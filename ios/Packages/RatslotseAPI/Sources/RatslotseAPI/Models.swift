@@ -72,11 +72,19 @@ public struct DistrictProjectsOverview: Codable, Sendable {
     public let total: Int?
     public let stages: [String: Int]?
     public let highlights: [DistrictHighlight]?
+    /// Wann das Register gerechnet wurde — NICHT der Datenstand.
     public let updatedAt: String?
+    /// Wie viele Tafel-Einträge als Doppel an einer Viertelgrenze nicht in
+    /// `total` zählen (seit 10/2026, optional).
+    public let shared: Int?
+    /// Der jüngste Sitzungstag, dessen Beschlüsse das Register gesehen hat —
+    /// „Beschlüsse bis …" (seit 10/2026, optional).
+    public let decisionsUntil: String?
 
     enum CodingKeys: String, CodingKey {
-        case districts, total, stages, highlights
+        case districts, total, stages, highlights, shared
         case updatedAt = "updated_at"
+        case decisionsUntil = "decisions_until"
     }
 
     public init(from decoder: Decoder) throws {
@@ -86,6 +94,8 @@ public struct DistrictProjectsOverview: Codable, Sendable {
         stages = try c.decodeIfPresent([String: Int].self, forKey: .stages)
         highlights = try c.decodeIfPresent([DistrictHighlight].self, forKey: .highlights)
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+        shared = try c.decodeIfPresent(Int.self, forKey: .shared)
+        decisionsUntil = try c.decodeIfPresent(String.self, forKey: .decisionsUntil)
     }
 }
 
@@ -165,14 +175,23 @@ public struct DistrictProject: Codable, Sendable, Hashable, Identifiable {
     public let reported: Bool
     public let decisions: [DistrictProjectDecision]
     public let locations: [DistrictProjectLocation]
+    /// Vom Server abgeleitet (`council/viertel_zeitplan.py`): `likely_done`,
+    /// `overdue`, `quiet` oder nil. Seit 10/2026, optional.
+    public let schedule: String?
+    /// Der Satz dazu, fertig zum Anzeigen.
+    public let scheduleNote: String?
+    /// Das aus `when` gelesene Ende (ISO-Datum).
+    public let whenEnd: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, what, stage, when, category, confidence, hidden, reported, decisions, locations
+        case id, name, what, stage, when, category, confidence, hidden, reported, decisions, locations, schedule
         case projectKey = "project_key"
         case placeID = "place_id"
         case firstDate = "first_date"
         case lastDate = "last_date"
         case reportCount = "report_count"
+        case scheduleNote = "schedule_note"
+        case whenEnd = "when_end"
     }
 }
 
@@ -301,10 +320,13 @@ public struct DistrictProjects: Codable, Sendable {
     public let press: [DistrictPressItem]
     public let neighbours: [DistrictNeighbour]
     public let updatedAt: String?
+    /// „Beschlüsse bis …" — der Datenstand des Registers (seit 10/2026, optional).
+    public let decisionsUntil: String?
 
     enum CodingKeys: String, CodingKey {
         case place, projects, upcoming, investments, participations, closures, press, neighbours
         case updatedAt = "updated_at"
+        case decisionsUntil = "decisions_until"
     }
 
     public init(from decoder: Decoder) throws {
@@ -318,6 +340,7 @@ public struct DistrictProjects: Codable, Sendable {
         press = try c.decodeIfPresent([DistrictPressItem].self, forKey: .press) ?? []
         neighbours = try c.decode([DistrictNeighbour].self, forKey: .neighbours)
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+        decisionsUntil = try c.decodeIfPresent(String.self, forKey: .decisionsUntil)
     }
 }
 

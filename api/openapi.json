@@ -8815,6 +8815,20 @@
             "title": "Reported",
             "type": "boolean"
           },
+          "schedule": {
+            "title": "Schedule",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schedule_note": {
+            "title": "Schedule Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "stage": {
             "title": "Stage",
             "type": "string"
@@ -8825,6 +8839,13 @@
           },
           "when": {
             "title": "When",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "when_end": {
+            "title": "When End",
             "type": [
               "string",
               "null"
@@ -8976,6 +8997,13 @@
             "title": "Closures",
             "type": "array"
           },
+          "decisions_until": {
+            "title": "Decisions Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "investments": {
             "items": {
               "$ref": "#/components/schemas/DistrictInvestment"
@@ -9046,6 +9074,13 @@
       "DistrictProjectsOverview": {
         "description": "``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,\ndazu die Stadtzahlen und die Vorhaben, die gerade herausstechen.",
         "properties": {
+          "decisions_until": {
+            "title": "Decisions Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "districts": {
             "items": {
               "$ref": "#/components/schemas/DistrictProjectsOverviewEntry"
@@ -9059,6 +9094,10 @@
             },
             "title": "Highlights",
             "type": "array"
+          },
+          "shared": {
+            "title": "Shared",
+            "type": "integer"
           },
           "stages": {
             "additionalProperties": {

@@ -23,6 +23,7 @@ from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING
 
 from council.store_basis import StoreBasis
+from council.viertel_zeitplan import schedule_state
 from kern.dbfehler import tabelle_fehlt
 
 #: Was als Vorhaben auf die Tafel darf. Darunter bleibt es im Register, aber
@@ -101,6 +102,7 @@ class ViertelMixin(StoreBasis):
         """
         if since is None:
             since = _months_ago(CANDIDATE_MONTHS)
+        plaene = self._plan_shares(since)
         rows = self._conn.execute(
             """
             SELECT d.id, d.title, d.summary, d.official_text, d.outcome, d.kind, d.kvonr,
@@ -130,7 +132,43 @@ class ViertelMixin(StoreBasis):
                 "evidence": (r["evidence"] or "")[:160], "strict": strict,
             })
             d["strict"] = d["strict"] or strict
+        # Bebauungspläne, deren Geltungsbereich hier liegt, sind Kandidaten —
+        # auch wenn die Orts-Pipeline nur Straßen am Rand erkannt hat, die zu
+        # weniger als der Hälfte im Viertel liegen (B-Plan 867 „Bremer
+        # Heerstraße/Müllersweg" liegt zu 84 % in Tweelbäke, die beiden
+        # Straßen nicht). Der Umring ist die bessere Auskunft als jede Straße.
+        neue_plaene = [did for did, pl in plaene.items()
+                       if did not in by_id and pl["shares"].get(place.name, 0) >= self.BPLAN_MIN_SHARE]
+        if neue_plaene:
+            ph = ",".join("?" * len(neue_plaene))
+            for r in self._conn.execute(
+                    f"SELECT d.id, d.title, d.summary, d.official_text, d.outcome, d.kind, d.kvonr, "
+                    f"se.session_date, se.committee FROM council_decisions d "
+                    f"JOIN council_sessions se ON se.ksinr = d.ksinr WHERE d.id IN ({ph}) "
+                    f"ORDER BY se.session_date DESC, d.id", neue_plaene).fetchall():
+                by_id[r["id"]] = {
+                    "id": r["id"], "title": r["title"], "summary": r["summary"],
+                    "official_text": r["official_text"], "outcome": r["outcome"], "kind": r["kind"],
+                    "kvonr": r["kvonr"], "date": r["session_date"], "committee": r["committee"],
+                    "locations": [], "strict": True, "other_districts": [],
+                }
         for d in by_id.values():
+            plan = plaene.get(d["id"])
+            if plan:
+                d["plan"] = plan
+                anteil = plan["shares"].get(place.name, 0)
+                if anteil >= self.BPLAN_MIN_SHARE and not any(loc["kind"] == "bplan" for loc in d["locations"]):
+                    d["locations"].append({
+                        "slug": f"bplan-{plan['key'].lower().replace(' ', '-')}", "name": plan["label"],
+                        "kind": "bplan", "share": round(anteil, 2), "source": "title",
+                        "method": "bplan_outline", "evidence": plan["label"], "strict": True,
+                    })
+            d["title_districts"] = [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT ld.district FROM council_decision_locations dl "
+                "JOIN council_locations l ON l.slug = dl.location_slug "
+                "JOIN council_location_districts ld ON ld.location_slug = l.slug "
+                "WHERE dl.decision_id = ? AND dl.source = 'title' AND l.kind = 'district' AND ld.share >= ?",
+                (d["id"], min_share)).fetchall()]
             others = self._conn.execute(
                 "SELECT DISTINCT ld.district FROM council_decision_locations dl "
                 "JOIN council_location_districts ld ON ld.location_slug = dl.location_slug "
@@ -147,6 +185,61 @@ class ViertelMixin(StoreBasis):
                     d["proposed_decision"] = (t["proposed_decision"] or "")[:600] or None
                     d["financial_impact"] = (t["financial_impact"] or "")[:300] or None
         return list(by_id.values())
+
+    def _plan_shares(self, since: str) -> dict[int, dict]:
+        """Je Beschluss seit ``since``, dessen Titel einen Bebauungsplan mit
+        Umring nennt: der Plan und sein Flächenanteil je Ortsbereich.
+
+        Das ist die eine Ortsangabe, die nicht geraten ist. Am 03.10.2026
+        standen B-Plan 858 und 837 (beide ganz in Nadorst) auch in Bürgeresch,
+        Dietrichsfeld und Ofenerdiek, B-Plan 847 (ganz in Tweelbäke) auch in
+        Osternburg, der vorhabenbezogene Plan 73 (ganz im Bahnhofsviertel)
+        auch in der Innenstadt — jedes Mal, weil eine Straße am Rand des
+        Plans in das andere Viertel hineinreicht.
+
+        Eine Flächennutzungsplan-Änderung trägt keine Plannummer, läuft aber
+        fast immer parallel zu einem Bebauungsplan über dieselbe Fläche, und
+        beide tragen dieselbe Ortsangabe in Klammern („Änderung 84 … (nördlich
+        Eßkamp/östlich Südbäke)" neben „Bebauungsplan 837 (nördlich
+        Eßkamp/östlich Südbäke)"), und Ausschuss und Rat beraten beide in
+        derselben Sitzung. Über Klammer und Sitzungstag erbt sie den Umring.
+        """
+        from council import bplan
+        try:
+            rows = self._conn.execute(
+                "SELECT d.id, d.title, se.session_date FROM council_decisions d "
+                "JOIN council_sessions se ON se.ksinr = d.ksinr "
+                "WHERE se.session_date >= ? AND (d.title LIKE '%plan%')", (since,)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return {}
+        je_titel = {r["id"]: (r["title"] or "", bplan.plannummern_im_titel(r["title"])) for r in rows}
+        datum = {r["id"]: r["session_date"] for r in rows}
+        umringe = self.bplan_outlines_by_keys([k for _, keys in je_titel.values() for k in keys])
+        if not umringe:
+            return {}
+        # Klammer und Sitzungstag → Plan. Der Tag gehört dazu, weil eine
+        # Klammer wie „(Krugweg)" für sich zu dünn ist; im Parallelverfahren
+        # beraten Ausschuss und Rat beide Pläne in derselben Sitzung.
+        plan_je_klammer: dict[tuple[str, str], dict] = {}
+        out: dict[int, dict] = {}
+        for did, (titel, keys) in je_titel.items():
+            treffer = next((umringe[k] for k in keys if k in umringe), None)
+            if not treffer:
+                continue
+            out[did] = {"key": treffer["key"], "label": f"Bebauungsplan {treffer['nr']}",
+                        "shares": _umring_anteile(treffer)}
+            klammer = _ortsklammer(titel)
+            if klammer:
+                plan_je_klammer.setdefault((klammer, datum[did]), out[did])
+        for did, (titel, keys) in je_titel.items():
+            if did in out or keys or "flächennutzungsplan" not in titel.lower():
+                continue
+            plan = plan_je_klammer.get((_ortsklammer(titel) or "", datum[did]))
+            if plan:
+                out[did] = plan
+        return out
 
     def _namesakes(self, locations: list[dict], place) -> list[dict]:
         """ANDERE Katalog-Orte anderer Ortsbereiche, die einen dieser Namen
@@ -350,6 +443,7 @@ class ViertelMixin(StoreBasis):
                 "report_count": r["report_count"], "hidden": hidden,
                 "decisions": [dict(d) for d in decisions],
                 "locations": locations,
+                **schedule_state(r["stage"], r["when_text"], r["last_date"]),
             })
         return out
 
@@ -481,34 +575,119 @@ class ViertelMixin(StoreBasis):
         place = self.resolve_place(place_id)
         return place.name if place else place_id
 
+    def _visible_project_rows(self, min_confidence: int) -> list[sqlite3.Row]:
+        """Die Vorhaben, die auf einer Tafel stehen: sicher genug und nicht
+        von der Redaktion nach einer Meldung ausgeblendet.
+
+        EINE Stelle für „sichtbar" — Übersicht, Stadtzahl und Highlights
+        zählten bis 10/2026 die gemeldeten mit, die Tafel nicht; die Zahl
+        im Kopf passte dann nicht zur Liste darunter."""
+        return [r for r in self._conn.execute(
+            "SELECT p.id, p.place_id, p.name, p.what, p.stage, p.when_text, p.category, p.last_date, "
+            f"p.updated_at, p.project_key, {_HIDDEN_SQL} AS hidden "
+            "FROM council_district_projects p WHERE p.confidence >= ?", (min_confidence,)).fetchall()
+            if not r["hidden"]]
+
     def district_projects_overview(self, *, min_confidence: int = PROJECT_MIN_CONFIDENCE) -> dict[str, dict]:
-        """Je Ortsbereich: wie viele Vorhaben, wann zuletzt etwas dazukam."""
+        """Je Ortsbereich: wie viele sichtbare Vorhaben, wann zuletzt etwas
+        dazukam und wie viele je Stand (trägt die Wärmekarte der Auswahl:
+        Wo gebaut wird, ist mehr los als wo nur eine Idee steht)."""
         try:
-            rows = self._conn.execute(
-                "SELECT place_id, COUNT(*) AS n, MAX(last_date) AS last_date, MAX(updated_at) AS updated_at "
-                "FROM council_district_projects WHERE confidence >= ? GROUP BY place_id",
-                (min_confidence,)).fetchall()
+            rows = self._visible_project_rows(min_confidence)
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise
             return {}
-        out = {r["place_id"]: {"count": r["n"], "last_date": r["last_date"], "updated_at": r["updated_at"],
-                               "stages": {}}
-               for r in rows}
-        # Die Stände je Ortsbereich tragen die Wärmekarte der Auswahl: Wo
-        # gebaut wird, ist mehr los als wo nur eine Idee steht.
-        for r in self._conn.execute(
-                "SELECT place_id, stage, COUNT(*) AS n FROM council_district_projects "
-                "WHERE confidence >= ? GROUP BY place_id, stage", (min_confidence,)):
-            out[r["place_id"]]["stages"][r["stage"]] = r["n"]
+        out: dict[str, dict] = {}
+        for r in rows:
+            o = out.setdefault(r["place_id"], {"count": 0, "last_date": None, "updated_at": None, "stages": {}})
+            o["count"] += 1
+            o["stages"][r["stage"]] = o["stages"].get(r["stage"], 0) + 1
+            for k in ("last_date", "updated_at"):
+                if r[k] and (o[k] is None or r[k] > o[k]):
+                    o[k] = r[k]
         return out
+
+    def district_city_totals(self, *, min_confidence: int = PROJECT_MIN_CONFIDENCE) -> dict:
+        """Die Stadtzahl: sichtbare Vorhaben, **jedes nur einmal**, und je Stand.
+
+        Ein Vorhaben an der Grenze steht zu Recht auf zwei Tafeln (ein
+        Bebauungsplan, der zu je einem guten Teil in zwei Ortsbereichen
+        liegt) — in der Stadtzahl aber nur einmal. Dasselbe Vorhaben heißt:
+        teilt mindestens einen Beschluss UND trägt im Wesentlichen denselben
+        Namen (``_gleicher_name``). Der Beschluss allein reicht nicht: Ein
+        Sammelbericht über drei Sporthallen ist drei Vorhaben in drei Vierteln.
+
+        ``stages`` summiert sich zu ``total`` — auch Idee, fertig und
+        abgelehnt stehen darin. Die Seite zeigt die drei großen Stände und
+        nennt den Rest, statt eine Lücke zwischen Kopfzahl und Aufteilung zu
+        lassen (147 gegen 11 + 47 + 63 = 121 am 03.10.2026).
+        """
+        try:
+            rows = self._visible_project_rows(min_confidence)
+            pd = self._conn.execute(
+                "SELECT project_id, decision_id FROM council_district_project_decisions").fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return {"total": 0, "stages": {}, "shared": 0}
+        ids = {r["id"] for r in rows}
+        by_decision: dict[int, list[int]] = {}
+        for p, d in pd:
+            if p in ids:
+                by_decision.setdefault(d, []).append(p)
+        by_id = {r["id"]: r for r in rows}
+        eltern = {i: i for i in ids}
+
+        def wurzel(i: int) -> int:
+            while eltern[i] != i:
+                eltern[i] = eltern[eltern[i]]
+                i = eltern[i]
+            return i
+
+        for gruppe in by_decision.values():
+            for a in gruppe:
+                for b in gruppe:
+                    if a < b and by_id[a]["place_id"] != by_id[b]["place_id"] \
+                            and _gleicher_name(by_id[a]["name"], by_id[b]["name"]):
+                        eltern[wurzel(a)] = wurzel(b)
+        gruppen: dict[int, list[sqlite3.Row]] = {}
+        for i in ids:
+            gruppen.setdefault(wurzel(i), []).append(by_id[i])
+        stages: dict[str, int] = {}
+        for mitglieder in gruppen.values():
+            # Der Stand der Gruppe ist der des jüngsten Eintrags — er kennt
+            # den letzten Beschluss.
+            jung = max(mitglieder, key=lambda r: (r["last_date"] or "", r["id"]))
+            stages[jung["stage"]] = stages.get(jung["stage"], 0) + 1
+        return {"total": len(gruppen), "stages": stages, "shared": len(ids) - len(gruppen)}
+
+    def district_decisions_until(self) -> str | None:
+        """Bis zu welchem Sitzungstag das Register Beschlüsse gesehen hat.
+
+        Das ist der jüngste Beschluss, den der Richter beurteilt hat — nicht
+        der Zeitpunkt des Laufs (``updated_at``). Am 03.10.2026 stand auf der
+        Seite „Stand 27.09.2026", der jüngste Beschluss war vom 27.08.; wer
+        einen Beschluss aus dem September suchte, fand ihn nicht und konnte
+        nicht wissen, warum."""
+        try:
+            row = self._conn.execute(
+                "SELECT MAX(se.session_date) FROM council_district_reviews r "
+                "JOIN council_decisions d ON d.id = r.decision_id "
+                "JOIN council_sessions se ON se.ksinr = d.ksinr").fetchone()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return None
+        return row[0] if row and row[0] else None
 
     #: Reihenfolge der Stände für die Stadt-Highlights: was gerade passiert,
     #: zuerst. Abgelehnt und fertig sind kein Blickfang.
     _HIGHLIGHT_ORDER = ("building", "decided", "planning", "idea")
 
     def district_highlights(self, *, limit: int = 6,
-                            min_confidence: int = PROJECT_MIN_CONFIDENCE) -> list[dict]:
+                            min_confidence: int = PROJECT_MIN_CONFIDENCE,
+                            today: date | None = None) -> list[dict]:
         """Die Vorhaben, die stadtweit gerade am meisten hergeben — für die
         Auswahl-Seite, bevor man ein Viertel gewählt hat.
 
@@ -518,21 +697,27 @@ class ViertelMixin(StoreBasis):
         Eversten sagen nichts über die Stadt, sie sagen, dass Eversten groß ist.
         Vorhaben, die die Redaktion nach einer Meldung ausgeblendet hat,
         bleiben weg — wie auf der Tafel.
+
+        **Nichts, dessen Zeit vorbei ist** (``viertel_zeitplan``): Am
+        03.10.2026 standen hier vier von sechs Vorhaben „Im Bau“, deren
+        genannter Zeitraum seit Monaten abgelaufen war — ganz oben, weil
+        „Im Bau“ zuerst kommt. Ein Vorhaben mit abgelaufenem Zeitraum oder
+        ohne Beschluss seit einem Jahr bleibt auf seiner Tafel (dort
+        gekennzeichnet), ist aber nicht „gerade in der Stadt".
         """
-        order = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(self._HIGHLIGHT_ORDER))
+        rang = {s: i for i, s in enumerate(self._HIGHLIGHT_ORDER)}
         try:
-            rows = self._conn.execute(
-                "SELECT p.id, p.project_key, p.place_id, p.name, p.what, p.stage, p.when_text, "
-                f"p.category, p.last_date, {_HIDDEN_SQL} AS hidden "
-                "FROM council_district_projects p WHERE p.confidence >= ? "
-                f"AND p.stage IN ({','.join('?' * len(self._HIGHLIGHT_ORDER))}) "
-                f"ORDER BY CASE p.stage {order} ELSE 9 END, (p.when_text IS NULL), p.last_date DESC, p.id "
-                "LIMIT ?", (min_confidence, *self._HIGHLIGHT_ORDER, limit * 8)).fetchall()
+            rows = [r for r in self._visible_project_rows(min_confidence) if r["stage"] in rang]
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise
             return []
-        rows = [r for r in rows if not r["hidden"]]
+        rows = [r for r in rows
+                if schedule_state(r["stage"], r["when_text"], r["last_date"], today)["schedule"] is None]
+        # Stabil sortiert in drei Schritten — die letzte Sortierung ist die wichtigste.
+        rows.sort(key=lambda r: r["id"])
+        rows.sort(key=lambda r: r["last_date"] or "", reverse=True)
+        rows.sort(key=lambda r: (rang[r["stage"]], r["when_text"] is None))
         gewaehlt: list = []
         gesehen: set[str] = set()
         for r in rows:
@@ -837,6 +1022,28 @@ class ViertelMixin(StoreBasis):
         return out
 
 
+_NAME_FUELLWOERTER = {"der", "die", "das", "des", "dem", "den", "am", "an", "im", "in", "auf", "und", "zum",
+                      "zur", "von", "vom", "für", "mit", "bei", "neue", "neuer", "neues", "neubau"}
+
+
+def _namensworte(name: str) -> set[str]:
+    worte = re.findall(r"[a-zäöüß0-9]+", (name or "").lower())
+    # „Eßkamp" und „Eßkamps", „Straße" und „Straßen" — ein Genitiv-s macht
+    # kein anderes Vorhaben.
+    return {re.sub(r"(?<=[a-zäöüß]{4})(?:es|s|n)$", "", w) for w in worte if w not in _NAME_FUELLWOERTER}
+
+
+def _gleicher_name(a: str, b: str) -> bool:
+    """Zwei Vorhaben-Namen meinen im Wesentlichen dasselbe (Jaccard ≥ 0,5 der
+    Inhaltswörter): „Wohngebiet nördlich Eßkamp" = „Wohngebiet nördlich des
+    Eßkamps", aber „Sanierung der Sporthalle der Grundschule Bürgeresch" ≠
+    „Sanierung der Sporthalle der IGS Kreyenbrück"."""
+    wa, wb = _namensworte(a), _namensworte(b)
+    if not wa or not wb:
+        return False
+    return len(wa & wb) / len(wa | wb) >= 0.5
+
+
 def _street_key(name: str) -> str:
     """Schreibweisen einer Straße auf einen Schlüssel: Hausnummern weg,
     „straße"/„str."/„str" gleich."""
@@ -929,6 +1136,37 @@ def _ist_grenzfund(blob: str, m: re.Match) -> bool:
         return False
     return ("zwischen" in davor.lower() or "(" in davor[-3:] or bool(re.search(r"\bvon\b", davor, re.IGNORECASE))
             or re.match(r"\s*bis\s", danach, re.IGNORECASE) is not None)
+
+
+#: Flächenanteile je Umring — die Geometrie ändert sich innerhalb eines
+#: Prozesses nicht, und der Register-Lauf fragt je Ortsbereich (31-mal).
+_ANTEILE_CACHE: dict[tuple[str, str | None], dict[str, float]] = {}
+
+
+def _umring_anteile(umring: dict) -> dict[str, float]:
+    """Flächenanteil eines Bebauungsplan-Umrings je Ortsbereich (Summe 1)."""
+    from council import geo
+    schluessel = (umring["key"], umring.get("updated_at"))
+    if schluessel not in _ANTEILE_CACHE:
+        try:
+            anteile = geo.ortsbereiche_der_geometrie(json.loads(umring["geojson"]))
+        except (TypeError, ValueError):
+            anteile = {}
+        gesamt = sum(anteile.values()) or 1
+        _ANTEILE_CACHE[schluessel] = {name: n / gesamt for name, n in anteile.items()}
+    return _ANTEILE_CACHE[schluessel]
+
+
+def _ortsklammer(titel: str) -> str | None:
+    """Die Ortsangabe in Klammern eines Plantitels, vereinheitlicht —
+    „(nördlich Eßkamp / östlich Südbäke)" = „(nördlich Eßkamp/östlich Südbäke)".
+    Eine Klammer mit Fraktion oder Datum ist keine Ortsangabe."""
+    for m in re.finditer(r"\(([^()]{6,})\)", titel or ""):
+        inhalt = m.group(1)
+        if re.search(r"fraktion|gruppe|vom\s+\d|\d{1,2}\.\d{1,2}\.\d{2,4}|antrag|bericht", inhalt, re.IGNORECASE):
+            continue
+        return re.sub(r"\s*/\s*", "/", re.sub(r"\s+", " ", inhalt.strip().lower()))
+    return None
 
 
 def _match_projects(old: dict[int, set[int]], new: list[set[int]]) -> list[int | None]:

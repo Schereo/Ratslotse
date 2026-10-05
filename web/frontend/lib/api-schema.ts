@@ -9956,12 +9956,18 @@ export interface components {
             report_count: number;
             /** Reported */
             reported: boolean;
+            /** Schedule */
+            schedule?: string | null;
+            /** Schedule Note */
+            schedule_note?: string | null;
             /** Stage */
             stage: string;
             /** What */
             what: string;
             /** When */
             when: string | null;
+            /** When End */
+            when_end?: string | null;
         };
         /**
          * DistrictProjectDecision
@@ -10026,6 +10032,8 @@ export interface components {
         DistrictProjects: {
             /** Closures */
             closures: components["schemas"]["DistrictClosure"][];
+            /** Decisions Until */
+            decisions_until?: string | null;
             /** Investments */
             investments: components["schemas"]["DistrictInvestment"][];
             /** Neighbours */
@@ -10049,10 +10057,14 @@ export interface components {
          *     dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen.
          */
         DistrictProjectsOverview: {
+            /** Decisions Until */
+            decisions_until?: string | null;
             /** Districts */
             districts: components["schemas"]["DistrictProjectsOverviewEntry"][];
             /** Highlights */
             highlights: components["schemas"]["DistrictHighlight"][];
+            /** Shared */
+            shared?: number;
             /** Stages */
             stages: {
                 [key: string]: number;
@@ -25134,4 +25146,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8bac47ea1dd46ae29cbf6d697fd2070b3508ea53d5072d620dbc775fe3873ad0
+// vertrag-sha256: 8cbfc0ed0e88cf3268140feb7d1cdd763e0b595b95fd7bcfe47f40f235d678d1

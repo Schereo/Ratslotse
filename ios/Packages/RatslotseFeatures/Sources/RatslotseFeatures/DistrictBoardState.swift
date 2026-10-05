@@ -12,6 +12,10 @@ final class DistrictBoardState {
     let placeID: String
     var data: DistrictProjects?
     var error: String?
+    /// Der Server kennt den Ortsbereich nicht (404) — dann hilft kein
+    /// zweiter Versuch, und die Tafel sagt das, statt „Erneut versuchen"
+    /// anzubieten.
+    var notFound = false
     var stage: DistrictStage?
     var selected: DistrictProject?
     /// Was dieses Konto hier gemeldet (`true`) oder zurückgenommen (`false`)
@@ -37,8 +41,12 @@ final class DistrictBoardState {
 
     func load() async {
         error = nil
+        notFound = false
         do {
             data = try await model.api.get("/api/districts/\(placeID)/projects")
+        } catch let failure as APIError where failure.statusCode == 404 {
+            notFound = true
+            self.error = "Diesen Ortsbereich gibt es nicht."
         } catch {
             self.error = "Die Tafel lässt sich gerade nicht laden."
             return

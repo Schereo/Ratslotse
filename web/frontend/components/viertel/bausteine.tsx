@@ -75,9 +75,32 @@ export function useMeineOrtsbereiche(orte: { name: string; place_id: string }[] 
   }, [topics.data, orte]);
 }
 
-/** Die Vorhaben einer Tafel in Anzeige-Reihenfolge: was gerade passiert, zuerst; dann das jüngste. */
+/** Die Vorhaben einer Tafel in Anzeige-Reihenfolge: was gerade passiert,
+ *  zuerst; innerhalb eines Stands die mit laufendem Zeitplan vor denen, deren
+ *  Zeitraum abgelaufen ist (`schedule`, vom Server gerechnet); dann das jüngste. */
 export function sortiert(projects: Vorhaben[]): Vorhaben[] {
-  return [...projects].sort((a, b) => (STAND[a.stage]?.rang ?? 9) - (STAND[b.stage]?.rang ?? 9) || (b.last_date ?? "").localeCompare(a.last_date ?? ""));
+  return [...projects].sort((a, b) => (STAND[a.stage]?.rang ?? 9) - (STAND[b.stage]?.rang ?? 9)
+    || Number(!!a.schedule) - Number(!!b.schedule)
+    || (b.last_date ?? "").localeCompare(a.last_date ?? ""));
+}
+
+/** Kurzform des abgeleiteten Zustands für Zeile und Badge. Ob ein Vorhaben
+ *  so heißt, entscheidet der Server (`council/viertel_zeitplan.py`); hier
+ *  steht nur, wie es heißt. Der ganze Satz kommt als `schedule_note`. */
+export const ZEITPLAN: Record<string, string> = {
+  likely_done: "vermutlich abgeschlossen",
+  overdue: "Zeitplan überschritten",
+  quiet: "lange kein Beschluss",
+};
+
+/** „Beschlüsse bis 27.08.2026" — der Datenstand des Registers. Bis 10/2026
+ *  stand hier „Stand" mit dem Tag des Laufs; der jüngste Beschluss war dann
+ *  einen Monat älter, und niemand konnte das sehen. Fehlt das Feld (älterer
+ *  Server), bleibt der Laufzeitpunkt — ehrlich als solcher benannt. */
+export function datenstand(d: { decisions_until?: string | null; updated_at: string | null }): string | null {
+  if (d.decisions_until) return `Beschlüsse bis ${formatDate(d.decisions_until)}`;
+  if (d.updated_at) return `gerechnet am ${formatDate(d.updated_at.slice(0, 10))}`;
+  return null;
 }
 
 /* ------------------------------------------------------- Stadt-Stufe --- */
@@ -86,6 +109,13 @@ export function sortiert(projects: Vorhaben[]): Vorhaben[] {
  *  `kompakt` für die Tafel-Spalte der Karte (kleinere Type). */
 export function Stadtzahl({ data, orte, kompakt }: { data: Uebersicht; orte: Uebersicht["districts"]; kompakt?: boolean }) {
   const belegt = orte.filter((o) => o.count > 0).length;
+  const stand = datenstand(data);
+  // Die Kopfzahl ist die Summe ALLER Stände — die drei großen stehen als
+  // Zahl, der Rest als Satz darunter, damit nichts zwischen ihnen fehlt.
+  const rest = ([["idea", "Idee", "Ideen"], ["done", "fertig", "fertig"], ["rejected", "abgelehnt", "abgelehnt"]] as const)
+    .map(([st, eins, viele]) => [data.stages[st] ?? 0, eins, viele] as const)
+    .filter(([n]) => n > 0)
+    .map(([n, eins, viele]) => `${n} ${n === 1 ? eins : viele}`);
   return (
     <div className="min-w-0">
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
@@ -96,7 +126,7 @@ export function Stadtzahl({ data, orte, kompakt }: { data: Uebersicht; orte: Ueb
         <span className={cn("ml-2 font-semibold tracking-normal text-muted-foreground", kompakt ? "text-[16px]" : "text-[18px] sm:text-[20px]")}>Vorhaben</span>
       </p>
       <p className="mt-2 text-sm text-muted-foreground">
-        in {belegt} von {orte.length} Ortsbereichen{data.updated_at ? ` · Stand ${formatDate(data.updated_at.slice(0, 10))}` : ""}
+        in {belegt} von {orte.length} Ortsbereichen{stand ? ` · ${stand}` : ""}
       </p>
       <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
         {(["building", "decided", "planning"] as const).map((st) => (
@@ -111,6 +141,12 @@ export function Stadtzahl({ data, orte, kompakt }: { data: Uebersicht; orte: Ueb
           </div>
         ))}
       </dl>
+      {(rest.length > 0 || (data.shared ?? 0) > 0) && (
+        <p className="mt-3 text-meta text-muted-foreground">
+          {rest.length > 0 && <>Dazu {rest.join(", ")}.</>}
+          {(data.shared ?? 0) > 0 && <> Vorhaben an einer Viertelgrenze zählen einmal.</>}
+        </p>
+      )}
     </div>
   );
 }
@@ -540,7 +576,12 @@ export function VorhabenZeile({ v, aktiv, schwebt, onClick, onHover }: {
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-foreground">{v.name}</span>
           <span className="block truncate text-xs text-muted-foreground">
-            {stand.label}{v.when ? ` · ${v.when}` : ""} · {KATEGORIE[v.category] ?? KATEGORIE.other}
+            {/* Der Hinweis direkt hinter dem Stand — am Ende der Zeile
+                schnitt ihn das Telefon ab („Mitte Juni 2025–Januar 2026 · ve…"). */}
+            {stand.label}
+            {v.schedule && ZEITPLAN[v.schedule] && <span className="font-medium text-amber-800 dark:text-amber-300"> · {ZEITPLAN[v.schedule]}</span>}
+            {v.when ? ` · ${v.when}` : ""}
+            {!v.schedule && ` · ${KATEGORIE[v.category] ?? KATEGORIE.other}`}
           </span>
         </span>
         <ArrowRight className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", aktiv && "translate-x-0.5 text-primary")} />
@@ -598,6 +639,13 @@ export function VorhabenDetail({ v, ortName, angemeldet, gemeldet, onMelden, onZ
       </div>
       <h3 className="mt-2 font-display text-xl font-bold leading-snug text-foreground">{v.name}</h3>
       <p className="mt-2 text-sm leading-relaxed text-foreground/90">{v.what}</p>
+      {/* Der Zeitraum ist vorbei oder es kam lange nichts: Der Rat beschließt
+          keinen Bauabschluss, also sagen wir, was wir wissen — nicht mehr. */}
+      {v.schedule && v.schedule_note && (
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-hinweis text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200" role="note">
+          {v.schedule_note}
+        </p>
+      )}
 
       {v.stage !== "rejected" && (
         <ol className="mt-4 flex items-center gap-1" aria-label="Stand des Vorhabens">

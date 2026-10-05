@@ -63,7 +63,7 @@ public struct NativeRootView: View {
                 }
             }
             .navigationDestination(for: AppRoute.self) { route in
-                RatsRouteScaffold(model: model) {
+                RatsRouteScaffold(model: model, title: route.scaffoldTitle) {
                     RouteDestinationView(model: model, route: route)
                 }
                 .ratsZoomDestination(RatsZoomID.forRoute(route))
@@ -176,14 +176,29 @@ public struct NativeRootView: View {
 #endif
 }
 
+private extension AppRoute {
+    /// Die Kopfzeile einer geschobenen Route. Die Navigationsleiste ist
+    /// ausgeblendet (s. `RatsRouteScaffold`), ein `.navigationTitle` der
+    /// Zielansicht erscheint also nie — „Mein Viertel" stand deshalb bis
+    /// 10/2026 als „Ratslotse" über der Karte.
+    var scaffoldTitle: String {
+        switch self {
+        case .district: "Mein Viertel"
+        default: "Ratslotse"
+        }
+    }
+}
+
 private struct RatsRouteScaffold<Content: View>: View {
     @Bindable var model: AppModel
+    let title: String
     @ViewBuilder let content: Content
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    init(model: AppModel, @ViewBuilder content: () -> Content) {
+    init(model: AppModel, title: String = "Ratslotse", @ViewBuilder content: () -> Content) {
         self.model = model
+        self.title = title
         self.content = content()
     }
 
@@ -222,7 +237,7 @@ private struct RatsRouteScaffold<Content: View>: View {
                 .buttonStyle(RatsRouteButtonStyle())
                 .accessibilityLabel("Zurück")
                 Spacer()
-                Text("Ratslotse")
+                Text(title)
                     .font(RatsFont.title(17))
                     .foregroundStyle(RatsColor.text)
                 Spacer()
