@@ -22,10 +22,12 @@ export interface paths {
          *     Passwort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem
          *     frischen Apple-Identity-Token (Re-Auth in der App, RL-1002).
          *
-         *     Geräumt werden **beide** Datenbanken. Zwischen ihnen gibt es keine
+         *     Geräumt werden **alle drei** Datenbanken. Zwischen ihnen gibt es keine
          *     Fremdschlüssel, und in ``council.sqlite`` steht mit
          *     ``committee_notifications``/``session_followups_sent``, welche Sitzungen
-         *     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss.
+         *     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss. In
+         *     ``cities.sqlite`` liegen die Rückmeldungen zu den Städte-Urteilen samt
+         *     Freitext (``CITIES_USER_OWNED_TABLES``).
          */
         delete: operations["delete_account_api_account_delete"];
         options?: never;
@@ -2857,7 +2859,9 @@ export interface paths {
          *
          *     **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
          *     Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
-         *     Stimmen), und der Maßstab wäre wieder wertlos.
+         *     Stimmen), und der Maßstab wäre wieder wertlos. **Und nur aktiv**
+         *     (``require_active``): ein gesperrtes oder unbestätigtes Konto schreibt
+         *     hier so wenig wie anderswo; die Bremse zählt je Konto.
          *
          *     Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
          *     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
@@ -12046,6 +12050,20 @@ export interface components {
             window_since: string | null;
         };
         /**
+         * IdeaDataStatus
+         * @description Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
+         *
+         *     **Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein
+         *     Datum, liest man es als „bis dahin ist alles drin"; das stimmt nur für
+         *     das früheste der Städte.
+         */
+        IdeaDataStatus: {
+            /** As Of */
+            as_of: string | null;
+            /** Lagging */
+            lagging: components["schemas"]["IdeaLaggingCity"][];
+        };
+        /**
          * IdeaEvidence
          * @description Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.
          */
@@ -12087,8 +12105,21 @@ export interface components {
         IdeaFields: {
             /** Bodies */
             bodies: string[];
+            data_status: components["schemas"]["IdeaDataStatus"];
             /** Fields */
             fields: components["schemas"]["IdeaFieldSummary"][];
+        };
+        /**
+         * IdeaLaggingCity
+         * @description Eine Stadt, deren Bestand deutlich vor dem letzten Abgleich endet.
+         */
+        IdeaLaggingCity: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Latest Paper */
+            latest_paper: string;
         };
         /**
          * IdeaProtocol
@@ -25146,4 +25177,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8cbfc0ed0e88cf3268140feb7d1cdd763e0b595b95fd7bcfe47f40f235d678d1
+// vertrag-sha256: 583f1ad03840179ea41e7e9bcbc352218e286063c405694e7cc4606f254575ad

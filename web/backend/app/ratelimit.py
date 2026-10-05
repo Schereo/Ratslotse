@@ -110,6 +110,11 @@ qa_feedback_limiter = RateLimiter(max_calls=20, window_seconds=600)
 # Positivliste in kern/seitenaufrufe.py gedeckelt — die Bremse schützt die
 # Schreiblast, nicht den Inhalt.
 page_view_limiter = RateLimiter(max_calls=120, window_seconds=600)
+# „Stimmt das?" an den Städte-Urteilen (Ideen und Bewegungen): je Konto, nicht
+# je Adresse. Ein Klick je Karte, umentscheiden erlaubt — 60 in zehn Minuten
+# deckt eine Durchsicht ganzer Themenfelder; ein Skript, das Freitext in die
+# Tabelle schüttet, nicht.
+cities_feedback_limiter = RateLimiter(max_calls=60, window_seconds=600)
 partei_meinungen_limiter = RateLimiter(max_calls=15, window_seconds=600)
 #: Nachladen des Debatten-Bausteins: je Antwort einmal, automatisch.
 debatten_limiter = RateLimiter(max_calls=30, window_seconds=600)

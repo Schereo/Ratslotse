@@ -14048,6 +14048,31 @@
         "title": "Idea",
         "type": "object"
       },
+      "IdeaDataStatus": {
+        "description": "Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ\" auf der Seite.\n\n**Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein\nDatum, liest man es als „bis dahin ist alles drin\"; das stimmt nur für\ndas früheste der Städte.",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lagging": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaLaggingCity"
+            },
+            "title": "Lagging",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "lagging"
+        ],
+        "title": "IdeaDataStatus",
+        "type": "object"
+      },
       "IdeaEvidence": {
         "description": "Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.",
         "properties": {
@@ -14152,6 +14177,9 @@
             "title": "Bodies",
             "type": "array"
           },
+          "data_status": {
+            "$ref": "#/components/schemas/IdeaDataStatus"
+          },
           "fields": {
             "items": {
               "$ref": "#/components/schemas/IdeaFieldSummary"
@@ -14162,9 +14190,34 @@
         },
         "required": [
           "fields",
+          "data_status",
           "bodies"
         ],
         "title": "IdeaFields",
+        "type": "object"
+      },
+      "IdeaLaggingCity": {
+        "description": "Eine Stadt, deren Bestand deutlich vor dem letzten Abgleich endet.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "latest_paper": {
+            "title": "Latest Paper",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body_id",
+          "city",
+          "latest_paper"
+        ],
+        "title": "IdeaLaggingCity",
         "type": "object"
       },
       "IdeaProtocol": {
@@ -26617,7 +26670,7 @@
   "paths": {
     "/api/account": {
       "delete": {
-        "description": "Permanently delete the account and all data keyed to it (DSGVO right to\nerasure). Verlangt eine frische Bestätigung — eine Session allein (offener\nLaptop, gestohlenes Cookie) darf das Konto nicht zerstören können:\nPasswort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem\nfrischen Apple-Identity-Token (Re-Auth in der App, RL-1002).\n\nGeräumt werden **beide** Datenbanken. Zwischen ihnen gibt es keine\nFremdschlüssel, und in ``council.sqlite`` steht mit\n``committee_notifications``/``session_followups_sent``, welche Sitzungen\ndiesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss.",
+        "description": "Permanently delete the account and all data keyed to it (DSGVO right to\nerasure). Verlangt eine frische Bestätigung — eine Session allein (offener\nLaptop, gestohlenes Cookie) darf das Konto nicht zerstören können:\nPasswort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem\nfrischen Apple-Identity-Token (Re-Auth in der App, RL-1002).\n\nGeräumt werden **alle drei** Datenbanken. Zwischen ihnen gibt es keine\nFremdschlüssel, und in ``council.sqlite`` steht mit\n``committee_notifications``/``session_followups_sent``, welche Sitzungen\ndiesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss. In\n``cities.sqlite`` liegen die Rückmeldungen zu den Städte-Urteilen samt\nFreitext (``CITIES_USER_OWNED_TABLES``).",
         "operationId": "delete_account_api_account_delete",
         "requestBody": {
           "content": {
@@ -30603,7 +30656,7 @@
     },
     "/api/council/cities/ideas/{paper_id}/feedback": {
       "post": {
-        "description": "„Stimmt\" oder „stimmt nicht\" zu einem Urteil — ein Klick an der Karte.\n\n**Warum das der billigste Maßstab ist, den es gibt.** Jedes Urteil des\nStädtevergleichs wird gegen vierzig Fälle gemessen, die EIN Mensch an\neinem Tag beurteilt hat — und in vier von sieben Pull Requests war genau\ndieser Maßstab der Fehler, nicht das Modell. Vierhundert Rückmeldungen von\nzwei Ratsmitgliedern wären ein besserer, und sie kosten niemanden Arbeit.\n\n**Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine\nRückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele\nStimmen), und der Maßstab wäre wieder wertlos.\n\nDie FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch\"\ngilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.",
+        "description": "„Stimmt\" oder „stimmt nicht\" zu einem Urteil — ein Klick an der Karte.\n\n**Warum das der billigste Maßstab ist, den es gibt.** Jedes Urteil des\nStädtevergleichs wird gegen vierzig Fälle gemessen, die EIN Mensch an\neinem Tag beurteilt hat — und in vier von sieben Pull Requests war genau\ndieser Maßstab der Fehler, nicht das Modell. Vierhundert Rückmeldungen von\nzwei Ratsmitgliedern wären ein besserer, und sie kosten niemanden Arbeit.\n\n**Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine\nRückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele\nStimmen), und der Maßstab wäre wieder wertlos. **Und nur aktiv**\n(``require_active``): ein gesperrtes oder unbestätigtes Konto schreibt\nhier so wenig wie anderswo; die Bremse zählt je Konto.\n\nDie FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch\"\ngilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.",
         "operationId": "cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post",
         "parameters": [
           {

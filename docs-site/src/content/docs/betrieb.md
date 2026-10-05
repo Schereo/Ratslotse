@@ -511,9 +511,12 @@ Seite in dem Moment, in dem der Schalter auf Prod steht.
 **Lokal zum Arbeiten:** `python scripts/lokale_daten.py hol --mit-staedten`
 und `setz --mit-staedten` nehmen den Speicher vom Server mit. Ohne den
 Schalter bleibt alles wie bisher; 600 MB will nicht jede*r auf dem Notebook.
-Eine Abspeckung wie bei der Rats-Datenbank braucht es nicht — es stehen
-ausschließlich öffentliche Ratsdokumente anderer Städte darin, keine Konten,
-keine Personendaten.
+Eine Abspeckung wie bei der Rats-Datenbank braucht es fast nicht — es stehen
+öffentliche Ratsdokumente anderer Städte darin. Die eine Ausnahme sind die
+Rückmeldungen zu den Urteilen („Stimmt das?", mit Konto-Nummer und
+Freitext): `hol` leert sie, bevor die Datei an ihren Platz rückt, und die
+Konto-Löschung räumt sie wie die übrigen Kontodaten
+(`CITIES_USER_OWNED_TABLES` in `council/cities/store.py`).
 
 ---
 

@@ -34,6 +34,18 @@ from council.cities.schema import MIGRATIONS, SCHEMA, SCHEMA_VERSION
 OBJECT_KINDS = ("paper", "agenda_item", "meeting", "organization", "body",
                 "cluster")
 
+#: Tabellen dieser Datenbank, die an einem Konto hängen — das Gegenstück zu
+#: ``council.store.COUNCIL_USER_OWNED_TABLES``.
+#:
+#: Die Konto-Löschung räumte lange nur ``ratslotse.sqlite`` und
+#: ``council.sqlite``; die Rückmeldungen zu den Städte-Urteilen (Konto-Nummer
+#: plus Freitext bis 500 Zeichen) überlebten sie (gefunden im Review zu
+#: 3.0.0). ``tests/test_account_deletion.py`` hält die Liste gegen das Schema:
+#: Eine neue Tabelle mit ``user_id``/``owner_id`` ohne Eintrag hier ist rot.
+CITIES_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
+    ("feedback", "user_id"),
+)
+
 #: Die Verschmelzung der beiden Such-Hälften (Reciprocal Rank Fusion).
 #: ``RRF_K`` dämpft die Spitze — ohne ihn entschiede der erste Treffer allein.
 #: 60 ist der übliche Wert und hier nicht gemessen; die Gewichte dagegen
@@ -406,6 +418,22 @@ class CitiesStore:
         if limit:
             sql += " LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def coverage(self, body_ids: Sequence[str]) -> list[dict]:
+        """Je Stadt: letzter Abgleich und jüngste Vorlage bis zu diesem Tag.
+
+        Vorlagen mit einem Datum NACH dem Abgleich (Hannover datiert
+        Drucksachen auf die Sitzung) zählen nicht — sonst sähe ein Bestand
+        frischer aus, als er abgeholt ist.
+        """
+        if not body_ids:
+            return []
+        platz = ",".join("?" * len(body_ids))
+        return [dict(r) for r in self._conn.execute(
+            "SELECT b.id AS body_id, b.last_fetched, "
+            "  (SELECT MAX(p.date) FROM papers p WHERE p.body_id = b.id "
+            "     AND p.date <= substr(b.last_fetched, 1, 10)) AS latest_paper "
+            f"FROM bodies b WHERE b.id IN ({platz}) ORDER BY b.id", tuple(body_ids))]
 
     def idea_body_ids(self) -> list[str]:
         """Die Städte, aus denen beurteilte Ideen vorliegen.
@@ -2272,6 +2300,21 @@ class CitiesStore:
                 "  created_at=excluded.created_at",
                 (object_kind, object_id, annotator, version, user_id, verdict,
                  note, now()))
+
+    def delete_owner_data(self, user_id: int) -> int:
+        """Alles aus dieser Datenbank löschen, was an einem Konto hängt.
+
+        Teil der Konto-Löschung (DSGVO, Recht auf Löschung) neben
+        ``Store.delete_web_user`` und ``CouncilStore.delete_owner_data`` —
+        zwischen den drei Dateien gibt es keine Fremdschlüssel, die das von
+        allein täten. Gibt die Zahl gelöschter Zeilen zurück.
+        """
+        n = 0
+        with self._write() as conn:
+            for tabelle, spalte in CITIES_USER_OWNED_TABLES:
+                cur = conn.execute(f"DELETE FROM {tabelle} WHERE {spalte} = ?", (user_id,))
+                n += cur.rowcount or 0
+        return n
 
     def feedback_for(self, object_id: str, annotator: str, version: str,
                      user_id: int) -> str | None:

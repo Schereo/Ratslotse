@@ -825,6 +825,24 @@ def test_reset_token_single_use(client):
                        json={"token": "once-token", "new_password": "another12345"}).status_code == 400
 
 
+def test_delete_account_raeumt_die_staedte_rueckmeldungen(client):
+    """DSGVO: Die Rückmeldungen zu den Städte-Urteilen (mit Freitext) gehen
+    mit dem Konto — sie lagen in `cities.sqlite`, die das Löschen nicht kannte."""
+    from council.cities.store import CitiesStore
+
+    _register(client)
+    uid = client.get("/api/auth/me").json()["id"]
+    cs = CitiesStore(os.environ["CITIES_DB"])
+    cs.put_feedback("paper", "os:p:1", "fit", "4", uid, "wrong", "Meine Notiz")
+    cs.put_feedback("paper", "os:p:1", "fit", "4", uid + 1000, "right")
+    assert client.request(
+        "DELETE", "/api/account", json={"current_password": "password123"}
+    ).status_code == 204
+    rest = [r[0] for r in cs._conn.execute("SELECT user_id FROM feedback")]
+    cs.close()
+    assert rest == [uid + 1000]
+
+
 def test_delete_account_requires_password(client):
     _register(client)  # admin@test.de
     client.post("/api/topics", json={"name": "X", "description": "Testthema zum Mitlöschen."})

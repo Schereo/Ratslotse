@@ -56,6 +56,7 @@ export default function DatenschutzPage() {
               <li><strong>Meldungen zu „Mein Viertel":</strong> Meldest du ein Vorhaben als „Gehört nicht hierher", speichern wir die Meldung samt dem Grund, den du optional angibst, und dein Konto dazu. Die Redaktion sieht Vorhaben und Grund, nicht aber, wer gemeldet hat. Du kannst die Meldung zurücknehmen; mit deinem Konto wird sie gelöscht.</li>
               <li><strong>„Frag den Rat"-Anfragen und Fragen an Lotti:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen — bei Lotti zusammen mit dem Ausschnitt der Seite, auf den sich die Frage bezieht (etwa ein angeklickter Baustein oder markierter Text).</li>
               <li><strong>Geteilte Antworten:</strong> Wenn du ausdrücklich „Teilen" auswählst, speichern wir Frage, Antwort und die dazugehörigen Belege unter einem nicht erratbaren öffentlichen Link. Jede Person mit dem Link kann den Inhalt lesen und melden. Der Link wird mit deinem Konto gelöscht; gemeldete Links können wir vorher entfernen.</li>
+              <li><strong>Rückmeldungen zu Einordnungen:</strong> Wenn du bei „Ideen aus anderen Städten" angibst, ob eine Einordnung stimmt, speichern wir deine Antwort mit deinem Konto, damit du sie wiedersiehst und wir die Einordnungen prüfen können. Sie werden mit deinem Konto gelöscht.</li>
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
             </ul>
           </Section>

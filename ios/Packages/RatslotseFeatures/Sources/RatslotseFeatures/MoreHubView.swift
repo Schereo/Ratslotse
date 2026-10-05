@@ -89,26 +89,28 @@ struct MoreHubView: View {
                 .background(RatsColor.page)
             }
             .toolbar(.hidden, for: .navigationBar)
+            // Die Kopfzeile nennt die Seite, nicht das Menü, aus dem sie kam —
+            // bis 10/2026 stand über allen fünf „Mehr" (Review 3.0.0).
             .navigationDestination(for: MoreDestination.self) { destination in
                 switch destination {
                 case .analysis:
-                    MoreDestinationScaffold(title: "Mehr", back: goBack) {
+                    MoreDestinationScaffold(title: "Analyse", back: goBack) {
                         CouncilInsightsView(model: model)
                     }
                 case .ideas:
-                    MoreDestinationScaffold(title: "Mehr", back: goBack) {
+                    MoreDestinationScaffold(title: "Ideen aus anderen Städten", back: goBack) {
                         IdeasView(model: model)
                     }
                 case .subscriptions:
-                    MoreDestinationScaffold(title: "Mehr", back: goBack) {
+                    MoreDestinationScaffold(title: "Ausschuss-Abos", back: goBack) {
                         CommitteeSubscriptionsView(model: model)
                     }
                 case .saved:
-                    MoreDestinationScaffold(title: "Mehr", back: goBack) {
+                    MoreDestinationScaffold(title: "Merkliste", back: goBack) {
                         SavedCouncilView(model: model)
                     }
                 case .quiz:
-                    MoreDestinationScaffold(title: "Mehr", back: goBack) {
+                    MoreDestinationScaffold(title: "Oldenburg-Quiz", back: goBack) {
                         QuizView(model: model, area: nil)
                     }
                 }
@@ -146,7 +148,7 @@ struct MoreHubView: View {
             ] + (model.feature("ideen-anderswo") ? [
                 // Hinter der Analyse, wie im Web: Beide stellen dieselbe Frage
                 // aus verschiedenen Richtungen.
-                .link("Ideen anderswo", "Was andere Räte beschlossen haben und Oldenburg fehlt",
+                .link("Ideen aus anderen Städten", "Was andere Räte beantragt oder beschlossen haben",
                       .lightbulb, .ideas),
             ] : [])
         )

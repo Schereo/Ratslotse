@@ -421,7 +421,12 @@ struct MovementsSection: View {
             }
             .pickerStyle(.segmented)
             if let fehler {
-                Text(fehler).font(RatsFont.body(13)).foregroundStyle(RatsColor.danger)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(fehler).font(RatsFont.body(13)).foregroundStyle(RatsColor.danger)
+                    Button("Nochmal versuchen") { Task { await lade(anhaengen: false) } }
+                        .font(RatsFont.body(14, weight: .semibold))
+                        .foregroundStyle(RatsColor.primary)
+                }
             } else if let antwort {
                 Text("\(antwort.total) \(antwort.total == 1 ? "Idee" : "Ideen") · ab 2 Städten")
                     .font(RatsFont.metadata())
@@ -529,6 +534,7 @@ struct MovementDetailView: View {
     let clusterID: Int
     @State private var detail: MovementDetail?
     @State private var fehler: String?
+    @State private var gibtEsNicht = false
     @State private var gesagt = ""
 
     var body: some View {
@@ -536,11 +542,24 @@ struct MovementDetailView: View {
             VStack(alignment: .leading, spacing: 18) {
                 if let detail {
                     inhalt(detail)
-                } else if fehler != nil {
+                } else if gibtEsNicht {
                     Text("Diese Idee gibt es nicht (mehr).")
                         .font(RatsFont.body(15))
                         .foregroundStyle(RatsColor.muted)
                         .padding(.top, 24)
+                } else if let fehler {
+                    // Nur ein 404 heißt „gibt es nicht" — ein Netzfehler sagte
+                    // bis 10/2026 dasselbe.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Diese Idee konnte nicht geladen werden.")
+                            .font(RatsFont.body(15, weight: .semibold))
+                            .foregroundStyle(RatsColor.text)
+                        Text(fehler).font(RatsFont.body(12)).foregroundStyle(RatsColor.muted)
+                        Button("Nochmal versuchen") { Task { await lade() } }
+                            .font(RatsFont.body(14, weight: .semibold))
+                            .foregroundStyle(RatsColor.primary)
+                    }
+                    .padding(.top, 24)
                 } else {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 32)
                 }
@@ -780,7 +799,9 @@ struct MovementDetailView: View {
                 query: [URLQueryItem(name: "id", value: String(clusterID))])
             detail = r
             fehler = nil
+            gibtEsNicht = false
         } catch {
+            gibtEsNicht = (error as? APIError)?.statusCode == 404
             fehler = error.localizedDescription
         }
     }

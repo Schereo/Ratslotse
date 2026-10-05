@@ -1786,8 +1786,32 @@ class FeedbackAck(TypedDict):
     verdict: str
 
 
+class IdeaLaggingCity(TypedDict):
+    """Eine Stadt, deren Bestand deutlich vor dem letzten Abgleich endet."""
+    body_id: str
+    city: str
+    #: Die jüngste Vorlage dieser Stadt (ISO-Datum).
+    latest_paper: str
+
+
+class IdeaDataStatus(TypedDict):
+    """Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
+
+    **Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein
+    Datum, liest man es als „bis dahin ist alles drin"; das stimmt nur für
+    das früheste der Städte.
+    """
+    #: Datum (ISO) des ältesten letzten Abgleichs unter den gezeigten Städten.
+    as_of: str | None
+    #: Städte, deren jüngste Vorlage mehr als zwei Monate vor ihrem letzten
+    #: Abgleich liegt — dort fehlt vermutlich etwas (Wolfsburg endete am
+    #: 25.06.2026, abgeglichen am 14.09.2026).
+    lagging: list[IdeaLaggingCity]
+
+
 class IdeaFields(TypedDict):
     fields: list[IdeaFieldSummary]
+    data_status: IdeaDataStatus
     #: Die Städte, aus denen Ideen vorliegen, nach Namen sortiert.
     #:
     #: **Sie gehören in die Antwort, nicht in den Einleitungstext.** Der zählte
