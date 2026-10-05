@@ -177,3 +177,32 @@ func anstupserSeiten() {
     #expect(!ExplainScreen(route: "/dashboard").allowsNudge)
     #expect(!ExplainScreen(route: "/topics").allowsNudge)
 }
+
+// MARK: - Die Längengrenze (Release-Prüfung 03.10.2026)
+
+@Test("Die Grenze spiegelt den Server, der Zähler kommt erst nahe daran")
+func frageGrenze() {
+    #expect(LottiFrage.maxZeichen == 300)
+    #expect(LottiFrage.zaehler("kurz") == nil)
+    #expect(LottiFrage.zaehler(String(repeating: "a", count: 262)) == "262/300")
+    #expect(LottiFrage.gekuerzt(String(repeating: "a", count: 320)).count == 300)
+    #expect(LottiFrage.gekuerzt("kurz") == "kurz")
+}
+
+@Test("Ein 422 wird ein Satz, keine englische Pydantic-Meldung")
+func frageFehlerText() {
+    let zuLang = APIError(statusCode: 422, message: "String should have at most 300 characters")
+    #expect(LottiFrage.fehlerText(zuLang).contains("zu lang"))
+    #expect(!LottiFrage.fehlerText(zuLang).contains("String should"))
+    // Der Satz des Servers bleibt, wo er für Menschen geschrieben ist.
+    let kontingent = APIError(statusCode: 429, message: "Für heute ist Schluss.")
+    #expect(LottiFrage.fehlerText(kontingent) == "Für heute ist Schluss.")
+}
+
+@Test("Der Schluss-Rahmen einer Weiterreichung trägt mode handoff")
+func handoffRahmen() throws {
+    let json = Data(#"{"type":"done","mode":"handoff","kind":"archiv","next":"ratsfrage","evidence":[]}"#.utf8)
+    let done = try JSONDecoder().decode(ExplainDone.self, from: json)
+    #expect(done.mode == "handoff")
+    #expect(done.leadsToCouncilQuestion)
+}

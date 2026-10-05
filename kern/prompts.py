@@ -750,6 +750,17 @@ GESCHAEFTSORDNUNG_REGEL = (
 )
 
 
+#: Die Anrede — für „Frag den Rat“ UND Lotti, an EINER Stelle.
+#:
+#: **Warum (Release-Prüfung 03.10.2026).** Keiner der beiden Prompts legte sie
+#: fest; die Archiv-Antwort aus Lottis Fenster siezte („Eine neue Frage ist in
+#: Ihrer Nachricht nicht enthalten“), während die ganze App duzt
+#: (``web/frontend/DESIGNSPRACHE.md`` § 1, „Du-Form“). Die Fragen-Seite redet
+#: nicht bewusst anders — es stand dort einfach nichts.
+ANREDE_REGEL = ("Sprich die Person, wenn du sie ansprichst, mit „du“ an — nie mit "
+                "„Sie“. ")
+
+
 #: Lottis Werkzeuge (``council/lotti_werkzeuge.py``, Schalter
 #: ``lotti-werkzeuge``): angehängt NUR, wenn sie mitgegeben werden — ohne
 #: Schalter bleibt der Prompt zeichengleich (Regel aus PR 21). Der Kern ist
@@ -772,7 +783,18 @@ WERKZEUG_REGEL = (
     "- Was ein Werkzeug liefert, gilt wie der Kontext oben: jede Zahl mit Jahr und\n"
     "  Beleg, Plan und Ist auseinanderhalten. Findet auch das Werkzeug nichts, sag\n"
     "  das in einem Satz.\n"
+    "- Fragt jemand nach der NÄCHSTEN oder einer künftigen Sitzung, nimm „sitzungen“\n"
+    "  ohne Zeitraum — dann sucht es ab HEUTE (Datum oben). Rechne nie mit einem\n"
+    "  anderen Jahr als dem laufenden.\n"
     "- Erzähl nicht, dass oder wie du nachgeschlagen hast — antworte einfach.\n"
+    # Release-Prüfung 03.10.2026: Mit Werkzeugen schlug Lotti die Zahl von
+    # der anderen Seite selbst nach — richtig — und ließ den Verweis darauf
+    # weg (wegweiser-gewerbesteuer, wegweiser-stellenplan,
+    # geld-ausserhalb-dashboard). Die Zahl ersetzt die Seite nicht.
+    "- Steht oben ein WEGWEISER und gehört deine Antwort auf eine ANDERE\n"
+    "  Haushalts-Seite, gilt die Verweisregel auch dann, wenn du die Zahl selbst\n"
+    "  nachgeschlagen hast: ein Satz mit dem Titel der Seite, und als letzte\n"
+    "  Zeile „WEITER: seite <Adresse>“.\n"
 )
 
 
@@ -1552,6 +1574,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "{context}\n"
             "{presse}\n"
             "Antworte auf Deutsch, klar und natürlich für Erwachsene ohne Verwaltungswissen. "
+            # 03.10.2026: Ohne diese Zeile siezte die Antwort („in Ihrer
+            # Nachricht“), während die App überall duzt (DESIGNSPRACHE § 1).
+            + ANREDE_REGEL +
             "Vermeide Behördensprache und erkläre unvermeidbare Fachbegriffe kurz. Schreibe weder "
             "belehrend noch kindlich. Verwende id-Zitate. Die Länge folgt der Frage: Eine enge "
             "Frage bekommt 2–5 Sätze; eine breite Frage („Was macht die Stadt für …?“) "
@@ -1617,7 +1642,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Erklärt die aktuelle Seite, ein angeklicktes Element oder markierten "
             "Text in Alltagssprache — ohne Suche im Beschluss-Archiv. Platzhalter: "
             "{knowledge}, {record}, {konto}, {glossar}, {geld}, {einordnung}, "
-            "{wegweiser}, {wegweiser_regel}, {zwei_zaehlweisen}, {einordnung_regel}, "
+            "{heute}, {wegweiser}, {wegweiser_regel}, {zwei_zaehlweisen}, {einordnung_regel}, "
             "{wertung_regel}, {erklaerwissen}, {erklaerwissen_regel}, "
             "{geschaeftsordnung}, {geschaeftsordnung_regel}, "
             "{screen}, {anker}, {question}, {gespraech}."
@@ -1627,6 +1652,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Person ohne Verwaltungswissen, was sie gerade auf dem Bildschirm sieht —\n"
             "eine Seite, einen Baustein, eine Zahl oder ein Fachwort. Du SUCHST nicht:\n"
             "Was du weißt, steht unten; darüber hinaus schlägst du nichts nach.\n"
+            # 03.10.2026: Ohne Datum hielt das Modell ein anderes Jahr für das
+            # laufende — „Wann tagt der Finanzausschuss als nächstes?“ bekam
+            # eine Sitzung von 2025 (s. `lotti_werkzeuge.heute`).
+            "HEUTE ist {heute}. „Nächste“, „kommende“, „bisher“ und „zuletzt“ beziehen\n"
+            "sich auf dieses Datum; was danach liegt, hat noch nicht stattgefunden.\n"
             "{gespraech}"
             "\nWAS DU WEISST (geprüfte Texte von Ratslotse — NUR daraus erklärst du):\n"
             "Seite: {knowledge}\n"
@@ -1692,6 +1722,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "  der Bausteine, sag das offen, statt einen ähnlichen anzubieten.\n"
             "- Keine Bewertung, keine Empfehlung, keine Rechtsberatung, keine Meinung zu\n"
             "  Parteien oder Personen. Keine Anrede mit Namen. Kein „Als KI …“.\n"
+            "- " + ANREDE_REGEL + "\n"
             "- KEINE Begrüßung, kein „Moin“, kein „Hallo“ — fang mit der Sache an. Das\n"
             "  Fenster begrüßt schon, bevor du etwas sagst; ein zweites Moin in jeder\n"
             "  Antwort macht aus dem Gruß eine Floskel.\n"
@@ -1841,6 +1872,15 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "ausgelassener Treffer ist verschmerzbar. Erfinde nichts, was nicht im Text steht.\n\n"
             "Steht bei einem Ort „namensgleich anderswo“, gibt es denselben Namen auch in einem anderen "
             "Viertel — dann entscheide nur aus dem Text, welcher gemeint ist, und im Zweifel „anderswo“.\n\n"
+            "Steht ein „Geltungsbereich“ mit amtlichem Umring dabei, ist die Lage damit geklärt: Der Plan "
+            "liegt zu einem nennenswerten Teil in diesem Viertel (sonst stünde er hier nicht), auch wenn "
+            "die Vorlage eine andere Gemarkung nennt — ein Plan an der Grenze gehört in beide Viertel. "
+            "Beurteile dann nur noch, ob sich etwas ändert.\n\n"
+            "Zähle nur Orte, an denen sich etwas ändert. Ein Ort, der nur als Vergleich, Vorbild oder "
+            "Beispiel genannt wird („analog zur Kampstraße“, „wie an der …-Schule“, „nach dem Vorbild "
+            "von …“), Einzugsgebiete, Herkunft von Kindern oder Teilnehmenden, Umleitungsstrecken und "
+            "Nachbarorte zur Beschreibung der Lage machen ein Vorhaben NICHT zu einem dieses Viertels — "
+            "liegt der eigentliche Gegenstand woanders, ist es „elsewhere“, sonst „mentioned“.\n\n"
             "Bewerte je Beschluss:\n"
             "- \"relation\":\n"
             "  \"district\" = der Gegenstand liegt (überwiegend) in diesem Viertel und betrifft dessen "
@@ -1856,8 +1896,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Vereinsname), historischer Bezug oder Vergleich — vor Ort ändert sich nichts.\n"
             "- \"changes\": true nur, wenn für Bewohner*innen etwas Sichtbares oder Praktisches passiert, "
             "fest geplant ist oder konkret vorbereitet wird (Bericht zum Planungsstand eines Bauvorhabens "
-            "zählt). Widmungen/Einziehungen ohne spürbare Folge, Personalien, Anfragen, Jahresabschlüsse, "
-            "reine Vergaben ohne neue Wirkung, Ablehnungen ohne Folge → false.\n"
+            "zählt, ebenso eine Prüfung baulicher oder verkehrlicher Maßnahmen an einem konkreten Ort). "
+            "Widmungen/Einziehungen ohne spürbare Folge, Personalien, Anfragen, Jahresabschlüsse, "
+            "reine Vergaben ohne neue Wirkung, Ablehnungen ohne Folge → false. Ebenso false: die "
+            "Vorstellung oder der Tätigkeitsbericht einer Initiative, Plattform, eines Vereins, Projekts "
+            "oder Programms, wenn daraus vor Ort nichts gebaut, eröffnet, geschlossen oder geändert wird.\n"
             "- \"what\": genau ein Satz, höchstens 160 Zeichen, Alltagssprache, beginnt mit dem Gegenstand "
             "(z. B. „Der Sandweg wird bis Juli 2027 mit neuen Leitungen und neuer Fahrbahn ausgebaut.“). "
             "Keine Ratsfloskeln („Der Rat beschließt“), keine Vorlagen-Nummern.\n"
@@ -1890,25 +1933,38 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Beschlüsse (Ausschuss und Rat, Aufstellungs- und Satzungsbeschluss, Bericht und Antrag) gehören "
             "zum selben Vorhaben, wenn sie denselben Gegenstand haben. Berichte und Sachstände zählen mit: "
             "Sie sagen, wo das Vorhaben steht.\n\n"
+            "Nur Beschlüsse mit DEMSELBEN Gegenstand gehören zusammen: dieselbe Einrichtung, dieselbe "
+            "Fläche, derselbe Straßenabschnitt, derselbe Plan. Zwei verschiedene Einrichtungen (etwa ein "
+            "Schwimmbad und ein Wald) sind zwei Vorhaben, auch wenn sie im selben Viertel, im selben "
+            "Ausschuss oder am selben Tag beraten wurden. Ein Beschluss mit eigenem Gegenstand ist ein "
+            "eigenes Vorhaben, auch wenn er allein steht.\n\n"
             "Nicht aufnehmen: reine Formalakte (Widmung, Einziehung ohne spürbare Folge, Straßenbenennung "
-            "ohne Neubau), Jahresabschlüsse, stadtweite Themen, Personalien, Gedenken ohne bauliche Folge.\n\n"
+            "ohne Neubau), Jahresabschlüsse, stadtweite Themen, Personalien, Gedenken ohne bauliche Folge, "
+            "Vorstellungen und Tätigkeitsberichte von Initiativen, Plattformen oder Vereinen, aus denen vor "
+            "Ort nichts folgt.\n\n"
+            "Das heutige Datum steht im Auftrag. Schreibe \"what\" aus heutiger Sicht: Liegt ein genannter "
+            "Zeitraum in der Vergangenheit, schreib nicht in der Zukunftsform („wird bis Januar 2026 "
+            "gebaut“), sondern sachlich, was die Beschlüsse sagen („Der Bau war bis Januar 2026 geplant.“). "
+            "Setze \"done\" nur, wenn ein Text den Abschluss belegt — ob ein Zeitraum abgelaufen ist, "
+            "kennzeichnet die App selbst.\n\n"
             "Je Vorhaben:\n"
             "- \"name\": kurz, konkret, Alltagssprache („Neubau Grundschule Kreyenbrück“), höchstens 60 Zeichen\n"
             "- \"what\": 1–2 Sätze, was sich für Bewohner*innen ändert; nur aus den Texten, nichts erfinden\n"
             "- \"stage\": \"idea\" | \"planning\" | \"decided\" | \"building\" | \"done\" | \"rejected\"\n"
-            "- \"when\": Jahr oder Zeitraum als Text, NUR wenn ein Text es hergibt, sonst null\n"
+            "- \"when\": Jahr oder Zeitraum, kurz wie im Beschluss („2027“, „Ende 2025“, „Schuljahr "
+            "2026/2027“) — kein Satz, höchstens 40 Zeichen; NUR wenn ein Text es hergibt, sonst null\n"
             "- \"category\": \"housing\" | \"traffic\" | \"school_childcare\" | \"green\" | "
             "\"culture_sport_social\" | \"other\"\n"
             "- \"decision_ids\": alle zugehörigen ids\n"
-            "- \"confidence\": 0–100, wie sicher das Vorhaben wirklich in diesem Viertel liegt und richtig "
-            "beschrieben ist\n\n"
+            "- \"confidence\": 0–100, wie sicher die Beschlüsse wirklich EIN Vorhaben bilden und es richtig "
+            "beschrieben ist (Dass alle Beschlüsse dieses Viertel betreffen, hat eine Vorstufe schon geprüft.)\n\n"
             "Antworte als JSON: {{\"projects\": [ … ]}}, wichtigstes zuerst."
         ),
     },
     "district_projects_user": {
         "title": "Mein Viertel – Vorhaben (Auftrag)",
         "description": "Ortsbereich und die Viertel-Treffer der zweiten Stufe.",
-        "template": "Viertel: {district}\n\nBeschlüsse ({count}):\n\n{batch}",
+        "template": "Viertel: {district}\nHeute ist der {today}.\n\nBeschlüsse ({count}):\n\n{batch}",
     },
     "agenda_item_importance_system": {
         "title": "Wichtigster Punkt der Woche – System",

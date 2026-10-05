@@ -66,6 +66,10 @@ struct AssistantTurn: Identifiable {
     /// Gehört die Frage ins Ratsarchiv? Dann steht unter der Antwort der Weg
     /// dorthin — und die Frage wandert mit, sie soll niemand zweimal tippen.
     var leadsToCouncilQuestion = false
+    /// Hat der Server gar nicht erst erklärt (`mode: handoff`)? Dann gibt es
+    /// keinen Antworttext — und ohne eigenen Satz stand bis 03.10.2026 nur
+    /// ein Knopf unter einer leeren Runde.
+    var handoff = false
 }
 
 // MARK: - Das Blatt
@@ -147,6 +151,10 @@ struct AssistantSheet: View {
                 answer: "**Tilgung** — der Teil einer Rate, mit dem die Stadt "
                     + "ihre Schulden wirklich abbaut. Der Rest sind Zinsen."
             ), AssistantTurn(
+                question: "Was haben andere Städte zur Grundsteuer C beschlossen?",
+                leadsToCouncilQuestion: true,
+                handoff: true
+            ), AssistantTurn(
                 question: "Was bedeutet die Rate-Treppe?",
                 answer: """
                 Die Rate-Treppe zeigt, wie viel die Stadt in den nächsten \
@@ -223,17 +231,34 @@ struct AssistantSheet: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            if turn.handoff && turn.answer.isEmpty && turn.error == nil {
+                // **Wie im Web: ein Satz statt einer leeren Runde** (Release-
+                // Prüfung 03.10.2026). Der Server hat entschieden, dass die
+                // Frage ins Archiv gehört, und gar nicht erst erklärt.
+                HStack(alignment: .top, spacing: RatsSpacing.sm) {
+                    LottiSpriteView(animation: .question, animated: false)
+                        .frame(width: 28, height: 28)
+                        .accessibilityHidden(true)
+                    LottiAnswerText(text: "Das steht nicht auf dieser Seite — die Antwort "
+                        + "liegt in den Ratsbeschlüssen. Tipp unten, dann frage ich dort "
+                        + "für dich nach.")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
             if turn.leadsToCouncilQuestion {
                 Button {
-                    // Die Frage wandert MIT: Sie noch einmal zu tippen wäre
-                    // der Preis dafür, dass Lotti sie nicht beantworten kann.
+                    // Die Frage wandert MIT — und wird dort sofort gestellt
+                    // (`pendingQuestion`, wie von der Heute-Seite), statt erst
+                    // im Feld zu liegen: Sie noch einmal abzuschicken wäre der
+                    // Preis dafür, dass Lotti sie nicht beantworten kann.
                     let frage = turn.question
                     dismiss()
                     model.navigation.removeAll()
                     model.selectedTab = .questions
-                    model.questionPrefill = frage
+                    model.pendingQuestion = frage
                 } label: {
-                    RatsLabel("Im Ratsarchiv nachsehen", .search)
+                    RatsLabel(turn.handoff ? "Im Ratsarchiv fragen" : "Im Ratsarchiv nachsehen",
+                              .search)
                 }
                 .buttonStyle(SecondaryButtonStyle())
             }
@@ -255,6 +280,18 @@ struct AssistantSheet: View {
                 .submitLabel(.send)
                 .disabled(!darfFragen)
                 .onSubmit { frage(input) }
+                // Dieselbe Grenze wie der Server — sonst 422 (s. `LottiFrage`).
+                .onChange(of: input) { _, neu in
+                    let kurz = LottiFrage.gekuerzt(neu)
+                    if kurz != neu { input = kurz }
+                }
+            if let zaehler = LottiFrage.zaehler(input) {
+                Text(zaehler)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(input.count >= LottiFrage.maxZeichen
+                                     ? RatsColor.signal : RatsColor.muted)
+                    .accessibilityLabel("\(input.count) von \(LottiFrage.maxZeichen) Zeichen")
+            }
             Button {
                 frage(input)
             } label: {
@@ -332,13 +369,17 @@ struct AssistantSheet: View {
                         turns[index].status = nil
                         turns[index].answer = event.text ?? turns[index].answer
                     case "error":
+                        // Der Server schickt den Satz als `message`, nicht als
+                        // `text` — bis 03.10.2026 stand deshalb immer der Ersatz da.
                         throw APIError(statusCode: 0,
-                                       message: event.text ?? "Die Erklärung ist abgebrochen.",
+                                       message: event.fields["message"]?.string ?? event.text
+                                           ?? "Die Erklärung ist abgebrochen.",
                                        retryAfter: nil)
                     case "done":
                         turns[index].status = nil
                         let done = try? event.decodedDone()
                         turns[index].leadsToCouncilQuestion = done?.leadsToCouncilQuestion ?? false
+                        turns[index].handoff = done?.mode == "handoff"
                         // In LOTTIS Gespräch, nicht ins Ratsgespräch: Die
                         // beiden tragen im Konto verschiedene Arten.
                         if let id = event.conversationID { model.lottiConversationID = id }
@@ -349,7 +390,9 @@ struct AssistantSheet: View {
                 // Blatt zu, Frage weg — nichts zu melden.
             } catch let fehler as APIError {
                 turns[index].status = nil
-                turns[index].error = fehler.message
+                turns[index].error = LottiFrage.fehlerText(fehler)
+                // Abgelehnt (zu lang, Kontingent) heißt nicht: Frage weg.
+                if (400..<500).contains(fehler.statusCode), input.isEmpty { input = frage }
             } catch {
                 turns[index].status = nil
                 turns[index].error = "Die Verbindung riss ab. Frag es gern noch einmal."

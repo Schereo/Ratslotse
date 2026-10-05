@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ankerListe, ankerTreffer, anschlussfragen, auswahlErlaubt, belegName, BELEG_NAME_MAX,
   chipTitel, daumenZeigen,
-  erklaerAktion, ernteElement,
+  erklaerAktion, erklaerFehler, ernteElement, FRAGE_MAX, FRAGE_ZAEHLER_AB, frageZaehler,
   gedaechtnis, kuerze, ohneNamen, ortsfrage, refsAus, routeAus, seitenTitel,
   seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
 } from "./assistentin";
@@ -694,5 +694,33 @@ describe("belegName", () => {
   it("kommt ohne Jahr aus", () => {
     expect(belegName({ label: "Prüfbericht" })).toBe("Prüfbericht");
     expect(belegName({ label: "Prüfbericht", year: null })).toBe("Prüfbericht");
+  });
+});
+
+describe("Die Längengrenze der Frage (Release-Prüfung 03.10.2026)", () => {
+  it("spiegelt den Server: 300 Zeichen", () => {
+    expect(FRAGE_MAX).toBe(300);
+  });
+
+  it("zeigt den Zähler erst nahe der Grenze", () => {
+    expect(frageZaehler("kurz")).toBeNull();
+    expect(frageZaehler("a".repeat(FRAGE_ZAEHLER_AB - 1))).toBeNull();
+    expect(frageZaehler("a".repeat(262))).toBe("262/300");
+  });
+
+  it("zählt Zeichen, nicht UTF-16-Einheiten", () => {
+    expect(frageZaehler("🐦".repeat(250))).toBe("250/300");
+  });
+
+  it("übersetzt 422 statt Pydantics Liste zu zeigen", () => {
+    const satz = erklaerFehler(422, [{ msg: "String should have at most 300 characters" }]);
+    expect(satz).toContain("zu lang");
+    expect(satz).not.toContain("String should");
+  });
+
+  it("nimmt den Satz des Servers, wenn er einen schickt", () => {
+    expect(erklaerFehler(429, "Für heute ist Schluss.")).toBe("Für heute ist Schluss.");
+    expect(erklaerFehler(429, null)).toContain("viele Fragen");
+    expect(erklaerFehler(500, undefined)).toBe("Dazu kann ich gerade nichts sagen.");
   });
 });

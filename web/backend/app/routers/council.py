@@ -10,11 +10,12 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated, cast
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import (AliasChoices, BaseModel, Field, ValidationError, field_validator,
+                      model_validator)
 
 from council.cities.store import CitiesStore
 from council.store import CouncilStore
@@ -75,6 +76,7 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          TodayBriefing, TrendData)
 from ..clients import client_kind
 from ..election import elected as elected_mod
+from .. import fehlersammler
 from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
@@ -3085,7 +3087,41 @@ def partei_meinungen_endpoint(
     return {"parties": meinungen or [], "without_speeches": ohne}
 
 
-class QaShareSource(BaseModel):
+class _QaShareTeil(BaseModel):
+    """Basis der Teilen-Bausteine: kappt, statt abzuweisen.
+
+    Der Client reicht Einträge aus dem Strom zurück; das Web kürzt sie
+    selbst, die iOS-App nicht. Ein zu langer Titel, ein Eintrag zu viel oder
+    ein ``null``, wo ein Wert mit Vorgabe steht (``kind`` fehlt im Strom
+    gelegentlich), machten sonst aus dem ganzen Teilen ein 422 — für einen
+    Baustein, der nur Beiwerk der Antwort ist. Gekappt wird auf genau die
+    Längen der Felder; was danach noch nicht passt, weist die Validierung ab
+    wie bisher.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _kappen(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        for name, feld in cls.model_fields.items():
+            alias = feld.validation_alias
+            namen = [name, *(alias.choices if isinstance(alias, AliasChoices) else [])]
+            grenze = next((m.max_length for m in feld.metadata
+                           if getattr(m, "max_length", None) is not None), None)
+            for key in namen:
+                if not isinstance(key, str) or key not in data:
+                    continue
+                wert = data[key]
+                if wert is None and not feld.is_required() and feld.default is not None:
+                    del data[key]          # null → die Vorgabe des Feldes
+                elif grenze is not None and isinstance(wert, (str, list)):
+                    data[key] = wert[:grenze]
+        return data
+
+
+class QaShareSource(_QaShareTeil):
     id: int
     title: str = Field(max_length=300)
     session_date: str | None = Field(default=None, max_length=10)
@@ -3093,11 +3129,18 @@ class QaShareSource(BaseModel):
     outcome: str | None = Field(default=None, max_length=40)
 
 
-class QaShareDebate(BaseModel):
+# Die alten Feldnamen (``art``, ``top``, ``nr``; im Körper ``debatten`` …)
+# nimmt das Modell weiter an. Pydantic verwirft unbekannte Schlüssel still:
+# Das Web schickte bis 10/2026 ``art``/``top``/``nr``, die ausgelieferte
+# iOS-App schickt die Bausteine unter deutschen Namen — beides kam nie an.
+# Die App im Store lässt sich nicht nachziehen, also hört der Server hin.
+class QaShareDebate(_QaShareTeil):
     speaker: str | None = Field(default=None, max_length=120)
     party: str | None = Field(default=None, max_length=60)
-    kind: str = Field(default="speech", max_length=30)
-    agenda_item: str | None = Field(default=None, max_length=300)
+    kind: str = Field(default="speech", max_length=30,
+                      validation_alias=AliasChoices("kind", "art"))
+    agenda_item: str | None = Field(default=None, max_length=300,
+                                    validation_alias=AliasChoices("agenda_item", "top"))
     excerpt: str = Field(default="", max_length=2000)
     committee: str | None = Field(default=None, max_length=120)
     date: str | None = Field(default=None, max_length=10)
@@ -3115,7 +3158,7 @@ class QaShareDebate(BaseModel):
         return v
 
 
-class QaSharePress(BaseModel):
+class QaSharePress(_QaShareTeil):
     title: str = Field(max_length=300)
     url: str = Field(max_length=500)
     date: str | None = Field(default=None, max_length=10)
@@ -3127,10 +3170,11 @@ class QaSharePress(BaseModel):
     excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareAttachment(BaseModel):
+class QaShareAttachment(_QaShareTeil):
     # Beleg-Nummer des Recherche-Berichts („[A1]") — ohne sie findet der
     # Marker im geteilten Text seine Anlage nicht.
-    number: int | None = Field(default=None, ge=1, le=99)
+    number: int | None = Field(default=None, ge=1, le=99,
+                               validation_alias=AliasChoices("number", "nr"))
     label: str | None = Field(default=None, max_length=300)
     url: str | None = Field(default=None, max_length=500)
     template_number: str | None = Field(default=None, max_length=60)
@@ -3138,13 +3182,13 @@ class QaShareAttachment(BaseModel):
     excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareKeyQuote(BaseModel):
+class QaShareKeyQuote(_QaShareTeil):
     text: str = Field(default="", max_length=600)
     speaker: str | None = Field(default=None, max_length=120)
     date: str | None = Field(default=None, max_length=10)
 
 
-class QaShareParty(BaseModel):
+class QaShareParty(_QaShareTeil):
     party: str = Field(max_length=60)
     stance: str | None = Field(default=None, max_length=20)
     position: str = Field(default="", max_length=800)
@@ -3154,21 +3198,89 @@ class QaShareParty(BaseModel):
     contributions: int = Field(default=0, ge=0)
 
 
-class QaShareBody(BaseModel):
+class QaShareRulesSection(BaseModel):
+    number: str = Field(max_length=8)
+    label: str = Field(max_length=12)
+    title: str = Field(max_length=120)
+    part: str = Field(max_length=60)
+    url: str = Field(max_length=300)
+    # § 23 hat 2.900 Zeichen; der Deckel lässt der nächsten Fassung Luft.
+    text: str = Field(default="", max_length=6000)
+
+
+class QaShareRulesContents(BaseModel):
+    label: str = Field(max_length=12)
+    title: str = Field(max_length=120)
+    url: str = Field(max_length=300)
+
+
+class QaShareRulesOfProcedure(BaseModel):
+    """Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
+
+    Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
+    Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
+    Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
+    darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
+    unterschieben. Ein fremder Link verwirft die ganze Karte (s.
+    ``QaShareBody._karte_oder_nichts``).
+    """
+    title: str = Field(max_length=120)
+    full_title: str = Field(default="", max_length=300)
+    version: str = Field(default="", max_length=300)
+    state: Literal["current", "term_ended", "superseded"] = "current"
+    url: str = Field(max_length=300)
+    sections: list[QaShareRulesSection] = Field(
+        default_factory=list, max_length=rules_of_procedure.MAX_SECTIONS)
+    contents: list[QaShareRulesContents] = Field(default_factory=list, max_length=80)
+
+    @model_validator(mode="after")
+    def _nur_das_pdf_der_stadt(self) -> QaShareRulesOfProcedure:
+        pdf = rules_of_procedure.load().source_url
+        urls = [self.url, *(s.url for s in self.sections), *(c.url for c in self.contents)]
+        if any(u != pdf and not u.startswith(f"{pdf}#page=") for u in urls):
+            raise ValueError("Geschäftsordnung: nur Links auf das PDF der Stadt")
+        return self
+
+
+class QaShareBody(_QaShareTeil):
     question: str = Field(min_length=1, max_length=300)
     answer: str = Field(min_length=1, max_length=8000)
     sources: list[QaShareSource] = Field(default_factory=list, max_length=40)
     # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
     # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
-    debates: list[QaShareDebate] = Field(default_factory=list, max_length=20)
-    press_releases: list[QaSharePress] = Field(default_factory=list, max_length=10)
-    attachments: list[QaShareAttachment] = Field(default_factory=list, max_length=10)
-    parties: list[QaShareParty] = Field(default_factory=list, max_length=12)
+    debates: list[QaShareDebate] = Field(
+        default_factory=list, max_length=20,
+        validation_alias=AliasChoices("debates", "debatten"))
+    press_releases: list[QaSharePress] = Field(
+        default_factory=list, max_length=10,
+        validation_alias=AliasChoices("press_releases", "presse"))
+    attachments: list[QaShareAttachment] = Field(
+        default_factory=list, max_length=10,
+        validation_alias=AliasChoices("attachments", "anlagen"))
+    parties: list[QaShareParty] = Field(
+        default_factory=list, max_length=12,
+        validation_alias=AliasChoices("parties", "parteien"))
     # Die Grafik zur Antwort (council/qa.py, geld_grafik) — als loses dict,
     # weil der Client sie unverändert zurückreicht: Sie stammt aus DIESEM
     # Backend, und ein zweites Schema hier wäre eine Kopie, die driftet.
     # Begrenzt wird trotzdem: höchstens 60 Punkte, nur bekannte Felder.
-    chart: dict | None = None
+    chart: dict | None = Field(default=None, validation_alias=AliasChoices("chart", "grafik"))
+    # Die Karte „Aus der Geschäftsordnung" — bei Verfahrensfragen oft der
+    # einzige Beleg der Antwort; ohne sie stünde die geteilte Antwort ohne
+    # Quelle da.
+    rules_of_procedure: QaShareRulesOfProcedure | None = None
+
+    @field_validator("rules_of_procedure", mode="wrap")
+    @classmethod
+    def _karte_oder_nichts(cls, v, handler):
+        # Eine Karte, die nicht passt, fällt weg, statt das Teilen zu
+        # verweigern: Nach einer neuen Fassung (Nov. 2026) trägt ein noch
+        # offenes Gespräch die alte PDF-Adresse — die Antwort soll sich
+        # trotzdem teilen lassen, nur eben ohne diese Karte.
+        try:
+            return handler(v)
+        except ValidationError:
+            return None
 
 
 _SHARE_BLOCKED_PHRASES = (
@@ -3256,6 +3368,8 @@ def qa_share_anlegen(
         "attachments": [a.model_dump() for a in body.attachments],
         "parties": [p.model_dump() for p in body.parties],
         "chart": _grafik_pruefen(body.chart),
+        "rules_of_procedure": (body.rules_of_procedure.model_dump()
+                               if body.rules_of_procedure else None),
     }
     token = ratslotse.qa_share_anlegen(user["id"], body.question, body.answer,
                                  [q.model_dump() for q in body.sources],
@@ -4150,6 +4264,44 @@ def _selbstpruefung_nachlauf(nachlauf: dict) -> None:
         _log.warning("Lottis Selbstprüfung (Stichprobe) fehlgeschlagen", exc_info=True)
 
 
+def _lotti_anderswo(store: CouncilStore, screen: lotti.Screen) -> list[dict]:
+    """Was die Beschluss-Seite unter „In anderen Städten“ zeigt — für Lotti.
+
+    **Derselbe Weg wie die Seite** (``decision_elsewhere``), nicht ein
+    zweiter: Welche Treffer dort stehen, entscheiden Schwelle und Filter des
+    Endpunkts, und Lotti soll genau die kennen, die man sieht. Nur mit dem
+    Schalter ``andere-staedte`` — ohne ihn gibt es den Block auf der Seite
+    nicht, also auch nichts zu erklären.
+
+    Der Städte-Speicher wird NUR hier geöffnet, nur auf einer Beschluss-Seite
+    und nur auf dem Weg mit Modell. Ein Fehler darin kostet die Zeilen, nie
+    die Erklärung.
+    """
+    did = (screen.refs or {}).get("decision_id")
+    if not did or not features.an("andere-staedte"):
+        return []
+    cities = None
+    try:
+        cities = CitiesStore(get_settings().cities_db)
+        return [dict(i) for i in decision_elsewhere(int(did), store=store, cities=cities)["items"]]
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        _log.warning("Lotti: „In anderen Städten“ nicht lesbar", exc_info=True)
+        return []
+    finally:
+        if cities is not None:
+            cities.close()
+
+
+def _lotti_nachlauf(nachlauf: dict, meldungen: list) -> None:
+    """Was nach Lottis Strom läuft: die Stichprobe und die Fehlermeldungen."""
+    _selbstpruefung_nachlauf(nachlauf)
+    for melden in meldungen:
+        try:
+            melden()
+        except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+            _log.warning("Fehlermeldung an die Admins ging nicht raus", exc_info=True)
+
+
 class AssistantEventBody(BaseModel):
     """Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
 
@@ -4264,6 +4416,15 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                             "Diese Seite steht deinem Konto nicht offen.")
     if not user.get("limits_unlocked"):
         assistant_limiter.check(request, subject=user["id"])
+        # Das Tageskontingent (`lotti.TAGES_KONTINGENT`, dort begründet). Der
+        # Satz ist für Menschen geschrieben — Web und App zeigen `detail`.
+        heute = ratslotse.aktivitaet_heute(user["id"], lotti.KONTINGENT_MERKMAL) or 0
+        if heute >= lotti.TAGES_KONTINGENT:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Für heute hast du mich schon {lotti.TAGES_KONTINGENT}-mal gefragt — "
+                "ab morgen erkläre ich wieder. Fachwörter und die Seiten selbst "
+                "bleiben natürlich lesbar.")
 
     # **Der Anzeigename fällt hier heraus, nicht erst im Prompt.** Auf
     # `/dashboard` ist die `h1` „Moin, <Name>!" — der Client streicht den Namen
@@ -4288,6 +4449,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     verlauf = [r.model_dump() for r in body.history]
     #: Was die stille Stichprobe nach dem Strom prüft — leer, wenn nichts.
     nachlauf: dict = {}
+    #: Fehlermeldungen an die Admins, die nach dem Strom rausgehen.
+    meldungen: list = []
 
     def gen():
         try:
@@ -4364,7 +4527,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # mit; nie als Name, Adresse oder Rollenwort.
             ctx = lotti.screen_context(store, screen, frage,
                                        permissions=rechte,
-                                       ratslotse=ratslotse, user_id=user["id"])
+                                       ratslotse=ratslotse, user_id=user["id"],
+                                       anderswo=_lotti_anderswo(store, screen))
             zeiten["context_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "answer"})
 
@@ -4469,15 +4633,26 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                         "evidence": belege,
                         "timings": zeiten,
                         "conversation_id": conversation_id})
-        except Exception:  # noqa: BLE001 — Fehler beim Client sichtbar machen
+        except Exception as exc:  # noqa: BLE001 — Fehler beim Client sichtbar machen
             _log.exception("Lottis Erklärung fehlgeschlagen")
+            # **Auch in die Fehlerliste** (Admin-Panel *Fehler*, Mail bei der
+            # ersten Begegnung). Der Strom hat schon mit 200 geantwortet, der
+            # 500er-Handler in `main.py` sieht diese Ausnahme also nie — bis
+            # 03.10.2026 stand sie nur im Log. Gespeichert wird, was
+            # `kern.fehler.aufbereiten` durchlässt: keine Frage, kein
+            # Seiteninhalt, die Route als Vorlage.
+            melden = fehlersammler.sammeln(
+                exc, request.method, getattr(request.scope.get("route"), "path", None),
+                request.url.path)
+            if melden:
+                meldungen.append(melden)
             yield _sse({"type": "error", "message": "Erklärung fehlgeschlagen."})
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         # Läuft erst, wenn der Strom ausgeliefert ist — niemand wartet darauf.
-        background=BackgroundTask(_selbstpruefung_nachlauf, nachlauf))
+        background=BackgroundTask(_lotti_nachlauf, nachlauf, meldungen))
 
 
 class ScreenContext(BaseModel):
@@ -4822,7 +4997,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # (expand_ms misst seit dem Fragetyp-Routing den EINEN Analyse-Call
             # — Begriffe + Typ —, der Schlüssel bleibt für Vergleichbarkeit.)
             zeiten: dict = {}
-            verlauf = [r.model_dump() for r in body.history]
+            # Eine Runde mit DERSELBEN Frage ist keine Vorgeschichte, sondern
+            # eine Dublette — sie machte aus der Weiterreichung aus Lottis
+            # Fenster eine leere Anschlussfrage (`qa.verlauf_ohne_dieselbe_frage`).
+            verlauf = qa.verlauf_ohne_dieselbe_frage(
+                [r.model_dump() for r in body.history], q)
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
             analyse = qa.analyse_query(q, verlauf=verlauf)

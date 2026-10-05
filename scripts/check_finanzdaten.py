@@ -311,7 +311,11 @@ def main(db: str | None = None, heute: date | None = None,
             for r in kandidaten:
                 moeglich |= r["einheiten"]
             gesehen[key] = {e[0] for e in moeglich}
-            offen = moeglich - vorhanden
+            erledigt = set(q.unlesbar) & vorhanden
+            if erledigt:
+                p.warnen(f"  {q.label}: {_kurz(erledigt)} steht inzwischen im Bestand — "
+                         f"der Eintrag in `unlesbar` (council/finanzquellen.py) kann weg")
+            offen = moeglich - vorhanden - set(q.unlesbar)
             if not offen:
                 p.sagen(f"{q.label}: nichts Neues "
                         f"({len(vorhanden)} Einheiten, {len(kandidaten)} Dokumente geprüft)")

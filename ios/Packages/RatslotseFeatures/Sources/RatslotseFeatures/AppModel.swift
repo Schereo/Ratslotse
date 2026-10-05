@@ -83,6 +83,10 @@ public final class AppModel {
     /// sagt, ob etwas schon so weit ist — keine Rechteprüfung (kern/features.py).
     public var features: Set<String> = []
     public func feature(_ key: String) -> Bool { features.contains(key) }
+    /// Ob `/api/app-config` schon geantwortet hat (oder gescheitert ist). Ein
+    /// Deep-Link beim Kaltstart kommt oft VOR der Antwort — bis dahin heißt ein
+    /// leeres `features` „weiß noch nicht", nicht „aus".
+    public var featuresLoaded = false
     /// Ein Beschlussort von der Stadtkarte (Ebene „Themen-Orte"), den die
     /// Beschluss-Suche als Filter übernehmen soll — wie `punktHref` im Web,
     /// das auf `/council?location=…` zeigt. Die Suche liest ihn beim Erscheinen
@@ -175,6 +179,7 @@ public final class AppModel {
             let config: AppConfiguration = try await api.get("/api/app-config")
             updateNotice = config.notice
             features = Set(config.features)
+            featuresLoaded = true
             let build = Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0
             if config.minBuild > build {
                 updateRequired = true
@@ -184,6 +189,7 @@ public final class AppModel {
         } catch {
             // Compatibility config is a safeguard, never a launch dependency.
         }
+        featuresLoaded = true
 
         guard hasStoredToken else {
             session = .loggedOut

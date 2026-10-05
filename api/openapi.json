@@ -224,6 +224,188 @@
         "title": "AdminCouncilStats",
         "type": "object"
       },
+      "AdminDistrictReport": {
+        "description": "Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "created_at"
+        ],
+        "title": "AdminDistrictReport",
+        "type": "object"
+      },
+      "AdminDistrictReportGroup": {
+        "description": "Alle Meldungen zu einem Vorhaben samt Entscheidung der Redaktion.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_at": {
+            "title": "Last At",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          },
+          "place_name": {
+            "title": "Place Name",
+            "type": "string"
+          },
+          "project": {
+            "description": "Das Vorhaben, wie es gerade auf der Tafel steht.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "stage": {
+                "title": "Stage",
+                "type": "string"
+              },
+              "what": {
+                "title": "What",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "what",
+              "stage"
+            ],
+            "title": "AdminDistrictReportProject",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "project_key": {
+            "title": "Project Key",
+            "type": "string"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/AdminDistrictReport"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "project_key",
+          "place_id",
+          "place_name",
+          "name",
+          "count",
+          "last_at",
+          "reports",
+          "verdict",
+          "note",
+          "decided_at",
+          "project"
+        ],
+        "title": "AdminDistrictReportGroup",
+        "type": "object"
+      },
+      "AdminDistrictReportProject": {
+        "description": "Das Vorhaben, wie es gerade auf der Tafel steht.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "what": {
+            "title": "What",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "what",
+          "stage"
+        ],
+        "title": "AdminDistrictReportProject",
+        "type": "object"
+      },
+      "AdminDistrictReports": {
+        "description": "``GET /api/admin/district-reports`` — die Meldungen aus „Mein Viertel\".",
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/AdminDistrictReportGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "groups",
+          "status",
+          "open_count"
+        ],
+        "title": "AdminDistrictReports",
+        "type": "object"
+      },
       "AdminEntityAlias": {
         "description": "Eine zusammengelegte Entität (``CouncilStore.list_entity_aliases``).\n\n``canonical_slug`` ist das AUFGELÖSTE Ziel: Eine Kette A→B→C wird bis zum\nEnde verfolgt, damit in der Liste nicht das leere Mittelglied steht.",
         "properties": {
@@ -8633,6 +8815,20 @@
             "title": "Reported",
             "type": "boolean"
           },
+          "schedule": {
+            "title": "Schedule",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schedule_note": {
+            "title": "Schedule Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "stage": {
             "title": "Stage",
             "type": "string"
@@ -8643,6 +8839,13 @@
           },
           "when": {
             "title": "When",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "when_end": {
+            "title": "When End",
             "type": [
               "string",
               "null"
@@ -8757,6 +8960,7 @@
         "type": "object"
       },
       "DistrictProjectReportOut": {
+        "description": "``POST``/``DELETE /api/districts/projects/{id}/report``.\n\n``hidden`` ist seit 10/2026 die Entscheidung der Redaktion, nicht mehr die\nZahl der Meldungen — eine Meldung allein blendet nichts aus. Die Form\nbleibt, weil die ausgelieferte iOS-App sie decodiert.",
         "properties": {
           "hidden": {
             "title": "Hidden",
@@ -8769,6 +8973,10 @@
           "report_count": {
             "title": "Report Count",
             "type": "integer"
+          },
+          "reported": {
+            "title": "Reported",
+            "type": "boolean"
           }
         },
         "required": [
@@ -8788,6 +8996,13 @@
             },
             "title": "Closures",
             "type": "array"
+          },
+          "decisions_until": {
+            "title": "Decisions Until",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "investments": {
             "items": {
@@ -8859,6 +9074,13 @@
       "DistrictProjectsOverview": {
         "description": "``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,\ndazu die Stadtzahlen und die Vorhaben, die gerade herausstechen.",
         "properties": {
+          "decisions_until": {
+            "title": "Decisions Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "districts": {
             "items": {
               "$ref": "#/components/schemas/DistrictProjectsOverviewEntry"
@@ -8872,6 +9094,10 @@
             },
             "title": "Highlights",
             "type": "array"
+          },
+          "shared": {
+            "title": "Shared",
+            "type": "integer"
           },
           "stages": {
             "additionalProperties": {
@@ -18859,7 +19085,7 @@
         "type": "object"
       },
       "QaShare": {
-        "description": "Ein geteilter Antwort-Schnappschuss (``Store.qa_share_get``).\n\nFestes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem\nBausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store\nsetzt die vier Listen dann auf leer und ``chart`` auf ``None``.",
+        "description": "Ein geteilter Antwort-Schnappschuss (``Store.qa_share_get``).\n\nFestes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem\nBausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store\nsetzt die vier Listen dann auf leer, ``chart`` und\n``rules_of_procedure`` auf ``None``.",
         "properties": {
           "answer": {
             "title": "Answer",
@@ -18913,6 +19139,14 @@
             "title": "Question",
             "type": "string"
           },
+          "rules_of_procedure": {
+            "additionalProperties": true,
+            "title": "Rules Of Procedure",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "sources": {
             "items": {
               "additionalProperties": true,
@@ -18931,7 +19165,8 @@
           "press_releases",
           "attachments",
           "parties",
-          "chart"
+          "chart",
+          "rules_of_procedure"
         ],
         "title": "QaShare",
         "type": "object"
@@ -19042,6 +19277,68 @@
             "minLength": 1,
             "title": "Question",
             "type": "string"
+          },
+          "rules_of_procedure": {
+            "description": "Die Karte „Aus der Geschäftsordnung\" (``rules_of_procedure.card``).\n\nDer Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.\nWeil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim\nProtokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,\ndarf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges\nunterschieben. Ein fremder Link verwirft die ganze Karte (s.\n``QaShareBody._karte_oder_nichts``).",
+            "properties": {
+              "contents": {
+                "items": {
+                  "$ref": "#/components/schemas/QaShareRulesContents"
+                },
+                "maxItems": 80,
+                "title": "Contents",
+                "type": "array"
+              },
+              "full_title": {
+                "default": "",
+                "maxLength": 300,
+                "title": "Full Title",
+                "type": "string"
+              },
+              "sections": {
+                "items": {
+                  "$ref": "#/components/schemas/QaShareRulesSection"
+                },
+                "maxItems": 4,
+                "title": "Sections",
+                "type": "array"
+              },
+              "state": {
+                "default": "current",
+                "enum": [
+                  "current",
+                  "term_ended",
+                  "superseded"
+                ],
+                "title": "State",
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 120,
+                "title": "Title",
+                "type": "string"
+              },
+              "url": {
+                "maxLength": 300,
+                "title": "Url",
+                "type": "string"
+              },
+              "version": {
+                "default": "",
+                "maxLength": 300,
+                "title": "Version",
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "url"
+            ],
+            "title": "QaShareRulesOfProcedure",
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "sources": {
             "items": {
@@ -19284,6 +19581,135 @@
           }
         },
         "title": "QaShareReportBody",
+        "type": "object"
+      },
+      "QaShareRulesContents": {
+        "properties": {
+          "label": {
+            "maxLength": 12,
+            "title": "Label",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 300,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "title",
+          "url"
+        ],
+        "title": "QaShareRulesContents",
+        "type": "object"
+      },
+      "QaShareRulesOfProcedure": {
+        "description": "Die Karte „Aus der Geschäftsordnung\" (``rules_of_procedure.card``).\n\nDer Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.\nWeil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim\nProtokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,\ndarf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges\nunterschieben. Ein fremder Link verwirft die ganze Karte (s.\n``QaShareBody._karte_oder_nichts``).",
+        "properties": {
+          "contents": {
+            "items": {
+              "$ref": "#/components/schemas/QaShareRulesContents"
+            },
+            "maxItems": 80,
+            "title": "Contents",
+            "type": "array"
+          },
+          "full_title": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Full Title",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/QaShareRulesSection"
+            },
+            "maxItems": 4,
+            "title": "Sections",
+            "type": "array"
+          },
+          "state": {
+            "default": "current",
+            "enum": [
+              "current",
+              "term_ended",
+              "superseded"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 300,
+            "title": "Url",
+            "type": "string"
+          },
+          "version": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "url"
+        ],
+        "title": "QaShareRulesOfProcedure",
+        "type": "object"
+      },
+      "QaShareRulesSection": {
+        "properties": {
+          "label": {
+            "maxLength": 12,
+            "title": "Label",
+            "type": "string"
+          },
+          "number": {
+            "maxLength": 8,
+            "title": "Number",
+            "type": "string"
+          },
+          "part": {
+            "maxLength": 60,
+            "title": "Part",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 6000,
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 300,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "label",
+          "title",
+          "part",
+          "url"
+        ],
+        "title": "QaShareRulesSection",
         "type": "object"
       },
       "QaShareSource": {
@@ -25690,6 +26116,34 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VerdictIn": {
+        "properties": {
+          "note": {
+            "maxLength": 300,
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verdict": {
+            "enum": [
+              "hidden",
+              "kept"
+            ],
+            "title": "Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "VerdictIn",
+        "type": "object"
+      },
       "VerifyEmailRequest": {
         "properties": {
           "token": {
@@ -26487,6 +26941,104 @@
           }
         },
         "summary": "Cities Stats",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/district-reports": {
+      "get": {
+        "description": "Die Meldungen aus „Mein Viertel\", je Vorhaben gebündelt.",
+        "operationId": "district_reports_api_admin_district_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "pattern": "^(open|decided|all)$",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDistrictReports"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "District Reports",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/district-reports/{project_key}": {
+      "put": {
+        "description": "Entscheiden: ausblenden, stehen lassen — oder die Entscheidung zurücknehmen.",
+        "operationId": "decide_district_report_api_admin_district_reports__project_key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_key",
+            "required": true,
+            "schema": {
+              "title": "Project Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerdictIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide District Report",
         "tags": [
           "admin"
         ]
@@ -32757,7 +33309,7 @@
     },
     "/api/districts/lookup": {
       "get": {
-        "description": "„Ich wohne in der …\": Straße, Platz oder Stadtteilname → Ortsbereich.\n\nStadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den\nBeschlüssen. Öffentlich wie die Auswahl-Seite selbst; kein Konto, kein\nSprachmodell, keine Speicherung der Eingabe.",
+        "description": "„Ich wohne in der …\": Straße, Platz oder Stadtteilname → Ortsbereich.\n\nStadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den\nBeschlüssen. Mit Konto wie die Auswahl-Seite selbst; kein Sprachmodell,\nkeine Speicherung der Eingabe.",
         "operationId": "district_lookup_api_districts_lookup_get",
         "parameters": [
           {
@@ -32823,8 +33375,49 @@
       }
     },
     "/api/districts/projects/{project_id}/report": {
+      "delete": {
+        "description": "Die eigene Meldung zurücknehmen — ein Fehltipp soll nicht stehen bleiben.\nEine Entscheidung der Redaktion bleibt davon unberührt.",
+        "operationId": "withdraw_project_report_api_districts_projects__project_id__report_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictProjectReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Withdraw Project Report",
+        "tags": [
+          "districts"
+        ]
+      },
       "post": {
-        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\nAb zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim\nKonto und geht mit dessen Löschung.",
+        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\n\n**Eine Meldung blendet nichts aus.** Bis 10/2026 verschwand ein Vorhaben ab\nzwei Meldungen dauerhaft — zwei Konten konnten so jede Tafel leeren, und\nniemand sah die Meldungen. Jetzt landet sie in der Admin-Liste, die erste\nje Vorhaben zusätzlich als Mail, und ausgeblendet wird erst, wenn die\nRedaktion bestätigt. Die Meldung hängt am Konto und geht mit dessen\nLöschung (``COUNCIL_USER_OWNED_TABLES``).",
         "operationId": "report_project_api_districts_projects__project_id__report_post",
         "parameters": [
           {
