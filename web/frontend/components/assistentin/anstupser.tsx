@@ -166,7 +166,7 @@ export function Anstupser({ erlaubt, onJa }: {
       role="status"
       data-lotti-anstupser
       className={cn(
-        "fixed right-4 z-50 w-[min(16rem,calc(100vw-2rem))] rounded-2xl border border-border",
+        "fixed right-4 z-[45] w-[min(16rem,calc(100vw-2rem))] rounded-2xl border border-border",
         "bg-card p-3 shadow-lifted print:hidden",
         "animate-in fade-in-0 slide-in-from-bottom-2 duration-buehne ease-out-strong",
         // Über dem Knopf, der seinerseits über Tab-Leiste und Composer sitzt.

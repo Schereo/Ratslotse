@@ -750,6 +750,17 @@ GESCHAEFTSORDNUNG_REGEL = (
 )
 
 
+#: Die Anrede — für „Frag den Rat“ UND Lotti, an EINER Stelle.
+#:
+#: **Warum (Release-Prüfung 03.10.2026).** Keiner der beiden Prompts legte sie
+#: fest; die Archiv-Antwort aus Lottis Fenster siezte („Eine neue Frage ist in
+#: Ihrer Nachricht nicht enthalten“), während die ganze App duzt
+#: (``web/frontend/DESIGNSPRACHE.md`` § 1, „Du-Form“). Die Fragen-Seite redet
+#: nicht bewusst anders — es stand dort einfach nichts.
+ANREDE_REGEL = ("Sprich die Person, wenn du sie ansprichst, mit „du“ an — nie mit "
+                "„Sie“. ")
+
+
 #: Lottis Werkzeuge (``council/lotti_werkzeuge.py``, Schalter
 #: ``lotti-werkzeuge``): angehängt NUR, wenn sie mitgegeben werden — ohne
 #: Schalter bleibt der Prompt zeichengleich (Regel aus PR 21). Der Kern ist
@@ -772,7 +783,18 @@ WERKZEUG_REGEL = (
     "- Was ein Werkzeug liefert, gilt wie der Kontext oben: jede Zahl mit Jahr und\n"
     "  Beleg, Plan und Ist auseinanderhalten. Findet auch das Werkzeug nichts, sag\n"
     "  das in einem Satz.\n"
+    "- Fragt jemand nach der NÄCHSTEN oder einer künftigen Sitzung, nimm „sitzungen“\n"
+    "  ohne Zeitraum — dann sucht es ab HEUTE (Datum oben). Rechne nie mit einem\n"
+    "  anderen Jahr als dem laufenden.\n"
     "- Erzähl nicht, dass oder wie du nachgeschlagen hast — antworte einfach.\n"
+    # Release-Prüfung 03.10.2026: Mit Werkzeugen schlug Lotti die Zahl von
+    # der anderen Seite selbst nach — richtig — und ließ den Verweis darauf
+    # weg (wegweiser-gewerbesteuer, wegweiser-stellenplan,
+    # geld-ausserhalb-dashboard). Die Zahl ersetzt die Seite nicht.
+    "- Steht oben ein WEGWEISER und gehört deine Antwort auf eine ANDERE\n"
+    "  Haushalts-Seite, gilt die Verweisregel auch dann, wenn du die Zahl selbst\n"
+    "  nachgeschlagen hast: ein Satz mit dem Titel der Seite, und als letzte\n"
+    "  Zeile „WEITER: seite <Adresse>“.\n"
 )
 
 
@@ -1552,6 +1574,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "{context}\n"
             "{presse}\n"
             "Antworte auf Deutsch, klar und natürlich für Erwachsene ohne Verwaltungswissen. "
+            # 03.10.2026: Ohne diese Zeile siezte die Antwort („in Ihrer
+            # Nachricht“), während die App überall duzt (DESIGNSPRACHE § 1).
+            + ANREDE_REGEL +
             "Vermeide Behördensprache und erkläre unvermeidbare Fachbegriffe kurz. Schreibe weder "
             "belehrend noch kindlich. Verwende id-Zitate. Die Länge folgt der Frage: Eine enge "
             "Frage bekommt 2–5 Sätze; eine breite Frage („Was macht die Stadt für …?“) "
@@ -1617,7 +1642,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Erklärt die aktuelle Seite, ein angeklicktes Element oder markierten "
             "Text in Alltagssprache — ohne Suche im Beschluss-Archiv. Platzhalter: "
             "{knowledge}, {record}, {konto}, {glossar}, {geld}, {einordnung}, "
-            "{wegweiser}, {wegweiser_regel}, {zwei_zaehlweisen}, {einordnung_regel}, "
+            "{heute}, {wegweiser}, {wegweiser_regel}, {zwei_zaehlweisen}, {einordnung_regel}, "
             "{wertung_regel}, {erklaerwissen}, {erklaerwissen_regel}, "
             "{geschaeftsordnung}, {geschaeftsordnung_regel}, "
             "{screen}, {anker}, {question}, {gespraech}."
@@ -1627,6 +1652,11 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "Person ohne Verwaltungswissen, was sie gerade auf dem Bildschirm sieht —\n"
             "eine Seite, einen Baustein, eine Zahl oder ein Fachwort. Du SUCHST nicht:\n"
             "Was du weißt, steht unten; darüber hinaus schlägst du nichts nach.\n"
+            # 03.10.2026: Ohne Datum hielt das Modell ein anderes Jahr für das
+            # laufende — „Wann tagt der Finanzausschuss als nächstes?“ bekam
+            # eine Sitzung von 2025 (s. `lotti_werkzeuge.heute`).
+            "HEUTE ist {heute}. „Nächste“, „kommende“, „bisher“ und „zuletzt“ beziehen\n"
+            "sich auf dieses Datum; was danach liegt, hat noch nicht stattgefunden.\n"
             "{gespraech}"
             "\nWAS DU WEISST (geprüfte Texte von Ratslotse — NUR daraus erklärst du):\n"
             "Seite: {knowledge}\n"
@@ -1692,6 +1722,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "  der Bausteine, sag das offen, statt einen ähnlichen anzubieten.\n"
             "- Keine Bewertung, keine Empfehlung, keine Rechtsberatung, keine Meinung zu\n"
             "  Parteien oder Personen. Keine Anrede mit Namen. Kein „Als KI …“.\n"
+            "- " + ANREDE_REGEL + "\n"
             "- KEINE Begrüßung, kein „Moin“, kein „Hallo“ — fang mit der Sache an. Das\n"
             "  Fenster begrüßt schon, bevor du etwas sagst; ein zweites Moin in jeder\n"
             "  Antwort macht aus dem Gruß eine Floskel.\n"

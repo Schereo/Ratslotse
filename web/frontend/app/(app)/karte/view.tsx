@@ -286,7 +286,14 @@ function Buehne() {
           className="h-full w-full"
         />
         {/* Ebenen-Chips oben links AUF der Karte — zugleich die Legende. Die
-            Zähler sagen, was gerade auf dieser Stufe liegt. */}
+            Zähler sagen, was gerade auf dieser Stufe liegt.
+
+            **`z-10`, nicht `z-[500]`** (03.10.2026). Leaflet hält seine
+            Ebenen in einem eigenen Stapel (`.leaflet-container { isolation:
+            isolate }` in globals.css) — über der Karte liegt alles, was im
+            DOM danach kommt, schon mit `z-10`. Die 500 galten dagegen im
+            Stapel der ganzen Seite: Chips und Brotkrumen lagen auf dem
+            Handy ÜBER Lottis Fenster (damals `z-50`, heute `z-[45]`) und verdeckten dessen Kopf. */}
         <EbenenChips
           ebenen={ebenen}
           stufe={stufe.art}
@@ -316,10 +323,10 @@ function Buehne() {
               {themenAn && <ThemenArtChips art={art} zaehler={artZaehler} onArt={setArt} />}
             </div>
           )}
-          className="absolute left-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]"
+          className="absolute left-3 top-3 z-10 max-w-[calc(100%-4.5rem)]"
         />
         {/* Brotkrumen: wo bin ich, und wie komme ich eine Stufe hoch. */}
-        <nav aria-label="Stufe" className="absolute bottom-4 left-4 z-[500] flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 text-[12.5px] font-medium shadow-lg backdrop-blur">
+        <nav aria-label="Stufe" className="absolute bottom-4 left-4 z-10 flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 text-[12.5px] font-medium shadow-lg backdrop-blur">
           {ortName ? (
             <>
               <button type="button" onClick={zurStadt} className="text-muted-foreground hover:text-foreground">Oldenburg</button>
@@ -337,7 +344,7 @@ function Buehne() {
         {/* Mini-Stadtkarte unten rechts: wo das Viertel in der Stadt liegt —
             und ein Tipp auf einen Nachbarn wechselt dorthin. */}
         {ortName && (
-          <div className="absolute bottom-4 right-4 z-[500] hidden w-[180px] rounded-xl border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur desk:block">
+          <div className="absolute bottom-4 right-4 z-10 hidden w-[180px] rounded-xl border border-border bg-card/95 p-1.5 shadow-lg backdrop-blur desk:block">
             <StadtteilKarte
               gewaehlt={new Set([ortName])}
               auswaehlbar={new Set(orte.map((o) => o.name))}
