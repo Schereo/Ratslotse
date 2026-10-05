@@ -7623,6 +7623,16 @@ export interface components {
                 path: string;
                 /** Polls Close */
                 polls_close: string;
+                /**
+                 * Prominent
+                 * @default false
+                 */
+                prominent: boolean;
+                /**
+                 * Result Status
+                 * @default vorlaeufig
+                 */
+                result_status: string;
                 /** Short Title */
                 short_title: string;
                 /** Slug */
@@ -7657,6 +7667,16 @@ export interface components {
             path: string;
             /** Polls Close */
             polls_close: string;
+            /**
+             * Prominent
+             * @default false
+             */
+            prominent: boolean;
+            /**
+             * Result Status
+             * @default vorlaeufig
+             */
+            result_status: string;
             /** Short Title */
             short_title: string;
             /** Slug */
@@ -10657,6 +10677,8 @@ export interface components {
             presentation_url: string;
             /** Previous Label */
             previous_label: string;
+            /** Result Status */
+            result_status: string;
             /** Seats */
             seats: number;
             /** Short Title */
@@ -10688,6 +10710,8 @@ export interface components {
             path: string;
             /** Polls Close */
             polls_close: string;
+            /** Result Status */
+            result_status: string;
             /** Short Title */
             short_title: string;
             /** Slug */
@@ -25177,4 +25201,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 583f1ad03840179ea41e7e9bcbc352218e286063c405694e7cc4606f254575ad
+// vertrag-sha256: 64b4bdcf856b2bc6d999c6d15a410bb24d037a7c0d94f7f416131425f3590efb

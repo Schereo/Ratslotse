@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { geteilt, gesperrtesTippspiel, nachJahren, type Wahlzeile } from "./wahlen";
+import { ergebnisVermerk, geteilt, gesperrtesTippspiel, istAmtlich, nachJahren, wahlLaut, type Wahlzeile } from "./wahlen";
 
 const z = (slug: string, date: string, focus = false): Wahlzeile => ({
   slug, short_title: slug, title: slug, date, polls_close: `${date}T18:00:00+02:00`,
   kind: "council", status: "live", path: "/wahlabend", summary: null, focus, tipp_path: "", tipp_locked: false, top: [],
+  result_status: "vorlaeufig",
 });
 
 describe("geteilt", () => {
@@ -43,5 +44,31 @@ describe("gesperrtesTippspiel", () => {
   });
   it("ist null, wenn nichts gesperrt ist — dann gibt es keinen Grund zum Drängen", () => {
     expect(gesperrtesTippspiel([z("a", "2026-09-27")])).toBeNull();
+  });
+});
+
+describe("wahlLaut", () => {
+  it("folgt allein dem Backend", () => {
+    expect(wahlLaut({ prominent: true })).toBe(true);
+    expect(wahlLaut({ prominent: false })).toBe(false);
+  });
+  it("bleibt still, wenn das Feld fehlt — lieber kein Hinweis als einer zur falschen Zeit", () => {
+    expect(wahlLaut({})).toBe(false);
+    expect(wahlLaut(null)).toBe(false);
+    expect(wahlLaut(undefined)).toBe(false);
+  });
+});
+
+describe("ergebnisVermerk", () => {
+  it("sagt amtlich nur, wenn das Backend es sagt", () => {
+    expect(istAmtlich("amtlich")).toBe(true);
+    expect(istAmtlich("vorlaeufig")).toBe(false);
+    expect(istAmtlich(undefined)).toBe(false);
+    expect(ergebnisVermerk("amtlich")).toMatch(/amtliche Endergebnis/);
+    expect(ergebnisVermerk("amtlich")).not.toMatch(/kein amtliches/i);
+  });
+  it("nennt ein vorläufiges Ergebnis vorläufig", () => {
+    expect(ergebnisVermerk("vorlaeufig")).toMatch(/^Vorläufig/);
+    expect(ergebnisVermerk(null)).toMatch(/^Vorläufig/);
   });
 });

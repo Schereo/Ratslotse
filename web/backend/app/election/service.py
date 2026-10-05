@@ -233,7 +233,7 @@ def _scaled(lists: Iterable[DistrictList], projection: Projection, reg: Register
     return out
 
 
-def _election_of(reg: Register | None) -> ElectionInfo:
+def _election_of(reg: Register | None, complete: bool = False) -> ElectionInfo:
     """Titel, Datum und Sitzzahl der Wahl — aus dem Register, sonst aus der Registry.
 
     ``_bare`` ist die letzte Reißleine: Dort ist das Register gerade NICHT
@@ -241,7 +241,12 @@ def _election_of(reg: Register | None) -> ElectionInfo:
     Rates …" von Hand in der Antwort — eine dritte Fassung derselben Angaben,
     die bei der nächsten Wahl still falsch geworden wäre.
     """
+    from . import archive
+
     wahl = elections.active()
+    # Amtlich nur bei vollständig ausgezähltem Stand: Der eingefrorene Stand
+    # ist vom selben Votemanager geholt; ein Zwischenstand ist nie amtlich.
+    status = archive.result_status(wahl) if complete else "vorlaeufig"
     return ElectionInfo(
         slug=wahl.slug,
         # Datum, Titel und Sitzzahl stehen im Register UND in der Registry —
@@ -259,6 +264,7 @@ def _election_of(reg: Register | None) -> ElectionInfo:
         status=wahl.status,
         presentation_url=votemanager.presentation_url(),
         previous_label=wahl.previous_label,
+        result_status=status,
     )
 
 
@@ -515,7 +521,7 @@ def districts(reg: Register, snap: Snapshot, dataset: str) -> ElectionDistrictLi
     return ElectionDistrictList(
         dataset=dataset,
         phase="before" if gezaehlt == 0 else ("complete" if gezaehlt == len(zeilen) else "counting"),
-        election=_election_of(reg),
+        election=_election_of(reg, complete=bool(zeilen) and gezaehlt == len(zeilen)),
         total=len(zeilen), counted=gezaehlt, districts=zeilen,
     )
 
@@ -744,7 +750,7 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
 
     return ElectionNight(
         dataset=dataset, phase=phase, person_votes_available=persons,
-        election=_election_of(reg),
+        election=_election_of(reg, complete=phase == "complete"),
         source={
             "fetched_at": snap.fetched_at.isoformat(timespec="seconds"),
             "last_modified": snap.last_modified, "ok": snap.ok, "error": snap.error,

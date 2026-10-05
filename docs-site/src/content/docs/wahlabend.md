@@ -20,6 +20,23 @@ Hinweis statt Zahlen. Nicht am Umgebungs-Gate — die Seite soll am Wahlabend
 auf Prod laufen und danach ohne Deploy wieder dunkel werden können.
 :::
 
+:::note[Wie laut eine Wahl ist, regelt der Kalender (seit 10/2026)]
+Der Schalter ist nur noch der Notaus für den ganzen Bereich. Ob eine Wahl als
+Hinweis oben auf **Heute** und als Streifen auf der **Startseite** erscheint,
+sagt `/api/app-config` in `election.prominent` — wahr von sieben Tagen vor bis
+drei Tage nach dem Wahlschluss der Wahl im Fokus
+(`elections.prominent`, `PROMINENT_VORHER`/`PROMINENT_NACHHER`). Außerhalb
+dieses Fensters führt nur der dauerhafte Ort hin: `/wahlen`, erreichbar über
+den Reiter „Wahlen" in der Analyse, die Zeile „Wahlen in Oldenburg" im
+Mehr-Menü der App und den Fuß der Startseite.
+
+Ob ein Ergebnis amtlich ist, kommt aus dem eingefrorenen Stand
+(`archive.result_status`, gesetzt von `scripts/wahl_einfrieren.py --stand
+amtlich`) und steht als `result_status` in `app-config.election`,
+`/api/wahlen` und — bei vollständig ausgezähltem Stand — in
+`/api/wahlabend` unter `election`.
+:::
+
 ## Woher die Zahlen kommen
 
 Die Stadt betreibt zur Wahl einen **Votemanager** (KDO) mit einer
@@ -511,7 +528,8 @@ Reihenfolge, die am Wahlabend trägt — jede Zeile ist ohne Deploy machbar:
 2. **Sonntag vor 18 Uhr auf Prod:** Schalter setzen, `systemctl restart
    nwz-web-api`, danach `curl -s https://ratslotse.de/api/wahlabend | head -c 400`
    — `"phase": "before"`, `"ok": true`. Die Seite zeigt „Noch nichts
-   ausgezählt“, Landing und Heute tragen die Einstiege.
+   ausgezählt“, Landing und Heute tragen die Einstiege (von selbst, ab sieben
+   Tagen vor dem Wahlschluss).
 3. **Ab der ersten Meldung:** `notes` lesen. Steht dort eine Warnung zur
    Spaltenreihenfolge (die Prüfung gegen das JSON des Votemanagers, s. o.),
    greift der Notausgang `WAHLABEND_COLUMNS` (Slugs in Spaltenreihenfolge in

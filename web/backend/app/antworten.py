@@ -4783,6 +4783,13 @@ class ElectionInfo(TypedDict):
     #: „2021" bei der Ratswahl 2026. Leer, wenn es keine Vorwahl gibt; dann
     #: zeigen beide Seiten den Vergleich gar nicht.
     previous_label: str
+    #: „amtlich" | „vorlaeufig". Amtlich nur, wenn der Stand VOLLSTÄNDIG
+    #: ausgezählt ist und der eingefrorene Stand dieser Wahl als amtlich
+    #: vermerkt ist (``archive.result_status``) — dann sind die Zahlen hier
+    #: dieselben, die der Wahlausschuss festgestellt hat. Bis 10/2026 stand
+    #: unter jeder Fassung „kein amtliches Ergebnis", auch drei Wochen nach
+    #: der Feststellung.
+    result_status: str
 
 
 class ElectionSource(TypedDict):
@@ -4969,6 +4976,9 @@ class ElectionListItem(TypedDict):
     summary: str | None
     #: Ist das die Wahl, auf die gerade alles zeigt (``elections.focus``)?
     focus: bool
+    #: „amtlich" | „vorlaeufig" — aus dem eingefrorenen Stand
+    #: (``archive.result_status``).
+    result_status: str
     #: Der Weg zum Tippspiel dieser Wahl — leer, wenn es keines gibt ODER die
     #: fragende Person nicht hineindarf. Die Entscheidung trifft das Backend:
     #: Ein Link, den man sieht und nicht benutzen kann, ist schlechter als

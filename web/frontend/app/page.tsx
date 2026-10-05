@@ -12,7 +12,7 @@ import { LiveStats } from "@/components/live-stats";
 import { HeuteLeiste } from "@/components/heute-leiste";
 import { LottiHero } from "@/components/lotti-hero";
 import { KommunalwahlBanner } from "@/components/kommunalwahl-banner";
-import { WahlabendBanner } from "@/components/wahlabend-hinweis";
+import { WahlabendBanner, WahlenFussLink } from "@/components/wahlabend-hinweis";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { Reveal } from "@/components/reveal";
 import { cn } from "@/lib/utils";
@@ -114,7 +114,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Am Wahlabend (Schalter `wahlabend`): der Weg zu den Zahlen. */}
+        {/* Um den Wahltag (`election.prominent`): der Weg zu den Zahlen. */}
         <WahlabendBanner />
 
         {/* Befristet bis zur Ratswahl am 13.09.: der Weg zum Wahl-Check —
@@ -200,6 +200,7 @@ export default function LandingPage() {
             © Ratslotse — Ratsinformationen für Oldenburg. Ein privates Bürgerprojekt, kein Angebot der Stadt.
           </span>
           <div className="flex flex-wrap gap-4">
+            <WahlenFussLink className="hover:text-foreground" />
             <Link href="/hilfe" className="hover:text-foreground">Hilfe &amp; Kontakt</Link>
             <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
             <Link href="/changelog" className="hover:text-foreground">Changelog</Link>

@@ -128,3 +128,45 @@ def test_eine_andere_wahl_aendert_die_antwort(monkeypatch):
         datei.unlink()
         elections.reset()
         register.reset()
+
+
+@pytest.mark.parametrize("wann,laut", [
+    # Lange vorher: die Wahl steht im Fokus (Countdown auf /wahlen), aber sie
+    # drängt sich nicht oben auf Heute.
+    ("2026-08-01T09:00", False),
+    ("2026-09-06T15:00", False),
+    # Eine Woche vor dem Wahlschluss wird sie laut ...
+    ("2026-09-06T17:00", True),
+    ("2026-09-13T19:00", True),
+    # ... und bleibt es bis Mittwoch danach.
+    ("2026-09-16T15:00", True),
+    ("2026-09-16T17:00", False),
+])
+def test_prominent_nur_um_den_wahltag(wann: str, laut: bool):
+    """Tims Entscheidung 03.10.2026: Wahlabend und Tippspiel bleiben, aber
+    nicht mehr prominent verlinkt. Die Prominenz kommt aus dem Kalender —
+    eine neue Wahl in ``kommunalwahl/wahlen/`` wird von selbst laut und still."""
+    ratswahl = elections.get("ratswahl-2026")
+    assert ratswahl is not None
+    assert elections.prominent(ratswahl, _zeit(wann)) is laut
+
+
+def test_am_3_oktober_ist_alles_still():
+    """Der Tag der Entscheidung: Sechs Tage nach der Stichwahl wirbt keine
+    Seite mehr für eine Wahl — auch nicht die im Fokus."""
+    t = _zeit("2026-10-03T09:00")
+    assert not elections.prominent(elections.focus(t), t)
+    assert not any(elections.prominent(w, t) for w in elections.all().values())
+
+
+def test_die_stichwahl_ist_ihre_eigene_woche_laut():
+    t = _zeit("2026-09-25T09:00")
+    wahl = elections.focus(t)
+    assert wahl.slug == "ob-stichwahl-2026"
+    assert elections.prominent(wahl, t)
+
+
+def test_ein_rueckblick_ist_nie_laut():
+    alt = elections.get("ratswahl-2021")
+    assert alt is not None and alt.status == "rueckblick"
+    assert not elections.prominent(alt, alt.polls_close)
