@@ -243,3 +243,21 @@ def test_die_geschaeftsordnungs_abschrift_kennt_jedes_feld():
     assert not fehlt, (
         "Diese Felder fehlen in web/frontend/tests/e2e/fixtures/geschaeftsordnung-karte.json:\n  "
         + "\n  ".join(fehlt) + "\n\nNeu erzeugen (s. Docstring dieses Tests).")
+
+
+def test_die_app_probe_traegt_dieselbe_geschaeftsordnungs_karte():
+    """Die App prüft ihren Leser an einer aufgezeichneten Antwort
+    (`ask-geschaeftsordnung.sse` in den Tests von `RatslotseAPI`). Deren Karte
+    ist eine Kopie der Abschrift oben — die das Backend hält, die App-Probe
+    aber nicht von selbst: Die iOS-CI läuft nur bei Änderungen unter `ios/`.
+    Ändert sich die Karte, zieht dieser Test die Aufzeichnung mit."""
+    probe = (WURZEL / "ios" / "Packages" / "RatslotseAPI" / "Tests" / "RatslotseAPITests"
+             / "Fixtures" / "ask-geschaeftsordnung.sse")
+    rahmen = [json.loads(z[len("data: "):]) for z in probe.read_text(encoding="utf-8").splitlines()
+              if z.startswith("data: ")]
+    quellen = next(r for r in rahmen if r["type"] == "sources")
+    soll = json.loads((FIXTURES / "geschaeftsordnung-karte.json").read_text(encoding="utf-8"))
+    assert quellen["rules_of_procedure"] == soll, (
+        "Die Karte in ask-geschaeftsordnung.sse weicht von "
+        "web/frontend/tests/e2e/fixtures/geschaeftsordnung-karte.json ab — "
+        "den sources-Rahmen der Aufzeichnung mit der Abschrift neu schreiben.")

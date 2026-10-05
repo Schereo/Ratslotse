@@ -57,6 +57,14 @@ private struct QuestionTurn: Identifiable {
     /// Die Verbindung riss, während die App im Hintergrund lag. Beim nächsten
     /// Aktivwerden fragt die Ansicht genau einmal von selbst noch einmal.
     var interruptedInBackground = false
+
+    /// Die Paragrafen der Geschäftsordnung, aus denen eine Verfahrensfrage
+    /// beantwortet wurde. Aus `evidence` gelesen statt eigens gespeichert —
+    /// so kommt sie aus dem Strom, aus einem geladenen Gespräch und aus einer
+    /// wiederhergestellten Recherche auf demselben Weg.
+    var rulesOfProcedure: RulesOfProcedureCard? {
+        RulesOfProcedureCard(sourcesFrame: evidence)
+    }
 }
 
 struct QuestionPerson: Decodable, Sendable, Hashable {
@@ -136,7 +144,7 @@ struct QuestionsView: View {
     }
     private var shouldAutoScroll: Bool {
 #if DEBUG
-        ratsDebugValue("RATSLOTSE_DEBUG_QUESTION_FIXTURE") != "1"
+        ratsDebugValue("RATSLOTSE_DEBUG_QUESTION_FIXTURE") == nil
 #else
         true
 #endif
@@ -187,8 +195,8 @@ struct QuestionsView: View {
             askPendingQuestionIfNeeded()
 #if DEBUG
             if turns.isEmpty,
-               ratsDebugValue("RATSLOTSE_DEBUG_QUESTION_FIXTURE") == "1",
-               let fixture = debugQuestionFixture() {
+               let name = ratsDebugValue("RATSLOTSE_DEBUG_QUESTION_FIXTURE"),
+               let fixture = debugQuestionFixture(named: name) {
                 turns = [fixture]
             }
             researchMode = ratsDebugValue("RATSLOTSE_DEBUG_RESEARCH_MODE") == "1"
@@ -954,6 +962,54 @@ struct QuestionsView: View {
     }
 
 #if DEBUG
+    /// `1` ist die Sichtprobe aller Antwort-Bausteine; `geschaeftsordnung`
+    /// eine Verfahrensfrage, die die Geschäftsordnung allein beantwortet, und
+    /// `geschaeftsordnung-alt` die Frage nach dem Ganzen mit Verzeichnis und
+    /// einer Fassung, deren Wahlperiode vorbei ist.
+    private func debugQuestionFixture(named name: String) -> QuestionTurn? {
+        switch name {
+        case "1": debugQuestionFixture()
+        case "geschaeftsordnung": debugRulesOfProcedureFixture(overview: false)
+        case "geschaeftsordnung-alt": debugRulesOfProcedureFixture(overview: true)
+        default: nil
+        }
+    }
+
+    private func debugRulesOfProcedureFixture(overview: Bool) -> QuestionTurn {
+        let evidence: [String: JSONValue] = [
+            "qtype": .string("topic"),
+            "sources": .array([]),
+            "evidence_level": .string("solide"),
+            "rules_of_procedure": RulesOfProcedureDebugFixture.card(overview: overview),
+        ]
+        if overview {
+            return QuestionTurn(
+                question: "Was steht in der Geschäftsordnung des Rates?",
+                answer: """
+                    Die Geschäftsordnung regelt, wie Rat, Verwaltungsausschuss und Ratsausschüsse arbeiten: Einberufung und Tagesordnung, Öffentlichkeit, Redeordnung, Abstimmungen und die Einwohnerfragestunde.
+
+                    Eine Ratssitzung läuft in der Regel in fester Reihenfolge ab — von der Feststellung der Beschlussfähigkeit bis zu Anfragen und Anregungen; der Rat kann die Reihenfolge ändern (§ 9). Jedes Ratsmitglied darf je Wortmeldung bis zu fünf Minuten reden (§ 15).
+
+                    Diese Fassung galt für die Wahlperiode 2021–2026; die Geschäftsordnung des neuen Rates liegt hier noch nicht vor.
+                    """,
+                evidence: evidence,
+                suggestions: ["Wie läuft die Einwohnerfragestunde ab?"]
+            )
+        }
+        return QuestionTurn(
+            question: "Wie lange darf ein Ratsmitglied im Rat reden?",
+            answer: """
+                Im Rat darf jedes Ratsmitglied **bis zu fünf Minuten je Wortmeldung** reden, soweit der Rat keine Ausnahme zulässt (§ 15 der Geschäftsordnung).
+
+                Zu einem Beratungsgegenstand spricht jedes Ratsmitglied grundsätzlich nur einmal. Ausgenommen sind Anträge zur Geschäftsordnung und Wortmeldungen des Oberbürgermeisters; die oder der Ratsvorsitzende kann im Einzelfall mehr zulassen, bei Widerspruch entscheidet der Rat (§ 15).
+
+                In den Ratsausschüssen gilt die Regel vom einmaligen Rederecht nicht (§ 32).
+                """,
+            evidence: evidence,
+            suggestions: ["Wer erteilt im Rat das Wort?", "Was ist ein Antrag zur Geschäftsordnung?"]
+        )
+    }
+
     private func debugQuestionFixture() -> QuestionTurn? {
         let raw = #"""
         {
@@ -1643,6 +1699,11 @@ private struct QuestionTurnView: View {
                     else { ask(turn.question) }
                 }
             }
+            // Für eine Verfahrensfrage IST die Geschäftsordnung der Beleg —
+            // deshalb vor den Beschlüssen, die nur Beispiele sind.
+            if showsEvidenceInline, let rules = turn.rulesOfProcedure {
+                RulesOfProcedureCardView(card: rules)
+            }
             if showsEvidenceInline, !turn.sources.isEmpty {
                 QuestionSourcesCard(turn: turn, model: model, collapsible: true)
             }
@@ -2193,6 +2254,10 @@ private struct QuestionEvidenceSidebar: View {
             RatsLoadingState(message: "Belege werden zusammengestellt …")
         }
 
+        let rules = turn.rulesOfProcedure
+        if let rules {
+            RulesOfProcedureCardView(card: rules)
+        }
         if !turn.sources.isEmpty {
             QuestionSourcesCard(turn: turn, model: model)
         }
@@ -2201,6 +2266,7 @@ private struct QuestionEvidenceSidebar: View {
         if turn.status == nil,
            turn.research?.status != "laeuft",
            turn.sources.isEmpty,
+           rules == nil,
            !hasSourceEvidence(turn.evidence) {
             VStack(alignment: .leading, spacing: 8) {
                 MonoKicker("Beleglage")
@@ -2758,7 +2824,7 @@ private struct QuestionAnswerActions: View {
         HStack(spacing: 0) {
             // Nach der Bewertung steht hier der Dank: Die Zeile war ohnehin
             // Beiwerk, und ein eigener Streifen für zwei Wörter wäre zu viel.
-            Text(rating == nil ? "Aus Ratsunterlagen zusammengefasst" : "Danke für die Rückmeldung!")
+            Text(rating == nil ? attribution : "Danke für die Rückmeldung!")
                 .foregroundStyle(rating == nil ? RatsColor.muted : RatsColor.primary)
                 .font(RatsFont.notice())
                 .fixedSize(horizontal: false, vertical: true)
@@ -2816,6 +2882,17 @@ private struct QuestionAnswerActions: View {
             AnswerFeedbackReasonSheet { reason in send(rating: "down", reason: reason) }
         }
         .onDisappear { speaker.stop() }
+    }
+
+    /// Woraus die Antwort stammt. Antwortet die Geschäftsordnung allein — die
+    /// Karte ist da, zitiert ist kein Beschluss —, wäre „aus Ratsunterlagen"
+    /// falsch: Gelesen wurde ein Dokument der Stadt (wie im Web).
+    private var attribution: String {
+        let onlyRules = turn.rulesOfProcedure != nil
+            && QuestionCitationIndex(text: turn.answer, sources: turn.sources).citedSources.isEmpty
+        return onlyRules
+            ? "Aus der Geschäftsordnung des Rates zusammengefasst"
+            : "Aus Ratsunterlagen zusammengefasst"
     }
 
     /// Der Daumen zählt sofort — auch wenn der Grund nie kommt. Beim Daumen

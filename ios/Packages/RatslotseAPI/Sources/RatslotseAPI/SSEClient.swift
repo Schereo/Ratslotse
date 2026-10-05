@@ -25,6 +25,23 @@ public struct SSEEvent: Codable, Sendable, Equatable {
     }
 }
 
+public extension RulesOfProcedureCard {
+    /// Die Karte aus einem `sources`-Rahmen — live aus dem Strom wie aus dem
+    /// gespeicherten Snapshot eines Gesprächs, die dasselbe Vokabular tragen.
+    ///
+    /// Der Schlüssel steht in DIESER Datei und nicht beim Modell:
+    /// `scripts/sse_vertrag.py` hält die Feldzugriffe hier gegen das, was der
+    /// Server sendet. Eine Umbenennung im Backend fiele sonst erst auf, wenn
+    /// jemand bemerkt, dass die Karte fehlt.
+    init?(sourcesFrame fields: [String: JSONValue]) {
+        guard let value = fields["rules_of_procedure"],
+              let card = try? value.decoded(RulesOfProcedureCard.self),
+              !card.sections.isEmpty || !card.contents.isEmpty
+        else { return nil }
+        self = card
+    }
+}
+
 /// Incremental, spec-shaped parser. It deliberately ignores comments such as
 /// `: ping`, joins repeated data lines, and dispatches only on a blank line.
 public struct SSEParser: Sendable {
