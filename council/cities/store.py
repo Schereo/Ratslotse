@@ -1441,6 +1441,129 @@ class CitiesStore:
             "WHERE object_kind=? AND annotator=? AND version<>?",
             (object_kind, annotator, version)).fetchone()[0])
 
+    def rekey_evidence(self, abbild: dict[str, str],
+                       annotators: Sequence[str] = ("fit", "idea_fit")) -> dict[str, int]:
+        """Beleg-Kennungen in Urteilen umschreiben — ``evidence`` und ``related``.
+
+        Für den Umzug der Beschluss-Belege von der Zeilennummer auf Sitzung
+        und Punkt (``evidence.beschluss_kennung``). Was das Abbild nicht kennt,
+        bleibt stehen; doppelt Gewordenes fällt weg, die Reihenfolge bleibt.
+        Der Quell-Hash wird NICHT angefasst — das ist ein eigener Schritt
+        (``set_source_hashes``), weil er die Belege neu sammeln muss.
+
+        Idempotent: Ein zweiter Lauf findet nichts mehr, was im Abbild steht.
+        """
+        stand = {"rows": 0, "keys": 0, "unknown": 0}
+        marks = ",".join("?" * len(annotators))
+        zeilen = self._conn.execute(
+            f"SELECT object_kind, object_id, annotator, version, payload FROM annotations "
+            f"WHERE annotator IN ({marks}) AND payload LIKE '%oldenburg:decision:%'",
+            list(annotators)).fetchall()
+        neu: list[tuple[str, str, str, str, str]] = []
+        for z in zeilen:
+            nutzlast = json.loads(z["payload"])
+            geaendert = False
+            for feld in ("evidence", "related"):
+                liste = nutzlast.get(feld)
+                if not isinstance(liste, list):
+                    continue
+                aus: list = []
+                for k in liste:
+                    ziel = abbild.get(str(k))
+                    if ziel is not None:
+                        stand["keys"] += 1
+                        geaendert = True
+                        k = ziel
+                    elif str(k).startswith("oldenburg:decision:") \
+                            and str(k)[len("oldenburg:decision:"):].isdigit():
+                        # Alte Form, die das Abbild nicht kennt — sie bleibt
+                        # und wird gezählt, damit die Lücke eine Zahl hat.
+                        stand["unknown"] += 1
+                    if k not in aus:
+                        aus.append(k)
+                nutzlast[feld] = aus
+            if geaendert:
+                neu.append((json.dumps(nutzlast, ensure_ascii=False), z["object_kind"],
+                            z["object_id"], z["annotator"], z["version"]))
+        with self._write() as conn:
+            conn.executemany(
+                "UPDATE annotations SET payload=? WHERE object_kind=? AND object_id=? "
+                "AND annotator=? AND version=?", neu)
+        stand["rows"] = len(neu)
+        return stand
+
+    def annotation_payloads(self, annotator: str,
+                            version: str | None = None) -> list[dict]:
+        """Die Nutzlasten eines Annotators — jeder Objektart, auf Wunsch jeder Fassung."""
+        if version is None:
+            rows = self._conn.execute(
+                "SELECT payload FROM annotations WHERE annotator=?", (annotator,))
+        else:
+            rows = self._conn.execute(
+                "SELECT payload FROM annotations WHERE annotator=? AND version=?",
+                (annotator, version))
+        return [json.loads(r["payload"]) for r in rows]
+
+    def papers_without_web(self) -> list[dict]:
+        """Vorlagen ohne Link ins Ratsinformationssystem."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, body_id FROM papers WHERE web IS NULL OR web = ''")]
+
+    def set_paper_web(self, paare: Sequence[tuple[str, str]]) -> int:
+        """``(url, paper_id)`` — nur, wo noch kein Link steht."""
+        with self._write() as conn:
+            conn.executemany(
+                "UPDATE papers SET web=? WHERE id=? AND (web IS NULL OR web = '')",
+                list(paare))
+        return len(paare)
+
+    def annotations_newer_than(self, annotator: str, version: str,
+                               than_annotator: str) -> list[str]:
+        """Papiere, deren ``annotator``-Urteil JÜNGER ist als ihr jüngstes
+        ``than_annotator``-Urteil (gleich welcher Fassung).
+
+        Für den schlanken Wochenlauf von ``fit``: Hat sich die Einordnung einer
+        Vorlage geändert (neuer Text, neues Instrument), ist ihr Urteil über
+        Oldenburg neu zu fällen — ohne dass dafür jeder Quell-Hash des
+        Bestands neu gerechnet werden muss. Papiere ganz ohne
+        ``than_annotator``-Urteil gehören nicht dazu; die findet
+        ``annotations_missing``.
+        """
+        return [r["object_id"] for r in self._conn.execute(
+            "SELECT a.object_id FROM annotations a "
+            "JOIN (SELECT object_id, MAX(created_at) AS zuletzt FROM annotations "
+            "      WHERE object_kind='paper' AND annotator=? GROUP BY object_id) b "
+            "  ON b.object_id = a.object_id "
+            "WHERE a.object_kind='paper' AND a.annotator=? AND a.version=? "
+            "  AND a.created_at > b.zuletzt",
+            (than_annotator, annotator, version))]
+
+    def source_hashes(self, object_kind: str, annotator: str,
+                      version: str) -> dict[str, str]:
+        """``object_id → source_hash`` aller Urteile einer Fassung."""
+        return {r["object_id"]: r["source_hash"] for r in self._conn.execute(
+            "SELECT object_id, source_hash FROM annotations "
+            "WHERE object_kind=? AND annotator=? AND version=?",
+            (object_kind, annotator, version))}
+
+    def set_source_hashes(self, object_kind: str, annotator: str, version: str,
+                          hashes: dict[str, str]) -> int:
+        """Den Quell-Hash bestehender Urteile setzen, ohne sie neu zu fällen.
+
+        Das ist eine bewusste Übernahme: Das Urteil gilt danach als auf dem
+        heutigen Stand gefällt. Gebraucht, wenn sich die FORM der Eingabe
+        ändert, nicht ihr Inhalt — etwa beim Umschlüsseln der Beleg-Kennungen.
+        Nur bestehende Zeilen; was kein Urteil hat, bekommt hier keins.
+        """
+        alt = self.source_hashes(object_kind, annotator, version)
+        zu_tun = [(h, object_kind, oid, annotator, version) for oid, h in hashes.items()
+                  if oid in alt and alt[oid] != h]
+        with self._write() as conn:
+            conn.executemany(
+                "UPDATE annotations SET source_hash=? WHERE object_kind=? AND object_id=? "
+                "AND annotator=? AND version=?", zu_tun)
+        return len(zu_tun)
+
     def annotation_values(self, annotator: str, version: str, key: str,
                           object_kind: str = "paper") -> list[tuple[str, Any]]:
         """``(object_id, payload[key])`` für alle Annotationen — für Auswertungen."""
@@ -1997,6 +2120,26 @@ class CitiesStore:
                 "VALUES (?,?,?,?,?)", zeilen)
         return len(zeilen)
 
+    def idea_cluster_ids(self, model: str, version: str) -> tuple[dict[str, int], int]:
+        """``(paper_id → cluster_id, höchste je vergebene Nummer)``.
+
+        Die höchste Nummer zählt auch Gruppen mit, die es nicht mehr gibt,
+        deren Urteile (``cluster_check``, ``idea_fit``) aber noch unter ihrer
+        Nummer liegen. Eine neue Gruppe bekommt deshalb nie eine Nummer, unter
+        der ein fremdes Urteil wartet.
+        """
+        zuordnung = {r["paper_id"]: int(r["cluster_id"]) for r in self._conn.execute(
+            "SELECT paper_id, cluster_id FROM idea_clusters WHERE model=? AND version=?",
+            (model, version))}
+        hoechste = max(zuordnung.values(), default=0)
+        for r in self._conn.execute(
+                "SELECT object_id FROM annotations WHERE object_kind='cluster' "
+                "AND object_id LIKE ? || ':%'", (version,)):
+            nummer = str(r["object_id"]).split(":", 1)[1]
+            if nummer.isdigit():
+                hoechste = max(hoechste, int(nummer))
+        return zuordnung, hoechste
+
     def cluster_members(self, version: str = "1") -> list[dict]:
         """Alle Cluster-Mitglieder mit Instrument — UNGEFILTERT.
 
@@ -2104,6 +2247,18 @@ class CitiesStore:
             conn.execute(
                 "INSERT INTO papers_fts (paper_id, body_id, name, reference, text, summary) VALUES (?,?,?,?,?,?)",
                 (paper_id, body_id, name, reference or "", (text or "")[:20000], summary or ""))
+
+    def fts_fingerprints(self, body_id: str | None = None) -> dict[str, tuple]:
+        """``paper_id → (Titel, Aktenzeichen, Zusammenfassung, Textlänge)`` im Volltextindex."""
+        if body_id:
+            rows = self._conn.execute(
+                "SELECT paper_id, name, reference, summary, length(text) AS n FROM papers_fts "
+                "WHERE body_id = ?", (body_id,))
+        else:
+            rows = self._conn.execute(
+                "SELECT paper_id, name, reference, summary, length(text) AS n FROM papers_fts")
+        return {r["paper_id"]: (r["name"] or "", r["reference"] or "", r["summary"] or "",
+                                int(r["n"] or 0)) for r in rows}
 
     def fts_search(self, query: str, body_id: str | None = None, limit: int = 20) -> list[dict]:
         sql = ("SELECT f.paper_id, f.body_id, p.name, p.date, p.kind, p.reference, p.web, "

@@ -352,11 +352,13 @@ CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_conversation_turns(conve
 -- Frage — der Prüfer darf sie nicht zitieren, und self_check._kurz streicht,
 -- was er trotzdem übernimmt), Seite, Modell, Dauer, Kosten. Frage und Antwort
 -- NUR mit der Einwilligung in die Gesprächsspeicherung
--- (web_users.saves_conversations = 1) — sonst NULL. user_id für die
--- Konto-Löschung (USER_OWNED_TABLES).
+-- (web_users.saves_conversations = 1) — sonst NULL. user_id NUR zusammen mit
+-- Frage und Antwort (seit 03.10.2026): Er ist für die Konto-Löschung da
+-- (USER_OWNED_TABLES), und ohne Text gibt es nichts Persönliches zu löschen —
+-- ein Urteil samt Seite braucht kein Konto.
 CREATE TABLE IF NOT EXISTS assistant_checks (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id      INTEGER NOT NULL,
+    user_id      INTEGER,
     created      TEXT NOT NULL,
     surface      TEXT NOT NULL DEFAULT 'lotti',
     route        TEXT NOT NULL,
@@ -1806,6 +1808,7 @@ class Store:
                     "CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day)")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id)")
+        self._migrate_assistant_checks_ohne_konto()
         # Schätzfrage-Slider für eigene Fragen (RL-U14-Erweiterung): Zahl-Felder
         # zur seit RL-U14 bestehenden Tabelle nachziehen.
         uq_cols = self._table_cols("user_quiz_questions")
@@ -2098,6 +2101,52 @@ class Store:
             self._conn.execute(
                 "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) "
                 "VALUES (?, datetime('now'))", (marke,))
+
+    def _migrate_assistant_checks_ohne_konto(self) -> None:
+        """``assistant_checks.user_id`` nullbar machen und leeren, wo kein Text ist.
+
+        **Warum (03.10.2026).** Die Selbstprüfung legte zu JEDER geprüften
+        Antwort die Konto-Kennung ab — auch ohne Einwilligung, also auch dann,
+        wenn Frage und Antwort gar nicht gespeichert werden. Gebraucht wird
+        sie nur, um gespeicherte Texte mit dem Konto zu löschen. Ohne Text
+        bleibt ein Urteil über eine Seite, und das gehört niemandem.
+
+        SQLite kann ``NOT NULL`` nicht abnehmen — also Tabelle neu bauen und
+        umkopieren (dieselbe Bauform wie bei ``user_activity``). Die Altzeilen
+        ohne Text verlieren dabei ihre Kennung. Läuft nur, solange die Spalte
+        noch ``NOT NULL`` trägt; danach ist der Schritt ein ``PRAGMA``.
+        """
+        spalten = {r[1]: r for r in self._conn.execute("PRAGMA table_info(assistant_checks)")}
+        user_id = spalten.get("user_id")
+        if user_id is None or not user_id[3]:  # [3] = notnull
+            return
+        with self._conn:
+            self._conn.execute("""CREATE TABLE assistant_checks_neu (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER,
+    created      TEXT NOT NULL,
+    surface      TEXT NOT NULL DEFAULT 'lotti',
+    route        TEXT NOT NULL,
+    verdict      TEXT NOT NULL,          -- good | poor | unknown
+    stage        TEXT NOT NULL,          -- rules | model
+    categories   TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste
+    reasons      TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste, je ≤ 160 Zeichen
+    model        TEXT,
+    duration_ms  INTEGER,
+    cost_usd     REAL,
+    question     TEXT,
+    answer       TEXT
+)""")
+            self._conn.execute(
+                "INSERT INTO assistant_checks_neu (id, user_id, created, surface, route, verdict, "
+                "stage, categories, reasons, model, duration_ms, cost_usd, question, answer) "
+                "SELECT id, CASE WHEN question IS NULL AND answer IS NULL THEN NULL "
+                "ELSE user_id END, created, surface, route, verdict, stage, categories, reasons, "
+                "model, duration_ms, cost_usd, question, answer FROM assistant_checks")
+            self._conn.execute("DROP TABLE assistant_checks")
+            self._conn.execute("ALTER TABLE assistant_checks_neu RENAME TO assistant_checks")
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_assistant_checks_created "
+                               "ON assistant_checks(created)")
 
     def _table_cols(self, table: str) -> set[str]:
         return {r[1] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -3433,7 +3482,7 @@ class Store:
         """Snapshot einer geteilten Antwort (Task 31) → öffentliches Token.
         Bewusste Einzel-Veröffentlichung — unabhängig vom Gespräche-Opt-in.
         `extras` hält die Bausteine neben den Beschlüssen (Debatten, Presse,
-        Anlagen, Parteien-Positionen), damit die geteilte Seite dieselbe
+        Anlagen, Parteien-Positionen, Grafik, Geschäftsordnung), damit die geteilte Seite dieselbe
         Antwort zeigt wie das Gespräch — und nicht nur deren Textkern."""
         import secrets
 
@@ -3473,7 +3522,10 @@ class Store:
                 "parties": extras.get("parties") or [],
                 # Die Grafik zur Antwort — vor diesem Nachtrag geteilte
                 # Antworten haben keine; die Seite zeigt dann keine.
-                "chart": extras.get("chart")}
+                "chart": extras.get("chart"),
+                # Die Karte „Aus der Geschäftsordnung" — ebenso erst später
+                # dazugekommen; ältere Snapshots zeigen sie nicht.
+                "rules_of_procedure": extras.get("rules_of_procedure")}
 
     def qa_share_owner_id(self, token: str) -> int | None:
         """Interne Zuordnung für Moderation; nie Teil der öffentlichen API."""
@@ -3624,18 +3676,20 @@ class Store:
         von Konten ab, die ausdrücklich nichts speichern wollen.
         """
         mit_text = self.get_qa_speichern(user_id) == 1
+        frage = (question or "")[:600] if mit_text and question else None
+        antwort = (answer or "")[:8000] if mit_text and answer else None
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
                 "INSERT INTO assistant_checks (user_id, created, route, verdict, stage, "
                 "categories, reasons, model, duration_ms, cost_usd, question, answer) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (user_id, now, route[:200], verdict, stage,
+                # Das Konto NUR mit Text — es ist für die Löschung da, und ohne
+                # Text gibt es nichts zu löschen (s. SCHEMA).
+                (user_id if (frage or antwort) else None, now, route[:200], verdict, stage,
                  json.dumps(categories[:6], ensure_ascii=False),
                  json.dumps([r[:160] for r in reasons[:3]], ensure_ascii=False),
-                 model, duration_ms, cost_usd,
-                 (question or "")[:600] if mit_text and question else None,
-                 (answer or "")[:8000] if mit_text and answer else None))
+                 model, duration_ms, cost_usd, frage, antwort))
 
     def selbstpruefung_auswertung(self, seit: str) -> dict:
         """Die Zahlen für den Admin-Reiter „Lotti“ — ab dem Tag ``seit``."""
@@ -3986,6 +4040,20 @@ class Store:
                 )
         except Exception:  # noqa: BLE001 — Aktivitäts-Log darf nie einen Request brechen
             pass
+
+    def aktivitaet_heute(self, owner_id: int, feature: str) -> int:
+        """Wie oft dieses Konto ``feature`` heute benutzt hat — über alle Clients.
+
+        Das Tageskontingent von Lottis Erklärungen zählt hier
+        (``council.assistant.TAGES_KONTINGENT``). „Heute“ ist derselbe Tag,
+        unter dem ``record_activity`` zählt.
+        """
+        from datetime import date
+        row = self._conn.execute(
+            "SELECT COALESCE(SUM(count), 0) FROM user_activity "
+            "WHERE owner_id = ? AND day = ? AND feature = ?",
+            (owner_id, date.today().isoformat(), feature)).fetchone()
+        return int(row[0] or 0)
 
     def client_usage(self, owner_id: int) -> dict[str, int]:
         """Wie oft dieses Konto von welchem Client aus zugegriffen hat.

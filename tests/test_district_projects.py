@@ -1,9 +1,10 @@
-"""„Mein Viertel": Register, Richter-Regeln und die öffentlichen Endpunkte.
+"""„Mein Viertel": Register, Richter-Regeln, Endpunkte und Meldungen.
 
 Das Sprachmodell wird gestubbt — geprüft wird, was UM den Aufruf herum
 entscheidet: Cache über den Eingabe-Hash, Verwerfen unbekannter Werte, die
-Namensvetter-Regel, die stadtweit-Regel aus dem Titel, die Ausblend-Schwelle
-der Meldungen und dass die Endpunkte ohne Konto lesbar sind.
+Namensvetter-Regel, die stadtweit-Regel aus dem Titel, stabile Vorhaben-ids
+über Läufe, dass Meldungen erst nach einer Entscheidung der Redaktion
+ausblenden, und dass die Endpunkte ein Konto verlangen.
 """
 from __future__ import annotations
 
@@ -26,7 +27,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
 from council import viertel  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from council.store_viertel import PROJECT_HIDE_REPORTS, PROJECT_MIN_CONFIDENCE  # noqa: E402
+from council.store_viertel import PROJECT_MIN_CONFIDENCE  # noqa: E402
 
 COUNCIL_DB = os.environ["COUNCIL_DB"]
 RATSLOTSE_DB = os.environ["RATSLOTSE_DB"]
@@ -169,7 +170,8 @@ def test_buendelung_namensvetter_und_stadtweit_regel(monkeypatch):
     projekte = store.district_projects(place.id, min_confidence=0)
     by_name = {p["name"]: p for p in projekte}
     assert set(by_name) == {"Wohnungen Sandkruger Straße", "Schießstand aufräumen"}
-    assert by_name["Wohnungen Sandkruger Straße"]["confidence"] == 97
+    # Die Sicherheit ist die des Richters (95), nicht die der Bündelung (97).
+    assert by_name["Wohnungen Sandkruger Straße"]["confidence"] == 95
     # Namensvetter ohne Vorlagenbeleg: unter der Tafel-Schwelle, und die
     # halluzinierte 999 sowie die ausgesiebte 12 hängen nicht dran.
     schiess = by_name["Schießstand aufräumen"]
@@ -271,17 +273,176 @@ def test_endpunkte_mit_konto_und_melden():
 
     kopf = {"Authorization": f"Bearer {_register(client)}"}
     r = client.post(f"/api/districts/projects/{pid}/report", json={"reason": "liegt in Bümmerstede"}, headers=kopf)
-    assert r.status_code == 201 and r.json() == {"ok": True, "report_count": 1, "hidden": False}
+    assert r.status_code == 201
+    assert r.json() == {"ok": True, "report_count": 1, "hidden": False, "reported": True}
     # Zweimal vom selben Konto zählt einmal.
     r = client.post(f"/api/districts/projects/{pid}/report", json={}, headers=kopf)
     assert r.json()["report_count"] == 1
     assert client.get("/api/districts/kreyenbrueck/projects", headers=kopf).json()["projects"][0]["reported"] is True
-
-    kopf2 = {"Authorization": f"Bearer {_register(client, 'zweite@example.org')}"}
-    r = client.post(f"/api/districts/projects/{pid}/report", json={}, headers=kopf2)
-    assert r.json()["hidden"] is True and r.json()["report_count"] == PROJECT_HIDE_REPORTS
-    assert client.get("/api/districts/kreyenbrueck/projects").json()["projects"] == []
     assert client.post("/api/districts/projects/424242/report", json={}, headers=kopf).status_code == 404
+
+
+def _tafel_mit_vorhaben() -> int:
+    store = _store()
+    _seed(store)
+    store.replace_district_projects("kreyenbrueck", [
+        {"name": "Wohnungen Sandkruger Straße", "what": "70 Wohnungen.", "stage": "planning", "when": "2028",
+         "category": "housing", "decision_ids": [10], "confidence": 97},
+    ])
+    pid = store.district_projects("kreyenbrueck")[0]["id"]
+    store.close()
+    return pid
+
+
+def _admin_kopf(client) -> dict:
+    from scripts.grant_admin import grant_admin
+    token = _register(client, "chefin@example.org")
+    grant_admin("chefin@example.org", RATSLOTSE_DB)
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_meldungen_blenden_nichts_aus_erst_die_redaktion(monkeypatch):
+    """Tims Linie: Zwei Konten dürfen kein Vorhaben dauerhaft löschen. Eine
+    Meldung landet in der Admin-Liste (die erste je Vorhaben als Mail), und
+    ausgeblendet wird erst, wenn ein Admin bestätigt — umkehrbar."""
+    from kern import alerts
+    mails: list[tuple[str, str]] = []
+    monkeypatch.setattr(alerts, "notify_admin", lambda text, betreff="", fusszeile="": mails.append((betreff, text)))
+    pid = _tafel_mit_vorhaben()
+    client = TestClient(app)
+    kopf1 = {"Authorization": f"Bearer {_register(client, 'eins@example.org')}"}
+    kopf2 = {"Authorization": f"Bearer {_register(client, 'zwei@example.org')}"}
+    kopf3 = {"Authorization": f"Bearer {_register(client, 'drei@example.org')}"}
+
+    for kopf in (kopf1, kopf2, kopf3):
+        r = client.post(f"/api/districts/projects/{pid}/report", json={"reason": "liegt <b>woanders</b>"}, headers=kopf)
+        assert r.status_code == 201 and r.json()["hidden"] is False
+    # Drei Meldungen — und das Vorhaben steht weiter auf der Tafel.
+    tafel = client.get("/api/districts/kreyenbrueck/projects", headers=kopf1).json()
+    assert [p["id"] for p in tafel["projects"]] == [pid]
+    # Genau EINE Mail, mit Namen und maskiertem Grund.
+    assert len(mails) == 1
+    assert "Mein Viertel" in mails[0][0]
+    assert "Wohnungen Sandkruger Straße" in mails[0][1] and "&lt;b&gt;woanders" in mails[0][1]
+
+    # Rücknahme der eigenen Meldung.
+    r = client.delete(f"/api/districts/projects/{pid}/report", headers=kopf3)
+    assert r.json() == {"ok": True, "report_count": 2, "hidden": False, "reported": False}
+
+    # Die Admin-Liste: ohne Admin 403, mit Admin die gebündelten Meldungen ohne Konten.
+    assert client.get("/api/admin/district-reports", headers=kopf1).status_code == 403
+    admin = _admin_kopf(client)
+    liste = client.get("/api/admin/district-reports", headers=admin).json()
+    assert liste["open_count"] == 1
+    gruppe = liste["groups"][0]
+    assert gruppe["project_key"] == "kreyenbrueck:10" and gruppe["count"] == 2
+    assert gruppe["place_name"] == "Kreyenbrück" and gruppe["project"]["id"] == pid
+    assert all(set(m) == {"reason", "created_at"} for m in gruppe["reports"])
+
+    # „Passt doch": bleibt stehen, verlässt die offene Liste.
+    key = "kreyenbrueck:10"
+    assert client.put(f"/api/admin/district-reports/{key}", json={"verdict": "kept"}, headers=admin).status_code == 200
+    assert client.get("/api/admin/district-reports", headers=admin).json()["groups"] == []
+    assert client.get("/api/admin/district-reports?status=decided", headers=admin).json()["groups"][0]["verdict"] == "kept"
+    assert len(client.get("/api/districts/kreyenbrueck/projects", headers=kopf1).json()["projects"]) == 1
+
+    # Bestätigt: ausgeblendet, auch in den Highlights.
+    client.put(f"/api/admin/district-reports/{key}", json={"verdict": "hidden", "note": "liegt in Bümmerstede"},
+               headers=admin)
+    assert client.get("/api/districts/kreyenbrueck/projects", headers=kopf1).json()["projects"] == []
+    assert client.get("/api/districts/projects", headers=kopf1).json()["highlights"] == []
+    # Zurückgenommen: wieder sichtbar, die Meldungen wieder offen.
+    client.put(f"/api/admin/district-reports/{key}", json={"verdict": None}, headers=admin)
+    assert len(client.get("/api/districts/kreyenbrueck/projects", headers=kopf1).json()["projects"]) == 1
+    assert client.get("/api/admin/district-reports", headers=admin).json()["open_count"] == 1
+    # Entschieden wird nur, was es gibt.
+    assert client.put("/api/admin/district-reports/nirgendwo:1", json={"verdict": "hidden"},
+                      headers=admin).status_code == 404
+
+
+def test_melden_ist_gebremst(monkeypatch):
+    pid = _tafel_mit_vorhaben()
+    client = TestClient(app)
+    kopf = {"Authorization": f"Bearer {_register(client, 'eilig@example.org')}"}
+    from app import ratelimit
+    monkeypatch.delenv("DISABLE_RATE_LIMIT")
+    monkeypatch.setattr(ratelimit.district_report_limiter, "_calls", __import__("collections").defaultdict(list))
+    codes = [client.post(f"/api/districts/projects/{pid}/report", json={}, headers=kopf).status_code
+             for _ in range(ratelimit.district_report_limiter.max_calls + 1)]
+    assert codes[-1] == 429 and set(codes[:-1]) == {201}
+
+
+def test_kontoloeschung_nimmt_meldungen_mit():
+    pid = _tafel_mit_vorhaben()
+    client = TestClient(app)
+    kopf = {"Authorization": f"Bearer {_register(client, 'geht@example.org')}"}
+    client.post(f"/api/districts/projects/{pid}/report", json={"reason": "privat"}, headers=kopf)
+    r = client.request("DELETE", "/api/account", headers=kopf, json={"current_password": "password123"})
+    assert r.status_code in (200, 204), r.text
+    store = _store()
+    assert store.district_project_report_count("kreyenbrueck:10") == 0
+    store.close()
+
+
+def test_vorhaben_behalten_ihre_id_ueber_laeufe():
+    """Jeder Sonntag schrieb alle Vorhaben neu (ids bis 769 bei 199 Zeilen) —
+    jeder ``?v=``-Link lief danach ins Leere. Jetzt erbt ein Vorhaben id und
+    Schlüssel des bisherigen, mit dem es die meisten Beschlüsse teilt."""
+    store = _store()
+    _seed(store)
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_decisions (id, ksinr, position, title, outcome, kind) "
+            "VALUES (13, 1, 4, 'Bebauungsplan 81 - Satzungsbeschluss', 'angenommen', 'decision')")
+
+    def lauf(*projekte):
+        store.replace_district_projects("kreyenbrueck", [
+            {"name": n, "what": "x", "stage": "planning", "category": "housing", "decision_ids": ids,
+             "confidence": 95} for n, ids in projekte])
+        return {p["name"]: p for p in store.district_projects("kreyenbrueck", min_confidence=0)}
+
+    erst = lauf(("Wohnungen", [10]), ("Schießstand", [11]))
+    wohn_id, schiess_id = erst["Wohnungen"]["id"], erst["Schießstand"]["id"]
+    # Derselbe Lauf noch einmal, mit neuem Namen: dieselben ids.
+    zweit = lauf(("Wohnungen an der Sandkruger Straße", [10]), ("Schießstand", [11]))
+    assert zweit["Wohnungen an der Sandkruger Straße"]["id"] == wohn_id
+    assert zweit["Schießstand"]["id"] == schiess_id
+
+    # Meldung und Entscheidung am Wohnungs-Vorhaben ...
+    store.save_district_project_report("kreyenbrueck:10", "kreyenbrueck", 7, "falsch", "Wohnungen")
+    store.set_district_project_verdict("kreyenbrueck:10", "kept")
+    # ... überleben, dass der ÄLTESTE Beschluss herausfällt (der Befund
+    # „Meldung verwaist, weil sie am ältesten Beschluss hängt").
+    dritt = lauf(("Wohnungen", [10, 13]), ("Schießstand", [11]))
+    viert = lauf(("Wohnungen", [13]), ("Schießstand", [11]))
+    assert dritt["Wohnungen"]["id"] == viert["Wohnungen"]["id"] == wohn_id
+    assert viert["Wohnungen"]["project_key"] == "kreyenbrueck:10"
+    assert viert["Wohnungen"]["report_count"] == 1
+
+    # Zusammengelegt: Das Schießstand-Vorhaben geht im Wohnungs-Vorhaben auf —
+    # seine Meldung zieht mit um, statt still zu verwaisen.
+    store.save_district_project_report("kreyenbrueck:11", "kreyenbrueck", 8, "auch falsch", "Schießstand")
+    store.save_district_project_report("kreyenbrueck:11", "kreyenbrueck", 7, "doppelt", "Schießstand")
+    fuenft = lauf(("Alles", [11, 13]))
+    assert list(fuenft) == ["Alles"]
+    alles = fuenft["Alles"]
+    assert alles["project_key"] in ("kreyenbrueck:10", "kreyenbrueck:11")
+    assert alles["report_count"] == 2  # Konto 7 und 8, die Doppelmeldung von 7 zählt einmal
+    gruppen = {g["project_key"]: g for g in store.district_report_groups("all")}
+    assert list(gruppen) == [alles["project_key"]]
+
+    # Ganz verschwunden: Die Meldung bleibt und die Admin-Liste sagt es.
+    lauf(("Neu", [12]))
+    gruppe = store.district_report_groups("all")[0]
+    assert gruppe["project"] is None and gruppe["count"] == 2
+    store.close()
+
+
+def test_match_projects_teilt_und_neu():
+    from council.store_viertel import _match_projects
+    alt = {1: {10, 11, 12}, 2: {20}}
+    # Geteilt: die größere Hälfte erbt, die kleinere ist neu; 2 bleibt 2.
+    assert _match_projects(alt, [{10}, {11, 12}, {20}, {30}]) == [None, 1, 2, None]
 
 
 def test_linie_wird_auf_den_ortsbereich_beschnitten():

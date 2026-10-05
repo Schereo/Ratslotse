@@ -177,11 +177,28 @@ def build_fts(main: CitiesStore, body_id: str | None = None) -> int:
     ann = get_annotator("classify")
     annotationen = main.annotations_for(ann.key, ann.version)
     n = 0
-    for p in main.papers(body_id=body_id):
-        a = annotationen.get(p["id"]) or {}
-        main.fts_upsert(p["id"], p["body_id"], p["name"], p.get("reference"),
-                        main.text_for_paper(p["id"]), a.get("summary"))
-        n += 1
+    papiere = main.papers(body_id=body_id)
+    # **Nur, was sich geändert hat.** Bis 10/2026 schrieb jeder Lauf den
+    # ganzen Index neu, und das Löschen einer Zeile sucht in einer FTS5-Tabelle
+    # über eine Nicht-Schlüssel-Spalte die ganze Tabelle ab: Oldenburg allein
+    # (6.464 Vorlagen) brauchte am 03.10.2026 22 Minuten, alle 60.000 knapp
+    # eine Stunde — für einen täglichen Lauf, der fast nichts Neues hat. Der
+    # Fingerabdruck (Titel, Aktenzeichen, Zusammenfassung, Textlänge) kostet
+    # eine Abfrage; eine Textänderung ohne Längenänderung bleibt bis zur
+    # nächsten Änderung liegen — für eine Volltextsuche verschmerzbar.
+    vorhanden = main.fts_fingerprints(body_id)
+    for start in range(0, len(papiere), 500):
+        with main.transaction():
+            for p in papiere[start:start + 500]:
+                a = annotationen.get(p["id"]) or {}
+                text = main.text_for_paper(p["id"])
+                abdruck = (p["name"] or "", p.get("reference") or "", a.get("summary") or "",
+                           len((text or "")[:20000]))
+                if vorhanden.get(p["id"]) == abdruck:
+                    continue
+                main.fts_upsert(p["id"], p["body_id"], p["name"], p.get("reference"),
+                                text, a.get("summary"))
+                n += 1
     return n
 
 

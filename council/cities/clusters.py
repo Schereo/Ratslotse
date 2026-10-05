@@ -30,9 +30,10 @@ import os
 import time
 from typing import TYPE_CHECKING
 
-from council.cities.annotators import USABLE
+from council.cities.annotators import LLM_TIMEOUT_S, USABLE
 from council.cities.index import EMBED_MODEL
 from council.cities.store import CitiesStore, text_hash
+from kern.stopp import Stopp
 
 if TYPE_CHECKING:
     import numpy as np
@@ -199,10 +200,19 @@ def build_clusters(main: CitiesStore, model: str = EMBED_MODEL,
     naehe = matrix @ matrix.T
 
     gruppen = _gruppen(naehe, threshold)
-    logger.info("%s Cluster mit mindestens %s Mitgliedern", len(gruppen), MIN_MITGLIEDER)
+    einordnung = main.annotations_for("classify", "2")
+    instrumente = [_instrument_norm((einordnung.get(k) or {}).get("instrument"))
+                   for k in kennungen]
+    vorher = len(gruppen)
+    gruppen = gleiche_ideen_vereinen(gruppen, matrix, instrumente)
+    logger.info("%s Cluster mit mindestens %s Mitgliedern (%s mit gleicher Überschrift "
+                "vereint)", len(gruppen), MIN_MITGLIEDER, vorher - len(gruppen))
+
+    alte, hoechste = main.idea_cluster_ids(model, version)
+    nummern = stabile_nummern([[kennungen[i] for i in g] for g in gruppen], alte, hoechste)
 
     zeilen: list[tuple[str, str, int, str, float]] = []
-    for cluster_id, gruppe in enumerate(sorted(gruppen, key=len, reverse=True), 1):
+    for cluster_id, gruppe in zip(nummern, gruppen):
         mitte = matrix[gruppe].mean(axis=0)
         norm = float(np.linalg.norm(mitte)) or 1.0
         for i in gruppe:
@@ -210,11 +220,138 @@ def build_clusters(main: CitiesStore, model: str = EMBED_MODEL,
                            float(matrix[i] @ mitte / norm)))
     main.replace_idea_clusters(model, version, zeilen)
     groesse = max((len(g) for g in gruppen), default=0)
+    behalten = sum(1 for n in nummern if n <= hoechste)
     return {"ideas": len(kennungen), "clusters": len(gruppen),
-            "members": len(zeilen), "largest": groesse}
+            "members": len(zeilen), "largest": groesse,
+            "merged_same_label": vorher - len(gruppen),
+            "kept_ids": behalten, "new_ids": len(nummern) - behalten}
 
 
-def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
+def stabile_nummern(gruppen: list[list[str]], alte: dict[str, int],
+                    hoechste: int) -> list[int]:
+    """Je Gruppe die Nummer, die sie schon hatte — sonst eine nie vergebene.
+
+    **Warum das nötig ist.** Bis 10/2026 nummerierte jeder Lauf die Gruppen
+    neu, nach Größe. Kam irgendwo eine Vorlage dazu, rutschten die Nummern —
+    und an der Nummer hängen die Urteile: ``cluster_check`` (welche Mitglieder
+    nicht dazugehören, ob die Gruppe überhaupt eine gemeinsame Sache hat),
+    ``idea_fit`` (hat Oldenburg die Idee?) und die Adresse der Ideen-Seite.
+    ``cluster_check`` prüft nur Gruppen OHNE Urteil; nach dem Rutschen hätte
+    Gruppe 22 das Prüfurteil der früheren Gruppe 22 getragen — eine fremde
+    Ausschlussliste, ein fremdes „uneins". Und ``idea_fit`` hätte jede
+    verrutschte Idee neu beurteilt, drei Stimmen je Idee.
+
+    **Wie.** Eine neue Gruppe erbt die Nummer der alten, mit der sie die
+    meisten Mitglieder teilt — gierig nach Überlappung, jede alte Nummer
+    höchstens einmal. Zerfällt eine Gruppe, behält der größere Teil die
+    Nummer; wachsen zwei zusammen, die mit mehr gemeinsamen Mitgliedern. Was
+    keine Vorgängerin hat, bekommt eine Nummer über ``hoechste`` — nie eine,
+    unter der noch ein Urteil einer verschwundenen Gruppe liegt.
+    """
+    from collections import Counter
+
+    paare: list[tuple[int, int, int]] = []          # (Überlappung, Gruppe, alte Nummer)
+    for gi, mitglieder in enumerate(gruppen):
+        for alt, n in Counter(alte[k] for k in mitglieder if k in alte).items():
+            paare.append((n, gi, alt))
+    # Größte Überlappung zuerst; bei Gleichstand die kleinere alte Nummer —
+    # damit zwei Läufe über denselben Bestand dieselben Nummern vergeben.
+    paare.sort(key=lambda t: (-t[0], t[2], t[1]))
+    nummern: list[int | None] = [None] * len(gruppen)
+    vergeben: set[int] = set()
+    for _n, gi, alt in paare:
+        if nummern[gi] is None and alt not in vergeben:
+            nummern[gi] = alt
+            vergeben.add(alt)
+    naechste = hoechste
+    # Neue Gruppen nach Größe, dann nach erster Kennung — deterministisch.
+    for gi in sorted((i for i, n in enumerate(nummern) if n is None),
+                     key=lambda i: (-len(gruppen[i]), min(gruppen[i]))):
+        naechste += 1
+        nummern[gi] = naechste
+    return [int(n) for n in nummern if n is not None]
+
+
+#: Ab welcher Nähe der Gruppen-MITTEN zwei Gruppen mit derselben Überschrift
+#: zusammengehören (s. ``gleiche_ideen_vereinen``). Gemessen am 03.10.2026
+#: über 1.439 Gruppen: 0,80 vereint 18 Paare — darunter die beiden
+#: „Zweckentfremdungssatzung erlassen" (0,83) und vier Mietspiegel-Gruppen
+#: (0,81–0,87). 0,85 ließe die Zweckentfremdung getrennt; 0,75 nähme Paare
+#: wie „Förderrichtlinie Jugendarbeit" gegen „Ferienfreizeiten" dazu.
+VEREINEN_AB = 0.80
+
+
+def _instrument_norm(text: str | None) -> str:
+    """Klein, ohne Satzzeichen, einfache Leerzeichen — für den Gleichheitstest."""
+    import re
+
+    t = re.sub(r"[^\wäöüß ]+", " ", (text or "").lower())
+    return " ".join(t.split())
+
+
+def gleiche_ideen_vereinen(gruppen: list[list[int]], matrix: np.ndarray,
+                           instrumente: list[str],
+                           ab: float = VEREINEN_AB) -> list[list[int]]:
+    """Zwei Gruppen, die dieselbe Überschrift tragen, sind eine Idee.
+
+    **Der Befund.** „Zweckentfremdungssatzung erlassen" stand als Idee 22 UND
+    als Idee 168 auf der Liste, „Qualifizierten Mietspiegel anerkennen" als
+    181 und 629. Die Gruppierung (``_gruppen``) verbindet zwei VORLAGEN, wenn
+    ihre Ideen-Vektoren nah genug liegen; der Vektor trägt Instrument UND
+    Zusammenfassung, und zwei Zusammenfassungen derselben Satzung können
+    verschieden genug sein, dass keine einzige Kante die Schwelle von 0,86
+    erreicht. Dann entstehen zwei Gruppen mit wortgleicher Überschrift.
+
+    **Warum nicht einfach die Schwelle senken.** Unter 0,82 kettet alles zu
+    einem Klumpen (s. ``IDEA_THRESHOLD``). Und eine Kante zwischen zwei
+    VORLAGEN mit gleichem Instrument (statt zwischen Gruppen) vereinte
+    gemessen 30 Gruppen, darunter „Bebauungsplan aufstellen" mit allem, was
+    so heißt — wortgleich ist bei Allerweltsinstrumenten kein Argument.
+
+    **Die Regel.** Zwei GRUPPEN werden eins, wenn das typischste Instrument
+    der einen (nächstes am Gruppenmittel — dasselbe, das ``idea_label`` zur
+    Überschrift macht) wortgleich in der anderen vorkommt UND die beiden
+    Gruppenmitten mindestens ``ab`` nah liegen. Beides zusammen: Das erste
+    allein vereinte Allerweltsüberschriften, das zweite allein Nachbarthemen.
+    """
+    import numpy as np_
+
+    if len(gruppen) < 2:
+        return gruppen
+    mitten = []
+    typisch = []
+    menge = []
+    for g in gruppen:
+        mitte = matrix[g].mean(axis=0)
+        mitte = mitte / (float(np_.linalg.norm(mitte)) or 1.0)
+        mitten.append(mitte)
+        bester = max(g, key=lambda i: float(matrix[i] @ mitte))
+        typisch.append(instrumente[bester])
+        menge.append({instrumente[i] for i in g if instrumente[i]})
+    m = np_.vstack(mitten)
+    naehe = m @ m.T
+    eltern = list(range(len(gruppen)))
+
+    def wurzel(x: int) -> int:
+        while eltern[x] != x:
+            eltern[x] = eltern[eltern[x]]
+            x = eltern[x]
+        return x
+
+    for a in range(len(gruppen)):
+        for b in np_.nonzero(naehe[a, a + 1:] >= ab)[0]:
+            b = a + 1 + int(b)
+            if (typisch[a] and typisch[a] in menge[b]) or (typisch[b] and typisch[b] in menge[a]):
+                wa, wb = wurzel(a), wurzel(b)
+                if wa != wb:
+                    eltern[wb] = wa
+    vereint: dict[int, list[int]] = {}
+    for gi, g in enumerate(gruppen):
+        vereint.setdefault(wurzel(gi), []).extend(g)
+    return [sorted(g) for g in vereint.values()]
+
+
+def run(main: CitiesStore, model: str = EMBED_MODEL, stopp: Stopp | None = None) -> dict:
     """Alle Schritte — für den Wochen-Cron und den Backfill.
 
     Der Prüflauf gehört dazu und nicht daneben: Eine frisch gerechnete Gruppe
@@ -225,13 +362,13 @@ def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
     eingebettet = embed_ideas(main, model)
     zahlen = build_clusters(main, model)
     zahlen["embedded"] = eingebettet
-    for name, wert in check_clusters(main, model).items():
+    for name, wert in check_clusters(main, model, stopp=stopp).items():
         zahlen[f"check_{name}"] = wert
     # Vierter Schritt, seit 10.09.2026: die Haltung je Vorlage. Sie hing bis
     # dahin an einem Handaufruf — der Cron hätte neue Vorlagen gruppiert und
     # geprüft, aber nie gefragt, ob der Rat die Sache wollte. Auf der Karte
     # stünde dann für alles Neue keine Zeile „In den anderen Räten".
-    for name, wert in stance_all(main, model).items():
+    for name, wert in stance_all(main, model, stopp=stopp).items():
         zahlen[f"stance_{name}"] = wert
     # Fünfter Schritt (10.09.2026): der Mehrheits-Status je Stadt und Gruppe.
     # Er MUSS nach dem Gruppieren laufen und nach jedem `fit`-Lauf noch
@@ -246,10 +383,15 @@ def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
     return zahlen
 
 
-#: Ab wie vielen STÄDTEN eine Gruppe nach der Richtung gefragt wird. Bei zwei
-#: Städten trägt die Angabe wenig — die Karte zeigt sie erst ab zwei ANDEREN
-#: Räten, und dort ist die Gegenrichtung der interessante Fall.
-STANCE_AB_STAEDTEN = 3
+#: Ab wie vielen STÄDTEN eine Gruppe nach der Richtung gefragt wird.
+#:
+#: Bis 10/2026 stand hier 3, mit der Begründung, bei zwei Städten trage die
+#: Angabe wenig. Seit die Richtung entscheidet, was unter „So haben die Räte
+#: entschieden" mitzählt (``rebuild_idea_groups``), trägt sie auch dort: Von
+#: 905 Vorlagen auf der Ideen-Liste (03.10.2026) hatten 258 keine Richtung —
+#: alle in Ideen aus zwei Städten, und genau dort kippt ein einzelner
+#: Gegenantrag die Bilanz. Kosten: rund 0,0002 $ je Vorlage.
+STANCE_AB_STAEDTEN = 2
 
 #: Wie viele Richtungs-Urteile gleichzeitig unterwegs sind. Dieselbe Lehre wie
 #: bei `fit`: Die Arbeiter rufen das Modell, geschrieben wird im Hauptthread.
@@ -258,7 +400,7 @@ STANCE_WORKERS = int(os.environ.get("CITIES_STANCE_WORKERS", "12"))
 
 def stance_all(main: CitiesStore, model: str = EMBED_MODEL,
                version: str = CLUSTER_VERSION, limit: int | None = None,
-               workers: int = 0) -> dict:
+               workers: int = 0, stopp: Stopp | None = None) -> dict:
     """Wohin will jede Vorlage die gemeinsame Sache ihrer Gruppe bewegen?
 
     **Warum das nicht in ``annotate.py`` läuft.** Der übliche Lauf fragt
@@ -325,7 +467,7 @@ def stance_all(main: CitiesStore, model: str = EMBED_MODEL,
                               ann.prompt_user, gruppe=gruppe,
                               paper=text[:ann.input_chars * 4])}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body={},
+                extra_body={}, timeout=LLM_TIMEOUT_S,
                 _feature=ann.feature)
             nutzlast = ann.payload.model_validate(
                 parse_json(antwort.choices[0].message.content or ""))
@@ -347,10 +489,17 @@ def stance_all(main: CitiesStore, model: str = EMBED_MODEL,
                 continue
             puffer.append(ergebnis)
             stand["cost_usd"] += ergebnis[3]
+            if stopp is not None:
+                stopp.ausgeben(ergebnis[3])
             if len(puffer) >= 25:
                 _stance_schreiben(main, ann, puffer)
                 stand["annotated"] += len(puffer)
                 puffer = []
+            abbruch = stopp.grund() if stopp else None
+            if abbruch:
+                stand[f"abgebrochen_{abbruch.schluessel}"] = 1
+                pool.shutdown(wait=False, cancel_futures=True)
+                break
         if puffer:
             _stance_schreiben(main, ann, puffer)
             stand["annotated"] += len(puffer)
@@ -435,7 +584,7 @@ UNEINIG_AB = 0.5
 
 def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
                    version: str = CLUSTER_VERSION,
-                   limit: int | None = None) -> dict:
+                   limit: int | None = None, stopp: Stopp | None = None) -> dict:
     """Jede Gruppe ab drei Mitgliedern einmal gegenlesen lassen.
 
     **Warum überhaupt.** Die Gruppierung kettet (single linkage): Hält sie A
@@ -485,7 +634,7 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
                       {"role": "user", "content": prompts.render(
                           ann.prompt_user, items=zeilen)}],
             max_tokens=ann.max_tokens, temperature=ann.temperature,
-            extra_body={},
+            extra_body={}, timeout=LLM_TIMEOUT_S,
             _feature=ann.feature)
         last = ann.payload.model_validate(
             parse_json(antwort.choices[0].message.content or ""))
@@ -496,6 +645,10 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
         return last, weg, float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
 
     for cid, mitglieder in offen:
+        abbruch = stopp.grund() if stopp else None
+        if abbruch:
+            stand[f"abgebrochen_{abbruch.schluessel}"] = 1
+            break
         zeilen = "\n".join(
             f"- {m['paper_id']} ({m['body_id']}, {(m.get('date') or '')[:7]}): "
             f"{m.get('instrument') or m.get('name') or ''}"
@@ -524,6 +677,8 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
                 nutzlast, weg, kosten = eine_stimme(zeilen, erlaubt)
                 stimmen.append(weg)
                 stand["cost_usd"] += kosten
+                if stopp is not None:
+                    stopp.ausgeben(kosten)
         except Exception as e:  # noqa: BLE001 — eine Gruppe, nicht der Lauf
             stand["errors"] += 1
             logger.info("cluster_check gescheitert (%s): %s", cid, type(e).__name__)
@@ -675,6 +830,7 @@ def rebuild_idea_groups(main: CitiesStore, model: str = EMBED_MODEL,
     from council.cities.annotators import get as get_annotator
 
     pruefung = main.cluster_verdicts(version, get_annotator("cluster_check").version)
+    haltung = main.annotations_for("stance", get_annotator("stance").version)
     gruppen: dict[int, list[dict]] = {}
     for zeile in main.idea_group_candidates(model, version):
         gruppen.setdefault(zeile["cluster_id"], []).append(zeile)
@@ -682,6 +838,20 @@ def rebuild_idea_groups(main: CitiesStore, model: str = EMBED_MODEL,
     zeilen: list[dict] = []
     for cid, alle in gruppen.items():
         fremde = [m for m in alle if m["body_id"] != "oldenburg"]
+        # **Gegenanträge zählen nicht für die Idee.** „Klimarelevanzprüfung
+        # streichen!" (Magdeburg) liegt zu Recht in derselben Gruppe wie
+        # „Klimawirkungsprüfung einführen" — es ist dieselbe Sache —, aber es
+        # will das Gegenteil. Mitgezählt stand seine Annahme unter „So haben
+        # die Räte entschieden" als Zustimmung zur Idee und seine Ablehnung als
+        # Ablehnung; Potsdams „Bargeld statt Bezahlkarte" ebenso. Die Richtung
+        # je Vorlage steht längst in `stance` (relativ zur Sache der Gruppe,
+        # nicht zum Verb der Überschrift). Hier fällt heraus, was `against`
+        # trägt — außer ALLE fremden Mitglieder wären dagegen: Dann ist die
+        # Gegenrichtung die Sache selbst, und die Gruppe bleibt, wie sie ist.
+        dafuer = [m for m in fremde
+                  if (haltung.get(m["paper_id"]) or {}).get("stance") != "against"]
+        if dafuer and len(dafuer) < len(fremde):
+            fremde = dafuer
         if not fremde:
             continue
         urteil = pruefung.get(cid) or {}

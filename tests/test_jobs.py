@@ -102,7 +102,7 @@ def test_registry_deckt_die_cron_eintraege_ab():
         # Sichert die Statistik-Quellen versioniert, täglich: Die Stadt führt
         # kein Jahrbuch-Archiv, überschriebene Ausgaben sind endgültig weg.
         "archive_statistik",
-        # Ratsdokumente der Vergleichsstädte (OParl) plus Oldenburg, sonntags 3 Uhr
+        # Oldenburg werktags 10:15, sonntags 5 Uhr dazu die Vergleichsstädte
         "check_cities",
         # Merkt, wenn ein Job aufhört zu laufen — und wenn die Platte
         # vollläuft. Ein Job, der gar nicht startet, stürzt nicht ab.

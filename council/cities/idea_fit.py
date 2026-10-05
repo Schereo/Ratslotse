@@ -135,7 +135,9 @@ def belege_fuer(main: CitiesStore, rats: CouncilStore, mitglieder: list[dict],
                 einordnung: dict[str, dict], model: str, *,
                 chunk_matrix=None, paper_matrix=None,
                 begriffe: dict[str, tuple[str, list[str]]] | None = None,
-                suche: bool = True) -> list[Evidence]:
+                suche: bool = True,
+                neue_begriffe: list[tuple[str, str, list[str]]] | None = None,
+                ) -> list[Evidence]:
     """Die Oldenburger Belege einer Idee — vereinigt und dedupliziert."""
     import json
 
@@ -164,8 +166,17 @@ def belege_fuer(main: CitiesStore, rats: CouncilStore, mitglieder: list[dict],
             klasse = einordnung.get(m["id"]) or {}
             gespeichert = (begriffe or {}).get(m["id"])
             woerter = None
-            if gespeichert and gespeichert[0] == beleg_modul.terms_hash(klasse, papier):
+            quelle = beleg_modul.terms_hash(klasse, papier)
+            if gespeichert and gespeichert[0] == quelle:
                 woerter = gespeichert[1]
+            elif neue_begriffe is not None:
+                # Die Wörter festhalten wie `fit` es tut: Sie gehen über die
+                # Belege in den Quell-Hash, und ein Modell antwortet auch bei
+                # `temperature=0` nicht garantiert gleich. Ungespeichert sähe
+                # jede Idee jede Woche „geändert" aus und würde neu beurteilt.
+                woerter = beleg_modul.search_terms(klasse, papier)
+                if woerter and woerter != beleg_modul.woerter_des_instruments(klasse):
+                    neue_begriffe.append((m["id"], quelle, woerter))
             je_mitglied.append([e for e in evidence_for(
                 main, rats, papier, klasse, model, chunk_matrix=chunk_matrix,
                 begriffe=woerter, paper_matrix=paper_matrix) if e.kind != "recap"])
@@ -246,8 +257,10 @@ class Richter:
     nur ``run``.
     """
 
-    def __init__(self, ann: Annotator, einordnung: dict[str, dict], stand: dict):
+    def __init__(self, ann: Annotator, einordnung: dict[str, dict], stand: dict,
+                 stopp: Stopp | None = None):
         self.ann = ann
+        self.stopp = stopp
         self.einordnung = einordnung
         self.stand = stand
         self.sperre = threading.Lock()
@@ -284,7 +297,10 @@ class Richter:
                         type(e).__name__, str(e)[:120])
             return None
         verbrauch = getattr(antwort, "usage", None)
-        korb.append(float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0)
+        kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+        korb.append(kosten)
+        if self.stopp is not None:
+            self.stopp.ausgeben(kosten)
         try:
             nutzlast = bereinigen(IdeaVerdict.model_validate(daten))
         except ValidationError as e:
@@ -331,10 +347,14 @@ class Richter:
 def run(main: CitiesStore, rats: CouncilStore, model: str, *,
         limit: int | None = None, min_cities: int = AB_STAEDTEN,
         workers: int = WORKERS, stopp: Stopp | None = None,
-        nur: Sequence[int] | None = None, suche: bool = True) -> dict:
+        nur: Sequence[int] | None = None, suche: bool = True,
+        nur_hashes: bool = False) -> dict:
     """Jede Idee ab ``min_cities`` Städten einmal gegen Oldenburg halten.
 
     ``nur`` beschränkt auf bestimmte Gruppen (Prüfstand, Nachurteilen).
+    ``nur_hashes`` fällt kein Urteil, sondern übernimmt den neu gerechneten
+    Quell-Hash in die bestehenden (s. ``fit.run`` — dieselbe Abkürzung, für
+    das Umschlüsseln der Beschluss-Belege).
     Geschrieben wird im Hauptthread, in Blöcken — derselbe eine Schreiber
     wie bei ``fit``.
     """
@@ -357,28 +377,45 @@ def run(main: CitiesStore, rats: CouncilStore, model: str, *,
     begriffe = main.evidence_terms() if suche else None
 
     auftraege: list[tuple[dict, list[dict], list[Evidence], str]] = []
+    neue_begriffe: list[tuple[str, str, list[str]]] = []
+    uebernommen: dict[str, str] = {}
     for g in gruppen:
         mitglieder = main.idea_group_members(model, CLUSTER_VERSION, g["cluster_id"])
         belege = belege_fuer(main, rats, mitglieder, einordnung, model,
                              chunk_matrix=matrix, paper_matrix=papier_matrix,
-                             begriffe=begriffe, suche=suche)
+                             begriffe=begriffe, suche=suche,
+                             neue_begriffe=neue_begriffe if suche else None)
+        if len(neue_begriffe) >= 50:
+            main.put_evidence_terms(neue_begriffe)
+            neue_begriffe = []
         quelle = source_hash(g, mitglieder, belege, ann)
         alt = main.annotation("cluster", f"{CLUSTER_VERSION}:{g['cluster_id']}",
                               ann.key, ann.version)
         if alt and alt.get("source_hash") == quelle:
             stand["unchanged"] += 1
             continue
+        if nur_hashes:
+            if alt:
+                uebernommen[f"{CLUSTER_VERSION}:{g['cluster_id']}"] = quelle
+            continue
         auftraege.append((g, mitglieder, belege, quelle))
         if limit and len(auftraege) >= limit:
             break
         abbruch = stopp.grund() if stopp else None
         if abbruch:
+            main.put_evidence_terms(neue_begriffe)
             stand[f"abgebrochen_{abbruch.schluessel}"] = 1
             return stand
+    main.put_evidence_terms(neue_begriffe)
+    if nur_hashes:
+        stand["hashes_adopted"] = main.set_source_hashes("cluster", ann.key, ann.version,
+                                                         uebernommen)
+        stand["seconds"] = round(time.time() - t0)
+        return stand
     logger.info("idea_fit: %s Ideen zu beurteilen, %s unverändert",
                 len(auftraege), stand["unchanged"])
 
-    richter = Richter(ann, einordnung, stand)
+    richter = Richter(ann, einordnung, stand, stopp=stopp)
 
     def eine(auftrag) -> tuple[int, dict, str, float] | None:
         g, mitglieder, belege, quelle = auftrag

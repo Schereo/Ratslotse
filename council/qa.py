@@ -150,6 +150,42 @@ _VERLAUF_FRAGE_MAX = 250
 _VERLAUF_ANTWORT_MAX = 400
 
 
+#: Ab dieser Länge (gefaltet) zählt auch „endet mit der Frage“ als dieselbe
+#: Frage — der Fall, in dem das Fenster ein Zitat davorsetzt („„…“ — Wie hoch
+#: ist das?“). Kürzere Fragen („warum?“) müssen genau gleich sein, sonst fiele
+#: „Und warum?“ als Dublette von „warum“ heraus.
+_DUBLETTE_SUFFIX_MIN = 12
+
+
+def verlauf_ohne_dieselbe_frage(verlauf: list[dict] | None, question: str) -> list[dict]:
+    """Der Verlauf ohne Runden, deren Frage die aktuelle IST.
+
+    **Warum (Release-Prüfung 03.10.2026).** Reicht Lotti eine Frage nach
+    ihrer Erklärung ans Archiv weiter („danach“), legte das Fenster genau
+    diese Frage samt Lottis Erklärung in den Verlauf — und schickte sie
+    dann noch einmal als neue Frage. Der Prompt machte daraus eine
+    Anschlussfrage („Beantworte NUR, was die neue Frage ZUSÄTZLICH wissen
+    will“), und das Modell antwortete wörtlich: „Eine neue Frage ist in Ihrer
+    Nachricht nicht enthalten“ — mit 0 Zitaten. Eine Frage ist nicht ihre
+    eigene Vorgeschichte.
+
+    **Hier und nicht im Client**, weil die ausgelieferte iOS-App denselben
+    Endpunkt bedient und kein Update braucht, um davon zu profitieren.
+    Verglichen wird gefaltet (``_falte``: Groß/klein, Umlaute, Satzzeichen).
+    """
+    ziel = _falte(question or "")
+    if not ziel or not verlauf:
+        return list(verlauf or [])
+    aus = []
+    for runde in verlauf:
+        vorher = _falte(str(runde.get("question") or ""))
+        gleich = vorher == ziel or (len(ziel) >= _DUBLETTE_SUFFIX_MIN
+                                    and vorher.endswith(" " + ziel))
+        if not gleich:
+            aus.append(runde)
+    return aus
+
+
 def _verlauf_zeilen(verlauf: list[dict] | None) -> str:
     """Gesprächsverlauf als kompakte Zeilen (leer ohne Verlauf)."""
     zeilen = []
@@ -407,6 +443,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     fallback = {"question": question, "terms": question, "kind": "topic", "party": None,
                 "variants": [], "eng": False, "unklar": False,
                 "rechercheplan": _research_plan({})}
+    verlauf = verlauf_ohne_dieselbe_frage(verlauf, question)
     vtext = _verlauf_zeilen(verlauf)
     key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
@@ -4621,7 +4658,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      # ``rules_of_procedure.prompt_block``; ebenfalls ANS ENDE
                      # und von den Aufrufern per NAME übergeben.
                      rules_block: str = "") -> tuple[list[dict], dict]:
-    vtext = _verlauf_zeilen(verlauf)
+    vtext = _verlauf_zeilen(verlauf_ohne_dieselbe_frage(verlauf, question))
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
                  if vtext else "")

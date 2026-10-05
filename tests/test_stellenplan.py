@@ -409,6 +409,21 @@ def test_einheit_ist_der_teil_nicht_der_jahrgang(tmp_path):
     store.close()
 
 
+def test_unlesbare_einheit_ist_nicht_offen(tmp_path):
+    """Ein Dokument, aus dem sich eine Einheit nachweislich nicht lesen lässt,
+    steht nicht in jeder Meldung als „weiter offen" — sonst klingt Bekanntes
+    wie ein Muster, das nicht mehr greift."""
+    from dataclasses import replace
+    store = CouncilStore(tmp_path / "c.sqlite")
+    _anlage(store, STELLENPLAN_2026_A)
+    finanzquellen.lies_stellenplaene(store, finanzquellen.Protokoll(still=True))
+
+    quelle = replace(finanzquellen.QUELLEN["stellenplan"],
+                     unlesbar={(2026, "B"): "Teil B nur als Scan"})
+    assert quelle.offene_einheiten(store) == set()
+    store.close()
+
+
 # --- 6. Einlesen, Herkunft, Bestandsschutz ----------------------------------
 
 def test_jede_zeile_weiss_woher_sie_kommt(tmp_path):

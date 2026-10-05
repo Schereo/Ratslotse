@@ -28,7 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from pydantic import ValidationError
 
-from council.cities.annotators import USABLE, Annotator
+from council.cities.annotators import LLM_TIMEOUT_S, USABLE, Annotator
 from council.cities.store import CitiesStore
 from council.topics import POLICY_FIELDS
 from kern import llm, prompts
@@ -144,6 +144,12 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
                                      source_hashes=hashes,
                                      since=f.since, kinds=f.kinds,
                                      nur_neu=nur_neu)
+    # Nur, was die Auswahl zugelassen hat. Über ALLE Städte (``body_id`` leer)
+    # hat ``fenster`` kein gemeinsames Fenster, und die Abfrage oben lieferte
+    # dann jede Vorlage ohne Urteil — gemessen am 03.10.2026 20.321, darunter
+    # Hannovers Anfragen und alles vor 2023, die die Auswahl gerade
+    # ausgeschlossen hat. Der Wochenlauf hätte davon 3.000 eingeordnet.
+    offen = [p for p in offen if p["id"] in hashes]
     if limit:
         offen = offen[:limit]
     if not offen:
@@ -179,7 +185,10 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
                               prompts.render(ann.prompt_user,
                                              items=batch_text(chunk, texte, ann))}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
-                extra_body=extra, _feature=ann.feature)
+                # Ohne Frist hing am 03.10.2026 ein einzelner Aufruf über zehn
+                # Minuten und hielt den ganzen Lauf fest — dieselbe Lehre wie
+                # bei `fit`, `idea_fit` und `reason`.
+                extra_body=extra, timeout=LLM_TIMEOUT_S, _feature=ann.feature)
             daten = parse_json(antwort.choices[0].message.content or "")
         except Exception as e:  # noqa: BLE001 — ein Batch, nicht der Lauf
             return [], sorted(erwartet), f"{type(e).__name__}: {str(e)[:120]}"
@@ -191,6 +200,8 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
                 stand["prompt_tokens"] += verbrauch.prompt_tokens or 0
                 stand["completion_tokens"] += verbrauch.completion_tokens or 0
                 stand["cost_usd"] += kosten
+        if stopp is not None:
+            stopp.ausgeben(kosten)
 
         fertig: list[tuple[str, dict, float]] = []
         ergebnisse = daten.get("results")

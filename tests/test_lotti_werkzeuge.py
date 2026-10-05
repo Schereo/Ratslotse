@@ -11,6 +11,7 @@ Fakten-Eval (``haushalt/mehrstufig``):
 from __future__ import annotations
 
 import json
+from datetime import date
 
 import pytest
 
@@ -264,3 +265,113 @@ def test_der_ersatzweg_schlaegt_mit_schalter_auch_nach(store, monkeypatch):
     text = lotti.explain_question(store, screen, "Schulden seit 2010?", ctx={},
                                   permissions=HAUSHALT, werkzeuge=True)
     assert text == "Die Schulden stiegen." and len(modell.aufrufe) == 2
+
+
+# --------------------------------------------------------------------------- #
+# Das Tagesdatum (Release-Prüfung 03.10.2026)
+# --------------------------------------------------------------------------- #
+#
+# „Wann tagt der Finanzausschuss als nächstes?“ bekam „am 2. April 2025“:
+# Lottis Prompt nannte kein Datum, das Modell suchte im falschen Jahr, und
+# das Werkzeug lieferte brav die letzte Sitzung darin. Richtig war der
+# 23.11.2026 aus `council_scheduled_sessions`.
+
+@pytest.fixture
+def kalender(store):
+    c = store._conn
+    c.execute("INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+              "location, fetched_at) VALUES (7, 'Ausschuss für Finanzen und Beteiligungen', "
+              "'2025-04-02', '17:00', 'PFL', 'x')")
+    for tag in ("2026-11-23", "2026-12-02"):
+        c.execute("INSERT INTO council_scheduled_sessions (committee, session_date, session_time, "
+                  "location, fetched_at) VALUES ('Ausschuss für Finanzen und Beteiligungen', ?, "
+                  "'17:00', '', 'x')", (tag,))
+    c.commit()
+    return store
+
+
+def test_sitzungen_ohne_zeitraum_sucht_ab_heute(kalender):
+    e = lw.sitzungen(kalender, {"gremium": "Finanzen"}, tag=date(2026, 10, 3))
+    assert "Heute ist 2026-10-03." in e.text
+    assert "Nächste Sitzung ab heute: 2026-11-23" in e.text
+    assert "2025-04-02" not in e.text
+    assert ("2026-11-23 · 17:00 · Ausschuss für Finanzen und Beteiligungen · STEHT NOCH BEVOR"
+            in e.text)
+
+
+def test_die_naechste_sitzung_steht_auch_bei_einem_alten_zeitraum_dabei(kalender):
+    """Genau der Fehler vom 03.10.2026: ein Zeitraum im falschen Jahr."""
+    e = lw.sitzungen(kalender, {"gremium": "Finanzen", "von_datum": "2025-01-01",
+                                "bis_datum": "2025-12-31"}, tag=date(2026, 10, 3))
+    kopf, liste = e.text.split("\n", 1)
+    assert "Nächste Sitzung ab heute: 2026-11-23" in kopf
+    assert "2025-04-02" in liste and "STEHT NOCH BEVOR" not in liste
+
+
+def test_der_zeitraum_ist_optional_im_schema():
+    s = next(x for x in lw.schemas(frozenset()) if x["function"]["name"] == "sitzungen")
+    assert s["function"]["parameters"]["required"] == ["gremium"]
+
+
+def test_der_prompt_nennt_das_heutige_datum():
+    msgs, _ = lotti.explain_messages(lotti.Screen(route="/council"), "Wann tagt der Rat?",
+                                     {"record": ""})
+    assert f"HEUTE ist {lw.heute_lang(lw.heute())}" in msgs[0]["content"]
+
+
+def test_heute_lang_nennt_wochentag_und_iso_form():
+    assert lw.heute_lang(date(2026, 10, 3)) == "Samstag, 3. Oktober 2026 (2026-10-03)"
+
+
+class _Rechner:
+    """Rechnet in Runde 1 mit den Zahlen ``werte``, antwortet in Runde 2."""
+
+    def __init__(self, werte: list[float]) -> None:
+        self.werte = werte
+        self.aufrufe: list[dict] = []
+
+    def __call__(self, **kw):
+        self.aufrufe.append(kw)
+        if len(self.aufrufe) == 1:
+            yield ("tools", [{"id": "r1", "name": "rechnen", "arguments": json.dumps(
+                {"art": "veraenderung_prozent", "werte": self.werte})}])
+            return
+        yield ("text", "fertig")
+
+
+def _rechnen_ergebnis(store, monkeypatch, frage: str, werte: list[float],
+                      verlauf: list[dict] | None = None) -> str:
+    modell = _Rechner(werte)
+    monkeypatch.setattr(lotti.llm, "chat_stream_events", modell)
+    monkeypatch.setattr(lotti, "NACHSCHLAGEN_ERZWINGEN", False)
+    list(lotti.explain_stream(store, lotti.Screen(route="/haushalt/schulden"), frage, ctx={},
+                              verlauf=verlauf, permissions=HAUSHALT, werkzeuge=True))
+    return modell.aufrufe[1]["messages"][-1]["content"]
+
+
+def test_eine_zahl_aus_der_frage_gilt_nicht_als_belegt(store, monkeypatch):
+    """Release-Prüfung 03.10.2026: Die Frage stand im Prompt, also galt ihre
+    Zahl als „belegt“ — und kam als „VON RATSLOTSE GERECHNET“ zurück."""
+    ergebnis = _rechnen_ergebnis(
+        store, monkeypatch, "Stimmt es, dass es 987654321 Euro Schulden sind? Wie viel mehr?",
+        [336_300_000, 987_654_321])
+    assert ergebnis.startswith("Nicht gerechnet") and "987.654.321" in ergebnis
+
+
+def test_eine_zahl_aus_dem_verlauf_gilt_nicht_als_belegt(store, monkeypatch):
+    verlauf = [{"question": "Und 2030?", "answer": "Dann wären es 987.654.321 €."}]
+    ergebnis = _rechnen_ergebnis(store, monkeypatch, "Wie viel mehr wäre das?",
+                                 [336_300_000, 987_654_321], verlauf)
+    assert ergebnis.startswith("Nicht gerechnet")
+
+
+def test_eine_zahl_aus_einem_werkzeug_bleibt_belegt():
+    msgs = [{"role": "user", "content": "Kontext\n<<<FRAGE\n555 Euro?\nFRAGE\n"},
+            {"role": "assistant", "content": "Ich vermute 777 Euro."},
+            {"role": "tool", "content": "Schulden 2024: 336.300.000 €"}]
+    text = lw.nachrichten_text(msgs, ohne=("555 Euro?",))
+    assert "336.300.000" in text and "555" not in text and "777" not in text
+
+
+def test_die_werkzeug_regel_schickt_naechste_sitzungen_ab_heute():
+    assert "ohne Zeitraum — dann sucht es ab HEUTE" in prompts.WERKZEUG_REGEL

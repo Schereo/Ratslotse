@@ -124,6 +124,11 @@ qa_share_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # Menschen; das enge Limit verhindert, dass Bots das Moderations-Postfach
 # fluten oder fremde Shares automatisiert markieren.
 qa_share_report_limiter = RateLimiter(max_calls=3, window_seconds=600)
+# „Gehört nicht hierher" in Mein Viertel: je Konto gezählt. Die erste Meldung
+# zu einem Vorhaben schickt eine Mail an die Redaktion — ohne Bremse ließe
+# sich das Postfach mit einem Konto und 199 Vorhaben fluten. Zehn in zehn
+# Minuten deckt jede ehrliche Durchsicht eines Viertels.
+district_report_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # Das Kontaktformular auf /hilfe ist der einzige Schreib-Endpoint ganz ohne
 # Konto — also der einzige, den ein Bot ohne Vorleistung findet. Eng wie
 # „Passwort vergessen": Wer ehrlich schreibt, braucht keinen zweiten Versuch
