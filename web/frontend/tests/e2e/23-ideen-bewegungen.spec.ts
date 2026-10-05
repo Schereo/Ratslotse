@@ -221,7 +221,10 @@ test("ein Netzfehler auf der Ideen-Seite sagt nicht „gibt es nicht“", async 
   await page.route((u) => u.pathname === "/api/council/cities/movements/detail", (route) =>
     route.fulfill({ status: 503, json: { detail: "Wartung" } }));
   await page.goto("/council/ideen/bewegung?id=14");
-  await expect(page.getByRole("alert")).toContainText("konnte nicht geladen werden", { timeout: 20_000 });
+  // Nicht `getByRole("alert")` allein: Next legt mit `#__next-route-announcer__`
+  // eine zweite, leere Alert-Region an, und der strikte Locator bricht ab.
+  await expect(page.getByRole("alert").filter({ hasText: "konnte nicht geladen werden" }))
+    .toBeVisible({ timeout: 20_000 });
   await expect(page.getByText("Diese Idee gibt es nicht (mehr).")).toHaveCount(0);
 });
 
