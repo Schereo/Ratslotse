@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * „Ideen aus anderen Städten" — was andere Räte beschlossen haben und
+ * „Ideen aus anderen Städten" — was andere Räte beantragt oder beschlossen haben und
  * Oldenburg fehlt.
  *
  * **Zwei Zustände, eine Route.** Ohne `?feld=` die Übersicht über die
@@ -17,7 +17,7 @@
  * Wort da, wo es etwas ändert — und sonst gar nicht.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpRight, Building2, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 import { AnalyseReiter } from "@/components/council-analysis";
@@ -27,9 +27,10 @@ import { STAND } from "@/components/ideen/stand";
 import { ZeitleisteLegende } from "@/components/ideen/zeitleiste";
 import { Lotti } from "@/components/lotti";
 import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui";
+import { DetailSkeleton, ErrorState, PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
-import { useFeature } from "@/lib/features";
+import { featureAktiv, useAppConfig } from "@/lib/features";
+import { aufzaehlung, rueckmeldungsFehler, standZeilen } from "@/lib/ideen";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { useQuery } from "@tanstack/react-query";
 
@@ -68,7 +69,7 @@ const AUFWAND: Record<string, string> = {
   budget: "kostet Geld",
 };
 
-/** Vorlagenarten — kurz, wie im Block „Anderswo beschlossen". */
+/** Vorlagenarten — kurz, wie im Block „In anderen Städten". */
 const ART: Record<string, string> = {
   motion: "Antrag", amendment: "Änderungsantrag", inquiry: "Anfrage",
   answer: "Antwort", proposal: "Beschlussvorlage", report: "Bericht",
@@ -83,14 +84,19 @@ function datum(iso: string | null): string {
 
 // ------------------------------------------------------------- Übersicht
 
-function Uebersicht({ felder, onFeld }: { felder: Felder | undefined; onFeld: (f: string) => void }) {
+function Uebersicht({ felder, onFeld, fehler }: {
+  felder: Felder | undefined; onFeld: (f: string) => void; fehler?: React.ReactNode;
+}) {
   const liste = felder?.fields ?? [];
-  if (!felder) return null;
+  if (!felder) return <>{fehler}</>;
   if (!liste.length) {
+    // Kein Takt-Versprechen: Wann der nächste Abgleich läuft, weiß die Seite
+    // nicht (bis 10/2026 stand hier „der wöchentliche Abgleich", während der
+    // Cron pausiert war).
     return (
       <p className="text-sm text-muted-foreground">
-        Noch keine Ideen eingelesen. Sobald der wöchentliche Abgleich mit den
-        anderen Städten gelaufen ist, steht hier etwas.
+        Noch keine Ideen eingelesen. Sobald die Ratsinformationssysteme der
+        anderen Städte abgeglichen sind, steht hier etwas.
       </p>
     );
   }
@@ -139,23 +145,23 @@ function Uebersicht({ felder, onFeld }: { felder: Felder | undefined; onFeld: (f
  */
 function Rueckmeldung({ idee }: { idee: Idee }) {
   const [gesagt, setGesagt] = useState(idee.feedback);
-  const [fehler, setFehler] = useState(false);
+  const [fehler, setFehler] = useState("");
 
   async function sagen(verdict: "right" | "wrong") {
     const neu = gesagt === verdict ? "" : verdict;
     setGesagt(neu);
-    setFehler(false);
+    setFehler("");
     if (!neu) return;
     try {
       await api.post(
         `/council/cities/ideas/${encodeURIComponent(idee.paper_id)}/feedback?verdict=${verdict}`,
       );
-    } catch {
-      // Ohne Konto geht es nicht, und das ist der Punkt: Eine Rückmeldung,
-      // die sich nicht zählen lässt, ist kein Maßstab. Ein Hinweis statt
-      // eines stillen Fehlschlags.
+    } catch (e) {
+      // Ohne (bestätigtes) Konto geht es nicht, und das ist der Punkt: Eine
+      // Rückmeldung, die sich nicht zählen lässt, ist kein Maßstab. Ein
+      // Hinweis statt eines stillen Fehlschlags — und der richtige.
       setGesagt("");
-      setFehler(true);
+      setFehler(rueckmeldungsFehler(e));
     }
   }
 
@@ -177,9 +183,7 @@ function Rueckmeldung({ idee }: { idee: Idee }) {
           {wert === "right" ? "Ja" : "Nein"}
         </button>
       ))}
-      {fehler && (
-        <span className="text-muted-foreground/70">Dafür braucht es ein Konto.</span>
-      )}
+      {fehler && <span className="text-muted-foreground/70">{fehler}</span>}
     </div>
   );
 }
@@ -296,7 +300,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
           nur nie gezeigt. Der Aktenname bleibt darunter stehen: Er ist das,
           wonach man im fremden System sucht, und der Beleg dafür, dass die
           kurze Zeile nicht erfunden ist. */}
-      <h3 className="mt-1.5 text-sm font-semibold text-foreground">
+      <h3 className="mt-1.5 text-sm font-semibold text-foreground [hyphens:manual] [overflow-wrap:break-word]">
         {idee.instrument || idee.name}
       </h3>
       {idee.instrument && idee.name && (
@@ -447,7 +451,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
 // -------------------------------------------------------------- Ein Feld
 
 function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["ideen", feld],
     queryFn: () => api.get<Ideen>(`/council/cities/ideas?field=${encodeURIComponent(feld)}`),
     staleTime: 60 * 60 * 1000,
@@ -465,10 +469,16 @@ function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
         Alle Themenfelder
       </button>
       <h3 className="mt-2 text-lg font-semibold text-foreground">{label}</h3>
-      {!isPending && (
+      {isError && !data && (
+        <div className="mt-4">
+          <ErrorState title="Die Ideen konnten nicht geladen werden"
+                      onRetry={() => void refetch()} busy={isFetching} />
+        </div>
+      )}
+      {!isPending && data && (
         <p className="text-xs text-muted-foreground">
-          {data?.total ?? 0} Ideen aus anderen Städten. Zuerst, was mehrere
-          Räte beschlossen haben und Oldenburg fehlt.
+          {data.total} Ideen aus anderen Städten. Zuerst, was mehrere
+          Räte beantragt oder beschlossen haben und Oldenburg fehlt.
         </p>
       )}
       <div className="mt-4 space-y-3">
@@ -476,7 +486,7 @@ function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
           <IdeenKarte key={i.paper_id} idee={i} />
         ))}
       </div>
-      {!isPending && !(data?.items ?? []).length && (
+      {data && !data.items.length && (
         <p className="mt-4 text-sm text-muted-foreground">
           In diesem Themenfeld ist noch nichts geprüft.
         </p>
@@ -488,16 +498,20 @@ function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
 // --------------------------------------------------------------- Suche
 
 function Suchergebnis({ frage }: { frage: string }) {
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["ideen-suche", frage],
     queryFn: () => api.get<Suche>(`/council/cities/search?q=${encodeURIComponent(frage)}`),
     staleTime: 60 * 60 * 1000,
   });
   return (
     <div>
-      {!isPending && (
+      {isError && !data && (
+        <ErrorState title="Die Suche hat nicht geklappt"
+                    onRetry={() => void refetch()} busy={isFetching} />
+      )}
+      {!isPending && data && (
         <p className="text-xs text-muted-foreground">
-          {data?.total ?? 0} einzelne Vorlagen zu „{frage}" in den
+          {data.total} einzelne Vorlagen zu „{frage}" in den
           Ratsinformationssystemen der anderen Städte.
         </p>
       )}
@@ -506,7 +520,7 @@ function Suchergebnis({ frage }: { frage: string }) {
           <IdeenKarte key={i.paper_id} idee={i} />
         ))}
       </div>
-      {!isPending && !(data?.items ?? []).length && (
+      {data && !data.items.length && (
         <p className="mt-4 text-sm text-muted-foreground">
           Dazu haben die anderen Städte nichts — jedenfalls nicht mit diesen Wörtern.
         </p>
@@ -748,7 +762,7 @@ function Leer({ gefiltert, zuruecksetzen }: { gefiltert: boolean; zuruecksetzen:
       <p className="max-w-prose text-sm text-muted-foreground">
         {gefiltert
           ? "Unter diesen Filtern gibt es keine Idee, die mehrere Räte hatten."
-          : "Noch keine Bewegungen — sobald der Abgleich mit den anderen Städten gelaufen ist, stehen sie hier."}
+          : "Noch keine Ideen, die mehrere Räte hatten — sobald die anderen Städte abgeglichen sind, stehen sie hier."}
       </p>
       {gefiltert && (
         <button type="button" onClick={zuruecksetzen} className="text-sm font-semibold text-primary hover:underline">
@@ -786,7 +800,7 @@ function Blaettern({
 function BewegungenListe({
   zustand, setze, felder,
 }: { zustand: Zustand; setze: (z: Partial<Zustand>) => void; felder: Felder | undefined }) {
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["bewegungen", zustand.feld, zustand.stand, zustand.q, zustand.sort, zustand.seite],
     queryFn: () => api.get<Bewegungen>(bewegungsAnfrage(zustand)),
     staleTime: 10 * 60 * 1000,
@@ -807,7 +821,12 @@ function BewegungenListe({
       </div>
       <Steuerung zustand={zustand} setze={setze} felder={felder} zaehler={data?.counts} />
       <ZeitleisteLegende />
-      {isPending && !data ? null : data && data.items.length > 0 ? (
+      {/* Ein Fehler ist keine Leere: Bis 10/2026 zeigte ein gescheiterter
+          Abruf „Noch keine Bewegungen" — als gäbe es keine. */}
+      {isPending && !data ? null : isError && !data ? (
+        <ErrorState title="Die Ideen konnten nicht geladen werden"
+                    onRetry={() => void refetch()} busy={isFetching} />
+      ) : data && data.items.length > 0 ? (
         <>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {data.items.map((b) => (
@@ -826,27 +845,37 @@ function BewegungenListe({
 // ---------------------------------------------------------------- Seite
 
 export default function View() {
-  const an = useFeature("ideen-anderswo");
+  const cfg = useAppConfig();
+  const an = featureAktiv(cfg.data, "ideen-anderswo");
   const router = useRouter();
   const params = useSearchParams();
   const zustand = useMemo(() => zustandAus(params), [params]);
   const setze = (neu: Partial<Zustand>) =>
     router.replace(adresse({ ...zustand, ...neu }), { scroll: false });
-  const { data: felder } = useQuery({
+  const felderAbfrage = useQuery({
     queryKey: ["ideen-felder"],
     queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
     staleTime: 60 * 60 * 1000,
+    enabled: an,
   });
+  const felder = felderAbfrage.data;
   // „A, B und C" — die letzte mit „und", wie man es schreibt.
   const staedte = useMemo(() => {
     const namen = felder?.bodies ?? [];
-    if (namen.length === 0) return "anderen Städten";
-    if (namen.length === 1) return namen[0];
-    return `${namen.slice(0, -1).join(", ")} und ${namen[namen.length - 1]}`;
+    return namen.length ? aufzaehlung(namen) : "anderen Städten";
   }, [felder]);
 
-  if (!an) return null;
+  // Schalter aus → 404 wie jede andere geschaltete Seite (Muster: /karte),
+  // nicht eine leere Seite. Aber erst nach der Antwort von /app-config:
+  // „noch nicht geladen" wäre sonst AUS und träfe jeden beim ersten Aufruf.
+  if (!cfg.isSuccess && !cfg.isError) return <DetailSkeleton />;
+  if (!an) notFound();
   const ungefiltert = !zustand.feld && !zustand.q;
+  const { stand, luecke } = standZeilen(felder?.data_status);
+  const felderFehler = felderAbfrage.isError ? (
+    <ErrorState title="Die Themenfelder konnten nicht geladen werden"
+                onRetry={() => void felderAbfrage.refetch()} busy={felderAbfrage.isFetching} />
+  ) : null;
 
   return (
     <div className="space-y-6">
@@ -872,8 +901,9 @@ export default function View() {
               aufgezählt stand hier bis zum 13.09.2026 „Osnabrück,
               Braunschweig, Münster, Potsdam und Magdeburg" — und das war
               falsch, sobald Hannover, Wolfsburg und Hildesheim dazukamen. */}
-          Was Räte in {staedte} beantragt und beschlossen haben — und ob
-          Oldenburg dasselbe schon hat.
+          Was Räte in {staedte} beantragt oder beschlossen haben — und ob
+          Oldenburg dasselbe schon hat. Nicht alles davon wurde dort auch
+          beschlossen; das Ergebnis steht bei jeder Vorlage.
         </p>
         <p className="mt-2 text-hinweis text-muted-foreground">
           Den Stand in Oldenburg prüft ein Sprachmodell an Oldenburger
@@ -881,6 +911,14 @@ export default function View() {
           lohnt, sagt hier bewusst niemand: Das hängt an Mehrheiten und
           Haushaltslage.
         </p>
+        {stand && (
+          // Wie alt ist, was hier steht? Der älteste Abgleich unter den
+          // Städten — und wo ein Bestand deutlich früher endet.
+          <p className="mt-2 font-mono text-meta text-muted-foreground">
+            {stand}
+            {luecke && <span className="font-sans"> · {luecke}</span>}
+          </p>
+        )}
       </div>
 
       {ungefiltert && zustand.stand === "offen" && <Tafel zustand={zustand} />}
@@ -905,7 +943,7 @@ export default function View() {
         ) : zustand.feld ? (
           <Feld feld={zustand.feld} zurueck={() => setze({ feld: "", seite: 1 })} />
         ) : (
-          <Uebersicht felder={felder} onFeld={(f) => setze({ feld: f, seite: 1 })} />
+          <Uebersicht felder={felder} fehler={felderFehler} onFeld={(f) => setze({ feld: f, seite: 1 })} />
         )}
       </section>
     </div>

@@ -110,6 +110,11 @@ qa_feedback_limiter = RateLimiter(max_calls=20, window_seconds=600)
 # Positivliste in kern/seitenaufrufe.py gedeckelt — die Bremse schützt die
 # Schreiblast, nicht den Inhalt.
 page_view_limiter = RateLimiter(max_calls=120, window_seconds=600)
+# „Stimmt das?" an den Städte-Urteilen (Ideen und Bewegungen): je Konto, nicht
+# je Adresse. Ein Klick je Karte, umentscheiden erlaubt — 60 in zehn Minuten
+# deckt eine Durchsicht ganzer Themenfelder; ein Skript, das Freitext in die
+# Tabelle schüttet, nicht.
+cities_feedback_limiter = RateLimiter(max_calls=60, window_seconds=600)
 partei_meinungen_limiter = RateLimiter(max_calls=15, window_seconds=600)
 #: Nachladen des Debatten-Bausteins: je Antwort einmal, automatisch.
 debatten_limiter = RateLimiter(max_calls=30, window_seconds=600)
@@ -119,6 +124,11 @@ qa_share_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # Menschen; das enge Limit verhindert, dass Bots das Moderations-Postfach
 # fluten oder fremde Shares automatisiert markieren.
 qa_share_report_limiter = RateLimiter(max_calls=3, window_seconds=600)
+# „Gehört nicht hierher" in Mein Viertel: je Konto gezählt. Die erste Meldung
+# zu einem Vorhaben schickt eine Mail an die Redaktion — ohne Bremse ließe
+# sich das Postfach mit einem Konto und 199 Vorhaben fluten. Zehn in zehn
+# Minuten deckt jede ehrliche Durchsicht eines Viertels.
+district_report_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # Das Kontaktformular auf /hilfe ist der einzige Schreib-Endpoint ganz ohne
 # Konto — also der einzige, den ein Bot ohne Vorleistung findet. Eng wie
 # „Passwort vergessen": Wer ehrlich schreibt, braucht keinen zweiten Versuch

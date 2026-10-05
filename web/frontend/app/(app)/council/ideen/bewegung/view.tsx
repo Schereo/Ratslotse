@@ -16,7 +16,7 @@
  */
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { notFound, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, ChevronLeft } from "lucide-react";
 
@@ -32,8 +32,10 @@ import {
   ZeitleistenFlaeche,
 } from "@/components/ideen/zeitleiste";
 import { Lotti } from "@/components/lotti";
+import { DetailSkeleton, ErrorState } from "@/components/ui";
 import { api } from "@/lib/api";
-import { useFeature } from "@/lib/features";
+import { featureAktiv, useAppConfig } from "@/lib/features";
+import { istNichtGefunden, rueckmeldungsFehler, standZeilen } from "@/lib/ideen";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
 import { anteil, datumText, reihenfolge, satz, stufe } from "@/lib/zeitleiste";
@@ -270,17 +272,18 @@ function BelegListe({ belege }: { belege: Beleg[] }) {
 
 function Rueckmeldung({ id }: { id: number }) {
   const [gesagt, setGesagt] = useState("");
-  const [fehler, setFehler] = useState(false);
+  const [fehler, setFehler] = useState("");
   async function sagen(verdict: "right" | "wrong") {
     setGesagt(verdict);
-    setFehler(false);
+    setFehler("");
     try {
       await api.post(`/council/cities/movements/feedback?id=${id}&verdict=${verdict}`);
-    } catch {
-      // Ohne Konto geht es nicht — eine Rückmeldung, die sich nicht zählen
-      // lässt, ist kein Maßstab. Ein Hinweis statt eines stillen Fehlschlags.
+    } catch (e) {
+      // Ohne (bestätigtes) Konto geht es nicht — eine Rückmeldung, die sich
+      // nicht zählen lässt, ist kein Maßstab. Ein Hinweis statt eines stillen
+      // Fehlschlags, und zwar der, der zum Fehler passt.
       setGesagt("");
-      setFehler(true);
+      setFehler(rueckmeldungsFehler(e));
     }
   }
   return (
@@ -297,7 +300,7 @@ function Rueckmeldung({ id }: { id: number }) {
           {wert === "right" ? "Ja" : "Nein"}
         </button>
       ))}
-      {fehler && <span className="text-muted-foreground">Dafür braucht es ein Konto.</span>}
+      {fehler && <span className="text-muted-foreground">{fehler}</span>}
     </div>
   );
 }
@@ -416,24 +419,38 @@ function Aehnliche({ detail, von }: { detail: Detail; von: string }) {
 // ---------------------------------------------------------------- Seite
 
 export default function View() {
-  const an = useFeature("ideen-anderswo");
+  const cfg = useAppConfig();
+  const an = featureAktiv(cfg.data, "ideen-anderswo");
   const params = useSearchParams();
   const id = Number(params?.get("id") ?? "");
   const von = params?.get("von") ?? "";
   const [alle, setAlle] = useState(false);
   const [markiert, setMarkiert] = useState<string | null>(null);
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["bewegung", id],
     queryFn: () => api.get<Detail>(`/council/cities/movements/detail?id=${id}`),
-    enabled: Number.isFinite(id) && id > 0,
+    enabled: an && Number.isFinite(id) && id > 0,
     staleTime: 10 * 60 * 1000,
+    // Ein 404 wird nicht wiederholt — die Idee kommt davon nicht zurück.
+    retry: (n, e) => !istNichtGefunden(e) && n < 2,
+  });
+  // Derselbe Abruf wie auf der Übersicht (gleicher Schlüssel, also meist
+  // schon im Speicher) — für „Stand: …" unter der Überschrift.
+  const { data: felder } = useQuery({
+    queryKey: ["ideen-felder"],
+    queryFn: () => api.get<ApiAntwort<"/council/cities/ideas/fields">>("/council/cities/ideas/fields"),
+    staleTime: 60 * 60 * 1000,
+    enabled: an,
   });
   const dokumente = useMemo(
     () => [...(data?.documents ?? [])].sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999")),
     [data],
   );
 
-  if (!an) return null;
+  // Schalter aus → 404 wie jede geschaltete Seite, aber erst nach der
+  // Antwort von /app-config (sonst träfe es jeden beim ersten Aufruf).
+  if (!cfg.isSuccess && !cfg.isError) return <DetailSkeleton />;
+  if (!an) notFound();
   const zurueck = von ? `/council/ideen?${von}` : "/council/ideen";
 
   const kopfLink = (
@@ -442,6 +459,17 @@ export default function View() {
     </Link>
   );
 
+  // Nur ein 404 heißt „gibt es nicht". Ein Netzfehler sagte bis 10/2026
+  // dasselbe — und schickte Leute weg von einer Seite, die es gibt.
+  if (isError && !istNichtGefunden(error)) {
+    return (
+      <div className="grid gap-4">
+        {kopfLink}
+        <ErrorState title="Diese Idee konnte nicht geladen werden"
+                    onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
   if (isError || (!isPending && !data) || !(id > 0)) {
     return (
       <div className="grid gap-4">
@@ -453,7 +481,13 @@ export default function View() {
       </div>
     );
   }
-  if (!data) return null;
+  if (!data) return <DetailSkeleton />;
+  // Der Hinweis auf alten Bestand nur für Städte, die in DIESER Idee stehen.
+  const dabei = new Set(data.movement.cities.map((c) => c.body_id));
+  const { stand, luecke } = standZeilen(felder?.data_status && {
+    ...felder.data_status,
+    lagging: felder.data_status.lagging.filter((h) => dabei.has(h.body_id)),
+  });
 
   const b = data.movement;
   const feld = b.field ? POLICY_FIELD_LABELS[b.field] ?? b.field : null;
@@ -469,6 +503,12 @@ export default function View() {
           <b className="font-medium text-foreground">{b.cities.length}</b> Städte ·{" "}
           {[bilanz(b), zeitraum(b)].filter(Boolean).join(" · ")}
         </p>
+        {stand && (
+          <p className="font-mono text-meta text-muted-foreground">
+            {stand}
+            {luecke && <span className="font-sans"> · {luecke}</span>}
+          </p>
+        )}
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">

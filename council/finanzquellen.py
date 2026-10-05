@@ -65,7 +65,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from collections.abc import Callable
 
@@ -279,6 +279,18 @@ class Finanzquelle:
     #: „Download von oldenburg.de, scripts/ingest_haushalt.py" und wurde mit
     #: der ersten Schicht einer anderen Stelle still falsch.
     nachschub: str | None = None
+    #: Einheiten, für die zwar ein Dokument vorliegt, die sich aber aus ihm
+    #: nicht lesen LASSEN — mit dem Grund, nachgesehen am Dokument selbst.
+    #: ``offene_einheiten`` lässt sie aus. Ohne diesen Eintrag stand jede
+    #: davon in jeder Meldung von ``check_finanzdaten`` als „weiter offen,
+    #: obwohl ein Dokument vorliegt" — derselbe Satz, mit dem sich ein
+    #: Erkennungsmuster meldet, das nicht mehr greift. Eine Meldung, die zur
+    #: Hälfte aus Bekanntem besteht, liest bald niemand mehr bis zum Ende.
+    #:
+    #: **Ein Eintrag ist eine Schuld, kein Zustand:** Steht eine dieser
+    #: Einheiten doch im Bestand (ein besserer Parser, eine OCR-Seite), schreibt
+    #: der Cron ins Protokoll, dass der Eintrag weg kann.
+    unlesbar: dict[tuple, str] = field(default_factory=dict)
 
     @property
     def automatisch(self) -> bool:
@@ -356,12 +368,13 @@ class Finanzquelle:
         return self.balance(store) if nur_fehlende else set()
 
     def offene_einheiten(self, store: CouncilStore) -> set[tuple]:
-        """Einheiten, für die ein Dokument vorliegt, die aber fehlen."""
+        """Einheiten, für die ein Dokument vorliegt, die aber fehlen — ohne
+        die, deren Dokument bekanntermaßen ``unlesbar`` ist."""
         vorhanden = self.balance(store)
         moeglich: set[tuple] = set()
         for r in self.kandidaten(store):
             moeglich |= r["einheiten"]
-        return moeglich - vorhanden
+        return moeglich - vorhanden - set(self.unlesbar)
 
 
 def jahrgaenge(einheiten: set[tuple]) -> list[int]:
@@ -2489,6 +2502,13 @@ for _q in (
             mindest_seiten=60,
         ),
         unit="Berichte",
+        unlesbar={
+            # Nachgesehen 05.10.2026 (s. auch `lies_kennzahlen`): Beide Berichte
+            # zeigen die Kennzahlen nur als Diagramm. Es fehlt nichts — ihre
+            # Jahrgänge stehen als Tabelle im Bericht 2019.
+            (2017,): "Kennzahlen nur als Diagramm; Jahrgänge kommen aus dem Bericht 2019",
+            (2018,): "Kennzahlen nur als Diagramm; Jahrgänge kommen aus dem Bericht 2019",
+        },
         einheiten_von=_einheiten_kennzahlen,
         balance=_bestand_kennzahlen,
         einlesen=lies_kennzahlen,
@@ -2599,6 +2619,17 @@ for _q in (
             mindest_seiten=40,
             ordnung="document_id",
         ),
+        unlesbar={
+            # Dokument 188333 („Anlage", 74 Seiten), nachgesehen auf Prod
+            # 05.10.2026: Die Textebene endet nach dem Prüfvermerk des RPA mit
+            # dem Deckblatt „Anlage Gesamtabschluss zum 31.12.2013" (38.000
+            # Zeichen; 2014 hat 134.000). Gesamtergebnisrechnung und
+            # Trägeraufstellung dahinter sind Scans — keine der drei Proben
+            # lässt sich rechnen. Lesbar nur per OCR (council/ocr.py), und
+            # deren Ausgabe hat nicht die Form, die `konzernabschluss.lies`
+            # erwartet.
+            (2013,): "Abschluss nur als Scan; Textebene endet beim Prüfvermerk",
+        },
         einheiten_von=_einheiten_konzernabschluss,
         balance=_bestand_konzernabschluss,
         einlesen=lies_konzernabschluesse,
@@ -3187,12 +3218,16 @@ for _q in (
             "Deutschland, dazu alle Niedersachsens — Oldenburg darin als Punkt.",
         tabelle="council_city_comparison",
         # Der Wegweiser zieht die Jahresrechnungen der Statistischen Ämter nach;
-        # 2023 stand im September 2026 als jüngstes Jahr da. Zwei Jahre Abstand
-        # und der September als Schwelle — früher ist nie ein Problem.
-        erwarteter_monat=9,
+        # 2023 stand im September 2026 als jüngstes Jahr da. Der September als
+        # Schwelle für 2024 war geraten und zu früh: Am 05.10.2026 lieferte der
+        # Export noch immer bis 2023 (ein Zeitraum bis 2024 fällt dort still
+        # auf 2016–2023 zurück). Bis ein Erscheinungstermin gemessen ist,
+        # gilt der Dezember — nachziehen, sobald 2024 tatsächlich auftaucht.
+        erwarteter_monat=12,
         versatz=2,
         herkunft="wegweiser",
-        nachschub="Export vom Wegweiser Kommune, scripts/ingest_bundesvergleich.py",
+        nachschub="Export vom Wegweiser Kommune: JAHRE in council/bundesvergleich.py "
+                  "anheben, dann scripts/ingest_bundesvergleich.py",
         balance=_bestand_bundesvergleich,
     ),
     Finanzquelle(

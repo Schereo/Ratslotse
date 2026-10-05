@@ -63,7 +63,7 @@ public struct NativeRootView: View {
                 }
             }
             .navigationDestination(for: AppRoute.self) { route in
-                RatsRouteScaffold(model: model) {
+                RatsRouteScaffold(model: model, title: route.scaffoldTitle) {
                     RouteDestinationView(model: model, route: route)
                 }
                 .ratsZoomDestination(RatsZoomID.forRoute(route))
@@ -182,14 +182,29 @@ public struct NativeRootView: View {
 #endif
 }
 
+private extension AppRoute {
+    /// Die Kopfzeile einer geschobenen Route. Die Navigationsleiste ist
+    /// ausgeblendet (s. `RatsRouteScaffold`), ein `.navigationTitle` der
+    /// Zielansicht erscheint also nie — „Mein Viertel" stand deshalb bis
+    /// 10/2026 als „Ratslotse" über der Karte.
+    var scaffoldTitle: String {
+        switch self {
+        case .district: "Mein Viertel"
+        default: "Ratslotse"
+        }
+    }
+}
+
 private struct RatsRouteScaffold<Content: View>: View {
     @Bindable var model: AppModel
+    let title: String
     @ViewBuilder let content: Content
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    init(model: AppModel, @ViewBuilder content: () -> Content) {
+    init(model: AppModel, title: String = "Ratslotse", @ViewBuilder content: () -> Content) {
         self.model = model
+        self.title = title
         self.content = content()
     }
 
@@ -228,7 +243,7 @@ private struct RatsRouteScaffold<Content: View>: View {
                 .buttonStyle(RatsRouteButtonStyle())
                 .accessibilityLabel("Zurück")
                 Spacer()
-                Text("Ratslotse")
+                Text(title)
                     .font(RatsFont.title(17))
                     .foregroundStyle(RatsColor.text)
                 Spacer()
@@ -1091,7 +1106,22 @@ struct RouteDestinationView: View {
         case .person(let slug): PublicProfileView(model: model, kind: .person, key: slug)
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
-        case .district(let id): CityMapView(model: model, placeID: id)
+        case let .district(id, project):
+            // Der Schalter gilt auch für Links: Bis 10/2026 öffnete
+            // `/karte?ort=` die Karte auch dort, wo „Mein Viertel" aus ist —
+            // im Web ist die Seite dann ein 404.
+            if model.feature("mein-viertel") {
+                CityMapView(model: model, placeID: id, projectID: project)
+            } else if !model.featuresLoaded {
+                RatsLoadingState(message: "Mein Viertel wird geladen …")
+            } else {
+                RatsEmptyState(
+                    title: "Mein Viertel ist noch nicht da",
+                    message: "Diese Ansicht ist in der App noch nicht freigeschaltet.",
+                    symbol: .mapPin
+                )
+                .padding(20)
+            }
         case .quiz(let area): QuizView(model: model, area: area)
         case .subscriptions: CommitteeSubscriptionsView(model: model)
         case .analysis: CouncilInsightsView(model: model)

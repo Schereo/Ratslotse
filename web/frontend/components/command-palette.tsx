@@ -6,7 +6,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   BarChart3, Bookmark, CalendarDays, CornerDownLeft, Gavel, History, Home, Landmark,
   Play, Scale, Search, Settings, Sparkles, SunMoon, Tag, Tags, UserCircle, type LucideIcon,
-  MapPinned, MessageCircleQuestion,
+  Lightbulb, MapPinned, MessageCircleQuestion,
 } from "lucide-react";
 import { api, qs } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -48,6 +48,7 @@ export function CommandPalette() {
   const router = useRouter();
   const { user } = useAuth();
   const lotti = useFeature("lotti-assistentin");
+  const ideen = useFeature("ideen-anderswo");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -130,6 +131,12 @@ export function CommandPalette() {
       { key: "nav-themen", section: "Navigation", label: "Themen", icon: Tag, run: () => go("/council?tab=themen") },
       { key: "nav-karte", section: "Navigation", label: "Mein Viertel — Stadtkarte", icon: MapPinned, run: () => go("/karte") },
       { key: "nav-analyse", section: "Navigation", label: "Analyse", icon: BarChart3, run: () => go("/council?tab=analysis") },
+      // Derselbe Name wie Seite, Analyse-Reiter und App — und hinter demselben
+      // Schalter wie die Seite: Ein Eintrag, der ins Leere führt, ist schlimmer
+      // als keiner (web/frontend/CLAUDE.md, „Ein Gate braucht auch seine Einstiegspunkte").
+      ...(ideen
+        ? [{ key: "nav-ideen", section: "Navigation", label: "Ideen aus anderen Städten", icon: Lightbulb, run: () => go("/council/ideen") } as Item]
+        : []),
       { key: "nav-meine", section: "Navigation", label: "Meine Themen", icon: Tags, run: () => go("/topics") },
       { key: "nav-merkliste", section: "Navigation", label: "Merkliste", icon: Bookmark, run: () => go("/bookmarks") },
       { key: "nav-konto", section: "Navigation", label: "Mein Konto", icon: UserCircle, run: () => go("/account") },
@@ -204,7 +211,7 @@ export function CommandPalette() {
     }
 
     return [...zurSuche, ...recent, ...found, ...nav, ...actions];
-  }, [query, debounced, decisions, user, lotti, go, close]);
+  }, [query, debounced, decisions, user, lotti, ideen, go, close]);
 
   // Aktiven Eintrag im gültigen Bereich halten + sichtbar scrollen.
   useEffect(() => {

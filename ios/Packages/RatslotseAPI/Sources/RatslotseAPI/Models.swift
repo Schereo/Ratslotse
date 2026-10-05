@@ -72,11 +72,19 @@ public struct DistrictProjectsOverview: Codable, Sendable {
     public let total: Int?
     public let stages: [String: Int]?
     public let highlights: [DistrictHighlight]?
+    /// Wann das Register gerechnet wurde — NICHT der Datenstand.
     public let updatedAt: String?
+    /// Wie viele Tafel-Einträge als Doppel an einer Viertelgrenze nicht in
+    /// `total` zählen (seit 10/2026, optional).
+    public let shared: Int?
+    /// Der jüngste Sitzungstag, dessen Beschlüsse das Register gesehen hat —
+    /// „Beschlüsse bis …" (seit 10/2026, optional).
+    public let decisionsUntil: String?
 
     enum CodingKeys: String, CodingKey {
-        case districts, total, stages, highlights
+        case districts, total, stages, highlights, shared
         case updatedAt = "updated_at"
+        case decisionsUntil = "decisions_until"
     }
 
     public init(from decoder: Decoder) throws {
@@ -86,6 +94,8 @@ public struct DistrictProjectsOverview: Codable, Sendable {
         stages = try c.decodeIfPresent([String: Int].self, forKey: .stages)
         highlights = try c.decodeIfPresent([DistrictHighlight].self, forKey: .highlights)
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+        shared = try c.decodeIfPresent(Int.self, forKey: .shared)
+        decisionsUntil = try c.decodeIfPresent(String.self, forKey: .decisionsUntil)
     }
 }
 
@@ -165,14 +175,23 @@ public struct DistrictProject: Codable, Sendable, Hashable, Identifiable {
     public let reported: Bool
     public let decisions: [DistrictProjectDecision]
     public let locations: [DistrictProjectLocation]
+    /// Vom Server abgeleitet (`council/viertel_zeitplan.py`): `likely_done`,
+    /// `overdue`, `quiet` oder nil. Seit 10/2026, optional.
+    public let schedule: String?
+    /// Der Satz dazu, fertig zum Anzeigen.
+    public let scheduleNote: String?
+    /// Das aus `when` gelesene Ende (ISO-Datum).
+    public let whenEnd: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, what, stage, when, category, confidence, hidden, reported, decisions, locations
+        case id, name, what, stage, when, category, confidence, hidden, reported, decisions, locations, schedule
         case projectKey = "project_key"
         case placeID = "place_id"
         case firstDate = "first_date"
         case lastDate = "last_date"
         case reportCount = "report_count"
+        case scheduleNote = "schedule_note"
+        case whenEnd = "when_end"
     }
 }
 
@@ -301,10 +320,13 @@ public struct DistrictProjects: Codable, Sendable {
     public let press: [DistrictPressItem]
     public let neighbours: [DistrictNeighbour]
     public let updatedAt: String?
+    /// „Beschlüsse bis …" — der Datenstand des Registers (seit 10/2026, optional).
+    public let decisionsUntil: String?
 
     enum CodingKeys: String, CodingKey {
         case place, projects, upcoming, investments, participations, closures, press, neighbours
         case updatedAt = "updated_at"
+        case decisionsUntil = "decisions_until"
     }
 
     public init(from decoder: Decoder) throws {
@@ -318,6 +340,7 @@ public struct DistrictProjects: Codable, Sendable {
         press = try c.decodeIfPresent([DistrictPressItem].self, forKey: .press) ?? []
         neighbours = try c.decode([DistrictNeighbour].self, forKey: .neighbours)
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+        decisionsUntil = try c.decodeIfPresent(String.self, forKey: .decisionsUntil)
     }
 }
 
@@ -330,10 +353,13 @@ public struct DistrictPlace: Codable, Sendable, Hashable {
 public struct DistrictProjectReportOut: Codable, Sendable {
     public let ok: Bool
     public let reportCount: Int
+    /// Seit 10/2026 die Entscheidung der Redaktion, nicht die Zahl der Meldungen.
     public let hidden: Bool
+    /// Ob das eigene Konto jetzt gemeldet hat (nach dem Zurücknehmen `false`).
+    public let reported: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case ok, hidden
+        case ok, hidden, reported
         case reportCount = "report_count"
     }
 }
@@ -771,14 +797,51 @@ public struct IdeaFields: Codable, Sendable {
     /// Satz im Kopf der Ansicht (der zählte bis 09/2026 fünf fest auf, als es
     /// schon acht waren).
     public let bodies: [String]
+    /// Wie frisch der Bestand ist (seit 10/2026). Optional: Ein älterer
+    /// Server liefert das Feld nicht.
+    public let dataStatus: IdeaDataStatus?
 
     public init(from decoder: Decoder) throws {
         let v = try decoder.container(keyedBy: CodingKeys.self)
         fields = try v.decodeIfPresent([IdeaFieldSummary].self, forKey: .fields) ?? []
         bodies = try v.decodeIfPresent([String].self, forKey: .bodies) ?? []
+        dataStatus = try? v.decodeIfPresent(IdeaDataStatus.self, forKey: .dataStatus)
     }
 
-    enum CodingKeys: String, CodingKey { case fields, bodies }
+    enum CodingKeys: String, CodingKey {
+        case fields, bodies
+        case dataStatus = "data_status"
+    }
+}
+
+/// „Stand: TT.MM.JJJJ" — der älteste letzte Abgleich unter den Städten,
+/// dazu die Städte, deren Bestand deutlich früher endet.
+public struct IdeaDataStatus: Codable, Sendable {
+    public let asOf: String?
+    public let lagging: [IdeaLaggingCity]
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        asOf = try v.decodeIfPresent(String.self, forKey: .asOf)
+        lagging = (try? v.decodeIfPresent([IdeaLaggingCity].self, forKey: .lagging)) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case asOf = "as_of"
+        case lagging
+    }
+}
+
+public struct IdeaLaggingCity: Codable, Sendable {
+    public let bodyID: String
+    public let city: String
+    public let latestPaper: String
+
+    enum CodingKeys: String, CodingKey {
+        case bodyID = "body_id"
+        case city
+        case latestPaper = "latest_paper"
+    }
 }
 
 
@@ -1061,7 +1124,7 @@ public struct MovementDetail: Codable, Sendable {
 
 
 /// Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss
-/// passt — der Block „Anderswo beschlossen".
+/// passt — der Block „In anderen Städten" (bis 10/2026 „Anderswo beschlossen").
 ///
 /// Alles außer der Kennung ist optional: Die Ratsinformationssysteme der
 /// Städte füllen unterschiedlich viel aus. Münster etwa liefert über OParl

@@ -352,7 +352,7 @@ export function MarkierKnopf({ aktiv, anzeigename, onFragen }: {
             ? `${[...stand.frage.text].slice(0, 60).join("")} …` : stand.frage.text}“?`}
           style={{ left: lage.x, top: lage.y }}
           className={cn(
-            "fixed z-50 flex items-center gap-1.5 rounded-full border border-primary/30 bg-card",
+            "fixed z-[45] flex items-center gap-1.5 rounded-full border border-primary/30 bg-card",
             "py-1 pl-1 pr-3 text-[13px] font-medium text-primary shadow-lifted print:hidden",
             "select-none touch-manipulation",
             // Touch braucht die volle Bedienhöhe (44 px, Designsprache § 6),

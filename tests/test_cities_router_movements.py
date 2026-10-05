@@ -157,7 +157,7 @@ def test_die_uebersicht_zaehlt_bewegungen(client):
 
 def test_rueckmeldung_zum_urteil_je_idee(client, cities_db):
     from web.backend.app.deps import get_current_user
-    app.dependency_overrides[get_current_user] = lambda: {"id": 7}
+    app.dependency_overrides[get_current_user] = lambda: {"id": 7, "status": "active"}
     try:
         r = client.post("/api/council/cities/movements/feedback?id=1&verdict=wrong")
         assert r.status_code == 200 and r.json() == {"paper_id": "1:1", "verdict": "wrong"}
@@ -168,6 +168,21 @@ def test_rueckmeldung_zum_urteil_je_idee(client, cities_db):
         assert client.post("/api/council/cities/movements/feedback?id=1&verdict=hm").status_code == 400
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_rueckmeldung_nur_von_aktiven_konten(client, cities_db):
+    """Ein unbestätigtes oder gesperrtes Konto schreibt hier nichts — wie
+    überall sonst (`require_active`, 403 statt 401 für die App)."""
+    from web.backend.app.deps import get_current_user
+    assert client.post("/api/council/cities/movements/feedback?id=1&verdict=wrong").status_code == 401
+    for status in ("pending", "disabled"):
+        app.dependency_overrides[get_current_user] = lambda s=status: {"id": 7, "status": s}
+        try:
+            assert client.post(
+                "/api/council/cities/movements/feedback?id=1&verdict=wrong").status_code == 403
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+    assert cities_db._conn.execute("SELECT COUNT(*) FROM feedback").fetchone()[0] == 0
 
 
 def test_derselbe_vorgang_steht_nur_einmal_unter_den_belegen():

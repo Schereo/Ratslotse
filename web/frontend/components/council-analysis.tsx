@@ -392,7 +392,11 @@ const ANALYSE_FRAGEN: Record<AnalysisSub, readonly string[]> = {
   ziele: ["Welche Klimaziele hat sich der Rat gesetzt?", "Bis wann will Oldenburg klimaneutral sein?"],
 };
 
-/** Ein Reiter mehr als die Analyse selbst kennt: „Andere Städte" führt auf
+/** Ein Reiter mehr als die Analyse selbst kennt: „Ideen aus anderen Städten"
+ *  — derselbe Name wie Seitentitel, Menü und App (Tims Entscheidung 10/2026;
+ *  vorher hieß er hier „Andere Städte", in der App „Ideen anderswo"). Er ist
+ *  länger als die übrigen Reiter, passt am Schreibtisch aber in die Leiste,
+ *  und auf dem Handy läuft die Leiste ohnehin seitwärts. Er führt auf
  *  die Ideen-Seite (`/council/ideen`). Sie stellt dieselbe Frage wie die
  *  Analyse — was tut der Rat? — aus der anderen Richtung: was tun andere Räte,
  *  was Oldenburg nicht tut. Tims Entscheidung 23.09.2026: kein eigener Punkt
@@ -415,7 +419,7 @@ export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; 
   const optionen: { value: AnalyseReiterWert; label: string; icon: typeof Users }[] =
     SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: lbl, icon: Icon }));
   const wahlen = useFeature("wahlabend");
-  if (staedte) optionen.push({ value: "staedte", label: "Andere Städte", icon: Lightbulb });
+  if (staedte) optionen.push({ value: "staedte", label: "Ideen aus anderen Städten", icon: Lightbulb });
   if (wahlen) optionen.push({ value: "wahlen", label: "Wahlen", icon: Vote });
   const wechsel = (s: AnalyseReiterWert) => {
     if (s === aktiv) return;
@@ -429,8 +433,8 @@ export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; 
     const ziel = `/council?${params.toString()}`;
     if (aktiv === "staedte") router.push(ziel); else router.replace(ziel, { scroll: false });
   };
-  // Auf dem Handy läuft die Leiste seitwärts aus dem Bild, und „Andere
-  // Städte" steht ganz rechts — ohne das stünde der aktive Reiter außer Sicht
+  // Auf dem Handy läuft die Leiste seitwärts aus dem Bild, und „Ideen aus
+  // anderen Städten" steht ganz rechts — ohne das stünde der aktive Reiter außer Sicht
   // (Bild vom 23.09.2026). `nearest` rollt nur waagerecht und nur wenn nötig.
   const huelle = useRef<HTMLDivElement>(null);
   useEffect(() => {

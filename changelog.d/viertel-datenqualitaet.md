@@ -1,0 +1,5 @@
+---
+kategorie: behoben
+---
+
+**Mein Viertel zeigt ehrlich, was vorbei ist, und zählt richtig.** Ein Vorhaben, dessen genannter Zeitraum abgelaufen ist, steht nicht mehr als „Im Bau“ ganz oben unter „Gerade in der Stadt“, sondern trägt auf seiner Tafel den Hinweis „vermutlich abgeschlossen“ oder „Zeitplan überschritten“; lange ohne neuen Beschluss heißt „lange kein Beschluss“. Die Stadtzahl zählt gemeldete Vorhaben nicht mehr mit und Vorhaben an einer Viertelgrenze nur einmal, und die Aufteilung nach Stand geht in der Kopfzahl auf. Statt „Stand“ mit dem Tag der Berechnung steht jetzt „Beschlüsse bis“ mit dem jüngsten berücksichtigten Beschluss. Bebauungspläne landen nur noch in dem Viertel, in dem ihre Fläche liegt, eine Schule auf dem Fliegerhorst nicht mehr in Dietrichsfeld, und ein bloßer Bericht oder ein Vergleichsort („analog zur Kampstraße“) macht kein Vorhaben mehr. Die Sperrungen-Ebene wird auf dem Server wieder befüllt, ein Ladefehler der Karte bietet „Erneut versuchen“ an, statt zu behaupten, den Ortsbereich gebe es nicht, und in der App heißt die Karte „Mein Viertel“.

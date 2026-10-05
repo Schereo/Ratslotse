@@ -10,7 +10,7 @@ const GROUPS = [
   { label: "Nutzung", icon: Activity, views: [["aktivitaet", "Aktivität"], ["konten", "Neue Konten"], ["reichweite", "Reichweite"], ["antworten", "Antwortqualität"], ["lotti", "Lotti"]] },
   { label: "Menschen", icon: Users, views: [["users", "Nutzer*innen"], ["emails", "E-Mails"], ["feedback", "Feedback"], ["news", "Neuigkeiten"]] },
   { label: "Betrieb", icon: Server, views: [["jobs", "Import & Cron-Jobs"], ["fehler", "Fehler"], ["llm", "LLM-Kosten"], ["live", "Live-Probe"]] },
-  { label: "Inhalte", icon: BookOpen, views: [["quiz", "Quiz"], ["orte", "Ortskandidaten"], ["themen", "Themen-Dubletten"]] },
+  { label: "Inhalte", icon: BookOpen, views: [["quiz", "Quiz"], ["orte", "Ortskandidaten"], ["viertel", "Viertel-Meldungen"], ["themen", "Themen-Dubletten"]] },
 ] as const;
 
 export type AdminView = typeof GROUPS[number]["views"][number][0];

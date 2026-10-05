@@ -10,12 +10,14 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated, cast
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import (AliasChoices, BaseModel, Field, ValidationError, field_validator,
+                      model_validator)
 
+from council.cities.model import display_title
 from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
@@ -58,7 +60,8 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
-                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaProtocol,
+                         Idea, IdeaDataStatus, IdeaEvidence, IdeaFields, IdeaFieldSummary,
+                         IdeaLaggingCity, IdeaProtocol,
                          IdeaSibling, Movement, MovementCity, MovementDetail,
                          MovementDocument, MovementSimilar, MovementsResponse,
                          OldenburgVerdict, TimeAxis, TimelinePoint,
@@ -75,10 +78,12 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          TodayBriefing, TrendData)
 from ..clients import client_kind
 from ..election import elected as elected_mod
-from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
+from .. import fehlersammler
+from ..deps import (get_cities_store, get_council_store, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
     assistant_event_limiter,
+    cities_feedback_limiter,
     assistant_limiter,
     partei_meinungen_limiter,
     debatten_limiter,
@@ -90,7 +95,7 @@ from ..ratelimit import (
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
-#: So viele fremde Vorlagen zeigt „Anderswo beschlossen" höchstens. Mehr als
+#: So viele fremde Vorlagen zeigt „In anderen Städten" höchstens. Mehr als
 #: eine Handvoll liest niemand, und die Nähe fällt danach spürbar ab.
 ELSEWHERE_LIMIT = 6
 
@@ -109,6 +114,33 @@ ELSEWHERE_LIMIT = 6
 #: ist ein gelegentlich verlorener guter Treffer knapp darunter — ein leerer
 #: Block ist ehrlicher als ein voller aus Zufallstreffern.
 ELSEWHERE_MIN_SCORE = 0.70
+
+#: Ist der Oldenburger Beschluss selbst ortsgebunden (`transfer=local`: eine
+#: Straße, eine Schule, ein Bebauungsplan), gilt eine höhere Schwelle, und
+#: es zählen nur Anträge und Vorlagen. Die Nähe misst dort fast nur die
+#: Gattung — „Widmung der Straße Im Technologiepark" fand „Land & Lions:
+#: Park- und Verkehrskonzept" (eine Antwort, 0,80), die Grundschule Wechloy
+#: „Schulwechsel zum Schuljahr 24/25" (0,71). Gute Treffer ortsgebundener
+#: Beschlüsse liegen darüber („Parksituation Wittingsbrok" → „Parksituation in
+#: der Händelstraße", Antrag, 0,84). Gemessen im Review zu 3.0.0.
+ELSEWHERE_LOKAL_MIN_SCORE = 0.80
+ELSEWHERE_LOKAL_ARTEN = ("motion", "proposal", "amendment")
+
+#: Formale Oldenburger Beschlüsse bekommen gar keinen Block: Widmungen und
+#: Einziehungen von Straßen, über- und außerplanmäßige Bewilligungen,
+#: Aufwandsspaltungen, Entgelte, die Pflasterung eines Platzes, Bebauungs-
+#: und Flächennutzungspläne samt Veränderungssperren, Jahresabschlüsse. Ihr
+#: Text ist Verwaltungsformel, und die Formel findet Formeln — „überplanmäßige
+#: Bewilligung" fand die Deckelungsquote in Magdeburg und den Bürgerhaushalt
+#: in Potsdam, die Pflasterung am Rathausmarkt die Entgeltordnung eines
+#: Gemeindehofs, jede Änderung eines Oldenburger Bebauungsplans einen
+#: Hannoverschen für eine andere Straße (0,82 bis 0,88). Was dort anderswo
+#: „dieselbe Sache" wäre, gibt es nicht.
+ELSEWHERE_FORMAL = re.compile(
+    r"\b(?:Widmung|Entwidmung|Einziehung|Teileinziehung|[üÜ]berplanm[äa](?:ß|ss)ig"
+    r"|[aA]u(?:ß|ss)erplanm[äa](?:ß|ss)ig|Aufwandsspaltung|Pflasterung|Entgelt"
+    r"|Bebauungspl[aä]n|Fl[äa]chennutzungspl[aä]n|Ver[äa]nderungssperre|Jahresabschl[uü]ss)",
+    re.IGNORECASE)
 
 #: Vorgabe der Ideen-Seite: was Oldenburg fehlt oder halb hat. „Vorhanden“ ist
 #: über den Filter erreichbar — es gehört zur Antwort, nur nicht in die erste
@@ -2036,12 +2068,26 @@ def _eigene_rueckmeldungen(cities: CitiesStore, user: dict | None) -> dict[str, 
     return cities.feedback_by_paper(ann, ver, int(user["id"]))
 
 
+def _papier_kennung(roh: str) -> str:
+    """Die Vorlagen-Kennung aus dem Pfad, so wie der Speicher sie führt.
+
+    Die Kennungen der OParl-Städte SIND Adressen (``https://…/papers/1``).
+    Die App bis Build 3.0 setzte sie roh in den Pfad; aus ``https://`` wurde
+    unterwegs ``https:/`` (ein Doppel-Schrägstrich übersteht Proxy und
+    Weiterleitung nicht), und jede Rückmeldung endete mit „unbekannte
+    Vorlage". Die ausgelieferten Builds kommen so weiter an — der neue
+    kodiert die Kennung vollständig.
+    """
+    return re.sub(r"^(https?):/+(?=[^/])", r"\1://", roh)
+
+
 @router.post("/cities/movements/feedback")
 def cities_movement_feedback(
+    request: Request,
     id: int,
     verdict: str,
     note: str | None = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
     """„Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
@@ -2053,6 +2099,7 @@ def cities_movement_feedback(
     """
     from council.cities.clusters import CLUSTER_VERSION
 
+    cities_feedback_limiter.check(request, subject=user["id"])
     if verdict not in ("right", "wrong"):
         raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
     if not cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
@@ -2065,10 +2112,11 @@ def cities_movement_feedback(
 
 @router.post("/cities/ideas/{paper_id:path}/feedback")
 def cities_idea_feedback(
+    request: Request,
     paper_id: str,
     verdict: str,
     note: str | None = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
     """„Stimmt" oder „stimmt nicht" zu einem Urteil — ein Klick an der Karte.
@@ -2081,13 +2129,17 @@ def cities_idea_feedback(
 
     **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
     Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
-    Stimmen), und der Maßstab wäre wieder wertlos.
+    Stimmen), und der Maßstab wäre wieder wertlos. **Und nur aktiv**
+    (``require_active``): ein gesperrtes oder unbestätigtes Konto schreibt
+    hier so wenig wie anderswo; die Bremse zählt je Konto.
 
     Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
     """
+    cities_feedback_limiter.check(request, subject=user["id"])
     if verdict not in ("right", "wrong"):
         raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    paper_id = _papier_kennung(paper_id)
     if not cities.paper(paper_id):
         raise HTTPException(404, "unbekannte Vorlage")
     ann, ver = CitiesStore.IDEEN_FIT
@@ -2120,9 +2172,40 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
          "movements": bewegungen.get(r["field"], 0)}
         for r in cities.idea_fields()]
     from council.cities.registry import BODIES
-    namen = sorted({(BODIES[b].name if b in BODIES else b)
-                    for b in cities.idea_body_ids()})
-    return {"fields": felder, "bodies": namen}
+    ids = cities.idea_body_ids()
+    namen = sorted({(BODIES[b].name if b in BODIES else b) for b in ids})
+    return {"fields": felder, "bodies": namen, "data_status": _datenstand(cities, ids)}
+
+
+#: Ab wann eine Stadt als „hinkt hinterher" gilt: so viele Tage zwischen
+#: ihrer jüngsten Vorlage und ihrem letzten Abgleich. Zwei Monate tragen eine
+#: Sommerpause; Wolfsburg (25.06. gegen 14.09.2026) fällt trotzdem auf.
+STAND_LUECKE_TAGE = 60
+
+
+def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
+    """„Stand: …" für die Seite — und welche Stadt deutlich älter endet."""
+    from datetime import date as _date
+
+    from council.cities.registry import BODIES
+
+    zeilen = cities.coverage(body_ids)
+    abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
+    hinten: list[IdeaLaggingCity] = []
+    for z in zeilen:
+        if not z.get("last_fetched") or not z.get("latest_paper"):
+            continue
+        try:
+            luecke = (_date.fromisoformat(str(z["last_fetched"])[:10])
+                      - _date.fromisoformat(str(z["latest_paper"])[:10])).days
+        except ValueError:
+            continue
+        if luecke > STAND_LUECKE_TAGE:
+            b = str(z["body_id"])
+            hinten.append({"body_id": b, "city": BODIES[b].name if b in BODIES else b,
+                           "latest_paper": str(z["latest_paper"])[:10]})
+    return {"as_of": min(abgleiche) if abgleiche else None,
+            "lagging": sorted(hinten, key=lambda h: h["city"])}
 
 
 @router.get("/cities/search")
@@ -2268,7 +2351,7 @@ def cities_movement_detail(
         dokumente.append({
             "paper_id": m["id"], "body_id": m["body_id"],
             "city": namen.get(m["body_id"]) or m.get("body_name") or m["body_id"],
-            "name": m.get("name") or "", "date": (m.get("date") or "")[:10] or None,
+            "name": display_title(m.get("name")), "date": (m.get("date") or "")[:10] or None,
             "kind": m.get("kind") or "other", "web": m.get("web"),
             "outcome": (cities.outcome_for_paper(m["id"]) or {}).get("outcome") or "none",
             "originator": display_originator(klasse.get("originator"), m.get("kind")),
@@ -2314,7 +2397,7 @@ def _bewegung(store: CouncilStore, z: dict,
         TimelinePoint(paper_id=str(p["paper_id"]), body_id=str(p["body_id"]),
                       city=namen.get(p["body_id"], str(p["body_id"])), date=p.get("date"),
                       outcome=p.get("outcome") or "none", kind=p.get("kind") or "other",
-                      title=p.get("title") or "")
+                      title=display_title(p.get("title")))
         for p in json.loads(z.get("timeline") or "[]")]
     return {
         "cluster_id": int(z["cluster_id"]), "label": z.get("label") or "",
@@ -2373,7 +2456,7 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "paper_id": r["id"], "body_id": r["body_id"],
         "body_name": (BODIES[r["body_id"]].name if r["body_id"] in BODIES
                       else (r.get("body_name") or r["body_id"])),
-        "name": r.get("name") or "", "date": r.get("date"),
+        "name": display_title(r.get("name")), "date": r.get("date"),
         "kind": r.get("kind") or "other", "web": r.get("web"),
         "outcome": (cities.outcome_for_paper(r["id"]) or {}).get("outcome") or "none",
         "field": klasse.get("field"), "instrument": klasse.get("instrument"),
@@ -2458,7 +2541,7 @@ def _geschwister(roh: str | None) -> list[IdeaSibling]:
         return []
     zeilen = json.loads(roh)
     zeilen.sort(key=lambda z: (z.get("date") is None, z.get("date") or ""))
-    return [{"paper_id": z["id"], "name": z.get("name") or "",
+    return [{"paper_id": z["id"], "name": display_title(z.get("name")),
              "date": z.get("date")} for z in zeilen]
 
 
@@ -2470,25 +2553,30 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list,
     keine Vorlagen-Id; sie fallen hier weg. Auf der Karte stünde sonst eine
     Zeile ohne Titel und ohne Ziel.
     """
-    from council.cities.evidence import kvonr_aus
+    from council.cities.evidence import (BESCHLUSS_PRAEFIX, beschluss_zu, kvonr_aus,
+                                         vorlage_hinter)
 
     aus: list[IdeaEvidence] = []
     for kennung in kennungen[:hoechstens]:
-        if str(kennung).startswith("oldenburg:decision:"):
+        titel_ersatz = ""
+        if str(kennung).startswith(BESCHLUSS_PRAEFIX):
             # Ein Beschluss als Beleg — `idea_fit` und `fit` dürfen ihn nennen.
             # Bis 22.09.2026 fiel er hier still weg: Die Karte zeigte dann
-            # „vorhanden" ohne die Zeile, die es belegt.
-            try:
-                beschluss = store.get_decision(int(str(kennung).rsplit(":", 1)[1]))
-            except ValueError:
-                beschluss = None
+            # „vorhanden" ohne die Zeile, die es belegt. Aufgelöst wird über
+            # Sitzung und Punkt (`beschluss_zu`), nicht über die Zeilennummer:
+            # Die stammte aus der Datenbank, in der das Urteil entstand, und
+            # auf Prod fand sie keinen einzigen der 1.294 Beschluss-Belege.
+            beschluss = beschluss_zu(store, str(kennung))
             if beschluss:
                 aus.append({"decision_id": beschluss["id"], "kvonr": beschluss.get("kvonr"),
                             "title": beschluss.get("title") or "",
                             "date": beschluss.get("session_date"),
                             "outcome": beschluss.get("outcome")})
-            continue
-        kvonr = kvonr_aus(str(kennung))
+                continue
+            # Der Beschluss fehlt hier, der Punkt nicht: dann seine Vorlage.
+            kvonr, titel_ersatz = vorlage_hinter(store, str(kennung))
+        else:
+            kvonr = kvonr_aus(str(kennung))
         if kvonr is None:
             continue
         vorlage = store.get_vorlage(kvonr)
@@ -2498,7 +2586,8 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list,
         aus.append({
             "decision_id": beschluss["id"] if beschluss else None,
             "kvonr": kvonr,
-            "title": (beschluss or {}).get("title") or (vorlage or {}).get("title") or "",
+            "title": ((beschluss or {}).get("title") or (vorlage or {}).get("title")
+                      or titel_ersatz),
             "date": (beschluss or {}).get("session_date"),
             "outcome": (beschluss or {}).get("outcome"),
         })
@@ -2568,7 +2657,7 @@ def decision_elsewhere(
         # die Tagesordnung unter der Grundnummer führt.
         vorlage = store.get_vorlage_by_nr(beschluss["template_number"])
         kvonr = vorlage.get("kvonr") if vorlage else None
-    if not kvonr:
+    if not kvonr or ELSEWHERE_FORMAL.search(beschluss.get("title") or ""):
         return {"decision_id": decision_id, "items": [], "bodies": []}
 
     from council.cities.annotators import USABLE, get as get_annotator
@@ -2587,6 +2676,11 @@ def decision_elsewhere(
     # heraus, und der Index legt ohnehin nur acht Kanten je Papier an.
     treffer = cities.neighbors("paper", f"oldenburg:paper:{kvonr}", EMBED_MODEL,
                                limit=ELSEWHERE_LIMIT + 4)
+    # Die Einordnung der EIGENEN Vorlage: Themenfeld und ob sie ortsgebunden ist.
+    eigen = (cities.annotation("paper", f"oldenburg:paper:{kvonr}", ann.key, ann.version)
+             or {}).get("payload", {})
+    eigenes_feld = eigen.get("field")
+    ortsgebunden = eigen.get("transfer") == "local"
 
     items: list[ElsewhereItem] = []
     gesehen: set[tuple[str, str]] = set()
@@ -2624,12 +2718,28 @@ def decision_elsewhere(
         # Es ist noch nicht eingeordnet, der nächste Cron holt es nach.
         if annotation.get("transfer") not in USABLE:
             continue
+        # **Dasselbe Themenfeld.** Wo beide Seiten eingeordnet sind und sich
+        # widersprechen, ist es nicht dieselbe Sache: Die Pflasterung am
+        # Rathausmarkt (Verkehr) fand die Entgeltordnung eines Gemeindehofs
+        # (Kultur/Sport) und zwei Zentrenkonzepte (Wirtschaft). In einer
+        # Stichprobe von 36 Beschlüssen nahm diese Regel 16 Fehltreffer und
+        # einen guten heraus (Review 3.0.0). „sonstiges" ist kein Feld, sondern
+        # „im Zweifel" — es widerspricht nichts: „Partnerschaften für
+        # Demokratie" stand in Magdeburg dort und ist dasselbe Bundesprogramm.
+        fremdes_feld = annotation.get("field")
+        if (eigenes_feld and fremdes_feld and fremdes_feld != eigenes_feld
+                and "sonstiges" not in (eigenes_feld, fremdes_feld)):
+            continue
+        if ortsgebunden and (float(t["score"]) < ELSEWHERE_LOKAL_MIN_SCORE
+                             or (t.get("kind") or "other") not in ELSEWHERE_LOKAL_ARTEN):
+            continue
         ergebnis = cities.outcome_for_paper(t["b_id"]) or {}
         items.append({
             "body_id": t["body_id"],
             "body_name": namen.get(t["body_id"], t["body_id"]),
             "paper_id": t["b_id"],
-            "name": t.get("name") or "",
+            # Privatpersonen im Titel nur mit Anfangsbuchstaben (Hannover).
+            "name": display_title(t.get("name")),
             "reference": t.get("reference"),
             "date": t.get("date"),
             "kind": t.get("kind") or "other",
@@ -3079,7 +3189,41 @@ def partei_meinungen_endpoint(
     return {"parties": meinungen or [], "without_speeches": ohne}
 
 
-class QaShareSource(BaseModel):
+class _QaShareTeil(BaseModel):
+    """Basis der Teilen-Bausteine: kappt, statt abzuweisen.
+
+    Der Client reicht Einträge aus dem Strom zurück; das Web kürzt sie
+    selbst, die iOS-App nicht. Ein zu langer Titel, ein Eintrag zu viel oder
+    ein ``null``, wo ein Wert mit Vorgabe steht (``kind`` fehlt im Strom
+    gelegentlich), machten sonst aus dem ganzen Teilen ein 422 — für einen
+    Baustein, der nur Beiwerk der Antwort ist. Gekappt wird auf genau die
+    Längen der Felder; was danach noch nicht passt, weist die Validierung ab
+    wie bisher.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _kappen(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        for name, feld in cls.model_fields.items():
+            alias = feld.validation_alias
+            namen = [name, *(alias.choices if isinstance(alias, AliasChoices) else [])]
+            grenze = next((m.max_length for m in feld.metadata
+                           if getattr(m, "max_length", None) is not None), None)
+            for key in namen:
+                if not isinstance(key, str) or key not in data:
+                    continue
+                wert = data[key]
+                if wert is None and not feld.is_required() and feld.default is not None:
+                    del data[key]          # null → die Vorgabe des Feldes
+                elif grenze is not None and isinstance(wert, (str, list)):
+                    data[key] = wert[:grenze]
+        return data
+
+
+class QaShareSource(_QaShareTeil):
     id: int
     title: str = Field(max_length=300)
     session_date: str | None = Field(default=None, max_length=10)
@@ -3087,11 +3231,18 @@ class QaShareSource(BaseModel):
     outcome: str | None = Field(default=None, max_length=40)
 
 
-class QaShareDebate(BaseModel):
+# Die alten Feldnamen (``art``, ``top``, ``nr``; im Körper ``debatten`` …)
+# nimmt das Modell weiter an. Pydantic verwirft unbekannte Schlüssel still:
+# Das Web schickte bis 10/2026 ``art``/``top``/``nr``, die ausgelieferte
+# iOS-App schickt die Bausteine unter deutschen Namen — beides kam nie an.
+# Die App im Store lässt sich nicht nachziehen, also hört der Server hin.
+class QaShareDebate(_QaShareTeil):
     speaker: str | None = Field(default=None, max_length=120)
     party: str | None = Field(default=None, max_length=60)
-    kind: str = Field(default="speech", max_length=30)
-    agenda_item: str | None = Field(default=None, max_length=300)
+    kind: str = Field(default="speech", max_length=30,
+                      validation_alias=AliasChoices("kind", "art"))
+    agenda_item: str | None = Field(default=None, max_length=300,
+                                    validation_alias=AliasChoices("agenda_item", "top"))
     excerpt: str = Field(default="", max_length=2000)
     committee: str | None = Field(default=None, max_length=120)
     date: str | None = Field(default=None, max_length=10)
@@ -3109,7 +3260,7 @@ class QaShareDebate(BaseModel):
         return v
 
 
-class QaSharePress(BaseModel):
+class QaSharePress(_QaShareTeil):
     title: str = Field(max_length=300)
     url: str = Field(max_length=500)
     date: str | None = Field(default=None, max_length=10)
@@ -3121,10 +3272,11 @@ class QaSharePress(BaseModel):
     excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareAttachment(BaseModel):
+class QaShareAttachment(_QaShareTeil):
     # Beleg-Nummer des Recherche-Berichts („[A1]") — ohne sie findet der
     # Marker im geteilten Text seine Anlage nicht.
-    number: int | None = Field(default=None, ge=1, le=99)
+    number: int | None = Field(default=None, ge=1, le=99,
+                               validation_alias=AliasChoices("number", "nr"))
     label: str | None = Field(default=None, max_length=300)
     url: str | None = Field(default=None, max_length=500)
     template_number: str | None = Field(default=None, max_length=60)
@@ -3132,13 +3284,13 @@ class QaShareAttachment(BaseModel):
     excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareKeyQuote(BaseModel):
+class QaShareKeyQuote(_QaShareTeil):
     text: str = Field(default="", max_length=600)
     speaker: str | None = Field(default=None, max_length=120)
     date: str | None = Field(default=None, max_length=10)
 
 
-class QaShareParty(BaseModel):
+class QaShareParty(_QaShareTeil):
     party: str = Field(max_length=60)
     stance: str | None = Field(default=None, max_length=20)
     position: str = Field(default="", max_length=800)
@@ -3148,21 +3300,89 @@ class QaShareParty(BaseModel):
     contributions: int = Field(default=0, ge=0)
 
 
-class QaShareBody(BaseModel):
+class QaShareRulesSection(BaseModel):
+    number: str = Field(max_length=8)
+    label: str = Field(max_length=12)
+    title: str = Field(max_length=120)
+    part: str = Field(max_length=60)
+    url: str = Field(max_length=300)
+    # § 23 hat 2.900 Zeichen; der Deckel lässt der nächsten Fassung Luft.
+    text: str = Field(default="", max_length=6000)
+
+
+class QaShareRulesContents(BaseModel):
+    label: str = Field(max_length=12)
+    title: str = Field(max_length=120)
+    url: str = Field(max_length=300)
+
+
+class QaShareRulesOfProcedure(BaseModel):
+    """Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
+
+    Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
+    Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
+    Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
+    darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
+    unterschieben. Ein fremder Link verwirft die ganze Karte (s.
+    ``QaShareBody._karte_oder_nichts``).
+    """
+    title: str = Field(max_length=120)
+    full_title: str = Field(default="", max_length=300)
+    version: str = Field(default="", max_length=300)
+    state: Literal["current", "term_ended", "superseded"] = "current"
+    url: str = Field(max_length=300)
+    sections: list[QaShareRulesSection] = Field(
+        default_factory=list, max_length=rules_of_procedure.MAX_SECTIONS)
+    contents: list[QaShareRulesContents] = Field(default_factory=list, max_length=80)
+
+    @model_validator(mode="after")
+    def _nur_das_pdf_der_stadt(self) -> QaShareRulesOfProcedure:
+        pdf = rules_of_procedure.load().source_url
+        urls = [self.url, *(s.url for s in self.sections), *(c.url for c in self.contents)]
+        if any(u != pdf and not u.startswith(f"{pdf}#page=") for u in urls):
+            raise ValueError("Geschäftsordnung: nur Links auf das PDF der Stadt")
+        return self
+
+
+class QaShareBody(_QaShareTeil):
     question: str = Field(min_length=1, max_length=300)
     answer: str = Field(min_length=1, max_length=8000)
     sources: list[QaShareSource] = Field(default_factory=list, max_length=40)
     # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
     # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
-    debates: list[QaShareDebate] = Field(default_factory=list, max_length=20)
-    press_releases: list[QaSharePress] = Field(default_factory=list, max_length=10)
-    attachments: list[QaShareAttachment] = Field(default_factory=list, max_length=10)
-    parties: list[QaShareParty] = Field(default_factory=list, max_length=12)
+    debates: list[QaShareDebate] = Field(
+        default_factory=list, max_length=20,
+        validation_alias=AliasChoices("debates", "debatten"))
+    press_releases: list[QaSharePress] = Field(
+        default_factory=list, max_length=10,
+        validation_alias=AliasChoices("press_releases", "presse"))
+    attachments: list[QaShareAttachment] = Field(
+        default_factory=list, max_length=10,
+        validation_alias=AliasChoices("attachments", "anlagen"))
+    parties: list[QaShareParty] = Field(
+        default_factory=list, max_length=12,
+        validation_alias=AliasChoices("parties", "parteien"))
     # Die Grafik zur Antwort (council/qa.py, geld_grafik) — als loses dict,
     # weil der Client sie unverändert zurückreicht: Sie stammt aus DIESEM
     # Backend, und ein zweites Schema hier wäre eine Kopie, die driftet.
     # Begrenzt wird trotzdem: höchstens 60 Punkte, nur bekannte Felder.
-    chart: dict | None = None
+    chart: dict | None = Field(default=None, validation_alias=AliasChoices("chart", "grafik"))
+    # Die Karte „Aus der Geschäftsordnung" — bei Verfahrensfragen oft der
+    # einzige Beleg der Antwort; ohne sie stünde die geteilte Antwort ohne
+    # Quelle da.
+    rules_of_procedure: QaShareRulesOfProcedure | None = None
+
+    @field_validator("rules_of_procedure", mode="wrap")
+    @classmethod
+    def _karte_oder_nichts(cls, v, handler):
+        # Eine Karte, die nicht passt, fällt weg, statt das Teilen zu
+        # verweigern: Nach einer neuen Fassung (Nov. 2026) trägt ein noch
+        # offenes Gespräch die alte PDF-Adresse — die Antwort soll sich
+        # trotzdem teilen lassen, nur eben ohne diese Karte.
+        try:
+            return handler(v)
+        except ValidationError:
+            return None
 
 
 _SHARE_BLOCKED_PHRASES = (
@@ -3250,6 +3470,8 @@ def qa_share_anlegen(
         "attachments": [a.model_dump() for a in body.attachments],
         "parties": [p.model_dump() for p in body.parties],
         "chart": _grafik_pruefen(body.chart),
+        "rules_of_procedure": (body.rules_of_procedure.model_dump()
+                               if body.rules_of_procedure else None),
     }
     token = ratslotse.qa_share_anlegen(user["id"], body.question, body.answer,
                                  [q.model_dump() for q in body.sources],
@@ -4144,6 +4366,44 @@ def _selbstpruefung_nachlauf(nachlauf: dict) -> None:
         _log.warning("Lottis Selbstprüfung (Stichprobe) fehlgeschlagen", exc_info=True)
 
 
+def _lotti_anderswo(store: CouncilStore, screen: lotti.Screen) -> list[dict]:
+    """Was die Beschluss-Seite unter „In anderen Städten“ zeigt — für Lotti.
+
+    **Derselbe Weg wie die Seite** (``decision_elsewhere``), nicht ein
+    zweiter: Welche Treffer dort stehen, entscheiden Schwelle und Filter des
+    Endpunkts, und Lotti soll genau die kennen, die man sieht. Nur mit dem
+    Schalter ``andere-staedte`` — ohne ihn gibt es den Block auf der Seite
+    nicht, also auch nichts zu erklären.
+
+    Der Städte-Speicher wird NUR hier geöffnet, nur auf einer Beschluss-Seite
+    und nur auf dem Weg mit Modell. Ein Fehler darin kostet die Zeilen, nie
+    die Erklärung.
+    """
+    did = (screen.refs or {}).get("decision_id")
+    if not did or not features.an("andere-staedte"):
+        return []
+    cities = None
+    try:
+        cities = CitiesStore(get_settings().cities_db)
+        return [dict(i) for i in decision_elsewhere(int(did), store=store, cities=cities)["items"]]
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        _log.warning("Lotti: „In anderen Städten“ nicht lesbar", exc_info=True)
+        return []
+    finally:
+        if cities is not None:
+            cities.close()
+
+
+def _lotti_nachlauf(nachlauf: dict, meldungen: list) -> None:
+    """Was nach Lottis Strom läuft: die Stichprobe und die Fehlermeldungen."""
+    _selbstpruefung_nachlauf(nachlauf)
+    for melden in meldungen:
+        try:
+            melden()
+        except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+            _log.warning("Fehlermeldung an die Admins ging nicht raus", exc_info=True)
+
+
 class AssistantEventBody(BaseModel):
     """Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
 
@@ -4258,6 +4518,15 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                             "Diese Seite steht deinem Konto nicht offen.")
     if not user.get("limits_unlocked"):
         assistant_limiter.check(request, subject=user["id"])
+        # Das Tageskontingent (`lotti.TAGES_KONTINGENT`, dort begründet). Der
+        # Satz ist für Menschen geschrieben — Web und App zeigen `detail`.
+        heute = ratslotse.aktivitaet_heute(user["id"], lotti.KONTINGENT_MERKMAL) or 0
+        if heute >= lotti.TAGES_KONTINGENT:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Für heute hast du mich schon {lotti.TAGES_KONTINGENT}-mal gefragt — "
+                "ab morgen erkläre ich wieder. Fachwörter und die Seiten selbst "
+                "bleiben natürlich lesbar.")
 
     # **Der Anzeigename fällt hier heraus, nicht erst im Prompt.** Auf
     # `/dashboard` ist die `h1` „Moin, <Name>!" — der Client streicht den Namen
@@ -4282,6 +4551,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     verlauf = [r.model_dump() for r in body.history]
     #: Was die stille Stichprobe nach dem Strom prüft — leer, wenn nichts.
     nachlauf: dict = {}
+    #: Fehlermeldungen an die Admins, die nach dem Strom rausgehen.
+    meldungen: list = []
 
     def gen():
         try:
@@ -4358,7 +4629,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # mit; nie als Name, Adresse oder Rollenwort.
             ctx = lotti.screen_context(store, screen, frage,
                                        permissions=rechte,
-                                       ratslotse=ratslotse, user_id=user["id"])
+                                       ratslotse=ratslotse, user_id=user["id"],
+                                       anderswo=_lotti_anderswo(store, screen))
             zeiten["context_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "answer"})
 
@@ -4463,15 +4735,26 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                         "evidence": belege,
                         "timings": zeiten,
                         "conversation_id": conversation_id})
-        except Exception:  # noqa: BLE001 — Fehler beim Client sichtbar machen
+        except Exception as exc:  # noqa: BLE001 — Fehler beim Client sichtbar machen
             _log.exception("Lottis Erklärung fehlgeschlagen")
+            # **Auch in die Fehlerliste** (Admin-Panel *Fehler*, Mail bei der
+            # ersten Begegnung). Der Strom hat schon mit 200 geantwortet, der
+            # 500er-Handler in `main.py` sieht diese Ausnahme also nie — bis
+            # 03.10.2026 stand sie nur im Log. Gespeichert wird, was
+            # `kern.fehler.aufbereiten` durchlässt: keine Frage, kein
+            # Seiteninhalt, die Route als Vorlage.
+            melden = fehlersammler.sammeln(
+                exc, request.method, getattr(request.scope.get("route"), "path", None),
+                request.url.path)
+            if melden:
+                meldungen.append(melden)
             yield _sse({"type": "error", "message": "Erklärung fehlgeschlagen."})
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         # Läuft erst, wenn der Strom ausgeliefert ist — niemand wartet darauf.
-        background=BackgroundTask(_selbstpruefung_nachlauf, nachlauf))
+        background=BackgroundTask(_lotti_nachlauf, nachlauf, meldungen))
 
 
 class ScreenContext(BaseModel):
@@ -4816,7 +5099,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # (expand_ms misst seit dem Fragetyp-Routing den EINEN Analyse-Call
             # — Begriffe + Typ —, der Schlüssel bleibt für Vergleichbarkeit.)
             zeiten: dict = {}
-            verlauf = [r.model_dump() for r in body.history]
+            # Eine Runde mit DERSELBEN Frage ist keine Vorgeschichte, sondern
+            # eine Dublette — sie machte aus der Weiterreichung aus Lottis
+            # Fenster eine leere Anschlussfrage (`qa.verlauf_ohne_dieselbe_frage`).
+            verlauf = qa.verlauf_ohne_dieselbe_frage(
+                [r.model_dump() for r in body.history], q)
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
             analyse = qa.analyse_query(q, verlauf=verlauf)

@@ -228,6 +228,120 @@ def kvonr_aus(paper_id: str) -> int | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Beschluss-Kennungen: über Sitzung und Tagesordnungspunkt, nie über die Zeile
+# ---------------------------------------------------------------------------
+
+#: Das Präfix aller Beschluss-Belege.
+BESCHLUSS_PRAEFIX = "oldenburg:decision:"
+
+
+def beschluss_kennung(beschluss: dict, geschwister: list[dict] | None = None) -> str:
+    """Die STABILE Kennung eines Oldenburger Beschlusses als Beleg.
+
+    ``oldenburg:decision:<ksinr>:<TOP>`` — die Sitzungsnummer aus dem RIS und
+    die Nummer des Tagesordnungspunkts. Beides ist auf dev, Prod und in jedem
+    Abzug dasselbe, weil es aus der Quelle kommt.
+
+    **Warum nicht die Zeilennummer.** Bis 10/2026 hieß ein Beleg
+    ``oldenburg:decision:<id>``, und ``id`` ist die Zeile in
+    ``council_decisions`` — vergeben von der Datenbank, in der der Beleg
+    entstand. Die Urteile wurden auf einem dev-Abzug gefällt (Zeilen 322 bis
+    9.441), Prod zählt ab 10.983. Gemessen am 03.10.2026 waren alle 1.294
+    Beschluss-Belege auf Prod damit unauflösbar: 48 von 207 Ideen standen
+    ohne Beleg da, 8 davon ganz ohne — „Oldenburg hat das" ohne die Zeile,
+    die es zeigt. Und selbst in EINER Datenbank hält die Zeile nicht:
+    ``save_protocol`` löscht die Beschlüsse einer Sitzung und legt sie neu an,
+    sobald das Protokoll neu gelesen wird.
+
+    Trägt ein Punkt mehrere Beschlüsse (41 von 8.674 auf Prod), zählt
+    ``#<n>`` sie in Protokollreihenfolge durch; der erste bleibt ohne Zusatz.
+    ``geschwister`` sind die Beschlüsse derselben Sitzung (``get_decisions``)
+    — ohne sie gilt jeder Beschluss als der einzige seines Punkts.
+    """
+    top = str(beschluss.get("item_number") or "")
+    gleiche = [b for b in (geschwister or [])
+               if b.get("kind", "decision") == "decision"
+               and str(b.get("item_number") or "") == top]
+    gleiche.sort(key=lambda b: b.get("position") or 0)
+    rang = next((i for i, b in enumerate(gleiche, 1) if b.get("id") == beschluss.get("id")), 1)
+    kennung = f"{BESCHLUSS_PRAEFIX}{beschluss['ksinr']}:{top}"
+    return kennung if rang == 1 else f"{kennung}#{rang}"
+
+
+def _beschluss_teile(kennung: str) -> tuple[int | None, int | None, str, int]:
+    """``(alte_zeile, ksinr, top, rang)`` aus einer Beleg-Kennung.
+
+    Die alte Form (``oldenburg:decision:8525``) liefert nur ``alte_zeile``.
+    """
+    rest = str(kennung or "")[len(BESCHLUSS_PRAEFIX):]
+    if rest.isdigit():
+        return int(rest), None, "", 1
+    sitzung, _, top = rest.partition(":")
+    if not sitzung.isdigit():
+        return None, None, "", 1
+    rang = 1
+    if "#" in top:
+        top, _, nummer = top.rpartition("#")
+        rang = int(nummer) if nummer.isdigit() else 1
+    return None, int(sitzung), top, rang
+
+
+def _top_nummer(top: str | None) -> str:
+    """``Ö 11.1`` und ``11.1`` sind derselbe Punkt."""
+    import re
+
+    m = re.search(r"\d+(?:\.\d+)*", str(top or ""))
+    return m.group(0) if m else ""
+
+
+def beschluss_zu(rats: CouncilStore, kennung: str) -> dict | None:
+    """Der Beschluss hinter einer Beleg-Kennung — oder ``None``.
+
+    Liest beide Formen: die stabile (``…:<ksinr>:<TOP>``) und die alte mit der
+    Zeilennummer, bis der Bestand umgeschlüsselt ist
+    (``scripts/cities_belege_umschluesseln.py``). Die alte Form löst nur in
+    der Datenbank auf, in der sie entstand — woanders liefert sie ``None``
+    oder, schlimmer, eine fremde Zeile. Deshalb wird sie nicht mehr erzeugt.
+
+    Steht der Punkt mit anderer Schreibweise da (``Ö 11.1`` gegen ``11.1``),
+    gilt die Nummer.
+    """
+    if not str(kennung or "").startswith(BESCHLUSS_PRAEFIX):
+        return None
+    alte_zeile, ksinr, top, rang = _beschluss_teile(kennung)
+    if alte_zeile is not None:
+        return rats.get_decision(alte_zeile)
+    if ksinr is None:
+        return None
+    alle = [b for b in rats.get_decisions(ksinr) if b.get("kind", "decision") == "decision"]
+    for passt in (lambda b: str(b.get("item_number") or "") == top,
+                  lambda b: bool(top) and _top_nummer(b.get("item_number")) == _top_nummer(top)):
+        treffer = [b for b in alle if passt(b)]
+        if len(treffer) >= rang:
+            return treffer[rang - 1]
+    return None
+
+
+def vorlage_hinter(rats: CouncilStore, kennung: str) -> tuple[int | None, str]:
+    """``(kvonr, titel)`` des Tagesordnungspunkts, wenn der Beschluss fehlt.
+
+    Ein Beschluss kann in einer Umgebung fehlen, in der anderen stehen: Die
+    Beschlüsse kommen aus dem Protokoll, gelesen von einem Sprachmodell, und
+    das liest nicht überall gleich. Gemessen am 03.10.2026: 32 von 863
+    Beschluss-Belegen fanden auf Prod keinen Beschluss — die Tagesordnung hat
+    den Punkt aber, samt Vorlage. Dann ist die Vorlage der Beleg; das ist
+    weniger als ein Beschluss, aber mehr als eine leere Zeile.
+    """
+    _alt, ksinr, top, _rang = _beschluss_teile(kennung)
+    if ksinr is None or not top:
+        return None, ""
+    for punkt in rats.agenda_items(ksinr):
+        if _top_nummer(punkt.get("item_number")) == _top_nummer(top):
+            return punkt.get("kvonr"), str(punkt.get("title") or "")
+    return None, ""
+
+
 def _kurz(text: str | None, n: int = 500) -> str:
     sauber = " ".join((text or "").split())
     return sauber[:n]
@@ -704,7 +818,13 @@ def _beschluss_treffer(rats: CouncilStore, begriffe: list[str], daten: dict) -> 
         heuhaufen = f"{b.get('title') or ''} {b.get('simple_summary') or ''}".lower()
         if not any(w in heuhaufen for w in spezifisch):
             continue
-        kennung = f"oldenburg:decision:{beschluss_id}"
+        # Die Kennung über Sitzung und Punkt, nicht über die Zeile — s.
+        # `beschluss_kennung`. Eine Abfrage mehr je Treffer; das hier ist ein
+        # Cron, kein Request.
+        kennung = beschluss_kennung(b, rats.get_decisions(int(b["ksinr"]))) \
+            if b.get("ksinr") is not None else f"{BESCHLUSS_PRAEFIX}{beschluss_id}"
+        if kennung in treffer:
+            continue
         treffer.append(kennung)
         daten.setdefault(kennung, ("decision", "", None, None, None))
         if len(treffer) >= POOL_JE_ARM:
@@ -721,7 +841,7 @@ def _beleg_bauen(rats: CouncilStore, main: CitiesStore, kennung: str,
                  art: EvidenceKind, name: str, datum: str | None,
                  score: float | None, chunk_idx: int | None = None) -> Evidence:
     """Aus einer Kennung den fertigen Beleg — je nach Quelle anders."""
-    if kennung.startswith("oldenburg:decision:"):
+    if kennung.startswith(BESCHLUSS_PRAEFIX):
         return _aus_beschluss(rats, kennung, score)
     beleg = _aus_papier(rats, kennung, name, datum, art, score)
     if not beleg.title:
@@ -739,8 +859,16 @@ def _beleg_bauen(rats: CouncilStore, main: CitiesStore, kennung: str,
 
 def _aus_beschluss(rats: CouncilStore, kennung: str, score: float | None) -> Evidence:
     """Ein Oldenburger Beschluss als Beleg — mit Ergebnis und Gremium."""
-    beschluss_id = int(kennung.rsplit(":", 1)[1])
-    b = rats.get_decision(beschluss_id) or {}
+    b = beschluss_zu(rats, kennung) or {}
+    if not b:
+        # Der Punkt steht auf der Tagesordnung, sein Beschluss fehlt in DIESER
+        # Datenbank (s. `vorlage_hinter`): dann die Vorlage als Beleg — unter
+        # der Beschluss-Kennung, damit das Urteil sie wiederfindet.
+        kvonr, titel = vorlage_hinter(rats, kennung)
+        if kvonr is not None:
+            beleg = _aus_papier(rats, f"oldenburg:paper:{kvonr}", titel, None,
+                                "decision", score)
+            return replace(beleg, id=kennung, title=beleg.title or titel)
     return Evidence(
         kind="decision", id=kennung, title=b.get("title") or "",
         date=b.get("session_date"), outcome=b.get("outcome"),

@@ -48,6 +48,10 @@ PROBE = "federal_comparison_own_series"
 BASIS = "https://www.wegweiser-kommune.de"
 DATEN_SEITE = BASIS + "/daten"
 REGIONEN_URL = BASIS + "/data-api/rest/region/list?max=20000"
+#: Von Hand angehoben, sobald der Wegweiser ein neues Jahr führt — und nicht
+#: vorsorglich: Ein Zeitraum über das jüngste Jahr hinaus liefert keinen
+#: Fehler, sondern still den Vorgabezeitraum des Portals (am 05.10.2026:
+#: „2019-2024" ergab 2019–2023, „2024-2025" ergab 2016–2023).
 JAHRE = "2019-2023"
 OLDENBURG = "oldenburg-oldenburg"
 LAND_NI = "03"

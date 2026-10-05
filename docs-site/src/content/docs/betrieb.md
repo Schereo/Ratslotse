@@ -235,6 +235,7 @@ Die Zeitpläne stehen als Docstring im jeweiligen Skript und in
 | `check_finanzdaten.py`&nbsp;¹ | sonntags `0 6 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#der-bereich-hält-sich-selbst-aktuell). |
 | `check_beteiligungsbericht.py` | sonntags `30 6 * * 0` | Lädt die Beteiligungsberichte von oldenburg.de und liest Gesellschaften, Aufsichtsorgane und Kennzahlen daraus. Der einzige Haushalts-Cron, der selbst herunterlädt. |
 | `archive_statistik.py` | täglich `0 4 * * *` | Sichert die amtlichen Statistik-Quellen versioniert unter `data/archiv/` — siehe unten. |
+| `check_cities.py` | werktags `15 10 * * 1-6` mit `--nur-oldenburg`, sonntags `0 5 * * 0` | Städte-Speicher: werktags nur Oldenburg übernehmen und einbetten (ohne Netz und Modell — daraus entsteht „Anderswo" unter neuen Beschlüssen), sonntags zusätzlich die Vergleichsstädte, Einordnung, Ideen-Gruppen und Urteile. Kostengrenze je Lauf `CITIES_MAX_USD` (Vorgabe 2 $), Frist `CITIES_MAX_SECONDS`. |
 
 ¹ **Nur auf Prod** — und das ist seit 09/2026 die richtige Seite. Der
 Haushalts-Bereich hing bis dahin an einem Umgebungs-Gate und war auf
@@ -372,7 +373,7 @@ per `nohup` weiter, während der Workflow selbst schon fertig ist.
 ## Städte-Speicher: der einmalige Backfill
 
 `data/cities.sqlite` (Ratsdokumente der Vergleichsstädte, `council/cities`)
-entsteht **nicht** allein aus dem Wochen-Cron. `check_cities.py` schaut je
+entsteht **nicht** allein aus dem Cron. `check_cities.py` schaut sonntags je
 Stadt 60 Tage zurück — das hält den Bestand aktuell, baut ihn aber nie auf.
 Der Aufbau ist ein einmaliger Lauf je Stadt:
 
@@ -510,9 +511,12 @@ Seite in dem Moment, in dem der Schalter auf Prod steht.
 **Lokal zum Arbeiten:** `python scripts/lokale_daten.py hol --mit-staedten`
 und `setz --mit-staedten` nehmen den Speicher vom Server mit. Ohne den
 Schalter bleibt alles wie bisher; 600 MB will nicht jede*r auf dem Notebook.
-Eine Abspeckung wie bei der Rats-Datenbank braucht es nicht — es stehen
-ausschließlich öffentliche Ratsdokumente anderer Städte darin, keine Konten,
-keine Personendaten.
+Eine Abspeckung wie bei der Rats-Datenbank braucht es fast nicht — es stehen
+öffentliche Ratsdokumente anderer Städte darin. Die eine Ausnahme sind die
+Rückmeldungen zu den Urteilen („Stimmt das?", mit Konto-Nummer und
+Freitext): `hol` leert sie, bevor die Datei an ihren Platz rückt, und die
+Konto-Löschung räumt sie wie die übrigen Kontodaten
+(`CITIES_USER_OWNED_TABLES` in `council/cities/store.py`).
 
 ---
 

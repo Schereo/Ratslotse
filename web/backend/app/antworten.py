@@ -1786,8 +1786,32 @@ class FeedbackAck(TypedDict):
     verdict: str
 
 
+class IdeaLaggingCity(TypedDict):
+    """Eine Stadt, deren Bestand deutlich vor dem letzten Abgleich endet."""
+    body_id: str
+    city: str
+    #: Die jüngste Vorlage dieser Stadt (ISO-Datum).
+    latest_paper: str
+
+
+class IdeaDataStatus(TypedDict):
+    """Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
+
+    **Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein
+    Datum, liest man es als „bis dahin ist alles drin"; das stimmt nur für
+    das früheste der Städte.
+    """
+    #: Datum (ISO) des ältesten letzten Abgleichs unter den gezeigten Städten.
+    as_of: str | None
+    #: Städte, deren jüngste Vorlage mehr als zwei Monate vor ihrem letzten
+    #: Abgleich liegt — dort fehlt vermutlich etwas (Wolfsburg endete am
+    #: 25.06.2026, abgeglichen am 14.09.2026).
+    lagging: list[IdeaLaggingCity]
+
+
 class IdeaFields(TypedDict):
     fields: list[IdeaFieldSummary]
+    data_status: IdeaDataStatus
     #: Die Städte, aus denen Ideen vorliegen, nach Namen sortiert.
     #:
     #: **Sie gehören in die Antwort, nicht in den Einleitungstext.** Der zählte
@@ -2766,7 +2790,8 @@ class QaShare(TypedDict):
 
     Festes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem
     Bausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store
-    setzt die vier Listen dann auf leer und ``chart`` auf ``None``.
+    setzt die vier Listen dann auf leer, ``chart`` und
+    ``rules_of_procedure`` auf ``None``.
     """
     question: str
     answer: str
@@ -2777,6 +2802,9 @@ class QaShare(TypedDict):
     attachments: list[dict[str, Any]]
     parties: list[dict[str, Any]]
     chart: dict[str, Any] | None
+    #: Die Karte „Aus der Geschäftsordnung" (``council.rules_of_procedure.card``),
+    #: wie sie beim Teilen unter der Antwort stand.
+    rules_of_procedure: dict[str, Any] | None
 
 
 class ResearchSnapshot(TypedDict):
@@ -3153,6 +3181,15 @@ class DistrictProject(TypedDict):
     reported: bool
     decisions: list[DistrictProjectDecision]
     locations: list[DistrictProjectLocation]
+    #: Abgeleitet aus ``when`` und dem heutigen Datum (``council/viertel_zeitplan.py``):
+    #: ``likely_done`` (im Bau, Zeitraum vorbei), ``overdue`` (Planung/beschlossen,
+    #: Zeitraum vorbei), ``quiet`` (kein Ende genannt, seit 12 Monaten kein
+    #: Beschluss) oder null. Optional, weil ältere Server es nicht kennen.
+    schedule: NotRequired[str | None]
+    #: Der Satz dazu, fertig zum Anzeigen — Web und App rechnen nichts nach.
+    schedule_note: NotRequired[str | None]
+    #: Das aus ``when`` gelesene Ende als ISO-Datum, sonst null.
+    when_end: NotRequired[str | None]
 
 
 class DistrictUpcomingItem(TypedDict):
@@ -3242,7 +3279,11 @@ class DistrictProjects(TypedDict):
     closures: list[DistrictClosure]
     press: list[DistrictPressItem]
     neighbours: list[DistrictNeighbour]
+    #: Wann das Register zuletzt gerechnet wurde — NICHT der Datenstand.
     updated_at: str | None
+    #: Der jüngste Sitzungstag, dessen Beschlüsse das Register gesehen hat:
+    #: „Beschlüsse bis …". Optional, weil ältere Server es nicht kennen.
+    decisions_until: NotRequired[str | None]
 
 
 class DistrictProjectsOverviewEntry(TypedDict):
@@ -3271,10 +3312,19 @@ class DistrictProjectsOverview(TypedDict):
     """``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,
     dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen."""
     districts: list[DistrictProjectsOverviewEntry]
+    #: Sichtbare Vorhaben der Stadt, jedes einmal — ein Vorhaben an der
+    #: Grenze steht auf zwei Tafeln, zählt hier aber einfach. Daher ist
+    #: ``total`` nicht die Summe der ``count`` je Ortsbereich.
     total: int
+    #: Je Stand, summiert sich zu ``total`` (alle Stände, auch idea/done/rejected).
     stages: dict[str, int]
+    #: Wie viele Tafel-Einträge als Doppel an einer Grenze nicht mitzählen.
+    shared: NotRequired[int]
     highlights: list[DistrictHighlight]
+    #: Wann das Register zuletzt gerechnet wurde — NICHT der Datenstand.
     updated_at: str | None
+    #: Der jüngste Sitzungstag, dessen Beschlüsse das Register gesehen hat.
+    decisions_until: NotRequired[str | None]
 
 
 class DistrictLookupMatch(TypedDict):
@@ -3292,9 +3342,55 @@ class DistrictLookup(TypedDict):
 
 
 class DistrictProjectReportOut(TypedDict):
+    """``POST``/``DELETE /api/districts/projects/{id}/report``.
+
+    ``hidden`` ist seit 10/2026 die Entscheidung der Redaktion, nicht mehr die
+    Zahl der Meldungen — eine Meldung allein blendet nichts aus. Die Form
+    bleibt, weil die ausgelieferte iOS-App sie decodiert."""
     ok: bool
     report_count: int
     hidden: bool
+    #: Ob das eigene Konto das Vorhaben jetzt gemeldet hat (nach POST true,
+    #: nach DELETE false).
+    reported: NotRequired[bool]
+
+
+class AdminDistrictReport(TypedDict):
+    """Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer."""
+    reason: str | None
+    created_at: str
+
+
+class AdminDistrictReportProject(TypedDict):
+    """Das Vorhaben, wie es gerade auf der Tafel steht."""
+    id: int
+    name: str
+    what: str
+    stage: str
+
+
+class AdminDistrictReportGroup(TypedDict):
+    """Alle Meldungen zu einem Vorhaben samt Entscheidung der Redaktion."""
+    project_key: str
+    place_id: str
+    place_name: str
+    name: str
+    count: int
+    last_at: str
+    reports: list[AdminDistrictReport]
+    #: ``hidden`` | ``kept`` | ``None`` (offen).
+    verdict: str | None
+    note: str | None
+    decided_at: str | None
+    #: ``None``: Ein späterer Lauf kennt das Vorhaben nicht mehr.
+    project: AdminDistrictReportProject | None
+
+
+class AdminDistrictReports(TypedDict):
+    """``GET /api/admin/district-reports`` — die Meldungen aus „Mein Viertel"."""
+    groups: list[AdminDistrictReportGroup]
+    status: str
+    open_count: int
 
 
 class SessionList(TypedDict):

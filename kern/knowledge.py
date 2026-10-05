@@ -118,7 +118,10 @@ PAGES: dict[str, PageKnowledge] = dict([
        "ein Viertel öffnet die Vorhaben, die dort laufen, mit dem Stand der "
        "letzten Ratsberatung.",
        "Die Orte stammen aus einem gepflegten Ortsverzeichnis; ein Beschluss "
-       "erscheint nur dort, wo sein Text den Ort wirklich nennt.",
+       "erscheint nur dort, wo sein Text den Ort wirklich nennt. Die eigenen "
+       "Viertel sind die Stadtteile unter den Themen des Kontos und liegen mit "
+       "ihnen auf dem Server. Ein Vorhaben, das jemand als falsch verortet "
+       "meldet, prüft die Redaktion, bevor es verschwindet.",
        "Ein Vorhaben ohne benannten Ort taucht auf der Karte nicht auf — die "
        "Karte ist kein vollständiges Bild der Stadt.", nudge=True,
        starters=(
@@ -329,7 +332,8 @@ PAGES: dict[str, PageKnowledge] = dict([
        ),
     ),
     _p("/council/ideen", "Ideen aus anderen Städten",
-       "Was andere Stadträte beschlossen haben und in Oldenburg fehlt — je "
+       "Was andere Stadträte beantragt oder beschlossen haben und in Oldenburg "
+       "fehlt — je "
        "Themenfeld, mit dem Weg zum Original im Ratsinformationssystem der "
        "jeweiligen Stadt.",
        "Die Vorlagen stammen aus den Ratsinformationssystemen anderer Kommunen; "

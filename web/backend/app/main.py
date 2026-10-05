@@ -175,6 +175,7 @@ app.include_router(auth_apple.router)
 app.include_router(account.router)
 app.include_router(council.router)
 app.include_router(districts.router)
+app.include_router(districts.admin_router)
 app.include_router(bookmarks.router)
 app.include_router(today.router)
 app.include_router(topics.router)
@@ -241,34 +242,13 @@ async def unbehandelter_fehler(request: Request, exc: Exception) -> JSONResponse
     """
     logger.exception("Unbehandelter Fehler bei %s %s", request.method, request.url.path)
 
-    hintergrund = None
-    try:
-        from kern import fehler as fehlerhilfe
-        from kern.store import Store
+    # Der Weg selbst steht in `fehlersammler.py` — dort benutzt ihn auch ein
+    # Strom, dessen Fehler diesen Handler nie erreicht (Lottis Fenster).
+    from .fehlersammler import sammeln
 
-        route = getattr(request.scope.get("route"), "path", None)
-        daten = fehlerhilfe.aufbereiten(exc, request.method, route, request.url.path)
-
-        store = Store(settings.ratslotse_db)
-        try:
-            neu = store.merke_request_fehler(daten)
-        finally:
-            store.close()
-
-        if neu:
-            from kern.alerts import notify_admin
-
-            text = (f"<b>{daten['exc_type']}</b> bei "
-                    f"<code>{daten['method']} {daten['route']}</code>\n\n"
-                    f"{daten['message']}\n\n<code>{daten['trace']}</code>")
-            hintergrund = BackgroundTask(
-                notify_admin, text,
-                betreff="Ratslotse – neuer Fehler im Web",
-                fusszeile="Erste Begegnung mit dieser Fehlerart. "
-                          "Weitere Vorkommen zählt das Admin-Panel mit, ohne "
-                          "erneut zu melden.")
-    except Exception:  # noqa: BLE001 — der Sammler bleibt folgenlos
-        logger.exception("Fehler ließ sich nicht sammeln")
+    route = getattr(request.scope.get("route"), "path", None)
+    melden = sammeln(exc, request.method, route, request.url.path)
+    hintergrund = BackgroundTask(melden) if melden else None
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -22,10 +22,12 @@ export interface paths {
          *     Passwort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem
          *     frischen Apple-Identity-Token (Re-Auth in der App, RL-1002).
          *
-         *     Geräumt werden **beide** Datenbanken. Zwischen ihnen gibt es keine
+         *     Geräumt werden **alle drei** Datenbanken. Zwischen ihnen gibt es keine
          *     Fremdschlüssel, und in ``council.sqlite`` steht mit
          *     ``committee_notifications``/``session_followups_sent``, welche Sitzungen
-         *     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss.
+         *     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss. In
+         *     ``cities.sqlite`` liegen die Rückmeldungen zu den Städte-Urteilen samt
+         *     Freitext (``CITIES_USER_OWNED_TABLES``).
          */
         delete: operations["delete_account_api_account_delete"];
         options?: never;
@@ -198,6 +200,46 @@ export interface paths {
          */
         get: operations["cities_stats_api_admin_cities_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/district-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Reports
+         * @description Die Meldungen aus „Mein Viertel", je Vorhaben gebündelt.
+         */
+        get: operations["district_reports_api_admin_district_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/district-reports/{project_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Decide District Report
+         * @description Entscheiden: ausblenden, stehen lassen — oder die Entscheidung zurücknehmen.
+         */
+        put: operations["decide_district_report_api_admin_district_reports__project_key__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2817,7 +2859,9 @@ export interface paths {
          *
          *     **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
          *     Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
-         *     Stimmen), und der Maßstab wäre wieder wertlos.
+         *     Stimmen), und der Maßstab wäre wieder wertlos. **Und nur aktiv**
+         *     (``require_active``): ein gesperrtes oder unbestätigtes Konto schreibt
+         *     hier so wenig wie anderswo; die Bremse zählt je Konto.
          *
          *     Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
          *     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
@@ -4187,8 +4231,8 @@ export interface paths {
          * @description „Ich wohne in der …": Straße, Platz oder Stadtteilname → Ortsbereich.
          *
          *     Stadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den
-         *     Beschlüssen. Öffentlich wie die Auswahl-Seite selbst; kein Konto, kein
-         *     Sprachmodell, keine Speicherung der Eingabe.
+         *     Beschlüssen. Mit Konto wie die Auswahl-Seite selbst; kein Sprachmodell,
+         *     keine Speicherung der Eingabe.
          */
         get: operations["district_lookup_api_districts_lookup_get"];
         put?: never;
@@ -4235,11 +4279,21 @@ export interface paths {
         /**
          * Report Project
          * @description „Gehört nicht hierher": Ein Konto meldet ein Vorhaben als falsch verortet.
-         *     Ab zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim
-         *     Konto und geht mit dessen Löschung.
+         *
+         *     **Eine Meldung blendet nichts aus.** Bis 10/2026 verschwand ein Vorhaben ab
+         *     zwei Meldungen dauerhaft — zwei Konten konnten so jede Tafel leeren, und
+         *     niemand sah die Meldungen. Jetzt landet sie in der Admin-Liste, die erste
+         *     je Vorhaben zusätzlich als Mail, und ausgeblendet wird erst, wenn die
+         *     Redaktion bestätigt. Die Meldung hängt am Konto und geht mit dessen
+         *     Löschung (``COUNCIL_USER_OWNED_TABLES``).
          */
         post: operations["report_project_api_districts_projects__project_id__report_post"];
-        delete?: never;
+        /**
+         * Withdraw Project Report
+         * @description Die eigene Meldung zurücknehmen — ein Fehltipp soll nicht stehen bleiben.
+         *     Eine Entscheidung der Redaktion bleibt davon unberührt.
+         */
+        delete: operations["withdraw_project_report_api_districts_projects__project_id__report_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6322,6 +6376,82 @@ export interface components {
             sessions: number;
             /** Upcoming */
             upcoming: number;
+        };
+        /**
+         * AdminDistrictReport
+         * @description Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer.
+         */
+        AdminDistrictReport: {
+            /** Created At */
+            created_at: string;
+            /** Reason */
+            reason: string | null;
+        };
+        /**
+         * AdminDistrictReportGroup
+         * @description Alle Meldungen zu einem Vorhaben samt Entscheidung der Redaktion.
+         */
+        AdminDistrictReportGroup: {
+            /** Count */
+            count: number;
+            /** Decided At */
+            decided_at: string | null;
+            /** Last At */
+            last_at: string;
+            /** Name */
+            name: string;
+            /** Note */
+            note: string | null;
+            /** Place Id */
+            place_id: string;
+            /** Place Name */
+            place_name: string;
+            /**
+             * AdminDistrictReportProject
+             * @description Das Vorhaben, wie es gerade auf der Tafel steht.
+             */
+            project: {
+                /** Id */
+                id: number;
+                /** Name */
+                name: string;
+                /** Stage */
+                stage: string;
+                /** What */
+                what: string;
+            } | null;
+            /** Project Key */
+            project_key: string;
+            /** Reports */
+            reports: components["schemas"]["AdminDistrictReport"][];
+            /** Verdict */
+            verdict: string | null;
+        };
+        /**
+         * AdminDistrictReportProject
+         * @description Das Vorhaben, wie es gerade auf der Tafel steht.
+         */
+        AdminDistrictReportProject: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Stage */
+            stage: string;
+            /** What */
+            what: string;
+        };
+        /**
+         * AdminDistrictReports
+         * @description ``GET /api/admin/district-reports`` — die Meldungen aus „Mein Viertel".
+         */
+        AdminDistrictReports: {
+            /** Groups */
+            groups: components["schemas"]["AdminDistrictReportGroup"][];
+            /** Open Count */
+            open_count: number;
+            /** Status */
+            status: string;
         };
         /**
          * AdminEntityAlias
@@ -9850,12 +9980,18 @@ export interface components {
             report_count: number;
             /** Reported */
             reported: boolean;
+            /** Schedule */
+            schedule?: string | null;
+            /** Schedule Note */
+            schedule_note?: string | null;
             /** Stage */
             stage: string;
             /** What */
             what: string;
             /** When */
             when: string | null;
+            /** When End */
+            when_end?: string | null;
         };
         /**
          * DistrictProjectDecision
@@ -9895,7 +10031,14 @@ export interface components {
             /** Slug */
             slug: string;
         };
-        /** DistrictProjectReportOut */
+        /**
+         * DistrictProjectReportOut
+         * @description ``POST``/``DELETE /api/districts/projects/{id}/report``.
+         *
+         *     ``hidden`` ist seit 10/2026 die Entscheidung der Redaktion, nicht mehr die
+         *     Zahl der Meldungen — eine Meldung allein blendet nichts aus. Die Form
+         *     bleibt, weil die ausgelieferte iOS-App sie decodiert.
+         */
         DistrictProjectReportOut: {
             /** Hidden */
             hidden: boolean;
@@ -9903,6 +10046,8 @@ export interface components {
             ok: boolean;
             /** Report Count */
             report_count: number;
+            /** Reported */
+            reported?: boolean;
         };
         /**
          * DistrictProjects
@@ -9911,6 +10056,8 @@ export interface components {
         DistrictProjects: {
             /** Closures */
             closures: components["schemas"]["DistrictClosure"][];
+            /** Decisions Until */
+            decisions_until?: string | null;
             /** Investments */
             investments: components["schemas"]["DistrictInvestment"][];
             /** Neighbours */
@@ -9934,10 +10081,14 @@ export interface components {
          *     dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen.
          */
         DistrictProjectsOverview: {
+            /** Decisions Until */
+            decisions_until?: string | null;
             /** Districts */
             districts: components["schemas"]["DistrictProjectsOverviewEntry"][];
             /** Highlights */
             highlights: components["schemas"]["DistrictHighlight"][];
+            /** Shared */
+            shared?: number;
             /** Stages */
             stages: {
                 [key: string]: number;
@@ -11923,6 +12074,20 @@ export interface components {
             window_since: string | null;
         };
         /**
+         * IdeaDataStatus
+         * @description Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
+         *
+         *     **Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein
+         *     Datum, liest man es als „bis dahin ist alles drin"; das stimmt nur für
+         *     das früheste der Städte.
+         */
+        IdeaDataStatus: {
+            /** As Of */
+            as_of: string | null;
+            /** Lagging */
+            lagging: components["schemas"]["IdeaLaggingCity"][];
+        };
+        /**
          * IdeaEvidence
          * @description Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.
          */
@@ -11964,8 +12129,21 @@ export interface components {
         IdeaFields: {
             /** Bodies */
             bodies: string[];
+            data_status: components["schemas"]["IdeaDataStatus"];
             /** Fields */
             fields: components["schemas"]["IdeaFieldSummary"][];
+        };
+        /**
+         * IdeaLaggingCity
+         * @description Eine Stadt, deren Bestand deutlich vor dem letzten Abgleich endet.
+         */
+        IdeaLaggingCity: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Latest Paper */
+            latest_paper: string;
         };
         /**
          * IdeaProtocol
@@ -13982,7 +14160,8 @@ export interface components {
          *
          *     Festes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem
          *     Bausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store
-         *     setzt die vier Listen dann auf leer und ``chart`` auf ``None``.
+         *     setzt die vier Listen dann auf leer, ``chart`` und
+         *     ``rules_of_procedure`` auf ``None``.
          */
         QaShare: {
             /** Answer */
@@ -14011,6 +14190,10 @@ export interface components {
             }[];
             /** Question */
             question: string;
+            /** Rules Of Procedure */
+            rules_of_procedure: {
+                [key: string]: unknown;
+            } | null;
             /** Sources */
             sources: {
                 [key: string]: unknown;
@@ -14052,6 +14235,43 @@ export interface components {
             press_releases?: components["schemas"]["QaSharePress"][];
             /** Question */
             question: string;
+            /**
+             * QaShareRulesOfProcedure
+             * @description Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
+             *
+             *     Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
+             *     Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
+             *     Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
+             *     darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
+             *     unterschieben. Ein fremder Link verwirft die ganze Karte (s.
+             *     ``QaShareBody._karte_oder_nichts``).
+             */
+            rules_of_procedure?: {
+                /** Contents */
+                contents?: components["schemas"]["QaShareRulesContents"][];
+                /**
+                 * Full Title
+                 * @default
+                 */
+                full_title: string;
+                /** Sections */
+                sections?: components["schemas"]["QaShareRulesSection"][];
+                /**
+                 * State
+                 * @default current
+                 * @enum {string}
+                 */
+                state: "current" | "term_ended" | "superseded";
+                /** Title */
+                title: string;
+                /** Url */
+                url: string;
+                /**
+                 * Version
+                 * @default
+                 */
+                version: string;
+            } | null;
             /** Sources */
             sources?: components["schemas"]["QaShareSource"][];
         };
@@ -14151,6 +14371,70 @@ export interface components {
              * @default other
              */
             reason: string;
+        };
+        /** QaShareRulesContents */
+        QaShareRulesContents: {
+            /** Label */
+            label: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * QaShareRulesOfProcedure
+         * @description Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
+         *
+         *     Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
+         *     Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
+         *     Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
+         *     darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
+         *     unterschieben. Ein fremder Link verwirft die ganze Karte (s.
+         *     ``QaShareBody._karte_oder_nichts``).
+         */
+        QaShareRulesOfProcedure: {
+            /** Contents */
+            contents?: components["schemas"]["QaShareRulesContents"][];
+            /**
+             * Full Title
+             * @default
+             */
+            full_title: string;
+            /** Sections */
+            sections?: components["schemas"]["QaShareRulesSection"][];
+            /**
+             * State
+             * @default current
+             * @enum {string}
+             */
+            state: "current" | "term_ended" | "superseded";
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /**
+             * Version
+             * @default
+             */
+            version: string;
+        };
+        /** QaShareRulesSection */
+        QaShareRulesSection: {
+            /** Label */
+            label: string;
+            /** Number */
+            number: string;
+            /** Part */
+            part: string;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
         };
         /** QaShareSource */
         QaShareSource: {
@@ -16735,6 +17019,16 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerdictIn */
+        VerdictIn: {
+            /** Note */
+            note?: string | null;
+            /**
+             * Verdict
+             * @enum {string|null}
+             */
+            verdict: "hidden" | "kept" | null;
+        };
         /** VerifyEmailRequest */
         VerifyEmailRequest: {
             /** Token */
@@ -17214,6 +17508,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CityStats"][];
+                };
+            };
+        };
+    };
+    district_reports_api_admin_district_reports_get: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDistrictReports"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_district_report_api_admin_district_reports__project_key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerdictIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -21694,6 +22054,37 @@ export interface operations {
             };
         };
     };
+    withdraw_project_report_api_districts_projects__project_id__report_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictProjectReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     district_projects_api_districts__place_id__projects_get: {
         parameters: {
             query?: never;
@@ -24810,4 +25201,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 734c06be45bef982ec4d022ba08bbb2e7b88fd864c883f590a9717414dcdd43f
+// vertrag-sha256: 64b4bdcf856b2bc6d999c6d15a410bb24d037a7c0d94f7f416131425f3590efb

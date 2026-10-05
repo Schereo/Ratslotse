@@ -563,7 +563,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
         "check_beteiligungsbericht",  # lädt von oldenburg.de, alle vier Wochen
         "archive_statistik",  # sichert die Statistik-Quellen versioniert, täglich
-        "check_cities",  # Ratsdokumente der Vergleichsstädte, sonntags 3 Uhr
+        "check_cities",  # Oldenburg werktags, Vergleichsstädte sonntags 5 Uhr
         "check_herzschlag",  # meldet Jobs, die nicht mehr laufen, täglich 6:30
         "check_wahltermine",  # Terminkalender der Stadt gegen kommunalwahl/wahlen/, täglich 6:15
     }
@@ -826,6 +826,24 @@ def test_reset_token_single_use(client):
                        json={"token": "once-token", "new_password": "newpass12345"}).status_code == 200
     assert client.post("/api/auth/reset-password",
                        json={"token": "once-token", "new_password": "another12345"}).status_code == 400
+
+
+def test_delete_account_raeumt_die_staedte_rueckmeldungen(client):
+    """DSGVO: Die Rückmeldungen zu den Städte-Urteilen (mit Freitext) gehen
+    mit dem Konto — sie lagen in `cities.sqlite`, die das Löschen nicht kannte."""
+    from council.cities.store import CitiesStore
+
+    _register(client)
+    uid = client.get("/api/auth/me").json()["id"]
+    cs = CitiesStore(os.environ["CITIES_DB"])
+    cs.put_feedback("paper", "os:p:1", "fit", "4", uid, "wrong", "Meine Notiz")
+    cs.put_feedback("paper", "os:p:1", "fit", "4", uid + 1000, "right")
+    assert client.request(
+        "DELETE", "/api/account", json={"current_password": "password123"}
+    ).status_code == 204
+    rest = [r[0] for r in cs._conn.execute("SELECT user_id FROM feedback")]
+    cs.close()
+    assert rest == [uid + 1000]
 
 
 def test_delete_account_requires_password(client):
@@ -3381,8 +3399,9 @@ def test_qa_share_traegt_bausteine(client):
         "answer": "Der Rat stimmte zu [5].",
         "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
                      "committee": "Rat", "outcome": "accepted"}],
-        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "art": "rede",
-                      "top": "6.1 Stadionneubau", "excerpt": "Warnte vor einem Millionengrab.",
+        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "kind": "inquiry",
+                      "agenda_item": "6.1 Stadionneubau",
+                      "excerpt": "Warnte vor einem Millionengrab.",
                       "committee": "Rat", "date": "2026-06-01",
                       "minutes_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do",
                       "minutes_page": 6},
@@ -3394,8 +3413,10 @@ def test_qa_share_traegt_bausteine(client):
                       "committee": "Rat", "date": "2026-06-01",
                       "minutes_url": "https://boese.example.org/phishing.pdf"}],
         "press_releases": [{"title": "Stadion: Stadt informiert",
-                    "url": "https://www.oldenburg.de/x", "date": "2026-06-02"}],
-        "attachments": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
+                    "url": "https://www.oldenburg.de/x", "date": "2026-06-02",
+                    "excerpt": "Die Stadt lädt zur Infoveranstaltung."}],
+        "attachments": [{"number": 3, "label": "Machbarkeitsstudie",
+                     "url": "https://ris/anlage.pdf",
                      "template_number": "26/0123", "template_title": "Stadionneubau",
                      "excerpt": "Kapazität 15.000."}],
         "parties": [{"party": "SPD", "stance": "dagegen", "position": "Skeptisch.",
@@ -3409,15 +3430,140 @@ def test_qa_share_traegt_bausteine(client):
     client.cookies.clear()  # öffentlich lesbar
     body = client.get(f"/api/council/qa-share/{token}").json()
     assert body["debates"][0]["speaker"] == "Ratsherr Wenzel"
+    assert body["debates"][0]["kind"] == "inquiry"
+    assert body["debates"][0]["agenda_item"] == "6.1 Stadionneubau"
     assert body["debates"][0]["minutes_url"] == (
         "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do")
     assert body["debates"][0]["minutes_page"] == 6
     assert body["debates"][1]["minutes_url"] is None
     assert body["debates"][1]["minutes_page"] is None
     assert body["press_releases"][0]["url"] == "https://www.oldenburg.de/x"
+    assert body["press_releases"][0]["excerpt"] == "Die Stadt lädt zur Infoveranstaltung."
     assert body["attachments"][0]["template_number"] == "26/0123"
+    # Die Beleg-Nummer: Ohne sie fände „[A3]" im Text seine Karte nicht.
+    assert body["attachments"][0]["number"] == 3
     assert body["parties"][0]["stance"] == "dagegen"
     assert "user_id" not in body
+
+
+def test_qa_share_nimmt_die_alten_feldnamen_an(client):
+    """Unbekannte Schlüssel verwirft Pydantic still — so gingen bis 10/2026
+    Art, TOP und Anlagen-Nummer aus dem Web verloren (``art``/``top``/``nr``)
+    und aus der iOS-App sogar alle Bausteine (``debatten``, ``presse``,
+    ``anlagen``, ``parteien``, ``grafik``). Die App im Store lässt sich nicht
+    nachziehen; der Server nimmt die alten Namen deshalb weiter an."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "question": "Was sagt der Rat zum Stadion?",
+        "answer": "Die Studie [A2] rechnet mit 15.000 Plätzen.",
+        "debatten": [{"speaker": "Ratsherr Wenzel", "art": "inquiry",
+                      "top": "6.1 Stadionneubau", "excerpt": "Fragte nach."}],
+        "presse": [{"title": "Stadion: Stadt informiert",
+                    "url": "https://www.oldenburg.de/x", "excerpt": "Infoabend."}],
+        "anlagen": [{"nr": 2, "label": "Machbarkeitsstudie", "excerpt": "15.000."}],
+        "parteien": [{"party": "SPD", "position": "Skeptisch."},
+                     {"party": "CDU", "position": "Dafür."}],
+        "grafik": {"kind": "linie", "title": "Kosten", "series": [
+            {"year": 2025, "value": 1.0}, {"year": 2026, "value": 2.0}]},
+    })
+    assert r.status_code == 201
+    client.cookies.clear()
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["debates"][0]["kind"] == "inquiry"
+    assert body["debates"][0]["agenda_item"] == "6.1 Stadionneubau"
+    assert body["press_releases"][0]["excerpt"] == "Infoabend."
+    assert body["attachments"][0]["number"] == 2
+    assert [p["party"] for p in body["parties"]] == ["SPD", "CDU"]
+    assert body["chart"]["title"] == "Kosten"
+
+
+def test_qa_share_kappt_rohe_eintraege_statt_abzuweisen(client):
+    """Die iOS-App reicht die Strom-Einträge ungekürzt zurück. Ein ``null``
+    bei ``kind``, ein überlanger Titel oder ein Eintrag zu viel darf das
+    Teilen nicht scheitern lassen — gekappt wird auf die Feldgrenzen."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "question": "Was sagt der Rat?", "answer": "Viel.",
+        "debates": [{"speaker": "Wenzel", "kind": None, "agenda_item": None,
+                     "excerpt": "x" * 5000, "id": 7}] * 25,
+        "press_releases": [{"title": "T" * 900, "url": "https://www.oldenburg.de/x",
+                            "excerpt": "y" * 900}],
+    })
+    assert r.status_code == 201, r.text
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert len(body["debates"]) == 20
+    assert body["debates"][0]["kind"] == "speech"
+    assert len(body["debates"][0]["excerpt"]) == 2000
+    assert len(body["press_releases"][0]["title"]) == 300
+    assert len(body["press_releases"][0]["excerpt"]) == 600
+
+
+def _go_karte(frage: str = "Wie lange darf man im Rat reden?") -> dict:
+    """Die Karte, wie das ``sources``-Ereignis sie dem Client bringt."""
+    from council import rules_of_procedure
+    karte = rules_of_procedure.card(rules_of_procedure.find(frage, frage))
+    assert karte and karte["sections"], frage
+    return karte
+
+
+def test_qa_share_traegt_die_geschaeftsordnung(client):
+    """Bei einer Verfahrensfrage ist die Karte „Aus der Geschäftsordnung"
+    oft der einzige Beleg — ohne sie stünde die geteilte Antwort quellenlos
+    da. Sie reist unverändert mit, samt Wortlaut."""
+    _register(client)
+    karte = _go_karte()
+    r = client.post("/api/council/qa-share", json={
+        "question": "Wie lange darf man im Rat reden?",
+        "answer": "Laut Geschäftsordnung höchstens zehn Minuten.",
+        "rules_of_procedure": karte,
+    })
+    assert r.status_code == 201
+    client.cookies.clear()
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] == karte
+    assert body["sources"] == []
+
+
+def test_qa_share_ohne_geschaeftsordnung(client):
+    """Ohne Karte — und für alle vor dem Nachtrag geteilten Antworten — steht
+    das Feld auf ``null``, statt zu fehlen."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={
+        "question": "Was wurde zum Stadion entschieden?", "answer": "Zugestimmt [5].",
+        "sources": [{"id": 5, "title": "Stadionneubau"}],
+    })
+    client.cookies.clear()
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] is None
+
+
+def test_qa_share_geschaeftsordnung_nur_mit_dem_pdf_der_stadt(client):
+    """Der Snapshot ist öffentlich, die Karte kommt vom Client: Ein Link,
+    der nicht auf das PDF der Stadt zeigt, verwirft die Karte. Das Teilen
+    selbst scheitert daran nicht — eine Karte aus einer älteren Fassung soll
+    die Antwort nicht unteilbar machen."""
+    _register(client)
+    karte = _go_karte()
+    karte["sections"][0]["url"] = "https://boese.example.org/phishing.pdf"
+    r = client.post("/api/council/qa-share", json={
+        "question": "Wie lange darf man im Rat reden?", "answer": "Zehn Minuten.",
+        "rules_of_procedure": karte,
+    })
+    assert r.status_code == 201
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] is None
+
+    # Ebenso eine Karte über dem Deckel: mehr Paragrafen, als je eine
+    # Antwort mitbringt.
+    karte = _go_karte()
+    karte["sections"] = karte["sections"] * 10
+    r = client.post("/api/council/qa-share", json={
+        "question": "Wie lange darf man im Rat reden?", "answer": "Zehn Minuten.",
+        "rules_of_procedure": karte,
+    })
+    assert r.status_code == 201
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] is None
 
 
 def test_qa_share_public_report_and_admin_removal(client):
