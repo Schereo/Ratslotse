@@ -56,6 +56,9 @@ TERMINE_PFAD = "/api/termine.json"
 TIMEOUT = (5, 15)
 UA = "Ratslotse-Wahlabend/1.0 (+https://ratslotse.de/wahlabend)"
 GESEHEN = WURZEL / "data" / "wahltermine-gesehen.json"
+#: Seit wann der Kalender nicht antwortet (ISO-Datum des ersten Fehltags).
+#: Ein Tag Ausfall ist kein Alarm, ab dem zweiten Tag in Folge schon — s. ``main``.
+AUSFALL = WURZEL / "data" / "wahltermine-ausfall.json"
 
 #: So weit zurück interessiert uns ein Termin. Der Kalender reicht bis 2006;
 #: „neu" ist nur, was noch kommt oder gerade war.
@@ -162,6 +165,29 @@ def _merken(schluessel: set[str]) -> None:
                      GESEHEN, exc)
 
 
+def _ausfall_seit() -> str | None:
+    try:
+        wert = json.loads(AUSFALL.read_text(encoding="utf-8")).get("seit")
+        return str(wert) if wert else None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def _ausfall_merken(tag: str) -> None:
+    try:
+        AUSFALL.parent.mkdir(parents=True, exist_ok=True)
+        AUSFALL.write_text(json.dumps({"seit": tag}), encoding="utf-8")
+    except OSError as exc:  # dann eben ohne Gedächtnis — der Lauf geht weiter
+        _log.warning("Wahltermine: %s nicht schreibbar (%s)", AUSFALL, exc)
+
+
+def _ausfall_vorbei() -> None:
+    try:
+        AUSFALL.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def main(heute: date | None = None) -> dict:
     """``heute`` setzt den Stichtag für beide Prüfungen; ohne Angabe gilt das
     echte Datum. Die Tests brauchen ihn, damit ein realer Wahltag in der
@@ -172,10 +198,27 @@ def main(heute: date | None = None) -> dict:
     try:
         termine = hole(url)
     except (requests.RequestException, ValueError) as exc:
-        # Kein Alarm: Der Kalender der Stadt ist kein Dienst, den wir betreiben.
-        # Bleibt er länger weg, meldet sich der Herzschlag über die Job-Ampel.
+        # Der erste Fehltag ist kein Alarm: Der Kalender der Stadt ist kein
+        # Dienst, den wir betreiben, und ein Aussetzer über Nacht kommt vor.
+        # Ab dem ZWEITEN Tag in Folge aber doch. Vorher stand hier „bleibt er
+        # länger weg, meldet sich der Herzschlag" — tat er nie: Der Lauf
+        # endete als `ok`, und für die Job-Ampel ist ein gelungener Lauf
+        # pünktlich. Ein dauerhaft toter Kalender blieb also für immer still.
         _log.warning("Wahltermine: %s nicht erreichbar (%s)", url, exc)
-        return {"termine": 0, "unbekannt": 0, "gemeldet": 0, "fehler": type(exc).__name__}
+        kennzahlen: dict = {"termine": 0, "unbekannt": 0, "gemeldet": 0,
+                            "fehler": type(exc).__name__}
+        tag = (heute or date.today()).isoformat()
+        seit = _ausfall_seit()
+        if seit is None:
+            _ausfall_merken(tag)
+            seit = tag
+        kennzahlen["ausfall_seit"] = seit
+        if seit < tag:
+            from kern.alerts import JobFehler
+            raise JobFehler(f"Terminkalender des Votemanagers seit {seit} nicht erreichbar "
+                            f"({type(exc).__name__}: {str(exc)[:160]})", kennzahlen) from exc
+        return kennzahlen
+    _ausfall_vorbei()
 
     neu = unbekannt(termine, heute=heute)
     ids = fehlende_ids(heute=heute)

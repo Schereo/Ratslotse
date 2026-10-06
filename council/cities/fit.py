@@ -345,12 +345,7 @@ def _probe(main: CitiesStore, rats: CouncilStore, papiere: list[dict],
     stand["probe"] = zaehler
     logger.info("Stichprobe nach %s Urteilen, %s Vorlagen: %s", stand["annotated"],
                 len(papiere), zaehler or "NICHTS")
-    erwartet = []
-    if papier_matrix and papier_matrix[0]:
-        erwartet.append("neighbor")
-    if chunk_matrix and chunk_matrix[0]:
-        erwartet.append("chunk")
-    return [art for art in erwartet if not zaehler.get(art)]
+    return beleg_modul.fehlende_arme(zaehler, chunk_matrix, papier_matrix)
 
 
 def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
@@ -485,6 +480,22 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
             return stand_leer
 
     if nur_hashes:
+        # Erst prüfen, DANN übernehmen. Die Hashes stehen auf den eben
+        # gesammelten Belegen; fehlt ein Vektor-Arm (kein Embedding-Modell —
+        # ``_Vektor.hol`` loggt das nur), wären es Hashes verarmter Belege, und
+        # jedes Urteil sähe danach „aktuell" aus, obwohl es auf vollen stand.
+        # Gezählt wird über die schon gesammelten Belege: kostet nichts.
+        zaehler: dict[str, int] = {}
+        for belege in belege_je.values():
+            for art in {b.kind for b in belege}:
+                zaehler[art] = zaehler.get(art, 0) + 1
+        fehlend = beleg_modul.fehlende_arme(zaehler, matrix, papier_matrix)
+        if fehlend:
+            raise LaufAbbruch(
+                f"Beleg-Arm ohne einen einzigen Treffer: {', '.join(fehlend)} "
+                f"({len(belege_je)} Vorlagen). Keine Quell-Hashes übernommen — "
+                "erst Embedding-Modell und Index prüfen (`cities_backfill.py "
+                "--run --stage index`).")
         stand_h = _leer()
         stand_h["hashes_adopted"] = main.set_source_hashes("paper", ann.key, ann.version,
                                                            hashes)

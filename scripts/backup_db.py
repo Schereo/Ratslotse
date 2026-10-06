@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Tägliche Sicherung — sieben Tages- und drei Wochenstände je Datenbank,
-optional per rsync gespiegelt.
+"""Tägliche Sicherung — sieben Tages- und vier Wochenstände je Datenbank
+(der Städte-Speicher nur zwei Tagesstände, s. ``ROTATION_JE_STAMM``),
+geprüft abgelegt, optional per rsync gespiegelt.
 
 Gesichert wird ALLES, was der Server nicht aus dem Repo wiederherstellen kann:
 
@@ -57,6 +58,23 @@ TAEGLICH = 7
 #: endete dann schon nach 22 Tagen. Mit vier Marken sind es verlässlich 29 bis
 #: 35 Tage, also wirklich ein Monat. Kosten: eine Kopie je Datenbank mehr.
 WOECHENTLICH = 4
+
+#: Eigene, kürzere Rotation je Datenbank: Stamm → (Tagesstände, Wochenstände).
+#:
+#: **``cities``: zwei Tagesstände, keine Wochenmarken (10/2026).** Der
+#: Städte-Speicher ist 2,4 GB groß; mit 7 + 4 Ständen lagen rund 27 GB in
+#: ``data/backups/`` — auf einer Platte, die am 05.10.2026 voll lief. Sein
+#: Inhalt sind öffentliche Ratsdokumente fremder Städte, die sich aus deren
+#: RIS neu holen lassen, dazu Urteile, die Geld kosten (Größenordnung zehn
+#: Dollar, s. ``check_cities.py``), aber kein einziger Datensatz, den es nur
+#: hier gibt. Zwei Stände reichen deshalb für den Fall, gegen den ein Backup
+#: dieser Datei schützt: Ein Lauf hat sie gestern zerschrieben, also zurück
+#: auf vorgestern. Wochenmarken schützten vor einem Schaden, der wochenlang
+#: unbemerkt bleibt — der zeigt sich bei diesem Speicher im Wochenlauf
+#: (``pruefung.pruefe``, Kennzahl ``implausibel``) und nicht erst nach einem Monat.
+ROTATION_JE_STAMM: dict[str, tuple[int, int]] = {
+    "cities": (2, 0),
+}
 
 #: Ein Sicherungsname ist ``<stamm>_JJJJ-MM-TT.sqlite`` — sonst nichts.
 _DATIERT = re.compile(r"^(?P<datum>\d{4}-\d{2}-\d{2})$")
@@ -127,19 +145,71 @@ def rotation(pfade, stamm: str, taeglich: int = TAEGLICH,
     return behalten, [p for _, p in datiert if p not in bleibt]
 
 
+class SicherungKaputt(RuntimeError):
+    """Die frische Kopie besteht ``PRAGMA integrity_check`` nicht."""
+
+
+#: Ab dieser Größe prüft ``quick_check`` statt ``integrity_check``. Der
+#: Unterschied: ``quick_check`` gleicht Indizes nicht gegen ihre Tabellen ab
+#: und ist dadurch um ein Vielfaches schneller — Seitenstruktur, Freiliste und
+#: eine abgeschnittene Datei (der Fall „Platte voll") findet er genauso. Das
+#: zählt, weil der Deploy dieses Skript VOR jedem Prod-Deploy laufen lässt
+#: (``verify_predeploy_backup.py``) und auf den 2,4 GB des Städte-Speichers
+#: wartet.
+VOLLPRUEFUNG_BIS_BYTES = 500_000_000
+
+
+def _pruefen(pfad: Path) -> None:
+    """Die Kopie öffnen und prüfen — wirft, wenn sie nicht taugt."""
+    pragma = ("integrity_check" if pfad.stat().st_size <= VOLLPRUEFUNG_BIS_BYTES
+              else "quick_check")
+    conn = sqlite3.connect(pfad)
+    try:
+        befund = [r[0] for r in conn.execute(f"PRAGMA {pragma}")]
+    finally:
+        conn.close()
+    if befund != ["ok"]:
+        raise SicherungKaputt(f"{pfad.name}: {pragma} → {'; '.join(befund[:5])}")
+
+
 def backup_db(src: Path) -> int:
+    """Eine Datenbank sichern: erst in eine Zwischendatei, dann prüfen, dann
+    unter dem datierten Namen ablegen.
+
+    **Warum nicht direkt in die Zieldatei.** Bis 10/2026 schrieb die
+    Backup-API gleich in ``<stamm>_<datum>.sqlite``. Lief dabei die Platte voll
+    (am 05.10.2026 passiert), blieb eine halbe Datei unter einem gültigen
+    Sicherungsnamen liegen — und die Rotation zählte sie als Stand und warf
+    dafür einen guten hinaus. Jetzt trägt nur eine geprüfte Kopie den Namen:
+    Die Zwischendatei beginnt mit einem Punkt (die Rotation sieht sie nicht),
+    ``integrity_check`` (bei großen Dateien ``quick_check``) muss „ok" sagen,
+    und erst ``os.replace`` macht sie zum Stand. Scheitert ein Schritt, verschwindet die Zwischendatei, und der Lauf
+    wirft (→ Alarm), statt einen Stand vorzutäuschen.
+    """
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     date_str = datetime.now().strftime("%Y-%m-%d")
     dst = BACKUP_DIR / f"{src.stem}_{date_str}.sqlite"
+    tmp = BACKUP_DIR / f".{dst.name}.tmp"
+    tmp.unlink(missing_ok=True)             # Rest eines abgebrochenen Laufs
 
-    src_conn = sqlite3.connect(src)
-    dst_conn = sqlite3.connect(dst)
-    with dst_conn:
-        src_conn.backup(dst_conn)
-    src_conn.close()
-    dst_conn.close()
+    try:
+        src_conn = sqlite3.connect(src)
+        dst_conn = sqlite3.connect(tmp)
+        try:
+            with dst_conn:
+                src_conn.backup(dst_conn)
+        finally:
+            src_conn.close()
+            dst_conn.close()
+        _pruefen(tmp)
+        os.replace(tmp, dst)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
-    behalten, veraltet = rotation(BACKUP_DIR.glob(f"{src.stem}_*.sqlite"), src.stem)
+    taeglich, woechentlich = ROTATION_JE_STAMM.get(src.stem, (TAEGLICH, WOECHENTLICH))
+    behalten, veraltet = rotation(BACKUP_DIR.glob(f"{src.stem}_*.sqlite"), src.stem,
+                                  taeglich=taeglich, woechentlich=woechentlich)
     for alt in veraltet:
         alt.unlink()
 
@@ -154,14 +224,24 @@ def offsite_sync() -> None:
     damit eine Kopie gegen Serververlust, aber kein Archiv: Was hier gelöscht
     wird, ist beim nächsten Lauf auch dort weg.
     BatchMode verhindert Passwort-Prompts im Cron; ein Fehler wirft und landet
-    damit im run_guarded-Alert."""
+    damit im run_guarded-Alert.
+
+    **``--fuzzy`` und ``--delete-after`` (10/2026).** Jeder Tagesstand hat
+    einen neuen Namen; rsync fand im Ziel also nie eine Vorlage für seinen
+    Delta-Abgleich und schob jede Nacht jede Datei ganz über die Leitung —
+    beim Städte-Speicher 2,4 GB. ``--fuzzy`` nimmt die ähnlich benannte
+    Vorgänger-Datei im Ziel als Vorlage; die Seiten einer SQLite-Datei ändern
+    sich von Tag zu Tag nur zum kleinen Teil. ``--delete-after`` gehört
+    zwingend dazu: Mit dem gewöhnlichen ``--delete`` wäre die Vorlage (der
+    eben aus der Rotation gefallene Stand) schon gelöscht, bevor rsync sie
+    braucht. Zwischendateien (``.*.tmp``) wandern nie mit."""
     target = os.environ.get("BACKUP_RSYNC_TARGET")
     if not target:
         return
     port = os.environ.get("BACKUP_RSYNC_SSH_PORT", "22")
     subprocess.run(
         [
-            "rsync", "-az", "--delete",
+            "rsync", "-az", "--fuzzy", "--delete-after", "--exclude", ".*.tmp",
             "-e", f"ssh -p {port} -o BatchMode=yes -o ConnectTimeout=15",
             f"{BACKUP_DIR}/", target,
         ],

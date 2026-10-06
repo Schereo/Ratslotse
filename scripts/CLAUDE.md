@@ -24,6 +24,15 @@ Ein Ops-Skript wird im Zweifel zweimal gestartet. Schreibende Läufe gehören
 in eine Transaktion und müssen idempotent sein; ein zweiter Lauf darf keine
 Dubletten anlegen und keine Korrektur zurückdrehen.
 
+**Das gilt auch für Benachrichtigungen.** Wer einreiht, merkt sich je
+Empfänger und Anlass, dass es geschehen ist — eine Merkmarke mit einem
+Schlüssel, der den Anlass eindeutig macht (N3: `council_results_sent` je
+Sitzung; N5/N6: `evening_notices_sent` je Sitzung bzw. Kalenderwoche; N1/N2:
+der Tagesordnungs-Hash). Bis 10/2026 hatten N5 und N6 keine: Ein zweiter Lauf
+am selben Abend reihte alles noch einmal ein, und die Warteschlange stellte es
+doppelt zu. Gesetzt wird die Marke erst, wenn `notify.einreihen` eine id
+zurückgibt — ein abgeschalteter Anlass hinterlässt keine.
+
 Wer massenhaft schreibt, baut zuerst den Trockenlauf. Der Ops-Default in
 diesem Repo ist Bericht, nicht Ausführung — wer das umdreht, sagt es im
 Namen des Schalters.

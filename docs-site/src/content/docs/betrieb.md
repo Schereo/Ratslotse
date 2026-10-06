@@ -518,6 +518,40 @@ Freitext): `hol` leert sie, bevor die Datei an ihren Platz rückt, und die
 Konto-Löschung räumt sie wie die übrigen Kontodaten
 (`CITIES_USER_OWNED_TABLES` in `council/cities/store.py`).
 
+### Runbook 3.0.0: Belege umschlüsseln, Cron wieder an
+
+Der einmalige Weg, den #1651 für den Prod-Speicher mitbringt — **in dieser
+Reihenfolge**. Gegenüber dem PR-Text von #1651 ist ein Schritt gewandert:
+Die Quell-Hashes der Ideen werden erst übernommen, **nachdem** der erste
+Oldenburg-Lauf die neuen Oldenburger Vorlagen geholt hat. Andersherum stehen
+die Hashes auf dem alten Beleg-Pool, und der erste Sonntag beurteilt trotzdem
+alle rund 200 Ideen neu (~0,9 $, Stunden). Das Skript prüft das inzwischen
+selbst und bricht ab, solange der Speicher hinterherhinkt
+(`oldenburg_rueckstand`, übergehen nur mit `--trotzdem`).
+
+Alles in `~/app`, der Dienst muss nicht neu starten; der Cron bleibt bis
+Schritt 8 aus — kein zweiter Schreiber auf `cities.sqlite`.
+
+| # | Befehl | Erwartung |
+|---|---|---|
+| 1 | `sqlite3 data/cities.sqlite ".backup data/cities.sqlite.vor-3.0.0"` | Sicherung (Handkopie, fällt aus der Rotation) |
+| 2 | `.venv/bin/python scripts/cities_belege_umschluesseln.py` | „863 alte Kennungen im Bestand, 863 davon im Abbild" |
+| 3 | `… --schreiben` | `{"rows": 3242, "keys": 3917, "unknown": 0}`; zweiter Aufruf ist ein No-op |
+| 4 | `… --gruppen` | feste Nummern, ~19 Gruppen vereint, `idea_groups` neu, keine leeren Zeitleisten-Titel |
+| 5 | `… --links` und `… --neu-einordnen "https://e-government.hannover-stadt.de/lhhsimwebre.nsf/DS/0832-2023"` | Links für Magdeburg/Münster; die Tippfehler-Vorlage wird am Sonntag neu eingeordnet |
+| 6 | `.venv/bin/python scripts/check_cities.py --nur-oldenburg` | Minuten, 0 $, `papers_new` ≈ Oldenburger Vorlagen seit 10.09.; endet **rot**, wenn eine Stufe scheitert (seit 10/2026) |
+| 7 | `… cities_belege_umschluesseln.py --hashes-ideen` | Minuten, Cent-Bereich; bricht mit Hinweis ab, wenn Schritt 6 fehlt, und mit `LaufAbbruch`, wenn ein Vektor-Arm stumm ist (Embedding-Modell fehlt) |
+| 8 | crontab scharf: werktags 10:15 `--nur-oldenburg`, sonntags 5 Uhr alles | |
+| 9 | vor dem ersten Sonntag: `check_cities.py --trocken` | Rückstau und Kosten; Stückkosten seit 10/2026 auf der Messung aus #1651 |
+
+**Warum Schritt 7 abbrechen kann.** `_Vektor.hol` schluckt einen
+Embedding-Fehler bewusst (ein Arm darf den Lauf nicht kippen). Damit lieferten
+die Vektor-Arme ohne fastembed-Modell still nichts, und `--hashes-ideen`
+übernahm am 03.10.2026 lokal 199 Hashes in 38 s — auf verarmten Belegen.
+`idea_fit.run` und `fit.run(nur_hashes=True)` zählen deshalb vorher, welche
+Arme Treffer liefern; fehlt einer, dessen Matrix im Bestand liegt, bricht der
+Lauf ab, statt zu urteilen oder Hashes zu übernehmen.
+
 ---
 
 ## Backups
@@ -527,6 +561,16 @@ Konto-Löschung räumt sie wie die übrigen Kontodaten
 konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
 `data/backups/` mit Datum im Dateinamen.
 
+- **Erst prüfen, dann ablegen (seit 10/2026):** Die Backup-API schreibt in
+  eine Zwischendatei (`.<name>.tmp`), `PRAGMA integrity_check` (ab 500 MB
+  `quick_check`) muss „ok" sagen, erst dann wird sie per `os.replace` zum
+  datierten Stand. Vorher ging es direkt in die Zieldatei — bei voller Platte
+  blieb eine halbe Datei unter gültigem Namen liegen und verdrängte in der
+  Rotation einen guten Stand.
+- **Der Städte-Speicher hat eine eigene Rotation:** zwei Tagesstände, keine
+  Wochenmarken (`ROTATION_JE_STAMM`). Mit 7 + 4 Ständen lagen von den 2,4 GB
+  rund 27 GB im Sicherungsordner; der Inhalt ist aus öffentlichen Quellen
+  wiederherstellbar.
 - **Rotation:** zwei Stufen, `TAEGLICH = 7` und `WOECHENTLICH = 4`. Es bleiben
   die sieben jüngsten Sicherungen, dazu aus jeder der vier Kalenderwochen
   **vor** diesem Fenster die jüngste — zusammen 29 bis 35 Tage Abdeckung.
@@ -543,8 +587,11 @@ konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
   Handkopien vom August zwei Tagesstände hinaus (am 03.09.2026 lagen deshalb nur
   fünf Tagesstände von `council` vor, aber sieben von `nwz`).
 - **Off-Site-Mirror (optional):** Ist `BACKUP_RSYNC_TARGET` gesetzt, wird das
-  Backup-Verzeichnis anschließend per `rsync -az --delete` gespiegelt; das Ziel
-  ist damit ein exaktes Abbild der lokalen Rotation. Eine Kopie gegen
+  Backup-Verzeichnis anschließend per `rsync -az --fuzzy --delete-after`
+  gespiegelt; das Ziel ist damit ein exaktes Abbild der lokalen Rotation.
+  `--fuzzy` nimmt den Vortagesstand im Ziel als Vorlage für den
+  Delta-Abgleich — ohne ihn ging jeder neu benannte Stand ganz über die
+  Leitung, beim Städte-Speicher 2,4 GB je Nacht. Eine Kopie gegen
   Serververlust, aber kein Archiv: Was lokal gelöscht wird, ist beim nächsten
   Lauf auch dort weg. Der SSH-Port kommt aus
   `BACKUP_RSYNC_SSH_PORT` (Default `22`), `BatchMode=yes` verhindert

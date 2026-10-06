@@ -95,9 +95,15 @@ def vorabend(council_store, ratslotse_store, heute: date | None = None) -> int:
             empfaenger.setdefault(owner_id, [])
 
         for owner_id, tops in empfaenger.items():
+            # Merkmarke je (Konto, Sitzung): Ein zweiter Lauf am selben Abend
+            # — von Hand oder nach einem Absturz — reihte sonst alles noch
+            # einmal ein, und die Erinnerung käme doppelt.
+            if ratslotse_store.evening_notice_sent(notify.N5_VORABEND, str(ksinr), owner_id):
+                continue
             title, html = _n5_text(sitzung, tops)
             if notify.einreihen(ratslotse_store, owner_id, notify.N5_VORABEND, title, html,
                                 f"/council?tab=sessions&ksinr={ksinr}"):
+                ratslotse_store.mark_evening_notice(notify.N5_VORABEND, str(ksinr), owner_id)
                 eingereiht += 1
     return eingereiht
 
@@ -145,9 +151,14 @@ def wochenueberblick(council_store, ratslotse_store, heute: date | None = None) 
     heute = heute or date.today()
     seit = (heute - timedelta(days=7)).isoformat()
     sitzung_seit, protokoll_seit = meldestichtage(heute)
+    jahr, woche, _ = heute.isocalendar()
+    wochen_key = f"{jahr}-W{woche:02d}"
     eingereiht = 0
 
     for owner_id in ratslotse_store.owners_with_topic_matches_since(seit):
+        # Einmal je Konto und Kalenderwoche — derselbe Grund wie bei N5.
+        if ratslotse_store.evening_notice_sent(notify.N6_WOCHE, wochen_key, owner_id):
+            continue
         ids = ratslotse_store.topic_match_decision_ids_since(owner_id, seit)
         aktuell = council_store.meldewuerdige_beschluss_ids(
             ids, sitzung_seit=sitzung_seit, protokoll_seit=protokoll_seit)
@@ -159,5 +170,6 @@ def wochenueberblick(council_store, ratslotse_store, heute: date | None = None) 
             continue
         title, html = _n6_text(beschluesse)
         if notify.einreihen(ratslotse_store, owner_id, notify.N6_WOCHE, title, html, "/topics"):
+            ratslotse_store.mark_evening_notice(notify.N6_WOCHE, wochen_key, owner_id)
             eingereiht += 1
     return eingereiht

@@ -163,6 +163,25 @@ def test_umschluesseln_loest_keine_neu_urteile_aus(cities, beschluss_arm, monkey
         == "present"
 
 
+def test_ohne_embedding_uebernimmt_nur_hashes_nichts(cities, beschluss_arm, monkeypatch):
+    """Die Hashes stehen auf den gerade gesammelten Belegen. Fehlt das
+    Embedding-Modell, sind das verarmte Belege — übernommen sähe danach jedes
+    Urteil „aktuell" aus. Also Abbruch statt Übernahme."""
+    ann = get("fit")
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(
+        {"status": "missing", "confidence": "high", "evidence": [], "reason": "."}))
+    fit_modul.run(cities, beschluss_arm, ann, MODELL, workers=1)
+    vorher = cities.source_hashes("paper", "fit", ann.version)
+
+    def kaputt(text):
+        raise RuntimeError("fastembed: Modell fehlt")
+
+    monkeypatch.setattr(ev, "_embed_eins", kaputt)
+    with pytest.raises(fit_modul.LaufAbbruch, match="neighbor"):
+        fit_modul.run(cities, beschluss_arm, ann, MODELL, workers=1, nur_hashes=True)
+    assert cities.source_hashes("paper", "fit", ann.version) == vorher
+
+
 def test_ohne_hash_uebernahme_wuerde_ein_bestandslauf_neu_urteilen(cities, beschluss_arm,
                                                                    monkeypatch):
     """Die Gegenprobe zum Test oben: Ohne `nur_hashes` IST es die Falle."""
@@ -211,3 +230,32 @@ def test_das_abbild_ist_eindeutig_und_vollstaendig():
         ksinr, trenner, _top = neu[len(BESCHLUSS_PRAEFIX):].partition(":")
         # Der Punkt kann leer sein (4 von 9.524 Beschlüssen ohne TOP-Nummer).
         assert ksinr.isdigit() and trenner == ":", neu
+
+
+def test_hashes_erst_nach_dem_oldenburg_lauf(cities, rats):
+    """Runbook-Reihenfolge (#1651): `--hashes-ideen` übernimmt die Hashes auf
+    dem Beleg-Pool, der gerade im Speicher liegt. Fehlen dort Oldenburger
+    Vorlagen, die der erste `check_cities --nur-oldenburg` erst holt, beurteilt
+    der erste Sonntag trotzdem alles neu. Das Skript zählt den Rückstand."""
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "umschluesseln_test", Path("scripts/cities_belege_umschluesseln.py"))
+    modul = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(modul)
+
+    def beratung(kvonr, datum):
+        with rats._conn:
+            rats._conn.execute(
+                "INSERT INTO council_deliberations (kvonr, date, committee, fetched_at) "
+                "VALUES (?, ?, 'Rat', '2026-01-01')", (kvonr, datum))
+
+    # Der Speicher kennt die Wärmeplanung vom 20.11.2025 — nichts fehlt.
+    beratung(4711, "2025-11-20")
+    assert modul.oldenburg_rueckstand(cities, rats) == 0
+    # Eine Vorlage, die erst danach beraten wurde, kennt er nicht.
+    beratung(4712, "2026-01-10")
+    beratung(4712, "2026-02-01")
+    assert modul.oldenburg_rueckstand(cities, rats) == 1

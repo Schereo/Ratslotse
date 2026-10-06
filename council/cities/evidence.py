@@ -437,7 +437,8 @@ def search_terms(classification: dict, paper: dict) -> list[str]:
 def arm_census(main: CitiesStore, rats: CouncilStore, papiere: list[dict],
                classifications: dict, model: str,
                chunk_matrix: ChunkMatrix | None = None,
-               paper_matrix: PaperMatrix | None = None) -> dict[str, int]:
+               paper_matrix: PaperMatrix | None = None,
+               begriffe: dict[str, list[str]] | None = None) -> dict[str, int]:
     """Wie viele Vorlagen jeder Arm belegt — ohne ein einziges Sprachmodell.
 
     **Wozu.** Ein Arm kann stumm ausfallen: Am 09.09.2026 lieferte
@@ -455,14 +456,35 @@ def arm_census(main: CitiesStore, rats: CouncilStore, papiere: list[dict],
     Gezählt werden **Vorlagen je Art**, nicht Belege: Dass ein Arm zwölf
     Treffer für ein Papier liefert, sagt weniger als dass er für die Hälfte
     aller Papiere überhaupt etwas findet.
+
+    ``begriffe`` (Kennung → Suchwörter) reicht ein Aufrufer durch, der die
+    Wörter schon hat — dann fragt die Zählung kein Modell. Fehlt eine Vorlage
+    darin, sucht ``evidence_for`` die Wörter selbst.
     """
     zaehler: dict[str, int] = {}
     for p in papiere:
         belege = evidence_for(main, rats, p, classifications.get(p["id"]) or {}, model,
-                              chunk_matrix=chunk_matrix, paper_matrix=paper_matrix)
+                              chunk_matrix=chunk_matrix, paper_matrix=paper_matrix,
+                              begriffe=(begriffe or {}).get(p["id"]))
         for art in {b.kind for b in belege}:
             zaehler[art] = zaehler.get(art, 0) + 1
     return zaehler
+
+
+def fehlende_arme(zaehler: dict[str, int], chunk_matrix, paper_matrix) -> list[str]:
+    """Welcher Vektor-Arm liefert nichts, obwohl seine Grundlage da ist?
+
+    Erwartet wird ein Arm nur, wenn seine Matrix im Bestand liegt — ohne
+    Oldenburger Vektoren ist ein leerer ``neighbor``-Arm richtig, mit ihnen
+    ist er ein Befund: Meist fehlt dann das Embedding-Modell, und
+    ``_Vektor.hol`` hat den Fehler (bewusst) nur geloggt.
+    """
+    erwartet = []
+    if paper_matrix and paper_matrix[0]:
+        erwartet.append("neighbor")
+    if chunk_matrix and chunk_matrix[0]:
+        erwartet.append("chunk")
+    return [art for art in erwartet if not zaehler.get(art)]
 
 
 def _rrf(raenge: list[list[str]]) -> dict[str, float]:
