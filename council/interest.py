@@ -10,9 +10,9 @@ als Code versioniert.
 """
 from __future__ import annotations
 
-import json
 import os
 
+from council import modell_json
 from kern import llm, prompts
 
 MODEL = os.environ.get("COUNCIL_INTEREST_MODEL", "deepseek/deepseek-v4-pro")
@@ -55,11 +55,12 @@ def rate_batch(decisions: list[dict]) -> list[tuple[int, int, str]]:
             temperature=0.2,
             _feature="interest_rating",
         )
-        data = json.loads(resp.choices[0].message.content or "{}")
+        data = modell_json.objekt(resp.choices[0].message.content)
     except Exception:  # noqa: BLE001 — nächster Lauf versucht es erneut
         return []
     out: list[tuple[int, int, str]] = []
-    for r in data.get("ratings") or []:
+    # Nur Objekte: `{"ratings": ["a"]}` brach hier vorher den Nachtlauf ab.
+    for r in modell_json.eintraege(data, "ratings"):
         try:
             did = int(r.get("id"))
             score = int(r.get("score"))

@@ -3801,6 +3801,20 @@ class Store:
                  json.dumps([r[:160] for r in reasons[:3]], ensure_ascii=False),
                  model, duration_ms, cost_usd, frage, antwort))
 
+    def selbstpruefung_tag(self, tag: str) -> dict:
+        """Die Prüfer-Urteile eines UTC-Tages: wie viele, wie viele „unknown“.
+
+        Für den Herzschlag. Nur ``stage = 'model'`` — die Regel-Stufe urteilt
+        nie „unknown“; zählte sie mit, verdünnte sie genau das Signal, auf das
+        es ankommt: Fällt das Prüfer-Modell weg (``self_check.judge`` liefert
+        dann still „unknown“), prüft die Selbstprüfung nichts mehr.
+        """
+        r = self._conn.execute(
+            "SELECT COUNT(*) n, SUM(CASE WHEN verdict = 'unknown' THEN 1 ELSE 0 END) unk "
+            "FROM assistant_checks WHERE stage = 'model' AND substr(created, 1, 10) = ?",
+            (tag,)).fetchone()
+        return {"model": int(r[0] or 0), "unknown": int(r[1] or 0)}
+
     def selbstpruefung_auswertung(self, seit: str) -> dict:
         """Die Zahlen für den Admin-Reiter „Lotti“ — ab dem Tag ``seit``."""
         zeilen = self._conn.execute(

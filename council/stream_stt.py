@@ -236,6 +236,81 @@ class Windower:
             self.next_boundary += self.window
 
 
+class WindowWorker:
+    """Ruft ``on_window`` in einem eigenen Faden — die Aufnahme wartet nie darauf.
+
+    **Der Befund (Review 05.10.2026).** ``Windower`` rief die Live-Verfolgung
+    synchron aus der Leseschleife der ffmpeg-Pipe, und darin hing ein
+    Modellaufruf ohne Frist. Antwortete das Modell eine Minute nicht, las in
+    dieser Minute niemand die Pipe: Gladia bekam kein Audio, ffmpeg staute,
+    und der Verzug der ganzen Aufnahme wuchs um genau diese Minute.
+
+    **Hängt der Faden hinterher, werden Fenster zusammengelegt, nicht
+    verworfen.** Wartet mehr als ein Fenster, wird daraus EIN Fenster vom
+    ältesten Anfang bis zum jüngsten Ende, mit allen Segmenten — der Tracker
+    sieht so den aktuellen Stand statt eines veralteten, verliert aber keine
+    Äußerung (``LiveTracker.on_window`` sammelt die Segmente in
+    ``self.segments``; ein verworfenes Fenster fehlte dort für immer). Ein
+    schließendes Fenster bleibt schließend.
+
+    ``close(wait)`` liefert das Letzte noch aus und wartet höchstens ``wait``
+    Sekunden — der Faden ist ein Daemon, ein hängender Aufruf hält das
+    Prozessende nicht auf.
+    """
+
+    def __init__(self, on_window: Callable[[float, float, list[tuple[float, str]], bool], None]):
+        self.on_window = on_window
+        self._queue: queue.Queue = queue.Queue()
+        self.merged = 0
+        self.delivered = 0
+        self._thread = threading.Thread(target=self._run, daemon=True, name="live-tracker")
+        self._thread.start()
+
+    def submit(self, t_from: float, t_to: float, segments: list[tuple[float, str]],
+               closing: bool) -> None:
+        self._queue.put((t_from, t_to, list(segments), closing))
+
+    def _take(self):
+        """Das nächste Fenster — mit allem, was inzwischen dahinter wartet, verschmolzen."""
+        item = self._queue.get()
+        if item is None:
+            return None
+        t_from, t_to, segs, closing = item
+        while True:
+            try:
+                nxt = self._queue.get_nowait()
+            except queue.Empty:
+                break
+            if nxt is None:
+                # Das Ende kommt NACH diesem Fenster: zurücklegen.
+                self._queue.put(None)
+                break
+            self.merged += 1
+            t_to = nxt[1]
+            segs = segs + nxt[2]
+            closing = closing or nxt[3]
+        return t_from, t_to, segs, closing
+
+    def _run(self) -> None:
+        while True:
+            item = self._take()
+            if item is None:
+                return
+            try:
+                self.on_window(*item)
+            except Exception:  # noqa: BLE001 — Live-Stand ist Zugabe
+                log.exception("Live-Verfolgung für Fenster %.0f–%.0f s fehlgeschlagen",
+                              item[0], item[1])
+            self.delivered += 1
+
+    def close(self, wait: float = 60) -> None:
+        self._queue.put(None)
+        self._thread.join(wait)
+        if self._thread.is_alive():
+            log.warning("Live-Verfolgung nach %.0f s noch nicht fertig — Aufnahme endet trotzdem",
+                        wait)
+
+
 class _Link:
     """Eine Gladia-Sitzung: Websocket plus Leser-Thread, der fertige
     Äußerungen in eine Warteschlange legt. ``offset`` = Audio-Sekunden,
@@ -326,7 +401,10 @@ def record_and_transcribe(on_window=None, source: str | None = None,
     if proc is None or proc.stdout is None:
         return []
     limit = max_seconds or livestream.MAX_HOURS * 3600
-    windower = Windower(on_window, window_seconds)
+    # Die Live-Verfolgung in ihrem eigenen Faden: Ein langsamer Modellaufruf
+    # darf die Leseschleife der Pipe nicht anhalten (s. WindowWorker).
+    worker = WindowWorker(on_window) if on_window is not None else None
+    windower = Windower(worker.submit if worker is not None else None, window_seconds)
     segments: list[tuple[float, str]] = []
     link = _Link(url, 0.0)
     sent = 0.0
@@ -418,6 +496,8 @@ def record_and_transcribe(on_window=None, source: str | None = None,
         link.stop(30)
         drain()
         windower.close()
+        if worker is not None:
+            worker.close()
         if current_file is not None:
             try:
                 current_file.close()
