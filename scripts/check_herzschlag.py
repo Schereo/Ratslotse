@@ -76,6 +76,30 @@ UNBESTAETIGT_ALARM = 10
 #: erst auffallen, wenn sie nach System aussieht. `duplicate_email` zählt
 #: NICHT mit — wer sein Konto vergessen hat, ist kein Angriff.
 ABWEISUNGEN_ALARM = 20
+#: **Kostenalarm**: Ab diesem Betrag (USD) an Modellkosten am Vortag kommt
+#: eine Mail (``LLM_TAGESKOSTEN_ALARM_USD``; 0 schaltet ihn ab). Anlass: das
+#: Review vom 05.10.2026 — die Kontingente deckeln jedes Konto, aber nichts
+#: sagte, wenn der Tag als GANZES aus dem Ruder lief (eine Schleife in einem
+#: Cron, ein neues Feature ohne Bremse, ein teureres Modell).
+#:
+#: **Warum 5 $.** Gemessen ist ein gewöhnlicher Sonntag des Städtevergleichs
+#: mit 1,62 $ (13.09.2026), und der stand damals für rund 70 % der
+#: Modellkosten (``kern/jobs.py``) — ein ganzer Tag lag also grob bei 2–3 $.
+#: Seit der Städtevergleich pausiert ist, liegt er darunter. 5 $ ist damit
+#: gut das Doppelte des teuersten gewöhnlichen Tages: Ein Ausreißer fällt am
+#: nächsten Morgen auf, der Alltag weckt niemanden. Nach den ersten Wochen
+#: lohnt ein Blick ins Admin-Panel (*Kosten*), ob der Wert zum Alltag passt.
+KOSTEN_ALARM_VAR = "LLM_TAGESKOSTEN_ALARM_USD"
+KOSTEN_ALARM_VORGABE = 5.0
+#: **Selbstprüfung still wirkungslos?** Fällt das Prüfer-Modell weg (ein
+#: Preview-Modell, das OpenRouter abschaltet), liefert ``self_check.judge``
+#: für JEDE Antwort „unknown“ — ohne Fehler, ohne Mail; im Panel sähe es aus
+#: wie „nichts zu beanstanden“. Ab diesem Anteil „unknown“ unter den
+#: Prüfer-Urteilen eines Tages wird gemeldet — und nur mit genug Urteilen,
+#: damit nicht ein einzelner Zeitüberschreiter um 3 Uhr den Alarm auslöst.
+#: Im Alltag ist „unknown“ der seltene Fall (Frist 20 s, p50 1,4 s).
+PRUEFER_UNKNOWN_ANTEIL = 0.5
+PRUEFER_MIN_URTEILE = 5
 #: Welche Gründe als Angriff zählen (s. `kern/store.SIGNUP_REJECTION_REASONS`).
 ABWEISUNGSGRUENDE = ("rate_limit", "disposable_email")
 #: Nur für die Mail — die Kennzahlen bleiben englisch.
@@ -136,6 +160,42 @@ def anmeldungen(store) -> dict:
     }
 
 
+def kostenschwelle() -> float | None:
+    """Die Alarmschwelle aus der Umgebung; ``0`` oder Unlesbares heißt „aus"."""
+    import os
+    roh = (os.environ.get(KOSTEN_ALARM_VAR) or "").strip()
+    if not roh:
+        return KOSTEN_ALARM_VORGABE
+    try:
+        wert = float(roh.replace(",", "."))
+    except ValueError:
+        return KOSTEN_ALARM_VORGABE
+    return wert if wert > 0 else None
+
+
+def gestern() -> str:
+    """Der Vortag in Oldenburger Ortszeit (``YYYY-MM-DD``)."""
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    return (datetime.now(ZoneInfo("Europe/Berlin")).date() - timedelta(days=1)).isoformat()
+
+
+def kosten_gestern() -> dict:
+    from kern import usage
+    return usage.tageskosten(gestern())
+
+
+def pruefer_gestern(store) -> dict:
+    """Die Prüfer-Urteile des Vortags (UTC-Tag, wie ``assistant_checks.created``)."""
+    from datetime import timedelta
+
+    from kern.store import today_utc
+    try:
+        return store.selbstpruefung_tag((today_utc() - timedelta(days=1)).isoformat())
+    except Exception:  # noqa: BLE001 — eine fehlende Tabelle ist kein Absturz des Herzschlags
+        return {"model": 0, "unknown": 0}
+
+
 def letzter_lauf(store) -> str:
     """Beginn des letzten Herzschlags (UTC, ISO) — ab da gilt eine Zeile als
     neu. Ohne früheren Lauf: die letzten 24 Stunden."""
@@ -183,9 +243,12 @@ def main() -> dict:
         stumm = schweigende(store)
         konten = anmeldungen(store)
         seit = letzter_lauf(store)
+        pruefer = pruefer_gestern(store)
     finally:
         store.close()
     pruefung = daten(seit)
+    kosten = kosten_gestern()
+    schwelle = kostenschwelle()
 
     p = platz(db.parent if db.parent.exists() else WURZEL)
 
@@ -229,6 +292,22 @@ def main() -> dict:
             f"und heute ({je_grund}). Die Bremse und der Wegwerf-Riegel haben also "
             "gehalten — aber jemand hat es oft versucht.")
 
+    teuer = schwelle is not None and kosten["usd"] >= schwelle
+    if teuer:
+        oben = ", ".join(f"{f}: {k:.2f} $" for f, k in kosten["features"][:3])
+        meldungen.append(
+            f"<b>Hohe Modellkosten gestern</b>: {kosten['usd']:.2f} $ in "
+            f"{kosten['calls']} Aufrufen (Schwelle {schwelle:.2f} $). Am teuersten: {oben}. "
+            "Im Admin-Panel unter <i>Kosten</i> steht der Verlauf.")
+    pruefer_still = (pruefer["model"] >= PRUEFER_MIN_URTEILE
+                     and pruefer["unknown"] / pruefer["model"] >= PRUEFER_UNKNOWN_ANTEIL)
+    if pruefer_still:
+        meldungen.append(
+            f"<b>Die Selbstprüfung prüft nicht mehr</b>: {pruefer['unknown']} von "
+            f"{pruefer['model']} Prüfer-Urteilen gestern waren „unknown“. Meist ist das "
+            "Prüfer-Modell weggefallen oder gedrosselt "
+            "(<code>COUNCIL_ASSISTANT_PRUEFER_MODEL</code>, <code>council/self_check.py</code>).")
+
     if pruefung["befunde"]:
         meldungen.append("Die Datenprüfung hat etwas gefunden:\n"
                          + "\n".join(f"• {b}" for b in pruefung["befunde"]))
@@ -238,6 +317,10 @@ def main() -> dict:
             betreff = "Ratslotse – ein Job schweigt"
         elif auffaellig:
             betreff = "Ratslotse – auffällige Registrierungen"
+        elif teuer:
+            betreff = "Ratslotse – hohe Modellkosten"
+        elif pruefer_still:
+            betreff = "Ratslotse – Selbstprüfung ohne Urteil"
         elif pruefung["befunde"]:
             betreff = "Ratslotse – Datenprüfung"
         else:
@@ -256,6 +339,9 @@ def main() -> dict:
         "konten_24h": konten["created"],
         "konten_24h_unbestaetigt": konten["unverified"],
         "registrierungen_abgewiesen": konten["abgewiesen"],
+        "llm_kosten_gestern_usd": kosten["usd"],
+        "pruefer_urteile_gestern": pruefer["model"],
+        "pruefer_unknown_gestern": pruefer["unknown"],
         **{f"daten_{k}": v for k, v in pruefung["kennzahlen"].items()},
         "gemeldet": len(meldungen),
     }

@@ -137,19 +137,40 @@ ist **dauerhaft aus** und sieht aus wie „noch nicht angeschaltet".
 
 Der einzige Ablauf, der von Hand geht und **nicht** gesquasht wird. Er steht
 vollständig in [`CLAUDE.md`](CLAUDE.md) unter „Deployment & Branch-Modell".
-Die drei Dinge, die man dabei vergisst:
+Die Dinge, die man dabei vergisst:
 
 1. `python3 scripts/ios_vertrag.py --ausgeliefert` — bricht die App im Store?
-2. Nach einem Fix auf `main`: zurück nach `dev` mergen.
-3. **Bei einer Minor-Version: die Karte „Neu bei Ratslotse"** — ein `Release(…)`
-   in [`kern/releases.py`](kern/releases.py), in denselben Commit wie der
-   Versionsschnitt. Entwurf aus den Fragmenten:
-   `scripts/changelog_schnitt.py x.y.0 --highlights`. Höchstens vier Highlights,
-   jedes mit einem Ziel in der App, **nur große Features** — Fixes stehen im
-   Changelog. **Der Titel ist ein Name, kein Halbsatz:** „Das Teilen-Update",
-   benannt nach dem Hauptfeature (Tims Wunsch 08.09.2026; `test_releases.py`
-   hält 40 Zeichen). Verschickt wird später von Hand im Admin-Panel unter
-   *Neuigkeiten*; ein Patch-Release bekommt gar keinen Eintrag.
+2. **Die Runbooks der mitfahrenden PRs.** Jeder PR, der seit dem letzten
+   Release nach `dev` kam und auf Prod etwas von Hand braucht, trägt dafür
+   einen Abschnitt „Runbook" im PR-Text. Die Liste entsteht aus
+   `git log origin/main..origin/dev --merges --first-parent` bzw. den
+   Squash-Commits mit ihrer PR-Nummer; jeden PR einmal öffnen und das Runbook
+   **nach** dem Deploy abarbeiten. Was dort steht, steht nirgendwo sonst.
+3. **Schalter auf Prod.** Was mit diesem Release sichtbar werden soll, gehört
+   in `FEATURE_FLAGS` der Prod-`.env` (kommagetrennt, s. `kern/features.py`)
+   — und danach `sudo systemctl restart nwz-web-api`: Die Liste wird beim
+   Start gelesen, nicht je Anfrage. Ohne Neustart bleibt der Schalter aus,
+   obwohl er in der Datei steht. `curl -s https://ratslotse.de/api/app-config`
+   zeigt, was wirklich an ist.
+4. **crontab auf Prod.** Neue Jobs aus [`kern/jobs.py`](kern/jobs.py) bekommen
+   ihre Zeile, ein pausierter (Feld `pausiert`) wird wieder scharf gestellt —
+   bei `check_cities` sind es **zwei** Zeilen (werktags `--nur-oldenburg`,
+   sonntags alles). Die Überfällig-Ampel rechnet gegen `kern/jobs.py`: Fehlt die
+   crontab-Zeile, meldet `check_herzschlag` den Job am nächsten Morgen.
+5. **Der Rückmerge nach `dev` läuft von selbst** (`sync-main-to-dev.yml`).
+   Nur wenn er rot wird (Konflikt), von Hand nachziehen — der Befehl steht in
+   [`CLAUDE.md`](CLAUDE.md).
+6. **Nur bei einer Major-Version (x.0.0): die Karte „Neu bei Ratslotse"** — ein
+   `Release(…)` in [`kern/releases.py`](kern/releases.py), in denselben Commit
+   wie der Versionsschnitt (Tims Entscheidung 21.09.2026; bis dahin galt sie
+   für jede Minor und wurde fünfmal hintereinander ausgelassen). Entwurf aus
+   den Fragmenten: `scripts/changelog_schnitt.py x.0.0 --highlights`.
+   Höchstens vier Highlights, jedes mit einem Ziel in der App, **nur große
+   Features** — Fixes stehen im Changelog. **Der Titel ist ein Name, kein
+   Halbsatz:** „Das Teilen-Update", benannt nach dem Hauptfeature (Tims Wunsch
+   08.09.2026; `test_releases.py` hält 40 Zeichen). Verschickt wird später von
+   Hand im Admin-Panel unter *Neuigkeiten*; Minor- und Patch-Versionen
+   bekommen gar keinen Eintrag.
 
    **Je Highlight ein Clip, in dem man das Feature bedient sieht** — der
    Zeiger fährt hin, der Klick ist markiert, das Bild zoomt auf die Stelle

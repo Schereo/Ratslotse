@@ -3741,6 +3741,49 @@ class Store:
                 "WHERE status = 'laeuft'", (now,))
             return cur.rowcount
 
+    def deep_jobs_inhalt_loeschen(self, user_id: int) -> int:
+        """„Alle Gespräche löschen" erfasst auch die Recherchen des Kontos.
+
+        Bis 10/2026 blieben Frage und Bericht in ``deep_research_jobs`` liegen,
+        und der Dialog meldete „0 gelöscht". Ältere Jobs fallen ganz weg; die
+        von HEUTE verlieren nur Frage, Bericht und Quellen — die leere Zeile
+        zählt weiter fürs Tageskontingent, sonst gäbe Löschen die fünf
+        Recherchen des Tages zurück. Ein laufender Job bleibt unberührt (sein
+        Thread schreibt gleich noch hinein); ihn räumt die Frist ab
+        (:meth:`deep_jobs_frist_abgelaufen`)."""
+        heute = _tagesbeginn_utc()
+        with self._conn:
+            weg = self._conn.execute(
+                "DELETE FROM deep_research_jobs WHERE user_id = ? AND status != 'laeuft' "
+                "AND created < ?", (user_id, heute)).rowcount or 0
+            geleert = self._conn.execute(
+                "UPDATE deep_research_jobs SET question = '', report = NULL, sources = NULL, "
+                "seen = 1 WHERE user_id = ? AND status != 'laeuft' "
+                "AND (question != '' OR report IS NOT NULL OR sources IS NOT NULL)",
+                (user_id,)).rowcount or 0
+        return weg + geleert
+
+    #: Wie lange eine Recherche OHNE Einwilligung ins Speichern
+    #: (``saves_conversations`` ≠ 1) nach ihrem letzten Stand liegen bleibt.
+    #: Sieben Tage, weil der Bericht im Hintergrund entsteht und per Mail/Push
+    #: gemeldet wird: Wer die App ein paar Tage nicht öffnet, findet ihn über
+    #: ``/deep-research/current`` und den Link der Meldung noch wieder — länger
+    #: braucht der Abruf nicht. Mit Einwilligung steht der Bericht ohnehin als
+    #: Gespräch da (``_gespraech_anhaengen``).
+    DEEP_JOB_FRIST_TAGE = 7
+
+    def deep_jobs_frist_abgelaufen(self, tage: int | None = None) -> int:
+        """Recherchen ohne Einwilligung nach Ablauf der Frist löschen
+        (täglich über ``scripts/speicherfristen.py`` und bei jedem Start)."""
+        tage = self.DEEP_JOB_FRIST_TAGE if tage is None else tage
+        grenze = (datetime.utcnow() - timedelta(days=tage)).isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM deep_research_jobs WHERE status != 'laeuft' AND updated < ? "
+                "AND user_id NOT IN (SELECT id FROM web_users WHERE saves_conversations = 1)",
+                (grenze,))
+            return cur.rowcount or 0
+
     def qa_gespraech_start(self, user_id: int, title: str, kind: str = "ask") -> int | None:
         """None, wenn es das Konto (nicht mehr) gibt — schließt das Fenster,
         in dem eine Konto-Löschung zwischen Einwilligungs-Check und Insert
@@ -3800,6 +3843,20 @@ class Store:
                  json.dumps(categories[:6], ensure_ascii=False),
                  json.dumps([r[:160] for r in reasons[:3]], ensure_ascii=False),
                  model, duration_ms, cost_usd, frage, antwort))
+
+    def selbstpruefung_tag(self, tag: str) -> dict:
+        """Die Prüfer-Urteile eines UTC-Tages: wie viele, wie viele „unknown“.
+
+        Für den Herzschlag. Nur ``stage = 'model'`` — die Regel-Stufe urteilt
+        nie „unknown“; zählte sie mit, verdünnte sie genau das Signal, auf das
+        es ankommt: Fällt das Prüfer-Modell weg (``self_check.judge`` liefert
+        dann still „unknown“), prüft die Selbstprüfung nichts mehr.
+        """
+        r = self._conn.execute(
+            "SELECT COUNT(*) n, SUM(CASE WHEN verdict = 'unknown' THEN 1 ELSE 0 END) unk "
+            "FROM assistant_checks WHERE stage = 'model' AND substr(created, 1, 10) = ?",
+            (tag,)).fetchone()
+        return {"model": int(r[0] or 0), "unknown": int(r[1] or 0)}
 
     def selbstpruefung_auswertung(self, seit: str) -> dict:
         """Die Zahlen für den Admin-Reiter „Lotti“ — ab dem Tag ``seit``."""

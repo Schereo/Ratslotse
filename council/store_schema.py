@@ -4103,6 +4103,72 @@ class SchemaMixin(StoreBasis):
         self._migrate_herkunft()
         self._migrate_owner_id()
         self._satzung_beschlussdatum("satzung_beschlussdatum_2026_09")
+        self._antragsteller_ohne_aenderungen("antragsteller_ohne_aenderungen_2026_10")
+
+    def _antragsteller_ohne_aenderungen(self, marke: str) -> None:
+        """``council_decisions.factions`` am HAUPTbeschluss einmalig um die
+        Fraktionen bereinigen, die nur über eine eigene Teilabstimmung dazukamen.
+
+        Die Extraktion schreibt je TOP alle Fraktionen mit Anträgen oder
+        Änderungslisten hinein; ein CDU-Änderungsantrag zur Stadionvorlage
+        machte so die CDU zur Antragstellerin der Verwaltungsvorlage (Beschluss
+        20947). Seit 10/2026 bereinigt ``save_protocol`` beim Import
+        (``council/applicants.py``); hier zieht der Bestand nach. Die
+        Änderungsanträge selbst bleiben unberührt — ihre Fraktionen stehen an
+        den Zeilen ``kind='subvote'``.
+
+        **Einmal, mit Marke**, aus demselben Grund wie oben: Jeder Store-Start
+        läse sonst alle Beschlüsse, und ein zweiter Start soll nur lesen
+        (``tests/test_store_start_neben_schreiber.py``)."""
+        import json as _js
+
+        from council.applicants import main_item_factions
+
+        hat_marken = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+            "AND name = 'council_migration_marks'").fetchone()
+        if hat_marken and self._conn.execute(
+                "SELECT 1 FROM council_migration_marks WHERE marke = ?", (marke,)).fetchone():
+            return
+        spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(council_decisions)")}
+        neu: list[tuple[str, int]] = []
+        if {"kind", "parent_item", "factions", "item_number", "ksinr", "title"} <= spalten:
+            geaendert: dict[tuple[int, str], list[str]] = {}
+            for ksinr, parent, fac in self._conn.execute(
+                    "SELECT ksinr, parent_item, factions FROM council_decisions "
+                    "WHERE kind = 'subvote' AND factions NOT IN ('', '[]')"):
+                try:
+                    geaendert.setdefault((ksinr, parent), []).extend(_js.loads(fac or "[]"))
+                except (ValueError, TypeError):
+                    continue
+            if geaendert:
+                for did, ksinr, item, title, fac in self._conn.execute(
+                        "SELECT id, ksinr, item_number, title, factions FROM council_decisions "
+                        "WHERE kind = 'decision' AND factions NOT IN ('', '[]')").fetchall():
+                    unter = geaendert.get((ksinr, item))
+                    if not unter:
+                        continue
+                    try:
+                        alt = _js.loads(fac or "[]")
+                    except (ValueError, TypeError):
+                        continue
+                    bereinigt = main_item_factions(alt, title, unter)
+                    if bereinigt != alt:
+                        neu.append((_js.dumps(bereinigt, ensure_ascii=False), did))
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS council_migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+            if neu:
+                self._conn.executemany(
+                    "UPDATE council_decisions SET factions = ? WHERE id = ?", neu)
+            self._conn.execute(
+                "INSERT OR IGNORE INTO council_migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
+        if neu:
+            logging.getLogger("ratslotse.council.store").warning(
+                "Antragsteller: %d Hauptbeschlüsse ohne die Fraktionen ihrer "
+                "Änderungsanträge", len(neu))
 
     def _satzung_beschlussdatum(self, marke: str) -> None:
         """``council_budget_bylaw.session_date`` einmalig auf das Datum des

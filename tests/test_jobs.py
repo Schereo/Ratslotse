@@ -91,6 +91,7 @@ def test_registry_deckt_die_cron_eintraege_ab():
         # Live-Mitschnitt des O1-Streams an Sitzungstagen, 13 Uhr UTC.
         "record_council_livestream",
         "check_vorlage_follows", "remind_setup", "backup_db",
+        "speicherfristen",  # Recherchen ohne Einwilligung nach 7 Tagen löschen, täglich
         "abendmeldungen",   # Design 30a: N5 täglich 18 Uhr, N6 sonntags
         "check_presse",     # Stufe 3a: Stadt-Pressemitteilungen, täglich 5:15
         "social_kartentexte",  # ein Satz je Tagesordnungspunkt (LLM), täglich 7:45

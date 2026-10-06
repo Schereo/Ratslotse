@@ -96,17 +96,26 @@ FEATURES: dict[str, Feature] = {
         description="„In anderen Städten“: Auf Beschluss-Seiten, was andere Städte "
                     "zu derselben Sache beantragt, beraten oder beschlossen haben — aus "
                     "deren Ratsinformationssystemen (council/cities).",
-        fertig_wenn="Der Block lag vier Wochen auf dev, und mindestens zwei Nutzer*innen "
-                    "mit Mandat haben die Treffer als brauchbar bestätigt.",
+        # Mit 3.0.0 auf Prod an (Tims Entscheidung 03.10.2026: Die Messung
+        # beginnt mit Prod). Der Schalter bleibt als Notaus.
+        fertig_wenn="Vier Wochen nach dem Prod-Start von 3.0.0: Die Rückmeldungen "
+                    "„stimmt / stimmt nicht“ (Tabelle `feedback` in cities.sqlite) zeigen mehr "
+                    "Zustimmung als Widerspruch, und mindestens zwei Nutzer*innen mit "
+                    "Mandat haben die Treffer als brauchbar bestätigt — dann Schalter raus. "
+                    "Überwiegt der Widerspruch, auf Prod wieder aus und die Einordnung "
+                    "nacharbeiten.",
     ),
     "ideen-anderswo": Feature(
         key="ideen-anderswo",
         description="„Ideen aus anderen Städten“: je Themenfeld, was andere Räte "
                     "beantragt oder beschlossen haben und Oldenburg fehlt — mit Urteil, Belegen "
                     "und dem Weg zum Original (council/cities, Annotator `fit`).",
-        fertig_wenn="Tim hat zwei Themenfelder durchgesehen und die Urteile für "
-                    "tragfähig erklärt. Bis dahin ist die Seite auf dev sichtbar "
-                    "und auf Prod nicht.",
+        # Mit 3.0.0 auf Prod an (Tims Entscheidung 03.10.2026: Die Messung
+        # beginnt mit Prod). Der Schalter bleibt als Notaus.
+        fertig_wenn="Vier Wochen nach dem Prod-Start von 3.0.0: Die Urteile der beiden "
+                    "meistbesuchten Themenfelder sind anhand der Rückmeldungen „stimmt / "
+                    "stimmt nicht“ geprüft und tragen (mehr Zustimmung als Widerspruch) — "
+                    "dann Schalter raus. Kippen sie, auf Prod wieder aus.",
     ),
     "wahlabend": Feature(
         key="wahlabend",
@@ -140,9 +149,12 @@ FEATURES: dict[str, Feature] = {
         description="Lotti klopft selten von selbst an („Hast du eine Frage zu dem, "
                     "was du siehst?“) — auf Leseseiten, nach 45 s Lesezeit, höchstens "
                     "einmal am Tag und dreimal in 30 Tagen.",
-        fertig_wenn="Vier Wochen gemessen (Admin-Panel, Reiter „Lotti“): Liegt die "
-                    "Ja-Quote unter 5 %, wird er seltener oder abgeschafft — Tims "
-                    "Entscheidung. Bleibt er, fliegt der Schalter raus.",
+        # Mit 3.0.0 auf Prod an (Tims Entscheidung 03.10.2026: Die Messung
+        # beginnt mit Prod — auf dev klopft er bei niemandem an).
+        fertig_wenn="Vier Wochen auf Prod gemessen, gezählt ab dem Start von 3.0.0 "
+                    "(Admin-Panel, Reiter „Lotti“): Liegt die Ja-Quote unter 5 %, wird er "
+                    "seltener oder abgeschafft — Tims Entscheidung. Bleibt er, fliegt der "
+                    "Schalter raus.",
     ),
     "lotti-selbstpruefung": Feature(
         key="lotti-selbstpruefung",
@@ -151,10 +163,13 @@ FEATURES: dict[str, Feature] = {
                     "geprüft — erst ohne Modell, dann von einem Prüfer-Modell einer anderen "
                     "Familie; das Urteil zählt der Admin-Reiter „Lotti“ (council/self_check.py). "
                     "Niemand wartet darauf, nichts wird ersetzt.",
-        fertig_wenn="Vier Wochen Stichprobe auf dev: Zeigt der Admin-Reiter Seiten mit "
-                    "auffällig vielen Beanstandungen, gehen sie als Aufgaben an die Kontext- "
-                    "und Regelarbeit; dann entscheidet Tim, ob die Stichprobe dauerhaft läuft "
-                    "(Schalter raus) oder wegfällt (docs/lotti-selbstpruefung.md).",
+        # Mit 3.0.0 auf Prod an (Tims Entscheidung 03.10.2026: Die Messung
+        # beginnt mit Prod — auf dev fragt kaum jemand Lotti).
+        fertig_wenn="Vier Wochen Stichprobe auf Prod, gezählt ab dem Start von 3.0.0: "
+                    "Zeigt der Admin-Reiter Seiten mit auffällig vielen Beanstandungen, "
+                    "gehen sie als Aufgaben an die Kontext- und Regelarbeit; dann entscheidet "
+                    "Tim, ob die Stichprobe dauerhaft läuft (Schalter raus) oder wegfällt "
+                    "(docs/lotti-selbstpruefung.md).",
     ),
     "lotti-werkzeuge": Feature(
         key="lotti-werkzeuge",

@@ -31,6 +31,7 @@ import type { QaOrtPin } from "@/components/qa-orte-karte";
 
 // 5a/I-10: Leaflet kennt kein SSR — die Mini-Karte kommt nur im Browser.
 const QaOrteKarte = dynamic(() => import("@/components/qa-orte-karte"), { ssr: false });
+import { limitArt } from "@/lib/frage-limit";
 import { QaSource } from "@/lib/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, apiUrl, authHeaders } from "@/lib/api";
@@ -201,7 +202,10 @@ type Turn = {
   debates: DebattenHinweis[];
   cited: number[];
   followups: string[];
-  fehler?: "netz" | "limit" | null;
+  fehler?: "netz" | "limit" | "tag" | null;
+  /** Der Satz des Servers zum Tageskontingent (`qa.KONTINGENT_TEXT`) — er
+   *  nennt die Zahl, die das Web nicht doppelt pflegen soll. */
+  fehlerText?: string;
   abgebrochen?: boolean;
   /** Die Frage nannte keinen Gegenstand — Lotti hat zurückgefragt, statt zu
    *  antworten, und dafür GAR NICHT gesucht. Ohne diese Marke sähe der Turn
@@ -869,9 +873,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       });
       if (!res.ok || !res.body) {
         if (res.status === 429) {
+          // Zwei Bremsen, ein Status (`lib/frage-limit.ts`): Beim
+          // Tageskontingent hülfe „Nochmal versuchen" erst morgen.
+          let detail: unknown = null;
+          try { detail = (await res.json())?.detail; } catch { /* egal */ }
           // Wie im Netz-Fehlerpfad: Die Frage gehört zurück ins Eingabefeld,
           // damit nach der Verschnaufpause ein Neuversuch möglich ist (F8).
-          patchLast({ fehler: "limit" });
+          patchLast(limitArt(detail) === "tag"
+            ? { fehler: "tag", fehlerText: String(detail) } : { fehler: "limit" });
           setQ(text);
           return;
         }
@@ -2109,7 +2118,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             <RechercheLimitKarte onSchnelleFrage={() => { setDeepLimit(false); void ask(q); }} />
           )}
           {rechercheModus && deepHinweis && !deepLimit && <RechercheHinweisKarte frei={deepFrei} />}
-          {letzterFehler === "limit" ? (
+          {letzterFehler === "tag" ? (
+            <div role="status" className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+              <p className="font-medium text-foreground">Für heute ist Schluss</p>
+              <p className="mt-0.5 text-[12.5px] text-muted-foreground">{letzter?.fehlerText}</p>
+            </div>
+          ) : letzterFehler === "limit" ? (
             <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
               <p className="font-medium text-foreground">Kurze Verschnaufpause</p>
               <p className="mt-0.5 text-[12.5px] text-muted-foreground">

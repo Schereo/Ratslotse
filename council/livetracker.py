@@ -76,6 +76,12 @@ log = logging.getLogger(__name__)
 #: statt 1,8 s, zum selben Preis je Aufruf (0,16 ct). 3.1 Flash Lite wäre ein
 #: Viertel billiger, braucht aber 2,2 s. Stand: docs/modell-pruefstand.md.
 TRACKER_MODEL = os.environ.get("COUNCIL_LIVE_TRACKER_MODEL", "google/gemini-3.5-flash-lite")
+#: Frist je Tracker-Aufruf (Sekunden ohne Lebenszeichen). Ein Fenster ist
+#: 15 s Audio; eine Antwort, die länger als 20 s braucht, beschreibt einen
+#: Stand, den das nächste Fenster schon überholt hat. Der Aufruf läuft in
+#: einem eigenen Faden (``stream_stt.WindowWorker``) — die Frist schützt
+#: also nicht die Aufnahme, sondern die Aktualität der Karte.
+TRACKER_FRIST_S = 20
 #: Wie viel vom Vorgänger-Fenster mit ins Transkript geht — ein Aufruf, der
 #: kurz vor der Stück-Grenze fiel, steht sonst in keinem Fenster ganz.
 OVERLAP_SECONDS = 30
@@ -296,6 +302,7 @@ def track_window(agenda: str, roster: str, state: dict, window_text: str,
         messages=[{"role": "system", "content": TRACKER_SYSTEM},
                   {"role": "user", "content": user}],
         temperature=0, response_format={"type": "json_object"}, max_tokens=2500,
+        timeout=TRACKER_FRIST_S,
     )
     if not getattr(resp, "choices", None):
         return _empty(state)

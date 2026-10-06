@@ -1250,6 +1250,10 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     public let abstentions: Int?
     public let factions: [String]
     public let parties: [String]
+    /// True, wenn der Titel die Fraktionen selbst nennt — dann „Antrag von".
+    /// Fehlt bei älteren Servern; dann bleibt es bei der vorsichtigen
+    /// Beschriftung „Anträge im TOP von" (council/applicants.py).
+    public let applicantsNamed: Bool?
     public let policyTags: [String]
     public let rawResult: String?
     public let protocolURL: String?
@@ -1266,6 +1270,7 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, title, summary, committee, outcome, kind, vote, factions, parties, importance, interest, impact
+        case applicantsNamed = "applicants_named"
         case simpleSummary = "simple_summary"
         case officialText = "official_text"
         case policyTags = "policy_tags"
@@ -1307,6 +1312,7 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         abstentions = try values.decodeIfPresent(Int.self, forKey: .abstentions)
         factions = try values.decodeIfPresent([String].self, forKey: .factions) ?? []
         parties = try values.decodeIfPresent([String].self, forKey: .parties) ?? factions
+        applicantsNamed = try values.decodeIfPresent(Bool.self, forKey: .applicantsNamed)
         policyTags = try values.decodeIfPresent([String].self, forKey: .policyTags) ?? []
         rawResult = try values.decodeIfPresent(String.self, forKey: .rawResult)
         protocolURL = try values.decodeIfPresent(String.self, forKey: .protocolURL)
@@ -1342,6 +1348,7 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         try values.encodeIfPresent(abstentions, forKey: .abstentions)
         try values.encode(factions, forKey: .factions)
         try values.encode(parties, forKey: .parties)
+        try values.encodeIfPresent(applicantsNamed, forKey: .applicantsNamed)
         try values.encode(policyTags, forKey: .policyTags)
         try values.encodeIfPresent(rawResult, forKey: .rawResult)
         try values.encodeIfPresent(protocolURL, forKey: .protocolURL)
@@ -1356,6 +1363,20 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         try values.encodeIfPresent(impact, forKey: .impact)
         try values.encodeIfPresent(impactReason, forKey: .impactReason)
     }
+
+    /// „Antrag von" nur, wo der Titel die Fraktion selbst nennt oder es eine
+    /// Teilabstimmung ist. Sonst kann es eine Änderungsliste zu einer
+    /// Verwaltungsvorlage sein (Stadion, Beschluss 20947).
+    public var applicantLabel: String {
+        applicantIsSure ? "Antrag von" : "Anträge im TOP von"
+    }
+
+    /// Dieselbe Unterscheidung kurz, für die Fußzeile einer Karte.
+    public var applicantShortLabel: String {
+        applicantIsSure ? "Antrag" : "Anträge im TOP"
+    }
+
+    private var applicantIsSure: Bool { kind == "subvote" || applicantsNamed == true }
 }
 
 public struct DecisionPage: Codable, Sendable {
@@ -2279,6 +2300,30 @@ public struct DeepResearchRequest: Encodable, Sendable {
         try values.encode(question, forKey: .question)
         // `null` bedeutet auch bei der Recherche: ein neues Gespräch beginnen.
         try values.encode(conversationID, forKey: .conversationID)
+    }
+}
+
+/// „Stimmt" / „stimmt nicht" zu einem Urteil des Städtevergleichs. Seit
+/// 10/2026 im Körper statt in der Query — eine Notiz wäre dort Freitext in
+/// jedem Zugriffsprotokoll. `id` nur für eine Bewegung (Ideengruppe).
+public struct CitiesFeedbackRequest: Encodable, Sendable {
+    public let id: Int?
+    public let verdict: String
+    public let note: String?
+
+    public init(id: Int?, verdict: String, note: String? = nil) {
+        self.id = id
+        self.verdict = verdict
+        self.note = note
+    }
+
+    enum CodingKeys: String, CodingKey { case id, verdict, note }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encodeIfPresent(id, forKey: .id)
+        try values.encode(verdict, forKey: .verdict)
+        try values.encodeIfPresent(note, forKey: .note)
     }
 }
 

@@ -56,7 +56,7 @@ export function GespraecheCard() {
       if (!r.ok) throw new Error();
       setAnzahl(0);
       setFrageLoeschen(false);
-      toast.success("Alle gespeicherten Gespräche gelöscht.");
+      toast.success("Alle gespeicherten Gespräche und Recherchen gelöscht.");
     } catch {
       toast.error("Löschen fehlgeschlagen.");
     }

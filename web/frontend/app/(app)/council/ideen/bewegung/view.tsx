@@ -277,7 +277,7 @@ function Rueckmeldung({ id }: { id: number }) {
     setGesagt(verdict);
     setFehler("");
     try {
-      await api.post(`/council/cities/movements/feedback?id=${id}&verdict=${verdict}`);
+      await api.post("/council/cities/movements/feedback", { id, verdict });
     } catch (e) {
       // Ohne (bestätigtes) Konto geht es nicht — eine Rückmeldung, die sich
       // nicht zählen lässt, ist kein Maßstab. Ein Hinweis statt eines stillen

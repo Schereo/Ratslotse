@@ -2081,12 +2081,35 @@ def _papier_kennung(roh: str) -> str:
     return re.sub(r"^(https?):/+(?=[^/])", r"\1://", roh)
 
 
+class CitiesFeedbackBody(BaseModel):
+    """Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.
+
+    Bis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in
+    der URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die
+    ausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query
+    und gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch
+    hier."""
+    verdict: str | None = Field(default=None, pattern="^(right|wrong)$")
+    note: str | None = Field(default=None, max_length=500)
+    #: Nur für ``/cities/movements/feedback``: die Gruppen-Kennung.
+    id: int | None = None
+
+
+def _feedback_werte(body: CitiesFeedbackBody | None, verdict: str | None) -> tuple[str, str | None]:
+    """Urteil und Notiz aus Körper oder (für ausgelieferte Clients) Query."""
+    verdict = (body.verdict if body and body.verdict else None) or verdict
+    if verdict not in ("right", "wrong"):
+        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    note = ((body.note if body else None) or "").strip()[:500] or None
+    return verdict, note
+
+
 @router.post("/cities/movements/feedback")
 def cities_movement_feedback(
     request: Request,
-    id: int,
-    verdict: str,
-    note: str | None = None,
+    body: CitiesFeedbackBody | None = None,
+    id: int | None = None,
+    verdict: str | None = None,
     user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
@@ -2100,13 +2123,15 @@ def cities_movement_feedback(
     from council.cities.clusters import CLUSTER_VERSION
 
     cities_feedback_limiter.check(request, subject=user["id"])
-    if verdict not in ("right", "wrong"):
-        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    verdict, note = _feedback_werte(body, verdict)
+    id = (body.id if body and body.id is not None else None) or id
+    if id is None:
+        raise HTTPException(400, "id fehlt")
     if not cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
         raise HTTPException(404, "unbekannte Bewegung")
     ann, ver = CitiesStore.IDEEN_IDEA_FIT
     cities.put_feedback("cluster", f"{CLUSTER_VERSION}:{id}", ann, ver, int(user["id"]),
-                        verdict, (note or "").strip()[:500] or None)
+                        verdict, note)
     return {"paper_id": f"{CLUSTER_VERSION}:{id}", "verdict": verdict}
 
 
@@ -2114,8 +2139,8 @@ def cities_movement_feedback(
 def cities_idea_feedback(
     request: Request,
     paper_id: str,
-    verdict: str,
-    note: str | None = None,
+    body: CitiesFeedbackBody | None = None,
+    verdict: str | None = None,
     user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
@@ -2137,14 +2162,12 @@ def cities_idea_feedback(
     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
     """
     cities_feedback_limiter.check(request, subject=user["id"])
-    if verdict not in ("right", "wrong"):
-        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    verdict, note = _feedback_werte(body, verdict)
     paper_id = _papier_kennung(paper_id)
     if not cities.paper(paper_id):
         raise HTTPException(404, "unbekannte Vorlage")
     ann, ver = CitiesStore.IDEEN_FIT
-    cities.put_feedback("paper", paper_id, ann, ver, int(user["id"]), verdict,
-                        (note or "").strip()[:500] or None)
+    cities.put_feedback("paper", paper_id, ann, ver, int(user["id"]), verdict, note)
     return {"paper_id": paper_id, "verdict": verdict}
 
 
@@ -2995,7 +3018,11 @@ def gespraech_loeschen(conversation_id: int, user: dict = Depends(require_active
 @router.delete("/conversations")
 def gespraeche_alle_loeschen(user: dict = Depends(require_active),
                              ratslotse: Store = Depends(get_store)) -> ConversationsDeleted:
-    return {"deleted": ratslotse.qa_gespraeche_loeschen(user["id"])}
+    """„Alle löschen": Gespräche UND die Fragen und Berichte der gründlichen
+    Recherche — die standen bis 10/2026 weiter mit dem Konto in
+    ``deep_research_jobs``, obwohl der Dialog „alles gelöscht" sagte."""
+    return {"deleted": ratslotse.qa_gespraeche_loeschen(user["id"]),
+            "research_deleted": ratslotse.deep_jobs_inhalt_loeschen(user["id"])}
 
 
 class QaFeedbackBody(BaseModel):
@@ -3060,7 +3087,10 @@ def debatten_nachladen(
     Aussprache zu allen belegten Beschlüssen. Neueste Sitzung zuerst.
     """
     if not user.get("limits_unlocked"):
-        debatten_limiter.check(request)
+        # Je KONTO, nicht je Adresse (Review 05.10.2026): Mobilfunkanbieter
+        # bündeln viele Geräte hinter einer Adresse, und ein Konto ist die
+        # Einheit, an der die Kosten hängen — dieselbe Wahl wie bei /ask.
+        debatten_limiter.check(request, subject=user["id"])
     from council import embeddings as emb
     rows: list[dict] = []
     try:
@@ -3107,7 +3137,8 @@ def partei_meinungen_endpoint(
     das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
     ist — der Baustein erscheint dann nicht."""
     if not user.get("limits_unlocked"):
-        partei_meinungen_limiter.check(request)
+        # Je Konto, wie bei /ask — der Baustein kostet einen Modellaufruf.
+        partei_meinungen_limiter.check(request, subject=user["id"])
     try:
         import hashlib
 
@@ -3531,6 +3562,10 @@ def qa_share_melden(
         f"{labels[body.reason]}\nShare-Token: {token}\nInhaber-ID: {owner_id}",
     )
     return {"ok": True}
+
+
+#: So viele Zeichen einer Frage kommen an — s. ``AskBody._frage_kappen``.
+QA_FRAGE_MAX = 300
 
 
 class AskTurn(BaseModel):
@@ -4785,6 +4820,17 @@ class ScreenContext(BaseModel):
 
 class AskBody(BaseModel):
     question: str
+
+    # **Gekappt, nicht abgewiesen** (Review 05.10.2026): Ohne Grenze kostete
+    # eine Frage von 200 kB 8,6 s CPU (Suche, Analyse, Rerank laufen über den
+    # ganzen Text), auf derselben Maschine, die die Website ausliefert. Der
+    # Prompt nimmt ohnehin nur die ersten 300 Zeichen (``question[:300]``).
+    # Kein ``max_length``: Ein 422 bräche eine ausgelieferte App, die längere
+    # Fragen schickt — der Vertrag bleibt dadurch auch unverändert.
+    @field_validator("question", mode="before")
+    @classmethod
+    def _frage_kappen(cls, v):
+        return v[:QA_FRAGE_MAX] if isinstance(v, str) else v
     # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
     # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
     # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
@@ -5072,6 +5118,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
+        # Das Tageskontingent (`qa.TAGES_KONTINGENT`, dort begründet). Der
+        # Fenster-Zähler oben allein ließ 1.440 Fragen am Tag zu. Der Satz ist
+        # für Menschen geschrieben: Web und App zeigen `detail` — die
+        # ausgelieferte App zeigt bei jedem Fehler genau diesen Text.
+        if ratslotse.aktivitaet_heute(user["id"], qa.KONTINGENT_MERKMAL) >= qa.TAGES_KONTINGENT:
+            raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, qa.KONTINGENT_TEXT)
     ratslotse.record_activity(user["id"], "ai_question")  # Admin-Statistik (20a)
     # Kam die Frage aus Lottis Fenster? Eigener Zähler — „wie oft führt eine
     # Erklärung ins Archiv?" ist die Frage, an der hängt, ob der zweite

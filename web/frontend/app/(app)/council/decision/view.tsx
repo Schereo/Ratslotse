@@ -207,7 +207,7 @@ function GlanceCard({
       </GlanceRow>
 
       {d.parties.length > 0 && (
-        <GlanceRow label="Antrag von">
+        <GlanceRow label={d.kind === "subvote" || d.applicants_named ? "Antrag von" : "Anträge im TOP von"}>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {d.parties.map((p) => <PartyBadge key={p} party={p} />)}
           </div>

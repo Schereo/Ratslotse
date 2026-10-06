@@ -63,8 +63,13 @@ export interface CouncilDecision {
   vote: string | null;
   no_votes: number | null;
   abstentions: number | null;
+  /** Fraktionen mit Anträgen zu diesem Punkt — am Hauptbeschluss ohne die
+   *  Änderungsanträge, die als eigene Teilabstimmung erfasst sind. */
   factions: string[];
   parties: string[];
+  /** True, wenn der Titel die Fraktionen selbst nennt: dann „Antrag von".
+   *  Sonst kann es auch eine Änderungsliste sein → „Anträge im TOP von". */
+  applicants_named?: boolean;
   template_number: string | null;
   raw_result: string | null;
   committee: string;

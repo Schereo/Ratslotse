@@ -378,8 +378,62 @@ def setz(ueberschreiben: bool) -> int:
     if not geklont:
         shutil.copy2(ABZUG, ziel)
     print(f"✓ {ziel.relative_to(WURZEL)} ({'geklont' if geklont else 'kopiert'})")
+    _akte_bauen(ziel)
     _warnen()
     return 0
+
+
+def _akte_bauen(ziel: Path) -> None:
+    """Die Grundakten bauen — der Abzug kommt ohne sie an.
+
+    ``council_matters`` füllt im Betrieb ``check_protocols.py`` jede Nacht; auf
+    dev laufen keine Crons, im Abzug ist die Tabelle also leer. Bis 10/2026
+    blieb sie das auch nach ``setz`` — und jede lokale Messung von „Frag den
+    Rat" maß still den Stand OHNE Akte, ohne dass etwas darauf hinwies.
+    Ohne LLM; auf dem vollen Abzug rund eine Minute (gemessen 06.10.2026:
+    68 s), aufgerufen wie ``scripts/build_matters.py``."""
+    sys.path.insert(0, str(WURZEL))
+    try:
+        from council import matters
+        from council.store import CouncilStore
+
+        store = CouncilStore(ziel)
+        try:
+            ergebnis = matters.build(store)
+        finally:
+            store.close()
+    except Exception as exc:  # noqa: BLE001 — der Abzug liegt; die Akte ist Zugabe
+        print(f"ACHTUNG: Akte nicht gebaut ({exc}). Lokale Messungen laufen dann "
+              f"OHNE Akte.\n  python scripts/build_matters.py", file=sys.stderr)
+        return
+    print(f"✓ Akte gebaut: {json.dumps(ergebnis, ensure_ascii=False)}")
+
+
+def _akte_pruefen(kopie: Path) -> None:
+    """Laut warnen, wenn die Kopie Beschlüsse, aber keine Akte trägt."""
+    if not kopie.exists():
+        return
+    sys.path.insert(0, str(WURZEL))
+    from kern.dbfehler import nur_lesen
+    try:
+        db = nur_lesen(kopie)
+    except sqlite3.Error:
+        return
+    try:
+        try:
+            akten = db.execute("SELECT COUNT(*) FROM council_matters").fetchone()[0]
+        except sqlite3.Error:
+            akten = 0
+        try:
+            beschluesse = db.execute("SELECT COUNT(*) FROM council_decisions").fetchone()[0]
+        except sqlite3.Error:
+            beschluesse = 0
+    finally:
+        db.close()
+    if beschluesse and not akten:
+        print("\n  ACHTUNG: Die Akte ist leer (council_matters: 0 Zeilen). Jede lokale")
+        print("  Messung von „Frag den Rat“ misst dann still den Stand OHNE Akte:")
+        print("      python scripts/build_matters.py")
 
 
 def setz_staedte(ueberschreiben: bool) -> int:
@@ -437,6 +491,7 @@ def stand() -> int:
     print(f"In diesem Worktree: "
           f"{'ja, %.0f MB' % (hier.stat().st_size / 1e6) if hier.exists() else 'nein'}")
     _kopie_gegen_abzug(hier)
+    _akte_pruefen(hier)
     _warnen()
     return 0
 

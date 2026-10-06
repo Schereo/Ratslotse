@@ -61,6 +61,9 @@ PROBEN: tuple[str, ...] = (
     # Bewegungen lesen (Plan PR 50).
     "/api/council/cities/ideas/fields",
     "/api/council/cities/movements",
+    # Die Wahlen aus kommunalwahl/wahlen/ — liest Dateien statt einer Tabelle
+    # und fiele damit sonst durch jedes Raster, das nur Migrationen sucht.
+    "/api/wahlen",
 )
 
 #: Endpunkte MIT Konto. Bewusst nur die, deren Antwort für alle gleich

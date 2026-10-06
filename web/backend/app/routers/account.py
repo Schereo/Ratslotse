@@ -295,7 +295,8 @@ def change_email(
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
     store.create_email_verification(int(user["id"]), token_hash, expires, new_email=neu)
-    background.add_task(_send_email_change_link, neu, raw, user.get("display_name"))
+    background.add_task(_send_email_change_link, neu, raw, user.get("display_name"),
+                        int(user["id"]))
     if alt and not alt.endswith("@local"):
         background.add_task(_send_email_change_notice, alt, neu, user.get("display_name"),
                             int(user["id"]))

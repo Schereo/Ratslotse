@@ -220,8 +220,10 @@ Arbeit geht wie immer per Pull Request nach `dev`.
 ## Geplante Jobs (Cron)
 
 Alle Jobs laufen auf der App-VM; maßgeblich ist die dort eingetragene Crontab.
-Die Zeitpläne stehen als Docstring im jeweiligen Skript und in
-`scripts/README.md`.
+Die Kopie, gegen die die Überfällig-Ampel im Admin-Panel und
+`check_herzschlag.py` rechnen, steht in `kern/jobs.py` — die Tabelle hier
+folgt ihr (Stand 10/2026: 20 Jobs). Ein Job ohne Zeile in dieser Tabelle ist
+ein Hinweis, dass jemand nur eine der beiden Stellen nachgezogen hat.
 
 | Skript | Rhythmus | Aufgabe |
 |---|---|---|
@@ -235,6 +237,15 @@ Die Zeitpläne stehen als Docstring im jeweiligen Skript und in
 | `check_finanzdaten.py`&nbsp;¹ | sonntags `0 6 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#der-bereich-hält-sich-selbst-aktuell). |
 | `check_beteiligungsbericht.py` | sonntags `30 6 * * 0` | Lädt die Beteiligungsberichte von oldenburg.de und liest Gesellschaften, Aufsichtsorgane und Kennzahlen daraus. Der einzige Haushalts-Cron, der selbst herunterlädt. |
 | `archive_statistik.py` | täglich `0 4 * * *` | Sichert die amtlichen Statistik-Quellen versioniert unter `data/archiv/` — siehe unten. |
+| `check_vorlage_follows.py` | täglich `30 9 * * *` | Neue Beratungsstationen und nachgetragene Ergebnisse zu Vorlagen, denen jemand folgt. |
+| `check_council_videos.py` | täglich `30 10 * * *` | Abstimmungsergebnisse aus der O1-Aufzeichnung der Ratssitzung — als vorläufiger Stand, bis das Protokoll kommt. |
+| `record_council_livestream.py` | täglich `0 13 * * *` (UTC) | Schneidet die Ratssitzung live aus dem O1-Stream mit, verfolgt den laufenden TOP und liest die Ergebnisse noch am Abend; an Tagen ohne Ratssitzung ein Leerlauf. |
+| `check_presse.py` | täglich `15 5 * * *` | RSS-Abgleich der städtischen Pressemitteilungen und der laufenden Bauleitplan-Beteiligungen. |
+| `social_kartentexte.py` | täglich `45 7 * * *` | Ein erklärender Satz je inhaltlichem Tagesordnungspunkt der nächsten drei Wochen (LLM, schreibt nie zweimal dasselbe). |
+| `render_plaene.py` | sonntags `30 4 * * 0` | Neue Bauleitplan-Anlagen (Planzeichnung, Lageplan) als Bilder für die Beschluss-Seite. |
+| `speicherfristen.py` | täglich `40 4 * * *` | Löscht Recherchen von Konten ohne Einwilligung ins Speichern sieben Tage nach ihrem letzten Stand (dieselbe Frist greift zusätzlich bei jedem Start des Backends). |
+| `check_wahltermine.py` | täglich `15 6 * * *` | Vergleicht den Terminkalender des Votemanagers mit `kommunalwahl/wahlen/` — meldet eine unbekannte Wahl und eine Wahl-Id, die endlich da ist oder kurz vor dem Wahltag noch fehlt. Legt nichts an. |
+| `check_herzschlag.py` | täglich `30 6 * * *` | Meldet Jobs, die gegen ihren Takt aus `kern/jobs.py` schweigen, einen vollen Datenträger, auffällige Registrierungen und Verstöße gegen die Datenregeln. |
 | `check_cities.py` | werktags `15 10 * * 1-6` mit `--nur-oldenburg`, sonntags `0 5 * * 0` | Städte-Speicher: werktags nur Oldenburg übernehmen und einbetten (ohne Netz und Modell — daraus entsteht „Anderswo" unter neuen Beschlüssen), sonntags zusätzlich die Vergleichsstädte, Einordnung, Ideen-Gruppen und Urteile. Kostengrenze je Lauf `CITIES_MAX_USD` (Vorgabe 2 $), Frist `CITIES_MAX_SECONDS`. |
 
 ¹ **Nur auf Prod** — und das ist seit 09/2026 die richtige Seite. Der
@@ -760,6 +771,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_QA_MODEL` | „Frag den Rat": Antwort, vereinfachte Antwort, Deep-Research-Bericht, Partei-Meinungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
 | `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (mit ZDR); auch die Städte-Suchbegriffe | `google/gemini-3.1-flash-lite` |
 | `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
+| `COUNCIL_ASSISTANT_PRUEFER_MODEL` | Lottis Selbstprüfung: Prüfer-Modell einer anderen Familie (`council/self_check.py`, Schalter `lotti-selbstpruefung`) | `google/gemini-3-flash-preview` |
+| `COUNCIL_ASSISTANT_PRUEFER_ANTEIL` | Anteil der Erklärungen, die nachträglich geprüft werden (0–1) | `0.1` |
+| `COUNCIL_DISTRICT_MODEL` | „Mein Viertel": Vorhaben aus Beschlüssen bündeln und einordnen (`council/viertel.py`) | `openai/gpt-6-luna` |
 | `COUNCIL_QUIZ_MODEL` | Quizfragen erzeugen | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_QUIZ_VERIFY_MODEL` | Verify-Pass über erzeugte Quizfragen | `openai/gpt-4o-mini` |
 | `COUNCIL_QUIZ_APPEAL_MODEL` | Richter: benotet, wie reizvoll eine Quizfrage ist | wie `COUNCIL_QUIZ_VERIFY_MODEL` |
@@ -831,6 +845,30 @@ sind.
 | `BACKUP_RSYNC_TARGET` | Ziel des Off-Site-Mirrors; leer = kein Mirror | nein | leer |
 | `BACKUP_RSYNC_SSH_PORT` | SSH-Port des Backup-Ziels | nein | `22` |
 | `FASTEMBED_CACHE_PATH` | Persistenter Modell-Cache von fastembed (ohne ihn liegt er im Temp-Verzeichnis und ist nach einem Neustart weg) — von der Bibliothek selbst gelesen, nicht vom Repo-Code | nein | Vorgabe der Bibliothek |
+
+### Wahlen
+
+| Variable | Wofür | Pflicht | Default |
+|---|---|---|---|
+| `WAHLKAMPF_TOKEN` | Geheimer Link-Teil der Wahlkampf-Auswertung (`scripts/stichwahl_potenzial.py --link`); mindestens 16 Zeichen, sonst wird er aus `WEB_JWT_SECRET` abgeleitet | nein | abgeleitet |
+| `WAHLTERMINE_URL` | Terminkalender des Votemanagers für `check_wahltermine.py`; leer = aus der Basis-URL der aktiven Wahl abgeleitet | nein | abgeleitet |
+
+### Städte-Speicher (`check_cities.py`)
+
+| Variable | Wofür | Pflicht | Default |
+|---|---|---|---|
+| `CITIES_DB` | Pfad zur Städte-Datenbank | nein | `data/cities.sqlite` |
+| `CITIES_FILES_DIR` / `CITIES_RAW_DIR` | Ablage der geladenen Dokumente bzw. Rohantworten | nein | `data/cities-files`, `data/cities-raw` |
+| `CITIES_MAX_USD` | Kostengrenze für den ganzen Lauf über alle Stufen; `0` hebt sie auf | nein | `2.0` |
+| `CITIES_MAX_SECONDS` | Frist je Lauf in Sekunden; `0` hebt sie auf (Nachlauf von Hand) | nein | `14400` (4 h) |
+| `CITIES_ANNOTATE_MAX` | Stückzahl je Lauf für die Einordnung (Deckel gegen den Rückstau) | nein | `3000` |
+| `CITIES_REASON_MAX` | Abschnitte je Lauf für die Begründungen | nein | `400` |
+| `CITIES_SINCE_DAYS` | Wie weit ein Lauf zurückschaut | nein | `60` |
+| `CITIES_RATE_SECONDS` | Abstand zwischen zwei Abrufen bei einem fremden Ratsinformationssystem (mindestens 1 s) | nein | `1.0` |
+| `CITIES_FIT_WORKERS`, `CITIES_TERM_WORKERS`, `CITIES_IDEA_FIT_WORKERS`, `CITIES_STANCE_WORKERS` | Gleichzeitige Urteile je Stufe — mehr ist schneller, nicht teurer | nein | `8`, `16`, `4`, `12` |
+| `CITIES_FIT_VOTES` / `CITIES_FIT_PROBE` | Stimmen je Urteil bzw. Stichprobengröße der Selbstkontrolle | nein | `3` / `300` |
+| `CITIES_*_MODEL` (`CLASSIFY`, `FIT`, `CLUSTER`, `STANCE`, `REASON`, `EFFORT`, `IDEA_FIT`) | Modell je Stufe | nein | `deepseek/deepseek-v4-flash` |
+| `CITIES_LLM_TIMEOUT` | Zeitgrenze je Modellaufruf in Sekunden | nein | `120` |
 
 :::tip
 Wer nur lokal entwickelt, braucht davon fast nichts: `OPENROUTER_API_KEY` für

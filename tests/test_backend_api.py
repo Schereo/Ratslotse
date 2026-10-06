@@ -557,6 +557,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "check_council_videos",  # vorläufige Ergebnisse aus der O1-Aufzeichnung, täglich
         "record_council_livestream",  # Live-Mitschnitt des O1-Streams an Sitzungstagen
         "check_vorlage_follows", "remind_setup", "backup_db", "abendmeldungen",
+        "speicherfristen",  # Recherchen ohne Einwilligung nach 7 Tagen löschen
         "check_presse",  # Stufe 3a: Stadt-Pressemitteilungen, täglich
         "social_kartentexte",  # ein Satz je Tagesordnungspunkt (LLM), täglich 7:45
         "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags
@@ -2189,6 +2190,23 @@ def test_feedback_ok_without_email_config(client):
     with patch("app.routers.feedback.get_settings", return_value=fake):
         r = client.post("/api/feedback", json={"kind": "other", "message": "Test ohne Mail-Config"})
     assert r.status_code == 200 and r.json()["ok"] is True
+
+
+def test_feedback_ist_je_konto_gebremst(client, monkeypatch):
+    """Jede Einreichung ist eine Mail an den Betrieb — bis 10/2026 ohne Bremse."""
+    import collections
+
+    from app.ratelimit import feedback_limiter
+    from types import SimpleNamespace
+    _register(client)
+    monkeypatch.delenv("DISABLE_RATE_LIMIT", raising=False)
+    monkeypatch.setattr(feedback_limiter, "max_calls", 2)
+    monkeypatch.setattr(feedback_limiter, "_calls", collections.defaultdict(list))
+    fake = SimpleNamespace(resend_api_key="", feedback_email="", web_admin_email="", email_from="")
+    with patch("app.routers.feedback.get_settings", return_value=fake):
+        codes = [client.post("/api/feedback", json={"kind": "other", "message": f"Nachricht {i}"}).status_code
+                 for i in range(3)]
+    assert codes == [200, 200, 429]
 
 
 # ---- Kontaktformular der Hilfe-Seite (öffentlich, Apple-Richtlinie 1.5) ----
@@ -6214,6 +6232,25 @@ def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
     finally:
         store.close()
         deepresearch._registry.clear()
+
+
+def test_alle_gespraeche_loeschen_erfasst_die_recherchen(client):
+    """„Alle löschen" meldete bis 10/2026 ``deleted: 0`` und ließ Frage und
+    Bericht jeder Recherche mit dem Konto in ``deep_research_jobs`` stehen."""
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        job = store.deep_job_anlegen(uid, "Stand beim Stadionneubau?")
+        store.deep_job_update(job, "fertig", bericht="Der Rat hat …")
+    finally:
+        store.close()
+
+    r = client.delete("/api/council/conversations")
+    assert r.status_code == 200
+    assert r.json() == {"deleted": 0, "research_deleted": 1}
+    snap = client.get(f"/api/council/deep-research/{job}").json()
+    assert snap["question"] == "" and snap["report"] is None
 
 
 def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
