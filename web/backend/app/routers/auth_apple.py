@@ -221,7 +221,23 @@ def apple_login(
             # selbst zurück — die Moderationsentscheidung war damit aushebelbar,
             # sobald die Apple-ID dieselbe bestätigte Adresse trug.
             war_unbestaetigt = not existing.get("email_verified")
-            store.link_apple_sub(existing["id"], sub)
+            if war_unbestaetigt:
+                # **Ein unbestätigtes Konto gehört noch niemandem.** Wer eine
+                # fremde Adresse mit eigenem Passwort registriert, kommt nicht
+                # weiter als bis zur Bestätigungs-Wand — bis die echte Person
+                # sich mit Apple anmeldet und das Konto damit bestätigt. Bis
+                # 10/2026 galten danach Passwort und Sitzung des Anmeldenden
+                # weiter (90 Tage), und er las mit, was die Person speicherte.
+                # Deshalb: Passwort durch einen Zufallswert ersetzen (das Konto
+                # gilt als Apple-only, ein eigenes geht über den Reset-Weg),
+                # alle Sitzungen beenden und die Push-Geräte des Vorbesitzers
+                # abmelden.
+                store.update_password_hash(existing["id"], hash_password(secrets.token_urlsafe(32)))
+                store.increment_token_version(existing["id"])
+                for geraet in store.get_push_tokens_for_owner(existing["id"]):
+                    store.remove_push_token(geraet["token"])
+            store.link_apple_sub(existing["id"], sub,
+                                 password_set=False if war_unbestaetigt else None)
             if war_unbestaetigt:
                 store.set_email_verified(existing["id"])
                 if existing.get("status") == "pending":

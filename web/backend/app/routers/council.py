@@ -3108,9 +3108,42 @@ class QaShareDebate(BaseModel):
         return v
 
 
+def _stadt_link(v: str | None) -> str | None:
+    """Nur Links auf die Stadt Oldenburg (https, Host ``oldenburg.de`` oder
+    eine Subdomain) — sonst ``None``.
+
+    Geteilte Antworten (``/g``) sind öffentlich, und Presse- und Anlagen-Links
+    kommen mit dem Snapshot vom Client. Bis 10/2026 wurden sie ungeprüft
+    gespeichert: Unter ratslotse.de ließ sich so ein Link auf eine beliebige
+    Seite oder eine ``javascript:``-URL verbreiten. Echte Werte kommen nur von
+    ``www.oldenburg.de`` (Presse) und ``buergerinfo.oldenburg.de`` (Anlagen).
+    """
+    if not v:
+        return None
+    from urllib.parse import urlsplit
+    try:
+        teile = urlsplit(v.strip())
+    except ValueError:
+        return None
+    host = (teile.hostname or "").lower()
+    if teile.scheme != "https" or not (host == "oldenburg.de" or host.endswith(".oldenburg.de")):
+        return None
+    return v.strip()
+
+
 class QaSharePress(BaseModel):
     title: str = Field(max_length=300)
     url: str = Field(max_length=500)
+
+    @field_validator("url")
+    @classmethod
+    def _nur_stadt(cls, v: str) -> str:
+        # Pflichtfeld: Eine Meldung ohne gültigen Link ist keine echte —
+        # lieber den ganzen Snapshot abweisen als ihn mit leerem Link zu speichern.
+        sauber = _stadt_link(v)
+        if sauber is None:
+            raise ValueError("Pressemitteilungen verlinken nur auf oldenburg.de")
+        return sauber
     date: str | None = Field(default=None, max_length=10)
     # Ohne den Anriss verlöre ein geteiltes Gespräch die Meldung selbst und
     # zeigte nur noch einen Link nach draußen. Der Name folgt seinen
@@ -3127,6 +3160,12 @@ class QaShareAttachment(BaseModel):
     label: str | None = Field(default=None, max_length=300)
     url: str | None = Field(default=None, max_length=500)
     template_number: str | None = Field(default=None, max_length=60)
+
+    @field_validator("url")
+    @classmethod
+    def _nur_stadt(cls, v: str | None) -> str | None:
+        # Optional: ein fremder Link fällt weg, die Anlage selbst bleibt.
+        return _stadt_link(v)
     template_title: str | None = Field(default=None, max_length=300)
     excerpt: str = Field(default="", max_length=600)
 

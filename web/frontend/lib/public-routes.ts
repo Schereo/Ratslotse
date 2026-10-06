@@ -43,7 +43,19 @@ export function istOeffentlich(pfad: string | null | undefined): boolean {
 export function sicheresZiel(roh: string | null | undefined): string | null {
   if (!roh) return null;
   if (!roh.startsWith("/")) return null;
-  if (roh.startsWith("//") || roh.startsWith("/\\")) return null;
+  // Steuerzeichen und Backslash gar nicht erst auflösen: Der URL-Parser des
+  // Browsers wirft Tab und Zeilenumbruch weg, aus `/\t/evil.example` wird
+  // so `//evil.example` — vorbei an der Prüfung auf `//` (10/2026).
+  if (/[\u0000-\u001F\u007F\\]/.test(roh)) return null;
+  if (roh.startsWith("//")) return null;
+  // Zweite Linie: so auflösen, wie der Browser es täte, und nur dann folgen,
+  // wenn das Ziel auf derselben Seite bleibt.
+  const basis = "https://ratslotse.invalid";
+  try {
+    if (new URL(roh, basis).origin !== basis) return null;
+  } catch {
+    return null;
+  }
   return roh;
 }
 

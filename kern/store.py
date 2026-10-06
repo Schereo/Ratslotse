@@ -3261,10 +3261,24 @@ class Store:
         self.set_web_user_roles(user_id, [] if role == _roles.DEFAULT_ROLE else [role])
 
     def increment_token_version(self, user_id: int) -> int:
-        """Bump token_version so all existing JWTs for this user become invalid."""
+        """Bump token_version so all existing JWTs for this user become invalid.
+
+        **Verwirft dabei einen schwebenden Adresswechsel.** Beide Aufrufer
+        (Passwort-Reset und Passwortwechsel) heißen „das Konto war womöglich in
+        fremder Hand". Die Warnmail zum Adresswechsel verspricht genau das:
+        „ändere jetzt dein Passwort — damit wird der Wechsel hinfällig". Bis
+        10/2026 stimmte das nicht: Der Link im Postfach des Angreifers blieb
+        gültig, und mit der übernommenen Adresse holte er sich das Konto über
+        „Passwort vergessen" zurück. Erstbestätigungs-Tokens (``new_email IS
+        NULL``) bleiben, wie bei ``cancel_email_change``.
+        """
         with self._conn:
             self._conn.execute(
                 "UPDATE web_users SET token_version = token_version + 1 WHERE id = ?", (user_id,)
+            )
+            self._conn.execute(
+                "DELETE FROM email_verification_tokens WHERE user_id = ? AND new_email IS NOT NULL",
+                (user_id,),
             )
         row = self._conn.execute("SELECT token_version FROM web_users WHERE id = ?", (user_id,)).fetchone()
         return row[0] if row else 0

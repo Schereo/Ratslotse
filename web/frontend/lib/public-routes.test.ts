@@ -52,6 +52,18 @@ describe("sicheresZiel — das Ziel kommt aus der Adresszeile", () => {
     }
   });
 
+  it("verwirft Steuerzeichen, die der URL-Parser wegwirft (10/2026)", () => {
+    // `/<Tab>/evil.example` wird im Browser zu `//evil.example` — vorher
+    // ging das an der Prüfung auf `//` vorbei.
+    for (const roh of ["/\t/example.org", "/\n/example.org", "/\r/example.org", "/\t\\example.org",
+                       "/%09/example.org/../x"]) {
+      const ziel = sicheresZiel(roh);
+      if (ziel !== null) expect(new URL(ziel, "https://ratslotse.de").origin, roh).toBe("https://ratslotse.de");
+      else expect(ziel, roh).toBeNull();
+    }
+    expect(sicheresZiel("/\t/example.org")).toBeNull();
+  });
+
   it("repariert nichts, sondern verwirft", () => {
     // Aus `//example.org` ein `/example.org` zu machen wäre der naheliegende
     // und falsche Weg: Man rät dann, was jemand gemeint hat.
