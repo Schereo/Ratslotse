@@ -46,11 +46,14 @@ export function PublicShell({ children, hinweis, onAbmelden }: {
           App-Hülle; die Leiter steht in app/globals.css. */}
       <header className="sticky top-0 z-[var(--level-huelle)] border-b border-border bg-card/95 backdrop-blur">
         {/* Schmal enger: Bei 320 px schob „Anmelden · Registrieren" die
-            Seite um 6 px seitwärts (Review 10/2026). */}
+            Seite um 6 px seitwärts (Review 10/2026). Unter 360 px steht
+            deshalb nur das Zeichen, der Schriftzug bleibt für Screenreader —
+            der Abstand allein reichte nicht, weil die Schrift auf Linux
+            (CI) breiter läuft als auf dem Mac und es dort 7 px blieben. */}
         <div className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:gap-3 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Image src="/icon-192.png" alt="" width={32} height={32} className="h-8 w-8 rounded-lg" priority />
-            <span className="font-display text-lg font-bold text-foreground">Ratslotse</span>
+            <span className="font-display text-lg font-bold text-foreground max-[359px]:sr-only">Ratslotse</span>
           </Link>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {onAbmelden ? (
