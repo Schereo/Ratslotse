@@ -104,7 +104,7 @@ struct ConversationSettingsCard: View {
             }
             Button("Abbrechen", role: .cancel) {}
         } message: {
-            Text("Die gespeicherten Gespräche werden dauerhaft aus deinem Konto entfernt.")
+            Text("Die gespeicherten Gespräche und deine Recherchen werden dauerhaft aus deinem Konto entfernt.")
         }
     }
 

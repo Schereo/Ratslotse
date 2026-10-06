@@ -9,6 +9,7 @@ from pathlib import Path
 import sqlite3
 from council import geld as _geld
 
+from .applicants import applicants_named
 from .parties import order_key, parties_for_faction
 from council.kontaktdaten import maskieren
 from kern.dbfehler import tabelle_fehlt
@@ -497,12 +498,20 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 "(SELECT id FROM council_decisions WHERE ksinr = ?)", (ksinr,))
             self._conn.execute("DELETE FROM council_decisions WHERE ksinr = ?", (ksinr,))
             self._conn.execute("DELETE FROM council_attendance WHERE ksinr = ?", (ksinr,))
+            from council.applicants import main_item_factions
+
             pos = 0
             for d in decisions:
+                # Änderungsanträge stehen als eigene Teilabstimmung da; am
+                # Hauptbeschluss machten sie ihre Fraktion zum „Antragsteller"
+                # einer Verwaltungsvorlage (Stadion, 20947 — council/applicants.py).
+                main_factions = main_item_factions(
+                    d.get("factions"), d.get("title"),
+                    [f for sv in d.get("sub_votes") or [] for f in sv.get("factions") or []])
                 self._insert_decision(ksinr, pos, "decision", None,
                                       d.get("item_number"), d.get("title"), d.get("official_text"),
                                       d.get("outcome"), d.get("vote"), d.get("no_votes"),
-                                      d.get("abstentions"), d.get("factions"),
+                                      d.get("abstentions"), main_factions,
                                       d.get("template_number"), d.get("kvonr"), d.get("raw_result"))
                 pos += 1
                 for sv in d.get("sub_votes") or []:
@@ -586,6 +595,10 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         # Normalised Antragsteller parties (real factions only, deduped).
         # Multi-Mapping: ein Gruppen-Label („FDP/Volt") zählt für jede Partei.
         d["parties"] = sorted({p for f in d["factions"] for p in parties_for_faction(f)}, key=order_key)
+        # „Antrag von" nur, wenn der Titel die Fraktionen selbst nennt — sonst
+        # kann es eine Änderungsliste sein („Anträge im TOP von").
+        if "title" in d:
+            d["applicants_named"] = applicants_named(d["factions"], d.get("title"))
         return d
 
 

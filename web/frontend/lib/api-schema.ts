@@ -3028,7 +3028,12 @@ export interface paths {
         get: operations["gespraeche_liste_api_council_conversations_get"];
         put?: never;
         post?: never;
-        /** Gespraeche Alle Loeschen */
+        /**
+         * Gespraeche Alle Loeschen
+         * @description „Alle löschen": Gespräche UND die Fragen und Berichte der gründlichen
+         *     Recherche — die standen bis 10/2026 weiter mit dem Konto in
+         *     ``deep_research_jobs``, obwohl der Dialog „alles gelöscht" sagte.
+         */
         delete: operations["gespraeche_alle_loeschen_api_council_conversations_delete"];
         options?: never;
         head?: never;
@@ -4335,6 +4340,8 @@ export interface paths {
          * Submit Feedback
          * @description Email the operator a piece of user feedback. Reply-to is the user's address so
          *     the operator can answer directly. Best-effort: never surfaces email config to the user.
+         *
+         *     Gebremst je Konto (``feedback_limiter``): Jede Einreichung ist eine Mail.
          */
         post: operations["submit_feedback_api_feedback_post"];
         delete?: never;
@@ -8033,13 +8040,18 @@ export interface components {
              *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
              *
              *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
-             *     ``parties`` rechnet der Store aus den Fraktionen aus.
+             *     ``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am
+             *     Hauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die
+             *     Fraktionen der Änderungsanträge, die als eigene Teilabstimmung
+             *     (``kind='subvote'``) desselben TOPs erfasst sind.
              */
             decision: {
                 /** Abstentions */
                 abstentions?: number | null;
                 /** Amount Eur */
                 amount_eur?: number | null;
+                /** Applicants Named */
+                applicants_named?: boolean;
                 /** Committee */
                 committee?: string | null;
                 /** Deviation */
@@ -8919,6 +8931,24 @@ export interface components {
             new_password: string;
         };
         /**
+         * CitiesFeedbackBody
+         * @description Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.
+         *
+         *     Bis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in
+         *     der URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die
+         *     ausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query
+         *     und gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch
+         *     hier.
+         */
+        CitiesFeedbackBody: {
+            /** Id */
+            id?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Verdict */
+            verdict?: string | null;
+        };
+        /**
          * CityDebt
          * @description Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,
          *     ``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides
@@ -9215,6 +9245,8 @@ export interface components {
         ConversationsDeleted: {
             /** Deleted */
             deleted: number;
+            /** Research Deleted */
+            research_deleted?: number;
         };
         /** CouncilMembers */
         CouncilMembers: {
@@ -9513,13 +9545,18 @@ export interface components {
          *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
          *
          *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
-         *     ``parties`` rechnet der Store aus den Fraktionen aus.
+         *     ``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am
+         *     Hauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die
+         *     Fraktionen der Änderungsanträge, die als eigene Teilabstimmung
+         *     (``kind='subvote'``) desselben TOPs erfasst sind.
          */
         DecisionRow: {
             /** Abstentions */
             abstentions?: number | null;
             /** Amount Eur */
             amount_eur?: number | null;
+            /** Applicants Named */
+            applicants_named?: boolean;
             /** Committee */
             committee?: string | null;
             /** Deviation */
@@ -20161,9 +20198,8 @@ export interface operations {
     };
     cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post: {
         parameters: {
-            query: {
-                verdict: string;
-                note?: string | null;
+            query?: {
+                verdict?: string | null;
             };
             header?: never;
             path: {
@@ -20171,7 +20207,18 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** Id */
+                    id?: number | null;
+                    /** Note */
+                    note?: string | null;
+                    /** Verdict */
+                    verdict?: string | null;
+                } | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -20263,16 +20310,26 @@ export interface operations {
     };
     cities_movement_feedback_api_council_cities_movements_feedback_post: {
         parameters: {
-            query: {
-                id: number;
-                verdict: string;
-                note?: string | null;
+            query?: {
+                id?: number | null;
+                verdict?: string | null;
             };
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** Id */
+                    id?: number | null;
+                    /** Note */
+                    note?: string | null;
+                    /** Verdict */
+                    verdict?: string | null;
+                } | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -25201,4 +25258,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 64b4bdcf856b2bc6d999c6d15a410bb24d037a7c0d94f7f416131425f3590efb
+// vertrag-sha256: c9bee2660ad81bb7ff6e633f4d66c464d86185da8c934f3ea66585d43e65fa3e

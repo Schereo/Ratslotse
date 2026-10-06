@@ -77,7 +77,7 @@ function CardFooter({ d }: { d: CouncilDecision }) {
             className="inline-flex flex-wrap items-center gap-1.5"
             title="Fraktion(en), die zu diesem Punkt einen Antrag oder eine Änderungsliste eingebracht haben"
           >
-            <span className="text-xs text-muted-foreground">Antrag:</span>
+            <span className="text-xs text-muted-foreground">{applicantLabel(d)}:</span>
             {factions.map((f) => (
               <span key={f} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{f}</span>
             ))}
@@ -92,6 +92,14 @@ function CardFooter({ d }: { d: CouncilDecision }) {
       )}
     </div>
   );
+}
+
+/** „Antrag" nur, wo der Titel die Fraktion selbst nennt (oder es eine
+ *  Teilabstimmung ist) — sonst kann es eine Änderungsliste zu einer
+ *  Verwaltungsvorlage sein. Die Entscheidung trifft das Backend
+ *  (`applicants_named`, council/applicants.py). */
+function applicantLabel(d: CouncilDecision): string {
+  return d.kind === "subvote" || d.applicants_named ? "Antrag" : "Anträge im TOP";
 }
 
 /** Text der Änderungsantrags-Unterzeile (Design 23a): „n Änderungsantrag ·

@@ -135,6 +135,12 @@ district_report_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # in derselben Viertelstunde; ein Skript kann so weder die Tabelle aufblähen
 # noch unser Resend-Kontingent leerlaufen lassen.
 support_limiter = RateLimiter(max_calls=5, window_seconds=900)
+# Der Feedback-Dialog (angemeldet) schickt je Einreichung eine Mail an den
+# Betrieb und legt eine Zeile an — bis 10/2026 ohne jede Bremse: Ein Konto
+# hätte das Postfach und das Resend-Kontingent in einer Schleife leeren
+# können. Je Konto gezählt; zehn in einer Stunde deckt jede ehrliche Runde
+# „noch was vergessen".
+feedback_limiter = RateLimiter(max_calls=10, window_seconds=3600)
 
 # Tippspiel zur Ratswahl (docs/plan-tippspiel-ratswahl.md). Öffentlich, ohne
 # Konto — die IP ist alles, was sich zählen lässt, und genau da liegt die

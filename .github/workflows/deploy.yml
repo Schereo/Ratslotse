@@ -10,6 +10,11 @@ on:
   # neu starten. Seitdem lässt sich der Deploy in der Actions-UI von Hand
   # anstoßen (Ref wählen, „Run workflow"); der Test-Job läuft dabei
   # unverändert davor.
+  #
+  # NUR von `main`: Die UI bietet jeden Zweig als Ref an, und ein Klick auf
+  # den falschen hätte einen Feature-Stand auf Prod gebracht, vorbei an
+  # Review und Release. Beide Jobs prüfen deshalb `github.ref`; ein Start von
+  # einem anderen Zweig endet als übersprungen statt als Deploy.
   workflow_dispatch:
 
 # Deploys müssen sich strikt abwechseln. Zwei kurz hintereinander gemergte PRs
@@ -30,7 +35,7 @@ jobs:
   # grünen PR-Check) gemergter Stand kann Produktion nicht mehr erreichen.
   # (Lehre aus dem #154-Ausfall: roter CI wurde gemergt und deployt.)
   test:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +67,7 @@ jobs:
 
   deploy:
     needs: test
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

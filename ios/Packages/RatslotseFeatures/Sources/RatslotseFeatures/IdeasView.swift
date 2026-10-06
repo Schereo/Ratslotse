@@ -645,13 +645,13 @@ private struct IdeaCard: View {
         fehlgeschlagen = false
         guard !neu.isEmpty else { return }
         do {
-            // Der Parameter geht über `query:`, nicht in den Pfad — sonst wird
-            // das „?" mitkodiert und der Server antwortet mit 404. Dieselbe
-            // Falle wie bei der Ideen-Liste. Die Kennung selbst ist meist eine
-            // Adresse (`https://…`) und geht deshalb VOLL kodiert in den Pfad.
+            // Das Urteil geht im Körper (seit 10/2026), nicht in den Pfad —
+            // dort würde ein „?" mitkodiert und der Server antwortete mit 404.
+            // Die Kennung selbst ist meist eine Adresse (`https://…`) und geht
+            // deshalb VOLL kodiert in den Pfad.
             try await model.api.sendVoid(
                 "/api/council/cities/ideas/\(APIClient.pathSegment(idee.paperID))/feedback",
-                query: [URLQueryItem(name: "verdict", value: wert)])
+                body: CitiesFeedbackRequest(id: nil, verdict: wert))
         } catch {
             gesagt = ""
             fehlgeschlagen = true

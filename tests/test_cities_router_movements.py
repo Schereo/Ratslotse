@@ -166,6 +166,13 @@ def test_rueckmeldung_zum_urteil_je_idee(client, cities_db):
         assert tuple(zeile) == ("cluster", "idea_fit", "wrong")
         assert client.post("/api/council/cities/movements/feedback?id=999&verdict=wrong").status_code == 404
         assert client.post("/api/council/cities/movements/feedback?id=1&verdict=hm").status_code == 400
+        # Seit 10/2026 im Körper — so schicken es Web und neue App.
+        r = client.post("/api/council/cities/movements/feedback",
+                        json={"id": 1, "verdict": "right", "note": "passt"})
+        assert r.status_code == 200 and r.json() == {"paper_id": "1:1", "verdict": "right"}
+        assert cities_db._conn.execute("SELECT note FROM feedback").fetchone()[0] == "passt"
+        assert client.post("/api/council/cities/movements/feedback",
+                           json={"verdict": "right"}).status_code == 400
     finally:
         app.dependency_overrides.pop(get_current_user, None)
 

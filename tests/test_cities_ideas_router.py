@@ -343,6 +343,24 @@ def test_rueckmeldung_zur_idee(client, cities_db, angemeldet):
     assert client.post("/api/council/cities/ideas/os:p:404/feedback?verdict=wrong").status_code == 404
 
 
+def test_rueckmeldung_im_koerper_und_keine_notiz_in_der_url(client, cities_db, angemeldet):
+    """Seit 10/2026 kommen Urteil und Notiz im Körper. Eine Notiz in der Query
+    (Freitext in jedem Zugriffsprotokoll) wird nicht mehr gelesen; die
+    ausgelieferten Clients schickten dort ohnehin nur das Urteil."""
+    r = client.post("/api/council/cities/ideas/os:p:1/feedback",
+                    json={"verdict": "wrong", "note": "  Haben wir schon seit 2024  "})
+    assert r.status_code == 200 and r.json()["verdict"] == "wrong"
+    notiz = cities_db._conn.execute("SELECT note FROM feedback").fetchone()[0]
+    assert notiz == "Haben wir schon seit 2024"
+
+    r = client.post("/api/council/cities/ideas/os:p:1/feedback?verdict=right&note=geheim")
+    assert r.status_code == 200
+    assert cities_db._conn.execute("SELECT note FROM feedback").fetchone()[0] is None
+    assert client.post("/api/council/cities/ideas/os:p:1/feedback", json={}).status_code == 400
+    assert client.post("/api/council/cities/ideas/os:p:1/feedback",
+                       json={"verdict": "right", "note": "x" * 501}).status_code == 422
+
+
 def test_rueckmeldung_mit_adresse_als_kennung(client, cities_db, angemeldet):
     """Die OParl-Kennungen SIND Adressen. Die ausgelieferte App setzte sie roh
     in den Pfad, und aus ``https://`` wurde unterwegs ``https:/`` — jede

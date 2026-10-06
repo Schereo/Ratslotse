@@ -178,6 +178,22 @@ def test_wechsel_gilt_erst_mit_dem_klick_und_meldet_sich_bei_beiden_adressen(cli
                        json={"email": NEU, "password": PASSWORT}).status_code == 200
 
 
+def test_beide_wechsel_mails_stehen_im_protokoll_des_kontos(client, postfach):
+    """Der Link an die NEUE Adresse lief bis 10/2026 ohne ``owner_id`` ins
+    Mailprotokoll — in der Personen-Ansicht des Admin-Panels fehlte er, nur
+    die Warnung an die alte Adresse stand dort."""
+    uid = _registrieren(client)["id"]
+    assert _wechsel_anstossen(client, postfach).status_code == 200
+    store = Store(RATSLOTSE_DB)
+    try:
+        zeilen = store._conn.execute(
+            "SELECT owner_id, anlass FROM email_log WHERE anlass LIKE 'email_change%'").fetchall()
+    finally:
+        store.close()
+    assert zeilen and all(owner == uid for owner, _ in zeilen), zeilen
+    assert ("email_change" in {a for _, a in zeilen})
+
+
 def test_die_sitzung_bleibt_nach_dem_wechsel_gueltig(client, postfach):
     """`token_version` wird bewusst NICHT erhöht: Der Wechsel wurde mit dem
     Passwort bestätigt, und wer den Link auf einem zweiten Gerät klickt,

@@ -31,10 +31,10 @@ BEWUSST_OFFEN: dict[tuple[str, str], list[str]] = {
     ("DecisionSummary", "BookmarkEntry.decision"): ["lat", "lon", "ort_name"],
     # Die semantischen Nachbarn sind bewusst eine SCHMALE Karte: Titel,
     # Gremium, Datum, Ergebnis. Die App wirft denselben Typ darauf, statt
-    # einen zweiten zu pflegen — die 23 Felder bleiben leer, und genau so ist
+    # einen zweiten zu pflegen — die 24 Felder bleiben leer, und genau so ist
     # die Karte gebaut.
     ("DecisionSummary", "SimilarDecision"): [
-        "abstentions", "amount_eur", "deviation", "factions", "impact",
+        "abstentions", "amount_eur", "applicants_named", "deviation", "factions", "impact",
         "impact_reason", "importance", "interest", "interest_reason",
         "item_number", "kind", "ksinr", "lat", "lon", "no_votes",
         "official_text", "ort_name", "parties", "policy_tags", "protocol_url",

@@ -71,3 +71,42 @@ def test_die_pdfs_bleiben_hier(keine_kopie, monkeypatch):
     monkeypatch.setattr(lokale_daten, "_fernbestand", lambda host: None)
     lokale_daten.schieb_staedte("dev", ja=False)
     assert not any("cities-files" in " ".join(b) for b in keine_kopie)
+
+
+# ---- Die Akte nach `setz` (Messfalle 10/2026) -------------------------------
+
+def _rats_db(pfad: Path, beschluesse: int) -> None:
+    import sqlite3
+    db = sqlite3.connect(pfad)
+    db.execute("CREATE TABLE council_decisions (id INTEGER)")
+    db.execute("CREATE TABLE council_matters (id INTEGER)")
+    db.executemany("INSERT INTO council_decisions VALUES (?)", [(i,) for i in range(beschluesse)])
+    db.commit()
+    db.close()
+
+
+def test_stand_warnt_laut_vor_einer_leeren_akte(tmp_path, capsys):
+    """Nach `setz` war `council_matters` leer, und jede lokale Messung von
+    „Frag den Rat" maß still den Stand OHNE Akte."""
+    _rats_db(tmp_path / "c.sqlite", beschluesse=3)
+    lokale_daten._akte_pruefen(tmp_path / "c.sqlite")
+    assert "Akte ist leer" in capsys.readouterr().out
+
+
+def test_ohne_beschluesse_ist_eine_leere_akte_kein_befund(tmp_path, capsys):
+    _rats_db(tmp_path / "c.sqlite", beschluesse=0)
+    lokale_daten._akte_pruefen(tmp_path / "c.sqlite")
+    assert capsys.readouterr().out == ""
+
+
+def test_setz_baut_die_akte(tmp_path, monkeypatch, capsys):
+    from council.store import CouncilStore
+
+    abzug = tmp_path / "cache" / "council.sqlite"
+    abzug.parent.mkdir()
+    CouncilStore(abzug).close()
+    monkeypatch.setattr(lokale_daten, "WURZEL", tmp_path)
+    monkeypatch.setattr(lokale_daten, "ABZUG", abzug)
+    monkeypatch.setattr(lokale_daten, "STAND", tmp_path / "cache" / "stand.json")
+    assert lokale_daten.setz(ueberschreiben=False) == 0
+    assert "Akte gebaut" in capsys.readouterr().out

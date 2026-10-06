@@ -177,13 +177,13 @@ außerhalb des Gates, gäbe es dort gar keine Prüfung, und ein neues
 `x.split()[0]` auf einem `str | None` fiele niemandem auf. Der Wächter zählt
 deshalb die Befunde je Bereich, und die Zahl **darf nur sinken** — kein
 Aufräumen wird verlangt, nur kein Rückschritt geduldet. Gemessen am
-04.09.2026:
+04.09.2026, `council/` nachgezogen am 06.10.2026 (Schranke in `SCHULDEN`):
 
 | Bereich | Befunde | Zustand |
 |---|---:|---|
 | `kern/` | **0** | harter Gate |
 | `web/backend/app/` (ohne Router) | **0** | harter Gate |
-| `council/` | 194 | Sperrklinke |
+| `council/` | 183 | Sperrklinke |
 | `web/backend/app/routers/` | 111 | Sperrklinke |
 | `scripts/` | 44 | Sperrklinke |
 | `eval/` | 7 | Sperrklinke |
@@ -205,8 +205,9 @@ python scripts/pruefe_typschulden.py --zeigen          # der Stand
 ```
 
 **Die Zahlen haben etwas Luft.** pyright löst Typen über die INSTALLIERTEN
-Pakete auf, und die sind nie bitgleich: Auf dem Entwicklungsrechner sind es
-194 Befunde in `council/`, in der CI 190. Die Schranke ist der höhere Wert.
+Pakete auf, und die sind nie bitgleich: Am 04.09.2026 waren es auf dem
+Entwicklungsrechner 194 Befunde in `council/`, in der CI 190. Die Schranke ist
+der höhere Wert.
 
 **Den Hook einschalten** (einmal je Checkout):
 

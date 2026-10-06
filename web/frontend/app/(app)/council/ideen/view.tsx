@@ -154,7 +154,7 @@ function Rueckmeldung({ idee }: { idee: Idee }) {
     if (!neu) return;
     try {
       await api.post(
-        `/council/cities/ideas/${encodeURIComponent(idee.paper_id)}/feedback?verdict=${verdict}`,
+        `/council/cities/ideas/${encodeURIComponent(idee.paper_id)}/feedback`, { verdict },
       );
     } catch (e) {
       // Ohne (bestätigtes) Konto geht es nicht, und das ist der Punkt: Eine

@@ -2320,7 +2320,7 @@ private struct DecisionGlanceCard: View {
 
             if !decision.parties.isEmpty {
                 DecisionGlanceDivider()
-                Text("ANTRAG VON").font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
+                Text(decision.applicantLabel.uppercased()).font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
                 DecisionPartyGrid(parties: decision.parties)
                     .padding(.top, 5)
             }

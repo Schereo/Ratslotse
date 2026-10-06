@@ -809,10 +809,11 @@ struct MovementDetailView: View {
     private func sagen(_ wert: String) async {
         gesagt = wert
         do {
+            // Im Körper, nicht in der Query (seit 10/2026): Eine Notiz wäre
+            // dort Freitext in jedem Zugriffsprotokoll.
             try await model.api.sendVoid(
                 "/api/council/cities/movements/feedback",
-                query: [URLQueryItem(name: "id", value: String(clusterID)),
-                        URLQueryItem(name: "verdict", value: wert)])
+                body: CitiesFeedbackRequest(id: clusterID, verdict: wert))
         } catch {
             gesagt = ""
         }

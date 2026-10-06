@@ -16,6 +16,7 @@ import re
 from kern import glossar, llm, prompts
 from kern.foreign_text import defuse
 from council import ernte
+from council.applicants import applicants_named
 from council import outcome_note
 from council import geld as _geld
 from council.geld import alltag as _alltag
@@ -2115,7 +2116,13 @@ def _build_context(candidates: list[dict]) -> str:
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
         applicants = _factions_of(c)
         if applicants:
-            suffix += f" — Antrag von: {', '.join(applicants)}"
+            # „Antrag von" nur, wenn der Titel die Fraktion selbst nennt; sonst
+            # kann es eine Änderungsliste zu einer Verwaltungsvorlage sein —
+            # das Modell machte daraus „beruhte auf einem CDU-Antrag" (Stadion,
+            # 20947; council/applicants.py).
+            label = ("Antrag von" if applicants_named(applicants, c.get("title"))
+                     else "Anträge im TOP von (Antrag oder Änderungsantrag)")
+            suffix += f" — {label}: {', '.join(applicants)}"
         strittig = (c.get("no_votes") or 0) > 0 or (c.get("abstentions") or 0) > 0 \
             or c.get("vote") == "majority" or c.get("outcome") == "rejected"
         raw_result = (c.get("raw_result") or "").strip()

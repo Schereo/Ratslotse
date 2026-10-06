@@ -603,3 +603,23 @@ import Testing
     #expect(try decoder.decode(Topic.self, from: Data(without.utf8)).imageAssetName == nil)
     #expect(try decoder.decode(Topic.self, from: Data(missing.utf8)).imageAssetName == nil)
 }
+
+@Test func antragstellerBeschriftungFolgtDemServer() throws {
+    // Seit 10/2026 sagt der Server, ob der Titel die Fraktion selbst nennt.
+    // Nur dann „Antrag von"; sonst kann es eine Änderungsliste zu einer
+    // Verwaltungsvorlage sein (Stadion, 20947). Ein älterer Server schickt
+    // das Feld nicht — dann die vorsichtige Beschriftung.
+    let benannt = #"{"id": 18256, "title": "Städtepartnerschaft (CDU-Fraktion vom 08.11.2023)", "kind": "decision", "factions": ["CDU"], "applicants_named": true}"#
+    let offen = #"{"id": 18934, "title": "Bewohnerparkzone Haarenesch", "kind": "decision", "factions": ["Grüne"]}"#
+    let teil = #"{"id": 20948, "title": "Änderungsantrag", "kind": "subvote", "factions": ["CDU"], "applicants_named": false}"#
+
+    let a = try JSONDecoder().decode(DecisionSummary.self, from: Data(benannt.utf8))
+    let b = try JSONDecoder().decode(DecisionSummary.self, from: Data(offen.utf8))
+    let c = try JSONDecoder().decode(DecisionSummary.self, from: Data(teil.utf8))
+
+    #expect(a.applicantLabel == "Antrag von")
+    #expect(b.applicantsNamed == nil)
+    #expect(b.applicantLabel == "Anträge im TOP von")
+    #expect(b.applicantShortLabel == "Anträge im TOP")
+    #expect(c.applicantShortLabel == "Antrag")
+}

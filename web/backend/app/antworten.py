@@ -312,7 +312,10 @@ class DecisionRow(TypedDict):
     hier ein 500, sobald ein Aufrufer schmaler selektiert.
 
     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
-    ``parties`` rechnet der Store aus den Fraktionen aus.
+    ``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am
+    Hauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die
+    Fraktionen der Änderungsanträge, die als eigene Teilabstimmung
+    (``kind='subvote'``) desselben TOPs erfasst sind.
     """
     id: int
     ksinr: NotRequired[int | None]
@@ -343,6 +346,11 @@ class DecisionRow(TypedDict):
     deviation: NotRequired[str | None]
     # aus den Joins bzw. vom Router angereichert
     parties: NotRequired[list[str]]
+    #: True, wenn der Titel jede Fraktion aus ``factions`` selbst nennt — dann
+    #: ist „Antrag von" belegt. Sonst kann es eine Änderungsliste sein, die das
+    #: Protokoll nicht als Teilabstimmung führt („Anträge im TOP von").
+    #: Fehlt, wenn die Abfrage keinen Titel liest (``council/applicants.py``).
+    applicants_named: NotRequired[bool]
     committee: NotRequired[str | None]
     session_date: NotRequired[str | None]
     protocol_url: NotRequired[str | None]
@@ -695,6 +703,9 @@ class ConversationDetail(TypedDict):
 
 class ConversationsDeleted(TypedDict):
     deleted: int
+    #: Recherchen, deren Frage und Bericht mit weggeräumt wurden (seit 10/2026;
+    #: vorher blieben sie stehen). ``deleted`` zählt weiter nur Gespräche.
+    research_deleted: NotRequired[int]
 
 
 # --------------------------------------------------------------------------
