@@ -3135,6 +3135,47 @@ def test_apple_login_schaltet_ein_unbestaetigtes_konto_weiter_frei(client, apple
     assert r.json()["id"] == uid
 
 
+def test_apple_login_entzieht_dem_vorregistrierenden_den_zugang(client, apple_jwks):
+    """Wer eine fremde Adresse mit eigenem Passwort registriert, darf nach der
+    Apple-Anmeldung der echten Person nichts mehr haben: kein Passwort, keine
+    Sitzung, kein Push-Gerät. Bis 10/2026 galten beide weiter (90 Tage)."""
+    _register(client)
+    angreifer = TestClient(app)
+    r = angreifer.post("/api/auth/register", json={
+        "display_name": "Fremd", "email": "opfer@example.org", "password": "angreifer123"})
+    assert r.status_code == 201
+    uid = r.json()["id"]
+    store = Store(RATSLOTSE_DB)
+    try:
+        # Lokal ohne Mailversand ist ein neues Konto sofort bestätigt — hier
+        # den echten Fall herstellen: unbestätigt, mit Gerät des Angreifers.
+        store._conn.execute("UPDATE web_users SET email_verified = 0, status = 'pending' WHERE id = ?", (uid,))
+        store._conn.commit()
+        store.add_push_token(uid, "geraet-des-angreifers", "ios")
+    finally:
+        store.close()
+
+    opfer = TestClient(app)
+    r = opfer.post("/api/auth/apple", json={
+        "identity_token": _apple_token(sub="sub-opfer", email="opfer@example.org")})
+    assert r.status_code == 200 and r.json()["id"] == uid and r.json()["status"] == "active"
+
+    # Die alte Sitzung des Angreifers ist ungültig …
+    assert angreifer.get("/api/auth/me").status_code == 401
+    # … sein Passwort auch …
+    assert TestClient(app).post("/api/auth/login", json={
+        "email": "opfer@example.org", "password": "angreifer123"}).status_code == 401
+    # … und sein Gerät bekommt keine Mitteilungen mehr.
+    store = Store(RATSLOTSE_DB)
+    try:
+        assert store.get_push_tokens_for_owner(uid) == []
+        assert not store.get_web_user_by_id(uid)["password_set"]
+    finally:
+        store.close()
+    # Die echte Person bleibt angemeldet.
+    assert opfer.get("/api/auth/me").status_code == 200
+
+
 def test_apple_login_rejects_foreign_audience_and_bad_signature(client, apple_jwks):
     bad_aud = _apple_token(aud="com.evil.app")
     assert client.post("/api/auth/apple", json={"identity_token": bad_aud}).status_code == 401
@@ -3415,6 +3456,25 @@ def test_qa_share_traegt_bausteine(client):
     assert body["attachments"][0]["template_number"] == "26/0123"
     assert body["parties"][0]["stance"] == "dagegen"
     assert "user_id" not in body
+
+
+def test_qa_share_verlinkt_nur_die_stadt(client):
+    """Presse- und Anlagen-Links kommen mit dem öffentlichen Snapshot vom
+    Client. Nur Links auf oldenburg.de werden gespeichert (10/2026)."""
+    _register(client)
+    basis = {"question": "Was ist mit dem Stadion?", "answer": "Text.", "sources": []}
+    for boese in ("https://evil.example.net/login", "javascript:alert(document.domain)",
+                  "http://www.oldenburg.de/x", "https://oldenburg.de.evil.example/x"):
+        r = client.post("/api/council/qa-share", json={**basis, "press_releases": [
+            {"title": "Meldung", "url": boese, "date": "2026-06-02"}]})
+        assert r.status_code == 422, boese
+    r = client.post("/api/council/qa-share", json={**basis, "attachments": [
+        {"label": "Fremd", "url": "javascript:alert(1)"},
+        {"label": "Echt", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=1"}]})
+    assert r.status_code == 201, r.text
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["attachments"][0]["url"] is None
+    assert body["attachments"][1]["url"] == "https://buergerinfo.oldenburg.de/getfile.php?id=1"
 
 
 def test_qa_share_public_report_and_admin_removal(client):

@@ -414,3 +414,38 @@ def test_der_wechsel_ist_pro_konto_gebremst(client, monkeypatch):
     ]
     change_email_limiter._calls.clear()
     assert codes[-1] == 429, codes
+
+
+# --- Passwort zurückgesetzt: der schwebende Wechsel ist hinfällig -------------
+
+def test_passwort_reset_macht_den_schwebenden_wechsel_hinfaellig(client, postfach):
+    """Die Warnmail an die alte Adresse rät: „ändere jetzt dein Passwort —
+    damit wird der Wechsel hinfällig". Bis 10/2026 stimmte das nicht: Der Link
+    im Postfach des Angreifers blieb gültig, die Adresse ging an ihn, und über
+    „Passwort vergessen" gehörte ihm danach das Konto."""
+    _registrieren(client)
+    _wechsel_anstossen(client, postfach)
+    link_des_angreifers = _token_aus(_an(postfach, NEU))
+
+    with patch("app.routers.auth.secrets.token_urlsafe", return_value="reset-token"):
+        assert client.post("/api/auth/forgot-password", json={"email": ALT}).status_code == 200
+    assert client.post("/api/auth/reset-password",
+                       json={"token": "reset-token", "new_password": "ganzneu12345"}).status_code == 200
+
+    r = _bestaetigen(TestClient(app), postfach, link_des_angreifers)
+    assert r.status_code >= 400
+    store = Store(RATSLOTSE_DB)
+    try:
+        assert store.get_web_user_by_email(ALT) is not None
+        assert store.get_web_user_by_email(NEU) is None
+    finally:
+        store.close()
+
+
+def test_passwortwechsel_macht_den_schwebenden_wechsel_hinfaellig(client, postfach):
+    _registrieren(client)
+    _wechsel_anstossen(client, postfach)
+    link = _token_aus(_an(postfach, NEU))
+    assert client.post("/api/account/change-password", json={
+        "current_password": PASSWORT, "new_password": "ganzneu12345"}).status_code == 200
+    assert _bestaetigen(TestClient(app), postfach, link).status_code >= 400
