@@ -68,6 +68,38 @@ from kern.alerts import (  # noqa: E402
     JobFehler,
     fehlschlaege_in_folge,
 )
+from kern.stopp import Stopp, aus_umgebung  # noqa: E402
+
+#: **Höchstdauer eines Schritts in Sekunden** (``WEEKLY_STEP_MAX_SECONDS``).
+#: Bis 10/2026 lief jeder Schritt ohne Grenze: Ein hängender Netzaufruf in
+#: EINEM Unterprozess hielt den ganzen Sonntagslauf an — und damit alle
+#: Schritte dahinter, ohne dass irgendetwas fehlschlug. Drei Stunden sind
+#: großzügig: Die teuersten Schritte (Einfach erklärt, Tragweite,
+#: Interessantheit, je 500er-Tranche mit zwei Arbeitern) brauchen auf dem
+#: Server eine gute Stunde. Ein Schritt über der Grenze wird beendet und zählt
+#: als Fehlschlag (Alarm), der Lauf geht mit dem nächsten weiter.
+STEP_MAX_SEKUNDEN = "WEEKLY_STEP_MAX_SECONDS"
+STEP_MAX_VORGABE = 3 * 3600
+#: Frist für den ganzen Lauf (``WEEKLY_ENRICH_MAX_SECONDS``, Vorgabe: keine)
+#: — und vor allem der Deploy-Marker (``kern/stopp.py``): Zwischen zwei
+#: Schritten sieht der Lauf nach, ob ein Deploy wartet, und tritt zur Seite.
+#: Der nächste Sonntag macht weiter; jeder Schritt fragt „was fehlt noch?".
+LAUF_MAX_SEKUNDEN = "WEEKLY_ENRICH_MAX_SECONDS"
+#: Kennzahl-Schlüssel, unter dem ein vorzeitiges Ende steht.
+ABBRUCH_SCHLUESSEL = "Zur Seite getreten"
+
+
+def _step_max_sekunden() -> float | None:
+    """Die Schrittgrenze aus der Umgebung; ``0`` oder Unlesbares heißt „keine"."""
+    import os
+    roh = (os.environ.get(STEP_MAX_SEKUNDEN) or "").strip()
+    if not roh:
+        return float(STEP_MAX_VORGABE)
+    try:
+        wert = float(roh)
+    except ValueError:
+        return None
+    return wert if wert > 0 else None
 
 #: Schritte, deren Fehlschlag NICHT sofort den ganzen Lauf rot macht —
 #: Name → wie oft er hintereinander fallen darf, bevor er es doch tut.
@@ -169,7 +201,8 @@ STEPS: list[tuple[str, str]] = [
 ]
 
 
-def main() -> list[dict]:
+def main(stopp: Stopp | None = None, step_max: float | None = -1.0,
+         abbruch: list[str] | None = None) -> list[dict]:
     """Läuft alle Schritte durch und gibt je Schritt ein Protokoll zurück.
 
     **Warum je Schritt und nicht nur die Gescheiterten.** Bis 09/2026 gab es
@@ -186,9 +219,23 @@ def main() -> list[dict]:
     nur den.
 
     ``warn`` ist ein Fehlschlag, der (noch) niemanden weckt: s. ``NACHSICHTIG``.
+
+    ``stopp`` fragt VOR jedem Schritt, ob ein Deploy wartet oder die Frist um
+    ist; dann endet der Lauf dort, die übrigen Schritte fehlen im Protokoll,
+    und der Grund (``deploy``/``frist``) landet in ``abbruch``.
+    ``step_max`` begrenzt jeden Schritt (``-1`` = aus der Umgebung, ``None`` =
+    ohne Grenze).
     """
+    if step_max == -1.0:
+        step_max = _step_max_sekunden()
     protokoll: list[dict] = []
     for name, script in STEPS:
+        grund = stopp.grund() if stopp is not None else None
+        if grund is not None:
+            print(f"\n=== {grund.text} Offen: {name} und folgende. ===", flush=True)
+            if abbruch is not None:
+                abbruch.append(grund.schluessel)
+            break
         print(f"\n=== {name} ({script}) ===", flush=True)
         start = time.monotonic()
         status = "ok"
@@ -196,17 +243,21 @@ def main() -> list[dict]:
             # Der Step-String darf Argumente tragen ("rate_interest.py --limit 500").
             parts = script.split()
             r = subprocess.run(
-                [sys.executable, str(ROOT / "scripts" / parts[0]), *parts[1:]], cwd=str(ROOT)
+                [sys.executable, str(ROOT / "scripts" / parts[0]), *parts[1:]], cwd=str(ROOT),
+                timeout=step_max,
             )
             if r.returncode != 0:
                 status = _fehlstatus(name, f"exit {r.returncode}")
+        except subprocess.TimeoutExpired as exc:
+            # subprocess.run beendet das Kind selbst (kill + wait).
+            status = _fehlstatus(name, f"nach {exc.timeout:.0f} s abgebrochen")
         except Exception as exc:  # noqa: BLE001 — never let one step abort the run
             status = _fehlstatus(name, repr(exc))
         protokoll.append({"name": name, "script": script, "status": status,
                           "duration_s": round(time.monotonic() - start, 1)})
     failed = [s["name"] for s in protokoll if s["status"] == "error"]
     wackelig = [s["name"] for s in protokoll if s["status"] == SCHRITT_WARNUNG]
-    print(f"\n=== weekly_enrich fertig — {len(STEPS) - len(failed) - len(wackelig)}/{len(STEPS)} ok"
+    print(f"\n=== weekly_enrich fertig — {len(protokoll) - len(failed) - len(wackelig)}/{len(STEPS)} ok"
           + (f", fehlgeschlagen: {', '.join(failed)}" if failed else "")
           + (f", wackelig: {', '.join(wackelig)}" if wackelig else "") + " ===", flush=True)
     return protokoll
@@ -244,7 +295,9 @@ def _guarded_main() -> dict:
     Kennzahlen bei jeder Exception — ausgerechnet am Tag eines Fehlschlags
     stand in ``job_runs`` also nur „error".
     """
-    protokoll = main()
+    abbruch: list[str] = []
+    stopp = aus_umgebung(ROOT / "data", LAUF_MAX_SEKUNDEN)
+    protokoll = main(stopp, abbruch=abbruch)
     # Nur ``error`` weckt jemanden. Ein ``warn`` steht im Protokoll und damit
     # in der Kachel, bleibt aber ohne Mail und ohne rote Jobzeile — sonst
     # unterschiede sich die Nachsicht nicht von ihrem Gegenteil.
@@ -253,7 +306,10 @@ def _guarded_main() -> dict:
     # als zwei Chips, direkt über der Zeile „18 Schritte · 1 fehlgeschlagen",
     # die dasselbe sagt. Zwei Darstellungen einer Zahl können auseinanderlaufen;
     # die Liste ist die Quelle, das Zählen macht, wer sie anzeigt.
-    kennzahlen = {SCHRITTE_SCHLUESSEL: protokoll}
+    kennzahlen: dict = {SCHRITTE_SCHLUESSEL: protokoll}
+    if abbruch:
+        # „deploy" oder „frist" — kein Fehler, der Rest kommt nächsten Sonntag.
+        kennzahlen[ABBRUCH_SCHLUESSEL] = abbruch[0]
     failed = [s["name"] for s in protokoll if s["status"] == "error"]
     if failed:
         raise JobFehler(

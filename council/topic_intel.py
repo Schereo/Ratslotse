@@ -34,6 +34,10 @@ from kern import llm, prompts
 logger = logging.getLogger("council.topic_intel")
 
 MODEL = os.environ.get("TOPIC_INTEL_MODEL", "deepseek/deepseek-v4-pro")
+#: Frist der beiden Aufrufe, die im Web-Request laufen (Beschreibung,
+#: Vagheits-Urteil): Sekunden ohne Lebenszeichen, wie Lottis ``LLM_FRIST_S``.
+#: Beide haben einen Rückfall ohne Modell — eine Schablone bzw. „nicht vage".
+WEB_FRIST_S = 20
 
 # Ab wie vielen belastbaren Treffern gilt eine Sache als „im Rat behandelt".
 # Zwei statt einem: Ein einzelner Zufallstreffer (ein Name fällt in einem
@@ -407,7 +411,9 @@ def _call_model(name: str, matches: list[dict]) -> dict | None:
         extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in MODEL else {}
         resp = llm.chat_complete(
             model=MODEL, _feature="topic_auto_description", temperature=0.2, max_tokens=300,
-            messages=[{"role": "user", "content": prompt}], **extra,
+            # Web-Anfrage (Thema anlegen): Wer wartet, bekommt nach der Frist
+            # die Schablone statt eines hängenden Formulars.
+            timeout=WEB_FRIST_S, messages=[{"role": "user", "content": prompt}], **extra,
         )
         obj = _parse(resp.choices[0].message.content or "")
         if obj is None:
@@ -523,7 +529,7 @@ def check_vagueness(name: str, description: str) -> dict:
         extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in MODEL else {}
         resp = llm.chat_complete(
             model=MODEL, _feature="vagueness_check", temperature=0, max_tokens=300,
-            messages=[
+            timeout=WEB_FRIST_S, messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": f"Thema: {(name or '').strip()[:120]}\nBeschreibung: {text[:600]}"},
             ], **extra,

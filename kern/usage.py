@@ -149,6 +149,40 @@ def seit(feature: str, marke: str) -> dict:
     return aus
 
 
+def tageskosten(tag: str) -> dict:
+    """Was am Kalendertag ``tag`` (``YYYY-MM-DD``, Ortszeit) an Modellkosten anfiel.
+
+    Für den Kostenalarm im Herzschlag (``scripts/check_herzschlag.py``).
+    Echte Kosten, wo der Anbieter sie mitgeliefert hat, sonst die Schätzung
+    aus :data:`PRICES` — derselbe Weg wie :func:`summary`. Der Tag in
+    Ortszeit wie bei ``cost_timeseries`` (``ts`` steht in UTC).
+
+    ``{"usd": 3.21, "calls": 812, "features": [("qa_answer", 1.2), …]}`` —
+    die Features teuerste zuerst, damit die Mail sagt, WOHER es kam.
+    """
+    leer = {"usd": 0.0, "calls": 0, "features": []}
+    try:
+        conn = _connect()
+        rows = conn.execute(
+            "SELECT feature, model, COUNT(*) calls, COALESCE(SUM(cost_usd),0) creal, "
+            "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN prompt_tokens END),0) pin_est, "
+            "COALESCE(SUM(CASE WHEN cost_usd IS NULL THEN completion_tokens END),0) pout_est "
+            "FROM llm_usage WHERE date(ts, 'localtime') = ? GROUP BY feature, model",
+            (tag,)).fetchall()
+        conn.close()
+    except Exception:  # noqa: BLE001 — Kostenmessung ist nie load-bearing
+        return leer
+    je_feature: dict[str, float] = {}
+    calls = 0
+    for r in rows:
+        kosten = r["creal"] + _cost(r["model"], r["pin_est"], r["pout_est"])
+        je_feature[r["feature"]] = je_feature.get(r["feature"], 0.0) + kosten
+        calls += r["calls"]
+    return {"usd": round(sum(je_feature.values()), 4), "calls": calls,
+            "features": sorted(((f, round(k, 4)) for f, k in je_feature.items()),
+                               key=lambda x: -x[1])}
+
+
 def _cost(model: str | None, pin: int, pout: int) -> float:
     p = PRICES.get(model or "", (0.0, 0.0))
     return pin / 1e6 * p[0] + pout / 1e6 * p[1]

@@ -1,0 +1,5 @@
+---
+kategorie: behoben
+---
+
+**„Frag den Rat“ kennt das heutige Datum, hängt nicht mehr minutenlang und hat ein Tageskontingent.** „Letzten Monat“ und „dieses Jahr“ beziehen sich jetzt auf den heutigen Tag — vorher hielt die Antwort August für den Vormonat. Antwort, „Verständlicher erklären“ und Recherche-Bericht warten nur noch eine feste Frist auf das Modell und weichen dann aus, statt bis zu zehn Minuten zu hängen; der Bericht bekommt außerdem den Aktenstand wie die schnelle Antwort. Anweisungen an eine KI, die in Vorlagen, Anlagen, Pressemitteilungen, Wortbeiträgen oder Beschlüssen anderer Städte stehen, werden vor dem Modell entfernt. Je Konto sind 60 Fragen am Tag möglich; danach sagt Ratslotse freundlich, dass es morgen weitergeht. Im Hintergrund bricht eine kaputte Modellantwort den nächtlichen Protokoll-Lauf nicht mehr ab, die Live-Verfolgung einer Ratssitzung hält die Aufnahme nicht mehr auf, und eine Mail meldet ungewöhnlich hohe Modellkosten oder eine Selbstprüfung, die nichts mehr prüft.

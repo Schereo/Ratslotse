@@ -12,10 +12,10 @@ Vor dem Prod-Rollout: ``scripts/eval_impact.py`` gegen das Golden-Set.
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 
+from council import modell_json
 from kern import llm, prompts
 
 # gpt-5.6-luna nach dem Vergleich vom 28.08.26 (55 echte Tagesordnungspunkte,
@@ -241,13 +241,13 @@ def rate_agenda_batch(items: list[dict], _tiefe: int = 0) -> list[tuple[int, int
             _feature="impact_rating_agenda", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
             _tarif="flex",
         )
-        data = json.loads(resp.choices[0].message.content or "{}")
+        data = modell_json.objekt(resp.choices[0].message.content)
     except Exception as exc:  # noqa: BLE001
         print(f"  ⚠️ Tragweite-Batch ({len(items)} Punkte) fehlgeschlagen: "
               f"{exc!r} — fasse in Hälften nach")
         return _nachgefasst(rate_agenda_batch, items, _tiefe, "Tragweite (Tagesordnung)")
     out: list[tuple[int, int, str]] = []
-    for r in data.get("ratings") or []:
+    for r in modell_json.eintraege(data, "ratings"):
         try:
             iid = int(r.get("id"))
             score = int(r.get("score"))
@@ -292,13 +292,15 @@ def rate_batch(decisions: list[dict], _tiefe: int = 0) -> list[tuple[int, int, s
             _feature="impact_rating", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
             _tarif="flex",
         )
-        data = json.loads(resp.choices[0].message.content or "{}")
+        data = modell_json.objekt(resp.choices[0].message.content)
     except Exception as exc:  # noqa: BLE001
         print(f"  ⚠️ Tragweite-Batch ({len(decisions)} Beschlüsse) fehlgeschlagen: "
               f"{exc!r} — fasse in Hälften nach")
         return _nachgefasst(rate_batch, decisions, _tiefe, "Tragweite (Beschlüsse)")
     out: list[tuple[int, int, str]] = []
-    for r in data.get("ratings") or []:
+    # Nur Objekte (council/modell_json.py) — fehlende IDs fasst der
+    # Nachgriff unten ohnehin in Hälften nach.
+    for r in modell_json.eintraege(data, "ratings"):
         try:
             did = int(r.get("id"))
             score = int(r.get("score"))

@@ -23,7 +23,14 @@ from openai import (
     APIConnectionError,
     APITimeoutError,
 )
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
+import httpx
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+)
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -543,14 +550,41 @@ def _usage_kurz(usage_obj: Any) -> dict | None:
 
 _client: OpenAI | None = None
 
+#: **Wie lange ein Aufruf ohne ein einziges Byte warten darf** — die Vorgabe
+#: für jeden Aufruf, der selbst keine ``timeout=`` mitgibt (die Cron-Jobs).
+#:
+#: Die Zahl ist eine Frist ohne Lebenszeichen, keine Gesamtdauer: httpx misst
+#: den Lese-Timeout zwischen zwei Bytes. OpenRouter hält die Leitung während
+#: der Erzeugung offen — gemessen am 06.10.2026 an GPT-6 Luna ohne Strom: das
+#: erste Byte nach 1,3 s, danach alle 1,4–3,0 s ein Füllzeichen, bis nach
+#: 11 s die Antwort kam. 120 s Stille heißen deshalb nicht „das Modell denkt
+#: lange", sondern „die Leitung ist tot" — auch ein DeepSeek-Lauf mit 8.000
+#: Denk-Tokens kommt darunter weg, weil er die Füllzeichen bekommt. Vorher
+#: galt die SDK-Vorgabe von 600 s.
+#:
+#: Der Verbindungsaufbau bekommt eigene 10 s: Wer in zehn Sekunden keinen
+#: TCP/TLS-Handschlag mit OpenRouter schafft, schafft ihn auch in 600 nicht.
+STANDARD_FRIST_S = 120.0
+VERBINDUNGS_FRIST_S = 10.0
+
 
 def get_client() -> OpenAI:
-    """Return (and lazily create) the shared OpenRouter client."""
+    """Return (and lazily create) the shared OpenRouter client.
+
+    **``max_retries=0``** — die Wiederholungen macht ``_create`` (tenacity),
+    und NUR dort. Das SDK wiederholt sonst selbst zweimal je Anlauf, und zwar
+    unsichtbar: gemessen am 05.10.2026 machte ``chat_complete(timeout=1)``
+    gegen einen stummen Server 15 Verbindungen in 30 s statt der vier, die
+    hier stehen; ohne ``timeout`` hätte derselbe Fall 4 × 3 × 600 s = zwei
+    Stunden gedauert. ``tests/test_llm_fristen.py`` hält beides fest.
+    """
     global _client
     if _client is None:
         _client = OpenAI(
             api_key=os.environ["OPENROUTER_API_KEY"],
             base_url=OPENROUTER_BASE_URL,
+            max_retries=0,
+            timeout=httpx.Timeout(STANDARD_FRIST_S, connect=VERBINDUNGS_FRIST_S),
         )
     return _client
 
@@ -705,16 +739,46 @@ def _melde_rueckfall(feature: str | None, model: str | None, exc: BaseException)
           "Rückfall auf das Routing ohne ZDR", flush=True)
 
 
+def _frist_von(kwargs: dict[str, Any]) -> float | None:
+    """Die Frist des Aufrufers in Sekunden — ``None``, wenn er keine setzt."""
+    frist = kwargs.get("timeout")
+    if frist is None:
+        return None
+    if isinstance(frist, httpx.Timeout):
+        frist = frist.read
+    try:
+        return float(frist) if frist else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _anlauf(kwargs: dict[str, Any]):
+    """``_create`` für den normalen Weg — mit Gesamtgrenze, wenn der Aufrufer eine Frist setzt.
+
+    Wer ``timeout=`` mitgibt, wartet vor einem Bildschirm. Vier Anläufe à
+    Frist wären vier Fristen Warten; die Anläufe enden deshalb, sobald zwei
+    Fristen verstrichen sind. Schnelle Fehler (429, 5xx in Millisekunden)
+    bekommen weiter ihre vier Anläufe — sie kosten zusammen keine 15 s —,
+    ein stummer Anbieter höchstens zwei. Ohne Frist bleibt alles wie
+    beschrieben: vier Anläufe, jeder unter :data:`STANDARD_FRIST_S`.
+    """
+    frist = _frist_von(kwargs)
+    if frist is None:
+        return _create
+    return _create.retry_with(stop=stop_after_attempt(4) | stop_after_delay(2 * frist))
+
+
 def _eu_anlauf(kwargs: dict[str, Any]):
     """``_create`` für den EU-Weg — mit EINEM Anlauf, wenn der Aufrufer eine Frist setzt.
 
     Wer ``timeout=`` mitgibt, wartet vor einem Bildschirm (Lottis Fenster). Am
     24.09.2026 antwortete Azure EU unter einer Drosselung minutenlang gar
     nicht: vier Anläufe à Frist vor dem Rückfall waren vier Minuten Warten.
-    Ein Anlauf, dann der Verzicht-Weg mit seinen eigenen Anläufen. Ohne Frist
-    bleibt alles wie beschrieben (vier schnelle Anläufe).
+    Ein Anlauf, dann der Verzicht-Weg mit seinen eigenen Anläufen
+    (:func:`_anlauf`). Ohne Frist bleibt alles wie beschrieben (vier schnelle
+    Anläufe).
     """
-    if kwargs.get("timeout") is None:
+    if _frist_von(kwargs) is None:
         return _create
     return _create.retry_with(stop=stop_after_attempt(1))
 
@@ -730,8 +794,9 @@ def _create_eu_zuerst(kwargs: dict[str, Any], anbieter: tuple[str, ...],
     bei einem Fehler, den ``_is_transient`` kennt, 2 + 2 + 4 = 8 s Pause plus
     die Dauer der vier Anläufe (bei einem sofortigen 429 zusammen gut 9 s);
     ein 404 fällt ohne Anlauf sofort zurück (Probe: 0,1 s). Ein Anbieter,
-    der gar nicht antwortet, läuft wie heute bis ins Zeitlimit des Clients —
-    das gilt für den Verzicht-Weg genauso und ist nicht Teil dieser Änderung.
+    der gar nicht antwortet, läuft bis ins Zeitlimit des Clients
+    (:data:`STANDARD_FRIST_S` ohne ein Byte, oder die Frist des Aufrufers) —
+    das gilt für den Verzicht-Weg genauso.
 
     Ein 200er ohne ``choices`` fällt auch dann zurück, wenn der Aufrufer
     Leerantworten selbst behandelt (``_allow_empty_response``, die
@@ -751,7 +816,7 @@ def _create_eu_zuerst(kwargs: dict[str, Any], anbieter: tuple[str, ...],
             raise
         grund = exc
     _melde_rueckfall(feature, kwargs.get("model"), grund)
-    return (_create_geduldig(kwargs) if geduld else _create(**kwargs)), True
+    return (_create_geduldig(kwargs) if geduld else _anlauf(kwargs)(**kwargs)), True
 
 
 # Kosten-Zähler je Prozess: die Eval-Suite bildet daraus Deltas je Frage.
@@ -846,7 +911,7 @@ def chat_complete(**kwargs: Any):
             elif anbieter:
                 resp, rueckfall = _create_eu_zuerst(versuch, anbieter, feature, geduld)
             else:
-                resp = _create_geduldig(versuch) if geduld else _create(**versuch)
+                resp = _create_geduldig(versuch) if geduld else _anlauf(versuch)(**versuch)
         except Exception as exc:  # noqa: BLE001 — nur Vorübergehendes wird ersetzt
             if i == len(modelle) - 1 or not _is_transient(exc):
                 raise
@@ -965,7 +1030,7 @@ def chat_stream_events(**kwargs: Any) -> Generator[tuple[str, Any], None, None]:
         for nr, (zdr, only) in enumerate(wege):
             ausgeliefert = False
             try:
-                erzeugen = _eu_anlauf(kwargs) if only else _create
+                erzeugen = _eu_anlauf(kwargs) if only else _anlauf(kwargs)
                 for chunk in erzeugen(stream=True, _zdr=zdr, _only=only, **kwargs):
                     if antwort_anbieter is None:
                         antwort_anbieter = _anbieter(chunk)
