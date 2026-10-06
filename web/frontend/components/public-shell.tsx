@@ -19,7 +19,7 @@ import { mitRuecksprung } from "@/lib/public-routes";
 /** Unter 360 px rücken die beiden Knöpfe enger zusammen — zusammen mit dem
  *  ausgeblendeten Schriftzug passt die Kopfzeile dann auch mit breiteren
  *  Ersatzschriften (die CI rendert ohne die Webfont). */
-const SCHMAL = "max-[359px]:px-2.5 max-[359px]:text-[13px]";
+const SCHMAL = "winzig:px-2.5 winzig:text-[13px]";
 
 export function PublicShell({ children, hinweis, onAbmelden }: {
   children: React.ReactNode;
@@ -58,7 +58,7 @@ export function PublicShell({ children, hinweis, onAbmelden }: {
         <div className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:gap-3 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Image src="/icon-192.png" alt="" width={32} height={32} className="h-8 w-8 rounded-lg" priority />
-            <span className="font-display text-lg font-bold text-foreground max-[359px]:sr-only">Ratslotse</span>
+            <span className="font-display text-lg font-bold text-foreground winzig:sr-only">Ratslotse</span>
           </Link>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {onAbmelden ? (
