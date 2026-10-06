@@ -18,3 +18,16 @@ export type SetupStand = {
  *  darüber. Beide sollen dafür nicht die ganze Assistenten-Datei laden. */
 export const SETUP_QUERY_KEY = ["onboarding-setup"] as const;
 export const holeSetupStand = () => api.get<SetupStand>("/onboarding/setup");
+
+/** Der höchste Schritt, den der Server annimmt (`SetupUpdate.step`, `le=4`):
+ *  1 Gremien, 2 Stadtteil, 3 Themen, 4 Mitteilungen. */
+export const LETZTER_SETUP_SCHRITT = 4;
+
+/** Welcher Schritt an den Server geht. Der Assistent kennt einen Schritt 5 —
+ *  das Auffangnetz „noch kein Thema, kein Gremium" —, der kein Schritt im
+ *  Pfad ist. Bis 10/2026 ging er trotzdem als 5 raus und kam als 422 zurück
+ *  (verschluckt, weil die Meldung fire-and-forget ist). Wer dort steht, hat
+ *  den Pfad hinter sich; gemeldet wird also der letzte echte Schritt. */
+export function gemeldeterSetupSchritt(step: number): number {
+  return Math.max(0, Math.min(LETZTER_SETUP_SCHRITT, Math.trunc(step)));
+}

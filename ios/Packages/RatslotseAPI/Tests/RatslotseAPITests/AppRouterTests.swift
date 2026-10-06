@@ -10,6 +10,9 @@ private let router = AppRouter()
     ("https://ratslotse.de/council/decision?id=42", .decision(id: 42)),
     // Eine Bewegung — dieselbe Idee in mehreren anderen Räten (Plan PR 54).
     ("https://ratslotse.de/council/ideen/bewegung?id=14", .movement(id: 14)),
+    // Die Ideen-Übersicht — bis 10/2026 fiel sie auf `.web` und aus der App.
+    ("https://ratslotse.de/council/ideen", .ideas),
+    ("https://ratslotse.de/council/ideen/", .ideas),
     ("https://ratslotse.de/council?tab=sessions&ksinr=123&top=%C3%96%206%2CN%206", .sessions(ksinr: 123, tops: ["Ö 6", "N 6"])),
     // Die geteilte Sitzungs-Seite — sie liest sich ohne Konto und ist deshalb
     // das Ziel der Teilen-Knöpfe; die Listen-Adresse darüber bleibt gültig
@@ -59,6 +62,7 @@ func mapsHistoricalUniversalLinks(input: String, expected: AppRoute) throws {
         .person(slug: "max-muster"), .topic(slug: "wohnen"), .place(id: "ort:1"),
         .sharedAnswer(token: "share-token"),
         .district(id: nil), .district(id: "eversten"), .district(id: "eversten", project: 12),
+        .ideas, .movement(id: 14),
     ]
     for route in routes {
         let link = router.universalLink(for: route)
@@ -74,4 +78,12 @@ func mapsHistoricalUniversalLinks(input: String, expected: AppRoute) throws {
     #expect(link.path == "/council/sitzung")
     #expect(link.absoluteString.contains("ksinr=8"))
     #expect(router.route(for: link) == .sessions(ksinr: 8, tops: ["Ö 2"]))
+}
+
+/** Der neue Rat gibt es nur im Web — ausdrücklich, nicht über den Rückfall.
+ *  Die Universal-Link-Datei nimmt die Adresse mit `NOT` aus
+ *  (`tests/test_universal_links.py` hält beides zusammen). */
+@Test func newCouncilStaysOnTheWeb() throws {
+    let url = try #require(URL(string: "https://ratslotse.de/council/neuer-rat"))
+    #expect(router.route(for: url) == .web(url))
 }

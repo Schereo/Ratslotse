@@ -34,7 +34,9 @@ WEGWEISER = FRONTEND / "components" / "haushalt" / "wegweiser.tsx"
 #: Wahrheit für dieselbe Zahl, und die einzige außerhalb des Codes.
 DOKU = (Path(__file__).resolve().parents[1]
         / "docs-site" / "src" / "content" / "docs" / "haushalt.md")
-UEBERSICHT = BEREICH / "page.tsx"
+#: In einer Routengruppe, damit die Übersicht ein eigenes Server-Layout samt
+#: Seitentitel bekommt — das Layout des Bereichs ist das (Client-)Rechte-Gate.
+UEBERSICHT = BEREICH / "(uebersicht)" / "page.tsx"
 
 #: Der Kicker, den die Seiten schreiben: „Stadtfinanzen Oldenburg · Schritt 9".
 #: Bewusst eng: Ein Kommentar, der beiläufig „Schritt 1" erwähnt (etwa über

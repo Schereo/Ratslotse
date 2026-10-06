@@ -197,7 +197,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
 // „Erscheinungsbild", die Topbar bleibt schlank (Tim, 22.07.).
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
-  return <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">{children}</p>;
+  return <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{children}</p>;
 }
 
 function NavItem({ item, active, badge = 0, badgeLabel, onNavigate }: { item: Item; active: boolean; badge?: number; badgeLabel?: string; onNavigate?: () => void }) {
@@ -364,7 +364,7 @@ function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
   useEffect(() => { setMitDocs(!isNativeApp()); }, []);
   return (
     <p className={cn(
-      "text-[11px] leading-relaxed text-muted-foreground/80",
+      "text-[11px] leading-relaxed text-muted-foreground",
       zentriert ? "border-t border-border/60 pt-2.5 text-center" : "px-3 pb-1 pt-2",
     )}>
       <a href="/hilfe" className="hover:text-foreground">Hilfe</a>

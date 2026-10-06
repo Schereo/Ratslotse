@@ -52,11 +52,15 @@ export default function LandingPage() {
         Zum Inhalt springen
       </a>
       <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5">
+        {/* Bei 320 px passten Marke, Schalter und „Anmelden →" mit den
+            Abständen des Schreibtischs nicht nebeneinander: 14 px Überbreite,
+            die ganze Seite ließ sich seitwärts schieben (bis 10/2026 als
+            `test.fail` in 14-layout festgehalten). Schmal rücken sie enger. */}
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5 sm:px-5">
           <Link href="/">
             <Brand />
           </Link>
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {/* Gäste haben kein Konto → „Erscheinungsbild" — der Schalter ist
                 hier der einzige Weg, das Farbschema zu wählen. */}
             <WebThemeSwitch />

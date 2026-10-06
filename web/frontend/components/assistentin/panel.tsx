@@ -316,11 +316,18 @@ export function LottiPanel({
   // Beim Öffnen: Fokus ins Eingabefeld. Beim Schließen: zurück auf den Knopf —
   // sonst steht der Fokus im Nichts, und die nächste Tabulatortaste beginnt
   // wieder ganz oben auf der Seite (BITV).
+  // Zurückgegeben wird der Fokus nur, wenn das Fenster vorher WIRKLICH offen
+  // war: Beim ersten Rendern ist es zu, und ein Fokus auf den Knopf hätte
+  // dann „Zum Inhalt springen" übersprungen (Review 10/2026).
+  const warOffen = useRef(false);
   useEffect(() => {
     if (offen) {
+      warOffen.current = true;
       const id = window.setTimeout(() => eingabeRef.current?.focus(), 60);
       return () => window.clearTimeout(id);
     }
+    if (!warOffen.current) return;
+    warOffen.current = false;
     document.querySelector<HTMLElement>("[data-lotti-knopf]")?.focus();
   }, [offen]);
 

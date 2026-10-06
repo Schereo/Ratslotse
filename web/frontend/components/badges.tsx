@@ -333,7 +333,11 @@ export function BadgesCard() {
               title={b.earned ? b.title : `${b.title} — ${b.hint}`}
               className={cn(
                 "relative flex flex-col items-center gap-1.5 rounded-xl border p-2 text-center",
-                b.earned ? "border-primary/25 bg-primary/[0.06]" : "border-border opacity-45",
+                // Noch nicht verdient: gestrichelter Rand und blasses
+                // Zeichen statt `opacity-45` auf der ganzen Kachel — die nahm
+                // den Namen mit (2,9 : 1 hell, Review 10/2026). Der Name ist
+                // Inhalt und bleibt lesbar (DESIGNSPRACHE § 3).
+                b.earned ? "border-primary/25 bg-primary/[0.06]" : "border-dashed border-border",
                 isNew &&
                   "border-signal/40 bg-signal/[0.08] shadow-[0_0_0_4px_hsl(var(--signal)/0.25)]",
               )}
@@ -350,7 +354,7 @@ export function BadgesCard() {
                     ? "border border-white/70 text-[hsl(28_75%_20%)]"
                     : b.earned
                       ? "bg-primary/15 text-primary"
-                      : "bg-muted text-muted-foreground",
+                      : "bg-muted text-muted-foreground opacity-60",
                 )}
                 style={isNew ? { backgroundImage: MEDAL_GRADIENT } : undefined}
               >
@@ -358,8 +362,8 @@ export function BadgesCard() {
               </span>
               <span
                 className={cn(
-                  "text-[10px] leading-tight",
-                  isNew ? "font-bold text-signal" : "font-medium text-foreground",
+                  "max-w-full hyphens-auto text-[10px] leading-tight [overflow-wrap:anywhere]",
+                  isNew ? "font-bold text-signal" : b.earned ? "font-medium text-foreground" : "font-medium text-muted-foreground",
                 )}
               >
                 {b.title}

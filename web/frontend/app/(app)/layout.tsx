@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Clock, MailWarning } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -31,8 +32,12 @@ import { breiteFuer, huellenKlasse } from "@/lib/vollbreit";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, refresh } = useAuth();
+  const { user, loading, refresh, logout } = useAuth();
   const router = useRouter();
+  const abmelden = async () => {
+    await logout();
+    router.replace("/login");
+  };
   const pathname = usePathname();
   // Geteilte Detailseiten lassen sich ohne Konto lesen (s. lib/public-routes.ts).
   const oeffentlich = istOeffentlich(pathname);
@@ -88,11 +93,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Solange das Konto gesperrt ist, gibt es die App-Hülle noch nicht: Topbar,
   // Suche und Bottom-Nav führen alle ins Leere, wenn man nichts darf. Der
   // Hinweis steht deshalb für sich, wie die Auth-Seiten davor.
+  //
+  // Ausnahme: die öffentlichen Detailseiten. Die liest jede:r ohne Konto — ein
+  // unbestätigtes Konto sah bis 10/2026 dort trotzdem nur die Wand und damit
+  // WENIGER als ein anonymer Besuch. Jetzt bekommt es dieselbe Seite, dazu
+  // oben den Hinweis, was noch fehlt, und den Weg hinaus.
+  if (gated && oeffentlich) {
+    return (
+      <PublicShell
+        onAbmelden={() => void abmelden()}
+        hinweis={<KontoHinweis verify={needsVerify} email={user!.pending_email ?? user!.email} />}
+      >
+        {children}
+      </PublicShell>
+    );
+  }
   if (gated) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-waves px-4 py-10">
         <div className="w-full max-w-sm">
           {needsVerify ? <VerifyNotice email={user!.email} /> : <PendingNotice email={user!.email} />}
+          {/* Der Weg hinaus. Bis 10/2026 fehlte er: Wer sich mit dem
+              falschen Konto angemeldet hatte, kam von hier nirgends hin. */}
+          <p className="mt-4 text-center">
+            <button type="button" onClick={() => void abmelden()}
+              className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+              Abmelden
+            </button>
+          </p>
         </div>
       </div>
     );
@@ -374,6 +402,33 @@ function VerifyNotice({ email }: { email: string }) {
         </button>
       )}
     </Card>
+  );
+}
+
+/** Der Streifen über einer öffentlichen Seite, solange das Konto noch nicht
+ *  freigeschaltet ist. Er erklärt, warum hier keine Navigation steht, und
+ *  führt zur Bestätigung — die liegt auf jeder Seite mit Konto-Pflicht. */
+function KontoHinweis({ verify, email }: { verify: boolean; email: string }) {
+  return (
+    <div role="status" className="mb-6 flex items-start gap-3 rounded-xl border border-border bg-muted/60 px-4 py-3 text-sm">
+      {verify
+        ? <MailWarning className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        : <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
+      <p className="min-w-0 text-foreground [overflow-wrap:anywhere]">
+        {verify ? (
+          <>
+            Bestätige noch deine E-Mail-Adresse (<span className="font-medium">{email}</span>) —
+            dann kannst du Themen anlegen und dich benachrichtigen lassen.{" "}
+            <Link href="/dashboard" className="font-medium text-primary hover:underline">Zur Bestätigung</Link>
+          </>
+        ) : (
+          <>
+            Dein Konto ist derzeit deaktiviert. Diese Seite kannst du trotzdem lesen.{" "}
+            <a href={KONTAKT_MAILTO} className="font-medium text-primary hover:underline">{KONTAKT_EMAIL}</a>
+          </>
+        )}
+      </p>
+    </div>
   );
 }
 

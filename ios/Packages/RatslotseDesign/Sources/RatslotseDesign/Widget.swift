@@ -72,6 +72,7 @@ public struct RatsWidget<Content: View, Trailing: View>: View {
     private let trailing: Trailing
     private let content: Content
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// `trailing` steht rechts in der Kopfleiste — für ein Menü oder eine
     /// Pille, die zum Widget gehört (Themen-Karte: „2 neue" und „…").
@@ -118,6 +119,25 @@ public struct RatsWidget<Content: View, Trailing: View>: View {
     private var tileTint: Double { isDark ? 0.20 : 0.13 }
     private var waveOpacity: Double { board ? 0.42 : (isDark ? 0.42 : 0.30) }
 
+    private var titleText: some View {
+        Text(title)
+            .font(RatsFont.body(14, weight: .bold))
+            .tracking(-0.14)
+            .foregroundStyle(RatsColor.text)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    @ViewBuilder private var noteText: some View {
+        if let note {
+            Text(note.uppercased())
+                .font(RatsFont.mono(9.5))
+                .tracking(0.57)
+                .foregroundStyle(RatsColor.muted)
+                .lineLimit(1)
+        }
+    }
+
     private var header: some View {
         HStack(spacing: 9) {
             if let imageName {
@@ -137,19 +157,19 @@ public struct RatsWidget<Content: View, Trailing: View>: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .accessibilityHidden(true)
             }
-            Text(title)
-                .font(RatsFont.body(14, weight: .bold))
-                .tracking(-0.14)
-                .foregroundStyle(RatsColor.text)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            if let note {
-                Text(note.uppercased())
-                    .font(RatsFont.mono(9.5))
-                    .tracking(0.57)
-                    .foregroundStyle(RatsColor.muted)
-                    .lineLimit(1)
+            // Bei Bedienungshilfen-Größen steht die Notiz UNTER dem Titel:
+            // Daneben ließ sie dem Titel so wenig Breite, dass „Demnächst im
+            // Rat" mitten im Wort brach („Demnächs / t", Review 10/2026, AX-XL).
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 3) {
+                    titleText
+                    noteText
+                }
+                Spacer(minLength: 8)
+            } else {
+                titleText
+                Spacer(minLength: 8)
+                noteText
             }
             trailing
         }

@@ -199,7 +199,7 @@ export default function AccountPage() {
           stapelt alles in genau dieser Reihenfolge — die Abzeichen bleiben
           zwischen Benachrichtigungen und Passwort (RL-U12, 11a). */}
       <div className="@container/konto mt-6">
-        <div className="grid items-start gap-6 @3xl/konto:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 @3xl/konto:grid-cols-2">
           <div className="flex flex-col gap-6">
             <DeliverySettings />
 

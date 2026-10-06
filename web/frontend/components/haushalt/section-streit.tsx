@@ -342,7 +342,7 @@ export function StreitAbschnitt({ onBestand }: {
             {years.map((j) => (
               <Link
                 key={j}
-                href={`/haushalt/streit?year=${j}`}
+                href={`/haushalt/mitreden?year=${j}#streit`}
                 scroll={false}
                 className={cn(
                   "flex-none rounded-full border px-3 py-1 font-mono text-[12px] font-medium tabular-nums transition-colors",

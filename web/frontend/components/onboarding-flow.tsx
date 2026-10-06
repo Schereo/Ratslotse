@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
-import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
+import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand } from "@/lib/onboarding-setup";
 import { isNativeApp } from "@/lib/platform";
 import { cn, pfad } from "@/lib/utils";
 import { Button, Input, toast } from "@/components/ui";
@@ -162,7 +162,7 @@ export const ONBOARDING_NEEDS_LOGIN_EVENT = "ratslotse:onboarding-needs-login";
  *  überlebt eine Neuinstallation — und nur er erlaubt es, nach zwei Tagen an
  *  eine liegengebliebene Einrichtung zu erinnern (scripts/remind_setup.py). */
 function reportSetupStep(step: number, done = false) {
-  api.post("/onboarding/setup", { step, done }).catch(() => {});
+  api.post("/onboarding/setup", { step: gemeldeterSetupSchritt(step), done }).catch(() => {});
 }
 
 /** Ein Konto allein reicht nicht — frisch registriert ist es „pending" und
@@ -189,6 +189,11 @@ export function OnboardingFlow() {
   // Genau einmal je Durchlauf: Ohne die Merke riefe `go("done")` aus dem
   // Rückruf die Prüfung erneut auf — eine Schleife.
   const hakenGeprueft = useRef(false);
+  // Solange die Prüfung läuft, zählt ein zweites „Fertig" nicht. Sonst ging
+  // der zweite Klick (die Abfrage braucht einen Moment) an der Prüfung vorbei
+  // direkt zu „done" — und wenn sie danach „kein Haken" meldete, stand der
+  // Haken-Schritt ÜBER der Tour-Einladung (Browsertest, 06.10.2026).
+  const hakenLaeuft = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const native = isNativeApp();
   // In DIESER Sitzung abgeschlossen. Ohne den Riegel schöbe die noch im Cache
@@ -271,9 +276,12 @@ export function OnboardingFlow() {
   };
 
   const go = (next: Step | "done") => {
+    if (next === "done" && hakenLaeuft.current) return;
     if (next === "done" && !hakenGeprueft.current) {
       hakenGeprueft.current = true;
+      hakenLaeuft.current = true;
       void hatHaken().then((ja) => {
+        hakenLaeuft.current = false;
         if (ja) { go("done"); return; }
         try { localStorage.setItem(STEP_KEY, String(HAKEN_SCHRITT)); } catch { /* egal */ }
         setStep(HAKEN_SCHRITT as Step);

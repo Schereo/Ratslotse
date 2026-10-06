@@ -3563,10 +3563,8 @@ private struct SessionDetailView: View {
                 error = "Kalenderzugriff wurde nicht erlaubt. Du kannst ihn in den Einstellungen freigeben."
                 return
             }
-            let parser = DateFormatter()
-            parser.locale = Locale(identifier: "de_DE")
-            parser.dateFormat = "yyyy-MM-dd HH:mm"
-            let start = parser.date(from: "\(detail.sessionDate) \(detail.sessionTime ?? "17:00")") ?? .now
+            // Oldenburger Ortszeit, nicht die des Geräts (SessionClock).
+            let start = SessionClock.start(day: detail.sessionDate, time: detail.sessionTime) ?? .now
             calendarDraft = CalendarDraft(
                 title: detail.committee,
                 start: start,
