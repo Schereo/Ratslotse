@@ -31,6 +31,16 @@ Vorlagen) und gut eine Stunde. Der Wochenlauf braucht den Schritt NICHT —
 er urteilt seit 10/2026 nur über Neues (``fit.run(schlank=True)``) —, ein
 Bestandslauf von Hand schon.
 
+**Reihenfolge auf Prod: ``--hashes-ideen`` erst NACH dem ersten
+``check_cities.py --nur-oldenburg``.** Der Oldenburg-Lauf holt die neuen
+Oldenburger Vorlagen samt Vektoren in den Speicher (nach der Pause am
+01.10.2026: 519 Stück) — und genau die landen in den Beleg-Pools der Ideen.
+Übernimmt man die Hashes vorher, stehen sie auf dem alten Pool, und der
+erste Sonntag beurteilt trotzdem alle Ideen neu (~0,9 $, Stunden). Das Skript
+prüft das selbst (``oldenburg_rueckstand``) und verweigert die Übernahme,
+solange die Rats-Datenbank Vorlagen hat, die der Speicher nicht kennt;
+``--trotzdem`` übergeht die Prüfung.
+
     python scripts/cities_belege_umschluesseln.py                 # zählen, nichts schreiben
     python scripts/cities_belege_umschluesseln.py --schreiben     # umschlüsseln
     python scripts/cities_belege_umschluesseln.py --hashes        # Quell-Hashes übernehmen
@@ -153,6 +163,23 @@ def zaehlen(s: CitiesStore, rats) -> dict:
     return aus
 
 
+def oldenburg_rueckstand(s: CitiesStore, rats) -> int:
+    """Wie viele Oldenburger Vorlagen der Städte-Speicher noch nicht kennt.
+
+    Gemessen am Datum: Eine Vorlage datiert der Oldenburg-Adapter auf ihre
+    früheste Beratung. Alles in der Rats-Datenbank, was jünger ist als die
+    jüngste Oldenburger Vorlage im Speicher, ist seit dem letzten
+    ``check_cities.py``-Lauf dazugekommen. Steht im Speicher noch gar keine,
+    zählt alles.
+    """
+    juengste = s.papers("oldenburg", limit=1)
+    seit = (juengste[0].get("date") if juengste else None) or ""
+    zeile = rats._conn.execute(
+        "SELECT COUNT(*) FROM (SELECT kvonr, MIN(date) AS d FROM council_deliberations "
+        "GROUP BY kvonr) WHERE d > ?", (seit,)).fetchone()
+    return int(zeile[0] or 0)
+
+
 def hashes_uebernehmen(s: CitiesStore, nur_ideen: bool = False) -> dict:
     """Quell-Hashes von ``fit`` und ``idea_fit`` neu rechnen und übernehmen.
 
@@ -214,6 +241,8 @@ def main() -> int:
                    help="Quell-Hashes von fit und idea_fit neu rechnen und übernehmen")
     p.add_argument("--hashes-ideen", action="store_true",
                    help="nur die Quell-Hashes von idea_fit (Minuten statt einer Stunde)")
+    p.add_argument("--trotzdem", action="store_true",
+                   help="Hashes übernehmen, obwohl Oldenburg im Speicher hinterherhinkt")
     p.add_argument("--links", action="store_true",
                    help="fehlende Links ins RIS nachtragen (Magdeburg, Münster)")
     p.add_argument("--gruppen", action="store_true",
@@ -246,6 +275,18 @@ def main() -> int:
             print(f"{links_nachtragen(s)} Links nachgetragen.")
             return 0
         if args.hashes or args.hashes_ideen:
+            rats = _rats()
+            try:
+                fehlt = oldenburg_rueckstand(s, rats)
+            finally:
+                rats.close()
+            if fehlt and not args.trotzdem:
+                print(f"ABBRUCH: {fehlt} Oldenburger Vorlagen fehlen im Städte-Speicher. "
+                      "Erst `scripts/check_cities.py --nur-oldenburg` laufen lassen, dann "
+                      "die Hashes übernehmen — sonst stehen sie auf dem alten Beleg-Pool, "
+                      "und der erste Sonntag beurteilt alle Ideen neu. "
+                      "(`--trotzdem` übergeht die Prüfung.)", file=sys.stderr)
+                return 2
             print(json.dumps(hashes_uebernehmen(s, nur_ideen=not args.hashes), indent=1))
             return 0
         rats = _rats()

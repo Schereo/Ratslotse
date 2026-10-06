@@ -255,6 +255,39 @@ def test_werktags_ohne_netz_und_ohne_modell(monkeypatch, tmp_path):
     assert zahlen["mode"] == "oldenburg" and zahlen["cost_usd"] == 0
 
 
+def test_ein_teilausfall_endet_rot_und_behaelt_die_kennzahlen(monkeypatch, tmp_path):
+    """Fehlt das Embedding-Modell, stand der Lauf bis 10/2026 als `ok` mit
+    `errors: 1` im Panel — ohne Mail. Jetzt: JobFehler samt Kennzahlen."""
+    import importlib.util
+    from pathlib import Path
+
+    import pytest
+
+    from kern.alerts import JobFehler
+
+    spec = importlib.util.spec_from_file_location("check_cities_test_rot",
+                                                  Path("scripts/check_cities.py"))
+    modul = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(modul)
+
+    monkeypatch.setattr(modul.pipeline, "fetch", lambda *a, **k: {})
+    monkeypatch.setattr(modul.pipeline, "normalize", lambda *a, **k: {"papers": 0})
+    monkeypatch.setattr(modul.pipeline, "extract_inline", lambda *a, **k: 0)
+    monkeypatch.setattr(modul.pipeline, "extract", lambda *a, **k: {})
+
+    def ohne_modell(*a, **k):
+        raise RuntimeError("fastembed: Modell nicht gefunden")
+
+    monkeypatch.setattr(modul.pipeline, "index_all", ohne_modell)
+    monkeypatch.setenv("CITIES_DB", str(tmp_path / "c.sqlite"))
+    with pytest.raises(JobFehler) as fehler:
+        modul.main(nur_oldenburg=True)
+    assert fehler.value.kennzahlen["errors"] == 1
+    assert "fastembed" in fehler.value.kennzahlen["error_oldenburg"]
+    assert "fastembed" in str(fehler.value)
+
+
 def test_der_volltextindex_schreibt_nur_was_sich_geaendert_hat(tmp_path):
     """Jeder Lauf schrieb alle 60.000 Zeilen neu — knapp eine Stunde (03.10.2026)."""
     from council.cities.index import build_fts

@@ -59,11 +59,12 @@ niemand. Wie viele Urteile eine ältere Version tragen, steht als Kennzahl
 Stufen. Das Geschriebene bleibt, der nächste Lauf macht weiter — die
 Arbeitslisten fragen ohnehin „was fehlt noch?", nicht „wo war ich?".
 
-**Was ein Lauf kostet** (gemessen, je Stück): Einordnung 0,00016 $, Aufwand
-0,00006 $, Richtung 0,00013 $, Urteil (drei Stimmen) 0,0011 $, Urteil je
-Idee 0,0016 $. Ein gewöhnlicher Sonntag (13.09.2026, noch ohne ``schlank``):
-1,62 $. Der erste Lauf nach der Pause hat rund vier Wochen Rückstand, s. den
-Trockenlauf::
+**Was ein Lauf kostet** (gemessen, je Stück, Lauf vom 03.10.2026 in #1651):
+Einordnung 0,0008 $, Aufwand 0,0004 $, Richtung 0,0007 $, Urteil (drei
+Stimmen) 0,0023 $, Urteil je Idee 0,0044 $ — zwei- bis fünfmal so viel wie
+im September gemessen (Einordnung 0,00016 $, Richtung 0,00013 $). Ein
+gewöhnlicher Sonntag (13.09.2026, noch ohne ``schlank``): 1,62 $. Der erste
+Lauf nach der Pause hat rund vier Wochen Rückstand, s. den Trockenlauf::
 
     python scripts/check_cities.py --trocken
 """
@@ -85,7 +86,7 @@ load_dotenv(ROOT / ".env")
 from council.cities import default_paths, pipeline  # noqa: E402
 from council.cities.registry import active_bodies  # noqa: E402
 from council.cities.store import CitiesStore  # noqa: E402
-from kern.alerts import run_guarded  # noqa: E402
+from kern.alerts import JobFehler, run_guarded  # noqa: E402
 from kern.stopp import aus_umgebung  # noqa: E402
 
 logger = logging.getLogger("check_cities")
@@ -122,10 +123,17 @@ MAX_SEKUNDEN_VORGABE = 4 * 3600
 MAX_USD = "CITIES_MAX_USD"
 MAX_USD_VORGABE = 2.0
 
-#: Was ein Stück je Stufe kostet — für den Trockenlauf. Gemessen an den
-#: Läufen vom 13. bis 20.09.2026 (``annotations.cost_usd``).
-KOSTEN_JE_STUECK = {"classify": 0.00016, "effort": 0.000064, "stance": 0.00013,
-                    "fit": 0.0011, "idea_fit": 0.0016}
+#: Was ein Stück je Stufe kostet — für den Trockenlauf. Gemessen am Lauf
+#: vom 03.10.2026 (#1651, Osnabrück, ``--limit 30``): classify 30 Stück für
+#: 0,023 $, effort 30 für 0,012 $, stance 760 für 0,55 $, fit 22 für 0,051 $,
+#: idea_fit 86 für 0,375 $. Die Werte vom September (classify 0,00016,
+#: stance 0,00013, fit 0,0011, idea_fit 0,0016) lagen um den Faktor 2–5
+#: darunter; mit ihnen hätte der Trockenlauf den Rückstau so weit
+#: unterschätzt, dass die 2-$-Grenze überraschend früh griff. Bei
+#: ``classify`` streute es zwischen 0,0003 und 0,0008 $ — die Schätzung nimmt
+#: den oberen Wert.
+KOSTEN_JE_STUECK = {"classify": 0.0008, "effort": 0.0004, "stance": 0.0007,
+                    "fit": 0.0023, "idea_fit": 0.0044}
 
 
 def _oldenburg(main_store: CitiesStore, raw_dir: Path, files_dir: Path,
@@ -245,6 +253,15 @@ def main(nur_oldenburg: bool = False, staedte: list[str] | None = None,
     zahlen.update(gruende)
     zahlen["cost_usd"] = round(stopp.kosten, 4)
     zahlen["seconds"] = round(time.time() - t0)
+    # Ein Teilausfall ist kein „ok". Bis 10/2026 zählte jede Stufe ihren
+    # Fehler nur in `errors`, und `run_guarded` buchte den Lauf als gelungen —
+    # ein fehlendes Embedding-Modell stand so als `status=ok, errors: 1` im
+    # Panel, ohne Mail. Jetzt endet der Lauf rot, die Kennzahlen bleiben
+    # (Muster `check_presse`): Das Geschriebene ist geschrieben, der Alarm geht raus.
+    if zaehler.get("errors"):
+        fehler = "; ".join(f"{k}: {v}" for k, v in gruende.items() if k.startswith("error_"))
+        raise JobFehler(f"Städte-Speicher: {zaehler['errors']} Stufe(n) gescheitert — "
+                        f"{fehler[:600]}", zahlen)
     return zahlen
 
 
@@ -350,6 +367,7 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
             zaehler["group_status"] = main_store.rebuild_group_status(
                 EMBED_MODEL, CLUSTER_VERSION, get_annotator("fit").version)
     except Exception as e:  # noqa: BLE001 — Kennzahl, nicht der Lauf
+        zaehler["errors"] += 1
         gruende["error_group_status"] = f"{type(e).__name__}: {e}"
 
     # 7. Das „Warum" — nach `group_status`, weil die Arbeitsliste daran hängt.
@@ -393,6 +411,7 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
             if veraltet:
                 zaehler[f"veraltet_{ann.key}"] = veraltet
     except Exception as e:  # noqa: BLE001 — Kennzahl, nicht der Lauf
+        zaehler["errors"] += 1
         gruende["error_veraltet"] = f"{type(e).__name__}: {e}"
 
 

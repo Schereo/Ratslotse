@@ -344,6 +344,38 @@ class Richter:
 
 # ------------------------------------------------------------- Lauf
 
+def _probe(main: CitiesStore, rats: CouncilStore, gruppen: list[dict],
+           einordnung: dict[str, dict], model: str, matrix, papier_matrix,
+           begriffe: dict[str, tuple[str, list[str]]], stand: dict) -> list[str]:
+    """Liefern die Vektor-Arme etwas? Gibt die stummen zurück.
+
+    Je Gruppe einer gestreuten Stichprobe das typischste fremde Mitglied —
+    dasselbe, für das ``belege_fuer`` sucht. Die Suchwörter kommen aus dem
+    Zwischenspeicher, sonst die des Instruments: Die Probe fragt kein Modell.
+    """
+    papiere: list[dict] = []
+    for g in fit.stichprobe(gruppen):
+        fremde = sorted((m for m in main.idea_group_members(model, CLUSTER_VERSION,
+                                                            g["cluster_id"])
+                         if m["body_id"] != "oldenburg"),
+                        key=lambda m: -(m.get("score") or 0.0))
+        if fremde:
+            papiere.append(main.paper(fremde[0]["id"]) or fremde[0])
+    if not papiere:
+        return []
+    woerter: dict[str, list[str]] = {}
+    for p in papiere:
+        gespeichert = begriffe.get(p["id"])
+        woerter[p["id"]] = (gespeichert[1] if gespeichert else
+                            beleg_modul.woerter_des_instruments(einordnung.get(p["id"]) or {}))
+    zaehler = beleg_modul.arm_census(main, rats, papiere, einordnung, model,
+                                     chunk_matrix=matrix, paper_matrix=papier_matrix,
+                                     begriffe=woerter)
+    stand["probe"] = zaehler
+    logger.info("idea_fit: Stichprobe über %s Ideen: %s", len(papiere), zaehler or "NICHTS")
+    return beleg_modul.fehlende_arme(zaehler, matrix, papier_matrix)
+
+
 def run(main: CitiesStore, rats: CouncilStore, model: str, *,
         limit: int | None = None, min_cities: int = AB_STAEDTEN,
         workers: int = WORKERS, stopp: Stopp | None = None,
@@ -375,6 +407,20 @@ def run(main: CitiesStore, rats: CouncilStore, model: str, *,
     matrix = main.chunk_matrix(model, "oldenburg") if suche else None
     papier_matrix = main.paper_matrix(model, "oldenburg") if suche else None
     begriffe = main.evidence_terms() if suche else None
+    if suche:
+        # Dieselbe Probe wie bei `fit`, aber VOR dem ersten Urteil und vor
+        # jeder Hash-Übernahme: `_Vektor.hol` schluckt einen Embedding-Fehler,
+        # beide Vektor-Arme bleiben leer, und ohne Probe urteilte der Lauf
+        # (bzw. übernahm `--hashes-ideen` 199 Hashes in 38 s) auf verarmten
+        # Belegen weiter.
+        fehlend = _probe(main, rats, gruppen, einordnung, model, matrix, papier_matrix,
+                         begriffe or {}, stand)
+        if fehlend:
+            raise fit.LaufAbbruch(
+                f"Beleg-Arm ohne einen einzigen Treffer: {', '.join(fehlend)}. "
+                "Kein Urteil gefällt, kein Quell-Hash übernommen — erst "
+                "Embedding-Modell und Index prüfen (`cities_backfill.py --run "
+                "--stage index`).")
 
     auftraege: list[tuple[dict, list[dict], list[Evidence], str]] = []
     neue_begriffe: list[tuple[str, str, list[str]]] = []
