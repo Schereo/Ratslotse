@@ -26,6 +26,7 @@
 //   hover(target)   nur hinfahren
 //   look(target)    hinfahren und hinsehen: Zoom-Beat ohne Klick (für alles,
 //                   was schon beim Überfahren aufgeht)
+//   markText(target, text)  ein Wort im Ziel mit gedrückter Maus markieren
 //   type(target, text)  hinfahren, fokussieren, Zeichen für Zeichen tippen
 //   scrollTo(target) weich dorthin blättern (ein Sprung sähe nach Schnitt aus)
 //   pause(seconds)  stehen lassen (die Pointe lesen lassen)
@@ -204,6 +205,9 @@ const stage = {
   },
   begin() {
     marks.begin = clock();
+    // Was der Aufbau mit `click`/`markText` erledigt hat, ist kein Beat des
+    // Clips — es läge vor dessen Anfang, und der Zoom käme aus dem Nichts.
+    marks.beats.length = 0;
     // Der Zeiger erscheint erst mit der ersten Fahrt — ein Aufbau-Klick
     // davor (Playwright) darf keinen Sprung hinterlassen.
     cursor = null;
@@ -244,6 +248,43 @@ const stage = {
     const z = await stage.hover(target, { from });
     await page.waitForTimeout(hover * 1000);
     marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: false });
+  },
+  /** Ein Wort (oder eine Wortfolge) im Ziel mit der Maus markieren: Zeiger
+   *  an den Anfang, drücken, sichtbar bis zum Ende ziehen, loslassen. Ein
+   *  Beat ohne Tipp am Ende der Markierung — dort erscheint, was auf eine
+   *  Markierung antwortet (3.0.0: „Lotti fragen“). */
+  async markText(target, text, { from } = {}) {
+    const l = locate(target);
+    await l.scrollIntoViewIfNeeded();
+    const box = await l.evaluate((el, gesucht) => {
+      const lauf = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = lauf.nextNode(); n; n = lauf.nextNode()) {
+        const i = n.textContent.indexOf(gesucht);
+        if (i < 0) continue;
+        const r = document.createRange();
+        r.setStart(n, i);
+        r.setEnd(n, i + gesucht.length);
+        const rects = [...r.getClientRects()];
+        const a = rects[0], z = rects[rects.length - 1];
+        return { x0: a.left + 1, y0: a.top + a.height / 2, x1: z.right - 1, y1: z.top + z.height / 2 };
+      }
+      return null;
+    }, text);
+    if (!box) throw new Error(`Text nicht gefunden: ${text}`);
+    if (!cursor) {
+      const [dx, dy] = from ?? [-380, 160];
+      cursor = { x: clamp(box.x0 + dx, 8, viewport.width - 8), y: clamp(box.y0 + dy, 8, viewport.height - 8) };
+      await page.mouse.move(cursor.x, cursor.y);
+      await page.waitForTimeout(500);
+    }
+    const weg = Math.hypot(box.x0 - cursor.x, box.y0 - cursor.y);
+    await page.mouse.move(box.x0, box.y0, { steps: clamp(Math.round(weg / 9), 18, 60) });
+    await page.waitForTimeout(350);
+    await page.mouse.down();
+    await page.mouse.move(box.x1, box.y1, { steps: clamp(Math.round((box.x1 - box.x0) / 6), 12, 40) });
+    await page.mouse.up();
+    cursor = { x: box.x1, y: box.y1 };
+    marks.beats.push({ t: clock(), x: (box.x0 + box.x1) / 2, y: box.y1, tap: false });
   },
   async type(target, text, { delay = 35 } = {}) {
     await stage.hover(target);

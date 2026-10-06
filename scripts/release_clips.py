@@ -71,6 +71,10 @@ TAIL = 2.5              # eingefrorener Schluss in Sekunden
 REACTION = 0.25         # der Tipp liegt so weit VOR dem ersten Bildwechsel
 BEFORE, AFTER = 1.5, 2.5  # Schnittfenster um den Bildwechsel eines iPhone-Beats
 CHANGE_THRESHOLD = 6.0  # mittlere Graustufen-Differenz, ab der ein Bild „anders" ist
+#: Zweiter Anlauf für kleine Reaktionen: Eine Sprechblase mit einer Zeile
+#: Text (3.0.0: die Frage an Lotti) bewegt im ganzen Telefonbild im Mittel
+#: kaum zwei Graustufen — unter 6 bliebe der Tipp „ohne Wirkung“.
+SMALL_CHANGE_THRESHOLD = 1.5
 
 #: Ein Drehbuch-Eintrag steht in ``release-clips/<version>.mjs`` als Schlüssel
 #: mit zwei Leerzeichen Einzug: ``  teilen: {``. Der Name ist der Dateistamm
@@ -381,6 +385,8 @@ def cmd_ios(args: argparse.Namespace) -> int:
             norm = Path(tmp) / f"norm{i}.mp4"
             normalize(datei, norm)
             wechsel = change_time(norm)
+            if wechsel is None:
+                wechsel = change_time(norm, SMALL_CHANGE_THRESHOLD)
             if wechsel is None:
                 print(f"{datei}: kein Bildwechsel gefunden — hat der Tipp etwas ausgelöst?", file=sys.stderr)
                 return 1
