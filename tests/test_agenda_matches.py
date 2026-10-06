@@ -114,6 +114,48 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
     ratslotse.close()
 
 
+def test_keine_themen_meldung_wenn_die_gremien_meldung_schon_ging(tmp_path, monkeypatch):
+    """`check_committees` (N1) läuft vor `check_council` (N2) und sieht den
+    Themen-Treffer noch nicht. Wer das Gremium abonniert hat UND ein passendes
+    Thema, bekam zur selben Tagesordnung zwei Meldungen."""
+    from council import watcher
+    from council.scraper import AgendaItem, CouncilSession
+    from council.store import CouncilStore
+
+    ratslotse = Store(tmp_path / "ratslotse.sqlite")
+    assert ratslotse.create_web_user("radweg@example.org", "x", status="active",
+                                     email_verified=True) == 1
+    topic = ratslotse.add_topic(1, "Radwege", "Ausbau von Radwegen")
+    owner = {"owner_id": 1, "delivery_channel": "email", "email": None,
+             "push_tokens": [], "topics": [topic]}
+    future = (date.today() + timedelta(days=5)).isoformat()
+    session = CouncilSession(
+        ksinr=42, committee="Verkehrsausschuss", session_date=future,
+        session_time="17:00", location="Fleiwa",
+        agenda_items=[AgendaItem(item_number="Ö 6", title="Radweg Hauptstraße")],
+    )
+    council = CouncilStore(tmp_path / "council.sqlite")
+    council.mark_notified(42, 1, "irgendein-hash")      # N1 ging um 7 Uhr raus
+    council.close()
+
+    monkeypatch.setattr(watcher.CouncilScraper, "past_session_ids",
+                        lambda self, months_back=3: [])
+    monkeypatch.setattr(watcher.CouncilScraper, "upcoming_calendar",
+                        lambda self, months_ahead=3: ([42], []))
+    monkeypatch.setattr(watcher.CouncilScraper, "fetch_session", lambda self, k: session)
+    monkeypatch.setattr(watcher, "_classify_agenda", lambda sess, topics, store=None: {0: ["Ö 6"]})
+
+    stats: dict = {}
+    alerts = watcher.run_watcher(tmp_path / "council.sqlite", [owner],
+                                 ratslotse_store=ratslotse, stats=stats)
+    assert alerts == []
+    assert ratslotse.due_notifications(1, "2999-01-01") == []
+    assert stats["N2 entfällt (N1 ging schon)"] == 1
+    # Die Treffer selbst bleiben — die App zeigt die Chips trotzdem.
+    assert ratslotse.agenda_matches_for_owner(1, [42])[42][0]["item_number"] == "Ö 6"
+    ratslotse.close()
+
+
 def test_content_filter_skips_owner_without_killing_the_run(tmp_path, monkeypatch):
     """Ein als Prompt-Injection getarnter Themenname lässt den Provider-Content-
     Filter anschlagen (HTTP 400). Das darf NUR diese Nutzer*in bei dieser Sitzung

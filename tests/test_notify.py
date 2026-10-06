@@ -802,6 +802,22 @@ def test_vorabend_erinnert_an_die_sitzung_von_morgen(store, tmp_path):
     council.close()
 
 
+def test_vorabend_zweimal_am_selben_abend_reiht_einmal_ein(store, tmp_path):
+    """Ein Ops-Skript wird im Zweifel zweimal gestartet (scripts/CLAUDE.md)."""
+    from council.abendmeldungen import vorabend
+    from council.scraper import CouncilSession
+
+    owner = _konto(store)
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})
+    store.subscribe(owner, "Verkehrsausschuss")
+    council = _council(tmp_path)
+    council.save_session(CouncilSession(4652, "Verkehrsausschuss", "2026-08-18", "17:00", "Fleiwa"))
+    assert vorabend(council, store, date(2026, 8, 17)) == 1
+    assert vorabend(council, store, date(2026, 8, 17)) == 0
+    assert len(store.due_notifications(owner, "2999-01-01")) == 1
+    council.close()
+
+
 def test_vorabend_ist_ab_werk_aus(store, tmp_path):
     from datetime import date
     from council.abendmeldungen import vorabend
@@ -872,6 +888,23 @@ def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
     # gegen die ein relativer Pfad aufgelöst werden könnte.
     assert 'href="https://' in p["body_html"]
     assert 'href="/council' not in p["body_html"]
+    council.close()
+
+
+def test_wochenueberblick_zweimal_in_der_woche_reiht_einmal_ein(store, tmp_path):
+    from council.abendmeldungen import wochenueberblick
+
+    owner = _konto(store)
+    thema = store.add_topic(owner, "Radwege", "Ausbau")
+    store.set_notify_prefs(owner, {notify.N6_WOCHE: True})
+    council = _council(tmp_path)
+    ids = _zwei_beschluesse(council)
+    store.save_topic_decision_matches(thema.id, owner, [(i, 0.9) for i in ids])
+    _stempel(store, "2026-08-22T03:00:00")
+
+    assert wochenueberblick(council, store, SONNTAG) == 1
+    assert wochenueberblick(council, store, SONNTAG) == 0
+    assert len(store.due_notifications(owner, "2999-01-01")) == 1
     council.close()
 
 

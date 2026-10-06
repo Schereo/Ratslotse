@@ -137,6 +137,19 @@ CREATE TABLE IF NOT EXISTS council_results_sent (
     PRIMARY KEY (ksinr, owner_id)
 );
 
+-- N5 „Vorabend" und N6 „Wochenüberblick" (council/abendmeldungen.py): je
+-- Anlass, Schlüssel und Konto einmal. Schlüssel ist bei N5 die Sitzung
+-- (ksinr), bei N6 die Kalenderwoche (2026-W40). Ohne die Marke reihte ein
+-- zweiter Lauf am selben Abend (von Hand, nach einem Absturz) alles noch
+-- einmal ein — Läufe müssen wiederholbar sein (scripts/CLAUDE.md).
+CREATE TABLE IF NOT EXISTS evening_notices_sent (
+    kind     TEXT NOT NULL,
+    key      TEXT NOT NULL,
+    owner_id INTEGER NOT NULL,
+    sent_at  TEXT NOT NULL,
+    PRIMARY KEY (kind, key, owner_id)
+);
+
 -- Semantic matches between a user topic and council decisions (computed offline by
 -- scripts/match_topics_decisions.py from the precomputed decision embeddings).
 CREATE TABLE IF NOT EXISTS council_topic_matches (
@@ -887,6 +900,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("bookmarks", "owner_id"),
     ("notification_queue", "owner_id"),
     ("council_results_sent", "owner_id"),
+    ("evening_notices_sent", "owner_id"),
     ("topic_hits_seen", "owner_id"),
     ("council_topic_matches", "owner_id"),
     ("council_topic_match_meta", "owner_id"),
@@ -3024,6 +3038,18 @@ class Store:
                 "INSERT OR IGNORE INTO council_results_sent (ksinr, owner_id, sent_at) VALUES (?,?,?)",
                 (ksinr, owner_id, now))
 
+    def evening_notice_sent(self, kind: str, key: str, owner_id: int) -> bool:
+        return self._conn.execute(
+            "SELECT 1 FROM evening_notices_sent WHERE kind = ? AND key = ? AND owner_id = ?",
+            (kind, key, owner_id)).fetchone() is not None
+
+    def mark_evening_notice(self, kind: str, key: str, owner_id: int) -> None:
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO evening_notices_sent (kind, key, owner_id, sent_at) "
+                "VALUES (?,?,?,?)", (kind, key, owner_id, now))
+
     # ---- Anlass-Schalter (Design 30a/E) ----
 
     def get_notify_prefs(self, owner_id: int) -> dict:
@@ -4508,6 +4534,13 @@ class Store:
         except Exception:  # noqa: BLE001 — s. Docstring
             logger.exception("Mail-Protokoll fehlgeschlagen (owner=%s, anlass=%s)",
                              owner_id, anlass)
+
+    def failed_mail_count(self, owner_id: int, anlass: str) -> int:
+        """Wie oft eine Mail dieses Anlasses an dieses Konto gescheitert ist
+        (``ok = 0`` im Protokoll) — die Obergrenze für Wiederholungen."""
+        return int(self._conn.execute(
+            "SELECT COUNT(*) FROM email_log WHERE owner_id = ? AND anlass = ? AND ok = 0",
+            (owner_id, mail_anlass(anlass))).fetchone()[0])
 
     def mails_fuer_konto(self, owner_id: int, limit: int = 200, offset: int = 0) -> list[dict]:
         """Die Mails eines Kontos, neueste zuerst.

@@ -525,9 +525,23 @@ def run_watcher(
                         {topics[idx]["id"]: nums for idx, nums in matches.items()},
                     )
 
+            # Ging für diese Sitzung schon die Gremien-Meldung (N1) raus, keine
+            # zweite Meldung zur selben Tagesordnung. `check_committees` läuft
+            # um 7 Uhr VOR diesem Lauf und sieht deshalb noch keinen
+            # Themen-Treffer (`has_agenda_match` füllt erst dieser Lauf) — wer
+            # das Gremium abonniert UND ein passendes Thema hat, bekam beides.
+            # Die Treffer bleiben gespeichert (Chips in der App); nur die
+            # Meldung entfällt, und die Marke verhindert sie auch später.
+            n1_schon = store.get_last_notified_hash(ksinr, owner["owner_id"]) is not None
             for topic_idx, item_numbers in matches.items():
                 topic_id = topics[topic_idx]["id"]
                 if store.alert_already_sent(ksinr, topic_id):
+                    continue
+                if n1_schon:
+                    store.mark_alert_sent(ksinr, topic_id)
+                    if stats is not None:
+                        stats["N2 entfällt (N1 ging schon)"] = \
+                            stats.get("N2 entfällt (N1 ging schon)", 0) + 1
                     continue
                 msg = _format_alert(session, {topic_idx: item_numbers}, topics)
                 print(f"    Match: topic={topics[topic_idx]['name']!r} items={item_numbers}")
