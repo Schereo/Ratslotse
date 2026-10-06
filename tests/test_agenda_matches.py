@@ -44,6 +44,9 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
     import kern.delivery as delivery_mod
 
     ratslotse = Store(tmp_path / "ratslotse.sqlite")
+    # Eingereiht wird nur für aktive Konten (kern.notify.konto_aktiv).
+    assert ratslotse.create_web_user("radweg@example.org", "x", status="active",
+                                     email_verified=True) == 1
     topic = ratslotse.add_topic(1, "Radwege", "Ausbau von Radwegen")
     owner = {"owner_id": 1, "delivery_channel": "email", "email": None,
              "push_tokens": [], "topics": [topic]}

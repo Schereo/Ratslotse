@@ -347,6 +347,122 @@ def test_gesperrtes_konto_bekommt_nichts(store, monkeypatch):
     assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 9)) == 0
 
 
+def test_gesperrtes_konto_wird_gar_nicht_erst_eingereiht(store):
+    owner = _konto(store)
+    store.set_web_user_status(owner, "disabled")
+    assert notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, "x", "<p>x</p>",
+                            "/council", jetzt=_zeit("2026-08-18", 9)) == 0
+    assert store.due_notifications(owner, "2999-01-01") == []
+
+
+def test_altbestand_eines_gesperrten_kontos_wird_verworfen(store, monkeypatch):
+    """Vorher blieb so ein Posten ohne Versuchszähler für immer liegen."""
+    owner = _konto(store)
+    notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, "x", "<p>x</p>", "/council",
+                     jetzt=_zeit("2026-08-18", 9))
+    store.set_web_user_status(owner, "disabled")
+    monkeypatch.setattr("kern.delivery.deliver_message",
+                        lambda *a, **k: pytest.fail("gesperrte Konten bekommen keine Post"))
+    assert notify.zustellen(store, jetzt=_zeit("2026-08-18", 9)) == 0
+    assert store.owners_with_due_notifications("2999-01-01") == []
+
+
+def test_gremien_ziele_nur_fuer_aktive_konten(store):
+    aktiv = _konto(store, "aktiv@example.org")
+    gesperrt = _konto(store, "gesperrt@example.org")
+    store.set_web_user_status(gesperrt, "disabled")
+    unbestaetigt = store.create_web_user("offen@example.org", "x")   # status pending
+    for o in (aktiv, gesperrt, unbestaetigt):
+        store.subscribe(o, "Rat")
+    assert set(store.get_subscription_targets()) == {aktiv}
+
+
+# ---- Doppelversand ----------------------------------------------------------
+
+def test_zwei_gleichzeitige_zustellungen_verschicken_nichts_doppelt(tmp_path, monkeypatch):
+    """Sechs Crons und der Neuigkeiten-Knopf stoßen die Zustellung an — oft
+    gleichzeitig. Vorher lasen beide Läufe dieselben Posten und schickten sie
+    zweimal. Hier halten wir den ersten Lauf MITTEN im Versand an, bis der
+    zweite durch ist: genau das Fenster, in dem es doppelt rausging."""
+    import threading
+
+    pfad = tmp_path / "ratslotse.sqlite"
+    s0 = Store(pfad)
+    owner = _konto(s0)
+    jetzt = _zeit("2026-08-18", 9)
+    _einreihen(s0, owner, 2, jetzt)
+
+    raus: list[str] = []
+    im_versand = threading.Event()
+    zweiter_fertig = threading.Event()
+
+    def langsam(o, html, email_subject, push_url="/", push_text=None, **_):
+        raus.append(email_subject)
+        if threading.current_thread().name == "erster" and not im_versand.is_set():
+            im_versand.set()
+            zweiter_fertig.wait(10)
+        return ["email"]
+
+    monkeypatch.setattr("kern.delivery.deliver_message", langsam)
+    ergebnisse: dict[str, int] = {}
+
+    def lauf(name):
+        st = Store(pfad)
+        try:
+            ergebnisse[name] = notify.zustellen(st, jetzt=jetzt)
+        finally:
+            st.close()
+
+    t1 = threading.Thread(target=lauf, args=("erster",), name="erster")
+    t1.start()
+    assert im_versand.wait(10)
+    t2 = threading.Thread(target=lauf, args=("zweiter",), name="zweiter")
+    t2.start()
+    t2.join(10)
+    zweiter_fertig.set()
+    t1.join(10)
+
+    assert sorted(raus) == ["Meldung 1", "Meldung 2"]
+    assert ergebnisse == {"erster": 2, "zweiter": 0}
+    s0.close()
+
+
+def test_liegengebliebene_reservierung_laeuft_nach_frist_frei(store, monkeypatch):
+    """Stirbt ein Lauf mitten in der Zustellung, darf seine Reservierung die
+    Posten nicht für immer festhalten."""
+    owner = _konto(store)
+    jetzt = _zeit("2026-08-18", 9)
+    _einreihen(store, owner, 1, jetzt)
+    assert len(store.claim_due_notifications(owner, jetzt.isoformat(), "toter-lauf")) == 1
+    # Frisch reserviert: ein zweiter Lauf geht leer aus.
+    assert store.claim_due_notifications(owner, jetzt.isoformat(), "anderer") == []
+    # Nach der Frist ist sie frei.
+    alt = "2000-01-01T00:00:00+00:00"
+    store._conn.execute("UPDATE notification_queue SET claimed_at = ?", (alt,))
+    store._conn.commit()
+    raus: list[str] = []
+    monkeypatch.setattr("kern.delivery.deliver_message",
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: (raus.append(email_subject), ["email"])[1])
+    assert notify.zustellen(store, jetzt=jetzt) == 1
+    assert raus == ["Meldung 1"]
+
+
+def test_was_die_grenze_zurueckhaelt_wird_wieder_freigegeben(store, monkeypatch):
+    """Reserviert, aber nicht verschickt (Tagesgrenze) → nach dem Lauf frei,
+    damit der nächste Lauf es nicht erst nach der Frist bekommt."""
+    owner = _konto(store)
+    monkeypatch.setattr("kern.delivery.deliver_message",
+                        lambda o, html, email_subject, push_url="/", push_text=None, **_: ["email"])
+    jetzt = _zeit("2026-08-18", 9)
+    _einreihen(store, owner, 2, jetzt)
+    assert notify.zustellen(store, jetzt=jetzt) == 2
+    _einreihen(store, owner, 1, jetzt)
+    assert notify.zustellen(store, jetzt=jetzt) == 0   # Grenze erreicht
+    offen = store._conn.execute(
+        "SELECT claim_token FROM notification_queue WHERE sent_at IS NULL").fetchall()
+    assert [r[0] for r in offen] == [None]
+
+
 # ---- Die zwei neuen Entscheidungen in check_committees ----------------------
 
 def test_themen_treffer_gewinnt(store):

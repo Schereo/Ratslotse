@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -184,6 +185,16 @@ def zustellung_aus(store, owner_id: int) -> bool:
         return False
 
 
+def konto_aktiv(store, owner_id: int) -> bool:
+    """Darf das Konto überhaupt Post bekommen (``status = 'active'``)?"""
+    try:
+        return store.is_owner_active(owner_id)
+    except AttributeError:
+        # Store-Doubles in Tests kennen die Abfrage nicht — wie bei
+        # ``zustellung_aus``: im Zweifel nicht stumm stellen.
+        return True
+
+
 def gewuenscht(store, owner_id: int, art: str) -> bool:
     """Will dieses Konto diesen Anlass? Unbekannte Arten gelten als gewünscht —
     ein neuer Anlass soll nicht versehentlich still sein.
@@ -278,6 +289,11 @@ def einreihen(store, owner_id: int, kind: str, title: str, html: str, url: str,
             f"Ziel muss ein App-Pfad sein (mit / beginnend), war: {url!r}. "
             "Externe Links gehören in den Meldungstext, nicht ins Tap-Ziel."
         )
+    # Gesperrte und unbestätigte Konten bekommen keine Post; eingereiht
+    # blieben ihre Meldungen für immer liegen (die Zustellung fasst nur
+    # aktive Konten an). Die Zustellung räumt Altbestand zusätzlich weg.
+    if not konto_aktiv(store, owner_id):
+        return 0
     # Abgeschaltete Anlässe gar nicht erst einreihen — sonst zählten sie
     # gegen die Tagesgrenze, ohne je zugestellt zu werden.
     if not gewuenscht(store, owner_id, kind):
@@ -342,10 +358,15 @@ def zustellen(store, jetzt: datetime | None = None, stats: dict | None = None) -
 
 def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
     """Die fälligen Meldungen *eines* Kontos. Gibt die Zahl der Zustellungen zurück."""
-    from kern.delivery import deliver_message
-
     owner = store.get_owner_delivery(owner_id)
     if not owner:
+        # Gesperrt, unbestätigt oder gelöscht: ``get_owner_delivery`` liefert
+        # nur aktive Konten. Vorher blieben die Posten dann einfach liegen —
+        # ohne Versuchszähler, also für immer, und jeder Lauf fand sie wieder.
+        weg = store.drop_pending_notifications(owner_id)
+        if weg:
+            logger.info("owner %s ist nicht aktiv — %d wartende Meldung(en) verworfen",
+                        owner_id, weg)
         return 0
     # Abgeschaltet? Dann ist das hier nicht bloß ein leerer Versand, sondern
     # Altbestand: Meldungen, die vor dem Abschalten eingereiht wurden. Sie
@@ -357,9 +378,22 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
             logger.info("owner %s hat abgeschaltet — %d wartende Meldung(en) verworfen",
                         owner_id, weg)
         return 0
-    offen = store.due_notifications(owner_id, jetzt_iso)
+    # Reservieren statt bloß lesen: Ein zweiter, gleichzeitiger Lauf sieht die
+    # Posten dann nicht mehr und verschickt sie nicht ein zweites Mal.
+    token = uuid.uuid4().hex
+    offen = store.claim_due_notifications(owner_id, jetzt_iso, token)
     if not offen:
         return 0
+    try:
+        return _zustellen_reserviert(store, owner, owner_id, offen, heute, jetzt_iso)
+    finally:
+        store.release_notification_claim(token)
+
+
+def _zustellen_reserviert(store, owner: dict, owner_id: int, offen: list[dict],
+                          heute: str, jetzt_iso: str) -> int:
+    """Die reservierten Posten eines Kontos unter den Grenzen aus 30a/C ausliefern."""
+    from kern.delivery import deliver_message
 
     def _abschicken(posten_ids: list[int], html: str, title: str, url: str, gebuendelt: bool,
                     push_text: str | None = None, anlass: str | None = None) -> bool:

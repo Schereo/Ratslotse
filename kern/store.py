@@ -116,7 +116,14 @@ CREATE TABLE IF NOT EXISTS notification_queue (
     -- unzustellbare Adresse die Warteschlange nicht ewig blockiert.
     attempts      INTEGER NOT NULL DEFAULT 0,
     -- 1 = darf an der Tagesgrenze vorbei (Tragweite gemessen), s. kern.notify.einreihen
-    wichtig       INTEGER NOT NULL DEFAULT 0
+    wichtig       INTEGER NOT NULL DEFAULT 0,
+    -- Reservierung der Zustellung (10/2026): Wer zustellt, setzt beide Felder
+    -- in EINEM UPDATE und arbeitet nur, was seine Marke trägt. Sonst lasen zwei
+    -- gleichzeitige Läufe (sechs Crons, der Neuigkeiten-Knopf) dieselben
+    -- Posten und verschickten sie doppelt. Eine Reservierung älter als
+    -- ZUSTELL_RESERVIERUNG_MIN gilt als liegen gelassen (Absturz) und läuft frei.
+    claimed_at    TEXT,
+    claim_token   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_notify_offen ON notification_queue(owner_id, sent_at, deliver_after);
 
@@ -1862,6 +1869,13 @@ class Store:
                 self._conn.execute(
                     "ALTER TABLE notification_queue ADD COLUMN wichtig INTEGER NOT NULL DEFAULT 0"
                 )
+        # Reservierung gegen Doppelversand (10/2026), s. claim_due_notifications.
+        if nq_cols and "claimed_at" not in nq_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE notification_queue ADD COLUMN claimed_at TEXT")
+        if nq_cols and "claim_token" not in nq_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE notification_queue ADD COLUMN claim_token TEXT")
         self._notify_vorgaben_einfrieren()
         # Der Fehler-Sammler kam zuerst nur mit Server-Fehlern; Herkunft und
         # Tagesverlauf sind nachgezogen. Ohne diesen Schritt scheitert das
@@ -2334,6 +2348,13 @@ class Store:
             self._conn.execute(
                 "UPDATE web_users SET delivery_channel = ? WHERE id = ?", (channel, owner_id)
             )
+
+    def is_owner_active(self, owner_id: int) -> bool:
+        """Darf dieses Konto Post bekommen? Nur ``status = 'active'`` — ein
+        gesperrtes, ein unbestätigtes oder ein gelöschtes Konto nicht."""
+        row = self._conn.execute(
+            "SELECT 1 FROM web_users WHERE id = ? AND status = 'active'", (owner_id,)).fetchone()
+        return row is not None
 
     def get_delivery_channel(self, owner_id: int) -> str:
         """Der Zustellweg eines Kontos — ``email`` | ``push`` | ``both`` | ``off``.
@@ -3069,6 +3090,69 @@ class Store:
             "WHERE owner_id = ? AND sent_at IS NULL AND attempts < ? AND deliver_after <= ? "
             "ORDER BY id",
             (owner_id, self.MAX_ZUSTELLVERSUCHE, jetzt_iso))]
+
+    #: Wie lange eine Reservierung hält. Ein Konto ist in Sekunden bedient;
+    #: eine ältere Marke stammt von einem Lauf, der mittendrin gestorben ist,
+    #: und darf die Posten nicht für immer festhalten.
+    ZUSTELL_RESERVIERUNG_MIN = 15
+
+    def claim_due_notifications(self, owner_id: int, jetzt_iso: str, token: str) -> list[dict]:
+        """Die fälligen Posten eines Kontos für GENAU einen Zustell-Lauf reservieren.
+
+        Vorher lasen ``due_notifications`` und ``mark_notification_sent`` ohne
+        Sperre dazwischen: Liefen zwei Zustellungen gleichzeitig (sechs Crons
+        stoßen sie an, dazu der Neuigkeiten-Knopf, der minutenlang zustellt),
+        bekamen beide dieselben Posten zu sehen und verschickten sie doppelt.
+
+        Jetzt nimmt ``BEGIN IMMEDIATE`` die Schreibsperre, BEVOR gelesen wird.
+        Hält schon ein anderer Lauf eine frische Reservierung für dieses Konto,
+        kommt eine leere Liste zurück — das Konto wird dann ganz von dem
+        anderen Lauf bedient, damit auch die Tagesgrenze nur einmal gezählt
+        wird. Sonst tragen alle fälligen Posten danach ``token``.
+
+        Die Uhr ist die echte, nicht ``jetzt_iso``: Ein langer Lauf hält
+        ``jetzt_iso`` vom Start fest, und eine damit gestempelte Reservierung
+        wäre für einen zweiten Lauf schon abgelaufen, bevor sie beginnt.
+        """
+        echt = datetime.now(timezone.utc)
+        jetzt_echt = echt.isoformat(timespec="seconds")
+        frist = (echt - timedelta(minutes=self.ZUSTELL_RESERVIERUNG_MIN)).isoformat(
+            timespec="seconds")
+        conn = self._conn
+        if conn.in_transaction:
+            conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            besetzt = conn.execute(
+                "SELECT 1 FROM notification_queue WHERE owner_id = ? AND sent_at IS NULL "
+                "AND claimed_at IS NOT NULL AND claimed_at >= ? AND claim_token != ? LIMIT 1",
+                (owner_id, frist, token)).fetchone()
+            if besetzt:
+                conn.commit()
+                return []
+            conn.execute(
+                "UPDATE notification_queue SET claimed_at = ?, claim_token = ? "
+                "WHERE owner_id = ? AND sent_at IS NULL AND attempts < ? AND deliver_after <= ? "
+                "AND (claimed_at IS NULL OR claimed_at < ? OR claim_token = ?)",
+                (jetzt_echt, token, owner_id, self.MAX_ZUSTELLVERSUCHE, jetzt_iso, frist, token))
+            conn.commit()
+        except BaseException:
+            conn.rollback()
+            raise
+        return [dict(r) for r in conn.execute(
+            "SELECT id, kind, title, body_html, url, created_at, push_text, wichtig "
+            "FROM notification_queue WHERE claim_token = ? AND owner_id = ? AND sent_at IS NULL "
+            "ORDER BY id",
+            (token, owner_id))]
+
+    def release_notification_claim(self, token: str) -> None:
+        """Was ein Lauf reserviert, aber nicht verschickt hat, wieder freigeben —
+        etwa, weil die Tagesgrenze erreicht war. Zugestelltes behält seine Marke
+        als Beleg, an ``sent_at`` ändert das nichts."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE notification_queue SET claimed_at = NULL, claim_token = NULL "
+                "WHERE claim_token = ? AND sent_at IS NULL", (token,))
 
     def bump_notification_attempts(self, ids: list[int]) -> None:
         """Einen erfolglosen Zustellversuch vermerken.
@@ -5643,11 +5727,17 @@ class Store:
 
     def get_subscription_targets(self) -> dict[int, dict]:
         """Return {owner_id: {delivery_channel, telegram_chat_id, email, push_tokens}}
-        for all owners that have ≥1 committee subscription — delivery info for the crons."""
+        for all owners that have ≥1 committee subscription — delivery info for the crons.
+
+        Nur aktive Konten (wie ``get_topic_owners``): Für ein gesperrtes oder
+        unbestätigtes Konto reihte der Gremien-Cron sonst Meldungen ein, die
+        nie jemand zustellen durfte — sie lagen ohne Versuchszähler für immer
+        in der Warteschlange."""
         rows = self._conn.execute(
             """SELECT DISTINCT wu.id AS owner_id, wu.delivery_channel,
                       wu.telegram_chat_id, wu.email
-               FROM committee_subscriptions cs JOIN web_users wu ON wu.id = cs.owner_id"""
+               FROM committee_subscriptions cs JOIN web_users wu ON wu.id = cs.owner_id
+               WHERE wu.status = 'active'"""
         ).fetchall()
         targets = {r["owner_id"]: dict(r) for r in rows}
         self._attach_push_tokens(targets)
