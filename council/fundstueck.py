@@ -14,11 +14,11 @@ und liegen prüfbar in ``council_daily_finds``.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
 from datetime import date
 
+from council import modell_json
 from kern import llm, prompts
 
 from .store import CouncilStore
@@ -143,10 +143,10 @@ def write_story(decision: dict) -> str | None:
             temperature=0.4,
             _feature="daily_find_story",
         )
-        data = json.loads(resp.choices[0].message.content or "{}")
+        data = modell_json.objekt(resp.choices[0].message.content)
     except Exception:  # noqa: BLE001 — nächster Lauf füllt den Tag erneut
         return None
-    story = (data.get("story") or "").strip()
+    story = modell_json.text(data, "story")
     if not story or len(story) > 260:
         return None
     return story

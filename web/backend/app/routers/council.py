@@ -3087,7 +3087,10 @@ def debatten_nachladen(
     Aussprache zu allen belegten Beschlüssen. Neueste Sitzung zuerst.
     """
     if not user.get("limits_unlocked"):
-        debatten_limiter.check(request)
+        # Je KONTO, nicht je Adresse (Review 05.10.2026): Mobilfunkanbieter
+        # bündeln viele Geräte hinter einer Adresse, und ein Konto ist die
+        # Einheit, an der die Kosten hängen — dieselbe Wahl wie bei /ask.
+        debatten_limiter.check(request, subject=user["id"])
     from council import embeddings as emb
     rows: list[dict] = []
     try:
@@ -3134,7 +3137,8 @@ def partei_meinungen_endpoint(
     das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
     ist — der Baustein erscheint dann nicht."""
     if not user.get("limits_unlocked"):
-        partei_meinungen_limiter.check(request)
+        # Je Konto, wie bei /ask — der Baustein kostet einen Modellaufruf.
+        partei_meinungen_limiter.check(request, subject=user["id"])
     try:
         import hashlib
 
@@ -3558,6 +3562,10 @@ def qa_share_melden(
         f"{labels[body.reason]}\nShare-Token: {token}\nInhaber-ID: {owner_id}",
     )
     return {"ok": True}
+
+
+#: So viele Zeichen einer Frage kommen an — s. ``AskBody._frage_kappen``.
+QA_FRAGE_MAX = 300
 
 
 class AskTurn(BaseModel):
@@ -4812,6 +4820,17 @@ class ScreenContext(BaseModel):
 
 class AskBody(BaseModel):
     question: str
+
+    # **Gekappt, nicht abgewiesen** (Review 05.10.2026): Ohne Grenze kostete
+    # eine Frage von 200 kB 8,6 s CPU (Suche, Analyse, Rerank laufen über den
+    # ganzen Text), auf derselben Maschine, die die Website ausliefert. Der
+    # Prompt nimmt ohnehin nur die ersten 300 Zeichen (``question[:300]``).
+    # Kein ``max_length``: Ein 422 bräche eine ausgelieferte App, die längere
+    # Fragen schickt — der Vertrag bleibt dadurch auch unverändert.
+    @field_validator("question", mode="before")
+    @classmethod
+    def _frage_kappen(cls, v):
+        return v[:QA_FRAGE_MAX] if isinstance(v, str) else v
     # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
     # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
     # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
@@ -5099,6 +5118,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
+        # Das Tageskontingent (`qa.TAGES_KONTINGENT`, dort begründet). Der
+        # Fenster-Zähler oben allein ließ 1.440 Fragen am Tag zu. Der Satz ist
+        # für Menschen geschrieben: Web und App zeigen `detail` — die
+        # ausgelieferte App zeigt bei jedem Fehler genau diesen Text.
+        if ratslotse.aktivitaet_heute(user["id"], qa.KONTINGENT_MERKMAL) >= qa.TAGES_KONTINGENT:
+            raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, qa.KONTINGENT_TEXT)
     ratslotse.record_activity(user["id"], "ai_question")  # Admin-Statistik (20a)
     # Kam die Frage aus Lottis Fenster? Eigener Zähler — „wie oft führt eine
     # Erklärung ins Archiv?" ist die Frage, an der hängt, ob der zweite

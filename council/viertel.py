@@ -27,7 +27,6 @@ einmal Benachrichtigungen daraus baut, geht über ``notify.einreihen``.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
 from datetime import date
@@ -35,6 +34,7 @@ from datetime import date
 from council.impact import vorlagen_kern
 from council.locations import affects_whole_city
 from council.store_viertel import PROJECT_MIN_CONFIDENCE
+from council import modell_json
 from kern import llm, prompts
 
 #: Tims Entscheidung 23.09.2026 (P5, docs/plan-modellwechsel.md): GPT-6 Luna
@@ -159,10 +159,10 @@ def review_batch(place, batch: list[dict]) -> dict[int, dict]:
         _feature="district_projects", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
         _tarif="flex",
     )
-    data = json.loads(resp.choices[0].message.content or "{}")
+    data = modell_json.objekt(resp.choices[0].message.content)
     valid = {k["id"] for k in batch}
     out: dict[int, dict] = {}
-    for r in data.get("reviews") or []:
+    for r in modell_json.eintraege(data, "reviews"):
         try:
             did = int(r.get("id"))
         except (TypeError, ValueError):
@@ -280,10 +280,10 @@ def bundle_projects(place, hits: list[dict], *, today: date | None = None) -> li
         _feature="district_projects", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
         _tarif="flex",
     )
-    data = json.loads(resp.choices[0].message.content or "{}")
+    data = modell_json.objekt(resp.choices[0].message.content)
     by_id = {k["id"]: k for k in hits}
     out = []
-    for p in data.get("projects") or []:
+    for p in modell_json.eintraege(data, "projects"):
         ids = []
         for i in p.get("decision_ids") or []:
             try:

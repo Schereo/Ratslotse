@@ -515,6 +515,11 @@ CITIES_MAX_SECONDS=14400             # Frist je Lauf; 0 hebt sie auf (Nachlauf v
 CITIES_MAX_USD=2                     # Kostengrenze je Lauf über ALLE Stufen; 0 hebt sie auf
 CITIES_ANNOTATE_MAX=3000             # Stückzahl je Lauf (Deckel gegen den Rückstau)
 CITIES_FIT_WORKERS=8                 # gleichzeitige Urteile; mehr = schneller, nicht teurer
+# Wochenlauf (weekly_enrich.py)
+WEEKLY_STEP_MAX_SECONDS=10800        # Höchstdauer je Schritt; 0 hebt sie auf
+WEEKLY_ENRICH_MAX_SECONDS=           # Frist für den ganzen Lauf (leer = keine); ein wartender Deploy beendet ihn ohnehin
+# Kostenalarm im Herzschlag (check_herzschlag.py)
+LLM_TAGESKOSTEN_ALARM_USD=5          # Mail, wenn die Modellkosten des Vortags darüber liegen; 0 = aus
 # OpenRouter Provider-Routing (DSGVO) — schließt China-Anbieter aus, verlangt ZDR
 NWZ_OPENROUTER_ROUTING=on            # "off" = Notausschalter
 NWZ_OPENROUTER_IGNORE=deepseek,baidu,streamlake,siliconflow,alibaba

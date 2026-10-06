@@ -53,6 +53,70 @@ DEEP_MODEL = os.environ.get("COUNCIL_DEEP_MODEL") or MODEL
 # Leer gesetzt = das Recht wirkt nicht, alle bekommen `DEEP_MODEL`.
 DEEP_PLUS_MODEL = os.environ.get("COUNCIL_DEEP_PLUS_MODEL", "openai/gpt-6-sol").strip() or DEEP_MODEL
 
+#: **Fristen der Modellaufrufe, auf die jemand wartet** (Review 05.10.2026).
+#: Sekunden ohne ein einziges Byte (httpx-Lesefrist) — dieselbe Bauform wie
+#: Lottis ``assistant.LLM_FRIST_S``. Ohne Angabe wartete der Antwort-Strom
+#: unter einer Drosselung so lange wie das SDK: 600 s je Anlauf. OpenRouter
+#: schickt während der Erzeugung alle ~3 s ein Füllzeichen (gemessen
+#: 06.10.2026), 30 s Stille heißen also: der Anbieter hängt. Mit Frist
+#: bekommt der EU-Weg einen Anlauf, der Verzicht-Weg höchstens zwei Fristen
+#: (``llm._anlauf``); danach greift im Router der Ersatzweg.
+ANTWORT_FRIST_S = 30
+#: Der Recherche-Bericht ist ein Hintergrund-Auftrag mit eigenem Neuanlauf
+#: (``deepresearch._schreiben_und_abschliessen``, drei Versuche) — er darf
+#: länger auf ein Lebenszeichen warten, aber nicht die zehn Minuten des SDK.
+DEEP_FRIST_S = 60
+
+#: **Tageskontingent von Frag den Rat je Konto** (Review 05.10.2026). Bis
+#: dahin bremste nur der Fenster-Zähler (10 in zehn Minuten,
+#: ``app.ratelimit.qa_limiter``) — über den Tag 1.440 Fragen, ein offener Hahn.
+#:
+#: **Warum 60.** Gemessen am 06.10.2026 (vier Fragen über ``/ask`` gegen die
+#: lokalen Ratsdaten, GPT-6 Luna): Analyse und Antwort kosten zusammen
+#: 0,08–0,17 Cent je Frage; der Parteien-Baustein kommt mit höchstens
+#: 6.000 Antwort-Tokens dazu (Luna: 0,3 Cent). 60 Fragen sind damit rund
+#: 30 Cent je Konto und Tag im schlimmsten Fall — und für einen Menschen zwei
+#: Stunden Nachfragen im Takt des Fenster-Zählers. Was als Summe trotzdem
+#: aus dem Ruder läuft, meldet der Herzschlag (``LLM_TAGESKOSTEN_ALARM_USD``).
+#: Gezählt wird dieselbe Zeile wie in der Nutzungsstatistik
+#: (``user_activity``, Merkmal ``ai_question``), dieselbe Mechanik wie Lottis
+#: ``assistant.TAGES_KONTINGENT`` — ein Zähler in der Datenbank, der
+#: Neustarts übersteht. Konten mit ``limits_unlocked`` sind ausgenommen.
+TAGES_KONTINGENT = 60
+KONTINGENT_MERKMAL = "ai_question"
+#: Der Satz, den Web und App zeigen. Er beginnt mit „Für heute“ — daran
+#: erkennt das Web das Tageskontingent und zeigt es nicht als „kurze
+#: Verschnaufpause“ (``council-qa.tsx``).
+KONTINGENT_TEXT = (f"Für heute hast du schon {TAGES_KONTINGENT} Fragen gestellt — ab morgen "
+                   "beantwortet Ratslotse wieder neue. Deine bisherigen Antworten bleiben "
+                   "lesbar.")
+
+
+def _heute() -> str:
+    """„Dienstag, 6. Oktober 2026 (2026-10-06)“ — der Tag in Oldenburg.
+
+    Dieselbe Quelle wie Lottis Prompt (``lotti_werkzeuge.heute_lang``),
+    damit Antwort, Bericht und Lotti nie über das Datum auseinanderliegen.
+    Spät importiert: ``lotti_werkzeuge`` braucht den Rest von ``council``.
+    """
+    from council.lotti_werkzeuge import heute_lang
+    return heute_lang()
+
+
+def _fremd(text: str) -> str:
+    """Fremdtext durch den Anweisungsfilter (``kern.foreign_text``).
+
+    **Der Befund (Review 05.10.2026).** Der Filter wirkte in der KI-Frage nur
+    auf den Bildschirm-Block aus Lottis Fenster. Vorlagenauszüge, Anlagen,
+    Pressemitteilungen, Wortbeiträge und die Beschlüsse anderer Städte —
+    alles von Dritten geschrieben — gingen ungefiltert an die Antwort, den
+    Recherche-Bericht und die Parteien-Positionen. Angewandt wird er auf die
+    fertigen Blöcke: Ein Text ohne Treffer kommt zeichengleich zurück, und
+    die eigenen Überschriften der Blöcke tragen kein Merkmal, auf das der
+    Filter anspringt (``tests/test_qa_fremdtext.py`` hält beides fest).
+    """
+    return defuse(text or "")[0]
+
 
 def deep_model_for(premium: bool) -> str:
     """Welches Modell den Recherche-Bericht schreibt — je nach Recht des Kontos.
@@ -2298,8 +2362,13 @@ def deep_bericht_stream(question: str, candidates: list[dict],
                         model: str | None = None,
                         taxes: list[dict] | None = None,
                         tax_capacity: dict | None = None,
-                        geld: dict | None = None):
+                        geld: dict | None = None,
+                        stand: dict | None = None):
     """Der lange Deep-Research-Bericht als Token-Stream (Task 34).
+
+    ``stand`` ist der Aktenstand (``aktenstand``) wie bei ``/ask``: wie alt der
+    jüngste Beleg ist und wann der Rat zuletzt getagt hat. Er steht direkt
+    über der Frage, zusammen mit dem Tagesdatum im Kopf des Prompts.
 
     ``geld`` ist der vollständige Haushalts-Kontext aus ``geld_kontext``; die
     drei Einzel-Parameter bleiben als alter Aufrufweg bestehen — ohne ``geld``
@@ -2320,20 +2389,24 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     # kurze Antwort — die Fachwörter darin tragen also ohnehin ihre Erklärung
     # als Tooltip. Ohne diesen Block hätte nur der Prompt sie nicht gehabt.
     zusatz = (_glossar_block(begriffe_fuer(question))
-              + _debatten_block(debatten, text_max=DEEP_DEBATTE_TEXT_MAX,
-                                answer_max=DEEP_DEBATTE_ANTWORT_MAX) + _presse_block(presse)
-              + _staedte_block(staedte)
-              + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
+              + _fremd(_debatten_block(debatten, text_max=DEEP_DEBATTE_TEXT_MAX,
+                                       answer_max=DEEP_DEBATTE_ANTWORT_MAX))
+              + _fremd(_presse_block(presse))
+              + _fremd(_staedte_block(staedte))
+              + geld_regeln(geld) + geld_block(geld) + _fremd(_anlagen_block(anlagen))
+              # Zuletzt, wie bei /ask: die Zeit-Tatsachen direkt über der FRAGE.
+              + aktenstand_regel(stand))
     prompt = prompts.render("deep_report", question=question.strip()[:300],
-                            context=_build_context(candidates),
+                            heute=_heute(),
+                            context=_fremd(_build_context(candidates)),
                             zusatz=zusatz,
-                            planungen=_planungen_block(planungen))
+                            planungen=_fremd(_planungen_block(planungen)))
     # Der Denkaufwand je Modell UND Feature, wie bei Lotti und der Antwort
     # (`llm.WEB_DENKAUFWAND`) — bis 23.09.2026 stand hier nur DeepSeeks
     # Aus-Schalter, der Bericht lief also immer mit der Vorgabe des Anbieters.
     extra = llm.web_denk_extra(model, "deep_report")
     yield from llm.chat_stream(model=model, _feature="deep_report", temperature=0.2,
-                               max_tokens=4000,
+                               max_tokens=4000, timeout=DEEP_FRIST_S,
                                messages=[{"role": "user", "content": prompt}], **extra)
 
 
@@ -2450,7 +2523,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             for b in gruppen[label])
         teile.append(f"{label} ({len(gruppen[label])} Beiträge):\n{zeilen}")
     prompt = prompts.render("party_opinions", question=question.strip()[:300],
-                            contributions="\n".join(teile))
+                            contributions=_fremd("\n".join(teile)))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     # 2000 Token reichten nicht mehr: Mit dem Beschluss-Anker stehen bis zu 15
     # Fraktionen und Verbände im Prompt, die Antwort lief mitten in der AfD-
@@ -2459,7 +2532,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
     # verschwinden. Erst Platz schaffen, dann trotzdem retten, was da ist.
     resp = llm.chat_complete(
         model=model, _feature="party_opinions", _allow_empty_response=True,
-        temperature=0, max_tokens=6000,
+        temperature=0, max_tokens=6000, timeout=ANTWORT_FRIST_S,
         messages=[{"role": "user", "content": prompt}], **extra,
     )
     content = _strip_fences(resp.choices[0].message.content or "") if resp.choices else ""
@@ -4709,15 +4782,16 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
         if akte_beschluesse:
             beitrag_ids = set(akte.get("speech_ids") or ())
             presse_ids = set(akte.get("press_ids") or ())
-            akte_text = akte_suche.zeitleiste(
+            akte_text = _fremd(akte_suche.zeitleiste(
                 akte_beschluesse, [d for d in debatten or [] if d.get("id") in beitrag_ids],
                 [x for x in presse or [] if x.get("id") in presse_ids],
-                akte.get("announced") or [])
+                akte.get("announced") or []))
             candidates = [c for c in candidates if c["id"] not in im]
             debatten = [d for d in debatten or [] if d.get("id") not in beitrag_ids]
             presse = [x for x in presse or [] if x.get("id") not in presse_ids]
     prompt = prompts.render("qa_answer", question=question.strip()[:300],
-                            context=_build_context(candidates) if candidates or not akte_text
+                            heute=_heute(),
+                            context=_fremd(_build_context(candidates)) if candidates or not akte_text
                             else "(alle passenden Beschlüsse stehen in der AKTE unten)",
                             # Die Haushalts-Regeln hängen am KONTEXT, nicht am
                             # Fragetyp: „Was hat das Rechnungsprüfungsamt
@@ -4740,14 +4814,18 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             # Die Geschäftsordnung zuerst: Für eine
                             # Verfahrensfrage IST sie die Antwort, die übrigen
                             # Bausteine sind Beiwerk.
-                            presse=rules_block + akte_text + _sitzungen_block(sitzungen)
+                            # Was Dritte geschrieben haben, geht durch den
+                            # Anweisungsfilter (``_fremd``); die eigenen
+                            # Bausteine (Geschäftsordnung, Glossar, Geld)
+                            # nicht — sie sind Code dieses Repos.
+                            presse=rules_block + akte_text + _fremd(_sitzungen_block(sitzungen))
                             + _glossar_block(begriffe_fuer(question))
-                            + _steckbrief_block(steckbriefe) + _presse_block(presse)
-                            + _staedte_block(staedte)
+                            + _fremd(_steckbrief_block(steckbriefe)) + _fremd(_presse_block(presse))
+                            + _fremd(_staedte_block(staedte))
                             + geld_block(geld)
-                            + _debatten_block(debatten, eng, text_max=ASK_DEBATTE_TEXT_MAX,
-                                              answer_max=ASK_DEBATTE_ANTWORT_MAX)
-                            + _anlagen_block(anlagen),
+                            + _fremd(_debatten_block(debatten, eng, text_max=ASK_DEBATTE_TEXT_MAX,
+                                                     answer_max=ASK_DEBATTE_ANTWORT_MAX))
+                            + _fremd(_anlagen_block(anlagen)),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
     # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
@@ -4836,13 +4914,14 @@ def vereinfachen_messages(question: str, bisher: str | None, candidates: list[di
     Meinungsbild") arbeiten gegen die Kürze — genau daran ist die beiläufige
     Bitte im normalen Prompt schon gescheitert."""
     prompt = prompts.render("qa_simple", question=question.strip()[:300],
+                            heute=_heute(),
                             bisher=_bisher_block(bisher),
                             # Die Begriffe stehen in der ANTWORT, nicht in der
                             # Bitte: „Erklär das einfacher" nennt selbst keins.
                             glossar=_glossar_block_einfach(
                                 begriffe_fuer(f"{bisher or ''}\n{question or ''}",
                                               max_n=GLOSSAR_MAX_EINFACH)),
-                            context=_build_context(candidates))
+                            context=_fremd(_build_context(candidates)))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     return [{"role": "user", "content": prompt}], extra
 
@@ -4856,7 +4935,8 @@ def vereinfachen_stream(question: str, bisher: str | None, candidates: list[dict
     """Die einfache Fassung als Token-Stream (wie answer_stream)."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
     yield from llm.chat_stream(model=model, _feature="qa_simple", temperature=0.2,
-                               max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
+                               max_tokens=VEREINFACHEN_TOKENS, timeout=ANTWORT_FRIST_S,
+                               messages=messages, **extra)
 
 
 def vereinfachen_question(question: str, bisher: str | None, candidates: list[dict],
@@ -4865,7 +4945,8 @@ def vereinfachen_question(question: str, bisher: str | None, candidates: list[di
     Liefert ``(answer, cited_ids)`` wie answer_question."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
     resp = llm.chat_complete(model=model, _feature="qa_simple", temperature=0.2,
-                             max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
+                             max_tokens=VEREINFACHEN_TOKENS, timeout=ANTWORT_FRIST_S,
+                             messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
 
@@ -4910,7 +4991,8 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                                        staedte, zukunft_leer, stand, screen, akte,
                                        rules_block=rules_block)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
-                             max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
+                             max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
+                             messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
 
@@ -4942,7 +5024,8 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                                        staedte, zukunft_leer, stand, screen, akte,
                                        rules_block=rules_block)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
-                               max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
+                               max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
+                               messages=messages, **extra)
 
 
 # --- Folgefragen (Design 24a / RL-U06) --------------------------------------
