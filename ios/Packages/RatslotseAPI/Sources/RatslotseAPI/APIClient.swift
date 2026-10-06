@@ -43,6 +43,9 @@ public actor APIClient {
     private let decoder: JSONDecoder
     private let keychain: KeychainStore
     private var accessToken: String?
+    /// Wird gerufen, wenn der Server ein mitgeschicktes Token mit 401
+    /// ablehnt — s. `onUnauthorized(_:)`.
+    private var unauthorizedHandler: (@Sendable () async -> Void)?
 
     public init(
         baseURL: URL = productionURL,
@@ -87,6 +90,45 @@ public actor APIClient {
     }
 
     public func hasAccessToken() -> Bool { accessToken != nil }
+
+    /// Meldet ein abgelaufenes oder widerrufenes Token an EINER Stelle.
+    ///
+    /// Bis 10/2026 meldeten nur `bootstrap` und `refreshAccount` ab. Lief die
+    /// Sitzung mitten im Gebrauch ab (Passwort auf einem anderen Gerät
+    /// geändert, Konto gesperrt, Token widerrufen), zeigte jede weitere
+    /// Ansicht nur noch ihren eigenen Fehler — angemeldet sah die App aus,
+    /// nichts ging mehr.
+    ///
+    /// **Keine Schleife:** Gemeldet wird nur, wenn die abgelehnte Anfrage
+    /// GENAU das aktuelle Token trug, und das Token fällt dabei sofort aus dem
+    /// Speicher. Jede Anfrage danach — auch die Abmelde-Aufrufe des Handlers —
+    /// geht ohne Token hinaus und kann nichts mehr auslösen. Ein 401 ohne
+    /// Token (falsches Passwort bei der Anmeldung) meldet ebenfalls nichts.
+    public func onUnauthorized(_ handler: (@Sendable () async -> Void)?) {
+        unauthorizedHandler = handler
+    }
+
+    /// Nur für Tests: ein Token setzen, ohne den Schlüsselbund anzufassen.
+    func setAccessTokenInMemory(_ token: String?) { accessToken = token }
+
+    /// Absenden, prüfen, und ein 401 auf das eigene Token melden.
+    private func perform(_ request: URLRequest) async throws -> Data {
+        let (data, response) = try await session.data(for: request)
+        do {
+            try validate(response: response, data: data)
+        } catch let error as APIError where error.isUnauthorized {
+            reportUnauthorized(sent: request.value(forHTTPHeaderField: "Authorization"))
+            throw error
+        }
+        return data
+    }
+
+    private func reportUnauthorized(sent: String?) {
+        guard let sent, let token = accessToken, sent == "Bearer \(token)" else { return }
+        accessToken = nil
+        guard let handler = unauthorizedHandler else { return }
+        Task { await handler() }
+    }
 
     /// Die volle Adresse eines Pfads, den der Server relativ nennt — Medien
     /// wie `/neuigkeiten/2.2.0/teilen-ios.mp4`. Auf Prod ist das dieselbe
@@ -176,8 +218,7 @@ public actor APIClient {
         body: Body
     ) async throws {
         let request = try makeRequest(path, method: method, query: [], body: encoder.encode(body))
-        let (data, response) = try await session.data(for: request)
-        try validate(response: response, data: data)
+        _ = try await perform(request)
     }
 
     /// Ein Aufruf ohne Körper und ohne Antwort — mit Abfrageparametern.
@@ -189,8 +230,7 @@ public actor APIClient {
     public func sendVoid(_ path: String, method: HTTPMethod = .post,
                          query: [URLQueryItem] = []) async throws {
         let request = try makeRequest(path, method: method, query: query)
-        let (data, response) = try await session.data(for: request)
-        try validate(response: response, data: data)
+        _ = try await perform(request)
     }
 
     public func makeStreamingRequest<Body: Encodable & Sendable>(
@@ -219,8 +259,7 @@ public actor APIClient {
     ) async throws -> Response {
         let bodyData = try body.map(encoder.encode)
         let request = try makeRequest(path, method: method, query: query, body: bodyData)
-        let (data, response) = try await session.data(for: request)
-        try validate(response: response, data: data)
+        let data = try await perform(request)
         do {
             return try decoder.decode(type, from: data)
         } catch {

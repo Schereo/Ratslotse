@@ -604,6 +604,11 @@ private struct MainTabsView: View {
                 }
             default: break
             }
+            // Ein Link wie von außen — derselbe Weg wie ein Universal Link
+            // (`handle(url:)`), für die Sichtprobe ohne Safari und AASA.
+            if let link = ratsDebugValue("RATSLOTSE_DEBUG_OPEN_URL"), let url = URL(string: link) {
+                model.handle(url: url)
+            }
             // NACH der Screen-Wahl: Das Blatt hält den Bildschirm fest, den
             // es beim Öffnen vorfindet — davor wäre es immer „Heute".
             if let lottiModus = ratsDebugValue("RATSLOTSE_DEBUG_LOTTI") {
@@ -1102,6 +1107,21 @@ struct RouteDestinationView: View {
         switch route {
         case .decision(let id): DecisionDetailView(model: model, decisionID: id)
         case .movement(let id): MovementDetailView(model: model, clusterID: id)
+        case .ideas:
+            // Derselbe Schalter wie im Mehr-Menü; ohne ihn ist die Seite im
+            // Web ein 404, hier ein ehrlicher Leerzustand.
+            if model.feature("ideen-anderswo") {
+                IdeasView(model: model)
+            } else if !model.featuresLoaded {
+                RatsLoadingState(message: "Ideen werden geladen …")
+            } else {
+                RatsEmptyState(
+                    title: "Noch nicht freigeschaltet",
+                    message: "Die Ideen aus anderen Städten sind in der App noch nicht da.",
+                    symbol: .lightbulb
+                )
+                .padding(20)
+            }
         case let .sessions(ksinr, tops): SessionRouteView(model: model, ksinr: ksinr, tops: tops)
         case .person(let slug): PublicProfileView(model: model, kind: .person, key: slug)
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)

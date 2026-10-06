@@ -36,6 +36,11 @@ export function BackToTop() {
       type="button"
       onClick={toTop}
       aria-label="Nach oben scrollen"
+      // Unsichtbar heißt auch: nicht per Tab erreichbar und nicht vorgelesen.
+      // Bis 10/2026 war er nur durchsichtig — die Tabulatortaste landete auf
+      // einem Knopf, den niemand sah (BITV).
+      tabIndex={show ? undefined : -1}
+      aria-hidden={show ? undefined : true}
       className={cn(
         // Über dem Lotti-Knopf, nicht neben ihm: Der schwebt seit 09/2026 in
         // derselben Ecke (components/assistentin/knopf.tsx, 56 px hoch). Die

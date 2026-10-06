@@ -125,7 +125,7 @@ public final class AppModel {
     private static let legacyIntroKey = "ratslotse.intro.done"
     private static let pushPrimerSnoozeKey = "ratslotse.push-primer.snoozed-until"
     private static let appearanceKey = "ratslotse.appearance"
-    private static let activeConversationKeyPrefix = "ratslotse.qa.active-conversation."
+    private static let activeConversationKeyPrefix = LocalAccountData.activeConversationPrefix
     private static let cachedUserKey = "ratslotse.account.offline-user"
 
     public init(
@@ -150,6 +150,12 @@ public final class AppModel {
             Task { @MainActor in self?.isOffline = !available }
         }
         network.start()
+        // Ein 401 mitten in der Sitzung meldet der Client hier — einmal, s.
+        // `APIClient.onUnauthorized`.
+        let client = api
+        Task {
+            await client.onUnauthorized { [weak self] in await self?.sessionExpired() }
+        }
     }
 
     public var user: User? {
@@ -417,6 +423,7 @@ public final class AppModel {
             switch route {
             case .decision: return "Ein Beschluss"
             case .movement: return "Eine Idee aus anderen Städten"
+            case .ideas: return "Ideen aus anderen Städten"
             case .sessions: return "Eine Sitzung"
             case .person: return "Eine Person im Rat"
             case .topic: return "Ein Themenfeld"
@@ -523,6 +530,25 @@ public final class AppModel {
         try? await api.sendVoid("/api/auth/logout")
         try? await api.setAccessToken(nil)
         pendingPushToken = nil
+        forgetLocalAccount()
+    }
+
+    /// Der Server hat das Token mitten in der Sitzung abgelehnt (401) —
+    /// Passwort woanders geändert, Token widerrufen, Konto gelöscht. Dasselbe
+    /// Aufräumen wie beim Abmelden, nur ohne die Server-Aufrufe: Das Token
+    /// gilt ohnehin nicht mehr. Zweimal gerufen schadet nicht.
+    func sessionExpired() async {
+        if case .loggedOut = session { return }
+        // Beim Start (noch kein Konto im Bild) still — wie bisher in `bootstrap`.
+        let warAngemeldet = user != nil
+        try? await api.setAccessToken(nil)
+        forgetLocalAccount()
+        if warAngemeldet { alertMessage = "Du wurdest abgemeldet. Bitte melde dich erneut an." }
+    }
+
+    /// Alles, was am Konto hing, aus dem Speicher und vom Gerät — auch beim
+    /// Löschen des Kontos, das hierüber abmeldet.
+    private func forgetLocalAccount() {
         conversationSavingPreferenceOverride = nil
         // Auch Lottis Gespräch: Ein neues Konto darf nicht in das alte
         // weiterschreiben.
@@ -534,6 +560,9 @@ public final class AppModel {
         tabletPage = nil
         navigation.removeAll()
         defaults.removeObject(forKey: Self.cachedUserKey)
+        // Zuletzt angesehene Beschlüsse, Karten-Ebenen, Lottis Anstupser —
+        // bis 10/2026 blieben sie für das nächste Konto liegen.
+        LocalAccountData.clear(defaults)
         session = .loggedOut
     }
 
@@ -716,7 +745,7 @@ public final class AppModel {
 
     private func tab(for route: AppRoute) -> AppTab {
         switch route {
-        case .decision, .movement, .sessions, .person, .topic, .place: .council
+        case .decision, .movement, .ideas, .sessions, .person, .topic, .place: .council
         case .quiz, .subscriptions: .today
         case .analysis: .council
         case .admin: .account

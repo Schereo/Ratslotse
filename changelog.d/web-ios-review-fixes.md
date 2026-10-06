@@ -1,0 +1,5 @@
+---
+kategorie: behoben
+---
+
+**Web und App halten, was der Review vor 3.0 gefunden hat.** Die Tabulatortaste beginnt wieder bei „Zum Inhalt springen" statt beim Lotti-Knopf, ein unsichtbarer „Nach oben"-Knopf ist nicht mehr per Tastatur erreichbar, und fünf tote Verweise (Suche, Bereiche, Streit ums Geld, „Alle Beschlüsse dazu") führen wieder auf echte Seiten. Startseite, Changelog, Haushalt, Konto und die öffentlichen Detailseiten lassen sich bei 320 px nicht mehr seitwärts schieben; ein Prüfbericht-Absatz mit „!" statt Leerzeichen wird beim Einlesen repariert. Ein noch unbestätigtes Konto liest öffentliche Seiten wie ohne Konto (mit Hinweis) und kann sich abmelden. Jede Seite trägt einen eigenen Titel, das Signal-Orange und das Rot im Dunkelmodus halten WCAG AA. In der App öffnen Links auf Karte, Viertel, Abos, Quiz, Anmeldung und Startseite die App, „Ideen aus anderen Städten" bleibt in der App, Kalendereinträge stehen in Oldenburger Zeit, Abmelden räumt Verlauf, Karten-Ebenen und Lottis Zähler mit ab, und ein abgelaufenes Token meldet sauber ab.

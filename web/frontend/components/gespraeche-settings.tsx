@@ -87,7 +87,7 @@ export function GespraecheCard() {
         </div>
       </div>
       {einstellung === null && (
-        <p className="mt-2 text-xs text-muted-foreground/80">
+        <p className="mt-2 text-xs text-muted-foreground">
           Noch nicht entschieden — Lotti fragt dich beim nächsten Ratsgespräch.
         </p>
       )}
@@ -115,7 +115,7 @@ export function GespraecheCard() {
       {/* Tims TestFlight-Feedback 11.08.: Der KI-Hinweis stand als Dauer-Text
           unter dem Composer und kostete dort Platz — er gehört hierher, zu den
           übrigen Entscheidungen über die eigenen Daten. */}
-      <p className="mt-4 border-t border-border/60 pt-3 text-xs leading-relaxed text-muted-foreground/80">
+      <p className="mt-4 border-t border-border/60 pt-3 text-xs leading-relaxed text-muted-foreground">
         Fragen an den Rat gehen an einen externen KI-Dienst — bitte keine
         personenbezogenen Daten eingeben.
       </p>

@@ -118,6 +118,7 @@ struct AssistantSheet: View {
                         }
                         .padding(RatsSpacing.lg)
                     }
+                    .modifier(HarteKopfkante())
                     .onChange(of: turns.last?.answer) { _, _ in
                         guard let letzte = turns.last?.id else { return }
                         withAnimation(RatsMotion.flow) { proxy.scrollTo(letzte, anchor: .bottom) }
@@ -129,6 +130,11 @@ struct AssistantSheet: View {
             .background(RatsColor.page)
             .navigationTitle("Lotti")
             .navigationBarTitleDisplayMode(.inline)
+            // Deckend statt durchsichtig: Bei großer Schrift (AX-XL) lief
+            // Lottis Text beim Scrollen unter die Kopfzeile und stand dort
+            // halb lesbar hinter „Fertig" (Review 10/2026).
+            .toolbarBackground(RatsColor.page, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Fertig") { dismiss() }
@@ -464,5 +470,18 @@ struct LottiAnswerText: View {
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace,
                            failurePolicy: .returnPartiallyParsedIfPossible)
         )) ?? AttributedString(s)
+    }
+}
+
+/// Ab iOS 26 legt das System eine weiche, halb durchsichtige Kante unter die
+/// Kopfzeile — Text scheint dort durch, bei AX-XL ganze Zeilen. Die harte
+/// Kante schneidet sauber ab; vor iOS 26 reicht `toolbarBackground`.
+private struct HarteKopfkante: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.scrollEdgeEffectStyle(.hard, for: .top)
+        } else {
+            content
+        }
     }
 }

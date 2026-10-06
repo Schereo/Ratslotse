@@ -263,10 +263,36 @@ def _ueberschriften(text: str, ab: int, ivz: dict[str, str]) -> list[tuple[int, 
     return gefunden
 
 
+#: Ein Ausrufezeichen ZWISCHEN zwei Buchstaben kommt in deutscher Prosa nicht
+#: vor — im Extrakt schon: Im Schlussbericht 2025 trägt ein Absatz (Textziffer
+#: 3.2.1, Seite 21) einen Zeichensatz, dessen Leerzeichen-Glyphe pypdf als „!“
+#: liest: „Das! Rechnungsprüfungsamt! erwartet,! …eines!Risikomanagements!bei!…“.
+#: Ohne Leerzeichen gab es dort keine Umbruchstelle mehr, und die Seite
+#: /haushalt/pruefung wurde bei 375 px 586 px breit (Review 10/2026).
+_AUSRUF_IM_WORT = re.compile(r"(?<=[^\W\d_])!(?=[^\W\d_])")
+
+#: Ab so vielen Treffern ist es der Zeichensatz und kein Tippfehler. Drei,
+#: weil ein einzelnes „Hallo!Welt“ eher ein Versehen im Original ist, das
+#: hier nicht zu reparieren ist.
+_AUSRUF_SCHWELLE = 3
+
+
+def _ausrufe_als_leerzeichen(text: str) -> str:
+    """„!“ als Leerzeichen-Ersatz zurückverwandeln — aber nur in einem Stück,
+    das eindeutig so kaputt ist (s. ``_AUSRUF_IM_WORT``). Dann ist JEDES „!“
+    darin ein Leerzeichen, auch das hinter einem Satzzeichen („erwartet,!“)
+    und das am Absatzende („wird.!“); ein echtes Ausrufezeichen gibt es in
+    einer Prüfungsfeststellung ohnehin nicht. Ein gesundes Stück bleibt
+    unangetastet."""
+    if len(_AUSRUF_IM_WORT.findall(text)) < _AUSRUF_SCHWELLE:
+        return text
+    return text.replace("!", " ")
+
+
 def saeubern(roh: str) -> str:
     """Rohen Textblock in lesbare Prosa überführen.
 
-    Zwei Eingriffe, beide auf Layout-Artefakte des PDF-Extrakts beschränkt:
+    Drei Eingriffe, alle auf Layout-Artefakte des PDF-Extrakts beschränkt:
 
     - **Seitenfurnitur** (Kopfzeile mit Amt, Datum, Berichtstitel und
       „Seite n") fällt weg — sie steht mitten im Satz, wenn eine Feststellung
@@ -276,6 +302,9 @@ def saeubern(roh: str) -> str:
       Strich dort keine Trennung ist: vor einem Ergänzungswort
       („Ertrags-\\nund" → „Ertrags- und") und vor einem Großbuchstaben
       („Programm-\\nUpdates" → „Programm-Updates").
+
+    - **„!“ statt Leerzeichen** (ein Zeichensatz im Bericht 2025) wird
+      zurückverwandelt, s. ``_ausrufe_als_leerzeichen``.
 
     **Nicht** repariert werden Leerzeichen mitten im Wort („Schlussberi
     chten"). Sie kommen in den Jahrgängen 2017 und 2021 vor und ließen sich
@@ -293,6 +322,7 @@ def saeubern(roh: str) -> str:
         return wort              # Silbentrennung: „Bescheini-gungen"
 
     text = re.sub(r"-[ \t]*\n[ \t]*(\w+)", verbinden, text)
+    text = _ausrufe_als_leerzeichen(text)
     return re.sub(r"\s+", " ", text).strip()
 
 

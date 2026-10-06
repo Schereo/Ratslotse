@@ -18,6 +18,10 @@ public enum AppRoute: Sendable, Hashable {
     /// Eine Bewegung — dieselbe Idee in mehreren anderen Räten
     /// (`/council/ideen/bewegung?id=`).
     case movement(id: Int)
+    /// „Ideen aus anderen Städten" (`/council/ideen`) — die Übersicht, von der
+    /// aus die Bewegungen erreichbar sind. Bis 10/2026 fiel die Adresse auf
+    /// `.web` und damit aus der App heraus.
+    case ideas
     case sessions(ksinr: Int?, tops: [String])
     case person(slug: String)
     case topic(slug: String)
@@ -76,6 +80,12 @@ public struct AppRouter: Sendable {
         case "/council/decision":
             guard let raw = value("id"), let id = Int(raw), id > 0 else { return .tab(.council) }
             return .decision(id: id)
+        case "/council/ideen": return .ideas
+        case "/council/neuer-rat":
+            // Ausdrücklich ins Web: Die Seite gibt es nur dort. Die
+            // Universal-Link-Datei nimmt sie mit `NOT` aus — sonst ginge ein
+            // Link erst in die App und von dort gleich wieder hinaus.
+            return .web(url)
         case "/council/ideen/bewegung":
             guard let raw = value("id"), let id = Int(raw), id > 0 else { return .tab(.council) }
             return .movement(id: id)
@@ -146,6 +156,7 @@ public struct AppRouter: Sendable {
             components.path = "/council/decision"; components.queryItems = [.init(name: "id", value: String(id))]
         case .movement(let id):
             components.path = "/council/ideen/bewegung"; components.queryItems = [.init(name: "id", value: String(id))]
+        case .ideas: components.path = "/council/ideen"
         case let .sessions(ksinr, tops):
             // Geteilt wird die eigenständige Sitzungs-Seite, nicht die Liste:
             // Sie ist ohne Konto lesbar, `/council?tab=sessions` nicht (die

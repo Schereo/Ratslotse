@@ -158,6 +158,20 @@ async function stromStubben(page: Page, opts: { next?: string | null } = {}) {
 const knopf = (page: Page) => page.locator("[data-lotti-knopf]");
 const fenster = (page: Page) => page.locator("[data-lotti-fenster]");
 
+/** Wartet, bis `/haushalt/schulden` entschieden hat: Überschrift (mit Daten)
+ *  ODER der ehrliche Leerhinweis (leere CI-Datenbank).
+ *
+ *  Bis 10/2026 stand hier `waitForLoadState("networkidle")` — und das ist
+ *  kein Zustand der Seite, sondern des Netzes: Ein Abfragen-Takt, ein
+ *  nachgeladener Baustein oder ein Vorzustand aus dem Test davor hielt es
+ *  offen, und der Test lief je nach Lage in den 30-s-Timeout. */
+async function schuldenGeladen(page: Page) {
+  await expect(
+    page.getByRole("heading", { name: "Wie viel Schulden hat Oldenburg?" })
+      .or(page.getByText(/Schuldenzeitreihe noch nicht eingelesen/)),
+  ).toBeVisible({ timeout: 20_000 });
+}
+
 test.describe("Lotti-Knopf und -Fenster", () => {
   test.use({ storageState: zustandsDatei("ratsfrau") });
 
@@ -190,6 +204,17 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     // Der Fokus kehrt auf den Knopf zurück — sonst beginnt die nächste
     // Tabulatortaste wieder ganz oben auf der Seite (BITV).
     await expect(knopf(page)).toBeFocused();
+  });
+
+  test("beim Laden bleibt der Fokus, wo er war — die erste Tabulatortaste trifft „Zum Inhalt springen“", async ({ page }) => {
+    // Bis 10/2026 gab das Fenster den Fokus schon beim ERSTEN Rendern an den
+    // Knopf zurück („Fenster zu" galt als „gerade geschlossen"). Wer per
+    // Tastatur kam, landete hinter dem Sprunglink — mitten in der Seite.
+    await page.goto("/dashboard");
+    await expect(knopf(page)).toBeVisible();
+    await expect(knopf(page)).not.toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: "Zum Inhalt springen" })).toBeFocused();
   });
 
   test("„Was sehe ich hier?“ zeigt die Antwort im Fenster", async ({ page }) => {
@@ -401,7 +426,7 @@ test.describe("Lotti-Knopf und -Fenster", () => {
           .catch(() => { /* Test ist schon zu Ende */ }),
       );
       await page.goto("/haushalt/schulden");
-      await page.waitForLoadState("networkidle");
+      await schuldenGeladen(page);
       await knopf(page).click();
       await fenster(page).getByLabel("Frage an Lotti").fill("Wer hat dagegen gestimmt?");
       await fenster(page).getByRole("button", { name: "Fragen" }).click();
@@ -717,7 +742,7 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await page.goto("/haushalt/schulden");
     // Erst die Daten, dann messen — sonst entscheidet ein Rennen, ob es Anker
     // gibt (dieselbe Falle wie beim Erklär-Modus-Test oben).
-    await page.waitForLoadState("networkidle");
+    await schuldenGeladen(page);
     const anker = page.locator("[data-erklaer][data-erklaer-titel]");
     test.skip(await anker.count() === 0,
       "Diese Datenbank hat keine Haushaltsdaten — also auch keine Anker.");
@@ -904,7 +929,7 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       });
       await page.goto("/haushalt/schulden");
       // Erst die Daten, dann messen (dieselbe Falle wie bei den Anker-Tests).
-      await page.waitForLoadState("networkidle");
+      await schuldenGeladen(page);
       const anker = page.locator("[data-erklaer][data-erklaer-titel]");
       const anzahl = await anker.count();
       test.skip(anzahl === 0,
@@ -1085,20 +1110,28 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await knopf(page).click();
     const vorher = (await fenster(page).boundingBox())!;
 
-    await page.evaluate(() => (window as unknown as
-      { tastaturAuf: (h: number) => void }).tastaturAuf(320));
+    const TASTATUR = 320;
+    await page.evaluate((h) => (window as unknown as
+      { tastaturAuf: (h: number) => void }).tastaturAuf(h), TASTATUR);
     await expect(knopf(page)).toBeHidden();
+    // Die Zusage, nicht eine Pixelzahl: Der untere Rand des Fensters liegt
+    // über der Oberkante der Tastatur — und damit auch die Eingabezeile, in
+    // die man gerade tippt. Bis 10/2026 standen hier „< 420" und „300 px
+    // höher als vorher"; gemessen wurden 418,8 und 297,2 — je nach Schrift-
+    // Rasterung grün oder rot, ohne dass sich am Verhalten etwas änderte.
+    const tastaturOben = 844 - TASTATUR;
     // Die Messung braucht einen eigenen Takt: Wer im selben Aufruf umstellt
     // und misst, bekommt die alte Geometrie zurück und hält den Umbau
     // fälschlich für wirkungslos (eine Stunde am 21.09.2026).
     await expect.poll(async () => {
       const b = await fenster(page).boundingBox();
-      return b ? Math.round(b.y + b.height) : 0;
-    }).toBeLessThan(420);
+      return b ? b.y + b.height : Infinity;
+    }).toBeLessThanOrEqual(tastaturOben);
     const nachher = (await fenster(page).boundingBox())!;
-    // Der untere Rand des Fensters liegt jetzt über der Tastatur — und damit
-    // auch die Eingabezeile, in die man gerade tippt.
-    expect(nachher.y + nachher.height).toBeLessThan(vorher.y + vorher.height - 300);
+    // Und es ist wirklich hochgerückt, nicht nur zufällig schon oben: vorher
+    // lag der Rand unter der Tastaturkante.
+    expect(vorher.y + vorher.height).toBeGreaterThan(tastaturOben);
+    expect(nachher.y).toBeGreaterThanOrEqual(0);
     await expect(fenster(page).getByLabel("Frage an Lotti")).toBeVisible();
   });
 

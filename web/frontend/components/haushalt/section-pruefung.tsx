@@ -87,7 +87,11 @@ import { cn } from "@/lib/utils";
 function Wortlaut({ text, gedaempft = false }: { text: string; gedaempft?: boolean }) {
   return (
     <p className={cn(
-      "border-l-2 pl-3 text-[13.5px] leading-relaxed",
+      // overflow-wrap: anywhere — der Wortlaut kommt aus einem PDF-Extrakt, und
+      // ein Absatz ohne Leerzeichen (2025, Tz. 3.2.1) schob die Seite bei
+      // 375 px auf 586 px Breite. Der Parser repariert den Fall inzwischen;
+      // der Umbruch hier hält die Seite für den nächsten.
+      "border-l-2 pl-3 text-[13.5px] leading-relaxed [overflow-wrap:anywhere]",
       gedaempft ? "border-dashed border-border text-muted-foreground" : "border-border text-foreground/90",
     )}>
       {text}

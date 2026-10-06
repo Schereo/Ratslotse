@@ -192,7 +192,7 @@ export function TermineAbschnitt({ onBestand }: {
       von: fach.von,
       bis: fach.bis,
       gemessen: `${fach.count} Termine in ${fach.committees.length} Ausschüssen — hier entstehen die Änderungslisten`,
-      href: "/haushalt/streit",
+      href: "/haushalt/mitreden#streit",
     });
   }
   const ankerEntscheidung = entscheidung(anker);

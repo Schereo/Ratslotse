@@ -16,7 +16,21 @@ import { mitRuecksprung } from "@/lib/public-routes";
  *  ein Weg hinein und am Ende eine Einladung — in dieser Reihenfolge, denn wer
  *  gerade erst liest, weiß noch gar nicht, wofür sich ein Konto lohnen würde.
  */
-export function PublicShell({ children }: { children: React.ReactNode }) {
+/** Unter 360 px rücken die beiden Knöpfe enger zusammen — zusammen mit dem
+ *  ausgeblendeten Schriftzug passt die Kopfzeile dann auch mit breiteren
+ *  Ersatzschriften (die CI rendert ohne die Webfont). */
+const SCHMAL = "winzig:px-2.5 winzig:text-[13px]";
+
+export function PublicShell({ children, hinweis, onAbmelden }: {
+  children: React.ReactNode;
+  /** Steht über dem Inhalt — für ein Konto, das hier nur liest, weil es noch
+   *  nicht freigeschaltet ist (unbestätigt oder deaktiviert). */
+  hinweis?: React.ReactNode;
+  /** Gesetzt, wenn jemand angemeldet ist, die App aber (noch) nicht nutzen
+   *  darf: Statt „Anmelden · Registrieren" steht dann „Abmelden" oben, und die
+   *  Einladung zum Registrieren entfällt — sie wäre an der falschen Adresse. */
+  onAbmelden?: () => void;
+}) {
   // Erst nach dem Mounten lesbar; `useSearchParams` würde die Seite in eine
   // Suspense-Grenze zwingen und den statischen Export (MOBILE=1) brechen.
   const [zurueck, setZurueck] = useState("/dashboard");
@@ -36,26 +50,38 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       {/* Ebene „huelle" — dieselbe Stufe wie Kopfzeile und Tab-Leiste der
           App-Hülle; die Leiter steht in app/globals.css. */}
       <header className="sticky top-0 z-[var(--level-huelle)] border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:px-6 lg:px-8">
+        {/* Schmal enger: Bei 320 px schob „Anmelden · Registrieren" die
+            Seite um 6 px seitwärts (Review 10/2026). Unter 360 px steht
+            deshalb nur das Zeichen, der Schriftzug bleibt für Screenreader —
+            der Abstand allein reichte nicht, weil die Schrift auf Linux
+            (CI) breiter läuft als auf dem Mac und es dort 7 px blieben. */}
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-2 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:gap-3 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Image src="/icon-192.png" alt="" width={32} height={32} className="h-8 w-8 rounded-lg" priority />
-            <span className="font-display text-lg font-bold text-foreground">Ratslotse</span>
+            <span className="font-display text-lg font-bold text-foreground winzig:sr-only">Ratslotse</span>
           </Link>
-          <div className="ml-auto flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link href={mitRuecksprung("/login", zurueck)}>Anmelden</Link>
-            </Button>
-            <Button asChild variant="signal" size="sm">
-              <Link href={mitRuecksprung("/register", zurueck)}>Registrieren</Link>
-            </Button>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            {onAbmelden ? (
+              <Button variant="ghost" size="sm" onClick={onAbmelden}>Abmelden</Button>
+            ) : (
+              <>
+                <Button asChild variant="ghost" size="sm" className={SCHMAL}>
+                  <Link href={mitRuecksprung("/login", zurueck)}>Anmelden</Link>
+                </Button>
+                <Button asChild variant="signal" size="sm" className={SCHMAL}>
+                  <Link href={mitRuecksprung("/register", zurueck)}>Registrieren</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
 
       <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
         <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          {hinweis}
           {children}
-          <Einladung zurueck={zurueck} />
+          {!onAbmelden && <Einladung zurueck={zurueck} />}
         </div>
 
         <footer className="border-t border-border bg-background/85 py-4 text-center text-xs text-muted-foreground">

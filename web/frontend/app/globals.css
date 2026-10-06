@@ -59,7 +59,11 @@
     --level-meldung: 120;
     /* Signal-Orange (Lotsenboot): Maskottchen, Highlights, sparsame Akzente.
        Token-Spec 6a: hell 19 92% 50 (Button-Fill), dunkel 19 95% 60. */
-    --signal: 19 92% 50%;
+    /* 42 % statt 50 %: Weiß auf dem alten Orange (#f5540a) lag bei 3,41 : 1 —
+       „Frag den Rat", „Registrieren" und der Zähler in der Leiste fielen
+       unter WCAG AA. #ce4709 trägt Weiß mit 4,65 : 1 (Review 10/2026,
+       DESIGNSPRACHE § 2). */
+    --signal: 19 92% 42%;
     --signal-foreground: 0 0% 100%;
     /* Starke Easing-Kurven (animations.dev): die CSS-Standardkurven sind zu
        schwach. out = Eintritte/Feedback, in-out = Bewegung auf dem Screen,
@@ -123,8 +127,11 @@
     --muted-foreground: 206 23% 72.5%;
     --accent: 211 36% 18%;
     --accent-foreground: 204 40% 96%;
-    --destructive: 0 70% 56%;
-    --destructive-foreground: 0 0% 100%;
+    /* Heller und mit dunkler Schrift darauf, wie beim Primär im Dunkeln:
+       Das alte Rot hielt auf der Karte 4,03 : 1 ("Konto löschen"), Weiß
+       darauf 4,29 : 1. Jetzt 4,83 : 1 und 4,98 : 1 (Review 10/2026). */
+    --destructive: 0 70% 62%;
+    --destructive-foreground: 213 60% 10%;
     --border: 211 36% 17%;
     --input: 211 36% 21%;
     --ring: 202 90% 60%;

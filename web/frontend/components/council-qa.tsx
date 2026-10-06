@@ -49,7 +49,7 @@ import { Button, Input, toast } from "@/components/ui";
 // hängen, gehören der Navigation — deshalb kommen sie von dort und werden
 // hier nicht nachgebaut (s. components/nav.tsx).
 import { KOPFLEISTE_HOEHE, TABLEISTE_HOEHE } from "@/components/nav";
-import { decisionHref } from "@/lib/routes";
+import { decisionHref, themaHref } from "@/lib/routes";
 import { PrintButton } from "@/components/print-button";
 import { AkteZeitleiste, type AkteZeitleisteDaten } from "@/components/akte-zeitleiste";
 import { KeyFactsCard, type KeyFacts } from "@/components/key-facts";
@@ -1906,7 +1906,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             )}
             <div className="mt-4 w-full max-w-md text-left">
             {/* Design 15a: EIN Funkel im Kicker statt eines je Zeile. */}
-            <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+            <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               <Sparkles className="h-3 w-3 text-signal" aria-hidden />
               Zum Beispiel
             </p>
@@ -3317,7 +3317,9 @@ function SteckbriefBaustein({ steckbriefe }: {
                     {auf ? "Weniger" : "Mehr"}
                   </button>
                 )}
-                <Link href={`/council/entity?slug=${encodeURIComponent(s.slug)}`}
+                {/* Bis 10/2026 „/council/entity?slug=…" — die Seite gab es nie,
+                    der Link lief in eine 404. Gefunden von tests/test_interne_links.py. */}
+                <Link href={themaHref(s.slug)}
                   className="text-meta font-medium text-primary hover:underline">
                   Alle Beschlüsse dazu
                 </Link>

@@ -173,7 +173,10 @@ export default function ChangelogPage() {
                       {s.items.map((it, idx) => (
                         <li key={idx} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
                           <span className="select-none text-muted-foreground/40">•</span>
-                          <span>{inline(it)}</span>
+                          {/* min-w-0 + overflow-wrap: Ein `weak_categories` hat
+                              keine Trennstelle und schob die Seite bei 320 px
+                              um 33 px seitwärts (Review 10/2026). */}
+                          <span className="min-w-0 [overflow-wrap:anywhere]">{inline(it)}</span>
                         </li>
                       ))}
                     </ul>

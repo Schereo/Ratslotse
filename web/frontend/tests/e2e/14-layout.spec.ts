@@ -107,42 +107,47 @@ test.describe("Schmalstes übliches Gerät (320px)", () => {
   // scrollt auch auf jedem größeren Gerät bei größerer Schrift.
   test.use({ viewport: { width: 320, height: 568 } });
 
-  test("/login bleibt in der Breite", async ({ page }) => {
-    await page.goto("/login", { waitUntil: "networkidle" });
-    const zuviel = await ueberbreite(page);
-    expect(zuviel, `/login ist ${zuviel}px zu breit. Schuldige:\n  `
-      + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
-  });
+  /** Ohne Konto. Bis 10/2026 stand hier `/` als `test.fail()` — die
+   *  Kopfzeile war 14 px zu breit. Der Review fand dieselbe Sorte an vier
+   *  weiteren Stellen: `/changelog` (33 px, ein `code` ohne Trennstelle) und
+   *  jede öffentliche Detailseite (6 px, „Anmelden · Registrieren"). Die
+   *  Detailseite prüft die Kopfzeile der öffentlichen Hülle — die steht auch
+   *  gegen die leere CI-Datenbank da. */
+  for (const pfad of ["/login", "/", "/changelog", "/council/decision?id=1"]) {
+    test(`${pfad} bleibt in der Breite`, async ({ page }) => {
+      await page.goto(pfad, { waitUntil: "networkidle" });
+      const zuviel = await ueberbreite(page);
+      expect(zuviel, `${pfad} ist ${zuviel}px zu breit. Schuldige:\n  `
+        + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
+    });
+  }
 
   test.describe("angemeldet", () => {
     test.use({ storageState: zustandsDatei("nutzerin") });
 
-    test("/dashboard bleibt in der Breite", async ({ page }) => {
-      await page.goto("/dashboard", { waitUntil: "networkidle" });
-      const zuviel = await ueberbreite(page);
-      expect(zuviel, `/dashboard ist ${zuviel}px zu breit. Schuldige:\n  `
-        + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
-    });
+    // `/account`: 2 px, die Karten-Spalte wuchs mit ihrem breitesten Knopf.
+    for (const pfad of ["/dashboard", "/account"]) {
+      test(`${pfad} bleibt in der Breite`, async ({ page }) => {
+        await page.goto(pfad, { waitUntil: "networkidle" });
+        const zuviel = await ueberbreite(page);
+        expect(zuviel, `${pfad} ist ${zuviel}px zu breit. Schuldige:\n  `
+          + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
+      });
+    }
   });
 
-  // BEKANNTER BEFUND, absichtlich als erwarteter Fehlschlag festgehalten.
-  //
-  // Die Kopfzeile der Startseite ist bei 320px **14px zu breit**: Marke,
-  // Erscheinungsbild-Schalter und „Kostenlos registrieren" passen dort nicht
-  // nebeneinander. Die Seite lässt sich seitwärts schieben, und alles darunter
-  // steht schief.
-  //
-  // Nicht mit repariert, weil die Startseite Design ist und keine Mechanik —
-  // ob der Schalter weicht, die Beschriftung kürzer wird oder die Zeile
-  // umbricht, ist eine gestalterische Entscheidung. `test.fail()` hält den
-  // Befund sichtbar: Der Test meldet sich, sobald jemand ihn behebt, und dann
-  // fliegt diese Markierung raus.
-  test("/ ist bei 320px zu breit (bekannt)", async ({ page }) => {
-    test.fail();   // gilt NUR für diesen Test — vor dem Block wären es alle
-    await page.goto("/", { waitUntil: "networkidle" });
-    const zuviel = await ueberbreite(page);
-    expect(zuviel, `Schuldige:\n  ` + (await ueberstehende(page)).join("\n  "))
-      .toBeLessThanOrEqual(1);
+  test.describe("mit Haushalt", () => {
+    test.use({ storageState: zustandsDatei("ratsfrau") });
+
+    // 27 px durch das Etikett der Ablesekarte („Ordentliche Aufwendungen des
+    // Ergebnishaushalts" in einer Zeile). Mit Daten nur lokal sichtbar; in
+    // der CI hält der Test wenigstens das Gerüst der Seite.
+    test("/haushalt bleibt in der Breite", async ({ page }) => {
+      await page.goto("/haushalt", { waitUntil: "networkidle" });
+      const zuviel = await ueberbreite(page);
+      expect(zuviel, `/haushalt ist ${zuviel}px zu breit. Schuldige:\n  `
+        + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
+    });
   });
 });
 

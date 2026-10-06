@@ -38,13 +38,24 @@ Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendu
 | Fließtext lange Antworten | hsl(212 55% 20%) |
 | Sekundär / Muted / Labels | hsl(207 18% 38.5%) · iOS #506474 |
 | **Primär „Hafenblau"** | hsl(205 92% 34%) |
-| **Signal-Orange** (nur Akzent: KI-Funken, Marker und Deltas ohne Wertung) | hsl(19 92% 55%) |
+| **Signal-Orange** (nur Akzent: KI-Funken, Marker und Deltas ohne Wertung) | hsl(19 92% 42%) · #ce4709 |
 
 ### Dunkel
 Seite hsl(213 50% 7%) · Karte hsl(212 42% 11%) · Rahmen hsl(211 36% 17%)
 (interaktiv 21%) · Text hsl(204 40% 96%) · Muted hsl(206 23% 72.5%)
 (iOS #A9BBC9) ·
-Primär hsl(202 90% 60%) (Text darauf dunkel!) · Signal hsl(19 95% 60%).
+Primär hsl(202 90% 60%) (Text darauf dunkel!) · Signal hsl(19 95% 60%) ·
+Fehler/Löschen hsl(0 70% 62%) (Text darauf dunkel, wie beim Primär).
+
+**Kontrast der Paare (seit 10/2026).** Jede Farbe, auf der Schrift steht,
+trägt ihre `-foreground` mit mindestens 4,5 : 1 — auch kleine Zähler und
+Knöpfe. Das Signal-Orange stand bis dahin bei 50 % Helligkeit (#f5540a): Weiß
+darauf 3,41 : 1, gemessen per axe an „Frag den Rat" und am Zähler der
+Seitenleiste. Mit 42 % sind es 4,65 : 1; dasselbe Orange ist auch als
+Textakzent auf Weiß lesbarer geworden. Im Dunkeln lag das Rot für „Konto
+löschen" bei 4,03 : 1 auf der Karte und Weiß darauf bei 4,29 : 1 — jetzt
+heller mit dunkler Schrift (4,83 / 4,98 : 1). Wer ein Token ändert, misst das
+Paar, nicht nur die Fläche.
 
 ### Semantik (Tints, nie Vollfarben-Flächen)
 - Erfolg/Angenommen: #dcfce7 / #15803d
@@ -121,6 +132,12 @@ Metadaten oder ganzer Quellenzeile. Der gedämpfte Text hält auf Karte,
 Seite und Tonfläche in beiden Themes mindestens 4,5:1; #506474 auf Weiß
 liegt bei etwa 6,15:1. Orange Beschriftung braucht die dunklere Textfarbe
 (Web `orange-800` / dunkel `orange-300`, iOS `signalInk`).
+Ein Bruch hinter dem Token (`text-muted-foreground/60`) nimmt genau das
+wieder weg — 2,59 : 1 auf Weiß; `tests/test_gedaempfter_text.py` hält die Zahl
+solcher Stellen als Sperrklinke. Ein noch nicht verdientes Abzeichen dimmt
+sein Zeichen und rahmt gestrichelt, nicht die ganze Kachel samt Namen.
+Ausgenommen sind nur abgeschaltete Bedienelemente (ein Unterschalter, dessen
+Oberschalter aus ist) — WCAG 1.4.3 nimmt inaktive Elemente aus.
 
 **Mehr Schrift braucht Höhe.** Quellentitel und ihre Metadaten werden
 vollständig umbrochen, auch in schmalen Belegespalten. Textauszüge dürfen

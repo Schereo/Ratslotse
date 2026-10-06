@@ -18,8 +18,9 @@ import SwiftUI
 /// Der Stand des Anklopfens in den `UserDefaults` — vier Zahlen, keine Inhalte.
 @MainActor
 struct NudgeStore {
-    private static let stateKey = "ratslotse.lotti.nudge"
-    private static let usedKey = "ratslotse.lotti.usedOn"
+    // Beim Abmelden gelöscht (`LocalAccountData`).
+    private static let stateKey = LocalAccountData.nudgeStateKey
+    private static let usedKey = LocalAccountData.nudgeUsedKey
 
     let defaults: UserDefaults
 

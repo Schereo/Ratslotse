@@ -84,7 +84,7 @@ struct CityMapView: View {
     /// war die Karte, die man dort kannte.
     var topicsFirst = false
 
-    @AppStorage("karte.ebenen") private var storedLayers = ""
+    @AppStorage(LocalAccountData.mapLayersKey) private var storedLayers = ""
 
     @State private var placeID: String?
     @State private var layers: Set<MapLayer> = MapLayer.defaults

@@ -46,8 +46,13 @@ und Tag, welche Funktionen benutzt werden: `user_activity` in
 5. Am Ende **Veröffentlichen**. Die Angaben gelten für alle künftigen
    Versionen, bis sie geändert werden.
 
-Nicht anhaken, auch wenn es plausibel klingt: Standort (die Karte zeigt
-Ratsdaten, nie den Nutzerstandort; „Mein Viertel" ist eine Kontoangabe),
+Nicht anhaken, auch wenn es plausibel klingt: Standort. Die App FRAGT
+zwar danach — einmalig, wenn man auf der Stadtkarte den Standort-Knopf
+(„Meinen Standort zeigen“) antippt —, aber die Koordinate verlässt das Gerät
+nicht: Der Ortsbereich wird lokal bestimmt, an den Server geht nur dessen
+Kennung. Apples Datenschutz-Angaben fragen nach übertragenen Daten, nicht
+nach Berechtigungen („Mein Viertel" ist ohnehin eine Kontoangabe). Weiter
+nicht anhaken:
 Suchverlauf (gezählt wird, dass gesucht wurde, nicht wonach), Diagnose
 (kein eigenes Crash-Reporting; der Fehlersammler speichert kein Konto und
 keine Gerätekennung, siehe `kern/fehler.py`), Kundendienst (das
