@@ -15,7 +15,7 @@ from kern.store import Store
 from ..config import get_settings
 from ..antworten import Ok
 from ..deps import get_store, require_active
-from ..ratelimit import client_error_limiter, page_view_limiter, support_limiter
+from ..ratelimit import client_error_limiter, feedback_limiter, page_view_limiter, support_limiter
 from ..schemas import ClientErrorIn, FeedbackIn, PageViewIn, SupportIn
 
 logger = logging.getLogger("ratslotse.web.feedback")
@@ -60,12 +60,16 @@ def _mail_bauen(title: str, kind_label: str, absender: str, message: str) -> tup
 
 @router.post("")
 def submit_feedback(
+    request: Request,
     body: FeedbackIn,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
 ) -> Ok:
     """Email the operator a piece of user feedback. Reply-to is the user's address so
-    the operator can answer directly. Best-effort: never surfaces email config to the user."""
+    the operator can answer directly. Best-effort: never surfaces email config to the user.
+
+    Gebremst je Konto (``feedback_limiter``): Jede Einreichung ist eine Mail."""
+    feedback_limiter.check(request, subject=user["id"])
     settings = get_settings()
     recipient = settings.feedback_email or settings.web_admin_email
     kind_label = _KIND_LABELS.get(body.kind, body.kind)

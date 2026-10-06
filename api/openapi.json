@@ -4049,7 +4049,7 @@
             "type": "string"
           },
           "decision": {
-            "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus.",
+            "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am\nHauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die\nFraktionen der Änderungsanträge, die als eigene Teilabstimmung\n(``kind='subvote'``) desselben TOPs erfasst sind.",
             "properties": {
               "abstentions": {
                 "title": "Abstentions",
@@ -4064,6 +4064,10 @@
                   "number",
                   "null"
                 ]
+              },
+              "applicants_named": {
+                "title": "Applicants Named",
+                "type": "boolean"
               },
               "committee": {
                 "title": "Committee",
@@ -6243,6 +6247,36 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "CitiesFeedbackBody": {
+        "description": "Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.\n\nBis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in\nder URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die\nausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query\nund gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch\nhier.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "note": {
+            "maxLength": 500,
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verdict": {
+            "pattern": "^(right|wrong)$",
+            "title": "Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "title": "CitiesFeedbackBody",
+        "type": "object"
+      },
       "CityDebt": {
         "description": "Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,\n``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides\nin Euro und je Einwohner*in (Einwohner am 30.06. desselben Jahres).",
         "properties": {
@@ -6879,6 +6913,10 @@
         "properties": {
           "deleted": {
             "title": "Deleted",
+            "type": "integer"
+          },
+          "research_deleted": {
+            "title": "Research Deleted",
             "type": "integer"
           }
         },
@@ -7624,7 +7662,7 @@
         "type": "object"
       },
       "DecisionRow": {
-        "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus.",
+        "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am\nHauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die\nFraktionen der Änderungsanträge, die als eigene Teilabstimmung\n(``kind='subvote'``) desselben TOPs erfasst sind.",
         "properties": {
           "abstentions": {
             "title": "Abstentions",
@@ -7639,6 +7677,10 @@
               "number",
               "null"
             ]
+          },
+          "applicants_named": {
+            "title": "Applicants Named",
+            "type": "boolean"
           },
           "committee": {
             "title": "Committee",
@@ -30701,18 +30743,9 @@
           {
             "in": "query",
             "name": "verdict",
-            "required": true,
-            "schema": {
-              "title": "Verdict",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "note",
             "required": false,
             "schema": {
-              "title": "Note",
+              "title": "Verdict",
               "type": [
                 "string",
                 "null"
@@ -30720,6 +30753,45 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.\n\nBis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in\nder URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die\nausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query\nund gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch\nhier.",
+                "properties": {
+                  "id": {
+                    "title": "Id",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "note": {
+                    "maxLength": 500,
+                    "title": "Note",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "verdict": {
+                    "pattern": "^(right|wrong)$",
+                    "title": "Verdict",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "title": "CitiesFeedbackBody",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -30905,27 +30977,21 @@
           {
             "in": "query",
             "name": "id",
-            "required": true,
+            "required": false,
             "schema": {
               "title": "Id",
-              "type": "integer"
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           {
             "in": "query",
             "name": "verdict",
-            "required": true,
-            "schema": {
-              "title": "Verdict",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "note",
             "required": false,
             "schema": {
-              "title": "Note",
+              "title": "Verdict",
               "type": [
                 "string",
                 "null"
@@ -30933,6 +30999,45 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.\n\nBis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in\nder URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die\nausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query\nund gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch\nhier.",
+                "properties": {
+                  "id": {
+                    "title": "Id",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "note": {
+                    "maxLength": 500,
+                    "title": "Note",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "verdict": {
+                    "pattern": "^(right|wrong)$",
+                    "title": "Verdict",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "title": "CitiesFeedbackBody",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -31050,6 +31155,7 @@
     },
     "/api/council/conversations": {
       "delete": {
+        "description": "„Alle löschen\": Gespräche UND die Fragen und Berichte der gründlichen\nRecherche — die standen bis 10/2026 weiter mit dem Konto in\n``deep_research_jobs``, obwohl der Dialog „alles gelöscht\" sagte.",
         "operationId": "gespraeche_alle_loeschen_api_council_conversations_delete",
         "responses": {
           "200": {
@@ -33596,7 +33702,7 @@
     },
     "/api/feedback": {
       "post": {
-        "description": "Email the operator a piece of user feedback. Reply-to is the user's address so\nthe operator can answer directly. Best-effort: never surfaces email config to the user.",
+        "description": "Email the operator a piece of user feedback. Reply-to is the user's address so\nthe operator can answer directly. Best-effort: never surfaces email config to the user.\n\nGebremst je Konto (``feedback_limiter``): Jede Einreichung ist eine Mail.",
         "operationId": "submit_feedback_api_feedback_post",
         "requestBody": {
           "content": {

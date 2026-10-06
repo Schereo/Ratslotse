@@ -188,6 +188,15 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "speicherfristen",
+        "label": "Speicherfristen",
+        "description": "Löscht Recherchen von Konten ohne Einwilligung ins Speichern sieben "
+                       "Tage nach ihrem letzten Stand (Datenschutzerklärung, "
+                       "Store.DEEP_JOB_FRIST_TAGE).",
+        "schedule": "täglich 4:40 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "check_wahltermine",
         "label": "Wahltermine der Stadt",
         "description": "Vergleicht den Terminkalender des Votemanagers mit kommunalwahl/wahlen/ — "

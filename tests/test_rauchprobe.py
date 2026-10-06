@@ -7,6 +7,7 @@ nur jedes Mal denselben Fehler, bis jemand sie abschaltet.
 """
 from __future__ import annotations
 
+import functools
 import json
 import sys
 from pathlib import Path
@@ -32,11 +33,24 @@ def _alle_muster() -> list[str]:
     return [*_ohne_konto(), *MIT_KONTO]
 
 
+@functools.cache
+def _mit_optionalem_konto() -> frozenset[str]:
+    """GET-Pfade hinter ``optional_user``: ohne Konto erreichbar, mit Konto
+    persönlicher. Der Schutz-Wächter zählt sie als geschützt, deshalb stehen
+    sie nicht in OEFFENTLICH — für die Probe ohne Konto taugen sie trotzdem
+    (``/api/wahlen`` etwa)."""
+    from tests.test_endpunkt_schutz import _endpunkte
+
+    return frozenset(p for m, p, namen in _endpunkte()
+            if m == "get" and "optional_user" in namen
+            and not namen & {"require_active", "require_admin", "get_current_user"})
+
+
 @pytest.mark.parametrize("pfad", _ohne_konto())
 def test_jede_probe_zeigt_auf_einen_endpunkt_ohne_konto(pfad):
     assert pfad in SPEC["paths"], f"{pfad} steht nicht im Vertrag"
     assert "get" in SPEC["paths"][pfad], f"{pfad} ist kein GET"
-    assert ("get", pfad) in OEFFENTLICH, (
+    assert ("get", pfad) in OEFFENTLICH or pfad in _mit_optionalem_konto(), (
         f"{pfad} verlangt ein Konto — die Rauchprobe hat keins und bekäme "
         "jedes Mal 401."
     )

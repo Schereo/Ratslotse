@@ -1441,7 +1441,7 @@ struct DecisionRow: View {
                                 .foregroundStyle(RatsColor.secondary)
                         }
                         if !decision.factions.isEmpty {
-                            Text("Antrag: \(decision.factions.prefix(2).joined(separator: ", "))")
+                            Text("\(decision.applicantShortLabel): \(decision.factions.prefix(2).joined(separator: ", "))")
                                 .font(RatsFont.body(10.5, weight: .medium))
                                 .foregroundStyle(RatsColor.secondary)
                                 .lineLimit(2)

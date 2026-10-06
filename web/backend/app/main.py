@@ -124,6 +124,12 @@ def _deep_jobs_aufraeumen() -> None:
             n = store.deep_jobs_verwaiste_beenden()
             if n:
                 logger.warning("%d verwaiste Recherche-Jobs als Fehler markiert", n)
+            # Speicherfrist der Recherchen ohne Einwilligung — täglich macht
+            # das scripts/speicherfristen.py, hier zusätzlich bei jedem Start,
+            # damit die Frist auch ohne eingerichtete crontab-Zeile greift.
+            n = store.deep_jobs_frist_abgelaufen()
+            if n:
+                logger.info("%d Recherchen nach Ablauf der Speicherfrist gelöscht", n)
         finally:
             store.close()
     except Exception:  # noqa: BLE001 — Aufräumen darf den Start nie verhindern
