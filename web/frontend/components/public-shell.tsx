@@ -16,6 +16,11 @@ import { mitRuecksprung } from "@/lib/public-routes";
  *  ein Weg hinein und am Ende eine Einladung — in dieser Reihenfolge, denn wer
  *  gerade erst liest, weiß noch gar nicht, wofür sich ein Konto lohnen würde.
  */
+/** Unter 360 px rücken die beiden Knöpfe enger zusammen — zusammen mit dem
+ *  ausgeblendeten Schriftzug passt die Kopfzeile dann auch mit breiteren
+ *  Ersatzschriften (die CI rendert ohne die Webfont). */
+const SCHMAL = "max-[359px]:px-2.5 max-[359px]:text-[13px]";
+
 export function PublicShell({ children, hinweis, onAbmelden }: {
   children: React.ReactNode;
   /** Steht über dem Inhalt — für ein Konto, das hier nur liest, weil es noch
@@ -60,10 +65,10 @@ export function PublicShell({ children, hinweis, onAbmelden }: {
               <Button variant="ghost" size="sm" onClick={onAbmelden}>Abmelden</Button>
             ) : (
               <>
-                <Button asChild variant="ghost" size="sm">
+                <Button asChild variant="ghost" size="sm" className={SCHMAL}>
                   <Link href={mitRuecksprung("/login", zurueck)}>Anmelden</Link>
                 </Button>
-                <Button asChild variant="signal" size="sm">
+                <Button asChild variant="signal" size="sm" className={SCHMAL}>
                   <Link href={mitRuecksprung("/register", zurueck)}>Registrieren</Link>
                 </Button>
               </>
