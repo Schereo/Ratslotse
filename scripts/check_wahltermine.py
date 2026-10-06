@@ -216,7 +216,7 @@ def main(heute: date | None = None) -> dict:
         if seit < tag:
             from kern.alerts import JobFehler
             raise JobFehler(f"Terminkalender des Votemanagers seit {seit} nicht erreichbar "
-                            f"({type(exc).__name__}: {str(exc)[:160]})", kennzahlen)
+                            f"({type(exc).__name__}: {str(exc)[:160]})", kennzahlen) from exc
         return kennzahlen
     _ausfall_vorbei()
 
