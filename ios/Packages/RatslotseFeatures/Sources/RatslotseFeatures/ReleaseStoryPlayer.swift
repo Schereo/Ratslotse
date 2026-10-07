@@ -57,6 +57,12 @@ struct ReleaseStoryPlayer: View {
     private var current: ReleaseHighlight { sequence[index] }
     private var tint: Color { ReleaseTileColor.color(current.color) }
     private var isLast: Bool { index >= sequence.count - 1 }
+    /// Hochkant (die App-Clips seit 3.0.0, randlos): Der Fuß wird zur
+    /// Knopfzeile, damit der Clip die Breite bekommt — mit Titel, Text und
+    /// zwei Knopfzeilen darunter stand er halb so breit wie das Telefon, der
+    /// Inhalt in einem Viertel seiner Größe. Titel und Text sagt der Clip
+    /// selbst (Intro, Untertitel je Schritt); der Kopf nennt den Titel.
+    private var upright: Bool { (current.media?.aspectRatio ?? 16.0 / 9.0) < 1 }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -188,7 +194,61 @@ struct ReleaseStoryPlayer: View {
 
     // MARK: Fuß
 
+    @ViewBuilder
     private var footer: some View {
+        if upright { compactFooter } else { fullFooter }
+    }
+
+    /// „‹  Ausprobieren →  ›" in einer Zeile. Eine lange Beschriftung
+    /// („Mein Viertel ausprobieren") bräche dort um — dann steht nur
+    /// „Ausprobieren", VoiceOver liest die ganze.
+    private var compactFooter: some View {
+        let action = current.action ?? "Ausprobieren"
+        let short = action.count > 16 ? "Ausprobieren" : action
+        return HStack(spacing: 10) {
+            if !aside {
+                Button(action: previous) { roundLabel { RatsIcon(.chevronLeft, size: 18) } }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .disabled(index == 0)
+                    .opacity(index == 0 ? 0.4 : 1)
+                    .accessibilityLabel("Zurück")
+            }
+            Button { playback.stop(); onTry(current) } label: {
+                HStack(spacing: 8) {
+                    Text(short)
+                    RatsIcon(.arrowRight, size: 16)
+                }
+                .font(RatsFont.body(16, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(tint)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(RatsPlainButtonStyle())
+            .accessibilityLabel(action)
+            .accessibilityHint(current.text)
+            Button { isLast ? dismiss() : advanceByUser() } label: {
+                if isLast {
+                    quietLabel { Text("Fertig") }.frame(width: 96)
+                } else {
+                    roundLabel { RatsIcon(.chevronRight, size: 18) }
+                }
+            }
+            .buttonStyle(RatsPlainButtonStyle())
+            .accessibilityLabel(isLast ? "Fertig" : "Weiter")
+        }
+        .padding(.top, 10)
+    }
+
+    private func roundLabel<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        content()
+            .foregroundStyle(.white)
+            .frame(width: 50, height: 50)
+            .background(.white.opacity(0.14))
+            .clipShape(Circle())
+    }
+
+    private var fullFooter: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(current.title)
