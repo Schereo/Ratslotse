@@ -34,6 +34,15 @@ public enum AppRoute: Sendable, Hashable {
     /// Ratslotse" und der Abo-Meldungen (`/abos`).
     case subscriptions
     case analysis
+    /// Die Merkliste (`/bookmarks`). Bis 10/2026 keine Route: Sie stand im
+    /// Mehr-Blatt und auf dem iPad als eigene Seite, beides am Stapel
+    /// vorbei — und was nicht auf dem Stapel liegt, kennt Lotti nicht.
+    ///
+    /// **Nur in diese Richtung.** `route(for:)` liest `/bookmarks` absichtlich
+    /// nicht: Die Universal-Link-Datei lässt die Adresse nicht in die App,
+    /// und nähme sie sie auf, schickte die ausgelieferte App (ohne diesen
+    /// Fall) jeden solchen Link gleich wieder ins Web.
+    case saved
     case admin
     case web(URL)
 }
@@ -189,6 +198,7 @@ public struct AppRouter: Sendable {
         case .subscriptions: components.path = "/abos"
         case .analysis:
             components.path = "/council"; components.queryItems = [.init(name: "tab", value: "analysis")]
+        case .saved: components.path = "/bookmarks"
         case .admin: return nil
         case .web(let url): return url
         }
