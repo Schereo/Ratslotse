@@ -21428,6 +21428,62 @@
               "null"
             ]
           },
+          "media_narrow": {
+            "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+            "properties": {
+              "alt": {
+                "title": "Alt",
+                "type": "string"
+              },
+              "aspect": {
+                "title": "Aspect",
+                "type": "string"
+              },
+              "cover": {
+                "title": "Cover",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "duration": {
+                "title": "Duration",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "poster": {
+                "title": "Poster",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "src": {
+                "title": "Src",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "src",
+              "alt",
+              "aspect",
+              "poster",
+              "cover",
+              "duration"
+            ],
+            "title": "ReleaseMedia",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "tagline": {
             "title": "Tagline",
             "type": [
@@ -21453,6 +21509,7 @@
           "text",
           "url",
           "media",
+          "media_narrow",
           "color",
           "aside",
           "tagline",

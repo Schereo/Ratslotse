@@ -33,6 +33,9 @@ export type Meta = {
   farbe?: string;
   /** Lotti im Intro (Datei aus web/frontend/public/lotti/). */
   lotti?: string;
+  /** Hochformat: Wo die Aufnahme spielt — „browser" (am Telefon) zeigt `weg`,
+   *  „app" zeigt `app`. Vorgabe: app. */
+  ort?: "browser" | "app";
 };
 
 export type ClipProps = Meta & {

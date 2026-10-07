@@ -6,6 +6,7 @@ import { Composition, Still } from "remotion";
 import { INTRO, OUTRO, WebClip } from "./WebClip";
 import { Titelbild } from "./Titelbild";
 import { INTRO_TEL, OUTRO_TEL, TelefonClip } from "./TelefonClip";
+import { BREITE_HOCH, HochClip, INTRO_HOCH, OUTRO_HOCH, hoeheHoch } from "./HochClip";
 import type { ClipProps, TitelbildProps } from "./typen";
 
 const FPS = 30;
@@ -43,6 +44,19 @@ export const Root: React.FC = () => (
       defaultProps={beispiel}
       calculateMetadata={({ props }) => ({
         durationInFrames: Math.round((INTRO_TEL + props.timeline.duration + OUTRO_TEL) * FPS),
+      })}
+    />
+    <Composition
+      id="HochClip"
+      component={HochClip}
+      width={BREITE_HOCH}
+      height={hoeheHoch(390, 844)}
+      fps={FPS}
+      durationInFrames={Math.round((INTRO_HOCH + beispiel.timeline.duration + OUTRO_HOCH) * FPS)}
+      defaultProps={{ ...beispiel, ort: "browser" as const, timeline: { ...beispiel.timeline, width: 390, height: 844 } }}
+      calculateMetadata={({ props }) => ({
+        durationInFrames: Math.round((INTRO_HOCH + props.timeline.duration + OUTRO_HOCH) * FPS),
+        height: hoeheHoch(props.timeline.width, props.timeline.height),
       })}
     />
     <Still

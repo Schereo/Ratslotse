@@ -17,6 +17,7 @@ function hl(title: string, extra: Partial<Highlight> = {}): Highlight {
   return {
     title, text: "…", url: `/${title.toLowerCase()}`,
     media: { kind: "video", src: "/c.mp4", alt: "x", aspect: "16/9", poster: "/c.webp", cover: "/c.webp", duration: 20 },
+    media_narrow: null,
     color: "primary", aside: false, tagline: null, action: "Ausprobieren",
     ...extra,
   };

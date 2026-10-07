@@ -199,6 +199,241 @@ export default {
     },
   },
 
+  'viertel-mobil': {
+    // Dieselbe Szene am Telefon, für den Spieler im schmalen Browser: Dort
+    // stand der 16:9-Clip vom Schreibtisch so klein, dass die Untertitel
+    // ~11 px hatten (07.10.2026). Randlos im Hochformat (HochClip).
+    mobil: true,
+    vorwaermen: ['/dashboard', '/karte', '/karte?ort=fliegerhorst'],
+    titel: 'Mein Viertel',
+    untertitel: 'Was sich vor deiner Haustür tut',
+    weg: ['Mehr', 'Mein Viertel'],
+    app: ['Mehr', 'Mein Viertel'],
+    farbe: 'gruen',
+    async run({ page, goto, begin, click, scrollTo, pause, say, lupe, ohne }) {
+      await goto('/dashboard');
+      const mehr = page.getByRole('button', { name: /^Mehr/ }).first();
+      await mehr.waitFor();
+      await pause(1.2);
+      await begin();
+      say('Unten auf „Mehr“ tippen');
+      await pause(1.2);
+      await click(mehr);
+      await pause(1.0);
+      say('„Mein Viertel“ öffnet deinen Stadtteil');
+      await pause(0.6);
+      await click(page.locator('a:visible', { hasText: 'Mein Viertel' }).first());
+      await ohne(async () => {
+        await page.waitForSelector('text=Vorhaben aus den Beschlüssen');
+        await page.waitForSelector('.leaflet-interactive');
+        await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      });
+      say('Alle Vorhaben auf Karte und Liste');
+      await pause(1.8);
+      const vorhaben = page.locator('a:visible, button:visible', { hasText: 'Neue Grundschule und Dreifeldhalle' }).first();
+      await scrollTo(vorhaben, { settle: 1.4 });
+      say('Ein Vorhaben antippen: Stand, Zeitplan und Beschlüsse');
+      await pause(0.6);
+      await click(vorhaben);
+      await ohne(async () => {
+        await page.waitForURL(/v=\d+/);
+        await page.waitForSelector('ol[aria-label="Stand des Vorhabens"]:visible');
+      });
+      await pause(1.0);
+      // Stand und Zeitplan stehen oben im Blatt (Plakette „In Planung“ samt
+      // Termin, darunter die Stufen) — die Stufen allein sind am Telefon nur
+      // Punkte ohne Beschriftung.
+      await lupe([
+        page.locator(':is(h1,h2,h3):visible', { hasText: 'Neue Grundschule und Dreifeldhalle' }).first(),
+        page.locator('ol[aria-label="Stand des Vorhabens"]:visible').first(),
+        page.locator(':text("In Planung"):visible').last(),
+      ], { dauer: 3.0 });
+      say('Darunter alle Beschlüsse dazu');
+      const beschluesse = page.locator(':text-matches("^\\\\d+ Beschlüsse?$", "i"):visible').first();
+      await lupe(beschluesse.locator('xpath=following-sibling::*[1]'), { dauer: 2.8 }).catch(async () => {
+        await scrollTo(beschluesse, { settle: 1.2 });
+        await pause(2.0);
+      });
+    },
+  },
+
+  'lotti-mobil': {
+    // Lotti am Telefon: unten rechts antippen, fragen, Antwort mit den Zahlen.
+    // Markieren gibt es am Telefon nur mit langem Druck — die zweite Frage
+    // wird deshalb getippt (die Erklärung eines Worts kommt so genauso).
+    mobil: true,
+    vorwaermen: ['/council/decision?id=21966'],
+    titel: 'Lotti erklärt dir jede Seite',
+    untertitel: 'Frag einfach, was du nicht verstehst',
+    weg: ['Jede Seite', 'Lotti unten rechts'],
+    app: ['Jede Seite', 'Lotti unten rechts'],
+    farbe: 'signal',
+    lotti: 'standbild-erklaert.png',
+    async run({ page, goto, begin, click, type, pause, say, lupe }) {
+      const ziel = '/council/decision?id=21966';
+      const fragen = ['Wie viele haben dagegen gestimmt?', 'Was heißt Öffentlichkeitsbeteiligung?'];
+      const band = await echteAntworten(page, '**/api/council/explain**');
+      const senden = () => page.locator('button[aria-label="Fragen"]:visible').last();
+
+      await goto(ziel);
+      await page.locator('button[aria-label="Lotti fragen"]:visible').first().click();
+      const einwilligen = page.locator('button:has-text("KI nutzen, nicht merken")');
+      if (await einwilligen.count()) await einwilligen.click();
+      for (const f of fragen) {
+        await page.locator('[aria-label="Frage an Lotti"]:visible').fill(f);
+        await lottiAntwort(page, () => senden().click());
+        // Ohne Modell-Schlüssel antwortet Lotti „Erklärung fehlgeschlagen“ —
+        // das gehört nicht in einen Clip (07.10.2026 genau so passiert).
+        const zuletzt = await page.locator('#lotti-fenster div.space-y-2').last().innerText();
+        if (/fehlgeschlagen/i.test(zuletzt)) throw new Error(`Lotti hat nicht geantwortet: ${zuletzt}`);
+      }
+      if (band.anzahl < 2) throw new Error(`Nur ${band.anzahl} Antwort(en) aufgehoben`);
+      band.wiedergeben();
+
+      await page.evaluate(() => {
+        sessionStorage.removeItem('ratslotse:lotti-verlauf');
+        sessionStorage.removeItem('ratslotse:lotti-gespraech');
+      });
+      await goto(ziel);
+      await page.waitForSelector('button[aria-label="Lotti fragen"]:visible');
+      await pause(1.0);
+      await begin();
+      say('Auf jeder Seite unten rechts: Lotti');
+      await pause(1.4);
+      await click(page.locator('button[aria-label="Lotti fragen"]:visible').first());
+      await page.waitForSelector('[aria-label="Frage an Lotti"]:visible');
+      await pause(0.6);
+      say('Frag, was du zur Seite wissen willst');
+      await type('[aria-label="Frage an Lotti"]:visible', fragen[0]);
+      await pause(0.3);
+      await lottiAntwort(page, () => click(senden()));
+      say('Lotti antwortet mit den Zahlen aus dem Protokoll');
+      await lupe(page.locator('#lotti-fenster div.space-y-2').last(), { dauer: 3.4 });
+      say('Ein Wort unklar? Einfach nachfragen');
+      await type('[aria-label="Frage an Lotti"]:visible', fragen[1]);
+      await pause(0.3);
+      await lottiAntwort(page, () => click(senden()));
+      await pause(0.4);
+      await lupe(page.locator('#lotti-fenster div.space-y-2').last(), { dauer: 4.0 });
+    },
+  },
+
+  'ideen-mobil': {
+    mobil: true,
+    vorwaermen: ['/dashboard', '/council?tab=analysis', '/council/ideen', '/council/ideen/bewegung?id=1'],
+    titel: 'Ideen aus anderen Städten',
+    untertitel: 'Was andere Räte schon beschlossen haben',
+    weg: ['Mehr', 'Analyse', 'Ideen aus anderen Städten'],
+    app: ['Mehr', 'Ideen aus anderen Städten'],
+    farbe: 'primary',
+    lotti: 'standbild-hat-idee.png',
+    async run({ page, goto, begin, click, look, scrollTo, pause, say, lupe, ohne }) {
+      await goto('/dashboard');
+      const mehr = page.getByRole('button', { name: /^Mehr/ }).first();
+      await mehr.waitFor();
+      await pause(1.2);
+      await begin();
+      say('Unter „Mehr“ in die Analyse');
+      await pause(1.0);
+      await click(mehr);
+      await pause(0.9);
+      await click(page.locator('a:visible', { hasText: 'Analyse' }).first());
+      const reiter = page.locator('button:visible', { hasText: 'Ideen aus anderen Städten' }).first();
+      await ohne(() => reiter.waitFor());
+      await pause(0.8);
+      say('Dort der Reiter „Ideen aus anderen Städten“');
+      await pause(0.6);
+      await click(reiter);
+      await ohne(async () => {
+        await page.waitForSelector(':text("Gerade in Bewegung"):visible');
+        await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      });
+      await pause(0.8);
+      const idee = page.locator('a:visible', { hasText: 'Hitzeaktionsplan aufstellen' }).first();
+      await scrollTo(idee, { settle: 1.2 });
+      say('Eine Idee antippen: Gibt es das in Oldenburg schon?');
+      await pause(0.6);
+      await click(idee);
+      await ohne(async () => {
+        await page.waitForSelector(':text("Und in Oldenburg?"):visible');
+        await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      });
+      await pause(0.6);
+      const kopf = page.locator(':text("Und in Oldenburg?"):visible').first();
+      await scrollTo(kopf, { settle: 1.2 });
+      const urteil = page.locator(':text("Teilweise vorhanden"):visible').first();
+      await lupe([kopf, urteil, urteil.locator('xpath=following::p[1]')], { dauer: 3.8 });
+      say('Die Zeitleiste: welche Stadt wann was beschlossen hat');
+      await scrollTo(page.locator('#buehne-titel:visible').first(), { settle: 1.4 });
+      await look(page.locator('[aria-label^="Potsdam:"]:visible').first());
+      await pause(1.6);
+      await look(page.locator('[aria-label^="Magdeburg:"]:visible').first());
+      await pause(2.0);
+    },
+  },
+
+  'akte-mobil': {
+    mobil: true,
+    vorwaermen: ['/dashboard', '/fragen'],
+    titel: 'Frag den Rat',
+    untertitel: 'Antworten mit dem ganzen Vorgang',
+    weg: ['Fragen'],
+    app: ['Fragen'],
+    farbe: 'primary',
+    lotti: 'standbild-liest.png',
+    async run({ page, goto, begin, click, type, scrollTo, pause, say, lupe, ohne }) {
+      const frage = 'Was hat der Rat zum neuen Fußballstadion beschlossen?';
+      const band = await echteAntworten(page, '**/api/council/ask');
+      const einwilligen = async () => {
+        const knopf = page.locator('button:has-text("KI nutzen, nicht merken")');
+        if (await knopf.count()) { await knopf.click(); await pause(0.8); }
+      };
+      for (let versuch = 1; ; versuch++) {
+        await goto('/fragen');
+        await page.waitForSelector('[data-search]');
+        await einwilligen();
+        await page.locator('[data-search]').fill(frage);
+        await page.locator('button[aria-label="Fragen"]:not([disabled])').first().click();
+        await page.waitForSelector('section[aria-label="Verlauf des Vorgangs"]', { timeout: 180_000 });
+        const text = await page.locator('body').innerText();
+        if (!/\bAkte\b/.test(text) || versuch >= 3) break;
+        band.verwerfen();
+      }
+      band.wiedergeben();
+
+      await goto('/dashboard');
+      const reiter = page.locator('nav a:visible', { hasText: 'Fragen' }).last();
+      await reiter.waitFor();
+      await pause(1.2);
+      await begin();
+      say('Unten auf „Fragen“');
+      await pause(1.0);
+      await click(reiter);
+      await ohne(() => page.waitForSelector('[data-search]'));
+      await einwilligen();
+      await pause(0.6);
+      say('Frag nach einem Vorgang — zum Beispiel dem Stadion');
+      await type('[data-search]', frage);
+      await page.waitForSelector('button[aria-label="Fragen"]:not([disabled])');
+      await pause(0.4);
+      await click('button[aria-label="Fragen"]');
+      await ohne(() => page.waitForSelector('section[aria-label="Eckdaten"]', { timeout: 30_000 }));
+      say('Die Antwort fasst den ganzen Vorgang zusammen');
+      await pause(0.6);
+      const kurz = page.locator(':is(p,div,li):visible', { hasText: 'Kurz gesagt' }).last();
+      await scrollTo(kurz, { settle: 1.0 });
+      await lupe(kurz, { dauer: 3.2 });
+      const eck = page.locator('section[aria-label="Eckdaten"]');
+      say('Darunter die Eckdaten: Abstimmung, Betrag, Stand');
+      await scrollTo(eck, { settle: 1.3 });
+      await lupe(eck, { dauer: 3.2 });
+      const stand = page.locator('section[aria-label="Verlauf des Vorgangs"] >> text=Aktueller Stand');
+      say('… und der Verlauf bis zum aktuellen Stand');
+      await scrollTo(stand, { settle: 1.4 });
+      await lupe(stand.locator('xpath=..'), { dauer: 3.4 });
+    },
+  },
+
   ideen: {
     // Ideen aus anderen Städten: Analyse → Reiter → „Gerade in Bewegung“ →
     // Hitzeaktionsplan → Stand in Oldenburg → Zeitleiste durch die Räte.

@@ -196,4 +196,25 @@ test.describe("am Telefon", () => {
     await page.touchscreen.tap(buehne.x + 20, buehne.y + buehne.height / 2);
     await expect(spieler(page).getByRole("heading", { name: /^1 von 3/ })).toBeVisible();
   });
+
+  test("nimmt die hochkante Fassung und gibt ihr fast die ganze Breite", async ({ page }) => {
+    // Der 16:9-Clip vom Schreibtisch stand hier 340 px breit, die Untertitel
+    // ~11 px hoch (07.10.2026) — deshalb `media_narrow`, wenn es sie gibt.
+    const hoch = (name: string) => ({ ...medium(`${name}-mobil`, 20), aspect: "6/13" });
+    const mitHoch = { ...NEWS, releases: NEWS.releases.map((r) => ({
+      ...r, highlights: r.highlights.map((h) => ({ ...h, media_narrow: hoch(h.media.src.split("/").pop()!.replace(".mp4", "")) })),
+    })) };
+    await stellen(page);
+    await page.route("**/api/news", (route) => route.fulfill({ json: mitHoch }));
+    const k = await karte(page);
+    await k.getByRole("button", { name: /Video ansehen: Mein Viertel/ }).tap();
+    const video = spieler(page).locator("video");
+    await expect(video).toHaveAttribute("src", "/neuigkeiten/3.0.0/viertel-mobil.mp4");
+    const rahmen = await video.boundingBox();
+    if (!rahmen) throw new Error("Video ohne Maße");
+    expect(rahmen.width).toBeGreaterThan(280);
+    // Titel und Text sagt der Clip selbst; der Weg zum Feature bleibt sichtbar.
+    await expect(spieler(page).getByRole("link", { name: /Mein Viertel ausprobieren/ })).toBeVisible();
+    await expect(spieler(page).getByRole("button", { name: "Zurück" })).toBeVisible();
+  });
 });

@@ -90,9 +90,10 @@ CHANGE_THRESHOLD = 6.0  # mittlere Graustufen-Differenz, ab der ein Bild „ande
 SMALL_CHANGE_THRESHOLD = 1.5
 
 #: Ein Drehbuch-Eintrag steht in ``release-clips/<version>.mjs`` als Schlüssel
-#: mit zwei Leerzeichen Einzug: ``  teilen: {``. Der Name ist der Dateistamm
+#: mit zwei Leerzeichen Einzug: ``  teilen: {`` — mit Bindestrich in
+#: Anführungszeichen (``  'viertel-mobil': {``). Der Name ist der Dateistamm
 #: des Mediums in der Registry.
-STORYBOARD_KEY = re.compile(r"^  ([\w-]+):\s*\{", re.MULTILINE)
+STORYBOARD_KEY = re.compile(r"^  '?([\w-]+)'?:\s*\{", re.MULTILINE)
 
 
 # --------------------------------------------------------------------------
@@ -110,8 +111,8 @@ def storyboard_names(version: str) -> list[str]:
 def web_video_names(release: releases.Release) -> list[str]:
     """Die Dateistämme der Browser-Clips eines Releases — das sind die Namen,
     die ein Drehbuch tragen muss."""
-    return [Path(h.media.src).stem for h in release.highlights
-            if h.media is not None and h.media.kind == "video"]
+    return [Path(m.src).stem for h in release.highlights for m in (h.media, h.media_narrow)
+            if m is not None and m.kind == "video"]
 
 
 def clip_start(frames: list[tuple[float, Path]], begin: float | None) -> float:
@@ -458,6 +459,31 @@ def schnitt_remotion(version: str, name: str, aufnahme: Recording, ziel: Path, t
     return duration(mp4)
 
 
+def schnitt_remotion_hoch(version: str, name: str, aufnahme: Recording, ziel: Path, tmp: Path) -> float:
+    """Telefon-Aufnahme (Drehbuch mit ``mobil``) → ``<name>.mp4`` + ``<name>.webp``
+    im Hochformat, randlos (``HochClip``). Kein eigenes Titelbild: Die Kachel
+    zeigt dasselbe wie am Schreibtisch."""
+    if not (CLIPS / "node_modules").exists():
+        raise SystemExit(f"Remotion fehlt — einmal `npm ci` in {CLIPS}.")
+    oeffentlich = tmp / "public"
+    oeffentlich.mkdir()
+    schnitte = [(c["a"], c["b"]) for c in (aufnahme.manifest or {}).get("cuts", [])]
+    plan = cut_plan(aufnahme.frames, aufnahme.begin, aufnahme.end, schnitte)
+    assemble(plan, oeffentlich / "roh.mp4")
+    ffmpeg("-sseof", "-0.1", "-i", str(oeffentlich / "roh.mp4"), "-frames:v", "1", "-update", "1",
+           str(oeffentlich / "letztes-bild.png"))
+    meta = {**remotion_meta(version, (aufnahme.manifest or {}).get("meta", {})), "ort": "browser"}
+    shutil.copy(LOTTI / meta["lotti"], oeffentlich / meta["lotti"])
+    props = {**meta, "video": "roh.mp4", "letztesBild": "letztes-bild.png", "timeline": remotion_timeline(aufnahme)}
+    ziel.mkdir(parents=True, exist_ok=True)
+    mp4 = ziel / f"{name}.mp4"
+    remotion("HochClip", props, mp4, oeffentlich)
+    png = tmp / "standbild.png"
+    remotion("HochClip", props, png, oeffentlich, still=True, frame=45)
+    Image.open(png).convert("RGB").save(ziel / f"{name}.webp", "WEBP", quality=82, method=6)
+    return duration(mp4)
+
+
 def storyboard_meta(version: str, name: str) -> dict:
     """Die Angaben eines Drehbuchs (Titel, Weg, Farbe …) ohne Aufnahme — für
     die App-Clips, die dieselbe Hülle bekommen wie die Browser-Clips."""
@@ -495,6 +521,11 @@ def cmd_web(args: argparse.Namespace) -> int:
         print(f"● {name} … aufnehmen", flush=True)
         with tempfile.TemporaryDirectory() as tmp:
             aufnahme = record_web(version, name, args.base, Path(tmp))
+            if (aufnahme.manifest or {}).get("meta", {}).get("mobil"):
+                sekunden = schnitt_remotion_hoch(version, name, aufnahme, ziel, Path(tmp))
+                groesse = (ziel / f"{name}.mp4").stat().st_size // 1024
+                print(f"  ✓ {name}.mp4 ({sekunden:.1f} s, {groesse} KB, Remotion hoch) + {name}.webp")
+                continue
             if (aufnahme.manifest or {}).get("meta", {}).get("titel"):
                 sekunden = schnitt_remotion(version, name, aufnahme, ziel, Path(tmp))
                 groesse = (ziel / f"{name}.mp4").stat().st_size // 1024

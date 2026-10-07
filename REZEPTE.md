@@ -215,6 +215,15 @@ Die Dinge, die man dabei vergisst:
    **Erst überlegen, was man verstehen soll, dann drehen:** Das Drehbuch von
    3.0.0 schreibt je Feature Nutzen und Aha-Moment oben hin.
 
+   **Am Telefon eine eigene Fassung** (`media_narrow`, Drehbuch
+   `<name>-mobil` mit `mobil: true`): Im Spieler am Telefon stand der
+   16:9-Clip vom Schreibtisch 340 px breit, die Untertitel ~11 px hoch. Die
+   Telefon-Fassung wird bei 390×844 mit Touch aufgenommen, in doppelter
+   Auflösung (Einzelbilder statt Screencast, der nur CSS-Pixel liefert) und
+   randlos im Hochformat geschnitten (`HochClip`) — ohne Telefon-Rahmen, der
+   den Inhalt noch einmal halbiert hätte. Der Spieler nimmt sie unter 640 px
+   und macht seinen Fuß dann zur Knopfzeile.
+
    Drei Messungen vom 08.09.2026, die im Recorder als Kommentar stehen, damit
    sie niemand wiederholt: Chromes Screencast liefert nur CSS-Pixel, 2× gibt
    es nicht. Playwrights `recordVideo` verliert bei einem Seitenwechsel

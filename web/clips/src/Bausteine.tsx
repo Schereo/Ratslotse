@@ -75,30 +75,30 @@ export function Intro({ meta, deckkraft, hoch = false }: { meta: Meta; deckkraft
   const lotti = spring({ frame, fps, config: { damping: 14 } });
   return (
     <AbsoluteFill style={{
-      opacity: deckkraft, padding: hoch ? "0 70px" : "0 150px", justifyContent: "center",
+      opacity: deckkraft, padding: hoch ? "0 80px" : "0 150px", justifyContent: "center",
     }}>
       <div style={{ display: "flex", flexDirection: hoch ? "column" : "row", alignItems: hoch ? "flex-start" : "center", gap: hoch ? 30 : 60 }}>
         <Img src={staticFile(meta.lotti ?? "standbild-winkt.png")} style={{
-          width: hoch ? 220 : 260, transform: `translateY(${(1 - lotti) * 40}px)`,
+          width: hoch ? 300 : 260, transform: `translateY(${(1 - lotti) * 40}px)`,
         }} />
         <div>
           <div style={{
-            fontFamily: MONO, fontSize: hoch ? 26 : 22, letterSpacing: "0.14em", textTransform: "uppercase",
+            fontFamily: MONO, fontSize: hoch ? 36 : 22, letterSpacing: "0.14em", textTransform: "uppercase",
             color: farbe(meta.farbe), fontWeight: 700,
           }}>{meta.kicker}</div>
           <div style={{
-            fontFamily: BRICOLAGE, fontWeight: 800, fontSize: hoch ? 96 : 104, color: C.fg, lineHeight: 1.02,
+            fontFamily: BRICOLAGE, fontWeight: 800, fontSize: hoch ? 128 : 104, color: C.fg, lineHeight: 1.02,
             marginTop: 10, opacity: spring({ frame: frame - 3, fps, config: { damping: 18 } }),
           }}>{meta.titel}</div>
-          <div style={{ fontFamily: INTER, fontSize: hoch ? 40 : 36, color: C.muted, marginTop: 12 }}>{meta.untertitel}</div>
+          <div style={{ fontFamily: INTER, fontSize: hoch ? 52 : 36, color: C.muted, marginTop: hoch ? 18 : 12, lineHeight: 1.2 }}>{meta.untertitel}</div>
           {/* Ab drei Gliedern passt die Kette nicht mehr neben das Label. */}
           <div style={{
             marginTop: 34, display: "flex", gap: 18,
             flexDirection: hoch || (meta.weg.length > 2) ? "column" : "row",
             alignItems: hoch || (meta.weg.length > 2) ? "flex-start" : "center",
           }}>
-            <div style={{ fontFamily: INTER, fontSize: hoch ? 30 : 24, color: C.muted, fontWeight: 600, whiteSpace: "nowrap" }}>So kommst du hin:</div>
-            <Weg glieder={hoch ? meta.app : meta.weg} ab={14} groesse={hoch ? 32 : 26} />
+            <div style={{ fontFamily: INTER, fontSize: hoch ? 40 : 24, color: C.muted, fontWeight: 600, whiteSpace: "nowrap" }}>So kommst du hin:</div>
+            <Weg glieder={hoch && meta.ort !== "browser" ? meta.app : meta.weg} ab={14} groesse={hoch ? 46 : 26} />
           </div>
         </div>
       </div>
@@ -107,15 +107,21 @@ export function Intro({ meta, deckkraft, hoch = false }: { meta: Meta; deckkraft
 }
 
 /** Der Schritt, der gerade dran ist — aus `say()` des Drehbuchs. */
-export function Untertitel({ steps, t, farbeName, unten = 34, breite = 1240, schrift = 30 }: {
+export function Untertitel({ steps, t, farbeName, unten = 34, oben, breite = 1240, schrift = 30 }: {
   steps: { t: number; text: string }[]; t: number; farbeName?: string; unten?: number; breite?: number; schrift?: number;
+  /** Statt unten oben stehen, so weit vom Rand (Hochformat: je Schritt). */
+  oben?: (i: number) => number | null;
 }) {
   const { fps } = useVideoConfig();
   const i = steps.reduce((acc, s, k) => (s.t <= t + 0.15 ? k : acc), -1);
   if (i < 0) return null;
   const p = spring({ frame: Math.round((t - steps[i].t) * fps), fps, config: { damping: 18, mass: 0.7 } });
+  const top = oben?.(i) ?? null;
   return (
-    <div style={{ position: "absolute", left: 0, right: 0, bottom: unten, display: "flex", justifyContent: "center" }}>
+    <div style={{
+      position: "absolute", left: 0, right: 0, display: "flex", justifyContent: "center",
+      ...(top === null ? { bottom: unten } : { top }),
+    }}>
       <div style={{
         display: "flex", alignItems: "center", gap: 18, padding: "16px 30px 16px 16px", borderRadius: 999,
         background: "rgba(255,255,255,.97)", boxShadow: "0 18px 40px -16px rgba(2,32,64,.45)",
@@ -140,19 +146,19 @@ export function Outro({ meta, ab, deckkraft, hoch = false }: { meta: Meta; ab: n
   const zeile = (titel: string, glieder: string[], verzug: number) => (
     <>
       <div style={{
-        marginTop: 28, fontFamily: INTER, fontSize: hoch ? 26 : 22, color: C.muted, fontWeight: 700,
+        marginTop: hoch ? 40 : 28, fontFamily: INTER, fontSize: hoch ? 36 : 22, color: C.muted, fontWeight: 700,
         textTransform: "uppercase", letterSpacing: "0.1em",
       }}>{titel}</div>
-      <div style={{ marginTop: 12 }}><Weg glieder={glieder} ab={ab + Math.round(verzug * fps)} groesse={hoch ? 32 : 28} /></div>
+      <div style={{ marginTop: hoch ? 18 : 12 }}><Weg glieder={glieder} ab={ab + Math.round(verzug * fps)} groesse={hoch ? 46 : 28} /></div>
     </>
   );
   return (
-    <AbsoluteFill style={{ padding: hoch ? "0 70px" : "0 90px", justifyContent: hoch ? "flex-start" : "center", paddingTop: hoch ? 120 : 0 }}>
+    <AbsoluteFill style={{ padding: hoch ? "0 80px" : "0 90px", justifyContent: hoch ? "flex-start" : "center", paddingTop: hoch ? 150 : 0 }}>
       <div style={{ width: hoch ? "auto" : 640, opacity: deckkraft, transform: `translateX(${(1 - deckkraft) * -30}px)` }}>
-        <div style={{ fontFamily: BRICOLAGE, fontWeight: 800, fontSize: hoch ? 72 : 62, color: C.fg, lineHeight: 1.05 }}>
+        <div style={{ fontFamily: BRICOLAGE, fontWeight: 800, fontSize: hoch ? 110 : 62, color: C.fg, lineHeight: 1.05 }}>
           So findest du es
         </div>
-        {hoch ? zeile("In der App", meta.app, 0.3) : (
+        {hoch ? (meta.ort === "browser" ? zeile("Im Browser", meta.weg, 0.3) : zeile("In der App", meta.app, 0.3)) : (
           <>
             {zeile("Im Browser", meta.weg, 0.3)}
             {zeile("In der App", meta.app, 0.6)}

@@ -156,6 +156,13 @@ class Highlight:
     #: (``media_for``). Ein Wechsel mitten in der Bühne wäre schlimmer als eine
     #: durchgehend fremde Oberfläche.
     media_ios: Media | None = None
+    #: Dasselbe Feature **im Browser am Telefon** aufgenommen — hochkant und
+    #: randlos (Drehbuch mit ``mobil``, ``web/clips/src/HochClip.tsx``). Der
+    #: Spieler im schmalen Browser nimmt diese Fassung: Der 16:9-Clip vom
+    #: Schreibtisch stand dort 340 px breit, seine Untertitel ~11 px hoch
+    #: (gemessen 07.10.2026). Alles oder nichts je Ausgabe, wie bei der
+    #: App-Fassung (``has_narrow_media``) — die Kachel zeigt weiter ``cover``.
+    media_narrow: Media | None = None
     #: Für welche Oberfläche dieses Highlight überhaupt gilt: ``None``
     #: (überall), ``"web"`` oder ``"native"``.
     #:
@@ -253,6 +260,15 @@ RELEASES: tuple[Release, ...] = (
                         "„Öffentlichkeitsbeteiligung“ markiert, ein Klick auf "
                         "„Lotti fragen“ erklärt das Wort.",
                 ),
+                media_narrow=Media(
+                    kind="video", aspect="6/13",
+                    src="/neuigkeiten/3.0.0/lotti-mobil.mp4", poster="/neuigkeiten/3.0.0/lotti-mobil.webp",
+                    cover="/neuigkeiten/3.0.0/lotti-titel.webp", duration=20.0,
+                    alt="Dieselbe Beschluss-Seite am Telefon: Ein Tipp auf Lotti unten "
+                        "rechts öffnet ihr Fenster; auf „Wie viele haben dagegen "
+                        "gestimmt?“ antwortet sie mit den Zahlen aus dem Protokoll, "
+                        "danach erklärt sie „Öffentlichkeitsbeteiligung“.",
+                ),
                 media_ios=Media(
                     kind="video", aspect="1206/2622",
                     src="/neuigkeiten/3.0.0/lotti-ios.mp4", poster="/neuigkeiten/3.0.0/lotti-ios.webp",
@@ -285,6 +301,15 @@ RELEASES: tuple[Release, ...] = (
                         "und die Beschlüsse dazu, „Stadt zeigen“ führt in jedes "
                         "andere Viertel.",
                 ),
+                media_narrow=Media(
+                    kind="video", aspect="6/13",
+                    src="/neuigkeiten/3.0.0/viertel-mobil.mp4", poster="/neuigkeiten/3.0.0/viertel-mobil.webp",
+                    cover="/neuigkeiten/3.0.0/viertel-titel.webp", duration=20.6,
+                    alt="Am Telefon: „Mehr“, dann „Mein Viertel“ — der eigene Stadtteil "
+                        "Fliegerhorst mit Karte und Liste; ein Tipp auf „Neue "
+                        "Grundschule und Dreifeldhalle“ zeigt Stand, Zeitplan und die "
+                        "Beschlüsse.",
+                ),
                 media_ios=Media(
                     kind="video", aspect="1206/2622",
                     src="/neuigkeiten/3.0.0/viertel-ios.mp4", poster="/neuigkeiten/3.0.0/viertel-ios.webp",
@@ -315,6 +340,15 @@ RELEASES: tuple[Release, ...] = (
                         "„Hitzeaktionsplan aufstellen“ zeigt unter „Und in "
                         "Oldenburg?“, was es hier schon gibt; die Zeitleiste zeigt, "
                         "wann Potsdam und Magdeburg darüber beraten haben.",
+                ),
+                media_narrow=Media(
+                    kind="video", aspect="6/13",
+                    src="/neuigkeiten/3.0.0/ideen-mobil.mp4", poster="/neuigkeiten/3.0.0/ideen-mobil.webp",
+                    cover="/neuigkeiten/3.0.0/ideen-titel.webp", duration=25.7,
+                    alt="Am Telefon: „Mehr“, „Analyse“, Reiter „Ideen aus anderen "
+                        "Städten“; ein Tipp auf „Hitzeaktionsplan aufstellen“ zeigt, "
+                        "was es in Oldenburg schon gibt, und die Zeitleiste durch die "
+                        "Räte.",
                 ),
                 media_ios=Media(
                     kind="video", aspect="1206/2622",
@@ -347,6 +381,14 @@ RELEASES: tuple[Release, ...] = (
                         "stehen unter der Antwort „Kurz gesagt“, die Eckdaten — 16 "
                         "Gegenstimmen, 57,3 Mio. € — und der Verlauf bis zum "
                         "aktuellen Stand.",
+                ),
+                media_narrow=Media(
+                    kind="video", aspect="6/13",
+                    src="/neuigkeiten/3.0.0/akte-mobil.mp4", poster="/neuigkeiten/3.0.0/akte-mobil.webp",
+                    cover="/neuigkeiten/3.0.0/akte-titel.webp", duration=25.9,
+                    alt="Am Telefon: Unter „Fragen“ die Frage nach dem neuen "
+                        "Fußballstadion; unter der Antwort „Kurz gesagt“, die Eckdaten "
+                        "und der Verlauf bis zum aktuellen Stand.",
                 ),
                 # Nur im Browser: Die App zeigt unter einer Antwort weder
                 # Zeitleiste noch Eckdaten (in ``ios/`` kommt ``key_facts``
@@ -573,6 +615,12 @@ def has_native_media(release: Release) -> bool:
     return bool(sichtbar) and all(h.media_ios is not None for h in sichtbar)
 
 
+def has_narrow_media(release: Release) -> bool:
+    """Ist die Telefon-Fassung fürs Web vollständig? (Alles oder nichts.)"""
+    sichtbar = highlights_for(release, "web")
+    return bool(sichtbar) and all(h.media_narrow is not None for h in sichtbar)
+
+
 def media_for(highlight: Highlight, client: str = "web") -> Media | None:
     """Welches Bild dieser Client sehen soll.
 
@@ -592,6 +640,7 @@ def as_dict(release: Release, client: str = "web") -> dict:
     unvollständige App-Fassungen fallen für die ganze Ausgabe auf Web zurück.
     """
     nativ = client in NATIVE_CLIENTS and has_native_media(release)
+    schmal = client not in NATIVE_CLIENTS and has_narrow_media(release)
 
     def medium(m: Media | None) -> dict | None:
         if m is None:
@@ -608,6 +657,7 @@ def as_dict(release: Release, client: str = "web") -> dict:
         "highlights": [
             {"title": h.title, "text": h.text, "url": h.url,
              "media": medium(h.media_ios if nativ else h.media),
+             "media_narrow": medium(h.media_narrow) if schmal else None,
              "color": h.color or DEFAULT_TILE_COLOR,
              "aside": h.aside,
              "tagline": h.tagline,
