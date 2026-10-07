@@ -35,8 +35,8 @@ const NEWS = {
   seen_version: null,
 };
 
-/** Stellt `/news`, hält die Erste-Schritte-Leiste fern (sie stünde im
- *  Hinweis-Slot vor der Karte) und zählt, was an `/news/seen` geht. Wie der
+/** Stellt `/news`, hält die Erste-Schritte-Leiste fern (bis 10/2026 stand
+ *  sie im Hinweis-Slot vor der Karte) und zählt, was an `/news/seen` geht. Wie der
  *  Server: Nach der Meldung ist die Ausgabe erledigt, `/news` liefert nichts
  *  mehr. */
 async function stellen(page: Page): Promise<string[]> {
@@ -52,9 +52,9 @@ async function stellen(page: Page): Promise<string[]> {
     route.request().method() === "GET"
       ? route.fulfill({ json: { steps: ["frag", "beschluesse", "analyse", "karten"], celebrated: true } })
       : route.continue());
-  // Sitzungspause und laufende Sitzung stehen im Hinweis-Slot VOR der Karte.
-  // Kommt eine davon erst nach dem Aufklappen an, rutscht die Karte zurück in
-  // die Pille (gemessen gegen die leere Ratsdatenbank: Pause aktiv).
+  // Eine laufende Sitzung steht im Hinweis-Slot VOR der Karte (bis 10/2026
+  // auch die Sitzungspause). Kommt sie erst nach dem Aufklappen an, rutscht
+  // die Karte zurück in die Pille — deshalb beide stillgelegt.
   await page.route("**/api/council/session-break", (route) => route.fulfill({ json: { active: false } }));
   await page.route("**/api/council/sessions?scope=upcoming&limit=6", (route) => route.fulfill({ json: { sessions: [] } }));
   await page.addInitScript(() => {
@@ -64,7 +64,7 @@ async function stellen(page: Page): Promise<string[]> {
 }
 
 /** Die Karte — notfalls aus der Pille des Hinweis-Slots geholt (eine
- *  laufende Sitzung oder die Sitzungspause stehen vor ihr). */
+ *  laufende Sitzung steht vor ihr). */
 async function karte(page: Page) {
   await page.goto("/dashboard");
   const titel = page.locator("main").getByRole("heading", { name: "Das Lotti-Update" });

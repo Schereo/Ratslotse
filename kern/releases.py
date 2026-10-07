@@ -236,18 +236,17 @@ RELEASES: tuple[Release, ...] = (
                 # Signal-Orange ist die Farbe der KI (Funken, Tipp-Anzeige):
                 # Was Lotti tut, trägt sie.
                 color="signal",
-                # Titelbild und Länge: Bis das Titelbild aus der Clip-Pipeline
-                # kommt (``lotti-titel.webp``, eines für Web UND App), steht
-                # das Standbild des Browser-Clips in der Kachel — auch in der
-                # App: Das Standbild der App-Aufnahme zeigt oben Uhrzeit und
-                # Dynamic Island, und genau die stünden in der Kachel. Die
-                # Längen sind mit ``ffprobe`` gemessen.
+                # Titelbild und Länge: Das Titelbild kommt aus der
+                # Clip-Pipeline (``<name>-titel.webp``, ohne Text) und gilt für
+                # Web UND App — das Standbild der App-Aufnahme zeigte oben
+                # Uhrzeit und Dynamic Island. Die Längen sind mit ``ffprobe``
+                # gemessen.
                 media=Media(
                     kind="video",
                     src="/neuigkeiten/3.0.0/lotti.mp4",
                     poster="/neuigkeiten/3.0.0/lotti.webp",
-                    cover="/neuigkeiten/3.0.0/lotti.webp",
-                    duration=20.0,
+                    cover="/neuigkeiten/3.0.0/lotti-titel.webp",
+                    duration=28.8,
                     alt="Eine Beschluss-Seite: Ein Klick auf Lotti unten rechts "
                         "öffnet ihr Fenster, auf „Wie viele haben dagegen "
                         "gestimmt?“ antwortet sie „16“. Danach wird "
@@ -257,7 +256,7 @@ RELEASES: tuple[Release, ...] = (
                 media_ios=Media(
                     kind="video", aspect="1206/2622",
                     src="/neuigkeiten/3.0.0/lotti-ios.mp4", poster="/neuigkeiten/3.0.0/lotti-ios.webp",
-                    cover="/neuigkeiten/3.0.0/lotti.webp", duration=11.4,
+                    cover="/neuigkeiten/3.0.0/lotti-titel.webp", duration=11.4,
                     alt="Die Sitzungen auf dem iPhone: Ein Tipp auf Lotti öffnet "
                         "ihr Blatt; auf die Frage „Was steht morgen im "
                         "Sportausschuss an?“ fasst sie die Tagesordnung zusammen.",
@@ -278,8 +277,8 @@ RELEASES: tuple[Release, ...] = (
                     kind="video",
                     src="/neuigkeiten/3.0.0/viertel.mp4",
                     poster="/neuigkeiten/3.0.0/viertel.webp",
-                    cover="/neuigkeiten/3.0.0/viertel.webp",
-                    duration=17.5,
+                    cover="/neuigkeiten/3.0.0/viertel-titel.webp",
+                    duration=28.2,
                     alt="Von „Heute“ über „Mein Viertel“ in der Seitenleiste in den "
                         "eigenen Stadtteil Fliegerhorst: Ein Klick auf „Neue "
                         "Grundschule und Dreifeldhalle“ zeigt den Stand des Vorhabens "
@@ -289,7 +288,7 @@ RELEASES: tuple[Release, ...] = (
                 media_ios=Media(
                     kind="video", aspect="1206/2622",
                     src="/neuigkeiten/3.0.0/viertel-ios.mp4", poster="/neuigkeiten/3.0.0/viertel-ios.webp",
-                    cover="/neuigkeiten/3.0.0/viertel.webp", duration=6.4,
+                    cover="/neuigkeiten/3.0.0/viertel-titel.webp", duration=6.4,
                     alt="Mein Viertel auf dem iPhone: Nadorst auf der Karte mit "
                         "seinen Vorhaben; ein Tipp auf „Kita Eßkamp“ zeigt die "
                         "Stufen bis „Im Bau“ und die Beschlüsse.",
@@ -310,8 +309,8 @@ RELEASES: tuple[Release, ...] = (
                     kind="video",
                     src="/neuigkeiten/3.0.0/ideen.mp4",
                     poster="/neuigkeiten/3.0.0/ideen.webp",
-                    cover="/neuigkeiten/3.0.0/ideen.webp",
-                    duration=19.6,
+                    cover="/neuigkeiten/3.0.0/ideen-titel.webp",
+                    duration=29.2,
                     alt="Über „Analyse“ zu „Ideen aus anderen Städten“: Ein Klick auf "
                         "„Hitzeaktionsplan aufstellen“ zeigt unter „Und in "
                         "Oldenburg?“, was es hier schon gibt; die Zeitleiste zeigt, "
@@ -320,7 +319,7 @@ RELEASES: tuple[Release, ...] = (
                 media_ios=Media(
                     kind="video", aspect="1206/2622",
                     src="/neuigkeiten/3.0.0/ideen-ios.mp4", poster="/neuigkeiten/3.0.0/ideen-ios.webp",
-                    cover="/neuigkeiten/3.0.0/ideen.webp", duration=9.6,
+                    cover="/neuigkeiten/3.0.0/ideen-titel.webp", duration=9.6,
                     alt="Die Idee „Hitzeaktionsplan aufstellen“ auf dem iPhone: "
                         "oben der Stand in Oldenburg samt Belegen, beim Blättern "
                         "die Zeitleiste durch die Räte und die Vorlagen.",
@@ -342,7 +341,8 @@ RELEASES: tuple[Release, ...] = (
                     kind="video",
                     src="/neuigkeiten/3.0.0/akte.mp4",
                     poster="/neuigkeiten/3.0.0/akte.webp",
-                    duration=20.7,
+                    cover="/neuigkeiten/3.0.0/akte-titel.webp",
+                    duration=28.8,
                     alt="Frag den Rat: Auf die Frage nach dem neuen Fußballstadion "
                         "stehen unter der Antwort „Kurz gesagt“, die Eckdaten — 16 "
                         "Gegenstimmen, 57,3 Mio. € — und der Verlauf bis zum "

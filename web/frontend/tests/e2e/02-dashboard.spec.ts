@@ -31,8 +31,8 @@ test.describe("Dashboard", () => {
   });
 
   test("Erste Schritte zeigen Fortschritt und führen zur ersten Station", async ({ page }) => {
-    // Der Hinweis-Platz zeigt EINEN Hinweis, nach Priorität: Live > Pause >
-    // Erste Schritte > Mitteilungen. Was gerade gewinnt, hängt am Datenstand —
+    // Der Hinweis-Platz zeigt EINEN Hinweis, nach Priorität: Live > Neu bei
+    // Ratslotse > Pause > Erste Schritte > Mitteilungen. Was gerade gewinnt, hängt am Datenstand —
     // in der CI ist die Rats-Datenbank leer, und dann meldet der Server eine
     // Sitzungspause, hinter der die Leiste unter „Mehr" verschwindet. Der Test
     // hat lokal bestanden und in der CI nicht.
@@ -46,6 +46,12 @@ test.describe("Dashboard", () => {
     await page.route("**/api/council/heute", (route) =>
       route.fulfill({ status: 200, contentType: "application/json",
         body: JSON.stringify({ state: "pause" }) }));
+    // Die Release-Karte steht ebenfalls davor. Ein Konto aus der CI ist meist
+    // jünger als die Ausgabe und sieht sie nicht — am Release-Tag selbst aber
+    // schon.
+    await page.route("**/api/news", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({ releases: [], older_count: 0, seen_version: null }) }));
     await page.reload();
 
     const leiste = page.locator("[data-tour='erste-schritte']");
