@@ -200,6 +200,21 @@ Die Dinge, die man dabei vergisst:
    `test_releases.py` meldet das Loch, `test_release_clips.py` ein Video ohne
    Drehbuch und ein Drehbuch ohne Video.
 
+   **Seit 3.0.0 rahmt Remotion die Aufnahme** (`web/clips/`, einmal
+   `npm ci --prefix web/clips`). Anlass war Tims Befund vom 07.10.2026: Die
+   Clips fingen mittendrin an, zoomten zu stark, und man sah nicht, wie man
+   überhaupt dorthin kommt. Trägt ein Drehbuch `titel`, `weg` und `app`, wird
+   daraus: Intro mit dem Weg („So kommst du hin“), die Aufnahme im
+   Browserfenster mit Adresszeile und Seitenleiste (1280×800, Zoom höchstens
+   1,25×), ein Untertitel je `say("…")`, eine **Lupe** (`lupe(ziel)`) statt
+   Heranzoomen für das, was man lesen soll, und ein Outro mit dem Weg im
+   Browser **und** in der App. `ohne(async () => …)` schneidet Ladezeit
+   heraus, `vorwaermen` ruft die Seiten vor der Aufnahme einmal auf (sonst
+   kompiliert der Dev-Server mitten im Clip). Dazu entsteht je Clip ein
+   Titelbild ohne Text (`<name>-titel.webp`) für die Kachel der Karte.
+   **Erst überlegen, was man verstehen soll, dann drehen:** Das Drehbuch von
+   3.0.0 schreibt je Feature Nutzen und Aha-Moment oben hin.
+
    Drei Messungen vom 08.09.2026, die im Recorder als Kommentar stehen, damit
    sie niemand wiederholt: Chromes Screencast liefert nur CSS-Pixel, 2× gibt
    es nicht. Playwrights `recordVideo` verliert bei einem Seitenwechsel

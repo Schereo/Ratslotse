@@ -31,6 +31,12 @@
 //   scrollTo(target) weich dorthin blättern (ein Sprung sähe nach Schnitt aus)
 //   pause(seconds)  stehen lassen (die Pointe lesen lassen)
 //   say(text)       ab jetzt steht dieser Schritt als Untertitel im Clip
+//   lupe(target, {dauer})  die Stelle vergrößert danebenstellen (Aha-Moment,
+//                   im Remotion-Schnitt), so lange stehen lassen; `target`
+//                   darf eine Liste sein (gemeinsamer Umriss)
+//   ohne(fn)        was `fn` abwartet (Laden einer Seite), fällt aus dem Clip
+// Im Drehbuch selbst (neben `run`): `vorwaermen: [pfade]` ruft diese Seiten vor
+// der Aufnahme einmal auf (der Dev-Server übersetzt sonst mitten im Clip).
 //                   (nur im Remotion-Schnitt, `release_clips.py web --remotion`)
 // `target` ist ein Selektor oder ein Locator.
 import { chromium } from 'playwright';
@@ -158,7 +164,7 @@ await cdp.send('Page.startScreencast', {
   format: 'jpeg', quality: 92, maxWidth: viewport.width, maxHeight: viewport.height, everyNthFrame: 1,
 });
 
-const marks = { begin: null, beats: [], navigations: [], steps: [] };
+const marks = { begin: null, beats: [], navigations: [], steps: [], cuts: [] };
 // Jede Navigation mit Zeitstempel — im JSON sichtbar, damit sich ein Clip,
 // in dem „die Seite zu früh wechselt“, ohne Raten erklären lässt.
 page.on('framenavigated', (frame) => {
@@ -195,6 +201,10 @@ const stage = {
   base: BASE,
   async goto(p) {
     await page.goto(BASE + p);
+    // Bis die Seite ihre Daten hat — sonst beginnt ein Clip auf dem
+    // Lade-Skelett. Läuft die Seite dauerhaft nach (Karte, Strom), reicht der
+    // Ablauf der Frist.
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
     await dismiss();
   },
   async login(email = DEFAULT_ACCOUNT) {
@@ -213,6 +223,7 @@ const stage = {
     // Clips — es läge vor dessen Anfang, und der Zoom käme aus dem Nichts.
     marks.beats.length = 0;
     marks.steps.length = 0;
+    marks.cuts.length = 0;
     // Der Zeiger erscheint erst mit der ersten Fahrt — ein Aufbau-Klick
     // davor (Playwright) darf keinen Sprung hinterlassen.
     cursor = null;
@@ -255,6 +266,37 @@ const stage = {
     const z = await stage.hover(target, { from });
     await page.waitForTimeout(hover * 1000);
     marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: false, box: z.box });
+  },
+  /** Die Pointe lesbar machen: Der Remotion-Schnitt stellt das Ziel
+   *  vergrößert als Karte daneben, das Original bekommt das Spotlight. Ein
+   *  stärkerer Zoom hätte den Zusammenhang gekostet (Tim, 07.10.2026) — die
+   *  Antwort im 384-px-Fenster von Lotti war in der Karte sonst unlesbar.
+   *  Der Zeiger bleibt, wo er ist. */
+  async lupe(target, { dauer = 3.2 } = {}) {
+    const ziele = Array.isArray(target) ? target : [target];
+    await locate(ziele[0]).scrollIntoViewIfNeeded();
+    const boxen = [];
+    for (const z of ziele) {
+      const bb = await locate(z).boundingBox();
+      if (!bb) throw new Error('Lupe: Ziel nicht sichtbar');
+      boxen.push(bb);
+    }
+    const x0 = Math.min(...boxen.map((q) => q.x)), y0 = Math.min(...boxen.map((q) => q.y));
+    const x1 = Math.max(...boxen.map((q) => q.x + q.width)), y1 = Math.max(...boxen.map((q) => q.y + q.height));
+    const b = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+    marks.beats.push({ t: clock(), x: b.x + b.width / 2, y: b.y + b.height / 2, tap: false,
+      lupe: dauer, box: { x: b.x, y: b.y, w: b.width, h: b.height } });
+    await page.waitForTimeout(dauer * 1000);
+  },
+  /** Warten, ohne dass es im Clip steht: Was `fn` abwartet (eine Seite
+   *  lädt, Daten kommen), schneidet der Schnitt heraus — die ersten 0,3 s
+   *  bleiben, damit man die Reaktion auf den Klick sieht. Gemessen
+   *  07.10.2026: bis zu drei Sekunden leere Ladeseite je Seitenwechsel. */
+  async ohne(fn) {
+    const a = clock();
+    await fn();
+    const b = clock();
+    if (b - a > 0.6) marks.cuts.push({ a: a + 0.3, b });
   },
   /** Ein Wort (oder eine Wortfolge) im Ziel mit der Maus markieren: Zeiger
    *  an den Anfang, drücken, sichtbar bis zum Ende ziehen, loslassen. Ein
@@ -303,6 +345,13 @@ const stage = {
 
 try {
   await stage.login(storyboard.account);
+  // Vorwärmen: Der Dev-Server übersetzt eine Seite erst beim ersten Aufruf —
+  // mitten in der Aufnahme stand „Heute“ dann 30 s still, bis /karte fertig
+  // war (07.10.2026). Jede Seite des Drehbuchs einmal vorher aufrufen.
+  for (const p of storyboard.vorwaermen ?? []) {
+    await page.goto(BASE + p, { timeout: 180_000 });
+    await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => {});
+  }
   await storyboard.run(stage);
 } catch (e) {
   // Das letzte Bild hilft beim Suchen: Wo stand die Seite, als es hakte?
@@ -322,8 +371,13 @@ const result = {
   height: viewport.height,
   begin: marks.begin,
   end,
-  beats: marks.beats.map((b) => ({ t: b.t, x: Math.round(b.x), y: Math.round(b.y), tap: b.tap, box: b.box ?? null })),
+  beats: marks.beats.map((b) => ({ t: b.t, x: Math.round(b.x), y: Math.round(b.y), tap: b.tap, box: b.box ?? null,
+    ...(b.lupe ? { lupe: b.lupe } : {}) })),
   steps: marks.steps,
+  cuts: marks.cuts,
+  // Was der Remotion-Schnitt fürs Intro und Outro braucht (Titel, Weg …).
+  meta: Object.fromEntries(Object.entries(storyboard)
+    .filter(([k, v]) => k !== 'run' && typeof v !== 'function')),
   navigations: marks.navigations,
   frames,
 };
