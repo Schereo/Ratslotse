@@ -7093,6 +7093,8 @@ export interface components {
             open_recipients: number;
             /** Sent Recipients */
             sent_recipients: number;
+            /** Teaser */
+            teaser: string | null;
             /** Title */
             title: string;
             /** Version */
@@ -15075,6 +15077,12 @@ export interface components {
          * @description Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.
          */
         ReleaseHighlight: {
+            /** Action */
+            action: string;
+            /** Aside */
+            aside: boolean;
+            /** Color */
+            color: string;
             /**
              * ReleaseMedia
              * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
@@ -15090,6 +15098,10 @@ export interface components {
                 alt: string;
                 /** Aspect */
                 aspect: string;
+                /** Cover */
+                cover: string | null;
+                /** Duration */
+                duration: number | null;
                 /** Kind */
                 kind: string;
                 /** Poster */
@@ -15097,6 +15109,8 @@ export interface components {
                 /** Src */
                 src: string;
             } | null;
+            /** Tagline */
+            tagline: string | null;
             /** Text */
             text: string;
             /** Title */
@@ -15119,6 +15133,10 @@ export interface components {
             alt: string;
             /** Aspect */
             aspect: string;
+            /** Cover */
+            cover: string | null;
+            /** Duration */
+            duration: number | null;
             /** Kind */
             kind: string;
             /** Poster */
@@ -15132,6 +15150,8 @@ export interface components {
             date: string;
             /** Highlights */
             highlights: components["schemas"]["ReleaseHighlight"][];
+            /** Teaser */
+            teaser: string | null;
             /** Title */
             title: string;
             /** Version */
@@ -25258,4 +25278,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c9bee2660ad81bb7ff6e633f4d66c464d86185da8c934f3ea66585d43e65fa3e
+// vertrag-sha256: b524d44759273197720298efb1db3b2760a200ba7d9057973609f8b342e9e0a0

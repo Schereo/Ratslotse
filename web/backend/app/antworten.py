@@ -490,6 +490,14 @@ class ReleaseMedia(TypedDict):
     #: Bühne baut ihren Rahmen daraus, statt ihn zu raten.
     aspect: str
     poster: str | None
+    #: Das Bild der Video-Kachel (seit 3.0.0): das Titelbild, sonst das
+    #: Standbild — die Wahl trifft der Server (``releases.cover_for``), damit
+    #: Web und App dieselbe Kachel zeigen. Nullbar nur für Clients, die eine
+    #: ältere Antwort zwischenspeichern.
+    cover: str | None
+    #: Länge des Clips in Sekunden („▶ 0:24" auf der Kachel); ``None`` bei
+    #: einem Bild oder wenn sie niemand gemessen hat.
+    duration: float | None
 
 
 class ReleaseHighlight(TypedDict):
@@ -501,12 +509,26 @@ class ReleaseHighlight(TypedDict):
     #: ``None``, solange eine Ausgabe ohne Bilder auskommt — dann zeigt die
     #: Karte die Listenform statt der Bühne.
     media: ReleaseMedia | None
+    #: Farbe der Kachel als Name aus der Designsprache: ``signal``,
+    #: ``primary`` oder ``green`` (``releases.TILE_COLORS``). Ohne eigene
+    #: Angabe ``primary`` — der Server setzt die Vorgabe.
+    color: str
+    #: ``True``: keine Kachel, sondern die Zeile „Außerdem: …" unter den
+    #: Kacheln; zählt nicht zum Fortschritt und nicht zur Abfolge im Spieler.
+    aside: bool
+    #: Eine Zeile unter dem Titel der Kachel; ``None`` = keine.
+    tagline: str | None
+    #: Beschriftung des Knopfs im Spieler, der zum Feature führt.
+    action: str
 
 
 class ReleaseNews(TypedDict):
     version: str
     date: str
     title: str
+    #: Eine Zeile unter dem Titel („Drei neue Wege durch den Rat — je ein
+    #: kurzes Video."); ``None`` bei Ausgaben vor 3.0.0.
+    teaser: str | None
     highlights: list[ReleaseHighlight]
 
 
@@ -535,6 +557,7 @@ class AdminNewsRelease(TypedDict):
     version: str
     date: str
     title: str
+    teaser: str | None
     highlights: list[ReleaseHighlight]
     #: Wie viele Konten die Ankündigung JETZT bekämen.
     open_recipients: int

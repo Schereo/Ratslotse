@@ -63,6 +63,21 @@ MAX_HIGHLIGHTS = 4
 NUR_WEB = "web"
 NUR_NATIVE = "native"
 
+#: Werte von ``Highlight.color`` — die Farbe einer Video-Kachel auf der Karte.
+#:
+#: **Namen, keine Farbwerte.** Die Werte selbst stehen in der Designsprache
+#: (``web/frontend/DESIGNSPRACHE.md``, „Neuigkeiten-Kacheln") und je einmal in
+#: Web und App; hier steht nur, welche der drei eine Kachel trägt. Ein
+#: Hex-Wert in der Registry wäre eine Farbe, die keine Designsprache kennt —
+#: und im Dunkelmodus niemand nachzieht.
+#:
+#: * ``signal`` — Signal-Orange, die KI-Farbe (Funken, Marker). Für das, was
+#:   Lotti tut.
+#: * ``primary`` — Hafenblau, der Rat selbst: Beschlüsse, Vorgänge, Räte.
+#: * ``green`` — das Grün der Bebauungspläne auf der Stadtkarte (#15803d,
+#:   zugleich „Angenommen"). Für das, was auf der Karte liegt.
+TILE_COLORS: frozenset[str] = frozenset({"signal", "primary", "green"})
+
 
 @dataclass(frozen=True)
 class Media:
@@ -98,6 +113,20 @@ class Media:
     #: Nur bei ``video``: das Standbild, bis der Clip läuft. Es ist zugleich
     #: das, was bei ``prefers-reduced-motion`` STATT des Clips steht.
     poster: str | None = None
+    #: Das **Titelbild** der Video-Kachel (seit 3.0.0, Tims Befund
+    #: 07.10.2026: „die Karte fühlt sich langweilig an … mehr Bilder, mehr
+    #: Anreiz"). Hochformat, füllt die Kachel randlos; der Titel steht weiß
+    #: darauf. Das Standbild (``poster``) ist dafür das falsche Bild: Es ist
+    #: der erste Frame des Clips — ein querformatiges Browserfenster, auf
+    #: dem man in einer Kachel nichts erkennt. Gerendert wird das Titelbild
+    #: als ``<name>-titel.webp`` (1080×1200) aus derselben Pipeline wie die
+    #: Clips. Ohne Titelbild nimmt die Kachel das Standbild.
+    cover: str | None = None
+    #: Die Länge des Clips in Sekunden — die Kachel zeigt sie („▶ 0:24"),
+    #: weil „wie lange dauert das?" die Frage vor dem Tipp ist. Gemessen
+    #: (``ffprobe``), nicht geschätzt; ``tests/test_releases.py`` hält die
+    #: Zahl gegen die Datei, wenn ``ffprobe`` da ist.
+    duration: float | None = None
 
 
 @dataclass(frozen=True)
@@ -136,6 +165,27 @@ class Highlight:
     #: auf dem eigenen Gerät nicht finden kann, ist schlimmer als eines
     #: weniger (Tims Entscheidung 07.09.2026).
     only: str | None = None
+    #: Die Farbe der Video-Kachel (``TILE_COLORS``). Sie trägt die Kachel,
+    #: den Fortschrittsbalken im Spieler und den Knopf „… ausprobieren", damit
+    #: man im Spieler weiß, aus welcher Kachel man kam. Ohne Wert: Hafenblau.
+    color: str | None = None
+    #: **Nebenbei** statt Kachel: Das Highlight steht als schmale Zeile
+    #: „Außerdem: …" unter den Kacheln (3.0.0: „Frag den Rat liest den ganzen
+    #: Vorgang"). Für eine Neuerung, die zu klein für eine eigene Bühne ist,
+    #: aber zu groß, um sie wegzulassen. Es zählt nicht zum Fortschritt
+    #: „1 von 3 angesehen" und nicht zur Abfolge im Spieler — sonst müsste
+    #: man es durchsehen, um die Karte abzuschließen.
+    aside: bool = False
+    #: Eine Zeile unter dem Titel der Kachel („Was sich vor deiner Haustür
+    #: tut."). ``text`` ist dafür zu lang — zwei Sätze, die erst im Spieler
+    #: unter dem Clip Platz haben. Ohne Zeile zeigt die Kachel den Anfang
+    #: von ``text``.
+    tagline: str | None = None
+    #: Die Beschriftung des Knopfs im Spieler, der zum Feature führt
+    #: („Mein Viertel ausprobieren"). Ein Verb, kein Etikett — der Titel
+    #: eines Highlights ist oft ein ganzer Satz, „Lotti erklärt dir, was du
+    #: siehst ausprobieren" wäre keiner. Ohne Wert: „Ausprobieren".
+    action: str | None = None
 
 
 @dataclass(frozen=True)
@@ -147,9 +197,13 @@ class Release:
     #: Erscheinungsdatum, ISO. Es entscheidet, wer die Karte sieht: Ein Konto,
     #: das jünger ist, hat das Feature von Anfang an gehabt.
     date: str
-    #: Die Überschrift der Karte — ein Halbsatz, der die Ausgabe zusammenfasst.
+    #: Die Überschrift der Karte — ein Name nach dem Hauptfeature.
     title: str
     highlights: tuple[Highlight, ...]
+    #: Eine Zeile unter dem Titel, die sagt, was einen erwartet („Drei neue
+    #: Wege durch den Rat — je ein kurzes Video."). Sie beantwortet die Frage,
+    #: ob sich das Durchklicken lohnt, bevor jemand klickt.
+    teaser: str | None = None
 
 
 #: Alle Releases mit Karte, **neueste zuerst**.
@@ -165,6 +219,7 @@ RELEASES: tuple[Release, ...] = (
         # wer die Karte sieht (``pending_for``).
         date="2026-10-06",
         title="Das Lotti-Update",
+        teaser="Drei neue Wege durch den Rat — je ein kurzes Video.",
         highlights=(
             Highlight(
                 title="Lotti erklärt dir, was du siehst",
@@ -176,10 +231,23 @@ RELEASES: tuple[Release, ...] = (
                      "die Antwort schlägt sie selbst in Sitzungen und Beschlüssen "
                      "nach.",
                 url="/council/decision?id=21966",
+                tagline="Tipp auf die Möwe — sie schlägt selbst nach.",
+                action="Lotti ausprobieren",
+                # Signal-Orange ist die Farbe der KI (Funken, Tipp-Anzeige):
+                # Was Lotti tut, trägt sie.
+                color="signal",
+                # Titelbild und Länge: Bis das Titelbild aus der Clip-Pipeline
+                # kommt (``lotti-titel.webp``, eines für Web UND App), steht
+                # das Standbild des Browser-Clips in der Kachel — auch in der
+                # App: Das Standbild der App-Aufnahme zeigt oben Uhrzeit und
+                # Dynamic Island, und genau die stünden in der Kachel. Die
+                # Längen sind mit ``ffprobe`` gemessen.
                 media=Media(
                     kind="video",
                     src="/neuigkeiten/3.0.0/lotti.mp4",
                     poster="/neuigkeiten/3.0.0/lotti.webp",
+                    cover="/neuigkeiten/3.0.0/lotti.webp",
+                    duration=20.0,
                     alt="Eine Beschluss-Seite: Ein Klick auf Lotti unten rechts "
                         "öffnet ihr Fenster, auf „Wie viele haben dagegen "
                         "gestimmt?“ antwortet sie „16“. Danach wird "
@@ -189,29 +257,39 @@ RELEASES: tuple[Release, ...] = (
                 media_ios=Media(
                     kind="video", aspect="1206/2622",
                     src="/neuigkeiten/3.0.0/lotti-ios.mp4", poster="/neuigkeiten/3.0.0/lotti-ios.webp",
+                    cover="/neuigkeiten/3.0.0/lotti.webp", duration=11.4,
                     alt="Die Sitzungen auf dem iPhone: Ein Tipp auf Lotti öffnet "
                         "ihr Blatt; auf die Frage „Was steht morgen im "
                         "Sportausschuss an?“ fasst sie die Tagesordnung zusammen.",
                 ),
             ),
             Highlight(
-                title="Mein Viertel: was sich vor deiner Haustür tut",
+                title="Mein Viertel",
                 text="Gib deine Straße oder deinen Stadtteil ein und sieh, was der "
                      "Rat dort beschlossen hat — jedes Vorhaben von der Idee bis "
                      "zum Bau, mit Bebauungsplänen und den Beschlüssen dazu.",
                 url="/karte",
+                tagline="Was sich vor deiner Haustür tut.",
+                action="Mein Viertel ausprobieren",
+                # Das Grün der Bebauungspläne auf der Stadtkarte — dort
+                # spielt das Feature.
+                color="green",
                 media=Media(
                     kind="video",
                     src="/neuigkeiten/3.0.0/viertel.mp4",
                     poster="/neuigkeiten/3.0.0/viertel.webp",
-                    alt="Die Stadtkarte: In die Suche wird „Nadorst“ getippt, die "
-                        "Karte fährt in den Stadtteil. Ein Klick auf das Vorhaben "
-                        "„Kita Eßkamp“ zeigt seine Stufen bis „Im Bau“ und die "
-                        "Beschlüsse dazu.",
+                    cover="/neuigkeiten/3.0.0/viertel.webp",
+                    duration=17.5,
+                    alt="Von „Heute“ über „Mein Viertel“ in der Seitenleiste in den "
+                        "eigenen Stadtteil Fliegerhorst: Ein Klick auf „Neue "
+                        "Grundschule und Dreifeldhalle“ zeigt den Stand des Vorhabens "
+                        "und die Beschlüsse dazu, „Stadt zeigen“ führt in jedes "
+                        "andere Viertel.",
                 ),
                 media_ios=Media(
                     kind="video", aspect="1206/2622",
                     src="/neuigkeiten/3.0.0/viertel-ios.mp4", poster="/neuigkeiten/3.0.0/viertel-ios.webp",
+                    cover="/neuigkeiten/3.0.0/viertel.webp", duration=6.4,
                     alt="Mein Viertel auf dem iPhone: Nadorst auf der Karte mit "
                         "seinen Vorhaben; ein Tipp auf „Kita Eßkamp“ zeigt die "
                         "Stufen bis „Im Bau“ und die Beschlüsse.",
@@ -224,18 +302,25 @@ RELEASES: tuple[Release, ...] = (
                      "sie durch die Räte lief — und mit Belegen, was es in "
                      "Oldenburg dazu schon gibt.",
                 url="/council/ideen",
+                tagline="Was andere Räte schon beschlossen haben.",
+                action="Ideen entdecken",
+                # Hafenblau: der Rat selbst, hier die Räte der anderen Städte.
+                color="primary",
                 media=Media(
                     kind="video",
                     src="/neuigkeiten/3.0.0/ideen.mp4",
                     poster="/neuigkeiten/3.0.0/ideen.webp",
-                    alt="„Ideen aus anderen Städten“: Ein Klick auf „Hitzeaktionsplan "
-                        "aufstellen“ öffnet die Idee mit „Und in Oldenburg?“ samt "
-                        "Belegen; die Zeitleiste zeigt, wann welcher Rat darüber "
-                        "beraten hat.",
+                    cover="/neuigkeiten/3.0.0/ideen.webp",
+                    duration=19.6,
+                    alt="Über „Analyse“ zu „Ideen aus anderen Städten“: Ein Klick auf "
+                        "„Hitzeaktionsplan aufstellen“ zeigt unter „Und in "
+                        "Oldenburg?“, was es hier schon gibt; die Zeitleiste zeigt, "
+                        "wann Potsdam und Magdeburg darüber beraten haben.",
                 ),
                 media_ios=Media(
                     kind="video", aspect="1206/2622",
                     src="/neuigkeiten/3.0.0/ideen-ios.mp4", poster="/neuigkeiten/3.0.0/ideen-ios.webp",
+                    cover="/neuigkeiten/3.0.0/ideen.webp", duration=9.6,
                     alt="Die Idee „Hitzeaktionsplan aufstellen“ auf dem iPhone: "
                         "oben der Stand in Oldenburg samt Belegen, beim Blättern "
                         "die Zeitleiste durch die Räte und die Vorlagen.",
@@ -246,13 +331,22 @@ RELEASES: tuple[Release, ...] = (
                 text="Fragst du nach einem Vorhaben, stehen unter der Antwort jetzt "
                      "sein Verlauf als Zeitleiste und die Eckdaten.",
                 url="/fragen",
+                tagline="Zeitleiste und Eckdaten unter jeder Antwort.",
+                action="Frag den Rat ausprobieren",
+                color="primary",
+                # Nebenbei: zu klein für eine eigene Kachel neben den drei
+                # großen, zu groß zum Weglassen — eine Zeile „Außerdem: …"
+                # unter den Kacheln, der Clip öffnet sich auf Tipp.
+                aside=True,
                 media=Media(
                     kind="video",
                     src="/neuigkeiten/3.0.0/akte.mp4",
                     poster="/neuigkeiten/3.0.0/akte.webp",
+                    duration=20.7,
                     alt="Frag den Rat: Auf die Frage nach dem neuen Fußballstadion "
-                        "stehen unter der Antwort die Eckdaten — Abstimmung, "
-                        "57,3 Mio. € — und der Verlauf bis zum aktuellen Stand.",
+                        "stehen unter der Antwort „Kurz gesagt“, die Eckdaten — 16 "
+                        "Gegenstimmen, 57,3 Mio. € — und der Verlauf bis zum "
+                        "aktuellen Stand.",
                 ),
                 # Nur im Browser: Die App zeigt unter einer Antwort weder
                 # Zeitleiste noch Eckdaten (in ``ios/`` kommt ``key_facts``
@@ -503,15 +597,50 @@ def as_dict(release: Release, client: str = "web") -> dict:
         if m is None:
             return None
         return {"kind": m.kind, "src": m.src, "alt": m.alt,
-                "aspect": m.aspect, "poster": m.poster}
+                "aspect": m.aspect, "poster": m.poster,
+                "cover": cover_for(m), "duration": m.duration}
 
     return {
         "version": release.version,
         "date": release.date,
         "title": release.title,
+        "teaser": release.teaser,
         "highlights": [
             {"title": h.title, "text": h.text, "url": h.url,
-             "media": medium(h.media_ios if nativ else h.media)}
+             "media": medium(h.media_ios if nativ else h.media),
+             "color": h.color or DEFAULT_TILE_COLOR,
+             "aside": h.aside,
+             "tagline": h.tagline,
+             "action": h.action or DEFAULT_ACTION}
             for h in highlights_for(release, client)
         ],
     }
+
+
+#: Ohne eigene Farbe trägt eine Kachel Hafenblau — die Farbe des Rats.
+DEFAULT_TILE_COLOR = "primary"
+
+#: Ohne eigene Beschriftung heißt der Knopf im Spieler schlicht so.
+DEFAULT_ACTION = "Ausprobieren"
+
+
+def cover_for(media: Media) -> str:
+    """Das Bild für die Kachel: Titelbild, sonst Standbild, sonst das Bild.
+
+    Die Wahl fällt hier und nicht in den Clients (dieselbe Regel wie bei
+    ``media_for``): Web und App zeigen damit dieselbe Kachel, und eine Ausgabe
+    ohne Titelbilder sieht trotzdem nicht leer aus.
+    """
+    if media.cover:
+        return media.cover
+    if media.kind == "video" and media.poster:
+        return media.poster
+    return media.src
+
+
+def tiles_for(release: Release, client: str = "web") -> tuple[Highlight, ...]:
+    """Die Highlights, die eine KACHEL bekommen — ohne die nebenbei genannten.
+
+    Sie bilden die Abfolge im Spieler und den Fortschritt „1 von 3 angesehen".
+    """
+    return tuple(h for h in highlights_for(release, client) if not h.aside)

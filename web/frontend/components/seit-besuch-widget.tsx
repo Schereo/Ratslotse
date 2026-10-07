@@ -36,7 +36,10 @@ export function SeitBesuchWidget({ size }: { size?: WidgetSize }) {
   });
   const data = query.data;
   return (
-    <HeuteWidget id="seit-besuch" title={data?.first_visit ? "Neu bei Ratslotse" : "Seit deinem letzten Besuch"}
+    // Beim ersten Besuch NICHT „Neu bei Ratslotse": So heißt die Release-Karte
+    // im Hinweis-Slot direkt darüber, und zwei gleiche Überschriften auf
+    // einer Seite meinen zwei verschiedene Dinge (Review 07.10.2026).
+    <HeuteWidget id="seit-besuch" title={data?.first_visit ? "Dein erster Rückblick" : "Seit deinem letzten Besuch"}
       icon={History} size={size}>
       {query.isPending && <RueckblickSkelett />}
       {query.isError && <div role="alert">
@@ -45,7 +48,7 @@ export function SeitBesuchWidget({ size }: { size?: WidgetSize }) {
       </div>}
       {data && <div className="inhalt-auf">
         <p className="text-hinweis text-muted-foreground">
-          {data.first_visit ? "Dein erster Rückblick: die letzten sieben Tage." : `Seit ${formatDate(data.since)} – auch außerhalb deiner Themen.`}
+          {data.first_visit ? "Zum Einstieg: die letzten sieben Tage." : `Seit ${formatDate(data.since)} – auch außerhalb deiner Themen.`}
         </p>
         {data.total > 0 ? <div className="mt-2 divide-y divide-border">
           {order.map(kind => {

@@ -133,13 +133,165 @@ def test_jede_genannte_mediendatei_existiert():
             for medium in (h.media, h.media_ios):
                 if not medium:
                     continue
-                for feld in ("src", "poster"):
+                for feld in ("src", "poster", "cover"):
                     pfad = getattr(medium, feld)
                     if pfad and not (wurzel / pfad.lstrip("/")).exists():
                         fehlend.append(f"{release.version} · {h.title} · {feld}: {pfad}")
     assert not fehlend, (
         "Diese Mediendateien fehlen unter "
         f"{releases.MEDIA_ROOT}:\n  " + "\n  ".join(fehlend))
+
+
+# --------------------------------------------------------------------------
+# (1b) Die Video-Kacheln (seit 3.0.0)
+# --------------------------------------------------------------------------
+
+#: Wo die Clients die Farbnamen in Farben übersetzen. Beide müssen jeden Namen
+#: aus ``releases.TILE_COLORS`` kennen — ein Name ohne Gegenstück fiele dort
+#: still auf die Vorgabe zurück und sähe aus wie „noch nicht eingetragen".
+FARBEN_WEB = WURZEL / "web/frontend/lib/neuigkeiten.ts"
+FARBEN_IOS = WURZEL / "ios/Packages/RatslotseFeatures/Sources/RatslotseFeatures/ReleaseNewsCard.swift"
+
+
+def test_kachelfarben_sind_namen_aus_der_designsprache():
+    """Die Registry nennt Farben beim Namen (``signal``, ``primary``,
+    ``green``), nie als Hex-Wert: Die Werte stehen in der Designsprache und je
+    einmal in Web und App."""
+    falsch = [(r.version, h.title, h.color) for r in releases.RELEASES
+              for h in r.highlights
+              if h.color is not None and h.color not in releases.TILE_COLORS]
+    assert not falsch, (
+        f"Unbekannte Kachelfarbe: {falsch}. Erlaubt: {sorted(releases.TILE_COLORS)} — "
+        "eine neue Farbe gehört zuerst in DESIGNSPRACHE.md und in beide Clients.")
+
+
+def test_beide_clients_kennen_jede_kachelfarbe():
+    """Web übersetzt in einem Objekt (``signal: "#ce4709"``), die App in einem
+    ``switch`` über den Namen (``case "signal":``)."""
+    web = FARBEN_WEB.read_text(encoding="utf-8")
+    ios = FARBEN_IOS.read_text(encoding="utf-8")
+    fehlt = sorted({f"web: {f}" for f in releases.TILE_COLORS
+                    if not re.search(rf"\b{f}\s*:", web)}
+                   | {f"ios: {f}" for f in releases.TILE_COLORS
+                      if f'case "{f}"' not in ios})
+    assert not fehlt, (
+        f"Diese Kachelfarben übersetzt ein Client nicht: {fehlt}. Ohne Eintrag "
+        "fällt die Kachel dort still auf Hafenblau zurück — nachtragen in "
+        f"{FARBEN_WEB.relative_to(WURZEL)} bzw. {FARBEN_IOS.relative_to(WURZEL)}.")
+
+
+def test_die_kachelfarben_stehen_in_der_designsprache():
+    """„Kein neuer Hex-Wert ohne Eintrag dort": Die drei Werte, die Web und App
+    benutzen, stehen im Abschnitt zu den Neuigkeiten-Kacheln."""
+    designsprache = (WURZEL / "web/frontend/DESIGNSPRACHE.md").read_text(encoding="utf-8")
+    web = FARBEN_WEB.read_text(encoding="utf-8").lower()
+    ios = FARBEN_IOS.read_text(encoding="utf-8").lower()
+    for wert in ("#ce4709", "#0764a6", "#15803d"):
+        assert wert in designsprache.lower(), f"{wert} fehlt in DESIGNSPRACHE.md"
+        assert wert in web, f"{wert} fehlt in lib/neuigkeiten.ts"
+        assert "0x" + wert[1:] in ios, f"{wert} fehlt in ReleaseNewsCard.swift"
+
+
+def test_nebenbei_ist_keine_kachel():
+    """Ein Highlight mit ``aside`` steht als Zeile „Außerdem: …" unter den
+    Kacheln. Es zählt nicht zum Fortschritt — sonst müsste man es durchsehen,
+    um die Karte abzuschließen —, und es bleibt immer wenigstens eine Kachel."""
+    nebenbei = releases.Highlight("Klein", "…", "/fragen", aside=True)
+    gross = releases.Highlight("Groß", "…", "/karte")
+    rel = releases.Release("9.6.0", "2026-01-01", "x", (gross, nebenbei))
+    assert [h.title for h in releases.tiles_for(rel)] == ["Groß"]
+    assert [h["aside"] for h in releases.as_dict(rel)["highlights"]] == [False, True]
+
+    for release in releases.RELEASES:
+        for client in ("web", "ios"):
+            if releases.highlights_for(release, client):
+                assert releases.tiles_for(release, client), (
+                    f"{release.version} ({client}): nur Nebenbei-Highlights, keine Kachel.")
+
+
+def test_die_kachel_texte_passen_auf_die_kachel():
+    """Tagline, Teaser und Knopf sind je EINE Zeile — auf einer 270 px breiten
+    Kachel bzw. in einem Knopf. Längeres gehört in ``text``, das im Spieler
+    unter dem Clip steht."""
+    for release in releases.RELEASES:
+        if release.teaser is not None:
+            assert 0 < len(release.teaser) <= 80, f"{release.version}: Teaser zu lang"
+        for h in release.highlights:
+            if h.tagline is not None:
+                assert 0 < len(h.tagline) <= 60, f"{h.title}: Tagline zu lang"
+            if h.action is not None:
+                assert 0 < len(h.action) <= 30, f"{h.title}: Knopf zu lang"
+
+
+def test_ein_clip_nennt_seine_laenge():
+    """„▶ 0:24" beantwortet vor dem Tipp, wie lange es dauert. Eine Ausgabe
+    mit Kacheln (erkennbar am Teaser) nennt die Länge jedes Clips."""
+    for release in releases.RELEASES:
+        for h in release.highlights:
+            for medium in (h.media, h.media_ios):
+                if medium is None:
+                    continue
+                if medium.duration is not None:
+                    assert 0 < medium.duration < 300, f"{h.title}: {medium.duration} s"
+                elif release.teaser is not None and medium.kind == "video":
+                    pytest.fail(f"{release.version} · {h.title}: Clip ohne Länge "
+                                f"({medium.src}) — `ffprobe` misst sie.")
+
+
+def test_die_laenge_stimmt_mit_der_datei():
+    """Gemessen, nicht geschätzt: Wird ein Clip ersetzt, ohne die Zahl
+    nachzuziehen, stünde auf der Kachel eine falsche Dauer. Ohne ``ffprobe``
+    (CI) übersprungen — lokal, wo die Clips entstehen, gibt es ihn."""
+    import shutil
+    import subprocess
+
+    if not shutil.which("ffprobe"):
+        pytest.skip("ffprobe nicht installiert")
+    wurzel = WURZEL / releases.MEDIA_ROOT
+    falsch = []
+    for release in releases.RELEASES:
+        for h in release.highlights:
+            for medium in (h.media, h.media_ios):
+                if not medium or medium.duration is None:
+                    continue
+                datei = wurzel / medium.src.lstrip("/")
+                aus = subprocess.run(
+                    ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                     "-of", "csv=p=0", str(datei)],
+                    capture_output=True, text=True, check=False).stdout.strip()
+                try:
+                    echt = float(aus)
+                except ValueError:
+                    continue
+                if abs(echt - medium.duration) > 0.5:
+                    falsch.append(f"{medium.src}: Registry {medium.duration} s, Datei {echt:.1f} s")
+    assert not falsch, "Die Länge in kern/releases.py stimmt nicht:\n  " + "\n  ".join(falsch)
+
+
+def test_titelbild_farbe_und_knopf_haben_eine_vorgabe():
+    """Die Clients bekommen fertige Werte: ohne Titelbild das Standbild, ohne
+    Farbe Hafenblau, ohne Knopf-Text „Ausprobieren" — entschieden einmal im
+    Server, nicht zweimal in Web und App."""
+    clip = releases.Media(kind="video", src="/c.mp4", poster="/c.webp", alt="x" * 30)
+    bild = releases.Media(kind="image", src="/b.webp", alt="x" * 30)
+    titel = releases.Media(kind="video", src="/c.mp4", poster="/c.webp",
+                           cover="/c-titel.webp", alt="x" * 30, duration=12.5)
+    assert releases.cover_for(clip) == "/c.webp"
+    assert releases.cover_for(bild) == "/b.webp"
+    assert releases.cover_for(titel) == "/c-titel.webp"
+
+    rel = releases.Release("9.5.0", "2026-01-01", "x", (
+        releases.Highlight("A", "…", "/karte", media=titel, color="green",
+                           tagline="Eine Zeile.", action="Karte öffnen"),
+        releases.Highlight("B", "…", "/fragen", media=clip),
+    ), teaser="Zwei neue Sachen.")
+    d = releases.as_dict(rel)
+    assert d["teaser"] == "Zwei neue Sachen."
+    a, b = d["highlights"]
+    assert (a["color"], a["tagline"], a["action"]) == ("green", "Eine Zeile.", "Karte öffnen")
+    assert a["media"]["cover"] == "/c-titel.webp" and a["media"]["duration"] == 12.5
+    assert (b["color"], b["tagline"], b["action"]) == ("primary", None, "Ausprobieren")
+    assert b["media"]["cover"] == "/c.webp" and b["media"]["duration"] is None
 
 
 def test_jede_oberflaeche_bekommt_wenigstens_ein_highlight():

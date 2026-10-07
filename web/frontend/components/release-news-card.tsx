@@ -8,48 +8,65 @@
  * Heute-Seite und **nicht** als Dialog vor der Seite: Wer die App öffnet, will
  * zum Rat, nicht zu uns (Tims Entscheidung 07.09.2026).
  *
- * **Eine Bühne, keine Stichpunktliste** (Tims Befund 07.09.2026: „das ist
- * schon sehr plain"). Jedes Highlight bringt eine echte Aufnahme aus der App
- * mit — beim Teilen einen kurzen Clip, sonst ein Bild —, und man blättert
- * durch sie. Ein Feature in einem Satz zu behaupten ist etwas anderes, als es
- * zu zeigen. Ohne Medien fällt die Karte auf die Listenform zurück
- * (``kern/releases.py`` verlangt: alle oder keines).
+ * **Video-Kacheln statt einer Bühne zum Durchklicken** (seit 3.0.0, Tims
+ * Befund 07.10.2026: „Die Karte fühlt sich langweilig an; ich weiß nicht, ob
+ * ich Bock habe, da unten durchzuklicken — mehr Bilder, mehr Anreiz"). Jede
+ * Neuerung ist eine große Kachel mit Titelbild, Farbe, Titel und Länge des
+ * Clips; ein Tipp öffnet den **Story-Spieler**
+ * (`components/neuigkeiten-spieler.tsx`). Die Kachel verspricht, was der
+ * Spieler hält — vorher stand ein Satz, und das Bild musste man erst
+ * erblättern. Kleinere Neuerungen stehen als Zeile „Außerdem: …" darunter
+ * (`aside` in `kern/releases.py`). Ohne Medien fällt die Karte auf die
+ * Listenform zurück (die Registry verlangt: alle oder keines).
  *
- * **Kein Selbstlauf.** Die Bühne wechselt nur auf Klick, Pfeiltaste oder Wisch.
- * Eine Karte, die von allein weiterschaltet, zieht den Text unter der lesenden
- * Person weg — und „Bewegung erklärt einen Zusammenhang oder sie fällt weg"
- * (DESIGNSPRACHE §7). Bewegt sich hier etwas von selbst, dann der Clip, und
- * der zeigt das Feature.
+ * **Kein Selbstlauf auf der Karte.** Die Kacheln zeigen Standbilder; was sich
+ * bewegt, bewegt sich erst im Spieler, und den öffnet ein Mensch.
  *
  * **Wer sie sieht, entscheidet der Server** (`GET /news`). Dieselbe Regel wie
  * beim Einrichtungs-Assistenten: Web und native App bekommen dieselbe Antwort,
  * statt die Bedingung je Client nachzubauen.
  *
- * **„Alles klar" setzt eine Hochwassermarke am Konto**, nicht im Browser: Auf
- * dem Telefon weggewischt heißt auch am Laptop weg. Gemeldet wird die Version,
- * die diese Karte GEZEIGT hat — käme zwischen Laden und Klick ein Deploy,
- * würde „die neueste" ein Release miterledigen, das niemand sah.
+ * **Wann die Karte endgültig geht.** Die Hochwassermarke am Konto
+ * (`news_seen_version`, `POST /news/seen`) bleibt die eine Entscheidung, die
+ * für alle Geräte gilt. Sie wird an zwei Stellen gesetzt:
+ *
+ * 1. **wenn alle Kacheln angesehen sind** — dann hat die Karte ihren Zweck
+ *    erfüllt. Sie bleibt für diesen Besuch stehen (alle drei abgehakt, „3 von
+ *    3 angesehen"), statt unter dem schließenden Spieler wegzuspringen, und ist
+ *    beim nächsten Laden weg. Vorher brauchte es dafür ein „Alles klar", das
+ *    nach dem Durchklicken niemand mehr vermisst hätte.
+ * 2. **wenn sie jemand ausblendet** (×) — ein Nein ist eine Antwort. Das ×
+ *    ist klein und steht in der Ecke: In der ersten Fassung stand „Alles klar"
+ *    gleichberechtigt neben der Bühne, und drei von vier Neuerungen sah nie
+ *    jemand (Tims Befund 07.09.2026).
+ *
+ * Gemeldet wird die Version, die diese Karte GEZEIGT hat — käme zwischen
+ * Laden und Klick ein Deploy, würde „die neueste" ein Release miterledigen,
+ * das niemand sah. Welche Kacheln schon angesehen sind, merkt sich dagegen nur
+ * dieses Gerät (`lib/neuigkeiten.ts`).
  */
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { vertrag, type ApiAntwort } from "@/lib/vertrag";
-import { Button, Card } from "@/components/ui";
+import { vertrag } from "@/lib/vertrag";
+import { Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
+import { NeuigkeitenSpieler } from "@/components/neuigkeiten-spieler";
+import {
+  aufteilen, dauerGesprochen, formatDauer, gesehenLesen, gesehenMerken,
+  highlightSchluessel, kachelFarbe, mitKacheln, zaehleGesehen,
+  type Highlight, type NewsState, type Release,
+} from "@/lib/neuigkeiten";
 import { cn } from "@/lib/utils";
-
-type NewsState = ApiAntwort<"/news">;
-type Release = NewsState["releases"][number];
-type Highlight = Release["highlights"][number];
 
 const NEWS_QUERY_KEY = ["news"] as const;
 
 const KICKER =
-  "font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-primary";
+  "font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-primary";
 
 /** „2.3.0" → „2.3" — die Patch-Null sagt niemandem etwas. */
 export function kurzVersion(version: string): string {
@@ -65,243 +82,230 @@ export function kickerText(versionen: string[]): string {
   return `Neu seit deinem letzten Besuch · ${versionen.map(kurzVersion).join(" und ")}`;
 }
 
-/** Hat diese Ausgabe Bilder? Die Registry verlangt alle oder keines; hier
- *  entscheidet es zwischen Bühne und Liste. */
-export function mitBuehne(release: Release | undefined): boolean {
-  return !!release?.highlights.length && release.highlights.every((h) => !!h.media);
+/** Der Abdunkler über dem Titelbild: die Textfarbe des hellen Themes,
+ *  hsl(212 55% 11%), halb deckend — darauf die Farbe der Kachel. Ab gut der
+ *  Hälfte der Höhe deckt die Farbe zu 95 %, ab drei Vierteln ganz; dort steht
+ *  die Schrift, und ihr Kontrast hängt nicht am Bild darunter (gemessen mit
+ *  einem Browserfenster als Bild: Bei 70 % lief Text aus dem Clip durch den
+ *  Titel). */
+function verlauf(farbe: string): string {
+  return `linear-gradient(180deg, hsl(212 55% 11% / 0) 20%, hsl(212 55% 11% / 0.5) 40%, ${farbe}f2 58%, ${farbe} 74%)`;
 }
 
-/** Läuft die Person mit abgeschalteter Bewegung? Dann steht das Standbild
- *  statt des Clips — die Regel aus DESIGNSPRACHE §7 gilt auch für Video. */
-function useRuhigeBewegung(): boolean {
-  const [ruhig, setRuhig] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const lies = () => setRuhig(mq.matches);
-    lies();
-    mq.addEventListener("change", lies);
-    return () => mq.removeEventListener("change", lies);
-  }, []);
-  return ruhig;
-}
-
-/** Das Medium eines Highlights, hell und dunkel.
+/** Eine Video-Kachel: Titelbild, Farbe, Titel, eine Zeile, Länge, Abspielen.
  *
- *  Zwei Elemente statt einer Quelle mit JavaScript: Die Umschaltung hängt an
- *  derselben `.dark`-Klasse wie alles andere, ohne einen zweiten Weg, auf dem
- *  Theme und Bild auseinanderlaufen könnten. */
-function Medium({ media, aktiv }: { media: NonNullable<Highlight["media"]>; aktiv: boolean }) {
-  const ruhig = useRuhigeBewegung();
-  const gemeinsam = "h-full w-full object-cover object-center";
-
-  if (media.kind === "video" && !ruhig) {
-    return (
-      // `key` am aktiven Index: Beim Wechsel startet der Clip von vorn, statt
-      // in der Mitte weiterzulaufen.
-      <video
-        key={aktiv ? "an" : "aus"}
-        className={gemeinsam}
-        poster={media.poster ?? undefined}
-        src={media.src}
-        autoPlay muted loop playsInline preload="metadata"
-        aria-label={media.alt}
-      />
-    );
-  }
-  // Bild — und bei abgeschalteter Bewegung auch das Standbild des Clips.
-  const quelle = media.kind === "video" ? (media.poster ?? media.src) : media.src;
+ *  Die ganze Kachel ist EIN Knopf — er öffnet den Spieler. Der Name sagt,
+ *  was passiert und wie lange es dauert, statt die Bausteine einzeln
+ *  vorzulesen. */
+function Kachel({
+  h, nummer, gesehen, onOeffnen,
+}: { h: Highlight; nummer: number; gesehen: boolean; onOeffnen: (von: HTMLElement) => void }) {
+  const farbe = kachelFarbe(h.color);
+  const dauer = formatDauer(h.media?.duration);
+  const gesprochen = dauerGesprochen(h.media?.duration);
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- die Maße stehen
-    // erst zur Laufzeit fest (Registry), und `next/image` bringt für vier
-    // statische Dateien im Export nichts.
-    <img src={quelle} alt={media.alt} className={gemeinsam} loading="lazy" />
+    <button
+      type="button"
+      onClick={(e) => onOeffnen(e.currentTarget)}
+      aria-label={`Video ansehen: ${h.title}${gesprochen ? `, ${gesprochen}` : ""}${gesehen ? " (schon angesehen)" : ""}`}
+      className={cn(
+        "group relative block aspect-[4/5] w-full overflow-hidden rounded-[18px] bg-[hsl(212_55%_11%)] text-left",
+        "shadow-[0_18px_36px_-24px_rgba(2,32,64,0.6)] outline-none",
+        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
+        "@3xl:aspect-[20/19]",
+        // Unter der Maus hebt sich die Kachel und der Knopf wächst — nur
+        // `transform`, nur mit Bewegung (DESIGNSPRACHE §7), nur mit Zeiger.
+        "transition-[transform,box-shadow] duration-fluss ease-out-strong",
+        "maus:hover:shadow-[0_24px_44px_-24px_rgba(2,32,64,0.7)] motion-safe:maus:hover:-translate-y-0.5",
+      )}
+    >
+      {h.media?.cover && (
+        // Statische Datei aus der Registry; `next/image` bringt im Export nichts.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={h.media.cover}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover object-top"
+        />
+      )}
+      <span aria-hidden className="absolute inset-0" style={{ background: verlauf(farbe) }} />
+
+      {/* Oben links die Nummer — oder der Haken, wenn sie schon dran war. */}
+      <span
+        aria-hidden
+        className="absolute left-3.5 top-3.5 grid h-8 w-8 place-items-center rounded-full bg-white/95 font-display text-[17px] font-extrabold tabular-nums"
+        style={{ color: farbe }}
+      >
+        {gesehen ? <Check className="h-4 w-4" strokeWidth={3} /> : nummer}
+      </span>
+      {dauer && (
+        <span
+          aria-hidden
+          className="absolute right-3.5 top-3.5 inline-flex items-center gap-1 rounded-full bg-[hsl(212_55%_11%/0.62)] px-2.5 py-1 text-[13px] font-semibold tabular-nums text-white"
+        >
+          <Play className="h-3 w-3 fill-current" /> {dauer}
+        </span>
+      )}
+
+      <span
+        aria-hidden
+        className="absolute left-1/2 top-[40%] grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/[0.94] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] transition-transform duration-fluss ease-out-strong motion-safe:maus:group-hover:scale-[1.06]"
+      >
+        <Play className="ml-1 h-7 w-7" style={{ color: farbe, fill: farbe }} />
+      </span>
+
+      <span className="absolute inset-x-0 bottom-0 block p-4 @3xl:p-5">
+        <span className="block font-display text-[22px] font-extrabold leading-[1.1] text-white">
+          {h.title}
+        </span>
+        {h.tagline && (
+          <span className="mt-1.5 block text-[14px] leading-snug text-white/90">{h.tagline}</span>
+        )}
+      </span>
+    </button>
   );
 }
 
-/** Die Bühne: das Bild, der Satz — und ein geführter Durchgang.
- *
- *  **Warum geführt** (Tims Befund 07.09.2026): In der ersten Fassung stand
- *  „Alles klar" gleichberechtigt neben den Reitern. Man klickte es sofort, und
- *  drei von vier Neuerungen hatte nie jemand gesehen — die Karte hatte ihren
- *  einzigen Zweck damit verfehlt. Jetzt ist **„Weiter" der Hauptknopf**, und
- *  erst auf der letzten Station wird daraus „Alles klar". Vier Klicks für vier
- *  Neuerungen; wer springen will, nimmt die Reiter.
- *
- *  Die Reiter sind nummeriert und haken sich ab. Nummer, Haken und der Zähler
- *  („2 von 4") sagen zusammen, dass hier etwas zum Durchgehen steht — bloße
- *  Pillen taten das nicht.
- */
-function Buehne({
-  highlights, aufKlar, klarLaeuft,
-}: { highlights: Highlight[]; aufKlar: () => void; klarLaeuft: boolean }) {
-  const [i, setI] = useState(0);
-  // Die erste Station hat man mit dem Aufschlagen der Karte gesehen.
-  const [gesehen, setGesehen] = useState<number[]>([0]);
-  const basis = useId();
-  const reiter = useRef<(HTMLButtonElement | null)[]>([]);
-  const h = highlights[i];
-  const n = highlights.length;
-  const alleGesehen = gesehen.length >= n;
-  // Alle Medien einer Ausgabe tragen dasselbe Verhältnis (Wächter im Backend);
-  // das erste genügt also für den Rahmen. Ohne Medium bleibt es beim Querformat.
-  const rahmen = h.media?.aspect ?? "16/9";
-  const hochkant = (() => {
-    const [b, hh] = rahmen.split("/").map(Number);
-    return Number.isFinite(b) && Number.isFinite(hh) && hh > b;
-  })();
-
-  const zeige = useCallback((ziel: number, fokus = false) => {
-    const neu = ((ziel % n) + n) % n;
-    setI(neu);
-    setGesehen((alt) => (alt.includes(neu) ? alt : [...alt, neu]));
-    if (fokus) reiter.current[neu]?.focus();
-  }, [n]);
-
-  /** „Weiter" springt zur nächsten Station, die noch NICHT abgehakt ist —
-   *  wer zwischendurch über die Reiter gesprungen ist, bekommt dadurch trotzdem
-   *  jede Neuerung einmal zu sehen, statt am Ende in einer Schleife zu landen. */
-  const weiter = useCallback(() => {
-    for (let s = 1; s <= n; s += 1) {
-      const kandidat = (i + s) % n;
-      if (!gesehen.includes(kandidat)) return zeige(kandidat);
-    }
-    zeige(i + 1);
-  }, [gesehen, i, n, zeige]);
-
+/** Der Fortschritt im Kopf: je Kachel ein Balken, gefüllt = angesehen.
+ *  Signal-Orange als Marker (DESIGNSPRACHE §2), keine Fläche. */
+function Fortschritt({ gesamt, gesehen }: { gesamt: number; gesehen: number }) {
   return (
-    <div className="mt-3">
-      <div className="flex flex-col gap-4 @2xl:flex-row @2xl:items-center">
-        {/* `aspect-video`: Alle Aufnahmen entstehen im selben 16:9-Rahmen
-            (s. kern/releases.py) — der Kasten hat damit dieselbe Form wie sein
-            Inhalt, füllt sich randlos und behält beim Blättern seine Höhe.
-            Ein Sprung beim Wechsel ist genau das, was die Bewegungsregeln
-            vermeiden (DESIGNSPRACHE §7). */}
-        <div
-          id={`${basis}-panel`}
-          role="tabpanel"
-          aria-labelledby={`${basis}-tab-${i}`}
-          // Das Verhältnis kommt aus dem Medium (`kern/releases.py`), es wird
-          // nicht geraten: Im Browser sind die Aufnahmen querformatige
-          // Fenster, in der App hochkante Telefon-Bildschirme. Alle Medien
-          // einer Ausgabe teilen sich eines, der Kasten springt also nicht.
-          style={{ aspectRatio: rahmen }}
-          className={cn(
-            "relative shrink-0 overflow-hidden rounded-xl border border-border bg-background",
-            // Querformat nimmt sich die Breite, Hochformat die HÖHE: Ein
-            // Telefon-Bildschirm über die halbe Kartenbreite wäre 700 px hoch
-            // und ließe rechts neben dem Satz ein leeres Feld — genau der
-            // halb leere Kasten, den die Designsprache verbietet.
-            hochkant ? "h-[300px] w-auto self-center @2xl:h-[420px] @2xl:self-auto"
-                     : "@2xl:w-[52%]",
-          )}
-        >
-          {/* Der Wechsel blendet nur — eine Strecke gäbe es hier nicht zu
-              zeigen, und `opacity` allein kostet kein Layout. */}
-          <div key={i} className="h-full w-full animate-in fade-in-0 duration-fluss ease-out-strong">
-            {h.media ? <Medium media={h.media} aktiv /> : null}
-          </div>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          {/* Der Zähler sagt vor dem ersten Klick, dass es mehr als das eine
-              gibt — das tat die Karte vorher nirgends. */}
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            {i + 1} von {n}
-          </p>
-          <div key={i} className="animate-in fade-in-0 duration-fluss ease-out-strong">
-            <h3 className="mt-1 font-display text-[15px] font-bold leading-snug text-foreground">
-              {h.title}
-            </h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{h.text}</p>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {/* Der Hauptknopf führt durch die Ausgabe und wird erst am Ende
-                zum Wegräumen. */}
-            {alleGesehen ? (
-              <Button size="sm" onClick={aufKlar} disabled={klarLaeuft}>
-                <Check className="!size-3.5" />
-                Alles klar
-              </Button>
-            ) : (
-              <Button size="sm" onClick={weiter}>
-                Weiter <ArrowRight className="!size-3.5" />
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={h.url}>
-                Ansehen <ArrowRight className="!size-3.5" />
-              </Link>
-            </Button>
-          </div>
-        </div>
+    <div className="shrink-0 text-right" aria-live="polite">
+      <div aria-hidden className="flex justify-end gap-1.5">
+        {Array.from({ length: gesamt }, (_, i) => (
+          <span key={i} className={cn("h-1.5 w-9 rounded-full", i < gesehen ? "bg-signal" : "bg-border")} />
+        ))}
       </div>
-
-      {/* Die Reiter tragen Nummer und Titel, nicht bloß Punkte: Man soll
-          vorher wissen, wohin man blättert, und hinterher sehen, was man schon
-          hatte.
-          Schmal scrollt die Leiste seitwärts (dieselbe Bauform wie im
-          Admin-Panel, und der halb sichtbare nächste Reiter sagt, dass es
-          weitergeht); breit bricht sie um. Ein abgeschnittener Reiter auf
-          einer 1.100 px breiten Karte sieht dagegen nach Fehler aus, nicht
-          nach Scrollbarkeit. */}
-      <div
-        role="tablist"
-        aria-label="Neuerungen dieser Ausgabe"
-        className="scrollbar-none -mx-1 mt-4 flex flex-nowrap gap-1.5 overflow-x-auto px-1 [-webkit-overflow-scrolling:touch] @2xl:flex-wrap @2xl:overflow-x-visible"
-        onKeyDown={(e) => {
-          if (e.key === "ArrowRight") { e.preventDefault(); zeige(i + 1, true); }
-          if (e.key === "ArrowLeft") { e.preventDefault(); zeige(i - 1, true); }
-        }}
-      >
-        {highlights.map((k, m) => {
-          const aktiv = m === i;
-          const fertig = gesehen.includes(m) && !aktiv;
-          return (
-            <button
-              key={k.url + k.title}
-              ref={(el) => { reiter.current[m] = el; }}
-              type="button"
-              role="tab"
-              id={`${basis}-tab-${m}`}
-              aria-selected={aktiv}
-              aria-controls={`${basis}-panel`}
-              tabIndex={aktiv ? 0 : -1}
-              onClick={() => zeige(m)}
-              className={cn(
-                "group inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors duration-tipp",
-                aktiv
-                  ? "border-primary/40 bg-primary/10 text-primary"
-                  : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground",
-              )}
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  "inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold tabular-nums",
-                  aktiv ? "bg-primary text-primary-foreground"
-                        : fertig ? "bg-primary/15 text-primary"
-                                 : "bg-muted text-muted-foreground",
-                )}
-              >
-                {fertig ? <Check className="h-2.5 w-2.5" /> : m + 1}
-              </span>
-              {k.title}
-            </button>
-          );
-        })}
-      </div>
+      <p className="mt-1.5 text-meta text-muted-foreground tabular-nums">
+        {gesehen} von {gesamt} angesehen
+      </p>
     </div>
   );
 }
 
+/** Die Kacheln: am Schreibtisch nebeneinander, schmal ein Karussell.
+ *
+ *  Schmal laufen die Kacheln bis an den Kartenrand und rasten ein; die
+ *  nächste schaut angeschnitten herein — das sagt ohne Worte, dass es
+ *  weitergeht. Darunter die Punkte; mit Maus zusätzlich die Blätter-Pfeile
+ *  daneben, am Anschlag gedimmt statt versteckt (DESIGNSPRACHE §6). */
+function Kacheln({
+  kacheln, gesehen, onOeffnen,
+}: { kacheln: Highlight[]; gesehen: ReadonlySet<string>; onOeffnen: (i: number, von: HTMLElement) => void }) {
+  const leiste = useRef<HTMLUListElement>(null);
+  const [aktiv, setAktiv] = useState(0);
+
+  const messen = useCallback(() => {
+    const el = leiste.current;
+    if (!el) return;
+    const erste = el.firstElementChild as HTMLElement | null;
+    if (!erste) return;
+    const schritt = erste.getBoundingClientRect().width + 12;
+    setAktiv(Math.max(0, Math.min(kacheln.length - 1, Math.round(el.scrollLeft / schritt))));
+  }, [kacheln.length]);
+
+  const blaettern = (richtung: 1 | -1) => {
+    const el = leiste.current;
+    const ziel = el?.children[Math.max(0, Math.min(kacheln.length - 1, aktiv + richtung))] as HTMLElement | undefined;
+    if (!el || !ziel) return;
+    const ruhig = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ left: ziel.offsetLeft - el.offsetLeft - parseFloat(getComputedStyle(el).paddingLeft || "0"), behavior: ruhig ? "auto" : "smooth" });
+  };
+
+  const spalten = ["", "@3xl:grid-cols-1", "@3xl:grid-cols-2", "@3xl:grid-cols-3", "@3xl:grid-cols-4"][kacheln.length] ?? "@3xl:grid-cols-4";
+
+  return (
+    <div className="mt-5">
+      <ul
+        ref={leiste}
+        onScroll={messen}
+        aria-label="Neuerungen dieser Ausgabe"
+        className={cn(
+          // Schmal: Karussell bis an den Kartenrand.
+          "scrollbar-none -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 pt-1 sm:-mx-6 sm:scroll-px-6 sm:px-6",
+          // Breit: ein Raster, alle Kacheln auf einen Blick.
+          "@3xl:mx-0 @3xl:grid @3xl:gap-4 @3xl:overflow-visible @3xl:px-0 @3xl:pb-1",
+          spalten,
+        )}
+      >
+        {kacheln.map((h, i) => (
+          <li key={highlightSchluessel(h)} className="w-[78%] max-w-[300px] shrink-0 snap-start @3xl:w-auto @3xl:max-w-none">
+            <Kachel h={h} nummer={i + 1} gesehen={gesehen.has(highlightSchluessel(h))} onOeffnen={(von) => onOeffnen(i, von)} />
+          </li>
+        ))}
+      </ul>
+
+      {kacheln.length > 1 && (
+        <div className="mt-1 flex items-center justify-center gap-3 @3xl:hidden">
+          <button
+            type="button"
+            onClick={() => blaettern(-1)}
+            aria-label="Vorige Kachel"
+            className={cn("hidden h-6 w-6 place-items-center rounded-full border border-border bg-card shadow-sm maus:grid", aktiv === 0 && "opacity-40")}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <div aria-hidden className="flex items-center gap-1.5">
+            {kacheln.map((h, i) => (
+              <span
+                key={highlightSchluessel(h)}
+                className={cn("h-2 rounded-full transition-[width,background-color] duration-fluss ease-out-strong",
+                  i === aktiv ? "w-5 bg-signal" : "w-2 bg-border")}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => blaettern(1)}
+            aria-label="Nächste Kachel"
+            className={cn("hidden h-6 w-6 place-items-center rounded-full border border-border bg-card shadow-sm maus:grid", aktiv === kacheln.length - 1 && "opacity-40")}
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** „Außerdem: …" — eine Neuerung ohne eigene Kachel. Ein Tipp öffnet ihren
+ *  Clip im Spieler, allein und ohne Fortschritt. */
+function Nebenbei({ h, onOeffnen }: { h: Highlight; onOeffnen: (von: HTMLElement) => void }) {
+  const bild = h.media?.cover ?? h.media?.poster ?? null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => onOeffnen(e.currentTarget)}
+      className="group mt-3 flex w-full items-center gap-3 rounded-xl bg-primary/[0.06] p-3 text-left outline-none transition-colors duration-tipp maus:hover:bg-primary/[0.1] focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {bild && (
+        // eslint-disable-next-line @next/next/no-img-element -- s. o.
+        <img src={bild} alt="" loading="lazy"
+          className="hidden h-[54px] w-24 shrink-0 rounded-lg border border-border object-cover object-top @md:block" />
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] leading-snug text-foreground">
+          <span className="font-semibold">Außerdem:</span> {h.title}
+        </span>
+        {/* Schmal bleibt es eine Zeile wie im Entwurf — die Unterzeile
+            steht im Spieler ohnehin unter dem Clip. */}
+        {h.tagline && <span className="mt-0.5 hidden text-hinweis text-muted-foreground @md:block">{h.tagline}</span>}
+      </span>
+      <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary">
+        <span className="hidden @md:inline">Ansehen</span>
+        <ArrowRight aria-hidden className="h-4 w-4 transition-transform duration-fluss ease-out-strong motion-safe:maus:group-hover:translate-x-0.5" />
+      </span>
+    </button>
+  );
+}
 
 /** Ohne Medien: dieselben Sätze als Liste — lesbar, nur eben still. */
 function Liste({ highlights }: { highlights: Highlight[] }) {
   return (
     <ul className="mt-2.5 grid gap-x-8 gap-y-2.5 @2xl:grid-cols-2">
       {highlights.map((h) => (
-        <li key={h.url + h.title} className="min-w-0">
+        <li key={highlightSchluessel(h)} className="min-w-0">
           <Link href={h.url} className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <span className="text-sm font-semibold text-foreground [@media(hover:hover)]:group-hover:text-primary">
               {h.title}
@@ -315,6 +319,14 @@ function Liste({ highlights }: { highlights: Highlight[] }) {
   );
 }
 
+type Spieler = {
+  folge: Highlight[];
+  start: number;
+  nebenbei: boolean;
+  /** Der Knopf, der ihn geöffnet hat — dorthin kehrt der Fokus zurück. */
+  von: HTMLElement | null;
+} | null;
+
 export function ReleaseNewsCard() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -327,7 +339,8 @@ export function ReleaseNewsCard() {
     staleTime: 60 * 60 * 1000,
   });
 
-  const wegklicken = useMutation({
+  /** × — die Karte ist weg, auf jedem Gerät. */
+  const ausblenden = useMutation({
     mutationFn: (version: string) => api.post("/news/seen", { version }),
     // Optimistisch leeren: Die Karte soll beim Klick verschwinden, nicht nach
     // der Antwort. Ein Fehlschlag bringt sie beim nächsten Laden zurück —
@@ -339,80 +352,137 @@ export function ReleaseNewsCard() {
     onSettled: () => { void qc.invalidateQueries({ queryKey: NEWS_QUERY_KEY }); },
   });
 
-  const releases = data?.releases ?? [];
-  if (releases.length === 0) return null;
+  /** Alle angesehen — die Marke setzen, die Karte aber für diesen Besuch
+   *  stehen lassen (kein Leeren, kein Neuladen: Der Spieler hängt an ihr). */
+  const abschliessen = useMutation({
+    mutationFn: (version: string) => api.post("/news/seen", { version }),
+  });
 
-  const [neuestes, ...aeltere] = releases;
+  const releases = data?.releases ?? [];
+  const neuestes = releases[0];
+  const version = neuestes?.version;
+
+  // Was auf diesem Gerät schon angesehen ist — erst nach dem Einhängen
+  // gelesen: Der Server kennt den Speicher nicht, ein Haken, der beim
+  // Hydrieren springt, wäre ein Fehler in der Konsole.
+  const [gesehen, setGesehen] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => { if (version) setGesehen(gesehenLesen(version)); }, [version]);
+  const [spieler, setSpieler] = useState<Spieler>(null);
+
+  const merken = useCallback((h: Highlight) => {
+    if (!version || h.aside) return; // Nebenbei zählt nicht zum Fortschritt.
+    setGesehen(new Set(gesehenMerken(version, highlightSchluessel(h))));
+  }, [version]);
+
+  const { kacheln, nebenbei } = aufteilen(neuestes?.highlights ?? []);
+  const mitBildern = mitKacheln(neuestes);
+  const anzahl = zaehleGesehen(kacheln, gesehen);
+  const alle = mitBildern && kacheln.length > 0 && anzahl >= kacheln.length;
+
+  // Alle angesehen → die Marke am Konto setzen, einmal je Version und Besuch.
+  // Die Karte bleibt dabei stehen; s. Kopfkommentar, Punkt 1.
+  const gemeldet = useRef<string | null>(null);
+  const abschluss = abschliessen.mutate;
+  useEffect(() => {
+    if (alle && version && gemeldet.current !== version) {
+      gemeldet.current = version;
+      abschluss(version);
+    }
+  }, [alle, version, abschluss]);
+
+  if (!neuestes) return null;
+
+  const aeltere = releases.slice(1);
   const weitere = data?.older_count ?? 0;
 
   return (
-    // `@container`: Die Karte steht im Hinweis-Slot über die volle Breite — auf
-    // einem 1440er-Schirm sind das 1030 px. Die Bühne stellt Bild und Text erst
-    // dann nebeneinander, wenn beide Platz haben; darunter untereinander.
-    <Card className="@container flex flex-col gap-4 border-primary/25 bg-primary/[0.04] p-4 sm:flex-row">
-      {/* `hat-idee`: Lotti bringt etwas mit, sie warnt nicht. */}
-      <Mascot decorative regung="hat-idee" className="hidden h-14 w-14 flex-none sm:block" />
-
-      <div className="min-w-0 flex-1">
-        <p className={KICKER}>
-          <Sparkles className="mr-1 inline h-3 w-3 align-[-1px]" aria-hidden />
-          {kickerText(releases.map((r) => r.version))}
-        </p>
-        <h2 className="mt-0.5 font-display text-base font-bold text-foreground">
-          {neuestes.title}
-        </h2>
-
-        {mitBuehne(neuestes)
-          ? (
-            <Buehne
-              highlights={neuestes.highlights}
-              aufKlar={() => wegklicken.mutate(neuestes.version)}
-              klarLaeuft={wegklicken.isPending}
-            />
-          )
-          : <Liste highlights={neuestes.highlights} />}
-
-        {aeltere.length > 0 && (
-          <div className="mt-3.5 border-t border-border pt-3">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Außerdem seit deinem letzten Besuch
-            </p>
-            <ul className="mt-1.5 flex flex-col gap-1">
-              {aeltere.map((r) => (
-                <li key={r.version} className="text-[13px] leading-snug text-muted-foreground">
-                  <span className="font-semibold text-foreground">{kurzVersion(r.version)}</span>
-                  {" — "}
-                  {r.highlights.map((h) => h.title).join(" · ")}
-                </li>
-              ))}
-            </ul>
+    // `@container`: Die Karte steht im Hinweis-Slot über die volle Breite —
+    // Kacheln nebeneinander erst, wenn die KARTE breit genug ist, nicht das
+    // Fenster (neben der Seitenleiste ist dieselbe Fensterbreite schmaler).
+    <Card className="@container relative rounded-2xl p-4 sm:p-6">
+      <div className="flex items-start gap-3 pr-9 sm:gap-4 @3xl:items-center">
+        {/* `hat-idee`: Lotti bringt etwas mit, sie warnt nicht. */}
+        <Mascot decorative regung="hat-idee" className="h-14 w-14 flex-none sm:h-[72px] sm:w-[72px]" />
+        <div className="min-w-0 flex-1">
+          <p className={KICKER}>{kickerText(releases.map((r) => r.version))}</p>
+          <h2 className="mt-0.5 font-display text-[26px] font-extrabold leading-[1.1] tracking-tight text-foreground sm:text-[30px]">
+            {neuestes.title}
+          </h2>
+          {neuestes.teaser && (
+            <p className="mt-1 text-hinweis text-muted-foreground sm:text-[15px]">{neuestes.teaser}</p>
+          )}
+        </div>
+        {/* Am Schreibtisch oben rechts; schmal sagen es die Haken auf den
+            Kacheln (der Entwurf hat dort keinen Platz dafür). */}
+        {mitBildern && kacheln.length > 1 && (
+          <div className="hidden @3xl:block">
+            <Fortschritt gesamt={kacheln.length} gesehen={anzahl} />
           </div>
         )}
+      </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          {/* Mit Bühne trägt DEREN Hauptknopf das Wegräumen — er wird erst am
-              Ende dazu. Zwei „Alles klar" nebeneinander wären genau der
-              Schnellausstieg, der die Karte wirkungslos gemacht hat. */}
-          {!mitBuehne(neuestes) && (
-            <Button
-              size="sm"
-              onClick={() => wegklicken.mutate(neuestes.version)}
-              disabled={wegklicken.isPending}
-            >
-              <Check className="!size-3.5" />
-              Alles klar
-            </Button>
-          )}
-          {/* „dieser Version" stimmt nur, wenn es wirklich eine ist — bei
-              mehreren stünde dort ein falsches Versprechen. */}
-          <Link href="/changelog" className="text-[13px] text-muted-foreground underline hover:text-foreground">
-            {weitere > 0
-              ? `Alle Änderungen — auch ${weitere} ältere Version${weitere === 1 ? "" : "en"}`
-              : releases.length > 1
-                ? "Alle Änderungen im Einzelnen"
-                : "Alle Änderungen dieser Version"}
-          </Link>
+      {/* Klein und in der Ecke — s. Kopfkommentar, Punkt 2. */}
+      <button
+        type="button"
+        onClick={() => ausblenden.mutate(neuestes.version)}
+        disabled={ausblenden.isPending}
+        aria-label="Neuigkeiten ausblenden"
+        title="Ausblenden"
+        className="absolute right-2 top-2 grid h-10 w-10 place-items-center rounded-full text-muted-foreground transition-colors duration-tipp maus:hover:bg-muted maus:hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:right-3 sm:top-3"
+      >
+        <X className="h-[18px] w-[18px]" />
+      </button>
+
+      {mitBildern ? (
+        <>
+          <Kacheln
+            kacheln={kacheln}
+            gesehen={gesehen}
+            onOeffnen={(i, von) => setSpieler({ folge: kacheln, start: i, nebenbei: false, von })}
+          />
+          {nebenbei.map((h) => (
+            <Nebenbei key={highlightSchluessel(h)} h={h}
+              onOeffnen={(von) => setSpieler({ folge: [h], start: 0, nebenbei: true, von })} />
+          ))}
+          <NeuigkeitenSpieler
+            offen={spieler !== null}
+            folge={spieler?.folge ?? []}
+            start={spieler?.start ?? 0}
+            nebenbei={spieler?.nebenbei ?? false}
+            onGesehen={merken}
+            onSchliessen={() => setSpieler(null)}
+            rueckkehr={spieler?.von}
+          />
+        </>
+      ) : <Liste highlights={neuestes.highlights} />}
+
+      {aeltere.length > 0 && (
+        <div className="mt-4 border-t border-border pt-3">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+            Außerdem seit deinem letzten Besuch
+          </p>
+          <ul className="mt-1.5 flex flex-col gap-1">
+            {aeltere.map((r) => (
+              <li key={r.version} className="text-[13px] leading-snug text-muted-foreground">
+                <span className="font-semibold text-foreground">{kurzVersion(r.version)}</span>
+                {" — "}
+                {r.highlights.map((h) => h.title).join(" · ")}
+              </li>
+            ))}
+          </ul>
         </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        {/* „dieser Version" stimmt nur, wenn es wirklich eine ist — bei
+            mehreren stünde dort ein falsches Versprechen. */}
+        <Link href="/changelog" className="text-[13px] text-muted-foreground underline hover:text-foreground">
+          {weitere > 0
+            ? `Alle Änderungen — auch ${weitere} ältere Version${weitere === 1 ? "" : "en"}`
+            : releases.length > 1
+              ? "Alle Änderungen im Einzelnen"
+              : "Alle Änderungen dieser Version"}
+        </Link>
       </div>
     </Card>
   );
