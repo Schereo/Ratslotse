@@ -398,9 +398,7 @@ public final class AppModel {
             case .analysis: return ExplainScreen.from(.analysis)
             case .subscriptions: return ExplainScreen.from(.subscriptions)
             case .quiz: return ExplainScreen.from(.quiz(area: nil))
-            // Die Merkliste hat im Web eine eigene Seite, aber keine eigene
-            // App-Route — deshalb von Hand, und nur hier.
-            case .saved: return ExplainScreen(route: "/bookmarks")
+            case .saved: return ExplainScreen.from(.saved)
             }
         }
         switch selectedTab {
@@ -432,6 +430,7 @@ public final class AppModel {
             case .quiz: return "Quiz"
             case .subscriptions: return "Abos"
             case .analysis: return "Auswertung"
+            case .saved: return "Merkliste"
             default: break
             }
         }
