@@ -30,6 +30,8 @@
 //   type(target, text)  hinfahren, fokussieren, Zeichen für Zeichen tippen
 //   scrollTo(target) weich dorthin blättern (ein Sprung sähe nach Schnitt aus)
 //   pause(seconds)  stehen lassen (die Pointe lesen lassen)
+//   say(text)       ab jetzt steht dieser Schritt als Untertitel im Clip
+//                   (nur im Remotion-Schnitt, `release_clips.py web --remotion`)
 // `target` ist ein Selektor oder ein Locator.
 import { chromium } from 'playwright';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
@@ -156,7 +158,7 @@ await cdp.send('Page.startScreencast', {
   format: 'jpeg', quality: 92, maxWidth: viewport.width, maxHeight: viewport.height, everyNthFrame: 1,
 });
 
-const marks = { begin: null, beats: [], navigations: [] };
+const marks = { begin: null, beats: [], navigations: [], steps: [] };
 // Jede Navigation mit Zeitstempel — im JSON sichtbar, damit sich ein Clip,
 // in dem „die Seite zu früh wechselt“, ohne Raten erklären lässt.
 page.on('framenavigated', (frame) => {
@@ -171,7 +173,9 @@ async function center(target) {
   await l.scrollIntoViewIfNeeded();
   const b = await l.boundingBox();
   if (!b) throw new Error(`Ziel nicht sichtbar: ${typeof target === 'string' ? target : '(Locator)'}`);
-  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  // Der Umriss reist mit: Der Remotion-Schnitt legt das Spotlight darum,
+  // statt nah heranzuzoomen (Tims Befund 07.10.2026: zu nah, kein Kontext).
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2, box: { x: b.x, y: b.y, w: b.width, h: b.height } };
 }
 
 /** Störer wegklicken — nur in Dialogen, damit kein „Weiter“ einer
@@ -208,12 +212,15 @@ const stage = {
     // Was der Aufbau mit `click`/`markText` erledigt hat, ist kein Beat des
     // Clips — es läge vor dessen Anfang, und der Zoom käme aus dem Nichts.
     marks.beats.length = 0;
+    marks.steps.length = 0;
     // Der Zeiger erscheint erst mit der ersten Fahrt — ein Aufbau-Klick
     // davor (Playwright) darf keinen Sprung hinterlassen.
     cursor = null;
     return page.evaluate(() => { const c = document.getElementById('rl-cursor'); if (c) c.style.display = 'none'; });
   },
   pause: (seconds) => page.waitForTimeout(seconds * 1000),
+  /** Der Schritt, der ab jetzt als Untertitel steht. */
+  say(text) { marks.steps.push({ t: clock(), text }); },
   /** Weich zum Ziel blättern — `scrollIntoViewIfNeeded` springt, und ein
    *  Sprung im Clip sieht aus wie ein Schnitt. */
   async scrollTo(target, { settle = 1.2 } = {}) {
@@ -231,14 +238,14 @@ const stage = {
     }
     const distance = Math.hypot(z.x - cursor.x, z.y - cursor.y);
     await page.mouse.move(z.x, z.y, { steps: clamp(Math.round(distance / 9), 18, 60) });
-    cursor = z;
+    cursor = { x: z.x, y: z.y };
     return z;
   },
   /** Hinfahren, kurz verweilen (Hover-Zustand zeigen), klicken — ein Beat. */
   async click(target, { from, hover = 0.85 } = {}) {
     const z = await stage.hover(target, { from });
     await page.waitForTimeout(hover * 1000);
-    marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: true });
+    marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: true, box: z.box });
     await page.mouse.down();
     await page.waitForTimeout(140);
     await page.mouse.up();
@@ -247,7 +254,7 @@ const stage = {
   async look(target, { from, hover = 0.4 } = {}) {
     const z = await stage.hover(target, { from });
     await page.waitForTimeout(hover * 1000);
-    marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: false });
+    marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: false, box: z.box });
   },
   /** Ein Wort (oder eine Wortfolge) im Ziel mit der Maus markieren: Zeiger
    *  an den Anfang, drücken, sichtbar bis zum Ende ziehen, loslassen. Ein
@@ -284,7 +291,8 @@ const stage = {
     await page.mouse.move(box.x1, box.y1, { steps: clamp(Math.round((box.x1 - box.x0) / 6), 12, 40) });
     await page.mouse.up();
     cursor = { x: box.x1, y: box.y1 };
-    marks.beats.push({ t: clock(), x: (box.x0 + box.x1) / 2, y: box.y1, tap: false });
+    marks.beats.push({ t: clock(), x: (box.x0 + box.x1) / 2, y: box.y1, tap: false,
+      box: { x: box.x0 - 4, y: box.y0 - 12, w: box.x1 - box.x0 + 8, h: 24 } });
   },
   async type(target, text, { delay = 35 } = {}) {
     await stage.hover(target);
@@ -314,7 +322,8 @@ const result = {
   height: viewport.height,
   begin: marks.begin,
   end,
-  beats: marks.beats.map((b) => ({ t: b.t, x: Math.round(b.x), y: Math.round(b.y), tap: b.tap })),
+  beats: marks.beats.map((b) => ({ t: b.t, x: Math.round(b.x), y: Math.round(b.y), tap: b.tap, box: b.box ?? null })),
+  steps: marks.steps,
   navigations: marks.navigations,
   frames,
 };

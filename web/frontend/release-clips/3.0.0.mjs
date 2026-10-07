@@ -114,35 +114,44 @@ export default {
   },
 
   viertel: {
-    // Mein Viertel: Stadtteil suchen, ein Vorhaben öffnen — Stufen bis
-    // „Im Bau“ und die Beschlüsse dazu. Kita Eßkamp: im Bau, fertig zum
-    // Kindergartenjahr 2026/2027 (kein abgelaufener Termin).
-    async run({ page, goto, begin, click, type, look, scrollTo, pause }) {
-      await goto('/karte');
-      await page.waitForSelector('input[aria-label="Straße oder Stadtteil"]');
-      await page.waitForSelector('.leaflet-tile-loaded');
-      await pause(1.5);
-      await begin();
-      await pause(0.6);
-      await type('input[aria-label="Straße oder Stadtteil"]', 'Nadorst', { delay: 70 });
-      const treffer = page.locator('[role="option"] button', { hasText: /^Nadorst/ }).first();
-      await treffer.waitFor();
-      await pause(0.6);
-      await click(treffer);
-      await page.waitForURL(/ort=nadorst/);
-      const kita = page.locator('a, button', { hasText: 'Kita Eßkamp' }).last();
-      await kita.waitFor();
-      await pause(1.8);   // die Karte fährt ins Viertel
-      await scrollTo(kita);
-      await pause(1.0);   // die Liste setzt sich (Mitreden-Kasten lädt nach)
-      await click(kita);
-      await page.waitForURL(/v=722/);
+    // Mein Viertel — mit dem WEG dorthin (Tims Befund 07.10.2026: Die Clips
+    // fingen mittendrin an, man sah nicht, wie man hinkommt). Start auf
+    // „Heute“ im Schreibtisch-Layout, die Seitenleiste ist im Bild.
+    // Kita Eßkamp: im Bau, fertig zum Kindergartenjahr 2026/2027.
+    viewport: { width: 1280, height: 800 },
+    titel: 'Mein Viertel',
+    untertitel: 'Was sich vor deiner Haustür tut',
+    weg: ['Seitenleiste', 'Mein Viertel'],
+    app: ['Mehr', 'Mein Viertel'],
+    async run({ page, goto, begin, click, look, scrollTo, pause, say }) {
+      // Das Probekonto hat Fliegerhorst gewählt (Themen) — „Mein Viertel“
+      // öffnet deshalb gleich den eigenen Stadtteil.
+      await goto('/dashboard');
+      await page.waitForSelector('nav a:has-text("Mein Viertel")');
       await pause(1.2);
-      const beschluesse = page.locator('text=/\\d Beschlüsse/').first();
+      await begin();
+      say('Mein Viertel findest du in der Seitenleiste');
+      await pause(1.0);
+      await click(page.locator('nav a', { hasText: 'Mein Viertel' }).first());
+      await page.waitForSelector('text=Vorhaben aus den Beschlüssen');
+      await page.waitForSelector('.leaflet-interactive');
+      say('Dein Stadtteil öffnet sich direkt — alle Vorhaben auf Karte und Liste');
+      await pause(1.6);
+      await look(page.locator('h1, h2', { hasText: 'Fliegerhorst' }).first());
+      await pause(1.4);
+      const vorhaben = page.locator('a, button', { hasText: 'Neue Grundschule und Dreifeldhalle' }).first();
+      say('Ein Vorhaben öffnen: Stand, Zeitplan und die Beschlüsse dazu');
+      await click(vorhaben);
+      await page.waitForURL(/v=\d+/);
+      await pause(1.4);
+      const beschluesse = page.locator('text=/\\d Beschlüsse?/').first();
       await beschluesse.waitFor();
       await scrollTo(beschluesse, { settle: 1.4 });
-      await look(page.locator('text=Im Bau').first());
-      await pause(3.0);
+      await pause(1.6);
+      say('Über „Stadt zeigen“ kommst du in jedes andere Viertel');
+      await click(page.locator('button, a', { hasText: 'Stadt zeigen' }).first());
+      await page.waitForSelector('input[aria-label="Straße oder Stadtteil"]');
+      await pause(2.4);
     },
   },
 
