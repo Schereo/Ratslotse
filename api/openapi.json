@@ -25685,6 +25685,21 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VerifyCodeRequest": {
+        "properties": {
+          "code": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "VerifyCodeRequest",
+        "type": "object"
+      },
       "VerifyEmailRequest": {
         "properties": {
           "token": {
@@ -28391,7 +28406,7 @@
     },
     "/api/auth/reset-password": {
       "post": {
-        "description": "Set a new password from a valid reset token, then invalidate all sessions.",
+        "description": "Set a new password from a valid reset token, then invalidate all sessions.\n\n**Ein Reset-Link ist kein Login für Fremde** (Sicherheitsprüfung 10/2026,\nF3). Wer gerade als ein ANDERES Konto angemeldet ist, bekommt eine\nAblehnung, und der Link bleibt gültig: Sonst schickte jemand seinen eigenen\nLink herum, und die App wechselte still in sein Konto — wo er später alles\nmitliest, was dort eingegeben wird.\n\n**Und er bestätigt die Adresse.** Der Link kam über das Postfach, das ist\nderselbe Beweis wie der Bestätigungslink. Ein Konto, das ein Fremder auf\ndiese Adresse angelegt hat, holt sich die Besitzerin damit zurück: neues\nPasswort, alle älteren Sitzungen beendet, Konto aktiv (F1).",
         "operationId": "reset_password_api_auth_reset_password_post",
         "requestBody": {
           "content": {
@@ -28431,9 +28446,51 @@
         ]
       }
     },
+    "/api/auth/verify-code": {
+      "post": {
+        "description": "Die Adresse mit dem sechsstelligen Code aus der Mail bestätigen.\n\nFür den Fall, dass Mail und Sitzung auf verschiedenen Geräten liegen\n(registriert am Laptop, Mail am Handy): Den Code tippt man dort ein, wo man\nschon angemeldet ist. Er gehört zur Sitzung, nicht zum Gerät, auf dem die\nMail liegt — wer ein Konto auf eine fremde Adresse angelegt hat, sieht ihn\nnie. Gilt für die Erstbestätigung wie für einen Adresswechsel; derselbe\nToken, der Link aus derselben Mail ist danach verbraucht.",
+        "operationId": "verify_code_api_auth_verify_code_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Code",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/auth/verify-email": {
       "post": {
-        "description": "Confirm an email address from a valid verification token.\n\nDerselbe Endpunkt schließt BEIDES ab: die Erstbestätigung nach der\nRegistrierung und einen Adresswechsel. Was von beidem, sagt der Token\n(``new_email``) — nicht die URL und nicht der Kontostand.",
+        "description": "Confirm an email address from a valid verification token.\n\nDerselbe Endpunkt schließt BEIDES ab: die Erstbestätigung nach der\nRegistrierung und einen Adresswechsel. Was von beidem, sagt der Token\n(``new_email``) — nicht die URL und nicht der Kontostand.\n\n**Wer den Link öffnet, zählt** (Sicherheitsprüfung 10/2026, F1/F3):\n\n* **Angemeldet als ein anderes Konto:** abgelehnt, der Link bleibt gültig.\n  Sonst schickte jemand den Link SEINES Kontos herum, und die App wechselte\n  still dorthin — mit allem, was danach eingegeben wird.\n* **Erstbestätigung ohne Sitzung des Kontos:** abgelehnt, bitte erst\n  anmelden. Die Registrierung prüft nicht, wem die Adresse gehört: Wer\n  eine fremde Adresse einträgt, legt das Passwort fest und hält eine\n  Sitzung. Bestätigte die Besitzerin dieses Konto mit einem Klick, gehörte\n  es danach beiden. Mit dieser Regel bestätigt nur, wer das Passwort\n  kennt; die Besitzerin der Adresse geht über „Passwort vergessen“ — das\n  setzt ein neues Passwort, beendet jede ältere Sitzung und bestätigt die\n  Adresse mit (``reset_password``).\n* **Adresswechsel ohne Sitzung:** geht durch (der Wechsel wurde mit dem\n  Passwort angestoßen), aber ohne neues Token.\n\nEin Token für die App gibt es nur, wenn der Request schon die Sitzung\ngenau dieses Kontos trägt.",
         "operationId": "verify_email_api_auth_verify_email_post",
         "requestBody": {
           "content": {
@@ -31203,7 +31260,7 @@
     },
     "/api/council/deep-research/{job_id}/partial-report": {
       "post": {
-        "description": "Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht\nschreiben („Teilbericht zeigen\"). Zählt nicht gegen das Kontingent.",
+        "description": "Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht\nschreiben („Teilbericht zeigen\"). Zählt nicht gegen das Kontingent — es\nsei denn, beim Stopp waren schon alle Facetten fertig.",
         "operationId": "deep_research_teilbericht_api_council_deep_research__job_id__partial_report_post",
         "parameters": [
           {
@@ -32819,7 +32876,7 @@
     },
     "/api/districts/projects/{project_id}/report": {
       "post": {
-        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\nAb zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim\nKonto und geht mit dessen Löschung.",
+        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\nAb zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim\nKonto und geht mit dessen Löschung. Ein Konto, das sehr viele Vorhaben\nmeldet, zählt nicht mehr mit (``PROJECT_REPORTS_PER_ACCOUNT``).",
         "operationId": "report_project_api_districts_projects__project_id__report_post",
         "parameters": [
           {

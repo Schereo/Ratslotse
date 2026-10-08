@@ -24,6 +24,7 @@ import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
 import { Button, Card, CardListSkeleton, Input, Label, PasswordInput, Skeleton, Spinner, toast } from "@/components/ui";
+import { CodeEingabe } from "@/components/code-eingabe";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
@@ -316,9 +317,10 @@ function VerifyNotice({ email }: { email: string }) {
       </div>
       <h1 className="mt-4 text-xl font-bold text-foreground">Bitte bestätige deine E-Mail</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Wir haben einen Bestätigungslink an <span className="font-medium">{zieladresse}</span> geschickt.
-        Klick den Link, um fortzufahren. Schau auch im Spam-Ordner nach.
+        Wir haben dir einen Link und einen Code an <span className="font-medium">{zieladresse}</span> geschickt.
+        Klick den Link oder gib den Code hier ein. Schau auch im Spam-Ordner nach.
       </p>
+      <CodeEingabe onBestaetigt={refresh} className="mx-auto mt-5" />
       {/* Der Screen wartet sichtbar mit: Sobald der Link im anderen Tab (oder
           auf dem Handy) geklickt ist, springt es hier von selbst weiter — ohne
           diesen Hinweis sieht die Seite aus, als wäre sie zu Ende. */}

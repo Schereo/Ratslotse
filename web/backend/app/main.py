@@ -1,7 +1,9 @@
 """FastAPI application entry point."""
 from __future__ import annotations
 
+import html
 import logging
+import time
 import warnings
 from contextlib import asynccontextmanager
 
@@ -19,7 +21,7 @@ from .antworten import Health
 from .config import get_settings
 from .schemas import AppConfigOut, AppElectionOut
 from .routers import today, account, admin, auth, auth_apple, bookmarks, council, districts, feedback, kommunalwahl, news, onboarding, push, quiz, social, topics, badges, calendar, tippspiel, wahlabend
-from .session import SitzungsVerlaengerung
+from .session import KeinCacheMitSitzung, SitzungsVerlaengerung
 
 logger = logging.getLogger("ratslotse.web.main")
 
@@ -162,6 +164,9 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["127.0.0.1", "::1"])
 # Stille Sitzungsverlängerung: Wer die Seite benutzt, bleibt angemeldet.
 app.add_middleware(SitzungsVerlaengerung)
 
+# Persönliche Antworten landen in keinem Client-Zwischenspeicher.
+app.add_middleware(KeinCacheMitSitzung)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -211,6 +216,28 @@ if _medien:
     app.mount("/api/social-media", StaticFiles(directory=_pfad), name="social-media")
 
 
+#: Platzhalter-Route für Fehler, die vor jedem Router fielen.
+_OHNE_ROUTE = "(vor dem Routing)"
+
+#: Höchstens so viele Fehler-Mails je Stunde und Prozess. Neue Fehlerarten
+#: sind begrenzt (die Routen stehen im Code), aber eine Kaskade nach einem
+#: Deploy soll das Postfach und das gemeinsame Resend-Kontingent — an dem auch
+#: Bestätigungs- und Passwort-Mails hängen — nicht leerräumen. Gezählt wird
+#: trotzdem alles; das Panel zeigt jede Gruppe.
+_MAILS_JE_STUNDE = 10
+_mail_zeiten: list[float] = []
+
+
+def _meldung_erlaubt() -> bool:
+    jetzt = time.monotonic()
+    while _mail_zeiten and jetzt - _mail_zeiten[0] > 3600:
+        _mail_zeiten.pop(0)
+    if len(_mail_zeiten) >= _MAILS_JE_STUNDE:
+        return False
+    _mail_zeiten.append(jetzt)
+    return True
+
+
 @app.exception_handler(Exception)
 async def unbehandelter_fehler(request: Request, exc: Exception) -> JSONResponse:
     """Jeder 500er wird festgehalten — und beim ERSTEN Mal gemeldet.
@@ -247,7 +274,14 @@ async def unbehandelter_fehler(request: Request, exc: Exception) -> JSONResponse
         from kern.store import Store
 
         route = getattr(request.scope.get("route"), "path", None)
-        daten = fehlerhilfe.aufbereiten(exc, request.method, route, request.url.path)
+        # Ohne getroffene Route ist der Pfad das, was der Aufrufer geschickt hat
+        # — fremde Eingabe. Er gehört weder in die Mail noch in den
+        # Fingerabdruck: Sonst ergäbe jeder neue Pfad eine neue Gruppe und
+        # damit eine neue Mail, und ein Fehler VOR dem Routing (die
+        # Sitzungsverlängerung läuft vor jedem Router) ließe sich beliebig oft
+        # auslösen (Sicherheitsprüfung 10/2026, F2).
+        pfad = request.url.path if route else _OHNE_ROUTE
+        daten = fehlerhilfe.aufbereiten(exc, request.method, route or _OHNE_ROUTE, pfad)
 
         store = Store(settings.ratslotse_db)
         try:
@@ -255,12 +289,16 @@ async def unbehandelter_fehler(request: Request, exc: Exception) -> JSONResponse
         finally:
             store.close()
 
-        if neu:
+        if neu and _meldung_erlaubt():
             from kern.alerts import notify_admin
 
-            text = (f"<b>{daten['exc_type']}</b> bei "
-                    f"<code>{daten['method']} {daten['route']}</code>\n\n"
-                    f"{daten['message']}\n\n<code>{daten['trace']}</code>")
+            # Alles maskieren, was aus der Ausnahme kommt: Die Meldung einer
+            # Ausnahme trägt oft Eingabe weiter (ein Wert, der nicht passte),
+            # und `notify_admin` setzt den Text als HTML in die Mail.
+            esc = html.escape
+            text = (f"<b>{esc(daten['exc_type'])}</b> bei "
+                    f"<code>{esc(daten['method'])} {esc(daten['route'])}</code>\n\n"
+                    f"{esc(daten['message'])}\n\n<code>{esc(daten['trace'])}</code>")
             hintergrund = BackgroundTask(
                 notify_admin, text,
                 betreff="Ratslotse – neuer Fehler im Web",

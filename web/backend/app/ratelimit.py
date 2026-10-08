@@ -80,6 +80,10 @@ login_limiter = RateLimiter(max_calls=10, window_seconds=60)
 register_limiter = RateLimiter(max_calls=5, window_seconds=300)
 forgot_password_limiter = RateLimiter(max_calls=5, window_seconds=900)
 verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
+# Bestätigungscode eintippen: pro Konto. Die Sperre nach fünf Fehlversuchen je
+# Code sitzt im Store; das hier bremst zusätzlich das Durchprobieren über
+# viele frisch angeforderte Codes.
+verify_code_limiter = RateLimiter(max_calls=10, window_seconds=900)
 # Adresswechsel: angemeldet, verschickt aber zwei Mails je Aufruf — eine davon
 # an eine FREMDE, frei gewählte Adresse. Ohne Bremse wäre das ein Versandweg
 # für Belästigung auf unsere Kosten (Resend-Kontingent, unsere Absenderdomain).
@@ -87,6 +91,15 @@ verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
 # der Missbrauch hängt, und Mobilfunkanbieter bündeln viele Geräte hinter einer
 # Adresse. Fünf in einer Viertelstunde deckt jeden ehrlichen Tippfehler.
 change_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
+# Jede Prüfung des AKTUELLEN Passworts aus einer laufenden Sitzung heraus
+# (Passwort ändern, Adresse ändern, Konto löschen). Das Passwort ist die
+# Schwelle, die eine gestohlene Sitzung NICHT überspringen soll — ohne Bremse
+# war jeder dieser Endpunkte ein unbegrenztes Rate-Orakel dafür
+# (Sicherheitsprüfung 10/2026, F15). Pro Konto, aus demselben Grund wie oben.
+reauth_limiter = RateLimiter(max_calls=10, window_seconds=900)
+# „Gehört nicht hierher" in Mein Viertel: pro Konto. Eine Schleife über alle
+# Vorhaben-Nummern soll schon an der Tür hängen bleiben (F19).
+district_report_limiter = RateLimiter(max_calls=10, window_seconds=3600)
 # „Frag den Rat" ist der einzige Endpoint, der pro Aufruf LLM-Kosten erzeugt —
 # großzügig genug für echtes Nachfragen, aber kein offener Geldhahn.
 qa_limiter = RateLimiter(max_calls=10, window_seconds=600)

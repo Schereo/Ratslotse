@@ -1221,8 +1221,46 @@ export interface paths {
         /**
          * Reset Password
          * @description Set a new password from a valid reset token, then invalidate all sessions.
+         *
+         *     **Ein Reset-Link ist kein Login für Fremde** (Sicherheitsprüfung 10/2026,
+         *     F3). Wer gerade als ein ANDERES Konto angemeldet ist, bekommt eine
+         *     Ablehnung, und der Link bleibt gültig: Sonst schickte jemand seinen eigenen
+         *     Link herum, und die App wechselte still in sein Konto — wo er später alles
+         *     mitliest, was dort eingegeben wird.
+         *
+         *     **Und er bestätigt die Adresse.** Der Link kam über das Postfach, das ist
+         *     derselbe Beweis wie der Bestätigungslink. Ein Konto, das ein Fremder auf
+         *     diese Adresse angelegt hat, holt sich die Besitzerin damit zurück: neues
+         *     Passwort, alle älteren Sitzungen beendet, Konto aktiv (F1).
          */
         post: operations["reset_password_api_auth_reset_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/verify-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Code
+         * @description Die Adresse mit dem sechsstelligen Code aus der Mail bestätigen.
+         *
+         *     Für den Fall, dass Mail und Sitzung auf verschiedenen Geräten liegen
+         *     (registriert am Laptop, Mail am Handy): Den Code tippt man dort ein, wo man
+         *     schon angemeldet ist. Er gehört zur Sitzung, nicht zum Gerät, auf dem die
+         *     Mail liegt — wer ein Konto auf eine fremde Adresse angelegt hat, sieht ihn
+         *     nie. Gilt für die Erstbestätigung wie für einen Adresswechsel; derselbe
+         *     Token, der Link aus derselben Mail ist danach verbraucht.
+         */
+        post: operations["verify_code_api_auth_verify_code_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1245,6 +1283,25 @@ export interface paths {
          *     Derselbe Endpunkt schließt BEIDES ab: die Erstbestätigung nach der
          *     Registrierung und einen Adresswechsel. Was von beidem, sagt der Token
          *     (``new_email``) — nicht die URL und nicht der Kontostand.
+         *
+         *     **Wer den Link öffnet, zählt** (Sicherheitsprüfung 10/2026, F1/F3):
+         *
+         *     * **Angemeldet als ein anderes Konto:** abgelehnt, der Link bleibt gültig.
+         *       Sonst schickte jemand den Link SEINES Kontos herum, und die App wechselte
+         *       still dorthin — mit allem, was danach eingegeben wird.
+         *     * **Erstbestätigung ohne Sitzung des Kontos:** abgelehnt, bitte erst
+         *       anmelden. Die Registrierung prüft nicht, wem die Adresse gehört: Wer
+         *       eine fremde Adresse einträgt, legt das Passwort fest und hält eine
+         *       Sitzung. Bestätigte die Besitzerin dieses Konto mit einem Klick, gehörte
+         *       es danach beiden. Mit dieser Regel bestätigt nur, wer das Passwort
+         *       kennt; die Besitzerin der Adresse geht über „Passwort vergessen“ — das
+         *       setzt ein neues Passwort, beendet jede ältere Sitzung und bestätigt die
+         *       Adresse mit (``reset_password``).
+         *     * **Adresswechsel ohne Sitzung:** geht durch (der Wechsel wurde mit dem
+         *       Passwort angestoßen), aber ohne neues Token.
+         *
+         *     Ein Token für die App gibt es nur, wenn der Request schon die Sitzung
+         *     genau dieses Kontos trägt.
          */
         post: operations["verify_email_api_auth_verify_email_post"];
         delete?: never;
@@ -3275,7 +3332,8 @@ export interface paths {
         /**
          * Deep Research Teilbericht
          * @description Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
-         *     schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent.
+         *     schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent — es
+         *     sei denn, beim Stopp waren schon alle Facetten fertig.
          */
         post: operations["deep_research_teilbericht_api_council_deep_research__job_id__partial_report_post"];
         delete?: never;
@@ -4236,7 +4294,8 @@ export interface paths {
          * Report Project
          * @description „Gehört nicht hierher": Ein Konto meldet ein Vorhaben als falsch verortet.
          *     Ab zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim
-         *     Konto und geht mit dessen Löschung.
+         *     Konto und geht mit dessen Löschung. Ein Konto, das sehr viele Vorhaben
+         *     meldet, zählt nicht mehr mit (``PROJECT_REPORTS_PER_ACCOUNT``).
          */
         post: operations["report_project_api_districts_projects__project_id__report_post"];
         delete?: never;
@@ -16706,6 +16765,11 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerifyCodeRequest */
+        VerifyCodeRequest: {
+            /** Code */
+            code: string;
+        };
         /** VerifyEmailRequest */
         VerifyEmailRequest: {
             /** Token */
@@ -18560,6 +18624,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_code_api_auth_verify_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyCodeRequest"];
             };
         };
         responses: {
@@ -24781,4 +24878,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 58b4a7b0455e87b63361e4a2999c85989dc722afdef21375b87484828dc58861
+// vertrag-sha256: 19fa05119cae993218f09944f88253a56c3b2181a409c25089a7892111e0c36b

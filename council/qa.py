@@ -2378,6 +2378,8 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
         if not isinstance(e, dict) or e.get("party") not in gruppen:
             continue  # Halluzinations-Guard: nur Fraktionen aus dem Input
         kern = e.get("kernaussage") if isinstance(e.get("kernaussage"), dict) else None
+        if kern and not _kernaussage_belegt(kern, gruppen[e["party"]]):
+            kern = None  # erfundenes oder fremd zugeschriebenes Zitat: weglassen
         haltung = str(e.get("stance") or "").strip().lower()
         out.append({
             "party": e["party"],
@@ -2402,6 +2404,40 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             } for b in gruppen[e["party"]]],
         })
     return [e for e in out if e["position"]] or None
+
+
+def _inhaltswoerter(text: str) -> set[str]:
+    return {w for w in re.findall(r"\w+", (text or "").lower()) if len(w) >= 4}
+
+
+def _kernaussage_belegt(kern: dict, beitraege: list[dict]) -> bool:
+    """Stammt die „Kernaussage" wirklich aus einem Beitrag dieser Fraktion?
+
+    Der Baustein zeigt sie als Zitat mit Namen — also muss der Name zu einem
+    der Beiträge gehören und der Text überwiegend aus dessen Wörtern bestehen.
+    Wortgleich verlangen wir nicht (der Prompt sagt „dicht an der Vorlage"),
+    aber ein Satz, von dem nicht einmal die Hälfte der Inhaltswörter beim
+    Redner vorkommt, ist kein Zitat, sondern erfunden. Anlass: Die Frage der
+    Nutzerin steht im Prompt; ein Text darin, der dem Modell eine Aussage samt
+    Rednernamen vorschreibt, landete sonst als Zitat eines echten Ratsmitglieds
+    im geteilten Zwischenspeicher (Sicherheitsprüfung 10/2026, F16).
+    """
+    sprecher = str(kern.get("speaker") or "").strip().lower()
+
+    def passt(name: str) -> bool:
+        # „Ratsfrau Müller" gegen „Müller" und umgekehrt — Anrede und Titel
+        # schreibt das Modell mal dazu, mal nicht.
+        name = name.strip().lower()
+        return len(name) >= 3 and len(sprecher) >= 3 and (name in sprecher or sprecher in name)
+
+    eigene = [b for b in beitraege if passt(str(b.get("speaker") or ""))]
+    if not eigene:
+        return False
+    woerter = _inhaltswoerter(str(kern.get("text") or ""))
+    if not woerter:
+        return False
+    belegt = set().union(*(_inhaltswoerter(str(b.get("text") or "")) for b in eigene))
+    return len(woerter & belegt) / len(woerter) >= 0.5
 
 
 def _datum_de(iso: str | None) -> str:

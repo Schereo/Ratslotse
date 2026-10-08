@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from council import geo
@@ -27,6 +27,7 @@ from ..antworten import (
     DistrictProjectsOverview,
 )
 from ..deps import get_council_store, require_active
+from ..ratelimit import district_report_limiter
 
 router = APIRouter(prefix="/api/districts", tags=["districts"])
 
@@ -143,12 +144,15 @@ def district_projects(
 def report_project(
     project_id: int,
     body: ProjectReportIn,
+    request: Request,
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> DistrictProjectReportOut:
     """„Gehört nicht hierher": Ein Konto meldet ein Vorhaben als falsch verortet.
     Ab zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim
-    Konto und geht mit dessen Löschung."""
+    Konto und geht mit dessen Löschung. Ein Konto, das sehr viele Vorhaben
+    meldet, zählt nicht mehr mit (``PROJECT_REPORTS_PER_ACCOUNT``)."""
+    district_report_limiter.check(request, subject=user["id"])
     project = store.district_project_by_id(project_id)
     if not project:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Vorhaben nicht gefunden.")

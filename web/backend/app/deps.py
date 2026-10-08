@@ -89,15 +89,14 @@ def optional_user(request: Request, store: Store = Depends(get_store)) -> dict |
         user = get_current_user(request, store)
     except HTTPException:
         return None
-    if not ist_admin(user) and user.get("status") != "active":
+    if not ist_aktiv(user):
         return None
     return user
 
 
 def require_active(user: dict = Depends(get_current_user)) -> dict:
-    """Account must be active: email confirmed and not suspended by an admin
-    (admins are always active)."""
-    if not ist_admin(user) and user.get("status") != "active":
+    """Account must be active: email confirmed and not suspended by an admin."""
+    if not ist_aktiv(user):
         # Der Text hängt am STATUS, nicht mehr am Umkehrschluss über
         # `email_verified`: `disabled` sagt selbst, dass ein Admin
         # abgeschaltet hat. Ein Konto aus der Zeit vor dieser Trennung, das
@@ -162,6 +161,21 @@ def require_permission(permission: str) -> Callable[[dict], dict]:
     # gleich („pruefen"), und man sähe der Liste nicht an, WELCHES Recht hängt.
     pruefen.__name__ = f"require_permission_{permission}"
     return pruefen
+
+
+def ist_aktiv(user: dict) -> bool:
+    """Darf dieses Konto die angemeldete Fläche benutzen?
+
+    Ein Admin braucht keine bestätigte Adresse (``pending``) — so bleibt ein
+    per ``grant_admin.py`` eingesetzter Admin ohne Mailversand handlungsfähig.
+    Ein **gesperrtes** Konto (``disabled``) bleibt aber gesperrt, auch mit
+    Adminrolle: Bis 10/2026 nahm die Ausnahme jeden Status mit, „Sperren"
+    wirkte auf ein Admin-Konto also gar nicht — ein übernommenes Admin-Konto
+    entsperrte sich danach selbst und nahm dem anderen die Rechte (F9).
+    """
+    if user.get("status") == "active":
+        return True
+    return ist_admin(user) and user.get("status") != "disabled"
 
 
 def ist_admin(user: dict | None) -> bool:

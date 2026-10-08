@@ -74,7 +74,7 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          TodayBriefing, TrendData)
 from ..clients import client_kind
 from ..election import elected as elected_mod
-from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
+from ..deps import (get_cities_store, get_council_store, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
     assistant_event_limiter,
@@ -2040,7 +2040,7 @@ def cities_movement_feedback(
     id: int,
     verdict: str,
     note: str | None = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
     """„Stimmt" oder „stimmt nicht" zum Urteil über Oldenburg JE IDEE.
@@ -2067,7 +2067,7 @@ def cities_idea_feedback(
     paper_id: str,
     verdict: str,
     note: str | None = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
     """„Stimmt" oder „stimmt nicht" zu einem Urteil — ein Klick an der Karte.
@@ -3026,9 +3026,17 @@ def partei_meinungen_endpoint(
         # ohne LLM-Call; ein neuer Beitrag ändert den Hash → Nachverdichtung.
         # „v3": seit dem Beschluss-Anker — die alten Einträge kennen nur den
         # Vektor-Kanal und sollen nicht 14 Tage weiterleben.
+        #
+        # „v4" (10/2026): Die Frage gehört mit in den Schlüssel, normalisiert.
+        # Sie steht im Prompt, und der Zwischenspeicher wird mit anderen
+        # geteilt — ohne sie im Schlüssel bekam jede spätere Nutzerin mit
+        # derselben Beitragsmenge die Antwort auf eine Frage, die ein anderer
+        # gestellt (und mit Anweisungen gespickt) hatte. Wortgleiche Fragen,
+        # allen voran die Vorschlags-Chips, treffen weiter (F16).
         alle_ids = sorted({wid for wid, _ in hits} | {r["id"] for r in anker})
-        key = "v3:" + hashlib.sha1(  # Cache-Schlüssel, keine Sicherheitsfunktion
-            ",".join(str(wid) for wid in alle_ids).encode(),
+        frage_norm = " ".join(re.findall(r"\w+", body.question.lower()))
+        key = "v4:" + hashlib.sha1(  # Cache-Schlüssel, keine Sicherheitsfunktion
+            (",".join(str(wid) for wid in alle_ids) + "|" + frage_norm).encode(),
             usedforsecurity=False).hexdigest()
         meinungen = store.partei_meinungen_cache_get(key) if alle_ids else None
         if meinungen is None and alle_ids:
@@ -3117,18 +3125,32 @@ def _stadt_link(v: str | None) -> str | None:
     gespeichert: Unter ratslotse.de ließ sich so ein Link auf eine beliebige
     Seite oder eine ``javascript:``-URL verbreiten. Echte Werte kommen nur von
     ``www.oldenburg.de`` (Presse) und ``buergerinfo.oldenburg.de`` (Anlagen).
+
+    Python und Browser lesen eine URL nicht gleich: ``urlsplit`` hält ``\\``
+    für ein gewöhnliches Zeichen, ein Browser für ``/``. Aus
+    ``https://evil.example\\.oldenburg.de/`` las die Prüfung den Host
+    ``evil.example\\.oldenburg.de`` (passt), der Browser ging zu
+    ``evil.example`` (F7/F23). Deshalb fliegt alles raus, worüber die beiden
+    sich uneinig sein können — Backslash, Leer- und Steuerzeichen, Zugangsdaten
+    (``@``), ein eigener Port —, und gespeichert wird die neu zusammengesetzte
+    Fassung, nicht die Eingabe.
     """
     if not v:
         return None
-    from urllib.parse import urlsplit
+    from urllib.parse import urlsplit, urlunsplit
+    roh = v.strip()
+    if any(z in roh for z in "\\@") or any(z.isspace() or ord(z) < 32 or ord(z) == 127 for z in roh):
+        return None
     try:
-        teile = urlsplit(v.strip())
+        teile = urlsplit(roh)
+        port = teile.port
     except ValueError:
         return None
     host = (teile.hostname or "").lower()
-    if teile.scheme != "https" or not (host == "oldenburg.de" or host.endswith(".oldenburg.de")):
+    if (teile.scheme != "https" or port is not None or teile.username or teile.password
+            or not (host == "oldenburg.de" or host.endswith(".oldenburg.de"))):
         return None
-    return v.strip()
+    return urlunsplit(("https", host, teile.path, teile.query, teile.fragment))
 
 
 class QaSharePress(BaseModel):
@@ -3226,7 +3248,16 @@ def _share_text_is_objectionable(text: str) -> bool:
     folded = re.sub(r"\s+", " ", folded)
     if any(phrase in folded for phrase in _SHARE_BLOCKED_PHRASES):
         return True
-    return bool(re.search(r"(?:https?://|javascript:|data:text/|<\s*script\b)", folded))
+    if re.search(r"(?:https?://|javascript:|data:text/|<\s*script\b)", folded):
+        return True
+    # Ein Link muss nicht `https://` heißen, um einer zu sein: Markdown macht
+    # aus `[Text](tel:…)`, `[Text](https\://…)` oder `[Text](https&#58;//…)`
+    # genauso einen antippbaren Verweis, und die App rendert die Antwort als
+    # Markdown (Sicherheitsprüfung 10/2026, F4). Eine Antwort von Ratslotse
+    # trägt keine eigenen Links — ihre Quellen kommen strukturiert. `](` ohne
+    # Leerzeichen, weil Markdown nur das als Link liest; ein Beleg wie
+    # „[123] (2024)" bleibt erlaubt.
+    return bool(re.search(r"\]\(|<[a-z][a-z0-9+.-]*:|:\s*//|\\:|&#0*58;|&colon;", folded))
 
 
 def _grafik_pruefen(g: dict | None) -> dict | None:
@@ -3242,7 +3273,14 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
     try:
         series = [{"year": int(p["year"]), "value": float(p["value"])}
                  for p in (g.get("series") or [])[:60]]
-    except (KeyError, TypeError, ValueError):
+        nachkomma = max(0, min(int(g.get("nachkomma") or 0), 3))
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+    # Ein Haushaltsjahr, keine beliebige Zahl: Die iOS-App wandelt `year` in
+    # einen `Int` und stürzt ab, wenn der Wert nicht hineinpasst — ein
+    # geteilter Link mit `year: 2^63` legte sie bei jedem Öffnen lahm (F10/F24).
+    # Und keine Unendlichkeiten als Wert, die kein Diagramm zeichnen kann.
+    if any(not (1900 <= p["year"] <= 2200) or not math.isfinite(p["value"]) for p in series):
         return None
     if len(series) < 2:
         return None
@@ -3258,7 +3296,7 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
     return {"kind": str(g.get("kind") or "")[:30],
             "title": str(g.get("title") or "")[:120],
             "unit": str(g.get("unit") or "")[:20],
-            "nachkomma": max(0, min(int(g.get("nachkomma") or 0), 3)),
+            "nachkomma": nachkomma,
             "series": series,
             "note": (str(g["note"])[:500] if g.get("note") else None),
             "source": (str(g["source"])[:200] if g.get("source") else None),
@@ -3398,16 +3436,39 @@ def deep_research_start(body: DeepResearchBody, request: Request,
     IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
     was ein Fenster-Zähler nicht abbilden kann). Admins können das Limit je
     Konto erhöhen oder ausschalten (web_users.deep_limit)."""
+    _deep_kontingent_pruefen(ratslotse, user)
+    # Den Platz belegen, BEVOR irgendetwas Langsames passiert, und erst
+    # freigeben, wenn der Job registriert ist — dazwischen liegt die Analyse
+    # der Frage, ein Modell-Aufruf. Danach das Kontingent noch einmal: Ein
+    # paralleler Start desselben Kontos kann es in genau dieser Spanne
+    # verbraucht haben (F5).
+    _deep_platz_belegen(user)
+    try:
+        _deep_kontingent_pruefen(ratslotse, user)
+        return _deep_research_anlegen(body, request, user, store, ratslotse)
+    finally:
+        deepresearch.platz_freigeben(user["id"])
+
+
+def _deep_kontingent_pruefen(ratslotse: Store, user: dict) -> None:
     limit = _deep_limit(user)
     if limit is not None and ratslotse.deep_jobs_heute(user["id"]) >= limit:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
                             "Deine Recherchen für heute sind aufgebraucht — ab morgen geht es weiter.")
-    if deepresearch.laufende_jobs(user["id"]) >= 1:
+
+
+def _deep_platz_belegen(user: dict) -> None:
+    grund = deepresearch.platz_reservieren(user["id"])
+    if grund == "konto":
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Es läuft bereits eine Recherche — warte kurz, bis sie fertig ist.")
-    if deepresearch.laufende_jobs() >= deepresearch.MAX_PARALLEL:
+    if grund == "voll":
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
+
+
+def _deep_research_anlegen(body: DeepResearchBody, request: Request, user: dict,
+                           store: CouncilStore, ratslotse: Store) -> ResearchStarted:
     question = body.question.strip()
     # Derselbe Riegel wie bei der schnellen Frage — hier wiegt er schwerer:
     # Ein Job auf eine gegenstandslose Frage zerlegt sie in Facetten, sucht zu
@@ -3538,7 +3599,8 @@ def deep_research_stop(job_id: str, user: dict = Depends(require_active),
 def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
                               ratslotse: Store = Depends(get_store)) -> Ok:
     """Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
-    schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent."""
+    schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent — es
+    sei denn, beim Stopp waren schon alle Facetten fertig."""
     row = ratslotse.deep_job_get(job_id, user["id"])
     if not row:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
@@ -3549,11 +3611,21 @@ def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
     if not (job.material and job.material.get("candidates")):
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Kein Material gesichert — bitte neu recherchieren.")
-    # Status VOR dem Thread-Start zurück auf laeuft — andersherum könnte der
-    # (schnelle) Thread sein „teilbericht" schreiben und würde überschrieben.
-    ratslotse.deep_job_update(job_id, "laeuft")
-    settings = get_settings()
-    deepresearch.teilbericht_starten(job, settings.ratslotse_db, settings.council_db)
+    # War das Material schon vollständig, ist das kein Teil-, sondern der
+    # ganze Bericht — er zählt (s. `deepresearch.material_vollstaendig`).
+    # Und auch ein echter Teilbericht ist ein Bericht-Lauf: dieselben Deckel
+    # für „eine je Konto" und global wie beim Start (F17).
+    if deepresearch.material_vollstaendig(job):
+        _deep_kontingent_pruefen(ratslotse, user)
+    _deep_platz_belegen(user)
+    try:
+        # Status VOR dem Thread-Start zurück auf laeuft — andersherum könnte der
+        # (schnelle) Thread sein „teilbericht" schreiben und würde überschrieben.
+        ratslotse.deep_job_update(job_id, "laeuft")
+        settings = get_settings()
+        deepresearch.teilbericht_starten(job, settings.ratslotse_db, settings.council_db)
+    finally:
+        deepresearch.platz_freigeben(user["id"])
     return {"ok": True}
 
 

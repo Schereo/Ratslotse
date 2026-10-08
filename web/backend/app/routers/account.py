@@ -19,11 +19,12 @@ from council.store import CouncilStore
 from ..config import get_settings
 from ..antworten import NotifySettings, Ok, TestDelivery
 from ..deps import get_council_store, get_current_user, get_store, ist_admin, require_active
-from ..ratelimit import change_email_limiter
+from ..ratelimit import change_email_limiter, reauth_limiter
 from ..schemas import (NAME_FEHLT, ChangeEmailRequest, ChangePasswordRequest,
                        DeleteAccountRequest, DeliveryUpdate, NotifyPrefsIn, UserOut)
 from ..security import hash_password, verify_password
-from .auth import (_VERIFY_TTL_HOURS, _app_access_token, _send_email_change_link,
+from .auth import (_VERIFY_TTL_HOURS, _app_access_token, _code_hash, _neuer_code,
+                   _send_email_change_link,
                    _send_email_change_notice, _set_auth_cookie, _to_out)
 
 logger = logging.getLogger("ratslotse.web.account")
@@ -79,7 +80,8 @@ def _frisch(store: Store, user_id: int) -> dict:
     return konto
 
 
-def _reauth(user: dict, current_password: str, apple_identity_token: str) -> None:
+def _reauth(request: Request, user: dict, current_password: str,
+            apple_identity_token: str) -> None:
     """Frische Bestätigung der Identität — oder ``HTTPException``.
 
     Der gemeinsame Kern von „Konto löschen" und „Adresse ändern": Beides sind
@@ -91,6 +93,7 @@ def _reauth(user: dict, current_password: str, apple_identity_token: str) -> Non
     Der Widerruf der Apple-Autorisierung gehört NICHT hierher — er ist nur beim
     Löschen richtig, und ein Adresswechsel würde damit die Anmeldung kappen.
     """
+    reauth_limiter.check(request, subject=user["id"])
     if apple_identity_token and user.get("apple_sub"):
         from .auth_apple import verify_apple_identity_token
         claims = verify_apple_identity_token(apple_identity_token)
@@ -207,6 +210,7 @@ def change_password(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
 ) -> UserOut:
+    reauth_limiter.check(request, subject=user["id"])
     if not verify_password(body.current_password, user["password_hash"]):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Aktuelles Passwort ist falsch.")
     store.update_password_hash(user["id"], hash_password(body.new_password))
@@ -246,12 +250,13 @@ def change_email(
     # über `email_verified`. Geprüft wird gegen „nicht aktiv und nicht
     # unbestätigt": Ein Konto, das die Migration auf `disabled` verfehlt hat,
     # bleibt damit ebenfalls draußen.
-    if not ist_admin(user) and user.get("status") not in ("active", "pending"):
+    if user.get("status") == "disabled" or (
+            not ist_admin(user) and user.get("status") not in ("active", "pending")):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Dein Konto ist derzeit deaktiviert.")
     if not ist_admin(user) and user.get("status") == "pending" and user.get("email_verified"):
         # Alt-Bestand vor der Trennung: bestätigt UND pending hieß abgeschaltet.
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Dein Konto ist derzeit deaktiviert.")
-    _reauth(user, body.current_password, body.apple_identity_token)
+    _reauth(request, user, body.current_password, body.apple_identity_token)
 
     neu = str(body.new_email).lower().strip()
     alt = str(user.get("email", ""))
@@ -293,8 +298,11 @@ def change_email(
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
-    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=neu)
-    background.add_task(_send_email_change_link, neu, raw, user.get("display_name"))
+    code = _neuer_code()
+    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=neu,
+                                    code_hash=_code_hash(int(user["id"]), code))
+    background.add_task(_send_email_change_link, neu, raw, user.get("display_name"),
+                        int(user["id"]), code)
     if alt and not alt.endswith("@local"):
         background.add_task(_send_email_change_notice, alt, neu, user.get("display_name"),
                             int(user["id"]))
@@ -344,6 +352,7 @@ def test_notification(
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 def delete_account(
+    request: Request,
     body: DeleteAccountRequest,
     response: Response,
     background: BackgroundTasks,
@@ -361,7 +370,7 @@ def delete_account(
     Fremdschlüssel, und in ``council.sqlite`` steht mit
     ``committee_notifications``/``session_followups_sent``, welche Sitzungen
     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss."""
-    _reauth(user, body.current_password, body.apple_identity_token)
+    _reauth(request, user, body.current_password, body.apple_identity_token)
     # Nur beim Löschen: Apple die Autorisierung zurückgeben. Steht bewusst
     # außerhalb von `_reauth` — beim Adresswechsel würde derselbe Aufruf die
     # Anmeldung des Kontos kappen, das gerade weiterlaufen soll.

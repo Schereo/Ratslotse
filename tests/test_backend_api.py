@@ -409,7 +409,11 @@ def test_configured_admin_not_re_promoted_when_an_admin_exists(client):
     store.create_email_verification(admin_id, hashlib.sha256(raw.encode()).hexdigest(), exp)
     store.close()
 
-    r = TestClient(app).post("/api/auth/verify-email", json={"token": raw})
+    # Die Erstbestätigung gilt nur aus der Sitzung des Kontos selbst.
+    eigene = TestClient(app)
+    assert eigene.post("/api/auth/login", json={"email": "admin@test.de",
+                                                "password": "password123"}).status_code == 200
+    r = eigene.post("/api/auth/verify-email", json={"token": raw})
     assert r.status_code == 200
     assert r.json()["role"] == "user"
 
@@ -2948,24 +2952,217 @@ def test_push_register_validates_platform(client):
                        json={"token": "x", "platform": "windows"}).status_code == 422
 
 
-def test_app_verify_email_returns_bearer_token(client):
-    """Verification opened via the app deep link should land logged-in: an
-    `X-Client: app` verify-email gets a bearer token in the body."""
-    _register(client)  # admin (active)
+def _unbestaetigt_mit_link(email: str, raw: str, new_email: str | None = None) -> int:
+    """Ein registriertes Konto auf „unbestätigt" setzen und ihm einen Link geben."""
     store = Store(RATSLOTSE_DB)
-    uid = store.get_web_user_by_email("admin@test.de")["id"]
-    raw = "app-verify-token"
+    uid = int(store.get_web_user_by_email(email)["id"])
+    if new_email is None:
+        store.set_email_verified(uid, False)
     exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
-    store.create_email_verification(uid, hashlib.sha256(raw.encode()).hexdigest(), exp)
+    store.create_email_verification(uid, hashlib.sha256(raw.encode()).hexdigest(), exp,
+                                    new_email=new_email)
     store.close()
+    return uid
 
-    r = TestClient(app).post("/api/auth/verify-email", json={"token": raw},
+
+def _app_token(email: str) -> str:
+    r = TestClient(app).post("/api/auth/login", json={"email": email, "password": "password123"},
                              headers={"X-Client": "app"})
     assert r.status_code == 200
-    token = r.json()["access_token"]
-    assert isinstance(token, str) and token
-    me = TestClient(app).get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    return r.json()["access_token"]
+
+
+def test_app_verify_email_returns_bearer_token(client):
+    """Verification opened in the app's OWN session gets a fresh bearer token."""
+    _register(client)  # admin (active)
+    _unbestaetigt_mit_link("admin@test.de", "app-verify-token")
+    token = _app_token("admin@test.de")
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "app-verify-token"},
+                             headers={"X-Client": "app", "Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    neu = r.json()["access_token"]
+    assert isinstance(neu, str) and neu
+    me = TestClient(app).get("/api/auth/me", headers={"Authorization": f"Bearer {neu}"})
     assert me.status_code == 200 and me.json()["email_verified"] is True
+
+
+def test_verify_link_ohne_sitzung_meldet_niemanden_an(client):
+    """Die Erstbestätigung braucht die Sitzung des Kontos (F1): Wer eine fremde
+    Adresse registriert, hält Passwort und Sitzung — ein Klick der echten
+    Besitzerin dürfte das Konto nicht an beide verteilen. Ohne Sitzung: 401,
+    und der Link bleibt gültig, damit er nach dem Anmelden greift."""
+    _register(client, email="zweite@test.de")
+    _unbestaetigt_mit_link("zweite@test.de", "ohne-sitzung")
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "ohne-sitzung"},
+                             headers={"X-Client": "app"})
+    assert r.status_code == 401
+    assert "melde dich an" in r.json()["detail"]
+
+    # Nicht verbraucht: aus der eigenen Sitzung greift derselbe Link.
+    token = _app_token("zweite@test.de")
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "ohne-sitzung"},
+                             headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200 and r.json()["email_verified"] is True
+
+
+def test_verify_link_eines_anderen_kontos_wechselt_nicht(client):
+    """Login-CSRF (F3): Den Link SEINES Kontos an jemanden schicken, dessen App
+    angemeldet ist — die App darf nicht still in das fremde Konto wechseln."""
+    _register(client, email="angreifer@test.de")
+    _register(client, email="opfer@test.de")
+    _unbestaetigt_mit_link("angreifer@test.de", "fremder-link")
+    opfer = _app_token("opfer@test.de")
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "fremder-link"},
+                             headers={"X-Client": "app", "Authorization": f"Bearer {opfer}"})
+    assert r.status_code == 409
+    # Der Link ist nicht verbraucht und das Angreifer-Konto unverändert.
+    store = Store(RATSLOTSE_DB)
+    try:
+        assert not store.get_web_user_by_email("angreifer@test.de")["email_verified"]
+    finally:
+        store.close()
+
+
+def test_adresswechsel_ohne_sitzung_ohne_token(client):
+    """Ein Wechsel-Link greift auch ohne Sitzung (das Passwort war beim
+    Anstoßen nötig) — aber er legt kein Token bei."""
+    _register(client, email="wechsel@test.de")
+    _unbestaetigt_mit_link("wechsel@test.de", "wechsel-link", new_email="neu@test.de")
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "wechsel-link"},
+                             headers={"X-Client": "app"})
+    assert r.status_code == 200
+    assert r.json()["email"] == "neu@test.de" and r.json()["access_token"] is None
+
+
+def _code_fuer(email: str, code: str, new_email: str | None = None) -> int:
+    from app.routers.auth import _code_hash
+    store = Store(RATSLOTSE_DB)
+    uid = int(store.get_web_user_by_email(email)["id"])
+    if new_email is None:
+        store.set_email_verified(uid, False)
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_email_verification(uid, hashlib.sha256(b"link-" + code.encode()).hexdigest(),
+                                    exp, new_email=new_email, code_hash=_code_hash(uid, code))
+    store.close()
+    return uid
+
+
+def test_bestaetigungscode_aus_der_eigenen_sitzung(client):
+    """Registriert am Laptop, Mail am Handy: Der Code wird dort eingetippt,
+    wo man angemeldet ist — kein Wechsel des Geräts, keine neue Anmeldung."""
+    _register(client, email="code@test.de")
+    _code_fuer("code@test.de", "123456")
+    token = _app_token("code@test.de")
+    kopf = {"X-Client": "app", "Authorization": f"Bearer {token}"}
+
+    r = TestClient(app).post("/api/auth/verify-code", json={"code": "123 456"}, headers=kopf)
+    assert r.status_code == 200
+    assert r.json()["email_verified"] is True and r.json()["access_token"]
+    # Der Link aus derselben Mail ist damit verbraucht.
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "link-123456"}, headers=kopf)
+    assert r.status_code == 400
+
+
+def test_bestaetigungscode_braucht_eine_sitzung(client):
+    _register(client, email="ohne@test.de")
+    _code_fuer("ohne@test.de", "123456")
+    assert TestClient(app).post("/api/auth/verify-code",
+                                json={"code": "123456"}).status_code == 401
+
+
+def test_bestaetigungscode_sperrt_nach_fuenf_fehlversuchen(client):
+    """Sechs Ziffern ließen sich sonst durchprobieren."""
+    _register(client, email="raten@test.de")
+    _code_fuer("raten@test.de", "123456")
+    kopf = {"Authorization": f"Bearer {_app_token('raten@test.de')}"}
+    c = TestClient(app)
+    for versuch in range(4):
+        assert c.post("/api/auth/verify-code", json={"code": f"00000{versuch}"},
+                      headers=kopf).status_code == 400
+    assert c.post("/api/auth/verify-code", json={"code": "000009"},
+                  headers=kopf).status_code == 429
+    # Auch der richtige hilft jetzt nicht mehr.
+    assert c.post("/api/auth/verify-code", json={"code": "123456"},
+                  headers=kopf).status_code == 429
+
+
+def test_bestaetigungscode_gilt_nur_fuer_das_eigene_konto(client):
+    """Ein Code ist an sein Konto gebunden — der Code des Angreifer-Kontos
+    bestätigt im Konto des Opfers nichts."""
+    _register(client, email="eins@test.de")
+    _register(client, email="zwei@test.de")
+    _code_fuer("eins@test.de", "111111")
+    _code_fuer("zwei@test.de", "222222")
+    kopf = {"Authorization": f"Bearer {_app_token('zwei@test.de')}"}
+    assert TestClient(app).post("/api/auth/verify-code", json={"code": "111111"},
+                                headers=kopf).status_code == 400
+
+
+def test_bestaetigungscode_schliesst_einen_adresswechsel_ab(client):
+    _register(client, email="umzug@test.de")
+    _code_fuer("umzug@test.de", "654321", new_email="umgezogen@test.de")
+    kopf = {"Authorization": f"Bearer {_app_token('umzug@test.de')}"}
+    r = TestClient(app).post("/api/auth/verify-code", json={"code": "654321"}, headers=kopf)
+    assert r.status_code == 200 and r.json()["email"] == "umgezogen@test.de"
+
+
+def test_bestaetigungsmail_traegt_den_code(client, monkeypatch):
+    from app.routers import auth as auth_mod
+    gesendet = {}
+    monkeypatch.setattr(auth_mod, "send_email",
+                        lambda an, betreff, html, **k: gesendet.update(html=html, text=k.get("text")))
+    monkeypatch.setattr(auth_mod, "protokolliere", lambda *a, **k: None)
+    monkeypatch.setattr(auth_mod, "get_settings", lambda: type("S", (), {
+        "resend_api_key": "x", "app_base_url": "https://ratslotse.example", "email_from": "x"})())
+    auth_mod._send_verification_email("a@example.org", "tok", "Anna", 1, "123456")
+    assert "123 456" in gesendet["html"] and "123456" in gesendet["text"]
+
+
+def test_reset_link_eines_anderen_kontos_wird_abgelehnt(client):
+    """Derselbe Riegel am Reset-Link: keine stille Übernahme einer Sitzung."""
+    _register(client, email="angreifer2@test.de")
+    _register(client, email="opfer2@test.de")
+    store = Store(RATSLOTSE_DB)
+    uid = int(store.get_web_user_by_email("angreifer2@test.de")["id"])
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_password_reset(uid, hashlib.sha256(b"reset-fremd").hexdigest(), exp)
+    store.close()
+    opfer = _app_token("opfer2@test.de")
+
+    r = TestClient(app).post("/api/auth/reset-password",
+                             json={"token": "reset-fremd", "new_password": "neuespasswort1"},
+                             headers={"X-Client": "app", "Authorization": f"Bearer {opfer}"})
+    assert r.status_code == 409
+    # Ohne fremde Sitzung greift er.
+    r = TestClient(app).post("/api/auth/reset-password",
+                             json={"token": "reset-fremd", "new_password": "neuespasswort1"})
+    assert r.status_code == 200
+
+
+def test_reset_bestaetigt_eine_vorab_registrierte_adresse(client):
+    """Wer eine fremde Adresse registriert hat, verliert das Konto, sobald die
+    Besitzerin „Passwort vergessen" benutzt (F1): neues Passwort, alte Sitzung
+    weg, Adresse bestätigt."""
+    angreifer = TestClient(app)
+    _register(angreifer, email="vorab@test.de")
+    store = Store(RATSLOTSE_DB)
+    uid = int(store.get_web_user_by_email("vorab@test.de")["id"])
+    store.set_email_verified(uid, False)
+    store.set_web_user_status(uid, "pending")
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_password_reset(uid, hashlib.sha256(b"reset-vorab").hexdigest(), exp)
+    store.close()
+    assert angreifer.get("/api/auth/me").status_code == 200
+
+    r = TestClient(app).post("/api/auth/reset-password",
+                             json={"token": "reset-vorab", "new_password": "neuespasswort1"})
+    assert r.status_code == 200
+    assert r.json()["email_verified"] is True and r.json()["status"] == "active"
+    assert angreifer.get("/api/auth/me").status_code == 401
 
 
 def test_cors_preflight_allows_app_webview_origin():
@@ -3565,8 +3762,15 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
     # Cache-Hit: gleiche Treffer-IDs wie Fall 1 → Ergebnis kommt ohne LLM
     # (partei_meinungen ist noch der kaputt-Mock — er darf nicht laufen).
     zaehler["n"] = 0
-    r = client.post("/api/council/party-meinungen", json={"question": "Anders formuliert?"})
+    r = client.post("/api/council/party-meinungen", json={"question": "stadionneubau"})
     assert r.status_code == 200 and r.json()["parties"] == meinung
+
+    # Eine ANDERE Frage zur selben Beitragsmenge trifft den Zwischenspeicher
+    # nicht: Die Frage steht im Prompt, und ein Ergebnis, das ein anderer mit
+    # seiner Frage erzeugt hat, darf nicht bei allen landen (F16).
+    zaehler["n"] = 0
+    r = client.post("/api/council/party-meinungen", json={"question": "Anders formuliert?"})
+    assert r.status_code == 200 and r.json()["parties"] == []
 
 
 def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):

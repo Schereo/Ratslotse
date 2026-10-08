@@ -38,8 +38,18 @@ public enum JSONValue: Codable, Sendable, Hashable {
         if case .string(let value) = self { value } else { nil }
     }
 
+    /// Die Zahl als `Int` — oder `nil`, wenn sie nicht hineinpasst.
+    ///
+    /// `Int(Double)` bricht das Programm ab, wenn der Wert unendlich, `NaN`
+    /// oder größer als `Int.max` ist. Werte hier kommen auch aus geteilten
+    /// Antworten, die ein Fremder anlegen kann: Ein Diagramm-Jahr `2^63` legte
+    /// die App bei jedem Öffnen des Links lahm (Sicherheitsprüfung 10/2026).
+    /// Die Grenze liegt knapp unter 2^63, weil `Double(Int.max)` schon 2^63
+    /// ist und damit selbst nicht mehr passt.
     public var int: Int? {
-        if case .number(let value) = self { Int(value) } else { nil }
+        guard case .number(let value) = self, value.isFinite,
+              value > -9.2e18, value < 9.2e18 else { return nil }
+        return Int(value)
     }
 
     public var bool: Bool? {

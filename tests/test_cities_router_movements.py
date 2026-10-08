@@ -157,7 +157,7 @@ def test_die_uebersicht_zaehlt_bewegungen(client):
 
 def test_rueckmeldung_zum_urteil_je_idee(client, cities_db):
     from web.backend.app.deps import get_current_user
-    app.dependency_overrides[get_current_user] = lambda: {"id": 7}
+    app.dependency_overrides[get_current_user] = lambda: {"id": 7, "status": "active"}
     try:
         r = client.post("/api/council/cities/movements/feedback?id=1&verdict=wrong")
         assert r.status_code == 200 and r.json() == {"paper_id": "1:1", "verdict": "wrong"}

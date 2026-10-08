@@ -155,7 +155,13 @@ def _verified_payload(token: str) -> dict | None:
     except ValueError:
         return None
     expected = _sign(f"{header_b64}.{payload_b64}".encode(), get_settings().web_jwt_secret)
-    if not hmac.compare_digest(expected, signature):
+    # Bytes vergleichen, nicht Zeichenketten: `compare_digest` wirft auf einen
+    # str mit Nicht-ASCII-Zeichen einen TypeError, statt False zu sagen — und
+    # ein Cookie wie `"a.b.\351"` liefert genau so ein Zeichen. Der Fehler fiel
+    # in der Sitzungsverlängerung, VOR jedem Router, und landete als 500er samt
+    # Admin-Mail im Fehlersammler (Sicherheitsprüfung 10/2026, F2).
+    if not hmac.compare_digest(expected.encode(),
+                               signature.encode("utf-8", "surrogatepass")):
         return None
     try:
         return json.loads(_b64url_decode(payload_b64))

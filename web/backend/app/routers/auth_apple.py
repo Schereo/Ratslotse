@@ -35,7 +35,7 @@ from ..deps import get_store
 from ..ratelimit import login_limiter
 from ..schemas import UserOut
 from ..security import decode_rs256_token, hash_password
-from .auth import _app_access_token, _set_auth_cookie, _to_out
+from .auth import _app_access_token, _promote_configured_admin, _set_auth_cookie, _to_out
 
 logger = logging.getLogger("ratslotse.web.auth_apple")
 
@@ -197,7 +197,6 @@ def apple_login(
     store: Store = Depends(get_store),
 ) -> UserOut:
     login_limiter.check(request)
-    settings = get_settings()
     claims = verify_apple_identity_token(body.identity_token)
     sub = str(claims["sub"])
     # Nur die E-Mail aus dem signierten Token zählt — eine Client-Angabe wäre
@@ -233,9 +232,9 @@ def apple_login(
                 # alle Sitzungen beenden und die Push-Geräte des Vorbesitzers
                 # abmelden.
                 store.update_password_hash(existing["id"], hash_password(secrets.token_urlsafe(32)))
+                # Beendet auch die Push-Geräte, offene Reset-Links und die
+                # Kalender-Adresse des Vorbesitzers (s. Store).
                 store.increment_token_version(existing["id"])
-                for geraet in store.get_push_tokens_for_owner(existing["id"]):
-                    store.remove_push_token(geraet["token"])
             store.link_apple_sub(existing["id"], sub,
                                  password_set=False if war_unbestaetigt else None)
             if war_unbestaetigt:
@@ -257,15 +256,15 @@ def apple_login(
         # Neues Konto: Apple bestätigt die Adresse → sofort aktiv; Platzhalter-
         # Passwort (nicht anmeldbar), bis über den Reset-Weg eines gesetzt wird.
         # Apple hat die Adresse bestätigt, deshalb darf die konfigurierte
-        # Admin-Adresse hier sofort Admin werden — anders als bei der
-        # Registrierung, wo die Adresse unbewiesen behauptet ist. Der
-        # „erste:r Nutzer*in wird Admin"-Notnagel entfällt: er verschenkte
-        # Admin an eine beliebige Person und hätte den Schutz in
-        # _promote_configured_admin ausgehebelt.
-        is_admin = bool(settings.web_admin_email) and email == settings.web_admin_email.lower()
+        # Admin-Adresse hier Admin werden — aber über dieselbe eine
+        # Entscheidungsstelle wie nach der Mail-Bestätigung
+        # (`_promote_configured_admin`), also nur, solange es noch gar keinen
+        # Admin gibt. Bis 10/2026 stand hier eine eigene Abkürzung ohne diese
+        # Bedingung: Ein bewusst herabgestuftes Admin-Konto löschte sich und
+        # meldete sich mit Apple neu an — und war wieder Admin (F13).
         user_id = store.create_web_user(
             email, hash_password(secrets.token_urlsafe(32)),
-            "admin" if is_admin else "user", "active", email_verified=True,
+            "user", "active", email_verified=True,
             signup_client=client_kind(request),
         )
         # Wie bei der Registrierung mit Passwort: Im Browser fragt der
@@ -275,7 +274,7 @@ def apple_login(
         store.link_apple_sub(user_id, sub, password_set=False)
         if apple_name:
             store.set_display_name(user_id, apple_name)
-        user = store.get_web_user_by_id(user_id)
+        user = _promote_configured_admin(store, store.get_web_user_by_id(user_id))
         logger.info("Neues Konto %s über Apple erstellt", user_id)
 
     # Nachtrag für Konten, die vor „name" im Scope entstanden sind: Wer sich
