@@ -245,9 +245,31 @@ def test_jede_version_steht_auch_im_changelog():
     Fehlt der Abschnitt, ist entweder die Version falsch getippt oder der
     Versionsschnitt vergessen worden."""
     changelog = (WURZEL / "CHANGELOG.md").read_text(encoding="utf-8")
+    geschnitten = [m.group(1) for m in re.finditer(r"^## \[(\d+\.\d+\.\d+)\]", changelog, re.M)]
     for release in releases.RELEASES:
+        if release.version == _naechste_major(geschnitten):
+            # Die Karte entsteht VOR dem Release-PR (Clips brauchen eine
+            # eigene Runde, s. kern/releases.py) — der Abschnitt kommt erst
+            # mit dem Versionsschnitt. Erlaubt ist das genau für die nächste
+            # Major; ein Tippfehler in der Version fällt weiter auf.
+            continue
         assert f"## [{release.version}]" in changelog, (
             f"{release.version} hat eine Karte, aber keinen Changelog-Abschnitt.")
+
+
+def _naechste_major(geschnitten: list[str]) -> str | None:
+    if not geschnitten:
+        return None
+    hoechste = max(releases.version_key(v) for v in geschnitten)
+    return f"{hoechste[0] + 1}.0.0"
+
+
+def test_die_vorbereitete_karte_ist_genau_die_naechste_major():
+    """Die Ausnahme oben ist eng: ``2.10.0`` geschnitten → nur ``3.0.0`` darf
+    vorab eine Karte haben, ``3.1.0`` oder ``4.0.0`` nicht."""
+    assert _naechste_major(["2.9.0", "2.10.0"]) == "3.0.0"
+    assert _naechste_major(["3.0.0", "2.10.0"]) == "4.0.0"
+    assert _naechste_major([]) is None
 
 
 def test_die_liste_steht_neueste_zuerst():

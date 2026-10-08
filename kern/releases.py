@@ -159,6 +159,110 @@ class Release:
 #: denselben Commit.
 RELEASES: tuple[Release, ...] = (
     Release(
+        version="3.0.0",
+        # Vorläufig: der Tag, an dem die Karte entstand. Der Versionsschnitt
+        # im Release-PR setzt den echten Release-Tag — das Datum entscheidet,
+        # wer die Karte sieht (``pending_for``).
+        date="2026-10-06",
+        title="Das Lotti-Update",
+        highlights=(
+            Highlight(
+                title="Lotti erklärt dir, was du siehst",
+                # „Markieren“ nur als Zusatz für den Browser: Die App kennt
+                # keine Textauswahl (ios/…/AssistantSheet.swift, „Was in v1
+                # fehlt“) — der Satz muss auf beiden Geräten stimmen.
+                text="Tipp auf Lotti unten rechts und frag, was du zur Seite wissen "
+                     "willst; im Browser erklärt sie auch ein markiertes Wort. Für "
+                     "die Antwort schlägt sie selbst in Sitzungen und Beschlüssen "
+                     "nach.",
+                url="/council/decision?id=21966",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/3.0.0/lotti.mp4",
+                    poster="/neuigkeiten/3.0.0/lotti.webp",
+                    alt="Eine Beschluss-Seite: Ein Klick auf Lotti unten rechts "
+                        "öffnet ihr Fenster, auf „Wie viele haben dagegen "
+                        "gestimmt?“ antwortet sie „16“. Danach wird "
+                        "„Öffentlichkeitsbeteiligung“ markiert, ein Klick auf "
+                        "„Lotti fragen“ erklärt das Wort.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1206/2622",
+                    src="/neuigkeiten/3.0.0/lotti-ios.mp4", poster="/neuigkeiten/3.0.0/lotti-ios.webp",
+                    alt="Die Sitzungen auf dem iPhone: Ein Tipp auf Lotti öffnet "
+                        "ihr Blatt; auf die Frage „Was steht morgen im "
+                        "Sportausschuss an?“ fasst sie die Tagesordnung zusammen.",
+                ),
+            ),
+            Highlight(
+                title="Mein Viertel: was sich vor deiner Haustür tut",
+                text="Gib deine Straße oder deinen Stadtteil ein und sieh, was der "
+                     "Rat dort beschlossen hat — jedes Vorhaben von der Idee bis "
+                     "zum Bau, mit Bebauungsplänen und den Beschlüssen dazu.",
+                url="/karte",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/3.0.0/viertel.mp4",
+                    poster="/neuigkeiten/3.0.0/viertel.webp",
+                    alt="Die Stadtkarte: In die Suche wird „Nadorst“ getippt, die "
+                        "Karte fährt in den Stadtteil. Ein Klick auf das Vorhaben "
+                        "„Kita Eßkamp“ zeigt seine Stufen bis „Im Bau“ und die "
+                        "Beschlüsse dazu.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1206/2622",
+                    src="/neuigkeiten/3.0.0/viertel-ios.mp4", poster="/neuigkeiten/3.0.0/viertel-ios.webp",
+                    alt="Mein Viertel auf dem iPhone: Nadorst auf der Karte mit "
+                        "seinen Vorhaben; ein Tipp auf „Kita Eßkamp“ zeigt die "
+                        "Stufen bis „Im Bau“ und die Beschlüsse.",
+                ),
+            ),
+            Highlight(
+                title="Ideen aus anderen Städten",
+                text="Was haben Hannover, Münster oder Potsdam schon beantragt oder "
+                     "beschlossen, das Oldenburg noch fehlt? Je Idee siehst du, wie "
+                     "sie durch die Räte lief — und mit Belegen, was es in "
+                     "Oldenburg dazu schon gibt.",
+                url="/council/ideen",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/3.0.0/ideen.mp4",
+                    poster="/neuigkeiten/3.0.0/ideen.webp",
+                    alt="„Ideen aus anderen Städten“: Ein Klick auf „Hitzeaktionsplan "
+                        "aufstellen“ öffnet die Idee mit „Und in Oldenburg?“ samt "
+                        "Belegen; die Zeitleiste zeigt, wann welcher Rat darüber "
+                        "beraten hat.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1206/2622",
+                    src="/neuigkeiten/3.0.0/ideen-ios.mp4", poster="/neuigkeiten/3.0.0/ideen-ios.webp",
+                    alt="Die Idee „Hitzeaktionsplan aufstellen“ auf dem iPhone: "
+                        "oben der Stand in Oldenburg samt Belegen, beim Blättern "
+                        "die Zeitleiste durch die Räte und die Vorlagen.",
+                ),
+            ),
+            Highlight(
+                title="Frag den Rat liest den ganzen Vorgang",
+                text="Fragst du nach einem Vorhaben, stehen unter der Antwort jetzt "
+                     "sein Verlauf als Zeitleiste und die Eckdaten.",
+                url="/fragen",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/3.0.0/akte.mp4",
+                    poster="/neuigkeiten/3.0.0/akte.webp",
+                    alt="Frag den Rat: Auf die Frage nach dem neuen Fußballstadion "
+                        "stehen unter der Antwort die Eckdaten — Abstimmung, "
+                        "57,3 Mio. € — und der Verlauf bis zum aktuellen Stand.",
+                ),
+                # Nur im Browser: Die App zeigt unter einer Antwort weder
+                # Zeitleiste noch Eckdaten (in ``ios/`` kommt ``key_facts``
+                # nicht vor). Angekündigt wird nur, was man auf dem eigenen
+                # Gerät auch findet — wie 2.2.0 beim Glossar.
+                only=NUR_WEB,
+            ),
+        ),
+    ),
+    Release(
         version="2.2.0",
         date="2026-09-06",
         title="Das Teilen-Update",
