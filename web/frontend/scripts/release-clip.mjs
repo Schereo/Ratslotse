@@ -30,6 +30,18 @@
 //   type(target, text)  hinfahren, fokussieren, Zeichen für Zeichen tippen
 //   scrollTo(target) weich dorthin blättern (ein Sprung sähe nach Schnitt aus)
 //   pause(seconds)  stehen lassen (die Pointe lesen lassen)
+//   say(text)       ab jetzt steht dieser Schritt als Untertitel im Clip
+//   lupe(target, {dauer})  die Stelle vergrößert danebenstellen (Aha-Moment,
+//                   im Remotion-Schnitt), so lange stehen lassen; `target`
+//                   darf eine Liste sein (gemeinsamer Umriss)
+//   ohne(fn)        was `fn` abwartet (Laden einer Seite), fällt aus dem Clip
+// Im Drehbuch selbst (neben `run`): `vorwaermen: [pfade]` ruft diese Seiten vor
+// der Aufnahme einmal auf (der Dev-Server übersetzt sonst mitten im Clip).
+// `mobil: true` nimmt am Telefon auf (390×844, Touch, doppelte Auflösung) —
+// für den Spieler am Telefon, in dem ein 16:9-Clip vom Schreibtisch winzig
+// wird (gemessen 07.10.2026: Untertitel ~11 px). Statt des Zeigers zeigt der
+// Schnitt dort nur die Tipp-Welle; `click` tippt, ohne hinzufahren.
+//                   (nur im Remotion-Schnitt, `release_clips.py web --remotion`)
 // `target` ist ein Selektor oder ein Locator.
 import { chromium } from 'playwright';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
@@ -47,6 +59,10 @@ const FRONTEND = path.resolve(HERE, '..');
 const DEFAULT_VIEWPORT = { width: 980, height: 620 };
 // Der Screencast liefert Bilder in CSS-Pixeln, egal welcher deviceScaleFactor
 // eingestellt ist — 2× wäre nur ein hochskaliertes 1× (gemessen 08.09.2026).
+// Für die Telefon-Aufnahme (`mobil`) deshalb Einzelbilder über
+// `page.screenshot`: die liefern 2×, rund 20 je Sekunde (gemessen 07.10.2026)
+// — 390 px Breite hochskaliert sähen am Telefon verwaschen aus.
+const MOBIL_VIEWPORT = { width: 390, height: 844 };
 const DEFAULT_ACCOUNT = 'nutzerin@example.org';
 const PASSWORD = 'password123';   // scripts/saat_konten.py
 
@@ -114,10 +130,11 @@ const CURSOR = () => {
   addEventListener('mouseup', () => { down = false; render(); }, true);
 };
 
-const viewport = storyboard.viewport ?? DEFAULT_VIEWPORT;
+const MOBIL = Boolean(storyboard.mobil);
+const viewport = storyboard.viewport ?? (MOBIL ? MOBIL_VIEWPORT : DEFAULT_VIEWPORT);
 const browser = await chromium.launch({ channel: 'chrome' });
 const ctx = await browser.newContext({
-  viewport, deviceScaleFactor: 1, colorScheme: 'light',
+  viewport, deviceScaleFactor: MOBIL ? 2 : 1, isMobile: MOBIL, hasTouch: MOBIL, colorScheme: 'light',
   locale: 'de-DE', timezoneId: 'Europe/Berlin',
   permissions: ['clipboard-write', 'clipboard-read'],
 });
@@ -125,7 +142,7 @@ const ctx = await browser.newContext({
 // ist sichtbar („Link kopiert.“). Mit ihr öffnet Chrome das Blatt des
 // Betriebssystems, das in der Aufnahme nicht vorkommt: Der Klick sähe aus wie nichts.
 await ctx.addInitScript(() => { try { delete Navigator.prototype.share; } catch { /* egal */ } });
-await ctx.addInitScript(CURSOR);
+if (!MOBIL) await ctx.addInitScript(CURSOR);
 const page = await ctx.newPage();
 // Die Karte „Neu bei Ratslotse“ selbst hat in ihren Clips nichts verloren.
 await page.route('**/api/news', (route) => (
@@ -146,17 +163,38 @@ await page.route('**/api/badges', async (route) => {
 const clock = () => Date.now() / 1000;   // dieselbe Uhr wie metadata.timestamp
 const frames = [];
 const cdp = await ctx.newCDPSession(page);
-cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
-  const f = path.join(FRAMES, `f${String(frames.length).padStart(5, '0')}.jpg`);
-  writeFileSync(f, Buffer.from(data, 'base64'));
-  frames.push({ t: metadata.timestamp, file: f });
-  cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
-});
-await cdp.send('Page.startScreencast', {
-  format: 'jpeg', quality: 92, maxWidth: viewport.width, maxHeight: viewport.height, everyNthFrame: 1,
-});
+let bildschleife = null;
+let aufnahmeLaeuft = true;
+if (MOBIL) {
+  // Ein Bild nach dem anderen; die Zeit ist die Mitte der Aufnahme. Während
+  // eines Seitenwechsels scheitert `screenshot` mitunter — dann steht das
+  // vorige Bild etwas länger, wie beim Screencast.
+  bildschleife = (async () => {
+    while (aufnahmeLaeuft) {
+      const a = clock();
+      try {
+        const bild = await page.screenshot({ type: 'jpeg', quality: 90, animations: 'allow', caret: 'initial', timeout: 4000 });
+        const f = path.join(FRAMES, `f${String(frames.length).padStart(5, '0')}.jpg`);
+        writeFileSync(f, bild);
+        frames.push({ t: (a + clock()) / 2, file: f });
+      } catch {
+        await new Promise((r) => setTimeout(r, 40));
+      }
+    }
+  })();
+} else {
+  cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
+    const f = path.join(FRAMES, `f${String(frames.length).padStart(5, '0')}.jpg`);
+    writeFileSync(f, Buffer.from(data, 'base64'));
+    frames.push({ t: metadata.timestamp, file: f });
+    cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
+  });
+  await cdp.send('Page.startScreencast', {
+    format: 'jpeg', quality: 92, maxWidth: viewport.width, maxHeight: viewport.height, everyNthFrame: 1,
+  });
+}
 
-const marks = { begin: null, beats: [], navigations: [] };
+const marks = { begin: null, beats: [], navigations: [], steps: [], cuts: [] };
 // Jede Navigation mit Zeitstempel — im JSON sichtbar, damit sich ein Clip,
 // in dem „die Seite zu früh wechselt“, ohne Raten erklären lässt.
 page.on('framenavigated', (frame) => {
@@ -171,7 +209,9 @@ async function center(target) {
   await l.scrollIntoViewIfNeeded();
   const b = await l.boundingBox();
   if (!b) throw new Error(`Ziel nicht sichtbar: ${typeof target === 'string' ? target : '(Locator)'}`);
-  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  // Der Umriss reist mit: Der Remotion-Schnitt legt das Spotlight darum,
+  // statt nah heranzuzoomen (Tims Befund 07.10.2026: zu nah, kein Kontext).
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2, box: { x: b.x, y: b.y, w: b.width, h: b.height } };
 }
 
 /** Störer wegklicken — nur in Dialogen, damit kein „Weiter“ einer
@@ -191,6 +231,10 @@ const stage = {
   base: BASE,
   async goto(p) {
     await page.goto(BASE + p);
+    // Bis die Seite ihre Daten hat — sonst beginnt ein Clip auf dem
+    // Lade-Skelett. Läuft die Seite dauerhaft nach (Karte, Strom), reicht der
+    // Ablauf der Frist.
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
     await dismiss();
   },
   async login(email = DEFAULT_ACCOUNT) {
@@ -208,12 +252,16 @@ const stage = {
     // Was der Aufbau mit `click`/`markText` erledigt hat, ist kein Beat des
     // Clips — es läge vor dessen Anfang, und der Zoom käme aus dem Nichts.
     marks.beats.length = 0;
+    marks.steps.length = 0;
+    marks.cuts.length = 0;
     // Der Zeiger erscheint erst mit der ersten Fahrt — ein Aufbau-Klick
     // davor (Playwright) darf keinen Sprung hinterlassen.
     cursor = null;
     return page.evaluate(() => { const c = document.getElementById('rl-cursor'); if (c) c.style.display = 'none'; });
   },
   pause: (seconds) => page.waitForTimeout(seconds * 1000),
+  /** Der Schritt, der ab jetzt als Untertitel steht. */
+  say(text) { marks.steps.push({ t: clock(), text }); },
   /** Weich zum Ziel blättern — `scrollIntoViewIfNeeded` springt, und ein
    *  Sprung im Clip sieht aus wie ein Schnitt. */
   async scrollTo(target, { settle = 1.2 } = {}) {
@@ -224,6 +272,7 @@ const stage = {
    *  links unterhalb (`from`), spätere dort, wo er gerade steht. */
   async hover(target, { from = [-380, 160] } = {}) {
     const z = await center(target);
+    if (MOBIL) return z;   // am Telefon gibt es keinen Zeiger, der hinfährt
     if (!cursor) {
       cursor = { x: clamp(z.x + from[0], 8, viewport.width - 8), y: clamp(z.y + from[1], 8, viewport.height - 8) };
       await page.mouse.move(cursor.x, cursor.y);
@@ -231,14 +280,18 @@ const stage = {
     }
     const distance = Math.hypot(z.x - cursor.x, z.y - cursor.y);
     await page.mouse.move(z.x, z.y, { steps: clamp(Math.round(distance / 9), 18, 60) });
-    cursor = z;
+    cursor = { x: z.x, y: z.y };
     return z;
   },
   /** Hinfahren, kurz verweilen (Hover-Zustand zeigen), klicken — ein Beat. */
   async click(target, { from, hover = 0.85 } = {}) {
     const z = await stage.hover(target, { from });
-    await page.waitForTimeout(hover * 1000);
-    marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: true });
+    await page.waitForTimeout((MOBIL ? Math.min(hover, 0.5) : hover) * 1000);
+    marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: true, box: z.box });
+    if (MOBIL) {
+      await page.touchscreen.tap(z.x, z.y);
+      return;
+    }
     await page.mouse.down();
     await page.waitForTimeout(140);
     await page.mouse.up();
@@ -247,7 +300,38 @@ const stage = {
   async look(target, { from, hover = 0.4 } = {}) {
     const z = await stage.hover(target, { from });
     await page.waitForTimeout(hover * 1000);
-    marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: false });
+    marks.beats.push({ t: clock(), x: z.x, y: z.y, tap: false, box: z.box });
+  },
+  /** Die Pointe lesbar machen: Der Remotion-Schnitt stellt das Ziel
+   *  vergrößert als Karte daneben, das Original bekommt das Spotlight. Ein
+   *  stärkerer Zoom hätte den Zusammenhang gekostet (Tim, 07.10.2026) — die
+   *  Antwort im 384-px-Fenster von Lotti war in der Karte sonst unlesbar.
+   *  Der Zeiger bleibt, wo er ist. */
+  async lupe(target, { dauer = 3.2 } = {}) {
+    const ziele = Array.isArray(target) ? target : [target];
+    await locate(ziele[0]).scrollIntoViewIfNeeded();
+    const boxen = [];
+    for (const z of ziele) {
+      const bb = await locate(z).boundingBox();
+      if (!bb) throw new Error('Lupe: Ziel nicht sichtbar');
+      boxen.push(bb);
+    }
+    const x0 = Math.min(...boxen.map((q) => q.x)), y0 = Math.min(...boxen.map((q) => q.y));
+    const x1 = Math.max(...boxen.map((q) => q.x + q.width)), y1 = Math.max(...boxen.map((q) => q.y + q.height));
+    const b = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+    marks.beats.push({ t: clock(), x: b.x + b.width / 2, y: b.y + b.height / 2, tap: false,
+      lupe: dauer, box: { x: b.x, y: b.y, w: b.width, h: b.height } });
+    await page.waitForTimeout(dauer * 1000);
+  },
+  /** Warten, ohne dass es im Clip steht: Was `fn` abwartet (eine Seite
+   *  lädt, Daten kommen), schneidet der Schnitt heraus — die ersten 0,3 s
+   *  bleiben, damit man die Reaktion auf den Klick sieht. Gemessen
+   *  07.10.2026: bis zu drei Sekunden leere Ladeseite je Seitenwechsel. */
+  async ohne(fn) {
+    const a = clock();
+    await fn();
+    const b = clock();
+    if (b - a > 0.6) marks.cuts.push({ a: a + 0.3, b });
   },
   /** Ein Wort (oder eine Wortfolge) im Ziel mit der Maus markieren: Zeiger
    *  an den Anfang, drücken, sichtbar bis zum Ende ziehen, loslassen. Ein
@@ -284,7 +368,8 @@ const stage = {
     await page.mouse.move(box.x1, box.y1, { steps: clamp(Math.round((box.x1 - box.x0) / 6), 12, 40) });
     await page.mouse.up();
     cursor = { x: box.x1, y: box.y1 };
-    marks.beats.push({ t: clock(), x: (box.x0 + box.x1) / 2, y: box.y1, tap: false });
+    marks.beats.push({ t: clock(), x: (box.x0 + box.x1) / 2, y: box.y1, tap: false,
+      box: { x: box.x0 - 4, y: box.y0 - 12, w: box.x1 - box.x0 + 8, h: 24 } });
   },
   async type(target, text, { delay = 35 } = {}) {
     await stage.hover(target);
@@ -295,9 +380,17 @@ const stage = {
 
 try {
   await stage.login(storyboard.account);
+  // Vorwärmen: Der Dev-Server übersetzt eine Seite erst beim ersten Aufruf —
+  // mitten in der Aufnahme stand „Heute“ dann 30 s still, bis /karte fertig
+  // war (07.10.2026). Jede Seite des Drehbuchs einmal vorher aufrufen.
+  for (const p of storyboard.vorwaermen ?? []) {
+    await page.goto(BASE + p, { timeout: 180_000 });
+    await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => {});
+  }
   await storyboard.run(stage);
 } catch (e) {
   // Das letzte Bild hilft beim Suchen: Wo stand die Seite, als es hakte?
+  aufnahmeLaeuft = false;
   await page.screenshot({ path: path.join(OUT, 'fehler.png') }).catch(() => {});
   await ctx.close().catch(() => {});
   await browser.close().catch(() => {});
@@ -305,7 +398,9 @@ try {
 }
 const end = clock();
 await page.waitForTimeout(300);   // späte Bilder noch einsammeln
-await cdp.send('Page.stopScreencast').catch(() => {});
+aufnahmeLaeuft = false;
+if (bildschleife) await bildschleife;
+else await cdp.send('Page.stopScreencast').catch(() => {});
 await ctx.close();
 await browser.close();
 
@@ -314,7 +409,13 @@ const result = {
   height: viewport.height,
   begin: marks.begin,
   end,
-  beats: marks.beats.map((b) => ({ t: b.t, x: Math.round(b.x), y: Math.round(b.y), tap: b.tap })),
+  beats: marks.beats.map((b) => ({ t: b.t, x: Math.round(b.x), y: Math.round(b.y), tap: b.tap, box: b.box ?? null,
+    ...(b.lupe ? { lupe: b.lupe } : {}) })),
+  steps: marks.steps,
+  cuts: marks.cuts,
+  // Was der Remotion-Schnitt fürs Intro und Outro braucht (Titel, Weg …).
+  meta: Object.fromEntries(Object.entries(storyboard)
+    .filter(([k, v]) => k !== 'run' && typeof v !== 'function')),
   navigations: marks.navigations,
   frames,
 };

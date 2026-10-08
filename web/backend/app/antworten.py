@@ -509,6 +509,11 @@ class ReleaseHighlight(TypedDict):
     #: ``None``, solange eine Ausgabe ohne Bilder auskommt — dann zeigt die
     #: Karte die Listenform statt der Bühne.
     media: ReleaseMedia | None
+    #: Dasselbe Feature am Telefon aufgenommen, hochkant und randlos — für den
+    #: Spieler im schmalen Browser, in dem ``media`` (16:9 vom Schreibtisch)
+    #: zu klein zum Lesen wird. ``None`` für die App (sie hat ihre eigene
+    #: Fassung in ``media``) und für Ausgaben ohne vollständige Telefon-Fassung.
+    media_narrow: ReleaseMedia | None
     #: Farbe der Kachel als Name aus der Designsprache: ``signal``,
     #: ``primary`` oder ``green`` (``releases.TILE_COLORS``). Ohne eigene
     #: Angabe ``primary`` — der Server setzt die Vorgabe.

@@ -128,12 +128,15 @@ export default function DashboardPage() {
           // Am Wahlabend das Dringendste — nur um den Wahltag (`election.prominent`).
           { key: "wahlabend", label: "Wahlabend", node: <WahlabendHinweis /> },
           { key: "live", label: "Sitzung läuft", node: <LiveBanner /> },
+          // „Neu bei Ratslotse": nach dem, was gerade passiert (Sitzung,
+          // Wahlabend), aber vor Pause und Erste Schritte. Die beiden stehen
+          // wochenlang da; die Karte kommt viermal im Jahr und geht, sobald sie
+          // angesehen oder weggeklickt ist. Dahinter stand sie bis 10/2026 und
+          // war damit bei jedem Konto mit offenen Ersten Schritten nur eine
+          // Pille (gemessen 07.10.2026 an „Nutzerin", 2/4 Schritte).
+          { key: "neuigkeiten", label: "Neu bei Ratslotse", node: <ReleaseNewsCard /> },
           { key: "pause", label: "Sitzungspause", node: <SitzungspauseBanner /> },
           { key: "erste-schritte", label: "Erste Schritte", node: <FirstStepsBar /> },
-          // „Neu bei Ratslotse": nach allem, was gerade passiert (Sitzung,
-          // Wahlabend), aber vor der Push-Frage — sie kommt wieder, ein
-          // Release nicht.
-          { key: "neuigkeiten", label: "Neu bei Ratslotse", node: <ReleaseNewsCard /> },
           { key: "push", label: "Mitteilungen", node: <PushPrimer /> },
         ]}
       />

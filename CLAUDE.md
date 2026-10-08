@@ -638,7 +638,9 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   Teilen-Update"), kein Halbsatz. Jedes Highlight bringt einen **kurzen Clip**
   mit, in dem man das Feature bedient sieht — aus einem Drehbuch in
   `web/frontend/release-clips/<version>.mjs`, aufgenommen und geschnitten von
-  `scripts/release_clips.py` (Ablage `web/frontend/public/neuigkeiten/<version>/`,
+  `scripts/release_clips.py` und seit 3.0.0 gerahmt mit Remotion (`web/clips/`:
+  Intro mit dem Weg zum Feature, Untertitel je Schritt, Lupe statt Zoom;
+  Ablage `web/frontend/public/neuigkeiten/<version>/`,
   immer hell; im Browser 16:9, in der App das ganze Telefon) — die
   Karte ist eine Bühne zum Blättern, keine Stichpunktliste. Verschickt wird von
   Hand im Admin-Panel unter *Neuigkeiten*, ein paar Tage nach dem Deploy:

@@ -130,7 +130,7 @@ def test_jede_genannte_mediendatei_existiert():
     fehlend = []
     for release in releases.RELEASES:
         for h in release.highlights:
-            for medium in (h.media, h.media_ios):
+            for medium in (h.media, h.media_ios, h.media_narrow):
                 if not medium:
                     continue
                 for feld in ("src", "poster", "cover"):
@@ -228,7 +228,7 @@ def test_ein_clip_nennt_seine_laenge():
     mit Kacheln (erkennbar am Teaser) nennt die Länge jedes Clips."""
     for release in releases.RELEASES:
         for h in release.highlights:
-            for medium in (h.media, h.media_ios):
+            for medium in (h.media, h.media_ios, h.media_narrow):
                 if medium is None:
                     continue
                 if medium.duration is not None:
@@ -251,7 +251,7 @@ def test_die_laenge_stimmt_mit_der_datei():
     falsch = []
     for release in releases.RELEASES:
         for h in release.highlights:
-            for medium in (h.media, h.media_ios):
+            for medium in (h.media, h.media_ios, h.media_narrow):
                 if not medium or medium.duration is None:
                     continue
                 datei = wurzel / medium.src.lstrip("/")
@@ -360,12 +360,34 @@ def test_die_app_bekommt_ihre_eigenen_bilder_wenn_es_sie_gibt():
     assert releases.as_dict(voll, "ios")["highlights"][0]["media"]["src"] == "/i.webp"
 
 
+def test_die_telefon_fassung_ist_ganz_oder_gar_nicht():
+    """Wie bei der App: Der Spieler im schmalen Browser wechselt nicht mitten
+    in der Abfolge vom Hochformat ins Querformat. Eine halbe Telefon-Fassung
+    geht gar nicht erst raus (``media_narrow`` bleibt ``None``)."""
+    web = releases.Media(kind="video", src="/w.mp4", alt="web" * 8, poster="/w.webp")
+    hoch = releases.Media(kind="video", src="/h.mp4", alt="hoch" * 8, aspect="6/13", poster="/h.webp")
+    beides = releases.Highlight("B", "…", "/dashboard", media=web, media_narrow=hoch)
+    nur_web = releases.Highlight("A", "…", "/dashboard", media=web)
+    voll = releases.Release("9.9.0", "2026-01-01", "x", (beides,))
+    halb = releases.Release("9.8.0", "2026-01-01", "x", (beides, nur_web))
+    assert releases.as_dict(voll, "web")["highlights"][0]["media_narrow"]["src"] == "/h.mp4"
+    assert releases.as_dict(halb, "web")["highlights"][0]["media_narrow"] is None
+    # Die App hat ihre eigene Fassung in `media` — sie bekommt keine zweite.
+    assert releases.as_dict(voll, "ios")["highlights"][0]["media_narrow"] is None
+    for release in releases.RELEASES:
+        sichtbar = releases.highlights_for(release, "web")
+        mit = [h.title for h in sichtbar if h.media_narrow]
+        ohne = [h.title for h in sichtbar if not h.media_narrow]
+        assert not (mit and ohne), (
+            f"{release.version}: Telefon-Fassung für {len(mit)}, nicht für {ohne}.")
+
+
 def test_alle_medien_einer_ausgabe_teilen_ein_seitenverhaeltnis():
     """Sonst springt der Kasten der Bühne beim Blättern — genau das, was die
     Bewegungsregeln vermeiden (DESIGNSPRACHE §7). Web und App dürfen sich
     unterscheiden: querformatige Fenster hier, hochkante Telefone dort."""
     for release in releases.RELEASES:
-        for client, feld in (("web", "media"), ("ios", "media_ios")):
+        for client, feld in (("web", "media"), ("ios", "media_ios"), ("web", "media_narrow")):
             formate = {getattr(h, feld).aspect
                        for h in releases.highlights_for(release, client)
                        if getattr(h, feld)}
@@ -378,7 +400,7 @@ def test_ein_clip_bringt_sein_standbild_mit():
     Poster bliebe die Bühne dort leer."""
     for release in releases.RELEASES:
         for h in release.highlights:
-            for medium in (h.media, h.media_ios):
+            for medium in (h.media, h.media_ios, h.media_narrow):
                 if medium and medium.kind == "video":
                     assert medium.poster, (
                         f"{release.version} · {h.title}: Clip ohne Standbild.")
@@ -387,7 +409,7 @@ def test_ein_clip_bringt_sein_standbild_mit():
 def test_medien_tragen_eine_bildbeschreibung():
     for release in releases.RELEASES:
         for h in release.highlights:
-            for medium in (h.media, h.media_ios):
+            for medium in (h.media, h.media_ios, h.media_narrow):
                 if medium:
                     assert len(medium.alt) > 20, f"{release.version} · {h.title}: alt zu dünn"
 

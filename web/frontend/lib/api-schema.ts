@@ -15109,6 +15109,32 @@ export interface components {
                 /** Src */
                 src: string;
             } | null;
+            /**
+             * ReleaseMedia
+             * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
+             *
+             *     Immer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für
+             *     den Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in
+             *     einem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht
+             *     nur bei ``kind == "video"`` und ist zugleich das, was bei
+             *     ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+             */
+            media_narrow: {
+                /** Alt */
+                alt: string;
+                /** Aspect */
+                aspect: string;
+                /** Cover */
+                cover: string | null;
+                /** Duration */
+                duration: number | null;
+                /** Kind */
+                kind: string;
+                /** Poster */
+                poster: string | null;
+                /** Src */
+                src: string;
+            } | null;
             /** Tagline */
             tagline: string | null;
             /** Text */
@@ -25278,4 +25304,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b524d44759273197720298efb1db3b2760a200ba7d9057973609f8b342e9e0a0
+// vertrag-sha256: 8b1beac9f269ebcea304e6f1332cb5b5d09634c7e6072100dc57be5a57e29bdc

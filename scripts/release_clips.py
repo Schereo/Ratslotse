@@ -30,6 +30,17 @@ Reaktion auf den Tipp), schneidet darum herum und legt die Stücke aneinander;
 die Nähte liegen auf identischen Standbildern. Der Tippunkt kommt als Rohpixel
 mit (``DATEI:X:Y``). Das Rezept dazu steht in REZEPTE.md („Release fahren").
 
+**Seit 3.0.0: Remotion** (``web/clips/``, einmal ``npm ci`` dort). Ein
+Drehbuch mit ``titel`` wird nicht mehr gezoomt, sondern geschnitten wie ein
+kleines Erklärvideo — Tims Befund 07.10.2026: Die Clips fingen mittendrin an
+und zoomten so nah, dass man weder den Weg noch den Zusammenhang sah. Jetzt:
+Intro mit „So kommst du hin“, die Aufnahme im Browserfenster mit Adresszeile
+(Schreibtisch-Layout, 1280×800, Seitenleiste im Bild), höchstens 1,25× Zoom,
+Spotlight auf dem Ziel, eine Lupe für die Pointe (``lupe()``), Untertitel je
+Schritt (``say()``), Wartezeiten herausgeschnitten (``ohne()``), Outro „So
+findest du es“. Dazu ein Titelbild je Clip (``<name>-titel.webp``) für die
+Kachel der Karte. App-Clips: ``ios … --schritt TEXT`` je Segment, Telefon-Rahmen.
+
 Warum Drehbücher als Code und nicht eine Aufnahme-App: Das Drehbuch löst den
 Klick selbst aus und **kennt** Zeit und Ort. Eine App müsste beides aus der
 Mausbewegung raten — und beim nächsten Release ginge alles von vorn los.
@@ -59,6 +70,8 @@ FRONTEND = ROOT / "web" / "frontend"
 STORYBOARDS = FRONTEND / "release-clips"
 MEDIA = FRONTEND / "public" / "neuigkeiten"
 RECORDER = FRONTEND / "scripts" / "release-clip.mjs"
+CLIPS = ROOT / "web" / "clips"          # das Remotion-Projekt
+LOTTI = FRONTEND / "public" / "lotti"
 
 #: Zoom-Takt je Oberfläche. Der Halt ist kurz, weil die Pointe (Toast,
 #: Teilen-Blatt) meist AUSSERHALB des Ausschnitts liegt und erst beim
@@ -77,9 +90,10 @@ CHANGE_THRESHOLD = 6.0  # mittlere Graustufen-Differenz, ab der ein Bild „ande
 SMALL_CHANGE_THRESHOLD = 1.5
 
 #: Ein Drehbuch-Eintrag steht in ``release-clips/<version>.mjs`` als Schlüssel
-#: mit zwei Leerzeichen Einzug: ``  teilen: {``. Der Name ist der Dateistamm
+#: mit zwei Leerzeichen Einzug: ``  teilen: {`` — mit Bindestrich in
+#: Anführungszeichen (``  'viertel-mobil': {``). Der Name ist der Dateistamm
 #: des Mediums in der Registry.
-STORYBOARD_KEY = re.compile(r"^  ([\w-]+):\s*\{", re.MULTILINE)
+STORYBOARD_KEY = re.compile(r"^  '?([\w-]+)'?:\s*\{", re.MULTILINE)
 
 
 # --------------------------------------------------------------------------
@@ -97,8 +111,8 @@ def storyboard_names(version: str) -> list[str]:
 def web_video_names(release: releases.Release) -> list[str]:
     """Die Dateistämme der Browser-Clips eines Releases — das sind die Namen,
     die ein Drehbuch tragen muss."""
-    return [Path(h.media.src).stem for h in release.highlights
-            if h.media is not None and h.media.kind == "video"]
+    return [Path(m.src).stem for h in release.highlights for m in (h.media, h.media_narrow)
+            if m is not None and m.kind == "video"]
 
 
 def clip_start(frames: list[tuple[float, Path]], begin: float | None) -> float:
@@ -272,6 +286,9 @@ class Recording:
     begin: float | None
     end: float
     beats: list[tuple[float, float, float, bool]]    # (Uhrzeit, x, y, Tipp?)
+    #: Das ganze Manifest — Schritte, Umrisse, Navigationen und die Angaben
+    #: des Drehbuchs (Titel, Weg …) braucht nur der Remotion-Schnitt.
+    manifest: dict | None = None
 
 
 def record_web(version: str, name: str, base: str, out: Path) -> Recording:
@@ -291,6 +308,7 @@ def record_web(version: str, name: str, base: str, out: Path) -> Recording:
         begin=daten.get("begin"), end=float(daten["end"]),
         beats=[(float(b["t"]), float(b["x"]), float(b["y"]), bool(b.get("tap", True)))
                for b in daten["beats"]],
+        manifest=daten,
     )
 
 
@@ -308,6 +326,175 @@ def assemble(plan: list[tuple[Path, float]], ziel: Path, crop: tuple[int, int] |
     ffmpeg("-f", "concat", "-safe", "0", "-i", pfad, "-vf", filter_,
            "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-an", str(ziel))
     Path(pfad).unlink(missing_ok=True)
+
+
+# --------------------------------------------------------------------------
+# Remotion: Intro mit dem Weg, Fenster mit Adresse, Spotlight, Untertitel
+# --------------------------------------------------------------------------
+#
+# Ein Drehbuch, das `titel` trägt, wird NICHT mehr gezoomt (highlight_clip.py),
+# sondern in web/clips/ (Remotion) geschnitten. Tims Befund 07.10.2026: Die
+# Clips fingen mittendrin an und zoomten so nah, dass man weder sah, wie man
+# hinkommt, noch den Zusammenhang. Die Zeitachse (Klicks samt Umriss des
+# Ziels, `say()`-Schritte, Seitenwechsel) kommt aus dem Recorder; nichts
+# wird geraten.
+
+def cut_mapper(cuts: list[tuple[float, float]]):
+    """Uhrzeit → Uhrzeit ohne die herausgeschnittenen Spannen (``ohne()``)."""
+    def abbilden(t: float) -> float:
+        return t - sum(max(0.0, min(t, b) - a) for a, b in cuts)
+    return abbilden
+
+
+def cut_plan(frames: list[tuple[float, Path]], begin: float | None, end: float,
+             cuts: list[tuple[float, float]]) -> list[tuple[Path, float]]:
+    """Wie ``frame_plan``, aber ohne die Spannen in ``cuts``: Jedes Bild steht
+    so lange, wie von seiner Zeit NICHT herausgeschnitten ist."""
+    start = clip_start(frames, begin)
+    davor = [f for f in frames if f[0] <= start]
+    danach = [f for f in frames if start < f[0] < end]
+    reihe = ([davor[-1]] if davor else []) + danach
+    abbilden = cut_mapper(cuts)
+    plan: list[tuple[Path, float]] = []
+    for i, (t, datei) in enumerate(reihe):
+        von = max(t, start)
+        bis = min(reihe[i + 1][0], end) if i + 1 < len(reihe) else end
+        dauer = abbilden(bis) - abbilden(von)
+        if dauer > 0.0005:
+            plan.append((datei, dauer))
+    return plan
+
+
+def remotion_timeline(aufnahme: Recording) -> dict:
+    """Die Zeitachse für Remotion — Sekunden ab ``begin()``, ohne die
+    herausgeschnittenen Wartezeiten."""
+    m = aufnahme.manifest or {}
+    start = clip_start(aufnahme.frames, aufnahme.begin)
+    abbilden = cut_mapper([(c["a"], c["b"]) for c in m.get("cuts", [])])
+    rel = lambda t: round(abbilden(t) - abbilden(start), 3)  # noqa: E731
+    davor = [n["url"] for n in m.get("navigations", []) if n["t"] <= start]
+    return {
+        "width": aufnahme.width, "height": aufnahme.height,
+        "duration": rel(aufnahme.end),
+        "beats": [{**b, "t": rel(b["t"])} for b in m.get("beats", [])],
+        "steps": [{"t": rel(x["t"]), "text": x["text"]} for x in m.get("steps", [])],
+        "navigations": [{"t": rel(n["t"]), "url": n["url"]}
+                        for n in m.get("navigations", []) if n["t"] > start],
+        "startUrl": davor[-1] if davor else "",
+    }
+
+
+def remotion_meta(version: str, meta: dict) -> dict:
+    """Die Angaben des Drehbuchs fürs Intro/Outro, mit Vorgaben."""
+    major, minor, _ = releases.version_key(version)
+    return {
+        "kicker": meta.get("kicker") or f"Neu in Ratslotse {major}.{minor}",
+        "titel": meta["titel"],
+        "untertitel": meta.get("untertitel", ""),
+        "weg": list(meta.get("weg", [])),
+        "app": list(meta.get("app", [])),
+        "farbe": meta.get("farbe", "primary"),
+        "lotti": meta.get("lotti", "standbild-winkt.png"),
+    }
+
+
+def remotion(komposition: str, props: dict, ziel: Path, oeffentlich: Path, *,
+             still: bool = False, frame: int | None = None) -> None:
+    """Eine Komposition aus web/clips rendern (``npx remotion render|still``)."""
+    datei = oeffentlich.parent / f"props-{komposition}.json"
+    datei.write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
+    befehl = ["npx", "remotion", "still" if still else "render", "src/index.ts", komposition, str(ziel),
+              f"--public-dir={oeffentlich}", f"--props={datei}", "--log=error"]
+    if not still:
+        # 1280×720 statt 1600×900: Die Karte zeigt den Clip höchstens gut
+        # 1100 px breit; die Ersparnis ist rund ein Drittel der Datei.
+        befehl += ["--codec=h264", "--crf=26", "--pixel-format=yuv420p", "--scale=0.8"]
+    if frame is not None:
+        befehl.append(f"--frame={frame}")
+    lauf = subprocess.run(befehl, cwd=CLIPS, capture_output=True, text=True)
+    if lauf.returncode:
+        raise SystemExit(f"Remotion ({komposition}) gescheitert:\n{lauf.stderr.strip()[-2000:]}")
+
+
+def schnitt_remotion(version: str, name: str, aufnahme: Recording, ziel: Path, tmp: Path) -> float:
+    """Aufnahme → ``<name>.mp4`` + ``<name>.webp`` (Standbild) + ``<name>-titel.webp``
+    (Titelbild der Kachel). Gibt die Länge des Clips in Sekunden zurück."""
+    if not (CLIPS / "node_modules").exists():
+        raise SystemExit(f"Remotion fehlt — einmal `npm ci` in {CLIPS}.")
+    oeffentlich = tmp / "public"
+    oeffentlich.mkdir()
+    schnitte = [(c["a"], c["b"]) for c in (aufnahme.manifest or {}).get("cuts", [])]
+    plan = cut_plan(aufnahme.frames, aufnahme.begin, aufnahme.end, schnitte)
+    assemble(plan, oeffentlich / "roh.mp4")
+    ffmpeg("-sseof", "-0.1", "-i", str(oeffentlich / "roh.mp4"), "-frames:v", "1", "-update", "1",
+           str(oeffentlich / "letztes-bild.png"))
+    meta = remotion_meta(version, (aufnahme.manifest or {}).get("meta", {}))
+    titel_lotti = (aufnahme.manifest or {}).get("meta", {}).get("titelbild_lotti", "standbild-zeigt-links.png")
+    for bild in {meta["lotti"], titel_lotti}:
+        shutil.copy(LOTTI / bild, oeffentlich / bild)
+    zeitachse = remotion_timeline(aufnahme)
+
+    ziel.mkdir(parents=True, exist_ok=True)
+    mp4 = ziel / f"{name}.mp4"
+    remotion("WebClip", {**meta, "video": "roh.mp4", "letztesBild": "letztes-bild.png", "timeline": zeitachse},
+             mp4, oeffentlich)
+    # Standbild: das Intro (Titel + „So kommst du hin“) — es steht vor dem
+    # Abspielen und bei reduzierter Bewegung statt des Clips.
+    png = tmp / "standbild.png"
+    remotion("WebClip", {**meta, "video": "roh.mp4", "letztesBild": "letztes-bild.png", "timeline": zeitachse},
+             png, oeffentlich, still=True, frame=45)
+    Image.open(png).convert("RGB").save(ziel / f"{name}.webp", "WEBP", quality=82, method=6)
+    # Titelbild: ein Bild aus der Aufnahme (Vorgabe: das letzte — dort steht,
+    # worauf es hinauslief), gerahmt, in der Farbe des Highlights.
+    bei = (aufnahme.manifest or {}).get("meta", {}).get("titelbild")
+    quelle = "letztes-bild.png"
+    if bei is not None:
+        quelle = "titel-quelle.png"
+        ffmpeg("-ss", f"{float(bei):.2f}", "-i", str(oeffentlich / "roh.mp4"), "-frames:v", "1", "-update", "1",
+               str(oeffentlich / quelle))
+    png = tmp / "titel.png"
+    remotion("Titelbild", {**meta, "lotti": titel_lotti, "bild": quelle,
+                           "breite": aufnahme.width, "hoehe": aufnahme.height}, png, oeffentlich, still=True)
+    Image.open(png).convert("RGB").save(ziel / f"{name}-titel.webp", "WEBP", quality=82, method=6)
+    return duration(mp4)
+
+
+def schnitt_remotion_hoch(version: str, name: str, aufnahme: Recording, ziel: Path, tmp: Path) -> float:
+    """Telefon-Aufnahme (Drehbuch mit ``mobil``) → ``<name>.mp4`` + ``<name>.webp``
+    im Hochformat, randlos (``HochClip``). Kein eigenes Titelbild: Die Kachel
+    zeigt dasselbe wie am Schreibtisch."""
+    if not (CLIPS / "node_modules").exists():
+        raise SystemExit(f"Remotion fehlt — einmal `npm ci` in {CLIPS}.")
+    oeffentlich = tmp / "public"
+    oeffentlich.mkdir()
+    schnitte = [(c["a"], c["b"]) for c in (aufnahme.manifest or {}).get("cuts", [])]
+    plan = cut_plan(aufnahme.frames, aufnahme.begin, aufnahme.end, schnitte)
+    assemble(plan, oeffentlich / "roh.mp4")
+    ffmpeg("-sseof", "-0.1", "-i", str(oeffentlich / "roh.mp4"), "-frames:v", "1", "-update", "1",
+           str(oeffentlich / "letztes-bild.png"))
+    meta = {**remotion_meta(version, (aufnahme.manifest or {}).get("meta", {})), "ort": "browser"}
+    shutil.copy(LOTTI / meta["lotti"], oeffentlich / meta["lotti"])
+    props = {**meta, "video": "roh.mp4", "letztesBild": "letztes-bild.png", "timeline": remotion_timeline(aufnahme)}
+    ziel.mkdir(parents=True, exist_ok=True)
+    mp4 = ziel / f"{name}.mp4"
+    remotion("HochClip", props, mp4, oeffentlich)
+    png = tmp / "standbild.png"
+    remotion("HochClip", props, png, oeffentlich, still=True, frame=45)
+    Image.open(png).convert("RGB").save(ziel / f"{name}.webp", "WEBP", quality=82, method=6)
+    return duration(mp4)
+
+
+def storyboard_meta(version: str, name: str) -> dict:
+    """Die Angaben eines Drehbuchs (Titel, Weg, Farbe …) ohne Aufnahme — für
+    die App-Clips, die dieselbe Hülle bekommen wie die Browser-Clips."""
+    skript = ("const m = await import(process.argv[1]); const d = m.default[process.argv[2]] ?? {};"
+              "console.log(JSON.stringify(Object.fromEntries(Object.entries(d).filter(([, v]) => typeof v !== 'function'))));")
+    lauf = subprocess.run(["node", "--input-type=module", "-e", skript,
+                           (STORYBOARDS / f"{version}.mjs").as_uri(), name],
+                          capture_output=True, text=True, cwd=FRONTEND)
+    if lauf.returncode:
+        return {}
+    return json.loads(lauf.stdout.strip() or "{}")
 
 
 def cmd_web(args: argparse.Namespace) -> int:
@@ -334,6 +521,16 @@ def cmd_web(args: argparse.Namespace) -> int:
         print(f"● {name} … aufnehmen", flush=True)
         with tempfile.TemporaryDirectory() as tmp:
             aufnahme = record_web(version, name, args.base, Path(tmp))
+            if (aufnahme.manifest or {}).get("meta", {}).get("mobil"):
+                sekunden = schnitt_remotion_hoch(version, name, aufnahme, ziel, Path(tmp))
+                groesse = (ziel / f"{name}.mp4").stat().st_size // 1024
+                print(f"  ✓ {name}.mp4 ({sekunden:.1f} s, {groesse} KB, Remotion hoch) + {name}.webp")
+                continue
+            if (aufnahme.manifest or {}).get("meta", {}).get("titel"):
+                sekunden = schnitt_remotion(version, name, aufnahme, ziel, Path(tmp))
+                groesse = (ziel / f"{name}.mp4").stat().st_size // 1024
+                print(f"  ✓ {name}.mp4 ({sekunden:.1f} s, {groesse} KB, Remotion) + {name}.webp + {name}-titel.webp")
+                continue
             start = clip_start(aufnahme.frames, aufnahme.begin)
             plan = frame_plan(aufnahme.frames, aufnahme.begin, aufnahme.end)
             roh = Path(tmp) / "roh.mp4"
@@ -372,6 +569,34 @@ def _point(text: str) -> tuple[float, float]:
         raise argparse.ArgumentTypeError(f"--focus erwartet X:Y, nicht {text!r}") from e
 
 
+def schnitt_remotion_ios(version: str, name: str, roh: Path, beats: list[Beat], starts: list[float],
+                         schritte: list[str], meta_roh: dict, tmp: Path) -> float:
+    """Die zusammengesetzte iPhone-Aufnahme → ``<name>-ios.mp4`` + ``-ios.webp``.
+    Schritt i beginnt mit Segment i."""
+    oeffentlich = tmp / "public-ios"
+    oeffentlich.mkdir()
+    shutil.copy(roh, oeffentlich / "roh.mp4")
+    ffmpeg("-sseof", "-0.1", "-i", str(roh), "-frames:v", "1", "-update", "1", str(oeffentlich / "letztes-bild.png"))
+    breite, hoehe = Image.open(oeffentlich / "letztes-bild.png").size
+    meta = remotion_meta(version, meta_roh)
+    shutil.copy(LOTTI / meta["lotti"], oeffentlich / meta["lotti"])
+    zeitachse = {
+        "width": breite, "height": hoehe, "duration": round(duration(roh), 3),
+        "beats": [{"t": round(b.t, 3), "x": b.x, "y": b.y, "tap": b.tap, "box": None} for b in beats],
+        "steps": [{"t": round(starts[i], 3), "text": text} for i, text in enumerate(schritte) if i < len(starts)],
+        "navigations": [], "startUrl": "",
+    }
+    ziel = MEDIA / version
+    ziel.mkdir(parents=True, exist_ok=True)
+    mp4 = ziel / f"{name}-ios.mp4"
+    props = {**meta, "video": "roh.mp4", "letztesBild": "letztes-bild.png", "timeline": zeitachse}
+    remotion("TelefonClip", props, mp4, oeffentlich)
+    png = tmp / "standbild-ios.png"
+    remotion("TelefonClip", props, png, oeffentlich, still=True, frame=45)
+    Image.open(png).convert("RGB").save(ziel / f"{name}-ios.webp", "WEBP", quality=82, method=6)
+    return duration(mp4)
+
+
 def cmd_ios(args: argparse.Namespace) -> int:
     version: str = args.version
     if releases.get(version) is None:
@@ -381,7 +606,9 @@ def cmd_ios(args: argparse.Namespace) -> int:
         stuecke: list[Path] = []
         beats: list[Beat] = []
         offset = 0.0
+        starts: list[float] = []   # wo jedes Segment im Clip beginnt (Untertitel)
         for i, (datei, x, y) in enumerate(args.segment):
+            starts.append(offset)
             norm = Path(tmp) / f"norm{i}.mp4"
             normalize(datei, norm)
             wechsel = change_time(norm)
@@ -416,6 +643,14 @@ def cmd_ios(args: argparse.Namespace) -> int:
             # Halt und Rückfahrt im eingefrorenen Schluss.
             beats.append(Beat(offset - 0.3, args.focus[0], args.focus[1], tap=False))
         roh = Path(tmp) / "roh.mp4"
+        meta = storyboard_meta(version, args.name)
+        if meta.get("titel"):
+            # Remotion: Telefon-Rahmen, Intro mit dem Weg in der App,
+            # Untertitel je Segment (`--schritt`), Outro.
+            concat_with_tail(stuecke, roh, 0.6)
+            sekunden = schnitt_remotion_ios(version, args.name, roh, beats, starts, args.schritt or [], meta, Path(tmp))
+            print(f"✓ {args.name}-ios.mp4 ({sekunden:.1f} s, Remotion) + {args.name}-ios.webp")
+            return 0
         concat_with_tail(stuecke, roh, tail)
         ziel = MEDIA / version
         n = finish(roh, beats, IOS_TIMING, ziel / f"{args.name}-ios.mp4", ziel / f"{args.name}-ios.webp",
@@ -530,6 +765,8 @@ def main() -> int:
     i.add_argument("--focus", type=_point, metavar="X:Y",
                    help="Schluss-Blick: Zoom ohne Tipp auf diese Stelle im letzten Bild")
     i.add_argument("--tail", type=float, default=TAIL, help="eingefrorener Schluss in Sekunden")
+    i.add_argument("--schritt", action="append", metavar="TEXT",
+                   help="Untertitel je Segment, in derselben Reihenfolge (nur Remotion-Schnitt)")
     i.set_defaults(func=cmd_ios)
 
     s = sub.add_parser("skeleton", help="Drehbuch-Gerüst aus kern/releases.py anlegen")

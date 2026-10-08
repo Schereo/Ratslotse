@@ -35,8 +35,8 @@ const NEWS = {
   seen_version: null,
 };
 
-/** Stellt `/news`, hält die Erste-Schritte-Leiste fern (sie stünde im
- *  Hinweis-Slot vor der Karte) und zählt, was an `/news/seen` geht. Wie der
+/** Stellt `/news`, hält die Erste-Schritte-Leiste fern (bis 10/2026 stand
+ *  sie im Hinweis-Slot vor der Karte) und zählt, was an `/news/seen` geht. Wie der
  *  Server: Nach der Meldung ist die Ausgabe erledigt, `/news` liefert nichts
  *  mehr. */
 async function stellen(page: Page): Promise<string[]> {
@@ -52,9 +52,9 @@ async function stellen(page: Page): Promise<string[]> {
     route.request().method() === "GET"
       ? route.fulfill({ json: { steps: ["frag", "beschluesse", "analyse", "karten"], celebrated: true } })
       : route.continue());
-  // Sitzungspause und laufende Sitzung stehen im Hinweis-Slot VOR der Karte.
-  // Kommt eine davon erst nach dem Aufklappen an, rutscht die Karte zurück in
-  // die Pille (gemessen gegen die leere Ratsdatenbank: Pause aktiv).
+  // Eine laufende Sitzung steht im Hinweis-Slot VOR der Karte (bis 10/2026
+  // auch die Sitzungspause). Kommt sie erst nach dem Aufklappen an, rutscht
+  // die Karte zurück in die Pille — deshalb beide stillgelegt.
   await page.route("**/api/council/session-break", (route) => route.fulfill({ json: { active: false } }));
   await page.route("**/api/council/sessions?scope=upcoming&limit=6", (route) => route.fulfill({ json: { sessions: [] } }));
   await page.addInitScript(() => {
@@ -64,7 +64,7 @@ async function stellen(page: Page): Promise<string[]> {
 }
 
 /** Die Karte — notfalls aus der Pille des Hinweis-Slots geholt (eine
- *  laufende Sitzung oder die Sitzungspause stehen vor ihr). */
+ *  laufende Sitzung steht vor ihr). */
 async function karte(page: Page) {
   await page.goto("/dashboard");
   const titel = page.locator("main").getByRole("heading", { name: "Das Lotti-Update" });
@@ -195,5 +195,26 @@ test.describe("am Telefon", () => {
     await expect(spieler(page).getByRole("heading", { name: /^2 von 3/ })).toBeVisible();
     await page.touchscreen.tap(buehne.x + 20, buehne.y + buehne.height / 2);
     await expect(spieler(page).getByRole("heading", { name: /^1 von 3/ })).toBeVisible();
+  });
+
+  test("nimmt die hochkante Fassung und gibt ihr fast die ganze Breite", async ({ page }) => {
+    // Der 16:9-Clip vom Schreibtisch stand hier 340 px breit, die Untertitel
+    // ~11 px hoch (07.10.2026) — deshalb `media_narrow`, wenn es sie gibt.
+    const hoch = (name: string) => ({ ...medium(`${name}-mobil`, 20), aspect: "6/13" });
+    const mitHoch = { ...NEWS, releases: NEWS.releases.map((r) => ({
+      ...r, highlights: r.highlights.map((h) => ({ ...h, media_narrow: hoch(h.media.src.split("/").pop()!.replace(".mp4", "")) })),
+    })) };
+    await stellen(page);
+    await page.route("**/api/news", (route) => route.fulfill({ json: mitHoch }));
+    const k = await karte(page);
+    await k.getByRole("button", { name: /Video ansehen: Mein Viertel/ }).tap();
+    const video = spieler(page).locator("video");
+    await expect(video).toHaveAttribute("src", "/neuigkeiten/3.0.0/viertel-mobil.mp4");
+    const rahmen = await video.boundingBox();
+    if (!rahmen) throw new Error("Video ohne Maße");
+    expect(rahmen.width).toBeGreaterThan(280);
+    // Titel und Text sagt der Clip selbst; der Weg zum Feature bleibt sichtbar.
+    await expect(spieler(page).getByRole("link", { name: /Mein Viertel ausprobieren/ })).toBeVisible();
+    await expect(spieler(page).getByRole("button", { name: "Zurück" })).toBeVisible();
   });
 });

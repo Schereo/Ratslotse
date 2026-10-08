@@ -35,6 +35,7 @@ import {
   kachelFarbe, nachDemEnde, seitenVerhaeltnis, type Highlight,
 } from "@/lib/neuigkeiten";
 import { cn } from "@/lib/utils";
+import { useTelefonBreite } from "@/lib/use-ultra";
 
 /** Läuft die Person mit abgeschalteter Bewegung? Dann steht das Standbild
  *  statt des Clips, und am Ende schaltet nichts weiter. */
@@ -118,18 +119,28 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
   const h = folge[i];
   const n = folge.length;
   const farbe = kachelFarbe(h.color);
-  const media = h.media;
+  // Am Telefon die hochkante Fassung, wenn es sie gibt: Der 16:9-Clip vom
+  // Schreibtisch stand hier 340 px breit, seine Untertitel ~11 px hoch
+  // (07.10.2026). Hochkant füllt er die Breite, und der Fuß wird schmal —
+  // Titel und Text sagt der Clip selbst (Intro, Untertitel je Schritt).
+  const telefon = useTelefonBreite();
+  const media = telefon && h.media_narrow ? h.media_narrow : h.media;
   const ratio = seitenVerhaeltnis(media?.aspect);
+  const hochkant = ratio < 1;
+  const kurzerKnopf = hochkant && h.action.length > 16;
 
   // Aufgeschlagen = angesehen (s. lib/neuigkeiten.ts).
   useEffect(() => { onGesehen(h); }, [h, onGesehen]);
 
   // Starten per Aufruf statt per `autoPlay`-Attribut: So entscheidet der
   // Bewegungs-Wunsch, bevor ein einziges Bild läuft.
+  // Auch beim Wechsel der Fassung: Die Telefonbreite steht erst nach dem
+  // ersten Rendern fest, dann tauscht das Video seine Quelle.
+  const quelle = media?.src;
   useEffect(() => {
     if (ruhig) return;
     void video.current?.play().catch(() => { /* verweigert: der Knopf bleibt da */ });
-  }, [i, ruhig]);
+  }, [i, ruhig, quelle]);
 
   const zeige = useCallback((ziel: number) => {
     if (ziel < 0 || ziel >= n) return;
@@ -269,12 +280,13 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
             // So breit wie möglich, aber nie höher als der Platz zwischen Kopf
             // und Fuß (rund 17 rem) — sonst schöbe ein Querformat-Clip auf
             // einem flachen Fenster die Knöpfe aus dem Bild.
-            width: `min(100%, 1240px, calc((100dvh - 17rem) * ${ratio.toFixed(4)}))`,
+            // Hochkant ist der Fuß nur eine Knopfzeile (rund 10 rem mit Kopf).
+            width: `min(100%, 1240px, calc((100dvh - ${hochkant ? 10.5 : 17}rem) * ${ratio.toFixed(4)}))`,
           }}
         >
           {media?.kind === "video" ? (
             <video
-              key={i}
+              key={`${i}:${media.src}`}
               ref={video}
               src={media.src}
               poster={media.poster ?? undefined}
@@ -323,39 +335,47 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
 
       {/* Fuß: was man sieht, und wohin es geht. */}
       <div className="mx-auto w-full max-w-[1240px]">
-        <h3 className="font-display text-[19px] font-bold leading-snug sm:text-[22px]">{h.title}</h3>
-        <DialogPrimitive.Description className="mt-1 max-w-[76ch] text-[14.5px] leading-relaxed text-white/[0.86]">
+        <h3 className={cn("font-display text-[19px] font-bold leading-snug sm:text-[22px]", hochkant && "sr-only")}>{h.title}</h3>
+        <DialogPrimitive.Description className={cn("mt-1 max-w-[76ch] text-[14.5px] leading-relaxed text-white/[0.86]", hochkant && "sr-only")}>
           {h.text}
         </DialogPrimitive.Description>
         {/* Schmal steht der Weg zum Feature allein in der ersten Zeile, Zurück
             und Weiter teilen sich die zweite: Drei Knöpfe nebeneinander
             brachen „Mein Viertel ausprobieren" auf 375 px in zwei Zeilen. */}
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-2.5 sm:mt-4 sm:flex-nowrap sm:gap-3.5">
+        <div className={cn("flex items-center justify-center gap-2.5 sm:mt-4 sm:flex-nowrap sm:gap-3.5", hochkant ? "flex-nowrap" : "mt-3 flex-wrap")}>
           {!nebenbei && (
             <button
               type="button"
               onClick={zurueck}
               disabled={i === 0}
-              className={cn(KNOPF_LEISE, "order-2 flex-1 sm:order-none sm:flex-none")}
+              aria-label={hochkant ? "Zurück" : undefined}
+              className={cn(KNOPF_LEISE, hochkant ? "w-12 px-0" : "order-2 flex-1 sm:order-none sm:flex-none")}
             >
               <ChevronLeft aria-hidden className="h-5 w-5" />
-              Zurück
+              {!hochkant && "Zurück"}
             </button>
           )}
           <Link
             href={h.url}
             onClick={onSchliessen}
-            className="order-1 inline-flex min-h-12 min-w-0 basis-full items-center justify-center gap-2 rounded-full px-5 text-center text-[15px] font-bold text-white sm:order-none sm:basis-auto transition-[filter] duration-tipp maus:hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:flex-none sm:px-7 sm:text-[17px]"
+            aria-label={kurzerKnopf ? h.action : undefined}
+            className={cn("inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-full px-5 text-center text-[15px] font-bold text-white sm:order-none sm:basis-auto transition-[filter] duration-tipp maus:hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:flex-none sm:px-7 sm:text-[17px]",
+              hochkant ? "flex-1 px-3" : "order-1 basis-full")}
             style={{ backgroundColor: farbe }}
           >
-            {h.action} <ArrowRight aria-hidden className="h-4 w-4 shrink-0" />
+            {/* Hochkant teilt er sich die Zeile mit zwei runden Knöpfen —
+                „Mein Viertel ausprobieren" brach dort auf zwei Zeilen. Der
+                Titel steht ohnehin im Kopf. */}
+            {kurzerKnopf ? "Ausprobieren" : h.action}
+            <ArrowRight aria-hidden className="h-4 w-4 shrink-0" />
           </Link>
           <button
             type="button"
             onClick={weiter}
-            className={cn(KNOPF_LEISE, "order-3 flex-1 sm:order-none sm:flex-none")}
+            aria-label={hochkant && !letzte ? "Weiter" : undefined}
+            className={cn(KNOPF_LEISE, hochkant ? (letzte ? "px-4" : "w-12 px-0") : "order-3 flex-1 sm:order-none sm:flex-none")}
           >
-            {letzte ? "Fertig" : "Weiter"}
+            {(!hochkant || letzte) && (letzte ? "Fertig" : "Weiter")}
             {!letzte && <ChevronRight aria-hidden className="h-5 w-5" />}
           </button>
         </div>
