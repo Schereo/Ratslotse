@@ -299,6 +299,29 @@ def test_ausgeblendete_person_fehlt_im_stand(client):
     assert "Konrad" not in [row["name"] for row in stand["rows"]]
 
 
+def test_ausgeblendete_person_kann_sich_nicht_selbst_loeschen(client):
+    """Austreten und neu beitreten machte das Ausblenden rückgängig und gab
+    den gesperrten Namen frei (zweite Sicherheitsprüfung 10/2026, F5)."""
+    d = beitreten(client, "Troll", seats=voller_tipp())
+    app.dependency_overrides[require_active] = lambda: ADMIN
+    try:
+        client.put(f"/api/tipp/admin/spieler/{d['player_id']}", json={"hidden": True})
+    finally:
+        app.dependency_overrides.pop(require_active, None)
+    assert client.delete("/api/tipp/me").status_code == 403
+
+
+def test_abmelden_nicht_von_fremder_seite(client):
+    """Ein fremdes, automatisch abgeschicktes Formular löschte sonst das
+    Tipp-Cookie — in einer offenen Runde die einzige Identität (F11)."""
+    beitreten(client, "Gerda", seats=voller_tipp())
+    r = client.post("/api/tipp/abmelden", headers={"Sec-Fetch-Site": "cross-site",
+                                                   "Origin": "https://evil.example"})
+    assert r.status_code == 403
+    assert client.post("/api/tipp/abmelden",
+                       headers={"Sec-Fetch-Site": "same-origin"}).status_code == 200
+
+
 def test_admin_stand_zeigt_ausgeblendete_in_der_spielerliste(client):
     """Die öffentliche Tafel lässt Ausgeblendete weg — der Admin muss sie
     trotzdem sehen können, um sie wieder einzublenden oder umzubenennen."""

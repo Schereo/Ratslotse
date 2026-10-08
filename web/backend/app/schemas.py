@@ -1,6 +1,8 @@
 """Pydantic request/response models."""
 from __future__ import annotations
 
+import re
+
 from typing import TYPE_CHECKING, Literal
 from pydantic import BaseModel, EmailStr, Field
 
@@ -10,6 +12,22 @@ from kern import roles as rollen
 #: Antwort auf einen leeren Namen — an einer Stelle, weil Registrierung und
 #: Konto-Seite dieselbe Regel durchsetzen und dieselben Worte benutzen sollen.
 NAME_FEHLT = "Bitte trage deinen Namen ein."
+
+#: Antwort auf einen Namen, der wie eine Adresse aussieht.
+NAME_UNZULAESSIG = "Bitte trage einen Namen ein — ohne Web- oder E-Mail-Adresse."
+
+# Was in einem Namen nichts zu suchen hat: Adressen. Der Anzeigename steht
+# als Anrede in Mails von noreply@ratslotse.de — „Moin Konto gesperrt, sofort
+# hier: https://…" war damit ein Phishing-Text in einer echten, signierten
+# Ratslotse-Mail (zweite Prüfung 10/2026, F15). Punkte, Bindestriche und
+# Apostrophe bleiben erlaubt („Dr. Anna-Lena O'Brien").
+_NAME_MIT_ADRESSE = re.compile(
+    r"[/\\@<>]|://|www\.|\w\.(?:de|com|org|net|io|info|eu|app|me|ly|xyz|ru|cn|to|co)\b",
+    re.IGNORECASE)
+
+
+def name_zulaessig(name: str) -> bool:
+    return not _NAME_MIT_ADRESSE.search(name)
 
 
 # ---- auth ----

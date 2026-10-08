@@ -449,6 +449,10 @@ export interface paths {
          *     Ratssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste
          *     (hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine
          *     Probe zugleich; verlässt der Browser die Seite, endet die Aufnahme.
+         *
+         *     Ein GET mit Kosten (Gladia, ffmpeg): Ein Link auf einer fremden Seite
+         *     startete die Probe sonst in der Sitzung des Admins (zweite Prüfung
+         *     10/2026, F14). Das Panel ruft von der eigenen Seite aus.
          */
         get: operations["live_probe_api_admin_live_probe_get"];
         put?: never;
@@ -4031,6 +4035,8 @@ export interface paths {
          * @description Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
          *     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
          *     eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick.
+         *
+         *     Inhalt kommt nur noch aus der Server-Kopie (s. ``QaShareBody``).
          */
         post: operations["qa_share_anlegen_api_council_qa_share_post"];
         delete?: never;
@@ -5285,6 +5291,10 @@ export interface paths {
          *     zu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden
          *     mit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom
          *     Schalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.
+         *
+         *     Nur nicht von einer fremden Seite aus: Der Cookie ist in einer offenen
+         *     Runde die EINZIGE Identität, und ein automatisch abgeschicktes Formular
+         *     irgendwo im Netz löschte ihn sonst (zweite Prüfung 10/2026, F11).
          */
         post: operations["abmelden_api_tipp_abmelden_post"];
         delete?: never;
@@ -13080,6 +13090,8 @@ export interface components {
         };
         /** PartyOpinionsBody */
         PartyOpinionsBody: {
+            /** Answer Id */
+            answer_id?: string | null;
             /** Decision Ids */
             decision_ids?: number[];
             /** Question */
@@ -14046,133 +14058,26 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
-        /** QaShareAttachment */
-        QaShareAttachment: {
-            /**
-             * Excerpt
-             * @default
-             */
-            excerpt: string;
-            /** Label */
-            label?: string | null;
-            /** Number */
-            number?: number | null;
-            /** Template Number */
-            template_number?: string | null;
-            /** Template Title */
-            template_title?: string | null;
-            /** Url */
-            url?: string | null;
-        };
-        /** QaShareBody */
+        /**
+         * QaShareBody
+         * @description Was geteilt wird — als KENNUNG, nicht als Inhalt.
+         *
+         *     Bis 10/2026 schickte der Client Frage, Antwort, Zitate, Debattenauszüge
+         *     und Parteipositionen selbst, und der Server veröffentlichte sie unter
+         *     ratslotse.de als „Automatische Antwort von ‚Frag den Rat‘". Jedes Konto
+         *     konnte so erfundene Zitate echter Ratsmitglieder verbreiten (zweite
+         *     Sicherheitsprüfung, F3; Tims Entscheidung 08.10.2026: nur, was der Server
+         *     geliefert hat). Geteilt wird jetzt die Server-Kopie: einer KI-Antwort
+         *     (``answer_id`` aus dem done-Ereignis) oder eines eigenen Recherche-Berichts
+         *     (``deep_job_id``). Alles andere im Körper wird ignoriert — ältere
+         *     App-Versionen schicken noch den Inhalt und bekommen einen 422 mit der
+         *     Bitte, die App zu aktualisieren.
+         */
         QaShareBody: {
-            /** Answer */
-            answer: string;
-            /** Attachments */
-            attachments?: components["schemas"]["QaShareAttachment"][];
-            /** Chart */
-            chart?: {
-                [key: string]: unknown;
-            } | null;
-            /** Debates */
-            debates?: components["schemas"]["QaShareDebate"][];
-            /** Parties */
-            parties?: components["schemas"]["QaShareParty"][];
-            /** Press Releases */
-            press_releases?: components["schemas"]["QaSharePress"][];
-            /** Question */
-            question: string;
-            /** Sources */
-            sources?: components["schemas"]["QaShareSource"][];
-        };
-        /** QaShareDebate */
-        QaShareDebate: {
-            /** Agenda Item */
-            agenda_item?: string | null;
-            /** Committee */
-            committee?: string | null;
-            /** Date */
-            date?: string | null;
-            /**
-             * Excerpt
-             * @default
-             */
-            excerpt: string;
-            /**
-             * Kind
-             * @default speech
-             */
-            kind: string;
-            /** Minutes Page */
-            minutes_page?: number | null;
-            /** Minutes Url */
-            minutes_url?: string | null;
-            /** Party */
-            party?: string | null;
-            /** Speaker */
-            speaker?: string | null;
-        };
-        /** QaShareKeyQuote */
-        QaShareKeyQuote: {
-            /** Date */
-            date?: string | null;
-            /** Speaker */
-            speaker?: string | null;
-            /**
-             * Text
-             * @default
-             */
-            text: string;
-        };
-        /** QaShareParty */
-        QaShareParty: {
-            /**
-             * Contributions
-             * @default 0
-             */
-            contributions: number;
-            /** QaShareKeyQuote */
-            kernaussage?: {
-                /** Date */
-                date?: string | null;
-                /** Speaker */
-                speaker?: string | null;
-                /**
-                 * Text
-                 * @default
-                 */
-                text: string;
-            } | null;
-            /** Note */
-            note?: string | null;
-            /** Party */
-            party: string;
-            /**
-             * Position
-             * @default
-             */
-            position: string;
-            /** Stance */
-            stance?: string | null;
-            /**
-             * Unanimous
-             * @default true
-             */
-            unanimous: boolean;
-        };
-        /** QaSharePress */
-        QaSharePress: {
-            /** Date */
-            date?: string | null;
-            /**
-             * Excerpt
-             * @default
-             */
-            excerpt: string;
-            /** Title */
-            title: string;
-            /** Url */
-            url: string;
+            /** Answer Id */
+            answer_id?: string | null;
+            /** Deep Job Id */
+            deep_job_id?: string | null;
         };
         /** QaShareReportBody */
         QaShareReportBody: {
@@ -14181,19 +14086,6 @@ export interface components {
              * @default other
              */
             reason: string;
-        };
-        /** QaShareSource */
-        QaShareSource: {
-            /** Committee */
-            committee?: string | null;
-            /** Id */
-            id: number;
-            /** Outcome */
-            outcome?: string | null;
-            /** Session Date */
-            session_date?: string | null;
-            /** Title */
-            title: string;
         };
         /** QaShareToken */
         QaShareToken: {
@@ -24878,4 +24770,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 19fa05119cae993218f09944f88253a56c3b2181a409c25089a7892111e0c36b
+// vertrag-sha256: 8aac293ccf017b4f9360477c60714b5c0231726f4e8c5fc3c524897a11ef948c

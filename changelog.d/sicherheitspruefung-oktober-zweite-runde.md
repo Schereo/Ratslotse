@@ -1,0 +1,5 @@
+---
+kategorie: behoben
+---
+
+**Zweite Sicherheitsprüfung: weitere Lücken in Backend, Web und App geschlossen.** Geteilte Antworten zeigen nur noch, was Ratslotse selbst geantwortet hat. Erfundene Zitate lassen sich so nicht mehr als Antwort von „Frag den Rat“ verbreiten; die App braucht dafür ein Update. Bestätigungslinks für eine neue Adresse und Links zum Zurücksetzen des Passworts melden niemanden mehr an: Nach dem Zurücksetzen meldet man sich einmal mit dem neuen Passwort an, eine neue Adresse bestätigt man in der eigenen Sitzung oder mit dem Code aus der Mail. Nach dem Abmelden bleiben keine Gesprächsverläufe oder zwischengespeicherten Daten mehr im Browser, und die App legt ihre Sitzung nicht mehr im Cookie-Speicher ab. Ein fremder Link stellt keine Fragen mehr unter deinem Konto, und viele Fehlversuche bei der Anmeldung sperren das betroffene Konto für eine Viertelstunde. Außerdem geschlossen: ein Weg am Tageskontingent der ausführlichen Recherche vorbei, überlange Fragen, Anzeigenamen mit Web-Adressen, ein Hinweis per Mail bei einer Registrierung mit bereits vergebener Adresse, Moderation im Tippspiel und einige Serverfehler durch präparierte Eingaben.

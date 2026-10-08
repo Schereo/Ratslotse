@@ -163,6 +163,25 @@ def require_permission(permission: str) -> Callable[[dict], dict]:
     return pruefen
 
 
+def kein_fremder_aufruf(request: Request) -> None:
+    """403, wenn der Browser meldet, dass die Anfrage von einer fremden Seite kommt.
+
+    Für Aktionen, die schon ein Link oder ein automatisch abgeschicktes
+    Formular auslösen kann: Das Sitzungs-Cookie ist ``SameSite=Lax`` und
+    reist bei einer Navigation von außen mit. ``Sec-Fetch-Site`` setzt der
+    Browser selbst, eine Seite kann es nicht fälschen. Ein erlaubter Ursprung
+    aus ``CORS_ORIGINS`` (etwa die App-Hülle) geht immer; Clients ohne den
+    Kopf (die native App, ältere Browser) gehen durch — der Schutz gilt dem
+    Browser, in dem eine fremde Seite offen ist.
+    """
+    origin = request.headers.get("origin")
+    if origin and origin in get_settings().cors_origin_list:
+        return
+    if request.headers.get("sec-fetch-site") == "cross-site":
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Diese Aktion geht nur von Ratslotse selbst aus.")
+
+
 def ist_aktiv(user: dict) -> bool:
     """Darf dieses Konto die angemeldete Fläche benutzen?
 

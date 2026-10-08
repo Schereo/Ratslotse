@@ -150,7 +150,6 @@ BEWUSST_OFFEN = {
     "EntityGeo": "`geojson` ist ein Umriss in Freiform.",
     "QaShare": "Geteilter Antwort-Schnappschuss aus `qa_shares.extras` — "
                "gespeichert in der Form von damals.",
-    "QaShareBody": "Derselbe Blob auf dem Hinweg.",
     "ResearchSnapshot": "Gespeicherter Quellen-Block eines Deep-Research-Jobs "
                         "— im Code ausführlich begründet.",
 }

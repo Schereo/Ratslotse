@@ -215,8 +215,8 @@ export function RechercheGestoppt({ fertig, gesamt, teilberichtMoeglich, onTeilb
       <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
         {teilberichtMoeglich
           ? gesamt > 0 && fertig >= gesamt
-            ? <>Alle {gesamt} Teilfragen waren schon fertig. Daraus kann Ratslotse den
-              Bericht noch schreiben — er zählt dann zu deinen fünf Recherchen heute.</>
+            ? <>Alle {gesamt} Teilfragen waren schon fertig, der Bericht entstand bereits —
+              diese Recherche zählt zu deinen fünf heute. Ratslotse kann den Bericht noch fertig schreiben.</>
             : <>{fertig} von {gesamt} Teilfragen waren fertig. Daraus kann Ratslotse einen
               Teilbericht erstellen. Dieser Versuch zählt <strong>nicht</strong> zu deinen fünf Recherchen heute.</>
           : <>Noch keine Teilfrage war fertig. Dieser Versuch zählt <strong>nicht</strong> zu

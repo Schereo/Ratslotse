@@ -1,10 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AppleCredential } from "./apple";
 import { api, ApiError, setUnauthorizedHandler } from "./api";
 import { loadToken, setToken } from "./token";
 import { unregisterPush } from "./push";
+import { kontoDatenRaeumen } from "./konto-raeumen";
 import { User } from "./types";
 
 interface AuthContextValue {
@@ -45,11 +47,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [refresh]);
 
-  // Clear state when any API call reports the session expired.
+  const queryClient = useQueryClient();
+
+  // Clear state when any API call reports the session expired. Mit dem Konto
+  // geht auch, was es zwischengespeichert hat (F8/F17) — nur der gerettete
+  // Entwurf bleibt, er soll nach der Anmeldung zurückkommen.
   useEffect(() => {
-    setUnauthorizedHandler(() => setUser(null));
+    setUnauthorizedHandler(() => {
+      setUser(null);
+      queryClient.clear();
+      kontoDatenRaeumen({ mitEntwurf: false });
+    });
     return () => setUnauthorizedHandler(null);
-  }, []);
+  }, [queryClient]);
 
   const login = async (email: string, password: string) => {
     const u = await api.post<User>("/auth/login", { email, password });
@@ -85,6 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post("/auth/logout");
     await setToken(null);
     setUser(null);
+    // Was das Konto im Tab hinterlassen hat, gehört nicht der nächsten
+    // Person an diesem Gerät (zweite Sicherheitsprüfung, F8/F17).
+    queryClient.clear();
+    kontoDatenRaeumen({ mitEntwurf: true });
   };
 
   return (

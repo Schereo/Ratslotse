@@ -603,6 +603,7 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
         # komplett neu generieren. Ein replace-Event räumt den Torso beim
         # Client weg, die Event-Liste bleibt für Replays konsistent.
         buf = ""
+        gezaehlt = False
         for versuch in range(3):
             if versuch > 0:
                 _emit(job, {"type": "replace", "text": vermerk})
@@ -621,9 +622,13 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
                     # Deltas bündeln: weniger, dafür tragfähige Events — der
                     # Replay nach einem Reconnect bleibt so klein.
                     if len(buf) - gesendet >= TOKEN_BUENDEL:
+                        if not gezaehlt:
+                            gezaehlt = _zaehlt_ab_jetzt(job, ratslotse_db, teilbericht)
                         _emit(job, {"type": "token", "text": buf[gesendet:]})
                         gesendet = len(buf)
                 if len(buf) > gesendet:
+                    if not gezaehlt:
+                        gezaehlt = _zaehlt_ab_jetzt(job, ratslotse_db, teilbericht)
                     _emit(job, {"type": "token", "text": buf[gesendet:]})
                 break
             except Exception:  # noqa: BLE001 — riss der Stream: neuer Anlauf
@@ -689,6 +694,9 @@ def _gespraech_anhaengen(ratslotse: Store, job: DeepJob, bericht: str,
         quellen_json = json.dumps(
             {"sources": [s for s in m.get("sources", []) if s.get("id") in zitiert],
              "cited": cited, "research": True,
+             # Damit ein wieder geöffneter Bericht noch geteilt werden kann
+             # (Teilen nimmt nur die Server-Kopie, s. qa_share_anlegen).
+             "deep_job_id": job.id,
              "press_releases": m.get("presse_kompakt", []),
              "debates": m.get("debatten_kompakt", []),
              "attachments": m.get("anlagen_kompakt", []),
@@ -715,6 +723,28 @@ def _db_update(ratslotse_db: str, job_id: str, status: str, bericht: str | None 
         store.deep_job_update(job_id, status, bericht=bericht, quellen_json=quellen_json)
     finally:
         store.close()
+
+
+def _zaehlt_ab_jetzt(job: DeepJob, ratslotse_db: str, teilbericht: bool) -> bool:
+    """Der erste Berichtstext geht raus: Ab hier zählt der Job zum Kontingent.
+
+    Bis 10/2026 zählte ein gestoppter Job nie — auch dann nicht, wenn der
+    Bericht schon fast vollständig beim Client stand (zweite Prüfung, F1). Ein
+    Teilbericht aus unvollständigem Material bleibt frei, wie die Karte es
+    verspricht. Gibt zurück, ob die Markierung gesetzt ist (dann nicht noch
+    einmal).
+    """
+    if teilbericht and not material_vollstaendig(job):
+        return True  # bleibt frei — nichts zu markieren, aber auch nicht erneut prüfen
+    try:
+        store = Store(ratslotse_db)
+        try:
+            store.deep_job_mark_counted(job.id)
+        finally:
+            store.close()
+    except Exception:  # noqa: BLE001 — der Bericht hat Vorrang vor der Zählung
+        _log.exception("deep %s: Kontingent-Markierung gescheitert", job.id)
+    return True
 
 
 def _gestoppt(job: DeepJob, ratslotse_db: str) -> None:

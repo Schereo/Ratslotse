@@ -54,7 +54,7 @@ from ..antworten import (
     PredictionStand,
 )
 from ..config import get_settings
-from ..deps import get_store, optional_user, require_admin
+from ..deps import get_store, kein_fremder_aufruf, optional_user, require_admin
 from ..election import elections, mayor, register
 from ..prediction import rounds, service
 from ..prediction.service import Basis
@@ -366,6 +366,12 @@ def austreten(request: Request, response: Response, runde: str | None = Query(de
     token_hash = _token_hash_fuer(store, game, game_id, request, r, user)
     if token_hash:
         player = store.prediction_player_by_token(token_hash, game_id)
+        if player and player.get("hidden_at"):
+            # Ausblenden ist das einzige Werkzeug der Moderation. Austreten und
+            # neu beitreten machte es rückgängig — und gab den gesperrten
+            # Namen wieder frei (zweite Prüfung 10/2026, F5).
+            raise HTTPException(status.HTTP_403_FORBIDDEN,
+                                "Dieser Eintrag wurde ausgeblendet und lässt sich nicht selbst löschen.")
         if player:
             store.prediction_player_delete_own(player["id"])
             service.reset()
@@ -379,7 +385,12 @@ def abmelden(request: Request, response: Response, runde: str | None = Query(def
     """Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz
     zu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden
     mit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom
-    Schalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden."""
+    Schalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.
+
+    Nur nicht von einer fremden Seite aus: Der Cookie ist in einer offenen
+    Runde die EINZIGE Identität, und ein automatisch abgeschicktes Formular
+    irgendwo im Netz löschte ihn sonst (zweite Prüfung 10/2026, F11)."""
+    kein_fremder_aufruf(request)
     _frei()
     r = _runde(runde)
     token_hash = _token_hash(request, r)

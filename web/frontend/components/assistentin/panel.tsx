@@ -311,6 +311,22 @@ export function LottiPanel({
   }, []);
   useEffect(() => { if (turns.length) merkeVerlauf(turns); }, [turns]);
 
+  // Meldet sich das Konto ab (oder wechselt), geht auch der Verlauf im
+  // Speicher der Seite — sonst sähe die nächste Person am Gerät ihn noch
+  // (zweite Sicherheitsprüfung, F8). Nur nach einem ECHTEN Wechsel: Beim
+  // Laden kommt das Konto erst nach dem ersten Rendern, das ist keiner.
+  const kontoRef = useRef<number | null>(null);
+  useEffect(() => {
+    const id = user?.id ?? null;
+    if (kontoRef.current != null && kontoRef.current !== id) {
+      abbruch.current?.abort();
+      setTurns([]);
+      setGespraechId(null);
+    }
+    kontoRef.current = id;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   // Beim Öffnen: Fokus ins Eingabefeld. Beim Schließen: zurück auf den Knopf —
   // sonst steht der Fokus im Nichts, und die nächste Tabulatortaste beginnt
   // wieder ganz oben auf der Seite (BITV).

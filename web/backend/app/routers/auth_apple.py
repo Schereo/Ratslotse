@@ -53,7 +53,7 @@ _JWKS_TTL = 24 * 3600
 
 
 class AppleLoginRequest(BaseModel):
-    identity_token: str = Field(min_length=20)
+    identity_token: str = Field(min_length=20, max_length=4096)
     # Apple übermittelt den Namen NUR bei der ersten Autorisierung und NICHT im
     # signierten Token — er kommt daher ungeprüft vom Client. Das ist vertretbar,
     # weil ein Anzeigename keine Berechtigung trägt; er wird ausschließlich für
@@ -284,5 +284,5 @@ def apple_login(
         store.set_display_name(user["id"], apple_name)
         user = store.get_web_user_by_id(user["id"])
 
-    _set_auth_cookie(response, user)
+    _set_auth_cookie(response, user, request)
     return _to_out(user, _app_access_token(request, user))

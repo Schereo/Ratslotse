@@ -389,6 +389,22 @@ CREATE TABLE IF NOT EXISTS qa_shares (
     extras   TEXT                   -- JSON {debates, press_releases, attachments, parties}
 );
 
+-- Die Antworten der KI-Frage, wie der SERVER sie geliefert hat (10/2026).
+-- Teilen nimmt nur noch diese Kopie, nie die des Clients: Bis dahin ließ sich
+-- unter ratslotse.de/g beliebiger Text samt erfundener Zitate echter
+-- Ratsmitglieder als „Automatische Antwort von Frag den Rat" veröffentlichen
+-- (zweite Sicherheitsprüfung, F3). 90 Tage, dann räumt sich die Tabelle selbst.
+CREATE TABLE IF NOT EXISTS qa_answer_records (
+    id         TEXT PRIMARY KEY,      -- unerratbares Token, geht im done-Ereignis an den Client
+    owner_id   INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    question   TEXT NOT NULL,
+    answer     TEXT NOT NULL,
+    sources    TEXT NOT NULL,         -- JSON [{id, title, session_date, committee, outcome}]
+    extras     TEXT NOT NULL          -- JSON {debates, press_releases, attachments, chart, parties}
+);
+CREATE INDEX IF NOT EXISTS idx_qa_answer_records_created ON qa_answer_records(created_at);
+
 -- „Gründliche Recherche" (RG-10): server-seitige Recherche-Jobs. Der Job
 -- läuft im Backend-Thread weiter, wenn der Client die Verbindung verliert
 -- (Tab-Wechsel, App-Navigation); diese Zeile ist die persistente Wahrheit —
@@ -406,7 +422,8 @@ CREATE TABLE IF NOT EXISTS deep_research_jobs (
     created  TEXT NOT NULL,
     updated  TEXT NOT NULL,
     model    TEXT,                  -- Modell des Berichts, beim Einreichen gewählt (NULL = vor 09/2026)
-    premium  INTEGER NOT NULL DEFAULT 0  -- 1 = mit dem Recht premium_models eingereicht
+    premium  INTEGER NOT NULL DEFAULT 0, -- 1 = mit dem Recht premium_models eingereicht
+    counts_against_quota INTEGER NOT NULL DEFAULT 0  -- 1 = Berichtstext ging schon raus (zählt, auch gestoppt)
 );
 CREATE INDEX IF NOT EXISTS idx_deep_jobs_user ON deep_research_jobs(user_id, created DESC);
 
@@ -852,6 +869,7 @@ MAIL_ANLAESSE: frozenset[str] = frozenset({
     "password_reset",    # Link zum Zurücksetzen
     "email_change",      # Bestätigung an die NEUE Adresse
     "email_change_info",  # Hinweis an die alte Adresse
+    "duplicate_signup",  # Registrierung auf eine vorhandene Adresse versucht
     "setup_reminder",    # scripts/remind_setup.py
     "feedback_reply",    # Antwort auf eine Rückmeldung
     "probe",             # Testmail aus den Kontoeinstellungen und der Neuigkeiten-Probe
@@ -893,6 +911,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("qa_conversation_turns", "user_id"),
     ("assistant_checks", "user_id"),
     ("qa_shares", "user_id"),
+    ("qa_answer_records", "owner_id"),
     ("deep_research_jobs", "user_id"),
     ("quiz_answers", "owner_id"),
     ("quiz_ratings", "owner_id"),
@@ -1852,6 +1871,13 @@ class Store:
             with self._conn:
                 self._conn.execute(
                     "ALTER TABLE deep_research_jobs ADD COLUMN premium INTEGER NOT NULL DEFAULT 0")
+        # Kontingent ab dem ersten Berichtstext (10/2026): Die Spalte prüft
+        # sich selbst; Bestandszeilen bleiben 0 und zählen wie bisher.
+        if dj_cols and "counts_against_quota" not in dj_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE deep_research_jobs "
+                    "ADD COLUMN counts_against_quota INTEGER NOT NULL DEFAULT 0")
         qs_cols = self._table_cols("qa_shares")
         if qs_cols and "extras" not in qs_cols:
             with self._conn:
@@ -3564,6 +3590,53 @@ class Store:
                  json.dumps(extras, ensure_ascii=False) if extras else None))
         return token
 
+    #: So lange lässt sich eine gelieferte Antwort noch teilen.
+    QA_ANSWER_RECORD_DAYS = 90
+
+    def qa_answer_record_save(self, owner_id: int, question: str, answer: str,
+                              sources: list[dict], extras: dict) -> str:
+        """Eine gelieferte Antwort festhalten → Kennung für das done-Ereignis."""
+        import secrets
+
+        record_id = secrets.token_urlsafe(16)
+        now = datetime.utcnow()
+        grenze = (now - timedelta(days=self.QA_ANSWER_RECORD_DAYS)).isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM qa_answer_records WHERE created_at < ?", (grenze,))
+            self._conn.execute(
+                "INSERT INTO qa_answer_records (id, owner_id, created_at, question, answer, "
+                "sources, extras) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (record_id, owner_id, now.isoformat(timespec="seconds"), question[:300],
+                 answer[:8000], json.dumps(sources, ensure_ascii=False),
+                 json.dumps(extras, ensure_ascii=False)))
+        return record_id
+
+    def qa_answer_record_get(self, record_id: str, owner_id: int) -> dict | None:
+        """Eine gelieferte Antwort — nur für das Konto, dem sie geliefert wurde."""
+        row = self._conn.execute(
+            "SELECT question, answer, sources, extras FROM qa_answer_records "
+            "WHERE id = ? AND owner_id = ?", (record_id, owner_id)).fetchone()
+        if not row:
+            return None
+        try:
+            return {"question": row["question"], "answer": row["answer"],
+                    "sources": json.loads(row["sources"] or "[]"),
+                    "extras": json.loads(row["extras"] or "{}")}
+        except (ValueError, TypeError):
+            return None
+
+    def qa_answer_record_set_parties(self, record_id: str, owner_id: int,
+                                     parties: list[dict]) -> None:
+        """Den Parteien-Baustein nachtragen — er kommt aus eigenem Endpunkt."""
+        rec = self.qa_answer_record_get(record_id, owner_id)
+        if rec is None:
+            return
+        extras = {**rec["extras"], "parties": parties}
+        with self._conn:
+            self._conn.execute(
+                "UPDATE qa_answer_records SET extras = ? WHERE id = ? AND owner_id = ?",
+                (json.dumps(extras, ensure_ascii=False), record_id, owner_id))
+
     def qa_share_get(self, token: str) -> dict | None:
         """Öffentliche Sicht eines Snapshots — OHNE user_id."""
         row = self._conn.execute(
@@ -3671,11 +3744,22 @@ class Store:
         der lokalen Mitternacht (als UTC-Zeitstempel gerechnet, denn genau so
         liegt `created` in der Tabelle).
         """
+        # Ein gestoppter Job zählt, sobald sein Bericht schon beim Client war
+        # (``counts_against_quota``): Wer kurz vor Schluss stoppte, hatte den
+        # Text bereits — und der Job kostete nichts (zweite Prüfung 10/2026,
+        # F1). Ein Fehler kostet weiterhin nichts.
         row = self._conn.execute(
             "SELECT COUNT(*) FROM deep_research_jobs WHERE user_id = ? "
-            "AND status IN ('laeuft', 'fertig') AND created >= ?",
+            "AND (status IN ('laeuft', 'fertig') "
+            "     OR (counts_against_quota = 1 AND status != 'fehler')) AND created >= ?",
             (user_id, _tagesbeginn_utc())).fetchone()
         return int(row[0])
+
+    def deep_job_mark_counted(self, job_id: str) -> None:
+        """Ab jetzt zählt der Job zum Kontingent — der Bericht ist unterwegs."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE deep_research_jobs SET counts_against_quota = 1 WHERE id = ?", (job_id,))
 
     def deep_job_gesehen(self, job_id: str, user_id: int) -> None:
         """Bericht wurde gerendert — nicht erneut ungefragt einblenden."""

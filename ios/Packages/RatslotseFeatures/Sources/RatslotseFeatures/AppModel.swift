@@ -287,6 +287,14 @@ public final class AppModel {
             alertMessage = "Dieser Link gehört zu einem anderen Konto."
             return
         }
+        // Ohne Sitzung meldet ein Reset-Link nicht an — das Backend legt dann
+        // kein Token bei. Sonst landete eine abgemeldete App im Konto dessen,
+        // der den Link verschickt hat (zweite Prüfung 10/2026, F9).
+        guard user.accessToken != nil else {
+            authPresentation = .login
+            alertMessage = "Dein Passwort ist geändert. Bitte melde dich damit an."
+            return
+        }
         try await accept(user: user)
         authPresentation = nil
     }
@@ -560,6 +568,12 @@ public final class AppModel {
         // Ältere App-Fassungen legten API-Antworten samt Token im
         // gemeinsamen Zwischenspeicher ab; beim Abmelden räumen wir ihn leer.
         URLCache.shared.removeAllCachedResponses()
+        // Ebenso das Sitzungs-Cookie, das ältere Fassungen im gemeinsamen
+        // Cookie-Speicher abgelegt haben (zweite Prüfung 10/2026, F12).
+        let cookieSpeicher = HTTPCookieStorage.shared
+        for cookie in cookieSpeicher.cookies ?? [] where cookie.domain.hasSuffix("ratslotse.de") {
+            cookieSpeicher.deleteCookie(cookie)
+        }
         pendingPushToken = nil
         conversationSavingPreferenceOverride = nil
         // Auch Lottis Gespräch: Ein neues Konto darf nicht in das alte

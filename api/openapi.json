@@ -3164,6 +3164,7 @@
             "type": "string"
           },
           "identity_token": {
+            "maxLength": 4096,
             "minLength": 20,
             "title": "Identity Token",
             "type": "string"
@@ -3205,6 +3206,8 @@
             "type": "string"
           },
           "question": {
+            "maxLength": 2000,
+            "minLength": 1,
             "title": "Question",
             "type": "string"
           },
@@ -16502,6 +16505,14 @@
       },
       "PartyOpinionsBody": {
         "properties": {
+          "answer_id": {
+            "maxLength": 64,
+            "title": "Answer Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "decision_ids": {
             "items": {
               "type": "integer"
@@ -18931,342 +18942,27 @@
         "title": "QaShare",
         "type": "object"
       },
-      "QaShareAttachment": {
-        "properties": {
-          "excerpt": {
-            "default": "",
-            "maxLength": 600,
-            "title": "Excerpt",
-            "type": "string"
-          },
-          "label": {
-            "maxLength": 300,
-            "title": "Label",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "number": {
-            "maximum": 99.0,
-            "minimum": 1.0,
-            "title": "Number",
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "template_number": {
-            "maxLength": 60,
-            "title": "Template Number",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "template_title": {
-            "maxLength": 300,
-            "title": "Template Title",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "url": {
-            "maxLength": 500,
-            "title": "Url",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "title": "QaShareAttachment",
-        "type": "object"
-      },
       "QaShareBody": {
+        "description": "Was geteilt wird — als KENNUNG, nicht als Inhalt.\n\nBis 10/2026 schickte der Client Frage, Antwort, Zitate, Debattenauszüge\nund Parteipositionen selbst, und der Server veröffentlichte sie unter\nratslotse.de als „Automatische Antwort von ‚Frag den Rat‘\". Jedes Konto\nkonnte so erfundene Zitate echter Ratsmitglieder verbreiten (zweite\nSicherheitsprüfung, F3; Tims Entscheidung 08.10.2026: nur, was der Server\ngeliefert hat). Geteilt wird jetzt die Server-Kopie: einer KI-Antwort\n(``answer_id`` aus dem done-Ereignis) oder eines eigenen Recherche-Berichts\n(``deep_job_id``). Alles andere im Körper wird ignoriert — ältere\nApp-Versionen schicken noch den Inhalt und bekommen einen 422 mit der\nBitte, die App zu aktualisieren.",
         "properties": {
-          "answer": {
-            "maxLength": 8000,
-            "minLength": 1,
-            "title": "Answer",
-            "type": "string"
-          },
-          "attachments": {
-            "items": {
-              "$ref": "#/components/schemas/QaShareAttachment"
-            },
-            "maxItems": 10,
-            "title": "Attachments",
-            "type": "array"
-          },
-          "chart": {
-            "additionalProperties": true,
-            "title": "Chart",
+          "answer_id": {
+            "maxLength": 64,
+            "title": "Answer Id",
             "type": [
-              "object",
+              "string",
               "null"
             ]
           },
-          "debates": {
-            "items": {
-              "$ref": "#/components/schemas/QaShareDebate"
-            },
-            "maxItems": 20,
-            "title": "Debates",
-            "type": "array"
-          },
-          "parties": {
-            "items": {
-              "$ref": "#/components/schemas/QaShareParty"
-            },
-            "maxItems": 12,
-            "title": "Parties",
-            "type": "array"
-          },
-          "press_releases": {
-            "items": {
-              "$ref": "#/components/schemas/QaSharePress"
-            },
-            "maxItems": 10,
-            "title": "Press Releases",
-            "type": "array"
-          },
-          "question": {
-            "maxLength": 300,
-            "minLength": 1,
-            "title": "Question",
-            "type": "string"
-          },
-          "sources": {
-            "items": {
-              "$ref": "#/components/schemas/QaShareSource"
-            },
-            "maxItems": 40,
-            "title": "Sources",
-            "type": "array"
+          "deep_job_id": {
+            "maxLength": 64,
+            "title": "Deep Job Id",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": [
-          "question",
-          "answer"
-        ],
         "title": "QaShareBody",
-        "type": "object"
-      },
-      "QaShareDebate": {
-        "properties": {
-          "agenda_item": {
-            "maxLength": 300,
-            "title": "Agenda Item",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "committee": {
-            "maxLength": 120,
-            "title": "Committee",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "date": {
-            "maxLength": 10,
-            "title": "Date",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "excerpt": {
-            "default": "",
-            "maxLength": 2000,
-            "title": "Excerpt",
-            "type": "string"
-          },
-          "kind": {
-            "default": "speech",
-            "maxLength": 30,
-            "title": "Kind",
-            "type": "string"
-          },
-          "minutes_page": {
-            "maximum": 9999.0,
-            "minimum": 1.0,
-            "title": "Minutes Page",
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "minutes_url": {
-            "maxLength": 500,
-            "title": "Minutes Url",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "party": {
-            "maxLength": 60,
-            "title": "Party",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "speaker": {
-            "maxLength": 120,
-            "title": "Speaker",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "title": "QaShareDebate",
-        "type": "object"
-      },
-      "QaShareKeyQuote": {
-        "properties": {
-          "date": {
-            "maxLength": 10,
-            "title": "Date",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "speaker": {
-            "maxLength": 120,
-            "title": "Speaker",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "text": {
-            "default": "",
-            "maxLength": 600,
-            "title": "Text",
-            "type": "string"
-          }
-        },
-        "title": "QaShareKeyQuote",
-        "type": "object"
-      },
-      "QaShareParty": {
-        "properties": {
-          "contributions": {
-            "default": 0,
-            "minimum": 0.0,
-            "title": "Contributions",
-            "type": "integer"
-          },
-          "kernaussage": {
-            "properties": {
-              "date": {
-                "maxLength": 10,
-                "title": "Date",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "speaker": {
-                "maxLength": 120,
-                "title": "Speaker",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "text": {
-                "default": "",
-                "maxLength": 600,
-                "title": "Text",
-                "type": "string"
-              }
-            },
-            "title": "QaShareKeyQuote",
-            "type": [
-              "object",
-              "null"
-            ]
-          },
-          "note": {
-            "maxLength": 300,
-            "title": "Note",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "party": {
-            "maxLength": 60,
-            "title": "Party",
-            "type": "string"
-          },
-          "position": {
-            "default": "",
-            "maxLength": 800,
-            "title": "Position",
-            "type": "string"
-          },
-          "stance": {
-            "maxLength": 20,
-            "title": "Stance",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "unanimous": {
-            "default": true,
-            "title": "Unanimous",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "party"
-        ],
-        "title": "QaShareParty",
-        "type": "object"
-      },
-      "QaSharePress": {
-        "properties": {
-          "date": {
-            "maxLength": 10,
-            "title": "Date",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "excerpt": {
-            "default": "",
-            "maxLength": 600,
-            "title": "Excerpt",
-            "type": "string"
-          },
-          "title": {
-            "maxLength": 300,
-            "title": "Title",
-            "type": "string"
-          },
-          "url": {
-            "maxLength": 500,
-            "title": "Url",
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "url"
-        ],
-        "title": "QaSharePress",
         "type": "object"
       },
       "QaShareReportBody": {
@@ -19279,49 +18975,6 @@
           }
         },
         "title": "QaShareReportBody",
-        "type": "object"
-      },
-      "QaShareSource": {
-        "properties": {
-          "committee": {
-            "maxLength": 120,
-            "title": "Committee",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "outcome": {
-            "maxLength": 40,
-            "title": "Outcome",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "session_date": {
-            "maxLength": 10,
-            "title": "Session Date",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "title": {
-            "maxLength": 300,
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title"
-        ],
-        "title": "QaShareSource",
         "type": "object"
       },
       "QaShareToken": {
@@ -26952,7 +26605,7 @@
     },
     "/api/admin/live-probe": {
       "get": {
-        "description": "Der O1-Stream als Transkript, Äußerung für Äußerung — die Generalprobe\nder Streaming-Transkription (``council/stream_stt``) im Admin-Panel.\n\nTims Wunsch 06.09.2026: „auf der dev-Seite mal das Transkript des\naktuellen O1-Programms anzeigen\". Was hier ankommt, kommt genauso in der\nRatssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste\n(hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine\nProbe zugleich; verlässt der Browser die Seite, endet die Aufnahme.",
+        "description": "Der O1-Stream als Transkript, Äußerung für Äußerung — die Generalprobe\nder Streaming-Transkription (``council/stream_stt``) im Admin-Panel.\n\nTims Wunsch 06.09.2026: „auf der dev-Seite mal das Transkript des\naktuellen O1-Programms anzeigen\". Was hier ankommt, kommt genauso in der\nRatssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste\n(hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine\nProbe zugleich; verlässt der Browser die Seite, endet die Aufnahme.\n\nEin GET mit Kosten (Gladia, ffmpeg): Ein Link auf einer fremden Seite\nstartete die Probe sonst in der Sitzung des Admins (zweite Prüfung\n10/2026, F14). Das Panel ruft von der eigenen Seite aus.",
         "operationId": "live_probe_api_admin_live_probe_get",
         "parameters": [
           {
@@ -32344,7 +31997,7 @@
     },
     "/api/council/qa-share": {
       "post": {
-        "description": "Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als\nSnapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und\neine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick.",
+        "description": "Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als\nSnapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und\neine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick.\n\nInhalt kommt nur noch aus der Server-Kopie (s. ``QaShareBody``).",
         "operationId": "qa_share_anlegen_api_council_qa_share_post",
         "requestBody": {
           "content": {
@@ -34993,7 +34646,7 @@
     },
     "/api/tipp/abmelden": {
       "post": {
-        "description": "Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz\nzu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden\nmit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom\nSchalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.",
+        "description": "Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz\nzu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden\nmit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom\nSchalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.\n\nNur nicht von einer fremden Seite aus: Der Cookie ist in einer offenen\nRunde die EINZIGE Identität, und ein automatisch abgeschicktes Formular\nirgendwo im Netz löschte ihn sonst (zweite Prüfung 10/2026, F11).",
         "operationId": "abmelden_api_tipp_abmelden_post",
         "parameters": [
           {
