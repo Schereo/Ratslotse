@@ -51,7 +51,10 @@ function Aufnahme({ props, t }: { props: ClipProps; t: number }) {
     if (w > spot) { spot = w; aktiv = b; }
   }
   const box = aktiv?.box ?? null;
-  const pad = 5;
+  // Maße in Pixeln der Aufnahme: Der Browser liefert CSS-Pixel (390 breit),
+  // der Simulator echte (1206) — Welle und Rahmen wachsen mit.
+  const k = W / 390;
+  const pad = 5 * k;
   const wellen = beats.filter((b) => b.tap && t >= b.t && t < b.t + 0.9);
 
   return (
@@ -64,17 +67,17 @@ function Aufnahme({ props, t }: { props: ClipProps; t: number }) {
         {box && spot > 0.01 && (
           <div style={{
             position: "absolute", left: box.x - pad, top: box.y - pad, width: box.w + 2 * pad, height: box.h + 2 * pad,
-            borderRadius: 10, boxShadow: `0 0 0 3000px rgba(10, 28, 48, ${0.4 * spot})`,
-            outline: `2px solid ${C.signal}`, opacity: spot,
+            borderRadius: 10 * k, boxShadow: `0 0 0 ${3000 * k}px rgba(10, 28, 48, ${0.4 * spot})`,
+            outline: `${2 * k}px solid ${C.signal}`, opacity: spot,
           }} />
         )}
         {wellen.map((b, i) => {
           const p = (t - b.t) / 0.9;
-          const r = 22 * (0.45 + p);
+          const r = 22 * k * (0.45 + p);
           return (
             <div key={i} style={{
               position: "absolute", left: b.x - r, top: b.y - r, width: 2 * r, height: 2 * r, borderRadius: "50%",
-              border: `3px solid ${C.signal}`, background: "rgba(255,255,255,.22)", opacity: 1 - p,
+              border: `${3 * k}px solid ${C.signal}`, background: "rgba(255,255,255,.22)", opacity: 1 - p,
             }} />
           );
         })}

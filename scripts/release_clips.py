@@ -583,16 +583,22 @@ def schnitt_remotion_ios(version: str, name: str, roh: Path, beats: list[Beat], 
     zeitachse = {
         "width": breite, "height": hoehe, "duration": round(duration(roh), 3),
         "beats": [{"t": round(b.t, 3), "x": b.x, "y": b.y, "tap": b.tap, "box": None} for b in beats],
-        "steps": [{"t": round(starts[i], 3), "text": text} for i, text in enumerate(schritte) if i < len(starts)],
+        # Ein leerer Schritt (`--schritt ""`) lässt den vorigen Untertitel
+        # stehen — für einen Schritt, der über zwei Aufnahmen läuft.
+        "steps": [{"t": round(starts[i], 3), "text": text} for i, text in enumerate(schritte)
+                  if i < len(starts) and text],
         "navigations": [], "startUrl": "",
     }
     ziel = MEDIA / version
     ziel.mkdir(parents=True, exist_ok=True)
     mp4 = ziel / f"{name}-ios.mp4"
-    props = {**meta, "video": "roh.mp4", "letztesBild": "letztes-bild.png", "timeline": zeitachse}
-    remotion("TelefonClip", props, mp4, oeffentlich)
+    # Randlos (HochClip), wie die Telefon-Fassung fürs Web: Im Spieler steht
+    # der Clip ohnehin nur so breit wie das Telefon — ein Rahmen darin hätte
+    # den Inhalt noch einmal halbiert (ein Telefon-Rahmen, bis 08.10.2026).
+    props = {**meta, "ort": "app", "video": "roh.mp4", "letztesBild": "letztes-bild.png", "timeline": zeitachse}
+    remotion("HochClip", props, mp4, oeffentlich)
     png = tmp / "standbild-ios.png"
-    remotion("TelefonClip", props, png, oeffentlich, still=True, frame=45)
+    remotion("HochClip", props, png, oeffentlich, still=True, frame=45)
     Image.open(png).convert("RGB").save(ziel / f"{name}-ios.webp", "WEBP", quality=82, method=6)
     return duration(mp4)
 
@@ -611,18 +617,24 @@ def cmd_ios(args: argparse.Namespace) -> int:
             starts.append(offset)
             norm = Path(tmp) / f"norm{i}.mp4"
             normalize(datei, norm)
-            wechsel = change_time(norm)
-            if wechsel is None:
-                wechsel = change_time(norm, SMALL_CHANGE_THRESHOLD)
-            if wechsel is None:
-                print(f"{datei}: kein Bildwechsel gefunden — hat der Tipp etwas ausgelöst?", file=sys.stderr)
-                return 1
             teil = Path(tmp) / f"teil{i}.mp4"
             if x is None or y is None:
                 # Ohne Tipp (Blättern): nur die Bewegung, jede Spanne mit
                 # etwas Luft davor und danach. Was dazwischen steht, ist
                 # dasselbe Standbild — der Schnitt ist unsichtbar.
-                for j, (von, bis) in enumerate(motion_spans(norm)):
+                spannen = motion_spans(norm)
+                if not spannen:
+                    # Gar keine Bewegung: ein Standbild zum Lesen (3.0.0:
+                    # Lottis Antwort kam schon im Stück davor und soll mit
+                    # eigenem Untertitel stehen bleiben).
+                    # Der Simulator schreibt ein stilles Bild kaum mit — die
+                    # Datei ist dann Bruchteile einer Sekunde lang.
+                    normalize(norm, teil, start=0.0, length=min(3.0, duration(norm)))
+                    pad_to(teil, 3.0)
+                    stuecke.append(teil)
+                    offset += duration(teil)
+                    continue
+                for j, (von, bis) in enumerate(spannen):
                     stueck = Path(tmp) / f"teil{i}-{j}.mp4"
                     anfang = max(0.0, von - 0.3)
                     normalize(norm, stueck, start=anfang, length=(bis - anfang) + 0.6)
@@ -630,6 +642,12 @@ def cmd_ios(args: argparse.Namespace) -> int:
                     offset += duration(stueck)
                 continue
             else:
+                wechsel = change_time(norm)
+                if wechsel is None:
+                    wechsel = change_time(norm, SMALL_CHANGE_THRESHOLD)
+                if wechsel is None:
+                    print(f"{datei}: kein Bildwechsel gefunden — hat der Tipp etwas ausgelöst?", file=sys.stderr)
+                    return 1
                 start = max(0.0, wechsel - BEFORE)
                 normalize(norm, teil, start=start, length=(wechsel - start) + AFTER)
                 pad_to(teil, (wechsel - start) + AFTER)
@@ -766,7 +784,8 @@ def main() -> int:
                    help="Schluss-Blick: Zoom ohne Tipp auf diese Stelle im letzten Bild")
     i.add_argument("--tail", type=float, default=TAIL, help="eingefrorener Schluss in Sekunden")
     i.add_argument("--schritt", action="append", metavar="TEXT",
-                   help="Untertitel je Segment, in derselben Reihenfolge (nur Remotion-Schnitt)")
+                   help="Untertitel je Segment, in derselben Reihenfolge (nur Remotion-Schnitt); "
+                        "leer = der vorige läuft weiter")
     i.set_defaults(func=cmd_ios)
 
     s = sub.add_parser("skeleton", help="Drehbuch-Gerüst aus kern/releases.py anlegen")

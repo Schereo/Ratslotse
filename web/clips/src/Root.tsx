@@ -5,7 +5,6 @@ import React from "react";
 import { Composition, Still } from "remotion";
 import { INTRO, OUTRO, WebClip } from "./WebClip";
 import { Titelbild } from "./Titelbild";
-import { INTRO_TEL, OUTRO_TEL, TelefonClip } from "./TelefonClip";
 import { BREITE_HOCH, HochClip, INTRO_HOCH, OUTRO_HOCH, hoeheHoch } from "./HochClip";
 import type { ClipProps, TitelbildProps } from "./typen";
 
@@ -32,18 +31,6 @@ export const Root: React.FC = () => (
       defaultProps={beispiel}
       calculateMetadata={({ props }) => ({
         durationInFrames: Math.round((INTRO + props.timeline.duration + OUTRO) * FPS),
-      })}
-    />
-    <Composition
-      id="TelefonClip"
-      component={TelefonClip}
-      width={1080}
-      height={1920}
-      fps={FPS}
-      durationInFrames={Math.round((INTRO_TEL + beispiel.timeline.duration + OUTRO_TEL) * FPS)}
-      defaultProps={beispiel}
-      calculateMetadata={({ props }) => ({
-        durationInFrames: Math.round((INTRO_TEL + props.timeline.duration + OUTRO_TEL) * FPS),
       })}
     />
     <Composition

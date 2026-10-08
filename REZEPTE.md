@@ -300,6 +300,26 @@ Die Dinge, die man dabei vergisst:
    jeden als eigene Aufnahme, dann zusammenschneiden — die Nähte liegen auf
    identischen Standbildern und fallen nicht auf.
 
+   **Seit 3.0.0 schneidet Remotion auch die App-Clips** (randlos im
+   Hochformat wie die Telefon-Fassung fürs Web, `HochClip`): `--schritt` je
+   Stück gibt den Untertitel, ein leerer `--schritt ""` lässt den vorigen
+   stehen, und ein Stück ohne Tipp und ohne Bewegung wird ein Standbild von
+   drei Sekunden (zum Lesen einer Antwort). Fünf Dinge, die beim Drehen
+   aufhalten:
+
+   * Ein frisches Konto landet im Einrichtungs-Assistenten. Vor dem Start
+     `simctl spawn <UDID> defaults write de.ratslotse.dev ratslotse.onboarding.done -bool true`.
+   * `SIMCTL_CHILD_RATSLOTSE_DEBUG_ROUTE='/council/decision?id=…'` öffnet
+     native Seiten direkt (Beschluss, Mehr-Ziele) — der Weg dorthin muss
+     nicht jedes Mal getippt werden.
+   * Text kommt per Einfügen, und iOS fragt dabei jedes Mal „Einsetzen
+     erlauben?“. Den Text VOR dem Stück einfügen; das Stück beginnt mit dem
+     Tipp auf „Senden“.
+   * Zwei Tipps kurz hintereinander: Der zweite fällt in die Animation des
+     ersten und verpufft. Jeder Tipp ein eigenes Stück.
+   * Die App lädt Bilder und Clips von ratslotse.de — lokal bleiben neue
+     Medien in der Karte schwarz, bis sie ausgeliefert sind.
+
    Auch hier alles oder nichts: Fehlt einem Highlight die App-Fassung, bekommt
    die App für die ganze Ausgabe die Web-Bilder. Und ein Feature, das es in der
    App gar nicht gibt (2.2.0: das Glossar), bekommt `only="web"` — angekündigt
