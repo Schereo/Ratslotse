@@ -108,7 +108,7 @@ function VerifyInner() {
     const zurueck = `/verify-email?token=${encodeURIComponent(token)}${istWechsel ? "&change=1" : ""}`;
     return (
       <div className="mt-6 space-y-4">
-        <p className="text-sm text-muted-foreground">{error}</p>
+        <p className="text-sm text-muted-foreground">Melde dich kurz an — dann ist deine Adresse bestätigt.</p>
         <Link href={mitRuecksprung("/login", zurueck)} className="block">
           <Button className="w-full">Anmelden und bestätigen</Button>
         </Link>

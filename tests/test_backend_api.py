@@ -2998,7 +2998,7 @@ def test_verify_link_ohne_sitzung_meldet_niemanden_an(client):
     r = TestClient(app).post("/api/auth/verify-email", json={"token": "ohne-sitzung"},
                              headers={"X-Client": "app"})
     assert r.status_code == 401
-    assert "melde dich zuerst" in r.json()["detail"]
+    assert "melde dich an" in r.json()["detail"]
 
     # Nicht verbraucht: aus der eigenen Sitzung greift derselbe Link.
     token = _app_token("zweite@test.de")

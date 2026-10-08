@@ -203,10 +203,7 @@ LINK_FREMDES_KONTO = (
     "angemeldet bist. Melde dich ab und öffne ihn dann erneut.")
 
 #: Die Erstbestätigung braucht die Sitzung des Kontos selbst.
-ERST_ANMELDEN = (
-    "Bitte melde dich zuerst mit deiner E-Mail-Adresse und deinem Passwort an "
-    "und öffne den Link dann noch einmal. Passwort nicht zur Hand? Über "
-    "„Passwort vergessen“ bestätigst du die Adresse auch.")
+ERST_ANMELDEN = "Bitte melde dich an und öffne den Link dann noch einmal."
 
 
 def _sitzungskonto(request: Request, store: Store) -> dict | None:
