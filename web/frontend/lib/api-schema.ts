@@ -1240,6 +1240,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/verify-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Code
+         * @description Die Adresse mit dem sechsstelligen Code aus der Mail bestätigen.
+         *
+         *     Für den Fall, dass Mail und Sitzung auf verschiedenen Geräten liegen
+         *     (registriert am Laptop, Mail am Handy): Den Code tippt man dort ein, wo man
+         *     schon angemeldet ist. Er gehört zur Sitzung, nicht zum Gerät, auf dem die
+         *     Mail liegt — wer ein Konto auf eine fremde Adresse angelegt hat, sieht ihn
+         *     nie. Gilt für die Erstbestätigung wie für einen Adresswechsel; derselbe
+         *     Token, der Link aus derselben Mail ist danach verbraucht.
+         */
+        post: operations["verify_code_api_auth_verify_code_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/verify-email": {
         parameters: {
             query?: never;
@@ -16738,6 +16765,11 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerifyCodeRequest */
+        VerifyCodeRequest: {
+            /** Code */
+            code: string;
+        };
         /** VerifyEmailRequest */
         VerifyEmailRequest: {
             /** Token */
@@ -18592,6 +18624,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_code_api_auth_verify_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyCodeRequest"];
             };
         };
         responses: {
@@ -24813,4 +24878,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f006dacb9abaeeb80d3a41471a51323db81da70fe93a9ce6d09cd75bb3dbef39
+// vertrag-sha256: 19fa05119cae993218f09944f88253a56c3b2181a409c25089a7892111e0c36b

@@ -3038,6 +3038,90 @@ def test_adresswechsel_ohne_sitzung_ohne_token(client):
     assert r.json()["email"] == "neu@test.de" and r.json()["access_token"] is None
 
 
+def _code_fuer(email: str, code: str, new_email: str | None = None) -> int:
+    from app.routers.auth import _code_hash
+    store = Store(RATSLOTSE_DB)
+    uid = int(store.get_web_user_by_email(email)["id"])
+    if new_email is None:
+        store.set_email_verified(uid, False)
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_email_verification(uid, hashlib.sha256(b"link-" + code.encode()).hexdigest(),
+                                    exp, new_email=new_email, code_hash=_code_hash(uid, code))
+    store.close()
+    return uid
+
+
+def test_bestaetigungscode_aus_der_eigenen_sitzung(client):
+    """Registriert am Laptop, Mail am Handy: Der Code wird dort eingetippt,
+    wo man angemeldet ist — kein Wechsel des Geräts, keine neue Anmeldung."""
+    _register(client, email="code@test.de")
+    _code_fuer("code@test.de", "123456")
+    token = _app_token("code@test.de")
+    kopf = {"X-Client": "app", "Authorization": f"Bearer {token}"}
+
+    r = TestClient(app).post("/api/auth/verify-code", json={"code": "123 456"}, headers=kopf)
+    assert r.status_code == 200
+    assert r.json()["email_verified"] is True and r.json()["access_token"]
+    # Der Link aus derselben Mail ist damit verbraucht.
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "link-123456"}, headers=kopf)
+    assert r.status_code == 400
+
+
+def test_bestaetigungscode_braucht_eine_sitzung(client):
+    _register(client, email="ohne@test.de")
+    _code_fuer("ohne@test.de", "123456")
+    assert TestClient(app).post("/api/auth/verify-code",
+                                json={"code": "123456"}).status_code == 401
+
+
+def test_bestaetigungscode_sperrt_nach_fuenf_fehlversuchen(client):
+    """Sechs Ziffern ließen sich sonst durchprobieren."""
+    _register(client, email="raten@test.de")
+    _code_fuer("raten@test.de", "123456")
+    kopf = {"Authorization": f"Bearer {_app_token('raten@test.de')}"}
+    c = TestClient(app)
+    for versuch in range(4):
+        assert c.post("/api/auth/verify-code", json={"code": f"00000{versuch}"},
+                      headers=kopf).status_code == 400
+    assert c.post("/api/auth/verify-code", json={"code": "000009"},
+                  headers=kopf).status_code == 429
+    # Auch der richtige hilft jetzt nicht mehr.
+    assert c.post("/api/auth/verify-code", json={"code": "123456"},
+                  headers=kopf).status_code == 429
+
+
+def test_bestaetigungscode_gilt_nur_fuer_das_eigene_konto(client):
+    """Ein Code ist an sein Konto gebunden — der Code des Angreifer-Kontos
+    bestätigt im Konto des Opfers nichts."""
+    _register(client, email="eins@test.de")
+    _register(client, email="zwei@test.de")
+    _code_fuer("eins@test.de", "111111")
+    _code_fuer("zwei@test.de", "222222")
+    kopf = {"Authorization": f"Bearer {_app_token('zwei@test.de')}"}
+    assert TestClient(app).post("/api/auth/verify-code", json={"code": "111111"},
+                                headers=kopf).status_code == 400
+
+
+def test_bestaetigungscode_schliesst_einen_adresswechsel_ab(client):
+    _register(client, email="umzug@test.de")
+    _code_fuer("umzug@test.de", "654321", new_email="umgezogen@test.de")
+    kopf = {"Authorization": f"Bearer {_app_token('umzug@test.de')}"}
+    r = TestClient(app).post("/api/auth/verify-code", json={"code": "654321"}, headers=kopf)
+    assert r.status_code == 200 and r.json()["email"] == "umgezogen@test.de"
+
+
+def test_bestaetigungsmail_traegt_den_code(client, monkeypatch):
+    from app.routers import auth as auth_mod
+    gesendet = {}
+    monkeypatch.setattr(auth_mod, "send_email",
+                        lambda an, betreff, html, **k: gesendet.update(html=html, text=k.get("text")))
+    monkeypatch.setattr(auth_mod, "protokolliere", lambda *a, **k: None)
+    monkeypatch.setattr(auth_mod, "get_settings", lambda: type("S", (), {
+        "resend_api_key": "x", "app_base_url": "https://ratslotse.example", "email_from": "x"})())
+    auth_mod._send_verification_email("a@example.org", "tok", "Anna", 1, "123456")
+    assert "123 456" in gesendet["html"] and "123456" in gesendet["text"]
+
+
 def test_reset_link_eines_anderen_kontos_wird_abgelehnt(client):
     """Derselbe Riegel am Reset-Link: keine stille Übernahme einer Sitzung."""
     _register(client, email="angreifer2@test.de")

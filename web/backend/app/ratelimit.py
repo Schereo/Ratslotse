@@ -80,6 +80,10 @@ login_limiter = RateLimiter(max_calls=10, window_seconds=60)
 register_limiter = RateLimiter(max_calls=5, window_seconds=300)
 forgot_password_limiter = RateLimiter(max_calls=5, window_seconds=900)
 verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
+# Bestätigungscode eintippen: pro Konto. Die Sperre nach fünf Fehlversuchen je
+# Code sitzt im Store; das hier bremst zusätzlich das Durchprobieren über
+# viele frisch angeforderte Codes.
+verify_code_limiter = RateLimiter(max_calls=10, window_seconds=900)
 # Adresswechsel: angemeldet, verschickt aber zwei Mails je Aufruf — eine davon
 # an eine FREMDE, frei gewählte Adresse. Ohne Bremse wäre das ein Versandweg
 # für Belästigung auf unsere Kosten (Resend-Kontingent, unsere Absenderdomain).

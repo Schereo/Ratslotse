@@ -25685,6 +25685,21 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VerifyCodeRequest": {
+        "properties": {
+          "code": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "VerifyCodeRequest",
+        "type": "object"
+      },
       "VerifyEmailRequest": {
         "properties": {
           "token": {
@@ -28426,6 +28441,48 @@
           }
         },
         "summary": "Reset Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/verify-code": {
+      "post": {
+        "description": "Die Adresse mit dem sechsstelligen Code aus der Mail bestätigen.\n\nFür den Fall, dass Mail und Sitzung auf verschiedenen Geräten liegen\n(registriert am Laptop, Mail am Handy): Den Code tippt man dort ein, wo man\nschon angemeldet ist. Er gehört zur Sitzung, nicht zum Gerät, auf dem die\nMail liegt — wer ein Konto auf eine fremde Adresse angelegt hat, sieht ihn\nnie. Gilt für die Erstbestätigung wie für einen Adresswechsel; derselbe\nToken, der Link aus derselben Mail ist danach verbraucht.",
+        "operationId": "verify_code_api_auth_verify_code_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Code",
         "tags": [
           "auth"
         ]

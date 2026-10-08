@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -265,7 +266,9 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
     user_id    INTEGER NOT NULL,
     expires_at TEXT NOT NULL,
     used       INTEGER NOT NULL DEFAULT 0,
-    new_email  TEXT
+    new_email  TEXT,
+    code_hash  TEXT,                        -- 6-stelliger Code aus derselben Mail (10/2026)
+    code_attempts INTEGER NOT NULL DEFAULT 0 -- Fehlversuche; ab CODE_VERSUCHE gesperrt
 );
 
 -- Native-app push device tokens (APNs on iOS, FCM on Android). One row per
@@ -1766,6 +1769,20 @@ class Store:
             with self._conn:
                 self._conn.execute(
                     "ALTER TABLE email_verification_tokens ADD COLUMN new_email TEXT")
+        # Bestätigungscode (10/2026): Dieselbe Mail trägt neben dem Link einen
+        # sechsstelligen Code, den man dort eintippt, wo man angemeldet ist.
+        # Beide Spalten prüfen sich selbst. Bestandszeilen bleiben ohne Code
+        # (NULL) — ihr Link gilt weiter.
+        evt_cols = self._table_cols("email_verification_tokens")
+        if evt_cols and "code_hash" not in evt_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE email_verification_tokens ADD COLUMN code_hash TEXT")
+        if evt_cols and "code_attempts" not in evt_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE email_verification_tokens "
+                    "ADD COLUMN code_attempts INTEGER NOT NULL DEFAULT 0")
         # Rückmeldung an die absendende Person (09/2026). Die Spalte prüft sich
         # SELBST — s. tests/test_web_users_spalten.py. Bestandszeilen bleiben
         # NULL: Für alles, was vor dieser Möglichkeit erledigt wurde, ist
@@ -3355,7 +3372,8 @@ class Store:
             )
 
     def create_email_verification(self, user_id: int, token_hash: str, expires_at: str,
-                                  new_email: str | None = None) -> None:
+                                  new_email: str | None = None,
+                                  code_hash: str | None = None) -> None:
         """Store a single-use email-verification token (only its sha256 hash). Drops the
         user's prior unused tokens so requesting a new link invalidates old ones.
 
@@ -3367,9 +3385,11 @@ class Store:
         with self._conn:
             self._conn.execute("DELETE FROM email_verification_tokens WHERE user_id = ?", (user_id,))
             self._conn.execute(
-                "INSERT INTO email_verification_tokens(token_hash, user_id, expires_at, used, new_email) "
-                "VALUES (?,?,?,0,?)",
-                (token_hash, user_id, expires_at, (new_email or "").lower().strip() or None),
+                "INSERT INTO email_verification_tokens"
+                "(token_hash, user_id, expires_at, used, new_email, code_hash) "
+                "VALUES (?,?,?,0,?,?)",
+                (token_hash, user_id, expires_at, (new_email or "").lower().strip() or None,
+                 code_hash),
             )
 
     def consume_email_verification(self, token_hash: str, now: str) -> dict | None:
@@ -3390,6 +3410,40 @@ class Store:
                 "WHERE token_hash = ? AND used = 0", (token_hash,)
             )
         return treffer if cur.rowcount == 1 else None
+
+    def consume_email_code(self, user_id: int, code_hash: str, now: str,
+                           max_versuche: int) -> dict | str:
+        """Den Bestätigungscode eines Kontos einlösen.
+
+        Gibt ``{"user_id", "new_email"}`` zurück, wenn er passt (der Token ist
+        danach verbraucht, der Link aus derselben Mail also auch). Sonst einen
+        Grund: ``"keiner"`` (kein offener Code), ``"falsch"`` oder
+        ``"gesperrt"`` — nach ``max_versuche`` Fehlversuchen gilt der Code
+        nicht mehr, sonst ließen sich sechs Ziffern durchprobieren.
+        """
+        row = self._conn.execute(
+            "SELECT token_hash, code_hash, code_attempts, new_email "
+            "FROM email_verification_tokens WHERE user_id = ? AND used = 0 "
+            "AND expires_at > ? AND code_hash IS NOT NULL",
+            (user_id, now),
+        ).fetchone()
+        if not row:
+            return "keiner"
+        if row["code_attempts"] >= max_versuche:
+            return "gesperrt"
+        if not hmac.compare_digest(str(row["code_hash"]), code_hash):
+            with self._conn:
+                self._conn.execute(
+                    "UPDATE email_verification_tokens SET code_attempts = code_attempts + 1 "
+                    "WHERE token_hash = ?", (row["token_hash"],))
+            return "gesperrt" if row["code_attempts"] + 1 >= max_versuche else "falsch"
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE email_verification_tokens SET used = 1 "
+                "WHERE token_hash = ? AND used = 0", (row["token_hash"],))
+        if cur.rowcount != 1:
+            return "keiner"
+        return {"user_id": user_id, "new_email": row["new_email"]}
 
     def peek_email_verification(self, token_hash: str, now: str) -> dict | None:
         """Wie ``consume_email_verification``, aber ohne den Token zu verbrennen.

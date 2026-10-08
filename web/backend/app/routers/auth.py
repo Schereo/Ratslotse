@@ -21,7 +21,8 @@ from ..config import get_settings
 from ..mailprotokoll import protokolliere
 from ..antworten import Ok
 from ..deps import get_current_user, get_store
-from ..ratelimit import forgot_password_limiter, login_limiter, register_limiter, verify_email_limiter
+from ..ratelimit import (forgot_password_limiter, login_limiter, register_limiter,
+                         verify_code_limiter, verify_email_limiter)
 from ..schemas import (
     NAME_FEHLT,
     ForgotPasswordRequest,
@@ -29,6 +30,7 @@ from ..schemas import (
     RegisterRequest,
     ResetPasswordRequest,
     UserOut,
+    VerifyCodeRequest,
     VerifyEmailRequest,
 )
 from ..security import DUMMY_PASSWORD_HASH, create_access_token, hash_password, verify_password
@@ -206,6 +208,29 @@ LINK_FREMDES_KONTO = (
 ERST_ANMELDEN = "Bitte melde dich an und öffne den Link dann noch einmal."
 
 
+#: So viele Fehlversuche verträgt ein Bestätigungscode, dann gilt er nicht mehr.
+#: Sechs Ziffern sind eine Million Möglichkeiten; fünf Versuche je Code und
+#: das Limit auf neue Codes halten das Raten aussichtslos.
+CODE_VERSUCHE = 5
+
+
+def _neuer_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _code_hash(user_id: int, code: str) -> str:
+    """Den Code nie im Klartext speichern — an das Konto gebunden gehasht."""
+    return hashlib.sha256(f"{int(user_id)}:{code}".encode()).hexdigest()
+
+
+def _code_html(code: str) -> str:
+    """Der Code als Block in der Mail — groß, mit Lücke in der Mitte lesbar."""
+    return ("<p style='margin:18px 0 6px'>Oder gib diesen Code dort ein, wo du bei "
+            "Ratslotse angemeldet bist:</p>"
+            "<p style='margin:0;font-size:26px;font-weight:700;letter-spacing:4px'>"
+            f"{code[:3]} {code[3:]}</p>")
+
+
 def _sitzungskonto(request: Request, store: Store) -> dict | None:
     """Das Konto der Sitzung, die diesen Request schickt — gleich welcher Status.
 
@@ -296,8 +321,10 @@ def register(
         raw = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
-        store.create_email_verification(user_id, token_hash, expires)
-        background.add_task(_send_verification_email, email, raw, display_name, user_id)
+        code = _neuer_code()
+        store.create_email_verification(user_id, token_hash, expires,
+                                        code_hash=_code_hash(user_id, code))
+        background.add_task(_send_verification_email, email, raw, display_name, user_id, code)
     elif email == _configured_admin_email(settings) and not _has_admin(store):
         # Ohne E-Mail-Versand gibt es keinen Link zum Bestätigen — der Weg über
         # verify_email() kann dieses Konto also nicht zum Admin machen. Laut sagen,
@@ -463,7 +490,7 @@ def reset_password(
 
 
 def _send_verification_email(email: str, raw_token: str, display_name: str | None = None,
-                             owner_id: int | None = None) -> None:
+                             owner_id: int | None = None, code: str | None = None) -> None:
     """Background task: email a verification link (valid 24h, best-effort)."""
     settings = get_settings()
     if not settings.resend_api_key:
@@ -474,7 +501,7 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
         subject,
         "<p style='margin:0'>Ein Klick noch, dann ist dein Konto startklar: "
         "Bestätige bitte deine E-Mail-Adresse — der Link ist <b>24 Stunden</b> gültig.</p>"
-        + knopf(link, "E-Mail bestätigen"),
+        + knopf(link, "E-Mail bestätigen") + (_code_html(code) if code else ""),
         anlass="verify_email",
         greeting_name=display_name,
         held="willkommen",
@@ -486,7 +513,8 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
     text = (
         "Willkommen bei Ratslotse.\n\n"
         f"Bitte bestätige deine E-Mail (24 Stunden gültig): {link}\n\n"
-        "Wenn du dich nicht registriert hast, ignoriere diese E-Mail.\n"
+        + (f"Oder gib diesen Code ein, wo du angemeldet bist: {code}\n\n" if code else "")
+        + "Wenn du dich nicht registriert hast, ignoriere diese E-Mail.\n"
     )
     try:
         mid = send_email(email, subject, body, text=text,
@@ -499,7 +527,7 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
 
 def _send_email_change_link(neue_adresse: str, raw_token: str,
                             display_name: str | None = None,
-                            owner_id: int | None = None) -> None:
+                            owner_id: int | None = None, code: str | None = None) -> None:
     """Background task: der Bestätigungslink an die NEUE Adresse (24 h).
 
     Bewusst derselbe Pfad wie die Erstbestätigung — ``/verify-email`` kennt
@@ -517,7 +545,7 @@ def _send_email_change_link(neue_adresse: str, raw_token: str,
         "<p style='margin:0'>Diese Adresse soll künftig zu deinem "
         "Ratslotse-Konto gehören. Ein Klick, dann ist der Wechsel erledigt — "
         "der Link ist <b>24 Stunden</b> gültig.</p>"
-        + knopf(link, "Neue Adresse bestätigen"),
+        + knopf(link, "Neue Adresse bestätigen") + (_code_html(code) if code else ""),
         anlass="email_change",
         greeting_name=display_name,
         held="willkommen",
@@ -529,7 +557,8 @@ def _send_email_change_link(neue_adresse: str, raw_token: str,
     text = (
         "Bestätige deine neue E-Mail-Adresse bei Ratslotse.\n\n"
         f"Neue Adresse bestätigen (24 Stunden gültig): {link}\n\n"
-        "Wenn du das nicht angefordert hast, ignoriere diese E-Mail.\n"
+        + (f"Oder gib diesen Code ein, wo du angemeldet bist: {code}\n\n" if code else "")
+        + "Wenn du das nicht angefordert hast, ignoriere diese E-Mail.\n"
     )
     try:
         mid = send_email(neue_adresse, subject, body, text=text,
@@ -675,6 +704,12 @@ def verify_email(
     treffer = store.consume_email_verification(token_hash, now)
     if treffer is None:
         raise ungueltig
+    return _bestaetigung_abschliessen(request, background, store, treffer, aufrufer)
+
+
+def _bestaetigung_abschliessen(request: Request, background: BackgroundTasks, store: Store,
+                               treffer: dict, aufrufer: dict | None) -> UserOut:
+    """Was nach einem eingelösten Link ODER Code passiert — für beide gleich."""
     user_id = treffer["user_id"]
     neue_adresse = treffer["new_email"]
     vorher = store.get_web_user_by_id(user_id)
@@ -726,6 +761,42 @@ def verify_email(
     return _to_out(user, _app_access_token(request, user) if aufrufer else None)
 
 
+@router.post("/verify-code", response_model=UserOut)
+def verify_code(
+    request: Request,
+    body: VerifyCodeRequest,
+    background: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+    store: Store = Depends(get_store),
+) -> UserOut:
+    """Die Adresse mit dem sechsstelligen Code aus der Mail bestätigen.
+
+    Für den Fall, dass Mail und Sitzung auf verschiedenen Geräten liegen
+    (registriert am Laptop, Mail am Handy): Den Code tippt man dort ein, wo man
+    schon angemeldet ist. Er gehört zur Sitzung, nicht zum Gerät, auf dem die
+    Mail liegt — wer ein Konto auf eine fremde Adresse angelegt hat, sieht ihn
+    nie. Gilt für die Erstbestätigung wie für einen Adresswechsel; derselbe
+    Token, der Link aus derselben Mail ist danach verbraucht.
+    """
+    verify_code_limiter.check(request, subject=user["id"])
+    code = "".join(z for z in body.code if z.isdigit())
+    if len(code) != 6:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Der Code hat sechs Ziffern.")
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    ergebnis = store.consume_email_code(int(user["id"]), _code_hash(int(user["id"]), code),
+                                        now, CODE_VERSUCHE)
+    if ergebnis == "keiner":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Es gibt keinen offenen Code — fordere eine neue E-Mail an.")
+    if ergebnis == "gesperrt":
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Zu viele Fehlversuche — fordere eine neue E-Mail an.")
+    if ergebnis == "falsch":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Der Code stimmt nicht.")
+    assert isinstance(ergebnis, dict)
+    return _bestaetigung_abschliessen(request, background, store, ergebnis, user)
+
+
 @router.post("/resend-verification")
 def resend_verification(
     request: Request,
@@ -755,14 +826,16 @@ def resend_verification(
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
-    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=wechsel)
+    code = _neuer_code()
+    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=wechsel,
+                                    code_hash=_code_hash(int(user["id"]), code))
     # Am Aufruf verzweigen statt die Funktion in eine Variable zu wählen: Die
     # beiden Versender haben verschiedene Parameternamen, eine gemeinsame
     # Variable wäre ein Union-Typ, den `add_task` nicht mehr prüfen kann.
     if wechsel:
         background.add_task(_send_email_change_link, email, raw, user.get("display_name"),
-                            int(user["id"]))
+                            int(user["id"]), code)
     else:
         background.add_task(_send_verification_email, email, raw, user.get("display_name"),
-                            int(user["id"]))
+                            int(user["id"]), code)
     return {"ok": True}

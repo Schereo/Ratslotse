@@ -43,6 +43,11 @@ class VerifyEmailRequest(BaseModel):
     token: str = Field(min_length=1)
 
 
+class VerifyCodeRequest(BaseModel):
+    #: Sechs Ziffern; Leerzeichen und Bindestriche aus dem Abtippen sind erlaubt.
+    code: str = Field(min_length=1, max_length=20)
+
+
 #: Die Rolle eines Kontos. Steht als Literal und nicht als ``str``, damit die
 #: Aufzählung im Vertrag ankommt — sonst muss jeder Client sie abschreiben,
 #: und genau das ist passiert: Das Web führte die Vereinigung von Hand, und

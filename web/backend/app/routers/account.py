@@ -23,7 +23,8 @@ from ..ratelimit import change_email_limiter, reauth_limiter
 from ..schemas import (NAME_FEHLT, ChangeEmailRequest, ChangePasswordRequest,
                        DeleteAccountRequest, DeliveryUpdate, NotifyPrefsIn, UserOut)
 from ..security import hash_password, verify_password
-from .auth import (_VERIFY_TTL_HOURS, _app_access_token, _send_email_change_link,
+from .auth import (_VERIFY_TTL_HOURS, _app_access_token, _code_hash, _neuer_code,
+                   _send_email_change_link,
                    _send_email_change_notice, _set_auth_cookie, _to_out)
 
 logger = logging.getLogger("ratslotse.web.account")
@@ -297,8 +298,11 @@ def change_email(
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
-    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=neu)
-    background.add_task(_send_email_change_link, neu, raw, user.get("display_name"))
+    code = _neuer_code()
+    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=neu,
+                                    code_hash=_code_hash(int(user["id"]), code))
+    background.add_task(_send_email_change_link, neu, raw, user.get("display_name"),
+                        int(user["id"]), code)
     if alt and not alt.endswith("@local"):
         background.add_task(_send_email_change_notice, alt, neu, user.get("display_name"),
                             int(user["id"]))

@@ -352,6 +352,16 @@ public final class AppModel {
         try await accept(user: user)
     }
 
+    /// Die Adresse mit dem sechsstelligen Code aus der Mail bestätigen — für
+    /// den Fall, dass die Mail auf einem anderen Gerät liegt. Der Code gehört
+    /// zur laufenden Sitzung; ein Link aus der Mail greift dagegen nur dort,
+    /// wo man angemeldet ist.
+    public func verifyCode(_ code: String) async throws {
+        struct Body: Codable, Sendable { let code: String }
+        let user: User = try await api.send("/api/auth/verify-code", body: Body(code: code))
+        try await accept(user: user)
+    }
+
     public func resendVerification() async throws {
         struct Response: Codable, Sendable { let ok: Bool }
         let _: Response = try await api.sendWithoutBody("/api/auth/resend-verification")
