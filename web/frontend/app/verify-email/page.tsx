@@ -109,7 +109,7 @@ function VerifyInner() {
     return (
       <div className="mt-6 space-y-4">
         <p className="text-sm text-muted-foreground">{error}</p>
-        <Link href={mitRuecksprung("/login", zurueck)}>
+        <Link href={mitRuecksprung("/login", zurueck)} className="block">
           <Button className="w-full">Anmelden und bestätigen</Button>
         </Link>
         <Link href="/forgot-password" className="block text-center text-sm text-muted-foreground underline underline-offset-2">
