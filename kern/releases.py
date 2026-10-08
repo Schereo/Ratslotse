@@ -270,12 +270,12 @@ RELEASES: tuple[Release, ...] = (
                         "danach erklärt sie „Öffentlichkeitsbeteiligung“.",
                 ),
                 media_ios=Media(
-                    kind="video", aspect="1206/2622",
+                    kind="video", aspect="1080/2350",
                     src="/neuigkeiten/3.0.0/lotti-ios.mp4", poster="/neuigkeiten/3.0.0/lotti-ios.webp",
-                    cover="/neuigkeiten/3.0.0/lotti-titel.webp", duration=11.4,
-                    alt="Die Sitzungen auf dem iPhone: Ein Tipp auf Lotti öffnet "
-                        "ihr Blatt; auf die Frage „Was steht morgen im "
-                        "Sportausschuss an?“ fasst sie die Tagesordnung zusammen.",
+                    cover="/neuigkeiten/3.0.0/lotti-titel.webp", duration=16.6,
+                    alt="Eine Beschluss-Seite in der App: Ein Tipp auf Lotti unten rechts "
+                        "öffnet ihr Blatt; auf „Wie viele haben dagegen gestimmt?“ "
+                        "antwortet sie „Dagegen gestimmt haben 16 Ratsmitglieder.“",
                 ),
             ),
             Highlight(
@@ -311,12 +311,12 @@ RELEASES: tuple[Release, ...] = (
                         "Beschlüsse.",
                 ),
                 media_ios=Media(
-                    kind="video", aspect="1206/2622",
+                    kind="video", aspect="1080/2350",
                     src="/neuigkeiten/3.0.0/viertel-ios.mp4", poster="/neuigkeiten/3.0.0/viertel-ios.webp",
-                    cover="/neuigkeiten/3.0.0/viertel-titel.webp", duration=6.4,
-                    alt="Mein Viertel auf dem iPhone: Nadorst auf der Karte mit "
-                        "seinen Vorhaben; ein Tipp auf „Kita Eßkamp“ zeigt die "
-                        "Stufen bis „Im Bau“ und die Beschlüsse.",
+                    cover="/neuigkeiten/3.0.0/viertel-titel.webp", duration=23.4,
+                    alt="In der App: „Mehr“, dann „Mein Viertel“ — die Stadtkarte mit allen "
+                        "Vorhaben. Ein Tipp auf Fliegerhorst zeigt seine Vorhaben, ein Tipp "
+                        "auf „Wohnen am Offizierskasino“ Stand, Bebauungsplan und Beschlüsse.",
                 ),
             ),
             Highlight(
@@ -351,12 +351,12 @@ RELEASES: tuple[Release, ...] = (
                         "Räte.",
                 ),
                 media_ios=Media(
-                    kind="video", aspect="1206/2622",
+                    kind="video", aspect="1080/2350",
                     src="/neuigkeiten/3.0.0/ideen-ios.mp4", poster="/neuigkeiten/3.0.0/ideen-ios.webp",
-                    cover="/neuigkeiten/3.0.0/ideen-titel.webp", duration=9.6,
-                    alt="Die Idee „Hitzeaktionsplan aufstellen“ auf dem iPhone: "
-                        "oben der Stand in Oldenburg samt Belegen, beim Blättern "
-                        "die Zeitleiste durch die Räte und die Vorlagen.",
+                    cover="/neuigkeiten/3.0.0/ideen-titel.webp", duration=24.4,
+                    alt="In der App: „Mehr“, dann „Ideen aus anderen Städten“; ein Tipp auf "
+                        "„Hitzeaktionsplan aufstellen“ zeigt unter „Und in Oldenburg?“, was "
+                        "es hier schon gibt, und die Zeitleiste durch die Räte.",
                 ),
             ),
             Highlight(
