@@ -798,19 +798,39 @@ def test_password_reset_flow(client):
 
 
 def test_app_password_reset_returns_replacement_bearer(client):
+    """Aus der EIGENEN Sitzung gibt ein Reset das Ersatz-Token zurück."""
     _register(client)
+    eigenes = _app_token("admin@test.de")
     with patch("app.routers.auth.secrets.token_urlsafe", return_value="native-reset-token"):
         client.post("/api/auth/forgot-password", json={"email": "admin@test.de"})
     response = TestClient(app).post(
         "/api/auth/reset-password",
         json={"token": "native-reset-token", "new_password": "newpass12345"},
-        headers={"X-Client": "app"},
+        headers={"X-Client": "app", "Authorization": f"Bearer {eigenes}"},
     )
     assert response.status_code == 200
     token = response.json()["access_token"]
     assert isinstance(token, str) and token
     me = TestClient(app).get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200 and me.json()["email"] == "admin@test.de"
+
+
+def test_reset_link_ohne_sitzung_meldet_nicht_an(client):
+    """Ohne Sitzung setzt der Link das Passwort, meldet aber niemanden an
+    (zweite Prüfung 10/2026, F9) — sonst landete eine abgemeldete App im
+    Konto dessen, der den Link verschickt hat."""
+    _register(client)
+    with patch("app.routers.auth.secrets.token_urlsafe", return_value="fremd-reset"):
+        client.post("/api/auth/forgot-password", json={"email": "admin@test.de"})
+    fremd = TestClient(app)
+    r = fremd.post("/api/auth/reset-password",
+                   json={"token": "fremd-reset", "new_password": "newpass12345"},
+                   headers={"X-Client": "app"})
+    assert r.status_code == 200 and r.json()["access_token"] is None
+    assert "access_token" not in r.cookies
+    # Mit dem neuen Passwort geht die Anmeldung.
+    assert TestClient(app).post("/api/auth/login", json={
+        "email": "admin@test.de", "password": "newpass12345"}).status_code == 200
 
 
 def test_reset_password_invalid_token(client):
@@ -3026,16 +3046,21 @@ def test_verify_link_eines_anderen_kontos_wechselt_nicht(client):
         store.close()
 
 
-def test_adresswechsel_ohne_sitzung_ohne_token(client):
-    """Ein Wechsel-Link greift auch ohne Sitzung (das Passwort war beim
-    Anstoßen nötig) — aber er legt kein Token bei."""
+def test_adresswechsel_link_braucht_die_eigene_sitzung(client):
+    """Auch der Wechsel-Link greift nur aus der Sitzung des Kontos (zweite
+    Prüfung 10/2026, F10): Sonst bestätigte die Besitzerin einer fremden
+    Adresse mit einem Klick, dass ihre Adresse zum Konto des Angreifers
+    gehört. Der Link bleibt dabei gültig."""
     _register(client, email="wechsel@test.de")
     _unbestaetigt_mit_link("wechsel@test.de", "wechsel-link", new_email="neu@test.de")
 
     r = TestClient(app).post("/api/auth/verify-email", json={"token": "wechsel-link"},
                              headers={"X-Client": "app"})
-    assert r.status_code == 200
-    assert r.json()["email"] == "neu@test.de" and r.json()["access_token"] is None
+    assert r.status_code == 401
+    eigenes = _app_token("wechsel@test.de")
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "wechsel-link"},
+                             headers={"Authorization": f"Bearer {eigenes}"})
+    assert r.status_code == 200 and r.json()["email"] == "neu@test.de"
 
 
 def _code_fuer(email: str, code: str, new_email: str | None = None) -> int:
@@ -3574,16 +3599,26 @@ def test_topic_suggestion_gives_numbered_plan_a_place_context():
 
 
 # ---- KI-Frage: Folgefragen im Stream (Design 24a) ----
+def _gelieferte_antwort(email: str = "admin@test.de", *, answer: str = "Der Rat stimmte zu [5].",
+                        extras: dict | None = None) -> str:
+    """Eine Antwort so festhalten, wie /ask es nach dem Streamen tut."""
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = int(store.get_web_user_by_email(email)["id"])
+        return store.qa_answer_record_save(
+            uid, "Was wurde zum Stadion entschieden?", answer,
+            [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+              "committee": "Rat", "outcome": "accepted"}],
+            extras or {})
+    finally:
+        store.close()
+
+
 def test_qa_share_roundtrip(client):
     """Teilen mit Substanz (Task 31): POST speichert den Antwort-Snapshot,
     GET liefert ihn ÖFFENTLICH (ohne Login) und ohne Konto-Daten."""
     _register(client)
-    r = client.post("/api/council/qa-share", json={
-        "question": "Was wurde zum Stadion entschieden?",
-        "answer": "Der Rat stimmte zu [5].",
-        "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
-                     "committee": "Rat", "outcome": "accepted"}],
-    })
+    r = client.post("/api/council/qa-share", json={"answer_id": _gelieferte_antwort()})
     assert r.status_code == 201
     token = r.json()["token"]
     assert len(token) >= 16
@@ -3595,92 +3630,74 @@ def test_qa_share_roundtrip(client):
     assert body["answer"] == "Der Rat stimmte zu [5]."
     assert body["sources"][0]["title"] == "Stadionneubau"
     assert "user_id" not in body
-
-    # Alte Snapshots (ohne Bausteine) liefern leere Listen statt zu fehlen.
     assert body["debates"] == [] and body["press_releases"] == []
     assert body["attachments"] == [] and body["parties"] == []
 
     assert client.get("/api/council/qa-share/gibtsnicht").status_code == 404
     # Ohne Login kein Anlegen.
-    assert client.post("/api/council/qa-share", json={
-        "question": "x", "answer": "y", "sources": []}).status_code in (401, 403)
+    assert client.post("/api/council/qa-share", json={"answer_id": "x"}).status_code in (401, 403)
 
 
-def test_qa_share_traegt_bausteine(client):
-    """Die geteilte Seite zeigt dieselben Bausteine wie das Gespräch —
-    Debatten, Presse, Anlagen und Fraktions-Positionen wandern mit in den
-    Snapshot (vorher sah der Empfänger nur Text + Beschlüsse)."""
+def test_qa_share_nimmt_nur_die_server_kopie(client):
+    """Was der Client mitschickt, zählt nicht (zweite Prüfung 10/2026, F3):
+    Vorher ließ sich jeder Text samt erfundener Zitate echter Ratsmitglieder
+    als „Automatische Antwort von Frag den Rat" veröffentlichen."""
     _register(client)
+    kennung = _gelieferte_antwort()
     r = client.post("/api/council/qa-share", json={
-        "question": "Was sagt der Rat zum Stadion?",
-        "answer": "Der Rat stimmte zu [5].",
-        "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
-                     "committee": "Rat", "outcome": "accepted"}],
-        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "art": "rede",
-                      "top": "6.1 Stadionneubau", "excerpt": "Warnte vor einem Millionengrab.",
-                      "committee": "Rat", "date": "2026-06-01",
-                      "minutes_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do",
-                      "minutes_page": 6},
-                     # Der Snapshot ist öffentlich und die URL kommt vom
-                     # Client: alles außerhalb des Ratsinfo-Systems wird
-                     # verworfen statt als „Protokoll" verlinkt.
-                     {"speaker": "Ratsfrau Muster", "party": "CDU", "art": "rede",
-                      "top": "6.1 Stadionneubau", "excerpt": "Begrüßte den Plan.",
-                      "committee": "Rat", "date": "2026-06-01",
-                      "minutes_url": "https://boese.example.org/phishing.pdf"}],
-        "press_releases": [{"title": "Stadion: Stadt informiert",
-                    "url": "https://www.oldenburg.de/x", "date": "2026-06-02"}],
-        "attachments": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
-                     "template_number": "26/0123", "template_title": "Stadionneubau",
-                     "excerpt": "Kapazität 15.000."}],
-        "parties": [{"party": "SPD", "stance": "dagegen", "position": "Skeptisch.",
-                      "unanimous": True, "note": None, "contributions": 3,
-                      "kernaussage": {"text": "Kein zweites Millionengrab.",
-                                      "speaker": "Wenzel", "date": "01.06.2026"}}],
+        "answer_id": kennung,
+        "answer": "Erfunden: Ratsherr X nannte das Projekt ein Verbrechen.",
+        "debates": [{"speaker": "Ratsherr X", "excerpt": "Erfunden."}],
     })
     assert r.status_code == 201
-    token = r.json()["token"]
-
-    client.cookies.clear()  # öffentlich lesbar
-    body = client.get(f"/api/council/qa-share/{token}").json()
-    assert body["debates"][0]["speaker"] == "Ratsherr Wenzel"
-    assert body["debates"][0]["minutes_url"] == (
-        "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do")
-    assert body["debates"][0]["minutes_page"] == 6
-    assert body["debates"][1]["minutes_url"] is None
-    assert body["debates"][1]["minutes_page"] is None
-    assert body["press_releases"][0]["url"] == "https://www.oldenburg.de/x"
-    assert body["attachments"][0]["template_number"] == "26/0123"
-    assert body["parties"][0]["stance"] == "dagegen"
-    assert "user_id" not in body
-
-
-def test_qa_share_verlinkt_nur_die_stadt(client):
-    """Presse- und Anlagen-Links kommen mit dem öffentlichen Snapshot vom
-    Client. Nur Links auf oldenburg.de werden gespeichert (10/2026)."""
-    _register(client)
-    basis = {"question": "Was ist mit dem Stadion?", "answer": "Text.", "sources": []}
-    for boese in ("https://evil.example.net/login", "javascript:alert(document.domain)",
-                  "http://www.oldenburg.de/x", "https://oldenburg.de.evil.example/x"):
-        r = client.post("/api/council/qa-share", json={**basis, "press_releases": [
-            {"title": "Meldung", "url": boese, "date": "2026-06-02"}]})
-        assert r.status_code == 422, boese
-    r = client.post("/api/council/qa-share", json={**basis, "attachments": [
-        {"label": "Fremd", "url": "javascript:alert(1)"},
-        {"label": "Echt", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=1"}]})
-    assert r.status_code == 201, r.text
     body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
-    assert body["attachments"][0]["url"] is None
-    assert body["attachments"][1]["url"] == "https://buergerinfo.oldenburg.de/getfile.php?id=1"
+    assert body["answer"] == "Der Rat stimmte zu [5]."
+    assert body["debates"] == []
+
+    # Inhalt ohne Kennung (ältere App): abgelehnt, mit der Bitte ums Update.
+    r = client.post("/api/council/qa-share", json={"question": "x", "answer": "y", "sources": []})
+    assert r.status_code == 422 and "aktualisiere" in r.json()["detail"]
+
+
+def test_qa_share_nur_die_eigene_antwort(client):
+    _register(TestClient(app), email="fremd@test.de")
+    _register(client)
+    fremde = _gelieferte_antwort("fremd@test.de")
+    assert client.post("/api/council/qa-share", json={"answer_id": fremde}).status_code == 404
+
+
+def test_qa_share_traegt_bausteine_und_parteien(client, monkeypatch):
+    """Die geteilte Seite zeigt dieselben Bausteine wie das Gespräch — aus der
+    Server-Kopie. Der Parteien-Baustein kommt aus eigenem Endpunkt und wandert
+    über die Kennung der Antwort dorthin."""
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    kennung = _gelieferte_antwort(extras={
+        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "kind": "speech",
+                     "excerpt": "Warnte vor einem Millionengrab.", "committee": "Rat",
+                     "date": "2026-06-01", "minutes_url": None, "minutes_page": None}],
+        "press_releases": [{"title": "Stadion: Stadt informiert",
+                            "url": "https://www.oldenburg.de/x", "date": "2026-06-02"}],
+        "attachments": [], "chart": None})
+    monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", lambda *a, **k: [(1, 0.5)])
+    meinung = [{"party": "SPD", "stance": "dagegen", "position": "Skeptisch.",
+                "unanimous": True, "note": None, "kernaussage": None, "contributions": 3}]
+    monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: meinung)
+    assert client.post("/api/council/party-meinungen", json={
+        "question": "Stadionneubau?", "answer_id": kennung}).status_code == 200
+
+    r = client.post("/api/council/qa-share", json={"answer_id": kennung})
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["debates"][0]["speaker"] == "Ratsherr Wenzel"
+    assert body["press_releases"][0]["url"] == "https://www.oldenburg.de/x"
+    assert body["parties"][0]["stance"] == "dagegen"
 
 
 def test_qa_share_public_report_and_admin_removal(client):
     _register(client)
-    made = client.post("/api/council/qa-share", json={
-        "question": "Was wurde beschlossen?",
-        "answer": "Eine automatisch erzeugte Antwort [1].",
-        "sources": [],
-    })
+    made = client.post("/api/council/qa-share", json={"answer_id": _gelieferte_antwort()})
     assert made.status_code == 201
     token = made.json()["token"]
 
@@ -3712,17 +3729,11 @@ def test_qa_share_public_report_and_admin_removal(client):
 
 
 def test_qa_share_filters_objectionable_or_embedded_web_content(client):
+    """Auch eine gelieferte Antwort mit eingebettetem Web-Ziel wird nicht geteilt."""
     _register(client)
-    for question, answer in (
-        ("Sieg Heil", "Antwort."),
-        ("Normale Frage", "Hier klicken: https://phishing.invalid"),
-        ("Normale Frage", "<script>alert(1)</script>"),
-    ):
-        response = client.post("/api/council/qa-share", json={
-            "question": question,
-            "answer": answer,
-            "sources": [],
-        })
+    for answer in ("Hier klicken: https://phishing.invalid", "<script>alert(1)</script>"):
+        response = client.post("/api/council/qa-share",
+                               json={"answer_id": _gelieferte_antwort(answer=answer)})
         assert response.status_code == 422
         assert "öffentlicher Link" in response.json()["detail"]
 

@@ -20,8 +20,9 @@ from ..config import get_settings
 from ..antworten import NotifySettings, Ok, TestDelivery
 from ..deps import get_council_store, get_current_user, get_store, ist_admin, require_active
 from ..ratelimit import change_email_limiter, reauth_limiter
-from ..schemas import (NAME_FEHLT, ChangeEmailRequest, ChangePasswordRequest,
-                       DeleteAccountRequest, DeliveryUpdate, NotifyPrefsIn, UserOut)
+from ..schemas import (NAME_FEHLT, NAME_UNZULAESSIG, ChangeEmailRequest, ChangePasswordRequest,
+                       DeleteAccountRequest, DeliveryUpdate, NotifyPrefsIn, UserOut,
+                       name_zulaessig)
 from ..security import hash_password, verify_password
 from .auth import (_VERIFY_TTL_HOURS, _app_access_token, _code_hash, _neuer_code,
                    _send_email_change_link,
@@ -133,6 +134,8 @@ def set_display_name(
     name = (body.display_name or "").strip()
     if not name:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
+    if not name_zulaessig(name):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_UNZULAESSIG)
     store.set_display_name(user["id"], name)
     return {"ok": True}
 
@@ -216,7 +219,7 @@ def change_password(
     store.update_password_hash(user["id"], hash_password(body.new_password))
     store.increment_token_version(user["id"])
     updated = store.get_web_user_by_id(user["id"])
-    _set_auth_cookie(response, updated)
+    _set_auth_cookie(response, updated, request)
     # Browser bekommen weiter nur das httpOnly-Cookie. Native Clients brauchen
     # nach der token_version-Erhöhung sofort einen neuen Bearer-Token; der alte
     # ist ab dieser Zeile absichtlich ungültig.

@@ -732,7 +732,11 @@ def _wahlkampf_token(token: str | None) -> None:
     etwas gibt. Das ist Schutz gegen Zufall, nicht gegen Angriff: Alle Daten
     dahinter sind öffentliche Wahlergebnisse."""
     soll = wahlkampf_token()
-    if soll is None or not token or not hmac.compare_digest(soll, token.strip()):
+    # Bytes vergleichen: `compare_digest` wirft auf Zeichenketten mit
+    # Nicht-ASCII einen TypeError — `?token=ä` war ein 500er samt Admin-Mail
+    # (zweite Prüfung 10/2026, F7; dieselbe Falle wie in security.py).
+    if soll is None or not token or not hmac.compare_digest(
+            soll.encode(), token.strip().encode("utf-8", "surrogatepass")):
         raise HTTPException(status_code=404, detail="Not Found")
 
 

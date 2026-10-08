@@ -50,10 +50,19 @@ public actor APIClient {
     /// ab — auch `/api/auth/me`, deren Rumpf ein frisches Zugangs-Token trägt.
     /// Das lag dort im Klartext, außerhalb der Keychain, und blieb nach dem
     /// Abmelden liegen (Sicherheitsprüfung 10/2026, F25).
+    ///
+    /// Und ohne Cookies: Das Backend setzte auch der App sein Sitzungs-Cookie
+    /// (90 Tage), und `HTTPCookieStorage.shared` legte es im Klartext unter
+    /// `Library/Cookies` ab — wieder außerhalb der Keychain, mit Backup, und
+    /// nach einem gescheiterten Abmelden weiter gültig (zweite Prüfung
+    /// 10/2026, F12/F18/F19). Die App meldet sich nur per Bearer-Token an.
     public static let sitzungOhneZwischenspeicher: URLSession = {
         let config = URLSessionConfiguration.default
         config.urlCache = nil
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.httpCookieStorage = nil
+        config.httpShouldSetCookies = false
+        config.httpCookieAcceptPolicy = .never
         return URLSession(configuration: config)
     }()
 

@@ -19,6 +19,7 @@ const LABEL: Record<string, string> = {
   n6_woche: "Wochenvorschau", n7_news: "Neu bei Ratslotse", bundel: "Sammelmeldung",
   verify_email: "E-Mail bestätigen", password_reset: "Passwort zurücksetzen",
   email_change: "Neue Adresse bestätigen", email_change_info: "Hinweis zum Adresswechsel",
+  duplicate_signup: "Registrierung mit vorhandener Adresse",
   setup_reminder: "Erinnerung an die Einrichtung", feedback_reply: "Antwort auf eine Rückmeldung",
   account_activated: "Konto freigeschaltet", account_deleted: "Konto gelöscht",
   probe: "Testmail", admin_fyi: "FYI an die Admins", alarm: "Betriebsalarm", andere: "Sonstige",

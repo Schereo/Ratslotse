@@ -33,6 +33,7 @@ import type { QaOrtPin } from "@/components/qa-orte-karte";
 const QaOrteKarte = dynamic(() => import("@/components/qa-orte-karte"), { ssr: false });
 import { QaSource } from "@/lib/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { chipEinloesen } from "@/lib/chip-frage";
 import { api, apiUrl, authHeaders } from "@/lib/api";
 // Der Vertrag statt einer abgetippten Form: ein umbenanntes Feld bricht
 // damit hier den Build statt still eine leere Kachel zu zeigen.
@@ -63,7 +64,7 @@ import {
 // Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
-  AnlagenBlock, AntwortText, DebattenBaustein, debatteArt, debatteTop, GrafikKarte, ParteienListe, PresseBlock,
+  AnlagenBlock, AntwortText, DebattenBaustein, GrafikKarte, ParteienListe, PresseBlock,
   TagesordnungBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
   type QaGrafik, type SitzungsInfo,
@@ -212,6 +213,9 @@ type Turn = {
    *  Der Job läuft SERVER-seitig — Tab-Wechsel und App-Navigation sind ihm
    *  egal; deepStatus spiegelt nur den zuletzt bekannten Stand. */
   research?: boolean;
+  /** Die Kennung der Server-Kopie dieser Antwort (done-Ereignis). Teilen geht
+   *  nur über sie — der Inhalt kommt dann vom Server, nicht von hier. */
+  answerId?: string | null;
   deepJobId?: string;
   deepStatus?: "laeuft" | "gestoppt" | "fehler" | "fertig";
   deepPhase?: DeepPhase;
@@ -695,7 +699,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Chip im Gespräch — und als Chip-Frage gezählt. Ohne die Marke bleibt es
     // beim Vorbelegen: Ein geteilter oder getippter Link soll keine Frage
     // auslösen, die niemand angetippt hat.
-    const ausChip = sp.get("chip") === "1";
+    // Die Marke in der Adresse allein reicht nicht — sie kann jeder Link
+    // setzen (zweite Sicherheitsprüfung, F4). Sofort gestellt wird nur, was
+    // in DIESEM Tab gerade angetippt wurde (`lib/chip-frage.ts`).
+    const ausChip = sp.get("chip") === "1" && chipEinloesen(urlQ);
     if (!ausChip) setQ((prev) => prev || urlQ);
     else if (einstellung === null || einstellung === undefined) {
       // Noch keine Einwilligung — genau der Fall des NEUEN Kontos, für das
@@ -916,6 +923,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         ...(msg.key_facts !== undefined
                           ? { key_facts: (msg.key_facts as KeyFacts | null) ?? null }
                           : {}),
+                        answerId: (msg.answer_id as string | null | undefined) ?? null,
                         unclear: Boolean(msg.unclear) });
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
             // speichern (z. B. auf anderem Gerät gelöscht) — die tote id nicht
@@ -1465,6 +1473,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         planning_procedures?: Planung[]; sessions?: SitzungsInfo[];
         records_state?: Turn["records_state"];
         research?: boolean; context?: string | null; unclear?: boolean;
+        answer_id?: string; deep_job_id?: string;
         documents_read?: number; period?: string; premium_model?: boolean;
         chart?: QaGrafik | null; timeline?: AkteZeitleisteDaten | null;
         key_facts?: KeyFacts | null } | null };
@@ -1489,6 +1498,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         // diesem Fix tragen sie nicht; für die bleibt es wie bisher.
         followups: [], context: t.sources?.context ?? t.question,
         unclear: Boolean(t.sources?.unclear),
+        answerId: t.sources?.answer_id ?? null,
+        ...(t.sources?.deep_job_id ? { deepJobId: t.sources.deep_job_id } : {}),
         ...(t.sources?.research ? {
           research: true, deepStatus: "fertig" as const,
           deepPremium: Boolean(t.sources?.premium_model),
@@ -2473,6 +2484,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             && turn.qtype !== "person" && (turn.debates?.length ?? 0) >= 1 && (
             <ParteienBaustein question={turn.context || turn.question}
               beschlussIds={turn.sources.slice(0, 20).map((q) => q.id)}
+              answerId={turn.answerId}
               onFrageStellen={onFrageStellen} />
           )}
 
@@ -2588,7 +2600,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               {/* Task 31: teilt einen Snapshot GENAU dieser Antwort — der alte
                   ?q=-Link ließ Empfänger eine andere Antwort würfeln. */}
               {turn.answer && !turn.fehler && !turn.abgebrochen && (
-                <TeilenKnopf turn={turn} zitierte={zitierte} />
+                <TeilenKnopf turn={turn} />
               )}
               <PrintButton iconOnly />
               {turn.answer && !turn.fehler && <VorlesenKnopf text={turn.answer} />}
@@ -3058,7 +3070,7 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
  *  Der Snapshot nimmt seit dem Bausteine-Nachtrag auch Debatten, Presse,
  *  Anlagen und die verdichteten Fraktions-Positionen mit: Wer den Link
  *  öffnete, sah vorher deutlich weniger als die Person, die ihn teilte. */
-function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
+function TeilenKnopf({ turn }: { turn: Turn }) {
   const tokenRef = useRef<string | null>(null);
   const [laedt, setLaedt] = useState(false);
   const teilen = async () => {
@@ -3067,50 +3079,20 @@ function TeilenKnopf({ turn, zitierte }: { turn: Turn; zitierte: QaSource[] }) {
     if (!token) {
       setLaedt(true);
       try {
-        // Parteien liegen nicht am Turn, sondern im Cache des Bausteins —
-        // derselbe Schlüssel wie beim Laden (kondensierte Frage).
-        const parties = turn.qtype !== "person"
-          ? (parteiMeinungenCache.get(turn.context || turn.question)?.parties ?? []) : [];
+        // Geteilt wird die SERVER-Kopie der Antwort, nicht dieser Turn: Der
+        // Server veröffentlicht unter ratslotse.de nur, was er selbst geliefert
+        // hat (zweite Sicherheitsprüfung, F3). Bausteine wie Debatten, Presse,
+        // Grafik und Parteien hängen dort schon dran.
+        const kennung = turn.deepJobId ? { deep_job_id: turn.deepJobId }
+          : turn.answerId ? { answer_id: turn.answerId } : null;
+        if (!kennung) {
+          toast.error("Diese Antwort lässt sich nicht teilen — stell die Frage bitte neu.");
+          return;
+        }
         const r = await fetch(apiUrl("/council/qa-share"), {
           method: "POST", credentials: "include",
           headers: { "Content-Type": "application/json", ...authHeaders() },
-          body: JSON.stringify({
-            question: turn.question.slice(0, 300),
-            answer: turn.answer.slice(0, 8000),
-            sources: zitierte.slice(0, 40).map((q) => ({
-              id: q.id, title: (q.title ?? "").slice(0, 300),
-              session_date: q.session_date ?? null,
-              committee: q.committee ?? null, outcome: q.outcome ?? null,
-            })),
-            debates: (turn.debates ?? []).slice(0, 20).map((d) => ({
-              speaker: d.speaker, party: d.party, art: debatteArt(d),
-              top: (debatteTop(d) ?? "")?.slice(0, 300) || null,
-              excerpt: (d.excerpt ?? "").slice(0, 2000),
-              committee: d.committee, date: d.date,
-              minutes_url: d.minutes_url?.slice(0, 500) ?? null,
-              minutes_page: d.minutes_page ?? null,
-            })),
-            press_releases: (turn.press_releases ?? []).slice(0, 10).map((p) => ({
-              title: p.title.slice(0, 300), url: p.url.slice(0, 500), date: p.date,
-            })),
-            // nr muss mit: Ohne sie fänden die „[A1]"-Belege im geteilten
-            // Text ihre Anlage nicht und würden ersatzlos geschluckt.
-            attachments: (turn.attachments ?? []).slice(0, 10).map((a, i) => ({
-              nr: a.nr ?? i + 1,
-              label: a.label, url: a.url, template_number: a.template_number,
-              template_title: a.template_title, excerpt: (a.excerpt ?? "").slice(0, 600),
-            })),
-            // Ohne beitraege_liste: die Aufklapp-Beiträge blähen den Snapshot,
-            // die geteilte Seite zeigt Position und Kernaussage.
-            parties: parties.slice(0, 12).map((p) => ({
-              party: p.party, stance: p.stance ?? null,
-              position: (p.position ?? "").slice(0, 800), unanimous: p.unanimous,
-              note: p.note, kernaussage: p.kernaussage, contributions: p.contributions,
-            })),
-            // Die Grafik gehört in den Snapshot wie Debatten und Presse:
-            // Wer dem Link folgt, soll sehen, was geteilt wurde.
-            chart: turn.chart ?? null,
-          }),
+          body: JSON.stringify(kennung),
         });
         if (!r.ok) throw new Error(String(r.status));
         token = (await r.json()).token as string;
@@ -3371,8 +3353,9 @@ function DuenneBeleglage({ onGruendlich, mitSteckbrief }: {
   );
 }
 
-function ParteienBaustein({ question, beschlussIds, onFrageStellen }: {
-  question: string; beschlussIds: number[]; onFrageStellen?: (text: string) => void;
+function ParteienBaustein({ question, beschlussIds, answerId, onFrageStellen }: {
+  question: string; beschlussIds: number[]; answerId?: string | null;
+  onFrageStellen?: (text: string) => void;
 }) {
   const [parties, setParteien] = useState<ParteiMeinung[] | null>(
     () => parteiMeinungenCache.get(question)?.parties ?? null);
@@ -3395,7 +3378,10 @@ function ParteienBaustein({ question, beschlussIds, onFrageStellen }: {
       // Die belegten Beschlüsse mitgeben: Über sie holt der Endpoint die
       // Aussprache, die ZU diesen Stationen gehört — die Ähnlichkeitssuche
       // allein fand je Fraktion oft nur einen Beitrag (Tims Befund 21.08.).
-      body: JSON.stringify({ question, decision_ids: idsKey ? idsKey.split(",").map(Number) : [] }),
+      // Mit der Kennung der Antwort wandert der Block in deren Server-Kopie —
+      // nur so kommt er mit in einen geteilten Link.
+      body: JSON.stringify({ question, decision_ids: idsKey ? idsKey.split(",").map(Number) : [],
+        ...(answerId ? { answer_id: answerId } : {}) }),
     })
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then((b) => {
@@ -3413,7 +3399,7 @@ function ParteienBaustein({ question, beschlussIds, onFrageStellen }: {
       // für diesen Moment verstecken, nicht bis zum nächsten Voll-Reload.
       .catch(() => { if (aktiv) setParteien([]); });
     return () => { aktiv = false; };
-  }, [question, idsKey]);
+  }, [question, idsKey, answerId]);
 
   if (parties !== null && parties.length < 2) return null; // dünne Lage: gar nicht
   return <ParteienListe parties={parties} ohneBeitraege={ohneBeitraege} onFrageStellen={onFrageStellen} />;

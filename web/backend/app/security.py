@@ -124,7 +124,13 @@ def decode_rs256_token(token: str, jwks_keys: list[dict]) -> dict | None:
         header = json.loads(_b64url_decode(header_b64))
         payload = json.loads(_b64url_decode(payload_b64))
         signature = _b64url_decode(signature_b64)
-    except (ValueError, json.JSONDecodeError):
+    except (ValueError, json.JSONDecodeError, RecursionError):
+        # RecursionError: ein Kopf aus tausenden `[` sprengt json.loads.
+        return None
+    # Ein Kopf wie `[]` ist gültiges JSON, aber kein Objekt — `header.get`
+    # warf dann einen AttributeError, und aus einer fremden Eingabe ohne
+    # Konto wurde ein 500er samt Admin-Mail (zweite Prüfung 10/2026, F6).
+    if not isinstance(header, dict) or not isinstance(payload, dict):
         return None
     if header.get("alg") != "RS256":
         return None
