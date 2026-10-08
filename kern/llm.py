@@ -120,6 +120,14 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
     # das Denken zuerst zehrt.
     **{m: {"min_max_tokens": GPT56_MIN_MAX_TOKENS} for m in (
         "openai/gpt-6-luna", "openai/gpt-6-sol")},
+    # Claude Haiku 5.5 denkt bei schweren Prompts von selbst (adaptiv) —
+    # gemessen 08.10.2026 an der KI-Frage: 1.000 Tokens Budget, alle 1.000
+    # als reasoning_tokens, finish_reason `length`, kein Text. Bei einer
+    # einfachen Frage denkt es gar nicht (reasoning_tokens 0). Der Boden ist
+    # höher als Lunas, weil der Claude-Tokenizer deutschen Text etwa doppelt
+    # so fein schneidet: dasselbe Wortbeitrags-JSON kostet Luna 3,6 Zeichen je
+    # Token, Haiku 2,0 — mit 16.000 brach Haiku mitten im Array ab.
+    "anthropic/claude-haiku-5.5": {"min_max_tokens": 40000},
 }
 
 

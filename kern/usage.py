@@ -51,6 +51,8 @@ PRICES: dict[str, tuple[float, float]] = {
     # Kandidat im Wortbeitrags-Vergleich (30.09.2026), Listenpreis OpenRouter.
     "anthropic/claude-sonnet-5.5": (2.0, 10.0),
     "anthropic/claude-opus-5.5": (4.0, 20.0),
+    # Kandidat gegen GPT-6 Luna (08.10.2026), Listenpreis OpenRouter.
+    "anthropic/claude-haiku-5.5": (0.10, 0.50),
 }
 
 
