@@ -291,10 +291,34 @@ def kontendatenbank(wurzel: Path, env: dict[str, str]) -> Path | None:
     return None
 
 
+#: Endpunkte hinter einem Feature-Schalter (``kern/features.py``): Ist er aus,
+#: antworten sie 404 — und das ist dann die richtige Antwort.
+#:
+#: Anlass (08.10.2026): Seit ``/api/wahlen`` hier steht (#1657), scheiterte
+#: jeder Dev-Deploy an der VORPROBE. Die startet uvicorn ohne die Umgebung der
+#: systemd-Unit, also ohne ``FEATURE_FLAGS`` — alle Schalter aus, ``/api/wahlen``
+#: 404, die Probe rot, der Deploy brach VOR dem Neustart ab. dev.ratslotse.de
+#: blieb zwei Tage auf dem Stand von #1656, und jeder Lauf sah aus wie ein
+#: Fehler im neuen Code.
+HINTER_SCHALTER: dict[str, str] = {
+    "/api/wahlen": "wahlabend",
+}
+
+#: Die Schalter, die der geprüfte Dienst meldet — aus ``/api/app-config``, das
+#: vor ihnen geprobt wird.
+SCHALTER_AN: set[str] = set()
+
+
 #: Die Rechte des Probe-Kontos, von ``token_bauen`` gefüllt. Modulweit und
 #: nicht als Rückgabewert, damit die Signatur von ``token_bauen`` (und damit
 #: ``tests/test_rauchprobe.py``) unverändert bleibt.
 RECHTE_DES_KONTOS: set[str] = set()
+
+
+def schalter_aus(pfad: str) -> str | None:
+    """Der Schalter, hinter dem ``pfad`` steht, wenn er gerade aus ist."""
+    schalter = HINTER_SCHALTER.get(pfad)
+    return schalter if schalter and schalter not in SCHALTER_AN else None
 
 
 def erwarteter_kode(pfad: str) -> int:
@@ -319,6 +343,8 @@ def erwarteter_kode(pfad: str) -> int:
     """
     if pfad.startswith(BUDGET_PREFIX) and "budget" not in RECHTE_DES_KONTOS:
         return 403
+    if schalter_aus(pfad):
+        return 404
     return 200
 
 
@@ -454,13 +480,18 @@ def main(argv: list[str] | None = None) -> int:
 
     def lauf(paare, mit_token=None):
         for muster, pfad in paare:
-            erwartet = erwarteter_kode(pfad) if mit_token else 200
+            erwartet = erwarteter_kode(pfad) if mit_token else (404 if schalter_aus(pfad) else 200)
             kode, daten = hole(args.basis, pfad, args.zeitlimit, mit_token)
             if erwartet != 200:
                 # Für diese Route ist die SPERRE das Erwartete. Sie wird
                 # geprüft, nicht übersprungen (Begründung in `erwarteter_kode`).
+                schalter = schalter_aus(pfad)
                 if kode == erwartet:
-                    print(f"  ✓ {pfad}  {kode} — Sperre greift")
+                    print(f"  ✓ {pfad}  {kode} — " + (f"Schalter `{schalter}` aus" if schalter else "Sperre greift"))
+                elif schalter:
+                    print(f"  ✗ {pfad}  HTTP {kode}, erwartet 404 (Schalter `{schalter}` ist aus "
+                          f"— die Route müsste es abweisen)")
+                    melde(muster)
                 else:
                     print(f"  ✗ {pfad}  HTTP {kode}, erwartet {erwartet} "
                           f"(das Probe-Konto hat das Recht nicht — die Route "
@@ -474,6 +505,9 @@ def main(argv: list[str] | None = None) -> int:
                 melde(muster)
                 continue
             antworten[muster] = daten
+            if muster == "/api/app-config" and isinstance(daten, dict):
+                SCHALTER_AN.clear()
+                SCHALTER_AN.update(daten.get("features") or [])
             schema = vertrag.antwortschema(muster)
             if schema is None:
                 print(f"  – {pfad}  (keine Antwortform im Vertrag)")
