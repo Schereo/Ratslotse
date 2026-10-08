@@ -270,6 +270,16 @@ def test_ohne_denken_setzt_reasoning_nur_voruebergehend():
     assert llm.MODEL_PARAMS[modell] == vorher
 
 
+def test_huelle_laesst_den_eu_weg_mit_frist_heil():
+    # llm._eu_anlauf ruft _create.retry_with, sobald der Aufrufer eine Frist
+    # setzt (Lotti). Ohne das Attribut brach Lotti mit Luna im Prüfstand ab.
+    zurueck = ps.Messpunkte().installieren()
+    try:
+        assert llm._eu_anlauf({"timeout": 5}) is not None
+    finally:
+        zurueck()
+
+
 # --------------------------------------------------------------------------- #
 # Bericht
 # --------------------------------------------------------------------------- #
