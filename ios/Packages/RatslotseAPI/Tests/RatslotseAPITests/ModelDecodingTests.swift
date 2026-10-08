@@ -529,6 +529,51 @@ import Testing
     #expect(media.aspectRatio.map { $0 < 1 } == true)
     #expect(media.poster == "/neuigkeiten/2.2.0/teilen-ios.webp")
     #expect(release.highlights.last?.media == nil)
+    // Eine Antwort von vor 3.0.0: Kachel-Felder fehlen, die Vorgaben greifen.
+    #expect(release.teaser == nil)
+    #expect(release.highlights.first?.aside == false)
+    #expect(release.highlights.first?.color == nil)
+    #expect(media.tileImage == "/neuigkeiten/2.2.0/teilen-ios.webp", "ohne Titelbild das Standbild")
+    #expect(media.durationLabel == nil)
+}
+
+/// Seit 3.0.0: Video-Kacheln mit Farbe, Zeile, Länge und Titelbild — und ein
+/// „Außerdem"-Highlight ohne eigene Kachel.
+@Test func newsStateDecodesTiles() throws {
+    let json = #"""
+    {
+      "releases": [{
+        "version": "3.0.0", "date": "2026-10-06", "title": "Das Lotti-Update",
+        "teaser": "Drei neue Wege durch den Rat — je ein kurzes Video.",
+        "highlights": [
+          {"title": "Mein Viertel", "text": "Gib deine Straße ein.", "url": "/karte",
+           "media": {"kind": "video", "src": "/neuigkeiten/3.0.0/viertel-ios.mp4", "alt": "Die Karte",
+                     "aspect": "1206/2622", "poster": "/neuigkeiten/3.0.0/viertel-ios.webp",
+                     "cover": "/neuigkeiten/3.0.0/viertel-titel.webp", "duration": 24.4},
+           "color": "green", "aside": false, "tagline": "Was sich vor deiner Haustür tut.",
+           "action": "Mein Viertel ausprobieren"},
+          {"title": "Frag den Rat", "text": "Zeitleiste.", "url": "/fragen",
+           "media": {"kind": "video", "src": "/a.mp4", "alt": "a", "aspect": "1206/2622",
+                     "poster": "/a.webp", "cover": "/a.webp", "duration": 65},
+           "color": "primary", "aside": true, "tagline": null, "action": "Ausprobieren"}
+        ]
+      }],
+      "older_count": 0, "seen_version": null
+    }
+    """#
+    let state = try JSONDecoder().decode(NewsState.self, from: Data(json.utf8))
+    let release = try #require(state.releases.first)
+    #expect(release.teaser == "Drei neue Wege durch den Rat — je ein kurzes Video.")
+    let viertel = try #require(release.highlights.first)
+    #expect(viertel.color == "green" && viertel.aside == false)
+    #expect(viertel.tagline == "Was sich vor deiner Haustür tut.")
+    #expect(viertel.action == "Mein Viertel ausprobieren")
+    #expect(viertel.media?.tileImage == "/neuigkeiten/3.0.0/viertel-titel.webp")
+    #expect(viertel.media?.durationLabel == "0:24")
+    #expect(viertel.media?.durationSpoken == "24 Sekunden")
+    #expect(release.highlights.last?.aside == true)
+    #expect(release.highlights.last?.media?.durationLabel == "1:05")
+    #expect(release.highlights.last?.media?.durationSpoken == "1 Minute 5 Sekunden")
 }
 
 // MARK: - Bewegungen (Plan PR 54)

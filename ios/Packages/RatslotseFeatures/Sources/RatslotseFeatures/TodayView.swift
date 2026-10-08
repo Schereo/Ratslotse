@@ -128,10 +128,15 @@ struct TodayView: View {
         }
         // Was die neue Ausgabe gebracht hat — an derselben Stelle wie im Web
         // (Hinweis-Slot: nach Pause und Live, vor dem Tag). Ob sie erscheint,
-        // sagt der Server (`GET /api/news`); „Alles klar" räumt sie weg.
+        // sagt der Server (`GET /api/news`); das × räumt sie weg, „alle
+        // angesehen" setzt die Marke und lässt sie bis zum nächsten Laden stehen.
         if let news, let newest = news.releases.first {
-            ReleaseNewsCard(model: model, state: news, newest: newest) { markNewsSeen(newest.version) }
-                .ratsStaggered(3)
+            ReleaseNewsCard(
+                model: model, state: news, newest: newest,
+                onDismiss: { markNewsSeen(newest.version) },
+                onAllWatched: { reportNewsSeen(newest.version) }
+            )
+            .ratsStaggered(3)
         }
         TodayUpdatesWidget(model: model, refreshID: updatesRefresh)
             .ratsStaggered(3)
@@ -153,13 +158,20 @@ struct TodayView: View {
         }
     }
 
-    /// „Alles klar" auf der Karte „Neu bei Ratslotse": optimistisch weg — die
+    /// Das × auf der Karte „Neu bei Ratslotse": optimistisch weg — die
     /// Karte soll beim Tipp verschwinden, nicht nach der Antwort. Schlägt der
     /// Ruf fehl, kommt sie beim nächsten Laden zurück. Gemeldet wird die
     /// Version, die die Karte GEZEIGT hat; die Marke am Konto gilt auf jedem
     /// Gerät (dieselbe Regel wie im Web).
     private func markNewsSeen(_ version: String) {
         news = nil
+        reportNewsSeen(version)
+    }
+
+    /// Alle Kacheln angesehen: dieselbe Marke, aber die Karte bleibt stehen —
+    /// sie spränge sonst unter dem schließenden Spieler weg. Beim nächsten
+    /// Laden ist sie fort.
+    private func reportNewsSeen(_ version: String) {
         struct Body: Codable, Sendable { let version: String }
         Task { try? await model.api.sendVoid("/api/news/seen", body: Body(version: version)) }
     }

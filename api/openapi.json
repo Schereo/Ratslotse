@@ -1978,6 +1978,13 @@
             "title": "Sent Recipients",
             "type": "integer"
           },
+          "teaser": {
+            "title": "Teaser",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1991,6 +1998,7 @@
           "version",
           "date",
           "title",
+          "teaser",
           "highlights",
           "open_recipients",
           "sent_recipients"
@@ -21352,6 +21360,18 @@
       "ReleaseHighlight": {
         "description": "Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.",
         "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "aside": {
+            "title": "Aside",
+            "type": "boolean"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
           "media": {
             "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
             "properties": {
@@ -21362,6 +21382,20 @@
               "aspect": {
                 "title": "Aspect",
                 "type": "string"
+              },
+              "cover": {
+                "title": "Cover",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "duration": {
+                "title": "Duration",
+                "type": [
+                  "number",
+                  "null"
+                ]
               },
               "kind": {
                 "title": "Kind",
@@ -21384,11 +21418,20 @@
               "src",
               "alt",
               "aspect",
-              "poster"
+              "poster",
+              "cover",
+              "duration"
             ],
             "title": "ReleaseMedia",
             "type": [
               "object",
+              "null"
+            ]
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -21409,7 +21452,11 @@
           "title",
           "text",
           "url",
-          "media"
+          "media",
+          "color",
+          "aside",
+          "tagline",
+          "action"
         ],
         "title": "ReleaseHighlight",
         "type": "object"
@@ -21424,6 +21471,20 @@
           "aspect": {
             "title": "Aspect",
             "type": "string"
+          },
+          "cover": {
+            "title": "Cover",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duration": {
+            "title": "Duration",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "kind": {
             "title": "Kind",
@@ -21446,7 +21507,9 @@
           "src",
           "alt",
           "aspect",
-          "poster"
+          "poster",
+          "cover",
+          "duration"
         ],
         "title": "ReleaseMedia",
         "type": "object"
@@ -21464,6 +21527,13 @@
             "title": "Highlights",
             "type": "array"
           },
+          "teaser": {
+            "title": "Teaser",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -21477,6 +21547,7 @@
           "version",
           "date",
           "title",
+          "teaser",
           "highlights"
         ],
         "title": "ReleaseNews",

@@ -87,7 +87,8 @@ test("einzelne Sitzung braucht keine zusätzliche Gremium-Ebene", async ({ page 
 test("erster Besuch und leerer Zeitraum werden ehrlich benannt", async ({ page }) => {
   await stub(page, { ...full, first_visit: true, total: 0, counts: { protocol: 0 }, groups: [], items: [] });
   await page.goto("/dashboard");
-  await expect(widget(page).getByRole("heading")).toHaveText("Neu bei Ratslotse");
+  // Nicht „Neu bei Ratslotse" — so heißt die Release-Karte darüber.
+  await expect(widget(page).getByRole("heading")).toHaveText("Dein erster Rückblick");
   await expect(widget(page)).toContainText("die letzten sieben Tage");
   await expect(widget(page)).toContainText("Keine neuen relevanten Ratsunterlagen");
   await expect(widget(page).getByRole("button")).toHaveCount(0);
