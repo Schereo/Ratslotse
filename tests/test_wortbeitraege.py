@@ -695,7 +695,7 @@ def test_partei_meinungen_aggregation(monkeypatch):
     monkeypatch.setattr(qa.llm, "chat_complete", lambda **k: SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=answer))], usage=None))
     rows = ([{"party": "Fraktion DIE LINKE.", "speaker": "Höpken",
-              "text": "Ablehnung " * 5, "session_date": "2026-06-01"}] * 3
+              "text": "Ablehnung: Kein Bedarf für die Straße.", "session_date": "2026-06-01"}] * 3
             + [{"party": "AfD", "speaker": "Paul", "text": "Zustimmung " * 5,
                 "session_date": "2026-06-01"}] * 2)
     out = qa.partei_meinungen("Was ist mit der Trasse?", rows)
@@ -705,6 +705,35 @@ def test_partei_meinungen_aggregation(monkeypatch):
     assert out[0]["stance"] == "dagegen"
     assert out[1]["stance"] == "offen"  # unbekannter Wert → offen
     assert out[1]["unanimous"] is False and "Paul" in out[1]["note"]
+
+
+def test_partei_meinungen_verwirft_erfundene_kernaussage(monkeypatch):
+    """Eine „Kernaussage" muss aus einem Beitrag dieser Fraktion stammen.
+
+    Die Frage steht im Prompt und kann dem Modell ein Zitat samt Rednernamen
+    vorschreiben; das Ergebnis landet im geteilten Zwischenspeicher
+    (Sicherheitsprüfung 10/2026, F16). Ein Satz, den der Redner nie gesagt
+    hat, oder ein Name, der unter keinem Beitrag steht, fliegt raus — die
+    Position bleibt.
+    """
+    answer = json.dumps([
+        {"party": "SPD", "stance": "dagegen", "position": "Lehnt ab.",
+         "kernaussage": {"text": "Wir lehnen das Projekt grundsätzlich ab",
+                         "speaker": "Krogmann", "date": "01.06.2026"}},
+        {"party": "CDU", "stance": "dafür", "position": "Stimmt zu.",
+         "kernaussage": {"text": "Der Ausbau ist überfällig", "speaker": "Erfunden",
+                         "date": "01.06.2026"}},
+    ])
+    monkeypatch.setattr(qa.llm, "chat_complete", lambda **k: SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=answer))], usage=None))
+    rows = ([{"party": "SPD", "speaker": "Krogmann", "text": "Der Radweg ist gut geplant.",
+              "session_date": "2026-06-01"}] * 2
+            + [{"party": "CDU", "speaker": "Meyer", "text": "Der Ausbau ist überfällig.",
+                "session_date": "2026-06-01"}] * 2)
+    out = qa.partei_meinungen("Radweg?", rows)
+    assert [e["party"] for e in out] == ["SPD", "CDU"]
+    assert out[0]["kernaussage"] is None  # Worte nie gesagt
+    assert out[1]["kernaussage"] is None  # Name unter keinem Beitrag
 
 
 def test_partei_meinungen_cache(store):

@@ -202,7 +202,9 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
 }
 
 /** Abbruch mit Teilergebnis (8c⑥): fertige Facetten → Teilbericht anbieten.
- *  Kostet laut Karte ausdrücklich kein Kontingent. */
+ *  Kostet laut Karte kein Kontingent — außer alle Teilfragen waren schon
+ *  fertig: Dann ist der „Teilbericht" der ganze Bericht und zählt (Backend,
+ *  `deepresearch.material_vollstaendig`). */
 export function RechercheGestoppt({ fertig, gesamt, teilberichtMoeglich, onTeilbericht, onVerwerfen }: {
   fertig: number; gesamt: number; teilberichtMoeglich: boolean;
   onTeilbericht: () => void; onVerwerfen: () => void;
@@ -212,8 +214,11 @@ export function RechercheGestoppt({ fertig, gesamt, teilberichtMoeglich, onTeilb
       <p className="text-[13px] font-semibold text-foreground">Recherche abgebrochen</p>
       <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
         {teilberichtMoeglich
-          ? <>{fertig} von {gesamt} Teilfragen waren fertig. Daraus kann Ratslotse einen
-            Teilbericht erstellen. Dieser Versuch zählt <strong>nicht</strong> zu deinen fünf Recherchen heute.</>
+          ? gesamt > 0 && fertig >= gesamt
+            ? <>Alle {gesamt} Teilfragen waren schon fertig. Daraus kann Ratslotse den
+              Bericht noch schreiben — er zählt dann zu deinen fünf Recherchen heute.</>
+            : <>{fertig} von {gesamt} Teilfragen waren fertig. Daraus kann Ratslotse einen
+              Teilbericht erstellen. Dieser Versuch zählt <strong>nicht</strong> zu deinen fünf Recherchen heute.</>
           : <>Noch keine Teilfrage war fertig. Dieser Versuch zählt <strong>nicht</strong> zu
             deinen fünf Recherchen heute.</>}
       </p>

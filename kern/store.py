@@ -3271,15 +3271,33 @@ class Store:
         gültig, und mit der übernommenen Adresse holte er sich das Konto über
         „Passwort vergessen" zurück. Erstbestätigungs-Tokens (``new_email IS
         NULL``) bleiben, wie bei ``cancel_email_change``.
+
+        **Und alles andere, was eine fremde Sitzung hinterlassen haben kann**
+        (Sicherheitsprüfung 10/2026, F14/F20/F21/F22). Ein JWT ist nicht der
+        einzige Zugang, den man sich mit einer übernommenen Sitzung anlegt:
+
+        * **Push-Geräte** — ein eingetragenes Fremdgerät bekam sonst nach dem
+          Reset weiter jede Meldung des Kontos. Die eigene App trägt sich beim
+          nächsten Start von selbst wieder ein.
+        * **Offene Reset-Links** — ein vor dem Absichern angeforderter Link
+          setzte das Passwort sonst eine Stunde lang zurück, über das neue
+          hinweg.
+        * **Die Kalender-Adresse** — sie ist ein eigenes Geheimnis und lief
+          sonst einfach weiter. Sie wird geleert und beim nächsten Abruf der
+          Abo-Seite neu angelegt; ein abonnierter Kalender muss die neue
+          Adresse dann einmal neu bekommen.
         """
         with self._conn:
             self._conn.execute(
-                "UPDATE web_users SET token_version = token_version + 1 WHERE id = ?", (user_id,)
+                "UPDATE web_users SET token_version = token_version + 1, "
+                "calendar_token = NULL WHERE id = ?", (user_id,)
             )
             self._conn.execute(
                 "DELETE FROM email_verification_tokens WHERE user_id = ? AND new_email IS NOT NULL",
                 (user_id,),
             )
+            self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM push_tokens WHERE owner_id = ?", (user_id,))
         row = self._conn.execute("SELECT token_version FROM web_users WHERE id = ?", (user_id,)).fetchone()
         return row[0] if row else 0
 
@@ -3305,15 +3323,29 @@ class Store:
     def consume_password_reset(self, token_hash: str, now: str) -> int | None:
         """Validate + burn a reset token: returns the user_id if it exists, is unused and
         not expired (then marks it used); otherwise None."""
-        row = self._conn.execute(
-            "SELECT user_id, expires_at, used FROM password_reset_tokens WHERE token_hash = ?",
-            (token_hash,),
-        ).fetchone()
-        if not row or row["used"] or row["expires_at"] <= now:
-            return None
+        # In EINER Anweisung prüfen und verbrennen: Zwei gleichzeitige
+        # Einlösungen desselben Links kamen vorher beide durch die Prüfung.
         with self._conn:
-            self._conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE token_hash = ?", (token_hash,))
-        return int(row["user_id"])
+            cur = self._conn.execute(
+                "UPDATE password_reset_tokens SET used = 1 "
+                "WHERE token_hash = ? AND used = 0 AND expires_at > ?",
+                (token_hash, now),
+            )
+        if cur.rowcount != 1:
+            return None
+        row = self._conn.execute(
+            "SELECT user_id FROM password_reset_tokens WHERE token_hash = ?", (token_hash,)
+        ).fetchone()
+        return int(row["user_id"]) if row else None
+
+    def peek_password_reset(self, token_hash: str, now: str) -> int | None:
+        """Wem ein Reset-Link gehört — ohne ihn zu verbrennen; ``None`` wenn ungültig."""
+        row = self._conn.execute(
+            "SELECT user_id FROM password_reset_tokens "
+            "WHERE token_hash = ? AND used = 0 AND expires_at > ?",
+            (token_hash, now),
+        ).fetchone()
+        return int(row["user_id"]) if row else None
 
     def set_email_verified(self, user_id: int, verified: bool = True) -> None:
         with self._conn:
@@ -3349,17 +3381,30 @@ class Store:
         TOKEN und nirgends sonst — ein Aufrufer, der das aus der URL oder aus
         dem Kontostand ableiten müsste, läge irgendwann falsch.
         """
-        row = self._conn.execute(
-            "SELECT user_id, expires_at, used, new_email FROM email_verification_tokens "
-            "WHERE token_hash = ?",
-            (token_hash,),
-        ).fetchone()
-        if not row or row["used"] or row["expires_at"] <= now:
+        treffer = self.peek_email_verification(token_hash, now)
+        if treffer is None:
             return None
         with self._conn:
-            self._conn.execute(
-                "UPDATE email_verification_tokens SET used = 1 WHERE token_hash = ?", (token_hash,)
+            cur = self._conn.execute(
+                "UPDATE email_verification_tokens SET used = 1 "
+                "WHERE token_hash = ? AND used = 0", (token_hash,)
             )
+        return treffer if cur.rowcount == 1 else None
+
+    def peek_email_verification(self, token_hash: str, now: str) -> dict | None:
+        """Wie ``consume_email_verification``, aber ohne den Token zu verbrennen.
+
+        Für die Prüfung VOR dem Einlösen: Wer den Link öffnet, ohne als das
+        Konto angemeldet zu sein, dem er gehört, bekommt eine Ablehnung — und
+        der Link muss danach noch funktionieren.
+        """
+        row = self._conn.execute(
+            "SELECT user_id, new_email FROM email_verification_tokens "
+            "WHERE token_hash = ? AND used = 0 AND expires_at > ?",
+            (token_hash, now),
+        ).fetchone()
+        if not row:
+            return None
         return {"user_id": int(row["user_id"]), "new_email": row["new_email"]}
 
     def pending_email_change(self, user_id: int, now: str) -> str | None:
@@ -3404,6 +3449,9 @@ class Store:
                 "UPDATE web_users SET email = ?, email_verified = 1 WHERE id = ?",
                 (new_email.lower().strip(), user_id),
             )
+            # Ein offener Reset-Link ging an die ALTE Adresse. Er darf das
+            # Konto nach dem Umzug nicht mehr zurückholen (F22).
+            self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
 
     def delete_web_user(self, user_id: int) -> None:
         """Hard-delete a web account and everything keyed to it (GDPR: right to erasure).

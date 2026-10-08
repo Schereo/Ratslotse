@@ -115,3 +115,41 @@ class SitzungsVerlaengerung:
             await send(message)
 
         await self.app(scope, receive, send_wrapper)
+
+
+class KeinCacheMitSitzung:
+    """``Cache-Control: no-store`` auf jede ``/api``-Antwort an eine Sitzung.
+
+    Was ein angemeldeter Client abholt, ist persönlich — und ``/api/auth/me``
+    legt der App sogar ein frisches Token in den Rumpf. Ohne Angabe darf ein
+    Client das zwischenspeichern: Die iOS-App hatte die Antwort samt Token in
+    der Datei-Ablage von ``URLSession.shared`` liegen, auch nach dem Abmelden
+    (Sicherheitsprüfung 10/2026, F25).
+
+    Nur wo der Request eine Sitzung trägt (Bearer oder Cookie), und nur, wenn
+    die Antwort nichts Eigenes sagt — der Strom der KI-Frage setzt sein
+    ``no-cache`` selbst. Rohes ASGI aus demselben Grund wie oben.
+    """
+
+    def __init__(self, app) -> None:  # noqa: ANN001 — ASGI-App
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:  # noqa: ANN001 — ASGI
+        if scope["type"] != "http" or not str(scope.get("path", "")).startswith("/api/"):
+            await self.app(scope, receive, send)
+            return
+        kopf = dict(scope.get("headers") or [])
+        mit_sitzung = (kopf.get(b"authorization", b"").startswith(b"Bearer ")
+                       or (COOKIE_NAME.encode() + b"=") in kopf.get(b"cookie", b""))
+        if not mit_sitzung:
+            await self.app(scope, receive, send)
+            return
+
+        async def send_wrapper(message) -> None:  # noqa: ANN001 — ASGI-Nachricht
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers") or [])
+                if not any(k.lower() == b"cache-control" for k, _ in headers):
+                    message = {**message, "headers": headers + [(b"cache-control", b"no-store")]}
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)

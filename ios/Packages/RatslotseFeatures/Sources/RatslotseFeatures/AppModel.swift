@@ -280,19 +280,50 @@ public final class AppModel {
         let user: User = try await api.send(
             "/api/auth/reset-password", body: Body(token: token, new_password: password)
         )
+        // Wie beim Bestätigungslink: Eine laufende Sitzung wechselt nie still
+        // in ein anderes Konto (das Backend lehnt das inzwischen selbst ab).
+        if let angemeldet = angemeldetesKonto?.id, angemeldet != user.id {
+            authPresentation = nil
+            alertMessage = "Dieser Link gehört zu einem anderen Konto."
+            return
+        }
         try await accept(user: user)
         authPresentation = nil
     }
 
+    /// Einen Bestätigungslink aus der Mail einlösen.
+    ///
+    /// **Ein Link meldet niemanden an.** Bis 10/2026 übernahm die App das
+    /// Konto aus der Antwort ungefragt — wer seinen eigenen Link herumschickte,
+    /// hatte danach die App eines anderen in seinem Konto und las mit, was dort
+    /// eingegeben wurde (Sicherheitsprüfung 10/2026, F6/F8). Jetzt gilt: Die
+    /// Antwort wird nur übernommen, wenn sie zum angemeldeten Konto gehört und
+    /// ein Token trägt — das Backend legt eines nur noch dann bei. Ohne
+    /// Anmeldung geht es über den Anmelde-Bildschirm; der Link bleibt dabei
+    /// gültig.
     public func verifyEmail(token: String) async {
         struct Body: Codable, Sendable { let token: String }
+        let angemeldet = angemeldetesKonto?.id
         do {
             let user: User = try await api.send("/api/auth/verify-email", body: Body(token: token))
+            guard let angemeldet, user.id == angemeldet, user.accessToken != nil else {
+                alertMessage = "Die Adresse ist bestätigt. Bitte melde dich an."
+                if angemeldet == nil { authPresentation = .login }
+                return
+            }
             try await accept(user: user)
             alertMessage = "Deine E-Mail-Adresse ist bestätigt."
         } catch {
             alertMessage = error.localizedDescription
-            authPresentation = .login
+            if angemeldet == nil { authPresentation = .login }
+        }
+    }
+
+    /// Das Konto der laufenden Sitzung, gleich in welchem Zustand.
+    private var angemeldetesKonto: User? {
+        switch session {
+        case .pending(let user), .active(let user), .disabled(let user): user
+        default: nil
         }
     }
 
@@ -516,6 +547,9 @@ public final class AppModel {
         }
         try? await api.sendVoid("/api/auth/logout")
         try? await api.setAccessToken(nil)
+        // Ältere App-Fassungen legten API-Antworten samt Token im
+        // gemeinsamen Zwischenspeicher ab; beim Abmelden räumen wir ihn leer.
+        URLCache.shared.removeAllCachedResponses()
         pendingPushToken = nil
         conversationSavingPreferenceOverride = nil
         // Auch Lottis Gespräch: Ein neues Konto darf nicht in das alte

@@ -44,9 +44,22 @@ public actor APIClient {
     private let keychain: KeychainStore
     private var accessToken: String?
 
+    /// Eine Sitzung ohne Zwischenspeicher auf der Platte.
+    ///
+    /// `URLSession.shared` legt GET-Antworten in `Library/Caches/…/Cache.db`
+    /// ab — auch `/api/auth/me`, deren Rumpf ein frisches Zugangs-Token trägt.
+    /// Das lag dort im Klartext, außerhalb der Keychain, und blieb nach dem
+    /// Abmelden liegen (Sicherheitsprüfung 10/2026, F25).
+    public static let sitzungOhneZwischenspeicher: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.urlCache = nil
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: config)
+    }()
+
     public init(
         baseURL: URL = productionURL,
-        session: URLSession = .shared,
+        session: URLSession = APIClient.sitzungOhneZwischenspeicher,
         keychain: KeychainStore = KeychainStore()
     ) {
         self.baseURL = baseURL

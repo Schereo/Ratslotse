@@ -416,10 +416,12 @@ struct LottiAnswerText: View {
     /// Inline-Markdown EINES Blocks. Scheitert das Parsen — ein halber Strom
     /// trägt ein offenes `**` —, bleibt der rohe Text; lesbar ist er allemal.
     private func inline(_ s: String) -> AttributedString {
-        (try? AttributedString(
+        // Lottis Text ist Modellausgabe über fremde Dokumente — ein Link darin
+        // geht nur auf die Stadt oder auf Ratslotse (s. `ExterneLinks`).
+        ExterneLinks.bereinigt((try? AttributedString(
             markdown: s,
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace,
                            failurePolicy: .returnPartiallyParsedIfPossible)
-        )) ?? AttributedString(s)
+        )) ?? AttributedString(s))
     }
 }

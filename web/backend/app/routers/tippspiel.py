@@ -403,10 +403,16 @@ def abmelden(request: Request, response: Response, runde: str | None = Query(def
 def stand(request: Request, response: Response, probe: str | None = Query(default=None),
          counted: int | None = Query(default=None, ge=0, le=133),
          runde: str | None = Query(default=None, alias="round"),
+         user: dict | None = Depends(optional_user),
          store: Store = Depends(get_store)) -> PredictionStand:
     _frei()
     r = _runde(runde)
-    ergebnis = service.stand(store, _game_id(store, r), probe=probe, counted=counted)
+    game_id = _game_id(store, r)
+    # Dieselbe Tür wie bei `setup` und `meins`: Die Tabelle einer Konto-Runde
+    # nennt Anzeigenamen samt freiwillig angegebener Partei — das sieht nur,
+    # wer selbst angemeldet ist (Sicherheitsprüfung 10/2026, F11).
+    _zutritt(store, game_id, user)
+    ergebnis = service.stand(store, game_id, probe=probe, counted=counted)
     etag = f'"{hashlib.sha1(ergebnis["computed_at"].encode()).hexdigest()[:16]}"'  # noqa: S324 — kein Sicherheitszweck, nur Cache-Schlüssel
     if request.headers.get("if-none-match") == etag:
         return Response(  # pyright: ignore[reportReturnType] — siehe oben

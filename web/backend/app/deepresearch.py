@@ -148,6 +148,46 @@ def laufende_jobs(user_id: int | None = None) -> int:
                    if not j.done and (user_id is None or j.user_id == user_id))
 
 
+#: Plätze, die ein Start gerade belegt, bevor sein Job in ``_registry`` steht.
+#: Zwischen der Prüfung und dem Anlegen liegt ein Modell-Aufruf (die Analyse
+#: der Frage, bis zu 8 s). Ohne Reservierung sahen 40 gleichzeitige Starts
+#: desselben Kontos alle „0 laufend, 0 heute" und liefen alle los — vorbei am
+#: Tageskontingent, an „eine je Konto" und am globalen Deckel
+#: (Sicherheitsprüfung 10/2026, F5).
+_reserviert: dict[int, int] = {}
+
+
+def platz_reservieren(user_id: int) -> str | None:
+    """Einen Recherche-Platz belegen. ``None`` heißt: belegt, bitte
+    ``platz_freigeben`` aufrufen, sobald der Job registriert ist (oder der
+    Start scheitert). Sonst der Grund der Ablehnung: ``"konto"`` (läuft schon
+    eine) oder ``"voll"`` (globaler Deckel)."""
+    with _reg_lock:
+        laufend = [j for j in _registry.values() if not j.done]
+        eigene = sum(1 for j in laufend if j.user_id == user_id) + _reserviert.get(user_id, 0)
+        if eigene >= 1:
+            return "konto"
+        if len(laufend) + sum(_reserviert.values()) >= MAX_PARALLEL:
+            return "voll"
+        _reserviert[user_id] = _reserviert.get(user_id, 0) + 1
+        return None
+
+
+def platz_freigeben(user_id: int) -> None:
+    with _reg_lock:
+        rest = _reserviert.get(user_id, 0) - 1
+        if rest > 0:
+            _reserviert[user_id] = rest
+        else:
+            _reserviert.pop(user_id, None)
+
+
+def material_vollstaendig(job: DeepJob) -> bool:
+    """Waren beim Stopp schon ALLE Facetten fertig? Dann ist ein
+    „Teilbericht" in Wahrheit der ganze Bericht — und zählt wie einer (F17)."""
+    return job.facetten_gesamt > 0 and job.facetten_fertig >= job.facetten_gesamt
+
+
 def registry_aufraeumen(max_fertige: int = 50) -> None:
     """Fertige Jobs irgendwann aus dem Speicher werfen — die Wahrheit liegt
     ohnehin in der DB; hier geht es nur um den Replay laufender Sitzungen."""
@@ -606,7 +646,12 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
         ratslotse = Store(ratslotse_db)
         try:
             conversation_id = _gespraech_anhaengen(ratslotse, job, bericht, m, cited)
-            status = "teilbericht" if teilbericht else "fertig"
+            # Ein „Teilbericht" aus vollständigem Material ist der ganze
+            # Bericht und zählt deshalb wie einer: `deep_jobs_heute` rechnet
+            # nur `fertig` (und laufende) — Stopp kurz vor dem Schreiben plus
+            # „Teilbericht zeigen" war sonst ein Bericht außerhalb des
+            # Kontingents, beliebig oft (F17).
+            status = "teilbericht" if teilbericht and not material_vollstaendig(job) else "fertig"
             ratslotse.deep_job_update(job.id, status, bericht=bericht,
                                 quellen_json=json.dumps(_quellen_payload(m, cited),
                                                         ensure_ascii=False))

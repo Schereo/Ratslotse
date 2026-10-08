@@ -3252,7 +3252,7 @@ struct CouncilEvidenceBlocks: View {
                             meta: item["template_number"]?.string,
                             symbol: .fileText
                         )
-                        if let raw = item["url"]?.string, let url = URL(string: raw) {
+                        if let url = ExterneLinks.beleg(item["url"]?.string) {
                             Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle())
                         } else { row }
                     }
@@ -3277,7 +3277,7 @@ struct CouncilEvidenceBlocks: View {
                             meta: RatsDate.short(item["date"]?.string),
                             symbol: .newspaper
                         )
-                        if let raw = item["url"]?.string, let url = URL(string: raw) {
+                        if let url = ExterneLinks.beleg(item["url"]?.string) {
                             Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle())
                         } else { row }
                     }
@@ -3349,9 +3349,9 @@ struct CouncilEvidenceBlocks: View {
     private func debateURL(_ item: [String: JSONValue]) -> URL? {
         guard let raw = item["minutes_url"]?.string else { return nil }
         if let page = item["minutes_page"]?.int {
-            return URL(string: "\(raw)#page=\(page)")
+            return ExterneLinks.beleg("\(raw)#page=\(page)")
         }
-        return URL(string: raw)
+        return ExterneLinks.beleg(raw)
     }
 }
 
@@ -3790,7 +3790,9 @@ struct CitedAnswerText: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
             .environment(\.openURL, OpenURLAction { url in
-                guard url.scheme == "ratslotse" else { return .systemAction }
+                guard url.scheme == "ratslotse" else {
+                    return ExterneLinks.imAntworttextErlaubt(url) ? .systemAction : .discarded
+                }
                 if url.host == "decision", let id = Int(url.lastPathComponent) {
                     model.navigation.append(.decision(id: id))
                     return .handled
@@ -3898,7 +3900,6 @@ struct CitedAnswerText: View {
 
     private func attachmentURL(number: Int) -> URL? {
         let rows = evidence["attachments"]?.array?.compactMap(\.object) ?? []
-        guard let raw = rows.first(where: { $0["nr"]?.int == number })?["url"]?.string else { return nil }
-        return URL(string: raw)
+        return ExterneLinks.beleg(rows.first(where: { $0["nr"]?.int == number })?["url"]?.string)
     }
 }

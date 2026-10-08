@@ -10,6 +10,20 @@ describe("nurHttps", () => {
       expect(nurHttps(roh), roh).toBeUndefined();
     }
   });
+  it("verwirft, was Server und Browser verschieden lesen", () => {
+    for (const roh of [
+      "https://evil.example\\@www.oldenburg.de/",
+      "https://phish.example\\.oldenburg.de/login",
+      "https://nutzer@example.org/",
+      "https://www.oldenburg.de/a b",
+      "https://www.oldenburg.de/\tx",
+    ]) {
+      expect(nurHttps(roh), roh).toBeUndefined();
+    }
+  });
+  it("liefert die aufgelöste Form", () => {
+    expect(nurHttps("https://WWW.Oldenburg.de/x")).toBe("https://www.oldenburg.de/x");
+  });
   it("leer bleibt leer", () => {
     expect(nurHttps(null)).toBeUndefined();
     expect(nurHttps("")).toBeUndefined();

@@ -20,6 +20,7 @@ import json
 import os
 import sys
 from datetime import date
+from html import escape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -61,9 +62,11 @@ def _label(station: str) -> str:
 
 
 def _message(follow: dict, neu: list[str], app_url: str) -> str:
-    zeilen = "".join(f"<li>{_label(s)}</li>" for s in neu)
-    title = follow.get("title") or follow.get("template_number") or "Verfolgter Vorgang"
-    nr = f" ({follow['template_number']})" if follow.get("template_number") else ""
+    # Titel, Nummer und Stationen stammen aus dem Ratsinformationssystem —
+    # fremder Text, ins HTML der Mail nur maskiert (F26).
+    zeilen = "".join(f"<li>{escape(_label(s))}</li>" for s in neu)
+    title = escape(str(follow.get("title") or follow.get("template_number") or "Verfolgter Vorgang"))
+    nr = f" ({escape(str(follow['template_number']))})" if follow.get("template_number") else ""
     return (
         f"<p>Es gibt Neues zu einem Vorgang, den du verfolgst:</p>"
         f"<p><b>{title}</b>{nr}</p>"
