@@ -129,6 +129,14 @@ function PlaceInner() {
               field={decision.policy_field} amount={decision.amount_eur}
               sub={evidence ? `Ortsbeleg: ${evidence}` : decision.summary} />;
           })}
+          {/* Die Liste kommt gekappt (die jüngsten 50), der Kopf zählt alle.
+              Ohne diesen Hinweis endete sie bei 50 von 166 einfach (RI-10). */}
+          {data.decision_count > data.decisions.length && (
+            <Link href={`/council?tab=decisions&district=${encodeURIComponent(place.id)}`}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-muted">
+              Die {data.decisions.length} jüngsten von {data.decision_count} — alle in der Beschlusssuche →
+            </Link>
+          )}
         </div>
       ) : (
         <p className="mt-3 text-sm text-muted-foreground">Noch kein Beschluss ist diesem Ort sicher zugeordnet.</p>

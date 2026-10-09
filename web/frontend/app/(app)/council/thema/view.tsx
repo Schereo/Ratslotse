@@ -1,9 +1,9 @@
 "use client";
 
-import {Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { EntityDetail, RelatedEntity } from "@/lib/types";
 import { DetailSkeleton } from "@/components/ui";
@@ -147,14 +147,36 @@ function EntityInner() {
       </div>
       <div className="min-w-0 weit:[&>*:first-child]:mt-0">
       <h2 className="mt-7 text-sm font-semibold text-muted-foreground">Beschlüsse zu diesem Thema</h2>
-      <div className="mt-3 space-y-2">
-        {data.decisions.map((d) => (
-          <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
-            session_date={d.session_date} field={d.policy_field} amount={d.amount_eur} sub={d.summary} />
-        ))}
+      <ThemaBeschluesse decisions={data.decisions} />
       </div>
       </div>
-      </div>
+    </div>
+  );
+}
+
+/** Zwanzig auf einmal, dann auf Wunsch die nächsten zwanzig. Bis 10/2026
+ *  standen alle da — beim Fliegerhorst 173 Karten, 24.757 px am Schreibtisch
+ *  und fast 40.000 px auf dem Telefon, ohne dass man je ans Ende kam. */
+const SCHRITT = 20;
+function ThemaBeschluesse({ decisions }: { decisions: EntityDetail["decisions"] }) {
+  const [anzahl, setAnzahl] = useState(SCHRITT);
+  const rest = decisions.length - anzahl;
+  return (
+    <div className="mt-3 space-y-2">
+      {decisions.slice(0, anzahl).map((d) => (
+        <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
+          session_date={d.session_date} field={d.policy_field} amount={d.amount_eur} sub={d.summary} />
+      ))}
+      {rest > 0 && (
+        <button
+          type="button"
+          onClick={() => setAnzahl((n) => n + SCHRITT)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-muted"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+          {Math.min(rest, SCHRITT)} weitere anzeigen <span className="text-muted-foreground">· noch {rest}</span>
+        </button>
+      )}
     </div>
   );
 }
