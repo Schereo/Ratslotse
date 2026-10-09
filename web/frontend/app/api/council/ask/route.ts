@@ -67,6 +67,10 @@ export async function POST(req: NextRequest) {
       ...(client ? { "x-client": client } : {}),
     },
     body,
+    // Bricht der Browser ab (Stopp, Seite verlassen), endet auch die Anfrage
+    // ans Backend — sonst schrieb es die Antwort für niemanden zu Ende. Die
+    // Recherche-Route tat das schon.
+    signal: req.signal,
   });
 
   if (!upstream.ok || !upstream.body) {

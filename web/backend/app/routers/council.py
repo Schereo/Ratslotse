@@ -3735,7 +3735,10 @@ def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
         raise HTTPException(status.HTTP_410_GONE, "Recherche nicht mehr aktiv — Snapshot laden.")
     return StreamingResponse(
         deepresearch.sse_events(job, ab=ab), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # `no-transform`: Ohne das komprimiert die Next-Weiterleitung den
+        # Strom und hält kleine Antworten zurück, bis sie fertig sind —
+        # Lotti „schrieb" dann nichts und alles kam auf einmal (FS-11).
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 
@@ -4787,7 +4790,10 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # `no-transform`: Ohne das komprimiert die Next-Weiterleitung den
+        # Strom und hält kleine Antworten zurück, bis sie fertig sind —
+        # Lotti „schrieb" dann nichts und alles kam auf einmal (FS-11).
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
         # Läuft erst, wenn der Strom ausgeliefert ist — niemand wartet darauf.
         background=BackgroundTask(_lotti_nachlauf, nachlauf, meldungen))
 
@@ -6172,7 +6178,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # `no-transform`: Ohne das komprimiert die Next-Weiterleitung den
+        # Strom und hält kleine Antworten zurück, bis sie fertig sind —
+        # Lotti „schrieb" dann nichts und alles kam auf einmal (FS-11).
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 
