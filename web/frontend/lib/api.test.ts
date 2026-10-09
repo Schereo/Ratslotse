@@ -143,8 +143,68 @@ describe("Fehler werden deutsche Sätze", () => {
   });
 
   it("fällt auf den Status zurück, wenn der Körper unlesbar ist", async () => {
+    mitAntwort(antwort(418));
+    await expect(a.api.get("/x")).rejects.toThrow("Fehler 418");
+  });
+
+  it("übersetzt den Klartext-500er der Weiterleitung, statt „Fehler 500“ zu sagen", async () => {
+    // Das Backend antwortet IMMER mit `detail`; ein 500er ohne JSON kommt von
+    // der Next-Weiterleitung (Backend weg oder nach 30 s aufgegeben).
     mitAntwort(antwort(500));
-    await expect(a.api.get("/x")).rejects.toThrow("Fehler 500");
+    await expect(a.api.get("/x")).rejects.toThrow(a.FEHLER_KURZ_WEG);
+  });
+
+  it("behält den Satz des Backends bei einem 500er mit JSON", async () => {
+    mitAntwort(antwort(500, { detail: "Da ist etwas schiefgegangen." }));
+    await expect(a.api.get("/x")).rejects.toThrow("Da ist etwas schiefgegangen.");
+  });
+
+  it.each([502, 503, 504])("%s heißt „kurz nicht erreichbar“", async (status) => {
+    mitAntwort(antwort(status));
+    await expect(a.api.get("/x")).rejects.toThrow(a.FEHLER_KURZ_WEG);
+  });
+});
+
+describe("Netz und Zeitgrenze", () => {
+  it("macht aus „Failed to fetch“ einen Satz mit Status 0", async () => {
+    vi.stubGlobal("fetch", () => Promise.reject(new TypeError("Failed to fetch")));
+    await expect(a.api.get("/x")).rejects.toMatchObject({ status: 0, message: a.FEHLER_OFFLINE });
+  });
+
+  it("gibt nach der Grenze auf, statt ewig zu warten", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal("fetch", (_u: string, init: RequestInit) => new Promise((_ok, nein) => {
+        init.signal!.addEventListener("abort", () => nein(new DOMException("aborted", "AbortError")));
+      }));
+      const p = a.api.get("/x");
+      const pruefung = expect(p).rejects.toMatchObject({ status: 0, message: a.FEHLER_ZEIT });
+      await vi.advanceTimersByTimeAsync(a.ANFRAGE_GRENZE_MS + 1);
+      await pruefung;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reicht einen Abbruch des Aufrufers unverändert durch", async () => {
+    // Seite verlassen, neue Suche: Die Aufrufer erkennen den AbortError und
+    // schweigen — als „Keine Verbindung“ verkleidet gäbe es einen Fehl-Toast.
+    vi.stubGlobal("fetch", (_u: string, init: RequestInit) => new Promise((_ok, nein) => {
+      init.signal!.addEventListener("abort", () => nein(new DOMException("aborted", "AbortError")));
+    }));
+    const ctrl = new AbortController();
+    const p = a.api.get("/x", { signal: ctrl.signal });
+    ctrl.abort();
+    await expect(p).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("wiederholt nur, was sich lohnt", () => {
+    expect(a.lohntWiederholen(new a.ApiError(404, "weg"))).toBe(false);
+    expect(a.lohntWiederholen(new a.ApiError(403, "nein"))).toBe(false);
+    expect(a.lohntWiederholen(new a.ApiError(500, "kaputt"))).toBe(true);
+    expect(a.lohntWiederholen(new a.ApiError(0, a.FEHLER_OFFLINE))).toBe(true);
+    expect(a.istNichtGefunden(new a.ApiError(404, "weg"))).toBe(true);
+    expect(a.istNichtGefunden(new a.ApiError(0, a.FEHLER_OFFLINE))).toBe(false);
   });
 
   it("trägt den Status am Fehler", async () => {

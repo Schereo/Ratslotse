@@ -8,8 +8,9 @@ import { MemberDetail, PersonProfil, VerwaltungDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { PartyBadge, partyBrand, AffiliationBadge } from "@/components/decision-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { apiUrl, authHeaders } from "@/lib/api";
+import { apiUrl, authHeaders, istNichtGefunden } from "@/lib/api";
 import { useFetch } from "@/lib/use-fetch";
+import { AbrufFehler } from "@/components/abruf-fehler";
 import { cn } from "@/lib/utils";
 import { shortCommittee } from "@/lib/committees";
 import { useZurueck } from "@/lib/zurueck";
@@ -156,7 +157,7 @@ function cnEllipsis(chair: boolean) {
 
 function PersonInner() {
   const slug = useSearchParams().get("slug");
-  const { data, loading } = useFetch<PersonProfil>(slug ? `/council/person/${slug}` : null);
+  const { data, loading, error, refetch } = useFetch<PersonProfil>(slug ? `/council/person/${slug}` : null);
 
   // Eine Person kann in den Anwesenheitslisten unter zwei Namensformen stehen;
   // das Backend liefert für beide dasselbe Profil und nennt in `slug` die
@@ -178,6 +179,7 @@ function PersonInner() {
   if (loading || gewaehltLaedt) return <DetailSkeleton />;
   if (!data) {
     if (gewaehlt) return <GewaehltProfil g={gewaehlt} />;
+    if (error && !istNichtGefunden(error)) return <AbrufFehler error={error} onRetry={refetch} was="Dieses Profil" />;
     notFound();
   }
   if (data.type === "administration") return <VerwaltungProfil data={data} />;

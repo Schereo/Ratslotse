@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { Mascot } from "@/components/mascot";
 import { Button } from "@/components/ui";
+import { meldeFehler } from "@/lib/fehler-melden";
+import { chunkFehlerHeilen, istChunkFehler } from "@/lib/chunk-fehler";
 
 /**
  * Error-Boundary INNERHALB der App-Shell: Wirft eine Seite (z. B. wegen eines
@@ -19,7 +21,17 @@ export default function AppError({
 }) {
   useEffect(() => {
     console.error(error);
+    // Nach einem Deploy fehlen die Programmteile der alten Seite: einmal neu
+    // laden statt einer Fehlerseite, aus der „Erneut versuchen" nicht hinausführt.
+    if (chunkFehlerHeilen(error)) return;
+    // Und melden: React fängt den Fehler hier ab, `window.onerror` sieht ihn
+    // nie. Bis 10/2026 blieben Abstürze innerhalb der App-Hülle deshalb
+    // ungemeldet — nur die Wurzel-Fehlerseite meldete.
+    meldeFehler(error.digest ? Object.assign(error, {
+      message: `${error.message} [digest ${error.digest}]`,
+    }) : error);
   }, [error]);
+  const chunk = istChunkFehler(error);
 
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -29,8 +41,9 @@ export default function AppError({
         Da ist Lotti kurz vom Kurs abgekommen. Versuch es erneut — die Navigation
         und deine Daten sind davon nicht betroffen.
       </p>
-      <Button className="mt-5" onClick={reset}>
-        Erneut versuchen
+      {/* Ein fehlender Programmteil kommt nur durch echtes Neuladen zurück. */}
+      <Button className="mt-5" onClick={chunk ? () => window.location.reload() : reset}>
+        {chunk ? "Seite neu laden" : "Erneut versuchen"}
       </Button>
     </div>
   );
