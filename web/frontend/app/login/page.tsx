@@ -57,8 +57,19 @@ export default function LoginPage() {
         <p className="mt-3 text-sm text-muted-foreground">
           {firstRun
             ? "Erstelle nur noch dein Konto, dann richten wir Ratslotse gemeinsam ein."
-            : "Willkommen zurück — melde dich an, um fortzufahren."}
+            : weiter
+              // Kam man über einen Link auf eine Seite mit Konto-Pflicht, sagte
+              // die Anmeldung bis 10/2026 nur „Willkommen zurück" — wer noch
+              // gar kein Konto hatte, erfuhr nicht, warum er hier stand.
+              ? "Für diese Seite brauchst du ein Konto. Melde dich an — danach geht es genau dort weiter."
+              : "Willkommen zurück — melde dich an, um fortzufahren."}
         </p>
+        {weiter && !firstRun && (
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Noch kein Konto?{" "}
+            <Link href={`/register${weiter}`} className="font-medium text-primary hover:underline">Kostenlos registrieren</Link>
+          </p>
+        )}
         <div className="mt-6">
           {/* RL-1001: Apple steht immer an erster Stelle (nur in der App sichtbar). */}
           <AppleSignInButton label="Mit Apple anmelden" />

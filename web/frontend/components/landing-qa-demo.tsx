@@ -149,14 +149,16 @@ export function LandingQaDemo() {
       const t = setTimeout(() => setPhase("thinking"), 400);
       return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setTyped(QUESTION.slice(0, typed.length + 1)), 45);
+    // 25 statt 45 ms je Zeichen, und kürzer „nachdenken": Bis 10/2026 stand
+    // die Karte 4–5 s als leerer weißer Kasten da, bevor die Antwort kam (OE-05).
+    const t = setTimeout(() => setTyped(QUESTION.slice(0, typed.length + 1)), 25);
     return () => clearTimeout(t);
   }, [phase, typed]);
 
   // Phase 2: Lotti sucht.
   useEffect(() => {
     if (phase !== "thinking") return;
-    const t = setTimeout(() => setPhase("answering"), 1700);
+    const t = setTimeout(() => setPhase("answering"), 900);
     return () => clearTimeout(t);
   }, [phase]);
 
