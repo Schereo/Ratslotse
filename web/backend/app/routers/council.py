@@ -550,9 +550,16 @@ def zahl_der_woche(
             return {"kind": "amount", "amount_eur": top["amount_eur"],
                     "decision_id": top["id"], "title": top["title"],
                     "session_date": top["session_date"], "window_days": days}
-    return {"kind": "count",
-            "count": store.count_decisions_since((today - timedelta(days=7)).isoformat()),
-            "window_days": 7}
+    # Ohne Betrag die Zahl der Beschlüsse — im kleinsten Fenster, in dem es
+    # überhaupt welche gibt. Bis 10/2026 immer 7 Tage: Nach Sommerpause und
+    # Wahl stand wochenlang eine orange „0" oben auf „Heute", obwohl die
+    # Ausschüsse längst wieder tagten (ihre Protokolle kommen ein bis drei
+    # Wochen später). Die App liest `window_days` mit (TodayView.swift).
+    for days in (7, 30, 90):
+        anzahl = store.count_decisions_since((today - timedelta(days=days)).isoformat())
+        if anzahl:
+            return {"kind": "count", "count": anzahl, "window_days": days}
+    return {"kind": "count", "count": 0, "window_days": 90}
 
 
 @router.get("/budget/products")
