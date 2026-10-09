@@ -33,6 +33,7 @@ import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
 import { decisionHref, sitzungHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { ohneRisErgebnis } from "@/lib/ris-titel";
 
 export const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -205,7 +206,9 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
             </a>
           </span>
         )}
-        <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
+        {/* Ohne das angehängte „Beschluss: ungeändert beschlossen", wo das
+            Ergebnis ohnehin als Marke daneben steht (lib/ris-titel.ts). */}
+        <p className="text-sm text-foreground"><Highlight text={ergebnis ? ohneRisErgebnis(it.title) : it.title} query={query} /></p>
         {/* Ein Satz, worum es geht (Tims Wunsch 12.08.) — der Hinweis
             „Kurzfassung" sagt, dass hier eine Maschine zusammengefasst hat. */}
         {kurzfassung(it) && (
@@ -248,7 +251,9 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
           {ergebnis}
         </span>
       )}
-      {decisionId != null && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />}
+      {/* Auf dem Telefon ohne Pfeil: Die ganze Zeile ist der Link, und die
+          28 px fehlten dem Titel. */}
+      {decisionId != null && <ChevronRight className="mt-0.5 hidden h-4 w-4 shrink-0 text-muted-foreground/50 sm:block" aria-hidden />}
     </>
   );
   const tone = gewaehlt ? "bg-primary/[0.07] ring-1 ring-primary/30"
