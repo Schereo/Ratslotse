@@ -62,7 +62,10 @@ function readFragments(): Fragment[] {
     }
     const m = roh.match(/^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*\r?\n([\s\S]*)$/);
     if (!m) continue;
-    const kat = m[1].match(/^[ \t]*category[ \t]*:[ \t]*(.+?)[ \t]*$/m);
+    // `kategorie` ist der Schlüssel, den Fragmente tragen (CLAUDE.md,
+    // scripts/changelog_schnitt.py). Hier stand bis 10/2026 nur `category` —
+    // kein einziges Fragment erschien unter „Unreleased".
+    const kat = m[1].match(/^[ \t]*(?:kategorie|category)[ \t]*:[ \t]*(.+?)[ \t]*$/m);
     const section = kat ? KATEGORIEN[kat[1].trim().toLowerCase()] : undefined;
     const text = m[2].replace(/\s+/g, " ").trim();
     // Ein kaputtes Fragment überspringen statt den Build zu kippen — angemeckert
@@ -117,6 +120,20 @@ function parse(md: string): Version[] {
   return out;
 }
 
+/** Wie viele Versionen (nach „Unreleased") voll dastehen. Ältere klappen
+ *  zu und zeigen nur ihre Kernsätze: Mit 39 Versionen und 1.246 Einträgen
+ *  war die Seite 2,3 MB HTML und am Telefon 362.000 px hoch (10/2026). Den
+ *  vollen Text jeder Version gibt es weiter als GitHub-Release. */
+const VOLL_VERSIONEN = 3;
+const RELEASES = "https://github.com/Schereo/Ratslotse/releases/tag/v";
+
+/** Der fett gesetzte Kernsatz eines Eintrags — jede Zeile beginnt so. */
+function kernsatz(item: string): string {
+  const m = item.match(/^\*\*([^*]+)\*\*/);
+  if (m) return m[1].trim();
+  return item.length > 140 ? `${item.slice(0, 139).trimEnd()} …` : item;
+}
+
 // Minimal inline markdown → React: **bold**, `code`, [text](url). Safe (no innerHTML).
 function inline(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -160,7 +177,7 @@ export default function ChangelogPage() {
           <p className="mt-8 text-sm text-muted-foreground">Changelog konnte nicht geladen werden.</p>
         ) : (
           <div className="mt-8 space-y-8">
-            {versions.map((v) => (
+            {versions.filter((v, i) => v.version === "Unreleased" || i <= VOLL_VERSIONEN).map((v) => (
               <section key={v.version} className="border-t border-border pt-6">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <h2 className="text-lg font-semibold text-foreground">{v.version === "Unreleased" ? "Unreleased" : `v${v.version}`}</h2>
@@ -184,6 +201,41 @@ export default function ChangelogPage() {
                 ))}
               </section>
             ))}
+            {versions.filter((v, i) => v.version !== "Unreleased" && i > VOLL_VERSIONEN).length > 0 && (
+              <section className="border-t border-border pt-6">
+                <h2 className="text-lg font-semibold text-foreground">Ältere Versionen</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Je Version die Kernsätze — der volle Text steht im GitHub-Release.</p>
+                <div className="mt-3 divide-y divide-border/70 rounded-xl border border-border bg-card">
+                  {versions.filter((v, i) => v.version !== "Unreleased" && i > VOLL_VERSIONEN).map((v) => {
+                    const alle = v.sections.flatMap((sec) => sec.items);
+                    return (
+                      <details key={v.version} className="group px-4 py-3">
+                        <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1 [&::-webkit-details-marker]:hidden">
+                          <span className="font-semibold text-foreground">v{v.version}</span>
+                          {v.date && <span className="text-xs text-muted-foreground">{v.date}</span>}
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {alle.length} {alle.length === 1 ? "Änderung" : "Änderungen"}
+                            <span aria-hidden className="ml-1.5 inline-block transition-transform group-open:rotate-90">›</span>
+                          </span>
+                        </summary>
+                        <ul className="mt-2 space-y-1">
+                          {alle.map((it, idx) => (
+                            <li key={idx} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
+                              <span className="select-none text-muted-foreground/40">•</span>
+                              <span className="min-w-0 [overflow-wrap:anywhere]">{inline(kernsatz(it))}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <a href={`${RELEASES}${v.version}`} target="_blank" rel="noreferrer"
+                          className="mt-2 inline-block text-sm text-primary hover:underline">
+                          Volltext zu v{v.version} auf GitHub →
+                        </a>
+                      </details>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </div>
         )}
 
