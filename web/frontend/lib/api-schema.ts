@@ -11652,7 +11652,9 @@ export interface components {
          *
          *     ``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere
          *     aus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist
-         *     je leer.
+         *     je leer — außer ``outcome``: Ein Beschluss ohne erkanntes Ergebnis (am
+         *     09.10.2026 drei von 1.307) brachte /goal/klima_2035 und /goal/wohnungsbau
+         *     bis dahin mit einem 500er zum Stehen.
          */
         GoalDecision: {
             /** Committee */
@@ -11661,9 +11663,9 @@ export interface components {
             id: number;
             /**
              * Outcome
-             * @enum {string}
+             * @enum {string|null}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled";
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Policy Field */
             policy_field: string;
             /** Rationale */
@@ -25304,4 +25306,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8b1beac9f269ebcea304e6f1332cb5b5d09634c7e6072100dc57be5a57e29bdc
+// vertrag-sha256: 7c9790d1a5758fa24546d26cec8bb256232e4ba629f8cb3eec4c4cdb162e3e17

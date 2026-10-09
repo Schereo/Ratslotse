@@ -12,6 +12,8 @@ out of the party analysis.
 """
 from __future__ import annotations
 
+import functools
+
 # Substrings that mark a NON-party row (kept out of the analysis).
 _NON_PARTY = (
     "verwaltung", "beratend", "gast", "protokoll", "schriftführ", "oberbürgermeister",
@@ -60,6 +62,11 @@ CANONICAL_ORDER = [
 ]
 
 
+# Beide Zuordnungen sind reine Funktionen über eine Handvoll Labels — aber
+# `list_members` rief sie je Aufruf 27.000- bzw. 34.000-mal (gemessen
+# 09.10.2026, 190–270 ms reine Python-Zeit unter dem GIL, auf JEDER
+# Personenseite). Der Zwischenspeicher macht daraus Nachschlagen.
+@functools.lru_cache(maxsize=4096)
 def normalize_party(raw: str | None) -> str | None:
     """Canonical party/group label, or None for non-parties / unknown."""
     if not raw:
@@ -111,18 +118,26 @@ def classify_faction(raw: str | None) -> dict:
       ihre Parteien; sonst leer)
     - ``group``: Gruppenname oder ``None``
     """
+    kind, label, parties, group = _faction(raw)
+    # Jedes Mal ein frisches dict samt Liste: Aufrufer dürfen es verändern,
+    # der Zwischenspeicher darunter hält nur unveränderliche Tupel.
+    return {"kind": kind, "label": label, "parties": list(parties), "group": group}
+
+
+@functools.lru_cache(maxsize=4096)
+def _faction(raw: str | None) -> tuple[str, str, tuple[str, ...], str | None]:
     if raw is None or not raw.strip():
-        return {"kind": "independent", "label": "parteilos", "parties": [], "group": None}
+        return ("independent", "parteilos", (), None)
     low = raw.strip().lower()
     if any(x in low for x in _NON_PARTY):
-        return {"kind": "unknown", "label": raw.strip(), "parties": [], "group": None}
+        return ("unknown", raw.strip(), (), None)
     for needles, name, members in _GROUPS:
         if all(n in low for n in needles):
-            return {"kind": "group", "label": name, "parties": list(members), "group": name}
+            return ("group", name, tuple(members), name)
     p = normalize_party(raw)
     if p:
-        return {"kind": "party", "label": p, "parties": [p], "group": None}
-    return {"kind": "unknown", "label": raw.strip(), "parties": [], "group": None}
+        return ("party", p, (p,), None)
+    return ("unknown", raw.strip(), (), None)
 
 
 def faction_label(raw: str | None) -> str | None:
