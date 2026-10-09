@@ -123,8 +123,10 @@ function usePersonenLexikon(): PersonEintrag[] {
   useEffect(() => {
     _lexikonPromise ||= fetch(apiUrl("/council/people-directory"),
       { credentials: "include", headers: authHeaders() })
-      .then((r) => (r.ok ? r.json() : { personen: [] }))
-      .then((b) => (b?.personen ?? []) as PersonEintrag[])
+      .then((r) => (r.ok ? r.json() : { people: [] }))
+      // Das Feld heißt seit dem englischen Vertrag `people`; das alte
+      // `personen` las still eine leere Liste — die Marken fehlten.
+      .then((b) => (b?.people ?? []) as PersonEintrag[])
       .catch(() => [] as PersonEintrag[]);
     let lebt = true;
     void _lexikonPromise.then((p) => { if (lebt) setLex(p); });
