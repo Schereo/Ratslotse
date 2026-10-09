@@ -239,9 +239,17 @@ export default function BookmarksPage() {
       <PageHeader title="Merkliste" description="Nach Sitzung gebündelt – damit auch viele gemerkte TOPs übersichtlich bleiben." />
       {!entries.length ? (
         <div className="mt-6">
-          <EmptyState icon={Bookmark} title="Deine Merkliste ist noch leer"
-            hint="Merke dir Sitzungen, einzelne Tagesordnungspunkte oder Beschlüsse, die du später wiederfinden möchtest."
-            action={<Button asChild variant="secondary"><Link href="/council?tab=sessions">Sitzungen ansehen</Link></Button>} />
+          {/* Lotti statt grauem Symbol, und beide Wege zum Merken: Meist merkt
+              man sich einen Beschluss aus der Suche — der Knopf führte bis
+              10/2026 nur zu den Sitzungen. */}
+          <EmptyState mascot="search" title="Deine Merkliste ist noch leer"
+            hint="Tippe auf das Lesezeichen an einem Beschluss, einer Sitzung oder einem Tagesordnungspunkt — hier findest du alles wieder."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button asChild variant="primary"><Link href="/council">Beschlüsse durchsuchen</Link></Button>
+                <Button asChild variant="secondary"><Link href="/council?tab=sessions">Sitzungen ansehen</Link></Button>
+              </div>
+            } />
         </div>
       ) : (
         <>

@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, 
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, voteLabel, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
-import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
+import { decisionHref, themaHref, sitzungHref } from "@/lib/routes";
 import { apiUrl } from "@/lib/api";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
@@ -655,7 +655,9 @@ function DecisionDetailInner() {
      die Anmeldewand (s. lib/zurueck.ts). */
   const backToSession = () => {
     if (!suche) {
-      zurueck(d.ksinr ? sessionHref(d.ksinr) : "/council");
+      // Die eigene Seite der Sitzung, nicht die Liste: Die zeigt den
+      // gemerkten Zeitraum, und eine vergangene Sitzung stand darin nicht.
+      zurueck(d.ksinr ? sitzungHref(d.ksinr) : "/council");
       return;
     }
     // Nur der unmittelbar aus DIESER Liste geöffnete Treffer benutzt History.
