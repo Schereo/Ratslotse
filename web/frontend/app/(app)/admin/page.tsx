@@ -15,6 +15,7 @@ type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 import { Badge, Button, Card, CardListSkeleton, ConfirmDialog, Dialog, DialogContent, DialogHeader, DialogTitle, EmptyState, ErrorState, Input, Label, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
+import { ThumbsDown } from "lucide-react";
 import type { OrtsbereichCatalog } from "@/lib/districts";
 
 import { AdminNavigation, useAdminView } from "@/components/admin/navigation";
@@ -704,7 +705,7 @@ function QuizModerationTab() {
         <div className="grid grid-cols-3 gap-3">
           <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.questions_active.toLocaleString("de-DE")}</p><p className="mt-1 text-[11px] text-muted-foreground">Fragen aktiv</p></Card>
           <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.avg_accuracy} %</p><p className="mt-1 text-[11px] text-muted-foreground">⌀ Trefferquote</p></Card>
-          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.reported}</p><p className="mt-1 text-[11px] text-muted-foreground">gemeldet 👎</p></Card>
+          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.reported}</p><p className="mt-1 text-[11px] text-muted-foreground">schlecht bewertet</p></Card>
         </div>
       )}
 
@@ -723,7 +724,7 @@ function QuizModerationTab() {
       )}
 
       {flagged.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">Keine schlecht bewerteten Fragen. 🎉</Card>
+        <Card className="p-8 text-center text-sm text-muted-foreground">Keine schlecht bewerteten Fragen.</Card>
       ) : (<>
       <p className="text-sm text-muted-foreground">
         Von Nutzer*innen als „schlecht" markierte Fragen, meist-gemeldete zuerst.
@@ -735,7 +736,7 @@ function QuizModerationTab() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge color="slate">{f.area_type}: {f.area_key}</Badge>
-                <Badge color="red">👎 {f.bad}</Badge>
+                <Badge color="red"><ThumbsDown className="mr-1 inline h-3 w-3" aria-hidden />{f.bad}</Badge>
                 {f.good > 0 && <Badge color="green">👍 {f.good}</Badge>}
               </div>
               <p className="mt-1.5 text-sm font-medium text-foreground">{f.question}</p>

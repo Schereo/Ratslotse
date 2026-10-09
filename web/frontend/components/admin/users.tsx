@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { AdminUserDetail } from "@/lib/types";
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
-import { Button, Card, ErrorState, Spinner, formatDate, toast } from "@/components/ui";
+import { Button, Card, ConfirmDialog, ErrorState, Spinner, formatDate, toast } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
 import { AdminVerlauf } from "@/components/grafik/admin-verlauf";
@@ -213,6 +213,11 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
     onSuccess: () => { toast.success("Rollen aktualisiert."); invalidate(); },
     onError: () => toast.error("Rollen konnten nicht geändert werden."),
   });
+  // Sperren wirkt sofort und wirft das Konto aus jeder Sitzung — bis 10/2026
+  // genügte dafür ein einziger Klick, ohne Rückfrage (beim Prüfen ist es so
+  // passiert). „Rate-Limits aus" ebenso. Freischalten und Wieder-an sind
+  // harmlos und bleiben ein Klick.
+  const [bestaetigen, setBestaetigen] = useState<"sperren" | "limits" | null>(null);
   const statusMutation = useMutation({
     mutationFn: (status: "active" | "disabled") => api.put(`/admin/users/${userId}/status`, { status }),
     onSuccess: (_, status) => { toast.success(status === "active" ? "Freigeschaltet." : "Gesperrt."); invalidate(); },
@@ -378,7 +383,7 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
       {!isSelf && (
         <div className="mt-4 flex gap-2 border-t border-border pt-4">
           <Button variant="secondary" size="sm"
-            onClick={() => statusMutation.mutate(data.status === "active" ? "disabled" : "active")}>
+            onClick={() => (data.status === "active" ? setBestaetigen("sperren") : statusMutation.mutate("active"))}>
             {data.status === "active" ? "Sperren" : "Freischalten"}
           </Button>
         </div>
@@ -410,9 +415,24 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
           Speichern
         </Button>
         <Button variant="secondary" size="sm"
-          onClick={() => limitsMutation.mutate({ deep_limit: data.deep_limit, limits_unlocked: !data.limits_unlocked })}>
+          onClick={() => (data.limits_unlocked
+            ? limitsMutation.mutate({ deep_limit: data.deep_limit, limits_unlocked: false })
+            : setBestaetigen("limits"))}>
           {data.limits_unlocked ? "Rate-Limits wieder an" : "Rate-Limits aus"}
         </Button>
+        <ConfirmDialog
+          open={bestaetigen !== null}
+          onOpenChange={(offen) => { if (!offen) setBestaetigen(null); }}
+          title={bestaetigen === "sperren" ? `${data.email} sperren?` : `Rate-Limits für ${data.email} abschalten?`}
+          description={bestaetigen === "sperren"
+            ? "Das Konto wird sofort abgemeldet und kann sich nicht mehr anmelden, bis du es wieder freischaltest."
+            : "Schnelle Frage, Parteien-Baustein und Teilen sind für dieses Konto dann unbegrenzt — jeder Aufruf kostet Modellzeit."}
+          confirmLabel={bestaetigen === "sperren" ? "Sperren" : "Abschalten"}
+          onConfirm={() => {
+            if (bestaetigen === "sperren") statusMutation.mutate("disabled");
+            else limitsMutation.mutate({ deep_limit: data.deep_limit, limits_unlocked: true });
+          }}
+        />
       </div>
       <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground/70">
         {data.deep_limit === 0 ? "Recherche: unbegrenzt." : data.deep_limit != null
