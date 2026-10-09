@@ -1823,6 +1823,17 @@ class SchemaMixin(StoreBasis):
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_importance ON council_decisions(importance)"
                 )
+                # Gemessen am 09.10.2026: Ohne diese beiden las jede Abfrage nach
+                # Vorlage die ganze Tabelle — `antrag_stats` tat das 587-mal je
+                # Aufruf der Analyse (1,0 s), die Haushalts-Herkunft
+                # (`beschluesse_zu_dokumenten`) einmal für 293 ms.
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_decisions_template_number "
+                    "ON council_decisions(template_number)"
+                )
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_decisions_kvonr ON council_decisions(kvonr)"
+                )
         # Full-text index for hybrid (BM25 + vector) retrieval. rowid = decision id;
         # diacritics folded so "Radweg"/"radweg" and German umlauts match. Populated by
         # scripts/build_decisions_fts.py (and the daily cron).

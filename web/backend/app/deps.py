@@ -1,7 +1,10 @@
 """Request-scoped dependencies: DB stores and the authenticated user."""
 from __future__ import annotations
 
+import threading
+import time
 from collections.abc import Callable, Iterator
+from datetime import date
 
 from fastapi import Depends, HTTPException, Request, status
 
@@ -17,7 +20,10 @@ from council.store import CouncilStore
 
 def get_store() -> Iterator[Store]:
     settings = get_settings()
-    store = Store(settings.ratslotse_db)
+    # `einmal`: Schema nur beim ersten Öffnen je Prozess einrichten
+    # (kern/einrichtung.py) — die Einrichtung kostete je Anfrage mehr als
+    # die meisten Antworten selbst.
+    store = Store(settings.ratslotse_db, einmal=True)
     try:
         yield store
     finally:
@@ -26,7 +32,7 @@ def get_store() -> Iterator[Store]:
 
 def get_council_store() -> Iterator[CouncilStore]:
     settings = get_settings()
-    store = CouncilStore(settings.council_db)
+    store = CouncilStore(settings.council_db, einmal=True)
     try:
         yield store
     finally:
@@ -65,10 +71,52 @@ def get_current_user(request: Request, store: Store = Depends(get_store)) -> dic
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Konto nicht gefunden.")
     if token_version != user.get("token_version", 0):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sitzung wurde beendet. Bitte neu anmelden.")
-    # Aktivität fürs Admin-Dashboard (20a): einmal je Request und Client,
-    # tages-throttled über den PK. Best-effort — darf den Request nie brechen.
-    store.record_activity(user["id"], "session", client_kind(request))
+    # Aktivität fürs Admin-Dashboard (20a). Best-effort — darf den Request
+    # nie brechen, und seit 10/2026 auch nicht mehr aufhalten (s. unten).
+    _sitzung_zaehlen(store, user["id"], client_kind(request))
     return user
+
+
+# Der Sitzungs-Zähler schrieb bis 10/2026 bei JEDER angemeldeten Anfrage in
+# ratslotse.sqlite — mit Commit. Eine Seite schickt 11–19 Anfragen; hielt
+# irgendwer die Schreibsperre (ein Cron, eine Löschung), wartete jede davon
+# den vollen busy_timeout von 5 s ab, und der Threadpool lief voll. Gemessen
+# am 09.10.2026: angemeldete Beschluss-Seite 5,4 s, anonyme daneben 6,0 s.
+#
+# Jetzt: Die erste Anfrage je Konto/Tag/Client schreibt sofort (damit „heute
+# aktiv" stimmt), danach höchstens einmal je Minute, mit dem aufgelaufenen
+# Zähler. Ist die Datei gesperrt, wird nicht gewartet, sondern nachgetragen.
+_SITZUNG_TAKT_S = 60.0
+_sitzung_sperre = threading.Lock()
+_sitzung_offen: dict[tuple[int, str, str], int] = {}
+_sitzung_zuletzt: dict[tuple[int, str, str], float] = {}
+
+
+def sitzungen_vergessen() -> None:
+    """Für Tests: Drosselung zurücksetzen."""
+    with _sitzung_sperre:
+        _sitzung_offen.clear()
+        _sitzung_zuletzt.clear()
+
+
+def _sitzung_zaehlen(store: Store, owner_id: int, client: str) -> None:
+    tag = date.today().isoformat()
+    key = (owner_id, tag, client)
+    jetzt = time.monotonic()
+    with _sitzung_sperre:
+        n = _sitzung_offen.pop(key, 0) + 1
+        if jetzt - _sitzung_zuletzt.get(key, -_SITZUNG_TAKT_S) < _SITZUNG_TAKT_S:
+            _sitzung_offen[key] = n
+            return
+        _sitzung_zuletzt[key] = jetzt
+        # Gestrige Schlüssel räumen, sonst wächst das über Wochen.
+        if len(_sitzung_zuletzt) > 5000:
+            for k in [k for k in _sitzung_zuletzt if k[1] != tag]:
+                _sitzung_zuletzt.pop(k, None)
+                _sitzung_offen.pop(k, None)
+    if not store.record_activity(owner_id, "session", client, anzahl=n, warten=False):
+        with _sitzung_sperre:
+            _sitzung_offen[key] = _sitzung_offen.get(key, 0) + n
 
 
 def optional_user(request: Request, store: Store = Depends(get_store)) -> dict | None:
