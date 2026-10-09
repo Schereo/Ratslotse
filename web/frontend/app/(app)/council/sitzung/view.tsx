@@ -16,6 +16,8 @@ import {
 import { sitzungHref, sessionHref } from "@/lib/routes";
 import { isLiveNow } from "@/lib/live";
 import { useFetch } from "@/lib/use-fetch";
+import { istNichtGefunden } from "@/lib/api";
+import { AbrufFehler } from "@/components/abruf-fehler";
 import { useHeute } from "@/lib/use-heute";
 import { useZurueck } from "@/lib/zurueck";
 import { useWeit } from "@/lib/use-ultra";
@@ -50,7 +52,10 @@ function SitzungInner() {
   const tops = useTopsAusLink(sp.get("top"));
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   const heute = useHeute();
-  const { data, loading } = useFetch<SessionDetail>(ksinr > 0 ? `/council/session/${ksinr}` : null);
+  const { data, loading, error, refetch } = useFetch<SessionDetail>(ksinr > 0 ? `/council/session/${ksinr}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
   // Erst hervorheben, wenn die Punkte im DOM stehen können — die Mechanik
   // dahinter (und ihre drei Fallen) steckt im Hook. Die Markierung bleibt hier
   // stehen: Der geteilte Punkt ist der Grund, warum diese Seite offen ist.
@@ -63,7 +68,10 @@ function SitzungInner() {
 
   if (ksinr <= 0) notFound();
   if (loading) return <DetailSkeleton />;
-  if (!data) notFound();
+  if (!data) {
+    if (error && !istNichtGefunden(error)) return <AbrufFehler error={error} onRetry={refetch} was="Diese Sitzung" />;
+    notFound();
+  }
 
   const { outcomeByItem, decisionByItem, videoByItem } = ergebnisseJeTop(data);
   const videoCount = Object.keys(videoByItem).length;

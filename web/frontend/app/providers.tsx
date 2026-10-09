@@ -15,6 +15,7 @@ import { fehlerMelderAnhaengen } from "@/lib/fehler-melden";
 import { initTheme } from "@/lib/theme";
 import { initAppUrlOpen } from "@/lib/app-links";
 import { isNativeApp } from "@/lib/platform";
+import { lohntWiederholen } from "@/lib/api";
 
 // In der App überlebt der Query-Cache den Neustart (RL-1103): beim Start im
 // Zug/Funkloch zeigt Ratslotse die zuletzt geladenen Daten statt Skeletons.
@@ -29,7 +30,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 30_000,
-            retry: 1,
+            // Einmal nachfassen bei Netz/5xx — nie bei 4xx: Ein 403 oder 404
+            // bleibt beim zweiten Mal derselbe und kostete nur eine Sekunde
+            // mehr Spinner.
+            retry: (n, e) => n < 1 && lohntWiederholen(e),
             ...(native ? { gcTime: PERSIST_MAX_AGE } : {}),
           },
         },

@@ -8,6 +8,8 @@ import { DecisionLinkCard } from "@/components/decision-ui";
 import { ShareButton } from "@/components/share-button";
 import { Button, DetailSkeleton } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
+import { istNichtGefunden } from "@/lib/api";
+import { AbrufFehler } from "@/components/abruf-fehler";
 import { fragenHref, ortHref } from "@/lib/routes";
 import type { CouncilDecision } from "@/lib/types";
 import type { OrtsbereichEntry } from "@/lib/districts";
@@ -23,10 +25,16 @@ interface PlaceDetail {
 function PlaceInner() {
   const id = useSearchParams().get("id");
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
-  const { data, loading } = useFetch<PlaceDetail>(id ? `/council/place/${encodeURIComponent(id)}` : null);
+  const { data, loading, error, refetch } = useFetch<PlaceDetail>(id ? `/council/place/${encodeURIComponent(id)}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
 
   if (loading) return <DetailSkeleton />;
-  if (!data) notFound();
+  if (!data) {
+    if (error && !istNichtGefunden(error)) return <AbrufFehler error={error} onRetry={refetch} was="Dieser Ort" />;
+    notFound();
+  }
   const place = data.place;
 
   return (
