@@ -353,3 +353,41 @@ def test_die_frist_steht_im_setup(client):
     setup = client.get(f"/api/tipp/setup{RUNDE}").json()
     assert setup["deadline_hint"] == "bis Sonntag, 27.09., 18:00 Uhr (Schließung der Wahllokale)"
     assert setup["polls_close"] == "2026-09-27T18:00:00+02:00"
+
+
+# ------------------------------------------------------------------ Das Spiel endet von selbst (10/2026)
+
+def test_nach_der_auszaehlung_ist_endstand_und_kein_beitritt_mehr(client, store, monkeypatch):
+    """Bis 10/2026 setzte nur ein Admin-Knopf den Endstand, und niemand
+    drückte ihn: Wer 26 Tage nach der Wahl einen alten QR-Code öffnete, wurde
+    eingeladen, „trotzdem" mitzutippen. Jetzt endet die Runde, sobald die
+    Auszählung vollständig ist — und spätestens 36 h nach Schluss."""
+    tippen(client, "Anna", 52.0, 48.0)
+    game_id = store.prediction_spiel_zeile("stichwahl")["id"]
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 16, 7, tzinfo=timezone.utc))
+    service.reset_all()
+    client.get(f"/api/tipp/stand{RUNDE}")
+    assert store.prediction_game(game_id)["phase"] == "locked"
+
+    # Vollständig ausgezählt: Endstand beim nächsten Aufruf.
+    monkeypatch.setattr(mayor_module, "fetch", _stichwahl_stand(10_000))
+    service.reset_all()
+    client.get(f"/api/tipp/stand{RUNDE}")
+    assert store.prediction_game(game_id)["phase"] == "final"
+    assert any("Endstand automatisch" in e["text"] for e in store.prediction_log(game_id))
+
+    client.cookies.clear()
+    r = client.post(f"/api/tipp{RUNDE}", json={"name": "Viel zu spät"})
+    assert r.status_code == 409 and "vorbei" in r.json()["detail"]
+
+
+def test_ohne_vollstaendige_zahl_endet_die_runde_nach_36_stunden(client, store, monkeypatch):
+    tippen(client, "Anna", 52.0, 48.0)
+    game_id = store.prediction_spiel_zeile("stichwahl")["id"]
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 28, 16, 0, tzinfo=timezone.utc))  # +24 h
+    service.reset_all()
+    client.get(f"/api/tipp/setup{RUNDE}")
+    assert store.prediction_game(game_id)["phase"] == "locked"
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 29, 4, 1, tzinfo=timezone.utc))  # +36 h
+    setup = client.get(f"/api/tipp/setup{RUNDE}").json()
+    assert setup["phase"] == "final"

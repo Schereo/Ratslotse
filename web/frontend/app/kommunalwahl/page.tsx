@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { Mascot } from "@/components/mascot";
-import { CountdownBadge, CountdownKarte } from "@/components/kommunalwahl/countdown";
+import { CountdownBadge, CountdownKarte, VorUndNachDerWahl } from "@/components/kommunalwahl/countdown";
 import { Fingerabdruck } from "@/components/kommunalwahl/fingerabdruck";
 import { Landkarte } from "@/components/kommunalwahl/landkarte";
 import { PositionsMatrix } from "@/components/kommunalwahl/matrix";
@@ -165,7 +165,9 @@ export default function KommunalwahlSeite() {
           <section id="stimmen" className="scroll-mt-24">
             <div className="flex flex-col items-start gap-5 rounded-[20px] bg-primary p-6 text-primary-foreground sm:flex-row sm:items-center sm:p-7">
               <div>
-                <p className="font-display text-[17px] font-bold sm:text-[21px]">Du hast drei Stimmen — nutz sie.</p>
+                <p className="font-display text-[17px] font-bold sm:text-[21px]">
+                  <VorUndNachDerWahl vorher="Du hast drei Stimmen — nutz sie." nachher="Drei Stimmen je Person — so wurde gewählt." />
+                </p>
                 <p className="mt-2 max-w-[56ch] text-[13px] leading-relaxed text-primary-foreground/85 sm:text-sm">
                   Alle drei auf eine Person häufen (kumulieren) oder über Listen verteilen (panaschieren) —
                   beides geht. Mehr als drei Kreuze machen den Zettel ungültig. Wählen ab 16, auch
@@ -378,7 +380,10 @@ export default function KommunalwahlSeite() {
           </section>
 
           {/* Nähe + Ohne Programm */}
-          <section id="naehe" className="mt-8 grid scroll-mt-24 gap-4 md:grid-cols-2">
+          {/* `grid-cols-[minmax(0,1fr)]` unterhalb md: Die implizite auto-Spalte
+              schrumpfte nicht unter die Mindestbreite der Zeilen — die Seite
+              scrollte bei 375 px 34 px seitwärts, bei 320 px 88 px. */}
+          <section id="naehe" className="mt-8 grid scroll-mt-24 grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
             <div className="rounded-[18px] border border-border bg-card p-5 sm:p-6">
               <h2 className="font-display text-[17px] font-bold tracking-tight sm:text-[19px]">Wer steht wem nahe?</h2>
               <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
