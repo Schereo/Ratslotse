@@ -81,7 +81,10 @@ function EntityInner() {
   useEffect(() => {
     if (slug) reportBadgeEvent("map_place", slug);
   }, [slug]);
-  const { data, loading, error, refetch } = useFetch<EntityDetail>(slug ? `/council/entity/${slug}` : null);
+  const { data, loading, error, refetch } = useFetch<EntityDetail>(slug ? `/council/entity/${slug}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
 
   if (loading) return <DetailSkeleton />;
   if (!data) {

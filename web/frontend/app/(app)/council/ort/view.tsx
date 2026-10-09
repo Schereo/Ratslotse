@@ -25,7 +25,10 @@ interface PlaceDetail {
 function PlaceInner() {
   const id = useSearchParams().get("id");
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
-  const { data, loading, error, refetch } = useFetch<PlaceDetail>(id ? `/council/place/${encodeURIComponent(id)}` : null);
+  const { data, loading, error, refetch } = useFetch<PlaceDetail>(id ? `/council/place/${encodeURIComponent(id)}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
 
   if (loading) return <DetailSkeleton />;
   if (!data) {

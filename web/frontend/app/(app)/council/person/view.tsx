@@ -157,7 +157,10 @@ function cnEllipsis(chair: boolean) {
 
 function PersonInner() {
   const slug = useSearchParams().get("slug");
-  const { data, loading, error, refetch } = useFetch<PersonProfil>(slug ? `/council/person/${slug}` : null);
+  const { data, loading, error, refetch } = useFetch<PersonProfil>(slug ? `/council/person/${slug}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
 
   // Eine Person kann in den Anwesenheitslisten unter zwei Namensformen stehen;
   // das Backend liefert für beide dasselbe Profil und nennt in `slug` die

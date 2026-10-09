@@ -52,7 +52,10 @@ function SitzungInner() {
   const tops = useTopsAusLink(sp.get("top"));
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   const heute = useHeute();
-  const { data, loading, error, refetch } = useFetch<SessionDetail>(ksinr > 0 ? `/council/session/${ksinr}` : null);
+  const { data, loading, error, refetch } = useFetch<SessionDetail>(ksinr > 0 ? `/council/session/${ksinr}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
   // Erst hervorheben, wenn die Punkte im DOM stehen können — die Mechanik
   // dahinter (und ihre drei Fallen) steckt im Hook. Die Markierung bleibt hier
   // stehen: Der geteilte Punkt ist der Grund, warum diese Seite offen ist.

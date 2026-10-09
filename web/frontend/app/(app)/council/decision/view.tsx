@@ -610,7 +610,10 @@ function DecisionDetailInner() {
   const suche = suchRueckweg(sp.get("suche"));
   const router = useRouter();
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
-  const { data, loading, error, refetch } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null);
+  const { data, loading, error, refetch } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
   // Design 28a/S2: Die Sitzung dazu — sie liefert die Nachbar-TOPs und das Ziel
   // für „Zurück". Zweitrangig, deshalb erst nach dem Beschluss und ohne eigenen
   // Ladezustand: fehlt sie, verhält sich die Seite wie bisher.
