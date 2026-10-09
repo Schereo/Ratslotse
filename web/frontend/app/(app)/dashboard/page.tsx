@@ -182,7 +182,7 @@ export default function DashboardPage() {
                   10/2026 stand hier fest „7 Tage — in der Sitzungspause",
                   auch wenn die Ausschüsse längst wieder tagten. */}
               <p className={cn("font-display text-[40px] font-extrabold leading-none tracking-tight",
-                zahl.count > 0 ? "text-signal" : "text-muted-foreground/60")}>
+                zahl.count > 0 ? "text-signal" : "text-muted-foreground")}>
                 <CountUpNumber value={zahl.count} />
               </p>
               <p className="mt-2 flex-1 text-hinweis text-muted-foreground">
