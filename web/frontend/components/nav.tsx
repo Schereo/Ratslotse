@@ -683,7 +683,9 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
   };
   const initialen = (user?.email ?? "?").slice(0, 2).toUpperCase();
   return (
-    <div className="fixed inset-0 z-40 desk:hidden" role="dialog" aria-modal="true" aria-label="Mehr">
+    // z-[46]: über dem schwebenden Lotti-Knopf (z-45, components/assistentin/
+    // knopf.tsx) — das Blatt ist modal, und der Knopf lag auf seinen Fußlinks.
+    <div className="fixed inset-0 z-[46] desk:hidden" role="dialog" aria-modal="true" aria-label="Mehr">
       <button type="button" aria-label="Menü schließen" onClick={onClose}
         className={cn("scrim absolute inset-0", abgang ? "animate-scrim-zu" : "animate-scrim-auf")} />
       <div
