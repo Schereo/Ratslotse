@@ -128,7 +128,16 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
   // Zeitangaben an echten Läufen gemessen (11.08.: 28 s und 36 s für eine
   // komplette Recherche) — vorher versprach die Karte „1–2 Minuten" und war
   // damit doppelt so pessimistisch wie die Wirklichkeit (Tims Befund).
-  const restzeit = phase === "schreiben" || phase === "lesen" ? "~ noch 15 Sek" : "~ noch 30 Sek";
+  // Steht eine Phase doppelt so lange wie gemessen, stimmt die Schätzung
+  // nicht mehr — bis 10/2026 hieß es dann minutenlang weiter „~ noch 15 Sek".
+  const [ueberfaellig, setUeberfaellig] = useState(false);
+  useEffect(() => {
+    setUeberfaellig(false);
+    const t = setTimeout(() => setUeberfaellig(true), phase === "schreiben" || phase === "lesen" ? 30_000 : 60_000);
+    return () => clearTimeout(t);
+  }, [phase]);
+  const restzeit = ueberfaellig ? "dauert länger als gedacht"
+    : phase === "schreiben" || phase === "lesen" ? "~ noch 15 Sek" : "~ noch 30 Sek";
 
   const schritt = (zustand: "fertig" | "aktiv" | "offen", text: string) => (
     <span className={cn("flex items-center gap-2 text-xs",
@@ -242,7 +251,9 @@ export function RechercheFehlerKarte({ onFortsetzen, onSchnelleFrage }: {
     <div className="rounded-xl border border-signal/30 bg-signal/5 px-3.5 py-3">
       <p className="text-[13px] font-semibold text-foreground">Die Recherche ist abgebrochen</p>
       <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-        Die Verbindung ist abgebrochen. Deine Frage ist nicht verloren; du kannst die
+        {/* Nicht „Die Verbindung ist abgebrochen": Die Karte steht auch, wenn
+            der Server einen Fehler meldet — und dann prüfte man sein WLAN. */}
+        Sie ist unterwegs stehen geblieben. Deine Frage ist nicht verloren; du kannst die
         Recherche neu starten. Dieser Versuch zählt nicht zu deinen fünf Recherchen heute.
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
