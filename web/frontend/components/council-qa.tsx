@@ -1195,7 +1195,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         throw new Error(msg);
       }
       const b = await res.json();
-      setDeepFrei(typeof b.frei === "number" ? b.frei : null);
+      setDeepFrei(typeof b.remaining === "number" ? b.remaining : null);
       patchTurn(key, { deepJobId: b.job_id });
       verbindeDeep(b.job_id, key, 0);
     } catch (e) {
@@ -1250,10 +1250,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   useEffect(() => {
     fetch(apiUrl("/council/deep-research/current"), { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
-      .then((b) => {
+      // Typ aus dem Vertrag: Bis 10/2026 las diese Stelle `frei` und
+      // `gesehen` — beides hieß längst `remaining`/`seen`. Ohne Typ fiel das
+      // niemandem auf; das Kontingent blieb unsichtbar, und ein gelesener
+      // Bericht kam bei jedem Besuch wieder.
+      .then((b: ApiAntwort<"/council/deep-research/current"> | null) => {
         if (!b) return;
-        if (typeof b.frei === "number") setDeepFrei(b.frei);
-        const job = b.job as { id: string; question: string; status: string; gesehen: number } | null;
+        if (typeof b.remaining === "number") setDeepFrei(b.remaining);
+        const job = b.job;
         if (!job) return;
         if (job.status === "laeuft") {
           setTurns((ts) => {
@@ -1267,7 +1271,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               deepPhase: "zerlegen", deepFacetten: [], deepFacettenFertig: 0,
             }];
           });
-        } else if (!job.gesehen && (job.status === "fertig" || job.status === "teilbericht" || job.status === "fehler")) {
+        } else if (!job.seen && (job.status === "fertig" || job.status === "teilbericht" || job.status === "fehler")) {
           setTurns((ts) => {
             if (ts.length > 0) return ts;
             fetch(apiUrl(`/council/deep-research/${job.id}`), { credentials: "include", headers: authHeaders() })
