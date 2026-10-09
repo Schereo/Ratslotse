@@ -263,6 +263,9 @@ def _check_auto_lock(store: Store, game_id: int, night: ElectionNight | None = N
     darf nicht zumachen, weil irgendwo anders ausgezählt wird.
     """
     game = store.prediction_game(game_id)
+    if game["phase"] == "locked":
+        _check_auto_final(store, game_id, game, night, ob)
+        return
     if game["phase"] != "open":
         return
     b = basis(game)
@@ -289,6 +292,34 @@ def _check_auto_lock(store: Store, game_id: int, night: ElectionNight | None = N
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     store.prediction_game_set(game_id, phase="locked", locked_at=now, locked_reason="projection")
     store.prediction_log_add(game_id, f"{anlass} · Tipp-Schluss automatisch gesetzt ({_uhrzeit(now)} Uhr)")
+
+
+#: Spätestens so lange nach Schließung der Wahllokale gilt eine Runde als
+#: beendet, auch wenn niemand den Endstand gesetzt hat. Oldenburg zählt in
+#: derselben Nacht aus; anderthalb Tage sind großzügig.
+ENDE_SPAETESTENS = timedelta(hours=36)
+
+
+def _check_auto_final(store: Store, game_id: int, game: dict,
+                      night: ElectionNight | None, ob: mayor.MayorResult | None) -> None:
+    """Setzt den Endstand von selbst — sobald die Auszählung der Wahl dieser
+    Runde vollständig ist, spätestens 36 Stunden nach Schließung der Lokale.
+
+    Bis 10/2026 war das ein Knopf im Admin-Panel, und niemand drückte ihn:
+    Beide Runden 2026 standen wochenlang auf „Tipp-Schluss", und wer einen
+    alten QR-Code öffnete, wurde 26 Tage nach der Wahl noch eingeladen,
+    „trotzdem" mitzutippen. Wie beim Tipp-Schluss gilt: kein Cron, der
+    nächste Aufruf setzt es."""
+    b = basis(game)
+    fertig = _jetzt() >= b.wahl.polls_close + ENDE_SPAETESTENS
+    if not fertig and b.sitzwahl and night is not None and b.wahl.slug == elections.active().slug:
+        fertig = night.get("phase") == "complete"
+    if not fertig and not b.sitzwahl and ob is not None:
+        fertig = ob.phase == "complete"
+    if not fertig:
+        return
+    store.prediction_game_set(game_id, phase="final")
+    store.prediction_log_add(game_id, "Auszählung vollständig · Endstand automatisch gesetzt")
 
 
 def _deadline_hint(game: dict, wahl: elections.Election) -> str:

@@ -107,6 +107,44 @@ function KontoNoetig() {
   );
 }
 
+/** Die Runde ist ausgezählt und vorbei (`phase === "final"`), und wer hier
+ *  landet, hat nicht mitgespielt — meist über einen alten QR-Code. Bis
+ *  10/2026 lud die Seite dann wochenlang ein, „trotzdem" mitzutippen. */
+function Vorbei({ setup, runde }: { setup: TippSetup; runde: string | null }) {
+  const ergebnis = setup.election_slug.includes("stichwahl") ? "/wahlabend/stichwahl" : "/wahlabend";
+  return (
+    <Rahmen>
+      <Kopf />
+      <div className="mt-6">
+        <Mascot pose="celebrate" className="h-24 w-24" decorative />
+      </div>
+      <h1 className="mt-3 text-balance font-display text-2xl font-bold leading-tight tracking-tight">
+        Das Tippspiel ist vorbei
+      </h1>
+      <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+        Die {setup.election_title} ist ausgezählt.
+        {setup.player_count > 0
+          ? ` ${setup.player_count} ${setup.player_count === 1 ? "Person hat" : "Leute haben"} mitgetippt — so lagen sie.`
+          : " Schau dir an, wie die Wahl ausgegangen ist."}
+      </p>
+      <div className="mt-5 flex w-full flex-col gap-2">
+        {setup.player_count > 0 && (
+          <Link href={mitRunde("/tipp/live", runde, "runde")}
+            className="inline-flex h-[46px] items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground">
+            Rangliste ansehen
+          </Link>
+        )}
+        <Link href={ergebnis}
+          className={setup.player_count > 0
+            ? "inline-flex h-[46px] items-center justify-center rounded-xl border border-border bg-card text-sm font-semibold text-foreground"
+            : "inline-flex h-[46px] items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground"}>
+          Zum Wahlergebnis
+        </Link>
+      </div>
+    </Rahmen>
+  );
+}
+
 function LadeSchirm() {
   // Erster Ladezustand — nichts steht schon da, das stehen bleiben könnte
   // (DESIGNSPRACHE §7): eine ruhige, sofort sichtbare Fläche statt Zucken.
@@ -179,6 +217,7 @@ export function TippView() {
   if (setupQuery.isLoading || meinsQuery.isLoading || !setup || meins === undefined || weiterZu) return <LadeSchirm />;
 
   if (!meins) {
+    if (setup.phase === "final") return <Vorbei setup={setup} runde={runde} />;
     return setup.locked
       ? <Spaetstarter setup={setup} runde={runde} lottiAnimiert={lottiAnimiert} onBeigetreten={aufFrisch} />
       : <Einstieg setup={setup} runde={runde} lottiAnimiert={lottiAnimiert} onBeigetreten={aufFrisch} />;
