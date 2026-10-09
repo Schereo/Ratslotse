@@ -28,6 +28,7 @@ import { Button, Card, CardListSkeleton, Input, Label, PasswordInput, Skeleton, 
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
+import { abmeldenAbholen, abmeldenMerken } from "@/lib/abmelden";
 import { breiteFuer, huellenKlasse } from "@/lib/vollbreit";
 import type { User } from "@/lib/types";
 
@@ -35,6 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, refresh, logout } = useAuth();
   const router = useRouter();
   const abmelden = async () => {
+    abmeldenMerken();
     await logout();
     router.replace("/login");
   };
@@ -79,6 +81,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // einer angetippten Mitteilung auf „Meine Themen" kommt und sich anmelden
     // muss, landete danach stumpf auf dem Dashboard.
     const ziel = window.location.pathname + window.location.search;
+    // Bewusst abgemeldet (lib/abmelden.ts): ohne Rücksprung.
+    if (abmeldenAbholen()) { router.replace("/login"); return; }
     router.replace(ziel === "/dashboard" ? "/login" : mitRuecksprung("/login", ziel));
   }, [user, loading, router, oeffentlich]);
 
@@ -158,10 +162,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           einem vollen „Heute" stehen zu lassen. */}
       <TourEinladung />
       <CommandPalette />
-      {/* Lotti als Assistentin: der schwebende Knopf und ihr Fenster.
-          HIER und nicht je Seite — der Verlauf soll den Seitenwechsel
-          überleben (components/assistentin/index.tsx). */}
-      <LottiAssistentin />
       <FeedbackDialog />
       {/* useSearchParams braucht eine Suspense-Grenze (CSR-Bailout beim Prerender). */}
       <Suspense fallback={null}>
@@ -218,6 +218,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             sitzen jetzt im Sidebar-Fuß (Desktop) bzw. Burger-Menü (mobil),
             beides über den UserFooter in components/nav.tsx. */}
       </main>
+      {/* Lotti als Assistentin: der schwebende Knopf und ihr Fenster.
+          HIER und nicht je Seite — der Verlauf soll den Seitenwechsel
+          überleben (components/assistentin/index.tsx). NACH dem Inhalt:
+          Davor stand ihr Knopf in der Tab-Reihenfolge noch vor der ganzen
+          Navigation — der zweite Tab-Druck landete bei Lotti. */}
+      <LottiAssistentin />
       <MobileBottomNav />
     </div>
   );

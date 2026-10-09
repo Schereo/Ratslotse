@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
   CalendarDays, BarChart3, Trophy, Sparkles, Command,
-  MoreHorizontal, MessageCircle, Bookmark, Euro, Bell, MapPinned,
+  MoreHorizontal, MessageCircle, Bookmark, Euro, Bell, MapPinned, LifeBuoy,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -23,6 +23,7 @@ import { cn, pfad } from "@/lib/utils";
 import { openCommandPalette } from "@/components/command-palette";
 import { useGleitMarker, GleitMarker } from "@/components/gleit-marker";
 import { karteHref } from "@/lib/routes";
+import { abmeldenMerken } from "@/lib/abmelden";
 import { useMeineOrtsbereiche, useUebersicht } from "@/components/viertel/bausteine";
 
 /** Wohin „Mein Viertel" führt: auf den eigenen Stadtteil, wenn einer gewählt
@@ -167,7 +168,9 @@ const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tou
 // bekamen dadurch weder Platz noch einen eigenen Weg dorthin — man musste an
 // den Themen vorbeiscrollen. Zwei Arten, dem Rat zu folgen (ein Anliegen vs.
 // ein ganzes Gremium), sind jetzt zwei Ziele.
-const ABOS: Item = { href: "/abos", label: "Abos", icon: Bell };
+// „Ausschuss-Abos" wie die Seite selbst und das Mehr-Blatt: „Abos" allein
+// war neben „Meine Themen" nicht zu unterscheiden (beides sind Abos).
+const ABOS: Item = { href: "/abos", label: "Ausschuss-Abos", icon: Bell };
 const BOOKMARKS: Item = { href: "/bookmarks", label: "Merkliste", icon: Bookmark };
 const QUIZ: Item = { href: "/quiz", label: "Quiz", icon: Trophy };
 
@@ -175,12 +178,14 @@ const QUIZ: Item = { href: "/quiz", label: "Quiz", icon: Trophy };
 // „Fragen" führt direkt in den KI-Frage-Modus, alles Übrige wohnt in „Mehr".
 const FRAGEN_HREF = "/fragen";
 const TABS: (Item & { aktiv: (pathname: string, tab: string | null) => boolean })[] = [
-  { href: "/dashboard", label: "Start", icon: Home,
+  // „Heute" wie in der Seitenleiste — bis 10/2026 hieß derselbe Ort hier
+  // „Start", in der Palette „Übersicht" und auf der Startseite „Dashboard".
+  { href: "/dashboard", label: "Heute", icon: Home,
     aktiv: (p) => p === "/dashboard" || p.startsWith("/dashboard/") },
   { href: FRAGEN_HREF, label: "Fragen", icon: Sparkles, tour: "nav-fragen",
     aktiv: (p) => p === "/fragen" || p.startsWith("/fragen/") },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays,
-    aktiv: (p, t) => p === "/council" && t === "sessions" },
+    aktiv: (p, t) => (p === "/council" && t === "sessions") || p.startsWith("/council/sitzung") },
   { href: "/topics", label: "Themen", icon: Tags, tour: "nav-themen",
     aktiv: (p) => p === "/topics" || p.startsWith("/topics/") },
 ];
@@ -189,7 +194,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   // Die Suche wohnt seit dem Split (#455) hier drin — samt ihrer Detailseiten
   // (Beschluss, Person, Thema), die ihr Inneres sind.
   (pathname === "/council" && tab !== "sessions")
-  || pathname.startsWith("/council/")
+  || (pathname.startsWith("/council/") && !pathname.startsWith("/council/sitzung"))
   || ["/karte", "/viertel", "/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 // RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
@@ -295,14 +300,28 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   );
 }
 
+/** Welcher der /council-Punkte zu einer Detailseite gehört.
+ *
+ *  Bis 10/2026 fiel jeder Pfad unter /council/ auf „Suche": Die Seite einer
+ *  Sitzung markierte die Suche statt „Sitzungen", ein Personenprofil und „Der
+ *  neue Rat" ebenso statt „Analyse" — man sah nicht, wo man war. */
+const COUNCIL_DETAIL_BEREICH: [string, string][] = [
+  ["/council/sitzung", "sessions"],
+  // Die Ideen aus anderen Städten sind ein Reiter der Analyse (Tim, 23.09.2026).
+  ["/council/ideen", "analysis"],
+  ["/council/person", "analysis"],
+  ["/council/neuer-rat", "analysis"],
+];
+
+export function councilBereich(pathname: string, param: string | null): string {
+  const treffer = COUNCIL_DETAIL_BEREICH.find(([p]) => pathname === p || pathname.startsWith(p + "/"));
+  return treffer ? treffer[1] : param || "decisions";
+}
+
 function NavLinksWithParams({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = pfad(usePathname());
   const param = useSearchParams().get("tab");
-  // Die Ideen aus anderen Städten sind ein Reiter der Analyse (Tim,
-  // 23.09.2026) — dort leuchtet „Analyse", nicht die Suche, unter der jeder
-  // andere Pfad in /council/ landet.
-  const tab = pathname.startsWith("/council/ideen") ? "analysis" : param || "decisions";
-  return <NavLinksInner activeTab={tab} onNavigate={onNavigate} />;
+  return <NavLinksInner activeTab={councilBereich(pathname, param)} onNavigate={onNavigate} />;
 }
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
@@ -320,6 +339,7 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
   const router = useRouter();
   const { user, logout } = useAuth();
   const onLogout = async () => {
+    abmeldenMerken();
     await logout();
     router.replace("/login");
   };
@@ -336,8 +356,14 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
             accountActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
           )}
         >
+          {/* Ein Wort statt nur der Adresse: „Wo bestelle ich die Mails ab?"
+              scheiterte bis 10/2026 daran, dass das Konto hier nur als
+              abgeschnittene E-Mail-Adresse stand. */}
           <UserCircle className="h-4 w-4 shrink-0" />
-          <span className="truncate">{user?.email}</span>
+          <span className="min-w-0">
+            <span className="block truncate text-[13px] font-medium text-foreground">Konto &amp; Einstellungen</span>
+            <span className="block truncate">{user?.email}</span>
+          </span>
         </Link>
         {showTheme && <WebThemeSwitch />}
       </div>
@@ -362,30 +388,35 @@ function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
   // Mount entscheiden, gleiches Hydration-Muster wie beim Druck-Knopf.
   const [mitDocs, setMitDocs] = useState(false);
   useEffect(() => { setMitDocs(!isNativeApp()); }, []);
+  const link = cn("hover:text-foreground", zentriert && "inline-block py-2");
   return (
     <p className={cn(
       "text-[11px] leading-relaxed text-muted-foreground",
       zentriert ? "border-t border-border/60 pt-2.5 text-center" : "px-3 pb-1 pt-2",
     )}>
-      <a href="/hilfe" className="hover:text-foreground">Hilfe</a>
+      {/* Im Mehr-Blatt maßen die Links 14 px Höhe — `py-2` macht sie
+          antippbar, ohne die Zeile optisch dicker zu machen. Hilfe steht dort
+          als eigene Zeile darüber. */}
+      {!zentriert && <><a href="/hilfe" className={link}>Hilfe</a>{" · "}</>}
+      <a href="/impressum" className={link}>Impressum</a>
       {" · "}
-      <a href="/impressum" className="hover:text-foreground">Impressum</a>
+      <a href="/datenschutz" className={link}>Datenschutz</a>
       {" · "}
-      <a href="/datenschutz" className="hover:text-foreground">Datenschutz</a>
+      <a href="/barrierefreiheit" className={link}>Barrierefreiheit</a>
       {" · "}
-      <a href="/changelog" className="hover:text-foreground">Changelog</a>
+      <a href="/changelog" className={link}>Changelog</a>
       {mitDocs && (
         <>
           {" · "}
           {/* Angemeldete werden von „/" aufs Dashboard geschickt — dieser
               Link ist die Fluchttür zur Startseite (Tims Wunsch 12.08.). */}
-          <a href={LANDING_HREF} className="hover:text-foreground">Startseite</a>
+          <a href={LANDING_HREF} className={link}>Startseite</a>
         </>
       )}
       {mitDocs && (
         <>
           {" · "}
-          <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
+          <a href="/docs" className={link}>Technik-Doku</a>
         </>
       )}
     </p>
@@ -608,6 +639,14 @@ function MehrZeile({ href, icon: Icon, label, badge = 0, badgeLabel, primaerFarb
   );
 }
 
+function MehrKicker({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-1 pb-1 pt-3 font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+      {children}
+    </p>
+  );
+}
+
 /** Bottom Sheet über der Tab-Bar: Konto-Zeile, Ziele ohne Tab-Platz, dann
  *  Einstellungen/Feedback/Abmelden und die Pflicht-Links als Fußzeile — es
  *  ersetzt Burger-Menü UND Seiten-Footer auf Mobil (9a④, 6a③). */
@@ -638,12 +677,15 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
   }, [abgang, onFertig]);
   const onLogout = async () => {
     onClose();
+    abmeldenMerken();
     await logout();
     router.replace("/login");
   };
   const initialen = (user?.email ?? "?").slice(0, 2).toUpperCase();
   return (
-    <div className="fixed inset-0 z-40 desk:hidden" role="dialog" aria-modal="true" aria-label="Mehr">
+    // z-[46]: über dem schwebenden Lotti-Knopf (z-45, components/assistentin/
+    // knopf.tsx) — das Blatt ist modal, und der Knopf lag auf seinen Fußlinks.
+    <div className="fixed inset-0 z-[46] desk:hidden" role="dialog" aria-modal="true" aria-label="Mehr">
       <button type="button" aria-label="Menü schließen" onClick={onClose}
         className={cn("scrim absolute inset-0", abgang ? "animate-scrim-zu" : "animate-scrim-auf")} />
       <div
@@ -680,7 +722,11 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
             Konto
           </span>
         </Link>
+        {/* In drei Gruppen statt einer Reihe (10/2026): Neun Zeilen ohne
+            Gliederung mischten Entdecken, Persönliches und Konto-Aktionen —
+            dieselben Gruppen wie in der Seitenleiste. */}
         <div className="flex flex-col pt-1">
+          <MehrKicker>Entdecken</MehrKicker>
           {/* Tims Befund 12.08.: Seit „Fragen" den Tab-Platz hat (Split #455),
               führte mobil KEIN Weg mehr zur Beschluss-Suche — die Lupe oben
               öffnet die Befehlspalette, nicht die Seite. Sie steht deshalb
@@ -692,6 +738,7 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
               (Tim: „ungern noch einen weiteren Punkt in die Navigation"). */}
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
           {darfHaushalt(user) && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
+          <MehrKicker>Für dich</MehrKicker>
           {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind
               die zweite Art, dem Rat zu folgen, und hatten seit dem Split vom
               28.08.2026 keinen eigenen Weg mehr auf dem Telefon. */}
@@ -701,6 +748,8 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
           {darfAdmin(user) && (
             <MehrZeile href={adminHref(openFeedbackUnread, pathname)} icon={Settings} label="Admin" badge={openFeedbackUnread} badgeLabel={feedbackLabel(openFeedbackUnread)} primaerFarbe={false} onClose={onClose} />
           )}
+          <MehrKicker>Hilfe &amp; Konto</MehrKicker>
+          <MehrZeile href="/hilfe" icon={LifeBuoy} label="Hilfe" primaerFarbe={false} onClose={onClose} />
           <button type="button" onClick={() => { onClose(); openFeedback(); }}
             className="flex min-h-11 items-center gap-3 border-b border-border/60 px-1 py-2.5 text-left text-sm font-medium text-foreground transition-colors active:bg-muted">
             <MessageCircle className="h-[17px] w-[17px] shrink-0 text-muted-foreground" aria-hidden />

@@ -981,6 +981,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
   // RL-F06: ?ksinr=… (Deep-Link von „Heute") — Sitzung aufklappen, sanft
   // hinscrollen und kurz aufblitzen lassen (wie der Fußnoten-Flash der KI).
   const deepSp = useSearchParams();
+  const sitzungsRouter = useRouter();
   const targetKsinr = Number(deepSp.get("ksinr") || 0);
   const deepLinkDone = useRef(false);
   const [flashKsinr, setFlashKsinr] = useState<number | null>(null);
@@ -1053,9 +1054,18 @@ function SessionsTab({ committees }: { committees: string[] }) {
   }, [debouncedQ, committee, scope]);
 
   useEffect(() => {
-    if (!targetKsinr || deepLinkDone.current || loading) return;
+    if (!targetKsinr || deepLinkDone.current || loading || !hasSearched) return;
     const s = sessions.find((x) => x.ksinr === targetKsinr);
-    if (!s) return;
+    if (!s) {
+      // Die Liste zeigt den gemerkten Zeitraum (meist „Anstehend") — eine
+      // vergangene Sitzung steht dort nicht, und der Link landete bis 10/2026
+      // auf einer Liste ohne sie: nichts klappte auf, nichts scrollte (vom
+      // „Zurück" eines Beschlusses und aus Ergebnis-Mails). Dann auf die
+      // eigene Seite der Sitzung, die es für jede gibt.
+      deepLinkDone.current = true;
+      sitzungsRouter.replace(sitzungHref(targetKsinr, topsAusLink));
+      return;
+    }
     deepLinkDone.current = true;
     // AUFKLAPPEN, nicht umschalten: Steht die Tagesordnung schon offen (etwa
     // weil sie den Tab-Wechsel überlebt hat, #447), machte `toggle` sie zu —
@@ -1494,7 +1504,10 @@ function FragenBruecke() {
 const TAB_META: Record<Tab, { title: string; description: string }> = {
   decisions: { title: "Suche", description: "Beschlüsse des Stadtrats durchsuchen — nach Stichwort, Ausschuss, Ergebnis und Zeitraum." },
   sessions: { title: "Sitzungen", description: "Sitzungen und Tagesordnungen von Rat und Ausschüssen." },
-  themen: { title: "Themen", description: "Was den Rat beschäftigt — als Liste; verortet liegt es auf der Stadtkarte unter „Mein Viertel“." },
+  // Bis 10/2026 „Themen" — genau wie „Meine Themen" (Tab-Leiste: „Themen"),
+  // aber etwas anderes: Hier stehen die Orte, Projekte und Organisationen,
+  // die in Beschlüssen vorkommen (gemessen: 527 / 241 / 232).
+  themen: { title: "Orte, Projekte & Organisationen", description: "Was den Rat beschäftigt — als Liste; verortet liegt es auf der Stadtkarte unter „Mein Viertel“." },
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
 };
 
