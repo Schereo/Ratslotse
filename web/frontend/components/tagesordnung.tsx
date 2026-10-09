@@ -163,6 +163,9 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
   gewaehlt?: boolean;
 }) {
   const hit = itemMatches(it, query);
+  const ergebnis = outcome ? <OutcomeDot outcome={outcome} />
+    : videoResult ? <VideoResultChip r={videoResult} />
+    : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null;
   const body = (
     <>
       {/* w-10 statt w-7: „Ö 6.2" brach sonst auf zwei Zeilen um und zog die
@@ -235,9 +238,16 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
           </span>
         )}
       </div>
-      {outcome ? <OutcomeDot outcome={outcome} />
-        : videoResult ? <VideoResultChip r={videoResult} />
-        : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
+      {/* Auf dem Telefon rutscht das Ergebnis in eine eigene Zeile unter den
+          Titel (`order-last basis-full`, eingerückt um Nummer + Abstand): Als
+          Nachbar in derselben Zeile ließ es (mit Nummer, Pfeil und den
+          beiden Knöpfen) dem Titel 32–64 px — ein Wort je Zeile, gemessen an
+          jeder vergangenen Sitzung bei 375 px (RI-01, 10/2026). */}
+      {ergebnis && (
+        <span className="order-last flex basis-full pl-[3.25rem] sm:order-none sm:basis-auto sm:shrink-0 sm:pl-0">
+          {ergebnis}
+        </span>
+      )}
       {decisionId != null && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />}
     </>
   );
