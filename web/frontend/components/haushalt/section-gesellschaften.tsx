@@ -74,6 +74,7 @@ import { Steckbrief } from "@/components/haushalt/beteiligung-steckbrief";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 import { schrittNummer } from "@/components/haushalt/schritt-weiter";
+import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
 
 /** Die Jahresergebnis-Reihe als Daten-Vertrag des Baukastens: Werte in
@@ -200,7 +201,7 @@ function Filterleiste({ liste, form, setForm, suche, setSuche }: {
   );
   return (
     <div className="flex flex-col gap-2">
-      <div className="scrollbar-none -mx-1 flex items-center gap-1.5 overflow-x-auto px-1 py-0.5">
+      <ScrollZeile className="-mx-1 flex items-center gap-1.5 px-1 py-0.5">
         <button type="button" onClick={() => setForm(null)} aria-pressed={form === null}
           className={chip(form === null)}>
           alle {liste.length}
@@ -214,7 +215,7 @@ function Filterleiste({ liste, form, setForm, suche, setSuche }: {
             </button>
           )
         ))}
-      </div>
+      </ScrollZeile>
       <input
         type="search" value={suche} onChange={(e) => setSuche(e.target.value)}
         placeholder="Gesellschaft suchen — Klinikum, Bäder, Wohnen …"

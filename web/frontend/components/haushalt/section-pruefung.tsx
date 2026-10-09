@@ -75,6 +75,7 @@ import { Beleg } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { MarkePille } from "@/components/haushalt/mark";
 import { cn } from "@/lib/utils";
+import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
 // NUR der Prüfbericht. `jahresabschluss` stand bis zum 21.08.2026 daneben und
 // bekam im Verzeichnis eine eigene Nummer — nur zeigte keine Zahl der Seite
@@ -415,7 +416,7 @@ export function PruefungAbschnitt({ onBestand }: {
             <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
               Geprüfter Jahresabschluss
             </span>
-            <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+            <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
               <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                 {years.map((j) => (
                   <Link key={j} href={`/haushalt/pruefung?year=${j}`} scroll={false}
@@ -425,7 +426,7 @@ export function PruefungAbschnitt({ onBestand }: {
                   </Link>
                 ))}
               </div>
-            </div>
+            </ScrollZeile>
           </div>
 
           {/* Der Weg von der Zahl oben zu den Einträgen. Keine Farbe, kein
@@ -436,7 +437,7 @@ export function PruefungAbschnitt({ onBestand }: {
               <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
                 Zeigen
               </span>
-              <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+              <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
                 <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                   {([
                     [false, `Alle (${imJahr.length})`],
@@ -452,7 +453,7 @@ export function PruefungAbschnitt({ onBestand }: {
                     </button>
                   ))}
                 </div>
-              </div>
+              </ScrollZeile>
             </div>
           )}
         </div>

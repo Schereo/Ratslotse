@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/brand";
 import { Button, Segmented, Spinner, Switch } from "@/components/ui";
 import { ParteiChip } from "./partei";
+import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
 type AdminStand = ApiAntwort<"/tipp/admin/stand">;
 type Ergebnis = AdminStand["results"][number];
@@ -197,20 +198,25 @@ export function TippAdminView() {
           gar kein Platz"). */}
       <div className="border-b border-border bg-card">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-8">
-          <div className="flex items-center gap-2.5">
+          {/* `min-w-0` + eigene Scroll-Zeile für die Runden: Marke und drei
+              lange Rundentitel standen in EINER nicht umbrechenden Gruppe
+              (803 px) — auf dem Telefon rechnete die Seite mit 819 px und
+              wurde herausgezoomt, die Tabellen waren unlesbar (HA-05). */}
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2.5">
             <BrandMark className="h-7 w-7" />
             <span className="font-display text-[17px] font-bold">Ratslotse</span>
             <span className="text-[13px] text-muted-foreground">
               <span className="font-medium text-primary">Tippspiel</span> / Verwaltung
             </span>
             {stand.rounds.length > 1 && (
-              <div className="ml-2">
+              <ScrollZeile className="min-w-0 max-w-full sm:ml-2">
                 <Segmented
+                  className="w-max"
                   value={runde ?? stand.rounds[0].slug}
                   onChange={(slug) => setRunde(slug === stand.rounds[0].slug ? null : slug)}
                   options={stand.rounds.map((r) => ({ value: r.slug, label: `${r.title} · ${r.player_count}` }))}
                 />
-              </div>
+              </ScrollZeile>
             )}
           </div>
           <div className="flex items-center gap-2.5 text-[12.5px]">
@@ -229,7 +235,7 @@ export function TippAdminView() {
         </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-8 sm:pb-8 lg:grid-cols-[1fr_400px]">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 sm:px-8 sm:pb-8 lg:grid-cols-[1fr_400px]">
         <div className="flex flex-col gap-5">
           {/* ── Ratswahl · Sitze (nur bei einer Sitzwahl) ────────────── */}
           {sitzwahl && <Karte>
@@ -246,13 +252,15 @@ export function TippAdminView() {
               </Button>
             </div>
 
-            <div className="mt-3.5 grid grid-cols-[1fr_80px_120px_140px] gap-2.5 border-b border-muted px-1.5 pb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-              <span>Liste</span><span className="text-right">Sitze</span><span>Quelle</span><span>Ø-Tipp · richtig</span>
+            {/* Auf dem Telefon ohne die Ø-Spalte: Die vier festen Spalten (340 px
+                plus Name) passten in keine 375 px. Eingeben geht weiter. */}
+            <div className="mt-3.5 grid grid-cols-[minmax(0,1fr)_72px_96px] gap-2.5 border-b border-muted px-1.5 pb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground sm:grid-cols-[1fr_80px_120px_140px]">
+              <span>Liste</span><span className="text-right">Sitze</span><span>Quelle</span><span className="hidden sm:inline">Ø-Tipp · richtig</span>
             </div>
             {ratswahlZeilen.map((r) => {
               const p = parteiVon[r.slug];
               return (
-                <div key={r.slug} className="grid grid-cols-[1fr_80px_120px_140px] items-center gap-2.5 border-b border-muted px-1.5 py-1.5 text-[13px]">
+                <div key={r.slug} className="grid grid-cols-[minmax(0,1fr)_72px_96px] items-center gap-2.5 border-b border-muted px-1.5 py-1.5 text-[13px] sm:grid-cols-[1fr_80px_120px_140px]">
                   <div className="flex items-center gap-2.5">
                     <span className="h-2 w-2 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.15)]" style={{ background: p?.color }} />
                     <span className="font-semibold">{p?.short ?? r.slug}</span>
@@ -260,7 +268,7 @@ export function TippAdminView() {
                   <Feld wert={r.seats} manuell={r.source === "manuell" && r.seats !== null} label={`Sitze für ${p?.short ?? r.slug}`}
                         onSpeichern={(neu) => speichern(r.slug, "seats", neu)} />
                   <Quelle r={r} />
-                  <span className="font-mono text-xs text-muted-foreground">
+                  <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
                     Ø {r.avg_tip !== null ? dezimal(r.avg_tip) : "–"} · {r.exact_count} richtig
                   </span>
                 </div>

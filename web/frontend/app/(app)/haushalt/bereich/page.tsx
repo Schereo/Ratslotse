@@ -58,6 +58,7 @@ import { ZuschuesseBereich } from "@/components/haushalt/zuschuesse-bereich";
 import { VorberichtBereich } from "@/components/haushalt/vorbericht-bereich";
 import { BudgetberichtBereich } from "@/components/haushalt/budgetbericht-bereich";
 import { cn } from "@/lib/utils";
+import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
 type ReiterId = "ueberblick" | "planist" | "zuschuesse" | "source";
 
@@ -456,12 +457,12 @@ function BereichInner() {
           </p>
           {/* Scrollzeile: „Kosten für die Stadt (netto)" ragte auf 375 px über
               den Bildschirmrand und ließ die ganze Seite horizontal wackeln. */}
-          <div className="scrollbar-none -mx-1 mb-3 overflow-x-auto px-1">
+          <ScrollZeile className="-mx-1 mb-3 px-1">
             <Segmented value={ranking} onChange={setRanking} tone="primary" className="w-max" options={[
               { value: "brutto", label: "Ausgaben (brutto)" },
               { value: "netto", label: "Kosten für die Stadt (netto)" },
             ]} />
-          </div>
+          </ScrollZeile>
           {/* Eine Kopfzeile nur für die Einheit: In 60 px passt hinter jede
               Zahl kein „Mio. €", ohne die Balken zu stauchen. */}
           <p className="mb-1 text-right font-mono text-[9.5px] font-medium uppercase tracking-[0.09em] text-muted-foreground">

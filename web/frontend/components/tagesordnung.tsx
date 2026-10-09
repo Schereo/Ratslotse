@@ -33,6 +33,7 @@ import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
 import { decisionHref, sitzungHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { ohneRisErgebnis } from "@/lib/ris-titel";
 
 export const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
 
@@ -163,6 +164,9 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
   gewaehlt?: boolean;
 }) {
   const hit = itemMatches(it, query);
+  const ergebnis = outcome ? <OutcomeDot outcome={outcome} />
+    : videoResult ? <VideoResultChip r={videoResult} />
+    : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null;
   const body = (
     <>
       {/* w-10 statt w-7: „Ö 6.2" brach sonst auf zwei Zeilen um und zog die
@@ -202,7 +206,9 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
             </a>
           </span>
         )}
-        <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
+        {/* Ohne das angehängte „Beschluss: ungeändert beschlossen", wo das
+            Ergebnis ohnehin als Marke daneben steht (lib/ris-titel.ts). */}
+        <p className="text-sm text-foreground"><Highlight text={ergebnis ? ohneRisErgebnis(it.title) : it.title} query={query} /></p>
         {/* Ein Satz, worum es geht (Tims Wunsch 12.08.) — der Hinweis
             „Kurzfassung" sagt, dass hier eine Maschine zusammengefasst hat. */}
         {kurzfassung(it) && (
@@ -235,10 +241,19 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
           </span>
         )}
       </div>
-      {outcome ? <OutcomeDot outcome={outcome} />
-        : videoResult ? <VideoResultChip r={videoResult} />
-        : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null}
-      {decisionId != null && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />}
+      {/* Auf dem Telefon rutscht das Ergebnis in eine eigene Zeile unter den
+          Titel (`order-last basis-full`, eingerückt um Nummer + Abstand): Als
+          Nachbar in derselben Zeile ließ es (mit Nummer, Pfeil und den
+          beiden Knöpfen) dem Titel 32–64 px — ein Wort je Zeile, gemessen an
+          jeder vergangenen Sitzung bei 375 px (RI-01, 10/2026). */}
+      {ergebnis && (
+        <span className="order-last flex basis-full pl-[3.25rem] sm:order-none sm:basis-auto sm:shrink-0 sm:pl-0">
+          {ergebnis}
+        </span>
+      )}
+      {/* Auf dem Telefon ohne Pfeil: Die ganze Zeile ist der Link, und die
+          28 px fehlten dem Titel. */}
+      {decisionId != null && <ChevronRight className="mt-0.5 hidden h-4 w-4 shrink-0 text-muted-foreground/50 sm:block" aria-hidden />}
     </>
   );
   const tone = gewaehlt ? "bg-primary/[0.07] ring-1 ring-primary/30"
