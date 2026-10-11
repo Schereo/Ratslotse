@@ -30,6 +30,7 @@ import {
 import type { Herkunft } from "@/lib/herkunft";
 import { cn } from "@/lib/utils";
 import { useErklaerAnker } from "@/lib/erklaer-anker";
+import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
 export function Vollzug({ daten, year, onYear, beleg }: {
   daten: VollzugDaten;
@@ -99,7 +100,7 @@ export function Vollzug({ daten, year, onYear, beleg }: {
       {/* Jahrgang, Stichtag, Haushalt — drei Umschalter, weil es drei
           verschiedene Dinge sind. Der Jahrgang lädt die Teilhaushalte nach. */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+        <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
           <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
             {daten.editions.map((j) => (
               <button key={j} type="button" onClick={() => onYear(j)}
@@ -109,7 +110,7 @@ export function Vollzug({ daten, year, onYear, beleg }: {
               </button>
             ))}
           </div>
-        </div>
+        </ScrollZeile>
         {stichtage.length > 1 && (
           <Segmented<string> value={asOf} onChange={setAsOf}
             options={stichtage.map((s) => ({ value: s.as_of, label: `zum ${deStichtagKurz(s.as_of)}` }))} />

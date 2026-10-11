@@ -45,6 +45,8 @@ import { Kassenzettel, kassenzettelQuellen } from "@/components/haushalt/kassenz
 import { Steuereuro } from "@/components/haushalt/steuereuro";
 import { Zeitreihe } from "@/components/haushalt/zeitreihe";
 import { NahtSaeulen, type NahtJahr } from "@/components/grafik/naht-saeulen";
+import { useScrollRand } from "@/lib/use-scroll-rand";
+import { cn } from "@/lib/utils";
 import {
   AUSGABEN_QUELLE_LABEL, HaushaltAuswahl, haushaltUrl,
   ausgabenKonflikte, expense_series,
@@ -78,6 +80,9 @@ export default function HaushaltPage() {
   const [year, setJahr] = useState<number | null>(null);
   const [visual, setVisual] = useState<"balken" | "euro">("balken");
   const jahrLeiste = useRef<HTMLDivElement>(null);
+  // Die Ausblend-Maske am verdeckten Ende (Designsprache § 6) — die Leiste
+  // stand auf dem Telefon 73 px über den Rand, hart angeschnitten.
+  const jahrMaske = useScrollRand(jahrLeiste);
 
   const aktJahr = year ?? years[years.length - 1] ?? null;
   const zeilen = aktJahr && data ? data.years[String(aktJahr)] ?? [] : [];
@@ -199,7 +204,7 @@ export default function HaushaltPage() {
               deshalb dieselbe Fade-Scrollzeile wie bei den Chips im
               Ratsgespräch — Scrollbalken ausgeblendet. */}
           <div ref={jahrLeiste}
-            className="scrollbar-none -mx-1 mt-1.5 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+            className={cn("scrollbar-none -mx-1 mt-1.5 flex items-center gap-1 overflow-x-auto px-1 py-0.5", jahrMaske)}>
             <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
               {(() => {
                 const alle: number[] = [];
