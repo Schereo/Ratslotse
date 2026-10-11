@@ -41,7 +41,7 @@ import re
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from collections.abc import Callable
 from typing import Any
 
@@ -404,7 +404,7 @@ def build(store: Any, stopp: Callable[[], bool] | None = None) -> dict:
              max(a.daten[k]) if a.daten.get(k) else None) for k in keys]
     items = [(art, iid, k, quelle) for (art, iid), (k, quelle) in a.zuordnung.items()]
     store.replace_matters(meta, items, sorted(a.kanten),
-                          datetime.now(timezone.utc).isoformat(timespec="seconds"))
+                          datetime.now(UTC).isoformat(timespec="seconds"))
     je_art: dict[str, int] = defaultdict(int)
     for art, _ in a.zuordnung:
         je_art[art] += 1

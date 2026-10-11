@@ -13,7 +13,7 @@ Handeingabe (Entwurf ändert die Tafel NICHT, Veröffentlichen schon).
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 import pytest
@@ -50,7 +50,7 @@ def keine_echten_netzaufrufe(monkeypatch):
     # Seit 19.09.2026 sperrt sich eine Runde um 18 Uhr am Wahltag von selbst —
     # mit der echten Uhr wäre die Ratswahl-Runde hier sofort zu.
     monkeypatch.setattr(prediction_service, "_jetzt",
-                        lambda: datetime(2026, 9, 13, 10, 0, tzinfo=timezone.utc))
+                        lambda: datetime(2026, 9, 13, 10, 0, tzinfo=UTC))
 
 
 @pytest.fixture

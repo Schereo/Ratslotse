@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 import pytest
@@ -57,7 +57,7 @@ def client(tmp_path, monkeypatch):
     # Seit 19.09.2026 sperrt sich eine Runde um 18 Uhr am Wahltag von selbst —
     # mit der echten Uhr wäre die Ratswahl-Runde hier sofort zu.
     monkeypatch.setattr(service, "_jetzt",
-                        lambda: datetime(2026, 9, 13, 10, 0, tzinfo=timezone.utc))
+                        lambda: datetime(2026, 9, 13, 10, 0, tzinfo=UTC))
     store = Store(tmp_path / "stichwahl.sqlite")
     app.dependency_overrides[get_store] = lambda: store
     service.reset_all()
@@ -327,12 +327,12 @@ def test_um_18_uhr_am_wahltag_ist_tipp_schluss_auch_ohne_zahl(client, store, mon
     Schließung selbst, nicht der Moment des ersten Aufrufs danach."""
     tippen(client, "Anna", 52.0, 48.0)
     game_id = store.prediction_spiel_zeile("stichwahl")["id"]
-    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 15, 59, 59, tzinfo=timezone.utc))
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 15, 59, 59, tzinfo=UTC))
     service.reset_all()
     client.get(f"/api/tipp/stand{RUNDE}")
     assert store.prediction_game(game_id)["phase"] == "open", "um 17:59:59 deutscher Zeit noch offen"
 
-    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 16, 7, tzinfo=timezone.utc))  # 18:07 Berlin
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 16, 7, tzinfo=UTC))  # 18:07 Berlin
     service.reset_all()
     client.get(f"/api/tipp/stand{RUNDE}")
     game = store.prediction_game(game_id)
@@ -353,3 +353,41 @@ def test_die_frist_steht_im_setup(client):
     setup = client.get(f"/api/tipp/setup{RUNDE}").json()
     assert setup["deadline_hint"] == "bis Sonntag, 27.09., 18:00 Uhr (Schließung der Wahllokale)"
     assert setup["polls_close"] == "2026-09-27T18:00:00+02:00"
+
+
+# ------------------------------------------------------------------ Das Spiel endet von selbst (10/2026)
+
+def test_nach_der_auszaehlung_ist_endstand_und_kein_beitritt_mehr(client, store, monkeypatch):
+    """Bis 10/2026 setzte nur ein Admin-Knopf den Endstand, und niemand
+    drückte ihn: Wer 26 Tage nach der Wahl einen alten QR-Code öffnete, wurde
+    eingeladen, „trotzdem" mitzutippen. Jetzt endet die Runde, sobald die
+    Auszählung vollständig ist — und spätestens 36 h nach Schluss."""
+    tippen(client, "Anna", 52.0, 48.0)
+    game_id = store.prediction_spiel_zeile("stichwahl")["id"]
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 16, 7, tzinfo=UTC))
+    service.reset_all()
+    client.get(f"/api/tipp/stand{RUNDE}")
+    assert store.prediction_game(game_id)["phase"] == "locked"
+
+    # Vollständig ausgezählt: Endstand beim nächsten Aufruf.
+    monkeypatch.setattr(mayor_module, "fetch", _stichwahl_stand(10_000))
+    service.reset_all()
+    client.get(f"/api/tipp/stand{RUNDE}")
+    assert store.prediction_game(game_id)["phase"] == "final"
+    assert any("Endstand automatisch" in e["text"] for e in store.prediction_log(game_id))
+
+    client.cookies.clear()
+    r = client.post(f"/api/tipp{RUNDE}", json={"name": "Viel zu spät"})
+    assert r.status_code == 409 and "vorbei" in r.json()["detail"]
+
+
+def test_ohne_vollstaendige_zahl_endet_die_runde_nach_36_stunden(client, store, monkeypatch):
+    tippen(client, "Anna", 52.0, 48.0)
+    game_id = store.prediction_spiel_zeile("stichwahl")["id"]
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 28, 16, 0, tzinfo=UTC))  # +24 h
+    service.reset_all()
+    client.get(f"/api/tipp/setup{RUNDE}")
+    assert store.prediction_game(game_id)["phase"] == "locked"
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 29, 4, 1, tzinfo=UTC))  # +36 h
+    setup = client.get(f"/api/tipp/setup{RUNDE}").json()
+    assert setup["phase"] == "final"

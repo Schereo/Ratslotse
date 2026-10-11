@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from functools import lru_cache
 
 from ..antworten import ElectionDistrictList, ElectionNight, ElectionTopEntry
@@ -55,7 +55,7 @@ def _eingefroren(slug: str):
     schnapp = Snapshot(
         city=parse(lies("stadt")), areas=parse(lies("wahlbereiche")),
         districts=parse(lies("wahlbezirke")),
-        fetched_at=datetime.now(timezone.utc), last_modified=None, ok=True, error=None,
+        fetched_at=datetime.now(UTC), last_modified=None, ok=True, error=None,
     )
     # Das Register DIESER Wahl — `verfuegbar` hat schon dafür gesorgt, dass es
     # eines gibt.
@@ -118,7 +118,7 @@ def night(slug: str) -> ElectionNight | None:
         schnapp = Snapshot(
             city=parse(lies("stadt")), areas=parse(lies("wahlbereiche")),
             districts=parse(lies("wahlbezirke")),
-            fetched_at=datetime.now(timezone.utc), last_modified=None, ok=True, error=None,
+            fetched_at=datetime.now(UTC), last_modified=None, ok=True, error=None,
         )
         # Das Register DIESER Wahl — `verfuegbar` hat schon dafür gesorgt,
         # dass es eines gibt.

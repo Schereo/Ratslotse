@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
+import { AbrufFehler } from "@/components/abruf-fehler";
 import { api, qs, ApiError } from "@/lib/api";
 import { fragenHref, decisionHref, ortHref, sitzungHref } from "@/lib/routes";
 import { STAFFEL, staffelStil } from "@/components/staffel";
@@ -448,6 +449,13 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     : null;
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  // Kam die Liste nicht an? Dann ist „Keine Beschlüsse gefunden" eine Lüge —
+  // bis 10/2026 sah ein Ausfall genau wie eine erfolglose Suche aus.
+  const [ladeFehler, setLadeFehler] = useState<unknown>(null);
+  const [nochmal, setNochmal] = useState(0);
+  // Für die Fehlerbehandlung im Effekt: Stehen schon Treffer da?
+  const hatTreffer = useRef(false);
+  hatTreffer.current = decisions.length > 0;
   const [geladenFuer, setGeladenFuer] = useState("");
   useSuchposition(suchadresse, loading || !bereit || geladenFuer !== suchadresse);
   const debouncedQ = useDebounce(q, 350);
@@ -516,6 +524,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     setLoading(true);
     if (!bereit || q !== debouncedQ) return;
     let verworfen = false;
+    setLadeFehler(null);
     api.get<{ total: number; decisions: CouncilDecision[] }>(
       `/council/decisions${qs({
         q: debouncedQ, committee, category: mode === "all" ? "" : mode, sort, field, party,
@@ -529,7 +538,11 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       setTotal(data.total);
       setGeladenFuer(suchadresse);
     }).catch((err) => {
-      if (!verworfen) toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
+      if (verworfen) return;
+      setLadeFehler(err);
+      // Stehen schon Treffer da, bleiben sie stehen; der Toast sagt, dass
+      // der neue Stand nicht kam. Ohne Treffer übernimmt die Fehlerkarte.
+      if (hatTreffer.current) toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
     }).finally(() => {
       if (!verworfen) setLoading(false);
     });
@@ -537,7 +550,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     // überschreiben — auch beim schnellen Zurück/Vorwärts oder Filterwechsel.
     return () => { verworfen = true; };
   }, [bereit, q, debouncedQ, committee, mode, outcome, sort, field, party, district,
-    location, dateFrom, dateTo, showSubvotes, page, topicId, suchadresse]);
+    location, dateFrom, dateTo, showSubvotes, page, topicId, suchadresse, nochmal]);
 
   // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
@@ -820,6 +833,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       >
         {loading && decisions.length === 0 ? (
           <CardListSkeleton rows={5} />
+        ) : ladeFehler && decisions.length === 0 ? (
+          <AbrufFehler error={ladeFehler} was="Die Beschlussliste" onRetry={() => setNochmal((n) => n + 1)} />
         ) : decisions.length === 0 ? (
           <EmptyState
             mascot="search"
@@ -990,6 +1005,12 @@ function SessionsTab({ committees }: { committees: string[] }) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [ladeFehler, setLadeFehler] = useState<unknown>(null);
+  // Zählt die Abrufe: Nur der jüngste darf die Liste setzen. Ohne das konnte
+  // eine langsame Antwort für den alten Filter den neuen überschreiben.
+  const abrufNr = useRef(0);
+  const hatSitzungen = useRef(false);
+  hatSitzungen.current = sessions.length > 0;
   const [hasSearched, setHasSearched] = useState(false);
   // Aufgeklappte Sitzungen überleben den Tab-Wechsel (Tims Wunsch 12.08.):
   // Wer eine Tagesordnung offen hat und kurz woanders nachsieht, findet sie
@@ -1014,6 +1035,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
     // sofort wieder zu (Tims Wunsch 12.08.). Beim Ändern von Suche, Filter
     // oder Seite räumt der Effekt darunter auf — dort ist es richtig, weil
     // die Liste dann andere Sitzungen zeigt.
+    const nr = ++abrufNr.current;
+    setLadeFehler(null);
     try {
       const effectiveScope = q || committee ? "all" : scope;
       const data = await api.get<{ sessions: CouncilSession[]; total: number }>(
@@ -1022,12 +1045,15 @@ function SessionsTab({ committees }: { committees: string[] }) {
           limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
         })}`,
       );
+      if (nr !== abrufNr.current) return;
       setSessions(data.sessions);
       setTotal(data.total);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
+      if (nr !== abrufNr.current) return;
+      setLadeFehler(err);
+      if (hatSitzungen.current) toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
     } finally {
-      setLoading(false);
+      if (nr === abrufNr.current) setLoading(false);
     }
   }, [q, committee, scope, page]);
 
@@ -1199,6 +1225,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
       >
         {loading && sessions.length === 0 ? (
           <CardListSkeleton rows={5} />
+        ) : ladeFehler && sessions.length === 0 ? (
+          <AbrufFehler error={ladeFehler} was="Die Sitzungsliste" onRetry={() => void load()} />
         ) : sessions.length === 0 ? (
           // RL-U04: In der Sitzungspause ist „Anstehend" leer, das Banner darüber
           // nennt den Grund — der Leerzustand greift ihn auf, statt generisch

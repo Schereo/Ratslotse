@@ -7,7 +7,7 @@ Ortsbereich mitgegeben wird.
 from __future__ import annotations
 
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, UTC
 from pathlib import Path
 
 import pytest
@@ -88,7 +88,7 @@ def _saat(viele: bool = False) -> None:
     orte = IM_ORT_VIELE if viele else IM_ORT
     council = CouncilStore(Path(_pfade()[1]))
     jung = (date.today() - timedelta(days=20)).isoformat()
-    jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    jetzt = datetime.now(UTC).isoformat(timespec="seconds")
     council.save_session(CouncilSession(1, "Rat", jung, "17:00", "Ratssaal"))
     with council._conn:
         for i in range(2 * len(orte)):

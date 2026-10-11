@@ -550,9 +550,16 @@ def zahl_der_woche(
             return {"kind": "amount", "amount_eur": top["amount_eur"],
                     "decision_id": top["id"], "title": top["title"],
                     "session_date": top["session_date"], "window_days": days}
-    return {"kind": "count",
-            "count": store.count_decisions_since((today - timedelta(days=7)).isoformat()),
-            "window_days": 7}
+    # Ohne Betrag die Zahl der Beschlüsse — im kleinsten Fenster, in dem es
+    # überhaupt welche gibt. Bis 10/2026 immer 7 Tage: Nach Sommerpause und
+    # Wahl stand wochenlang eine orange „0" oben auf „Heute", obwohl die
+    # Ausschüsse längst wieder tagten (ihre Protokolle kommen ein bis drei
+    # Wochen später). Die App liest `window_days` mit (TodayView.swift).
+    for days in (7, 30, 90):
+        anzahl = store.count_decisions_since((today - timedelta(days=days)).isoformat())
+        if anzahl:
+            return {"kind": "count", "count": anzahl, "window_days": days}
+    return {"kind": "count", "count": 0, "window_days": 90}
 
 
 @router.get("/budget/products")
@@ -3735,7 +3742,10 @@ def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
         raise HTTPException(status.HTTP_410_GONE, "Recherche nicht mehr aktiv — Snapshot laden.")
     return StreamingResponse(
         deepresearch.sse_events(job, ab=ab), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # `no-transform`: Ohne das komprimiert die Next-Weiterleitung den
+        # Strom und hält kleine Antworten zurück, bis sie fertig sind —
+        # Lotti „schrieb" dann nichts und alles kam auf einmal (FS-11).
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 
@@ -4787,7 +4797,10 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # `no-transform`: Ohne das komprimiert die Next-Weiterleitung den
+        # Strom und hält kleine Antworten zurück, bis sie fertig sind —
+        # Lotti „schrieb" dann nichts und alles kam auf einmal (FS-11).
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
         # Läuft erst, wenn der Strom ausgeliefert ist — niemand wartet darauf.
         background=BackgroundTask(_lotti_nachlauf, nachlauf, meldungen))
 
@@ -6172,7 +6185,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # `no-transform`: Ohne das komprimiert die Next-Weiterleitung den
+        # Strom und hält kleine Antworten zurück, bis sie fertig sind —
+        # Lotti „schrieb" dann nichts und alles kam auf einmal (FS-11).
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 

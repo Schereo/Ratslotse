@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Check, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Bell, Check, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand } from "@/lib/onboarding-setup";
 import { isNativeApp } from "@/lib/platform";
@@ -424,6 +424,16 @@ export function OnboardingFlow() {
           <div className={cn(SPALTE, "px-[18px] lg:px-8 lg:pt-5",
                              step === HAKEN_SCHRITT && "hidden")}>
             <div className="flex items-center gap-3">
+              {/* Zurück (10/2026): Bis dahin gab es nur „Überspringen" und
+                  „Weiter" — wer sich im Themen-Schritt verklickt hatte, kam
+                  nicht mehr zu den Ausschüssen. Die Schritte laden ihren Stand
+                  vom Konto, eine Wahl geht beim Zurückgehen also nicht verloren. */}
+              {step > 1 && step <= SCHRITTE && (
+                <button type="button" onClick={() => go((step - 1) as Step)}
+                  className="inline-flex shrink-0 items-center gap-1 py-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Zurück
+                </button>
+              )}
               {/* Segmente statt eines Laufbalkens: Man sieht, wie viele
                   Schritte es überhaupt sind. */}
               <div className="flex flex-1 gap-1.5 lg:hidden" role="progressbar"

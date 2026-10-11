@@ -1,5 +1,5 @@
 """Der Rückblick auf Ergänzungen seit dem letzten sichtbaren Besuch."""
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -38,7 +38,7 @@ def updates(
     if since is not None and until is not None:
         if since.tzinfo is None or until.tzinfo is None or since >= until:
             raise HTTPException(422, "Ungültiger Zeitraum.")
-        window["since"] = since.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-        window["until"] = until.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        window["since"] = since.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        window["until"] = until.astimezone(UTC).isoformat().replace("+00:00", "Z")
     return TodayUpdates(**window, **council.updates_since(
         window["since"], window["until"], offset, limit, kind, committee))

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ExternalLink, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowRight, ExternalLink, RotateCcw, Sparkles, Square, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
@@ -95,6 +95,11 @@ export type LottiTurn = {
   /** Kam die Antwort ohne Modell? Nur fürs Protokoll, nicht sichtbar. */
   mode: string | null;
   fehler?: boolean;
+  /** Die Runde endete ohne Antwort und ohne Fehler: Stopp, Seitenwechsel,
+   *  gerissener Strom. Bis 10/2026 zeigte so eine Runde „Lotti schreibt …"
+   *  für immer — und weil der Verlauf im Tab-Speicher liegt, sogar nach dem
+   *  Neuladen. */
+  abgebrochen?: boolean;
   /** Was auf dem Bildschirm stand, als die Frage gestellt wurde. */
   kontext: string;
   /** Auf welcher Seite gefragt wurde — die normalisierte Route. Sie trägt die
@@ -208,7 +213,11 @@ function leseVerlauf(): LottiTurn[] {
     const roh = sessionStorage.getItem(SPEICHER);
     if (!roh) return [];
     const p = JSON.parse(roh);
-    return Array.isArray(p) ? (p as LottiTurn[]).slice(-MAX_TURNS_SPEICHER) : [];
+    if (!Array.isArray(p)) return [];
+    // Eine gespeicherte Runde ohne Antwort lief, als der Tab ging — sie kommt
+    // nie mehr an. Sonst stünde nach dem Neuladen „Lotti schreibt …" da.
+    return (p as LottiTurn[]).slice(-MAX_TURNS_SPEICHER)
+      .map((t) => (!t.answer && !t.fehler ? { ...t, abgebrochen: true } : t));
   } catch {
     return [];
   }
@@ -343,10 +352,23 @@ export function LottiPanel({
   // ALTEN Seite, die auf der neuen fertig geschrieben wird, ist schlimmer als
   // keine — sie sieht aus, als gehörte sie hierher.
   useEffect(() => {
+    if (abbruch.current) {
+      abbruch.current.abort();
+      abbruch.current = null;
+      setTurns((ts) => ts.map((t) => (!t.answer && !t.fehler ? { ...t, abgebrochen: true } : t)));
+    }
+    setLaden(false);
+  }, [pathname]);
+
+  /** Stopp — derselbe Ausweg wie auf der Fragen-Seite. Bis 10/2026 war die
+   *  Eingabe während einer Antwort gesperrt, und heraus kam man nur über einen
+   *  Seitenwechsel oder „Neu anfangen". */
+  const stoppen = useCallback(() => {
     abbruch.current?.abort();
     abbruch.current = null;
     setLaden(false);
-  }, [pathname]);
+    setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 && !t.fehler ? { ...t, abgebrochen: true } : t)));
+  }, []);
 
   useEffect(() => {
     if (offen) endeRef.current?.scrollIntoView({ block: "end" });
@@ -388,7 +410,7 @@ export function LottiPanel({
     setLaden(true);
     const key = opts.inTurn ?? naechsterKey.current++;
     const rahmen = {
-      question: frageText, answer: "", next: null, mode: null,
+      question: frageText, answer: "", next: null, mode: null, abgebrochen: false, fehler: false,
       kontext: "im Ratsarchiv gesucht", ratsfrage: true, quellen: [], cited: [],
       route, seite: seitenName(document, anzeigename),
       // Die Frage steht schon über der Erklärung — ein zweites Mal wäre sie
@@ -456,7 +478,9 @@ export function LottiPanel({
         }));
         return;
       }
+      let fertig = false;
       await leseSseStrom(res.body, (msg) => {
+        if (msg.type === "done" || msg.type === "error") fertig = true;
         // Die Ratsfrage meldet drei Schritte (`expand`, `search`, `answer`) —
         // dieselbe Abbildung wie auf der Fragen-Seite, aus `lib/qa-schritte.ts`.
         if (msg.type === "step") patch(() => ({ schritt: msg.step as string }));
@@ -482,6 +506,11 @@ export function LottiPanel({
           patch(() => ({ answer: (msg.message as string) ?? "Frage fehlgeschlagen.", fehler: true }));
         }
       });
+      // Strom ohne Ende gerissen: angefangener Text bleibt, aber als
+      // abgebrochen markiert; ohne Text ein Fehler mit Ausweg.
+      if (!fertig && !ctrl.signal.aborted) {
+        patch((t) => (t.answer ? { abgebrochen: true } : { answer: "Die Antwort ist unterwegs abgerissen.", fehler: true }));
+      }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       patch(() => ({ answer: "Das hat gerade nicht geklappt.", fehler: true }));
@@ -544,7 +573,12 @@ export function LottiPanel({
       }
     }
 
-    abbruch.current?.abort();
+    // Eine noch laufende Runde endet hier — sie bekäme sonst nie Text und
+    // zeigte „Lotti schreibt …" weiter, während die neue antwortet.
+    if (abbruch.current) {
+      abbruch.current.abort();
+      setTurns((ts) => ts.map((t) => (!t.answer && !t.fehler ? { ...t, abgebrochen: true } : t)));
+    }
     const ctrl = new AbortController();
     abbruch.current = ctrl;
     setFrage("");
@@ -643,7 +677,9 @@ export function LottiPanel({
         if (sauber) setFrage(sauber);
         return;
       }
+      let fertig = false;
       await leseSseStrom(res.body, (msg) => {
+        if (msg.type === "done" || msg.type === "error") fertig = true;
         // **Der Schritt, den das Fenster bis 22.09.2026 wegwarf.** Der Server
         // meldet `context` und `answer`, seit es den Endpunkt gibt; angezeigt
         // wurden drei blasse Punkte, an denen man nicht sah, dass etwas läuft.
@@ -691,6 +727,11 @@ export function LottiPanel({
           patch(() => ({ answer: (msg.message as string) ?? "Erklärung fehlgeschlagen.", fehler: true }));
         }
       });
+      if (!fertig && !ctrl.signal.aborted) {
+        archivWeg = null;
+        patch((t) => (t.answer ? { abgebrochen: true } : { answer: "Die Antwort ist unterwegs abgerissen.", fehler: true }));
+        if (!antwort) setFrage(sauber);
+      }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       // Die Frage ist nicht verloren — sie steht wieder im Eingabefeld
@@ -1010,7 +1051,22 @@ export function LottiPanel({
                       <AntwortText text={t.answer} idToNum={new Map()} />
                     </GlossarAufklappBereich>
                   )
-                  : <Tippt schritt={t.schritt} text={t.schrittText} ratsfrage={t.ratsfrage} />}
+                  : t.abgebrochen
+                    ? <p className="py-1 text-hinweis text-muted-foreground">Abgebrochen.</p>
+                    : <Tippt schritt={t.schritt} text={t.schrittText} ratsfrage={t.ratsfrage} />}
+                {t.answer && t.abgebrochen && !t.fehler && (
+                  <p className="mt-1 text-hinweis text-muted-foreground">Abgebrochen — die Antwort ist unvollständig.</p>
+                )}
+                {/* Ein Fehler braucht einen Ausweg (Designsprache § 6): bis
+                    10/2026 stand hier nur der nackte Satz. */}
+                {t.fehler && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <Chip onClick={() => setFrage(t.question)} disabled={laden}>Nochmal fragen</Chip>
+                    <Chip onClick={() => { onSchliessen(); router.push(fragenHref({ q: t.question })); }}>
+                      In „Frag den Rat“ stellen
+                    </Chip>
+                  </div>
+                )}
                 {t.answer && !t.fehler && t.ratsfrage && (
                   <Quellen turn={t} onSchliessen={onSchliessen} />
                 )}
@@ -1182,14 +1238,26 @@ export function LottiPanel({
             {zaehler}
           </span>
         )}
-        <button
-          type="submit"
-          disabled={laden || !frage.trim() || merken == null}
-          aria-label="Fragen"
-          className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors disabled:bg-primary/35"
-        >
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </button>
+        {laden ? (
+          <button
+            type="button"
+            onClick={stoppen}
+            aria-label="Antwort stoppen"
+            title="Stoppen"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-muted"
+          >
+            <Square className="h-3.5 w-3.5 fill-current" aria-hidden />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!frage.trim() || merken == null}
+            aria-label="Fragen"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors disabled:bg-primary/35"
+          >
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </button>
+        )}
       </form>
       {/* **Hier stand bis 22.09.2026 eine feste Fußzeile** („Erklärt aus
           Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung, keine

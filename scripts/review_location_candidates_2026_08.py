@@ -14,7 +14,7 @@ import sqlite3
 import sys
 import tempfile
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -397,12 +397,12 @@ def snapshot(db_path: str) -> str:
     path = Path(db_path)
     backup_dir = path.parent / "backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     backup_path = backup_dir / f"place_reviews_before_full_review_{stamp}.json"
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     data = {
-        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "reviews": [dict(row) for row in conn.execute("SELECT * FROM council_place_reviews")],
         "locations": [dict(row) for row in conn.execute(
             "SELECT slug,place_id,local_area_id,stadtteil,lat,lon,geojson,geo_tried,updated_at "
