@@ -128,6 +128,10 @@ def _material_pruefen(case: dict, m: dict) -> list[dict]:
                           and b.get("committee", "") in (a.get("committee") or "")
                           and b["titel_enthaelt"].lower() in (a.get("title") or "").lower()
                           for a in m.get("agenda", []))
+        elif b["art"] == "grafik":
+            # Die Grafik unter der Antwort (``qa.geld_grafik``) — sie trägt die
+            # Zahlen der Kontenebene, die in keinem Beschluss stehen.
+            treffer = b["titel_enthaelt"].lower() in str((m.get("chart") or {}).get("title") or "").lower()
         out.append({"id": b["id"], "fuer": b["fuer"], "art": b["art"], "vorhanden": treffer})
     return out
 
@@ -173,8 +177,14 @@ def lauf(db: Path, label: str, premium: bool, nur: str | None) -> Path:
     from council import qa
 
     cases = json.loads(CASES.read_text(encoding="utf-8"))
+    # Fälle, die nur einen der beiden Wege messen (``"wege": ["ask"]``) — das
+    # Wahlergebnis etwa kennt nur „Frag den Rat“, die Recherche bekommt den
+    # Baustein nicht.
+    cases = [c for c in cases if "deep" in c.get("wege", ["ask", "deep"])]
     if nur:
-        cases = [c for c in cases if c["id"] == nur]
+        # Mehrere durch Komma: „--nur parkgebuehren-einnahmen,brokhausen-stand“.
+        gewollt = {n.strip() for n in nur.split(",") if n.strip()}
+        cases = [c for c in cases if c["id"] in gewollt]
     ergebnisse = []
     with tempfile.TemporaryDirectory() as tmp:
         ratslotse_db = str(Path(tmp) / "ratslotse.sqlite")
@@ -225,7 +235,7 @@ def main() -> None:
     ap.add_argument("--db", required=True, help="Kopie der council.sqlite")
     ap.add_argument("--label", required=True)
     ap.add_argument("--premium", action="store_true", help="Berichtsmodell für Recherche Plus")
-    ap.add_argument("--nur", default=None, help="nur diesen Fall")
+    ap.add_argument("--nur", default=None, help="nur diese Fälle (ids, durch Komma)")
     args = ap.parse_args()
     lauf(Path(args.db), args.label, args.premium, args.nur)
 
