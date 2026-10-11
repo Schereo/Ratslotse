@@ -1573,3 +1573,11 @@ lotti-figur {
     animation: lotti-tippt-blinzeln 1.8s ease-in-out infinite !important;
   }
 }
+
+/* Story-Spieler (components/neuigkeiten-spieler.tsx): der Balken auf
+   „Als Nächstes" im Zwischenbild. Nur `transform`; sein Ende löst den Wechsel
+   aus. Unter reduced-motion gibt es das Zwischenbild gar nicht erst. */
+@keyframes zwischenbild-lauf {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

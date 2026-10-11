@@ -177,6 +177,15 @@ export function seitenVerhaeltnis(aspect: string | null | undefined): number {
  *  reduzierter Bewegung startet kein Clip von selbst, also schaltet auch keiner
  *  weiter. Nach dem letzten bleibt der Spieler stehen; ein Nebenbei-Clip steht
  *  allein. */
+/** Wie lange das Zwischenbild steht, bevor der nächste Clip kommt.
+ *
+ *  Bis 10/2026 begann der nächste Clip im selben Augenblick, in dem der
+ *  vorige endete (Tims Befund): Man merkte kaum, dass jetzt ein ANDERES
+ *  Feature lief, und hatte keinen Moment, das gerade gesehene auszuprobieren.
+ *  Acht Sekunden reichen, um „Ausprobieren" zu lesen und zu treffen; wer
+ *  weiter will, tippt früher. */
+export const ZWISCHENBILD_SEKUNDEN = 8;
+
 export function nachDemEnde(opts: { index: number; anzahl: number; ruhig: boolean; nebenbei: boolean }):
   "weiter" | "stehen" {
   const { index, anzahl, ruhig, nebenbei } = opts;

@@ -10,13 +10,13 @@
 //   node scripts/release-clip.mjs 2.2.0 teilen --out DIR   → eine JSON-Zeile auf stdout
 //   node scripts/release-clip.mjs 2.2.0 --list
 //
-// Aufgenommen wird über Chromes Screencast (CDP), Bild für Bild mit
+// Aufgenommen wird Bild für Bild über `page.screenshot`, jedes mit
 // Zeitstempel, nicht über Playwrights recordVideo: Dessen Zeitachse ist die
 // Bildzahl durch 25, und bei einem Seitenwechsel fehlten darin gemessen
-// 0,5–0,9 s (08.09.2026) — der Zoom saß dann neben dem Klick. Die
-// Screencast-Bilder tragen die Uhrzeit des Bildwechsels, die Klicks dieselbe
-// Uhr; der Schnitt legt beides übereinander. Zwischen zwei Bildern hat sich
-// nichts bewegt, das letzte Bild steht bis zum nächsten.
+// 0,5–0,9 s (08.09.2026) — der Zoom saß dann neben dem Klick. Die Bilder
+// tragen dieselbe Uhr wie die Klicks; der Schnitt legt beides übereinander.
+// Zwischen zwei Bildern hat sich nichts bewegt, das letzte Bild steht bis zum
+// nächsten.
 //
 // Was ein Drehbuch bekommt (`stage`):
 //   page            die Playwright-Seite, für Aufbau und Routen
@@ -57,11 +57,15 @@ const FRONTEND = path.resolve(HERE, '..');
 // Dieselbe Bühne für alle Browser-Clips einer Ausgabe: Die Karte setzt ihr
 // Seitenverhältnis aus dem Medium; springt es beim Blättern, wackelt sie.
 const DEFAULT_VIEWPORT = { width: 980, height: 620 };
-// Der Screencast liefert Bilder in CSS-Pixeln, egal welcher deviceScaleFactor
-// eingestellt ist — 2× wäre nur ein hochskaliertes 1× (gemessen 08.09.2026).
-// Für die Telefon-Aufnahme (`mobil`) deshalb Einzelbilder über
-// `page.screenshot`: die liefern 2×, rund 20 je Sekunde (gemessen 07.10.2026)
-// — 390 px Breite hochskaliert sähen am Telefon verwaschen aus.
+// Aufgenommen wird in doppelter Pixeldichte, am Telefon wie am Schreibtisch.
+// Bis 10/2026 lief die Schreibtisch-Aufnahme über Chromes Screencast (CDP) —
+// und der liefert Bilder in CSS-Pixeln, egal welcher deviceScaleFactor,
+// welche maxWidth oder welcher Geräte-Override eingestellt ist (gemessen
+// 08.09. und 11.10.2026). Der Clip zeigte also 1280 Pixel Seite, verkleinert
+// in ein Browserfenster und auf einem Retina-Schirm wieder hochgezogen: Tims
+// Befund „relativ unscharf". `page.screenshot` liefert 2× — bei 1280×800 rund
+// 25 Bilder je Sekunde (gemessen 11.10.2026), am Telefon rund 20.
+const PIXELDICHTE = 2;
 const MOBIL_VIEWPORT = { width: 390, height: 844 };
 const DEFAULT_ACCOUNT = 'nutzerin@example.org';
 const PASSWORD = 'password123';   // scripts/saat_konten.py
@@ -134,7 +138,7 @@ const MOBIL = Boolean(storyboard.mobil);
 const viewport = storyboard.viewport ?? (MOBIL ? MOBIL_VIEWPORT : DEFAULT_VIEWPORT);
 const browser = await chromium.launch({ channel: 'chrome' });
 const ctx = await browser.newContext({
-  viewport, deviceScaleFactor: MOBIL ? 2 : 1, isMobile: MOBIL, hasTouch: MOBIL, colorScheme: 'light',
+  viewport, deviceScaleFactor: PIXELDICHTE, isMobile: MOBIL, hasTouch: MOBIL, colorScheme: 'light',
   locale: 'de-DE', timezoneId: 'Europe/Berlin',
   permissions: ['clipboard-write', 'clipboard-read'],
 });
@@ -159,40 +163,26 @@ await page.route('**/api/badges', async (route) => {
   await route.fulfill({ response: r, json: { ...(await r.json()), newly_earned: [] } });
 });
 
-// ---- Aufnahme: Screencast mit Zeitstempeln ---------------------------------
-const clock = () => Date.now() / 1000;   // dieselbe Uhr wie metadata.timestamp
+// ---- Aufnahme: Einzelbilder mit Zeitstempeln --------------------------------
+const clock = () => Date.now() / 1000;
 const frames = [];
-const cdp = await ctx.newCDPSession(page);
-let bildschleife = null;
 let aufnahmeLaeuft = true;
-if (MOBIL) {
-  // Ein Bild nach dem anderen; die Zeit ist die Mitte der Aufnahme. Während
-  // eines Seitenwechsels scheitert `screenshot` mitunter — dann steht das
-  // vorige Bild etwas länger, wie beim Screencast.
-  bildschleife = (async () => {
-    while (aufnahmeLaeuft) {
-      const a = clock();
-      try {
-        const bild = await page.screenshot({ type: 'jpeg', quality: 90, animations: 'allow', caret: 'initial', timeout: 4000 });
-        const f = path.join(FRAMES, `f${String(frames.length).padStart(5, '0')}.jpg`);
-        writeFileSync(f, bild);
-        frames.push({ t: (a + clock()) / 2, file: f });
-      } catch {
-        await new Promise((r) => setTimeout(r, 40));
-      }
+// Ein Bild nach dem anderen; die Zeit ist die Mitte der Aufnahme. Während
+// eines Seitenwechsels scheitert `screenshot` mitunter — dann steht das
+// vorige Bild etwas länger.
+const bildschleife = (async () => {
+  while (aufnahmeLaeuft) {
+    const a = clock();
+    try {
+      const bild = await page.screenshot({ type: 'jpeg', quality: 90, animations: 'allow', caret: 'initial', timeout: 4000 });
+      const f = path.join(FRAMES, `f${String(frames.length).padStart(5, '0')}.jpg`);
+      writeFileSync(f, bild);
+      frames.push({ t: (a + clock()) / 2, file: f });
+    } catch {
+      await new Promise((r) => setTimeout(r, 40));
     }
-  })();
-} else {
-  cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
-    const f = path.join(FRAMES, `f${String(frames.length).padStart(5, '0')}.jpg`);
-    writeFileSync(f, Buffer.from(data, 'base64'));
-    frames.push({ t: metadata.timestamp, file: f });
-    cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
-  });
-  await cdp.send('Page.startScreencast', {
-    format: 'jpeg', quality: 92, maxWidth: viewport.width, maxHeight: viewport.height, everyNthFrame: 1,
-  });
-}
+  }
+})();
 
 const marks = { begin: null, beats: [], navigations: [], steps: [], cuts: [] };
 // Jede Navigation mit Zeitstempel — im JSON sichtbar, damit sich ein Clip,
@@ -399,8 +389,7 @@ try {
 const end = clock();
 await page.waitForTimeout(300);   // späte Bilder noch einsammeln
 aufnahmeLaeuft = false;
-if (bildschleife) await bildschleife;
-else await cdp.send('Page.stopScreencast').catch(() => {});
+await bildschleife;
 await ctx.close();
 await browser.close();
 
