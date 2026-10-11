@@ -22,6 +22,7 @@ sys.path.insert(0, str(WURZEL / "web" / "backend"))
 from app.election import reference, register, service, votemanager  # noqa: E402
 from app.election.projection import project  # noqa: E402
 from app.election.seats import DistrictList, allocate, hare_niemeyer, party_seat_margins, votes_to_seat  # noqa: E402
+from datetime import UTC
 
 REFERENZ = WURZEL / "kommunalwahl" / "referenz-2021"
 FIXTURES = WURZEL / "tests" / "fixtures" / "wahlabend"
@@ -237,14 +238,14 @@ def test_endpunkt_ist_hinter_dem_schalter(client, monkeypatch):
 
 def test_endpunkt_live_vor_der_auszaehlung_und_bei_netzfehler(client, monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     def leer(force: bool = False):
         return votemanager.Snapshot(
             votemanager.parse((FIXTURES / "2026-stadt.csv").read_text(encoding="utf-8")),
             votemanager.parse((FIXTURES / "2026-wahlbereiche.csv").read_text(encoding="utf-8")),
             votemanager.parse((FIXTURES / "2026-wahlbezirk.csv").read_text(encoding="utf-8")),
-            datetime.now(timezone.utc), "Mon, 31 Aug 2026 10:54:31 GMT", True, None,
+            datetime.now(UTC), "Mon, 31 Aug 2026 10:54:31 GMT", True, None,
         )
 
     monkeypatch.setattr(votemanager, "fetch", leer)
@@ -259,7 +260,7 @@ def test_endpunkt_live_vor_der_auszaehlung_und_bei_netzfehler(client, monkeypatc
     service.reset()
 
     def kaputt(force: bool = False):
-        return votemanager.Snapshot([], [], [], datetime.now(timezone.utc), None, False, "ConnectionError: zu")
+        return votemanager.Snapshot([], [], [], datetime.now(UTC), None, False, "ConnectionError: zu")
 
     monkeypatch.setattr(votemanager, "fetch", kaputt)
     d = client.get("/api/wahlabend").json()
@@ -269,8 +270,8 @@ def test_endpunkt_live_vor_der_auszaehlung_und_bei_netzfehler(client, monkeypatc
 
 def test_abruftakt_vor_und_am_wahlabend():
     """Vor Sonntag 18 Uhr alle 15 Minuten, danach jede Minute."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    assert votemanager.ttl_seconds(datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)) == 15 * 60
-    assert votemanager.ttl_seconds(datetime(2026, 9, 13, 15, 59, tzinfo=timezone.utc)) == 15 * 60
-    assert votemanager.ttl_seconds(datetime(2026, 9, 13, 16, 0, tzinfo=timezone.utc)) == 60
+    assert votemanager.ttl_seconds(datetime(2026, 9, 7, 12, 0, tzinfo=UTC)) == 15 * 60
+    assert votemanager.ttl_seconds(datetime(2026, 9, 13, 15, 59, tzinfo=UTC)) == 15 * 60
+    assert votemanager.ttl_seconds(datetime(2026, 9, 13, 16, 0, tzinfo=UTC)) == 60

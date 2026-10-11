@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 import requests
 
@@ -72,7 +72,7 @@ def _datum(wert) -> str | None:
     if wert in (None, ""):
         return None
     if isinstance(wert, (int, float)):
-        return datetime.fromtimestamp(wert / 1000, tz=timezone.utc).date().isoformat()
+        return datetime.fromtimestamp(wert / 1000, tz=UTC).date().isoformat()
     return str(wert)[:10]
 
 

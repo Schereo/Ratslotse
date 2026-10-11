@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[1]
@@ -39,7 +39,7 @@ SCHNAPPSCHUSS = {"elements": [
 
 def _saat(db: Path) -> None:
     store = CouncilStore(db)
-    jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    jetzt = datetime.now(UTC).isoformat(timespec="seconds")
     with store._conn:
         store._conn.execute(
             "INSERT INTO council_locations (slug,name,kind,lat,lon,geojson,district,"
