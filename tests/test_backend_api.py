@@ -412,7 +412,11 @@ def test_configured_admin_not_re_promoted_when_an_admin_exists(client):
     store.create_email_verification(admin_id, hashlib.sha256(raw.encode()).hexdigest(), exp)
     store.close()
 
-    r = TestClient(app).post("/api/auth/verify-email", json={"token": raw})
+    # Die Erstbestätigung gilt nur aus der Sitzung des Kontos selbst.
+    eigene = TestClient(app)
+    assert eigene.post("/api/auth/login", json={"email": "admin@test.de",
+                                                "password": "password123"}).status_code == 200
+    r = eigene.post("/api/auth/verify-email", json={"token": raw})
     assert r.status_code == 200
     assert r.json()["role"] == "user"
 
@@ -798,19 +802,39 @@ def test_password_reset_flow(client):
 
 
 def test_app_password_reset_returns_replacement_bearer(client):
+    """Aus der EIGENEN Sitzung gibt ein Reset das Ersatz-Token zurück."""
     _register(client)
+    eigenes = _app_token("admin@test.de")
     with patch("app.routers.auth.secrets.token_urlsafe", return_value="native-reset-token"):
         client.post("/api/auth/forgot-password", json={"email": "admin@test.de"})
     response = TestClient(app).post(
         "/api/auth/reset-password",
         json={"token": "native-reset-token", "new_password": "newpass12345"},
-        headers={"X-Client": "app"},
+        headers={"X-Client": "app", "Authorization": f"Bearer {eigenes}"},
     )
     assert response.status_code == 200
     token = response.json()["access_token"]
     assert isinstance(token, str) and token
     me = TestClient(app).get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200 and me.json()["email"] == "admin@test.de"
+
+
+def test_reset_link_ohne_sitzung_meldet_nicht_an(client):
+    """Ohne Sitzung setzt der Link das Passwort, meldet aber niemanden an
+    (zweite Prüfung 10/2026, F9) — sonst landete eine abgemeldete App im
+    Konto dessen, der den Link verschickt hat."""
+    _register(client)
+    with patch("app.routers.auth.secrets.token_urlsafe", return_value="fremd-reset"):
+        client.post("/api/auth/forgot-password", json={"email": "admin@test.de"})
+    fremd = TestClient(app)
+    r = fremd.post("/api/auth/reset-password",
+                   json={"token": "fremd-reset", "new_password": "newpass12345"},
+                   headers={"X-Client": "app"})
+    assert r.status_code == 200 and r.json()["access_token"] is None
+    assert "access_token" not in r.cookies
+    # Mit dem neuen Passwort geht die Anmeldung.
+    assert TestClient(app).post("/api/auth/login", json={
+        "email": "admin@test.de", "password": "newpass12345"}).status_code == 200
 
 
 def test_reset_password_invalid_token(client):
@@ -2987,24 +3011,222 @@ def test_push_register_validates_platform(client):
                        json={"token": "x", "platform": "windows"}).status_code == 422
 
 
-def test_app_verify_email_returns_bearer_token(client):
-    """Verification opened via the app deep link should land logged-in: an
-    `X-Client: app` verify-email gets a bearer token in the body."""
-    _register(client)  # admin (active)
+def _unbestaetigt_mit_link(email: str, raw: str, new_email: str | None = None) -> int:
+    """Ein registriertes Konto auf „unbestätigt" setzen und ihm einen Link geben."""
     store = Store(RATSLOTSE_DB)
-    uid = store.get_web_user_by_email("admin@test.de")["id"]
-    raw = "app-verify-token"
+    uid = int(store.get_web_user_by_email(email)["id"])
+    if new_email is None:
+        store.set_email_verified(uid, False)
     exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
-    store.create_email_verification(uid, hashlib.sha256(raw.encode()).hexdigest(), exp)
+    store.create_email_verification(uid, hashlib.sha256(raw.encode()).hexdigest(), exp,
+                                    new_email=new_email)
     store.close()
+    return uid
 
-    r = TestClient(app).post("/api/auth/verify-email", json={"token": raw},
+
+def _app_token(email: str) -> str:
+    r = TestClient(app).post("/api/auth/login", json={"email": email, "password": "password123"},
                              headers={"X-Client": "app"})
     assert r.status_code == 200
-    token = r.json()["access_token"]
-    assert isinstance(token, str) and token
-    me = TestClient(app).get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    return r.json()["access_token"]
+
+
+def test_app_verify_email_returns_bearer_token(client):
+    """Verification opened in the app's OWN session gets a fresh bearer token."""
+    _register(client)  # admin (active)
+    _unbestaetigt_mit_link("admin@test.de", "app-verify-token")
+    token = _app_token("admin@test.de")
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "app-verify-token"},
+                             headers={"X-Client": "app", "Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    neu = r.json()["access_token"]
+    assert isinstance(neu, str) and neu
+    me = TestClient(app).get("/api/auth/me", headers={"Authorization": f"Bearer {neu}"})
     assert me.status_code == 200 and me.json()["email_verified"] is True
+
+
+def test_verify_link_ohne_sitzung_meldet_niemanden_an(client):
+    """Die Erstbestätigung braucht die Sitzung des Kontos (F1): Wer eine fremde
+    Adresse registriert, hält Passwort und Sitzung — ein Klick der echten
+    Besitzerin dürfte das Konto nicht an beide verteilen. Ohne Sitzung: 401,
+    und der Link bleibt gültig, damit er nach dem Anmelden greift."""
+    _register(client, email="zweite@test.de")
+    _unbestaetigt_mit_link("zweite@test.de", "ohne-sitzung")
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "ohne-sitzung"},
+                             headers={"X-Client": "app"})
+    assert r.status_code == 401
+    assert "melde dich an" in r.json()["detail"]
+
+    # Nicht verbraucht: aus der eigenen Sitzung greift derselbe Link.
+    token = _app_token("zweite@test.de")
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "ohne-sitzung"},
+                             headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200 and r.json()["email_verified"] is True
+
+
+def test_verify_link_eines_anderen_kontos_wechselt_nicht(client):
+    """Login-CSRF (F3): Den Link SEINES Kontos an jemanden schicken, dessen App
+    angemeldet ist — die App darf nicht still in das fremde Konto wechseln."""
+    _register(client, email="angreifer@test.de")
+    _register(client, email="opfer@test.de")
+    _unbestaetigt_mit_link("angreifer@test.de", "fremder-link")
+    opfer = _app_token("opfer@test.de")
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "fremder-link"},
+                             headers={"X-Client": "app", "Authorization": f"Bearer {opfer}"})
+    assert r.status_code == 409
+    # Der Link ist nicht verbraucht und das Angreifer-Konto unverändert.
+    store = Store(RATSLOTSE_DB)
+    try:
+        assert not store.get_web_user_by_email("angreifer@test.de")["email_verified"]
+    finally:
+        store.close()
+
+
+def test_adresswechsel_link_braucht_die_eigene_sitzung(client):
+    """Auch der Wechsel-Link greift nur aus der Sitzung des Kontos (zweite
+    Prüfung 10/2026, F10): Sonst bestätigte die Besitzerin einer fremden
+    Adresse mit einem Klick, dass ihre Adresse zum Konto des Angreifers
+    gehört. Der Link bleibt dabei gültig."""
+    _register(client, email="wechsel@test.de")
+    _unbestaetigt_mit_link("wechsel@test.de", "wechsel-link", new_email="neu@test.de")
+
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "wechsel-link"},
+                             headers={"X-Client": "app"})
+    assert r.status_code == 401
+    eigenes = _app_token("wechsel@test.de")
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "wechsel-link"},
+                             headers={"Authorization": f"Bearer {eigenes}"})
+    assert r.status_code == 200 and r.json()["email"] == "neu@test.de"
+
+
+def _code_fuer(email: str, code: str, new_email: str | None = None) -> int:
+    from app.routers.auth import _code_hash
+    store = Store(RATSLOTSE_DB)
+    uid = int(store.get_web_user_by_email(email)["id"])
+    if new_email is None:
+        store.set_email_verified(uid, False)
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_email_verification(uid, hashlib.sha256(b"link-" + code.encode()).hexdigest(),
+                                    exp, new_email=new_email, code_hash=_code_hash(uid, code))
+    store.close()
+    return uid
+
+
+def test_bestaetigungscode_aus_der_eigenen_sitzung(client):
+    """Registriert am Laptop, Mail am Handy: Der Code wird dort eingetippt,
+    wo man angemeldet ist — kein Wechsel des Geräts, keine neue Anmeldung."""
+    _register(client, email="code@test.de")
+    _code_fuer("code@test.de", "123456")
+    token = _app_token("code@test.de")
+    kopf = {"X-Client": "app", "Authorization": f"Bearer {token}"}
+
+    r = TestClient(app).post("/api/auth/verify-code", json={"code": "123 456"}, headers=kopf)
+    assert r.status_code == 200
+    assert r.json()["email_verified"] is True and r.json()["access_token"]
+    # Der Link aus derselben Mail ist damit verbraucht.
+    r = TestClient(app).post("/api/auth/verify-email", json={"token": "link-123456"}, headers=kopf)
+    assert r.status_code == 400
+
+
+def test_bestaetigungscode_braucht_eine_sitzung(client):
+    _register(client, email="ohne@test.de")
+    _code_fuer("ohne@test.de", "123456")
+    assert TestClient(app).post("/api/auth/verify-code",
+                                json={"code": "123456"}).status_code == 401
+
+
+def test_bestaetigungscode_sperrt_nach_fuenf_fehlversuchen(client):
+    """Sechs Ziffern ließen sich sonst durchprobieren."""
+    _register(client, email="raten@test.de")
+    _code_fuer("raten@test.de", "123456")
+    kopf = {"Authorization": f"Bearer {_app_token('raten@test.de')}"}
+    c = TestClient(app)
+    for versuch in range(4):
+        assert c.post("/api/auth/verify-code", json={"code": f"00000{versuch}"},
+                      headers=kopf).status_code == 400
+    assert c.post("/api/auth/verify-code", json={"code": "000009"},
+                  headers=kopf).status_code == 429
+    # Auch der richtige hilft jetzt nicht mehr.
+    assert c.post("/api/auth/verify-code", json={"code": "123456"},
+                  headers=kopf).status_code == 429
+
+
+def test_bestaetigungscode_gilt_nur_fuer_das_eigene_konto(client):
+    """Ein Code ist an sein Konto gebunden — der Code des Angreifer-Kontos
+    bestätigt im Konto des Opfers nichts."""
+    _register(client, email="eins@test.de")
+    _register(client, email="zwei@test.de")
+    _code_fuer("eins@test.de", "111111")
+    _code_fuer("zwei@test.de", "222222")
+    kopf = {"Authorization": f"Bearer {_app_token('zwei@test.de')}"}
+    assert TestClient(app).post("/api/auth/verify-code", json={"code": "111111"},
+                                headers=kopf).status_code == 400
+
+
+def test_bestaetigungscode_schliesst_einen_adresswechsel_ab(client):
+    _register(client, email="umzug@test.de")
+    _code_fuer("umzug@test.de", "654321", new_email="umgezogen@test.de")
+    kopf = {"Authorization": f"Bearer {_app_token('umzug@test.de')}"}
+    r = TestClient(app).post("/api/auth/verify-code", json={"code": "654321"}, headers=kopf)
+    assert r.status_code == 200 and r.json()["email"] == "umgezogen@test.de"
+
+
+def test_bestaetigungsmail_traegt_den_code(client, monkeypatch):
+    from app.routers import auth as auth_mod
+    gesendet = {}
+    monkeypatch.setattr(auth_mod, "send_email",
+                        lambda an, betreff, html, **k: gesendet.update(html=html, text=k.get("text")))
+    monkeypatch.setattr(auth_mod, "protokolliere", lambda *a, **k: None)
+    monkeypatch.setattr(auth_mod, "get_settings", lambda: type("S", (), {
+        "resend_api_key": "x", "app_base_url": "https://ratslotse.example", "email_from": "x"})())
+    auth_mod._send_verification_email("a@example.org", "tok", "Anna", 1, "123456")
+    assert "123 456" in gesendet["html"] and "123456" in gesendet["text"]
+
+
+def test_reset_link_eines_anderen_kontos_wird_abgelehnt(client):
+    """Derselbe Riegel am Reset-Link: keine stille Übernahme einer Sitzung."""
+    _register(client, email="angreifer2@test.de")
+    _register(client, email="opfer2@test.de")
+    store = Store(RATSLOTSE_DB)
+    uid = int(store.get_web_user_by_email("angreifer2@test.de")["id"])
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_password_reset(uid, hashlib.sha256(b"reset-fremd").hexdigest(), exp)
+    store.close()
+    opfer = _app_token("opfer2@test.de")
+
+    r = TestClient(app).post("/api/auth/reset-password",
+                             json={"token": "reset-fremd", "new_password": "neuespasswort1"},
+                             headers={"X-Client": "app", "Authorization": f"Bearer {opfer}"})
+    assert r.status_code == 409
+    # Ohne fremde Sitzung greift er.
+    r = TestClient(app).post("/api/auth/reset-password",
+                             json={"token": "reset-fremd", "new_password": "neuespasswort1"})
+    assert r.status_code == 200
+
+
+def test_reset_bestaetigt_eine_vorab_registrierte_adresse(client):
+    """Wer eine fremde Adresse registriert hat, verliert das Konto, sobald die
+    Besitzerin „Passwort vergessen" benutzt (F1): neues Passwort, alte Sitzung
+    weg, Adresse bestätigt."""
+    angreifer = TestClient(app)
+    _register(angreifer, email="vorab@test.de")
+    store = Store(RATSLOTSE_DB)
+    uid = int(store.get_web_user_by_email("vorab@test.de")["id"])
+    store.set_email_verified(uid, False)
+    store.set_web_user_status(uid, "pending")
+    exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+    store.create_password_reset(uid, hashlib.sha256(b"reset-vorab").hexdigest(), exp)
+    store.close()
+    assert angreifer.get("/api/auth/me").status_code == 200
+
+    r = TestClient(app).post("/api/auth/reset-password",
+                             json={"token": "reset-vorab", "new_password": "neuespasswort1"})
+    assert r.status_code == 200
+    assert r.json()["email_verified"] is True and r.json()["status"] == "active"
+    assert angreifer.get("/api/auth/me").status_code == 401
 
 
 def test_cors_preflight_allows_app_webview_origin():
@@ -3172,6 +3394,47 @@ def test_apple_login_schaltet_ein_unbestaetigtes_konto_weiter_frei(client, apple
     assert r.status_code == 200
     assert r.json()["status"] == "active" and r.json()["email_verified"] is True
     assert r.json()["id"] == uid
+
+
+def test_apple_login_entzieht_dem_vorregistrierenden_den_zugang(client, apple_jwks):
+    """Wer eine fremde Adresse mit eigenem Passwort registriert, darf nach der
+    Apple-Anmeldung der echten Person nichts mehr haben: kein Passwort, keine
+    Sitzung, kein Push-Gerät. Bis 10/2026 galten beide weiter (90 Tage)."""
+    _register(client)
+    angreifer = TestClient(app)
+    r = angreifer.post("/api/auth/register", json={
+        "display_name": "Fremd", "email": "opfer@example.org", "password": "angreifer123"})
+    assert r.status_code == 201
+    uid = r.json()["id"]
+    store = Store(RATSLOTSE_DB)
+    try:
+        # Lokal ohne Mailversand ist ein neues Konto sofort bestätigt — hier
+        # den echten Fall herstellen: unbestätigt, mit Gerät des Angreifers.
+        store._conn.execute("UPDATE web_users SET email_verified = 0, status = 'pending' WHERE id = ?", (uid,))
+        store._conn.commit()
+        store.add_push_token(uid, "geraet-des-angreifers", "ios")
+    finally:
+        store.close()
+
+    opfer = TestClient(app)
+    r = opfer.post("/api/auth/apple", json={
+        "identity_token": _apple_token(sub="sub-opfer", email="opfer@example.org")})
+    assert r.status_code == 200 and r.json()["id"] == uid and r.json()["status"] == "active"
+
+    # Die alte Sitzung des Angreifers ist ungültig …
+    assert angreifer.get("/api/auth/me").status_code == 401
+    # … sein Passwort auch …
+    assert TestClient(app).post("/api/auth/login", json={
+        "email": "opfer@example.org", "password": "angreifer123"}).status_code == 401
+    # … und sein Gerät bekommt keine Mitteilungen mehr.
+    store = Store(RATSLOTSE_DB)
+    try:
+        assert store.get_push_tokens_for_owner(uid) == []
+        assert not store.get_web_user_by_id(uid)["password_set"]
+    finally:
+        store.close()
+    # Die echte Person bleibt angemeldet.
+    assert opfer.get("/api/auth/me").status_code == 200
 
 
 def test_apple_login_rejects_foreign_audience_and_bad_signature(client, apple_jwks):
@@ -3375,16 +3638,26 @@ def test_topic_suggestion_gives_numbered_plan_a_place_context():
 
 
 # ---- KI-Frage: Folgefragen im Stream (Design 24a) ----
+def _gelieferte_antwort(email: str = "admin@test.de", *, answer: str = "Der Rat stimmte zu [5].",
+                        extras: dict | None = None) -> str:
+    """Eine Antwort so festhalten, wie /ask es nach dem Streamen tut."""
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = int(store.get_web_user_by_email(email)["id"])
+        return store.qa_answer_record_save(
+            uid, "Was wurde zum Stadion entschieden?", answer,
+            [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+              "committee": "Rat", "outcome": "accepted"}],
+            extras or {})
+    finally:
+        store.close()
+
+
 def test_qa_share_roundtrip(client):
     """Teilen mit Substanz (Task 31): POST speichert den Antwort-Snapshot,
     GET liefert ihn ÖFFENTLICH (ohne Login) und ohne Konto-Daten."""
     _register(client)
-    r = client.post("/api/council/qa-share", json={
-        "question": "Was wurde zum Stadion entschieden?",
-        "answer": "Der Rat stimmte zu [5].",
-        "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
-                     "committee": "Rat", "outcome": "accepted"}],
-    })
+    r = client.post("/api/council/qa-share", json={"answer_id": _gelieferte_antwort()})
     assert r.status_code == 201
     token = r.json()["token"]
     assert len(token) >= 16
@@ -3396,124 +3669,69 @@ def test_qa_share_roundtrip(client):
     assert body["answer"] == "Der Rat stimmte zu [5]."
     assert body["sources"][0]["title"] == "Stadionneubau"
     assert "user_id" not in body
-
-    # Alte Snapshots (ohne Bausteine) liefern leere Listen statt zu fehlen.
     assert body["debates"] == [] and body["press_releases"] == []
     assert body["attachments"] == [] and body["parties"] == []
 
     assert client.get("/api/council/qa-share/gibtsnicht").status_code == 404
     # Ohne Login kein Anlegen.
-    assert client.post("/api/council/qa-share", json={
-        "question": "x", "answer": "y", "sources": []}).status_code in (401, 403)
+    assert client.post("/api/council/qa-share", json={"answer_id": "x"}).status_code in (401, 403)
 
 
-def test_qa_share_traegt_bausteine(client):
-    """Die geteilte Seite zeigt dieselben Bausteine wie das Gespräch —
-    Debatten, Presse, Anlagen und Fraktions-Positionen wandern mit in den
-    Snapshot (vorher sah der Empfänger nur Text + Beschlüsse)."""
+def test_qa_share_nimmt_nur_die_server_kopie(client):
+    """Was der Client mitschickt, zählt nicht (zweite Prüfung 10/2026, F3):
+    Vorher ließ sich jeder Text samt erfundener Zitate echter Ratsmitglieder
+    als „Automatische Antwort von Frag den Rat" veröffentlichen."""
     _register(client)
+    kennung = _gelieferte_antwort()
     r = client.post("/api/council/qa-share", json={
-        "question": "Was sagt der Rat zum Stadion?",
-        "answer": "Der Rat stimmte zu [5].",
-        "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
-                     "committee": "Rat", "outcome": "accepted"}],
-        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "kind": "inquiry",
-                      "agenda_item": "6.1 Stadionneubau",
-                      "excerpt": "Warnte vor einem Millionengrab.",
-                      "committee": "Rat", "date": "2026-06-01",
-                      "minutes_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do",
-                      "minutes_page": 6},
-                     # Der Snapshot ist öffentlich und die URL kommt vom
-                     # Client: alles außerhalb des Ratsinfo-Systems wird
-                     # verworfen statt als „Protokoll" verlinkt.
-                     {"speaker": "Ratsfrau Muster", "party": "CDU", "art": "rede",
-                      "top": "6.1 Stadionneubau", "excerpt": "Begrüßte den Plan.",
-                      "committee": "Rat", "date": "2026-06-01",
-                      "minutes_url": "https://boese.example.org/phishing.pdf"}],
+        "answer_id": kennung,
+        "answer": "Erfunden: Ratsherr X nannte das Projekt ein Verbrechen.",
+        "debates": [{"speaker": "Ratsherr X", "excerpt": "Erfunden."}],
+    })
+    assert r.status_code == 201
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["answer"] == "Der Rat stimmte zu [5]."
+    assert body["debates"] == []
+
+    # Inhalt ohne Kennung (ältere App): abgelehnt, mit der Bitte ums Update.
+    r = client.post("/api/council/qa-share", json={"question": "x", "answer": "y", "sources": []})
+    assert r.status_code == 422 and "aktualisiere" in r.json()["detail"]
+
+
+def test_qa_share_nur_die_eigene_antwort(client):
+    _register(TestClient(app), email="fremd@test.de")
+    _register(client)
+    fremde = _gelieferte_antwort("fremd@test.de")
+    assert client.post("/api/council/qa-share", json={"answer_id": fremde}).status_code == 404
+
+
+def test_qa_share_traegt_bausteine_und_parteien(client, monkeypatch):
+    """Die geteilte Seite zeigt dieselben Bausteine wie das Gespräch — aus der
+    Server-Kopie. Der Parteien-Baustein kommt aus eigenem Endpunkt und wandert
+    über die Kennung der Antwort dorthin."""
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    kennung = _gelieferte_antwort(extras={
+        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "kind": "speech",
+                     "excerpt": "Warnte vor einem Millionengrab.", "committee": "Rat",
+                     "date": "2026-06-01", "minutes_url": None, "minutes_page": None}],
         "press_releases": [{"title": "Stadion: Stadt informiert",
-                    "url": "https://www.oldenburg.de/x", "date": "2026-06-02",
-                    "excerpt": "Die Stadt lädt zur Infoveranstaltung."}],
-        "attachments": [{"number": 3, "label": "Machbarkeitsstudie",
-                     "url": "https://ris/anlage.pdf",
-                     "template_number": "26/0123", "template_title": "Stadionneubau",
-                     "excerpt": "Kapazität 15.000."}],
-        "parties": [{"party": "SPD", "stance": "dagegen", "position": "Skeptisch.",
-                      "unanimous": True, "note": None, "contributions": 3,
-                      "kernaussage": {"text": "Kein zweites Millionengrab.",
-                                      "speaker": "Wenzel", "date": "01.06.2026"}}],
-    })
-    assert r.status_code == 201
-    token = r.json()["token"]
+                            "url": "https://www.oldenburg.de/x", "date": "2026-06-02"}],
+        "attachments": [], "chart": None})
+    monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", lambda *a, **k: [(1, 0.5)])
+    meinung = [{"party": "SPD", "stance": "dagegen", "position": "Skeptisch.",
+                "unanimous": True, "note": None, "kernaussage": None, "contributions": 3}]
+    monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: meinung)
+    assert client.post("/api/council/party-meinungen", json={
+        "question": "Stadionneubau?", "answer_id": kennung}).status_code == 200
 
-    client.cookies.clear()  # öffentlich lesbar
-    body = client.get(f"/api/council/qa-share/{token}").json()
+    r = client.post("/api/council/qa-share", json={"answer_id": kennung})
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
     assert body["debates"][0]["speaker"] == "Ratsherr Wenzel"
-    assert body["debates"][0]["kind"] == "inquiry"
-    assert body["debates"][0]["agenda_item"] == "6.1 Stadionneubau"
-    assert body["debates"][0]["minutes_url"] == (
-        "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do")
-    assert body["debates"][0]["minutes_page"] == 6
-    assert body["debates"][1]["minutes_url"] is None
-    assert body["debates"][1]["minutes_page"] is None
     assert body["press_releases"][0]["url"] == "https://www.oldenburg.de/x"
-    assert body["press_releases"][0]["excerpt"] == "Die Stadt lädt zur Infoveranstaltung."
-    assert body["attachments"][0]["template_number"] == "26/0123"
-    # Die Beleg-Nummer: Ohne sie fände „[A3]" im Text seine Karte nicht.
-    assert body["attachments"][0]["number"] == 3
     assert body["parties"][0]["stance"] == "dagegen"
-    assert "user_id" not in body
-
-
-def test_qa_share_nimmt_die_alten_feldnamen_an(client):
-    """Unbekannte Schlüssel verwirft Pydantic still — so gingen bis 10/2026
-    Art, TOP und Anlagen-Nummer aus dem Web verloren (``art``/``top``/``nr``)
-    und aus der iOS-App sogar alle Bausteine (``debatten``, ``presse``,
-    ``anlagen``, ``parteien``, ``grafik``). Die App im Store lässt sich nicht
-    nachziehen; der Server nimmt die alten Namen deshalb weiter an."""
-    _register(client)
-    r = client.post("/api/council/qa-share", json={
-        "question": "Was sagt der Rat zum Stadion?",
-        "answer": "Die Studie [A2] rechnet mit 15.000 Plätzen.",
-        "debatten": [{"speaker": "Ratsherr Wenzel", "art": "inquiry",
-                      "top": "6.1 Stadionneubau", "excerpt": "Fragte nach."}],
-        "presse": [{"title": "Stadion: Stadt informiert",
-                    "url": "https://www.oldenburg.de/x", "excerpt": "Infoabend."}],
-        "anlagen": [{"nr": 2, "label": "Machbarkeitsstudie", "excerpt": "15.000."}],
-        "parteien": [{"party": "SPD", "position": "Skeptisch."},
-                     {"party": "CDU", "position": "Dafür."}],
-        "grafik": {"kind": "linie", "title": "Kosten", "series": [
-            {"year": 2025, "value": 1.0}, {"year": 2026, "value": 2.0}]},
-    })
-    assert r.status_code == 201
-    client.cookies.clear()
-    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
-    assert body["debates"][0]["kind"] == "inquiry"
-    assert body["debates"][0]["agenda_item"] == "6.1 Stadionneubau"
-    assert body["press_releases"][0]["excerpt"] == "Infoabend."
-    assert body["attachments"][0]["number"] == 2
-    assert [p["party"] for p in body["parties"]] == ["SPD", "CDU"]
-    assert body["chart"]["title"] == "Kosten"
-
-
-def test_qa_share_kappt_rohe_eintraege_statt_abzuweisen(client):
-    """Die iOS-App reicht die Strom-Einträge ungekürzt zurück. Ein ``null``
-    bei ``kind``, ein überlanger Titel oder ein Eintrag zu viel darf das
-    Teilen nicht scheitern lassen — gekappt wird auf die Feldgrenzen."""
-    _register(client)
-    r = client.post("/api/council/qa-share", json={
-        "question": "Was sagt der Rat?", "answer": "Viel.",
-        "debates": [{"speaker": "Wenzel", "kind": None, "agenda_item": None,
-                     "excerpt": "x" * 5000, "id": 7}] * 25,
-        "press_releases": [{"title": "T" * 900, "url": "https://www.oldenburg.de/x",
-                            "excerpt": "y" * 900}],
-    })
-    assert r.status_code == 201, r.text
-    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
-    assert len(body["debates"]) == 20
-    assert body["debates"][0]["kind"] == "speech"
-    assert len(body["debates"][0]["excerpt"]) == 2000
-    assert len(body["press_releases"][0]["title"]) == 300
-    assert len(body["press_releases"][0]["excerpt"]) == 600
 
 
 def _go_karte(frage: str = "Wie lange darf man im Rat reden?") -> dict:
@@ -3527,70 +3745,52 @@ def _go_karte(frage: str = "Wie lange darf man im Rat reden?") -> dict:
 def test_qa_share_traegt_die_geschaeftsordnung(client):
     """Bei einer Verfahrensfrage ist die Karte „Aus der Geschäftsordnung"
     oft der einzige Beleg — ohne sie stünde die geteilte Antwort quellenlos
-    da. Sie reist unverändert mit, samt Wortlaut."""
+    da. Seit dem Rückmerge 10/2026 reist sie in der SERVER-Kopie der Antwort
+    mit (``_antwort_festhalten``), nicht mehr im Körper des Clients — dort
+    stand sie auf dev, bis die zweite Sicherheitsprüfung (F3) das Teilen auf
+    eine Kennung umstellte."""
     _register(client)
     karte = _go_karte()
-    r = client.post("/api/council/qa-share", json={
-        "question": "Wie lange darf man im Rat reden?",
-        "answer": "Laut Geschäftsordnung höchstens zehn Minuten.",
-        "rules_of_procedure": karte,
-    })
+    kennung = _gelieferte_antwort(answer="Laut Geschäftsordnung höchstens zehn Minuten.",
+                                  extras={"rules_of_procedure": karte})
+    r = client.post("/api/council/qa-share", json={"answer_id": kennung})
     assert r.status_code == 201
     client.cookies.clear()
     body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
     assert body["rules_of_procedure"] == karte
-    assert body["sources"] == []
 
 
 def test_qa_share_ohne_geschaeftsordnung(client):
     """Ohne Karte — und für alle vor dem Nachtrag geteilten Antworten — steht
     das Feld auf ``null``, statt zu fehlen."""
     _register(client)
-    r = client.post("/api/council/qa-share", json={
-        "question": "Was wurde zum Stadion entschieden?", "answer": "Zugestimmt [5].",
-        "sources": [{"id": 5, "title": "Stadionneubau"}],
-    })
+    r = client.post("/api/council/qa-share", json={"answer_id": _gelieferte_antwort()})
     client.cookies.clear()
     body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
     assert body["rules_of_procedure"] is None
 
 
-def test_qa_share_geschaeftsordnung_nur_mit_dem_pdf_der_stadt(client):
-    """Der Snapshot ist öffentlich, die Karte kommt vom Client: Ein Link,
-    der nicht auf das PDF der Stadt zeigt, verwirft die Karte. Das Teilen
-    selbst scheitert daran nicht — eine Karte aus einer älteren Fassung soll
-    die Antwort nicht unteilbar machen."""
-    _register(client)
-    karte = _go_karte()
-    karte["sections"][0]["url"] = "https://boese.example.org/phishing.pdf"
-    r = client.post("/api/council/qa-share", json={
-        "question": "Wie lange darf man im Rat reden?", "answer": "Zehn Minuten.",
-        "rules_of_procedure": karte,
-    })
-    assert r.status_code == 201
-    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
-    assert body["rules_of_procedure"] is None
+def test_antwort_festhalten_nimmt_die_karte_mit(client):
+    """Die Karte, die /ask im sources-Ereignis zeigt, landet auch in der
+    Kopie, die geteilt wird — sonst fehlte sie genau dort."""
+    from app.routers import council as router_modul
 
-    # Ebenso eine Karte über dem Deckel: mehr Paragrafen, als je eine
-    # Antwort mitbringt.
-    karte = _go_karte()
-    karte["sections"] = karte["sections"] * 10
-    r = client.post("/api/council/qa-share", json={
-        "question": "Wie lange darf man im Rat reden?", "answer": "Zehn Minuten.",
-        "rules_of_procedure": karte,
-    })
-    assert r.status_code == 201
-    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
-    assert body["rules_of_procedure"] is None
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    try:
+        user = store.get_web_user_by_email("admin@test.de")
+        kennung = router_modul._antwort_festhalten(
+            store, user, "Wie lange darf man reden?", "Zehn Minuten.", [], [],
+            rules={"title": "Geschäftsordnung"})
+        rec = store.qa_answer_record_get(kennung, int(user["id"]))
+    finally:
+        store.close()
+    assert rec["extras"]["rules_of_procedure"] == {"title": "Geschäftsordnung"}
 
 
 def test_qa_share_public_report_and_admin_removal(client):
     _register(client)
-    made = client.post("/api/council/qa-share", json={
-        "question": "Was wurde beschlossen?",
-        "answer": "Eine automatisch erzeugte Antwort [1].",
-        "sources": [],
-    })
+    made = client.post("/api/council/qa-share", json={"answer_id": _gelieferte_antwort()})
     assert made.status_code == 201
     token = made.json()["token"]
 
@@ -3622,17 +3822,11 @@ def test_qa_share_public_report_and_admin_removal(client):
 
 
 def test_qa_share_filters_objectionable_or_embedded_web_content(client):
+    """Auch eine gelieferte Antwort mit eingebettetem Web-Ziel wird nicht geteilt."""
     _register(client)
-    for question, answer in (
-        ("Sieg Heil", "Antwort."),
-        ("Normale Frage", "Hier klicken: https://phishing.invalid"),
-        ("Normale Frage", "<script>alert(1)</script>"),
-    ):
-        response = client.post("/api/council/qa-share", json={
-            "question": question,
-            "answer": answer,
-            "sources": [],
-        })
+    for answer in ("Hier klicken: https://phishing.invalid", "<script>alert(1)</script>"):
+        response = client.post("/api/council/qa-share",
+                               json={"answer_id": _gelieferte_antwort(answer=answer)})
         assert response.status_code == 422
         assert "öffentlicher Link" in response.json()["detail"]
 
@@ -3672,8 +3866,15 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
     # Cache-Hit: gleiche Treffer-IDs wie Fall 1 → Ergebnis kommt ohne LLM
     # (partei_meinungen ist noch der kaputt-Mock — er darf nicht laufen).
     zaehler["n"] = 0
-    r = client.post("/api/council/party-meinungen", json={"question": "Anders formuliert?"})
+    r = client.post("/api/council/party-meinungen", json={"question": "stadionneubau"})
     assert r.status_code == 200 and r.json()["parties"] == meinung
+
+    # Eine ANDERE Frage zur selben Beitragsmenge trifft den Zwischenspeicher
+    # nicht: Die Frage steht im Prompt, und ein Ergebnis, das ein anderer mit
+    # seiner Frage erzeugt hat, darf nicht bei allen landen (F16).
+    zaehler["n"] = 0
+    r = client.post("/api/council/party-meinungen", json={"question": "Anders formuliert?"})
+    assert r.status_code == 200 and r.json()["parties"] == []
 
 
 def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):

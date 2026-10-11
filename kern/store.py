@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -286,7 +287,9 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
     user_id    INTEGER NOT NULL,
     expires_at TEXT NOT NULL,
     used       INTEGER NOT NULL DEFAULT 0,
-    new_email  TEXT
+    new_email  TEXT,
+    code_hash  TEXT,                        -- 6-stelliger Code aus derselben Mail (10/2026)
+    code_attempts INTEGER NOT NULL DEFAULT 0 -- Fehlversuche; ab CODE_VERSUCHE gesperrt
 );
 
 -- Native-app push device tokens (APNs on iOS, FCM on Android). One row per
@@ -409,6 +412,22 @@ CREATE TABLE IF NOT EXISTS qa_shares (
     extras   TEXT                   -- JSON {debates, press_releases, attachments, parties}
 );
 
+-- Die Antworten der KI-Frage, wie der SERVER sie geliefert hat (10/2026).
+-- Teilen nimmt nur noch diese Kopie, nie die des Clients: Bis dahin ließ sich
+-- unter ratslotse.de/g beliebiger Text samt erfundener Zitate echter
+-- Ratsmitglieder als „Automatische Antwort von Frag den Rat" veröffentlichen
+-- (zweite Sicherheitsprüfung, F3). 90 Tage, dann räumt sich die Tabelle selbst.
+CREATE TABLE IF NOT EXISTS qa_answer_records (
+    id         TEXT PRIMARY KEY,      -- unerratbares Token, geht im done-Ereignis an den Client
+    owner_id   INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    question   TEXT NOT NULL,
+    answer     TEXT NOT NULL,
+    sources    TEXT NOT NULL,         -- JSON [{id, title, session_date, committee, outcome}]
+    extras     TEXT NOT NULL          -- JSON {debates, press_releases, attachments, chart, parties}
+);
+CREATE INDEX IF NOT EXISTS idx_qa_answer_records_created ON qa_answer_records(created_at);
+
 -- „Gründliche Recherche" (RG-10): server-seitige Recherche-Jobs. Der Job
 -- läuft im Backend-Thread weiter, wenn der Client die Verbindung verliert
 -- (Tab-Wechsel, App-Navigation); diese Zeile ist die persistente Wahrheit —
@@ -426,7 +445,8 @@ CREATE TABLE IF NOT EXISTS deep_research_jobs (
     created  TEXT NOT NULL,
     updated  TEXT NOT NULL,
     model    TEXT,                  -- Modell des Berichts, beim Einreichen gewählt (NULL = vor 09/2026)
-    premium  INTEGER NOT NULL DEFAULT 0  -- 1 = mit dem Recht premium_models eingereicht
+    premium  INTEGER NOT NULL DEFAULT 0, -- 1 = mit dem Recht premium_models eingereicht
+    counts_against_quota INTEGER NOT NULL DEFAULT 0  -- 1 = Berichtstext ging schon raus (zählt, auch gestoppt)
 );
 CREATE INDEX IF NOT EXISTS idx_deep_jobs_user ON deep_research_jobs(user_id, created DESC);
 
@@ -872,6 +892,7 @@ MAIL_ANLAESSE: frozenset[str] = frozenset({
     "password_reset",    # Link zum Zurücksetzen
     "email_change",      # Bestätigung an die NEUE Adresse
     "email_change_info",  # Hinweis an die alte Adresse
+    "duplicate_signup",  # Registrierung auf eine vorhandene Adresse versucht
     "setup_reminder",    # scripts/remind_setup.py
     "feedback_reply",    # Antwort auf eine Rückmeldung
     "probe",             # Testmail aus den Kontoeinstellungen und der Neuigkeiten-Probe
@@ -914,6 +935,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("qa_conversation_turns", "user_id"),
     ("assistant_checks", "user_id"),
     ("qa_shares", "user_id"),
+    ("qa_answer_records", "owner_id"),
     ("deep_research_jobs", "user_id"),
     ("quiz_answers", "owner_id"),
     ("quiz_ratings", "owner_id"),
@@ -1793,6 +1815,20 @@ class Store:
             with self._conn:
                 self._conn.execute(
                     "ALTER TABLE email_verification_tokens ADD COLUMN new_email TEXT")
+        # Bestätigungscode (10/2026): Dieselbe Mail trägt neben dem Link einen
+        # sechsstelligen Code, den man dort eintippt, wo man angemeldet ist.
+        # Beide Spalten prüfen sich selbst. Bestandszeilen bleiben ohne Code
+        # (NULL) — ihr Link gilt weiter.
+        evt_cols = self._table_cols("email_verification_tokens")
+        if evt_cols and "code_hash" not in evt_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE email_verification_tokens ADD COLUMN code_hash TEXT")
+        if evt_cols and "code_attempts" not in evt_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE email_verification_tokens "
+                    "ADD COLUMN code_attempts INTEGER NOT NULL DEFAULT 0")
         # Rückmeldung an die absendende Person (09/2026). Die Spalte prüft sich
         # SELBST — s. tests/test_web_users_spalten.py. Bestandszeilen bleiben
         # NULL: Für alles, was vor dieser Möglichkeit erledigt wurde, ist
@@ -1863,6 +1899,13 @@ class Store:
             with self._conn:
                 self._conn.execute(
                     "ALTER TABLE deep_research_jobs ADD COLUMN premium INTEGER NOT NULL DEFAULT 0")
+        # Kontingent ab dem ersten Berichtstext (10/2026): Die Spalte prüft
+        # sich selbst; Bestandszeilen bleiben 0 und zählen wie bisher.
+        if dj_cols and "counts_against_quota" not in dj_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE deep_research_jobs "
+                    "ADD COLUMN counts_against_quota INTEGER NOT NULL DEFAULT 0")
         qs_cols = self._table_cols("qa_shares")
         if qs_cols and "extras" not in qs_cols:
             with self._conn:
@@ -3424,11 +3467,43 @@ class Store:
         self.set_web_user_roles(user_id, [] if role == _roles.DEFAULT_ROLE else [role])
 
     def increment_token_version(self, user_id: int) -> int:
-        """Bump token_version so all existing JWTs for this user become invalid."""
+        """Bump token_version so all existing JWTs for this user become invalid.
+
+        **Verwirft dabei einen schwebenden Adresswechsel.** Beide Aufrufer
+        (Passwort-Reset und Passwortwechsel) heißen „das Konto war womöglich in
+        fremder Hand". Die Warnmail zum Adresswechsel verspricht genau das:
+        „ändere jetzt dein Passwort — damit wird der Wechsel hinfällig". Bis
+        10/2026 stimmte das nicht: Der Link im Postfach des Angreifers blieb
+        gültig, und mit der übernommenen Adresse holte er sich das Konto über
+        „Passwort vergessen" zurück. Erstbestätigungs-Tokens (``new_email IS
+        NULL``) bleiben, wie bei ``cancel_email_change``.
+
+        **Und alles andere, was eine fremde Sitzung hinterlassen haben kann**
+        (Sicherheitsprüfung 10/2026, F14/F20/F21/F22). Ein JWT ist nicht der
+        einzige Zugang, den man sich mit einer übernommenen Sitzung anlegt:
+
+        * **Push-Geräte** — ein eingetragenes Fremdgerät bekam sonst nach dem
+          Reset weiter jede Meldung des Kontos. Die eigene App trägt sich beim
+          nächsten Start von selbst wieder ein.
+        * **Offene Reset-Links** — ein vor dem Absichern angeforderter Link
+          setzte das Passwort sonst eine Stunde lang zurück, über das neue
+          hinweg.
+        * **Die Kalender-Adresse** — sie ist ein eigenes Geheimnis und lief
+          sonst einfach weiter. Sie wird geleert und beim nächsten Abruf der
+          Abo-Seite neu angelegt; ein abonnierter Kalender muss die neue
+          Adresse dann einmal neu bekommen.
+        """
         with self._conn:
             self._conn.execute(
-                "UPDATE web_users SET token_version = token_version + 1 WHERE id = ?", (user_id,)
+                "UPDATE web_users SET token_version = token_version + 1, "
+                "calendar_token = NULL WHERE id = ?", (user_id,)
             )
+            self._conn.execute(
+                "DELETE FROM email_verification_tokens WHERE user_id = ? AND new_email IS NOT NULL",
+                (user_id,),
+            )
+            self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
+            self._conn.execute("DELETE FROM push_tokens WHERE owner_id = ?", (user_id,))
         row = self._conn.execute("SELECT token_version FROM web_users WHERE id = ?", (user_id,)).fetchone()
         return row[0] if row else 0
 
@@ -3454,15 +3529,29 @@ class Store:
     def consume_password_reset(self, token_hash: str, now: str) -> int | None:
         """Validate + burn a reset token: returns the user_id if it exists, is unused and
         not expired (then marks it used); otherwise None."""
-        row = self._conn.execute(
-            "SELECT user_id, expires_at, used FROM password_reset_tokens WHERE token_hash = ?",
-            (token_hash,),
-        ).fetchone()
-        if not row or row["used"] or row["expires_at"] <= now:
-            return None
+        # In EINER Anweisung prüfen und verbrennen: Zwei gleichzeitige
+        # Einlösungen desselben Links kamen vorher beide durch die Prüfung.
         with self._conn:
-            self._conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE token_hash = ?", (token_hash,))
-        return int(row["user_id"])
+            cur = self._conn.execute(
+                "UPDATE password_reset_tokens SET used = 1 "
+                "WHERE token_hash = ? AND used = 0 AND expires_at > ?",
+                (token_hash, now),
+            )
+        if cur.rowcount != 1:
+            return None
+        row = self._conn.execute(
+            "SELECT user_id FROM password_reset_tokens WHERE token_hash = ?", (token_hash,)
+        ).fetchone()
+        return int(row["user_id"]) if row else None
+
+    def peek_password_reset(self, token_hash: str, now: str) -> int | None:
+        """Wem ein Reset-Link gehört — ohne ihn zu verbrennen; ``None`` wenn ungültig."""
+        row = self._conn.execute(
+            "SELECT user_id FROM password_reset_tokens "
+            "WHERE token_hash = ? AND used = 0 AND expires_at > ?",
+            (token_hash, now),
+        ).fetchone()
+        return int(row["user_id"]) if row else None
 
     def set_email_verified(self, user_id: int, verified: bool = True) -> None:
         with self._conn:
@@ -3472,7 +3561,8 @@ class Store:
             )
 
     def create_email_verification(self, user_id: int, token_hash: str, expires_at: str,
-                                  new_email: str | None = None) -> None:
+                                  new_email: str | None = None,
+                                  code_hash: str | None = None) -> None:
         """Store a single-use email-verification token (only its sha256 hash). Drops the
         user's prior unused tokens so requesting a new link invalidates old ones.
 
@@ -3484,9 +3574,11 @@ class Store:
         with self._conn:
             self._conn.execute("DELETE FROM email_verification_tokens WHERE user_id = ?", (user_id,))
             self._conn.execute(
-                "INSERT INTO email_verification_tokens(token_hash, user_id, expires_at, used, new_email) "
-                "VALUES (?,?,?,0,?)",
-                (token_hash, user_id, expires_at, (new_email or "").lower().strip() or None),
+                "INSERT INTO email_verification_tokens"
+                "(token_hash, user_id, expires_at, used, new_email, code_hash) "
+                "VALUES (?,?,?,0,?,?)",
+                (token_hash, user_id, expires_at, (new_email or "").lower().strip() or None,
+                 code_hash),
             )
 
     def consume_email_verification(self, token_hash: str, now: str) -> dict | None:
@@ -3498,17 +3590,64 @@ class Store:
         TOKEN und nirgends sonst — ein Aufrufer, der das aus der URL oder aus
         dem Kontostand ableiten müsste, läge irgendwann falsch.
         """
-        row = self._conn.execute(
-            "SELECT user_id, expires_at, used, new_email FROM email_verification_tokens "
-            "WHERE token_hash = ?",
-            (token_hash,),
-        ).fetchone()
-        if not row or row["used"] or row["expires_at"] <= now:
+        treffer = self.peek_email_verification(token_hash, now)
+        if treffer is None:
             return None
         with self._conn:
-            self._conn.execute(
-                "UPDATE email_verification_tokens SET used = 1 WHERE token_hash = ?", (token_hash,)
+            cur = self._conn.execute(
+                "UPDATE email_verification_tokens SET used = 1 "
+                "WHERE token_hash = ? AND used = 0", (token_hash,)
             )
+        return treffer if cur.rowcount == 1 else None
+
+    def consume_email_code(self, user_id: int, code_hash: str, now: str,
+                           max_versuche: int) -> dict | str:
+        """Den Bestätigungscode eines Kontos einlösen.
+
+        Gibt ``{"user_id", "new_email"}`` zurück, wenn er passt (der Token ist
+        danach verbraucht, der Link aus derselben Mail also auch). Sonst einen
+        Grund: ``"keiner"`` (kein offener Code), ``"falsch"`` oder
+        ``"gesperrt"`` — nach ``max_versuche`` Fehlversuchen gilt der Code
+        nicht mehr, sonst ließen sich sechs Ziffern durchprobieren.
+        """
+        row = self._conn.execute(
+            "SELECT token_hash, code_hash, code_attempts, new_email "
+            "FROM email_verification_tokens WHERE user_id = ? AND used = 0 "
+            "AND expires_at > ? AND code_hash IS NOT NULL",
+            (user_id, now),
+        ).fetchone()
+        if not row:
+            return "keiner"
+        if row["code_attempts"] >= max_versuche:
+            return "gesperrt"
+        if not hmac.compare_digest(str(row["code_hash"]), code_hash):
+            with self._conn:
+                self._conn.execute(
+                    "UPDATE email_verification_tokens SET code_attempts = code_attempts + 1 "
+                    "WHERE token_hash = ?", (row["token_hash"],))
+            return "gesperrt" if row["code_attempts"] + 1 >= max_versuche else "falsch"
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE email_verification_tokens SET used = 1 "
+                "WHERE token_hash = ? AND used = 0", (row["token_hash"],))
+        if cur.rowcount != 1:
+            return "keiner"
+        return {"user_id": user_id, "new_email": row["new_email"]}
+
+    def peek_email_verification(self, token_hash: str, now: str) -> dict | None:
+        """Wie ``consume_email_verification``, aber ohne den Token zu verbrennen.
+
+        Für die Prüfung VOR dem Einlösen: Wer den Link öffnet, ohne als das
+        Konto angemeldet zu sein, dem er gehört, bekommt eine Ablehnung — und
+        der Link muss danach noch funktionieren.
+        """
+        row = self._conn.execute(
+            "SELECT user_id, new_email FROM email_verification_tokens "
+            "WHERE token_hash = ? AND used = 0 AND expires_at > ?",
+            (token_hash, now),
+        ).fetchone()
+        if not row:
+            return None
         return {"user_id": int(row["user_id"]), "new_email": row["new_email"]}
 
     def pending_email_change(self, user_id: int, now: str) -> str | None:
@@ -3553,6 +3692,9 @@ class Store:
                 "UPDATE web_users SET email = ?, email_verified = 1 WHERE id = ?",
                 (new_email.lower().strip(), user_id),
             )
+            # Ein offener Reset-Link ging an die ALTE Adresse. Er darf das
+            # Konto nach dem Umzug nicht mehr zurückholen (F22).
+            self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (user_id,))
 
     def delete_web_user(self, user_id: int) -> None:
         """Hard-delete a web account and everything keyed to it (GDPR: right to erasure).
@@ -3610,6 +3752,53 @@ class Store:
                  json.dumps(quellen or [], ensure_ascii=False), now,
                  json.dumps(extras, ensure_ascii=False) if extras else None))
         return token
+
+    #: So lange lässt sich eine gelieferte Antwort noch teilen.
+    QA_ANSWER_RECORD_DAYS = 90
+
+    def qa_answer_record_save(self, owner_id: int, question: str, answer: str,
+                              sources: list[dict], extras: dict) -> str:
+        """Eine gelieferte Antwort festhalten → Kennung für das done-Ereignis."""
+        import secrets
+
+        record_id = secrets.token_urlsafe(16)
+        now = datetime.utcnow()
+        grenze = (now - timedelta(days=self.QA_ANSWER_RECORD_DAYS)).isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM qa_answer_records WHERE created_at < ?", (grenze,))
+            self._conn.execute(
+                "INSERT INTO qa_answer_records (id, owner_id, created_at, question, answer, "
+                "sources, extras) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (record_id, owner_id, now.isoformat(timespec="seconds"), question[:300],
+                 answer[:8000], json.dumps(sources, ensure_ascii=False),
+                 json.dumps(extras, ensure_ascii=False)))
+        return record_id
+
+    def qa_answer_record_get(self, record_id: str, owner_id: int) -> dict | None:
+        """Eine gelieferte Antwort — nur für das Konto, dem sie geliefert wurde."""
+        row = self._conn.execute(
+            "SELECT question, answer, sources, extras FROM qa_answer_records "
+            "WHERE id = ? AND owner_id = ?", (record_id, owner_id)).fetchone()
+        if not row:
+            return None
+        try:
+            return {"question": row["question"], "answer": row["answer"],
+                    "sources": json.loads(row["sources"] or "[]"),
+                    "extras": json.loads(row["extras"] or "{}")}
+        except (ValueError, TypeError):
+            return None
+
+    def qa_answer_record_set_parties(self, record_id: str, owner_id: int,
+                                     parties: list[dict]) -> None:
+        """Den Parteien-Baustein nachtragen — er kommt aus eigenem Endpunkt."""
+        rec = self.qa_answer_record_get(record_id, owner_id)
+        if rec is None:
+            return
+        extras = {**rec["extras"], "parties": parties}
+        with self._conn:
+            self._conn.execute(
+                "UPDATE qa_answer_records SET extras = ? WHERE id = ? AND owner_id = ?",
+                (json.dumps(extras, ensure_ascii=False), record_id, owner_id))
 
     def qa_share_get(self, token: str) -> dict | None:
         """Öffentliche Sicht eines Snapshots — OHNE user_id."""
@@ -3721,11 +3910,22 @@ class Store:
         der lokalen Mitternacht (als UTC-Zeitstempel gerechnet, denn genau so
         liegt `created` in der Tabelle).
         """
+        # Ein gestoppter Job zählt, sobald sein Bericht schon beim Client war
+        # (``counts_against_quota``): Wer kurz vor Schluss stoppte, hatte den
+        # Text bereits — und der Job kostete nichts (zweite Prüfung 10/2026,
+        # F1). Ein Fehler kostet weiterhin nichts.
         row = self._conn.execute(
             "SELECT COUNT(*) FROM deep_research_jobs WHERE user_id = ? "
-            "AND status IN ('laeuft', 'fertig') AND created >= ?",
+            "AND (status IN ('laeuft', 'fertig') "
+            "     OR (counts_against_quota = 1 AND status != 'fehler')) AND created >= ?",
             (user_id, _tagesbeginn_utc())).fetchone()
         return int(row[0])
+
+    def deep_job_mark_counted(self, job_id: str) -> None:
+        """Ab jetzt zählt der Job zum Kontingent — der Bericht ist unterwegs."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE deep_research_jobs SET counts_against_quota = 1 WHERE id = ?", (job_id,))
 
     def deep_job_gesehen(self, job_id: str, user_id: int) -> None:
         """Bericht wurde gerendert — nicht erneut ungefragt einblenden."""

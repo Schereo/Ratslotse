@@ -20,6 +20,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, ChevronDown, ExternalLink, FileDown, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { personHref } from "@/lib/routes";
+import { nurHttps } from "@/lib/externer-link";
 // Reine Beleg-/Datums-Logik liegt in lib/qa-belege.ts — ohne "use client",
 // damit auch die Server-Komponente app/g sie AUFRUFEN kann (aus einem
 // Client-Modul kämen dort nur Referenzen an, keine Funktionen).
@@ -142,8 +143,10 @@ function usePersonenLexikon(): PersonEintrag[] {
   useEffect(() => {
     _lexikonPromise ||= fetch(apiUrl("/council/people-directory"),
       { credentials: "include", headers: authHeaders() })
-      .then((r) => (r.ok ? r.json() : { personen: [] }))
-      .then((b) => (b?.personen ?? []) as PersonEintrag[])
+      .then((r) => (r.ok ? r.json() : { people: [] }))
+      // Das Feld heißt seit dem englischen Vertrag `people`; das alte
+      // `personen` las still eine leere Liste — die Marken fehlten.
+      .then((b) => (b?.people ?? []) as PersonEintrag[])
       .catch(() => [] as PersonEintrag[]);
     let lebt = true;
     void _lexikonPromise.then((p) => { if (lebt) setLex(p); });
@@ -744,7 +747,7 @@ export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
           return (
           <li key={i} id={`${ankerPrefix}-${nr}`}
             className="scroll-mt-16 text-hinweis">
-            <a href={a.url ?? undefined} target="_blank" rel="noopener noreferrer"
+            <a href={nurHttps(a.url)} target="_blank" rel="noopener noreferrer"
               className="group flex flex-wrap items-baseline gap-2">
               {b && (
                 <span aria-hidden
@@ -788,7 +791,7 @@ export function PresseBlock({ press_releases }: { press_releases: PresseHinweis[
       <ul className="mt-1.5 space-y-1">
         {press_releases.map((p) => (
           <li key={p.url}>
-            <a href={p.url} target="_blank" rel="noopener noreferrer"
+            <a href={nurHttps(p.url)} target="_blank" rel="noopener noreferrer"
               className="group block rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
               <span className="flex flex-wrap items-baseline gap-2">
                 <span className="min-w-0 flex-1 break-words text-quelle group-hover:underline">{p.title}</span>
@@ -1143,7 +1146,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
             Firefox/Edge; Safari öffnet dann schlicht das PDF). */}
         {d.minutes_url && (
           <a target="_blank" rel="noopener noreferrer"
-            href={d.minutes_page ? `${d.minutes_url}#page=${d.minutes_page}` : d.minutes_url}
+            href={nurHttps(d.minutes_page ? `${d.minutes_url}#page=${d.minutes_page}` : d.minutes_url)}
             title={d.minutes_page
               ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.minutes_page})`
               : "Sitzungsprotokoll öffnen (PDF)"}

@@ -35,7 +35,7 @@ from ..deps import get_store
 from ..ratelimit import login_limiter
 from ..schemas import UserOut
 from ..security import decode_rs256_token, hash_password
-from .auth import _app_access_token, _set_auth_cookie, _to_out
+from .auth import _app_access_token, _promote_configured_admin, _set_auth_cookie, _to_out
 
 logger = logging.getLogger("ratslotse.web.auth_apple")
 
@@ -53,7 +53,7 @@ _JWKS_TTL = 24 * 3600
 
 
 class AppleLoginRequest(BaseModel):
-    identity_token: str = Field(min_length=20)
+    identity_token: str = Field(min_length=20, max_length=4096)
     # Apple übermittelt den Namen NUR bei der ersten Autorisierung und NICHT im
     # signierten Token — er kommt daher ungeprüft vom Client. Das ist vertretbar,
     # weil ein Anzeigename keine Berechtigung trägt; er wird ausschließlich für
@@ -197,7 +197,6 @@ def apple_login(
     store: Store = Depends(get_store),
 ) -> UserOut:
     login_limiter.check(request)
-    settings = get_settings()
     claims = verify_apple_identity_token(body.identity_token)
     sub = str(claims["sub"])
     # Nur die E-Mail aus dem signierten Token zählt — eine Client-Angabe wäre
@@ -221,7 +220,23 @@ def apple_login(
             # selbst zurück — die Moderationsentscheidung war damit aushebelbar,
             # sobald die Apple-ID dieselbe bestätigte Adresse trug.
             war_unbestaetigt = not existing.get("email_verified")
-            store.link_apple_sub(existing["id"], sub)
+            if war_unbestaetigt:
+                # **Ein unbestätigtes Konto gehört noch niemandem.** Wer eine
+                # fremde Adresse mit eigenem Passwort registriert, kommt nicht
+                # weiter als bis zur Bestätigungs-Wand — bis die echte Person
+                # sich mit Apple anmeldet und das Konto damit bestätigt. Bis
+                # 10/2026 galten danach Passwort und Sitzung des Anmeldenden
+                # weiter (90 Tage), und er las mit, was die Person speicherte.
+                # Deshalb: Passwort durch einen Zufallswert ersetzen (das Konto
+                # gilt als Apple-only, ein eigenes geht über den Reset-Weg),
+                # alle Sitzungen beenden und die Push-Geräte des Vorbesitzers
+                # abmelden.
+                store.update_password_hash(existing["id"], hash_password(secrets.token_urlsafe(32)))
+                # Beendet auch die Push-Geräte, offene Reset-Links und die
+                # Kalender-Adresse des Vorbesitzers (s. Store).
+                store.increment_token_version(existing["id"])
+            store.link_apple_sub(existing["id"], sub,
+                                 password_set=False if war_unbestaetigt else None)
             if war_unbestaetigt:
                 store.set_email_verified(existing["id"])
                 if existing.get("status") == "pending":
@@ -241,15 +256,15 @@ def apple_login(
         # Neues Konto: Apple bestätigt die Adresse → sofort aktiv; Platzhalter-
         # Passwort (nicht anmeldbar), bis über den Reset-Weg eines gesetzt wird.
         # Apple hat die Adresse bestätigt, deshalb darf die konfigurierte
-        # Admin-Adresse hier sofort Admin werden — anders als bei der
-        # Registrierung, wo die Adresse unbewiesen behauptet ist. Der
-        # „erste:r Nutzer*in wird Admin"-Notnagel entfällt: er verschenkte
-        # Admin an eine beliebige Person und hätte den Schutz in
-        # _promote_configured_admin ausgehebelt.
-        is_admin = bool(settings.web_admin_email) and email == settings.web_admin_email.lower()
+        # Admin-Adresse hier Admin werden — aber über dieselbe eine
+        # Entscheidungsstelle wie nach der Mail-Bestätigung
+        # (`_promote_configured_admin`), also nur, solange es noch gar keinen
+        # Admin gibt. Bis 10/2026 stand hier eine eigene Abkürzung ohne diese
+        # Bedingung: Ein bewusst herabgestuftes Admin-Konto löschte sich und
+        # meldete sich mit Apple neu an — und war wieder Admin (F13).
         user_id = store.create_web_user(
             email, hash_password(secrets.token_urlsafe(32)),
-            "admin" if is_admin else "user", "active", email_verified=True,
+            "user", "active", email_verified=True,
             signup_client=client_kind(request),
         )
         # Wie bei der Registrierung mit Passwort: Im Browser fragt der
@@ -259,7 +274,7 @@ def apple_login(
         store.link_apple_sub(user_id, sub, password_set=False)
         if apple_name:
             store.set_display_name(user_id, apple_name)
-        user = store.get_web_user_by_id(user_id)
+        user = _promote_configured_admin(store, store.get_web_user_by_id(user_id))
         logger.info("Neues Konto %s über Apple erstellt", user_id)
 
     # Nachtrag für Konten, die vor „name" im Scope entstanden sind: Wer sich
@@ -269,5 +284,5 @@ def apple_login(
         store.set_display_name(user["id"], apple_name)
         user = store.get_web_user_by_id(user["id"])
 
-    _set_auth_cookie(response, user)
+    _set_auth_cookie(response, user, request)
     return _to_out(user, _app_access_token(request, user))

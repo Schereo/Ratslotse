@@ -502,6 +502,7 @@ struct VerificationPendingView: View {
     @State private var neu = ""
     @State private var passwort = ""
     @State private var busy = false
+    @State private var code = ""
 
     /// Wohin der Link zuletzt ging — die neue Adresse, sobald einer schwebt.
     private var zieladresse: String { model.user?.pendingEmail ?? user.email }
@@ -510,12 +511,34 @@ struct VerificationPendingView: View {
         AuthScaffold(
             scene: .wave,
             title: "Fast an Bord!",
-            subtitle: "Bestätige deine E-Mail-Adresse. Sobald der Link geöffnet ist, geht es hier automatisch weiter."
+            subtitle: "Bestätige deine E-Mail-Adresse: Öffne den Link aus der Mail oder gib den Code hier ein."
         ) {
             VStack(spacing: 16) {
                 RatsLabel(zieladresse, .mailWarning)
                     .font(RatsFont.body(14, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
+                // Der Code aus derselben Mail: für den Fall, dass sie auf einem
+                // anderen Gerät liegt als diese App.
+                HStack(spacing: 10) {
+                    TextField("123 456", text: $code)
+                        .keyboardType(.numberPad)
+                        .textContentType(.oneTimeCode)
+                        .multilineTextAlignment(.center)
+                        .font(RatsFont.body(17, weight: .semibold))
+                        .accessibilityLabel("Code aus der E-Mail")
+                    Button {
+                        busy = true
+                        Task {
+                            do { try await model.verifyCode(code) }
+                            catch { feedback = error.localizedDescription }
+                            busy = false
+                        }
+                    } label: {
+                        Text("Bestätigen")
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .disabled(busy || code.filter(\.isNumber).count != 6)
+                }
                 Button {
                     Task {
                         do { try await model.resendVerification(); feedback = "Der Link ist unterwegs." }

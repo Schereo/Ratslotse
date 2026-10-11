@@ -40,6 +40,22 @@ PROJECT_MIN_CONFIDENCE = 90
 _HIDDEN_SQL = ("EXISTS (SELECT 1 FROM council_district_project_verdicts vd "
                "WHERE vd.project_key = p.project_key AND vd.verdict = 'hidden')")
 
+#: Ein Konto, das mehr Vorhaben gemeldet hat als das, zählt fürs Ausblenden
+#: nicht mehr mit. Zwei Stimmen reichen zum Ausblenden — und zwei Konten
+#: konnten so per Schleife über alle Nummern JEDE Tafel der Stadt leeren
+#: (Sicherheitsprüfung 10/2026, F19). Wer ehrlich meldet, meldet ein paar
+#: falsch verortete Vorhaben in seinem Viertel, nicht Dutzende. Die Meldungen
+#: bleiben gespeichert; sie wirken nur nicht mehr.
+PROJECT_REPORTS_PER_ACCOUNT = 10
+
+#: Die Meldungen, die zählen — als Unterabfrage auf ein Vorhaben ``p``.
+_ZAEHLENDE_MELDUNGEN = (
+    "(SELECT COUNT(*) FROM council_district_project_reports r "
+    "WHERE r.project_key = p.project_key AND (SELECT COUNT(*) FROM "
+    "council_district_project_reports r2 WHERE r2.owner_id = r.owner_id) "
+    f"<= {PROJECT_REPORTS_PER_ACCOUNT})"
+)
+
 #: Wie weit zurück Beschlüsse als Kandidaten zählen (Monate). Ein Vorhaben
 #: lebt über Jahre, aber ein Beschluss von 2019 sagt nichts über 2027 —
 #: 24 Monate war die Messgrundlage des PoC.
@@ -414,8 +430,10 @@ class ViertelMixin(StoreBasis):
         """Die Vorhaben eines Ortsbereichs mit ihren Beschlüssen, sichtbare zuerst nach Stand."""
         try:
             rows = self._conn.execute(
-                "SELECT p.*, (SELECT COUNT(*) FROM council_district_project_reports r "
-                f"WHERE r.project_key = p.project_key) AS report_count, {_HIDDEN_SQL} AS hidden "
+                # Gezählt wird wie bei main (Vielmelder zählen nicht mit,
+                # Sicherheitsprüfung 10/2026); ausgeblendet wird nur, was die
+                # Redaktion bestätigt hat (_HIDDEN_SQL) — beides zusammen.
+                f"SELECT p.*, {_ZAEHLENDE_MELDUNGEN} AS report_count, {_HIDDEN_SQL} AS hidden "
                 "FROM council_district_projects p WHERE p.place_id = ? AND p.confidence >= ? "
                 "ORDER BY p.last_date DESC, p.id", (place_id, min_confidence)).fetchall()
         except sqlite3.OperationalError as fehler:
@@ -900,8 +918,9 @@ class ViertelMixin(StoreBasis):
         return dict(row) if row else None
 
     def district_project_report_count(self, project_key: str) -> int:
+        """Die Meldungen, die fürs Ausblenden zählen (s. ``PROJECT_REPORTS_PER_ACCOUNT``)."""
         row = self._conn.execute(
-            "SELECT COUNT(*) FROM council_district_project_reports WHERE project_key = ?",
+            f"SELECT {_ZAEHLENDE_MELDUNGEN} FROM (SELECT ? AS project_key) p",
             (project_key,)).fetchone()
         return int(row[0]) if row else 0
 
@@ -1208,5 +1227,5 @@ def project_key_ids(project: dict) -> list[int]:
     return sorted({int(i) for i in project.get("decision_ids") or []})
 
 
-__all__ = ["ViertelMixin", "PROJECT_MIN_CONFIDENCE", "CANDIDATE_MONTHS",
+__all__ = ["ViertelMixin", "PROJECT_MIN_CONFIDENCE", "PROJECT_REPORTS_PER_ACCOUNT", "CANDIDATE_MONTHS",
            "CANDIDATE_MIN_SHARE", "project_key_ids", "ortsrollen", "json"]

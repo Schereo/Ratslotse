@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { chipMerken } from "@/lib/chip-frage";
 
 /**
  * Fertige Fragen zum Antippen — auf Seiten, die NICHT die KI-Frage sind.
@@ -17,7 +18,9 @@ import { cn } from "@/lib/utils";
  *
  * Jeder Chip ist ein Link auf `/fragen?q=…&chip=1`. Dort übernimmt der
  * Composer die Frage und stellt sie sofort (wie ein Chip im Gespräch
- * selbst); `chip=1` zählt sie als `ai_question_chip`, damit sichtbar bleibt,
+ * selbst) — aber nur, wenn der Chip wirklich angetippt wurde
+ * (`lib/chip-frage.ts`); ein bloßer Link belegt nur vor. `chip=1` zählt sie
+ * als `ai_question_chip`, damit sichtbar bleibt,
  * ob der Einstieg trägt. Wer nicht angemeldet ist, landet über den
  * Rücksprung der Anmeldung genau dort — die Frage geht nicht verloren.
  *
@@ -55,6 +58,7 @@ export function FrageChips({ fragen, titel = "Frag Lotti", className }: {
       <div className="flex flex-wrap gap-1.5">
         {liste.map(({ frage, label }) => (
           <Link key={frage} href={frageLink(frage)} prefetch={false} title={label !== frage ? frage : undefined}
+            onClick={() => chipMerken(frage)}
             className="inline-flex items-center rounded-full border border-primary/30 bg-primary/[0.05] px-3 py-1.5 text-[12.5px] text-foreground transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.1] active:scale-[0.98]">
             {label}
           </Link>

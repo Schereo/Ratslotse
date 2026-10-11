@@ -7,6 +7,7 @@
 // imported so it never enters the web bundle's critical path.
 import { isNativeApp, nativePlatform } from "./platform";
 import { api } from "./api";
+import { sicheresZiel } from "./public-routes";
 
 let initialized = false;
 // The OS-issued device token, kept so logout can unregister it server-side.
@@ -43,7 +44,10 @@ export async function initPush(navigate: (path: string) => void): Promise<void> 
     await PushNotifications.addListener("registrationError", () => { /* ignore; retry next launch */ });
     await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
       const url = action.notification?.data?.url;
-      if (typeof url === "string" && url.startsWith("/")) navigate(url);
+      // Dieselbe Prüfung wie jedes Rücksprungziel: `//evil.example` beginnt
+      // auch mit „/" (Sicherheitsprüfung 10/2026, F12).
+      const ziel = typeof url === "string" ? sicheresZiel(url) : null;
+      if (ziel) navigate(ziel);
     });
   }
   // Erlaubnis liegt schon vor? Dann das Token (neu) holen — iOS liefert es

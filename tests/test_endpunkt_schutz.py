@@ -173,9 +173,9 @@ OEFFENTLICH = {
     # `optional_user` gehängt: Eine Runde mit `visibility = 'konto'` verlangt
     # eine Anmeldung, und dieser Riegel gehört in den Router, nicht in einen
     # versteckten Link. Sie stehen deshalb nicht mehr in dieser Liste — für
-    # die öffentlichen Runden ändert sich nichts.
+    # die öffentlichen Runden ändert sich nichts. `stand` folgte 10/2026: Die
+    # Tabelle einer Konto-Runde nennt Anzeigenamen samt Partei.
     ("post", "/api/tipp/abmelden"),  # geteiltes Gerät: nur der eigene Cookie geht, kein Datenzugriff
-    ("get", "/api/tipp/stand"),
     ("get", "/api/tipp/qr.png"),
 
     # Geteilte Antworten: Der Token IST der Zugang — wer den Link hat, darf

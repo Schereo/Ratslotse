@@ -12,8 +12,12 @@ import { Button, Spinner, toast } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/lib/auth";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
+import { mitRuecksprung } from "@/lib/public-routes";
 
-type State = "missing" | "verifying" | "ok" | "error";
+// "anmelden": Die Erstbestätigung braucht die Sitzung des Kontos selbst
+// (Backend, `verify_email`). Der Link ist dabei NICHT verbraucht — nach der
+// Anmeldung kommt man hierher zurück, und er greift.
+type State = "missing" | "verifying" | "ok" | "error" | "anmelden";
 
 function VerifyInner() {
   const params = useSearchParams();
@@ -58,7 +62,7 @@ function VerifyInner() {
         setState("ok");
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Bestätigung fehlgeschlagen.");
-        setState("error");
+        setState(err instanceof ApiError && err.status === 401 ? "anmelden" : "error");
       }
     })();
   }, [token, refresh, queryClient, istWechsel]);
@@ -97,6 +101,20 @@ function VerifyInner() {
           : istWechsel
             ? "Adresse geändert — einen Moment…"
             : "Es geht los…"}
+      </div>
+    );
+  }
+  if (state === "anmelden") {
+    const zurueck = `/verify-email?token=${encodeURIComponent(token)}${istWechsel ? "&change=1" : ""}`;
+    return (
+      <div className="mt-6 space-y-4">
+        <p className="text-sm text-muted-foreground">Melde dich kurz an — dann ist deine Adresse bestätigt.</p>
+        <Link href={mitRuecksprung("/login", zurueck)} className="block">
+          <Button className="w-full">Anmelden und bestätigen</Button>
+        </Link>
+        <Link href="/forgot-password" className="block text-center text-sm text-muted-foreground underline underline-offset-2">
+          Passwort vergessen?
+        </Link>
       </div>
     );
   }

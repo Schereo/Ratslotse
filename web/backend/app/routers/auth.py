@@ -9,6 +9,8 @@ import sqlite3
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
+from starlette.background import BackgroundTask
 
 from kern import roles as kern_roles
 from kern.disposable_email import REGISTER_REJECTED, domain_of, is_disposable
@@ -21,15 +23,20 @@ from ..config import get_settings
 from ..mailprotokoll import protokolliere
 from ..antworten import Ok
 from ..deps import get_current_user, get_store
-from ..ratelimit import forgot_password_limiter, login_limiter, register_limiter, verify_email_limiter
+from ..ratelimit import (forgot_password_limiter, login_fail_limiter, login_limiter,
+                         register_duplicate_limiter, register_limiter, register_notice_limiter,
+                         verify_code_limiter, verify_email_limiter)
 from ..schemas import (
     NAME_FEHLT,
+    NAME_UNZULAESSIG,
     ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
     ResetPasswordRequest,
     UserOut,
+    VerifyCodeRequest,
     VerifyEmailRequest,
+    name_zulaessig,
 )
 from ..security import DUMMY_PASSWORD_HASH, create_access_token, hash_password, verify_password
 from ..session import clear_session_cookie, set_session_cookie
@@ -142,7 +149,15 @@ def _notify_admins_registration(new_email: str) -> None:
         store.close()
 
 
-def _set_auth_cookie(response: Response, user: dict) -> None:
+def _set_auth_cookie(response: Response, user: dict, request: Request) -> None:
+    """Das Sitzungs-Cookie — nur für Browser.
+
+    Die App meldet sich per Bearer-Token an, das sie in der Keychain hält. Ein
+    Cookie dazu landete in ihrem Cookie-Speicher im Klartext, mit Backup, und
+    überlebte ein gescheitertes Abmelden (zweite Prüfung 10/2026, F12).
+    """
+    if _is_app_client(request):
+        return
     set_session_cookie(response, create_access_token(user["id"], user.get("token_version", 0)))
 
 
@@ -196,6 +211,54 @@ def _to_out(user: dict, access_token: str | None = None,
     )
 
 
+#: Ein Link aus einer Mail wurde in einer Sitzung geöffnet, die einem ANDEREN
+#: Konto gehört. Abgelehnt, ohne den Link zu verbrennen.
+LINK_FREMDES_KONTO = (
+    "Dieser Link gehört zu einem anderen Konto als dem, mit dem du gerade "
+    "angemeldet bist. Melde dich ab und öffne ihn dann erneut.")
+
+#: Die Erstbestätigung braucht die Sitzung des Kontos selbst.
+ERST_ANMELDEN = "Bitte melde dich an und öffne den Link dann noch einmal."
+
+
+#: So viele Fehlversuche verträgt ein Bestätigungscode, dann gilt er nicht mehr.
+#: Sechs Ziffern sind eine Million Möglichkeiten; fünf Versuche je Code und
+#: das Limit auf neue Codes halten das Raten aussichtslos.
+CODE_VERSUCHE = 5
+
+
+def _neuer_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _code_hash(user_id: int, code: str) -> str:
+    """Den Code nie im Klartext speichern — an das Konto gebunden gehasht."""
+    return hashlib.sha256(f"{int(user_id)}:{code}".encode()).hexdigest()
+
+
+def _code_html(code: str) -> str:
+    """Der Code als Block in der Mail — groß, mit Lücke in der Mitte lesbar."""
+    return ("<p style='margin:18px 0 6px'>Oder gib diesen Code dort ein, wo du bei "
+            "Ratslotse angemeldet bist:</p>"
+            "<p style='margin:0;font-size:26px;font-weight:700;letter-spacing:4px'>"
+            f"{code[:3]} {code[3:]}</p>")
+
+
+def _sitzungskonto(request: Request, store: Store) -> dict | None:
+    """Das Konto der Sitzung, die diesen Request schickt — gleich welcher Status.
+
+    Anders als ``optional_user`` zählt hier auch ein unbestätigtes Konto: Genau
+    das ist es, das seinen Bestätigungslink öffnet.
+    """
+    if not (request.headers.get("Authorization", "").startswith("Bearer ")
+            or request.cookies.get("access_token")):
+        return None
+    try:
+        return get_current_user(request, store)
+    except HTTPException:
+        return None
+
+
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register(
     request: Request,
@@ -223,6 +286,8 @@ def register(
     display_name = (body.display_name or "").strip()
     if not display_name:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
+    if not name_zulaessig(display_name):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_UNZULAESSIG)
     # Wegwerf-Anbieter VOR der Dubletten-Prüfung: Die Bestätigungs-Mail hält
     # sie nicht ab (das Postfach gibt es ja, nur eben für zehn Minuten), und
     # die Reihenfolge verrät so auch nicht, ob die Adresse schon ein Konto hat.
@@ -230,9 +295,25 @@ def register(
         logger.info("Registrierung abgewiesen: Wegwerf-Domain %s", domain_of(email))
         store.record_signup_rejection("disposable_email")
         raise HTTPException(status.HTTP_400_BAD_REQUEST, REGISTER_REJECTED)
-    if store.get_web_user_by_email(email):
+    vorhanden = store.get_web_user_by_email(email)
+    if vorhanden:
         store.record_signup_rejection("duplicate_email")
-        raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
+        # Die Antwort verrät, dass es das Konto gibt — anders geht es nicht,
+        # solange die Registrierung sofort anmeldet (Tims Entscheidung
+        # 08.10.2026: abmildern statt den Ablauf umbauen). Abgemildert wird
+        # zweifach (zweite Prüfung 10/2026, F16): Wer so abfragt, wird je
+        # Netzadresse strenger gebremst als bei der Registrierung, und die
+        # Besitzerin erfährt davon — höchstens einmal je Stunde.
+        register_duplicate_limiter.check(request)
+        hinweis = None
+        if not register_notice_limiter.ist_voll(subject=email):
+            register_notice_limiter.zaehlen(subject=email)
+            # Als Hintergrund-Aufgabe DIESER Antwort: Aufgaben aus
+            # `BackgroundTasks` laufen nach einer HTTPException nicht.
+            hinweis = BackgroundTask(_send_duplicate_notice, email, int(vorhanden["id"]))
+        return JSONResponse(  # pyright: ignore[reportReturnType] — wie /api/health
+            {"detail": "E-Mail ist bereits registriert."},
+            status_code=status.HTTP_409_CONFLICT, background=hinweis)
     # Registration hands out no role at all: everything it could decide on comes
     # from this unauthenticated request body. Even the configured WEB_ADMIN_EMAIL
     # starts as a plain user and is only promoted once it has proven control of
@@ -264,15 +345,17 @@ def register(
     # behält sie die bisherige Vorbelegung.
     store.set_delivery_channel(user_id, "email" if is_app_client(request) else "off")
     created_user = store.get_web_user_by_id(user_id)
-    _set_auth_cookie(response, created_user)
+    _set_auth_cookie(response, created_user, request)
     if user_status == "pending":
         # Send a verification link; confirming it activates the account and
         # pings the admins (FYI) once the address is confirmed real.
         raw = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
-        store.create_email_verification(user_id, token_hash, expires)
-        background.add_task(_send_verification_email, email, raw, display_name, user_id)
+        code = _neuer_code()
+        store.create_email_verification(user_id, token_hash, expires,
+                                        code_hash=_code_hash(user_id, code))
+        background.add_task(_send_verification_email, email, raw, display_name, user_id, code)
     elif email == _configured_admin_email(settings) and not _has_admin(store):
         # Ohne E-Mail-Versand gibt es keinen Link zum Bestätigen — der Weg über
         # verify_email() kann dieses Konto also nicht zum Admin machen. Laut sagen,
@@ -294,6 +377,13 @@ def login(
     store: Store = Depends(get_store),
 ) -> UserOut:
     login_limiter.check(request)
+    konto = str(body.email).lower().strip()
+    if login_fail_limiter.ist_voll(subject=konto):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Zu viele Fehlversuche für dieses Konto. Bitte warte eine Viertelstunde "
+            "oder setze dein Passwort über „Passwort vergessen“ neu.",
+            headers={"Retry-After": "900"})
     user = store.get_web_user_by_email(str(body.email))
     # Verify unconditionally — against a dummy hash when the email has no account.
     # Short-circuiting here would skip scrypt for unknown emails and turn the
@@ -301,8 +391,9 @@ def login(
     stored = user["password_hash"] if user else DUMMY_PASSWORD_HASH
     password_ok = verify_password(body.password, stored)
     if not user or not password_ok:
+        login_fail_limiter.zaehlen(subject=konto)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-Mail oder Passwort falsch.")
-    _set_auth_cookie(response, user)
+    _set_auth_cookie(response, user, request)
     return _to_out(user, _app_access_token(request, user))
 
 
@@ -325,6 +416,43 @@ def me(request: Request, user: dict = Depends(get_current_user),
     now = datetime.utcnow().isoformat(timespec="seconds")
     return _to_out(user, _app_access_token(request, user),
                    store.pending_email_change(int(user["id"]), now))
+
+
+def _send_duplicate_notice(email: str, owner_id: int) -> None:
+    """Background task: Hinweis an eine Adresse, mit der sich jemand erneut
+    registrieren wollte. Ohne Namen und ohne Link aufs Konto — nur der Weg
+    über „Passwort vergessen", falls man selbst es war."""
+    settings = get_settings()
+    if not settings.resend_api_key:
+        return
+    reset_url = f"{settings.app_base_url.rstrip('/')}/forgot-password"
+    subject = "Ratslotse – Registrierung mit deiner Adresse versucht"
+    body = render_html_email(
+        subject,
+        "<p style='margin:0'>Gerade wollte sich jemand mit dieser E-Mail-Adresse bei "
+        "Ratslotse registrieren. Zu dieser Adresse gibt es aber schon ein Konto, "
+        "deshalb ist nichts passiert.</p>"
+        "<p style='margin:10px 0 0'>Warst du das und kommst nicht mehr hinein? "
+        "Dann setz dein Passwort neu:</p>"
+        + knopf(reset_url, "Passwort zurücksetzen"),
+        anlass="duplicate_signup",
+        held="passwort",
+        kicker="Dein Konto",
+        title="Registrierung versucht",
+        fusszeile="Warst du das nicht, musst du nichts tun — dein Konto bleibt, wie es ist.",
+    )
+    text = (
+        "Gerade wollte sich jemand mit dieser Adresse bei Ratslotse registrieren. "
+        "Es gibt schon ein Konto dazu, deshalb ist nichts passiert.\n\n"
+        f"Warst du das? Passwort zurücksetzen: {reset_url}\n"
+    )
+    try:
+        mid = send_email(email, subject, body, text=text,
+                         api_key=settings.resend_api_key, sender=settings.email_from)
+        protokolliere(owner_id, "duplicate_signup", subject, message_id=mid)
+    except Exception:  # noqa: BLE001 — ein Hinweis, kein Muss
+        logger.exception("duplicate-signup notice failed for %s", email)
+        protokolliere(owner_id, "duplicate_signup", subject, ok=False)
 
 
 def _send_reset_email(email: str, raw_token: str, display_name: str | None = None,
@@ -390,19 +518,54 @@ def reset_password(
     request: Request,
     body: ResetPasswordRequest,
     response: Response,
+    background: BackgroundTasks,
     store: Store = Depends(get_store),
 ) -> UserOut:
-    """Set a new password from a valid reset token, then invalidate all sessions."""
+    """Set a new password from a valid reset token, then invalidate all sessions.
+
+    **Ein Reset-Link ist kein Login für Fremde** (Sicherheitsprüfung 10/2026,
+    F3). Wer gerade als ein ANDERES Konto angemeldet ist, bekommt eine
+    Ablehnung, und der Link bleibt gültig: Sonst schickte jemand seinen eigenen
+    Link herum, und die App wechselte still in sein Konto — wo er später alles
+    mitliest, was dort eingegeben wird.
+
+    **Und er bestätigt die Adresse.** Der Link kam über das Postfach, das ist
+    derselbe Beweis wie der Bestätigungslink. Ein Konto, das ein Fremder auf
+    diese Adresse angelegt hat, holt sich die Besitzerin damit zurück: neues
+    Passwort, alle älteren Sitzungen beendet, Konto aktiv (F1).
+    """
     token_hash = hashlib.sha256(body.token.encode()).hexdigest()
     now = datetime.utcnow().isoformat(timespec="seconds")
+    besitzer = store.peek_password_reset(token_hash, now)
+    if besitzer is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.")
+    aufrufer = _sitzungskonto(request, store)
+    if aufrufer and int(aufrufer["id"]) != besitzer:
+        raise HTTPException(status.HTTP_409_CONFLICT, LINK_FREMDES_KONTO)
     user_id = store.consume_password_reset(token_hash, now)
     if user_id is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Der Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.")
+    vorher = store.get_web_user_by_id(user_id) or {}
     store.update_password_hash(user_id, hash_password(body.new_password))
     store.increment_token_version(user_id)
+    if not vorher.get("email_verified"):
+        store.set_email_verified(user_id, True)
+        if vorher.get("status") == "pending":
+            store.set_web_user_status(user_id, "active")
+            background.add_task(_notify_admins_registration, str(vorher.get("email", "")))
     user = store.get_web_user_by_id(user_id)
-    _set_auth_cookie(response, user)
+    if user and not vorher.get("email_verified"):
+        user = _promote_configured_admin(store, user)
+    # Angemeldet wird nur, wer schon die Sitzung DIESES Kontos trägt (zweite
+    # Prüfung 10/2026, F9). Ohne Sitzung meldete der Link vorher an — wer
+    # seinen eigenen Reset-Link herumschickte, hatte danach eine fremde App
+    # oder einen fremden Browser in seinem Konto. Mit dem neuen Passwort meldet
+    # man sich jetzt einmal selbst an.
+    if aufrufer is None:
+        return _to_out(user, None)
+    _set_auth_cookie(response, user, request)
     # Reset links can open directly in the native app. Returning the refreshed
     # account and its app token avoids an unnecessary login immediately after
     # invalidating every previous token.
@@ -410,7 +573,7 @@ def reset_password(
 
 
 def _send_verification_email(email: str, raw_token: str, display_name: str | None = None,
-                             owner_id: int | None = None) -> None:
+                             owner_id: int | None = None, code: str | None = None) -> None:
     """Background task: email a verification link (valid 24h, best-effort)."""
     settings = get_settings()
     if not settings.resend_api_key:
@@ -421,9 +584,12 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
         subject,
         "<p style='margin:0'>Ein Klick noch, dann ist dein Konto startklar: "
         "Bestätige bitte deine E-Mail-Adresse — der Link ist <b>24 Stunden</b> gültig.</p>"
-        + knopf(link, "E-Mail bestätigen"),
+        + knopf(link, "E-Mail bestätigen") + (_code_html(code) if code else ""),
         anlass="verify_email",
-        greeting_name=display_name,
+        # Keine Anrede mit dem Namen: Die Adresse ist unbestätigt, und den
+        # Namen hat eingegeben, wer die Adresse eingegeben hat — womöglich ein
+        # Fremder (zweite Prüfung 10/2026, F15).
+        greeting_name=None,
         held="willkommen",
         kicker="Willkommen an Bord",
         title="Schön, dass du da bist!",
@@ -433,7 +599,8 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
     text = (
         "Willkommen bei Ratslotse.\n\n"
         f"Bitte bestätige deine E-Mail (24 Stunden gültig): {link}\n\n"
-        "Wenn du dich nicht registriert hast, ignoriere diese E-Mail.\n"
+        + (f"Oder gib diesen Code ein, wo du angemeldet bist: {code}\n\n" if code else "")
+        + "Wenn du dich nicht registriert hast, ignoriere diese E-Mail.\n"
     )
     try:
         mid = send_email(email, subject, body, text=text,
@@ -446,7 +613,7 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
 
 def _send_email_change_link(neue_adresse: str, raw_token: str,
                             display_name: str | None = None,
-                            owner_id: int | None = None) -> None:
+                            owner_id: int | None = None, code: str | None = None) -> None:
     """Background task: der Bestätigungslink an die NEUE Adresse (24 h).
 
     Bewusst derselbe Pfad wie die Erstbestätigung — ``/verify-email`` kennt
@@ -464,9 +631,9 @@ def _send_email_change_link(neue_adresse: str, raw_token: str,
         "<p style='margin:0'>Diese Adresse soll künftig zu deinem "
         "Ratslotse-Konto gehören. Ein Klick, dann ist der Wechsel erledigt — "
         "der Link ist <b>24 Stunden</b> gültig.</p>"
-        + knopf(link, "Neue Adresse bestätigen"),
+        + knopf(link, "Neue Adresse bestätigen") + (_code_html(code) if code else ""),
         anlass="email_change",
-        greeting_name=display_name,
+        greeting_name=None,  # unbestätigte Adresse — s. _send_verification_email
         held="willkommen",
         kicker="Dein Konto",
         title="Neue Adresse bestätigen",
@@ -476,7 +643,8 @@ def _send_email_change_link(neue_adresse: str, raw_token: str,
     text = (
         "Bestätige deine neue E-Mail-Adresse bei Ratslotse.\n\n"
         f"Neue Adresse bestätigen (24 Stunden gültig): {link}\n\n"
-        "Wenn du das nicht angefordert hast, ignoriere diese E-Mail.\n"
+        + (f"Oder gib diesen Code ein, wo du angemeldet bist: {code}\n\n" if code else "")
+        + "Wenn du das nicht angefordert hast, ignoriere diese E-Mail.\n"
     )
     try:
         mid = send_email(neue_adresse, subject, body, text=text,
@@ -585,14 +753,54 @@ def verify_email(
     Derselbe Endpunkt schließt BEIDES ab: die Erstbestätigung nach der
     Registrierung und einen Adresswechsel. Was von beidem, sagt der Token
     (``new_email``) — nicht die URL und nicht der Kontostand.
+
+    **Wer den Link öffnet, zählt** (Sicherheitsprüfung 10/2026, F1/F3):
+
+    * **Angemeldet als ein anderes Konto:** abgelehnt, der Link bleibt gültig.
+      Sonst schickte jemand den Link SEINES Kontos herum, und die App wechselte
+      still dorthin — mit allem, was danach eingegeben wird.
+    * **Erstbestätigung ohne Sitzung des Kontos:** abgelehnt, bitte erst
+      anmelden. Die Registrierung prüft nicht, wem die Adresse gehört: Wer
+      eine fremde Adresse einträgt, legt das Passwort fest und hält eine
+      Sitzung. Bestätigte die Besitzerin dieses Konto mit einem Klick, gehörte
+      es danach beiden. Mit dieser Regel bestätigt nur, wer das Passwort
+      kennt; die Besitzerin der Adresse geht über „Passwort vergessen“ — das
+      setzt ein neues Passwort, beendet jede ältere Sitzung und bestätigt die
+      Adresse mit (``reset_password``).
+    * **Adresswechsel ohne Sitzung:** geht durch (der Wechsel wurde mit dem
+      Passwort angestoßen), aber ohne neues Token.
+
+    Ein Token für die App gibt es nur, wenn der Request schon die Sitzung
+    genau dieses Kontos trägt.
     """
     token_hash = hashlib.sha256(body.token.encode()).hexdigest()
     now = datetime.utcnow().isoformat(timespec="seconds")
+    ungueltig = HTTPException(status.HTTP_400_BAD_REQUEST,
+                              "Der Bestätigungslink ist ungültig oder abgelaufen. "
+                              "Bitte fordere einen neuen an.")
+    vorab = store.peek_email_verification(token_hash, now)
+    if vorab is None:
+        raise ungueltig
+    aufrufer = _sitzungskonto(request, store)
+    if aufrufer and int(aufrufer["id"]) != vorab["user_id"]:
+        raise HTTPException(status.HTTP_409_CONFLICT, LINK_FREMDES_KONTO)
+    # Auch der Adresswechsel braucht die Sitzung des Kontos (zweite Prüfung
+    # 10/2026, F10). Bis dahin galt ein Wechsel-Link für jeden, der ihn
+    # öffnete: Ein Konto stieß den Wechsel auf eine FREMDE Adresse an, deren
+    # Besitzerin klickte den Link — und die Adresse stand bestätigt im Konto
+    # des Angreifers. „Mit Apple anmelden" mit dieser Adresse landete danach
+    # dort. Wer auf einem anderen Gerät liest, nimmt den Code aus der Mail.
+    if aufrufer is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, ERST_ANMELDEN)
     treffer = store.consume_email_verification(token_hash, now)
     if treffer is None:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            "Der Bestätigungslink ist ungültig oder abgelaufen. "
-                            "Bitte fordere einen neuen an.")
+        raise ungueltig
+    return _bestaetigung_abschliessen(request, background, store, treffer, aufrufer)
+
+
+def _bestaetigung_abschliessen(request: Request, background: BackgroundTasks, store: Store,
+                               treffer: dict, aufrufer: dict | None) -> UserOut:
+    """Was nach einem eingelösten Link ODER Code passiert — für beide gleich."""
     user_id = treffer["user_id"]
     neue_adresse = treffer["new_email"]
     vorher = store.get_web_user_by_id(user_id)
@@ -635,13 +843,52 @@ def verify_email(
         store.set_web_user_status(user_id, "active")
         user = store.get_web_user_by_id(user_id)
         background.add_task(_notify_admins_registration, user["email"])
-    if user:
+    if user and not neue_adresse:
         # Erst hier — nach verbranntem Token und bestätigter Adresse — kann das
         # konfigurierte Admin-Konto seine Rolle bekommen (Erst-Einrichtung).
+        # Nur für die Adresse, mit der das Konto registriert wurde, nie nach
+        # einem Wechsel: Sonst zog ein Konto per Wechsel auf WEB_ADMIN_EMAIL
+        # um und war Admin (F10).
         user = _promote_configured_admin(store, user)
-    # If the app opened this via a deep link (verification tapped on-device),
-    # hand back a bearer token so it lands logged-in.
-    return _to_out(user, _app_access_token(request, user))
+    # Die App bekommt ihr frisches Token nur, wenn sie schon als genau dieses
+    # Konto angemeldet ist (s. o.) — ein Link aus einer Mail meldet niemanden an.
+    return _to_out(user, _app_access_token(request, user) if aufrufer else None)
+
+
+@router.post("/verify-code", response_model=UserOut)
+def verify_code(
+    request: Request,
+    body: VerifyCodeRequest,
+    background: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+    store: Store = Depends(get_store),
+) -> UserOut:
+    """Die Adresse mit dem sechsstelligen Code aus der Mail bestätigen.
+
+    Für den Fall, dass Mail und Sitzung auf verschiedenen Geräten liegen
+    (registriert am Laptop, Mail am Handy): Den Code tippt man dort ein, wo man
+    schon angemeldet ist. Er gehört zur Sitzung, nicht zum Gerät, auf dem die
+    Mail liegt — wer ein Konto auf eine fremde Adresse angelegt hat, sieht ihn
+    nie. Gilt für die Erstbestätigung wie für einen Adresswechsel; derselbe
+    Token, der Link aus derselben Mail ist danach verbraucht.
+    """
+    verify_code_limiter.check(request, subject=user["id"])
+    code = "".join(z for z in body.code if z.isdigit())
+    if len(code) != 6:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Der Code hat sechs Ziffern.")
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    ergebnis = store.consume_email_code(int(user["id"]), _code_hash(int(user["id"]), code),
+                                        now, CODE_VERSUCHE)
+    if ergebnis == "keiner":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Es gibt keinen offenen Code — fordere eine neue E-Mail an.")
+    if ergebnis == "gesperrt":
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Zu viele Fehlversuche — fordere eine neue E-Mail an.")
+    if ergebnis == "falsch":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Der Code stimmt nicht.")
+    assert isinstance(ergebnis, dict)
+    return _bestaetigung_abschliessen(request, background, store, ergebnis, user)
 
 
 @router.post("/resend-verification")
@@ -673,14 +920,16 @@ def resend_verification(
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
-    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=wechsel)
+    code = _neuer_code()
+    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=wechsel,
+                                    code_hash=_code_hash(int(user["id"]), code))
     # Am Aufruf verzweigen statt die Funktion in eine Variable zu wählen: Die
     # beiden Versender haben verschiedene Parameternamen, eine gemeinsame
     # Variable wäre ein Union-Typ, den `add_task` nicht mehr prüfen kann.
     if wechsel:
         background.add_task(_send_email_change_link, email, raw, user.get("display_name"),
-                            int(user["id"]))
+                            int(user["id"]), code)
     else:
         background.add_task(_send_verification_email, email, raw, user.get("display_name"),
-                            int(user["id"]))
+                            int(user["id"]), code)
     return {"ok": True}

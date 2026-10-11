@@ -119,12 +119,14 @@ def test_ein_befreites_konto_hat_kein_tageskontingent(client, monkeypatch):
 
 
 def test_eine_ueberlange_frage_wird_gekappt_nicht_abgewiesen(client, monkeypatch):
-    """200 kB kosteten 8,6 s CPU; jetzt kommen 300 Zeichen an — und die
-    ausgelieferte App, die evtl. länger schickt, bekommt keinen 422."""
+    """200 kB kosteten 8,6 s CPU; jetzt kommen 300 Zeichen an — und eine lang
+    getippte Frage bekommt keinen 422. Über 2.000 Zeichen weist der Server ab
+    (zweite Sicherheitsprüfung F2, ``test_f2_eine_ueberlange_frage_wird_
+    abgewiesen``); darunter wird gekappt (Rückmerge 10/2026)."""
     gesehen = _antwort_ohne_modell(monkeypatch)
     t0 = time.monotonic()
     with client.stream("POST", "/api/council/ask",
-                       json={"question": "Radwege " * 25_000}) as r:
+                       json={"question": "Radwege " * 249}) as r:
         assert r.status_code == 200
         "".join(r.iter_text())
     assert len(gesehen["frage"]) <= 300

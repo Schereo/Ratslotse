@@ -279,8 +279,11 @@ def top_block(mark: str, title: str | None, text: str) -> str:
     if title and mark == "Dringlichkeitsantrag":
         title = _DRINGLICH_MARKE_RE.sub("", title).strip() or None
     kopf = f"{_esc(mark)} · {_esc(title)}" if title else _esc(mark)
+    # Der Satz ist Modellausgabe, geschrieben aus Vorlagen und Anlagen der
+    # Stadt — fremder Text. Unmaskiert wurde eine `<a href=…>` darin in jeder
+    # Tagesordnungs-Mail zum echten Link (Sicherheitsprüfung 10/2026, F26).
     return (f"<div class='{_TOP_MARKE}' style='margin:0 0 14px'>"
-            f"<b>{kopf}</b>\n{text}</div>")
+            f"<b>{kopf}</b>\n{_esc(text, quote=False)}</div>")
 
 
 def _gecachte_aufzaehlung(council_store: CouncilStore, ksinr: int,

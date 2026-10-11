@@ -10,12 +10,11 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated, Any, Literal, cast
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import (AliasChoices, BaseModel, Field, ValidationError, field_validator,
-                      model_validator)
+from pydantic import (AliasChoices, BaseModel, Field, field_validator)
 
 from council.cities.model import display_title
 from council.cities.store import CitiesStore
@@ -3124,6 +3123,9 @@ def debatten_nachladen(
 
 class PartyOpinionsBody(BaseModel):
     question: str = Field(min_length=3, max_length=300)
+    #: Die Antwort, zu der der Baustein gehört (done-Ereignis von /ask). Mit
+    #: ihr wandert der Block in die Server-Kopie und damit ins Teilen.
+    answer_id: str | None = Field(default=None, max_length=64)
     #: Die Beschlüsse, auf denen die Antwort steht (Reihenfolge = Relevanz).
     #: Über sie kommt die Aussprache dazu, die ZU diesen Stationen gehört —
     #: siehe Kommentar im Endpoint. Leer (ältere Clients) → nur Vektor-Kanal.
@@ -3136,6 +3138,7 @@ def partei_meinungen_endpoint(
     request: Request,
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
+    ratslotse: Store = Depends(get_store),
 ) -> PartyOpinions:
     """Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
     gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Sammelt
@@ -3175,9 +3178,17 @@ def partei_meinungen_endpoint(
         # ohne LLM-Call; ein neuer Beitrag ändert den Hash → Nachverdichtung.
         # „v3": seit dem Beschluss-Anker — die alten Einträge kennen nur den
         # Vektor-Kanal und sollen nicht 14 Tage weiterleben.
+        #
+        # „v4" (10/2026): Die Frage gehört mit in den Schlüssel, normalisiert.
+        # Sie steht im Prompt, und der Zwischenspeicher wird mit anderen
+        # geteilt — ohne sie im Schlüssel bekam jede spätere Nutzerin mit
+        # derselben Beitragsmenge die Antwort auf eine Frage, die ein anderer
+        # gestellt (und mit Anweisungen gespickt) hatte. Wortgleiche Fragen,
+        # allen voran die Vorschlags-Chips, treffen weiter (F16).
         alle_ids = sorted({wid for wid, _ in hits} | {r["id"] for r in anker})
-        key = "v3:" + hashlib.sha1(  # Cache-Schlüssel, keine Sicherheitsfunktion
-            ",".join(str(wid) for wid in alle_ids).encode(),
+        frage_norm = " ".join(re.findall(r"\w+", body.question.lower()))
+        key = "v4:" + hashlib.sha1(  # Cache-Schlüssel, keine Sicherheitsfunktion
+            (",".join(str(wid) for wid in alle_ids) + "|" + frage_norm).encode(),
             usedforsecurity=False).hexdigest()
         meinungen = store.partei_meinungen_cache_get(key) if alle_ids else None
         if meinungen is None and alle_ids:
@@ -3224,83 +3235,67 @@ def partei_meinungen_endpoint(
         _log.exception("partei_meinungen fehlgeschlagen")
         meinungen = None
         ohne = []
+    if body.answer_id and meinungen:
+        try:
+            ratslotse.qa_answer_record_set_parties(body.answer_id, int(user["id"]), [
+                {k: p.get(k) for k in ("party", "stance", "position", "unanimous", "note",
+                                       "kernaussage", "contributions")}
+                for p in meinungen][:12])
+        except Exception:  # noqa: BLE001 — Teilen ist Zusatz, nie Blocker
+            _log.exception("Parteien-Baustein ließ sich nicht festhalten")
     return {"parties": meinungen or [], "without_speeches": ohne}
 
 
-class _QaShareTeil(BaseModel):
-    """Basis der Teilen-Bausteine: kappt, statt abzuweisen.
+def _stadt_link(v: str | None) -> str | None:
+    """Nur Links auf die Stadt Oldenburg (https, Host ``oldenburg.de`` oder
+    eine Subdomain) — sonst ``None``.
 
-    Der Client reicht Einträge aus dem Strom zurück; das Web kürzt sie
-    selbst, die iOS-App nicht. Ein zu langer Titel, ein Eintrag zu viel oder
-    ein ``null``, wo ein Wert mit Vorgabe steht (``kind`` fehlt im Strom
-    gelegentlich), machten sonst aus dem ganzen Teilen ein 422 — für einen
-    Baustein, der nur Beiwerk der Antwort ist. Gekappt wird auf genau die
-    Längen der Felder; was danach noch nicht passt, weist die Validierung ab
-    wie bisher.
+    Geteilte Antworten (``/g``) sind öffentlich, und Presse- und Anlagen-Links
+    kommen mit dem Snapshot vom Client. Bis 10/2026 wurden sie ungeprüft
+    gespeichert: Unter ratslotse.de ließ sich so ein Link auf eine beliebige
+    Seite oder eine ``javascript:``-URL verbreiten. Echte Werte kommen nur von
+    ``www.oldenburg.de`` (Presse) und ``buergerinfo.oldenburg.de`` (Anlagen).
+
+    Python und Browser lesen eine URL nicht gleich: ``urlsplit`` hält ``\\``
+    für ein gewöhnliches Zeichen, ein Browser für ``/``. Aus
+    ``https://evil.example\\.oldenburg.de/`` las die Prüfung den Host
+    ``evil.example\\.oldenburg.de`` (passt), der Browser ging zu
+    ``evil.example`` (F7/F23). Deshalb fliegt alles raus, worüber die beiden
+    sich uneinig sein können — Backslash, Leer- und Steuerzeichen, Zugangsdaten
+    (``@``), ein eigener Port —, und gespeichert wird die neu zusammengesetzte
+    Fassung, nicht die Eingabe.
     """
-
-    @model_validator(mode="before")
-    @classmethod
-    def _kappen(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        data = dict(data)
-        for name, feld in cls.model_fields.items():
-            alias = feld.validation_alias
-            namen = [name, *(alias.choices if isinstance(alias, AliasChoices) else [])]
-            grenze = next((m.max_length for m in feld.metadata
-                           if getattr(m, "max_length", None) is not None), None)
-            for key in namen:
-                if not isinstance(key, str) or key not in data:
-                    continue
-                wert = data[key]
-                if wert is None and not feld.is_required() and feld.default is not None:
-                    del data[key]          # null → die Vorgabe des Feldes
-                elif grenze is not None and isinstance(wert, (str, list)):
-                    data[key] = wert[:grenze]
-        return data
+    if not v:
+        return None
+    from urllib.parse import urlsplit, urlunsplit
+    roh = v.strip()
+    if any(z in roh for z in "\\@") or any(z.isspace() or ord(z) < 32 or ord(z) == 127 for z in roh):
+        return None
+    try:
+        teile = urlsplit(roh)
+        port = teile.port
+    except ValueError:
+        return None
+    host = (teile.hostname or "").lower()
+    if (teile.scheme != "https" or port is not None or teile.username or teile.password
+            or not (host == "oldenburg.de" or host.endswith(".oldenburg.de"))):
+        return None
+    return urlunsplit(("https", host, teile.path, teile.query, teile.fragment))
 
 
-class QaShareSource(_QaShareTeil):
-    id: int
-    title: str = Field(max_length=300)
-    session_date: str | None = Field(default=None, max_length=10)
-    committee: str | None = Field(default=None, max_length=120)
-    outcome: str | None = Field(default=None, max_length=40)
-
-
-# Die alten Feldnamen (``art``, ``top``, ``nr``; im Körper ``debatten`` …)
-# nimmt das Modell weiter an. Pydantic verwirft unbekannte Schlüssel still:
-# Das Web schickte bis 10/2026 ``art``/``top``/``nr``, die ausgelieferte
-# iOS-App schickt die Bausteine unter deutschen Namen — beides kam nie an.
-# Die App im Store lässt sich nicht nachziehen, also hört der Server hin.
-class QaShareDebate(_QaShareTeil):
-    speaker: str | None = Field(default=None, max_length=120)
-    party: str | None = Field(default=None, max_length=60)
-    kind: str = Field(default="speech", max_length=30,
-                      validation_alias=AliasChoices("kind", "art"))
-    agenda_item: str | None = Field(default=None, max_length=300,
-                                    validation_alias=AliasChoices("agenda_item", "top"))
-    excerpt: str = Field(default="", max_length=2000)
-    committee: str | None = Field(default=None, max_length=120)
-    date: str | None = Field(default=None, max_length=10)
-    minutes_url: str | None = Field(default=None, max_length=500)
-    minutes_page: int | None = Field(default=None, ge=1, le=9999)
-
-    @field_validator("minutes_url")
-    @classmethod
-    def _nur_ratsinfo(cls, v: str | None) -> str | None:
-        # Der Snapshot ist öffentlich und der Client liefert die URL mit —
-        # als „Protokoll" verlinken wir deshalb ausschließlich das
-        # Ratsinfo-System, sonst ließe sich hier Beliebiges unterschieben.
-        if v and not v.startswith(f"{BASE_URL}/"):
-            return None
-        return v
-
-
-class QaSharePress(_QaShareTeil):
+class QaSharePress(BaseModel):
     title: str = Field(max_length=300)
     url: str = Field(max_length=500)
+
+    @field_validator("url")
+    @classmethod
+    def _nur_stadt(cls, v: str) -> str:
+        # Pflichtfeld: Eine Meldung ohne gültigen Link ist keine echte —
+        # lieber den ganzen Snapshot abweisen als ihn mit leerem Link zu speichern.
+        sauber = _stadt_link(v)
+        if sauber is None:
+            raise ValueError("Pressemitteilungen verlinken nur auf oldenburg.de")
+        return sauber
     date: str | None = Field(default=None, max_length=10)
     # Ohne den Anriss verlöre ein geteiltes Gespräch die Meldung selbst und
     # zeigte nur noch einen Link nach draußen. Der Name folgt seinen
@@ -3310,7 +3305,7 @@ class QaSharePress(_QaShareTeil):
     excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareAttachment(_QaShareTeil):
+class QaShareAttachment(BaseModel):
     # Beleg-Nummer des Recherche-Berichts („[A1]") — ohne sie findet der
     # Marker im geteilten Text seine Anlage nicht.
     number: int | None = Field(default=None, ge=1, le=99,
@@ -3318,109 +3313,32 @@ class QaShareAttachment(_QaShareTeil):
     label: str | None = Field(default=None, max_length=300)
     url: str | None = Field(default=None, max_length=500)
     template_number: str | None = Field(default=None, max_length=60)
+
+    @field_validator("url")
+    @classmethod
+    def _nur_stadt(cls, v: str | None) -> str | None:
+        # Optional: ein fremder Link fällt weg, die Anlage selbst bleibt.
+        return _stadt_link(v)
     template_title: str | None = Field(default=None, max_length=300)
     excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareKeyQuote(_QaShareTeil):
-    text: str = Field(default="", max_length=600)
-    speaker: str | None = Field(default=None, max_length=120)
-    date: str | None = Field(default=None, max_length=10)
+class QaShareBody(BaseModel):
+    """Was geteilt wird — als KENNUNG, nicht als Inhalt.
 
-
-class QaShareParty(_QaShareTeil):
-    party: str = Field(max_length=60)
-    stance: str | None = Field(default=None, max_length=20)
-    position: str = Field(default="", max_length=800)
-    unanimous: bool = True
-    note: str | None = Field(default=None, max_length=300)
-    kernaussage: QaShareKeyQuote | None = None
-    contributions: int = Field(default=0, ge=0)
-
-
-class QaShareRulesSection(BaseModel):
-    number: str = Field(max_length=8)
-    label: str = Field(max_length=12)
-    title: str = Field(max_length=120)
-    part: str = Field(max_length=60)
-    url: str = Field(max_length=300)
-    # § 23 hat 2.900 Zeichen; der Deckel lässt der nächsten Fassung Luft.
-    text: str = Field(default="", max_length=6000)
-
-
-class QaShareRulesContents(BaseModel):
-    label: str = Field(max_length=12)
-    title: str = Field(max_length=120)
-    url: str = Field(max_length=300)
-
-
-class QaShareRulesOfProcedure(BaseModel):
-    """Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
-
-    Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
-    Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
-    Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
-    darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
-    unterschieben. Ein fremder Link verwirft die ganze Karte (s.
-    ``QaShareBody._karte_oder_nichts``).
+    Bis 10/2026 schickte der Client Frage, Antwort, Zitate, Debattenauszüge
+    und Parteipositionen selbst, und der Server veröffentlichte sie unter
+    ratslotse.de als „Automatische Antwort von ‚Frag den Rat‘". Jedes Konto
+    konnte so erfundene Zitate echter Ratsmitglieder verbreiten (zweite
+    Sicherheitsprüfung, F3; Tims Entscheidung 08.10.2026: nur, was der Server
+    geliefert hat). Geteilt wird jetzt die Server-Kopie: einer KI-Antwort
+    (``answer_id`` aus dem done-Ereignis) oder eines eigenen Recherche-Berichts
+    (``deep_job_id``). Alles andere im Körper wird ignoriert — ältere
+    App-Versionen schicken noch den Inhalt und bekommen einen 422 mit der
+    Bitte, die App zu aktualisieren.
     """
-    title: str = Field(max_length=120)
-    full_title: str = Field(default="", max_length=300)
-    version: str = Field(default="", max_length=300)
-    state: Literal["current", "term_ended", "superseded"] = "current"
-    url: str = Field(max_length=300)
-    sections: list[QaShareRulesSection] = Field(
-        default_factory=list, max_length=rules_of_procedure.MAX_SECTIONS)
-    contents: list[QaShareRulesContents] = Field(default_factory=list, max_length=80)
-
-    @model_validator(mode="after")
-    def _nur_das_pdf_der_stadt(self) -> QaShareRulesOfProcedure:
-        pdf = rules_of_procedure.load().source_url
-        urls = [self.url, *(s.url for s in self.sections), *(c.url for c in self.contents)]
-        if any(u != pdf and not u.startswith(f"{pdf}#page=") for u in urls):
-            raise ValueError("Geschäftsordnung: nur Links auf das PDF der Stadt")
-        return self
-
-
-class QaShareBody(_QaShareTeil):
-    question: str = Field(min_length=1, max_length=300)
-    answer: str = Field(min_length=1, max_length=8000)
-    sources: list[QaShareSource] = Field(default_factory=list, max_length=40)
-    # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
-    # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
-    debates: list[QaShareDebate] = Field(
-        default_factory=list, max_length=20,
-        validation_alias=AliasChoices("debates", "debatten"))
-    press_releases: list[QaSharePress] = Field(
-        default_factory=list, max_length=10,
-        validation_alias=AliasChoices("press_releases", "presse"))
-    attachments: list[QaShareAttachment] = Field(
-        default_factory=list, max_length=10,
-        validation_alias=AliasChoices("attachments", "anlagen"))
-    parties: list[QaShareParty] = Field(
-        default_factory=list, max_length=12,
-        validation_alias=AliasChoices("parties", "parteien"))
-    # Die Grafik zur Antwort (council/qa.py, geld_grafik) — als loses dict,
-    # weil der Client sie unverändert zurückreicht: Sie stammt aus DIESEM
-    # Backend, und ein zweites Schema hier wäre eine Kopie, die driftet.
-    # Begrenzt wird trotzdem: höchstens 60 Punkte, nur bekannte Felder.
-    chart: dict | None = Field(default=None, validation_alias=AliasChoices("chart", "grafik"))
-    # Die Karte „Aus der Geschäftsordnung" — bei Verfahrensfragen oft der
-    # einzige Beleg der Antwort; ohne sie stünde die geteilte Antwort ohne
-    # Quelle da.
-    rules_of_procedure: QaShareRulesOfProcedure | None = None
-
-    @field_validator("rules_of_procedure", mode="wrap")
-    @classmethod
-    def _karte_oder_nichts(cls, v, handler):
-        # Eine Karte, die nicht passt, fällt weg, statt das Teilen zu
-        # verweigern: Nach einer neuen Fassung (Nov. 2026) trägt ein noch
-        # offenes Gespräch die alte PDF-Adresse — die Antwort soll sich
-        # trotzdem teilen lassen, nur eben ohne diese Karte.
-        try:
-            return handler(v)
-        except ValidationError:
-            return None
+    answer_id: str | None = Field(default=None, max_length=64)
+    deep_job_id: str | None = Field(default=None, max_length=64)
 
 
 _SHARE_BLOCKED_PHRASES = (
@@ -3446,7 +3364,16 @@ def _share_text_is_objectionable(text: str) -> bool:
     folded = re.sub(r"\s+", " ", folded)
     if any(phrase in folded for phrase in _SHARE_BLOCKED_PHRASES):
         return True
-    return bool(re.search(r"(?:https?://|javascript:|data:text/|<\s*script\b)", folded))
+    if re.search(r"(?:https?://|javascript:|data:text/|<\s*script\b)", folded):
+        return True
+    # Ein Link muss nicht `https://` heißen, um einer zu sein: Markdown macht
+    # aus `[Text](tel:…)`, `[Text](https\://…)` oder `[Text](https&#58;//…)`
+    # genauso einen antippbaren Verweis, und die App rendert die Antwort als
+    # Markdown (Sicherheitsprüfung 10/2026, F4). Eine Antwort von Ratslotse
+    # trägt keine eigenen Links — ihre Quellen kommen strukturiert. `](` ohne
+    # Leerzeichen, weil Markdown nur das als Link liest; ein Beleg wie
+    # „[123] (2024)" bleibt erlaubt.
+    return bool(re.search(r"\]\(|<[a-z][a-z0-9+.-]*:|:\s*//|\\:|&#0*58;|&colon;", folded))
 
 
 def _grafik_pruefen(g: dict | None) -> dict | None:
@@ -3462,7 +3389,14 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
     try:
         series = [{"year": int(p["year"]), "value": float(p["value"])}
                  for p in (g.get("series") or [])[:60]]
-    except (KeyError, TypeError, ValueError):
+        nachkomma = max(0, min(int(g.get("nachkomma") or 0), 3))
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+    # Ein Haushaltsjahr, keine beliebige Zahl: Die iOS-App wandelt `year` in
+    # einen `Int` und stürzt ab, wenn der Wert nicht hineinpasst — ein
+    # geteilter Link mit `year: 2^63` legte sie bei jedem Öffnen lahm (F10/F24).
+    # Und keine Unendlichkeiten als Wert, die kein Diagramm zeichnen kann.
+    if any(not (1900 <= p["year"] <= 2200) or not math.isfinite(p["value"]) for p in series):
         return None
     if len(series) < 2:
         return None
@@ -3478,7 +3412,7 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
     return {"kind": str(g.get("kind") or "")[:30],
             "title": str(g.get("title") or "")[:120],
             "unit": str(g.get("unit") or "")[:20],
-            "nachkomma": max(0, min(int(g.get("nachkomma") or 0), 3)),
+            "nachkomma": nachkomma,
             "series": series,
             "note": (str(g["note"])[:500] if g.get("note") else None),
             "source": (str(g["source"])[:200] if g.get("source") else None),
@@ -3494,27 +3428,55 @@ def qa_share_anlegen(
 ) -> QaShareToken:
     """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
-    eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
-    if _share_text_is_objectionable(body.question) or _share_text_is_objectionable(body.answer):
+    eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick.
+
+    Inhalt kommt nur noch aus der Server-Kopie (s. ``QaShareBody``)."""
+    if body.answer_id:
+        rec = ratslotse.qa_answer_record_get(body.answer_id, int(user["id"]))
+        if rec is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND,
+                                "Diese Antwort lässt sich nicht mehr teilen.")
+        question, answer, sources, extras = (rec["question"], rec["answer"],
+                                             rec["sources"], rec["extras"])
+    elif body.deep_job_id:
+        job = ratslotse.deep_job_get(body.deep_job_id, int(user["id"]))
+        if not job or not job.get("report") or job.get("status") not in ("fertig", "teilbericht"):
+            raise HTTPException(status.HTTP_404_NOT_FOUND,
+                                "Dieser Bericht lässt sich nicht teilen.")
+        try:
+            quellen = json.loads(job.get("sources") or "{}")
+        except (ValueError, TypeError):
+            quellen = {}
+        zitiert = set(quellen.get("cited") or [])
+        question, answer = job["question"], job["report"]
+        sources = [_share_quelle(c) for c in (quellen.get("sources") or [])
+                   if c.get("id") in zitiert][:40]
+        extras = {"debates": (quellen.get("debates") or [])[:20],
+                  "press_releases": _links_pruefen(quellen.get("press_releases") or [])[:10],
+                  "attachments": _links_pruefen(quellen.get("attachments") or [])[:10]}
+    else:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "Bitte aktualisiere die App, um Antworten zu teilen.")
+    if _share_text_is_objectionable(question) or _share_text_is_objectionable(answer):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Dieser Inhalt kann nicht als öffentlicher Link geteilt werden.",
         )
     if not user.get("limits_unlocked"):
         qa_share_limiter.check(request)
-    extras = {
-        "debates": [d.model_dump() for d in body.debates],
-        "press_releases": [p.model_dump() for p in body.press_releases],
-        "attachments": [a.model_dump() for a in body.attachments],
-        "parties": [p.model_dump() for p in body.parties],
-        "chart": _grafik_pruefen(body.chart),
-        "rules_of_procedure": (body.rules_of_procedure.model_dump()
-                               if body.rules_of_procedure else None),
-    }
-    token = ratslotse.qa_share_anlegen(user["id"], body.question, body.answer,
-                                 [q.model_dump() for q in body.sources],
-                                 extras if any(extras.values()) else None)
+    token = ratslotse.qa_share_anlegen(user["id"], question, answer, sources,
+                                       extras if any(extras.values()) else None)
     return {"token": token}
+
+
+def _links_pruefen(eintraege: list[dict]) -> list[dict]:
+    """Presse und Anlagen: nur Links auf die Stadt, sonst ohne Link.
+
+    Die Werte stammen aus der eigenen Datenbank; die Prüfung ist die zweite
+    Linie dafür, dass unter ratslotse.de/g nie ein fremdes Ziel steht.
+    """
+    return [{**e, "url": _stadt_link(e.get("url"))} for e in eintraege]
 
 
 @router.get("/qa-share/{token}")
@@ -3627,16 +3589,39 @@ def deep_research_start(body: DeepResearchBody, request: Request,
     IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
     was ein Fenster-Zähler nicht abbilden kann). Admins können das Limit je
     Konto erhöhen oder ausschalten (web_users.deep_limit)."""
+    _deep_kontingent_pruefen(ratslotse, user)
+    # Den Platz belegen, BEVOR irgendetwas Langsames passiert, und erst
+    # freigeben, wenn der Job registriert ist — dazwischen liegt die Analyse
+    # der Frage, ein Modell-Aufruf. Danach das Kontingent noch einmal: Ein
+    # paralleler Start desselben Kontos kann es in genau dieser Spanne
+    # verbraucht haben (F5).
+    _deep_platz_belegen(user)
+    try:
+        _deep_kontingent_pruefen(ratslotse, user)
+        return _deep_research_anlegen(body, request, user, store, ratslotse)
+    finally:
+        deepresearch.platz_freigeben(user["id"])
+
+
+def _deep_kontingent_pruefen(ratslotse: Store, user: dict) -> None:
     limit = _deep_limit(user)
     if limit is not None and ratslotse.deep_jobs_heute(user["id"]) >= limit:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
                             "Deine Recherchen für heute sind aufgebraucht — ab morgen geht es weiter.")
-    if deepresearch.laufende_jobs(user["id"]) >= 1:
+
+
+def _deep_platz_belegen(user: dict) -> None:
+    grund = deepresearch.platz_reservieren(user["id"])
+    if grund == "konto":
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Es läuft bereits eine Recherche — warte kurz, bis sie fertig ist.")
-    if deepresearch.laufende_jobs() >= deepresearch.MAX_PARALLEL:
+    if grund == "voll":
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
+
+
+def _deep_research_anlegen(body: DeepResearchBody, request: Request, user: dict,
+                           store: CouncilStore, ratslotse: Store) -> ResearchStarted:
     question = body.question.strip()
     # Derselbe Riegel wie bei der schnellen Frage — hier wiegt er schwerer:
     # Ein Job auf eine gegenstandslose Frage zerlegt sie in Facetten, sucht zu
@@ -3772,7 +3757,8 @@ def deep_research_stop(job_id: str, user: dict = Depends(require_active),
 def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
                               ratslotse: Store = Depends(get_store)) -> Ok:
     """Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
-    schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent."""
+    schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent — es
+    sei denn, beim Stopp waren schon alle Facetten fertig."""
     row = ratslotse.deep_job_get(job_id, user["id"])
     if not row:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
@@ -3783,11 +3769,21 @@ def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
     if not (job.material and job.material.get("candidates")):
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Kein Material gesichert — bitte neu recherchieren.")
-    # Status VOR dem Thread-Start zurück auf laeuft — andersherum könnte der
-    # (schnelle) Thread sein „teilbericht" schreiben und würde überschrieben.
-    ratslotse.deep_job_update(job_id, "laeuft")
-    settings = get_settings()
-    deepresearch.teilbericht_starten(job, settings.ratslotse_db, settings.council_db)
+    # War das Material schon vollständig, ist das kein Teil-, sondern der
+    # ganze Bericht — er zählt (s. `deepresearch.material_vollstaendig`).
+    # Und auch ein echter Teilbericht ist ein Bericht-Lauf: dieselben Deckel
+    # für „eine je Konto" und global wie beim Start (F17).
+    if deepresearch.material_vollstaendig(job):
+        _deep_kontingent_pruefen(ratslotse, user)
+    _deep_platz_belegen(user)
+    try:
+        # Status VOR dem Thread-Start zurück auf laeuft — andersherum könnte der
+        # (schnelle) Thread sein „teilbericht" schreiben und würde überschrieben.
+        ratslotse.deep_job_update(job_id, "laeuft")
+        settings = get_settings()
+        deepresearch.teilbericht_starten(job, settings.ratslotse_db, settings.council_db)
+    finally:
+        deepresearch.platz_freigeben(user["id"])
     return {"ok": True}
 
 
@@ -4832,18 +4828,22 @@ class ScreenContext(BaseModel):
 
 
 class AskBody(BaseModel):
-    question: str
+    # Zwei Grenzen, aus zwei Prüfungen (Rückmerge 10/2026):
+    # - **Abgewiesen über 2.000 Zeichen** (zweite Sicherheitsprüfung, F2):
+    #   Ohne Obergrenze liefen Orts-, Sitzungs- und Glossarsuche als Regex über
+    #   Megabytes und hielten den GIL des einzigen API-Prozesses. 2.000, weil
+    #   die Clients die Eingabe nicht kürzen — eine lang getippte Frage soll
+    #   keinen 422 bekommen.
+    # - **Gekappt auf 300 darunter** (Review 05.10.2026): Suche, Analyse und
+    #   Rerank laufen über den ganzen Text; der Prompt nimmt ohnehin nur die
+    #   ersten 300 Zeichen (``question[:300]``). `mode="after"`, damit die
+    #   Längenprüfung VOR dem Kappen greift.
+    question: str = Field(min_length=1, max_length=2000)
 
-    # **Gekappt, nicht abgewiesen** (Review 05.10.2026): Ohne Grenze kostete
-    # eine Frage von 200 kB 8,6 s CPU (Suche, Analyse, Rerank laufen über den
-    # ganzen Text), auf derselben Maschine, die die Website ausliefert. Der
-    # Prompt nimmt ohnehin nur die ersten 300 Zeichen (``question[:300]``).
-    # Kein ``max_length``: Ein 422 bräche eine ausgelieferte App, die längere
-    # Fragen schickt — der Vertrag bleibt dadurch auch unverändert.
-    @field_validator("question", mode="before")
+    @field_validator("question", mode="after")
     @classmethod
-    def _frage_kappen(cls, v):
-        return v[:QA_FRAGE_MAX] if isinstance(v, str) else v
+    def _frage_kappen(cls, v: str) -> str:
+        return v[:QA_FRAGE_MAX]
     # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
     # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
     # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
@@ -5023,9 +5023,54 @@ def _anlagen_kompakt(rows: list[dict]) -> list[dict]:
              "excerpt": (a.get("citation") or "")[:220]} for a in rows]
 
 
+def _share_quelle(c: dict) -> dict:
+    """Die Form eines Beschlusses in einer geteilten Antwort."""
+    return {"id": c["id"], "title": (c.get("title") or "")[:300],
+            "session_date": c.get("session_date"), "committee": c.get("committee"),
+            "outcome": c.get("outcome")}
+
+
+def _antwort_festhalten(ratslotse: Store, user: dict, frage: str, answer_text: str,
+                        candidates: list[dict], cited: list[int], *,
+                        presse_rows: list[dict] | None = None,
+                        debatten_rows: list[dict] | None = None,
+                        anlagen_rows: list[dict] | None = None,
+                        grafik: dict | None = None,
+                        rules: dict | None = None) -> str | None:
+    """Die Antwort so festhalten, wie der Server sie geliefert hat.
+
+    Geteilt wird ab 10/2026 nur noch diese Kopie (``qa_share_anlegen``). Bis
+    dahin schickte der Client Antwort, Zitate und Parteipositionen selbst — und
+    der Server veröffentlichte unter ratslotse.de, was immer darin stand,
+    beschriftet als automatische Antwort (zweite Sicherheitsprüfung, F3).
+    Nie ein Blocker: Scheitert das Festhalten, fehlt nur das Teilen.
+    """
+    if not answer_text.strip():
+        return None
+    try:
+        nach_id = {c["id"]: c for c in candidates}
+        return ratslotse.qa_answer_record_save(
+            int(user["id"]), frage.strip(), answer_text,
+            [_share_quelle(nach_id[i]) for i in cited if i in nach_id][:40],
+            {"debates": _debatten_kompakt(debatten_rows or [])[:20],
+             "press_releases": _links_pruefen(_presse_kompakt(presse_rows or []))[:10],
+             "attachments": _links_pruefen(_anlagen_kompakt(anlagen_rows or []))[:10],
+             "chart": _grafik_pruefen(grafik),
+             # Die Karte „Aus der Geschäftsordnung": Bei Verfahrensfragen oft
+             # der einzige Beleg. Sie stammt aus DIESEM Server
+             # (council/rules_of_procedure.card) — dieselbe Herkunft wie alles
+             # andere in dieser Kopie (Rückmerge 10/2026: auf dev reichte bis
+             # dahin der Client die Karte zurück).
+             "rules_of_procedure": rules})
+    except Exception:  # noqa: BLE001 — Teilen ist Zusatz, nie Blocker
+        _log.exception("Antwort ließ sich nicht festhalten")
+        return None
+
+
 def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     answer_text: str, candidates: list[dict],
                     cited: list[int],
+                    answer_id: str | None = None,
                     presse_rows: list[dict] | None = None,
                     debatten_rows: list[dict] | None = None,
                     anlagen_rows: list[dict] | None = None,
@@ -5084,6 +5129,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              # auf den Fragen-Tab komplett neu und fragte dabei mit der
              # kontextlosen Frage (Tims Befund 21.08.2026).
              "context": q_suche,
+             # Damit ein wieder geöffnetes Gespräch noch geteilt werden kann.
+             **({"answer_id": answer_id} if answer_id else {}),
              "press_releases": _presse_kompakt(presse_rows or []),
              "debates": _debatten_kompakt(debatten_rows or []),
              "attachments": _anlagen_kompakt(anlagen_rows or []),
@@ -6151,8 +6198,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                   + zeiten.get("antwort_ms", 0))
             _log.info("qa_timings mode=%s typ=%s %s", mode, typ,
                       " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
+            answer_id = _antwort_festhalten(ratslotse, user, body.question, answer_text,
+                                            candidates, cited, presse_rows=presse_rows,
+                                            debatten_rows=debatten_rows,
+                                            anlagen_rows=anlagen_rows, grafik=grafik,
+                                            rules=rules_card)
             conversation_id = _turn_speichern(ratslotse, user, body, q_suche, answer_text,
                                            candidates, cited,
+                                           answer_id=answer_id,
                                            presse_rows=presse_rows,
                                            debatten_rows=debatten_rows,
                                            anlagen_rows=anlagen_rows,
@@ -6178,6 +6231,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "key_facts": eckdaten,
                         # Ein langer Vorgang: die Gründliche Recherche anbieten.
                         "research_offer": recherche_angebot,
+                        # Die Kennung der Server-Kopie dieser Antwort — Teilen
+                        # geht nur über sie (_antwort_festhalten).
+                        "answer_id": answer_id,
                         "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")
