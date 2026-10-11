@@ -221,7 +221,7 @@ export default function ChangelogPage() {
                         <ul className="mt-2 space-y-1">
                           {alle.map((it, idx) => (
                             <li key={idx} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
-                              <span className="select-none text-muted-foreground/40">•</span>
+                              <span aria-hidden className="select-none text-border">•</span>
                               <span className="min-w-0 [overflow-wrap:anywhere]">{inline(kernsatz(it))}</span>
                             </li>
                           ))}
