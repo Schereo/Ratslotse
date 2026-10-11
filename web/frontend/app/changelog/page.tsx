@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { BackLink } from "@/components/back-link";
+import { KopfKontoLink } from "@/components/kopf-konto-link";
 
 export const metadata: Metadata = {
   title: "Changelog – Ratslotse",
@@ -148,7 +149,7 @@ export default function ChangelogPage() {
             <BackLink />
             <Link href="/" className="flex items-center gap-2"><BrandMark /><span className="hidden font-semibold text-foreground sm:inline">Ratslotse</span></Link>
           </div>
-          <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">Anmelden →</Link>
+          <KopfKontoLink />
         </div>
       </header>
 

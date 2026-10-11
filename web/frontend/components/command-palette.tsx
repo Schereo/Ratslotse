@@ -6,11 +6,12 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   BarChart3, Bookmark, CalendarDays, CornerDownLeft, Gavel, History, Home, Landmark,
   Play, Scale, Search, Settings, Sparkles, SunMoon, Tag, Tags, UserCircle, type LucideIcon,
-  Lightbulb, MapPinned, MessageCircleQuestion,
+  Lightbulb, MapPinned, MessageCircleQuestion, Euro, Bell, Trophy, Vote, LifeBuoy, MessageCircle,
 } from "lucide-react";
 import { api, qs } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { darfAdmin } from "@/lib/rechte";
+import { darfAdmin, darfHaushalt } from "@/lib/rechte";
+import { openFeedback } from "@/components/feedback";
 import { useFeature } from "@/lib/features";
 import { openLotti } from "@/components/assistentin";
 import { useDebounce } from "@/lib/use-debounce";
@@ -49,6 +50,7 @@ export function CommandPalette() {
   const { user } = useAuth();
   const lotti = useFeature("lotti-assistentin");
   const ideen = useFeature("ideen-anderswo");
+  const neuerRat = useFeature("neuer-rat");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -125,10 +127,12 @@ export function CommandPalette() {
     const match = (label: string) => !q || label.toLowerCase().includes(q);
 
     const nav: Item[] = [
-      { key: "nav-dash", section: "Navigation", label: "Übersicht", icon: Home, run: () => go("/dashboard") },
-      { key: "nav-besch", section: "Navigation", label: "Beschlüsse", icon: Gavel, run: () => go("/council?tab=decisions") },
+      // Dieselben Namen wie Seitenleiste und Tab-Leiste (bis 10/2026 hieß
+      // „Heute" hier „Übersicht" und die Suche „Beschlüsse").
+      { key: "nav-dash", section: "Navigation", label: "Heute", icon: Home, run: () => go("/dashboard") },
+      { key: "nav-besch", section: "Navigation", label: "Suche — Beschlüsse", icon: Gavel, run: () => go("/council?tab=decisions") },
       { key: "nav-sitz", section: "Navigation", label: "Sitzungen", icon: CalendarDays, run: () => go("/council?tab=sessions") },
-      { key: "nav-themen", section: "Navigation", label: "Themen", icon: Tag, run: () => go("/council?tab=themen") },
+      { key: "nav-themen", section: "Navigation", label: "Orte, Projekte & Organisationen", icon: Tag, run: () => go("/council?tab=themen") },
       { key: "nav-karte", section: "Navigation", label: "Mein Viertel — Stadtkarte", icon: MapPinned, run: () => go("/karte") },
       { key: "nav-analyse", section: "Navigation", label: "Analyse", icon: BarChart3, run: () => go("/council?tab=analysis") },
       // Derselbe Name wie Seite, Analyse-Reiter und App — und hinter demselben
@@ -137,9 +141,19 @@ export function CommandPalette() {
       ...(ideen
         ? [{ key: "nav-ideen", section: "Navigation", label: "Ideen aus anderen Städten", icon: Lightbulb, run: () => go("/council/ideen") } as Item]
         : []),
+      ...(neuerRat
+        ? [{ key: "nav-neuer-rat", section: "Navigation", label: "Der neue Rat", icon: Landmark, run: () => go("/council/neuer-rat") } as Item]
+        : []),
+      ...(darfHaushalt(user)
+        ? [{ key: "nav-haushalt", section: "Navigation", label: "Haushalt", icon: Euro, run: () => go("/haushalt") } as Item]
+        : []),
       { key: "nav-meine", section: "Navigation", label: "Meine Themen", icon: Tags, run: () => go("/topics") },
+      { key: "nav-abos", section: "Navigation", label: "Ausschuss-Abos", icon: Bell, run: () => go("/abos") },
       { key: "nav-merkliste", section: "Navigation", label: "Merkliste", icon: Bookmark, run: () => go("/bookmarks") },
-      { key: "nav-konto", section: "Navigation", label: "Mein Konto", icon: UserCircle, run: () => go("/account") },
+      { key: "nav-quiz", section: "Navigation", label: "Quiz", icon: Trophy, run: () => go("/quiz") },
+      { key: "nav-wahlen", section: "Navigation", label: "Wahlen", icon: Vote, run: () => go("/wahlen") },
+      { key: "nav-konto", section: "Navigation", label: "Konto & Einstellungen", icon: UserCircle, run: () => go("/account") },
+      { key: "nav-hilfe", section: "Navigation", label: "Hilfe", icon: LifeBuoy, run: () => go("/hilfe") },
       ...(darfAdmin(user)
         ? [{ key: "nav-admin", section: "Navigation", label: "Admin", icon: Settings, run: () => go("/admin") } as Item]
         : []),
@@ -162,6 +176,10 @@ export function CommandPalette() {
       {
         key: "act-tour", section: "Aktionen", label: "Lotti-Tour starten", sub: "Einmal durch alles, was Ratslotse kann",
         icon: Play, run: () => { close(); startGuidedTour(); },
+      },
+      {
+        key: "act-feedback", section: "Aktionen", label: "Feedback geben", sub: "Lob, Fehler, Wünsche — direkt an uns",
+        icon: MessageCircle, run: () => { close(); openFeedback(); },
       },
       // Der Weg zu Lotti, der auch dann bleibt, wenn der Knopf ausgeblendet
       // ist (Konto → Lotti). Ausblenden heißt wegräumen, nicht abschalten.
@@ -211,7 +229,7 @@ export function CommandPalette() {
     }
 
     return [...zurSuche, ...recent, ...found, ...nav, ...actions];
-  }, [query, debounced, decisions, user, lotti, ideen, go, close]);
+  }, [query, debounced, decisions, user, lotti, ideen, neuerRat, go, close]);
 
   // Aktiven Eintrag im gültigen Bereich halten + sichtbar scrollen.
   useEffect(() => {
