@@ -779,7 +779,10 @@ export function StichwahlView() {
     if (data) document.title = fensterTitel(data);
   }, [data]);
 
-  if (!frei || isError) {
+  // `isError && !data`: Scheitert EIN Abruf im 15-s-Takt, bleibt der letzte
+  // Stand stehen — vorher sprang die Live-Tafel bis zum nächsten Erfolg auf
+  // „Die Stichwahl ist noch nicht offen" (wie wahlabend/view.tsx es schon hielt).
+  if (!frei || (isError && !data)) {
     return (
       <>
         <Kopf label="Stichwahl" />

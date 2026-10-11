@@ -46,7 +46,9 @@ async function ladeShare(token: string): Promise<Share | null> {
   if (!token || token.length > 64) return null;
   try {
     const r = await fetch(`${BACKEND}/api/council/qa-share/${encodeURIComponent(token)}`,
-      { cache: "no-store" });
+      // Die geteilte Antwort IST der Seiteninhalt — großzügiger als die
+      // Vorschau, aber nicht unbegrenzt (Node wartet sonst bis zu 300 s).
+      { cache: "no-store", signal: AbortSignal.timeout(5000) });
     if (!r.ok) return null;
     return (await r.json()) as Share;
   } catch {

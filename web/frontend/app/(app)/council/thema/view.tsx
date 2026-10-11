@@ -11,6 +11,8 @@ import { reportBadgeEvent } from "@/components/badges";
 import { DecisionLinkCard, PartyBadge, FieldBadge, formatEuro } from "@/components/decision-ui";
 import { ENTITY_KIND } from "@/components/council-entities";
 import { useFetch } from "@/lib/use-fetch";
+import { istNichtGefunden } from "@/lib/api";
+import { AbrufFehler } from "@/components/abruf-fehler";
 import { themaHref } from "@/lib/routes";
 import { ShareButton } from "@/components/share-button";
 import { useZurueck } from "@/lib/zurueck";
@@ -79,10 +81,16 @@ function EntityInner() {
   useEffect(() => {
     if (slug) reportBadgeEvent("map_place", slug);
   }, [slug]);
-  const { data, loading } = useFetch<EntityDetail>(slug ? `/council/entity/${slug}` : null);
+  const { data, loading, error, refetch } = useFetch<EntityDetail>(slug ? `/council/entity/${slug}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
 
   if (loading) return <DetailSkeleton />;
-  if (!data) notFound();
+  if (!data) {
+    if (error && !istNichtGefunden(error)) return <AbrufFehler error={error} onRetry={refetch} was="Dieses Thema" />;
+    notFound();
+  }
   const k = ENTITY_KIND[data.entity.kind] ?? ENTITY_KIND.project;
   return (
     <div className="mx-auto max-w-3xl weit:max-w-[1480px]">

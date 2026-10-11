@@ -28,12 +28,20 @@ export type VorschauArt = "decision" | "person" | "thema" | "sitzung" | "ort";
  *  die auch next.config.mjs für die /api-Weiterleitung benutzt. */
 const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
 
+/** Wie lange die Metadaten das erste Byte einer Seite aufhalten dürfen. */
+export const VORSCHAU_GRENZE_MS = 1500;
+
 async function holeVorschau(art: VorschauArt, key: string) {
   try {
     const res = await fetch(`${BACKEND}/api/council/preview/${art}/${encodeURIComponent(key)}`, {
       // Geteilte Links werden von Messengern oft im Schwarm abgerufen — eine
       // Viertelstunde Cache reicht völlig und hält die Last vom Backend fern.
       next: { revalidate: 900 },
+      // Die Vorschau hält das HTML der Seite auf (generateMetadata läuft vor
+      // dem ersten Byte). Ohne Grenze wartete ein hängendes Backend bis zu
+      // 300 s — eine weiße Seite für eine Zeile Messenger-Vorschau. Kommt sie
+      // nicht rasch, gibt es die allgemeine.
+      signal: AbortSignal.timeout(VORSCHAU_GRENZE_MS),
     });
     if (!res.ok) return null;
     return (await res.json()) as { title: string; description: string };
@@ -79,7 +87,9 @@ type WahlKopf = { slug: string; short_title: string; date: string; kind: string 
  */
 export async function holeWahl(): Promise<WahlKopf | null> {
   try {
-    const res = await fetch(`${BACKEND}/api/app-config`, { next: { revalidate: 900 } });
+    const res = await fetch(`${BACKEND}/api/app-config`, {
+      next: { revalidate: 900 }, signal: AbortSignal.timeout(VORSCHAU_GRENZE_MS),
+    });
     if (!res.ok) return null;
     const config = (await res.json()) as { election?: WahlKopf | null };
     return config.election ?? null;

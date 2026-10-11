@@ -14,6 +14,7 @@
 // Handler). Deshalb hier ein eigener, roher Abruf statt des Wrappers —
 // dieselbe Ausnahme wie bei Streams (web/frontend/CLAUDE.md).
 
+import { AbrufFehler } from "@/components/abruf-fehler";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -176,6 +177,16 @@ export function TippView() {
   if (configLaedt) return null; // wie useFeature überall: lieber später als falsch
   if (!tippspielAn) return <NichtFreigeschaltet />;
   if (setupQuery.error instanceof SetupFehler && setupQuery.error.status === 401) return <KontoNoetig />;
+  // Ein 5xx am Wahlabend (genau dann, wenn alle gleichzeitig tippen) ließ den
+  // Ladeschirm bis 10/2026 für immer stehen: `!setup` blieb einfach wahr.
+  const tippFehler = (!setup && setupQuery.isError) ? setupQuery.error
+    : (meins === undefined && meinsQuery.isError) ? meinsQuery.error : null;
+  if (tippFehler) {
+    return (
+      <AbrufFehler error={tippFehler} was="Das Tippspiel"
+        onRetry={() => { void setupQuery.refetch(); void meinsQuery.refetch(); }} />
+    );
+  }
   if (setupQuery.isLoading || meinsQuery.isLoading || !setup || meins === undefined || weiterZu) return <LadeSchirm />;
 
   if (!meins) {

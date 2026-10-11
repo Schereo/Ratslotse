@@ -54,7 +54,5 @@ export function rueckmeldungsFehler(fehler: unknown): string {
   return "Das hat nicht geklappt — bitte noch einmal.";
 }
 
-/** Gibt es das nicht, oder kam die Antwort nicht an? Nur ein 404 heißt „gibt es nicht". */
-export function istNichtGefunden(fehler: unknown): boolean {
-  return fehler instanceof ApiError && fehler.status === 404;
-}
+/** Gibt es das nicht, oder kam die Antwort nicht an? Wohnt in `lib/api.ts`. */
+export { istNichtGefunden } from "./api";
