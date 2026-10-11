@@ -1061,6 +1061,8 @@ class SchemaMixin(StoreBasis):
         # nach, bevor es merkt, dass es nichts nachzutragen gibt.
         "council_budget_execution": (None, "source_url", "ris"),
         "council_liquidity": (None, "url", "ris"),
+        # Die Kontenebene der Teilhaushalte: neu, ohne Altbestand.
+        "council_budget_accounts": (None, "url", "ris"),
     "council_enterprise_accounts": (None, None, "ris"),
         "council_company_accounts": (None, None, "ris"),
         # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
@@ -3841,6 +3843,29 @@ class SchemaMixin(StoreBasis):
             "probes TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Die Kontenebene der Teilhaushalte (council/budget_accounts.py): je
+        # Plan, Teilhaushalt, Konto, Jahr und Spaltenart EIN Betrag — „Was
+        # bringen die Parkgebühren?" fragt nach einem Sachkonto, und das stand
+        # bis 10/2026 in keiner Tabelle. `plan_year` ist der Haushaltsplan, aus
+        # dem die Zeile stammt; derselbe Jahrgang steht in mehreren Plänen
+        # (als Entwurf, als fortgeschriebener Vorjahresansatz, als Ergebnis).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_accounts ("
+            "plan_year INTEGER NOT NULL, "
+            "sub_budget_no INTEGER NOT NULL, sub_budget_name TEXT, "
+            "account_no TEXT NOT NULL, label TEXT NOT NULL, "
+            "posten_nr INTEGER, posten_label TEXT, "
+            "kind TEXT, "                        # revenue | expense | internal_…
+            "year INTEGER NOT NULL, "
+            "column_kind TEXT NOT NULL, "        # actual (Ergebnis) | budget (Ansatz)
+            "amount REAL NOT NULL, "             # Euro
+            "document_id INTEGER, url TEXT, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (plan_year, sub_budget_no, account_no, year, column_kind))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_budget_accounts_konto "
+            "ON council_budget_accounts(account_no, year)")
         # Die Jahresabschlüsse der Eigenbetriebe (council/eigenbetriebe_abschluss.py):
         # je Betrieb, Jahr und Kennzahl EINE Zahl — aus dem jüngsten Bericht,
         # der sie nennt, bezeugt von den Vorjahresspalten der folgenden.

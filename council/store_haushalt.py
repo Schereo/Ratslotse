@@ -193,6 +193,9 @@ class HaushaltMixin(StoreBasis):
         # Der Liquiditätsstand: je Monat die Grafik, aus der der Wert zuletzt
         # bestätigt wurde — die Papierliste eines Jahrgangs sind die Grafiken.
         "liquidity":        ("council_liquidity", "year", None, "url"),
+        # Die Kontenebene: je Plan und Teilhaushalt eine Anlage — dieselben
+        # Dokumente wie `teilhaushalt`, die Jahresspalte ist der Plan.
+        "budget_accounts":  ("council_budget_accounts", "plan_year", None, "url"),
         # Die Jahresabschlüsse der Eigenbetriebe: je Jahrgang bis zu vier
         # Prüfberichte (ein Betrieb, ein Papier), jede Kennzahl zeigt auf den
         # jüngsten Bericht, der sie nennt.
@@ -3243,6 +3246,52 @@ class HaushaltMixin(StoreBasis):
                      r.get("revised_from"), r.get("document_id"), r.get("url"), r.get("template_number"),
                      ",".join(r.get("probes") or []), hid, now))
         return len(rows)
+
+    def save_budget_accounts(self, plan_year: int, sub_budget_no: int,
+                             rows: list[dict], herkunft) -> int:
+        """Die Konten EINES Teilhaushalts aus EINEM Plan schreiben.
+
+        Die Einheit wird vorher geleert: Ein Plan-Teilhaushalt ist ein
+        Dokument, und ein erneutes Einlesen liest dasselbe Dokument neu —
+        Zeilen eines früheren Parser-Stands stehen zu lassen hieße, sie zu
+        konservieren. ``rows`` je Konto und Spalte: ``account_no``, ``label``,
+        ``posten_nr``, ``posten_label``, ``kind``, ``sub_budget_name``,
+        ``year``, ``column_kind``, ``amount``, ``document_id``, ``url``."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self.transaktion():
+            hid = self.merke_herkunft(herkunft, fetched_at=now)
+            self._conn.execute(
+                "DELETE FROM council_budget_accounts WHERE plan_year = ? AND sub_budget_no = ?",
+                (plan_year, sub_budget_no))
+            self._conn.executemany(
+                "INSERT INTO council_budget_accounts (plan_year, sub_budget_no, sub_budget_name, "
+                " account_no, label, posten_nr, posten_label, kind, year, column_kind, amount, "
+                " document_id, url, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                [(plan_year, sub_budget_no, r.get("sub_budget_name"), r["account_no"], r["label"],
+                  r.get("posten_nr"), r.get("posten_label"), r.get("kind"), r["year"],
+                  r["column_kind"], r["amount"], r.get("document_id"), r.get("url"), hid, now)
+                 for r in rows])
+        return len(rows)
+
+    def budget_accounts_einheiten(self) -> set[tuple]:
+        """``(Planjahr, Teilhaushalt)`` — die Einheiten des Datenstands."""
+        try:
+            return {(r[0], r[1]) for r in self._conn.execute(
+                "SELECT DISTINCT plan_year, sub_budget_no FROM council_budget_accounts")}
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return set()
+
+    def budget_accounts_count(self, plan_year: int, sub_budget_no: int) -> int:
+        try:
+            return self._conn.execute(
+                "SELECT COUNT(*) FROM council_budget_accounts WHERE plan_year = ? "
+                "AND sub_budget_no = ?", (plan_year, sub_budget_no)).fetchone()[0]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return 0
 
     def liquidity_einheiten(self) -> set[tuple]:
         """``(Jahr, Monat)`` je Zeile — die Einheiten des Datenstands."""

@@ -69,8 +69,8 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from collections.abc import Callable
 
-from council import (anlagenspiegel, bilanz, buergschaften, indicators, income_budget, finanzberichte,
-                     herkunft, investitionsprogramm, konzernabschluss,
+from council import (anlagenspiegel, bilanz, budget_accounts, buergschaften, indicators,
+                     income_budget, finanzberichte, herkunft, investitionsprogramm, konzernabschluss,
                      pruefberichte, stellenplan)
 from council.store import CouncilStore
 from kern.dbfehler import tabelle_fehlt
@@ -2239,6 +2239,83 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
             "in_tabelle": gesamt, "steckbrief": abdeckung}
 
 
+def lies_budget_accounts(store: CouncilStore, p: Protokoll,
+                         nur_fehlende: bool = False,
+                         schuetzen: bool = True) -> dict:
+    """Die Kontenebene aus denselben Teilhaushalts-Plänen wie die Produkte.
+
+    Einheit ist ``(Planjahr, Teilhaushalt)``: Ein Plan trägt je Konto das
+    Ergebnis von vor zwei Jahren, den fortgeschriebenen Vorjahresansatz, den
+    eingebrachten Ansatz und drei Jahre Finanzplanung. Derselbe Jahrgang
+    steht damit in mehreren Plänen — welche Zahl eine Frage beantwortet,
+    entscheidet die Abfrage (``council/geld/accounts.py``), nicht der Ingest.
+
+    **Ein Teilhaushalt je Plan wird genau einmal versorgt, vom ersten
+    Dokument** — dieselbe Regel und derselbe Grund wie bei den Produkten
+    (``lies_teilhaushalte``): Elf Plan-Teilhaushalte liegen zweimal im
+    Bestand, unter einer zweiten Vorlage hochgeladen."""
+    source = QUELLEN["budget_accounts"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
+    versorgt: set[tuple] = set()
+    neue: set[tuple] = set()
+    ohne = geschuetzt = dubletten = konten = unklar = verworfen = 0
+    for r in rows:
+        parsed = budget_accounts.parse(r["raw_text"] or "")
+        if not parsed or not parsed["accounts"]:
+            ohne += 1
+            continue
+        plan_year = parsed["columns"][2][1]
+        einheit = (plan_year, parsed["sub_budget_no"])
+        if einheit in vorhanden:
+            continue
+        if einheit in versorgt:
+            dubletten += 1
+            continue
+        zeilen = [{
+            "sub_budget_name": parsed["sub_budget_name"], "account_no": a["account_no"],
+            "label": a["label"], "posten_nr": a["posten_nr"], "posten_label": a["posten_label"],
+            "kind": a["kind"], "year": jahr,
+            "column_kind": "actual" if art == "Ergebnis" else "budget",
+            "amount": betrag, "document_id": r["document_id"], "url": r["url"]}
+            for a in parsed["accounts"] for (art, jahr), betrag in a["values"].items()]
+        alt = store.budget_accounts_count(*einheit)
+        if not bestandsschutz(p, f"Plan {plan_year} THH{einheit[1]:02d} (Konten)", alt,
+                              len(zeilen), schuetzen):
+            geschuetzt += 1 if alt else 0
+            continue
+        n_unklar = sum(len(x.get("accounts", [])) for x in parsed["posten_rejected"])
+        n_verworfen = sum(1 for x in parsed["posten_rejected"] if "accounts" not in x)
+        store.save_budget_accounts(plan_year, einheit[1], zeilen, herkunft.Herkunft(
+            kind="ris", probe=budget_accounts.POSTEN_SUM,
+            document_id=r["document_id"], label=r["label"], url=r["url"],
+            citation=f"Teilergebnishaushalt THH{einheit[1]:02d} — {budget_accounts.CITATION}",
+            probe_result=(f"{len(parsed['accounts'])} Konten aus {len(parsed['posten_ok'])} "
+                          f"Posten, deren Summe aufgeht"
+                          + (f"; {n_unklar} Konten ohne eindeutige Spalte weggelassen"
+                             if n_unklar else "")
+                          + (f"; {n_verworfen} Posten ohne aufgehende Summe weggelassen"
+                             if n_verworfen else "")),
+            as_of=f"Haushaltsplan {plan_year} — Stand der Einbringung"))
+        versorgt.add(einheit)
+        neue.add(einheit)
+        konten += len(parsed["accounts"])
+        unklar += n_unklar
+        verworfen += n_verworfen
+    for plan_year in sorted({e[0] for e in neue}):
+        p.sagen(f"  Plan {plan_year}: {sum(1 for e in neue if e[0] == plan_year)} Teilhaushalte")
+    if unklar or verworfen:
+        p.sagen(f"  {unklar} Konten ohne eindeutige Spalte, {verworfen} Posten ohne "
+                f"aufgehende Summe — weggelassen")
+    if ohne:
+        p.warnen(f"  {ohne} Dokument(e) ohne lesbare Kontentabelle")
+    return {"neue_jahrgaenge": sorted({e[0] for e in neue}),
+            "neue_einheiten": sorted(neue), "dokumente": len(rows),
+            "ohne_treffer": ohne, "bestand_geschuetzt": geschuetzt,
+            "dubletten": dubletten, "konten": konten, "unklar": unklar,
+            "posten_verworfen": verworfen}
+
+
 def lies_pruefungsfeststellungen(store: CouncilStore, p: Protokoll,
                                  nur_fehlende: bool = False,
                                  schuetzen: bool = True,
@@ -2453,6 +2530,12 @@ def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
 from council.eigenbetriebe_abschluss import TITEL_MUSTER as _EIGENBETRIEBE_TITEL  # noqa: E402
 from council.gesellschaft_abschluss import TITEL_MUSTER as _GESELLSCHAFTEN_TITEL  # noqa: E402
 
+#: Woran ein Teilhaushalts-Plan erkennbar ist — geteilt von der Produkt- und
+#: der Kontenebene, die aus denselben Anlagen kommen. Die Begründung der
+#: Muster und der Seitenschwelle steht beim Eintrag ``teilhaushalt``.
+_THH_ERKENNUNG = Erkennung(label_muster=("%THH%", "%icht rechtsfähige Stiftungen%"),
+                           oder=True, mindest_seiten=25, ordnung="document_id")
+
 QUELLEN: dict[str, Finanzquelle] = {}
 
 for _q in (
@@ -2587,14 +2670,30 @@ for _q in (
         # fehlte er deshalb, obwohl der Parser das Dokument ohne Änderung
         # liest (28 Seiten, Kopf „THH13"). Das Gegenstück „020 Rechtsfähige
         # Stiftungen" ist KEIN Teilhaushalt und passt nicht auf „icht rechts…".
-        erkennung=Erkennung(label_muster=("%THH%", "%icht rechtsfähige Stiftungen%"),
-                            oder=True, mindest_seiten=25, ordnung="document_id"),
+        erkennung=_THH_ERKENNUNG,
         # Die Einheit ist der Teilhaushalt, nicht der Jahrgang: Ein Jahr
         # verteilt sich auf zwölf bis dreizehn Anlagen, die einzeln lesbar werden.
         unit="Teilhaushalte",
         einheiten_von=_einheiten_teilhaushalt,
         balance=_bestand_produkte,
         einlesen=lies_teilhaushalte,
+    ),
+    Finanzquelle(
+        key="budget_accounts",
+        label="Teilhaushalts-Pläne (Kontenebene)",
+        was="Was einzelne Einnahme- und Ausgabearten bringen und kosten — "
+            "Parkgebühren, Straßenunterhaltung, Mieten —, je Teilhaushalt mit "
+            "Ergebnis, Ansatz und Finanzplanung.",
+        tabelle="council_budget_accounts",
+        # Dieselben Anlagen wie die Produktebene, also derselbe Takt.
+        erwarteter_monat=10,
+        versatz=-1,
+        herkunft="ris",
+        erkennung=_THH_ERKENNUNG,
+        unit="Teilhaushalte",
+        einheiten_von=_einheiten_teilhaushalt,
+        balance=lambda store: store.budget_accounts_einheiten(),
+        einlesen=lies_budget_accounts,
     ),
     Finanzquelle(
         key="konzernabschluss",
@@ -3316,7 +3415,7 @@ REIHENFOLGE = ("haushaltsplan", "budget_notes", "income_budget", "finance_budget
                "budget_measures",
                "investitionen",
                "investitionsprogramm", "budget_execution",
-               "jahresabschluss", "teilhaushalt",
+               "jahresabschluss", "teilhaushalt", "budget_accounts",
                "stellenplan", "indicators", "rpa_fundstelle",
                "pruefungsfeststellungen",
                "konzernabschluss", "beteiligungsbericht", "fees",

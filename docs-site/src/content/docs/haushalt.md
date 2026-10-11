@@ -149,6 +149,7 @@ die es nicht zeigen:
 | `council_variance_reasons` | Warum ein Posten vom Plan abwich (Abschnitt 6.3.1), 45 Einträge | dito | dito |
 | `council_audit_report_sources` | **Fundstelle** des RPA-Schlussberichts je Jahrgang (eine Zeile je Jahr) | dito | dito |
 | `council_products` | Produktebene: was einzelne Aufgaben kosten — plus Steckbrief (Kurzbeschreibung, Auftragsgrundlage, Beeinflussbarkeit, Wirkungskreis, Zielgruppe) | Teilhaushalts-Pläne — **Anlagen im RIS** | dito |
+| `council_budget_accounts` | Kontenebene: was einzelne Einnahme- und Ausgabearten bringen und kosten (Parkgebühren, Straßenunterhaltung, Strom …) — je Haushaltsplan und Teilhaushalt das Ergebnis von vor zwei Jahren, der fortgeschriebene Vorjahresansatz, der eingebrachte Ansatz und die Finanzplanung. Probe: Die Konten eines Postens ergeben in jeder Spalte dessen Summenzeile; Teilzeilen ohne alle Spalten werden über diese Summe zugeordnet, nicht eindeutige bleiben draußen | Teilhaushalts-Pläne — **Anlagen im RIS** (dieselben wie die Produktebene) | `scripts/check_finanzdaten.py` (`finanzquellen.lies_budget_accounts`) |
 | `council_staff_plan` | Stellen je Amtsbezeichnung, 2023–2026 — `teil` A (Beamt\*innen) / B (Tarifbeschäftigte), `art` (`posten` / `gruppe` / `gesamt`), dazu Besetzung und unbesetzte Stellen zum Stichtag | Stellenplan (Anlage 21/22 des Haushaltsplans) — **Anlagen im RIS** | dito |
 | `council_audit_reports` | Prüfungsfeststellungen 2017–2023, eine Zeile je Randmarke | Schlussberichte des Rechnungsprüfungsamts — **Anlagen im RIS** | `scripts/ingest_pruefberichte.py` |
 | `council_group_items` | Gesamtergebnisrechnung des **Konzerns** je Posten, 2014–2024 | Konsolidierte Gesamtabschlüsse — **Anlagen im RIS** | `scripts/ingest_konzernabschluss.py` |
@@ -572,9 +573,9 @@ sondern auch, ob sie einer anderen etwas wegnimmt oder ihr etwas anhängt.
 
 ## Der Bereich hält sich selbst aktuell
 
-**Zweiunddreißig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
+**Dreiunddreißig** Datenschichten, jede einmal von Hand eingelesen — ohne Cron
 veraltet der ganze Bereich still, sobald niemand mehr daran denkt.
-`check_finanzdaten.py` (sonntags) nimmt das ab: **Neun** liest er
+`check_finanzdaten.py` (sonntags) nimmt das ab: **Zehn** liest er
 selbst nach (sie liegen als Anlage im Ratsinformationssystem), die **dreiundzwanzig**
 übrigen werden nur beobachtet — er meldet, dass ein Jahrgang fällig wäre, und
 nennt Quelle und Skript. Elf davon kommen von außerhalb, zwölf liegen zwar

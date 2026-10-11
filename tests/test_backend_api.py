@@ -919,7 +919,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     schichten = {s["key"]: s for s in b["layers"]}
     assert set(schichten) == {"haushaltsplan", "budget_notes", "income_budget", "finance_budget", "grants", "budget_measures", "investitionen",
                               "investitionsprogramm", "budget_execution",
-                              "jahresabschluss", "teilhaushalt", "stellenplan",
+                              "jahresabschluss", "teilhaushalt", "budget_accounts", "stellenplan",
                               "indicators", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
                               "beteiligungsbericht", "fees",
