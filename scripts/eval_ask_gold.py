@@ -148,14 +148,7 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
         raise SystemExit(f"Kein Token: {info}")
     frei = befreien(basis, token, info) if frei_machen else False
     cases = json.loads(CASES.read_text(encoding="utf-8"))
-    # Fälle, die nur einen der beiden Wege messen (``"wege": ["ask"]``) — das
-    # Wahlergebnis etwa kennt nur „Frag den Rat“, die Recherche bekommt den
-    # Baustein nicht.
-    cases = [c for c in cases if "ask" in c.get("wege", ["ask", "deep"])]
-    if nur:
-        # Mehrere durch Komma: „--nur parkgebuehren-einnahmen,brokhausen-stand“.
-        gewollt = {n.strip() for n in nur.split(",") if n.strip()}
-        cases = [c for c in cases if c["id"] in gewollt]
+    cases = gold.faelle_waehlen(cases, "ask", nur)
     ergebnisse = []
     gestellt: list[float] = []
     for case in cases:
