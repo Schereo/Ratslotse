@@ -129,6 +129,7 @@ def material_form(quellen: dict, debatten: list[dict] | None = None) -> dict:
                      "speaker": d.get("speaker")} for d in deb],
         "press_releases": quellen.get("press_releases") or [],
         "attachments": quellen.get("attachments") or [],
+        "chart": quellen.get("chart"),
         # Tagesordnungspunkte aus dem Sitzungs-Baustein — die einzige Stelle,
         # an der „Frag den Rat“ heute angekündigte Stationen zeigt.
         "agenda": [{"session_date": s.get("session_date"), "committee": s.get("committee"),
@@ -147,8 +148,14 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
         raise SystemExit(f"Kein Token: {info}")
     frei = befreien(basis, token, info) if frei_machen else False
     cases = json.loads(CASES.read_text(encoding="utf-8"))
+    # Fälle, die nur einen der beiden Wege messen (``"wege": ["ask"]``) — das
+    # Wahlergebnis etwa kennt nur „Frag den Rat“, die Recherche bekommt den
+    # Baustein nicht.
+    cases = [c for c in cases if "ask" in c.get("wege", ["ask", "deep"])]
     if nur:
-        cases = [c for c in cases if c["id"] == nur]
+        # Mehrere durch Komma: „--nur parkgebuehren-einnahmen,brokhausen-stand“.
+        gewollt = {n.strip() for n in nur.split(",") if n.strip()}
+        cases = [c for c in cases if c["id"] in gewollt]
     ergebnisse = []
     gestellt: list[float] = []
     for case in cases:
@@ -225,7 +232,7 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
 def main() -> None:
     ap = argparse.ArgumentParser(description="Gold-Fälle für Frag den Rat")
     ap.add_argument("--label", required=True)
-    ap.add_argument("--nur", default=None, help="nur diesen Fall")
+    ap.add_argument("--nur", default=None, help="nur diese Fälle (ids, durch Komma)")
     ap.add_argument("--basis", default="http://127.0.0.1:8000")
     ap.add_argument("--konto", default=None, help="Konto-Adresse fürs Token (Vorgabe wie Rauchprobe)")
     ap.add_argument("--befreien", action="store_true",

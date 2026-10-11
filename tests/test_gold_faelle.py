@@ -30,9 +30,11 @@ def test_gold_faelle_sind_wohlgeformt():
         assert all(p["gewicht"] in (1, 2, 3) and p["beleg"].strip() for p in f["pflicht"]), f["id"]
         assert any(p["gewicht"] == 3 for p in f["pflicht"]), f"{f['id']}: kein Kernfakt (Gewicht 3)"
         assert f["verboten"], f"{f['id']}: keine verbotene Behauptung"
+        assert set(f.get("wege", ["ask", "deep"])) <= {"ask", "deep"} and f.get("wege", [1]), f["id"]
         for m in f.get("material", []):
             assert set(m["fuer"]) <= fakten, f"{f['id']}/{m['id']}: zeigt auf unbekannte Fakten"
-            assert m["art"] in ("beschluss", "debatte", "presse", "vorlage", "beratung"), m
+            assert m["art"] in ("beschluss", "debatte", "presse", "vorlage", "beratung",
+                                "grafik"), m
             if m["art"] == "debatte":
                 assert m["text_enthaelt_eins"], m
             if m["art"] == "vorlage":
@@ -90,3 +92,22 @@ def test_vorlage_und_beratung_werden_erkannt():
             "agenda": [{"session_date": "2026-09-28", "committee": "Rat",
                         "title": "Verlängerung des Liquiditätskreditvertrages"}]}
     assert {m["id"]: m["vorhanden"] for m in deep._material_pruefen(fall, voll)} == {"V": True, "B": True}
+
+
+def test_grafik_wird_erkannt():
+    """Die Kontenebene (10/2026) belegt sich über die Grafik unter der Antwort."""
+    from scripts import eval_ask_gold as ask
+    from scripts import eval_deep_gold as deep
+    fall = {"material": [{"id": "G", "fuer": ["F1"], "art": "grafik", "titel_enthaelt": "Parkgebühren"}]}
+    ohne = ask.material_form({"chart": {"title": "Steuereinnahmen insgesamt"}})
+    mit = ask.material_form({"chart": {"title": "Parkgebühren — Einnahmen (Ist)"}})
+    assert [m["vorhanden"] for m in deep._material_pruefen(fall, ohne)] == [False]
+    assert [m["vorhanden"] for m in deep._material_pruefen(fall, mit)] == [True]
+    assert [m["vorhanden"] for m in deep._material_pruefen(fall, ask.material_form({}))] == [False]
+
+
+def test_wahlfaelle_laufen_nur_bei_frag_den_rat():
+    """Die Recherche bekommt den Wahl-Baustein nicht — ihre Messung bliebe rot,
+    ohne dass sich an ihr etwas ändern ließe."""
+    nur_ask = {f["id"] for f in _faelle() if f.get("wege") == ["ask"]}
+    assert {"ratswahl-2026-sitzverteilung", "ob-stichwahl-2026"} <= nur_ask
