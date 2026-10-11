@@ -4369,6 +4369,34 @@ def _geld_vereinheitlichen(geld: dict | None, haushalt, taxes, tax_capacity) -> 
     return {"haushalt": haushalt, "taxes": taxes, "tax_capacity": tax_capacity}
 
 
+#: Haushalts-Bausteine, die zu JEDER Geldfrage etwas liefern (Summen des
+#: Gesamthaushalts) — sie belegen keine bestimmte Antwort.
+_GELD_ALLGEMEIN = frozenset({"facets", "haushalt", "ansatz"})
+
+
+def geld_belegt(geld: dict | None) -> bool:
+    """Trägt der Haushalt eine Antwort — eine Quelle mit Daten, die die Frage
+    gezielt getroffen hat (Konto, Schulden, Steuern …)?"""
+    return any(v for k, v in (geld or {}).items() if k not in _GELD_ALLGEMEIN)
+
+
+_ANLAGE_MARKER = re.compile(r"\[A\d+\]")
+
+
+def antwort_belegt(answer: str, cited: list, *, geld: dict | None = None,
+                   weitere: bool = False) -> bool:
+    """Hat eine Antwort irgendeinen Beleg?
+
+    Der Zähler „Antworten ohne Quelle" (``ai_answer_empty``) fragte bis
+    10/2026 nur nach zitierten BESCHLÜSSEN. Alle vier Antworten zu den
+    Parkgebühren vom 10.10.2026 zählten deshalb als Sackgasse — dabei zitierten
+    sie eine Haushaltsanlage ([A4]) bzw. kamen aus der Kontenebene.
+    ``weitere``: ein Baustein, der selbst Beleg ist (Geschäftsordnung,
+    Sitzungskalender, Wahlergebnis)."""
+    return bool(cited) or bool(_ANLAGE_MARKER.search(answer or "")) \
+        or geld_belegt(geld) or weitere
+
+
 def geld_block(geld: dict | None, max_chars: int | None = None) -> str:
     """Alle vorhandenen Geld-Bausteine als EIN Prompt-Abschnitt, gedeckelt.
 
