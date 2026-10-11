@@ -16,7 +16,7 @@ Drei Aufrufe, in dieser Reihenfolge beim Release::
 
 **Browser:** ``web/frontend/scripts/release-clip.mjs`` spielt das Drehbuch aus
 ``web/frontend/release-clips/<version>.mjs`` in Chrome ab (Playwright,
-sichtbarer Zeiger) und liefert die Bildwechsel des Screencasts mit Uhrzeit
+sichtbarer Zeiger) und liefert Einzelbilder in doppelter Pixeldichte mit Uhrzeit
 sowie je Klick Uhrzeit und Ort. Hier werden die Bilder ab ``begin()`` zu
 einem Video mit 30 fps gelegt, von ``highlight_clip.py`` gezoomt und als
 MP4 + WebP-Standbild abgelegt. Voraussetzung: Frontend und
@@ -398,6 +398,28 @@ def remotion_meta(version: str, meta: dict) -> dict:
     }
 
 
+#: Ausgabegröße je Komposition (Faktor auf die Komposition) und Qualität.
+#: Bis 10/2026 renderte alles mit ``--scale=0.8`` — der Browser-Clip also
+#: 1280×720, darin die 1280 px breite Seite verkleinert auf rund 1000 px, und
+#: das aus einer Aufnahme in einfacher Pixeldichte. Text stand bei rund 10
+#: Pixeln und sah auf jedem Retina-Schirm verwaschen aus (Tims Befund
+#: 11.10.2026). Jetzt: 1920×1080 aus einer 2×-Aufnahme, hochkant die volle
+#: Breite von 1080. Die Unschärfe kam aus der Auflösung, nicht aus der
+#: Kompression: Derselbe Lotti-Clip mit CRF 20 (14 MB) und 27 (5,7 MB) war im
+#: Bildvergleich nicht zu unterscheiden. CRF bleibt deshalb 26; ``slow`` holt
+#: bei gleicher Qualität noch etwas Größe zurück.
+SKALA = {"WebClip": 1.2, "HochClip": 1.0}
+CRF = 26
+X264_PRESET = "slow"
+
+#: Remotion rendert mit dem installierten Chrome, wenn es einen gibt — wie
+#: der Recorder (``channel: 'chrome'``). Die mitgebrachte Headless-Shell blieb
+#: am 11.10.2026 in jedem Worktree bei „Waiting for root component to load"
+#: hängen, auch für ``remotion compositions`` ohne eine einzige Prop; mit
+#: Chrome lief dieselbe Wurzel sofort.
+SYSTEM_CHROME = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+
+
 def remotion(komposition: str, props: dict, ziel: Path, oeffentlich: Path, *,
              still: bool = False, frame: int | None = None) -> None:
     """Eine Komposition aus web/clips rendern (``npx remotion render|still``)."""
@@ -405,10 +427,11 @@ def remotion(komposition: str, props: dict, ziel: Path, oeffentlich: Path, *,
     datei.write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
     befehl = ["npx", "remotion", "still" if still else "render", "src/index.ts", komposition, str(ziel),
               f"--public-dir={oeffentlich}", f"--props={datei}", "--log=error"]
+    if SYSTEM_CHROME.exists():
+        befehl.append(f"--browser-executable={SYSTEM_CHROME}")
     if not still:
-        # 1280×720 statt 1600×900: Die Karte zeigt den Clip höchstens gut
-        # 1100 px breit; die Ersparnis ist rund ein Drittel der Datei.
-        befehl += ["--codec=h264", "--crf=26", "--pixel-format=yuv420p", "--scale=0.8"]
+        befehl += ["--codec=h264", f"--crf={CRF}", f"--x264-preset={X264_PRESET}",
+                   "--pixel-format=yuv420p", f"--scale={SKALA.get(komposition, 1.0)}"]
     if frame is not None:
         befehl.append(f"--frame={frame}")
     lauf = subprocess.run(befehl, cwd=CLIPS, capture_output=True, text=True)

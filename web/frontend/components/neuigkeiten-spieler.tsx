@@ -15,7 +15,13 @@
  *   **Wischen nach unten schließt**, seitwärts wischen blättert;
  * - „<Feature> ausprobieren →" führt zum Feature und schließt den Spieler.
  *
- * **Am Ende eines Clips kommt der nächste** — das ist der eine Selbstlauf,
+ * **Am Ende eines Clips steht erst ein Zwischenbild** (seit 10/2026): „Das
+ * war …", „<Feature> ausprobieren →", „Als Nächstes: …" mit einem Balken, der
+ * acht Sekunden läuft, dann kommt der nächste. Vorher begann er im selben
+ * Augenblick, und man merkte kaum, dass jetzt ein anderes Feature lief.
+ * Zeiger auf der Tafel oder Fokus auf einem ihrer Knöpfe hält den Balken an.
+ *
+ * **Danach kommt der nächste** — das ist der eine Selbstlauf,
  * und er ist keiner im Sinn von DESIGNSPRACHE §7: Ein Mensch hat den Spieler
  * geöffnet, um die Clips zu sehen; gewechselt wird erst, wenn der laufende zu
  * Ende ist, und die Balken kündigen es an. Mit `prefers-reduced-motion`
@@ -32,7 +38,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X } from "lucide-react";
 import {
-  kachelFarbe, nachDemEnde, seitenVerhaeltnis, type Highlight,
+  kachelFarbe, nachDemEnde, seitenVerhaeltnis, ZWISCHENBILD_SEKUNDEN, type Highlight,
 } from "@/lib/neuigkeiten";
 import { cn } from "@/lib/utils";
 import { useTelefonBreite } from "@/lib/use-ultra";
@@ -113,6 +119,8 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
   const [i, setI] = useState(() => Math.max(0, Math.min(start, folge.length - 1)));
   const [spielt, setSpielt] = useState(false);
   const [zuEnde, setZuEnde] = useState(false);
+  // Das Zwischenbild nach einem Clip, bevor der nächste kommt.
+  const [zwischen, setZwischen] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const balken = useRef<HTMLSpanElement>(null);
   const buehne = useRef<HTMLDivElement>(null);
@@ -144,6 +152,7 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
 
   const zeige = useCallback((ziel: number) => {
     if (ziel < 0 || ziel >= n) return;
+    setZwischen(false);
     setZuEnde(false);
     setSpielt(false);
     setI(ziel);
@@ -157,6 +166,7 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
     if (v.paused || v.ended) {
       if (v.ended) v.currentTime = 0;
       setZuEnde(false);
+      setZwischen(false);
       void v.play().catch(() => { /* Autoplay verweigert: der Knopf bleibt da */ });
     } else {
       v.pause();
@@ -182,7 +192,7 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
   }, [i]);
 
   const amEnde = () => {
-    if (nachDemEnde({ index: i, anzahl: n, ruhig, nebenbei }) === "weiter") zeige(i + 1);
+    if (nachDemEnde({ index: i, anzahl: n, ruhig, nebenbei }) === "weiter") setZwischen(true);
     else setZuEnde(true);
   };
 
@@ -222,6 +232,9 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
     const dx = e.clientX - z.x;
     const dy = e.clientY - z.y;
     const tipp = Math.abs(dx) < 10 && Math.abs(dy) < 10;
+    // Auf dem Zwischenbild entscheiden seine Knöpfe; ein Tipp daneben täte
+    // sonst etwas Unsichtbares (Clip neu starten, blättern). Wischen geht.
+    if (zwischen && tipp) return;
     if (z.art === "mouse") { if (tipp) umschalten(); return; }
     if (dy > 90 && dy > Math.abs(dx)) { onSchliessen(); return; }
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) { if (dx < 0) { if (i < n - 1) zeige(i + 1); } else zurueck(); return; }
@@ -306,9 +319,15 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
 
           {media?.kind === "video" && (
             <>
+              {zwischen && i < n - 1 && (
+                <Zwischenbild
+                  gesehen={h} naechstes={folge[i + 1]} farbe={farbe} schmal={hochkant || telefon}
+                  onWeiter={() => zeige(i + 1)} onNochmal={umschalten} onAusprobieren={onSchliessen}
+                />
+              )}
               {/* Steht der Clip (reduzierte Bewegung, angehalten, zu Ende),
                   sagt ein großer Knopf in der Mitte, wie es weitergeht. */}
-              {!spielt && (
+              {!spielt && !zwischen && (
                 <button
                   type="button"
                   onClick={umschalten}
@@ -320,14 +339,14 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
                     : <Play className="ml-1 h-8 w-8" style={{ color: farbe, fill: farbe }} />}
                 </button>
               )}
-              <button
+              {!zwischen && <button
                 type="button"
                 onClick={umschalten}
                 aria-label={spielt ? "Anhalten" : "Abspielen"}
                 className="absolute bottom-2 left-2 grid h-8 w-8 place-items-center rounded-full bg-[hsl(212_55%_11%/0.7)] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:bottom-3 sm:left-3 sm:h-10 sm:w-10"
               >
                 {spielt ? <Pause className="h-3.5 w-3.5 fill-current sm:h-4 sm:w-4" /> : <Play className="ml-0.5 h-3.5 w-3.5 fill-current sm:h-4 sm:w-4" />}
-              </button>
+              </button>}
             </>
           )}
         </div>
@@ -379,6 +398,93 @@ function Inhalt({ folge, start, nebenbei, onGesehen, onSchliessen }: Omit<Props,
             {!letzte && <ChevronRight aria-hidden className="h-5 w-5" />}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Die Tafel zwischen zwei Clips: was man gerade gesehen hat, der Weg dorthin
+ *  und was als Nächstes kommt — mit einem Balken, der zeigt, wann.
+ *
+ *  Der Balken läuft über eine CSS-Animation (nur `transform`), deren Ende den
+ *  Wechsel auslöst; angehalten wird sie über `animation-play-state`, solange
+ *  die Maus auf „Ausprobieren" oder „Nochmal ansehen" liegt oder einer der
+ *  beiden den Fokus hat — wer gerade dorthin will, dem soll der Clip nicht
+ *  unter dem Zeiger wechseln. Bewusst nicht die ganze Tafel: Die Maus ruht
+ *  am Schreibtisch oft dort, wo man auf „Abspielen" geklickt hat, und der
+ *  Balken stünde dann für immer still. */
+function Zwischenbild({ gesehen, naechstes, farbe, schmal, onWeiter, onNochmal, onAusprobieren }: {
+  gesehen: Highlight; naechstes: Highlight; farbe: string; schmal: boolean;
+  onWeiter: () => void; onNochmal: () => void; onAusprobieren: () => void;
+}) {
+  const [halt, setHalt] = useState(false);
+  const weiterKnopf = useRef<HTMLButtonElement>(null);
+  // Der Fokus geht auf „Als Nächstes" — Leertaste/Enter setzen die Story
+  // fort, Tab erreicht „Ausprobieren".
+  useEffect(() => { weiterKnopf.current?.focus({ preventScroll: true }); }, []);
+  const anhalten = {
+    onFocus: () => setHalt(true),
+    onBlur: () => setHalt(false),
+    onPointerEnter: (e: React.PointerEvent) => { if (e.pointerType === "mouse") setHalt(true); },
+    onPointerLeave: (e: React.PointerEvent) => { if (e.pointerType === "mouse") setHalt(false); },
+  };
+  return (
+    <div
+      role="group"
+      aria-label={`${gesehen.title} ist zu Ende`}
+      className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-5 text-center backdrop-blur-sm animate-in fade-in-0 duration-buehne"
+      // Nachtblau wie der Spieler: Das letzte Bild eines Clips ist meist eine
+      // helle Seite, und darauf trügen die weißen Knöpfe nicht.
+      style={{ backgroundColor: "hsl(213 50% 7% / 0.86)" }}
+    >
+      <div className="max-w-md">
+        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">Das war</p>
+        <p className="mt-1 font-display text-[19px] font-bold leading-snug text-white sm:text-[22px]">{gesehen.title}</p>
+      </div>
+      <div className={cn("flex w-full max-w-md flex-col items-stretch gap-2.5", !schmal && "sm:max-w-lg")}>
+        <Link
+          href={gesehen.url}
+          onClick={onAusprobieren}
+          {...anhalten}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[16px] font-bold text-white transition-[filter] duration-tipp maus:hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+          style={{ backgroundColor: farbe }}
+        >
+          {gesehen.action}
+          <ArrowRight aria-hidden className="h-4 w-4 shrink-0" />
+        </Link>
+        <button
+          ref={weiterKnopf}
+          type="button"
+          onClick={onWeiter}
+          aria-label={`Als Nächstes: ${naechstes.title}`}
+          className="relative inline-flex min-h-14 items-center justify-center gap-2 overflow-hidden rounded-[28px] bg-white/[0.14] px-6 py-2 text-white transition-colors duration-tipp maus:hover:bg-white/[0.22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          {/* Der Balken: läuft einmal durch und löst dann den Wechsel aus. */}
+          <span
+            aria-hidden
+            onAnimationEnd={onWeiter}
+            className="absolute inset-y-0 left-0 w-full origin-left bg-white/[0.16] motion-reduce:hidden"
+            style={{
+              animation: `zwischenbild-lauf ${ZWISCHENBILD_SEKUNDEN}s linear forwards`,
+              animationPlayState: halt ? "paused" : "running",
+            }}
+          />
+          {/* Zweizeilig: „Als Nächstes: Mein Viertel" lief auf 375 px in
+              eine Ellipse — gerade der Titel ist hier die Nachricht. */}
+          <span className="relative flex min-w-0 flex-col items-center leading-tight">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/70">Als Nächstes</span>
+            <span className="line-clamp-2 text-[15px] font-semibold">{naechstes.title}</span>
+          </span>
+          <ChevronRight aria-hidden className="relative h-5 w-5 shrink-0" />
+        </button>
+        <button
+          type="button"
+          onClick={onNochmal}
+          {...anhalten}
+          className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 text-[14px] font-medium text-white/80 transition-colors duration-tipp maus:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          <RotateCcw aria-hidden className="h-4 w-4" /> Nochmal ansehen
+        </button>
       </div>
     </div>
   );

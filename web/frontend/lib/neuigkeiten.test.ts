@@ -24,7 +24,7 @@ function hl(title: string, extra: Partial<Highlight> = {}): Highlight {
 }
 
 function rel(highlights: Highlight[]): Release {
-  return { version: "3.0.0", date: "2026-10-06", title: "Das Lotti-Update", teaser: null, highlights };
+  return { version: "3.0.0", date: "2026-10-06", title: "Das Erklär-Update", teaser: null, highlights };
 }
 
 describe("Kachelfarbe", () => {

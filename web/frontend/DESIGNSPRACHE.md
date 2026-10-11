@@ -473,6 +473,14 @@ iOS-Schrift.
   19/22, der ganze `text` in Weiß 86 %, dann „‹ Zurück" · **„<Feature>
   ausprobieren →" in der Kachelfarbe** · „Weiter ›" (auf dem letzten
   „Fertig"); schmal steht der Feature-Knopf allein in der ersten Zeile.
+  **Zwischen zwei Clips steht eine Tafel** über dem abgedunkelten letzten
+  Bild (Nachtblau 86 %, Unschärfe): „DAS WAR" + Titel (Bricolage 19/22),
+  darunter „<Feature> ausprobieren →" in der Kachelfarbe, „ALS NÄCHSTES ·
+  <Titel> ›" mit einem hellen Balken, der in acht Sekunden durchläuft, und
+  leise „↻ Nochmal ansehen". Der Fokus steht auf „Als Nächstes"; Zeiger oder
+  Fokus auf den anderen beiden Knöpfen halten den Balken an. **In der App
+  fehlt die Tafel noch** — `ReleaseStoryPlayer.reachedEnd()` schaltet
+  direkt weiter; nachziehen, wenn die App das nächste Mal angefasst wird.
   Bedienung: ein echter Dialog (Fokusfalle, `Esc`, Fokus zurück auf die
   Kachel), `←`/`→`, Leertaste; am Telefon Tipp links/rechts (je 30 %) blättert,
   Mitte hält an, seitwärts wischen blättert, **nach unten wischen schließt**.
@@ -798,7 +806,12 @@ unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
   erwartete Grammatik einer Story und erklärt die Reihenfolge: Ein Mensch hat
   ihn geöffnet, um die Clips zu sehen; die Balken oben kündigen den Wechsel an;
   gewechselt wird erst, wenn der laufende Clip **zu Ende** ist — nichts wird
-  mitten im Lesen weggezogen, und Anhalten hält auch das an. Mit
+  mitten im Lesen weggezogen, und Anhalten hält auch das an. **Und nie
+  übergangslos:** Bis 10/2026 begann der nächste Clip im selben Augenblick,
+  und man merkte nicht, dass jetzt ein anderes Feature lief (Tims Befund).
+  Seitdem steht dazwischen die Tafel mit dem sichtbaren Balken — der Wechsel
+  ist angekündigt, und wer das Gesehene ausprobieren will, hat dafür einen
+  Moment. Mit
   `prefers-reduced-motion` startet kein Clip von selbst (Standbild +
   Abspielknopf), und am Ende schaltet nichts weiter (`nachDemEnde` in
   `lib/neuigkeiten.ts`, in der App `ReleaseStoryPlayer`).

@@ -18,7 +18,7 @@ const medium = (name: string, sekunden: number) => ({
 });
 const NEWS = {
   releases: [{
-    version: "3.0.0", date: "2026-10-06", title: "Das Lotti-Update",
+    version: "3.0.0", date: "2026-10-06", title: "Das Erklär-Update",
     teaser: "Drei neue Wege durch den Rat — je ein kurzes Video.",
     highlights: [
       { title: "Lotti erklärt dir, was du siehst", text: "Tipp auf Lotti unten rechts.", url: "/council",
@@ -67,7 +67,7 @@ async function stellen(page: Page): Promise<string[]> {
  *  laufende Sitzung steht vor ihr). */
 async function karte(page: Page) {
   await page.goto("/dashboard");
-  const titel = page.locator("main").getByRole("heading", { name: "Das Lotti-Update" });
+  const titel = page.locator("main").getByRole("heading", { name: "Das Erklär-Update" });
   const pille = page.locator("main").getByRole("button", { name: /^Neu bei Ratslotse/ });
   await expect(titel.or(pille).first()).toBeVisible();
   if (!(await titel.isVisible())) await pille.click();
@@ -132,7 +132,7 @@ test("mit reduzierter Bewegung: Standbild statt Autoplay, am Ende kein Weiter", 
 test.describe("mit Bewegung", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("am Ende eines Clips kommt der nächste", async ({ page }) => {
+  test("am Ende eines Clips steht ein Zwischenbild, dann kommt der nächste", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stellen(page);
     const k = await karte(page);
@@ -143,7 +143,32 @@ test.describe("mit Bewegung", () => {
       v.currentTime = Math.max(0, v.duration - 0.3);
       await v.play().catch(() => {});
     });
-    await expect(spieler(page).getByRole("heading", { name: "2 von 3 · Mein Viertel" })).toBeVisible({ timeout: 10_000 });
+    // Erst die Tafel: was man gesehen hat, der Weg dorthin, was als Nächstes kommt.
+    const tafel = spieler(page).getByRole("group", { name: /ist zu Ende/ });
+    await expect(tafel).toBeVisible({ timeout: 10_000 });
+    await expect(tafel.getByRole("link", { name: /Lotti ausprobieren/ })).toBeVisible();
+    await expect(tafel.getByRole("button", { name: /Als Nächstes: Mein Viertel/ })).toBeFocused();
+    await expect(spieler(page).getByRole("heading", { name: /^1 von 3/ })).toBeVisible();
+    // Der Balken läuft durch und schaltet weiter, ohne dass jemand tippt.
+    await expect(spieler(page).getByRole("heading", { name: "2 von 3 · Mein Viertel" })).toBeVisible({ timeout: 15_000 });
+    await expect(tafel).toHaveCount(0);
+  });
+
+  test("„Nochmal ansehen“ auf dem Zwischenbild startet den Clip neu", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await stellen(page);
+    const k = await karte(page);
+    await k.getByRole("button", { name: /Video ansehen: Lotti/ }).click();
+    const video = spieler(page).locator("video");
+    await video.evaluate(async (v: HTMLVideoElement) => {
+      await new Promise((r) => (v.readyState >= 1 ? r(null) : v.addEventListener("loadedmetadata", () => r(null), { once: true })));
+      v.currentTime = Math.max(0, v.duration - 0.3);
+      await v.play().catch(() => {});
+    });
+    await spieler(page).getByRole("button", { name: "Nochmal ansehen" }).click();
+    await expect(spieler(page).getByRole("group", { name: /ist zu Ende/ })).toHaveCount(0);
+    await expect(spieler(page).getByRole("heading", { name: /^1 von 3/ })).toBeVisible();
+    expect(await video.evaluate((v: HTMLVideoElement) => v.currentTime < 5)).toBe(true);
   });
 });
 
@@ -161,7 +186,7 @@ test("alle angesehen setzt die Marke; die Karte bleibt für diesen Besuch, × bl
   await expect(k).toContainText("3 von 3 angesehen");
 
   await k.getByRole("button", { name: "Neuigkeiten ausblenden" }).click();
-  await expect(page.locator("main").getByRole("heading", { name: "Das Lotti-Update" })).toHaveCount(0);
+  await expect(page.locator("main").getByRole("heading", { name: "Das Erklär-Update" })).toHaveCount(0);
   expect(gemeldet).toEqual(["3.0.0", "3.0.0"]);
 });
 
