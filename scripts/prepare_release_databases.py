@@ -16,7 +16,7 @@ import os
 import re
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from urllib.parse import quote
 
@@ -127,7 +127,7 @@ def _write_manifest(backup_dir: Path, label: str, databases: list[dict]) -> Path
         raise PreparationError(f"Release-Manifest existiert bereits: {path.name}")
     document = {
         "format": 1,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "label": label,
         "databases": databases,
     }

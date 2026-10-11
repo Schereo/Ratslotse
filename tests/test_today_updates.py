@@ -1,5 +1,5 @@
 """Besuchsgrenzen und Neuigkeiten brauchen weder Themen-Abos noch Lesemarken."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 import sys
 
@@ -32,7 +32,7 @@ def stores(tmp_path, monkeypatch):
 
 def test_visit_window_stays_stable_and_catches_changes_during_previous_visit(stores):
     users, _, uid = stores
-    start = datetime(2026, 9, 1, 8, tzinfo=timezone.utc)
+    start = datetime(2026, 9, 1, 8, tzinfo=UTC)
     users.record_visit(uid, start)
     first = users.visit_window(uid)
     assert first['first_visit']
@@ -116,8 +116,8 @@ def test_protocol_migration_does_not_change_known_import_time(tmp_path):
 def test_api_requires_account_no_topics_and_keeps_pagination_window(stores):
     users, council, uid = stores
     seed_updates(council)
-    users.record_visit(uid, datetime(2026, 9, 1, tzinfo=timezone.utc))
-    users.record_visit(uid, datetime(2026, 9, 5, tzinfo=timezone.utc))
+    users.record_visit(uid, datetime(2026, 9, 1, tzinfo=UTC))
+    users.record_visit(uid, datetime(2026, 9, 5, tzinfo=UTC))
     app.dependency_overrides[get_store] = lambda: users
     app.dependency_overrides[get_council_store] = lambda: council
     try:

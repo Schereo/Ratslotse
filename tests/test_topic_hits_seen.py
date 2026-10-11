@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from kern.store import Store
+from datetime import UTC
 
 
 def _setup(tmp_path):
@@ -190,8 +191,8 @@ def test_bubble_verstummt_nach_einem_blick_auf_die_uebersicht(tmp_path):
     assert store.unseen_hit_counts(owner) == {topic.id: 2}
 
     # Was DANACH dazukommt, meldet sich wieder — sonst wäre die Bubble tot.
-    from datetime import datetime, timedelta, timezone
-    spaeter = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(timespec="seconds")
+    from datetime import datetime, timedelta
+    spaeter = (datetime.now(UTC) + timedelta(minutes=5)).isoformat(timespec="seconds")
     with store._conn:
         store._conn.execute(
             "INSERT INTO council_topic_matches (topic_id, owner_id, decision_id, score, matched_at) "

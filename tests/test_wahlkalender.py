@@ -12,7 +12,7 @@ auseinander — dieselbe Begründung wie bei ``jobs.zustand``.
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 import pytest
@@ -24,7 +24,7 @@ from app.election import elections, service  # noqa: E402
 
 
 def _zeit(text: str) -> datetime:
-    return datetime.fromisoformat(text).replace(tzinfo=timezone.utc)
+    return datetime.fromisoformat(text).replace(tzinfo=UTC)
 
 
 @pytest.mark.parametrize("wann,erwartet,pfad", [
