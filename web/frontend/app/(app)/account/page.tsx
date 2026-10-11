@@ -1,5 +1,6 @@
 "use client";
 
+import { abmeldenMerken } from "@/lib/abmelden";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -125,6 +126,7 @@ export default function AccountPage() {
     },
     onSuccess: async () => {
       toast.success("Dein Konto wurde gelöscht.");
+      abmeldenMerken();
       await logout();
       router.replace("/");
     },

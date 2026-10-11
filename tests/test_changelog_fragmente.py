@@ -345,3 +345,12 @@ def test_release_legt_nichts_doppelt_an(repo, monkeypatch):
         lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, "", ""))
     with pytest.raises(ReleaseFehler, match="gibt es schon"):
         release("1.12.0", wurzel=repo)
+
+
+def test_die_changelog_seite_liest_denselben_schluessel():
+    """Die Seite (`web/frontend/app/changelog/page.tsx`) liest die Fragmente
+    selbst. Bis 10/2026 suchte sie `category:` — die Fragmente tragen
+    `kategorie:`, und unter „Unreleased" erschien kein einziges. Beide Leser
+    müssen denselben Schlüssel kennen."""
+    seite = (Path(__file__).resolve().parents[1] / "web" / "frontend" / "app" / "changelog" / "page.tsx").read_text()
+    assert "kategorie" in seite, "changelog/page.tsx kennt den Fragment-Schlüssel `kategorie` nicht"
