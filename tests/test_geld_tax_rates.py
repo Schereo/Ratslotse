@@ -93,7 +93,9 @@ def test_grundsteuerreform_ohne_satzfrage_zieht_nichts():
 def test_die_alten_facetten_bleiben_unverschoben(frage, alte):
     """`ausgleich` bei „hebesatz" ist gewollt — es ist der NFAG-Dämpfer, die
     zweite Hälfte derselben Antwort."""
-    assert qa.geld_facetten(frage, "topic") - {NAME} == alte
+    # `accounts` (die Kontenebene, 10/2026) fragt bei jeder Geldfrage mit
+    # und liefert nur bei einem Kontennamen etwas — sie verschiebt nichts.
+    assert qa.geld_facetten(frage, "topic") - {NAME, "accounts"} == alte
 
 
 # ---------------------------------------------------------------------------

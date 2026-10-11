@@ -2086,6 +2086,12 @@ def _steckbrief_block(steckbriefe: list[dict] | None) -> str:
             "Beschluss):\n" + zeilen + "\n")
 
 
+#: Wie viel des Abschnitts „Finanzielle Auswirkungen" einer Vorlage in den
+#: Kontext darf. Der Abschnitt ist meist kurz; bei 23/0101 steht die Zahl im
+#: zweiten Satz (Zeichen 220–330).
+FINANZEN_ZEICHEN = 450
+
+
 def _vorlage_basis(nr: str | None) -> str | None:
     """„26/0100-1" → „26/0100": Revisionen hängen ein Zähler-Suffix an."""
     if not nr or not str(nr).strip():
@@ -2178,6 +2184,8 @@ def _build_context(candidates: list[dict]) -> str:
             body = outcome_note.as_proposal(c.get("outcome"), body)
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
+        if c.get("vorlage_finanzen"):
+            suffix += f" — Finanzielle Auswirkungen laut Vorlage: {c['vorlage_finanzen']}"
         applicants = _factions_of(c)
         if applicants:
             # „Antrag von" nur, wenn der Titel die Fraktion selbst nennt; sonst
@@ -3386,6 +3394,11 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic",
     # (`frage=` beim Ansatz unten) — sie sind deren Übersetzung, nicht
     # Beiwerk der Expansion.
     alltag_begriffe = _alltag.begriffe(_falte(question or ""))
+    # Die Kontenebene sucht OHNE die Alltagsübersetzung: Die übersetzt
+    # „Einnahmen" in Gattungen („Zuwendungen", „Kostenerstattungen"), und
+    # Gattungen sind Kontennamen — „Wie hoch sind die Einnahmen aus
+    # Bußgeldern?" bekam sonst die Sonderposten-Auflösung (11.10.2026).
+    woerter_konten = list(woerter)
     woerter += [w for w in alltag_begriffe if w not in woerter]
     alltag_facetten = _alltag.facetten(_falte(question or ""))
     # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion streut
@@ -3461,8 +3474,40 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic",
     # Die Modul-Facetten: eine Store-Methode je Facette, Signatur (woerter, year).
     for fac in _geld.FACETTEN:
         if fac.name in facetten:
-            aus[fac.key] = _sicher(getattr(store, fac.methode), woerter, jahr)
+            aus[fac.key] = _sicher(getattr(store, fac.methode),
+                                   woerter_konten if fac.name == "accounts" else woerter, jahr)
+    # Trifft die Frage ein KONTO („Parkgebühren“), ist das die Antwort, und
+    # die Summen daneben sind Ablenkung: Auf „Wie hoch sind die Abweichungen
+    # zwischen Soll und Ist bei den Parkgebühren?“ antwortete das Modell am
+    # 10.10.2026 mit der Gewerbesteuer, weil der Steuerplan-Baustein der
+    # einzige mit Soll UND Ist war. Ohne Steuerwort in der Frage fallen die
+    # Steuer- und Gesamtsummen deshalb weg.
+    # Ein bloßer Wortteil-Treffer („Schulden" in „Schuldendiensthilfen") tritt
+    # zurück, sobald eine Fachquelle geantwortet hat — die weiß es besser.
+    if (aus.get("accounts") and aus["accounts"].get("match", 3) < 2
+            and any(v for k, v in aus.items()
+                    if k not in ("facets", "accounts", "haushalt", "plan", "ansatz", "produkte"))):
+        aus.pop("accounts")
+    if aus.get("accounts") and not _F_STEUERN.search(_falte(question or "")):
+        for key in _NEBEN_KONTEN:
+            aus.pop(key, None)
+        # Teilhaushalt und Produkte nur, wenn sie zum Teilhaushalt des Kontos
+        # gehören — „Einnahmen“ allein zog sonst „Finanzmanagement und Recht“.
+        thh = {t["name"] for t in aus["accounts"]["accounts"][0]["sub_budgets"][:1]}
+        if aus.get("haushalt"):
+            aus["haushalt"] = [h for h in aus["haushalt"] if h.get("area") in thh]
+        produkte = aus.get("produkte")
+        if isinstance(produkte, dict):
+            prod = [x for x in produkte.get("produkte") or []
+                    if x.get("sub_budget_name") in thh]
+            aus["produkte"] = {**produkte, "produkte": prod} if prod else None
     return aus
+
+
+#: Was neben einem Kontentreffer wegfällt — Summen über den ganzen Haushalt
+#: und die Steuern, die eine Frage nach einer Einnahmeart nicht meint.
+_NEBEN_KONTEN = ("taxes", "tax_plan", "tax_capacity", "ansatz", "ist", "kassensicht",
+                 "execution")
 
 
 #: Quell-Label → Steckbrief-Slug von /haushalt/steuer. Nur die Arten, die
@@ -3535,6 +3580,27 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 "mehr": {"href": "/haushalt/schulden",
                          "label": "Wie viel Schulden hat Oldenburg?"},
             }
+
+    konten = (geld.get("accounts") or {}).get("accounts") or []
+    if konten and len(konten[0].get("actual") or {}) >= 2:
+        k = konten[0]
+        gross = max(abs(v) for v in k["actual"].values()) >= 1e6
+        einnahme = (k.get("kind") or "").endswith("revenue")
+        return {
+            "kind": "budget_account",
+            "title": f"{k['label']} — {'Einnahmen' if einnahme else 'Ausgaben'} (Ist)",
+            "unit": "Mio. €" if gross else "€",
+            "nachkomma": 2 if gross else 0,
+            "series": [{"year": y, "value": round(v / 1e6, 2) if gross else round(v)}
+                       for y, v in sorted(k["actual"].items())],
+            "note": (f"Rechnungsergebnisse des Kontos {k['account_no']}"
+                     + (f" im Teilhaushalt {k['sub_budgets'][0]['no']:02d} "
+                        f"{k['sub_budgets'][0]['name']}" if len(k["sub_budgets"]) == 1
+                        else f", Summe über {len(k['sub_budgets'])} Teilhaushalte")
+                     + " — keine Planwerte."),
+            "source": "Haushaltspläne der Stadt Oldenburg, Teilergebnishaushalte",
+            "mehr": None,
+        }
 
     if geld.get("taxes"):
         # Die Art, die die Frage getroffen hat — `steuern_fuer_begriffe` hat

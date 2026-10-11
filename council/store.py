@@ -1042,18 +1042,25 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         ).fetchone()
         return dict(row) if row else None
 
-    def vorlage_texts_for(self, vorlage_nrs: list[str]) -> dict[str, str]:
+    def vorlage_texts_for(self, vorlage_nrs: list[str],
+                          column: str = "raw_text") -> dict[str, str]:
         """Batch raw texts for Q&A context enrichment: exact template_number → text
-        (only rows that actually have text). Best-effort — no base-nr fallback."""
+        (only rows that actually have text). Best-effort — no base-nr fallback.
+
+        ``column="financial_impact"`` gives the section „Finanzielle
+        Auswirkungen" instead — where a Vorlage states what it costs or brings
+        (23/0101: „Mehreinnahmen von rd. 1.100.000 Euro jährlich")."""
+        if column not in ("raw_text", "financial_impact"):
+            raise ValueError(column)
         nrs = sorted({(n or "").strip() for n in vorlage_nrs if n and str(n).strip()})
         if not nrs:
             return {}
         ph = ",".join("?" * len(nrs))
         rows = self._conn.execute(
-            f"SELECT template_number, raw_text FROM council_templates "
+            f"SELECT template_number, {column} AS text FROM council_templates "
             f"WHERE template_number IN ({ph}) AND status = 'ok'", nrs,
         ).fetchall()
-        return {r["template_number"]: r["raw_text"] for r in rows if r["raw_text"]}
+        return {r["template_number"]: r["text"] for r in rows if r["text"]}
 
     # --- Anlagen (documents attached to a Vorlage, incl. fraction motions) -----
 
@@ -3394,7 +3401,11 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
             bereiche.extend(("waste_treatment", "waste_collection"))
         if any(w in text for w in ("strassenreinig", "kehrgeb", "kehrdienst")):
             bereiche.append("street_cleaning")
-        if not bereiche and any(w in text for w in ("gebuehr", "gebuehrenbedarf")):
+        # Nur die Gebühr ALS SOLCHE zieht alle drei Kalkulationen — nicht ein
+        # Kompositum mit fremdem Gegenstand: „Parkgebühren“ bekam bis 10/2026
+        # die Abfall- und Straßenreinigungs-Kalkulationen (echte Frage vom
+        # 10.10.2026); die Parkgebühren stehen in der Kontenebene.
+        if not bereiche and any(w.startswith(("gebuehr", "gebuehrenbedarf")) for w in worte):
             bereiche = ["waste_treatment", "waste_collection", "street_cleaning"]
         bereiche = list(dict.fromkeys(bereiche))
         if not bereiche:

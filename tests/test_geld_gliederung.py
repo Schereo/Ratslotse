@@ -100,6 +100,9 @@ FRAGEN = [
     "Wie hoch ist die Steuereinnahmekraft je Einwohner im Vergleich?",
     "Wie haben sich die Schulden der Stadt seit 2015 entwickelt?",
     "Wie ist das Haushaltsjahr 2025 ausgegangen?",
+    # Die Kontenebene (10/2026): eine einzelne Einnahmeart mit Ist, Ansatz und
+    # Soll-Ist-Vergleich — die echte Frage vom 10.10.2026.
+    "Wie hoch sind die Einnahmen durch die Parkgebühren im Jahr?",
 ]
 
 

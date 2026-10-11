@@ -5996,6 +5996,22 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                             c["vorlage_excerpt"] = stelle or vorlagen_mod.excerpt(t, 350)
                 except Exception:  # noqa: BLE001
                     pass
+            # Bei einer Geldfrage die „Finanziellen Auswirkungen“ der Vorlage
+            # dazu: Dort steht, was sie kostet oder bringt — und zwar oft NUR
+            # dort. „Wie hoch wären die prognostizierten Mehreinnahmen durch
+            # die letzte Parkgebührenerhöhung?" bekam am 10.10.2026 „nicht
+            # beziffert", obwohl Vorlage 23/0101 „Mehreinnahmen von rd.
+            # 1.100.000 Euro jährlich" nennt.
+            if geld.get("facets") and not einfach:
+                try:
+                    finanzen = store.vorlage_texts_for(
+                        [c.get("template_number") or "" for c in ctx], "financial_impact")
+                    for c in ctx:
+                        f = finanzen.get((c.get("template_number") or "").strip())
+                        if f:
+                            c["vorlage_finanzen"] = " ".join(f.split())[:qa.FINANZEN_ZEICHEN]
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Finanzielle Auswirkungen nicht geladen")
             try:  # Läuft zu einem Kandidaten gerade eine Bauleitplan-Beteiligung?
                 from council import beteiligung as bet_mod
                 bets = store.list_beteiligungen()

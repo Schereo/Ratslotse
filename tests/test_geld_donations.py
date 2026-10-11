@@ -56,10 +56,12 @@ def test_diese_fragen_ziehen_sie_nicht(frage):
 
 
 def test_die_alten_facetten_verschieben_sich_nicht():
-    assert qa.geld_facetten("Wie hoch waren die Steuereinnahmen?", "money") == {
+    # `accounts` (die Kontenebene, 10/2026) fragt bei jeder Geldfrage mit
+    # und liefert nur bei einem Kontennamen etwas — sie verschiebt nichts.
+    assert qa.geld_facetten("Wie hoch waren die Steuereinnahmen?", "money") - {"accounts"} == {
         "plan", "ansatz", "taxes", "ausgleich"}
     assert qa.geld_facetten("Wie viel gibt Oldenburg für Soziales aus?",
-                            "money") == {"plan", "produkte", "ansatz"}
+                            "money") - {"accounts"} == {"plan", "produkte", "ansatz"}
 
 
 # --- 2. Inhalt ------------------------------------------------------------
