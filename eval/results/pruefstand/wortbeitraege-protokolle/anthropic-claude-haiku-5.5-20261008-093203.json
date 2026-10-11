@@ -1,0 +1,308 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "anthropic/claude-haiku-5.5",
+ "variante": null,
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-10-08T09:32:03",
+ "db_stand": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "qualitaet": 0.884,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 56767,
+ "p95_ms": 109050,
+ "aufrufe": 14,
+ "kosten_usd": 0.143416,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 1.0244,
+ "ct_je_lauf": 14.3416,
+ "kosten_gesamt_usd": 0.143416,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "anthropic/claude-haiku-5.5"
+ ],
+ "ersatz": [],
+ "dauer_s": 818.0,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.934,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.0595,
+  "zahlen_erhalten": 0.1864,
+  "begriffe_erhalten": 0.3148,
+  "beitraege": 924,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.884,
+  "precision": 0.8247,
+  "recall": 0.9525,
+  "recall_ohne_mandat": 0.934,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.0595,
+  "zahlen_erhalten": 0.1864,
+  "begriffe_erhalten": 0.3148,
+  "erfunden": 0,
+  "beitraege": 924,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 83,
+    "fp": 3,
+    "fn": 8,
+    "tp_ohne": 27,
+    "fn_ohne": 5,
+    "verpasst": [
+     "gerhard",
+     "jaekel",
+     "kaesemann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 2,
+    "bewertbar": 121,
+    "fremd_beispiele": [
+     "Kai Marius Jaekel: Verkehrssicherungsgründen",
+     "Robert Sprenger: Ausschusssitzung"
+    ],
+    "zahlen": [
+     12,
+     41
+    ],
+    "begriffe": [
+     124,
+     354
+    ],
+    "beitraege": 129
+   },
+   {
+    "id": "4430",
+    "tp": 106,
+    "fp": 12,
+    "fn": 3,
+    "tp_ohne": 38,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 4,
+    "bewertbar": 143,
+    "fremd_beispiele": [
+     "Baak: Bestandteil",
+     "Atzler: Fahrplanung",
+     "Atzler: Fahrplanung",
+     "Dr. Korallus: Vorbereitung"
+    ],
+    "zahlen": [
+     18,
+     326
+    ],
+    "begriffe": [
+     96,
+     409
+    ],
+    "beitraege": 162
+   },
+   {
+    "id": "4418",
+    "tp": 71,
+    "fp": 3,
+    "fn": 3,
+    "tp_ohne": 25,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 5,
+    "bewertbar": 78,
+    "fremd_beispiele": [
+     "Meike Dikosso: Widerspruch, Paragraphen, Seniorensatzung",
+     "Jan Bembennek: Betreuungsbehörde, Betreuungsorganisationsgesetz, Betreuungsgerichts",
+     "Anja Maud Siegert: Vermittlung",
+     "Gunnar Rohde: Altersquotient",
+     "Jan Bembennek: Betroffenheit"
+    ],
+    "zahlen": [
+     5,
+     23
+    ],
+    "begriffe": [
+     77,
+     179
+    ],
+    "beitraege": 84
+   },
+   {
+    "id": "4446",
+    "tp": 67,
+    "fp": 1,
+    "fn": 6,
+    "tp_ohne": 40,
+    "fn_ohne": 6,
+    "verpasst": [
+     "dikosso",
+     "krogmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 4,
+    "bewertbar": 78,
+    "fremd_beispiele": [
+     "Sander: Bezifferung, Mehrausgaben",
+     "Niederstein: Landesregelung",
+     "Eilers-Dörfler: Landesregelung",
+     "Dr. Lammerding: Städtetages, Landesregelung"
+    ],
+    "zahlen": [
+     17,
+     19
+    ],
+    "begriffe": [
+     78,
+     154
+    ],
+    "beitraege": 79
+   },
+   {
+    "id": "4545",
+    "tp": 76,
+    "fp": 11,
+    "fn": 3,
+    "tp_ohne": 45,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 81,
+    "fremd_beispiele": [],
+    "zahlen": [
+     17,
+     21
+    ],
+    "begriffe": [
+     77,
+     162
+    ],
+    "beitraege": 101
+   },
+   {
+    "id": "4611",
+    "tp": 40,
+    "fp": 3,
+    "fn": 2,
+    "tp_ohne": 27,
+    "fn_ohne": 1,
+    "verpasst": [
+     "woltmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 2,
+    "bewertbar": 44,
+    "fremd_beispiele": [
+     "Marianne Schmeichel: Kinderzahlen",
+     "Matthias Welp: Härtefallanträgen"
+    ],
+    "zahlen": [
+     4,
+     131
+    ],
+    "begriffe": [
+     80,
+     354
+    ],
+    "beitraege": 46
+   },
+   {
+    "id": "3717",
+    "tp": 93,
+    "fp": 9,
+    "fn": 4,
+    "tp_ohne": 44,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 5,
+    "bewertbar": 109,
+    "fremd_beispiele": [
+     "Paul Behrens: Maximalwert",
+     "Frau Bertram: Landschaftsschutzgebiete",
+     "Dr. Sven Uhrhan: Anreizprogramm, Verkehrsausschuss",
+     "Mazalla: Amtsleiterstelle, Nachfolgestelle",
+     "Dr. Kreft-Kohlhage: Amphibiengewässer, Hundebesitzern"
+    ],
+    "zahlen": [
+     37,
+     43
+    ],
+    "begriffe": [
+     133,
+     214
+    ],
+    "beitraege": 116
+   },
+   {
+    "id": "2855",
+    "tp": 43,
+    "fp": 35,
+    "fn": 2,
+    "tp_ohne": 20,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 49,
+    "fremd_beispiele": [],
+    "zahlen": [
+     16,
+     27
+    ],
+    "begriffe": [
+     52,
+     198
+    ],
+    "beitraege": 90
+   },
+   {
+    "id": "4441",
+    "tp": 42,
+    "fp": 55,
+    "fn": 0,
+    "tp_ohne": 17,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 25,
+    "bewertbar": 87,
+    "fremd_beispiele": [
+     "Behrens: Friedhofsmauer, Gertrudenfriedhofs, Nachbepflanzung",
+     "Skiba: Alternativplanungen",
+     "Drügemöller: Erläuterungen",
+     "Woltmann: Straßensanierung, Leitungssysteme, Gesamtkonzept",
+     "Finke: Baumstandorte",
+     "Klein: Lambertistraße, Fortschritt"
+    ],
+    "zahlen": [
+     3,
+     61
+    ],
+    "begriffe": [
+     53,
+     422
+    ],
+    "beitraege": 117
+   }
+  ]
+ }
+}

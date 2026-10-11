@@ -1,0 +1,224 @@
+{
+ "suite": "tragweite",
+ "titel": "Tragweite eines Beschlusses",
+ "kennzahl": "Band-Trefferquote gegen 30 handbewertete Beschlüsse (Spearman ρ als Nebenkennzahl — sie misst die Reihenfolge, nicht den Wert)",
+ "modell": "anthropic/claude-haiku-5.5",
+ "variante": "ohne Denken",
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-10-08T14:24:55",
+ "db_stand": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "qualitaet": 0.95,
+ "harte_befunde": null,
+ "warnung": null,
+ "faelle": 30,
+ "p50_ms": 5324,
+ "p95_ms": 10196,
+ "aufrufe": 8,
+ "kosten_usd": 0.00764,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0955,
+ "ct_je_lauf": 0.764,
+ "kosten_gesamt_usd": 0.00764,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "anthropic/claude-haiku-5.5"
+ ],
+ "ersatz": [],
+ "dauer_s": 51.1,
+ "nebenkennzahlen": {
+  "rho": 0.946,
+  "bewertet": 20
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n": 20,
+  "golden": 30,
+  "rho": 0.946,
+  "hit_rate": 0.95,
+  "faelle": [
+   {
+    "title": "Berufung eines beratenden Mitglieds in den Ausschuss für Stadtgrün, Umwelt und Klima",
+    "impact": 6,
+    "band": [
+     0,
+     15
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Verfahren für die Berufung von beratenden Mitgliedern im Ausschuss für Stadtgrün, Umwelt u",
+    "impact": 15,
+    "band": [
+     0,
+     18
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Berufung beratender Mitglieder in den Sportausschuss",
+    "impact": 7,
+    "band": [
+     0,
+     15
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Berufung eines beratenden Mitgliedes für den Sozialausschuss",
+    "impact": 5,
+    "band": [
+     0,
+     15
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Nachberufung der sonstigen Beschäftigtenvertreter in den Betriebsausschuss Gebäudewirtscha",
+    "impact": 5,
+    "band": [
+     0,
+     15
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Berufung eines stellvertretenden beratenden Mitgliedes für den Sozialausschuss",
+    "impact": 4,
+    "band": [
+     0,
+     15
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Demonstrationen \"Fridays for Future Oldenburg\"",
+    "impact": 12,
+    "band": [
+     5,
+     30
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Coronafonds - Bericht 2021/2022",
+    "impact": 18,
+    "band": [
+     10,
+     35
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Satzung der Stadtbibliothek Oldenburg (Oldb) - Anpassungen nach Umsetzung des Zukunftsprog",
+    "impact": 25,
+    "band": [
+     10,
+     40
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Bürgervorschläge für Wildblumenwiesen - Bericht",
+    "impact": 15,
+    "band": [
+     5,
+     30
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Vermarktung eines städtischen Investorengrundstücks (Los 11) mit Bestandsgebäude im Bereic",
+    "impact": 55,
+    "band": [
+     45,
+     80
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Änderung Nr. 1 des vorhabenbezogenen Bebauungsplanes Nr. 24 (Schlosshöfe) - Prüfung der St",
+    "impact": 60,
+    "band": [
+     40,
+     75
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Bebauungsplan 851 (östlich Schützenweg/nördlich Hamelmannstraße) - Aufstellungsbeschluss",
+    "impact": 40,
+    "band": [
+     40,
+     75
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Überplanmäßige Bewilligung für Mehraufwendungen in Höhe von 11.716.000 Euro für den Teilha",
+    "impact": 70,
+    "band": [
+     55,
+     95
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Überplanmäßige Bewilligung von Mehraufwendungen in Höhe von 11.232.400 Euro für den Teilha",
+    "impact": 66,
+    "band": [
+     55,
+     95
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Jahresabschluss 2022 der Stadt Oldenburg (Kernverwaltung)",
+    "impact": 78,
+    "band": [
+     45,
+     85
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Änderung der „Satzung der Stadt Oldenburg über die Inanspruchnahme der Mittagsverpflegung ",
+    "impact": 50,
+    "band": [
+     50,
+     88
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Veränderungssperre Nummer 83 (Scharnhorst-, Blücher- und Zietenstraße)",
+    "impact": 35,
+    "band": [
+     40,
+     78
+    ],
+    "im_band": false
+   },
+   {
+    "title": "Rechtsbereinigungssatzung 2022",
+    "impact": 15,
+    "band": [
+     15,
+     55
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Weser-Ems Halle Oldenburg GmbH & Co. KG Jahresabschluss 2019",
+    "impact": 40,
+    "band": [
+     35,
+     78
+    ],
+    "im_band": true
+   }
+  ]
+ }
+}
