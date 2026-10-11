@@ -1599,6 +1599,17 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "NIE die Tausenderstellen als Nachkomma an — „44,699 Millionen Euro“ liest\n"
             "niemand. Centgenaue Beträge nur, wenn die Frage ausdrücklich danach fragt.\n"
             "Passen mehrere Beschlüsse, nenne die neuesten zuerst.\n"
+            # Auswertung der echten Fragen 11.10.2026: „Gibt es Infos zum
+            # Spielplatz auf dem Kasernengelände in Neu-Donnerschwee?" bekam
+            # „keine Informationen" und danach zwölf Beschlüsse zum Quartier
+            # (Gedenkstein, Urban Gardening, eine Straße am FLIEGERHORST);
+            # Brokhausen einen Abschnitt „Vergleich mit anderen Gewerbegebieten".
+            "Nimm nur Beschlüsse auf, die die Frage beantworten oder ihren Gegenstand\n"
+            "unmittelbar betreffen. Einer, der bloß denselben Ort, dasselbe Quartier oder\n"
+            "dasselbe Stichwort trägt, gehört nicht hinein — auch kein Abschnitt „zum\n"
+            "Vergleich“, nach dem niemand gefragt hat. Gibt der Kontext das Gefragte nicht\n"
+            "her, sag das und nenne höchstens die zwei Beschlüsse, die dem Gegenstand am\n"
+            "nächsten kommen.\n"
             "Trägt ein Beschluss den Vermerk „ÄLTERE STATION“, ist er ein überholter\n"
             "Zwischenstand: Stelle die NEUERE Station als geltenden Stand dar und nutze die\n"
             "ältere höchstens für den Verlauf — nie als aktuelle Beschlusslage.\n"

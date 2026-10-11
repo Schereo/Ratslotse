@@ -4597,7 +4597,8 @@ GROSS_REGEL = (
     "Ankündigung dessen, was folgt. Gliedere danach mit 2-4 Zwischenüberschriften "
     "(Zeile, die mit „## “ beginnt, z. B. „## Finanzierung“) und nutze, wo es "
     "passt, kurze Spiegelstrich-Listen („- “). Die Fußnoten-Regeln gelten "
-    "unverändert."
+    "unverändert. Ausführlich wird nur, was die Frage beantwortet: Steht das "
+    "Gefragte nicht im Kontext, bleibt die Antwort kurz und ohne Gliederung."
 )
 
 
