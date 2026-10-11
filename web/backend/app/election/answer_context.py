@@ -60,7 +60,7 @@ def _ratswahl(wahl: elections.Election) -> list[str]:
             continue
         vorher = []
         if p.get("seats_previous") is not None:
-            vorher.append(_sitze(p["seats_previous"]))
+            vorher.append(_sitze(p.get("seats_previous") or 0))
         if p.get("share_previous_pct") is not None:
             vorher.append(_pct(p["share_previous_pct"]))
         zeilen.append(f"  - {p['short']}: {_sitze(p.get('seats') or 0)}, "
