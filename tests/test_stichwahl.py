@@ -19,7 +19,7 @@ beide unter der URL des Kommunalwahltermins.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 import sys
 from pathlib import Path
 
@@ -229,7 +229,7 @@ def test_eine_leere_ergebnisdatei_vor_dem_abend_ist_kein_fehler(monkeypatch):
     """Bis 09/2026 stand hier „Der Abruf der OB-Wahl klemmt gerade" — auf
     Prod eine Woche lang über einer Seite, der nichts fehlte."""
     monkeypatch.setattr(mayor.requests, "Session", _Sitzung)
-    w = _mit_schluss(datetime.now(timezone.utc) + timedelta(days=4))
+    w = _mit_schluss(datetime.now(UTC) + timedelta(days=4))
     r = mayor.fetch(w=w)
     assert r.ok and r.error is None
     assert r.phase == "before" and r.reports_received == 0
@@ -239,7 +239,7 @@ def test_eine_leere_ergebnisdatei_nach_dem_wahlschluss_sagt_noch_nicht(monkeypat
     """Nach 18 Uhr ist „keine Zahlen" eine Auskunft wert — aber die richtige:
     Die Stadt hat noch nichts, unser Abruf klemmt nicht."""
     monkeypatch.setattr(mayor.requests, "Session", _Sitzung)
-    w = _mit_schluss(datetime.now(timezone.utc) - timedelta(minutes=5))
+    w = _mit_schluss(datetime.now(UTC) - timedelta(minutes=5))
     r = mayor.fetch(w=w)
     assert not r.ok and r.error == mayor.NOCH_NICHT
 
@@ -248,9 +248,9 @@ def test_der_takt_haengt_am_eigenen_wahlschluss():
     """Nicht am Wahlschluss der Ratswahl — der ist für die Stichwahl zwei
     Wochen alt, und sie hätte sonst schon die Woche davor im Sekundentakt
     beim Votemanager angeklopft."""
-    w = _mit_schluss(datetime(2026, 9, 27, 16, 0, tzinfo=timezone.utc))
-    assert mayor.ttl_seconds(w, datetime(2026, 9, 27, 15, 59, tzinfo=timezone.utc)) == 15 * 60
-    assert mayor.ttl_seconds(w, datetime(2026, 9, 27, 16, 0, tzinfo=timezone.utc)) == mayor.TTL_LIVE
+    w = _mit_schluss(datetime(2026, 9, 27, 16, 0, tzinfo=UTC))
+    assert mayor.ttl_seconds(w, datetime(2026, 9, 27, 15, 59, tzinfo=UTC)) == 15 * 60
+    assert mayor.ttl_seconds(w, datetime(2026, 9, 27, 16, 0, tzinfo=UTC)) == mayor.TTL_LIVE
     assert mayor.TTL_LIVE <= 20
 
 

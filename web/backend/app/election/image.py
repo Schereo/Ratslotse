@@ -25,7 +25,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from email.utils import parsedate_to_datetime
 from io import BytesIO
 from pathlib import Path
@@ -235,7 +235,7 @@ def _date(iso: str | None) -> str:
 
 def _local(dt: datetime) -> datetime:
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     try:
         from zoneinfo import ZoneInfo
 

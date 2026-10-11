@@ -35,6 +35,7 @@ sys.path.insert(0, str(WURZEL / "web" / "backend"))
 
 from app.antworten import ElectionCandidateDetail  # noqa: E402
 from app.election import candidates, service  # noqa: E402
+from datetime import UTC
 
 FIXTURES = WURZEL / "web" / "frontend" / "tests" / "e2e" / "fixtures"
 
@@ -210,11 +211,11 @@ def test_die_potenzial_abschrift_kennt_jedes_feld():
 def test_die_wahlkarten_abschrift_kennt_jedes_feld():
     """`/api/wahlabend/karte` für `24-wahlkarte.spec.ts` — auf die Bezirke von
     Krusenbusch gekürzt. Wieder erzeugen: s. Kopf der Spec-Datei."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.election import district_map
 
-    frisch = district_map.build("ratswahl-2026", now=datetime(2026, 9, 23, 12, tzinfo=timezone.utc))
+    frisch = district_map.build("ratswahl-2026", now=datetime(2026, 9, 23, 12, tzinfo=UTC))
     ist = json.loads((FIXTURES / "wahlkarte-krusenbusch.json").read_text(encoding="utf-8"))
     fehlt = _fehlt(dict(frisch), ist, "wahlkarte")
     assert not fehlt, "Diese Felder fehlen in wahlkarte-krusenbusch.json:\n  " + "\n  ".join(fehlt)

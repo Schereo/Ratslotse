@@ -63,7 +63,7 @@ import sqlite3
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[1]
@@ -198,7 +198,7 @@ def hol(quelle: str) -> int:
     STAND.write_text(json.dumps({
         "quelle": quelle,
         "host": host,
-        "geholt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "geholt": datetime.now(UTC).isoformat(timespec="seconds"),
         "bytes": ABZUG.stat().st_size,
         "geleert": bericht["geleert"],
     }, indent=1, ensure_ascii=False) + "\n")
@@ -381,7 +381,7 @@ def _warnen() -> None:
         return
     stand = json.loads(STAND.read_text())
     geholt = datetime.fromisoformat(stand["geholt"])
-    tage = (datetime.now(timezone.utc) - geholt).days
+    tage = (datetime.now(UTC) - geholt).days
     if tage >= ALT_AB_TAGEN:
         print(f"ACHTUNG: Der Abzug ist {tage} Tage alt (von {stand['quelle']}). "
               f"Gegen alte Daten zu prüfen fühlt sich an wie gegen echte.\n"

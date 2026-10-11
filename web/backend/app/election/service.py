@@ -32,7 +32,7 @@ import threading
 import time
 from collections.abc import Iterable
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from typing import cast
 from zoneinfo import ZoneInfo
 
@@ -753,7 +753,7 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
         totals=_totals(city),
         parties=parties, areas=areas,
         mandates=_mandates(alloc, reg), projected_mandates=_mandates(proj_alloc, reg),
-        notes=notes, computed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        notes=notes, computed_at=datetime.now(UTC).isoformat(timespec="seconds"),
         history=[],
     )
 
@@ -803,7 +803,7 @@ def probe_snapshot(reg: Register, ref: Reference, counted: int | None) -> Snapsh
                 and votemanager.area_of_district(n) == a.number]
         areas.append(_aggregate(f"{a.roman} - {a.name}", a.number, mine))
     city = _aggregate("Stadt Oldenburg", None, areas)
-    return Snapshot([city], areas, districts, datetime.now(timezone.utc), None, True, None)
+    return Snapshot([city], areas, districts, datetime.now(UTC), None, True, None)
 
 
 # ------------------------------------------------------------------ Verlauf
@@ -847,7 +847,7 @@ def probe_history(reg: Register, ref: Reference, counted: int | None) -> list[El
         stops.append(target)
     out: list[ElectionHistoryPoint] = []
     for i, n in enumerate(stops):
-        at = (PROBE_START + i * PROBE_STEP).astimezone(timezone.utc).isoformat(timespec="seconds")
+        at = (PROBE_START + i * PROBE_STEP).astimezone(UTC).isoformat(timespec="seconds")
         point = summary(reg, probe_snapshot(reg, ref, n), at)
         if point is not None:
             out.append(point)
@@ -905,7 +905,7 @@ def _bare(error: str) -> ElectionNight:
         source={"fetched_at": None, "last_modified": None, "ok": False, "error": error},
         progress={"districts_total": 0, "districts_counted": 0},
         totals=_totals(None), parties=[], areas=[], mandates=[], projected_mandates=[],
-        notes=[NOTE_EMPTY], computed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        notes=[NOTE_EMPTY], computed_at=datetime.now(UTC).isoformat(timespec="seconds"),
         history=[],
     )
 
@@ -914,7 +914,7 @@ def _empty(error: str) -> ElectionNight:
     """Stufe (d): das Bild vor der Auszählung, mit dem Fehler im Kopf. Listen,
     Namen und Farben stehen im Register — die Seite kann also zeigen, wer
     antritt, und dazusagen, dass die Zahlen gerade nicht kommen."""
-    snap = Snapshot([], [], [], datetime.now(timezone.utc), None, False, error)
+    snap = Snapshot([], [], [], datetime.now(UTC), None, False, error)
     try:
         night = compose(load_register(), load_reference(), snap, "live", margins=False, projection=False)
     except Exception:

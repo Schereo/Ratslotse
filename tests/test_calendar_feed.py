@@ -7,7 +7,7 @@ Meldung. Deshalb prüfen die Tests die Bytes, nicht nur den Inhalt.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 
 import pytest
 
@@ -124,7 +124,7 @@ def welt(tmp_path, store):
 
 def _feed(w, **kw) -> str:
     user = {"id": w["uid"]}
-    now = datetime(2026, 9, 5, 10, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 5, 10, 0, tzinfo=UTC)
     return build_feed(user=user, council=w["council"], ratslotse=w["store"],
                       base_url="https://ratslotse.de/", now=now, **kw)
 

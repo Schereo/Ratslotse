@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from pathlib import Path
+from datetime import UTC
 
 _DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "ratslotse.sqlite"
 
@@ -104,8 +105,8 @@ def jetzt_utc() -> str:
     ``date(ts,'localtime')`` einfängt). Deshalb gibt es die Marke hier und
     nicht an der Aufrufstelle.
     """
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    from datetime import datetime
+    return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def seit(feature: str, marke: str) -> dict:

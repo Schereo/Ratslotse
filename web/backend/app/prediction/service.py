@@ -53,7 +53,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from statistics import mean
 from zoneinfo import ZoneInfo
 
@@ -160,7 +160,7 @@ def _uhrzeit(iso: str) -> str:
     except ValueError:
         return iso[11:16]
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt.astimezone(BERLIN).strftime("%H:%M")
 
 
@@ -237,7 +237,7 @@ def _read_mayor(probe: str | None, counted: int | None, w: elections.Election) -
 
 def _jetzt() -> datetime:
     """Die Uhr — als Funktion, damit Tests sie stellen können."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 WOCHENTAGE = ("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag")
@@ -267,7 +267,7 @@ def _check_auto_lock(store: Store, game_id: int, night: ElectionNight | None = N
         return
     b = basis(game)
     if _jetzt() >= b.wahl.polls_close:
-        schluss = b.wahl.polls_close.astimezone(timezone.utc).isoformat(timespec="seconds")
+        schluss = b.wahl.polls_close.astimezone(UTC).isoformat(timespec="seconds")
         store.prediction_game_set(game_id, phase="locked", locked_at=schluss, locked_reason="polls_close")
         store.prediction_log_add(game_id, f"Wahllokale geschlossen · Tipp-Schluss automatisch gesetzt ({_uhrzeit(schluss)} Uhr)")
         return
@@ -286,7 +286,7 @@ def _check_auto_lock(store: Store, game_id: int, night: ElectionNight | None = N
         if ob is None or not _mayor_has_result(ob):
             return
         anlass = "Erster Auszählungsstand erkannt"
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    now = datetime.now(UTC).isoformat(timespec="seconds")
     store.prediction_game_set(game_id, phase="locked", locked_at=now, locked_reason="projection")
     store.prediction_log_add(game_id, f"{anlass} · Tipp-Schluss automatisch gesetzt ({_uhrzeit(now)} Uhr)")
 
@@ -440,7 +440,7 @@ def _stand_at(key: str, digest: str) -> tuple[str, bool]:
     alt = _marker.get(key)
     if alt and alt[0] == digest:
         return alt[1], False
-    jetzt = datetime.now(timezone.utc)
+    jetzt = datetime.now(UTC)
     if alt:
         vorher = datetime.fromisoformat(alt[1])
         if jetzt <= vorher:
@@ -697,7 +697,7 @@ def _build(store: Store, game_id: int, *, probe: str | None, counted: int | None
         if ob is not None and not ob.ok and ob.error:
             notes.append(ob.error)
 
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    now = datetime.now(UTC).isoformat(timespec="seconds")
     tafel = PredictionStand(
         title=game["title"], phase=game["phase"], tip_kind="seats" if b.sitzwahl else "pct",
         stand_label=_uhrzeit(computed_at) if computed_at else "",

@@ -22,6 +22,7 @@ sys.path.insert(0, str(WURZEL / "web" / "backend"))
 
 from app.election import history, reference, register, service, votemanager  # noqa: E402
 from app.antworten import ElectionHistoryPoint  # noqa: E402
+from datetime import UTC
 
 FIXTURES = WURZEL / "tests" / "fixtures" / "wahlabend"
 SCHLUESSEL = {"at", "districts_counted", "shares", "seats"}
@@ -140,14 +141,14 @@ def test_punkt_aus_dem_fertigen_bild(datei):
 
 def test_live_vor_der_auszaehlung_haengt_nichts_an(datei, monkeypatch):
     """Ein Nachmittag voller Nullstände ist kein Verlauf."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     def leer(force: bool = False):
         return votemanager.Snapshot(
             votemanager.parse((FIXTURES / "2026-stadt.csv").read_text(encoding="utf-8")),
             votemanager.parse((FIXTURES / "2026-wahlbereiche.csv").read_text(encoding="utf-8")),
             votemanager.parse((FIXTURES / "2026-wahlbezirk.csv").read_text(encoding="utf-8")),
-            datetime.now(timezone.utc), None, True, None,
+            datetime.now(UTC), None, True, None,
         )
 
     monkeypatch.setattr(votemanager, "fetch", leer)

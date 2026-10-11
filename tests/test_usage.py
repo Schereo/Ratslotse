@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import calendar
-from datetime import date, timedelta
+from datetime import date, timedelta, UTC
 
 import pytest
 
@@ -122,12 +122,12 @@ def test_zeitstempel_werden_als_lokale_tage_gezaehlt(usage_db):
     gehört.
     """
     import sqlite3
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     usage.record("qa_antwort", "openai/gpt-4o", 1000, 0, cost_usd=0.5)
 
     # Den eben geschriebenen Eintrag auf 23:30 UTC von vorgestern setzen.
-    utc_ts = (datetime.now(timezone.utc) - timedelta(days=2)).replace(
+    utc_ts = (datetime.now(UTC) - timedelta(days=2)).replace(
         hour=23, minute=30, second=0, microsecond=0)
     conn = sqlite3.connect(usage_db)
     conn.execute("UPDATE llm_usage SET ts = ?", (utc_ts.strftime("%Y-%m-%d %H:%M:%S"),))

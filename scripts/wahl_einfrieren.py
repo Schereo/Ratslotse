@@ -68,7 +68,7 @@ import argparse
 import json
 import shutil
 import sys
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -159,7 +159,7 @@ def _nachgerechnet(texte: dict[str, str]) -> tuple[list[dict], dict[str, int]]:
         city=votemanager.parse(texte["city"]),
         areas=votemanager.parse(texte["areas"]),
         districts=votemanager.parse(texte["districts"]),
-        fetched_at=datetime.now(timezone.utc), last_modified=None, ok=True, error=None,
+        fetched_at=datetime.now(UTC), last_modified=None, ok=True, error=None,
     )
     nacht = service.compose(reg, referenz.load(), schnapp, "live", margins=False, projection=False)
     if nacht["phase"] != "complete":
@@ -284,7 +284,7 @@ def _freeze_mayor(session: requests.Session, w: elections.Election, target: Path
         return
     _json_sichern(session, base + mayor.TERMIN_PATH, target / "termin.json")
     source = {"wahl": w.slug, "url": f"{base}/praesentation/", "presentation_id": election_id, "city_id": city_id,
-              "stand": status, "abgerufen": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+              "stand": status, "abgerufen": datetime.now(UTC).isoformat(timespec="seconds")}
     (target / "quelle.json").write_text(json.dumps(source, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"  quelle.json  (Stand: {status})")
 
