@@ -58,6 +58,7 @@ export function PersonenView() {
   const { data: lexikon } = useFetch<{ personen: PersonEintrag[] }>("/council/people-directory");
   const [q, setQ] = useState("");
   const [party, setParty] = useState("");
+  const [alleBeratenden, setAlleBeratenden] = useState(false);
 
   if (loading) return <div className="py-4"><TableSkeleton rows={8} cols={4} /></div>;
   const all = data?.members ?? [];
@@ -135,8 +136,17 @@ export function PersonenView() {
             sie in keiner Ratssitzung als Mitglied geführt sind.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {beratend.map((m) => <MemberChip key={m.slug} m={m} />)}
+            {(alleBeratenden || needle ? beratend : beratend.slice(0, 12)).map((m) => <MemberChip key={m.slug} m={m} />)}
           </div>
+          {/* Die Liste lief bis 10/2026 voll aus — mit allen 326 Personen
+              war die Seite am Telefon 24.000 px lang. Die Suche oben findet
+              jede; ausgeklappt wird nur auf Wunsch. */}
+          {!alleBeratenden && !needle && beratend.length > 12 && (
+            <button type="button" onClick={() => setAlleBeratenden(true)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-muted">
+              Alle {beratend.length} beratenden Mitglieder anzeigen
+            </button>
+          )}
         </>
       )}
       {verwaltung.length > 0 && (
