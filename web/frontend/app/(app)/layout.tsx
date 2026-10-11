@@ -24,7 +24,7 @@ import { BackToTop } from "@/components/back-to-top";
 import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
-import { Button, Card, CardListSkeleton, Input, Label, PasswordInput, Skeleton, Spinner, toast } from "@/components/ui";
+import { Button, Card, CardListSkeleton, ErrorState, Input, Label, PasswordInput, Skeleton, Spinner, toast } from "@/components/ui";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
@@ -33,7 +33,7 @@ import { breiteFuer, huellenKlasse } from "@/lib/vollbreit";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, refresh, logout } = useAuth();
+  const { user, loading, authFehler, refresh, logout } = useAuth();
   const router = useRouter();
   const abmelden = async () => {
     abmeldenMerken();
@@ -76,7 +76,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (loading || user || oeffentlich) return;
+    // `authFehler`: Der Server kam nicht an — das ist kein Abmelden. Der
+    // Rauswurf hier traf bei jedem Deploy alle, die gerade eine Seite luden.
+    if (loading || user || oeffentlich || authFehler) return;
     // Das Ziel mitnehmen, statt es zu verlieren: Wer aus einem Lesezeichen oder
     // einer angetippten Mitteilung auf „Meine Themen" kommt und sich anmelden
     // muss, landete danach stumpf auf dem Dashboard.
@@ -84,7 +86,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Bewusst abgemeldet (lib/abmelden.ts): ohne Rücksprung.
     if (abmeldenAbholen()) { router.replace("/login"); return; }
     router.replace(ziel === "/dashboard" ? "/login" : mitRuecksprung("/login", ziel));
-  }, [user, loading, router, oeffentlich]);
+  }, [user, loading, router, oeffentlich, authFehler]);
 
   // Wire native push once a user is present: device token → backend, tap → route.
   // No-op on the web and when notifications aren't permitted.
@@ -134,6 +136,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Anmeldung zu schicken. Die App-Hülle passt hier nicht — ihre Navigation
   // führt ausschließlich zu Seiten, die ein Konto verlangen.
   if (!loading && !user && oeffentlich) return <PublicShell>{children}</PublicShell>;
+
+  if (!loading && !user && authFehler) return <NichtErreichbar onRetry={refresh} />;
 
   // Design 29a (P3): Der erste Eindruck war ein Spinner auf weißem Grund — die
   // Marke verschwand ausgerechnet in der Sekunde, die zählt, und jeder App-Start
@@ -463,5 +467,35 @@ function PendingNotice({ email }: { email: string }) {
         {KONTAKT_EMAIL}
       </a>
     </Card>
+  );
+}
+
+
+/** Der Server antwortet nicht — beim ersten Laden, also bevor klar ist, wer
+ *  hier ist. Statt der Anmeldung (die genauso wenig ankäme) ein Weg zurück:
+ *  nochmal fragen, und im Hintergrund alle 10 s von selbst. */
+function NichtErreichbar({ onRetry }: { onRetry: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const versuchen = async () => {
+    setBusy(true);
+    try { await onRetry(); } finally { setBusy(false); }
+  };
+  useEffect(() => {
+    const t = setInterval(() => { void onRetry(); }, 10_000);
+    const an = () => { void onRetry(); };
+    window.addEventListener("online", an);
+    return () => { clearInterval(t); window.removeEventListener("online", an); };
+  }, [onRetry]);
+  return (
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-waves px-4 py-10">
+      <div className="w-full max-w-sm">
+        <ErrorState
+          title="Ratslotse antwortet gerade nicht"
+          hint="Meist ist das nach einer Minute vorbei — zum Beispiel, wenn gerade ein Update eingespielt wird. Wir versuchen es von selbst weiter."
+          onRetry={() => void versuchen()}
+          busy={busy}
+        />
+      </div>
+    </div>
   );
 }

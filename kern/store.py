@@ -12,6 +12,7 @@ from collections.abc import Iterable
 from types import EllipsisType
 from kern.dbfehler import neue_id, tabelle_fehlt
 from kern.maintenance import require_database_available
+from kern.einrichtung import einmal_einrichten
 
 
 logger = logging.getLogger("kern.store")
@@ -1127,7 +1128,7 @@ def vorhandene_werte(conn: sqlite3.Connection, tabelle: str, spalte: str,
 
 
 class Store:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, *, einmal: bool = False):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         require_database_available(self.path)
@@ -1145,11 +1146,14 @@ class Store:
         # VOR dem Schema — sonst legt `CREATE TABLE IF NOT EXISTS` die neue
         # Tabelle leer an und die Umbenennung unterbleibt für immer
         # (s. `_web_users_spalten_nachziehen`, derselbe Fehler spaltenweise).
-        self._tabellen_umbenennen()
-        self._conn.executescript(SCHEMA)
-        self._conn.commit()
-        self._migrate()
-        self._zeitungsreste_entfernen()
+        # Einmal je Prozess und Schema-Stand, s. kern/einrichtung.py.
+        def _einrichten() -> None:
+            self._tabellen_umbenennen()
+            self._conn.executescript(SCHEMA)
+            self._conn.commit()
+            self._migrate()
+            self._zeitungsreste_entfernen()
+        einmal_einrichten(self._conn, self.path, _einrichten, einmal=einmal)
 
     def _werte_umschreiben(self, tabelle: str, spalte: str,
                            paare: list[tuple[str, str]]) -> None:
@@ -4187,7 +4191,8 @@ class Store:
         }
 
     def record_activity(self, owner_id: int, feature: str = "session",
-                        client: str = "unknown") -> None:
+                        client: str = "unknown", *, anzahl: int = 1,
+                        warten: bool = True) -> bool:
         """Ein Feature-Nutzungsereignis je Konto/Tag/Client zählen (best-effort,
         nie load-bearing). ‚session‘ wird bei jedem eingeloggten Request gesetzt
         (throttled durch den Tages-PK).
@@ -4195,18 +4200,29 @@ class Store:
         ``client`` ist eines von web | ios | android | app | unknown und kommt
         aus dem ``X-Client``-Header (siehe ``app.clients``). Er steht im PK, weil
         dieselbe Person am selben Tag am Rechner und am Telefon arbeiten kann.
+
+        ``anzahl`` trägt mehrere gesammelte Ereignisse auf einmal nach;
+        ``warten=False`` gibt bei einer Schreibsperre sofort auf, statt den
+        busy_timeout abzuwarten (der Sitzungs-Zähler in ``app.deps``). Gibt
+        zurück, ob geschrieben wurde.
         """
         from datetime import date
+        if not warten:
+            self._conn.execute("PRAGMA busy_timeout=0")
         try:
             with self._conn:
                 self._conn.execute(
                     "INSERT INTO user_activity (owner_id, day, feature, client, count) "
-                    "VALUES (?, ?, ?, ?, 1) "
-                    "ON CONFLICT(owner_id, day, feature, client) DO UPDATE SET count = count + 1",
-                    (owner_id, date.today().isoformat(), feature, client),
+                    "VALUES (?, ?, ?, ?, ?) "
+                    "ON CONFLICT(owner_id, day, feature, client) DO UPDATE SET count = count + excluded.count",
+                    (owner_id, date.today().isoformat(), feature, client, anzahl),
                 )
+            return True
         except Exception:  # noqa: BLE001 — Aktivitäts-Log darf nie einen Request brechen
-            pass
+            return False
+        finally:
+            if not warten:
+                self._conn.execute("PRAGMA busy_timeout=5000")
 
     def aktivitaet_heute(self, owner_id: int, feature: str) -> int:
         """Wie oft dieses Konto ``feature`` heute benutzt hat — über alle Clients.

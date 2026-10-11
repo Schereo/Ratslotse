@@ -85,6 +85,7 @@ import { Beleg } from "@/components/haushalt/source";
 import { OUTCOME_META, voteLabel } from "@/components/decision-ui";
 import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
 
 
@@ -327,7 +328,7 @@ export function TermineAbschnitt({ onBestand }: {
         {/* Jahr-Umschalter für die Stationsliste. Acht Jahrgänge passen in
             keine Segment-Gruppe auf 375 px — Pillen in einer scrollbaren
             Zeile statt gequetschter Tabs (H4-A: nie ein Dropdown). */}
-        <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [@media(min-width:744px)]:flex-wrap"
+        <ScrollZeile className="-mx-1 flex gap-1.5 px-1 pb-1 [@media(min-width:744px)]:flex-wrap"
           role="group" aria-label="Haushaltsjahr wählen">
           {runden.map((r) => (
             <button
@@ -345,7 +346,7 @@ export function TermineAbschnitt({ onBestand }: {
               {r.year}
             </button>
           ))}
-        </div>
+        </ScrollZeile>
 
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">

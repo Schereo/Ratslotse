@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
+from starlette.concurrency import run_in_threadpool
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from pathlib import Path
@@ -253,7 +254,11 @@ async def unbehandelter_fehler(request: Request, exc: Exception) -> JSONResponse
     from .fehlersammler import sammeln
 
     route = getattr(request.scope.get("route"), "path", None)
-    melden = sammeln(exc, request.method, route, request.url.path)
+    # Im Threadpool, nicht auf der Event-Loop: `sammeln` öffnet den Store und
+    # schreibt. Hält ein Cron gerade die Schreibsperre, wartet das bis zu 5 s
+    # (busy_timeout) — gemessen am 09.10.2026 stand in dieser Zeit der GANZE
+    # Dienst, auch jeder Strom, weil der Handler `async` ist.
+    melden = await run_in_threadpool(sammeln, exc, request.method, route, request.url.path)
     hintergrund = BackgroundTask(melden) if melden else None
 
     return JSONResponse(

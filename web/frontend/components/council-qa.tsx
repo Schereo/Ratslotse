@@ -57,6 +57,7 @@ import { ResearchOffer, type ResearchOfferData } from "@/components/research-off
 import { pfad, cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
+import { useLaengerAls } from "@/lib/use-laenger";
 import {
   berichtAbschnitte, RechercheFehlerKarte, RechercheFortschritt, RechercheGestoppt,
   RechercheHinweisKarte, RechercheLimitKarte, RechercheToggle, Sprungmarken, WieEsWeitergeht,
@@ -150,6 +151,12 @@ function waehleBeispiele(frisch: string[], count: number): string[] {
 
 // Die Schritt-Texte stehen seit 22.09.2026 in `lib/qa-schritte.ts` — Lottis
 // Fenster zeigt dieselben Rahmen, und zwei Fassungen liefen auseinander.
+
+/** Der Server hat geantwortet — aber mit „ging nicht" (Fehler-Rahmen im
+ *  Strom oder ein Status ohne Strom). Getrennt vom Netzfehler, weil beides
+ *  verschiedene Sätze braucht. */
+class ServerAntwortFehler extends Error {}
+
 type Step = AskSchritt;
 const STEP_LABELS = ASK_SCHRITTE;
 
@@ -202,7 +209,11 @@ type Turn = {
   debates: DebattenHinweis[];
   cited: number[];
   followups: string[];
-  fehler?: "netz" | "limit" | "tag" | null;
+  /** `netz`: Die Antwort kam nicht an (Funkloch, Abbruch). `server`: Sie
+   *  kam an, sagte aber „ging nicht" — Modell- oder Serverfehler. Bis
+   *  10/2026 hieß beides „Die Verbindung ist abgebrochen", und wer das las,
+   *  prüfte sein WLAN. */
+  fehler?: "netz" | "server" | "limit" | "tag" | null;
   /** Der Satz des Servers zum Tageskontingent (`qa.KONTINGENT_TEXT`) — er
    *  nennt die Zahl, die das Web nicht doppelt pflegen soll. */
   fehlerText?: string;
@@ -831,7 +842,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     const text = question.trim();
     if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
-    reportBadgeEvent("frage"); // RL-U12: Erste Frage
     const unterbrochen = loading;
     abortRef.current?.abort();
     const ctrl = new AbortController();
@@ -886,8 +896,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         }
         let msg = "Frage fehlgeschlagen.";
         try { const b = await res.json(); if (b?.detail) msg = typeof b.detail === "string" ? b.detail : msg; } catch { /* ignore */ }
-        throw new Error(msg);
+        throw new ServerAntwortFehler(msg);
       }
+      // Kam das Ende an? Ohne `done` ist ein Strom gerissen — auch wenn er
+      // schon Text gebracht hat. Bis 10/2026 sah ein angefangener Text dann
+      // aus wie eine fertige Antwort, und ohne Text stand unter der Frage nichts.
+      let fertig = false;
+      let gefeiert = false;
+      let textDa = false;
       // Das Zerlegen des Stroms steht in `lib/sse.ts` — eine Stelle für alle
       // Leser (seit Lottis Fenster sind es zwei). Was ein Rahmen BEDEUTET,
       // bleibt hier: Das weiß nur diese Ansicht.
@@ -909,13 +925,21 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             chart: (msg.chart as QaGrafik | null) ?? null,
             rules_of_procedure: (msg.rules_of_procedure as RulesOfProcedureCard | null) ?? null,
           });
-          else if (msg.type === "token") patchLast((t) => ({ answer: t.answer + (msg.text as string) }));
+          else if (msg.type === "token") {
+            // Das Abzeichen „Erste Frage" erst, wenn eine Antwort kommt — es
+            // feierte bis 10/2026 auch die gescheiterte (RL-U12).
+            if (!gefeiert) { gefeiert = true; reportBadgeEvent("frage"); }
+            textDa = true;
+            patchLast((t) => ({ answer: t.answer + (msg.text as string) }));
+          }
           // Riss der LLM-Stream mitten in der Antwort, generiert das Backend
           // einmal komplett neu und ersetzt den Torso (Befund 10.08.).
-          else if (msg.type === "replace") patchLast({ answer: (msg.text as string) ?? "" });
+          else if (msg.type === "replace") { textDa = Boolean(msg.text); patchLast({ answer: (msg.text as string) ?? "" }); }
           else if (msg.type === "abbruch") patchLast({ abgebrochen: true });
           else if (msg.type === "suggestions") patchLast({ followups: (msg.questions as string[]) ?? [] });
           else if (msg.type === "done") {
+            fertig = true;
+            if (!gefeiert) { gefeiert = true; reportBadgeEvent("frage"); }
             patchLast({ cited: (msg.cited as number[]) ?? [],
                         // Der Stand aus dem sources-Ereignis ist über ALLE
                         // Kandidaten gerechnet, dieser hier über die
@@ -943,14 +967,22 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             if (msg.conversation_id != null) setGespraechId(msg.conversation_id as number);
             else if ("conversation_id" in msg) setGespraechId(null);
           }
-          else if (msg.type === "error") throw new Error((msg.message as string) ?? "Frage fehlgeschlagen.");
+          else if (msg.type === "error") throw new ServerAntwortFehler((msg.message as string) ?? "Frage fehlgeschlagen.");
       });
+      if (!fertig && !ctrl.signal.aborted) {
+        // Gerissen. Mit Text: stehen lassen, aber ehrlich als abgebrochen
+        // (wie beim Stopp). Ohne Text: Fehler-Turn, Frage zurück ins Feld.
+        if (textDa) patchLast({ abgebrochen: true });
+        else { patchLast({ fehler: "netz" }); setQ(text); }
+      }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       // Fehler-Turn: Die Frage ist nicht verloren — zurück ins Eingabefeld.
-      patchLast({ fehler: "netz" });
+      // KEIN Toast mehr dazu: Die Karte im Gespräch sagt es schon, und zwei
+      // Meldungen, von denen eine das Falsche sagte, verwirrten (RI-04).
+      if (e instanceof ServerAntwortFehler) patchLast({ fehler: "server", fehlerText: e.message });
+      else patchLast({ fehler: "netz" });
       setQ(text);
-      toast.error(e instanceof Error ? e.message : "Frage fehlgeschlagen.");
     } finally {
       if (abortRef.current === ctrl) {
         setLoading(false);
@@ -1127,6 +1159,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
     const lauf = async () => {
       let beendet = false;
+      // Wachsende Pause statt fester 2 s, und eine Grenze: Bis 10/2026
+      // verband sich die Schleife bei 401/403/404 alle 2 s neu — ohne Ende,
+      // auch im Hintergrund-Tab, und die Fortschrittskarte stand für immer.
+      let pause = 2_000;
+      let letzterKontakt = Date.now();
       while (!beendet && !ctrl.signal.aborted) {
         try {
           const ab = deepAb.current.get(jobId) ?? 0;
@@ -1137,20 +1174,36 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             await ladeDeepSnapshot(jobId, turnKey);
             return;
           }
+          // Abgemeldet, kein Zugriff, Job weg: Neu verbinden ändert daran
+          // nichts. Die Fehlerkarte bietet „Fortsetzen" und „Schnelle Frage".
+          if (res.status === 401 || res.status === 403 || res.status === 404) {
+            patchTurn(turnKey, { deepStatus: "fehler" });
+            return;
+          }
           if (!res.ok || !res.body) throw new Error(String(res.status));
           // Derselbe Leser wie bei der schnellen Frage (lib/sse.ts); die
           // Keepalive-Zeilen dieses Stroms (`: …`) fallen dort als
           // ungültiges JSON heraus.
           await leseSseStrom(res.body, (msg) => {
+            letzterKontakt = Date.now();
+            pause = 2_000;
             deepAb.current.set(jobId, (deepAb.current.get(jobId) ?? 0) + 1);
             if (verarbeite(msg)) beendet = true;
           });
         } catch (e) {
           if ((e as Error)?.name === "AbortError") return;
         }
-        // Riss ohne Terminal-Event: kurz durchatmen, dann ab letztem Stand
-        // neu verbinden — der Server recherchiert währenddessen weiter.
-        if (!beendet && !ctrl.signal.aborted) await new Promise((r) => setTimeout(r, 2000));
+        if (beendet || ctrl.signal.aborted) break;
+        // Fünf Minuten ohne ein Lebenszeichen: aufgeben, statt endlos zu
+        // klopfen. Der Server recherchiert weiter; „Fortsetzen" holt ihn.
+        if (Date.now() - letzterKontakt > 5 * 60_000) {
+          patchTurn(turnKey, { deepStatus: "fehler" });
+          return;
+        }
+        // Riss ohne Terminal-Event: durchatmen, dann ab letztem Stand neu
+        // verbinden — 2, 4, 8 … höchstens 30 s.
+        await new Promise((r) => setTimeout(r, pause));
+        pause = Math.min(pause * 2, 30_000);
       }
     };
     void lauf();
@@ -2299,6 +2352,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
 
   const hatAntwort = turn.answer.length > 0;
+  // 20 s ohne ein Wort: sagen, dass es ungewöhnlich lange dauert (FS-12).
+  const dauertLaenger = useLaengerAls(Boolean(loading && !hatAntwort && !turn.fehler), 20_000);
   // RG-10: Recherche-Turns haben einen eigenen Lebenszyklus neben `loading`
   // (das nur den /ask-Stream spiegelt) — der Job läuft server-seitig weiter.
   const deepLaeuft = Boolean(turn.research && turn.deepStatus === "laeuft");
@@ -2383,14 +2438,16 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
       )}
 
       {/* Fehler-Turn (RG ⑧). */}
-      {turn.fehler === "netz" && (
+      {(turn.fehler === "netz" || turn.fehler === "server") && (
         <div className="flex items-start gap-3 rounded-xl border border-signal/30 bg-signal/5 p-4">
           <Mascot pose="confused" decorative className="h-12 w-12 shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">Das hat nicht geklappt.</p>
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-              Die Verbindung ist abgebrochen. Deine Frage ist nicht verloren —
-              sie steht wieder im Eingabefeld.
+              {turn.fehler === "server"
+                ? "Ratslotse konnte gerade keine Antwort schreiben — das liegt an uns, nicht an deinem Netz."
+                : "Die Verbindung ist abgebrochen."}{" "}
+              Deine Frage ist nicht verloren — sie steht wieder im Eingabefeld.
             </p>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <button type="button" onClick={onRetry}
@@ -2408,7 +2465,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
       {/* Laufender Schritt, solange noch kein Text streamt (RG ②). */}
       {loading && !hatAntwort && !turn.fehler && (
-        <div role="status" className="flex items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
           {/* `denkt` ist die gebackene Ladeanzeige — läuft, bis Text streamt. */}
           <Mascot regung="denkt" className="h-12 w-12 shrink-0" />
           <div className="min-w-0">
@@ -2417,6 +2474,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               {step ? STEP_LABELS[step] : "Wird vorbereitet"}…
             </span>
             <span className="hidden text-xs text-muted-foreground/70 sm:inline">{word} …</span>
+            {dauertLaenger && (
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Das dauert länger als üblich. Du kannst warten oder mit „Stopp" abbrechen.
+              </span>
+            )}
           </div>
         </div>
       )}

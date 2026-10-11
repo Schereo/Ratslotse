@@ -14,6 +14,7 @@ from .parties import order_key, parties_for_faction
 from council.kontaktdaten import maskieren
 from kern.dbfehler import tabelle_fehlt
 from kern.maintenance import require_database_available
+from kern.einrichtung import einmal_einrichten
 from council.store_helfer import _dedup_keys, _int_or_none
 from council.store_fundstuecke import FundstueckeMixin
 from council.store_bplan import BplanMixin
@@ -157,7 +158,8 @@ def _produkt_stufe(begriffe: list[str]) -> str | None:
 class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                    PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
                    ThemenMixin, ViertelMixin, WortbeitraegeMixin, *_geld.MIXINS):
-    def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):
+    def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None,
+                 *, einmal: bool = False):
         self._path = path
         require_database_available(path)
         # Sibling ratslotse.sqlite holds the chat_id→owner_id map for the migration.
@@ -184,10 +186,16 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         # Umbenennung unterbleibt für immer — die Daten lägen weiter unter dem
         # alten Namen, unsichtbar. Genau so ist am 01.09.2026 die Einwilligung
         # in `web_users` verschwunden, nur eben spaltenweise.
-        self._tabellen_umbenennen()
-        self._conn.executescript(SCHEMA)
-        self._conn.commit()
-        self._migrate()
+        #
+        # Einmal je Prozess und Schema-Stand (kern/einrichtung.py): Der Web-
+        # Dienst öffnet je Anfrage einen Store, und die Einrichtung war bis
+        # 10/2026 der größte Posten jeder Rats-Anfrage.
+        def _einrichten() -> None:
+            self._tabellen_umbenennen()
+            self._conn.executescript(SCHEMA)
+            self._conn.commit()
+            self._migrate()
+        einmal_einrichten(self._conn, path, _einrichten, einmal=einmal)
         #: Läuft gerade eine geklammerte Transaktion (siehe ``transaktion``)?
         self._sammelt = False
         #: Zwischenspeicher für ``personen_kanon`` — je Instanz, also je Anfrage.
@@ -2132,9 +2140,14 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 """SELECT d.outcome, cs.committee FROM council_decisions d
                    JOIN council_sessions cs ON cs.ksinr = d.ksinr
                    WHERE d.kind = 'decision' AND d.outcome IN ('accepted','rejected')
-                     AND (d.template_number = ? OR d.template_number LIKE ?)
+                     AND (d.template_number = ?
+                          OR (d.template_number >= ? AND d.template_number < ?))
                    ORDER BY (cs.committee LIKE 'Rat%') DESC, cs.session_date DESC
-                   LIMIT 1""", (base, base + "/%"),
+                   LIMIT 1""",
+                # Bereich statt `LIKE base/%`: Nur so nimmt SQLite den Index
+                # (LIKE ist ohne case_sensitive_like nie indexfähig). „/" + 1
+                # ist „0" — der Bereich umfasst genau alles mit `base/` davor.
+                (base, base + "/", base + "0"),
             ).fetchone()
             if not decision:
                 continue

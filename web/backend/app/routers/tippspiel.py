@@ -248,6 +248,9 @@ def setup(runde: str | None = Query(default=None, alias="round"),
     r = _runde(runde)
     game_id = _game_id(store, r)
     _zutritt(store, game_id, user)
+    # Schluss und Endstand setzen sich beim Aufruf (kein Cron) — auch hier,
+    # sonst sähe die Einstiegsseite eine Runde nie enden.
+    service._check_auto_lock(store, game_id)  # noqa: SLF001 — wie beim Beitritt
     return service.setup(store, game_id)
 
 
@@ -287,6 +290,11 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Bitte gib deinen Namen ein.")
         partei = _clean_party(payload.party)
         game = store.prediction_game(game_id)
+        if game["phase"] == "final":
+            # Nach dem Endstand gibt es nichts mehr zu tippen — „nachgetippt"
+            # gilt für den Wahlabend, nicht für die Wochen danach.
+            raise HTTPException(status.HTTP_409_CONFLICT,
+                                "Das Tippspiel ist vorbei — die Auszählung ist abgeschlossen.")
         jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
         late_at = jetzt if game["phase"] != "open" else None
         klartext = secrets.token_hex(16)

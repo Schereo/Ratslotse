@@ -5,6 +5,7 @@ import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { featureAktiv, useAppConfig } from "@/lib/features";
+import { AbrufFehler } from "@/components/abruf-fehler";
 import { karteHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { Button, DetailSkeleton, EmptyState, Sheet, SheetContent, SheetTitle, toast } from "@/components/ui";
@@ -65,6 +66,14 @@ export default function KarteView() {
   // diesem Moment träfe jeden beim ersten Aufruf. Deshalb erst nach Antwort.
   if (cfg.isSuccess && !featureAktiv(cfg.data, "mein-viertel")) notFound();
   // Das Polster, das die randlose Hülle hier nicht mehr gibt (lib/vollbreit.ts).
+  // Scheitert die Konfiguration, blieb hier bis 10/2026 das Skelett für immer.
+  if (cfg.isError) {
+    return (
+      <div className={SEITEN_POLSTER}>
+        <AbrufFehler error={cfg.error} onRetry={() => void cfg.refetch()} was="Die Karte" />
+      </div>
+    );
+  }
   if (!cfg.isSuccess) return <div className={SEITEN_POLSTER}><DetailSkeleton /></div>;
   return <Buehne />;
 }

@@ -161,3 +161,29 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "einwilligung(wert): saves_conversations dieses Kontos (None | 0 | 1)")
+
+
+@pytest.fixture(autouse=True)
+def _prozess_gedaechtnis_leeren():
+    """Was der Web-Dienst sich je Prozess merkt, gilt in der Suite je Test.
+
+    Der Dienst richtet das Schema nur beim ersten Öffnen je Prozess ein
+    (``kern/einrichtung.py``) und zählt Sitzungen gedrosselt (``app.deps``).
+    Ein Test, der eine Zeile auf einen Altwert setzt und dann eine Anfrage
+    schickt, erwartet aber die Migration — und ein Test, der zwei Anfragen
+    zählt, zwei Ereignisse. Ohne das hier hinge beides an der Reihenfolge.
+    """
+    from kern import einrichtung
+    einrichtung.vergessen()
+    try:
+        from app import deps
+    except ImportError:  # Suite-Teile ohne Backend auf dem Pfad
+        deps = None
+    if deps is not None:
+        deps.sitzungen_vergessen()
+        # Ungedrosselt wie vor 10/2026: Tests zählen Anfragen genau. Die
+        # Drosselung selbst prüft tests/test_sitzungszaehler.py.
+        alt, deps._SITZUNG_TAKT_S = deps._SITZUNG_TAKT_S, 0.0
+    yield
+    if deps is not None:
+        deps._SITZUNG_TAKT_S = alt

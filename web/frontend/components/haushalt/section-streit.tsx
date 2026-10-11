@@ -85,6 +85,7 @@ import { OutcomeBadge, OutcomeDot } from "@/components/decision-ui";
 import { parteiDot } from "@/components/qa-bausteine";
 import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
 
 /** Der neutrale Punkt für kombinierte Label (Designsprache §2). */
@@ -338,7 +339,7 @@ export function StreitAbschnitt({ onBestand }: {
           {/* H4-A: mobil ein Scrollband (nie ein Dropdown — der Vergleichs-
               Blick über die Jahre ist der Sinn des Umschalters), ab 744 px
               passen alle Pillen nebeneinander. */}
-          <div className="scrollbar-none -mx-1 mt-2 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [@media(min-width:744px)]:flex-wrap">
+          <ScrollZeile className="-mx-1 mt-2 flex gap-1.5 px-1 pb-0.5 [@media(min-width:744px)]:flex-wrap">
             {years.map((j) => (
               <Link
                 key={j}
@@ -354,7 +355,7 @@ export function StreitAbschnitt({ onBestand }: {
                 {j}
               </Link>
             ))}
-          </div>
+          </ScrollZeile>
           <p className="mt-2 max-w-[70ch] text-[11.5px] leading-relaxed text-muted-foreground">
             Der Haushalt für ein Jahr wird meist im Dezember davor beschlossen — der für 2026
             erst im Februar 2026. Das Jahr hier ist das Haushaltsjahr, nicht das Sitzungsjahr.

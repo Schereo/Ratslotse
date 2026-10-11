@@ -13007,7 +13007,7 @@
         "type": "object"
       },
       "GoalDecision": {
-        "description": "Ein Beschluss, der auf ein Nachhaltigkeitsziel einzahlt.\n\n``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere\naus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist\nje leer.",
+        "description": "Ein Beschluss, der auf ein Nachhaltigkeitsziel einzahlt.\n\n``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere\naus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist\nje leer — außer ``outcome``: Ein Beschluss ohne erkanntes Ergebnis (am\n09.10.2026 drei von 1.307) brachte /goal/klima_2035 und /goal/wohnungsbau\nbis dahin mit einem 500er zum Stehen.",
         "properties": {
           "committee": {
             "title": "Committee",
@@ -13027,7 +13027,10 @@
               "settled"
             ],
             "title": "Outcome",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "policy_field": {
             "title": "Policy Field",

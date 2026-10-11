@@ -4262,14 +4262,16 @@ class GoalDecision(TypedDict):
 
     ``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere
     aus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist
-    je leer.
+    je leer — außer ``outcome``: Ein Beschluss ohne erkanntes Ergebnis (am
+    09.10.2026 drei von 1.307) brachte /goal/klima_2035 und /goal/wohnungsbau
+    bis dahin mit einem 500er zum Stehen.
     """
     id: int
     title: str
     summary: str
     committee: str
     session_date: str
-    outcome: Beschlussergebnis
+    outcome: Beschlussergebnis | None
     policy_field: str
     stance: str
     rationale: str
