@@ -5851,7 +5851,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             hat_geld = bool(geld.get("facets")) and any(
                 v for k, v in geld.items() if k != "facets")
             if (not candidates and not anlagen_rows and not hat_geld and not rules_sel
-                    and not election_block):
+                    and not election_block and not qa.fundortfrage(q, q_suche)):
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
                 if sitzungen and ort:
                     leer_text = (f"In der gefragten Sitzung habe ich keine Beschlüsse mit "
@@ -6023,6 +6023,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                             c["vorlage_finanzen"] = " ".join(f.split())[:qa.FINANZEN_ZEICHEN]
                 except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                     _log.exception("Finanzielle Auswirkungen nicht geladen")
+            # Was seit dem jüngsten Beschluss einer Vorlage auf einer
+            # Tagesordnung stand — und, bei der Frage nach dem Fundort, wo
+            # Ergebnisse überhaupt stehen (Auswertung 11.10.2026).
+            extra_block = qa.FUNDORT_BLOCK if qa.fundortfrage(q, q_suche) else ""
+            if not einfach and not sitzungen:
+                try:
+                    extra_block += qa.seither_block(store.agenda_since_decisions(
+                        [c.get("template_number") or "" for c in ctx]))
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Tagesordnungen seit dem Beschluss nicht geladen")
             try:  # Läuft zu einem Kandidaten gerade eine Bauleitplan-Beteiligung?
                 from council import beteiligung as bet_mod
                 bets = store.list_beteiligungen()
@@ -6102,7 +6112,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           zukunft_leer=zukunft_leer, stand=stand,
                                           screen=bildschirm, akte=akte_prompt,
                                           rules_block=rules_block,
-                                          election_block=election_block))
+                                          election_block=election_block,
+                                          extra_block=extra_block))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -6142,7 +6153,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  stand=stand, screen=bildschirm,
                                                  akte=akte_prompt,
                                                  rules_block=rules_block,
-                                          election_block=election_block))
+                                          election_block=election_block,
+                                          extra_block=extra_block))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
