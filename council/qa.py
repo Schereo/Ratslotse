@@ -1708,6 +1708,13 @@ _GREMIUM_ALIASE = {
     "abfallausschuss": "abfallwirtschaftsbetrieb",
     "hochbauausschuss": "gebaeudewirtschaft",
     "bahnausschuss": "bahnangelegenheiten",
+    # „Was ist gestern beim allgemeinen Ausschuss rausgekommen?" (29.09.2026)
+    # fand den „Ausschuss für Allgemeine Angelegenheiten" nicht — der amtliche
+    # Name steht nirgends in der Frage, und die Sitzung vom Vortag blieb
+    # unbemerkt. Beide Beugungen, weil `_gremium_genannt` nur -es/-s erlaubt.
+    "allgemeinen ausschuss": "allgemeine angelegenheiten",
+    "allgemeiner ausschuss": "allgemeine angelegenheiten",
+    "allgemeine ausschuss": "allgemeine angelegenheiten",
 }
 
 
@@ -1757,7 +1764,9 @@ def _gremium_passt(fragment: str, committee: str | None) -> bool:
 _SITZUNG_ANLASS_RE = re.compile(
     r"\b(sitzung\w*|beschloss\w*|beschluss\w*|beschluesse\w*|entschied\w*|"
     r"entscheidung\w*|tagesordnung\w*|getagt|tagte?n?|beraten|abgestimmt|"
-    r"ergebnis\w*)\b")
+    # Umgangssprachlich dasselbe wie „Ergebnis" — „Was ist gestern beim
+    # allgemeinen Ausschuss rausgekommen?" (29.09.2026) verwarf sonst das Datum.
+    r"ergebnis\w*|(?:he)?rausgekommen|besprochen|passiert|gelaufen)\b")
 _SITZUNG_ZURUECK_RE = re.compile(
     r"\b(letzt\w*|juengst\w*|vergangen\w*|vorig\w*)\s+(rats)?sitzung\b|\bzuletzt\b")
 #: Nur die ausdrückliche Sitzungs-Phrase („letzte Ratssitzung") — ohne das
@@ -1969,6 +1978,53 @@ def _sitzungen_block(sitzungen: list[dict] | None) -> str:
             "Liegen zur gefragten Sitzung noch keine Beschlüsse vor, sage das "
             "ehrlich als Erstes — Beschlüsse ANDERER Sitzungen aus dem Kontext "
             "sind dann NICHT die Antwort.\n")
+
+
+def seither_block(stationen: list[dict] | None) -> str:
+    """Tagesordnungs-Stationen der Vorlagen im Kontext, die NACH ihrem
+    jüngsten Beschluss liegen (``store.agenda_since_decisions``).
+
+    Ohne sie erzählt eine Sachstands-Antwort den Stand des letzten
+    Protokolls: „im Mai vertagt" (Brokhausen, 24.09.2026), obwohl der Punkt
+    im Juni abgesetzt und im August wieder beraten worden war."""
+    if not stationen:
+        return ""
+    zeilen = []
+    for st in stationen:
+        kopf = (f"- {_datum_de(st['session_date'])}, {st.get('committee') or 'Gremium'}: "
+                f"„{' '.join((st.get('title') or '').split())[:160]}“ (Vorlage {st['template_number']})")
+        if st.get("outcome"):
+            kopf += f" — laut Tagesordnung: {st['outcome']}"
+        else:
+            kopf += " — stand auf der Tagesordnung; ein ausgewertetes Protokoll mit dem Ergebnis liegt noch nicht vor"
+        zeilen.append(kopf)
+    return ("\nSEIT DEM JÜNGSTEN BESCHLUSS (aus den Tagesordnungen — spätere Stationen der Vorlagen "
+            "oben, zu denen es noch keinen ausgewerteten Beschluss gibt). Geht es um den Stand, "
+            "gehören sie in die Antwort, mit Datum; NIE mit [id]:\n" + "\n".join(zeilen) + "\n")
+
+
+#: „Wo finde ich Ergebnisse der Ausschusssitzung?" (29.09.2026) — eine Frage
+#: an Ratslotse selbst, keine an die Beschlüsse. Die Antwort verwies auf einen
+#: Beschluss von 2022 über Videoübertragungen.
+_FUNDORT_RE = re.compile(
+    r"\bwo (?:finde|gibt|stehen|steht|kann|sehe|bekomme|lese|sind|findet)\b[^.?!]{0,50}"
+    r"(?:ergebnis|protokoll|niederschrift|beschluss|beschluesse|tagesordnung|abstimmung)|"
+    r"wann (?:kommt|erscheint|gibt es|ist) (?:das|ein) protokoll")
+
+
+def fundortfrage(*fragen: str) -> bool:
+    """Fragt jemand, WO Ergebnisse, Protokolle oder Tagesordnungen stehen?"""
+    return any(_FUNDORT_RE.search(_falte(f or "")) for f in fragen)
+
+
+FUNDORT_BLOCK = (
+    "\nWO ERGEBNISSE STEHEN (zu Ratslotse selbst — die Frage richtet sich an die App, nicht an "
+    "die Beschlüsse): In Ratslotse unter „Sitzungen“ hat jede Sitzung eine eigene Seite mit "
+    "Tagesordnung und — sobald das Protokoll ausgewertet ist — den Beschlüssen samt "
+    "Abstimmung. Die Originale (Tagesordnung, Vorlagen, Niederschrift) stehen im "
+    "Ratsinformationssystem der Stadt, buergerinfo.oldenburg.de. Die Stadt veröffentlicht "
+    "Niederschriften in der Regel einige Wochen bis ein, zwei Monate nach der Sitzung; bis "
+    "dahin gibt es nur die Tagesordnung. Nenne das, und keine Beschlüsse als „Fundort“.\n")
 
 
 def sitzungs_leer_text(sitzungen: list[dict]) -> str:
@@ -4901,7 +4957,11 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      # Die Wahlergebnisse — fertiger Baustein aus
                      # ``web/backend/app/election/answer_context.py``, sobald
                      # ``wahlfrage`` anschlägt; per NAME übergeben wie oben.
-                     election_block: str = "") -> tuple[list[dict], dict]:
+                     election_block: str = "",
+                     # Fertige Bausteine des Routers aus eigenen Daten (seit der
+                     # Auswertung 11.10.2026: „Seit dem jüngsten Beschluss",
+                     # „Wo Ergebnisse stehen"); per NAME übergeben wie oben.
+                     extra_block: str = "") -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf_ohne_dieselbe_frage(verlauf, question))
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
@@ -4983,7 +5043,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             # Anweisungsfilter (``_fremd``); die eigenen
                             # Bausteine (Geschäftsordnung, Glossar, Geld)
                             # nicht — sie sind Code dieses Repos.
-                            presse=rules_block + election_block + akte_text
+                            presse=rules_block + election_block + _fremd(extra_block) + akte_text
                             + _fremd(_sitzungen_block(sitzungen))
                             + _glossar_block(begriffe_fuer(question))
                             + _fremd(_steckbrief_block(steckbriefe)) + _fremd(_presse_block(presse))
@@ -5143,7 +5203,8 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     ort: dict | None = None, staedte: list[dict] | None = None,
                     zukunft_leer: bool = False, stand: dict | None = None,
                   screen: dict | None = None, akte: dict | None = None,
-                  rules_block: str = "", election_block: str = ""):
+                  rules_block: str = "", election_block: str = "",
+                  extra_block: str = ""):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
@@ -5156,7 +5217,8 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                                        # wie alles hier; deshalb ganz ans Ende.
                                        staedte, zukunft_leer, stand, screen, akte,
                                        rules_block=rules_block,
-                                       election_block=election_block)
+                                       election_block=election_block,
+                                       extra_block=extra_block)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
                              messages=messages, **extra)
@@ -5175,7 +5237,8 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   ort: dict | None = None, staedte: list[dict] | None = None,
                   zukunft_leer: bool = False, stand: dict | None = None,
                   screen: dict | None = None, akte: dict | None = None,
-                  rules_block: str = "", election_block: str = ""):
+                  rules_block: str = "", election_block: str = "",
+                  extra_block: str = ""):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
@@ -5190,7 +5253,8 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                                        # wie alles hier; deshalb ganz ans Ende.
                                        staedte, zukunft_leer, stand, screen, akte,
                                        rules_block=rules_block,
-                                       election_block=election_block)
+                                       election_block=election_block,
+                                       extra_block=extra_block)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
                                messages=messages, **extra)

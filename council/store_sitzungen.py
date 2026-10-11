@@ -1477,6 +1477,55 @@ class SitzungenMixin(StoreBasis):
             out[r["item_number"]] = wert
         return out
 
+    #: Das Ergebnis, das die Tagesordnung im Titel nachträgt („… Beschluss:
+    #: zurückgestellt/abgesetzt") — nicht jede Sitzung trägt es.
+    _TOP_ERGEBNIS = re.compile(r"\s*Beschluss:\s*(.+?)\s*$")
+
+    def agenda_since_decisions(self, template_numbers: list[str],
+                               today: str | None = None, limit: int = 8) -> list[dict]:
+        """Tagesordnungs-Stationen einer Vorlage NACH ihrem jüngsten Beschluss.
+
+        Brokhausen, 24.09.2026: Die Antwort sagte „im Mai vertagt" — am 18.06.
+        war der Punkt aber schon wieder abgesetzt (steht im Titel des
+        Tagesordnungspunkts) und am 27.08. erneut auf der Tagesordnung, nur
+        das Protokoll fehlte noch. Beschlüsse kennt die KI-Frage erst mit dem
+        Protokoll, Wochen nach der Sitzung; die Tagesordnung ist sofort da.
+
+        Je Station: ``template_number``, ``title`` (ohne Ergebnis-Zusatz),
+        ``outcome`` (der Zusatz, sonst ``None``), ``session_date``,
+        ``committee``, ``ksinr`` — älteste zuerst, höchstens ``limit``."""
+        nrs = sorted({(n or "").strip() for n in template_numbers if n and str(n).strip()})
+        if not nrs:
+            return []
+        heute = today or date.today().isoformat()
+        ph = ",".join("?" * len(nrs))
+        juengst = {r[0]: r[1] for r in self._conn.execute(
+            f"SELECT d.template_number, MAX(s.session_date) FROM council_decisions d "
+            f"JOIN council_sessions s ON s.ksinr = d.ksinr "
+            f"WHERE d.template_number IN ({ph}) GROUP BY d.template_number", nrs)}
+        rows = self._conn.execute(
+            f"SELECT a.template_number, a.title, s.session_date, s.committee, s.ksinr "
+            f"FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            f"WHERE a.template_number IN ({ph}) AND s.session_date <= ? "
+            f"ORDER BY s.session_date, a.id", [*nrs, heute]).fetchall()
+        out: list[dict] = []
+        gesehen: set[tuple] = set()
+        for r in rows:
+            nr = r["template_number"]
+            if nr not in juengst or str(r["session_date"]) <= str(juengst[nr]):
+                continue
+            if (nr, r["ksinr"]) in gesehen:
+                continue
+            gesehen.add((nr, r["ksinr"]))
+            titel = r["title"] or ""
+            m = self._TOP_ERGEBNIS.search(titel)
+            out.append({"template_number": nr,
+                        "title": titel[:m.start()] if m else titel,
+                        "outcome": m.group(1) if m else None,
+                        "session_date": r["session_date"], "committee": r["committee"],
+                        "ksinr": r["ksinr"]})
+        return out[:limit]
+
     def agenda_items(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(
             """SELECT item_number, title, template_number, kvonr, is_public
