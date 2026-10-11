@@ -144,7 +144,7 @@ def test_ohne_grundakten_gibt_es_keine_aktenregel(tmp_path):
 def test_eine_neue_geschaeftsordnung_meldet_sich(store):
     """Der neue Rat beschließt seine Geschäftsordnung — dann muss die Fassung
     im Repo nachgezogen werden (council/rules_of_procedure.py)."""
-    jetzt = datetime.now(timezone.utc)
+    jetzt = datetime.now(UTC)
     assert _pruefen(store, jetzt)["kennzahlen"]["geschaeftsordnung"] in ("current", "term_ended")
     store._conn.execute(
         "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, "

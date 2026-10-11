@@ -364,7 +364,7 @@ def test_nach_der_auszaehlung_ist_endstand_und_kein_beitritt_mehr(client, store,
     Auszählung vollständig ist — und spätestens 36 h nach Schluss."""
     tippen(client, "Anna", 52.0, 48.0)
     game_id = store.prediction_spiel_zeile("stichwahl")["id"]
-    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 16, 7, tzinfo=timezone.utc))
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 27, 16, 7, tzinfo=UTC))
     service.reset_all()
     client.get(f"/api/tipp/stand{RUNDE}")
     assert store.prediction_game(game_id)["phase"] == "locked"
@@ -384,10 +384,10 @@ def test_nach_der_auszaehlung_ist_endstand_und_kein_beitritt_mehr(client, store,
 def test_ohne_vollstaendige_zahl_endet_die_runde_nach_36_stunden(client, store, monkeypatch):
     tippen(client, "Anna", 52.0, 48.0)
     game_id = store.prediction_spiel_zeile("stichwahl")["id"]
-    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 28, 16, 0, tzinfo=timezone.utc))  # +24 h
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 28, 16, 0, tzinfo=UTC))  # +24 h
     service.reset_all()
     client.get(f"/api/tipp/setup{RUNDE}")
     assert store.prediction_game(game_id)["phase"] == "locked"
-    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 29, 4, 1, tzinfo=timezone.utc))  # +36 h
+    monkeypatch.setattr(service, "_jetzt", lambda: datetime(2026, 9, 29, 4, 1, tzinfo=UTC))  # +36 h
     setup = client.get(f"/api/tipp/setup{RUNDE}").json()
     assert setup["phase"] == "final"

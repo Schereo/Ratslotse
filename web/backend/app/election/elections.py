@@ -287,7 +287,7 @@ def prominent(wahl: Election, jetzt: datetime | None = None) -> bool:
     """
     if wahl.status in ("entwurf", "rueckblick"):
         return False
-    jetzt = jetzt or datetime.now(timezone.utc)
+    jetzt = jetzt or datetime.now(UTC)
     return wahl.polls_close - PROMINENT_VORHER <= jetzt <= wahl.polls_close + PROMINENT_NACHHER
 
 

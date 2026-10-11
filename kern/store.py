@@ -3091,7 +3091,7 @@ class Store:
             (kind, key, owner_id)).fetchone() is not None
 
     def mark_evening_notice(self, kind: str, key: str, owner_id: int) -> None:
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
                 "INSERT OR IGNORE INTO evening_notices_sent (kind, key, owner_id, sent_at) "
@@ -3187,7 +3187,7 @@ class Store:
         ``jetzt_iso`` vom Start fest, und eine damit gestempelte Reservierung
         wäre für einen zweiten Lauf schon abgelaufen, bevor sie beginnt.
         """
-        echt = datetime.now(timezone.utc)
+        echt = datetime.now(UTC)
         jetzt_echt = echt.isoformat(timespec="seconds")
         frist = (echt - timedelta(minutes=self.ZUSTELL_RESERVIERUNG_MIN)).isoformat(
             timespec="seconds")

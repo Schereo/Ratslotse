@@ -4,7 +4,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 
 import pytest
@@ -47,7 +47,7 @@ def umgebung(tmp_path, monkeypatch):
 def _kosten_gestern(db: Path, feature: str, usd: float | None, n: int = 1,
                     pin: int = 0, pout: int = 0) -> None:
     """Zeilen mit einem UTC-Zeitstempel mitten im gestrigen Ortstag."""
-    gestern_mittag = datetime.fromisoformat(herzschlag.gestern() + "T12:00:00").astimezone(timezone.utc)
+    gestern_mittag = datetime.fromisoformat(herzschlag.gestern() + "T12:00:00").astimezone(UTC)
     usage._connect().close()   # Tabelle anlegen
     with sqlite3.connect(db) as conn:
         for _ in range(n):
@@ -96,7 +96,7 @@ def test_die_schwelle_kommt_aus_der_umgebung(monkeypatch):
 
 
 def _urteile_gestern(db: Path, verdicts: list[str], stage: str = "model") -> None:
-    gestern = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+    gestern = (datetime.now(UTC).date() - timedelta(days=1)).isoformat()
     with sqlite3.connect(db) as conn:
         for v in verdicts:
             conn.execute("INSERT INTO assistant_checks (created, route, verdict, stage, categories, "
