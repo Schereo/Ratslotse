@@ -1,0 +1,318 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "anthropic/claude-haiku-5.5",
+ "variante": "ohne Denken",
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-10-08T09:22:16",
+ "db_stand": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "qualitaet": 0.8059,
+ "harte_befunde": 3,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 28026,
+ "p95_ms": 52974,
+ "aufrufe": 14,
+ "kosten_usd": 0.086638,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.6188,
+ "ct_je_lauf": 8.6639,
+ "kosten_gesamt_usd": 0.086638,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "anthropic/claude-haiku-5.5"
+ ],
+ "ersatz": [],
+ "dauer_s": 393.0,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.7921,
+  "antwort_in_rede": 78,
+  "fremd_zugeschrieben": 0.0517,
+  "zahlen_erhalten": 0.172,
+  "begriffe_erhalten": 0.2645,
+  "beitraege": 930,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.8059,
+  "precision": 0.7487,
+  "recall": 0.8727,
+  "recall_ohne_mandat": 0.7921,
+  "antwort_in_rede": 78,
+  "fremd_zugeschrieben": 0.0517,
+  "zahlen_erhalten": 0.172,
+  "begriffe_erhalten": 0.2645,
+  "erfunden": 3,
+  "beitraege": 930,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 80,
+    "fp": 15,
+    "fn": 11,
+    "tp_ohne": 23,
+    "fn_ohne": 9,
+    "verpasst": [
+     "gerhard",
+     "kaesemann"
+    ],
+    "erfunden": [
+     "Kaesemann/Grimm"
+    ],
+    "antwort_in_rede": 15,
+    "fremd": 3,
+    "bewertbar": 113,
+    "fremd_beispiele": [
+     "Zenner: Wärmeversorgung",
+     "Behrens: Bürgerbeteiligung",
+     "Beerheide: Einspeisevergütung"
+    ],
+    "zahlen": [
+     14,
+     41
+    ],
+    "begriffe": [
+     116,
+     354
+    ],
+    "beitraege": 139
+   },
+   {
+    "id": "4430",
+    "tp": 87,
+    "fp": 18,
+    "fn": 22,
+    "tp_ohne": 24,
+    "fn_ohne": 15,
+    "verpasst": [
+     "rußler"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 16,
+    "fremd": 3,
+    "bewertbar": 113,
+    "fremd_beispiele": [
+     "Kurt Bernhardt: Dringlichkeitseintrag, Handlungsbedarf",
+     "Christoph Baak: Bestandteil",
+     "Nicole Piechotta: Rücksichtnahme"
+    ],
+    "zahlen": [
+     17,
+     326
+    ],
+    "begriffe": [
+     74,
+     409
+    ],
+    "beitraege": 149
+   },
+   {
+    "id": "4418",
+    "tp": 56,
+    "fp": 18,
+    "fn": 18,
+    "tp_ohne": 17,
+    "fn_ohne": 11,
+    "verpasst": [
+     "thole"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 15,
+    "fremd": 1,
+    "bewertbar": 64,
+    "fremd_beispiele": [
+     "Bembennek: Betreuungsbehörde, Betreuungsorganisationsgesetz, Betreuungsgerichts"
+    ],
+    "zahlen": [
+     2,
+     23
+    ],
+    "begriffe": [
+     55,
+     179
+    ],
+    "beitraege": 85
+   },
+   {
+    "id": "4446",
+    "tp": 69,
+    "fp": 4,
+    "fn": 4,
+    "tp_ohne": 42,
+    "fn_ohne": 4,
+    "verpasst": [
+     "freede",
+     "krogmann"
+    ],
+    "erfunden": [
+     "Verwaltung (Beschlusstext)"
+    ],
+    "antwort_in_rede": 1,
+    "fremd": 4,
+    "bewertbar": 77,
+    "fremd_beispiele": [
+     "Sander: Bezifferung, Mehrausgaben",
+     "Dikosso: Wohnortnähe",
+     "Hasenclever: Zeugnisferien",
+     "Lammerding: Städtetages"
+    ],
+    "zahlen": [
+     18,
+     19
+    ],
+    "begriffe": [
+     71,
+     154
+    ],
+    "beitraege": 83
+   },
+   {
+    "id": "4545",
+    "tp": 70,
+    "fp": 18,
+    "fn": 9,
+    "tp_ohne": 39,
+    "fn_ohne": 9,
+    "verpasst": [
+     "atzler",
+     "görk",
+     "janssen"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 2,
+    "fremd": 1,
+    "bewertbar": 74,
+    "fremd_beispiele": [
+     "Friedrich-Wilhelm Wehrmeyer: Heranfahren"
+    ],
+    "zahlen": [
+     16,
+     21
+    ],
+    "begriffe": [
+     73,
+     162
+    ],
+    "beitraege": 100
+   },
+   {
+    "id": "4611",
+    "tp": 37,
+    "fp": 5,
+    "fn": 5,
+    "tp_ohne": 23,
+    "fn_ohne": 5,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 0,
+    "bewertbar": 41,
+    "fremd_beispiele": [],
+    "zahlen": [
+     4,
+     131
+    ],
+    "begriffe": [
+     68,
+     354
+    ],
+    "beitraege": 45
+   },
+   {
+    "id": "3717",
+    "tp": 84,
+    "fp": 18,
+    "fn": 13,
+    "tp_ohne": 35,
+    "fn_ohne": 9,
+    "verpasst": [
+     "sprenger",
+     "zenner"
+    ],
+    "erfunden": [
+     "Verwaltung/Ausschuss"
+    ],
+    "antwort_in_rede": 5,
+    "fremd": 6,
+    "bewertbar": 99,
+    "fremd_beispiele": [
+     "Michael Grösch: Ratsfraktionen",
+     "Klaus Büscher: Gesteinsformationen",
+     "Dr. Hans Hermann Schreier: Einsatzmöglichkeit",
+     "Klaus Büscher: Eichenprozessionsspinners",
+     "Mazalla: Amtsleiterstelle, Nachfolgestelle",
+     "Dr. Kreft-Kohlhage: Amphibiengewässer, Hundebesitzern"
+    ],
+    "zahlen": [
+     26,
+     43
+    ],
+    "begriffe": [
+     100,
+     214
+    ],
+    "beitraege": 115
+   },
+   {
+    "id": "2855",
+    "tp": 44,
+    "fp": 34,
+    "fn": 1,
+    "tp_ohne": 20,
+    "fn_ohne": 1,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 13,
+    "fremd": 0,
+    "bewertbar": 50,
+    "fremd_beispiele": [],
+    "zahlen": [
+     18,
+     27
+    ],
+    "begriffe": [
+     50,
+     198
+    ],
+    "beitraege": 89
+   },
+   {
+    "id": "4441",
+    "tp": 42,
+    "fp": 61,
+    "fn": 0,
+    "tp_ohne": 17,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 11,
+    "fremd": 19,
+    "bewertbar": 85,
+    "fremd_beispiele": [
+     "Behrens: Friedhofsmauer, Gertrudenfriedhofs, Nachbepflanzung",
+     "Skiba: Alternativplanungen",
+     "Drügemöller: Erläuterungen",
+     "Woltmann: Schwierigkeit, Leitungssysteme, Gesamtkonzept",
+     "Finke: Baumstandorte",
+     "Klein: Lambertistraße, Schließung"
+    ],
+    "zahlen": [
+     4,
+     61
+    ],
+    "begriffe": [
+     40,
+     422
+    ],
+    "beitraege": 125
+   }
+  ]
+ }
+}

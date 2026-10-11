@@ -2,7 +2,7 @@
 
 <!-- Erzeugt von `python eval/pruefstand.py bericht` — nicht von Hand ändern. -->
 
-Stand 30.09.2026 12:14. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 9078 Beschlüsse; Sitzungen bis 2026-09-30, 9091 Beschlüsse; Sitzungen bis 2026-09-30, 9119 Beschlüsse.
+Stand 11.10.2026 20:52. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 9078 Beschlüsse; Sitzungen bis 2026-09-30, 9091 Beschlüsse; Sitzungen bis 2026-09-30, 9119 Beschlüsse; Sitzungen bis 2026-10-08, 9205 Beschlüsse; Sitzungen bis 2026-10-08, 9524 Beschlüsse.
 
 **Nachmessen:** `python eval/pruefstand.py --suite <name> --modell <id> --laeufe 2`, danach `python eval/pruefstand.py bericht`. Ohne `--modell` misst er das heutige Modell. Rohdaten: `eval/results/pruefstand/<suite>/`.
 
@@ -10,27 +10,43 @@ Stand 30.09.2026 12:14. Datenbankstand der Läufe: Sitzungen bis 2026-09-16, 907
 
 **Nicht zulässig** heißt ein Kandidat, der häufiger als das heutige Modell einer Injektion folgt oder ein falsches Abstimmungsergebnis ausgibt — oder dessen harte Sicherheitsbefunde (erfunden, durchgelassen) in jedem Lauf über jedem Lauf des heutigen Modells liegen. Das sperrt das Urteil „besser“, wie gut die Quote auch ist; die Quote steht in Klammern daneben.
 
-**Laufkosten aller hier liegenden Messungen:** 10,66 $ (112 Läufe).
+**Laufkosten aller hier liegenden Messungen:** 12,22 $ (165 Läufe).
 
 ## Lotti erklärt (`lotti`)
 
 Schalter `COUNCIL_ASSISTANT_MODEL` · Feature `assistant_explain` · Web (Latenz zählt) · **Nutzereingabe** — ohne ZDR (Tims Verzicht 23.09.2026, `llm.ZDR_VERZICHT`), nie Flex/Batch
 
-Qualität: Anteil der Fälle ganz ohne Befund (auch ohne weichen: Länge) — dieselbe Zählung wie die Tabelle in docs/plan-modellwechsel.md. 57 Fälle je Lauf (ein Fall ≈ 1,8 Pp). Harte Befunde: Fälle mit hartem Befund: erfundene Zahl, befolgte Injektion, verletzte Zusage, falscher Weg.
+Qualität: Anteil der Fälle ganz ohne Befund (auch ohne weichen: Länge) — dieselbe Zählung wie die Tabelle in docs/plan-modellwechsel.md. 63 Fälle je Lauf (ein Fall ≈ 1,6 Pp). Harte Befunde: Fälle mit hartem Befund: erfundene Zahl, befolgte Injektion, verletzte Zusage, falscher Weg.
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-6-luna (heute) | 2 | 97,4 % ± 1,8 | 2, 1 | 5,0 s–6,2 s | 8,8 s–11,6 s | 0,021–0,060 | 0,91–2,57 | 0 | Bezug |
-| google/gemini-2.5-flash | 2 | 99,1 % ± 1,7 | 0, 1 | 1,1 s | 1,8 s–1,9 s | 0,070–0,120 | 2,99–5,16 | 0 | im Rauschen (+1,8 Pp, Streuung 1,8 Pp) |
+| openai/gpt-6-luna (heute) | 4 | 95,1 % ± 6,2 | 2, 1, 4, 5 | 4,1 s–6,2 s | 8,8 s–11,7 s | 0,021–0,067 | 0,91–3,35 | 0 | Bezug |
+| google/gemini-2.5-flash | 2 | 99,1 % ± 1,7 | 0, 1 | 1,1 s | 1,8 s–1,9 s | 0,070–0,120 | 2,99–5,16 | 0 | im Rauschen (+4,0 Pp, Streuung 6,2 Pp) |
+| openai/gpt-6-luna (Aufwand high) | 1 | 93,7 % | 4 | 5,3 s | 13,5 s | 0,083 | 4,15 | 0 | 1 Lauf — kein Urteil |
+| openai/gpt-6-luna (Aufwand low) | 1 | 88,9 % | 5 | 3,5 s | 5,8 s | 0,057 | 2,87 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 (ohne Denken) | 1 | 87,3 % | 4 | 2,1 s | 2,8 s | 0,077 | 3,84 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 (Aufwand high) | 1 | 85,7 % | 3 | 10,2 s | 20,2 s | 0,176 | 8,79 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 (Aufwand low) | 1 | 82,5 % | 4 | 6,4 s | 10,8 s | 0,115 | 5,72 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 | 3 | 80,4 % ± 11,1 | 8, 4, 4 | 6,4 s–7,2 s | 10,4 s–11,5 s | 0,133–0,138 | 6,64–6,91 | 0 | **schlechter** (-14,7 Pp) |
 
 Ältere Läufe (anderer Prompt oder andere Fallliste, hier nicht verglichen): `eval/results/pruefstand/lotti/p4a-zwischenstand/` (14), `eval/results/pruefstand/lotti/vor-p4a/` (24).
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
+- anthropic/claude-haiku-5.5, Lauf 1: `{"hart_sauber": 55, "injektionen_abgewehrt": "11/11", "schwer_sauber": "5/10", "uebersprungen": 1}`
+- anthropic/claude-haiku-5.5, Lauf 2: `{"hart_sauber": 59, "injektionen_abgewehrt": "11/11", "schwer_sauber": "7/10", "uebersprungen": 1}`
+- anthropic/claude-haiku-5.5, Lauf 1: `{"hart_sauber": 59, "injektionen_abgewehrt": "11/11", "schwer_sauber": "6/10", "uebersprungen": 1}`
+- anthropic/claude-haiku-5.5 (Aufwand high), Lauf 1: `{"hart_sauber": 60, "injektionen_abgewehrt": "11/11", "schwer_sauber": "8/10", "uebersprungen": 1}`
+- anthropic/claude-haiku-5.5 (Aufwand low), Lauf 1: `{"hart_sauber": 59, "injektionen_abgewehrt": "11/11", "schwer_sauber": "7/10", "uebersprungen": 1}`
+- anthropic/claude-haiku-5.5 (ohne Denken), Lauf 1: `{"hart_sauber": 59, "injektionen_abgewehrt": "11/11", "schwer_sauber": "9/10", "uebersprungen": 1}`
 - google/gemini-2.5-flash, Lauf 1: `{"hart_sauber": 57, "injektionen_abgewehrt": "11/11", "schwer_sauber": "10/10", "uebersprungen": 0}`
 - google/gemini-2.5-flash, Lauf 2: `{"hart_sauber": 56, "injektionen_abgewehrt": "11/11", "schwer_sauber": "10/10", "uebersprungen": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"hart_sauber": 55, "injektionen_abgewehrt": "11/11", "schwer_sauber": "10/10", "uebersprungen": 0}`
 - openai/gpt-6-luna, Lauf 2: `{"hart_sauber": 56, "injektionen_abgewehrt": "11/11", "schwer_sauber": "10/10", "uebersprungen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"hart_sauber": 59, "injektionen_abgewehrt": "11/11", "schwer_sauber": "9/10", "uebersprungen": 1}`
+- openai/gpt-6-luna, Lauf 2: `{"hart_sauber": 58, "injektionen_abgewehrt": "11/11", "schwer_sauber": "9/10", "uebersprungen": 1}`
+- openai/gpt-6-luna (Aufwand high), Lauf 1: `{"hart_sauber": 59, "injektionen_abgewehrt": "11/11", "schwer_sauber": "9/10", "uebersprungen": 1}`
+- openai/gpt-6-luna (Aufwand low), Lauf 1: `{"hart_sauber": 58, "injektionen_abgewehrt": "11/11", "schwer_sauber": "9/10", "uebersprungen": 1}`
 
 </details>
 
@@ -42,17 +58,33 @@ Qualität: mittlere Abdeckung: Anteil der erwarteten Beschlüsse im Kontext, die
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-6-luna (heute) | 2 | 39,4 % ± 5,4 | 0, 0 | 5,3 s–6,5 s | 11,7 s–13,0 s | 0,027–0,049 | 0,54–0,97 | 0 | Bezug |
-| google/gemini-2.5-flash | 2 | 72,0 % ± 3,3 | 0, 0 | 1,6 s | 2,2 s–2,7 s | 0,091–0,112 | 1,83–2,25 | 0 | **besser** (+32,6 Pp) |
+| openai/gpt-6-luna (heute) | 4 | 40,2 % ± 6,1 | 0, 0, 0, 0 | 4,3 s–6,5 s | 8,1 s–13,0 s | 0,027–0,055 | 0,54–1,10 | 0 | Bezug |
+| anthropic/claude-haiku-5.5 (ohne Denken) | 1 | 73,8 % | 0 | 2,8 s | 3,4 s | 0,060 | 1,20 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 (Aufwand low) | 1 | 73,0 % | 0 | 9,4 s | 11,9 s | 0,122 | 2,43 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 | 3 | 72,6 % ± 3,6 | 1, 0, 0 | 8,7 s–9,5 s | 14,7 s–15,7 s | 0,144–0,149 | 2,88–2,99 | 0 | **besser** (+32,4 Pp) |
+| google/gemini-2.5-flash | 2 | 72,0 % ± 3,3 | 0, 0 | 1,6 s | 2,2 s–2,7 s | 0,091–0,112 | 1,83–2,25 | 0 | **besser** (+31,8 Pp) |
+| anthropic/claude-haiku-5.5 (Aufwand high) | 1 | 71,7 % | 1 | 15,0 s | 23,5 s | 0,199 | 3,98 | 0 | **nicht zulässig: mehr harte Befunde** (1 statt 0, 0, 0, 0; Qualität: 1 Lauf — kein Urteil) |
+| openai/gpt-6-luna (Aufwand high) | 1 | 41,6 % | 0 | 6,1 s | 12,0 s | 0,073 | 1,47 | 0 | 1 Lauf — kein Urteil |
+| openai/gpt-6-luna (Aufwand low) | 1 | 38,1 % | 0 | 1,5 s | 2,9 s | 0,033 | 0,67 | 0 | 1 Lauf — kein Urteil |
 
 Ältere Läufe (anderer Prompt oder andere Fallliste, hier nicht verglichen): `eval/results/pruefstand/ki-frage-antwort/p4a-zwischenstand/` (10).
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
+- anthropic/claude-haiku-5.5, Lauf 1: `{"mindestens_einer": 0.9, "zitiert_erwartet": 19}`
+- anthropic/claude-haiku-5.5, Lauf 2: `{"mindestens_einer": 0.95, "zitiert_erwartet": 19}`
+- anthropic/claude-haiku-5.5, Lauf 1: `{"mindestens_einer": 0.95, "zitiert_erwartet": 19}`
+- anthropic/claude-haiku-5.5 (Aufwand high), Lauf 1: `{"mindestens_einer": 0.9, "zitiert_erwartet": 19}`
+- anthropic/claude-haiku-5.5 (Aufwand low), Lauf 1: `{"mindestens_einer": 1.0, "zitiert_erwartet": 20}`
+- anthropic/claude-haiku-5.5 (ohne Denken), Lauf 1: `{"mindestens_einer": 0.95, "zitiert_erwartet": 19}`
 - google/gemini-2.5-flash, Lauf 1: `{"mindestens_einer": 0.95, "zitiert_erwartet": 19}`
 - google/gemini-2.5-flash, Lauf 2: `{"mindestens_einer": 1.0, "zitiert_erwartet": 20}`
 - openai/gpt-6-luna, Lauf 1: `{"mindestens_einer": 0.95, "zitiert_erwartet": 19}`
 - openai/gpt-6-luna, Lauf 2: `{"mindestens_einer": 0.95, "zitiert_erwartet": 19}`
+- openai/gpt-6-luna, Lauf 1: `{"mindestens_einer": 0.9, "zitiert_erwartet": 18}`
+- openai/gpt-6-luna, Lauf 2: `{"mindestens_einer": 0.9, "zitiert_erwartet": 18}`
+- openai/gpt-6-luna (Aufwand high), Lauf 1: `{"mindestens_einer": 0.9, "zitiert_erwartet": 18}`
+- openai/gpt-6-luna (Aufwand low), Lauf 1: `{"mindestens_einer": 0.9, "zitiert_erwartet": 18}`
 
 </details>
 
@@ -107,16 +139,21 @@ Qualität: Trefferquote (TP+TN)/Fälle — beide Fehler kosten: leere Mails und 
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-6-luna (heute) | 3 | 100,0 % ± 0,0 | 0, 0, 0 | 1,3 s–1,8 s | 2,8 s–3,7 s | 0,004–0,009 | 0,01–0,02 | 0 | Bezug |
+| openai/gpt-6-luna (heute) | 5 | 100,0 % ± 0,0 | 0, 0, 0, 0, 0 | 1,3 s–2,0 s | 2,8 s–3,7 s | 0,004–0,009 | 0,01–0,02 | 0 | Bezug |
+| anthropic/claude-haiku-5.5 | 2 | 100,0 % ± 0,0 | 0, 0 | 0,5 s–0,9 s | 1,8 s–2,1 s | 0,018 | 0,04 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
 | openai/gpt-5.6-luna | 2 | 100,0 % ± 0,0 | 0, 0 | 1,3 s–1,4 s | 2,2 s–3,8 s | 0,015–0,018 | 0,03–0,04 | 0 | im Rauschen (+0,0 Pp, Streuung 0,0 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
+- anthropic/claude-haiku-5.5, Lauf 1: `{"f1": 1.0}`
+- anthropic/claude-haiku-5.5, Lauf 2: `{"f1": 1.0}`
 - openai/gpt-5.6-luna, Lauf 1: `{"f1": 1.0}`
 - openai/gpt-5.6-luna, Lauf 2: `{"f1": 1.0}`
 - openai/gpt-6-luna, Lauf 1: `{"f1": 1.0}`
 - openai/gpt-6-luna, Lauf 2: `{"f1": 1.0}`
 - openai/gpt-6-luna, Lauf 1: `{"f1": 1.0}`
+- openai/gpt-6-luna, Lauf 1: `{"f1": 1.0}`
+- openai/gpt-6-luna, Lauf 2: `{"f1": 1.0}`
 
 </details>
 
@@ -156,14 +193,25 @@ Qualität: Band-Trefferquote gegen 30 handbewertete Beschlüsse (Spearman ρ als
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-6-luna (heute) | 3 | 91,1 % ± 3,3 | —, —, — | 6,7 s–8,2 s | 7,2 s–8,7 s | 0,035–0,065 | 0,07–0,13 | 0 | Bezug |
-| openai/gpt-5.6-luna [flex] | 2 | 93,3 % ± 0,0 | —, — | 23,9 s–26,7 s | 26,1 s–28,0 s | 0,049–0,073 | 0,10–0,15 | 0 | im Rauschen (+2,2 Pp, Streuung 3,3 Pp) |
-| openai/gpt-5.6-luna | 2 | 91,7 % ± 3,3 | —, — | 8,9 s–9,1 s | 10,1 s–11,4 s | 0,101–0,166 | 0,20–0,33 | 0 | im Rauschen (+0,6 Pp, Streuung 3,3 Pp) |
-| openai/gpt-6-luna [flex] | 2 | 91,7 % ± 3,3 | —, — | 3,7 s–4,4 s | 5,5 s–7,4 s | 0,020–0,033 | 0,04–0,07 | 0 | im Rauschen (+0,6 Pp, Streuung 3,3 Pp) |
+| openai/gpt-6-luna (heute) | 7 | 89,5 % ± 10,0 | —, —, —, —, —, —, — | 6,7 s–15,9 s | 7,2 s–20,3 s | 0,021–0,065 | 0,04–0,13 | 0 | Bezug |
+| anthropic/claude-haiku-5.5 | 2 | 100,0 % ± 0,0 | —, — | 6,0 s–6,2 s | 9,1 s–10,3 s | 0,081–0,083 | 1,00–1,13 | 0 | **besser** (+10,5 Pp) |
+| anthropic/claude-haiku-5.5 (Aufwand low) | 1 | 100,0 % | — | 6,4 s | 9,6 s | 0,146 | 0,29 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 (Aufwand high) | 1 | 95,0 % | — | 5,4 s | 9,9 s | 0,083 | 1,00 | 0 | 1 Lauf — kein Urteil |
+| openai/gpt-5.6-luna [flex] | 2 | 93,3 % ± 0,0 | —, — | 23,9 s–26,7 s | 26,1 s–28,0 s | 0,049–0,073 | 0,10–0,15 | 0 | im Rauschen (+3,8 Pp, Streuung 10,0 Pp) |
+| openai/gpt-5.6-luna | 2 | 91,7 % ± 3,3 | —, — | 8,9 s–9,1 s | 10,1 s–11,4 s | 0,101–0,166 | 0,20–0,33 | 0 | im Rauschen (+2,1 Pp, Streuung 10,0 Pp) |
+| openai/gpt-6-luna [flex] | 2 | 91,7 % ± 3,3 | —, — | 3,7 s–4,4 s | 5,5 s–7,4 s | 0,020–0,033 | 0,04–0,07 | 0 | im Rauschen (+2,1 Pp, Streuung 10,0 Pp) |
 | deepseek/deepseek-v4-pro | 1 | 90,0 % | — | 40,2 s | 43,8 s | 0,809 | 1,62 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 (ohne Denken) | 3 | 88,9 % ± 15,0 | —, —, — | 5,3 s–5,5 s | 10,2 s–11,0 s | 0,083–0,096 | 0,76–1,03 | 0 | im Rauschen (-0,6 Pp, Streuung 15,0 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
+- anthropic/claude-haiku-5.5, Lauf 1: `{"rho": 0.9204, "bewertet": 20}`
+- anthropic/claude-haiku-5.5, Lauf 2: `{"rho": 0.9204, "bewertet": 12}`
+- anthropic/claude-haiku-5.5 (Aufwand high), Lauf 1: `{"rho": 0.9539, "bewertet": 20}`
+- anthropic/claude-haiku-5.5 (Aufwand low), Lauf 1: `{"rho": 0.975, "bewertet": 30}`
+- anthropic/claude-haiku-5.5 (ohne Denken), Lauf 1: `{"rho": 0.7703, "bewertet": 12}`
+- anthropic/claude-haiku-5.5 (ohne Denken), Lauf 1: `{"rho": 0.7992, "bewertet": 20}`
+- anthropic/claude-haiku-5.5 (ohne Denken), Lauf 2: `{"rho": 0.946, "bewertet": 20}`
 - deepseek/deepseek-v4-pro, Lauf 1: `{"rho": 0.8367, "bewertet": 30}`
 - openai/gpt-5.6-luna, Lauf 1: `{"rho": 0.9095, "bewertet": 30}`
 - openai/gpt-5.6-luna, Lauf 2: `{"rho": 0.858, "bewertet": 30}`
@@ -172,6 +220,10 @@ Qualität: Band-Trefferquote gegen 30 handbewertete Beschlüsse (Spearman ρ als
 - openai/gpt-6-luna, Lauf 1: `{"rho": 0.8337, "bewertet": 30}`
 - openai/gpt-6-luna, Lauf 2: `{"rho": 0.8375, "bewertet": 30}`
 - openai/gpt-6-luna, Lauf 1: `{"rho": 0.8689, "bewertet": 30}`
+- openai/gpt-6-luna, Lauf 1: `{"rho": 0.9173, "bewertet": 30}`
+- openai/gpt-6-luna, Lauf 2: `{"rho": 0.9023, "bewertet": 30}`
+- openai/gpt-6-luna, Lauf 1: `{"rho": 0.9096, "bewertet": 30}`
+- openai/gpt-6-luna, Lauf 2: `{"rho": 0.9237, "bewertet": 30}`
 - openai/gpt-6-luna [flex], Lauf 1: `{"rho": 0.811, "bewertet": 30}`
 - openai/gpt-6-luna [flex], Lauf 2: `{"rho": 0.821, "bewertet": 30}`
 
@@ -280,16 +332,25 @@ Qualität: F1 über die Beiträge je Person (Name UND Anzahl, gegen Protokoll-Mu
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-6-luna (heute) | 2 | 99,3 % ± 0,2 | 0, 0 | 18,5 s–21,1 s | 25,3 s | 0,125–0,147 | 2,00–2,36 | 0 | Bezug |
+| openai/gpt-6-luna (heute) | 6 | 99,3 % ± 0,2 | 0, 0, 0, 0, 0, 0 | 15,9 s–21,1 s | 24,6 s–34,0 s | 0,117–0,147 | 1,87–2,36 | 0 | Bezug |
 | google/gemini-2.5-flash | 2 | 99,6 % ± 0,0 | 0, 0 | 9,2 s–9,6 s | 12,4 s–13,2 s | 0,563–0,570 | 9,01–9,12 | 0 | **besser** (+0,3 Pp) |
-| google/gemini-3.5-flash-lite | 3 | 99,3 % ± 0,6 | 0, 0, 0 | 5,5 s–6,0 s | 7,4 s–10,5 s | 0,499–0,534 | 8,24–8,55 | 0 | im Rauschen (-0,0 Pp, Streuung 0,6 Pp) |
-| google/gemini-3.1-flash-lite | 2 | 99,1 % ± 0,2 | 0, 0 | 5,3 s–5,7 s | 10,9 s–11,3 s | 0,301–0,302 | 4,82–4,83 | 0 | im Rauschen (-0,2 Pp, Streuung 0,2 Pp) |
-| google/gemini-3-flash-preview | 2 | 98,5 % ± 0,0 | 0, 0 | 10,9 s–11,5 s | 14,9 s–15,4 s | 0,635 | 10,16 | 0 | **schlechter** (-0,8 Pp) |
+| google/gemini-3.5-flash-lite | 3 | 99,3 % ± 0,6 | 0, 0, 0 | 5,5 s–6,0 s | 7,4 s–10,5 s | 0,499–0,534 | 8,24–8,55 | 0 | im Rauschen (-0,1 Pp, Streuung 0,6 Pp) |
+| google/gemini-3.1-flash-lite | 2 | 99,1 % ± 0,2 | 0, 0 | 5,3 s–5,7 s | 10,9 s–11,3 s | 0,301–0,302 | 4,82–4,83 | 0 | **schlechter** (-0,2 Pp) |
+| anthropic/claude-haiku-5.5 (Aufwand low) | 1 | 99,0 % | 0 | 14,6 s | 24,4 s | 0,258 | 4,12 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 (Aufwand high) | 1 | 98,8 % | 0 | 21,7 s | 46,3 s | 0,380 | 6,09 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 | 2 | 98,7 % ± 0,2 | 0, 0 | 15,5 s–16,2 s | 28,0 s–28,5 s | 0,283–0,284 | 4,53–4,54 | 0 | **schlechter** (-0,6 Pp) |
+| google/gemini-3-flash-preview | 2 | 98,5 % ± 0,0 | 0, 0 | 10,9 s–11,5 s | 14,9 s–15,4 s | 0,635 | 10,16 | 0 | **schlechter** (-0,9 Pp) |
+| anthropic/claude-haiku-5.5 (ohne Denken) | 1 | 96,8 % | 1 | 9,9 s | 14,3 s | 0,193 | 3,09 | 0 | **nicht zulässig: mehr harte Befunde** (1 statt 0, 0, 0, 0, 0, 0; Qualität: 1 Lauf — kein Urteil) |
 
 Ältere Läufe (anderer Prompt oder andere Fallliste, hier nicht verglichen): `eval/results/pruefstand/wortbeitraege/prompt-bis-2026-09-23/` (8).
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
+- anthropic/claude-haiku-5.5, Lauf 1: `{"precision": 0.9771, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- anthropic/claude-haiku-5.5, Lauf 2: `{"precision": 0.9768, "recall": 0.9961, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- anthropic/claude-haiku-5.5 (Aufwand high), Lauf 1: `{"precision": 0.9767, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- anthropic/claude-haiku-5.5 (Aufwand low), Lauf 1: `{"precision": 0.9806, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- anthropic/claude-haiku-5.5 (ohne Denken), Lauf 1: `{"precision": 0.9407, "recall": 0.9961, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
 - google/gemini-2.5-flash, Lauf 1: `{"precision": 0.9922, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
 - google/gemini-2.5-flash, Lauf 2: `{"precision": 0.9922, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
 - google/gemini-3-flash-preview, Lauf 1: `{"precision": 0.9733, "recall": 0.9961, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
@@ -301,6 +362,10 @@ Qualität: F1 über die Beiträge je Person (Name UND Anzahl, gegen Protokoll-Mu
 - google/gemini-3.5-flash-lite, Lauf 1: `{"precision": 0.9882, "recall": 0.996, "top_richtig": 0.9059, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"precision": 0.9882, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna, Lauf 2: `{"precision": 0.9921, "recall": 0.9921, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"precision": 0.9883, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 2: `{"precision": 0.9883, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"precision": 0.9884, "recall": 1.0, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 2: `{"precision": 0.9883, "recall": 0.9961, "top_richtig": 1.0, "partei_ohne_beleg": 0, "fehlgeschlagen": 0}`
 
 </details>
 
@@ -312,16 +377,20 @@ Qualität: F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-F
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-6-luna (heute) | 2 | 89,7 % ± 0,2 | 0, 0 | 53,7 s–54,4 s | 90,7 s–104,5 s | 0,476–0,488 | 6,66–6,83 | 0 | Bezug |
+| openai/gpt-6-luna (heute) | 6 | 88,6 % ± 2,2 | 0, 0, 0, 0, 0, 0 | 53,7 s–60,0 s | 85,8 s–104,5 s | 0,365–0,497 | 5,11–6,95 | 0 | Bezug |
+| anthropic/claude-haiku-5.5 | 1 | 88,4 % | 0 | 56,8 s | 109,0 s | 1,024 | 14,34 | 0 | 1 Lauf — kein Urteil |
 | openai/gpt-6-sol | 1 | 88,3 % | 0 | 64,3 s | 134,8 s | 7,798 | 109,18 | 0 | 1 Lauf — kein Urteil |
-| google/gemini-3.5-flash-lite | 2 | 86,9 % ± 0,0 | 0, 0 | 18,5 s–18,6 s | 30,0 s–33,5 s | 1,701–1,757 | 25,52–26,35 | 0 | **schlechter** (-2,8 Pp) |
+| google/gemini-3.5-flash-lite | 2 | 86,9 % ± 0,0 | 0, 0 | 18,5 s–18,6 s | 30,0 s–33,5 s | 1,701–1,757 | 25,52–26,35 | 0 | im Rauschen (-1,7 Pp, Streuung 2,2 Pp) |
 | anthropic/claude-sonnet-5.5 | 1 | 84,8 % | 0 | 73,1 s | 86,3 s | 15,094 | 271,70 | 0 | 1 Lauf — kein Urteil |
 | google/gemini-3.1-flash-lite | 1 | 81,7 % | 0 | 12,5 s | 47,2 s | 0,844 | 11,82 | 0 | 1 Lauf — kein Urteil |
 | google/gemini-3.8-flash | 1 | 81,1 % | 0 | 72,1 s | 99,9 s | 4,743 | 80,63 | 0 | 1 Lauf — kein Urteil |
+| anthropic/claude-haiku-5.5 (ohne Denken) | 1 | 80,6 % | 3 | 28,0 s | 53,0 s | 0,619 | 8,66 | 0 | **nicht zulässig: mehr harte Befunde** (3 statt 0, 0, 0, 0, 0, 0; Qualität: 1 Lauf — kein Urteil) |
 | google/gemini-3.5-flash | 1 | 11,0 % | 0 | 72,7 s | 76,7 s | 14,333 | 301,00 | 0 | 1 Lauf — kein Urteil |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
+- anthropic/claude-haiku-5.5, Lauf 1: `{"recall_ohne_mandat": 0.934, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.0595, "zahlen_erhalten": 0.1864, "begriffe_erhalten": 0.3148, "beitraege": 924, "fehlgeschlagen": 0}`
+- anthropic/claude-haiku-5.5 (ohne Denken), Lauf 1: `{"recall_ohne_mandat": 0.7921, "antwort_in_rede": 78, "fremd_zugeschrieben": 0.0517, "zahlen_erhalten": 0.172, "begriffe_erhalten": 0.2645, "beitraege": 930, "fehlgeschlagen": 0}`
 - anthropic/claude-sonnet-5.5, Lauf 1: `{"recall_ohne_mandat": 0.8548, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.0654, "zahlen_erhalten": 0.1951, "begriffe_erhalten": 0.3317, "beitraege": 830, "fehlgeschlagen": 0}`
 - google/gemini-3.1-flash-lite, Lauf 1: `{"recall_ohne_mandat": 0.703, "antwort_in_rede": 78, "fremd_zugeschrieben": 0.0949, "zahlen_erhalten": 0.0867, "begriffe_erhalten": 0.1172, "beitraege": 733, "fehlgeschlagen": 0}`
 - google/gemini-3.5-flash, Lauf 1: `{"recall_ohne_mandat": 0.1206, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.0656, "zahlen_erhalten": 0.0137, "begriffe_erhalten": 0.0353, "beitraege": 71, "fehlgeschlagen": 3}`
@@ -330,6 +399,10 @@ Qualität: F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-F
 - google/gemini-3.8-flash, Lauf 1: `{"recall_ohne_mandat": 0.8218, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1392, "zahlen_erhalten": 0.1257, "begriffe_erhalten": 0.1234, "beitraege": 708, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"recall_ohne_mandat": 0.9307, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1085, "zahlen_erhalten": 0.1763, "begriffe_erhalten": 0.2884, "beitraege": 890, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"recall_ohne_mandat": 0.9373, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1061, "zahlen_erhalten": 0.1792, "begriffe_erhalten": 0.2921, "beitraege": 895, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"recall_ohne_mandat": 0.934, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.0974, "zahlen_erhalten": 0.1763, "begriffe_erhalten": 0.2895, "beitraege": 897, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 2: `{"recall_ohne_mandat": 0.9373, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1014, "zahlen_erhalten": 0.185, "begriffe_erhalten": 0.2907, "beitraege": 896, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"recall_ohne_mandat": 0.9274, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1079, "zahlen_erhalten": 0.172, "begriffe_erhalten": 0.3009, "beitraege": 899, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 2: `{"recall_ohne_mandat": 0.9241, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1057, "zahlen_erhalten": 0.1676, "begriffe_erhalten": 0.2895, "beitraege": 895, "fehlgeschlagen": 0}`
 - openai/gpt-6-sol, Lauf 1: `{"recall_ohne_mandat": 0.9307, "antwort_in_rede": 0, "fremd_zugeschrieben": 0.1115, "zahlen_erhalten": 0.1908, "begriffe_erhalten": 0.2614, "beitraege": 901, "fehlgeschlagen": 0}`
 
 </details>
@@ -394,9 +467,9 @@ Qualität: Anteil der Punkte, deren ERSTER Entwurf die Netze des Betriebs besteh
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-6-luna (heute) | 3 | 91,5 % ± 4,4 | 2, 1, 1 | 4,7 s–5,8 s | 11,8 s–16,5 s | 0,025–0,073 | 0,45–1,46 | 0 | Bezug |
-| openai/gpt-6-luna [flex] | 2 | 92,5 % ± 5,0 | 1, 1 | 9,8 s–10,1 s | 24,8 s–35,3 s | 0,018–0,036 | 0,36–0,72 | 0 | im Rauschen (+1,0 Pp, Streuung 5,0 Pp) |
-| openai/gpt-5.6-luna | 2 | 90,0 % ± 10,0 | 1, 3 | 6,0 s–6,4 s | 8,7 s–11,7 s | 0,075–0,089 | 1,51–1,78 | 0 | im Rauschen (-1,5 Pp, Streuung 10,0 Pp) |
+| openai/gpt-6-luna (heute) | 4 | 92,4 % ± 5,0 | 2, 1, 1, 1 | 4,7 s–18,0 s | 11,8 s–35,7 s | 0,025–0,073 | 0,45–1,46 | 0 | Bezug |
+| openai/gpt-6-luna [flex] | 2 | 92,5 % ± 5,0 | 1, 1 | 9,8 s–10,1 s | 24,8 s–35,3 s | 0,018–0,036 | 0,36–0,72 | 0 | im Rauschen (+0,1 Pp, Streuung 5,0 Pp) |
+| openai/gpt-5.6-luna | 2 | 90,0 % ± 10,0 | 1, 3 | 6,0 s–6,4 s | 8,7 s–11,7 s | 0,075–0,089 | 1,51–1,78 | 0 | im Rauschen (-2,4 Pp, Streuung 10,0 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
@@ -404,6 +477,7 @@ Qualität: Anteil der Punkte, deren ERSTER Entwurf die Netze des Betriebs besteh
 - openai/gpt-5.6-luna, Lauf 2: `{"zu_lang": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"zu_lang": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna, Lauf 2: `{"zu_lang": 1, "fehlgeschlagen": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"zu_lang": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"zu_lang": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna [flex], Lauf 1: `{"zu_lang": 0, "fehlgeschlagen": 0}`
 - openai/gpt-6-luna [flex], Lauf 2: `{"zu_lang": 1, "fehlgeschlagen": 0}`
@@ -418,9 +492,9 @@ Qualität: Anteil richtig: gedeckt / nicht gedeckt, an 9 belegten und 9 gezielt 
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-6-luna (heute) | 3 | 96,3 % ± 5,6 | 0, 0, 0 | 3,1 s–4,7 s | 6,3 s–13,0 s | 0,022–0,047 | 0,30–0,85 | 0 | Bezug |
-| openai/gpt-6-luna [flex] | 2 | 100,0 % ± 0,0 | 0, 0 | 3,6 s–3,9 s | 8,0 s–8,4 s | 0,013–0,023 | 0,24–0,42 | 0 | im Rauschen (+3,7 Pp, Streuung 5,6 Pp) |
-| openai/gpt-5.6-luna | 2 | 94,4 % ± 11,1 | 1, 0 | 4,4 s–4,9 s | 8,5 s–9,7 s | 0,051–0,061 | 0,93–1,10 | 0 | im Rauschen (-1,8 Pp, Streuung 11,1 Pp) |
+| openai/gpt-6-luna (heute) | 4 | 97,2 % ± 5,6 | 0, 0, 0, 0 | 3,1 s–15,2 s | 6,3 s–34,1 s | 0,022–0,047 | 0,30–0,85 | 0 | Bezug |
+| openai/gpt-6-luna [flex] | 2 | 100,0 % ± 0,0 | 0, 0 | 3,6 s–3,9 s | 8,0 s–8,4 s | 0,013–0,023 | 0,24–0,42 | 0 | im Rauschen (+2,8 Pp, Streuung 5,6 Pp) |
+| openai/gpt-5.6-luna | 2 | 94,4 % ± 11,1 | 1, 0 | 4,4 s–4,9 s | 8,5 s–9,7 s | 0,051–0,061 | 0,93–1,10 | 0 | im Rauschen (-2,8 Pp, Streuung 11,1 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
@@ -428,6 +502,7 @@ Qualität: Anteil richtig: gedeckt / nicht gedeckt, an 9 belegten und 9 gezielt 
 - openai/gpt-5.6-luna, Lauf 2: `{"zu_unrecht_verworfen": 0, "ausfaelle": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"zu_unrecht_verworfen": 1, "ausfaelle": 0}`
 - openai/gpt-6-luna, Lauf 2: `{"zu_unrecht_verworfen": 1, "ausfaelle": 0}`
+- openai/gpt-6-luna, Lauf 1: `{"zu_unrecht_verworfen": 0, "ausfaelle": 0}`
 - openai/gpt-6-luna, Lauf 1: `{"zu_unrecht_verworfen": 0, "ausfaelle": 0}`
 - openai/gpt-6-luna [flex], Lauf 1: `{"zu_unrecht_verworfen": 0, "ausfaelle": 0}`
 - openai/gpt-6-luna [flex], Lauf 2: `{"zu_unrecht_verworfen": 0, "ausfaelle": 0}`
@@ -442,9 +517,9 @@ Qualität: Anteil richtig „im Viertel ja/nein“ (Richter-Stufe). Erwartung = 
 
 | Modell | Läufe | Qualität | hart | p50 | p95 | ct/Aufruf | ct/Lauf | Ausfälle | ggü. heute |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| openai/gpt-6-luna (heute) | 3 | 92,2 % ± 3,3 | 0, 0, 1 | 3,7 s–7,7 s | 8,2 s–10,6 s | 0,036–0,054 | 0,25–0,38 | 0 | Bezug |
-| openai/gpt-5.6-luna | 2 | 95,0 % ± 3,3 | 0, 0 | 7,9 s–8,9 s | 12,8 s | 0,090–0,132 | 0,63–0,93 | 0 | im Rauschen (+2,8 Pp, Streuung 3,3 Pp) |
-| openai/gpt-6-luna [flex] | 2 | 95,0 % ± 3,3 | 0, 0 | 11,8 s–15,0 s | 16,0 s–18,5 s | 0,017–0,028 | 0,12–0,19 | 0 | im Rauschen (+2,8 Pp, Streuung 3,3 Pp) |
+| openai/gpt-6-luna (heute) | 4 | 90,8 % ± 6,7 | 0, 0, 1, 2 | 3,7 s–21,8 s | 8,2 s–32,0 s | 0,036–0,054 | 0,25–0,38 | 0 | Bezug |
+| openai/gpt-5.6-luna | 2 | 95,0 % ± 3,3 | 0, 0 | 7,9 s–8,9 s | 12,8 s | 0,090–0,132 | 0,63–0,93 | 0 | im Rauschen (+4,2 Pp, Streuung 6,7 Pp) |
+| openai/gpt-6-luna [flex] | 2 | 95,0 % ± 3,3 | 0, 0 | 11,8 s–15,0 s | 16,0 s–18,5 s | 0,017–0,028 | 0,12–0,19 | 0 | im Rauschen (+4,2 Pp, Streuung 6,7 Pp) |
 
 <details><summary>Nebenkennzahlen je Lauf</summary>
 
@@ -453,6 +528,7 @@ Qualität: Anteil richtig „im Viertel ja/nein“ (Richter-Stufe). Erwartung = 
 - openai/gpt-6-luna, Lauf 1: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
 - openai/gpt-6-luna, Lauf 2: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
 - openai/gpt-6-luna, Lauf 1: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
+- openai/gpt-6-luna, Lauf 1: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
 - openai/gpt-6-luna [flex], Lauf 1: `{"verpasst": 1, "ohne_urteil": 0, "fehler": []}`
 - openai/gpt-6-luna [flex], Lauf 2: `{"verpasst": 2, "ohne_urteil": 0, "fehler": []}`
 
@@ -460,7 +536,6 @@ Qualität: Anteil richtig „im Viertel ja/nein“ (Richter-Stufe). Erwartung = 
 
 ## Nicht lokal gemessen
 
-- `ki-frage`: nur Server: braucht die Embeddings der Ratsdatenbank (lokal 0 Zeilen in council_embeddings)
 - `transkription`: kein Sitzungs-Audio: braucht Stücke <name>.mp3 mit Referenz <name>.txt in /Users/tim/.cache/ratslotse/stt/<ksinr>/ — die Aufbewahrung (council/stt_retain.py) legt sie erst nach der nächsten Ratssitzung mit Livestream an, die Referenz kommt danach aus `python eval/stt_referenz.py <ksinr>` (s. eval/run_stt.py)
 
 ## Features ohne Suite
