@@ -14,6 +14,7 @@ import { FrageChips } from "@/components/frage-chips";
 import { TrendsView } from "@/components/council-trends";
 import { GoalsView } from "@/components/council-goals";
 import { PersonenView } from "@/components/council-members";
+import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
 function Block({ title, hint, explain, children }: { title: string; hint?: string; explain?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -443,12 +444,16 @@ export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; 
   }, [aktiv, staedte, wahlen]);
   return (
     <div ref={huelle}>
-      <Segmented
-        className={className ?? "overflow-x-auto sm:w-fit"}
-        value={aktiv}
-        onChange={wechsel}
-        options={optionen}
-      />
+      {/* Die Zeile scrollt auf dem Handy — und zeigt das jetzt mit der
+          Ausblend-Maske (Designsprache § 6). Bis 10/2026 stand „€ Finanzen"
+          hart angeschnitten am Rand, ohne Hinweis auf weitere Reiter. */}
+      {className ? (
+        <Segmented className={className} value={aktiv} onChange={wechsel} options={optionen} />
+      ) : (
+        <ScrollZeile>
+          <Segmented className="w-max" value={aktiv} onChange={wechsel} options={optionen} />
+        </ScrollZeile>
+      )}
     </div>
   );
 }

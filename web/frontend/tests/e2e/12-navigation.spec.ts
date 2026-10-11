@@ -16,7 +16,7 @@ const ZIELE = [
   { label: "Fragen", pfad: /\/fragen/ },
   { label: "Suche", pfad: /\/council/ },
   { label: "Meine Themen", pfad: /\/topics/ },
-  { label: "Abos", pfad: /\/abos/ },
+  { label: "Ausschuss-Abos", pfad: /\/abos/ },
   { label: "Merkliste", pfad: /\/bookmarks/ },
   { label: "Quiz", pfad: /\/quiz/ },
 ];
@@ -86,8 +86,11 @@ test.describe("Mobil", () => {
   test("die untere Leiste trägt die Hauptpunkte", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/dashboard");
-    for (const label of ["Start", "Fragen"]) {
-      await expect(page.getByRole("link", { name: label, exact: true }).first()).toBeVisible();
+    // In der Leiste selbst suchen: „Heute" heißt seit 10/2026 überall so,
+    // also auch in der (mobil versteckten) Seitenleiste davor im DOM.
+    const leiste = page.getByRole("navigation", { name: "Hauptnavigation" });
+    for (const label of ["Heute", "Fragen"]) {
+      await expect(leiste.getByRole("link", { name: label, exact: true })).toBeVisible();
     }
   });
 });
