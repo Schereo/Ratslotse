@@ -18,7 +18,7 @@ import logging
 import os
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import cast
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
@@ -331,7 +331,7 @@ def _tipp_pfad(store: Store, w: elections.Election, user: dict | None) -> tuple[
     if runde is None:
         return "", False
     zeile = store.prediction_spiel_zeile(runde.slug)
-    vorbei = (w.polls_close + elections.FOKUS_NACHHER < datetime.now(timezone.utc)
+    vorbei = (w.polls_close + elections.FOKUS_NACHHER < datetime.now(UTC)
               or archive.summary(w) is not None)
     if zeile is None and vorbei:
         # Auf eine gelaufene Wahl kann man nicht mehr tippen. Hat jemand es
@@ -435,7 +435,7 @@ def _probe_mayor_history(w: elections.Election, counted: int | None) -> list[May
         jetzt = {d.number for d in stand.districts if d.counted}
         neu, schon = sorted(jetzt - schon), schon | jetzt
         proj = _runoff_projection(stand, known, w)
-        at = (service.PROBE_START + i * service.PROBE_STEP).astimezone(timezone.utc).isoformat(timespec="seconds")
+        at = (service.PROBE_START + i * service.PROBE_STEP).astimezone(UTC).isoformat(timespec="seconds")
         shares = {c.slug: c.share_pct for c in stand.candidates if c.votes and c.share_pct is not None}
         out.append(MayorHistoryPoint(
             at=at, reports_received=stand.reports_received, shares=shares,

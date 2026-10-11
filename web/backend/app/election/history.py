@@ -20,7 +20,7 @@ import logging
 import os
 import threading
 from collections.abc import Callable, Iterable
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -329,7 +329,7 @@ def from_mayor_night(night: MayorNight, at: str | None = None,
               if c["votes"] and c["votes"] > 0 and c["share_pct"] is not None}
     proj = night.get("projection")
     return MayorHistoryPoint(
-        at=at or night["fetched_at"] or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        at=at or night["fetched_at"] or datetime.now(UTC).isoformat(timespec="seconds"),
         reports_received=night["reports_received"],
         shares=shares,
         votes={c["slug"]: c["votes"] for c in night["candidates"] if c["votes"] is not None},

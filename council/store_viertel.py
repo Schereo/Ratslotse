@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 from typing import TYPE_CHECKING
 
 from council.store_basis import StoreBasis
@@ -71,7 +71,7 @@ _STRICT_METHODS = ("district_list", "place_catalog")
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class ViertelMixin(StoreBasis):

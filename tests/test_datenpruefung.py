@@ -7,7 +7,7 @@ Prüfung, die täglich grundlos meldet, wird weggefiltert.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, UTC
 
 import pytest
 
@@ -119,7 +119,7 @@ def _pruefen(store, jetzt):
 
 
 def test_ein_sauberer_bestand_bleibt_still(store):
-    jetzt = datetime.now(timezone.utc)
+    jetzt = datetime.now(UTC)
     erg = _pruefen(store, jetzt)
     assert erg["befunde"] == [], erg["befunde"]
     assert erg["kennzahlen"]["akten_waisen"] == 0
@@ -127,7 +127,7 @@ def test_ein_sauberer_bestand_bleibt_still(store):
 
 def test_alte_grundakten_melden_sich(store):
     """Der nächtliche Aufbau in check_protocols lief nicht."""
-    jetzt = datetime.now(timezone.utc) + timedelta(hours=dp.AKTEN_ALTER_H + 1)
+    jetzt = datetime.now(UTC) + timedelta(hours=dp.AKTEN_ALTER_H + 1)
     erg = _pruefen(store, jetzt)
     assert any("Grundakten" in b for b in erg["befunde"])
 
@@ -136,7 +136,7 @@ def test_ohne_grundakten_gibt_es_keine_aktenregel(tmp_path):
     """Vor Phase 1 (oder auf einer frischen DB) ist „keine Akte“ kein Befund."""
     from council.store import CouncilStore
 
-    erg = _pruefen(CouncilStore(tmp_path / "leer.sqlite"), datetime.now(timezone.utc))
+    erg = _pruefen(CouncilStore(tmp_path / "leer.sqlite"), datetime.now(UTC))
     assert erg["befunde"] == []
     assert erg["kennzahlen"]["akten"] == "keine"
 

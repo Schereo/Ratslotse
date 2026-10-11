@@ -10,7 +10,7 @@ Zwei davon leben in kern/notify.py und sind hier festgehalten:
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 
 import pytest
 
@@ -23,7 +23,7 @@ BERLIN = notify.ZONE
 def _zeit(tag: str, stunde: int, minute: int = 0) -> datetime:
     """Ortszeit → UTC, so wie die App rechnet."""
     j, m, t = (int(x) for x in tag.split("-"))
-    return datetime(j, m, t, stunde, minute, tzinfo=BERLIN).astimezone(timezone.utc)
+    return datetime(j, m, t, stunde, minute, tzinfo=BERLIN).astimezone(UTC)
 
 
 def _konto(store: Store, email: str = "a@b.de") -> int:
@@ -1127,7 +1127,7 @@ def test_einrichtungs_erinnerung_auch_ohne_zustellweg(store):
 
     def _halb_eingerichtet(email: str) -> int:
         uid = _konto(store, email)
-        alt = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat(timespec="seconds")
+        alt = (datetime.now(UTC) - timedelta(days=5)).isoformat(timespec="seconds")
         with store._conn:
             store._conn.execute(
                 "UPDATE web_users SET setup_started_at = ?, setup_updated_at = ?, "

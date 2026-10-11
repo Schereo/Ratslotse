@@ -26,7 +26,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from functools import lru_cache
 
 from ..antworten import (
@@ -120,7 +120,7 @@ def choices(now: datetime | None = None) -> list[elections.Election]:
     OB-Wahl ihre Bezirksdatei, die Stichwahl nur ihren Wahlschluss — davor
     gibt es nichts zu färben.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     rat = elections.active()
     out: list[elections.Election] = []
     if rat.kind == "council" and (archive.verfuegbar(rat) or rat.polls_close <= now):

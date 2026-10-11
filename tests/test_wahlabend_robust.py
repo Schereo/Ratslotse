@@ -31,7 +31,7 @@ import sys
 import threading
 import time
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 import pytest
@@ -133,7 +133,7 @@ def _zufallsstand(rnd: random.Random) -> Snapshot:
         districts.append(_zeile(rnd, f"{n} Nachtrag", None, 1, indices, mit_kandidaten))
 
     city = [] if rnd.random() < 0.25 else [_zeile(rnd, "Stadt Oldenburg", None, 133, indices, mit_kandidaten)]
-    return Snapshot(city, areas, districts, datetime.now(timezone.utc), None, rnd.random() < 0.9, None)
+    return Snapshot(city, areas, districts, datetime.now(UTC), None, rnd.random() < 0.9, None)
 
 
 # ------------------------------------------------------------------ Zusicherungen

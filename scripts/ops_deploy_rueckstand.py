@@ -66,7 +66,7 @@ from __future__ import annotations
 import argparse
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 #: Ab wann ein Rückstand kein Warten mehr ist. Ein Sonntagslauf von
@@ -96,7 +96,7 @@ def _zeit(wert: str | None) -> datetime | None:
         gelesen = datetime.fromisoformat(text)
     except ValueError:
         return None
-    return gelesen if gelesen.tzinfo else gelesen.replace(tzinfo=timezone.utc)
+    return gelesen if gelesen.tzinfo else gelesen.replace(tzinfo=UTC)
 
 
 def bewerten(main_commit: str, letzter_erfolg: str | None, jetzt: str,
@@ -186,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-versuche", type=int, default=MAX_VERSUCHE)
     a = p.parse_args(argv)
 
-    jetzt = a.jetzt or datetime.now(timezone.utc).isoformat()
+    jetzt = a.jetzt or datetime.now(UTC).isoformat()
     befund = bewerten(a.main_commit, a.letzter_erfolg or None, jetzt,
                       _crons_frei(a.crons), a.fehlversuche,
                       a.melde_ab_stunden, a.max_versuche,

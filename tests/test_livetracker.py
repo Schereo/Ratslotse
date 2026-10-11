@@ -2,7 +2,7 @@
 Parser, Block-Erkennung, Stand in der Datenbank (Modell gemockt)."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from types import SimpleNamespace
 from unittest import mock
 
@@ -113,7 +113,7 @@ def test_council_roster_before_takes_the_last_council_session_with_a_list(tmp_pa
 
 
 def _tracker(store, responses):
-    start = datetime(2026, 8, 31, 18, 0, tzinfo=timezone.utc)
+    start = datetime(2026, 8, 31, 18, 0, tzinfo=UTC)
     tracker = livetracker.LiveTracker(store, 200, chunk_seconds=120, started_at=start)
     calls = iter(responses)
 
