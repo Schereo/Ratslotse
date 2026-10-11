@@ -124,7 +124,7 @@ function Tafel({ daten, aktualisiert, probe, counted }: {
         <div className="min-w-0 flex-1 basis-[18rem]">
           <p className={KICKER}>
             Oldenburg · {datumLang(daten.election.date)} ·{" "}
-            <span suppressHydrationWarning>{daten.dataset === "probe" ? "Generalprobe" : zeit.kicker}</span>
+            <span suppressHydrationWarning>{daten.dataset === "probe" ? "Generalprobe" : daten.phase === "complete" ? "Endstand" : zeit.kicker}</span>
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-none tracking-tight sm:text-[32px]">Stichwahl</h1>
           <p className="mt-3 text-[14px] text-foreground">
@@ -147,7 +147,11 @@ function Tafel({ daten, aktualisiert, probe, counted }: {
               : daten.ok
                 ? zeit.phase === "laeuft"
                   ? daten.phase === "complete"
-                    ? "Alle Bezirke sind da — die Seite fragt nur noch jede Minute nach."
+                    // „fragt jede Minute nach" stand bis 10/2026 noch Wochen
+                    // nach der Wahl da — am Abend selbst ist der Satz richtig.
+                    ? (Date.now() - new Date(daten.election.polls_close).getTime() < 86_400_000
+                      ? "Alle Bezirke sind da — die Seite fragt nur noch jede Minute nach."
+                      : "Endergebnis: alle Bezirke ausgezählt.")
                     : "Die Seite fragt alle 15 Sekunden nach."
                   : `Ab ${zeit.tage === 0 ? "heute" : "Sonntag"} 18 Uhr fragt die Seite alle 15 Sekunden nach.`
                 : (daten.error ?? "Der Votemanager antwortet gerade nicht.")}

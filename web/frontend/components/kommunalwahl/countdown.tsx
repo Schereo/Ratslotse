@@ -32,8 +32,22 @@ export function CountdownBadge({ kompakt = false }: { kompakt?: boolean }) {
   );
 }
 
-/** Dunkle Countdown-Karte in der Seitenleiste (Design 2a, Rail). */
+/** Dunkle Countdown-Karte in der Seitenleiste (Design 2a, Rail).
+ *
+ *  Nach dem Wahltag zeigte sie bis 10/2026 wochenlang „0 Tage bis zur
+ *  Ratswahl" — jetzt führt sie zum Ergebnis. */
 export function CountdownKarte() {
+  const [vorbei, setVorbei] = useState(false);
+  useEffect(() => setVorbei(tageBis() <= 0), []);
+  if (vorbei) {
+    return (
+      <a href="/wahlabend"
+        className="mb-3.5 block rounded-[14px] bg-foreground px-4 py-3.5 text-background transition-opacity hover:opacity-90">
+        <p className="font-display text-[19px] font-bold leading-tight">Gewählt am 13.09.</p>
+        <p className="mt-1 text-xs opacity-70">Zum Ergebnis der Ratswahl →</p>
+      </a>
+    );
+  }
   return (
     <div className="mb-3.5 rounded-[14px] bg-foreground px-4 py-3.5 text-background">
       <p className="font-display text-[28px] font-bold tabular-nums leading-none">
@@ -55,4 +69,12 @@ export function NachWahlStreifen() {
       Die Wahl ist vorbei. Diese Seite dokumentiert den Stand der Programme vor dem 13.09.2026.
     </div>
   );
+}
+
+/** Ein Satz, der nach dem Wahltag in die Vergangenheit wechselt. Die Seite ist
+ *  statisch gebaut; entschieden wird erst im Browser, wie beim Streifen. */
+export function VorUndNachDerWahl({ vorher, nachher }: { vorher: React.ReactNode; nachher: React.ReactNode }) {
+  const [vorbei, setVorbei] = useState(false);
+  useEffect(() => setVorbei(tageBis() <= 0), []);
+  return <>{vorbei ? nachher : vorher}</>;
 }
