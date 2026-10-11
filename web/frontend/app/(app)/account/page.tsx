@@ -11,6 +11,7 @@ import { isNativeApp } from "@/lib/platform";
 import type { User } from "@/lib/types";
 import { applyTheme, getTheme, isDarkNow, THEME_EVENT, type Theme } from "@/lib/theme";
 import { Button, Card, ConfirmDialog, Input, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
+import { CodeEingabe } from "@/components/code-eingabe";
 import { DeliverySettings } from "@/components/delivery-settings";
 import { BadgesCard } from "@/components/badges";
 import { GespraecheCard } from "@/components/gespraeche-settings";
@@ -471,10 +472,14 @@ function EmailCard() {
       {schwebend ? (
         <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] p-4">
           <p className="text-sm text-foreground">
-            Bestätigungslink an <span className="font-medium">{schwebend}</span> unterwegs.
-            Der Link ist 24 Stunden gültig. Bis er geklickt ist, bleibt alles bei
-            der bisherigen Adresse.
+            Link und Code an <span className="font-medium">{schwebend}</span> unterwegs,
+            beide 24 Stunden gültig. Bis du bestätigst, bleibt alles bei der
+            bisherigen Adresse.
           </p>
+          <CodeEingabe onBestaetigt={async () => {
+            toast.success("Deine neue E-Mail-Adresse ist bestätigt.");
+            await refresh();
+          }} className="mt-3" />
           <div className="mt-3 flex flex-wrap gap-4">
             <button
               type="button"

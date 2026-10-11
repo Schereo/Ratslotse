@@ -116,7 +116,10 @@ def test_jede_wahl_bringt_ihre_runde_mit():
 
 def test_ohne_anmeldung_kommt_man_nicht_hinein(client):
     _als(None)
-    for pfad in (f"/api/tipp/setup?round={TIPP}", f"/api/tipp/me?round={TIPP}"):
+    # Auch die Tabelle: Sie nennt Anzeigenamen samt freiwillig angegebener
+    # Partei (Sicherheitsprüfung 10/2026, F11).
+    for pfad in (f"/api/tipp/setup?round={TIPP}", f"/api/tipp/me?round={TIPP}",
+                 f"/api/tipp/stand?round={TIPP}"):
         assert client.get(pfad).status_code == 401, pfad
     assert client.post(f"/api/tipp?round={TIPP}", json={"name": "Fremd"}).status_code == 401
 

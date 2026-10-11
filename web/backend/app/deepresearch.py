@@ -148,6 +148,46 @@ def laufende_jobs(user_id: int | None = None) -> int:
                    if not j.done and (user_id is None or j.user_id == user_id))
 
 
+#: Plätze, die ein Start gerade belegt, bevor sein Job in ``_registry`` steht.
+#: Zwischen der Prüfung und dem Anlegen liegt ein Modell-Aufruf (die Analyse
+#: der Frage, bis zu 8 s). Ohne Reservierung sahen 40 gleichzeitige Starts
+#: desselben Kontos alle „0 laufend, 0 heute" und liefen alle los — vorbei am
+#: Tageskontingent, an „eine je Konto" und am globalen Deckel
+#: (Sicherheitsprüfung 10/2026, F5).
+_reserviert: dict[int, int] = {}
+
+
+def platz_reservieren(user_id: int) -> str | None:
+    """Einen Recherche-Platz belegen. ``None`` heißt: belegt, bitte
+    ``platz_freigeben`` aufrufen, sobald der Job registriert ist (oder der
+    Start scheitert). Sonst der Grund der Ablehnung: ``"konto"`` (läuft schon
+    eine) oder ``"voll"`` (globaler Deckel)."""
+    with _reg_lock:
+        laufend = [j for j in _registry.values() if not j.done]
+        eigene = sum(1 for j in laufend if j.user_id == user_id) + _reserviert.get(user_id, 0)
+        if eigene >= 1:
+            return "konto"
+        if len(laufend) + sum(_reserviert.values()) >= MAX_PARALLEL:
+            return "voll"
+        _reserviert[user_id] = _reserviert.get(user_id, 0) + 1
+        return None
+
+
+def platz_freigeben(user_id: int) -> None:
+    with _reg_lock:
+        rest = _reserviert.get(user_id, 0) - 1
+        if rest > 0:
+            _reserviert[user_id] = rest
+        else:
+            _reserviert.pop(user_id, None)
+
+
+def material_vollstaendig(job: DeepJob) -> bool:
+    """Waren beim Stopp schon ALLE Facetten fertig? Dann ist ein
+    „Teilbericht" in Wahrheit der ganze Bericht — und zählt wie einer (F17)."""
+    return job.facetten_gesamt > 0 and job.facetten_fertig >= job.facetten_gesamt
+
+
 def registry_aufraeumen(max_fertige: int = 50) -> None:
     """Fertige Jobs irgendwann aus dem Speicher werfen — die Wahrheit liegt
     ohnehin in der DB; hier geht es nur um den Replay laufender Sitzungen."""
@@ -574,6 +614,7 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
         # komplett neu generieren. Ein replace-Event räumt den Torso beim
         # Client weg, die Event-Liste bleibt für Replays konsistent.
         buf = ""
+        gezaehlt = False
         for versuch in range(3):
             if versuch > 0:
                 _emit(job, {"type": "replace", "text": vermerk})
@@ -593,9 +634,13 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
                     # Deltas bündeln: weniger, dafür tragfähige Events — der
                     # Replay nach einem Reconnect bleibt so klein.
                     if len(buf) - gesendet >= TOKEN_BUENDEL:
+                        if not gezaehlt:
+                            gezaehlt = _zaehlt_ab_jetzt(job, ratslotse_db, teilbericht)
                         _emit(job, {"type": "token", "text": buf[gesendet:]})
                         gesendet = len(buf)
                 if len(buf) > gesendet:
+                    if not gezaehlt:
+                        gezaehlt = _zaehlt_ab_jetzt(job, ratslotse_db, teilbericht)
                     _emit(job, {"type": "token", "text": buf[gesendet:]})
                 break
             except Exception:  # noqa: BLE001 — riss der Stream: neuer Anlauf
@@ -618,7 +663,12 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
         ratslotse = Store(ratslotse_db)
         try:
             conversation_id = _gespraech_anhaengen(ratslotse, job, bericht, m, cited)
-            status = "teilbericht" if teilbericht else "fertig"
+            # Ein „Teilbericht" aus vollständigem Material ist der ganze
+            # Bericht und zählt deshalb wie einer: `deep_jobs_heute` rechnet
+            # nur `fertig` (und laufende) — Stopp kurz vor dem Schreiben plus
+            # „Teilbericht zeigen" war sonst ein Bericht außerhalb des
+            # Kontingents, beliebig oft (F17).
+            status = "teilbericht" if teilbericht and not material_vollstaendig(job) else "fertig"
             ratslotse.deep_job_update(job.id, status, bericht=bericht,
                                 quellen_json=json.dumps(_quellen_payload(m, cited),
                                                         ensure_ascii=False))
@@ -656,6 +706,9 @@ def _gespraech_anhaengen(ratslotse: Store, job: DeepJob, bericht: str,
         quellen_json = json.dumps(
             {"sources": [s for s in m.get("sources", []) if s.get("id") in zitiert],
              "cited": cited, "research": True,
+             # Damit ein wieder geöffneter Bericht noch geteilt werden kann
+             # (Teilen nimmt nur die Server-Kopie, s. qa_share_anlegen).
+             "deep_job_id": job.id,
              "press_releases": m.get("presse_kompakt", []),
              "debates": m.get("debatten_kompakt", []),
              "attachments": m.get("anlagen_kompakt", []),
@@ -682,6 +735,28 @@ def _db_update(ratslotse_db: str, job_id: str, status: str, bericht: str | None 
         store.deep_job_update(job_id, status, bericht=bericht, quellen_json=quellen_json)
     finally:
         store.close()
+
+
+def _zaehlt_ab_jetzt(job: DeepJob, ratslotse_db: str, teilbericht: bool) -> bool:
+    """Der erste Berichtstext geht raus: Ab hier zählt der Job zum Kontingent.
+
+    Bis 10/2026 zählte ein gestoppter Job nie — auch dann nicht, wenn der
+    Bericht schon fast vollständig beim Client stand (zweite Prüfung, F1). Ein
+    Teilbericht aus unvollständigem Material bleibt frei, wie die Karte es
+    verspricht. Gibt zurück, ob die Markierung gesetzt ist (dann nicht noch
+    einmal).
+    """
+    if teilbericht and not material_vollstaendig(job):
+        return True  # bleibt frei — nichts zu markieren, aber auch nicht erneut prüfen
+    try:
+        store = Store(ratslotse_db)
+        try:
+            store.deep_job_mark_counted(job.id)
+        finally:
+            store.close()
+    except Exception:  # noqa: BLE001 — der Bericht hat Vorrang vor der Zählung
+        _log.exception("deep %s: Kontingent-Markierung gescheitert", job.id)
+    return True
 
 
 def _gestoppt(job: DeepJob, ratslotse_db: str) -> None:

@@ -491,6 +491,10 @@ export interface paths {
          *     Ratssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste
          *     (hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine
          *     Probe zugleich; verlässt der Browser die Seite, endet die Aufnahme.
+         *
+         *     Ein GET mit Kosten (Gladia, ffmpeg): Ein Link auf einer fremden Seite
+         *     startete die Probe sonst in der Sitzung des Admins (zweite Prüfung
+         *     10/2026, F14). Das Panel ruft von der eigenen Seite aus.
          */
         get: operations["live_probe_api_admin_live_probe_get"];
         put?: never;
@@ -1263,8 +1267,46 @@ export interface paths {
         /**
          * Reset Password
          * @description Set a new password from a valid reset token, then invalidate all sessions.
+         *
+         *     **Ein Reset-Link ist kein Login für Fremde** (Sicherheitsprüfung 10/2026,
+         *     F3). Wer gerade als ein ANDERES Konto angemeldet ist, bekommt eine
+         *     Ablehnung, und der Link bleibt gültig: Sonst schickte jemand seinen eigenen
+         *     Link herum, und die App wechselte still in sein Konto — wo er später alles
+         *     mitliest, was dort eingegeben wird.
+         *
+         *     **Und er bestätigt die Adresse.** Der Link kam über das Postfach, das ist
+         *     derselbe Beweis wie der Bestätigungslink. Ein Konto, das ein Fremder auf
+         *     diese Adresse angelegt hat, holt sich die Besitzerin damit zurück: neues
+         *     Passwort, alle älteren Sitzungen beendet, Konto aktiv (F1).
          */
         post: operations["reset_password_api_auth_reset_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/verify-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Code
+         * @description Die Adresse mit dem sechsstelligen Code aus der Mail bestätigen.
+         *
+         *     Für den Fall, dass Mail und Sitzung auf verschiedenen Geräten liegen
+         *     (registriert am Laptop, Mail am Handy): Den Code tippt man dort ein, wo man
+         *     schon angemeldet ist. Er gehört zur Sitzung, nicht zum Gerät, auf dem die
+         *     Mail liegt — wer ein Konto auf eine fremde Adresse angelegt hat, sieht ihn
+         *     nie. Gilt für die Erstbestätigung wie für einen Adresswechsel; derselbe
+         *     Token, der Link aus derselben Mail ist danach verbraucht.
+         */
+        post: operations["verify_code_api_auth_verify_code_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1287,6 +1329,25 @@ export interface paths {
          *     Derselbe Endpunkt schließt BEIDES ab: die Erstbestätigung nach der
          *     Registrierung und einen Adresswechsel. Was von beidem, sagt der Token
          *     (``new_email``) — nicht die URL und nicht der Kontostand.
+         *
+         *     **Wer den Link öffnet, zählt** (Sicherheitsprüfung 10/2026, F1/F3):
+         *
+         *     * **Angemeldet als ein anderes Konto:** abgelehnt, der Link bleibt gültig.
+         *       Sonst schickte jemand den Link SEINES Kontos herum, und die App wechselte
+         *       still dorthin — mit allem, was danach eingegeben wird.
+         *     * **Erstbestätigung ohne Sitzung des Kontos:** abgelehnt, bitte erst
+         *       anmelden. Die Registrierung prüft nicht, wem die Adresse gehört: Wer
+         *       eine fremde Adresse einträgt, legt das Passwort fest und hält eine
+         *       Sitzung. Bestätigte die Besitzerin dieses Konto mit einem Klick, gehörte
+         *       es danach beiden. Mit dieser Regel bestätigt nur, wer das Passwort
+         *       kennt; die Besitzerin der Adresse geht über „Passwort vergessen“ — das
+         *       setzt ein neues Passwort, beendet jede ältere Sitzung und bestätigt die
+         *       Adresse mit (``reset_password``).
+         *     * **Adresswechsel ohne Sitzung:** geht durch (der Wechsel wurde mit dem
+         *       Passwort angestoßen), aber ohne neues Token.
+         *
+         *     Ein Token für die App gibt es nur, wenn der Request schon die Sitzung
+         *     genau dieses Kontos trägt.
          */
         post: operations["verify_email_api_auth_verify_email_post"];
         delete?: never;
@@ -3324,7 +3385,8 @@ export interface paths {
         /**
          * Deep Research Teilbericht
          * @description Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
-         *     schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent.
+         *     schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent — es
+         *     sei denn, beim Stopp waren schon alle Facetten fertig.
          */
         post: operations["deep_research_teilbericht_api_council_deep_research__job_id__partial_report_post"];
         delete?: never;
@@ -4022,6 +4084,8 @@ export interface paths {
          * @description Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
          *     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
          *     eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick.
+         *
+         *     Inhalt kommt nur noch aus der Server-Kopie (s. ``QaShareBody``).
          */
         post: operations["qa_share_anlegen_api_council_qa_share_post"];
         delete?: never;
@@ -5287,6 +5351,10 @@ export interface paths {
          *     zu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden
          *     mit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom
          *     Schalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.
+         *
+         *     Nur nicht von einer fremden Seite aus: Der Cookie ist in einer offenen
+         *     Runde die EINZIGE Identität, und ein automatisch abgeschicktes Formular
+         *     irgendwo im Netz löschte ihn sonst (zweite Prüfung 10/2026, F11).
          */
         post: operations["abmelden_api_tipp_abmelden_post"];
         delete?: never;
@@ -13269,6 +13337,8 @@ export interface components {
         };
         /** PartyOpinionsBody */
         PartyOpinionsBody: {
+            /** Answer Id */
+            answer_id?: string | null;
             /** Decision Ids */
             decision_ids?: number[];
             /** Question */
@@ -14240,170 +14310,26 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
-        /** QaShareAttachment */
-        QaShareAttachment: {
-            /**
-             * Excerpt
-             * @default
-             */
-            excerpt: string;
-            /** Label */
-            label?: string | null;
-            /** Number */
-            number?: number | null;
-            /** Template Number */
-            template_number?: string | null;
-            /** Template Title */
-            template_title?: string | null;
-            /** Url */
-            url?: string | null;
-        };
-        /** QaShareBody */
+        /**
+         * QaShareBody
+         * @description Was geteilt wird — als KENNUNG, nicht als Inhalt.
+         *
+         *     Bis 10/2026 schickte der Client Frage, Antwort, Zitate, Debattenauszüge
+         *     und Parteipositionen selbst, und der Server veröffentlichte sie unter
+         *     ratslotse.de als „Automatische Antwort von ‚Frag den Rat‘". Jedes Konto
+         *     konnte so erfundene Zitate echter Ratsmitglieder verbreiten (zweite
+         *     Sicherheitsprüfung, F3; Tims Entscheidung 08.10.2026: nur, was der Server
+         *     geliefert hat). Geteilt wird jetzt die Server-Kopie: einer KI-Antwort
+         *     (``answer_id`` aus dem done-Ereignis) oder eines eigenen Recherche-Berichts
+         *     (``deep_job_id``). Alles andere im Körper wird ignoriert — ältere
+         *     App-Versionen schicken noch den Inhalt und bekommen einen 422 mit der
+         *     Bitte, die App zu aktualisieren.
+         */
         QaShareBody: {
-            /** Answer */
-            answer: string;
-            /** Attachments */
-            attachments?: components["schemas"]["QaShareAttachment"][];
-            /** Chart */
-            chart?: {
-                [key: string]: unknown;
-            } | null;
-            /** Debates */
-            debates?: components["schemas"]["QaShareDebate"][];
-            /** Parties */
-            parties?: components["schemas"]["QaShareParty"][];
-            /** Press Releases */
-            press_releases?: components["schemas"]["QaSharePress"][];
-            /** Question */
-            question: string;
-            /**
-             * QaShareRulesOfProcedure
-             * @description Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
-             *
-             *     Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
-             *     Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
-             *     Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
-             *     darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
-             *     unterschieben. Ein fremder Link verwirft die ganze Karte (s.
-             *     ``QaShareBody._karte_oder_nichts``).
-             */
-            rules_of_procedure?: {
-                /** Contents */
-                contents?: components["schemas"]["QaShareRulesContents"][];
-                /**
-                 * Full Title
-                 * @default
-                 */
-                full_title: string;
-                /** Sections */
-                sections?: components["schemas"]["QaShareRulesSection"][];
-                /**
-                 * State
-                 * @default current
-                 * @enum {string}
-                 */
-                state: "current" | "term_ended" | "superseded";
-                /** Title */
-                title: string;
-                /** Url */
-                url: string;
-                /**
-                 * Version
-                 * @default
-                 */
-                version: string;
-            } | null;
-            /** Sources */
-            sources?: components["schemas"]["QaShareSource"][];
-        };
-        /** QaShareDebate */
-        QaShareDebate: {
-            /** Agenda Item */
-            agenda_item?: string | null;
-            /** Committee */
-            committee?: string | null;
-            /** Date */
-            date?: string | null;
-            /**
-             * Excerpt
-             * @default
-             */
-            excerpt: string;
-            /**
-             * Kind
-             * @default speech
-             */
-            kind: string;
-            /** Minutes Page */
-            minutes_page?: number | null;
-            /** Minutes Url */
-            minutes_url?: string | null;
-            /** Party */
-            party?: string | null;
-            /** Speaker */
-            speaker?: string | null;
-        };
-        /** QaShareKeyQuote */
-        QaShareKeyQuote: {
-            /** Date */
-            date?: string | null;
-            /** Speaker */
-            speaker?: string | null;
-            /**
-             * Text
-             * @default
-             */
-            text: string;
-        };
-        /** QaShareParty */
-        QaShareParty: {
-            /**
-             * Contributions
-             * @default 0
-             */
-            contributions: number;
-            /** QaShareKeyQuote */
-            kernaussage?: {
-                /** Date */
-                date?: string | null;
-                /** Speaker */
-                speaker?: string | null;
-                /**
-                 * Text
-                 * @default
-                 */
-                text: string;
-            } | null;
-            /** Note */
-            note?: string | null;
-            /** Party */
-            party: string;
-            /**
-             * Position
-             * @default
-             */
-            position: string;
-            /** Stance */
-            stance?: string | null;
-            /**
-             * Unanimous
-             * @default true
-             */
-            unanimous: boolean;
-        };
-        /** QaSharePress */
-        QaSharePress: {
-            /** Date */
-            date?: string | null;
-            /**
-             * Excerpt
-             * @default
-             */
-            excerpt: string;
-            /** Title */
-            title: string;
-            /** Url */
-            url: string;
+            /** Answer Id */
+            answer_id?: string | null;
+            /** Deep Job Id */
+            deep_job_id?: string | null;
         };
         /** QaShareReportBody */
         QaShareReportBody: {
@@ -14412,83 +14338,6 @@ export interface components {
              * @default other
              */
             reason: string;
-        };
-        /** QaShareRulesContents */
-        QaShareRulesContents: {
-            /** Label */
-            label: string;
-            /** Title */
-            title: string;
-            /** Url */
-            url: string;
-        };
-        /**
-         * QaShareRulesOfProcedure
-         * @description Die Karte „Aus der Geschäftsordnung" (``rules_of_procedure.card``).
-         *
-         *     Der Client reicht sie zurück, wie das ``sources``-Ereignis sie brachte.
-         *     Weil der Snapshot öffentlich ist, gilt für die Links dasselbe wie beim
-         *     Protokoll der Debatten: Nur das PDF der Stadt, aus dem die Karte stammt,
-         *     darf verlinkt sein — sonst ließe sich unter unserem Absender Beliebiges
-         *     unterschieben. Ein fremder Link verwirft die ganze Karte (s.
-         *     ``QaShareBody._karte_oder_nichts``).
-         */
-        QaShareRulesOfProcedure: {
-            /** Contents */
-            contents?: components["schemas"]["QaShareRulesContents"][];
-            /**
-             * Full Title
-             * @default
-             */
-            full_title: string;
-            /** Sections */
-            sections?: components["schemas"]["QaShareRulesSection"][];
-            /**
-             * State
-             * @default current
-             * @enum {string}
-             */
-            state: "current" | "term_ended" | "superseded";
-            /** Title */
-            title: string;
-            /** Url */
-            url: string;
-            /**
-             * Version
-             * @default
-             */
-            version: string;
-        };
-        /** QaShareRulesSection */
-        QaShareRulesSection: {
-            /** Label */
-            label: string;
-            /** Number */
-            number: string;
-            /** Part */
-            part: string;
-            /**
-             * Text
-             * @default
-             */
-            text: string;
-            /** Title */
-            title: string;
-            /** Url */
-            url: string;
-        };
-        /** QaShareSource */
-        QaShareSource: {
-            /** Committee */
-            committee?: string | null;
-            /** Id */
-            id: number;
-            /** Outcome */
-            outcome?: string | null;
-            /** Session Date */
-            session_date?: string | null;
-            /** Title */
-            title: string;
         };
         /** QaShareToken */
         QaShareToken: {
@@ -17114,6 +16963,11 @@ export interface components {
              */
             verdict: "hidden" | "kept" | null;
         };
+        /** VerifyCodeRequest */
+        VerifyCodeRequest: {
+            /** Code */
+            code: string;
+        };
         /** VerifyEmailRequest */
         VerifyEmailRequest: {
             /** Token */
@@ -19034,6 +18888,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_code_api_auth_verify_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyCodeRequest"];
             };
         };
         responses: {
@@ -25306,4 +25193,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7c9790d1a5758fa24546d26cec8bb256232e4ba629f8cb3eec4c4cdb162e3e17
+// vertrag-sha256: c6846fe62097a2b7bfa3edd84119ccd9613c2c754679b61f1d4053abd9504251

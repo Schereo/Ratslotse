@@ -16,6 +16,9 @@ public struct SSEEvent: Codable, Sendable, Equatable {
     public var text: String? { fields["text"]?.string }
     public var step: String? { fields["step"]?.string }
     public var conversationID: Int? { fields["conversation_id"]?.int }
+    /// Die Kennung der Server-Kopie einer Antwort (done-Ereignis von `/ask`).
+    /// Teilen geht nur über sie.
+    public var answerID: String? { fields["answer_id"]?.string }
     /// Der Server sendet die Anschlussfragen als `questions` — und hat sie nie
     /// anders genannt (nachgesehen 02.09.2026). Der Rückfall auf `suggestions`
     /// stand hier trotzdem, und die aufgezeichnete Probe benutzte ihn: Sie
@@ -91,7 +94,9 @@ public struct SSEClient: Sendable {
     private let session: URLSession
     private let decoder = JSONDecoder()
 
-    public init(session: URLSession = .shared) {
+    /// Dieselbe Sitzung wie der `APIClient`: ohne Platten-Zwischenspeicher
+    /// und ohne Cookie-Speicher (s. dort).
+    public init(session: URLSession = APIClient.sitzungOhneZwischenspeicher) {
         self.session = session
     }
 

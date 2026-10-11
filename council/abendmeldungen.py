@@ -55,21 +55,25 @@ def _n5_text(sitzung: dict, tops: list[dict]) -> tuple[str, str]:
     """
     zeit = f", {sitzung['session_time']} Uhr" if sitzung.get("session_time") else ""
     wann = f"{_datum(sitzung['session_date'])}{zeit}"
+    # Gremium, Ort und TOP-Nummer kommen aus dem Ratsinformationssystem — ins
+    # HTML nur maskiert (F26). Der Titel bleibt Klartext (Betreff, Push).
+    esc = html.escape
+    gremium = esc(str(sitzung["committee"]))
+    ort = f", {esc(str(sitzung['location']))}" if sitzung.get("location") else ""
+    kopf = f"<p>{gremium} am {_datum(sitzung['session_date'])}{esc(zeit)}{ort}.</p>"
     if tops:
         namen = sorted({t["topic_name"] for t in tops})
         title = f"{wann}: {namen[0]} im {sitzung['committee']}" if len(namen) == 1 \
             else f"{wann}: deine Themen im {sitzung['committee']}"
         zeilen = "".join(
-            f"<li style='margin-bottom:4px'>TOP {t['item_number']} — {t['topic_name']}</li>"
+            f"<li style='margin-bottom:4px'>TOP {esc(str(t['item_number']))} — "
+            f"{esc(str(t['topic_name']))}</li>"
             for t in tops)
-        html = (f"<p>{sitzung['committee']} am {_datum(sitzung['session_date'])}{zeit}"
-                + (f", {sitzung['location']}" if sitzung.get("location") else "") + ".</p>"
-                f"<ul style='margin:0;padding-left:18px'>{zeilen}</ul>")
+        html_text = kopf + f"<ul style='margin:0;padding-left:18px'>{zeilen}</ul>"
     else:
         title = f"{wann}: {sitzung['committee']} tagt"
-        html = (f"<p>{sitzung['committee']} am {_datum(sitzung['session_date'])}{zeit}"
-                + (f", {sitzung['location']}" if sitzung.get("location") else "") + ".</p>")
-    return title, html
+        html_text = kopf
+    return title, html_text
 
 
 def vorabend(council_store, ratslotse_store, heute: date | None = None) -> int:

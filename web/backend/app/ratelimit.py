@@ -1,6 +1,7 @@
 """Simple in-memory fixed-window rate limiter — no external deps."""
 from __future__ import annotations
 
+import ipaddress
 import os
 import threading
 import time
@@ -22,7 +23,16 @@ class RateLimiter:
     def _key(self, request: Request) -> str:
         # Trust request.client.host — set to the real client IP by
         # ProxyHeadersMiddleware (which only trusts 127.0.0.1/::1).
-        return request.client.host if request.client else "unknown"
+        host = request.client.host if request.client else "unknown"
+        # IPv6 je /64 zählen: Ein Anschluss bekommt meist ein ganzes /64, und
+        # je Adresse gezählt hätte jede Bremse dort Millionen eigene Eimer
+        # (zweite Prüfung 10/2026, F13).
+        if ":" in host:
+            try:
+                return str(ipaddress.ip_network(f"{host}/64", strict=False))
+            except ValueError:
+                return host
+        return host
 
     def _cleanup(self, now: float) -> None:
         """Evict expired buckets to prevent unbounded memory growth."""
@@ -30,6 +40,27 @@ class RateLimiter:
         for k in expired:
             del self._calls[k]
         self._last_cleanup = now
+
+    def ist_voll(self, *, subject: str | int) -> bool:
+        """Ist der Eimer dieses Kontos voll? Zählt selbst NICHT mit — für
+        Bremsen, die nur Fehlversuche zählen (``zaehlen``)."""
+        if os.environ.get("DISABLE_RATE_LIMIT") == "1":
+            return False
+        now = time.monotonic()
+        with self._lock:
+            calls = [t for t in self._calls.get(f"account:{subject}", []) if now - t < self.window]
+            return len(calls) >= self.max_calls
+
+    def zaehlen(self, *, subject: str | int) -> None:
+        """Einen Fehlversuch für dieses Konto vermerken."""
+        if os.environ.get("DISABLE_RATE_LIMIT") == "1":
+            return
+        now = time.monotonic()
+        key = f"account:{subject}"
+        with self._lock:
+            if now - self._last_cleanup > _CLEANUP_INTERVAL:
+                self._cleanup(now)
+            self._calls[key] = [t for t in self._calls[key] if now - t < self.window] + [now]
 
     def check(self, request: Request, *, subject: str | int | None = None) -> None:
         """Count a request in a fixed-window bucket.
@@ -77,9 +108,26 @@ topic_match_limiter = RateLimiter(max_calls=12, window_seconds=300)
 # echten Fehlerfall und für eine Seite, die mehrere Fehler auf einmal wirft.
 client_error_limiter = RateLimiter(max_calls=20, window_seconds=300)
 login_limiter = RateLimiter(max_calls=10, window_seconds=60)
+# Fehlgeschlagene Anmeldungen je KONTO (die Adresse aus dem Formular). Die
+# Bremse oben zählt je Netzadresse; wer von vielen Adressen aus gegen EIN
+# Konto rät, lief an ihr vorbei (zweite Prüfung 10/2026, F13). Zwanzig in
+# einer Viertelstunde: genug für jeden Vertipper, zu wenig zum Raten. Der
+# Preis: Wer es darauf anlegt, kann ein Konto für eine Viertelstunde von der
+# Passwort-Anmeldung aussperren — „Passwort vergessen" und Apple gehen weiter.
+login_fail_limiter = RateLimiter(max_calls=20, window_seconds=900)
 register_limiter = RateLimiter(max_calls=5, window_seconds=300)
+# Registrierungsversuche auf eine SCHON VORHANDENE Adresse — das ist der Weg,
+# auf dem man abfragt, wer ein Konto hat. Strenger als oben: drei je Stunde
+# und Netzadresse (zweite Prüfung 10/2026, F16).
+register_duplicate_limiter = RateLimiter(max_calls=3, window_seconds=3600)
+# Der Hinweis an die Besitzerin der Adresse geht höchstens einmal je Stunde.
+register_notice_limiter = RateLimiter(max_calls=1, window_seconds=3600)
 forgot_password_limiter = RateLimiter(max_calls=5, window_seconds=900)
 verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
+# Bestätigungscode eintippen: pro Konto. Die Sperre nach fünf Fehlversuchen je
+# Code sitzt im Store; das hier bremst zusätzlich das Durchprobieren über
+# viele frisch angeforderte Codes.
+verify_code_limiter = RateLimiter(max_calls=10, window_seconds=900)
 # Adresswechsel: angemeldet, verschickt aber zwei Mails je Aufruf — eine davon
 # an eine FREMDE, frei gewählte Adresse. Ohne Bremse wäre das ein Versandweg
 # für Belästigung auf unsere Kosten (Resend-Kontingent, unsere Absenderdomain).
@@ -87,6 +135,15 @@ verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
 # der Missbrauch hängt, und Mobilfunkanbieter bündeln viele Geräte hinter einer
 # Adresse. Fünf in einer Viertelstunde deckt jeden ehrlichen Tippfehler.
 change_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
+# Jede Prüfung des AKTUELLEN Passworts aus einer laufenden Sitzung heraus
+# (Passwort ändern, Adresse ändern, Konto löschen). Das Passwort ist die
+# Schwelle, die eine gestohlene Sitzung NICHT überspringen soll — ohne Bremse
+# war jeder dieser Endpunkte ein unbegrenztes Rate-Orakel dafür
+# (Sicherheitsprüfung 10/2026, F15). Pro Konto, aus demselben Grund wie oben.
+reauth_limiter = RateLimiter(max_calls=10, window_seconds=900)
+# „Gehört nicht hierher" in Mein Viertel: pro Konto. Eine Schleife über alle
+# Vorhaben-Nummern soll schon an der Tür hängen bleiben (F19).
+district_report_limiter = RateLimiter(max_calls=10, window_seconds=3600)
 # „Frag den Rat" ist der einzige Endpoint, der pro Aufruf LLM-Kosten erzeugt —
 # großzügig genug für echtes Nachfragen, aber kein offener Geldhahn.
 qa_limiter = RateLimiter(max_calls=10, window_seconds=600)

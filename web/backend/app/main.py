@@ -20,7 +20,7 @@ from .antworten import Health
 from .config import get_settings
 from .schemas import AppConfigOut, AppElectionOut
 from .routers import today, account, admin, auth, auth_apple, bookmarks, council, districts, feedback, kommunalwahl, news, onboarding, push, quiz, social, topics, badges, calendar, tippspiel, wahlabend
-from .session import SitzungsVerlaengerung
+from .session import KeinCacheMitSitzung, SitzungsVerlaengerung
 
 logger = logging.getLogger("ratslotse.web.main")
 
@@ -169,6 +169,9 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["127.0.0.1", "::1"])
 # Stille Sitzungsverlängerung: Wer die Seite benutzt, bleibt angemeldet.
 app.add_middleware(SitzungsVerlaengerung)
 
+# Persönliche Antworten landen in keinem Client-Zwischenspeicher.
+app.add_middleware(KeinCacheMitSitzung)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -299,6 +302,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         loc = e.get("loc", ())
         if any(str(part) in _SENSITIVE for part in loc):
             e = {**e, "input": "***"}
+        # `ctx` trägt bei einem `ValueError` aus einem Validator das Exception-
+        # Objekt selbst — das lässt sich nicht als JSON ausgeben, und aus der
+        # 422 wurde ein 500 (gesehen 10/2026 beim Host-Check geteilter Links).
+        if "ctx" in e:
+            e = {**e, "ctx": {k: str(v) for k, v in (e.get("ctx") or {}).items()}}
         errors.append(e)
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

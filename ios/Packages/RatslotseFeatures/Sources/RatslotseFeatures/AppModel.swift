@@ -292,19 +292,58 @@ public final class AppModel {
         let user: User = try await api.send(
             "/api/auth/reset-password", body: Body(token: token, new_password: password)
         )
+        // Wie beim Bestätigungslink: Eine laufende Sitzung wechselt nie still
+        // in ein anderes Konto (das Backend lehnt das inzwischen selbst ab).
+        if let angemeldet = angemeldetesKonto?.id, angemeldet != user.id {
+            authPresentation = nil
+            alertMessage = "Dieser Link gehört zu einem anderen Konto."
+            return
+        }
+        // Ohne Sitzung meldet ein Reset-Link nicht an — das Backend legt dann
+        // kein Token bei. Sonst landete eine abgemeldete App im Konto dessen,
+        // der den Link verschickt hat (zweite Prüfung 10/2026, F9).
+        guard user.accessToken != nil else {
+            authPresentation = .login
+            alertMessage = "Dein Passwort ist geändert. Bitte melde dich damit an."
+            return
+        }
         try await accept(user: user)
         authPresentation = nil
     }
 
+    /// Einen Bestätigungslink aus der Mail einlösen.
+    ///
+    /// **Ein Link meldet niemanden an.** Bis 10/2026 übernahm die App das
+    /// Konto aus der Antwort ungefragt — wer seinen eigenen Link herumschickte,
+    /// hatte danach die App eines anderen in seinem Konto und las mit, was dort
+    /// eingegeben wurde (Sicherheitsprüfung 10/2026, F6/F8). Jetzt gilt: Die
+    /// Antwort wird nur übernommen, wenn sie zum angemeldeten Konto gehört und
+    /// ein Token trägt — das Backend legt eines nur noch dann bei. Ohne
+    /// Anmeldung geht es über den Anmelde-Bildschirm; der Link bleibt dabei
+    /// gültig.
     public func verifyEmail(token: String) async {
         struct Body: Codable, Sendable { let token: String }
+        let angemeldet = angemeldetesKonto?.id
         do {
             let user: User = try await api.send("/api/auth/verify-email", body: Body(token: token))
+            guard let angemeldet, user.id == angemeldet, user.accessToken != nil else {
+                alertMessage = "Die Adresse ist bestätigt. Bitte melde dich an."
+                if angemeldet == nil { authPresentation = .login }
+                return
+            }
             try await accept(user: user)
             alertMessage = "Deine E-Mail-Adresse ist bestätigt."
         } catch {
             alertMessage = error.localizedDescription
-            authPresentation = .login
+            if angemeldet == nil { authPresentation = .login }
+        }
+    }
+
+    /// Das Konto der laufenden Sitzung, gleich in welchem Zustand.
+    private var angemeldetesKonto: User? {
+        switch session {
+        case .pending(let user), .active(let user), .disabled(let user): user
+        default: nil
         }
     }
 
@@ -330,6 +369,16 @@ public final class AppModel {
     /// Einen schwebenden Adresswechsel verwerfen — der Link wird ungültig.
     public func cancelEmailChange() async throws {
         let user: User = try await api.sendWithoutBody("/api/account/change-email", method: .delete)
+        try await accept(user: user)
+    }
+
+    /// Die Adresse mit dem sechsstelligen Code aus der Mail bestätigen — für
+    /// den Fall, dass die Mail auf einem anderen Gerät liegt. Der Code gehört
+    /// zur laufenden Sitzung; ein Link aus der Mail greift dagegen nur dort,
+    /// wo man angemeldet ist.
+    public func verifyCode(_ code: String) async throws {
+        struct Body: Codable, Sendable { let code: String }
+        let user: User = try await api.send("/api/auth/verify-code", body: Body(code: code))
         try await accept(user: user)
     }
 
@@ -529,6 +578,15 @@ public final class AppModel {
         }
         try? await api.sendVoid("/api/auth/logout")
         try? await api.setAccessToken(nil)
+        // Ältere App-Fassungen legten API-Antworten samt Token im
+        // gemeinsamen Zwischenspeicher ab; beim Abmelden räumen wir ihn leer.
+        URLCache.shared.removeAllCachedResponses()
+        // Ebenso das Sitzungs-Cookie, das ältere Fassungen im gemeinsamen
+        // Cookie-Speicher abgelegt haben (zweite Prüfung 10/2026, F12).
+        let cookieSpeicher = HTTPCookieStorage.shared
+        for cookie in cookieSpeicher.cookies ?? [] where cookie.domain.hasSuffix("ratslotse.de") {
+            cookieSpeicher.deleteCookie(cookie)
+        }
         pendingPushToken = nil
         forgetLocalAccount()
     }

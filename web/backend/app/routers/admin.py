@@ -17,7 +17,7 @@ import queue
 import threading
 import time
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
 from council.cities.store import CitiesStore
@@ -38,7 +38,7 @@ from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminFeedbackNotified,
                          AdminMailRow, AdminMailStats, AdminMailSummary,
                          AdminUnread, AdminUserDetail, AdminUserEmails, AdminUserRow, Ok)
-from ..deps import get_cities_store, get_council_store, get_store, require_admin
+from ..deps import get_cities_store, get_council_store, get_store, kein_fremder_aufruf, require_admin
 from ..mailprotokoll import protokolliere
 from ..schemas import (EntityAliasIn, EntityAliasOut, FeedbackNotifyIn, LimitsUpdate,
                        PlaceReviewIn, RoleInfo, RolesUpdate, RoleUpdate, StatusUpdate,
@@ -872,7 +872,8 @@ LIVE_PROBE_MAX_SECONDS = 600
 
 
 @router.get("/live-probe", response_class=EventStreamResponse, responses=SSE_LIVE_PROBE)
-def live_probe(seconds: int = Query(120, ge=10, le=LIVE_PROBE_MAX_SECONDS),
+def live_probe(request: Request,
+               seconds: int = Query(120, ge=10, le=LIVE_PROBE_MAX_SECONDS),
                user: dict = Depends(require_admin)) -> StreamingResponse:
     """Der O1-Stream als Transkript, Äußerung für Äußerung — die Generalprobe
     der Streaming-Transkription (``council/stream_stt``) im Admin-Panel.
@@ -882,7 +883,12 @@ def live_probe(seconds: int = Query(120, ge=10, le=LIVE_PROBE_MAX_SECONDS),
     Ratssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste
     (hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine
     Probe zugleich; verlässt der Browser die Seite, endet die Aufnahme.
+
+    Ein GET mit Kosten (Gladia, ffmpeg): Ein Link auf einer fremden Seite
+    startete die Probe sonst in der Sitzung des Admins (zweite Prüfung
+    10/2026, F14). Das Panel ruft von der eigenen Seite aus.
     """
+    kein_fremder_aufruf(request)
     if not stream_stt.configured():
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "GLADIA_API_KEY fehlt — Streaming ist auf diesem Server aus.")

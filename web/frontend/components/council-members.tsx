@@ -55,7 +55,7 @@ export function PersonenView() {
   const { data, loading } = useFetch<{ members: Member[] }>("/council/members");
   // Öffentlich, sechs Stunden gecacht (dieselbe Quelle wie die Badges im
   // KI-Antworttext) — kein eigener Verwaltungs-Endpunkt nötig.
-  const { data: lexikon } = useFetch<{ personen: PersonEintrag[] }>("/council/people-directory");
+  const { data: lexikon } = useFetch<{ people: PersonEintrag[] }>("/council/people-directory");
   const [q, setQ] = useState("");
   const [party, setParty] = useState("");
 
@@ -85,7 +85,7 @@ export function PersonenView() {
   // (verwaltung_detail() im Backend) — ohne Amt gäbe es nur einen toten Link.
   // Der Parteifilter blendet den Block aus: Verwaltung ist parteilos, unter
   // einer gewählten Fraktion wäre er nur verwirrend.
-  const verwaltung = party ? [] : (lexikon?.personen ?? [])
+  const verwaltung = party ? [] : (lexikon?.people ?? [])
     .filter((p) => p.art === "city" && p.role && (!needle || (p.name ?? "").toLowerCase().includes(needle)));
 
   return (

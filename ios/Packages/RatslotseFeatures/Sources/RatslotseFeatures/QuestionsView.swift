@@ -54,6 +54,8 @@ private struct QuestionTurn: Identifiable {
     var status: String?
     var error: String?
     var research: ResearchState?
+    /// Die Kennung der Server-Kopie dieser Antwort — Teilen geht nur über sie.
+    var answerID: String?
     /// Die Verbindung riss, während die App im Hintergrund lag. Beim nächsten
     /// Aktivwerden fragt die Ansicht genau einmal von selbst noch einmal.
     var interruptedInBackground = false
@@ -551,15 +553,17 @@ struct QuestionsView: View {
             let sources = evidence["sources"]?.array?.compactMap {
                 try? $0.decoded(DecisionSummary.self)
             } ?? []
-            let research = evidence["research"]?.bool == true
+            var research = evidence["research"]?.bool == true
                 ? ResearchState(status: "fertig")
                 : nil
+            research?.jobID = evidence["deep_job_id"]?.string
             return QuestionTurn(
                 question: question,
                 answer: answer,
                 sources: sources,
                 evidence: evidence,
-                research: research
+                research: research,
+                answerID: evidence["answer_id"]?.string
             )
         }
         turns = restored
@@ -659,6 +663,7 @@ struct QuestionsView: View {
                     case "error": throw APIError(statusCode: 0, message: event.text ?? "Die Antwort ist abgebrochen.", retryAfter: nil)
                     case "done":
                         turns[index].status = nil
+                        turns[index].answerID = event.answerID
                         if let conversationID = event.conversationID {
                             model.setActiveConversationID(conversationID)
                         }
@@ -2410,7 +2415,13 @@ private struct PartyOpinionsView: View {
     }
 
     private func load() async {
-        struct Body: Codable, Sendable { let question: String; let decision_ids: [Int] }
+        // Mit der Kennung der Antwort wandert der Block in deren Server-Kopie
+        // und damit in einen geteilten Link.
+        struct Body: Codable, Sendable {
+            let question: String
+            let decision_ids: [Int]
+            let answer_id: String?
+        }
         let citedIDs = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
             .citedSources
             .map(\.id)
@@ -2424,7 +2435,8 @@ private struct PartyOpinionsView: View {
         do {
             response = try await model.api.send(
                 "/api/council/party-meinungen",
-                body: Body(question: String(turn.question.prefix(300)), decision_ids: decisionIDs)
+                body: Body(question: String(turn.question.prefix(300)), decision_ids: decisionIDs,
+                           answer_id: turn.answerID)
             )
         } catch { self.error = error.localizedDescription }
     }
@@ -2848,78 +2860,34 @@ private struct QuestionAnswerActions: View {
         }
     }
 
+    /// Teilen schickt nur noch die KENNUNG — den Inhalt nimmt der Server aus
+    /// seiner eigenen Kopie. Vorher ließ sich unter ratslotse.de beliebiger
+    /// Text als Antwort von „Frag den Rat“ veröffentlichen (zweite
+    /// Sicherheitsprüfung 10/2026, F3).
     private func createShare() async {
-        struct Source: Codable, Sendable {
-            let id: Int
-            let title: String
-            let session_date: String?
-            let committee: String?
-            let outcome: String?
-        }
         struct Body: Codable, Sendable {
-            let question: String
-            let answer: String
-            let sources: [Source]
-            // Die Namen des Backend-Modells (QaShareBody). Bis 10/2026 standen
-            // hier deutsche Namen, die der Server still verwarf — geteilte
-            // Antworten aus der App kamen ohne jeden Baustein an.
-            let debates: [JSONValue]
-            let press_releases: [JSONValue]
-            let attachments: [JSONValue]
-            let parties: [PartyOpinion]
-            let chart: JSONValue?
+            let answer_id: String?
+            let deep_job_id: String?
         }
         struct Response: Codable, Sendable { let token: String }
 
+        let jobID = turn.research?.jobID
+        guard jobID != nil || turn.answerID != nil else {
+            model.alertMessage = "Diese Antwort lässt sich nicht teilen. Stell die Frage bitte neu."
+            return
+        }
         isSharing = true
         defer { isSharing = false }
         do {
-            let parties = await partyOpinionsForShare()
             let response: Response = try await model.api.send(
                 "/api/council/qa-share",
-                body: Body(
-                    question: String(turn.question.prefix(300)),
-                    answer: String(turn.answer.prefix(8000)),
-                    sources: turn.sources.map {
-                        Source(
-                            id: $0.id,
-                            title: String($0.title.prefix(300)),
-                            session_date: $0.sessionDate,
-                            committee: $0.committee,
-                            outcome: $0.outcome
-                        )
-                    },
-                    debates: turn.evidence["debates"]?.array ?? [],
-                    press_releases: turn.evidence["press_releases"]?.array ?? [],
-                    attachments: turn.evidence["attachments"]?.array ?? [],
-                    parties: parties,
-                    chart: turn.evidence["chart"]
-                )
+                body: Body(answer_id: jobID == nil ? turn.answerID : nil, deep_job_id: jobID)
             )
             guard let url = URL(string: "https://ratslotse.de/g?t=\(response.token)") else { return }
             shareItem = SharedAnswer(url: url)
         } catch {
             model.alertMessage = error.localizedDescription
         }
-    }
-
-    private func partyOpinionsForShare() async -> [PartyOpinion] {
-        let embedded = (turn.evidence["parties"]?.array ?? []).compactMap {
-            try? $0.decoded(PartyOpinion.self)
-        }
-        if embedded.count >= 2 { return embedded }
-        guard !(turn.evidence["debates"]?.array ?? []).isEmpty else { return [] }
-
-        struct Body: Codable, Sendable { let question: String; let decision_ids: [Int] }
-        let citationIndex = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
-        let IDs = citationIndex.citedSources.isEmpty
-            ? Array(turn.sources.prefix(20).map(\.id))
-            : citationIndex.citedSources.map(\.id)
-        guard let response: PartyOpinionsResponse = try? await model.api.send(
-            "/api/council/party-meinungen",
-            body: Body(question: String(turn.question.prefix(300)), decision_ids: IDs)
-        ) else { return [] }
-        return response.parties.count >= 2 ? response.parties : []
     }
 }
 
@@ -3255,7 +3223,7 @@ struct CouncilEvidenceBlocks: View {
                             meta: item["template_number"]?.string,
                             symbol: .fileText
                         )
-                        if let raw = item["url"]?.string, let url = URL(string: raw) {
+                        if let url = ExterneLinks.beleg(item["url"]?.string) {
                             Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle())
                         } else { row }
                     }
@@ -3280,7 +3248,7 @@ struct CouncilEvidenceBlocks: View {
                             meta: RatsDate.short(item["date"]?.string),
                             symbol: .newspaper
                         )
-                        if let raw = item["url"]?.string, let url = URL(string: raw) {
+                        if let url = ExterneLinks.beleg(item["url"]?.string) {
                             Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle())
                         } else { row }
                     }
@@ -3352,9 +3320,9 @@ struct CouncilEvidenceBlocks: View {
     private func debateURL(_ item: [String: JSONValue]) -> URL? {
         guard let raw = item["minutes_url"]?.string else { return nil }
         if let page = item["minutes_page"]?.int {
-            return URL(string: "\(raw)#page=\(page)")
+            return ExterneLinks.beleg("\(raw)#page=\(page)")
         }
-        return URL(string: raw)
+        return ExterneLinks.beleg(raw)
     }
 }
 
@@ -3793,7 +3761,9 @@ struct CitedAnswerText: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
             .environment(\.openURL, OpenURLAction { url in
-                guard url.scheme == "ratslotse" else { return .systemAction }
+                guard url.scheme == "ratslotse" else {
+                    return ExterneLinks.imAntworttextErlaubt(url) ? .systemAction : .discarded
+                }
                 if url.host == "decision", let id = Int(url.lastPathComponent) {
                     model.navigation.append(.decision(id: id))
                     return .handled
@@ -3901,7 +3871,6 @@ struct CitedAnswerText: View {
 
     private func attachmentURL(number: Int) -> URL? {
         let rows = evidence["attachments"]?.array?.compactMap(\.object) ?? []
-        guard let raw = rows.first(where: { $0["nr"]?.int == number })?["url"]?.string else { return nil }
-        return URL(string: raw)
+        return ExterneLinks.beleg(rows.first(where: { $0["nr"]?.int == number })?["url"]?.string)
     }
 }

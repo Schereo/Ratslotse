@@ -124,7 +124,13 @@ def decode_rs256_token(token: str, jwks_keys: list[dict]) -> dict | None:
         header = json.loads(_b64url_decode(header_b64))
         payload = json.loads(_b64url_decode(payload_b64))
         signature = _b64url_decode(signature_b64)
-    except (ValueError, json.JSONDecodeError):
+    except (ValueError, json.JSONDecodeError, RecursionError):
+        # RecursionError: ein Kopf aus tausenden `[` sprengt json.loads.
+        return None
+    # Ein Kopf wie `[]` ist gültiges JSON, aber kein Objekt — `header.get`
+    # warf dann einen AttributeError, und aus einer fremden Eingabe ohne
+    # Konto wurde ein 500er samt Admin-Mail (zweite Prüfung 10/2026, F6).
+    if not isinstance(header, dict) or not isinstance(payload, dict):
         return None
     if header.get("alg") != "RS256":
         return None
@@ -155,7 +161,13 @@ def _verified_payload(token: str) -> dict | None:
     except ValueError:
         return None
     expected = _sign(f"{header_b64}.{payload_b64}".encode(), get_settings().web_jwt_secret)
-    if not hmac.compare_digest(expected, signature):
+    # Bytes vergleichen, nicht Zeichenketten: `compare_digest` wirft auf einen
+    # str mit Nicht-ASCII-Zeichen einen TypeError, statt False zu sagen — und
+    # ein Cookie wie `"a.b.\351"` liefert genau so ein Zeichen. Der Fehler fiel
+    # in der Sitzungsverlängerung, VOR jedem Router, und landete als 500er samt
+    # Admin-Mail im Fehlersammler (Sicherheitsprüfung 10/2026, F2).
+    if not hmac.compare_digest(expected.encode(),
+                               signature.encode("utf-8", "surrogatepass")):
         return None
     try:
         return json.loads(_b64url_decode(payload_b64))
