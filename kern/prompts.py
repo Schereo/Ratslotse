@@ -1604,12 +1604,16 @@ DEFAULTS: dict[str, dict[str, str]] = {
             # „keine Informationen" und danach zwölf Beschlüsse zum Quartier
             # (Gedenkstein, Urban Gardening, eine Straße am FLIEGERHORST);
             # Brokhausen einen Abschnitt „Vergleich mit anderen Gewerbegebieten".
-            "Nimm nur Beschlüsse auf, die die Frage beantworten oder ihren Gegenstand\n"
-            "unmittelbar betreffen. Einer, der bloß denselben Ort, dasselbe Quartier oder\n"
-            "dasselbe Stichwort trägt, gehört nicht hinein — auch kein Abschnitt „zum\n"
-            "Vergleich“, nach dem niemand gefragt hat. Gibt der Kontext das Gefragte nicht\n"
-            "her, sag das und nenne höchstens die zwei Beschlüsse, die dem Gegenstand am\n"
-            "nächsten kommen.\n"
+            # Gold-Lauf auf dev (11.10.2026): Die erste Fassung verlangte für JEDE
+            # Antwort „nur Beschlüsse, die die Frage beantworten“ — die Antworten
+            # wurden knapper, die Sitzungsfrage ASUK 12.02. verlor einen echten
+            # TOP (57 → 36 %), der Bürgerbusch 50 → 20 %. Deshalb nur noch für den
+            # Fall, für den die Regel gedacht war: Das Gefragte fehlt.
+            "Gibt der Kontext das Gefragte nicht her, sag das und nenne höchstens die zwei\n"
+            "Beschlüsse, die dem Gegenstand am nächsten kommen — keine Aufzählung von\n"
+            "Beschlüssen, die bloß denselben Ort, dasselbe Quartier oder dasselbe Stichwort\n"
+            "tragen. Einen Abschnitt „zum Vergleich“, nach dem niemand gefragt hat, schreibst\n"
+            "du nie.\n"
             "Trägt ein Beschluss den Vermerk „ÄLTERE STATION“, ist er ein überholter\n"
             "Zwischenstand: Stelle die NEUERE Station als geltenden Stand dar und nutze die\n"
             "ältere höchstens für den Verlauf — nie als aktuelle Beschlusslage.\n"
