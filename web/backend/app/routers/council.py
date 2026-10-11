@@ -5760,6 +5760,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Da antwortet der Sitzungskalender, und der „mit Vorsicht"-
                 # Hinweis stünde falsch neben der Tagesordnungs-Karte.
                 lage = "solide"
+            if election_block:
+                # Das Wahlergebnis ist ein direkter Beleg wie die
+                # Geschäftsordnung darunter — Beschlüsse kennen es noch nicht.
+                lage = "solide"
             if rules_sel:
                 # Die Geschäftsordnung ist ein direkter Beleg (wie ein
                 # Anlagenfund oben). Der Hinweis „dünne Beleglage" und seine
@@ -5787,6 +5791,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # VORIGE Antwort um (eigener Prompt ohne Zusatz-Bausteine), die
             # Abfragen wären sicher umsonst.
             geld = {} if einfach else qa.geld_kontext(store, q_suche, expanded, typ)
+            if lage == "duenn" and qa.geld_belegt(geld):
+                # Ein gezielter Haushaltstreffer (Konto, Schulden, Steuern) ist
+                # ein direkter Beleg wie ein Anlagenfund. Bei den Parkgebühren
+                # stand am 11.10.2026 „nur wenige passende Beschlüsse — die
+                # Antwort kann unsicher sein" unter einer Antwort, die Zahl für
+                # Zahl aus den Haushaltsplänen kam.
+                lage = "solide"
             # Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom
             # Modell (council/qa.py, geld_grafik). Das Modell weiß nicht
             # einmal, dass es sie gibt: Sie hängt am Ereignis, nicht am
@@ -6245,7 +6256,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            zeitleiste=zeitleiste_daten,
                                            eckdaten=eckdaten,
                                            rules=rules_card)
-            if not cited:
+            if not qa.antwort_belegt(answer_text, cited, geld=geld,
+                                     weitere=bool(rules_sel or sitzungen or election_block)):
                 ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
                         # Korrigiert den Wert aus dem sources-Ereignis: dort
