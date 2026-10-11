@@ -5760,6 +5760,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Da antwortet der Sitzungskalender, und der „mit Vorsicht"-
                 # Hinweis stünde falsch neben der Tagesordnungs-Karte.
                 lage = "solide"
+            if election_block:
+                # Das Wahlergebnis ist ein direkter Beleg wie die
+                # Geschäftsordnung darunter — Beschlüsse kennen es noch nicht.
+                lage = "solide"
             if rules_sel:
                 # Die Geschäftsordnung ist ein direkter Beleg (wie ein
                 # Anlagenfund oben). Der Hinweis „dünne Beleglage" und seine
@@ -6253,7 +6257,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            eckdaten=eckdaten,
                                            rules=rules_card)
             if not qa.antwort_belegt(answer_text, cited, geld=geld,
-                                     weitere=bool(rules_sel or sitzungen)):
+                                     weitere=bool(rules_sel or sitzungen or election_block)):
                 ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
                         # Korrigiert den Wert aus dem sources-Ereignis: dort
