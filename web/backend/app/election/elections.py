@@ -37,7 +37,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from functools import lru_cache
 from pathlib import Path
 
@@ -236,7 +236,7 @@ def focus(jetzt: datetime | None = None) -> Election:
     brauchen: ``/api/app-config`` für den Countdown auf Startseite und
     Heute-Karte, und später die Übersicht unter ``/wahlen``.
     """
-    jetzt = jetzt or datetime.now(timezone.utc)
+    jetzt = jetzt or datetime.now(UTC)
     # Steht in der ``.env`` eine Wahl, ist SIE gemeint — sonst zeigte der
     # Notausgang nur die halbe Seite um: /api/wahlabend die gewählte, der
     # Countauf der Startseite weiter die aus dem Kalender.

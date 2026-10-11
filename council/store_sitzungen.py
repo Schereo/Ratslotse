@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, UTC
 
 from council.scraper import CouncilSession
 from council.store_basis import StoreBasis
@@ -1806,14 +1806,14 @@ class SitzungenMixin(StoreBasis):
 
     def save_agenda_impact(self, ksinr: int, item_number: str,
                            score: int, reason: str | None) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         with self._conn:
             self._conn.execute(
                 "INSERT OR REPLACE INTO agenda_item_impact "
                 "(ksinr, item_number, impact, reason, created_at) VALUES (?, ?, ?, ?, ?)",
                 (ksinr, item_number, max(0, min(100, int(score))), reason,
-                 datetime.now(timezone.utc).isoformat(timespec="seconds")),
+                 datetime.now(UTC).isoformat(timespec="seconds")),
             )
 
     def session_dates_fuer(self, decision_ids: list[int]) -> dict[int, str]:

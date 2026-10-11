@@ -44,7 +44,7 @@ für die alte galt.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, UTC
 from typing import Any
 
 from council.outcome_note import NOT_ADOPTED, states_outcome
@@ -121,7 +121,7 @@ def protokoll_verzug(store: Any, seit: date, heute: date) -> list[dict]:
 def _stunden_seit(zeitpunkt: str, jetzt: datetime) -> float:
     t = datetime.fromisoformat(zeitpunkt)
     if t.tzinfo is None:
-        t = t.replace(tzinfo=timezone.utc)
+        t = t.replace(tzinfo=UTC)
     return round((jetzt - t).total_seconds() / 3600, 1)
 
 
@@ -132,7 +132,7 @@ def pruefen(store: Any, seit: str, jetzt: datetime | None = None) -> dict:
     Gibt ``{"kennzahlen": {...}, "befunde": [Text, …]}`` zurück; ein Befund
     ist ein fertiger Absatz für die Mail.
     """
-    jetzt = jetzt or datetime.now(timezone.utc)
+    jetzt = jetzt or datetime.now(UTC)
     heute = jetzt.date()
     k: dict[str, Any] = {}
     befunde: list[str] = []

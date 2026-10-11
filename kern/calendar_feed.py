@@ -23,7 +23,7 @@ gleich.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, UTC
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
@@ -132,7 +132,7 @@ def _stamp_local(dt: datetime) -> str:
 
 
 def _stamp_utc(dt: datetime) -> str:
-    return dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return dt.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
 def session_url(base_url: str, session: dict, item_number: str | None = None) -> str:
@@ -181,7 +181,7 @@ def select_sessions(*, council, ratslotse, owner_id: int, today: date | None = N
 
 def build_feed(*, user: dict, council, ratslotse, base_url: str, now: datetime | None = None) -> str:
     """Der ganze Kalender als ICS-Text (CRLF, gefaltet)."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     today = now.astimezone(BERLIN).date()
     base_url = base_url.rstrip("/")
     sessions = select_sessions(council=council, ratslotse=ratslotse, owner_id=user["id"], today=today)

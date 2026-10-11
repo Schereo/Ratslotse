@@ -35,7 +35,7 @@ import hashlib
 import json
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from types import EllipsisType
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -295,7 +295,7 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
             # gilt für den Wahlabend, nicht für die Wochen danach.
             raise HTTPException(status.HTTP_409_CONFLICT,
                                 "Das Tippspiel ist vorbei — die Auszählung ist abgeschlossen.")
-        jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        jetzt = datetime.now(UTC).isoformat(timespec="seconds")
         late_at = jetzt if game["phase"] != "open" else None
         klartext = secrets.token_hex(16)
         try:
@@ -606,7 +606,7 @@ def phase_setzen(payload: PredictionPhaseIn, _admin: dict = Depends(require_admi
     if payload.phase == "locked":
         game = store.prediction_game(game_id)
         if game["phase"] == "open":
-            felder["locked_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            felder["locked_at"] = datetime.now(UTC).isoformat(timespec="seconds")
             felder["locked_reason"] = "admin"
     if payload.late_scored is not None:
         felder["late_scored"] = 1 if payload.late_scored else 0

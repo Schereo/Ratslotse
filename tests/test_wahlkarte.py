@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 import pytest
@@ -23,7 +23,7 @@ sys.path.insert(0, str(WURZEL / "scripts"))
 from app.election import archive, district_map  # noqa: E402
 from app.routers import wahlabend as router  # noqa: E402
 
-VOR_DER_STICHWAHL = datetime(2026, 9, 23, 12, tzinfo=timezone.utc)
+VOR_DER_STICHWAHL = datetime(2026, 9, 23, 12, tzinfo=UTC)
 GEO = WURZEL / "web" / "frontend" / "public" / "geo"
 
 
@@ -98,7 +98,7 @@ def test_ob_wahl_personen_statt_listen():
 def test_stichwahl_erst_nach_wahlschluss():
     slugs = [w.slug for w in district_map.choices(VOR_DER_STICHWAHL)]
     assert slugs == ["ratswahl-2026", "ob-2026"]
-    danach = datetime(2026, 9, 27, 17, 0, tzinfo=timezone.utc)
+    danach = datetime(2026, 9, 27, 17, 0, tzinfo=UTC)
     assert [w.slug for w in district_map.choices(danach)][-1] == "ob-stichwahl-2026"
 
 
