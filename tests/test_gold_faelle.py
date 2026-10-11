@@ -111,3 +111,15 @@ def test_wahlfaelle_laufen_nur_bei_frag_den_rat():
     ohne dass sich an ihr etwas ändern ließe."""
     nur_ask = {f["id"] for f in _faelle() if f.get("wege") == ["ask"]}
     assert {"ratswahl-2026-sitzverteilung", "ob-stichwahl-2026"} <= nur_ask
+
+
+def test_auswahl_bricht_bei_unbekannter_id_ab():
+    """Ein Tippfehler in `--nur` liefe sonst als Lauf über null Fälle durch."""
+    from scripts import eval_deep_gold as deep
+    alle = _faelle()
+    with pytest.raises(SystemExit, match="Unbekannte Fall-ids: gibts-nicht"):
+        deep.faelle_waehlen(alle, "ask", "brokhausen-stand,gibts-nicht")
+    assert [c["id"] for c in deep.faelle_waehlen(alle, "ask", "brokhausen-stand")] == ["brokhausen-stand"]
+    # Ein vorhandener Fall, der nur für „ask“ gilt, ist für „deep“ kein Fehler.
+    assert deep.faelle_waehlen(alle, "deep", "ratswahl-2026-sitzverteilung") == []
+    assert len(deep.faelle_waehlen(alle, "ask", None)) > len(deep.faelle_waehlen(alle, "deep", None))
