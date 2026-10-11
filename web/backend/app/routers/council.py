@@ -76,6 +76,7 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
 from ..clients import client_kind
+from ..election import answer_context as election_answer
 from ..election import elected as elected_mod
 from .. import fehlersammler
 from ..deps import (get_cities_store, get_council_store, get_store,
@@ -5243,6 +5244,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Vereinfachen: Der Knopf schreibt die vorige Antwort um.
             rules_sel = (rules_of_procedure.Selection() if einfach
                           else rules_of_procedure.find(q, q_suche))
+            # Wahlergebnisse („Wie ist die Sitzverteilung nach der Ratswahl?") —
+            # ebenfalls am Wortlaut, roh UND kondensiert. Der Baustein kommt aus
+            # dem eingefrorenen Wahlstand (election/answer_context.py).
+            election_block = ""
+            if not einfach and qa.wahlfrage(q, q_suche):
+                try:
+                    election_block = election_answer.prompt_block()
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Wahl-Baustein nicht gebaut")
             # Personen-Fragetyp (10.08.26): nennt die Frage eine Ratsperson,
             # antworten wir aus DEREN Wortbeiträgen — deterministisch erkannt,
             # schlägt thema/verlauf (nicht aber partei/geld).
@@ -5840,7 +5850,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # hier „keine Beschlüsse gefunden“, obwohl der Kontext die Zahl hatte.
             hat_geld = bool(geld.get("facets")) and any(
                 v for k, v in geld.items() if k != "facets")
-            if not candidates and not anlagen_rows and not hat_geld and not rules_sel:
+            if (not candidates and not anlagen_rows and not hat_geld and not rules_sel
+                    and not election_block):
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
                 if sitzungen and ort:
                     leer_text = (f"In der gefragten Sitzung habe ich keine Beschlüsse mit "
@@ -6090,7 +6101,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           sitzungen=sitzungen, ort=ort,
                                           zukunft_leer=zukunft_leer, stand=stand,
                                           screen=bildschirm, akte=akte_prompt,
-                                          rules_block=rules_block))
+                                          rules_block=rules_block,
+                                          election_block=election_block))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -6129,7 +6141,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  zukunft_leer=zukunft_leer,
                                                  stand=stand, screen=bildschirm,
                                                  akte=akte_prompt,
-                                                 rules_block=rules_block))
+                                                 rules_block=rules_block,
+                                          election_block=election_block))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

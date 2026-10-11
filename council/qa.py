@@ -4679,6 +4679,36 @@ DUENN_REGEL = (
 #: **Nichts aus dem Gedächtnis.** Was die Geschäftsordnung nicht regelt,
 #: regelt oft das NKomVG — das Modell kennt es ungefähr, und „ungefähr" ist
 #: bei einer Frist das Falsche.
+#: Woran eine Frage nach einem Wahlergebnis zu erkennen ist — gefaltet.
+#: „Wie sind die Sitzverteilung nach der Ratswahl?" (28.09.2026) bekam „geht
+#: aus den Unterlagen nicht hervor", obwohl das Ergebnis seit zwei Wochen auf
+#: /wahlen stand. Die Ratsbeschlüsse kennen es erst nach der ersten Sitzung
+#: des neuen Rats.
+_WAHL_RE = re.compile(
+    r"ratswahl|kommunalwahl|wahlergebnis|sitzverteilung|wahlbeteiligung|stichwahl|"
+    r"oberbuergermeisterwahl|ob wahl|\bwie viele sitze|\bsitze im (?:neuen )?rat|"
+    r"\bneue[nr]? (?:stadt)?rat\b|wahl gewonnen|\bwahlsieger|neue[nr]? oberbuergermeister|"
+    r"wer (?:ist|wird) [^.?!]{0,20}oberbuergermeister|"
+    r"(?:oberbuergermeister|\bob\b)[^.?!]{0,40}gewaehlt|gewaehlt[^.?!]{0,40}(?:oberbuergermeister|\bob\b)|"
+    r"(?:\bwahl\b|gewaehlt)[^.?!]{0,30}\b(?:2026|september)\b")
+
+
+def wahlfrage(*fragen: str) -> bool:
+    """Fragt eine Fassung der Frage nach einem Wahlergebnis (Rat, OB)?"""
+    return any(_WAHL_RE.search(_falte(f or "")) for f in fragen)
+
+
+WAHL_REGEL = (
+    "\nWAHLERGEBNISSE: Unten stehen die Ergebnisse der Wahlen in Oldenburg (Ratswahl, "
+    "Oberbürgermeisterwahl, Stichwahl). Fragt die Frage danach — Sitzverteilung, "
+    "Stimmenanteile, Wahlbeteiligung, wer gewählt ist —, beantworte sie aus diesem Baustein: "
+    "geradeheraus, mit Datum und dem Hinweis, ob das Ergebnis amtlich oder vorläufig ist, "
+    "ohne den Vorbehalt, die Beschlüsse gäben nichts her. Die Zahlen NIE mit [id] belegen. "
+    "Wie sich Fraktionen oder Gruppen im neuen Rat bilden, steht nicht darin — sag das, "
+    "statt es aus den Sitzen abzuleiten."
+)
+
+
 GESCHAEFTSORDNUNG_REGEL = (
     "\nGESCHÄFTSORDNUNG: Unten steht der Wortlaut der Geschäftsordnung des Rates. "
     "Fragt die Frage, wie der Rat, seine Ausschüsse oder die Einwohnerfragestunde "
@@ -4839,7 +4869,11 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      # Die Geschäftsordnung — fertiger Baustein aus
                      # ``rules_of_procedure.prompt_block``; ebenfalls ANS ENDE
                      # und von den Aufrufern per NAME übergeben.
-                     rules_block: str = "") -> tuple[list[dict], dict]:
+                     rules_block: str = "",
+                     # Die Wahlergebnisse — fertiger Baustein aus
+                     # ``web/backend/app/election/answer_context.py``, sobald
+                     # ``wahlfrage`` anschlägt; per NAME übergeben wie oben.
+                     election_block: str = "") -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf_ohne_dieselbe_frage(verlauf, question))
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
@@ -4912,7 +4946,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             + aktenstand_regel(stand)
                             + ((akte_suche.AKTE_REGEL_ENG if eng else akte_suche.AKTE_REGEL)
                                if akte_text else "")
-                            + (GESCHAEFTSORDNUNG_REGEL if rules_block else ""),
+                            + (GESCHAEFTSORDNUNG_REGEL if rules_block else "")
+                            + (WAHL_REGEL if election_block else ""),
                             # Die Geschäftsordnung zuerst: Für eine
                             # Verfahrensfrage IST sie die Antwort, die übrigen
                             # Bausteine sind Beiwerk.
@@ -4920,7 +4955,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             # Anweisungsfilter (``_fremd``); die eigenen
                             # Bausteine (Geschäftsordnung, Glossar, Geld)
                             # nicht — sie sind Code dieses Repos.
-                            presse=rules_block + akte_text + _fremd(_sitzungen_block(sitzungen))
+                            presse=rules_block + election_block + akte_text
+                            + _fremd(_sitzungen_block(sitzungen))
                             + _glossar_block(begriffe_fuer(question))
                             + _fremd(_steckbrief_block(steckbriefe)) + _fremd(_presse_block(presse))
                             + _fremd(_staedte_block(staedte))
@@ -5079,7 +5115,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     ort: dict | None = None, staedte: list[dict] | None = None,
                     zukunft_leer: bool = False, stand: dict | None = None,
                   screen: dict | None = None, akte: dict | None = None,
-                  rules_block: str = ""):
+                  rules_block: str = "", election_block: str = ""):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
@@ -5091,7 +5127,8 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                                        # ohne ihn. Positionsweise durchgereicht
                                        # wie alles hier; deshalb ganz ans Ende.
                                        staedte, zukunft_leer, stand, screen, akte,
-                                       rules_block=rules_block)
+                                       rules_block=rules_block,
+                                       election_block=election_block)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
                              messages=messages, **extra)
@@ -5110,7 +5147,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   ort: dict | None = None, staedte: list[dict] | None = None,
                   zukunft_leer: bool = False, stand: dict | None = None,
                   screen: dict | None = None, akte: dict | None = None,
-                  rules_block: str = ""):
+                  rules_block: str = "", election_block: str = ""):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
@@ -5124,7 +5161,8 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                                        # ohne ihn. Positionsweise durchgereicht
                                        # wie alles hier; deshalb ganz ans Ende.
                                        staedte, zukunft_leer, stand, screen, akte,
-                                       rules_block=rules_block)
+                                       rules_block=rules_block,
+                                       election_block=election_block)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
                                messages=messages, **extra)
