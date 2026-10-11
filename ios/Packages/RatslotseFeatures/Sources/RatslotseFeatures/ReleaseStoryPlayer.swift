@@ -13,12 +13,16 @@ import SwiftUI
 /// - unten Titel und Text, „‹ Zurück", „<Feature> ausprobieren →" (führt zum
 ///   Feature und schließt den Spieler), „Weiter ›".
 ///
-/// **Am Ende eines Clips kommt der nächste** — nur wenn Bewegung nicht
-/// abgeschaltet ist. Ein Mensch hat den Spieler geöffnet, um die Clips zu
-/// sehen; gewechselt wird erst, wenn der laufende zu Ende ist, und die Balken
-/// kündigen es an (DESIGNSPRACHE §7, „Story-Spieler"). Mit „Bewegung
-/// reduzieren" startet kein Clip von selbst (Standbild + Abspielknopf), und
-/// am Ende schaltet nichts weiter.
+/// **Am Ende eines Clips steht erst eine Tafel** (`StoryInterlude`, seit
+/// 10/2026): „Das war …", „<Feature> ausprobieren →", „Als Nächstes: …" mit
+/// einem Balken, der acht Sekunden läuft, dann kommt der nächste — nur wenn
+/// Bewegung nicht abgeschaltet ist. Vorher begann er im selben Augenblick,
+/// und man merkte kaum, dass jetzt ein anderes Feature lief. Ein Mensch hat
+/// den Spieler geöffnet, um die Clips zu sehen; gewechselt wird erst, wenn
+/// der laufende zu Ende ist, und Tafel und Balken kündigen es an
+/// (DESIGNSPRACHE §7, „Story-Spieler"). Mit „Bewegung reduzieren" startet
+/// kein Clip von selbst (Standbild + Abspielknopf), und am Ende schaltet
+/// nichts weiter — auch keine Tafel.
 ///
 /// **Immer dunkel**: die Kinofläche eines Videoplayers, keine dunkle Karte.
 struct ReleaseStoryPlayer: View {
@@ -35,6 +39,8 @@ struct ReleaseStoryPlayer: View {
     @State private var index: Int
     @State private var playback = StoryPlayback()
     @State private var dragOffset: CGFloat = 0
+    /// Die Tafel zwischen zwei Clips, bevor der nächste kommt.
+    @State private var interlude = false
 
     /// Die dunkle Seitenfarbe hsl(213 50% 7%), deckend (DESIGNSPRACHE §5).
     static let stage = ReleaseTileColor.rgb(0x09111B)
@@ -135,28 +141,48 @@ struct ReleaseStoryPlayer: View {
         let ratio = media?.aspectRatio ?? 16.0 / 9.0
         return ZStack {
             if let media {
-                // Unter dem Clip sein Standbild, bis das erste Bild läuft —
-                // und bei „Bewegung reduzieren", solange niemand abspielt.
-                AsyncImage(url: resolve(media.poster ?? media.src)) { phase in
-                    if case .success(let image) = phase { image.resizable().scaledToFit() } else { Color.black }
+                ZStack {
+                    // Unter dem Clip sein Standbild, bis das erste Bild läuft —
+                    // und bei „Bewegung reduzieren", solange niemand abspielt.
+                    AsyncImage(url: resolve(media.poster ?? media.src)) { phase in
+                        if case .success(let image) = phase { image.resizable().scaledToFit() } else { Color.black }
+                    }
+                    if media.isVideo {
+                        StoryVideoView(player: playback.player)
+                            .opacity(playback.hasStarted ? 1 : 0)
+                    }
                 }
-                if media.isVideo {
-                    StoryVideoView(player: playback.player)
-                        .opacity(playback.hasStarted ? 1 : 0)
-                }
+                // Unter der Tafel bleibt das letzte Bild als Ahnung stehen.
+                .blur(radius: interlude ? 4 : 0)
             }
             tapZones
-            if media?.isVideo == true, !playback.isPlaying { bigPlayButton }
+            if media?.isVideo == true, !playback.isPlaying, !interlude { bigPlayButton }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(media?.alt ?? current.title)
+        .accessibilityAddTraits(.startsMediaSession)
+        .accessibilityAction(named: playback.isPlaying ? "Anhalten" : "Abspielen") { playback.toggle() }
+        .accessibilityHidden(interlude)
+        // Nach dem Clip-Element, damit VoiceOver die Knöpfe der Tafel einzeln
+        // erreicht; innerhalb der Rundung, damit sie auf dem Clip liegt.
+        .overlay {
+            if interlude, !isLast {
+                StoryInterlude(
+                    seen: current,
+                    next: sequence[index + 1],
+                    tint: tint,
+                    onNext: { index += 1 },
+                    onReplay: replay,
+                    onTry: { playback.stop(); onTry(current) }
+                )
+                .transition(.opacity)
+            }
         }
         .aspectRatio(ratio, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.6), radius: 30, y: 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.vertical, 12)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(media?.alt ?? current.title)
-        .accessibilityAddTraits(.startsMediaSession)
-        .accessibilityAction(named: playback.isPlaying ? "Anhalten" : "Abspielen") { playback.toggle() }
     }
 
     /// Links zurück, rechts weiter, die Mitte hält an. Die Knöpfe unten
@@ -325,6 +351,7 @@ struct ReleaseStoryPlayer: View {
     // MARK: Steuerung
 
     private func load() {
+        interlude = false
         onSeen(current)
         guard let media = current.media, media.isVideo else { playback.stop(); return }
         playback.onEnd = { reachedEnd() }
@@ -332,7 +359,14 @@ struct ReleaseStoryPlayer: View {
     }
 
     private func reachedEnd() {
-        if !reduceMotion, !aside, !isLast { index += 1 }
+        if !reduceMotion, !aside, !isLast {
+            withAnimation(RatsMotion.stage) { interlude = true }
+        }
+    }
+
+    private func replay() {
+        interlude = false
+        playback.toggle()
     }
 
     private func advanceByUser() {
@@ -341,6 +375,194 @@ struct ReleaseStoryPlayer: View {
 
     private func previous() {
         if index > 0 { index -= 1 }
+    }
+}
+
+// MARK: - Zwischen zwei Clips
+
+/// Die Tafel zwischen zwei Clips: was man gerade gesehen hat, der Weg dorthin
+/// und was als Nächstes kommt — mit einem Balken, der zeigt, wann. Dieselbe
+/// Tafel wie `Zwischenbild` in `components/neuigkeiten-spieler.tsx`.
+///
+/// Der Balken läuft über eine Uhr statt über eine Animation, weil sein Ende
+/// den Wechsel auslöst und er anhalten können muss: solange VoiceOver auf
+/// „Ausprobieren" oder „Nochmal ansehen" steht oder der Zeiger (iPad) darauf
+/// liegt — wer gerade dorthin will, dem soll der Clip nicht unter dem Finger
+/// wechseln. Bewusst nicht die ganze Tafel, wie im Web.
+///
+/// Bei „Bewegung reduzieren" gibt es die Tafel gar nicht erst
+/// (`ReleaseStoryPlayer.reachedEnd()`).
+struct StoryInterlude: View {
+    let seen: ReleaseHighlight
+    let next: ReleaseHighlight
+    let tint: Color
+    let onNext: () -> Void
+    let onReplay: () -> Void
+    let onTry: () -> Void
+
+    /// Wie lange die Tafel steht — `ZWISCHENBILD_SEKUNDEN` in
+    /// `web/frontend/lib/neuigkeiten.ts`. Acht Sekunden reichen, um
+    /// „Ausprobieren" zu lesen und zu treffen; wer weiter will, tippt früher.
+    static let seconds: Double = 8
+
+    private enum Target: Hashable { case tryIt, next, replay }
+
+    @State private var progress: Double = 0
+    @State private var hovered: Target?
+    @AccessibilityFocusState private var focus: Target?
+
+    private var held: Bool {
+        hovered == .tryIt || hovered == .replay || focus == .tryIt || focus == .replay
+    }
+
+    var body: some View {
+        ZStack {
+            // Nachtblau wie der Spieler über dem unscharfen letzten Bild: Das
+            // ist meist eine helle Seite, und darauf trügen die weißen Knöpfe
+            // nicht.
+            ReleaseStoryPlayer.stage.opacity(0.86)
+            // Hochkant passt alles untereinander; ein Clip im Querformat ist
+            // auf dem Telefon kaum 200 pt hoch — dann die knappe Fassung.
+            ViewThatFits(in: .vertical) {
+                full
+                compact
+            }
+            .padding(20)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(seen.title) ist zu Ende")
+        .task { await run() }
+        .onAppear { focus = .next }
+    }
+
+    private var full: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 4) {
+                Text("DAS WAR")
+                    .font(RatsFont.mono(11, weight: .semibold))
+                    .tracking(1.3)
+                    .foregroundStyle(.white.opacity(0.7))
+                Text(seen.title)
+                    .font(RatsFont.title(19, weight: .bold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            VStack(spacing: 10) {
+                tryButton
+                nextButton
+                replayButton
+            }
+            .frame(maxWidth: 420)
+        }
+    }
+
+    private var compact: some View {
+        VStack(spacing: 8) {
+            Text(seen.title)
+                .font(RatsFont.title(17, weight: .bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            HStack(spacing: 10) {
+                tryButton
+                nextButton
+            }
+            replayButton
+        }
+        .frame(maxWidth: 520)
+    }
+
+    private var tryButton: some View {
+        Button(action: onTry) {
+            HStack(spacing: 8) {
+                Text(seen.action ?? "Ausprobieren")
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                RatsIcon(.arrowRight, size: 16)
+            }
+            .font(RatsFont.body(16, weight: .bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(tint)
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(RatsPlainButtonStyle())
+        .onHover { hovered = $0 ? .tryIt : nil }
+        .accessibilityFocused($focus, equals: .tryIt)
+    }
+
+    private var nextButton: some View {
+        Button(action: onNext) {
+            HStack(spacing: 8) {
+                // Zweizeilig: „Als Nächstes: Mein Viertel" lief im Web auf
+                // 375 px in eine Ellipse — gerade der Titel ist die Nachricht.
+                VStack(spacing: 1) {
+                    Text("ALS NÄCHSTES")
+                        .font(RatsFont.body(11, weight: .semibold))
+                        .tracking(1.1)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text(next.title)
+                        .font(RatsFont.body(15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
+                RatsIcon(.chevronRight, size: 18)
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(alignment: .leading) {
+                // Der Balken: läuft einmal durch und löst dann den Wechsel aus.
+                GeometryReader { proxy in
+                    Rectangle()
+                        .fill(.white.opacity(0.16))
+                        .frame(width: proxy.size.width * progress)
+                }
+            }
+            .background(.white.opacity(0.14))
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        }
+        .buttonStyle(RatsPlainButtonStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Als Nächstes: \(next.title)")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityFocused($focus, equals: .next)
+    }
+
+    private var replayButton: some View {
+        Button(action: onReplay) {
+            HStack(spacing: 6) {
+                RatsIcon(.rotateCcw, size: 16)
+                Text("Nochmal ansehen")
+            }
+            .font(RatsFont.body(14, weight: .medium))
+            .foregroundStyle(.white.opacity(0.8))
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(RatsPlainButtonStyle())
+        .onHover { hovered = $0 ? .replay : nil }
+        .accessibilityFocused($focus, equals: .replay)
+    }
+
+    private func run() async {
+        let clock = ContinuousClock()
+        var last = clock.now
+        while progress < 1 {
+            try? await Task.sleep(for: .milliseconds(33))
+            if Task.isCancelled { return }
+            let now = clock.now
+            if !held { progress = min(1, progress + (now - last) / .seconds(Self.seconds)) }
+            last = now
+        }
+        onNext()
     }
 }
 
