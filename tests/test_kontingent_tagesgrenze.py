@@ -1,6 +1,6 @@
 """Tagesgrenze des Recherche-Kontingents (V-07): „ab Mitternacht wieder"
 stimmt nur, wenn der Tag lokal beginnt — nicht in UTC."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 from kern.store import Store, _tagesbeginn_utc
 
@@ -20,7 +20,7 @@ def test_tagesgrenze_folgt_oldenburger_mitternacht():
         from zoneinfo import ZoneInfo
     except ImportError:  # pragma: no cover
         return
-    lokal = beginn.replace(tzinfo=timezone.utc).astimezone(ZoneInfo("Europe/Berlin"))
+    lokal = beginn.replace(tzinfo=UTC).astimezone(ZoneInfo("Europe/Berlin"))
     assert (lokal.hour, lokal.minute, lokal.second) == (0, 0, 0)
 
 

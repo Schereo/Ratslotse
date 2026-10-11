@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -145,7 +145,7 @@ def process(council_db: Path, *, apply: bool = False) -> dict:
     deterministic_rows, additions = deterministic_changes(
         store, ignored_current=removed_llm_keys)
     if apply and (llm_rows or beiwerk_rows or deterministic_rows or additions):
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with store._conn:
             store._conn.executemany(
                 "DELETE FROM council_decision_locations "

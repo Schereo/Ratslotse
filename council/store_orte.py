@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from council.store_basis import StoreBasis
 
 #: Ortsarten, die einen PUNKT auf der Karte rechtfertigen — im Unterschied zu
@@ -413,7 +413,7 @@ class OrteMixin(StoreBasis):
         from council import geo
         from council.locations import curated_location_geocodes
 
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         updates = []
         for slug, point in curated_location_geocodes().items():
             lat, lon = point["lat"], point["lon"]
@@ -446,7 +446,7 @@ class OrteMixin(StoreBasis):
 
     def hydrate_location_geo_from_entities(self) -> int:
         """Vorhandene, gleichnamige Entitäts-Geocodes ohne Netzaufruf übernehmen."""
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
                 """UPDATE council_locations
@@ -503,7 +503,7 @@ class OrteMixin(StoreBasis):
             return (-zaehler.get(zeile["slug"], 0), fragmente,
                     -sum(c.isalpha() for c in name), name)
 
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         zusammengefuehrt = 0
         for _, zeilen in gruppen.items():
             if len(zeilen) < 2:
@@ -608,7 +608,7 @@ class OrteMixin(StoreBasis):
         """
         from council.locations import _CODE_ONLY_RE
 
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         betroffen = [
             (now, row["slug"])
             for row in self._conn.execute(
@@ -642,7 +642,7 @@ class OrteMixin(StoreBasis):
             "AND (district IS NULL OR district = '')"
         ).fetchall()
         updates = []
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         for row in rows:
             # Nackte Kennungen bekommen keinen Stadtteil — siehe
             # ``clear_code_only_districts``. Der Riegel gehört HIER hin und
@@ -682,7 +682,7 @@ class OrteMixin(StoreBasis):
         """
         from council import geo, places
 
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         updates = []
         for row in self._conn.execute(
             "SELECT slug, district, geojson FROM council_locations "
@@ -721,7 +721,7 @@ class OrteMixin(StoreBasis):
         for place in places.primary_places():
             for variante in (place.name, *place.aliases):
                 nach_name[variante.casefold()] = place
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         updates = []
         for row in self._conn.execute(
             "SELECT slug, name, district FROM council_locations"
@@ -765,7 +765,7 @@ class OrteMixin(StoreBasis):
             "SELECT slug,name FROM council_locations "
             "WHERE lat IS NULL AND (district IS NULL OR district = '')"
         ).fetchall()
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         updates = []
         for row in rows:
             treffer = [place for place, regex in muster if regex.search(row["name"] or "")]
@@ -787,7 +787,7 @@ class OrteMixin(StoreBasis):
             "SELECT slug,name,lat,lon,district,place_id,local_area_id FROM council_locations"
         ).fetchall()
         updates = []
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         for row in rows:
             exact = self.resolve_place(row["name"])
             primary = self.resolve_place(row["district"])
@@ -836,7 +836,7 @@ class OrteMixin(StoreBasis):
         district = geo.ortsbereich_der_geometrie(geojson)
         if not district and hat_ergebnis:
             district = geo.ortsbereich_for(lat, lon)
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             if district or hat_ergebnis:
                 primary = places.resolve(district) if district else None
@@ -1171,7 +1171,7 @@ class OrteMixin(StoreBasis):
         else:
             place_id = None
             parent_id = None
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         clean_aliases = list(dict.fromkeys(value.strip() for value in (aliases or []) if value.strip()))
         with self._conn:
             self._conn.execute(
@@ -1215,7 +1215,7 @@ class OrteMixin(StoreBasis):
         """
         from council.locations import location_slug
 
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         by_slug: dict[str, dict] = {}
         for row in rows:
             slug = row.get("slug") or location_slug(row.get("name") or "")

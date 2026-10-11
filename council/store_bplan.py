@@ -9,7 +9,7 @@ Datensatz, wir spiegeln ihn nur.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from council.store_basis import StoreBasis
 from kern.dbfehler import tabelle_fehlt
@@ -23,7 +23,7 @@ class BplanMixin(StoreBasis):
     def replace_bplan_outlines(self, rows: list[dict]) -> int:
         """Den Bestand durch den frischen Abzug ersetzen — in EINER Transaktion,
         damit zwischen Löschen und Einfügen keine leere Tabelle sichtbar ist."""
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute("DELETE FROM council_bplan_outlines")
             self._conn.executemany(

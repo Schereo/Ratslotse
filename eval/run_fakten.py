@@ -81,7 +81,7 @@ import time
 from collections import Counter, defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -523,7 +523,7 @@ def ein_lauf(modell: str, faelle: list[dict], *, ohne_zdr: bool = False,
         aus["aufwand"] = aufwand
     datei = kostendatei(ordner)
     # Dieselbe Uhr wie `ts` in llm_usage: UTC (s. kern/usage.jetzt_utc).
-    marke = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    marke = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
     bisher = [kosten_seit(datei, marke)["usd"]]
 
     def messen(basis_: str) -> None:

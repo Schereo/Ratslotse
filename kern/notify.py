@@ -30,7 +30,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger("kern.notify")
@@ -223,7 +223,7 @@ def gewuenscht(store, owner_id: int, art: str) -> bool:
 
 
 def _jetzt(jetzt: datetime | None = None) -> datetime:
-    return (jetzt or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    return (jetzt or datetime.now(UTC)).astimezone(UTC)
 
 
 def naechstes_fenster(jetzt: datetime | None = None) -> datetime:
@@ -240,7 +240,7 @@ def naechstes_fenster(jetzt: datetime | None = None) -> datetime:
         ziel = lokal.replace(hour=NACHTRUHE_BIS, minute=0, second=0, microsecond=0)
     else:
         return n
-    return ziel.astimezone(timezone.utc)
+    return ziel.astimezone(UTC)
 
 
 def ist_nachtruhe(jetzt: datetime | None = None) -> bool:

@@ -43,7 +43,7 @@ import re
 import threading
 import time
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 import requests
@@ -475,7 +475,7 @@ def ttl_seconds(w: elections.Election, now: datetime | None = None) -> int:
     """Der Takt einer OB-Wahl: 15 s ab IHREM Wahlschluss, davor eine
     Viertelstunde. Nicht der der Ratswahl (``votemanager.ttl_seconds``) —
     deren Wahlschluss ist für die Stichwahl zwei Wochen alt."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     return TTL_LIVE if now >= w.polls_close else TTL_SECONDS_BEFORE
 
 
@@ -551,9 +551,9 @@ def fetch(force: bool = False, w: elections.Election | None = None) -> MayorResu
             _log.log(logging.INFO if fehlt else logging.WARNING,
                      "Wahlabend/OB (%s): Abruf fehlgeschlagen — %s", w.slug, fehler)
             result = None
-        jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        jetzt = datetime.now(UTC).isoformat(timespec="seconds")
         vorher = _good.get(w.slug)
-        if result is None and fehlt and vorher is None and datetime.now(timezone.utc) < w.polls_close:
+        if result is None and fehlt and vorher is None and datetime.now(UTC) < w.polls_close:
             # Vor dem Wahlschluss ist „noch keine Zahlen" kein Fehler; die
             # Seite sagt dann selbst, ab wann sie nachfragt.
             out = replace(_bare("", w), ok=True, error=None)

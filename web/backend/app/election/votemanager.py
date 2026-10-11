@@ -57,7 +57,7 @@ import re
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 import requests
 
@@ -82,7 +82,7 @@ def ttl_seconds(now: datetime | None = None) -> int:
     Der Zeitpunkt steht in der Wahl (``polls_close``), nicht mehr als
     Konstante hier — sonst liefe die nächste Wahl den ganzen Abend im
     Viertelstundentakt."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     return TTL_SECONDS if now >= elections.active().polls_close else TTL_SECONDS_BEFORE
 #: (verbinden, lesen). Drei Dateien nacheinander, jede Minute eine Runde: Ein
 #: langes Lese-Zeitlimit hielte den Request-Thread fest, während die Seite
@@ -466,7 +466,7 @@ def fetch(force: bool = False) -> Snapshot:
                 try:
                     text, last_modified = _get(session, base + path)
                     header = _header_of(text)
-                    _good[key] = _Fetched(parse(text), header, last_modified, datetime.now(timezone.utc))
+                    _good[key] = _Fetched(parse(text), header, last_modified, datetime.now(UTC))
                 except (requests.RequestException, ValueError) as exc:
                     failed.append((key, f"{type(exc).__name__}: {exc}"[:160]))
             # Der Fehlertext sagt beides: welche Datei, und ob für sie noch ein
@@ -480,7 +480,7 @@ def fetch(force: bool = False) -> Snapshot:
                 city=city.rows if city else [],
                 areas=areas.rows if areas else [],
                 districts=districts.rows if districts else [],
-                fetched_at=max((f.at for f in known), default=datetime.now(timezone.utc)),
+                fetched_at=max((f.at for f in known), default=datetime.now(UTC)),
                 last_modified=city.last_modified if city else None,
                 ok=not errors,
                 error="; ".join(errors)[:400] or None,

@@ -7,7 +7,7 @@ import secrets
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, UTC
 from collections.abc import Iterable
 from types import EllipsisType
 from kern.dbfehler import neue_id, tabelle_fehlt
@@ -954,7 +954,7 @@ def today_utc() -> date:
     fehlt im „heute". Genau so scheiterten zwei Tests abends reproduzierbar
     und in der CI (UTC) nie.
     """
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 def _tagesbeginn_utc() -> str:
@@ -964,9 +964,9 @@ def _tagesbeginn_utc() -> str:
         from zoneinfo import ZoneInfo
         jetzt = datetime.now(ZoneInfo("Europe/Berlin"))
     except Exception:  # noqa: BLE001 — ohne tzdata bleibt es beim UTC-Tag
-        jetzt = datetime.now(timezone.utc)
+        jetzt = datetime.now(UTC)
     start = jetzt.replace(hour=0, minute=0, second=0, microsecond=0)
-    return start.astimezone(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
+    return start.astimezone(UTC).replace(tzinfo=None).isoformat(timespec="seconds")
 
 
 def _begleitdateien_entfernen(pfad: Path) -> None:
@@ -3048,7 +3048,7 @@ class Store:
             (kind, key, owner_id)).fetchone() is not None
 
     def mark_evening_notice(self, kind: str, key: str, owner_id: int) -> None:
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
                 "INSERT OR IGNORE INTO evening_notices_sent (kind, key, owner_id, sent_at) "
@@ -3144,7 +3144,7 @@ class Store:
         ``jetzt_iso`` vom Start fest, und eine damit gestempelte Reservierung
         wäre für einen zweiten Lauf schon abgelaufen, bevor sie beginnt.
         """
-        echt = datetime.now(timezone.utc)
+        echt = datetime.now(UTC)
         jetzt_echt = echt.isoformat(timespec="seconds")
         frist = (echt - timedelta(minutes=self.ZUSTELL_RESERVIERUNG_MIN)).isoformat(
             timespec="seconds")
@@ -4161,8 +4161,8 @@ class Store:
         des vorherigen Besuchs bleibt die Untergrenze, damit Ergänzungen
         WÄHREND jenes Besuchs nicht verloren gehen. Keine Verlaufstabelle.
         """
-        now = now or datetime.now(timezone.utc)
-        stamp = now.astimezone(timezone.utc).isoformat(timespec="microseconds")
+        now = now or datetime.now(UTC)
+        stamp = now.astimezone(UTC).isoformat(timespec="microseconds")
         cutoff = (now - timedelta(minutes=30)).isoformat()
         with self._conn:
             self._conn.execute(
@@ -4177,7 +4177,7 @@ class Store:
 
     def visit_window(self, owner_id: int, now: datetime | None = None) -> dict:
         """Lesen verschiebt weder Besuch noch Zeitraum."""
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         row = self._conn.execute(
             "SELECT visit_started_at, visit_previous_at FROM web_users WHERE id = ?",
             (owner_id,),
@@ -4527,7 +4527,7 @@ class Store:
     def sackgassen_basis(self, tage: int = 90, versatz: int = 0) -> tuple[int, int]:
         """(Antworten ohne Quelle, Antworten gesamt) im Fenster — ``versatz``
         Tage zurückgeschoben für den Vorzeitraum."""
-        ende = datetime.now(timezone.utc) - timedelta(days=versatz)
+        ende = datetime.now(UTC) - timedelta(days=versatz)
         seit = (ende - timedelta(days=tage)).date().isoformat()
         bis = ende.date().isoformat()
         rows = self._conn.execute(
@@ -4602,7 +4602,7 @@ class Store:
                     "INSERT INTO email_log (owner_id, anlass, subject, sent_at, ok, message_id) "
                     "VALUES (?, ?, ?, ?, ?, ?)",
                     (owner_id, mail_anlass(anlass), (subject or "")[:300],
-                     jetzt or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                     jetzt or datetime.now(UTC).isoformat(timespec="seconds"),
                      1 if ok else 0, message_id))
         except Exception:  # noqa: BLE001 — s. Docstring
             logger.exception("Mail-Protokoll fehlgeschlagen (owner=%s, anlass=%s)",
@@ -4641,7 +4641,7 @@ class Store:
 
     def mail_zusammenfassung(self, owner_id: int, tage: int = 30) -> dict:
         """Wie viele Mails das Konto bekommen hat — gesamt, im Zeitraum, je Anlass."""
-        seit = (datetime.now(timezone.utc) - timedelta(days=tage)).isoformat(timespec="seconds")
+        seit = (datetime.now(UTC) - timedelta(days=tage)).isoformat(timespec="seconds")
         gesamt = self._conn.execute(
             "SELECT COUNT(*) c FROM email_log WHERE owner_id = ? AND ok = 1",
             (owner_id,)).fetchone()["c"]
@@ -4670,7 +4670,7 @@ class Store:
         seit einem Jahr gibt, stünde sonst immer oben, ohne dass daraus etwas
         folgte.
         """
-        seit = (datetime.now(timezone.utc) - timedelta(days=tage)).isoformat(timespec="seconds")
+        seit = (datetime.now(UTC) - timedelta(days=tage)).isoformat(timespec="seconds")
         rows = self._conn.execute(
             "SELECT e.owner_id, COUNT(*) c, MAX(e.sent_at) letzte, "
             "  u.email, u.display_name, u.delivery_channel "
@@ -4699,7 +4699,7 @@ class Store:
     def mail_statistik(self, tage: int = 30) -> dict:
         """Mailaufkommen insgesamt: je Anlass, je Tag, und was zurückkam."""
         from datetime import date
-        seit = (datetime.now(timezone.utc) - timedelta(days=tage)).isoformat(timespec="seconds")
+        seit = (datetime.now(UTC) - timedelta(days=tage)).isoformat(timespec="seconds")
         seit_tag = (date.today() - timedelta(days=tage)).isoformat()
         je_anlass = [{"anlass": r["anlass"], "mails": r["c"],
                       "konten": r["k"], "gescheitert": r["f"]}
@@ -5471,8 +5471,8 @@ class Store:
     def topics_uebersicht_gesehen(self, owner_id: int) -> None:
         """Merkt sich, dass die Themen-Übersicht gerade offen war — ab hier
         zählt für die Bubble nur noch, was danach dazukommt."""
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        from datetime import datetime
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute("UPDATE web_users SET topics_seen_at = ? WHERE id = ?",
                                (now, owner_id))
@@ -5480,8 +5480,8 @@ class Store:
     def mark_topic_hits_seen(self, owner_id: int, topic_id: int) -> int:
         """Alle aktuellen Treffer eines Themas als gesehen markieren (RL-903).
         Idempotent (INSERT OR IGNORE); Rückgabe = neu markierte Zeilen."""
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        from datetime import datetime
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
                 """INSERT OR IGNORE INTO topic_hits_seen (owner_id, topic_id, decision_id, seen_at)
@@ -5505,8 +5505,8 @@ class Store:
         eine Zeile bekommen. Ohne den Umweg ließe sich die Tabelle über einen
         direkten API-Aufruf mit beliebigen decision_ids füllen.
         """
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        from datetime import datetime
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
                 """INSERT OR IGNORE INTO topic_hits_seen (owner_id, topic_id, decision_id, seen_at)
@@ -5523,8 +5523,8 @@ class Store:
         Nur vorhandene Treffer eigener Themen werden markiert. Wiederholte
         Aufrufe sind wirkungslos; fremde Themen bleiben unverändert.
         """
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        from datetime import datetime
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
                 """INSERT OR IGNORE INTO topic_hits_seen (owner_id, topic_id, decision_id, seen_at)
@@ -5552,8 +5552,8 @@ class Store:
         klassifizierten Stand festhalten. matches: {topic_id: [item_numbers]}.
         Voller Austausch, damit bei geänderter Tagesordnung keine veralteten
         Treffer stehen bleiben (RL-902)."""
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        from datetime import datetime
+        now = datetime.now(UTC).isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
                 "DELETE FROM council_agenda_matches WHERE owner_id = ? AND ksinr = ?",
