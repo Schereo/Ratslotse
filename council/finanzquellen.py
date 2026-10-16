@@ -2718,17 +2718,15 @@ for _q in (
             mindest_seiten=40,
             ordnung="document_id",
         ),
-        unlesbar={
-            # Dokument 188333 („Anlage", 74 Seiten), nachgesehen auf Prod
-            # 05.10.2026: Die Textebene endet nach dem Prüfvermerk des RPA mit
-            # dem Deckblatt „Anlage Gesamtabschluss zum 31.12.2013" (38.000
-            # Zeichen; 2014 hat 134.000). Gesamtergebnisrechnung und
-            # Trägeraufstellung dahinter sind Scans — keine der drei Proben
-            # lässt sich rechnen. Lesbar nur per OCR (council/ocr.py), und
-            # deren Ausgabe hat nicht die Form, die `konzernabschluss.lies`
-            # erwartet.
-            (2013,): "Abschluss nur als Scan; Textebene endet beim Prüfvermerk",
-        },
+        # Jahrgang 2013 (Dokument 188333, „Anlage", 74 Seiten): Die Textebene
+        # endet nach dem Prüfvermerk des RPA; der Abschluss selbst (S. 19–74)
+        # ist ein Scan. Sein Text steht seit 16.10.2026 per OCR im Bestand —
+        # Textebene + Gemini-Lesung, die Seiten vorher AUFRECHT gestellt. Ohne
+        # Drehung verrutschten beide Sehmodelle in der zweispaltigen Tabelle
+        # die Zeilen; Sonnet bestand dabei sogar alle drei Proben, mit vier
+        # falschen Zellen (u. a. Posten 11 und 12 vertauscht). Geprüft wurde
+        # die Lesung am Bild und gegen die Vorjahresspalte des Berichts 2014:
+        # alle 27 Posten innerhalb der TEUR-Rundung.
         einheiten_von=_einheiten_konzernabschluss,
         balance=_bestand_konzernabschluss,
         einlesen=lies_konzernabschluesse,
