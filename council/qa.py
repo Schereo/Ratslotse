@@ -1915,6 +1915,15 @@ def _naechstliegende_sitzung(alle: list[dict], heute: str, frage_f: str) -> list
     return sorted(kandidaten, key=abstand)[:1]
 
 
+def _kommende_am(store, passt_tag) -> list[dict]:
+    """Kommende Sitzungen, echte und terminierte, deren Tag ``passt_tag`` erfüllt."""
+    try:
+        kommend = store.upcoming_sessions(limit=200)
+    except Exception:  # noqa: BLE001 — ein Zusatz, nie ein Abbruch
+        return []
+    return [r for r in kommend if passt_tag(str(r.get("session_date") or "")[:10])]
+
+
 def _finde_sitzungen(store, question: str) -> list[dict]:
     from datetime import date as _date
     heute = _date.today().isoformat()
@@ -1924,16 +1933,27 @@ def _finde_sitzungen(store, question: str) -> list[dict]:
     rows: list[dict] = []
     if (date or monat_tag) and not committee and not _SITZUNG_ANLASS_RE.search(frage_f):
         return []
+    def passt(r: dict) -> bool:
+        return committee is None or _gremium_passt(committee, r.get("committee"))
+
     if date:
-        rows = [r for r in store.sessions_on(date)
-                if committee is None or _gremium_passt(committee, r.get("committee"))]
+        rows = [r for r in store.sessions_on(date) if passt(r)]
+        if not rows and date >= heute:
+            rows = [r for r in _kommende_am(store, lambda d: d == date) if passt(r)]
     elif monat_tag:
-        alle = [r for r in store.sitzungen_am_monatstag(monat_tag)
-                if committee is None or _gremium_passt(committee, r.get("committee"))]
+        # Kommende Sitzungen stehen oft erst im Terminkalender, noch ohne
+        # Sitzungsnummer — `sitzungen_am_monatstag` liest nur die Sitzungs-
+        # tabelle und kannte den Rat am 26.10.2026 deshalb nicht (16.10.2026).
+        alle = [r for r in store.sitzungen_am_monatstag(monat_tag) if passt(r)]
+        bekannt = {(r.get("committee"), str(r.get("session_date") or "")[:10]) for r in alle}
+        alle += [r for r in _kommende_am(store, lambda d: d.endswith(monat_tag))
+                 if passt(r) and (r.get("committee"), str(r.get("session_date") or "")[:10]) not in bekannt]
         rows = _naechstliegende_sitzung(alle, heute, frage_f)
         if rows and committee is None:
             # Datum ohne Gremium meint den TAG — alle Sitzungen dieses Tages.
-            rows = store.sessions_on(rows[0]["session_date"])
+            tag = str(rows[0]["session_date"])[:10]
+            rows = store.sessions_on(tag) or [
+                r for r in alle if str(r.get("session_date") or "")[:10] == tag]
     elif committee and _SITZUNG_ZURUECK_RE.search(frage_f):
         # „zuletzt zum Radverkehr" ist eine Themenfrage mit Zeitbezug, keine
         # Sitzungsfrage — siehe `sitzungsfrage_ohne_thema`. Nur die

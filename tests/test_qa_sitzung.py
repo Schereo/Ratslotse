@@ -370,3 +370,31 @@ def test_datum_ohne_jahr_nimmt_die_naechstliegende_sitzung():
     nur_alt = [{"ksinr": 3, "session_date": "2020-10-26"}]
     assert qa._naechstliegende_sitzung(nur_alt, heute, qa._falte("Was steht am 26.10. an?"))[0]["ksinr"] == 3
     assert qa._naechstliegende_sitzung([], heute, "egal") == []
+
+
+def test_datum_ohne_jahr_findet_die_terminierte_sitzung(tmp_path):
+    """Kommende Sitzungen stehen oft nur im Terminkalender, ohne
+    Sitzungsnummer. Der Monatstag-Weg las nur die Sitzungstabelle und fand
+    deshalb zum 26. Oktober allein den Rat von 2020 (16.10.2026)."""
+    from datetime import date, timedelta
+    bald = date.today() + timedelta(days=10)
+    frueher = bald.replace(year=bald.year - 6)
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (9, 'Rat', ?, '18:00', 'Rathaus', '')",
+            (frueher.isoformat(),))
+        store._conn.execute(
+            "INSERT INTO council_scheduled_sessions (committee, session_date, session_time, "
+            "location, fetched_at) VALUES ('Rat', ?, '18:00', 'PFL', '')", (bald.isoformat(),))
+    tag = f"{bald.day}.{bald.month}."
+    kommend = qa.finde_sitzungen(store, f"Was steht in der Ratssitzung am {tag} auf der Tagesordnung?")
+    assert [s["session_date"] for s in kommend] == [bald.isoformat()]
+    assert kommend[0]["kuenftig"] is True
+    gewesen = qa.finde_sitzungen(store, f"Was wurde im Rat am {tag} beschlossen?")
+    assert [s["session_date"] for s in gewesen] == [frueher.isoformat()]
+    # Mit Jahr: der Kalender-Eintrag, auch ohne Sitzungsnummer.
+    mit_jahr = qa.finde_sitzungen(store, f"Was steht am {tag}{bald.year} im Rat an?")
+    assert [s["session_date"] for s in mit_jahr] == [bald.isoformat()]
+    store.close()
