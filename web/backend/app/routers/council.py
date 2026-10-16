@@ -5255,9 +5255,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     _log.exception("Wahl-Baustein nicht gebaut")
             # Personen-Fragetyp (10.08.26): nennt die Frage eine Ratsperson,
             # antworten wir aus DEREN Wortbeiträgen — deterministisch erkannt,
-            # schlägt thema/verlauf (nicht aber partei/geld).
+            # schlägt thema/verlauf (nicht aber geld). Eine Parteifrage schlägt
+            # er nur, wenn Vor- UND Nachname fallen: „Was sagt Paul Behrens
+            # (SPD) zum Stadion?“ lief bis 10/2026 als Parteifrage und bekam
+            # Reden anderer SPD-Leute zu anderen Themen (Gold 0,35). Ein
+            # nackter Nachname kann dagegen zufällig ein Wort der Frage sein.
             person = qa.finde_person(store, q_suche)
-            if person and typ not in ("party", "money"):
+            if person and (typ not in ("party", "money")
+                           or (typ == "party" and person.get("full_name"))):
                 typ = "person"
             # Orts-Fragetyp: dieselbe deterministische Stammdaten-Erkennung wie
             # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf

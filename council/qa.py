@@ -1193,7 +1193,8 @@ def protokolle_verlinken(store, rows: list[dict]) -> None:
 def finde_person(store, question: str) -> dict | None:
     """Personen-Fragetyp: Nennt die Frage eine Ratsperson (Voll- oder
     Nachname, umlaut-gefaltet, ganze Wörter)? Liefert
-    {name, partei, nachname} — deterministisch, kostenlos."""
+    {name, party, nachname, full_name} — deterministisch, kostenlos.
+    ``full_name``: Vor- UND Nachname standen in der Frage."""
     try:
         index = store.personen_suchindex()
     except Exception:  # noqa: BLE001
@@ -1206,9 +1207,12 @@ def finde_person(store, question: str) -> dict | None:
         if not nachname_f or len(nachname_f) < 4:
             continue
         if f" {name_f} " in frage_f:
-            laenge = len(name_f)
+            laenge, voll = len(name_f), True
         elif f" {nachname_f} " in frage_f:
+            # „Paul Behrens“ zu „Dr. Paul Behrens“: Titel zählen nicht zum Namen.
+            teile = [t for t in name_f.split() if t not in ("dr", "prof")]
             laenge = len(nachname_f)
+            voll = len(teile) > 1 and all(f" {t} " in frage_f for t in teile)
         else:
             continue
         # nachname im ORIGINAL (mit Umlauten): die Wortbeitrags-Suche macht
@@ -1216,7 +1220,8 @@ def finde_person(store, question: str) -> dict | None:
         # Sprecher-Feld nie treffen (Faltung kennt keinen Rückweg).
         original = next((t for t in reversed(name.replace(".", " ").split())
                          if _falte(t) == nachname_f), name.split()[-1])
-        treffer.append((laenge, {"name": name, "party": party, "nachname": original}))
+        treffer.append((laenge, {"name": name, "party": party, "nachname": original,
+                                 "full_name": voll}))
     if not treffer:
         return None
     return max(treffer, key=lambda t: t[0])[1]
@@ -1863,6 +1868,53 @@ def finde_sitzungen(store, question: str) -> list[dict]:
         return []
 
 
+#: Zeitform einer Frage mit Datum ohne Jahr. „Was wurde am 17.06.
+#: beschlossen?“ meint eine gewesene Sitzung, „Was steht am 26. Oktober auf
+#: der Tagesordnung?“ eine kommende. Die Vergangenheit wird zuerst geprüft:
+#: „Was STAND am 17.06. auf der Tagesordnung?“ trägt beide Signale.
+_SITZUNG_GEWESEN_RE = re.compile(
+    r"\b(wurde\w*|war|waren|stand|standen|kam|kamen|beschlossen|entschieden|"
+    r"getagt|tagte\w*|beraten|abgestimmt|besprochen|passiert|gelaufen|"
+    r"(?:he)?rausgekommen|ergebnis\w*)\b")
+_SITZUNG_KOMMEND_RE = re.compile(
+    r"\b(steht|stehen|ansteh\w*|kommt|kommen|wird|werden|geplant|"
+    r"tagesordnung\w*|naechst\w*|kommend\w*|bevor\w*)\b")
+
+
+def _naechstliegende_sitzung(alle: list[dict], heute: str, frage_f: str) -> list[dict]:
+    """Die gemeinte Sitzung zu einem Datum ohne Jahr — als Liste mit höchstens
+    einem Eintrag.
+
+    Bis 10/2026 galt „die jüngste vergangene“. „Was steht in der Ratssitzung
+    am 26. Oktober auf der Tagesordnung?“ landete so am 16.10.2026 beim
+    26.10.2020 und bekam „keine Tagesordnung“ — der Rat zehn Tage später lag
+    mit 39 Punkten im Bestand (Auswertung der echten Fragen, 16.10.2026).
+    Jetzt entscheidet die Zeitform der Frage die Richtung, und innerhalb der
+    Richtung der geringste Abstand zu heute. Ohne Zeitform: der geringste
+    Abstand überhaupt.
+    """
+    from datetime import date as _date
+
+    def tag(r: dict) -> str:
+        return str(r.get("session_date") or "")[:10]
+
+    if _SITZUNG_GEWESEN_RE.search(frage_f):
+        bevorzugt = [r for r in alle if tag(r) <= heute]
+    elif _SITZUNG_KOMMEND_RE.search(frage_f):
+        bevorzugt = [r for r in alle if tag(r) >= heute]
+    else:
+        bevorzugt = []
+    kandidaten = bevorzugt or alle
+    jetzt = _date.fromisoformat(heute)
+
+    def abstand(r: dict) -> int:
+        try:
+            return abs((_date.fromisoformat(tag(r)) - jetzt).days)
+        except ValueError:
+            return 10**6
+    return sorted(kandidaten, key=abstand)[:1]
+
+
 def _finde_sitzungen(store, question: str) -> list[dict]:
     from datetime import date as _date
     heute = _date.today().isoformat()
@@ -1876,13 +1928,9 @@ def _finde_sitzungen(store, question: str) -> list[dict]:
         rows = [r for r in store.sessions_on(date)
                 if committee is None or _gremium_passt(committee, r.get("committee"))]
     elif monat_tag:
-        # Ohne Jahr: die jüngste vergangene Sitzung an diesem Monatstag —
-        # gibt es nur künftige, die nächstliegende.
         alle = [r for r in store.sitzungen_am_monatstag(monat_tag)
                 if committee is None or _gremium_passt(committee, r.get("committee"))]
-        vergangene = [r for r in alle if str(r.get("session_date") or "") <= heute]
-        rows = vergangene[:1] if vergangene else sorted(
-            alle, key=lambda r: str(r.get("session_date") or ""))[:1]
+        rows = _naechstliegende_sitzung(alle, heute, frage_f)
         if rows and committee is None:
             # Datum ohne Gremium meint den TAG — alle Sitzungen dieses Tages.
             rows = store.sessions_on(rows[0]["session_date"])
@@ -2189,7 +2237,15 @@ def markiere_veraltete(store, candidates: list[dict],
         c["neuere_station"] = {
             "id": top["id"] if top["id"] in kandidaten_ids else None,
             "date": top.get("session_date"), "committee": top.get("committee"),
+            "outcome": top.get("outcome"),
         }
+
+
+def _gleichsinnig(alt: str | None, neu: str | None) -> bool:
+    """Hat die spätere Station dasselbe entschieden? Nur bei Zustimmung oder
+    Kenntnisnahme auf beiden Stufen — eine Ablehnung nach einer Empfehlung
+    oder ein vertagter Punkt überholt den älteren Stand wirklich."""
+    return bool(alt) and alt == neu and alt in ("accepted", "noted")
 
 
 #: So viele Teilabstimmungen je Beschluss höchstens im Kontext.
@@ -2301,7 +2357,18 @@ def _build_context(candidates: list[dict]) -> str:
         # ein Gremium — das Modell soll den älteren Stand nie als aktuell
         # verkaufen (markiere_veraltete setzt das Feld deterministisch).
         ns = c.get("neuere_station")
-        if ns and ns.get("date"):
+        if ns and ns.get("date") and _gleichsinnig(c.get("outcome"), ns.get("outcome")):
+            # Dieselbe Entscheidung eine Stufe höher ist eine BESTÄTIGUNG, kein
+            # Überholen: Der ASUK-Beschluss vom 12.02.2026, den der Rat am 23.02.
+            # bestätigte, wurde als „ÄLTERE STATION“ zu „durch eine neuere
+            # Ratsstation abgelöst“ — in drei von drei Gold-Läufen falsch
+            # (Auswertung 16.10.2026). Ein Vermerk von Ratslotse bleibt es
+            # trotzdem; der Prompt kennt ihn nicht als Aussage des Rates.
+            verweis = f" [{ns['id']}]" if ns.get("id") else ""
+            wo = f"im {ns['committee']}" if ns.get("committee") else "in einem späteren Gremium"
+            wie = "ebenso zur Kenntnis genommen" if ns.get("outcome") == "noted" else "bestätigt"
+            suffix += f" — {wo} am {_datum_de(ns['date'])}{verweis} {wie}"
+        elif ns and ns.get("date"):
             verweis = f", siehe [{ns['id']}]" if ns.get("id") else ""
             committee = f" ({ns['committee']})" if ns.get("committee") else ""
             suffix += (f" — ⚠ ÄLTERE STATION: Zu dieser Vorlage gibt es eine NEUERE Station "
@@ -5270,6 +5337,18 @@ _MAX_FOLLOWUPS = 3
 _MAX_FOLLOWUP_LEN = 90
 
 
+#: Ein Quellenverweis wie in der Antwort: „[8047]“, „[A2]“, „[8047, P3]“.
+_VERWEIS_RE = re.compile(r"\s*\[[A-Z]{0,2}\d+(?:\s*[,;]\s*[A-Z]{0,2}\d+)*\]")
+
+
+def _ohne_verweise(frage: str) -> str:
+    """Eine Folgefrage ohne Quellenverweise. Das Modell hängt sie manchmal an
+    („…fortgesetzt? [8047]“) — als Chip ist das Rauschen, und abgeschickt
+    wird der Verweis zur Suchanfrage (Auswertung 16.10.2026: 3 von 8
+    Probeantworten)."""
+    return " ".join(_VERWEIS_RE.sub("", frage).split()).replace(" ?", "?")
+
+
 def split_followups(text: str) -> tuple[str, list[str]]:
     """Antworttext und die vom Modell angehängten Folgefragen trennen.
 
@@ -5287,7 +5366,7 @@ def split_followups(text: str) -> tuple[str, list[str]]:
         start, end = tail.find("["), tail.rfind("]")
         if start != -1 and end > start:
             for item in json.loads(tail[start:end + 1]):
-                q = str(item).strip()
+                q = _ohne_verweise(str(item))
                 if q and len(q) <= _MAX_FOLLOWUP_LEN and q not in questions:
                     questions.append(q)
     except (ValueError, TypeError):
@@ -5295,7 +5374,7 @@ def split_followups(text: str) -> tuple[str, list[str]]:
     if not questions:
         # Kein (brauchbares) JSON — zeilenweise als Notnagel (»- Frage?«).
         for line in tail.splitlines():
-            q = line.strip().lstrip("-•*\" ").rstrip("\",")
+            q = _ohne_verweise(line.strip().lstrip("-•*\" ").rstrip("\","))
             if q.endswith("?") and len(q) <= _MAX_FOLLOWUP_LEN and q not in questions:
                 questions.append(q)
     return answer, questions[:_MAX_FOLLOWUPS]

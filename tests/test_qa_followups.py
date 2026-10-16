@@ -68,3 +68,19 @@ def test_fallback_ohne_gegenstimmen_und_ohne_betrag():
 
 def test_fallback_bei_leeren_kandidaten():
     assert qa.fallback_followups([]) == []
+
+
+def test_folgefragen_tragen_keine_quellenverweise():
+    """Auswertung 16.10.2026: Chips wie „…fortgesetzt? [8047]“ — der Verweis
+    gehört in die Antwort, nicht in die nächste Frage."""
+    text = ('Antwort [8047].\n' + qa.FOLLOWUP_MARKER +
+            '\n["Wird das Projekt fortgesetzt? [8047]", "Was kostet es [A2, 8050]?", "Wer stimmte dagegen?"]')
+    antwort, fragen = qa.split_followups(text)
+    assert antwort == "Antwort [8047]."
+    assert fragen == ["Wird das Projekt fortgesetzt?", "Was kostet es?", "Wer stimmte dagegen?"]
+    # Auch der zeilenweise Notnagel.
+    _, fragen = qa.split_followups("A\n" + qa.FOLLOWUP_MARKER + "\n- Gilt das noch? [P3]\n")
+    assert fragen == ["Gilt das noch?"]
+    # Jahreszahlen in eckigen Klammern sind selten, aber eine Zahl in einer
+    # Frage ohne Klammer bleibt stehen.
+    assert qa._ohne_verweise("Was geschah 2024?") == "Was geschah 2024?"

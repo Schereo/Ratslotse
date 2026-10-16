@@ -344,3 +344,29 @@ def test_sitzungsfrage_ohne_thema_erkennt_gegenstand():
     assert not f("Was hat der Rat zuletzt zum Radverkehr beschlossen?", "rat")
     assert not f("Was hat der Rat zuletzt zur Cäcilienbrücke entschieden?", "rat")
     assert not f("Was hat der Sozialausschuss zuletzt zu Kita-Gebühren beschlossen?", "sozialausschuss")
+
+
+# ---- Datum ohne Jahr: die gemeinte Sitzung ---------------------------------
+
+def test_datum_ohne_jahr_nimmt_die_naechstliegende_sitzung():
+    """Echte Probefrage 16.10.2026: „Was steht in der Ratssitzung am 26.
+    Oktober auf der Tagesordnung?“ landete beim 26.10.2020, weil immer die
+    jüngste VERGANGENE Sitzung galt — der Rat zehn Tage später nicht."""
+    alle = [{"ksinr": 1, "session_date": "2026-10-26"},
+            {"ksinr": 2, "session_date": "2025-10-26"},
+            {"ksinr": 3, "session_date": "2020-10-26"}]
+    heute = "2026-10-16"
+
+    def wahl(frage: str) -> int:
+        return qa._naechstliegende_sitzung(alle, heute, qa._falte(frage))[0]["ksinr"]
+
+    assert wahl("Was steht in der Ratssitzung am 26. Oktober auf der Tagesordnung?") == 1
+    # Vergangenheit bleibt Vergangenheit, auch wenn die kommende näher liegt.
+    assert wahl("Was wurde in der Ratssitzung am 26. Oktober beschlossen?") == 2
+    assert wahl("Was stand am 26.10. auf der Tagesordnung?") == 2
+    # Ohne Zeitform: der geringste Abstand.
+    assert wahl("Ratssitzung am 26.10.") == 1
+    # Gibt es in der Richtung nichts, gilt der geringste Abstand überhaupt.
+    nur_alt = [{"ksinr": 3, "session_date": "2020-10-26"}]
+    assert qa._naechstliegende_sitzung(nur_alt, heute, qa._falte("Was steht am 26.10. an?"))[0]["ksinr"] == 3
+    assert qa._naechstliegende_sitzung([], heute, "egal") == []
