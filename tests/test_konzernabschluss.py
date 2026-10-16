@@ -118,6 +118,7 @@ GER_2014 = """5.2  Gesamtergebnisrechnung für 2014
 2. Zuwendungen und allgemeine Umlagen  105.667.339, 23  98.266
 15. ordentliche Gesamterträge  760.810.621,37  711.430
 16. Aufwendungen für aktives Personal  268.436.724, 73  249.616
+18. Aufwendungen für Sach- und Dienstleistungen  17 3.223.747,06  165.154
 20. Zinsen und sonstige Finanzaufwendungen
 20.1. Zinsaufwendungen 11.209.002,22   11.373
 20.2. sonstige Finanzaufwendungen 921.837,75   1.023
@@ -267,14 +268,59 @@ def test_unterposten_reissen_die_summe_nicht_an_sich():
     assert not any(p["amount"] == 11209002.22 for p in result["posten"])
 
 
-def test_betrag_mit_leerzeichen_wird_verworfen():
-    """„105.667.339, 23" ist kein lesbarer Betrag — die Zeile fällt weg,
-    statt eine geratene Zahl zu liefern."""
+def test_betrag_mit_leerzeichen_wird_zusammengefuegt():
+    """„105.667.339, 23" ist ein Betrag mit einem Leerzeichen darin, kein
+    unlesbarer. Bis 10/2026 fiel die Zeile weg — 2014 fehlten so sieben
+    Posten. Jeder geheilte Wert stimmt mit der Vorjahresspalte des Berichts
+    2015 überein (≤ 0,4 TEUR), und Erträge wie Aufwendungen ergeben danach
+    Posten für Posten auf den Cent ihre Summenzeile."""
     result = ka.parse_gesamtergebnisrechnung(GER_2014)
-    nummern = {p["nr"] for p in result["posten"]}
-    assert 2 not in nummern
-    assert 16 not in nummern
-    assert 15 in nummern  # der saubere Nachbar bleibt
+    betrag = {p["nr"]: p["amount"] for p in result["posten"]}
+    assert betrag[2] == 105667339.23
+    assert betrag[16] == 268436724.73
+    assert betrag[15] == 760810621.37  # der saubere Nachbar bleibt
+
+
+def test_abgetrennte_fuehrende_ziffern_gehoeren_zum_betrag():
+    """Der Fall, der im Bestand stand: „17 3.223.747,06" kam als 3,2 statt
+    173,2 Mio. € herein, mit „17" in der Beschriftung. Keine der drei Proben
+    sieht so etwas — sie prüfen nur Summen und Salden. Der Bericht 2015 führt
+    für 2014 als Vorjahr 173.224 TEUR."""
+    result = ka.parse_gesamtergebnisrechnung(GER_2014)
+    posten = {p["nr"]: p for p in result["posten"]}
+    assert posten[18]["amount"] == 173223747.06
+    assert posten[18]["label"] == "Aufwendungen für Sach- und Dienstleistungen"
+
+
+@pytest.mark.parametrize("roh, geheilt", [
+    ("63.842.254 ,20", "63.842.254,20"),
+    ("105.667.339, 23  98.266", "105.667.339,23  98.266"),
+    ("15.567.728,4 4  15.122", "15.567.728,44  15.122"),
+    ("14.616. 613,52", "14.616.613,52"),
+    ("1.929 .814,46", "1.929.814,46"),
+    ("17 3.223.747,06  165.154", "173.223.747,06  165.154"),
+    ("160.026.568 ,55 181.653.464,27", "160.026.568,55 181.653.464,27"),
+])
+def test_risse_im_betrag(roh, geheilt):
+    assert ka.zusammenfuegen(roh) == geheilt
+
+
+@pytest.mark.parametrize("zeile", [
+    "1.234,56 7.890,12",            # zwei Beträge nebeneinander bleiben zwei
+    "4.301.213,79 3.117.896,95",
+    "- 510.903,43",                 # Vorzeichen mit Leerzeichen ist kein Riss
+    "17 223.747,06",                # ergäbe „17223.747,06" — kein Betrag
+])
+def test_eindeutig_getrennte_zahlen_bleiben_getrennt(zeile):
+    assert ka.zusammenfuegen(zeile) == zeile
+
+
+def test_nicht_heilbarer_rest_wird_verworfen():
+    """Was nach dem Zusammenfügen noch eine Ziffer vor dem Betrag hat, kommt
+    nicht herein — lieber gar kein Wert als ein halber."""
+    text = GER_2014.replace("17 3.223.747,06", "17 223.747,06")
+    result = ka.parse_gesamtergebnisrechnung(text)
+    assert 18 not in {p["nr"] for p in result["posten"]}
 
 
 def test_gerissene_probe_verwirft_den_jahrgang():
