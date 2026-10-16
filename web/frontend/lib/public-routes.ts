@@ -4,7 +4,7 @@
 // öffnete, sah zuerst das Registrierungsformular, bevor er überhaupt wusste,
 // worum es geht. Das schreckt genau die Leute ab, die man gewinnen will.
 //
-// Öffentlich sind deshalb die drei Detailseiten, für die es Teilen-Knöpfe und
+// Öffentlich sind deshalb die Detailseiten, für die es Teilen-Knöpfe und
 // Link-Vorschauen gibt. Stöbern, Suche, Dashboard, eigene Themen und alles
 // Persönliche bleiben hinter der Anmeldung — die Liste hier ist die
 // Frontend-Hälfte einer Grenze, die das Backend eigenständig durchsetzt
@@ -19,6 +19,13 @@ export const OEFFENTLICHE_PFADE = [
   "/council/sitzung",
   "/council/thema",
   "/council/person",
+  // Die Wahlen (seit 10/2026 in der App-Hülle, vorher eigene Vollbild-Seiten):
+  // öffentliche Zahlen, ohne Konto lesbar wie vorher. Die Endpunkte dahinter
+  // sind offen (`/api/wahlen`, `/api/wahlabend…`).
+  "/wahlen",
+  "/wahlabend",
+  "/wahlabend/stichwahl",
+  "/wahlabend/ob",
   // „Mein Viertel" (/viertel, /karte) stand hier bis 09/2026. Seit dem Umzug
   // auf die vereinte Karte liegt es hinter der Anmeldung (Tims Entscheidung
   // 07.09.2026, STADTKARTE-PLAN.md): Ein geteilter Tafel-Link führt zur

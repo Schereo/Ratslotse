@@ -304,6 +304,63 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Woher stammen die Angaben zu einer Person?",
        ),
     ),
+    # Die Wahlseiten liegen seit 10/2026 in der App-Hülle (Tims Befund
+    # 16.10.2026) — damit steht dort auch der Lotti-Knopf.
+    _p("/wahlen", "Wahlen",
+       "Die Übersicht der Wahlen in Oldenburg: oben die nächste oder zuletzt "
+       "gelaufene, darunter die übrigen mit ihrem Ergebnis in einer Zeile. Ein "
+       "Pfeil führt zur ausführlichen Ergebnisseite der jeweiligen Wahl.",
+       "Die Zahlen stammen aus den Open-Data-Dateien und der Ergebnisdarstellung "
+       "des Votemanagers der Stadt; gelaufene Wahlen liegen eingefroren vor.",
+       "Für ältere Wahlen ohne Kandidatenlisten gibt es nur die Zeile, keine "
+       "eigene Seite; was Fraktionen nach der Wahl vereinbaren, steht hier nicht.",
+       starters=(
+           "Welche Wahlen gab es in Oldenburg zuletzt?",
+           "Woher stammen die Wahlergebnisse?",
+       ),
+    ),
+    _p("/wahlabend", "Wahlabend der Ratswahl",
+       "Das Ergebnis der Ratswahl: Stimmenanteile und Sitze je Liste, der "
+       "Vergleich mit der Wahl davor, die Wahlbereiche und eine Rangliste aller "
+       "Kandidaturen nach Personenstimmen. Am Wahlabend selbst lief die Seite "
+       "live mit, Bezirk für Bezirk.",
+       "Die Stimmen kommen aus den Open-Data-Dateien der Stadt; die Sitze "
+       "rechnet Ratslotse selbst nach dem Kommunalwahlgesetz nach.",
+       "Maßgeblich ist die amtliche Ergebnispräsentation der Stadt; welche "
+       "Gruppen und Fraktionen sich im neuen Rat bilden, steht hier nicht.",
+       starters=(
+           "Woher kommen die Sitzzahlen auf dieser Seite?",
+           "Was zeigt die Rangliste der Kandidaturen?",
+       ),
+    ),
+    _p("/wahlabend/ob", "OB-Wahl, erster Wahlgang",
+       "Der erste Wahlgang der Oberbürgermeisterwahl: alle Kandidaturen nach "
+       "Stimmen, mit Anteil und der Liste, die sie vorgeschlagen hat. Erreicht "
+       "niemand mehr als die Hälfte der gültigen Stimmen, gehen die beiden "
+       "Stärksten in eine Stichwahl.",
+       "Die Zahlen stammen aus der Ergebnisdarstellung des Votemanagers der Stadt.",
+       "Die vorschlagende Liste sagt nicht, ob die Person dort Mitglied ist oder "
+       "wer sie sonst unterstützt; amtlich ist erst, was der Wahlausschuss "
+       "feststellt.",
+       starters=(
+           "Wann kommt es zu einer Stichwahl?",
+           "Was heißt „vorgeschlagen von“ bei einer Kandidatur?",
+       ),
+    ),
+    _p("/wahlabend/stichwahl", "OB-Stichwahl",
+       "Die Stichwahl um das Amt des Oberbürgermeisters zwischen den beiden "
+       "Stärksten des ersten Wahlgangs. Nach der Wahl zeigt die Seite das "
+       "Ergebnis und in Reitern den Vergleich mit dem ersten Wahlgang, die "
+       "Wahlbereiche, die Bezirke und wie gut die Hochrechnung am Abend lag.",
+       "Die Zahlen stammen aus der Ergebnisdarstellung des Votemanagers der "
+       "Stadt; die Hochrechnung ist ein Modell von Ratslotse.",
+       "Die Hochrechnung war eine Schätzung während der Auszählung, kein "
+       "Ergebnis; amtlich ist erst, was der Wahlausschuss feststellt.",
+       starters=(
+           "Ist die Hochrechnung schon das Ergebnis?",
+           "Was zeigt der Vergleich mit dem ersten Wahlgang?",
+       ),
+    ),
     _p("/council/neuer-rat", "Der neue Rat",
        "Wer nach der Ratswahl ab dem 1. November im Rat sitzt — nach Listen, mit "
        "Wahlbereich, Personenstimmen, Beruf und Jahrgang. Die Karten sagen, wer "
@@ -521,10 +578,11 @@ OHNE_ERKLAERUNG: dict[str, str] = {
 }
 
 
-#: Alles außerhalb der App-Hülle: Startseite, Anmeldung, Rechtstexte, die
-#: Wahl- und Tippspiel-Seiten. Dort gibt es keinen Lotti-Knopf, weil es dort
-#: die App-Hülle nicht gibt — die Liste steht hier nur, damit der Wächter
-#: JEDE Route aus ``seitenaufrufe.ROUTEN`` zuordnen kann.
+#: Alles außerhalb der App-Hülle: Startseite, Anmeldung, Rechtstexte, das
+#: Stichwahl-Potenzial und die Tippspiel-Seiten. Dort gibt es keinen
+#: Lotti-Knopf, weil es dort die App-Hülle nicht gibt — die Liste steht hier
+#: nur, damit der Wächter JEDE Route aus ``seitenaufrufe.ROUTEN`` zuordnen
+#: kann. Die Wahlseiten stehen seit 10/2026 in ``PAGES``.
 OEFFENTLICH: frozenset[str] = frozenset({
     "/", "/login", "/register", "/forgot-password", "/reset-password",
     "/verify-email", "/hilfe", "/impressum", "/datenschutz",
@@ -532,7 +590,7 @@ OEFFENTLICH: frozenset[str] = frozenset({
     "/kommunalwahl", "/kommunalwahl/check", "/kommunalwahl/methodik",
     "/kommunalwahl/naehe", "/kommunalwahl/liste/{slug}",
     "/kommunalwahl/thema/{slug}",
-    "/wahlen", "/wahl", "/wahlabend", "/wahlabend/stichwahl",
+    "/wahl",
     "/stichwahl/potenzial", "/tipp", "/tipp/live", "/tipp/admin",
     ANDERE,
 })

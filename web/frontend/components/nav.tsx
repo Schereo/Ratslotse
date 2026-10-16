@@ -195,7 +195,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   // (Beschluss, Person, Thema), die ihr Inneres sind.
   (pathname === "/council" && tab !== "sessions")
   || (pathname.startsWith("/council/") && !pathname.startsWith("/council/sitzung"))
-  || ["/karte", "/viertel", "/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
+  || ["/wahlen", "/wahlabend", "/karte", "/viertel", "/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 // RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
 // nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
@@ -242,7 +242,9 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const pathname = pfad(usePathname());
   const { user } = useAuth();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
-  const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
+  // Die Wahlseiten liegen außerhalb von /council, gehören aber zur Analyse.
+  const onCouncil = pathname === "/council" || pathname.startsWith("/council/")
+    || WAHL_PFADE.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const unread = useUnreadTopicHits();
   const openFeedback = useUnreadFeedback(darfAdmin(user));
   const viertel = useFeature("mein-viertel");
@@ -311,7 +313,13 @@ const COUNCIL_DETAIL_BEREICH: [string, string][] = [
   ["/council/ideen", "analysis"],
   ["/council/person", "analysis"],
   ["/council/neuer-rat", "analysis"],
+  // Die Wahlen erreicht man über die Analyse; seit sie in der App-Hülle
+  // liegen, soll die Seitenleiste das auch zeigen (Tims Befund 16.10.2026).
+  ["/wahlen", "analysis"],
+  ["/wahlabend", "analysis"],
 ];
+
+const WAHL_PFADE = ["/wahlen", "/wahlabend"];
 
 export function councilBereich(pathname: string, param: string | null): string {
   const treffer = COUNCIL_DETAIL_BEREICH.find(([p]) => pathname === p || pathname.startsWith(p + "/"));

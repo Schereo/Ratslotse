@@ -1,8 +1,8 @@
 "use client";
 
-// Der Kopf der Wahlabend-Seiten. Stand bis 09/2026 in `view.tsx`; seit die
-// Stichwahl eine eigene Seite hat, sind es zwei Seiten mit demselben Kopf —
-// und zwei Fassungen davon wären zwei Fassungen des Zurück-Links.
+// Der eigene Kopf für Wahlseiten AUSSERHALB der App-Hülle. Bis 10/2026 trugen
+// ihn /wahlen, /wahlabend und die Stichwahl; seit die in der Hülle liegen
+// (Tims Befund 16.10.2026), braucht ihn nur noch das Stichwahl-Potenzial.
 
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";

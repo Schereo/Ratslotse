@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { datumLang, holeWahl, istExport } from "@/lib/share-metadata";
 
-// Der Wahlabend lebt wie /kommunalwahl und /changelog AUSSERHALB von app/(app)/:
-// kein Konto-Gate, eigener Kopf. Anders als der Wahlprogramm-Vergleich hängt
-// er nicht am Umgebungs-Gate, sondern am Feature-Schalter `wahlabend` — die
-// Seite soll am Wahlabend auf Prod laufen und danach ohne Deploy wieder
-// dunkel werden können (kern/features.py).
+// Der Wahlabend lebt seit 10/2026 IN der App-Hülle (wie /wahlen, s. dort):
+// angemeldet mit Seitenleiste, ohne Konto in der PublicShell — die Pfade stehen
+// in lib/public-routes.ts. Er hängt nicht am Umgebungs-Gate, sondern am
+// Feature-Schalter `wahlabend` — die Seite soll am Wahlabend auf Prod laufen
+// und danach ohne Deploy wieder dunkel werden können (kern/features.py).
 //
 // Titel und Beschreibung kommen seit 09/2026 aus der Wahl selbst
 // (`/api/app-config`), nicht aus zwei Literalen hier: Sie stehen in jeder
@@ -31,5 +31,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function WahlabendLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-[100dvh] bg-background text-foreground">{children}</div>;
+  return children;
 }

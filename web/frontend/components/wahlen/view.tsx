@@ -20,7 +20,7 @@ import { Lotti, type LottiRegung } from "@/components/lotti";
 import { Mascot } from "@/components/mascot";
 import { Reveal } from "@/components/reveal";
 import { STAFFEL, staffelStil } from "@/components/staffel";
-import { Kopf } from "@/components/wahlabend/kopf";
+import { PageHeader } from "@/components/ui/page-header";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
@@ -249,9 +249,8 @@ export function WahlenView() {
 
   if (!frei) {
     return (
-      <>
-        <Kopf label="Wahlen" />
-        <main className="mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+      <div className="mx-auto w-full max-w-3xl pb-6">
+        <PageHeader title="Wahlen" />
           <div className="mx-auto mt-16 flex max-w-md flex-col items-center text-center">
             <Mascot pose="sleep" className="h-28 w-28" decorative />
             <h1 className="mt-4 font-display text-[22px] font-bold tracking-tight">Gerade nichts zu wählen</h1>
@@ -259,8 +258,7 @@ export function WahlenView() {
               Hier stehen die Wahlen in Oldenburg, sobald eine ansteht.
             </p>
           </div>
-        </main>
-      </>
+      </div>
     );
   }
 
@@ -272,10 +270,9 @@ export function WahlenView() {
   const gesperrt = !loading && !user ? gesperrtesTippspiel(zeilen) : null;
 
   return (
-    <>
-      <Kopf label="Wahlen" />
-      <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-5 sm:px-6">
-        <h1 className="sr-only">Wahlen in Oldenburg</h1>
+    <div className="mx-auto w-full max-w-3xl pb-6">
+      <PageHeader title="Wahlen" description="Die nächste Wahl in Oldenburg und die gelaufenen mit ihrem Ergebnis." />
+      <div className="mt-6">
         {isLoading ? <div className="h-56 animate-pulse rounded-3xl bg-muted" /> : null}
         {fokus ? <Buehne z={fokus} /> : null}
         {gesperrt ? <Anreiz z={gesperrt} /> : null}
@@ -304,7 +301,7 @@ export function WahlenView() {
             der Feststellung durch den Wahlausschuss eingefroren haben; „vorläufig“ ist der Stand vom Wahlabend.
           </p>
         </footer>
-      </main>
-    </>
+      </div>
+    </div>
   );
 }
