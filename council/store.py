@@ -2431,7 +2431,7 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
 
     def neueste_stationen_fuer(self, kvonrs: list[int],
                                vorlage_basen: list[str]) -> list[dict]:
-        """Alle Beschlüsse (id, kvonr, template_number, session_date, committee) der
+        """Alle Beschlüsse (id, kvonr, template_number, session_date, committee, outcome) der
         genannten Vorlagen-Familien — Grundlage für den „ältere Station"-Marker:
         derselbe Text durchläuft mehrere Gremien (gleiches kvonr), Revisionen
         hängen ein Suffix an die Vorlagen-Nummer (26/0100 → 26/0100-1)."""
@@ -2447,7 +2447,7 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
             teile.append("d.template_number = ? OR d.template_number LIKE ?")
             params += [b, b + "-%"]
         rows = self._conn.execute(
-            "SELECT d.id, d.kvonr, d.template_number, cs.session_date, cs.committee "
+            "SELECT d.id, d.kvonr, d.template_number, cs.session_date, cs.committee, d.outcome "
             "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
             "WHERE " + " OR ".join(teile), params).fetchall()
         return [dict(r) for r in rows]
