@@ -194,6 +194,12 @@ OEFFENTLICH = {
     # unbekanntes Token und gesperrtes Konto antworten gleich mit 404.
     ("get", "/api/calendar/{token}.ics"),
 
+    # Der MCP-Server: Ein Agent hat keine Sitzung, er schickt seinen
+    # persönlichen Schlüssel (`Authorization: Bearer rlmcp_…`). Der Handler
+    # prüft ihn selbst — Hash, aktives Konto, Recht `mcp` — und nimmt das
+    # Sitzungs-Cookie ausdrücklich NICHT an (tests/test_mcp.py hält beides).
+    ("post", "/api/mcp"),
+
     # Wahlprogramm-Quellen: Belege einer öffentlichen Vergleichsseite.
     ("get", "/api/kommunalwahl/source/{slug}"),
 

@@ -4575,6 +4575,50 @@ class CalendarSubscription(TypedDict):
     subscribed_committees: int
 
 
+class McpToken(TypedDict):
+    """Ein persönlicher MCP-Schlüssel, wie ihn die Liste zeigt — ohne das
+    Geheimnis selbst; ``prefix`` sind die ersten Zeichen zum Wiedererkennen."""
+    id: int
+    label: str
+    prefix: str
+    created: str
+    last_used: str | None
+    calls: int
+
+
+class McpTokenList(TypedDict):
+    """``GET /api/account/mcp-tokens``: die Schlüssel des Kontos, die
+    Höchstzahl und die Adresse, unter der der Server antwortet."""
+    tokens: list[McpToken]
+    max: int
+    endpoint: str
+
+
+class McpTokenCreated(TypedDict):
+    """``POST /api/account/mcp-tokens``: der neue Schlüssel. ``secret`` steht
+    hier genau EINMAL — gespeichert ist nur sein Hash."""
+    token: McpToken
+    secret: str
+    endpoint: str
+
+
+class McpMessage(TypedDict):
+    """Eine JSON-RPC-2.0-Antwort des MCP-Servers (``POST /api/mcp``).
+
+    ``result`` bzw. ``error`` tragen, was die MCP-Spezifikation für die
+    jeweilige Methode vorsieht (``initialize``, ``tools/list``,
+    ``tools/call``, ``ping``) — deshalb ``dict[str, Any]`` und keine
+    Aufzählung: Den Vertrag hält die Spezifikation, nicht diese Datei.
+    """
+    jsonrpc: Literal["2.0"]
+    #: Zahl, Text oder ``null`` — genau so, wie die Anfrage sie schickte.
+    #: Bewusst ``Any``: ``str | int | None`` landete als ``anyOf`` im Vertrag,
+    #: und das lässt der Swift-Generator still weg.
+    id: Any
+    result: NotRequired[dict[str, Any]]
+    error: NotRequired[dict[str, Any]]
+
+
 # --------------------------------------------------------------------------
 # Antworten, die kein JSON sind
 #

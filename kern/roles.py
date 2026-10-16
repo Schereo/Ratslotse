@@ -40,10 +40,18 @@ from dataclasses import dataclass, field
 #:   Tageskontingent bleibt dasselbe — das Recht ändert das Modell, nicht
 #:   die Menge.
 #:
+#: - ``mcp``: ein persönlicher Schlüssel für den MCP-Server (``/api/mcp``),
+#:   über den ein eigener Agent die Ratsdaten abfragt. Tims Wunsch
+#:   16.10.2026: „eine extra Rolle […], nur wenn sie die haben, können sie
+#:   so ein Token bekommen.“ Ein Recht und kein bloßer Schalter, weil ein
+#:   Schlüssel aus der Hand gegeben wird: Wer ihn ausstellt, soll das
+#:   ausdrücklich dürfen. Lesend, ohne Haushalt und ohne Sprachmodell auf
+#:   unserer Seite.
+#:
 #: Dass ``budget`` und ``mandate`` **zwei** Rechte sind und nicht eines, ist
 #: der Grund, warum es die Rolle *Fachpublikum* ohne einen einzigen weiteren
 #: Handgriff geben kann: Sie nimmt das eine und lässt das andere liegen.
-PERMISSIONS: tuple[str, ...] = ("budget", "mandate", "premium_models", "admin")
+PERMISSIONS: tuple[str, ...] = ("budget", "mandate", "premium_models", "mcp", "admin")
 
 
 @dataclass(frozen=True)
@@ -83,6 +91,16 @@ ROLES: dict[str, Role] = {
         # Stufe. Ein Ratsmitglied mit „Recherche Plus“ trägt beide Rollen —
         # ohne eine vierte, die beides bündelt.
         permissions=frozenset({"premium_models"}),
+    ),
+    "mcp_access": Role(
+        key="mcp_access",
+        label="MCP-Zugang",
+        description="Darf persönliche Schlüssel für den MCP-Server ausstellen und damit "
+                    "einen eigenen Agenten (Claude, ChatGPT, Cursor …) an die Ratsdaten "
+                    "anschließen — lesend, ohne Haushalt. Wird zusätzlich zu einer anderen "
+                    "Rolle vergeben.",
+        # Ein Zusatz wie „Recherche Plus“: genau dieses eine Recht.
+        permissions=frozenset({"mcp"}),
     ),
     "expert": Role(
         key="expert",
@@ -126,8 +144,9 @@ ROLES: dict[str, Role] = {
 #: *Recherche Plus* steht direkt nach dem Standard: Sie ist ein Zusatz, der
 #: neben jeder anderen Rolle vergeben wird, und soll in der Alt-Spalte nie
 #: eine davon verdrängen — ein Ratsmitglied mit Recherche Plus erscheint dort
-#: als Ratsmitglied, ein Admin als Admin.
-ROLE_ORDER: tuple[str, ...] = ("user", "research_plus", "expert", "council_member", "admin")
+#: als Ratsmitglied, ein Admin als Admin. Dasselbe gilt für *MCP-Zugang*.
+ROLE_ORDER: tuple[str, ...] = ("user", "research_plus", "mcp_access", "expert", "council_member",
+                               "admin")
 
 
 def known_roles(roles) -> list[str]:
