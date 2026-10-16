@@ -71,6 +71,9 @@ def test_eine_wahl_ohne_register_bekommt_keinen_link():
         "Ein Link auf eine Seite, die es nicht gibt, ist schlechter als kein Link.")
     assert zeilen["ratswahl-2026"]["path"] == "/wahlabend"
     assert zeilen["ob-stichwahl-2026"]["path"] == "/wahlabend/stichwahl"
+    # Der erste Wahlgang stand bis 10/2026 als einzige gelaufene Wahl ohne
+    # Link da — er hat seine Seite unter /wahlabend/ob.
+    assert zeilen["ob-2026"]["path"] == "/wahlabend/ob"
 
 
 # ------------------------------------------------------------------ Rückblick

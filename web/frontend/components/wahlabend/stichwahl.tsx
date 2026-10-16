@@ -19,7 +19,7 @@ import { ChevronDown, Info } from "lucide-react";
 import { Aufklapp } from "@/components/aufklapp";
 import { Mascot } from "@/components/mascot";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Kopf } from "@/components/wahlabend/kopf";
+import { ZurueckZuWahlen } from "@/components/wahlen/zurueck";
 import { TippspielEinladung, useWahlzeile } from "@/components/tipp/einladung";
 import { AuszaehlungsSimulator } from "@/components/wahlabend/simulator";
 import { StichwahlKarte } from "@/components/wahlabend/stichwahl-karte";
@@ -209,7 +209,7 @@ function AbfrageTakt({ seit, ms }: { seit: number; ms: number }) {
  *  Beides steht nicht in der amtlichen Bekanntmachung — das Backend liefert
  *  es nur mit eigener Quelle, und die steht hier als Beleg daneben. Ohne
  *  Angaben bleibt die Zeile weg; sie ist kein Platzhalter. */
-function Herkunft({ k }: { k: StichwahlKandidat }) {
+export function Herkunft({ k }: { k: StichwahlKandidat }) {
   // Eingeklappt, was nur Erklärung ist (Tim 23.09.2026: „sehr viel Text
   // dafür, dass es eigentlich nur ein Disclaimer ist"): Die Zeile mit den
   // Parteien bleibt stehen, die Begründung zum Stimmzettel und die Belege
@@ -789,24 +789,24 @@ export function StichwahlView() {
   if (!frei || (isError && !data)) {
     return (
       <>
-        <Kopf label="Stichwahl" />
-        <main className="mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+        <div className="mx-auto w-full max-w-3xl pb-6">
+          <ZurueckZuWahlen />
           <Hinweisbild
             pose="sleep"
             titel="Die Stichwahl ist noch nicht offen"
             text="Diese Seite zeigt ab dem 27. September ab 18 Uhr den Auszählungsstand. Bis dahin gibt es hier nichts zu sehen."
           />
-        </main>
+        </div>
       </>
     );
   }
   if (isLoading || !data) {
     return (
       <>
-        <Kopf label="Stichwahl" />
-        <main className="mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+        <div className="mx-auto w-full max-w-3xl pb-6">
+          <ZurueckZuWahlen />
           <div className="mt-10 h-40 animate-pulse rounded-2xl bg-muted" />
-        </main>
+        </div>
       </>
     );
   }
@@ -835,8 +835,8 @@ export function StichwahlView() {
 
   return (
     <>
-      <Kopf label="Stichwahl" />
-      <main className="mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+      <div className="mx-auto w-full max-w-3xl pb-6">
+        <ZurueckZuWahlen />
         {data.dataset === "probe" ? (
           <p className="mt-4 rounded-xl border border-amber-300/50 bg-amber-50 px-4 py-2.5 text-[13px] text-amber-900 dark:border-amber-700/40 dark:bg-amber-900/25 dark:text-amber-100">
             <strong className="font-semibold">Generalprobe.</strong> Die Zahlen sind die des ersten Wahlgangs vom
@@ -950,7 +950,7 @@ export function StichwahlView() {
             </Link>
           </p>
         </footer>
-      </main>
+      </div>
       <StichwahlMomente daten={data} favorit={favorit} />
       {/* Nur auf dev sichtbar — die Bedienung für die Generalprobe. */}
       <AuszaehlungsSimulator />

@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 
-// Eigene Metadaten, aber dieselbe Hülle wie /wahlabend (die kommt vom
-// darüberliegenden Layout): kein Konto-Gate, eigener Kopf, Feature-Schalter
-// `wahlabend`.
+// Eigene Metadaten, dieselbe Hülle wie /wahlabend (App-Hülle bzw. ohne
+// Konto die PublicShell), Feature-Schalter `wahlabend`.
 export const metadata: Metadata = {
   title: "OB-Stichwahl 2026 in Oldenburg: Ergebnis und Rückblick | Ratslotse",
   description:
