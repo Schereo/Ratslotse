@@ -45,10 +45,6 @@ def test_finde_person_namen_titel_und_faltung():
     assert qa.finde_person(store, "Position von Niewerth-Baumann zum Haushalt?")["party"] == "CDU"
     # Keine Person genannt → None (kein Fehlmatch über kurze Wortteile).
     assert qa.finde_person(store, "Was kostet das neue Stadion?") is None
-    # Vor- und Nachname zusammen schlagen eine Parteifrage (Router), der
-    # Nachname allein nicht — die Erkennung sagt, welcher Fall vorliegt.
-    assert qa.finde_person(store, "Was sagt Jens Lükermann (Volt) zum Stadion?")["full_name"] is True
-    assert qa.finde_person(store, "Was sagt Lükermann zum Stadion?")["full_name"] is False
 
 
 def test_wortbeitraege_von_sprecher_umlaut_varianten(tmp_path):

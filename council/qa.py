@@ -1193,8 +1193,7 @@ def protokolle_verlinken(store, rows: list[dict]) -> None:
 def finde_person(store, question: str) -> dict | None:
     """Personen-Fragetyp: Nennt die Frage eine Ratsperson (Voll- oder
     Nachname, umlaut-gefaltet, ganze Wörter)? Liefert
-    {name, party, nachname, full_name} — deterministisch, kostenlos.
-    ``full_name``: Vor- UND Nachname standen in der Frage."""
+    {name, party, nachname} — deterministisch, kostenlos."""
     try:
         index = store.personen_suchindex()
     except Exception:  # noqa: BLE001
@@ -1207,12 +1206,9 @@ def finde_person(store, question: str) -> dict | None:
         if not nachname_f or len(nachname_f) < 4:
             continue
         if f" {name_f} " in frage_f:
-            laenge, voll = len(name_f), True
+            laenge = len(name_f)
         elif f" {nachname_f} " in frage_f:
-            # „Paul Behrens“ zu „Dr. Paul Behrens“: Titel zählen nicht zum Namen.
-            teile = [t for t in name_f.split() if t not in ("dr", "prof")]
             laenge = len(nachname_f)
-            voll = len(teile) > 1 and all(f" {t} " in frage_f for t in teile)
         else:
             continue
         # nachname im ORIGINAL (mit Umlauten): die Wortbeitrags-Suche macht
@@ -1220,8 +1216,7 @@ def finde_person(store, question: str) -> dict | None:
         # Sprecher-Feld nie treffen (Faltung kennt keinen Rückweg).
         original = next((t for t in reversed(name.replace(".", " ").split())
                          if _falte(t) == nachname_f), name.split()[-1])
-        treffer.append((laenge, {"name": name, "party": party, "nachname": original,
-                                 "full_name": voll}))
+        treffer.append((laenge, {"name": name, "party": party, "nachname": original}))
     if not treffer:
         return None
     return max(treffer, key=lambda t: t[0])[1]
