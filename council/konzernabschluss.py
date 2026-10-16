@@ -188,13 +188,61 @@ _POSTEN = re.compile(r"^(\d{1,2})\.\s+(?=[A-Za-zÄÖÜäöüß])(.*)$")
 #: Probe es merkt.
 _UNTERPOSTEN = re.compile(r"^\d{1,2}\.\d")
 _EINHEIT = re.compile(r"TEUR|T€|EUR|€")
-#: Eine Beschriftung trägt keine Zahlenkolonne. Der Extrakt setzt in den
+#: Eine Beschriftung trägt keine Ziffer. Der Extrakt setzt in den
 #: schlechteren Jahrgängen Leerzeichen mitten in Beträge („160.026.568 ,55"),
 #: und dann ist der erste *saubere* Betrag der Zeile nicht mehr der Wert des
-#: Haushaltsjahres, sondern der des Vorjahres. Diese Prüfung fängt das ab:
-#: Steht vor dem gefundenen Betrag noch eine Ziffernfolge, ist die Zeile
-#: zerschossen und fällt weg.
-_ZAHL_IM_TEXT = re.compile(r"\d[\d.]{2,}")
+#: Haushaltsjahres, sondern der des Vorjahres — oder ein Rest des eigenen.
+#: :func:`zusammenfuegen` heilt die eindeutigen Fälle vorher; was danach noch
+#: eine Ziffer vor dem Betrag stehen hat, ist zerschossen und fällt weg.
+#:
+#: Bis 10/2026 verlangte die Prüfung DREI Zeichen („\d[\d.]{2,}"). Zwei
+#: reichten zum Durchrutschen: „18. Aufwendungen für Sach- und
+#: Dienstleistungen  17 3.223.747,06" kam als 3,2 statt 173,2 Mio. € in den
+#: Bestand 2014 — mit „17" in der Beschriftung, und keine der drei Proben
+#: konnte es sehen, weil sie nur Summen und Salden prüfen. Keine Beschriftung
+#: aus zwölf Jahrgängen trägt eine Ziffer; die strengere Regel kostet nichts.
+_ZAHL_IM_TEXT = re.compile(r"\d")
+
+#: Die eindeutigen Formen, in denen der Extrakt EIN Leerzeichen in einen
+#: Betrag setzt — alle aus den Jahrgängen 2014 und 2017 abgeschrieben:
+#:
+#:   „63.842.254 ,20"   „105.667.339, 23"   „15.567.728,4 4"
+#:   „14.616. 613,52"   „1.929 .814,46"     „17 3.223.747,06"
+#:
+#: Jede Regel verlangt, dass das Ergebnis wieder genau ein deutscher Betrag
+#: ist (Dreiergruppen, zwei Nachkommastellen). Zwei Beträge nebeneinander
+#: („1.234,56 7.890,12") trennt immer ein Komma mit ZWEI Ziffern davor — das
+#: fasst keine der Regeln an.
+_RISSE = (
+    re.compile(r"(\d) (,\d\d)(?![\d])"),            # „254 ,20"
+    re.compile(r"(,) (\d\d)(?=\s|$)"),               # „, 23"
+    re.compile(r"(,\d) (\d)(?=\s|$)"),               # „,4 4"
+    re.compile(r"(\d\.) (\d{3}[.,])"),                # „616. 613,"
+    re.compile(r"(\d) (\.\d{3}[.,])"),                # „929 .814,"
+)
+#: „17 3.223.747,06": abgetrennte führende Ziffern. Zusammengefügt wird nur,
+#: wenn die erste Gruppe danach höchstens drei Stellen hat — „17 223.747,06"
+#: ergäbe „17223.747,06" und bleibt deshalb zerschossen (und fällt weg).
+_FUEHRENDE = re.compile(r"(?<![\d.,])(\d{1,2}) (\d{1,2})(\.\d{3}(?:\.\d{3})*,\d\d)(?!\d)")
+
+
+def zusammenfuegen(row: str) -> str:
+    """Leerzeichen mitten in einem Betrag entfernen, wo es eindeutig ist.
+
+    Was hier geheilt wird, bestätigt anschließend eine Probe, die nicht im
+    selben Dokument steckt: Der Folgejahrgang druckt jeden Posten noch einmal
+    als Vorjahr (``tests/test_konzernabschluss.py`` hält die Fälle 2014 und
+    2017 gegen diese Spalte fest). Vorher fehlten 2014 sieben Posten, und einer
+    stand um den Faktor 50 zu klein da."""
+    for riss in _RISSE:
+        row = riss.sub(r"\1\2", row)
+
+    def fuehrend(m: re.Match) -> str:
+        if len(m.group(1)) + len(m.group(2)) > 3:
+            return m.group(0)
+        return m.group(1) + m.group(2) + m.group(3)
+
+    return _FUEHRENDE.sub(fuehrend, row)
 
 
 def _vorjahr_in_tausend(kopf: str) -> bool:
@@ -235,7 +283,7 @@ def _posten_zeilen(rumpf: str, tausend: bool) -> list[dict]:
     offen_text = ""
     aus: list[dict] = []
     for roh in rumpf.split("\n"):
-        row = roh.strip()
+        row = zusammenfuegen(roh.strip())
         if not row:
             continue
         if _UNTERPOSTEN.match(row):
