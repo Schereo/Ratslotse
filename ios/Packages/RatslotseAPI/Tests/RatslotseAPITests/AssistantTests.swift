@@ -206,3 +206,45 @@ func handoffRahmen() throws {
     #expect(done.mode == "handoff")
     #expect(done.leadsToCouncilQuestion)
 }
+
+// MARK: - Wo der Knopf steht
+
+@Test("Die Merkliste ist ein eigener Screen mit eigener Route")
+func merklisteHatEineRoute() throws {
+    // Bis 10/2026 stand "/bookmarks" in AppModel von Hand — die Merkliste
+    // hatte keine App-Route und lag am Stapel vorbei.
+    #expect(ExplainScreen.from(.saved)?.route == "/bookmarks")
+    #expect(ExplainScreen.from(.saved)?.refs == ExplainRefs())
+}
+
+@Test("Über der Tab-Leiste nur auf der Wurzel, auf einer geschobenen Seite ganz unten")
+func knopfAbstand() {
+    // Wurzel: über der Leiste.
+    #expect(LottiPlacement.bottomClearance(stackDepth: 0, tabBarHeight: 72, keyboardVisible: false) == 72)
+    // Beschluss, Bewegung, Sitzung …: Die Seite verdeckt die Leiste — ein
+    // Knopf in ihrer Höhe schwebte mitten im Inhalt.
+    #expect(LottiPlacement.bottomClearance(stackDepth: 1, tabBarHeight: 72, keyboardVisible: false) == 0)
+    #expect(LottiPlacement.bottomClearance(stackDepth: 3, tabBarHeight: 72, keyboardVisible: false) == 0)
+    // Tastatur offen: Die Leiste weicht.
+    #expect(LottiPlacement.bottomClearance(stackDepth: 0, tabBarHeight: 72, keyboardVisible: true) == 0)
+}
+
+@Test("Jede erklärbare Seite hält unten Platz für den Knopf frei", arguments: [
+    AppRoute.decision(id: 1), .sessions(ksinr: 7, tops: []), .person(slug: "anna-muster"),
+    .topic(slug: "radverkehr"), .place(id: "stadtteil:eversten"), .movement(id: 5), .ideas,
+    .district(id: "eversten"), .analysis, .subscriptions, .saved, .quiz(area: nil),
+])
+func seitenHaltenPlatzFrei(route: AppRoute) {
+    #expect(LottiPlacement.pageInset(for: route, enabled: true, keyboardVisible: false)
+            == LottiPlacement.pageInset)
+    // Ohne Schalter oder mit Tastatur steht kein Knopf da — dann auch kein Loch.
+    #expect(LottiPlacement.pageInset(for: route, enabled: false, keyboardVisible: false) == 0)
+    #expect(LottiPlacement.pageInset(for: route, enabled: true, keyboardVisible: true) == 0)
+}
+
+@Test("Wo es Lotti nicht gibt, bleibt auch unten kein Loch")
+func ohneLottiKeinRand() {
+    #expect(LottiPlacement.pageInset(for: .admin, enabled: true, keyboardVisible: false) == 0)
+    let fremd = AppRoute.web(URL(string: "https://example.org")!)
+    #expect(LottiPlacement.pageInset(for: fremd, enabled: true, keyboardVisible: false) == 0)
+}

@@ -119,9 +119,11 @@ struct CouncilBrowserView: View {
                     .accessibilityLabel("Im Kalender abonnieren")
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }
-                NavigationLink {
-                    SavedCouncilView(model: model)
-                } label: {
+                // Als Route, nicht als eingebettete Ansicht: Nur was auf dem
+                // Stapel liegt, bekommt Kopfzeile, Zurück-Geste und Lottis
+                // Knopf mit dem richtigen Seitenkontext (bis 10/2026 hätte
+                // Lotti hier die Beschlussliste darunter erklärt).
+                NavigationLink(value: AppRoute.saved) {
                     RatsGlyphView(glyph: .saved, color: RatsColor.bodyText)
                         .frame(width: 19, height: 19)
                         .frame(width: 40, height: 40)

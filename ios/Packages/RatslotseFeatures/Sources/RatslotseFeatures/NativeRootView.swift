@@ -25,6 +25,8 @@ public struct NativeRootView: View {
     @Bindable private var model: AppModel
     @Environment(\.scenePhase) private var scenePhase
     @Namespace private var zoomNamespace
+    /// Lottis Knopf, Blase und Blatt — über dem Stapel, s. `LottiHost`.
+    @State private var lotti = LottiPresence()
 
     public init(model: AppModel) { self.model = model }
 
@@ -56,19 +58,31 @@ public struct NativeRootView: View {
                         } else if model.onboardingStep != nil {
                             NativeOnboardingFlow(model: model)
                         } else {
-                            MainTabsView(model: model)
+                            MainTabsView(model: model, lotti: lotti)
                         }
                     }
                 }
                 }
             }
             .navigationDestination(for: AppRoute.self) { route in
-                RatsRouteScaffold(model: model, title: route.scaffoldTitle) {
+                RatsRouteScaffold(
+                    model: model,
+                    title: route.scaffoldTitle,
+                    lottiInset: LottiPlacement.pageInset(
+                        for: route,
+                        enabled: showsMainTabs && model.feature("lotti-assistentin"),
+                        keyboardVisible: lotti.keyboardVisible)
+                ) {
                     RouteDestinationView(model: model, route: route)
                 }
                 .ratsZoomDestination(RatsZoomID.forRoute(route))
             }
         }
+        // AUSSERHALB des Stapels: So liegt der Knopf über jeder geschobenen
+        // Seite, nicht nur über der Tab-Ansicht an seiner Wurzel. Und noch
+        // innerhalb von Schrift und Farben weiter unten, damit Lottis Blatt
+        // sie erbt.
+        .lottiHost(model: model, presence: lotti, active: showsMainTabs)
         .environment(\.ratsZoomNamespace, zoomNamespace)
         .sensoryFeedback(.success, trigger: model.actionFeedback)
         .task(id: "\(scenePhase)-\(model.session)") {
@@ -149,6 +163,14 @@ public struct NativeRootView: View {
         }
     }
 
+    /// Steht die App in ihrer Hauptansicht (Tabs samt Stapel)? Nur dort gibt
+    /// es Lotti — nicht in Anmeldung, Einrichtung oder Aktualisieren-Schirm.
+    private var showsMainTabs: Bool {
+        guard !showsDebugPersonProfile, !model.updateRequired,
+              case .active = model.session else { return false }
+        return model.onboardingStep == nil
+    }
+
     private var showsDebugPersonProfile: Bool {
 #if DEBUG
         ratsDebugValue("RATSLOTSE_DEBUG_MAIN") == "person-detail"
@@ -187,9 +209,18 @@ private extension AppRoute {
     /// ausgeblendet (s. `RatsRouteScaffold`), ein `.navigationTitle` der
     /// Zielansicht erscheint also nie — „Mein Viertel" stand deshalb bis
     /// 10/2026 als „Ratslotse" über der Karte.
+    ///
+    /// Die Seiten aus dem Mehr-Menü tragen dieselben Namen wie ihre Zeilen
+    /// dort: Bis 10/2026 öffneten sie sich in einem eigenen Stapel im Blatt,
+    /// der seine Titel selbst setzte.
     var scaffoldTitle: String {
         switch self {
         case .district: "Mein Viertel"
+        case .analysis: "Analyse"
+        case .ideas: "Ideen aus anderen Städten"
+        case .subscriptions: "Ausschuss-Abos"
+        case .saved: "Merkliste"
+        case .quiz: "Oldenburg-Quiz"
         default: "Ratslotse"
         }
     }
@@ -198,13 +229,17 @@ private extension AppRoute {
 private struct RatsRouteScaffold<Content: View>: View {
     @Bindable var model: AppModel
     let title: String
+    /// Unten frei gehaltener Platz für Lottis Knopf (`LottiPlacement`).
+    let lottiInset: Double
     @ViewBuilder let content: Content
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    init(model: AppModel, title: String = "Ratslotse", @ViewBuilder content: () -> Content) {
+    init(model: AppModel, title: String = "Ratslotse", lottiInset: Double = 0,
+         @ViewBuilder content: () -> Content) {
         self.model = model
         self.title = title
+        self.lottiInset = lottiInset
         self.content = content()
     }
 
@@ -253,7 +288,10 @@ private struct RatsRouteScaffold<Content: View>: View {
             .padding(.vertical, 10)
             .background(RatsColor.page)
             Divider().overlay(RatsColor.separator)
+            // Der Knopf schwebt über der Seite; ohne diesen Rand läge ihr
+            // letzter Eintrag unter ihm, egal wie weit man scrollt.
             content
+                .safeAreaPadding(.bottom, lottiInset)
         }
         .background(RatsColor.page)
         .toolbar(.hidden, for: .navigationBar)
@@ -359,6 +397,10 @@ private struct UpdateRequiredView: View {
 
 private struct MainTabsView: View {
     @Bindable var model: AppModel
+    /// Lottis Zustand. Knopf, Blase und Blatt hängen über dem Stapel
+    /// (`LottiHost`); die Tab-Ansicht meldet nur, was sie davon weiß: wie
+    /// hoch ihre Leiste ist und ob eines ihrer Blätter offen ist.
+    @Bindable var lotti: LottiPresence
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var showsMore = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE"] == "1"
@@ -368,8 +410,8 @@ private struct MainTabsView: View {
     /// zwischen Tastatur und Eingabefeld und nahm dem Gespräch rund 90 pt
     /// (Tim, 09.09.2026). Gehört wird auf die System-Meldungen, nicht auf
     /// einen Fokus — so gilt es für jedes Feld in jedem Tab und auch für
-    /// ein Blatt darüber.
-    @State private var keyboardVisible = false
+    /// ein Blatt darüber. Die Meldungen hört `LottiHost` ab, für beide.
+    private var keyboardVisible: Bool { lotti.keyboardVisible }
     /// Gemessene Höhe der Tab-Leiste. Der `safeAreaInset` mit der Leiste
     /// sitzt außen am TabView, und dessen Seiten erben diesen Bereich NICHT
     /// — auf „Heute“ lag die letzte Karte unter der Leiste, egal wie weit
@@ -377,13 +419,6 @@ private struct MainTabsView: View {
     /// als eigenen Safe-Area-Rand; steht die Tastatur, ist die Leiste weg
     /// und der Rand null.
     @State private var bottomBarHeight: CGFloat = 0
-    /// Lottis Blatt. Der Bildschirm wird beim ÖFFNEN festgehalten: Wer im
-    /// Blatt weiterfragt, fragt weiter zu der Seite, von der er kam.
-    @State private var lotti: LottiSitzung?
-    /// Lottis Anklopfen: die Uhr je Screen und die Blase.
-    @State private var nudgeClock = NudgeClock()
-    @State private var nudgeVisible = false
-    @Environment(\.scenePhase) private var scenePhase
 
     private var tabBarClearance: CGFloat {
         horizontalSizeClass == .regular || keyboardVisible ? 0 : bottomBarHeight
@@ -396,7 +431,7 @@ private struct MainTabsView: View {
     /// unter ihm, egal wie weit man scrollte — derselbe Befund wie bei der
     /// Tab-Leiste selbst (Tim, 09.09.2026), nur eine Ebene höher.
     private var lottiClearance: CGFloat {
-        zeigtLotti && !keyboardVisible ? 58 : 0
+        zeigtLotti && !keyboardVisible ? LottiPlacement.pageInset : 0
     }
 
     private var zeigtLotti: Bool {
@@ -441,70 +476,20 @@ private struct MainTabsView: View {
                     .animation(RatsMotion.flow, value: keyboardVisible)
             }
         }
-        .task {
-            for await _ in NotificationCenter.default.notifications(named: UIResponder.keyboardWillShowNotification) {
-                keyboardVisible = true
-            }
+        // Lottis Knopf hängt über dem Stapel (`LottiHost`). Von hier erfährt
+        // er die Höhe der Leiste und ob ein Blatt der Tab-Ansicht offen ist —
+        // unter dem Mehr-Blatt oder der Tour klopft Lotti nicht an.
+        .onChange(of: tabBarClearance, initial: true) { _, hoehe in lotti.tabBarHeight = hoehe }
+        .onChange(of: showsMore || showsTour, initial: true) { _, offen in lotti.busy = offen }
+        // Ein Blatt, unter dem sich eine Seite öffnet, geht zu. Das Mehr-Blatt
+        // öffnet seine Seiten selbst im Stapel und schließt sich dabei; hier
+        // geht es um alles andere — einen Push, einen Link von außen. Ohne
+        // das läge die Seite unsichtbar dahinter, wie bis 10/2026 jede Idee,
+        // die man aus „Mehr" heraus antippte.
+        .onChange(of: model.navigation) { _, _ in
+            if showsMore { showsMore = false }
         }
-        .task {
-            for await _ in NotificationCenter.default.notifications(named: UIResponder.keyboardWillHideNotification) {
-                keyboardVisible = false
-            }
-        }
-        // Der schwebende Knopf liegt ÜBER allem, auch über der Tab-Leiste —
-        // wie im Web. Er erscheint nur, wo es zur Seite etwas zu sagen gibt
-        // (auf dem Konto gibt es ihn nicht, `currentExplainScreen`).
-        .overlay(alignment: .bottomTrailing) {
-            if zeigtLotti, !keyboardVisible, let screen = model.currentExplainScreen {
-                LottiFloatingButton(
-                    open: { oeffneLotti(screen) },
-                    bottomClearance: tabBarClearance
-                )
-                .transition(.scale.combined(with: .opacity))
-            }
-        }
-        // Die Blase über dem Knopf. Sie verschwindet von selbst wieder, und
-        // **das zählt nicht als Ablehnung**: Wer nicht hinsieht, hat nicht
-        // Nein gesagt.
-        .overlay(alignment: .bottomTrailing) {
-            if nudgeVisible, let screen = model.currentExplainScreen {
-                LottiNudgeBubble(
-                    accept: {
-                        let stand = AssistantNudge.afterAccept(NudgeStore().state,
-                                                               now: Date.now.timeIntervalSince1970)
-                        NudgeStore().state = stand
-                        nudgeVisible = false
-                        Task { await model.reportAssistantEvent("nudge_accepted") }
-                        oeffneLotti(screen)
-                    },
-                    dismiss: {
-                        NudgeStore().state = AssistantNudge.afterDismissal(NudgeStore().state)
-                        nudgeVisible = false
-                        Task { await model.reportAssistantEvent("nudge_dismissed") }
-                    },
-                    bottomClearance: tabBarClearance
-                )
-            }
-        }
-        .animation(RatsMotion.flow, value: nudgeVisible)
-        // Jede Berührung ist ein Lebenszeichen — `simultaneousGesture` nimmt
-        // sie mit, ohne sie zu verbrauchen: Listen scrollen weiter, Knöpfe
-        // drücken weiter.
-        .simultaneousGesture(DragGesture(minimumDistance: 0)
-            .onChanged { _ in nudgeClock.touched() })
-        // Ein Screen-Wechsel setzt die Uhr zurück und nimmt die Blase mit:
-        // Eine Frage zum ALTEN Screen wäre eine zur falschen Sache.
-        .onChange(of: model.currentExplainScreen?.route, initial: true) { _, _ in
-            nudgeClock.enteredScreen()
-            nudgeVisible = false
-        }
-        .task(id: model.feature("lotti-anstupser")) { await klopfUhr() }
         .animation(RatsMotion.flow, value: keyboardVisible)
-        .sheet(item: $lotti) { sitzung in
-            AssistantSheet(model: model, screen: sitzung.screen, title: sitzung.title,
-                           fixture: sitzung.fixture)
-                .ratsLargeSheet()
-        }
         .sheet(isPresented: $showsMore) {
             MoreHubView(
                 model: model,
@@ -609,6 +594,18 @@ private struct MainTabsView: View {
             if let link = ratsDebugValue("RATSLOTSE_DEBUG_OPEN_URL"), let url = URL(string: link) {
                 model.handle(url: url)
             }
+            // Wie ein Tipp auf eine Karte: Die Seiten werden an den Stapel
+            // ANGEHÄNGT (nicht ersetzt, anders als ein Link von außen), und
+            // erst, wenn die Seite davor steht. Für die Sichtprobe der Wege
+            // „Mehr → Ideen → Bewegung" ohne Simulator-Steuerung; mehrere
+            // Pfade mit `|` getrennt.
+            if let raw = ratsDebugValue("RATSLOTSE_DEBUG_PUSH") {
+                let routes = raw.split(separator: "|").compactMap { model.router.route(forPath: String($0)) }
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    model.navigation.append(contentsOf: routes)
+                }
+            }
             // NACH der Screen-Wahl: Das Blatt hält den Bildschirm fest, den
             // es beim Öffnen vorfindet — davor wäre es immer „Heute".
             if let lottiModus = ratsDebugValue("RATSLOTSE_DEBUG_LOTTI") {
@@ -622,11 +619,11 @@ private struct MainTabsView: View {
                     model.features.insert("lotti-anstupser")
                     Task {
                         try? await Task.sleep(for: .seconds(1))
-                        nudgeVisible = true
+                        lotti.nudgeVisible = true
                     }
                 }
                 if lottiModus != "knopf" && lottiModus != "anstupser" {
-                    lotti = LottiSitzung(
+                    lotti.sitzung = LottiSitzung(
                         screen: model.currentExplainScreen ?? ExplainScreen(route: "/dashboard"),
                         title: model.currentScreenTitle,
                         fixture: lottiModus == "fixture"
@@ -637,45 +634,6 @@ private struct MainTabsView: View {
         }
         .onChange(of: horizontalSizeClass) { _, sizeClass in
             if sizeClass == .regular { showsMore = false }
-        }
-    }
-
-    /// Lottis Blatt öffnen — und sich merken, dass sie heute benutzt wurde.
-    private func oeffneLotti(_ screen: ExplainScreen) {
-        nudgeVisible = false
-        nudgeClock.sheetWasOpen = true
-        NudgeStore().markUsed()
-        lotti = LottiSitzung(screen: screen, title: model.currentScreenTitle)
-    }
-
-    /// Die Uhr, die alle fünf Sekunden nachsieht, ob angeklopft werden darf.
-    ///
-    /// Sie läuft nur mit dem eigenen Schalter (`lotti-anstupser`): Auf Prod
-    /// lässt sich das Anklopfen abstellen, ohne Lotti selbst abzuschalten.
-    private func klopfUhr() async {
-        guard model.feature("lotti-assistentin"), model.feature("lotti-anstupser") else { return }
-        while !Task.isCancelled {
-            try? await Task.sleep(for: .seconds(5))
-            nudgeClock.tick(visible: scenePhase == .active)
-            guard !nudgeVisible, let screen = model.currentExplainScreen, lotti == nil else { continue }
-            let store = NudgeStore()
-            let kontext = NudgeContext(
-                screenAllowed: screen.allowsNudge,
-                readingTime: nudgeClock.readingTime,
-                sinceInteraction: nudgeClock.sinceInteraction,
-                screensThisSession: nudgeClock.screensThisSession,
-                sheetWasOpen: nudgeClock.sheetWasOpen,
-                usedToday: store.usedToday,
-                busy: keyboardVisible || showsMore || showsTour)
-            let jetzt = Date.now.timeIntervalSince1970
-            guard AssistantNudge.mayAppear(store.state, kontext, now: jetzt) else { continue }
-            store.state = AssistantNudge.afterShowing(store.state, now: jetzt)
-            nudgeVisible = true
-            await model.reportAssistantEvent("nudge_shown")
-            // Nach 15 Sekunden ist sie von selbst wieder weg.
-            let gezeigt = nudgeVisible
-            try? await Task.sleep(for: .seconds(15))
-            if gezeigt { nudgeVisible = false }
         }
     }
 
@@ -1145,6 +1103,7 @@ struct RouteDestinationView: View {
         case .quiz(let area): QuizView(model: model, area: area)
         case .subscriptions: CommitteeSubscriptionsView(model: model)
         case .analysis: CouncilInsightsView(model: model)
+        case .saved: SavedCouncilView(model: model)
         case .admin: AdminView(model: model)
         case .sharedAnswer(let token): SharedAnswerView(model: model, token: token)
         case .web(let url): ExternalWebView(url: url)

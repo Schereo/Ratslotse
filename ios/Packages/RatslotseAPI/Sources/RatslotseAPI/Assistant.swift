@@ -295,3 +295,40 @@ extension ExplainScreen {
     /// Darf auf diesem Screen angeklopft werden?
     public var allowsNudge: Bool { Self.nudgeRoutes.contains(route) }
 }
+
+// MARK: - Wo der Knopf steht
+
+/// Wo Lottis Knopf steht und wie viel Platz eine Seite für ihn frei hält —
+/// ohne Oberfläche, damit es ohne Simulator geprüft werden kann.
+///
+/// **Der Knopf gehört über den Stapel, nicht in die Tab-Ansicht.** Bis 10/2026
+/// hing er an der Wurzel des Navigations-Stapels. Jede geschobene Seite —
+/// Beschluss, Sitzung, Person, Thema, Ort, Bewegung, Mein Viertel — legte
+/// sich darüber, und Lotti war genau dort unerreichbar, wo es am meisten zu
+/// erklären gibt (gefunden beim Drehen der Clips für 3.0.0). Seitdem liegt er
+/// über dem Stapel; diese Regeln sagen, wo genau.
+public enum LottiPlacement {
+    /// Wie viel Platz eine Seite unten frei hält, damit ihr letzter Eintrag
+    /// nicht unter dem Knopf liegt.
+    public static let pageInset: Double = 58
+
+    /// Abstand des Knopfs zum unteren Rand.
+    ///
+    /// Die Tab-Leiste steht nur auf der Wurzel; eine geschobene Seite
+    /// verdeckt sie. Ein Knopf, der über einer Leiste schwebt, die es nicht
+    /// gibt, stünde mitten im Inhalt. Bei offener Tastatur ist die Leiste
+    /// ohnehin weggeräumt.
+    public static func bottomClearance(stackDepth: Int, tabBarHeight: Double,
+                                       keyboardVisible: Bool) -> Double {
+        stackDepth == 0 && !keyboardVisible ? tabBarHeight : 0
+    }
+
+    /// Der Rand, den eine geschobene Seite für den Knopf frei hält — nur wo er
+    /// auch steht: Lotti eingeschaltet, Tastatur zu und eine Seite, zu der es
+    /// etwas zu erklären gibt (`ExplainScreen.from`; Admin und fremde
+    /// Adressen nicht).
+    public static func pageInset(for route: AppRoute, enabled: Bool,
+                                 keyboardVisible: Bool) -> Double {
+        enabled && !keyboardVisible && ExplainScreen.from(route) != nil ? pageInset : 0
+    }
+}

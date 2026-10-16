@@ -2,14 +2,22 @@ import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
 
-private enum MoreDestination: Hashable {
-    case analysis
-    case ideas
-    case subscriptions
-    case saved
-    case quiz
-}
-
+/// Das Mehr-Menü: ein Blatt mit Zeilen, keine eigene Navigation.
+///
+/// **Jede Zeile schließt das Blatt und öffnet ihre Seite im Stapel der App.**
+/// Bis 10/2026 hatte das Blatt einen eigenen `NavigationStack`: Analyse,
+/// Ideen, Abos, Merkliste und Quiz öffneten sich IN ihm. Die Links auf diesen
+/// Seiten schieben aber auf den Stapel der App (`model.navigation`) — der lag
+/// unter dem Blatt. Ein Tipp auf eine Idee unter „Gerade in Bewegung" öffnete
+/// sie deshalb unsichtbar dahinter; zu sehen war sie erst, wenn man das Blatt
+/// wegwischte (gefunden beim Drehen der Clips für 3.0.0, die genau diesen Weg
+/// zeigen). Und im Blatt gab es keinen Lotti-Knopf.
+///
+/// Statt jeden Link der fünf Seiten auf zwei Stapel umzustellen, gibt es nur
+/// noch einen: Die Seiten sind Routen wie jede andere. Damit gelten dort
+/// Zurück-Geste, Kopfzeile, Lotti samt Seitenkontext — und jeder Link führt
+/// sichtbar weiter. `tests/test_ios_lotti_blatt.py` hält fest, dass hier kein
+/// zweiter Stapel wieder entsteht.
 struct MoreHubView: View {
     let model: AppModel
     let openCouncil: (CouncilSection) -> Void
@@ -19,114 +27,88 @@ struct MoreHubView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.openURL) private var openURL
     @State private var showsFeedback = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_FEEDBACK"] == "1"
-    @State private var path: NavigationPath = {
-        var path = NavigationPath()
-        switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE_DESTINATION"] {
-        case "analysis": path.append(MoreDestination.analysis)
-        case "ideas": path.append(MoreDestination.ideas)
-        case "subscriptions": path.append(MoreDestination.subscriptions)
-        case "saved": path.append(MoreDestination.saved)
-        case "quiz": path.append(MoreDestination.quiz)
-        default: break
-        }
-        return path
-    }()
 
     var body: some View {
-        NavigationStack(path: $path) {
-            VStack(spacing: 0) {
-                HStack {
-                    Text("Mehr entdecken")
-                        .font(RatsFont.title(22))
-                        .foregroundStyle(RatsColor.text)
-                    Spacer()
-                    Button { dismiss() } label: {
-                        Text("×")
-                            .font(RatsFont.body(23, weight: .medium))
-                            .foregroundStyle(RatsColor.bodyText)
-                            .frame(width: 38, height: 38)
-                            .background(RatsColor.card)
-                            .overlay(Circle().stroke(RatsColor.border))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(RatsPressButtonStyle())
-                    .accessibilityLabel("Mehr schließen")
+        VStack(spacing: 0) {
+            HStack {
+                Text("Mehr entdecken")
+                    .font(RatsFont.title(22))
+                    .foregroundStyle(RatsColor.text)
+                Spacer()
+                Button { dismiss() } label: {
+                    Text("×")
+                        .font(RatsFont.body(23, weight: .medium))
+                        .foregroundStyle(RatsColor.bodyText)
+                        .frame(width: 38, height: 38)
+                        .background(RatsColor.card)
+                        .overlay(Circle().stroke(RatsColor.border))
+                        .clipShape(Circle())
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 20)
-                .padding(.bottom, 14)
-                .background(RatsColor.page)
-                Divider().overlay(RatsColor.separator)
+                .buttonStyle(RatsPressButtonStyle())
+                .accessibilityLabel("Mehr schließen")
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 20)
+            .padding(.bottom, 14)
+            .background(RatsColor.page)
+            Divider().overlay(RatsColor.separator)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        profileCard
-                        if horizontalSizeClass == .regular {
-                            HStack(alignment: .top, spacing: 18) {
-                                councilGroup.frame(maxWidth: .infinity, alignment: .top)
-                                personalGroup.frame(maxWidth: .infinity, alignment: .top)
-                            }
-                            HStack(alignment: .top, spacing: 18) {
-                                ratslotseGroup.frame(maxWidth: .infinity, alignment: .top)
-                                VStack(spacing: 14) {
-                                    logoutButton
-                                    legalFooter
-                                }
-                                .frame(maxWidth: .infinity, alignment: .top)
-                            }
-                        } else {
-                            councilGroup
-                            personalGroup
-                            ratslotseGroup
-                            logoutButton
-                            legalFooter
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    profileCard
+                    if horizontalSizeClass == .regular {
+                        HStack(alignment: .top, spacing: 18) {
+                            councilGroup.frame(maxWidth: .infinity, alignment: .top)
+                            personalGroup.frame(maxWidth: .infinity, alignment: .top)
                         }
-                    }
-                    .frame(maxWidth: horizontalSizeClass == .regular ? 980 : 680, alignment: .leading)
-                    .padding(.horizontal, 18)
-                    .padding(.top, 16)
-                    .padding(.bottom, 30)
-                }
-                .background(RatsColor.page)
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            // Die Kopfzeile nennt die Seite, nicht das Menü, aus dem sie kam —
-            // bis 10/2026 stand über allen fünf „Mehr" (Review 3.0.0).
-            .navigationDestination(for: MoreDestination.self) { destination in
-                switch destination {
-                case .analysis:
-                    MoreDestinationScaffold(title: "Analyse", back: goBack) {
-                        CouncilInsightsView(model: model)
-                    }
-                case .ideas:
-                    MoreDestinationScaffold(title: "Ideen aus anderen Städten", back: goBack) {
-                        IdeasView(model: model)
-                    }
-                case .subscriptions:
-                    MoreDestinationScaffold(title: "Ausschuss-Abos", back: goBack) {
-                        CommitteeSubscriptionsView(model: model)
-                    }
-                case .saved:
-                    MoreDestinationScaffold(title: "Merkliste", back: goBack) {
-                        SavedCouncilView(model: model)
-                    }
-                case .quiz:
-                    MoreDestinationScaffold(title: "Oldenburg-Quiz", back: goBack) {
-                        QuizView(model: model, area: nil)
+                        HStack(alignment: .top, spacing: 18) {
+                            ratslotseGroup.frame(maxWidth: .infinity, alignment: .top)
+                            VStack(spacing: 14) {
+                                logoutButton
+                                legalFooter
+                            }
+                            .frame(maxWidth: .infinity, alignment: .top)
+                        }
+                    } else {
+                        councilGroup
+                        personalGroup
+                        ratslotseGroup
+                        logoutButton
+                        legalFooter
                     }
                 }
+                .frame(maxWidth: horizontalSizeClass == .regular ? 980 : 680, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.top, 16)
+                .padding(.bottom, 30)
             }
-            .navigationDestination(for: AppRoute.self) { route in
-                MoreDestinationScaffold(title: "Mehr", back: goBack) {
-                    RouteDestinationView(model: model, route: route)
-                }
-            }
+            .background(RatsColor.page)
         }
         .presentationDragIndicator(.hidden)
         .sheet(isPresented: $showsFeedback) {
             NativeFeedbackView(model: model)
                 .ratsLargeSheet()
         }
+#if DEBUG
+        // Für die Sichtprobe: eine Zeile „antippen", ohne den Simulator zu
+        // steuern — derselbe Weg wie der Finger.
+        .onAppear {
+            let ziel: AppRoute? = switch ratsDebugValue("RATSLOTSE_DEBUG_MORE_DESTINATION") {
+            case "analysis": .analysis
+            case "ideas": .ideas
+            case "subscriptions": .subscriptions
+            case "saved": .saved
+            case "quiz": .quiz(area: nil)
+            default: nil
+            }
+            if let ziel {
+                Task {
+                    try? await Task.sleep(for: .seconds(1))
+                    openPage(ziel)
+                }
+            }
+        }
+#endif
     }
 
     private var councilGroup: some View {
@@ -172,7 +154,7 @@ struct MoreHubView: View {
             rows: [
                 .link("Ausschuss-Abos", "Neue und geänderte Tagesordnungen", .subscriptions, .subscriptions),
                 .link("Merkliste", "Beschlüsse und Vorgänge wiederfinden", .saved, .saved),
-                .link("Oldenburg-Quiz", "Dein Wissen über Stadt und Rat", .quiz, .quiz),
+                .link("Oldenburg-Quiz", "Dein Wissen über Stadt und Rat", .quiz, .quiz(area: nil)),
             ]
         )
     }
@@ -224,7 +206,7 @@ struct MoreHubView: View {
             VStack(spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                     if let destination = row.destination {
-                        NavigationLink(value: destination) { MoreRowLabel(row: row) }
+                        Button { openPage(destination) } label: { MoreRowLabel(row: row) }
                             .buttonStyle(RatsPressButtonStyle())
                     } else {
                         Button(action: row.action ?? {}) { MoreRowLabel(row: row) }
@@ -313,9 +295,15 @@ struct MoreHubView: View {
         model.selectedTab = .council
     }
 
-    private func goBack() {
-        guard !path.isEmpty else { return }
-        path.removeLast()
+    /// Eine Seite aus dem Menü: Blatt zu, Seite im Stapel der App auf.
+    ///
+    /// Das Menü erreicht man nur von der Wurzel (die Tab-Leiste steht nur
+    /// dort), der Stapel ist also leer; die Seite kommt obenauf, und „Zurück"
+    /// führt auf den Tab, von dem man kam.
+    private func openPage(_ route: AppRoute) {
+        dismiss()
+        model.tabletPage = nil
+        model.navigation.append(route)
     }
 }
 
@@ -505,61 +493,19 @@ private struct NativeFeedbackView: View {
     }
 }
 
-private struct MoreDestinationScaffold<Content: View>: View {
-    let title: String
-    let back: () -> Void
-    @ViewBuilder let content: Content
-
-    init(title: String, back: @escaping () -> Void, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.back = back
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button(action: back) {
-                    RatsGlyphView(glyph: .back, color: RatsColor.bodyText)
-                        .frame(width: 20, height: 20)
-                        .frame(width: 38, height: 38)
-                        .background(RatsColor.card)
-                        .overlay(Circle().stroke(RatsColor.border))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(RatsPressButtonStyle())
-                .accessibilityLabel("Zurück")
-                Spacer()
-                Text(title)
-                    .font(RatsFont.title(17))
-                    .foregroundStyle(RatsColor.text)
-                    .lineLimit(1)
-                Spacer()
-                Color.clear.frame(width: 38, height: 38)
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .background(RatsColor.page)
-            Divider().overlay(RatsColor.separator)
-            content
-        }
-        .background(RatsColor.page)
-        .toolbar(.hidden, for: .navigationBar)
-    }
-}
-
 private struct MoreRow {
     let title: String
     let detail: String
     let glyph: RatsGlyph
-    let destination: MoreDestination?
+    /// Die Seite, die die Zeile im Stapel der App öffnet.
+    let destination: AppRoute?
     let action: (() -> Void)?
 
     static func link(
         _ title: String,
         _ detail: String,
         _ glyph: RatsGlyph,
-        _ destination: MoreDestination
+        _ destination: AppRoute
     ) -> MoreRow {
         MoreRow(title: title, detail: detail, glyph: glyph, destination: destination, action: nil)
     }

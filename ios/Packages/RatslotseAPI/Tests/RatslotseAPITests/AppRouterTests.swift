@@ -87,3 +87,13 @@ func mapsHistoricalUniversalLinks(input: String, expected: AppRoute) throws {
     let url = try #require(URL(string: "https://ratslotse.de/council/neuer-rat"))
     #expect(router.route(for: url) == .web(url))
 }
+
+/** Die Merkliste hat seit 10/2026 eine Route, aber nur nach außen: Ihre Adresse
+ *  ist die Web-Seite, gelesen wird sie nicht. Die Universal-Link-Datei lässt
+ *  `/bookmarks` nicht in die App — nähme sie es auf, schickte die
+ *  ausgelieferte App (ohne `.saved`) jeden solchen Link gleich wieder hinaus. */
+@Test func savedListLinksToTheWebPageOnly() throws {
+    let link = try #require(router.universalLink(for: .saved))
+    #expect(link.path == "/bookmarks")
+    #expect(router.route(for: link) == .web(link))
+}
