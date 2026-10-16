@@ -180,6 +180,17 @@ FEATURES: dict[str, Feature] = {
                     "deutlich über dem Stand ohne Werkzeuge, die übrigen Haushaltsfälle und "
                     "die Wartezeit nicht schlechter — dann auf Prod an und Schalter raus.",
     ),
+    "mcp-server": Feature(
+        key="mcp-server",
+        description="Der MCP-Server unter /api/mcp: Wer die Rolle „MCP-Zugang“ hat, stellt "
+                    "sich in den Einstellungen einen persönlichen Schlüssel aus und schließt "
+                    "damit einen eigenen Agenten an die Ratsdaten an — lesend, ohne Haushalt "
+                    "(council/mcp_tools.py, web/backend/app/routers/mcp.py).",
+        fertig_wenn="Ein paar Konten haben ihn auf dev und Prod mit Claude/ChatGPT/Cursor "
+                    "benutzt, die Last ist gemessen (mcp_tokens.calls) und die Bremse hat "
+                    "nicht zugeschlagen, wo sie nicht sollte — dann Schalter raus; der "
+                    "Zugang hängt ohnehin am Recht `mcp`.",
+    ),
     "neuer-rat": Feature(
         key="neuer-rat",
         description="Der gewählte Rat vor seiner ersten Sitzung: die Liste der 52 "

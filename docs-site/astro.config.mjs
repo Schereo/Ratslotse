@@ -47,6 +47,7 @@ export default defineConfig({
 						{ slug: 'wahlabend' },
 						{ slug: 'tippspiel' },
 						{ slug: 'app-und-konten' },
+						{ slug: 'mcp' },
 					],
 				},
 				{

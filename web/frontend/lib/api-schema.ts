@@ -137,6 +137,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/account/mcp-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tokens
+         * @description Die MCP-Schlüssel dieses Kontos (ohne die Geheimnisse).
+         */
+        get: operations["list_tokens_api_account_mcp_tokens_get"];
+        put?: never;
+        /**
+         * Create Token
+         * @description Einen neuen Schlüssel ausstellen. Das Geheimnis steht nur in DIESER
+         *     Antwort; danach kennt der Server nur noch seinen Hash.
+         */
+        post: operations["create_token_api_account_mcp_tokens_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/mcp-tokens/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Token
+         * @description Einen Schlüssel zurückziehen — er gilt ab sofort nicht mehr.
+         */
+        delete: operations["delete_token_api_account_mcp_tokens__token_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/account/notifications": {
         parameters: {
             query?: never;
@@ -4478,6 +4523,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mcp
+         * @description Der MCP-Endpunkt (Streamable HTTP, zustandslos, nur Werkzeuge).
+         *
+         *     **Öffentlich erreichbar, aber nur mit Schlüssel** — autorisiert über
+         *     ``Authorization: Bearer rlmcp_…``, ausdrücklich NICHT über das
+         *     Sitzungs-Cookie. Ohne Schalter ``mcp-server`` ein 404.
+         *
+         *     Synchron wie die übrigen Endpunkte: Die Stores öffnen ihre
+         *     SQLite-Verbindung im Threadpool, und eine Verbindung darf den Thread
+         *     nicht wechseln.
+         */
+        post: operations["mcp_api_mcp_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/news": {
         parameters: {
             query?: never;
@@ -8050,6 +8123,11 @@ export interface components {
             value: number;
             /** Year */
             year: number;
+        };
+        /** Body_create_token_api_account_mcp_tokens_post */
+        Body_create_token_api_account_mcp_tokens_post: {
+            /** Label */
+            label: string;
         };
         /** Body_medien_ablegen_api_social_media__day__post */
         Body_medien_ablegen_api_social_media__day__post: {
@@ -12875,6 +12953,76 @@ export interface components {
             /** Valid Votes */
             valid_votes: number | null;
         };
+        /**
+         * McpMessage
+         * @description Eine JSON-RPC-2.0-Antwort des MCP-Servers (``POST /api/mcp``).
+         *
+         *     ``result`` bzw. ``error`` tragen, was die MCP-Spezifikation für die
+         *     jeweilige Methode vorsieht (``initialize``, ``tools/list``,
+         *     ``tools/call``, ``ping``) — deshalb ``dict[str, Any]`` und keine
+         *     Aufzählung: Den Vertrag hält die Spezifikation, nicht diese Datei.
+         */
+        McpMessage: {
+            /** Error */
+            error?: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: unknown;
+            /**
+             * Jsonrpc
+             * @constant
+             */
+            jsonrpc: "2.0";
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * McpToken
+         * @description Ein persönlicher MCP-Schlüssel, wie ihn die Liste zeigt — ohne das
+         *     Geheimnis selbst; ``prefix`` sind die ersten Zeichen zum Wiedererkennen.
+         */
+        McpToken: {
+            /** Calls */
+            calls: number;
+            /** Created */
+            created: string;
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** Last Used */
+            last_used: string | null;
+            /** Prefix */
+            prefix: string;
+        };
+        /**
+         * McpTokenCreated
+         * @description ``POST /api/account/mcp-tokens``: der neue Schlüssel. ``secret`` steht
+         *     hier genau EINMAL — gespeichert ist nur sein Hash.
+         */
+        McpTokenCreated: {
+            /** Endpoint */
+            endpoint: string;
+            /** Secret */
+            secret: string;
+            token: components["schemas"]["McpToken"];
+        };
+        /**
+         * McpTokenList
+         * @description ``GET /api/account/mcp-tokens``: die Schlüssel des Kontos, die
+         *     Höchstzahl und die Adresse, unter der der Server antwortet.
+         */
+        McpTokenList: {
+            /** Endpoint */
+            endpoint: string;
+            /** Max */
+            max: number;
+            /** Tokens */
+            tokens: components["schemas"]["McpToken"][];
+        };
         /** MediaUpload */
         MediaUpload: {
             /** Count */
@@ -15168,11 +15316,11 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "user" | "research_plus" | "expert" | "council_member" | "admin";
+            key: "user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin";
             /** Label */
             label: string;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "premium_models" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "mcp" | "admin")[];
         };
         /**
          * RoleUpdate
@@ -16845,14 +16993,14 @@ export interface components {
             /** Pending Email */
             pending_email?: string | null;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "premium_models" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "mcp" | "admin")[];
             /**
              * Role
              * @enum {string}
              */
-            role: "user" | "research_plus" | "expert" | "council_member" | "admin";
+            role: "user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin";
             /** Roles */
-            roles: ("user" | "research_plus" | "expert" | "council_member" | "admin")[];
+            roles: ("user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin")[];
             /** Saves Conversations */
             saves_conversations?: number | null;
             /**
@@ -17047,12 +17195,12 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "user" | "research_plus" | "expert" | "council_member" | "admin";
+            role: "user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin";
             /**
              * Roles
              * @default []
              */
-            roles: ("user" | "research_plus" | "expert" | "council_member" | "admin")[];
+            roles: ("user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin")[];
             /**
              * Status
              * @default pending
@@ -17337,6 +17485,90 @@ export interface operations {
                 "application/json": components["schemas"]["DisplayNameIn"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tokens_api_account_mcp_tokens_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpTokenList"];
+                };
+            };
+        };
+    };
+    create_token_api_account_mcp_tokens_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Body_create_token_api_account_mcp_tokens_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpTokenCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_token_api_account_mcp_tokens__token_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -22225,6 +22457,46 @@ export interface operations {
             };
         };
     };
+    mcp_api_mcp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpMessage"];
+                };
+            };
+            /** @description Benachrichtigung angenommen */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_news_api_news_get: {
         parameters: {
             query?: never;
@@ -25193,4 +25465,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c6846fe62097a2b7bfa3edd84119ccd9613c2c754679b61f1d4053abd9504251
+// vertrag-sha256: 4488f328917597d2eff61b29e7d6ef274093617eaf72fe4d7853212faec5577c

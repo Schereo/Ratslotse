@@ -304,6 +304,23 @@ CREATE TABLE IF NOT EXISTS push_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_push_tokens_owner ON push_tokens(owner_id);
 
+-- Persönliche Schlüssel für den MCP-Server (/api/mcp, Recht `mcp`). Ein
+-- Konto darf mehrere haben — einen je angeschlossenem Agenten, damit sich
+-- einer allein zurückziehen lässt. Gespeichert wird nur der SHA-256 des
+-- Schlüssels; der Klartext steht genau einmal in der Antwort beim Anlegen.
+-- `prefix` sind die ersten Zeichen, an denen man ihn in der Liste wiedererkennt.
+CREATE TABLE IF NOT EXISTS mcp_tokens (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id   INTEGER NOT NULL,
+    label      TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    prefix     TEXT NOT NULL,
+    created    TEXT NOT NULL,
+    last_used  TEXT,
+    calls      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_tokens_owner ON mcp_tokens(owner_id);
+
 -- Quiz-Antworten (Punkte je Konto). Gebiet + Kategorie sind DENORMALISIERT,
 -- weil die Fragen in council.sqlite liegen (kein DB-übergreifender Join) — so
 -- aggregiert die Statistik ohne Zugriff auf die Fragen-DB.
@@ -952,6 +969,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("password_reset_tokens", "user_id"),
     ("email_verification_tokens", "user_id"),
     ("web_user_roles", "user_id"),
+    ("mcp_tokens", "owner_id"),
 )
 
 
@@ -6020,6 +6038,80 @@ class Store:
             "SELECT * FROM web_users WHERE calendar_token = ?", (token,)
         ).fetchone()
         return dict(row) if row else None
+
+    # ---- MCP-Schlüssel ------------------------------------------------------
+
+    #: So viele Schlüssel darf ein Konto gleichzeitig haben. Einer je Agent
+    #: reicht; mehr sind meist vergessene.
+    MCP_TOKENS_MAX = 5
+    #: Erkennungszeichen vorn am Schlüssel — wer ihn in einer Konfigdatei
+    #: findet, weiß, wozu er gehört (und ein Geheimnis-Scanner auch).
+    MCP_TOKEN_PRAEFIX = "rlmcp_"
+
+    @staticmethod
+    def _mcp_hash(token: str) -> str:
+        import hashlib
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def list_mcp_tokens(self, owner_id: int) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT id, label, prefix, created, last_used, calls FROM mcp_tokens "
+            "WHERE owner_id = ? ORDER BY id", (owner_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def create_mcp_token(self, owner_id: int, label: str) -> tuple[dict, str] | None:
+        """Legt einen Schlüssel an und gibt ``(zeile, klartext)`` zurück — oder
+        ``None``, wenn das Konto schon ``MCP_TOKENS_MAX`` hat. Der Klartext
+        existiert danach nirgends mehr."""
+        token = self.MCP_TOKEN_PRAEFIX + secrets.token_urlsafe(32)
+        jetzt = datetime.now(UTC).isoformat(timespec="seconds")
+        with self._conn:
+            n = self._conn.execute(
+                "SELECT COUNT(*) FROM mcp_tokens WHERE owner_id = ?", (owner_id,)).fetchone()[0]
+            if n >= self.MCP_TOKENS_MAX:
+                return None
+            cur = self._conn.execute(
+                "INSERT INTO mcp_tokens (owner_id, label, token_hash, prefix, created) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (owner_id, label, self._mcp_hash(token), token[:len(self.MCP_TOKEN_PRAEFIX) + 4],
+                 jetzt))
+        zeile = {"id": cur.lastrowid, "label": label,
+                 "prefix": token[:len(self.MCP_TOKEN_PRAEFIX) + 4],
+                 "created": jetzt, "last_used": None, "calls": 0}
+        return zeile, token
+
+    def delete_mcp_token(self, owner_id: int, token_id: int) -> bool:
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM mcp_tokens WHERE id = ? AND owner_id = ?", (token_id, owner_id))
+        return cur.rowcount > 0
+
+    def mcp_token_owner(self, token: str) -> tuple[int, int] | None:
+        """``(token_id, owner_id)`` zu einem Klartext-Schlüssel, sonst ``None``.
+        Verglichen wird über den Hash; ein Schlüssel ohne Präfix wird gar
+        nicht erst gesucht."""
+        if not token or not token.startswith(self.MCP_TOKEN_PRAEFIX) or len(token) > 200:
+            return None
+        row = self._conn.execute(
+            "SELECT id, owner_id FROM mcp_tokens WHERE token_hash = ?",
+            (self._mcp_hash(token),)).fetchone()
+        return (int(row[0]), int(row[1])) if row else None
+
+    def touch_mcp_token(self, token_id: int, anzahl: int = 1) -> bool:
+        """Zählt Aufrufe und setzt ``last_used`` — best-effort und ohne auf
+        eine Schreibsperre zu warten (dieselbe Begründung wie beim
+        Sitzungs-Zähler in ``app.deps``). Gibt zurück, ob geschrieben wurde."""
+        self._conn.execute("PRAGMA busy_timeout=0")
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "UPDATE mcp_tokens SET calls = calls + ?, last_used = ? WHERE id = ?",
+                    (anzahl, datetime.now(UTC).isoformat(timespec="seconds"), token_id))
+            return True
+        except sqlite3.Error:
+            return False
+        finally:
+            self._conn.execute("PRAGMA busy_timeout=5000")
 
     def get_all_subscriptions(self) -> dict[int, list[str]]:
         """Return {owner_id: [committee_name]} for all owners with subscriptions."""

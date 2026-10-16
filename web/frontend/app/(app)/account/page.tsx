@@ -17,6 +17,7 @@ import { DeliverySettings } from "@/components/delivery-settings";
 import { BadgesCard } from "@/components/badges";
 import { GespraecheCard } from "@/components/gespraeche-settings";
 import { LottiCard } from "@/components/assistentin/einstellung";
+import { McpCard } from "@/components/mcp-zugang";
 import { cn } from "@/lib/utils";
 
 /**
@@ -213,6 +214,9 @@ export default function AccountPage() {
             {/* Lotti schwebt über dem Inhalt — wer sie stört, bekommt hier
                 den Weg, sie wegzuräumen (und den Weg zurück über ⌘K). */}
             <LottiCard />
+
+            {/* Nur mit dem Recht `mcp` (Rolle „MCP-Zugang“) — sonst null. */}
+            <McpCard />
           </div>
 
           <div className="flex flex-col gap-6">

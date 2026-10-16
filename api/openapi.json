@@ -3963,6 +3963,21 @@
         "title": "BalanceItem",
         "type": "object"
       },
+      "Body_create_token_api_account_mcp_tokens_post": {
+        "properties": {
+          "label": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "title": "Body_create_token_api_account_mcp_tokens_post",
+        "type": "object"
+      },
       "Body_medien_ablegen_api_social_media__day__post": {
         "properties": {
           "dateien": {
@@ -15884,6 +15899,127 @@
         "title": "MayorNight",
         "type": "object"
       },
+      "McpMessage": {
+        "description": "Eine JSON-RPC-2.0-Antwort des MCP-Servers (``POST /api/mcp``).\n\n``result`` bzw. ``error`` tragen, was die MCP-Spezifikation für die\njeweilige Methode vorsieht (``initialize``, ``tools/list``,\n``tools/call``, ``ping``) — deshalb ``dict[str, Any]`` und keine\nAufzählung: Den Vertrag hält die Spezifikation, nicht diese Datei.",
+        "properties": {
+          "error": {
+            "additionalProperties": true,
+            "title": "Error",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id"
+          },
+          "jsonrpc": {
+            "const": "2.0",
+            "title": "Jsonrpc",
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          }
+        },
+        "required": [
+          "jsonrpc",
+          "id"
+        ],
+        "title": "McpMessage",
+        "type": "object"
+      },
+      "McpToken": {
+        "description": "Ein persönlicher MCP-Schlüssel, wie ihn die Liste zeigt — ohne das\nGeheimnis selbst; ``prefix`` sind die ersten Zeichen zum Wiedererkennen.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_used": {
+            "title": "Last Used",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "prefix",
+          "created",
+          "last_used",
+          "calls"
+        ],
+        "title": "McpToken",
+        "type": "object"
+      },
+      "McpTokenCreated": {
+        "description": "``POST /api/account/mcp-tokens``: der neue Schlüssel. ``secret`` steht\nhier genau EINMAL — gespeichert ist nur sein Hash.",
+        "properties": {
+          "endpoint": {
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          },
+          "token": {
+            "$ref": "#/components/schemas/McpToken"
+          }
+        },
+        "required": [
+          "token",
+          "secret",
+          "endpoint"
+        ],
+        "title": "McpTokenCreated",
+        "type": "object"
+      },
+      "McpTokenList": {
+        "description": "``GET /api/account/mcp-tokens``: die Schlüssel des Kontos, die\nHöchstzahl und die Adresse, unter der der Server antwortet.",
+        "properties": {
+          "endpoint": {
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "max": {
+            "title": "Max",
+            "type": "integer"
+          },
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/McpToken"
+            },
+            "title": "Tokens",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tokens",
+          "max",
+          "endpoint"
+        ],
+        "title": "McpTokenList",
+        "type": "object"
+      },
       "MediaUpload": {
         "properties": {
           "count": {
@@ -21314,6 +21450,7 @@
             "enum": [
               "user",
               "research_plus",
+              "mcp_access",
               "expert",
               "council_member",
               "admin"
@@ -21331,6 +21468,7 @@
                 "budget",
                 "mandate",
                 "premium_models",
+                "mcp",
                 "admin"
               ],
               "type": "string"
@@ -25511,6 +25649,7 @@
                 "budget",
                 "mandate",
                 "premium_models",
+                "mcp",
                 "admin"
               ],
               "type": "string"
@@ -25522,6 +25661,7 @@
             "enum": [
               "user",
               "research_plus",
+              "mcp_access",
               "expert",
               "council_member",
               "admin"
@@ -25534,6 +25674,7 @@
               "enum": [
                 "user",
                 "research_plus",
+                "mcp_access",
                 "expert",
                 "council_member",
                 "admin"
@@ -26053,6 +26194,7 @@
             "enum": [
               "user",
               "research_plus",
+              "mcp_access",
               "expert",
               "council_member",
               "admin"
@@ -26066,6 +26208,7 @@
               "enum": [
                 "user",
                 "research_plus",
+                "mcp_access",
                 "expert",
                 "council_member",
                 "admin"
@@ -26567,6 +26710,111 @@
         "summary": "Set Display Name",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/api/account/mcp-tokens": {
+      "get": {
+        "description": "Die MCP-Schlüssel dieses Kontos (ohne die Geheimnisse).",
+        "operationId": "list_tokens_api_account_mcp_tokens_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpTokenList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Tokens",
+        "tags": [
+          "mcp"
+        ]
+      },
+      "post": {
+        "description": "Einen neuen Schlüssel ausstellen. Das Geheimnis steht nur in DIESER\nAntwort; danach kennt der Server nur noch seinen Hash.",
+        "operationId": "create_token_api_account_mcp_tokens_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_token_api_account_mcp_tokens_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpTokenCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Token",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
+    "/api/account/mcp-tokens/{token_id}": {
+      "delete": {
+        "description": "Einen Schlüssel zurückziehen — er gilt ab sofort nicht mehr.",
+        "operationId": "delete_token_api_account_mcp_tokens__token_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "title": "Token Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Token",
+        "tags": [
+          "mcp"
         ]
       }
     },
@@ -33492,6 +33740,50 @@
         "summary": "Quelle Pruefen",
         "tags": [
           "kommunalwahl"
+        ]
+      }
+    },
+    "/api/mcp": {
+      "post": {
+        "description": "Der MCP-Endpunkt (Streamable HTTP, zustandslos, nur Werkzeuge).\n\n**Öffentlich erreichbar, aber nur mit Schlüssel** — autorisiert über\n``Authorization: Bearer rlmcp_…``, ausdrücklich NICHT über das\nSitzungs-Cookie. Ohne Schalter ``mcp-server`` ein 404.\n\nSynchron wie die übrigen Endpunkte: Die Stores öffnen ihre\nSQLite-Verbindung im Threadpool, und eine Verbindung darf den Thread\nnicht wechseln.",
+        "operationId": "mcp_api_mcp_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Nachricht"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpMessage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "202": {
+            "description": "Benachrichtigung angenommen"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp",
+        "tags": [
+          "mcp"
         ]
       }
     },
