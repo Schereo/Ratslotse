@@ -3661,8 +3661,10 @@ def _deep_research_anlegen(body: DeepResearchBody, request: Request, user: dict,
     analyse = qa.analyse_query(question, verlauf=verlauf, orte=orte)
     q_suche = analyse.get("question") or question
     person = qa.finde_person(store, q_suche)
-    ort = qa.ort_entscheiden(qa.finde_ort(q_suche, store) or qa.finde_ort(question, store),
-                             analyse.get("ort_id"), store)
+    # Für die Rückfrage zählt auch ein gewählter Ort: Die Frage NENNT einen
+    # Gegenstand, ob er nun wörtlich im Katalog steht oder nicht.
+    ort = (qa.finde_ort(q_suche, store) or qa.finde_ort(question, store)
+           or qa.ort_aus_id(analyse.get("ort_id"), store))
     sitzungen = [] if person else (qa.finde_sitzungen(store, q_suche)
                                    or qa.finde_sitzungen(store, question))
     if qa.rueckfrage_noetig(analyse, person=person, ort=ort, sitzungen=sitzungen):
@@ -4911,7 +4913,8 @@ QA_RERANK_BIAS = 1.5
 def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
                  timings: dict | None = None,
                  varianten: list[str] | None = None,
-                 place_ids: list[int] | None = None) -> tuple[list[dict], str]:
+                 place_ids: list[int] | None = None,
+                 hinweis_ids: list[int] | None = None) -> tuple[list[dict], str]:
     """Hybrid retrieval + cross-encoder rerank → candidates in relevance order, each
     with an *absolute* relevance score: the sigmoid of the reranker logit, NOT a
     min-max normalisation (which forced the weakest hit to a misleading 0 %). Falls
@@ -4922,7 +4925,10 @@ def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
         # Entitäts-Anker (benannte Objekte der Frage) in den Rerank-Pool,
         # Frische-Bonus bei Sachstands-Formulierungen.
         entity_anchors = qa.anker_ids_fuer(store, q)
-        anchors = list(dict.fromkeys([*entity_anchors, *(place_ids or [])]))
+        # `hinweis_ids`: Beschlüsse eines von der Analyse GEWÄHLTEN Ortes —
+        # Anker wie die Entitäten, aber kein Filter (`allowed_ids` bleibt aus).
+        anchors = list(dict.fromkeys([*entity_anchors, *(place_ids or []),
+                                      *(hinweis_ids or [])]))
         hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55, timings=timings,
                                  varianten=varianten,
                                  anker_ids=anchors,
@@ -5291,8 +5297,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Orts-Fragetyp: dieselbe deterministische Stammdaten-Erkennung wie
             # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
             # die stabile Orts-ID ``neu-donnerschwee`` aufgelöst.
-            ort = qa.ort_entscheiden(qa.finde_ort(q_suche, store) or qa.finde_ort(q, store),
-                                     analyse.get("ort_id"), store)
+            ort = qa.finde_ort(q_suche, store) or qa.finde_ort(q, store)
+            # Der Ort, den die Analyse aus dem Katalog GEWÄHLT hat, ist nur ein
+            # Hinweis, kein Filter: Seine Beschlüsse kommen zusätzlich in den
+            # Rerank-Pool, mehr nicht. Als harter Filter (#1702) ordnete die
+            # Analyse auch Gebäude und Plätze ihrem Stadtteil zu — „Weser-Ems-
+            # Hallen“ → Innenstadt — und der Filter warf alles andere weg:
+            # Gold 17.10.2026, Weser-Ems 56 → 19 Beschlüsse (0,56 → 0,00),
+            # Schlossplatz 46 → 14, Heidbrook 40 → 6.
+            ort_hinweis = qa.ort_hinweis(ort, analyse.get("ort_id"), store)
             # Der Ort ist grundsätzlich ein Filter, kein exklusiver Fragetyp:
             # Geld-, Partei-, Verlaufs-, Personen- und Sitzungsfragen behalten
             # ihre Spezialregeln. Nur eine allgemeine Themenfrage wird zur
@@ -5394,7 +5407,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             else:
                 candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
                                                 varianten=analyse.get("variants"),
-                                                place_ids=place_ids)
+                                                place_ids=place_ids,
+                                                hinweis_ids=(store.decision_ids_for_place(
+                                                    ort_hinweis["id"], limit=40)
+                                                    if ort_hinweis else None))
+                if ort_hinweis:
+                    zeiten["ort_hinweis"] = ort_hinweis["id"]
             # Nachrecherche (Schalter `nachrecherche`): Ein kleines Modell sieht
             # die Titel der Treffer und nennt, wenn etwas Gefragtes fehlt, bis
             # zu drei Anfragen in Verwaltungssprache; deren Funde werden gegen

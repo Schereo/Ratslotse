@@ -62,16 +62,26 @@ def test_die_analyse_waehlt_nur_aus_der_liste(monkeypatch):
     qa._ANALYSE_CACHE.clear()
 
 
-def test_der_wortlaut_geht_vor_ausser_die_wahl_liegt_darin():
+def test_die_wahl_ist_ein_hinweis_kein_filter():
+    """Die Wahl der Analyse filtert nicht (Gold 17.10.2026: „Weser-Ems-Hallen“
+    → Innenstadt warf als Filter alles andere weg, 0,56 → 0,00). Sie kommt als
+    Hinweis zurück — außer sie ist der Wortlaut-Ort selbst."""
     store = _Store()
     stadtteil = qa.ort_aus_id("donnerschwee", store)
-    # Genauer innerhalb des Stadtteils: die Wahl gewinnt.
-    assert qa.ort_entscheiden(stadtteil, "neu-donnerschwee", store)["id"] == "neu-donnerschwee"
-    # Einen ANDEREN Ort darf die Wahl dem Wortlaut nicht unterschieben.
-    assert qa.ort_entscheiden(stadtteil, "osternburg", store)["id"] == "donnerschwee"
-    # Ohne Wortlaut-Treffer: die Wahl, oder nichts.
-    assert qa.ort_entscheiden(None, "alter-stadthafen", store)["id"] == "alter-stadthafen"
-    assert qa.ort_entscheiden(None, None, store) is None
+    assert qa.ort_hinweis(stadtteil, "neu-donnerschwee", store)["id"] == "neu-donnerschwee"
+    assert qa.ort_hinweis(stadtteil, "donnerschwee", store) is None   # filtert schon
+    assert qa.ort_hinweis(None, "alter-stadthafen", store)["id"] == "alter-stadthafen"
+    assert qa.ort_hinweis(None, None, store) is None
+    assert qa.ort_hinweis(None, "gibt-es-nicht", store) is None
+
+
+def test_der_router_nimmt_die_wahl_nicht_als_filter():
+    """Wächter am Quelltext: Der Ortsfilter (`ort`) kommt nur aus dem
+    Wortlaut; die Wahl geht als `hinweis_ids` an die Suche."""
+    from pathlib import Path
+    quelle = (Path(__file__).parent.parent / "web/backend/app/routers/council.py").read_text()
+    assert "ort = qa.finde_ort(q_suche, store) or qa.finde_ort(q, store)\n" in quelle
+    assert "hinweis_ids=" in quelle and "ort_entscheiden" not in quelle
 
 
 def test_die_liste_kommt_nur_ohne_genauen_treffer():
