@@ -6183,6 +6183,46 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
                                    "answer": "Resolution ans WSA."}]
 
 
+def test_ask_sucht_nach_wenn_der_schalter_an_ist(client, monkeypatch):
+    """Nachrecherche (Schalter `nachrecherche`): Die Anfragen des Modells
+    gehen an die Nachsuche, mit den schon gefundenen ids als Ausschluss —
+    und stehen in den Zeitmessungen. Ohne Schalter läuft nichts davon."""
+    from app.routers import council as council_router
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Kostenloser Bus an Samstagen", "summary": "Bericht",
+             "outcome": "noted", "session_date": "2025-09-10", "committee": "Rat", "score": 0.6}]
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "question": "Was kostet der kostenlose Bus am Samstag?", "terms": "Bus Samstag Kosten",
+        "kind": "money", "party": None})
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (list(cand), "semantisch"))
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Antwort [5]."]))
+    aufrufe: list = []
+    monkeypatch.setattr(qa_mod, "nachrecherche_anfragen",
+                        lambda frage, kandidaten: aufrufe.append(("anfragen", [c["id"] for c in kandidaten]))
+                        or ["Samstagsfahrten ÖPNV Ausgleich"])
+    monkeypatch.setattr(emb, "nachsuche", lambda store, q, anfragen, schon, erlaubt:
+                        aufrufe.append(("nachsuche", anfragen, sorted(schon))) or [])
+
+    def fragen():
+        with client.stream("POST", "/api/council/ask",
+                           json={"question": "Was kostet der kostenlose Bus am Samstag?"}) as r:
+            text = "".join(r.iter_text())
+        done = [json.loads(z[6:]) for z in text.split("\n") if z.startswith("data: ")
+                and '"done"' in z]
+        return done[-1]["timings"] if done else {}
+
+    monkeypatch.setenv("FEATURE_FLAGS", "")
+    assert "nachrecherche" not in fragen() and aufrufe == []
+
+    monkeypatch.setenv("FEATURE_FLAGS", "nachrecherche")
+    zeiten = fragen()
+    assert aufrufe == [("anfragen", [5]), ("nachsuche", ["Samstagsfahrten ÖPNV Ausgleich"], [5])]
+    assert zeiten["nachrecherche"] == {"anfragen": ["Samstagsfahrten ÖPNV Ausgleich"], "neu": 0}
+
+
 # ---- „Gründliche Recherche" (RG-10, Task 34) ----
 
 def _deep_mocks(monkeypatch):

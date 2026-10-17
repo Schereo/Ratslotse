@@ -62,6 +62,14 @@ class Feature:
 #:                     "wie vorher (tests/…/eval).",
 #:     ),
 FEATURES: dict[str, Feature] = {
+    "nachrecherche": Feature(
+        key="nachrecherche",
+        description="„Frag den Rat“ sieht nach der ersten Suche auf die Titel der Treffer und "
+                    "sucht bis zu dreimal gezielt nach, wenn etwas Gefragtes fehlt "
+                    "(qa.nachrecherche_anfragen, embeddings.nachsuche).",
+        fertig_wenn="Gold „Frag den Rat“ auf dev ohne Rückschritt und mit mehr bestandenen "
+                    "Fällen als ohne, Laufzeit auf Prod gemessen; dann ist sie der Normalweg.",
+    ),
     "akten-suche": Feature(
         key="akten-suche",
         description="„Frag den Rat“ liest zu den besten Treffern die ganze Akte des "

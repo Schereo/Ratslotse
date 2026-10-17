@@ -1412,6 +1412,25 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "SUCHBEGRIFFE:"
         ),
     },
+    "qa_nachrecherche": {
+        "title": "Frag den Rat – Nachrecherche",
+        "description": "Nach der ersten Suche: Fehlt in den Treffern etwas, wonach die Frage fragt? Dann bis zu drei Suchanfragen in Verwaltungssprache. Platzhalter: {question}, {treffer}.",
+        "template": (
+            "Eine Frage an das Archiv des Oldenburger Stadtrats und die Titel der Beschlüsse, "
+            "die eine erste Suche gefunden hat.\n\n"
+            "FRAGE: {question}\n\nTREFFER:\n{treffer}\n\n"
+            "Fehlt in den Treffern ein Teil dessen, wonach die Frage fragt — ein Vorgang, eine "
+            "Station (die jüngste Entscheidung, eine Vergabe, ein Bericht), ein Betrag, die "
+            "Gegenposition? Dann nenne bis zu DREI kurze Suchanfragen, mit denen man es im "
+            "Archiv findet. Schreibe sie in der Sprache der Vorlagen, nicht der Frage: "
+            "Fachwörter und Verwaltungsbegriffe statt Alltagssprache (\"kostenloser Bus am "
+            "Samstag\" → \"Samstagsfahrten ÖPNV Ausgleich\", \"Giftmüll\" → \"Sondermüll "
+            "Altlasten\", \"Hafenbecken\" → \"Alter Stadthafen Kaje Sanierung\"). Keine "
+            "Wörter wie Rat, Beschluss, Oldenburg. Decken die Treffer die Frage schon ab, gib "
+            "eine leere Liste.\n"
+            'Antworte NUR als JSON: {{"suchen": ["…"]}}'
+        ),
+    },
     "qa_analysis": {
         "title": "Frag den Rat – Frage-Analyse",
         "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp, Klarheits-Urteil und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",

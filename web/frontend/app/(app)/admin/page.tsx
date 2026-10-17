@@ -122,6 +122,7 @@ const FEATURE_LABELS: Record<string, string> = {
   minutes_extraction: "Protokoll-Extraktion",
   party_opinions: "Haltungen der Fraktionen",
   qa_analysis: "Frag den Rat — Analyse",
+  qa_nachrecherche: "Frag den Rat — Nachrecherche",
   qa_answer: "Frag den Rat — Antwort",
   qa_query_expansion: "Frag den Rat — Suchbegriffe",
   qa_simple: "Frag den Rat — verständlicher erklärt",

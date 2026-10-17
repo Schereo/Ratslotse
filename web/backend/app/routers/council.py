@@ -5395,6 +5395,32 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
                                                 varianten=analyse.get("variants"),
                                                 place_ids=place_ids)
+            # Nachrecherche (Schalter `nachrecherche`): Ein kleines Modell sieht
+            # die Titel der Treffer und nennt, wenn etwas Gefragtes fehlt, bis
+            # zu drei Anfragen in Verwaltungssprache; deren Funde werden gegen
+            # die Frage gerankt und einsortiert (`qa.nachrecherche_anfragen`).
+            # Nicht bei Sitzungsfragen (die Sitzung ist aufgelöst, nicht
+            # gesucht), nicht beim reinen „zuletzt an Ort X“ (chronologisch)
+            # und nicht beim Vereinfachen (schreibt die vorige Antwort um).
+            if (features.an("nachrecherche") and not latest_place and typ != "session"
+                    and not einfach and mode == "semantisch"):
+                t_nach = time.perf_counter()
+                anfragen = qa.nachrecherche_anfragen(q_suche, candidates)
+                if anfragen:
+                    from council import embeddings as emb
+                    ranked = emb.nachsuche(store, q_suche, anfragen,
+                                           {c["id"] for c in candidates}, place_ids)
+                    neue = store.get_decisions_by_ids([i for i, _ in ranked])
+                    logit = dict(ranked)
+                    for c in neue:
+                        c["score"] = round(1.0 / (1.0 + math.exp(-(logit[c["id"]] + QA_RERANK_BIAS))), 3)
+                    neue = [c for c in neue if c["score"] >= QA_MIN_SCORE]
+                    candidates = qa.nachrecherche_einfuegen(candidates, neue)
+                    # Stationen-Vermerk über die vereinte Liste: Eine neue
+                    # Station kann eine alte überholen und umgekehrt.
+                    qa.markiere_veraltete(store, candidates)
+                    zeiten["nachrecherche"] = {"anfragen": anfragen, "neu": len(neue)}
+                zeiten["nachrecherche_ms"] = round((time.perf_counter() - t_nach) * 1000)
             partei_ids: set[int] = set()
             if typ == "party" and analyse.get("party"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
