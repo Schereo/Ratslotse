@@ -770,3 +770,50 @@ def test_leerraum_vor_dem_betrag_gehoert_nicht_dazu():
     ergebnis = ocr.abgleich(a, b)
     assert ergebnis.gemeinsam == 1 and not ergebnis.strittig
     assert ocr.abgleich("x\t- 510.903,43\n", "x\t-510.903,43\n").gemeinsam == 1
+
+
+# Geschärft nach der ersten Probe am Bestand (17.10.2026): Fünf von fünf
+# Bilanzen waren „strittig", keine davon zu Recht. Die drei Fälle, an denen das
+# lag, stehen hier — wörtlich aus den Lesungen von 217001 und 203301.
+
+def test_umbrochene_beschriftung_ist_derselbe_posten():
+    gemini = ("1. entgeltlich erworbene gewerbliche\t9.089,00\t10.915,00\n"
+              "Schutzrechte und ähnliche Rechte\n")
+    sonnet = ("1. entgeltlich erworbene gewerbliche\n"
+              "Schutzrechte und ähnliche Rechte\t9.089,00\t10.915,00\n")
+    assert not ocr.abgleich(gemini, sonnet).strittig
+
+
+def test_andere_ueberschrift_davor_ist_derselbe_posten():
+    a = "B. Umlaufvermögen erhaltene Anzahlungen auf Bestellungen\t6.619,72\n"
+    b = "I. Vorräte erhaltene Anzahlungen auf Bestellungen\t6.619,72\n"
+    assert not ocr.abgleich(a, b).strittig
+
+
+def test_mehrdeutiger_betrag_wird_nicht_verglichen():
+    """„0,00" steht auf zehn Zeilen — dass die Modelle es verschiedenen
+    davon zuordnen, sagt nichts."""
+    a = "Konzessionen\t0,00\nFinanzanlagen\t0,00\nVorräte\t12.345,00\n"
+    b = "Steuerrückstellungen\t0,00\nBilanzgewinn\t0,00\nVorräte\t12.345,00\n"
+    ergebnis = ocr.abgleich(a, b)
+    assert not ergebnis.strittig and ergebnis.gemeinsam == 1
+
+
+def test_bilanz_nebeneinander_wird_nicht_verglichen():
+    a = "A k t i v a\tEUR\tP a s s i v a\tEUR\nI. Vorräte\t240.342,12\t228\n"
+    b = "Aktiva\tPassiva\n1. Forderungen aus Lieferungen\t240.342,12\t228\n"
+    ergebnis = ocr.abgleich(a, b)
+    assert ergebnis.nicht_vergleichbar and not ergebnis.strittig
+
+
+def test_nebeneinander_bilanz_kostet_keinen_zweitleser(monkeypatch):
+    class _Leser:
+        pages = [_Seite(_Bild("a.jpg"))]
+
+    bilanz = "AKTIVA\t\tPASSIVA\n" + "Posten\t1.000,00\t2.000,00\n" * 5
+    monkeypatch.setattr(ocr.pypdf, "PdfReader", lambda *_a, **_k: _Leser())
+    monkeypatch.setattr(ocr, "aufrichten", lambda b, **_k: b)
+    aufrufe = []
+    monkeypatch.setattr(ocr, "lies_seite", lambda b, model=None: aufrufe.append(model) or bilanz)
+    lesung = ocr.lies_pdf(b"%PDF-1.4", model="erst/x", zweitleser="zweit/x")
+    assert aufrufe == ["erst/x"] and lesung.zweit_gelesen == 0
