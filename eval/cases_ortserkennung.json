@@ -1,0 +1,22 @@
+[
+  {"id": "hafenbecken", "question": "Was wird gerade beim Oldenburger Hafenbecken gebaut? Saniert?", "expect": ["alter-stadthafen", "stadthafen-sued"], "quelle": "echte Frage 12.10.2026"},
+  {"id": "am-hafen", "question": "Was passiert eigentlich am Hafen?", "expect": ["alter-stadthafen", "stadthafen-sued"]},
+  {"id": "stadthafen", "question": "Wie ist der Stand am Stadthafen?", "expect": ["alter-stadthafen", "stadthafen-sued"]},
+  {"id": "flugplatz", "question": "Was ist mit dem alten Flugplatz geplant?", "expect": ["fliegerhorst"]},
+  {"id": "kaserne-donnerschwee", "question": "Was wird auf dem ehemaligen Kasernengelände in Donnerschwee gebaut?", "expect": ["neu-donnerschwee"]},
+  {"id": "schlosspark", "question": "Gibt es Pläne für den Schlosspark?", "expect": ["schlossgarten"]},
+  {"id": "utkiek", "question": "Was ist am Utkiek in Osternburg los?", "expect": ["osternburger-utkiek"]},
+  {"id": "wunderburg", "question": "Wird im Wunderburg-Park etwas verändert?", "expect": ["wunderburgpark"]},
+  {"id": "fleiwa", "question": "Was wird aus der Fleiwa?", "expect": ["alte-fleiwa"]},
+  {"id": "sportplatz-kreyenbrueck", "question": "Was wird am Sportplatz in Kreyenbrück gemacht?", "expect": ["sportpark-kreyenbrueck"]},
+  {"id": "tippfehler-everstenholz", "question": "Was ist im Everstenhol geplant?", "expect": ["eversten-holz"]},
+  {"id": "tpo", "question": "Wie geht es mit dem Technologiepark weiter?", "expect": ["technologiepark-oldenburg"]},
+  {"id": "fussgaengerzone", "question": "Was ändert sich in der Fußgängerzone?", "expect": ["fussgaengerzone"]},
+  {"id": "osternburg", "question": "Was gibt es Neues in Osternburg?", "expect": ["osternburg"]},
+  {"id": "neg-schwimmbecken", "question": "Wie viele Schwimmbecken hat Oldenburg?", "expect": [null]},
+  {"id": "neg-grundsteuer", "question": "Wie hoch ist die Grundsteuer B?", "expect": [null]},
+  {"id": "neg-ratssitzung", "question": "Wann ist die nächste Ratssitzung?", "expect": [null]},
+  {"id": "neg-radverkehr", "question": "Was tut die Stadt für den Radverkehr?", "expect": [null]},
+  {"id": "neg-stadion", "question": "Was kostet das neue Stadion?", "expect": [null]},
+  {"id": "neg-hafenrundfahrt", "question": "Gibt es Zuschüsse für Vereine, die Hafenfeste organisieren?", "expect": [null, "alter-stadthafen", "stadthafen-sued"]}
+]

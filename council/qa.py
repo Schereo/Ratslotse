@@ -498,7 +498,8 @@ def research_plan_log_record(question: str, plan: dict, typ: str,
 
 
 def analyse_query(question: str, model: str = EXPAND_MODEL,
-                  verlauf: list[dict] | None = None) -> dict:
+                  verlauf: list[dict] | None = None,
+                  orte: list[tuple[str, str]] | None = None) -> dict:
     """{"question", "terms", "kind", "party"} zur Frage. ``question`` ist die
     EIGENSTÄNDIGE Fassung: Bei mitgegebenem Gesprächsverlauf (Chat) löst die
     Analyse Rückbezüge auf („Und was kostet das?" → „Was kostet der Neubau der
@@ -510,14 +511,15 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
                 "rechercheplan": _research_plan({})}
     verlauf = verlauf_ohne_dieselbe_frage(verlauf, question)
     vtext = _verlauf_zeilen(verlauf)
-    key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
+    ortsblock = _ortsblock(orte)
+    key = f"{model}|{hash(vtext)}|{hash(ortsblock)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
     if hit is not None:
         return dict(hit)
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         block = f"\nBisheriges Gespräch (für Rückbezüge):\n{vtext}\n" if vtext else ""
-        prompt = prompts.render("qa_analysis", question=question.strip()[:300], verlauf=block)
+        prompt = prompts.render("qa_analysis", question=question.strip()[:300], verlauf=block) + ortsblock
         resp = llm.chat_complete(
             model=model, _feature="qa_analysis", temperature=0, max_tokens=480,
             timeout=8.0, response_format={"type": "json_object"},
@@ -573,6 +575,10 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         out = {"question": umgeschrieben or question, "terms": begriffe or question,
                "kind": typ, "party": party, "variants": varianten, "eng": eng,
                "unklar": unklar, "rechercheplan": _research_plan(data)}
+        # Nur eine id AUS der Liste zählt: Das Modell wählt, es erfindet nicht.
+        ort_id = str(data.get("ort") or "").strip()
+        if orte and ort_id in {i for i, _ in orte}:
+            out["ort_id"] = ort_id
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
                 _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))
@@ -580,6 +586,38 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         return out
     except Exception:  # noqa: BLE001
         return fallback
+
+
+def ortsliste(store) -> list[tuple[str, str]]:
+    """Alle Katalogorte als (id, Name) — die Auswahl für :func:`analyse_query`."""
+    try:
+        return [(p.id, p.name) for p in store.all_places()]
+    except Exception:  # noqa: BLE001 — ein Zusatz, nie ein Abbruch
+        return []
+
+
+def _ortsblock(orte: list[tuple[str, str]] | None) -> str:
+    """Die Ortsauswahl als Nachsatz zum Analyse-Prompt — leer ohne Orte.
+
+    **Warum das Modell wählt und keine Wortliste.** Die Ortserkennung
+    (:func:`finde_ort`) vergleicht den Wortlaut mit Namen und Aliassen. Am
+    12.10.2026 fragte jemand, was „beim Oldenburger Hafenbecken“ gebaut
+    wird: kein Katalogwort, also kein Ort — und in der allgemeinen Suche zog
+    „Becken“ die Bäder nach oben. Jedes solche Wort als Alias nachzutragen
+    endet nie (Tim, 16.10.2026). Das Analyse-Modell liest die Frage ohnehin;
+    mit der Liste der Orte vor Augen erkennt es Teilwörter, Umgangssprache und
+    Tippfehler. Es darf nur eine id AUS der Liste nennen, und der Abgleich am
+    Wortlaut geht vor — die Liste kommt nur, wenn er nichts fand.
+    """
+    if not orte:
+        return ""
+    zeilen = "\n".join(f"- {i}: {name}" for i, name in orte)
+    return (
+        "\n\nORTE in Oldenburg (Katalog):\n" + zeilen + "\n"
+        'Ergänze das JSON um "ort": die id des Ortes aus dieser Liste, den die Frage '
+        "meint — auch wenn sie ihn anders nennt (Teil eines Wortes, umgangssprachlich, "
+        "verschrieben: „Hafenbecken“ → der Stadthafen). Sonst null. null auch, wenn ein "
+        "Wort nur zufällig ähnlich klingt oder die Frage die ganze Stadt meint.\n")
 
 
 #: Wörter, die das Analyse-Modell gern in die Suchbegriffe schreibt und die
@@ -1238,6 +1276,42 @@ def finde_ort(question: str, store=None) -> dict | None:
     return {"id": place.id, "name": place.name, "kind": place.kind,
             "kind_label": places.kind_label(place.kind),
             "description": place.description}
+
+
+def braucht_ortsliste(wort_ort: dict | None) -> bool:
+    """Soll die Frage-Analyse die Ortsliste sehen? Ja, wenn der Wortlaut
+    keinen Ort fand — und wenn er nur einen STADTTEIL fand: „Was wird auf dem
+    ehemaligen Kasernengelände in Donnerschwee gebaut?“ meint Neu-Donnerschwee,
+    der Wortabgleich sieht aber nur „Donnerschwee“."""
+    return wort_ort is None or wort_ort.get("kind") == "local_area"
+
+
+def ort_entscheiden(wort_ort: dict | None, ort_id: str | None, store=None) -> dict | None:
+    """Wortlaut oder Wahl der Analyse? Der Wortlaut gilt — außer die Analyse
+    nennt einen Ort INNERHALB des gefundenen Stadtteils; dann ist sie genauer.
+    Einen anderen Stadtteil darf sie dem Wortlaut nicht unterschieben."""
+    gewaehlt = ort_aus_id(ort_id, store)
+    if wort_ort is None:
+        return gewaehlt
+    if gewaehlt and wort_ort["id"] in gewaehlt.get("parent_ids", ()):
+        return gewaehlt
+    return wort_ort
+
+
+def ort_aus_id(ort_id: str | None, store=None) -> dict | None:
+    """Ein Katalogort aus seiner id, in derselben Form wie :func:`finde_ort` —
+    für den Ort, den die Frage-Analyse aus der Liste gewählt hat."""
+    if not ort_id:
+        return None
+    from council import places
+
+    katalog = store.all_places() if store is not None else places.all_places()
+    place = next((p for p in katalog if p.id == ort_id), None)
+    if place is None:
+        return None
+    return {"id": place.id, "name": place.name, "kind": place.kind,
+            "kind_label": places.kind_label(place.kind),
+            "description": place.description, "parent_ids": tuple(place.parent_ids)}
 
 
 def nennt_ort(beitrag: dict, ort: dict, store=None) -> bool:

@@ -3638,10 +3638,12 @@ def _deep_research_anlegen(body: DeepResearchBody, request: Request, user: dict,
     # Die Erkennung ist wörtlich die von `/ask` — Analyse, dann die drei
     # deterministischen Anker, die sie überstimmen.
     verlauf = [r.model_dump() for r in body.history]
-    analyse = qa.analyse_query(question, verlauf=verlauf)
+    orte = qa.ortsliste(store) if qa.braucht_ortsliste(qa.finde_ort(question, store)) else None
+    analyse = qa.analyse_query(question, verlauf=verlauf, orte=orte)
     q_suche = analyse.get("question") or question
     person = qa.finde_person(store, q_suche)
-    ort = qa.finde_ort(q_suche, store) or qa.finde_ort(question, store)
+    ort = qa.ort_entscheiden(qa.finde_ort(q_suche, store) or qa.finde_ort(question, store),
+                             analyse.get("ort_id"), store)
     sitzungen = [] if person else (qa.finde_sitzungen(store, q_suche)
                                    or qa.finde_sitzungen(store, question))
     if qa.rueckfrage_noetig(analyse, person=person, ort=ort, sitzungen=sitzungen):
@@ -5219,7 +5221,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 [r.model_dump() for r in body.history], q)
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
-            analyse = qa.analyse_query(q, verlauf=verlauf)
+            # Findet der Wortlaut keinen Katalogort, wählt die Analyse aus der
+            # Liste (`qa._ortsblock`) — kostet keinen zusätzlichen Aufruf.
+            orte = qa.ortsliste(store) if qa.braucht_ortsliste(qa.finde_ort(q, store)) else None
+            analyse = qa.analyse_query(q, verlauf=verlauf, orte=orte)
             expanded, typ = analyse["terms"], analyse["kind"]
             # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
             # der Befund kam aus einer echten Nutzer-Frage, der nach dem
@@ -5267,7 +5272,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Orts-Fragetyp: dieselbe deterministische Stammdaten-Erkennung wie
             # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
             # die stabile Orts-ID ``neu-donnerschwee`` aufgelöst.
-            ort = qa.finde_ort(q_suche, store) or qa.finde_ort(q, store)
+            ort = qa.ort_entscheiden(qa.finde_ort(q_suche, store) or qa.finde_ort(q, store),
+                                     analyse.get("ort_id"), store)
             # Der Ort ist grundsätzlich ein Filter, kein exklusiver Fragetyp:
             # Geld-, Partei-, Verlaufs-, Personen- und Sitzungsfragen behalten
             # ihre Spezialregeln. Nur eine allgemeine Themenfrage wird zur
