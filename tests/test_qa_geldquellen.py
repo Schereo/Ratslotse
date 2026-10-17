@@ -1224,7 +1224,7 @@ def test_geldregeln_treten_bei_punktfragen_zurueck(tmp_path):
     messages, _ = qa._answer_messages("Was kostet die Feuerwehr?", [], typ="money",
                                       geld=kontext, eng=True)
     prompt = messages[0]["content"]
-    assert "HÖCHSTENS 3 Sätzen" in prompt
+    assert "DIESE FRAGE IST ENG GESTELLT" in prompt
     assert "JAHR IMMER NENNEN" not in prompt
     assert "laut Jahresabschluss 2024" in prompt   # die kurze Belegregel
     store.close()

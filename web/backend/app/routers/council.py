@@ -5601,6 +5601,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                             text_ids=qa.speech_text_ids(store, q_suche),
                             neueste_zuerst=qa.stand_or_recency(q_suche))
                         debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+                        # Fragt die Frage nach DEN Fraktionen, kommen die Reden
+                        # je Fraktion dazu — dieselbe Auswahl wie im Baustein
+                        # „Das sagen die Parteien“, nur VOR der Antwort
+                        # (`qa.fraktionsfrage`). Vorn, damit sie nicht hinter
+                        # dem Wortfeld der Frage verschwinden.
+                        if qa.fraktionsfrage(analyse):
+                            hits_f = emb.search_wortbeitraege_je_fraktion(store, q_suche, expanded)
+                            schon = {d["id"] for d in debatten_rows}
+                            debatten_rows = [r for r in store.wortbeitraege_by_ids(
+                                [wid for wid, _ in hits_f]) if r["id"] not in schon] + debatten_rows
                         # … plus die Aussprache ZU den gefundenen Beschlüssen:
                         # Fachsprache (Vinylchlorid, Messpunkte) liegt außerhalb
                         # des Frage-Wortfelds und fällt durch die Ähnlichkeits-
