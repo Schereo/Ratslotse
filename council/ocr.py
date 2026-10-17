@@ -39,6 +39,15 @@ Sonnet alle drei Summenproben mit vier falschen Zellen, bei AWB 2020 standen
 alle Beträge eines Blocks eine Beschriftung zu tief — und keine Summenprobe
 merkt, wenn die richtige Zahl am falschen Posten steht.
 
+**Aufrichten ist kein Allheilmittel** (Neulesen des Bestands, 17.10.2026,
+19 Dokumente): Beim AWB-Prüfbericht 2018 Teil 2 (206874, GuV) verschob die
+AUFRECHTE Lesung die Beträge ab Posten 10 um eine Zeile, die seitliche erst ab
+Posten 13 — Auslöser sind „davon"-Zeilen mit eigenem Betrag im Text. Gefangen
+hat es die Überlappungsprobe der Eigenbetriebe (zwei Berichte, zwei Zahlen →
+„strittig"), nicht eine Summenprobe. Das Dokument steht deshalb wieder mit
+seiner alten Lesung im Bestand; alle übrigen Datenschichten blieben beim
+Neulesen Zeile für Zeile gleich.
+
 WAS DIESES MODUL BEWUSST NICHT TUT: Es normalisiert keine Zahlen. „1.234,56"
 bleibt „1.234,56". Wer das Modell rechnen oder umformatieren lässt, verliert
 die Probe, mit der der Haushalts-Bereich arbeitet — und bekommt dafür eine
