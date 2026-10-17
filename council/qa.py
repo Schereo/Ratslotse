@@ -620,6 +620,66 @@ def _ortsblock(orte: list[tuple[str, str]] | None) -> str:
         "Wort nur zufällig ähnlich klingt oder die Frage die ganze Stadt meint.\n")
 
 
+#: So viele Treffer-Titel sieht die Nachrecherche — genug, um zu sehen, was
+#: fehlt, ohne den kleinen Aufruf zu verlangsamen.
+NACHRECHERCHE_TITEL = 15
+
+
+def nachrecherche_anfragen(question: str, candidates: list[dict],
+                           model: str = EXPAND_MODEL) -> list[str]:
+    """Fehlt in den Treffern etwas, wonach die Frage fragt? Dann bis zu drei
+    Suchanfragen in der Sprache der Vorlagen — sonst ``[]``.
+
+    **Warum.** Die Suche lief bis 10/2026 genau einmal. Was die erste Runde
+    nicht traf, kam in der Antwort nicht vor: „Wie viel kostet der kostenlose
+    Bus Samstag?“ — die Vorlagen sagen „Samstagsfahrten“; „Wie stehen die
+    Fraktionen zum Stadion?“ — der Vergabe-Beschluss vom 01.06.2026 war gar
+    nicht unter den Treffern. Im Gold-Set fehlte bei 28 % der verfehlten
+    Fakten das Material ganz (Auswertung 16.10.2026). Lotti schlägt seit
+    #1570 nach; das hier ist dieselbe Idee in klein: ein Blick auf die Titel,
+    gezielt nachsuchen, einmal.
+
+    Robust: Jeder Fehler und jede unbrauchbare Antwort heißt ``[]`` — dann
+    bleibt es bei der ersten Suche.
+    """
+    titel = []
+    for c in candidates[:NACHRECHERCHE_TITEL]:
+        datum = str(c.get("session_date") or "")[:10]
+        gremium = c.get("committee") or ""
+        titel.append(f"- {(c.get('title') or '').strip()[:140]} ({gremium}, {datum})")
+    try:
+        prompt = prompts.render("qa_nachrecherche", question=question.strip()[:300],
+                                treffer="\n".join(titel) or "(keine Treffer)")
+        resp = llm.chat_complete(
+            model=model, _feature="qa_nachrecherche", temperature=0, max_tokens=200,
+            timeout=8.0, response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompt}])
+        data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
+        roh = data.get("suchen") if isinstance(data, dict) else None
+        if not isinstance(roh, list):
+            return []
+        anfragen = [" ".join(str(a).split())[:120] for a in roh
+                    if isinstance(a, str) and str(a).strip()]
+        # Eine Anfrage, die nur die Frage wiederholt, sucht dasselbe noch einmal.
+        frage_f = _falte(question)
+        return [a for a in dict.fromkeys(anfragen) if _falte(a) != frage_f][:3]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def nachrecherche_einfuegen(candidates: list[dict], neue: list[dict]) -> list[dict]:
+    """Die Funde der Nachrecherche nach Score in die erste Liste einsortieren.
+
+    Die erste Liste behält ihre Reihenfolge (Frische-Bonus, Serien-Deckel);
+    ein neuer Kandidat rückt vor den ersten, den er schlägt."""
+    aus = list(candidates)
+    for n in sorted(neue, key=lambda c: -(c.get("score") or 0)):
+        s = n.get("score") or 0
+        pos = next((i for i, c in enumerate(aus) if (c.get("score") or 0) < s), len(aus))
+        aus.insert(pos, n)
+    return aus
+
+
 def fraktionsfrage(analyse: dict) -> bool:
     """Fragt die Frage nach den Positionen ALLER Fraktionen („Wie stehen die
     Fraktionen zum Stadion?“) statt nach einer bestimmten?

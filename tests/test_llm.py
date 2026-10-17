@@ -297,7 +297,8 @@ def test_ersatz_fuer_kennt_luna_und_sonst_nichts():
 #: Fragen, Themen, Lottis Kontext. Sie dürfen NIE ohne ZDR laufen.
 NUTZER_PFADE = ("qa_answer", "qa_simple", "qa_analysis", "qa_query_expansion",
                 "deep_report", "deep_decomposition", "party_opinions",
-                "assistant_explain", "topic_auto_description", "vagueness_check")
+                "assistant_explain", "topic_auto_description", "vagueness_check",
+                "qa_nachrecherche")
 
 
 def test_nutzer_pfade_behalten_zdr(monkeypatch):
