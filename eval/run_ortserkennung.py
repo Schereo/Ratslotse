@@ -34,7 +34,9 @@ def erkenne(store, frage: str, mit_modell: bool) -> str | None:
     ort = qa.finde_ort(frage, store)
     if mit_modell and qa.braucht_ortsliste(ort):
         analyse = qa.analyse_query(frage, orte=qa.ortsliste(store))
-        ort = qa.ort_entscheiden(ort, analyse.get("ort_id"), store)
+        # Gemessen wird, ob der gemeinte Ort ERKANNT ist — als Filter (Wortlaut)
+        # oder als Hinweis (Wahl der Analyse, `qa.ort_hinweis`).
+        ort = qa.ort_hinweis(ort, analyse.get("ort_id"), store) or ort
     return ort["id"] if ort else None
 
 

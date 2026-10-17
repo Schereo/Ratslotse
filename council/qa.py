@@ -607,7 +607,8 @@ def _ortsblock(orte: list[tuple[str, str]] | None) -> str:
     endet nie (Tim, 16.10.2026). Das Analyse-Modell liest die Frage ohnehin;
     mit der Liste der Orte vor Augen erkennt es Teilwörter, Umgangssprache und
     Tippfehler. Es darf nur eine id AUS der Liste nennen, und der Abgleich am
-    Wortlaut geht vor — die Liste kommt nur, wenn er nichts fand.
+    Wortlaut geht vor — die Liste kommt nur, wenn er nichts fand. Die Wahl
+    ist ein Hinweis, kein Filter (:func:`ort_hinweis`).
     """
     if not orte:
         return ""
@@ -617,7 +618,9 @@ def _ortsblock(orte: list[tuple[str, str]] | None) -> str:
         'Ergänze das JSON um "ort": die id des Ortes aus dieser Liste, den die Frage '
         "meint — auch wenn sie ihn anders nennt (Teil eines Wortes, umgangssprachlich, "
         "verschrieben: „Hafenbecken“ → der Stadthafen). Sonst null. null auch, wenn ein "
-        "Wort nur zufällig ähnlich klingt oder die Frage die ganze Stadt meint.\n")
+        "Wort nur zufällig ähnlich klingt oder die Frage die ganze Stadt meint — und wenn "
+        "sie ein GEBÄUDE, einen Platz oder ein Vorhaben nennt, das nicht selbst in der "
+        "Liste steht: Dann ist nicht dessen Stadtteil gemeint.\n")
 
 
 #: So viele Treffer-Titel sieht die Nachrecherche — genug, um zu sehen, was
@@ -1370,16 +1373,25 @@ def braucht_ortsliste(wort_ort: dict | None) -> bool:
     return wort_ort is None or wort_ort.get("kind") == "local_area"
 
 
-def ort_entscheiden(wort_ort: dict | None, ort_id: str | None, store=None) -> dict | None:
-    """Wortlaut oder Wahl der Analyse? Der Wortlaut gilt — außer die Analyse
-    nennt einen Ort INNERHALB des gefundenen Stadtteils; dann ist sie genauer.
-    Einen anderen Stadtteil darf sie dem Wortlaut nicht unterschieben."""
+def ort_hinweis(wort_ort: dict | None, ort_id: str | None, store=None) -> dict | None:
+    """Der Ort, den die Analyse aus dem Katalog gewählt hat — als HINWEIS.
+
+    Er filtert nicht, er bringt nur die Beschlüsse dieses Ortes zusätzlich in
+    den Rerank-Pool. ``None``, wenn nichts gewählt ist oder die Wahl der
+    Wortlaut-Ort selbst ist (der filtert ohnehin).
+
+    **Warum kein Filter.** Mit der Ortsliste vor Augen ordnete die Analyse
+    auch Gebäude, Plätze und Vorhaben ihrem Stadtteil zu („Weser-Ems-Hallen“
+    → Innenstadt). Als harter Filter warf das alles weg, was nicht dort
+    verortet ist: Gold 17.10.2026, Weser-Ems 0,56 → 0,00, Schlossplatz
+    0,58 → 0,08. Als Anker hilft die Wahl dort, wo sie stimmt
+    („Hafenbecken“ → Alter Stadthafen), und schadet nicht, wo sie danebenliegt —
+    über die Reihenfolge entscheidet der Reranker.
+    """
     gewaehlt = ort_aus_id(ort_id, store)
-    if wort_ort is None:
-        return gewaehlt
-    if gewaehlt and wort_ort["id"] in gewaehlt.get("parent_ids", ()):
-        return gewaehlt
-    return wort_ort
+    if gewaehlt is None or (wort_ort and gewaehlt["id"] == wort_ort["id"]):
+        return None
+    return gewaehlt
 
 
 def ort_aus_id(ort_id: str | None, store=None) -> dict | None:
