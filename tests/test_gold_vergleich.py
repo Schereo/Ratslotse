@@ -28,6 +28,15 @@ def test_ursachen_trennen_suche_und_antwort():
     assert gold.ursache("F3", MATERIAL) == "teilweise"
     assert gold.ursache("F9", MATERIAL) == "ohne_material"
     assert gold.kontext_recall(MATERIAL) == (2, 4)
+    # Bei den Kandidaten gefunden, im Prompt nicht: der Schnitt nach Rang 20.
+    gefunden = [dict(m, vorhanden=True) for m in MATERIAL]
+    assert gold.ursache("F2", MATERIAL, gefunden) == "abgeschnitten"
+
+
+def test_material_form_zaehlt_nur_was_im_prompt_stand():
+    quellen = {"sources": [{"id": 1, "title": "A"}, {"id": 2, "title": "B"}]}
+    assert [c["id"] for c in gold.material_form(quellen)["candidates"]] == [1, 2]
+    assert [c["id"] for c in gold.material_form(quellen, kontext_ids=[2])["candidates"]] == [2]
 
 
 def _lauf(tmp_path, label, abdeckung):

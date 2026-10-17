@@ -39,7 +39,7 @@ def kennzahlen(faelle: list[dict]) -> dict:
         a, b = gold.kontext_recall(c["material"])
         da, gesamt = da + a, gesamt + b
         for fid in c["wertung"]["verfehlt"]:
-            ursachen[gold.ursache(fid, c["material"])] += 1
+            ursachen[gold.ursache(fid, c["material"], c.get("material_gefunden"))] += 1
     return {"abdeckung": statistics.mean(c["wertung"]["abdeckung"] for c in faelle),
             "bestanden": sum(c["wertung"]["bestanden"] for c in faelle),
             "recall": da / gesamt if gesamt else 0.0, "ursachen": ursachen}
