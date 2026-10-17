@@ -498,9 +498,14 @@ def lies_seite(bild: Seitenbild, model: str = MODEL) -> str:
 
 #: Ein Betrag, wie ihn diese Dokumente drucken: mit Tausenderpunkt oder mit
 #: Nachkommastellen. Jahreszahlen, Seitenzahlen und Postennummern sind keiner.
+#:
+#: Ein Minus steht nie direkt an einem Wort und hat höchstens EIN Leerzeichen
+#: hinter sich: „Mehrzweck-<Tab>25.000 €" ist ein Trennstrich am Zeilenende
+#: und kein negativer Betrag (193959 S. 30 — der falsche Betragssatz machte
+#: eine andere Zeile zur einzigen Fundstelle und damit zum Fehlalarm).
 _BETRAG_ZEILE = re.compile(
-    r"(?<![\d.,])(?:-\s?)?\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?!\d)"
-    r"|(?<![\d.,])-?\d+,\d{2}(?!\d)")
+    r"(?<![\w.,])(?:- ?)?\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?!\d)"
+    r"|(?<![\w.,])-?\d+,\d{2}(?!\d)")
 
 
 def _beschriftung(text: str) -> str:
