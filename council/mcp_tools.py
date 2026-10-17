@@ -31,11 +31,13 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from council import lotti_werkzeuge as lw
+from council import vorlagen
 from kern import foreign_text
 
 RIS = "https://buergerinfo.oldenburg.de"
@@ -110,6 +112,45 @@ def _datum(args: dict, key: str) -> str:
     if wert and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", wert):
         raise ToolError(f"{key} muss die Form JJJJ-MM-TT haben.")
     return wert
+
+
+#: Eine Zeile aus Buchstaben mit Leerzeichen dazwischen — so setzt das
+#: PDF-Textlayer die gesperrte Unterschrift („D r . S v e n U h r h a n“).
+_GESPERRT = re.compile(r"^(?:\S{1,2}\s+){4,}\S{1,2}$")
+
+
+def _entsperren(zeile: str) -> str:
+    """„D r .  S v e n  U h r h a n“ → „Dr. Sven Uhrhan“. Die Sperrung ist je
+    Vorlage verschieden breit (ein, zwei, drei Leerzeichen je Buchstabe): Die
+    HÄUFIGSTE Lücke der Zeile trennt Buchstaben, jede breitere Wörter — nicht
+    die schmalste, denn einzelne Paare stehen enger („G  a  b  r  i  e  l e“).
+    Sind alle gleich breit, trennt der Wechsel von klein zu groß."""
+    einzeln = [t for t in zeile.split() if len(t) == 1]
+    # Mehrheitlich Buchstaben: Tabellenzeilen („7 4 % 7 6 % …“) sind auch
+    # gesperrt gesetzt, zusammengeschoben aber unlesbarer als vorher.
+    if (not _GESPERRT.match(zeile) or len(einzeln) < 4
+            or sum(t.isalpha() for t in einzeln) < 0.75 * len(einzeln)):
+        return zeile
+    luecke = Counter(len(x) for x in re.findall(r"\s+", zeile)).most_common(1)[0][0]
+    woerter = [re.sub(r"(?<=[a-zäöüß])(?=[A-ZÄÖÜ])", " ", re.sub(r"\s+", "", t))
+               for t in re.split(rf"\s{{{luecke + 1},}}", zeile)]
+    return re.sub(r"\s*\.(?=\S)", ". ", " ".join(woerter))
+
+
+def _volltext(roh: str | None) -> str:
+    """Der Vorlagen-Volltext ohne die Spuren des PDF-Textlayers: keine
+    Seitenköpfe („Ausdruck vom … Seite 1/2“), Zeilen innerhalb eines Absatzes
+    zu Fließtext verbunden, Silbentrennung geheilt, gesperrte Unterschrift
+    lesbar. Anders als ``vorlagen.excerpt`` bleibt ALLES stehen — Kopf,
+    Unterschrift und angehängte Anlagen —, denn ein Agent soll den ganzen
+    Text lesen können, nicht unseren Auszug davon."""
+    absaetze = []
+    for block in re.split(r"\n\s*\n", roh or ""):
+        zeilen = [_entsperren(z.strip()) for z in block.splitlines()]
+        zeilen = [z for z in zeilen if z and not vorlagen._NOISE_RE.match(z)]  # noqa: SLF001
+        if zeilen:
+            absaetze.append("\n".join(vorlagen._entzeilen(zeilen)))  # noqa: SLF001
+    return re.sub(r"[ \t]+", " ", "\n\n".join(absaetze)).strip()
 
 
 def _beschluss_kurz(d: dict, base: str) -> dict:
@@ -211,7 +252,7 @@ def get_template(store, args: dict, base: str) -> str:
     if not v:
         raise ToolError(f"Keine Vorlage „{nr}“ im Bestand.")
     offset = _int(args, "offset", 0, 0, 10**7)
-    volltext = _sauber(v.get("raw_text"))
+    volltext = _sauber(_volltext(v.get("raw_text")))
     stueck = volltext[offset:offset + VOLLTEXT_STUECK]
     weiter = offset + len(stueck)
     return _json({
@@ -237,28 +278,92 @@ def list_committees(store, args: dict, base: str) -> str:
         for n in store.get_all_committee_names()]})
 
 
+#: Höchstens so viele Sitzungen je Abruf; ein engerer Zeitraum holt den Rest.
+SITZUNGEN_MAX = 100
+
+
+def _sitzung(z: tuple, heute: str, base: str) -> dict:
+    ksinr, gremium, tag, zeit, ort, n = z
+    tag = str(tag)[:10]
+    aus: dict[str, Any] = {
+        "date": tag, "time": zeit or None, "committee": gremium, "location": ort or None,
+        "status": "today" if tag == heute else ("upcoming" if tag > heute else "past"),
+        "ksinr": ksinr,
+        # Ohne ksinr steht der Termin nur im Kalender — eine Tagesordnung
+        # gibt es dann noch nicht.
+        "agenda_items": n if ksinr else None,
+    }
+    if ksinr:
+        aus["url"] = f"{base}/council/sitzung?ksinr={ksinr}"
+    return aus
+
+
 def list_sessions(store, args: dict, base: str) -> str:
-    if not str(args.get("committee") or "").strip():
+    gremium = str(args.get("committee") or "").strip()[:80]
+    if not gremium:
         raise ToolError("committee fehlt, z. B. „Rat“ oder „Verkehr“.")
-    return lw.sitzungen(store, {"gremium": args.get("committee"),
-                                "von_datum": _datum(args, "date_from"),
-                                "bis_datum": _datum(args, "date_to")}).text
+    d = lw.sitzungen_daten(store, gremium, _datum(args, "date_from"), _datum(args, "date_to"))
+    aus: dict[str, Any] = {
+        "today": d["heute"], "date_from": d["von"], "date_to": d["bis"],
+        # Die nächste Sitzung ab heute steht IMMER dabei, auch bei einem
+        # Zeitraum in der Vergangenheit (s. ``lw.sitzungen_daten``).
+        "next_session": _sitzung(d["naechste"], d["heute"], base) if d["naechste"] else None,
+        "sessions": [_sitzung(z, d["heute"], base) for z in d["zeilen"][:SITZUNGEN_MAX]],
+    }
+    if len(d["zeilen"]) > SITZUNGEN_MAX:
+        aus["truncated"] = len(d["zeilen"]) - SITZUNGEN_MAX
+    if not d["zeilen"]:
+        aus["hint"] = ("Keine Sitzung in diesem Zeitraum. Zeitraum weiter fassen, oder "
+                       "list_committees für den genauen Gremiennamen.")
+    return _json(aus)
 
 
 def get_agenda(store, args: dict, base: str) -> str:
     ksinr = _int(args, "ksinr", 0, 0, 10**9)
-    e = lw.tagesordnung(store, {"ksinr": ksinr})
-    if not store.get_session(ksinr):
-        raise ToolError(e.text)
-    return e.text + f"\nSeite: {base}/council/sitzung?ksinr={ksinr}" \
-                    f"\nOriginal: {RIS}/si0057.php?__ksinr={ksinr}"
+    daten = lw.tagesordnung_daten(store, ksinr)
+    if not daten:
+        raise ToolError(f"Keine Sitzung mit ksinr {ksinr}. list_sessions nennt die Kennungen.")
+    sitzung, tops = daten
+    return _json({
+        "ksinr": ksinr,
+        "committee": sitzung.get("committee"),
+        "date": sitzung.get("session_date"),
+        "items": [{"number": nr,
+                   # „N 11“ ist nichtöffentlich; der Titel ist dann
+                   # „gesperrte Information“, mehr gibt es dazu nicht.
+                   "public": not str(nr or "").startswith("N"),
+                   "title": titel,
+                   "outcome": _ERGEBNIS.get(o or "", o)}
+                  for nr, titel, o in tops],
+        "url": f"{base}/council/sitzung?ksinr={ksinr}",
+        "original_url": f"{RIS}/si0057.php?__ksinr={ksinr}",
+    })
+
+
+_STIMME = {"unanimous": "einstimmig", "majority": "mehrheitlich"}
 
 
 def get_template_history(store, args: dict, base: str) -> str:
     nr = str(args.get("template_number") or "").strip()[:30]
     if not nr:
         raise ToolError("template_number fehlt, z. B. „25/0615“.")
-    return lw.beratungsfolge(store, {"vorlage": nr}).text
+    if not lw.VORLAGEN_NR.fullmatch(nr):
+        raise ToolError(f"„{nr}“ ist keine Vorlagennummer; sie hat die Form „25/0615“.")
+    beraten, offen = lw.beratungsfolge_daten(store, nr)
+    aus: dict[str, Any] = {
+        "template_number": nr,
+        "consultations": [
+            {"date": tag, "committee": gremium,
+             "outcome": _ERGEBNIS.get(erg or "", erg),
+             "vote": _STIMME.get(stimme or "", stimme),
+             # Eine Ergänzung („25/0615/1“) zählt zur Vorlage dazu.
+             "template_number": vnr}
+            for gremium, tag, erg, stimme, vnr in beraten],
+        "pending": [{"date": tag, "committee": gremium} for gremium, tag in offen],
+    }
+    if not beraten and not offen:
+        aus["hint"] = "Zu dieser Vorlage ist keine Beratung verzeichnet."
+    return _json(aus)
 
 
 def count_decisions(store, args: dict, base: str) -> str:
@@ -266,8 +371,16 @@ def count_decisions(store, args: dict, base: str) -> str:
     field = str(args.get("policy_field") or "")
     if field and field not in _FELDER:
         raise ToolError(f"policy_field muss eines sein von: {', '.join(_FELDER)}.")
-    return lw.beschluesse_zaehlen(store, {"jahr": jahr, "themenfeld": field,
-                                          "gremium": args.get("committee") or ""}).text
+    gremium = str(args.get("committee") or "").strip()[:80]
+    zeilen = sorted(lw.beschluesse_zaehlen_daten(store, jahr, field, gremium),
+                    key=lambda z: -z[1])
+    return _json({
+        "year": jahr, "policy_field": field or None, "committee": gremium or None,
+        "total": sum(n for _, n in zeilen),
+        "by_outcome": {_ERGEBNIS.get(o or "", o or "ohne Ergebnis"): n for o, n in zeilen},
+        # Gezählt hat die Datenbank, nicht ein Modell — die Zahl ist exakt.
+        "counted_by": "ratslotse",
+    })
 
 
 TOOLS: dict[str, Tool] = {t.name: t for t in (

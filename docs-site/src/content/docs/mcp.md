@@ -57,9 +57,18 @@ fremde Seite im Namen einer angemeldeten Person Anfragen stellen.
 | `get_agenda` | Die Tagesordnung einer Sitzung samt Ergebnissen |
 | `count_decisions` | Beschlüsse eines Jahres nach Ergebnis, Themenfeld, Gremium |
 
-Die Sitzungs-, Beratungs- und Zähl-Werkzeuge sind dieselben, mit denen Lotti
-nachschlägt (`council/lotti_werkzeuge.py`); die übrigen stehen in
-`council/mcp_tools.py`.
+Alle Werkzeuge antworten mit **JSON**, auch die vier, deren Abfragen Lotti
+teilt (`council/lotti_werkzeuge.py`, die `…_daten`-Funktionen): Lotti formt
+daraus ihren Fließtext, der MCP-Server gibt die Daten selbst aus. Bis 10/2026
+kamen diese vier als Lottis Text — mit TOP-Titeln, die bei 160 Zeichen mitten
+im Wort endeten. Titel kommen jetzt ungekürzt.
+
+Der Vorlagen-Volltext (`get_template`) ist von den Spuren des PDF-Textlayers
+befreit: keine Seitenköpfe („Ausdruck vom … Seite 1/2“), Zeilen eines Absatzes
+als Fließtext, Silbentrennung geheilt, die gesperrt gesetzte Unterschrift
+lesbar („D r .  S v e n  U h r h a n“ → „Dr. Sven Uhrhan“). Anders als der
+Auszug auf der Beschluss-Seite bleibt dabei **alles** stehen, auch Kopf und
+angehängte Anlagen.
 
 ## Grenzen
 
