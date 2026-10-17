@@ -11,6 +11,7 @@ Haushalt und nichts, was an einem Konto hängt.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -246,6 +247,89 @@ def test_werkzeuge_lesen_beschluesse(client):
     assert r["isError"] is True
 
 
+def _rufe(token: str, name: str, **arguments) -> dict:
+    r = _rpc(token, "tools/call", {"name": name, "arguments": arguments}).json()["result"]
+    assert r["isError"] is False, r
+    return json.loads(r["content"][0]["text"])
+
+
+def test_alle_werkzeuge_antworten_als_json(client):
+    """Bis 10/2026 antworteten vier der acht Werkzeuge mit Lottis Fließtext.
+    Ein Agent liest JSON zuverlässiger, und er soll nicht je Werkzeug raten,
+    welche Form kommt."""
+    _konto(client)
+    token = _schluessel(client)
+    _beschluss()
+    lang = ("Zusammenführung des Bäderbetriebs der Stadt Oldenburg (BBO) und der "
+            "Bäderbetriebsgesellschaft Oldenburg mbH (BBGO) in eine GmbH & Co. KG - "
+            "Grundsatzbeschluss vorbehaltlich der Zustimmung")
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(4712, "Rat", "2026-07-06", "18:00", "PFL", agenda_items=[
+        AgendaItem("Ö 6", lang), AgendaItem("N 11", "gesperrte Information")]))
+    cs.close()
+
+    s = _rufe(token, "list_sessions", committee="Rat", date_from="2026-06-01",
+              date_to="2026-07-31")
+    assert [x["ksinr"] for x in s["sessions"]] == [4711, 4712]
+    assert s["sessions"][0]["status"] == "past"
+    assert s["sessions"][0]["url"].endswith("/council/sitzung?ksinr=4711")
+
+    a = _rufe(token, "get_agenda", ksinr=4712)
+    # Der Titel kommt GANZ — Lottis Tagesordnung schnitt bei 160 Zeichen
+    # mitten im Wort („Grundsatzbeschluss vo“).
+    assert a["items"][0]["title"] == lang
+    assert [i["public"] for i in a["items"]] == [True, False]
+    assert a["original_url"].endswith("si0057.php?__ksinr=4712")
+    assert _rufe(token, "get_agenda", ksinr=4711)["items"][0]["outcome"] == "angenommen"
+
+    h = _rufe(token, "get_template_history", template_number="26/0101")
+    assert h["consultations"][0]["committee"] == "Rat"
+    assert h["consultations"][0]["outcome"] == "angenommen"
+
+    z = _rufe(token, "count_decisions", year=2026)
+    assert z["total"] == 1 and z["by_outcome"] == {"angenommen": 1}
+
+    r = _rpc(token, "tools/call", {"name": "get_template_history",
+                                   "arguments": {"template_number": "Radweg"}}).json()["result"]
+    assert r["isError"] is True
+
+
+def test_lotti_kuerzt_lange_titel_sichtbar():
+    """Lotti behält ihre Kürzung, aber mit „…“: Ohne Zeichen hält das Modell
+    den Stummel für den ganzen Titel."""
+    from council import lotti_werkzeuge as lw
+
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(4713, "Rat", "2026-07-06", "18:00", "PFL",
+                                   agenda_items=[AgendaItem("Ö 6", "Bäderbetrieb " * 20)]))
+    try:
+        zeile = lw.tagesordnung(cs, {"ksinr": 4713}).text.splitlines()[2]
+    finally:
+        cs.close()
+    assert zeile.endswith("Bäderbetrieb …")
+    assert len(zeile) < lw.TOP_TITEL_MAX + 20
+
+
+def test_volltext_ohne_pdf_spuren():
+    """Am Bestand gesehen (Vorlage 22/0195): Seitenköpfe mitten im Text,
+    harte Zeilenumbrüche und die gesperrte Unterschrift."""
+    roh = (" \n  Ausdruck vom: 10.03.2022 \n  Seite: 1/2 \n \n"
+           "Die CDU-Fraktion möchte wissen, ob es Planungen gibt, den \n"
+           "Radweg zu verlängern. Der nörd-\nliche Abschnitt ist Tempo 30. \n \n"
+           "In Vertretung \n \nDr . S v e n U h r h a n \n \n"
+           "  Ausdruck vom: 10.03.2022 \n  Seite: 2/2 \n")
+    text = mcp_tools._volltext(roh)
+    assert "Ausdruck vom" not in text and "Seite:" not in text
+    assert "ob es Planungen gibt, den Radweg zu verlängern." in text
+    assert "nördliche Abschnitt" in text
+    assert "Dr. Sven Uhrhan" in text
+    assert "\n\n" in text  # Absätze bleiben Absätze
+    assert mcp_tools._entsperren("J ü r g e n  K r o g m a n n") == "Jürgen Krogmann"
+    # Ein gewöhnlicher Satz bleibt, wie er ist.
+    assert mcp_tools._entsperren("Der Rat tagt am 3. 4. um 18 Uhr") == \
+        "Der Rat tagt am 3. 4. um 18 Uhr"
+
+
 def test_aufrufe_werden_gezaehlt(client):
     _konto(client)
     token = _schluessel(client)
@@ -265,7 +349,8 @@ def test_kein_haushalt_und_nichts_kontogebundenes():
 
     quellen = (ROOT / "council" / "mcp_tools.py").read_text()
     benutzt = set(re.findall(r"lw\.(\w+)\(", quellen))
-    assert benutzt <= {"sitzungen", "tagesordnung", "beratungsfolge", "beschluesse_zaehlen"}, (
+    assert benutzt <= {"sitzungen_daten", "tagesordnung_daten", "beratungsfolge_daten",
+                       "beschluesse_zaehlen_daten"}, (
         "council/mcp_tools.py benutzt ein weiteres Lotti-Werkzeug. Ist es frei von Haushalt "
         "und Kontodaten? Dann hier aufnehmen.")
     import inspect
