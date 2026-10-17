@@ -657,3 +657,116 @@ def test_lies_pdf_zaehlt_gedrehte_seiten(monkeypatch):
         b.daten, b.mime, b.weg, drehung=next(zug)))
     assert ocr.lies_pdf(b"%PDF-1.4").gedreht == 1
     assert ocr.lies_pdf(b"%PDF-1.4", aufrichten_an=False).gedreht == 0
+
+
+# --------------------------------------------------------------------------
+# (g) Zweitleser: Zeilenversatz finden, den keine Summenprobe sieht
+# --------------------------------------------------------------------------
+
+#: Wörtlich: AWB-Prüfbericht 2018, Teil 2 (206874), Seite 2, aufrecht gelesen
+#: von Gemini Flash Lite — ab Posten 10 eine Zeile verschoben (am Bild
+#: geprüft: Jahresüberschuss 349.543,67 €).
+GUV_GEMINI = (
+    "9. Zinsen und ähnliche Aufwendungen\t169.687,38\t236.668,34\n"
+    "- davon aus der Aufzinsung:\t\n"
+    "\t370.000,98\t304.834,06\n"
+    "10. Ergebnis nach Steuern\t20.457,31\t19.580,62\n"
+    "11. Sonstige Steuern\t349.543,67\t285.253,44\n"
+    "12. Jahresüberschuss\t132.578,94\t12.249,74\n"
+    "13. Gewinnvortrag\t-345.469,23\t-308.905,46\n")
+#: Dieselbe Seite von Sonnet 4.6 — richtig zugeordnet.
+GUV_SONNET = (
+    "9.\tZinsen und ähnliche Aufwendungen\n"
+    "\t- davon aus der Aufzinsung:\n"
+    "10.\tErgebnis nach Steuern\t\t370.000,98\t304.834,06\n"
+    "11.\tSonstige Steuern\t\t20.457,31\t19.580,62\n"
+    "12.\tJahresüberschuss\t\t349.543,67\t285.253,44\n"
+    "13.\tGewinnvortrag\t\t132.578,94\t12.249,74\n"
+    "14.\tEinstellung in Rücklagen\t\t-345.469,23\t-308.905,46\n")
+
+
+def test_zeilenversatz_wird_strittig():
+    ergebnis = ocr.abgleich(GUV_GEMINI, GUV_SONNET)
+    assert ergebnis.strittig
+    assert ergebnis.versatz == 4
+    # Die Beispiele nennen beide Zuordnungen — genug, um am PDF nachzusehen.
+    assert ergebnis.beispiele and all(a != b for _, a, b in ergebnis.beispiele)
+    zuordnung = {k: (a, b) for k, a, b in ocr.abgleich(GUV_GEMINI, GUV_SONNET).beispiele}
+    assert len(zuordnung) == 3
+
+
+def test_gleiche_zuordnung_in_anderer_form_ist_einig():
+    """Tabs, Markdown-Sterne, Leerzeichen: Darin unterscheiden sich zwei
+    Modelle immer. Ein Fehlalarm je sauberer Seite machte die Meldung wertlos."""
+    umformatiert = GUV_SONNET.replace("\t\t", " | ").replace("12.\t", "**12.** ")
+    assert not ocr.abgleich(GUV_SONNET, umformatiert).strittig
+
+
+def test_summenzeile_ohne_beschriftung_ist_kein_versatz():
+    a = "Erlöse\t1.000 €\t2.000 €\n\t3.000 €\t4.000 €\n"
+    b = "Erlöse\t1.000 €\t2.000 €\nSumme\t3.000 €\t4.000 €\n"
+    assert not ocr.abgleich(a, b).strittig
+
+
+def test_jahreszahlen_und_postennummern_sind_keine_betraege():
+    assert ocr.betragszeilen_anzahl("Plan 2019\tPlan 2020\n12. Jahresüberschuss\n") == 0
+
+
+def test_zweitleser_liest_nur_seiten_mit_zahlentabelle(monkeypatch):
+    """Fließtext kann keine Zeile verschieben, die ein Parser liest — ihn ein
+    zweites Mal zu bezahlen, kostete nur."""
+    seiten = [_Seite(_Bild("a.jpg")), _Seite(_Bild("b.jpg"))]
+
+    class _Leser:
+        pages = seiten
+
+    monkeypatch.setattr(ocr.pypdf, "PdfReader", lambda *_a, **_k: _Leser())
+    monkeypatch.setattr(ocr, "aufrichten", lambda b, **_k: b)
+    erste = iter([GUV_GEMINI, "Der Lagebericht gibt ein zutreffendes Bild. " * 5])
+    aufrufe = []
+
+    def _lies(bild, model=None):
+        aufrufe.append(model)
+        return GUV_SONNET if model == "zweit/x" else next(erste)
+
+    monkeypatch.setattr(ocr, "lies_seite", _lies)
+    lesung = ocr.lies_pdf(b"%PDF-1.4", model="erst/x", zweitleser="zweit/x")
+    assert aufrufe.count("zweit/x") == 1
+    assert lesung.strittig == (1,) and lesung.zweit_gelesen == 1
+    assert lesung.zweitleser == "zweit/x"
+    # Gespeichert wird die Lesung des ERSTEN Modells: Uneinigkeit ist ein
+    # Prüffall, kein Mehrheitsentscheid.
+    assert "132.578,94" in lesung.text.split("12. Jahresüberschuss")[1][:20]
+
+
+def test_ohne_zweitleser_kein_zweiter_aufruf(monkeypatch):
+    class _Leser:
+        pages = [_Seite(_Bild("a.jpg"))]
+
+    monkeypatch.setattr(ocr.pypdf, "PdfReader", lambda *_a, **_k: _Leser())
+    monkeypatch.setattr(ocr, "aufrichten", lambda b, **_k: b)
+    aufrufe = []
+    monkeypatch.setattr(ocr, "lies_seite", lambda b, model=None: aufrufe.append(model) or GUV_GEMINI)
+    lesung = ocr.lies_pdf(b"%PDF-1.4", model="erst/x")
+    assert aufrufe == ["erst/x"] and lesung.strittig == () and lesung.zweitleser is None
+
+
+def test_strittige_seiten_werden_gespeichert_und_gelesen(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    store.save_ocr_check(4711, "erst/x", "zweit/x", 12, [7, 3])
+    store.save_ocr_check(4712, "erst/x", "zweit/x", 5, [])
+    assert store.ocr_disputes() == {4711: [3, 7]}
+    # Ein zweiter Lauf ersetzt das Ergebnis, statt eine Zeile anzuhängen.
+    store.save_ocr_check(4711, "erst/x", "zweit/x", 12, [])
+    assert store.ocr_disputes() == {}
+    store.close()
+
+
+def test_leerraum_vor_dem_betrag_gehoert_nicht_dazu():
+    """„\\t1.448.253,00" und „1.448.253,00" sind derselbe Betrag. Der Tabulator
+    vor der Zahl ist Spaltenform, kein Vorzeichen-Abstand."""
+    a = "B. Sonderposten\t1.448.253,00\t1.533.864,00\n"
+    b = "B. SONDERPOSTEN\t\t1.448.253,00\t1.533.864,00\n"
+    ergebnis = ocr.abgleich(a, b)
+    assert ergebnis.gemeinsam == 1 and not ergebnis.strittig
+    assert ocr.abgleich("x\t- 510.903,43\n", "x\t-510.903,43\n").gemeinsam == 1

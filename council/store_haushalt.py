@@ -39,6 +39,37 @@ class HaushaltMixin(StoreBasis):
     von dort.
     """
 
+    def save_ocr_check(self, document_id: int, model: str, second_model: str,
+                       pages_checked: int, disputed_pages: list[int]) -> None:
+        """Das Ergebnis des Zweitlesers für eine Anlage (``council/ocr.py``).
+
+        Steht hier und nicht im Kern, weil es die Finanzdokumente sind, für
+        die der Zweitleser mitliest (``backfill_anlagen_ocr.py --nur-finanz``)
+        und deren Uneinigkeit ``check_finanzdaten`` meldet."""
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO council_ocr_checks (document_id, model, second_model, "
+                "pages_checked, disputed_pages, checked_at) VALUES (?, ?, ?, ?, ?, "
+                "datetime('now')) ON CONFLICT(document_id) DO UPDATE SET "
+                "model = excluded.model, second_model = excluded.second_model, "
+                "pages_checked = excluded.pages_checked, "
+                "disputed_pages = excluded.disputed_pages, checked_at = excluded.checked_at",
+                (document_id, model, second_model, pages_checked,
+                 json.dumps(sorted(disputed_pages))))
+
+    def ocr_disputes(self) -> dict[int, list[int]]:
+        """``{document_id: [Seiten]}`` aller Anlagen mit strittigen Seiten."""
+        try:
+            rows = self._conn.execute(
+                "SELECT document_id, disputed_pages FROM council_ocr_checks "
+                "WHERE disputed_pages != '[]'").fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return {}
+        return {int(r[0]): json.loads(r[1]) for r in rows}
+
+
     def beschluesse_mit_betrag(self, wort: str) -> int:
         """Wie viele Beschlüsse tragen ``wort`` im Titel UND einen Betrag?
 

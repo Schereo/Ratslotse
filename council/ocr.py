@@ -75,6 +75,10 @@ MODEL = os.environ.get("COUNCIL_OCR_MODEL") or "google/gemini-3.1-flash-lite"
 #: Uneinigkeit ist ein Prüffall, kein Mittelwert — gemittelt würde aus zwei
 #: verschiedenen Ziffern eine dritte, die auf keinem Papier steht.
 MODEL_ZWEIT = os.environ.get("COUNCIL_OCR_MODEL_ZWEIT") or "anthropic/claude-sonnet-4.6"
+#: Ab wie vielen Zeilen mit Beträgen eine Seite den Zweitleser bekommt.
+#: Fließtext ohne Zahlentabelle kann keine Zeile vertauschen, die ein Parser
+#: liest — ihn ein zweites Mal lesen zu lassen, kostete nur.
+ZWEIT_AB_ZEILEN = 3
 
 #: Temperatur 0. Zwei Läufe desselben Modells lieferten über 114 Zahlenzellen
 #: keine einzige Abweichung — diese Wiederholbarkeit ist die Voraussetzung
@@ -476,6 +480,81 @@ def lies_seite(bild: Seitenbild, model: str = MODEL) -> str:
 
 
 # --------------------------------------------------------------------------
+# Zweitleser: Zeilenversatz finden
+# --------------------------------------------------------------------------
+#
+# DER FEHLER, DEN KEINE SUMMENPROBE SIEHT: Das Modell liest alle Beträge
+# richtig, ordnet sie aber eine Zeile verschoben den Beschriftungen zu. Die
+# Summe geht auf, der Posten ist falsch. Gefunden am Konzern 2013 (188333),
+# AWB 2020 (208461) und AWB-Prüfbericht 2018 (206874) — seitlich wie aufrecht.
+#
+# Gemessen (17.10.2026): Gemini Flash Lite und Sonnet 4.6 auf denselben zehn
+# Seiten. Auf allen sechs Seiten mit bekanntem Versatz waren sie sich uneinig
+# (3, 5 und 10 Zeilen), auf allen vier sauberen Seiten und den drei richtig
+# gelesenen einig (0). Verglichen wird über den BETRAGSSATZ einer Zeile: Steht
+# dieselbe Zahlenfolge in beiden Lesungen bei verschiedenen Beschriftungen,
+# hat eines der Modelle die Zeile verschoben. Welches, sagt der Vergleich
+# nicht — das ist ein Prüffall, kein Mehrheitsentscheid.
+
+#: Ein Betrag, wie ihn diese Dokumente drucken: mit Tausenderpunkt oder mit
+#: Nachkommastellen. Jahreszahlen, Seitenzahlen und Postennummern sind keiner.
+_BETRAG_ZEILE = re.compile(
+    r"(?<![\d.,])(?:-\s?)?\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?!\d)"
+    r"|(?<![\d.,])-?\d+,\d{2}(?!\d)")
+
+
+def _betragszeilen(text: str) -> dict[tuple, set[str]]:
+    """``{Betragssatz: {Beschriftung, …}}`` je Zeile mit mindestens einem
+    Betrag. Die Beschriftung ist auf Buchstaben eingedampft — Tabs,
+    Markdown und Leerzeichen unterscheiden zwei Modelle, nicht der Inhalt."""
+    aus: dict[tuple, set[str]] = {}
+    for zeile in (text or "").replace("*", "").replace("|", "\t").splitlines():
+        betraege = tuple(b.replace(" ", "") for b in _BETRAG_ZEILE.findall(zeile))
+        if not betraege:
+            continue
+        erster = _BETRAG_ZEILE.search(zeile)
+        ende = erster.start() if erster else 0
+        beschriftung = re.sub(r"[^a-zäöüß]", "", zeile[:ende].lower())[:30]
+        aus.setdefault(betraege, set()).add(beschriftung)
+    return aus
+
+
+@dataclass(frozen=True)
+class Abgleich:
+    """Was zwei Lesungen derselben Seite über einander verraten."""
+    #: Betragssätze, die beide Lesungen kennen.
+    gemeinsam: int
+    #: Davon bei verschiedener Beschriftung — der Zeilenversatz.
+    versatz: int
+    #: Betragssätze, die nur eine Lesung kennt (Ziffernfehler, Umbruch).
+    einseitig: int
+    #: Bis zu drei Beispiele ``(Beträge, Beschriftung A, Beschriftung B)``.
+    beispiele: tuple = ()
+
+    @property
+    def strittig(self) -> bool:
+        return self.versatz > 0
+
+
+def abgleich(text_a: str, text_b: str) -> Abgleich:
+    """Zwei Lesungen derselben Seite gegeneinander halten."""
+    a, b = _betragszeilen(text_a), _betragszeilen(text_b)
+    gemeinsam = a.keys() & b.keys()
+    # Eine leere Beschriftung (Summenzeile ohne Text) ist kein Versatz: Das
+    # eine Modell schreibt „Summe" davor, das andere nichts.
+    versetzt = sorted(k for k in gemeinsam
+                      if a[k] != b[k] and any(a[k]) and any(b[k]))
+    return Abgleich(
+        gemeinsam=len(gemeinsam), versatz=len(versetzt),
+        einseitig=len(a.keys() ^ b.keys()),
+        beispiele=tuple((k, sorted(a[k]), sorted(b[k])) for k in versetzt[:3]))
+
+
+def betragszeilen_anzahl(text: str) -> int:
+    return len(_betragszeilen(text))
+
+
+# --------------------------------------------------------------------------
 # Was der Text über sich selbst verrät
 # --------------------------------------------------------------------------
 
@@ -517,6 +596,13 @@ class Lesung:
     weg: str
     #: Seiten, die vor dem Lesen aufgerichtet wurden (:func:`aufrichten`).
     gedreht: int = 0
+    #: Seiten, auf denen Erst- und Zweitleser Zeilen verschieden zuordnen —
+    #: leer, wenn es keinen Zweitleser gab oder beide einig waren.
+    strittig: tuple[int, ...] = ()
+    #: Das Modell des Zweitlesers, wenn einer mitlas.
+    zweitleser: str | None = None
+    #: Seiten, die der Zweitleser gelesen hat (nur die mit Zahlentabellen).
+    zweit_gelesen: int = 0
 
     @property
     def vollstaendig(self) -> bool:
@@ -524,7 +610,8 @@ class Lesung:
 
 
 def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
-             dpi: int = 200, aufrichten_an: bool = True) -> Lesung:
+             dpi: int = 200, aufrichten_an: bool = True,
+             zweitleser: str | None = None) -> Lesung:
     """Ein ganzes PDF lesen, Seite für Seite.
 
     Der Vollständigkeitszähler ist Absicht: Eine fehlende Seite lässt jede
@@ -534,7 +621,8 @@ def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
     leser = pypdf.PdfReader(io.BytesIO(daten))
     seiten = leser.pages if max_seiten is None else leser.pages[:max_seiten]
     teile: list[str] = []
-    gelesen = uebersprungen = gedreht = 0
+    gelesen = uebersprungen = gedreht = zweit_gelesen = 0
+    strittig: list[int] = []
     wege: set[str] = set()
 
     for nr, page in enumerate(seiten, start=1):
@@ -552,10 +640,15 @@ def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
         if len(text) >= MIN_SEITE:
             gelesen += 1
         teile.append(text)
+        if zweitleser and betragszeilen_anzahl(text) >= ZWEIT_AB_ZEILEN:
+            zweit_gelesen += 1
+            if abgleich(text, lies_seite(bild, model=zweitleser)).strittig:
+                strittig.append(nr)
 
     ganz = "\n\n".join(teile).strip()
     return Lesung(
         text=ganz, seiten=len(seiten), gelesen=gelesen,
         uebersprungen=uebersprungen, skalen=tuple(skalenhinweise(ganz)),
         modell=model, weg="+".join(sorted(wege)) or "keiner", gedreht=gedreht,
+        strittig=tuple(strittig), zweitleser=zweitleser, zweit_gelesen=zweit_gelesen,
     )
