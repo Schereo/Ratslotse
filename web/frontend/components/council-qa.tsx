@@ -36,6 +36,7 @@ import { QaSource } from "@/lib/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { chipEinloesen } from "@/lib/chip-frage";
 import { api, apiUrl, authHeaders } from "@/lib/api";
+import { sendAndForget } from "@/lib/send-and-forget";
 // Der Vertrag statt einer abgetippten Form: ein umbenanntes Feld bricht
 // damit hier den Build statt still eine leere Kachel zu zeigen.
 import { type ApiAntwort } from "@/lib/vertrag";
@@ -1077,9 +1078,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // während die App im Hintergrund liegt, bliebe er sonst als „gesehen"
     // markiert und der nächste Besuch fände ein leeres Gespräch vor.
     if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-    void fetch(apiUrl(`/council/deep-research/${jobId}/seen`), {
+    sendAndForget(apiUrl(`/council/deep-research/${jobId}/seen`), {
       method: "POST", credentials: "include", headers: authHeaders(),
-    }).catch(() => {});
+    });
   };
 
   /** Endzustand aus der DB holen (Job nicht mehr im Speicher, Neustart …). */
