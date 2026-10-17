@@ -503,33 +503,78 @@ _BETRAG_ZEILE = re.compile(
     r"|(?<![\d.,])-?\d+,\d{2}(?!\d)")
 
 
-def _betragszeilen(text: str) -> dict[tuple, set[str]]:
-    """``{Betragssatz: {Beschriftung, …}}`` je Zeile mit mindestens einem
-    Betrag. Die Beschriftung ist auf Buchstaben eingedampft — Tabs,
-    Markdown und Leerzeichen unterscheiden zwei Modelle, nicht der Inhalt."""
-    aus: dict[tuple, set[str]] = {}
+def _beschriftung(text: str) -> str:
+    return re.sub(r"[^a-zäöüß]", "", text.lower())
+
+
+def _betragszeilen(text: str) -> dict[tuple, list[tuple[str, str]]]:
+    """``{Betragssatz: [(eigene Beschriftung, volle Beschriftung), …]}`` je
+    Zeile mit mindestens einem Betrag.
+
+    Die Beschriftung ist auf Buchstaben eingedampft — Tabs, Markdown und
+    Leerzeichen unterscheiden zwei Modelle, nicht der Inhalt. Die VOLLE
+    Beschriftung nimmt die Zeilen ohne Betrag davor mit: Ein umbrochener
+    Posten („1. entgeltlich erworbene Konzessionen, / … Lizenzen 41.265,00")
+    steht beim einen Modell mit der ersten, beim anderen mit der letzten Zeile
+    vor dem Betrag."""
+    aus: dict[tuple, list[tuple[str, str]]] = {}
+    offen = ""
     for zeile in (text or "").replace("*", "").replace("|", "\t").splitlines():
         betraege = tuple(b.replace(" ", "") for b in _BETRAG_ZEILE.findall(zeile))
         if not betraege:
+            offen = (offen + _beschriftung(zeile))[-120:] if _beschriftung(zeile) else ""
             continue
         erster = _BETRAG_ZEILE.search(zeile)
-        ende = erster.start() if erster else 0
-        beschriftung = re.sub(r"[^a-zäöüß]", "", zeile[:ende].lower())[:30]
-        aus.setdefault(betraege, set()).add(beschriftung)
+        eigen = _beschriftung(zeile[:erster.start() if erster else 0])
+        aus.setdefault(betraege, []).append((eigen, offen + eigen))
+        offen = ""
     return aus
+
+
+def _gleicher_posten(x: tuple[str, str], y: tuple[str, str]) -> bool:
+    """Meinen zwei Zuordnungen denselben Posten?
+
+    Ja, wenn eine Seite gar keine Beschriftung hat (Summenzeile), wenn die
+    eigene Zeile der einen in der vollen Beschriftung der anderen steht
+    (Umbruch), oder wenn beide auf mindestens 12 Buchstaben gleich enden —
+    „B. Umlaufvermögen … erhaltene Anzahlungen auf Bestellungen" und „I.
+    Vorräte … erhaltene Anzahlungen auf Bestellungen" sind derselbe Posten
+    mit verschiedener Überschrift davor."""
+    (eigen_a, voll_a), (eigen_b, voll_b) = x, y
+    if not eigen_a or not eigen_b:
+        return True
+    gemeinsames_ende = len(os.path.commonprefix([eigen_a[::-1], eigen_b[::-1]]))
+    return eigen_a in voll_b or eigen_b in voll_a or gemeinsames_ende >= 12
+
+
+#: Bilanzen mit Aktiva und Passiva NEBENEINANDER lesen beide Modelle als
+#: verschmolzene Zeilen — der Betrag rechts landet hinter einer Beschriftung
+#: links, bei jedem Modell hinter einer anderen. Gemessen an fünf Bilanzen des
+#: Bestands (17.10.2026): jede war „strittig", keine Zuordnung dort war eine,
+#: die ein Parser liest (die Bilanz-Ingests nehmen die Summe, die auf beiden
+#: Seiten stehen muss). Solche Seiten werden nicht verglichen.
+_NEBENEINANDER = re.compile(r"a\s*k\s*t\s*i\s*v\s*a[\s\S]*p\s*a\s*s\s*s\s*i\s*v\s*a", re.IGNORECASE)
+
+
+def nebeneinander(text: str) -> bool:
+    """Steht auf dieser Seite eine Bilanz mit beiden Seiten nebeneinander?"""
+    return bool(_NEBENEINANDER.search(text or ""))
 
 
 @dataclass(frozen=True)
 class Abgleich:
     """Was zwei Lesungen derselben Seite über einander verraten."""
-    #: Betragssätze, die beide Lesungen kennen.
+    #: Betragssätze, die beide Lesungen je genau einmal kennen — nur die sind
+    #: vergleichbar („0,00" steht auf zehn Zeilen und sagt nichts).
     gemeinsam: int
-    #: Davon bei verschiedener Beschriftung — der Zeilenversatz.
+    #: Davon einem anderen Posten zugeordnet — der Zeilenversatz.
     versatz: int
     #: Betragssätze, die nur eine Lesung kennt (Ziffernfehler, Umbruch).
     einseitig: int
     #: Bis zu drei Beispiele ``(Beträge, Beschriftung A, Beschriftung B)``.
     beispiele: tuple = ()
+    #: Bilanz mit beiden Seiten nebeneinander — nicht verglichen.
+    nicht_vergleichbar: bool = False
 
     @property
     def strittig(self) -> bool:
@@ -538,16 +583,16 @@ class Abgleich:
 
 def abgleich(text_a: str, text_b: str) -> Abgleich:
     """Zwei Lesungen derselben Seite gegeneinander halten."""
+    if nebeneinander(text_a) or nebeneinander(text_b):
+        return Abgleich(gemeinsam=0, versatz=0, einseitig=0, nicht_vergleichbar=True)
     a, b = _betragszeilen(text_a), _betragszeilen(text_b)
-    gemeinsam = a.keys() & b.keys()
-    # Eine leere Beschriftung (Summenzeile ohne Text) ist kein Versatz: Das
-    # eine Modell schreibt „Summe" davor, das andere nichts.
-    versetzt = sorted(k for k in gemeinsam
-                      if a[k] != b[k] and any(a[k]) and any(b[k]))
+    vergleichbar = sorted(k for k in a.keys() & b.keys()
+                          if len(a[k]) == 1 and len(b[k]) == 1)
+    versetzt = [k for k in vergleichbar if not _gleicher_posten(a[k][0], b[k][0])]
     return Abgleich(
-        gemeinsam=len(gemeinsam), versatz=len(versetzt),
+        gemeinsam=len(vergleichbar), versatz=len(versetzt),
         einseitig=len(a.keys() ^ b.keys()),
-        beispiele=tuple((k, sorted(a[k]), sorted(b[k])) for k in versetzt[:3]))
+        beispiele=tuple((k, a[k][0][0], b[k][0][0]) for k in versetzt[:3]))
 
 
 def betragszeilen_anzahl(text: str) -> int:
@@ -640,7 +685,8 @@ def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
         if len(text) >= MIN_SEITE:
             gelesen += 1
         teile.append(text)
-        if zweitleser and betragszeilen_anzahl(text) >= ZWEIT_AB_ZEILEN:
+        if (zweitleser and betragszeilen_anzahl(text) >= ZWEIT_AB_ZEILEN
+                and not nebeneinander(text)):
             zweit_gelesen += 1
             if abgleich(text, lies_seite(bild, model=zweitleser)).strittig:
                 strittig.append(nr)
