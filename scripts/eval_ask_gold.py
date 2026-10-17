@@ -100,6 +100,7 @@ def fragen(basis: str, token: str, frage: str) -> dict:
     t0 = time.time()
     text: list[str] = []
     quellen: dict = {}
+    zeiten: dict = {}
     with _post(basis, token, "/api/council/ask", {"question": frage, "history": []},
                strom=True) as antwort:
         for roh in antwort:
@@ -114,7 +115,10 @@ def fragen(basis: str, token: str, frage: str) -> dict:
                 text.append(e.get("text") or "")
             elif e.get("type") == "sources":
                 quellen = e
-    return {"antwort": "".join(text), "quellen": quellen, "dauer_s": round(time.time() - t0, 1)}
+            elif e.get("type") == "done":
+                zeiten = e.get("timings") or {}
+    return {"antwort": "".join(text), "quellen": quellen, "zeiten": zeiten,
+            "dauer_s": round(time.time() - t0, 1)}
 
 
 def material_form(quellen: dict, debatten: list[dict] | None = None) -> dict:
@@ -201,7 +205,13 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
                         "beschluesse": len(q.get("sources") or []),
                         "debatten": [f"{d.get('date')} · {d.get('speaker')}"
                                      for d in (q.get("debates") or [])],
-                        "baustein": len(baustein)},
+                        "baustein": len(baustein),
+                        # Was die Suche selbst getan hat: Nachrecherche
+                        # (Anfragen, neue Funde) und ein gewählter Ort als
+                        # Hinweis — ohne das lässt sich ein Gold-Unterschied
+                        # keinem Schritt zuordnen (17.10.2026).
+                        "nachrecherche": (r.get("zeiten") or {}).get("nachrecherche"),
+                        "ort_hinweis": (r.get("zeiten") or {}).get("ort_hinweis")},
         })
         fehlt = [x["id"] for x in material if not x["vorhanden"]]
         fehlt_b = [x["id"] for x in material_baustein if not x["vorhanden"]]
