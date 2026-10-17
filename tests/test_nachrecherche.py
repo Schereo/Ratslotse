@@ -84,3 +84,49 @@ def test_debatten_diaet_deckelt_je_tagesordnungspunkt():
     debatten.append({"id": 99, "zu_beschluss": None, "session_date": "2026-05-01", "top": "Ö 2"})
     aus = qa.debatten_diaet(debatten, [{"id": 1}], max_n=10, je_top=4)
     assert [d["id"] for d in aus] == [0, 1, 2, 3, 99]
+
+
+# ---- Belegnotizen: erst lesen, dann antworten ------------------------------
+
+def test_belegnotizen_lesen_parallel_und_behalten_nur_gueltige(monkeypatch):
+    aufrufe: list[str] = []
+
+    def chat(**kw):
+        inhalt = kw["messages"][0]["content"]
+        aufrufe.append(inhalt)
+        notizen = [{"key": "B1", "relevant": True, "notiz": "Satzung am 13.04.2026 beschlossen."},
+                   {"key": "B2", "relevant": False, "notiz": "nichts"},
+                   {"key": "X9", "relevant": True, "notiz": "erfunden"}]
+        if "W7" in inhalt:
+            notizen = [{"key": "W7", "relevant": True, "notiz": "Grüne: OVG kippte 2020er Satzung."}]
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+            content=json.dumps({"notizen": notizen})))], usage=None)
+    monkeypatch.setattr(qa.llm, "chat_complete", chat)
+    monkeypatch.setattr(qa, "NOTIZ_PAKET", 2)
+    ctx = [{"id": 1, "title": "B-Plan N-777 G", "committee": "Rat", "session_date": "2026-04-13",
+            "outcome": "accepted"}, {"id": 2, "title": "Anderes", "outcome": "noted"}]
+    debatten = [{"id": 7, "speaker": "X", "party": "Grüne", "text": "OVG", "session_date": "2026-04-13"}]
+    notizen = qa.belegnotizen("Wann wurde der B-Plan beschlossen?", ctx, debatten)
+    assert len(aufrufe) == 2                                   # zwei Pakete
+    assert [n["key"] for n in notizen] == ["B1", "W7"]        # irrelevant und erfunden fallen raus
+    block = qa.belegnotizen_block(notizen)
+    assert block.startswith("BELEGNOTIZEN") and "Beschluss [1]" in block and "angenommen" in block
+
+
+def test_belegnotizen_kommen_an_den_anfang_des_kontexts():
+    messages, _ = qa._answer_messages(
+        "Wann?", [{"id": 1, "title": "T", "official_text": "B"}], typ="topic",
+        notiz_block=qa.belegnotizen_block([{"key": "B1", "kopf": "Beschluss [1] T", "notiz": "N"}]))
+    prompt = messages[0]["content"]
+    assert prompt.index("BELEGNOTIZEN (vorab") < prompt.index("[1] T")
+    assert "Schreibe NIE, etwas gehe aus den Unterlagen nicht" in prompt
+    # Ohne Notizen weder Block noch Regel.
+    ohne, _ = qa._answer_messages("Wann?", [{"id": 1, "title": "T", "official_text": "B"}], typ="topic")
+    assert "BELEGNOTIZEN" not in ohne[0]["content"]
+
+
+def test_belegnotizen_fehler_heisst_ohne_notiz(monkeypatch):
+    def kaputt(**kw):
+        raise TimeoutError
+    monkeypatch.setattr(qa.llm, "chat_complete", kaputt)
+    assert qa.belegnotizen("Frage?", [{"id": 1, "title": "T"}], []) == []
