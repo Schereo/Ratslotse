@@ -1013,6 +1013,29 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         if row.get("template_number"):
             self.refresh_abweichung(template_number=row["template_number"])
 
+    def vorlagentext_ersetzen(self, kvonr: int, raw_text: str, n_pages: int) -> None:
+        """Den Volltext einer Vorlage neu setzen — samt allem, was die Ernte
+        daraus liest (Amt, Klima, Finanzen, Beschlussvorschlag).
+
+        NICHT über ``save_vorlage``: Das schreibt per ``INSERT OR REPLACE`` und
+        setzte jede Spalte zurück, die es nicht kennt. Gebraucht vom Neulesen
+        des Bestands mit PyMuPDF (``scripts/pdf_neu_lesen.py``)."""
+        from council import ernte
+
+        aus = ernte.auswirkungen(raw_text)
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_templates SET raw_text = ?, n_pages = ?, office = ?, "
+                "climate_impact = ?, financial_impact = ?, proposed_decision = ? "
+                "WHERE kvonr = ?",
+                (raw_text, n_pages, ernte.federfuehrendes_amt(raw_text), aus["klima"],
+                 aus["finanzen"], ernte.proposed_decision(raw_text), kvonr))
+            row = self._conn.execute(
+                "SELECT template_number FROM council_templates WHERE kvonr = ?",
+                (kvonr,)).fetchone()
+        if row and row[0]:
+            self.refresh_abweichung(template_number=row[0])
+
     def mark_vorlage_failed(self, kvonr: int) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:

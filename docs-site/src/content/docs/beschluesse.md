@@ -195,6 +195,14 @@ sind. `extraktor_fuer` erkennt sie wie `finanzquellen.finanz_anlagen_where` —
 am Label oder am Titel der Vorlage. PyMuPDF ist optional (AGPL, steht nur in
 `constraints.txt`); fehlt es, liest pypdf weiter und das Log sagt es einmal.
 
+**Den Bestand neu lesen** übernimmt `scripts/pdf_neu_lesen.py`, als
+Vorgabe im Trockenlauf: Es lädt, liest, vergleicht mit dem gespeicherten Text
+und berichtet, ohne zu schreiben. Erst `--ausfuehren` schreibt, je Dokument
+sofort und mit Fortschrittsdatei zum Fortsetzen. Nie überschrieben werden
+Protokolle mit geänderter Seitenzahl oder schwächerem TOP-Schnitt, Dokumente,
+die leer würden, solche mit denselben Wörtern in anderem Umbruch, OCR-Anlagen
+und Haushalts-Anlagen.
+
 Ein idempotenter Backfill über Datumsbereiche hat den Bestand seit 2018
 eingelesen; der tägliche Lauf zieht **neu veröffentlichte** Protokolle nach und
 lädt Vorlagen-/Anlagen-Volltexte (inkl. Rescan der letzten Wochen, s. o.).
