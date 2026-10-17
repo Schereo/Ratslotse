@@ -14401,12 +14401,24 @@ export interface components {
         QaFeedbackBody: {
             /** Answer Excerpt */
             answer_excerpt?: string | null;
+            /** Answer Id */
+            answer_id?: string | null;
             /** Question */
             question: string;
             /** Rating */
             rating: string;
             /** Reason */
             reason?: string | null;
+            /**
+             * Reason Kind
+             * @enum {string|null}
+             */
+            reason_kind?: "wrong" | "incomplete" | "outdated" | "off_topic" | null;
+            /**
+             * Share Answer
+             * @default false
+             */
+            share_answer: boolean;
             /**
              * Source
              * @default ask
@@ -25465,4 +25477,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 4488f328917597d2eff61b29e7d6ef274093617eaf72fe4d7853212faec5577c
+// vertrag-sha256: 86eb87b53b90e821a4902906d8ae57dd1411171a616590a9d1c685b78e24fb0c

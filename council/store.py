@@ -4469,9 +4469,14 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 "WHERE created_at < datetime('now', '-30 days')")
 
 
+    #: Die festen Gründe zum Daumen runter.
+    QA_FEEDBACK_REASONS = ("wrong", "incomplete", "outdated", "off_topic")
+
     def save_qa_feedback(self, question: str, answer_excerpt: str | None,
                          rating: str, reason: str | None,
-                         user_id: int | None = None, source: str = "ask") -> None:
+                         user_id: int | None = None, source: str = "ask",
+                         reason_kind: str | None = None,
+                         shared_answer: str | None = None) -> None:
         """Daumen hoch/runter zu einer KI-Antwort (5a/I-03).
 
         Ein Konto hat je **Antwort** eine Stimme: Der nachgereichte Grund und
@@ -4497,6 +4502,10 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         quelle = source if source in ("ask", "lotti") else "ask"
         werte = (question[:300], (answer_excerpt or "")[:500] or None, rating,
                  (reason or "").strip()[:500] or None, user_id, now)
+        # Grund und freigegebene Antwort gehören zum Daumen RUNTER: Wer auf
+        # „hilfreich“ umschwenkt, nimmt beides zurück — auch die Freigabe.
+        art = reason_kind if rating == "down" and reason_kind in self.QA_FEEDBACK_REASONS else None
+        kopie = shared_answer if rating == "down" else None
         with self._conn:
             if user_id is not None:
                 # `IS` statt `=`: Eine Antwort ohne Auszug ist NULL, und NULL
@@ -4509,14 +4518,16 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 if vorher:
                     self._conn.execute(
                         "UPDATE council_qa_feedback SET rating = ?, "
-                        "reason = ?, created = ? WHERE id = ?",
-                        (rating, werte[3], now, vorher[0]))
+                        "reason = ?, created = ?, reason_kind = ?, shared_answer = ? "
+                        "WHERE id = ?",
+                        (rating, werte[3], now, art, kopie, vorher[0]))
                     return
             self._conn.execute(
                 "INSERT INTO council_qa_feedback "
-                "(question, answer_excerpt, rating, reason, user_id, created, source) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (*werte, quelle),
+                "(question, answer_excerpt, rating, reason, user_id, created, source, "
+                "reason_kind, shared_answer) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (*werte, quelle, art, kopie),
             )
 
 

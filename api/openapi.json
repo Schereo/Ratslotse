@@ -19334,6 +19334,14 @@
               "null"
             ]
           },
+          "answer_id": {
+            "maxLength": 64,
+            "title": "Answer Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "question": {
             "maxLength": 300,
             "minLength": 1,
@@ -19352,6 +19360,24 @@
               "string",
               "null"
             ]
+          },
+          "reason_kind": {
+            "enum": [
+              "wrong",
+              "incomplete",
+              "outdated",
+              "off_topic"
+            ],
+            "title": "Reason Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "share_answer": {
+            "default": false,
+            "title": "Share Answer",
+            "type": "boolean"
           },
           "source": {
             "default": "ask",

@@ -2116,7 +2116,11 @@ class SchemaMixin(StoreBasis):
             # 'lotti' = Lottis Fenster. In einem Topf ließe sich die Frage
             # „taugen Lottis Erklärungen?" gar nicht mehr stellen.
             "user_id INTEGER, created TEXT NOT NULL, "
-            "source TEXT NOT NULL DEFAULT 'ask')"
+            "source TEXT NOT NULL DEFAULT 'ask', "
+            # Seit 10/2026: ein fester Grund zum Daumen runter, und — NUR mit
+            # ausdrücklicher Einwilligung beim Absenden — die Antwort samt
+            # Quellen als JSON, damit sich ein 👎 überhaupt prüfen lässt.
+            "reason_kind TEXT, shared_answer TEXT)"
         )
         # Anlagen zu Vorlagen: alle als Label+Link, Fraktions-Anträge zusätzlich mit
         # PDF-Text und erkannten Antragstellern (council.vorlagen/_build_anlage_rows).
@@ -4293,6 +4297,11 @@ class SchemaMixin(StoreBasis):
                 self._conn.execute(
                     "ALTER TABLE council_qa_feedback "
                     "ADD COLUMN source TEXT NOT NULL DEFAULT 'ask'")
+        # Fester Grund und freigegebene Antwort (10/2026) — je für sich geprüft.
+        for col in ("reason_kind", "shared_answer"):
+            if cols and col not in cols:
+                with self._conn:
+                    self._conn.execute(f"ALTER TABLE council_qa_feedback ADD COLUMN {col} TEXT")
 
     def _migrate_quiz_hint(self) -> None:
         """„Tipp" (vor dem Auflösen) + „topic" (Such-Stichwort für „Beschlüsse

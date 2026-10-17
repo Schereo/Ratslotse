@@ -3677,6 +3677,55 @@ def test_qa_share_roundtrip(client):
     assert client.post("/api/council/qa-share", json={"answer_id": "x"}).status_code in (401, 403)
 
 
+def _feedback_zeile(frage: str) -> dict:
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        row = cs._conn.execute(
+            "SELECT rating, reason_kind, shared_answer FROM council_qa_feedback "
+            "WHERE question = ? ORDER BY id DESC LIMIT 1", (frage,)).fetchone()
+        return dict(row) if row else {}
+    finally:
+        cs.close()
+
+
+def test_daumen_runter_gibt_die_antwort_nur_mit_einwilligung_frei(client):
+    """Seit 10/2026: Ein 👎 kann die ganze Antwort samt Quellen zur Prüfung
+    mitschicken — nur mit Häkchen, nur aus der EIGENEN Antwort-Kopie, und ein
+    Umschwenken auf 👍 nimmt die Freigabe zurück."""
+    _register(client)
+    frage = "Was wurde zum Stadion entschieden?"
+    antwort_id = _gelieferte_antwort()
+    basis = {"question": frage, "answer_excerpt": "Der Rat", "rating": "down",
+             "answer_id": antwort_id, "reason_kind": "incomplete"}
+
+    # Ohne Häkchen: Grund ja, Antwort-Kopie nein.
+    assert client.post("/api/council/qa-feedback", json=basis).status_code == 201
+    zeile = _feedback_zeile(frage)
+    assert zeile["reason_kind"] == "incomplete" and zeile["shared_answer"] is None
+
+    # Mit Häkchen: die ganze Antwort samt Quellen.
+    assert client.post("/api/council/qa-feedback",
+                       json={**basis, "share_answer": True}).status_code == 201
+    kopie = json.loads(_feedback_zeile(frage)["shared_answer"])
+    assert kopie["answer"] == "Der Rat stimmte zu [5]."
+    assert kopie["sources"][0]["title"] == "Stadionneubau"
+
+    # Umschwenken auf 👍: Grund und Kopie sind weg.
+    client.post("/api/council/qa-feedback", json={**basis, "rating": "up", "share_answer": True})
+    zeile = _feedback_zeile(frage)
+    assert zeile["rating"] == "up" and zeile["shared_answer"] is None and zeile["reason_kind"] is None
+
+    # Eine fremde oder erfundene Antwort-Kennung gibt nichts frei.
+    andere = "Wer hat das beantragt?"
+    client.post("/api/council/qa-feedback", json={**basis, "question": andere,
+                                                  "answer_id": "erfunden", "share_answer": True})
+    assert _feedback_zeile(andere)["shared_answer"] is None
+
+    # Ein unbekannter Grund ist ein 422, kein stiller Freitext.
+    r = client.post("/api/council/qa-feedback", json={**basis, "reason_kind": "doof"})
+    assert r.status_code == 422
+
+
 def test_qa_share_nimmt_nur_die_server_kopie(client):
     """Was der Client mitschickt, zählt nicht (zweite Prüfung 10/2026, F3):
     Vorher ließ sich jeder Text samt erfundener Zitate echter Ratsmitglieder

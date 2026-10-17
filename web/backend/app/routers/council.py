@@ -10,7 +10,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated, cast
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -3041,6 +3041,13 @@ class QaFeedbackBody(BaseModel):
     # Erklärungen und die Archiv-Antworten in einem Topf — und die Frage
     # „taugen Lottis Antworten?" wäre nicht mehr zu stellen.
     source: str = Field(default="ask", pattern="^(ask|lotti)$")
+    #: Fester Grund zum Daumen runter — auswertbar, anders als Freitext.
+    reason_kind: Literal["wrong", "incomplete", "outdated", "off_topic"] | None = None
+    #: Die Antwort, um die es geht (done-Ereignis von /ask).
+    answer_id: str | None = Field(default=None, max_length=64)
+    #: Ausdrückliche Einwilligung: Die Antwort samt Quellen darf zur Prüfung
+    #: gespeichert werden. Ohne sie bleibt es beim Auszug von 500 Zeichen.
+    share_answer: bool = False
 
 
 @router.post("/qa-feedback", status_code=status.HTTP_201_CREATED)
@@ -3049,15 +3056,27 @@ def qa_feedback(
     request: Request,
     user: dict | None = Depends(optional_user),
     store: CouncilStore = Depends(get_council_store),
+    ratslotse: Store = Depends(get_store),
 ) -> Ok:
     """Daumen hoch/runter zu einer KI-Antwort (5a/I-03) — der einzige
     Qualitätsmesser außerhalb der Eval-Gold-Fälle. Anonym erlaubt (die
     KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema, das
     Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
     qa_feedback_limiter.check(request)
+    # Die Antwort-Kopie nur mit Einwilligung, nur zum Daumen runter und nur
+    # aus der EIGENEN Antwort-Kopie (`qa_answer_record_get` prüft das Konto).
+    # Bis 10/2026 ließ sich ein 👎 keiner Antwort zuordnen: Gespeichert waren
+    # Frage und 500 Zeichen — welche Quellen gefehlt hatten, blieb offen.
+    kopie: str | None = None
+    if body.share_answer and body.rating == "down" and body.answer_id and user:
+        rec = ratslotse.qa_answer_record_get(body.answer_id, user["id"])
+        if rec is not None:
+            kopie = json.dumps({"answer": rec["answer"], "sources": rec["sources"]},
+                               ensure_ascii=False)
     store.save_qa_feedback(body.question, body.answer_excerpt, body.rating,
                            body.reason, user_id=(user or {}).get("id"),
-                           source=body.source)
+                           source=body.source, reason_kind=body.reason_kind,
+                           shared_answer=kopie)
     return {"ok": True}
 
 
