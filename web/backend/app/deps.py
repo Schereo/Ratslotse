@@ -154,6 +154,8 @@ def require_active(user: dict = Depends(get_current_user)) -> dict:
             status.HTTP_403_FORBIDDEN,
             "Bitte bestätige zuerst deine E-Mail-Adresse."
             if user.get("status") == "pending" and not user.get("email_verified")
+            else "Dein Konto wartet auf Freischaltung."
+            if getattr(get_settings(), "signup_requires_approval", False)
             else "Dein Konto ist derzeit deaktiviert.",
         )
     return user

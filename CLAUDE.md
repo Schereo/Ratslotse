@@ -429,8 +429,16 @@ Key in `web/frontend/.env.local` (gitignored) — ins Repo nie, das ist
 
 ### Dev-Umgebung (dev.ratslotse.de)
 
-Eigene VM neben Prod, mit eigenen Datenbanken/Secrets (Basic-Auth vorm vhost,
-kein Mail-Versand, keine Crons). **Jeder Push auf den Branch `dev`** deployt
+Eigene VM neben Prod, mit eigenen Datenbanken/Secrets (kein Mail-Versand,
+keine Crons). **Seit 17.10.2026 ohne Basic-Auth** — sie stand dem MCP-Zugang
+im Weg (Basic-Auth und Bearer-Token wollen beide den `Authorization`-Header),
+und angemeldet wird ohnehin per Konto. Zwei Dinge halten dev seitdem zu:
+`SIGNUP_REQUIRES_APPROVAL=1` in der `.env` (neue Konten beginnen als
+`disabled` und werden im Admin-Panel unter *Web-Nutzer*innen* freigeschaltet —
+ohne Mailversand wären sie sonst sofort aktiv, auf dem Dev-LLM-Schlüssel) und
+**keine Indexierung**: `robots.ts` sperrt im Dev-Build alles, Caddy schickt
+zusätzlich `X-Robots-Tag: noindex`. feature.ratslotse.de behält seine
+Basic-Auth. **Jeder Push auf den Branch `dev`** deployt
 dorthin (`.github/workflows/deploy-dev.yml`, ohne Test-Gate — die Tests laufen
 auf jedem PR). Die Dev-VM zieht per `git fetch` + `reset --hard`, baut
 Frontend + Backend-Deps und startet ihre Services neu. Prod bleibt davon
@@ -477,6 +485,7 @@ APP_BASE_URL=https://ratslotse.de
 FEEDBACK_EMAIL=...                   # Empfänger des Nutzer-Feedbacks
 ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_EMAIL)
 FASTEMBED_CACHE_PATH=~/.cache/fastembed  # persistenter Modell-Cache (sonst /tmp → weg beim Reboot)
+SIGNUP_REQUIRES_APPROVAL=0            # "1" = neue Konten warten auf Freischaltung im Admin-Panel (dev)
 FEATURE_FLAGS=                        # Feature-Schalter, kommagetrennt (s. kern/features.py); `*` = alle (dev)
 APPLE_BUNDLE_ID=de.ratslotse.app     # Sign in with Apple: aud der nativen App (Default passt)
 APPLE_SERVICE_ID=de.ratslotse.web    # Sign in with Apple im Browser (Services ID; leer = Web-Flow aus)

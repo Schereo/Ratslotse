@@ -449,15 +449,29 @@ function KontoHinweis({ verify, email }: { verify: boolean; email: string }) {
     Bis 09/2026 war das ein Umkehrschluss — `pending` trotz bestätigter
     Adresse. Jetzt sagt der Status es selbst. */
 function PendingNotice({ email }: { email: string }) {
+  // Auf dev (SIGNUP_REQUIRES_APPROVAL) beginnt jedes neue Konto als `disabled`
+  // und wartet auf die Freischaltung — „deaktiviert" klänge dort nach Strafe.
+  const freischaltung = process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev";
   return (
     <Card className="mx-auto mt-10 max-w-md p-8 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
         <Clock className="h-6 w-6 text-amber-600" />
       </div>
-      <h1 className="mt-4 text-xl font-bold text-foreground">Konto ist deaktiviert</h1>
+      <h1 className="mt-4 text-xl font-bold text-foreground">
+        {freischaltung ? "Konto wartet auf Freischaltung" : "Konto ist deaktiviert"}
+      </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Dein Konto <span className="font-medium">{email}</span> ist derzeit deaktiviert.
-        Wenn du meinst, dass das ein Irrtum ist, melde dich gern.
+        {freischaltung ? (
+          <>
+            Dein Konto <span className="font-medium">{email}</span> ist angelegt. Diese
+            Testumgebung schaltet neue Konten von Hand frei — das kann etwas dauern.
+          </>
+        ) : (
+          <>
+            Dein Konto <span className="font-medium">{email}</span> ist derzeit deaktiviert.
+            Wenn du meinst, dass das ein Irrtum ist, melde dich gern.
+          </>
+        )}
       </p>
       {/* Die Adresse steht hier direkt statt als Verweis aufs Impressum: Wer
           gesperrt ist, sieht nur noch diese eine Karte — ihn von dort erst

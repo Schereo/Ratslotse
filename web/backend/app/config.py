@@ -103,6 +103,11 @@ class Settings(BaseSettings):
     email_from: str = "Ratslotse <noreply@ratslotse.de>"
     app_base_url: str = "https://ratslotse.de"
     feedback_email: str = ""  # where user feedback is sent; falls back to web_admin_email
+    # SIGNUP_REQUIRES_APPROVAL=1: new accounts start as ``disabled`` and an admin
+    # unlocks them in the panel (Web-Nutzer*innen). Meant for dev.ratslotse.de,
+    # which is public without Basic-Auth since 10/2026 but sends no mail — so
+    # every signup would otherwise be active at once, on the dev LLM key.
+    signup_requires_approval: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:
