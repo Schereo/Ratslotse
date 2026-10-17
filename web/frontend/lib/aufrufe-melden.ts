@@ -43,6 +43,7 @@
  * `keepalive` und blockiert nichts, ein Fehler wird verschluckt.
  */
 import { apiUrl } from "./api";
+import { sendAndForget } from "./send-and-forget";
 
 /** Marke für „in diesem Tab war ich schon". Nur lokal, nie im Versand. */
 const TAB_MARKE = "ratslotse.aufruf-gesehen";
@@ -79,7 +80,7 @@ export function meldeAufruf(pfad: string, angemeldet: boolean, client = "web",
     const mailHerkunft = von && von !== letztesVon ? von.slice(0, 40) : undefined;
     if (von) letztesVon = von;
 
-    void fetch(apiUrl("/page-views"), {
+    sendAndForget(apiUrl("/page-views"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // KEIN `credentials: "include"` — die Zählung braucht kein Konto, und
@@ -92,8 +93,6 @@ export function meldeAufruf(pfad: string, angemeldet: boolean, client = "web",
         logged_in: angemeldet,
         ...(mailHerkunft ? { von: mailHerkunft } : {}),
       }),
-    }).catch(() => {
-      /* Eine gescheiterte Zählung ist kein Ereignis. */
     });
   } catch {
     /* dito */

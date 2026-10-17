@@ -32,6 +32,7 @@
  * verschluckt: Ein Melder, der selbst wirft, erzeugt eine Endlosschleife.
  */
 import { apiUrl } from "./api";
+import { sendAndForget } from "./send-and-forget";
 
 /** So viele Meldungen je Seitenaufruf. Eine kaputte Schleife feuert sonst
  *  hunderte — die Bremse im Backend fängt das zwar, aber sie soll gar nicht
@@ -67,7 +68,7 @@ export function meldeFehler(e: unknown, zusatz?: { route?: string }): void {
     gesehen.add(schluessel);
     gesendet += 1;
 
-    void fetch(apiUrl("/client-errors"), {
+    sendAndForget(apiUrl("/client-errors"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       // KEIN `credentials: "include"` — die Meldung braucht kein Konto, und
@@ -79,8 +80,6 @@ export function meldeFehler(e: unknown, zusatz?: { route?: string }): void {
         stack: stapel(fehler).slice(0, 4000),
         route: (zusatz?.route ?? pfadOhneQuery()).slice(0, 200),
       }),
-    }).catch(() => {
-      /* Der Melder darf nicht selbst melden — sonst dreht sich das im Kreis. */
     });
   } catch {
     /* dito */

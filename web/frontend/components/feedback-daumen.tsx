@@ -21,6 +21,7 @@ import { ThumbsDown, ThumbsUp } from "lucide-react";
 
 import { toast } from "@/components/ui";
 import { apiUrl, authHeaders } from "@/lib/api";
+import { sendAndForget } from "@/lib/send-and-forget";
 import { cn } from "@/lib/utils";
 
 /** Aus welcher Fläche der Daumen kommt — `QaFeedbackBody.source` im Backend.
@@ -60,7 +61,7 @@ export function FeedbackDaumen({ question, answer, source = "ask", answerId = nu
   const [art, setArt] = useState<GrundArt | null>(null);
   const [freigeben, setFreigeben] = useState(false);
   const post = (rating: "up" | "down", extra?: { reason?: string; art?: GrundArt | null; freigeben?: boolean }) =>
-    void fetch(apiUrl("/council/qa-feedback"), {
+    sendAndForget(apiUrl("/council/qa-feedback"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -74,7 +75,7 @@ export function FeedbackDaumen({ question, answer, source = "ask", answerId = nu
         share_answer: Boolean(extra?.freigeben && answerId),
         source,
       }),
-    }).catch(() => {});
+    });
   const senden = (rating: "up" | "down") => {
     // Nochmal auf denselben Daumen: nichts zu melden, nichts zu senden — das
     // spart eine Zeile in der Tabelle und einen Schlag aufs Rate-Limit.
