@@ -1915,11 +1915,16 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
 
     def anlagentext_nachtragen(self, document_id: int, text: str, n_pages: int) -> None:
         """Den heruntergeladenen Text einer Anlage ablegen — damit der nächste
-        Lauf (und die KI-Frage) ihn haben, ohne noch einmal zu laden."""
+        Lauf (und die KI-Frage) ihn haben, ohne noch einmal zu laden.
+
+        Ein leerer Text heißt Status ``empty`` (Scan, s. ``council/anlagentext
+        .py``) — auch das ist ein Ergebnis, das niemand ein zweites Mal laden
+        soll."""
         with self._conn:
             self._conn.execute(
-                "UPDATE council_attachments SET raw_text = ?, n_pages = ?, status = 'ok', "
-                "fetched_at = datetime('now') WHERE document_id = ?", (text, n_pages, document_id))
+                "UPDATE council_attachments SET raw_text = ?, n_pages = ?, status = ?, "
+                "fetched_at = datetime('now') WHERE document_id = ?",
+                (text, n_pages, "ok" if text else "empty", document_id))
 
 
 
