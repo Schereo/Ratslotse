@@ -2132,6 +2132,14 @@ class SchemaMixin(StoreBasis):
             "status TEXT NOT NULL DEFAULT 'listed')"  # listed | ok | empty | failed | ocr
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_anlagen_kvonr ON council_attachments(kvonr)")
+        # Zweitleser der Texterkennung (council/ocr.py, `abgleich`): je Anlage,
+        # auf welchen Seiten Erst- und Zweitleser Zeilen verschieden zuordnen.
+        # Eine Zeile heißt „geprüft", eine leere Liste „einig".
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_ocr_checks ("
+            "document_id INTEGER PRIMARY KEY, model TEXT NOT NULL, "
+            "second_model TEXT NOT NULL, pages_checked INTEGER NOT NULL, "
+            "disputed_pages TEXT NOT NULL DEFAULT '[]', checked_at TEXT NOT NULL)")
         # Gerenderte Planzeichnung (scripts/render_plaene.py): 0 = offen,
         # 1 = Bild liegt unter data/plaene/<document_id>.jpg, -1 = fehlgeschlagen.
         aacols = {r[1] for r in self._conn.execute(

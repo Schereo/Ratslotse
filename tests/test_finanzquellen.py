@@ -1422,3 +1422,16 @@ def test_foerdermittel_nur_der_juengste_stand():
                     {"list_as_of": "2026-01-31", "fetched_at": "2026-09-24"},
                     {"list_as_of": None, "fetched_at": "2026-09-24T10:00:00"}]
     assert finanzquellen._bestand_foerdermittel(_Store()) == {(2026,)}
+
+
+def test_hinweis_nennt_strittige_ocr_seiten():
+    """Ein Zeilenversatz besteht jede Summenprobe — die Mail ist der einzige
+    Ort, an dem er auffällt. Sie nennt Schicht, Dokument und Seite, damit man
+    am PDF nachsehen kann."""
+    heute = date(2027, 11, 1)
+    ohne = check_finanzdaten._hinweis_text([], {}, {}, heute)
+    mit = check_finanzdaten._hinweis_text([], {}, {}, heute, None,
+                                          {"jahresabschluss": {206874: [2, 5]}})
+    assert "Texterkennungen" not in ohne and "Zeilen verschieden zuordnen" not in ohne
+    assert "Dokument 206874, Seite 2, 5" in mit
+    assert finanzquellen.QUELLEN["jahresabschluss"].label in mit
