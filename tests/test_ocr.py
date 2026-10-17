@@ -817,3 +817,30 @@ def test_nebeneinander_bilanz_kostet_keinen_zweitleser(monkeypatch):
     monkeypatch.setattr(ocr, "lies_seite", lambda b, model=None: aufrufe.append(model) or bilanz)
     lesung = ocr.lies_pdf(b"%PDF-1.4", model="erst/x", zweitleser="zweit/x")
     assert aufrufe == ["erst/x"] and lesung.zweit_gelesen == 0
+
+
+def test_bestand_abgleich_findet_den_versatz_im_ganzen_text():
+    """Der Bestand liegt nicht seitenweise vor. Gegen den ganzen Text zählt
+    nur, was dort genau einmal steht."""
+    bestand = "Lagebericht ohne Zahlen.\n\n" + GUV_GEMINI + "\nAnhang ohne Zahlen.\n"
+    ergebnis = ocr.abgleich_gegen_bestand(GUV_SONNET, bestand)
+    assert ergebnis.strittig and ergebnis.versatz == 4
+
+
+def test_bestand_abgleich_uebergeht_doppelte_fundstellen():
+    """Steht derselbe Betragssatz im Bestand zweimal (Vorjahresspalte,
+    Wiederholung im Anhang), ist keine der beiden ein Beleg für Versatz."""
+    zweimal = GUV_GEMINI + "\n12. Jahresüberschuss\t349.543,67\t285.253,44\n"
+    ergebnis = ocr.abgleich_gegen_bestand(GUV_SONNET, zweimal)
+    assert "349.543,67" not in str(ergebnis.beispiele)
+
+
+def test_fortsetzung_nach_dem_betrag_gehoert_zum_posten():
+    """Wörtlich aus 206874 S. 7: Gemini setzt den Betrag hinter die erste Zeile
+    des Postens, Sonnet hinter die letzte."""
+    gemini = ("Rückstellungen mit nicht\t3.762.962,73\t129.860,67\t3.698.782,21\n"
+              "unerheblichem Umfang\nRekultivierung und\nNachsorge\n\n")
+    sonnet = ("Rückstellungen mit nicht unerheblichem Umfang\n"
+              "Rekultivierung und Nachsorge\t3.762.962,73\t129.860,67\t3.698.782,21\n")
+    assert not ocr.abgleich(gemini, sonnet).strittig
+    assert not ocr.abgleich_gegen_bestand(sonnet, gemini).strittig

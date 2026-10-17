@@ -517,17 +517,32 @@ def _betragszeilen(text: str) -> dict[tuple, list[tuple[str, str]]]:
     Posten („1. entgeltlich erworbene Konzessionen, / … Lizenzen 41.265,00")
     steht beim einen Modell mit der ersten, beim anderen mit der letzten Zeile
     vor dem Betrag."""
-    aus: dict[tuple, list[tuple[str, str]]] = {}
+    eintraege: list[tuple[tuple, str, list[str]]] = []
     offen = ""
+    letzter: list[str] | None = None
     for zeile in (text or "").replace("*", "").replace("|", "\t").splitlines():
         betraege = tuple(b.replace(" ", "") for b in _BETRAG_ZEILE.findall(zeile))
         if not betraege:
-            offen = (offen + _beschriftung(zeile))[-120:] if _beschriftung(zeile) else ""
+            wort = _beschriftung(zeile)
+            if not wort:
+                offen, letzter = "", None
+                continue
+            offen = (offen + wort)[-120:]
+            # Die Fortsetzung NACH dem Betrag gehört auch zum Posten:
+            # „Rückstellungen mit nicht 3.762.962,73 / unerheblichem Umfang /
+            # Rekultivierung und Nachsorge" — das andere Modell setzt den
+            # Betrag hinter die letzte dieser Zeilen.
+            if letzter is not None:
+                letzter[0] = (letzter[0] + wort)[:240]
             continue
         erster = _BETRAG_ZEILE.search(zeile)
         eigen = _beschriftung(zeile[:erster.start() if erster else 0])
-        aus.setdefault(betraege, []).append((eigen, offen + eigen))
+        letzter = [offen + eigen]
+        eintraege.append((betraege, eigen, letzter))
         offen = ""
+    aus: dict[tuple, list[tuple[str, str]]] = {}
+    for betraege, eigen, voll in eintraege:
+        aus.setdefault(betraege, []).append((eigen, voll[0]))
     return aus
 
 
@@ -592,6 +607,27 @@ def abgleich(text_a: str, text_b: str) -> Abgleich:
     return Abgleich(
         gemeinsam=len(vergleichbar), versatz=len(versetzt),
         einseitig=len(a.keys() ^ b.keys()),
+        beispiele=tuple((k, a[k][0][0], b[k][0][0]) for k in versetzt[:3]))
+
+
+def abgleich_gegen_bestand(seite: str, bestand: str) -> Abgleich:
+    """Die Lesung EINER Seite gegen den gespeicherten Text des GANZEN
+    Dokuments halten — für den Bestand, dessen Text nicht seitenweise vorliegt.
+
+    Verglichen wird nur, was auf beiden Seiten eindeutig ist: ein Betragssatz,
+    der auf der Seite und im ganzen Dokument genau einmal steht. Was das
+    Dokument öfter trägt (Vorjahresspalte im Folgebericht, Wiederholung im
+    Anhang), bleibt außen vor — sonst hielte der Abgleich eine zweite,
+    richtige Fundstelle für einen Versatz."""
+    if nebeneinander(seite):
+        return Abgleich(gemeinsam=0, versatz=0, einseitig=0, nicht_vergleichbar=True)
+    a, b = _betragszeilen(seite), _betragszeilen(bestand)
+    vergleichbar = sorted(k for k in a.keys() & b.keys()
+                          if len(a[k]) == 1 and len(b[k]) == 1)
+    versetzt = [k for k in vergleichbar if not _gleicher_posten(a[k][0], b[k][0])]
+    return Abgleich(
+        gemeinsam=len(vergleichbar), versatz=len(versetzt),
+        einseitig=len(a.keys() - b.keys()),
         beispiele=tuple((k, a[k][0][0], b[k][0][0]) for k in versetzt[:3]))
 
 
