@@ -68,6 +68,7 @@ struct PublicProfileView: View {
         }
         .background(RatsColor.page)
         .navigationTitle(kicker.capitalized)
+        .lottiPageTitle(preview?.title, for: route, model: model)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await load()
