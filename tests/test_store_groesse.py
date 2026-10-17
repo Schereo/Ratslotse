@@ -24,8 +24,10 @@ STORE = WURZEL / "council" / "store.py"
 
 #: Stand nach dem zwölften Schnitt (03.09.2026). Darf schrumpfen. Was jetzt
 #: noch hier liegt, ist der Kern: Beschlüsse, Vorlagen, Anlagen, Herkunft,
-#: Suche und Embeddings.
-HOECHSTENS_METHODEN = 160
+#: Suche und Embeddings. 161 seit 10/2026: ``vorlagentext_ersetzen`` — der
+#: Vorlagentext ist Kern, und ``save_vorlage`` (INSERT OR REPLACE) setzte beim
+#: Neulesen des Bestands alle übrigen Spalten zurück.
+HOECHSTENS_METHODEN = 161
 HOECHSTENS_ZEILEN = 4786
 
 
