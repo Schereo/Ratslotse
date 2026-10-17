@@ -345,6 +345,54 @@ def lade_kontingent_vergessen() -> None:
         _lade_zeiten.clear()
 
 
+_DOKUMENT_ID = re.compile(r"[?&]id=(\d+)")
+
+
+def _dokument_id(url: str | None) -> int | None:
+    """Die Dokumentnummer des Ratsinformationssystems aus ``getfile.php?id=…``
+    — die gemeinsame Kennung für Vorlagen- und TOP-Anlagen."""
+    m = _DOKUMENT_ID.search(url or "")
+    return int(m.group(1)) if m else None
+
+
+def _top_anlagen(store, ksinr: int, mit_vorlage: set[str]) -> dict[str, list[dict]]:
+    """TOP-Nummer → die Anlagen, die es NUR am Punkt gibt.
+
+    Bei einem Punkt mit Vorlage wiederholt das Ratsinformationssystem am Punkt
+    die Vorlage selbst („Vorlage“) und ihre Anlagen. Die kennt ``get_template``
+    schon, samt Lesestand — hier noch einmal aufgeführt, stünden sie als
+    ``on_demand`` da, obwohl ihr Text längst im Bestand liegt."""
+    roh = [(a, _dokument_id(a["url"])) for a in store.top_anlagen(ksinr)]
+    ids = [d for _, d in roh if d]
+    bekannt = {r[0] for r in store._conn.execute(  # noqa: SLF001
+        f"SELECT document_id FROM council_attachments WHERE document_id IN "
+        f"({','.join('?' * len(ids))})", ids)} if ids else set()
+    je_top: dict[str, list[dict]] = {}
+    for a, did in roh:
+        if not did or did in bekannt:
+            continue
+        if a["item_number"] in mit_vorlage and (a["label"] or "").strip() == "Vorlage":
+            continue
+        je_top.setdefault(a["item_number"], []).append({
+            "attachment_id": did, "label": _sauber(a["label"]),
+            "text": ("on_demand" if a["raw_text"] is None
+                     else "available" if a["raw_text"] else "scan"),
+            "url": a["url"]})
+    return je_top
+
+
+def _pdf_laden(did: int, url: str) -> tuple[str, int]:
+    """Ein PDF aus dem Ratsinformationssystem lesen, gedeckelt und beurteilt."""
+    _laden_erlaubt()
+    try:
+        roh, seiten = vorlagen._pdf_text(url)  # noqa: SLF001
+    except Exception as fehler:  # noqa: BLE001 — ein PDF, keine Störung des Servers
+        logger.warning("Anlage %s nicht geladen: %s", did, fehler)
+        raise ToolError("Die Anlage ließ sich gerade nicht laden. Später erneut "
+                        "versuchen oder direkt unter url öffnen.") from fehler
+    return anlagentext.beurteilen(roh), seiten
+
+
 def get_attachment(store, args: dict, base: str) -> str:
     did = _int(args, "attachment_id", 0, 0, 10**9)
     zeile = store._conn.execute(  # noqa: SLF001
@@ -352,29 +400,35 @@ def get_attachment(store, args: dict, base: str) -> str:
         "t.template_number FROM council_attachments a "
         "LEFT JOIN council_templates t ON t.kvonr = a.kvonr WHERE a.document_id = ?",
         (did,)).fetchone() if did else None
-    if not zeile:
-        raise ToolError(f"Keine Anlage mit der Kennung {did}. get_template nennt die "
-                        "Anlagen einer Vorlage samt attachment_id.")
-    did, label, url, status, text, seiten, vorlage = tuple(zeile)
-    aus: dict[str, Any] = {"attachment_id": did, "label": _sauber(label),
-                           "template_number": vorlage, "url": url}
-    # ``failed`` darf es noch einmal versuchen: Meist war es ein Netzaussetzer.
-    # ``ok`` ohne Text ebenso — so steht es in jedem lokalen Abzug, der die
-    # Anlagentexte abspeckt (scripts/lokale_daten.py).
-    if (status not in ("ok", "empty") or not text) and status != "empty" and url:
-        _laden_erlaubt()
-        try:
-            roh, seiten = vorlagen._pdf_text(url)  # noqa: SLF001
-        except Exception as fehler:  # noqa: BLE001 — ein PDF, keine Störung des Servers
-            logger.warning("Anlage %s nicht geladen: %s", did, fehler)
-            raise ToolError("Die Anlage ließ sich gerade nicht laden. Später erneut "
-                            "versuchen oder direkt unter url öffnen.") from fehler
-        text = anlagentext.beurteilen(roh)
-        store.anlagentext_nachtragen(did, text, seiten)
-        status = "ok" if text else "empty"
-        aus["loaded_now"] = True
-    aus["pages"] = seiten
-    if status != "ok" or not text:
+    if zeile:
+        did, label, url, status, text, seiten, vorlage = tuple(zeile)
+        aus: dict[str, Any] = {"attachment_id": did, "label": _sauber(label),
+                               "template_number": vorlage, "url": url}
+        # ``failed`` darf es noch einmal versuchen: Meist war es ein
+        # Netzaussetzer. ``ok`` ohne Text ebenso — so steht es in jedem lokalen
+        # Abzug, der die Anlagentexte abspeckt (scripts/lokale_daten.py).
+        if status != "empty" and not (status == "ok" and text) and url:
+            text, seiten = _pdf_laden(did, url)
+            store.anlagentext_nachtragen(did, text, seiten)
+            aus["loaded_now"] = True
+        aus["pages"] = seiten
+    else:
+        # Keine Vorlagen-Anlage — vielleicht eine, die direkt am
+        # Tagesordnungspunkt hängt (Dringlichkeitsantrag, Konzept zu einem
+        # Fraktionsantrag). Viele davon haben gar keine Vorlage.
+        top = store.top_anlage_zu_dokument(did) if did else None
+        if not top or str(top["item_number"] or "").upper().startswith("N"):
+            raise ToolError(f"Keine Anlage mit der Kennung {did}. get_template und "
+                            "get_agenda nennen die Anlagen samt attachment_id.")
+        url, text = top["url"], top["raw_text"]
+        aus = {"attachment_id": did, "label": _sauber(top["label"]),
+               "ksinr": top["ksinr"], "item_number": top["item_number"], "url": url}
+        if text is None:
+            text, seiten = _pdf_laden(did, url)
+            store.top_anlage_text_ablegen(url, text)
+            aus["loaded_now"] = True
+            aus["pages"] = seiten
+    if not text:
         aus["text"] = None
         aus["hint"] = ("Dieses PDF hat keine lesbare Textebene (Scan oder Plan). "
                        "Es lässt sich nur als Datei unter url öffnen.")
@@ -492,6 +546,7 @@ def get_agenda(store, args: dict, base: str) -> str:
     if not daten:
         raise ToolError(f"Keine Sitzung mit ksinr {ksinr}. list_sessions nennt die Kennungen.")
     sitzung, tops = daten
+    anlagen = _top_anlagen(store, ksinr, {nr for nr, _t, _o, v in tops if v})
     return _json({
         "ksinr": ksinr,
         "committee": sitzung.get("committee"),
@@ -503,7 +558,11 @@ def get_agenda(store, args: dict, base: str) -> str:
                    "title": titel,
                    "outcome": _ERGEBNIS.get(o or "", o),
                    # Für get_template: was am Punkt zur Abstimmung steht.
-                   "template_number": vorlage or None}
+                   "template_number": vorlage or None,
+                   # Was direkt am Punkt hängt, oft OHNE Vorlage — für
+                   # get_attachment. Nichtöffentliche Punkte tragen nichts.
+                   "attachments": anlagen.get(nr, []) if not str(nr or "").startswith("N")
+                   else []}
                   for nr, titel, o, vorlage in tops],
         "url": f"{base}/council/sitzung?ksinr={ksinr}",
         "original_url": f"{RIS}/si0057.php?__ksinr={ksinr}",
@@ -587,7 +646,7 @@ TOOLS: dict[str, Tool] = {t.name: t for t in (
                  ["template_number"]),
          get_template),
     Tool("get_attachment", "Anlage lesen",
-         "Der Text einer Anlage zu einer Vorlage (attachment_id aus get_template). Noch "
+         "Der Text einer Anlage (attachment_id aus get_template oder get_agenda). Noch "
          "nicht geladene Anlagen holt Ratslotse beim ersten Abruf aus dem "
          "Ratsinformationssystem. Langer Text kommt in Stücken; mit next_offset "
          "weiterlesen. Scans ohne Textebene gibt es nur als PDF unter url.",
@@ -624,8 +683,9 @@ TOOLS: dict[str, Tool] = {t.name: t for t in (
          list_sessions),
     Tool("get_agenda", "Tagesordnung",
          "Die Tagesordnung einer Sitzung (ksinr aus list_sessions oder get_decision) samt "
-         "den Ergebnissen, sobald beschlossen ist, und der Vorlagennummer je Punkt "
-         "(für get_template).",
+         "den Ergebnissen, sobald beschlossen ist, der Vorlagennummer je Punkt (für "
+         "get_template) und den Anlagen, die direkt am Punkt hängen — Dringlichkeits- und "
+         "Änderungsanträge haben oft keine Vorlage (für get_attachment).",
          _schema({"ksinr": {"type": "integer", "minimum": 1}}, ["ksinr"]),
          get_agenda),
     Tool("count_decisions", "Beschlüsse zählen",

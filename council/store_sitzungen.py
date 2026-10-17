@@ -239,6 +239,14 @@ class SitzungenMixin(StoreBasis):
                     for i in session.agenda_items
                 ],
             )
+            # Schon gelesene Texte überleben das Neu-Einlesen: Jeder Lauf von
+            # check_council ersetzt die Anlagen einer kommenden Sitzung, und
+            # ohne diese Übernahme wäre ein Text, den der MCP-Server auf Zuruf
+            # nachgeladen hat (``get_attachment``), am nächsten Morgen wieder
+            # weg. ``""`` heißt „geladen, aber Scan“ und wird ebenso übernommen.
+            gelesen = {r[0]: r[1] for r in self._conn.execute(
+                "SELECT url, raw_text FROM council_agenda_attachments "
+                "WHERE ksinr = ? AND raw_text IS NOT NULL", (session.ksinr,))}
             self._conn.execute(
                 "DELETE FROM council_agenda_attachments WHERE ksinr = ?", (session.ksinr,)
             )
@@ -247,7 +255,8 @@ class SitzungenMixin(StoreBasis):
                    (ksinr, item_number, label, url, raw_text) VALUES (?, ?, ?, ?, ?)""",
                 [
                     (session.ksinr, i.item_number, a.get("label") or "Anlage",
-                     a.get("url") or "", a.get("raw_text") or None)
+                     a.get("url") or "",
+                     a.get("raw_text") or gelesen.get(a.get("url") or ""))
                     for i in session.agenda_items
                     for a in (getattr(i, "anlagen", None) or [])
                     if a.get("url")
@@ -1693,6 +1702,35 @@ class SitzungenMixin(StoreBasis):
             for s in sessions:
                 s["matched_items"] = by_ksinr.get(s["ksinr"], [])
         return sessions
+
+    def top_anlagen(self, ksinr: int) -> list[dict]:
+        """Die Anlagen, die direkt an den Tagesordnungspunkten einer Sitzung
+        hängen — Dringlichkeits- und Änderungsanträge, Konzepte zu
+        Fraktionsanträgen, Einwohnerfragen. Viele haben KEINE Vorlage und sind
+        nur so zu erreichen. ``raw_text``: ``None`` = nie geladen, ``""`` =
+        geladen, aber ohne Textebene."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT item_number, label, url, raw_text FROM council_agenda_attachments "
+            "WHERE ksinr = ? ORDER BY id", (ksinr,))]
+
+    def top_anlage_zu_dokument(self, document_id: int) -> dict | None:
+        """Eine TOP-Anlage über die Dokumentnummer des Ratsinformationssystems
+        (``getfile.php?id=…``) — dieselbe Nummer wie ``council_attachments
+        .document_id``, sodass ein Agent beide über EINE Kennung anspricht."""
+        muster = re.compile(rf"[?&]id={int(document_id)}(?:&|$)")
+        for r in self._conn.execute(
+                "SELECT ksinr, item_number, label, url, raw_text FROM council_agenda_attachments "
+                "WHERE url LIKE ? ORDER BY id DESC", (f"%id={int(document_id)}%",)):
+            if muster.search(r["url"] or ""):
+                return dict(r)
+        return None
+
+    def top_anlage_text_ablegen(self, url: str, text: str) -> None:
+        """Den nachgeladenen Text einer TOP-Anlage ablegen (``""`` für einen
+        Scan — dann lädt ihn niemand ein zweites Mal)."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_agenda_attachments SET raw_text = ? WHERE url = ?", (text, url))
 
     def has_protocol(self, ksinr: int) -> bool:
         row = self._conn.execute(
