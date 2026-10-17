@@ -276,7 +276,7 @@ def test_analyse_sitzung_setzt_nur_der_router(monkeypatch):
 def test_sitzung_regel_und_tokenbudget():
     assert qa._answer_tokens("session") == 1400
     assert qa._answer_tokens("session", gross=True) == 2200
-    assert qa._answer_tokens("session", eng=True) == 320
+    assert qa._answer_tokens("session", eng=True) == qa._answer_tokens("topic")
     messages, _ = qa._answer_messages(
         "Was hat der JHA am 17.06.2026 beschlossen?",
         [{"id": 1, "title": "T", "official_text": "B"}], typ="session",

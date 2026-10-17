@@ -620,6 +620,19 @@ def _ortsblock(orte: list[tuple[str, str]] | None) -> str:
         "Wort nur zufällig ähnlich klingt oder die Frage die ganze Stadt meint.\n")
 
 
+def fraktionsfrage(analyse: dict) -> bool:
+    """Fragt die Frage nach den Positionen ALLER Fraktionen („Wie stehen die
+    Fraktionen zum Stadion?“) statt nach einer bestimmten?
+
+    Dann braucht die Antwort die Reden je Fraktion. Bis 10/2026 hatte sie nur
+    der Baustein „Das sagen die Parteien“ unter der Antwort; die Antwort
+    selbst sah sie nicht und schrieb, die Protokolle gäben die Positionen
+    nicht her — zwei Zentimeter über der Zuordnung (Gold stadion-fraktionen
+    0,19; Tim, 17.10.2026: „die Reden sollten mit dem Antworttext rein“).
+    """
+    return analyse.get("kind") == "party" and not analyse.get("party")
+
+
 #: Wörter, die das Analyse-Modell gern in die Suchbegriffe schreibt und die
 #: in JEDER Vorlage stehen. Gemessen am 20.09.2026 auf dev: Für „Was hat der
 #: Rat zuletzt zum Radverkehr beschlossen?" lieferte es „Radverkehr Beschlüsse
@@ -824,14 +837,19 @@ def sort_verlauf(candidates: list[dict]) -> list[dict]:
 # ersetzt die Debatten-Pflicht (die im Debatten-Block steht) ausdrücklich.
 ENG_REGEL = (
     "\n\nDIESE FRAGE IST ENG GESTELLT: Sie verlangt EINE Tatsache (Datum, Zahl, "
-    "Name, Ja/Nein). Antworte in HÖCHSTENS 3 Sätzen, ohne Überschriften und ohne "
-    "Aufzählung. Der ERSTE Satz beantwortet die Frage direkt; gibt es mehrere "
+    "Name, Ja/Nein). Antworte KURZ, meist in zwei bis drei Sätzen, ohne Überschriften "
+    "und ohne Aufzählung. Der ERSTE Satz beantwortet die Frage direkt; gibt es mehrere "
     "Stationen (Aufstellung, Entwurf, Satzung), nenne die MASSGEBLICHE zuerst — "
     "das ist der endgültige Beschluss, nicht ein Zwischenschritt. "
     "Nenne die Tatsache mit Beleg [id] und, wenn es zum Verständnis "
     "nötig ist, den einen wichtigsten Bezug (etwa die Bestätigung im Rat). "
-    "KEIN Absatz zur Debatte, KEINE Vorgeschichte, KEINE Aufzählung weiterer "
-    "Beschlüsse — auch dann nicht, wenn der Kontext mehr hergibt. Ist das, "
+    "KEIN Absatz zur Debatte, KEINE Aufzählung weiterer Beschlüsse, keine "
+    "Vorgeschichte um ihrer selbst willen. AUSNAHME, und dann Pflicht: Ändert ein "
+    "Umstand im Kontext, wie die Antwort zu verstehen ist, gehört er in EINEN "
+    "weiteren Satz mit Beleg — ein früherer Beschluss wurde aufgehoben, von einem "
+    "Gericht für unwirksam erklärt oder ersetzt; ein Vorschlag wurde abgelehnt; "
+    "es gilt noch nicht oder nicht mehr; der Betrag ist ein Ansatz, kein Ist. Ohne "
+    "diesen Satz wäre die kurze Antwort richtig und trotzdem irreführend. Ist das, "
     "was die Frage erwartet, gar NICHT beschlossen — nur geprüft, geplant, "
     "angekündigt oder als Bericht zur Kenntnis genommen —, sage das im selben "
     "oder im zweiten Satz ausdrücklich, samt Anlass (wer es beantragt hat): "
@@ -860,11 +878,17 @@ EXTRA_REGELN = {
     ),
     "party": (
         "Diese Frage zielt auf eine Fraktion/Gruppe: Stütze dich auf deren Anträge "
-        "und Änderungsanträge (im Kontext als „Antrag von: …“ markiert) und auf "
-        "ausdrücklich protokollierte Abstimmungssätze. WICHTIG: Das Ratsinfo kennt "
-        "kein Stimmverhalten einzelner Fraktionen — behaupte NIE, wie eine Fraktion "
-        "gestimmt hat, wenn es nicht wörtlich im Abstimmungssatz steht; sage dann, "
-        "dass die Protokolle das nicht hergeben."
+        "und Änderungsanträge (im Kontext als „Antrag von: …“ markiert), auf "
+        "ausdrücklich protokollierte Abstimmungssätze und auf die Wortbeiträge "
+        "ihrer Ratsmitglieder. Fragt sie nach DEN Fraktionen insgesamt, gib je "
+        "Fraktion, die in den Wortbeiträgen spricht, in EINEM Satz wieder, was sie "
+        "vertritt und warum („Laut Protokoll begründete … (Grüne) die Ablehnung "
+        "mit …“). WICHTIG: Das Ratsinfo kennt kein Stimmverhalten einzelner "
+        "Fraktionen — behaupte NIE, wie eine Fraktion gestimmt hat, wenn es weder "
+        "im Abstimmungssatz noch in einem Wortbeitrag oder einer Mitteilung der "
+        "Stadt steht. Der Satz, die Protokolle gäben etwas nicht her, gilt NUR für "
+        "das Stimmverhalten und NUR, wenn es wirklich nirgends steht — nie für die "
+        "Positionen, wenn Wortbeiträge der Fraktionen vorliegen."
     ),
     # ACHTUNG, wer hier etwas ändert: Diese Regel ist für BESCHLUSS-Beträge
     # gebaut („Was hat Vorhaben X gekostet?"). Alles, was aus dem
@@ -5335,9 +5359,14 @@ def vereinfachen_question(question: str, bisher: str | None, candidates: list[di
 
 
 def _answer_tokens(typ: str, gross: bool = False, eng: bool = False) -> int:
-    # Punktfrage: knappes Budget als zweite Bremse neben der Prompt-Regel.
+    # Punktfrage: Die Kürze regelt der Prompt (ENG_REGEL), nicht das Budget.
+    # Bis 10/2026 stand hier eine harte Grenze von 320 Tokens als „zweite
+    # Bremse“ — sie schnitt genau den Satz ab, der eine knappe Antwort erst
+    # richtig macht („der Beschluss von 2020 wurde vom OVG gekippt“), und
+    # beim Abbruch mitten im Satz fehlte er ganz (Tim, 17.10.2026: keine
+    # harten Grenzen je Fragetyp, sonst fehlt bei wichtigen Fragen etwas).
     if eng:
-        return 320
+        return 1000
     # Seit dem Ratsgespräch dürfen breite Fragen strukturiert länger antworten
     # (Prompt regelt die Länge nach Frage; das Budget kappt nur den Ausreißer).
     # Große Themen (Task 32) bekommen Platz für die gegliederte Langfassung.
