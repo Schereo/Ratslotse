@@ -5679,8 +5679,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # des Frage-Wortfelds und fällt durch die Ähnlichkeits-
                         # suche — Zugehörigkeit trägt hier weiter (Befund 10.08.).
                         have = {d["id"] for d in debatten_rows}
+                        # Mit der Kontext-Diät mehr Aussprache zur Sache: Bis
+                        # 10/2026 kamen zu den acht besten Beschlüssen höchstens
+                        # SECHS zugehörige Beiträge, der Baustein unter der
+                        # Antwort nimmt sechzig. Im Gold-Set fehlten vor allem
+                        # Wortbeiträge (87 von 184 fehlenden Belegen, 17.10.2026).
+                        # Die Diät stellt sie nach vorn und deckelt den Prompt.
+                        anker_max = (qa.ANKER_AUSSPRACHE_MAX if features.an("kontext-diaet")
+                                     else 6)
                         debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
-                            candidates[:qa.DEBATTE_ANKER_KOPF]) if w["id"] not in have]
+                            candidates[:qa.DEBATTE_ANKER_KOPF], max_gesamt=anker_max)
+                            if w["id"] not in have]
                         # … und zu weiter hinten gerankten Beschlüssen, die die
                         # Frage im Titel tragen (qa.title_match_decisions).
                         extra = qa.title_match_decisions(store, q_suche, candidates)
@@ -6186,6 +6195,31 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     "press_ids": {p["id"] for p in akte["press"]},
                     "announced": akte.get("announced") or [],
                 }
+            # Kontext-Diät (Schalter `kontext-diaet`): weniger Wortbeiträge in
+            # den Prompt, die zur Sache zuerst (`qa.debatten_diaet`). Die Liste
+            # unter der Antwort bleibt vollständig — sie ist zum Lesen da, der
+            # Prompt zum Antworten. Nicht bei Sitzungsfragen (die Sitzung ist
+            # ganz gefragt) und nicht für Personenfragen (dort SIND die
+            # Beiträge die Antwort).
+            debatten_prompt = debatten_rows
+            if (features.an("kontext-diaet") and typ not in ("session", "person")
+                    and not einfach):
+                debatten_prompt = qa.debatten_diaet(
+                    debatten_rows, ctx, set(akte_prompt["speech_ids"]) if akte_prompt else None)
+                zeiten["kontext_debatten_ids"] = [d["id"] for d in debatten_prompt]
+            # Belegnotizen (Schalter `belegnotizen`): vor der Antwort je Dokument
+            # eine Notiz, was es zur Frage beiträgt — oben im Kontext, wo das
+            # Antwort-Modell liest (`qa.belegnotizen`). Nicht bei Sitzungsfragen
+            # (dort zählt die ganze Tagesordnung), beim Vereinfachen und beim
+            # deterministischen „zuletzt an Ort X“.
+            notiz_block = ""
+            if (features.an("belegnotizen") and typ != "session" and not einfach
+                    and not latest_place and ctx):
+                t_notiz = time.perf_counter()
+                notizen = qa.belegnotizen(q_suche, ctx, debatten_prompt)
+                notiz_block = qa.belegnotizen_block(notizen)
+                zeiten["belegnotizen"] = len(notizen)
+                zeiten["belegnotizen_ms"] = round((time.perf_counter() - t_notiz) * 1000)
             if latest_place and not einfach:
                 # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
                 # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
@@ -6199,7 +6233,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                          if einfach else
                          qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                           staedte=staedte_rows,
-                                          geld=geld, debatten=debatten_rows,
+                                          geld=geld, debatten=debatten_prompt,
                                           anlagen=anlagen_rows,
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
@@ -6208,7 +6242,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           screen=bildschirm, akte=akte_prompt,
                                           rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block))
+                                          extra_block=extra_block, notiz_block=notiz_block))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -6239,7 +6273,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                               if einfach else
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                             staedte=staedte_rows,
-                                                 geld=geld, debatten=debatten_rows,
+                                                 geld=geld, debatten=debatten_prompt,
                                                  anlagen=anlagen_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng,
@@ -6249,7 +6283,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  akte=akte_prompt,
                                                  rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block))
+                                          extra_block=extra_block, notiz_block=notiz_block))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

@@ -62,6 +62,22 @@ class Feature:
 #:                     "wie vorher (tests/…/eval).",
 #:     ),
 FEATURES: dict[str, Feature] = {
+    "belegnotizen": Feature(
+        key="belegnotizen",
+        description="„Frag den Rat“ lässt vor der Antwort ein kleines Modell je Dokument "
+                    "notieren, was es zur Frage beiträgt; die Notizen stehen oben im "
+                    "Kontext (qa.belegnotizen).",
+        fertig_wenn="Zwei Gold-Läufe auf dev mit weniger „im Prompt, aber weggelassen“ und "
+                    "ohne Rückschritt, Laufzeit auf Prod gemessen; dann Normalweg.",
+    ),
+    "kontext-diaet": Feature(
+        key="kontext-diaet",
+        description="„Frag den Rat“ gibt dem Antwort-Modell höchstens 24 Wortbeiträge statt "
+                    "aller (50–98), die Aussprache zu den Beschlüssen im Prompt zuerst "
+                    "(qa.debatten_diaet).",
+        fertig_wenn="Zwei Gold-Läufe auf dev ohne Rückschritt gegenüber zwei ohne, weniger "
+                    "„im Prompt, aber weggelassen“; dann ist die Diät der Normalweg.",
+    ),
     "nachrecherche": Feature(
         key="nachrecherche",
         description="„Frag den Rat“ sieht nach der ersten Suche auf die Titel der Treffer und "

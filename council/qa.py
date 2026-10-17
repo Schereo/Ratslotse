@@ -683,6 +683,110 @@ def nachrecherche_einfuegen(candidates: list[dict], neue: list[dict]) -> list[di
     return aus
 
 
+#: So viele Dokumente bekommen eine Notiz — Beschlüsse und Wortbeiträge je
+#: für sich. Mehr liest das Antwort-Modell ohnehin nicht aufmerksam.
+NOTIZ_BESCHLUESSE = 14
+NOTIZ_BEITRAEGE = 12
+#: Dokumente je Aufruf; die Aufrufe laufen parallel.
+NOTIZ_PAKET = 8
+
+NOTIZ_REGEL = (
+    "\n\nBELEGNOTIZEN: Ganz oben im Kontext steht zu jedem Dokument, was es zur "
+    "Frage beiträgt — vorab gelesen. Jede Notiz, die zur Frage etwas sagt, gehört "
+    "in die Antwort, mit ihrem Beleg [id] (Wortbeiträge als „Laut Protokoll …“), "
+    "außer sie wiederholt eine andere. Nennt eine Notiz einen Umstand, der die "
+    "Antwort ändert (aufgehoben, abgelehnt, vertagt, gekippt, nur ein Bericht), "
+    "steht er in der Antwort. Schreibe NIE, etwas gehe aus den Unterlagen nicht "
+    "hervor, wenn eine Notiz es nennt. Die Notizen sind eine Lesehilfe; im "
+    "Zweifel gilt der Wortlaut des Dokuments darunter."
+)
+
+
+def _notiz_dokumente(ctx: list[dict], debatten: list[dict]) -> list[dict]:
+    """Die Dokumente für die Notizen: Schlüssel, Kopf, Text — knapp."""
+    docs = []
+    for c in ctx[:NOTIZ_BESCHLUESSE]:
+        text = " ".join(str(c.get(k) or "") for k in ("summary", "official_text"))
+        kopf = (f"Beschluss [{c['id']}] {(c.get('title') or '').strip()[:160]} — "
+                f"{c.get('committee') or ''}, {str(c.get('session_date') or '')[:10]}, "
+                f"Ergebnis: {_TEIL_ERGEBNIS.get(c.get('outcome') or '', c.get('outcome') or '?')}")
+        docs.append({"key": f"B{c['id']}", "kopf": kopf, "text": " ".join(text.split())[:700]})
+    for d in debatten[:NOTIZ_BEITRAEGE]:
+        wer = d.get("speaker") or "?"
+        if d.get("party"):
+            wer += f" ({d['party']})"
+        kopf = (f"Wortbeitrag von {wer}, {str(d.get('session_date') or '')[:10]}, "
+                f"{d.get('committee') or ''} zu „{(d.get('top') or '')[:100]}“")
+        text = (d.get("text") or "") + (f" Antwort der Verwaltung: {d['answer']}" if d.get("answer") else "")
+        docs.append({"key": f"W{d['id']}", "kopf": kopf, "text": " ".join(text.split())[:600]})
+    return docs
+
+
+def _notizen_paket(question: str, paket: list[dict], model: str) -> dict[str, str]:
+    teile = "\n\n".join(f"<{d['key']}> {d['kopf']}\n{d['text']}" for d in paket)
+    try:
+        prompt = prompts.render("qa_belegnotizen", question=question.strip()[:300],
+                                dokumente=teile)
+        resp = llm.chat_complete(
+            model=model, _feature="qa_belegnotizen", temperature=0, max_tokens=900,
+            timeout=10.0, response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompt}])
+        data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
+    except Exception:  # noqa: BLE001 — ohne Notiz bleibt das Dokument im Kontext
+        return {}
+    gueltig = {d["key"] for d in paket}
+    aus: dict[str, str] = {}
+    for eintrag in (data.get("notizen") if isinstance(data, dict) else None) or []:
+        if not isinstance(eintrag, dict):
+            continue
+        key, notiz = str(eintrag.get("key") or ""), " ".join(str(eintrag.get("notiz") or "").split())
+        if key in gueltig and notiz and eintrag.get("relevant") is not False:
+            aus[key] = notiz[:400]
+    return aus
+
+
+def belegnotizen(question: str, ctx: list[dict], debatten: list[dict],
+                 model: str = EXPAND_MODEL) -> list[dict]:
+    """Erst lesen, dann antworten: je Dokument eine Notiz, was es zur Frage beiträgt.
+
+    **Warum.** Im Gold-Set stand das Material für fast die Hälfte der
+    verfehlten Fakten im Prompt und wurde nicht genutzt (17.10.2026). Das ist
+    der bekannteste Antwort-Fehler von RAG-Systemen („im Kontext, aber nicht
+    extrahiert“, Barnett et al. 2024; „lost in the middle“, Liu et al. 2023).
+    Die bekannte Gegenmaßnahme ist ein Lese-Schritt vor dem Schreiben
+    (Chain-of-Note, EviNote-RAG): Ein kleines Modell hält je Dokument fest,
+    was es zur Frage sagt — mit Datum, Zahl und Verneinung im Wortlaut —, und
+    die Notizen stehen GANZ OBEN im Kontext, wo das Antwort-Modell liest.
+
+    Die Dokumente bleiben darunter vollständig stehen; die Notiz ist eine
+    Lesehilfe, kein Ersatz (eine Verdichtung verliert sonst genau die Zahl,
+    um die es geht). Parallel in Paketen zu ``NOTIZ_PAKET``; jeder Fehler
+    heißt: dieses Paket ohne Notiz. Liefert ``[{key, kopf, notiz}]`` in
+    Kontext-Reihenfolge, nur Dokumente mit Bezug zur Frage.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    docs = _notiz_dokumente(ctx, debatten)
+    if not docs:
+        return []
+    pakete = [docs[i:i + NOTIZ_PAKET] for i in range(0, len(docs), NOTIZ_PAKET)]
+    notizen: dict[str, str] = {}
+    with ThreadPoolExecutor(max_workers=len(pakete)) as pool:
+        for teil in pool.map(lambda p: _notizen_paket(question, p, model), pakete):
+            notizen.update(teil)
+    return [{"key": d["key"], "kopf": d["kopf"], "notiz": notizen[d["key"]]}
+            for d in docs if d["key"] in notizen]
+
+
+def belegnotizen_block(notizen: list[dict]) -> str:
+    """Die Notizen als erster Abschnitt des Kontexts — leer ohne Notizen."""
+    if not notizen:
+        return ""
+    zeilen = [f"- {n['kopf']}: {n['notiz']}" for n in notizen]
+    return ("BELEGNOTIZEN (vorab gelesen: was jedes Dokument zur Frage beiträgt; "
+            "die Dokumente selbst folgen darunter):\n" + "\n".join(zeilen) + "\n\nBESCHLÜSSE IM WORTLAUT:\n")
+
+
 def fraktionsfrage(analyse: dict) -> bool:
     """Fragt die Frage nach den Positionen ALLER Fraktionen („Wie stehen die
     Fraktionen zum Stadion?“) statt nach einer bestimmten?
@@ -3070,6 +3174,9 @@ def press_title_ids(store, question: str, rare_max: int = PRESSE_TITEL_SELTEN,
 # Fällungen (gemessen an den Gold-Fragen, 01.10.2026).
 DEBATTE_ANKER_KOPF = 8
 DEBATTE_TITEL_EXTRA = 4
+#: So viele Beiträge der zugehörigen Aussprache holt /ask mit der Kontext-Diät
+#: zu diesen acht Beschlüssen (sonst 6). Die Diät reiht sie vorn ein.
+ANKER_AUSSPRACHE_MAX = 24
 DEBATTE_TITEL_SELTEN = 50  # höchstens so viele Beschlusstitel tragen das Wort
 
 
@@ -3105,6 +3212,49 @@ def title_match_decisions(store, question: str, candidates: list[dict],
     return out[:max_extra]
 ASK_DEBATTE_TEXT_MAX = 800
 ASK_DEBATTE_ANTWORT_MAX = 600
+
+
+#: So viele Wortbeiträge gehen höchstens in den Antwort-Prompt (Schalter
+#: `kontext-diaet`), die der Akte nicht mitgezählt. Bis 10/2026 gingen ALLE
+#: hinein — 50 bis 98 je Frage, dazu 20 Beschlüsse und die Akte. Im Gold-Set
+#: stand das Material für 46 % der verfehlten Fakten im Kontext und wurde
+#: nicht genutzt; mehr Kontext ging mit mehr Weggelassenem einher (r = 0,45,
+#: 17.10.2026) — das bekannte „lost in the middle“ (Liu et al. 2023).
+DEBATTEN_PROMPT_MAX = 24
+#: … davon höchstens so viele zum selben Tagesordnungspunkt.
+DEBATTEN_JE_TOP = 4
+
+
+def debatten_diaet(debatten: list[dict], ctx: list[dict],
+                   behalten: set[int] | None = None,
+                   max_n: int = DEBATTEN_PROMPT_MAX, je_top: int = DEBATTEN_JE_TOP) -> list[dict]:
+    """Die Wortbeiträge für den Prompt — wenige, und die zur Sache zuerst.
+
+    Reihenfolge: erst die Aussprache zu den Beschlüssen im Prompt, in deren
+    Rang (Zugehörigkeit schlägt Ähnlichkeit, s. ``wortbeitraege_zu_beschluessen``),
+    dann der Rest in Suchreihenfolge. Je Tagesordnungspunkt höchstens
+    ``je_top``, damit eine lange Debatte nicht alle Plätze nimmt. ``behalten``
+    (die Beiträge der Akte) bleibt vollständig und zählt nicht mit: Die Akte
+    baut daraus ihre Zeitleiste.
+    """
+    behalten = behalten or set()
+    rang = {c["id"]: i for i, c in enumerate(ctx)}
+    fest = [d for d in debatten if d.get("id") in behalten]
+    rest = [d for d in debatten if d.get("id") not in behalten]
+    zur_sache = sorted((d for d in rest if d.get("zu_beschluss") in rang),
+                       key=lambda d: rang[d["zu_beschluss"]])
+    uebrige = [d for d in rest if d.get("zu_beschluss") not in rang]
+    aus: list[dict] = []
+    je: dict[tuple, int] = {}
+    for d in zur_sache + uebrige:
+        if len(aus) >= max_n:
+            break
+        top = (d.get("session_date"), d.get("top"))
+        if je.get(top, 0) >= je_top:
+            continue
+        je[top] = je.get(top, 0) + 1
+        aus.append(d)
+    return fest + aus
 
 
 def _debatten_block(debatten: list[dict] | None, eng: bool = False,
@@ -5214,7 +5364,9 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      # Fertige Bausteine des Routers aus eigenen Daten (seit der
                      # Auswertung 11.10.2026: „Seit dem jüngsten Beschluss",
                      # „Wo Ergebnisse stehen"); per NAME übergeben wie oben.
-                     extra_block: str = "") -> tuple[list[dict], dict]:
+                     extra_block: str = "",
+                     # Belegnotizen (``belegnotizen_block``) — per NAME, wie oben.
+                     notiz_block: str = "") -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf_ohne_dieselbe_frage(verlauf, question))
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
@@ -5268,7 +5420,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
             presse = [x for x in presse or [] if x.get("id") not in presse_ids]
     prompt = prompts.render("qa_answer", question=question.strip()[:300],
                             heute=_heute(),
-                            context=_fremd(_build_context(candidates)) if candidates or not akte_text
+                            context=_fremd(notiz_block + _build_context(candidates))
+                            if candidates or not akte_text
                             else "(alle passenden Beschlüsse stehen in der AKTE unten)",
                             # Die Haushalts-Regeln hängen am KONTEXT, nicht am
                             # Fragetyp: „Was hat das Rechnungsprüfungsamt
@@ -5288,7 +5441,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             + ((akte_suche.AKTE_REGEL_ENG if eng else akte_suche.AKTE_REGEL)
                                if akte_text else "")
                             + (GESCHAEFTSORDNUNG_REGEL if rules_block else "")
-                            + (WAHL_REGEL if election_block else ""),
+                            + (WAHL_REGEL if election_block else "")
+                            + (NOTIZ_REGEL if notiz_block else ""),
                             # Die Geschäftsordnung zuerst: Für eine
                             # Verfahrensfrage IST sie die Antwort, die übrigen
                             # Bausteine sind Beiwerk.
@@ -5462,7 +5616,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     zukunft_leer: bool = False, stand: dict | None = None,
                   screen: dict | None = None, akte: dict | None = None,
                   rules_block: str = "", election_block: str = "",
-                  extra_block: str = ""):
+                  extra_block: str = "", notiz_block: str = ""):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
@@ -5476,7 +5630,7 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                                        staedte, zukunft_leer, stand, screen, akte,
                                        rules_block=rules_block,
                                        election_block=election_block,
-                                       extra_block=extra_block)
+                                       extra_block=extra_block, notiz_block=notiz_block)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
                              messages=messages, **extra)
@@ -5496,7 +5650,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   zukunft_leer: bool = False, stand: dict | None = None,
                   screen: dict | None = None, akte: dict | None = None,
                   rules_block: str = "", election_block: str = "",
-                  extra_block: str = ""):
+                  extra_block: str = "", notiz_block: str = ""):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
@@ -5512,7 +5666,7 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                                        staedte, zukunft_leer, stand, screen, akte,
                                        rules_block=rules_block,
                                        election_block=election_block,
-                                       extra_block=extra_block)
+                                       extra_block=extra_block, notiz_block=notiz_block)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
                                messages=messages, **extra)
