@@ -34,7 +34,7 @@ def laden(label: str) -> list[dict]:
 def kennzahlen(faelle: list[dict]) -> dict:
     """Abdeckung, bestanden, Kontext-Recall und Ursachen eines Laufs."""
     da = gesamt = 0
-    ursachen = dict.fromkeys(gold.URSACHEN, 0)
+    ursachen: dict[str, int] = {u: 0 for u in gold.URSACHEN}
     for c in faelle:
         a, b = gold.kontext_recall(c["material"])
         da, gesamt = da + a, gesamt + b
