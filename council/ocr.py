@@ -390,6 +390,24 @@ def aufrichten(bild: Seitenbild, model: str = MODEL) -> Seitenbild:
     return Seitenbild(puffer.getvalue(), "image/jpeg", bild.weg, drehung=grad)
 
 
+def seitliche_seiten(daten: bytes, max_seiten: int | None = None) -> list[int]:
+    """Die Seitennummern eines PDF, deren Zeilen senkrecht laufen — nur aus
+    den Pixeln, ohne Modellaufruf. Sagt vorher, ob sich Aufrichten lohnt."""
+    from PIL import Image  # noqa: PLC0415
+
+    leser = pypdf.PdfReader(io.BytesIO(daten))
+    seiten = leser.pages if max_seiten is None else leser.pages[:max_seiten]
+    aus: list[int] = []
+    for nr, page in enumerate(seiten, start=1):
+        try:
+            bild = Image.open(io.BytesIO(seite_als_bild(page).daten))
+            if zeilen_senkrecht(bild):
+                aus.append(nr)
+        except Exception:  # noqa: BLE001 — eine unlesbare Seite ist keine seitliche
+            continue
+    return aus
+
+
 # --------------------------------------------------------------------------
 # Bild → Text
 # --------------------------------------------------------------------------
