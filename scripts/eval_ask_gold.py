@@ -121,13 +121,92 @@ def fragen(basis: str, token: str, frage: str) -> dict:
             "dauer_s": round(time.time() - t0, 1)}
 
 
-def material_form(quellen: dict, debatten: list[dict] | None = None) -> dict:
+#: Die vier Ursachen eines verfehlten Pflichtfakts — je nachdem, ob das
+#: Material dafür im Kontext der Antwort stand. Die Einteilung folgt der
+#: Trennung von Suche und Antwort (Barnett et al. 2024: „missing content“ /
+#: „not in context“ / „not extracted“; Leung et al. 2026, E4/E7 gegen E12).
+URSACHEN = ("weggelassen", "abgeschnitten", "nicht_gefunden", "teilweise", "ohne_material")
+URSACHE_TEXT = {
+    "weggelassen": "Material im Prompt, Antwort lässt es weg",
+    "abgeschnitten": "gefunden, aber hinter dem Prompt-Schnitt",
+    "nicht_gefunden": "Material fehlt im Kontext",
+    "teilweise": "Material nur teilweise im Kontext",
+    "ohne_material": "kein Material im Gold-Fall hinterlegt",
+}
+
+
+def ursache(fakt_id: str, material: list[dict],
+            gefunden: list[dict] | None = None) -> str:
+    """Warum fehlt ein Pflichtfakt? Deterministisch aus der Materialprüfung.
+
+    ``material`` prüft gegen den PROMPT, ``gefunden`` gegen alle Kandidaten
+    der Suche. Lag alles bei den Kandidaten, aber nicht im Prompt, hat der
+    Schnitt nach Rang 20 es weggeworfen — ein Fehler der Rangfolge (E7),
+    nicht der Antwort."""
+    ms = [m for m in material if fakt_id in (m.get("fuer") or [])]
+    if not ms:
+        return "ohne_material"
+    da = [m["vorhanden"] for m in ms]
+    if all(da):
+        return "weggelassen"
+    if gefunden is not None:
+        gs = [m["vorhanden"] for m in gefunden if fakt_id in (m.get("fuer") or [])]
+        if gs and all(gs):
+            return "abgeschnitten"
+    return "teilweise" if any(da) else "nicht_gefunden"
+
+
+def kontext_recall(material: list[dict]) -> tuple[int, int]:
+    """(Belege im Kontext, Belege insgesamt) — die Kennzahl der SUCHE.
+
+    Sie braucht keinen Richter und streut deshalb nicht wie die Abdeckung:
+    Am 17.10.2026 ergab derselbe Code einmal 51 %, einmal 45 % Abdeckung.
+    Ob eine Änderung an der Suche hilft, zeigt diese Zahl."""
+    return sum(1 for m in material if m["vorhanden"]), len(material)
+
+
+def fehlerbild_zeilen(ergebnisse: list[dict], faelle: list[dict]) -> list[str]:
+    """Kontext-Recall und die Ursachen der verfehlten Fakten, nach Gewicht."""
+    gewicht = {(f["id"], p["id"]): p.get("gewicht", 1)
+               for f in faelle for p in f.get("pflicht", [])}
+    da = gesamt = 0
+    n: dict[str, int] = dict.fromkeys(URSACHEN, 0)
+    g: dict[str, int] = dict.fromkeys(URSACHEN, 0)
+    for e in ergebnisse:
+        a, b = kontext_recall(e["material"])
+        da, gesamt = da + a, gesamt + b
+        for fid in e["wertung"]["verfehlt"]:
+            u = ursache(fid, e["material"], e.get("material_gefunden"))
+            n[u] += 1
+            g[u] += gewicht.get((e["id"], fid), 1)
+    zeilen = [f"KONTEXT-RECALL: {da}/{gesamt} Belege im Kontext "
+              f"({da / gesamt:.0%})" if gesamt else "KONTEXT-RECALL: –"]
+    for u in URSACHEN:
+        zeilen.append(f"  verfehlt, {URSACHE_TEXT[u]}: {n[u]} (Gewicht {g[u]})")
+    return zeilen
+
+
+def material_form(quellen: dict, debatten: list[dict] | None = None,
+                  kontext_ids: list[int] | None = None,
+                  debatten_ids: list[int] | None = None) -> dict:
     """Quellen-Ereignis (bzw. nachgeladene Debatten) in die Form, die
     ``eval_deep_gold._material_pruefen`` liest: Debatten tragen dort
-    ``session_date``/``text``, im Web-Vertrag ``date``/``excerpt``."""
+    ``session_date``/``text``, im Web-Vertrag ``date``/``excerpt``.
+
+    ``kontext_ids``: nur die Beschlüsse, die wirklich im Prompt standen
+    (``timings.kontext_ids``). Das Quellen-Ereignis nennt alle Kandidaten,
+    der Prompt bekommt 20 plus Akte."""
     deb = debatten if debatten is not None else (quellen.get("debates") or [])
+    if debatten_ids is not None:
+        # Kontext-Diät: Nur diese Wortbeiträge standen im Prompt.
+        im_prompt = set(debatten_ids)
+        deb = [d for d in deb if d.get("id") in im_prompt]
+    quellen_liste = quellen.get("sources") or []
+    if kontext_ids is not None:
+        im = set(kontext_ids)
+        quellen_liste = [c for c in quellen_liste if c.get("id") in im]
     return {
-        "candidates": quellen.get("sources") or [],
+        "candidates": quellen_liste,
         "debates": [{"session_date": d.get("date") or d.get("session_date"),
                      "text": d.get("excerpt") or d.get("text") or "",
                      "speaker": d.get("speaker")} for d in deb],
@@ -183,7 +262,10 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
                 print(f"  429 — warte {FENSTER_S // 2} s", flush=True)
                 time.sleep(FENSTER_S // 2)
         q = r["quellen"]
-        material = gold._material_pruefen(case, material_form(q))
+        zeiten = r.get("zeiten") or {}
+        material = gold._material_pruefen(case, material_form(
+            q, kontext_ids=zeiten.get("kontext_ids"), debatten_ids=zeiten.get("kontext_debatten_ids")))
+        material_gefunden = gold._material_pruefen(case, material_form(q))
         baustein: list[dict] = []
         try:
             with _post(basis, token, "/api/council/debates", {
@@ -200,6 +282,10 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
         ergebnisse.append({
             "id": case["id"], "question": case["question"], "dauer_s": r["dauer_s"],
             "wertung": wertung, "material": material, "material_baustein": material_baustein,
+            "material_gefunden": material_gefunden,
+            "kontext_recall": list(kontext_recall(material)),
+            "ursachen": {fid: ursache(fid, material, material_gefunden)
+                         for fid in wertung["verfehlt"]},
             "urteil": urteil, "antwort": r["antwort"],
             "gelesen": {"fragetyp": q.get("qtype"),
                         "beschluesse": len(q.get("sources") or []),
@@ -220,6 +306,8 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
               f"{'BESTANDEN' if wertung['bestanden'] else 'NICHT bestanden'} ({r['dauer_s']} s)",
               flush=True)
     n = len(ergebnisse) or 1
+    for zeile in fehlerbild_zeilen(ergebnisse, cases):
+        print(zeile, flush=True)
     print(f"GESAMT: Abdeckung {sum(e['wertung']['abdeckung'] for e in ergebnisse) / n:.0%}, "
           f"bestanden {sum(e['wertung']['bestanden'] for e in ergebnisse)}/{len(ergebnisse)}, "
           f"Verstöße {sum(len(e['wertung']['verstoesse']) for e in ergebnisse)}, "

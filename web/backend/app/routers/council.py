@@ -6176,6 +6176,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             frage_thema = q_suche
             if einfach and frage_thema.strip() == q and verlauf:
                 frage_thema = verlauf[-1].get("question") or q
+            # Welche Beschlüsse WIRKLICH im Prompt stehen — das Quellen-Ereignis
+            # nennt alle Kandidaten (40–75), der Prompt bekommt `ctx` (20 plus
+            # Akte). Ohne diese Liste hielt der Gold-Lauf einen Beschluss auf
+            # Platz 30 für „im Kontext, aber weggelassen“ (17.10.2026).
+            zeiten["kontext_ids"] = [c["id"] for c in ctx]
             # Plan „Akte“, Phase 4 (Schalter `akten-zeitleiste`): die Akte als
             # Zeitleiste in den Prompt (council/akte_suche.py::zeitleiste).
             akte_prompt: dict | None = None
