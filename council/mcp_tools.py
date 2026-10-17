@@ -149,6 +149,54 @@ def _entsperren(zeile: str) -> str:
     return re.sub(r"\s*\.(?=\S)", ". ", " ".join(woerter))
 
 
+#: Kopf- und Fußzeilen, die der Textlayer an jeder Seitengrenze einstreut —
+#: Oldenburger Protokolle „Seite: 10/34“ (auch „S eite“, s.
+#: ``haushaltsdebatte._SEITE``), Vorlagen „Ausdruck vom: …“ samt Seitenzahl.
+_SEITENZEILE = re.compile(
+    r"^[ \t]*(?:S[ \t]?eite:?[ \t]*\d+[ \t]*/[ \t]*\d+|Ausdruck vom:.*)[ \t]*$")
+#: Woran ein Absatz wirklich endet. Steht davor etwas anderes, lief der Satz
+#: über die Seite weiter.
+_SATZENDE = re.compile(r"[.!?:;“”\"»«)]\s*$")
+
+
+def _seitenwechsel_heilen(roh: str) -> str:
+    """Kopf- und Fußzeilen raus — und den Absatz, den sie zerrissen haben,
+    wieder zusammensetzen.
+
+    Gemessen am Stadion-Protokoll (17.10.2026): „Zwischenzeitlich habe der
+    VfB“ / ``Seite: 10/34`` / Leerzeile / „den Aufstieg in die 3. Liga …“.
+    Die Fußzeile stand zwischen Leerzeilen; strich man sie, blieb eine
+    Leerzeile, und die gilt jedem Absatzschnitt als Absatzende. Ein Agent las
+    dann zwei Absätze, deren erster mitten im Satz aufhört.
+
+    Die Regel: Über eine Seitengrenze hinweg wird verbunden, wenn die Zeile
+    davor nicht mit einem Satzzeichen endet ODER die Zeile danach klein
+    beginnt. Sonst bleibt der Absatzwechsel stehen — ein Absatz kann ja
+    wirklich am Seitenende aufhören. Verbunden wird mit EINEM Zeilenumbruch,
+    damit die Silbentrennung dahinter (``saeubern``, ``_entzeilen``) auch über
+    die Seite greift („Auszah-“ / „lung“)."""
+    zeilen = (roh or "").split("\n")
+    aus: list[str] = []
+    i = 0
+    while i < len(zeilen):
+        if not _SEITENZEILE.match(zeilen[i]):
+            aus.append(zeilen[i])
+            i += 1
+            continue
+        # Die Seitengrenze samt aller Leer- und Kopfzeilen drumherum.
+        while aus and not aus[-1].strip():
+            aus.pop()
+        while i < len(zeilen) and (not zeilen[i].strip() or _SEITENZEILE.match(zeilen[i])):
+            i += 1
+        davor = aus[-1] if aus else ""
+        danach = zeilen[i].lstrip() if i < len(zeilen) else ""
+        weiter = bool(davor) and bool(danach) and (
+            not _SATZENDE.search(davor) or danach[:1].islower())
+        if aus and danach and not weiter:
+            aus.append("")
+    return "\n".join(aus)
+
+
 def _volltext(roh: str | None) -> str:
     """Der Vorlagen-Volltext ohne die Spuren des PDF-Textlayers: keine
     Seitenköpfe („Ausdruck vom … Seite 1/2“), Zeilen innerhalb eines Absatzes
@@ -157,7 +205,7 @@ def _volltext(roh: str | None) -> str:
     Unterschrift und angehängte Anlagen —, denn ein Agent soll den ganzen
     Text lesen können, nicht unseren Auszug davon."""
     absaetze = []
-    for block in re.split(r"\n\s*\n", roh or ""):
+    for block in re.split(r"\n\s*\n", _seitenwechsel_heilen(roh or "")):
         zeilen = [_entsperren(z.strip()) for z in block.splitlines()]
         zeilen = [z for z in zeilen if z and not vorlagen._NOISE_RE.match(z)]  # noqa: SLF001
         if zeilen:
@@ -478,7 +526,10 @@ def get_protocol_section(store, args: dict, base: str) -> str:
         aus["hint"] = ("Zu dieser Sitzung liegt noch kein Protokoll vor. Protokolle "
                        "erscheinen meist einige Wochen nach der Sitzung.")
         return _json(aus)
-    abschnitt = top_abschnitt(saeubern(roh), top) if top else ""
+    # ZUERST die Seitengrenzen heilen: ``saeubern`` streicht die Fußzeile
+    # ebenfalls, lässt dabei aber die Leerzeile stehen — danach wäre der
+    # zerrissene Absatz von einem echten nicht mehr zu unterscheiden.
+    abschnitt = top_abschnitt(saeubern(_seitenwechsel_heilen(roh)), top) if top else ""
     if not abschnitt.strip():
         aus["text"] = None
         aus["hint"] = ("Im Protokoll ließ sich der Abschnitt zu diesem Punkt nicht "

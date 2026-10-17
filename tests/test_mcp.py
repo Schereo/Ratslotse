@@ -499,6 +499,47 @@ def test_anlagen_am_tagesordnungspunkt(client, monkeypatch):
     assert r["isError"] is True and geladen == [geladen[0]]
 
 
+def test_seitengrenze_zerreisst_keinen_absatz():
+    """Am Stadion-Protokoll gesehen (17.10.2026): „Zwischenzeitlich habe der
+    VfB“ endete als Absatz, weil die Fußzeile „Seite: 10/34“ zwischen
+    Leerzeilen stand. Gemessen an 600 Protokollabschnitten: 121 Absätze
+    endeten so mitten im Satz, mit der Heilung 35 — der Rest ist Layout der
+    Beschlusstexte, keine Seitengrenze."""
+    h = mcp_tools._seitenwechsel_heilen
+    assert h("habe der VfB \n  Seite: 10/34 \n \nden Aufstieg geschafft.") == \
+        "habe der VfB \nden Aufstieg geschafft."
+    # Ein Absatz, der wirklich am Seitenende aufhört, bleibt einer.
+    assert h("Ende des Absatzes. \n  Seite: 11/34 \n \nNeuer Absatz.") == \
+        "Ende des Absatzes. \n\nNeuer Absatz."
+    # Satzzeichen davor, aber klein danach: Der Satz läuft weiter.
+    assert h("vgl. Anlage 3. \n Seite: 2/5 \n\nwird beschlossen.") == \
+        "vgl. Anlage 3. \nwird beschlossen."
+    # Silbentrennung über die Seite und der Vorlagenkopf aus zwei Zeilen.
+    assert mcp_tools._volltext("Die Auszah-\n Ausdruck vom: 10.03.2022 \n Seite: 2/2 \n \n"
+                               "lung erfolgt.") == "Die Auszahlung erfolgt."
+    assert h("Seite: 1/3\n\nKopf am Anfang.") == "Kopf am Anfang."
+
+
+def test_protokollabschnitt_ueber_die_seitengrenze(client):
+    _konto(client)
+    token = _schluessel(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(4740, "Rat", "2026-06-01", "18:00", "PFL",
+                                   agenda_items=[AgendaItem("Ö 6.1", "Stadion")]))
+    cs._conn.execute(
+        "INSERT INTO council_protocols (ksinr, raw_text, extracted_at) VALUES (4740, ?, "
+        "datetime('now'))",
+        ("zu 6.1 Stadion\nOberbürgermeister Krogmann sagt, zwischenzeitlich habe der VfB \n"
+         "  Seite: 10/34 \n \nden Aufstieg in die 3. Liga geschafft.\n\n"
+         "Ratsfrau Schilling widerspricht.\nzu 6.2 Weiter\n",))
+    cs._conn.commit()
+    cs.close()
+    p = _rufe(token, "get_protocol_section", ksinr=4740, item_number="Ö 6.1")
+    assert "habe der VfB den Aufstieg in die 3. Liga geschafft." in p["text"]
+    assert "Seite" not in p["text"]
+    assert "geschafft.\n\nRatsfrau Schilling" in p["text"]
+
+
 def test_aufrufe_werden_gezaehlt(client):
     _konto(client)
     token = _schluessel(client)
