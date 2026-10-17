@@ -30,15 +30,23 @@ deutsch sein, damit die Volltextsuche trifft.
 from __future__ import annotations
 
 import json
+import logging
 import re
+import threading
+import time
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from council import anlagentext
 from council import lotti_werkzeuge as lw
 from council import vorlagen
+from council.haushaltsdebatte import saeubern, top_abschnitt
+from council.kontaktdaten import maskieren
 from kern import foreign_text
+
+logger = logging.getLogger("council.mcp_tools")
 
 RIS = "https://buergerinfo.oldenburg.de"
 
@@ -72,14 +80,18 @@ class Tool:
     description: str
     input_schema: dict
     run: Callable[[Any, dict, str], str]
+    #: Greift das Werkzeug über unseren Bestand hinaus (lädt ein PDF aus dem
+    #: Ratsinformationssystem)? Das sagt der Client der Nutzerin.
+    open_world: bool = False
 
     def beschreibung(self) -> dict:
         return {"name": self.name, "title": self.title, "description": self.description,
                 "inputSchema": self.input_schema,
                 # Alle Werkzeuge lesen nur — Clients fragen dann nicht bei
-                # jedem Aufruf nach.
+                # jedem Aufruf nach. Dass ``get_attachment`` dabei einen Text
+                # in unseren Bestand nachträgt, ändert für den Agenten nichts.
                 "annotations": {"readOnlyHint": True, "destructiveHint": False,
-                                "idempotentHint": True, "openWorldHint": False}}
+                                "idempotentHint": True, "openWorldHint": self.open_world}}
 
 
 def _schema(props: dict, required: list[str] | None = None) -> dict:
@@ -268,7 +280,163 @@ def get_template(store, args: dict, base: str) -> str:
         "next_offset": weiter if weiter < len(volltext) else None,
         "url": f"{RIS}/vo0050.php?__kvonr={v['kvonr']}" if v.get("kvonr") else v.get(
             "document_url"),
+        "attachments": _anlagen(store, v.get("kvonr")),
     })
+
+
+#: Was ``text`` an einer Anlage heißt — der Agent entscheidet daran, ob sich
+#: ``get_attachment`` lohnt.
+_ANLAGE_TEXT = {"ok": "available", "empty": "scan", "failed": "failed"}
+
+
+def _anlagen(store, kvonr: int | None) -> list[dict]:
+    if not kvonr:
+        return []
+    return [{"attachment_id": r[0], "label": _sauber(r[1]), "pages": r[2],
+             # Alles außer ok/empty/failed (``listed``) ist noch nicht
+             # geladen — get_attachment holt es beim ersten Abruf.
+             "text": _ANLAGE_TEXT.get(r[3] or "", "on_demand") if r[6] or r[3] != "ok"
+             else "on_demand",
+             "is_motion": bool(r[4]), "url": r[5]}
+            for r in store._conn.execute(  # noqa: SLF001
+                "SELECT document_id, label, n_pages, status, is_motion, url, "
+                "raw_text IS NOT NULL AND raw_text != '' "
+                "FROM council_attachments WHERE kvonr = ? ORDER BY is_motion DESC, label",
+                (kvonr,))]
+
+
+# --------------------------------------------------------------------------- #
+# Anlagen auf Zuruf
+# --------------------------------------------------------------------------- #
+
+#: Mindestabstand zwischen zwei Downloads aus dem Ratsinformationssystem —
+#: über ALLE Agenten, nicht je Schlüssel. Dieselbe Höflichkeit wie bei
+#: fremden Systemen (min. 1 s); hier ist es das Haus, aus dem alle Daten
+#: kommen, und eine Sperre träfe den ganzen Ingest.
+LADE_ABSTAND_S = 1.0
+#: Höchstens so viele Downloads je Stunde, wieder über alle. Danach bleibt
+#: der Bestand lesbar, nur Neues wartet. Ein Agent, der eine Vorlage
+#: durcharbeitet, braucht eine Handvoll; 120 hält auch mehrere davon aus.
+LADE_JE_STUNDE = 120
+
+_lade_sperre = threading.Lock()
+_lade_zeiten: list[float] = []
+
+
+def _laden_erlaubt() -> None:
+    """Wartet den Mindestabstand ab und zählt den Download — oder wirft, wenn
+    das Stundenkontingent aufgebraucht ist."""
+    with _lade_sperre:
+        jetzt = time.monotonic()
+        while _lade_zeiten and jetzt - _lade_zeiten[0] > 3600:
+            _lade_zeiten.pop(0)
+        if len(_lade_zeiten) >= LADE_JE_STUNDE:
+            raise ToolError("Gerade werden zu viele Anlagen nachgeladen. Bereits geladene "
+                            "Anlagen sind weiter lesbar; diese bitte später erneut versuchen "
+                            "oder direkt unter url öffnen.")
+        if _lade_zeiten and jetzt - _lade_zeiten[-1] < LADE_ABSTAND_S:
+            time.sleep(LADE_ABSTAND_S - (jetzt - _lade_zeiten[-1]))
+        _lade_zeiten.append(time.monotonic())
+
+
+def lade_kontingent_vergessen() -> None:
+    """Für Tests."""
+    with _lade_sperre:
+        _lade_zeiten.clear()
+
+
+def get_attachment(store, args: dict, base: str) -> str:
+    did = _int(args, "attachment_id", 0, 0, 10**9)
+    zeile = store._conn.execute(  # noqa: SLF001
+        "SELECT a.document_id, a.label, a.url, a.status, a.raw_text, a.n_pages, "
+        "t.template_number FROM council_attachments a "
+        "LEFT JOIN council_templates t ON t.kvonr = a.kvonr WHERE a.document_id = ?",
+        (did,)).fetchone() if did else None
+    if not zeile:
+        raise ToolError(f"Keine Anlage mit der Kennung {did}. get_template nennt die "
+                        "Anlagen einer Vorlage samt attachment_id.")
+    did, label, url, status, text, seiten, vorlage = tuple(zeile)
+    aus: dict[str, Any] = {"attachment_id": did, "label": _sauber(label),
+                           "template_number": vorlage, "url": url}
+    # ``failed`` darf es noch einmal versuchen: Meist war es ein Netzaussetzer.
+    # ``ok`` ohne Text ebenso — so steht es in jedem lokalen Abzug, der die
+    # Anlagentexte abspeckt (scripts/lokale_daten.py).
+    if (status not in ("ok", "empty") or not text) and status != "empty" and url:
+        _laden_erlaubt()
+        try:
+            roh, seiten = vorlagen._pdf_text(url)  # noqa: SLF001
+        except Exception as fehler:  # noqa: BLE001 — ein PDF, keine Störung des Servers
+            logger.warning("Anlage %s nicht geladen: %s", did, fehler)
+            raise ToolError("Die Anlage ließ sich gerade nicht laden. Später erneut "
+                            "versuchen oder direkt unter url öffnen.") from fehler
+        text = anlagentext.beurteilen(roh)
+        store.anlagentext_nachtragen(did, text, seiten)
+        status = "ok" if text else "empty"
+        aus["loaded_now"] = True
+    aus["pages"] = seiten
+    if status != "ok" or not text:
+        aus["text"] = None
+        aus["hint"] = ("Dieses PDF hat keine lesbare Textebene (Scan oder Plan). "
+                       "Es lässt sich nur als Datei unter url öffnen.")
+        return _json(aus)
+    # Telefon und E-Mail bleiben im Bestand, gehen aber nicht hinaus — wie
+    # beim Suchindex (``council/kontaktdaten.py``).
+    volltext = _sauber(_volltext(maskieren(text)))
+    offset = _int(args, "offset", 0, 0, 10**7)
+    stueck = volltext[offset:offset + VOLLTEXT_STUECK]
+    weiter = offset + len(stueck)
+    aus.update({"text": stueck or None, "text_length": len(volltext),
+                "next_offset": weiter if weiter < len(volltext) else None})
+    return _json(aus)
+
+
+# --------------------------------------------------------------------------- #
+# Protokoll
+# --------------------------------------------------------------------------- #
+
+def get_protocol_section(store, args: dict, base: str) -> str:
+    """Was im Protokoll zu einem Tagesordnungspunkt steht — die Debatte, also
+    das „Warum“, das der Beschlusstext nicht enthält."""
+    did = _int(args, "decision_id", 0, 0, 10**9)
+    if did:
+        d = store.get_decision(did)
+        if not d:
+            raise ToolError(f"Kein Beschluss mit der Kennung {did}.")
+        ksinr, nr = d.get("ksinr"), str(d.get("item_number") or "")
+    else:
+        ksinr = _int(args, "ksinr", 0, 0, 10**9)
+        nr = str(args.get("item_number") or "").strip()[:20]
+        if not ksinr or not nr:
+            raise ToolError("decision_id angeben — oder ksinr und item_number "
+                            "(z. B. „Ö 7.2“ aus get_agenda).")
+    # Das veröffentlichte Protokoll ist das öffentliche; einen nichtöffentlichen
+    # Punkt gibt es darin nicht — und wo der Schnitt doch etwas fände, soll es
+    # nicht hinaus.
+    if nr.upper().startswith("N"):
+        raise ToolError("Das ist ein nichtöffentlicher Tagesordnungspunkt; dazu gibt es "
+                        "kein veröffentlichtes Protokoll.")
+    top = re.sub(r"^Ö\s*", "", nr).strip()
+    aus: dict[str, Any] = {"ksinr": ksinr, "item_number": nr,
+                           "protocol_url": store.protokoll_urls_fuer([ksinr]).get(ksinr)}
+    roh = store.protocol_raw_text(ksinr) if ksinr else None
+    if not roh:
+        aus["text"] = None
+        aus["hint"] = ("Zu dieser Sitzung liegt noch kein Protokoll vor. Protokolle "
+                       "erscheinen meist einige Wochen nach der Sitzung.")
+        return _json(aus)
+    abschnitt = top_abschnitt(saeubern(roh), top) if top else ""
+    if not abschnitt.strip():
+        aus["text"] = None
+        aus["hint"] = ("Im Protokoll ließ sich der Abschnitt zu diesem Punkt nicht "
+                       "abgrenzen. Das ganze Protokoll steht unter protocol_url.")
+        return _json(aus)
+    text = _sauber(_volltext(maskieren(abschnitt)))
+    offset = _int(args, "offset", 0, 0, 10**7)
+    stueck = text[offset:offset + VOLLTEXT_STUECK]
+    weiter = offset + len(stueck)
+    aus.update({"text": stueck, "text_length": len(text),
+                "next_offset": weiter if weiter < len(text) else None})
+    return _json(aus)
 
 
 def list_committees(store, args: dict, base: str) -> str:
@@ -333,8 +501,10 @@ def get_agenda(store, args: dict, base: str) -> str:
                    # „gesperrte Information“, mehr gibt es dazu nicht.
                    "public": not str(nr or "").startswith("N"),
                    "title": titel,
-                   "outcome": _ERGEBNIS.get(o or "", o)}
-                  for nr, titel, o in tops],
+                   "outcome": _ERGEBNIS.get(o or "", o),
+                   # Für get_template: was am Punkt zur Abstimmung steht.
+                   "template_number": vorlage or None}
+                  for nr, titel, o, vorlage in tops],
         "url": f"{base}/council/sitzung?ksinr={ksinr}",
         "original_url": f"{RIS}/si0057.php?__ksinr={ksinr}",
     })
@@ -410,11 +580,31 @@ TOOLS: dict[str, Tool] = {t.name: t for t in (
     Tool("get_template", "Vorlage lesen",
          "Eine Vorlage (Beschlussvorlage, Antrag, Anfrage, Mitteilung) mit Beschlussvorschlag, "
          "finanziellen Auswirkungen und Volltext (Sachverhalt, Begründung). Langer Volltext "
-         "kommt in Stücken; mit next_offset weiterlesen.",
+         "kommt in Stücken; mit next_offset weiterlesen. Dazu die Liste der Anlagen "
+         "(Gutachten, Pläne, Anträge) mit attachment_id für get_attachment.",
          _schema({"template_number": {"type": "string", "description": "z. B. „25/0615“"},
                   "offset": {"type": "integer", "minimum": 0, "default": 0}},
                  ["template_number"]),
          get_template),
+    Tool("get_attachment", "Anlage lesen",
+         "Der Text einer Anlage zu einer Vorlage (attachment_id aus get_template). Noch "
+         "nicht geladene Anlagen holt Ratslotse beim ersten Abruf aus dem "
+         "Ratsinformationssystem. Langer Text kommt in Stücken; mit next_offset "
+         "weiterlesen. Scans ohne Textebene gibt es nur als PDF unter url.",
+         _schema({"attachment_id": {"type": "integer", "minimum": 1},
+                  "offset": {"type": "integer", "minimum": 0, "default": 0}},
+                 ["attachment_id"]),
+         get_attachment, open_world=True),
+    Tool("get_protocol_section", "Protokollabschnitt",
+         "Was im Sitzungsprotokoll zu einem Tagesordnungspunkt steht: die Debatte mit "
+         "Wortbeiträgen und die Abstimmung — also das „Warum“ hinter einem Beschluss. "
+         "decision_id aus search_decisions/get_decision, oder ksinr und item_number "
+         "aus get_agenda. Lange Abschnitte kommen in Stücken; mit next_offset weiterlesen.",
+         _schema({"decision_id": {"type": "integer", "minimum": 1},
+                  "ksinr": {"type": "integer", "minimum": 1},
+                  "item_number": {"type": "string", "description": "z. B. „Ö 7.2“"},
+                  "offset": {"type": "integer", "minimum": 0, "default": 0}}),
+         get_protocol_section),
     Tool("get_template_history", "Beratungsfolge",
          "Alle Beratungen einer Vorlage in allen Gremien, mit Datum und Ergebnis — z. B. "
          "„wurde das vorher im Ausschuss beraten?“.",
@@ -434,7 +624,8 @@ TOOLS: dict[str, Tool] = {t.name: t for t in (
          list_sessions),
     Tool("get_agenda", "Tagesordnung",
          "Die Tagesordnung einer Sitzung (ksinr aus list_sessions oder get_decision) samt "
-         "den Ergebnissen, sobald beschlossen ist.",
+         "den Ergebnissen, sobald beschlossen ist, und der Vorlagennummer je Punkt "
+         "(für get_template).",
          _schema({"ksinr": {"type": "integer", "minimum": 1}}, ["ksinr"]),
          get_agenda),
     Tool("count_decisions", "Beschlüsse zählen",

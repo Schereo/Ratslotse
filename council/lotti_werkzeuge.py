@@ -642,19 +642,20 @@ TOP_TITEL_MAX = 160
 
 
 def tagesordnung_daten(store, ksinr: int) -> tuple[dict, list[tuple]] | None:
-    """Sitzung und Tagesordnung als Daten: ``(sitzung, [(nr, titel, outcome)])``,
-    Titel ungekürzt und entschärft, ``outcome`` als Schlüssel (``accepted`` …)
-    oder ``None``. ``None`` statt des Paars, wenn es die Sitzung nicht gibt."""
+    """Sitzung und Tagesordnung als Daten:
+    ``(sitzung, [(nr, titel, outcome, vorlagennummer)])``, Titel ungekürzt und
+    entschärft, ``outcome`` als Schlüssel (``accepted`` …) oder ``None``.
+    ``None`` statt des Paars, wenn es die Sitzung nicht gibt."""
     sitzung = store.get_session(ksinr) if ksinr else None
     if not sitzung:
         return None
     ergebnisse = {r[0]: r[1] for r in store._conn.execute(  # noqa: SLF001
         "SELECT item_number, outcome FROM council_decisions WHERE ksinr = ?", (ksinr,))}
     tops = []
-    for nr, titel in store._conn.execute(  # noqa: SLF001
-            "SELECT item_number, title FROM council_agenda_items WHERE ksinr = ? ORDER BY id",
-            (ksinr,)).fetchall():
-        tops.append((nr, foreign_text.defuse(titel or "")[0], ergebnisse.get(nr)))
+    for nr, titel, vorlage in store._conn.execute(  # noqa: SLF001
+            "SELECT item_number, title, template_number FROM council_agenda_items "
+            "WHERE ksinr = ? ORDER BY id", (ksinr,)).fetchall():
+        tops.append((nr, foreign_text.defuse(titel or "")[0], ergebnisse.get(nr), vorlage))
     return sitzung, tops
 
 
@@ -669,7 +670,7 @@ def tagesordnung(store, args: dict) -> Ergebnis:
     sitzung, tops = daten
     schritt = f"Lotti liest die Tagesordnung vom {sitzung['session_date']}"
     zeilen = [f"{sitzung['committee']}, {sitzung['session_date']}:"]
-    for nr, titel, outcome in tops[:40]:
+    for nr, titel, outcome, _vorlage in tops[:40]:
         if len(titel) > TOP_TITEL_MAX:
             titel = titel[:TOP_TITEL_MAX].rsplit(" ", 1)[0] + " …"
         erg = _ERGEBNIS.get(outcome or "", "")

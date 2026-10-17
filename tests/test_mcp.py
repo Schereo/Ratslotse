@@ -41,6 +41,8 @@ def frische_dbs(monkeypatch):
             Path(base + suffix).unlink(missing_ok=True)
     monkeypatch.setenv("FEATURE_FLAGS", "mcp-server")
     mcp_router.zaehler_vergessen()
+    mcp_tools.lade_kontingent_vergessen()
+    monkeypatch.setattr(mcp_tools, "LADE_ABSTAND_S", 0)
     yield
 
 
@@ -328,6 +330,127 @@ def test_volltext_ohne_pdf_spuren():
     # Ein gewöhnlicher Satz bleibt, wie er ist.
     assert mcp_tools._entsperren("Der Rat tagt am 3. 4. um 18 Uhr") == \
         "Der Rat tagt am 3. 4. um 18 Uhr"
+
+
+def _protokoll_und_anlagen() -> None:
+    """Eine Sitzung mit Protokoll und eine Vorlage mit zwei Anlagen — eine
+    schon gelesen, eine noch nicht geladen."""
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(4720, "Rat", "2026-09-28", "18:00", "PFL", agenda_items=[
+        AgendaItem("Ö 7.2", "Weiteres Vorgehen Schießbahn Fliegerhorst - Beschluss",
+                   "26/0629"),
+        AgendaItem("N 11", "gesperrte Information")]))
+    cs._conn.execute(
+        "INSERT INTO council_protocols (ksinr, document_url, raw_text, extracted_at) "
+        "VALUES (4720, 'https://buergerinfo.oldenburg.de/getfile.php?id=1&type=do', ?, "
+        "datetime('now'))",
+        ("zu 7.1 Erster Punkt\nDer Bericht wird zur Kenntnis genommen.\n"
+         "zu 7.2 Weiteres Vorgehen Schießbahn Fliegerhorst\n"
+         "Ratsfrau Muster erläutert, die Altlasten müssten vor jeder Be-\nbauung weg. "
+         "Rückfragen an buero@example.org oder Tel. 0441 235-2350.\n"
+         "Der Beschlussvorschlag wird angenommen.\n"
+         "zu 8 Nächster Punkt\nNichts.\n",))
+    cs._conn.execute("INSERT INTO council_templates (kvonr, template_number, title, "
+                     "fetched_at) VALUES (29999, '26/0629', 'Schießbahn', datetime('now'))")
+    cs._conn.executemany(
+        "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
+        "n_pages, status, fetched_at) VALUES (?, 29999, ?, ?, ?, ?, ?, datetime('now'))",
+        [(501, "Anlage 1 Gutachten", "https://buergerinfo.oldenburg.de/getfile.php?id=501",
+          "Das Gutachten stellt Blei im Boden fest. " * 10, 4, "ok"),
+         (502, "Anlage 2 Lageplan", "https://buergerinfo.oldenburg.de/getfile.php?id=502",
+          None, None, "listed")])
+    cs._conn.commit()
+    cs.close()
+
+
+def test_vorlagennummer_je_tagesordnungspunkt(client):
+    """Ohne sie endet „was steht am 26.10. an?“ beim Titel — die Vorlage
+    dahinter war für einen Agenten nicht zu erreichen."""
+    _konto(client)
+    token = _schluessel(client)
+    _protokoll_und_anlagen()
+    a = _rufe(token, "get_agenda", ksinr=4720)
+    assert [i["template_number"] for i in a["items"]] == ["26/0629", None]
+
+
+def test_protokollabschnitt(client):
+    _konto(client)
+    token = _schluessel(client)
+    _protokoll_und_anlagen()
+    p = _rufe(token, "get_protocol_section", ksinr=4720, item_number="Ö 7.2")
+    assert "Altlasten müssten vor jeder Bebauung weg" in p["text"]
+    # Nur dieser Punkt — weder der vorige noch der nächste.
+    assert "Erster Punkt" not in p["text"] and "Nächster Punkt" not in p["text"]
+    # Telefon und E-Mail gehen nicht hinaus, wie beim Suchindex.
+    assert "example.org" not in p["text"] and "2350" not in p["text"]
+    assert p["protocol_url"].startswith("https://buergerinfo.oldenburg.de/")
+
+    for argumente in ({"ksinr": 4720, "item_number": "N 11"}, {"ksinr": 4720}):
+        r = _rpc(token, "tools/call", {"name": "get_protocol_section",
+                                       "arguments": argumente}).json()["result"]
+        assert r["isError"] is True
+    # Eine Sitzung ohne Protokoll ist kein Fehler, sondern ein Hinweis.
+    p = _rufe(token, "get_protocol_section", ksinr=4711, item_number="Ö 5")
+    assert p["text"] is None and "noch kein Protokoll" in p["hint"]
+
+
+def test_anlagen_auf_zuruf(client, monkeypatch):
+    """Eine noch nicht geladene Anlage holt der Server beim ersten Abruf —
+    genau einmal; danach steht sie im Bestand."""
+    _konto(client)
+    token = _schluessel(client)
+    _protokoll_und_anlagen()
+    geladen = []
+
+    def pdf(url):
+        geladen.append(url)
+        return ("Lageplan der Schießbahn mit Kontakt buero@example.org. " * 10, 2)
+
+    monkeypatch.setattr(mcp_tools.vorlagen, "_pdf_text", pdf)
+    t = _rufe(token, "get_template", template_number="26/0629")
+    assert {x["attachment_id"]: x["text"] for x in t["attachments"]} == {
+        501: "available", 502: "on_demand"}
+
+    assert "Blei im Boden" in _rufe(token, "get_attachment", attachment_id=501)["text"]
+    assert geladen == []
+
+    a = _rufe(token, "get_attachment", attachment_id=502)
+    assert a["loaded_now"] is True and "Lageplan der Schießbahn" in a["text"]
+    assert "example.org" not in a["text"]
+    a = _rufe(token, "get_attachment", attachment_id=502)
+    assert "loaded_now" not in a and len(geladen) == 1
+    # Im Bestand steht die Adresse noch (maskiert wird beim Hinausgehen).
+    cs = CouncilStore(COUNCIL_DB)
+    assert cs.anlage_text(502).count("example.org") == 10
+    cs.close()
+
+
+def test_anlage_ohne_textebene_wird_nicht_wieder_geladen(client, monkeypatch):
+    _konto(client)
+    token = _schluessel(client)
+    _protokoll_und_anlagen()
+    geladen = []
+    monkeypatch.setattr(mcp_tools.vorlagen, "_pdf_text",
+                        lambda url: geladen.append(url) or ("  ", 3))
+    for _ in range(2):
+        a = _rufe(token, "get_attachment", attachment_id=502)
+        assert a["text"] is None and "keine lesbare Textebene" in a["hint"]
+    assert len(geladen) == 1
+
+
+def test_nachladen_ist_gedeckelt(client, monkeypatch):
+    """Über alle Agenten zusammen: Das Ratsinformationssystem ist die Quelle
+    des ganzen Bestands; eine Sperre dort träfe den Ingest."""
+    _konto(client)
+    token = _schluessel(client)
+    _protokoll_und_anlagen()
+    monkeypatch.setattr(mcp_tools, "LADE_JE_STUNDE", 0)
+    monkeypatch.setattr(mcp_tools.vorlagen, "_pdf_text", lambda url: ("x" * 500, 1))
+    r = _rpc(token, "tools/call", {"name": "get_attachment",
+                                   "arguments": {"attachment_id": 502}}).json()["result"]
+    assert r["isError"] is True and "später" in r["content"][0]["text"]
+    # Was schon im Bestand steht, bleibt lesbar.
+    assert _rufe(token, "get_attachment", attachment_id=501)["text"]
 
 
 def test_aufrufe_werden_gezaehlt(client):

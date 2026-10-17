@@ -50,11 +50,13 @@ fremde Seite im Namen einer angemeldeten Person Anfragen stellen.
 |---|---|
 | `search_decisions` | Volltextsuche (deutsch, BM25) über Beschlüsse, filterbar nach Gremium, Ergebnis, Themenfeld, Zeitraum; blättert mit `offset` |
 | `get_decision` | Ein Beschluss vollständig: Text, Abstimmung, Antragsteller, Kurzfassung, einfache Sprache, Änderungsanträge, Links |
-| `get_template` | Eine Vorlage mit Beschlussvorschlag, Finanz- und Klimaauswirkungen und Volltext in Stücken zu 12.000 Zeichen |
+| `get_template` | Eine Vorlage mit Beschlussvorschlag, Finanz- und Klimaauswirkungen, Volltext in Stücken zu 12.000 Zeichen und der Liste ihrer Anlagen |
+| `get_attachment` | Der Text einer Anlage; eine noch nicht geladene holt Ratslotse beim ersten Abruf aus dem Ratsinformationssystem |
+| `get_protocol_section` | Der Protokollabschnitt zu einem Tagesordnungspunkt: Debatte, Wortbeiträge, Abstimmung |
 | `get_template_history` | Die Beratungsfolge einer Vorlage durch alle Gremien |
 | `list_committees` | Alle Gremien mit nächster Sitzung |
 | `list_sessions` | Sitzungen eines Gremiums, vergangen und geplant |
-| `get_agenda` | Die Tagesordnung einer Sitzung samt Ergebnissen |
+| `get_agenda` | Die Tagesordnung einer Sitzung samt Ergebnissen und Vorlagennummer je Punkt |
 | `count_decisions` | Beschlüsse eines Jahres nach Ergebnis, Themenfeld, Gremium |
 
 Alle Werkzeuge antworten mit **JSON**, auch die vier, deren Abfragen Lotti
@@ -95,3 +97,32 @@ Sitzungsspeicher auf den Server. Antworten kommen immer als
 `application/json`, ein `GET` bekommt 405, denn einen vom Server gesendeten
 Strom gibt es nicht. Verhandelt werden die Fassungen `2025-11-25`,
 `2025-06-18` und `2025-03-26`.
+
+## Protokolle und Anlagen
+
+Was ein Beschluss **bedeutet**, steht in der Vorlage; **warum** er so ausfiel,
+steht nur im Protokoll. `get_protocol_section` schneidet den Abschnitt eines
+Punkts aus dem öffentlichen Protokoll — mit demselben Schnitt, mit dem die
+Haushaltsdebatte ihre Reden findet (`council/haushaltsdebatte.py::top_abschnitt`,
+an den Ankern „zu 7.2“). Gemessen über 400 zufällige Beschlüsse mit Protokoll:
+**388 finden ihren Abschnitt** (97 %), Median rund 1.000 Zeichen. Gemeinsam
+beratene Punkte (Stadion: 6.1 bis 6.3) tragen die ganze Debatte und können
+30.000 Zeichen lang werden; sie kommen in Stücken. Nichtöffentliche Punkte
+(„N 11“) weist das Werkzeug ab.
+
+**Anlagen auf Zuruf.** Von den Anlagen einer Vorlage sind die meisten schon
+gelesen (`text: "available"`); was der Backfill noch nicht geholt hat
+(`"on_demand"`), lädt `get_attachment` beim ersten Abruf und legt den Text in
+den Bestand — der zweite Abruf und die KI-Frage haben ihn dann ohne Download.
+Ob ein PDF als gelesen gilt oder als Scan, entscheidet dieselbe Regel wie im
+Backfill (`council/anlagentext.py`); ein Scan wird als `empty` festgehalten
+und nicht bei jedem Abruf neu geladen. Gedeckelt ist das **über alle Agenten
+zusammen**: mindestens eine Sekunde zwischen zwei Downloads, höchstens 120 je
+Stunde. Das Ratsinformationssystem ist die Quelle des ganzen Bestands, eine
+Sperre dort träfe den Ingest.
+
+**Was nicht hinausgeht:** Telefonnummern und E-Mail-Adressen werden in
+Anlagen- und Protokolltext maskiert, wie beim Suchindex
+(`council/kontaktdaten.py::maskieren`). Kontonummern und Anschriften stehen
+ohnehin nicht im Bestand, sie fallen schon beim Speichern heraus.
+
