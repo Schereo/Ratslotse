@@ -429,11 +429,11 @@ def _top_anlagen(store, ksinr: int, mit_vorlage: set[str]) -> dict[str, list[dic
     return je_top
 
 
-def _pdf_laden(did: int, url: str) -> tuple[str, int]:
+def _pdf_laden(did: int, url: str, extraktor: str = anlagentext.PYMUPDF) -> tuple[str, int]:
     """Ein PDF aus dem Ratsinformationssystem lesen, gedeckelt und beurteilt."""
     _laden_erlaubt()
     try:
-        roh, seiten = vorlagen._pdf_text(url)  # noqa: SLF001
+        roh, seiten = vorlagen._pdf_text(url, extraktor)  # noqa: SLF001
     except Exception as fehler:  # noqa: BLE001 — ein PDF, keine Störung des Servers
         logger.warning("Anlage %s nicht geladen: %s", did, fehler)
         raise ToolError("Die Anlage ließ sich gerade nicht laden. Später erneut "
@@ -445,18 +445,20 @@ def get_attachment(store, args: dict, base: str) -> str:
     did = _int(args, "attachment_id", 0, 0, 10**9)
     zeile = store._conn.execute(  # noqa: SLF001
         "SELECT a.document_id, a.label, a.url, a.status, a.raw_text, a.n_pages, "
-        "t.template_number FROM council_attachments a "
+        "t.template_number, t.title FROM council_attachments a "
         "LEFT JOIN council_templates t ON t.kvonr = a.kvonr WHERE a.document_id = ?",
         (did,)).fetchone() if did else None
     if zeile:
-        did, label, url, status, text, seiten, vorlage = tuple(zeile)
+        did, label, url, status, text, seiten, vorlage, vorlagentitel = tuple(zeile)
         aus: dict[str, Any] = {"attachment_id": did, "label": _sauber(label),
                                "template_number": vorlage, "url": url}
         # ``failed`` darf es noch einmal versuchen: Meist war es ein
         # Netzaussetzer. ``ok`` ohne Text ebenso — so steht es in jedem lokalen
         # Abzug, der die Anlagentexte abspeckt (scripts/lokale_daten.py).
         if status != "empty" and not (status == "ok" and text) and url:
-            text, seiten = _pdf_laden(did, url)
+            # Derselbe Extraktor wie im Backfill: Was eine Haushalts-Schicht
+            # füllen könnte, liest pypdf (``anlagentext.extraktor_fuer``).
+            text, seiten = _pdf_laden(did, url, anlagentext.extraktor_fuer(label, vorlagentitel))
             store.anlagentext_nachtragen(did, text, seiten)
             aus["loaded_now"] = True
         aus["pages"] = seiten

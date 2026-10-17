@@ -1,13 +1,12 @@
 """Extract structured data from public council session protocols (Niederschriften).
 
 A past session carries a "Protokoll (öffentlich)" PDF. We download it, pull the
-text (``pypdf``) and ask an LLM to return structured decisions + attendance in one
+text (PyMuPDF, ``council/anlagentext.py``) and ask an LLM to return structured decisions + attendance in one
 call. Topic-matching is NOT done here — that is per-owner and lives in a later
 phase; this module produces owner-agnostic facts only.
 """
 from __future__ import annotations
 
-import io
 import json
 import logging
 import os
@@ -15,9 +14,9 @@ import re
 from types import SimpleNamespace
 
 import requests
-import pypdf
 from bs4 import BeautifulSoup
 
+from council import anlagentext
 from kern import llm
 
 BASE = "https://buergerinfo.oldenburg.de"
@@ -133,8 +132,10 @@ def extract_pdf_text(url: str) -> tuple[str, int, list[int]]:
     """Download a PDF and return (text, n_pages, page_offsets)."""
     r = _session.get(url, timeout=45)
     r.raise_for_status()
-    reader = pypdf.PdfReader(io.BytesIO(r.content))
-    seiten = [p.extract_text() or "" for p in reader.pages]
+    # PyMuPDF: pypdf riss hier Wörter auf („R atsherr“, „S eite“, 519 Fälle in
+    # 25 Protokollen), der TOP-Schnitt trifft mit beiden gleich oft
+    # (``council/anlagentext.py``).
+    seiten = anlagentext.pdf_seiten(r.content)
     return "\n".join(seiten), len(seiten), page_offsets(seiten)
 
 

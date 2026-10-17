@@ -4,7 +4,8 @@
 Der Anlagen-Scan erfasst alle Anlagen als Zeilen, lädt aber nur Antrags-PDFs
 als Volltext: von 6.354 Anlagen tragen 671 Text, 5.496 stehen auf 'listed'.
 Dieses Skript zieht die restlichen PDFs (Gutachten, Konzepte, Stellungnahmen)
-und extrahiert den Text — reine Netz+pypdf-Arbeit, kein LLM.
+und extrahiert den Text — reine Netz- und PDF-Arbeit, kein LLM (PyMuPDF;
+Haushalts-Anlagen pypdf, s. ``council/anlagentext.py``).
 
 Status-Vokabular wie gehabt: 'ok' = Text da, 'empty' = PDF ohne extrahierbaren
 Text (Scans/Planbilder), 'failed' = Download/Parse-Fehler (mit --retry-failed
@@ -29,7 +30,8 @@ load_dotenv(ROOT / ".env")
 
 from council.store import CouncilStore  # noqa: E402
 from council.anlagentext import (MAX_TEXT, MIN_BUCHSTABEN, MIN_TEXT,  # noqa: E402,F401
-                                 beurteilen, buchstabenanteil)
+                                 beurteilen, buchstabenanteil, extraktor_fuer,
+                                 finanz_muster)
 from council.kontaktdaten import entfernen  # noqa: E402
 from council.vorlagen import _pdf_text, _session  # noqa: E402
 
@@ -42,26 +44,6 @@ COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlit
 #: nimmt genau diese dazu. Wer die Grenze künftig erneut anhebt, trägt den alten
 #: Wert hier nach — dann findet derselbe Schalter auch jene Jahrgänge wieder.
 FRUEHERE_GRENZEN = (400_000,)
-
-
-def finanz_muster() -> list[str]:
-    """Die Label-Muster der Finanzschichten — aus der Registry, nicht doppelt.
-
-    Der Haushalts-Bereich liest sieben Schichten aus Anlagen (Jahresabschluss,
-    Teilhaushalte, Stellenplan, …). Wer nur die braucht, muss nicht 5.500 PDFs
-    laden: Auf der Dev-VM standen deshalb drei Seiten leer, obwohl ihre Parser
-    längst liefen. Die Muster stehen in ``finanzquellen`` — hier nur geholt,
-    damit sie nicht an zwei Stellen gepflegt werden müssen.
-    """
-    from council import finanzquellen as fq
-
-    muster: list[str] = []
-    for key in fq.REIHENFOLGE:
-        erkennung = getattr(fq.QUELLEN[key], "erkennung", None)
-        if erkennung is None:
-            continue
-        muster.extend(getattr(erkennung, "label_muster", None) or ())
-    return sorted(set(muster))
 
 
 #: Ab wie vielen Zeichen eine Seite überhaupt als „beschrieben" gilt — kürzere
@@ -205,19 +187,24 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
                          f"AND LENGTH(raw_text) IN ({laengen})))")
             print(f"Auch früher gekappte Anlagen (Textlänge exakt {laengen})", flush=True)
         rows = store._conn.execute(
-            f"SELECT document_id, url FROM council_attachments "
+            f"SELECT document_id, url, label, (SELECT t.title FROM council_templates t "
+            f"WHERE t.kvonr = council_attachments.kvonr LIMIT 1) AS vorlagentitel "
+            f"FROM council_attachments "
             f"WHERE {bedingung} AND url IS NOT NULL{wo} "
             f"ORDER BY document_id DESC" + (f" LIMIT {int(limit)}" if limit else ""),
             werte,
         ).fetchall()
         ok = leer = fehler = 0
 
-        def laden(document_id: int, url: str):
-            return document_id, _pdf_text(url)
+        def laden(document_id: int, url: str, extraktor: str):
+            return document_id, _pdf_text(url, extraktor)
 
         # Netz+Parse in Workern, DB-Schreiben im Main-Thread (SQLite-Konvention).
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futs = {pool.submit(laden, r["document_id"], r["url"]): r["document_id"]
+            # Haushalts-Anlagen bleiben bei pypdf: Ihre Parser lesen den
+            # gespeicherten Text und sind darauf abgestimmt (anlagentext.py).
+            futs = {pool.submit(laden, r["document_id"], r["url"],
+                                extraktor_fuer(r["label"], r["vorlagentitel"])): r["document_id"]
                     for r in rows}
             for fut in as_completed(futs):
                 did = futs[fut]
@@ -260,7 +247,7 @@ def process(db_path: Path, limit: int | None, workers: int, retry_failed: bool,
 
 
 def main() -> dict:
-    ap = argparse.ArgumentParser(description="Anlagen-Volltexte nachladen (Netz + pypdf)")
+    ap = argparse.ArgumentParser(description="Anlagen-Volltexte nachladen (Netz + PDF-Text)")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--retry-failed", action="store_true")

@@ -402,7 +402,7 @@ def test_anlagen_auf_zuruf(client, monkeypatch):
     _protokoll_und_anlagen()
     geladen = []
 
-    def pdf(url):
+    def pdf(url, extraktor=None):
         geladen.append(url)
         return ("Lageplan der Schießbahn mit Kontakt buero@example.org. " * 10, 2)
 
@@ -431,7 +431,7 @@ def test_anlage_ohne_textebene_wird_nicht_wieder_geladen(client, monkeypatch):
     _protokoll_und_anlagen()
     geladen = []
     monkeypatch.setattr(mcp_tools.vorlagen, "_pdf_text",
-                        lambda url: geladen.append(url) or ("  ", 3))
+                        lambda url, extraktor=None: geladen.append(url) or ("  ", 3))
     for _ in range(2):
         a = _rufe(token, "get_attachment", attachment_id=502)
         assert a["text"] is None and "keine lesbare Textebene" in a["hint"]
@@ -445,7 +445,7 @@ def test_nachladen_ist_gedeckelt(client, monkeypatch):
     token = _schluessel(client)
     _protokoll_und_anlagen()
     monkeypatch.setattr(mcp_tools, "LADE_JE_STUNDE", 0)
-    monkeypatch.setattr(mcp_tools.vorlagen, "_pdf_text", lambda url: ("x" * 500, 1))
+    monkeypatch.setattr(mcp_tools.vorlagen, "_pdf_text", lambda url, extraktor=None: ("x" * 500, 1))
     r = _rpc(token, "tools/call", {"name": "get_attachment",
                                    "arguments": {"attachment_id": 502}}).json()["result"]
     assert r["isError"] is True and "später" in r["content"][0]["text"]
@@ -472,7 +472,7 @@ def test_anlagen_am_tagesordnungspunkt(client, monkeypatch):
     cs.save_session(_sitzung_mit_top_anlagen())
     cs.close()
     geladen = []
-    monkeypatch.setattr(mcp_tools.vorlagen, "_pdf_text", lambda url: geladen.append(url) or (
+    monkeypatch.setattr(mcp_tools.vorlagen, "_pdf_text", lambda url, extraktor=None: geladen.append(url) or (
         "Die CDU beantragt, die Schießbahn vor einer Bebauung vollständig zu sanieren. " * 5, 2))
 
     a = _rufe(token, "get_agenda", ksinr=4730)
