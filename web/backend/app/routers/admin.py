@@ -29,7 +29,7 @@ from kern.store import Store
 
 from council import stream_stt
 from ..config import get_settings
-from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
+from ..antworten import (AdminDaumenRunter, CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
                          AdminEreignisse, AdminKohorten, AdminLotti, AdminPlaceCandidates,
@@ -223,6 +223,22 @@ def stats_dead_ends(
     diese Liste hätte das an dem Tag gezeigt, an dem es passierte.
     """
     return cast("list[AdminSackgasse]", store.sackgassen(max(1, min(days, 365))))
+
+
+@router.get("/stats/thumbs-down")
+def stats_thumbs_down(
+    days: int = 90,
+    _admin: dict = Depends(require_admin),
+    council: CouncilStore = Depends(get_council_store),
+) -> list[AdminDaumenRunter]:
+    """Die Daumen runter aus „Frag den Rat“ — mit Grund und, wo jemand sie
+    freigegeben hat, der ganzen Antwort samt Quellen.
+
+    Bis 10/2026 kam ein 👎 nur als Frage und 500 Zeichen an, und die standen
+    nirgends im Panel. Ohne Konto und ohne Gesprächs-id (wie die Liste der
+    Fragen ohne Antwort): Es geht darum, woran eine Antwort scheiterte.
+    """
+    return cast("list[AdminDaumenRunter]", council.daumen_runter(max(1, min(days, 365))))
 
 
 @router.get("/quiz/stats")

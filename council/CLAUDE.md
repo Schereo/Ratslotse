@@ -121,6 +121,7 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 | `council/store_akten.py` | 19 | Grundakten und Akten (Phase 1+2): Rohdaten für den Aufbau (`council/matters.py`), Entitäten und Erwähnungen, Abfragen |
 | `council/store_pruefung.py` | 6 | die stehenden Datenprüfungen (Regeln in `council/datenpruefung.py`, gerufen vom Herzschlag) |
 | `council/store_quiz.py` | 13 | die Quiz-Abfragen |
+| `council/store_rueckmeldungen.py` | 2 | Daumen und Gründe zur KI-Frage, freigegebene Antworten fürs Admin-Panel |
 | `council/store_presse.py` | 10 | Pressemitteilungen und Beteiligungen |
 | `council/store_fundstuecke.py` | 10 | Fundstücke, Rückblicke, Social-Text |
 | `council/geld/*.py` | 24 | je eine Facette der KI-Frage |

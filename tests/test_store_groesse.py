@@ -25,7 +25,7 @@ STORE = WURZEL / "council" / "store.py"
 #: Stand nach dem zwölften Schnitt (03.09.2026). Darf schrumpfen. Was jetzt
 #: noch hier liegt, ist der Kern: Beschlüsse, Vorlagen, Anlagen, Herkunft,
 #: Suche und Embeddings.
-HOECHSTENS_METHODEN = 161
+HOECHSTENS_METHODEN = 160
 HOECHSTENS_ZEILEN = 4786
 
 
@@ -65,6 +65,7 @@ def _mixins():
     from council.store_personen import PersonenMixin
     from council.store_presse import PresseMixin
     from council.store_quiz import QuizMixin
+    from council.store_rueckmeldungen import RueckmeldungenMixin
     from council.store_schema import SchemaMixin
     from council.store_sitzungen import SitzungenMixin
     from council.store_themen import ThemenMixin
@@ -78,6 +79,7 @@ def _mixins():
         "Personen": (PersonenMixin, 27),
         "Presse": (PresseMixin, 9),
         "Quiz": (QuizMixin, 12),
+        "Rückmeldungen": (RueckmeldungenMixin, 3),
         "Schema": (SchemaMixin, 14),
         "Sitzungen": (SitzungenMixin, 47),
         "Themen": (ThemenMixin, 30),

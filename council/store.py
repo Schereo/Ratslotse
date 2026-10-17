@@ -23,6 +23,7 @@ from council.store_orte import OrteMixin
 from council.store_personen import PersonenMixin
 from council.store_presse import PresseMixin
 from council.store_pruefung import PruefungMixin
+from council.store_rueckmeldungen import RueckmeldungenMixin
 from council.store_quiz import QuizMixin
 # Schema, Migration und die Vokabulare des Umbenennungs-Umbaus liegen seit
 # 09/2026 in `store_schema.py` — `_migrate` allein war 2.458 Zeilen. Sie werden
@@ -157,7 +158,8 @@ def _produkt_stufe(begriffe: list[str]) -> str | None:
 # Datei nicht an.
 class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                    PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
-                   ThemenMixin, ViertelMixin, WortbeitraegeMixin, *_geld.MIXINS):
+                   RueckmeldungenMixin, ThemenMixin, ViertelMixin, WortbeitraegeMixin,
+                   *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None,
                  *, einmal: bool = False):
         self._path = path
@@ -4467,68 +4469,6 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
             self._conn.execute(
                 "DELETE FROM council_partei_meinungen_cache "
                 "WHERE created_at < datetime('now', '-30 days')")
-
-
-    #: Die festen Gründe zum Daumen runter.
-    QA_FEEDBACK_REASONS = ("wrong", "incomplete", "outdated", "off_topic")
-
-    def save_qa_feedback(self, question: str, answer_excerpt: str | None,
-                         rating: str, reason: str | None,
-                         user_id: int | None = None, source: str = "ask",
-                         reason_kind: str | None = None,
-                         shared_answer: str | None = None) -> None:
-        """Daumen hoch/runter zu einer KI-Antwort (5a/I-03).
-
-        Ein Konto hat je **Antwort** eine Stimme: Der nachgereichte Grund und
-        die korrigierte Bewertung (Daumen runter → hoch) überschreiben die
-        frühere Zeile, statt sich als widersprüchliches Paar in der Tabelle zu
-        stapeln — sonst zählte jede Meinungsänderung doppelt. Anonyme
-        Rückmeldungen haben keinen Schlüssel und werden weiterhin angehängt.
-
-        **Der Schlüssel ist die Antwort, nicht die Frage** — seit Lottis
-        Fenster (09/2026) einen Daumen hat. Dort heißt die häufigste Frage auf
-        jeder Seite gleich: „Was sehe ich hier?" steht als Vorschlags-Chip
-        unter jeder Erklärung. Mit dem alten Schlüssel (Konto + Frage) hätte
-        ein Konto über alle Seiten hinweg **eine einzige** Lotti-Stimme
-        abgeben können, und jede weitere hätte die vorige überschrieben — die
-        Quote wäre dauerhaft zu klein gewesen, ohne dass es auffällt. Der
-        Antwort-Auszug unterscheidet die Seiten; ``source`` gehört mit in den
-        Schlüssel, weil dieselbe Frage im Archiv etwas anderes beantwortet als
-        im Fenster.
-        """
-        if rating not in ("up", "down"):
-            raise ValueError(f"rating muss up/down sein, nicht {rating!r}")
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        quelle = source if source in ("ask", "lotti") else "ask"
-        werte = (question[:300], (answer_excerpt or "")[:500] or None, rating,
-                 (reason or "").strip()[:500] or None, user_id, now)
-        # Grund und freigegebene Antwort gehören zum Daumen RUNTER: Wer auf
-        # „hilfreich“ umschwenkt, nimmt beides zurück — auch die Freigabe.
-        art = reason_kind if rating == "down" and reason_kind in self.QA_FEEDBACK_REASONS else None
-        kopie = shared_answer if rating == "down" else None
-        with self._conn:
-            if user_id is not None:
-                # `IS` statt `=`: Eine Antwort ohne Auszug ist NULL, und NULL
-                # ist mit `=` zu nichts gleich — auch nicht zu sich selbst.
-                vorher = self._conn.execute(
-                    "SELECT id FROM council_qa_feedback WHERE user_id = ? AND question = ? "
-                    "AND answer_excerpt IS ? AND COALESCE(source, 'ask') = ? "
-                    "ORDER BY id DESC LIMIT 1",
-                    (user_id, werte[0], werte[1], quelle)).fetchone()
-                if vorher:
-                    self._conn.execute(
-                        "UPDATE council_qa_feedback SET rating = ?, "
-                        "reason = ?, created = ?, reason_kind = ?, shared_answer = ? "
-                        "WHERE id = ?",
-                        (rating, werte[3], now, art, kopie, vorher[0]))
-                    return
-            self._conn.execute(
-                "INSERT INTO council_qa_feedback "
-                "(question, answer_excerpt, rating, reason, user_id, created, source, "
-                "reason_kind, shared_answer) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (*werte, quelle, art, kopie),
-            )
 
 
     def get_decisions_by_ids(self, ids: list[int]) -> list[dict]:
