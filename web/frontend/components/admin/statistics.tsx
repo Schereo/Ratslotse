@@ -11,6 +11,7 @@ import { StatKicker } from "@/components/admin-charts";
 import { AdminVerlauf } from "@/components/grafik/admin-verlauf";
 import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
+import { AntwortText } from "@/components/qa-bausteine";
 import { clientFarbe, clientLabel } from "@/lib/clients";
 import { KohortenSection } from "./cohorts";
 import { AbschnittKopf, Basis, KennzahlCard, Veraenderung } from "./primitives";
@@ -636,6 +637,9 @@ function DaumenRunterSection() {
 
 function DaumenRunterZeile({ d }: { d: AdminDaumenRunter }) {
   const [offen, setOffen] = useState(false);
+  // Die Chips in der Antwort zählen in der Reihenfolge der Quellenliste.
+  const nummern = new Map<number, number>();
+  for (const [i, q] of (d.shared?.sources ?? []).entries()) if (q.id != null) nummern.set(q.id, i + 1);
   return (
     <div className="grid gap-x-4 gap-y-1 p-4 sm:grid-cols-[5.5rem_minmax(0,1fr)]" data-daumen-runter>
       <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground sm:pt-1">
@@ -652,7 +656,7 @@ function DaumenRunterZeile({ d }: { d: AdminDaumenRunter }) {
         </div>
         {d.reason && <p className="mt-1 text-sm leading-snug text-foreground">„{d.reason}“</p>}
         {!d.shared && d.answer_excerpt && (
-          <p className="mt-1 text-sm italic leading-snug text-muted-foreground">{d.answer_excerpt}…</p>
+          <p className="mt-1 text-sm italic leading-snug text-muted-foreground">{d.answer_excerpt}{d.answer_excerpt.length >= 500 ? "…" : ""}</p>
         )}
         {d.shared && (
           <div className="mt-2">
@@ -663,14 +667,18 @@ function DaumenRunterZeile({ d }: { d: AdminDaumenRunter }) {
             </button>
             {offen && (
               <div className="mt-2 space-y-3 rounded-lg border border-border bg-muted/40 p-3">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{d.shared.answer}</p>
+                {/* Dieselbe Darstellung wie im Gespräch: Die Person sah Chips
+                    und Zwischenköpfe, nicht Sternchen und Rauten. */}
+                <div className="text-sm leading-relaxed text-foreground">
+                  <AntwortText text={d.shared.answer} idToNum={nummern} />
+                </div>
                 {d.shared.sources.length > 0 && (
                   <div>
                     <StatKicker>Quellen der Antwort · {d.shared.sources.length}</StatKicker>
                     <ol className="mt-1 space-y-1 text-sm">
                       {d.shared.sources.map((q, j) => (
                         <li key={`${q.id}-${j}`} className="flex gap-2">
-                          <span className="w-6 flex-none text-right font-mono text-xs tabular-nums text-muted-foreground">[{q.id}]</span>
+                          <span className="w-5 flex-none pt-0.5 text-right font-mono text-xs tabular-nums text-muted-foreground">{j + 1}</span>
                           <span className="min-w-0">
                             {q.id ? (
                               <Link href={`/council/decision?id=${q.id}`} className="text-foreground hover:text-primary hover:underline">
