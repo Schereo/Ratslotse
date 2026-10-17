@@ -23,13 +23,21 @@ Vektoren bestehen (der Schlussbericht des Rechnungsprüfungsamts), wird ein
 Renderer gebraucht; der ist optional und fehlt er, bleibt die Seite ungelesen
 statt falsch gelesen.
 
-**Die Lage-Metadaten lügen.** Von drei AWB-Jahrgängen tragen zwei ``/Rotate``
-passend zum Inhalt, einer nicht: 208461 hat eine hochkant-MediaBox, das Bild
-darin liegt aber quer. Wer ``/Rotate`` folgt, dreht bei zwei von drei Jahrgängen
-falsch. Wir folgen ihm gar nicht — das eingebettete Bild geht so, wie es
-gescannt wurde, an das Modell. Auf der um 90° liegenden 200-dpi-Seite gingen
-alle 24 Rechenproben auf; die Modelle kommen mit der Drehung zurecht, unsere
-Metadaten nicht.
+**Die Lage-Metadaten lügen — die Lage kommt aus dem Bild.** Gemessen an
+sechs Scan-Dokumenten (17.10.2026): ``/Rotate`` und die Platzierungsmatrix
+sagen, wie ein BETRACHTER die Seite zeigt, nicht, ob der Text darin aufrecht
+steht. Beim Konzernabschluss 2013 (188333) hätten sie richtig aufgerichtet, bei
+den AWB-Plänen 2019/2021 (193959, 224533) ein schon aufrechtes Bild seitlich
+gedreht, bei 2020/2022 (208461, 240156) gar nichts gesagt. Wir folgen ihnen
+deshalb weiterhin nicht.
+
+Seitlich liegende Seiten werden aber AUFGERICHTET (:func:`aufrichten`) — bis
+10/2026 gingen sie so an das Modell, wie sie gescannt wurden, weil die AWB-
+Proben auch seitlich aufgingen. Das war zu kurz gemessen: In zweispaltigen
+Tabellen verrutschen seitlich gelesen die Zeilen. Beim Konzern 2013 bestand
+Sonnet alle drei Summenproben mit vier falschen Zellen, bei AWB 2020 standen
+alle Beträge eines Blocks eine Beschriftung zu tief — und keine Summenprobe
+merkt, wenn die richtige Zahl am falschen Posten steht.
 
 WAS DIESES MODUL BEWUSST NICHT TUT: Es normalisiert keine Zahlen. „1.234,56"
 bleibt „1.234,56". Wer das Modell rechnen oder umformatieren lässt, verliert
@@ -43,6 +51,7 @@ import base64
 import io
 import os
 import re
+import zlib
 from dataclasses import dataclass
 
 import pypdf
@@ -98,6 +107,9 @@ class Seitenbild:
     mime: str
     #: „eingebettet" oder „gerendert" — steht später in der Herkunft.
     weg: str
+    #: Um wie viel Grad (gegen den Uhrzeigersinn) :func:`aufrichten` die Seite
+    #: gedreht hat. 0 heißt: lag schon aufrecht, oder es war nicht zu klären.
+    drehung: int = 0
 
     def als_data_url(self) -> str:
         return f"data:{self.mime};base64,{base64.b64encode(self.daten).decode('ascii')}"
@@ -267,6 +279,118 @@ def _einmal_rendern(renderer, roh: bytes, dpi: float) -> bytes:
 
 
 # --------------------------------------------------------------------------
+# Lage: seitlich liegende Seiten aufrichten
+# --------------------------------------------------------------------------
+#
+# Zwei Schritte, weil jeder für sich gemessen nur das eine kann
+# (17.10.2026, 200 Scanseiten aus sechs Dokumenten, Wahrheit am Bild):
+#
+# 1. ACHSE aus den Pixeln: Laufen die Zeilen waagerecht oder senkrecht?
+#    Textzeilen machen das Tintenprofil quer zu ihnen feinkörnig (Zeile,
+#    Lücke, Zeile); längs mitteln sich die Buchstaben weg. 200 von 200
+#    richtig, kostenlos. Oben/unten können Pixel dagegen NICHT: Ziffern
+#    haben alle Versalhöhe, das Mittelband fehlt — das beste Merkmal kam auf
+#    Zahlentabellen auf 160 von 200.
+# 2. RICHTUNG aus einem Vergleich: Dasselbe Bild in drei Drehungen (0°, 90°,
+#    270°), und das Sehmodell sagt, welche aufrecht steht. 157 von 157
+#    richtig, darunter 30 aufrechte Seiten, die es unverändert ließ. Nach der
+#    Richtung FRAGEN taugt nicht: „Uhrzeigersinn oder gegen?" beantwortete
+#    das Modell für jede der 127 Seiten gleich, egal wie sie lag.
+#
+# Die 0° stehen mit zur Wahl, damit eine falsch eingestufte Achse nichts
+# verdreht. Gefragt wird nur bei senkrechter Achse — eine aufrechte Seite
+# kostet nichts extra, eine seitliche rund 0,0008 $.
+
+#: Die Frage für den Vergleich. Die Fassungen werden je Seite anders
+#: gemischt: Eine Vorliebe für einen Buchstaben schlüge sonst durch.
+LAGE_PROMPT = (
+    "Hier sind drei Fassungen derselben gescannten Seite, unterschiedlich "
+    "gedreht. In welcher Fassung steht der Text aufrecht und ist normal von "
+    "links nach rechts lesbar? Antworte mit genau einem Buchstaben: A, B oder C.")
+
+#: Die Kantenlänge, auf die das Bild für die Achse verkleinert wird — bei
+#: dieser Auflösung gemessen. Kleiner verschwimmen die Zeilenlücken.
+_ACHSE_PX = 2000
+#: Fensterbreite der Glättung in Pixeln (bei ``_ACHSE_PX``): breiter als eine
+#: Zeile, schmaler als eine Tabellenspalte.
+_FENSTER = 41
+#: Weniger Tinte als das gilt als leere Seite — sie wird nicht gedreht.
+_MIN_TINTE = 0.001
+
+
+def _feinenergie(profil) -> float:
+    import numpy as np  # noqa: PLC0415 — nur wer aufrichtet, braucht es
+
+    p = profil.astype(float)
+    glatt = np.convolve(p, np.ones(_FENSTER) / _FENSTER, mode="same")
+    return float(((p - glatt) ** 2).sum() / max(1.0, (p ** 2).sum()))
+
+
+def zeilen_senkrecht(bild) -> bool:
+    """Laufen die Textzeilen dieses PIL-Bildes senkrecht?"""
+    import numpy as np  # noqa: PLC0415
+
+    grau = bild.convert("L")
+    grau.thumbnail((_ACHSE_PX, _ACHSE_PX))
+    tinte = np.asarray(grau, dtype=np.float32) < 128
+    if tinte.mean() < _MIN_TINTE:
+        return False
+    return _feinenergie(tinte.sum(0)) > _feinenergie(tinte.sum(1))
+
+
+def _klein(bild) -> str:
+    kopie = bild.copy()
+    kopie.thumbnail((900, 900))
+    puffer = io.BytesIO()
+    kopie.save(puffer, "JPEG", quality=80)
+    return "data:image/jpeg;base64," + base64.b64encode(puffer.getvalue()).decode("ascii")
+
+
+def aufrecht_waehlen(bild, model: str = MODEL) -> int | None:
+    """Welche Drehung (0, 90 oder 270 Grad gegen den Uhrzeigersinn) stellt das
+    Bild aufrecht? ``None``, wenn die Antwort keine der drei ist."""
+    from kern.llm import chat_complete  # noqa: PLC0415
+
+    # Reihenfolge aus dem Bildinhalt: je Seite anders, aber wiederholbar.
+    reihen = ((0, 90, 270), (90, 270, 0), (270, 0, 90))
+    kandidaten = reihen[zlib.crc32(bild.tobytes()[:65536]) % 3]
+    inhalt: list[dict] = [{"type": "text", "text": LAGE_PROMPT}]
+    for name, grad in zip("ABC", kandidaten, strict=True):
+        inhalt += [{"type": "text", "text": f"Fassung {name}:"},
+                   {"type": "image_url",
+                    "image_url": {"url": _klein(bild.rotate(grad, expand=True))}}]
+    antwort = chat_complete(model=model, temperature=TEMPERATUR,
+                            messages=[{"role": "user", "content": inhalt}],
+                            _feature="attachment_ocr")
+    buchstabe = (antwort.choices[0].message.content or "").strip().upper()[:1]
+    return dict(zip("ABC", kandidaten, strict=True)).get(buchstabe)
+
+
+def aufrichten(bild: Seitenbild, model: str = MODEL) -> Seitenbild:
+    """Eine seitlich liegende Seite aufrecht stellen — sonst unverändert.
+
+    Unverändert heißt auch: Wo etwas fehlt (Pillow, numpy, ein lesbares
+    Bild, eine eindeutige Antwort), geht die Seite so weiter wie bis 10/2026.
+    Das ist kein stiller Fehler, sondern der alte, gemessene Zustand."""
+    try:
+        from PIL import Image  # noqa: PLC0415
+
+        pil = Image.open(io.BytesIO(bild.daten))
+        pil.load()
+        if not zeilen_senkrecht(pil):
+            return bild
+        grad = aufrecht_waehlen(pil, model=model)
+    except Exception:  # noqa: BLE001 — Aufrichten ist eine Verbesserung, keine Bedingung
+        return bild
+    if not grad:
+        return bild
+    gedreht = pil.convert("RGB").rotate(grad, expand=True)
+    puffer = io.BytesIO()
+    gedreht.save(puffer, "JPEG", quality=90)
+    return Seitenbild(puffer.getvalue(), "image/jpeg", bild.weg, drehung=grad)
+
+
+# --------------------------------------------------------------------------
 # Bild → Text
 # --------------------------------------------------------------------------
 
@@ -364,6 +488,8 @@ class Lesung:
     skalen: tuple[str, ...]
     modell: str
     weg: str
+    #: Seiten, die vor dem Lesen aufgerichtet wurden (:func:`aufrichten`).
+    gedreht: int = 0
 
     @property
     def vollstaendig(self) -> bool:
@@ -371,7 +497,7 @@ class Lesung:
 
 
 def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
-             dpi: int = 200) -> Lesung:
+             dpi: int = 200, aufrichten_an: bool = True) -> Lesung:
     """Ein ganzes PDF lesen, Seite für Seite.
 
     Der Vollständigkeitszähler ist Absicht: Eine fehlende Seite lässt jede
@@ -381,7 +507,7 @@ def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
     leser = pypdf.PdfReader(io.BytesIO(daten))
     seiten = leser.pages if max_seiten is None else leser.pages[:max_seiten]
     teile: list[str] = []
-    gelesen = uebersprungen = 0
+    gelesen = uebersprungen = gedreht = 0
     wege: set[str] = set()
 
     for nr, page in enumerate(seiten, start=1):
@@ -391,6 +517,9 @@ def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
             uebersprungen += 1
             teile.append(PLATZHALTER.format(nr=nr))
             continue
+        if aufrichten_an:
+            bild = aufrichten(bild)
+            gedreht += 1 if bild.drehung else 0
         wege.add(bild.weg)
         text = lies_seite(bild, model=model)
         if len(text) >= MIN_SEITE:
@@ -401,5 +530,5 @@ def lies_pdf(daten: bytes, model: str = MODEL, max_seiten: int | None = None,
     return Lesung(
         text=ganz, seiten=len(seiten), gelesen=gelesen,
         uebersprungen=uebersprungen, skalen=tuple(skalenhinweise(ganz)),
-        modell=model, weg="+".join(sorted(wege)) or "keiner",
+        modell=model, weg="+".join(sorted(wege)) or "keiner", gedreht=gedreht,
     )
