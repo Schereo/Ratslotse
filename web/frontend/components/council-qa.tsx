@@ -2726,7 +2726,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               <PrintButton iconOnly />
               {turn.answer && !turn.fehler && <VorlesenKnopf text={turn.answer} />}
               {turn.answer && !turn.fehler
-                && <FeedbackDaumen question={turn.question} answer={turn.answer} />}
+                && <FeedbackDaumen question={turn.question} answer={turn.answer} answerId={turn.answerId} />}
               <span role="status" className="min-w-0 basis-full text-hinweis text-muted-foreground sm:flex-1 sm:basis-auto sm:text-right">
                 {/* 5a/I-02 bzw. RG-10: ehrlich sagen, worauf die Antwort fußt. */}
                 {turn.unclear
