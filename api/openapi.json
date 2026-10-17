@@ -224,6 +224,75 @@
         "title": "AdminCouncilStats",
         "type": "object"
       },
+      "AdminDaumenRunter": {
+        "description": "Ein Daumen runter aus „Frag den Rat“ — ohne Konto, wie die Sackgassen.",
+        "properties": {
+          "answer_excerpt": {
+            "title": "Answer Excerpt",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason_kind": {
+            "title": "Reason Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shared": {
+            "description": "Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat.",
+            "properties": {
+              "answer": {
+                "title": "Answer",
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "$ref": "#/components/schemas/AdminFreigabeQuelle"
+                },
+                "title": "Sources",
+                "type": "array"
+              }
+            },
+            "required": [
+              "answer",
+              "sources"
+            ],
+            "title": "AdminFreigabe",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "created",
+          "question",
+          "answer_excerpt",
+          "reason",
+          "reason_kind",
+          "shared"
+        ],
+        "title": "AdminDaumenRunter",
+        "type": "object"
+      },
       "AdminDistrictReport": {
         "description": "Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer.",
         "properties": {
@@ -698,6 +767,76 @@
           "n"
         ],
         "title": "AdminFehlerTag",
+        "type": "object"
+      },
+      "AdminFreigabe": {
+        "description": "Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat.",
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFreigabeQuelle"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "answer",
+          "sources"
+        ],
+        "title": "AdminFreigabe",
+        "type": "object"
+      },
+      "AdminFreigabeQuelle": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "session_date",
+          "committee",
+          "outcome"
+        ],
+        "title": "AdminFreigabeQuelle",
         "type": "object"
       },
       "AdminGrowth": {
@@ -28340,6 +28479,54 @@
           }
         },
         "summary": "Stats Signups",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/thumbs-down": {
+      "get": {
+        "description": "Die Daumen runter aus „Frag den Rat“ — mit Grund und, wo jemand sie\nfreigegeben hat, der ganzen Antwort samt Quellen.\n\nBis 10/2026 kam ein 👎 nur als Frage und 500 Zeichen an, und die standen\nnirgends im Panel. Ohne Konto und ohne Gesprächs-id (wie die Liste der\nFragen ohne Antwort): Es geht darum, woran eine Antwort scheiterte.",
+        "operationId": "stats_thumbs_down_api_admin_stats_thumbs_down_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 90,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminDaumenRunter"
+                  },
+                  "title": "Response Stats Thumbs Down Api Admin Stats Thumbs Down Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Thumbs Down",
         "tags": [
           "admin"
         ]

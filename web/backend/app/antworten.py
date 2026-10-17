@@ -2273,6 +2273,32 @@ class AdminLotti(TypedDict):
     nudge: AdminLottiAnstupser
 
 
+class AdminFreigabeQuelle(TypedDict):
+    id: int | None
+    title: str | None
+    session_date: str | None
+    committee: str | None
+    outcome: str | None
+
+
+class AdminFreigabe(TypedDict):
+    """Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat."""
+    answer: str
+    sources: list[AdminFreigabeQuelle]
+
+
+class AdminDaumenRunter(TypedDict):
+    """Ein Daumen runter aus „Frag den Rat“ — ohne Konto, wie die Sackgassen."""
+    created: str
+    question: str
+    answer_excerpt: str | None
+    reason: str | None
+    #: wrong | incomplete | outdated | off_topic — oder None (vor 10/2026, oder keiner gewählt)
+    reason_kind: str | None
+    #: Nur mit Einwilligung beim Absenden.
+    shared: AdminFreigabe | None
+
+
 class AdminSackgasse(TypedDict):
     """Eine Frage, die keine Quelle gefunden hat.
 

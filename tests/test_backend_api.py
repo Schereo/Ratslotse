@@ -3726,6 +3726,31 @@ def test_daumen_runter_gibt_die_antwort_nur_mit_einwilligung_frei(client):
     assert r.status_code == 422
 
 
+def test_admin_sieht_daumen_runter_samt_freigabe_ohne_konto(client):
+    """Das Panel zeigt Grund und — nur wo freigegeben — die ganze Antwort,
+    nie das Konto (wie die Fragen ohne Antwort)."""
+    _register(client)
+    frage = "Was kostet der Stadionneubau insgesamt?"
+    client.post("/api/council/qa-feedback", json={
+        "question": frage, "answer_excerpt": "Der Rat", "rating": "down",
+        "answer_id": _gelieferte_antwort(), "reason_kind": "wrong", "share_answer": True,
+        "reason": "Zahl stimmt nicht"})
+    client.post("/api/council/qa-feedback", json={
+        "question": "Ohne Freigabe?", "answer_excerpt": "Kurz", "rating": "down"})
+    r = client.get("/api/admin/stats/thumbs-down")
+    assert r.status_code == 200
+    zeilen = {z["question"]: z for z in r.json()}
+    z = zeilen[frage]
+    assert z["reason_kind"] == "wrong" and z["reason"] == "Zahl stimmt nicht"
+    assert z["shared"]["answer"] == "Der Rat stimmte zu [5]."
+    assert z["shared"]["sources"][0]["title"] == "Stadionneubau"
+    assert zeilen["Ohne Freigabe?"]["shared"] is None
+    assert all("user_id" not in z and "email" not in z for z in r.json())
+    # Nur für Admins.
+    client.cookies.clear()
+    assert client.get("/api/admin/stats/thumbs-down").status_code in (401, 403)
+
+
 def test_qa_share_nimmt_nur_die_server_kopie(client):
     """Was der Client mitschickt, zählt nicht (zweite Prüfung 10/2026, F3):
     Vorher ließ sich jeder Text samt erfundener Zitate echter Ratsmitglieder

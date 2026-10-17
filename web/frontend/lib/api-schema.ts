@@ -979,6 +979,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/thumbs-down": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Thumbs Down
+         * @description Die Daumen runter aus „Frag den Rat“ — mit Grund und, wo jemand sie
+         *     freigegeben hat, der ganzen Antwort samt Quellen.
+         *
+         *     Bis 10/2026 kam ein 👎 nur als Frage und 500 Zeichen an, und die standen
+         *     nirgends im Panel. Ohne Konto und ohne Gesprächs-id (wie die Liste der
+         *     Fragen ohne Antwort): Es geht darum, woran eine Antwort scheiterte.
+         */
+        get: operations["stats_thumbs_down_api_admin_stats_thumbs_down_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -6526,6 +6551,32 @@ export interface components {
             upcoming: number;
         };
         /**
+         * AdminDaumenRunter
+         * @description Ein Daumen runter aus „Frag den Rat“ — ohne Konto, wie die Sackgassen.
+         */
+        AdminDaumenRunter: {
+            /** Answer Excerpt */
+            answer_excerpt: string | null;
+            /** Created */
+            created: string;
+            /** Question */
+            question: string;
+            /** Reason */
+            reason: string | null;
+            /** Reason Kind */
+            reason_kind: string | null;
+            /**
+             * AdminFreigabe
+             * @description Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat.
+             */
+            shared: {
+                /** Answer */
+                answer: string;
+                /** Sources */
+                sources: components["schemas"]["AdminFreigabeQuelle"][];
+            } | null;
+        };
+        /**
          * AdminDistrictReport
          * @description Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer.
          */
@@ -6718,6 +6769,29 @@ export interface components {
             n: number;
             /** Tag */
             tag: string;
+        };
+        /**
+         * AdminFreigabe
+         * @description Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat.
+         */
+        AdminFreigabe: {
+            /** Answer */
+            answer: string;
+            /** Sources */
+            sources: components["schemas"]["AdminFreigabeQuelle"][];
+        };
+        /** AdminFreigabeQuelle */
+        AdminFreigabeQuelle: {
+            /** Committee */
+            committee: string | null;
+            /** Id */
+            id: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string | null;
+            /** Title */
+            title: string | null;
         };
         /** AdminGrowth */
         AdminGrowth: {
@@ -18684,6 +18758,37 @@ export interface operations {
             };
         };
     };
+    stats_thumbs_down_api_admin_stats_thumbs_down_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDaumenRunter"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_users_api_admin_users_get: {
         parameters: {
             query?: never;
@@ -25477,4 +25582,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 86eb87b53b90e821a4902906d8ae57dd1411171a616590a9d1c685b78e24fb0c
+// vertrag-sha256: 982e72b57ba4f97a5a9498a49cea03a36085f39cdb5a64f24108b30d7f6fac9b
