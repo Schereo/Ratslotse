@@ -540,6 +540,15 @@ def test_protokollabschnitt_ueber_die_seitengrenze(client):
     assert "geschafft.\n\nRatsfrau Schilling" in p["text"]
 
 
+def test_die_anleitung_nennt_jedes_werkzeug():
+    """Die Anleitung ist das Erste, was ein Agent liest. Kennt sie ein Werkzeug
+    nicht, findet der Agent es nur, wenn er zufällig die Beschreibung liest —
+    so ging es bis 10/2026 dem Protokollabschnitt und den Anlagen."""
+    fehlt = sorted(n for n in mcp_tools.TOOLS if n not in mcp_router.ANLEITUNG)
+    assert not fehlt, (f"ANLEITUNG in web/backend/app/routers/mcp.py nennt {fehlt} nicht — "
+                       "dort in einen der typischen Wege aufnehmen.")
+
+
 def test_aufrufe_werden_gezaehlt(client):
     _konto(client)
     token = _schluessel(client)
