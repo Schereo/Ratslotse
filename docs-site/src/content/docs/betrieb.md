@@ -278,7 +278,7 @@ Tagen ohne neue Protokolle sind die LLM-Schritte ein No-op.
 | „Einfach erklärt"-Kurzfassungen | `generate_simple_summaries.process` | 60 |
 | Gesprächswert (Interessantheit) | `rate_interest.process` | 200, 2 Worker |
 | Tragweite | `rate_impact.process` | 200, 2 Worker |
-| Vorlagen-Volltexte nachladen (Netz + pypdf, kein LLM) | `backfill_vorlagen.process_missing` | 300 |
+| Vorlagen-Volltexte nachladen (Netz + PDF-Text, kein LLM) | `backfill_vorlagen.process_missing` | 300 |
 | Anlagen/Anträge nachladen + jüngste Tagesordnungen erneut scannen | `backfill_anlagen` | 300 (+ Rescan) |
 | Beratungsfolge nachziehen + bewegliche Stationen aktualisieren | `backfill_beratungen` | 300 (+ Rescan) |
 | Wichtigkeits-Score neu berechnen (Heuristik, kein LLM) | `CouncilStore.backfill_importance` | alle |

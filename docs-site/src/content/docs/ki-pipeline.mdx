@@ -16,7 +16,7 @@ Nutzer*innen gefunden werden — bei hoher **Precision** (keine Fehltreffer) *un
 brauchbarem **Recall**.
 
 Wichtig vorab: **Das Scraping selbst nutzt kein LLM.** Tagesordnungen und
-Protokolle werden per BeautifulSoup bzw. pypdf strukturiert eingelesen; das LLM
+Protokolle werden per BeautifulSoup bzw. PyMuPDF strukturiert eingelesen; das LLM
 kommt **erst beim Zusammenfassen, Matchen und Klassifizieren** zum Einsatz.
 Vorlagen und Anlagen werden sogar komplett ohne LLM ausgewertet.
 
@@ -38,7 +38,7 @@ flowchart TD
     Klassifikation"]
     KLASS --> ENRICH["LLM & Embeddings (wöchentlich):
     Entitäten · Geocoding · Ähnliche · Rückblicke"]
-    VO -->|"pypdf + Wortlisten,
+    VO -->|"PDF-Text + Wortlisten,
     ganz ohne LLM"| TEXTE["Volltexte &
     Antragsteller"]
 
