@@ -121,6 +121,60 @@ def fragen(basis: str, token: str, frage: str) -> dict:
             "dauer_s": round(time.time() - t0, 1)}
 
 
+#: Die vier Ursachen eines verfehlten Pflichtfakts — je nachdem, ob das
+#: Material dafür im Kontext der Antwort stand. Die Einteilung folgt der
+#: Trennung von Suche und Antwort (Barnett et al. 2024: „missing content“ /
+#: „not in context“ / „not extracted“; Leung et al. 2026, E4/E7 gegen E12).
+URSACHEN = ("weggelassen", "nicht_gefunden", "teilweise", "ohne_material")
+URSACHE_TEXT = {
+    "weggelassen": "Material im Kontext, Antwort lässt es weg",
+    "nicht_gefunden": "Material fehlt im Kontext",
+    "teilweise": "Material nur teilweise im Kontext",
+    "ohne_material": "kein Material im Gold-Fall hinterlegt",
+}
+
+
+def ursache(fakt_id: str, material: list[dict]) -> str:
+    """Warum fehlt ein Pflichtfakt? Deterministisch aus der Materialprüfung."""
+    ms = [m for m in material if fakt_id in (m.get("fuer") or [])]
+    if not ms:
+        return "ohne_material"
+    da = [m["vorhanden"] for m in ms]
+    if all(da):
+        return "weggelassen"
+    return "teilweise" if any(da) else "nicht_gefunden"
+
+
+def kontext_recall(material: list[dict]) -> tuple[int, int]:
+    """(Belege im Kontext, Belege insgesamt) — die Kennzahl der SUCHE.
+
+    Sie braucht keinen Richter und streut deshalb nicht wie die Abdeckung:
+    Am 17.10.2026 ergab derselbe Code einmal 51 %, einmal 45 % Abdeckung.
+    Ob eine Änderung an der Suche hilft, zeigt diese Zahl."""
+    return sum(1 for m in material if m["vorhanden"]), len(material)
+
+
+def fehlerbild_zeilen(ergebnisse: list[dict], faelle: list[dict]) -> list[str]:
+    """Kontext-Recall und die Ursachen der verfehlten Fakten, nach Gewicht."""
+    gewicht = {(f["id"], p["id"]): p.get("gewicht", 1)
+               for f in faelle for p in f.get("pflicht", [])}
+    da = gesamt = 0
+    n: dict[str, int] = dict.fromkeys(URSACHEN, 0)
+    g: dict[str, int] = dict.fromkeys(URSACHEN, 0)
+    for e in ergebnisse:
+        a, b = kontext_recall(e["material"])
+        da, gesamt = da + a, gesamt + b
+        for fid in e["wertung"]["verfehlt"]:
+            u = ursache(fid, e["material"])
+            n[u] += 1
+            g[u] += gewicht.get((e["id"], fid), 1)
+    zeilen = [f"KONTEXT-RECALL: {da}/{gesamt} Belege im Kontext "
+              f"({da / gesamt:.0%})" if gesamt else "KONTEXT-RECALL: –"]
+    for u in URSACHEN:
+        zeilen.append(f"  verfehlt, {URSACHE_TEXT[u]}: {n[u]} (Gewicht {g[u]})")
+    return zeilen
+
+
 def material_form(quellen: dict, debatten: list[dict] | None = None) -> dict:
     """Quellen-Ereignis (bzw. nachgeladene Debatten) in die Form, die
     ``eval_deep_gold._material_pruefen`` liest: Debatten tragen dort
@@ -200,6 +254,8 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
         ergebnisse.append({
             "id": case["id"], "question": case["question"], "dauer_s": r["dauer_s"],
             "wertung": wertung, "material": material, "material_baustein": material_baustein,
+            "kontext_recall": list(kontext_recall(material)),
+            "ursachen": {fid: ursache(fid, material) for fid in wertung["verfehlt"]},
             "urteil": urteil, "antwort": r["antwort"],
             "gelesen": {"fragetyp": q.get("qtype"),
                         "beschluesse": len(q.get("sources") or []),
@@ -220,6 +276,8 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
               f"{'BESTANDEN' if wertung['bestanden'] else 'NICHT bestanden'} ({r['dauer_s']} s)",
               flush=True)
     n = len(ergebnisse) or 1
+    for zeile in fehlerbild_zeilen(ergebnisse, cases):
+        print(zeile, flush=True)
     print(f"GESAMT: Abdeckung {sum(e['wertung']['abdeckung'] for e in ergebnisse) / n:.0%}, "
           f"bestanden {sum(e['wertung']['bestanden'] for e in ergebnisse)}/{len(ergebnisse)}, "
           f"Verstöße {sum(len(e['wertung']['verstoesse']) for e in ergebnisse)}, "
