@@ -221,8 +221,9 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                     unvollstaendig.append(did)
                 note = (f", Einheit: {', '.join(lesung.skalen)}"
                            if lesung.skalen else "")
+                gedreht = f", {lesung.gedreht} aufgerichtet" if lesung.gedreht else ""
                 print(f"  [{did}] {lesung.gelesen}/{lesung.seiten} Seiten, "
-                      f"{len(lesung.text)} Zeichen, {lesung.weg}{note}"
+                      f"{len(lesung.text)} Zeichen, {lesung.weg}{gedreht}{note}"
                       f"{'  UNVOLLSTÄNDIG' if not lesung.vollstaendig else ''}",
                       flush=True)
 

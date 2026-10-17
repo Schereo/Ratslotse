@@ -528,3 +528,132 @@ def test_was_auch_klein_nicht_passt_bleibt_ungelesen(monkeypatch):
     with pytest.raises(ocr.OcrFehler) as fehler:
         ocr._gerendert(_Seite(), 200)
     assert "Großformat" in str(fehler.value)
+
+
+# --------------------------------------------------------------------------
+# (f) Seitlich liegende Seiten werden aufgerichtet
+# --------------------------------------------------------------------------
+#
+# Anlass (17.10.2026): Seitlich gelesen verrutschen in zweispaltigen Tabellen
+# die Zeilen — Konzern 2013 bestand so alle drei Summenproben mit vier
+# falschen Zellen, AWB 2020 hatte einen ganzen Block eine Beschriftung zu
+# tief. Gemessen ist das Verfahren an 200 echten Scanseiten (s. ocr.py); hier
+# steht nur fest, was es tun und was es lassen muss.
+
+def _textseite(breite=1240, hoehe=1754):
+    """Eine künstliche Seite mit waagerechten Textzeilen: Wortblöcke
+    unterschiedlicher Länge, Zeilenabstand wie bei 11-pt-Schrift."""
+    import random
+    from PIL import Image, ImageDraw
+    bild = Image.new("L", (breite, hoehe), 255)
+    zeichner, zufall = ImageDraw.Draw(bild), random.Random(7)
+    for y in range(120, hoehe - 120, 34):
+        x = 100
+        while x < breite - 200:
+            wort = zufall.randint(30, 140)
+            zeichner.rectangle([x, y, x + wort, y + 14], fill=0)
+            x += wort + zufall.randint(12, 40)
+    return bild
+
+
+def _als_seitenbild(pil):
+    import io
+    puffer = io.BytesIO()
+    pil.convert("RGB").save(puffer, "JPEG", quality=90)
+    return ocr.Seitenbild(puffer.getvalue(), "image/jpeg", "eingebettet")
+
+
+def test_waagerechte_zeilen_werden_erkannt():
+    seite = _textseite()
+    assert ocr.zeilen_senkrecht(seite) is False
+    assert ocr.zeilen_senkrecht(seite.rotate(90, expand=True)) is True
+    assert ocr.zeilen_senkrecht(seite.rotate(270, expand=True)) is True
+
+
+def test_leere_seite_gilt_nicht_als_senkrecht():
+    from PIL import Image
+    assert ocr.zeilen_senkrecht(Image.new("L", (1240, 1754), 255)) is False
+
+
+def test_aufrechte_seite_kostet_keinen_modellaufruf(monkeypatch):
+    """Die Achse entscheidet vorher und kostenlos — eine aufrechte Seite geht
+    unverändert und ohne Frage ans Lesen."""
+    gefragt = []
+    monkeypatch.setattr(ocr, "aufrecht_waehlen", lambda *a, **k: gefragt.append(1) or 90)
+    bild = _als_seitenbild(_textseite())
+    assert ocr.aufrichten(bild) is bild
+    assert gefragt == []
+
+
+def test_seitliche_seite_wird_gedreht(monkeypatch):
+    monkeypatch.setattr(ocr, "aufrecht_waehlen", lambda *a, **k: 270)
+    from PIL import Image
+    import io
+    seitlich = _als_seitenbild(_textseite().rotate(90, expand=True))
+    aufrecht = ocr.aufrichten(seitlich)
+    assert aufrecht.drehung == 270
+    assert aufrecht.mime == "image/jpeg" and aufrecht.weg == "eingebettet"
+    breite, hoehe = Image.open(io.BytesIO(aufrecht.daten)).size
+    assert hoehe > breite  # wieder hochkant
+
+
+@pytest.mark.parametrize("antwort", [None, 0])
+def test_ohne_eindeutige_antwort_bleibt_die_seite_wie_sie_ist(monkeypatch, antwort):
+    """Wählt das Modell 0° oder nichts Eindeutiges, wird nichts gedreht — der
+    Zustand bis 10/2026, gemessen und bekannt."""
+    monkeypatch.setattr(ocr, "aufrecht_waehlen", lambda *a, **k: antwort)
+    seitlich = _als_seitenbild(_textseite().rotate(90, expand=True))
+    assert ocr.aufrichten(seitlich) is seitlich
+
+
+def test_unlesbares_bild_und_modellfehler_halten_nichts_auf(monkeypatch):
+    kaputt = ocr.Seitenbild(b"\xff\xd8\xff\xe0JPEG", "image/jpeg", "eingebettet")
+    assert ocr.aufrichten(kaputt) is kaputt
+
+    def _faellt_aus(*_a, **_k):
+        raise RuntimeError("503")
+    monkeypatch.setattr(ocr, "aufrecht_waehlen", _faellt_aus)
+    seitlich = _als_seitenbild(_textseite().rotate(90, expand=True))
+    assert ocr.aufrichten(seitlich) is seitlich
+
+
+def test_vergleich_bietet_drei_drehungen_und_liest_den_buchstaben(monkeypatch):
+    """Drei Fassungen, darunter die unveränderte — eine falsch eingestufte
+    Achse kann so nichts verdrehen. Die Antwort wird auf die Drehung der
+    gewählten Fassung abgebildet, nicht auf ihre Position."""
+    gesehen = {}
+
+    class _Antwort:
+        def __init__(self, text):
+            self.choices = [type("C", (), {"message": type("M", (), {"content": text})()})()]
+
+    def _modell(messages, **_k):
+        inhalt = messages[0]["content"]
+        gesehen["bilder"] = sum(1 for t in inhalt if t["type"] == "image_url")
+        gesehen["prompt"] = inhalt[0]["text"]
+        return _Antwort("B")
+
+    import kern.llm
+    monkeypatch.setattr(kern.llm, "chat_complete", _modell)
+    seite = _textseite()
+    grad = ocr.aufrecht_waehlen(seite)
+    assert gesehen["bilder"] == 3
+    assert "A, B oder C" in gesehen["prompt"]
+    assert grad in (0, 90, 270)
+    # Dieselbe Seite bekommt dieselbe Reihenfolge — wiederholbar.
+    assert ocr.aufrecht_waehlen(seite) == grad
+
+
+def test_lies_pdf_zaehlt_gedrehte_seiten(monkeypatch):
+    seiten = [_Seite(_Bild("a.jpg")), _Seite(_Bild("b.jpg"))]
+
+    class _Leser:
+        pages = seiten
+
+    monkeypatch.setattr(ocr.pypdf, "PdfReader", lambda *_a, **_k: _Leser())
+    monkeypatch.setattr(ocr, "lies_seite", lambda bild, model=None: "x " * 30)
+    zug = iter([90, 0])
+    monkeypatch.setattr(ocr, "aufrichten", lambda b, **k: ocr.Seitenbild(
+        b.daten, b.mime, b.weg, drehung=next(zug)))
+    assert ocr.lies_pdf(b"%PDF-1.4").gedreht == 1
+    assert ocr.lies_pdf(b"%PDF-1.4", aufrichten_an=False).gedreht == 0
