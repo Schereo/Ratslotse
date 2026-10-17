@@ -34,6 +34,13 @@ Index.
 KOSTEN: gemessen 0,0024 $ je Seite mit dem Vorgabemodell. Die ~46
 Finanzdokumente (~600 Seiten) liegen bei rund 1,50 $, der ganze Bestand bei
 unter 10 $. ``--trocken`` sagt vorher, wie viele Seiten es werden.
+
+DER ZWEITLESER (seit 10/2026) kostet mehr als das Lesen selbst: Sonnet 4.6
+rund 0,022 $ je Seite, und zwar nur für Seiten mit Zahlentabelle. Er läuft bei
+``--nur-finanz`` von selbst mit — dort gehen Zahlen in die Datenbank, und
+einen Zeilenversatz findet nur er (``council/ocr.py``, `abgleich`). Ein
+36-seitiger Wirtschaftsplan kostet damit rund 0,80 $ statt 0,04 $.
+``--ohne-zweitleser`` schaltet ihn ab.
 """
 from __future__ import annotations
 
@@ -143,7 +150,7 @@ def _hole(url: str) -> bytes:
 
 def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
             limit: int | None, workers: int, max_seiten: int, model: str,
-            trocken: bool) -> dict:
+            trocken: bool, zweitleser: str | None = None) -> dict:
     store = CouncilStore(db_path)
     try:
         rows = kandidaten(store, nur_finanz, document_id, limit)
@@ -155,7 +162,9 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
         offen = len(rows) - len(bekannt)
         print(f"{len(rows)} Anlagen, zusammen höchstens {seiten_gesamt} Seiten"
               + (f" (+ {offen} mit unbekannter Seitenzahl)" if offen else "")
-              + f" (Modell {model})", flush=True)
+              + f" (Modell {model}"
+              + (f", Zweitleser {zweitleser} für Seiten mit Zahlentabellen" if zweitleser else "")
+              + ")", flush=True)
         if trocken:
             for r in rows[:25]:
                 print(f"  [{r['document_id']:>7}] {r['n_pages'] or '?':>3} S.  "
@@ -169,7 +178,7 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
 
         def laden(row: dict):
             return row, ocr.lies_pdf(_hole(row["url"]), model=model,
-                                     max_seiten=max_seiten)
+                                     max_seiten=max_seiten, zweitleser=zweitleser)
 
         # Netz + Modell in Workern, DB-Schreiben im Main-Thread — dieselbe
         # SQLite-Konvention wie im Nachbar-Skript.
@@ -217,11 +226,17 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                         "WHERE document_id = ?",
                         (text, lesung.seiten, lesung.modell, did))
                 gelesen += 1
+                if lesung.zweitleser:
+                    store.save_ocr_check(did, lesung.modell, lesung.zweitleser,
+                                         lesung.zweit_gelesen, list(lesung.strittig))
                 if not lesung.vollstaendig:
                     unvollstaendig.append(did)
                 note = (f", Einheit: {', '.join(lesung.skalen)}"
                            if lesung.skalen else "")
                 gedreht = f", {lesung.gedreht} aufgerichtet" if lesung.gedreht else ""
+                if lesung.strittig:
+                    gedreht += (f", STRITTIG S. {', '.join(map(str, lesung.strittig))} "
+                                f"(Zweitleser ordnet Zeilen anders zu)")
                 print(f"  [{did}] {lesung.gelesen}/{lesung.seiten} Seiten, "
                       f"{len(lesung.text)} Zeichen, {lesung.weg}{gedreht}{note}"
                       f"{'  UNVOLLSTÄNDIG' if not lesung.vollstaendig else ''}",
@@ -252,14 +267,23 @@ def main() -> dict:
     ap.add_argument("--max-seiten", type=int, default=MAX_SEITEN)
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--model", default=ocr.MODEL)
+    # Für Finanzdokumente liest ein zweites Modell jede Seite mit Zahlentabelle
+    # mit (council/ocr.py, `abgleich`): Ein Zeilenversatz besteht jede
+    # Summenprobe, und nur der Vergleich zweier Lesungen findet ihn.
+    ap.add_argument("--zweitleser", default=None,
+                    help=f"Modell des Zweitlesers (Vorgabe bei --nur-finanz: {ocr.MODEL_ZWEIT})")
+    ap.add_argument("--ohne-zweitleser", action="store_true",
+                    help="auch bei --nur-finanz keinen Zweitleser")
     ap.add_argument("--trocken", action="store_true",
                     help="nur zeigen, was drankäme — ruft kein Modell auf")
     ap.add_argument("--db", default=str(COUNCIL_DB))
     args = ap.parse_args()
+    zweitleser = None if args.ohne_zweitleser else (
+        args.zweitleser or (ocr.MODEL_ZWEIT if args.nur_finanz else None))
     stats = process(Path(args.db), nur_finanz=args.nur_finanz,
                     document_id=args.document_id, limit=args.limit,
                     workers=args.workers, max_seiten=args.max_seiten,
-                    model=args.model, trocken=args.trocken)
+                    model=args.model, trocken=args.trocken, zweitleser=zweitleser)
     if not args.trocken:
         print(f"OCR: {stats['gelesen']} gelesen, {stats['ohne_text']} ohne Text, "
               f"{stats['fehler']} Fehler von {stats['gesamt']} "
