@@ -61,3 +61,26 @@ def test_neue_funde_rutschen_nach_score_ein_die_erste_liste_bleibt_geordnet():
     ids = [c["id"] for c in qa.nachrecherche_einfuegen(erste, neue)]
     # 8 schlägt alle; 9 schlägt 2 (0,4) — die erste Liste behält ihre Folge 1, 2, 3.
     assert ids == [8, 1, 9, 2, 3]
+
+
+# ---- Kontext-Diät: weniger Wortbeiträge, die zur Sache zuerst --------------
+
+def test_debatten_diaet_nimmt_die_aussprache_zur_sache_zuerst():
+    ctx = [{"id": 10}, {"id": 20}]
+    debatten = (
+        [{"id": i, "zu_beschluss": None, "session_date": "2026-01-01", "top": f"T{i}"} for i in range(1, 31)]
+        + [{"id": 100, "zu_beschluss": 20, "session_date": "2026-06-01", "top": "Ö 5"},
+           {"id": 101, "zu_beschluss": 10, "session_date": "2026-06-01", "top": "Ö 4"},
+           {"id": 200, "zu_beschluss": None, "session_date": "2026-02-01", "top": "Akte"}])
+    aus = qa.debatten_diaet(debatten, ctx, behalten={200}, max_n=5)
+    ids = [d["id"] for d in aus]
+    assert ids[0] == 200                    # die Akte bleibt, zählt nicht mit
+    assert ids[1:3] == [101, 100]           # Aussprache in Rangfolge der Beschlüsse
+    assert len(ids) == 1 + 5
+
+
+def test_debatten_diaet_deckelt_je_tagesordnungspunkt():
+    debatten = [{"id": i, "zu_beschluss": 1, "session_date": "2026-06-01", "top": "Ö 5"} for i in range(10)]
+    debatten.append({"id": 99, "zu_beschluss": None, "session_date": "2026-05-01", "top": "Ö 2"})
+    aus = qa.debatten_diaet(debatten, [{"id": 1}], max_n=10, je_top=4)
+    assert [d["id"] for d in aus] == [0, 1, 2, 3, 99]

@@ -6186,6 +6186,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     "press_ids": {p["id"] for p in akte["press"]},
                     "announced": akte.get("announced") or [],
                 }
+            # Kontext-Diät (Schalter `kontext-diaet`): weniger Wortbeiträge in
+            # den Prompt, die zur Sache zuerst (`qa.debatten_diaet`). Die Liste
+            # unter der Antwort bleibt vollständig — sie ist zum Lesen da, der
+            # Prompt zum Antworten. Nicht bei Sitzungsfragen (die Sitzung ist
+            # ganz gefragt) und nicht für Personenfragen (dort SIND die
+            # Beiträge die Antwort).
+            debatten_prompt = debatten_rows
+            if (features.an("kontext-diaet") and typ not in ("session", "person")
+                    and not einfach):
+                debatten_prompt = qa.debatten_diaet(
+                    debatten_rows, ctx, set(akte_prompt["speech_ids"]) if akte_prompt else None)
+                zeiten["kontext_debatten_ids"] = [d["id"] for d in debatten_prompt]
             if latest_place and not einfach:
                 # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
                 # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
@@ -6199,7 +6211,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                          if einfach else
                          qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                           staedte=staedte_rows,
-                                          geld=geld, debatten=debatten_rows,
+                                          geld=geld, debatten=debatten_prompt,
                                           anlagen=anlagen_rows,
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
@@ -6239,7 +6251,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                               if einfach else
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                             staedte=staedte_rows,
-                                                 geld=geld, debatten=debatten_rows,
+                                                 geld=geld, debatten=debatten_prompt,
                                                  anlagen=anlagen_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng,

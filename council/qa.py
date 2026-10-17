@@ -3107,6 +3107,49 @@ ASK_DEBATTE_TEXT_MAX = 800
 ASK_DEBATTE_ANTWORT_MAX = 600
 
 
+#: So viele Wortbeiträge gehen höchstens in den Antwort-Prompt (Schalter
+#: `kontext-diaet`), die der Akte nicht mitgezählt. Bis 10/2026 gingen ALLE
+#: hinein — 50 bis 98 je Frage, dazu 20 Beschlüsse und die Akte. Im Gold-Set
+#: stand das Material für 46 % der verfehlten Fakten im Kontext und wurde
+#: nicht genutzt; mehr Kontext ging mit mehr Weggelassenem einher (r = 0,45,
+#: 17.10.2026) — das bekannte „lost in the middle“ (Liu et al. 2023).
+DEBATTEN_PROMPT_MAX = 24
+#: … davon höchstens so viele zum selben Tagesordnungspunkt.
+DEBATTEN_JE_TOP = 4
+
+
+def debatten_diaet(debatten: list[dict], ctx: list[dict],
+                   behalten: set[int] | None = None,
+                   max_n: int = DEBATTEN_PROMPT_MAX, je_top: int = DEBATTEN_JE_TOP) -> list[dict]:
+    """Die Wortbeiträge für den Prompt — wenige, und die zur Sache zuerst.
+
+    Reihenfolge: erst die Aussprache zu den Beschlüssen im Prompt, in deren
+    Rang (Zugehörigkeit schlägt Ähnlichkeit, s. ``wortbeitraege_zu_beschluessen``),
+    dann der Rest in Suchreihenfolge. Je Tagesordnungspunkt höchstens
+    ``je_top``, damit eine lange Debatte nicht alle Plätze nimmt. ``behalten``
+    (die Beiträge der Akte) bleibt vollständig und zählt nicht mit: Die Akte
+    baut daraus ihre Zeitleiste.
+    """
+    behalten = behalten or set()
+    rang = {c["id"]: i for i, c in enumerate(ctx)}
+    fest = [d for d in debatten if d.get("id") in behalten]
+    rest = [d for d in debatten if d.get("id") not in behalten]
+    zur_sache = sorted((d for d in rest if d.get("zu_beschluss") in rang),
+                       key=lambda d: rang[d["zu_beschluss"]])
+    uebrige = [d for d in rest if d.get("zu_beschluss") not in rang]
+    aus: list[dict] = []
+    je: dict[tuple, int] = {}
+    for d in zur_sache + uebrige:
+        if len(aus) >= max_n:
+            break
+        top = (d.get("session_date"), d.get("top"))
+        if je.get(top, 0) >= je_top:
+            continue
+        je[top] = je.get(top, 0) + 1
+        aus.append(d)
+    return fest + aus
+
+
 def _debatten_block(debatten: list[dict] | None, eng: bool = False,
                     text_max: int = 400, answer_max: int = 300) -> str:
     """Kontext-Absatz „Aus den Ratsdebatten" — Wortbeiträge aus Protokollen
