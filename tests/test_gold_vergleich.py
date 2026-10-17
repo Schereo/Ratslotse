@@ -37,6 +37,9 @@ def test_material_form_zaehlt_nur_was_im_prompt_stand():
     quellen = {"sources": [{"id": 1, "title": "A"}, {"id": 2, "title": "B"}]}
     assert [c["id"] for c in gold.material_form(quellen)["candidates"]] == [1, 2]
     assert [c["id"] for c in gold.material_form(quellen, kontext_ids=[2])["candidates"]] == [2]
+    quellen["debates"] = [{"id": 7, "date": "2026-06-01", "excerpt": "a"},
+                          {"id": 8, "date": "2026-06-01", "excerpt": "b"}]
+    assert len(gold.material_form(quellen, debatten_ids=[8])["debates"]) == 1
 
 
 def _lauf(tmp_path, label, abdeckung):

@@ -187,7 +187,8 @@ def fehlerbild_zeilen(ergebnisse: list[dict], faelle: list[dict]) -> list[str]:
 
 
 def material_form(quellen: dict, debatten: list[dict] | None = None,
-                  kontext_ids: list[int] | None = None) -> dict:
+                  kontext_ids: list[int] | None = None,
+                  debatten_ids: list[int] | None = None) -> dict:
     """Quellen-Ereignis (bzw. nachgeladene Debatten) in die Form, die
     ``eval_deep_gold._material_pruefen`` liest: Debatten tragen dort
     ``session_date``/``text``, im Web-Vertrag ``date``/``excerpt``.
@@ -196,6 +197,10 @@ def material_form(quellen: dict, debatten: list[dict] | None = None,
     (``timings.kontext_ids``). Das Quellen-Ereignis nennt alle Kandidaten,
     der Prompt bekommt 20 plus Akte."""
     deb = debatten if debatten is not None else (quellen.get("debates") or [])
+    if debatten_ids is not None:
+        # Kontext-Diät: Nur diese Wortbeiträge standen im Prompt.
+        im_prompt = set(debatten_ids)
+        deb = [d for d in deb if d.get("id") in im_prompt]
     quellen_liste = quellen.get("sources") or []
     if kontext_ids is not None:
         im = set(kontext_ids)
@@ -257,8 +262,9 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
                 print(f"  429 — warte {FENSTER_S // 2} s", flush=True)
                 time.sleep(FENSTER_S // 2)
         q = r["quellen"]
-        kontext_ids = (r.get("zeiten") or {}).get("kontext_ids")
-        material = gold._material_pruefen(case, material_form(q, kontext_ids=kontext_ids))
+        zeiten = r.get("zeiten") or {}
+        material = gold._material_pruefen(case, material_form(
+            q, kontext_ids=zeiten.get("kontext_ids"), debatten_ids=zeiten.get("kontext_debatten_ids")))
         material_gefunden = gold._material_pruefen(case, material_form(q))
         baustein: list[dict] = []
         try:
