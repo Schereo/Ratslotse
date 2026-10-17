@@ -213,8 +213,18 @@ private extension AppRoute {
     /// Die Seiten aus dem Mehr-Menü tragen dieselben Namen wie ihre Zeilen
     /// dort: Bis 10/2026 öffneten sie sich in einem eigenen Stapel im Blatt,
     /// der seine Titel selbst setzte.
+    ///
+    /// Die Detailseiten nennen hier, WAS sie sind, nicht wovon sie handeln —
+    /// der Name steht als Überschrift direkt darunter. Bis 10/2026 standen
+    /// Beschluss, Idee, Sitzung und Profile als „Ratslotse" da.
     var scaffoldTitle: String {
         switch self {
+        case .decision: "Beschluss"
+        case .movement: "Idee aus anderen Städten"
+        case .sessions(let ksinr, _): ksinr == nil ? "Sitzungen" : "Sitzung"
+        case .person: "Person"
+        case .topic: "Thema im Rat"
+        case .place: "Ort in Oldenburg"
         case .district: "Mein Viertel"
         case .analysis: "Analyse"
         case .ideas: "Ideen aus anderen Städten"
@@ -281,6 +291,8 @@ private struct RatsRouteScaffold<Content: View>: View {
                 Text(title)
                     .font(RatsFont.title(17))
                     .foregroundStyle(RatsColor.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Spacer()
                 Color.clear.frame(width: 38, height: 38)
             }

@@ -464,9 +464,19 @@ public final class AppModel {
         }
     }
 
+    /// Wovon eine geschobene Seite handelt, sobald sie es geladen hat —
+    /// der Beschlusstitel, der Name der Idee, das Gremium der Sitzung.
+    /// Gesetzt über `lottiPageTitle(_:for:model:)`.
+    public var pageTitles: [AppRoute: String] = [:]
+
     /// Die Überschrift, die im Lotti-Blatt als „Du bist auf: …" steht.
+    ///
+    /// Erst der geladene Name der Seite, wie im Web (dort die `h1`); die
+    /// Gattung nur, solange er fehlt. Bis 10/2026 stand auf jedem Beschluss
+    /// „Du bist auf: Ein Beschluss".
     public var currentScreenTitle: String {
         if let route = navigation.last {
+            if let title = pageTitles[route] { return title }
             switch route {
             case .decision: return "Ein Beschluss"
             case .movement: return "Eine Idee aus anderen Städten"

@@ -830,6 +830,7 @@ struct MovementDetailView: View {
         }
         .background(RatsColor.page)
         .navigationTitle("Idee")
+        .lottiPageTitle(detail?.movement.label, for: .movement(id: clusterID), model: model)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: clusterID) { await lade() }
     }

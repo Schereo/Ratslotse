@@ -184,4 +184,15 @@ extension View {
     func lottiHost(model: AppModel, presence: LottiPresence, active: Bool) -> some View {
         modifier(LottiHost(model: model, presence: presence, active: active))
     }
+
+    /// Sagt Lottis Blatt, wovon diese Seite handelt („Du bist auf: …").
+    /// Die Route steht ausdrücklich da: Endet ein Laden erst, nachdem schon
+    /// die nächste Seite geschoben ist, darf der Name nicht an ihr landen.
+    func lottiPageTitle(_ title: String?, for route: AppRoute, model: AppModel) -> some View {
+        onChange(of: title, initial: true) { _, neu in
+            guard let neu = neu?.trimmingCharacters(in: .whitespacesAndNewlines), !neu.isEmpty
+            else { return }
+            model.pageTitles[route] = neu
+        }
+    }
 }

@@ -113,6 +113,21 @@ import Testing
 }
 
 @MainActor
+@Test func lottiNamesTheLoadedPageNotItsKind() {
+    let model = AppModel()
+    model.navigation = [.decision(id: 7)]
+    #expect(model.currentScreenTitle == "Ein Beschluss")
+
+    model.pageTitles[.decision(id: 7)] = "Haushaltsplan 2026"
+    #expect(model.currentScreenTitle == "Haushaltsplan 2026")
+
+    // Der Name gehört zu SEINER Seite: Die nächste fällt auf ihre Gattung
+    // zurück, bis sie selbst geladen hat.
+    model.navigation.append(.movement(id: 3))
+    #expect(model.currentScreenTitle == "Eine Idee aus anderen Städten")
+}
+
+@MainActor
 @Test func incomingRouteLeavesAnAuxiliaryTabletPage() {
     let model = AppModel()
     model.tabletPage = .saved

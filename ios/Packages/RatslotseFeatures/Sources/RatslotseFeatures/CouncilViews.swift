@@ -1576,6 +1576,7 @@ struct DecisionDetailView: View {
         }
         .background(RatsColor.page)
         .navigationTitle("Beschluss")
+        .lottiPageTitle(detail?.decision.title, for: .decision(id: decisionID), model: model)
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         // Eigener Takt, gebunden an den Schalter: Der kommt aus
@@ -3186,7 +3187,7 @@ struct SessionRouteView: View {
     let tops: [String]
 
     var body: some View {
-        if let ksinr { SessionDetailView(model: model, ksinr: ksinr, highlightedTops: Set(tops)) }
+        if let ksinr { SessionDetailView(model: model, ksinr: ksinr, highlightedTops: Set(tops), route: .sessions(ksinr: ksinr, tops: tops)) }
         else { SessionListView(model: model) }
     }
 }
@@ -3316,7 +3317,15 @@ private struct SessionDetailView: View {
     let model: AppModel
     let ksinr: Int
     let highlightedTops: Set<String>
+    /// Die Route, unter der die Seite geschoben ist — für Lottis Seitennamen.
+    let route: AppRoute
     @State private var detail: SessionDetail?
+
+    /// „Rat · Mo., 12. Okt." — das Gremium allein hieße bei jeder Sitzung
+    /// desselben Ausschusses gleich.
+    static func lottiTitle(_ detail: SessionDetail) -> String {
+        [detail.committee, RatsDate.weekday(detail.sessionDate)].compactMap { $0 }.joined(separator: " · ")
+    }
     @State private var error: String?
     @State private var calendarDraft: CalendarDraft?
     @State private var previewAttachment: AgendaAttachment?
@@ -3388,6 +3397,7 @@ private struct SessionDetailView: View {
         }
         .background(RatsColor.page)
         .navigationTitle("Sitzung")
+        .lottiPageTitle(detail.map(Self.lottiTitle), for: route, model: model)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await load()
