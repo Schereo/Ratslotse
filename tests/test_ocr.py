@@ -844,3 +844,13 @@ def test_fortsetzung_nach_dem_betrag_gehoert_zum_posten():
               "Rekultivierung und Nachsorge\t3.762.962,73\t129.860,67\t3.698.782,21\n")
     assert not ocr.abgleich(gemini, sonnet).strittig
     assert not ocr.abgleich_gegen_bestand(sonnet, gemini).strittig
+
+
+def test_trennstrich_am_zeilenende_ist_kein_minus():
+    """Wörtlich aus 193959: „Mehrzweck-" bricht das Wort um."""
+    a = ("Ersatz für Aufsatzstreuer für Mehrzweck-\t25.000 €\t\t\t25.000 €\n"
+         "fahrzeug OL-SR 133, Baujahr 2003\n\n"
+         "Erneuerung Toranlage Heizungsverteilraum\t25.000 €\t\t\t25.000 €\n")
+    zeilen = ocr._betragszeilen(a)
+    assert len(zeilen[("25.000", "25.000")]) == 2  # zweimal — also mehrdeutig
+    assert ocr._betragszeilen("Zinsen\t- 510.903,43\n") == {("-510.903,43",): [("zinsen", "zinsen")]}
