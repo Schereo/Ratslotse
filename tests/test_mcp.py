@@ -453,6 +453,52 @@ def test_nachladen_ist_gedeckelt(client, monkeypatch):
     assert _rufe(token, "get_attachment", attachment_id=501)["text"]
 
 
+def _sitzung_mit_top_anlagen() -> CouncilSession:
+    return CouncilSession(4730, "Rat", "2026-10-26", "18:00", "PFL", agenda_items=[
+        AgendaItem("Ö 7.2", "Weiteres Vorgehen Schießbahn Fliegerhorst - Beschluss",
+                   anlagen=[{"label": "Änderungsantrag CDU Fliegerhorst",
+                             "url": "https://buergerinfo.oldenburg.de/getfile.php?id=777&type=do"}]),
+        AgendaItem("N 11", "gesperrte Information",
+                   anlagen=[{"label": "Vertraulich",
+                             "url": "https://buergerinfo.oldenburg.de/getfile.php?id=778&type=do"}])])
+
+
+def test_anlagen_am_tagesordnungspunkt(client, monkeypatch):
+    """Ein Punkt ohne Vorlage (Ö 7.2 am 26.10.2026) war für einen Agenten eine
+    Sackgasse: Seine Unterlagen hängen nur am Punkt selbst."""
+    _konto(client)
+    token = _schluessel(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(_sitzung_mit_top_anlagen())
+    cs.close()
+    geladen = []
+    monkeypatch.setattr(mcp_tools.vorlagen, "_pdf_text", lambda url: geladen.append(url) or (
+        "Die CDU beantragt, die Schießbahn vor einer Bebauung vollständig zu sanieren. " * 5, 2))
+
+    a = _rufe(token, "get_agenda", ksinr=4730)
+    oeffentlich, geheim = a["items"]
+    assert oeffentlich["template_number"] is None
+    assert oeffentlich["attachments"] == [{
+        "attachment_id": 777, "label": "Änderungsantrag CDU Fliegerhorst",
+        "text": "on_demand", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=777&type=do"}]
+    assert geheim["attachments"] == []
+
+    t = _rufe(token, "get_attachment", attachment_id=777)
+    assert t["loaded_now"] is True and "Schießbahn" in t["text"] and t["item_number"] == "Ö 7.2"
+    # Das nächste Einlesen der Sitzung (jeder check_council-Lauf) behält den Text.
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(_sitzung_mit_top_anlagen())
+    cs.close()
+    t = _rufe(token, "get_attachment", attachment_id=777)
+    assert "loaded_now" not in t and len(geladen) == 1
+    assert _rufe(token, "get_agenda", ksinr=4730)["items"][0]["attachments"][0]["text"] == \
+        "available"
+
+    r = _rpc(token, "tools/call", {"name": "get_attachment",
+                                   "arguments": {"attachment_id": 778}}).json()["result"]
+    assert r["isError"] is True and geladen == [geladen[0]]
+
+
 def test_aufrufe_werden_gezaehlt(client):
     _konto(client)
     token = _schluessel(client)

@@ -56,7 +56,7 @@ fremde Seite im Namen einer angemeldeten Person Anfragen stellen.
 | `get_template_history` | Die Beratungsfolge einer Vorlage durch alle Gremien |
 | `list_committees` | Alle Gremien mit nächster Sitzung |
 | `list_sessions` | Sitzungen eines Gremiums, vergangen und geplant |
-| `get_agenda` | Die Tagesordnung einer Sitzung samt Ergebnissen und Vorlagennummer je Punkt |
+| `get_agenda` | Die Tagesordnung einer Sitzung samt Ergebnissen, Vorlagennummer und den Anlagen, die nur am Punkt hängen |
 | `count_decisions` | Beschlüsse eines Jahres nach Ergebnis, Themenfeld, Gremium |
 
 Alle Werkzeuge antworten mit **JSON**, auch die vier, deren Abfragen Lotti
@@ -120,6 +120,16 @@ und nicht bei jedem Abruf neu geladen. Gedeckelt ist das **über alle Agenten
 zusammen**: mindestens eine Sekunde zwischen zwei Downloads, höchstens 120 je
 Stunde. Das Ratsinformationssystem ist die Quelle des ganzen Bestands, eine
 Sperre dort träfe den Ingest.
+
+**Anlagen am Tagesordnungspunkt.** Dringlichkeits- und Änderungsanträge,
+Konzepte zu Fraktionsanträgen und Einwohnerfragen hängen im
+Ratsinformationssystem oft direkt am Punkt, **ohne Vorlage** — gemessen 266
+solcher Unterlagen im Bestand. `get_agenda` listet sie je Punkt, aber nur die,
+die es nicht schon über `get_template` gibt (das System wiederholt am Punkt
+die Vorlage und ihre Anlagen). Beide Arten spricht `get_attachment` über
+**dieselbe Kennung** an: die Dokumentnummer aus `getfile.php?id=…`. Ein
+nachgeladener Text überlebt das tägliche Neu-Einlesen der Sitzung
+(`save_session` übernimmt ihn über die URL).
 
 **Was nicht hinausgeht:** Telefonnummern und E-Mail-Adressen werden in
 Anlagen- und Protokolltext maskiert, wie beim Suchindex
