@@ -7,6 +7,366 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.11.0] – 2026-10-18
+
+### Hinzugefügt
+- **Admin-Panel: Daumen runter mit Grund und freigegebener Antwort.** Unter
+  *Nutzung → Antwortqualität* stehen jetzt die Daumen runter aus „Frag den Rat“
+  der letzten 90 Tage — mit dem gewählten Grund, dem Freitext und, wo jemand sie
+  freigegeben hat, der ganzen Antwort samt Quellen. Ohne Konto, wie die Liste
+  der Fragen ohne Antwort. (#1710)
+- **„Frag den Rat“ kennt jetzt die Geschäftsordnung des Rates.**
+  Fragen dazu, wie Rat und Ausschüsse arbeiten, werden aus dem Wortlaut
+  beantwortet, mit Paragraf: Wie lange ein Ratsmitglied reden darf, bis wann
+  Fragen für die Einwohnerfragestunde eingehen sollten, was bei
+  Stimmengleichheit gilt, wann eine Sitzung nichtöffentlich ist. Unter der
+  Antwort steht der Paragraf zum Nachlesen, mit Link auf die Seite im PDF der
+  Stadt. Die Antwort sagt dazu, für welche Wahlperiode die Fassung beschlossen
+  wurde, und merkt an, wenn der neue Rat eine neue beschlossen hat. (#1642)
+- **Geteilte Antworten zeigen die Geschäftsordnung.** Wer eine Antwort auf eine
+  Verfahrensfrage teilt, schickt die Karte „Aus der Geschäftsordnung des Rates“
+  samt Wortlaut der Paragrafen mit. Vorher stand die Antwort auf der
+  Teilen-Seite oft ganz ohne Beleg da. (#1644)
+- **Die App zeigt den Wortlaut der Geschäftsordnung unter einer
+  Verfahrensfrage.** Beantwortet „Frag den Rat“ eine Frage wie „Wie lange darf
+  ein Ratsmitglied reden?“ aus der Geschäftsordnung des Rates, steht darunter
+  jetzt auch in der iPhone- und iPad-App die Karte „Aus der Geschäftsordnung des
+  Rates“: je Paragraf Titel mit Sprung auf die Seite im PDF der Stadt, der
+  Wortlaut (lange Paragrafen zum Aufklappen), bei der Frage nach dem Ganzen das
+  Verzeichnis aller Paragrafen, darunter die Fassung — in Warnfarbe, wenn sie
+  nicht mehr sicher gilt. Antwortet die Geschäftsordnung allein, heißt die
+  Fußzeile „Aus der Geschäftsordnung des Rates zusammengefasst“. (#1643)
+- **Frag den Rat kennt jetzt die Wahlergebnisse.** Fragen nach der
+  Sitzverteilung im neuen Rat, nach Stimmenanteilen, der Wahlbeteiligung oder
+  dem neuen Oberbürgermeister beantwortet die KI-Frage aus denselben Ergebnissen
+  wie die Wahlseiten, mit Datum, dem Vergleich zur Ratswahl 2021 und dem
+  Hinweis, ob das Ergebnis amtlich oder vorläufig ist. Bisher hieß es dort, die
+  Ratsunterlagen gäben dazu nichts her. (#1686)
+- **Frag den Rat kennt jetzt einzelne Einnahmen und Ausgaben des Haushalts.**
+  Wer nach den Parkgebühren, der Straßenbeleuchtung, dem Strom oder den
+  Bußgeldern fragt, bekommt das Rechnungsergebnis seit 2017, den beschlossenen
+  Ansatz, die Finanzplanung und den Vergleich von Soll und Ist, Konto für Konto
+  aus den Teilhaushalts-Plänen. Bisher kannte die KI-Frage nur Teilhaushalte und
+  Produkte; eine Frage nach Soll und Ist bei den Parkgebühren wurde mit der
+  Gewerbesteuer beantwortet. Bei Geldfragen liest sie außerdem den Abschnitt
+  „Finanzielle Auswirkungen“ der Vorlagen mit, und eine Frage nach Parkgebühren
+  zieht keine Abfall-Kalkulation und keine Steuergrafik mehr heran. (#1685)
+- **Bei langen Vorgängen bietet Frag den Rat die Gründliche Recherche an.** Hat
+  ein Thema viele Stationen, steht unter der Antwort ein Knopf, der dieselbe
+  Frage ausführlich recherchiert: alle Beratungen, Debatten und Mitteilungen,
+  als Bericht mit Abschnitten. (#1641)
+
+### Geändert
+- **Admin-Panel: Sperren nur noch mit Rückfrage.** „Sperren“ wirkte bisher beim
+  ersten Klick — das Konto war sofort abgemeldet. Jetzt fragt das Panel mit der
+  Adresse des Kontos nach, ebenso bevor die Rate-Limits eines Kontos
+  abgeschaltet werden. Freischalten und Wieder-Einschalten bleiben ein Klick. Im
+  Quiz-Reiter stehen Wörter und ein Symbol statt Emoji. (#1674)
+- **Antworten kennen jetzt die Änderungsanträge zu einem Beschluss.** Was per
+  Änderungs- oder Geschäftsordnungsantrag ergänzt, gestrichen oder vertagt
+  werden sollte, stand bisher nur im Suchindex. Jetzt lesen „Frag den Rat“ und
+  die Gründliche Recherche diese Teilabstimmungen samt Ergebnis mit — etwa, dass
+  beim Wärmewende-Beirat auf Antrag der FDP auch Vermietende vertreten sind und
+  die BSW-Vertagung abgelehnt wurde. Außerdem findet die Akte eines Vorgangs
+  jüngere Stationen auch dann, wenn die Frage einen Stadtteil nennt, und nimmt
+  Pressemitteilungen mit, deren Titel die Frage trifft. (#1640)
+- **Ratslotse bleibt schnell, wenn viele gleichzeitig kommen.** Der Server
+  prüfte bei jeder einzelnen Anfrage sein Datenbank-Schema neu; das kostete mehr
+  Zeit als die meisten Antworten selbst, und bei zwanzig gleichzeitigen Anfragen
+  dauerte es drei Sekunden statt einer halben. Jetzt geschieht das einmal beim
+  Start. Angemeldete Seiten warten außerdem nicht mehr bis zu fünf Sekunden,
+  wenn im Hintergrund gerade jemand in die Datenbank schreibt, und ein Fehler
+  hält nicht mehr den ganzen Dienst an. Die Auswertung „Analyse“ lädt in
+  Millisekunden statt in einer Sekunde, Personenseiten spürbar schneller. Zwei
+  Seiten unter *Analyse → Ziele* (Klima, Wohnungsbau) brachen mit einem Fehler
+  ab und öffnen wieder. (#1670)
+- **Frag den Rat liest erst, dann schreibt es.** Vor der Antwort notiert ein
+  kleines Modell zu jedem gefundenen Beschluss und Wortbeitrag, was er zur Frage
+  beiträgt — samt Datum, Betrag und Ergebnis. Die Antwort baut auf diesen
+  Notizen auf und behauptet nicht mehr, etwas stehe nicht in den Unterlagen,
+  wenn eine Notiz es nennt. Dazu kommt mehr von der Aussprache zu den
+  wichtigsten Beschlüssen in den Kontext. Vorerst hinter den Schaltern
+  `belegnotizen` und `kontext-diaet`. (#1726)
+- **Daumen runter mit Grund — und auf Wunsch mit der ganzen Antwort.** Wer eine
+  Antwort von Frag den Rat nicht gut fand, kann jetzt einen Grund antippen
+  (falsch, unvollständig, veraltet, Thema verfehlt) und mit einem Häkchen die
+  Antwort samt Quellen zur Prüfung mitschicken. Ohne das Häkchen speichern wir
+  wie bisher nur die Frage und den Anfang der Antwort. (#1705)
+- **Der Einstieg hat keine Sackgassen mehr.** Der Einrichtungs-Assistent hat
+  einen „Zurück“-Knopf, die Lotti-Tour übersteht ein Neuladen, und ihr Beispiel
+  zeigt die Antwort nach zwei statt dreieinhalb Sekunden. Wer über einen Link
+  auf eine Seite mit Konto-Pflicht kommt, liest auf der Anmeldung, warum er dort
+  steht, und findet gleich den Weg zur Registrierung. Ein abgelaufener Link zu
+  einer geteilten Antwort zeigt Lotti und zwei Wege weiter statt eines einzelnen
+  Satzes, und die Demo auf der Startseite steht nicht mehr sekundenlang leer.
+  (#1679)
+- **„Heute“ zeigt auch zwischen den Sitzungen etwas.** Tagt in den nächsten
+  sieben Tagen nichts, fiel die Wochenkarte bisher einfach weg; jetzt nennt eine
+  Karte den nächsten Sitzungstag, wie weit er weg ist und welche Gremien dann
+  tagen. Die „Zahl der Woche“ zeigt keine orangefarbene Null mehr: Sie zählt die
+  Beschlüsse im kleinsten Zeitraum, in dem es welche gibt (7, 30 oder 90 Tage),
+  und sagt es dazu — gibt es gar keine neuen, erklärt sie, dass Protokolle meist
+  ein bis drei Wochen nach einer Sitzung erscheinen. (#1677)
+- **Frag den Rat füllt Antworten nicht mehr mit Fremdbeschlüssen auf.** Findet
+  sich das Gefragte nicht, sagt die Antwort das und nennt höchstens die zwei
+  nächstliegenden Beschlüsse, statt ein Dutzend Beschlüsse aus demselben
+  Stadtteil aufzuzählen. Abschnitte „zum Vergleich“, nach denen niemand gefragt
+  hat, entfallen. (#1691)
+- **Kurze Antworten verschweigen nichts Wesentliches mehr, Fraktionsfragen
+  bekommen die Reden.** Auf eine Punktfrage („Wann wurde der Bebauungsplan
+  beschlossen?“) antwortet Frag den Rat weiter knapp, nennt aber jetzt den einen
+  Umstand, der die Antwort ändert — etwa dass ein früherer Beschluss vom Gericht
+  gekippt wurde. Eine feste Längengrenze für solche Antworten gibt es nicht
+  mehr. Und wer fragt, wie die Fraktionen zu einem Vorhaben stehen, bekommt ihre
+  Positionen aus den Ratsreden direkt in der Antwort, statt eines „geben die
+  Protokolle nicht her“ über dem Baustein, der es dann doch zeigt. (#1704)
+- **Die Navigation sagt überall dasselbe.** Derselbe Ort hieß je nach Stelle
+  „Heute“, „Start“, „Übersicht“ oder „Dashboard“; jetzt heißt er überall
+  „Heute“, die Abos überall „Ausschuss-Abos“, und der Reiter mit Orten,
+  Projekten und Organisationen der Ratsarbeit heißt so, statt sich „Themen“ mit
+  „Meine Themen“ zu teilen. Auf Sitzungs-, Personen- und „Neuer Rat“-Seiten
+  leuchtet der richtige Menüpunkt. „Zurück“ von einem Beschluss führt auf die
+  Seite der Sitzung, statt in einer Liste zu landen, in der sie nicht steht. Die
+  Befehlspalette (⌘K) kennt jetzt auch Quiz, Ausschuss-Abos, Haushalt, Wahlen,
+  Hilfe und Feedback. Das „Mehr“-Blatt auf dem Telefon ist in „Entdecken“, „Für
+  dich“ und „Hilfe & Konto“ gegliedert, die Konto-Zeile heißt „Konto &
+  Einstellungen“, und Hilfe, Impressum & Co. führen Angemeldete „Zurück zur App“
+  statt zur Anmeldung. Nach dem Abmelden landet man auf der Anmeldung — nicht
+  mehr auf einer, die zurück ins Konto will. (#1673)
+- **Frag den Rat erkennt Orte auch in Alltagssprache.** „Hafenbecken“, „der alte
+  Flugplatz“, „Schlosspark“ oder ein Tippfehler wie „Everstenhol“ führen jetzt
+  zum gemeinten Ort — vorher musste die Frage den Namen aus dem Ortskatalog
+  treffen. Die Frage-Analyse wählt dafür aus der Liste der Orte, ohne
+  zusätzliche Wartezeit; findet der Wortlaut nur einen Stadtteil, darf sie
+  genauer werden („Kasernengelände“ → Neu-Donnerschwee), aber nie einen anderen
+  Ort unterschieben. (#1702)
+- **Die Wahl-Auswertung hat einen festen Platz, der Wahlabend drängt sich nicht
+  mehr vor.** Der Hinweis oben auf Heute und der Streifen auf der Startseite
+  erscheinen nur noch in der Woche vor einer Wahl bis drei Tage danach — das
+  regelt der Wahlkalender, nicht mehr ein Schalter. Das ganze Jahr über
+  erreichbar sind die Ergebnisse von Ratswahl, OB-Wahl und Stichwahl unter
+  „Wahlen“: als Reiter in der Analyse, im Mehr-Menü der App, im Fuß der
+  Startseite und von „Der neue Rat“ aus. Wo das amtliche Endergebnis vorliegt,
+  steht das jetzt auch so da, statt „kein amtliches Ergebnis“. (#1647)
+- **Die Wahlseiten bleiben in Ratslotse.** Wer über „Analyse“ zu den Wahlen
+  kommt, behält Seitenleiste und Navigation — vorher wechselte die ganze Ansicht
+  auf einen eigenen Kopf, als hätte man die Seite verlassen. Das gilt für die
+  Übersicht, den Wahlabend der Ratswahl und die Stichwahl; „Analyse“ bleibt
+  dabei markiert. Neu ist eine eigene Ergebnisseite für den ersten Wahlgang der
+  OB-Wahl mit allen neun Kandidaturen — in der Übersicht war er bisher die
+  einzige gelaufene Wahl ohne Link. (#1697)
+
+### Behoben
+- **Ein Änderungsantrag macht eine Fraktion nicht mehr zur Antragstellerin der
+  ganzen Vorlage.** Bei der Stadionvergabe stand „Antrag von: CDU“ über einer
+  Verwaltungsvorlage, nur weil die CDU einen Änderungsantrag dazu gestellt hatte
+  — und „Frag den Rat“ schrieb, der Beschluss beruhe auf einem CDU-Antrag.
+  Änderungsanträge stehen jetzt nur noch bei ihrer Teilabstimmung; wo der Titel
+  den Antragsteller nicht selbst nennt, heißt es ehrlich „Anträge im TOP von“.
+  Das betraf rund 160 Beschlüsse und auch die Partei-Auswertung. Außerdem löscht
+  „Alle Gespräche löschen“ jetzt auch die gründlichen Recherchen, Recherchen
+  ohne Einwilligung ins Speichern werden nach sieben Tagen gelöscht,
+  Rückmeldungen zum Städtevergleich stehen nicht mehr in der Adresse, und die
+  Datenschutzerklärung nennt Tippspiel-Cookie, Nutzungszählung,
+  Daumen-Rückmeldungen, Feedback und Speicherfristen. (#1657)
+- **Frag den Rat und die Recherche sagen ehrlich, was schiefging — und lassen
+  niemanden hängen.** Ein Fehler beim Schreiben der Antwort hieß bisher immer
+  „Die Verbindung ist abgebrochen“, dazu ein zweiter, roter Hinweis; jetzt steht
+  dort, dass es an uns liegt und nicht am Netz, und nur einmal. Bricht eine
+  Antwort unterwegs ab, ist sie als unvollständig markiert, statt wie fertig
+  auszusehen. Nach 20 Sekunden ohne ein Wort sagt Frag den Rat, dass es länger
+  dauert als üblich; die Recherche schätzt nicht mehr minutenlang „noch 15
+  Sekunden“ und gibt nach fünf Minuten ohne Lebenszeichen auf, statt sich alle
+  zwei Sekunden neu zu verbinden. Ein Fehler
+  bietet „Nochmal fragen“ und „In ‚Frag den Rat‘ stellen“ an. Das Abzeichen
+  „Erste Frage“ gibt es erst, wenn eine Antwort kommt. (#1675)
+- **Geteilte Antworten verlieren keine Bausteine mehr.** Aus der App geteilte
+  Antworten kamen ohne Debatten, Presse, Anlagen, Parteien und Grafik an, weil
+  die App sie unter anderen Namen schickte, als der Server erwartete. Im Web
+  fehlten auf der Teilen-Seite die Art eines Wortbeitrags, der
+  Tagesordnungspunkt und der Anriss der Pressemitteilung, und die Anlagen trugen
+  eine durchgezählte statt ihrer echten Belegnummer. Der Server nimmt jetzt auch
+  die alten Namen an, sodass Teilen aus der App schon ohne Update vollständig
+  ankommt. (#1645)
+- **Die App sagt wieder, wo du bist.** Über Beschlüssen, Sitzungen und
+  Profilen stand in der Kopfzeile nur „Ratslotse“; jetzt steht dort, was die
+  Seite ist.  (#1707)
+- **Antworten aus dem Haushalt gelten nicht mehr als unsicher.** Kommt eine
+  Antwort Zahl für Zahl aus den Haushaltsplänen, steht darunter nicht mehr „nur
+  wenige passende Beschlüsse gefunden — die Antwort kann unsicher sein“. Im
+  Admin-Panel zählen Antworten, die eine Anlage, den Haushalt, die
+  Geschäftsordnung oder den Sitzungskalender als Beleg haben, nicht mehr als
+  „Antworten ohne Quelle“. (#1689)
+- **Frag den Rat findet frische Sitzungen und den Stand seit dem letzten
+  Protokoll.** „Was ist gestern beim allgemeinen Ausschuss rausgekommen?“ findet
+  jetzt die Sitzung vom Vortag und nennt ihre Tagesordnung, solange das
+  Protokoll aussteht. Antworten zum Stand eines Vorhabens nennen auch spätere
+  Tagesordnungs-Stationen, etwa eine erneute Absetzung, statt beim letzten
+  ausgewerteten Beschluss stehenzubleiben. Und wer fragt, wo man Ergebnisse
+  findet, bekommt den Weg zur Sitzungsseite und zum Ratsinformationssystem statt
+  eines alten Beschlusses. (#1690)
+- **Frag den Rat trifft Datum und Stand genauer.** Ein Datum ohne Jahr („Was
+  steht am 26. Oktober im Rat an?“) meint jetzt die nächstliegende passende
+  Sitzung, auch wenn sie bisher nur im Terminkalender steht — statt einer
+  Sitzung von vor Jahren. Ein Ausschussbeschluss, den der Rat später bestätigt
+  hat, gilt nicht mehr als „abgelöst“. Und die vorgeschlagenen Folgefragen
+  tragen keine Quellennummern wie „[8047]“ mehr. (#1700)
+- **„Frag den Rat“ kennt das heutige Datum, hängt nicht mehr minutenlang und hat
+  ein Tageskontingent.** „Letzten Monat“ und „dieses Jahr“ beziehen sich jetzt
+  auf den heutigen Tag — vorher hielt die Antwort August für den Vormonat.
+  Antwort, „Verständlicher erklären“ und Recherche-Bericht warten nur noch eine
+  feste Frist auf das Modell und weichen dann aus, statt bis zu zehn Minuten zu
+  hängen; der Bericht bekommt außerdem den Aktenstand wie die schnelle Antwort.
+  Anweisungen an eine KI, die in Vorlagen, Anlagen, Pressemitteilungen,
+  Wortbeiträgen oder Beschlüssen anderer Städte stehen, werden vor dem Modell
+  entfernt. Je Konto sind 60 Fragen am Tag möglich; danach sagt Ratslotse
+  freundlich, dass es morgen weitergeht. Im Hintergrund bricht eine kaputte
+  Modellantwort den nächtlichen Protokoll-Lauf nicht mehr ab, die
+  Live-Verfolgung einer Ratssitzung hält die Aufnahme nicht mehr auf, und eine
+  Mail meldet ungewöhnlich hohe Modellkosten oder eine Selbstprüfung, die nichts
+  mehr prüft. (#1656)
+- **Konzern Stadt 2014: Sachaufwand und sieben fehlende Posten korrigiert.** In
+  der Gesamtergebnisrechnung des Konzerns standen 2014 die Aufwendungen für
+  Sach- und Dienstleistungen mit 3,2 statt 173,2 Mio. €, und sieben Posten
+  fehlten ganz — der Text des Prüfberichts trägt Leerzeichen mitten in Beträgen.
+  Diese Beträge werden jetzt zusammengesetzt; jeder geheilte Wert stimmt mit der
+  Vorjahresspalte des Folgeberichts überein. 2017 kommt der Sachaufwand dazu.
+  (#1696)
+- **Lange Seiten enden, bevor man aufgibt.** Der Changelog zeigt die drei
+  jüngsten Versionen voll und ältere zusammengeklappt mit ihren Kernsätzen; er
+  war 2,3 MB groß und auf dem Telefon über 360.000 Pixel hoch. Noch nicht
+  veröffentlichte Änderungen stehen dort jetzt wirklich unter „Unreleased“ — sie
+  fehlten bisher ganz. Themenseiten zeigen 20 Beschlüsse und auf Wunsch die
+  nächsten 20 statt aller 173, Ortsseiten sagen, dass sie nur die jüngsten 50
+  zeigen, und führen zu allen, und die Liste der beratenden Ausschussmitglieder
+  klappt erst auf Wunsch ganz auf. (#1678)
+- **Wahlseiten wissen, dass die Wahl vorbei ist.** Das Tippspiel lud noch Wochen
+  nach der Wahl ein, „trotzdem“ mitzutippen; jetzt endet eine Runde von selbst,
+  sobald die Auszählung vollständig ist (spätestens anderthalb Tage nach
+  Schließung der Wahllokale), und wer danach kommt, sieht „Das Tippspiel ist
+  vorbei“ mit Rangliste und Wahlergebnis. Der Wahlprogramm-Vergleich zählt nicht
+  mehr auf „0 Tage bis zur Ratswahl“, sondern führt zum Ergebnis, und scrollt
+  auf dem Telefon nicht mehr seitwärts. Die Stichwahl-Seite zeigt nach der
+  Auszählung „Endstand“ statt „Live“, und ein leerer „Verlauf des Abends“, der
+  sich nie mehr füllen würde, verschwindet. (#1672)
+- **Ratslotse bleibt nicht mehr hängen, wenn der Server stockt.** Jede Anfrage
+  gibt nach 20 Sekunden auf und sagt verständlich, was los ist („Keine
+  Verbindung“, „antwortet gerade nicht“, „kurz nicht erreichbar, vermutlich
+  wegen eines Updates“), statt endlos zu laden oder „Failed to fetch“ und
+  „Fehler 500“ zu zeigen. Ein kurzer Aussetzer — etwa während eines Updates —
+  wirft niemanden mehr zur Anmeldung hinaus; stattdessen erscheint ein Hinweis,
+  der es von selbst weiter versucht. Beschluss-, Sitzungs-, Personen-, Themen-
+  und Ortsseiten melden einen Ladefehler jetzt als solchen mit „Nochmal
+  versuchen“, statt zu behaupten, es gebe die Seite nicht; ebenso Beschluss- und
+  Sitzungsliste, Karte und Tippspiel, die vorher leer blieben oder ewig luden.
+  Nach einem Update lädt eine offene Seite sich bei Bedarf einmal selbst neu,
+  und die Stichwahl-Tafel springt bei einem einzelnen verpassten Abruf nicht
+  mehr auf „noch nicht offen“. (#1671)
+- **Ein erkannter Ort schränkt die Suche nicht mehr falsch ein.** Seit Frag den
+  Rat Orte auch in Alltagssprache erkennt, ordnete es manche Gebäude und Plätze
+  ihrem Stadtteil zu („Weser-Ems-Hallen“ → Innenstadt) und suchte dann nur noch
+  dort — die Antworten zu Weser-Ems-Hallen oder Schlossplatz wurden dadurch
+  deutlich schlechter. Jetzt gilt ein so erkannter Ort nur als Hinweis; fest
+  eingeschränkt wird nur, wenn der Ort wörtlich in der Frage steht. (#1714)
+- **Die Antwort scrollt auf dem Handy nicht mehr seitwärts.** Im Baustein „Aus
+  den Ratsdebatten" passte eine Zeile mit langem Fraktionsnamen, Haltung,
+  Beitragszahl und „Dazu fragen" nicht in die Breite eines Telefons: Die ganze
+  Seite wurde breiter, Eingabezeile und Anschlussfragen rutschten rechts aus dem
+  Bild. Die Zeile bricht jetzt um, „Dazu fragen" rückt bei Bedarf in die nächste
+  Zeile. Auf dem iPad quer ist „Dazu fragen" außerdem wieder sichtbar — es war
+  dort nur beim Überfahren mit der Maus zu sehen. (#1637)
+- **Wörter ohne Lücken.** Protokolle, Vorlagen und Anlagen werden mit einem
+  anderen Werkzeug aus dem PDF gelesen. Das bisherige setzte bei vielen
+  Dokumenten Leerzeichen mitten ins Wort („de r“, „Arbei tsverträge“, „R
+  atsherr“); das betraf Suche, Antworten der KI-Frage und die Texte für eigene
+  Agenten gleichermaßen. Neu eingelesene Dokumente sind ab sofort sauber, der
+  Bestand folgt. (#1722)
+- **Drei Sicherheitslücken bei Anmeldung und geteilten Links geschlossen.** Wer
+  eine fremde Adresse vorab mit eigenem Passwort registriert hatte, behielt nach
+  der Anmeldung der echten Person über „Mit Apple anmelden“ Zugang zum Konto —
+  Passwort, Sitzungen und Push-Geräte des Vorbesitzers werden dabei jetzt
+  ungültig. Ein angestoßener Adresswechsel ist nach dem Zurücksetzen oder Ändern
+  des Passworts hinfällig, wie es die Warnmail verspricht. Und weder das
+  Rücksprungziel nach der Anmeldung noch Presse- und Anlagen-Links in geteilten
+  Antworten können mehr auf fremde Seiten führen. (#1654)
+- **Zweite Sicherheitsprüfung: weitere Lücken in Backend, Web und App
+  geschlossen.** Geteilte Antworten zeigen nur noch, was Ratslotse selbst
+  geantwortet hat. Erfundene Zitate lassen sich so nicht mehr als Antwort von
+  „Frag den Rat“ verbreiten; die App braucht dafür ein Update. Bestätigungslinks
+  für eine neue Adresse und Links zum Zurücksetzen des Passworts melden
+  niemanden mehr an: Nach dem Zurücksetzen meldet man sich einmal mit dem neuen
+  Passwort an, eine neue Adresse bestätigt man in der eigenen Sitzung oder mit
+  dem Code aus der Mail. Nach dem Abmelden bleiben keine Gesprächsverläufe oder
+  zwischengespeicherten Daten mehr im Browser, und die App legt ihre Sitzung
+  nicht mehr im Cookie-Speicher ab. Ein fremder Link stellt keine Fragen mehr
+  unter deinem Konto, und viele Fehlversuche bei der Anmeldung sperren das
+  betroffene Konto für eine Viertelstunde. Außerdem geschlossen: ein Weg am
+  Tageskontingent der ausführlichen Recherche vorbei, überlange Fragen,
+  Anzeigenamen mit Web-Adressen, ein Hinweis per Mail bei einer Registrierung
+  mit bereits vergebener Adresse, Moderation im Tippspiel und einige
+  Serverfehler durch präparierte Eingaben. (#1668)
+- **Weitere Sicherheitslücken aus einer Prüfung von Backend, Web und App
+  geschlossen.** Die Bestätigungsmail trägt jetzt neben dem Link einen
+  sechsstelligen Code. Den tippt man dort ein, wo man angemeldet ist —
+  praktisch, wenn die Mail auf einem anderen Gerät landet. Der Link selbst
+  bestätigt nur noch, wenn man im selben Konto angemeldet ist; sonst meldet man
+  sich zuerst an oder setzt über „Passwort vergessen“ ein neues Passwort, was
+  die Adresse ebenfalls bestätigt. So behält niemand ein Konto, das er auf eine
+  fremde Adresse angelegt hat, und ein zugeschickter Link kann die App nicht
+  mehr still in ein fremdes Konto wechseln. Wer sein Passwort zurücksetzt oder
+  ändert, beendet damit auch die Push-Benachrichtigungen fremder Geräte, ältere
+  Reset-Links und die bisherige Kalender-Adresse; ein abonnierter Kalender
+  braucht danach einmal die neue Adresse. Gesperrte Admin-Konten sind wirklich
+  gesperrt. Links in geteilten Antworten führen nur noch dorthin, wohin sie zu
+  führen scheinen. Ein präpariertes Diagramm in einer geteilten Antwort lässt
+  die iOS-App nicht mehr abstürzen. Die Tabelle einer Tipprunde nur für
+  Angemeldete ist ohne Konto nicht mehr einsehbar. Das Tageskontingent der
+  ausführlichen Recherche lässt sich nicht mehr durch gleichzeitige Starts oder
+  über „Teilbericht zeigen“ umgehen. Auch einige kleinere Lücken sind
+  geschlossen, unter anderem beim Melden von Vorhaben in „Mein Viertel“ und in
+  den Benachrichtigungs-Mails. (#1665)
+- **Personen-Marken in KI-Antworten, Verwaltungsliste und Recherche-Kontingent
+  wieder sichtbar.** Drei Stellen lasen noch die alten deutschen Feldnamen der
+  Schnittstelle und bekamen dadurch still nichts: Namen von Ratsmitgliedern in
+  Antworten trugen keine Partei-Marke mehr, unter *Analyse → Personen* fehlte
+  die Verwaltung, und das verbleibende Tageskontingent der ausführlichen
+  Recherche wurde nie angezeigt. Außerdem kam ein bereits gelesener
+  Recherche-Bericht bei jedem Öffnen von *Fragen* wieder hoch. (#1669)
+- **Sitzungen und Haushalt lesen sich auf dem Telefon besser.** In der
+  Tagesordnung einer vergangenen Sitzung stand bei jedem Punkt mit Ergebnis der
+  Titel ein Wort je Zeile, weil das Ergebnis daneben den Platz nahm; es steht
+  jetzt darunter. Seitwärts scrollende Chip-Zeilen im Haushalt (Jahre,
+  Konzern-Filter, Prüfung, Termine) blenden am Rand aus, statt hart
+  abgeschnitten zu stehen, und die Verwaltung des Tippspiels passt auf ein
+  Telefon, statt herausgezoomt zu werden. Wo das Ergebnis eines
+  Tagesordnungspunkts als Marke daneben steht, fehlt im Titel das angehängte
+  „Beschluss: ungeändert beschlossen“ aus dem Ratsinformationssystem — es stand
+  bei fast jedem zweiten Punkt doppelt. (#1676)
+- **Web und App halten, was der Review vor 3.0 gefunden hat.** Die
+  Tabulatortaste beginnt wieder bei „Zum Inhalt springen" statt bei einem
+  schwebenden Knopf, ein unsichtbarer „Nach oben"-Knopf ist nicht mehr per
+  Tastatur erreichbar, und fünf tote Verweise (Suche, Bereiche, Streit ums
+  Geld, „Alle Beschlüsse dazu") führen wieder auf echte Seiten. Startseite,
+  Changelog, Haushalt, Konto und die öffentlichen Detailseiten lassen sich bei
+  320 px nicht mehr seitwärts schieben; ein Prüfbericht-Absatz mit „!" statt
+  Leerzeichen wird beim Einlesen repariert. Ein noch unbestätigtes Konto liest
+  öffentliche Seiten wie ohne Konto (mit Hinweis) und kann sich abmelden. Jede
+  Seite trägt einen eigenen Titel, das Signal-Orange und das Rot im
+  Dunkelmodus halten WCAG AA. In der App öffnen Links auf Karte, Viertel,
+  Abos, Quiz, Anmeldung und Startseite die App,  Kalendereinträge stehen in
+  Oldenburger Zeit, Abmelden räumt Verlauf, Karten-Ebenen und Zähler mit ab,
+  und ein abgelaufenes Token meldet sauber ab. (#1658)
+- **Benachrichtigungen kommen nicht mehr doppelt.** Liefen zwei Zustellungen
+  gleichzeitig – etwa ein Cron und die Ankündigung einer neuen Version –, konnte
+  dieselbe Mail oder Push-Nachricht zweimal ankommen; jetzt reserviert jede
+  Zustellung ihre Meldungen, bevor sie verschickt. Wer ein Gremium abonniert hat
+  und zugleich ein passendes Thema verfolgt, bekommt zur selben Tagesordnung nur
+  noch eine Meldung, und Vorabend-Erinnerung und Wochenüberblick gehen auch bei
+  einem wiederholten Lauf nur einmal raus. Gesperrte und unbestätigte Konten
+  bekommen keine Meldungen mehr eingereiht. Im Betrieb melden sich Teilausfälle
+  des Städtevergleichs und ein dauerhaft unerreichbarer Wahltermin-Kalender
+  jetzt als Fehler, und Sicherungen werden vor dem Ablegen geprüft. (#1655)
+
 ## [2.10.0] – 2026-10-03
 
 ### Hinzugefügt
@@ -9589,7 +9949,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.10.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.11.0...main
+[2.11.0]: https://github.com/Schereo/Ratslotse/compare/v2.10.0...v2.11.0
 [2.10.0]: https://github.com/Schereo/Ratslotse/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Schereo/Ratslotse/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/Schereo/Ratslotse/compare/v2.7.0...v2.8.0
