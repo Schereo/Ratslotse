@@ -135,3 +135,16 @@ def test_der_router_nimmt_themen_nur_als_hinweis():
     quelle = (Path(__file__).parent.parent / "web/backend/app/routers/council.py").read_text()
     i = quelle.index("hinweis_ids=(")
     assert 'analyse["themen_ids"]' in quelle[i:i + 600]
+
+
+def test_vorgang_und_ortstext_haengen_am_schalter():
+    """Wächter am Quelltext: Die Vorgangs-Beschlüsse kommen nur mit
+    `suche-ausbau` und nur bei Stand-, Verlaufs- und Geldfragen; der Ortsfilter
+    nimmt Textfunde nur für einwortige Orte (ODER-Volltext, s. Kommentar)."""
+    from pathlib import Path
+    quelle = (Path(__file__).parent.parent / "web/backend/app/routers/council.py").read_text()
+    i = quelle.index("# Vorgang als Zeitleiste")
+    block = quelle[i:i + 1600]
+    assert "suche_ausbau" in block and 'typ in ("history", "money")' in block
+    assert "allowed_place_ids" in block           # der Ortsfilter gilt auch hier
+    assert 'len(ort["name"].split()) == 1' in quelle

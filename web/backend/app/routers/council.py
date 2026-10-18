@@ -5411,6 +5411,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     place_ids = (place_ids or []) + [
                         i for i in store.decision_ids_for_entities(gleichnamig, je=60)
                         if i not in schon]
+                # … und Beschlüsse, die einen einwortigen Ort wörtlich nennen,
+                # ohne ihm zugeordnet zu sein („Schutzgebietsausweisung“ zum
+                # Heidbrook). Mehrwortige Namen nicht: Die Volltextsuche
+                # verknüpft Wörter mit ODER, „Alter Stadthafen“ träfe jedes „alter“.
+                if len(ort["name"].split()) == 1:
+                    schon = set(place_ids or [])
+                    place_ids = (place_ids or []) + [
+                        i for i, _s, _snip in store.search_decisions_fts(ort["name"], limit=40)
+                        if i not in schon]
             allowed_place_ids = set(place_ids or []) if ort else None
             if latest_place:
                 # Bei einer reinen Ortsfrage nach dem „zuletzt“ ist das Datum
@@ -6097,6 +6106,27 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Stationen, die anders klingen (Bürgschaft, B-Plan, Vertrag).
                 im_ctx = {c["id"] for c in ctx}
                 ctx = ctx + [d for d in akte_beschluesse if d["id"] not in im_ctx]
+            # Vorgang als Zeitleiste (Schalter `suche-ausbau`): Bei Stand-,
+            # Verlaufs- und Geldfragen mit klar erkanntem Thema kommen dessen
+            # jüngste Beschlüsse dazu — OHNE die Mindestpunktzahl des Rerankers.
+            # Die „Akte“ fasst nur je Vorlage zusammen; ein Vorhaben läuft über
+            # viele Vorlagen. Bei „Bürgschaften für das Klinikum“ fielen die
+            # Eigenkapitalstärkungen 2022–2024 unter die Schwelle, obwohl sie
+            # zum Vorgang gehören (Gold 18.10.2026).
+            if (suche_ausbau and not vorher_ids and not einfach and not latest_place
+                    and typ not in ("session", "person")
+                    and (typ in ("history", "money") or qa.stand_or_recency(q_suche))):
+                haupt = [e["id"] for e in qa.finde_entitaeten(store, q_suche, max_n=2)]
+                haupt += [i for i in (analyse.get("themen_ids") or [])[:2] if i not in haupt]
+                if haupt:
+                    im_ctx = {c["id"] for c in ctx}
+                    vorgang_ids = [i for i in store.decision_ids_for_entities(haupt, je=qa.VORGANG_MAX)
+                                   if i not in im_ctx
+                                   and (allowed_place_ids is None or i in allowed_place_ids)]
+                    vorgang = store.get_decisions_by_ids(vorgang_ids[:qa.VORGANG_MAX])
+                    if vorgang:
+                        ctx = ctx + vorgang
+                        zeiten["vorgang"] = len(vorgang)
             if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
             if typ == "session" and sitzung_ids and not einfach:
