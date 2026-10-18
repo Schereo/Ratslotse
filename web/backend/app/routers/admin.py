@@ -32,7 +32,7 @@ from ..config import get_settings
 from ..antworten import (AdminDaumenRunter, CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
-                         AdminEreignisse, AdminKohorten, AdminLotti, AdminPlaceCandidates,
+                         AdminEreignisse, AdminKohorten, AdminLotti, AdminMcp, AdminPlaceCandidates,
                          AdminQuizStats, AdminRequestFehler, AdminSackgasse,
                          AdminSeitenaufrufe, AdminAnmeldungen,
                          AdminFeedbackNotified,
@@ -206,6 +206,23 @@ def stats_assistant(
     """
     return cast("AdminLotti", store.lotti_auswertung(
         max(1, min(days, 365)), council_db=get_settings().council_db))
+
+
+@router.get("/stats/mcp")
+def stats_mcp(
+    days: int = 30,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminMcp:
+    """Wie Agenten den MCP-Server benutzen: Werkzeuge, Abfolgen, Suchen
+    ohne Treffer, Konten.
+
+    Mit Konto und Suchtext (Tims Entscheidung 18.10.2026) — beides sagen die
+    Freigabe-Seite und die Einstellungskarte, bevor jemand verbindet. Der
+    Suchtext ist gekürzt, Kontaktdaten sind maskiert, nach 90 Tagen ist er
+    weg (``Store.purge_mcp_calls``).
+    """
+    return cast("AdminMcp", store.mcp_auswertung(max(1, min(days, 365))))
 
 
 @router.get("/stats/dead-ends")

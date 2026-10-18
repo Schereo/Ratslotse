@@ -26,7 +26,9 @@ Welche Werkzeuge es gibt und was sie dürfen: ``council/mcp_tools.py``.
 """
 from __future__ import annotations
 
+import json
 import logging
+import re
 import threading
 import time
 from datetime import UTC, datetime
@@ -35,7 +37,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from council import mcp_tools
+from council import kontaktdaten, mcp_tools
 from council.store import CouncilStore
 from kern import features
 from kern import roles as rollen
@@ -183,7 +185,7 @@ def _abgewiesen(code: int, text: str, *, token_kaputt: bool = False) -> JSONResp
 Zaehlstelle = tuple[str, int]
 
 
-def _oauth_konto(token: str, store: Store) -> tuple[Zaehlstelle, int] | JSONResponse:
+def _oauth_konto(token: str, store: Store) -> tuple[Zaehlstelle, int, str] | JSONResponse:
     grant = store.mcp_oauth_grant_by_access(token)
     if not grant or (grant["access_expires"] or "") < datetime.now(UTC).isoformat(timespec="seconds"):
         return _abgewiesen(401, "Zugang abgelaufen oder widerrufen.", token_kaputt=True)
@@ -197,11 +199,13 @@ def _oauth_konto(token: str, store: Store) -> tuple[Zaehlstelle, int] | JSONResp
         store.revoke_mcp_oauth_grant(int(grant["id"]))
         return _abgewiesen(401, "Die Verbindung wurde beendet. Bitte neu verbinden.",
                            token_kaputt=True)
-    return ("g", int(grant["id"])), int(grant["owner_id"])
+    return ("g", int(grant["id"])), int(grant["owner_id"]), str(grant["client_name"])
 
 
-def _konto(request: Request, store: Store) -> tuple[Zaehlstelle, dict] | JSONResponse:
-    """``(zählstelle, konto)`` — oder die Antwort, mit der abgewiesen wird.
+def _konto(request: Request, store: Store) -> tuple[Zaehlstelle, dict, str] | JSONResponse:
+    """``(zählstelle, konto, agent)`` — oder die Antwort, mit der abgewiesen
+    wird. ``agent`` ist der Name, unter dem die Aufrufe in der Auswertung
+    stehen: der des Schlüssels bzw. der, den sich der OAuth-Client gab.
 
     Zwei Wege hinein: der persönliche Schlüssel (``rlmcp_…``) und das
     OAuth-Zugangs-Token (``rloat_…``, ``routers/mcp_oauth.py``).
@@ -218,7 +222,7 @@ def _konto(request: Request, store: Store) -> tuple[Zaehlstelle, dict] | JSONRes
         gefunden = _oauth_konto(token, store)
         if isinstance(gefunden, JSONResponse):
             return gefunden
-        stelle, owner_id = gefunden
+        stelle, owner_id, agent = gefunden
     else:
         schluessel = store.mcp_token_owner(token)
         if not schluessel:
@@ -226,12 +230,13 @@ def _konto(request: Request, store: Store) -> tuple[Zaehlstelle, dict] | JSONRes
                                     f"{get_settings().app_base_url.rstrip('/')}/account.",
                                token_kaputt=bool(token))
         stelle, owner_id = ("t", schluessel[0]), schluessel[1]
+        agent = store.mcp_token_label(schluessel[0])
     user = store.get_web_user_by_id(owner_id)
     if not user or not ist_aktiv(user):
         return _abgewiesen(403, "Das Konto zu diesem Schlüssel ist nicht aktiv.")
     if "mcp" not in rollen.permissions_for(user.get("roles")):
         return _abgewiesen(403, "Dieses Konto hat keinen MCP-Zugang (Rolle „MCP-Zugang“).")
-    return stelle, user
+    return stelle, user, agent
 
 
 def _zaehlen(store: Store, stelle: Zaehlstelle) -> None:
@@ -251,10 +256,126 @@ def _zaehlen(store: Store, stelle: Zaehlstelle) -> None:
 
 
 def zaehler_vergessen() -> None:
-    """Für Tests: Drosselung zurücksetzen."""
+    """Für Tests: Drosselung und Aufruf-Puffer zurücksetzen."""
+    global _puffer_geschrieben
     with _zaehl_sperre:
         _zaehl_offen.clear()
         _zaehl_zuletzt.clear()
+    with _puffer_sperre:
+        _puffer.clear()
+        _puffer_geschrieben = 0.0
+
+
+# --------------------------------------------------------------------------- #
+# Auswertung: Wie benutzen Agenten den Server?
+# --------------------------------------------------------------------------- #
+#
+# Jeder Werkzeugaufruf landet als Zeile in `mcp_calls` — gesammelt und
+# stapelweise geschrieben, nie während der Antwort: Ein Agent fragt bis zu
+# 120-mal in der Minute, und ein Commit je Aufruf stünde hinter jeder
+# Schreibsperre an (dieselbe Lehre wie beim Sitzungs-Zähler, `app.deps`).
+# Gelingt das Schreiben nicht, bleibt der Stapel liegen und geht mit dem
+# nächsten; mehr als `_PUFFER_MAX` Zeilen werden nicht gehalten.
+
+_PUFFER_TAKT_S = 15.0
+_PUFFER_MAX = 5000
+_puffer_sperre = threading.Lock()
+_puffer: list[dict] = []
+_puffer_geschrieben = 0.0
+_aufgeraeumt = 0.0
+
+#: Suchtext: gekürzt, Kontaktdaten maskiert. Die Felder, die Text tragen
+#: können, stehen hier — alle anderen Argumente zählen nur mit ihrem Namen.
+QUERY_LAENGE = 200
+#: Eine Telefonnummer ohne „Tel.“ davor: Vorwahl mit 0 oder +49, dann
+#: mindestens sechs weitere Ziffern. `kontaktdaten.maskieren` erkennt Nummern
+#: nur mit Anrede, weil es für Protokolltexte voller Drucksachennummern gebaut
+#: ist; ein Suchtext ist kurz, und eine Nummer darin hat keinen anderen Sinn.
+_TELEFON = re.compile(r"(?:\+49[\s/-]?|\b0)\d{2,5}[\s/-]?\d(?:[\s/-]?\d){4,}")
+
+
+def _suchtext(roh: str) -> str:
+    return " ".join(_TELEFON.sub(kontaktdaten.PLATZHALTER, kontaktdaten.maskieren(roh)).split())[:QUERY_LAENGE]
+
+
+def _treffer(text: str | None) -> int | None:
+    """Wie viele Treffer hat die Antwort? ``total`` der Suche, sonst die
+    Länge der Ergebnisliste; bei Einzelabrufen ``None``."""
+    if not text:
+        return None
+    try:
+        daten = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(daten, dict):
+        return None
+    if isinstance(daten.get("total"), int):
+        return int(daten["total"])
+    for schluessel in ("results", "sessions", "committees", "items"):
+        if isinstance(daten.get(schluessel), list):
+            return len(daten[schluessel])
+    return None
+
+
+def aufruf_zeile(herkunft: dict, tool: str, argumente: Any, ergebnis: str,
+                 text: str | None, dauer_s: float) -> dict:
+    args = argumente if isinstance(argumente, dict) else {}
+    gesetzt = sorted(k for k, v in args.items() if v not in (None, "", [], {}))[:20]
+    query = args.get("query")
+    if isinstance(query, str) and query.strip():
+        query = _suchtext(query)
+    else:
+        query = None
+    return {
+        "ts": datetime.now(UTC).isoformat(timespec="seconds"),
+        "owner_id": int(herkunft["owner_id"]),
+        "source": herkunft["source"],
+        "client": str(herkunft["client"])[:80],
+        "tool": tool,
+        "outcome": ergebnis,
+        "duration_ms": int(dauer_s * 1000),
+        "args": json.dumps(gesetzt),
+        "query": query,
+        "result_count": _treffer(text) if ergebnis == "ok" else None,
+    }
+
+
+def _vermerken(tasks: BackgroundTasks, zeile: dict) -> None:
+    with _puffer_sperre:
+        _puffer.append(zeile)
+        del _puffer[:-_PUFFER_MAX]
+        faellig = time.monotonic() - _puffer_geschrieben >= _PUFFER_TAKT_S or len(_puffer) >= 50
+    if faellig:
+        tasks.add_task(aufrufe_schreiben)
+
+
+def aufrufe_schreiben() -> None:
+    """Den Puffer in die Datenbank schreiben (läuft nach der Antwort).
+
+    Öffnet eine eigene Verbindung: Die der Anfrage ist zu diesem Zeitpunkt
+    schon geschlossen. Einmal am Tag wird dabei auch aufgeräumt (Suchtexte
+    nach 90 Tagen, Zeilen nach einem Jahr)."""
+    global _puffer_geschrieben, _aufgeraeumt
+    with _puffer_sperre:
+        stapel = list(_puffer)
+        _puffer.clear()
+        _puffer_geschrieben = time.monotonic()
+    if not stapel:
+        return
+    store = Store(get_settings().ratslotse_db, einmal=True)
+    try:
+        if not store.record_mcp_calls(stapel):
+            with _puffer_sperre:
+                _puffer[:0] = stapel
+                del _puffer[:-_PUFFER_MAX]
+            return
+        if time.monotonic() - _aufgeraeumt > 24 * 3600 or _aufgeraeumt == 0.0:
+            _aufgeraeumt = time.monotonic()
+            store.purge_mcp_calls()
+    except Exception:  # noqa: BLE001 — die Auswertung darf den Server nie stören
+        _log.exception("MCP-Aufrufe nicht geschrieben")
+    finally:
+        store.close()
 
 
 def _fehler(mid: Any, code: int, text: str) -> dict:
@@ -265,9 +386,11 @@ def _ergebnis(mid: Any, result: dict) -> dict:
     return {"jsonrpc": "2.0", "id": mid, "result": result}
 
 
-def _bearbeiten(nachricht: Any, council: CouncilStore, tasks: BackgroundTasks) -> dict | None:
+def _bearbeiten(nachricht: Any, council: CouncilStore, tasks: BackgroundTasks,
+                herkunft: dict | None = None) -> dict | None:
     """Eine JSON-RPC-Nachricht → Antwort, oder ``None`` für eine
-    Benachrichtigung bzw. eine Antwort des Clients (beide bekommen keine)."""
+    Benachrichtigung bzw. eine Antwort des Clients (beide bekommen keine).
+    Werkzeugaufrufe werden mit ``herkunft`` für die Auswertung vermerkt."""
     if not isinstance(nachricht, dict) or nachricht.get("jsonrpc") != "2.0":
         return _fehler(None, -32600, "Keine JSON-RPC-2.0-Nachricht.")
     methode = nachricht.get("method")
@@ -294,16 +417,25 @@ def _bearbeiten(nachricht: Any, council: CouncilStore, tasks: BackgroundTasks) -
         name = params.get("name")
         if name not in mcp_tools.TOOLS:
             return _fehler(mid, -32602, f"Unbekanntes Werkzeug: {name}")
+        beginn = time.monotonic()
+        argumente = params.get("arguments")
+
+        def vermerken(ergebnis: str, text: str | None) -> None:
+            if herkunft is not None:
+                _vermerken(tasks, aufruf_zeile(herkunft, str(name), argumente, ergebnis, text,
+                                               time.monotonic() - beginn))
         try:
-            text = mcp_tools.ausfuehren(council, name, params.get("arguments"),
-                                        get_settings().app_base_url)
+            text = mcp_tools.ausfuehren(council, name, argumente, get_settings().app_base_url)
+            vermerken("ok", text)
             return _ergebnis(mid, {"content": [{"type": "text", "text": text}],
                                    "isError": False})
         except mcp_tools.ToolError as e:
+            vermerken("tool_error", None)
             return _ergebnis(mid, {"content": [{"type": "text", "text": str(e)}],
                                    "isError": True})
         except Exception as e:  # noqa: BLE001 — landet in der Fehlerliste, nicht beim Agenten
             _log.exception("MCP-Werkzeug %s", name)
+            vermerken("internal", None)
             from ..fehlersammler import sammeln
             melden = sammeln(e, "POST", f"/api/mcp#{name}", "/api/mcp")
             if melden:
@@ -337,18 +469,20 @@ def mcp(
     konto = _konto(request, store)
     if isinstance(konto, JSONResponse):
         return konto  # type: ignore[return-value]
-    stelle, user = konto
+    stelle, user, agent = konto
     _minute.check(request, subject=user["id"])
     _tag.check(request, subject=user["id"])
     _zaehlen(store, stelle)
+    herkunft = {"owner_id": user["id"], "client": agent,
+                "source": ("key:" if stelle[0] == "t" else "oauth:") + str(stelle[1])}
     if isinstance(nachricht, list):
         # Stapel (Protokoll 2025-03-26). Neuere Fassungen schicken keine mehr.
-        antworten = [a for a in (_bearbeiten(n, council, tasks) for n in nachricht)
+        antworten = [a for a in (_bearbeiten(n, council, tasks, herkunft) for n in nachricht)
                      if a is not None]
         if not antworten:
             return Response(status_code=202)  # type: ignore[return-value]
         return JSONResponse(antworten)  # type: ignore[return-value]
-    antwort = _bearbeiten(nachricht, council, tasks)
+    antwort = _bearbeiten(nachricht, council, tasks, herkunft)
     if antwort is None:
         return Response(status_code=202)  # type: ignore[return-value]
     return JSONResponse(antwort)  # type: ignore[return-value]

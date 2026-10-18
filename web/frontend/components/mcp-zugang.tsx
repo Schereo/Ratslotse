@@ -105,6 +105,10 @@ function McpKarte() {
         Er sucht dann selbst in Beschlüssen, Vorlagen und Tagesordnungen. Er kann nur lesen, und der
         Haushalt ist nicht dabei.
       </p>
+      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+        Ratslotse speichert zu deinem Konto, welche Werkzeuge dein Agent aufruft und wonach er sucht,
+        um den Zugang zu verbessern. Den Suchtext löschen wir nach 90 Tagen.
+      </p>
 
       {daten && (
         <div className="mt-4">

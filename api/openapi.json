@@ -2079,6 +2079,280 @@
         "title": "AdminMailVielempfaenger",
         "type": "object"
       },
+      "AdminMcp": {
+        "description": "``GET /api/admin/stats/mcp``: Wie Agenten den MCP-Server benutzen.\n\nEine Sitzung ist eine Folge von Aufrufen derselben Verbindung ohne Pause\nüber 30 Minuten. ``transitions`` zählt Schritte innerhalb einer Sitzung\n(„search_decisions → get_decision“), ``entries`` den ersten Aufruf.",
+        "properties": {
+          "accounts": {
+            "title": "Accounts",
+            "type": "integer"
+          },
+          "accounts_list": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpAccount"
+            },
+            "title": "Accounts List",
+            "type": "array"
+          },
+          "arguments": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpZeile"
+            },
+            "title": "Arguments",
+            "type": "array"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "calls_per_session": {
+            "title": "Calls Per Session",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpZeile"
+            },
+            "title": "Clients",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "empty_queries": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpQuery"
+            },
+            "title": "Empty Queries",
+            "type": "array"
+          },
+          "empty_searches": {
+            "title": "Empty Searches",
+            "type": "integer"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpZeile"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "p50_ms": {
+            "title": "P50 Ms",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "per_day": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpTag"
+            },
+            "title": "Per Day",
+            "type": "array"
+          },
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpQuery"
+            },
+            "title": "Queries",
+            "type": "array"
+          },
+          "searches": {
+            "title": "Searches",
+            "type": "integer"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpTool"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "transitions": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpZeile"
+            },
+            "title": "Transitions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days",
+          "calls",
+          "accounts",
+          "sessions",
+          "calls_per_session",
+          "errors",
+          "searches",
+          "empty_searches",
+          "p50_ms",
+          "per_day",
+          "tools",
+          "clients",
+          "accounts_list",
+          "entries",
+          "transitions",
+          "arguments",
+          "queries",
+          "empty_queries"
+        ],
+        "title": "AdminMcp",
+        "type": "object"
+      },
+      "AdminMcpAccount": {
+        "properties": {
+          "clients": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Clients",
+            "type": "array"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "title": "Email",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last": {
+            "title": "Last",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "owner_id": {
+            "title": "Owner Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "owner_id",
+          "email",
+          "display_name",
+          "n",
+          "last",
+          "clients"
+        ],
+        "title": "AdminMcpAccount",
+        "type": "object"
+      },
+      "AdminMcpQuery": {
+        "properties": {
+          "empty": {
+            "title": "Empty",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "n",
+          "empty"
+        ],
+        "title": "AdminMcpQuery",
+        "type": "object"
+      },
+      "AdminMcpTag": {
+        "properties": {
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "n"
+        ],
+        "title": "AdminMcpTag",
+        "type": "object"
+      },
+      "AdminMcpTool": {
+        "properties": {
+          "empty": {
+            "title": "Empty",
+            "type": "integer"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p50_ms": {
+            "title": "P50 Ms",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "n",
+          "errors",
+          "empty",
+          "p50_ms"
+        ],
+        "title": "AdminMcpTool",
+        "type": "object"
+      },
+      "AdminMcpZeile": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "n"
+        ],
+        "title": "AdminMcpZeile",
+        "type": "object"
+      },
       "AdminNewsList": {
         "properties": {
           "releases": {
@@ -29055,6 +29329,50 @@
           }
         },
         "summary": "Stats Growth",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/mcp": {
+      "get": {
+        "description": "Wie Agenten den MCP-Server benutzen: Werkzeuge, Abfolgen, Suchen\nohne Treffer, Konten.\n\nMit Konto und Suchtext (Tims Entscheidung 18.10.2026) — beides sagen die\nFreigabe-Seite und die Einstellungskarte, bevor jemand verbindet. Der\nSuchtext ist gekürzt, Kontaktdaten sind maskiert, nach 90 Tagen ist er\nweg (``Store.purge_mcp_calls``).",
+        "operationId": "stats_mcp_api_admin_stats_mcp_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMcp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Mcp",
         "tags": [
           "admin"
         ]

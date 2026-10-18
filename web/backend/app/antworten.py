@@ -4628,6 +4628,67 @@ class McpTokenCreated(TypedDict):
     endpoint: str
 
 
+class AdminMcpTag(TypedDict):
+    day: str
+    n: int
+
+
+class AdminMcpZeile(TypedDict):
+    key: str
+    n: int
+
+
+class AdminMcpTool(TypedDict):
+    key: str
+    n: int
+    errors: int
+    #: Aufrufe ohne Treffer (``result_count == 0``) — bei der Suche die
+    #: wichtigste Zahl: Dort lässt die Volltextsuche den Agenten im Stich.
+    empty: int
+    p50_ms: int | None
+
+
+class AdminMcpAccount(TypedDict):
+    owner_id: int
+    email: str | None
+    display_name: str | None
+    n: int
+    last: str
+    clients: list[str]
+
+
+class AdminMcpQuery(TypedDict):
+    query: str
+    n: int
+    empty: int
+
+
+class AdminMcp(TypedDict):
+    """``GET /api/admin/stats/mcp``: Wie Agenten den MCP-Server benutzen.
+
+    Eine Sitzung ist eine Folge von Aufrufen derselben Verbindung ohne Pause
+    über 30 Minuten. ``transitions`` zählt Schritte innerhalb einer Sitzung
+    („search_decisions → get_decision“), ``entries`` den ersten Aufruf."""
+    days: int
+    calls: int
+    accounts: int
+    sessions: int
+    calls_per_session: int | None
+    errors: int
+    searches: int
+    empty_searches: int
+    p50_ms: int | None
+    per_day: list[AdminMcpTag]
+    tools: list[AdminMcpTool]
+    clients: list[AdminMcpZeile]
+    accounts_list: list[AdminMcpAccount]
+    entries: list[AdminMcpZeile]
+    transitions: list[AdminMcpZeile]
+    arguments: list[AdminMcpZeile]
+    queries: list[AdminMcpQuery]
+    empty_queries: list[AdminMcpQuery]
+
+
 class McpMessage(TypedDict):
     """Eine JSON-RPC-2.0-Antwort des MCP-Servers (``POST /api/mcp``).
 
