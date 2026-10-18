@@ -16,6 +16,7 @@ import re
 from kern import glossar, llm, prompts
 from kern.foreign_text import defuse
 from council import ernte
+from council.applicants import applicants_named
 from council import outcome_note
 from council import geld as _geld
 from council.geld import alltag as _alltag
@@ -51,6 +52,70 @@ DEEP_MODEL = os.environ.get("COUNCIL_DEEP_MODEL") or MODEL
 # wie Luna einen Azure-EU-Endpunkt, der auch ZDR annimmt (Probe 23.09.2026).
 # Leer gesetzt = das Recht wirkt nicht, alle bekommen `DEEP_MODEL`.
 DEEP_PLUS_MODEL = os.environ.get("COUNCIL_DEEP_PLUS_MODEL", "openai/gpt-6-sol").strip() or DEEP_MODEL
+
+#: **Fristen der Modellaufrufe, auf die jemand wartet** (Review 05.10.2026).
+#: Sekunden ohne ein einziges Byte (httpx-Lesefrist) — dieselbe Bauform wie
+#: Lottis ``assistant.LLM_FRIST_S``. Ohne Angabe wartete der Antwort-Strom
+#: unter einer Drosselung so lange wie das SDK: 600 s je Anlauf. OpenRouter
+#: schickt während der Erzeugung alle ~3 s ein Füllzeichen (gemessen
+#: 06.10.2026), 30 s Stille heißen also: der Anbieter hängt. Mit Frist
+#: bekommt der EU-Weg einen Anlauf, der Verzicht-Weg höchstens zwei Fristen
+#: (``llm._anlauf``); danach greift im Router der Ersatzweg.
+ANTWORT_FRIST_S = 30
+#: Der Recherche-Bericht ist ein Hintergrund-Auftrag mit eigenem Neuanlauf
+#: (``deepresearch._schreiben_und_abschliessen``, drei Versuche) — er darf
+#: länger auf ein Lebenszeichen warten, aber nicht die zehn Minuten des SDK.
+DEEP_FRIST_S = 60
+
+#: **Tageskontingent von Frag den Rat je Konto** (Review 05.10.2026). Bis
+#: dahin bremste nur der Fenster-Zähler (10 in zehn Minuten,
+#: ``app.ratelimit.qa_limiter``) — über den Tag 1.440 Fragen, ein offener Hahn.
+#:
+#: **Warum 60.** Gemessen am 06.10.2026 (vier Fragen über ``/ask`` gegen die
+#: lokalen Ratsdaten, GPT-6 Luna): Analyse und Antwort kosten zusammen
+#: 0,08–0,17 Cent je Frage; der Parteien-Baustein kommt mit höchstens
+#: 6.000 Antwort-Tokens dazu (Luna: 0,3 Cent). 60 Fragen sind damit rund
+#: 30 Cent je Konto und Tag im schlimmsten Fall — und für einen Menschen zwei
+#: Stunden Nachfragen im Takt des Fenster-Zählers. Was als Summe trotzdem
+#: aus dem Ruder läuft, meldet der Herzschlag (``LLM_TAGESKOSTEN_ALARM_USD``).
+#: Gezählt wird dieselbe Zeile wie in der Nutzungsstatistik
+#: (``user_activity``, Merkmal ``ai_question``), dieselbe Mechanik wie Lottis
+#: ``assistant.TAGES_KONTINGENT`` — ein Zähler in der Datenbank, der
+#: Neustarts übersteht. Konten mit ``limits_unlocked`` sind ausgenommen.
+TAGES_KONTINGENT = 60
+KONTINGENT_MERKMAL = "ai_question"
+#: Der Satz, den Web und App zeigen. Er beginnt mit „Für heute“ — daran
+#: erkennt das Web das Tageskontingent und zeigt es nicht als „kurze
+#: Verschnaufpause“ (``council-qa.tsx``).
+KONTINGENT_TEXT = (f"Für heute hast du schon {TAGES_KONTINGENT} Fragen gestellt — ab morgen "
+                   "beantwortet Ratslotse wieder neue. Deine bisherigen Antworten bleiben "
+                   "lesbar.")
+
+
+def _heute() -> str:
+    """„Dienstag, 6. Oktober 2026 (2026-10-06)“ — der Tag in Oldenburg.
+
+    Dieselbe Quelle wie Lottis Prompt (``lotti_werkzeuge.heute_lang``),
+    damit Antwort, Bericht und Lotti nie über das Datum auseinanderliegen.
+    Spät importiert: ``lotti_werkzeuge`` braucht den Rest von ``council``.
+    """
+    from council.lotti_werkzeuge import heute_lang
+    return heute_lang()
+
+
+def _fremd(text: str) -> str:
+    """Fremdtext durch den Anweisungsfilter (``kern.foreign_text``).
+
+    **Der Befund (Review 05.10.2026).** Der Filter wirkte in der KI-Frage nur
+    auf den Bildschirm-Block aus Lottis Fenster. Vorlagenauszüge, Anlagen,
+    Pressemitteilungen, Wortbeiträge und die Beschlüsse anderer Städte —
+    alles von Dritten geschrieben — gingen ungefiltert an die Antwort, den
+    Recherche-Bericht und die Parteien-Positionen. Angewandt wird er auf die
+    fertigen Blöcke: Ein Text ohne Treffer kommt zeichengleich zurück, und
+    die eigenen Überschriften der Blöcke tragen kein Merkmal, auf das der
+    Filter anspringt (``tests/test_qa_fremdtext.py`` hält beides fest).
+    """
+    return defuse(text or "")[0]
 
 
 def deep_model_for(premium: bool) -> str:
@@ -148,6 +213,42 @@ _PLAN_HASH_KEY = ((os.environ.get("WEB_JWT_SECRET") or
 VERLAUF_MAX_RUNDEN = 3
 _VERLAUF_FRAGE_MAX = 250
 _VERLAUF_ANTWORT_MAX = 400
+
+
+#: Ab dieser Länge (gefaltet) zählt auch „endet mit der Frage“ als dieselbe
+#: Frage — der Fall, in dem das Fenster ein Zitat davorsetzt („„…“ — Wie hoch
+#: ist das?“). Kürzere Fragen („warum?“) müssen genau gleich sein, sonst fiele
+#: „Und warum?“ als Dublette von „warum“ heraus.
+_DUBLETTE_SUFFIX_MIN = 12
+
+
+def verlauf_ohne_dieselbe_frage(verlauf: list[dict] | None, question: str) -> list[dict]:
+    """Der Verlauf ohne Runden, deren Frage die aktuelle IST.
+
+    **Warum (Release-Prüfung 03.10.2026).** Reicht Lotti eine Frage nach
+    ihrer Erklärung ans Archiv weiter („danach“), legte das Fenster genau
+    diese Frage samt Lottis Erklärung in den Verlauf — und schickte sie
+    dann noch einmal als neue Frage. Der Prompt machte daraus eine
+    Anschlussfrage („Beantworte NUR, was die neue Frage ZUSÄTZLICH wissen
+    will“), und das Modell antwortete wörtlich: „Eine neue Frage ist in Ihrer
+    Nachricht nicht enthalten“ — mit 0 Zitaten. Eine Frage ist nicht ihre
+    eigene Vorgeschichte.
+
+    **Hier und nicht im Client**, weil die ausgelieferte iOS-App denselben
+    Endpunkt bedient und kein Update braucht, um davon zu profitieren.
+    Verglichen wird gefaltet (``_falte``: Groß/klein, Umlaute, Satzzeichen).
+    """
+    ziel = _falte(question or "")
+    if not ziel or not verlauf:
+        return list(verlauf or [])
+    aus = []
+    for runde in verlauf:
+        vorher = _falte(str(runde.get("question") or ""))
+        gleich = vorher == ziel or (len(ziel) >= _DUBLETTE_SUFFIX_MIN
+                                    and vorher.endswith(" " + ziel))
+        if not gleich:
+            aus.append(runde)
+    return aus
 
 
 def _verlauf_zeilen(verlauf: list[dict] | None) -> str:
@@ -397,7 +498,8 @@ def research_plan_log_record(question: str, plan: dict, typ: str,
 
 
 def analyse_query(question: str, model: str = EXPAND_MODEL,
-                  verlauf: list[dict] | None = None) -> dict:
+                  verlauf: list[dict] | None = None,
+                  orte: list[tuple[str, str]] | None = None) -> dict:
     """{"question", "terms", "kind", "party"} zur Frage. ``question`` ist die
     EIGENSTÄNDIGE Fassung: Bei mitgegebenem Gesprächsverlauf (Chat) löst die
     Analyse Rückbezüge auf („Und was kostet das?" → „Was kostet der Neubau der
@@ -407,15 +509,17 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     fallback = {"question": question, "terms": question, "kind": "topic", "party": None,
                 "variants": [], "eng": False, "unklar": False,
                 "rechercheplan": _research_plan({})}
+    verlauf = verlauf_ohne_dieselbe_frage(verlauf, question)
     vtext = _verlauf_zeilen(verlauf)
-    key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
+    ortsblock = _ortsblock(orte)
+    key = f"{model}|{hash(vtext)}|{hash(ortsblock)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
     if hit is not None:
         return dict(hit)
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     try:
         block = f"\nBisheriges Gespräch (für Rückbezüge):\n{vtext}\n" if vtext else ""
-        prompt = prompts.render("qa_analysis", question=question.strip()[:300], verlauf=block)
+        prompt = prompts.render("qa_analysis", question=question.strip()[:300], verlauf=block) + ortsblock
         resp = llm.chat_complete(
             model=model, _feature="qa_analysis", temperature=0, max_tokens=480,
             timeout=8.0, response_format={"type": "json_object"},
@@ -471,6 +575,10 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         out = {"question": umgeschrieben or question, "terms": begriffe or question,
                "kind": typ, "party": party, "variants": varianten, "eng": eng,
                "unklar": unklar, "rechercheplan": _research_plan(data)}
+        # Nur eine id AUS der Liste zählt: Das Modell wählt, es erfindet nicht.
+        ort_id = str(data.get("ort") or "").strip()
+        if orte and ort_id in {i for i, _ in orte}:
+            out["ort_id"] = ort_id
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
                 _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))
@@ -478,6 +586,218 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         return out
     except Exception:  # noqa: BLE001
         return fallback
+
+
+def ortsliste(store) -> list[tuple[str, str]]:
+    """Alle Katalogorte als (id, Name) — die Auswahl für :func:`analyse_query`."""
+    try:
+        return [(p.id, p.name) for p in store.all_places()]
+    except Exception:  # noqa: BLE001 — ein Zusatz, nie ein Abbruch
+        return []
+
+
+def _ortsblock(orte: list[tuple[str, str]] | None) -> str:
+    """Die Ortsauswahl als Nachsatz zum Analyse-Prompt — leer ohne Orte.
+
+    **Warum das Modell wählt und keine Wortliste.** Die Ortserkennung
+    (:func:`finde_ort`) vergleicht den Wortlaut mit Namen und Aliassen. Am
+    12.10.2026 fragte jemand, was „beim Oldenburger Hafenbecken“ gebaut
+    wird: kein Katalogwort, also kein Ort — und in der allgemeinen Suche zog
+    „Becken“ die Bäder nach oben. Jedes solche Wort als Alias nachzutragen
+    endet nie (Tim, 16.10.2026). Das Analyse-Modell liest die Frage ohnehin;
+    mit der Liste der Orte vor Augen erkennt es Teilwörter, Umgangssprache und
+    Tippfehler. Es darf nur eine id AUS der Liste nennen, und der Abgleich am
+    Wortlaut geht vor — die Liste kommt nur, wenn er nichts fand. Die Wahl
+    ist ein Hinweis, kein Filter (:func:`ort_hinweis`).
+    """
+    if not orte:
+        return ""
+    zeilen = "\n".join(f"- {i}: {name}" for i, name in orte)
+    return (
+        "\n\nORTE in Oldenburg (Katalog):\n" + zeilen + "\n"
+        'Ergänze das JSON um "ort": die id des Ortes aus dieser Liste, den die Frage '
+        "meint — auch wenn sie ihn anders nennt (Teil eines Wortes, umgangssprachlich, "
+        "verschrieben: „Hafenbecken“ → der Stadthafen). Sonst null. null auch, wenn ein "
+        "Wort nur zufällig ähnlich klingt oder die Frage die ganze Stadt meint — und wenn "
+        "sie ein GEBÄUDE, einen Platz oder ein Vorhaben nennt, das nicht selbst in der "
+        "Liste steht: Dann ist nicht dessen Stadtteil gemeint.\n")
+
+
+#: So viele Treffer-Titel sieht die Nachrecherche — genug, um zu sehen, was
+#: fehlt, ohne den kleinen Aufruf zu verlangsamen.
+NACHRECHERCHE_TITEL = 15
+
+
+def nachrecherche_anfragen(question: str, candidates: list[dict],
+                           model: str = EXPAND_MODEL) -> list[str]:
+    """Fehlt in den Treffern etwas, wonach die Frage fragt? Dann bis zu drei
+    Suchanfragen in der Sprache der Vorlagen — sonst ``[]``.
+
+    **Warum.** Die Suche lief bis 10/2026 genau einmal. Was die erste Runde
+    nicht traf, kam in der Antwort nicht vor: „Wie viel kostet der kostenlose
+    Bus Samstag?“ — die Vorlagen sagen „Samstagsfahrten“; „Wie stehen die
+    Fraktionen zum Stadion?“ — der Vergabe-Beschluss vom 01.06.2026 war gar
+    nicht unter den Treffern. Im Gold-Set fehlte bei 28 % der verfehlten
+    Fakten das Material ganz (Auswertung 16.10.2026). Lotti schlägt seit
+    #1570 nach; das hier ist dieselbe Idee in klein: ein Blick auf die Titel,
+    gezielt nachsuchen, einmal.
+
+    Robust: Jeder Fehler und jede unbrauchbare Antwort heißt ``[]`` — dann
+    bleibt es bei der ersten Suche.
+    """
+    titel = []
+    for c in candidates[:NACHRECHERCHE_TITEL]:
+        datum = str(c.get("session_date") or "")[:10]
+        gremium = c.get("committee") or ""
+        titel.append(f"- {(c.get('title') or '').strip()[:140]} ({gremium}, {datum})")
+    try:
+        prompt = prompts.render("qa_nachrecherche", question=question.strip()[:300],
+                                treffer="\n".join(titel) or "(keine Treffer)")
+        resp = llm.chat_complete(
+            model=model, _feature="qa_nachrecherche", temperature=0, max_tokens=200,
+            timeout=8.0, response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompt}])
+        data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
+        roh = data.get("suchen") if isinstance(data, dict) else None
+        if not isinstance(roh, list):
+            return []
+        anfragen = [" ".join(str(a).split())[:120] for a in roh
+                    if isinstance(a, str) and str(a).strip()]
+        # Eine Anfrage, die nur die Frage wiederholt, sucht dasselbe noch einmal.
+        frage_f = _falte(question)
+        return [a for a in dict.fromkeys(anfragen) if _falte(a) != frage_f][:3]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def nachrecherche_einfuegen(candidates: list[dict], neue: list[dict]) -> list[dict]:
+    """Die Funde der Nachrecherche nach Score in die erste Liste einsortieren.
+
+    Die erste Liste behält ihre Reihenfolge (Frische-Bonus, Serien-Deckel);
+    ein neuer Kandidat rückt vor den ersten, den er schlägt."""
+    aus = list(candidates)
+    for n in sorted(neue, key=lambda c: -(c.get("score") or 0)):
+        s = n.get("score") or 0
+        pos = next((i for i, c in enumerate(aus) if (c.get("score") or 0) < s), len(aus))
+        aus.insert(pos, n)
+    return aus
+
+
+#: So viele Dokumente bekommen eine Notiz — Beschlüsse und Wortbeiträge je
+#: für sich. Mehr liest das Antwort-Modell ohnehin nicht aufmerksam.
+NOTIZ_BESCHLUESSE = 14
+NOTIZ_BEITRAEGE = 12
+#: Dokumente je Aufruf; die Aufrufe laufen parallel.
+NOTIZ_PAKET = 8
+
+NOTIZ_REGEL = (
+    "\n\nBELEGNOTIZEN: Ganz oben im Kontext steht zu jedem Dokument, was es zur "
+    "Frage beiträgt — vorab gelesen. Jede Notiz, die zur Frage etwas sagt, gehört "
+    "in die Antwort, mit ihrem Beleg [id] (Wortbeiträge als „Laut Protokoll …“), "
+    "außer sie wiederholt eine andere. Nennt eine Notiz einen Umstand, der die "
+    "Antwort ändert (aufgehoben, abgelehnt, vertagt, gekippt, nur ein Bericht), "
+    "steht er in der Antwort. Schreibe NIE, etwas gehe aus den Unterlagen nicht "
+    "hervor, wenn eine Notiz es nennt. Die Notizen sind eine Lesehilfe; im "
+    "Zweifel gilt der Wortlaut des Dokuments darunter."
+)
+
+
+def _notiz_dokumente(ctx: list[dict], debatten: list[dict]) -> list[dict]:
+    """Die Dokumente für die Notizen: Schlüssel, Kopf, Text — knapp."""
+    docs = []
+    for c in ctx[:NOTIZ_BESCHLUESSE]:
+        text = " ".join(str(c.get(k) or "") for k in ("summary", "official_text"))
+        kopf = (f"Beschluss [{c['id']}] {(c.get('title') or '').strip()[:160]} — "
+                f"{c.get('committee') or ''}, {str(c.get('session_date') or '')[:10]}, "
+                f"Ergebnis: {_TEIL_ERGEBNIS.get(c.get('outcome') or '', c.get('outcome') or '?')}")
+        docs.append({"key": f"B{c['id']}", "kopf": kopf, "text": " ".join(text.split())[:700]})
+    for d in debatten[:NOTIZ_BEITRAEGE]:
+        wer = d.get("speaker") or "?"
+        if d.get("party"):
+            wer += f" ({d['party']})"
+        kopf = (f"Wortbeitrag von {wer}, {str(d.get('session_date') or '')[:10]}, "
+                f"{d.get('committee') or ''} zu „{(d.get('top') or '')[:100]}“")
+        text = (d.get("text") or "") + (f" Antwort der Verwaltung: {d['answer']}" if d.get("answer") else "")
+        docs.append({"key": f"W{d['id']}", "kopf": kopf, "text": " ".join(text.split())[:600]})
+    return docs
+
+
+def _notizen_paket(question: str, paket: list[dict], model: str) -> dict[str, str]:
+    teile = "\n\n".join(f"<{d['key']}> {d['kopf']}\n{d['text']}" for d in paket)
+    try:
+        prompt = prompts.render("qa_belegnotizen", question=question.strip()[:300],
+                                dokumente=teile)
+        resp = llm.chat_complete(
+            model=model, _feature="qa_belegnotizen", temperature=0, max_tokens=900,
+            timeout=10.0, response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": prompt}])
+        data = json.loads(_strip_fences(resp.choices[0].message.content or ""))
+    except Exception:  # noqa: BLE001 — ohne Notiz bleibt das Dokument im Kontext
+        return {}
+    gueltig = {d["key"] for d in paket}
+    aus: dict[str, str] = {}
+    for eintrag in (data.get("notizen") if isinstance(data, dict) else None) or []:
+        if not isinstance(eintrag, dict):
+            continue
+        key, notiz = str(eintrag.get("key") or ""), " ".join(str(eintrag.get("notiz") or "").split())
+        if key in gueltig and notiz and eintrag.get("relevant") is not False:
+            aus[key] = notiz[:400]
+    return aus
+
+
+def belegnotizen(question: str, ctx: list[dict], debatten: list[dict],
+                 model: str = EXPAND_MODEL) -> list[dict]:
+    """Erst lesen, dann antworten: je Dokument eine Notiz, was es zur Frage beiträgt.
+
+    **Warum.** Im Gold-Set stand das Material für fast die Hälfte der
+    verfehlten Fakten im Prompt und wurde nicht genutzt (17.10.2026). Das ist
+    der bekannteste Antwort-Fehler von RAG-Systemen („im Kontext, aber nicht
+    extrahiert“, Barnett et al. 2024; „lost in the middle“, Liu et al. 2023).
+    Die bekannte Gegenmaßnahme ist ein Lese-Schritt vor dem Schreiben
+    (Chain-of-Note, EviNote-RAG): Ein kleines Modell hält je Dokument fest,
+    was es zur Frage sagt — mit Datum, Zahl und Verneinung im Wortlaut —, und
+    die Notizen stehen GANZ OBEN im Kontext, wo das Antwort-Modell liest.
+
+    Die Dokumente bleiben darunter vollständig stehen; die Notiz ist eine
+    Lesehilfe, kein Ersatz (eine Verdichtung verliert sonst genau die Zahl,
+    um die es geht). Parallel in Paketen zu ``NOTIZ_PAKET``; jeder Fehler
+    heißt: dieses Paket ohne Notiz. Liefert ``[{key, kopf, notiz}]`` in
+    Kontext-Reihenfolge, nur Dokumente mit Bezug zur Frage.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    docs = _notiz_dokumente(ctx, debatten)
+    if not docs:
+        return []
+    pakete = [docs[i:i + NOTIZ_PAKET] for i in range(0, len(docs), NOTIZ_PAKET)]
+    notizen: dict[str, str] = {}
+    with ThreadPoolExecutor(max_workers=len(pakete)) as pool:
+        for teil in pool.map(lambda p: _notizen_paket(question, p, model), pakete):
+            notizen.update(teil)
+    return [{"key": d["key"], "kopf": d["kopf"], "notiz": notizen[d["key"]]}
+            for d in docs if d["key"] in notizen]
+
+
+def belegnotizen_block(notizen: list[dict]) -> str:
+    """Die Notizen als erster Abschnitt des Kontexts — leer ohne Notizen."""
+    if not notizen:
+        return ""
+    zeilen = [f"- {n['kopf']}: {n['notiz']}" for n in notizen]
+    return ("BELEGNOTIZEN (vorab gelesen: was jedes Dokument zur Frage beiträgt; "
+            "die Dokumente selbst folgen darunter):\n" + "\n".join(zeilen) + "\n\nBESCHLÜSSE IM WORTLAUT:\n")
+
+
+def fraktionsfrage(analyse: dict) -> bool:
+    """Fragt die Frage nach den Positionen ALLER Fraktionen („Wie stehen die
+    Fraktionen zum Stadion?“) statt nach einer bestimmten?
+
+    Dann braucht die Antwort die Reden je Fraktion. Bis 10/2026 hatte sie nur
+    der Baustein „Das sagen die Parteien“ unter der Antwort; die Antwort
+    selbst sah sie nicht und schrieb, die Protokolle gäben die Positionen
+    nicht her — zwei Zentimeter über der Zuordnung (Gold stadion-fraktionen
+    0,19; Tim, 17.10.2026: „die Reden sollten mit dem Antworttext rein“).
+    """
+    return analyse.get("kind") == "party" and not analyse.get("party")
 
 
 #: Wörter, die das Analyse-Modell gern in die Suchbegriffe schreibt und die
@@ -684,14 +1004,19 @@ def sort_verlauf(candidates: list[dict]) -> list[dict]:
 # ersetzt die Debatten-Pflicht (die im Debatten-Block steht) ausdrücklich.
 ENG_REGEL = (
     "\n\nDIESE FRAGE IST ENG GESTELLT: Sie verlangt EINE Tatsache (Datum, Zahl, "
-    "Name, Ja/Nein). Antworte in HÖCHSTENS 3 Sätzen, ohne Überschriften und ohne "
-    "Aufzählung. Der ERSTE Satz beantwortet die Frage direkt; gibt es mehrere "
+    "Name, Ja/Nein). Antworte KURZ, meist in zwei bis drei Sätzen, ohne Überschriften "
+    "und ohne Aufzählung. Der ERSTE Satz beantwortet die Frage direkt; gibt es mehrere "
     "Stationen (Aufstellung, Entwurf, Satzung), nenne die MASSGEBLICHE zuerst — "
     "das ist der endgültige Beschluss, nicht ein Zwischenschritt. "
     "Nenne die Tatsache mit Beleg [id] und, wenn es zum Verständnis "
     "nötig ist, den einen wichtigsten Bezug (etwa die Bestätigung im Rat). "
-    "KEIN Absatz zur Debatte, KEINE Vorgeschichte, KEINE Aufzählung weiterer "
-    "Beschlüsse — auch dann nicht, wenn der Kontext mehr hergibt. Ist das, "
+    "KEIN Absatz zur Debatte, KEINE Aufzählung weiterer Beschlüsse, keine "
+    "Vorgeschichte um ihrer selbst willen. AUSNAHME, und dann Pflicht: Ändert ein "
+    "Umstand im Kontext, wie die Antwort zu verstehen ist, gehört er in EINEN "
+    "weiteren Satz mit Beleg — ein früherer Beschluss wurde aufgehoben, von einem "
+    "Gericht für unwirksam erklärt oder ersetzt; ein Vorschlag wurde abgelehnt; "
+    "es gilt noch nicht oder nicht mehr; der Betrag ist ein Ansatz, kein Ist. Ohne "
+    "diesen Satz wäre die kurze Antwort richtig und trotzdem irreführend. Ist das, "
     "was die Frage erwartet, gar NICHT beschlossen — nur geprüft, geplant, "
     "angekündigt oder als Bericht zur Kenntnis genommen —, sage das im selben "
     "oder im zweiten Satz ausdrücklich, samt Anlass (wer es beantragt hat): "
@@ -720,11 +1045,17 @@ EXTRA_REGELN = {
     ),
     "party": (
         "Diese Frage zielt auf eine Fraktion/Gruppe: Stütze dich auf deren Anträge "
-        "und Änderungsanträge (im Kontext als „Antrag von: …“ markiert) und auf "
-        "ausdrücklich protokollierte Abstimmungssätze. WICHTIG: Das Ratsinfo kennt "
-        "kein Stimmverhalten einzelner Fraktionen — behaupte NIE, wie eine Fraktion "
-        "gestimmt hat, wenn es nicht wörtlich im Abstimmungssatz steht; sage dann, "
-        "dass die Protokolle das nicht hergeben."
+        "und Änderungsanträge (im Kontext als „Antrag von: …“ markiert), auf "
+        "ausdrücklich protokollierte Abstimmungssätze und auf die Wortbeiträge "
+        "ihrer Ratsmitglieder. Fragt sie nach DEN Fraktionen insgesamt, gib je "
+        "Fraktion, die in den Wortbeiträgen spricht, in EINEM Satz wieder, was sie "
+        "vertritt und warum („Laut Protokoll begründete … (Grüne) die Ablehnung "
+        "mit …“). WICHTIG: Das Ratsinfo kennt kein Stimmverhalten einzelner "
+        "Fraktionen — behaupte NIE, wie eine Fraktion gestimmt hat, wenn es weder "
+        "im Abstimmungssatz noch in einem Wortbeitrag oder einer Mitteilung der "
+        "Stadt steht. Der Satz, die Protokolle gäben etwas nicht her, gilt NUR für "
+        "das Stimmverhalten und NUR, wenn es wirklich nirgends steht — nie für die "
+        "Positionen, wenn Wortbeiträge der Fraktionen vorliegen."
     ),
     # ACHTUNG, wer hier etwas ändert: Diese Regel ist für BESCHLUSS-Beträge
     # gebaut („Was hat Vorhaben X gekostet?"). Alles, was aus dem
@@ -1091,7 +1422,7 @@ def protokolle_verlinken(store, rows: list[dict]) -> None:
 def finde_person(store, question: str) -> dict | None:
     """Personen-Fragetyp: Nennt die Frage eine Ratsperson (Voll- oder
     Nachname, umlaut-gefaltet, ganze Wörter)? Liefert
-    {name, partei, nachname} — deterministisch, kostenlos."""
+    {name, party, nachname} — deterministisch, kostenlos."""
     try:
         index = store.personen_suchindex()
     except Exception:  # noqa: BLE001
@@ -1136,6 +1467,51 @@ def finde_ort(question: str, store=None) -> dict | None:
     return {"id": place.id, "name": place.name, "kind": place.kind,
             "kind_label": places.kind_label(place.kind),
             "description": place.description}
+
+
+def braucht_ortsliste(wort_ort: dict | None) -> bool:
+    """Soll die Frage-Analyse die Ortsliste sehen? Ja, wenn der Wortlaut
+    keinen Ort fand — und wenn er nur einen STADTTEIL fand: „Was wird auf dem
+    ehemaligen Kasernengelände in Donnerschwee gebaut?“ meint Neu-Donnerschwee,
+    der Wortabgleich sieht aber nur „Donnerschwee“."""
+    return wort_ort is None or wort_ort.get("kind") == "local_area"
+
+
+def ort_hinweis(wort_ort: dict | None, ort_id: str | None, store=None) -> dict | None:
+    """Der Ort, den die Analyse aus dem Katalog gewählt hat — als HINWEIS.
+
+    Er filtert nicht, er bringt nur die Beschlüsse dieses Ortes zusätzlich in
+    den Rerank-Pool. ``None``, wenn nichts gewählt ist oder die Wahl der
+    Wortlaut-Ort selbst ist (der filtert ohnehin).
+
+    **Warum kein Filter.** Mit der Ortsliste vor Augen ordnete die Analyse
+    auch Gebäude, Plätze und Vorhaben ihrem Stadtteil zu („Weser-Ems-Hallen“
+    → Innenstadt). Als harter Filter warf das alles weg, was nicht dort
+    verortet ist: Gold 17.10.2026, Weser-Ems 0,56 → 0,00, Schlossplatz
+    0,58 → 0,08. Als Anker hilft die Wahl dort, wo sie stimmt
+    („Hafenbecken“ → Alter Stadthafen), und schadet nicht, wo sie danebenliegt —
+    über die Reihenfolge entscheidet der Reranker.
+    """
+    gewaehlt = ort_aus_id(ort_id, store)
+    if gewaehlt is None or (wort_ort and gewaehlt["id"] == wort_ort["id"]):
+        return None
+    return gewaehlt
+
+
+def ort_aus_id(ort_id: str | None, store=None) -> dict | None:
+    """Ein Katalogort aus seiner id, in derselben Form wie :func:`finde_ort` —
+    für den Ort, den die Frage-Analyse aus der Liste gewählt hat."""
+    if not ort_id:
+        return None
+    from council import places
+
+    katalog = store.all_places() if store is not None else places.all_places()
+    place = next((p for p in katalog if p.id == ort_id), None)
+    if place is None:
+        return None
+    return {"id": place.id, "name": place.name, "kind": place.kind,
+            "kind_label": places.kind_label(place.kind),
+            "description": place.description, "parent_ids": tuple(place.parent_ids)}
 
 
 def nennt_ort(beitrag: dict, ort: dict, store=None) -> bool:
@@ -1281,7 +1657,8 @@ RUECKFRAGE_MINDEST_TOPS = 5
 
 
 def rueckfrage_noetig(analyse: dict, *, einfach: bool = False,
-                      person=None, ort=None, sitzungen=None) -> bool:
+                      person=None, ort=None, sitzungen=None,
+                      procedure: bool = False) -> bool:
     """Wird auf diese Frage zurückgefragt, statt sie zu beantworten?
 
     Die Regel steht hier und nicht in den Endpunkten, weil sie ZWEI Wege
@@ -1296,8 +1673,13 @@ def rueckfrage_noetig(analyse: dict, *, einfach: bool = False,
     teurere der beiden Fehler. ``einfach`` ist aus demselben Grund dabei: Der
     Knopf „Einfacher erklären" schickt einen Wunsch, keine Frage — der sieht
     gegenstandslos aus und meint die vorige Antwort.
+
+    ``procedure``: Die Frage meint eine Regel der Geschäftsordnung
+    (:func:`council.rules_of_procedure.find`) — „Wie lange darf man reden?"
+    nennt kein Vorhaben, ist aber beantwortbar, und zwar ohne Archiv.
     """
-    return bool(analyse.get("unklar")) and not einfach and not (person or ort or sitzungen)
+    return (bool(analyse.get("unklar")) and not einfach
+            and not (person or ort or sitzungen or procedure))
 
 #: „Stadt Oldenburg (Oldb)" — der amtliche Zusatz steht in jedem zweiten Titel
 #: und trägt in einer Frage an Ratslotse null Information.
@@ -1600,6 +1982,13 @@ _GREMIUM_ALIASE = {
     "abfallausschuss": "abfallwirtschaftsbetrieb",
     "hochbauausschuss": "gebaeudewirtschaft",
     "bahnausschuss": "bahnangelegenheiten",
+    # „Was ist gestern beim allgemeinen Ausschuss rausgekommen?" (29.09.2026)
+    # fand den „Ausschuss für Allgemeine Angelegenheiten" nicht — der amtliche
+    # Name steht nirgends in der Frage, und die Sitzung vom Vortag blieb
+    # unbemerkt. Beide Beugungen, weil `_gremium_genannt` nur -es/-s erlaubt.
+    "allgemeinen ausschuss": "allgemeine angelegenheiten",
+    "allgemeiner ausschuss": "allgemeine angelegenheiten",
+    "allgemeine ausschuss": "allgemeine angelegenheiten",
 }
 
 
@@ -1649,7 +2038,9 @@ def _gremium_passt(fragment: str, committee: str | None) -> bool:
 _SITZUNG_ANLASS_RE = re.compile(
     r"\b(sitzung\w*|beschloss\w*|beschluss\w*|beschluesse\w*|entschied\w*|"
     r"entscheidung\w*|tagesordnung\w*|getagt|tagte?n?|beraten|abgestimmt|"
-    r"ergebnis\w*)\b")
+    # Umgangssprachlich dasselbe wie „Ergebnis" — „Was ist gestern beim
+    # allgemeinen Ausschuss rausgekommen?" (29.09.2026) verwarf sonst das Datum.
+    r"ergebnis\w*|(?:he)?rausgekommen|besprochen|passiert|gelaufen)\b")
 _SITZUNG_ZURUECK_RE = re.compile(
     r"\b(letzt\w*|juengst\w*|vergangen\w*|vorig\w*)\s+(rats)?sitzung\b|\bzuletzt\b")
 #: Nur die ausdrückliche Sitzungs-Phrase („letzte Ratssitzung") — ohne das
@@ -1713,6 +2104,25 @@ _SITZUNG_VORAUS_RE = re.compile(
 #: sinnvoll in einer Antwort.
 _SITZUNGEN_MAX = 3
 
+#: „die nächste Ratssitzung", „in der letzten Sitzung" — die Frage nennt
+#: selbst eine Sitzung, nicht bloß ein Gremium und die Tagesordnung.
+_SITZUNG_GENANNT_RE = re.compile(
+    r"\b(?:naechst|kommend|letzt|juengst|vergangen|vorig|heutig|morgig)\w*\s+(?:\w+)?sitzung")
+
+
+def nennt_sitzung(*fragen: str) -> bool:
+    """Nennt eine der Fassungen der Frage eine bestimmte Sitzung — ein Datum
+    oder „die nächste/letzte Sitzung"?
+
+    Für Regelfragen (``council.rules_of_procedure``): Die Sitzungserkennung
+    oben reicht dort „Rat" und „Tagesordnung" für die nächste Sitzung, und
+    eine Frage nach § 11 bekäme den Termin vorangestellt."""
+    for frage in fragen:
+        datum, monat_tag = _datum_in_frage(frage or "")
+        if datum or monat_tag or _SITZUNG_GENANNT_RE.search(_falte(frage or "")):
+            return True
+    return False
+
 
 def finde_sitzungen(store, question: str) -> list[dict]:
     """Sitzungs-Fragetyp: Nennt die Frage ein konkretes Sitzungsdatum („am
@@ -1727,6 +2137,62 @@ def finde_sitzungen(store, question: str) -> list[dict]:
         return []
 
 
+#: Zeitform einer Frage mit Datum ohne Jahr. „Was wurde am 17.06.
+#: beschlossen?“ meint eine gewesene Sitzung, „Was steht am 26. Oktober auf
+#: der Tagesordnung?“ eine kommende. Die Vergangenheit wird zuerst geprüft:
+#: „Was STAND am 17.06. auf der Tagesordnung?“ trägt beide Signale.
+_SITZUNG_GEWESEN_RE = re.compile(
+    r"\b(wurde\w*|war|waren|stand|standen|kam|kamen|beschlossen|entschieden|"
+    r"getagt|tagte\w*|beraten|abgestimmt|besprochen|passiert|gelaufen|"
+    r"(?:he)?rausgekommen|ergebnis\w*)\b")
+_SITZUNG_KOMMEND_RE = re.compile(
+    r"\b(steht|stehen|ansteh\w*|kommt|kommen|wird|werden|geplant|"
+    r"tagesordnung\w*|naechst\w*|kommend\w*|bevor\w*)\b")
+
+
+def _naechstliegende_sitzung(alle: list[dict], heute: str, frage_f: str) -> list[dict]:
+    """Die gemeinte Sitzung zu einem Datum ohne Jahr — als Liste mit höchstens
+    einem Eintrag.
+
+    Bis 10/2026 galt „die jüngste vergangene“. „Was steht in der Ratssitzung
+    am 26. Oktober auf der Tagesordnung?“ landete so am 16.10.2026 beim
+    26.10.2020 und bekam „keine Tagesordnung“ — der Rat zehn Tage später lag
+    mit 39 Punkten im Bestand (Auswertung der echten Fragen, 16.10.2026).
+    Jetzt entscheidet die Zeitform der Frage die Richtung, und innerhalb der
+    Richtung der geringste Abstand zu heute. Ohne Zeitform: der geringste
+    Abstand überhaupt.
+    """
+    from datetime import date as _date
+
+    def tag(r: dict) -> str:
+        return str(r.get("session_date") or "")[:10]
+
+    if _SITZUNG_GEWESEN_RE.search(frage_f):
+        bevorzugt = [r for r in alle if tag(r) <= heute]
+    elif _SITZUNG_KOMMEND_RE.search(frage_f):
+        bevorzugt = [r for r in alle if tag(r) >= heute]
+    else:
+        bevorzugt = []
+    kandidaten = bevorzugt or alle
+    jetzt = _date.fromisoformat(heute)
+
+    def abstand(r: dict) -> int:
+        try:
+            return abs((_date.fromisoformat(tag(r)) - jetzt).days)
+        except ValueError:
+            return 10**6
+    return sorted(kandidaten, key=abstand)[:1]
+
+
+def _kommende_am(store, passt_tag) -> list[dict]:
+    """Kommende Sitzungen, echte und terminierte, deren Tag ``passt_tag`` erfüllt."""
+    try:
+        kommend = store.upcoming_sessions(limit=200)
+    except Exception:  # noqa: BLE001 — ein Zusatz, nie ein Abbruch
+        return []
+    return [r for r in kommend if passt_tag(str(r.get("session_date") or "")[:10])]
+
+
 def _finde_sitzungen(store, question: str) -> list[dict]:
     from datetime import date as _date
     heute = _date.today().isoformat()
@@ -1736,20 +2202,27 @@ def _finde_sitzungen(store, question: str) -> list[dict]:
     rows: list[dict] = []
     if (date or monat_tag) and not committee and not _SITZUNG_ANLASS_RE.search(frage_f):
         return []
+    def passt(r: dict) -> bool:
+        return committee is None or _gremium_passt(committee, r.get("committee"))
+
     if date:
-        rows = [r for r in store.sessions_on(date)
-                if committee is None or _gremium_passt(committee, r.get("committee"))]
+        rows = [r for r in store.sessions_on(date) if passt(r)]
+        if not rows and date >= heute:
+            rows = [r for r in _kommende_am(store, lambda d: d == date) if passt(r)]
     elif monat_tag:
-        # Ohne Jahr: die jüngste vergangene Sitzung an diesem Monatstag —
-        # gibt es nur künftige, die nächstliegende.
-        alle = [r for r in store.sitzungen_am_monatstag(monat_tag)
-                if committee is None or _gremium_passt(committee, r.get("committee"))]
-        vergangene = [r for r in alle if str(r.get("session_date") or "") <= heute]
-        rows = vergangene[:1] if vergangene else sorted(
-            alle, key=lambda r: str(r.get("session_date") or ""))[:1]
+        # Kommende Sitzungen stehen oft erst im Terminkalender, noch ohne
+        # Sitzungsnummer — `sitzungen_am_monatstag` liest nur die Sitzungs-
+        # tabelle und kannte den Rat am 26.10.2026 deshalb nicht (16.10.2026).
+        alle = [r for r in store.sitzungen_am_monatstag(monat_tag) if passt(r)]
+        bekannt = {(r.get("committee"), str(r.get("session_date") or "")[:10]) for r in alle}
+        alle += [r for r in _kommende_am(store, lambda d: d.endswith(monat_tag))
+                 if passt(r) and (r.get("committee"), str(r.get("session_date") or "")[:10]) not in bekannt]
+        rows = _naechstliegende_sitzung(alle, heute, frage_f)
         if rows and committee is None:
             # Datum ohne Gremium meint den TAG — alle Sitzungen dieses Tages.
-            rows = store.sessions_on(rows[0]["session_date"])
+            tag = str(rows[0]["session_date"])[:10]
+            rows = store.sessions_on(tag) or [
+                r for r in alle if str(r.get("session_date") or "")[:10] == tag]
     elif committee and _SITZUNG_ZURUECK_RE.search(frage_f):
         # „zuletzt zum Radverkehr" ist eine Themenfrage mit Zeitbezug, keine
         # Sitzungsfrage — siehe `sitzungsfrage_ohne_thema`. Nur die
@@ -1842,6 +2315,53 @@ def _sitzungen_block(sitzungen: list[dict] | None) -> str:
             "Liegen zur gefragten Sitzung noch keine Beschlüsse vor, sage das "
             "ehrlich als Erstes — Beschlüsse ANDERER Sitzungen aus dem Kontext "
             "sind dann NICHT die Antwort.\n")
+
+
+def seither_block(stationen: list[dict] | None) -> str:
+    """Tagesordnungs-Stationen der Vorlagen im Kontext, die NACH ihrem
+    jüngsten Beschluss liegen (``store.agenda_since_decisions``).
+
+    Ohne sie erzählt eine Sachstands-Antwort den Stand des letzten
+    Protokolls: „im Mai vertagt" (Brokhausen, 24.09.2026), obwohl der Punkt
+    im Juni abgesetzt und im August wieder beraten worden war."""
+    if not stationen:
+        return ""
+    zeilen = []
+    for st in stationen:
+        kopf = (f"- {_datum_de(st['session_date'])}, {st.get('committee') or 'Gremium'}: "
+                f"„{' '.join((st.get('title') or '').split())[:160]}“ (Vorlage {st['template_number']})")
+        if st.get("outcome"):
+            kopf += f" — laut Tagesordnung: {st['outcome']}"
+        else:
+            kopf += " — stand auf der Tagesordnung; ein ausgewertetes Protokoll mit dem Ergebnis liegt noch nicht vor"
+        zeilen.append(kopf)
+    return ("\nSEIT DEM JÜNGSTEN BESCHLUSS (aus den Tagesordnungen — spätere Stationen der Vorlagen "
+            "oben, zu denen es noch keinen ausgewerteten Beschluss gibt). Geht es um den Stand, "
+            "gehören sie in die Antwort, mit Datum; NIE mit [id]:\n" + "\n".join(zeilen) + "\n")
+
+
+#: „Wo finde ich Ergebnisse der Ausschusssitzung?" (29.09.2026) — eine Frage
+#: an Ratslotse selbst, keine an die Beschlüsse. Die Antwort verwies auf einen
+#: Beschluss von 2022 über Videoübertragungen.
+_FUNDORT_RE = re.compile(
+    r"\bwo (?:finde|gibt|stehen|steht|kann|sehe|bekomme|lese|sind|findet)\b[^.?!]{0,50}"
+    r"(?:ergebnis|protokoll|niederschrift|beschluss|beschluesse|tagesordnung|abstimmung)|"
+    r"wann (?:kommt|erscheint|gibt es|ist) (?:das|ein) protokoll")
+
+
+def fundortfrage(*fragen: str) -> bool:
+    """Fragt jemand, WO Ergebnisse, Protokolle oder Tagesordnungen stehen?"""
+    return any(_FUNDORT_RE.search(_falte(f or "")) for f in fragen)
+
+
+FUNDORT_BLOCK = (
+    "\nWO ERGEBNISSE STEHEN (zu Ratslotse selbst — die Frage richtet sich an die App, nicht an "
+    "die Beschlüsse): In Ratslotse unter „Sitzungen“ hat jede Sitzung eine eigene Seite mit "
+    "Tagesordnung und — sobald das Protokoll ausgewertet ist — den Beschlüssen samt "
+    "Abstimmung. Die Originale (Tagesordnung, Vorlagen, Niederschrift) stehen im "
+    "Ratsinformationssystem der Stadt, buergerinfo.oldenburg.de. Die Stadt veröffentlicht "
+    "Niederschriften in der Regel einige Wochen bis ein, zwei Monate nach der Sitzung; bis "
+    "dahin gibt es nur die Tagesordnung. Nenne das, und keine Beschlüsse als „Fundort“.\n")
 
 
 def sitzungs_leer_text(sitzungen: list[dict]) -> str:
@@ -1959,6 +2479,12 @@ def _steckbrief_block(steckbriefe: list[dict] | None) -> str:
             "Beschluss):\n" + zeilen + "\n")
 
 
+#: Wie viel des Abschnitts „Finanzielle Auswirkungen" einer Vorlage in den
+#: Kontext darf. Der Abschnitt ist meist kurz; bei 23/0101 steht die Zahl im
+#: zweiten Satz (Zeichen 220–330).
+FINANZEN_ZEICHEN = 450
+
+
 def _vorlage_basis(nr: str | None) -> str | None:
     """„26/0100-1" → „26/0100": Revisionen hängen ein Zähler-Suffix an."""
     if not nr or not str(nr).strip():
@@ -2000,7 +2526,36 @@ def markiere_veraltete(store, candidates: list[dict],
         c["neuere_station"] = {
             "id": top["id"] if top["id"] in kandidaten_ids else None,
             "date": top.get("session_date"), "committee": top.get("committee"),
+            "outcome": top.get("outcome"),
         }
+
+
+def _gleichsinnig(alt: str | None, neu: str | None) -> bool:
+    """Hat die spätere Station dasselbe entschieden? Nur bei Zustimmung oder
+    Kenntnisnahme auf beiden Stufen — eine Ablehnung nach einer Empfehlung
+    oder ein vertagter Punkt überholt den älteren Stand wirklich."""
+    return bool(alt) and alt == neu and alt in ("accepted", "noted")
+
+
+#: So viele Teilabstimmungen je Beschluss höchstens im Kontext.
+TEILABSTIMMUNGEN = 5
+_TEIL_ERGEBNIS = {"accepted": "angenommen", "rejected": "abgelehnt", "postponed": "vertagt",
+                  "settled": "gilt als behandelt", "no_decision": "kein Beschluss",
+                  "noted": "zur Kenntnis genommen"}
+
+
+def _teilabstimmung(t: dict) -> str:
+    """„Änderungsantrag der FDP-Fraktion: Aufnahme der Vermieterseite
+    (angenommen, mehrheitlich, 18 Gegenstimmen)“."""
+    from council.akte_suche import _stimmen_text
+
+    teile = [_TEIL_ERGEBNIS.get(str(t.get("outcome") or ""), "")]
+    stimmen = _stimmen_text(t)
+    if stimmen:
+        teile.append(stimmen)
+    titel = " ".join(str(t.get("title") or "").split())[:160]
+    rest = ", ".join(p for p in teile if p)
+    return f"{titel} ({rest})" if rest else titel
 
 
 def _build_context(candidates: list[dict]) -> str:
@@ -2030,9 +2585,17 @@ def _build_context(candidates: list[dict]) -> str:
             body = outcome_note.as_proposal(c.get("outcome"), body)
         vorlage = (c.get("vorlage_excerpt") or "").strip()
         suffix = f" — Aus der Vorlage: {vorlage}" if vorlage else ""
+        if c.get("vorlage_finanzen"):
+            suffix += f" — Finanzielle Auswirkungen laut Vorlage: {c['vorlage_finanzen']}"
         applicants = _factions_of(c)
         if applicants:
-            suffix += f" — Antrag von: {', '.join(applicants)}"
+            # „Antrag von" nur, wenn der Titel die Fraktion selbst nennt; sonst
+            # kann es eine Änderungsliste zu einer Verwaltungsvorlage sein —
+            # das Modell machte daraus „beruhte auf einem CDU-Antrag" (Stadion,
+            # 20947; council/applicants.py).
+            label = ("Antrag von" if applicants_named(applicants, c.get("title"))
+                     else "Anträge im TOP von (Antrag oder Änderungsantrag)")
+            suffix += f" — {label}: {', '.join(applicants)}"
         strittig = (c.get("no_votes") or 0) > 0 or (c.get("abstentions") or 0) > 0 \
             or c.get("vote") == "majority" or c.get("outcome") == "rejected"
         raw_result = (c.get("raw_result") or "").strip()
@@ -2040,6 +2603,9 @@ def _build_context(candidates: list[dict]) -> str:
             suffix += f" — Abstimmung: {raw_result[:180]}"
         if c.get("amount_eur"):
             suffix += f" — Volumen: {c['amount_eur']:,.0f} €".replace(",", ".")
+        if c.get("subvotes"):
+            suffix += " — Dazu abgestimmt: " + "; ".join(
+                _teilabstimmung(t) for t in c["subvotes"][:TEILABSTIMMUNGEN])
         if c.get("beteiligung"):
             suffix += (f" — BÜRGERBETEILIGUNG LÄUFT: {c['beteiligung']} "
                        f"(Stellungnahme auf oldenburg.planungsbeteiligung.de möglich — "
@@ -2080,7 +2646,18 @@ def _build_context(candidates: list[dict]) -> str:
         # ein Gremium — das Modell soll den älteren Stand nie als aktuell
         # verkaufen (markiere_veraltete setzt das Feld deterministisch).
         ns = c.get("neuere_station")
-        if ns and ns.get("date"):
+        if ns and ns.get("date") and _gleichsinnig(c.get("outcome"), ns.get("outcome")):
+            # Dieselbe Entscheidung eine Stufe höher ist eine BESTÄTIGUNG, kein
+            # Überholen: Der ASUK-Beschluss vom 12.02.2026, den der Rat am 23.02.
+            # bestätigte, wurde als „ÄLTERE STATION“ zu „durch eine neuere
+            # Ratsstation abgelöst“ — in drei von drei Gold-Läufen falsch
+            # (Auswertung 16.10.2026). Ein Vermerk von Ratslotse bleibt es
+            # trotzdem; der Prompt kennt ihn nicht als Aussage des Rates.
+            verweis = f" [{ns['id']}]" if ns.get("id") else ""
+            wo = f"im {ns['committee']}" if ns.get("committee") else "in einem späteren Gremium"
+            wie = "ebenso zur Kenntnis genommen" if ns.get("outcome") == "noted" else "bestätigt"
+            suffix += f" — {wo} am {_datum_de(ns['date'])}{verweis} {wie}"
+        elif ns and ns.get("date"):
             verweis = f", siehe [{ns['id']}]" if ns.get("id") else ""
             committee = f" ({ns['committee']})" if ns.get("committee") else ""
             suffix += (f" — ⚠ ÄLTERE STATION: Zu dieser Vorlage gibt es eine NEUERE Station "
@@ -2205,8 +2782,13 @@ def deep_bericht_stream(question: str, candidates: list[dict],
                         model: str | None = None,
                         taxes: list[dict] | None = None,
                         tax_capacity: dict | None = None,
-                        geld: dict | None = None):
+                        geld: dict | None = None,
+                        stand: dict | None = None):
     """Der lange Deep-Research-Bericht als Token-Stream (Task 34).
+
+    ``stand`` ist der Aktenstand (``aktenstand``) wie bei ``/ask``: wie alt der
+    jüngste Beleg ist und wann der Rat zuletzt getagt hat. Er steht direkt
+    über der Frage, zusammen mit dem Tagesdatum im Kopf des Prompts.
 
     ``geld`` ist der vollständige Haushalts-Kontext aus ``geld_kontext``; die
     drei Einzel-Parameter bleiben als alter Aufrufweg bestehen — ohne ``geld``
@@ -2227,20 +2809,24 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     # kurze Antwort — die Fachwörter darin tragen also ohnehin ihre Erklärung
     # als Tooltip. Ohne diesen Block hätte nur der Prompt sie nicht gehabt.
     zusatz = (_glossar_block(begriffe_fuer(question))
-              + _debatten_block(debatten, text_max=DEEP_DEBATTE_TEXT_MAX,
-                                answer_max=DEEP_DEBATTE_ANTWORT_MAX) + _presse_block(presse)
-              + _staedte_block(staedte)
-              + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
+              + _fremd(_debatten_block(debatten, text_max=DEEP_DEBATTE_TEXT_MAX,
+                                       answer_max=DEEP_DEBATTE_ANTWORT_MAX))
+              + _fremd(_presse_block(presse))
+              + _fremd(_staedte_block(staedte))
+              + geld_regeln(geld) + geld_block(geld) + _fremd(_anlagen_block(anlagen))
+              # Zuletzt, wie bei /ask: die Zeit-Tatsachen direkt über der FRAGE.
+              + aktenstand_regel(stand))
     prompt = prompts.render("deep_report", question=question.strip()[:300],
-                            context=_build_context(candidates),
+                            heute=_heute(),
+                            context=_fremd(_build_context(candidates)),
                             zusatz=zusatz,
-                            planungen=_planungen_block(planungen))
+                            planungen=_fremd(_planungen_block(planungen)))
     # Der Denkaufwand je Modell UND Feature, wie bei Lotti und der Antwort
     # (`llm.WEB_DENKAUFWAND`) — bis 23.09.2026 stand hier nur DeepSeeks
     # Aus-Schalter, der Bericht lief also immer mit der Vorgabe des Anbieters.
     extra = llm.web_denk_extra(model, "deep_report")
     yield from llm.chat_stream(model=model, _feature="deep_report", temperature=0.2,
-                               max_tokens=4000,
+                               max_tokens=4000, timeout=DEEP_FRIST_S,
                                messages=[{"role": "user", "content": prompt}], **extra)
 
 
@@ -2357,7 +2943,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
             for b in gruppen[label])
         teile.append(f"{label} ({len(gruppen[label])} Beiträge):\n{zeilen}")
     prompt = prompts.render("party_opinions", question=question.strip()[:300],
-                            contributions="\n".join(teile))
+                            contributions=_fremd("\n".join(teile)))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     # 2000 Token reichten nicht mehr: Mit dem Beschluss-Anker stehen bis zu 15
     # Fraktionen und Verbände im Prompt, die Antwort lief mitten in der AfD-
@@ -2366,7 +2952,7 @@ def partei_meinungen(question: str, rows: list[dict], model: str = MODEL) -> lis
     # verschwinden. Erst Platz schaffen, dann trotzdem retten, was da ist.
     resp = llm.chat_complete(
         model=model, _feature="party_opinions", _allow_empty_response=True,
-        temperature=0, max_tokens=6000,
+        temperature=0, max_tokens=6000, timeout=ANTWORT_FRIST_S,
         messages=[{"role": "user", "content": prompt}], **extra,
     )
     content = _strip_fences(resp.choices[0].message.content or "") if resp.choices else ""
@@ -2482,9 +3068,12 @@ def _staedte_block(staedte: list[dict] | None) -> str:
     """
     if not staedte:
         return ""
+    # Privatpersonen im Titel nur mit Anfangsbuchstaben — wie auf den Karten.
+    from council.cities.model import display_title
+
     zeilen = "\n".join(
         f"- {s.get('body_name') or s.get('body_id')}, {_datum_de(s.get('date'))}: "
-        f"{(s.get('name') or '').strip()[:160]}"
+        f"{display_title(s.get('name')).strip()[:160]}"
         + (f" — {s['summary'].strip()[:180]}" if s.get("summary") else "")
         for s in staedte)
     return ("\nAUS ANDEREN STÄDTEN (Beschlüsse und Anträge fremder Räte, nicht "
@@ -2585,6 +3174,9 @@ def press_title_ids(store, question: str, rare_max: int = PRESSE_TITEL_SELTEN,
 # Fällungen (gemessen an den Gold-Fragen, 01.10.2026).
 DEBATTE_ANKER_KOPF = 8
 DEBATTE_TITEL_EXTRA = 4
+#: So viele Beiträge der zugehörigen Aussprache holt /ask mit der Kontext-Diät
+#: zu diesen acht Beschlüssen (sonst 6). Die Diät reiht sie vorn ein.
+ANKER_AUSSPRACHE_MAX = 24
 DEBATTE_TITEL_SELTEN = 50  # höchstens so viele Beschlusstitel tragen das Wort
 
 
@@ -2620,6 +3212,49 @@ def title_match_decisions(store, question: str, candidates: list[dict],
     return out[:max_extra]
 ASK_DEBATTE_TEXT_MAX = 800
 ASK_DEBATTE_ANTWORT_MAX = 600
+
+
+#: So viele Wortbeiträge gehen höchstens in den Antwort-Prompt (Schalter
+#: `kontext-diaet`), die der Akte nicht mitgezählt. Bis 10/2026 gingen ALLE
+#: hinein — 50 bis 98 je Frage, dazu 20 Beschlüsse und die Akte. Im Gold-Set
+#: stand das Material für 46 % der verfehlten Fakten im Kontext und wurde
+#: nicht genutzt; mehr Kontext ging mit mehr Weggelassenem einher (r = 0,45,
+#: 17.10.2026) — das bekannte „lost in the middle“ (Liu et al. 2023).
+DEBATTEN_PROMPT_MAX = 24
+#: … davon höchstens so viele zum selben Tagesordnungspunkt.
+DEBATTEN_JE_TOP = 4
+
+
+def debatten_diaet(debatten: list[dict], ctx: list[dict],
+                   behalten: set[int] | None = None,
+                   max_n: int = DEBATTEN_PROMPT_MAX, je_top: int = DEBATTEN_JE_TOP) -> list[dict]:
+    """Die Wortbeiträge für den Prompt — wenige, und die zur Sache zuerst.
+
+    Reihenfolge: erst die Aussprache zu den Beschlüssen im Prompt, in deren
+    Rang (Zugehörigkeit schlägt Ähnlichkeit, s. ``wortbeitraege_zu_beschluessen``),
+    dann der Rest in Suchreihenfolge. Je Tagesordnungspunkt höchstens
+    ``je_top``, damit eine lange Debatte nicht alle Plätze nimmt. ``behalten``
+    (die Beiträge der Akte) bleibt vollständig und zählt nicht mit: Die Akte
+    baut daraus ihre Zeitleiste.
+    """
+    behalten = behalten or set()
+    rang = {c["id"]: i for i, c in enumerate(ctx)}
+    fest = [d for d in debatten if d.get("id") in behalten]
+    rest = [d for d in debatten if d.get("id") not in behalten]
+    zur_sache = sorted((d for d in rest if d.get("zu_beschluss") in rang),
+                       key=lambda d: rang[d["zu_beschluss"]])
+    uebrige = [d for d in rest if d.get("zu_beschluss") not in rang]
+    aus: list[dict] = []
+    je: dict[tuple, int] = {}
+    for d in zur_sache + uebrige:
+        if len(aus) >= max_n:
+            break
+        top = (d.get("session_date"), d.get("top"))
+        if je.get(top, 0) >= je_top:
+            continue
+        je[top] = je.get(top, 0) + 1
+        aus.append(d)
+    return fest + aus
 
 
 def _debatten_block(debatten: list[dict] | None, eng: bool = False,
@@ -3217,6 +3852,11 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic",
     # (`frage=` beim Ansatz unten) — sie sind deren Übersetzung, nicht
     # Beiwerk der Expansion.
     alltag_begriffe = _alltag.begriffe(_falte(question or ""))
+    # Die Kontenebene sucht OHNE die Alltagsübersetzung: Die übersetzt
+    # „Einnahmen" in Gattungen („Zuwendungen", „Kostenerstattungen"), und
+    # Gattungen sind Kontennamen — „Wie hoch sind die Einnahmen aus
+    # Bußgeldern?" bekam sonst die Sonderposten-Auflösung (11.10.2026).
+    woerter_konten = list(woerter)
     woerter += [w for w in alltag_begriffe if w not in woerter]
     alltag_facetten = _alltag.facetten(_falte(question or ""))
     # Das Jahr aus der FRAGE, nicht aus den Begriffen: Die Expansion streut
@@ -3292,8 +3932,40 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic",
     # Die Modul-Facetten: eine Store-Methode je Facette, Signatur (woerter, year).
     for fac in _geld.FACETTEN:
         if fac.name in facetten:
-            aus[fac.key] = _sicher(getattr(store, fac.methode), woerter, jahr)
+            aus[fac.key] = _sicher(getattr(store, fac.methode),
+                                   woerter_konten if fac.name == "accounts" else woerter, jahr)
+    # Trifft die Frage ein KONTO („Parkgebühren“), ist das die Antwort, und
+    # die Summen daneben sind Ablenkung: Auf „Wie hoch sind die Abweichungen
+    # zwischen Soll und Ist bei den Parkgebühren?“ antwortete das Modell am
+    # 10.10.2026 mit der Gewerbesteuer, weil der Steuerplan-Baustein der
+    # einzige mit Soll UND Ist war. Ohne Steuerwort in der Frage fallen die
+    # Steuer- und Gesamtsummen deshalb weg.
+    # Ein bloßer Wortteil-Treffer („Schulden" in „Schuldendiensthilfen") tritt
+    # zurück, sobald eine Fachquelle geantwortet hat — die weiß es besser.
+    if (aus.get("accounts") and aus["accounts"].get("match", 3) < 2
+            and any(v for k, v in aus.items()
+                    if k not in ("facets", "accounts", "haushalt", "plan", "ansatz", "produkte"))):
+        aus.pop("accounts")
+    if aus.get("accounts") and not _F_STEUERN.search(_falte(question or "")):
+        for key in _NEBEN_KONTEN:
+            aus.pop(key, None)
+        # Teilhaushalt und Produkte nur, wenn sie zum Teilhaushalt des Kontos
+        # gehören — „Einnahmen“ allein zog sonst „Finanzmanagement und Recht“.
+        thh = {t["name"] for t in aus["accounts"]["accounts"][0]["sub_budgets"][:1]}
+        if aus.get("haushalt"):
+            aus["haushalt"] = [h for h in aus["haushalt"] if h.get("area") in thh]
+        produkte = aus.get("produkte")
+        if isinstance(produkte, dict):
+            prod = [x for x in produkte.get("produkte") or []
+                    if x.get("sub_budget_name") in thh]
+            aus["produkte"] = {**produkte, "produkte": prod} if prod else None
     return aus
+
+
+#: Was neben einem Kontentreffer wegfällt — Summen über den ganzen Haushalt
+#: und die Steuern, die eine Frage nach einer Einnahmeart nicht meint.
+_NEBEN_KONTEN = ("taxes", "tax_plan", "tax_capacity", "ansatz", "ist", "kassensicht",
+                 "execution")
 
 
 #: Quell-Label → Steckbrief-Slug von /haushalt/steuer. Nur die Arten, die
@@ -3366,6 +4038,27 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 "mehr": {"href": "/haushalt/schulden",
                          "label": "Wie viel Schulden hat Oldenburg?"},
             }
+
+    konten = (geld.get("accounts") or {}).get("accounts") or []
+    if konten and len(konten[0].get("actual") or {}) >= 2:
+        k = konten[0]
+        gross = max(abs(v) for v in k["actual"].values()) >= 1e6
+        einnahme = (k.get("kind") or "").endswith("revenue")
+        return {
+            "kind": "budget_account",
+            "title": f"{k['label']} — {'Einnahmen' if einnahme else 'Ausgaben'} (Ist)",
+            "unit": "Mio. €" if gross else "€",
+            "nachkomma": 2 if gross else 0,
+            "series": [{"year": y, "value": round(v / 1e6, 2) if gross else round(v)}
+                       for y, v in sorted(k["actual"].items())],
+            "note": (f"Rechnungsergebnisse des Kontos {k['account_no']}"
+                     + (f" im Teilhaushalt {k['sub_budgets'][0]['no']:02d} "
+                        f"{k['sub_budgets'][0]['name']}" if len(k["sub_budgets"]) == 1
+                        else f", Summe über {len(k['sub_budgets'])} Teilhaushalte")
+                     + " — keine Planwerte."),
+            "source": "Haushaltspläne der Stadt Oldenburg, Teilergebnishaushalte",
+            "mehr": None,
+        }
 
     if geld.get("taxes"):
         # Die Art, die die Frage getroffen hat — `steuern_fuer_begriffe` hat
@@ -4134,6 +4827,34 @@ def _geld_vereinheitlichen(geld: dict | None, haushalt, taxes, tax_capacity) -> 
     return {"haushalt": haushalt, "taxes": taxes, "tax_capacity": tax_capacity}
 
 
+#: Haushalts-Bausteine, die zu JEDER Geldfrage etwas liefern (Summen des
+#: Gesamthaushalts) — sie belegen keine bestimmte Antwort.
+_GELD_ALLGEMEIN = frozenset({"facets", "haushalt", "ansatz"})
+
+
+def geld_belegt(geld: dict | None) -> bool:
+    """Trägt der Haushalt eine Antwort — eine Quelle mit Daten, die die Frage
+    gezielt getroffen hat (Konto, Schulden, Steuern …)?"""
+    return any(v for k, v in (geld or {}).items() if k not in _GELD_ALLGEMEIN)
+
+
+_ANLAGE_MARKER = re.compile(r"\[A\d+\]")
+
+
+def antwort_belegt(answer: str, cited: list, *, geld: dict | None = None,
+                   weitere: bool = False) -> bool:
+    """Hat eine Antwort irgendeinen Beleg?
+
+    Der Zähler „Antworten ohne Quelle" (``ai_answer_empty``) fragte bis
+    10/2026 nur nach zitierten BESCHLÜSSEN. Alle vier Antworten zu den
+    Parkgebühren vom 10.10.2026 zählten deshalb als Sackgasse — dabei zitierten
+    sie eine Haushaltsanlage ([A4]) bzw. kamen aus der Kontenebene.
+    ``weitere``: ein Baustein, der selbst Beleg ist (Geschäftsordnung,
+    Sitzungskalender, Wahlergebnis)."""
+    return bool(cited) or bool(_ANLAGE_MARKER.search(answer or "")) \
+        or geld_belegt(geld) or weitere
+
+
 def geld_block(geld: dict | None, max_chars: int | None = None) -> str:
     """Alle vorhandenen Geld-Bausteine als EIN Prompt-Abschnitt, gedeckelt.
 
@@ -4362,7 +5083,8 @@ GROSS_REGEL = (
     "Ankündigung dessen, was folgt. Gliedere danach mit 2-4 Zwischenüberschriften "
     "(Zeile, die mit „## “ beginnt, z. B. „## Finanzierung“) und nutze, wo es "
     "passt, kurze Spiegelstrich-Listen („- “). Die Fußnoten-Regeln gelten "
-    "unverändert."
+    "unverändert. Ausführlich wird nur, was die Frage beantwortet: Steht das "
+    "Gefragte nicht im Kontext, bleibt die Antwort kurz und ohne Gliederung."
 )
 
 
@@ -4425,6 +5147,66 @@ DUENN_REGEL = (
     "Ratsunterlagen dazu wenig hergeben, und referiere danach nur, was wirklich "
     "belegt ist. Erfinde keine Zusammenhänge und dehne Randtreffer nicht zu einer "
     "Antwort — lieber kurz und ehrlich als lang und geraten."
+)
+
+#: Wie die Antwort den Wortlaut der Geschäftsordnung benutzt
+#: (:mod:`council.rules_of_procedure`) — angehängt NUR, wenn die Frage
+#: Paragrafen gezogen hat; ohne sie ist der Prompt zeichengleich mit dem von
+#: vorher (Regel aus PR 21, s. ``kern/prompts.py::ERKLAERWISSEN_REGEL``).
+#:
+#: **Der Vorbehalt fällt, aber nur für die Regel.** Der Antwort-Prompt sagt
+#: „nur anhand der Beschlüsse … sonst ehrlich sagen" — und „Wie lange darf
+#: ein Ratsmitglied reden?" hat keinen Beschluss. Ohne diesen Absatz stünde
+#: § 15 Abs. 5 zwar im Prompt, aber hinter einer Regel, die das Gegenteil
+#: verlangt — dieselbe Falle wie beim Haushalt am 02.09.2026 („Die
+#: Ratsunterlagen geben keine direkte Auskunft … Der Liquiditätsstand betrug
+#: 136,1 Millionen Euro“, s. Prompt ``qa_answer``). Für alles, was der Rat
+#: ENTSCHIEDEN hat, gilt der Vorbehalt weiter.
+#:
+#: **Nichts aus dem Gedächtnis.** Was die Geschäftsordnung nicht regelt,
+#: regelt oft das NKomVG — das Modell kennt es ungefähr, und „ungefähr" ist
+#: bei einer Frist das Falsche.
+#: Woran eine Frage nach einem Wahlergebnis zu erkennen ist — gefaltet.
+#: „Wie sind die Sitzverteilung nach der Ratswahl?" (28.09.2026) bekam „geht
+#: aus den Unterlagen nicht hervor", obwohl das Ergebnis seit zwei Wochen auf
+#: /wahlen stand. Die Ratsbeschlüsse kennen es erst nach der ersten Sitzung
+#: des neuen Rats.
+_WAHL_RE = re.compile(
+    r"ratswahl|kommunalwahl|wahlergebnis|sitzverteilung|wahlbeteiligung|stichwahl|"
+    r"oberbuergermeisterwahl|ob wahl|\bwie viele sitze|\bsitze im (?:neuen )?rat|"
+    r"\bneue[nr]? (?:stadt)?rat\b|wahl gewonnen|\bwahlsieger|neue[nr]? oberbuergermeister|"
+    r"wer (?:ist|wird) [^.?!]{0,20}oberbuergermeister|"
+    r"(?:oberbuergermeister|\bob\b)[^.?!]{0,40}gewaehlt|gewaehlt[^.?!]{0,40}(?:oberbuergermeister|\bob\b)|"
+    r"(?:\bwahl\b|gewaehlt)[^.?!]{0,30}\b(?:2026|september)\b")
+
+
+def wahlfrage(*fragen: str) -> bool:
+    """Fragt eine Fassung der Frage nach einem Wahlergebnis (Rat, OB)?"""
+    return any(_WAHL_RE.search(_falte(f or "")) for f in fragen)
+
+
+WAHL_REGEL = (
+    "\nWAHLERGEBNISSE: Unten stehen die Ergebnisse der Wahlen in Oldenburg (Ratswahl, "
+    "Oberbürgermeisterwahl, Stichwahl). Fragt die Frage danach — Sitzverteilung, "
+    "Stimmenanteile, Wahlbeteiligung, wer gewählt ist —, beantworte sie aus diesem Baustein: "
+    "geradeheraus, mit Datum und dem Hinweis, ob das Ergebnis amtlich oder vorläufig ist, "
+    "ohne den Vorbehalt, die Beschlüsse gäben nichts her. Die Zahlen NIE mit [id] belegen. "
+    "Wie sich Fraktionen oder Gruppen im neuen Rat bilden, steht nicht darin — sag das, "
+    "statt es aus den Sitzen abzuleiten."
+)
+
+
+GESCHAEFTSORDNUNG_REGEL = (
+    "\nGESCHÄFTSORDNUNG: Unten steht der Wortlaut der Geschäftsordnung des Rates. "
+    "Fragt die Frage, wie der Rat, seine Ausschüsse oder die Einwohnerfragestunde "
+    "ARBEITEN — wer reden darf und wie lange, welche Fristen gelten, wie abgestimmt "
+    "oder gewählt wird —, beantworte sie aus diesem Wortlaut: geradeheraus, ohne den "
+    "Vorbehalt, die Beschlüsse gäben nichts her. Nenne den Paragrafen mit Absatz im "
+    "Satz („nach § 15 Abs. 5 der Geschäftsordnung“), NIE als [id]. Gib nur wieder, "
+    "was dort steht; regelt sie etwas nicht, sag das, statt es zu ergänzen. "
+    "Beschlüsse nennst du nur, wenn sie die Regel an einem Oldenburger Fall zeigen "
+    "oder die Frage nach ihnen fragt. Die Anschlussfragen dürfen sich hier auch auf "
+    "andere Regeln der Geschäftsordnung beziehen."
 )
 
 
@@ -4570,8 +5352,22 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      # ANS ENDE, aus demselben Grund wie `stand` darüber.
                      screen: dict | None = None,
                      # Plan „Akte“, Phase 4 — ebenfalls ANS ENDE.
-                     akte: dict | None = None) -> tuple[list[dict], dict]:
-    vtext = _verlauf_zeilen(verlauf)
+                     akte: dict | None = None,
+                     # Die Geschäftsordnung — fertiger Baustein aus
+                     # ``rules_of_procedure.prompt_block``; ebenfalls ANS ENDE
+                     # und von den Aufrufern per NAME übergeben.
+                     rules_block: str = "",
+                     # Die Wahlergebnisse — fertiger Baustein aus
+                     # ``web/backend/app/election/answer_context.py``, sobald
+                     # ``wahlfrage`` anschlägt; per NAME übergeben wie oben.
+                     election_block: str = "",
+                     # Fertige Bausteine des Routers aus eigenen Daten (seit der
+                     # Auswertung 11.10.2026: „Seit dem jüngsten Beschluss",
+                     # „Wo Ergebnisse stehen"); per NAME übergeben wie oben.
+                     extra_block: str = "",
+                     # Belegnotizen (``belegnotizen_block``) — per NAME, wie oben.
+                     notiz_block: str = "") -> tuple[list[dict], dict]:
+    vtext = _verlauf_zeilen(verlauf_ohne_dieselbe_frage(verlauf, question))
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n"
                  f"{ANSCHLUSS_REGEL}\n\n"
                  if vtext else "")
@@ -4615,15 +5411,17 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
         if akte_beschluesse:
             beitrag_ids = set(akte.get("speech_ids") or ())
             presse_ids = set(akte.get("press_ids") or ())
-            akte_text = akte_suche.zeitleiste(
+            akte_text = _fremd(akte_suche.zeitleiste(
                 akte_beschluesse, [d for d in debatten or [] if d.get("id") in beitrag_ids],
                 [x for x in presse or [] if x.get("id") in presse_ids],
-                akte.get("announced") or [])
+                akte.get("announced") or []))
             candidates = [c for c in candidates if c["id"] not in im]
             debatten = [d for d in debatten or [] if d.get("id") not in beitrag_ids]
             presse = [x for x in presse or [] if x.get("id") not in presse_ids]
     prompt = prompts.render("qa_answer", question=question.strip()[:300],
-                            context=_build_context(candidates) if candidates or not akte_text
+                            heute=_heute(),
+                            context=_fremd(notiz_block + _build_context(candidates))
+                            if candidates or not akte_text
                             else "(alle passenden Beschlüsse stehen in der AKTE unten)",
                             # Die Haushalts-Regeln hängen am KONTEXT, nicht am
                             # Fragetyp: „Was hat das Rechnungsprüfungsamt
@@ -4641,15 +5439,26 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             # verschwinden.
                             + aktenstand_regel(stand)
                             + ((akte_suche.AKTE_REGEL_ENG if eng else akte_suche.AKTE_REGEL)
-                               if akte_text else ""),
-                            presse=akte_text + _sitzungen_block(sitzungen)
+                               if akte_text else "")
+                            + (GESCHAEFTSORDNUNG_REGEL if rules_block else "")
+                            + (WAHL_REGEL if election_block else "")
+                            + (NOTIZ_REGEL if notiz_block else ""),
+                            # Die Geschäftsordnung zuerst: Für eine
+                            # Verfahrensfrage IST sie die Antwort, die übrigen
+                            # Bausteine sind Beiwerk.
+                            # Was Dritte geschrieben haben, geht durch den
+                            # Anweisungsfilter (``_fremd``); die eigenen
+                            # Bausteine (Geschäftsordnung, Glossar, Geld)
+                            # nicht — sie sind Code dieses Repos.
+                            presse=rules_block + election_block + _fremd(extra_block) + akte_text
+                            + _fremd(_sitzungen_block(sitzungen))
                             + _glossar_block(begriffe_fuer(question))
-                            + _steckbrief_block(steckbriefe) + _presse_block(presse)
-                            + _staedte_block(staedte)
+                            + _fremd(_steckbrief_block(steckbriefe)) + _fremd(_presse_block(presse))
+                            + _fremd(_staedte_block(staedte))
                             + geld_block(geld)
-                            + _debatten_block(debatten, eng, text_max=ASK_DEBATTE_TEXT_MAX,
-                                              answer_max=ASK_DEBATTE_ANTWORT_MAX)
-                            + _anlagen_block(anlagen),
+                            + _fremd(_debatten_block(debatten, eng, text_max=ASK_DEBATTE_TEXT_MAX,
+                                                     answer_max=ASK_DEBATTE_ANTWORT_MAX))
+                            + _fremd(_anlagen_block(anlagen)),
                             gespraech=gespraech)
     # reasoning-Schalter am TATSÄCHLICH genutzten Modell festmachen — vorher
     # hing er an der Modul-Konstante und lief bei model=-Overrides ins Leere.
@@ -4738,13 +5547,14 @@ def vereinfachen_messages(question: str, bisher: str | None, candidates: list[di
     Meinungsbild") arbeiten gegen die Kürze — genau daran ist die beiläufige
     Bitte im normalen Prompt schon gescheitert."""
     prompt = prompts.render("qa_simple", question=question.strip()[:300],
+                            heute=_heute(),
                             bisher=_bisher_block(bisher),
                             # Die Begriffe stehen in der ANTWORT, nicht in der
                             # Bitte: „Erklär das einfacher" nennt selbst keins.
                             glossar=_glossar_block_einfach(
                                 begriffe_fuer(f"{bisher or ''}\n{question or ''}",
                                               max_n=GLOSSAR_MAX_EINFACH)),
-                            context=_build_context(candidates))
+                            context=_fremd(_build_context(candidates)))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     return [{"role": "user", "content": prompt}], extra
 
@@ -4758,7 +5568,8 @@ def vereinfachen_stream(question: str, bisher: str | None, candidates: list[dict
     """Die einfache Fassung als Token-Stream (wie answer_stream)."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
     yield from llm.chat_stream(model=model, _feature="qa_simple", temperature=0.2,
-                               max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
+                               max_tokens=VEREINFACHEN_TOKENS, timeout=ANTWORT_FRIST_S,
+                               messages=messages, **extra)
 
 
 def vereinfachen_question(question: str, bisher: str | None, candidates: list[dict],
@@ -4767,15 +5578,21 @@ def vereinfachen_question(question: str, bisher: str | None, candidates: list[di
     Liefert ``(answer, cited_ids)`` wie answer_question."""
     messages, extra = vereinfachen_messages(question, bisher, candidates, model)
     resp = llm.chat_complete(model=model, _feature="qa_simple", temperature=0.2,
-                             max_tokens=VEREINFACHEN_TOKENS, messages=messages, **extra)
+                             max_tokens=VEREINFACHEN_TOKENS, timeout=ANTWORT_FRIST_S,
+                             messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
 
 
 def _answer_tokens(typ: str, gross: bool = False, eng: bool = False) -> int:
-    # Punktfrage: knappes Budget als zweite Bremse neben der Prompt-Regel.
+    # Punktfrage: Die Kürze regelt der Prompt (ENG_REGEL), nicht das Budget.
+    # Bis 10/2026 stand hier eine harte Grenze von 320 Tokens als „zweite
+    # Bremse“ — sie schnitt genau den Satz ab, der eine knappe Antwort erst
+    # richtig macht („der Beschluss von 2020 wurde vom OVG gekippt“), und
+    # beim Abbruch mitten im Satz fehlte er ganz (Tim, 17.10.2026: keine
+    # harten Grenzen je Fragetyp, sonst fehlt bei wichtigen Fragen etwas).
     if eng:
-        return 320
+        return 1000
     # Seit dem Ratsgespräch dürfen breite Fragen strukturiert länger antworten
     # (Prompt regelt die Länge nach Frage; das Budget kappt nur den Ausreißer).
     # Große Themen (Task 32) bekommen Platz für die gegliederte Langfassung.
@@ -4797,7 +5614,9 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     geld: dict | None = None, sitzungen: list[dict] | None = None,
                     ort: dict | None = None, staedte: list[dict] | None = None,
                     zukunft_leer: bool = False, stand: dict | None = None,
-                  screen: dict | None = None, akte: dict | None = None):
+                  screen: dict | None = None, akte: dict | None = None,
+                  rules_block: str = "", election_block: str = "",
+                  extra_block: str = "", notiz_block: str = ""):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
@@ -4808,9 +5627,13 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                                        # die Ratsfrage aus Lottis Fenster fragte
                                        # ohne ihn. Positionsweise durchgereicht
                                        # wie alles hier; deshalb ganz ans Ende.
-                                       staedte, zukunft_leer, stand, screen, akte)
+                                       staedte, zukunft_leer, stand, screen, akte,
+                                       rules_block=rules_block,
+                                       election_block=election_block,
+                                       extra_block=extra_block, notiz_block=notiz_block)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
-                             max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
+                             max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
+                             messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
     return resolve_citations(answer, {c["id"] for c in candidates})
 
@@ -4825,7 +5648,9 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   geld: dict | None = None, sitzungen: list[dict] | None = None,
                   ort: dict | None = None, staedte: list[dict] | None = None,
                   zukunft_leer: bool = False, stand: dict | None = None,
-                  screen: dict | None = None, akte: dict | None = None):
+                  screen: dict | None = None, akte: dict | None = None,
+                  rules_block: str = "", election_block: str = "",
+                  extra_block: str = "", notiz_block: str = ""):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
@@ -4838,9 +5663,13 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                                        # die Ratsfrage aus Lottis Fenster fragte
                                        # ohne ihn. Positionsweise durchgereicht
                                        # wie alles hier; deshalb ganz ans Ende.
-                                       staedte, zukunft_leer, stand, screen, akte)
+                                       staedte, zukunft_leer, stand, screen, akte,
+                                       rules_block=rules_block,
+                                       election_block=election_block,
+                                       extra_block=extra_block, notiz_block=notiz_block)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
-                               max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
+                               max_tokens=_answer_tokens(typ, gross, eng), timeout=ANTWORT_FRIST_S,
+                               messages=messages, **extra)
 
 
 # --- Folgefragen (Design 24a / RL-U06) --------------------------------------
@@ -4850,6 +5679,18 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
 FOLLOWUP_MARKER = "FOLGEFRAGEN:"
 _MAX_FOLLOWUPS = 3
 _MAX_FOLLOWUP_LEN = 90
+
+
+#: Ein Quellenverweis wie in der Antwort: „[8047]“, „[A2]“, „[8047, P3]“.
+_VERWEIS_RE = re.compile(r"\s*\[[A-Z]{0,2}\d+(?:\s*[,;]\s*[A-Z]{0,2}\d+)*\]")
+
+
+def _ohne_verweise(frage: str) -> str:
+    """Eine Folgefrage ohne Quellenverweise. Das Modell hängt sie manchmal an
+    („…fortgesetzt? [8047]“) — als Chip ist das Rauschen, und abgeschickt
+    wird der Verweis zur Suchanfrage (Auswertung 16.10.2026: 3 von 8
+    Probeantworten)."""
+    return " ".join(_VERWEIS_RE.sub("", frage).split()).replace(" ?", "?")
 
 
 def split_followups(text: str) -> tuple[str, list[str]]:
@@ -4869,7 +5710,7 @@ def split_followups(text: str) -> tuple[str, list[str]]:
         start, end = tail.find("["), tail.rfind("]")
         if start != -1 and end > start:
             for item in json.loads(tail[start:end + 1]):
-                q = str(item).strip()
+                q = _ohne_verweise(str(item))
                 if q and len(q) <= _MAX_FOLLOWUP_LEN and q not in questions:
                     questions.append(q)
     except (ValueError, TypeError):
@@ -4877,7 +5718,7 @@ def split_followups(text: str) -> tuple[str, list[str]]:
     if not questions:
         # Kein (brauchbares) JSON — zeilenweise als Notnagel (»- Frage?«).
         for line in tail.splitlines():
-            q = line.strip().lstrip("-•*\" ").rstrip("\",")
+            q = _ohne_verweise(line.strip().lstrip("-•*\" ").rstrip("\","))
             if q.endswith("?") and len(q) <= _MAX_FOLLOWUP_LEN and q not in questions:
                 questions.append(q)
     return answer, questions[:_MAX_FOLLOWUPS]

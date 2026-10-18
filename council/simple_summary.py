@@ -7,10 +7,9 @@ Prompts liegen in kern/prompts.py.
 """
 from __future__ import annotations
 
-import json
 import os
 
-from council import outcome_note
+from council import modell_json, outcome_note
 from kern import llm, prompts
 
 MODEL = os.environ.get("COUNCIL_SIMPLE_MODEL", "deepseek/deepseek-v4-pro")
@@ -53,10 +52,12 @@ def generate_one(decision: dict) -> str | None:
             temperature=0.3,
             _feature="simple_summary",
         )
-        data = json.loads(resp.choices[0].message.content or "{}")
+        data = modell_json.objekt(resp.choices[0].message.content)
     except Exception:  # noqa: BLE001 — Aufrufer entscheidet über Retry beim nächsten Lauf
         return None
-    text = (data.get("einfach") or "").strip()
+    # Ein Array oder ein nackter String statt des Objekts ist „unbrauchbar",
+    # kein Absturz des ganzen Nachtlaufs (council/modell_json.py).
+    text = modell_json.text(data, "einfach")
     # Plausibilitäts-Leitplanken: leere oder ausufernde Antworten verwerfen.
     if not text or len(text) > 700:
         return None

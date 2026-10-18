@@ -27,7 +27,7 @@ der Nutzer*innen.
   an den Vorlagen.
 - **Kosten:** LLM braucht nur die Protokoll-Extraktion ≈ **$0,007/Protokoll**
   (1 Call/Protokoll) und die Klassifikation. Vorlagen und Anlagen werden **ohne
-  LLM** ausgewertet (pypdf + Wortlisten) — ihr Backfill kostet $0.
+  LLM** ausgewertet (PDF-Text + Wortlisten) — ihr Backfill kostet $0.
 
 ## Datenmodell (`council.sqlite`)
 
@@ -72,7 +72,7 @@ Seither dazugekommen — beide Dokumentklassen werden **ohne LLM** ausgewertet:
 council_templates           -- eine Zeile je Vorlage (kvonr = SessionNet-Dokument-ID)
   kvonr PK, vorlage_nr, title, art,      -- art: Beschlussvorlage | Berichtsvorlage | …
   document_id, document_url,
-  raw_text, n_pages,                     -- pypdf-Volltext (Sachverhalt & Begründung)
+  raw_text, n_pages,                     -- PDF-Volltext (Sachverhalt & Begründung)
   fetched_at, status,                    -- ok | empty | no_pdf | failed
   anlagen_scanned
 
@@ -160,10 +160,48 @@ Das Modul **`council/protocols.py`** erledigt drei Schritte:
 
 - das öffentliche **Protokoll-PDF erkennen** (Dokument-Link mit dem Label
   „Protokoll … öffentlich" auf der Sitzungsseite),
-- den **Text extrahieren** (pypdf — die PDFs tragen seit 2018 eine Textebene,
-  kein OCR nötig),
+- den **Text extrahieren** (PyMuPDF — die PDFs tragen seit 2018 eine
+  Textebene, kein OCR nötig; s. „Welcher Extraktor“ unten),
 - **ein LLM-Aufruf je Protokoll** → Metadaten, Anwesenheit und alle Beschlüsse
   als strukturiertes JSON (robust gegen leere Modell-Antworten).
+
+### Welcher Extraktor
+
+Seit 10/2026 liest **PyMuPDF** den Text von Protokollen, Vorlagen und Anlagen
+(`council/anlagentext.py::pdf_seiten`), vorher war es pypdf. pypdf setzte
+Leerzeichen mitten ins Wort („de r“, „Arbei tsverträge“, „R atsherr“): Viele
+Erzeuger — Ghostscript/PDF24, mit dem die Fraktionsanträge kommen — teilen
+jede Zeile in zwei Textblöcke und springen dazwischen an die exakte Position,
+oft mitten im Wort. pypdf hält den Sprung für einen Wortabstand, weil seine
+Breitenschätzung die Blocksatz-Abstände nicht mitzählt.
+
+Gemessen an 120 Dokumenten der Prod-Daten, je pypdf → PyMuPDF:
+
+| Art | Wortrisse | nachgelagert |
+|---|---|---|
+| Protokolle (25) | 519 → 0 | TOP-Schnitt 201/211 → 201/211, Redner-Anker 756 → 781 |
+| Vorlagen (40) | 46 → 0 | Ernte (Finanzen, Klima, Amt, Vorschlag) identisch |
+| Anlagen (40) | 147 → 0 | Zahlen 987 von 1.012 an derselben Stelle |
+| Haushalt (15) | 209 → 0 | — bleibt bei pypdf, s. u. |
+
+Die drei Haushalts-Parser auf dem **Vorlagentext** liefern mit beiden dieselben
+Zahlen: Nachbewilligungen 15/15, Spenden 15/15 samt Jahressummen, Kredite
+12/12 (einziger Unterschied: „hinzug efügt“ → „hinzugefügt“ in einer
+Zusammenfassung).
+
+**Haushalts-Anlagen bleiben bei pypdf.** Rund zwanzig Schichten lesen den
+gespeicherten Anlagentext mit Regexen, die auf pypdfs Zeilenbild abgestimmt
+sind. `extraktor_fuer` erkennt sie wie `finanzquellen.finanz_anlagen_where` —
+am Label oder am Titel der Vorlage. PyMuPDF ist optional (AGPL, steht nur in
+`constraints.txt`); fehlt es, liest pypdf weiter und das Log sagt es einmal.
+
+**Den Bestand neu lesen** übernimmt `scripts/pdf_neu_lesen.py`, als
+Vorgabe im Trockenlauf: Es lädt, liest, vergleicht mit dem gespeicherten Text
+und berichtet, ohne zu schreiben. Erst `--ausfuehren` schreibt, je Dokument
+sofort und mit Fortschrittsdatei zum Fortsetzen. Nie überschrieben werden
+Protokolle mit geänderter Seitenzahl oder schwächerem TOP-Schnitt, Dokumente,
+die leer würden, solche mit denselben Wörtern in anderem Umbruch, OCR-Anlagen
+und Haushalts-Anlagen.
 
 Ein idempotenter Backfill über Datumsbereiche hat den Bestand seit 2018
 eingelesen; der tägliche Lauf zieht **neu veröffentlichte** Protokolle nach und

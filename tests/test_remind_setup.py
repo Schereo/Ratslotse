@@ -76,6 +76,40 @@ def test_main_findet_offene_einrichtung(db):
     assert row[0] is None
 
 
+def test_eine_tote_adresse_wird_nicht_ewig_versucht(db):
+    """Vorher stand eine Adresse, die der Versand dauerhaft abweist, jeden Tag
+    wieder auf der Liste. Jetzt: drei Fehlversuche, dann gilt die eine
+    Erinnerung als verbraucht."""
+    store = Store(db)
+    store.create_web_user("tot@example.org", "hash", display_name="Tot")
+    alt = (datetime.utcnow() - timedelta(days=3)).isoformat(timespec="seconds")
+    with store._conn:
+        store._conn.execute(
+            "UPDATE web_users SET status='active', email_verified=1, setup_step=1, "
+            "setup_started_at=? WHERE email='tot@example.org'", (alt,))
+
+    mod = _load()
+    versuche: list[str] = []
+
+    def abgewiesen(an, *a, **k):
+        versuche.append(an)
+        raise RuntimeError("422: Adresse abgewiesen")
+
+    mod.email_ready = lambda: True
+    mod.send_email = abgewiesen
+    for _ in range(mod.MAX_VERSUCHE):
+        assert mod.main()["gesendet"] == 0
+    assert len(versuche) == mod.MAX_VERSUCHE
+    letzter = mod.main()
+    assert letzter["aufgegeben"] == 1 and len(versuche) == mod.MAX_VERSUCHE
+    assert mod.main()["kandidaten"] == 0, "danach steht das Konto nicht mehr auf der Liste"
+
+
+def test_die_fusszeile_ist_deutsch():
+    quelltext = (ROOT / "scripts" / "remind_setup.py").read_text()
+    assert "exact einmal" not in quelltext and "genau einmal" in quelltext
+
+
 def test_laedt_dotenv():
     """Ohne load_dotenv ist unter Cron kein RESEND_API_KEY gesetzt — dann geht
     weder die Erinnerung noch die Absturzmeldung raus."""

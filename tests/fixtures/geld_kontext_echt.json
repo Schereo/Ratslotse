@@ -1,4 +1,995 @@
 {
+ "accounts": [
+  {
+   "accounts": [
+    {
+     "account_no": "31449000",
+     "actual": {
+      "2017": 181202.97,
+      "2018": 181055.66999999998,
+      "2019": 187618.67,
+      "2020": 190744.98,
+      "2021": 38167.77,
+      "2022": 296981.96,
+      "2023": 202402.98,
+      "2024": 212106.84
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH10 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 016 Vw THH10 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297452&type=do"
+     },
+     "budget": {
+      "2018": [
+       185000.0,
+       "adopted"
+      ],
+      "2019": [
+       188000.0,
+       "adopted"
+      ],
+      "2020": [
+       209900.0,
+       "adopted"
+      ],
+      "2021": [
+       196500.0,
+       "adopted"
+      ],
+      "2022": [
+       196500.0,
+       "adopted"
+      ],
+      "2023": [
+       196500.0,
+       "adopted"
+      ],
+      "2024": [
+       196500.0,
+       "adopted"
+      ],
+      "2025": [
+       196500.0,
+       "adopted"
+      ],
+      "2026": [
+       196500.0,
+       "draft"
+      ]
+     },
+     "comparison": [
+      {
+       "actual": 181055.66999999998,
+       "plan": 185000.0,
+       "plan_kind": "adopted",
+       "year": 2018
+      },
+      {
+       "actual": 187618.67,
+       "plan": 188000.0,
+       "plan_kind": "adopted",
+       "year": 2019
+      },
+      {
+       "actual": 190744.98,
+       "plan": 209900.0,
+       "plan_kind": "adopted",
+       "year": 2020
+      },
+      {
+       "actual": 38167.77,
+       "plan": 196500.0,
+       "plan_kind": "adopted",
+       "year": 2021
+      },
+      {
+       "actual": 296981.96,
+       "plan": 196500.0,
+       "plan_kind": "adopted",
+       "year": 2022
+      },
+      {
+       "actual": 202402.98,
+       "plan": 196500.0,
+       "plan_kind": "adopted",
+       "year": 2023
+      },
+      {
+       "actual": 212106.84,
+       "plan": 196500.0,
+       "plan_kind": "adopted",
+       "year": 2024
+      }
+     ],
+     "kind": "revenue",
+     "label": "Sonst. Zuweis. für laufende Zw. ges. Soz",
+     "planning": {
+      "2027": 196500.0,
+      "2028": 196500.0,
+      "2029": 196500.0
+     },
+     "planning_from": 2026,
+     "posten_label": "Zuwendungen u. allgem. Umlagen",
+     "size": 212106.84,
+     "sub_budgets": [
+      {
+       "name": "Soziales und Gesundheit",
+       "no": 10
+      }
+     ]
+    }
+   ],
+   "asked_year": null,
+   "match": 2,
+   "more": 0
+  },
+  {
+   "accounts": [
+    {
+     "account_no": "33211000",
+     "actual": {
+      "2017": 3362532.01,
+      "2018": 3362973.59,
+      "2019": 3447442.6,
+      "2020": 2682045.3,
+      "2021": 2637920.89,
+      "2022": 3007970.03,
+      "2023": 3660342.6599999997,
+      "2024": 4482786.140000001
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH09 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 015 Vw THH09 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297451&type=do"
+     },
+     "budget": {
+      "2018": [
+       3226000.0,
+       "adopted"
+      ],
+      "2019": [
+       3276000.0,
+       "adopted"
+      ],
+      "2020": [
+       2926000.0,
+       "adopted"
+      ],
+      "2021": [
+       3276000.0,
+       "adopted"
+      ],
+      "2022": [
+       3778000.0,
+       "adopted"
+      ],
+      "2023": [
+       2690500.0,
+       "adopted"
+      ],
+      "2024": [
+       4434600.0,
+       "adopted"
+      ],
+      "2025": [
+       4434600.0,
+       "adopted"
+      ],
+      "2026": [
+       4432600.0,
+       "draft"
+      ]
+     },
+     "comparison": [
+      {
+       "actual": 3362973.59,
+       "plan": 3226000.0,
+       "plan_kind": "adopted",
+       "year": 2018
+      },
+      {
+       "actual": 3447442.6,
+       "plan": 3276000.0,
+       "plan_kind": "adopted",
+       "year": 2019
+      },
+      {
+       "actual": 2682045.3,
+       "plan": 2926000.0,
+       "plan_kind": "adopted",
+       "year": 2020
+      },
+      {
+       "actual": 2637920.89,
+       "plan": 3276000.0,
+       "plan_kind": "adopted",
+       "year": 2021
+      },
+      {
+       "actual": 3007970.03,
+       "plan": 3778000.0,
+       "plan_kind": "adopted",
+       "year": 2022
+      },
+      {
+       "actual": 3660342.6599999997,
+       "plan": 2690500.0,
+       "plan_kind": "adopted",
+       "year": 2023
+      },
+      {
+       "actual": 4482786.140000001,
+       "plan": 4434600.0,
+       "plan_kind": "adopted",
+       "year": 2024
+      }
+     ],
+     "kind": "revenue",
+     "label": "Parkgebühren",
+     "planning": {
+      "2027": 5267479.0,
+      "2028": 5267479.0,
+      "2029": 5267479.0
+     },
+     "planning_from": 2026,
+     "posten_label": "öffentlich-rechtliche Entgelte",
+     "size": 4482786.140000001,
+     "sub_budgets": [
+      {
+       "name": "Verkehr und Straßenbau",
+       "no": 8
+      },
+      {
+       "name": "Klima/Umwelt/Mobilität/Bau/Grün/Friedh.",
+       "no": 9
+      }
+     ]
+    },
+    {
+     "account_no": "33211004",
+     "actual": {
+      "2017": 287329.92,
+      "2018": 286868.82,
+      "2019": 330341.08,
+      "2020": 180074.72,
+      "2021": 161444.71,
+      "2022": 253908.97,
+      "2023": 276534.22,
+      "2024": 310149.12
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH08 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 014 Vw THH08 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297450&type=do"
+     },
+     "budget": {
+      "2018": [
+       322000.0,
+       "adopted"
+      ],
+      "2019": [
+       322000.0,
+       "adopted"
+      ],
+      "2020": [
+       354000.0,
+       "adopted"
+      ],
+      "2021": [
+       354000.0,
+       "adopted"
+      ],
+      "2022": [
+       354000.0,
+       "adopted"
+      ],
+      "2023": [
+       354000.0,
+       "adopted"
+      ],
+      "2024": [
+       354000.0,
+       "adopted"
+      ],
+      "2025": [
+       354000.0,
+       "adopted"
+      ],
+      "2026": [
+       354000.0,
+       "draft"
+      ]
+     },
+     "comparison": [
+      {
+       "actual": 286868.82,
+       "plan": 322000.0,
+       "plan_kind": "adopted",
+       "year": 2018
+      },
+      {
+       "actual": 330341.08,
+       "plan": 322000.0,
+       "plan_kind": "adopted",
+       "year": 2019
+      },
+      {
+       "actual": 180074.72,
+       "plan": 354000.0,
+       "plan_kind": "adopted",
+       "year": 2020
+      },
+      {
+       "actual": 161444.71,
+       "plan": 354000.0,
+       "plan_kind": "adopted",
+       "year": 2021
+      },
+      {
+       "actual": 253908.97,
+       "plan": 354000.0,
+       "plan_kind": "adopted",
+       "year": 2022
+      },
+      {
+       "actual": 276534.22,
+       "plan": 354000.0,
+       "plan_kind": "adopted",
+       "year": 2023
+      },
+      {
+       "actual": 310149.12,
+       "plan": 354000.0,
+       "plan_kind": "adopted",
+       "year": 2024
+      }
+     ],
+     "kind": "revenue",
+     "label": "Parkgebühren VWG",
+     "planning": {
+      "2027": 354000.0,
+      "2028": 354000.0,
+      "2029": 354000.0
+     },
+     "planning_from": 2026,
+     "posten_label": "öffentlich-rechtliche Entgelte",
+     "size": 310149.12,
+     "sub_budgets": [
+      {
+       "name": "Verkehr und Straßenbau",
+       "no": 8
+      }
+     ]
+    }
+   ],
+   "asked_year": null,
+   "match": 3,
+   "more": 0
+  },
+  {
+   "accounts": [
+    {
+     "account_no": "51320000",
+     "actual": {
+      "2017": 16655.629999999997,
+      "2018": 16176936.22,
+      "2019": 14245725.520000001,
+      "2020": 2472684.17,
+      "2021": 15001097.24,
+      "2022": 21556617.93,
+      "2023": 26800659.2,
+      "2024": 28502746.54
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH04 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 010 Vw THH04 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297446&type=do"
+     },
+     "budget": {},
+     "comparison": [],
+     "kind": "expense",
+     "label": "Außerplanmäßige AfA auf Finanzvermögen",
+     "planning": {},
+     "planning_from": 2026,
+     "posten_label": "außerordentliche Aufwendungen",
+     "size": 28502746.54,
+     "sub_budgets": [
+      {
+       "name": "Finanzmanagement und Recht",
+       "no": 4
+      },
+      {
+       "name": "nicht rechtsfähige Stiftungen",
+       "no": 13
+      }
+     ]
+    },
+    {
+     "account_no": "51310000",
+     "actual": {
+      "2017": 447861.36,
+      "2018": 365543.99000000005,
+      "2019": 1700645.49,
+      "2020": 297678.77,
+      "2021": 49505.78,
+      "2022": 70627.29000000001,
+      "2023": 277469.01,
+      "2024": 142287.5
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH08 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 014 Vw THH08 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297450&type=do"
+     },
+     "budget": {},
+     "comparison": [],
+     "kind": "expense",
+     "label": "Außerplanmäßige AfA auf Sachvermögen",
+     "planning": {},
+     "planning_from": 2026,
+     "posten_label": "außerordentliche Aufwendungen",
+     "size": 142287.5,
+     "sub_budgets": [
+      {
+       "name": "Verkehr und Straßenbau",
+       "no": 8
+      },
+      {
+       "name": "Wirtschaftsförderung, Liegenschaften",
+       "no": 3
+      },
+      {
+       "name": "Personal/Organisation/Digitalisierung/IT",
+       "no": 2
+      },
+      {
+       "name": "Schule und Bildung",
+       "no": 12
+      },
+      {
+       "name": "Verwaltungsführung",
+       "no": 1
+      }
+     ]
+    },
+    {
+     "account_no": "51330000",
+     "actual": {
+      "2021": 394.0,
+      "2023": 13816.0,
+      "2024": 157.0
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH06 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 012 Vw THH06 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297448&type=do"
+     },
+     "budget": {},
+     "comparison": [],
+     "kind": "expense",
+     "label": "Außerplanmäßige AfA auf imm. VG a. g. In",
+     "planning": {},
+     "planning_from": 2026,
+     "posten_label": "außerordentliche Aufwendungen",
+     "size": 157.0,
+     "sub_budgets": [
+      {
+       "name": "Kultur, Museen, Sport",
+       "no": 6
+      }
+     ]
+    }
+   ],
+   "asked_year": 2024,
+   "match": 2,
+   "more": 0
+  },
+  {
+   "accounts": [
+    {
+     "account_no": "30120000",
+     "actual": {
+      "2017": 31561545.389999997,
+      "2018": 32085032.55,
+      "2019": 32394620.310000002,
+      "2020": 33129814.31,
+      "2021": 33204538.39,
+      "2022": 33685604.78,
+      "2023": 33812082.63,
+      "2024": 34100360.41
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH04 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 010 Vw THH04 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297446&type=do"
+     },
+     "budget": {
+      "2018": [
+       31500000.0,
+       "adopted"
+      ],
+      "2019": [
+       32200000.0,
+       "adopted"
+      ],
+      "2020": [
+       32500000.0,
+       "adopted"
+      ],
+      "2021": [
+       32700000.0,
+       "adopted"
+      ],
+      "2022": [
+       33200000.0,
+       "adopted"
+      ],
+      "2023": [
+       33700000.0,
+       "adopted"
+      ],
+      "2024": [
+       34050000.0,
+       "adopted"
+      ],
+      "2025": [
+       34050000.0,
+       "adopted"
+      ],
+      "2026": [
+       36500000.0,
+       "draft"
+      ]
+     },
+     "comparison": [
+      {
+       "actual": 32085032.55,
+       "plan": 31500000.0,
+       "plan_kind": "adopted",
+       "year": 2018
+      },
+      {
+       "actual": 32394620.310000002,
+       "plan": 32200000.0,
+       "plan_kind": "adopted",
+       "year": 2019
+      },
+      {
+       "actual": 33129814.31,
+       "plan": 32500000.0,
+       "plan_kind": "adopted",
+       "year": 2020
+      },
+      {
+       "actual": 33204538.39,
+       "plan": 32700000.0,
+       "plan_kind": "adopted",
+       "year": 2021
+      },
+      {
+       "actual": 33685604.78,
+       "plan": 33200000.0,
+       "plan_kind": "adopted",
+       "year": 2022
+      },
+      {
+       "actual": 33812082.63,
+       "plan": 33700000.0,
+       "plan_kind": "adopted",
+       "year": 2023
+      },
+      {
+       "actual": 34100360.41,
+       "plan": 34050000.0,
+       "plan_kind": "adopted",
+       "year": 2024
+      }
+     ],
+     "kind": "revenue",
+     "label": "Grundsteuer B",
+     "planning": {
+      "2027": 36500000.0,
+      "2028": 36500000.0,
+      "2029": 36500000.0
+     },
+     "planning_from": 2026,
+     "posten_label": "Steuern und ähnliche Abgaben",
+     "size": 34100360.41,
+     "sub_budgets": [
+      {
+       "name": "Finanzmanagement und Recht",
+       "no": 4
+      }
+     ]
+    },
+    {
+     "account_no": "30110000",
+     "actual": {
+      "2017": 72132.03,
+      "2018": 69392.38,
+      "2019": 70810.82,
+      "2020": 70869.58,
+      "2021": 69131.6,
+      "2022": 71105.52,
+      "2023": 66751.13,
+      "2024": 71119.69
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH04 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 010 Vw THH04 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297446&type=do"
+     },
+     "budget": {
+      "2018": [
+       73000.0,
+       "adopted"
+      ],
+      "2019": [
+       72000.0,
+       "adopted"
+      ],
+      "2020": [
+       70000.0,
+       "adopted"
+      ],
+      "2021": [
+       70000.0,
+       "adopted"
+      ],
+      "2022": [
+       70000.0,
+       "adopted"
+      ],
+      "2023": [
+       70000.0,
+       "adopted"
+      ],
+      "2024": [
+       70000.0,
+       "adopted"
+      ],
+      "2025": [
+       70000.0,
+       "adopted"
+      ],
+      "2026": [
+       70000.0,
+       "draft"
+      ]
+     },
+     "comparison": [
+      {
+       "actual": 69392.38,
+       "plan": 73000.0,
+       "plan_kind": "adopted",
+       "year": 2018
+      },
+      {
+       "actual": 70810.82,
+       "plan": 72000.0,
+       "plan_kind": "adopted",
+       "year": 2019
+      },
+      {
+       "actual": 70869.58,
+       "plan": 70000.0,
+       "plan_kind": "adopted",
+       "year": 2020
+      },
+      {
+       "actual": 69131.6,
+       "plan": 70000.0,
+       "plan_kind": "adopted",
+       "year": 2021
+      },
+      {
+       "actual": 71105.52,
+       "plan": 70000.0,
+       "plan_kind": "adopted",
+       "year": 2022
+      },
+      {
+       "actual": 66751.13,
+       "plan": 70000.0,
+       "plan_kind": "adopted",
+       "year": 2023
+      },
+      {
+       "actual": 71119.69,
+       "plan": 70000.0,
+       "plan_kind": "adopted",
+       "year": 2024
+      }
+     ],
+     "kind": "revenue",
+     "label": "Grundsteuer A",
+     "planning": {
+      "2027": 70000.0,
+      "2028": 70000.0,
+      "2029": 70000.0
+     },
+     "planning_from": 2026,
+     "posten_label": "Steuern und ähnliche Abgaben",
+     "size": 71119.69,
+     "sub_budgets": [
+      {
+       "name": "Finanzmanagement und Recht",
+       "no": 4
+      }
+     ]
+    }
+   ],
+   "asked_year": null,
+   "match": 3,
+   "more": 0
+  },
+  {
+   "accounts": [
+    {
+     "account_no": "30130000",
+     "actual": {
+      "2017": 107234685.51,
+      "2018": 130997292.83,
+      "2019": 130080989.38,
+      "2020": 115936506.26,
+      "2021": 131363494.12,
+      "2022": 154892068.9,
+      "2023": 190276683.53,
+      "2024": 220148444.83
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH04 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 010 Vw THH04 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297446&type=do"
+     },
+     "budget": {
+      "2018": [
+       106000000.0,
+       "adopted"
+      ],
+      "2019": [
+       129000000.0,
+       "adopted"
+      ],
+      "2020": [
+       105000000.0,
+       "adopted"
+      ],
+      "2021": [
+       118000000.0,
+       "adopted"
+      ],
+      "2022": [
+       135000000.0,
+       "adopted"
+      ],
+      "2023": [
+       135000000.0,
+       "adopted"
+      ],
+      "2024": [
+       145000000.0,
+       "adopted"
+      ],
+      "2025": [
+       169000000.0,
+       "adopted"
+      ],
+      "2026": [
+       218000000.0,
+       "draft"
+      ]
+     },
+     "comparison": [
+      {
+       "actual": 130997292.83,
+       "plan": 106000000.0,
+       "plan_kind": "adopted",
+       "year": 2018
+      },
+      {
+       "actual": 130080989.38,
+       "plan": 129000000.0,
+       "plan_kind": "adopted",
+       "year": 2019
+      },
+      {
+       "actual": 115936506.26,
+       "plan": 105000000.0,
+       "plan_kind": "adopted",
+       "year": 2020
+      },
+      {
+       "actual": 131363494.12,
+       "plan": 118000000.0,
+       "plan_kind": "adopted",
+       "year": 2021
+      },
+      {
+       "actual": 154892068.9,
+       "plan": 135000000.0,
+       "plan_kind": "adopted",
+       "year": 2022
+      },
+      {
+       "actual": 190276683.53,
+       "plan": 135000000.0,
+       "plan_kind": "adopted",
+       "year": 2023
+      },
+      {
+       "actual": 220148444.83,
+       "plan": 145000000.0,
+       "plan_kind": "adopted",
+       "year": 2024
+      }
+     ],
+     "kind": "revenue",
+     "label": "Gewerbesteuer",
+     "planning": {
+      "2027": 190000000.0,
+      "2028": 190000000.0,
+      "2029": 190000000.0
+     },
+     "planning_from": 2026,
+     "posten_label": "Steuern und ähnliche Abgaben",
+     "size": 220148444.83,
+     "sub_budgets": [
+      {
+       "name": "Finanzmanagement und Recht",
+       "no": 4
+      }
+     ]
+    }
+   ],
+   "asked_year": null,
+   "match": 3,
+   "more": 0
+  },
+  {
+   "accounts": [
+    {
+     "account_no": "42420000",
+     "actual": {
+      "2017": 9901.66,
+      "2018": 4569.54,
+      "2019": 3159.94,
+      "2020": 2533.68,
+      "2021": 4280.01,
+      "2022": 6074.27,
+      "2023": 2507.38,
+      "2024": 3860.94
+     },
+     "beleg": {
+      "as_of": "Haushaltsplan 2026 — Stand der Einbringung",
+      "citation": "Teilergebnishaushalt THH13 — Teilergebnishaushalt des Teilhaushalts, Kontenzeilen — jede mit der Summenzeile ihres Postens nachgerechnet",
+      "label": "2026 019 Vw THH13 Haushalt 2026 Verwaltungsentwurf",
+      "page": null,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=297429&type=do"
+     },
+     "budget": {
+      "2018": [
+       3000.0,
+       "adopted"
+      ],
+      "2019": [
+       3000.0,
+       "adopted"
+      ],
+      "2020": [
+       3000.0,
+       "adopted"
+      ],
+      "2021": [
+       3000.0,
+       "adopted"
+      ],
+      "2022": [
+       3000.0,
+       "adopted"
+      ],
+      "2023": [
+       3000.0,
+       "adopted"
+      ],
+      "2024": [
+       3500.0,
+       "adopted"
+      ],
+      "2025": [
+       3500.0,
+       "adopted"
+      ],
+      "2026": [
+       4000.0,
+       "draft"
+      ]
+     },
+     "comparison": [
+      {
+       "actual": 4569.54,
+       "plan": 3000.0,
+       "plan_kind": "adopted",
+       "year": 2018
+      },
+      {
+       "actual": 3159.94,
+       "plan": 3000.0,
+       "plan_kind": "adopted",
+       "year": 2019
+      },
+      {
+       "actual": 2533.68,
+       "plan": 3000.0,
+       "plan_kind": "adopted",
+       "year": 2020
+      },
+      {
+       "actual": 4280.01,
+       "plan": 3000.0,
+       "plan_kind": "adopted",
+       "year": 2021
+      },
+      {
+       "actual": 6074.27,
+       "plan": 3000.0,
+       "plan_kind": "adopted",
+       "year": 2022
+      },
+      {
+       "actual": 2507.38,
+       "plan": 3000.0,
+       "plan_kind": "adopted",
+       "year": 2023
+      },
+      {
+       "actual": 3860.94,
+       "plan": 3500.0,
+       "plan_kind": "adopted",
+       "year": 2024
+      }
+     ],
+     "kind": "expense",
+     "label": "Hausmeisterdienstleistungen",
+     "planning": {
+      "2027": 4000.0,
+      "2028": 4000.0,
+      "2029": 4000.0
+     },
+     "planning_from": 2026,
+     "posten_label": "Aufwendungen für Sach- und Dienstleistungen",
+     "size": 3860.94,
+     "sub_budgets": [
+      {
+       "name": "nicht rechtsfähige Stiftungen",
+       "no": 13
+      }
+     ]
+    }
+   ],
+   "asked_year": null,
+   "match": 1,
+   "more": 0
+  }
+ ],
  "amendments": [
   {
    "authors": [],

@@ -43,15 +43,15 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # Seit 09/2026 wird auch der Ansatz GEFRAGT (Posten-Ebene: „Personal" →
     # Personalaufwendungen); in den Kontext kommt er nur bei einem Treffer im
     # Fragewortlaut — s. test_qa_posten.py und die Stadion-Regression unten.
-    ("Was kostet die Feuerwehr?", "money", {"plan", "produkte", "ansatz"}),
+    ("Was kostet die Feuerwehr?", "money", {"accounts", "plan", "produkte", "ansatz"}),
     # Dieselbe Frage als KOMPOSITUM. `\bkost` trifft nur „kostet"/„Kosten" am
     # Wortanfang; „Personalkosten", „Baukosten", „Betriebskosten" gingen bis
     # zum 17.08. leer aus — gemessen, nicht vermutet. Die Endung `kosten\b`
     # fängt sie. Beim Personal kommt der Stellenplan dazu, und das ist die
     # bessere Antwort: Personalausgaben ohne die Stellen dahinter sind eine
     # Zahl ohne Erklärung.
-    ("Wie hoch sind die Personalkosten?", "money", {"plan", "produkte", "stellenplan", "ansatz"}),
-    ("Was sind die Baukosten der Schule?", "money", {"plan", "produkte", "ansatz"}),
+    ("Wie hoch sind die Personalkosten?", "money", {"accounts", "plan", "produkte", "stellenplan", "ansatz"}),
+    ("Was sind die Baukosten der Schule?", "money", {"accounts", "plan", "produkte", "ansatz"}),
     # Plan gegen Ist — das kann NUR der Jahresabschluss beantworten.
     # `kassensicht` kommt seit 08/2026 mit jedem `ist` mit: Für 2024 weist die
     # Ergebnisrechnung einen Überschuss aus und die Finanzrechnung einen
@@ -59,33 +59,33 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # halbe Wahrheit — und zwar je nach Zufall die optimistische oder die
     # pessimistische Hälfte.
     ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "money",
-     {"plan", "ist", "kassensicht"}),
+     {"accounts", "plan", "ist", "kassensicht"}),
     # Das „Warum" steht in den Erläuterungen; die Steuer-Ist-Zahlen und der
     # NFAG-Dämpfer gehören dazu, sonst klingt jede Mehreinnahme nach Gewinn.
     ("Warum kam so viel mehr Gewerbesteuer rein?", "money",
-     {"gruende", "ist", "taxes", "ausgleich", "kassensicht"}),
+     {"accounts", "gruende", "ist", "taxes", "ausgleich", "kassensicht"}),
     # Präzise und allein: eine Prüfbericht-Frage will keinen Haushaltsplan.
     ("Was hat das Rechnungsprüfungsamt beanstandet?", "topic", {"pruefung"}),
     # „Insgesamt" ist das Stichwort für den Konzern: der Kernhaushalt
     # antwortet mit 799 Mio., der Gesamtabschluss mit 1.242 Mio.
-    ("Was kostet die Stadt insgesamt?", "money", {"plan", "produkte", "konzern", "ansatz"}),
+    ("Was kostet die Stadt insgesamt?", "money", {"accounts", "plan", "produkte", "konzern", "ansatz"}),
     # Keine Betragsfrage — eine Rechtsfrage. Nur die Produktebene führt die
     # Auftragsgrundlage je Aufgabe.
-    ("Muss die Stadt das Theater betreiben?", "topic", {"produkte"}),
-    ("Warum steigen die Abfallgebühren?", "topic", {"fees", "fee_rates"}),
-    ("Wie hoch ist die Straßenreinigungsgebühr?", "money", {"fees", "fee_rates"}),
-    ("Wie werden die Müllgebühren berechnet?", "topic", {"fees", "fee_rates"}),
+    ("Muss die Stadt das Theater betreiben?", "topic", {"accounts", "produkte"}),
+    ("Warum steigen die Abfallgebühren?", "topic", {"accounts", "fees", "fee_rates"}),
+    ("Wie hoch ist die Straßenreinigungsgebühr?", "money", {"accounts", "fees", "fee_rates"}),
+    ("Wie werden die Müllgebühren berechnet?", "topic", {"accounts", "fees", "fee_rates"}),
 
     # --- Weitere echte Fragen ----------------------------------------------
-    ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte", "ansatz"}),
+    ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"accounts", "plan", "produkte", "ansatz"}),
     ("Wie hoch ist der Hebesatz der Grundsteuer?", "money",
-     {"taxes", "ausgleich", "tax_rates"}),
+     {"accounts", "taxes", "ausgleich", "tax_rates"}),
     ("Wie steht Oldenburg im Vergleich zu Osnabrück da?", "money", {"vergleich"}),
-    ("Welche Aufgaben könnte die Stadt streichen?", "topic", {"produkte"}),
+    ("Welche Aufgaben könnte die Stadt streichen?", "topic", {"accounts", "produkte"}),
     # „Steuereinnahmen" trägt „einnahm" und zieht damit auch die Plan-Seite —
     # gewollt: Die Antwort kann Ist und Ansatz nebeneinanderstellen.
     ("Wie hoch waren die Steuereinnahmen?", "money",
-     {"plan", "ansatz", "taxes", "ausgleich"}),
+     {"accounts", "plan", "ansatz", "taxes", "ausgleich"}),
 
     # --- Die vier Schichten, die die KI-Frage bis 17.08. nicht kannte -------
     # Vorher zog jede dieser Fragen die falsche Quelle oder gar keine; die
@@ -109,9 +109,9 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     ("Wie viele Mitarbeiter hat die Stadt?", "topic", {"stellenplan"}),
     # Die Änderungslisten. Vorher: {"plan", "ansatz"} — die Plan-Zahlen des
     # Haushalts, aber kein Wort darüber, wer ihn ändern wollte.
-    ("Wer wollte den Haushalt ändern?", "topic", {"plan", "ansatz", "antraege", "amendments"}),
+    ("Wer wollte den Haushalt ändern?", "topic", {"accounts", "plan", "ansatz", "antraege", "amendments"}),
     ("Welche Änderungslisten gab es zum Haushalt 2026?", "topic",
-     {"plan", "ansatz", "antraege", "amendments"}),
+     {"accounts", "plan", "ansatz", "antraege", "amendments"}),
 
     # --- Negativfälle -------------------------------------------------------
     # Ohne diese Zeilen optimiert man auf „lädt immer alles" und überflutet
@@ -156,7 +156,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # 4–5: Die Kassensicht. Sie kommt auch ungefragt mit, sobald es um das Ist
     # geht — 2024 weist die Ergebnisrechnung einen Überschuss aus und die
     # Finanzrechnung einen Fehlbetrag, und nur beide zusammen sind ehrlich.
-    ("Wie viel Geld ist 2024 tatsächlich geflossen?", "money", {"kassensicht"}),
+    ("Wie viel Geld ist 2024 tatsächlich geflossen?", "money", {"accounts", "kassensicht"}),
     ("Wie hoch waren die liquiden Mittel am Jahresende?", "money",
      {"bilanz", "kassensicht"}),   # „liquide" trifft beide Quellen — richtig so
 
@@ -168,7 +168,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # „Eigenkapitalquote" zieht zusätzlich die Bilanz, aus der sie stammt.
     ("Wie hoch ist die Eigenkapitalquote?", "money", {"bilanz", "indicators"}),
     ("Wie hat sich die Steuerquote entwickelt?", "money",
-     {"indicators", "taxes", "ausgleich"}),
+     {"accounts", "indicators", "taxes", "ausgleich"}),
     ("Welche Kennzahlen nennt die Stadt zu ihrem Abschluss?", "money",
      {"indicators"}),
 
@@ -464,7 +464,9 @@ def test_neue_facetten_ziehen_sich_nicht_gegenseitig(facette, fragen):
     ändern?" trägt „Haushalt" im Wortlaut, und die Plan-Zahlen sind dort der
     Gegenstand des Streits, nicht Beiwerk.
     """
-    zusatz = {"antraege": {"plan", "ansatz", "amendments"},
+    # `accounts` (die Kontenebene) fragt bei jeder Geldfrage mit und liefert
+    # nur bei einem Kontennamen im Wortlaut etwas — „Haushalt" ist keiner.
+    zusatz = {"antraege": {"plan", "ansatz", "amendments", "accounts"},
               # Plan und Ist derselben Frage — sie MÜSSEN zusammen kommen,
               # sonst hinge die Regel „nie voneinander abziehen" an einer
               # Zahl, die nicht im Kontext steht (council/qa.py).
@@ -552,7 +554,7 @@ VARIANTEN = [
       "Feuerwehr Kosten",
       "Was gibt die Stadt für die Feuerwehr aus?",
       "Wie viel gibt Oldenburg für die Feuerwehr aus?"],
-     {"plan", "produkte", "ansatz"}),
+     {"plan", "produkte", "ansatz", "accounts"}),
     ("Plan gegen Ist",
      ["Hat die Stadt 2024 mehr ausgegeben als geplant?",
       "Wurde der Haushalt 2024 eingehalten?",
@@ -1222,7 +1224,7 @@ def test_geldregeln_treten_bei_punktfragen_zurueck(tmp_path):
     messages, _ = qa._answer_messages("Was kostet die Feuerwehr?", [], typ="money",
                                       geld=kontext, eng=True)
     prompt = messages[0]["content"]
-    assert "HÖCHSTENS 3 Sätzen" in prompt
+    assert "DIESE FRAGE IST ENG GESTELLT" in prompt
     assert "JAHR IMMER NENNEN" not in prompt
     assert "laut Jahresabschluss 2024" in prompt   # die kurze Belegregel
     store.close()
@@ -1284,7 +1286,7 @@ def test_deepresearch_ruft_geld_kontext_statt_einzelquellen():
 def test_facetten_stehen_im_kontext_zum_mitloggen():
     store = _MessStore()
     kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr", "money")
-    assert kontext["facets"] == sorted({"plan", "produkte", "ansatz"})
+    assert kontext["facets"] == sorted({"plan", "produkte", "ansatz", "accounts"})
 
 
 def test_alle_facetten_haben_baustein_und_methode():

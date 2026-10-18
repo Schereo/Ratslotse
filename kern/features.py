@@ -62,6 +62,30 @@ class Feature:
 #:                     "wie vorher (tests/…/eval).",
 #:     ),
 FEATURES: dict[str, Feature] = {
+    "belegnotizen": Feature(
+        key="belegnotizen",
+        description="„Frag den Rat“ lässt vor der Antwort ein kleines Modell je Dokument "
+                    "notieren, was es zur Frage beiträgt; die Notizen stehen oben im "
+                    "Kontext (qa.belegnotizen).",
+        fertig_wenn="Zwei Gold-Läufe auf dev mit weniger „im Prompt, aber weggelassen“ und "
+                    "ohne Rückschritt, Laufzeit auf Prod gemessen; dann Normalweg.",
+    ),
+    "kontext-diaet": Feature(
+        key="kontext-diaet",
+        description="„Frag den Rat“ gibt dem Antwort-Modell höchstens 24 Wortbeiträge statt "
+                    "aller (50–98), die Aussprache zu den Beschlüssen im Prompt zuerst "
+                    "(qa.debatten_diaet).",
+        fertig_wenn="Zwei Gold-Läufe auf dev ohne Rückschritt gegenüber zwei ohne, weniger "
+                    "„im Prompt, aber weggelassen“; dann ist die Diät der Normalweg.",
+    ),
+    "nachrecherche": Feature(
+        key="nachrecherche",
+        description="„Frag den Rat“ sieht nach der ersten Suche auf die Titel der Treffer und "
+                    "sucht bis zu dreimal gezielt nach, wenn etwas Gefragtes fehlt "
+                    "(qa.nachrecherche_anfragen, embeddings.nachsuche).",
+        fertig_wenn="Gold „Frag den Rat“ auf dev ohne Rückschritt und mit mehr bestandenen "
+                    "Fällen als ohne, Laufzeit auf Prod gemessen; dann ist sie der Normalweg.",
+    ),
     "akten-suche": Feature(
         key="akten-suche",
         description="„Frag den Rat“ liest zu den besten Treffern die ganze Akte des "
@@ -93,29 +117,45 @@ FEATURES: dict[str, Feature] = {
     ),
     "andere-staedte": Feature(
         key="andere-staedte",
-        description="„Anderswo beschlossen“: Auf Beschluss-Seiten, was andere Städte "
-                    "zu derselben Sache beantragt oder beschlossen haben — aus deren "
-                    "Ratsinformationssystemen (council/cities).",
-        fertig_wenn="Der Block lag vier Wochen auf dev, und mindestens zwei Nutzer*innen "
-                    "mit Mandat haben die Treffer als brauchbar bestätigt.",
+        description="„In anderen Städten“: Auf Beschluss-Seiten, was andere Städte "
+                    "zu derselben Sache beantragt, beraten oder beschlossen haben — aus "
+                    "deren Ratsinformationssystemen (council/cities).",
+        # Mit 3.0.0 auf Prod an (Tims Entscheidung 03.10.2026: Die Messung
+        # beginnt mit Prod). Der Schalter bleibt als Notaus.
+        fertig_wenn="Vier Wochen nach dem Prod-Start von 3.0.0: Die Rückmeldungen "
+                    "„stimmt / stimmt nicht“ (Tabelle `feedback` in cities.sqlite) zeigen mehr "
+                    "Zustimmung als Widerspruch, und mindestens zwei Nutzer*innen mit "
+                    "Mandat haben die Treffer als brauchbar bestätigt — dann Schalter raus. "
+                    "Überwiegt der Widerspruch, auf Prod wieder aus und die Einordnung "
+                    "nacharbeiten.",
     ),
     "ideen-anderswo": Feature(
         key="ideen-anderswo",
         description="„Ideen aus anderen Städten“: je Themenfeld, was andere Räte "
-                    "beschlossen haben und Oldenburg fehlt — mit Urteil, Belegen "
+                    "beantragt oder beschlossen haben und Oldenburg fehlt — mit Urteil, Belegen "
                     "und dem Weg zum Original (council/cities, Annotator `fit`).",
-        fertig_wenn="Tim hat zwei Themenfelder durchgesehen und die Urteile für "
-                    "tragfähig erklärt. Bis dahin ist die Seite auf dev sichtbar "
-                    "und auf Prod nicht.",
+        # Mit 3.0.0 auf Prod an (Tims Entscheidung 03.10.2026: Die Messung
+        # beginnt mit Prod). Der Schalter bleibt als Notaus.
+        fertig_wenn="Vier Wochen nach dem Prod-Start von 3.0.0: Die Urteile der beiden "
+                    "meistbesuchten Themenfelder sind anhand der Rückmeldungen „stimmt / "
+                    "stimmt nicht“ geprüft und tragen (mehr Zustimmung als Widerspruch) — "
+                    "dann Schalter raus. Kippen sie, auf Prod wieder aus.",
     ),
     "wahlabend": Feature(
         key="wahlabend",
         description="Der Wahlabend zur Ratswahl am 13.09.2026: Auszählungsstand, "
                     "Sitze je Liste und Wahlbereich, wer nach NKWG gerade drin wäre "
                     "— aus den Open-Data-CSVs des Votemanagers der Stadt.",
-        fertig_wenn="Das amtliche Endergebnis steht (Wahlausschuss, voraussichtlich "
-                    "in der Woche nach dem 13.09.2026); danach ist die Seite ein "
-                    "Rückblick und braucht keinen Schalter mehr.",
+        # Seit 10/2026 regelt dieser Schalter NICHT mehr, wie laut die Wahl ist —
+        # das tut der Kalender (`elections.prominent`: Hinweis auf Heute und
+        # Streifen auf der Startseite nur eine Woche vor bis drei Tage nach dem
+        # Wahlschluss). Er ist nur noch der Notaus für den ganzen Bereich:
+        # /wahlen, /wahlabend, Stichwahl, Wahlkarte in Mein Viertel.
+        fertig_wenn="Die Wahlseiten sind ein dauerhafter Bereich (/wahlen, Reiter "
+                    "„Wahlen“ in der Analyse); die Prominenz kommt aus der Wahl-Phase. "
+                    "Er kann weg, sobald keine App-Fassung im Store mehr `wahlabend` "
+                    "abfragt (Karten-Ebene in CityMapView, Mehr-Zeile) — dann alle "
+                    "Abfragen entfernen und APP_MIN_BUILD nachziehen.",
     ),
     "lotti-assistentin": Feature(
         key="lotti-assistentin",
@@ -133,9 +173,12 @@ FEATURES: dict[str, Feature] = {
         description="Lotti klopft selten von selbst an („Hast du eine Frage zu dem, "
                     "was du siehst?“) — auf Leseseiten, nach 45 s Lesezeit, höchstens "
                     "einmal am Tag und dreimal in 30 Tagen.",
-        fertig_wenn="Vier Wochen gemessen (Admin-Panel, Reiter „Lotti“): Liegt die "
-                    "Ja-Quote unter 5 %, wird er seltener oder abgeschafft — Tims "
-                    "Entscheidung. Bleibt er, fliegt der Schalter raus.",
+        # Mit 3.0.0 auf Prod an (Tims Entscheidung 03.10.2026: Die Messung
+        # beginnt mit Prod — auf dev klopft er bei niemandem an).
+        fertig_wenn="Vier Wochen auf Prod gemessen, gezählt ab dem Start von 3.0.0 "
+                    "(Admin-Panel, Reiter „Lotti“): Liegt die Ja-Quote unter 5 %, wird er "
+                    "seltener oder abgeschafft — Tims Entscheidung. Bleibt er, fliegt der "
+                    "Schalter raus.",
     ),
     "lotti-selbstpruefung": Feature(
         key="lotti-selbstpruefung",
@@ -144,10 +187,13 @@ FEATURES: dict[str, Feature] = {
                     "geprüft — erst ohne Modell, dann von einem Prüfer-Modell einer anderen "
                     "Familie; das Urteil zählt der Admin-Reiter „Lotti“ (council/self_check.py). "
                     "Niemand wartet darauf, nichts wird ersetzt.",
-        fertig_wenn="Vier Wochen Stichprobe auf dev: Zeigt der Admin-Reiter Seiten mit "
-                    "auffällig vielen Beanstandungen, gehen sie als Aufgaben an die Kontext- "
-                    "und Regelarbeit; dann entscheidet Tim, ob die Stichprobe dauerhaft läuft "
-                    "(Schalter raus) oder wegfällt (docs/lotti-selbstpruefung.md).",
+        # Mit 3.0.0 auf Prod an (Tims Entscheidung 03.10.2026: Die Messung
+        # beginnt mit Prod — auf dev fragt kaum jemand Lotti).
+        fertig_wenn="Vier Wochen Stichprobe auf Prod, gezählt ab dem Start von 3.0.0: "
+                    "Zeigt der Admin-Reiter Seiten mit auffällig vielen Beanstandungen, "
+                    "gehen sie als Aufgaben an die Kontext- und Regelarbeit; dann entscheidet "
+                    "Tim, ob die Stichprobe dauerhaft läuft (Schalter raus) oder wegfällt "
+                    "(docs/lotti-selbstpruefung.md).",
     ),
     "lotti-werkzeuge": Feature(
         key="lotti-werkzeuge",
@@ -157,6 +203,17 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Die mehrstufigen Fälle der Fakten-Eval (haushalt/mehrstufig) liegen "
                     "deutlich über dem Stand ohne Werkzeuge, die übrigen Haushaltsfälle und "
                     "die Wartezeit nicht schlechter — dann auf Prod an und Schalter raus.",
+    ),
+    "mcp-server": Feature(
+        key="mcp-server",
+        description="Der MCP-Server unter /api/mcp: Wer die Rolle „MCP-Zugang“ hat, stellt "
+                    "sich in den Einstellungen einen persönlichen Schlüssel aus und schließt "
+                    "damit einen eigenen Agenten an die Ratsdaten an — lesend, ohne Haushalt "
+                    "(council/mcp_tools.py, web/backend/app/routers/mcp.py).",
+        fertig_wenn="Ein paar Konten haben ihn auf dev und Prod mit Claude/ChatGPT/Cursor "
+                    "benutzt, die Last ist gemessen (mcp_tokens.calls) und die Bremse hat "
+                    "nicht zugeschlagen, wo sie nicht sollte — dann Schalter raus; der "
+                    "Zugang hängt ohnehin am Recht `mcp`.",
     ),
     "neuer-rat": Feature(
         key="neuer-rat",
@@ -173,8 +230,13 @@ FEATURES: dict[str, Feature] = {
                     "Liste, zur OB-Stichwahl am 27.09. die Prozente der beiden Kandidaturen, "
                     "jeweils dazu die Wahlbeteiligung; Live-Vergleich und Scoreboard "
                     "(docs/plan-tippspiel-ratswahl.md) — ohne Konto, per QR-Link.",
-        fertig_wenn="Auch der Stichwahl-Abend ist vorbei und das Scoreboard ein Rückblick "
-                    "statt eines laufenden Spiels.",
+        # Seit 10/2026: Die Einladungen zum Tippen hängen an der Wahl-Phase
+        # (nur, solange die Wahl prominent ist bzw. in /wahlen noch nicht vorbei),
+        # die Scoreboards bleiben als Rückblick erreichbar.
+        fertig_wenn="Die Scoreboards 2026 sind Rückblick, Einladungen kommen nur noch "
+                    "aus der Wahl-Phase. Er kann weg, wenn das Tippspiel zu einer "
+                    "künftigen Wahl ohne Freischaltung starten darf — dann die "
+                    "Abfragen in /tipp und /api/tipp entfernen.",
     ),
 }
 

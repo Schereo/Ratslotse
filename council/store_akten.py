@@ -189,6 +189,27 @@ class AktenMixin(StoreBasis):
             f"SELECT id FROM council_decisions WHERE kind = 'decision' AND id IN "
             f"({','.join('?' * len(decision_ids))})", decision_ids)]
 
+    def subvotes_of(self, decisions: list[dict]) -> dict[int, list[dict]]:
+        """Die Teilabstimmungen (Änderungs- und GO-Anträge) je Hauptbeschluss:
+        ``{decision_id: [{title, outcome, vote, no_votes, abstentions}, …]}``,
+        in Protokollreihenfolge. Sie hängen über Sitzung und TOP
+        (``ksinr``/``parent_item``) am Beschluss — eine eigene Zeile im
+        Kontext haben sie nicht."""
+        paare = {(d["ksinr"], str(d["item_number"])): d["id"] for d in decisions
+                 if d.get("ksinr") is not None and d.get("item_number")}
+        if not paare:
+            return {}
+        ksinrs = sorted({k for k, _ in paare})
+        out: dict[int, list[dict]] = {}
+        for r in self._conn.execute(
+                f"SELECT ksinr, parent_item, title, outcome, vote, no_votes, abstentions "
+                f"FROM council_decisions WHERE kind = 'subvote' AND ksinr IN "
+                f"({','.join('?' * len(ksinrs))}) ORDER BY ksinr, position", ksinrs):
+            haupt = paare.get((r["ksinr"], str(r["parent_item"])))
+            if haupt is not None:
+                out.setdefault(haupt, []).append(dict(r))
+        return out
+
     def items_of_matters(self, matter_ids: list[int]) -> list[tuple]:
         """(item_type, item_id) aller Zeilen dieser Grundakten."""
         if not matter_ids:

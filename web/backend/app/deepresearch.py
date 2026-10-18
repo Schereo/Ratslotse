@@ -509,6 +509,9 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             "facet_names": [f["name"] for f in facetten],
             "facets_done": job.facetten_fertig, "documents_read": gelesen,
             "period": zeitraum, "context": job.suchfrage,
+            # Der Aktenstand wie bei /ask (``qa.aktenstand``): Ohne ihn las der
+            # Bericht einen Beschluss von 2018 als Gegenwart (Review 05.10.2026).
+            "records_state": qa.aktenstand(store, candidates),
             "sources": [_qa_source(c) for c in candidates],
             "presse_kompakt": [{"title": p.get("title"), "url": p.get("url"),
                                 "date": p.get("date"),
@@ -557,6 +560,14 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             _gestoppt(job, ratslotse_db)
             return
         _emit(job, {"type": "phase", "phase": "lesen", "dokumente": gelesen})
+        # Änderungs- und GO-Anträge gehören zum Beschluss (wie in /ask).
+        try:
+            teile = store.subvotes_of(candidates)
+            for c in candidates:
+                if teile.get(c["id"]):
+                    c["subvotes"] = teile[c["id"]]
+        except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+            _log.exception("deep %s: Teilabstimmungen nicht geladen", job.id)
         try:
             from council import vorlagen as vorlagen_mod
             texts = store.vorlage_texts_for([c.get("template_number") or "" for c in candidates])
@@ -615,6 +626,7 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
                                                     geld=m.get("money"),
                                                     planungen=m.get("planning_procedures"),
                                                     anlagen=m.get("attachments"),
+                                                    stand=m.get("records_state"),
                                                     model=job.model):
                     if job.stop.is_set():
                         break

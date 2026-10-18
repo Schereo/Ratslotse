@@ -1,0 +1,514 @@
+{
+ "suite": "ki-frage-antwort",
+ "titel": "KI-Frage: Antwort bei festem Kontext",
+ "kennzahl": "mittlere Abdeckung: Anteil der erwarteten Beschlüsse im Kontext, die die Antwort zitiert (Fall mit hartem Befund = 0)",
+ "modell": "anthropic/claude-haiku-5.5",
+ "variante": "Aufwand high",
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-10-08T09:23:54",
+ "db_stand": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "qualitaet": 0.7173,
+ "harte_befunde": 1,
+ "warnung": null,
+ "faelle": 20,
+ "p50_ms": 14992,
+ "p95_ms": 23506,
+ "aufrufe": 20,
+ "kosten_usd": 0.039759,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.1988,
+ "ct_je_lauf": 3.9759,
+ "kosten_gesamt_usd": 0.039759,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "anthropic/claude-haiku-5.5"
+ ],
+ "ersatz": [],
+ "dauer_s": 307.9,
+ "nebenkennzahlen": {
+  "mindestens_einer": 0.9,
+  "zitiert_erwartet": 19
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "faelle": [
+   {
+    "id": "stadion",
+    "ms": 18312,
+    "zitiert": [
+     20947,
+     21138,
+     17992,
+     17953,
+     17973,
+     18795,
+     19981
+    ],
+    "erwartet": [
+     17992,
+     18279,
+     18122,
+     18293,
+     18264,
+     17953,
+     17973
+    ],
+    "text": "Der Rat hat dem Stadionneubau an der Maastrichter Straße zugestimmt, und zwar zum **Pauschalpreis von rund 57,3 Millionen Euro netto** [20947]. Die Mehrheit fiel mit 18 Gegenstimmen und zwei Enthaltungen deutlich aus, und der Rat wich damit spürbar vom Vorschlag der Verwaltung ab [20947]. Der Finanzausschuss hatte vorher mit vier Gegenstimmen zugestimmt [21138].\n\nDer Weg dorthin umfasste mehrere Schritte:\n\n- Der Rat beschloss die Planung für ein neues Fußballstadion mit 7.500 bis 10.000 Plätzen [17992].\n- Für Planung und Klimaneutralität wurden außerplanmäßig 604.000 Euro bewilligt [17953].\n- Für die Bauleitplanung kamen weitere 180.000 Euro hinzu [17973].\n- Den Bericht zur Bauleitplanung nahm der Ausschuss zur Kenntnis [18795].\n- Der Verkehrsausschuss beschloss, einen Gutachter einzuladen, der das Verkehrskonzept vorstellen soll [19981].\n\nFOLGEFRAGEN: [\"Wer stimmte gegen den Pauschalpreis?\", \"Wie hoch waren die Mittel für die Bauleitplanung?\", \"Was steht im Verkehrskonzept zum Stadionneubau?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.4286,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "fahrradstrassen",
+    "ms": 15194,
+    "zitiert": [
+     20341,
+     18933,
+     17860,
+     15824,
+     12669,
+     13583,
+     18884,
+     20964,
+     20828
+    ],
+    "erwartet": [
+     18933,
+     20341,
+     17860,
+     15824,
+     12669,
+     13583
+    ],
+    "text": "Der einzige Beschluss zu einer bestimmten Fahrradstraße betrifft die **Haareneschstraße**. Rat und Verkehrsausschuss haben beschlossen, sie als Fahrradstraße beizubehalten, das Parken neu zu ordnen und die Straße nach der Gestaltungsrichtlinie umzugestalten [20341] [18933]. Der Rat wich dabei deutlich vom Vorschlag der Verwaltung ab.\n\nFür Quellenweg [17860], Achterdiek [15824] und Haarenufer [12669] liegen nur Berichte vor, die zur Kenntnis genommen wurden. Die Beratung zum Quellenweg wurde zudem vertagt [13583]. Einen Beschluss, diese Straßen als Fahrradstraßen einzurichten, gibt es in den Unterlagen nicht. Bei der Fahrradstraßen-Achse Fliegerhorst–Innenstadt gibt es ebenfalls nur einen Sachstandsbericht [18884].\n\nFür alle Fahrradstraßen gilt außerdem der Oldenburger Leitfaden für die Einrichtung von Fahrradstraßen, dessen Fortschreibung der Rat beschlossen hat [20964]. Der Verkehrsausschuss hatte zuvor eine einheitliche Gestaltung festgelegt [20828].\n\nFOLGEFRAGEN: [\"Was steht im Leitfaden für die Einrichtung von Fahrradstraßen?\", \"Wie viele Gegenstimmen gab es bei der Haareneschstraße?\", \"Wie steht es um die Fahrradstraßen-Achse Fliegerhorst-Innenstadt?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "fliegerhorst-abfall",
+    "ms": 11585,
+    "zitiert": [
+     20412,
+     20391,
+     20374
+    ],
+    "erwartet": [
+     21845,
+     20391,
+     20412,
+     20373,
+     20374
+    ],
+    "text": "Der Rat hat drei Schritte beschlossen. Erstens soll die Verwaltung herausfinden, wie groß die illegalen Ablagerungen auf dem Schießstand sind und wer sie verursacht hat. Dafür soll sie ein Verwaltungsverfahren einleiten [20412]. Zweitens gilt eine **Auftragssperre** für die beteiligten Firmen, das heißt, die Stadt vergibt vorerst keine Aufträge an sie, bis die Korruptions- und Abfallvorwürfe geklärt sind [20391]. Drittens bekamen die Ratsmitglieder Akteneinsicht in die Unterlagen zur **Bodenbeprobung** und Begehung des ehemaligen Schießstands [20374].\n\nDie Beschlüsse sagen allerdings nur, was beschlossen wurde. Ergebnisse der Ermittlungen oder konkrete Maßnahmen zur Beseitigung des Materials stehen darin nicht.\n\nFOLGEFRAGEN: [\"Wer hat gegen die Ermittlung gestimmt?\", \"Welche Firmen sind von der Auftragssperre betroffen?\", \"Was ist aus der Bodenbeprobung herausgekommen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.6,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "wechloy-neubau",
+    "ms": 17280,
+    "zitiert": [
+     20155,
+     20147,
+     19184,
+     19008
+    ],
+    "erwartet": [
+     19184,
+     19003,
+     19571,
+     19560,
+     18995,
+     18998,
+     19008,
+     18924
+    ],
+    "text": "Der jüngste Beschluss betrifft die **bauliche Umsetzung** auf dem ehemaligen Fliegerhorstgelände. Dort wurde der Bericht zur neuen Grundschule zur Kenntnis genommen [20155]. Zuvor hatte der Schulausschuss den Ausbau der Grundschule Wechloy zur zweizügigen Ganztagsgrundschule ebenfalls nur zur Kenntnis genommen [20147]. Beim Neubau selbst lehnte der Rat den Beschlussvorschlag der Verwaltung mehrheitlich ab [19184]. Davor hatte der Schulausschuss beschlossen, die Schule an der **Theodor-Heuss-Straße** neu zu bauen und das Raumprogramm der Grundschule Fliegerhorst zu übernehmen [19008]. Ob dieser Standort noch gilt, geht aus den Beschlüssen nicht eindeutig hervor.\n\nFOLGEFRAGEN: [\"Wie stimmte der Rat über den Neubau ab?\", \"Ist der Standort Theodor-Heuss-Straße noch aktuell?\", \"Wie ist der Stand der baulichen Umsetzung?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.25,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "vergnuegungssteuer",
+    "ms": 13694,
+    "zitiert": [
+     20481,
+     19901,
+     20469,
+     19862
+    ],
+    "erwartet": [
+     20469,
+     19862,
+     20481,
+     19901,
+     19482,
+     19415
+    ],
+    "text": "Ja, die Vergnügungssteuer auf Tanzveranstaltungen ist abgeschafft. Die nötige Änderung der Satzung (der örtlichen Rechtsvorschrift) hat der Rat zuletzt beschlossen, nachdem der Finanzausschuss sie vorbereitet hatte [20481] [19901]. Grundlage ist der Ratsbeschluss, mit dem die Steuer auf Tanzveranstaltungen wegfällt [20469]. Die Stadt rechnet dadurch mit Einnahmeausfällen von rund 35.000 Euro, die bei Bedarf ausgeglichen werden sollen [19862].\n\nFOLGEFRAGEN: [\"Wie sollen die Einnahmeausfälle von 35.000 Euro ausgeglichen werden?\", \"Welche Fraktionen haben den Antrag zur Abschaffung gestellt?\", \"Was gilt für Tanzveranstaltungen mit Livemusik bei der Steuer?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.6667,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "huntebruecke",
+    "ms": 11926,
+    "zitiert": [
+     20561,
+     19955
+    ],
+    "erwartet": [
+     20561,
+     19955
+    ],
+    "text": "Ja, der Rat hat eine Resolution zum schnellstmöglichen Neubau der Oldenburger Huntebrücke verabschiedet [20561]. Eine Resolution ist eine gemeinsame Erklärung des Rats zu einem Thema, für das er selbst nicht zuständig ist. Sie bindet niemanden, ist aber ein politisches Signal. Eingebracht hatten sie Bündnis 90/Die Grünen, SPD, FDP und CDU als Dringlichkeitsantrag, dem der Verkehrsausschuss zugestimmt hat [19955]. Außerdem hat der Rat einen Berichtsauftrag erteilt, die Verwaltung muss also über den Stand berichten [20561].\n\nFOLGEFRAGEN: [\"Welchen Berichtsauftrag erteilte der Rat zur Huntebrücke?\", \"Wer hat die Resolution zur Huntebrücke beantragt?\", \"Was wurde zum Sachstand der Huntebrücke berichtet?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "lachgas",
+    "ms": 12433,
+    "zitiert": [
+     20471,
+     20069,
+     20306,
+     20056
+    ],
+    "erwartet": [
+     20069,
+     20306,
+     20056,
+     20028
+    ],
+    "text": "Der Stadtrat hat eine **Verordnung** beschlossen, die den Verkauf und die Weitergabe von Lachgas an Minderjährige im Stadtgebiet Oldenburg verbietet. Dabei wurde die Geltungsdauer geändert, wie lang das Verbot nun gilt, geht aus dem Beschluss allerdings nicht hervor [20471]. Vorher hatte der Jugendhilfeausschuss den Erlass einer solchen Verordnung beschlossen [20069], und der Rat hatte die Verwaltung mit der Ausarbeitung beauftragt [20306]. Zuletzt war außerdem eine Übergangsverordnung in Vorbereitung [20056].\n\nFOLGEFRAGEN: [\"Wie lange gilt das Verbot?\", \"Was sieht die Übergangsverordnung vor?\", \"Wer hatte den Antrag eingebracht?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.75,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "machatschkala",
+    "ms": 14615,
+    "zitiert": [
+     19173,
+     17842,
+     18256,
+     18717
+    ],
+    "erwartet": [
+     17842,
+     18256,
+     19173,
+     18717
+    ],
+    "text": "Der Rat hat den Antrag der CDU, die Städtepartnerschaft mit Machatschkala zu beenden, abgelehnt. Das geschah mehrheitlich bei sechs Gegenstimmen [19173]. Vorher war das Thema mehrfach zurückgestellt worden, also vertagt: Zunächst im Ausschuss und dann auch im Rat, bevor es entschieden wurde [17842] [18256]. Später galt der Tagesordnungspunkt im Ausschuss als behandelt [18717].\n\nFOLGEFRAGEN: [\"Was bedeutet „vertagt“ bei diesem Antrag genau?\", \"Wer hat den Antrag zur Städtepartnerschaft gestellt?\", \"Gibt es Berichte zur Internationalen Zusammenarbeit?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "maerchen-strassen",
+    "ms": 11811,
+    "zitiert": [
+     20295,
+     20293,
+     20292,
+     19734,
+     19735,
+     19736
+    ],
+    "erwartet": [
+     19735,
+     19736,
+     19734,
+     20292,
+     20293,
+     20295
+    ],
+    "text": "Drei Straßen in Oldenburg tragen Namen aus Märchen: der **Rapunzelweg**, der **Rotkäppchenweg** und der **Schneewittchenweg**. Der Rat hat die Namen inzwischen beschlossen [20295] [20293] [20292]. Vorbereitet hatte das der Verkehrsausschuss, der jeden Namen einer im Plan farbig markierten Straße zugeordnet hat: grün für den Rapunzelweg, rot für den Rotkäppchenweg, lila für den Schneewittchenweg [19734] [19735] [19736].\n\nFOLGEFRAGEN: [\"Welche Farbe hatte die Straße für den Rapunzelweg im Plan?\", \"Was hat der Verkehrsausschuss zu den Märchenstraßen entschieden?\", \"Welche Straße soll den Schneewittchenweg bekommen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "summer-street",
+    "ms": 18547,
+    "zitiert": [
+     17042,
+     17011,
+     16525,
+     18031,
+     18338,
+     19978
+    ],
+    "erwartet": [
+     16525,
+     17042,
+     17494,
+     16476,
+     16511
+    ],
+    "text": "Der Rat hat die Planung für eine **dauerhafte Umgestaltung** des Schloßplatzes mit Verkehrsberuhigung und Aufwertung beschlossen [17042]. Die Sommeraktion 2022 fiel aus [17011], und vom Plan einer temporären Schließung hat der Verkehrsausschuss später abgesehen [16525]. Für die Planungskosten wurde eine Mehrausgabe von rund 136.000 Euro bewilligt [18031] [18338]. Zuletzt hat der Verkehrsausschuss nur den Sachstandsbericht zur Planung zur Kenntnis genommen [19978].\n\nFOLGEFRAGEN: [\"Was steht im Sachstandsbericht zur Planung?\", \"Wofür genau sind die 136.000 Euro Planungskosten?\", \"Was bedeutet die Verkehrsberuhigung am Schloßplatz?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.4,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "baeder-finanzen",
+    "ms": 15557,
+    "zitiert": [
+     19246,
+     18032,
+     17441,
+     17137,
+     19963
+    ],
+    "erwartet": [
+     19963,
+     19246,
+     19333,
+     18032
+    ],
+    "text": "Die Bäderbetriebsgesellschaft Oldenburg schließt seit Jahren mit einem Verlust ab. Im Jahresabschluss 2023 fehlten rund 5,2 Millionen Euro, und die Gesellschafterin gleicht diesen Verlust aus [19246]. Ein Jahr zuvor waren es knapp 4,8 Millionen Euro [18032]. Die Wirtschaftspläne rechneten zuletzt mit Fehlbedarfen zwischen rund 4,8 und 5,5 Millionen Euro, etwa für 2023 mit höchstens rund 5,3 Millionen Euro [17441]. Den Plan für 2022 hob der Rat Ende 2022 auf rund 5,15 Millionen Euro an [17137]. Den Jahresabschluss 2024 hat der Ausschuss festgestellt, die Höhe des Ergebnisses nennt der Beschluss aber nicht [19963].\n\nFOLGEFRAGEN: [\"Wie hoch war der Verlustausgleich durch die Gesellschafterin?\", \"Was sieht der Wirtschaftsplan 2023 beim Fehlbedarf vor?\", \"Warum wurde der Wirtschaftsplan 2022 angepasst?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.75,
+    "erfundene_zahlen": [
+     "5,5 Millionen"
+    ],
+    "erfundene_quellen": [],
+    "hart": true
+   },
+   {
+    "id": "klimaneutral",
+    "ms": 25044,
+    "zitiert": [
+     15963,
+     16294,
+     16201,
+     21143,
+     19663,
+     17329,
+     17953,
+     14604,
+     14868,
+     14852
+    ],
+    "erwartet": [
+     19663,
+     16294
+    ],
+    "text": "Das Hauptziel lautet, dass Oldenburg **bis 2035 klimaneutral** werden soll. Der Rat hat das beschlossen und dabei deutlich vom Vorschlag der Verwaltung abgewichen. Ein Maßnahmenplan und regelmäßige Berichte sollen den Weg dorthin begleiten [15963]. Den Stand des Maßnahmenplans hat der Ausschuss zur Kenntnis genommen [16294]. Die Verwaltung war zuvor beauftragt worden, die Planung auf Grundlage des Leitantrags von Fridays for Future und des InEKK zu erarbeiten [16201].\n\nBei den **städtischen Gebäuden** geht es um die Sanierung. Zuletzt hat der Betriebsausschuss die Ergebnisse von DELTA-Q zur neu ausgerichteten Gebäudesanierung zur Kenntnis genommen [21143]. Grundlage ist ein früherer Ratsbeschluss zum klimaneutralen Umbau städtischer Gebäude, zu dem es einen Sachstandsbericht gibt [19663]. Schon früher gab es einen Zwischenbericht zur energetischen Sanierung [17329].\n\nFür den **Stadionneubau** an der Maastrichter Straße hat der Rat gut 600.000 Euro außerplanmäßig für Planung und Klimaneutralität bewilligt. Die Entscheidung fiel mehrheitlich bei zwei Gegenstimmen [17953].\n\nIm Schulbereich soll die Verwaltung ein **Leitbildprojekt für klimaneutrale Schulen** starten und Schulen auf dem Weg dorthin unterstützen [14604]. Zunächst lag der Schwerpunkt auf Ernährung, Energie und Mobilität [14868].\n\nGanz am Anfang hatte die Fraktion Fossil Free beantragt, dass die Verwaltung Szenarien für Klimaneutralität bis 2030, 2035 und 2040 sowie ein CO2-Budget berechnet. Der Ausschuss hat das beschlossen [14852].\n\nFOLGEFRAGEN: [\"Welche Ergebnisse hat DELTA-Q zur Gebäudesanierung gebracht?\", \"Was steckt im Maßnahmenplan Klimaneutralität bis 2035?\", \"Wie läuft das Leitbildprojekt für klimaneutrale Schulen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "grundschulen-aktuell",
+    "ms": 12678,
+    "zitiert": [
+     20652,
+     20646,
+     20647,
+     19184
+    ],
+    "erwartet": [
+     20652,
+     20646,
+     19184,
+     19003
+    ],
+    "text": "Zuletzt hat der Rat am 16.03.2026 beschlossen, dass die **Grundschule Wechloy** ab dem Schuljahr 2027/2028 zweizügig geführt wird, also mit zwei Klassen pro Jahrgang [20652]. Der Schulausschuss hatte dieser Erweiterung wenige Tage zuvor einstimmig bei zwei Enthaltungen zugestimmt [20646]. Außerdem stimmte er einer Satzung zu, die die **Schulbezirke** der städtischen Grundschulen ändert, also festlegt, welches Kind an welche Grundschule gehört [20647]. Den Neubau der Grundschule Wechloy hatte der Rat Ende 2024 dagegen mehrheitlich abgelehnt [19184].\n\nFOLGEFRAGEN: [\"Warum wurde der Neubau der Grundschule Wechloy abgelehnt?\", \"Welche Schulbezirke sind von der Satzungsänderung betroffen?\", \"Was wurde zur kooperativen Ganztagsbildung an Grundschulen geändert?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.75,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "wohnraum",
+    "ms": 23506,
+    "zitiert": [
+     21909,
+     19161,
+     18869,
+     18001,
+     14444,
+     17485,
+     14655,
+     20193,
+     14466,
+     12834
+    ],
+    "erwartet": [
+     17485,
+     18001,
+     14444,
+     14655
+    ],
+    "text": "Die Unterlagen zeigen mehrere Ansätze, konkret beschlossen ist aber vor allem wenig. Zahlen zu Summen, Förderungen oder fertiggestellten Wohnungen enthalten sie nicht, deshalb lässt sich über das Ausmaß nichts sagen.\n\n- **Zweckentfremdungssatzung:** Die Stadt hat einen Satzungsentwurf gegen die Zweckentfremdung von Wohnraum gebilligt, also gegen die Nutzung von Wohnungen für andere Zwecke. Außerdem beschloss der Ausschuss die Öffentlichkeitsbeteiligung, bei zwei Gegenstimmen [21909].\n- **Quotenregelung für preiswerten Wohnraum:** Die Quote verlangt einen Anteil günstiger Wohnungen bei neuen Bauvorhaben. Für das Bauleitplanverfahren 857 östlich Schramperweg und nördlich Watertucht wurden Ausnahmen davon beschlossen. Der Rat stimmte mehrheitlich zu, bei vier Gegenstimmen und einer Enthaltung [19161]. Der Ausschuss hatte einstimmig bei einer Enthaltung zugestimmt [18869]. Wie stark die Abweichung ausfällt, sagen die Unterlagen nicht.\n- **Vergabe städtischer Grundstücke:** Der Rat hat einen Grundsatzbeschluss gefasst, um städtische Wohnbaugrundstücke leichter an Endnutzer und Investoren zu vergeben, per **Erbbaurecht** oder Verkauf. Bei einem Erbbaurecht bleibt das Grundstück im Besitz der Stadt, die Bauenden zahlen dafür einen laufenden Erbbauzins. Der Antrag kam von Bündnis 90/Die Grünen und SPD [18001].\n- **Kommunale Wohnungsbaugesellschaft:** Die Stadt hat geprüft, ob sie eine **kommunale Wohnungsbaugesellschaft** gründen und auf eigenen Grundstücken fördern kann. Der Bericht dazu wurde nur zur Kenntnis genommen. Eine Gründung ist in diesen Unterlagen nicht beschlossen [14444].\n- **Bedarf und Studierende:** Der Bericht zum Bedarf an bezahlbarem Wohnraum im Wohnkonzept wurde zur Kenntnis genommen [17485]. Ähnliches gilt für den Wohnungsmarktbericht 2019 [14655] und für die Berichte zu Wohnraum für Studierende [20193] und [14466]. Konkrete Vorhaben nennen diese Beschlüsse nicht. Ein Vorschlag, Wohnraum auf Supermärkten und Discountern zu schaffen, blieb ohne Beschluss [12834].\n\nFOLGEFRAGEN: [\"Wer stimmte gegen die Zweckentfremdungssatzung?\", \"Was bedeutet die Quotenregelung im Bauleitplanverfahren 857?\", \"Was wurde aus der kommunalen Wohnungsbaugesellschaft?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "caecilienbruecke-verlauf",
+    "ms": 12651,
+    "zitiert": [
+     21055,
+     20397,
+     18898,
+     18987
+    ],
+    "erwartet": [
+     20397,
+     18987,
+     18898
+    ],
+    "text": "Der Rat drängt auf schnellere Fortschritte, weil sich der Neubau verzögert. Zuletzt hat er beschlossen, eine **Fachaufsichtsbeschwerde** gegen das WSA einzuleiten, also eine förmliche Beschwerde bei der zuständigen Aufsichtsbehörde, und gemeinsam politisch Druck zu machen [21055]. Schon 2025 hatte er eine Resolution zur Beschleunigung der Planungen und Baumaßnahmen verabschiedet [20397]. Die Beschlüsse zu früheren Berichten zeigen, dass das Projekt seit 2018 läuft, zuletzt mit Sachständen zu Abriss und Neubau [18898] [18987]. Zu konkreten Terminen oder Kosten enthalten die Beschlüsse keine Angaben.\n\nFOLGEFRAGEN: [\"Wer stimmte gegen die Fachaufsichtsbeschwerde?\", \"Was sagte der WSA-Vortrag zum Verfahrensstand?\", \"Was steht in der Resolution zur Beschleunigung?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "pumptrack-vorlagentiefe",
+    "ms": 8304,
+    "zitiert": [
+     21164,
+     20590,
+     19632
+    ],
+    "erwartet": [
+     20606,
+     18394,
+     15639
+    ],
+    "text": "Aus den vorliegenden Beschlüssen geht nicht hervor, dass die Stadt einen Pumptrack plant. Der Begriff taucht in keinem der Beschlüsse auf, und Haushaltsdaten liegen hier nicht vor. Am nächsten am Thema liegt die **Skateanlage Eversten/Bloherfelde**. Dazu hat der Sportausschuss nur einen Bericht zur Kenntnis genommen, Inhalte nennt der Beschluss nicht [21164]. Für die Skatehalle hat die Verwaltung den Auftrag bekommen, Fördermittel für Sanierung und Erweiterung zu beantragen [20590] [19632]. Ob dabei auch ein Pumptrack vorkommt, lässt sich den Beschlüssen nicht entnehmen.\n\nFOLGEFRAGEN: [\"Was berichtet die Verwaltung zur Skateanlage Eversten/Bloherfelde?\", \"Welche Fördermittel beantragt die Verwaltung für die Skatehalle?\", \"Was soll auf dem Sportplatz Schlieffenstraße passieren?\"]",
+    "zitiert_erwartet": false,
+    "abdeckung": 0.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "weser-ems-buergschaft",
+    "ms": 14992,
+    "zitiert": [
+     20423,
+     19792,
+     19789,
+     20364
+    ],
+    "erwartet": [
+     20423,
+     19792
+    ],
+    "text": "Die Stadt Oldenburg steht für die Weser-Ems-Hallen mit **bis zu 79 Millionen Euro** gerade [20423] [19792]. Es handelt sich um eine Ausfallbürgschaft: Die Stadt springt ein, falls die Betreibergesellschaft ihre Darlehen nicht zurückzahlen kann. Die Erhöhung hängt mit dem Neubau der Kongresshalle und der Festsäle zusammen, für den rund 78,7 Millionen Euro netto veranschlagt sind [19789]. Zusätzlich hat der Rat eine eigene Bürgschaft über gut 1 Million Euro für ein Darlehen der Halle übernommen [20364].\n\nFOLGEFRAGEN: [\"Wer stimmte gegen die Erhöhung auf 79 Millionen Euro?\", \"Was umfasst der Neubau der Kongresshalle und Festsäle?\", \"Was steckt hinter der Bürgschaft über 1.010.000 Euro?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "seb-bus-samstag",
+    "ms": 17866,
+    "zitiert": [
+     20830,
+     20459
+    ],
+    "erwartet": [
+     20459
+    ],
+    "text": "Der kostenlose Samstag ist nicht ausgelaufen, sondern dauerhaft geblieben. Zuletzt hat der Verkehrsausschuss den Endbericht zur Evaluation nur zur Kenntnis genommen [20830]. Grundlage ist der Ratsbeschluss, mit dem die **unbefristete Fortsetzung** von „Samstags einfach Bus fahren“ (SEB) zusammen mit der VBN-Tarifanpassung für 2026 beschlossen wurde. Der Antrag kam von Grünen und SPD, und der Rat wich damit deutlich vom Vorschlag der Verwaltung ab. Mehrheitlich, bei zwei Gegenstimmen, wurde zugestimmt [20459]. Die Beschlüsse sagen allerdings nicht, zu welchen Ergebnissen die Evaluation kam.\n\nFOLGEFRAGEN: [\"Was steht im Evaluationsbericht zu Samstags einfach Bus fahren?\", \"Wer hat den Antrag zum kostenlosen Samstag gestellt?\", \"Was ändert die VBN-Tarifanpassung zum 01.01.2026?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "fliegerhorst-altlasten",
+    "ms": 15119,
+    "zitiert": [
+     19150,
+     20391,
+     21844,
+     21845,
+     20030,
+     20852
+    ],
+    "erwartet": [
+     20852,
+     19150,
+     21845,
+     20391,
+     20030
+    ],
+    "text": "Die Vorwürfe zu Korruption und Sondermüll auf dem Fliegerhorst nahm der Rat am 15.04.2024 zur Kenntnis [19150]. Am 26.05.2025 beschloss er eine **Auftragssperre** für die beteiligten Firmen, bis die Vorwürfe zur illegalen Abfallentsorgung und zum Korruptionsverdacht am Schießstand geklärt sind [20391]. Am selben Tag nahm der Ausschuss für Allgemeine Angelegenheiten einen Bericht zur Rolle der Verwaltung bei der Sondermüllentsorgung zur Kenntnis [21844] und schloss den Tagesordnungspunkt dazu ab [21845]. Am 12.06.2025 folgte ein Sachstandsbericht zur ehemaligen Schießanlage, den der Umweltausschuss zur Kenntnis nahm [20030]. Der aktuelle Stand ist der Bericht zum **zweiten Grundwassermonitoring** an der ehemaligen Schießanlage, den der Ausschuss für Stadtgrün, Umwelt und Klima am 12.02.2026 zur Kenntnis genommen hat [20852]. Die Auftragssperre gilt laut Beschluss weiterhin bis zur Klärung der Vorwürfe. Ob diese inzwischen geklärt sind und was das Grundwassermonitoring ergeben hat, geht aus den Beschlüssen nicht hervor.\n\nFOLGEFRAGEN: [\"Was ergab das zweite Grundwassermonitoring?\", \"Welche Firmen betrifft die Auftragssperre?\", \"Welche Rolle hatte die Verwaltung bei der Sondermüllentsorgung?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 1.0,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   },
+   {
+    "id": "fliegerhorst-sondermuell-debatte",
+    "ms": 16346,
+    "zitiert": [
+     20852,
+     20391,
+     20374,
+     19203,
+     19150
+    ],
+    "erwartet": [
+     20852,
+     21845,
+     20391,
+     20030
+    ],
+    "text": "Dem Rat ist bekannt, dass auf dem ehemaligen Schießstand des Fliegerhorsts illegal Abfälle entsorgt worden sein sollen und dass ein Korruptionsverdacht im Raum steht. Der Ausschuss für Stadtgrün, Umwelt und Klima hat den zweiten Bericht zum Grundwassermonitoring an der ehemaligen Schießanlage zur Kenntnis genommen [20852]. Am folgenreichsten ist die Entscheidung, dass der Rat eine **Auftragssperre** für die beteiligten Firmen beschlossen hat, bis die Korruptions- und Abfallvorwürfe geklärt sind [20391]. Zuvor hatten Ratsmitglieder Akteneinsicht in Unterlagen zur Bodenbeprobung und Begehung des ehemaligen Schießstandes erhalten [20374]. Ein Antrag auf Probebohrungen auf dem Gelände wurde zurückgezogen [19203]. Den Anfang bildete ein Bericht zu Korruptionsvorwürfen und Sondermüll auf dem Fliegerhorst, den der Rat zur Kenntnis nahm [19150].\n\nDie Beschlüsse sagen allerdings nichts darüber, was die Untersuchungen ergeben haben, wie stark das Gelände belastet ist oder was eine Sanierung kosten würde.\n\nFOLGEFRAGEN: [\"Was ergab das zweite Grundwassermonitoring?\", \"Welche Firmen sind von der Auftragssperre betroffen?\", \"Warum wurde der Antrag auf Probebohrungen zurückgezogen?\"]",
+    "zitiert_erwartet": true,
+    "abdeckung": 0.5,
+    "erfundene_zahlen": [],
+    "erfundene_quellen": [],
+    "hart": false
+   }
+  ],
+  "cases": 20,
+  "qualitaet": 0.7173,
+  "mindestens_einer": 0.9,
+  "hart": 1,
+  "zitiert_erwartet": 19
+ }
+}

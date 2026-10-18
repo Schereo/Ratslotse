@@ -158,7 +158,21 @@ jobs:
               echo "FEHLER: Der neue Stand kam auf dem Ersatzport nicht hoch."
               exit 1
             fi
+            # Wie in deploy.yml: 1 = KERN rot → abbrechen; 2 = nur Rand-Proben
+            # (einzelne Kacheln) → weiter, der Lauf meldet es am Ende. Bis
+            # 08.10.2026 brach hier JEDE 2 ab — vor dem Neustart, dev blieb
+            # zwei Tage auf altem Stand.
+            set +e
             python3 ~/app/scripts/rauchprobe.py --basis "http://127.0.0.1:$vorprobe_port"
+            probe_rc=$?
+            set -e
+            rand_rot=0
+            if [ "$probe_rc" = "2" ]; then
+              rand_rot=1
+              echo "WARNUNG: Rand-Proben rot. Der Deploy läuft weiter."
+            elif [ "$probe_rc" != "0" ]; then
+              exit "$probe_rc"
+            fi
             kill "$vorprobe_pid" 2>/dev/null || true
             wait "$vorprobe_pid" 2>/dev/null || true
             trap - EXIT
@@ -188,10 +202,21 @@ jobs:
             # Dieselbe Probe noch einmal, jetzt gegen den ECHTEN Dienst: Die
             # Vorprobe oben hat den Code geprüft, diese hier die Unit — eine
             # falsche EnvironmentFile, ein fehlendes venv, ein belegter Port.
+            set +e
             python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000
+            probe_rc=$?
+            set -e
+            if [ "$probe_rc" = "2" ]; then
+              rand_rot=1
+            elif [ "$probe_rc" != "0" ]; then
+              exit "$probe_rc"
+            fi
             # Grundakten und Akten (docs/plan-akte.md): Auf Prod baut sie
             # check_protocols.py jede Nacht, auf dev laufen keine Crons —
             # ohne diesen Schritt bliebe der Schalter `akten-suche` hier
             # wirkungslos. Ohne LLM, rund 12 Sekunden; scheitert er, ist der
             # Deploy trotzdem gut (die Suche fällt auf den heutigen Weg zurück).
             .venv/bin/python scripts/build_matters.py || echo "Grundakten nicht gebaut"
+            if [ "$rand_rot" = "1" ]; then
+              echo "::warning::Deploy durch, aber Rand-Proben der Rauchprobe sind rot (siehe oben)."
+            fi

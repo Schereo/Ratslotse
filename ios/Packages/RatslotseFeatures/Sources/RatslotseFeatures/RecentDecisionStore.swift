@@ -3,7 +3,7 @@ import RatslotseAPI
 
 @MainActor
 enum RecentDecisionStore {
-    private static let key = "ratslotse.recent-decisions"
+    private static let key = LocalAccountData.recentDecisionsKey
     private static let maximumCount = 8
 
     static func load(defaults: UserDefaults = .standard) -> [DecisionSummary] {

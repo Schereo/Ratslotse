@@ -179,11 +179,8 @@ extension AppModel {
 func sessionCalendarDraft(for session: CouncilSession, link: URL?) async -> CalendarDraft? {
     let store = EKEventStore()
     guard (try? await store.requestFullAccessToEvents()) == true else { return nil }
-    let parser = DateFormatter()
-    parser.locale = Locale(identifier: "de_DE")
-    parser.dateFormat = "yyyy-MM-dd HH:mm"
-    let time = session.sessionTime.map { String($0.prefix(5)) } ?? "17:00"
-    let start = parser.date(from: "\(session.sessionDate.prefix(10)) \(time)") ?? .now
+    // Oldenburger Ortszeit, nicht die des Geräts (SessionClock).
+    let start = SessionClock.start(day: session.sessionDate, time: session.sessionTime) ?? .now
     return CalendarDraft(
         title: Committee.short(session.committee),
         start: start,

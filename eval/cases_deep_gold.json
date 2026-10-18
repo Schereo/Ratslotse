@@ -3965,5 +3965,433 @@
     "titel_enthaelt": "Feuerwerksverboten"
    }
   ]
+ },
+ {
+  "id": "parkgebuehren-einnahmen-soll-ist",
+  "wege": [
+   "ask",
+   "deep"
+  ],
+  "akte": false,
+  "note": "Echte Frage vom 10.10.2026 (Gespräch mit vier Anschlussfragen), damals: Ist 2021 aus einer Anlage von 2023, „für 2026 kein Betrag“ und beim Soll-Ist-Vergleich die Gewerbesteuer. Handgeprüft am 11.10.2026 gegen die Teilhaushalts-Pläne THH08 auf Prod (Konto 33211000 „Parkgebühren“): Plan 2019 (Ergebnis 2017 3.362.532,01), Plan 2020 (2018 3.362.838,59), Plan 2021 (2019 3.447.442,60; Ansatz 2020 2.926.000), Plan 2022 (2020 2.681.890,30; Ansatz 2021 3.276.000), Plan 2023 (2021 2.637.765,89; Ansatz 2022 3.737.500; Entwurf 2023 3.737.500), Plan 2024 (2022 3.007.970,03; Ansatz 2023 2.650.000; Entwurf 2024 4.504.100), Plan 2025 (2023 3.614.636,78; Ansatz 2024 4.394.100; Entwurf 2025 5.394.100), Plan 2026 (2024 4.482.612,19; Ansatz 2025 4.394.100; Entwurf 2026 4.394.100; Finanzplanung 2027–2029 je 5.228.979). „Ansatz Y“ = fortgeschriebener Vorjahresansatz im Plan Y+1. Dazu im THH09 ein Kleinstbetrag (2024: 174 €), daneben das Konto 33211004 „Parkgebühren VWG“ (2024: 310.149,12; Ansatz 354.000). Fallstricke: (1) Kein Ist für 2025 oder 2026 im Bestand. (2) 2023 hängt am Vergleichswert: unter dem Entwurf (3,74 Mio.), über dem fortgeschriebenen Ansatz (2,65 Mio.) — beides darf genannt werden, wenn es benannt ist. (3) Steuerzahlen gehören nicht zur Frage.",
+  "stand": "2026-10-11 (Prod)",
+  "question": "Wie hoch sind die Einnahmen durch die Parkgebühren im Jahr, und weicht das Ist vom Plan ab?",
+  "varianten": [
+   "Wie viel nimmt Oldenburg mit Parkgebühren ein?",
+   "Kann man bei den Parkgebühren Abweichungen zwischen Soll und Ist sehen?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Im Rechnungsergebnis 2024 nahm die Stadt rund 4,5 Mio. Euro Parkgebühren ein (4.482.612 Euro, Konto 33211000, Teilhaushalt 08 Verkehr und Straßenbau).",
+    "beleg": "Haushaltsplan 2026, Verwaltungsentwurf, Anlage „014 THH08“ (getfile id=297450), Teilergebnishaushalt THH08, Spalte „Ergebnis 2024“"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Geplant sind für 2025 rund 4,4 Mio. Euro (4.394.100 Euro) und im Entwurf für 2026 ebenfalls rund 4,4 Mio. Euro; die Finanzplanung sieht ab 2027 rund 5,2 Mio. Euro je Jahr vor (mindestens zwei dieser Angaben).",
+    "beleg": "Haushaltsplan 2026, Anlage THH08 (id=297450): Ansatz 2025 4.394.100, Ansatz 2026 4.394.100, Ansatz 2027–2029 je 5.228.979"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Soll und Ist weichen ab — mindestens ein Jahr mit beiden Werten richtig: 2024 lag das Ist (≈4,48 Mio.) leicht über dem Ansatz (≈4,4 Mio.); 2021 deutlich darunter (2,64 Mio. gegen 3,28 Mio.); 2022 ebenso (3,01 Mio. gegen 3,74 Mio.).",
+    "beleg": "THH08-Anlagen der Pläne 2022–2026 (Ansatz Y aus dem Plan Y+1, Ergebnis Y aus dem Plan Y+2), ids 241238, 253107, 268446, 282821, 297450"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Verlauf: vor Corona rund 3,4 Mio. Euro im Jahr (2017–2019), 2020 und 2021 nur rund 2,7 bzw. 2,6 Mio. Euro, danach wieder steigend (2022 rund 3,0, 2023 rund 3,6 Mio. Euro).",
+    "beleg": "Ergebnis-Spalten der THH08-Anlagen der Pläne 2019–2025"
+   },
+   {
+    "id": "F5",
+    "gewicht": 1,
+    "fakt": "Getrennt geführt ist ein Konto „Parkgebühren VWG“ mit 2024 rund 0,31 Mio. Euro (Ansatz 354.000 Euro).",
+    "beleg": "Haushaltsplan 2026, Anlage THH08 (id=297450), Konto 33211004"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Die Abweichung zwischen Soll und Ist wird mit Steuerzahlen (etwa Gewerbesteuer) statt mit Parkgebühren beantwortet."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Für 2025 oder 2026 sei im Haushalt kein Betrag für Parkgebühren ausgewiesen."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Für 2025 liege bereits ein tatsächliches Ergebnis (Ist) der Parkgebühren vor."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (9). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F3",
+     "F4"
+    ],
+    "art": "grafik",
+    "titel_enthaelt": "Parkgebühren"
+   }
+  ]
+ },
+ {
+  "id": "parkgebuehren-mehreinnahmen",
+  "wege": [
+   "ask",
+   "deep"
+  ],
+  "akte": false,
+  "note": "Echte Frage vom 10.10.2026, damals „nicht beziffert“. Handgeprüft am 11.10.2026 auf Prod: Vorlage 23/0101 (council_templates.financial_impact und raw_text), Beschlüsse 17878 (VA 20.02.2023, mehrheitlich bei vier Gegenstimmen), 18022 (Rat 27.02.2023, mehrheitlich), 18991 (VA 18.11.2024, eine Gegenstimme), 19206 (Rat 25.11.2024, eine Gegenstimme, vier Enthaltungen). Fallstricke: (1) „Letzte Erhöhung“ ist der Gebührenpfad von 2023; die weiteren Stufen hat der Rat im November 2024 ausgesetzt — wirksam wurde zuletzt die Stufe zum 01.01.2024. (2) Die 1,1 Mio. Euro sind eine bedingte Schätzung: Die Vorlage sagt selbst, eine verlässliche Hochrechnung sei nicht möglich, und rechnet damit, dass der Betrag nicht erreicht wird. (3) Antrag der CDU „Auswertung Erhöhung Parkgebühren“ (VA 10.06.2024, id 18913) wurde zurückgezogen.",
+  "stand": "2026-10-11 (Prod)",
+  "question": "Wie hoch wären die prognostizierten Mehreinnahmen durch die letzte Parkgebührenerhöhung?",
+  "varianten": [
+   "Was sollte die Erhöhung der Parkgebühren 2023 einbringen?",
+   "Wurde die Erhöhung der Parkgebühren in Oldenburg ausgesetzt?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Die Vorlage nennt Mehreinnahmen von rund 1,1 Mio. Euro jährlich — unter der Voraussetzung, dass die Parkplätze wieder so ausgelastet sind wie vor Corona; die Verwaltung ging selbst davon aus, dass der Betrag wegen veränderten Parkverhaltens nicht erreicht wird.",
+    "beleg": "Vorlage 23/0101, Abschnitt „Finanzielle Auswirkungen“"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Beschlossen hat der Rat am 27.02.2023 (mehrheitlich) einen stufenweisen Gebührenpfad: in Zone 1 (Innenstadt) je angefangene Viertelstunde ab 01.06.2023 0,50 Euro bis 1,30 Euro ab 2027, in Zone 2 und 3 von 0,30 bis 0,80 Euro.",
+    "beleg": "Rat 27.02.2023, Beschluss-id 18022; Verkehrsausschuss 20.02.2023, Beschluss-id 17878 (mehrheitlich bei vier Gegenstimmen)"
+   },
+   {
+    "id": "F3",
+    "gewicht": 2,
+    "fakt": "Am 25.11.2024 setzte der Rat die weiteren Erhöhungsstufen aus (mehrheitlich, eine Gegenstimme, vier Enthaltungen), um zuerst die Auswirkungen zu evaluieren.",
+    "beleg": "Rat 25.11.2024, Beschluss-id 19206 (Antrag SPD und Grüne vom 30.10.2024); Verkehrsausschuss 18.11.2024, Beschluss-id 18991"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Die tatsächlichen Parkgebühren stiegen von rund 3,0 Mio. Euro (2022) auf rund 3,6 Mio. Euro (2023) und rund 4,5 Mio. Euro (2024).",
+    "beleg": "Teilhaushalt 08, Konto 33211000, Ergebnis-Spalten der Pläne 2024, 2025, 2026 (ids 268446, 282821, 297450)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Die Unterlagen beziffern die erwarteten Mehreinnahmen nicht."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Der Gebührenpfad wurde vollständig umgesetzt, die Gebühr in Zone 1 liegt heute bei 1,10 oder 1,30 Euro je Viertelstunde."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (8). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F2"
+    ],
+    "art": "vorlage",
+    "template_number": "23/0101"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2023-02-27",
+    "committee": "Rat",
+    "titel_enthaelt": "Änderung der Parkgebühren"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2024-11-25",
+    "committee": "Rat",
+    "titel_enthaelt": "Aussetzung der Erhöhung"
+   }
+  ]
+ },
+ {
+  "id": "ratswahl-2026-sitzverteilung",
+  "wege": [
+   "ask"
+  ],
+  "akte": false,
+  "note": "Echte Frage vom 28.09.2026, damals „geht aus den Unterlagen nicht hervor“. Handgeprüft am 11.10.2026 gegen das eingefrorene Ergebnis kommunalwahl/referenz-2026 (Votemanager Open Data 20260913, quelle.stand „amtlich“, abgerufen 24.09.2026) und archive.night(„ratswahl-2026“): 52 Sitze, Wahlbeteiligung 63,5 %. Nur „Frag den Rat“: Die Gründliche Recherche bekommt den Wahl-Baustein nicht.",
+  "stand": "2026-10-11 (Prod)",
+  "question": "Wie ist die Sitzverteilung nach der Ratswahl?",
+  "varianten": [
+   "Wie viele Sitze hat welche Partei im neuen Oldenburger Rat?",
+   "Wie ist die Kommunalwahl 2026 in Oldenburg ausgegangen?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Die 52 Sitze verteilen sich: Grüne 13, SPD 12, CDU 7, Linke 7, AfD 5, Volt 2, FDP 2, je 1 Sitz für Bürger Bündnis, BSW, Echt Oldenburg und Piraten (mindestens die fünf größten richtig).",
+    "beleg": "kommunalwahl/referenz-2026 (Meta-Datei, sitzverteilung); /wahlen"
+   },
+   {
+    "id": "F2",
+    "gewicht": 1,
+    "fakt": "Es ist das amtliche Endergebnis der Ratswahl vom 13.09.2026.",
+    "beleg": "Meta-Datei, quelle.stand = amtlich"
+   },
+   {
+    "id": "F3",
+    "gewicht": 1,
+    "fakt": "Gegenüber 2021 verloren Grüne (16 → 13), SPD (15 → 12) und CDU (9 → 7); Linke (4 → 7) und AfD (1 → 5) gewannen dazu (mindestens zwei Veränderungen).",
+    "beleg": "archive.night: seats_previous je Liste"
+   },
+   {
+    "id": "F4",
+    "gewicht": 1,
+    "fakt": "Die Wahlbeteiligung lag bei 63,5 Prozent.",
+    "beleg": "archive.night: totals.turnout_pct 63,5"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Die Sitzverteilung gehe aus den Unterlagen nicht hervor, oder es wird die Sitzverteilung von 2021 als aktuelle genannt."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Eine der fünf größten Listen (Grüne, SPD, CDU, Linke, AfD) hat eine andere Sitzzahl als 13, 12, 7, 7, 5."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (6). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": []
+ },
+ {
+  "id": "ob-stichwahl-2026",
+  "wege": [
+   "ask"
+  ],
+  "akte": false,
+  "note": "Abgeleitet aus derselben Lücke wie die Ratswahl-Frage (28.09.2026). Handgeprüft am 11.10.2026 gegen kommunalwahl/referenz-2026-stichwahl und referenz-2026 (praesentation-ob.json, quelle.json „vorlaeufig“): Stichwahl 27.09.2026 Rohr 51,5 %, Prange 48,5 %, Beteiligung 44,4 %; erster Wahlgang 13.09.2026 Prange 33,2 %, Rohr 30,5 %. Steht das amtliche Ergebnis fest (scripts/wahl_einfrieren.py --stand amtlich), F1 anpassen.",
+  "stand": "2026-10-11 (Prod)",
+  "question": "Wer ist neuer Oberbürgermeister von Oldenburg?",
+  "varianten": [
+   "Wer hat die Stichwahl um das Oberbürgermeisteramt gewonnen?",
+   "Wie ist die OB-Wahl 2026 ausgegangen?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Jascha Rohr (Grüne) gewann die Stichwahl am 27.09.2026 mit 51,5 Prozent gegen Ulf Prange (SPD, 48,5 Prozent); das Ergebnis ist vorläufig.",
+    "beleg": "kommunalwahl/referenz-2026-stichwahl/praesentation-ob.json, quelle.json"
+   },
+   {
+    "id": "F2",
+    "gewicht": 1,
+    "fakt": "Im ersten Wahlgang am 13.09.2026 lag Prange mit 33,2 Prozent vor Rohr (30,5 Prozent); niemand hatte die absolute Mehrheit.",
+    "beleg": "kommunalwahl/referenz-2026/praesentation-ob.json"
+   },
+   {
+    "id": "F3",
+    "gewicht": 1,
+    "fakt": "Die Wahlbeteiligung bei der Stichwahl lag bei 44,4 Prozent.",
+    "beleg": "praesentation-ob.json der Stichwahl"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Ulf Prange hat die Stichwahl gewonnen oder ist neuer Oberbürgermeister."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Jascha Rohr wurde bereits im ersten Wahlgang gewählt."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (5). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": []
+ },
+ {
+  "id": "afaa-2026-09-28-ergebnis",
+  "wege": [
+   "ask"
+  ],
+  "akte": false,
+  "note": "Echte Frage vom 29.09.2026 („Was ist gestern beim allgemeinen Ausschuss rausgekommen?“), hier mit Datum, damit der Fall nicht am Tag hängt. Damals: Berichte vom Mai/Juni statt der Sitzung. Handgeprüft am 11.10.2026 auf Prod: Sitzung ksinr 4703 mit 11 Tagesordnungspunkten (council_agenda_items), keine Beschlüsse (council_decisions leer, kein Protokoll). Sobald das Protokoll ausgewertet ist, F1 und X1 auf die Ergebnisse umstellen.",
+  "stand": "2026-10-11 (Prod)",
+  "question": "Was ist am 28.09.2026 beim allgemeinen Ausschuss herausgekommen?",
+  "varianten": [
+   "Was hat der Ausschuss für Allgemeine Angelegenheiten am 28. September 2026 beschlossen?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Zur Sitzung des Ausschusses für Allgemeine Angelegenheiten am 28.09.2026 liegt noch kein ausgewertetes Protokoll vor; Ergebnisse lassen sich deshalb noch nicht nennen.",
+    "beleg": "council_sessions ksinr 4703; council_decisions ohne Einträge (Stand 11.10.2026)"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Auf der Tagesordnung standen u. a. eine Dienstreise nach Groningen (Promotiedagen), eine Änderung der Entschädigungssatzung, die Zuständigkeit des Verwaltungsausschusses für Auftragsvergaben und ein Antrag der Grünen, Ratsaufzeichnungen unter Creative-Commons-Lizenz zu veröffentlichen (mindestens zwei Punkte).",
+    "beleg": "council_agenda_items ksinr 4703, TOP Ö 5, Ö 6, Ö 7, Ö 9.1"
+   },
+   {
+    "id": "F3",
+    "gewicht": 1,
+    "fakt": "Protokolle erscheinen in der Regel einige Wochen bis ein, zwei Monate nach der Sitzung; das ist der normale Ablauf.",
+    "beleg": "gemessener Protokollverzug (council/qa.py, _sitzungen_block)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Ausschuss habe am 28.09.2026 einen der Punkte beschlossen, abgelehnt oder vertagt."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Als Ergebnis der Sitzung werden Berichte oder Beschlüsse aus früheren Sitzungen (etwa Mai oder Juni 2026) genannt."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (6). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beratung",
+    "session_date": "2026-09-28",
+    "committee": "Allgemeine Angelegenheiten",
+    "titel_enthaelt": "Groningen"
+   }
+  ]
+ },
+ {
+  "id": "brokhausen-stand",
+  "wege": [
+   "ask",
+   "deep"
+  ],
+  "akte": false,
+  "note": "Echte Frage vom 24.09.2026 („Was findest du zum geplanten Gewerbegebiet Brookhausen?“ — mit Tippfehler gestellt), damals: „im Mai vertagt“ plus ein Abschnitt zu anderen Gewerbegebieten. Handgeprüft am 11.10.2026 auf Prod: Beschlüsse 20667–20669 (ASB 21.05.2026, einstimmig vertagt), Tagesordnung ASB 18.06.2026 (ksinr 4606, TOP Ö 8.1–8.4 „zurückgestellt/abgesetzt“, keine Beschluss-Datensätze), Beschlüsse 21916–21919 (ASB 27.08.2026, vertagt; Protokoll seit 26.09.2026 im Bestand), Wortbeiträge ASB 21.05.2026 (Landschaftsschutzgebiet, Biotop) und ASUK 11.06.2026 (Heidbrook). Nächste ASB-Sitzung laut Kalender 10.12.2026, Tagesordnung noch nicht im Bestand.",
+  "stand": "2026-10-11 (Prod)",
+  "question": "Was ist der Stand beim geplanten Gewerbegebiet Brokhausen?",
+  "varianten": [
+   "Was findest du zum geplanten Gewerbegebiet Brookhausen?",
+   "Ist der Bebauungsplan 869 für Brokhausen schon beschlossen?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Über den Bebauungsplan 869 und die 94. Änderung des Flächennutzungsplans (Gewerbegebiet Brokhausen) ist noch nicht entschieden: Der Bauausschuss hat die Aufstellungsbeschlüsse und die Grundzüge der Planung bisher nicht beschlossen.",
+    "beleg": "ASB 21.05.2026 Beschluss-ids 20667–20669; ASB 27.08.2026 Beschluss-ids 21916–21919"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Die Punkte standen dreimal auf der Tagesordnung und wurden jedes Mal nicht entschieden: 21.05.2026 einstimmig vertagt, 18.06.2026 abgesetzt, 27.08.2026 erneut vertagt (mindestens zwei Termine, darunter der 27.08.).",
+    "beleg": "Beschlüsse 20667–20669 und 21916–21919; Tagesordnung ksinr 4606 (18.06.2026), TOP Ö 8.1–8.4"
+   },
+   {
+    "id": "F3",
+    "gewicht": 1,
+    "fakt": "In den Beratungen ging es um Konflikte mit Natur- und Landschaftsschutz: Überschneidung mit dem Landschaftsschutzgebiet, Ausgleich für ein geschütztes Biotop, Unterschutzstellung des Heidbrook.",
+    "beleg": "Wortbeitrag ASB 21.05.2026; Einwohnerfragen ASUK 11.06.2026"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Der Aufstellungsbeschluss für den Bebauungsplan 869 oder die 94. Flächennutzungsplan-Änderung ist gefasst."
+   },
+   {
+    "id": "X2",
+    "behauptung": "Die jüngste Befassung sei die Vertagung im Mai 2026."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (6). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": [
+   {
+    "id": "M1",
+    "fuer": [
+     "F1",
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-08-27",
+    "committee": "Stadtplanung",
+    "titel_enthaelt": "Gewerbegebiet Brokhausen"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F1",
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-05-21",
+    "committee": "Stadtplanung",
+    "titel_enthaelt": "Gewerbegebiet Brokhausen"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F3"
+    ],
+    "art": "debatte",
+    "session_date": "2026-05-21",
+    "text_enthaelt_eins": [
+     "Landschaftsschutzgebiet",
+     "Biotop"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "fundort-ergebnisse",
+  "wege": [
+   "ask"
+  ],
+  "akte": false,
+  "note": "Echte Anschlussfrage vom 29.09.2026, damals ein Verweis auf einen Beschluss von 2022 zur Übertragung von Ausschusssitzungen auf gemeinsam.oldenburg.de. Eine Frage an Ratslotse selbst; geprüft am 11.10.2026 an der App (Sitzungsliste /council?tab=sessions, Sitzungsseite /council/sitzung?ksinr=…) und am gemessenen Protokollverzug.",
+  "stand": "2026-10-11 (Prod)",
+  "question": "Wo finde ich die Ergebnisse einer Ausschusssitzung?",
+  "varianten": [
+   "Wann kommt das Protokoll einer Ratssitzung?"
+  ],
+  "pflicht": [
+   {
+    "id": "F1",
+    "gewicht": 3,
+    "fakt": "Ergebnisse stehen in Ratslotse unter „Sitzungen“ auf der Seite der jeweiligen Sitzung (Beschlüsse samt Abstimmung, sobald das Protokoll ausgewertet ist) und im Original im Ratsinformationssystem der Stadt (buergerinfo.oldenburg.de).",
+    "beleg": "web/frontend: /council?tab=sessions, /council/sitzung; Ratsinformationssystem buergerinfo.oldenburg.de"
+   },
+   {
+    "id": "F2",
+    "gewicht": 2,
+    "fakt": "Protokolle erscheinen meist einige Wochen bis ein, zwei Monate nach der Sitzung; bis dahin gibt es nur die Tagesordnung.",
+    "beleg": "gemessener Protokollverzug (council/qa.py, _sitzungen_block)"
+   }
+  ],
+  "verboten": [
+   {
+    "id": "X1",
+    "behauptung": "Die Ergebnisse stehen auf der Beteiligungsplattform gemeinsam.oldenburg.de bzw. in einer Videoübertragung."
+   }
+  ],
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (5). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "material": []
  }
 ]

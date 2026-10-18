@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
@@ -10,6 +11,7 @@ import { StatKicker } from "@/components/admin-charts";
 import { AdminVerlauf } from "@/components/grafik/admin-verlauf";
 import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
+import { AntwortText } from "@/components/qa-bausteine";
 import { clientFarbe, clientLabel } from "@/lib/clients";
 import { KohortenSection } from "./cohorts";
 import { AbschnittKopf, Basis, KennzahlCard, Veraenderung } from "./primitives";
@@ -17,6 +19,7 @@ import { AbschnittKopf, Basis, KennzahlCard, Veraenderung } from "./primitives";
 export type AdminGrowth = ApiAntwort<"/admin/stats/growth">;
 export type AdminKohorten = ApiAntwort<"/admin/stats/cohorts">;
 type AdminSackgasse = ApiAntwort<"/admin/stats/dead-ends">[number];
+type AdminDaumenRunter = ApiAntwort<"/admin/stats/thumbs-down">[number];
 export type AdminEreignisse = ApiAntwort<"/admin/stats/events">;
 export type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
 export type AdminAnmeldungen = ApiAntwort<"/admin/stats/signups">;
@@ -576,10 +579,132 @@ function SackgassenSection() {
   );
 }
 
+/** Die festen Gründe zum Daumen runter (`QaFeedbackBody.reason_kind`). */
+const DAUMEN_GRUND: Record<string, string> = {
+  wrong: "Falsch", incomplete: "Unvollständig", outdated: "Veraltet", off_topic: "Thema verfehlt",
+};
+
+/** Daumen runter aus „Frag den Rat" — mit Grund und, wo freigegeben, der
+ *  ganzen Antwort samt Quellen (seit 10/2026). Vorher kam ein 👎 nur als
+ *  Frage und 500 Zeichen an und stand nirgends im Panel. */
+function DaumenRunterSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "thumbs-down"],
+    queryFn: () => api.get<AdminDaumenRunter[]>("/admin/stats/thumbs-down?days=90"),
+  });
+
+  if (isPending) return <div className="pt-2"><CardListSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Liste konnte nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+  const freigegeben = data.filter((d) => d.shared).length;
+  const jeGrund = Object.entries(DAUMEN_GRUND)
+    .map(([id, label]) => ({ label, n: data.filter((d) => d.reason_kind === id).length }))
+    .filter((g) => g.n > 0);
+
+  return (
+    <div className="@container space-y-3 pt-2">
+      <AbschnittKopf titel="Daumen runter"
+        rechts={`${data.length} · davon ${freigegeben} mit Antwort · 90 Tage`}>
+        Was Leute an einer Antwort schlecht fanden — ohne Konto. Die ganze Antwort samt Quellen steht nur dort, wo jemand sie beim Absenden ausdrücklich zur Prüfung freigegeben hat.
+      </AbschnittKopf>
+      {jeGrund.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {jeGrund.map((g) => (
+            <span key={g.label} className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+              {g.label} <span className="font-semibold tabular-nums text-foreground">{g.n}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      {data.length === 0 ? (
+        <Card className="flex flex-wrap items-center gap-4 p-4">
+          <Mascot pose="wave" className="h-14 w-14 shrink-0" />
+          <p className="text-sm text-muted-foreground">Kein Daumen runter in den letzten 90 Tagen.</p>
+        </Card>
+      ) : (
+        <Card className="divide-y divide-border p-0">
+          {data.map((d, i) => <DaumenRunterZeile key={`${d.created}-${i}`} d={d} />)}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function DaumenRunterZeile({ d }: { d: AdminDaumenRunter }) {
+  const [offen, setOffen] = useState(false);
+  // Die Chips in der Antwort zählen in der Reihenfolge der Quellenliste.
+  const nummern = new Map<number, number>();
+  for (const [i, q] of (d.shared?.sources ?? []).entries()) if (q.id != null) nummern.set(q.id, i + 1);
+  return (
+    <div className="grid gap-x-4 gap-y-1 p-4 sm:grid-cols-[5.5rem_minmax(0,1fr)]" data-daumen-runter>
+      <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground sm:pt-1">
+        {formatDate(d.created.slice(0, 10))}
+      </span>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <p className="text-[14px] font-semibold leading-snug text-foreground">{d.question}</p>
+          {d.reason_kind && (
+            <span className="rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-medium text-signal">
+              {DAUMEN_GRUND[d.reason_kind] ?? d.reason_kind}
+            </span>
+          )}
+        </div>
+        {d.reason && <p className="mt-1 text-sm leading-snug text-foreground">„{d.reason}“</p>}
+        {!d.shared && d.answer_excerpt && (
+          <p className="mt-1 text-sm italic leading-snug text-muted-foreground">{d.answer_excerpt}{d.answer_excerpt.length >= 500 ? "…" : ""}</p>
+        )}
+        {d.shared && (
+          <div className="mt-2">
+            <button type="button" onClick={() => setOffen((o) => !o)} aria-expanded={offen}
+              className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              Freigegebene Antwort {offen ? "ausblenden" : "ansehen"}
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-fluss", offen && "rotate-180")} aria-hidden />
+            </button>
+            {offen && (
+              <div className="mt-2 space-y-3 rounded-lg border border-border bg-muted/40 p-3">
+                {/* Dieselbe Darstellung wie im Gespräch: Die Person sah Chips
+                    und Zwischenköpfe, nicht Sternchen und Rauten. */}
+                <div className="text-sm leading-relaxed text-foreground">
+                  <AntwortText text={d.shared.answer} idToNum={nummern} />
+                </div>
+                {d.shared.sources.length > 0 && (
+                  <div>
+                    <StatKicker>Quellen der Antwort · {d.shared.sources.length}</StatKicker>
+                    <ol className="mt-1 space-y-1 text-sm">
+                      {d.shared.sources.map((q, j) => (
+                        <li key={`${q.id}-${j}`} className="flex gap-2">
+                          <span className="w-5 flex-none pt-0.5 text-right font-mono text-xs tabular-nums text-muted-foreground">{j + 1}</span>
+                          <span className="min-w-0">
+                            {q.id ? (
+                              <Link href={`/council/decision?id=${q.id}`} className="text-foreground hover:text-primary hover:underline">
+                                {q.title}
+                              </Link>
+                            ) : q.title}
+                            <span className="text-muted-foreground"> · {[q.committee, q.session_date ? formatDate(q.session_date) : null].filter(Boolean).join(" · ")}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function StatsTab({ view }: { view: string }) {
   if (view === "konten") return <div className="space-y-8"><KohortenSection /><AnmeldungenSection /></div>;
   if (view === "reichweite") return <SeitenaufrufeSection />;
-  if (view === "antworten") return <div className="space-y-6"><QualityMetrics /><EreignisSection qualityOnly /><SackgassenSection /></div>;
+  if (view === "antworten") return <div className="space-y-6"><QualityMetrics /><EreignisSection qualityOnly /><DaumenRunterSection /><SackgassenSection /></div>;
   return <ActivityTab />;
 }
 

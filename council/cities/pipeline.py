@@ -399,7 +399,8 @@ def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> in
 
 def annotate(main: CitiesStore, body_id: str | None = None,
              limit: int | None = None, nach_index: bool = False,
-             stopp: Stopp | None = None, nur_neu: bool = False) -> dict:
+             stopp: Stopp | None = None, nur_neu: bool = False,
+             schlank: bool = False) -> dict:
     """Die Annotatoren laufen lassen, die an dieser Stelle dran sind.
 
     **Zwei Stellen, nicht eine.** ``classify`` gibt einer fremden Vorlage ihr
@@ -417,7 +418,7 @@ def annotate(main: CitiesStore, body_id: str | None = None,
             continue
         if ann.key == "fit":
             zahlen[f"{ann.key}/{ann.version}"] = _fit(main, ann, body_id, limit,
-                                                      stopp, nur_neu)
+                                                      stopp, nur_neu, schlank=schlank)
         else:
             zahlen[f"{ann.key}/{ann.version}"] = annotate_modul.run(
                 main, ann, body_id, limit, stopp=stopp, nur_neu=nur_neu)
@@ -431,7 +432,8 @@ def annotate(main: CitiesStore, body_id: str | None = None,
 
 
 def _fit(main: CitiesStore, ann, body_id: str | None, limit: int | None,
-         stopp: Stopp | None = None, nur_neu: bool = False) -> dict:
+         stopp: Stopp | None = None, nur_neu: bool = False,
+         schlank: bool = False) -> dict:
     """``fit`` braucht die Rats-Datenbank für die Belege — als einziger.
 
     Sie wird hier geöffnet und wieder geschlossen, nicht durchgereicht: Der
@@ -453,7 +455,7 @@ def _fit(main: CitiesStore, ann, body_id: str | None, limit: int | None,
     rats = CouncilStore(pfad)
     try:
         stand = fit_modul.run(main, rats, ann, EMBED_MODEL, body_id, limit,
-                              stopp=stopp, nur_neu=nur_neu)
+                              stopp=stopp, nur_neu=nur_neu, schlank=schlank)
     finally:
         rats.close()
     # **Der Gruppen-Status gehört zur Fassung** (Regel 30). Die Ideen-Liste
@@ -503,7 +505,7 @@ def idea_fit_all(main: CitiesStore, limit: int | None = None,
 
 # ------------------------------------------------------------------- index
 
-def cluster_all(main: CitiesStore) -> dict:
+def cluster_all(main: CitiesStore, stopp: Stopp | None = None) -> dict:
     """Ideen einbetten und zu Clustern zusammenfassen.
 
     Läuft NACH der Einordnung (sie sagt, was eine Idee ist) und braucht
@@ -511,7 +513,7 @@ def cluster_all(main: CitiesStore) -> dict:
     zusammen, denn ein Cluster über Stadtgrenzen ist der ganze Zweck.
     """
     from council.cities import clusters as cluster_modul
-    return cluster_modul.run(main)
+    return cluster_modul.run(main, stopp=stopp)
 
 
 def index_all(main: CitiesStore, body_id: str | None = None) -> dict:

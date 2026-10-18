@@ -325,6 +325,10 @@ def register(
     can_send_email = bool(settings.resend_api_key)
     verified = not can_send_email
     user_status = "active" if verified else "pending"
+    if getattr(settings, "signup_requires_approval", False):
+        # Manual approval (dev): the account waits as `disabled` until an admin
+        # unlocks it — the same switch the panel already uses to lock one.
+        user_status = "disabled"
     user_id = store.create_web_user(
         email, hash_password(body.password), role, user_status, email_verified=verified,
         display_name=display_name,

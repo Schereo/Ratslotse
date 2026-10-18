@@ -177,13 +177,13 @@ außerhalb des Gates, gäbe es dort gar keine Prüfung, und ein neues
 `x.split()[0]` auf einem `str | None` fiele niemandem auf. Der Wächter zählt
 deshalb die Befunde je Bereich, und die Zahl **darf nur sinken** — kein
 Aufräumen wird verlangt, nur kein Rückschritt geduldet. Gemessen am
-04.09.2026:
+04.09.2026, `council/` nachgezogen am 06.10.2026 (Schranke in `SCHULDEN`):
 
 | Bereich | Befunde | Zustand |
 |---|---:|---|
 | `kern/` | **0** | harter Gate |
 | `web/backend/app/` (ohne Router) | **0** | harter Gate |
-| `council/` | 194 | Sperrklinke |
+| `council/` | 183 | Sperrklinke |
 | `web/backend/app/routers/` | 111 | Sperrklinke |
 | `scripts/` | 44 | Sperrklinke |
 | `eval/` | 7 | Sperrklinke |
@@ -205,8 +205,9 @@ python scripts/pruefe_typschulden.py --zeigen          # der Stand
 ```
 
 **Die Zahlen haben etwas Luft.** pyright löst Typen über die INSTALLIERTEN
-Pakete auf, und die sind nie bitgleich: Auf dem Entwicklungsrechner sind es
-194 Befunde in `council/`, in der CI 190. Die Schranke ist der höhere Wert.
+Pakete auf, und die sind nie bitgleich: Am 04.09.2026 waren es auf dem
+Entwicklungsrechner 194 Befunde in `council/`, in der CI 190. Die Schranke ist
+der höhere Wert.
 
 **Den Hook einschalten** (einmal je Checkout):
 
@@ -428,8 +429,16 @@ Key in `web/frontend/.env.local` (gitignored) — ins Repo nie, das ist
 
 ### Dev-Umgebung (dev.ratslotse.de)
 
-Eigene VM neben Prod, mit eigenen Datenbanken/Secrets (Basic-Auth vorm vhost,
-kein Mail-Versand, keine Crons). **Jeder Push auf den Branch `dev`** deployt
+Eigene VM neben Prod, mit eigenen Datenbanken/Secrets (kein Mail-Versand,
+keine Crons). **Seit 17.10.2026 ohne Basic-Auth** — sie stand dem MCP-Zugang
+im Weg (Basic-Auth und Bearer-Token wollen beide den `Authorization`-Header),
+und angemeldet wird ohnehin per Konto. Zwei Dinge halten dev seitdem zu:
+`SIGNUP_REQUIRES_APPROVAL=1` in der `.env` (neue Konten beginnen als
+`disabled` und werden im Admin-Panel unter *Web-Nutzer*innen* freigeschaltet —
+ohne Mailversand wären sie sonst sofort aktiv, auf dem Dev-LLM-Schlüssel) und
+**keine Indexierung**: `robots.ts` sperrt im Dev-Build alles, Caddy schickt
+zusätzlich `X-Robots-Tag: noindex`. feature.ratslotse.de behält seine
+Basic-Auth. **Jeder Push auf den Branch `dev`** deployt
 dorthin (`.github/workflows/deploy-dev.yml`, ohne Test-Gate — die Tests laufen
 auf jedem PR). Die Dev-VM zieht per `git fetch` + `reset --hard`, baut
 Frontend + Backend-Deps und startet ihre Services neu. Prod bleibt davon
@@ -476,6 +485,7 @@ APP_BASE_URL=https://ratslotse.de
 FEEDBACK_EMAIL=...                   # Empfänger des Nutzer-Feedbacks
 ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_EMAIL)
 FASTEMBED_CACHE_PATH=~/.cache/fastembed  # persistenter Modell-Cache (sonst /tmp → weg beim Reboot)
+SIGNUP_REQUIRES_APPROVAL=0            # "1" = neue Konten warten auf Freischaltung im Admin-Panel (dev)
 FEATURE_FLAGS=                        # Feature-Schalter, kommagetrennt (s. kern/features.py); `*` = alle (dev)
 APPLE_BUNDLE_ID=de.ratslotse.app     # Sign in with Apple: aud der nativen App (Default passt)
 APPLE_SERVICE_ID=de.ratslotse.web    # Sign in with Apple im Browser (Services ID; leer = Web-Flow aus)
@@ -511,8 +521,14 @@ COUNCIL_DEEP_PLUS_MODEL=openai/gpt-6-sol  # derselbe Bericht für Konten mit Rec
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
 # Städtevergleich (check_cities.py) — der teuerste und längste Cron
 CITIES_MAX_SECONDS=14400             # Frist je Lauf; 0 hebt sie auf (Nachlauf von Hand)
+CITIES_MAX_USD=2                     # Kostengrenze je Lauf über ALLE Stufen; 0 hebt sie auf
 CITIES_ANNOTATE_MAX=3000             # Stückzahl je Lauf (Deckel gegen den Rückstau)
 CITIES_FIT_WORKERS=8                 # gleichzeitige Urteile; mehr = schneller, nicht teurer
+# Wochenlauf (weekly_enrich.py)
+WEEKLY_STEP_MAX_SECONDS=10800        # Höchstdauer je Schritt; 0 hebt sie auf
+WEEKLY_ENRICH_MAX_SECONDS=           # Frist für den ganzen Lauf (leer = keine); ein wartender Deploy beendet ihn ohnehin
+# Kostenalarm im Herzschlag (check_herzschlag.py)
+LLM_TAGESKOSTEN_ALARM_USD=5          # Mail, wenn die Modellkosten des Vortags darüber liegen; 0 = aus
 # OpenRouter Provider-Routing (DSGVO) — schließt China-Anbieter aus, verlangt ZDR
 NWZ_OPENROUTER_ROUTING=on            # "off" = Notausschalter
 NWZ_OPENROUTER_IGNORE=deepseek,baidu,streamlake,siliconflow,alibaba
@@ -590,6 +606,12 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   **Kernsatz fett.** Dann der Fließtext.
   ```
 
+  **Ein Feature hinter einem Schalter** trägt `schalter: <key>[, …]` im
+  Frontmatter. Der Schnitt lässt das Fragment liegen, bis die Version den
+  Schalter freigibt (`changelog_schnitt.py x.y.z --freigeben <key>,…`), und die
+  Changelog-Seite zeigt es außerhalb von dev nicht. Sonst beschreibt der
+  öffentliche Changelog etwas, das auf Prod aus ist.
+
   **Keine Überschrift im Fragment.** Der Text wird zu *einem* Listenpunkt
   zusammengezogen; ein `### …` darin landet mitten im Satz. `--pruefen` weist
   das seit 09/2026 ab — davor stand #816 als „- ### Kurzfassungen: … Die
@@ -631,11 +653,19 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   Teilen-Update"), kein Halbsatz. Jedes Highlight bringt einen **kurzen Clip**
   mit, in dem man das Feature bedient sieht — aus einem Drehbuch in
   `web/frontend/release-clips/<version>.mjs`, aufgenommen und geschnitten von
-  `scripts/release_clips.py` (Ablage `web/frontend/public/neuigkeiten/<version>/`,
+  `scripts/release_clips.py` und seit 3.0.0 gerahmt mit Remotion (`web/clips/`:
+  Intro mit dem Weg zum Feature, Untertitel je Schritt, Lupe statt Zoom;
+  Ablage `web/frontend/public/neuigkeiten/<version>/`,
   immer hell; im Browser 16:9, in der App das ganze Telefon) — die
   Karte ist eine Bühne zum Blättern, keine Stichpunktliste. Verschickt wird von
   Hand im Admin-Panel unter *Neuigkeiten*, ein paar Tage nach dem Deploy:
   Ausliefern und Ankündigen sind zwei Entscheidungen.
+
+  **Die Karte hängt an ihren Schaltern** (`Release.schalter`, seit 10/2026).
+  Sie erscheint erst und lässt sich erst verschicken, wenn alle Features an
+  sind, die sie ankündigt. Anlass: Die 3.0.0-Karte lag fertig auf dev, als
+  2.11.0 nur Code nach Prod bringen sollte, und `pending_for` hätte sie jedem
+  Konto gezeigt, obwohl Lotti, Mein Viertel und die Ideen dort aus waren.
 
   Der zweite Befehl war bis 09/2026 Handarbeit und fiel deshalb dreimal aus:
   v1.14.0, v1.15.0 und v2.0.0 lagen als Tags bei GitHub, ohne dass ein Release
@@ -699,18 +729,24 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   anlaufen kann>"` tragen. Dann ist sein Schweigen der gewollte Zustand: keine
   Überfällig-Ampel im Panel, keine Mail aus `check_herzschlag.py`. Ohne dieses
   Feld hieße „Cron aus" entweder „jeden Tag eine Mail" oder „Eintrag löschen" —
-  und beim Wiedereinschalten fiele niemandem auf, dass er fehlt. **Pausiert
-  seit 20.09.2026: `check_cities`** (Städtevergleich noch nicht ausgeliefert,
-  stand aber für rund 70 % der Modellkosten). Wieder anschalten heißt: Zeile in
-  `kern/jobs.py` raus UND die crontab-Zeile auf dem Server wieder scharf
-  stellen.
+  und beim Wiedereinschalten fiele niemandem auf, dass er fehlt. Erster
+  Anwendungsfall war `check_cities` (pausiert 20.09. bis 10/2026, rund 70 % der
+  Modellkosten bei einem noch nicht ausgelieferten Feature). **Seit 3.0.0 läuft
+  er wieder — schlank:** werktags 10:15 nur Oldenburg (ohne Netz und Modell;
+  daraus entsteht „Anderswo" unter neuen Beschlüssen), sonntags 5 Uhr alles,
+  Urteile nur über Neues, EINE Kostengrenze für den ganzen Lauf
+  (`CITIES_MAX_USD`, Vorgabe 2 $). Die beiden crontab-Zeilen stehen im Kopf von
+  `scripts/check_cities.py`.
 - **Lange Cron-Läufe treten dem Deploy zur Seite** (`kern/stopp.py`). Der
   Deploy legt `data/.deploy-wartet`, bevor er irgendetwas anfasst; die
   Stapelschleifen sehen an ihrer nächsten Grenze nach, behalten das
   Geschriebene und hören auf. Anlass: `check_cities.py` lief am 20.09.2026
   vierzehn Stunden und ließ sechs Deploys hintereinander abbrechen. Wer eine
   neue lange Schleife baut, reicht `stopp` durch — und schreibt **stapelweise**,
-  nicht am Ende: Nur dann ist das Zur-Seite-Treten kostenlos.
+  nicht am Ende: Nur dann ist das Zur-Seite-Treten kostenlos. Seit 10/2026
+  trägt `stopp` auch die **Kostengrenze**: Jede Stufe mit Modellaufruf meldet
+  ihre Kosten über `stopp.ausgeben(…)`, sonst deckelt die Grenze sie nicht
+  (`tests/test_cities_cron_schlank.py` hält die Liste).
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische
   Nachbarn per **fastembed** (ONNX, kein torch) — bewusst **nicht** in
   `requirements.txt`, damit Deploy + Web-Service unberührt bleiben.

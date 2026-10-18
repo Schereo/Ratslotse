@@ -224,6 +224,257 @@
         "title": "AdminCouncilStats",
         "type": "object"
       },
+      "AdminDaumenRunter": {
+        "description": "Ein Daumen runter aus „Frag den Rat“ — ohne Konto, wie die Sackgassen.",
+        "properties": {
+          "answer_excerpt": {
+            "title": "Answer Excerpt",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason_kind": {
+            "title": "Reason Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shared": {
+            "description": "Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat.",
+            "properties": {
+              "answer": {
+                "title": "Answer",
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "$ref": "#/components/schemas/AdminFreigabeQuelle"
+                },
+                "title": "Sources",
+                "type": "array"
+              }
+            },
+            "required": [
+              "answer",
+              "sources"
+            ],
+            "title": "AdminFreigabe",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "created",
+          "question",
+          "answer_excerpt",
+          "reason",
+          "reason_kind",
+          "shared"
+        ],
+        "title": "AdminDaumenRunter",
+        "type": "object"
+      },
+      "AdminDistrictReport": {
+        "description": "Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "created_at"
+        ],
+        "title": "AdminDistrictReport",
+        "type": "object"
+      },
+      "AdminDistrictReportGroup": {
+        "description": "Alle Meldungen zu einem Vorhaben samt Entscheidung der Redaktion.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_at": {
+            "title": "Last At",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          },
+          "place_name": {
+            "title": "Place Name",
+            "type": "string"
+          },
+          "project": {
+            "description": "Das Vorhaben, wie es gerade auf der Tafel steht.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "stage": {
+                "title": "Stage",
+                "type": "string"
+              },
+              "what": {
+                "title": "What",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "what",
+              "stage"
+            ],
+            "title": "AdminDistrictReportProject",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "project_key": {
+            "title": "Project Key",
+            "type": "string"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/AdminDistrictReport"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "project_key",
+          "place_id",
+          "place_name",
+          "name",
+          "count",
+          "last_at",
+          "reports",
+          "verdict",
+          "note",
+          "decided_at",
+          "project"
+        ],
+        "title": "AdminDistrictReportGroup",
+        "type": "object"
+      },
+      "AdminDistrictReportProject": {
+        "description": "Das Vorhaben, wie es gerade auf der Tafel steht.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "what": {
+            "title": "What",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "what",
+          "stage"
+        ],
+        "title": "AdminDistrictReportProject",
+        "type": "object"
+      },
+      "AdminDistrictReports": {
+        "description": "``GET /api/admin/district-reports`` — die Meldungen aus „Mein Viertel\".",
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/AdminDistrictReportGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "groups",
+          "status",
+          "open_count"
+        ],
+        "title": "AdminDistrictReports",
+        "type": "object"
+      },
       "AdminEntityAlias": {
         "description": "Eine zusammengelegte Entität (``CouncilStore.list_entity_aliases``).\n\n``canonical_slug`` ist das AUFGELÖSTE Ziel: Eine Kette A→B→C wird bis zum\nEnde verfolgt, damit in der Liste nicht das leere Mittelglied steht.",
         "properties": {
@@ -516,6 +767,76 @@
           "n"
         ],
         "title": "AdminFehlerTag",
+        "type": "object"
+      },
+      "AdminFreigabe": {
+        "description": "Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat.",
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFreigabeQuelle"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "answer",
+          "sources"
+        ],
+        "title": "AdminFreigabe",
+        "type": "object"
+      },
+      "AdminFreigabeQuelle": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "session_date",
+          "committee",
+          "outcome"
+        ],
+        "title": "AdminFreigabeQuelle",
         "type": "object"
       },
       "AdminGrowth": {
@@ -1796,6 +2117,13 @@
             "title": "Sent Recipients",
             "type": "integer"
           },
+          "teaser": {
+            "title": "Teaser",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1809,6 +2137,7 @@
           "version",
           "date",
           "title",
+          "teaser",
           "highlights",
           "open_recipients",
           "sent_recipients"
@@ -3061,6 +3390,16 @@
                 "title": "Polls Close",
                 "type": "string"
               },
+              "prominent": {
+                "default": false,
+                "title": "Prominent",
+                "type": "boolean"
+              },
+              "result_status": {
+                "default": "vorlaeufig",
+                "title": "Result Status",
+                "type": "string"
+              },
               "short_title": {
                 "title": "Short Title",
                 "type": "string"
@@ -3127,6 +3466,16 @@
           },
           "polls_close": {
             "title": "Polls Close",
+            "type": "string"
+          },
+          "prominent": {
+            "default": false,
+            "title": "Prominent",
+            "type": "boolean"
+          },
+          "result_status": {
+            "default": "vorlaeufig",
+            "title": "Result Status",
             "type": "string"
           },
           "short_title": {
@@ -3753,6 +4102,21 @@
         "title": "BalanceItem",
         "type": "object"
       },
+      "Body_create_token_api_account_mcp_tokens_post": {
+        "properties": {
+          "label": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "title": "Body_create_token_api_account_mcp_tokens_post",
+        "type": "object"
+      },
       "Body_medien_ablegen_api_social_media__day__post": {
         "properties": {
           "dateien": {
@@ -3850,7 +4214,7 @@
             "type": "string"
           },
           "decision": {
-            "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus.",
+            "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am\nHauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die\nFraktionen der Änderungsanträge, die als eigene Teilabstimmung\n(``kind='subvote'``) desselben TOPs erfasst sind.",
             "properties": {
               "abstentions": {
                 "title": "Abstentions",
@@ -3865,6 +4229,10 @@
                   "number",
                   "null"
                 ]
+              },
+              "applicants_named": {
+                "title": "Applicants Named",
+                "type": "boolean"
               },
               "committee": {
                 "title": "Committee",
@@ -6044,6 +6412,36 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "CitiesFeedbackBody": {
+        "description": "Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.\n\nBis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in\nder URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die\nausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query\nund gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch\nhier.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "note": {
+            "maxLength": 500,
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verdict": {
+            "pattern": "^(right|wrong)$",
+            "title": "Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "title": "CitiesFeedbackBody",
+        "type": "object"
+      },
       "CityDebt": {
         "description": "Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,\n``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides\nin Euro und je Einwohner*in (Einwohner am 30.06. desselben Jahres).",
         "properties": {
@@ -6680,6 +7078,10 @@
         "properties": {
           "deleted": {
             "title": "Deleted",
+            "type": "integer"
+          },
+          "research_deleted": {
+            "title": "Research Deleted",
             "type": "integer"
           }
         },
@@ -7425,7 +7827,7 @@
         "type": "object"
       },
       "DecisionRow": {
-        "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus.",
+        "description": "Ein Beschluss aus ``CouncilStore._decision_row``.\n\nDie Felder sind die 27 Spalten von ``council_decisions`` plus das, was die\nAbfragen dazujoinen (``committee``, ``session_date``, ``protocol_url``) und\nwas der Router anreichert. Bis auf ``id`` ist alles ``NotRequired``: Welche\nSpalten dabei sind, hängt an der jeweiligen Abfrage — ein Pflichtfeld wäre\nhier ein 500, sobald ein Aufrufer schmaler selektiert.\n\n``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,\n``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am\nHauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die\nFraktionen der Änderungsanträge, die als eigene Teilabstimmung\n(``kind='subvote'``) desselben TOPs erfasst sind.",
         "properties": {
           "abstentions": {
             "title": "Abstentions",
@@ -7440,6 +7842,10 @@
               "number",
               "null"
             ]
+          },
+          "applicants_named": {
+            "title": "Applicants Named",
+            "type": "boolean"
           },
           "committee": {
             "title": "Committee",
@@ -7784,6 +8190,11 @@
               "integer",
               "null"
             ]
+          },
+          "from_offer": {
+            "default": false,
+            "title": "From Offer",
+            "type": "boolean"
           },
           "history": {
             "items": {
@@ -8631,6 +9042,20 @@
             "title": "Reported",
             "type": "boolean"
           },
+          "schedule": {
+            "title": "Schedule",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schedule_note": {
+            "title": "Schedule Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "stage": {
             "title": "Stage",
             "type": "string"
@@ -8641,6 +9066,13 @@
           },
           "when": {
             "title": "When",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "when_end": {
+            "title": "When End",
             "type": [
               "string",
               "null"
@@ -8755,6 +9187,7 @@
         "type": "object"
       },
       "DistrictProjectReportOut": {
+        "description": "``POST``/``DELETE /api/districts/projects/{id}/report``.\n\n``hidden`` ist seit 10/2026 die Entscheidung der Redaktion, nicht mehr die\nZahl der Meldungen — eine Meldung allein blendet nichts aus. Die Form\nbleibt, weil die ausgelieferte iOS-App sie decodiert.",
         "properties": {
           "hidden": {
             "title": "Hidden",
@@ -8767,6 +9200,10 @@
           "report_count": {
             "title": "Report Count",
             "type": "integer"
+          },
+          "reported": {
+            "title": "Reported",
+            "type": "boolean"
           }
         },
         "required": [
@@ -8786,6 +9223,13 @@
             },
             "title": "Closures",
             "type": "array"
+          },
+          "decisions_until": {
+            "title": "Decisions Until",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "investments": {
             "items": {
@@ -8857,6 +9301,13 @@
       "DistrictProjectsOverview": {
         "description": "``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,\ndazu die Stadtzahlen und die Vorhaben, die gerade herausstechen.",
         "properties": {
+          "decisions_until": {
+            "title": "Decisions Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "districts": {
             "items": {
               "$ref": "#/components/schemas/DistrictProjectsOverviewEntry"
@@ -8870,6 +9321,10 @@
             },
             "title": "Highlights",
             "type": "array"
+          },
+          "shared": {
+            "title": "Shared",
+            "type": "integer"
           },
           "stages": {
             "additionalProperties": {
@@ -10375,6 +10830,10 @@
             "title": "Previous Label",
             "type": "string"
           },
+          "result_status": {
+            "title": "Result Status",
+            "type": "string"
+          },
           "seats": {
             "title": "Seats",
             "type": "integer"
@@ -10405,7 +10864,8 @@
           "polls_close",
           "status",
           "presentation_url",
-          "previous_label"
+          "previous_label",
+          "result_status"
         ],
         "title": "ElectionInfo",
         "type": "object"
@@ -10447,6 +10907,10 @@
           },
           "polls_close": {
             "title": "Polls Close",
+            "type": "string"
+          },
+          "result_status": {
+            "title": "Result Status",
             "type": "string"
           },
           "short_title": {
@@ -10499,6 +10963,7 @@
           "path",
           "summary",
           "focus",
+          "result_status",
           "tipp_path",
           "tipp_locked",
           "top"
@@ -12699,7 +13164,7 @@
         "type": "object"
       },
       "GoalDecision": {
-        "description": "Ein Beschluss, der auf ein Nachhaltigkeitsziel einzahlt.\n\n``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere\naus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist\nje leer.",
+        "description": "Ein Beschluss, der auf ein Nachhaltigkeitsziel einzahlt.\n\n``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere\naus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist\nje leer — außer ``outcome``: Ein Beschluss ohne erkanntes Ergebnis (am\n09.10.2026 drei von 1.307) brachte /goal/klima_2035 und /goal/wohnungsbau\nbis dahin mit einem 500er zum Stehen.",
         "properties": {
           "committee": {
             "title": "Committee",
@@ -12719,7 +13184,10 @@
               "settled"
             ],
             "title": "Outcome",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "policy_field": {
             "title": "Policy Field",
@@ -13820,6 +14288,31 @@
         "title": "Idea",
         "type": "object"
       },
+      "IdeaDataStatus": {
+        "description": "Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ\" auf der Seite.\n\n**Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein\nDatum, liest man es als „bis dahin ist alles drin\"; das stimmt nur für\ndas früheste der Städte.",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lagging": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaLaggingCity"
+            },
+            "title": "Lagging",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "lagging"
+        ],
+        "title": "IdeaDataStatus",
+        "type": "object"
+      },
       "IdeaEvidence": {
         "description": "Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.",
         "properties": {
@@ -13924,6 +14417,9 @@
             "title": "Bodies",
             "type": "array"
           },
+          "data_status": {
+            "$ref": "#/components/schemas/IdeaDataStatus"
+          },
           "fields": {
             "items": {
               "$ref": "#/components/schemas/IdeaFieldSummary"
@@ -13934,9 +14430,34 @@
         },
         "required": [
           "fields",
+          "data_status",
           "bodies"
         ],
         "title": "IdeaFields",
+        "type": "object"
+      },
+      "IdeaLaggingCity": {
+        "description": "Eine Stadt, deren Bestand deutlich vor dem letzten Abgleich endet.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "latest_paper": {
+            "title": "Latest Paper",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body_id",
+          "city",
+          "latest_paper"
+        ],
+        "title": "IdeaLaggingCity",
         "type": "object"
       },
       "IdeaProtocol": {
@@ -15515,6 +16036,127 @@
           "recent_districts"
         ],
         "title": "MayorNight",
+        "type": "object"
+      },
+      "McpMessage": {
+        "description": "Eine JSON-RPC-2.0-Antwort des MCP-Servers (``POST /api/mcp``).\n\n``result`` bzw. ``error`` tragen, was die MCP-Spezifikation für die\njeweilige Methode vorsieht (``initialize``, ``tools/list``,\n``tools/call``, ``ping``) — deshalb ``dict[str, Any]`` und keine\nAufzählung: Den Vertrag hält die Spezifikation, nicht diese Datei.",
+        "properties": {
+          "error": {
+            "additionalProperties": true,
+            "title": "Error",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id"
+          },
+          "jsonrpc": {
+            "const": "2.0",
+            "title": "Jsonrpc",
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          }
+        },
+        "required": [
+          "jsonrpc",
+          "id"
+        ],
+        "title": "McpMessage",
+        "type": "object"
+      },
+      "McpToken": {
+        "description": "Ein persönlicher MCP-Schlüssel, wie ihn die Liste zeigt — ohne das\nGeheimnis selbst; ``prefix`` sind die ersten Zeichen zum Wiedererkennen.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_used": {
+            "title": "Last Used",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "prefix",
+          "created",
+          "last_used",
+          "calls"
+        ],
+        "title": "McpToken",
+        "type": "object"
+      },
+      "McpTokenCreated": {
+        "description": "``POST /api/account/mcp-tokens``: der neue Schlüssel. ``secret`` steht\nhier genau EINMAL — gespeichert ist nur sein Hash.",
+        "properties": {
+          "endpoint": {
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          },
+          "token": {
+            "$ref": "#/components/schemas/McpToken"
+          }
+        },
+        "required": [
+          "token",
+          "secret",
+          "endpoint"
+        ],
+        "title": "McpTokenCreated",
+        "type": "object"
+      },
+      "McpTokenList": {
+        "description": "``GET /api/account/mcp-tokens``: die Schlüssel des Kontos, die\nHöchstzahl und die Adresse, unter der der Server antwortet.",
+        "properties": {
+          "endpoint": {
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "max": {
+            "title": "Max",
+            "type": "integer"
+          },
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/McpToken"
+            },
+            "title": "Tokens",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tokens",
+          "max",
+          "endpoint"
+        ],
+        "title": "McpTokenList",
         "type": "object"
       },
       "MediaUpload": {
@@ -18831,6 +19473,14 @@
               "null"
             ]
           },
+          "answer_id": {
+            "maxLength": 64,
+            "title": "Answer Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "question": {
             "maxLength": 300,
             "minLength": 1,
@@ -18850,6 +19500,24 @@
               "null"
             ]
           },
+          "reason_kind": {
+            "enum": [
+              "wrong",
+              "incomplete",
+              "outdated",
+              "off_topic"
+            ],
+            "title": "Reason Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "share_answer": {
+            "default": false,
+            "title": "Share Answer",
+            "type": "boolean"
+          },
           "source": {
             "default": "ask",
             "pattern": "^(ask|lotti)$",
@@ -18865,7 +19533,7 @@
         "type": "object"
       },
       "QaShare": {
-        "description": "Ein geteilter Antwort-Schnappschuss (``Store.qa_share_get``).\n\nFestes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem\nBausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store\nsetzt die vier Listen dann auf leer und ``chart`` auf ``None``.",
+        "description": "Ein geteilter Antwort-Schnappschuss (``Store.qa_share_get``).\n\nFestes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem\nBausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store\nsetzt die vier Listen dann auf leer, ``chart`` und\n``rules_of_procedure`` auf ``None``.",
         "properties": {
           "answer": {
             "title": "Answer",
@@ -18919,6 +19587,14 @@
             "title": "Question",
             "type": "string"
           },
+          "rules_of_procedure": {
+            "additionalProperties": true,
+            "title": "Rules Of Procedure",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "sources": {
             "items": {
               "additionalProperties": true,
@@ -18937,7 +19613,8 @@
           "press_releases",
           "attachments",
           "parties",
-          "chart"
+          "chart",
+          "rules_of_procedure"
         ],
         "title": "QaShare",
         "type": "object"
@@ -20449,6 +21126,18 @@
       "ReleaseHighlight": {
         "description": "Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.",
         "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "aside": {
+            "title": "Aside",
+            "type": "boolean"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
           "media": {
             "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
             "properties": {
@@ -20459,6 +21148,20 @@
               "aspect": {
                 "title": "Aspect",
                 "type": "string"
+              },
+              "cover": {
+                "title": "Cover",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "duration": {
+                "title": "Duration",
+                "type": [
+                  "number",
+                  "null"
+                ]
               },
               "kind": {
                 "title": "Kind",
@@ -20481,11 +21184,76 @@
               "src",
               "alt",
               "aspect",
-              "poster"
+              "poster",
+              "cover",
+              "duration"
             ],
             "title": "ReleaseMedia",
             "type": [
               "object",
+              "null"
+            ]
+          },
+          "media_narrow": {
+            "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+            "properties": {
+              "alt": {
+                "title": "Alt",
+                "type": "string"
+              },
+              "aspect": {
+                "title": "Aspect",
+                "type": "string"
+              },
+              "cover": {
+                "title": "Cover",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "duration": {
+                "title": "Duration",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "poster": {
+                "title": "Poster",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "src": {
+                "title": "Src",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "src",
+              "alt",
+              "aspect",
+              "poster",
+              "cover",
+              "duration"
+            ],
+            "title": "ReleaseMedia",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -20506,7 +21274,12 @@
           "title",
           "text",
           "url",
-          "media"
+          "media",
+          "media_narrow",
+          "color",
+          "aside",
+          "tagline",
+          "action"
         ],
         "title": "ReleaseHighlight",
         "type": "object"
@@ -20521,6 +21294,20 @@
           "aspect": {
             "title": "Aspect",
             "type": "string"
+          },
+          "cover": {
+            "title": "Cover",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duration": {
+            "title": "Duration",
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "kind": {
             "title": "Kind",
@@ -20543,7 +21330,9 @@
           "src",
           "alt",
           "aspect",
-          "poster"
+          "poster",
+          "cover",
+          "duration"
         ],
         "title": "ReleaseMedia",
         "type": "object"
@@ -20561,6 +21350,13 @@
             "title": "Highlights",
             "type": "array"
           },
+          "teaser": {
+            "title": "Teaser",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -20574,6 +21370,7 @@
           "version",
           "date",
           "title",
+          "teaser",
           "highlights"
         ],
         "title": "ReleaseNews",
@@ -20818,6 +21615,7 @@
             "enum": [
               "user",
               "research_plus",
+              "mcp_access",
               "expert",
               "council_member",
               "admin"
@@ -20835,6 +21633,7 @@
                 "budget",
                 "mandate",
                 "premium_models",
+                "mcp",
                 "admin"
               ],
               "type": "string"
@@ -25015,6 +25814,7 @@
                 "budget",
                 "mandate",
                 "premium_models",
+                "mcp",
                 "admin"
               ],
               "type": "string"
@@ -25026,6 +25826,7 @@
             "enum": [
               "user",
               "research_plus",
+              "mcp_access",
               "expert",
               "council_member",
               "admin"
@@ -25038,6 +25839,7 @@
               "enum": [
                 "user",
                 "research_plus",
+                "mcp_access",
                 "expert",
                 "council_member",
                 "admin"
@@ -25338,6 +26140,34 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VerdictIn": {
+        "properties": {
+          "note": {
+            "maxLength": 300,
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verdict": {
+            "enum": [
+              "hidden",
+              "kept"
+            ],
+            "title": "Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "VerdictIn",
+        "type": "object"
+      },
       "VerifyCodeRequest": {
         "properties": {
           "code": {
@@ -25529,6 +26359,7 @@
             "enum": [
               "user",
               "research_plus",
+              "mcp_access",
               "expert",
               "council_member",
               "admin"
@@ -25542,6 +26373,7 @@
               "enum": [
                 "user",
                 "research_plus",
+                "mcp_access",
                 "expert",
                 "council_member",
                 "admin"
@@ -25826,7 +26658,7 @@
   "paths": {
     "/api/account": {
       "delete": {
-        "description": "Permanently delete the account and all data keyed to it (DSGVO right to\nerasure). Verlangt eine frische Bestätigung — eine Session allein (offener\nLaptop, gestohlenes Cookie) darf das Konto nicht zerstören können:\nPasswort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem\nfrischen Apple-Identity-Token (Re-Auth in der App, RL-1002).\n\nGeräumt werden **beide** Datenbanken. Zwischen ihnen gibt es keine\nFremdschlüssel, und in ``council.sqlite`` steht mit\n``committee_notifications``/``session_followups_sent``, welche Sitzungen\ndiesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss.",
+        "description": "Permanently delete the account and all data keyed to it (DSGVO right to\nerasure). Verlangt eine frische Bestätigung — eine Session allein (offener\nLaptop, gestohlenes Cookie) darf das Konto nicht zerstören können:\nPasswort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem\nfrischen Apple-Identity-Token (Re-Auth in der App, RL-1002).\n\nGeräumt werden **alle drei** Datenbanken. Zwischen ihnen gibt es keine\nFremdschlüssel, und in ``council.sqlite`` steht mit\n``committee_notifications``/``session_followups_sent``, welche Sitzungen\ndiesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss. In\n``cities.sqlite`` liegen die Rückmeldungen zu den Städte-Urteilen samt\nFreitext (``CITIES_USER_OWNED_TABLES``).",
         "operationId": "delete_account_api_account_delete",
         "requestBody": {
           "content": {
@@ -26046,6 +26878,111 @@
         ]
       }
     },
+    "/api/account/mcp-tokens": {
+      "get": {
+        "description": "Die MCP-Schlüssel dieses Kontos (ohne die Geheimnisse).",
+        "operationId": "list_tokens_api_account_mcp_tokens_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpTokenList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Tokens",
+        "tags": [
+          "mcp"
+        ]
+      },
+      "post": {
+        "description": "Einen neuen Schlüssel ausstellen. Das Geheimnis steht nur in DIESER\nAntwort; danach kennt der Server nur noch seinen Hash.",
+        "operationId": "create_token_api_account_mcp_tokens_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_token_api_account_mcp_tokens_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpTokenCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Token",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
+    "/api/account/mcp-tokens/{token_id}": {
+      "delete": {
+        "description": "Einen Schlüssel zurückziehen — er gilt ab sofort nicht mehr.",
+        "operationId": "delete_token_api_account_mcp_tokens__token_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "title": "Token Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Token",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
     "/api/account/notifications": {
       "get": {
         "description": "Was diese Person wovon hören will (Design 30a/E).\n\nLiefert die Anlässe mitsamt Beschriftung und Vorgabe, damit die Oberfläche\nkeine zweite Liste pflegen muss — eine vergessene Art fällt sonst erst auf,\nwenn sich jemand über eine unabschaltbare Meldung ärgert.",
@@ -26150,6 +27087,104 @@
           }
         },
         "summary": "Cities Stats",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/district-reports": {
+      "get": {
+        "description": "Die Meldungen aus „Mein Viertel\", je Vorhaben gebündelt.",
+        "operationId": "district_reports_api_admin_district_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "pattern": "^(open|decided|all)$",
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDistrictReports"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "District Reports",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/district-reports/{project_key}": {
+      "put": {
+        "description": "Entscheiden: ausblenden, stehen lassen — oder die Entscheidung zurücknehmen.",
+        "operationId": "decide_district_report_api_admin_district_reports__project_key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_key",
+            "required": true,
+            "schema": {
+              "title": "Project Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerdictIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide District Report",
         "tags": [
           "admin"
         ]
@@ -27444,6 +28479,54 @@
           }
         },
         "summary": "Stats Signups",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/thumbs-down": {
+      "get": {
+        "description": "Die Daumen runter aus „Frag den Rat“ — mit Grund und, wo jemand sie\nfreigegeben hat, der ganzen Antwort samt Quellen.\n\nBis 10/2026 kam ein 👎 nur als Frage und 500 Zeichen an, und die standen\nnirgends im Panel. Ohne Konto und ohne Gesprächs-id (wie die Liste der\nFragen ohne Antwort): Es geht darum, woran eine Antwort scheiterte.",
+        "operationId": "stats_thumbs_down_api_admin_stats_thumbs_down_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 90,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminDaumenRunter"
+                  },
+                  "title": "Response Stats Thumbs Down Api Admin Stats Thumbs Down Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Thumbs Down",
         "tags": [
           "admin"
         ]
@@ -29756,7 +30839,7 @@
     },
     "/api/council/cities/ideas/{paper_id}/feedback": {
       "post": {
-        "description": "„Stimmt\" oder „stimmt nicht\" zu einem Urteil — ein Klick an der Karte.\n\n**Warum das der billigste Maßstab ist, den es gibt.** Jedes Urteil des\nStädtevergleichs wird gegen vierzig Fälle gemessen, die EIN Mensch an\neinem Tag beurteilt hat — und in vier von sieben Pull Requests war genau\ndieser Maßstab der Fehler, nicht das Modell. Vierhundert Rückmeldungen von\nzwei Ratsmitgliedern wären ein besserer, und sie kosten niemanden Arbeit.\n\n**Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine\nRückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele\nStimmen), und der Maßstab wäre wieder wertlos.\n\nDie FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch\"\ngilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.",
+        "description": "„Stimmt\" oder „stimmt nicht\" zu einem Urteil — ein Klick an der Karte.\n\n**Warum das der billigste Maßstab ist, den es gibt.** Jedes Urteil des\nStädtevergleichs wird gegen vierzig Fälle gemessen, die EIN Mensch an\neinem Tag beurteilt hat — und in vier von sieben Pull Requests war genau\ndieser Maßstab der Fehler, nicht das Modell. Vierhundert Rückmeldungen von\nzwei Ratsmitgliedern wären ein besserer, und sie kosten niemanden Arbeit.\n\n**Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine\nRückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele\nStimmen), und der Maßstab wäre wieder wertlos. **Und nur aktiv**\n(``require_active``): ein gesperrtes oder unbestätigtes Konto schreibt\nhier so wenig wie anderswo; die Bremse zählt je Konto.\n\nDie FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch\"\ngilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.",
         "operationId": "cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post",
         "parameters": [
           {
@@ -29771,18 +30854,9 @@
           {
             "in": "query",
             "name": "verdict",
-            "required": true,
-            "schema": {
-              "title": "Verdict",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "note",
             "required": false,
             "schema": {
-              "title": "Note",
+              "title": "Verdict",
               "type": [
                 "string",
                 "null"
@@ -29790,6 +30864,45 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.\n\nBis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in\nder URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die\nausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query\nund gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch\nhier.",
+                "properties": {
+                  "id": {
+                    "title": "Id",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "note": {
+                    "maxLength": 500,
+                    "title": "Note",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "verdict": {
+                    "pattern": "^(right|wrong)$",
+                    "title": "Verdict",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "title": "CitiesFeedbackBody",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -29975,27 +31088,21 @@
           {
             "in": "query",
             "name": "id",
-            "required": true,
+            "required": false,
             "schema": {
               "title": "Id",
-              "type": "integer"
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           {
             "in": "query",
             "name": "verdict",
-            "required": true,
-            "schema": {
-              "title": "Verdict",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "note",
             "required": false,
             "schema": {
-              "title": "Note",
+              "title": "Verdict",
               "type": [
                 "string",
                 "null"
@@ -30003,6 +31110,45 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.\n\nBis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in\nder URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die\nausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query\nund gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch\nhier.",
+                "properties": {
+                  "id": {
+                    "title": "Id",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "note": {
+                    "maxLength": 500,
+                    "title": "Note",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "verdict": {
+                    "pattern": "^(right|wrong)$",
+                    "title": "Verdict",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "title": "CitiesFeedbackBody",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -30120,6 +31266,7 @@
     },
     "/api/council/conversations": {
       "delete": {
+        "description": "„Alle löschen\": Gespräche UND die Fragen und Berichte der gründlichen\nRecherche — die standen bis 10/2026 weiter mit dem Konto in\n``deep_research_jobs``, obwohl der Dialog „alles gelöscht\" sagte.",
         "operationId": "gespraeche_alle_loeschen_api_council_conversations_delete",
         "responses": {
           "200": {
@@ -32462,7 +33609,7 @@
     },
     "/api/districts/lookup": {
       "get": {
-        "description": "„Ich wohne in der …\": Straße, Platz oder Stadtteilname → Ortsbereich.\n\nStadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den\nBeschlüssen. Öffentlich wie die Auswahl-Seite selbst; kein Konto, kein\nSprachmodell, keine Speicherung der Eingabe.",
+        "description": "„Ich wohne in der …\": Straße, Platz oder Stadtteilname → Ortsbereich.\n\nStadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den\nBeschlüssen. Mit Konto wie die Auswahl-Seite selbst; kein Sprachmodell,\nkeine Speicherung der Eingabe.",
         "operationId": "district_lookup_api_districts_lookup_get",
         "parameters": [
           {
@@ -32528,8 +33675,49 @@
       }
     },
     "/api/districts/projects/{project_id}/report": {
+      "delete": {
+        "description": "Die eigene Meldung zurücknehmen — ein Fehltipp soll nicht stehen bleiben.\nEine Entscheidung der Redaktion bleibt davon unberührt.",
+        "operationId": "withdraw_project_report_api_districts_projects__project_id__report_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictProjectReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Withdraw Project Report",
+        "tags": [
+          "districts"
+        ]
+      },
       "post": {
-        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\nAb zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim\nKonto und geht mit dessen Löschung. Ein Konto, das sehr viele Vorhaben\nmeldet, zählt nicht mehr mit (``PROJECT_REPORTS_PER_ACCOUNT``).",
+        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\n\n**Eine Meldung blendet nichts aus.** Bis 10/2026 verschwand ein Vorhaben ab\nzwei Meldungen dauerhaft — zwei Konten konnten so jede Tafel leeren, und\nniemand sah die Meldungen. Jetzt landet sie in der Admin-Liste, die erste\nje Vorhaben zusätzlich als Mail, und ausgeblendet wird erst, wenn die\nRedaktion bestätigt. Die Meldung hängt am Konto und geht mit dessen\nLöschung (``COUNCIL_USER_OWNED_TABLES``).",
         "operationId": "report_project_api_districts_projects__project_id__report_post",
         "parameters": [
           {
@@ -32625,7 +33813,7 @@
     },
     "/api/feedback": {
       "post": {
-        "description": "Email the operator a piece of user feedback. Reply-to is the user's address so\nthe operator can answer directly. Best-effort: never surfaces email config to the user.",
+        "description": "Email the operator a piece of user feedback. Reply-to is the user's address so\nthe operator can answer directly. Best-effort: never surfaces email config to the user.\n\nGebremst je Konto (``feedback_limiter``): Jede Einreichung ist eine Mail.",
         "operationId": "submit_feedback_api_feedback_post",
         "requestBody": {
           "content": {
@@ -32765,6 +33953,50 @@
         "summary": "Quelle Pruefen",
         "tags": [
           "kommunalwahl"
+        ]
+      }
+    },
+    "/api/mcp": {
+      "post": {
+        "description": "Der MCP-Endpunkt (Streamable HTTP, zustandslos, nur Werkzeuge).\n\n**Öffentlich erreichbar, aber nur mit Schlüssel** — autorisiert über\n``Authorization: Bearer rlmcp_…``, ausdrücklich NICHT über das\nSitzungs-Cookie. Ohne Schalter ``mcp-server`` ein 404.\n\nSynchron wie die übrigen Endpunkte: Die Stores öffnen ihre\nSQLite-Verbindung im Threadpool, und eine Verbindung darf den Thread\nnicht wechseln.",
+        "operationId": "mcp_api_mcp_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Nachricht"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpMessage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "202": {
+            "description": "Benachrichtigung angenommen"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mcp",
+        "tags": [
+          "mcp"
         ]
       }
     },

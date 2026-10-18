@@ -37,14 +37,26 @@ export function anlagenNr(bracket: string): number {
 /** a, b, c … — mehr als 26 Anlagen liefert die Recherche nie (top_k = 6). */
 export const anlagenBuchstabe = (i: number) => String.fromCharCode(97 + (i % 26));
 
+/** Die Beleg-Nummer einer Anlage („[A<n>]"). Das Backend schickt sie seit
+ *  dem Wire-Umbau (02.09.2026) als `number`; gespeicherte Gespräche von davor
+ *  tragen `nr`, ganz alte gar nichts — dann zählt die Position, wie der
+ *  Server sie vergibt (1, 2, 3 …). Bis 10/2026 las das Web nur `nr` und fiel
+ *  damit IMMER auf die Position zurück. */
+export function anlageNummer(
+  a: { number?: number | null; nr?: number | null }, index: number,
+): number {
+  return a.number ?? a.nr ?? index + 1;
+}
+
 /** Anlagen-Fußnoten eines Antworttexts: nr → Buchstabe, in Reihenfolge des
  *  Auftauchens. Nur Marker, zu denen es wirklich eine Anlage gibt — ein
  *  halluziniertes „[A9]" bekommt keinen Buchstaben und wird beim Rendern
  *  ersatzlos geschluckt (wie die ungültigen [id] serverseitig). */
 export function anlagenBuchstaben(
-  text: string, attachments: { nr?: number | null }[] | undefined | null,
+  text: string,
+  attachments: { number?: number | null; nr?: number | null }[] | undefined | null,
 ): Map<number, string> {
-  const vorhanden = new Set((attachments ?? []).map((a, i) => a.nr ?? i + 1));
+  const vorhanden = new Set((attachments ?? []).map(anlageNummer));
   const map = new Map<number, string>();
   for (const g of text.matchAll(ANL_RE)) {
     const nr = anlagenNr(g[0]);

@@ -112,6 +112,13 @@ class Fragment:
     pfad: Path
     category: str  # Kürzel, immer ASCII (siehe KATEGORIEN)
     text: str       # einzeiliger Fließtext, ohne PR-Nummer
+    #: Schalter (``kern/features.py``), hinter denen das Beschriebene steht.
+    #: Solange nicht alle beim Schnitt freigegeben sind (``--freigeben``),
+    #: bleibt das Fragment liegen — und die Changelog-Seite zeigt es außerhalb
+    #: von dev nicht. Anlass: 2.11.0 brachte nur Code nach Prod; ohne diese
+    #: Zurückhaltung hätte der öffentliche Changelog Lotti, Mein Viertel und
+    #: Ideen aus anderen Städten beschrieben, die dort aus waren.
+    schalter: tuple[str, ...] = ()
 
     @property
     def heading(self) -> str:
@@ -123,6 +130,7 @@ class Ergebnis:
     text: str                                  # der neue Changelog
     fragmente: list[Fragment] = field(default_factory=list)
     ohne_nummer: list[Path] = field(default_factory=list)
+    zurueckgehalten: list[Fragment] = field(default_factory=list)
     geschrieben: bool = False
 
 
@@ -164,6 +172,16 @@ def lies_fragment(pfad: Path) -> Fragment:
             f"{pfad.name}: kategorie '{werte.get('kategorie', '')}' unbekannt (erlaubt: {erlaubt})"
         )
 
+    schalter = tuple(t.strip() for t in werte.get("schalter", "").split(",") if t.strip())
+    if schalter:
+        from kern.features import FEATURES  # noqa: PLC0415
+
+        unbekannt = [k for k in schalter if k not in FEATURES]
+        if unbekannt:
+            raise FragmentFehler(
+                f"{pfad.name}: schalter {', '.join(unbekannt)} gibt es nicht in kern/features.py "
+                "— ein Tippfehler hielte das Fragment für immer zurück.")
+
     erste = next((z for z in rumpf.splitlines() if z.strip()), "")
     if UEBERSCHRIFT.match(erste):
         raise FragmentFehler(
@@ -177,7 +195,7 @@ def lies_fragment(pfad: Path) -> Fragment:
     if not text:
         raise FragmentFehler(f"{pfad.name}: kein Text unter dem Frontmatter")
 
-    return Fragment(pfad=pfad, category=category, text=text)
+    return Fragment(pfad=pfad, category=category, text=text, schalter=schalter)
 
 
 def sammle_fragmente(verzeichnis: Path) -> list[Fragment]:
@@ -365,7 +383,7 @@ def app_version_setzen(version: str, wurzel: Path = WURZEL,
 
 
 def schnitt(version: str, tag_iso: str | None = None, wurzel: Path = WURZEL,
-            trocken: bool = False, nummern=None) -> Ergebnis:
+            trocken: bool = False, nummern=None, freigeben: tuple[str, ...] = ()) -> Ergebnis:
     """Den Versionsschnitt ausführen (bzw. bei ``trocken`` nur berechnen).
 
     ``nummern`` ist die Auflösung Fragment → PR-Nummer; per Default die
@@ -374,7 +392,14 @@ def schnitt(version: str, tag_iso: str | None = None, wurzel: Path = WURZEL,
     tag_iso = tag_iso or date.today().isoformat()
     finder = nummern or (lambda pfad: pr_nummer(pfad, wurzel))
 
-    fragmente = sammle_fragmente(wurzel / "changelog.d")
+    alle = sammle_fragmente(wurzel / "changelog.d")
+    # Was hinter einem nicht freigegebenen Schalter steht, bleibt liegen und
+    # kommt mit dem Schnitt, der den Schalter freigibt.
+    fragmente = [f for f in alle if all(k in freigeben for k in f.schalter)]
+    zurueck = [f for f in alle if f not in fragmente]
+    for f in zurueck:
+        fehlt = ", ".join(k for k in f.schalter if k not in freigeben)
+        print(f"  ~ {f.pfad.name}: zurückgehalten (Schalter {fehlt})", file=sys.stderr)
     eintraege: dict[str, list[str]] = {}
     ohne_nummer: list[Path] = []
     for fragment in fragmente:
@@ -389,14 +414,16 @@ def schnitt(version: str, tag_iso: str | None = None, wurzel: Path = WURZEL,
     text = einsetzen(pfad.read_text(encoding="utf-8"), eintraege, version, tag_iso)
 
     if trocken:
-        return Ergebnis(text=text, fragmente=fragmente, ohne_nummer=ohne_nummer)
+        return Ergebnis(text=text, fragmente=fragmente, ohne_nummer=ohne_nummer,
+                        zurueckgehalten=zurueck)
 
     pfad.write_text(text, encoding="utf-8")
     for fragment in fragmente:
         fragment.pfad.unlink()
     for datei in app_version_setzen(version, wurzel):
         print(f"  App-Version nachgezogen: {datei} → {version}")
-    return Ergebnis(text=text, fragmente=fragmente, ohne_nummer=ohne_nummer, geschrieben=True)
+    return Ergebnis(text=text, fragmente=fragmente, ohne_nummer=ohne_nummer,
+                    zurueckgehalten=zurueck, geschrieben=True)
 
 
 # ---------------------------------------------------------------------------
@@ -642,6 +669,9 @@ def main() -> int:
     p.add_argument("version", nargs="?", help="neue Version, z. B. 1.13.0")
     p.add_argument("--date", help="Datum des Schnitts (Default: heute)")
     p.add_argument("--trocken", action="store_true", help="Ergebnis zeigen, nichts schreiben")
+    p.add_argument("--freigeben", default="",
+                   help="Schalter, die mit dieser Version auf Prod angehen (kommagetrennt); "
+                        "Fragmente hinter anderen Schaltern bleiben liegen")
     p.add_argument("--pruefen", action="store_true",
                    help="nur prüfen, ob alle Fragmente wohlgeformt sind")
     p.add_argument("--release", action="store_true",
@@ -685,7 +715,8 @@ def main() -> int:
         return 0
 
     try:
-        result = schnitt(args.version, args.date, trocken=args.trocken)
+        freigeben = tuple(t.strip() for t in args.freigeben.split(",") if t.strip())
+        result = schnitt(args.version, args.date, trocken=args.trocken, freigeben=freigeben)
     except (FragmentFehler, ValueError) as fehler:
         print(f"FEHLER: {fehler}", file=sys.stderr)
         return 1
@@ -695,7 +726,8 @@ def main() -> int:
         # die 900 Zeilen Historie darunter interessieren beim Probelauf nicht.
         teile = result.text.split("\n## [")
         print("\n## [".join(teile[:3]))
-        print(f"\n— Probelauf: {len(result.fragmente)} Fragment(e), nichts geschrieben.",
+        print(f"\n— Probelauf: {len(result.fragmente)} Fragment(e), "
+              f"{len(result.zurueckgehalten)} zurückgehalten, nichts geschrieben.",
               file=sys.stderr)
     else:
         print(f"{len(result.fragmente)} Fragment(e) in Version {args.version} übernommen "

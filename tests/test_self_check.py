@@ -263,6 +263,53 @@ def test_die_tabelle_wird_mit_dem_konto_geloescht(tmp_path):
     s, uid = _konten_store(tmp_path, 1)
     s.assistant_check_speichern(uid, route="/haushalt", verdict="good", stage="model",
                                 categories=[], reasons=[], model="m", duration_ms=1,
-                                cost_usd=None)
+                                cost_usd=None, question="Wie viele Schulden?", answer="eins")
     s.delete_web_user(uid)
     assert s._conn.execute("SELECT COUNT(*) FROM assistant_checks").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize("einwilligung", [0, None])
+def test_ohne_einwilligung_traegt_das_urteil_kein_konto(tmp_path, einwilligung):
+    """Release-Prüfung 03.10.2026: Die Kennung stand an JEDEM Urteil, auch
+    ohne Einwilligung. Gebraucht wird sie nur für die Löschung gespeicherter
+    Texte — ohne Text ist das Urteil über eine Seite niemandes Datum."""
+    s, uid = _konten_store(tmp_path, einwilligung)
+    s.assistant_check_speichern(uid, route="/haushalt", verdict="poor", stage="model",
+                                categories=[], reasons=[], model="m", duration_ms=1,
+                                cost_usd=None, question="Wie viele Schulden?", answer="eins")
+    r = s._conn.execute("SELECT user_id, question, verdict FROM assistant_checks").fetchone()
+    assert r["user_id"] is None and r["question"] is None and r["verdict"] == "poor"
+
+
+def test_alte_tabelle_wird_umgebaut_und_verliert_die_kennung_ohne_text(tmp_path):
+    """Die Migration: `NOT NULL` ab, Kennung weg, wo kein Text steht — und
+    beim zweiten Öffnen passiert nichts mehr."""
+    import sqlite3
+
+    from kern.store import Store
+    pfad = tmp_path / "alt.sqlite"
+    Store(str(pfad)).close()
+    roh = sqlite3.connect(pfad)
+    roh.executescript("""
+        DROP TABLE assistant_checks;
+        CREATE TABLE assistant_checks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            created TEXT NOT NULL, surface TEXT NOT NULL DEFAULT 'lotti', route TEXT NOT NULL,
+            verdict TEXT NOT NULL, stage TEXT NOT NULL, categories TEXT NOT NULL DEFAULT '[]',
+            reasons TEXT NOT NULL DEFAULT '[]', model TEXT, duration_ms INTEGER,
+            cost_usd REAL, question TEXT, answer TEXT);
+        INSERT INTO assistant_checks (user_id, created, route, verdict, stage)
+            VALUES (5, '2026-09-30', '/haushalt', 'good', 'model');
+        INSERT INTO assistant_checks (user_id, created, route, verdict, stage, question, answer)
+            VALUES (6, '2026-09-30', '/haushalt', 'poor', 'model', 'Frage?', 'Antwort.');
+    """)
+    roh.commit()
+    roh.close()
+    for _ in range(2):
+        s = Store(str(pfad))
+        zeilen = s._conn.execute(
+            "SELECT user_id, question FROM assistant_checks ORDER BY id").fetchall()
+        assert [(z["user_id"], z["question"]) for z in zeilen] == [(None, None), (6, "Frage?")]
+        notnull = {r[1]: r[3] for r in s._conn.execute("PRAGMA table_info(assistant_checks)")}
+        assert notnull["user_id"] == 0
+        s.close()

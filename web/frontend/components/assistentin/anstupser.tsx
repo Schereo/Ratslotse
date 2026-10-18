@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
 import { apiUrl, authHeaders } from "@/lib/api";
+import { sendAndForget } from "@/lib/send-and-forget";
 import {
   darfAnstupsen, leseStand, merkeStand, nachAnzeige, nachJa, nachNein,
 } from "@/lib/anstupser";
@@ -71,13 +72,13 @@ export function merkeBenutzung(): void {
 
 function melde(kind: string): void {
   // Fire and forget: Ein Zähler darf nichts kosten, auch keine Fehlermeldung.
-  void fetch(apiUrl("/council/assistant/event"), {
+  sendAndForget(apiUrl("/council/assistant/event"), {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ kind }),
     keepalive: true,
-  }).catch(() => { /* egal */ });
+  });
 }
 
 export function Anstupser({ erlaubt, onJa }: {
@@ -166,7 +167,7 @@ export function Anstupser({ erlaubt, onJa }: {
       role="status"
       data-lotti-anstupser
       className={cn(
-        "fixed right-4 z-50 w-[min(16rem,calc(100vw-2rem))] rounded-2xl border border-border",
+        "fixed right-4 z-[45] w-[min(16rem,calc(100vw-2rem))] rounded-2xl border border-border",
         "bg-card p-3 shadow-lifted print:hidden",
         "animate-in fade-in-0 slide-in-from-bottom-2 duration-buehne ease-out-strong",
         // Über dem Knopf, der seinerseits über Tab-Leiste und Composer sitzt.

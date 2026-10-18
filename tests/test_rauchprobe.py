@@ -7,6 +7,7 @@ nur jedes Mal denselben Fehler, bis jemand sie abschaltet.
 """
 from __future__ import annotations
 
+import functools
 import json
 import sys
 from pathlib import Path
@@ -32,11 +33,24 @@ def _alle_muster() -> list[str]:
     return [*_ohne_konto(), *MIT_KONTO]
 
 
+@functools.cache
+def _mit_optionalem_konto() -> frozenset[str]:
+    """GET-Pfade hinter ``optional_user``: ohne Konto erreichbar, mit Konto
+    persönlicher. Der Schutz-Wächter zählt sie als geschützt, deshalb stehen
+    sie nicht in OEFFENTLICH — für die Probe ohne Konto taugen sie trotzdem
+    (``/api/wahlen`` etwa)."""
+    from tests.test_endpunkt_schutz import _endpunkte
+
+    return frozenset(p for m, p, namen in _endpunkte()
+            if m == "get" and "optional_user" in namen
+            and not namen & {"require_active", "require_admin", "get_current_user"})
+
+
 @pytest.mark.parametrize("pfad", _ohne_konto())
 def test_jede_probe_zeigt_auf_einen_endpunkt_ohne_konto(pfad):
     assert pfad in SPEC["paths"], f"{pfad} steht nicht im Vertrag"
     assert "get" in SPEC["paths"][pfad], f"{pfad} ist kein GET"
-    assert ("get", pfad) in OEFFENTLICH, (
+    assert ("get", pfad) in OEFFENTLICH or pfad in _mit_optionalem_konto(), (
         f"{pfad} verlangt ein Konto — die Rauchprobe hat keins und bekäme "
         "jedes Mal 401."
     )
@@ -228,7 +242,13 @@ def _probe_mit_fehlern(fehlerpfade: set[str]) -> int:
     from scripts import rauchprobe
 
     def fake_hole(basis, pfad, zeitlimit, token=None):
-        return (500, {}) if pfad in fehlerpfade else (200, {})
+        if pfad in fehlerpfade:
+            return (500, {})
+        # Alle Schalter an, wie auf dev — sonst erwartete die Probe für die
+        # Endpunkte dahinter ein 404 (`HINTER_SCHALTER`).
+        if pfad == "/api/app-config":
+            return (200, {"features": list(rauchprobe.HINTER_SCHALTER.values())})
+        return (200, {})
 
     with patch.object(rauchprobe, "hole", fake_hole), \
          patch.object(rauchprobe, "token_bauen", return_value=(None, "Test")), \
@@ -256,3 +276,56 @@ def test_nur_rand_kaputt_laesst_den_deploy_durch():
 def test_kern_schlaegt_rand():
     """Ist beides rot, zählt der Kern: abbrechen."""
     assert _probe_mit_fehlern({"/api/health", "/api/council/qa-beispiele"}) == 1
+
+
+def test_endpunkt_hinter_schalter_erwartet_404_wenn_er_aus_ist():
+    """Die Vorprobe im Deploy läuft ohne die Umgebung der Unit, also ohne
+    ``FEATURE_FLAGS``: Ein Endpunkt hinter einem Schalter antwortet dort 404.
+    Das ist dann richtig — und wird geprüft, nicht als Ausfall gezählt (bis
+    08.10.2026 brach daran jeder Dev-Deploy vor dem Neustart ab)."""
+    from scripts.rauchprobe import HINTER_SCHALTER, PROBEN, SCHALTER_AN, erwarteter_kode, schalter_aus
+
+    for pfad in HINTER_SCHALTER:
+        assert pfad in PROBEN, f"{pfad}: steht in HINTER_SCHALTER, wird aber nicht geprobt"
+        # app-config liefert die Schalter — es muss VORHER geprobt werden.
+        assert PROBEN.index("/api/app-config") < PROBEN.index(pfad)
+    alt = set(SCHALTER_AN)
+    try:
+        SCHALTER_AN.clear()
+        assert schalter_aus("/api/wahlen") == "wahlabend"
+        assert erwarteter_kode("/api/wahlen") == 404
+        SCHALTER_AN.add("wahlabend")
+        assert schalter_aus("/api/wahlen") is None
+        assert erwarteter_kode("/api/wahlen") == 200
+    finally:
+        SCHALTER_AN.clear()
+        SCHALTER_AN.update(alt)
+
+
+def test_jeder_schalter_der_probe_steht_in_der_registry():
+    """Ein Tippfehler hier hieße: Schalter nie an, Probe prüft nie die Daten."""
+    from kern import features
+    from scripts.rauchprobe import HINTER_SCHALTER
+
+    for schalter in HINTER_SCHALTER.values():
+        assert schalter in features.FEATURES, schalter
+
+
+def test_vorprobe_ohne_schalter_ist_gruen():
+    """Genau der Fall vom 08.10.2026: Die Vorprobe läuft ohne FEATURE_FLAGS,
+    `/api/wahlen` antwortet 404 — die Probe muss das als Sperre werten."""
+    from unittest.mock import patch
+
+    from scripts import rauchprobe
+
+    def fake_hole(basis, pfad, zeitlimit, token=None):
+        if pfad == "/api/app-config":
+            return (200, {"features": []})
+        if pfad in rauchprobe.HINTER_SCHALTER:
+            return (404, {"detail": "noch nicht freigeschaltet"})
+        return (200, {})
+
+    with patch.object(rauchprobe, "hole", fake_hole), \
+         patch.object(rauchprobe, "token_bauen", return_value=(None, "Test")), \
+         patch.object(rauchprobe.Vertrag, "antwortschema", return_value=None):
+        assert rauchprobe.main(["--basis", "http://127.0.0.1:1"]) == 0

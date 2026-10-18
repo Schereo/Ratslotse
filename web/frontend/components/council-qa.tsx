@@ -31,10 +31,12 @@ import type { QaOrtPin } from "@/components/qa-orte-karte";
 
 // 5a/I-10: Leaflet kennt kein SSR — die Mini-Karte kommt nur im Browser.
 const QaOrteKarte = dynamic(() => import("@/components/qa-orte-karte"), { ssr: false });
+import { limitArt } from "@/lib/frage-limit";
 import { QaSource } from "@/lib/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { chipEinloesen } from "@/lib/chip-frage";
 import { api, apiUrl, authHeaders } from "@/lib/api";
+import { sendAndForget } from "@/lib/send-and-forget";
 // Der Vertrag statt einer abgetippten Form: ein umbenanntes Feld bricht
 // damit hier den Build statt still eine leere Kachel zu zeigen.
 import { type ApiAntwort } from "@/lib/vertrag";
@@ -49,13 +51,15 @@ import { Button, Input, toast } from "@/components/ui";
 // hängen, gehören der Navigation — deshalb kommen sie von dort und werden
 // hier nicht nachgebaut (s. components/nav.tsx).
 import { KOPFLEISTE_HOEHE, TABLEISTE_HOEHE } from "@/components/nav";
-import { decisionHref } from "@/lib/routes";
+import { decisionHref, themaHref } from "@/lib/routes";
 import { PrintButton } from "@/components/print-button";
 import { AkteZeitleiste, type AkteZeitleisteDaten } from "@/components/akte-zeitleiste";
 import { KeyFactsCard, type KeyFacts } from "@/components/key-facts";
+import { ResearchOffer, type ResearchOfferData } from "@/components/research-offer";
 import { pfad, cn } from "@/lib/utils";
 import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
+import { useLaengerAls } from "@/lib/use-laenger";
 import {
   berichtAbschnitte, RechercheFehlerKarte, RechercheFortschritt, RechercheGestoppt,
   RechercheHinweisKarte, RechercheLimitKarte, RechercheToggle, Sprungmarken, WieEsWeitergeht,
@@ -68,9 +72,10 @@ import {
   TagesordnungBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
   type QaGrafik, type SitzungsInfo,
+  RulesOfProcedureBlock, type RulesOfProcedureCard,
 } from "@/components/qa-bausteine";
 import {
-  anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
+  anlageNummer, anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
 } from "@/lib/qa-belege";
 
 /** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
@@ -148,6 +153,12 @@ function waehleBeispiele(frisch: string[], count: number): string[] {
 
 // Die Schritt-Texte stehen seit 22.09.2026 in `lib/qa-schritte.ts` — Lottis
 // Fenster zeigt dieselben Rahmen, und zwei Fassungen liefen auseinander.
+
+/** Der Server hat geantwortet — aber mit „ging nicht" (Fehler-Rahmen im
+ *  Strom oder ein Status ohne Strom). Getrennt vom Netzfehler, weil beides
+ *  verschiedene Sätze braucht. */
+class ServerAntwortFehler extends Error {}
+
 type Step = AskSchritt;
 const STEP_LABELS = ASK_SCHRITTE;
 
@@ -200,7 +211,14 @@ type Turn = {
   debates: DebattenHinweis[];
   cited: number[];
   followups: string[];
-  fehler?: "netz" | "limit" | null;
+  /** `netz`: Die Antwort kam nicht an (Funkloch, Abbruch). `server`: Sie
+   *  kam an, sagte aber „ging nicht" — Modell- oder Serverfehler. Bis
+   *  10/2026 hieß beides „Die Verbindung ist abgebrochen", und wer das las,
+   *  prüfte sein WLAN. */
+  fehler?: "netz" | "server" | "limit" | "tag" | null;
+  /** Der Satz des Servers zum Tageskontingent (`qa.KONTINGENT_TEXT`) — er
+   *  nennt die Zahl, die das Web nicht doppelt pflegen soll. */
+  fehlerText?: string;
   abgebrochen?: boolean;
   /** Die Frage nannte keinen Gegenstand — Lotti hat zurückgefragt, statt zu
    *  antworten, und dafür GAR NICHT gesucht. Ohne diese Marke sähe der Turn
@@ -253,6 +271,11 @@ type Turn = {
   timeline?: AkteZeitleisteDaten | null;
   /** Die Eckdaten dazu: Abstimmung, Betrag, Stand, nächster Termin. */
   key_facts?: KeyFacts | null;
+  /** Ein langer Vorgang — die Gründliche Recherche anbieten (Backend entscheidet). */
+  research_offer?: ResearchOfferData | null;
+  /** Die Paragrafen der Geschäftsordnung, aus denen eine Verfahrensfrage
+   *  beantwortet wurde — fertig vom Backend (council/rules_of_procedure.py). */
+  rules_of_procedure?: RulesOfProcedureCard | null;
 };
 
 /** Antwort vorlesen (5a/I-12, nur die TTS-Hälfte): SpeechSynthesis mit
@@ -827,7 +850,6 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     const text = question.trim();
     if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
-    reportBadgeEvent("frage"); // RL-U12: Erste Frage
     const unterbrochen = loading;
     abortRef.current?.abort();
     const ctrl = new AbortController();
@@ -869,16 +891,27 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       });
       if (!res.ok || !res.body) {
         if (res.status === 429) {
+          // Zwei Bremsen, ein Status (`lib/frage-limit.ts`): Beim
+          // Tageskontingent hülfe „Nochmal versuchen" erst morgen.
+          let detail: unknown = null;
+          try { detail = (await res.json())?.detail; } catch { /* egal */ }
           // Wie im Netz-Fehlerpfad: Die Frage gehört zurück ins Eingabefeld,
           // damit nach der Verschnaufpause ein Neuversuch möglich ist (F8).
-          patchLast({ fehler: "limit" });
+          patchLast(limitArt(detail) === "tag"
+            ? { fehler: "tag", fehlerText: String(detail) } : { fehler: "limit" });
           setQ(text);
           return;
         }
         let msg = "Frage fehlgeschlagen.";
         try { const b = await res.json(); if (b?.detail) msg = typeof b.detail === "string" ? b.detail : msg; } catch { /* ignore */ }
-        throw new Error(msg);
+        throw new ServerAntwortFehler(msg);
       }
+      // Kam das Ende an? Ohne `done` ist ein Strom gerissen — auch wenn er
+      // schon Text gebracht hat. Bis 10/2026 sah ein angefangener Text dann
+      // aus wie eine fertige Antwort, und ohne Text stand unter der Frage nichts.
+      let fertig = false;
+      let gefeiert = false;
+      let textDa = false;
       // Das Zerlegen des Stroms steht in `lib/sse.ts` — eine Stelle für alle
       // Leser (seit Lottis Fenster sind es zwei). Was ein Rahmen BEDEUTET,
       // bleibt hier: Das weiß nur diese Ansicht.
@@ -898,14 +931,23 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             records_state: (msg.records_state as Turn["records_state"]) ?? null,
             steckbriefe: (msg.steckbriefe as Turn["steckbriefe"]) ?? [],
             chart: (msg.chart as QaGrafik | null) ?? null,
+            rules_of_procedure: (msg.rules_of_procedure as RulesOfProcedureCard | null) ?? null,
           });
-          else if (msg.type === "token") patchLast((t) => ({ answer: t.answer + (msg.text as string) }));
+          else if (msg.type === "token") {
+            // Das Abzeichen „Erste Frage" erst, wenn eine Antwort kommt — es
+            // feierte bis 10/2026 auch die gescheiterte (RL-U12).
+            if (!gefeiert) { gefeiert = true; reportBadgeEvent("frage"); }
+            textDa = true;
+            patchLast((t) => ({ answer: t.answer + (msg.text as string) }));
+          }
           // Riss der LLM-Stream mitten in der Antwort, generiert das Backend
           // einmal komplett neu und ersetzt den Torso (Befund 10.08.).
-          else if (msg.type === "replace") patchLast({ answer: (msg.text as string) ?? "" });
+          else if (msg.type === "replace") { textDa = Boolean(msg.text); patchLast({ answer: (msg.text as string) ?? "" }); }
           else if (msg.type === "abbruch") patchLast({ abgebrochen: true });
           else if (msg.type === "suggestions") patchLast({ followups: (msg.questions as string[]) ?? [] });
           else if (msg.type === "done") {
+            fertig = true;
+            if (!gefeiert) { gefeiert = true; reportBadgeEvent("frage"); }
             patchLast({ cited: (msg.cited as number[]) ?? [],
                         // Der Stand aus dem sources-Ereignis ist über ALLE
                         // Kandidaten gerechnet, dieser hier über die
@@ -923,6 +965,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         ...(msg.key_facts !== undefined
                           ? { key_facts: (msg.key_facts as KeyFacts | null) ?? null }
                           : {}),
+                        ...(msg.research_offer !== undefined
+                          ? { research_offer: (msg.research_offer as ResearchOfferData | null) ?? null }
+                          : {}),
                         answerId: (msg.answer_id as string | null | undefined) ?? null,
                         unclear: Boolean(msg.unclear) });
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
@@ -931,14 +976,22 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             if (msg.conversation_id != null) setGespraechId(msg.conversation_id as number);
             else if ("conversation_id" in msg) setGespraechId(null);
           }
-          else if (msg.type === "error") throw new Error((msg.message as string) ?? "Frage fehlgeschlagen.");
+          else if (msg.type === "error") throw new ServerAntwortFehler((msg.message as string) ?? "Frage fehlgeschlagen.");
       });
+      if (!fertig && !ctrl.signal.aborted) {
+        // Gerissen. Mit Text: stehen lassen, aber ehrlich als abgebrochen
+        // (wie beim Stopp). Ohne Text: Fehler-Turn, Frage zurück ins Feld.
+        if (textDa) patchLast({ abgebrochen: true });
+        else { patchLast({ fehler: "netz" }); setQ(text); }
+      }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       // Fehler-Turn: Die Frage ist nicht verloren — zurück ins Eingabefeld.
-      patchLast({ fehler: "netz" });
+      // KEIN Toast mehr dazu: Die Karte im Gespräch sagt es schon, und zwei
+      // Meldungen, von denen eine das Falsche sagte, verwirrten (RI-04).
+      if (e instanceof ServerAntwortFehler) patchLast({ fehler: "server", fehlerText: e.message });
+      else patchLast({ fehler: "netz" });
       setQ(text);
-      toast.error(e instanceof Error ? e.message : "Frage fehlgeschlagen.");
     } finally {
       if (abortRef.current === ctrl) {
         setLoading(false);
@@ -1025,9 +1078,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // während die App im Hintergrund liegt, bliebe er sonst als „gesehen"
     // markiert und der nächste Besuch fände ein leeres Gespräch vor.
     if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-    void fetch(apiUrl(`/council/deep-research/${jobId}/seen`), {
+    sendAndForget(apiUrl(`/council/deep-research/${jobId}/seen`), {
       method: "POST", credentials: "include", headers: authHeaders(),
-    }).catch(() => {});
+    });
   };
 
   /** Endzustand aus der DB holen (Job nicht mehr im Speicher, Neustart …). */
@@ -1115,6 +1168,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
     const lauf = async () => {
       let beendet = false;
+      // Wachsende Pause statt fester 2 s, und eine Grenze: Bis 10/2026
+      // verband sich die Schleife bei 401/403/404 alle 2 s neu — ohne Ende,
+      // auch im Hintergrund-Tab, und die Fortschrittskarte stand für immer.
+      let pause = 2_000;
+      let letzterKontakt = Date.now();
       while (!beendet && !ctrl.signal.aborted) {
         try {
           const ab = deepAb.current.get(jobId) ?? 0;
@@ -1125,26 +1183,42 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             await ladeDeepSnapshot(jobId, turnKey);
             return;
           }
+          // Abgemeldet, kein Zugriff, Job weg: Neu verbinden ändert daran
+          // nichts. Die Fehlerkarte bietet „Fortsetzen" und „Schnelle Frage".
+          if (res.status === 401 || res.status === 403 || res.status === 404) {
+            patchTurn(turnKey, { deepStatus: "fehler" });
+            return;
+          }
           if (!res.ok || !res.body) throw new Error(String(res.status));
           // Derselbe Leser wie bei der schnellen Frage (lib/sse.ts); die
           // Keepalive-Zeilen dieses Stroms (`: …`) fallen dort als
           // ungültiges JSON heraus.
           await leseSseStrom(res.body, (msg) => {
+            letzterKontakt = Date.now();
+            pause = 2_000;
             deepAb.current.set(jobId, (deepAb.current.get(jobId) ?? 0) + 1);
             if (verarbeite(msg)) beendet = true;
           });
         } catch (e) {
           if ((e as Error)?.name === "AbortError") return;
         }
-        // Riss ohne Terminal-Event: kurz durchatmen, dann ab letztem Stand
-        // neu verbinden — der Server recherchiert währenddessen weiter.
-        if (!beendet && !ctrl.signal.aborted) await new Promise((r) => setTimeout(r, 2000));
+        if (beendet || ctrl.signal.aborted) break;
+        // Fünf Minuten ohne ein Lebenszeichen: aufgeben, statt endlos zu
+        // klopfen. Der Server recherchiert weiter; „Fortsetzen" holt ihn.
+        if (Date.now() - letzterKontakt > 5 * 60_000) {
+          patchTurn(turnKey, { deepStatus: "fehler" });
+          return;
+        }
+        // Riss ohne Terminal-Event: durchatmen, dann ab letztem Stand neu
+        // verbinden — 2, 4, 8 … höchstens 30 s.
+        await new Promise((r) => setTimeout(r, pause));
+        pause = Math.min(pause * 2, 30_000);
       }
     };
     void lauf();
   };
 
-  const askDeep = async (question: string) => {
+  const askDeep = async (question: string, ausAngebot = false) => {
     const text = question.trim();
     if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch { /* egal */ }
@@ -1165,7 +1239,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ question: text, conversation_id: gespraechId,
-                               history: baueVerlauf() }),
+                               history: baueVerlauf(),
+                               // Nur für die Statistik: aus dem Angebot unter
+                               // einer Antwort gestartet (research_offer).
+                               ...(ausAngebot ? { from_offer: true } : {}) }),
       });
       if (res.status === 429) {
         setTurns((ts) => ts.filter((t) => t.key !== key));
@@ -1480,7 +1557,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         answer_id?: string; deep_job_id?: string;
         documents_read?: number; period?: string; premium_model?: boolean;
         chart?: QaGrafik | null; timeline?: AkteZeitleisteDaten | null;
-        key_facts?: KeyFacts | null } | null };
+        key_facts?: KeyFacts | null;
+        rules_of_procedure?: RulesOfProcedureCard | null } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
         key: naechsterKey(),
         question: t.question, answer: t.answer, qtype: null, mode: null,
@@ -1493,6 +1571,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         chart: t.sources?.chart ?? null,
         timeline: t.sources?.timeline ?? null,
         key_facts: t.sources?.key_facts ?? null,
+        rules_of_procedure: t.sources?.rules_of_procedure ?? null,
         records_state: t.sources?.records_state ?? null,
         cited: t.sources?.cited ?? [],
         // Die kondensierte Frage aus dem Snapshot, sonst die Originalfrage.
@@ -1896,7 +1975,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             )}
             <div className="mt-4 w-full max-w-md text-left">
             {/* Design 15a: EIN Funkel im Kicker statt eines je Zeile. */}
-            <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+            <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               <Sparkles className="h-3 w-3 text-signal" aria-hidden />
               Zum Beispiel
             </p>
@@ -1970,6 +2049,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 onDeepFortsetzen={() => { deepVerwerfen(t); void askDeep(t.question); }}
                 onDeepSchnell={() => { deepVerwerfen(t); void ask(t.question); }}
                 onGruendlich={() => void askDeep(t.context || t.question)}
+                // Aufgebraucht heißt: kein Angebot, das dann mit „ab morgen“ scheitert.
+                onRechercheAngebot={deepFrei === 0 ? undefined
+                  : () => void askDeep(t.context || t.question, true)}
+                rechercheFrei={deepFrei}
               />
             ))}
           </div>
@@ -2104,7 +2187,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             <RechercheLimitKarte onSchnelleFrage={() => { setDeepLimit(false); void ask(q); }} />
           )}
           {rechercheModus && deepHinweis && !deepLimit && <RechercheHinweisKarte frei={deepFrei} />}
-          {letzterFehler === "limit" ? (
+          {letzterFehler === "tag" ? (
+            <div role="status" className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+              <p className="font-medium text-foreground">Für heute ist Schluss</p>
+              <p className="mt-0.5 text-[12.5px] text-muted-foreground">{letzter?.fehlerText}</p>
+            </div>
+          ) : letzterFehler === "limit" ? (
             <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
               <p className="font-medium text-foreground">Kurze Verschnaufpause</p>
               <p className="mt-0.5 text-[12.5px] text-muted-foreground">
@@ -2243,7 +2331,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
 
 /* ------------------------------------------------------------------------- */
 
-function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen, onFrageStellen, onDeepStop, onDeepTeilbericht, onDeepVerwerfen, onDeepFortsetzen, onDeepSchnell, onGruendlich }: {
+function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJump, onRetry, onEigeneFrage, onDazuFragen, onFrageStellen, onDeepStop, onDeepTeilbericht, onDeepVerwerfen, onDeepFortsetzen, onDeepSchnell, onGruendlich, onRechercheAngebot, rechercheFrei }: {
   turn: Turn; turnIdx: number; istLetzter: boolean; loading: boolean;
   step: Step | null; word: string; flashId: number | null;
   onJump: (id: number) => void; onRetry: () => void; onEigeneFrage: () => void;
@@ -2253,6 +2341,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   onDeepFortsetzen?: () => void; onDeepSchnell?: () => void;
   /** Dieselbe Frage gründlich nachrecherchieren — der Ausweg bei dünner Beleglage. */
   onGruendlich?: () => void;
+  onRechercheAngebot?: () => void;
+  rechercheFrei?: number | null;
 }) {
   const [showAll, setShowAll] = useState(false);
   // Ältere Turns beruhigen (Design 2⑤): Belege hinter der Kompaktzeile.
@@ -2278,6 +2368,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
 
   const hatAntwort = turn.answer.length > 0;
+  // 20 s ohne ein Wort: sagen, dass es ungewöhnlich lange dauert (FS-12).
+  const dauertLaenger = useLaengerAls(Boolean(loading && !hatAntwort && !turn.fehler), 20_000);
   // RG-10: Recherche-Turns haben einen eigenen Lebenszyklus neben `loading`
   // (das nur den /ask-Stream spiegelt) — der Job läuft server-seitig weiter.
   const deepLaeuft = Boolean(turn.research && turn.deepStatus === "laeuft");
@@ -2297,7 +2389,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   // Vorschlags-Chips, die der Server mitschickt.
   const nichtsGefunden = !beschaeftigt && hatAntwort && turn.sources.length === 0
     && turn.press_releases.length === 0 && (turn.debates?.length ?? 0) === 0
-    && (turn.attachments?.length ?? 0) === 0 && !turn.fehler && !turn.unclear;
+    && (turn.attachments?.length ?? 0) === 0 && !turn.rules_of_procedure
+    && !turn.fehler && !turn.unclear;
   // Einspaltig zeigt der jüngste Turn seine Belege inline; sobald die
   // Belege-Spalte danebensteht (`breit`, also auch iPad quer), übernimmt sie —
   // sonst stünden dieselben Quellen zweimal auf dem Schirm. Ältere Turns
@@ -2306,6 +2399,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   // eine quer gedruckte Seite ist breiter als 1024 px — ohne das fiele der
   // Ausdruck genau um seine Quellen kürzer aus.
   const belegeInline = istLetzter ? "breit:hidden print:flex" : aufgeklappt ? "" : "hidden";
+  // Eine Regelfrage, beantwortet aus der Geschäftsordnung allein: Darunter
+  // gehören weder „Daraus ein Thema machen" (ein Thema „Redezeit" meldet sich
+  // nie) noch nachgeladene Ratsdebatten — die Suche danach fände Beiträge zu
+  // irgendetwas, das zufällig „reden" heißt.
+  const nurGeschaeftsordnung = !!turn.rules_of_procedure && zitierte.length === 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -2356,14 +2454,16 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
       )}
 
       {/* Fehler-Turn (RG ⑧). */}
-      {turn.fehler === "netz" && (
+      {(turn.fehler === "netz" || turn.fehler === "server") && (
         <div className="flex items-start gap-3 rounded-xl border border-signal/30 bg-signal/5 p-4">
           <Mascot pose="confused" decorative className="h-12 w-12 shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">Das hat nicht geklappt.</p>
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-              Die Verbindung ist abgebrochen. Deine Frage ist nicht verloren —
-              sie steht wieder im Eingabefeld.
+              {turn.fehler === "server"
+                ? "Ratslotse konnte gerade keine Antwort schreiben — das liegt an uns, nicht an deinem Netz."
+                : "Die Verbindung ist abgebrochen."}{" "}
+              Deine Frage ist nicht verloren — sie steht wieder im Eingabefeld.
             </p>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <button type="button" onClick={onRetry}
@@ -2381,7 +2481,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
       {/* Laufender Schritt, solange noch kein Text streamt (RG ②). */}
       {loading && !hatAntwort && !turn.fehler && (
-        <div role="status" className="flex items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
           {/* `denkt` ist die gebackene Ladeanzeige — läuft, bis Text streamt. */}
           <Mascot regung="denkt" className="h-12 w-12 shrink-0" />
           <div className="min-w-0">
@@ -2390,6 +2490,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               {step ? STEP_LABELS[step] : "Wird vorbereitet"}…
             </span>
             <span className="hidden text-xs text-muted-foreground/70 sm:inline">{word} …</span>
+            {dauertLaenger && (
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Das dauert länger als üblich. Du kannst warten oder mit „Stopp" abbrechen.
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -2505,6 +2610,15 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             <AkteZeitleiste daten={turn.timeline} idToNum={idToNum} onJump={(id) => setPeekId(id)} />
           )}
 
+          {/* Ein langer Vorgang: die Gründliche Recherche anbieten — direkt
+              unter dem Verlauf, auf den sie sich bezieht. Nur am jüngsten
+              Turn: Nach einer Anschlussfrage wäre das Angebot veraltet. */}
+          {!beschaeftigt && istLetzter && turn.research_offer && onRechercheAngebot
+            && !turn.fehler && !turn.abgebrochen && (
+            <ResearchOffer offer={turn.research_offer} frei={rechercheFrei}
+              onStart={onRechercheAngebot} />
+          )}
+
           {!beschaeftigt && <Baustein turn={turn} idToNum={idToNum} onJump={(id) => setPeekId(id)} />}
 
           {/* RG-10 (8b): „Wie es weitergeht" — künftige Beratungsstationen
@@ -2540,15 +2654,18 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
 
           {/* Kompaktzeile älterer Turns (Design 2⑤). */}
           {/* turn.debates defensiv (?.) — Fast-Refresh/alte States kennen das Feld nicht. */}
-          {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.press_releases.length > 0 || (turn.debates?.length ?? 0) > 0 || (turn.attachments?.length ?? 0) > 0) && (
+          {!istLetzter && !aufgeklappt && (turn.sources.length > 0 || turn.press_releases.length > 0 || (turn.debates?.length ?? 0) > 0 || (turn.attachments?.length ?? 0) > 0 || !!turn.rules_of_procedure) && (
             <button type="button" onClick={() => setAufgeklappt(true)}
               className="flex w-fit items-center gap-1.5 rounded-full border border-border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
               <ChevronDown className="h-3 w-3" aria-hidden />
-              Quellen ({turn.sources.length}){turn.press_releases.length > 0 ? ` · Presse (${turn.press_releases.length})` : ""}{(turn.debates?.length ?? 0) > 0 ? ` · Debatten (${turn.debates.length})` : ""}{(turn.attachments?.length ?? 0) > 0 ? ` · Anlagen (${turn.attachments?.length})` : ""}
+              Quellen ({turn.sources.length}){turn.press_releases.length > 0 ? ` · Presse (${turn.press_releases.length})` : ""}{(turn.debates?.length ?? 0) > 0 ? ` · Debatten (${turn.debates.length})` : ""}{(turn.attachments?.length ?? 0) > 0 ? ` · Anlagen (${turn.attachments?.length})` : ""}{turn.rules_of_procedure ? " · Geschäftsordnung" : ""}
             </button>
           )}
 
           <div className={cn("flex flex-col gap-3.5", belegeInline)}>
+            {/* Für eine Verfahrensfrage IST die Geschäftsordnung der Beleg —
+                deshalb vor den Beschlüssen, die nur Beispiele sind. */}
+            {turn.rules_of_procedure && <RulesOfProcedureBlock card={turn.rules_of_procedure} />}
             {turn.sources.length > 0 && (
               <QuellenBlock turn={turn} turnIdx={turnIdx} idToNum={idToNum} zitierte={zitierte}
                 showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix={`qa-source-${turnIdx}`}
@@ -2558,7 +2675,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               <DebattenBaustein question={turn.context || turn.question}
                 beschlussIds={turn.sources.slice(0, 40).map((q) => q.id)}
                 debates={turn.debates ?? []}
-                nachladen={!beschaeftigt && !!turn.answer && !turn.fehler && !turn.abgebrochen} />
+                nachladen={!beschaeftigt && !!turn.answer && !turn.fehler && !turn.abgebrochen
+                  && !nurGeschaeftsordnung} />
             )}
             {turn.research && (turn.debates?.length ?? 0) > 0 && (
               <DebattenBaustein question={turn.question} beschlussIds={[]}
@@ -2591,7 +2709,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               Gremium; für die gibt es keinen Anlass, sie je wieder
               anzusprechen. */}
           {!beschaeftigt && hatAntwort && !turn.fehler && !nichtsGefunden
-            && !turn.unclear && (
+            && !turn.unclear && !nurGeschaeftsordnung && (
             <ThemenBruecke frage={turn.question} />
           )}
 
@@ -2609,13 +2727,15 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               <PrintButton iconOnly />
               {turn.answer && !turn.fehler && <VorlesenKnopf text={turn.answer} />}
               {turn.answer && !turn.fehler
-                && <FeedbackDaumen question={turn.question} answer={turn.answer} />}
+                && <FeedbackDaumen question={turn.question} answer={turn.answer} answerId={turn.answerId} />}
               <span role="status" className="min-w-0 basis-full text-hinweis text-muted-foreground sm:flex-1 sm:basis-auto sm:text-right">
                 {/* 5a/I-02 bzw. RG-10: ehrlich sagen, worauf die Antwort fußt. */}
                 {turn.unclear
                   ? null
                   : turn.research && turn.documents_read
                   ? <>Bericht aus {turn.documents_read} gelesenen Dokumenten{turn.period ? ` (${turn.period})` : ""}{zitierte.length > 0 ? `, ${zitierte.length} zitiert` : ""} — kann unvollständig sein. Quellen prüfen.</>
+                  : zitierte.length === 0 && turn.rules_of_procedure
+                  ? <>Automatische Antwort aus der Geschäftsordnung des Rates — kann unvollständig sein. Wortlaut prüfen.</>
                   : <>Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.</>}
               </span>
             </div>
@@ -2920,10 +3040,12 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen, fertig = true }: {
   const anlBuchstaben = useAnlagenBuchstaben(turn);
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
   if (turn.sources.length === 0 && turn.press_releases.length === 0
-      && (turn.debates?.length ?? 0) === 0 && (turn.attachments?.length ?? 0) === 0) return null;
+      && (turn.debates?.length ?? 0) === 0 && (turn.attachments?.length ?? 0) === 0
+      && !turn.rules_of_procedure) return null;
   // Scroll und Höhe übernimmt seit Design 4a die Karten-Hülle im QaTab.
   return (
     <div className="flex flex-col gap-3.5">
+      {turn.rules_of_procedure && <RulesOfProcedureBlock card={turn.rules_of_procedure} />}
       {turn.sources.length > 0 && (
         <QuellenBlock turn={turn} turnIdx={-1} idToNum={idToNum} zitierte={zitierte}
           showAll={showAll} setShowAll={setShowAll} flashId={flashId} ankerPrefix="qa-col"
@@ -2933,7 +3055,7 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen, fertig = true }: {
         beschlussIds={turn.sources.slice(0, 40).map((q) => q.id)}
         debates={turn.debates ?? []}
         nachladen={fertig && !turn.research && !turn.unclear && !!turn.answer && !turn.fehler
-          && !turn.abgebrochen} />
+          && !turn.abgebrochen && !(turn.rules_of_procedure && zitierte.length === 0)} />
       {(turn.attachments?.length ?? 0) > 0 && (
         <AnlagenBlock attachments={turn.attachments ?? []} buchstaben={anlBuchstaben}
           ankerPrefix="qa-anlage-col" />
@@ -3072,8 +3194,9 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
  *  Antwort sehen (Tims Befund). Das Token wird je Turn nur einmal erzeugt.
  *
  *  Der Snapshot nimmt seit dem Bausteine-Nachtrag auch Debatten, Presse,
- *  Anlagen und die verdichteten Fraktions-Positionen mit: Wer den Link
- *  öffnete, sah vorher deutlich weniger als die Person, die ihn teilte. */
+ *  Anlagen, die verdichteten Fraktions-Positionen und die Karte „Aus der
+ *  Geschäftsordnung" mit: Wer den Link öffnete, sah vorher deutlich weniger
+ *  als die Person, die ihn teilte. */
 function TeilenKnopf({ turn }: { turn: Turn }) {
   const tokenRef = useRef<string | null>(null);
   const [laedt, setLaedt] = useState(false);
@@ -3235,7 +3358,9 @@ function SteckbriefBaustein({ steckbriefe }: {
                     {auf ? "Weniger" : "Mehr"}
                   </button>
                 )}
-                <Link href={`/council/entity?slug=${encodeURIComponent(s.slug)}`}
+                {/* Bis 10/2026 „/council/entity?slug=…" — die Seite gab es nie,
+                    der Link lief in eine 404. Gefunden von tests/test_interne_links.py. */}
+                <Link href={themaHref(s.slug)}
                   className="text-meta font-medium text-primary hover:underline">
                   Alle Beschlüsse dazu
                 </Link>

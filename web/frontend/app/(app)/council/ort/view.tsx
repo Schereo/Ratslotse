@@ -8,6 +8,8 @@ import { DecisionLinkCard } from "@/components/decision-ui";
 import { ShareButton } from "@/components/share-button";
 import { Button, DetailSkeleton } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
+import { istNichtGefunden } from "@/lib/api";
+import { AbrufFehler } from "@/components/abruf-fehler";
 import { fragenHref, ortHref } from "@/lib/routes";
 import type { CouncilDecision } from "@/lib/types";
 import type { OrtsbereichEntry } from "@/lib/districts";
@@ -23,10 +25,16 @@ interface PlaceDetail {
 function PlaceInner() {
   const id = useSearchParams().get("id");
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
-  const { data, loading } = useFetch<PlaceDetail>(id ? `/council/place/${encodeURIComponent(id)}` : null);
+  const { data, loading, error, refetch } = useFetch<PlaceDetail>(id ? `/council/place/${encodeURIComponent(id)}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
 
   if (loading) return <DetailSkeleton />;
-  if (!data) notFound();
+  if (!data) {
+    if (error && !istNichtGefunden(error)) return <AbrufFehler error={error} onRetry={refetch} was="Dieser Ort" />;
+    notFound();
+  }
   const place = data.place;
 
   return (
@@ -129,6 +137,14 @@ function PlaceInner() {
               field={decision.policy_field} amount={decision.amount_eur}
               sub={evidence ? `Ortsbeleg: ${evidence}` : decision.summary} />;
           })}
+          {/* Die Liste kommt gekappt (die jüngsten 50), der Kopf zählt alle.
+              Ohne diesen Hinweis endete sie bei 50 von 166 einfach (RI-10). */}
+          {data.decision_count > data.decisions.length && (
+            <Link href={`/council?tab=decisions&district=${encodeURIComponent(place.id)}`}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border px-3 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-muted">
+              Die {data.decisions.length} jüngsten von {data.decision_count} — alle in der Beschlusssuche →
+            </Link>
+          )}
         </div>
       ) : (
         <p className="mt-3 text-sm text-muted-foreground">Noch kein Beschluss ist diesem Ort sicher zugeordnet.</p>

@@ -1,9 +1,7 @@
 """FastAPI application entry point."""
 from __future__ import annotations
 
-import html
 import logging
-import time
 import warnings
 from contextlib import asynccontextmanager
 
@@ -13,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
+from starlette.concurrency import run_in_threadpool
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from pathlib import Path
@@ -20,7 +19,7 @@ from pathlib import Path
 from .antworten import Health
 from .config import get_settings
 from .schemas import AppConfigOut, AppElectionOut
-from .routers import today, account, admin, auth, auth_apple, bookmarks, council, districts, feedback, kommunalwahl, news, onboarding, push, quiz, social, topics, badges, calendar, tippspiel, wahlabend
+from .routers import today, account, admin, auth, auth_apple, bookmarks, council, districts, feedback, kommunalwahl, news, onboarding, push, quiz, social, topics, badges, calendar, mcp, tippspiel, wahlabend
 from .session import KeinCacheMitSitzung, SitzungsVerlaengerung
 
 logger = logging.getLogger("ratslotse.web.main")
@@ -126,6 +125,12 @@ def _deep_jobs_aufraeumen() -> None:
             n = store.deep_jobs_verwaiste_beenden()
             if n:
                 logger.warning("%d verwaiste Recherche-Jobs als Fehler markiert", n)
+            # Speicherfrist der Recherchen ohne Einwilligung — täglich macht
+            # das scripts/speicherfristen.py, hier zusätzlich bei jedem Start,
+            # damit die Frist auch ohne eingerichtete crontab-Zeile greift.
+            n = store.deep_jobs_frist_abgelaufen()
+            if n:
+                logger.info("%d Recherchen nach Ablauf der Speicherfrist gelöscht", n)
         finally:
             store.close()
     except Exception:  # noqa: BLE001 — Aufräumen darf den Start nie verhindern
@@ -180,6 +185,7 @@ app.include_router(auth_apple.router)
 app.include_router(account.router)
 app.include_router(council.router)
 app.include_router(districts.router)
+app.include_router(districts.admin_router)
 app.include_router(bookmarks.router)
 app.include_router(today.router)
 app.include_router(topics.router)
@@ -200,6 +206,7 @@ app.include_router(social.router)
 app.include_router(calendar.router)
 app.include_router(wahlabend.router)
 app.include_router(tippspiel.router)
+app.include_router(mcp.router)
 
 # Die abgelegten Social-Bilder öffentlich ausliefern — Instagram holt sie
 # selbst, also darf hier kein Token davor.
@@ -214,28 +221,6 @@ if _medien:
     _pfad = Path(_medien)
     _pfad.mkdir(parents=True, exist_ok=True)
     app.mount("/api/social-media", StaticFiles(directory=_pfad), name="social-media")
-
-
-#: Platzhalter-Route für Fehler, die vor jedem Router fielen.
-_OHNE_ROUTE = "(vor dem Routing)"
-
-#: Höchstens so viele Fehler-Mails je Stunde und Prozess. Neue Fehlerarten
-#: sind begrenzt (die Routen stehen im Code), aber eine Kaskade nach einem
-#: Deploy soll das Postfach und das gemeinsame Resend-Kontingent — an dem auch
-#: Bestätigungs- und Passwort-Mails hängen — nicht leerräumen. Gezählt wird
-#: trotzdem alles; das Panel zeigt jede Gruppe.
-_MAILS_JE_STUNDE = 10
-_mail_zeiten: list[float] = []
-
-
-def _meldung_erlaubt() -> bool:
-    jetzt = time.monotonic()
-    while _mail_zeiten and jetzt - _mail_zeiten[0] > 3600:
-        _mail_zeiten.pop(0)
-    if len(_mail_zeiten) >= _MAILS_JE_STUNDE:
-        return False
-    _mail_zeiten.append(jetzt)
-    return True
 
 
 @app.exception_handler(Exception)
@@ -268,45 +253,17 @@ async def unbehandelter_fehler(request: Request, exc: Exception) -> JSONResponse
     """
     logger.exception("Unbehandelter Fehler bei %s %s", request.method, request.url.path)
 
-    hintergrund = None
-    try:
-        from kern import fehler as fehlerhilfe
-        from kern.store import Store
+    # Der Weg selbst steht in `fehlersammler.py` — dort benutzt ihn auch ein
+    # Strom, dessen Fehler diesen Handler nie erreicht (Lottis Fenster).
+    from .fehlersammler import sammeln
 
-        route = getattr(request.scope.get("route"), "path", None)
-        # Ohne getroffene Route ist der Pfad das, was der Aufrufer geschickt hat
-        # — fremde Eingabe. Er gehört weder in die Mail noch in den
-        # Fingerabdruck: Sonst ergäbe jeder neue Pfad eine neue Gruppe und
-        # damit eine neue Mail, und ein Fehler VOR dem Routing (die
-        # Sitzungsverlängerung läuft vor jedem Router) ließe sich beliebig oft
-        # auslösen (Sicherheitsprüfung 10/2026, F2).
-        pfad = request.url.path if route else _OHNE_ROUTE
-        daten = fehlerhilfe.aufbereiten(exc, request.method, route or _OHNE_ROUTE, pfad)
-
-        store = Store(settings.ratslotse_db)
-        try:
-            neu = store.merke_request_fehler(daten)
-        finally:
-            store.close()
-
-        if neu and _meldung_erlaubt():
-            from kern.alerts import notify_admin
-
-            # Alles maskieren, was aus der Ausnahme kommt: Die Meldung einer
-            # Ausnahme trägt oft Eingabe weiter (ein Wert, der nicht passte),
-            # und `notify_admin` setzt den Text als HTML in die Mail.
-            esc = html.escape
-            text = (f"<b>{esc(daten['exc_type'])}</b> bei "
-                    f"<code>{esc(daten['method'])} {esc(daten['route'])}</code>\n\n"
-                    f"{esc(daten['message'])}\n\n<code>{esc(daten['trace'])}</code>")
-            hintergrund = BackgroundTask(
-                notify_admin, text,
-                betreff="Ratslotse – neuer Fehler im Web",
-                fusszeile="Erste Begegnung mit dieser Fehlerart. "
-                          "Weitere Vorkommen zählt das Admin-Panel mit, ohne "
-                          "erneut zu melden.")
-    except Exception:  # noqa: BLE001 — der Sammler bleibt folgenlos
-        logger.exception("Fehler ließ sich nicht sammeln")
+    route = getattr(request.scope.get("route"), "path", None)
+    # Im Threadpool, nicht auf der Event-Loop: `sammeln` öffnet den Store und
+    # schreibt. Hält ein Cron gerade die Schreibsperre, wartet das bis zu 5 s
+    # (busy_timeout) — gemessen am 09.10.2026 stand in dieser Zeit der GANZE
+    # Dienst, auch jeder Strom, weil der Handler `async` ist.
+    melden = await run_in_threadpool(sammeln, exc, request.method, route, request.url.path)
+    hintergrund = BackgroundTask(melden) if melden else None
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -394,13 +351,14 @@ def _naechste_wahl() -> AppElectionOut | None:
     Wirft nie: Ohne ``/api/app-config`` startet die native App gar nicht, und
     eine unlesbare Registry darf das nicht auslösen.
     """
-    from .election import elections
+    from .election import archive, elections
 
     try:
         wahl = elections.focus()
         return AppElectionOut(slug=wahl.slug, short_title=wahl.short_title, date=wahl.date,
                               polls_close=wahl.polls_close.isoformat(), kind=wahl.kind,
-                              path=elections.path_of(wahl))
+                              path=elections.path_of(wahl), prominent=elections.prominent(wahl),
+                              result_status=archive.result_status(wahl))
     except Exception:
         logging.getLogger("ratslotse.web").exception("app-config: Wahl nicht lesbar")
         return None

@@ -356,6 +356,18 @@ ART = {"decision": "beschluss", "speech": "debatte", "press": "presse",
        "template": "vorlage", "agenda_item": "beratung", "deliberation": "station"}
 
 
+def _stadtteile() -> set[str]:
+    """Die Stadtteile, klein geschrieben. Ein Stadtteil ist kein Vorgang:
+    „Ofenerdiek“ hängt nur an 14 Akten — unter ``ORT_KLEBT_BIS`` — und klebte
+    die Starkregen-Förderung und das Bürgerhaus an den Bahnübergang (Akte
+    37 → 21 Beschlüsse, die Gold-Belege blieben alle; 03.10.2026)."""
+    try:
+        from council import geo
+        return {s.lower() for s in geo.stadtteile()}
+    except Exception:  # noqa: BLE001 — ohne Liste klebt, was bisher klebte
+        return set()
+
+
 def akte_von(store: Any, decision_ids: list[int]) -> dict:
     """Die Akte zu einem Einstieg (Beschlüsse, die die Suche gefunden hat).
 
@@ -368,8 +380,10 @@ def akte_von(store: Any, decision_ids: list[int]) -> dict:
     aus (Art, id) mit den Arten aus ``ART``.
     """
     start = store.matters_of_decisions(list(decision_ids))
+    viertel = _stadtteile()
     entities = [e for e in store.entities_of_matters(sorted(start))
-                if not (e["kind"] == "place" and (e["n"] or 0) > ORT_KLEBT_BIS)]
+                if not (e["kind"] == "place" and ((e["n"] or 0) > ORT_KLEBT_BIS
+                                                  or str(e.get("name") or "").lower() in viertel))]
     slugs = sorted(e["slug"] for e in entities)
     matters = start | store.matters_of_entities(slugs)
     items = {(ART[t], i) for t, i in store.items_of_matters(sorted(matters)) if t in ART}

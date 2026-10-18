@@ -27,6 +27,7 @@ import re
 
 from council import geo, places
 from council.bplan import MAPSERVER, _datum, _session
+from kern.proxy import proxies_for
 
 EBENE = 11
 QUELLE_LABEL = "Stadt Oldenburg, Geoportal"
@@ -95,8 +96,14 @@ def normiere(feature: dict) -> dict | None:
 
 def fetch_closures(timeout: int = 60) -> list[dict]:
     """Alle aktuellen Sperrungen der Stadt, normiert. Wirft bei Netzfehlern —
-    der Aufrufer lässt dann den Bestand stehen."""
-    r = _session.get(f"{MAPSERVER}/{EBENE}/query", params={
+    der Aufrufer lässt dann den Bestand stehen.
+
+    Über den Umweg (``kern/proxy.py``) wie die Bebauungsplan-Umringe: Das
+    Geoportal sperrt Hetzner-Adressen. Ohne ``proxies`` lief der Abruf auf
+    Prod in einen Fehler, den ``check_presse`` bis 10/2026 mit ``pass``
+    verschluckte — die Sperrungen-Ebene blieb dort leer, und niemand wusste
+    es."""
+    r = _session.get(f"{MAPSERVER}/{EBENE}/query", proxies=proxies_for(MAPSERVER), params={
         "where": "1=1", "outFields": "*", "outSR": "4326", "f": "geojson", "resultRecordCount": 1000,
     }, timeout=timeout)
     r.raise_for_status()

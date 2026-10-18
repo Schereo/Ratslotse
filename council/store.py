@@ -9,10 +9,12 @@ from pathlib import Path
 import sqlite3
 from council import geld as _geld
 
+from .applicants import applicants_named
 from .parties import order_key, parties_for_faction
 from council.kontaktdaten import maskieren
 from kern.dbfehler import tabelle_fehlt
 from kern.maintenance import require_database_available
+from kern.einrichtung import einmal_einrichten
 from council.store_helfer import _dedup_keys, _int_or_none
 from council.store_fundstuecke import FundstueckeMixin
 from council.store_bplan import BplanMixin
@@ -21,6 +23,7 @@ from council.store_orte import OrteMixin
 from council.store_personen import PersonenMixin
 from council.store_presse import PresseMixin
 from council.store_pruefung import PruefungMixin
+from council.store_rueckmeldungen import RueckmeldungenMixin
 from council.store_quiz import QuizMixin
 # Schema, Migration und die Vokabulare des Umbenennungs-Umbaus liegen seit
 # 09/2026 in `store_schema.py` — `_migrate` allein war 2.458 Zeilen. Sie werden
@@ -155,8 +158,10 @@ def _produkt_stufe(begriffe: list[str]) -> str | None:
 # Datei nicht an.
 class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                    PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
-                   ThemenMixin, ViertelMixin, WortbeitraegeMixin, *_geld.MIXINS):
-    def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):
+                   RueckmeldungenMixin, ThemenMixin, ViertelMixin, WortbeitraegeMixin,
+                   *_geld.MIXINS):
+    def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None,
+                 *, einmal: bool = False):
         self._path = path
         require_database_available(path)
         # Sibling ratslotse.sqlite holds the chat_id→owner_id map for the migration.
@@ -183,10 +188,16 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         # Umbenennung unterbleibt für immer — die Daten lägen weiter unter dem
         # alten Namen, unsichtbar. Genau so ist am 01.09.2026 die Einwilligung
         # in `web_users` verschwunden, nur eben spaltenweise.
-        self._tabellen_umbenennen()
-        self._conn.executescript(SCHEMA)
-        self._conn.commit()
-        self._migrate()
+        #
+        # Einmal je Prozess und Schema-Stand (kern/einrichtung.py): Der Web-
+        # Dienst öffnet je Anfrage einen Store, und die Einrichtung war bis
+        # 10/2026 der größte Posten jeder Rats-Anfrage.
+        def _einrichten() -> None:
+            self._tabellen_umbenennen()
+            self._conn.executescript(SCHEMA)
+            self._conn.commit()
+            self._migrate()
+        einmal_einrichten(self._conn, path, _einrichten, einmal=einmal)
         #: Läuft gerade eine geklammerte Transaktion (siehe ``transaktion``)?
         self._sammelt = False
         #: Zwischenspeicher für ``personen_kanon`` — je Instanz, also je Anfrage.
@@ -497,12 +508,20 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 "(SELECT id FROM council_decisions WHERE ksinr = ?)", (ksinr,))
             self._conn.execute("DELETE FROM council_decisions WHERE ksinr = ?", (ksinr,))
             self._conn.execute("DELETE FROM council_attendance WHERE ksinr = ?", (ksinr,))
+            from council.applicants import main_item_factions
+
             pos = 0
             for d in decisions:
+                # Änderungsanträge stehen als eigene Teilabstimmung da; am
+                # Hauptbeschluss machten sie ihre Fraktion zum „Antragsteller"
+                # einer Verwaltungsvorlage (Stadion, 20947 — council/applicants.py).
+                main_factions = main_item_factions(
+                    d.get("factions"), d.get("title"),
+                    [f for sv in d.get("sub_votes") or [] for f in sv.get("factions") or []])
                 self._insert_decision(ksinr, pos, "decision", None,
                                       d.get("item_number"), d.get("title"), d.get("official_text"),
                                       d.get("outcome"), d.get("vote"), d.get("no_votes"),
-                                      d.get("abstentions"), d.get("factions"),
+                                      d.get("abstentions"), main_factions,
                                       d.get("template_number"), d.get("kvonr"), d.get("raw_result"))
                 pos += 1
                 for sv in d.get("sub_votes") or []:
@@ -586,6 +605,10 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         # Normalised Antragsteller parties (real factions only, deduped).
         # Multi-Mapping: ein Gruppen-Label („FDP/Volt") zählt für jede Partei.
         d["parties"] = sorted({p for f in d["factions"] for p in parties_for_faction(f)}, key=order_key)
+        # „Antrag von" nur, wenn der Titel die Fraktionen selbst nennt — sonst
+        # kann es eine Änderungsliste sein („Anträge im TOP von").
+        if "title" in d:
+            d["applicants_named"] = applicants_named(d["factions"], d.get("title"))
         return d
 
 
@@ -990,6 +1013,29 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         if row.get("template_number"):
             self.refresh_abweichung(template_number=row["template_number"])
 
+    def vorlagentext_ersetzen(self, kvonr: int, raw_text: str, n_pages: int) -> None:
+        """Den Volltext einer Vorlage neu setzen — samt allem, was die Ernte
+        daraus liest (Amt, Klima, Finanzen, Beschlussvorschlag).
+
+        NICHT über ``save_vorlage``: Das schreibt per ``INSERT OR REPLACE`` und
+        setzte jede Spalte zurück, die es nicht kennt. Gebraucht vom Neulesen
+        des Bestands mit PyMuPDF (``scripts/pdf_neu_lesen.py``)."""
+        from council import ernte
+
+        aus = ernte.auswirkungen(raw_text)
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_templates SET raw_text = ?, n_pages = ?, office = ?, "
+                "climate_impact = ?, financial_impact = ?, proposed_decision = ? "
+                "WHERE kvonr = ?",
+                (raw_text, n_pages, ernte.federfuehrendes_amt(raw_text), aus["klima"],
+                 aus["finanzen"], ernte.proposed_decision(raw_text), kvonr))
+            row = self._conn.execute(
+                "SELECT template_number FROM council_templates WHERE kvonr = ?",
+                (kvonr,)).fetchone()
+        if row and row[0]:
+            self.refresh_abweichung(template_number=row[0])
+
     def mark_vorlage_failed(self, kvonr: int) -> None:
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
@@ -1021,18 +1067,25 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         ).fetchone()
         return dict(row) if row else None
 
-    def vorlage_texts_for(self, vorlage_nrs: list[str]) -> dict[str, str]:
+    def vorlage_texts_for(self, vorlage_nrs: list[str],
+                          column: str = "raw_text") -> dict[str, str]:
         """Batch raw texts for Q&A context enrichment: exact template_number → text
-        (only rows that actually have text). Best-effort — no base-nr fallback."""
+        (only rows that actually have text). Best-effort — no base-nr fallback.
+
+        ``column="financial_impact"`` gives the section „Finanzielle
+        Auswirkungen" instead — where a Vorlage states what it costs or brings
+        (23/0101: „Mehreinnahmen von rd. 1.100.000 Euro jährlich")."""
+        if column not in ("raw_text", "financial_impact"):
+            raise ValueError(column)
         nrs = sorted({(n or "").strip() for n in vorlage_nrs if n and str(n).strip()})
         if not nrs:
             return {}
         ph = ",".join("?" * len(nrs))
         rows = self._conn.execute(
-            f"SELECT template_number, raw_text FROM council_templates "
+            f"SELECT template_number, {column} AS text FROM council_templates "
             f"WHERE template_number IN ({ph}) AND status = 'ok'", nrs,
         ).fetchall()
-        return {r["template_number"]: r["raw_text"] for r in rows if r["raw_text"]}
+        return {r["template_number"]: r["text"] for r in rows if r["text"]}
 
     # --- Anlagen (documents attached to a Vorlage, incl. fraction motions) -----
 
@@ -1885,11 +1938,16 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
 
     def anlagentext_nachtragen(self, document_id: int, text: str, n_pages: int) -> None:
         """Den heruntergeladenen Text einer Anlage ablegen — damit der nächste
-        Lauf (und die KI-Frage) ihn haben, ohne noch einmal zu laden."""
+        Lauf (und die KI-Frage) ihn haben, ohne noch einmal zu laden.
+
+        Ein leerer Text heißt Status ``empty`` (Scan, s. ``council/anlagentext
+        .py``) — auch das ist ein Ergebnis, das niemand ein zweites Mal laden
+        soll."""
         with self._conn:
             self._conn.execute(
-                "UPDATE council_attachments SET raw_text = ?, n_pages = ?, status = 'ok', "
-                "fetched_at = datetime('now') WHERE document_id = ?", (text, n_pages, document_id))
+                "UPDATE council_attachments SET raw_text = ?, n_pages = ?, status = ?, "
+                "fetched_at = datetime('now') WHERE document_id = ?",
+                (text, n_pages, "ok" if text else "empty", document_id))
 
 
 
@@ -2119,9 +2177,14 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 """SELECT d.outcome, cs.committee FROM council_decisions d
                    JOIN council_sessions cs ON cs.ksinr = d.ksinr
                    WHERE d.kind = 'decision' AND d.outcome IN ('accepted','rejected')
-                     AND (d.template_number = ? OR d.template_number LIKE ?)
+                     AND (d.template_number = ?
+                          OR (d.template_number >= ? AND d.template_number < ?))
                    ORDER BY (cs.committee LIKE 'Rat%') DESC, cs.session_date DESC
-                   LIMIT 1""", (base, base + "/%"),
+                   LIMIT 1""",
+                # Bereich statt `LIKE base/%`: Nur so nimmt SQLite den Index
+                # (LIKE ist ohne case_sensitive_like nie indexfähig). „/" + 1
+                # ist „0" — der Bereich umfasst genau alles mit `base/` davor.
+                (base, base + "/", base + "0"),
             ).fetchone()
             if not decision:
                 continue
@@ -2398,7 +2461,7 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
 
     def neueste_stationen_fuer(self, kvonrs: list[int],
                                vorlage_basen: list[str]) -> list[dict]:
-        """Alle Beschlüsse (id, kvonr, template_number, session_date, committee) der
+        """Alle Beschlüsse (id, kvonr, template_number, session_date, committee, outcome) der
         genannten Vorlagen-Familien — Grundlage für den „ältere Station"-Marker:
         derselbe Text durchläuft mehrere Gremien (gleiches kvonr), Revisionen
         hängen ein Suffix an die Vorlagen-Nummer (26/0100 → 26/0100-1)."""
@@ -2414,7 +2477,7 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
             teile.append("d.template_number = ? OR d.template_number LIKE ?")
             params += [b, b + "-%"]
         rows = self._conn.execute(
-            "SELECT d.id, d.kvonr, d.template_number, cs.session_date, cs.committee "
+            "SELECT d.id, d.kvonr, d.template_number, cs.session_date, cs.committee, d.outcome "
             "FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr "
             "WHERE " + " OR ".join(teile), params).fetchall()
         return [dict(r) for r in rows]
@@ -3368,7 +3431,11 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
             bereiche.extend(("waste_treatment", "waste_collection"))
         if any(w in text for w in ("strassenreinig", "kehrgeb", "kehrdienst")):
             bereiche.append("street_cleaning")
-        if not bereiche and any(w in text for w in ("gebuehr", "gebuehrenbedarf")):
+        # Nur die Gebühr ALS SOLCHE zieht alle drei Kalkulationen — nicht ein
+        # Kompositum mit fremdem Gegenstand: „Parkgebühren“ bekam bis 10/2026
+        # die Abfall- und Straßenreinigungs-Kalkulationen (echte Frage vom
+        # 10.10.2026); die Parkgebühren stehen in der Kontenebene.
+        if not bereiche and any(w.startswith(("gebuehr", "gebuehrenbedarf")) for w in worte):
             bereiche = ["waste_treatment", "waste_collection", "street_cleaning"]
         bereiche = list(dict.fromkeys(bereiche))
         if not bereiche:
@@ -4430,57 +4497,6 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
             self._conn.execute(
                 "DELETE FROM council_partei_meinungen_cache "
                 "WHERE created_at < datetime('now', '-30 days')")
-
-
-    def save_qa_feedback(self, question: str, answer_excerpt: str | None,
-                         rating: str, reason: str | None,
-                         user_id: int | None = None, source: str = "ask") -> None:
-        """Daumen hoch/runter zu einer KI-Antwort (5a/I-03).
-
-        Ein Konto hat je **Antwort** eine Stimme: Der nachgereichte Grund und
-        die korrigierte Bewertung (Daumen runter → hoch) überschreiben die
-        frühere Zeile, statt sich als widersprüchliches Paar in der Tabelle zu
-        stapeln — sonst zählte jede Meinungsänderung doppelt. Anonyme
-        Rückmeldungen haben keinen Schlüssel und werden weiterhin angehängt.
-
-        **Der Schlüssel ist die Antwort, nicht die Frage** — seit Lottis
-        Fenster (09/2026) einen Daumen hat. Dort heißt die häufigste Frage auf
-        jeder Seite gleich: „Was sehe ich hier?" steht als Vorschlags-Chip
-        unter jeder Erklärung. Mit dem alten Schlüssel (Konto + Frage) hätte
-        ein Konto über alle Seiten hinweg **eine einzige** Lotti-Stimme
-        abgeben können, und jede weitere hätte die vorige überschrieben — die
-        Quote wäre dauerhaft zu klein gewesen, ohne dass es auffällt. Der
-        Antwort-Auszug unterscheidet die Seiten; ``source`` gehört mit in den
-        Schlüssel, weil dieselbe Frage im Archiv etwas anderes beantwortet als
-        im Fenster.
-        """
-        if rating not in ("up", "down"):
-            raise ValueError(f"rating muss up/down sein, nicht {rating!r}")
-        now = datetime.utcnow().isoformat(timespec="seconds")
-        quelle = source if source in ("ask", "lotti") else "ask"
-        werte = (question[:300], (answer_excerpt or "")[:500] or None, rating,
-                 (reason or "").strip()[:500] or None, user_id, now)
-        with self._conn:
-            if user_id is not None:
-                # `IS` statt `=`: Eine Antwort ohne Auszug ist NULL, und NULL
-                # ist mit `=` zu nichts gleich — auch nicht zu sich selbst.
-                vorher = self._conn.execute(
-                    "SELECT id FROM council_qa_feedback WHERE user_id = ? AND question = ? "
-                    "AND answer_excerpt IS ? AND COALESCE(source, 'ask') = ? "
-                    "ORDER BY id DESC LIMIT 1",
-                    (user_id, werte[0], werte[1], quelle)).fetchone()
-                if vorher:
-                    self._conn.execute(
-                        "UPDATE council_qa_feedback SET rating = ?, "
-                        "reason = ?, created = ? WHERE id = ?",
-                        (rating, werte[3], now, vorher[0]))
-                    return
-            self._conn.execute(
-                "INSERT INTO council_qa_feedback "
-                "(question, answer_excerpt, rating, reason, user_id, created, source) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (*werte, quelle),
-            )
 
 
     def get_decisions_by_ids(self, ids: list[int]) -> list[dict]:

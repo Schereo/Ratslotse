@@ -94,6 +94,26 @@ def _bericht_aus(events: list[dict]) -> str:
     return buf
 
 
+def faelle_waehlen(alle: list[dict], weg: str, nur: str | None) -> list[dict]:
+    """Die Fälle für einen Weg („ask“ oder „deep“), auf Wunsch nur bestimmte.
+
+    ``nur`` ist eine id oder eine Komma-Liste. Eine id, die es im Gold-Set
+    nicht gibt, bricht ab — ein Tippfehler liefe sonst als Lauf über null
+    Fälle durch und sähe aus wie ein gelungener. Fällt ein vorhandener Fall nur
+    wegen ``wege`` heraus (``"wege": ["ask"]``: das Wahlergebnis kennt nur
+    „Frag den Rat“), ist das kein Fehler, wird aber gesagt."""
+    gewollt = [n.strip() for n in (nur or "").split(",") if n.strip()]
+    unbekannt = sorted(set(gewollt) - {c["id"] for c in alle})
+    if unbekannt:
+        raise SystemExit(f"Unbekannte Fall-ids: {', '.join(unbekannt)}")
+    faelle = [c for c in alle if weg in c.get("wege", ["ask", "deep"])
+              and (not gewollt or c["id"] in gewollt)]
+    if gewollt and not faelle:
+        print(f"Keiner der gewählten Fälle gilt für „{weg}“ (Feld `wege`) — nichts zu tun.",
+              flush=True)
+    return faelle
+
+
 def _material_pruefen(case: dict, m: dict) -> list[dict]:
     """Stufe 1: Welche Belegstellen lagen dem Bericht vor?"""
     out = []
@@ -128,6 +148,10 @@ def _material_pruefen(case: dict, m: dict) -> list[dict]:
                           and b.get("committee", "") in (a.get("committee") or "")
                           and b["titel_enthaelt"].lower() in (a.get("title") or "").lower()
                           for a in m.get("agenda", []))
+        elif b["art"] == "grafik":
+            # Die Grafik unter der Antwort (``qa.geld_grafik``) — sie trägt die
+            # Zahlen der Kontenebene, die in keinem Beschluss stehen.
+            treffer = b["titel_enthaelt"].lower() in str((m.get("chart") or {}).get("title") or "").lower()
         out.append({"id": b["id"], "fuer": b["fuer"], "art": b["art"], "vorhanden": treffer})
     return out
 
@@ -173,8 +197,7 @@ def lauf(db: Path, label: str, premium: bool, nur: str | None) -> Path:
     from council import qa
 
     cases = json.loads(CASES.read_text(encoding="utf-8"))
-    if nur:
-        cases = [c for c in cases if c["id"] == nur]
+    cases = faelle_waehlen(cases, "deep", nur)
     ergebnisse = []
     with tempfile.TemporaryDirectory() as tmp:
         ratslotse_db = str(Path(tmp) / "ratslotse.sqlite")
@@ -225,7 +248,7 @@ def main() -> None:
     ap.add_argument("--db", required=True, help="Kopie der council.sqlite")
     ap.add_argument("--label", required=True)
     ap.add_argument("--premium", action="store_true", help="Berichtsmodell für Recherche Plus")
-    ap.add_argument("--nur", default=None, help="nur diesen Fall")
+    ap.add_argument("--nur", default=None, help="nur diese Fälle (ids, durch Komma)")
     args = ap.parse_args()
     lauf(Path(args.db), args.label, args.premium, args.nur)
 

@@ -19,6 +19,7 @@ load_dotenv(ROOT / ".env")
 
 from council import finanzquellen, herkunft as h, liquidity  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
+from council import anlagentext  # noqa: E402
 from council.vorlagen import _pdf_text  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -53,7 +54,9 @@ def main() -> int:
                 if (a.get("raw_text") or "").strip() or not a.get("url"):
                     continue
                 try:
-                    text, n = _pdf_text(a["url"])
+                    # pypdf: liquidity.lies ist auf dessen Zeilenbild abgestimmt
+                    # (s. council/anlagentext.py, „Haushalts-Anlagen bleiben bei pypdf“).
+                    text, n = _pdf_text(a["url"], anlagentext.PYPDF)
                 except Exception as fehler:  # noqa: BLE001 — ein PDF, nicht der Lauf
                     print(f"  nicht geladen: {a['template_number']} ({a['document_id']}): {fehler}",
                           file=sys.stderr)

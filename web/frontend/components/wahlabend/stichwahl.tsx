@@ -19,7 +19,7 @@ import { ChevronDown, Info } from "lucide-react";
 import { Aufklapp } from "@/components/aufklapp";
 import { Mascot } from "@/components/mascot";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Kopf } from "@/components/wahlabend/kopf";
+import { ZurueckZuWahlen } from "@/components/wahlen/zurueck";
 import { TippspielEinladung, useWahlzeile } from "@/components/tipp/einladung";
 import { AuszaehlungsSimulator } from "@/components/wahlabend/simulator";
 import { StichwahlKarte } from "@/components/wahlabend/stichwahl-karte";
@@ -124,7 +124,7 @@ function Tafel({ daten, aktualisiert, probe, counted }: {
         <div className="min-w-0 flex-1 basis-[18rem]">
           <p className={KICKER}>
             Oldenburg · {datumLang(daten.election.date)} ·{" "}
-            <span suppressHydrationWarning>{daten.dataset === "probe" ? "Generalprobe" : zeit.kicker}</span>
+            <span suppressHydrationWarning>{daten.dataset === "probe" ? "Generalprobe" : daten.phase === "complete" ? "Endstand" : zeit.kicker}</span>
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-none tracking-tight sm:text-[32px]">Stichwahl</h1>
           <p className="mt-3 text-[14px] text-foreground">
@@ -147,7 +147,11 @@ function Tafel({ daten, aktualisiert, probe, counted }: {
               : daten.ok
                 ? zeit.phase === "laeuft"
                   ? daten.phase === "complete"
-                    ? "Alle Bezirke sind da — die Seite fragt nur noch jede Minute nach."
+                    // „fragt jede Minute nach" stand bis 10/2026 noch Wochen
+                    // nach der Wahl da — am Abend selbst ist der Satz richtig.
+                    ? (Date.now() - new Date(daten.election.polls_close).getTime() < 86_400_000
+                      ? "Alle Bezirke sind da — die Seite fragt nur noch jede Minute nach."
+                      : "Endergebnis: alle Bezirke ausgezählt.")
                     : "Die Seite fragt alle 15 Sekunden nach."
                   : `Ab ${zeit.tage === 0 ? "heute" : "Sonntag"} 18 Uhr fragt die Seite alle 15 Sekunden nach.`
                 : (daten.error ?? "Der Votemanager antwortet gerade nicht.")}
@@ -205,7 +209,7 @@ function AbfrageTakt({ seit, ms }: { seit: number; ms: number }) {
  *  Beides steht nicht in der amtlichen Bekanntmachung — das Backend liefert
  *  es nur mit eigener Quelle, und die steht hier als Beleg daneben. Ohne
  *  Angaben bleibt die Zeile weg; sie ist kein Platzhalter. */
-function Herkunft({ k }: { k: StichwahlKandidat }) {
+export function Herkunft({ k }: { k: StichwahlKandidat }) {
   // Eingeklappt, was nur Erklärung ist (Tim 23.09.2026: „sehr viel Text
   // dafür, dass es eigentlich nur ein Disclaimer ist"): Die Zeile mit den
   // Parteien bleibt stehen, die Begründung zum Stimmzettel und die Belege
@@ -779,27 +783,30 @@ export function StichwahlView() {
     if (data) document.title = fensterTitel(data);
   }, [data]);
 
-  if (!frei || isError) {
+  // `isError && !data`: Scheitert EIN Abruf im 15-s-Takt, bleibt der letzte
+  // Stand stehen — vorher sprang die Live-Tafel bis zum nächsten Erfolg auf
+  // „Die Stichwahl ist noch nicht offen" (wie wahlabend/view.tsx es schon hielt).
+  if (!frei || (isError && !data)) {
     return (
       <>
-        <Kopf label="Stichwahl" />
-        <main className="mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+        <div className="mx-auto w-full max-w-3xl pb-6">
+          <ZurueckZuWahlen />
           <Hinweisbild
             pose="sleep"
             titel="Die Stichwahl ist noch nicht offen"
             text="Diese Seite zeigt ab dem 27. September ab 18 Uhr den Auszählungsstand. Bis dahin gibt es hier nichts zu sehen."
           />
-        </main>
+        </div>
       </>
     );
   }
   if (isLoading || !data) {
     return (
       <>
-        <Kopf label="Stichwahl" />
-        <main className="mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+        <div className="mx-auto w-full max-w-3xl pb-6">
+          <ZurueckZuWahlen />
           <div className="mt-10 h-40 animate-pulse rounded-2xl bg-muted" />
-        </main>
+        </div>
       </>
     );
   }
@@ -828,8 +835,8 @@ export function StichwahlView() {
 
   return (
     <>
-      <Kopf label="Stichwahl" />
-      <main className="mx-auto w-full max-w-3xl px-4 pb-16 sm:px-6">
+      <div className="mx-auto w-full max-w-3xl pb-6">
+        <ZurueckZuWahlen />
         {data.dataset === "probe" ? (
           <p className="mt-4 rounded-xl border border-amber-300/50 bg-amber-50 px-4 py-2.5 text-[13px] text-amber-900 dark:border-amber-700/40 dark:bg-amber-900/25 dark:text-amber-100">
             <strong className="font-semibold">Generalprobe.</strong> Die Zahlen sind die des ersten Wahlgangs vom
@@ -943,7 +950,7 @@ export function StichwahlView() {
             </Link>
           </p>
         </footer>
-      </main>
+      </div>
       <StichwahlMomente daten={data} favorit={favorit} />
       {/* Nur auf dev sichtbar — die Bedienung für die Generalprobe. */}
       <AuszaehlungsSimulator />

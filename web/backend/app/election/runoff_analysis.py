@@ -322,14 +322,10 @@ def _projection_review(w: elections.Election, winner: str, final_share: float | 
 
 
 def _result_status(w: elections.Election) -> str:
-    """„vorlaeufig" | „amtlich" — aus der ``quelle.json`` des Archivs."""
-    if w.archive_folder is None:
-        return "vorlaeufig"
-    try:
-        source = json.loads((w.archive_folder / "quelle.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return "vorlaeufig"
-    return "amtlich" if source.get("stand") == "amtlich" else "vorlaeufig"
+    """„vorlaeufig" | „amtlich" — die Regel steht in ``archive.result_status``."""
+    from . import archive
+
+    return archive.result_status(w)
 
 
 def districts(rows: list[dict[str, Any]], sort: str = "share", area: int | None = None,

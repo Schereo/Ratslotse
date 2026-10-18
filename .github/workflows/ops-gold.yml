@@ -35,7 +35,7 @@ on:
         type: string
         required: true
       nur:
-        description: "Nur diesen Fall (id aus cases_deep_gold.json), leer = alle"
+        description: "Nur diese Fälle (ids aus cases_deep_gold.json, durch Komma), leer = alle"
         type: string
         default: ""
       befreien:
@@ -76,8 +76,8 @@ jobs:
             if ! echo "$LABEL" | grep -qE '^[A-Za-z0-9-]{1,40}$'; then
               echo "label nur aus Buchstaben, Ziffern, Bindestrich: $LABEL"; exit 2
             fi
-            if [ -n "$NUR" ] && ! echo "$NUR" | grep -qE '^[a-z0-9-]{1,60}$'; then
-              echo "nur muss eine Fall-id sein: $NUR"; exit 2
+            if [ -n "$NUR" ] && ! echo "$NUR" | grep -qE '^[a-z0-9-]{1,60}(,[a-z0-9-]{1,60}){0,40}$'; then
+              echo "nur muss eine Fall-id oder eine Komma-Liste davon sein: $NUR"; exit 2
             fi
             PY=.venv/bin/python
             # Die Login-Shell auf dem Server ist zsh: Ein unquotiertes

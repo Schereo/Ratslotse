@@ -145,6 +145,27 @@ def test_ergaenzungsstrich_bleibt_stehen():
     assert pruefberichte.saeubern("Bescheini-\ngungen") == "Bescheinigungen"
 
 
+def test_ausrufezeichen_als_leerzeichen_wird_repariert():
+    """Schlussbericht 2025, Tz. 3.2.1: ein Zeichensatz, dessen Leerzeichen der
+    Extrakt als „!“ liest. Ohne Reparatur hatte der Absatz keine
+    Umbruchstelle mehr und schob /haushalt/pruefung auf 586 px."""
+    roh = ("Das! Rechnungsprüfungsamt! erwartet,! dass! die! weitere! Umsetzung! des! "
+           "Projekts! Einrichten! eines!Risikomanagements!bei!der!Stadt!Oldenburg!"
+           "konsequent!fortgesetzt!wird.!")
+    assert pruefberichte.saeubern(roh) == (
+        "Das Rechnungsprüfungsamt erwartet, dass die weitere Umsetzung des Projekts "
+        "Einrichten eines Risikomanagements bei der Stadt Oldenburg konsequent "
+        "fortgesetzt wird.")
+
+
+def test_echtes_ausrufezeichen_bleibt_stehen():
+    """Ein gesunder Absatz wird nicht angefasst — auch nicht ein einzelnes
+    „!“ zwischen Buchstaben, das im Original so stehen mag."""
+    assert pruefberichte.saeubern("Achtung! Das ist wichtig!") == "Achtung! Das ist wichtig!"
+    assert pruefberichte.saeubern("Ein Yahoo!Konto und sonst nichts.") == (
+        "Ein Yahoo!Konto und sonst nichts.")
+
+
 def test_antwort_der_verwaltung_steht_getrennt():
     """Was direkt darauf folgt, gehört dazu — aber nicht in die Beanstandung."""
     beanstandung = pruefberichte.parse_feststellungen(BERICHT)["feststellungen"][1]

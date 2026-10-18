@@ -1,0 +1,330 @@
+{
+ "suite": "wortbeitraege-protokolle",
+ "titel": "Wortbeiträge aus ganzen Niederschriften",
+ "kennzahl": "F1 über die Wortmeldungen je Person in ganzen Protokollen (bis 48k-Fenster, wie im Cron), ohne Sammel-TOPs; eval/run_speeches_protokolle.py",
+ "modell": "openai/gpt-6-luna",
+ "variante": null,
+ "tarif": null,
+ "lauf": 2,
+ "zeitstempel": "2026-10-08T08:55:16",
+ "db_stand": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "qualitaet": 0.8786,
+ "harte_befunde": 0,
+ "warnung": null,
+ "faelle": 9,
+ "p50_ms": 59983,
+ "p95_ms": 89449,
+ "aufrufe": 14,
+ "kosten_usd": 0.051123,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.3652,
+ "ct_je_lauf": 5.1123,
+ "kosten_gesamt_usd": 0.051123,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "openai/gpt-6-luna"
+ ],
+ "ersatz": [],
+ "dauer_s": 755.4,
+ "nebenkennzahlen": {
+  "recall_ohne_mandat": 0.9241,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.1057,
+  "zahlen_erhalten": 0.1676,
+  "begriffe_erhalten": 0.2895,
+  "beitraege": 895,
+  "fehlgeschlagen": 0
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n_cases": 9,
+  "f1": 0.8786,
+  "precision": 0.8222,
+  "recall": 0.9433,
+  "recall_ohne_mandat": 0.9241,
+  "antwort_in_rede": 0,
+  "fremd_zugeschrieben": 0.1057,
+  "zahlen_erhalten": 0.1676,
+  "begriffe_erhalten": 0.2895,
+  "erfunden": 0,
+  "beitraege": 895,
+  "fehlgeschlagen": 0,
+  "faelle": [
+   {
+    "id": "4664",
+    "tp": 82,
+    "fp": 12,
+    "fn": 9,
+    "tp_ohne": 25,
+    "fn_ohne": 7,
+    "verpasst": [
+     "gerhard",
+     "jaekel",
+     "kaesemann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 5,
+    "bewertbar": 116,
+    "fremd_beispiele": [
+     "Dittrich: Anwohnenden",
+     "Piening: Integration",
+     "Kreft-Kohlhage: Verkehrssicherungspflicht",
+     "Sprenger: Erläuterung",
+     "Sprenger: Ausschusssitzung"
+    ],
+    "zahlen": [
+     11,
+     41
+    ],
+    "begriffe": [
+     115,
+     354
+    ],
+    "beitraege": 124
+   },
+   {
+    "id": "4430",
+    "tp": 105,
+    "fp": 6,
+    "fn": 4,
+    "tp_ohne": 39,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 8,
+    "bewertbar": 137,
+    "fremd_beispiele": [
+     "Pietsch: Finanzierung",
+     "Höpken: Taxifahrerinnen",
+     "Baak: Bestandteil",
+     "Korallus: Evangelische, Krankenhaus",
+     "Piechotta: Evangelischen, Krankenhauses",
+     "Pfeiffer: Krankenhauses"
+    ],
+    "zahlen": [
+     20,
+     326
+    ],
+    "begriffe": [
+     117,
+     409
+    ],
+    "beitraege": 154
+   },
+   {
+    "id": "4418",
+    "tp": 70,
+    "fp": 4,
+    "fn": 4,
+    "tp_ohne": 25,
+    "fn_ohne": 3,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 7,
+    "bewertbar": 76,
+    "fremd_beispiele": [
+     "Meike Dikosso: Widerspruch, Paragraphen, Seniorensatzung",
+     "Jan Bembennek: Betreuungsbehörde, Betreuungsorganisationsgesetz, Betreuungsgerichts",
+     "Holger Onken: Zahlungsfähigkeit",
+     "Meike Dikosso: Verwaltungsvorlage",
+     "Gunnar Rohde: Altersquotient",
+     "Jan Bembennek: Betroffenheit, Drogenszene"
+    ],
+    "zahlen": [
+     5,
+     23
+    ],
+    "begriffe": [
+     65,
+     179
+    ],
+    "beitraege": 83
+   },
+   {
+    "id": "4446",
+    "tp": 70,
+    "fp": 1,
+    "fn": 3,
+    "tp_ohne": 43,
+    "fn_ohne": 3,
+    "verpasst": [
+     "dikosso",
+     "krogmann"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 6,
+    "bewertbar": 79,
+    "fremd_beispiele": [
+     "Sander: Mehrausgaben",
+     "Adler: Landesregelung",
+     "Jahnke: Landesregelung",
+     "Niederstein: Landesregelung",
+     "Eilers-Dörfler: Landesregelung, Beschaffung",
+     "Dr. Lammerding: Städtetages, Landesregelung, Insellösungen"
+    ],
+    "zahlen": [
+     13,
+     19
+    ],
+    "begriffe": [
+     67,
+     154
+    ],
+    "beitraege": 80
+   },
+   {
+    "id": "4545",
+    "tp": 75,
+    "fp": 13,
+    "fn": 4,
+    "tp_ohne": 44,
+    "fn_ohne": 4,
+    "verpasst": [
+     "görk"
+    ],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 2,
+    "bewertbar": 80,
+    "fremd_beispiele": [
+     "Maik Niederstein: Bordsteinkante",
+     "Christian Lüdke: Bordsteinkante"
+    ],
+    "zahlen": [
+     16,
+     21
+    ],
+    "begriffe": [
+     82,
+     162
+    ],
+    "beitraege": 101
+   },
+   {
+    "id": "4611",
+    "tp": 40,
+    "fp": 1,
+    "fn": 2,
+    "tp_ohne": 26,
+    "fn_ohne": 2,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 5,
+    "bewertbar": 43,
+    "fremd_beispiele": [
+     "Matthias Welp: Ganztagsschulen",
+     "Matthias Welp: Inklusionsräumen",
+     "Matthias Welp: Schulbezirksanpassung",
+     "Andrea Hufeland: Schulbezirksänderung",
+     "Matthias Welp: Härtefallanträgen"
+    ],
+    "zahlen": [
+     4,
+     131
+    ],
+    "begriffe": [
+     72,
+     354
+    ],
+    "beitraege": 44
+   },
+   {
+    "id": "3717",
+    "tp": 88,
+    "fp": 6,
+    "fn": 9,
+    "tp_ohne": 42,
+    "fn_ohne": 2,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 11,
+    "bewertbar": 99,
+    "fremd_beispiele": [
+     "Paul Behrens: Schnelltests",
+     "Stefan Menke: Inkrafttreten",
+     "Frau Bertram: Schutzstatus",
+     "Frau Bertram: Landschaftsschutzgebiete",
+     "Frau Bertram: Erarbeitung",
+     "Margrit Conty: Eigenbetrieb, Gebäudewirtschaft"
+    ],
+    "zahlen": [
+     27,
+     43
+    ],
+    "begriffe": [
+     91,
+     214
+    ],
+    "beitraege": 104
+   },
+   {
+    "id": "2855",
+    "tp": 43,
+    "fp": 34,
+    "fn": 2,
+    "tp_ohne": 19,
+    "fn_ohne": 2,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 9,
+    "bewertbar": 49,
+    "fremd_beispiele": [
+     "Krause: Stadtjugendring",
+     "Meyer: Stadtjugendrings",
+     "Kurka: Stadtjugendring, Selbstverwaltung, Stadtjugendrings",
+     "Jahnke: Stadtjugendring",
+     "Boldt: Stadtjugendring",
+     "Meyer: Stadtjugendrings"
+    ],
+    "zahlen": [
+     14,
+     27
+    ],
+    "begriffe": [
+     48,
+     198
+    ],
+    "beitraege": 87
+   },
+   {
+    "id": "4441",
+    "tp": 42,
+    "fp": 56,
+    "fn": 0,
+    "tp_ohne": 17,
+    "fn_ohne": 0,
+    "verpasst": [],
+    "erfunden": [],
+    "antwort_in_rede": 0,
+    "fremd": 28,
+    "bewertbar": 87,
+    "fremd_beispiele": [
+     "Menke: Information",
+     "Behrens: Friedhofsmauer, Gertrudenfriedhofs, Alleecharakter",
+     "Adler: Sachverhalt",
+     "Sprenger: Hindenburgstraße",
+     "Skiba: Alternativplanungen",
+     "Drügemöller: Erläuterungen"
+    ],
+    "zahlen": [
+     6,
+     61
+    ],
+    "begriffe": [
+     51,
+     422
+    ],
+    "beitraege": 118
+   }
+  ]
+ }
+}

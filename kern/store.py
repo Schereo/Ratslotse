@@ -13,6 +13,7 @@ from collections.abc import Iterable
 from types import EllipsisType
 from kern.dbfehler import neue_id, tabelle_fehlt
 from kern.maintenance import require_database_available
+from kern.einrichtung import einmal_einrichten
 
 
 logger = logging.getLogger("kern.store")
@@ -117,7 +118,14 @@ CREATE TABLE IF NOT EXISTS notification_queue (
     -- unzustellbare Adresse die Warteschlange nicht ewig blockiert.
     attempts      INTEGER NOT NULL DEFAULT 0,
     -- 1 = darf an der Tagesgrenze vorbei (Tragweite gemessen), s. kern.notify.einreihen
-    wichtig       INTEGER NOT NULL DEFAULT 0
+    wichtig       INTEGER NOT NULL DEFAULT 0,
+    -- Reservierung der Zustellung (10/2026): Wer zustellt, setzt beide Felder
+    -- in EINEM UPDATE und arbeitet nur, was seine Marke trägt. Sonst lasen zwei
+    -- gleichzeitige Läufe (sechs Crons, der Neuigkeiten-Knopf) dieselben
+    -- Posten und verschickten sie doppelt. Eine Reservierung älter als
+    -- ZUSTELL_RESERVIERUNG_MIN gilt als liegen gelassen (Absturz) und läuft frei.
+    claimed_at    TEXT,
+    claim_token   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_notify_offen ON notification_queue(owner_id, sent_at, deliver_after);
 
@@ -129,6 +137,19 @@ CREATE TABLE IF NOT EXISTS council_results_sent (
     owner_id INTEGER NOT NULL,
     sent_at  TEXT NOT NULL,
     PRIMARY KEY (ksinr, owner_id)
+);
+
+-- N5 „Vorabend" und N6 „Wochenüberblick" (council/abendmeldungen.py): je
+-- Anlass, Schlüssel und Konto einmal. Schlüssel ist bei N5 die Sitzung
+-- (ksinr), bei N6 die Kalenderwoche (2026-W40). Ohne die Marke reihte ein
+-- zweiter Lauf am selben Abend (von Hand, nach einem Absturz) alles noch
+-- einmal ein — Läufe müssen wiederholbar sein (scripts/CLAUDE.md).
+CREATE TABLE IF NOT EXISTS evening_notices_sent (
+    kind     TEXT NOT NULL,
+    key      TEXT NOT NULL,
+    owner_id INTEGER NOT NULL,
+    sent_at  TEXT NOT NULL,
+    PRIMARY KEY (kind, key, owner_id)
 );
 
 -- Semantic matches between a user topic and council decisions (computed offline by
@@ -283,6 +304,23 @@ CREATE TABLE IF NOT EXISTS push_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_push_tokens_owner ON push_tokens(owner_id);
 
+-- Persönliche Schlüssel für den MCP-Server (/api/mcp, Recht `mcp`). Ein
+-- Konto darf mehrere haben — einen je angeschlossenem Agenten, damit sich
+-- einer allein zurückziehen lässt. Gespeichert wird nur der SHA-256 des
+-- Schlüssels; der Klartext steht genau einmal in der Antwort beim Anlegen.
+-- `prefix` sind die ersten Zeichen, an denen man ihn in der Liste wiedererkennt.
+CREATE TABLE IF NOT EXISTS mcp_tokens (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id   INTEGER NOT NULL,
+    label      TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    prefix     TEXT NOT NULL,
+    created    TEXT NOT NULL,
+    last_used  TEXT,
+    calls      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_tokens_owner ON mcp_tokens(owner_id);
+
 -- Quiz-Antworten (Punkte je Konto). Gebiet + Kategorie sind DENORMALISIERT,
 -- weil die Fragen in council.sqlite liegen (kein DB-übergreifender Join) — so
 -- aggregiert die Statistik ohne Zugriff auf die Fragen-DB.
@@ -355,11 +393,13 @@ CREATE INDEX IF NOT EXISTS idx_qa_turns_gespraech ON qa_conversation_turns(conve
 -- Frage — der Prüfer darf sie nicht zitieren, und self_check._kurz streicht,
 -- was er trotzdem übernimmt), Seite, Modell, Dauer, Kosten. Frage und Antwort
 -- NUR mit der Einwilligung in die Gesprächsspeicherung
--- (web_users.saves_conversations = 1) — sonst NULL. user_id für die
--- Konto-Löschung (USER_OWNED_TABLES).
+-- (web_users.saves_conversations = 1) — sonst NULL. user_id NUR zusammen mit
+-- Frage und Antwort (seit 03.10.2026): Er ist für die Konto-Löschung da
+-- (USER_OWNED_TABLES), und ohne Text gibt es nichts Persönliches zu löschen —
+-- ein Urteil samt Seite braucht kein Konto.
 CREATE TABLE IF NOT EXISTS assistant_checks (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id      INTEGER NOT NULL,
+    user_id      INTEGER,
     created      TEXT NOT NULL,
     surface      TEXT NOT NULL DEFAULT 'lotti',
     route        TEXT NOT NULL,
@@ -899,6 +939,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("bookmarks", "owner_id"),
     ("notification_queue", "owner_id"),
     ("council_results_sent", "owner_id"),
+    ("evening_notices_sent", "owner_id"),
     ("topic_hits_seen", "owner_id"),
     ("council_topic_matches", "owner_id"),
     ("council_topic_match_meta", "owner_id"),
@@ -928,6 +969,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("password_reset_tokens", "user_id"),
     ("email_verification_tokens", "user_id"),
     ("web_user_roles", "user_id"),
+    ("mcp_tokens", "owner_id"),
 )
 
 
@@ -1126,7 +1168,7 @@ def vorhandene_werte(conn: sqlite3.Connection, tabelle: str, spalte: str,
 
 
 class Store:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, *, einmal: bool = False):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         require_database_available(self.path)
@@ -1144,11 +1186,14 @@ class Store:
         # VOR dem Schema — sonst legt `CREATE TABLE IF NOT EXISTS` die neue
         # Tabelle leer an und die Umbenennung unterbleibt für immer
         # (s. `_web_users_spalten_nachziehen`, derselbe Fehler spaltenweise).
-        self._tabellen_umbenennen()
-        self._conn.executescript(SCHEMA)
-        self._conn.commit()
-        self._migrate()
-        self._zeitungsreste_entfernen()
+        # Einmal je Prozess und Schema-Stand, s. kern/einrichtung.py.
+        def _einrichten() -> None:
+            self._tabellen_umbenennen()
+            self._conn.executescript(SCHEMA)
+            self._conn.commit()
+            self._migrate()
+            self._zeitungsreste_entfernen()
+        einmal_einrichten(self._conn, self.path, _einrichten, einmal=einmal)
 
     def _werte_umschreiben(self, tabelle: str, spalte: str,
                            paare: list[tuple[str, str]]) -> None:
@@ -1842,6 +1887,7 @@ class Store:
                     "CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day)")
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id)")
+        self._migrate_assistant_checks_ohne_konto()
         # Schätzfrage-Slider für eigene Fragen (RL-U14-Erweiterung): Zahl-Felder
         # zur seit RL-U14 bestehenden Tabelle nachziehen.
         uq_cols = self._table_cols("user_quiz_questions")
@@ -1902,6 +1948,13 @@ class Store:
                 self._conn.execute(
                     "ALTER TABLE notification_queue ADD COLUMN wichtig INTEGER NOT NULL DEFAULT 0"
                 )
+        # Reservierung gegen Doppelversand (10/2026), s. claim_due_notifications.
+        if nq_cols and "claimed_at" not in nq_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE notification_queue ADD COLUMN claimed_at TEXT")
+        if nq_cols and "claim_token" not in nq_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE notification_queue ADD COLUMN claim_token TEXT")
         self._notify_vorgaben_einfrieren()
         # Der Fehler-Sammler kam zuerst nur mit Server-Fehlern; Herkunft und
         # Tagesverlauf sind nachgezogen. Ohne diesen Schritt scheitert das
@@ -2142,6 +2195,52 @@ class Store:
                 "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) "
                 "VALUES (?, datetime('now'))", (marke,))
 
+    def _migrate_assistant_checks_ohne_konto(self) -> None:
+        """``assistant_checks.user_id`` nullbar machen und leeren, wo kein Text ist.
+
+        **Warum (03.10.2026).** Die Selbstprüfung legte zu JEDER geprüften
+        Antwort die Konto-Kennung ab — auch ohne Einwilligung, also auch dann,
+        wenn Frage und Antwort gar nicht gespeichert werden. Gebraucht wird
+        sie nur, um gespeicherte Texte mit dem Konto zu löschen. Ohne Text
+        bleibt ein Urteil über eine Seite, und das gehört niemandem.
+
+        SQLite kann ``NOT NULL`` nicht abnehmen — also Tabelle neu bauen und
+        umkopieren (dieselbe Bauform wie bei ``user_activity``). Die Altzeilen
+        ohne Text verlieren dabei ihre Kennung. Läuft nur, solange die Spalte
+        noch ``NOT NULL`` trägt; danach ist der Schritt ein ``PRAGMA``.
+        """
+        spalten = {r[1]: r for r in self._conn.execute("PRAGMA table_info(assistant_checks)")}
+        user_id = spalten.get("user_id")
+        if user_id is None or not user_id[3]:  # [3] = notnull
+            return
+        with self._conn:
+            self._conn.execute("""CREATE TABLE assistant_checks_neu (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER,
+    created      TEXT NOT NULL,
+    surface      TEXT NOT NULL DEFAULT 'lotti',
+    route        TEXT NOT NULL,
+    verdict      TEXT NOT NULL,          -- good | poor | unknown
+    stage        TEXT NOT NULL,          -- rules | model
+    categories   TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste
+    reasons      TEXT NOT NULL DEFAULT '[]',   -- JSON-Liste, je ≤ 160 Zeichen
+    model        TEXT,
+    duration_ms  INTEGER,
+    cost_usd     REAL,
+    question     TEXT,
+    answer       TEXT
+)""")
+            self._conn.execute(
+                "INSERT INTO assistant_checks_neu (id, user_id, created, surface, route, verdict, "
+                "stage, categories, reasons, model, duration_ms, cost_usd, question, answer) "
+                "SELECT id, CASE WHEN question IS NULL AND answer IS NULL THEN NULL "
+                "ELSE user_id END, created, surface, route, verdict, stage, categories, reasons, "
+                "model, duration_ms, cost_usd, question, answer FROM assistant_checks")
+            self._conn.execute("DROP TABLE assistant_checks")
+            self._conn.execute("ALTER TABLE assistant_checks_neu RENAME TO assistant_checks")
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_assistant_checks_created "
+                               "ON assistant_checks(created)")
+
     def _table_cols(self, table: str) -> set[str]:
         return {r[1] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
 
@@ -2328,6 +2427,13 @@ class Store:
             self._conn.execute(
                 "UPDATE web_users SET delivery_channel = ? WHERE id = ?", (channel, owner_id)
             )
+
+    def is_owner_active(self, owner_id: int) -> bool:
+        """Darf dieses Konto Post bekommen? Nur ``status = 'active'`` — ein
+        gesperrtes, ein unbestätigtes oder ein gelöschtes Konto nicht."""
+        row = self._conn.execute(
+            "SELECT 1 FROM web_users WHERE id = ? AND status = 'active'", (owner_id,)).fetchone()
+        return row is not None
 
     def get_delivery_channel(self, owner_id: int) -> str:
         """Der Zustellweg eines Kontos — ``email`` | ``push`` | ``both`` | ``off``.
@@ -2997,6 +3103,18 @@ class Store:
                 "INSERT OR IGNORE INTO council_results_sent (ksinr, owner_id, sent_at) VALUES (?,?,?)",
                 (ksinr, owner_id, now))
 
+    def evening_notice_sent(self, kind: str, key: str, owner_id: int) -> bool:
+        return self._conn.execute(
+            "SELECT 1 FROM evening_notices_sent WHERE kind = ? AND key = ? AND owner_id = ?",
+            (kind, key, owner_id)).fetchone() is not None
+
+    def mark_evening_notice(self, kind: str, key: str, owner_id: int) -> None:
+        now = datetime.now(UTC).isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO evening_notices_sent (kind, key, owner_id, sent_at) "
+                "VALUES (?,?,?,?)", (kind, key, owner_id, now))
+
     # ---- Anlass-Schalter (Design 30a/E) ----
 
     def get_notify_prefs(self, owner_id: int) -> dict:
@@ -3063,6 +3181,69 @@ class Store:
             "WHERE owner_id = ? AND sent_at IS NULL AND attempts < ? AND deliver_after <= ? "
             "ORDER BY id",
             (owner_id, self.MAX_ZUSTELLVERSUCHE, jetzt_iso))]
+
+    #: Wie lange eine Reservierung hält. Ein Konto ist in Sekunden bedient;
+    #: eine ältere Marke stammt von einem Lauf, der mittendrin gestorben ist,
+    #: und darf die Posten nicht für immer festhalten.
+    ZUSTELL_RESERVIERUNG_MIN = 15
+
+    def claim_due_notifications(self, owner_id: int, jetzt_iso: str, token: str) -> list[dict]:
+        """Die fälligen Posten eines Kontos für GENAU einen Zustell-Lauf reservieren.
+
+        Vorher lasen ``due_notifications`` und ``mark_notification_sent`` ohne
+        Sperre dazwischen: Liefen zwei Zustellungen gleichzeitig (sechs Crons
+        stoßen sie an, dazu der Neuigkeiten-Knopf, der minutenlang zustellt),
+        bekamen beide dieselben Posten zu sehen und verschickten sie doppelt.
+
+        Jetzt nimmt ``BEGIN IMMEDIATE`` die Schreibsperre, BEVOR gelesen wird.
+        Hält schon ein anderer Lauf eine frische Reservierung für dieses Konto,
+        kommt eine leere Liste zurück — das Konto wird dann ganz von dem
+        anderen Lauf bedient, damit auch die Tagesgrenze nur einmal gezählt
+        wird. Sonst tragen alle fälligen Posten danach ``token``.
+
+        Die Uhr ist die echte, nicht ``jetzt_iso``: Ein langer Lauf hält
+        ``jetzt_iso`` vom Start fest, und eine damit gestempelte Reservierung
+        wäre für einen zweiten Lauf schon abgelaufen, bevor sie beginnt.
+        """
+        echt = datetime.now(UTC)
+        jetzt_echt = echt.isoformat(timespec="seconds")
+        frist = (echt - timedelta(minutes=self.ZUSTELL_RESERVIERUNG_MIN)).isoformat(
+            timespec="seconds")
+        conn = self._conn
+        if conn.in_transaction:
+            conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            besetzt = conn.execute(
+                "SELECT 1 FROM notification_queue WHERE owner_id = ? AND sent_at IS NULL "
+                "AND claimed_at IS NOT NULL AND claimed_at >= ? AND claim_token != ? LIMIT 1",
+                (owner_id, frist, token)).fetchone()
+            if besetzt:
+                conn.commit()
+                return []
+            conn.execute(
+                "UPDATE notification_queue SET claimed_at = ?, claim_token = ? "
+                "WHERE owner_id = ? AND sent_at IS NULL AND attempts < ? AND deliver_after <= ? "
+                "AND (claimed_at IS NULL OR claimed_at < ? OR claim_token = ?)",
+                (jetzt_echt, token, owner_id, self.MAX_ZUSTELLVERSUCHE, jetzt_iso, frist, token))
+            conn.commit()
+        except BaseException:
+            conn.rollback()
+            raise
+        return [dict(r) for r in conn.execute(
+            "SELECT id, kind, title, body_html, url, created_at, push_text, wichtig "
+            "FROM notification_queue WHERE claim_token = ? AND owner_id = ? AND sent_at IS NULL "
+            "ORDER BY id",
+            (token, owner_id))]
+
+    def release_notification_claim(self, token: str) -> None:
+        """Was ein Lauf reserviert, aber nicht verschickt hat, wieder freigeben —
+        etwa, weil die Tagesgrenze erreicht war. Zugestelltes behält seine Marke
+        als Beleg, an ``sent_at`` ändert das nichts."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE notification_queue SET claimed_at = NULL, claim_token = NULL "
+                "WHERE claim_token = ? AND sent_at IS NULL", (token,))
 
     def bump_notification_attempts(self, ids: list[int]) -> None:
         """Einen erfolglosen Zustellversuch vermerken.
@@ -3575,7 +3756,7 @@ class Store:
         """Snapshot einer geteilten Antwort (Task 31) → öffentliches Token.
         Bewusste Einzel-Veröffentlichung — unabhängig vom Gespräche-Opt-in.
         `extras` hält die Bausteine neben den Beschlüssen (Debatten, Presse,
-        Anlagen, Parteien-Positionen), damit die geteilte Seite dieselbe
+        Anlagen, Parteien-Positionen, Grafik, Geschäftsordnung), damit die geteilte Seite dieselbe
         Antwort zeigt wie das Gespräch — und nicht nur deren Textkern."""
         import secrets
 
@@ -3662,7 +3843,10 @@ class Store:
                 "parties": extras.get("parties") or [],
                 # Die Grafik zur Antwort — vor diesem Nachtrag geteilte
                 # Antworten haben keine; die Seite zeigt dann keine.
-                "chart": extras.get("chart")}
+                "chart": extras.get("chart"),
+                # Die Karte „Aus der Geschäftsordnung" — ebenso erst später
+                # dazugekommen; ältere Snapshots zeigen sie nicht.
+                "rules_of_procedure": extras.get("rules_of_procedure")}
 
     def qa_share_owner_id(self, token: str) -> int | None:
         """Interne Zuordnung für Moderation; nie Teil der öffentlichen API."""
@@ -3779,6 +3963,49 @@ class Store:
                 "WHERE status = 'laeuft'", (now,))
             return cur.rowcount
 
+    def deep_jobs_inhalt_loeschen(self, user_id: int) -> int:
+        """„Alle Gespräche löschen" erfasst auch die Recherchen des Kontos.
+
+        Bis 10/2026 blieben Frage und Bericht in ``deep_research_jobs`` liegen,
+        und der Dialog meldete „0 gelöscht". Ältere Jobs fallen ganz weg; die
+        von HEUTE verlieren nur Frage, Bericht und Quellen — die leere Zeile
+        zählt weiter fürs Tageskontingent, sonst gäbe Löschen die fünf
+        Recherchen des Tages zurück. Ein laufender Job bleibt unberührt (sein
+        Thread schreibt gleich noch hinein); ihn räumt die Frist ab
+        (:meth:`deep_jobs_frist_abgelaufen`)."""
+        heute = _tagesbeginn_utc()
+        with self._conn:
+            weg = self._conn.execute(
+                "DELETE FROM deep_research_jobs WHERE user_id = ? AND status != 'laeuft' "
+                "AND created < ?", (user_id, heute)).rowcount or 0
+            geleert = self._conn.execute(
+                "UPDATE deep_research_jobs SET question = '', report = NULL, sources = NULL, "
+                "seen = 1 WHERE user_id = ? AND status != 'laeuft' "
+                "AND (question != '' OR report IS NOT NULL OR sources IS NOT NULL)",
+                (user_id,)).rowcount or 0
+        return weg + geleert
+
+    #: Wie lange eine Recherche OHNE Einwilligung ins Speichern
+    #: (``saves_conversations`` ≠ 1) nach ihrem letzten Stand liegen bleibt.
+    #: Sieben Tage, weil der Bericht im Hintergrund entsteht und per Mail/Push
+    #: gemeldet wird: Wer die App ein paar Tage nicht öffnet, findet ihn über
+    #: ``/deep-research/current`` und den Link der Meldung noch wieder — länger
+    #: braucht der Abruf nicht. Mit Einwilligung steht der Bericht ohnehin als
+    #: Gespräch da (``_gespraech_anhaengen``).
+    DEEP_JOB_FRIST_TAGE = 7
+
+    def deep_jobs_frist_abgelaufen(self, tage: int | None = None) -> int:
+        """Recherchen ohne Einwilligung nach Ablauf der Frist löschen
+        (täglich über ``scripts/speicherfristen.py`` und bei jedem Start)."""
+        tage = self.DEEP_JOB_FRIST_TAGE if tage is None else tage
+        grenze = (datetime.utcnow() - timedelta(days=tage)).isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM deep_research_jobs WHERE status != 'laeuft' AND updated < ? "
+                "AND user_id NOT IN (SELECT id FROM web_users WHERE saves_conversations = 1)",
+                (grenze,))
+            return cur.rowcount or 0
+
     def qa_gespraech_start(self, user_id: int, title: str, kind: str = "ask") -> int | None:
         """None, wenn es das Konto (nicht mehr) gibt — schließt das Fenster,
         in dem eine Konto-Löschung zwischen Einwilligungs-Check und Insert
@@ -3824,18 +4051,34 @@ class Store:
         von Konten ab, die ausdrücklich nichts speichern wollen.
         """
         mit_text = self.get_qa_speichern(user_id) == 1
+        frage = (question or "")[:600] if mit_text and question else None
+        antwort = (answer or "")[:8000] if mit_text and answer else None
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
                 "INSERT INTO assistant_checks (user_id, created, route, verdict, stage, "
                 "categories, reasons, model, duration_ms, cost_usd, question, answer) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (user_id, now, route[:200], verdict, stage,
+                # Das Konto NUR mit Text — es ist für die Löschung da, und ohne
+                # Text gibt es nichts zu löschen (s. SCHEMA).
+                (user_id if (frage or antwort) else None, now, route[:200], verdict, stage,
                  json.dumps(categories[:6], ensure_ascii=False),
                  json.dumps([r[:160] for r in reasons[:3]], ensure_ascii=False),
-                 model, duration_ms, cost_usd,
-                 (question or "")[:600] if mit_text and question else None,
-                 (answer or "")[:8000] if mit_text and answer else None))
+                 model, duration_ms, cost_usd, frage, antwort))
+
+    def selbstpruefung_tag(self, tag: str) -> dict:
+        """Die Prüfer-Urteile eines UTC-Tages: wie viele, wie viele „unknown“.
+
+        Für den Herzschlag. Nur ``stage = 'model'`` — die Regel-Stufe urteilt
+        nie „unknown“; zählte sie mit, verdünnte sie genau das Signal, auf das
+        es ankommt: Fällt das Prüfer-Modell weg (``self_check.judge`` liefert
+        dann still „unknown“), prüft die Selbstprüfung nichts mehr.
+        """
+        r = self._conn.execute(
+            "SELECT COUNT(*) n, SUM(CASE WHEN verdict = 'unknown' THEN 1 ELSE 0 END) unk "
+            "FROM assistant_checks WHERE stage = 'model' AND substr(created, 1, 10) = ?",
+            (tag,)).fetchone()
+        return {"model": int(r[0] or 0), "unknown": int(r[1] or 0)}
 
     def selbstpruefung_auswertung(self, seit: str) -> dict:
         """Die Zahlen für den Admin-Reiter „Lotti“ — ab dem Tag ``seit``."""
@@ -4166,7 +4409,8 @@ class Store:
         }
 
     def record_activity(self, owner_id: int, feature: str = "session",
-                        client: str = "unknown") -> None:
+                        client: str = "unknown", *, anzahl: int = 1,
+                        warten: bool = True) -> bool:
         """Ein Feature-Nutzungsereignis je Konto/Tag/Client zählen (best-effort,
         nie load-bearing). ‚session‘ wird bei jedem eingeloggten Request gesetzt
         (throttled durch den Tages-PK).
@@ -4174,18 +4418,43 @@ class Store:
         ``client`` ist eines von web | ios | android | app | unknown und kommt
         aus dem ``X-Client``-Header (siehe ``app.clients``). Er steht im PK, weil
         dieselbe Person am selben Tag am Rechner und am Telefon arbeiten kann.
+
+        ``anzahl`` trägt mehrere gesammelte Ereignisse auf einmal nach;
+        ``warten=False`` gibt bei einer Schreibsperre sofort auf, statt den
+        busy_timeout abzuwarten (der Sitzungs-Zähler in ``app.deps``). Gibt
+        zurück, ob geschrieben wurde.
         """
         from datetime import date
+        if not warten:
+            self._conn.execute("PRAGMA busy_timeout=0")
         try:
             with self._conn:
                 self._conn.execute(
                     "INSERT INTO user_activity (owner_id, day, feature, client, count) "
-                    "VALUES (?, ?, ?, ?, 1) "
-                    "ON CONFLICT(owner_id, day, feature, client) DO UPDATE SET count = count + 1",
-                    (owner_id, date.today().isoformat(), feature, client),
+                    "VALUES (?, ?, ?, ?, ?) "
+                    "ON CONFLICT(owner_id, day, feature, client) DO UPDATE SET count = count + excluded.count",
+                    (owner_id, date.today().isoformat(), feature, client, anzahl),
                 )
+            return True
         except Exception:  # noqa: BLE001 — Aktivitäts-Log darf nie einen Request brechen
-            pass
+            return False
+        finally:
+            if not warten:
+                self._conn.execute("PRAGMA busy_timeout=5000")
+
+    def aktivitaet_heute(self, owner_id: int, feature: str) -> int:
+        """Wie oft dieses Konto ``feature`` heute benutzt hat — über alle Clients.
+
+        Das Tageskontingent von Lottis Erklärungen zählt hier
+        (``council.assistant.TAGES_KONTINGENT``). „Heute“ ist derselbe Tag,
+        unter dem ``record_activity`` zählt.
+        """
+        from datetime import date
+        row = self._conn.execute(
+            "SELECT COALESCE(SUM(count), 0) FROM user_activity "
+            "WHERE owner_id = ? AND day = ? AND feature = ?",
+            (owner_id, date.today().isoformat(), feature)).fetchone()
+        return int(row[0] or 0)
 
     def client_usage(self, owner_id: int) -> dict[str, int]:
         """Wie oft dieses Konto von welchem Client aus zugegriffen hat.
@@ -4557,6 +4826,13 @@ class Store:
             logger.exception("Mail-Protokoll fehlgeschlagen (owner=%s, anlass=%s)",
                              owner_id, anlass)
 
+    def failed_mail_count(self, owner_id: int, anlass: str) -> int:
+        """Wie oft eine Mail dieses Anlasses an dieses Konto gescheitert ist
+        (``ok = 0`` im Protokoll) — die Obergrenze für Wiederholungen."""
+        return int(self._conn.execute(
+            "SELECT COUNT(*) FROM email_log WHERE owner_id = ? AND anlass = ? AND ok = 0",
+            (owner_id, mail_anlass(anlass))).fetchone()[0])
+
     def mails_fuer_konto(self, owner_id: int, limit: int = 200, offset: int = 0) -> list[dict]:
         """Die Mails eines Kontos, neueste zuerst.
 
@@ -4888,6 +5164,11 @@ class Store:
         ("assistant_nudge_dismissed", "Lotti: Anklopfen weggeklickt"),
         ("search", "Suchbegriffe eingegeben"),
         ("research", "Tiefen-Recherchen"),
+        # Unter der Antwort eines langen Vorgangs (akte_suche.research_offer):
+        # wie oft angeboten, wie oft angenommen — die Messung zur Idee vom
+        # 03.10.2026, dass die Recherche dort mehr herausholt.
+        ("research_offer_shown", "Recherche angeboten"),
+        ("research_offer_taken", "davon angenommen"),
         ("analysis", "Auswertungen geöffnet"),
         ("map", "Karte geöffnet"),
         ("topic_created", "Themen angelegt"),
@@ -5758,6 +6039,80 @@ class Store:
         ).fetchone()
         return dict(row) if row else None
 
+    # ---- MCP-Schlüssel ------------------------------------------------------
+
+    #: So viele Schlüssel darf ein Konto gleichzeitig haben. Einer je Agent
+    #: reicht; mehr sind meist vergessene.
+    MCP_TOKENS_MAX = 5
+    #: Erkennungszeichen vorn am Schlüssel — wer ihn in einer Konfigdatei
+    #: findet, weiß, wozu er gehört (und ein Geheimnis-Scanner auch).
+    MCP_TOKEN_PRAEFIX = "rlmcp_"
+
+    @staticmethod
+    def _mcp_hash(token: str) -> str:
+        import hashlib
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def list_mcp_tokens(self, owner_id: int) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT id, label, prefix, created, last_used, calls FROM mcp_tokens "
+            "WHERE owner_id = ? ORDER BY id", (owner_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def create_mcp_token(self, owner_id: int, label: str) -> tuple[dict, str] | None:
+        """Legt einen Schlüssel an und gibt ``(zeile, klartext)`` zurück — oder
+        ``None``, wenn das Konto schon ``MCP_TOKENS_MAX`` hat. Der Klartext
+        existiert danach nirgends mehr."""
+        token = self.MCP_TOKEN_PRAEFIX + secrets.token_urlsafe(32)
+        jetzt = datetime.now(UTC).isoformat(timespec="seconds")
+        with self._conn:
+            n = self._conn.execute(
+                "SELECT COUNT(*) FROM mcp_tokens WHERE owner_id = ?", (owner_id,)).fetchone()[0]
+            if n >= self.MCP_TOKENS_MAX:
+                return None
+            cur = self._conn.execute(
+                "INSERT INTO mcp_tokens (owner_id, label, token_hash, prefix, created) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (owner_id, label, self._mcp_hash(token), token[:len(self.MCP_TOKEN_PRAEFIX) + 4],
+                 jetzt))
+        zeile = {"id": cur.lastrowid, "label": label,
+                 "prefix": token[:len(self.MCP_TOKEN_PRAEFIX) + 4],
+                 "created": jetzt, "last_used": None, "calls": 0}
+        return zeile, token
+
+    def delete_mcp_token(self, owner_id: int, token_id: int) -> bool:
+        with self._conn:
+            cur = self._conn.execute(
+                "DELETE FROM mcp_tokens WHERE id = ? AND owner_id = ?", (token_id, owner_id))
+        return cur.rowcount > 0
+
+    def mcp_token_owner(self, token: str) -> tuple[int, int] | None:
+        """``(token_id, owner_id)`` zu einem Klartext-Schlüssel, sonst ``None``.
+        Verglichen wird über den Hash; ein Schlüssel ohne Präfix wird gar
+        nicht erst gesucht."""
+        if not token or not token.startswith(self.MCP_TOKEN_PRAEFIX) or len(token) > 200:
+            return None
+        row = self._conn.execute(
+            "SELECT id, owner_id FROM mcp_tokens WHERE token_hash = ?",
+            (self._mcp_hash(token),)).fetchone()
+        return (int(row[0]), int(row[1])) if row else None
+
+    def touch_mcp_token(self, token_id: int, anzahl: int = 1) -> bool:
+        """Zählt Aufrufe und setzt ``last_used`` — best-effort und ohne auf
+        eine Schreibsperre zu warten (dieselbe Begründung wie beim
+        Sitzungs-Zähler in ``app.deps``). Gibt zurück, ob geschrieben wurde."""
+        self._conn.execute("PRAGMA busy_timeout=0")
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "UPDATE mcp_tokens SET calls = calls + ?, last_used = ? WHERE id = ?",
+                    (anzahl, datetime.now(UTC).isoformat(timespec="seconds"), token_id))
+            return True
+        except sqlite3.Error:
+            return False
+        finally:
+            self._conn.execute("PRAGMA busy_timeout=5000")
+
     def get_all_subscriptions(self) -> dict[int, list[str]]:
         """Return {owner_id: [committee_name]} for all owners with subscriptions."""
         rows = self._conn.execute(
@@ -5770,11 +6125,17 @@ class Store:
 
     def get_subscription_targets(self) -> dict[int, dict]:
         """Return {owner_id: {delivery_channel, telegram_chat_id, email, push_tokens}}
-        for all owners that have ≥1 committee subscription — delivery info for the crons."""
+        for all owners that have ≥1 committee subscription — delivery info for the crons.
+
+        Nur aktive Konten (wie ``get_topic_owners``): Für ein gesperrtes oder
+        unbestätigtes Konto reihte der Gremien-Cron sonst Meldungen ein, die
+        nie jemand zustellen durfte — sie lagen ohne Versuchszähler für immer
+        in der Warteschlange."""
         rows = self._conn.execute(
             """SELECT DISTINCT wu.id AS owner_id, wu.delivery_channel,
                       wu.telegram_chat_id, wu.email
-               FROM committee_subscriptions cs JOIN web_users wu ON wu.id = cs.owner_id"""
+               FROM committee_subscriptions cs JOIN web_users wu ON wu.id = cs.owner_id
+               WHERE wu.status = 'active'"""
         ).fetchall()
         targets = {r["owner_id"]: dict(r) for r in rows}
         self._attach_push_tokens(targets)

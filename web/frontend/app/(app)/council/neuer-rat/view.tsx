@@ -20,6 +20,7 @@ import {
 import { Card, DetailSkeleton, PageHeader, Segmented } from "@/components/ui";
 import { personHref } from "@/lib/routes";
 import { ratsjahre } from "@/lib/ratsjahre";
+import { useFeature } from "@/lib/features";
 
 type Filter = "all" | Gewaehlt["council_status"];
 
@@ -70,6 +71,7 @@ function PersonKarte({ g, letzte }: { g: Gewaehlt; letzte: number }) {
 export default function View() {
   const { an, data, laedt } = useGewaehlt<GewaehlterRat>();
   const [filter, setFilter] = useState<Filter>("all");
+  const wahlen = useFeature("wahlabend");
 
   const gruppen = useMemo(() => {
     const out: { list: string; short: string; color: string; dark: string; members: Gewaehlt[]; sitze: number }[] = [];
@@ -177,6 +179,16 @@ export default function View() {
         </a>. Wer schon im Rat saß, steht in den Ratsprotokollen (ab 2018) oder mit seinen Mandaten im
         Ratsinformationssystem der Stadt, das sie für heutige Ratsmitglieder bis 1991 zurück führt. Wer vor 2018
         im Rat saß und dort nicht mehr geführt wird, erscheint hier als neu.
+        {/* Der Kontext-Weg zur Auswertung: Wer wissen will, WARUM jemand drin
+            ist (Personenstimmen, Wahlbereich, wie knapp), findet es dort. */}
+        {wahlen ? (
+          <>
+            {" "}
+            <Link href="/wahlabend" className="font-medium text-primary underline-offset-2 hover:underline">
+              Das ganze Wahlergebnis →
+            </Link>
+          </>
+        ) : null}
       </p>
     </div>
   );

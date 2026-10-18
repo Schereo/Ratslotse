@@ -431,3 +431,23 @@ def test_rerank_cache_spart_den_teuren_schritt(monkeypatch):
     # Doppelte ids fallen weg, statt das Ergebnis zu verdoppeln.
     assert len(emb.rerank("Doppelt?", [(7, "a"), (7, "a"), (8, "b")])) == 2
     emb._RERANK_CACHE.clear()
+
+
+def test_bestaetigung_ist_keine_aeltere_station():
+    """Auswertung 16.10.2026: Der ASUK-Beschluss vom 12.02., den der Rat am
+    23.02. bestätigte, stand als „ÄLTERE STATION“ im Kontext — und die
+    Antwort machte daraus „durch eine neuere Ratsstation abgelöst“, in drei
+    von drei Gold-Läufen. Dieselbe Entscheidung eine Stufe höher bestätigt."""
+    c = _decision(101, 500, "26/0100", "2026-02-12", "ASUK")
+    c["outcome"] = "accepted"
+    c["neuere_station"] = {"id": 102, "date": "2026-02-23", "committee": "Rat", "outcome": "accepted"}
+    ctx = qa._build_context([c])
+    assert "ÄLTERE STATION" not in ctx
+    assert "im Rat am 23.02.2026 [102] bestätigt" in ctx
+    # Anders entschieden: Der ältere Stand IST überholt.
+    c["neuere_station"]["outcome"] = "rejected"
+    assert "ÄLTERE STATION" in qa._build_context([c])
+    # Ohne bekanntes Ergebnis bleibt es beim alten, vorsichtigen Vermerk.
+    c.pop("outcome")
+    c["neuere_station"]["outcome"] = "accepted"
+    assert "ÄLTERE STATION" in qa._build_context([c])

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { BackLink } from "@/components/back-link";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
+import { KopfKontoLink } from "@/components/kopf-konto-link";
 
 export const metadata: Metadata = {
   title: "Datenschutzerklärung – Ratslotse",
@@ -27,7 +28,7 @@ export default function DatenschutzPage() {
             <BackLink />
             <Link href="/" className="flex items-center gap-2"><BrandMark /><span className="hidden font-semibold text-foreground sm:inline">Ratslotse</span></Link>
           </div>
-          <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground">Anmelden →</Link>
+          <KopfKontoLink />
         </div>
       </header>
 
@@ -52,9 +53,18 @@ export default function DatenschutzPage() {
               <li><strong>Konto:</strong> E-Mail-Adresse und ein Passwort-Hash (das Passwort selbst wird nicht im Klartext gespeichert).</li>
               <li><strong>Anmeldung mit Apple (optional):</strong> Meldest du dich mit Apple an, erhalten wir von Apple eine pseudonyme Nutzerkennung und deine E-Mail-Adresse (bei „E-Mail-Adresse verbergen" eine Apple-Weiterleitungsadresse). Beides dient ausschließlich der Anmeldung und Konto-Verknüpfung.</li>
               <li><strong>Push (optional):</strong> ein Geräte-Token, wenn du App-Push-Benachrichtigungen aktivierst.</li>
-              <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen.</li>
+              <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen. Dazu gehören auch die Stadtteile, die „Mein Viertel" als deine Viertel zeigt — sie sind Themen deines Kontos und liegen wie diese auf dem Server.</li>
+              <li><strong>Meldungen zu „Mein Viertel":</strong> Meldest du ein Vorhaben als „Gehört nicht hierher", speichern wir die Meldung samt dem Grund, den du optional angibst, und dein Konto dazu. Die Redaktion sieht Vorhaben und Grund, nicht aber, wer gemeldet hat. Du kannst die Meldung zurücknehmen; mit deinem Konto wird sie gelöscht.</li>
               <li><strong>„Frag den Rat"-Anfragen und Fragen an Lotti:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen — bei Lotti zusammen mit dem Ausschnitt der Seite, auf den sich die Frage bezieht (etwa ein angeklickter Baustein oder markierter Text).</li>
+              <li><strong>Gespeicherte Gespräche (nur mit deiner Einwilligung):</strong> Erlaubst du das Speichern, legen wir Fragen und Antworten mit deinem Konto ab, damit du sie auf allen Geräten unter „Gespräche" wiederfindest. Du kannst einzelne Gespräche oder alle auf einmal löschen und das Speichern jederzeit wieder ausschalten. Zur Verbesserung der Antworten sehe ich mir in der Verwaltung Fragen aus gespeicherten Gesprächen an, auf die es keine belegte Antwort gab (die letzten 30 Tage) — ohne Angabe, von welchem Konto sie stammen.</li>
+              <li><strong>Gründliche Recherche:</strong> Eine Recherche läuft im Hintergrund weiter, auch wenn du die App schließt. Deshalb speichern wir Frage und Bericht mit deinem Konto, bis du sie abrufst. Ohne Einwilligung ins Speichern von Gesprächen löschen wir beides sieben Tage nach Fertigstellung; mit Einwilligung steht der Bericht als Gespräch in deinem Konto. „Alle Gespräche löschen" entfernt auch deine Recherchen.</li>
+              <li><strong>Rückmeldungen zu KI-Antworten:</strong> Gibst du einer Antwort einen Daumen hoch oder runter, speichern wir die Frage, einen Auszug der Antwort, die Bewertung, den optional angegebenen Grund und — wenn du angemeldet bist — dein Konto. Setzt du beim Daumen runter ausdrücklich das Häkchen „Antwort mit Quellen zur Prüfung mitschicken“, speichern wir zusätzlich die vollständige Antwort und die Liste ihrer Quellen, um den Fehler nachvollziehen zu können; ohne Häkchen nicht. Nimmst du den Daumen zurück (Daumen hoch), wird diese Kopie gelöscht. Alles wird mit deinem Konto gelöscht.</li>
+              <li><strong>Feedback und Kontaktformular:</strong> Über den Feedback-Dialog (angemeldet) oder das Kontaktformular der Hilfe-Seite (ohne Konto) speichern wir deine Nachricht, ihre Art und deine E-Mail-Adresse und schicken sie mir per E-Mail, damit ich antworten kann. Feedback aus dem Konto wird mit dem Konto gelöscht.</li>
+              <li><strong>Nutzung je Konto:</strong> Für angemeldete Konten zählen wir je Tag, welche Funktionen wie oft genutzt wurden (etwa Frage, Recherche, Suche, Karte) und ob über Web oder App — ohne Inhalte, ohne Uhrzeit, ohne IP-Adresse. Daraus entstehen die Übersichten in der Verwaltung, etwa wie viele Konten eine Woche aktiv waren. Die Zählung wird mit deinem Konto gelöscht. Seitenaufrufe zählen wir nur als Summe je Seite und Tag, ohne Konto- oder Gerätebezug.</li>
+              <li><strong>Mailprotokoll:</strong> Welche Service- und Benachrichtigungs-Mails an dein Konto gingen (Anlass, Betreff, Zeitpunkt, Zustellkennung) — damit sich Fragen wie „warum kam keine Mail?" beantworten lassen. Es wird mit deinem Konto gelöscht.</li>
+              <li><strong>Tippspiel zur Wahl:</strong> Spielst du mit, speichern wir den Namen, den du dafür wählst, optional eine Parteizugehörigkeit und deine Tipps. <strong>Name, Partei und Platzierung sind in der Rangliste öffentlich sichtbar</strong> — wähle also keinen Namen, der dich ungewollt erkennbar macht. Ohne Konto erkennt dich das Spiel an einem Cookie (siehe unten), in Konto-Runden an deinem Konto.</li>
               <li><strong>Geteilte Antworten:</strong> Wenn du ausdrücklich „Teilen" auswählst, speichern wir Frage, Antwort und die dazugehörigen Belege unter einem nicht erratbaren öffentlichen Link. Jede Person mit dem Link kann den Inhalt lesen und melden. Der Link wird mit deinem Konto gelöscht; gemeldete Links können wir vorher entfernen.</li>
+              <li><strong>Rückmeldungen zu Einordnungen:</strong> Wenn du bei „Ideen aus anderen Städten" angibst, ob eine Einordnung stimmt, speichern wir deine Antwort mit deinem Konto, damit du sie wiedersiehst und wir die Einordnungen prüfen können. Sie werden mit deinem Konto gelöscht.</li>
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
             </ul>
           </Section>
@@ -63,7 +73,10 @@ export default function DatenschutzPage() {
             <p>
               Bereitstellung von Konto, Themen und Benachrichtigungen zur Erfüllung des Nutzungsverhältnisses
               (Art. 6 Abs. 1 lit. b DSGVO). Server-Logs und Sicherheit auf Grundlage des berechtigten Interesses am
-              sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO).
+              sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO). Das Speichern von Gesprächen erfolgt nur mit deiner
+              Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du in den Einstellungen jederzeit widerrufen kannst.
+              Nutzungszählung, Mailprotokoll und Rückmeldungen zu Antworten dienen dem berechtigten Interesse, den
+              Dienst zuverlässig zu betreiben und zu verbessern (Art. 6 Abs. 1 lit. f DSGVO).
             </p>
           </Section>
 
@@ -71,7 +84,7 @@ export default function DatenschutzPage() {
             <p>Zur Erbringung des Dienstes setze ich folgende Dienstleister ein:</p>
             <ul className="list-disc space-y-1 pl-5">
               <li><strong>Hosting:</strong> Hetzner Online GmbH (Serverstandort EU). Betrieb der Server und Verarbeitung von Server-Logs.</li>
-              <li><strong>KI-Verarbeitung (OpenRouter):</strong> „Frag den Rat"-Anfragen und Fragen an Lotti werden zur Beantwortung über den Vermittler OpenRouter (USA) an ein KI-Sprachmodell übermittelt. Die Antworten erzeugt derzeit ein Modell von OpenAI. Im Regelfall läuft es bei Microsoft Azure in der EU, mit der Zusage, Anfragen nicht zu speichern („Zero Data Retention"). Nur wenn dieser Weg gestört ist, geht die Anfrage ausnahmsweise direkt an OpenAI (USA); dort wird sie vorübergehend gespeichert, eine solche Zusage gibt es dort nicht. Ausgeschlossen sind in jedem Fall Anbieter, die Anfragen zum Training verwenden, und Anbieter mit Sitz in China. Die vorbereitende Auswertung deiner Frage (Suchbegriffe) erzeugt ein Modell von Google, nur bei Anbietern mit Zero-Data-Retention-Zusage. <strong>Bitte gib keine personenbezogenen oder sensiblen Daten in die Fragen ein.</strong></li>
+              <li><strong>KI-Verarbeitung (OpenRouter):</strong> „Frag den Rat"-Anfragen und Fragen an Lotti werden zur Beantwortung über den Vermittler OpenRouter (USA) an ein KI-Sprachmodell übermittelt. Die Antworten erzeugt derzeit ein Modell von OpenAI. Im Regelfall läuft es bei Microsoft Azure in der EU, mit der Zusage, Anfragen nicht zu speichern („Zero Data Retention"). Nur wenn dieser Weg gestört ist, geht die Anfrage ausnahmsweise direkt an OpenAI (USA); dort wird sie vorübergehend gespeichert, eine solche Zusage gibt es dort nicht. Ausgeschlossen sind in jedem Fall Anbieter, die Anfragen zum Training verwenden, und Anbieter mit Sitz in China. Die vorbereitende Auswertung deiner Frage (Suchbegriffe) erzeugt ein Modell von Google, nur bei Anbietern mit Zero-Data-Retention-Zusage. Zur Qualitätssicherung prüft ein Modell von Google außerdem eine zufällige Stichprobe von Lottis Antworten nachträglich — dafür gehen Frage, Antwort und der Seitenausschnitt noch einmal über OpenRouter, ebenfalls nur an Anbieter mit Zero-Data-Retention-Zusage. Gespeichert wird bei uns das Urteil mit der Seite, auf der gefragt wurde; Frage und Antwort samt Konto-Zuordnung nur, wenn du das Speichern deiner Gespräche erlaubt hast, und sie werden mit deinem Konto gelöscht. <strong>Bitte gib keine personenbezogenen oder sensiblen Daten in die Fragen ein.</strong></li>
               <li><strong>Resend:</strong> Versand von Benachrichtigungs-E-Mails (nur, wenn du E-Mail als Kanal wählst).</li>
               <li><strong>CARTO:</strong> Die Kartendarstellung lädt Kartenkacheln von CARTO; dabei wird deine IP-Adresse an CARTO übermittelt.</li>
               <li><strong>Apple / Google (Push):</strong> App-Benachrichtigungen werden über den Push-Dienst des Betriebssystems (APNs bzw. FCM) zugestellt — nur, wenn du Push als Kanal aktivierst.</li>
@@ -89,19 +102,27 @@ export default function DatenschutzPage() {
 
           <Section title="Cookies und lokale Speicherung">
             <p>
-              Ratslotse setzt nur ein technisch notwendiges Cookie zur Anmeldung (Session). Im Browser und in der
-              App werden außerdem einige technisch notwendige Daten lokal auf deinem Gerät gespeichert (localStorage):
-              deine Design-Einstellung (hell/dunkel), in der App das Anmelde-Token sowie ein Zwischenspeicher der
-              zuletzt geladenen Inhalte (bis zu 24 Stunden), damit die App auch offline etwas anzeigen kann. Es
-              findet kein Tracking und keine Analyse-Software statt; daher ist keine Einwilligung (Cookie-Banner)
-              erforderlich (§ 25 Abs. 2 TDDDG).
+              Ratslotse setzt ein technisch notwendiges Cookie zur Anmeldung (Session). Spielst du ohne Konto beim
+              Tippspiel mit, kommt ein zweites hinzu, das dich als Mitspieler*in wiedererkennt und nach 30 Tagen
+              abläuft; es enthält nur ein zufälliges Geheimnis, gespeichert wird bei uns lediglich dessen Prüfsumme.
+              Im Browser und in der App werden außerdem einige technisch notwendige Daten lokal auf deinem Gerät
+              gespeichert (localStorage): deine Design-Einstellung (hell/dunkel), in der App das Anmelde-Token sowie
+              ein Zwischenspeicher der zuletzt geladenen Inhalte (bis zu 24 Stunden), damit die App auch offline etwas
+              anzeigen kann. Es gibt kein Tracking durch Dritte, keine Werbung und keine Analyse-Software; die
+              oben beschriebene Nutzungszählung läuft auf unserem eigenen Server und braucht kein Cookie. Daher ist
+              keine Einwilligung (Cookie-Banner) erforderlich (§ 25 Abs. 2 TDDDG).
             </p>
           </Section>
 
           <Section title="Speicherdauer">
             <p>
-              Kontodaten werden gespeichert, solange dein Konto besteht. Server-Logs werden nur kurzzeitig zur
-              Sicherheit vorgehalten. Du kannst die Löschung deines Kontos jederzeit verlangen.
+              Kontodaten werden gespeichert, solange dein Konto besteht; mit der Löschung des Kontos entfernen wir
+              auch Themen, gespeicherte Gespräche, Recherchen, Rückmeldungen, Feedback, Nutzungszählung und
+              Mailprotokoll. Recherchen ohne Einwilligung ins Speichern von Gesprächen löschen wir schon sieben Tage
+              nach Fertigstellung. Server-Logs werden nur kurzzeitig zur Sicherheit vorgehalten. Tägliche
+              Sicherungskopien der Datenbanken bewahren wir rund fünf Wochen auf; gelöschte Daten verschwinden aus
+              ihnen spätestens dann. Du kannst die Löschung deines Kontos jederzeit selbst unter „Konto"
+              auslösen oder verlangen.
             </p>
           </Section>
 

@@ -307,6 +307,7 @@ def wahlen(user: dict | None = Depends(optional_user), store: Store = Depends(ge
             slug=w.slug, short_title=w.short_title, title=w.title, date=w.date,
             polls_close=w.polls_close.isoformat(), kind=w.kind, status=w.status,
             path=_pfad_zu(w), summary=archive.summary(w), focus=w.slug == fokus.slug,
+            result_status=archive.result_status(w),
             tipp_path=tipp, tipp_locked=gesperrt, top=archive.top(w),
         ))
     return ElectionList(elections=zeilen)
@@ -358,6 +359,12 @@ def _pfad_zu(w: elections.Election) -> str:
     """
     if w.status != "rueckblick" and (w.slug == elections.active().slug or w.first_round):
         return elections.path_of(w)
+    # Der erste Wahlgang der OB-Wahl hat seine eigene Seite; bis 10/2026 stand
+    # er hier als einzige gelaufene Wahl ohne Link (Tims Befund 16.10.2026).
+    # Nur der zur aktiven Ratswahl: `/api/wahlabend/ob` kennt keinen anderen.
+    ob = elections.mayor_of()
+    if ob is not None and w.slug == ob.slug:
+        return "/wahlabend/ob"
     # Eine gelaufene Wahl braucht keine eigene Seite: Es IST der Wahlabend,
     # nur mit eingefrorenen Zahlen. `?wahl=` statt eines Pfadsegments, weil
     # der App-Export keine dynamischen Segmente kann (web/frontend/CLAUDE.md).

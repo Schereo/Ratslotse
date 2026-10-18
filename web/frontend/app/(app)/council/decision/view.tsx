@@ -7,8 +7,8 @@ import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, 
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, voteLabel, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
-import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
-import { apiUrl } from "@/lib/api";
+import { decisionHref, themaHref, sitzungHref } from "@/lib/routes";
+import { apiUrl, istNichtGefunden } from "@/lib/api";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
 import { PrintButton } from "@/components/print-button";
@@ -22,6 +22,7 @@ import { Mascot } from "@/components/mascot";
 import { Elsewhere } from "@/components/elsewhere";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
+import { AbrufFehler } from "@/components/abruf-fehler";
 import { useAuth } from "@/lib/auth";
 import { darfHaushalt } from "@/lib/rechte";
 import { useErklaerAnker } from "@/lib/erklaer-anker";
@@ -207,7 +208,7 @@ function GlanceCard({
       </GlanceRow>
 
       {d.parties.length > 0 && (
-        <GlanceRow label="Antrag von">
+        <GlanceRow label={d.kind === "subvote" || d.applicants_named ? "Antrag von" : "Anträge im TOP von"}>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {d.parties.map((p) => <PartyBadge key={p} party={p} />)}
           </div>
@@ -609,7 +610,10 @@ function DecisionDetailInner() {
   const suche = suchRueckweg(sp.get("suche"));
   const router = useRouter();
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
-  const { data, loading } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null);
+  const { data, loading, error, refetch } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null,
+    // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
+    // daneben sagte denselben Satz ein zweites Mal.
+    { quiet: true });
   // Design 28a/S2: Die Sitzung dazu — sie liefert die Nachbar-TOPs und das Ziel
   // für „Zurück". Zweitrangig, deshalb erst nach dem Beschluss und ohne eigenen
   // Ladezustand: fehlt sie, verhält sich die Seite wie bisher.
@@ -627,7 +631,10 @@ function DecisionDetailInner() {
   }, [data]);
 
   if (loading) return <DetailSkeleton />;
-  if (!data) notFound();
+  if (!data) {
+    if (error && !istNichtGefunden(error)) return <AbrufFehler error={error} onRetry={refetch} was="Dieser Beschluss" />;
+    notFound();
+  }
 
   const d = data.decision;
   const unanimous = d.outcome === "accepted"
@@ -655,7 +662,9 @@ function DecisionDetailInner() {
      die Anmeldewand (s. lib/zurueck.ts). */
   const backToSession = () => {
     if (!suche) {
-      zurueck(d.ksinr ? sessionHref(d.ksinr) : "/council");
+      // Die eigene Seite der Sitzung, nicht die Liste: Die zeigt den
+      // gemerkten Zeitraum, und eine vergangene Sitzung stand darin nicht.
+      zurueck(d.ksinr ? sitzungHref(d.ksinr) : "/council");
       return;
     }
     // Nur der unmittelbar aus DIESER Liste geöffnete Treffer benutzt History.

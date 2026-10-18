@@ -14,7 +14,9 @@ struct TodayUpdatesWidget: View {
     @State private var requestID = UUID()
 
     var body: some View {
-        RatsWidget(state?.firstVisit == true ? "Neu bei Ratslotse" : "Seit deinem letzten Besuch", accent: .buoy, glyph: .history) {
+        // Beim ersten Besuch NICHT „Neu bei Ratslotse": So heißt die
+        // Release-Karte direkt darüber (dieselbe Regel wie im Web).
+        RatsWidget(state?.firstVisit == true ? "Dein erster Rückblick" : "Seit deinem letzten Besuch", accent: .buoy, glyph: .history) {
             VStack(alignment: .leading, spacing: 12) {
                 if state == nil && !failed {
                     HStack(spacing: 10) {
@@ -29,7 +31,7 @@ struct TodayUpdatesWidget: View {
                         .frame(minHeight: 44).disabled(loading)
                 }
                 if let state {
-                    Text(state.firstVisit ? "Dein erster Rückblick: die letzten sieben Tage."
+                    Text(state.firstVisit ? "Zum Einstieg: die letzten sieben Tage."
                          : "Seit \(dateLabel(state.since)) – auch außerhalb deiner Themen.")
                         .font(RatsFont.notice()).foregroundStyle(RatsColor.secondary)
                     if state.total > 0 {

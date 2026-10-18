@@ -965,6 +965,11 @@ class Messpunkte:
             punkte.flex["service_tier"][tier] = punkte.flex["service_tier"].get(tier, 0) + 1
             return antwort
 
+        # Der EU-Weg mit Frist (llm._eu_anlauf) ruft ``_create.retry_with`` —
+        # ohne das brach Lotti mit Luna als AttributeError ab (08.10.2026).
+        if hasattr(orig_create, "retry_with"):
+            create.retry_with = orig_create.retry_with  # type: ignore[attr-defined]
+
         def complete(**kw: Any) -> Any:
             feature, t0 = kw.get("_feature"), time.perf_counter()
             try:

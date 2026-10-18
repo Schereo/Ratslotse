@@ -88,8 +88,11 @@ def test_app_config_nennt_die_wahl_im_fokus(client):
     kaputte Registry darf das nicht auslösen."""
     wahl = client.get("/api/app-config").json().get("election")
     assert wahl is not None
-    assert set(wahl) == {"slug", "short_title", "date", "polls_close", "kind", "path"}
+    assert set(wahl) == {"slug", "short_title", "date", "polls_close", "kind", "path",
+                         "prominent", "result_status"}
     assert wahl["kind"] in ("council", "mayor")
+    assert isinstance(wahl["prominent"], bool)
+    assert wahl["result_status"] in ("amtlich", "vorlaeufig")
     assert wahl["path"].startswith("/wahlabend")
 
 
@@ -558,13 +561,14 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "check_council_videos",  # vorläufige Ergebnisse aus der O1-Aufzeichnung, täglich
         "record_council_livestream",  # Live-Mitschnitt des O1-Streams an Sitzungstagen
         "check_vorlage_follows", "remind_setup", "backup_db", "abendmeldungen",
+        "speicherfristen",  # Recherchen ohne Einwilligung nach 7 Tagen löschen
         "check_presse",  # Stufe 3a: Stadt-Pressemitteilungen, täglich
         "social_kartentexte",  # ein Satz je Tagesordnungspunkt (LLM), täglich 7:45
         "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
         "check_beteiligungsbericht",  # lädt von oldenburg.de, alle vier Wochen
         "archive_statistik",  # sichert die Statistik-Quellen versioniert, täglich
-        "check_cities",  # Ratsdokumente der Vergleichsstädte, sonntags 3 Uhr
+        "check_cities",  # Oldenburg werktags, Vergleichsstädte sonntags 5 Uhr
         "check_herzschlag",  # meldet Jobs, die nicht mehr laufen, täglich 6:30
         "check_wahltermine",  # Terminkalender der Stadt gegen kommunalwahl/wahlen/, täglich 6:15
     }
@@ -849,6 +853,24 @@ def test_reset_token_single_use(client):
                        json={"token": "once-token", "new_password": "another12345"}).status_code == 400
 
 
+def test_delete_account_raeumt_die_staedte_rueckmeldungen(client):
+    """DSGVO: Die Rückmeldungen zu den Städte-Urteilen (mit Freitext) gehen
+    mit dem Konto — sie lagen in `cities.sqlite`, die das Löschen nicht kannte."""
+    from council.cities.store import CitiesStore
+
+    _register(client)
+    uid = client.get("/api/auth/me").json()["id"]
+    cs = CitiesStore(os.environ["CITIES_DB"])
+    cs.put_feedback("paper", "os:p:1", "fit", "4", uid, "wrong", "Meine Notiz")
+    cs.put_feedback("paper", "os:p:1", "fit", "4", uid + 1000, "right")
+    assert client.request(
+        "DELETE", "/api/account", json={"current_password": "password123"}
+    ).status_code == 204
+    rest = [r[0] for r in cs._conn.execute("SELECT user_id FROM feedback")]
+    cs.close()
+    assert rest == [uid + 1000]
+
+
 def test_delete_account_requires_password(client):
     _register(client)  # admin@test.de
     client.post("/api/topics", json={"name": "X", "description": "Testthema zum Mitlöschen."})
@@ -897,7 +919,7 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     schichten = {s["key"]: s for s in b["layers"]}
     assert set(schichten) == {"haushaltsplan", "budget_notes", "income_budget", "finance_budget", "grants", "budget_measures", "investitionen",
                               "investitionsprogramm", "budget_execution",
-                              "jahresabschluss", "teilhaushalt", "stellenplan",
+                              "jahresabschluss", "teilhaushalt", "budget_accounts", "stellenplan",
                               "indicators", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
                               "beteiligungsbericht", "fees",
@@ -2192,6 +2214,23 @@ def test_feedback_ok_without_email_config(client):
     with patch("app.routers.feedback.get_settings", return_value=fake):
         r = client.post("/api/feedback", json={"kind": "other", "message": "Test ohne Mail-Config"})
     assert r.status_code == 200 and r.json()["ok"] is True
+
+
+def test_feedback_ist_je_konto_gebremst(client, monkeypatch):
+    """Jede Einreichung ist eine Mail an den Betrieb — bis 10/2026 ohne Bremse."""
+    import collections
+
+    from app.ratelimit import feedback_limiter
+    from types import SimpleNamespace
+    _register(client)
+    monkeypatch.delenv("DISABLE_RATE_LIMIT", raising=False)
+    monkeypatch.setattr(feedback_limiter, "max_calls", 2)
+    monkeypatch.setattr(feedback_limiter, "_calls", collections.defaultdict(list))
+    fake = SimpleNamespace(resend_api_key="", feedback_email="", web_admin_email="", email_from="")
+    with patch("app.routers.feedback.get_settings", return_value=fake):
+        codes = [client.post("/api/feedback", json={"kind": "other", "message": f"Nachricht {i}"}).status_code
+                 for i in range(3)]
+    assert codes == [200, 200, 429]
 
 
 # ---- Kontaktformular der Hilfe-Seite (öffentlich, Apple-Richtlinie 1.5) ----
@@ -3638,6 +3677,80 @@ def test_qa_share_roundtrip(client):
     assert client.post("/api/council/qa-share", json={"answer_id": "x"}).status_code in (401, 403)
 
 
+def _feedback_zeile(frage: str) -> dict:
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        row = cs._conn.execute(
+            "SELECT rating, reason_kind, shared_answer FROM council_qa_feedback "
+            "WHERE question = ? ORDER BY id DESC LIMIT 1", (frage,)).fetchone()
+        return dict(row) if row else {}
+    finally:
+        cs.close()
+
+
+def test_daumen_runter_gibt_die_antwort_nur_mit_einwilligung_frei(client):
+    """Seit 10/2026: Ein 👎 kann die ganze Antwort samt Quellen zur Prüfung
+    mitschicken — nur mit Häkchen, nur aus der EIGENEN Antwort-Kopie, und ein
+    Umschwenken auf 👍 nimmt die Freigabe zurück."""
+    _register(client)
+    frage = "Was wurde zum Stadion entschieden?"
+    antwort_id = _gelieferte_antwort()
+    basis = {"question": frage, "answer_excerpt": "Der Rat", "rating": "down",
+             "answer_id": antwort_id, "reason_kind": "incomplete"}
+
+    # Ohne Häkchen: Grund ja, Antwort-Kopie nein.
+    assert client.post("/api/council/qa-feedback", json=basis).status_code == 201
+    zeile = _feedback_zeile(frage)
+    assert zeile["reason_kind"] == "incomplete" and zeile["shared_answer"] is None
+
+    # Mit Häkchen: die ganze Antwort samt Quellen.
+    assert client.post("/api/council/qa-feedback",
+                       json={**basis, "share_answer": True}).status_code == 201
+    kopie = json.loads(_feedback_zeile(frage)["shared_answer"])
+    assert kopie["answer"] == "Der Rat stimmte zu [5]."
+    assert kopie["sources"][0]["title"] == "Stadionneubau"
+
+    # Umschwenken auf 👍: Grund und Kopie sind weg.
+    client.post("/api/council/qa-feedback", json={**basis, "rating": "up", "share_answer": True})
+    zeile = _feedback_zeile(frage)
+    assert zeile["rating"] == "up" and zeile["shared_answer"] is None and zeile["reason_kind"] is None
+
+    # Eine fremde oder erfundene Antwort-Kennung gibt nichts frei.
+    andere = "Wer hat das beantragt?"
+    client.post("/api/council/qa-feedback", json={**basis, "question": andere,
+                                                  "answer_id": "erfunden", "share_answer": True})
+    assert _feedback_zeile(andere)["shared_answer"] is None
+
+    # Ein unbekannter Grund ist ein 422, kein stiller Freitext.
+    r = client.post("/api/council/qa-feedback", json={**basis, "reason_kind": "doof"})
+    assert r.status_code == 422
+
+
+def test_admin_sieht_daumen_runter_samt_freigabe_ohne_konto(client):
+    """Das Panel zeigt Grund und — nur wo freigegeben — die ganze Antwort,
+    nie das Konto (wie die Fragen ohne Antwort)."""
+    _register(client)
+    frage = "Was kostet der Stadionneubau insgesamt?"
+    client.post("/api/council/qa-feedback", json={
+        "question": frage, "answer_excerpt": "Der Rat", "rating": "down",
+        "answer_id": _gelieferte_antwort(), "reason_kind": "wrong", "share_answer": True,
+        "reason": "Zahl stimmt nicht"})
+    client.post("/api/council/qa-feedback", json={
+        "question": "Ohne Freigabe?", "answer_excerpt": "Kurz", "rating": "down"})
+    r = client.get("/api/admin/stats/thumbs-down")
+    assert r.status_code == 200
+    zeilen = {z["question"]: z for z in r.json()}
+    z = zeilen[frage]
+    assert z["reason_kind"] == "wrong" and z["reason"] == "Zahl stimmt nicht"
+    assert z["shared"]["answer"] == "Der Rat stimmte zu [5]."
+    assert z["shared"]["sources"][0]["title"] == "Stadionneubau"
+    assert zeilen["Ohne Freigabe?"]["shared"] is None
+    assert all("user_id" not in z and "email" not in z for z in r.json())
+    # Nur für Admins.
+    client.cookies.clear()
+    assert client.get("/api/admin/stats/thumbs-down").status_code in (401, 403)
+
+
 def test_qa_share_nimmt_nur_die_server_kopie(client):
     """Was der Client mitschickt, zählt nicht (zweite Prüfung 10/2026, F3):
     Vorher ließ sich jeder Text samt erfundener Zitate echter Ratsmitglieder
@@ -3693,6 +3806,60 @@ def test_qa_share_traegt_bausteine_und_parteien(client, monkeypatch):
     assert body["debates"][0]["speaker"] == "Ratsherr Wenzel"
     assert body["press_releases"][0]["url"] == "https://www.oldenburg.de/x"
     assert body["parties"][0]["stance"] == "dagegen"
+
+
+def _go_karte(frage: str = "Wie lange darf man im Rat reden?") -> dict:
+    """Die Karte, wie das ``sources``-Ereignis sie dem Client bringt."""
+    from council import rules_of_procedure
+    karte = rules_of_procedure.card(rules_of_procedure.find(frage, frage))
+    assert karte and karte["sections"], frage
+    return karte
+
+
+def test_qa_share_traegt_die_geschaeftsordnung(client):
+    """Bei einer Verfahrensfrage ist die Karte „Aus der Geschäftsordnung"
+    oft der einzige Beleg — ohne sie stünde die geteilte Antwort quellenlos
+    da. Seit dem Rückmerge 10/2026 reist sie in der SERVER-Kopie der Antwort
+    mit (``_antwort_festhalten``), nicht mehr im Körper des Clients — dort
+    stand sie auf dev, bis die zweite Sicherheitsprüfung (F3) das Teilen auf
+    eine Kennung umstellte."""
+    _register(client)
+    karte = _go_karte()
+    kennung = _gelieferte_antwort(answer="Laut Geschäftsordnung höchstens zehn Minuten.",
+                                  extras={"rules_of_procedure": karte})
+    r = client.post("/api/council/qa-share", json={"answer_id": kennung})
+    assert r.status_code == 201
+    client.cookies.clear()
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] == karte
+
+
+def test_qa_share_ohne_geschaeftsordnung(client):
+    """Ohne Karte — und für alle vor dem Nachtrag geteilten Antworten — steht
+    das Feld auf ``null``, statt zu fehlen."""
+    _register(client)
+    r = client.post("/api/council/qa-share", json={"answer_id": _gelieferte_antwort()})
+    client.cookies.clear()
+    body = client.get(f"/api/council/qa-share/{r.json()['token']}").json()
+    assert body["rules_of_procedure"] is None
+
+
+def test_antwort_festhalten_nimmt_die_karte_mit(client):
+    """Die Karte, die /ask im sources-Ereignis zeigt, landet auch in der
+    Kopie, die geteilt wird — sonst fehlte sie genau dort."""
+    from app.routers import council as router_modul
+
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    try:
+        user = store.get_web_user_by_email("admin@test.de")
+        kennung = router_modul._antwort_festhalten(
+            store, user, "Wie lange darf man reden?", "Zehn Minuten.", [], [],
+            rules={"title": "Geschäftsordnung"})
+        rec = store.qa_answer_record_get(kennung, int(user["id"]))
+    finally:
+        store.close()
+    assert rec["extras"]["rules_of_procedure"] == {"title": "Geschäftsordnung"}
 
 
 def test_qa_share_public_report_and_admin_removal(client):
@@ -5993,7 +6160,7 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
     _register(client)
     gesehen = {}
 
-    def fake_analyse(q, model=None, verlauf=None):
+    def fake_analyse(q, model=None, verlauf=None, orte=None):
         gesehen["question"] = q
         gesehen["verlauf"] = verlauf
         return {"question": "Was kostet der Neubau der Cäcilienbrücke?",
@@ -6014,6 +6181,46 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
         "".join(r.iter_text())
     assert gesehen["verlauf"] == [{"question": "Wie ist der Stand bei der Cäcilienbrücke?",
                                    "answer": "Resolution ans WSA."}]
+
+
+def test_ask_sucht_nach_wenn_der_schalter_an_ist(client, monkeypatch):
+    """Nachrecherche (Schalter `nachrecherche`): Die Anfragen des Modells
+    gehen an die Nachsuche, mit den schon gefundenen ids als Ausschluss —
+    und stehen in den Zeitmessungen. Ohne Schalter läuft nichts davon."""
+    from app.routers import council as council_router
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    cand = [{"id": 5, "title": "Kostenloser Bus an Samstagen", "summary": "Bericht",
+             "outcome": "noted", "session_date": "2025-09-10", "committee": "Rat", "score": 0.6}]
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
+        "question": "Was kostet der kostenlose Bus am Samstag?", "terms": "Bus Samstag Kosten",
+        "kind": "money", "party": None})
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (list(cand), "semantisch"))
+    monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Antwort [5]."]))
+    aufrufe: list = []
+    monkeypatch.setattr(qa_mod, "nachrecherche_anfragen",
+                        lambda frage, kandidaten: aufrufe.append(("anfragen", [c["id"] for c in kandidaten]))
+                        or ["Samstagsfahrten ÖPNV Ausgleich"])
+    monkeypatch.setattr(emb, "nachsuche", lambda store, q, anfragen, schon, erlaubt:
+                        aufrufe.append(("nachsuche", anfragen, sorted(schon))) or [])
+
+    def fragen():
+        with client.stream("POST", "/api/council/ask",
+                           json={"question": "Was kostet der kostenlose Bus am Samstag?"}) as r:
+            text = "".join(r.iter_text())
+        done = [json.loads(z[6:]) for z in text.split("\n") if z.startswith("data: ")
+                and '"done"' in z]
+        return done[-1]["timings"] if done else {}
+
+    monkeypatch.setenv("FEATURE_FLAGS", "")
+    assert "nachrecherche" not in fragen() and aufrufe == []
+
+    monkeypatch.setenv("FEATURE_FLAGS", "nachrecherche")
+    zeiten = fragen()
+    assert aufrufe == [("anfragen", [5]), ("nachsuche", ["Samstagsfahrten ÖPNV Ausgleich"], [5])]
+    assert zeiten["nachrecherche"] == {"anfragen": ["Samstagsfahrten ÖPNV Ausgleich"], "neu": 0}
 
 
 # ---- „Gründliche Recherche" (RG-10, Task 34) ----
@@ -6340,6 +6547,25 @@ def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
     finally:
         store.close()
         deepresearch._registry.clear()
+
+
+def test_alle_gespraeche_loeschen_erfasst_die_recherchen(client):
+    """„Alle löschen" meldete bis 10/2026 ``deleted: 0`` und ließ Frage und
+    Bericht jeder Recherche mit dem Konto in ``deep_research_jobs`` stehen."""
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
+        job = store.deep_job_anlegen(uid, "Stand beim Stadionneubau?")
+        store.deep_job_update(job, "fertig", bericht="Der Rat hat …")
+    finally:
+        store.close()
+
+    r = client.delete("/api/council/conversations")
+    assert r.status_code == 200
+    assert r.json() == {"deleted": 0, "research_deleted": 1}
+    snap = client.get(f"/api/council/deep-research/{job}").json()
+    assert snap["question"] == "" and snap["report"] is None
 
 
 def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):

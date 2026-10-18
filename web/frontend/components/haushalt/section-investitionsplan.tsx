@@ -385,7 +385,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
           <p className="mt-3.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
             Die Bereiche heißen im Haushalt „Teilhaushalte“ — dieselbe Einteilung
             wie unter{" "}
-            <Link href="/haushalt/bereiche" className="text-primary hover:underline">
+            <Link href="/haushalt/produkte#bereiche" className="text-primary hover:underline">
               Was steckt hinter den Namen?
             </Link>
             . Hohe Investitionsauszahlungen bedeuten zunächst nur, dass in diesem
@@ -489,7 +489,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
               bestimmte Schule saniert wird, ist deshalb auch hier nicht
               beantwortet — was der Rat dazu beschlossen hat, findest du über
               die{" "}
-              <Link href="/suche" className="text-primary hover:underline">Suche</Link>{" "}
+              <Link href="/council?tab=decisions" className="text-primary hover:underline">Suche</Link>{" "}
               in den Beschlüssen.
             </li>
             <li>

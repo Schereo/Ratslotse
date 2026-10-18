@@ -313,6 +313,11 @@ PROBEN: dict[str, str] = {
         "Jahrgang für diesen Posten führt.",
     "product_row":
         "Je Produktzeile: Erträge − Aufwendungen = ordentliches Ergebnis.",
+    "budget_accounts_posten_sum":
+        "Die Konten stehen im Plan über der Zeile ihres Postens, und die "
+        "Postenzeile ist ihre Summe — in jeder Jahresspalte, bis auf die "
+        "Rundung der Ansätze auf volle Euro. Ein Konto, dessen Spalte sich "
+        "daraus nicht eindeutig ergibt, bleibt draußen.",
     # Gesamtergebnishaushalt der Haushaltspläne (council/ergebnishaushalt.py).
     # Die zweite Probe ist die wichtigere: Sie entscheidet, welche der sechs
     # Spalten als beschlossener Ansatz gespeichert wird.
@@ -891,6 +896,9 @@ HERKUNFT_TABELLEN: tuple[str, ...] = (
     # Der Liquiditätsstand (council/liquidity.py): je Monat die Herkunft
     # der Grafik, aus der der Wert zuletzt bestätigt wurde.
     "council_liquidity",
+    # Die Kontenebene der Teilhaushalte (council/budget_accounts.py): je
+    # Plan und Teilhaushalt die Herkunft der Anlage.
+    "council_budget_accounts",
 )
 
 

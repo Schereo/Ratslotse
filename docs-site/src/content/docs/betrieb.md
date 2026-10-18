@@ -220,8 +220,10 @@ Arbeit geht wie immer per Pull Request nach `dev`.
 ## Geplante Jobs (Cron)
 
 Alle Jobs laufen auf der App-VM; maßgeblich ist die dort eingetragene Crontab.
-Die Zeitpläne stehen als Docstring im jeweiligen Skript und in
-`scripts/README.md`.
+Die Kopie, gegen die die Überfällig-Ampel im Admin-Panel und
+`check_herzschlag.py` rechnen, steht in `kern/jobs.py` — die Tabelle hier
+folgt ihr (Stand 10/2026: 20 Jobs). Ein Job ohne Zeile in dieser Tabelle ist
+ein Hinweis, dass jemand nur eine der beiden Stellen nachgezogen hat.
 
 | Skript | Rhythmus | Aufgabe |
 |---|---|---|
@@ -235,6 +237,16 @@ Die Zeitpläne stehen als Docstring im jeweiligen Skript und in
 | `check_finanzdaten.py`&nbsp;¹ | sonntags `0 6 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#der-bereich-hält-sich-selbst-aktuell). |
 | `check_beteiligungsbericht.py` | sonntags `30 6 * * 0` | Lädt die Beteiligungsberichte von oldenburg.de und liest Gesellschaften, Aufsichtsorgane und Kennzahlen daraus. Der einzige Haushalts-Cron, der selbst herunterlädt. |
 | `archive_statistik.py` | täglich `0 4 * * *` | Sichert die amtlichen Statistik-Quellen versioniert unter `data/archiv/` — siehe unten. |
+| `check_vorlage_follows.py` | täglich `30 9 * * *` | Neue Beratungsstationen und nachgetragene Ergebnisse zu Vorlagen, denen jemand folgt. |
+| `check_council_videos.py` | täglich `30 10 * * *` | Abstimmungsergebnisse aus der O1-Aufzeichnung der Ratssitzung — als vorläufiger Stand, bis das Protokoll kommt. |
+| `record_council_livestream.py` | täglich `0 13 * * *` (UTC) | Schneidet die Ratssitzung live aus dem O1-Stream mit, verfolgt den laufenden TOP und liest die Ergebnisse noch am Abend; an Tagen ohne Ratssitzung ein Leerlauf. |
+| `check_presse.py` | täglich `15 5 * * *` | RSS-Abgleich der städtischen Pressemitteilungen und der laufenden Bauleitplan-Beteiligungen. |
+| `social_kartentexte.py` | täglich `45 7 * * *` | Ein erklärender Satz je inhaltlichem Tagesordnungspunkt der nächsten drei Wochen (LLM, schreibt nie zweimal dasselbe). |
+| `render_plaene.py` | sonntags `30 4 * * 0` | Neue Bauleitplan-Anlagen (Planzeichnung, Lageplan) als Bilder für die Beschluss-Seite. |
+| `speicherfristen.py` | täglich `40 4 * * *` | Löscht Recherchen von Konten ohne Einwilligung ins Speichern sieben Tage nach ihrem letzten Stand (dieselbe Frist greift zusätzlich bei jedem Start des Backends). |
+| `check_wahltermine.py` | täglich `15 6 * * *` | Vergleicht den Terminkalender des Votemanagers mit `kommunalwahl/wahlen/` — meldet eine unbekannte Wahl und eine Wahl-Id, die endlich da ist oder kurz vor dem Wahltag noch fehlt. Legt nichts an. |
+| `check_herzschlag.py` | täglich `30 6 * * *` | Meldet Jobs, die gegen ihren Takt aus `kern/jobs.py` schweigen, einen vollen Datenträger, auffällige Registrierungen und Verstöße gegen die Datenregeln. |
+| `check_cities.py` | werktags `15 10 * * 1-6` mit `--nur-oldenburg`, sonntags `0 5 * * 0` | Städte-Speicher: werktags nur Oldenburg übernehmen und einbetten (ohne Netz und Modell — daraus entsteht „Anderswo" unter neuen Beschlüssen), sonntags zusätzlich die Vergleichsstädte, Einordnung, Ideen-Gruppen und Urteile. Kostengrenze je Lauf `CITIES_MAX_USD` (Vorgabe 2 $), Frist `CITIES_MAX_SECONDS`. |
 
 ¹ **Nur auf Prod** — und das ist seit 09/2026 die richtige Seite. Der
 Haushalts-Bereich hing bis dahin an einem Umgebungs-Gate und war auf
@@ -266,7 +278,7 @@ Tagen ohne neue Protokolle sind die LLM-Schritte ein No-op.
 | „Einfach erklärt"-Kurzfassungen | `generate_simple_summaries.process` | 60 |
 | Gesprächswert (Interessantheit) | `rate_interest.process` | 200, 2 Worker |
 | Tragweite | `rate_impact.process` | 200, 2 Worker |
-| Vorlagen-Volltexte nachladen (Netz + pypdf, kein LLM) | `backfill_vorlagen.process_missing` | 300 |
+| Vorlagen-Volltexte nachladen (Netz + PDF-Text, kein LLM) | `backfill_vorlagen.process_missing` | 300 |
 | Anlagen/Anträge nachladen + jüngste Tagesordnungen erneut scannen | `backfill_anlagen` | 300 (+ Rescan) |
 | Beratungsfolge nachziehen + bewegliche Stationen aktualisieren | `backfill_beratungen` | 300 (+ Rescan) |
 | Wichtigkeits-Score neu berechnen (Heuristik, kein LLM) | `CouncilStore.backfill_importance` | alle |
@@ -372,7 +384,7 @@ per `nohup` weiter, während der Workflow selbst schon fertig ist.
 ## Städte-Speicher: der einmalige Backfill
 
 `data/cities.sqlite` (Ratsdokumente der Vergleichsstädte, `council/cities`)
-entsteht **nicht** allein aus dem Wochen-Cron. `check_cities.py` schaut je
+entsteht **nicht** allein aus dem Cron. `check_cities.py` schaut sonntags je
 Stadt 60 Tage zurück — das hält den Bestand aktuell, baut ihn aber nie auf.
 Der Aufbau ist ein einmaliger Lauf je Stadt:
 
@@ -510,9 +522,46 @@ Seite in dem Moment, in dem der Schalter auf Prod steht.
 **Lokal zum Arbeiten:** `python scripts/lokale_daten.py hol --mit-staedten`
 und `setz --mit-staedten` nehmen den Speicher vom Server mit. Ohne den
 Schalter bleibt alles wie bisher; 600 MB will nicht jede*r auf dem Notebook.
-Eine Abspeckung wie bei der Rats-Datenbank braucht es nicht — es stehen
-ausschließlich öffentliche Ratsdokumente anderer Städte darin, keine Konten,
-keine Personendaten.
+Eine Abspeckung wie bei der Rats-Datenbank braucht es fast nicht — es stehen
+öffentliche Ratsdokumente anderer Städte darin. Die eine Ausnahme sind die
+Rückmeldungen zu den Urteilen („Stimmt das?", mit Konto-Nummer und
+Freitext): `hol` leert sie, bevor die Datei an ihren Platz rückt, und die
+Konto-Löschung räumt sie wie die übrigen Kontodaten
+(`CITIES_USER_OWNED_TABLES` in `council/cities/store.py`).
+
+### Runbook 3.0.0: Belege umschlüsseln, Cron wieder an
+
+Der einmalige Weg, den #1651 für den Prod-Speicher mitbringt — **in dieser
+Reihenfolge**. Gegenüber dem PR-Text von #1651 ist ein Schritt gewandert:
+Die Quell-Hashes der Ideen werden erst übernommen, **nachdem** der erste
+Oldenburg-Lauf die neuen Oldenburger Vorlagen geholt hat. Andersherum stehen
+die Hashes auf dem alten Beleg-Pool, und der erste Sonntag beurteilt trotzdem
+alle rund 200 Ideen neu (~0,9 $, Stunden). Das Skript prüft das inzwischen
+selbst und bricht ab, solange der Speicher hinterherhinkt
+(`oldenburg_rueckstand`, übergehen nur mit `--trotzdem`).
+
+Alles in `~/app`, der Dienst muss nicht neu starten; der Cron bleibt bis
+Schritt 8 aus — kein zweiter Schreiber auf `cities.sqlite`.
+
+| # | Befehl | Erwartung |
+|---|---|---|
+| 1 | `sqlite3 data/cities.sqlite ".backup data/cities.sqlite.vor-3.0.0"` | Sicherung (Handkopie, fällt aus der Rotation) |
+| 2 | `.venv/bin/python scripts/cities_belege_umschluesseln.py` | „863 alte Kennungen im Bestand, 863 davon im Abbild" |
+| 3 | `… --schreiben` | `{"rows": 3242, "keys": 3917, "unknown": 0}`; zweiter Aufruf ist ein No-op |
+| 4 | `… --gruppen` | feste Nummern, ~19 Gruppen vereint, `idea_groups` neu, keine leeren Zeitleisten-Titel |
+| 5 | `… --links` und `… --neu-einordnen "https://e-government.hannover-stadt.de/lhhsimwebre.nsf/DS/0832-2023"` | Links für Magdeburg/Münster; die Tippfehler-Vorlage wird am Sonntag neu eingeordnet |
+| 6 | `.venv/bin/python scripts/check_cities.py --nur-oldenburg` | Minuten, 0 $, `papers_new` ≈ Oldenburger Vorlagen seit 10.09.; endet **rot**, wenn eine Stufe scheitert (seit 10/2026) |
+| 7 | `… cities_belege_umschluesseln.py --hashes-ideen` | Minuten, Cent-Bereich; bricht mit Hinweis ab, wenn Schritt 6 fehlt, und mit `LaufAbbruch`, wenn ein Vektor-Arm stumm ist (Embedding-Modell fehlt) |
+| 8 | crontab scharf: werktags 10:15 `--nur-oldenburg`, sonntags 5 Uhr alles | |
+| 9 | vor dem ersten Sonntag: `check_cities.py --trocken` | Rückstau und Kosten; Stückkosten seit 10/2026 auf der Messung aus #1651 |
+
+**Warum Schritt 7 abbrechen kann.** `_Vektor.hol` schluckt einen
+Embedding-Fehler bewusst (ein Arm darf den Lauf nicht kippen). Damit lieferten
+die Vektor-Arme ohne fastembed-Modell still nichts, und `--hashes-ideen`
+übernahm am 03.10.2026 lokal 199 Hashes in 38 s — auf verarmten Belegen.
+`idea_fit.run` und `fit.run(nur_hashes=True)` zählen deshalb vorher, welche
+Arme Treffer liefern; fehlt einer, dessen Matrix im Bestand liegt, bricht der
+Lauf ab, statt zu urteilen oder Hashes zu übernehmen.
 
 ---
 
@@ -523,6 +572,16 @@ keine Personendaten.
 konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
 `data/backups/` mit Datum im Dateinamen.
 
+- **Erst prüfen, dann ablegen (seit 10/2026):** Die Backup-API schreibt in
+  eine Zwischendatei (`.<name>.tmp`), `PRAGMA integrity_check` (ab 500 MB
+  `quick_check`) muss „ok" sagen, erst dann wird sie per `os.replace` zum
+  datierten Stand. Vorher ging es direkt in die Zieldatei — bei voller Platte
+  blieb eine halbe Datei unter gültigem Namen liegen und verdrängte in der
+  Rotation einen guten Stand.
+- **Der Städte-Speicher hat eine eigene Rotation:** zwei Tagesstände, keine
+  Wochenmarken (`ROTATION_JE_STAMM`). Mit 7 + 4 Ständen lagen von den 2,4 GB
+  rund 27 GB im Sicherungsordner; der Inhalt ist aus öffentlichen Quellen
+  wiederherstellbar.
 - **Rotation:** zwei Stufen, `TAEGLICH = 7` und `WOECHENTLICH = 4`. Es bleiben
   die sieben jüngsten Sicherungen, dazu aus jeder der vier Kalenderwochen
   **vor** diesem Fenster die jüngste — zusammen 29 bis 35 Tage Abdeckung.
@@ -539,8 +598,11 @@ konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
   Handkopien vom August zwei Tagesstände hinaus (am 03.09.2026 lagen deshalb nur
   fünf Tagesstände von `council` vor, aber sieben von `nwz`).
 - **Off-Site-Mirror (optional):** Ist `BACKUP_RSYNC_TARGET` gesetzt, wird das
-  Backup-Verzeichnis anschließend per `rsync -az --delete` gespiegelt; das Ziel
-  ist damit ein exaktes Abbild der lokalen Rotation. Eine Kopie gegen
+  Backup-Verzeichnis anschließend per `rsync -az --fuzzy --delete-after`
+  gespiegelt; das Ziel ist damit ein exaktes Abbild der lokalen Rotation.
+  `--fuzzy` nimmt den Vortagesstand im Ziel als Vorlage für den
+  Delta-Abgleich — ohne ihn ging jeder neu benannte Stand ganz über die
+  Leitung, beim Städte-Speicher 2,4 GB je Nacht. Eine Kopie gegen
   Serververlust, aber kein Archiv: Was lokal gelöscht wird, ist beim nächsten
   Lauf auch dort weg. Der SSH-Port kommt aus
   `BACKUP_RSYNC_SSH_PORT` (Default `22`), `BatchMode=yes` verhindert
@@ -709,6 +771,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_QA_MODEL` | „Frag den Rat": Antwort, vereinfachte Antwort, Deep-Research-Bericht, Partei-Meinungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
 | `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (mit ZDR); auch die Städte-Suchbegriffe | `google/gemini-3.1-flash-lite` |
 | `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
+| `COUNCIL_ASSISTANT_PRUEFER_MODEL` | Lottis Selbstprüfung: Prüfer-Modell einer anderen Familie (`council/self_check.py`, Schalter `lotti-selbstpruefung`) | `google/gemini-3-flash-preview` |
+| `COUNCIL_ASSISTANT_PRUEFER_ANTEIL` | Anteil der Erklärungen, die nachträglich geprüft werden (0–1) | `0.1` |
+| `COUNCIL_DISTRICT_MODEL` | „Mein Viertel": Vorhaben aus Beschlüssen bündeln und einordnen (`council/viertel.py`) | `openai/gpt-6-luna` |
 | `COUNCIL_QUIZ_MODEL` | Quizfragen erzeugen | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_QUIZ_VERIFY_MODEL` | Verify-Pass über erzeugte Quizfragen | `openai/gpt-4o-mini` |
 | `COUNCIL_QUIZ_APPEAL_MODEL` | Richter: benotet, wie reizvoll eine Quizfrage ist | wie `COUNCIL_QUIZ_VERIFY_MODEL` |
@@ -780,6 +845,30 @@ sind.
 | `BACKUP_RSYNC_TARGET` | Ziel des Off-Site-Mirrors; leer = kein Mirror | nein | leer |
 | `BACKUP_RSYNC_SSH_PORT` | SSH-Port des Backup-Ziels | nein | `22` |
 | `FASTEMBED_CACHE_PATH` | Persistenter Modell-Cache von fastembed (ohne ihn liegt er im Temp-Verzeichnis und ist nach einem Neustart weg) — von der Bibliothek selbst gelesen, nicht vom Repo-Code | nein | Vorgabe der Bibliothek |
+
+### Wahlen
+
+| Variable | Wofür | Pflicht | Default |
+|---|---|---|---|
+| `WAHLKAMPF_TOKEN` | Geheimer Link-Teil der Wahlkampf-Auswertung (`scripts/stichwahl_potenzial.py --link`); mindestens 16 Zeichen, sonst wird er aus `WEB_JWT_SECRET` abgeleitet | nein | abgeleitet |
+| `WAHLTERMINE_URL` | Terminkalender des Votemanagers für `check_wahltermine.py`; leer = aus der Basis-URL der aktiven Wahl abgeleitet | nein | abgeleitet |
+
+### Städte-Speicher (`check_cities.py`)
+
+| Variable | Wofür | Pflicht | Default |
+|---|---|---|---|
+| `CITIES_DB` | Pfad zur Städte-Datenbank | nein | `data/cities.sqlite` |
+| `CITIES_FILES_DIR` / `CITIES_RAW_DIR` | Ablage der geladenen Dokumente bzw. Rohantworten | nein | `data/cities-files`, `data/cities-raw` |
+| `CITIES_MAX_USD` | Kostengrenze für den ganzen Lauf über alle Stufen; `0` hebt sie auf | nein | `2.0` |
+| `CITIES_MAX_SECONDS` | Frist je Lauf in Sekunden; `0` hebt sie auf (Nachlauf von Hand) | nein | `14400` (4 h) |
+| `CITIES_ANNOTATE_MAX` | Stückzahl je Lauf für die Einordnung (Deckel gegen den Rückstau) | nein | `3000` |
+| `CITIES_REASON_MAX` | Abschnitte je Lauf für die Begründungen | nein | `400` |
+| `CITIES_SINCE_DAYS` | Wie weit ein Lauf zurückschaut | nein | `60` |
+| `CITIES_RATE_SECONDS` | Abstand zwischen zwei Abrufen bei einem fremden Ratsinformationssystem (mindestens 1 s) | nein | `1.0` |
+| `CITIES_FIT_WORKERS`, `CITIES_TERM_WORKERS`, `CITIES_IDEA_FIT_WORKERS`, `CITIES_STANCE_WORKERS` | Gleichzeitige Urteile je Stufe — mehr ist schneller, nicht teurer | nein | `8`, `16`, `4`, `12` |
+| `CITIES_FIT_VOTES` / `CITIES_FIT_PROBE` | Stimmen je Urteil bzw. Stichprobengröße der Selbstkontrolle | nein | `3` / `300` |
+| `CITIES_*_MODEL` (`CLASSIFY`, `FIT`, `CLUSTER`, `STANCE`, `REASON`, `EFFORT`, `IDEA_FIT`) | Modell je Stufe | nein | `deepseek/deepseek-v4-flash` |
+| `CITIES_LLM_TIMEOUT` | Zeitgrenze je Modellaufruf in Sekunden | nein | `120` |
 
 :::tip
 Wer nur lokal entwickelt, braucht davon fast nichts: `OPENROUTER_API_KEY` für

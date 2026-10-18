@@ -38,13 +38,24 @@ Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendu
 | Fließtext lange Antworten | hsl(212 55% 20%) |
 | Sekundär / Muted / Labels | hsl(207 18% 38.5%) · iOS #506474 |
 | **Primär „Hafenblau"** | hsl(205 92% 34%) |
-| **Signal-Orange** (nur Akzent: KI-Funken, Marker und Deltas ohne Wertung) | hsl(19 92% 55%) |
+| **Signal-Orange** (nur Akzent: KI-Funken, Marker und Deltas ohne Wertung) | hsl(19 92% 42%) · #ce4709 |
 
 ### Dunkel
 Seite hsl(213 50% 7%) · Karte hsl(212 42% 11%) · Rahmen hsl(211 36% 17%)
 (interaktiv 21%) · Text hsl(204 40% 96%) · Muted hsl(206 23% 72.5%)
 (iOS #A9BBC9) ·
-Primär hsl(202 90% 60%) (Text darauf dunkel!) · Signal hsl(19 95% 60%).
+Primär hsl(202 90% 60%) (Text darauf dunkel!) · Signal hsl(19 95% 60%) ·
+Fehler/Löschen hsl(0 70% 62%) (Text darauf dunkel, wie beim Primär).
+
+**Kontrast der Paare (seit 10/2026).** Jede Farbe, auf der Schrift steht,
+trägt ihre `-foreground` mit mindestens 4,5 : 1 — auch kleine Zähler und
+Knöpfe. Das Signal-Orange stand bis dahin bei 50 % Helligkeit (#f5540a): Weiß
+darauf 3,41 : 1, gemessen per axe an „Frag den Rat" und am Zähler der
+Seitenleiste. Mit 42 % sind es 4,65 : 1; dasselbe Orange ist auch als
+Textakzent auf Weiß lesbarer geworden. Im Dunkeln lag das Rot für „Konto
+löschen" bei 4,03 : 1 auf der Karte und Weiß darauf bei 4,29 : 1 — jetzt
+heller mit dunkler Schrift (4,83 / 4,98 : 1). Wer ein Token ändert, misst das
+Paar, nicht nur die Fläche.
 
 ### Semantik (Tints, nie Vollfarben-Flächen)
 - Erfolg/Angenommen: #dcfce7 / #15803d
@@ -90,6 +101,28 @@ kräftiger, in der Mitte kaum. Keine stehende Fläche, und bei
 `prefers-reduced-motion` gar nicht. Dieselbe Frage wie auf der Karte, nur
 zeitlich statt räumlich: „wer hat die neuen Bezirke geholt?"
 
+**Die dritte Ausnahme: die Neuigkeiten-Kacheln** (`release-news-card.tsx`,
+Tims Abnahme des Entwurfs 07.10.2026). „Neu bei Ratslotse" zeigt je Neuerung
+eine Video-Kachel, deren untere Hälfte in der **Farbe der Neuerung** steht —
+eine Fläche, auch in Signal-Orange (sonst Anti-Pattern, § 8). Der Grund: Die
+Kachel ist ein **Titelbild**, kein Bedienelement auf der Seite, und die Farbe
+ordnet Kachel, Fortschritt und den Knopf „… ausprobieren" im Spieler einander
+zu. Drei feste Werte, **keine Theme-Token** — auf der Kachel steht Weiß, und
+im Dunkelmodus würden Primär und Signal hell (Weiß darauf 2,5 : 1). Wie die
+Clips selbst wechselt ein Titelbild mit dem Theme nicht die Farbe.
+
+| Name (`kern/releases.py`) | Wert | Weiß darauf | wofür |
+|---|---|---|---|
+| `signal` | #ce4709 = hsl(19 92% 42%) | 4,65 : 1 | was Lotti tut — die Farbe der KI |
+| `primary` | #0764a6 = hsl(205 92% 34%) | 6,20 : 1 | der Rat, Vorgänge, andere Räte |
+| `green` | #15803d (Erfolg, s. o.; die Bebauungspläne der Stadtkarte) | 5,02 : 1 | was auf der Karte liegt |
+
+Ein vierter Wert kommt zuerst hierher: `tests/test_releases.py` hält Registry,
+Web (`lib/neuigkeiten.ts`) und App (`ReleaseNewsCard.swift`) gegen diese
+Tabelle. Über dem Titelbild liegt die helle Textfarbe hsl(212 55% 11%) halb
+deckend, ab 58 % der Höhe die Kachelfarbe zu 95 %, ab 74 % ganz — dort steht
+die Schrift, und ihr Kontrast hängt nicht am Bild darunter.
+
 ## 3. Typografie
 
 - **Inter** 400/500/600/700 — UI und Fließtext. Die Leserollen unten gelten
@@ -121,6 +154,12 @@ Metadaten oder ganzer Quellenzeile. Der gedämpfte Text hält auf Karte,
 Seite und Tonfläche in beiden Themes mindestens 4,5:1; #506474 auf Weiß
 liegt bei etwa 6,15:1. Orange Beschriftung braucht die dunklere Textfarbe
 (Web `orange-800` / dunkel `orange-300`, iOS `signalInk`).
+Ein Bruch hinter dem Token (`text-muted-foreground/60`) nimmt genau das
+wieder weg — 2,59 : 1 auf Weiß; `tests/test_gedaempfter_text.py` hält die Zahl
+solcher Stellen als Sperrklinke. Ein noch nicht verdientes Abzeichen dimmt
+sein Zeichen und rahmt gestrichelt, nicht die ganze Kachel samt Namen.
+Ausgenommen sind nur abgeschaltete Bedienelemente (ein Unterschalter, dessen
+Oberschalter aus ist) — WCAG 1.4.3 nimmt inaktive Elemente aus.
 
 **Mehr Schrift braucht Höhe.** Quellentitel und ihre Metadaten werden
 vollständig umbrochen, auch in schmalen Belegespalten. Textauszüge dürfen
@@ -397,9 +436,57 @@ iOS-Schrift.
   darüber eingeschoben spränge der Text, den man gerade liest.
 - **Parteien** (RG-09): Dot + Label 700 + Position 1–2 Sätze + Paraphrase kursiv
   „— Sprecher, Datum"; Badge „uneinheitlich" (Amber); Fußzeile „Paraphrasen,
-  keine wörtlichen Zitate".
+  keine wörtlichen Zitate". Die Kopfzeile (Name · Haltung · Beiträge · „Dazu
+  fragen") **bricht um**, jedes Stück bleibt für sich ganz; „Dazu fragen"
+  steht am rechten Rand seiner Zeile. Mit Maus sitzt es oben rechts in
+  freigehaltenem Raum, damit der Hover-Knopf keine leere Zeile belegt.
 - **Presse-Block** (RG-06): max 3 Zeilen, gestrichelt, External-Link-Icon,
   nie Fußnoten-Ziel.
+- **Neuigkeiten-Karte** (`components/release-news-card.tsx`, seit 3.0.0; Tims
+  Befund 07.10.2026: „fühlt sich langweilig an … mehr Bilder, mehr Anreiz").
+  Kopf: Lotti `hat-idee` 56/72 px · Mono-Kicker „NEU BEI RATSLOTSE · 3.0" ·
+  Titel Bricolage 26/30 extrabold (nie größer als das „Moin" der Seite) ·
+  Teaser in `hinweis` · rechts der **Fortschritt** (je Kachel ein 36×6-Balken,
+  angesehen = Signal als Marker, darunter „1 von 3 angesehen" in `meta`), nur
+  wo die Kacheln nebeneinander stehen. Ein kleines × (40 px) in der Ecke blendet
+  aus. Darunter je Neuerung eine **Video-Kachel**: Titelbild randlos
+  (`object-top`), Radius 18, Verlauf in der Kachelfarbe (§ 2), oben links
+  Nummer bzw. Haken in einem weißen 32-px-Kreis, oben rechts die Länge
+  („▶ 0:24", gemessen, nie geschätzt), mittig ein weißer 64-px-Abspielknopf,
+  unten Titel Bricolage 22 extrabold weiß und eine Zeile in 14 px. Die ganze
+  Kachel ist EIN Knopf („Video ansehen: Mein Viertel, 18 Sekunden"). Ab 768 px
+  KARTEN-Breite (`@3xl`) nebeneinander im Raster, darunter ein Karussell mit
+  Einrasten bis an den Kartenrand (78 %, max. 300 px; die nächste schaut
+  herein), Punkte darunter, mit Maus die Blätter-Pfeile daneben (§ 6).
+  Kleinere Neuerungen (`aside`) sind keine Kachel, sondern eine Zeile
+  „**Außerdem:** … Ansehen →" auf primary/6. Die Karte bewegt sich nicht von
+  selbst: Standbilder; was läuft, läuft im Spieler.
+- **Story-Spieler** (`components/neuigkeiten-spieler.tsx`; App
+  `ReleaseStoryPlayer.swift`): Vollbild, **immer dunkel** — die Kinofläche ist
+  die dunkle Seitenfarbe hsl(213 50% 7%), deckend. Das ist keine dunkle Karte
+  auf heller Seite (die lehnt Tim ab), sondern ein Videoplayer, der die Seite
+  ersetzt; halb durchsichtig schimmerte die Startseite als graue Schrift neben
+  dem Clip durch. Oben je Clip ein 4-px-Balken, der **mit der Videozeit**
+  läuft (nur `transform`), darunter „2 von 3 · Mein Viertel" und ×. Der Clip
+  so groß, wie Kopf und Fuß es lassen (Radius 16), Wiedergabe-Knopf unten
+  links, steht er, ein großer Abspielknopf in der Mitte. Fuß: Titel Bricolage
+  19/22, der ganze `text` in Weiß 86 %, dann „‹ Zurück" · **„<Feature>
+  ausprobieren →" in der Kachelfarbe** · „Weiter ›" (auf dem letzten
+  „Fertig"); schmal steht der Feature-Knopf allein in der ersten Zeile.
+  **Zwischen zwei Clips steht eine Tafel** über dem abgedunkelten letzten
+  Bild (Nachtblau 86 %, Unschärfe): „DAS WAR" + Titel (Bricolage 19/22),
+  darunter „<Feature> ausprobieren →" in der Kachelfarbe, „ALS NÄCHSTES ·
+  <Titel> ›" mit einem hellen Balken, der in acht Sekunden durchläuft, und
+  leise „↻ Nochmal ansehen". Der Fokus steht auf „Als Nächstes"; Zeiger oder
+  Fokus auf den anderen beiden Knöpfen halten den Balken an. **In der App
+  fehlt die Tafel noch** — `ReleaseStoryPlayer.reachedEnd()` schaltet
+  direkt weiter; nachziehen, wenn die App das nächste Mal angefasst wird.
+  Bedienung: ein echter Dialog (Fokusfalle, `Esc`, Fokus zurück auf die
+  Kachel), `←`/`→`, Leertaste; am Telefon Tipp links/rechts (je 30 %) blättert,
+  Mitte hält an, seitwärts wischen blättert, **nach unten wischen schließt**.
+  Ein Kachel-Clip gilt als angesehen, sobald er aufgeschlagen ist (Haken je
+  Gerät); sind alle angesehen, setzt die Karte die Marke am Konto, bleibt aber
+  bis zum nächsten Laden stehen.
 - **Composer**: h 48–52, Radius 16, Funken-Icon (Signal-Orange) links, Senden
   36–38 ⌀ primary (disabled: primary/35); ein Verarbeitungshinweis verwendet
   die Leserolle `hinweis`.
@@ -636,6 +723,8 @@ eine. Die Rücknavigation liegt oberhalb der Karte.
 - Vorschlags-Chips (antippbare Fragen): primary-Rahmen /30 + bg /4 (auf Tonfläche
   weiß) + Pfeil/Icon; nur am jüngsten Turn.
 - Hover legt Zeilen-Aktionen frei („Dazu fragen") — Fläche primary/5, Radius 9.
+  Verstecken nur mit Maus (`desk:`), nie nach bloßer Breite (`lg:`): Ein iPad
+  quer ist breit, hat aber keinen Hover — dort war die Aktion unerreichbar.
 - Horizontales Blättern: Touch wischt, `maus:` bekommt stille runde
   Blätter-Pfeile (24 px, Rahmen + bg-card + Schatten). An Scroll-Zeilen
   schweben sie über den Enden, der Inhalt fadet dort per CSS-**Maske** aus
@@ -710,6 +799,22 @@ unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
   KI-Frage-Segment ruht ~70 % seines Loops, das Maskottchen atmet und blinzelt
   in Abständen von Sekunden. Ein Dauer-Flackern im Blickfeld macht den Text
   daneben unlesbar.
+- **Am Ende eines Clips darf der Story-Spieler weiterschalten — sonst nichts
+  von selbst.** Auf der Karte gilt weiter: kein Selbstlauf, gewechselt wird auf
+  Klick, Pfeil oder Wisch (eine Karte, die weiterschaltet, zieht den Text
+  unter der lesenden Person weg). Im Spieler ist das Weiterschalten die
+  erwartete Grammatik einer Story und erklärt die Reihenfolge: Ein Mensch hat
+  ihn geöffnet, um die Clips zu sehen; die Balken oben kündigen den Wechsel an;
+  gewechselt wird erst, wenn der laufende Clip **zu Ende** ist — nichts wird
+  mitten im Lesen weggezogen, und Anhalten hält auch das an. **Und nie
+  übergangslos:** Bis 10/2026 begann der nächste Clip im selben Augenblick,
+  und man merkte nicht, dass jetzt ein anderes Feature lief (Tims Befund).
+  Seitdem steht dazwischen die Tafel mit dem sichtbaren Balken — der Wechsel
+  ist angekündigt, und wer das Gesehene ausprobieren will, hat dafür einen
+  Moment. Mit
+  `prefers-reduced-motion` startet kein Clip von selbst (Standbild +
+  Abspielknopf), und am Ende schaltet nichts weiter (`nachDemEnde` in
+  `lib/neuigkeiten.ts`, in der App `ReleaseStoryPlayer`).
 - **`prefers-reduced-motion` ist keine Kür.** Der globale Block in
   `app/globals.css` legt Dauern still; wer eine Bewegung baut, deren
   Endzustand nicht von allein steht (Sichtbarkeit per JS, gestaffelte
@@ -757,7 +862,7 @@ eine Wirkung der einzelnen Mail zu behaupten.
 Keine Lotti-Sprechblase außerhalb der Anstupser-Grenzen (§ 5) · kein Zähler
 oder Abzeichen am geschlossenen Lotti-Knopf ·
 keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
-kein Signal-Orange als Flächenfarbe · keine Parteifarben-Flächen (Ausnahmen:
+kein Signal-Orange als Flächenfarbe (Ausnahme: Neuigkeiten-Kacheln, § 2) · keine Parteifarben-Flächen (Ausnahmen:
 Stichwahl-Karte und ihr Aufleuchten, Wahl-Ebene der Stadtkarte, s. § 2) · kein Emoji
 im UI-Text · keine gerahmten Button-Reihen unter Antworten (stille Icons) ·
 Bricolage nie im Fließtext · Externes nie wie Beschlüsse stylen · Footer nie
@@ -827,8 +932,9 @@ breiten Woche; weitere Widgets folgen im selben Raster.
 „Seit deinem letzten Besuch“ ersetzt die frühere Themen-Karte auf Heute.
 Der Rückblick zeigt allgemeine Ergänzungen, unabhängig von Abos: neue und
 geänderte Tagesordnungen sowie erstmals ergänzte Protokolle mit Ergebnissen.
-Beim ersten Besuch heißt er „Neu bei Ratslotse“ und nennt ausdrücklich sieben
-Tage. Der Zeitraum bleibt während eines Besuchs stabil, auch beim Nachladen;
+Beim ersten Besuch heißt er „Dein erster Rückblick“ und nennt ausdrücklich
+sieben Tage — nicht „Neu bei Ratslotse“, so heißt die Release-Karte im
+Hinweis-Slot darüber (bis 10/2026 standen beide Überschriften untereinander). Der Zeitraum bleibt während eines Besuchs stabil, auch beim Nachladen;
 ein neuer Besuch beginnt nach 30 Minuten ohne sichtbare Nutzung.
 
 Hierarchie: Zeitraum → höchstens drei aufklappbare Arten → Gremien → Sitzungen.

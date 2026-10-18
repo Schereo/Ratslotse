@@ -8,10 +8,35 @@ import { loadToken, setToken } from "./token";
 import { unregisterPush } from "./push";
 import { kontoDatenRaeumen } from "./konto-raeumen";
 import { User } from "./types";
+import { isNativeApp } from "./platform";
+
+/** In der App: das zuletzt bestätigte Konto, für den Start im Funkloch. Der
+ *  Abfrage-Zwischenspeicher überlebt dort den Neustart (RL-1103) — ohne Konto
+ *  stand davor aber die Anmeldung, und die gespeicherten Daten waren wertlos.
+ *  Rechte setzt ohnehin der Server durch; das hier entscheidet nur, ob die
+ *  Hülle steht. */
+const LETZTES_KONTO = "ratslotse.letztes-konto";
+function kontoMerken(u: User | null) {
+  if (!isNativeApp()) return;
+  try {
+    if (u) localStorage.setItem(LETZTES_KONTO, JSON.stringify({ ...u, access_token: null }));
+    else localStorage.removeItem(LETZTES_KONTO);
+  } catch { /* gesperrter Speicher: dann eben ohne */ }
+}
+function letztesKonto(): User | null {
+  if (!isNativeApp()) return null;
+  try {
+    const roh = localStorage.getItem(LETZTES_KONTO);
+    return roh ? (JSON.parse(roh) as User) : null;
+  } catch { return null; }
+}
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
+  /** `/auth/me` kam nicht an (Netz, 5xx, Deploy) — NICHT „abgemeldet".
+   *  Die Hülle zeigt dann „antwortet gerade nicht" statt der Anmeldung. */
+  authFehler: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   loginWithApple: (cred: AppleCredential) => Promise<User>;
@@ -24,6 +49,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authFehler, setAuthFehler] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -34,8 +60,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // nichts.
       if (u.access_token) await setToken(u.access_token);
       setUser(u);
+      kontoMerken(u);
+      setAuthFehler(false);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) setUser(null);
+      // Nur ein 401 heißt „nicht angemeldet". Bis 10/2026 landete auch jeder
+      // 5xx und jedes Funkloch beim ersten Laden auf der Anmeldung — bei
+      // jedem Deploy also alle, die gerade eine Seite öffneten.
+      if (e instanceof ApiError && e.status === 401) {
+        setUser(null); kontoMerken(null); setAuthFehler(false);
+      } else {
+        setAuthFehler(true);
+        setUser((jetzt) => jetzt ?? letztesKonto());
+      }
     }
   }, []);
 
@@ -55,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setUnauthorizedHandler(() => {
       setUser(null);
+      kontoMerken(null);
       queryClient.clear();
       kontoDatenRaeumen({ mitEntwurf: false });
     });
@@ -95,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post("/auth/logout");
     await setToken(null);
     setUser(null);
+    kontoMerken(null);
     // Was das Konto im Tab hinterlassen hat, gehört nicht der nächsten
     // Person an diesem Gerät (zweite Sicherheitsprüfung, F8/F17).
     queryClient.clear();
@@ -102,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, loginWithApple, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, authFehler, login, register, loginWithApple, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

@@ -52,6 +52,13 @@ from kern.email import email_ready, send_email  # noqa: E402
 from kern.store import Store  # noqa: E402
 
 REMIND_AFTER_HOURS = int(os.environ.get("SETUP_REMIND_AFTER_HOURS", "48"))
+
+#: So oft darf der Versand an ein Konto scheitern, dann gilt die Erinnerung
+#: als verbraucht. Vorher gab es keine Grenze: Eine Adresse, die Resend
+#: dauerhaft abweist, stand jeden Tag wieder auf der Liste — ein Versuch, ein
+#: Fehler, eine Logzeile, für immer. Drei Tage reichen, um einen Ausfall des
+#: Versanddienstes zu überstehen.
+MAX_VERSUCHE = 3
 APP_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de")
 
 # Was im jeweiligen Schritt offen ist — die Mail sagt konkret, was noch fehlt,
@@ -112,8 +119,14 @@ def main() -> dict:
                 "reason": "kein_mailversand"}
 
     sent = 0
+    aufgegeben = 0
     ohne_haken_ids = {u["id"] for u in ohne_haken}
     for u in pending:
+        if store.failed_mail_count(int(u["id"]), "setup_reminder") >= MAX_VERSUCHE:
+            store.mark_setup_reminded(u["id"])
+            aufgegeben += 1
+            print(f"  aufgegeben: Konto {u['id']} ({MAX_VERSUCHE} Fehlversuche)")
+            continue
         step = int(u.get("setup_step") or 0)
         leer = u["id"] in ohne_haken_ids
         betreff = ("Ratslotse meldet sich noch nicht bei dir" if leer
@@ -129,7 +142,7 @@ def main() -> dict:
                     held="erinnerung",
                     kicker="Deine Einrichtung",
                     title="Noch kein Thema hinterlegt" if leer else "Fast fertig eingerichtet",
-                    fusszeile="Diese Erinnerung schicken wir exact einmal — "
+                    fusszeile="Diese Erinnerung schicken wir genau einmal — "
                               "du bekommst sie nicht noch einmal.",
                     anlass="setup_reminder",
                 ),
@@ -137,13 +150,16 @@ def main() -> dict:
             store.protokolliere_mail(int(u["id"]), "setup_reminder", betreff, message_id=mid)
         except Exception as exc:  # noqa: BLE001 — ein Fehlschlag stoppt nicht den Rest
             print(f"  Mail an Konto {u['id']} fehlgeschlagen: {exc}")
+            # Der Fehlschlag zählt gegen MAX_VERSUCHE.
+            store.protokolliere_mail(int(u["id"]), "setup_reminder", betreff, ok=False)
             continue
         # Erst nach erfolgreichem Versand markieren: Ein Fehlschlag darf die
         # einzige Erinnerung nicht verbrauchen.
         store.mark_setup_reminded(u["id"])
         sent += 1
         print(f"  erinnert: Konto {u['id']} ({'ohne Haken' if leer else f'Schritt {step}'})")
-    return {"kandidaten": len(pending), "gesendet": sent, "ohne_haken": len(ohne_haken)}
+    return {"kandidaten": len(pending), "gesendet": sent, "ohne_haken": len(ohne_haken),
+            "aufgegeben": aufgegeben}
 
 
 if __name__ == "__main__":

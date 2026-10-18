@@ -991,7 +991,16 @@ private struct AnalysisDecisionSheet: View {
                         if isLoading { RatsLoadingState(message: "Beschlüsse werden geladen …") }
                         if let error { ErrorCard(message: error) { Task { await load() } } }
                         ForEach(decisions) { decision in
-                            NavigationLink(value: AppRoute.decision(id: decision.id)) {
+                            // Blatt zu, Beschluss im Stapel der App auf — wie
+                            // aus dem Vorhaben in Mein Viertel. Bis 10/2026
+                            // hatte das Blatt einen eigenen Stapel: Der
+                            // Beschluss stand darin ohne Kopfzeile und ohne
+                            // Lotti, und jeder Link auf ihm („Im
+                            // Zusammenhang") öffnete sich unsichtbar dahinter.
+                            Button {
+                                dismiss()
+                                model.navigation.append(.decision(id: decision.id))
+                            } label: {
                                 DecisionRow(decision: decision).ratsCard()
                             }.buttonStyle(RatsPlainButtonStyle())
                         }
@@ -999,9 +1008,6 @@ private struct AnalysisDecisionSheet: View {
                 }.background(RatsColor.page)
             }
             .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: AppRoute.self) { route in
-                RouteDestinationView(model: model, route: route)
-            }
         }
         .task { await load() }
     }

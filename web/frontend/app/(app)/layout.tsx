@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Clock, MailWarning } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,17 +24,23 @@ import { BackToTop } from "@/components/back-to-top";
 import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
-import { Button, Card, CardListSkeleton, Input, Label, PasswordInput, Skeleton, Spinner, toast } from "@/components/ui";
+import { Button, Card, CardListSkeleton, ErrorState, Input, Label, PasswordInput, Skeleton, Spinner, toast } from "@/components/ui";
 import { CodeEingabe } from "@/components/code-eingabe";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
+import { abmeldenAbholen, abmeldenMerken } from "@/lib/abmelden";
 import { breiteFuer, huellenKlasse } from "@/lib/vollbreit";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, refresh } = useAuth();
+  const { user, loading, authFehler, refresh, logout } = useAuth();
   const router = useRouter();
+  const abmelden = async () => {
+    abmeldenMerken();
+    await logout();
+    router.replace("/login");
+  };
   const pathname = usePathname();
   // Geteilte Detailseiten lassen sich ohne Konto lesen (s. lib/public-routes.ts).
   const oeffentlich = istOeffentlich(pathname);
@@ -70,13 +77,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (loading || user || oeffentlich) return;
+    // `authFehler`: Der Server kam nicht an — das ist kein Abmelden. Der
+    // Rauswurf hier traf bei jedem Deploy alle, die gerade eine Seite luden.
+    if (loading || user || oeffentlich || authFehler) return;
     // Das Ziel mitnehmen, statt es zu verlieren: Wer aus einem Lesezeichen oder
     // einer angetippten Mitteilung auf „Meine Themen" kommt und sich anmelden
     // muss, landete danach stumpf auf dem Dashboard.
     const ziel = window.location.pathname + window.location.search;
+    // Bewusst abgemeldet (lib/abmelden.ts): ohne Rücksprung.
+    if (abmeldenAbholen()) { router.replace("/login"); return; }
     router.replace(ziel === "/dashboard" ? "/login" : mitRuecksprung("/login", ziel));
-  }, [user, loading, router, oeffentlich]);
+  }, [user, loading, router, oeffentlich, authFehler]);
 
   // Wire native push once a user is present: device token → backend, tap → route.
   // No-op on the web and when notifications aren't permitted.
@@ -89,11 +100,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Solange das Konto gesperrt ist, gibt es die App-Hülle noch nicht: Topbar,
   // Suche und Bottom-Nav führen alle ins Leere, wenn man nichts darf. Der
   // Hinweis steht deshalb für sich, wie die Auth-Seiten davor.
+  //
+  // Ausnahme: die öffentlichen Detailseiten. Die liest jede:r ohne Konto — ein
+  // unbestätigtes Konto sah bis 10/2026 dort trotzdem nur die Wand und damit
+  // WENIGER als ein anonymer Besuch. Jetzt bekommt es dieselbe Seite, dazu
+  // oben den Hinweis, was noch fehlt, und den Weg hinaus.
+  if (gated && oeffentlich) {
+    return (
+      <PublicShell
+        onAbmelden={() => void abmelden()}
+        hinweis={<KontoHinweis verify={needsVerify} email={user!.pending_email ?? user!.email} />}
+      >
+        {children}
+      </PublicShell>
+    );
+  }
   if (gated) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-waves px-4 py-10">
         <div className="w-full max-w-sm">
           {needsVerify ? <VerifyNotice email={user!.email} /> : <PendingNotice email={user!.email} />}
+          {/* Der Weg hinaus. Bis 10/2026 fehlte er: Wer sich mit dem
+              falschen Konto angemeldet hatte, kam von hier nirgends hin. */}
+          <p className="mt-4 text-center">
+            <button type="button" onClick={() => void abmelden()}
+              className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+              Abmelden
+            </button>
+          </p>
         </div>
       </div>
     );
@@ -103,6 +137,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Anmeldung zu schicken. Die App-Hülle passt hier nicht — ihre Navigation
   // führt ausschließlich zu Seiten, die ein Konto verlangen.
   if (!loading && !user && oeffentlich) return <PublicShell>{children}</PublicShell>;
+
+  if (!loading && !user && authFehler) return <NichtErreichbar onRetry={refresh} />;
 
   // Design 29a (P3): Der erste Eindruck war ein Spinner auf weißem Grund — die
   // Marke verschwand ausgerechnet in der Sekunde, die zählt, und jeder App-Start
@@ -131,10 +167,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           einem vollen „Heute" stehen zu lassen. */}
       <TourEinladung />
       <CommandPalette />
-      {/* Lotti als Assistentin: der schwebende Knopf und ihr Fenster.
-          HIER und nicht je Seite — der Verlauf soll den Seitenwechsel
-          überleben (components/assistentin/index.tsx). */}
-      <LottiAssistentin />
       <FeedbackDialog />
       {/* useSearchParams braucht eine Suspense-Grenze (CSR-Bailout beim Prerender). */}
       <Suspense fallback={null}>
@@ -191,6 +223,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             sitzen jetzt im Sidebar-Fuß (Desktop) bzw. Burger-Menü (mobil),
             beides über den UserFooter in components/nav.tsx. */}
       </main>
+      {/* Lotti als Assistentin: der schwebende Knopf und ihr Fenster.
+          HIER und nicht je Seite — der Verlauf soll den Seitenwechsel
+          überleben (components/assistentin/index.tsx). NACH dem Inhalt:
+          Davor stand ihr Knopf in der Tab-Reihenfolge noch vor der ganzen
+          Navigation — der zweite Tab-Druck landete bei Lotti. */}
+      <LottiAssistentin />
       <MobileBottomNav />
     </div>
   );
@@ -379,20 +417,61 @@ function VerifyNotice({ email }: { email: string }) {
   );
 }
 
+/** Der Streifen über einer öffentlichen Seite, solange das Konto noch nicht
+ *  freigeschaltet ist. Er erklärt, warum hier keine Navigation steht, und
+ *  führt zur Bestätigung — die liegt auf jeder Seite mit Konto-Pflicht. */
+function KontoHinweis({ verify, email }: { verify: boolean; email: string }) {
+  return (
+    <div role="status" className="mb-6 flex items-start gap-3 rounded-xl border border-border bg-muted/60 px-4 py-3 text-sm">
+      {verify
+        ? <MailWarning className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        : <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
+      <p className="min-w-0 text-foreground [overflow-wrap:anywhere]">
+        {verify ? (
+          <>
+            Bestätige noch deine E-Mail-Adresse (<span className="font-medium">{email}</span>) —
+            dann kannst du Themen anlegen und dich benachrichtigen lassen.{" "}
+            <Link href="/dashboard" className="font-medium text-primary hover:underline">Zur Bestätigung</Link>
+          </>
+        ) : (
+          <>
+            Dein Konto ist derzeit deaktiviert. Diese Seite kannst du trotzdem lesen.{" "}
+            <a href={KONTAKT_MAILTO} className="font-medium text-primary hover:underline">{KONTAKT_EMAIL}</a>
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
 /** Das Konto wurde von einem Admin abgeschaltet (`status: "disabled"`).
 
     Bis 09/2026 war das ein Umkehrschluss — `pending` trotz bestätigter
     Adresse. Jetzt sagt der Status es selbst. */
 function PendingNotice({ email }: { email: string }) {
+  // Auf dev (SIGNUP_REQUIRES_APPROVAL) beginnt jedes neue Konto als `disabled`
+  // und wartet auf die Freischaltung — „deaktiviert" klänge dort nach Strafe.
+  const freischaltung = process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev";
   return (
     <Card className="mx-auto mt-10 max-w-md p-8 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
         <Clock className="h-6 w-6 text-amber-600" />
       </div>
-      <h1 className="mt-4 text-xl font-bold text-foreground">Konto ist deaktiviert</h1>
+      <h1 className="mt-4 text-xl font-bold text-foreground">
+        {freischaltung ? "Konto wartet auf Freischaltung" : "Konto ist deaktiviert"}
+      </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Dein Konto <span className="font-medium">{email}</span> ist derzeit deaktiviert.
-        Wenn du meinst, dass das ein Irrtum ist, melde dich gern.
+        {freischaltung ? (
+          <>
+            Dein Konto <span className="font-medium">{email}</span> ist angelegt. Diese
+            Testumgebung schaltet neue Konten von Hand frei — das kann etwas dauern.
+          </>
+        ) : (
+          <>
+            Dein Konto <span className="font-medium">{email}</span> ist derzeit deaktiviert.
+            Wenn du meinst, dass das ein Irrtum ist, melde dich gern.
+          </>
+        )}
       </p>
       {/* Die Adresse steht hier direkt statt als Verweis aufs Impressum: Wer
           gesperrt ist, sieht nur noch diese eine Karte — ihn von dort erst
@@ -404,5 +483,35 @@ function PendingNotice({ email }: { email: string }) {
         {KONTAKT_EMAIL}
       </a>
     </Card>
+  );
+}
+
+
+/** Der Server antwortet nicht — beim ersten Laden, also bevor klar ist, wer
+ *  hier ist. Statt der Anmeldung (die genauso wenig ankäme) ein Weg zurück:
+ *  nochmal fragen, und im Hintergrund alle 10 s von selbst. */
+function NichtErreichbar({ onRetry }: { onRetry: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const versuchen = async () => {
+    setBusy(true);
+    try { await onRetry(); } finally { setBusy(false); }
+  };
+  useEffect(() => {
+    const t = setInterval(() => { void onRetry(); }, 10_000);
+    const an = () => { void onRetry(); };
+    window.addEventListener("online", an);
+    return () => { clearInterval(t); window.removeEventListener("online", an); };
+  }, [onRetry]);
+  return (
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-waves px-4 py-10">
+      <div className="w-full max-w-sm">
+        <ErrorState
+          title="Ratslotse antwortet gerade nicht"
+          hint="Meist ist das nach einer Minute vorbei — zum Beispiel, wenn gerade ein Update eingespielt wird. Wir versuchen es von selbst weiter."
+          onRetry={() => void versuchen()}
+          busy={busy}
+        />
+      </div>
+    </div>
   );
 }

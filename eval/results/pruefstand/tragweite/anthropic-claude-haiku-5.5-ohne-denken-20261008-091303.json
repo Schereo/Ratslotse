@@ -1,0 +1,152 @@
+{
+ "suite": "tragweite",
+ "titel": "Tragweite eines Beschlusses",
+ "kennzahl": "Band-Trefferquote gegen 30 handbewertete Beschlüsse (Spearman ρ als Nebenkennzahl — sie misst die Reihenfolge, nicht den Wert)",
+ "modell": "anthropic/claude-haiku-5.5",
+ "variante": "ohne Denken",
+ "tarif": null,
+ "lauf": 1,
+ "zeitstempel": "2026-10-08T09:13:03",
+ "db_stand": "Sitzungen bis 2026-10-08, 9524 Beschlüsse",
+ "qualitaet": 0.9167,
+ "harte_befunde": null,
+ "warnung": null,
+ "faelle": 30,
+ "p50_ms": 5469,
+ "p95_ms": 10976,
+ "aufrufe": 12,
+ "kosten_usd": 0.010312,
+ "ohne_kostenwert": 0,
+ "ct_je_aufruf": 0.0859,
+ "ct_je_lauf": 1.0312,
+ "kosten_gesamt_usd": 0.010312,
+ "ausfaelle": 0,
+ "nicht_zulaessig": false,
+ "abbruch": null,
+ "modelle_laut_tabelle": [
+  "anthropic/claude-haiku-5.5"
+ ],
+ "ersatz": [],
+ "dauer_s": 71.9,
+ "nebenkennzahlen": {
+  "rho": 0.7703,
+  "bewertet": 12
+ },
+ "fehler_beispiele": [],
+ "roh": {
+  "n": 12,
+  "golden": 30,
+  "rho": 0.7703,
+  "hit_rate": 0.9167,
+  "faelle": [
+   {
+    "title": "Überplanmäßige Bewilligung einer Mehrauszahlung in Höhe von 131.000 Euro für den Kunstrase",
+    "impact": 30,
+    "band": [
+     12,
+     45
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Überplanmäßige Bewilligung einer Mehrauszahlung in Höhe von 115.000 Euro für die Ersatzbes",
+    "impact": 27,
+    "band": [
+     10,
+     42
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Bebauungsplan 846 (Vergnügungsstätten nördliche Cloppenburger Straße) - Aufstellungsbeschl",
+    "impact": 50,
+    "band": [
+     40,
+     75
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Bebauungsplan 381 Änderung 1 (Mühlenhofsweg) mit örtlichen Bauvorschriften",
+    "impact": 55,
+    "band": [
+     45,
+     80
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Änderung 1 des Bebauungsplanes 513 (Meerkamp/Mittagsweg) mit örtlichen Bauvorschriften",
+    "impact": 58,
+    "band": [
+     45,
+     80
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Vermarktung eines städtischen Investorengrundstücks (Los 11) mit Bestandsgebäude im Bereic",
+    "impact": 52,
+    "band": [
+     45,
+     80
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Änderung Nr. 1 des vorhabenbezogenen Bebauungsplanes Nr. 24 (Schlosshöfe) - Prüfung der St",
+    "impact": 60,
+    "band": [
+     40,
+     75
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Jahresabschluss 2022 der Stadt Oldenburg (Kernverwaltung)",
+    "impact": 85,
+    "band": [
+     45,
+     85
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Änderung der „Satzung der Stadt Oldenburg über die Inanspruchnahme der Mittagsverpflegung ",
+    "impact": 55,
+    "band": [
+     50,
+     88
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Veränderungssperre Nummer 83 (Scharnhorst-, Blücher- und Zietenstraße)",
+    "impact": 35,
+    "band": [
+     40,
+     78
+    ],
+    "im_band": false
+   },
+   {
+    "title": "Rechtsbereinigungssatzung 2022",
+    "impact": 22,
+    "band": [
+     15,
+     55
+    ],
+    "im_band": true
+   },
+   {
+    "title": "Weser-Ems Halle Oldenburg GmbH & Co. KG Jahresabschluss 2019",
+    "impact": 42,
+    "band": [
+     35,
+     78
+    ],
+    "im_band": true
+   }
+  ]
+ }
+}

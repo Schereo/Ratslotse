@@ -148,6 +148,9 @@ BEWUSST_OFFEN = {
                     "nicht als Verweis ein, sondern schreibt es aus — samt "
                     "seinem freien `geojson`.",
     "EntityGeo": "`geojson` ist ein Umriss in Freiform.",
+    "McpMessage": "Eine JSON-RPC-Antwort des MCP-Servers. `result` und `error` "
+                  "trägt die MCP-Spezifikation je Methode; den Vertrag hält sie, "
+                  "nicht unsere Clients (die rufen den Endpunkt nie auf).",
     "QaShare": "Geteilter Antwort-Schnappschuss aus `qa_shares.extras` — "
                "gespeichert in der Form von damals.",
     "ResearchSnapshot": "Gespeicherter Quellen-Block eines Deep-Research-Jobs "

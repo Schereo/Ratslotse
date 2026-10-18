@@ -177,3 +177,74 @@ func anstupserSeiten() {
     #expect(!ExplainScreen(route: "/dashboard").allowsNudge)
     #expect(!ExplainScreen(route: "/topics").allowsNudge)
 }
+
+// MARK: - Die Längengrenze (Release-Prüfung 03.10.2026)
+
+@Test("Die Grenze spiegelt den Server, der Zähler kommt erst nahe daran")
+func frageGrenze() {
+    #expect(LottiFrage.maxZeichen == 300)
+    #expect(LottiFrage.zaehler("kurz") == nil)
+    #expect(LottiFrage.zaehler(String(repeating: "a", count: 262)) == "262/300")
+    #expect(LottiFrage.gekuerzt(String(repeating: "a", count: 320)).count == 300)
+    #expect(LottiFrage.gekuerzt("kurz") == "kurz")
+}
+
+@Test("Ein 422 wird ein Satz, keine englische Pydantic-Meldung")
+func frageFehlerText() {
+    let zuLang = APIError(statusCode: 422, message: "String should have at most 300 characters")
+    #expect(LottiFrage.fehlerText(zuLang).contains("zu lang"))
+    #expect(!LottiFrage.fehlerText(zuLang).contains("String should"))
+    // Der Satz des Servers bleibt, wo er für Menschen geschrieben ist.
+    let kontingent = APIError(statusCode: 429, message: "Für heute ist Schluss.")
+    #expect(LottiFrage.fehlerText(kontingent) == "Für heute ist Schluss.")
+}
+
+@Test("Der Schluss-Rahmen einer Weiterreichung trägt mode handoff")
+func handoffRahmen() throws {
+    let json = Data(#"{"type":"done","mode":"handoff","kind":"archiv","next":"ratsfrage","evidence":[]}"#.utf8)
+    let done = try JSONDecoder().decode(ExplainDone.self, from: json)
+    #expect(done.mode == "handoff")
+    #expect(done.leadsToCouncilQuestion)
+}
+
+// MARK: - Wo der Knopf steht
+
+@Test("Die Merkliste ist ein eigener Screen mit eigener Route")
+func merklisteHatEineRoute() throws {
+    // Bis 10/2026 stand "/bookmarks" in AppModel von Hand — die Merkliste
+    // hatte keine App-Route und lag am Stapel vorbei.
+    #expect(ExplainScreen.from(.saved)?.route == "/bookmarks")
+    #expect(ExplainScreen.from(.saved)?.refs == ExplainRefs())
+}
+
+@Test("Über der Tab-Leiste nur auf der Wurzel, auf einer geschobenen Seite ganz unten")
+func knopfAbstand() {
+    // Wurzel: über der Leiste.
+    #expect(LottiPlacement.bottomClearance(stackDepth: 0, tabBarHeight: 72, keyboardVisible: false) == 72)
+    // Beschluss, Bewegung, Sitzung …: Die Seite verdeckt die Leiste — ein
+    // Knopf in ihrer Höhe schwebte mitten im Inhalt.
+    #expect(LottiPlacement.bottomClearance(stackDepth: 1, tabBarHeight: 72, keyboardVisible: false) == 0)
+    #expect(LottiPlacement.bottomClearance(stackDepth: 3, tabBarHeight: 72, keyboardVisible: false) == 0)
+    // Tastatur offen: Die Leiste weicht.
+    #expect(LottiPlacement.bottomClearance(stackDepth: 0, tabBarHeight: 72, keyboardVisible: true) == 0)
+}
+
+@Test("Jede erklärbare Seite hält unten Platz für den Knopf frei", arguments: [
+    AppRoute.decision(id: 1), .sessions(ksinr: 7, tops: []), .person(slug: "anna-muster"),
+    .topic(slug: "radverkehr"), .place(id: "stadtteil:eversten"), .movement(id: 5), .ideas,
+    .district(id: "eversten"), .analysis, .subscriptions, .saved, .quiz(area: nil),
+])
+func seitenHaltenPlatzFrei(route: AppRoute) {
+    #expect(LottiPlacement.pageInset(for: route, enabled: true, keyboardVisible: false)
+            == LottiPlacement.pageInset)
+    // Ohne Schalter oder mit Tastatur steht kein Knopf da — dann auch kein Loch.
+    #expect(LottiPlacement.pageInset(for: route, enabled: false, keyboardVisible: false) == 0)
+    #expect(LottiPlacement.pageInset(for: route, enabled: true, keyboardVisible: true) == 0)
+}
+
+@Test("Wo es Lotti nicht gibt, bleibt auch unten kein Loch")
+func ohneLottiKeinRand() {
+    #expect(LottiPlacement.pageInset(for: .admin, enabled: true, keyboardVisible: false) == 0)
+    let fremd = AppRoute.web(URL(string: "https://example.org")!)
+    #expect(LottiPlacement.pageInset(for: fremd, enabled: true, keyboardVisible: false) == 0)
+}

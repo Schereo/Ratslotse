@@ -25,7 +25,7 @@ import { nurHttps } from "@/lib/externer-link";
 // damit auch die Server-Komponente app/g sie AUFRUFEN kann (aus einem
 // Client-Modul kämen dort nur Referenzen an, keine Funktionen).
 import {
-  ANL_EXACT_RE, ANL_SOURCE, anlagenBuchstaben, anlagenNr, BELEG_SPLIT_RE,
+  ANL_EXACT_RE, ANL_SOURCE, anlageNummer, anlagenBuchstaben, anlagenNr, BELEG_SPLIT_RE,
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
 import { markiereBegriffe } from "@/components/glossary-text";
@@ -42,12 +42,32 @@ export type PresseHinweis = { title: string; url: string; date: string | null;
    *  Gespräche kennen das Feld nicht — dann bleibt es die reine Titelzeile. */
   excerpt?: string };
 
+/** Ein Paragraf der Geschäftsordnung des Rates, wie ihn
+ *  `council/rules_of_procedure.py::card` ausliefert — Wortlaut samt Sprung auf
+ *  die Seite im PDF der Stadt. */
+export type RulesOfProcedureSection = {
+  number: string; label: string; title: string; part: string; url: string; text: string;
+};
+
+/** Die Karte „Aus der Geschäftsordnung". `version` ist fertiger Text vom
+ *  Server (Fassung, Beschluss, Wahlperiode); `state` sagt, ob sie noch gilt. */
+export type RulesOfProcedureCard = {
+  title: string; full_title: string; version: string;
+  state: "current" | "term_ended" | "superseded";
+  url: string;
+  sections: RulesOfProcedureSection[];
+  /** Nur bei der Frage nach dem Ganzen: das Inhaltsverzeichnis. */
+  contents: { label: string; title: string; url: string }[];
+};
+
 /** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) aus der
  *  schnellen oder gründlichen Recherche. */
 export type AnlagenHinweis = {
-  /** Beleg-Nummer aus dem Recherchepfad; im Text steht sie als „[A<nr>]".
-   *  Ältere gespeicherte Gespräche kennen das Feld nicht — dann bleibt die
-   *  Karte einfach ohne Buchstabe (in diesen Texten steht auch kein Marker). */
+  /** Beleg-Nummer aus dem Recherchepfad; im Text steht sie als „[A<n>]".
+   *  So heißt das Feld im Strom und in Schnappschüssen; gespeicherte
+   *  Gespräche von vor dem Wire-Umbau tragen `nr`. Gelesen wird über
+   *  `anlageNummer`, das beides kennt. */
+  number?: number | null;
   nr?: number | null;
   label: string | null; url: string | null;
   template_number: string | null; template_title: string | null; excerpt: string;
@@ -722,7 +742,7 @@ export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
       </p>
       <ul className="mt-1.5 space-y-2">
         {attachments.map((a, i) => {
-          const nr = a.nr ?? i + 1;
+          const nr = anlageNummer(a, i);
           const b = buchstaben.get(nr);
           return (
           <li key={i} id={`${ankerPrefix}-${nr}`}
@@ -791,6 +811,93 @@ export function PresseBlock({ press_releases }: { press_releases: PresseHinweis[
         ))}
       </ul>
     </div>
+  );
+}
+
+/** „Aus der Geschäftsordnung" — der Wortlaut, auf den eine Verfahrensfrage
+ *  antwortet („Wie lange darf ein Ratsmitglied reden?").
+ *
+ *  Gestrichelt wie der Presse-Block: Die Geschäftsordnung ist ein Dokument
+ *  der Stadt, kein Beschluss aus dem Archiv, und bekommt deshalb auch keine
+ *  Fußnoten-Nummer (DESIGNSPRACHE § 8, „Externes nie wie Beschlüsse
+ *  stylen"). Der Wortlaut steht DA, nicht nur ein Link: Die Karte ist der
+ *  Beleg — wer prüfen will, was die Antwort sagt, liest den Absatz hier und
+ *  muss nicht das PDF öffnen. Lange Paragrafen (§ 23 hat 2.900 Zeichen)
+ *  beginnen als Vorschau und lassen sich aufklappen. */
+export function RulesOfProcedureBlock({ card }: { card: RulesOfProcedureCard }) {
+  const veraltet = card.state !== "current";
+  return (
+    <div className="rounded-xl border border-dashed border-border p-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+        Aus der Geschäftsordnung des Rates
+      </p>
+      {card.sections.length > 0 && (
+        <ul className="mt-2 space-y-3">
+          {card.sections.map((s) => <RulesOfProcedureParagraph key={s.number} section={s} />)}
+        </ul>
+      )}
+      {card.contents.length > 0 && (
+        <details className="group mt-2">
+          <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 text-hinweis font-medium text-primary sm:min-h-0">
+            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden />
+            Alle {card.contents.length} Paragrafen
+          </summary>
+          <ul className="mt-1.5 space-y-1">
+            {card.contents.map((c) => (
+              <li key={c.label}>
+                <a href={c.url} target="_blank" rel="noopener noreferrer"
+                  className="group/z flex items-baseline gap-2 text-hinweis">
+                  <span className="w-11 shrink-0 font-mono text-meta text-muted-foreground">{c.label}</span>
+                  <span className="min-w-0 break-words text-foreground group-hover/z:underline">{c.title}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <p className={cn("mt-2.5 border-t border-border/60 pt-2 text-meta",
+        veraltet ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground")}>
+        {card.version}
+        {" · "}
+        <a href={card.url} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+          PDF auf oldenburg.de <ExternalLink className="h-3 w-3" aria-hidden />
+        </a>
+      </p>
+    </div>
+  );
+}
+
+/** Ein Paragraf: Kopf als Link auf die Seite im PDF, darunter der Wortlaut.
+ *  Absätze stehen im Text je auf einer Zeile („(1) …\n(2) …") — daher
+ *  `whitespace-pre-line`. */
+function RulesOfProcedureParagraph({ section }: { section: RulesOfProcedureSection }) {
+  const [offen, setOffen] = useState(false);
+  // Ab hier lohnt die Vorschau: Kürzere Paragrafen (§ 30 hat 86 Zeichen)
+  // stehen ganz da, ein Knopf für drei Zeilen wäre Lärm.
+  const lang = section.text.length > 420;
+  return (
+    <li>
+      <a href={section.url} target="_blank" rel="noopener noreferrer"
+        className="group flex items-baseline gap-2">
+        <span className="min-w-0 flex-1 break-words text-quelle font-medium group-hover:underline">
+          {section.label} {section.title}
+        </span>
+        <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+      </a>
+      <p className="font-mono text-meta text-muted-foreground">Abschnitt {section.part}</p>
+      <p className={cn("mt-1 whitespace-pre-line text-hinweis text-muted-foreground",
+        lang && !offen && "line-clamp-5")}>
+        {section.text}
+      </p>
+      {lang && (
+        <button type="button" onClick={() => setOffen((o) => !o)} aria-expanded={offen}
+          className="mt-1 inline-flex min-h-[44px] items-center gap-1 text-hinweis font-medium text-primary hover:underline sm:min-h-0">
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", offen && "rotate-180")} aria-hidden />
+          {offen ? "Weniger anzeigen" : "Ganzen Wortlaut lesen"}
+        </button>
+      )}
+    </li>
   );
 }
 
@@ -1112,7 +1219,9 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
   const nurFraktionen = (parties ?? []).every((p) => parteiKuerzel(p.party) !== "Rat");
   return (
     <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm print:break-inside-avoid">
-      <div className="flex items-baseline justify-between gap-2">
+      {/* Umbrechen statt quetschen: Bei 320 px passen Kicker und Zählung
+          nicht nebeneinander — sonst zerfielen beide in je zwei Zeilen. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
           Aus den Ratsdebatten
         </p>
@@ -1152,10 +1261,23 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                   <span aria-hidden className="mt-[5px] h-2 w-2 shrink-0 rounded-full"
                     style={{ background: dot.bg, boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : undefined }} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    {/* Die Kopfzeile BRICHT UM, statt die Seite zu verbreitern
+                        (02.10.2026, 375 px: „Bündnis 90/Die Grünen · dagegen ·
+                        12 Beiträge · Dazu fragen" ragte 32 px über den Rand,
+                        der Name stand trotzdem auf drei Zeilen). Jedes Stück
+                        bleibt für sich ganz; was nicht mehr passt, rutscht in
+                        die nächste Zeile — „Dazu fragen" dort an den rechten
+                        Rand, wo es auch in den kurzen Zeilen steht.
+
+                        Mit Maus (`desk`) zeigt sich der Knopf erst beim Hover.
+                        Im Fluss belegte er dann, umgebrochen, eine UNSICHTBARE
+                        Zeile — ein Loch zwischen Name und Position. Dort sitzt
+                        er deshalb absolut oben rechts in freigehaltenem Raum. */}
+                    <div className={cn("relative flex flex-wrap items-center gap-x-2 gap-y-1",
+                      onFrageStellen && "desk:pr-24")}>
                       <p className="text-[12.5px] font-bold">{p.party}</p>
                       {p.stance && HALTUNG_BADGE[p.stance] && (
-                        <span className={cn("rounded-full px-2 py-px text-[10px] font-semibold",
+                        <span className={cn("whitespace-nowrap rounded-full px-2 py-px text-[10px] font-semibold",
                           HALTUNG_BADGE[p.stance].cls)}>
                           {HALTUNG_BADGE[p.stance].label}
                         </span>
@@ -1163,7 +1285,7 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                       {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
                           die Position verdichtet ist (Tims Befund 10.08.). */}
                       {p.contributions > 0 && (
-                        <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-muted-foreground/70">
+                        <span className="inline-flex items-center gap-0.5 whitespace-nowrap font-mono text-[10px] text-muted-foreground/70">
                           {p.contributions === 1 ? "1 Beitrag" : `${p.contributions} Beiträge`}
                           {aufklappbar && (
                             <ChevronDown aria-hidden
@@ -1172,14 +1294,14 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
                         </span>
                       )}
                       {!p.unanimous && (
-                        <span className="rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                        <span className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                           uneinheitlich
                         </span>
                       )}
                       {onFrageStellen && (
                         <button type="button"
                           onClick={(e) => { e.stopPropagation(); onFrageStellen(`Was sagt ${p.party} dazu im Detail?`); }}
-                          className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-opacity hover:text-foreground lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100"
+                          className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-opacity hover:text-foreground desk:absolute desk:right-0 desk:top-0 desk:opacity-0 desk:group-hover:opacity-100 desk:focus:opacity-100"
                           title={`Was sagt ${p.party} dazu im Detail?`}>
                           <MessageSquarePlus className="h-3 w-3" aria-hidden /> Dazu fragen
                         </button>

@@ -1,7 +1,14 @@
 "use client";
 
 /**
- * „Anderswo beschlossen" — was andere Städte zu derselben Sache gemacht haben.
+ * „In anderen Städten" — was andere Räte zu derselben Sache beantragt, beraten
+ * oder beschlossen haben.
+ *
+ * **Die Überschrift verspricht nur, was stimmt.** Bis 10/2026 hieß der Block
+ * „Anderswo beschlossen" — beschlossen war aber nur gut ein Drittel der
+ * Treffer (gezählt im Review zu 3.0.0: 57 von 155; 45 ohne bekanntes Ergebnis,
+ * 9 abgelehnt, 4 zurückgezogen). Das Ergebnis steht deshalb an jeder Karte,
+ * und die Überschrift sagt nur „in anderen Städten".
  *
  * Die Karten führen aus dem Haus heraus (ins Ratsinformationssystem der
  * jeweiligen Stadt), deshalb kein `DecisionLinkCard`: Der Chevron dort
@@ -17,6 +24,7 @@ import { ArrowUpRight, Building2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
+import { aufzaehlung } from "@/lib/ideen";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { useQuery } from "@tanstack/react-query";
 
@@ -121,10 +129,11 @@ export function Elsewhere({ decisionId }: { decisionId: number }) {
 
   return (
     <div className="mt-6">
-      <h2 className="text-sm font-semibold text-muted-foreground">Anderswo beschlossen</h2>
+      <h2 className="text-sm font-semibold text-muted-foreground">In anderen Städten</h2>
       <p className="text-xs text-muted-foreground/70">
-        Was {data.bodies.join(", ")} zu einer ähnlichen Sache beantragt oder beschlossen
-        {" "}haben — aus den Ratsinformationssystemen dieser Städte.
+        Ähnliche Vorlagen aus {aufzaehlung(data.bodies)}, nach Ähnlichkeit der Texte
+        {" "}ausgewählt. Nicht jede wurde beschlossen — das Ergebnis steht dabei, wo es
+        {" "}bekannt ist.
       </p>
       <div className="mt-3 space-y-2">
         {data.items.map((item) => (

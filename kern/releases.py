@@ -47,6 +47,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from kern import features
+
 #: Eine Version, wie sie im Changelog steht: genau drei Zahlen.
 VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
@@ -62,6 +64,21 @@ MAX_HIGHLIGHTS = 4
 #: Werte von ``Highlight.only`` — für welche Oberfläche ein Highlight gilt.
 NUR_WEB = "web"
 NUR_NATIVE = "native"
+
+#: Werte von ``Highlight.color`` — die Farbe einer Video-Kachel auf der Karte.
+#:
+#: **Namen, keine Farbwerte.** Die Werte selbst stehen in der Designsprache
+#: (``web/frontend/DESIGNSPRACHE.md``, „Neuigkeiten-Kacheln") und je einmal in
+#: Web und App; hier steht nur, welche der drei eine Kachel trägt. Ein
+#: Hex-Wert in der Registry wäre eine Farbe, die keine Designsprache kennt —
+#: und im Dunkelmodus niemand nachzieht.
+#:
+#: * ``signal`` — Signal-Orange, die KI-Farbe (Funken, Marker). Für das, was
+#:   Lotti tut.
+#: * ``primary`` — Hafenblau, der Rat selbst: Beschlüsse, Vorgänge, Räte.
+#: * ``green`` — das Grün der Bebauungspläne auf der Stadtkarte (#15803d,
+#:   zugleich „Angenommen"). Für das, was auf der Karte liegt.
+TILE_COLORS: frozenset[str] = frozenset({"signal", "primary", "green"})
 
 
 @dataclass(frozen=True)
@@ -98,6 +115,20 @@ class Media:
     #: Nur bei ``video``: das Standbild, bis der Clip läuft. Es ist zugleich
     #: das, was bei ``prefers-reduced-motion`` STATT des Clips steht.
     poster: str | None = None
+    #: Das **Titelbild** der Video-Kachel (seit 3.0.0, Tims Befund
+    #: 07.10.2026: „die Karte fühlt sich langweilig an … mehr Bilder, mehr
+    #: Anreiz"). Hochformat, füllt die Kachel randlos; der Titel steht weiß
+    #: darauf. Das Standbild (``poster``) ist dafür das falsche Bild: Es ist
+    #: der erste Frame des Clips — ein querformatiges Browserfenster, auf
+    #: dem man in einer Kachel nichts erkennt. Gerendert wird das Titelbild
+    #: als ``<name>-titel.webp`` (1080×1200) aus derselben Pipeline wie die
+    #: Clips. Ohne Titelbild nimmt die Kachel das Standbild.
+    cover: str | None = None
+    #: Die Länge des Clips in Sekunden — die Kachel zeigt sie („▶ 0:24"),
+    #: weil „wie lange dauert das?" die Frage vor dem Tipp ist. Gemessen
+    #: (``ffprobe``), nicht geschätzt; ``tests/test_releases.py`` hält die
+    #: Zahl gegen die Datei, wenn ``ffprobe`` da ist.
+    duration: float | None = None
 
 
 @dataclass(frozen=True)
@@ -127,6 +158,13 @@ class Highlight:
     #: (``media_for``). Ein Wechsel mitten in der Bühne wäre schlimmer als eine
     #: durchgehend fremde Oberfläche.
     media_ios: Media | None = None
+    #: Dasselbe Feature **im Browser am Telefon** aufgenommen — hochkant und
+    #: randlos (Drehbuch mit ``mobil``, ``web/clips/src/HochClip.tsx``). Der
+    #: Spieler im schmalen Browser nimmt diese Fassung: Der 16:9-Clip vom
+    #: Schreibtisch stand dort 340 px breit, seine Untertitel ~11 px hoch
+    #: (gemessen 07.10.2026). Alles oder nichts je Ausgabe, wie bei der
+    #: App-Fassung (``has_narrow_media``) — die Kachel zeigt weiter ``cover``.
+    media_narrow: Media | None = None
     #: Für welche Oberfläche dieses Highlight überhaupt gilt: ``None``
     #: (überall), ``"web"`` oder ``"native"``.
     #:
@@ -136,6 +174,27 @@ class Highlight:
     #: auf dem eigenen Gerät nicht finden kann, ist schlimmer als eines
     #: weniger (Tims Entscheidung 07.09.2026).
     only: str | None = None
+    #: Die Farbe der Video-Kachel (``TILE_COLORS``). Sie trägt die Kachel,
+    #: den Fortschrittsbalken im Spieler und den Knopf „… ausprobieren", damit
+    #: man im Spieler weiß, aus welcher Kachel man kam. Ohne Wert: Hafenblau.
+    color: str | None = None
+    #: **Nebenbei** statt Kachel: Das Highlight steht als schmale Zeile
+    #: „Außerdem: …" unter den Kacheln (3.0.0: „Frag den Rat liest den ganzen
+    #: Vorgang"). Für eine Neuerung, die zu klein für eine eigene Bühne ist,
+    #: aber zu groß, um sie wegzulassen. Es zählt nicht zum Fortschritt
+    #: „1 von 3 angesehen" und nicht zur Abfolge im Spieler — sonst müsste
+    #: man es durchsehen, um die Karte abzuschließen.
+    aside: bool = False
+    #: Eine Zeile unter dem Titel der Kachel („Was sich vor deiner Haustür
+    #: tut."). ``text`` ist dafür zu lang — zwei Sätze, die erst im Spieler
+    #: unter dem Clip Platz haben. Ohne Zeile zeigt die Kachel den Anfang
+    #: von ``text``.
+    tagline: str | None = None
+    #: Die Beschriftung des Knopfs im Spieler, der zum Feature führt
+    #: („Mein Viertel ausprobieren"). Ein Verb, kein Etikett — der Titel
+    #: eines Highlights ist oft ein ganzer Satz, „Lotti erklärt dir, was du
+    #: siehst ausprobieren" wäre keiner. Ohne Wert: „Ausprobieren".
+    action: str | None = None
 
 
 @dataclass(frozen=True)
@@ -147,9 +206,22 @@ class Release:
     #: Erscheinungsdatum, ISO. Es entscheidet, wer die Karte sieht: Ein Konto,
     #: das jünger ist, hat das Feature von Anfang an gehabt.
     date: str
-    #: Die Überschrift der Karte — ein Halbsatz, der die Ausgabe zusammenfasst.
+    #: Die Überschrift der Karte — ein Name nach dem Hauptfeature.
     title: str
     highlights: tuple[Highlight, ...]
+    #: Eine Zeile unter dem Titel, die sagt, was einen erwartet („Drei neue
+    #: Wege durch den Rat — je ein kurzes Video."). Sie beantwortet die Frage,
+    #: ob sich das Durchklicken lohnt, bevor jemand klickt.
+    teaser: str | None = None
+    #: Die Schalter (``kern/features.py``), hinter denen die angekündigten
+    #: Features stehen. Die Karte erscheint erst, wenn ALLE an sind — und
+    #: lässt sich vorher nicht verschicken.
+    #:
+    #: Anlass (18.10.2026): Die 3.0.0-Karte lag fertig auf dev, als 2.11.0 nur
+    #: Code nach Prod bringen sollte. ``pending_for`` hätte sie allen Konten
+    #: gezeigt — samt Lotti, Mein Viertel und Ideen aus anderen Städten, die
+    #: dort aus sind. Auf dev (``FEATURE_FLAGS=*``) bleibt sie sichtbar.
+    schalter: tuple[str, ...] = ()
 
 
 #: Alle Releases mit Karte, **neueste zuerst**.
@@ -158,6 +230,186 @@ class Release:
 #: dem Versionsschnitt: Changelog, App-Version und diese Liste gehören in
 #: denselben Commit.
 RELEASES: tuple[Release, ...] = (
+    Release(
+        version="3.0.0",
+        # Vorläufig: der Tag, an dem die Karte entstand. Der Versionsschnitt
+        # im Release-PR setzt den echten Release-Tag — das Datum entscheidet,
+        # wer die Karte sieht (``pending_for``).
+        date="2026-10-06",
+        title="Das Erklär-Update",
+        schalter=("lotti-assistentin", "mein-viertel", "ideen-anderswo", "andere-staedte"),
+        teaser="Drei neue Wege durch den Rat — je ein kurzes Video.",
+        highlights=(
+            Highlight(
+                title="Lotti erklärt dir, was du siehst",
+                # „Markieren“ nur als Zusatz für den Browser: Die App kennt
+                # keine Textauswahl (ios/…/AssistantSheet.swift, „Was in v1
+                # fehlt“) — der Satz muss auf beiden Geräten stimmen.
+                text="Tipp auf Lotti unten rechts und frag, was du zur Seite wissen "
+                     "willst; im Browser erklärt sie auch ein markiertes Wort. Für "
+                     "die Antwort schlägt sie selbst in Sitzungen und Beschlüssen "
+                     "nach.",
+                url="/council/decision?id=21966",
+                tagline="Tipp auf die Möwe — sie schlägt selbst nach.",
+                action="Lotti ausprobieren",
+                # Signal-Orange ist die Farbe der KI (Funken, Tipp-Anzeige):
+                # Was Lotti tut, trägt sie.
+                color="signal",
+                # Titelbild und Länge: Das Titelbild kommt aus der
+                # Clip-Pipeline (``<name>-titel.webp``, ohne Text) und gilt für
+                # Web UND App — das Standbild der App-Aufnahme zeigte oben
+                # Uhrzeit und Dynamic Island. Die Längen sind mit ``ffprobe``
+                # gemessen.
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/3.0.0/lotti.mp4",
+                    poster="/neuigkeiten/3.0.0/lotti.webp",
+                    cover="/neuigkeiten/3.0.0/lotti-titel.webp",
+                    duration=29.4,
+                    alt="Eine Beschluss-Seite: Ein Klick auf Lotti unten rechts "
+                        "öffnet ihr Fenster, auf „Wie viele haben dagegen "
+                        "gestimmt?“ antwortet sie „16“. Danach wird "
+                        "„Öffentlichkeitsbeteiligung“ markiert, ein Klick auf "
+                        "„Lotti fragen“ erklärt das Wort.",
+                ),
+                media_narrow=Media(
+                    kind="video", aspect="6/13",
+                    src="/neuigkeiten/3.0.0/lotti-mobil.mp4", poster="/neuigkeiten/3.0.0/lotti-mobil.webp",
+                    cover="/neuigkeiten/3.0.0/lotti-titel.webp", duration=20.3,
+                    alt="Dieselbe Beschluss-Seite am Telefon: Ein Tipp auf Lotti unten "
+                        "rechts öffnet ihr Fenster; auf „Wie viele haben dagegen "
+                        "gestimmt?“ antwortet sie mit den Zahlen aus dem Protokoll, "
+                        "danach erklärt sie „Öffentlichkeitsbeteiligung“.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1080/2350",
+                    src="/neuigkeiten/3.0.0/lotti-ios.mp4", poster="/neuigkeiten/3.0.0/lotti-ios.webp",
+                    cover="/neuigkeiten/3.0.0/lotti-titel.webp", duration=16.6,
+                    alt="Eine Beschluss-Seite in der App: Ein Tipp auf Lotti unten rechts "
+                        "öffnet ihr Blatt; auf „Wie viele haben dagegen gestimmt?“ "
+                        "antwortet sie „Dagegen gestimmt haben 16 Ratsmitglieder.“",
+                ),
+            ),
+            Highlight(
+                title="Mein Viertel",
+                text="Gib deine Straße oder deinen Stadtteil ein und sieh, was der "
+                     "Rat dort beschlossen hat — jedes Vorhaben von der Idee bis "
+                     "zum Bau, mit Bebauungsplänen und den Beschlüssen dazu.",
+                url="/karte",
+                tagline="Was sich vor deiner Haustür tut.",
+                action="Mein Viertel ausprobieren",
+                # Das Grün der Bebauungspläne auf der Stadtkarte — dort
+                # spielt das Feature.
+                color="green",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/3.0.0/viertel.mp4",
+                    poster="/neuigkeiten/3.0.0/viertel.webp",
+                    cover="/neuigkeiten/3.0.0/viertel-titel.webp",
+                    duration=29.9,
+                    alt="Von „Heute“ über „Mein Viertel“ in der Seitenleiste in den "
+                        "eigenen Stadtteil Fliegerhorst: Ein Klick auf „Neue "
+                        "Grundschule und Dreifeldhalle“ zeigt den Stand des Vorhabens "
+                        "und die Beschlüsse dazu, „Stadt zeigen“ führt in jedes "
+                        "andere Viertel.",
+                ),
+                media_narrow=Media(
+                    kind="video", aspect="6/13",
+                    src="/neuigkeiten/3.0.0/viertel-mobil.mp4", poster="/neuigkeiten/3.0.0/viertel-mobil.webp",
+                    cover="/neuigkeiten/3.0.0/viertel-titel.webp", duration=21.0,
+                    alt="Am Telefon: „Mehr“, dann „Mein Viertel“ — der eigene Stadtteil "
+                        "Fliegerhorst mit Karte und Liste; ein Tipp auf „Neue "
+                        "Grundschule und Dreifeldhalle“ zeigt Stand, Zeitplan und die "
+                        "Beschlüsse.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1080/2350",
+                    src="/neuigkeiten/3.0.0/viertel-ios.mp4", poster="/neuigkeiten/3.0.0/viertel-ios.webp",
+                    cover="/neuigkeiten/3.0.0/viertel-titel.webp", duration=23.4,
+                    alt="In der App: „Mehr“, dann „Mein Viertel“ — die Stadtkarte mit allen "
+                        "Vorhaben. Ein Tipp auf Fliegerhorst zeigt seine Vorhaben, ein Tipp "
+                        "auf „Wohnen am Offizierskasino“ Stand, Bebauungsplan und Beschlüsse.",
+                ),
+            ),
+            Highlight(
+                title="Ideen aus anderen Städten",
+                text="Was haben Hannover, Münster oder Potsdam schon beantragt oder "
+                     "beschlossen, das Oldenburg noch fehlt? Je Idee siehst du, wie "
+                     "sie durch die Räte lief — und mit Belegen, was es in "
+                     "Oldenburg dazu schon gibt.",
+                url="/council/ideen",
+                tagline="Was andere Räte schon beschlossen haben.",
+                action="Ideen entdecken",
+                # Hafenblau: der Rat selbst, hier die Räte der anderen Städte.
+                color="primary",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/3.0.0/ideen.mp4",
+                    poster="/neuigkeiten/3.0.0/ideen.webp",
+                    cover="/neuigkeiten/3.0.0/ideen-titel.webp",
+                    duration=30.2,
+                    alt="Über „Analyse“ zu „Ideen aus anderen Städten“: Ein Klick auf "
+                        "„Hitzeaktionsplan aufstellen“ zeigt unter „Und in "
+                        "Oldenburg?“, was es hier schon gibt; die Zeitleiste zeigt, "
+                        "wann Potsdam und Magdeburg darüber beraten haben.",
+                ),
+                media_narrow=Media(
+                    kind="video", aspect="6/13",
+                    src="/neuigkeiten/3.0.0/ideen-mobil.mp4", poster="/neuigkeiten/3.0.0/ideen-mobil.webp",
+                    cover="/neuigkeiten/3.0.0/ideen-titel.webp", duration=26.0,
+                    alt="Am Telefon: „Mehr“, „Analyse“, Reiter „Ideen aus anderen "
+                        "Städten“; ein Tipp auf „Hitzeaktionsplan aufstellen“ zeigt, "
+                        "was es in Oldenburg schon gibt, und die Zeitleiste durch die "
+                        "Räte.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1080/2350",
+                    src="/neuigkeiten/3.0.0/ideen-ios.mp4", poster="/neuigkeiten/3.0.0/ideen-ios.webp",
+                    cover="/neuigkeiten/3.0.0/ideen-titel.webp", duration=24.4,
+                    alt="In der App: „Mehr“, dann „Ideen aus anderen Städten“; ein Tipp auf "
+                        "„Hitzeaktionsplan aufstellen“ zeigt unter „Und in Oldenburg?“, was "
+                        "es hier schon gibt, und die Zeitleiste durch die Räte.",
+                ),
+            ),
+            Highlight(
+                title="Frag den Rat liest den ganzen Vorgang",
+                text="Fragst du nach einem Vorhaben, stehen unter der Antwort jetzt "
+                     "sein Verlauf als Zeitleiste und die Eckdaten.",
+                url="/fragen",
+                tagline="Zeitleiste und Eckdaten unter jeder Antwort.",
+                action="Frag den Rat ausprobieren",
+                color="primary",
+                # Nebenbei: zu klein für eine eigene Kachel neben den drei
+                # großen, zu groß zum Weglassen — eine Zeile „Außerdem: …"
+                # unter den Kacheln, der Clip öffnet sich auf Tipp.
+                aside=True,
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/3.0.0/akte.mp4",
+                    poster="/neuigkeiten/3.0.0/akte.webp",
+                    cover="/neuigkeiten/3.0.0/akte-titel.webp",
+                    duration=32.3,
+                    alt="Frag den Rat: Auf die Frage nach dem neuen Fußballstadion "
+                        "stehen unter der Antwort „Kurz gesagt“, die Eckdaten — 18 "
+                        "Gegenstimmen, 57,3 Mio. € — und der Verlauf bis zum "
+                        "aktuellen Stand.",
+                ),
+                media_narrow=Media(
+                    kind="video", aspect="6/13",
+                    src="/neuigkeiten/3.0.0/akte-mobil.mp4", poster="/neuigkeiten/3.0.0/akte-mobil.webp",
+                    cover="/neuigkeiten/3.0.0/akte-titel.webp", duration=26.1,
+                    alt="Am Telefon: Unter „Fragen“ die Frage nach dem neuen "
+                        "Fußballstadion; unter der Antwort „Kurz gesagt“, die Eckdaten "
+                        "und der Verlauf bis zum aktuellen Stand.",
+                ),
+                # Nur im Browser: Die App zeigt unter einer Antwort weder
+                # Zeitleiste noch Eckdaten (in ``ios/`` kommt ``key_facts``
+                # nicht vor). Angekündigt wird nur, was man auf dem eigenen
+                # Gerät auch findet — wie 2.2.0 beim Glossar.
+                only=NUR_WEB,
+            ),
+        ),
+    ),
     Release(
         version="2.2.0",
         date="2026-09-06",
@@ -306,6 +558,11 @@ def get(version: str) -> Release | None:
     return None
 
 
+def freigeschaltet(release: Release, roh: str | None = None) -> bool:
+    """Sind alle Features an, die diese Karte ankündigt? (``Release.schalter``)"""
+    return all(features.an(k, roh) for k in release.schalter)
+
+
 def pending_for(seen_version: str | None,
                 account_created: str | None) -> tuple[list[Release], int]:
     """Was dieses Konto noch nicht gesehen hat: ``(zu zeigen, weitere)``.
@@ -335,6 +592,9 @@ def pending_for(seen_version: str | None,
         r for r in RELEASES
         if (marke is None or version_key(r.version) > marke)
         and (not erstellt or erstellt <= r.date)
+        # Eine Karte, deren Features noch aus sind, kündigt nichts an, was es
+        # gibt — sie wartet, bis der Schalter umgelegt ist (``Release.schalter``).
+        and freigeschaltet(r)
     ]
     offen.sort(key=lambda r: version_key(r.version), reverse=True)
     return offen[:CARD_LIMIT], max(0, len(offen) - CARD_LIMIT)
@@ -375,6 +635,12 @@ def has_native_media(release: Release) -> bool:
     return bool(sichtbar) and all(h.media_ios is not None for h in sichtbar)
 
 
+def has_narrow_media(release: Release) -> bool:
+    """Ist die Telefon-Fassung fürs Web vollständig? (Alles oder nichts.)"""
+    sichtbar = highlights_for(release, "web")
+    return bool(sichtbar) and all(h.media_narrow is not None for h in sichtbar)
+
+
 def media_for(highlight: Highlight, client: str = "web") -> Media | None:
     """Welches Bild dieser Client sehen soll.
 
@@ -394,20 +660,57 @@ def as_dict(release: Release, client: str = "web") -> dict:
     unvollständige App-Fassungen fallen für die ganze Ausgabe auf Web zurück.
     """
     nativ = client in NATIVE_CLIENTS and has_native_media(release)
+    schmal = client not in NATIVE_CLIENTS and has_narrow_media(release)
 
     def medium(m: Media | None) -> dict | None:
         if m is None:
             return None
         return {"kind": m.kind, "src": m.src, "alt": m.alt,
-                "aspect": m.aspect, "poster": m.poster}
+                "aspect": m.aspect, "poster": m.poster,
+                "cover": cover_for(m), "duration": m.duration}
 
     return {
         "version": release.version,
         "date": release.date,
         "title": release.title,
+        "teaser": release.teaser,
         "highlights": [
             {"title": h.title, "text": h.text, "url": h.url,
-             "media": medium(h.media_ios if nativ else h.media)}
+             "media": medium(h.media_ios if nativ else h.media),
+             "media_narrow": medium(h.media_narrow) if schmal else None,
+             "color": h.color or DEFAULT_TILE_COLOR,
+             "aside": h.aside,
+             "tagline": h.tagline,
+             "action": h.action or DEFAULT_ACTION}
             for h in highlights_for(release, client)
         ],
     }
+
+
+#: Ohne eigene Farbe trägt eine Kachel Hafenblau — die Farbe des Rats.
+DEFAULT_TILE_COLOR = "primary"
+
+#: Ohne eigene Beschriftung heißt der Knopf im Spieler schlicht so.
+DEFAULT_ACTION = "Ausprobieren"
+
+
+def cover_for(media: Media) -> str:
+    """Das Bild für die Kachel: Titelbild, sonst Standbild, sonst das Bild.
+
+    Die Wahl fällt hier und nicht in den Clients (dieselbe Regel wie bei
+    ``media_for``): Web und App zeigen damit dieselbe Kachel, und eine Ausgabe
+    ohne Titelbilder sieht trotzdem nicht leer aus.
+    """
+    if media.cover:
+        return media.cover
+    if media.kind == "video" and media.poster:
+        return media.poster
+    return media.src
+
+
+def tiles_for(release: Release, client: str = "web") -> tuple[Highlight, ...]:
+    """Die Highlights, die eine KACHEL bekommen — ohne die nebenbei genannten.
+
+    Sie bilden die Abfolge im Spieler und den Fortschritt „1 von 3 angesehen".
+    """
+    return tuple(h for h in highlights_for(release, client) if not h.aside)

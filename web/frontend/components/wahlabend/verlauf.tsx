@@ -125,6 +125,10 @@ export function Verlauf({ daten, liste }: { daten: Wahlabend; liste: string | nu
   const steuerung = useAblesen(punkte.length, Math.max(punkte.length - 1, 0));
   const id = useAbleseId();
   if (punkte.length < 2 || !partei) {
+    // Ausgezählt und trotzdem kein Verlauf (der Abend wurde nicht
+    // mitgeschrieben): Dann füllt sich hier nichts mehr, und der
+    // Platzhalter versprach bis 10/2026 etwas, das nie kam.
+    if (daten.phase === "complete") return null;
     return (
       <section className="mt-6 rounded-2xl border border-dashed border-border p-4">
         <h2 className="font-display text-[16px] font-bold tracking-tight">Der Verlauf des Abends</h2>

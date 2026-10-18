@@ -15,9 +15,13 @@ import { BrandMark } from "@/components/brand";
 import { ShareAktionen } from "@/components/share-aktionen";
 import {
   AnlagenBlock, DebattenBlock, GeteilterAntwortText, ParteienListe, PresseBlock,
+  RulesOfProcedureBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
+  type RulesOfProcedureCard,
 } from "@/components/qa-bausteine";
 import { anlagenBuchstaben } from "@/lib/qa-belege";
+import { cn } from "@/lib/utils";
+import { Mascot } from "@/components/mascot";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +35,9 @@ type Share = {
    *  haben sie nicht, dann bleiben die Listen leer. */
   debates?: DebattenHinweis[]; press_releases?: PresseHinweis[];
   attachments?: AnlagenHinweis[]; parties?: ParteiMeinung[];
+  /** Die Karte „Aus der Geschäftsordnung" — `null` ohne Verfahrensfrage und
+   *  bei allen vor ihrem Nachtrag geteilten Antworten. */
+  rules_of_procedure?: RulesOfProcedureCard | null;
 };
 
 // Server-seitig direkt ans Backend (gleiche env wie der /api-Rewrite).
@@ -40,7 +47,9 @@ async function ladeShare(token: string): Promise<Share | null> {
   if (!token || token.length > 64) return null;
   try {
     const r = await fetch(`${BACKEND}/api/council/qa-share/${encodeURIComponent(token)}`,
-      { cache: "no-store" });
+      // Die geteilte Antwort IST der Seiteninhalt — großzügiger als die
+      // Vorschau, aber nicht unbegrenzt (Node wartet sonst bis zu 300 s).
+      { cache: "no-store", signal: AbortSignal.timeout(5000) });
     if (!r.ok) return null;
     return (await r.json()) as Share;
   } catch {
@@ -102,11 +111,24 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
         </Link>
       </div>
       {!share ? (
-        <div className="mt-10 rounded-2xl border border-border bg-card p-6 text-center">
-          <p className="font-semibold">Diese geteilte Antwort gibt es nicht mehr.</p>
-          <p className="mt-1 text-sm text-muted-foreground">
+        /* Wie die 404: Lotti und zwei Wege weiter — bis 10/2026 stand hier ein
+           einzelner Satz auf leerer Seite. */
+        <div className="mt-10 flex flex-col items-center rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center">
+          <Mascot regung="sucht" className="h-28 w-28" />
+          <p className="mt-3 font-semibold">Diese geteilte Antwort gibt es nicht mehr.</p>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             Der Link ist abgelaufen oder wurde gelöscht — du kannst dem Rat die Frage selbst stellen.
           </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Link href="/fragen"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Selbst fragen
+            </Link>
+            <Link href="/"
+              className="inline-flex items-center rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted">
+              Was ist Ratslotse?
+            </Link>
+          </div>
         </div>
       ) : (
         <>
@@ -124,8 +146,15 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
               <ParteienListe parties={share.parties ?? []} />
             </div>
           )}
+          {/* Für eine Verfahrensfrage IST die Geschäftsordnung der Beleg —
+              wie im Gespräch vor den Beschlüssen, die nur Beispiele sind. */}
+          {share.rules_of_procedure && (
+            <div className="mt-6">
+              <RulesOfProcedureBlock card={share.rules_of_procedure} />
+            </div>
+          )}
           {share.sources.length > 0 && (
-            <div className="mt-6 rounded-xl border border-border bg-card p-4">
+            <div className={cn(share.rules_of_procedure ? "mt-3.5" : "mt-6", "rounded-xl border border-border bg-card p-4")}>
               <p className="font-mono text-meta uppercase tracking-[0.08em] text-muted-foreground">
                 Zitierte Beschlüsse
               </p>

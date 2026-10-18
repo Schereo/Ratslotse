@@ -312,7 +312,10 @@ class DecisionRow(TypedDict):
     hier ein 500, sobald ein Aufrufer schmaler selektiert.
 
     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
-    ``parties`` rechnet der Store aus den Fraktionen aus.
+    ``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am
+    Hauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die
+    Fraktionen der Änderungsanträge, die als eigene Teilabstimmung
+    (``kind='subvote'``) desselben TOPs erfasst sind.
     """
     id: int
     ksinr: NotRequired[int | None]
@@ -343,6 +346,11 @@ class DecisionRow(TypedDict):
     deviation: NotRequired[str | None]
     # aus den Joins bzw. vom Router angereichert
     parties: NotRequired[list[str]]
+    #: True, wenn der Titel jede Fraktion aus ``factions`` selbst nennt — dann
+    #: ist „Antrag von" belegt. Sonst kann es eine Änderungsliste sein, die das
+    #: Protokoll nicht als Teilabstimmung führt („Anträge im TOP von").
+    #: Fehlt, wenn die Abfrage keinen Titel liest (``council/applicants.py``).
+    applicants_named: NotRequired[bool]
     committee: NotRequired[str | None]
     session_date: NotRequired[str | None]
     protocol_url: NotRequired[str | None]
@@ -482,6 +490,14 @@ class ReleaseMedia(TypedDict):
     #: Bühne baut ihren Rahmen daraus, statt ihn zu raten.
     aspect: str
     poster: str | None
+    #: Das Bild der Video-Kachel (seit 3.0.0): das Titelbild, sonst das
+    #: Standbild — die Wahl trifft der Server (``releases.cover_for``), damit
+    #: Web und App dieselbe Kachel zeigen. Nullbar nur für Clients, die eine
+    #: ältere Antwort zwischenspeichern.
+    cover: str | None
+    #: Länge des Clips in Sekunden („▶ 0:24" auf der Kachel); ``None`` bei
+    #: einem Bild oder wenn sie niemand gemessen hat.
+    duration: float | None
 
 
 class ReleaseHighlight(TypedDict):
@@ -493,12 +509,31 @@ class ReleaseHighlight(TypedDict):
     #: ``None``, solange eine Ausgabe ohne Bilder auskommt — dann zeigt die
     #: Karte die Listenform statt der Bühne.
     media: ReleaseMedia | None
+    #: Dasselbe Feature am Telefon aufgenommen, hochkant und randlos — für den
+    #: Spieler im schmalen Browser, in dem ``media`` (16:9 vom Schreibtisch)
+    #: zu klein zum Lesen wird. ``None`` für die App (sie hat ihre eigene
+    #: Fassung in ``media``) und für Ausgaben ohne vollständige Telefon-Fassung.
+    media_narrow: ReleaseMedia | None
+    #: Farbe der Kachel als Name aus der Designsprache: ``signal``,
+    #: ``primary`` oder ``green`` (``releases.TILE_COLORS``). Ohne eigene
+    #: Angabe ``primary`` — der Server setzt die Vorgabe.
+    color: str
+    #: ``True``: keine Kachel, sondern die Zeile „Außerdem: …" unter den
+    #: Kacheln; zählt nicht zum Fortschritt und nicht zur Abfolge im Spieler.
+    aside: bool
+    #: Eine Zeile unter dem Titel der Kachel; ``None`` = keine.
+    tagline: str | None
+    #: Beschriftung des Knopfs im Spieler, der zum Feature führt.
+    action: str
 
 
 class ReleaseNews(TypedDict):
     version: str
     date: str
     title: str
+    #: Eine Zeile unter dem Titel („Drei neue Wege durch den Rat — je ein
+    #: kurzes Video."); ``None`` bei Ausgaben vor 3.0.0.
+    teaser: str | None
     highlights: list[ReleaseHighlight]
 
 
@@ -527,6 +562,7 @@ class AdminNewsRelease(TypedDict):
     version: str
     date: str
     title: str
+    teaser: str | None
     highlights: list[ReleaseHighlight]
     #: Wie viele Konten die Ankündigung JETZT bekämen.
     open_recipients: int
@@ -695,6 +731,9 @@ class ConversationDetail(TypedDict):
 
 class ConversationsDeleted(TypedDict):
     deleted: int
+    #: Recherchen, deren Frage und Bericht mit weggeräumt wurden (seit 10/2026;
+    #: vorher blieben sie stehen). ``deleted`` zählt weiter nur Gespräche.
+    research_deleted: NotRequired[int]
 
 
 # --------------------------------------------------------------------------
@@ -1786,8 +1825,32 @@ class FeedbackAck(TypedDict):
     verdict: str
 
 
+class IdeaLaggingCity(TypedDict):
+    """Eine Stadt, deren Bestand deutlich vor dem letzten Abgleich endet."""
+    body_id: str
+    city: str
+    #: Die jüngste Vorlage dieser Stadt (ISO-Datum).
+    latest_paper: str
+
+
+class IdeaDataStatus(TypedDict):
+    """Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
+
+    **Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein
+    Datum, liest man es als „bis dahin ist alles drin"; das stimmt nur für
+    das früheste der Städte.
+    """
+    #: Datum (ISO) des ältesten letzten Abgleichs unter den gezeigten Städten.
+    as_of: str | None
+    #: Städte, deren jüngste Vorlage mehr als zwei Monate vor ihrem letzten
+    #: Abgleich liegt — dort fehlt vermutlich etwas (Wolfsburg endete am
+    #: 25.06.2026, abgeglichen am 14.09.2026).
+    lagging: list[IdeaLaggingCity]
+
+
 class IdeaFields(TypedDict):
     fields: list[IdeaFieldSummary]
+    data_status: IdeaDataStatus
     #: Die Städte, aus denen Ideen vorliegen, nach Namen sortiert.
     #:
     #: **Sie gehören in die Antwort, nicht in den Einleitungstext.** Der zählte
@@ -2208,6 +2271,32 @@ class AdminLotti(TypedDict):
     feedback: AdminLottiDaumen
     self_check: AdminLottiSelbstpruefung
     nudge: AdminLottiAnstupser
+
+
+class AdminFreigabeQuelle(TypedDict):
+    id: int | None
+    title: str | None
+    session_date: str | None
+    committee: str | None
+    outcome: str | None
+
+
+class AdminFreigabe(TypedDict):
+    """Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat."""
+    answer: str
+    sources: list[AdminFreigabeQuelle]
+
+
+class AdminDaumenRunter(TypedDict):
+    """Ein Daumen runter aus „Frag den Rat“ — ohne Konto, wie die Sackgassen."""
+    created: str
+    question: str
+    answer_excerpt: str | None
+    reason: str | None
+    #: wrong | incomplete | outdated | off_topic — oder None (vor 10/2026, oder keiner gewählt)
+    reason_kind: str | None
+    #: Nur mit Einwilligung beim Absenden.
+    shared: AdminFreigabe | None
 
 
 class AdminSackgasse(TypedDict):
@@ -2766,7 +2855,8 @@ class QaShare(TypedDict):
 
     Festes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem
     Bausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store
-    setzt die vier Listen dann auf leer und ``chart`` auf ``None``.
+    setzt die vier Listen dann auf leer, ``chart`` und
+    ``rules_of_procedure`` auf ``None``.
     """
     question: str
     answer: str
@@ -2777,6 +2867,9 @@ class QaShare(TypedDict):
     attachments: list[dict[str, Any]]
     parties: list[dict[str, Any]]
     chart: dict[str, Any] | None
+    #: Die Karte „Aus der Geschäftsordnung" (``council.rules_of_procedure.card``),
+    #: wie sie beim Teilen unter der Antwort stand.
+    rules_of_procedure: dict[str, Any] | None
 
 
 class ResearchSnapshot(TypedDict):
@@ -3153,6 +3246,15 @@ class DistrictProject(TypedDict):
     reported: bool
     decisions: list[DistrictProjectDecision]
     locations: list[DistrictProjectLocation]
+    #: Abgeleitet aus ``when`` und dem heutigen Datum (``council/viertel_zeitplan.py``):
+    #: ``likely_done`` (im Bau, Zeitraum vorbei), ``overdue`` (Planung/beschlossen,
+    #: Zeitraum vorbei), ``quiet`` (kein Ende genannt, seit 12 Monaten kein
+    #: Beschluss) oder null. Optional, weil ältere Server es nicht kennen.
+    schedule: NotRequired[str | None]
+    #: Der Satz dazu, fertig zum Anzeigen — Web und App rechnen nichts nach.
+    schedule_note: NotRequired[str | None]
+    #: Das aus ``when`` gelesene Ende als ISO-Datum, sonst null.
+    when_end: NotRequired[str | None]
 
 
 class DistrictUpcomingItem(TypedDict):
@@ -3242,7 +3344,11 @@ class DistrictProjects(TypedDict):
     closures: list[DistrictClosure]
     press: list[DistrictPressItem]
     neighbours: list[DistrictNeighbour]
+    #: Wann das Register zuletzt gerechnet wurde — NICHT der Datenstand.
     updated_at: str | None
+    #: Der jüngste Sitzungstag, dessen Beschlüsse das Register gesehen hat:
+    #: „Beschlüsse bis …". Optional, weil ältere Server es nicht kennen.
+    decisions_until: NotRequired[str | None]
 
 
 class DistrictProjectsOverviewEntry(TypedDict):
@@ -3271,10 +3377,19 @@ class DistrictProjectsOverview(TypedDict):
     """``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,
     dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen."""
     districts: list[DistrictProjectsOverviewEntry]
+    #: Sichtbare Vorhaben der Stadt, jedes einmal — ein Vorhaben an der
+    #: Grenze steht auf zwei Tafeln, zählt hier aber einfach. Daher ist
+    #: ``total`` nicht die Summe der ``count`` je Ortsbereich.
     total: int
+    #: Je Stand, summiert sich zu ``total`` (alle Stände, auch idea/done/rejected).
     stages: dict[str, int]
+    #: Wie viele Tafel-Einträge als Doppel an einer Grenze nicht mitzählen.
+    shared: NotRequired[int]
     highlights: list[DistrictHighlight]
+    #: Wann das Register zuletzt gerechnet wurde — NICHT der Datenstand.
     updated_at: str | None
+    #: Der jüngste Sitzungstag, dessen Beschlüsse das Register gesehen hat.
+    decisions_until: NotRequired[str | None]
 
 
 class DistrictLookupMatch(TypedDict):
@@ -3292,9 +3407,55 @@ class DistrictLookup(TypedDict):
 
 
 class DistrictProjectReportOut(TypedDict):
+    """``POST``/``DELETE /api/districts/projects/{id}/report``.
+
+    ``hidden`` ist seit 10/2026 die Entscheidung der Redaktion, nicht mehr die
+    Zahl der Meldungen — eine Meldung allein blendet nichts aus. Die Form
+    bleibt, weil die ausgelieferte iOS-App sie decodiert."""
     ok: bool
     report_count: int
     hidden: bool
+    #: Ob das eigene Konto das Vorhaben jetzt gemeldet hat (nach POST true,
+    #: nach DELETE false).
+    reported: NotRequired[bool]
+
+
+class AdminDistrictReport(TypedDict):
+    """Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer."""
+    reason: str | None
+    created_at: str
+
+
+class AdminDistrictReportProject(TypedDict):
+    """Das Vorhaben, wie es gerade auf der Tafel steht."""
+    id: int
+    name: str
+    what: str
+    stage: str
+
+
+class AdminDistrictReportGroup(TypedDict):
+    """Alle Meldungen zu einem Vorhaben samt Entscheidung der Redaktion."""
+    project_key: str
+    place_id: str
+    place_name: str
+    name: str
+    count: int
+    last_at: str
+    reports: list[AdminDistrictReport]
+    #: ``hidden`` | ``kept`` | ``None`` (offen).
+    verdict: str | None
+    note: str | None
+    decided_at: str | None
+    #: ``None``: Ein späterer Lauf kennt das Vorhaben nicht mehr.
+    project: AdminDistrictReportProject | None
+
+
+class AdminDistrictReports(TypedDict):
+    """``GET /api/admin/district-reports`` — die Meldungen aus „Mein Viertel"."""
+    groups: list[AdminDistrictReportGroup]
+    status: str
+    open_count: int
 
 
 class SessionList(TypedDict):
@@ -4127,14 +4288,16 @@ class GoalDecision(TypedDict):
 
     ``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere
     aus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist
-    je leer.
+    je leer — außer ``outcome``: Ein Beschluss ohne erkanntes Ergebnis (am
+    09.10.2026 drei von 1.307) brachte /goal/klima_2035 und /goal/wohnungsbau
+    bis dahin mit einem 500er zum Stehen.
     """
     id: int
     title: str
     summary: str
     committee: str
     session_date: str
-    outcome: Beschlussergebnis
+    outcome: Beschlussergebnis | None
     policy_field: str
     stance: str
     rationale: str
@@ -4438,6 +4601,50 @@ class CalendarSubscription(TypedDict):
     subscribed_committees: int
 
 
+class McpToken(TypedDict):
+    """Ein persönlicher MCP-Schlüssel, wie ihn die Liste zeigt — ohne das
+    Geheimnis selbst; ``prefix`` sind die ersten Zeichen zum Wiedererkennen."""
+    id: int
+    label: str
+    prefix: str
+    created: str
+    last_used: str | None
+    calls: int
+
+
+class McpTokenList(TypedDict):
+    """``GET /api/account/mcp-tokens``: die Schlüssel des Kontos, die
+    Höchstzahl und die Adresse, unter der der Server antwortet."""
+    tokens: list[McpToken]
+    max: int
+    endpoint: str
+
+
+class McpTokenCreated(TypedDict):
+    """``POST /api/account/mcp-tokens``: der neue Schlüssel. ``secret`` steht
+    hier genau EINMAL — gespeichert ist nur sein Hash."""
+    token: McpToken
+    secret: str
+    endpoint: str
+
+
+class McpMessage(TypedDict):
+    """Eine JSON-RPC-2.0-Antwort des MCP-Servers (``POST /api/mcp``).
+
+    ``result`` bzw. ``error`` tragen, was die MCP-Spezifikation für die
+    jeweilige Methode vorsieht (``initialize``, ``tools/list``,
+    ``tools/call``, ``ping``) — deshalb ``dict[str, Any]`` und keine
+    Aufzählung: Den Vertrag hält die Spezifikation, nicht diese Datei.
+    """
+    jsonrpc: Literal["2.0"]
+    #: Zahl, Text oder ``null`` — genau so, wie die Anfrage sie schickte.
+    #: Bewusst ``Any``: ``str | int | None`` landete als ``anyOf`` im Vertrag,
+    #: und das lässt der Swift-Generator still weg.
+    id: Any
+    result: NotRequired[dict[str, Any]]
+    error: NotRequired[dict[str, Any]]
+
+
 # --------------------------------------------------------------------------
 # Antworten, die kein JSON sind
 #
@@ -4687,6 +4894,13 @@ class ElectionInfo(TypedDict):
     #: „2021" bei der Ratswahl 2026. Leer, wenn es keine Vorwahl gibt; dann
     #: zeigen beide Seiten den Vergleich gar nicht.
     previous_label: str
+    #: „amtlich" | „vorlaeufig". Amtlich nur, wenn der Stand VOLLSTÄNDIG
+    #: ausgezählt ist und der eingefrorene Stand dieser Wahl als amtlich
+    #: vermerkt ist (``archive.result_status``) — dann sind die Zahlen hier
+    #: dieselben, die der Wahlausschuss festgestellt hat. Bis 10/2026 stand
+    #: unter jeder Fassung „kein amtliches Ergebnis", auch drei Wochen nach
+    #: der Feststellung.
+    result_status: str
 
 
 class ElectionSource(TypedDict):
@@ -4873,6 +5087,9 @@ class ElectionListItem(TypedDict):
     summary: str | None
     #: Ist das die Wahl, auf die gerade alles zeigt (``elections.focus``)?
     focus: bool
+    #: „amtlich" | „vorlaeufig" — aus dem eingefrorenen Stand
+    #: (``archive.result_status``).
+    result_status: str
     #: Der Weg zum Tippspiel dieser Wahl — leer, wenn es keines gibt ODER die
     #: fragende Person nicht hineindarf. Die Entscheidung trifft das Backend:
     #: Ein Link, den man sieht und nicht benutzen kann, ist schlechter als

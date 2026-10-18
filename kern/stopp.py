@@ -27,10 +27,20 @@ stapelweise Schreiben ist das, was das Zur-Seite-Treten kostenlos macht.
 ist auch ohne Deploy ein Problem: Er hält eine VM mit zwei Kernen besetzt, und
 niemand hat entschieden, dass er so lange dauern darf. ``frist_sekunden``
 macht daraus eine Zahl, die in der ``.env`` steht.
+
+**Die Kostengrenze ist die dritte (seit 10/2026).** Eine Stückzahl-Grenze je
+Stufe deckelt nicht die Rechnung: Fünf Stufen mit je eigenem Deckel ergeben
+fünf Rechnungen, und keine kennt die anderen. ``max_kosten`` ist EIN Betrag
+für den ganzen Lauf; jede Stufe meldet, was ein Modellaufruf gekostet hat
+(``ausgeben``), und fragt an ihrer Stapelgrenze dieselbe ``grund()`` wie
+sonst. Ist der Betrag erreicht, hört der Lauf so auf wie bei einem wartenden
+Deploy — die bereits laufenden Aufrufe werden noch fertig, der Betrag kann
+also um ein paar Stapel überschritten werden, nie um eine ganze Stufe.
 """
 from __future__ import annotations
 
 import os
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -66,12 +76,31 @@ class Stopp:
     def __init__(self, daten_dir: Path | None = None,
                  frist_sekunden: float | None = None,
                  jetzt=time.monotonic,
-                 marker_max_alter: float = WARTET_MAX_ALTER) -> None:
+                 marker_max_alter: float = WARTET_MAX_ALTER,
+                 max_kosten: float | None = None) -> None:
         self._marker = Path(daten_dir) / WARTET_NAME if daten_dir else None
         self._jetzt = jetzt
         self._max_alter = marker_max_alter
         self._frist = (self._jetzt() + frist_sekunden
                        if frist_sekunden and frist_sekunden > 0 else None)
+        self._max_kosten = max_kosten if max_kosten and max_kosten > 0 else None
+        self._kosten = 0.0
+        self._sperre = threading.Lock()
+
+    def ausgeben(self, usd: float) -> None:
+        """Was ein Modellaufruf gekostet hat — thread-sicher, aus jedem Arbeiter."""
+        if usd:
+            with self._sperre:
+                self._kosten += float(usd)
+
+    @property
+    def kosten(self) -> float:
+        """Was dieser Lauf bisher ausgegeben hat (über alle Stufen)."""
+        return self._kosten
+
+    @property
+    def max_kosten(self) -> float | None:
+        return self._max_kosten
 
     def _deploy_wartet(self) -> bool:
         """Liegt der Marker — und ist er frisch genug, um ernst zu sein?"""
@@ -94,24 +123,37 @@ class Stopp:
         if self._frist is not None and self._jetzt() >= self._frist:
             return Grund("frist", "Die Frist für diesen Lauf ist um — der Rest "
                                   "kommt beim nächsten Mal.")
+        if self._max_kosten is not None and self._kosten >= self._max_kosten:
+            return Grund("kosten", f"Die Kostengrenze dieses Laufs "
+                                   f"(${self._max_kosten:.2f}) ist erreicht — der "
+                                   "Rest kommt beim nächsten Mal.")
         return None
+
+
+def _zahl_aus_umgebung(variable: str | None, vorgabe: float | None) -> float | None:
+    """Ein unlesbarer oder negativer Wert heißt „keine Grenze", nicht „null"."""
+    roh = (os.environ.get(variable) or "").strip() if variable else ""
+    if not roh:
+        return vorgabe
+    try:
+        gelesen = float(roh)
+    except ValueError:
+        gelesen = -1.0
+    return gelesen if gelesen > 0 else None
 
 
 def aus_umgebung(daten_dir: Path, variable: str,
                  vorgabe_sekunden: float | None = None,
-                 jetzt=time.monotonic) -> Stopp:
-    """Ein ``Stopp`` mit der Frist aus der ``.env``.
+                 jetzt=time.monotonic,
+                 kosten_variable: str | None = None,
+                 kosten_vorgabe: float | None = None) -> Stopp:
+    """Ein ``Stopp`` mit Frist (und auf Wunsch Kostengrenze) aus der ``.env``.
 
     Ein unlesbarer oder negativer Wert heißt „keine Frist" und nicht „sofort
     aufhören": Ein Tippfehler in der ``.env`` darf einen Wochenlauf nicht
-    stillschweigend auf null Sekunden setzen.
+    stillschweigend auf null Sekunden setzen. Dieselbe Regel für die
+    Kostengrenze — ``0`` hebt sie auf (für einen Nachlauf von Hand).
     """
-    roh = (os.environ.get(variable) or "").strip()
-    frist = vorgabe_sekunden
-    if roh:
-        try:
-            gelesen = float(roh)
-        except ValueError:
-            gelesen = -1.0
-        frist = gelesen if gelesen > 0 else None
-    return Stopp(daten_dir, frist, jetzt)
+    frist = _zahl_aus_umgebung(variable, vorgabe_sekunden)
+    kosten = _zahl_aus_umgebung(kosten_variable, kosten_vorgabe)
+    return Stopp(daten_dir, frist, jetzt, max_kosten=kosten)

@@ -119,9 +119,11 @@ struct CouncilBrowserView: View {
                     .accessibilityLabel("Im Kalender abonnieren")
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }
-                NavigationLink {
-                    SavedCouncilView(model: model)
-                } label: {
+                // Als Route, nicht als eingebettete Ansicht: Nur was auf dem
+                // Stapel liegt, bekommt Kopfzeile, Zurück-Geste und Lottis
+                // Knopf mit dem richtigen Seitenkontext (bis 10/2026 hätte
+                // Lotti hier die Beschlussliste darunter erklärt).
+                NavigationLink(value: AppRoute.saved) {
                     RatsGlyphView(glyph: .saved, color: RatsColor.bodyText)
                         .frame(width: 19, height: 19)
                         .frame(width: 40, height: 40)
@@ -1332,8 +1334,10 @@ private struct SessionYearDivider: View {
     }
 }
 
-/// „Anderswo beschlossen" — was andere Städte zu derselben Sache beantragt
-/// oder beschlossen haben.
+/// „In anderen Städten" — was andere Räte zu derselben Sache beantragt,
+/// beraten oder beschlossen haben. Bis 10/2026 hieß der Block „Anderswo
+/// beschlossen"; beschlossen war aber nur gut ein Drittel der Treffer (Review
+/// 3.0.0), deshalb steht das Ergebnis an jeder Zeile und nicht im Titel.
 ///
 /// Die Zeilen führen aus dem Haus heraus, ins Ratsinformationssystem der
 /// jeweiligen Stadt. Deshalb kein Chevron: Der verspricht eine Detailseite
@@ -1349,10 +1353,10 @@ struct ElsewhereSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             VStack(alignment: .leading, spacing: 4) {
-                MonoKicker("Anderswo beschlossen")
-                Text("Was \(response.bodies.formatted(.list(type: .and))) zu einer ähnlichen "
-                     + "Sache beantragt oder beschlossen haben — aus den Ratsinformations"
-                     + "systemen dieser Städte.")
+                MonoKicker("In anderen Städten")
+                Text("Ähnliche Vorlagen aus \(response.bodies.formatted(.list(type: .and))), "
+                     + "nach Ähnlichkeit der Texte ausgewählt. Nicht jede wurde beschlossen — "
+                     + "das Ergebnis steht dabei, wo es bekannt ist.")
                     .font(RatsFont.body(11.5))
                     .foregroundStyle(RatsColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1572,6 +1576,7 @@ struct DecisionDetailView: View {
         }
         .background(RatsColor.page)
         .navigationTitle("Beschluss")
+        .lottiPageTitle(detail?.decision.title, for: .decision(id: decisionID), model: model)
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         // Eigener Takt, gebunden an den Schalter: Der kommt aus
@@ -1610,7 +1615,7 @@ struct DecisionDetailView: View {
         } catch { self.error = error.localizedDescription }
     }
 
-    /// „Anderswo beschlossen" — eigener Aufruf, der still scheitern darf.
+    /// „In anderen Städten" — eigener Aufruf, der still scheitern darf.
     ///
     /// Der Block ist Zugabe, kein Inhalt der Seite: Ein Fehler hier darf
     /// weder die Fehlermeldung der Seite setzen noch das schon geladene
@@ -2318,7 +2323,7 @@ private struct DecisionGlanceCard: View {
 
             if !decision.parties.isEmpty {
                 DecisionGlanceDivider()
-                Text("ANTRAG VON").font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
+                Text(decision.applicantLabel.uppercased()).font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
                 DecisionPartyGrid(parties: decision.parties)
                     .padding(.top, 5)
             }
@@ -3182,7 +3187,7 @@ struct SessionRouteView: View {
     let tops: [String]
 
     var body: some View {
-        if let ksinr { SessionDetailView(model: model, ksinr: ksinr, highlightedTops: Set(tops)) }
+        if let ksinr { SessionDetailView(model: model, ksinr: ksinr, highlightedTops: Set(tops), route: .sessions(ksinr: ksinr, tops: tops)) }
         else { SessionListView(model: model) }
     }
 }
@@ -3312,7 +3317,15 @@ private struct SessionDetailView: View {
     let model: AppModel
     let ksinr: Int
     let highlightedTops: Set<String>
+    /// Die Route, unter der die Seite geschoben ist — für Lottis Seitennamen.
+    let route: AppRoute
     @State private var detail: SessionDetail?
+
+    /// „Rat · Mo., 12. Okt." — das Gremium allein hieße bei jeder Sitzung
+    /// desselben Ausschusses gleich.
+    static func lottiTitle(_ detail: SessionDetail) -> String {
+        [detail.committee, RatsDate.weekday(detail.sessionDate)].compactMap { $0 }.joined(separator: " · ")
+    }
     @State private var error: String?
     @State private var calendarDraft: CalendarDraft?
     @State private var previewAttachment: AgendaAttachment?
@@ -3384,6 +3397,7 @@ private struct SessionDetailView: View {
         }
         .background(RatsColor.page)
         .navigationTitle("Sitzung")
+        .lottiPageTitle(detail.map(Self.lottiTitle), for: route, model: model)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await load()
@@ -3561,10 +3575,8 @@ private struct SessionDetailView: View {
                 error = "Kalenderzugriff wurde nicht erlaubt. Du kannst ihn in den Einstellungen freigeben."
                 return
             }
-            let parser = DateFormatter()
-            parser.locale = Locale(identifier: "de_DE")
-            parser.dateFormat = "yyyy-MM-dd HH:mm"
-            let start = parser.date(from: "\(detail.sessionDate) \(detail.sessionTime ?? "17:00")") ?? .now
+            // Oldenburger Ortszeit, nicht die des Geräts (SessionClock).
+            let start = SessionClock.start(day: detail.sessionDate, time: detail.sessionTime) ?? .now
             calendarDraft = CalendarDraft(
                 title: detail.committee,
                 start: start,

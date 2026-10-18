@@ -4,11 +4,13 @@ import { useEffect } from "react";
 import { Card, Button } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { meldeFehler } from "@/lib/fehler-melden";
+import { chunkFehlerHeilen, istChunkFehler } from "@/lib/chunk-fehler";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     // Surface to the browser console; server-side errors are already logged.
     console.error(error);
+    if (chunkFehlerHeilen(error)) return; // Deploy-Rest: einmal neu laden (lib/chunk-fehler.ts)
     // Und melden. Bis 09/2026 endete der Fehler hier — sichtbar nur in der
     // Konsole des Betroffenen, und der schreibt uns nicht.
     //
@@ -28,7 +30,9 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <p className="mt-2 text-sm text-muted-foreground">
           Da ist Lotti kurz vom Kurs abgekommen. Bitte versuche es erneut — falls das Problem bleibt, lade die Seite neu.
         </p>
-        <Button onClick={reset} className="mt-6 w-full">Erneut versuchen</Button>
+        <Button onClick={istChunkFehler(error) ? () => window.location.reload() : reset} className="mt-6 w-full">
+          {istChunkFehler(error) ? "Seite neu laden" : "Erneut versuchen"}
+        </Button>
       </Card>
     </div>
   );

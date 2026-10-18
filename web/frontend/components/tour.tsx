@@ -139,13 +139,15 @@ function TourQaDemo() {
       const t = setTimeout(() => setPhase("thinking"), 350);
       return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setTyped(DEMO_FRAGE.slice(0, typed.length + 1)), 38);
+    // 22 ms je Zeichen, 600 ms „sucht": Bis 10/2026 dauerte das Beispiel
+    // 3,5 s, und wer schneller weiterklickte, sah nie eine Antwort (OE-09).
+    const t = setTimeout(() => setTyped(DEMO_FRAGE.slice(0, typed.length + 1)), 22);
     return () => clearTimeout(t);
   }, [phase, typed]);
 
   useEffect(() => {
     if (phase !== "thinking") return;
-    const t = setTimeout(() => setPhase("done"), 1100);
+    const t = setTimeout(() => setPhase("done"), 600);
     return () => clearTimeout(t);
   }, [phase]);
 
@@ -189,6 +191,7 @@ function TourQaDemo() {
 }
 
 const SEEN_KEY = "ratslotse:tour-seen";
+const TOUR_SCHRITT_KEY = "ratslotse:tour-schritt";
 /** Hat dieses Gerät die Tour schon einmal beendet? Die Einladung nach der
  *  Einrichtung fragt das, bevor sie ein zweites Mal einlädt. */
 export function tourGesehen(): boolean {
@@ -248,6 +251,23 @@ export function GuidedTour() {
   useVollbildMelden("tour", active);
   const step = active ? STEPS[stepIndex] : null;
   const isLast = stepIndex === STEPS.length - 1;
+
+  // Der Schritt überlebt das Neuladen (sessionStorage, nur dieser Tab): Bis
+  // 10/2026 endete die Tour dabei stumm — man stand auf einer Seite der Tour,
+  // ohne Tour und ohne Hinweis, wie es weitergeht.
+  useEffect(() => {
+    try {
+      const roh = sessionStorage.getItem(TOUR_SCHRITT_KEY);
+      const n = roh === null ? -1 : Number(roh);
+      if (Number.isInteger(n) && n >= 0 && n < STEPS.length) setStepIndex(n);
+    } catch { /* gesperrter Speicher: dann eben ohne */ }
+  }, []);
+  useEffect(() => {
+    try {
+      if (stepIndex >= 0) sessionStorage.setItem(TOUR_SCHRITT_KEY, String(stepIndex));
+      else sessionStorage.removeItem(TOUR_SCHRITT_KEY);
+    } catch { /* egal */ }
+  }, [stepIndex]);
 
   const end = useCallback(() => {
     setStepIndex(-1);

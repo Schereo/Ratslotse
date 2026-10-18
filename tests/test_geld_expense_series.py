@@ -88,7 +88,9 @@ def test_warum_frage_setzt_ist_und_ist_trotzdem_kein_anker():
     ("Sind die Ausgaben über die Jahrzehnte gestiegen?", {"plan"}),
 ])
 def test_die_alten_facetten_bleiben_unverschoben(frage, alte):
-    assert qa.geld_facetten(frage, "topic") - {NAME} == alte
+    # `accounts` (die Kontenebene, 10/2026) fragt bei jeder Geldfrage mit
+    # und liefert nur bei einem Kontennamen etwas — sie verschiebt nichts.
+    assert qa.geld_facetten(frage, "topic") - {NAME, "accounts"} == alte
 
 
 # ---------------------------------------------------------------------------

@@ -298,3 +298,76 @@ def test_retention_bounds_disk_usage_for_a_six_hour_session(tmp_path, monkeypatc
     # Rohton gebraucht hätte, und unter dem 50-MB-Ziel aus dem Review.
     assert spitzenwert < 50_000_000, f"{spitzenwert} Bytes — deutlich mehr als geplant"
     assert spitzenwert < gesamt_bytes / 10
+
+
+# ------------------------------------- Live-Verfolgung blockiert die Aufnahme nicht
+
+def test_window_worker_merges_while_the_tracker_hangs():
+    """Review 05.10.2026: Ein hängender Tracker-Aufruf hielt die Leseschleife
+    an. Jetzt nimmt ``submit`` sofort an; was sich staut, wird zu EINEM
+    Fenster verschmolzen — ohne eine Äußerung zu verlieren."""
+    import time as _t
+
+    frei = threading.Event()
+    seen = []
+
+    def haengt(a, b, segs, closing):
+        if not seen and not frei.is_set():
+            frei.wait(5)          # der erste Aufruf hängt, bis der Test ihn löst
+        seen.append((a, b, [t for _, t in segs], closing))
+
+    w = stream_stt.WindowWorker(haengt)
+    t0 = _t.monotonic()
+    w.submit(0.0, 15.0, [(1.0, "eins")], False)
+    _t.sleep(0.1)                 # der Faden steckt jetzt im ersten Aufruf
+    w.submit(15.0, 30.0, [(16.0, "zwei")], False)
+    w.submit(30.0, 45.0, [(31.0, "drei")], False)
+    w.submit(45.0, 50.0, [(46.0, "vier")], True)
+    assert _t.monotonic() - t0 < 0.5      # submit wartet nie auf den Tracker
+    frei.set()
+    w.close(5)
+    assert seen[0] == (0.0, 15.0, ["eins"], False)
+    # Die drei gestauten Fenster als eines: ältester Anfang, jüngstes Ende,
+    # alle Segmente, schließend.
+    assert seen[1] == (15.0, 50.0, ["zwei", "drei", "vier"], True)
+    assert w.merged == 2 and w.delivered == 2
+
+
+def test_window_worker_survives_a_failing_tracker(caplog):
+    def kaputt(a, b, segs, closing):
+        raise RuntimeError("Tracker tot")
+    w = stream_stt.WindowWorker(kaputt)
+    with caplog.at_level("ERROR"):
+        w.submit(0.0, 15.0, [], False)
+        w.close(5)
+    assert w.delivered == 1 and "fehlgeschlagen" in caplog.text
+
+
+def test_record_and_transcribe_does_not_wait_for_a_hanging_tracker(monkeypatch):
+    """Die Aufnahme läuft im Takt der Pipe weiter, auch wenn jeder
+    Tracker-Aufruf hängt — vorher stand sie für die Dauer jedes Aufrufs."""
+    import time as _t
+
+    fake = _FakeWS({5.0: "Wir kommen zu Punkt 6.1.", 40.0: "Damit schließe ich die Sitzung."})
+    monkeypatch.setattr(stream_stt, "open_session", lambda vocab: "wss://fake")
+    monkeypatch.setattr(stream_stt.ws_client, "connect", lambda url, **kw: fake)
+    monkeypatch.setattr(stream_stt, "ffmpeg_pcm", lambda source: _pcm(60))
+    aufrufe = []
+    gesendet_beim_ersten = []
+
+    def haengt(a, b, segs, closing):
+        if not aufrufe:
+            gesendet_beim_ersten.append(fake.sent_seconds)
+            _t.sleep(1.5)         # der erste Aufruf „hängt"
+            gesendet_beim_ersten.append(fake.sent_seconds)
+        aufrufe.append(closing)
+
+    segs = stream_stt.record_and_transcribe(on_window=haengt, source="datei.m4a",
+                                            people=[], window_seconds=15, pace=20)
+    assert [t for _, t in segs] == ["Wir kommen zu Punkt 6.1.",
+                                    "Damit schließe ich die Sitzung."]
+    # Während der erste Aufruf hing, lief die Aufnahme weiter: Bei pace=20
+    # sind 1,5 s Wartezeit 30 s Audio. Synchron stünde der Zähler still.
+    assert gesendet_beim_ersten[1] - gesendet_beim_ersten[0] > 10
+    # Das Schlussfenster wird trotzdem noch zugestellt.
+    assert aufrufe[-1] is True

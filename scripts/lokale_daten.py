@@ -208,18 +208,50 @@ def hol(quelle: str) -> int:
     return 0
 
 
-def hol_staedte(quelle: str) -> int:
-    """Den Städte-Speicher unverändert herunterladen.
+def staedte_abspecken(pfad: Path) -> int:
+    """Die konto-bezogenen Zeilen aus einem Städte-Abzug entfernen.
 
-    Keine Abspeckung wie bei der Rats-Datenbank: Es stehen ausschließlich
-    öffentliche Ratsdokumente anderer Städte darin, keine Konten, keine
-    Personendaten. Deshalb reicht ein `scp`.
+    Der Speicher trägt fast nur öffentliche Ratsdokumente anderer Städte —
+    aber auch die Rückmeldungen zu den Urteilen, mit Konto-Nummer und
+    Freitext (``CITIES_USER_OWNED_TABLES``). Die gehören so wenig auf ein
+    Notebook wie die Konten selbst. Gibt die Zahl entfernter Zeilen zurück.
+    """
+    sys.path.insert(0, str(WURZEL))
+    from council.cities.store import CITIES_USER_OWNED_TABLES
+
+    n = 0
+    verbindung = sqlite3.connect(str(pfad))
+    try:
+        for tabelle, _spalte in CITIES_USER_OWNED_TABLES:
+            try:
+                n += verbindung.execute(f'DELETE FROM "{tabelle}"').rowcount or 0
+            except sqlite3.OperationalError:
+                continue  # ältere Datei ohne die Tabelle
+        verbindung.commit()
+    finally:
+        verbindung.close()
+    return n
+
+
+def hol_staedte(quelle: str) -> int:
+    """Den Städte-Speicher herunterladen — ohne die Rückmeldungen.
+
+    Eine Abspeckung wie bei der Rats-Datenbank braucht es sonst nicht: Es
+    stehen öffentliche Ratsdokumente anderer Städte darin. Die eine
+    Ausnahme sind die Rückmeldungen zu den Urteilen (Konto-Nummer und
+    Freitext); sie werden geleert, BEVOR die Datei an ihren Platz rückt.
+    Serverseitig abzuspecken hieße eine zweite Kopie von 2,4 GB auf einer
+    Platte, die schon einmal voll lief.
     """
     host, _ = QUELLEN[quelle]
     SPEICHER.mkdir(parents=True, exist_ok=True)
     t0 = time.monotonic()
     print(f"Städte-Speicher von {quelle} holen …")
-    _lauf(["scp", f"{host}:{STAEDTE_FERN}", str(STAEDTE_ABZUG)])
+    zwischen = STAEDTE_ABZUG.with_suffix(".teil")
+    _lauf(["scp", f"{host}:{STAEDTE_FERN}", str(zwischen)])
+    geleert = staedte_abspecken(zwischen)
+    zwischen.replace(STAEDTE_ABZUG)
+    print(f"  {geleert} Rückmeldungen entfernt (konto-bezogen)")
     print(f"✓ {STAEDTE_ABZUG}  ({STAEDTE_ABZUG.stat().st_size / 1e6:.0f} MB, "
           f"{time.monotonic() - t0:.0f}s)")
     return 0
@@ -346,8 +378,62 @@ def setz(ueberschreiben: bool) -> int:
     if not geklont:
         shutil.copy2(ABZUG, ziel)
     print(f"✓ {ziel.relative_to(WURZEL)} ({'geklont' if geklont else 'kopiert'})")
+    _akte_bauen(ziel)
     _warnen()
     return 0
+
+
+def _akte_bauen(ziel: Path) -> None:
+    """Die Grundakten bauen — der Abzug kommt ohne sie an.
+
+    ``council_matters`` füllt im Betrieb ``check_protocols.py`` jede Nacht; auf
+    dev laufen keine Crons, im Abzug ist die Tabelle also leer. Bis 10/2026
+    blieb sie das auch nach ``setz`` — und jede lokale Messung von „Frag den
+    Rat" maß still den Stand OHNE Akte, ohne dass etwas darauf hinwies.
+    Ohne LLM; auf dem vollen Abzug rund eine Minute (gemessen 06.10.2026:
+    68 s), aufgerufen wie ``scripts/build_matters.py``."""
+    sys.path.insert(0, str(WURZEL))
+    try:
+        from council import matters
+        from council.store import CouncilStore
+
+        store = CouncilStore(ziel)
+        try:
+            ergebnis = matters.build(store)
+        finally:
+            store.close()
+    except Exception as exc:  # noqa: BLE001 — der Abzug liegt; die Akte ist Zugabe
+        print(f"ACHTUNG: Akte nicht gebaut ({exc}). Lokale Messungen laufen dann "
+              f"OHNE Akte.\n  python scripts/build_matters.py", file=sys.stderr)
+        return
+    print(f"✓ Akte gebaut: {json.dumps(ergebnis, ensure_ascii=False)}")
+
+
+def _akte_pruefen(kopie: Path) -> None:
+    """Laut warnen, wenn die Kopie Beschlüsse, aber keine Akte trägt."""
+    if not kopie.exists():
+        return
+    sys.path.insert(0, str(WURZEL))
+    from kern.dbfehler import nur_lesen
+    try:
+        db = nur_lesen(kopie)
+    except sqlite3.Error:
+        return
+    try:
+        try:
+            akten = db.execute("SELECT COUNT(*) FROM council_matters").fetchone()[0]
+        except sqlite3.Error:
+            akten = 0
+        try:
+            beschluesse = db.execute("SELECT COUNT(*) FROM council_decisions").fetchone()[0]
+        except sqlite3.Error:
+            beschluesse = 0
+    finally:
+        db.close()
+    if beschluesse and not akten:
+        print("\n  ACHTUNG: Die Akte ist leer (council_matters: 0 Zeilen). Jede lokale")
+        print("  Messung von „Frag den Rat“ misst dann still den Stand OHNE Akte:")
+        print("      python scripts/build_matters.py")
 
 
 def setz_staedte(ueberschreiben: bool) -> int:
@@ -405,6 +491,7 @@ def stand() -> int:
     print(f"In diesem Worktree: "
           f"{'ja, %.0f MB' % (hier.stat().st_size / 1e6) if hier.exists() else 'nein'}")
     _kopie_gegen_abzug(hier)
+    _akte_pruefen(hier)
     _warnen()
     return 0
 

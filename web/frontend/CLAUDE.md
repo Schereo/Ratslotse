@@ -218,7 +218,7 @@ Genau so ist der einzige Test aufgefallen, der nur mit Daten grün war.
 | `11-quiz-admin` | Quiz und die Admin-Grenze (drei Konten, drei Rechte) |
 | `12-navigation` | Jeder Navigationspunkt, der aktive Zustand, Deep-Links |
 | `13-einrichtung` | Der Assistent — den alle anderen absichtlich überspringen |
-| `14-layout` | Keine Seite scrollt seitwärts (390 px und 320 px) |
+| `14-layout` | Keine Seite scrollt seitwärts (390 px und 320 px); die Antwort samt Parteien-Baustein gestubbt bei 375 und 320 px |
 
 **Der Assistent ist der Sonderfall.** `einrichtungUeberspringen()` schaltet ihn
 über den Server ab, weil seine Fläche (`fixed inset-0`) jeden Klick abfängt:
@@ -243,8 +243,8 @@ ist, gehört in einen Test, der nur bei echtem Bruch anschlägt.
 genau so gehören breite Tabellen gebaut (`overflow-x: auto`). Der Test
 berücksichtigt das; er meldet nur, was das FENSTER schiebt.
 
-**Ein bekannter Befund steht als `test.fail()` drin.** Die Startseite ist bei
-320 px 14 px zu breit. Das ist Gestaltung, keine Mechanik — deshalb nicht
-nebenbei repariert, sondern sichtbar festgehalten: Der Test meldet sich,
-sobald jemand es behebt, und dann fliegt die Markierung raus. So verschwindet
-ein Befund nicht in einer Liste, die niemand liest.
+**Ein bekannter Befund gehört als `test.fail()` hinein**, nicht in eine Liste,
+die niemand liest: Der Test meldet sich, sobald jemand ihn behebt, und dann
+fliegt die Markierung raus. So stand bis 10/2026 die Startseite drin (bei
+320 px 14 px zu breit); seit dem Review sind sie und fünf weitere Seiten in
+der Breite und werden bei 320 px ausdrücklich geprüft.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ANL_EXACT_RE, BELEG_SPLIT_RE, CITE_EXACT_RE, CITE_RE,
-  anlagenBuchstabe, anlagenBuchstaben, anlagenNr, citationIds, datenEindeutschen,
+  anlageNummer, anlagenBuchstabe, anlagenBuchstaben, anlagenNr, citationIds, datenEindeutschen,
 } from "./qa-belege";
 
 // Die Beleg-Marker sind eine SYNCHRONE Regel mit dem Backend (council/qa.py,
@@ -99,6 +99,20 @@ describe("anlagenBuchstaben — nur für Anlagen, die es gibt", () => {
   it("zählt ohne `nr` über die Position", () => {
     const map = anlagenBuchstaben("[A2]", [{}, {}]);
     expect(map.get(2)).toBe("a");
+  });
+
+  it("liest die Nummer, wie das Backend sie schickt (`number`)", () => {
+    // Die Position allein läge hier falsch: Die zweite Karte ist [A3].
+    const map = anlagenBuchstaben("siehe [A3]", [{ number: 1 }, { number: 3 }]);
+    expect(map.get(3)).toBe("a");
+    expect(map.has(2)).toBe(false);
+  });
+
+  it("nimmt `number` vor dem alten `nr`, dann die Position", () => {
+    expect(anlageNummer({ number: 4, nr: 2 }, 0)).toBe(4);
+    expect(anlageNummer({ nr: 2 }, 0)).toBe(2);
+    expect(anlageNummer({}, 0)).toBe(1);
+    expect(anlageNummer({ number: null }, 2)).toBe(3);
   });
 
   it("verträgt fehlende Anlagen", () => {

@@ -104,3 +104,49 @@ test.describe("Unbekannte Adressen", () => {
     expect(antwort?.status()).toBe(404);
   });
 });
+
+test.describe("Unbestätigtes Konto", () => {
+  // Bis 10/2026 prüfte die App-Hülle „unbestätigt" VOR der Ausnahme für
+  // öffentliche Seiten: Wer sich registriert, aber den Link noch nicht
+  // geklickt hatte, sah auf einem geteilten Beschluss nur die Wand —
+  // weniger als ein anonymer Besuch. Und die Wand hatte keinen Ausgang.
+  test.beforeEach(async ({ page }) => {
+    // Frisches Konto je Test — das Abmelden unten soll keiner geteilten
+    // Sitzung schaden. `register` setzt das Sitzungs-Cookie selbst.
+    const email = `unbestaetigt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.org`;
+    const antwort = await page.request.post("/api/auth/register", {
+      data: { email, password: "password123", display_name: "Noch Unbestätigt" },
+    });
+    expect(antwort.ok(), await antwort.text()).toBeTruthy();
+    // Ohne Mailversand ist eine Registrierung in der Testumgebung sofort
+    // bestätigt (`auth.py::register`). Den unbestätigten Zustand stellt
+    // deshalb `/auth/me` her — genau das Feld, an dem die Hülle entscheidet.
+    await page.route("**/api/auth/me", async (route) => {
+      try {
+        const echt = await route.fetch();
+        if (!echt.ok()) return route.fulfill({ response: echt });
+        const ich = await echt.json();
+        await route.fulfill({ json: { ...ich, email_verified: false, status: "pending" } });
+      } catch {
+        await route.fallback().catch(() => { /* Test ist schon zu Ende */ });
+      }
+    });
+  });
+
+  test("liest eine öffentliche Seite wie ohne Konto — mit Hinweis und Abmelden", async ({ page }) => {
+    await page.goto("/council/decision?id=1");
+    await expect(page.getByText(/Bestätige noch deine E-Mail-Adresse/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bitte bestätige deine E-Mail" })).toHaveCount(0);
+    // Keine Einladung zum Registrieren — das Konto gibt es ja schon.
+    await expect(page.getByRole("link", { name: "Registrieren" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Abmelden" })).toBeVisible();
+  });
+
+  test("die Wand vor den Konto-Seiten hat einen Ausgang", async ({ page }) => {
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading", { name: "Bitte bestätige deine E-Mail" })).toBeVisible();
+    await page.getByRole("button", { name: "Abmelden" }).click();
+    await page.waitForURL(/\/login/);
+    await expect(page.locator("#password")).toBeVisible();
+  });
+});

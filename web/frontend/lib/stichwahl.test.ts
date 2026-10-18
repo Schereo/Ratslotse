@@ -142,7 +142,10 @@ describe("bezugsperson (Verlauf)", () => {
   it("zeigt den Anteil dessen, der im ersten Wahlgang vorn lag", async () => {
     const { bezugsperson } = await import("../components/wahlabend/stichwahl-verlauf");
     expect(bezugsperson([k("rohr", 100, 40, 30.5), k("prange", 90, 60, 33.2)])?.slug).toBe("prange");
-  });
+    // 20 s statt der Vorgabe 5 s: Der dynamische Import übersetzt die ganze
+    // Komponente samt Grafik-Baukasten. Allein dauert das 3 s, im Pre-Push-Hook
+    // neben pyright und anderen Läufen riss es reproduzierbar die 5 s (06.10.2026).
+  }, 20_000);
 });
 
 describe("Momente", () => {

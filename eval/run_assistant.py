@@ -58,6 +58,7 @@ Aufruf::
     python eval/run_assistant.py --nur schwer          # nur die schweren Haushalts-Fälle
     python eval/run_assistant.py --modell google/gemini-2.5-pro --save
     python eval/run_assistant.py --save                # Ergebnis nach eval/results/assistant/
+    python eval/run_assistant.py --ohne-werkzeuge      # der Weg ohne Nachschlagen (vor 3.0.0)
 
 Braucht die echte ``council.sqlite`` (``COUNCIL_DB``); ohne sie fehlen die
 Beschluss- und Haushalts-Fälle und werden sichtbar übersprungen statt falsch
@@ -66,6 +67,7 @@ gemessen.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import math
 import os
@@ -100,7 +102,14 @@ FEATURE = "assistant_explain"
 #: einen natürlichen Schlüssel, damit der Eval gegen jede Datenbankkopie läuft
 #: (dieselbe Regel wie ``expected_keys`` in ``run_qa.py``).
 BESCHLUESSE = {
-    "stadion": "%Stadion%Maastrichter%",
+    # Der RATS-Beschluss vom 01.06.2026 (18 Gegenstimmen, 2 Enthaltungen).
+    # Bis 03.10.2026 stand hier „%Stadion%Maastrichter%“ — mit dem Abzug vom
+    # 01.10. traf das jüngste Id den Finanzausschuss-Beschluss vom 27.05.2026
+    # („bei vier Gegenstimmen“), und `beschluss-wie-viele-dagegen` wurde rot,
+    # obwohl Lotti für DIESE Seite richtig „vier“ sagte. Gemeint war immer der
+    # Rat (der Fall nennt die 18) — der Schlüssel heißt jetzt so eng wie dessen
+    # Titel („… Maastrichter Straße - Beschluss“).
+    "stadion": "%Stadionneubau Maastrichter Straße - B%",
     # B1 (21.09.2026): Auf DIESER Seite beantwortete der Weg ins Archiv eine
     # Frage über einen anderen Beschluss — die Stadion-Richtlinien vom
     # 15.12.2025, ähnlich im Wortfeld, fünf Jahre jünger.
@@ -352,8 +361,33 @@ def _pruefe(fall: dict, text: str, modus: str, weiter: str | None,
     return aus
 
 
+def _mit_werkzeug_mitschnitt(fn):
+    """``fn()`` laufen lassen und mitschreiben, was die Werkzeuge lieferten.
+
+    Für ``must_not_number``: Eine Zahl aus einem Werkzeug-Ergebnis ist
+    belegt, steht aber nicht im ersten Prompt. Ohne Mitschnitt wäre jede
+    nachgeschlagene Zahl ein harter Befund.
+    """
+    from council import lotti_werkzeuge as lw
+    gesehen: list[str] = []
+    original = lw.ausfuehren
+
+    def mitschreiben(*a, **k):
+        e = original(*a, **k)
+        gesehen.append(e.text)
+        return e
+    lw.ausfuehren = mitschreiben
+    try:
+        return fn(), gesehen
+    finally:
+        lw.ausfuehren = original
+
+
 def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool,
-         modell: str = lotti.MODEL) -> list[dict]:
+         modell: str = lotti.MODEL, werkzeuge: bool = True) -> list[dict]:
+    """``werkzeuge``: wie ausgeliefert (Schalter ``lotti-werkzeuge`` ist mit
+    3.0.0 auf Prod an). Bis 03.10.2026 maß der Lauf den Weg OHNE Werkzeuge —
+    also eine Lotti, die es nirgends mehr gab."""
     aus = []
     for fall in faelle:
         screen, grund = _screen(fall, store)
@@ -383,7 +417,9 @@ def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool,
         # deterministisch dorthin, gibt es gar keinen Erklär-Aufruf mehr
         # (PR 23) — ein Eval, der das nicht nachbaut, misst einen Text, den
         # in der Produktion niemand zu sehen bekommt.
-        if lotti.archiv_sofort(frage):
+        # Dazu die Preisfrage nach einem Vorhaben, am Bestand geprüft — der
+        # zweite Riegel des Routers (`projekt_ins_archiv`).
+        if lotti.archiv_sofort(frage) or lotti.projekt_ins_archiv(store, screen, frage):
             aus.append({
                 "id": fall["id"], "modus": "handoff", "weiter": "ratsfrage",
                 "seite": None, "ms": round((time.perf_counter() - t0) * 1000),
@@ -407,7 +443,10 @@ def lauf(faelle: list[dict], store: CouncilStore, *, nur_deterministisch: bool,
                                        permissions=frozenset({"budget"}))
             msgs, _ = lotti.explain_messages(screen, frage, ctx, model=modell)
             kontext = msgs[0]["content"]
-            roh = lotti.explain_question(store, screen, frage, ctx=ctx, model=modell)
+            roh, werkzeug_texte = _mit_werkzeug_mitschnitt(functools.partial(
+                lotti.explain_question, store, screen, frage, ctx=ctx, model=modell,
+                permissions=RECHTE, werkzeuge=werkzeuge))
+            kontext += "\n" + "\n".join(werkzeug_texte)
             # Die Route MUSS mit: Ein `WEITER: seite` auf die Seite, auf der
             # man steht, wird verworfen (Tims Befund 22.09.2026 — „Weiter zu:
             # Bereichs-Steckbrief" auf dem Bereichs-Steckbrief). Ein Eval ohne
@@ -543,6 +582,9 @@ def main() -> int:
                     help=f"Modell für Lottis Erklärungen (Vorgabe: {lotti.MODEL}); "
                          "der Ratsweg-Fall bleibt bei COUNCIL_QA_MODEL")
     ap.add_argument("--db", help="Pfad zur council.sqlite (sonst COUNCIL_DB/.env)")
+    ap.add_argument("--ohne-werkzeuge", action="store_true",
+                    help="Lotti ohne Nachschlagen messen (Stand vor dem Schalter "
+                         "lotti-werkzeuge) — Vorgabe ist der ausgelieferte Weg MIT")
     args = ap.parse_args()
 
     faelle = json.loads(FAELLE.read_text())
@@ -563,7 +605,7 @@ def main() -> int:
     # zählen — dann bleibt die Marke weg und die Kostenzeile still.
     marke = None if args.nur_deterministisch else usage.jetzt_utc()
     zeilen = lauf(faelle, store, nur_deterministisch=args.nur_deterministisch,
-                  modell=args.modell)
+                  modell=args.modell, werkzeuge=not args.ohne_werkzeuge)
     text = bericht(zeilen)
     print(text)
     kz = kennzahlen(zeilen, args.modell, marke)

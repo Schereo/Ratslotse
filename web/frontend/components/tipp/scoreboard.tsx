@@ -172,7 +172,12 @@ export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe
       )}
       {mitRang.length === 0 && (
         <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
-          Noch kein Ergebnis — sobald die erste Hochrechnung da ist, steht hier die Rangliste.
+          {/* Ohne Ränge gibt es zwei Gründe, und sie brauchen verschiedene
+              Sätze: Es ist noch nichts ausgezählt — oder es hat niemand
+              getippt. Bis 10/2026 stand Ersteres auch beim Endstand. */}
+          {stand.stand_label
+            ? (stand.rows.length === 0 ? "In dieser Runde hat niemand getippt." : "Noch hat kein Tipp einen Platz.")
+            : "Noch kein Ergebnis — sobald die erste Hochrechnung da ist, steht hier die Rangliste."}
         </p>
       )}
       <div className="mt-3 flex flex-col gap-2">

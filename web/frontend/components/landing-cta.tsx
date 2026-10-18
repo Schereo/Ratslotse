@@ -12,7 +12,7 @@ export function HeaderCTA() {
   return (
     <Link
       href={user ? "/dashboard" : "/login"}
-      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm sm:px-4 font-medium text-primary-foreground transition-opacity hover:opacity-90"
     >
       {user ? "Zum Dashboard" : "Anmelden"} <span aria-hidden>→</span>
     </Link>

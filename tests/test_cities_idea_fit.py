@@ -173,3 +173,67 @@ def test_eine_erfundene_kennung_schreibt_nichts(staende, monkeypatch):
     stand = idea_fit.run(main, rats, EMBED_MODEL, suche=False)
     assert stand["annotated"] == 0 and stand["hallucinated_evidence"] == 3
     assert main.annotation("cluster", "1:1", "idea_fit", "1") is None
+
+
+# ------------------------------------------------------- Probe der Beleg-Arme
+
+def _oldenburger_vektor(main) -> None:
+    """Oldenburg hat Papier-Vektoren — der Nachbar-Arm MUSS also etwas finden.
+
+    Bewusst eine Vorlage AUSSERHALB der Gruppe: Ein Gruppenmitglied zählt als
+    Beleg der Art `cluster`, nicht `neighbor`."""
+    import numpy as np
+    main.upsert_batch(Batch(papers=[Paper("oldenburg:paper:8", "oldenburg",
+                                          "Hitzeschutz in Kitas", date="2024-06-01",
+                                          kind="motion")]))
+    main.put_object_embedding("paper", "oldenburg:paper:8", EMBED_MODEL, "h",
+                              np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32).tobytes())
+
+
+def _feste_woerter(monkeypatch):
+    from council.cities import evidence as ev
+    monkeypatch.setattr(ev, "search_terms",
+                        lambda klasse, papier: ev._woerter(klasse.get("instrument") or ""))
+
+
+@pytest.mark.parametrize("nur_hashes", [False, True])
+def test_ohne_embedding_bricht_der_lauf_ab_statt_verarmt_zu_urteilen(staende, monkeypatch,
+                                                                     nur_hashes):
+    """`_Vektor.hol` schluckt den Embedding-Fehler, beide Vektor-Arme bleiben
+    leer. Vorher urteilte `idea_fit` trotzdem — und `--hashes-ideen`
+    übernahm 199 Hashes verarmter Belege in 38 s."""
+    from council.cities import evidence as ev
+    from council.cities import fit
+
+    main, rats = staende
+    _oldenburger_vektor(main)
+    _feste_woerter(monkeypatch)
+
+    def kaputt(text):
+        raise RuntimeError("fastembed: Modell fehlt")
+
+    monkeypatch.setattr(ev, "_embed_eins", kaputt)
+    monkeypatch.setattr(idea_fit.llm, "chat_complete",
+                        lambda **kw: pytest.fail("ohne Vektor-Arme kein Urteil"))
+    ann = get_annotator("idea_fit")
+    vorher = main.source_hashes("cluster", ann.key, ann.version)
+    with pytest.raises(fit.LaufAbbruch, match="neighbor"):
+        idea_fit.run(main, rats, EMBED_MODEL, nur_hashes=nur_hashes)
+    assert main.source_hashes("cluster", ann.key, ann.version) == vorher
+
+
+def test_mit_embedding_besteht_der_lauf_die_probe(staende, monkeypatch):
+    import numpy as np
+
+    from council.cities import evidence as ev
+
+    main, rats = staende
+    _oldenburger_vektor(main)
+    _feste_woerter(monkeypatch)
+    monkeypatch.setattr(ev, "_embed_eins",
+                        lambda text: np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32))
+    monkeypatch.setattr(idea_fit.llm, "chat_complete", lambda **kw: _antwort(
+        {"status": "partial", "situation": "Oldenburg informiert über Hitze.",
+         "evidence": ["oldenburg:paper:7"], "related": [], "confidence": "medium"}))
+    stand = idea_fit.run(main, rats, EMBED_MODEL)
+    assert stand["probe"].get("neighbor") and stand["annotated"] == 1

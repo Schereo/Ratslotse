@@ -83,6 +83,11 @@ const config: Config = {
            auch auf 400 px nebeneinander aus. 480 px ist gemessen an der
            längsten Reihe des Bereichs (Investitionsarten). */
         "ab-lesezeile": { raw: "(min-width: 480px)" },
+        /* Unter 360 px (iPhone SE der ersten Generation, 320 px): Die
+           öffentliche Kopfzeile zeigt dort nur das Zeichen und enge Knöpfe —
+           mit „Ratslotse · Anmelden · Registrieren" war sie 7 px zu breit
+           (CI, 10/2026). Benannt aus demselben Grund wie `mobil` oben. */
+        winzig: { raw: "(max-width: 359.98px)" },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

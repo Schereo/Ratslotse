@@ -18,17 +18,31 @@ public enum AppRoute: Sendable, Hashable {
     /// Eine Bewegung — dieselbe Idee in mehreren anderen Räten
     /// (`/council/ideen/bewegung?id=`).
     case movement(id: Int)
+    /// „Ideen aus anderen Städten" (`/council/ideen`) — die Übersicht, von der
+    /// aus die Bewegungen erreichbar sind. Bis 10/2026 fiel die Adresse auf
+    /// `.web` und damit aus der App heraus.
+    case ideas
     case sessions(ksinr: Int?, tops: [String])
     case person(slug: String)
     case topic(slug: String)
     case place(id: String)
-    /// „Mein Viertel": ohne id die Auswahl der Ortsbereiche, mit id die Tafel.
-    case district(id: String?)
+    /// „Mein Viertel": ohne id die Auswahl der Ortsbereiche, mit id die Tafel,
+    /// mit `project` (Web: `?v=`) zusätzlich das Vorhaben geöffnet.
+    case district(id: String?, project: Int? = nil)
     case quiz(area: String?)
     /// Die Ausschuss-Abos samt Kalender-Abo — Ziel der Karte „Neu bei
     /// Ratslotse" und der Abo-Meldungen (`/abos`).
     case subscriptions
     case analysis
+    /// Die Merkliste (`/bookmarks`). Bis 10/2026 keine Route: Sie stand im
+    /// Mehr-Blatt und auf dem iPad als eigene Seite, beides am Stapel
+    /// vorbei — und was nicht auf dem Stapel liegt, kennt Lotti nicht.
+    ///
+    /// **Nur in diese Richtung.** `route(for:)` liest `/bookmarks` absichtlich
+    /// nicht: Die Universal-Link-Datei lässt die Adresse nicht in die App,
+    /// und nähme sie sie auf, schickte die ausgelieferte App (ohne diesen
+    /// Fall) jeden solchen Link gleich wieder ins Web.
+    case saved
     case admin
     case web(URL)
 }
@@ -75,6 +89,12 @@ public struct AppRouter: Sendable {
         case "/council/decision":
             guard let raw = value("id"), let id = Int(raw), id > 0 else { return .tab(.council) }
             return .decision(id: id)
+        case "/council/ideen": return .ideas
+        case "/council/neuer-rat":
+            // Ausdrücklich ins Web: Die Seite gibt es nur dort. Die
+            // Universal-Link-Datei nimmt sie mit `NOT` aus — sonst ginge ein
+            // Link erst in die App und von dort gleich wieder hinaus.
+            return .web(url)
         case "/council/ideen/bewegung":
             guard let raw = value("id"), let id = Int(raw), id > 0 else { return .tab(.council) }
             return .movement(id: id)
@@ -91,10 +111,14 @@ public struct AppRouter: Sendable {
             // Die alte Adresse der Tafel — steht in Mails und Push und leitet
             // im Web auf /karte?ort= weiter (STADTKARTE-PLAN.md, Schritt 5).
             let id = value("id")
-            return .district(id: (id?.isEmpty ?? true) ? nil : id)
+            return .district(id: (id?.isEmpty ?? true) ? nil : id, project: districtProject(value("v")))
         case "/karte":
+            // `v` öffnet das Vorhaben — der Link aus Mails, Highlights und
+            // dem Teilen. Bis 10/2026 fiel er hier weg, und die App zeigte
+            // nur das Viertel.
             let ort = value("ort")
-            return .district(id: (ort?.isEmpty ?? true) ? nil : ort)
+            let id = (ort?.isEmpty ?? true) ? nil : ort
+            return .district(id: id, project: id == nil ? nil : districtProject(value("v")))
         case "/council":
             if value("mode") == "fragen" {
                 return .question(prefill: value("q"), share: value("share"))
@@ -141,6 +165,7 @@ public struct AppRouter: Sendable {
             components.path = "/council/decision"; components.queryItems = [.init(name: "id", value: String(id))]
         case .movement(let id):
             components.path = "/council/ideen/bewegung"; components.queryItems = [.init(name: "id", value: String(id))]
+        case .ideas: components.path = "/council/ideen"
         case let .sessions(ksinr, tops):
             // Geteilt wird die eigenständige Sitzungs-Seite, nicht die Liste:
             // Sie ist ohne Konto lesbar, `/council?tab=sessions` nicht (die
@@ -161,19 +186,28 @@ public struct AppRouter: Sendable {
             components.path = "/council/thema"; components.queryItems = [.init(name: "slug", value: slug)]
         case .place(let id):
             components.path = "/council/ort"; components.queryItems = [.init(name: "id", value: id)]
-        case .district(let id):
+        case let .district(id, project):
             // Geteilt wird die neue Adresse; /viertel bleibt nur als Einstieg.
             components.path = "/karte"
-            if let id { components.queryItems = [.init(name: "ort", value: id)] }
+            if let id {
+                components.queryItems = [.init(name: "ort", value: id)]
+                if let project { components.queryItems?.append(.init(name: "v", value: String(project))) }
+            }
         case .quiz(let area):
             components.path = "/quiz"; components.queryItems = [.init(name: "area", value: area)]
         case .subscriptions: components.path = "/abos"
         case .analysis:
             components.path = "/council"; components.queryItems = [.init(name: "tab", value: "analysis")]
+        case .saved: components.path = "/bookmarks"
         case .admin: return nil
         case .web(let url): return url
         }
         return components.url
+    }
+
+    private func districtProject(_ raw: String?) -> Int? {
+        guard let raw, let id = Int(raw), id > 0 else { return nil }
+        return id
     }
 
     private func normalized(path: String) -> String {

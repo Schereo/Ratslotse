@@ -10,8 +10,13 @@ import { isNativeApp } from "@/lib/platform";
  * sonst Link in die Zwischenablage. Aus der nativen App heraus wird immer die
  * ratslotse.de-URL geteilt — der capacitor://-Origin wäre für Empfänger nutzlos.
  */
-export function ShareButton({ path, title, className, iconOnly, kompakt, still, label = "Teilen" }: {
+export function ShareButton({ path, title, className, iconOnly, kompakt, still, label = "Teilen", hinweis }: {
   path: string; title: string; className?: string; iconOnly?: boolean;
+  /** Ein Satz für die Empfänger*innen, der mit dem Link geteilt wird — und
+   *  den die Kopier-Meldung wiederholt. Für Seiten hinter der Anmeldung: Wer
+   *  „Mein Viertel" teilt, soll wissen, dass der Link ohne Konto auf der
+   *  Anmeldung landet. */
+  hinweis?: string;
   /** Icon-Knopf in den Maßen des Merken-Knopfs — für die Aktionsspalte einer
    *  Zeile (Tagesordnungspunkt), wo ein gerahmter Knopf die Zeile sprengt. */
   kompakt?: boolean;
@@ -29,7 +34,7 @@ export function ShareButton({ path, title, className, iconOnly, kompakt, still, 
     const url = `${base}${path}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title, url });
+        await navigator.share(hinweis ? { title, text: hinweis, url } : { title, url });
         return;
       } catch (e) {
         if ((e as Error).name === "AbortError") return; // Nutzer*in hat den Share-Dialog geschlossen
@@ -38,7 +43,7 @@ export function ShareButton({ path, title, className, iconOnly, kompakt, still, 
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Link kopiert.");
+      toast.success("Link kopiert.", hinweis ? { description: hinweis } : undefined);
     } catch {
       toast.error("Link konnte nicht kopiert werden.");
     }

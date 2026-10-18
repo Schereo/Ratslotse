@@ -10,12 +10,13 @@ import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from collections.abc import Callable
-from typing import Annotated, cast
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import (AliasChoices, BaseModel, Field, field_validator)
 
+from council.cities.model import display_title
 from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
@@ -32,6 +33,7 @@ from council import assistant as lotti
 from council import self_check
 from starlette.background import BackgroundTask
 from council import akte_suche, beteiligungsbericht, qa
+from council import rules_of_procedure
 from council import ernte
 from kern import features, knowledge, seitenaufrufe
 from kern import roles as rollen
@@ -57,7 +59,8 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
-                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaProtocol,
+                         Idea, IdeaDataStatus, IdeaEvidence, IdeaFields, IdeaFieldSummary,
+                         IdeaLaggingCity, IdeaProtocol,
                          IdeaSibling, Movement, MovementCity, MovementDetail,
                          MovementDocument, MovementSimilar, MovementsResponse,
                          OldenburgVerdict, TimeAxis, TimelinePoint,
@@ -73,11 +76,14 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
 from ..clients import client_kind
+from ..election import answer_context as election_answer
 from ..election import elected as elected_mod
+from .. import fehlersammler
 from ..deps import (get_cities_store, get_council_store, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
     assistant_event_limiter,
+    cities_feedback_limiter,
     assistant_limiter,
     partei_meinungen_limiter,
     debatten_limiter,
@@ -89,7 +95,7 @@ from ..ratelimit import (
 
 router = APIRouter(prefix="/api/council", tags=["council"])
 
-#: So viele fremde Vorlagen zeigt „Anderswo beschlossen" höchstens. Mehr als
+#: So viele fremde Vorlagen zeigt „In anderen Städten" höchstens. Mehr als
 #: eine Handvoll liest niemand, und die Nähe fällt danach spürbar ab.
 ELSEWHERE_LIMIT = 6
 
@@ -108,6 +114,33 @@ ELSEWHERE_LIMIT = 6
 #: ist ein gelegentlich verlorener guter Treffer knapp darunter — ein leerer
 #: Block ist ehrlicher als ein voller aus Zufallstreffern.
 ELSEWHERE_MIN_SCORE = 0.70
+
+#: Ist der Oldenburger Beschluss selbst ortsgebunden (`transfer=local`: eine
+#: Straße, eine Schule, ein Bebauungsplan), gilt eine höhere Schwelle, und
+#: es zählen nur Anträge und Vorlagen. Die Nähe misst dort fast nur die
+#: Gattung — „Widmung der Straße Im Technologiepark" fand „Land & Lions:
+#: Park- und Verkehrskonzept" (eine Antwort, 0,80), die Grundschule Wechloy
+#: „Schulwechsel zum Schuljahr 24/25" (0,71). Gute Treffer ortsgebundener
+#: Beschlüsse liegen darüber („Parksituation Wittingsbrok" → „Parksituation in
+#: der Händelstraße", Antrag, 0,84). Gemessen im Review zu 3.0.0.
+ELSEWHERE_LOKAL_MIN_SCORE = 0.80
+ELSEWHERE_LOKAL_ARTEN = ("motion", "proposal", "amendment")
+
+#: Formale Oldenburger Beschlüsse bekommen gar keinen Block: Widmungen und
+#: Einziehungen von Straßen, über- und außerplanmäßige Bewilligungen,
+#: Aufwandsspaltungen, Entgelte, die Pflasterung eines Platzes, Bebauungs-
+#: und Flächennutzungspläne samt Veränderungssperren, Jahresabschlüsse. Ihr
+#: Text ist Verwaltungsformel, und die Formel findet Formeln — „überplanmäßige
+#: Bewilligung" fand die Deckelungsquote in Magdeburg und den Bürgerhaushalt
+#: in Potsdam, die Pflasterung am Rathausmarkt die Entgeltordnung eines
+#: Gemeindehofs, jede Änderung eines Oldenburger Bebauungsplans einen
+#: Hannoverschen für eine andere Straße (0,82 bis 0,88). Was dort anderswo
+#: „dieselbe Sache" wäre, gibt es nicht.
+ELSEWHERE_FORMAL = re.compile(
+    r"\b(?:Widmung|Entwidmung|Einziehung|Teileinziehung|[üÜ]berplanm[äa](?:ß|ss)ig"
+    r"|[aA]u(?:ß|ss)erplanm[äa](?:ß|ss)ig|Aufwandsspaltung|Pflasterung|Entgelt"
+    r"|Bebauungspl[aä]n|Fl[äa]chennutzungspl[aä]n|Ver[äa]nderungssperre|Jahresabschl[uü]ss)",
+    re.IGNORECASE)
 
 #: Vorgabe der Ideen-Seite: was Oldenburg fehlt oder halb hat. „Vorhanden“ ist
 #: über den Filter erreichbar — es gehört zur Antwort, nur nicht in die erste
@@ -517,9 +550,16 @@ def zahl_der_woche(
             return {"kind": "amount", "amount_eur": top["amount_eur"],
                     "decision_id": top["id"], "title": top["title"],
                     "session_date": top["session_date"], "window_days": days}
-    return {"kind": "count",
-            "count": store.count_decisions_since((today - timedelta(days=7)).isoformat()),
-            "window_days": 7}
+    # Ohne Betrag die Zahl der Beschlüsse — im kleinsten Fenster, in dem es
+    # überhaupt welche gibt. Bis 10/2026 immer 7 Tage: Nach Sommerpause und
+    # Wahl stand wochenlang eine orange „0" oben auf „Heute", obwohl die
+    # Ausschüsse längst wieder tagten (ihre Protokolle kommen ein bis drei
+    # Wochen später). Die App liest `window_days` mit (TodayView.swift).
+    for days in (7, 30, 90):
+        anzahl = store.count_decisions_since((today - timedelta(days=days)).isoformat())
+        if anzahl:
+            return {"kind": "count", "count": anzahl, "window_days": days}
+    return {"kind": "count", "count": 0, "window_days": 90}
 
 
 @router.get("/budget/products")
@@ -2035,11 +2075,48 @@ def _eigene_rueckmeldungen(cities: CitiesStore, user: dict | None) -> dict[str, 
     return cities.feedback_by_paper(ann, ver, int(user["id"]))
 
 
+def _papier_kennung(roh: str) -> str:
+    """Die Vorlagen-Kennung aus dem Pfad, so wie der Speicher sie führt.
+
+    Die Kennungen der OParl-Städte SIND Adressen (``https://…/papers/1``).
+    Die App bis Build 3.0 setzte sie roh in den Pfad; aus ``https://`` wurde
+    unterwegs ``https:/`` (ein Doppel-Schrägstrich übersteht Proxy und
+    Weiterleitung nicht), und jede Rückmeldung endete mit „unbekannte
+    Vorlage". Die ausgelieferten Builds kommen so weiter an — der neue
+    kodiert die Kennung vollständig.
+    """
+    return re.sub(r"^(https?):/+(?=[^/])", r"\1://", roh)
+
+
+class CitiesFeedbackBody(BaseModel):
+    """Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.
+
+    Bis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in
+    der URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die
+    ausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query
+    und gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch
+    hier."""
+    verdict: str | None = Field(default=None, pattern="^(right|wrong)$")
+    note: str | None = Field(default=None, max_length=500)
+    #: Nur für ``/cities/movements/feedback``: die Gruppen-Kennung.
+    id: int | None = None
+
+
+def _feedback_werte(body: CitiesFeedbackBody | None, verdict: str | None) -> tuple[str, str | None]:
+    """Urteil und Notiz aus Körper oder (für ausgelieferte Clients) Query."""
+    verdict = (body.verdict if body and body.verdict else None) or verdict
+    if verdict not in ("right", "wrong"):
+        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    note = ((body.note if body else None) or "").strip()[:500] or None
+    return verdict, note
+
+
 @router.post("/cities/movements/feedback")
 def cities_movement_feedback(
-    id: int,
-    verdict: str,
-    note: str | None = None,
+    request: Request,
+    body: CitiesFeedbackBody | None = None,
+    id: int | None = None,
+    verdict: str | None = None,
     user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
@@ -2052,21 +2129,25 @@ def cities_movement_feedback(
     """
     from council.cities.clusters import CLUSTER_VERSION
 
-    if verdict not in ("right", "wrong"):
-        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    cities_feedback_limiter.check(request, subject=user["id"])
+    verdict, note = _feedback_werte(body, verdict)
+    id = (body.id if body and body.id is not None else None) or id
+    if id is None:
+        raise HTTPException(400, "id fehlt")
     if not cities.idea_group(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION, id):
         raise HTTPException(404, "unbekannte Bewegung")
     ann, ver = CitiesStore.IDEEN_IDEA_FIT
     cities.put_feedback("cluster", f"{CLUSTER_VERSION}:{id}", ann, ver, int(user["id"]),
-                        verdict, (note or "").strip()[:500] or None)
+                        verdict, note)
     return {"paper_id": f"{CLUSTER_VERSION}:{id}", "verdict": verdict}
 
 
 @router.post("/cities/ideas/{paper_id:path}/feedback")
 def cities_idea_feedback(
+    request: Request,
     paper_id: str,
-    verdict: str,
-    note: str | None = None,
+    body: CitiesFeedbackBody | None = None,
+    verdict: str | None = None,
     user: dict = Depends(require_active),
     cities: CitiesStore = Depends(get_cities_store),
 ) -> FeedbackAck:
@@ -2080,18 +2161,20 @@ def cities_idea_feedback(
 
     **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
     Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
-    Stimmen), und der Maßstab wäre wieder wertlos.
+    Stimmen), und der Maßstab wäre wieder wertlos. **Und nur aktiv**
+    (``require_active``): ein gesperrtes oder unbestätigtes Konto schreibt
+    hier so wenig wie anderswo; die Bremse zählt je Konto.
 
     Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
     """
-    if verdict not in ("right", "wrong"):
-        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    cities_feedback_limiter.check(request, subject=user["id"])
+    verdict, note = _feedback_werte(body, verdict)
+    paper_id = _papier_kennung(paper_id)
     if not cities.paper(paper_id):
         raise HTTPException(404, "unbekannte Vorlage")
     ann, ver = CitiesStore.IDEEN_FIT
-    cities.put_feedback("paper", paper_id, ann, ver, int(user["id"]), verdict,
-                        (note or "").strip()[:500] or None)
+    cities.put_feedback("paper", paper_id, ann, ver, int(user["id"]), verdict, note)
     return {"paper_id": paper_id, "verdict": verdict}
 
 
@@ -2119,9 +2202,40 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
          "movements": bewegungen.get(r["field"], 0)}
         for r in cities.idea_fields()]
     from council.cities.registry import BODIES
-    namen = sorted({(BODIES[b].name if b in BODIES else b)
-                    for b in cities.idea_body_ids()})
-    return {"fields": felder, "bodies": namen}
+    ids = cities.idea_body_ids()
+    namen = sorted({(BODIES[b].name if b in BODIES else b) for b in ids})
+    return {"fields": felder, "bodies": namen, "data_status": _datenstand(cities, ids)}
+
+
+#: Ab wann eine Stadt als „hinkt hinterher" gilt: so viele Tage zwischen
+#: ihrer jüngsten Vorlage und ihrem letzten Abgleich. Zwei Monate tragen eine
+#: Sommerpause; Wolfsburg (25.06. gegen 14.09.2026) fällt trotzdem auf.
+STAND_LUECKE_TAGE = 60
+
+
+def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
+    """„Stand: …" für die Seite — und welche Stadt deutlich älter endet."""
+    from datetime import date as _date
+
+    from council.cities.registry import BODIES
+
+    zeilen = cities.coverage(body_ids)
+    abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
+    hinten: list[IdeaLaggingCity] = []
+    for z in zeilen:
+        if not z.get("last_fetched") or not z.get("latest_paper"):
+            continue
+        try:
+            luecke = (_date.fromisoformat(str(z["last_fetched"])[:10])
+                      - _date.fromisoformat(str(z["latest_paper"])[:10])).days
+        except ValueError:
+            continue
+        if luecke > STAND_LUECKE_TAGE:
+            b = str(z["body_id"])
+            hinten.append({"body_id": b, "city": BODIES[b].name if b in BODIES else b,
+                           "latest_paper": str(z["latest_paper"])[:10]})
+    return {"as_of": min(abgleiche) if abgleiche else None,
+            "lagging": sorted(hinten, key=lambda h: h["city"])}
 
 
 @router.get("/cities/search")
@@ -2267,7 +2381,7 @@ def cities_movement_detail(
         dokumente.append({
             "paper_id": m["id"], "body_id": m["body_id"],
             "city": namen.get(m["body_id"]) or m.get("body_name") or m["body_id"],
-            "name": m.get("name") or "", "date": (m.get("date") or "")[:10] or None,
+            "name": display_title(m.get("name")), "date": (m.get("date") or "")[:10] or None,
             "kind": m.get("kind") or "other", "web": m.get("web"),
             "outcome": (cities.outcome_for_paper(m["id"]) or {}).get("outcome") or "none",
             "originator": display_originator(klasse.get("originator"), m.get("kind")),
@@ -2313,7 +2427,7 @@ def _bewegung(store: CouncilStore, z: dict,
         TimelinePoint(paper_id=str(p["paper_id"]), body_id=str(p["body_id"]),
                       city=namen.get(p["body_id"], str(p["body_id"])), date=p.get("date"),
                       outcome=p.get("outcome") or "none", kind=p.get("kind") or "other",
-                      title=p.get("title") or "")
+                      title=display_title(p.get("title")))
         for p in json.loads(z.get("timeline") or "[]")]
     return {
         "cluster_id": int(z["cluster_id"]), "label": z.get("label") or "",
@@ -2372,7 +2486,7 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "paper_id": r["id"], "body_id": r["body_id"],
         "body_name": (BODIES[r["body_id"]].name if r["body_id"] in BODIES
                       else (r.get("body_name") or r["body_id"])),
-        "name": r.get("name") or "", "date": r.get("date"),
+        "name": display_title(r.get("name")), "date": r.get("date"),
         "kind": r.get("kind") or "other", "web": r.get("web"),
         "outcome": (cities.outcome_for_paper(r["id"]) or {}).get("outcome") or "none",
         "field": klasse.get("field"), "instrument": klasse.get("instrument"),
@@ -2457,7 +2571,7 @@ def _geschwister(roh: str | None) -> list[IdeaSibling]:
         return []
     zeilen = json.loads(roh)
     zeilen.sort(key=lambda z: (z.get("date") is None, z.get("date") or ""))
-    return [{"paper_id": z["id"], "name": z.get("name") or "",
+    return [{"paper_id": z["id"], "name": display_title(z.get("name")),
              "date": z.get("date")} for z in zeilen]
 
 
@@ -2469,25 +2583,30 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list,
     keine Vorlagen-Id; sie fallen hier weg. Auf der Karte stünde sonst eine
     Zeile ohne Titel und ohne Ziel.
     """
-    from council.cities.evidence import kvonr_aus
+    from council.cities.evidence import (BESCHLUSS_PRAEFIX, beschluss_zu, kvonr_aus,
+                                         vorlage_hinter)
 
     aus: list[IdeaEvidence] = []
     for kennung in kennungen[:hoechstens]:
-        if str(kennung).startswith("oldenburg:decision:"):
+        titel_ersatz = ""
+        if str(kennung).startswith(BESCHLUSS_PRAEFIX):
             # Ein Beschluss als Beleg — `idea_fit` und `fit` dürfen ihn nennen.
             # Bis 22.09.2026 fiel er hier still weg: Die Karte zeigte dann
-            # „vorhanden" ohne die Zeile, die es belegt.
-            try:
-                beschluss = store.get_decision(int(str(kennung).rsplit(":", 1)[1]))
-            except ValueError:
-                beschluss = None
+            # „vorhanden" ohne die Zeile, die es belegt. Aufgelöst wird über
+            # Sitzung und Punkt (`beschluss_zu`), nicht über die Zeilennummer:
+            # Die stammte aus der Datenbank, in der das Urteil entstand, und
+            # auf Prod fand sie keinen einzigen der 1.294 Beschluss-Belege.
+            beschluss = beschluss_zu(store, str(kennung))
             if beschluss:
                 aus.append({"decision_id": beschluss["id"], "kvonr": beschluss.get("kvonr"),
                             "title": beschluss.get("title") or "",
                             "date": beschluss.get("session_date"),
                             "outcome": beschluss.get("outcome")})
-            continue
-        kvonr = kvonr_aus(str(kennung))
+                continue
+            # Der Beschluss fehlt hier, der Punkt nicht: dann seine Vorlage.
+            kvonr, titel_ersatz = vorlage_hinter(store, str(kennung))
+        else:
+            kvonr = kvonr_aus(str(kennung))
         if kvonr is None:
             continue
         vorlage = store.get_vorlage(kvonr)
@@ -2497,7 +2616,8 @@ def _belege_aufloesen(store: CouncilStore, kennungen: list,
         aus.append({
             "decision_id": beschluss["id"] if beschluss else None,
             "kvonr": kvonr,
-            "title": (beschluss or {}).get("title") or (vorlage or {}).get("title") or "",
+            "title": ((beschluss or {}).get("title") or (vorlage or {}).get("title")
+                      or titel_ersatz),
             "date": (beschluss or {}).get("session_date"),
             "outcome": (beschluss or {}).get("outcome"),
         })
@@ -2567,7 +2687,7 @@ def decision_elsewhere(
         # die Tagesordnung unter der Grundnummer führt.
         vorlage = store.get_vorlage_by_nr(beschluss["template_number"])
         kvonr = vorlage.get("kvonr") if vorlage else None
-    if not kvonr:
+    if not kvonr or ELSEWHERE_FORMAL.search(beschluss.get("title") or ""):
         return {"decision_id": decision_id, "items": [], "bodies": []}
 
     from council.cities.annotators import USABLE, get as get_annotator
@@ -2586,6 +2706,11 @@ def decision_elsewhere(
     # heraus, und der Index legt ohnehin nur acht Kanten je Papier an.
     treffer = cities.neighbors("paper", f"oldenburg:paper:{kvonr}", EMBED_MODEL,
                                limit=ELSEWHERE_LIMIT + 4)
+    # Die Einordnung der EIGENEN Vorlage: Themenfeld und ob sie ortsgebunden ist.
+    eigen = (cities.annotation("paper", f"oldenburg:paper:{kvonr}", ann.key, ann.version)
+             or {}).get("payload", {})
+    eigenes_feld = eigen.get("field")
+    ortsgebunden = eigen.get("transfer") == "local"
 
     items: list[ElsewhereItem] = []
     gesehen: set[tuple[str, str]] = set()
@@ -2623,12 +2748,28 @@ def decision_elsewhere(
         # Es ist noch nicht eingeordnet, der nächste Cron holt es nach.
         if annotation.get("transfer") not in USABLE:
             continue
+        # **Dasselbe Themenfeld.** Wo beide Seiten eingeordnet sind und sich
+        # widersprechen, ist es nicht dieselbe Sache: Die Pflasterung am
+        # Rathausmarkt (Verkehr) fand die Entgeltordnung eines Gemeindehofs
+        # (Kultur/Sport) und zwei Zentrenkonzepte (Wirtschaft). In einer
+        # Stichprobe von 36 Beschlüssen nahm diese Regel 16 Fehltreffer und
+        # einen guten heraus (Review 3.0.0). „sonstiges" ist kein Feld, sondern
+        # „im Zweifel" — es widerspricht nichts: „Partnerschaften für
+        # Demokratie" stand in Magdeburg dort und ist dasselbe Bundesprogramm.
+        fremdes_feld = annotation.get("field")
+        if (eigenes_feld and fremdes_feld and fremdes_feld != eigenes_feld
+                and "sonstiges" not in (eigenes_feld, fremdes_feld)):
+            continue
+        if ortsgebunden and (float(t["score"]) < ELSEWHERE_LOKAL_MIN_SCORE
+                             or (t.get("kind") or "other") not in ELSEWHERE_LOKAL_ARTEN):
+            continue
         ergebnis = cities.outcome_for_paper(t["b_id"]) or {}
         items.append({
             "body_id": t["body_id"],
             "body_name": namen.get(t["body_id"], t["body_id"]),
             "paper_id": t["b_id"],
-            "name": t.get("name") or "",
+            # Privatpersonen im Titel nur mit Anfangsbuchstaben (Hannover).
+            "name": display_title(t.get("name")),
             "reference": t.get("reference"),
             "date": t.get("date"),
             "kind": t.get("kind") or "other",
@@ -2884,7 +3025,11 @@ def gespraech_loeschen(conversation_id: int, user: dict = Depends(require_active
 @router.delete("/conversations")
 def gespraeche_alle_loeschen(user: dict = Depends(require_active),
                              ratslotse: Store = Depends(get_store)) -> ConversationsDeleted:
-    return {"deleted": ratslotse.qa_gespraeche_loeschen(user["id"])}
+    """„Alle löschen": Gespräche UND die Fragen und Berichte der gründlichen
+    Recherche — die standen bis 10/2026 weiter mit dem Konto in
+    ``deep_research_jobs``, obwohl der Dialog „alles gelöscht" sagte."""
+    return {"deleted": ratslotse.qa_gespraeche_loeschen(user["id"]),
+            "research_deleted": ratslotse.deep_jobs_inhalt_loeschen(user["id"])}
 
 
 class QaFeedbackBody(BaseModel):
@@ -2896,6 +3041,13 @@ class QaFeedbackBody(BaseModel):
     # Erklärungen und die Archiv-Antworten in einem Topf — und die Frage
     # „taugen Lottis Antworten?" wäre nicht mehr zu stellen.
     source: str = Field(default="ask", pattern="^(ask|lotti)$")
+    #: Fester Grund zum Daumen runter — auswertbar, anders als Freitext.
+    reason_kind: Literal["wrong", "incomplete", "outdated", "off_topic"] | None = None
+    #: Die Antwort, um die es geht (done-Ereignis von /ask).
+    answer_id: str | None = Field(default=None, max_length=64)
+    #: Ausdrückliche Einwilligung: Die Antwort samt Quellen darf zur Prüfung
+    #: gespeichert werden. Ohne sie bleibt es beim Auszug von 500 Zeichen.
+    share_answer: bool = False
 
 
 @router.post("/qa-feedback", status_code=status.HTTP_201_CREATED)
@@ -2904,15 +3056,27 @@ def qa_feedback(
     request: Request,
     user: dict | None = Depends(optional_user),
     store: CouncilStore = Depends(get_council_store),
+    ratslotse: Store = Depends(get_store),
 ) -> Ok:
     """Daumen hoch/runter zu einer KI-Antwort (5a/I-03) — der einzige
     Qualitätsmesser außerhalb der Eval-Gold-Fälle. Anonym erlaubt (die
     KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema, das
     Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
     qa_feedback_limiter.check(request)
+    # Die Antwort-Kopie nur mit Einwilligung, nur zum Daumen runter und nur
+    # aus der EIGENEN Antwort-Kopie (`qa_answer_record_get` prüft das Konto).
+    # Bis 10/2026 ließ sich ein 👎 keiner Antwort zuordnen: Gespeichert waren
+    # Frage und 500 Zeichen — welche Quellen gefehlt hatten, blieb offen.
+    kopie: str | None = None
+    if body.share_answer and body.rating == "down" and body.answer_id and user:
+        rec = ratslotse.qa_answer_record_get(body.answer_id, user["id"])
+        if rec is not None:
+            kopie = json.dumps({"answer": rec["answer"], "sources": rec["sources"]},
+                               ensure_ascii=False)
     store.save_qa_feedback(body.question, body.answer_excerpt, body.rating,
                            body.reason, user_id=(user or {}).get("id"),
-                           source=body.source)
+                           source=body.source, reason_kind=body.reason_kind,
+                           shared_answer=kopie)
     return {"ok": True}
 
 
@@ -2949,7 +3113,10 @@ def debatten_nachladen(
     Aussprache zu allen belegten Beschlüssen. Neueste Sitzung zuerst.
     """
     if not user.get("limits_unlocked"):
-        debatten_limiter.check(request)
+        # Je KONTO, nicht je Adresse (Review 05.10.2026): Mobilfunkanbieter
+        # bündeln viele Geräte hinter einer Adresse, und ein Konto ist die
+        # Einheit, an der die Kosten hängen — dieselbe Wahl wie bei /ask.
+        debatten_limiter.check(request, subject=user["id"])
     from council import embeddings as emb
     rows: list[dict] = []
     try:
@@ -3000,7 +3167,8 @@ def partei_meinungen_endpoint(
     das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
     ist — der Baustein erscheint dann nicht."""
     if not user.get("limits_unlocked"):
-        partei_meinungen_limiter.check(request)
+        # Je Konto, wie bei /ask — der Baustein kostet einen Modellaufruf.
+        partei_meinungen_limiter.check(request, subject=user["id"])
     try:
         import hashlib
 
@@ -3160,7 +3328,8 @@ class QaSharePress(BaseModel):
 class QaShareAttachment(BaseModel):
     # Beleg-Nummer des Recherche-Berichts („[A1]") — ohne sie findet der
     # Marker im geteilten Text seine Anlage nicht.
-    number: int | None = Field(default=None, ge=1, le=99)
+    number: int | None = Field(default=None, ge=1, le=99,
+                               validation_alias=AliasChoices("number", "nr"))
     label: str | None = Field(default=None, max_length=300)
     url: str | None = Field(default=None, max_length=500)
     template_number: str | None = Field(default=None, max_length=60)
@@ -3384,6 +3553,10 @@ def qa_share_melden(
     return {"ok": True}
 
 
+#: So viele Zeichen einer Frage kommen an — s. ``AskBody._frage_kappen``.
+QA_FRAGE_MAX = 300
+
+
 class AskTurn(BaseModel):
     """Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort."""
     question: str = Field(max_length=300)
@@ -3406,6 +3579,9 @@ class DeepResearchBody(BaseModel):
     # „Meine Gespräche": läuft ein Gespräch, wird der fertige Bericht dort
     # angehängt — auch wenn die App längst zu ist.
     conversation_id: int | None = Field(default=None, ge=1)
+    # Aus dem Angebot unter einer Antwort gestartet (``research_offer``) —
+    # nur für die Nutzungsstatistik, ändert am Job nichts.
+    from_offer: bool = False
 
 
 def _deep_limit(user: dict) -> int | None:
@@ -3481,10 +3657,14 @@ def _deep_research_anlegen(body: DeepResearchBody, request: Request, user: dict,
     # Die Erkennung ist wörtlich die von `/ask` — Analyse, dann die drei
     # deterministischen Anker, die sie überstimmen.
     verlauf = [r.model_dump() for r in body.history]
-    analyse = qa.analyse_query(question, verlauf=verlauf)
+    orte = qa.ortsliste(store) if qa.braucht_ortsliste(qa.finde_ort(question, store)) else None
+    analyse = qa.analyse_query(question, verlauf=verlauf, orte=orte)
     q_suche = analyse.get("question") or question
     person = qa.finde_person(store, q_suche)
-    ort = qa.finde_ort(q_suche, store) or qa.finde_ort(question, store)
+    # Für die Rückfrage zählt auch ein gewählter Ort: Die Frage NENNT einen
+    # Gegenstand, ob er nun wörtlich im Katalog steht oder nicht.
+    ort = (qa.finde_ort(q_suche, store) or qa.finde_ort(question, store)
+           or qa.ort_aus_id(analyse.get("ort_id"), store))
     sitzungen = [] if person else (qa.finde_sitzungen(store, q_suche)
                                    or qa.finde_sitzungen(store, question))
     if qa.rueckfrage_noetig(analyse, person=person, ort=ort, sitzungen=sitzungen):
@@ -3502,6 +3682,8 @@ def _deep_research_anlegen(body: DeepResearchBody, request: Request, user: dict,
             {"detail": qa.RUECKFRAGE_TEXT, "unclear": True, "questions": vorschlaege},
             status_code=status.HTTP_400_BAD_REQUEST)
     ratslotse.record_activity(user["id"], "research")
+    if body.from_offer:
+        ratslotse.record_activity(user["id"], "research_offer_taken", client_kind(request))
     # Recherche Plus: Das Recht wird HIER am Konto geprüft und mit dem Job
     # festgehalten — der Hintergrundlauf fragt das Konto nicht noch einmal.
     # Das Konto-Dict trägt `roles`, nie ein `permissions`-Feld. Das
@@ -3569,7 +3751,10 @@ def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
         raise HTTPException(status.HTTP_410_GONE, "Recherche nicht mehr aktiv — Snapshot laden.")
     return StreamingResponse(
         deepresearch.sse_events(job, ab=ab), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # `no-transform`: Ohne das komprimiert die Next-Weiterleitung den
+        # Strom und hält kleine Antworten zurück, bis sie fertig sind —
+        # Lotti „schrieb" dann nichts und alles kam auf einmal (FS-11).
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 
@@ -4246,6 +4431,44 @@ def _selbstpruefung_nachlauf(nachlauf: dict) -> None:
         _log.warning("Lottis Selbstprüfung (Stichprobe) fehlgeschlagen", exc_info=True)
 
 
+def _lotti_anderswo(store: CouncilStore, screen: lotti.Screen) -> list[dict]:
+    """Was die Beschluss-Seite unter „In anderen Städten“ zeigt — für Lotti.
+
+    **Derselbe Weg wie die Seite** (``decision_elsewhere``), nicht ein
+    zweiter: Welche Treffer dort stehen, entscheiden Schwelle und Filter des
+    Endpunkts, und Lotti soll genau die kennen, die man sieht. Nur mit dem
+    Schalter ``andere-staedte`` — ohne ihn gibt es den Block auf der Seite
+    nicht, also auch nichts zu erklären.
+
+    Der Städte-Speicher wird NUR hier geöffnet, nur auf einer Beschluss-Seite
+    und nur auf dem Weg mit Modell. Ein Fehler darin kostet die Zeilen, nie
+    die Erklärung.
+    """
+    did = (screen.refs or {}).get("decision_id")
+    if not did or not features.an("andere-staedte"):
+        return []
+    cities = None
+    try:
+        cities = CitiesStore(get_settings().cities_db)
+        return [dict(i) for i in decision_elsewhere(int(did), store=store, cities=cities)["items"]]
+    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+        _log.warning("Lotti: „In anderen Städten“ nicht lesbar", exc_info=True)
+        return []
+    finally:
+        if cities is not None:
+            cities.close()
+
+
+def _lotti_nachlauf(nachlauf: dict, meldungen: list) -> None:
+    """Was nach Lottis Strom läuft: die Stichprobe und die Fehlermeldungen."""
+    _selbstpruefung_nachlauf(nachlauf)
+    for melden in meldungen:
+        try:
+            melden()
+        except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+            _log.warning("Fehlermeldung an die Admins ging nicht raus", exc_info=True)
+
+
 class AssistantEventBody(BaseModel):
     """Ein Ereignis aus Lottis Fenster, das sonst keinen Endpunkt hätte.
 
@@ -4360,6 +4583,15 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                             "Diese Seite steht deinem Konto nicht offen.")
     if not user.get("limits_unlocked"):
         assistant_limiter.check(request, subject=user["id"])
+        # Das Tageskontingent (`lotti.TAGES_KONTINGENT`, dort begründet). Der
+        # Satz ist für Menschen geschrieben — Web und App zeigen `detail`.
+        heute = ratslotse.aktivitaet_heute(user["id"], lotti.KONTINGENT_MERKMAL) or 0
+        if heute >= lotti.TAGES_KONTINGENT:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Für heute hast du mich schon {lotti.TAGES_KONTINGENT}-mal gefragt — "
+                "ab morgen erkläre ich wieder. Fachwörter und die Seiten selbst "
+                "bleiben natürlich lesbar.")
 
     # **Der Anzeigename fällt hier heraus, nicht erst im Prompt.** Auf
     # `/dashboard` ist die `h1` „Moin, <Name>!" — der Client streicht den Namen
@@ -4384,6 +4616,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
     verlauf = [r.model_dump() for r in body.history]
     #: Was die stille Stichprobe nach dem Strom prüft — leer, wenn nichts.
     nachlauf: dict = {}
+    #: Fehlermeldungen an die Admins, die nach dem Strom rausgehen.
+    meldungen: list = []
 
     def gen():
         try:
@@ -4460,7 +4694,8 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
             # mit; nie als Name, Adresse oder Rollenwort.
             ctx = lotti.screen_context(store, screen, frage,
                                        permissions=rechte,
-                                       ratslotse=ratslotse, user_id=user["id"])
+                                       ratslotse=ratslotse, user_id=user["id"],
+                                       anderswo=_lotti_anderswo(store, screen))
             zeiten["context_ms"] = round((time.perf_counter() - t0) * 1000)
             yield _sse({"type": "step", "step": "answer"})
 
@@ -4565,15 +4800,29 @@ def explain(body: ExplainBody, request: Request, user: dict = Depends(require_ac
                         "evidence": belege,
                         "timings": zeiten,
                         "conversation_id": conversation_id})
-        except Exception:  # noqa: BLE001 — Fehler beim Client sichtbar machen
+        except Exception as exc:  # noqa: BLE001 — Fehler beim Client sichtbar machen
             _log.exception("Lottis Erklärung fehlgeschlagen")
+            # **Auch in die Fehlerliste** (Admin-Panel *Fehler*, Mail bei der
+            # ersten Begegnung). Der Strom hat schon mit 200 geantwortet, der
+            # 500er-Handler in `main.py` sieht diese Ausnahme also nie — bis
+            # 03.10.2026 stand sie nur im Log. Gespeichert wird, was
+            # `kern.fehler.aufbereiten` durchlässt: keine Frage, kein
+            # Seiteninhalt, die Route als Vorlage.
+            melden = fehlersammler.sammeln(
+                exc, request.method, getattr(request.scope.get("route"), "path", None),
+                request.url.path)
+            if melden:
+                meldungen.append(melden)
             yield _sse({"type": "error", "message": "Erklärung fehlgeschlagen."})
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # `no-transform`: Ohne das komprimiert die Next-Weiterleitung den
+        # Strom und hält kleine Antworten zurück, bis sie fertig sind —
+        # Lotti „schrieb" dann nichts und alles kam auf einmal (FS-11).
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
         # Läuft erst, wenn der Strom ausgeliefert ist — niemand wartet darauf.
-        background=BackgroundTask(_selbstpruefung_nachlauf, nachlauf))
+        background=BackgroundTask(_lotti_nachlauf, nachlauf, meldungen))
 
 
 class ScreenContext(BaseModel):
@@ -4603,12 +4852,22 @@ class ScreenContext(BaseModel):
 
 
 class AskBody(BaseModel):
-    # Mit Obergrenze (10/2026, zweite Prüfung F2): Ohne sie liefen Orts-,
-    # Sitzungs- und Glossarsuche als Regex über Megabytes und hielten den GIL
-    # des einzigen API-Prozesses. 2.000 statt 300 wie bei der Recherche, weil
-    # die Clients die Eingabe nicht kürzen — eine lange getippte Frage soll
-    # keinen 422 bekommen; in den Prompt gehen ohnehin nur 300 Zeichen.
+    # Zwei Grenzen, aus zwei Prüfungen (Rückmerge 10/2026):
+    # - **Abgewiesen über 2.000 Zeichen** (zweite Sicherheitsprüfung, F2):
+    #   Ohne Obergrenze liefen Orts-, Sitzungs- und Glossarsuche als Regex über
+    #   Megabytes und hielten den GIL des einzigen API-Prozesses. 2.000, weil
+    #   die Clients die Eingabe nicht kürzen — eine lang getippte Frage soll
+    #   keinen 422 bekommen.
+    # - **Gekappt auf 300 darunter** (Review 05.10.2026): Suche, Analyse und
+    #   Rerank laufen über den ganzen Text; der Prompt nimmt ohnehin nur die
+    #   ersten 300 Zeichen (``question[:300]``). `mode="after"`, damit die
+    #   Längenprüfung VOR dem Kappen greift.
     question: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("question", mode="after")
+    @classmethod
+    def _frage_kappen(cls, v: str) -> str:
+        return v[:QA_FRAGE_MAX]
     # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
     # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
     # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
@@ -4654,7 +4913,8 @@ QA_RERANK_BIAS = 1.5
 def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
                  timings: dict | None = None,
                  varianten: list[str] | None = None,
-                 place_ids: list[int] | None = None) -> tuple[list[dict], str]:
+                 place_ids: list[int] | None = None,
+                 hinweis_ids: list[int] | None = None) -> tuple[list[dict], str]:
     """Hybrid retrieval + cross-encoder rerank → candidates in relevance order, each
     with an *absolute* relevance score: the sigmoid of the reranker logit, NOT a
     min-max normalisation (which forced the weakest hit to a misleading 0 %). Falls
@@ -4665,7 +4925,10 @@ def _qa_retrieve(store: CouncilStore, q: str, expanded: str,
         # Entitäts-Anker (benannte Objekte der Frage) in den Rerank-Pool,
         # Frische-Bonus bei Sachstands-Formulierungen.
         entity_anchors = qa.anker_ids_fuer(store, q)
-        anchors = list(dict.fromkeys([*entity_anchors, *(place_ids or [])]))
+        # `hinweis_ids`: Beschlüsse eines von der Analyse GEWÄHLTEN Ortes —
+        # Anker wie die Entitäten, aber kein Filter (`allowed_ids` bleibt aus).
+        anchors = list(dict.fromkeys([*entity_anchors, *(place_ids or []),
+                                      *(hinweis_ids or [])]))
         hits = emb.hybrid_search(store, q, expanded, top_k=QA_TOP_K, pool=55, timings=timings,
                                  varianten=varianten,
                                  anker_ids=anchors,
@@ -4800,7 +5063,8 @@ def _antwort_festhalten(ratslotse: Store, user: dict, frage: str, answer_text: s
                         presse_rows: list[dict] | None = None,
                         debatten_rows: list[dict] | None = None,
                         anlagen_rows: list[dict] | None = None,
-                        grafik: dict | None = None) -> str | None:
+                        grafik: dict | None = None,
+                        rules: dict | None = None) -> str | None:
     """Die Antwort so festhalten, wie der Server sie geliefert hat.
 
     Geteilt wird ab 10/2026 nur noch diese Kopie (``qa_share_anlegen``). Bis
@@ -4819,7 +5083,13 @@ def _antwort_festhalten(ratslotse: Store, user: dict, frage: str, answer_text: s
             {"debates": _debatten_kompakt(debatten_rows or [])[:20],
              "press_releases": _links_pruefen(_presse_kompakt(presse_rows or []))[:10],
              "attachments": _links_pruefen(_anlagen_kompakt(anlagen_rows or []))[:10],
-             "chart": _grafik_pruefen(grafik)})
+             "chart": _grafik_pruefen(grafik),
+             # Die Karte „Aus der Geschäftsordnung": Bei Verfahrensfragen oft
+             # der einzige Beleg. Sie stammt aus DIESEM Server
+             # (council/rules_of_procedure.card) — dieselbe Herkunft wie alles
+             # andere in dieser Kopie (Rückmerge 10/2026: auf dev reichte bis
+             # dahin der Client die Karte zurück).
+             "rules_of_procedure": rules})
     except Exception:  # noqa: BLE001 — Teilen ist Zusatz, nie Blocker
         _log.exception("Antwort ließ sich nicht festhalten")
         return None
@@ -4838,7 +5108,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     stand: dict | None = None,
                     unclear: bool = False,
                     zeitleiste: dict | None = None,
-                    eckdaten: dict | None = None) -> int | None:
+                    eckdaten: dict | None = None,
+                    rules: dict | None = None) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -4905,6 +5176,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              # Und der Verlauf des Vorgangs (Akte), aus demselben Grund.
              **({"timeline": zeitleiste} if zeitleiste else {}),
              **({"key_facts": eckdaten} if eckdaten else {}),
+             # Und die Karte „Aus der Geschäftsordnung", aus demselben Grund.
+             **({"rules_of_procedure": rules} if rules else {}),
              # Und die Marke der Rückfrage: Ohne sie sähe der Turn beim
              # Wiederöffnen aus wie eine Antwort ohne Treffer.
              **({"unclear": True} if unclear else {})}, ensure_ascii=False)
@@ -4933,6 +5206,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
+        # Das Tageskontingent (`qa.TAGES_KONTINGENT`, dort begründet). Der
+        # Fenster-Zähler oben allein ließ 1.440 Fragen am Tag zu. Der Satz ist
+        # für Menschen geschrieben: Web und App zeigen `detail` — die
+        # ausgelieferte App zeigt bei jedem Fehler genau diesen Text.
+        if ratslotse.aktivitaet_heute(user["id"], qa.KONTINGENT_MERKMAL) >= qa.TAGES_KONTINGENT:
+            raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, qa.KONTINGENT_TEXT)
     ratslotse.record_activity(user["id"], "ai_question")  # Admin-Statistik (20a)
     # Kam die Frage aus Lottis Fenster? Eigener Zähler — „wie oft führt eine
     # Erklärung ins Archiv?" ist die Frage, an der hängt, ob der zweite
@@ -4960,10 +5239,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # (expand_ms misst seit dem Fragetyp-Routing den EINEN Analyse-Call
             # — Begriffe + Typ —, der Schlüssel bleibt für Vergleichbarkeit.)
             zeiten: dict = {}
-            verlauf = [r.model_dump() for r in body.history]
+            # Eine Runde mit DERSELBEN Frage ist keine Vorgeschichte, sondern
+            # eine Dublette — sie machte aus der Weiterreichung aus Lottis
+            # Fenster eine leere Anschlussfrage (`qa.verlauf_ohne_dieselbe_frage`).
+            verlauf = qa.verlauf_ohne_dieselbe_frage(
+                [r.model_dump() for r in body.history], q)
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
-            analyse = qa.analyse_query(q, verlauf=verlauf)
+            # Findet der Wortlaut keinen Katalogort, wählt die Analyse aus der
+            # Liste (`qa._ortsblock`) — kostet keinen zusätzlichen Aufruf.
+            orte = qa.ortsliste(store) if qa.braucht_ortsliste(qa.finde_ort(q, store)) else None
+            analyse = qa.analyse_query(q, verlauf=verlauf, orte=orte)
             expanded, typ = analyse["terms"], analyse["kind"]
             # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
             # der Befund kam aus einer echten Nutzer-Frage, der nach dem
@@ -4982,9 +5268,29 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Frage — „Und was kostet das?" sucht sonst nach nichts.
             q_suche = analyse["question"]
             zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
+            # Verfahrensfragen („Wie lange darf ein Ratsmitglied reden?") an
+            # der Geschäftsordnung — deterministisch am Wortlaut, roh UND
+            # kondensiert (council/rules_of_procedure.py). Nicht beim
+            # Vereinfachen: Der Knopf schreibt die vorige Antwort um.
+            rules_sel = (rules_of_procedure.Selection() if einfach
+                          else rules_of_procedure.find(q, q_suche))
+            # Wahlergebnisse („Wie ist die Sitzverteilung nach der Ratswahl?") —
+            # ebenfalls am Wortlaut, roh UND kondensiert. Der Baustein kommt aus
+            # dem eingefrorenen Wahlstand (election/answer_context.py).
+            election_block = ""
+            if not einfach and qa.wahlfrage(q, q_suche):
+                try:
+                    election_block = election_answer.prompt_block()
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Wahl-Baustein nicht gebaut")
             # Personen-Fragetyp (10.08.26): nennt die Frage eine Ratsperson,
             # antworten wir aus DEREN Wortbeiträgen — deterministisch erkannt,
-            # schlägt thema/verlauf (nicht aber partei/geld).
+            # schlägt thema/verlauf (nicht aber partei/geld). Auch nicht bei
+            # Vor- UND Nachname samt Partei: Das war am 16.10.2026 kurz so
+            # (#1700) und kostete „Was hat Paul Behrens (SPD) … zum
+            # Baumschutz gesagt und beantragt?“ drei Gold-Läufe in Folge
+            # 18 % statt 35–47 % — der Partei-Weg trägt die Reden der Person
+            # schon, dazu die Beschlüsse, nach denen „beantragt“ fragt.
             person = qa.finde_person(store, q_suche)
             if person and typ not in ("party", "money"):
                 typ = "person"
@@ -4992,6 +5298,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
             # die stabile Orts-ID ``neu-donnerschwee`` aufgelöst.
             ort = qa.finde_ort(q_suche, store) or qa.finde_ort(q, store)
+            # Der Ort, den die Analyse aus dem Katalog GEWÄHLT hat, ist nur ein
+            # Hinweis, kein Filter: Seine Beschlüsse kommen zusätzlich in den
+            # Rerank-Pool, mehr nicht. Als harter Filter (#1702) ordnete die
+            # Analyse auch Gebäude und Plätze ihrem Stadtteil zu — „Weser-Ems-
+            # Hallen“ → Innenstadt — und der Filter warf alles andere weg:
+            # Gold 17.10.2026, Weser-Ems 56 → 19 Beschlüsse (0,56 → 0,00),
+            # Schlossplatz 46 → 14, Heidbrook 40 → 6.
+            ort_hinweis = qa.ort_hinweis(ort, analyse.get("ort_id"), store)
             # Der Ort ist grundsätzlich ein Filter, kein exklusiver Fragetyp:
             # Geld-, Partei-, Verlaufs-, Personen- und Sitzungsfragen behalten
             # ihre Spezialregeln. Nur eine allgemeine Themenfrage wird zur
@@ -5011,8 +5325,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Original-Frage noch (Tims Befund 26.08., zweiter Anlauf).
             sitzungen = [] if person else (qa.finde_sitzungen(store, q_suche)
                                            or qa.finde_sitzungen(store, q))
+            # Eine Regelfrage nennt oft „Rat" und „Tagesordnung" — für die
+            # Erkennung heißt das „die nächste Sitzung". „Kann der Rat über
+            # etwas abstimmen, das nicht auf der Tagesordnung steht?" begann
+            # deshalb mit dem Termin der nächsten Ratssitzung (Messung
+            # 03.10.2026). Die Sitzung bleibt nur, wenn die Frage selbst eine
+            # nennt („für die nächste Ratssitzung") — und auch dann wird die
+            # Frage keine Sitzungsfrage: Sie fragt nach der Frist, nicht nach
+            # jedem Punkt der Tagesordnung.
+            if rules_sel and not qa.nennt_sitzung(q_suche, q):
+                sitzungen = []
             sitzung_ids = [i for s in sitzungen for i in s.get("decision_ids") or []]
-            if sitzungen and typ not in ("party", "money"):
+            if sitzungen and typ not in ("party", "money") and not rules_sel:
                 typ = "session"
             # Nennt die Frage überhaupt einen Gegenstand? Wenn nicht, wird hier
             # ZURÜCKGEFRAGT statt geantwortet — warum, steht bei
@@ -5026,7 +5350,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Vielfaches des einen Analyse-Calls, der das Urteil ohnehin schon
             # mitgebracht hat.
             if qa.rueckfrage_noetig(analyse, einfach=einfach, person=person,
-                                    ort=ort, sitzungen=sitzungen):
+                                    ort=ort, sitzungen=sitzungen,
+                                    procedure=bool(rules_sel)):
                 yield _sse({"type": "token", "text": qa.RUECKFRAGE_TEXT})
                 try:
                     vorschlaege = qa.rueckfrage_vorschlaege(store, q)
@@ -5082,7 +5407,38 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             else:
                 candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
                                                 varianten=analyse.get("variants"),
-                                                place_ids=place_ids)
+                                                place_ids=place_ids,
+                                                hinweis_ids=(store.decision_ids_for_place(
+                                                    ort_hinweis["id"], limit=40)
+                                                    if ort_hinweis else None))
+                if ort_hinweis:
+                    zeiten["ort_hinweis"] = ort_hinweis["id"]
+            # Nachrecherche (Schalter `nachrecherche`): Ein kleines Modell sieht
+            # die Titel der Treffer und nennt, wenn etwas Gefragtes fehlt, bis
+            # zu drei Anfragen in Verwaltungssprache; deren Funde werden gegen
+            # die Frage gerankt und einsortiert (`qa.nachrecherche_anfragen`).
+            # Nicht bei Sitzungsfragen (die Sitzung ist aufgelöst, nicht
+            # gesucht), nicht beim reinen „zuletzt an Ort X“ (chronologisch)
+            # und nicht beim Vereinfachen (schreibt die vorige Antwort um).
+            if (features.an("nachrecherche") and not latest_place and typ != "session"
+                    and not einfach and mode == "semantisch"):
+                t_nach = time.perf_counter()
+                anfragen = qa.nachrecherche_anfragen(q_suche, candidates)
+                if anfragen:
+                    from council import embeddings as emb
+                    ranked = emb.nachsuche(store, q_suche, anfragen,
+                                           {c["id"] for c in candidates}, place_ids)
+                    neue = store.get_decisions_by_ids([i for i, _ in ranked])
+                    logit = dict(ranked)
+                    for c in neue:
+                        c["score"] = round(1.0 / (1.0 + math.exp(-(logit[c["id"]] + QA_RERANK_BIAS))), 3)
+                    neue = [c for c in neue if c["score"] >= QA_MIN_SCORE]
+                    candidates = qa.nachrecherche_einfuegen(candidates, neue)
+                    # Stationen-Vermerk über die vereinte Liste: Eine neue
+                    # Station kann eine alte überholen und umgekehrt.
+                    qa.markiere_veraltete(store, candidates)
+                    zeiten["nachrecherche"] = {"anfragen": anfragen, "neu": len(neue)}
+                zeiten["nachrecherche_ms"] = round((time.perf_counter() - t_nach) * 1000)
             partei_ids: set[int] = set()
             if typ == "party" and analyse.get("party"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
@@ -5147,6 +5503,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     candidates += store.get_decisions_by_ids(
                         [i for i in qa.screen_session_ids(store, bildschirm)
                          if i not in have])
+            # Steht im Archiv eine NEUERE Geschäftsordnung als die gespeicherte
+            # (der neue Rat beschließt seine in der ersten Sitzung), kommt der
+            # Beschluss nach vorn — die Antwort sagt dann, dass der Wortlaut
+            # überholt sein kann, und zitiert ihn. Nicht unter einem
+            # Ortsfilter: Eine Geschäftsordnung hat keinen Ort.
+            rules_newer: list[dict] = []
+            if rules_sel:
+                rules_newer = rules_of_procedure.newer_adoptions(store)
+                if rules_newer and allowed_place_ids is None:
+                    have = {c["id"] for c in candidates}
+                    if rules_newer[0]["id"] not in have:
+                        candidates = store.get_decisions_by_ids([rules_newer[0]["id"]]) + candidates
             # Beim Vereinfachen zählen die Belege der VORIGEN Antwort: Ihre ids
             # müssen im Kandidatenset stehen, sonst streicht resolve_citations
             # genau die Fußnoten weg, die die einfache Fassung übernehmen soll —
@@ -5296,13 +5664,32 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                             text_ids=qa.speech_text_ids(store, q_suche),
                             neueste_zuerst=qa.stand_or_recency(q_suche))
                         debatten_rows = store.wortbeitraege_by_ids([wid for wid, _ in hits_w])
+                        # Fragt die Frage nach DEN Fraktionen, kommen die Reden
+                        # je Fraktion dazu — dieselbe Auswahl wie im Baustein
+                        # „Das sagen die Parteien“, nur VOR der Antwort
+                        # (`qa.fraktionsfrage`). Vorn, damit sie nicht hinter
+                        # dem Wortfeld der Frage verschwinden.
+                        if qa.fraktionsfrage(analyse):
+                            hits_f = emb.search_wortbeitraege_je_fraktion(store, q_suche, expanded)
+                            schon = {d["id"] for d in debatten_rows}
+                            debatten_rows = [r for r in store.wortbeitraege_by_ids(
+                                [wid for wid, _ in hits_f]) if r["id"] not in schon] + debatten_rows
                         # … plus die Aussprache ZU den gefundenen Beschlüssen:
                         # Fachsprache (Vinylchlorid, Messpunkte) liegt außerhalb
                         # des Frage-Wortfelds und fällt durch die Ähnlichkeits-
                         # suche — Zugehörigkeit trägt hier weiter (Befund 10.08.).
                         have = {d["id"] for d in debatten_rows}
+                        # Mit der Kontext-Diät mehr Aussprache zur Sache: Bis
+                        # 10/2026 kamen zu den acht besten Beschlüssen höchstens
+                        # SECHS zugehörige Beiträge, der Baustein unter der
+                        # Antwort nimmt sechzig. Im Gold-Set fehlten vor allem
+                        # Wortbeiträge (87 von 184 fehlenden Belegen, 17.10.2026).
+                        # Die Diät stellt sie nach vorn und deckelt den Prompt.
+                        anker_max = (qa.ANKER_AUSSPRACHE_MAX if features.an("kontext-diaet")
+                                     else 6)
                         debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
-                            candidates[:qa.DEBATTE_ANKER_KOPF]) if w["id"] not in have]
+                            candidates[:qa.DEBATTE_ANKER_KOPF], max_gesamt=anker_max)
+                            if w["id"] not in have]
                         # … und zu weiter hinten gerankten Beschlüssen, die die
                         # Frage im Titel tragen (qa.title_match_decisions).
                         extra = qa.title_match_decisions(store, q_suche, candidates)
@@ -5358,14 +5745,23 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Partei in Klammern macht daraus `party`.
             akte_beschluesse: list[dict] = []
             akte: dict | None = None
+            # Und nicht bei einer Verfahrensfrage: Die Geschäftsordnung ist
+            # kein Vorgang, und die Akte baute sich aus den Treffern davor —
+            # bei „Wie lange darf man reden?" aus irgendeinem
+            # „Geschäftsordnungsantrag auf Vertagung".
             if (features.an("akten-suche") and not einfach and typ != "session" and not person
-                    and candidates):
+                    and not rules_sel and candidates):
                 try:
                     akte = akte_suche.material(store, q_suche, candidates)
                     have = {c["id"] for c in candidates}
+                    # OHNE Ortsfilter: Die Akte hängt an einem Einstieg, der
+                    # ihn schon bestanden hat. Ein zweites Mal gefiltert, warf
+                    # er bei „Bahnübergang Am Stadtrand in Ofenerdiek“ genau
+                    # die jüngsten Stationen weg — Interimslösungen, Rat vom
+                    # 29.06., Sicherheitsaudit —, weil sie nicht als Ofenerdiek
+                    # verortet sind (Gold-Lauf 03.10.2026: +5 Belege).
                     akte_beschluesse = [
                         d for d in akte["decisions"] if d["id"] not in have
-                        and (allowed_place_ids is None or d["id"] in allowed_place_ids)
                     ][:akte_suche.BESCHLUESSE]
                     candidates += akte_beschluesse
                     schon = {d["id"] for d in debatten_rows}
@@ -5457,6 +5853,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Da antwortet der Sitzungskalender, und der „mit Vorsicht"-
                 # Hinweis stünde falsch neben der Tagesordnungs-Karte.
                 lage = "solide"
+            if election_block:
+                # Das Wahlergebnis ist ein direkter Beleg wie die
+                # Geschäftsordnung darunter — Beschlüsse kennen es noch nicht.
+                lage = "solide"
+            if rules_sel:
+                # Die Geschäftsordnung ist ein direkter Beleg (wie ein
+                # Anlagenfund oben). Der Hinweis „dünne Beleglage" und seine
+                # Prompt-Regel stünden sonst neben einer Antwort, die aus dem
+                # Wortlaut kommt — „Wie lange darf man reden?" hat nie gute
+                # Beschluss-Treffer.
+                lage = "solide"
             zeiten["retrieve_ms"] = round((time.perf_counter() - t0) * 1000)
             # Haushalts-Kontext: welche der zehn Geld-Quellen diese Frage
             # beantworten, entscheidet `qa.geld_facetten` deterministisch am
@@ -5477,6 +5884,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # VORIGE Antwort um (eigener Prompt ohne Zusatz-Bausteine), die
             # Abfragen wären sicher umsonst.
             geld = {} if einfach else qa.geld_kontext(store, q_suche, expanded, typ)
+            if lage == "duenn" and qa.geld_belegt(geld):
+                # Ein gezielter Haushaltstreffer (Konto, Schulden, Steuern) ist
+                # ein direkter Beleg wie ein Anlagenfund. Bei den Parkgebühren
+                # stand am 11.10.2026 „nur wenige passende Beschlüsse — die
+                # Antwort kann unsicher sein" unter einer Antwort, die Zahl für
+                # Zahl aus den Haushaltsplänen kam.
+                lage = "solide"
             # Die Grafik zur Antwort — Rohreihen aus dem Store, nie vom
             # Modell (council/qa.py, geld_grafik). Das Modell weiß nicht
             # einmal, dass es sie gibt: Sie hängt am Ereignis, nicht am
@@ -5493,6 +5907,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                  and not latest_place and not vorher_ids)
             zeitleiste_daten: dict | None = None
             eckdaten: dict | None = None
+            recherche_angebot: dict | None = None
+            rules_card = rules_of_procedure.card(rules_sel, newer=rules_newer)
+            rules_block = rules_of_procedure.prompt_block(rules_sel, newer=rules_newer)
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
@@ -5505,6 +5922,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         # Tagesordnungs-Baustein: die aufgelösten Sitzungen des
                         # Sitzungs-Fragetyps — deterministisch, nie vom Modell.
                         "sessions": _sitzungen_kompakt(sitzungen),
+                        # Die Karte „Aus der Geschäftsordnung" — Paragrafen
+                        # samt Wortlaut und Seitensprung ins PDF; None, wenn
+                        # die Frage keine Regel meint.
+                        "rules_of_procedure": rules_card,
                         "evidence_level": lage,
                         # Alter des jüngsten Belegs samt Sitzungskalender —
                         # dieselbe Rolle wie die Beleglage, nur für die Zeit.
@@ -5533,7 +5954,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # hier „keine Beschlüsse gefunden“, obwohl der Kontext die Zahl hatte.
             hat_geld = bool(geld.get("facets")) and any(
                 v for k, v in geld.items() if k != "facets")
-            if not candidates and not anlagen_rows and not hat_geld:
+            if (not candidates and not anlagen_rows and not hat_geld and not rules_sel
+                    and not election_block and not qa.fundortfrage(q, q_suche)):
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
                 if sitzungen and ort:
                     leer_text = (f"In der gefragten Sitzung habe ich keine Beschlüsse mit "
@@ -5584,7 +6006,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Beim Vereinfachen NIE die Langfassungs-Regel: „umfangreiches Thema"
             # verlangt ~500 Wörter mit Zwischenüberschriften — das ist das
             # Gegenteil von dem, was der Knopf verspricht.
-            gross = (len(candidates) >= 25 or spanne >= 3) and not einfach
+            # Und nie bei einer Regelfrage: Die Beschluss-Treffer daneben
+            # spannen oft Jahre, die Frage ist trotzdem eine nach einem
+            # Absatz (Messung 03.10.2026: „Warum tagt der Verwaltungsausschuss
+            # nicht öffentlich?" bekam „Kurz gesagt" und Zwischentitel).
+            gross = (len(candidates) >= 25 or spanne >= 3) and not einfach and not rules_sel
             if typ == "session":
                 # Länge nach Sitzungsgröße statt Kandidatenzahl — die zählt
                 # nach dem Voll-Merge der Sitzung immer hoch.
@@ -5656,6 +6082,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # und genau das Anschneiden ist der Anlass dieses Fragetyps.
                 im_set = set(sitzung_ids)
                 ctx = [c for c in candidates if c["id"] in im_set][:QA_SITZUNG_N]
+            if not einfach:
+                # Änderungs- und GO-Anträge gehören zum Beschluss: „Auf Antrag
+                # der FDP auch Vermietende im Beirat“ stand bisher nur im
+                # Suchindex, nie im Kontext. Gold-Läufe 03.10.2026: Fakten aus
+                # Teilabstimmungen ohne sie 0 von 18, mit ihnen 9 von 12.
+                try:
+                    teile = store.subvotes_of(ctx)
+                    for c in ctx:
+                        if teile.get(c["id"]):
+                            c["subvotes"] = teile[c["id"]]
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Teilabstimmungen nicht geladen")
             if documents_enabled and not einfach:
                 try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
                     texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])
@@ -5673,6 +6111,32 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                             c["vorlage_excerpt"] = stelle or vorlagen_mod.excerpt(t, 350)
                 except Exception:  # noqa: BLE001
                     pass
+            # Bei einer Geldfrage die „Finanziellen Auswirkungen“ der Vorlage
+            # dazu: Dort steht, was sie kostet oder bringt — und zwar oft NUR
+            # dort. „Wie hoch wären die prognostizierten Mehreinnahmen durch
+            # die letzte Parkgebührenerhöhung?" bekam am 10.10.2026 „nicht
+            # beziffert", obwohl Vorlage 23/0101 „Mehreinnahmen von rd.
+            # 1.100.000 Euro jährlich" nennt.
+            if geld.get("facets") and not einfach:
+                try:
+                    finanzen = store.vorlage_texts_for(
+                        [c.get("template_number") or "" for c in ctx], "financial_impact")
+                    for c in ctx:
+                        f = finanzen.get((c.get("template_number") or "").strip())
+                        if f:
+                            c["vorlage_finanzen"] = " ".join(f.split())[:qa.FINANZEN_ZEICHEN]
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Finanzielle Auswirkungen nicht geladen")
+            # Was seit dem jüngsten Beschluss einer Vorlage auf einer
+            # Tagesordnung stand — und, bei der Frage nach dem Fundort, wo
+            # Ergebnisse überhaupt stehen (Auswertung 11.10.2026).
+            extra_block = qa.FUNDORT_BLOCK if qa.fundortfrage(q, q_suche) else ""
+            if not einfach and not sitzungen:
+                try:
+                    extra_block += qa.seither_block(store.agenda_since_decisions(
+                        [c.get("template_number") or "" for c in ctx]))
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Tagesordnungen seit dem Beschluss nicht geladen")
             try:  # Läuft zu einem Kandidaten gerade eine Bauleitplan-Beteiligung?
                 from council import beteiligung as bet_mod
                 bets = store.list_beteiligungen()
@@ -5721,6 +6185,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             frage_thema = q_suche
             if einfach and frage_thema.strip() == q and verlauf:
                 frage_thema = verlauf[-1].get("question") or q
+            # Welche Beschlüsse WIRKLICH im Prompt stehen — das Quellen-Ereignis
+            # nennt alle Kandidaten (40–75), der Prompt bekommt `ctx` (20 plus
+            # Akte). Ohne diese Liste hielt der Gold-Lauf einen Beschluss auf
+            # Platz 30 für „im Kontext, aber weggelassen“ (17.10.2026).
+            zeiten["kontext_ids"] = [c["id"] for c in ctx]
             # Plan „Akte“, Phase 4 (Schalter `akten-zeitleiste`): die Akte als
             # Zeitleiste in den Prompt (council/akte_suche.py::zeitleiste).
             akte_prompt: dict | None = None
@@ -5731,6 +6200,31 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     "press_ids": {p["id"] for p in akte["press"]},
                     "announced": akte.get("announced") or [],
                 }
+            # Kontext-Diät (Schalter `kontext-diaet`): weniger Wortbeiträge in
+            # den Prompt, die zur Sache zuerst (`qa.debatten_diaet`). Die Liste
+            # unter der Antwort bleibt vollständig — sie ist zum Lesen da, der
+            # Prompt zum Antworten. Nicht bei Sitzungsfragen (die Sitzung ist
+            # ganz gefragt) und nicht für Personenfragen (dort SIND die
+            # Beiträge die Antwort).
+            debatten_prompt = debatten_rows
+            if (features.an("kontext-diaet") and typ not in ("session", "person")
+                    and not einfach):
+                debatten_prompt = qa.debatten_diaet(
+                    debatten_rows, ctx, set(akte_prompt["speech_ids"]) if akte_prompt else None)
+                zeiten["kontext_debatten_ids"] = [d["id"] for d in debatten_prompt]
+            # Belegnotizen (Schalter `belegnotizen`): vor der Antwort je Dokument
+            # eine Notiz, was es zur Frage beiträgt — oben im Kontext, wo das
+            # Antwort-Modell liest (`qa.belegnotizen`). Nicht bei Sitzungsfragen
+            # (dort zählt die ganze Tagesordnung), beim Vereinfachen und beim
+            # deterministischen „zuletzt an Ort X“.
+            notiz_block = ""
+            if (features.an("belegnotizen") and typ != "session" and not einfach
+                    and not latest_place and ctx):
+                t_notiz = time.perf_counter()
+                notizen = qa.belegnotizen(q_suche, ctx, debatten_prompt)
+                notiz_block = qa.belegnotizen_block(notizen)
+                zeiten["belegnotizen"] = len(notizen)
+                zeiten["belegnotizen_ms"] = round((time.perf_counter() - t_notiz) * 1000)
             if latest_place and not einfach:
                 # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
                 # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
@@ -5744,13 +6238,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                          if einfach else
                          qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                           staedte=staedte_rows,
-                                          geld=geld, debatten=debatten_rows,
+                                          geld=geld, debatten=debatten_prompt,
                                           anlagen=anlagen_rows,
                                           gross=gross, steckbriefe=steckbriefe,
                                           duenn=(lage == "duenn"), eng=eng,
                                           sitzungen=sitzungen, ort=ort,
                                           zukunft_leer=zukunft_leer, stand=stand,
-                                          screen=bildschirm, akte=akte_prompt))
+                                          screen=bildschirm, akte=akte_prompt,
+                                          rules_block=rules_block,
+                                          election_block=election_block,
+                                          extra_block=extra_block, notiz_block=notiz_block))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -5781,14 +6278,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                               if einfach else
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                             staedte=staedte_rows,
-                                                 geld=geld, debatten=debatten_rows,
+                                                 geld=geld, debatten=debatten_prompt,
                                                  anlagen=anlagen_rows,
                                                  gross=gross, steckbriefe=steckbriefe,
                                                  duenn=(lage == "duenn"), eng=eng,
                                                  sitzungen=sitzungen, ort=ort,
                                                  zukunft_leer=zukunft_leer,
                                                  stand=stand, screen=bildschirm,
-                                                 akte=akte_prompt))
+                                                 akte=akte_prompt,
+                                                 rules_block=rules_block,
+                                          election_block=election_block,
+                                          extra_block=extra_block, notiz_block=notiz_block))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
@@ -5833,6 +6333,15 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         kern["press"] + akte_suche.press_named(answer_text, presse_rows or []),
                         kern["announced"], date.today().isoformat(), q_suche)
                     eckdaten = akte_suche.without_station(eckdaten, angehaengt)
+                    # Ein langer Vorgang: Die Gründliche Recherche holt dort
+                    # deutlich mehr heraus (akte_suche.RECHERCHE_AB). Nicht bei
+                    # einer engen Zahlfrage — „Wie hoch ist der Hebesatz?“ ist
+                    # mit einer Zahl beantwortet.
+                    if not eng:
+                        recherche_angebot = akte_suche.research_offer(zeitleiste_daten)
+                    if recherche_angebot:
+                        ratslotse.record_activity(user["id"], "research_offer_shown",
+                                                  client_kind(request))
                 except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                     _log.exception("Kern-Akte nicht gebaut")
             if not followups:
@@ -5854,6 +6363,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if cited:
                 zitierte = [c for c in candidates if c["id"] in set(cited)]
                 stand_zitiert = qa.aktenstand(store, zitierte) or stand
+            elif rules_sel:
+                # Antwortet die Geschäftsordnung allein, sagt das Alter der
+                # Beschluss-Treffer nichts über die Antwort — „Ältere
+                # Aktenlage" stünde unter einer Regel, die heute gilt.
+                stand_zitiert = None
             zeiten["antwort_ms"] = round((time.perf_counter() - t0) * 1000)
             zeiten["total_ms"] = (zeiten.get("expand_ms", 0) + zeiten.get("retrieve_ms", 0)
                                   + zeiten.get("antwort_ms", 0))
@@ -5862,7 +6376,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             answer_id = _antwort_festhalten(ratslotse, user, body.question, answer_text,
                                             candidates, cited, presse_rows=presse_rows,
                                             debatten_rows=debatten_rows,
-                                            anlagen_rows=anlagen_rows, grafik=grafik)
+                                            anlagen_rows=anlagen_rows, grafik=grafik,
+                                            rules=rules_card)
             conversation_id = _turn_speichern(ratslotse, user, body, q_suche, answer_text,
                                            candidates, cited,
                                            answer_id=answer_id,
@@ -5874,8 +6389,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            sitzungen=sitzungen,
                                            stand=stand_zitiert,
                                            zeitleiste=zeitleiste_daten,
-                                           eckdaten=eckdaten)
-            if not cited:
+                                           eckdaten=eckdaten,
+                                           rules=rules_card)
+            if not qa.antwort_belegt(answer_text, cited, geld=geld,
+                                     weitere=bool(rules_sel or sitzungen or election_block)):
                 ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
                         # Korrigiert den Wert aus dem sources-Ereignis: dort
@@ -5888,6 +6405,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         "timeline": zeitleiste_daten,
                         # Die Eckdaten dazu (akte_suche.key_facts).
                         "key_facts": eckdaten,
+                        # Ein langer Vorgang: die Gründliche Recherche anbieten.
+                        "research_offer": recherche_angebot,
                         # Die Kennung der Server-Kopie dieser Antwort — Teilen
                         # geht nur über sie (_antwort_festhalten).
                         "answer_id": answer_id,
@@ -5898,7 +6417,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
 
     return StreamingResponse(
         gen(), media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        # `no-transform`: Ohne das komprimiert die Next-Weiterleitung den
+        # Strom und hält kleine Antworten zurück, bis sie fertig sind —
+        # Lotti „schrieb" dann nichts und alles kam auf einmal (FS-11).
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
 
 

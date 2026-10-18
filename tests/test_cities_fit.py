@@ -449,7 +449,10 @@ def test_fit_laeuft_nach_dem_index():
 
 def test_der_cron_ruft_beide_stellen():
     from pathlib import Path
+    # Im vollen Lauf — der Oldenburg-Teil davor indiziert nur Oldenburg und
+    # urteilt nicht (s. `_oldenburg` im Cron).
     quelle = Path("scripts/check_cities.py").read_text()
+    quelle = quelle[quelle.index("def _voller_lauf"):]
     vor = quelle.index("pipeline.annotate(")
     index = quelle.index("pipeline.index_all(")
     nach = quelle.index("nach_index=True")

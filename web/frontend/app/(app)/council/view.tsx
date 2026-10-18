@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
+import { AbrufFehler } from "@/components/abruf-fehler";
 import { api, qs, ApiError } from "@/lib/api";
 import { fragenHref, decisionHref, ortHref, sitzungHref } from "@/lib/routes";
 import { STAFFEL, staffelStil } from "@/components/staffel";
@@ -77,7 +78,7 @@ function CardFooter({ d }: { d: CouncilDecision }) {
             className="inline-flex flex-wrap items-center gap-1.5"
             title="Fraktion(en), die zu diesem Punkt einen Antrag oder eine Änderungsliste eingebracht haben"
           >
-            <span className="text-xs text-muted-foreground">Antrag:</span>
+            <span className="text-xs text-muted-foreground">{applicantLabel(d)}:</span>
             {factions.map((f) => (
               <span key={f} className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{f}</span>
             ))}
@@ -92,6 +93,14 @@ function CardFooter({ d }: { d: CouncilDecision }) {
       )}
     </div>
   );
+}
+
+/** „Antrag" nur, wo der Titel die Fraktion selbst nennt (oder es eine
+ *  Teilabstimmung ist) — sonst kann es eine Änderungsliste zu einer
+ *  Verwaltungsvorlage sein. Die Entscheidung trifft das Backend
+ *  (`applicants_named`, council/applicants.py). */
+function applicantLabel(d: CouncilDecision): string {
+  return d.kind === "subvote" || d.applicants_named ? "Antrag" : "Anträge im TOP";
 }
 
 /** Text der Änderungsantrags-Unterzeile (Design 23a): „n Änderungsantrag ·
@@ -440,6 +449,13 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     : null;
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  // Kam die Liste nicht an? Dann ist „Keine Beschlüsse gefunden" eine Lüge —
+  // bis 10/2026 sah ein Ausfall genau wie eine erfolglose Suche aus.
+  const [ladeFehler, setLadeFehler] = useState<unknown>(null);
+  const [nochmal, setNochmal] = useState(0);
+  // Für die Fehlerbehandlung im Effekt: Stehen schon Treffer da?
+  const hatTreffer = useRef(false);
+  hatTreffer.current = decisions.length > 0;
   const [geladenFuer, setGeladenFuer] = useState("");
   useSuchposition(suchadresse, loading || !bereit || geladenFuer !== suchadresse);
   const debouncedQ = useDebounce(q, 350);
@@ -508,6 +524,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     setLoading(true);
     if (!bereit || q !== debouncedQ) return;
     let verworfen = false;
+    setLadeFehler(null);
     api.get<{ total: number; decisions: CouncilDecision[] }>(
       `/council/decisions${qs({
         q: debouncedQ, committee, category: mode === "all" ? "" : mode, sort, field, party,
@@ -521,7 +538,11 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       setTotal(data.total);
       setGeladenFuer(suchadresse);
     }).catch((err) => {
-      if (!verworfen) toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
+      if (verworfen) return;
+      setLadeFehler(err);
+      // Stehen schon Treffer da, bleiben sie stehen; der Toast sagt, dass
+      // der neue Stand nicht kam. Ohne Treffer übernimmt die Fehlerkarte.
+      if (hatTreffer.current) toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
     }).finally(() => {
       if (!verworfen) setLoading(false);
     });
@@ -529,7 +550,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     // überschreiben — auch beim schnellen Zurück/Vorwärts oder Filterwechsel.
     return () => { verworfen = true; };
   }, [bereit, q, debouncedQ, committee, mode, outcome, sort, field, party, district,
-    location, dateFrom, dateTo, showSubvotes, page, topicId, suchadresse]);
+    location, dateFrom, dateTo, showSubvotes, page, topicId, suchadresse, nochmal]);
 
   // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
@@ -812,6 +833,8 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       >
         {loading && decisions.length === 0 ? (
           <CardListSkeleton rows={5} />
+        ) : ladeFehler && decisions.length === 0 ? (
+          <AbrufFehler error={ladeFehler} was="Die Beschlussliste" onRetry={() => setNochmal((n) => n + 1)} />
         ) : decisions.length === 0 ? (
           <EmptyState
             mascot="search"
@@ -973,6 +996,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
   // RL-F06: ?ksinr=… (Deep-Link von „Heute") — Sitzung aufklappen, sanft
   // hinscrollen und kurz aufblitzen lassen (wie der Fußnoten-Flash der KI).
   const deepSp = useSearchParams();
+  const sitzungsRouter = useRouter();
   const targetKsinr = Number(deepSp.get("ksinr") || 0);
   const deepLinkDone = useRef(false);
   const [flashKsinr, setFlashKsinr] = useState<number | null>(null);
@@ -982,6 +1006,12 @@ function SessionsTab({ committees }: { committees: string[] }) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [ladeFehler, setLadeFehler] = useState<unknown>(null);
+  // Zählt die Abrufe: Nur der jüngste darf die Liste setzen. Ohne das konnte
+  // eine langsame Antwort für den alten Filter den neuen überschreiben.
+  const abrufNr = useRef(0);
+  const hatSitzungen = useRef(false);
+  hatSitzungen.current = sessions.length > 0;
   const [hasSearched, setHasSearched] = useState(false);
   // Aufgeklappte Sitzungen überleben den Tab-Wechsel (Tims Wunsch 12.08.):
   // Wer eine Tagesordnung offen hat und kurz woanders nachsieht, findet sie
@@ -1006,6 +1036,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
     // sofort wieder zu (Tims Wunsch 12.08.). Beim Ändern von Suche, Filter
     // oder Seite räumt der Effekt darunter auf — dort ist es richtig, weil
     // die Liste dann andere Sitzungen zeigt.
+    const nr = ++abrufNr.current;
+    setLadeFehler(null);
     try {
       const effectiveScope = q || committee ? "all" : scope;
       const data = await api.get<{ sessions: CouncilSession[]; total: number }>(
@@ -1014,12 +1046,15 @@ function SessionsTab({ committees }: { committees: string[] }) {
           limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
         })}`,
       );
+      if (nr !== abrufNr.current) return;
       setSessions(data.sessions);
       setTotal(data.total);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
+      if (nr !== abrufNr.current) return;
+      setLadeFehler(err);
+      if (hatSitzungen.current) toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
     } finally {
-      setLoading(false);
+      if (nr === abrufNr.current) setLoading(false);
     }
   }, [q, committee, scope, page]);
 
@@ -1045,9 +1080,18 @@ function SessionsTab({ committees }: { committees: string[] }) {
   }, [debouncedQ, committee, scope]);
 
   useEffect(() => {
-    if (!targetKsinr || deepLinkDone.current || loading) return;
+    if (!targetKsinr || deepLinkDone.current || loading || !hasSearched) return;
     const s = sessions.find((x) => x.ksinr === targetKsinr);
-    if (!s) return;
+    if (!s) {
+      // Die Liste zeigt den gemerkten Zeitraum (meist „Anstehend") — eine
+      // vergangene Sitzung steht dort nicht, und der Link landete bis 10/2026
+      // auf einer Liste ohne sie: nichts klappte auf, nichts scrollte (vom
+      // „Zurück" eines Beschlusses und aus Ergebnis-Mails). Dann auf die
+      // eigene Seite der Sitzung, die es für jede gibt.
+      deepLinkDone.current = true;
+      sitzungsRouter.replace(sitzungHref(targetKsinr, topsAusLink));
+      return;
+    }
     deepLinkDone.current = true;
     // AUFKLAPPEN, nicht umschalten: Steht die Tagesordnung schon offen (etwa
     // weil sie den Tab-Wechsel überlebt hat, #447), machte `toggle` sie zu —
@@ -1191,6 +1235,8 @@ function SessionsTab({ committees }: { committees: string[] }) {
       >
         {loading && sessions.length === 0 ? (
           <CardListSkeleton rows={5} />
+        ) : ladeFehler && sessions.length === 0 ? (
+          <AbrufFehler error={ladeFehler} was="Die Sitzungsliste" onRetry={() => void load()} />
         ) : sessions.length === 0 ? (
           // RL-U04: In der Sitzungspause ist „Anstehend" leer, das Banner darüber
           // nennt den Grund — der Leerzustand greift ihn auf, statt generisch
@@ -1486,7 +1532,10 @@ function FragenBruecke() {
 const TAB_META: Record<Tab, { title: string; description: string }> = {
   decisions: { title: "Suche", description: "Beschlüsse des Stadtrats durchsuchen — nach Stichwort, Ausschuss, Ergebnis und Zeitraum." },
   sessions: { title: "Sitzungen", description: "Sitzungen und Tagesordnungen von Rat und Ausschüssen." },
-  themen: { title: "Themen", description: "Was den Rat beschäftigt — als Liste; verortet liegt es auf der Stadtkarte unter „Mein Viertel“." },
+  // Bis 10/2026 „Themen" — genau wie „Meine Themen" (Tab-Leiste: „Themen"),
+  // aber etwas anderes: Hier stehen die Orte, Projekte und Organisationen,
+  // die in Beschlüssen vorkommen (gemessen: 527 / 241 / 232).
+  themen: { title: "Orte, Projekte & Organisationen", description: "Was den Rat beschäftigt — als Liste; verortet liegt es auf der Stadtkarte unter „Mein Viertel“." },
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
 };
 

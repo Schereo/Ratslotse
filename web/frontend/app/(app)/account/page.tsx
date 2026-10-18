@@ -1,5 +1,6 @@
 "use client";
 
+import { abmeldenMerken } from "@/lib/abmelden";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ import { DeliverySettings } from "@/components/delivery-settings";
 import { BadgesCard } from "@/components/badges";
 import { GespraecheCard } from "@/components/gespraeche-settings";
 import { LottiCard } from "@/components/assistentin/einstellung";
+import { McpCard } from "@/components/mcp-zugang";
 import { cn } from "@/lib/utils";
 
 /**
@@ -125,6 +127,7 @@ export default function AccountPage() {
     },
     onSuccess: async () => {
       toast.success("Dein Konto wurde gelöscht.");
+      abmeldenMerken();
       await logout();
       router.replace("/");
     },
@@ -200,7 +203,7 @@ export default function AccountPage() {
           stapelt alles in genau dieser Reihenfolge — die Abzeichen bleiben
           zwischen Benachrichtigungen und Passwort (RL-U12, 11a). */}
       <div className="@container/konto mt-6">
-        <div className="grid items-start gap-6 @3xl/konto:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 @3xl/konto:grid-cols-2">
           <div className="flex flex-col gap-6">
             <DeliverySettings />
 
@@ -211,6 +214,9 @@ export default function AccountPage() {
             {/* Lotti schwebt über dem Inhalt — wer sie stört, bekommt hier
                 den Weg, sie wegzuräumen (und den Weg zurück über ⌘K). */}
             <LottiCard />
+
+            {/* Nur mit dem Recht `mcp` (Rolle „MCP-Zugang“) — sonst null. */}
+            <McpCard />
           </div>
 
           <div className="flex flex-col gap-6">

@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Iterator
+from dataclasses import replace
 
 from council.cities.adapters._common import (
     link_by_title, normalize_common)
@@ -47,6 +48,39 @@ def _magdeburg_url(datei: dict, url: str | None) -> str | None:
 FILE_URL_FIX = {
     "https://ratsinfo.magdeburg.de/": _magdeburg_url,
 }
+
+
+#: Kennungs-Präfix einer Vorlage → ihre Seite im Ratsinformationssystem.
+#:
+#: **Somacos liefert an der Vorlage kein ``web``** — weder Magdeburg noch
+#: Münster; 6.782 und 3.011 Vorlagen standen deshalb ohne Link ins Original.
+#: Die Seite ist trotzdem eindeutig adressierbar: Die Zahl am Ende der
+#: OParl-Kennung (``…/papers/vo/240103``) ist dieselbe ``__kvonr``, unter der
+#: SessionNet die Vorlage zeigt — dieselbe Adresse wie bei Oldenburgs eigenem
+#: SessionNet. **Geraten ist hier nichts:** Den Host nennt die Schnittstelle
+#: selbst (Münster: ``website`` im System-Objekt,
+#: ``https://www.stadt-muenster.de/sessionnet/sessionnetbi``; Magdeburg: der
+#: Host der Schnittstelle, unter dem auch ``getfile.asp`` liegt), und je Stadt
+#: am 03.10.2026 an einer Vorlage nachgesehen: Der Seitentitel trug genau den
+#: Betreff, die Seite die Drucksachen-Nummer (DS0580/22/2, A-W/0001/2023).
+#: Magdeburg spricht ``.asp``, Münster ``.php`` — auch das gemessen, nicht
+#: abgeleitet. Eine neue Somacos-Stadt ist eine Zeile, nach derselben Probe.
+WEB_URL = {
+    "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/":
+        "https://ratsinfo.magdeburg.de/vo0050.asp?__kvonr={nummer}",
+    "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/":
+        "https://www.stadt-muenster.de/sessionnet/sessionnetbi/vo0050.php?__kvonr={nummer}",
+}
+
+
+def web_url_for(paper_id: str) -> str | None:
+    """Die Seite einer Vorlage im RIS — nur, wo das Muster gemessen ist."""
+    for praefix, muster in WEB_URL.items():
+        if paper_id.startswith(praefix):
+            nummer = paper_id[len(praefix):]
+            if nummer.isdigit():
+                return muster.format(nummer=nummer)
+    return None
 
 
 def url_fix_for(body: dict):
@@ -148,6 +182,9 @@ class SessionAdapter:
             fix = url_fix_for({"id": obj.get("body") or obj.get("id") or ""})
             break
         batch = normalize_common(body_id, raw, url_fix=fix)
+        # Der Link ins Original, wo die Schnittstelle keinen liefert (s. WEB_URL).
+        batch.papers = [p if p.web else replace(p, web=web_url_for(p.id))
+                        for p in batch.papers]
         # **Somacos verweist sauber.** Hier stand bis 10.09.2026 ein
         # Titelabgleich innerhalb der Sitzung (`link_within_meeting`), weil
         # Magdeburgs Beratungen angeblich auf einen zweiten Kennungsraum

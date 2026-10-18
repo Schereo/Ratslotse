@@ -5,8 +5,15 @@
 // `wahlabend` — ohne ihn rendern sie nichts, denn die Zielseite zeigt dann
 // nur einen Hinweis („Ein Gate braucht auch seine Einstiegspunkte",
 // web/frontend/CLAUDE.md). Am Wahlabend selbst sind sie der kürzeste Weg zu
-// den Zahlen; nach dem amtlichen Endergebnis geht der Schalter aus, und
-// beide verschwinden ohne Deploy.
+// den Zahlen.
+//
+// **Laut sind sie nur um den Wahltag** (seit 10/2026, Tims Entscheidung
+// 03.10.: „vorhanden bleiben, aber nicht mehr prominent verlinkt"). Ob, sagt
+// das Backend als `election.prominent` — eine Woche vor bis drei Tage nach
+// dem Wahlschluss (`elections.prominent`). Danach führt nur noch der
+// dauerhafte Ort hin: `/wahlen`, Reiter „Wahlen" in der Analyse, Fuß der
+// Startseite. Vorher hing beides am Schalter allein und stand drei Wochen
+// nach der Stichwahl noch oben auf Heute.
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -16,6 +23,7 @@ import { Mascot } from "@/components/mascot";
 import { useAppConfig, useFeature } from "@/lib/features";
 import { TippspielKnopf } from "@/components/tipp/einladung";
 import { datumLang, wahlabendZeit, type WahlabendZeit } from "@/lib/wahlabend";
+import { ergebnisVermerk, wahlLaut } from "@/lib/wahlen";
 
 /** Die Wahl, auf die gerade hingewiesen wird — aus `/api/app-config`.
  *
@@ -50,7 +58,7 @@ const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] te
  *  Montagmorgen nach der Wahl „Der Wahlabend läuft" auf der Startseite. Alle
  *  drei stehen hier zusammen: Sechs verstreute Ternaries in zwei Komponenten
  *  laufen auseinander, sobald jemand einen Satz ändert. */
-function texte(zeit: WahlabendZeit, name: string): {
+function texte(zeit: WahlabendZeit, name: string, ergebnis: string | null | undefined): {
   ueberschrift: string;
   kurz: string;
   text: string;
@@ -71,7 +79,7 @@ function texte(zeit: WahlabendZeit, name: string): {
       ueberschrift: `${name}: das Ergebnis, nachgerechnet.`,
       kurz: "Das Ergebnis steht",
       text: "Sitze je Liste und Wahlbereich, wer nach dem Kommunalwahlgesetz in den Rat einzieht und wie knapp es "
-        + "war — aus den Open-Data-Zahlen der Stadt. Eigene Rechnung, kein amtliches Ergebnis.",
+        + `war — aus den Open-Data-Zahlen der Stadt. ${ergebnisVermerk(ergebnis)}`,
       knopf: "Zum Ergebnis",
     };
   }
@@ -94,8 +102,8 @@ export function WahlabendBanner() {
   const an = useFeature("wahlabend");
   const wahl = useFokusWahl();
   const zeit = useWahlabendZeit();
-  if (!an) return null;
-  const t = texte(zeit, wahl?.short_title ?? "Die Wahl");
+  if (!an || !wahlLaut(wahl)) return null;
+  const t = texte(zeit, wahl?.short_title ?? "Die Wahl", wahl?.result_status);
   return (
     <section aria-label={`Wahlabend: ${wahl?.short_title ?? "die nächste Wahl"}`} className="mx-auto max-w-5xl px-5 pb-2 pt-6">
       <div className="hh-tafel flex flex-col items-center gap-5 rounded-2xl px-5 py-6 sm:flex-row sm:gap-7 sm:px-7">
@@ -132,8 +140,8 @@ export function WahlabendHinweis() {
   const an = useFeature("wahlabend");
   const wahl = useFokusWahl();
   const zeit = useWahlabendZeit();
-  if (!an) return null;
-  const t = texte(zeit, wahl?.short_title ?? "Die Wahl");
+  if (!an || !wahlLaut(wahl)) return null;
+  const t = texte(zeit, wahl?.short_title ?? "Die Wahl", wahl?.result_status);
   return (
     <Card className="flex flex-col gap-4 border-primary/25 bg-primary/[0.04] p-4 sm:flex-row sm:items-center">
       <Mascot pose="point" decorative className="hidden h-14 w-14 flex-none sm:block" />
@@ -157,5 +165,19 @@ export function WahlabendHinweis() {
         <TippspielKnopf slug={wahl?.slug} className="justify-center py-2 text-[13px]" kurz />
       </div>
     </Card>
+  );
+}
+
+/** Der dauerhafte Weg für alle ohne Konto: „Wahlen" im Fuß der Startseite.
+ *  Angemeldete haben den Reiter „Wahlen" in der Analyse; wer nur die
+ *  Startseite kennt, hätte außerhalb der Wahlwoche sonst keinen Weg zur
+ *  Auswertung. Am Schalter `wahlabend`, weil `/wahlen` daran hängt. */
+export function WahlenFussLink({ className }: { className?: string }) {
+  const an = useFeature("wahlabend");
+  if (!an) return null;
+  return (
+    <Link href="/wahlen" className={className}>
+      Wahlen
+    </Link>
   );
 }

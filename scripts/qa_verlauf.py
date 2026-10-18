@@ -95,9 +95,12 @@ def main() -> dict:
 
         print("\n=== Feedback ===")
         for f in council._conn.execute(
-                "SELECT created, rating, question, reason FROM council_qa_feedback "
+                "SELECT created, rating, question, reason, reason_kind, "
+                "shared_answer IS NOT NULL AS freigegeben FROM council_qa_feedback "
                 "WHERE user_id = ? ORDER BY created", (uid,)):
             print(f"  {str(f['created'])[:16]} {f['rating']} · {f['question'][:70]}"
+                  + (f" [{f['reason_kind']}]" if f["reason_kind"] else "")
+                  + (" · Antwort zur Prüfung freigegeben" if f["freigegeben"] else "")
                   + (f"\n      Grund: {f['reason']}" if f["reason"] else ""))
         return {"Gespräche": len(gespraeche), "Fragen": n_turns}
     finally:

@@ -229,7 +229,11 @@ export function Ablesekarte({
             </p>
           )}
         </div>
-        <div className="flex-none text-right">
+        {/* max-w + umbrechendes Etikett: „Ordentliche Aufwendungen des
+            Ergebnishaushalts" stand bis 10/2026 in EINER Zeile und schob
+            /haushalt bei 320 px um 27 px seitwärts. Der Betrag selbst bleibt
+            ungetrennt (s. o.), nur seine Beschriftung darf umbrechen. */}
+        <div className="max-w-[60%] flex-none text-right">
           <p className={cn(
             "whitespace-nowrap font-display text-[20px] font-bold leading-none tracking-tight tabular-nums",
             wertSignal ? "text-signal" : "text-foreground",
@@ -237,7 +241,8 @@ export function Ablesekarte({
             {wert}
           </p>
           {(wertLabel || anteil != null) && (
-            <p className="mt-1 whitespace-nowrap text-[11px] leading-none text-muted-foreground">
+            <p className={cn("mt-1 text-[11px] text-muted-foreground",
+              anteil != null ? "whitespace-nowrap leading-none" : "text-balance leading-tight")}>
               {anteil != null ? <>{deZahl(anteil, 1)}&nbsp;% der Fläche</> : wertLabel}
             </p>
           )}

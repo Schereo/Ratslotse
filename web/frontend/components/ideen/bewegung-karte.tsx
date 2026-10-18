@@ -86,7 +86,11 @@ export function BewegungKarte({
       )}
       <h3
         className={cn(
-          "font-display font-bold leading-tight text-foreground [text-wrap:balance] group-hover:text-primary",
+          // Keine Silbentrennung: Auf der Karte ist Platz, und der ausgewogene
+          // Umbruch trennte sonst ohne Not („Kulturförderricht-linie",
+          // „Hitzeakti-onsplan" — Review 3.0.0). Ein Wort, das wirklich nicht
+          // passt, bricht trotzdem um (overflow-wrap), statt seitwärts zu schieben.
+          "font-display font-bold leading-tight text-foreground [hyphens:manual] [overflow-wrap:break-word] [text-wrap:balance] group-hover:text-primary",
           gross ? "text-lg" : "text-[17px]",
         )}
       >

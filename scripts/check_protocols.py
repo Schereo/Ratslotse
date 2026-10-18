@@ -39,9 +39,50 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 RATSLOTSE_DB = ROOT / "data" / "ratslotse.sqlite"
 LOOKBACK_DAYS = 90
 
+#: Kennzahl-Schlüssel: wie viele Schritte dieses Laufs gescheitert sind.
+TEILFEHLER_SCHLUESSEL = "Schritte gescheitert"
 
-def main() -> dict:
-    """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
+
+class _Leer(dict):
+    """Ergebnis eines gescheiterten Schritts: jede Kennzahl ist 0.
+
+    Die Folgeschritte und das Rückgabe-dict lesen die Ergebnisse mit
+    ``stats["parsed"]``; ein leeres dict würde dort einen ``KeyError`` werfen
+    und den Lauf doch noch abbrechen."""
+
+    def __missing__(self, key):
+        return 0
+
+
+def _schritt(fehler: list[str], name: str, fn, leer=None):
+    """Einen Schritt ausführen — scheitert er, laufen die übrigen trotzdem.
+
+    **Der Befund (Review 05.10.2026).** Bis 10/2026 standen die Schritte
+    nackt hintereinander. Ein ``AttributeError`` in der Kurzfassung (das
+    Modell antwortete mit einem Array statt eines Objekts) brach den Lauf
+    dort ab — und mit ihm Tragweite, Wortbeiträge, Vorlagen, Anlagen,
+    Beratungsfolge, Orte, Akten und die Ergebnis-Meldungen, die mit der
+    Kurzfassung nichts zu tun haben. Jetzt fällt der eine Schritt aus, sein
+    Name landet in ``fehler``, und ``_guarded_main`` meldet den Lauf am Ende
+    als Teilfehler (``JobFehler`` → Alarm-Mail, Kennzahlen bleiben).
+    """
+    try:
+        return fn()
+    except Exception as exc:  # noqa: BLE001 — ein Schritt, nicht der Lauf
+        import traceback
+        print(f"!! {name} fehlgeschlagen ({type(exc).__name__}: {exc}) — weiter mit dem Rest.",
+              flush=True)
+        traceback.print_exc()
+        fehler.append(name)
+        return _Leer() if leer is None else leer
+
+
+def main(fehler: list[str] | None = None) -> dict:
+    """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück.
+
+    ``fehler`` sammelt die Namen gescheiterter Schritte (s. ``_schritt``).
+    """
+    fehler = [] if fehler is None else fehler
     since = (date.today() - timedelta(days=LOOKBACK_DAYS)).isoformat()
     # Ein ausdrücklich abonnierter TOP bleibt offen, auch wenn ein Ausschuss
     # sein Protokoll später als nach 90 Tagen veröffentlicht. Das normale
@@ -64,33 +105,35 @@ def main() -> dict:
     except Exception as exc:  # noqa: BLE001 — Merkliste darf den Grundlauf nie stoppen
         print(f"Merkliste für Protokoll-Zeitraum übersprungen: {exc}")
     print(f"Checking for new protocols since {since}…")
-    stats = process_range(COUNCIL_DB, since=since)
+    stats = _schritt(fehler, "Protokolle", lambda: process_range(COUNCIL_DB, since=since))
     print(f"Done — {stats['parsed']} newly parsed, {stats['no_protocol']} still without "
           f"protocol, {stats['failed']} failed.")
     # Classify any decisions still without a policy field — including the ones just
     # parsed above. Idempotent, so it doubles as the daily classification catch-up.
-    cstats = classify_decisions(COUNCIL_DB)
+    cstats = _schritt(fehler, "Klassifikation", lambda: classify_decisions(COUNCIL_DB))
     print(f"Classified {cstats['classified']} decision(s), {cstats['failed']} failed "
           f"→ ${cstats['cost']:.4f}.")
     # Assess newly classified decisions against the city goals (incremental — only
     # decisions not yet linked to each goal, so this is cheap to run daily).
-    gstats = track_goals(COUNCIL_DB, incremental=True)
+    gstats = _schritt(fehler, "Ziele", lambda: track_goals(COUNCIL_DB, incremental=True))
     print(f"Goal links added: {gstats['links']} → ${gstats['cost']:.4f}.")
     # Extract € amounts from any decisions still missing one (regex, no cost).
-    astats = extract_amounts(COUNCIL_DB, only_missing=True)
+    astats = _schritt(fehler, "Beträge", lambda: extract_amounts(COUNCIL_DB, only_missing=True))
     print(f"€ amounts: {astats['with_amount']}/{astats['decisions']} newly scanned.")
     # „Einfach erklärt"-Kurzfassungen für frisch geparste Beschlüsse (RL-904).
     # Klein limitiert — der Tageszuwachs ist eine Handvoll; den Alt-Bestand
     # arbeitet weekly_enrich in Wochen-Tranchen ab.
-    sstats = generate_simple(COUNCIL_DB, limit=60)
+    sstats = _schritt(fehler, "Einfach erklärt", lambda: generate_simple(COUNCIL_DB, limit=60))
     print(f"Einfach erklärt: {sstats['written']} neu, {sstats['failed']} ohne Ergebnis.")
     # Gesprächswert + Tragweite für frisch geparste Beschlüsse (RL-U11/U16):
     # beide Queries liefern „neueste zuerst", das kleine Limit trifft also den
     # Tageszuwachs; den Alt-Bestand arbeiten die weekly-Tranchen ab. An Tagen
     # ohne neue Protokolle ist das ein No-op (0 LLM-Aufrufe).
-    itotal, irated = rate_interest(COUNCIL_DB, limit=200, workers=2)
+    itotal, irated = _schritt(fehler, "Interessantheit",
+                              lambda: rate_interest(COUNCIL_DB, limit=200, workers=2), (0, 0))
     print(f"Interessantheit: {irated}/{itotal} bewertet.")
-    ptotal, prated = rate_impact(COUNCIL_DB, limit=200, workers=2)
+    ptotal, prated = _schritt(fehler, "Tragweite",
+                              lambda: rate_impact(COUNCIL_DB, limit=200, workers=2), (0, 0))
     print(f"Tragweite: {prated}/{ptotal} bewertet.")
     # Wortbeiträge (Task 16): Reden, Anfragen, Einwohnerfragen aus den frisch
     # geparsten Protokollen für den Debatten-Kanal der KI-Frage. Klein
@@ -107,20 +150,21 @@ def main() -> dict:
     # Newest first + capped, so a normal day fetches a handful; the historic bulk
     # is scripts/backfill_vorlagen.py without limit. Runs before the FTS rebuild
     # so fresh Sachverhalt wording is searchable the same day.
-    vstats = fetch_vorlagen(COUNCIL_DB, limit=300)
+    vstats = _schritt(fehler, "Vorlagen", lambda: fetch_vorlagen(COUNCIL_DB, limit=300))
     print(f"Vorlagen: {vstats['fetched']} ingested, {vstats['no_pdf']} without PDF/text, "
           f"{vstats['failed']} failed.")
     # Anlagen: catch-up for never-scanned Vorlagen + re-scan of recent agendas —
     # Änderungsanträge landen oft erst Tage nach der Vorlage auf der Seite.
-    astats2 = fetch_anlagen_missing(COUNCIL_DB, limit=300)
-    rstats = rescan_recent_anlagen(COUNCIL_DB)
+    astats2 = _schritt(fehler, "Anlagen", lambda: fetch_anlagen_missing(COUNCIL_DB, limit=300))
+    rstats = _schritt(fehler, "Anlagen (neu prüfen)", lambda: rescan_recent_anlagen(COUNCIL_DB))
     print(f"Anlagen: {astats2['anlagen'] + rstats['anlagen']} neu "
           f"({astats2['antraege'] + rstats['antraege']} Anträge), "
           f"{astats2['failed'] + rstats['failed']} Fehler.")
     # Beratungsfolge: neue Vorlagen nachziehen + bewegliche aktualisieren
     # (nachgetragene Ergebnisse, neu angesetzte künftige Stationen).
-    bstats = fetch_beratungen_missing(COUNCIL_DB, limit=300)
-    b2stats = rescan_beratungen(COUNCIL_DB)
+    bstats = _schritt(fehler, "Beratungsfolge",
+                      lambda: fetch_beratungen_missing(COUNCIL_DB, limit=300))
+    b2stats = _schritt(fehler, "Beratungsfolge (neu prüfen)", lambda: rescan_beratungen(COUNCIL_DB))
     print(f"Beratungsfolge: {bstats['stationen'] + b2stats['stationen']} Stationen "
           f"({bstats['geplant'] + b2stats['geplant']} geplant), "
           f"{bstats['failed'] + b2stats['failed']} Fehler.")
@@ -130,10 +174,10 @@ def main() -> dict:
     # Harte Tagesgrenze: Beim ersten Deploy darf der Cron nicht versehentlich
     # den gesamten historischen Bestand per LLM abarbeiten. Der bewusste
     # Einmal-Lauf bleibt `extract_decision_locations.py --full`.
-    lstats = extract_locations(COUNCIL_DB, limit=120)
+    lstats = _schritt(fehler, "Ortszuordnung", lambda: extract_locations(COUNCIL_DB, limit=120))
     print(f"Ortszuordnung: {lstats['assigned']}/{lstats['candidates']} Beschlüsse, "
           f"{lstats['links']} Verknüpfungen, {lstats['failed_batches']} LLM-Fehler.")
-    geostats = geocode_locations(COUNCIL_DB, limit=60)
+    geostats = _schritt(fehler, "Orts-Geocoding", lambda: geocode_locations(COUNCIL_DB, limit=60))
     print(f"Orts-Geocoding: {geostats['located']} neu, {geostats['reused']} übernommen, "
           f"{geostats['missed']} ohne Treffer, {geostats['failed']} Fehler.")
     # Keep the full-text index in sync for hybrid retrieval (pure SQLite, instant).
@@ -142,9 +186,10 @@ def main() -> dict:
     # Wichtig-Wert neu rechnen (reine Heuristik, kein LLM) — damit die
     # 50/50-Mischung mit der frischen Tragweite sofort greift und neue
     # Beschlüsse nicht bis zum Sonntags-Lauf ohne Score bleiben.
-    wichtig = _store.backfill_importance()
+    wichtig = _schritt(fehler, "Wichtig-Score", _store.backfill_importance, 0)
     print(f"Wichtig-Score: {wichtig} Beschlüsse berechnet.")
-    print(f"FTS rebuilt: {_store.rebuild_fts()} decisions indexed.")
+    print(f"FTS rebuilt: {_schritt(fehler, 'Volltextindex', _store.rebuild_fts, 0)} "
+          "decisions indexed.")
     # Grundakten (docs/plan-akte.md): vollständig neu aus den Rohdaten, ohne
     # LLM, samt Entitäten und Erwähnungen rund 20 Sekunden — NACH Vorlagen,
     # Beratungsfolge und Wortbeiträgen, damit die frischen Stationen am selben
@@ -167,8 +212,9 @@ def main() -> dict:
     from council.ergebnisse import melde_ergebnisse
 
     ratslotse = NwzStore(RATSLOTSE_DB)
-    ergebnisse = melde_ergebnisse(_store, ratslotse, stats.get("ksinrs") or [])
-    zugestellt = notify.zustellen(ratslotse)
+    ergebnisse = _schritt(fehler, "Ergebnis-Meldungen",
+                          lambda: melde_ergebnisse(_store, ratslotse, stats.get("ksinrs") or []), 0)
+    zugestellt = _schritt(fehler, "Zustellung", lambda: notify.zustellen(ratslotse), 0)
     ratslotse.close()
     print(f"Ergebnis-Meldungen: {ergebnisse} eingereiht, {zugestellt} zugestellt.")
     _store.close()
@@ -202,10 +248,26 @@ def main() -> dict:
         "Wichtig-Score neu": wichtig,
         "Ergebnis-Meldungen": ergebnisse,
         "LLM-Kosten $": round(cstats["cost"] + gstats["cost"], 4),
+        TEILFEHLER_SCHLUESSEL: len(fehler),
     }
+
+
+def _guarded_main() -> dict:
+    """``main`` — und ein Teilfehler wird zum Alarm, mit den Kennzahlen.
+
+    Dasselbe Muster wie ``weekly_enrich._guarded_main``: Die Schritte laufen
+    alle, aber ein gescheiterter darf nicht still in einer Zahl verschwinden.
+    """
+    fehler: list[str] = []
+    kennzahlen = main(fehler)
+    if fehler:
+        from kern.alerts import JobFehler
+        raise JobFehler("Teil-Schritte fehlgeschlagen (Details im Log): " + ", ".join(fehler),
+                        kennzahlen)
+    return kennzahlen
 
 
 if __name__ == "__main__":
     from kern.alerts import run_guarded
 
-    run_guarded("check_protocols", main)
+    run_guarded("check_protocols", _guarded_main)

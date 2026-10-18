@@ -24,17 +24,17 @@
   "notiz": "gespeicherter Kartentext, jede Angabe in der Vorlage nachgelesen"
  },
  {
-  "id": "4667 Ö 8.1.1 gedeckt",
+  "id": "4667 Ö 9.1.1 gedeckt",
   "ksinr": 4667,
-  "item_number": "Ö 8.1.1",
+  "item_number": "Ö 9.1.1",
   "text": "SPD und BSW beantragen Ersatzbäume mit 12–14 statt 20–25 cm Stammumfang und 400 Euro Ausgleich je Baum. Die Verwaltung berichtet: 99 Genehmigungen, vier Ausgleichszahlungen.",
   "gedeckt": true,
   "notiz": "gespeicherter Kartentext, jede Angabe in der Vorlage nachgelesen"
  },
  {
-  "id": "4667 Ö 8.3 gedeckt",
+  "id": "4667 Ö 9.3 gedeckt",
   "ksinr": 4667,
-  "item_number": "Ö 8.3",
+  "item_number": "Ö 9.3",
   "text": "Zur Abstimmung steht der weitere Umgang mit den Ratsbeschlüssen zum Fliegerhorst. Die Staatsanwaltschaft stellte das Verfahren ein; ein Sachverständigenbüro nimmt am 18. August die Arbeit auf, Kosten sind noch nicht beziffert.",
   "gedeckt": true,
   "notiz": "gespeicherter Kartentext mit einer Korrektur: dort stand „prüft seit 18. August“, die Vorlage sagt „wird … am 18. August 2026 aufnehmen“ (der Kritiker fand das im ersten Lauf zu Recht)"
@@ -88,17 +88,17 @@
   "notiz": "Ort der Demokratiekonferenz vertauscht"
  },
  {
-  "id": "4667 Ö 8.1.1 erfunden",
+  "id": "4667 Ö 9.1.1 erfunden",
   "ksinr": 4667,
-  "item_number": "Ö 8.1.1",
+  "item_number": "Ö 9.1.1",
   "text": "CDU und FDP beantragen Ersatzbäume mit 12–14 statt 20–25 cm Stammumfang und 400 Euro Ausgleich je Baum. Die Verwaltung berichtet: 99 Genehmigungen, vier Ausgleichszahlungen.",
   "gedeckt": false,
   "notiz": "Antragsteller vertauscht (CDU/FDP stehen nicht in der Vorlage)"
  },
  {
-  "id": "4667 Ö 8.3 erfunden",
+  "id": "4667 Ö 9.3 erfunden",
   "ksinr": 4667,
-  "item_number": "Ö 8.3",
+  "item_number": "Ö 9.3",
   "text": "Zur Abstimmung steht der weitere Umgang mit den Ratsbeschlüssen zum Fliegerhorst. Das Landgericht verurteilte die Verantwortlichen; ein Sachverständigenbüro nimmt am 18. August die Arbeit auf, Kosten sind noch nicht beziffert.",
   "gedeckt": false,
   "notiz": "Einstellung durch die Staatsanwaltschaft → Verurteilung durch ein Gericht"

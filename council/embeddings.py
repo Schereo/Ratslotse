@@ -303,6 +303,51 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
         return [(i, sc.get(i, 0.0)) for i in order[:top_k]]
 
 
+#: So viele NEUE Kandidaten bringt die Nachrecherche höchstens in den Rerank.
+NACHSUCHE_NEU_MAX = 20
+
+
+def nachsuche(store, query: str, anfragen: list[str], schon: set[int],
+              allowed_ids: list[int] | None = None) -> list[tuple]:
+    """Nachrecherche: Kandidaten zu den Zusatzanfragen, die die erste Suche
+    nicht hatte — gegen die ORIGINALFRAGE gerankt.
+
+    Je Anfrage Vektor UND Volltext: Die Anfragen stehen in der Sprache der
+    Vorlagen („Samstagsfahrten Ausgleich ÖPNV“), und wörtliches Vokabular
+    findet die Volltextsuche besser als jede Ähnlichkeit. Gerankt wird nur
+    das Neue (höchstens ``NACHSUCHE_NEU_MAX`` Paare) — derselbe
+    Cross-Encoder, dieselbe Frage, also mit der ersten Liste vergleichbar.
+    Liefert ``[(id, logit)]``, bester zuerst; leer bei jedem Fehler.
+    """
+    try:
+        erlaubt = set(allowed_ids) if allowed_ids is not None else None
+        neu: list[int] = []
+        snippet: dict[int, str] = {}
+        for anfrage in anfragen[:3]:
+            kandidaten: list[int] = []
+            try:
+                kandidaten += [i for i, _ in _search_vec(store, embed([anfrage])[0],
+                                                         top_k=12, min_score=0.25)]
+            except Exception:  # noqa: BLE001 — ohne Vektoren bleibt der Volltext
+                pass
+            for i, _s, snip in store.search_decisions_fts(anfrage, limit=12):
+                kandidaten.append(i)
+                if snip:
+                    snippet.setdefault(i, snip)
+            for i in kandidaten:
+                if i in schon or i in neu or (erlaubt is not None and i not in erlaubt):
+                    continue
+                neu.append(i)
+        neu = neu[:NACHSUCHE_NEU_MAX]
+        if not neu:
+            return []
+        docs = store.get_decisions_by_ids(neu)
+        excerpts = _vorlage_excerpts(store, [d.get("template_number") or "" for d in docs])
+        return rerank(query, [(d["id"], _pair_text(d, excerpts, {}, snippet)) for d in docs])
+    except Exception:  # noqa: BLE001 — die Nachrecherche ist Zusatz, nie Blocker
+        return []
+
+
 #: So viele Beschlüsse mit wortgleichem Titel bleiben vorn im Feld.
 SERIE_MAX = int(os.environ.get("COUNCIL_SERIE_MAX", "3"))
 _SERIE_ZUSATZ = re.compile(r"\s*[-–]\s*(beschluss|bericht|sachstandsbericht)\s*$", re.IGNORECASE)

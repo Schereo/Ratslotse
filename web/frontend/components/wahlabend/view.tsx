@@ -21,7 +21,7 @@ import { Halbkreis } from "@/components/wahlabend/halbkreis";
 import { Kandidaten, type KandidatenFilter } from "@/components/wahlabend/kandidaten";
 import { Wahlgebiete } from "@/components/wahlabend/wahlgebiete";
 import { Rangfolge, bereichAnker, springeZuBereich } from "@/components/wahlabend/rangfolge";
-import { Kopf } from "@/components/wahlabend/kopf";
+import { ZurueckZuWahlen } from "@/components/wahlen/zurueck";
 import { AuszaehlungsSimulator } from "@/components/wahlabend/simulator";
 import { TippspielEinladung } from "@/components/tipp/einladung";
 import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
@@ -32,6 +32,7 @@ import { useWahlabendZeit } from "@/components/wahlabend-hinweis";
 import { api, apiUrl } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
+import { istAmtlich } from "@/lib/wahlen";
 import {
   datumLang,
   LISTE_SPEICHER,
@@ -95,7 +96,13 @@ function Fuss({ daten }: { daten: Wahlabend | undefined }) {
         Niedersächsischen Kommunalwahlgesetzes (§§ 36, 37 — dreimal Hare/Niemeyer: Listen, Wahlbereiche, dann Listen-
         gegen Personensitze). Gegen das amtliche Ergebnis von 2021 geprüft, alle 50 Mandate. Die Hochrechnung setzt für
         jeden offenen Wahlbezirk sein Ergebnis von {daten?.election.previous_label ?? "der Vorwahl"} an, skaliert mit dem Trend der schon ausgezählten Bezirke im
-        selben Wahlbereich. Kein amtliches Ergebnis — das stellt der Wahlausschuss fest.
+        selben Wahlbereich.{" "}
+        {/* Bis 10/2026 stand hier immer „Kein amtliches Ergebnis" — auch nach
+            der Feststellung durch den Wahlausschuss. Das Backend weiß es aus
+            dem eingefrorenen Stand (`election.result_status`). */}
+        {istAmtlich(daten?.election.result_status)
+          ? "Die Zahlen sind das amtliche Endergebnis, vom Wahlausschuss festgestellt; die Sitzverteilung haben wir beim Einfrieren gegen die amtliche geprüft — sie ist deckungsgleich."
+          : "Kein amtliches Ergebnis — das stellt der Wahlausschuss fest."}
       </p>
     </footer>
   );
@@ -251,7 +258,11 @@ function Tafel({
           <p className={KICKER}>
             {daten.election.short_title} · {datumLang(daten.election.date)} ·{" "}
             <span suppressHydrationWarning>
-              {daten.dataset === "probe" ? "Generalprobe" : daten.dataset === "archive" ? "Rückblick" : zeit.kicker}
+              {daten.dataset === "probe"
+                ? "Generalprobe"
+                : istAmtlich(daten.election.result_status)
+                  ? "Amtliches Endergebnis"
+                  : daten.dataset === "archive" ? "Rückblick" : zeit.kicker}
             </span>
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-none tracking-tight sm:text-[32px]">Wahlabend</h1>
@@ -1044,15 +1055,15 @@ export function WahlabendView() {
 
   return (
     <>
-      <Kopf label="Wahlabend 2026" />
-      <main className="mx-auto w-full max-w-7xl px-4 pb-16 sm:px-6 lg:px-10 @container">
+      <div className="w-full pb-6 @container">
+        <ZurueckZuWahlen />
         {inhalt}
         {/* Der Weg ins Tippspiel dieser Wahl — was es dazu gibt, sagt das
             Backend. `daten` ist hier noch optional (die Seite rendert auch
             ohne Zahlen); ohne Wahl bleibt die Einladung bei der im Fokus. */}
         <TippspielEinladung slug={daten?.election.slug} phase={daten?.phase ?? "before"} />
         <Fuss daten={daten} />
-      </main>
+      </div>
       {/* Nur auf dev sichtbar — die Bedienung für die Generalprobe. */}
       <AuszaehlungsSimulator />
     </>

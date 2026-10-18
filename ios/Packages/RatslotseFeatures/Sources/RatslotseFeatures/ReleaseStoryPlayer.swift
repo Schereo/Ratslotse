@@ -1,0 +1,679 @@
+import AVFoundation
+import RatslotseAPI
+import RatslotseDesign
+import SwiftUI
+
+/// Der Story-Spieler zu „Neu bei Ratslotse" — Vollbild, auf Tipp einer
+/// Video-Kachel (`ReleaseNewsCard`). Dieselbe Bedienung wie im Web
+/// (`components/neuigkeiten-spieler.tsx`):
+///
+/// - oben je Clip ein Balken, der **mit der Videozeit** läuft;
+/// - Tipp links/rechts blättert, Tipp in die Mitte hält an, seitwärts wischen
+///   blättert, **nach unten wischen schließt**;
+/// - unten Titel und Text, „‹ Zurück", „<Feature> ausprobieren →" (führt zum
+///   Feature und schließt den Spieler), „Weiter ›".
+///
+/// **Am Ende eines Clips steht erst eine Tafel** (`StoryInterlude`, seit
+/// 10/2026): „Das war …", „<Feature> ausprobieren →", „Als Nächstes: …" mit
+/// einem Balken, der acht Sekunden läuft, dann kommt der nächste — nur wenn
+/// Bewegung nicht abgeschaltet ist. Vorher begann er im selben Augenblick,
+/// und man merkte kaum, dass jetzt ein anderes Feature lief. Ein Mensch hat
+/// den Spieler geöffnet, um die Clips zu sehen; gewechselt wird erst, wenn
+/// der laufende zu Ende ist, und Tafel und Balken kündigen es an
+/// (DESIGNSPRACHE §7, „Story-Spieler"). Mit „Bewegung reduzieren" startet
+/// kein Clip von selbst (Standbild + Abspielknopf), und am Ende schaltet
+/// nichts weiter — auch keine Tafel.
+///
+/// **Immer dunkel**: die Kinofläche eines Videoplayers, keine dunkle Karte.
+struct ReleaseStoryPlayer: View {
+    let sequence: [ReleaseHighlight]
+    let start: Int
+    /// Ein Nebenbei-Clip steht allein: kein „2 von 3", kein Weiterschalten.
+    let aside: Bool
+    let resolve: (String) -> URL
+    let onSeen: (ReleaseHighlight) -> Void
+    let onTry: (ReleaseHighlight) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var index: Int
+    @State private var playback = StoryPlayback()
+    @State private var dragOffset: CGFloat = 0
+    /// Die Tafel zwischen zwei Clips, bevor der nächste kommt.
+    @State private var interlude = false
+
+    /// Die dunkle Seitenfarbe hsl(213 50% 7%), deckend (DESIGNSPRACHE §5).
+    static let stage = ReleaseTileColor.rgb(0x09111B)
+
+    init(
+        sequence: [ReleaseHighlight], start: Int, aside: Bool,
+        resolve: @escaping (String) -> URL,
+        onSeen: @escaping (ReleaseHighlight) -> Void,
+        onTry: @escaping (ReleaseHighlight) -> Void
+    ) {
+        self.sequence = sequence
+        self.start = start
+        self.aside = aside
+        self.resolve = resolve
+        self.onSeen = onSeen
+        self.onTry = onTry
+        _index = State(initialValue: min(max(start, 0), max(sequence.count - 1, 0)))
+    }
+
+    private var current: ReleaseHighlight { sequence[index] }
+    private var tint: Color { ReleaseTileColor.color(current.color) }
+    private var isLast: Bool { index >= sequence.count - 1 }
+    /// Hochkant (die App-Clips seit 3.0.0, randlos): Der Fuß wird zur
+    /// Knopfzeile, damit der Clip die Breite bekommt — mit Titel, Text und
+    /// zwei Knopfzeilen darunter stand er halb so breit wie das Telefon, der
+    /// Inhalt in einem Viertel seiner Größe. Titel und Text sagt der Clip
+    /// selbst (Intro, Untertitel je Schritt); der Kopf nennt den Titel.
+    private var upright: Bool { (current.media?.aspectRatio ?? 16.0 / 9.0) < 1 }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            stage
+            footer
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+        .background(Self.stage.ignoresSafeArea())
+        .offset(y: dragOffset)
+        .opacity(dragOffset > 0 ? max(0.5, 1 - dragOffset / 700) : 1)
+        .simultaneousGesture(swipe)
+        .preferredColorScheme(.dark)
+        .onAppear { load() }
+        .onChange(of: index) { _, _ in load() }
+        .onDisappear { playback.stop() }
+    }
+
+    // MARK: Kopf
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                ForEach(Array(sequence.enumerated()), id: \.offset) { position, _ in
+                    Capsule()
+                        .fill(.white.opacity(0.25))
+                        .overlay(alignment: .leading) {
+                            Capsule()
+                                .fill(.white)
+                                .scaleEffect(x: fraction(for: position), y: 1, anchor: .leading)
+                        }
+                        .frame(height: 4)
+                        .clipShape(Capsule())
+                }
+            }
+            .accessibilityHidden(true)
+            HStack(alignment: .top) {
+                Text(aside ? "Außerdem · \(current.title)" : "\(index + 1) von \(sequence.count) · \(current.title)")
+                    .font(RatsFont.body(15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                Button { dismiss() } label: {
+                    RatsIcon(.circleX, size: 24)
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+                .padding(.top, -10)
+                .padding(.trailing, -10)
+                .accessibilityLabel("Schließen")
+            }
+        }
+    }
+
+    private func fraction(for position: Int) -> CGFloat {
+        if position < index { return 1 }
+        if position > index { return 0 }
+        return CGFloat(playback.progress)
+    }
+
+    // MARK: Bühne
+
+    private var stage: some View {
+        let media = current.media
+        let ratio = media?.aspectRatio ?? 16.0 / 9.0
+        return ZStack {
+            if let media {
+                ZStack {
+                    // Unter dem Clip sein Standbild, bis das erste Bild läuft —
+                    // und bei „Bewegung reduzieren", solange niemand abspielt.
+                    AsyncImage(url: resolve(media.poster ?? media.src)) { phase in
+                        if case .success(let image) = phase { image.resizable().scaledToFit() } else { Color.black }
+                    }
+                    if media.isVideo {
+                        StoryVideoView(player: playback.player)
+                            .opacity(playback.hasStarted ? 1 : 0)
+                    }
+                }
+                // Unter der Tafel bleibt das letzte Bild als Ahnung stehen.
+                .blur(radius: interlude ? 4 : 0)
+            }
+            tapZones
+            if media?.isVideo == true, !playback.isPlaying, !interlude { bigPlayButton }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(media?.alt ?? current.title)
+        .accessibilityAddTraits(.startsMediaSession)
+        .accessibilityAction(named: playback.isPlaying ? "Anhalten" : "Abspielen") { playback.toggle() }
+        .accessibilityHidden(interlude)
+        // Nach dem Clip-Element, damit VoiceOver die Knöpfe der Tafel einzeln
+        // erreicht; innerhalb der Rundung, damit sie auf dem Clip liegt.
+        .overlay {
+            if interlude, !isLast {
+                StoryInterlude(
+                    seen: current,
+                    next: sequence[index + 1],
+                    tint: tint,
+                    onNext: { index += 1 },
+                    onReplay: replay,
+                    onTry: { playback.stop(); onTry(current) }
+                )
+                .transition(.opacity)
+            }
+        }
+        .aspectRatio(ratio, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.6), radius: 30, y: 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.vertical, 12)
+    }
+
+    /// Links zurück, rechts weiter, die Mitte hält an. Die Knöpfe unten
+    /// können dasselbe — die Zonen sind die Abkürzung für den Daumen.
+    private var tapZones: some View {
+        GeometryReader { proxy in
+            HStack(spacing: 0) {
+                Color.clear.contentShape(Rectangle())
+                    .frame(width: proxy.size.width * 0.3)
+                    .onTapGesture { previous() }
+                Color.clear.contentShape(Rectangle())
+                    .onTapGesture { playback.toggle() }
+                Color.clear.contentShape(Rectangle())
+                    .frame(width: proxy.size.width * 0.3)
+                    .onTapGesture { advanceByUser() }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var bigPlayButton: some View {
+        Button { playback.toggle() } label: {
+            ZStack {
+                Circle().fill(.white.opacity(0.94))
+                RatsIcon(playback.ended ? .rotateCcw : .play, size: 28)
+                    .foregroundStyle(tint)
+                    .offset(x: playback.ended ? 0 : 2)
+            }
+            .frame(width: 72, height: 72)
+            .shadow(color: .black.opacity(0.4), radius: 14, y: 8)
+        }
+        .buttonStyle(RatsPlainButtonStyle())
+        .accessibilityLabel(playback.ended ? "Noch einmal ansehen" : "Abspielen")
+    }
+
+    // MARK: Fuß
+
+    @ViewBuilder
+    private var footer: some View {
+        if upright { compactFooter } else { fullFooter }
+    }
+
+    /// „‹  Ausprobieren →  ›" in einer Zeile. Eine lange Beschriftung
+    /// („Mein Viertel ausprobieren") bräche dort um — dann steht nur
+    /// „Ausprobieren", VoiceOver liest die ganze.
+    private var compactFooter: some View {
+        let action = current.action ?? "Ausprobieren"
+        let short = action.count > 16 ? "Ausprobieren" : action
+        return HStack(spacing: 10) {
+            if !aside {
+                Button(action: previous) { roundLabel { RatsIcon(.chevronLeft, size: 18) } }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .disabled(index == 0)
+                    .opacity(index == 0 ? 0.4 : 1)
+                    .accessibilityLabel("Zurück")
+            }
+            Button { playback.stop(); onTry(current) } label: {
+                HStack(spacing: 8) {
+                    Text(short)
+                    RatsIcon(.arrowRight, size: 16)
+                }
+                .font(RatsFont.body(16, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(tint)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(RatsPlainButtonStyle())
+            .accessibilityLabel(action)
+            .accessibilityHint(current.text)
+            Button { isLast ? dismiss() : advanceByUser() } label: {
+                if isLast {
+                    quietLabel { Text("Fertig") }.frame(width: 96)
+                } else {
+                    roundLabel { RatsIcon(.chevronRight, size: 18) }
+                }
+            }
+            .buttonStyle(RatsPlainButtonStyle())
+            .accessibilityLabel(isLast ? "Fertig" : "Weiter")
+        }
+        .padding(.top, 10)
+    }
+
+    private func roundLabel<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        content()
+            .foregroundStyle(.white)
+            .frame(width: 50, height: 50)
+            .background(.white.opacity(0.14))
+            .clipShape(Circle())
+    }
+
+    private var fullFooter: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(current.title)
+                    .font(RatsFont.title(20, weight: .bold))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(current.text)
+                    .font(RatsFont.body(14.5))
+                    .foregroundStyle(.white.opacity(0.86))
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // Der Weg zum Feature allein in der ersten Zeile — drei Knöpfe
+            // nebeneinander brachen „Mein Viertel ausprobieren" um.
+            Button { playback.stop(); onTry(current) } label: {
+                HStack(spacing: 8) {
+                    Text(current.action ?? "Ausprobieren")
+                    RatsIcon(.arrowRight, size: 16)
+                }
+                .font(RatsFont.body(16, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(tint)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(RatsPlainButtonStyle())
+            HStack(spacing: 10) {
+                if !aside {
+                    Button(action: previous) {
+                        quietLabel { RatsIcon(.chevronLeft, size: 18); Text("Zurück") }
+                    }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .disabled(index == 0)
+                    .opacity(index == 0 ? 0.4 : 1)
+                }
+                Button { isLast ? dismiss() : advanceByUser() } label: {
+                    quietLabel {
+                        Text(isLast ? "Fertig" : "Weiter")
+                        if !isLast { RatsIcon(.chevronRight, size: 18) }
+                    }
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+            }
+        }
+    }
+
+    private func quietLabel<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        HStack(spacing: 4) { content() }
+            .font(RatsFont.body(16, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(.white.opacity(0.14))
+            .clipShape(Capsule())
+    }
+
+    // MARK: Gesten
+
+    /// Nach unten wischen schließt, seitwärts blättert.
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onChanged { value in
+                guard !reduceMotion else { return }
+                let dy = value.translation.height
+                if dy > 0, dy > abs(value.translation.width) { dragOffset = dy * 0.6 }
+            }
+            .onEnded { value in
+                let dx = value.translation.width, dy = value.translation.height
+                withAnimation(reduceMotion ? nil : RatsMotion.flow) { dragOffset = 0 }
+                if dy > 100, dy > abs(dx) { dismiss(); return }
+                if abs(dx) > 60, abs(dx) > abs(dy) { dx < 0 ? advanceByUser() : previous() }
+            }
+    }
+
+    // MARK: Steuerung
+
+    private func load() {
+        interlude = false
+        onSeen(current)
+        guard let media = current.media, media.isVideo else { playback.stop(); return }
+        playback.onEnd = { reachedEnd() }
+        playback.load(resolve(media.src), autoplay: !reduceMotion)
+    }
+
+    private func reachedEnd() {
+        if !reduceMotion, !aside, !isLast {
+            withAnimation(RatsMotion.stage) { interlude = true }
+        }
+    }
+
+    private func replay() {
+        interlude = false
+        playback.toggle()
+    }
+
+    private func advanceByUser() {
+        if !isLast { index += 1 }
+    }
+
+    private func previous() {
+        if index > 0 { index -= 1 }
+    }
+}
+
+// MARK: - Zwischen zwei Clips
+
+/// Die Tafel zwischen zwei Clips: was man gerade gesehen hat, der Weg dorthin
+/// und was als Nächstes kommt — mit einem Balken, der zeigt, wann. Dieselbe
+/// Tafel wie `Zwischenbild` in `components/neuigkeiten-spieler.tsx`.
+///
+/// Der Balken läuft über eine Uhr statt über eine Animation, weil sein Ende
+/// den Wechsel auslöst und er anhalten können muss: solange VoiceOver auf
+/// „Ausprobieren" oder „Nochmal ansehen" steht oder der Zeiger (iPad) darauf
+/// liegt — wer gerade dorthin will, dem soll der Clip nicht unter dem Finger
+/// wechseln. Bewusst nicht die ganze Tafel, wie im Web.
+///
+/// Bei „Bewegung reduzieren" gibt es die Tafel gar nicht erst
+/// (`ReleaseStoryPlayer.reachedEnd()`).
+struct StoryInterlude: View {
+    let seen: ReleaseHighlight
+    let next: ReleaseHighlight
+    let tint: Color
+    let onNext: () -> Void
+    let onReplay: () -> Void
+    let onTry: () -> Void
+
+    /// Wie lange die Tafel steht — `ZWISCHENBILD_SEKUNDEN` in
+    /// `web/frontend/lib/neuigkeiten.ts`. Acht Sekunden reichen, um
+    /// „Ausprobieren" zu lesen und zu treffen; wer weiter will, tippt früher.
+    static let seconds: Double = 8
+
+    private enum Target: Hashable { case tryIt, next, replay }
+
+    @State private var progress: Double = 0
+    @State private var hovered: Target?
+    @AccessibilityFocusState private var focus: Target?
+
+    private var held: Bool {
+        hovered == .tryIt || hovered == .replay || focus == .tryIt || focus == .replay
+    }
+
+    var body: some View {
+        ZStack {
+            // Nachtblau wie der Spieler über dem unscharfen letzten Bild: Das
+            // ist meist eine helle Seite, und darauf trügen die weißen Knöpfe
+            // nicht.
+            ReleaseStoryPlayer.stage.opacity(0.86)
+            // Hochkant passt alles untereinander; ein Clip im Querformat ist
+            // auf dem Telefon kaum 200 pt hoch — dann die knappe Fassung.
+            ViewThatFits(in: .vertical) {
+                full
+                compact
+            }
+            .padding(20)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(seen.title) ist zu Ende")
+        .task { await run() }
+        .onAppear { focus = .next }
+    }
+
+    private var full: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 4) {
+                Text("DAS WAR")
+                    .font(RatsFont.mono(11, weight: .semibold))
+                    .tracking(1.3)
+                    .foregroundStyle(.white.opacity(0.7))
+                Text(seen.title)
+                    .font(RatsFont.title(19, weight: .bold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            VStack(spacing: 10) {
+                tryButton
+                nextButton
+                replayButton
+            }
+            .frame(maxWidth: 420)
+        }
+    }
+
+    private var compact: some View {
+        VStack(spacing: 8) {
+            Text(seen.title)
+                .font(RatsFont.title(17, weight: .bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            HStack(spacing: 10) {
+                tryButton
+                nextButton
+            }
+            replayButton
+        }
+        .frame(maxWidth: 520)
+    }
+
+    private var tryButton: some View {
+        Button(action: onTry) {
+            HStack(spacing: 8) {
+                Text(seen.action ?? "Ausprobieren")
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                RatsIcon(.arrowRight, size: 16)
+            }
+            .font(RatsFont.body(16, weight: .bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(tint)
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(RatsPlainButtonStyle())
+        .onHover { hovered = $0 ? .tryIt : nil }
+        .accessibilityFocused($focus, equals: .tryIt)
+    }
+
+    private var nextButton: some View {
+        Button(action: onNext) {
+            HStack(spacing: 8) {
+                // Zweizeilig: „Als Nächstes: Mein Viertel" lief im Web auf
+                // 375 px in eine Ellipse — gerade der Titel ist die Nachricht.
+                VStack(spacing: 1) {
+                    Text("ALS NÄCHSTES")
+                        .font(RatsFont.body(11, weight: .semibold))
+                        .tracking(1.1)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text(next.title)
+                        .font(RatsFont.body(15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
+                RatsIcon(.chevronRight, size: 18)
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(alignment: .leading) {
+                // Der Balken: läuft einmal durch und löst dann den Wechsel aus.
+                GeometryReader { proxy in
+                    Rectangle()
+                        .fill(.white.opacity(0.16))
+                        .frame(width: proxy.size.width * progress)
+                }
+            }
+            .background(.white.opacity(0.14))
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        }
+        .buttonStyle(RatsPlainButtonStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Als Nächstes: \(next.title)")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityFocused($focus, equals: .next)
+    }
+
+    private var replayButton: some View {
+        Button(action: onReplay) {
+            HStack(spacing: 6) {
+                RatsIcon(.rotateCcw, size: 16)
+                Text("Nochmal ansehen")
+            }
+            .font(RatsFont.body(14, weight: .medium))
+            .foregroundStyle(.white.opacity(0.8))
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(RatsPlainButtonStyle())
+        .onHover { hovered = $0 ? .replay : nil }
+        .accessibilityFocused($focus, equals: .replay)
+    }
+
+    private func run() async {
+        let clock = ContinuousClock()
+        var last = clock.now
+        while progress < 1 {
+            try? await Task.sleep(for: .milliseconds(33))
+            if Task.isCancelled { return }
+            let now = clock.now
+            if !held { progress = min(1, progress + (now - last) / .seconds(Self.seconds)) }
+            last = now
+        }
+        onNext()
+    }
+}
+
+// MARK: - Wiedergabe
+
+/// Ein `AVPlayer` samt Fortschritt und Ende — stumm, ohne Systemregler.
+@MainActor
+@Observable
+final class StoryPlayback {
+    let player = AVPlayer()
+    private(set) var progress: Double = 0
+    private(set) var isPlaying = false
+    private(set) var ended = false
+    /// Hat der Clip schon ein Bild gezeigt? Bis dahin steht das Standbild.
+    private(set) var hasStarted = false
+    var onEnd: (() -> Void)?
+
+    @ObservationIgnored private var timeObserver: Any?
+    @ObservationIgnored private var endObserver: NSObjectProtocol?
+
+    init() {
+        player.isMuted = true
+        player.preventsDisplaySleepDuringVideoPlayback = true
+    }
+
+    func load(_ url: URL, autoplay: Bool) {
+        removeEndObserver()
+        let item = AVPlayerItem(url: url)
+        player.replaceCurrentItem(with: item)
+        progress = 0
+        ended = false
+        hasStarted = false
+        endObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.finish() }
+        }
+        if timeObserver == nil {
+            timeObserver = player.addPeriodicTimeObserver(
+                forInterval: CMTime(value: 1, timescale: 30), queue: .main
+            ) { [weak self] time in
+                MainActor.assumeIsolated { self?.tick(time) }
+            }
+        }
+        if autoplay { play() } else { player.pause(); isPlaying = false }
+    }
+
+    func toggle() {
+        if isPlaying {
+            player.pause()
+            isPlaying = false
+        } else {
+            if ended {
+                player.seek(to: .zero)
+                ended = false
+            }
+            play()
+        }
+    }
+
+    func stop() {
+        player.pause()
+        isPlaying = false
+        removeEndObserver()
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        onEnd = nil
+    }
+
+    private func play() {
+        player.play()
+        isPlaying = true
+        hasStarted = true
+    }
+
+    private func tick(_ time: CMTime) {
+        guard let duration = player.currentItem?.duration, duration.isNumeric, duration.seconds > 0 else { return }
+        progress = min(1, max(0, time.seconds / duration.seconds))
+    }
+
+    private func finish() {
+        progress = 1
+        isPlaying = false
+        ended = true
+        onEnd?()
+    }
+
+    private func removeEndObserver() {
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        endObserver = nil
+    }
+}
+
+/// Die Bildfläche des Clips — `AVPlayerLayer` ohne Regler (`VideoPlayer`
+/// brächte die Systemsteuerung mit, die hier die Tippzonen verdeckte).
+private struct StoryVideoView: UIViewRepresentable {
+    let player: AVPlayer
+
+    func makeUIView(context: Context) -> PlayerLayerView {
+        let view = PlayerLayerView()
+        view.playerLayer.player = player
+        view.playerLayer.videoGravity = .resizeAspect
+        return view
+    }
+
+    func updateUIView(_ view: PlayerLayerView, context: Context) {
+        if view.playerLayer.player !== player { view.playerLayer.player = player }
+    }
+}
+
+final class PlayerLayerView: UIView {
+    override class var layerClass: AnyClass { AVPlayerLayer.self }
+    var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+}

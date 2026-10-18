@@ -428,8 +428,8 @@ def test_finde_ort_nutzt_katalog_und_aliase():
 
 def test_kontext_markiert_antragsteller_und_volumen():
     ctx = qa._build_context([
-        {"id": 7, "title": "Radweg", "summary": "Bau", "factions": json.dumps(["SPD", "Grüne"]),
-         "amount_eur": 1500000},
+        {"id": 7, "title": "Radweg (SPD-Fraktion und Fraktion Grüne vom 01.02.2026)",
+         "summary": "Bau", "factions": json.dumps(["SPD", "Grüne"]), "amount_eur": 1500000},
     ])
     assert "Antrag von: SPD, Grüne" in ctx
     assert "Volumen: 1.500.000 €" in ctx

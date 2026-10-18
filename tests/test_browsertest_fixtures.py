@@ -219,3 +219,46 @@ def test_die_wahlkarten_abschrift_kennt_jedes_feld():
     ist = json.loads((FIXTURES / "wahlkarte-krusenbusch.json").read_text(encoding="utf-8"))
     fehlt = _fehlt(dict(frisch), ist, "wahlkarte")
     assert not fehlt, "Diese Felder fehlen in wahlkarte-krusenbusch.json:\n  " + "\n  ".join(fehlt)
+
+
+def test_die_geschaeftsordnungs_abschrift_kennt_jedes_feld():
+    """`25-geschaeftsordnung.spec.ts` stubbt die Karte „Aus der
+    Geschäftsordnung" mit dieser Abschrift. Wieder erzeugen:
+
+        .venv/bin/python -c "import json; from datetime import date; \\
+          from council import rules_of_procedure as r; print(json.dumps(r.card(r.find( \\
+          'Wie oft darf man im Ausschuss zu einem Punkt sprechen?'), date(2026, 10, 3)), \\
+          ensure_ascii=False, indent=1))" > web/frontend/tests/e2e/fixtures/geschaeftsordnung-karte.json
+    """
+    from datetime import date
+
+    sys.path.insert(0, str(WURZEL))
+    from council import rules_of_procedure as rop
+
+    soll = rop.card(rop.find("Was steht in der Geschäftsordnung?"), date(2026, 10, 3))
+    ist = json.loads((FIXTURES / "geschaeftsordnung-karte.json").read_text(encoding="utf-8"))
+    # Die Abschrift hat kein Inhaltsverzeichnis; dessen Form prüft der
+    # Vergleich mit der Überblicks-Karte trotzdem über die Schlüssel oben.
+    ist = {**ist, "contents": ist["contents"] or soll["contents"]}
+    fehlt = _fehlt(soll, ist, "geschaeftsordnung")
+    assert not fehlt, (
+        "Diese Felder fehlen in web/frontend/tests/e2e/fixtures/geschaeftsordnung-karte.json:\n  "
+        + "\n  ".join(fehlt) + "\n\nNeu erzeugen (s. Docstring dieses Tests).")
+
+
+def test_die_app_probe_traegt_dieselbe_geschaeftsordnungs_karte():
+    """Die App prüft ihren Leser an einer aufgezeichneten Antwort
+    (`ask-geschaeftsordnung.sse` in den Tests von `RatslotseAPI`). Deren Karte
+    ist eine Kopie der Abschrift oben — die das Backend hält, die App-Probe
+    aber nicht von selbst: Die iOS-CI läuft nur bei Änderungen unter `ios/`.
+    Ändert sich die Karte, zieht dieser Test die Aufzeichnung mit."""
+    probe = (WURZEL / "ios" / "Packages" / "RatslotseAPI" / "Tests" / "RatslotseAPITests"
+             / "Fixtures" / "ask-geschaeftsordnung.sse")
+    rahmen = [json.loads(z[len("data: "):]) for z in probe.read_text(encoding="utf-8").splitlines()
+              if z.startswith("data: ")]
+    quellen = next(r for r in rahmen if r["type"] == "sources")
+    soll = json.loads((FIXTURES / "geschaeftsordnung-karte.json").read_text(encoding="utf-8"))
+    assert quellen["rules_of_procedure"] == soll, (
+        "Die Karte in ask-geschaeftsordnung.sse weicht von "
+        "web/frontend/tests/e2e/fixtures/geschaeftsordnung-karte.json ab — "
+        "den sources-Rahmen der Aufzeichnung mit der Abschrift neu schreiben.")

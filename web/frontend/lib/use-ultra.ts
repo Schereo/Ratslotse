@@ -25,3 +25,9 @@ export function useUltra(): boolean {
 export function useWeit(): boolean {
   return useMedia(WEIT_MEDIA);
 }
+
+/** Telefonbreite (unter `sm`, 640 px). Der Spieler „Neu bei Ratslotse"
+ *  nimmt dort die hochkante Fassung der Clips (`media_narrow`). */
+export function useTelefonBreite(): boolean {
+  return useMedia("(max-width: 639.98px)");
+}

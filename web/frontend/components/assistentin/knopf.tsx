@@ -24,7 +24,14 @@ import { cn } from "@/lib/utils";
  *   genau auf dem Senden-Pfeil — derselbe Konflikt, wegen dem `BackToTop` auf
  *   der Fragen-Seite gar nicht erst erscheint.
  *
- * `z-50`, damit er über der Tab-Leiste (`z-40`) und dem Composer liegt.
+ * **`z-[45]` — die Lotti-Ebene** (Knopf, Fenster, Anstupser, Markier-Knopf;
+ * Release-Prüfung 03.10.2026): über der Tab-Leiste und dem Composer (`z-40`)
+ * und über allem, was eine Seite auf ihre Karte legt (Leaflet hält seine
+ * Ebenen bis 1000 im eigenen Stapel, `.leaflet-container { isolation:
+ * isolate }`; die Chips auf `/karte` stehen bei `z-10`) — aber UNTER den
+ * modalen Dialogen (`components/ui/dialog.tsx`, `sheet.tsx`: `z-50`). Bis
+ * dahin stand alles bei `z-50`: Dann entscheidet die Reihenfolge im DOM, und
+ * der Knopf lag hell über der Abdunkelung des Melde-Dialogs in „Mein Viertel“.
  *
  * **Das Gesicht ist die 3D-Lotti, nicht das flache Logo** (Tims Wunsch
  * 21.09.2026). Der Kopf ist aus dem Standbild der Ruhe-Pose geschnitten
@@ -67,7 +74,7 @@ export function LottiKnopf({ offen, onToggle, className }: {
       aria-label={offen ? "Lotti schließen" : "Lotti fragen"}
       data-lotti-knopf
       className={cn(
-        "group fixed right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full",
+        "group fixed right-4 z-[45] flex h-14 w-14 items-center justify-center rounded-full",
         "overflow-hidden bg-primary text-primary-foreground shadow-lifted print:hidden",
         "transition-[transform,background-color,box-shadow] duration-fluss ease-out-strong",
         // Der Zeiger-Zustand (s. Kopfkommentar): Farbe und Schatten IMMER,

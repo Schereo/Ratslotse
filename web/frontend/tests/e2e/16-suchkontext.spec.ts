@@ -10,8 +10,20 @@ const beschluss = (id: number) => ({
   factions: [], parties: [], policy_tags: [], amount_eur: null,
 });
 
+/** Die Statuszeile der Suche — nicht irgendeine `status`-Region. Die
+ *  Abzeichen-Feier (`components/badges.tsx`) ist ebenfalls eine; sie erschien
+ *  am 05.10.2026 in der CI mitten im Test, weil der Server ein frisch
+ *  verdientes Abzeichen genau EINMAL meldet und es davon abhängt, welche Tests
+ *  vorher mit demselben Konto liefen. */
+const suchstand = (page: Page) => page.getByRole("status").filter({ hasText: /Seite \d+ von \d+/ });
+
 async function ratsdaten(page: Page) {
   const anfragen: URLSearchParams[] = [];
+  // Abzeichen sind eine eigene Oberfläche (s. `17-lesbarkeit.spec.ts`): Eine
+  // Feier, die zufällig während der Rücknavigation auftaucht, misst hier nichts.
+  await page.route("**/api/badges**", (r) => r.fulfill({
+    json: { badges: [], newly_earned: [], earned_count: 0, total: 0 },
+  }));
   await page.route("**/api/council/committees", (r) => r.fulfill({ json: { committees: ["Bauausschuss"] } }));
   await page.route("**/api/council/decisions?**", (r) => {
     const p = new URL(r.request().url()).searchParams;
@@ -38,7 +50,7 @@ for (const mobil of [false, true]) {
     if (mobil) await page.setViewportSize({ width: 390, height: 844 });
     const anfragen = await ratsdaten(page);
     await page.goto("/council?tab=decisions&q=Rad&committee=Bauausschuss&outcome=accepted&sort=date_asc&page=2");
-    await expect(page.getByRole("status")).toContainText("Seite 2 von 2");
+    await expect(suchstand(page)).toContainText("Seite 2 von 2");
     const treffer = page.locator("#beschluss-54");
     await treffer.scrollIntoViewIfNeeded();
     const oben = (await treffer.boundingBox())!.y;
@@ -46,7 +58,7 @@ for (const mobil of [false, true]) {
     await expect(page).toHaveURL(/\/council\/decision\?id=54&/);
     await expect(page.getByRole("heading", { name: "Radwege – Abschnitt 54", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Zurück zur Suche", exact: true }).click();
-    await expect(page.getByRole("status")).toContainText("Seite 2 von 2");
+    await expect(suchstand(page)).toContainText("Seite 2 von 2");
     await expect(treffer).toBeFocused();
     await expect.poll(async () => Math.abs((await treffer.boundingBox())!.y - oben)).toBeLessThan(12);
     for (const [key, value] of Object.entries({ q: "Rad", committee: "Bauausschuss", outcome: "accepted", sort: "date_asc", page: "2" })) {
@@ -66,7 +78,7 @@ for (const mobil of [false, true]) {
     await expect(page).toHaveURL(/\/council\/decision\?id=55&/);
     await page.getByRole("button", { name: "Zurück zur Suche", exact: true }).click();
     await expect(page.locator("#beschluss-55")).toBeFocused();
-    await expect(page.getByRole("status")).toContainText("Seite 2 von 2");
+    await expect(suchstand(page)).toContainText("Seite 2 von 2");
   });
 }
 
@@ -75,32 +87,32 @@ test("Eingabe, Neuladen, neuer Tab und Rückkehr über die Navigation verwenden 
   const anfragen = await ratsdaten(page);
   await page.goto("/council?page=1");
   await page.getByPlaceholder("Suchen (z. B. Haushalt, Radwege)…").fill("Rad & Schule");
-  await expect(page.getByRole("status")).toContainText("zu Rad & Schule");
+  await expect(suchstand(page)).toContainText("zu Rad & Schule");
   await page.getByRole("button", { name: "2", exact: true }).first().click();
-  await expect(page.getByRole("status")).toContainText("Seite 2 von 2");
+  await expect(suchstand(page)).toContainText("Seite 2 von 2");
   const adresse = page.url();
   expect(new URL(adresse).searchParams.get("q")).toBe("Rad & Schule");
   await page.reload();
   await expect(page.getByPlaceholder("Suchen (z. B. Haushalt, Radwege)…")).toHaveValue("Rad & Schule");
-  await expect(page.getByRole("status")).toContainText("Seite 2 von 2");
+  await expect(suchstand(page)).toContainText("Seite 2 von 2");
   expect(anfragen.at(-1)?.get("q")).toBe("Rad & Schule");
 
   const geteilt = await context.newPage();
   await ratsdaten(geteilt);
   await geteilt.goto(adresse);
-  await expect(geteilt.getByRole("status")).toContainText("Seite 2 von 2");
+  await expect(suchstand(geteilt)).toContainText("Seite 2 von 2");
   await expect(geteilt.getByPlaceholder("Suchen (z. B. Haushalt, Radwege)…")).toHaveValue("Rad & Schule");
   await geteilt.close();
 
   await page.getByRole("link", { name: "Fragen", exact: true }).first().click();
   await expect(page).toHaveURL(/\/fragen/);
   await page.getByRole("link", { name: "Suche", exact: true }).first().click();
-  await expect(page.getByRole("status")).toContainText("Seite 2 von 2");
+  await expect(suchstand(page)).toContainText("Seite 2 von 2");
   await expect(page.getByPlaceholder("Suchen (z. B. Haushalt, Radwege)…")).toHaveValue("Rad & Schule");
 
   // Ein expliziter Deep-Link darf keine versteckten Filter der alten Suche erben.
   await page.goto("/council?field=bildung");
-  await expect(page.getByRole("status")).toContainText("Seite 1 von 2");
+  await expect(suchstand(page)).toContainText("Seite 1 von 2");
   await expect(page.getByPlaceholder("Suchen (z. B. Haushalt, Radwege)…")).toHaveValue("");
   expect(anfragen.at(-1)?.get("q")).toBeNull();
   expect(anfragen.at(-1)?.get("field")).toBe("bildung");
@@ -111,6 +123,6 @@ test("ein direkt geöffneter Beschluss findet ohne gespeicherte History seine Su
   const suche = "/council?tab=decisions&q=Rad&page=2#beschluss-54";
   await page.goto(`/council/decision?id=54&suche=${encodeURIComponent(suche)}`);
   await page.getByRole("button", { name: "Zurück zur Suche", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Seite 2 von 2");
+  await expect(suchstand(page)).toContainText("Seite 2 von 2");
   await expect(page.locator("#beschluss-54")).toBeFocused();
 });

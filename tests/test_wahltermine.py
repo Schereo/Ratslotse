@@ -124,6 +124,7 @@ def test_nur_wahlen_mit_suchregel_werden_geprueft(monkeypatch):
 @pytest.fixture
 def merkdatei(tmp_path, monkeypatch):
     monkeypatch.setattr(job, "GESEHEN", tmp_path / "gesehen.json")
+    monkeypatch.setattr(job, "AUSFALL", tmp_path / "ausfall.json")
     return tmp_path / "gesehen.json"
 
 
@@ -153,8 +154,8 @@ def test_derselbe_termin_wird_nicht_jede_nacht_gemeldet(monkeypatch, merkdatei):
 
 
 def test_ein_kalender_ohne_antwort_loest_keinen_alarm_aus(monkeypatch, merkdatei):
-    """Der Kalender der Stadt ist kein Dienst, den wir betreiben. Bleibt er
-    weg, ist das keine Nachricht wert — die Job-Ampel merkt es ohnehin."""
+    """Der Kalender der Stadt ist kein Dienst, den wir betreiben. Ein Tag
+    Ausfall ist keine Nachricht wert (ab dem zweiten s. u.)."""
     gesendet: list[str] = []
     monkeypatch.setattr("kern.alerts.notify_admin", lambda text, **k: gesendet.append(text))
 
@@ -165,6 +166,33 @@ def test_ein_kalender_ohne_antwort_loest_keinen_alarm_aus(monkeypatch, merkdatei
     ergebnis = job.main()
     assert ergebnis["gemeldet"] == 0 and ergebnis["fehler"] == "RequestException"
     assert not gesendet
+
+
+def test_ab_dem_zweiten_ausfalltag_endet_der_lauf_rot(monkeypatch, merkdatei):
+    """Vorher endete jeder Ausfall als `ok` — ein dauerhaft toter Kalender
+    fiel weder der Ampel noch dem Herzschlag auf."""
+    from kern.alerts import JobFehler
+
+    monkeypatch.setattr("kern.alerts.notify_admin", lambda text, **k: None)
+
+    def kaputt(url):
+        raise job.requests.RequestException("kaputt")
+
+    monkeypatch.setattr(job, "hole", kaputt)
+    erster = job.main(heute=date(2026, 10, 1))
+    assert erster["ausfall_seit"] == "2026-10-01"
+    # Derselbe Tag noch einmal (zweiter Lauf von Hand): noch kein Alarm.
+    assert job.main(heute=date(2026, 10, 1))["fehler"] == "RequestException"
+    with pytest.raises(JobFehler) as fehler:
+        job.main(heute=date(2026, 10, 2))
+    assert fehler.value.kennzahlen["ausfall_seit"] == "2026-10-01"
+
+    # Antwortet der Kalender wieder, ist der Ausfall vergessen.
+    monkeypatch.setattr(job, "hole", lambda url: list(KALENDER))
+    monkeypatch.setattr(job, "fehlende_ids", lambda heute=None: [])
+    job.main(heute=date(2026, 10, 3))
+    monkeypatch.setattr(job, "hole", kaputt)
+    assert job.main(heute=date(2026, 10, 4))["ausfall_seit"] == "2026-10-04"
 
 
 def test_der_job_steht_in_der_registry():

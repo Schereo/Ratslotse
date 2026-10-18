@@ -438,6 +438,54 @@ der Cluster-Schritt aus Clustern, Prüfurteilen und Ergebnissen neu — nur
 Zählen, kein Modell. Das Urteil über Oldenburg je Idee steht als `idea_fit`
 in `annotations`, nie als Spalte an `idea_groups`.
 
+## Kennungen, die eine Datenbank überleben müssen
+
+Was im Städte-Speicher auf etwas ANDERES zeigt, braucht eine Kennung, die in
+jeder Umgebung dasselbe meint. Zweimal ist das schiefgegangen, beide Male
+still:
+
+- **Beschluss-Belege** hießen bis 10/2026 `oldenburg:decision:<id>` — die
+  Zeile in `council_decisions` der Datenbank, in der das Urteil entstand (ein
+  dev-Abzug). Auf Prod löste keiner der 1.294 auf; „Oldenburg hat das" stand
+  ohne Beleg da. Jetzt `oldenburg:decision:<ksinr>:<TOP>[#n]`
+  (`evidence.beschluss_kennung`), aufgelöst von `evidence.beschluss_zu` — die
+  alte Form bleibt lesbar. Fehlt der Beschluss in einer Umgebung (das
+  Protokoll wurde anders gelesen), trägt die Vorlage des Punkts
+  (`vorlage_hinter`). Umgeschlüsselt hat den Bestand
+  `scripts/cities_belege_umschluesseln.py` mit dem Abbild
+  `beschluss_abbild.json`, gebaut aus dev-Abzügen.
+- **Ideen-Gruppen** wurden bis 10/2026 bei jedem Lauf neu nach Größe
+  nummeriert. An der Nummer hängen `cluster_check`, `idea_fit` und die
+  Adresse der Ideen-Seite. `clusters.stabile_nummern` vererbt die Nummer an
+  die Gruppe mit der größten Überlappung und vergibt nie eine Nummer, unter
+  der noch ein Urteil liegt.
+
+**Und der Quell-Hash ist Teil davon.** `fit` und `idea_fit` nehmen die
+Beleg-Kennungen in den Hash. Wer die FORM einer Kennung ändert, ändert jeden
+Hash — und ein Bestandslauf urteilt dann alles neu (rund 12.000 Urteile).
+Deshalb gibt es `nur_hashes` (`fit.run`, `idea_fit.run`): die Hashes neu
+rechnen und übernehmen, ohne ein Urteil zu fällen.
+
+## Der Cron ist schlank, und das ist eine Entscheidung
+
+Seit 10/2026 (`scripts/check_cities.py`): werktags nur Oldenburg, ohne Netz
+und Modell; sonntags alles. `fit` urteilt im Cron nur über Vorlagen OHNE
+Urteil und solche mit jüngerer Einordnung (`schlank`) — ein gewachsener
+Oldenburger Beleg-Pool öffnet kein altes Urteil. Das ist der Unterschied
+zwischen 1–2 $ und einem Bestandslauf jede Woche. Wer die Urteile auf den
+neuen Stand der Oldenburger Belege bringen will, tut das ausdrücklich, von
+Hand (`cities_backfill.py --run --stage annotate`).
+
+Jede Stufe mit Modellaufruf meldet ihre Kosten an `stopp.ausgeben(…)`; die
+Grenze `CITIES_MAX_USD` gilt für den ganzen Lauf. Eine neue Stufe ohne diese
+Meldung läuft an der Grenze vorbei — `tests/test_cities_cron_schlank.py`
+hält die Liste.
+
+**Gegenanträge zählen nicht für die Idee.** `rebuild_idea_groups` lässt
+Mitglieder mit `stance = against` aus Bilanz, Zeitleiste und Städtezahl
+heraus (außer alle sind dagegen). Gefragt wird die Richtung deshalb schon ab
+zwei Städten (`STANCE_AB_STAEDTEN`).
+
 ## Kein `sqlite3.connect` außerhalb von `store.py`
 
 Auch nicht in Skripten. Über den Store laufen Schema, Migration und

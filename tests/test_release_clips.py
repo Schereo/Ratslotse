@@ -93,3 +93,57 @@ def test_erster_bildwechsel_gegen_das_ausgangsbild():
     assert release_clips.first_change(frames, threshold=6.0) == 4
     assert release_clips.first_change([bild(10), bild(10)], threshold=6.0) is None
     assert release_clips.first_change([], threshold=6.0) is None
+
+
+# --- Remotion-Schnitt (07.10.2026) -------------------------------------------
+
+def _aufnahme(cuts=(), beats=(), steps=(), navs=()):
+    frames = [(100.0 + i, Path(f"f{i}.jpg")) for i in range(10)]
+    return release_clips.Recording(
+        width=1280, height=800, frames=frames, begin=101.0, end=109.0, beats=[],
+        manifest={"cuts": [{"a": a, "b": b} for a, b in cuts], "beats": list(beats),
+                  "steps": list(steps), "navigations": list(navs), "meta": {}},
+    )
+
+
+def test_schnitte_fallen_aus_dem_plan_und_der_zeitachse():
+    """Was `ohne()` abgewartet hat, steht nicht im Clip: Der Plan wird um die
+    Spanne kürzer, und alles danach rückt um genau diese Spanne vor."""
+    a = _aufnahme(cuts=[(103.0, 106.0)],
+                  beats=[{"t": 107.0, "x": 1, "y": 2, "tap": True, "box": None}],
+                  steps=[{"t": 102.0, "text": "eins"}, {"t": 106.5, "text": "zwei"}])
+    plan = release_clips.cut_plan(a.frames, a.begin, a.end, [(103.0, 106.0)])
+    assert sum(d for _, d in plan) == pytest.approx(8.0 - 3.0)
+    z = release_clips.remotion_timeline(a)
+    assert z["duration"] == pytest.approx(5.0)
+    assert z["beats"][0]["t"] == pytest.approx(3.0)     # 107 − 101 − 3
+    assert [s["t"] for s in z["steps"]] == pytest.approx([1.0, 2.5])
+
+
+def test_ohne_schnitt_bleibt_der_plan_wie_bisher():
+    a = _aufnahme()
+    alt = release_clips.frame_plan(a.frames, a.begin, a.end)
+    neu = release_clips.cut_plan(a.frames, a.begin, a.end, [])
+    assert [d for _, d in neu] == pytest.approx([d for _, d in alt])
+
+
+def test_remotion_meta_hat_vorgaben():
+    m = release_clips.remotion_meta("3.0.0", {"titel": "Mein Viertel", "weg": ["Seitenleiste", "Mein Viertel"]})
+    assert m["kicker"] == "Neu in Ratslotse 3.0"
+    assert m["app"] == [] and m["farbe"] == "primary"
+    assert (release_clips.LOTTI / m["lotti"]).exists()
+
+
+def test_jedes_remotion_drehbuch_nennt_weg_und_lotti_gibt_es():
+    """Ein Drehbuch mit `titel` wird über Remotion geschnitten — dann braucht
+    es den Weg (Browser und App), und die genannten Lotti-Bilder müssen
+    existieren, sonst scheitert der Schnitt erst nach der Aufnahme."""
+    for version in ("3.0.0",):
+        for name in release_clips.storyboard_names(version):
+            meta = release_clips.storyboard_meta(version, name)
+            if not meta.get("titel"):
+                continue
+            assert meta.get("weg") and meta.get("app"), name
+            for bild in (meta.get("lotti"), meta.get("titelbild_lotti")):
+                if bild:
+                    assert (release_clips.LOTTI / bild).exists(), (name, bild)

@@ -345,3 +345,52 @@ def test_release_legt_nichts_doppelt_an(repo, monkeypatch):
         lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, "", ""))
     with pytest.raises(ReleaseFehler, match="gibt es schon"):
         release("1.12.0", wurzel=repo)
+
+
+def test_die_changelog_seite_liest_denselben_schluessel():
+    """Die Seite (`web/frontend/app/changelog/page.tsx`) liest die Fragmente
+    selbst. Bis 10/2026 suchte sie `category:` — die Fragmente tragen
+    `kategorie:`, und unter „Unreleased" erschien kein einziges. Beide Leser
+    müssen denselben Schlüssel kennen."""
+    seite = (Path(__file__).resolve().parents[1] / "web" / "frontend" / "app" / "changelog" / "page.tsx").read_text()
+    assert "kategorie" in seite, "changelog/page.tsx kennt den Fragment-Schlüssel `kategorie` nicht"
+
+
+def test_fragment_hinter_schaltern_bleibt_liegen(repo):
+    """2.11.0 brachte nur Code nach Prod. Ein Fragment über ein Feature, das dort
+    aus ist, gehört nicht in dessen Changelog — es wartet auf den Schnitt, der
+    den Schalter freigibt."""
+    (repo / "changelog.d" / "lotti.md").write_text(
+        "---\nkategorie: hinzugefuegt\nschalter: lotti-assistentin, mein-viertel\n---\n\n"
+        "**Lotti erklärt.** Neu.\n", encoding="utf-8")
+    result = schnitt("1.13.0", tag_iso="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
+    assert [f.pfad.name for f in result.zurueckgehalten] == ["lotti.md"]
+    assert "**Lotti erklärt.**" not in (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert (repo / "changelog.d" / "lotti.md").exists()
+
+    # Halb freigegeben reicht nicht; ganz freigegeben kommt es mit.
+    result = schnitt("1.14.0", tag_iso="2026-08-18", wurzel=repo, nummern=lambda pfad: 778,
+                     freigeben=("lotti-assistentin",))
+    assert [f.pfad.name for f in result.zurueckgehalten] == ["lotti.md"]
+    schnitt("1.15.0", tag_iso="2026-08-19", wurzel=repo, nummern=lambda pfad: 779,
+            freigeben=("lotti-assistentin", "mein-viertel"))
+    assert "**Lotti erklärt.**" in (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert not (repo / "changelog.d" / "lotti.md").exists()
+
+
+def test_unbekannter_schalter_wird_abgewiesen(tmp_path):
+    f = tmp_path / "x.md"
+    f.write_text("---\nkategorie: behoben\nschalter: lotti-assistent\n---\n\n**X.** Y.\n",
+                 encoding="utf-8")
+    with pytest.raises(FragmentFehler, match="lotti-assistent"):
+        lies_fragment(f)
+
+
+def test_die_changelog_seite_haelt_schalter_fragmente_zurueck():
+    """Die Seite zeigt offene Fragmente als „Unreleased“ — auf Prod ohne die,
+    deren Schalter dort aus sind. Geprüft am Quelltext: eine Seite zu bauen
+    wäre ein Browsertest."""
+    quelle = (Path(__file__).resolve().parents[1] / "web" / "frontend" / "app" / "changelog"
+              / "page.tsx").read_text()
+    assert "schalter" in quelle and 'NEXT_PUBLIC_RATSLOTSE_ENV !== "dev"' in quelle
+

@@ -22,10 +22,12 @@ export interface paths {
          *     Passwort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem
          *     frischen Apple-Identity-Token (Re-Auth in der App, RL-1002).
          *
-         *     Geräumt werden **beide** Datenbanken. Zwischen ihnen gibt es keine
+         *     Geräumt werden **alle drei** Datenbanken. Zwischen ihnen gibt es keine
          *     Fremdschlüssel, und in ``council.sqlite`` steht mit
          *     ``committee_notifications``/``session_followups_sent``, welche Sitzungen
-         *     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss.
+         *     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss. In
+         *     ``cities.sqlite`` liegen die Rückmeldungen zu den Städte-Urteilen samt
+         *     Freitext (``CITIES_USER_OWNED_TABLES``).
          */
         delete: operations["delete_account_api_account_delete"];
         options?: never;
@@ -135,6 +137,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/account/mcp-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tokens
+         * @description Die MCP-Schlüssel dieses Kontos (ohne die Geheimnisse).
+         */
+        get: operations["list_tokens_api_account_mcp_tokens_get"];
+        put?: never;
+        /**
+         * Create Token
+         * @description Einen neuen Schlüssel ausstellen. Das Geheimnis steht nur in DIESER
+         *     Antwort; danach kennt der Server nur noch seinen Hash.
+         */
+        post: operations["create_token_api_account_mcp_tokens_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/mcp-tokens/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Token
+         * @description Einen Schlüssel zurückziehen — er gilt ab sofort nicht mehr.
+         */
+        delete: operations["delete_token_api_account_mcp_tokens__token_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/account/notifications": {
         parameters: {
             query?: never;
@@ -198,6 +245,46 @@ export interface paths {
          */
         get: operations["cities_stats_api_admin_cities_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/district-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Reports
+         * @description Die Meldungen aus „Mein Viertel", je Vorhaben gebündelt.
+         */
+        get: operations["district_reports_api_admin_district_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/district-reports/{project_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Decide District Report
+         * @description Entscheiden: ausblenden, stehen lassen — oder die Entscheidung zurücknehmen.
+         */
+        put: operations["decide_district_report_api_admin_district_reports__project_key__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -884,6 +971,31 @@ export interface paths {
          *     denselben Zahlen Alarm; diese Ansicht ist der Blick dazwischen.
          */
         get: operations["stats_signups_api_admin_stats_signups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/stats/thumbs-down": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Thumbs Down
+         * @description Die Daumen runter aus „Frag den Rat“ — mit Grund und, wo jemand sie
+         *     freigegeben hat, der ganzen Antwort samt Quellen.
+         *
+         *     Bis 10/2026 kam ein 👎 nur als Frage und 500 Zeichen an, und die standen
+         *     nirgends im Panel. Ohne Konto und ohne Gesprächs-id (wie die Liste der
+         *     Fragen ohne Antwort): Es geht darum, woran eine Antwort scheiterte.
+         */
+        get: operations["stats_thumbs_down_api_admin_stats_thumbs_down_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2878,7 +2990,9 @@ export interface paths {
          *
          *     **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
          *     Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
-         *     Stimmen), und der Maßstab wäre wieder wertlos.
+         *     Stimmen), und der Maßstab wäre wieder wertlos. **Und nur aktiv**
+         *     (``require_active``): ein gesperrtes oder unbestätigtes Konto schreibt
+         *     hier so wenig wie anderswo; die Bremse zählt je Konto.
          *
          *     Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
          *     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
@@ -3045,7 +3159,12 @@ export interface paths {
         get: operations["gespraeche_liste_api_council_conversations_get"];
         put?: never;
         post?: never;
-        /** Gespraeche Alle Loeschen */
+        /**
+         * Gespraeche Alle Loeschen
+         * @description „Alle löschen": Gespräche UND die Fragen und Berichte der gründlichen
+         *     Recherche — die standen bis 10/2026 weiter mit dem Konto in
+         *     ``deep_research_jobs``, obwohl der Dialog „alles gelöscht" sagte.
+         */
         delete: operations["gespraeche_alle_loeschen_api_council_conversations_delete"];
         options?: never;
         head?: never;
@@ -4251,8 +4370,8 @@ export interface paths {
          * @description „Ich wohne in der …": Straße, Platz oder Stadtteilname → Ortsbereich.
          *
          *     Stadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den
-         *     Beschlüssen. Öffentlich wie die Auswahl-Seite selbst; kein Konto, kein
-         *     Sprachmodell, keine Speicherung der Eingabe.
+         *     Beschlüssen. Mit Konto wie die Auswahl-Seite selbst; kein Sprachmodell,
+         *     keine Speicherung der Eingabe.
          */
         get: operations["district_lookup_api_districts_lookup_get"];
         put?: never;
@@ -4299,12 +4418,21 @@ export interface paths {
         /**
          * Report Project
          * @description „Gehört nicht hierher": Ein Konto meldet ein Vorhaben als falsch verortet.
-         *     Ab zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim
-         *     Konto und geht mit dessen Löschung. Ein Konto, das sehr viele Vorhaben
-         *     meldet, zählt nicht mehr mit (``PROJECT_REPORTS_PER_ACCOUNT``).
+         *
+         *     **Eine Meldung blendet nichts aus.** Bis 10/2026 verschwand ein Vorhaben ab
+         *     zwei Meldungen dauerhaft — zwei Konten konnten so jede Tafel leeren, und
+         *     niemand sah die Meldungen. Jetzt landet sie in der Admin-Liste, die erste
+         *     je Vorhaben zusätzlich als Mail, und ausgeblendet wird erst, wenn die
+         *     Redaktion bestätigt. Die Meldung hängt am Konto und geht mit dessen
+         *     Löschung (``COUNCIL_USER_OWNED_TABLES``).
          */
         post: operations["report_project_api_districts_projects__project_id__report_post"];
-        delete?: never;
+        /**
+         * Withdraw Project Report
+         * @description Die eigene Meldung zurücknehmen — ein Fehltipp soll nicht stehen bleiben.
+         *     Eine Entscheidung der Redaktion bleibt davon unberührt.
+         */
+        delete: operations["withdraw_project_report_api_districts_projects__project_id__report_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4346,6 +4474,8 @@ export interface paths {
          * Submit Feedback
          * @description Email the operator a piece of user feedback. Reply-to is the user's address so
          *     the operator can answer directly. Best-effort: never surfaces email config to the user.
+         *
+         *     Gebremst je Konto (``feedback_limiter``): Jede Einreichung ist eine Mail.
          */
         post: operations["submit_feedback_api_feedback_post"];
         delete?: never;
@@ -4412,6 +4542,34 @@ export interface paths {
         get: operations["quelle_pruefen_api_kommunalwahl_source__slug__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mcp
+         * @description Der MCP-Endpunkt (Streamable HTTP, zustandslos, nur Werkzeuge).
+         *
+         *     **Öffentlich erreichbar, aber nur mit Schlüssel** — autorisiert über
+         *     ``Authorization: Bearer rlmcp_…``, ausdrücklich NICHT über das
+         *     Sitzungs-Cookie. Ohne Schalter ``mcp-server`` ein 404.
+         *
+         *     Synchron wie die übrigen Endpunkte: Die Stores öffnen ihre
+         *     SQLite-Verbindung im Threadpool, und eine Verbindung darf den Thread
+         *     nicht wechseln.
+         */
+        post: operations["mcp_api_mcp_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6393,6 +6551,108 @@ export interface components {
             upcoming: number;
         };
         /**
+         * AdminDaumenRunter
+         * @description Ein Daumen runter aus „Frag den Rat“ — ohne Konto, wie die Sackgassen.
+         */
+        AdminDaumenRunter: {
+            /** Answer Excerpt */
+            answer_excerpt: string | null;
+            /** Created */
+            created: string;
+            /** Question */
+            question: string;
+            /** Reason */
+            reason: string | null;
+            /** Reason Kind */
+            reason_kind: string | null;
+            /**
+             * AdminFreigabe
+             * @description Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat.
+             */
+            shared: {
+                /** Answer */
+                answer: string;
+                /** Sources */
+                sources: components["schemas"]["AdminFreigabeQuelle"][];
+            } | null;
+        };
+        /**
+         * AdminDistrictReport
+         * @description Eine Meldung — ohne Konto: Für die Prüfung zählt der Grund, nicht wer.
+         */
+        AdminDistrictReport: {
+            /** Created At */
+            created_at: string;
+            /** Reason */
+            reason: string | null;
+        };
+        /**
+         * AdminDistrictReportGroup
+         * @description Alle Meldungen zu einem Vorhaben samt Entscheidung der Redaktion.
+         */
+        AdminDistrictReportGroup: {
+            /** Count */
+            count: number;
+            /** Decided At */
+            decided_at: string | null;
+            /** Last At */
+            last_at: string;
+            /** Name */
+            name: string;
+            /** Note */
+            note: string | null;
+            /** Place Id */
+            place_id: string;
+            /** Place Name */
+            place_name: string;
+            /**
+             * AdminDistrictReportProject
+             * @description Das Vorhaben, wie es gerade auf der Tafel steht.
+             */
+            project: {
+                /** Id */
+                id: number;
+                /** Name */
+                name: string;
+                /** Stage */
+                stage: string;
+                /** What */
+                what: string;
+            } | null;
+            /** Project Key */
+            project_key: string;
+            /** Reports */
+            reports: components["schemas"]["AdminDistrictReport"][];
+            /** Verdict */
+            verdict: string | null;
+        };
+        /**
+         * AdminDistrictReportProject
+         * @description Das Vorhaben, wie es gerade auf der Tafel steht.
+         */
+        AdminDistrictReportProject: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Stage */
+            stage: string;
+            /** What */
+            what: string;
+        };
+        /**
+         * AdminDistrictReports
+         * @description ``GET /api/admin/district-reports`` — die Meldungen aus „Mein Viertel".
+         */
+        AdminDistrictReports: {
+            /** Groups */
+            groups: components["schemas"]["AdminDistrictReportGroup"][];
+            /** Open Count */
+            open_count: number;
+            /** Status */
+            status: string;
+        };
+        /**
          * AdminEntityAlias
          * @description Eine zusammengelegte Entität (``CouncilStore.list_entity_aliases``).
          *
@@ -6509,6 +6769,29 @@ export interface components {
             n: number;
             /** Tag */
             tag: string;
+        };
+        /**
+         * AdminFreigabe
+         * @description Die Antwort, die jemand beim Daumen runter ausdrücklich freigegeben hat.
+         */
+        AdminFreigabe: {
+            /** Answer */
+            answer: string;
+            /** Sources */
+            sources: components["schemas"]["AdminFreigabeQuelle"][];
+        };
+        /** AdminFreigabeQuelle */
+        AdminFreigabeQuelle: {
+            /** Committee */
+            committee: string | null;
+            /** Id */
+            id: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string | null;
+            /** Title */
+            title: string | null;
         };
         /** AdminGrowth */
         AdminGrowth: {
@@ -7025,6 +7308,8 @@ export interface components {
             open_recipients: number;
             /** Sent Recipients */
             sent_recipients: number;
+            /** Teaser */
+            teaser: string | null;
             /** Title */
             title: string;
             /** Version */
@@ -7562,6 +7847,16 @@ export interface components {
                 path: string;
                 /** Polls Close */
                 polls_close: string;
+                /**
+                 * Prominent
+                 * @default false
+                 */
+                prominent: boolean;
+                /**
+                 * Result Status
+                 * @default vorlaeufig
+                 */
+                result_status: string;
                 /** Short Title */
                 short_title: string;
                 /** Slug */
@@ -7596,6 +7891,16 @@ export interface components {
             path: string;
             /** Polls Close */
             polls_close: string;
+            /**
+             * Prominent
+             * @default false
+             */
+            prominent: boolean;
+            /**
+             * Result Status
+             * @default vorlaeufig
+             */
+            result_status: string;
             /** Short Title */
             short_title: string;
             /** Slug */
@@ -7893,6 +8198,11 @@ export interface components {
             /** Year */
             year: number;
         };
+        /** Body_create_token_api_account_mcp_tokens_post */
+        Body_create_token_api_account_mcp_tokens_post: {
+            /** Label */
+            label: string;
+        };
         /** Body_medien_ablegen_api_social_media__day__post */
         Body_medien_ablegen_api_social_media__day__post: {
             /** Dateien */
@@ -7952,13 +8262,18 @@ export interface components {
              *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
              *
              *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
-             *     ``parties`` rechnet der Store aus den Fraktionen aus.
+             *     ``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am
+             *     Hauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die
+             *     Fraktionen der Änderungsanträge, die als eigene Teilabstimmung
+             *     (``kind='subvote'``) desselben TOPs erfasst sind.
              */
             decision: {
                 /** Abstentions */
                 abstentions?: number | null;
                 /** Amount Eur */
                 amount_eur?: number | null;
+                /** Applicants Named */
+                applicants_named?: boolean;
                 /** Committee */
                 committee?: string | null;
                 /** Deviation */
@@ -8838,6 +9153,24 @@ export interface components {
             new_password: string;
         };
         /**
+         * CitiesFeedbackBody
+         * @description Rückmeldung zu einem Urteil des Städtevergleichs — im KÖRPER.
+         *
+         *     Bis 10/2026 kam ``note`` als Query-Parameter: Freitext einer Person in
+         *     der URL, und damit in jedem Zugriffsprotokoll von Proxy und Server. Die
+         *     ausgelieferten Clients schicken nur ``verdict`` (und ``id``) in der Query
+         *     und gar keine Notiz; das bleibt angenommen, eine Notiz gibt es nur noch
+         *     hier.
+         */
+        CitiesFeedbackBody: {
+            /** Id */
+            id?: number | null;
+            /** Note */
+            note?: string | null;
+            /** Verdict */
+            verdict?: string | null;
+        };
+        /**
          * CityDebt
          * @description Die Schulden einer Stadt zum 31.12. — ``debt_core`` im Kernhaushalt,
          *     ``debt_entities`` in den Einrichtungen, die ihr zu 100 % gehören, beides
@@ -9134,6 +9467,8 @@ export interface components {
         ConversationsDeleted: {
             /** Deleted */
             deleted: number;
+            /** Research Deleted */
+            research_deleted?: number;
         };
         /** CouncilMembers */
         CouncilMembers: {
@@ -9432,13 +9767,18 @@ export interface components {
          *     hier ein 500, sobald ein Aufrufer schmaler selektiert.
          *
          *     ``factions``/``policy_tags`` kommen als JSON-Spalte und werden geparst,
-         *     ``parties`` rechnet der Store aus den Fraktionen aus.
+         *     ``parties`` rechnet der Store aus den Fraktionen aus. ``factions`` am
+         *     Hauptbeschluss (``kind='decision'``) trägt seit 10/2026 NICHT mehr die
+         *     Fraktionen der Änderungsanträge, die als eigene Teilabstimmung
+         *     (``kind='subvote'``) desselben TOPs erfasst sind.
          */
         DecisionRow: {
             /** Abstentions */
             abstentions?: number | null;
             /** Amount Eur */
             amount_eur?: number | null;
+            /** Applicants Named */
+            applicants_named?: boolean;
             /** Committee */
             committee?: string | null;
             /** Deviation */
@@ -9549,6 +9889,11 @@ export interface components {
         DeepResearchBody: {
             /** Conversation Id */
             conversation_id?: number | null;
+            /**
+             * From Offer
+             * @default false
+             */
+            from_offer: boolean;
             /** History */
             history?: components["schemas"]["AskTurn"][];
             /** Question */
@@ -9894,12 +10239,18 @@ export interface components {
             report_count: number;
             /** Reported */
             reported: boolean;
+            /** Schedule */
+            schedule?: string | null;
+            /** Schedule Note */
+            schedule_note?: string | null;
             /** Stage */
             stage: string;
             /** What */
             what: string;
             /** When */
             when: string | null;
+            /** When End */
+            when_end?: string | null;
         };
         /**
          * DistrictProjectDecision
@@ -9939,7 +10290,14 @@ export interface components {
             /** Slug */
             slug: string;
         };
-        /** DistrictProjectReportOut */
+        /**
+         * DistrictProjectReportOut
+         * @description ``POST``/``DELETE /api/districts/projects/{id}/report``.
+         *
+         *     ``hidden`` ist seit 10/2026 die Entscheidung der Redaktion, nicht mehr die
+         *     Zahl der Meldungen — eine Meldung allein blendet nichts aus. Die Form
+         *     bleibt, weil die ausgelieferte iOS-App sie decodiert.
+         */
         DistrictProjectReportOut: {
             /** Hidden */
             hidden: boolean;
@@ -9947,6 +10305,8 @@ export interface components {
             ok: boolean;
             /** Report Count */
             report_count: number;
+            /** Reported */
+            reported?: boolean;
         };
         /**
          * DistrictProjects
@@ -9955,6 +10315,8 @@ export interface components {
         DistrictProjects: {
             /** Closures */
             closures: components["schemas"]["DistrictClosure"][];
+            /** Decisions Until */
+            decisions_until?: string | null;
             /** Investments */
             investments: components["schemas"]["DistrictInvestment"][];
             /** Neighbours */
@@ -9978,10 +10340,14 @@ export interface components {
          *     dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen.
          */
         DistrictProjectsOverview: {
+            /** Decisions Until */
+            decisions_until?: string | null;
             /** Districts */
             districts: components["schemas"]["DistrictProjectsOverviewEntry"][];
             /** Highlights */
             highlights: components["schemas"]["DistrictHighlight"][];
+            /** Shared */
+            shared?: number;
             /** Stages */
             stages: {
                 [key: string]: number;
@@ -10570,6 +10936,8 @@ export interface components {
             presentation_url: string;
             /** Previous Label */
             previous_label: string;
+            /** Result Status */
+            result_status: string;
             /** Seats */
             seats: number;
             /** Short Title */
@@ -10601,6 +10969,8 @@ export interface components {
             path: string;
             /** Polls Close */
             polls_close: string;
+            /** Result Status */
+            result_status: string;
             /** Short Title */
             short_title: string;
             /** Slug */
@@ -11502,7 +11872,9 @@ export interface components {
          *
          *     ``stance`` und ``rationale`` kommen aus der LLM-Bewertung, alles andere
          *     aus dem Beschluss selbst. Am Bestand nachgemessen: keins der Felder ist
-         *     je leer.
+         *     je leer — außer ``outcome``: Ein Beschluss ohne erkanntes Ergebnis (am
+         *     09.10.2026 drei von 1.307) brachte /goal/klima_2035 und /goal/wohnungsbau
+         *     bis dahin mit einem 500er zum Stehen.
          */
         GoalDecision: {
             /** Committee */
@@ -11511,9 +11883,9 @@ export interface components {
             id: number;
             /**
              * Outcome
-             * @enum {string}
+             * @enum {string|null}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled";
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
             /** Policy Field */
             policy_field: string;
             /** Rationale */
@@ -11963,6 +12335,20 @@ export interface components {
             window_since: string | null;
         };
         /**
+         * IdeaDataStatus
+         * @description Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
+         *
+         *     **Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein
+         *     Datum, liest man es als „bis dahin ist alles drin"; das stimmt nur für
+         *     das früheste der Städte.
+         */
+        IdeaDataStatus: {
+            /** As Of */
+            as_of: string | null;
+            /** Lagging */
+            lagging: components["schemas"]["IdeaLaggingCity"][];
+        };
+        /**
          * IdeaEvidence
          * @description Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.
          */
@@ -12004,8 +12390,21 @@ export interface components {
         IdeaFields: {
             /** Bodies */
             bodies: string[];
+            data_status: components["schemas"]["IdeaDataStatus"];
             /** Fields */
             fields: components["schemas"]["IdeaFieldSummary"][];
+        };
+        /**
+         * IdeaLaggingCity
+         * @description Eine Stadt, deren Bestand deutlich vor dem letzten Abgleich endet.
+         */
+        IdeaLaggingCity: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Latest Paper */
+            latest_paper: string;
         };
         /**
          * IdeaProtocol
@@ -12627,6 +13026,76 @@ export interface components {
             turnout_pct: number | null;
             /** Valid Votes */
             valid_votes: number | null;
+        };
+        /**
+         * McpMessage
+         * @description Eine JSON-RPC-2.0-Antwort des MCP-Servers (``POST /api/mcp``).
+         *
+         *     ``result`` bzw. ``error`` tragen, was die MCP-Spezifikation für die
+         *     jeweilige Methode vorsieht (``initialize``, ``tools/list``,
+         *     ``tools/call``, ``ping``) — deshalb ``dict[str, Any]`` und keine
+         *     Aufzählung: Den Vertrag hält die Spezifikation, nicht diese Datei.
+         */
+        McpMessage: {
+            /** Error */
+            error?: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: unknown;
+            /**
+             * Jsonrpc
+             * @constant
+             */
+            jsonrpc: "2.0";
+            /** Result */
+            result?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * McpToken
+         * @description Ein persönlicher MCP-Schlüssel, wie ihn die Liste zeigt — ohne das
+         *     Geheimnis selbst; ``prefix`` sind die ersten Zeichen zum Wiedererkennen.
+         */
+        McpToken: {
+            /** Calls */
+            calls: number;
+            /** Created */
+            created: string;
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** Last Used */
+            last_used: string | null;
+            /** Prefix */
+            prefix: string;
+        };
+        /**
+         * McpTokenCreated
+         * @description ``POST /api/account/mcp-tokens``: der neue Schlüssel. ``secret`` steht
+         *     hier genau EINMAL — gespeichert ist nur sein Hash.
+         */
+        McpTokenCreated: {
+            /** Endpoint */
+            endpoint: string;
+            /** Secret */
+            secret: string;
+            token: components["schemas"]["McpToken"];
+        };
+        /**
+         * McpTokenList
+         * @description ``GET /api/account/mcp-tokens``: die Schlüssel des Kontos, die
+         *     Höchstzahl und die Adresse, unter der der Server antwortet.
+         */
+        McpTokenList: {
+            /** Endpoint */
+            endpoint: string;
+            /** Max */
+            max: number;
+            /** Tokens */
+            tokens: components["schemas"]["McpToken"][];
         };
         /** MediaUpload */
         MediaUpload: {
@@ -14006,12 +14475,24 @@ export interface components {
         QaFeedbackBody: {
             /** Answer Excerpt */
             answer_excerpt?: string | null;
+            /** Answer Id */
+            answer_id?: string | null;
             /** Question */
             question: string;
             /** Rating */
             rating: string;
             /** Reason */
             reason?: string | null;
+            /**
+             * Reason Kind
+             * @enum {string|null}
+             */
+            reason_kind?: "wrong" | "incomplete" | "outdated" | "off_topic" | null;
+            /**
+             * Share Answer
+             * @default false
+             */
+            share_answer: boolean;
             /**
              * Source
              * @default ask
@@ -14024,7 +14505,8 @@ export interface components {
          *
          *     Festes Literal, deshalb vollständig und ohne ``NotRequired``: Vor dem
          *     Bausteine-Nachtrag geteilte Antworten haben keine ``extras``, der Store
-         *     setzt die vier Listen dann auf leer und ``chart`` auf ``None``.
+         *     setzt die vier Listen dann auf leer, ``chart`` und
+         *     ``rules_of_procedure`` auf ``None``.
          */
         QaShare: {
             /** Answer */
@@ -14053,6 +14535,10 @@ export interface components {
             }[];
             /** Question */
             question: string;
+            /** Rules Of Procedure */
+            rules_of_procedure: {
+                [key: string]: unknown;
+            } | null;
             /** Sources */
             sources: {
                 [key: string]: unknown;
@@ -14676,6 +15162,12 @@ export interface components {
          * @description Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.
          */
         ReleaseHighlight: {
+            /** Action */
+            action: string;
+            /** Aside */
+            aside: boolean;
+            /** Color */
+            color: string;
             /**
              * ReleaseMedia
              * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
@@ -14691,6 +15183,10 @@ export interface components {
                 alt: string;
                 /** Aspect */
                 aspect: string;
+                /** Cover */
+                cover: string | null;
+                /** Duration */
+                duration: number | null;
                 /** Kind */
                 kind: string;
                 /** Poster */
@@ -14698,6 +15194,34 @@ export interface components {
                 /** Src */
                 src: string;
             } | null;
+            /**
+             * ReleaseMedia
+             * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
+             *
+             *     Immer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für
+             *     den Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in
+             *     einem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht
+             *     nur bei ``kind == "video"`` und ist zugleich das, was bei
+             *     ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+             */
+            media_narrow: {
+                /** Alt */
+                alt: string;
+                /** Aspect */
+                aspect: string;
+                /** Cover */
+                cover: string | null;
+                /** Duration */
+                duration: number | null;
+                /** Kind */
+                kind: string;
+                /** Poster */
+                poster: string | null;
+                /** Src */
+                src: string;
+            } | null;
+            /** Tagline */
+            tagline: string | null;
             /** Text */
             text: string;
             /** Title */
@@ -14720,6 +15244,10 @@ export interface components {
             alt: string;
             /** Aspect */
             aspect: string;
+            /** Cover */
+            cover: string | null;
+            /** Duration */
+            duration: number | null;
             /** Kind */
             kind: string;
             /** Poster */
@@ -14733,6 +15261,8 @@ export interface components {
             date: string;
             /** Highlights */
             highlights: components["schemas"]["ReleaseHighlight"][];
+            /** Teaser */
+            teaser: string | null;
             /** Title */
             title: string;
             /** Version */
@@ -14872,11 +15402,11 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "user" | "research_plus" | "expert" | "council_member" | "admin";
+            key: "user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin";
             /** Label */
             label: string;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "premium_models" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "mcp" | "admin")[];
         };
         /**
          * RoleUpdate
@@ -16549,14 +17079,14 @@ export interface components {
             /** Pending Email */
             pending_email?: string | null;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "premium_models" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "mcp" | "admin")[];
             /**
              * Role
              * @enum {string}
              */
-            role: "user" | "research_plus" | "expert" | "council_member" | "admin";
+            role: "user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin";
             /** Roles */
-            roles: ("user" | "research_plus" | "expert" | "council_member" | "admin")[];
+            roles: ("user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin")[];
             /** Saves Conversations */
             saves_conversations?: number | null;
             /**
@@ -16657,6 +17187,16 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerdictIn */
+        VerdictIn: {
+            /** Note */
+            note?: string | null;
+            /**
+             * Verdict
+             * @enum {string|null}
+             */
+            verdict: "hidden" | "kept" | null;
+        };
         /** VerifyCodeRequest */
         VerifyCodeRequest: {
             /** Code */
@@ -16741,12 +17281,12 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "user" | "research_plus" | "expert" | "council_member" | "admin";
+            role: "user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin";
             /**
              * Roles
              * @default []
              */
-            roles: ("user" | "research_plus" | "expert" | "council_member" | "admin")[];
+            roles: ("user" | "research_plus" | "mcp_access" | "expert" | "council_member" | "admin")[];
             /**
              * Status
              * @default pending
@@ -17052,6 +17592,90 @@ export interface operations {
             };
         };
     };
+    list_tokens_api_account_mcp_tokens_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpTokenList"];
+                };
+            };
+        };
+    };
+    create_token_api_account_mcp_tokens_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Body_create_token_api_account_mcp_tokens_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpTokenCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_token_api_account_mcp_tokens__token_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_notifications_api_account_notifications_get: {
         parameters: {
             query?: never;
@@ -17141,6 +17765,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CityStats"][];
+                };
+            };
+        };
+    };
+    district_reports_api_admin_district_reports_get: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDistrictReports"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_district_report_api_admin_district_reports__project_key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerdictIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -18055,6 +18745,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminAnmeldungen"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_thumbs_down_api_admin_stats_thumbs_down_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDaumenRunter"][];
                 };
             };
             /** @description Validation Error */
@@ -19761,9 +20482,8 @@ export interface operations {
     };
     cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post: {
         parameters: {
-            query: {
-                verdict: string;
-                note?: string | null;
+            query?: {
+                verdict?: string | null;
             };
             header?: never;
             path: {
@@ -19771,7 +20491,18 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** Id */
+                    id?: number | null;
+                    /** Note */
+                    note?: string | null;
+                    /** Verdict */
+                    verdict?: string | null;
+                } | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -19863,16 +20594,26 @@ export interface operations {
     };
     cities_movement_feedback_api_council_cities_movements_feedback_post: {
         parameters: {
-            query: {
-                id: number;
-                verdict: string;
-                note?: string | null;
+            query?: {
+                id?: number | null;
+                verdict?: string | null;
             };
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** Id */
+                    id?: number | null;
+                    /** Note */
+                    note?: string | null;
+                    /** Verdict */
+                    verdict?: string | null;
+                } | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -21654,6 +22395,37 @@ export interface operations {
             };
         };
     };
+    withdraw_project_report_api_districts_projects__project_id__report_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictProjectReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     district_projects_api_districts__place_id__projects_get: {
         parameters: {
             query?: never;
@@ -21790,6 +22562,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SourceCheck"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mcp_api_mcp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpMessage"];
+                };
+            };
+            /** @description Benachrichtigung angenommen */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -24770,4 +25582,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8aac293ccf017b4f9360477c60714b5c0231726f4e8c5fc3c524897a11ef948c
+// vertrag-sha256: 982e72b57ba4f97a5a9498a49cea03a36085f39cdb5a64f24108b30d7f6fac9b

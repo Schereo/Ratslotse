@@ -239,6 +239,14 @@ class SitzungenMixin(StoreBasis):
                     for i in session.agenda_items
                 ],
             )
+            # Schon gelesene Texte überleben das Neu-Einlesen: Jeder Lauf von
+            # check_council ersetzt die Anlagen einer kommenden Sitzung, und
+            # ohne diese Übernahme wäre ein Text, den der MCP-Server auf Zuruf
+            # nachgeladen hat (``get_attachment``), am nächsten Morgen wieder
+            # weg. ``""`` heißt „geladen, aber Scan“ und wird ebenso übernommen.
+            gelesen = {r[0]: r[1] for r in self._conn.execute(
+                "SELECT url, raw_text FROM council_agenda_attachments "
+                "WHERE ksinr = ? AND raw_text IS NOT NULL", (session.ksinr,))}
             self._conn.execute(
                 "DELETE FROM council_agenda_attachments WHERE ksinr = ?", (session.ksinr,)
             )
@@ -247,7 +255,8 @@ class SitzungenMixin(StoreBasis):
                    (ksinr, item_number, label, url, raw_text) VALUES (?, ?, ?, ?, ?)""",
                 [
                     (session.ksinr, i.item_number, a.get("label") or "Anlage",
-                     a.get("url") or "", a.get("raw_text") or None)
+                     a.get("url") or "",
+                     a.get("raw_text") or gelesen.get(a.get("url") or ""))
                     for i in session.agenda_items
                     for a in (getattr(i, "anlagen", None) or [])
                     if a.get("url")
@@ -1477,6 +1486,55 @@ class SitzungenMixin(StoreBasis):
             out[r["item_number"]] = wert
         return out
 
+    #: Das Ergebnis, das die Tagesordnung im Titel nachträgt („… Beschluss:
+    #: zurückgestellt/abgesetzt") — nicht jede Sitzung trägt es.
+    _TOP_ERGEBNIS = re.compile(r"\s*Beschluss:\s*(.+?)\s*$")
+
+    def agenda_since_decisions(self, template_numbers: list[str],
+                               today: str | None = None, limit: int = 8) -> list[dict]:
+        """Tagesordnungs-Stationen einer Vorlage NACH ihrem jüngsten Beschluss.
+
+        Brokhausen, 24.09.2026: Die Antwort sagte „im Mai vertagt" — am 18.06.
+        war der Punkt aber schon wieder abgesetzt (steht im Titel des
+        Tagesordnungspunkts) und am 27.08. erneut auf der Tagesordnung, nur
+        das Protokoll fehlte noch. Beschlüsse kennt die KI-Frage erst mit dem
+        Protokoll, Wochen nach der Sitzung; die Tagesordnung ist sofort da.
+
+        Je Station: ``template_number``, ``title`` (ohne Ergebnis-Zusatz),
+        ``outcome`` (der Zusatz, sonst ``None``), ``session_date``,
+        ``committee``, ``ksinr`` — älteste zuerst, höchstens ``limit``."""
+        nrs = sorted({(n or "").strip() for n in template_numbers if n and str(n).strip()})
+        if not nrs:
+            return []
+        heute = today or date.today().isoformat()
+        ph = ",".join("?" * len(nrs))
+        juengst = {r[0]: r[1] for r in self._conn.execute(
+            f"SELECT d.template_number, MAX(s.session_date) FROM council_decisions d "
+            f"JOIN council_sessions s ON s.ksinr = d.ksinr "
+            f"WHERE d.template_number IN ({ph}) GROUP BY d.template_number", nrs)}
+        rows = self._conn.execute(
+            f"SELECT a.template_number, a.title, s.session_date, s.committee, s.ksinr "
+            f"FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            f"WHERE a.template_number IN ({ph}) AND s.session_date <= ? "
+            f"ORDER BY s.session_date, a.id", [*nrs, heute]).fetchall()
+        out: list[dict] = []
+        gesehen: set[tuple] = set()
+        for r in rows:
+            nr = r["template_number"]
+            if nr not in juengst or str(r["session_date"]) <= str(juengst[nr]):
+                continue
+            if (nr, r["ksinr"]) in gesehen:
+                continue
+            gesehen.add((nr, r["ksinr"]))
+            titel = r["title"] or ""
+            m = self._TOP_ERGEBNIS.search(titel)
+            out.append({"template_number": nr,
+                        "title": titel[:m.start()] if m else titel,
+                        "outcome": m.group(1) if m else None,
+                        "session_date": r["session_date"], "committee": r["committee"],
+                        "ksinr": r["ksinr"]})
+        return out[:limit]
+
     def agenda_items(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(
             """SELECT item_number, title, template_number, kvonr, is_public
@@ -1527,6 +1585,19 @@ class SitzungenMixin(StoreBasis):
         return [r[0] for r in self._conn.execute(
             "SELECT id FROM council_decisions WHERE ksinr = ? AND kind = 'decision' "
             "ORDER BY position", (int(ksinr),))]
+
+    def rules_of_procedure_decisions(self, after: str) -> list[dict]:
+        """Ratsbeschlüsse NACH ``after``, deren Titel eine Geschäftsordnung
+        nennt — grob, neueste zuerst. Fein entscheidet
+        ``council.rules_of_procedure.ADOPTION_TITLE``: Hier stehen auch die
+        „Geschäftsordnungsanträge auf Vertagung", die keine neue Fassung sind.
+        Gebraucht, um zu merken, dass die gespeicherte Fassung überholt ist."""
+        return [dict(r) for r in self._conn.execute(
+            """SELECT d.id, d.title, d.outcome, cs.session_date
+               FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
+               WHERE cs.committee = 'Rat' AND cs.session_date > ?
+                 AND d.title LIKE '%Geschäftsordnung%'
+               ORDER BY cs.session_date DESC, d.id DESC""", (after,))]
 
     def known_session_ids(self, ksinrs: list[int]) -> set[int]:
         """Welche dieser Sitzungs-IDs kennen wir schon? Für den Nachlauf im
@@ -1631,6 +1702,35 @@ class SitzungenMixin(StoreBasis):
             for s in sessions:
                 s["matched_items"] = by_ksinr.get(s["ksinr"], [])
         return sessions
+
+    def top_anlagen(self, ksinr: int) -> list[dict]:
+        """Die Anlagen, die direkt an den Tagesordnungspunkten einer Sitzung
+        hängen — Dringlichkeits- und Änderungsanträge, Konzepte zu
+        Fraktionsanträgen, Einwohnerfragen. Viele haben KEINE Vorlage und sind
+        nur so zu erreichen. ``raw_text``: ``None`` = nie geladen, ``""`` =
+        geladen, aber ohne Textebene."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT item_number, label, url, raw_text FROM council_agenda_attachments "
+            "WHERE ksinr = ? ORDER BY id", (ksinr,))]
+
+    def top_anlage_zu_dokument(self, document_id: int) -> dict | None:
+        """Eine TOP-Anlage über die Dokumentnummer des Ratsinformationssystems
+        (``getfile.php?id=…``) — dieselbe Nummer wie ``council_attachments
+        .document_id``, sodass ein Agent beide über EINE Kennung anspricht."""
+        muster = re.compile(rf"[?&]id={int(document_id)}(?:&|$)")
+        for r in self._conn.execute(
+                "SELECT ksinr, item_number, label, url, raw_text FROM council_agenda_attachments "
+                "WHERE url LIKE ? ORDER BY id DESC", (f"%id={int(document_id)}%",)):
+            if muster.search(r["url"] or ""):
+                return dict(r)
+        return None
+
+    def top_anlage_text_ablegen(self, url: str, text: str) -> None:
+        """Den nachgeladenen Text einer TOP-Anlage ablegen (``""`` für einen
+        Scan — dann lädt ihn niemand ein zweites Mal)."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE council_agenda_attachments SET raw_text = ? WHERE url = ?", (text, url))
 
     def has_protocol(self, ksinr: int) -> bool:
         row = self._conn.execute(

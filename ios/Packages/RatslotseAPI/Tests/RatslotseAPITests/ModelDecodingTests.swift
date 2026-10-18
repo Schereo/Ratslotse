@@ -2,6 +2,35 @@ import Foundation
 import Testing
 @testable import RatslotseAPI
 
+@Test func viertelTraegtZeitplanUndDatenstand() throws {
+    // Seit 10/2026 leitet der Server ab, ob der Zeitraum eines Vorhabens
+    // vorbei ist (`schedule`), und nennt den Datenstand (`decisions_until`).
+    // Ein älterer Server kennt beides nicht — dann bleibt es nil, und die
+    // Tafel decodiert trotzdem.
+    let neu = #"""
+    {"id": 1, "project_key": "eversten:1", "place_id": "eversten", "name": "Skateanlage", "what": "x",
+     "stage": "building", "when": "bis 31. Januar 2026", "category": "other", "confidence": 95,
+     "first_date": null, "last_date": "2025-03-01", "report_count": 0, "hidden": false, "reported": false,
+     "decisions": [], "locations": [], "schedule": "likely_done",
+     "schedule_note": "Laut Beschluss – der Zeitraum ist vorbei.", "when_end": "2026-01-31"}
+    """#
+    let alt = #"""
+    {"id": 2, "project_key": "eversten:2", "place_id": "eversten", "name": "Brücke", "what": "x",
+     "stage": "planning", "when": null, "category": "other", "confidence": 95, "first_date": null,
+     "last_date": null, "report_count": 0, "hidden": false, "reported": false, "decisions": [], "locations": []}
+    """#
+    let decoder = JSONDecoder()
+    let p = try decoder.decode(DistrictProject.self, from: Data(neu.utf8))
+    #expect(p.schedule == "likely_done" && p.whenEnd == "2026-01-31" && p.scheduleNote != nil)
+    #expect(try decoder.decode(DistrictProject.self, from: Data(alt.utf8)).schedule == nil)
+
+    let overview = #"{"districts": [], "total": 4, "stages": {"idea": 1}, "highlights": [], "updated_at": null, "shared": 1, "decisions_until": "2026-08-27"}"#
+    let o = try decoder.decode(DistrictProjectsOverview.self, from: Data(overview.utf8))
+    #expect(o.decisionsUntil == "2026-08-27" && o.shared == 1)
+    let ohne = #"{"districts": []}"#
+    #expect(try decoder.decode(DistrictProjectsOverview.self, from: Data(ohne.utf8)).decisionsUntil == nil)
+}
+
 @Test func richDecisionDetailDecodesWithoutDiscardingNativeSections() throws {
     let json = #"""
     {
@@ -364,7 +393,7 @@ import Testing
     #expect(abo.subscribedCommittees == 3)
 }
 
-/// „Anderswo beschlossen": Sechs von sechzehn Feldern tragen einen
+/// „In anderen Städten": Sechs von sechzehn Feldern tragen einen
 /// Unterstrich, und die Ratsinformationssysteme füllen sehr unterschiedlich
 /// viel aus. Der zweite Eintrag hier ist der gemessene Münster-Fall — kein
 /// `web`, keine Einordnung, kein Ergebnis.
@@ -453,6 +482,23 @@ import Testing
     """#.utf8))
     #expect(felder.fields.first?.multiCity == 12)
     #expect(felder.fields.first?.id == "verkehr")
+    #expect(felder.dataStatus == nil, "ein älterer Server liefert keinen Stand")
+}
+
+/// „Stand: …" (seit 10/2026): der älteste Abgleich und Städte mit altem Bestand.
+@Test func ideaFieldsDecodesDataStatus() throws {
+    let felder = try JSONDecoder().decode(IdeaFields.self, from: Data(#"""
+    {"fields": [], "bodies": ["Wolfsburg"],
+     "data_status": {"as_of": "2026-09-10",
+                     "lagging": [{"body_id": "wolfsburg", "city": "Wolfsburg",
+                                  "latest_paper": "2026-06-25"}]}}
+    """#.utf8))
+    #expect(felder.dataStatus?.asOf == "2026-09-10")
+    #expect(felder.dataStatus?.lagging.first?.latestPaper == "2026-06-25")
+    let ohne = try JSONDecoder().decode(IdeaFields.self, from: Data(#"""
+    {"fields": [], "bodies": [], "data_status": {"as_of": null, "lagging": []}}
+    """#.utf8))
+    #expect(ohne.dataStatus?.asOf == nil)
 }
 
 /// Die Karte „Neu bei Ratslotse": Bühne (mit Aufnahme) und Liste (ohne) in
@@ -483,6 +529,51 @@ import Testing
     #expect(media.aspectRatio.map { $0 < 1 } == true)
     #expect(media.poster == "/neuigkeiten/2.2.0/teilen-ios.webp")
     #expect(release.highlights.last?.media == nil)
+    // Eine Antwort von vor 3.0.0: Kachel-Felder fehlen, die Vorgaben greifen.
+    #expect(release.teaser == nil)
+    #expect(release.highlights.first?.aside == false)
+    #expect(release.highlights.first?.color == nil)
+    #expect(media.tileImage == "/neuigkeiten/2.2.0/teilen-ios.webp", "ohne Titelbild das Standbild")
+    #expect(media.durationLabel == nil)
+}
+
+/// Seit 3.0.0: Video-Kacheln mit Farbe, Zeile, Länge und Titelbild — und ein
+/// „Außerdem"-Highlight ohne eigene Kachel.
+@Test func newsStateDecodesTiles() throws {
+    let json = #"""
+    {
+      "releases": [{
+        "version": "3.0.0", "date": "2026-10-06", "title": "Das Lotti-Update",
+        "teaser": "Drei neue Wege durch den Rat — je ein kurzes Video.",
+        "highlights": [
+          {"title": "Mein Viertel", "text": "Gib deine Straße ein.", "url": "/karte",
+           "media": {"kind": "video", "src": "/neuigkeiten/3.0.0/viertel-ios.mp4", "alt": "Die Karte",
+                     "aspect": "1206/2622", "poster": "/neuigkeiten/3.0.0/viertel-ios.webp",
+                     "cover": "/neuigkeiten/3.0.0/viertel-titel.webp", "duration": 24.4},
+           "color": "green", "aside": false, "tagline": "Was sich vor deiner Haustür tut.",
+           "action": "Mein Viertel ausprobieren"},
+          {"title": "Frag den Rat", "text": "Zeitleiste.", "url": "/fragen",
+           "media": {"kind": "video", "src": "/a.mp4", "alt": "a", "aspect": "1206/2622",
+                     "poster": "/a.webp", "cover": "/a.webp", "duration": 65},
+           "color": "primary", "aside": true, "tagline": null, "action": "Ausprobieren"}
+        ]
+      }],
+      "older_count": 0, "seen_version": null
+    }
+    """#
+    let state = try JSONDecoder().decode(NewsState.self, from: Data(json.utf8))
+    let release = try #require(state.releases.first)
+    #expect(release.teaser == "Drei neue Wege durch den Rat — je ein kurzes Video.")
+    let viertel = try #require(release.highlights.first)
+    #expect(viertel.color == "green" && viertel.aside == false)
+    #expect(viertel.tagline == "Was sich vor deiner Haustür tut.")
+    #expect(viertel.action == "Mein Viertel ausprobieren")
+    #expect(viertel.media?.tileImage == "/neuigkeiten/3.0.0/viertel-titel.webp")
+    #expect(viertel.media?.durationLabel == "0:24")
+    #expect(viertel.media?.durationSpoken == "24 Sekunden")
+    #expect(release.highlights.last?.aside == true)
+    #expect(release.highlights.last?.media?.durationLabel == "1:05")
+    #expect(release.highlights.last?.media?.durationSpoken == "1 Minute 5 Sekunden")
 }
 
 // MARK: - Bewegungen (Plan PR 54)
@@ -498,7 +589,8 @@ import Testing
         "first_date": "2023-06-01", "last_date": "2025-02-01",
         "outcomes": {"accepted": 1},
         "timeline": [{"paper_id": "p1", "body_id": "osnabrueck", "city": "Osnabrück",
-                      "date": "2023-06-01", "outcome": "accepted", "kind": "motion"}],
+                      "date": "2023-06-01", "outcome": "accepted", "kind": "motion",
+                      "title": "Hitzeaktionsplan aufstellen"}],
         "oldenburg": {"status": "partial", "situation": "Oldenburg hat informiert.",
                       "confidence": "medium",
                       "evidence": [{"decision_id": 1, "kvonr": 4711, "title": "Hitze-Informationen",
@@ -521,6 +613,15 @@ import Testing
     #expect(antwort.items[0].oldenburg?.evidence.first?.decisionID == 1)
     #expect(antwort.items[1].oldenburg == nil, "ohne Urteil steht nil da, kein erfundener Stand")
     #expect(antwort.counts["unjudged"] == 1)
+    #expect(antwort.items[0].timeline.first?.title == "Hitzeaktionsplan aufstellen")
+}
+
+@Test func einPunktOhneTitelKipptNicht() throws {
+    // Server vor #1498 (und Bestände, die seither nicht neu gebaut wurden)
+    // schicken keinen Titel — die Ablesung nennt dann die Art der Vorlage.
+    let json = #"{"paper_id": "p1", "body_id": "kiel", "city": "Kiel", "date": null, "outcome": "none", "kind": "inquiry"}"#
+    let punkt = try JSONDecoder().decode(TimelinePoint.self, from: Data(json.utf8))
+    #expect(punkt.title == "")
 }
 
 @Test func eineLeereBewegungsantwortKipptNicht() throws {
@@ -556,4 +657,24 @@ import Testing
     #expect(try decoder.decode(Topic.self, from: Data(with.utf8)).imageAssetName == "ThemeCycling")
     #expect(try decoder.decode(Topic.self, from: Data(without.utf8)).imageAssetName == nil)
     #expect(try decoder.decode(Topic.self, from: Data(missing.utf8)).imageAssetName == nil)
+}
+
+@Test func antragstellerBeschriftungFolgtDemServer() throws {
+    // Seit 10/2026 sagt der Server, ob der Titel die Fraktion selbst nennt.
+    // Nur dann „Antrag von"; sonst kann es eine Änderungsliste zu einer
+    // Verwaltungsvorlage sein (Stadion, 20947). Ein älterer Server schickt
+    // das Feld nicht — dann die vorsichtige Beschriftung.
+    let benannt = #"{"id": 18256, "title": "Städtepartnerschaft (CDU-Fraktion vom 08.11.2023)", "kind": "decision", "factions": ["CDU"], "applicants_named": true}"#
+    let offen = #"{"id": 18934, "title": "Bewohnerparkzone Haarenesch", "kind": "decision", "factions": ["Grüne"]}"#
+    let teil = #"{"id": 20948, "title": "Änderungsantrag", "kind": "subvote", "factions": ["CDU"], "applicants_named": false}"#
+
+    let a = try JSONDecoder().decode(DecisionSummary.self, from: Data(benannt.utf8))
+    let b = try JSONDecoder().decode(DecisionSummary.self, from: Data(offen.utf8))
+    let c = try JSONDecoder().decode(DecisionSummary.self, from: Data(teil.utf8))
+
+    #expect(a.applicantLabel == "Antrag von")
+    #expect(b.applicantsNamed == nil)
+    #expect(b.applicantLabel == "Anträge im TOP von")
+    #expect(b.applicantShortLabel == "Anträge im TOP")
+    #expect(c.applicantShortLabel == "Antrag")
 }

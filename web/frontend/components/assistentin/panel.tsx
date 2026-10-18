@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, ExternalLink, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowRight, ExternalLink, RotateCcw, Sparkles, Square, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
@@ -14,7 +14,7 @@ import { api, apiUrl, authHeaders, qs } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import {
   ankerKennung, ankerListe, ankerTreffer, anschlussfragen, belegName,
-  chipTitel, daumenZeigen, erklaerAktion,
+  chipTitel, daumenZeigen, erklaerAktion, erklaerFehler, FRAGE_MAX, frageZaehler,
   ernteElement, gedaechtnis, kuerze, ortsfrage, refsAus, routeAus, seitenName,
   seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
   type Anker, type Bildschirm, type NaechsteSeite,
@@ -95,6 +95,11 @@ export type LottiTurn = {
   /** Kam die Antwort ohne Modell? Nur fürs Protokoll, nicht sichtbar. */
   mode: string | null;
   fehler?: boolean;
+  /** Die Runde endete ohne Antwort und ohne Fehler: Stopp, Seitenwechsel,
+   *  gerissener Strom. Bis 10/2026 zeigte so eine Runde „Lotti schreibt …"
+   *  für immer — und weil der Verlauf im Tab-Speicher liegt, sogar nach dem
+   *  Neuladen. */
+  abgebrochen?: boolean;
   /** Was auf dem Bildschirm stand, als die Frage gestellt wurde. */
   kontext: string;
   /** Auf welcher Seite gefragt wurde — die normalisierte Route. Sie trägt die
@@ -208,7 +213,11 @@ function leseVerlauf(): LottiTurn[] {
     const roh = sessionStorage.getItem(SPEICHER);
     if (!roh) return [];
     const p = JSON.parse(roh);
-    return Array.isArray(p) ? (p as LottiTurn[]).slice(-MAX_TURNS_SPEICHER) : [];
+    if (!Array.isArray(p)) return [];
+    // Eine gespeicherte Runde ohne Antwort lief, als der Tab ging — sie kommt
+    // nie mehr an. Sonst stünde nach dem Neuladen „Lotti schreibt …" da.
+    return (p as LottiTurn[]).slice(-MAX_TURNS_SPEICHER)
+      .map((t) => (!t.answer && !t.fehler ? { ...t, abgebrochen: true } : t));
   } catch {
     return [];
   }
@@ -264,6 +273,8 @@ export function LottiPanel({
     } catch { /* privates Fenster — dann eben nicht */ }
   }, []);
   const [frage, setFrage] = useState("");
+  /** „262/300“ nahe der Grenze, sonst nichts (lib/assistentin.ts). */
+  const zaehler = frageZaehler(frage);
   const [laden, setLaden] = useState(false);
   const abbruch = useRef<AbortController | null>(null);
   const eingabeRef = useRef<HTMLInputElement>(null);
@@ -330,11 +341,18 @@ export function LottiPanel({
   // Beim Öffnen: Fokus ins Eingabefeld. Beim Schließen: zurück auf den Knopf —
   // sonst steht der Fokus im Nichts, und die nächste Tabulatortaste beginnt
   // wieder ganz oben auf der Seite (BITV).
+  // Zurückgegeben wird der Fokus nur, wenn das Fenster vorher WIRKLICH offen
+  // war: Beim ersten Rendern ist es zu, und ein Fokus auf den Knopf hätte
+  // dann „Zum Inhalt springen" übersprungen (Review 10/2026).
+  const warOffen = useRef(false);
   useEffect(() => {
     if (offen) {
+      warOffen.current = true;
       const id = window.setTimeout(() => eingabeRef.current?.focus(), 60);
       return () => window.clearTimeout(id);
     }
+    if (!warOffen.current) return;
+    warOffen.current = false;
     document.querySelector<HTMLElement>("[data-lotti-knopf]")?.focus();
   }, [offen]);
 
@@ -350,10 +368,23 @@ export function LottiPanel({
   // ALTEN Seite, die auf der neuen fertig geschrieben wird, ist schlimmer als
   // keine — sie sieht aus, als gehörte sie hierher.
   useEffect(() => {
+    if (abbruch.current) {
+      abbruch.current.abort();
+      abbruch.current = null;
+      setTurns((ts) => ts.map((t) => (!t.answer && !t.fehler ? { ...t, abgebrochen: true } : t)));
+    }
+    setLaden(false);
+  }, [pathname]);
+
+  /** Stopp — derselbe Ausweg wie auf der Fragen-Seite. Bis 10/2026 war die
+   *  Eingabe während einer Antwort gesperrt, und heraus kam man nur über einen
+   *  Seitenwechsel oder „Neu anfangen". */
+  const stoppen = useCallback(() => {
     abbruch.current?.abort();
     abbruch.current = null;
     setLaden(false);
-  }, [pathname]);
+    setTurns((ts) => ts.map((t, i) => (i === ts.length - 1 && !t.fehler ? { ...t, abgebrochen: true } : t)));
+  }, []);
 
   useEffect(() => {
     if (offen) endeRef.current?.scrollIntoView({ block: "end" });
@@ -379,13 +410,10 @@ export function LottiPanel({
   const ratsfrageStellen = useCallback(async (frageText: string, opts: {
     /** Die bestehende Runde, in die geantwortet wird (statt einer neuen). */
     inTurn?: number;
-    /** Die Erklärung, die gerade darüber entstanden ist — sie gehört ins
-     *  Gedächtnis der Ratsfrage („und wer hat das beantragt?"). Der Zustand
-     *  `turns` trägt sie zu diesem Zeitpunkt noch nicht: React hat den
-     *  Setzer erst eingereiht, und dieser `useCallback` hält den Stand vom
-     *  letzten Zeichnen. Gesetzt heißt außerdem: Diese Runde ist der ZWEITE
-     *  Schritt derselben Frage — die Frage-Blase steht schon darüber und
-     *  wird nicht wiederholt. */
+    /** Die Erklärung, die gerade darüber entstanden ist. Gesetzt heißt:
+     *  Diese Runde ist der ZWEITE Schritt derselben Frage — die Frage-Blase
+     *  steht schon darüber und wird nicht wiederholt. Ins Gedächtnis der
+     *  Ratsfrage geht sie NICHT (s. `history` unten). */
     dazu?: { question: string; answer: string };
     /** Die Markierung der Runde, aus der dieser Weg kommt. Der Zustand
      *  `markierung` taugt dafür nicht: Auf dem Handy ist die Auswahl nach dem
@@ -398,7 +426,7 @@ export function LottiPanel({
     setLaden(true);
     const key = opts.inTurn ?? naechsterKey.current++;
     const rahmen = {
-      question: frageText, answer: "", next: null, mode: null,
+      question: frageText, answer: "", next: null, mode: null, abgebrochen: false, fehler: false,
       kontext: "im Ratsarchiv gesucht", ratsfrage: true, quellen: [], cited: [],
       route, seite: seitenName(document, anzeigename),
       // Die Frage steht schon über der Erklärung — ein zweites Mal wäre sie
@@ -424,13 +452,20 @@ export function LottiPanel({
           // beiden Felder blieb er ungespeichert, und der Verlauf hatte ein
           // Loch genau an der interessantesten Stelle.
           conversation_id: gespraechId,
-          // Wie bei `/explain`: nur Runden dieser Seite — plus die Erklärung,
-          // die gerade darüber entstanden ist und noch nicht im Zustand steht.
-          history: [
-            ...gedaechtnis(turns, route, MAX_TURNS_KONTEXT).map((t) => ({
-              question: frageMitZitat(t), answer: t.answer })),
-            ...(opts.dazu ? [opts.dazu] : []),
-          ].slice(-MAX_TURNS_KONTEXT)
+          // Wie bei `/explain`: nur Runden dieser Seite.
+          //
+          // **Die Erklärung darüber gehört NICHT hinein** (03.10.2026). Bis
+          // dahin stand sie hier als `dazu` — samt derselben Frage, die gleich
+          // darunter noch einmal als neue Frage ging. Das Archiv las daraus
+          // eine Anschlussfrage ohne neuen Inhalt und antwortete „Eine neue
+          // Frage ist in Ihrer Nachricht nicht enthalten“, mit 0 Quellen. Den
+          // Gegenstand trägt `screen` unten; die Erklärung selbst sagte in
+          // diesem Fall ohnehin nur, dass das Archiv antworten muss. Der
+          // Server verwirft eine solche Dublette inzwischen auch selbst
+          // (`qa.verlauf_ohne_dieselbe_frage`) — für die App und alte Stände.
+          history: gedaechtnis(turns, route, MAX_TURNS_KONTEXT)
+            .map((t) => ({ question: frageMitZitat(t), answer: t.answer }))
+            .slice(-MAX_TURNS_KONTEXT)
             .map((t) => ({ question: t.question.slice(0, 200), answer: t.answer.slice(0, 300) })),
           screen: {
             route,
@@ -459,7 +494,9 @@ export function LottiPanel({
         }));
         return;
       }
+      let fertig = false;
       await leseSseStrom(res.body, (msg) => {
+        if (msg.type === "done" || msg.type === "error") fertig = true;
         // Die Ratsfrage meldet drei Schritte (`expand`, `search`, `answer`) —
         // dieselbe Abbildung wie auf der Fragen-Seite, aus `lib/qa-schritte.ts`.
         if (msg.type === "step") patch(() => ({ schritt: msg.step as string }));
@@ -485,6 +522,11 @@ export function LottiPanel({
           patch(() => ({ answer: (msg.message as string) ?? "Frage fehlgeschlagen.", fehler: true }));
         }
       });
+      // Strom ohne Ende gerissen: angefangener Text bleibt, aber als
+      // abgebrochen markiert; ohne Text ein Fehler mit Ausweg.
+      if (!fertig && !ctrl.signal.aborted) {
+        patch((t) => (t.answer ? { abgebrochen: true } : { answer: "Die Antwort ist unterwegs abgerissen.", fehler: true }));
+      }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       patch(() => ({ answer: "Das hat gerade nicht geklappt.", fehler: true }));
@@ -547,7 +589,12 @@ export function LottiPanel({
       }
     }
 
-    abbruch.current?.abort();
+    // Eine noch laufende Runde endet hier — sie bekäme sonst nie Text und
+    // zeigte „Lotti schreibt …" weiter, während die neue antwortet.
+    if (abbruch.current) {
+      abbruch.current.abort();
+      setTurns((ts) => ts.map((t) => (!t.answer && !t.fehler ? { ...t, abgebrochen: true } : t)));
+    }
     const ctrl = new AbortController();
     abbruch.current = ctrl;
     setFrage("");
@@ -632,16 +679,23 @@ export function LottiPanel({
       });
       if (!res.ok || !res.body) {
         // 400 heißt: Zu dieser Seite gibt es nichts zu sagen — der Grund steht
-        // in der Antwort und ist für Menschen geschrieben.
-        let msg = "Dazu kann ich gerade nichts sagen.";
+        // in der Antwort und ist für Menschen geschrieben. Dasselbe gilt für
+        // beide 429 (zu schnell, Tageskontingent). 422 dagegen trägt Pydantics
+        // englische Liste; daraus wird ein Satz (`erklaerFehler`).
+        let detail: unknown = null;
         try {
-          const b = await res.json();
-          if (typeof b?.detail === "string") msg = b.detail;
+          detail = (await res.json())?.detail;
         } catch { /* kein JSON — dann bleibt der allgemeine Satz */ }
-        patch(() => ({ answer: msg, fehler: true }));
+        patch(() => ({ answer: erklaerFehler(res.status, detail), fehler: true }));
+        // **Die Frage geht nicht verloren** (Designsprache § 6: „Fehler/Limits:
+        // immer mit Ausweg"). Bis 03.10.2026 war sie nach einem 422 weg — wer
+        // 320 Zeichen getippt hatte, durfte neu anfangen.
+        if (sauber) setFrage(sauber);
         return;
       }
+      let fertig = false;
       await leseSseStrom(res.body, (msg) => {
+        if (msg.type === "done" || msg.type === "error") fertig = true;
         // **Der Schritt, den das Fenster bis 22.09.2026 wegwarf.** Der Server
         // meldet `context` und `answer`, seit es den Endpunkt gibt; angezeigt
         // wurden drei blasse Punkte, an denen man nicht sah, dass etwas läuft.
@@ -689,6 +743,11 @@ export function LottiPanel({
           patch(() => ({ answer: (msg.message as string) ?? "Erklärung fehlgeschlagen.", fehler: true }));
         }
       });
+      if (!fertig && !ctrl.signal.aborted) {
+        archivWeg = null;
+        patch((t) => (t.answer ? { abgebrochen: true } : { answer: "Die Antwort ist unterwegs abgerissen.", fehler: true }));
+        if (!antwort) setFrage(sauber);
+      }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       // Die Frage ist nicht verloren — sie steht wieder im Eingabefeld
@@ -885,7 +944,7 @@ export function LottiPanel({
       // zur Bauzeit, er entsteht erst beim Tippen.
       style={{ "--rl-tastatur": `${tastatur}px` } as React.CSSProperties}
       className={cn(
-        "fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-border",
+        "fixed z-[45] flex flex-col overflow-hidden rounded-2xl border border-border",
         "bg-card shadow-lifted print:hidden",
         "animate-in fade-in-0 slide-in-from-bottom-4 duration-buehne ease-out-strong",
         // Handy: die Fläche zwischen Kopfleiste und Knopf.
@@ -1008,7 +1067,22 @@ export function LottiPanel({
                       <AntwortText text={t.answer} idToNum={new Map()} />
                     </GlossarAufklappBereich>
                   )
-                  : <Tippt schritt={t.schritt} text={t.schrittText} ratsfrage={t.ratsfrage} />}
+                  : t.abgebrochen
+                    ? <p className="py-1 text-hinweis text-muted-foreground">Abgebrochen.</p>
+                    : <Tippt schritt={t.schritt} text={t.schrittText} ratsfrage={t.ratsfrage} />}
+                {t.answer && t.abgebrochen && !t.fehler && (
+                  <p className="mt-1 text-hinweis text-muted-foreground">Abgebrochen — die Antwort ist unvollständig.</p>
+                )}
+                {/* Ein Fehler braucht einen Ausweg (Designsprache § 6): bis
+                    10/2026 stand hier nur der nackte Satz. */}
+                {t.fehler && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <Chip onClick={() => setFrage(t.question)} disabled={laden}>Nochmal fragen</Chip>
+                    <Chip onClick={() => { onSchliessen(); router.push(fragenHref({ q: t.question })); }}>
+                      In „Frag den Rat“ stellen
+                    </Chip>
+                  </div>
+                )}
                 {t.answer && !t.fehler && t.ratsfrage && (
                   <Quellen turn={t} onSchliessen={onSchliessen} />
                 )}
@@ -1163,18 +1237,43 @@ export function LottiPanel({
           ref={eingabeRef}
           value={frage}
           onChange={(e) => setFrage(e.target.value)}
+          // Dieselbe Grenze wie der Server (`assistant.QUESTION_MAX`) — sonst
+          // kommt eine lange Frage als 422 zurück (lib/assistentin.ts).
+          maxLength={FRAGE_MAX}
           placeholder="Frag mich zu dieser Seite …"
           aria-label="Frage an Lotti"
+          aria-describedby={zaehler ? "lotti-zaehler" : undefined}
           className="min-w-0 flex-1 bg-transparent text-[13.5px] text-foreground outline-none placeholder:text-muted-foreground"
         />
-        <button
-          type="submit"
-          disabled={laden || !frage.trim() || merken == null}
-          aria-label="Fragen"
-          className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors disabled:bg-primary/35"
-        >
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </button>
+        {/* Erst nahe der Grenze, und dann ruhig: Mono, gedämpft — am Ende
+            in der Signalfarbe, weil dort jedes weitere Zeichen wegfällt. */}
+        {zaehler && (
+          <span id="lotti-zaehler" aria-live="polite"
+                className={cn("flex-none font-mono text-[10.5px] tabular-nums",
+                              [...frage].length >= FRAGE_MAX ? "text-signal" : "text-muted-foreground")}>
+            {zaehler}
+          </span>
+        )}
+        {laden ? (
+          <button
+            type="button"
+            onClick={stoppen}
+            aria-label="Antwort stoppen"
+            title="Stoppen"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-muted"
+          >
+            <Square className="h-3.5 w-3.5 fill-current" aria-hidden />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!frage.trim() || merken == null}
+            aria-label="Fragen"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors disabled:bg-primary/35"
+          >
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </button>
+        )}
       </form>
       {/* **Hier stand bis 22.09.2026 eine feste Fußzeile** („Erklärt aus
           Glossar, Seite und Haushaltsdaten. Keine Rechtsberatung, keine

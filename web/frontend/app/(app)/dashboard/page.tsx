@@ -20,6 +20,7 @@ import { useUltra } from "@/lib/use-ultra";
 import { MeinViertelWidget } from "@/components/mein-viertel-widget";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, WocheImRatSkelett, type Wochenvorschau } from "@/components/woche-im-rat";
+import { NaechsteSitzungKarte } from "@/components/naechste-sitzung-karte";
 import { HinweisSlot } from "@/components/note-slot";
 import { PushPrimer } from "@/components/push-primer";
 import { WahlabendHinweis } from "@/components/wahlabend-hinweis";
@@ -86,9 +87,12 @@ export default function DashboardPage() {
   // Solange die Woche lädt, hält ein Skelett ihren Platz — sonst erschien die
   // Karte erst mit den Daten und schob alles darunter weg. Ohne Sitzungen
   // (`found: false`) und bei einem Fehler entfällt sie wie bisher.
+  // Ohne Sitzung in den nächsten sieben Tagen steht stattdessen der nächste
+  // Sitzungstag da — bis 10/2026 fiel die Karte dann ganz weg (NV-05).
   const woche = vorschau
     ? <WocheImRat vorschau={vorschau} heuteIso={heuteIso} size="wide" />
-    : vorschauQuery.isPending ? <WocheImRatSkelett size="wide" /> : null;
+    : vorschauQuery.isPending ? <WocheImRatSkelett size="wide" />
+    : vorschauQuery.isSuccess ? <NaechsteSitzungKarte size="wide" heute={heute} /> : null;
 
   return (
     <div>
@@ -125,15 +129,18 @@ export default function DashboardPage() {
         className={cn("mt-6", STAFFEL)}
         style={staffelStil(1)}
         hinweise={[
-          // Am Wahlabend das Dringendste — der Schalter `wahlabend` entscheidet.
+          // Am Wahlabend das Dringendste — nur um den Wahltag (`election.prominent`).
           { key: "wahlabend", label: "Wahlabend", node: <WahlabendHinweis /> },
           { key: "live", label: "Sitzung läuft", node: <LiveBanner /> },
+          // „Neu bei Ratslotse": nach dem, was gerade passiert (Sitzung,
+          // Wahlabend), aber vor Pause und Erste Schritte. Die beiden stehen
+          // wochenlang da; die Karte kommt viermal im Jahr und geht, sobald sie
+          // angesehen oder weggeklickt ist. Dahinter stand sie bis 10/2026 und
+          // war damit bei jedem Konto mit offenen Ersten Schritten nur eine
+          // Pille (gemessen 07.10.2026 an „Nutzerin", 2/4 Schritte).
+          { key: "neuigkeiten", label: "Neu bei Ratslotse", node: <ReleaseNewsCard /> },
           { key: "pause", label: "Sitzungspause", node: <SitzungspauseBanner /> },
           { key: "erste-schritte", label: "Erste Schritte", node: <FirstStepsBar /> },
-          // „Neu bei Ratslotse": nach allem, was gerade passiert (Sitzung,
-          // Wahlabend), aber vor der Push-Frage — sie kommt wieder, ein
-          // Release nicht.
-          { key: "neuigkeiten", label: "Neu bei Ratslotse", node: <ReleaseNewsCard /> },
           { key: "push", label: "Mitteilungen", node: <PushPrimer /> },
         ]}
       />
@@ -169,12 +176,19 @@ export default function DashboardPage() {
           )}
           {zahl?.kind === "count" && (
             <div className="inhalt-auf">
-              <p className="font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
+              {/* Eine Null in Signal-Orange las sich wie „Achtung" — sie steht
+                  jetzt gedämpft, und der Satz erklärt sie. Das Fenster wählt
+                  der Server (7/30/90 Tage, das kleinste mit Beschlüssen); bis
+                  10/2026 stand hier fest „7 Tage — in der Sitzungspause",
+                  auch wenn die Ausschüsse längst wieder tagten. */}
+              <p className={cn("font-display text-[40px] font-extrabold leading-none tracking-tight",
+                zahl.count > 0 ? "text-signal" : "text-muted-foreground")}>
                 <CountUpNumber value={zahl.count} />
               </p>
               <p className="mt-2 flex-1 text-hinweis text-muted-foreground">
-                {zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten 7 Tagen — in der Sitzungspause
-                sammelt sich hier wenig an.
+                {zahl.count > 0
+                  ? `${zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten ${zahl.window_days} Tagen.`
+                  : "Noch keine neuen Beschlüsse — die Protokolle erscheinen meist ein bis drei Wochen nach einer Sitzung."}
               </p>
               {/* Design 28a/S5: Die auffälligste Zahl des Screens war in dieser
                   Variante der einzige Inhalt ohne Ziel. Die Suche kennt

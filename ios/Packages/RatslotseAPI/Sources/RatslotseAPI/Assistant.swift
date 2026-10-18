@@ -110,6 +110,39 @@ public struct ExplainRequest: Codable, Sendable {
     }
 }
 
+/// Die Grenzen einer Frage an Lotti — gespiegelt aus `council.assistant`.
+///
+/// **Warum hier (Release-Prüfung 03.10.2026).** Länger als 300 Zeichen lehnt
+/// der Server mit 422 ab, und die App zeigte dann Pydantics englische Meldung
+/// („String should have at most 300 characters"); die Frage war weg. Hier
+/// und nicht in der Ansicht, weil dieses Paket ohne Simulator testbar ist.
+public enum LottiFrage {
+    /// `council.assistant.QUESTION_MAX`.
+    public static let maxZeichen = 300
+    /// Ab so vielen Zeichen zeigt das Feld den Zähler.
+    public static let zaehlerAb = 240
+
+    /// „262/300" nahe der Grenze, sonst `nil`.
+    public static func zaehler(_ text: String) -> String? {
+        text.count >= zaehlerAb ? "\(text.count)/\(maxZeichen)" : nil
+    }
+
+    /// Der Text auf die Grenze gekürzt.
+    public static func gekuerzt(_ text: String) -> String {
+        text.count > maxZeichen ? String(text.prefix(maxZeichen)) : text
+    }
+
+    /// Der Satz für einen abgelehnten Aufruf — nie Pydantics Liste. 429 und
+    /// 400 bringen ihren Satz vom Server mit; er ist für Menschen geschrieben.
+    public static func fehlerText(_ fehler: APIError) -> String {
+        if fehler.statusCode == 422 {
+            return "Deine Frage ist zu lang — höchstens \(maxZeichen) Zeichen. "
+                + "Sie steht wieder im Eingabefeld."
+        }
+        return fehler.message
+    }
+}
+
 /// Der Schluss-Rahmen des Erklär-Stroms (`type = "done"`).
 ///
 /// Handgeschrieben gegen `SSE_ERKLAERUNG`; `scripts/ios_vertrag.py` kommt an
@@ -261,4 +294,41 @@ extension ExplainScreen {
 
     /// Darf auf diesem Screen angeklopft werden?
     public var allowsNudge: Bool { Self.nudgeRoutes.contains(route) }
+}
+
+// MARK: - Wo der Knopf steht
+
+/// Wo Lottis Knopf steht und wie viel Platz eine Seite für ihn frei hält —
+/// ohne Oberfläche, damit es ohne Simulator geprüft werden kann.
+///
+/// **Der Knopf gehört über den Stapel, nicht in die Tab-Ansicht.** Bis 10/2026
+/// hing er an der Wurzel des Navigations-Stapels. Jede geschobene Seite —
+/// Beschluss, Sitzung, Person, Thema, Ort, Bewegung, Mein Viertel — legte
+/// sich darüber, und Lotti war genau dort unerreichbar, wo es am meisten zu
+/// erklären gibt (gefunden beim Drehen der Clips für 3.0.0). Seitdem liegt er
+/// über dem Stapel; diese Regeln sagen, wo genau.
+public enum LottiPlacement {
+    /// Wie viel Platz eine Seite unten frei hält, damit ihr letzter Eintrag
+    /// nicht unter dem Knopf liegt.
+    public static let pageInset: Double = 58
+
+    /// Abstand des Knopfs zum unteren Rand.
+    ///
+    /// Die Tab-Leiste steht nur auf der Wurzel; eine geschobene Seite
+    /// verdeckt sie. Ein Knopf, der über einer Leiste schwebt, die es nicht
+    /// gibt, stünde mitten im Inhalt. Bei offener Tastatur ist die Leiste
+    /// ohnehin weggeräumt.
+    public static func bottomClearance(stackDepth: Int, tabBarHeight: Double,
+                                       keyboardVisible: Bool) -> Double {
+        stackDepth == 0 && !keyboardVisible ? tabBarHeight : 0
+    }
+
+    /// Der Rand, den eine geschobene Seite für den Knopf frei hält — nur wo er
+    /// auch steht: Lotti eingeschaltet, Tastatur zu und eine Seite, zu der es
+    /// etwas zu erklären gibt (`ExplainScreen.from`; Admin und fremde
+    /// Adressen nicht).
+    public static func pageInset(for route: AppRoute, enabled: Bool,
+                                 keyboardVisible: Bool) -> Double {
+        enabled && !keyboardVisible && ExplainScreen.from(route) != nil ? pageInset : 0
+    }
 }

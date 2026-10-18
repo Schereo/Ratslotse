@@ -263,7 +263,7 @@ export function Vorhaben({
           Hier stehen für Schulen nur Ausstattungs-Kategorien und die
           berufsbildenden Schulen. Was der Rat zu einer bestimmten Schule
           beschlossen hat, findest du über die{" "}
-          <Link href="/suche" className="font-semibold text-primary hover:underline">
+          <Link href="/council?tab=decisions" className="font-semibold text-primary hover:underline">
             Suche
           </Link>{" "}
           in den Beschlüssen.

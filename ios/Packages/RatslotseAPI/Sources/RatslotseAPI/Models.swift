@@ -72,11 +72,19 @@ public struct DistrictProjectsOverview: Codable, Sendable {
     public let total: Int?
     public let stages: [String: Int]?
     public let highlights: [DistrictHighlight]?
+    /// Wann das Register gerechnet wurde — NICHT der Datenstand.
     public let updatedAt: String?
+    /// Wie viele Tafel-Einträge als Doppel an einer Viertelgrenze nicht in
+    /// `total` zählen (seit 10/2026, optional).
+    public let shared: Int?
+    /// Der jüngste Sitzungstag, dessen Beschlüsse das Register gesehen hat —
+    /// „Beschlüsse bis …" (seit 10/2026, optional).
+    public let decisionsUntil: String?
 
     enum CodingKeys: String, CodingKey {
-        case districts, total, stages, highlights
+        case districts, total, stages, highlights, shared
         case updatedAt = "updated_at"
+        case decisionsUntil = "decisions_until"
     }
 
     public init(from decoder: Decoder) throws {
@@ -86,6 +94,8 @@ public struct DistrictProjectsOverview: Codable, Sendable {
         stages = try c.decodeIfPresent([String: Int].self, forKey: .stages)
         highlights = try c.decodeIfPresent([DistrictHighlight].self, forKey: .highlights)
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+        shared = try c.decodeIfPresent(Int.self, forKey: .shared)
+        decisionsUntil = try c.decodeIfPresent(String.self, forKey: .decisionsUntil)
     }
 }
 
@@ -165,14 +175,23 @@ public struct DistrictProject: Codable, Sendable, Hashable, Identifiable {
     public let reported: Bool
     public let decisions: [DistrictProjectDecision]
     public let locations: [DistrictProjectLocation]
+    /// Vom Server abgeleitet (`council/viertel_zeitplan.py`): `likely_done`,
+    /// `overdue`, `quiet` oder nil. Seit 10/2026, optional.
+    public let schedule: String?
+    /// Der Satz dazu, fertig zum Anzeigen.
+    public let scheduleNote: String?
+    /// Das aus `when` gelesene Ende (ISO-Datum).
+    public let whenEnd: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, what, stage, when, category, confidence, hidden, reported, decisions, locations
+        case id, name, what, stage, when, category, confidence, hidden, reported, decisions, locations, schedule
         case projectKey = "project_key"
         case placeID = "place_id"
         case firstDate = "first_date"
         case lastDate = "last_date"
         case reportCount = "report_count"
+        case scheduleNote = "schedule_note"
+        case whenEnd = "when_end"
     }
 }
 
@@ -301,10 +320,13 @@ public struct DistrictProjects: Codable, Sendable {
     public let press: [DistrictPressItem]
     public let neighbours: [DistrictNeighbour]
     public let updatedAt: String?
+    /// „Beschlüsse bis …" — der Datenstand des Registers (seit 10/2026, optional).
+    public let decisionsUntil: String?
 
     enum CodingKeys: String, CodingKey {
         case place, projects, upcoming, investments, participations, closures, press, neighbours
         case updatedAt = "updated_at"
+        case decisionsUntil = "decisions_until"
     }
 
     public init(from decoder: Decoder) throws {
@@ -318,6 +340,7 @@ public struct DistrictProjects: Codable, Sendable {
         press = try c.decodeIfPresent([DistrictPressItem].self, forKey: .press) ?? []
         neighbours = try c.decode([DistrictNeighbour].self, forKey: .neighbours)
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+        decisionsUntil = try c.decodeIfPresent(String.self, forKey: .decisionsUntil)
     }
 }
 
@@ -330,10 +353,13 @@ public struct DistrictPlace: Codable, Sendable, Hashable {
 public struct DistrictProjectReportOut: Codable, Sendable {
     public let ok: Bool
     public let reportCount: Int
+    /// Seit 10/2026 die Entscheidung der Redaktion, nicht die Zahl der Meldungen.
     public let hidden: Bool
+    /// Ob das eigene Konto jetzt gemeldet hat (nach dem Zurücknehmen `false`).
+    public let reported: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case ok, hidden
+        case ok, hidden, reported
         case reportCount = "report_count"
     }
 }
@@ -771,14 +797,51 @@ public struct IdeaFields: Codable, Sendable {
     /// Satz im Kopf der Ansicht (der zählte bis 09/2026 fünf fest auf, als es
     /// schon acht waren).
     public let bodies: [String]
+    /// Wie frisch der Bestand ist (seit 10/2026). Optional: Ein älterer
+    /// Server liefert das Feld nicht.
+    public let dataStatus: IdeaDataStatus?
 
     public init(from decoder: Decoder) throws {
         let v = try decoder.container(keyedBy: CodingKeys.self)
         fields = try v.decodeIfPresent([IdeaFieldSummary].self, forKey: .fields) ?? []
         bodies = try v.decodeIfPresent([String].self, forKey: .bodies) ?? []
+        dataStatus = try? v.decodeIfPresent(IdeaDataStatus.self, forKey: .dataStatus)
     }
 
-    enum CodingKeys: String, CodingKey { case fields, bodies }
+    enum CodingKeys: String, CodingKey {
+        case fields, bodies
+        case dataStatus = "data_status"
+    }
+}
+
+/// „Stand: TT.MM.JJJJ" — der älteste letzte Abgleich unter den Städten,
+/// dazu die Städte, deren Bestand deutlich früher endet.
+public struct IdeaDataStatus: Codable, Sendable {
+    public let asOf: String?
+    public let lagging: [IdeaLaggingCity]
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        asOf = try v.decodeIfPresent(String.self, forKey: .asOf)
+        lagging = (try? v.decodeIfPresent([IdeaLaggingCity].self, forKey: .lagging)) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case asOf = "as_of"
+        case lagging
+    }
+}
+
+public struct IdeaLaggingCity: Codable, Sendable {
+    public let bodyID: String
+    public let city: String
+    public let latestPaper: String
+
+    enum CodingKeys: String, CodingKey {
+        case bodyID = "body_id"
+        case city
+        case latestPaper = "latest_paper"
+    }
 }
 
 
@@ -824,9 +887,13 @@ public struct TimelinePoint: Codable, Sendable, Hashable, Identifiable {
     /// Kanonisches Ergebnis; `none`, wenn die Stadt keins ausweist.
     public let outcome: String
     public let kind: String
+    /// Kurztitel für die Ablesung unter der Zeitleiste. Leer bei Servern vor
+    /// #1498 und bei Beständen, die seither nicht neu gebaut wurden — die
+    /// Ablesung nennt dann die Art der Vorlage.
+    public let title: String
 
     enum CodingKeys: String, CodingKey {
-        case city, date, outcome, kind
+        case city, date, outcome, kind, title
         case paperID = "paper_id"
         case bodyID = "body_id"
     }
@@ -839,16 +906,18 @@ public struct TimelinePoint: Codable, Sendable, Hashable, Identifiable {
         date = try v.decodeIfPresent(String.self, forKey: .date)
         outcome = try v.decodeIfPresent(String.self, forKey: .outcome) ?? "none"
         kind = try v.decodeIfPresent(String.self, forKey: .kind) ?? "other"
+        title = try v.decodeIfPresent(String.self, forKey: .title) ?? ""
     }
 
     public init(paperID: String, bodyID: String, city: String, date: String?,
-                outcome: String, kind: String) {
+                outcome: String, kind: String, title: String = "") {
         self.paperID = paperID
         self.bodyID = bodyID
         self.city = city
         self.date = date
         self.outcome = outcome
         self.kind = kind
+        self.title = title
     }
 }
 
@@ -1061,7 +1130,7 @@ public struct MovementDetail: Codable, Sendable {
 
 
 /// Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss
-/// passt — der Block „Anderswo beschlossen".
+/// passt — der Block „In anderen Städten" (bis 10/2026 „Anderswo beschlossen").
 ///
 /// Alles außer der Kennung ist optional: Die Ratsinformationssysteme der
 /// Städte füllen unterschiedlich viel aus. Münster etwa liefert über OParl
@@ -1187,6 +1256,10 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     public let abstentions: Int?
     public let factions: [String]
     public let parties: [String]
+    /// True, wenn der Titel die Fraktionen selbst nennt — dann „Antrag von".
+    /// Fehlt bei älteren Servern; dann bleibt es bei der vorsichtigen
+    /// Beschriftung „Anträge im TOP von" (council/applicants.py).
+    public let applicantsNamed: Bool?
     public let policyTags: [String]
     public let rawResult: String?
     public let protocolURL: String?
@@ -1203,6 +1276,7 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, title, summary, committee, outcome, kind, vote, factions, parties, importance, interest, impact
+        case applicantsNamed = "applicants_named"
         case simpleSummary = "simple_summary"
         case officialText = "official_text"
         case policyTags = "policy_tags"
@@ -1244,6 +1318,7 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         abstentions = try values.decodeIfPresent(Int.self, forKey: .abstentions)
         factions = try values.decodeIfPresent([String].self, forKey: .factions) ?? []
         parties = try values.decodeIfPresent([String].self, forKey: .parties) ?? factions
+        applicantsNamed = try values.decodeIfPresent(Bool.self, forKey: .applicantsNamed)
         policyTags = try values.decodeIfPresent([String].self, forKey: .policyTags) ?? []
         rawResult = try values.decodeIfPresent(String.self, forKey: .rawResult)
         protocolURL = try values.decodeIfPresent(String.self, forKey: .protocolURL)
@@ -1279,6 +1354,7 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         try values.encodeIfPresent(abstentions, forKey: .abstentions)
         try values.encode(factions, forKey: .factions)
         try values.encode(parties, forKey: .parties)
+        try values.encodeIfPresent(applicantsNamed, forKey: .applicantsNamed)
         try values.encode(policyTags, forKey: .policyTags)
         try values.encodeIfPresent(rawResult, forKey: .rawResult)
         try values.encodeIfPresent(protocolURL, forKey: .protocolURL)
@@ -1293,6 +1369,20 @@ public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
         try values.encodeIfPresent(impact, forKey: .impact)
         try values.encodeIfPresent(impactReason, forKey: .impactReason)
     }
+
+    /// „Antrag von" nur, wo der Titel die Fraktion selbst nennt oder es eine
+    /// Teilabstimmung ist. Sonst kann es eine Änderungsliste zu einer
+    /// Verwaltungsvorlage sein (Stadion, Beschluss 20947).
+    public var applicantLabel: String {
+        applicantIsSure ? "Antrag von" : "Anträge im TOP von"
+    }
+
+    /// Dieselbe Unterscheidung kurz, für die Fußzeile einer Karte.
+    public var applicantShortLabel: String {
+        applicantIsSure ? "Antrag" : "Anträge im TOP"
+    }
+
+    private var applicantIsSure: Bool { kind == "subvote" || applicantsNamed == true }
 }
 
 public struct DecisionPage: Codable, Sendable {
@@ -2219,6 +2309,30 @@ public struct DeepResearchRequest: Encodable, Sendable {
     }
 }
 
+/// „Stimmt" / „stimmt nicht" zu einem Urteil des Städtevergleichs. Seit
+/// 10/2026 im Körper statt in der Query — eine Notiz wäre dort Freitext in
+/// jedem Zugriffsprotokoll. `id` nur für eine Bewegung (Ideengruppe).
+public struct CitiesFeedbackRequest: Encodable, Sendable {
+    public let id: Int?
+    public let verdict: String
+    public let note: String?
+
+    public init(id: Int?, verdict: String, note: String? = nil) {
+        self.id = id
+        self.verdict = verdict
+        self.note = note
+    }
+
+    enum CodingKeys: String, CodingKey { case id, verdict, note }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encodeIfPresent(id, forKey: .id)
+        try values.encode(verdict, forKey: .verdict)
+        try values.encodeIfPresent(note, forKey: .note)
+    }
+}
+
 // MARK: - Neu bei Ratslotse
 
 /// Was `GET /api/news` liefert: die Ausgaben, die dieses Konto noch nicht
@@ -2258,13 +2372,30 @@ public struct ReleaseNews: Codable, Sendable {
     public let version: String
     public let date: String
     public let title: String
+    /// Eine Zeile unter dem Titel („Drei neue Wege durch den Rat — je ein
+    /// kurzes Video."); seit 3.0.0, bei älteren Ausgaben nil.
+    public let teaser: String?
     public let highlights: [ReleaseHighlight]
 
-    public init(version: String, date: String, title: String, highlights: [ReleaseHighlight]) {
+    enum CodingKeys: String, CodingKey {
+        case version, date, title, teaser, highlights
+    }
+
+    public init(version: String, date: String, title: String, teaser: String? = nil, highlights: [ReleaseHighlight]) {
         self.version = version
         self.date = date
         self.title = title
+        self.teaser = teaser
         self.highlights = highlights
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        version = try values.decode(String.self, forKey: .version)
+        date = try values.decode(String.self, forKey: .date)
+        title = try values.decode(String.self, forKey: .title)
+        teaser = try values.decodeIfPresent(String.self, forKey: .teaser)
+        highlights = try values.decode([ReleaseHighlight].self, forKey: .highlights)
     }
 }
 
@@ -2280,16 +2411,33 @@ public struct ReleaseHighlight: Codable, Sendable {
     public let text: String
     public let url: String
     public let media: ReleaseMedia?
+    /// Farbe der Video-Kachel als Name (`signal`, `primary`, `green`) — die
+    /// Werte stehen in der Designsprache. Seit 3.0.0; fehlt sie, Hafenblau.
+    public let color: String?
+    /// `true`: keine Kachel, sondern die Zeile „Außerdem: …" unter den
+    /// Kacheln. Zählt nicht zum Fortschritt und nicht zur Abfolge im Spieler.
+    public let aside: Bool
+    /// Eine Zeile unter dem Titel der Kachel.
+    public let tagline: String?
+    /// Beschriftung des Knopfs im Spieler („Mein Viertel ausprobieren").
+    public let action: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, text, url, media
+        case title, text, url, media, color, aside, tagline, action
     }
 
-    public init(title: String, text: String, url: String, media: ReleaseMedia?) {
+    public init(
+        title: String, text: String, url: String, media: ReleaseMedia?,
+        color: String? = nil, aside: Bool = false, tagline: String? = nil, action: String? = nil
+    ) {
         self.title = title
         self.text = text
         self.url = url
         self.media = media
+        self.color = color
+        self.aside = aside
+        self.tagline = tagline
+        self.action = action
     }
 
     public init(from decoder: Decoder) throws {
@@ -2298,6 +2446,12 @@ public struct ReleaseHighlight: Codable, Sendable {
         text = try values.decode(String.self, forKey: .text)
         url = try values.decode(String.self, forKey: .url)
         media = try values.decodeIfPresent(ReleaseMedia.self, forKey: .media)
+        // Alles Neue gehärtet: Ein Server vor 3.0.0 schickt es nicht, und die
+        // Karte fällt dann auf ihre Vorgaben zurück, statt leer zu bleiben.
+        color = try values.decodeIfPresent(String.self, forKey: .color)
+        aside = try values.decodeIfPresent(Bool.self, forKey: .aside) ?? false
+        tagline = try values.decodeIfPresent(String.self, forKey: .tagline)
+        action = try values.decodeIfPresent(String.self, forKey: .action)
     }
 }
 
@@ -2315,17 +2469,27 @@ public struct ReleaseMedia: Codable, Sendable, Equatable {
     public let alt: String
     public let aspect: String
     public let poster: String?
+    /// Das Bild der Video-Kachel — Titelbild, sonst Standbild; die Wahl trifft
+    /// der Server (`releases.cover_for`). Seit 3.0.0.
+    public let cover: String?
+    /// Länge des Clips in Sekunden („▶ 0:24" auf der Kachel).
+    public let duration: Double?
 
     enum CodingKeys: String, CodingKey {
-        case kind, src, alt, aspect, poster
+        case kind, src, alt, aspect, poster, cover, duration
     }
 
-    public init(kind: String, src: String, alt: String, aspect: String, poster: String?) {
+    public init(
+        kind: String, src: String, alt: String, aspect: String, poster: String?,
+        cover: String? = nil, duration: Double? = nil
+    ) {
         self.kind = kind
         self.src = src
         self.alt = alt
         self.aspect = aspect
         self.poster = poster
+        self.cover = cover
+        self.duration = duration
     }
 
     public init(from decoder: Decoder) throws {
@@ -2335,6 +2499,8 @@ public struct ReleaseMedia: Codable, Sendable, Equatable {
         alt = try values.decode(String.self, forKey: .alt)
         aspect = try values.decodeIfPresent(String.self, forKey: .aspect) ?? "16/9"
         poster = try values.decodeIfPresent(String.self, forKey: .poster)
+        cover = try values.decodeIfPresent(String.self, forKey: .cover)
+        duration = try values.decodeIfPresent(Double.self, forKey: .duration)
     }
 }
 
@@ -2346,5 +2512,30 @@ extension ReleaseMedia {
         let parts = aspect.split(separator: "/").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
         guard parts.count == 2, parts[1] > 0 else { return nil }
         return parts[0] / parts[1]
+    }
+
+    /// Das Bild für die Kachel: Titelbild, sonst Standbild, sonst das Bild
+    /// selbst — für einen Server, der `cover` noch nicht schickt.
+    public var tileImage: String {
+        cover ?? (isVideo ? (poster ?? src) : src)
+    }
+
+    /// „0:24" — gerundet auf ganze Sekunden; nil ohne gemessene Länge.
+    /// Dieselbe Rechnung wie `formatDauer` im Web (`lib/neuigkeiten.ts`).
+    public var durationLabel: String? {
+        guard let duration, duration.isFinite, duration > 0 else { return nil }
+        let total = max(1, Int(duration.rounded(.toNearestOrAwayFromZero)))
+        return "\(total / 60):" + String(format: "%02d", total % 60)
+    }
+
+    /// „24 Sekunden" — für VoiceOver.
+    public var durationSpoken: String? {
+        guard let duration, duration.isFinite, duration > 0 else { return nil }
+        let total = max(1, Int(duration.rounded(.toNearestOrAwayFromZero)))
+        let minutes = total / 60, seconds = total % 60
+        var parts: [String] = []
+        if minutes > 0 { parts.append("\(minutes) \(minutes == 1 ? "Minute" : "Minuten")") }
+        if seconds > 0 || minutes == 0 { parts.append("\(seconds) \(seconds == 1 ? "Sekunde" : "Sekunden")") }
+        return parts.joined(separator: " ")
     }
 }

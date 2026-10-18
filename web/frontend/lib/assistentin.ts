@@ -797,3 +797,36 @@ export function belegName(beleg: { label: string; year?: number | null }): strin
     ? ` ${beleg.year}` : "";
   return kuerze(ohneUntertitel + jahr, BELEG_NAME_MAX);
 }
+
+/** So lang darf eine Frage an Lotti sein — `council.assistant.QUESTION_MAX`.
+ *
+ *  **Hier gespiegelt, weil der Server sonst still ablehnt.** Bis 03.10.2026
+ *  kannte das Eingabefeld keine Grenze: Eine längere Frage kam als 422
+ *  zurück, das Fenster schrieb „Dazu kann ich gerade nichts sagen.“, und die
+ *  Frage war weg. Das Feld schneidet jetzt bei derselben Zahl ab, und der
+ *  Zähler erscheint, bevor es so weit ist. */
+export const FRAGE_MAX = 300;
+
+/** Ab so vielen Zeichen zeigt das Feld den Zähler — vorher wäre er Rauschen. */
+export const FRAGE_ZAEHLER_AB = 240;
+
+/** „262/300“ nahe der Grenze, sonst `null`. Gezählt in Zeichen, nicht in
+ *  UTF-16-Einheiten — wie Pydantic auf dem Server: Ein Emoji ist EIN Zeichen. */
+export function frageZaehler(frage: string): string | null {
+  const n = [...frage].length;
+  return n >= FRAGE_ZAEHLER_AB ? `${n}/${FRAGE_MAX}` : null;
+}
+
+/** Der Satz für eine abgelehnte Erklärung — nach Status, nie Pydantics
+ *  englische Liste. `detail` ist, was der Server als Text geschickt hat
+ *  (429 und 400 sind für Menschen geschrieben). */
+export function erklaerFehler(status: number, detail: unknown): string {
+  if (status === 422) {
+    return `Deine Frage ist zu lang — höchstens ${FRAGE_MAX} Zeichen. Sie steht wieder im Eingabefeld.`;
+  }
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (status === 429) {
+    return "Du hast gerade viele Fragen gestellt — probier es in ein paar Minuten noch mal.";
+  }
+  return "Dazu kann ich gerade nichts sagen.";
+}

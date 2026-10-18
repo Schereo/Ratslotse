@@ -276,7 +276,7 @@ def test_analyse_sitzung_setzt_nur_der_router(monkeypatch):
 def test_sitzung_regel_und_tokenbudget():
     assert qa._answer_tokens("session") == 1400
     assert qa._answer_tokens("session", gross=True) == 2200
-    assert qa._answer_tokens("session", eng=True) == 320
+    assert qa._answer_tokens("session", eng=True) == qa._answer_tokens("topic")
     messages, _ = qa._answer_messages(
         "Was hat der JHA am 17.06.2026 beschlossen?",
         [{"id": 1, "title": "T", "official_text": "B"}], typ="session",
@@ -344,3 +344,57 @@ def test_sitzungsfrage_ohne_thema_erkennt_gegenstand():
     assert not f("Was hat der Rat zuletzt zum Radverkehr beschlossen?", "rat")
     assert not f("Was hat der Rat zuletzt zur Cäcilienbrücke entschieden?", "rat")
     assert not f("Was hat der Sozialausschuss zuletzt zu Kita-Gebühren beschlossen?", "sozialausschuss")
+
+
+# ---- Datum ohne Jahr: die gemeinte Sitzung ---------------------------------
+
+def test_datum_ohne_jahr_nimmt_die_naechstliegende_sitzung():
+    """Echte Probefrage 16.10.2026: „Was steht in der Ratssitzung am 26.
+    Oktober auf der Tagesordnung?“ landete beim 26.10.2020, weil immer die
+    jüngste VERGANGENE Sitzung galt — der Rat zehn Tage später nicht."""
+    alle = [{"ksinr": 1, "session_date": "2026-10-26"},
+            {"ksinr": 2, "session_date": "2025-10-26"},
+            {"ksinr": 3, "session_date": "2020-10-26"}]
+    heute = "2026-10-16"
+
+    def wahl(frage: str) -> int:
+        return qa._naechstliegende_sitzung(alle, heute, qa._falte(frage))[0]["ksinr"]
+
+    assert wahl("Was steht in der Ratssitzung am 26. Oktober auf der Tagesordnung?") == 1
+    # Vergangenheit bleibt Vergangenheit, auch wenn die kommende näher liegt.
+    assert wahl("Was wurde in der Ratssitzung am 26. Oktober beschlossen?") == 2
+    assert wahl("Was stand am 26.10. auf der Tagesordnung?") == 2
+    # Ohne Zeitform: der geringste Abstand.
+    assert wahl("Ratssitzung am 26.10.") == 1
+    # Gibt es in der Richtung nichts, gilt der geringste Abstand überhaupt.
+    nur_alt = [{"ksinr": 3, "session_date": "2020-10-26"}]
+    assert qa._naechstliegende_sitzung(nur_alt, heute, qa._falte("Was steht am 26.10. an?"))[0]["ksinr"] == 3
+    assert qa._naechstliegende_sitzung([], heute, "egal") == []
+
+
+def test_datum_ohne_jahr_findet_die_terminierte_sitzung(tmp_path):
+    """Kommende Sitzungen stehen oft nur im Terminkalender, ohne
+    Sitzungsnummer. Der Monatstag-Weg las nur die Sitzungstabelle und fand
+    deshalb zum 26. Oktober allein den Rat von 2020 (16.10.2026)."""
+    from datetime import date, timedelta
+    bald = date.today() + timedelta(days=10)
+    frueher = bald.replace(year=bald.year - 6)
+    store = CouncilStore(tmp_path / "c.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (9, 'Rat', ?, '18:00', 'Rathaus', '')",
+            (frueher.isoformat(),))
+        store._conn.execute(
+            "INSERT INTO council_scheduled_sessions (committee, session_date, session_time, "
+            "location, fetched_at) VALUES ('Rat', ?, '18:00', 'PFL', '')", (bald.isoformat(),))
+    tag = f"{bald.day}.{bald.month}."
+    kommend = qa.finde_sitzungen(store, f"Was steht in der Ratssitzung am {tag} auf der Tagesordnung?")
+    assert [s["session_date"] for s in kommend] == [bald.isoformat()]
+    assert kommend[0]["kuenftig"] is True
+    gewesen = qa.finde_sitzungen(store, f"Was wurde im Rat am {tag} beschlossen?")
+    assert [s["session_date"] for s in gewesen] == [frueher.isoformat()]
+    # Mit Jahr: der Kalender-Eintrag, auch ohne Sitzungsnummer.
+    mit_jahr = qa.finde_sitzungen(store, f"Was steht am {tag}{bald.year} im Rat an?")
+    assert [s["session_date"] for s in mit_jahr] == [bald.isoformat()]
+    store.close()

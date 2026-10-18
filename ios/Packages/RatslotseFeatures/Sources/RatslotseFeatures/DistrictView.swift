@@ -79,8 +79,31 @@ func sortedProjects(_ projects: [DistrictProject]) -> [DistrictProject] {
         let ra = DistrictStage.allCases.firstIndex(of: stageOf(a)) ?? 9
         let rb = DistrictStage.allCases.firstIndex(of: stageOf(b)) ?? 9
         if ra != rb { return ra < rb }
+        // Innerhalb eines Stands: laufender Zeitplan vor abgelaufenem.
+        if (a.schedule == nil) != (b.schedule == nil) { return a.schedule == nil }
         return (a.lastDate ?? "") > (b.lastDate ?? "")
     }
+}
+
+/// Kurzform des Zustands, den der Server aus Zeitraum und Datum ableitet
+/// (`council/viertel_zeitplan.py`). Ob ein Vorhaben so heißt, entscheidet der
+/// Server — hier steht nur, wie es heißt; der ganze Satz ist `scheduleNote`.
+func scheduleLabel(_ raw: String?) -> String? {
+    switch raw {
+    case "likely_done": "vermutlich abgeschlossen"
+    case "overdue": "Zeitplan überschritten"
+    case "quiet": "lange kein Beschluss"
+    default: nil
+    }
+}
+
+/// „Beschlüsse bis 27. Aug. 2026" — der Datenstand des Registers, nicht der
+/// Tag des Laufs. Ein älterer Server liefert nur den Laufzeitpunkt; der
+/// heißt dann auch so.
+func districtDataStand(decisionsUntil: String?, updatedAt: String?) -> String? {
+    if let until = decisionsUntil { return "Beschlüsse bis \(RatsDate.short(until) ?? until)" }
+    if let updated = updatedAt { return "gerechnet am \(RatsDate.short(String(updated.prefix(10))) ?? updated)" }
+    return nil
 }
 
 // MARK: - Auswahl (Stadt-Stufe)
@@ -122,7 +145,9 @@ struct DistrictChooserPanel: View {
                 ErrorCard(message: error, retry: retry)
             } else if let overview {
                 if let total = overview.total, total > 0 {
-                    cityNumbers(total: total, stages: overview.stages ?? [:], districts: overview.districts)
+                    cityNumbers(total: total, stages: overview.stages ?? [:], districts: overview.districts,
+                                shared: overview.shared ?? 0,
+                                stand: districtDataStand(decisionsUntil: overview.decisionsUntil, updatedAt: overview.updatedAt))
                         .ratsStaggered(1)
                 }
                 let mine = overview.districts.filter { district in
@@ -157,8 +182,16 @@ struct DistrictChooserPanel: View {
     }
 
     /// Die Stadtzahl mit den drei Ständen — der Blickfang der Anzeigetafel.
-    private func cityNumbers(total: Int, stages: [String: Int], districts: [DistrictProjectsOverviewEntry]) -> some View {
+    private func cityNumbers(total: Int, stages: [String: Int], districts: [DistrictProjectsOverviewEntry],
+                             shared: Int, stand: String?) -> some View {
         let occupied = districts.filter { $0.count > 0 }.count
+        // Die Kopfzahl ist die Summe ALLER Stände; der Rest neben den drei
+        // großen steht als Satz darunter, damit nichts dazwischen fehlt.
+        let rest = [("idea", "Idee", "Ideen"), ("done", "fertig", "fertig"), ("rejected", "abgelehnt", "abgelehnt")]
+            .compactMap { key, one, many -> String? in
+                let n = stages[key] ?? 0
+                return n > 0 ? "\(n) \(n == 1 ? one : many)" : nil
+            }
         return VStack(alignment: .leading, spacing: 10) {
             MonoKicker("Ganz Oldenburg · Beschlüsse der letzten zwei Jahre")
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -169,7 +202,7 @@ struct DistrictChooserPanel: View {
                     .font(RatsFont.body(16, weight: .semibold))
                     .foregroundStyle(RatsColor.secondary)
             }
-            Text("in \(occupied) von \(districts.count) Ortsbereichen")
+            Text("in \(occupied) von \(districts.count) Ortsbereichen" + (stand.map { " · \($0)" } ?? ""))
                 .font(RatsFont.body(13))
                 .foregroundStyle(RatsColor.secondary)
             HStack(spacing: 14) {
@@ -184,6 +217,14 @@ struct DistrictChooserPanel: View {
                             .monospacedDigit()
                     }
                 }
+            }
+            if !rest.isEmpty || shared > 0 {
+                Text(((rest.isEmpty ? "" : "Dazu \(rest.joined(separator: ", ")).")
+                      + (shared > 0 ? " Vorhaben an einer Viertelgrenze zählen einmal." : ""))
+                    .trimmingCharacters(in: .whitespaces))
+                    .font(RatsFont.metadata())
+                    .foregroundStyle(RatsColor.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(14)
@@ -290,7 +331,14 @@ struct DistrictBoardPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: RatsSpacing.lg) {
-            if let error = board.error {
+            if board.notFound {
+                RatsEmptyState(
+                    title: "Diesen Ortsbereich gibt es nicht",
+                    message: "Der Link zeigt auf einen Ortsbereich, den Ratslotse nicht kennt. Auf der Karte stehen alle 31.",
+                    symbol: .mapPin,
+                    animation: .searching
+                )
+            } else if let error = board.error {
                 ErrorCard(message: error) { Task { await board.load() } }
             } else if let data = board.data {
                 if !compact { header(data) }
@@ -329,8 +377,10 @@ struct DistrictBoardPanel: View {
             DistrictProjectSheet(
                 model: model,
                 project: project,
-                reported: board.reported.contains(project.projectKey) || project.reported,
-                report: { await board.report(project) }
+                placeName: board.data?.place.name,
+                reported: board.isReported(project),
+                report: { reason in await board.report(project, reason: reason) },
+                withdraw: { await board.withdraw(project) }
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -346,7 +396,8 @@ struct DistrictBoardPanel: View {
                 .font(RatsFont.title(26))
             Text(projects.isEmpty
                  ? (data.updatedAt == nil ? "Die Tafel ist noch nicht gerechnet." : "Noch kein Vorhaben aus den Beschlüssen der letzten zwei Jahre.")
-                 : "\(projects.count) Vorhaben aus den Beschlüssen der letzten zwei Jahre")
+                 : "\(projects.count) Vorhaben aus den Beschlüssen der letzten zwei Jahre"
+                    + (districtDataStand(decisionsUntil: data.decisionsUntil, updatedAt: data.updatedAt).map { " · \($0)" } ?? ""))
                 .font(RatsFont.body(14))
                 .foregroundStyle(RatsColor.secondary)
         }
@@ -402,10 +453,19 @@ struct DistrictBoardPanel: View {
                                 .font(RatsFont.body(15, weight: .semibold))
                                 .foregroundStyle(RatsColor.text)
                                 .lineLimit(1)
-                            Text([stage.label, project.when, categoryLabel(project.category)].compactMap { $0 }.joined(separator: " · "))
-                                .font(RatsFont.body(12))
-                                .foregroundStyle(RatsColor.secondary)
-                                .lineLimit(1)
+                            if let label = scheduleLabel(project.schedule) {
+                                // Der Hinweis direkt hinter dem Stand — am Zeilenende schnitte ihn die Breite ab.
+                                (Text(stage.label + " · ").foregroundStyle(RatsColor.secondary)
+                                 + Text(label).foregroundStyle(RatsColor.warning)
+                                 + Text(project.when.map { " · \($0)" } ?? "").foregroundStyle(RatsColor.secondary))
+                                    .font(RatsFont.body(12))
+                                    .lineLimit(1)
+                            } else {
+                                Text([stage.label, project.when, categoryLabel(project.category)].compactMap { $0 }.joined(separator: " · "))
+                                    .font(RatsFont.body(12))
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .lineLimit(1)
+                            }
                         }
                         Spacer(minLength: 8)
                         RatsIcon(.chevronRight, size: 14)
@@ -614,9 +674,14 @@ struct DistrictPin: View {
 private struct DistrictProjectSheet: View {
     let model: AppModel
     let project: DistrictProject
+    let placeName: String?
     let reported: Bool
-    let report: () async -> Void
+    let report: (String?) async -> Void
+    let withdraw: () async -> Void
     @Environment(\.dismiss) private var dismiss
+    /// Die Rückfrage vor dem Melden — ein Tipp allein meldet nichts.
+    @State private var asking = false
+    @State private var reason = ""
 
     var body: some View {
         let stage = stageOf(project)
@@ -645,6 +710,20 @@ private struct DistrictProjectSheet: View {
                     .font(RatsFont.body(15))
                     .foregroundStyle(RatsColor.bodyText)
                     .fixedSize(horizontal: false, vertical: true)
+
+                // Zeitraum vorbei oder lange nichts: Der Rat beschließt keinen
+                // Bauabschluss — wir sagen, was wir wissen, nicht mehr.
+                if project.schedule != nil, let note = project.scheduleNote {
+                    Text(note)
+                        .font(RatsFont.notice())
+                        .foregroundStyle(RatsColor.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RatsColor.warningTint, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .accessibilityLabel(note)
+                }
 
                 if stage != .rejected { stagePath(stage) }
 
@@ -727,14 +806,23 @@ private struct DistrictProjectSheet: View {
                 if model.user != nil {
                     Divider().overlay(RatsColor.separator)
                     if reported {
-                        RatsLabel("Gemeldet — danke.", .check)
-                            .font(RatsFont.body(12))
-                            .foregroundStyle(RatsColor.secondary)
+                        HStack(spacing: 12) {
+                            RatsLabel("Gemeldet — wir sehen uns das an.", .check)
+                                .foregroundStyle(RatsColor.secondary)
+                            Button { Task { await withdraw() } } label: {
+                                Text("Zurücknehmen").underline()
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .frame(minHeight: 44)
+                            }
+                            .buttonStyle(RatsPlainButtonStyle())
+                        }
+                        .font(RatsFont.body(12))
                     } else {
-                        Button { Task { await report() } } label: {
+                        Button { asking = true } label: {
                             RatsLabel("Gehört nicht hierher", .mailWarning)
                                 .font(RatsFont.body(12))
                                 .foregroundStyle(RatsColor.secondary)
+                                .frame(minHeight: 44)
                         }
                         .buttonStyle(RatsPlainButtonStyle())
                     }
@@ -743,6 +831,17 @@ private struct DistrictProjectSheet: View {
             .padding(.horizontal, 20)
             .padding(.top, 26)
             .padding(.bottom, 30)
+        }
+        .alert("Gehört nicht hierher?", isPresented: $asking) {
+            TextField("Was stimmt nicht? (freiwillig)", text: $reason)
+            Button("Abbrechen", role: .cancel) { reason = "" }
+            Button("Melden") {
+                let text = reason
+                reason = ""
+                Task { await report(text) }
+            }
+        } message: {
+            Text("Du meldest „\(project.name)“ als falsch \(placeName.map { "in \($0)" } ?? "in diesem Viertel") verortet. Wir sehen uns das an; das Vorhaben bleibt stehen, bis entschieden ist. Die Redaktion sieht nicht, von wem die Meldung kommt.")
         }
     }
 

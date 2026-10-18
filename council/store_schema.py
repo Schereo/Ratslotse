@@ -370,9 +370,10 @@ CREATE TABLE IF NOT EXISTS council_district_reviews (
     PRIMARY KEY (decision_id, place_id)
 );
 
--- Vorhaben je Ortsbereich, aus den Urteilen gebündelt; je Lauf und Ortsbereich
--- ersetzt. project_key bleibt über Läufe stabil (place_id + ältester Beschluss),
--- daran hängen die „Gehört nicht hierher"-Meldungen.
+-- Vorhaben je Ortsbereich, aus den Urteilen gebündelt. Ein Lauf schreibt sie
+-- NICHT neu, sondern gleicht ab: Ein Vorhaben, das Beschlüsse mit einem
+-- bisherigen teilt, behält dessen id und project_key (``?v=``-Links, Mails).
+-- An project_key hängen Meldungen und die Entscheidung der Redaktion.
 CREATE TABLE IF NOT EXISTS council_district_projects (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     place_id     TEXT NOT NULL,
@@ -400,7 +401,17 @@ CREATE TABLE IF NOT EXISTS council_district_project_reports (
     owner_id    INTEGER NOT NULL,
     reason      TEXT,
     created_at  TEXT NOT NULL,
+    project_name TEXT,
     UNIQUE (project_key, owner_id)
+);
+-- Was die Redaktion zu gemeldeten Vorhaben entschieden hat: ``hidden`` blendet
+-- aus, ``kept`` heißt „passt doch“. Eine Meldung allein blendet nie aus.
+CREATE TABLE IF NOT EXISTS council_district_project_verdicts (
+    project_key TEXT PRIMARY KEY,
+    place_id    TEXT NOT NULL,
+    verdict     TEXT NOT NULL CHECK (verdict IN ('hidden', 'kept')),
+    note        TEXT,
+    decided_at  TEXT NOT NULL
 );
 
 -- Aktuelle Sperrungen der Stadt (Geoportal, council/sperrungen.py), täglich
@@ -1050,6 +1061,8 @@ class SchemaMixin(StoreBasis):
         # nach, bevor es merkt, dass es nichts nachzutragen gibt.
         "council_budget_execution": (None, "source_url", "ris"),
         "council_liquidity": (None, "url", "ris"),
+        # Die Kontenebene der Teilhaushalte: neu, ohne Altbestand.
+        "council_budget_accounts": (None, "url", "ris"),
     "council_enterprise_accounts": (None, None, "ris"),
         "council_company_accounts": (None, None, "ris"),
         # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
@@ -1812,6 +1825,17 @@ class SchemaMixin(StoreBasis):
                 self._conn.execute(
                     "CREATE INDEX IF NOT EXISTS idx_decisions_importance ON council_decisions(importance)"
                 )
+                # Gemessen am 09.10.2026: Ohne diese beiden las jede Abfrage nach
+                # Vorlage die ganze Tabelle — `antrag_stats` tat das 587-mal je
+                # Aufruf der Analyse (1,0 s), die Haushalts-Herkunft
+                # (`beschluesse_zu_dokumenten`) einmal für 293 ms.
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_decisions_template_number "
+                    "ON council_decisions(template_number)"
+                )
+                self._conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_decisions_kvonr ON council_decisions(kvonr)"
+                )
         # Full-text index for hybrid (BM25 + vector) retrieval. rowid = decision id;
         # diacritics folded so "Radweg"/"radweg" and German umlauts match. Populated by
         # scripts/build_decisions_fts.py (and the daily cron).
@@ -1934,8 +1958,19 @@ class SchemaMixin(StoreBasis):
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_district_project_reports ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, project_key TEXT NOT NULL, place_id TEXT NOT NULL, "
-            "owner_id INTEGER NOT NULL, reason TEXT, created_at TEXT NOT NULL, "
+            "owner_id INTEGER NOT NULL, reason TEXT, created_at TEXT NOT NULL, project_name TEXT, "
             "UNIQUE (project_key, owner_id))"
+        )
+        # Der Name des Vorhabens zum Zeitpunkt der Meldung: Verschwindet es aus
+        # dem Register, weiß die Admin-Liste trotzdem, worum es ging.
+        if "project_name" not in {r[1] for r in self._conn.execute(
+                "PRAGMA table_info(council_district_project_reports)")}:
+            self._conn.execute("ALTER TABLE council_district_project_reports ADD COLUMN project_name TEXT")
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_district_project_verdicts ("
+            "project_key TEXT PRIMARY KEY, place_id TEXT NOT NULL, "
+            "verdict TEXT NOT NULL CHECK (verdict IN ('hidden', 'kept')), note TEXT, "
+            "decided_at TEXT NOT NULL)"
         )
         # Stadt-Quellen je Viertel: Sperrungen (council/sperrungen.py) und die
         # Ortsbereiche der Pressemitteilungen (council/presse_orte.py).
@@ -2081,7 +2116,11 @@ class SchemaMixin(StoreBasis):
             # 'lotti' = Lottis Fenster. In einem Topf ließe sich die Frage
             # „taugen Lottis Erklärungen?" gar nicht mehr stellen.
             "user_id INTEGER, created TEXT NOT NULL, "
-            "source TEXT NOT NULL DEFAULT 'ask')"
+            "source TEXT NOT NULL DEFAULT 'ask', "
+            # Seit 10/2026: ein fester Grund zum Daumen runter, und — NUR mit
+            # ausdrücklicher Einwilligung beim Absenden — die Antwort samt
+            # Quellen als JSON, damit sich ein 👎 überhaupt prüfen lässt.
+            "reason_kind TEXT, shared_answer TEXT)"
         )
         # Anlagen zu Vorlagen: alle als Label+Link, Fraktions-Anträge zusätzlich mit
         # PDF-Text und erkannten Antragstellern (council.vorlagen/_build_anlage_rows).
@@ -3816,6 +3855,29 @@ class SchemaMixin(StoreBasis):
             "probes TEXT NOT NULL, "
             "herkunft_id INTEGER, fetched_at TEXT NOT NULL)"
         )
+        # Die Kontenebene der Teilhaushalte (council/budget_accounts.py): je
+        # Plan, Teilhaushalt, Konto, Jahr und Spaltenart EIN Betrag — „Was
+        # bringen die Parkgebühren?" fragt nach einem Sachkonto, und das stand
+        # bis 10/2026 in keiner Tabelle. `plan_year` ist der Haushaltsplan, aus
+        # dem die Zeile stammt; derselbe Jahrgang steht in mehreren Plänen
+        # (als Entwurf, als fortgeschriebener Vorjahresansatz, als Ergebnis).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_budget_accounts ("
+            "plan_year INTEGER NOT NULL, "
+            "sub_budget_no INTEGER NOT NULL, sub_budget_name TEXT, "
+            "account_no TEXT NOT NULL, label TEXT NOT NULL, "
+            "posten_nr INTEGER, posten_label TEXT, "
+            "kind TEXT, "                        # revenue | expense | internal_…
+            "year INTEGER NOT NULL, "
+            "column_kind TEXT NOT NULL, "        # actual (Ergebnis) | budget (Ansatz)
+            "amount REAL NOT NULL, "             # Euro
+            "document_id INTEGER, url TEXT, "
+            "herkunft_id INTEGER, fetched_at TEXT NOT NULL, "
+            "PRIMARY KEY (plan_year, sub_budget_no, account_no, year, column_kind))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_budget_accounts_konto "
+            "ON council_budget_accounts(account_no, year)")
         # Die Jahresabschlüsse der Eigenbetriebe (council/eigenbetriebe_abschluss.py):
         # je Betrieb, Jahr und Kennzahl EINE Zahl — aus dem jüngsten Bericht,
         # der sie nennt, bezeugt von den Vorjahresspalten der folgenden.
@@ -4089,6 +4151,72 @@ class SchemaMixin(StoreBasis):
         self._migrate_herkunft()
         self._migrate_owner_id()
         self._satzung_beschlussdatum("satzung_beschlussdatum_2026_09")
+        self._antragsteller_ohne_aenderungen("antragsteller_ohne_aenderungen_2026_10")
+
+    def _antragsteller_ohne_aenderungen(self, marke: str) -> None:
+        """``council_decisions.factions`` am HAUPTbeschluss einmalig um die
+        Fraktionen bereinigen, die nur über eine eigene Teilabstimmung dazukamen.
+
+        Die Extraktion schreibt je TOP alle Fraktionen mit Anträgen oder
+        Änderungslisten hinein; ein CDU-Änderungsantrag zur Stadionvorlage
+        machte so die CDU zur Antragstellerin der Verwaltungsvorlage (Beschluss
+        20947). Seit 10/2026 bereinigt ``save_protocol`` beim Import
+        (``council/applicants.py``); hier zieht der Bestand nach. Die
+        Änderungsanträge selbst bleiben unberührt — ihre Fraktionen stehen an
+        den Zeilen ``kind='subvote'``.
+
+        **Einmal, mit Marke**, aus demselben Grund wie oben: Jeder Store-Start
+        läse sonst alle Beschlüsse, und ein zweiter Start soll nur lesen
+        (``tests/test_store_start_neben_schreiber.py``)."""
+        import json as _js
+
+        from council.applicants import main_item_factions
+
+        hat_marken = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+            "AND name = 'council_migration_marks'").fetchone()
+        if hat_marken and self._conn.execute(
+                "SELECT 1 FROM council_migration_marks WHERE marke = ?", (marke,)).fetchone():
+            return
+        spalten = {r[1] for r in self._conn.execute("PRAGMA table_info(council_decisions)")}
+        neu: list[tuple[str, int]] = []
+        if {"kind", "parent_item", "factions", "item_number", "ksinr", "title"} <= spalten:
+            geaendert: dict[tuple[int, str], list[str]] = {}
+            for ksinr, parent, fac in self._conn.execute(
+                    "SELECT ksinr, parent_item, factions FROM council_decisions "
+                    "WHERE kind = 'subvote' AND factions NOT IN ('', '[]')"):
+                try:
+                    geaendert.setdefault((ksinr, parent), []).extend(_js.loads(fac or "[]"))
+                except (ValueError, TypeError):
+                    continue
+            if geaendert:
+                for did, ksinr, item, title, fac in self._conn.execute(
+                        "SELECT id, ksinr, item_number, title, factions FROM council_decisions "
+                        "WHERE kind = 'decision' AND factions NOT IN ('', '[]')").fetchall():
+                    unter = geaendert.get((ksinr, item))
+                    if not unter:
+                        continue
+                    try:
+                        alt = _js.loads(fac or "[]")
+                    except (ValueError, TypeError):
+                        continue
+                    bereinigt = main_item_factions(alt, title, unter)
+                    if bereinigt != alt:
+                        neu.append((_js.dumps(bereinigt, ensure_ascii=False), did))
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS council_migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+            if neu:
+                self._conn.executemany(
+                    "UPDATE council_decisions SET factions = ? WHERE id = ?", neu)
+            self._conn.execute(
+                "INSERT OR IGNORE INTO council_migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
+        if neu:
+            logging.getLogger("ratslotse.council.store").warning(
+                "Antragsteller: %d Hauptbeschlüsse ohne die Fraktionen ihrer "
+                "Änderungsanträge", len(neu))
 
     def _satzung_beschlussdatum(self, marke: str) -> None:
         """``council_budget_bylaw.session_date`` einmalig auf das Datum des
@@ -4177,6 +4305,11 @@ class SchemaMixin(StoreBasis):
                 self._conn.execute(
                     "ALTER TABLE council_qa_feedback "
                     "ADD COLUMN source TEXT NOT NULL DEFAULT 'ask'")
+        # Fester Grund und freigegebene Antwort (10/2026) — je für sich geprüft.
+        for col in ("reason_kind", "shared_answer"):
+            if cols and col not in cols:
+                with self._conn:
+                    self._conn.execute(f"ALTER TABLE council_qa_feedback ADD COLUMN {col} TEXT")
 
     def _migrate_quiz_hint(self) -> None:
         """„Tipp" (vor dem Auflösen) + „topic" (Such-Stichwort für „Beschlüsse

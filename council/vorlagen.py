@@ -4,7 +4,7 @@ A Vorlage is the document a decision is ABOUT: it carries the Sachverhalt and th
 Begründung — the *why* behind a Beschluss, which the protocol only records the
 outcome of. The vo0050 page itself holds only metadata (Betreff, Nr., Art); the
 content lives in the attached "Vorlage" PDF, so we download that and extract its
-text (``pypdf``). No LLM here — ingestion is pure network + parsing; consumers
+text (PyMuPDF, see ``council/anlagentext.py``). No LLM here — ingestion is pure network + parsing; consumers
 (Q&A context, FTS, decision pages) work on the raw text.
 
 Anlagen: every further document on the page is recorded with label + link. In
@@ -15,13 +15,12 @@ recognised via council.parties); maps/balance sheets stay link-only.
 """
 from __future__ import annotations
 
-import io
 import re
 
 import requests
-import pypdf
 from bs4 import BeautifulSoup
 
+from council import anlagentext
 from council.parties import parties_in_text
 
 BASE = "https://buergerinfo.oldenburg.de"
@@ -38,7 +37,7 @@ _session.headers["User-Agent"] = "Mozilla/5.0"
 _HEADING = r"Sachverhalt(?:\s+und\s+Begründung)?|Sach-\s*und\s*Rechtslage|Begründung|Ausgangslage|Anlass|Bericht"
 _SECTION_RE = re.compile(rf"^(?:{_HEADING})(?::|\s*$)")
 _FALLBACK_SECTION_RE = re.compile(r"^Beschlussvorschlag(?::|\s*$)")
-# Per-page boilerplate that pypdf interleaves with the content.
+# Per-page boilerplate that the PDF text layer interleaves with the content.
 _NOISE_RE = re.compile(
     r"^(Seite:?\s*\d+\s*/\s*\d+.*|Ausdruck vom:.*|Vorlagen?-?\s*Nr\.?:.*|\s*-\s*\d+\s*-\s*)$"
 )
@@ -145,14 +144,14 @@ def parse_vorlage_page(html: str) -> dict | None:
     }
 
 
-def _pdf_text(url: str) -> tuple[str, int]:
-    """Download a PDF and return (text, n_pages). Mirrors protocols.extract_pdf_text
-    but keeps this module free of the LLM import chain."""
+def _pdf_text(url: str, extraktor: str = anlagentext.PYMUPDF) -> tuple[str, int]:
+    """Download a PDF and return (text, n_pages). ``extraktor`` says who reads
+    it — PyMuPDF unless the document feeds a budget parser tuned to pypdf
+    (``anlagentext.extraktor_fuer``, measurements in its module docstring)."""
     r = _session.get(url, timeout=45)
     r.raise_for_status()
-    reader = pypdf.PdfReader(io.BytesIO(r.content))
-    text = "\n".join(p.extract_text() or "" for p in reader.pages)
-    return text, len(reader.pages)
+    seiten = anlagentext.pdf_seiten(r.content, extraktor)
+    return "\n".join(seiten), len(seiten)
 
 
 # Anlagen whose label smells like a fraction motion get their text ingested.
@@ -173,7 +172,7 @@ def _build_anlage_rows(anlagen: list[dict], skip_document_ids: frozenset = froze
         if _ANTRAG_LABEL_RE.search(a["label"] or "") and a["document_id"] not in skip_document_ids:
             row["is_motion"] = 1
             try:
-                text, n_pages = _pdf_text(a["url"])
+                text, n_pages = _pdf_text(a["url"], anlagentext.extraktor_fuer(a["label"]))
                 row["raw_text"], row["n_pages"] = text, n_pages
                 row["status"] = "ok" if len(text.strip()) >= 50 else "empty"
             except Exception:  # noqa: BLE001 — ein kaputtes Anlagen-PDF kippt nicht den ganzen kvonr

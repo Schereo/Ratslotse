@@ -137,19 +137,41 @@ ist **dauerhaft aus** und sieht aus wie „noch nicht angeschaltet".
 
 Der einzige Ablauf, der von Hand geht und **nicht** gesquasht wird. Er steht
 vollständig in [`CLAUDE.md`](CLAUDE.md) unter „Deployment & Branch-Modell".
-Die drei Dinge, die man dabei vergisst:
+Die Dinge, die man dabei vergisst:
 
 1. `python3 scripts/ios_vertrag.py --ausgeliefert` — bricht die App im Store?
-2. Nach einem Fix auf `main`: zurück nach `dev` mergen.
-3. **Bei einer Minor-Version: die Karte „Neu bei Ratslotse"** — ein `Release(…)`
-   in [`kern/releases.py`](kern/releases.py), in denselben Commit wie der
-   Versionsschnitt. Entwurf aus den Fragmenten:
-   `scripts/changelog_schnitt.py x.y.0 --highlights`. Höchstens vier Highlights,
-   jedes mit einem Ziel in der App, **nur große Features** — Fixes stehen im
-   Changelog. **Der Titel ist ein Name, kein Halbsatz:** „Das Teilen-Update",
-   benannt nach dem Hauptfeature (Tims Wunsch 08.09.2026; `test_releases.py`
-   hält 40 Zeichen). Verschickt wird später von Hand im Admin-Panel unter
-   *Neuigkeiten*; ein Patch-Release bekommt gar keinen Eintrag.
+2. **Die Runbooks der mitfahrenden PRs.** Jeder PR, der seit dem letzten
+   Release nach `dev` kam und auf Prod etwas von Hand braucht, trägt dafür
+   einen Abschnitt „Runbook" im PR-Text. Die Liste entsteht aus
+   `git log origin/main..origin/dev --merges --first-parent` bzw. den
+   Squash-Commits mit ihrer PR-Nummer; jeden PR einmal öffnen und das Runbook
+   **nach** dem Deploy abarbeiten. Was dort steht, steht nirgendwo sonst.
+3. **Schalter auf Prod.** Was mit diesem Release sichtbar werden soll, gehört
+   in `FEATURE_FLAGS` der Prod-`.env` (kommagetrennt, s. `kern/features.py`)
+   — und danach `sudo systemctl restart nwz-web-api`: Die Liste wird beim
+   Start gelesen, nicht je Anfrage. Ohne Neustart bleibt der Schalter aus,
+   obwohl er in der Datei steht. `curl -s https://ratslotse.de/api/app-config`
+   zeigt, was wirklich an ist.
+4. **crontab auf Prod.** Neue Jobs aus [`kern/jobs.py`](kern/jobs.py) bekommen
+   ihre Zeile, ein pausierter (Feld `pausiert`) wird wieder scharf gestellt —
+   bei `check_cities` sind es **zwei** Zeilen (werktags `--nur-oldenburg`,
+   sonntags alles). Die Überfällig-Ampel rechnet gegen `kern/jobs.py`: Fehlt die
+   crontab-Zeile, meldet `check_herzschlag` den Job am nächsten Morgen.
+5. **Der Rückmerge nach `dev` läuft von selbst** (`sync-main-to-dev.yml`).
+   Nur wenn er rot wird (Konflikt), von Hand nachziehen — der Befehl steht in
+   [`CLAUDE.md`](CLAUDE.md).
+6. **Nur bei einer Major-Version (x.0.0): die Karte „Neu bei Ratslotse"** — ein
+   `Release(…)` in [`kern/releases.py`](kern/releases.py), in denselben Commit
+   wie der Versionsschnitt (Tims Entscheidung 21.09.2026; bis dahin galt sie
+   für jede Minor und wurde fünfmal hintereinander ausgelassen). Entwurf aus
+   den Fragmenten: `scripts/changelog_schnitt.py x.0.0 --highlights`.
+   Höchstens vier Highlights, jedes mit einem Ziel in der App, **nur große
+   Features** — Fixes stehen im Changelog. **Der Titel ist ein Name, kein
+   Halbsatz:** „Das Teilen-Update", benannt nach dem Hauptfeature (Tims Wunsch
+   08.09.2026; `test_releases.py` hält 40 Zeichen). Verschickt wird später von
+   Hand im Admin-Panel unter *Neuigkeiten*; Minor- und Patch-Versionen
+   bekommen gar keinen Eintrag. **`schalter=(…)` nennen**, was die Karte
+   ankündigt: Bis alle davon auf Prod an sind, bleibt sie dort unsichtbar.
 
    **Je Highlight ein Clip, in dem man das Feature bedient sieht** — der
    Zeiger fährt hin, der Klick ist markiert, das Bild zoomt auf die Stelle
@@ -178,6 +200,30 @@ Die drei Dinge, die man dabei vergisst:
    **alle** Highlights einer Ausgabe haben ein Medium oder keins —
    `test_releases.py` meldet das Loch, `test_release_clips.py` ein Video ohne
    Drehbuch und ein Drehbuch ohne Video.
+
+   **Seit 3.0.0 rahmt Remotion die Aufnahme** (`web/clips/`, einmal
+   `npm ci --prefix web/clips`). Anlass war Tims Befund vom 07.10.2026: Die
+   Clips fingen mittendrin an, zoomten zu stark, und man sah nicht, wie man
+   überhaupt dorthin kommt. Trägt ein Drehbuch `titel`, `weg` und `app`, wird
+   daraus: Intro mit dem Weg („So kommst du hin“), die Aufnahme im
+   Browserfenster mit Adresszeile und Seitenleiste (1280×800, Zoom höchstens
+   1,25×), ein Untertitel je `say("…")`, eine **Lupe** (`lupe(ziel)`) statt
+   Heranzoomen für das, was man lesen soll, und ein Outro mit dem Weg im
+   Browser **und** in der App. `ohne(async () => …)` schneidet Ladezeit
+   heraus, `vorwaermen` ruft die Seiten vor der Aufnahme einmal auf (sonst
+   kompiliert der Dev-Server mitten im Clip). Dazu entsteht je Clip ein
+   Titelbild ohne Text (`<name>-titel.webp`) für die Kachel der Karte.
+   **Erst überlegen, was man verstehen soll, dann drehen:** Das Drehbuch von
+   3.0.0 schreibt je Feature Nutzen und Aha-Moment oben hin.
+
+   **Am Telefon eine eigene Fassung** (`media_narrow`, Drehbuch
+   `<name>-mobil` mit `mobil: true`): Im Spieler am Telefon stand der
+   16:9-Clip vom Schreibtisch 340 px breit, die Untertitel ~11 px hoch. Die
+   Telefon-Fassung wird bei 390×844 mit Touch aufgenommen, in doppelter
+   Auflösung (Einzelbilder statt Screencast, der nur CSS-Pixel liefert) und
+   randlos im Hochformat geschnitten (`HochClip`) — ohne Telefon-Rahmen, der
+   den Inhalt noch einmal halbiert hätte. Der Spieler nimmt sie unter 640 px
+   und macht seinen Fuß dann zur Knopfzeile.
 
    Drei Messungen vom 08.09.2026, die im Recorder als Kommentar stehen, damit
    sie niemand wiederholt: Chromes Screencast liefert nur CSS-Pixel, 2× gibt
@@ -254,6 +300,26 @@ Die drei Dinge, die man dabei vergisst:
    führt zurück. Vier Beats also (Blättern, Teilen, „Erinnerungen“, Haken),
    jeden als eigene Aufnahme, dann zusammenschneiden — die Nähte liegen auf
    identischen Standbildern und fallen nicht auf.
+
+   **Seit 3.0.0 schneidet Remotion auch die App-Clips** (randlos im
+   Hochformat wie die Telefon-Fassung fürs Web, `HochClip`): `--schritt` je
+   Stück gibt den Untertitel, ein leerer `--schritt ""` lässt den vorigen
+   stehen, und ein Stück ohne Tipp und ohne Bewegung wird ein Standbild von
+   drei Sekunden (zum Lesen einer Antwort). Fünf Dinge, die beim Drehen
+   aufhalten:
+
+   * Ein frisches Konto landet im Einrichtungs-Assistenten. Vor dem Start
+     `simctl spawn <UDID> defaults write de.ratslotse.dev ratslotse.onboarding.done -bool true`.
+   * `SIMCTL_CHILD_RATSLOTSE_DEBUG_ROUTE='/council/decision?id=…'` öffnet
+     native Seiten direkt (Beschluss, Mehr-Ziele) — der Weg dorthin muss
+     nicht jedes Mal getippt werden.
+   * Text kommt per Einfügen, und iOS fragt dabei jedes Mal „Einsetzen
+     erlauben?“. Den Text VOR dem Stück einfügen; das Stück beginnt mit dem
+     Tipp auf „Senden“.
+   * Zwei Tipps kurz hintereinander: Der zweite fällt in die Animation des
+     ersten und verpufft. Jeder Tipp ein eigenes Stück.
+   * Die App lädt Bilder und Clips von ratslotse.de — lokal bleiben neue
+     Medien in der Karte schwarz, bis sie ausgeliefert sind.
 
    Auch hier alles oder nichts: Fehlt einem Highlight die App-Fassung, bekommt
    die App für die ganze Ausgabe die Web-Bilder. Und ein Feature, das es in der

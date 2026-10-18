@@ -464,3 +464,63 @@ def display_originator(raw: str | None, kind: str | None = None) -> str | None:
     if (kind or "") == PaperKind.PETITION.value:
         return None
     return text
+
+
+# ------------------------------------------------- Namen in Vorlagentiteln
+
+#: Wörter, die neben „Herr/Frau Name" ein Amt oder Mandat anzeigen. Steht eins
+#: davon dicht vor oder hinter dem Namen, bleibt er — wie beim Urheber
+#: (``display_originator``): Wer als Ratsmitglied, Beigeordnete oder
+#: Ehrenbeamter in einem öffentlichen Verfahren handelt, gehört mit Namen zur
+#: Sache. Bewusst Rollen, keine Gremien: „Beihilfen aus Bezirksratsmitteln;
+#: hier: Herr …" nennt einen Empfänger, kein Mitglied.
+_AMT = re.compile(
+    r"bürgermeister|beigeordnet|stadtrat\b|stadträtin|stadtbaur[aä]t|kämmer|ratsherr|ratsfrau"
+    r"|ratsmitglied|ratsanfrage|mitglied des (?:stadt)?rates|mandat|sitzverlust"
+    r"|bürgermitglied|brandmeister|intendant|beauftragte|dezernent|landrat|minister"
+    r"|abgeordnet|präsident|senator|ehrenbürger|benennung|vorsitzend",
+    re.IGNORECASE)
+
+#: Steht eins davon VOR dem Namen, meint er eine Privatperson — gleich, was
+#: sonst dasteht: Eingaben, Beihilfen, Zuschüsse an Einzelne, Abschiebungen.
+_PRIVAT = re.compile(
+    r"petition|eingabe|einwohnerantrag|bürgerantrag|beihilfe|zuschuss|abschiebung",
+    re.IGNORECASE)
+
+_NAMENSWORT = r"[A-ZÄÖÜ][\w'’\-]*"
+_ANREDE_NAME = re.compile(
+    rf"\b(?P<anrede>Herrn?|Frau)\s+(?P<titel>(?:(?:Dr|Prof)\.\s*)*)"
+    rf"(?P<name>{_NAMENSWORT}(?:\s+{_NAMENSWORT}){{0,2}})")
+
+
+def display_title(title: str | None) -> str:
+    """Ein fremder Vorlagentitel, so wie er angezeigt werden darf.
+
+    **Privatpersonen nur mit Anfangsbuchstaben.** Hannover setzt Namen in den
+    Titel: „Antrag von Herrn Lars Mesch (Stadtjugendring)", „Beihilfen aus
+    Bezirksratsmitteln; hier: Herr …", Petitionen samt Wohnanschrift. Im
+    dortigen Ratsinformationssystem stehen sie, aber sie von dort auf eine
+    Oldenburger Seite zu heben, ist etwas anderes, als sie dort zu belassen —
+    dieselbe Überlegung wie bei ``display_originator``. Gemessen am Bestand
+    (03.10.2026): 226 Titel mit „Herr/Frau + Name", darunter Mandatsträger,
+    Ehrenbeamte, Schülervertreter und Petenten.
+
+    **Konservativ, nicht vollständig.** Ein Name bleibt nur, wenn dicht
+    daneben ein Amt steht (``_AMT``); sonst wird er zu „Herrn L. M.". Ein
+    Name ohne Anrede wird nicht erkannt — das wäre Raterei, die echte
+    Straßennamen und Gebäude träfe.
+    """
+    text = title or ""
+    if "Herr" not in text and "Frau" not in text:
+        return text
+
+    def ersetzen(m: re.Match[str]) -> str:
+        davor = text[max(0, m.start() - 60):m.start()]
+        if not _PRIVAT.search(davor):
+            umfeld = text[max(0, m.start() - 50):m.end() + 60]
+            if _AMT.search(umfeld):
+                return m.group(0)
+        kurz = " ".join(f"{w[0]}." for w in m.group("name").split())
+        return f"{m.group('anrede')} {m.group('titel')}{kurz}"
+
+    return _ANREDE_NAME.sub(ersetzen, text)

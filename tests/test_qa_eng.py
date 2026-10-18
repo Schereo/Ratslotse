@@ -20,11 +20,22 @@ def test_eng_regel_ersetzt_die_typ_regeln_und_die_debatten_pflicht():
     assert "Ein Beitrag zur Sache." in block_eng   # Daten bleiben im Kontext
 
 
-def test_eng_kappt_das_token_budget():
-    """Zweite Bremse neben der Prompt-Regel — ein Ausreißer bleibt kurz."""
-    assert qa._answer_tokens("topic", gross=False, eng=True) == 320
-    assert qa._answer_tokens("topic", gross=True, eng=True) == 320   # gross verliert
-    assert qa._answer_tokens("topic", gross=False, eng=False) >= 1000
+def test_eng_kappt_das_budget_nicht_mehr():
+    """Die Kürze regelt der Prompt. Die harte Grenze von 320 Tokens schnitt
+    den Vorbehaltssatz ab, der eine knappe Antwort erst richtig macht (Tim,
+    17.10.2026) — eine Punktfrage hat dasselbe Budget wie jede andere."""
+    assert qa._answer_tokens("topic", eng=True) == qa._answer_tokens("topic")
+
+
+def test_punktfrage_darf_und_muss_einen_vorbehalt_nennen():
+    """Gold fliegerhorst (0,19): „am 13.04.2026 [8541]“ — richtig, aber ohne
+    den Satz, dass das OVG den ersten Satzungsbeschluss von 2020 gekippt hat.
+    Die Regel verbot jede Vorgeschichte; jetzt ist der eine Umstand, der die
+    Antwort ändert, Pflicht."""
+    assert "HÖCHSTENS 3 Sätzen" not in qa.ENG_REGEL
+    assert "AUSNAHME, und dann Pflicht" in qa.ENG_REGEL
+    for umstand in ("aufgehoben", "unwirksam", "abgelehnt", "nicht mehr"):
+        assert umstand in qa.ENG_REGEL, umstand
 
 
 def test_analyse_liest_eng_aus_der_antwort(monkeypatch):
@@ -56,3 +67,16 @@ def test_analyse_fallback_ist_nicht_eng(monkeypatch):
     monkeypatch.setattr(qa.llm, "chat_complete", _kaputt)
     qa._ANALYSE_CACHE.clear()
     assert qa.analyse_query("Was wurde zum Fliegerhorst entschieden?")["eng"] is False
+
+
+def test_fraktionsfrage_holt_die_reden_in_die_antwort():
+    """Gold stadion-fraktionen (0,19): Die Antwort schrieb, die Protokolle
+    gäben die Positionen nicht her, während der Baustein darunter sie je
+    Fraktion aufzählte (Tim, 17.10.2026)."""
+    assert qa.fraktionsfrage({"kind": "party", "party": None})
+    assert not qa.fraktionsfrage({"kind": "party", "party": "SPD"})   # eine bestimmte
+    assert not qa.fraktionsfrage({"kind": "topic", "party": None})
+    regel = qa.EXTRA_REGELN["party"]
+    assert "je Fraktion" in regel and "Wortbeiträge" in regel
+    # Das „gibt das Protokoll nicht her“ bleibt — aber nur fürs Stimmverhalten.
+    assert "NUR für das Stimmverhalten" in regel
