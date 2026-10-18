@@ -200,6 +200,23 @@ OEFFENTLICH = {
     # Sitzungs-Cookie ausdrücklich NICHT an (tests/test_mcp.py hält beides).
     ("post", "/api/mcp"),
 
+    # OAuth für den MCP-Server (routers/mcp_oauth.py) — für ChatGPT, das
+    # keinen festen Schlüssel schicken kann. Die Metadaten MÜSSEN ohne
+    # Anmeldung lesbar sein, sonst findet kein Client den Weg (RFC 9728/8414).
+    # Registrieren, Token und Widerruf ruft der Agent selbst, ohne Sitzung;
+    # alle drei sind gebremst, und keiner öffnet etwas ohne eine Freigabe
+    # durch ein Konto mit dem Recht `mcp` (POST /api/oauth/authorize, das ist
+    # NICHT offen). Die Prüfung der Anfrage für die Freigabe-Seite muss auch
+    # ohne Anmeldung antworten: Die Seite erklärt dann, warum es erst zur
+    # Anmeldung geht.
+    ("get", "/.well-known/oauth-protected-resource"),
+    ("get", "/.well-known/oauth-protected-resource/api/mcp"),
+    ("get", "/.well-known/oauth-authorization-server"),
+    ("post", "/api/oauth/register"),
+    ("post", "/api/oauth/token"),
+    ("post", "/api/oauth/revoke"),
+    ("get", "/api/oauth/authorize"),
+
     # Wahlprogramm-Quellen: Belege einer öffentlichen Vergleichsseite.
     ("get", "/api/kommunalwahl/source/{slug}"),
 

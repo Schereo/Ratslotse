@@ -4645,6 +4645,102 @@ class McpMessage(TypedDict):
     error: NotRequired[dict[str, Any]]
 
 
+class McpGrant(TypedDict):
+    """Ein über OAuth verbundener Agent (Freigabe), wie ihn die Liste zeigt.
+
+    ``client_name`` hat sich der Agent selbst gegeben; ``redirect_host`` ist
+    das, was wirklich zählt — wohin die Freigabe zurückgeschickt wurde."""
+    id: int
+    client_name: str
+    redirect_host: str
+    created: str
+    last_used: str | None
+    calls: int
+
+
+class McpGrantList(TypedDict):
+    """``GET /api/account/mcp-grants``: die verbundenen Agenten und die Höchstzahl."""
+    grants: list[McpGrant]
+    max: int
+
+
+class OAuthProtectedResource(TypedDict):
+    """RFC 9728: Wer schützt ``/api/mcp``, und mit welchen Rechten?"""
+    resource: str
+    resource_name: str
+    authorization_servers: list[str]
+    scopes_supported: list[str]
+    bearer_methods_supported: list[str]
+    resource_documentation: str
+
+
+class OAuthServerMetadata(TypedDict):
+    """RFC 8414: was der Autorisierungsserver kann. ChatGPT bricht ab, wenn
+    ``code_challenge_methods_supported`` kein ``S256`` nennt."""
+    issuer: str
+    authorization_endpoint: str
+    token_endpoint: str
+    registration_endpoint: str
+    revocation_endpoint: str
+    response_types_supported: list[str]
+    grant_types_supported: list[str]
+    code_challenge_methods_supported: list[str]
+    token_endpoint_auth_methods_supported: list[str]
+    revocation_endpoint_auth_methods_supported: list[str]
+    scopes_supported: list[str]
+    client_id_metadata_document_supported: bool
+    authorization_response_iss_parameter_supported: bool
+    service_documentation: str
+
+
+class OAuthClientRegistered(TypedDict):
+    """RFC 7591: der neu registrierte Client. Immer öffentlich
+    (``token_endpoint_auth_method: none``) — das Geheimnis ist PKCE."""
+    client_id: str
+    client_id_issued_at: int
+    client_name: str
+    redirect_uris: list[str]
+    grant_types: list[str]
+    response_types: list[str]
+    token_endpoint_auth_method: str
+
+
+class OAuthToken(TypedDict):
+    """Antwort des Token-Endpunkts (OAuth 2.1, Abschnitt 3.2.3)."""
+    access_token: str
+    token_type: Literal["Bearer"]
+    expires_in: int
+    refresh_token: str
+    scope: str
+
+
+class OAuthAuthorizeCheck(TypedDict):
+    """``GET /api/oauth/authorize``: was die Freigabe-Seite zeigen soll.
+
+    ``status``: ``ready`` (Knöpfe zeigen), ``login`` (erst anmelden),
+    ``forbidden`` (Konto darf nicht; ``cancel_url`` schickt die Absage
+    zurück), ``error`` (Anfrage kaputt; mit ``cancel_url`` nur, wenn die
+    Rücksprungadresse geprüft ist — sonst wird NIE weitergeleitet).
+    ``redirect_kind``: ``web`` (https), ``local`` (localhost) oder ``app``
+    (eigenes Schema eines Programms auf dem Gerät); die letzten beiden
+    bekommen eine Warnung."""
+    status: Literal["ready", "login", "forbidden", "error"]
+    message: str | None
+    client_name: str | None
+    client_id_host: str | None
+    redirect_host: str | None
+    redirect_kind: Literal["web", "local", "app"] | None
+    cancel_url: str | None
+    already_connected: bool
+    at_limit: bool
+
+
+class OAuthAuthorizeResult(TypedDict):
+    """``POST /api/oauth/authorize``: wohin der Browser jetzt geht — mit Code
+    oder mit der Absage."""
+    redirect: str
+
+
 # --------------------------------------------------------------------------
 # Antworten, die kein JSON sind
 #

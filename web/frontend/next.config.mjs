@@ -27,6 +27,17 @@ async function rewrites() {
       source: "/api/:path*",
       destination: `${BACKEND_URL}/api/:path*`,
     },
+    // OAuth-Metadaten für den MCP-Server (web/backend/app/routers/mcp_oauth.py).
+    // Ihr Ort ist von RFC 9728/8414 vorgeschrieben, außerhalb von /api — der
+    // Edge-Proxy reicht aber nur /api ans Backend, also leitet Next sie durch.
+    {
+      source: "/.well-known/oauth-protected-resource/:path*",
+      destination: `${BACKEND_URL}/.well-known/oauth-protected-resource/:path*`,
+    },
+    {
+      source: "/.well-known/oauth-authorization-server",
+      destination: `${BACKEND_URL}/.well-known/oauth-authorization-server`,
+    },
   ];
   const dateien = [
     // Apple fetches the AASA (Universal Links) at the extensionless URL but
