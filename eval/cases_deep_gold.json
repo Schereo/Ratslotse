@@ -692,6 +692,7 @@
   "note": "Handgeprüft am 30.09.2026 gegen Beschlüsse, Protokolltexte (council_protocols.raw_text) und Pressemitteilungen im Bestand. Die Kernaussage steht nur als Protokollnotiz ohne Sprecher; der Beschluss lautet bloß „zur Kenntnis genommen“. Am 02.10.2026 gegen den Prod-Abzug vom 01.10.2026 neu geprüft: F3 war falsch (die Zweifel an Nebelmaschinen äußerte der FDP-, nicht ein CDU-Vertreter). F2 geteilt (F2 Antrag, F2b nur Kenntnisnahme). Neu: F5 Abraten der Verwaltung 2020, F6 ehemalige Brunnen Haarenstraße, F7 offene Punkte laut Vorlage 26/0261, F8 eingeplante Einzelbrunnen (Hauptbahnhof im Haushalt 2026, Pulverturm in der Entwurfsplanung Schlossplatz), F9 Bahnhofsvorplatz. X1 und X3 präzisiert, weil es konkrete Standorte in Planungen gibt.",
   "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Wann kommen öffentliche Trinkwasserspender in Oldenburg?",
+  "punktfrage": true,
   "varianten": [
    "Was ist aus dem Antrag zu Trinkwasserspendern und Nebelmaschinen geworden?"
   ],
@@ -771,7 +772,7 @@
     "behauptung": "Es werden andere konkrete Standorte als Hauptbahnhof bzw. Bahnhofsvorplatz und Schlossplatz/Pulverturm oder eine konkrete Gesamtzahl geplanter öffentlicher Trinkwasserspender genannt (die ehemaligen Brunnen in der Haarenstraße zu nennen ist KEIN Verstoß)."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (12). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (12). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung. Punktfrage (Tim, 18.10.2026): Für „Frag den Rat“ gilt bestanden schon, wenn die Kernfakten (Gewicht 3) erfüllt sind und keine verbotene Behauptung fällt — eine knappe, richtige Antwort soll nicht an den Begleitfakten scheitern. Die Abdeckung wird weiter gemessen; für die Recherche gilt die volle Regel.",
   "material": [
    {
     "id": "M1",
@@ -1701,6 +1702,7 @@
   "note": "Handgeprüft am 02.10.2026 gegen council_decisions (alle Titel mit '777 G'/'Entlastungsstraße'/'Baumoratorium'), Vorlagen 24/0360 (OVG-Bericht), 24/0476, 25/0153, 26/0210 (Planverfahren mit allen Daten), Protokolle Rat 28.09.2020 (TOP 14.3/14.4) und 13.04.2026 (TOP 6.3/8.1), ASB 20.06.2024, 19.03.2026, VA 19.08.2024, sowie PMs 02.01.2025, 30.04.2025, 30.12.2025, 12.02.2026, 14.04.2026. Fallstricke: (1) Zwei Satzungsbeschlüsse – der erste (28.09.2020) ist durch das OVG-Urteil vom 15.05.2024 unwirksam, maßgeblich ist der zweite vom 13.04.2026. (2) Die PM der Stadt vom 14.04.2026 behauptet, der Plan sei '2022 schon einmal vom Rat als Satzung beschlossen' worden – das ist falsch (Rat 28.09.2020, Beschluss id 15163; Vorlage 26/0210; Conty im Rat 13.04.2026). 2022 gab es nur den Ratsbeschluss zum Baumoratorium bis zum Abschluss der Normenkontrollverfahren (28.03.2022). (3) Zwischenstationen sind keine Satzungsbeschlüsse: Aufstellungsbeschluss VA 17.12.2018, Auslegungsbeschluss VA 06.04.2020, Beschluss zur erneuten Veröffentlichung VA 28.04.2025 (ASB 20.03.2025), Empfehlung ASB 19.03.2026. (4) Die PM 30.04.2025 nennt als Ende der erneuten Beteiligung den 04.06.2025, die Vorlage 26/0210 den 10.06.2025. (5) Ob/wann die Satzung bekanntgemacht wurde und ob erneut ein Normenkontrollantrag läuft, steht nicht im Bestand (Wenzel nennt den Plan im Rat 'noch nicht rechtskräftig'). (6) Namensvetter: B-Plan 869 'Gewerbegebiet Brokhausen' an der Entlastungsstraße (ASB 21.05.2026) ist ein eigenes Verfahren; die Änderung F-Plan Nr. 78 ist der Flächennutzungsplan, nicht der B-Plan. Der Normenkontrollantrag kam von einem ansässigen Betrieb – kein Name übernommen.",
   "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Wann hat der Rat den Bebauungsplan für die Entlastungsstraße am Fliegerhorst beschlossen?",
+  "punktfrage": true,
   "varianten": [
    "Ist der Bebauungsplan N-777 G für die Fliegerhorststraße beschlossen – und seit wann?",
    "Seit wann gibt es Baurecht für die Entlastungsstraße zwischen Alexanderstraße und Ammerländer Heerstraße?"
@@ -1785,7 +1787,7 @@
     "behauptung": "Der Ausschuss für Stadtplanung und Bauen (19.03.2026) oder der Verwaltungsausschuss (28.04.2025) hat den Bebauungsplan als Satzung beschlossen."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (16). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (16). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung. Punktfrage (Tim, 18.10.2026): Für „Frag den Rat“ gilt bestanden schon, wenn die Kernfakten (Gewicht 3) erfüllt sind und keine verbotene Behauptung fällt — eine knappe, richtige Antwort soll nicht an den Begleitfakten scheitern. Die Abdeckung wird weiter gemessen; für die Recherche gilt die volle Regel.",
   "material": [
    {
     "id": "M1",
@@ -2111,6 +2113,7 @@
   "note": "Punktfrage mit Zahl. Handgeprüft am 02.10.2026 gegen den Prod-Abzug: Vorlagen 23/0632, 24/0645 und 25/0615 (council_templates, Volltext), Beschlüsse ids 18358, 19440, 19195, 19934, 20554, 20498, 20592, 21952, 21973, Protokolle AFB 05.11.2025 (ksinr 4428, TOP 20), AFB 15.12.2025 (ksinr 4580, TOP 4), Rat 25.11.2024 (ksinr 4299, TOP 8.11), Rat 15.12.2025 (ksinr 4516, TOP 16.1), Pressemitteilungen 14.10.2024, 04.11.2024, 07.01.2025, 28.10.2025, 16.12.2025, 02.01.2026; council_tax_rates bestätigt 2025: A 500, B 539. Fallstricke: (1) Die vorgeschlagene Erhöhung auf 613/530 v. H. wurde abgelehnt – es gilt weiter 539/500. (2) Rat 09.02.2026 (Haushalt 2026), Protokoll ksinr 4726: Ein Ratsherr sagt, ein Großteil der Verhandlungen sei „mit Verabschiedung der Erhöhung der Grundsteuer hinfällig gewesen“ (die Zusammenfassung in council_speeches id 46367 macht daraus „Die Erhöhung der Grundsteuer mit erwarteten Mehreinnahmen von 4 Millionen Euro“) – das ist hypothetisch gemeint, es gab keine Erhöhung; PM 02.01.2026 bestätigt unveränderte Hebesätze, und kein Beschluss nach dem 15.12.2025 ändert sie. (3) Rat 15.12.2025, Einwohnerfragestunde: Die Verwaltung spricht noch vor der Abstimmung von der „im Haushaltsentwurf vorgesehenen moderaten Grundsteuererhöhung“ – Zwischenstand, nicht Ergebnis. (4) Der Sprung 445 → 539 zum 01.01.2025 war die aufkommensneutrale Umrechnung nach der Grundsteuerreform, keine Erhöhung des Aufkommens. (5) Grundsteuer C: nur verwiesen bzw. im AFB 30.09.2026 auf der Tagesordnung, kein Ergebnis im Abzug. Ratsbeschluss zu 25/0615 laut Protokoll „mehrheitlich mit 43 Gegenstimmen“ abgelehnt; laut PM stimmten nur der Oberbürgermeister und ein Ratsmitglied (Volt) dafür.",
   "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Wie hoch ist der Hebesatz der Grundsteuer B in Oldenburg?",
+  "punktfrage": true,
   "varianten": [
    "Hat Oldenburg die Grundsteuer für 2026 erhöht?",
    "Welcher Grundsteuer-Hebesatz gilt aktuell in Oldenburg?"
@@ -2189,7 +2192,7 @@
     "behauptung": "Oldenburg hat eine Grundsteuer C eingeführt oder beschlossen."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (16). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (16). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 und F2 erfüllt, keine verbotene Behauptung. Punktfrage (Tim, 18.10.2026): Für „Frag den Rat“ gilt bestanden schon, wenn die Kernfakten (Gewicht 3) erfüllt sind und keine verbotene Behauptung fällt — eine knappe, richtige Antwort soll nicht an den Begleitfakten scheitern. Die Abdeckung wird weiter gemessen; für die Recherche gilt die volle Regel.",
   "material": [
    {
     "id": "M1",
@@ -3819,6 +3822,7 @@
   "note": "Leer-/Abgrenzungsfrage. Handgeprüft am 02.10.2026 gegen Beschlüsse, Tagesordnungen (council_agenda_items), Vorlagen 25/0068 und 19/0860, Protokoll-Volltexte (ASUK 4434, 4437; AAA 4486), council_speeches und Pressemitteilungen. Volltextsuche über alle Protokolle ab 10/2024 findet Feuerwerk/Böller nur in diesen drei Sitzungen; keine Vorlage zu einer Allgemeinverfügung. Kernaussage: Es gibt keinen Beschluss für ein Böller- oder Feuerwerksverbot – nur einen Berichtsantrag, der zur Kenntnis genommen wurde. Der eine „accepted“-Eintrag (AAA 17.03.2025) ist nur die Rückverweisung in den ASUK; der von 2019 nur das Einverständnis mit der Linie des Oberbürgermeisters, kein Verbot zu erlassen.",
   "stand": "2026-10-01 (Prod-Abzug)",
   "question": "Hat Oldenburg ein Böllerverbot oder Verbotszonen für Silvesterfeuerwerk beschlossen?",
+  "punktfrage": true,
   "varianten": [
    "Was ist aus dem Antrag zu Böllern und Feuerwerk in Oldenburg geworden?",
    "Darf man in Oldenburg an Silvester in Landschaftsschutzgebieten böllern – hat der Rat dazu etwas entschieden?"
@@ -3887,7 +3891,7 @@
     "behauptung": "Der Rat hat den Antrag von Grünen und SPD angenommen oder abgelehnt (es war ein Berichtsantrag, der zur Kenntnis genommen wurde)."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (12). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (12). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung. Punktfrage (Tim, 18.10.2026): Für „Frag den Rat“ gilt bestanden schon, wenn die Kernfakten (Gewicht 3) erfüllt sind und keine verbotene Behauptung fällt — eine knappe, richtige Antwort soll nicht an den Begleitfakten scheitern. Die Abdeckung wird weiter gemessen; für die Recherche gilt die volle Regel.",
   "material": [
    {
     "id": "M1",

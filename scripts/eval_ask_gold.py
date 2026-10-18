@@ -278,7 +278,7 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
         material_baustein = gold._material_pruefen(
             case, material_form(q, (q.get("debates") or []) + baustein))
         urteil = gold._judge(case, r["antwort"])
-        wertung = gold._bewerten(case, urteil)
+        wertung = gold._bewerten(case, urteil, punktregel=True)
         ergebnisse.append({
             "id": case["id"], "question": case["question"], "dauer_s": r["dauer_s"],
             "wertung": wertung, "material": material, "material_baustein": material_baustein,

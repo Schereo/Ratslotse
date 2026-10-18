@@ -6207,8 +6207,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # ganz gefragt) und nicht für Personenfragen (dort SIND die
             # Beiträge die Antwort).
             debatten_prompt = debatten_rows
+            # Auch nicht bei Fraktionsfragen: Deren Reden je Fraktion (#1704)
+            # SIND die Antwort; in vier Gold-Läufen mit Diät wurden beide
+            # Fraktions-Fälle schlechter (Stadion 31/19 → 12–25 %,
+            # Zweckentfremdung 70/70 → 40–65 %, 18.10.2026).
             if (features.an("kontext-diaet") and typ not in ("session", "person")
-                    and not einfach):
+                    and not qa.fraktionsfrage(analyse) and not einfach):
                 debatten_prompt = qa.debatten_diaet(
                     debatten_rows, ctx, set(akte_prompt["speech_ids"]) if akte_prompt else None)
                 zeiten["kontext_debatten_ids"] = [d["id"] for d in debatten_prompt]
