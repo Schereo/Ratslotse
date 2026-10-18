@@ -101,6 +101,31 @@ opak, keine JWT, damit ein Widerruf sofort wirkt. Per DCR angelegte
 Clients, die nach einem Tag niemand freigegeben hat, räumt der Server
 wieder ab.
 
+## Auswertung
+
+Jeder Werkzeugaufruf landet als Zeile in `mcp_calls` (`ratslotse.sqlite`). Das
+Admin-Panel zeigt die Auswertung unter *Nutzung → Agenten (MCP)*: Aufrufe je
+Tag, Werkzeuge mit Fehlern und leeren Antworten, den Einstieg einer Sitzung,
+die Schritte darin („search_decisions → get_decision“), welche Argumente
+gesetzt werden, wonach gesucht wird, was ohne Treffer bleibt, und welche
+Konten mit welchen Agenten fragen. Eine Sitzung ist eine Folge von Aufrufen
+derselben Verbindung ohne Pause über 30 Minuten.
+
+Gespeichert werden **mit Konto** (Tims Entscheidung 18.10.2026) Zeitpunkt,
+Werkzeug, der Name des Agenten, Dauer, Ergebnis (`ok`, `tool_error`,
+`internal`), die Trefferzahl und die **Namen** der gesetzten Argumente. Ihre
+Werte werden nicht gespeichert, mit einer Ausnahme: den Suchtext (`query`).
+Der wird auf 200 Zeichen gekürzt, Kontaktdaten werden maskiert, auch eine
+nackte Telefonnummer, die `kontaktdaten.maskieren` allein nicht erkennt.
+Nach 90 Tagen ist der Suchtext leer, nach einem Jahr ist die Zeile weg, und
+mit dem Konto geht alles (`USER_OWNED_TABLES`). Die Freigabe-Seite, die
+Einstellungskarte und die Datenschutzerklärung sagen das, bevor jemand
+verbindet.
+
+Geschrieben wird gesammelt, nie während der Antwort: höchstens alle
+15 Sekunden bzw. alle 50 Aufrufe, ohne auf eine Schreibsperre zu warten.
+Gelingt es nicht, bleibt der Stapel liegen und geht mit dem nächsten.
+
 ## Werkzeuge
 
 | Werkzeug | Was es liefert |

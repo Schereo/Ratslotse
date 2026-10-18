@@ -1029,6 +1029,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Mcp
+         * @description Wie Agenten den MCP-Server benutzen: Werkzeuge, Abfolgen, Suchen
+         *     ohne Treffer, Konten.
+         *
+         *     Mit Konto und Suchtext (Tims Entscheidung 18.10.2026) — beides sagen die
+         *     Freigabe-Seite und die Einstellungskarte, bevor jemand verbindet. Der
+         *     Suchtext ist gekürzt, Kontaktdaten sind maskiert, nach 90 Tagen ist er
+         *     weg (``Store.purge_mcp_calls``).
+         */
+        get: operations["stats_mcp_api_admin_stats_mcp_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats/page-views": {
         parameters: {
             query?: never;
@@ -7485,6 +7511,103 @@ export interface components {
             mails: number;
             /** Owner Id */
             owner_id: number;
+        };
+        /**
+         * AdminMcp
+         * @description ``GET /api/admin/stats/mcp``: Wie Agenten den MCP-Server benutzen.
+         *
+         *     Eine Sitzung ist eine Folge von Aufrufen derselben Verbindung ohne Pause
+         *     über 30 Minuten. ``transitions`` zählt Schritte innerhalb einer Sitzung
+         *     („search_decisions → get_decision“), ``entries`` den ersten Aufruf.
+         */
+        AdminMcp: {
+            /** Accounts */
+            accounts: number;
+            /** Accounts List */
+            accounts_list: components["schemas"]["AdminMcpAccount"][];
+            /** Arguments */
+            arguments: components["schemas"]["AdminMcpZeile"][];
+            /** Calls */
+            calls: number;
+            /** Calls Per Session */
+            calls_per_session: number | null;
+            /** Clients */
+            clients: components["schemas"]["AdminMcpZeile"][];
+            /** Days */
+            days: number;
+            /** Empty Queries */
+            empty_queries: components["schemas"]["AdminMcpQuery"][];
+            /** Empty Searches */
+            empty_searches: number;
+            /** Entries */
+            entries: components["schemas"]["AdminMcpZeile"][];
+            /** Errors */
+            errors: number;
+            /** P50 Ms */
+            p50_ms: number | null;
+            /** Per Day */
+            per_day: components["schemas"]["AdminMcpTag"][];
+            /** Queries */
+            queries: components["schemas"]["AdminMcpQuery"][];
+            /** Searches */
+            searches: number;
+            /** Sessions */
+            sessions: number;
+            /** Tools */
+            tools: components["schemas"]["AdminMcpTool"][];
+            /** Transitions */
+            transitions: components["schemas"]["AdminMcpZeile"][];
+        };
+        /** AdminMcpAccount */
+        AdminMcpAccount: {
+            /** Clients */
+            clients: string[];
+            /** Display Name */
+            display_name: string | null;
+            /** Email */
+            email: string | null;
+            /** Last */
+            last: string;
+            /** N */
+            n: number;
+            /** Owner Id */
+            owner_id: number;
+        };
+        /** AdminMcpQuery */
+        AdminMcpQuery: {
+            /** Empty */
+            empty: number;
+            /** N */
+            n: number;
+            /** Query */
+            query: string;
+        };
+        /** AdminMcpTag */
+        AdminMcpTag: {
+            /** Day */
+            day: string;
+            /** N */
+            n: number;
+        };
+        /** AdminMcpTool */
+        AdminMcpTool: {
+            /** Empty */
+            empty: number;
+            /** Errors */
+            errors: number;
+            /** Key */
+            key: string;
+            /** N */
+            n: number;
+            /** P50 Ms */
+            p50_ms: number | null;
+        };
+        /** AdminMcpZeile */
+        AdminMcpZeile: {
+            /** Key */
+            key: string;
+            /** N */
+            n: number;
         };
         /** AdminNewsList */
         AdminNewsList: {
@@ -19226,6 +19349,37 @@ export interface operations {
             };
         };
     };
+    stats_mcp_api_admin_stats_mcp_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMcp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stats_page_views_api_admin_stats_page_views_get: {
         parameters: {
             query?: {
@@ -26282,4 +26436,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: ed346e0d790a102a3d2c23668084d3eb7594c23285b0601a8fd67e02dbe596a2
+// vertrag-sha256: be89d58280b11447e03d8a9006acb6141d8098cf26ae406147ad3165a279484a

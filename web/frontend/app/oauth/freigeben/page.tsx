@@ -201,7 +201,12 @@ export default function FreigebenPage() {
           {busy === "ja" ? "Erlaube …" : "Erlauben"}
         </Button>
       </div>
-      <p className="mt-4 text-center text-xs text-muted-foreground">
+      <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+        Ratslotse speichert zu deinem Konto, welche Werkzeuge der Agent aufruft und wonach er
+        sucht. Damit sehen wir, wie Agenten den Zugang nutzen und wo die Suche nichts findet.
+        Den Suchtext löschen wir nach 90 Tagen.
+      </p>
+      <p className="mt-2 text-center text-xs text-muted-foreground">
         Trennen kannst du ihn jederzeit in den Einstellungen unter „Eigener Agent (MCP)“.
       </p>
     </AuthShell>
