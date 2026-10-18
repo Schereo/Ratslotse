@@ -68,6 +68,12 @@ function readFragments(): Fragment[] {
     // kein einziges Fragment erschien unter „Unreleased".
     const kat = m[1].match(/^[ \t]*(?:kategorie|category)[ \t]*:[ \t]*(.+?)[ \t]*$/m);
     const section = kat ? KATEGORIEN[kat[1].trim().toLowerCase()] : undefined;
+    // Ein Fragment mit `schalter:` beschreibt ein Feature, das außerhalb von
+    // dev noch aus ist (scripts/changelog_schnitt.py hält es beim Schnitt
+    // zurück). Auf Prod soll der Changelog es nicht vorab ankündigen.
+    if (/^[ \t]*schalter[ \t]*:[ \t]*\S/m.test(m[1]) && process.env.NEXT_PUBLIC_RATSLOTSE_ENV !== "dev") {
+      continue;
+    }
     const text = m[2].replace(/\s+/g, " ").trim();
     // Ein kaputtes Fragment überspringen statt den Build zu kippen — angemeckert
     // wird es von tests/test_changelog_fragmente.py, nicht von der Seite.

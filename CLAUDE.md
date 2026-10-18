@@ -606,6 +606,12 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   **Kernsatz fett.** Dann der Fließtext.
   ```
 
+  **Ein Feature hinter einem Schalter** trägt `schalter: <key>[, …]` im
+  Frontmatter. Der Schnitt lässt das Fragment liegen, bis die Version den
+  Schalter freigibt (`changelog_schnitt.py x.y.z --freigeben <key>,…`), und die
+  Changelog-Seite zeigt es außerhalb von dev nicht. Sonst beschreibt der
+  öffentliche Changelog etwas, das auf Prod aus ist.
+
   **Keine Überschrift im Fragment.** Der Text wird zu *einem* Listenpunkt
   zusammengezogen; ein `### …` darin landet mitten im Satz. `--pruefen` weist
   das seit 09/2026 ab — davor stand #816 als „- ### Kurzfassungen: … Die
