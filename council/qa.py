@@ -1494,6 +1494,9 @@ def braucht_ortsliste(wort_ort: dict | None) -> bool:
 #: Erste Wörter von Entitäts-Namen, die fast jede Frage träfen.
 _THEMEN_GENERISCH = {"oldenburger", "oldenburgische", "oldenburgisch", "oldenburg",
                      "ausschuss", "stadtrat", "stadtteil", "beschluss", "antrag"}
+#: So viele Beschlüsse eines erkannten Vorgangs kommen bei Stand-, Verlaufs- und
+#: Geldfragen zusätzlich in den Prompt (Schalter `suche-ausbau`).
+VORGANG_MAX = 10
 #: So viele Themen-Kandidaten sieht die Analyse höchstens.
 THEMEN_KANDIDATEN = 20
 
