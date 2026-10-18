@@ -5249,7 +5249,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Findet der Wortlaut keinen Katalogort, wählt die Analyse aus der
             # Liste (`qa._ortsblock`) — kostet keinen zusätzlichen Aufruf.
             orte = qa.ortsliste(store) if qa.braucht_ortsliste(qa.finde_ort(q, store)) else None
-            analyse = qa.analyse_query(q, verlauf=verlauf, orte=orte)
+            # Themen ohne wörtlichen Namen (Schalter `suche-ausbau`): die Analyse
+            # wählt aus Kandidaten nach Wortanfang (`qa.themen_kandidaten`).
+            suche_ausbau = features.an("suche-ausbau")
+            themen = qa.themen_kandidaten(store, q) if suche_ausbau else None
+            analyse = qa.analyse_query(q, verlauf=verlauf, orte=orte, themen=themen)
             expanded, typ = analyse["terms"], analyse["kind"]
             # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
             # der Befund kam aus einer echten Nutzer-Frage, der nach dem
@@ -5395,6 +5399,18 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             t0 = time.perf_counter()
             place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
                          if ort else None)
+            if ort and suche_ausbau:
+                # Ein Ort heißt oft wie ein Thema (Heidbrook): Beschlüsse, die am
+                # gleichnamigen Thema hängen, aber nicht als Ort verortet sind,
+                # fielen sonst durch den Filter — „Schutzgebietsausweisung“ und
+                # „Heuschreckengutachten“ zum Heidbrook (Gold 18.10.2026).
+                gleichnamig = [e["id"] for e in qa.finde_entitaeten(store, ort["name"], max_n=3)
+                               if qa._falte(e["name"]) == qa._falte(ort["name"])]
+                if gleichnamig:
+                    schon = set(place_ids or [])
+                    place_ids = (place_ids or []) + [
+                        i for i in store.decision_ids_for_entities(gleichnamig, je=60)
+                        if i not in schon]
             allowed_place_ids = set(place_ids or []) if ort else None
             if latest_place:
                 # Bei einer reinen Ortsfrage nach dem „zuletzt“ ist das Datum
@@ -5408,9 +5424,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
                                                 varianten=analyse.get("variants"),
                                                 place_ids=place_ids,
-                                                hinweis_ids=(store.decision_ids_for_place(
-                                                    ort_hinweis["id"], limit=40)
-                                                    if ort_hinweis else None))
+                                                hinweis_ids=(
+                                                    (store.decision_ids_for_place(
+                                                        ort_hinweis["id"], limit=40)
+                                                     if ort_hinweis else [])
+                                                    + (store.decision_ids_for_entities(
+                                                        analyse["themen_ids"])
+                                                       if analyse.get("themen_ids") else []))
+                                                or None)
+                if analyse.get("themen_ids"):
+                    zeiten["themen_hinweis"] = analyse["themen_ids"]
                 if ort_hinweis:
                     zeiten["ort_hinweis"] = ort_hinweis["id"]
             # Nachrecherche (Schalter `nachrecherche`): Ein kleines Modell sieht
