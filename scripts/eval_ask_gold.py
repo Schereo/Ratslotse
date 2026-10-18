@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import re
 import sys
 import time
@@ -222,7 +223,7 @@ def material_form(quellen: dict, debatten: list[dict] | None = None,
 
 
 def lauf(basis: str, label: str, nur: str | None, konto: str | None,
-         frei_machen: bool = False) -> Path:
+         frei_machen: bool = False, ohne_richter: bool = False) -> Path:
     from scripts import eval_deep_gold as gold
 
     rauchprobe = importlib.import_module("rauchprobe")
@@ -277,8 +278,15 @@ def lauf(basis: str, label: str, nur: str | None, konto: str | None,
         # Was die Antwort schon hatte, steht auch im Baustein (er hängt an).
         material_baustein = gold._material_pruefen(
             case, material_form(q, (q.get("debates") or []) + baustein))
-        urteil = gold._judge(case, r["antwort"])
-        wertung = gold._bewerten(case, urteil, punktregel=True)
+        if ohne_richter:
+            # Nur die Suche messen: Kontext-Recall braucht keinen Richter,
+            # ist deterministisch und kostet nichts außer der Frage selbst.
+            urteil = {}
+            wertung = {"abdeckung": 0.0, "erfuellt": [], "verfehlt": [], "verstoesse": [],
+                       "bestanden": False}
+        else:
+            urteil = gold._judge(case, r["antwort"])
+            wertung = gold._bewerten(case, urteil, punktregel=True)
         ergebnisse.append({
             "id": case["id"], "question": case["question"], "dauer_s": r["dauer_s"],
             "wertung": wertung, "material": material, "material_baustein": material_baustein,
@@ -326,10 +334,14 @@ def main() -> None:
     ap.add_argument("--nur", default=None, help="nur diese Fälle (ids, durch Komma)")
     ap.add_argument("--basis", default="http://127.0.0.1:8000")
     ap.add_argument("--konto", default=None, help="Konto-Adresse fürs Token (Vorgabe wie Rauchprobe)")
+    ap.add_argument("--ohne-richter", action="store_true",
+                    help="nur die Suche messen (Kontext-Recall), ohne Richter-Modell; "
+                         "auch über GOLD_OHNE_RICHTER=true")
     ap.add_argument("--befreien", action="store_true",
                     help="Messkonto von den Rate-Limitern befreien (Admin-Endpunkt)")
     a = ap.parse_args()
-    lauf(a.basis, a.label, a.nur, a.konto, frei_machen=a.befreien)
+    ohne = a.ohne_richter or os.environ.get("GOLD_OHNE_RICHTER", "").lower() == "true"
+    lauf(a.basis, a.label, a.nur, a.konto, frei_machen=a.befreien, ohne_richter=ohne)
 
 
 if __name__ == "__main__":
