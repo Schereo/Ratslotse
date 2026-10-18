@@ -13,7 +13,7 @@ from typing import cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
-from kern import news, releases
+from kern import features, news, releases
 from kern.store import Store
 
 from ..antworten import (AdminNewsList, AdminNewsRelease, AdminNewsSent,
@@ -170,6 +170,14 @@ def admin_news_send(
     Abhängigkeit aus dem Request ist zu diesem Zeitpunkt längst geschlossen.
     """
     release = _release_oder_404(version)
+    if not releases.freigeschaltet(release):
+        # Die Testzustellung an sich selbst bleibt erlaubt — ansehen darf man
+        # die Karte vorher, ankündigen erst, wenn es das Angekündigte gibt.
+        aus = [k for k in release.schalter if not features.an(k)]
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            f"Die Karte {release.version} kündigt Features an, die hier noch "
+                            f"aus sind: {', '.join(aus)}. Erst die Schalter in FEATURE_FLAGS "
+                            "setzen und den Dienst neu starten.")
     bilanz = news.announce(store, release)
     if bilanz["queued"]:
         background.add_task(_zustellen)

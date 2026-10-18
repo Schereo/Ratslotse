@@ -466,6 +466,31 @@ def test_versionen_werden_als_zahlen_verglichen():
 # (3) Wer sieht was
 # --------------------------------------------------------------------------
 
+def test_jeder_schalter_einer_karte_gibt_es():
+    """Ein Tippfehler hielte die Karte für immer zurück — „noch nicht
+    freigeschaltet“ sähe genauso aus wie „gibt es nicht“."""
+    from kern import features
+
+    for r in releases.RELEASES:
+        unbekannt = [k for k in r.schalter if k not in features.FEATURES]
+        assert not unbekannt, f"{r.version}: {unbekannt} steht nicht in kern/features.py"
+
+
+def test_die_karte_wartet_auf_ihre_schalter(monkeypatch):
+    """18.10.2026: 2.11.0 brachte nur Code nach Prod, die 3.0.0-Karte lag
+    fertig daneben. Ohne Sperre hätte jedes Konto sie gesehen — mit Features,
+    die dort aus sind."""
+    karte = next(r for r in releases.RELEASES if r.schalter)
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend,tippspiel,akten-suche,akten-zeitleiste")
+    assert karte not in releases.pending_for(None, "2020-01-01")[0]
+    monkeypatch.setenv("FEATURE_FLAGS", ",".join(karte.schalter[:-1]))
+    assert karte not in releases.pending_for(None, "2020-01-01")[0]
+    monkeypatch.setenv("FEATURE_FLAGS", ",".join(karte.schalter))
+    assert karte in releases.pending_for(None, "2020-01-01")[0]
+    monkeypatch.setenv("FEATURE_FLAGS", "*")  # dev
+    assert karte in releases.pending_for(None, "2020-01-01")[0]
+
+
 def test_zwei_verpasste_releases_kommen_beide(monkeypatch):
     monkeypatch.setattr(releases, "RELEASES", (
         releases.Release("2.4.0", "2026-11-01", "Vier", (
