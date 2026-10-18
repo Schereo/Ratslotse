@@ -19,7 +19,7 @@ from pathlib import Path
 from .antworten import Health
 from .config import get_settings
 from .schemas import AppConfigOut, AppElectionOut
-from .routers import today, account, admin, auth, auth_apple, bookmarks, council, districts, feedback, kommunalwahl, news, onboarding, push, quiz, social, topics, badges, calendar, mcp, tippspiel, wahlabend
+from .routers import today, account, admin, auth, auth_apple, bookmarks, council, districts, feedback, kommunalwahl, news, onboarding, push, quiz, social, topics, badges, calendar, mcp, mcp_oauth, tippspiel, wahlabend
 from .session import KeinCacheMitSitzung, SitzungsVerlaengerung
 
 logger = logging.getLogger("ratslotse.web.main")
@@ -207,6 +207,7 @@ app.include_router(calendar.router)
 app.include_router(wahlabend.router)
 app.include_router(tippspiel.router)
 app.include_router(mcp.router)
+app.include_router(mcp_oauth.router)
 
 # Die abgelegten Social-Bilder öffentlich ausliefern — Instagram holt sie
 # selbst, also darf hier kein Token davor.
