@@ -29,6 +29,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
@@ -44,6 +45,7 @@ from ..antworten import McpMessage, McpToken, McpTokenCreated, McpTokenList, Ok
 from ..config import get_settings
 from ..deps import get_council_store, get_store, ist_aktiv, require_permission
 from ..ratelimit import RateLimiter
+from . import mcp_oauth
 
 router = APIRouter(tags=["mcp"])
 
@@ -97,8 +99,8 @@ _tag = RateLimiter(3000, 24 * 3600)
 #: Anfrage stand dort schon einmal hinter einer Schreibsperre an.
 _ZAEHL_TAKT_S = 60.0
 _zaehl_sperre = threading.Lock()
-_zaehl_offen: dict[int, int] = {}
-_zaehl_zuletzt: dict[int, float] = {}
+_zaehl_offen: dict[tuple[str, int], int] = {}
+_zaehl_zuletzt: dict[tuple[str, int], float] = {}
 
 
 def _endpoint() -> str:
@@ -162,13 +164,47 @@ def delete_token(
 # Der Server
 # --------------------------------------------------------------------------- #
 
-def _abgewiesen(code: int, text: str) -> JSONResponse:
-    kopf = {"WWW-Authenticate": 'Bearer realm="ratslotse-mcp"'} if code == 401 else None
+def _abgewiesen(code: int, text: str, *, token_kaputt: bool = False) -> JSONResponse:
+    """401 trägt, was ein OAuth-Client zum Anmelden braucht (RFC 9728, 5.1):
+    die Adresse der Schutz-Metadaten und das Recht, das er anfragen soll."""
+    kopf = None
+    if code == 401:
+        teile = ['realm="ratslotse-mcp"',
+                 f'resource_metadata="{mcp_oauth.resource_metadata_url()}"',
+                 f'scope="{mcp_oauth.SCOPE}"']
+        if token_kaputt:
+            teile.append('error="invalid_token"')
+        kopf = {"WWW-Authenticate": "Bearer " + ", ".join(teile)}
     return JSONResponse({"detail": text}, status_code=code, headers=kopf)
 
 
-def _konto(request: Request, store: Store) -> tuple[int, dict] | JSONResponse:
-    """``(token_id, konto)`` — oder die Antwort, mit der abgewiesen wird.
+#: Wem ein Aufruf zugerechnet wird: ``("t", id)`` für einen persönlichen
+#: Schlüssel, ``("g", id)`` für eine OAuth-Freigabe.
+Zaehlstelle = tuple[str, int]
+
+
+def _oauth_konto(token: str, store: Store) -> tuple[Zaehlstelle, int] | JSONResponse:
+    grant = store.mcp_oauth_grant_by_access(token)
+    if not grant or (grant["access_expires"] or "") < datetime.now(UTC).isoformat(timespec="seconds"):
+        return _abgewiesen(401, "Zugang abgelaufen oder widerrufen.", token_kaputt=True)
+    # Audience (RFC 8707): Das Token gilt nur für den Server, für den es
+    # ausgestellt wurde — nicht für eine andere Instanz mit derselben Datenbank.
+    if not mcp_oauth.gleiche_ressource(grant["resource"], mcp_oauth.resource()):
+        return _abgewiesen(401, "Dieses Token gilt nicht für diesen Server.", token_kaputt=True)
+    owner = store.get_web_user_by_id(int(grant["owner_id"]))
+    if owner and int(owner.get("token_version") or 0) != int(grant["token_version"]):
+        # „Überall abmelden“ oder neues Passwort: Die Freigabe ist erledigt.
+        store.revoke_mcp_oauth_grant(int(grant["id"]))
+        return _abgewiesen(401, "Die Verbindung wurde beendet. Bitte neu verbinden.",
+                           token_kaputt=True)
+    return ("g", int(grant["id"])), int(grant["owner_id"])
+
+
+def _konto(request: Request, store: Store) -> tuple[Zaehlstelle, dict] | JSONResponse:
+    """``(zählstelle, konto)`` — oder die Antwort, mit der abgewiesen wird.
+
+    Zwei Wege hinein: der persönliche Schlüssel (``rlmcp_…``) und das
+    OAuth-Zugangs-Token (``rloat_…``, ``routers/mcp_oauth.py``).
 
     401 heißt „kein gültiger Schlüssel“, 403 „Schlüssel gültig, aber das
     Konto darf nicht (mehr)“: gesperrt, unbestätigt oder ohne die Rolle. So
@@ -178,30 +214,40 @@ def _konto(request: Request, store: Store) -> tuple[int, dict] | JSONResponse:
     """
     kopf = request.headers.get("Authorization", "")
     token = kopf[7:].strip() if kopf.startswith("Bearer ") else ""
-    gefunden = store.mcp_token_owner(token)
-    if not gefunden:
-        return _abgewiesen(401, "Kein gültiger MCP-Schlüssel. Ausstellen unter "
-                                f"{get_settings().app_base_url.rstrip('/')}/account.")
-    token_id, owner_id = gefunden
+    if token.startswith(store.MCP_ACCESS_PRAEFIX):
+        gefunden = _oauth_konto(token, store)
+        if isinstance(gefunden, JSONResponse):
+            return gefunden
+        stelle, owner_id = gefunden
+    else:
+        schluessel = store.mcp_token_owner(token)
+        if not schluessel:
+            return _abgewiesen(401, "Kein gültiger MCP-Schlüssel. Ausstellen unter "
+                                    f"{get_settings().app_base_url.rstrip('/')}/account.",
+                               token_kaputt=bool(token))
+        stelle, owner_id = ("t", schluessel[0]), schluessel[1]
     user = store.get_web_user_by_id(owner_id)
     if not user or not ist_aktiv(user):
         return _abgewiesen(403, "Das Konto zu diesem Schlüssel ist nicht aktiv.")
     if "mcp" not in rollen.permissions_for(user.get("roles")):
         return _abgewiesen(403, "Dieses Konto hat keinen MCP-Zugang (Rolle „MCP-Zugang“).")
-    return token_id, user
+    return stelle, user
 
 
-def _zaehlen(store: Store, token_id: int) -> None:
+def _zaehlen(store: Store, stelle: Zaehlstelle) -> None:
     jetzt = time.monotonic()
     with _zaehl_sperre:
-        n = _zaehl_offen.pop(token_id, 0) + 1
-        if jetzt - _zaehl_zuletzt.get(token_id, -_ZAEHL_TAKT_S) < _ZAEHL_TAKT_S:
-            _zaehl_offen[token_id] = n
+        n = _zaehl_offen.pop(stelle, 0) + 1
+        if jetzt - _zaehl_zuletzt.get(stelle, -_ZAEHL_TAKT_S) < _ZAEHL_TAKT_S:
+            _zaehl_offen[stelle] = n
             return
-        _zaehl_zuletzt[token_id] = jetzt
-    if not store.touch_mcp_token(token_id, n):
+        _zaehl_zuletzt[stelle] = jetzt
+    art, nummer = stelle
+    geschrieben = (store.touch_mcp_token(nummer, n) if art == "t"
+                   else store.touch_mcp_oauth_grant(nummer, n))
+    if not geschrieben:
         with _zaehl_sperre:
-            _zaehl_offen[token_id] = _zaehl_offen.get(token_id, 0) + n
+            _zaehl_offen[stelle] = _zaehl_offen.get(stelle, 0) + n
 
 
 def zaehler_vergessen() -> None:
@@ -279,7 +325,8 @@ def mcp(
     """Der MCP-Endpunkt (Streamable HTTP, zustandslos, nur Werkzeuge).
 
     **Öffentlich erreichbar, aber nur mit Schlüssel** — autorisiert über
-    ``Authorization: Bearer rlmcp_…``, ausdrücklich NICHT über das
+    ``Authorization: Bearer rlmcp_…`` oder ein OAuth-Zugangs-Token
+    (``rloat_…``), ausdrücklich NICHT über das
     Sitzungs-Cookie. Ohne Schalter ``mcp-server`` ein 404.
 
     Synchron wie die übrigen Endpunkte: Die Stores öffnen ihre
@@ -290,10 +337,10 @@ def mcp(
     konto = _konto(request, store)
     if isinstance(konto, JSONResponse):
         return konto  # type: ignore[return-value]
-    token_id, user = konto
+    stelle, user = konto
     _minute.check(request, subject=user["id"])
     _tag.check(request, subject=user["id"])
-    _zaehlen(store, token_id)
+    _zaehlen(store, stelle)
     if isinstance(nachricht, list):
         # Stapel (Protokoll 2025-03-26). Neuere Fassungen schicken keine mehr.
         antworten = [a for a in (_bearbeiten(n, council, tasks) for n in nachricht)
