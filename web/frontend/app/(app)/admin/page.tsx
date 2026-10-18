@@ -123,6 +123,7 @@ const FEATURE_LABELS: Record<string, string> = {
   party_opinions: "Haltungen der Fraktionen",
   qa_analysis: "Frag den Rat — Analyse",
   qa_nachrecherche: "Frag den Rat — Nachrecherche",
+  qa_belegnotizen: "Frag den Rat — Belegnotizen",
   qa_answer: "Frag den Rat — Antwort",
   qa_query_expansion: "Frag den Rat — Suchbegriffe",
   qa_simple: "Frag den Rat — verständlicher erklärt",

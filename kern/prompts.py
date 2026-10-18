@@ -1412,6 +1412,22 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "SUCHBEGRIFFE:"
         ),
     },
+    "qa_belegnotizen": {
+        "title": "Frag den Rat – Belegnotizen",
+        "description": "Vor der Antwort: je Dokument eine Notiz, was es zur Frage beiträgt. Platzhalter: {question}, {dokumente}.",
+        "template": (
+            "Du liest für eine Antwort aus dem Archiv des Oldenburger Stadtrats vor. Zu jeder "
+            "Frage gibt es mehrere Dokumente, je mit Schlüssel in spitzen Klammern.\n\n"
+            "FRAGE: {question}\n\nDOKUMENTE:\n{dokumente}\n\n"
+            "Schreibe zu JEDEM Dokument eine Notiz von höchstens zwei Sätzen: Was trägt es "
+            "zur Frage bei? Übernimm Zahlen, Beträge, Daten, Abstimmungsergebnisse und "
+            "Verneinungen wörtlich (\"abgelehnt\", \"nicht beschlossen\", \"vertagt\", "
+            "\"für unwirksam erklärt\"). Nenne, wer etwas gesagt oder beantragt hat. Erfinde "
+            "nichts, was nicht im Dokument steht. Trägt ein Dokument nichts zur Frage bei, setze "
+            "relevant auf false.\n"
+            'Antworte NUR als JSON: {{"notizen": [{{"key": "B123", "relevant": true, "notiz": "…"}}]}}'
+        ),
+    },
     "qa_nachrecherche": {
         "title": "Frag den Rat – Nachrecherche",
         "description": "Nach der ersten Suche: Fehlt in den Treffern etwas, wonach die Frage fragt? Dann bis zu drei Suchanfragen in Verwaltungssprache. Platzhalter: {question}, {treffer}.",
