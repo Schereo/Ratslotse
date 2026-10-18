@@ -62,6 +62,15 @@ class Feature:
 #:                     "wie vorher (tests/…/eval).",
 #:     ),
 FEATURES: dict[str, Feature] = {
+    "suche-ausbau": Feature(
+        key="suche-ausbau",
+        description="„Frag den Rat“: Die Analyse wählt Themen auch ohne wörtlichen Namen "
+                    "(qa.themen_kandidaten), deren Beschlüsse kommen als Hinweis in die Suche; "
+                    "ein wörtlicher Ort filtert zusätzlich auf die Beschlüsse des gleichnamigen "
+                    "Themas.",
+        fertig_wenn="Kontext-Recall im Gold-Lauf höher als ohne, Abdeckung ohne Rückschritt; "
+                    "dann Normalweg.",
+    ),
     "belegnotizen": Feature(
         key="belegnotizen",
         description="„Frag den Rat“ lässt vor der Antwort ein kleines Modell je Dokument "

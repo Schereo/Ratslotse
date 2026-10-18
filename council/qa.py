@@ -499,7 +499,8 @@ def research_plan_log_record(question: str, plan: dict, typ: str,
 
 def analyse_query(question: str, model: str = EXPAND_MODEL,
                   verlauf: list[dict] | None = None,
-                  orte: list[tuple[str, str]] | None = None) -> dict:
+                  orte: list[tuple[str, str]] | None = None,
+                  themen: list[tuple[int, str]] | None = None) -> dict:
     """{"question", "terms", "kind", "party"} zur Frage. ``question`` ist die
     EIGENSTÄNDIGE Fassung: Bei mitgegebenem Gesprächsverlauf (Chat) löst die
     Analyse Rückbezüge auf („Und was kostet das?" → „Was kostet der Neubau der
@@ -511,7 +512,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
                 "rechercheplan": _research_plan({})}
     verlauf = verlauf_ohne_dieselbe_frage(verlauf, question)
     vtext = _verlauf_zeilen(verlauf)
-    ortsblock = _ortsblock(orte)
+    ortsblock = _ortsblock(orte) + _themenblock(themen)
     key = f"{model}|{hash(vtext)}|{hash(ortsblock)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
     if hit is not None:
@@ -579,6 +580,19 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         ort_id = str(data.get("ort") or "").strip()
         if orte and ort_id in {i for i, _ in orte}:
             out["ort_id"] = ort_id
+        # Dasselbe für Themen: nur ids AUS der Liste, höchstens drei.
+        if themen:
+            erlaubt = {i for i, _ in themen}
+            gewaehlt = []
+            for roh in (data.get("themen") or []) if isinstance(data.get("themen"), list) else []:
+                try:
+                    tid = int(roh)
+                except (TypeError, ValueError):
+                    continue
+                if tid in erlaubt and tid not in gewaehlt:
+                    gewaehlt.append(tid)
+            if gewaehlt:
+                out["themen_ids"] = gewaehlt[:3]
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
                 _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))
@@ -1475,6 +1489,61 @@ def braucht_ortsliste(wort_ort: dict | None) -> bool:
     ehemaligen Kasernengelände in Donnerschwee gebaut?“ meint Neu-Donnerschwee,
     der Wortabgleich sieht aber nur „Donnerschwee“."""
     return wort_ort is None or wort_ort.get("kind") == "local_area"
+
+
+#: Erste Wörter von Entitäts-Namen, die fast jede Frage träfen.
+_THEMEN_GENERISCH = {"oldenburger", "oldenburgische", "oldenburgisch", "oldenburg",
+                     "ausschuss", "stadtrat", "stadtteil", "beschluss", "antrag"}
+#: So viele Themen-Kandidaten sieht die Analyse höchstens.
+THEMEN_KANDIDATEN = 20
+
+
+def themen_kandidaten(store, question: str, max_n: int = THEMEN_KANDIDATEN) -> list[tuple[int, str]]:
+    """Themen (Entitäten), die die Frage MEINEN könnte — als Auswahl für die
+    Analyse, nicht als Treffer.
+
+    **Warum.** ``finde_entitaeten`` verlangt den Namen wörtlich. „Wie stehen
+    die Fraktionen zum neuen Stadion?“ traf deshalb keine der fünf
+    Stadion-Entitäten („Stadion Oldenburg“, „Stadionneubau Maastrichter
+    Straße“ …), „Bürgschaften für das Klinikum“ nicht „Klinikum Oldenburg“ —
+    und ohne Anker fehlten die Ratsbeschlüsse vom 01.06.2026 (Gold 18.10.2026).
+    Dasselbe Muster wie bei den Orten (``_ortsblock``): Wortanfänge (ab sechs
+    Buchstaben, „Stadion“ ↔ „Stadionneubau“) liefern Kandidaten, das
+    Analyse-Modell wählt. Allein wären Wortanfänge zu grob — „Oldenburger …“
+    und „Grundschule …“ träfen Dutzende.
+    """
+    woerter = {w for w in _falte(question).split() if len(w) >= 6 and w not in _THEMEN_GENERISCH}
+    if not woerter:
+        return []
+    try:
+        index = store.entity_suchindex()
+    except Exception:  # noqa: BLE001
+        return []
+    exakt = {e["id"] for e in finde_entitaeten(store, question, max_n=5)}
+    name_von: dict[int, str] = {}
+    beste: dict[int, tuple[int, int]] = {}
+    for eid, name, n in index:
+        name_von.setdefault(eid, name)   # die Entitäts-Zeilen stehen vor den Aliassen
+        if eid in exakt:
+            continue
+        toks = [t for t in _falte(name).split() if len(t) >= 6 and t not in _THEMEN_GENERISCH]
+        treffer = sum(1 for w in woerter if any(w.startswith(t) or t.startswith(w) for t in toks))
+        if treffer and (treffer, n or 0) > beste.get(eid, (0, 0)):
+            beste[eid] = (treffer, n or 0)
+    geordnet = sorted(beste, key=lambda e: (-beste[e][0], -beste[e][1]))[:max_n]
+    return [(eid, name_von[eid]) for eid in geordnet]
+
+
+def _themenblock(themen: list[tuple[int, str]] | None) -> str:
+    """Die Themen-Auswahl als Nachsatz zum Analyse-Prompt — leer ohne Kandidaten."""
+    if not themen:
+        return ""
+    zeilen = "\n".join(f"- {i}: {name}" for i, name in themen)
+    return (
+        "\n\nTHEMEN aus dem Archiv (Auswahl):\n" + zeilen + "\n"
+        'Ergänze das JSON um "themen": die ids von höchstens DREI Themen aus dieser Liste, '
+        "um die es in der Frage geht — auch wenn sie anders heißen („neues Stadion“ → "
+        "Stadionneubau, Stadion Oldenburg). Nur, was die Frage wirklich meint; sonst [].\n")
 
 
 def ort_hinweis(wort_ort: dict | None, ort_id: str | None, store=None) -> dict | None:

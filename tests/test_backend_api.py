@@ -6160,7 +6160,7 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
     _register(client)
     gesehen = {}
 
-    def fake_analyse(q, model=None, verlauf=None, orte=None):
+    def fake_analyse(q, model=None, verlauf=None, orte=None, themen=None):
         gesehen["question"] = q
         gesehen["verlauf"] = verlauf
         return {"question": "Was kostet der Neubau der Cäcilienbrücke?",

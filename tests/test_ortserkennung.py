@@ -99,3 +99,39 @@ def test_die_eval_faelle_nennen_nur_echte_orte():
     faelle = json.loads((Path(__file__).parent.parent / "eval" / "cases_ortserkennung.json").read_text())
     assert len(faelle) >= 20
     assert sum(1 for f in faelle if f["expect"] == [None]) >= 5, "zu wenige Fragen ohne Ort"
+
+
+# ---- Themen ohne wörtlichen Namen (Schalter `suche-ausbau`) ----------------
+
+class _ThemenStore:
+    def entity_suchindex(self):
+        return [(853, "Stadion Oldenburg", 40), (740, "Stadionneubau Maastrichter Straße", 22),
+                (168, "Klinikum Oldenburg", 30), (900, "Oldenburger Turnerbund", 5),
+                (740, "stadionneubau", 22)]
+
+
+def test_themen_kandidaten_nach_wortanfang_ohne_allerweltswoerter():
+    store = _ThemenStore()
+    ids = [i for i, _ in qa.themen_kandidaten(store, "Wie stehen die Fraktionen zum neuen Stadion?")]
+    assert set(ids) == {853, 740}
+    # „Oldenburger …“ trifft nicht jede Frage mit „Oldenburger“.
+    assert qa.themen_kandidaten(store, "Was macht der Oldenburger Rat?") == []
+    # Der angezeigte Name ist der des Themas, nicht der Alias-Slug.
+    assert dict(qa.themen_kandidaten(store, "Wie geht es mit dem Stadion weiter?"))[740] \
+        == "Stadionneubau Maastrichter Straße"
+
+
+def test_die_analyse_waehlt_hoechstens_drei_themen_aus_der_liste(monkeypatch):
+    gesehen = _analyse_mit(monkeypatch, {"terms": "Stadion", "themen": [853, "740", 999, 168, 5]})
+    themen = [(853, "Stadion Oldenburg"), (740, "Stadionneubau"), (168, "Klinikum"), (5, "X")]
+    a = qa.analyse_query("Wie stehen die Fraktionen zum neuen Stadion?", themen=themen)
+    assert a["themen_ids"] == [853, 740, 168]        # 999 fehlt in der Liste, höchstens drei
+    assert "853: Stadion Oldenburg" in gesehen[0]
+    qa._ANALYSE_CACHE.clear()
+
+
+def test_der_router_nimmt_themen_nur_als_hinweis():
+    from pathlib import Path
+    quelle = (Path(__file__).parent.parent / "web/backend/app/routers/council.py").read_text()
+    i = quelle.index("hinweis_ids=(")
+    assert 'analyse["themen_ids"]' in quelle[i:i + 600]
