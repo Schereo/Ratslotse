@@ -655,6 +655,12 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   Hand im Admin-Panel unter *Neuigkeiten*, ein paar Tage nach dem Deploy:
   Ausliefern und Ankündigen sind zwei Entscheidungen.
 
+  **Die Karte hängt an ihren Schaltern** (`Release.schalter`, seit 10/2026).
+  Sie erscheint erst und lässt sich erst verschicken, wenn alle Features an
+  sind, die sie ankündigt. Anlass: Die 3.0.0-Karte lag fertig auf dev, als
+  2.11.0 nur Code nach Prod bringen sollte, und `pending_for` hätte sie jedem
+  Konto gezeigt, obwohl Lotti, Mein Viertel und die Ideen dort aus waren.
+
   Der zweite Befehl war bis 09/2026 Handarbeit und fiel deshalb dreimal aus:
   v1.14.0, v1.15.0 und v2.0.0 lagen als Tags bei GitHub, ohne dass ein Release
   daraus wurde — die Release-Seite zeigte wochenlang v1.13.2 als „Latest". Ein

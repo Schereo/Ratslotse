@@ -170,7 +170,8 @@ Die Dinge, die man dabei vergisst:
    Halbsatz:** „Das Teilen-Update", benannt nach dem Hauptfeature (Tims Wunsch
    08.09.2026; `test_releases.py` hält 40 Zeichen). Verschickt wird später von
    Hand im Admin-Panel unter *Neuigkeiten*; Minor- und Patch-Versionen
-   bekommen gar keinen Eintrag.
+   bekommen gar keinen Eintrag. **`schalter=(…)` nennen**, was die Karte
+   ankündigt: Bis alle davon auf Prod an sind, bleibt sie dort unsichtbar.
 
    **Je Highlight ein Clip, in dem man das Feature bedient sieht** — der
    Zeiger fährt hin, der Klick ist markiert, das Bild zoomt auf die Stelle

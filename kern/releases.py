@@ -47,6 +47,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from kern import features
+
 #: Eine Version, wie sie im Changelog steht: genau drei Zahlen.
 VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
@@ -211,6 +213,15 @@ class Release:
     #: Wege durch den Rat — je ein kurzes Video."). Sie beantwortet die Frage,
     #: ob sich das Durchklicken lohnt, bevor jemand klickt.
     teaser: str | None = None
+    #: Die Schalter (``kern/features.py``), hinter denen die angekündigten
+    #: Features stehen. Die Karte erscheint erst, wenn ALLE an sind — und
+    #: lässt sich vorher nicht verschicken.
+    #:
+    #: Anlass (18.10.2026): Die 3.0.0-Karte lag fertig auf dev, als 2.11.0 nur
+    #: Code nach Prod bringen sollte. ``pending_for`` hätte sie allen Konten
+    #: gezeigt — samt Lotti, Mein Viertel und Ideen aus anderen Städten, die
+    #: dort aus sind. Auf dev (``FEATURE_FLAGS=*``) bleibt sie sichtbar.
+    schalter: tuple[str, ...] = ()
 
 
 #: Alle Releases mit Karte, **neueste zuerst**.
@@ -226,6 +237,7 @@ RELEASES: tuple[Release, ...] = (
         # wer die Karte sieht (``pending_for``).
         date="2026-10-06",
         title="Das Erklär-Update",
+        schalter=("lotti-assistentin", "mein-viertel", "ideen-anderswo", "andere-staedte"),
         teaser="Drei neue Wege durch den Rat — je ein kurzes Video.",
         highlights=(
             Highlight(
@@ -546,6 +558,11 @@ def get(version: str) -> Release | None:
     return None
 
 
+def freigeschaltet(release: Release, roh: str | None = None) -> bool:
+    """Sind alle Features an, die diese Karte ankündigt? (``Release.schalter``)"""
+    return all(features.an(k, roh) for k in release.schalter)
+
+
 def pending_for(seen_version: str | None,
                 account_created: str | None) -> tuple[list[Release], int]:
     """Was dieses Konto noch nicht gesehen hat: ``(zu zeigen, weitere)``.
@@ -575,6 +592,9 @@ def pending_for(seen_version: str | None,
         r for r in RELEASES
         if (marke is None or version_key(r.version) > marke)
         and (not erstellt or erstellt <= r.date)
+        # Eine Karte, deren Features noch aus sind, kündigt nichts an, was es
+        # gibt — sie wartet, bis der Schalter umgelegt ist (``Release.schalter``).
+        and freigeschaltet(r)
     ]
     offen.sort(key=lambda r: version_key(r.version), reverse=True)
     return offen[:CARD_LIMIT], max(0, len(offen) - CARD_LIMIT)
