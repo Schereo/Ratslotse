@@ -321,6 +321,28 @@ CREATE TABLE IF NOT EXISTS mcp_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_mcp_tokens_owner ON mcp_tokens(owner_id);
 
+-- Jeder Werkzeugaufruf über den MCP-Server, für die Auswertung im Admin-Panel
+-- (Statistik → Agenten). Mit Konto (Tims Entscheidung 18.10.2026) und dem
+-- Suchtext — gekürzt, Kontaktdaten maskiert, nach 90 Tagen geleert. Beides
+-- steht auf der Freigabe-Seite und in der Einstellungskarte, bevor jemand
+-- verbindet. `source` ist `key:<id>` (persönlicher Schlüssel) bzw.
+-- `oauth:<id>` (Freigabe): Daran hängen die Abfolgen einer Verbindung.
+CREATE TABLE IF NOT EXISTS mcp_calls (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts           TEXT NOT NULL,
+    owner_id     INTEGER NOT NULL,
+    source       TEXT NOT NULL,
+    client       TEXT NOT NULL,
+    tool         TEXT NOT NULL,
+    outcome      TEXT NOT NULL,
+    duration_ms  INTEGER NOT NULL,
+    args         TEXT NOT NULL,
+    query        TEXT,
+    result_count INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_calls_ts ON mcp_calls(ts);
+CREATE INDEX IF NOT EXISTS idx_mcp_calls_owner ON mcp_calls(owner_id);
+
 -- OAuth für den MCP-Server (web/backend/app/routers/mcp_oauth.py). ChatGPT
 -- kann keinen festen Schlüssel schicken, nur OAuth 2.1 mit PKCE; deshalb ist
 -- Ratslotse dafür selbst Autorisierungsserver.
@@ -1039,6 +1061,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("mcp_oauth_grants", "owner_id"),
     ("mcp_oauth_retired", "owner_id"),
     ("mcp_oauth_codes", "owner_id"),
+    ("mcp_calls", "owner_id"),
 )
 
 
@@ -6166,6 +6189,10 @@ class Store:
             (self._mcp_hash(token),)).fetchone()
         return (int(row[0]), int(row[1])) if row else None
 
+    def mcp_token_label(self, token_id: int) -> str:
+        row = self._conn.execute("SELECT label FROM mcp_tokens WHERE id = ?", (token_id,)).fetchone()
+        return str(row[0]) if row else "Schlüssel"
+
     def touch_mcp_token(self, token_id: int, anzahl: int = 1) -> bool:
         """Zählt Aufrufe und setzt ``last_used`` — best-effort und ohne auf
         eine Schreibsperre zu warten (dieselbe Begründung wie beim
@@ -6181,6 +6208,154 @@ class Store:
             return False
         finally:
             self._conn.execute("PRAGMA busy_timeout=5000")
+
+    # ---- MCP-Aufrufe (Auswertung) -------------------------------------------
+
+    #: So lange bleibt der Suchtext stehen; die Zeile selbst ein Jahr.
+    MCP_QUERY_TAGE = 90
+    MCP_CALL_TAGE = 365
+
+    def record_mcp_calls(self, zeilen: list[dict]) -> bool:
+        """Einen Stapel Aufrufe schreiben — ohne auf eine Schreibsperre zu
+        warten (wie ``touch_mcp_token``). ``False`` heißt: nichts geschrieben,
+        der Aufrufer behält den Stapel und versucht es später."""
+        if not zeilen:
+            return True
+        self._conn.execute("PRAGMA busy_timeout=0")
+        try:
+            with self._conn:
+                self._conn.executemany(
+                    "INSERT INTO mcp_calls (ts, owner_id, source, client, tool, outcome, "
+                    "duration_ms, args, query, result_count) VALUES (:ts, :owner_id, :source, "
+                    ":client, :tool, :outcome, :duration_ms, :args, :query, :result_count)",
+                    zeilen)
+            return True
+        except sqlite3.Error:
+            return False
+        finally:
+            self._conn.execute("PRAGMA busy_timeout=5000")
+
+    def purge_mcp_calls(self, jetzt: datetime | None = None) -> None:
+        """Suchtexte nach 90 Tagen leeren, Zeilen nach einem Jahr löschen."""
+        jetzt = jetzt or datetime.now(UTC)
+        with self._conn:
+            self._conn.execute(
+                "UPDATE mcp_calls SET query = NULL WHERE query IS NOT NULL AND ts < ?",
+                (self._iso(jetzt - timedelta(days=self.MCP_QUERY_TAGE)),))
+            self._conn.execute("DELETE FROM mcp_calls WHERE ts < ?",
+                               (self._iso(jetzt - timedelta(days=self.MCP_CALL_TAGE)),))
+
+    def mcp_auswertung(self, tage: int = 30) -> dict:
+        """Wie Agenten den MCP-Server benutzen — für das Admin-Panel.
+
+        Eine **Sitzung** ist eine Folge von Aufrufen derselben Verbindung
+        (``source``) ohne Pause über 30 Minuten; Abfolgen werden innerhalb
+        einer Sitzung gezählt, nie über ihre Grenze hinweg."""
+        seit = self._iso(datetime.now(UTC) - timedelta(days=tage))
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT c.ts, c.owner_id, c.source, c.client, c.tool, c.outcome, c.duration_ms, "
+            "c.args, c.query, c.result_count FROM mcp_calls c WHERE c.ts >= ? ORDER BY c.ts",
+            (seit,))]
+
+        def median(werte: list[int]) -> int | None:
+            if not werte:
+                return None
+            w = sorted(werte)
+            return w[len(w) // 2]
+
+        def rangliste(zaehler: dict[str, int], n: int) -> list[dict]:
+            return [{"key": k, "n": v} for k, v in
+                    sorted(zaehler.items(), key=lambda kv: (-kv[1], kv[0]))[:n]]
+
+        tage_n: dict[str, int] = {}
+        werkzeuge: dict[str, dict] = {}
+        clients: dict[str, int] = {}
+        konten: dict[int, dict] = {}
+        anfragen: dict[str, dict] = {}
+        filter_n: dict[str, int] = {}
+        uebergaenge: dict[str, int] = {}
+        einstiege: dict[str, int] = {}
+        letzte: dict[str, tuple[datetime, str]] = {}
+        sitzungen = 0
+        sitzungslaengen: list[int] = []
+        laenge: dict[str, int] = {}
+        for r in rows:
+            zeit = datetime.fromisoformat(r["ts"])
+            tage_n[r["ts"][:10]] = tage_n.get(r["ts"][:10], 0) + 1
+            w = werkzeuge.setdefault(r["tool"], {"key": r["tool"], "n": 0, "errors": 0,
+                                                 "empty": 0, "ms": []})
+            w["n"] += 1
+            w["ms"].append(int(r["duration_ms"]))
+            if r["outcome"] != "ok":
+                w["errors"] += 1
+            if r["result_count"] == 0:
+                w["empty"] += 1
+            clients[r["client"]] = clients.get(r["client"], 0) + 1
+            k = konten.setdefault(r["owner_id"], {"owner_id": r["owner_id"], "n": 0,
+                                                  "last": r["ts"], "clients": set()})
+            k["n"] += 1
+            k["last"] = r["ts"]
+            k["clients"].add(r["client"])
+            for name in json.loads(r["args"] or "[]"):
+                filter_n[f"{r['tool']}.{name}"] = filter_n.get(f"{r['tool']}.{name}", 0) + 1
+            if r["query"]:
+                a = anfragen.setdefault(r["query"].lower(), {"query": r["query"], "n": 0,
+                                                             "empty": 0})
+                a["n"] += 1
+                if r["result_count"] == 0:
+                    a["empty"] += 1
+            vorher = letzte.get(r["source"])
+            if vorher is None or zeit - vorher[0] > timedelta(minutes=30):
+                if vorher is not None:
+                    sitzungslaengen.append(laenge[r["source"]])
+                sitzungen += 1
+                laenge[r["source"]] = 0
+                einstiege[r["tool"]] = einstiege.get(r["tool"], 0) + 1
+            else:
+                schritt = f"{vorher[1]} → {r['tool']}"
+                uebergaenge[schritt] = uebergaenge.get(schritt, 0) + 1
+            laenge[r["source"]] += 1
+            letzte[r["source"]] = (zeit, r["tool"])
+        sitzungslaengen.extend(laenge.values())
+
+        namen: dict[int, dict] = {}
+        if konten:
+            platz = ",".join("?" * len(konten))
+            for z in self._conn.execute(
+                    f"SELECT id, email, display_name FROM web_users WHERE id IN ({platz})",
+                    list(konten)):
+                namen[int(z["id"])] = dict(z)
+        suchen = [r for r in rows if r["tool"] == "search_decisions"]
+        return {
+            "days": tage,
+            "calls": len(rows),
+            "accounts": len(konten),
+            "sessions": sitzungen,
+            "calls_per_session": median(sitzungslaengen),
+            "errors": sum(1 for r in rows if r["outcome"] != "ok"),
+            "searches": len(suchen),
+            "empty_searches": sum(1 for r in suchen if r["result_count"] == 0),
+            "p50_ms": median([int(r["duration_ms"]) for r in rows]),
+            "per_day": [{"day": d, "n": n} for d, n in sorted(tage_n.items())],
+            "tools": [{"key": w["key"], "n": w["n"], "errors": w["errors"], "empty": w["empty"],
+                       "p50_ms": median(w["ms"])}
+                      for w in sorted(werkzeuge.values(), key=lambda w: -w["n"])],
+            "clients": rangliste(clients, 20),
+            "accounts_list": [
+                {"owner_id": k["owner_id"],
+                 "email": namen.get(k["owner_id"], {}).get("email"),
+                 "display_name": namen.get(k["owner_id"], {}).get("display_name"),
+                 "n": k["n"], "last": k["last"], "clients": sorted(k["clients"])}
+                for k in sorted(konten.values(), key=lambda k: -k["n"])[:50]],
+            "entries": rangliste(einstiege, 10),
+            "transitions": rangliste(uebergaenge, 15),
+            "arguments": rangliste(filter_n, 20),
+            "queries": [{"query": a["query"], "n": a["n"], "empty": a["empty"]}
+                        for a in sorted(anfragen.values(), key=lambda a: (-a["n"], a["query"]))[:50]],
+            "empty_queries": [{"query": a["query"], "n": a["empty"], "empty": a["empty"]}
+                              for a in sorted(anfragen.values(), key=lambda a: (-a["empty"], a["query"]))
+                              if a["empty"] > 0][:30],
+        }
 
     # ---- MCP über OAuth ---------------------------------------------------
     #
