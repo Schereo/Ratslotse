@@ -62,3 +62,17 @@ def test_vergleich_nennt_mittel_spanne_und_recall(tmp_path, monkeypatch, capsys)
     assert "Kontext-Recall 50%" in aus
     # +50 Punkte bei 10 Punkten Spannweite je Seite: als echter Unterschied markiert.
     assert "★ fall-a" in aus
+
+
+def test_punktfrage_besteht_mit_den_kernfakten():
+    """Tim, 18.10.2026: Bei Punktfragen zählen für „Frag den Rat“ die
+    Kernfakten, nicht die 60-%-Schwelle; die Recherche behält die volle Regel."""
+    import eval_deep_gold as deep
+    fall = {"punktfrage": True, "verboten": [{"id": "V1"}],
+            "pflicht": [{"id": "F1", "gewicht": 3}, *({"id": f"F{i}", "gewicht": 1} for i in range(2, 10))]}
+    urteil = {"pflicht": {"F1": {"ok": True}}, "verboten": {}}
+    assert deep._bewerten(fall, urteil, punktregel=True)["bestanden"] is True
+    assert deep._bewerten(fall, urteil)["bestanden"] is False            # Recherche
+    assert deep._bewerten(dict(fall, punktfrage=False), urteil, punktregel=True)["bestanden"] is False
+    verstoss = dict(urteil, verboten={"V1": {"verstoss": True}})
+    assert deep._bewerten(fall, verstoss, punktregel=True)["bestanden"] is False
