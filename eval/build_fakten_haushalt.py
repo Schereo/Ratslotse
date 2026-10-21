@@ -1121,6 +1121,7 @@ def bauen() -> list[dict]:  # noqa: PLR0915 — eine Liste, kein Algorithmus
     mehrstufig()
     mehrstufig_anschluss()
     mehrstufig_neue_reihen()
+    bestaende()
     return FAELLE
 
 
@@ -1610,6 +1611,82 @@ def mehrstufig_neue_reihen() -> None:
       "hat sich die gewerbesteuer seit 2012 verdoppelt", k, B_STEUERN,
       [Z(gewst, 2012, jahr=2012, bez="Gewerbesteuer 2012"),
        Z(gewst, 2025, jahr=2025, bez="Gewerbesteuer 2025")], fenster=True)
+
+
+B_FINANZ = "council/geld/finanzhaushalt.py"
+B_VORBERICHT = "council/geld/vorbericht.py"
+B_SCHULDENPLAN = "council/geld/schuldenplan.py"
+B_VE = "council/geld/ve.py"
+B_ABSCHLUSS = "council/geld/gesellschaft_abschluss.py"
+B_BILANZ_ERL = "council/geld/bilanz_erlaeuterung.py"
+
+FINANZ = ("SELECT amount FROM council_finance_budget WHERE plan_budget_year = ? "
+          "AND year = ? AND role = ?")
+VORBERICHT = ("SELECT amount FROM council_budget_preface_figures WHERE plan_budget_year = ? "
+              "AND series = ? AND year = ? AND variant = ?")
+SCHULDENPLAN = ("SELECT start_expected FROM council_debt_plan WHERE budget_year = ? "
+                "AND entity = ? AND code = ?")
+ABSCHLUSS = ("SELECT value FROM council_company_accounts WHERE company = ? AND year = ? "
+             "AND indicator = ?")
+
+
+def bestaende() -> None:
+    """Die sieben Bestände, die bis 10/2026 nur auf den Haushaltsseiten standen
+    (Finanzhaushalt, Vorbericht, Schuldenübersicht, Verpflichtungsermächtigungen,
+    Abschlüsse der Gesellschaften, Bilanz-Erläuterungen) — je eine Frage, die
+    nur der neue Baustein beantwortet, mit der naheliegenden Verwechslung als
+    ``verboten``."""
+    F("hh-finanz-fehlbetrag-2026-rat", "rat",
+      "Wie hoch ist der Finanzmittelfehlbetrag im Finanzhaushalt 2026?",
+      "haushalt/finanzhaushalt", B_FINANZ,
+      [Z(FINANZ, 2026, 2026, "cash_surplus", jahr=2026, betrag=True,
+         bez="Finanzmittelüberschuss/-fehlbetrag 2026 (Ansatz)")])
+    F("hh-finanz-laufend-2027-rat", "rat",
+      "Welchen Saldo aus laufender Verwaltungstätigkeit sieht die Finanzplanung für 2027 vor?",
+      "haushalt/finanzhaushalt", B_FINANZ,
+      [Z(FINANZ, 2026, 2027, "balance_operating", jahr=2027, betrag=True,
+         bez="Saldo laufende Verwaltung 2027 (Finanzplanung im Plan 2026)")],
+      verboten=[V(FINANZ, 2026, 2026, "balance_operating", als_jahr=2027,
+                  grund="Ansatz 2026 als Finanzplanung 2027")])
+    F("hh-vorbericht-gewerbe-prognose-rat", "rat",
+      "Mit wie viel Gewerbesteuer rechnet die Stadt laut Prognose im Vorbericht für 2025?",
+      "haushalt/vorbericht", B_VORBERICHT,
+      [Z(VORBERICHT, 2026, "tax_trade", 2025, "forecast", jahr=2025,
+         bez="Gewerbesteuer 2025, Prognose im Vorbericht 2026")],
+      verboten=[V(VORBERICHT, 2026, "tax_trade", 2025, "prior_budget", als_jahr=2025,
+                  grund="Vorjahresansatz als Prognose"),
+                V(VORBERICHT, 2026, "tax_trade", 2026, "budget", als_jahr=2025,
+                  grund="Ansatz 2026 als Prognose 2025")])
+    F("hh-schuldenplan-egh-rat", "rat",
+      "Mit welchen Schulden geht der Eigenbetrieb Gebäudewirtschaft und Hochbau voraussichtlich "
+      "ins Jahr 2026?",
+      "haushalt/schuldenplan", B_SCHULDENPLAN,
+      [Z(SCHULDENPLAN, 2026, "Eigenbetrieb Gebäudewirtschaft und Hochbau", "total", jahr=2025,
+         bez="Schulden EGH, voraussichtlich 31.12.2025 (Schuldenübersicht Plan 2026)")])
+    F("hh-ve-faellig-2027-rat", "rat",
+      "Wie viel aus den Verpflichtungsermächtigungen des Haushalts 2026 wird 2027 fällig?",
+      "haushalt/ve", B_VE,
+      [Z("SELECT amount FROM council_commitments WHERE budget_year = ? AND plan_year = ? "
+         "AND due_year = ?", 2026, 2026, 2027, jahr=2027,
+         bez="VE des Plans 2026, fällig 2027")])
+    F("hh-abschluss-bbgo-2025-rat", "rat",
+      "Welches Jahresergebnis hatte die Bäderbetriebsgesellschaft 2025 laut Jahresabschluss?",
+      "haushalt/gesellschaften", B_ABSCHLUSS,
+      [Z(ABSCHLUSS, "bbgo", 2025, "jahresergebnis", jahr=2025, betrag=True,
+         bez="Jahresergebnis BBGO 2025 (Ist)")],
+      verboten=[V(ABSCHLUSS, "bbgo", 2024, "jahresergebnis", als_jahr=2025,
+                  grund="Ergebnis 2024 als 2025")])
+    F("hh-abschluss-vwg-bilanz-rat", "rat",
+      "Wie hoch war die Bilanzsumme der Verkehr und Wasser GmbH im Jahresabschluss 2024?",
+      "haushalt/gesellschaften", B_ABSCHLUSS,
+      [Z(ABSCHLUSS, "vwg", 2024, "bilanzsumme", jahr=2024, bez="Bilanzsumme VWG 2024")])
+    F("hh-bilanz-rueckstellung-erl-rat", "rat",
+      "Was steckt hinter den Rückstellungen in der Bilanz der Stadt 2025?",
+      "haushalt/bilanz", B_BILANZ_ERL,
+      [Z("SELECT 20.9e6", jahr=2025,
+         bez="Erhöhung der Pensionsrückstellungen 2025 (Erläuterung zur Bilanz: "
+             "„um 20,9 Millionen Euro erhöht“)"),
+       T([["Pension"]], "council_balance_sheet_notes year=2025 heading='Rückstellungen'")])
 
 
 def main() -> int:
