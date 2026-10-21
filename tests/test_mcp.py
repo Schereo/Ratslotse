@@ -551,6 +551,45 @@ def test_die_anleitung_nennt_jedes_werkzeug():
                        "dort in einen der typischen Wege aufnehmen.")
 
 
+def test_budget_document_liest_bestaende_mit_beleg(client, monkeypatch):
+    """Bestände, die bis 10/2026 nur auf den Haushaltsseiten standen —
+    hier die Verpflichtungsermächtigungen: Jahr wählbar, Zeilen mit Beleg,
+    ein fehlendes Jahr nennt die vorhandenen, viele Zeilen kommen in Stücken."""
+    cs = CouncilStore(COUNCIL_DB)
+    cur = cs._conn.execute(
+        "INSERT INTO council_provenance (key, kind, label, url, probe, as_of, fetched_at) "
+        "VALUES ('t:ve', 'haushaltsplan', 'Haushaltsplan 2026', "
+        "'https://buergerinfo.oldenburg.de/getfile.php?id=9&type=do', 'x', '2026', "
+        "datetime('now'))")
+    cs._conn.executemany(
+        "INSERT INTO council_commitments (budget_year, plan_year, due_year, amount, herkunft_id, "
+        "fetched_at) VALUES (?, ?, ?, ?, ?, datetime('now'))",
+        [(2025, 2025, 2026, 1_000_000, cur.lastrowid),
+         (2026, 2026, 2027, 27_419_000, cur.lastrowid),
+         (2026, 2026, 2028, 5_000_000, cur.lastrowid)])
+    cs._conn.commit()
+    cs.close()
+    _konto(client, email="rat@example.org", rollen=("mcp_access", "council_member"))
+    token = _schluessel(client)
+
+    d = _rufe(token, "budget_document", kind="commitments")
+    assert d["year"] == 2026 and d["available_years"] == [2025, 2026]
+    assert [r["amount"] for r in d["rows"]] == [27_419_000, 5_000_000]
+    assert d["rows"][0]["source"] == 0 and "herkunft_id" not in d["rows"][0]
+    assert d["sources"][0]["url"].endswith("id=9&type=do")
+
+    r = _rpc(token, "tools/call", {"name": "budget_document",
+                                   "arguments": {"kind": "commitments", "year": 2019}})
+    assert r.json()["result"]["isError"] is True
+    assert "2025, 2026" in r.json()["result"]["content"][0]["text"]
+
+    monkeypatch.setattr(mcp_tools, "DOKUMENT_ZEICHEN", 10)
+    teil = _rufe(token, "budget_document", kind="commitments")
+    assert len(teil["rows"]) == 1 and teil["next_offset"] == 1
+    rest = _rufe(token, "budget_document", kind="commitments", offset=1)
+    assert len(rest["rows"]) == 1 and rest["next_offset"] is None
+
+
 def test_aufrufe_werden_gezaehlt(client):
     _konto(client)
     token = _schluessel(client)
@@ -639,7 +678,7 @@ def test_haushaltswerkzeuge_nur_mit_budget(client):
     assert "budget_search" not in _rpc(ohne, "initialize", {}).json()["result"]["instructions"]
     namen = {w["name"] for w in _rpc(mit, "tools/list").json()["result"]["tools"]}
     assert {"budget_search", "budget_series", "budget_product", "enterprise_plans",
-            "fee_calculations", "cash_position"} <= namen
+            "fee_calculations", "cash_position", "budget_document"} <= namen
     s = _rufe(mit, "budget_series", series="schulden", year_from=2024, year_to=2025)
     assert [v["value"] for v in s["values"]] == [290_000_000, 310_000_000]
     assert s["unit"] == "EUR" and s["values"][0]["source"] == 0

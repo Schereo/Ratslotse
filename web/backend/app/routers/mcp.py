@@ -97,7 +97,10 @@ ANLEITUNG_HAUSHALT = (
     "\n4. Was kostet es, was nimmt die Stadt ein? budget_search mit deutschen Stichwörtern "
     "und gern einem Jahr; Kennzahlen über viele Jahre mit budget_series, Aufgaben "
     "(Produkte) mit budget_product, Betriebe mit enterprise_plans, Gebühren mit "
-    "fee_calculations, Kassenstand mit cash_position. Plan und Ist sind verschiedene "
+    "fee_calculations, Kassenstand mit cash_position. Ganze Bestände (Finanzhaushalt, "
+    "Vorbericht, Schuldenübersicht, Verpflichtungsermächtigungen, Abschlüsse der "
+    "Gesellschaften, Bilanz-Erläuterungen) Zeile für Zeile mit budget_document. "
+    "Plan und Ist sind verschiedene "
     "Zahlen — nie vermischen; jeder Wert verweist mit source auf seinen Beleg in sources."
 )
 

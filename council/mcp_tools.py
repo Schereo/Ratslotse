@@ -840,6 +840,99 @@ def cash_position(store, args: dict, base: str) -> str:
     return _json(aus)
 
 
+#: Die Bestände von ``budget_document`` — Schlüssel → (Beschreibung, welches
+#: Jahr ``year`` meint, Leser). Sie standen bis 10/2026 nur auf den
+#: Haushaltsseiten (``routers/council.py``): weder die KI-Frage noch
+#: ``budget_search`` erreichte sie. Gelesen wird über DIESELBEN Store-Methoden
+#: wie dort, damit Seite und Agent nie zwei Fassungen zeigen.
+DOKUMENTE: dict[str, tuple[str, str]] = {
+    "finance_investments": ("Finanzhaushalt: Ein- und Auszahlungen aus Investitionstätigkeit "
+                            "je Plan, mit Finanzplanung der Folgejahre", "Planjahr"),
+    "preface_figures": ("Vorbericht zum Haushaltsplan: Eckdaten über die Jahre "
+                        "(Plan, Ist, Prognose je Reihe)", "Planjahr"),
+    "preface_texts": ("Vorbericht: Erläuterungen je Teilhaushalt (Text)", "Planjahr"),
+    "debt_plan": ("Schuldenübersicht des Haushaltsplans: Stand je Schuldenart und "
+                  "Einheit zu Beginn des Vor- und Planjahres", "Planjahr"),
+    "commitments": ("Verpflichtungsermächtigungen: welche Bindungen späterer Jahre "
+                    "ein Plan erlaubt, nach Fälligkeitsjahr", "Planjahr"),
+    "company_accounts": ("Jahresabschlüsse städtischer Gesellschaften: Kennzahlen "
+                         "(Bilanzsumme, Eigenkapital, Ergebnis …)", "Geschäftsjahr"),
+    "balance_sheet_notes": ("Erläuterungen zur Bilanz der Stadt (Text)", "Geschäftsjahr"),
+}
+
+#: So viele Zeilen je Abruf höchstens — und so viele Zeichen. Die
+#: Vorbericht-Texte eines Jahrgangs sind 170.000 Zeichen lang; nach Zeilen
+#: allein geblättert, käme das in einem Stück.
+DOKUMENT_ZEILEN = 100
+DOKUMENT_ZEICHEN = 20_000
+
+
+def _dokument_zeilen(store, art: str) -> tuple[list[dict], str]:
+    """Alle Zeilen eines Bestands, vereinheitlicht: ``_jahr`` ist das Jahr, nach
+    dem gefiltert wird, ``herkunft_id`` bleibt für den Beleg."""
+    if art == "finance_investments":
+        roh = [{**z, "_jahr": z["plan_budget_year"]} for z in store.get_finanzhaushalt_investitionen()]
+    elif art == "preface_figures":
+        roh = [{**z, "_jahr": z["plan_budget_year"]} for z in store.get_vorbericht_zahlen()]
+    elif art == "preface_texts":
+        nummern = [r[0] for r in store._conn.execute(  # noqa: SLF001
+            "SELECT DISTINCT sub_budget_no FROM council_budget_notes ORDER BY 1")]
+        roh = [{**z, "_jahr": z["budget_year"]} for n in nummern for z in store.get_vorbericht(n)]
+    elif art == "debt_plan":
+        roh = [{**z, "_jahr": z["budget_year"]} for z in store.get_schulden_plan()]
+    elif art == "commitments":
+        roh = [{**z, "_jahr": z["budget_year"]} for z in store.get_ve()]
+    elif art == "company_accounts":
+        roh = [{**z, "_jahr": z["year"]} for z in store.get_company_accounts()]
+    else:
+        roh = [{**z, "_jahr": z["year"]} for z in store.get_bilanz_erlaeuterungen()]
+    return roh, DOKUMENTE[art][1]
+
+
+#: Felder, die nur den Ingest angehen und nicht hinausgehen.
+_INTERN = {"fetched_at", "probes", "confirmations", "conflicts", "document_id", "herkunft_id",
+           "_jahr"}
+
+
+def budget_document(store, args: dict, base: str) -> str:
+    art = str(args.get("kind") or "")
+    if art not in DOKUMENTE:
+        raise ToolError(f"kind muss eines sein von: {', '.join(DOKUMENTE)}.")
+    zeilen, jahr_heisst = _dokument_zeilen(store, art)
+    jahre = sorted({int(z["_jahr"]) for z in zeilen if z.get("_jahr") is not None})
+    if not jahre:
+        return _json({"kind": art, "label": DOKUMENTE[art][0], "rows": [], "sources": [],
+                      "hint": "Zu diesem Bestand liegen keine Daten vor."})
+    jahr = _int(args, "year", jahre[-1], 1990, 2035)
+    if jahr not in jahre:
+        raise ToolError(f"Für {jahr} gibt es diesen Bestand nicht. Vorhandene Jahre "
+                        f"({jahr_heisst}): {', '.join(map(str, jahre))}.")
+    auswahl = [z for z in zeilen if int(z["_jahr"]) == jahr]
+    teil = str(args.get("company") or "").strip().lower()
+    if art == "company_accounts" and teil:
+        auswahl = [z for z in auswahl if teil in str(z.get("company") or "").lower()]
+    offset = _int(args, "offset", 0, 0, 100_000)
+    q = _Quellen(store)
+    rows: list[dict] = []
+    groesse = 0
+    for z in auswahl[offset:offset + DOKUMENT_ZEILEN]:
+        zeile = {k: (_sauber(v) if isinstance(v, str) else v)
+                 for k, v in z.items() if k not in _INTERN}
+        if zeile.get("is_total") is not None:
+            zeile["is_total"] = bool(zeile["is_total"])
+        zeile["source"] = q.nr(z.get("herkunft_id"))
+        groesse += len(_json(zeile))
+        if rows and groesse > DOKUMENT_ZEICHEN:
+            break  # mindestens eine Zeile, auch wenn sie allein größer ist
+        rows.append(zeile)
+    weiter = offset + len(rows)
+    return _json({"kind": art, "label": DOKUMENTE[art][0], "year": jahr,
+                  "year_means": jahr_heisst, "available_years": jahre,
+                  "rows": rows, "total_rows": len(auswahl),
+                  "next_offset": weiter if weiter < len(auswahl) else None,
+                  "sources": q.liste})
+
+
 _JAHR = {"type": "integer", "minimum": 1990, "maximum": 2035}
 _JAHRE = {"year_from": _JAHR, "year_to": _JAHR}
 
@@ -958,6 +1051,17 @@ TOOLS: dict[str, Tool] = {t.name: t for t in (
          "Bereiche: Straßenreinigung, Abfallsammlung, Abfallbehandlungsanlagen.",
          _schema({"area": {"type": "string"}, **_JAHRE}, ["area"]),
          fee_calculations, recht=BUDGET),
+    Tool("budget_document", "Haushalts-Bestand lesen",
+         "Liest einen Haushaltsbestand vollständig und genau, Zeile für Zeile mit Beleg — für "
+         "das, was budget_search nicht als Block bringt: "
+         + "; ".join(f"{k} = {v[0]}" for k, v in DOKUMENTE.items())
+         + ". year ist das Planjahr bzw. Geschäftsjahr (ohne Angabe das jüngste); "
+         "company filtert company_accounts nach Gesellschaft. Viele Zeilen kommen in Stücken; "
+         "mit next_offset weiterlesen.",
+         _schema({"kind": {"type": "string", "enum": list(DOKUMENTE)}, "year": _JAHR,
+                  "company": {"type": "string"},
+                  "offset": {"type": "integer", "minimum": 0, "default": 0}}, ["kind"]),
+         budget_document, recht=BUDGET),
     Tool("cash_position", "Kassenstand",
          "Der Kassenstand (Liquidität) der Stadt je Monatsende.",
          _schema({"month_from": {"type": "string", "pattern": r"^\d{4}-\d{2}$",
