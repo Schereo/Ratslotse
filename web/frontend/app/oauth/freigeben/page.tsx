@@ -22,6 +22,7 @@ import { Check, ShieldAlert, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { mitRuecksprung } from "@/lib/public-routes";
+import { hatRecht } from "@/lib/rechte";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui";
@@ -46,9 +47,12 @@ const DARF = [
 ];
 const DARF_NICHT = [
   "deine Themen, Merkliste oder Gespräche sehen",
-  "den Haushaltsbereich öffnen",
   "etwas ändern oder in deinem Namen schreiben",
 ];
+/** Den Haushalt bekommt der Agent genau dann, wenn das Konto ihn auch hier
+ *  sieht (Recht `budget`, seit 21.10.2026) — die Liste sagt es je Konto. */
+const HAUSHALT_JA = "Haushaltszahlen mit ihren Belegen lesen";
+const HAUSHALT_NEIN = "den Haushaltsbereich öffnen";
 
 export default function FreigebenPage() {
   const router = useRouter();
@@ -123,6 +127,8 @@ export default function FreigebenPage() {
 
   const aufDemGeraet = pruefung.redirect_kind === "local" || pruefung.redirect_kind === "app";
 
+  const haushalt = hatRecht(user, "budget");
+
   return (
     <AuthShell title="Agent verbinden" pose="point">
       <p className="mt-3 text-[15px] leading-relaxed text-foreground">
@@ -137,7 +143,7 @@ export default function FreigebenPage() {
 
       <div className="mt-5 space-y-3 text-sm">
         <ul className="space-y-1.5">
-          {DARF.map((t) => (
+          {(haushalt ? [...DARF, HAUSHALT_JA] : DARF).map((t) => (
             <li key={t} className="flex items-start gap-2 text-foreground">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#15803d] dark:text-green-400" aria-hidden />
               {t}
@@ -145,7 +151,7 @@ export default function FreigebenPage() {
           ))}
         </ul>
         <ul className="space-y-1.5">
-          {DARF_NICHT.map((t) => (
+          {(haushalt ? DARF_NICHT : [DARF_NICHT[0], HAUSHALT_NEIN, DARF_NICHT[1]]).map((t) => (
             <li key={t} className="flex items-start gap-2 text-muted-foreground">
               <X className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span><span className="sr-only">Nicht: </span>{t}</span>

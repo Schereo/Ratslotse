@@ -381,23 +381,31 @@ _REIHEN_WOERTER: dict[str, tuple[str, ...]] = {
 }
 
 
+def zeitreihe_daten(store, reihe: str, von: int, bis: int) -> tuple[list[tuple], list[tuple]]:
+    """``(alle, im_zeitraum)`` als ``(jahr, wert, herkunft_id)`` — für Lotti
+    und den MCP-Server (``budget_series``). Hebesätze gelten AB einem Jahr:
+    Der Satz vor dem Anfang gehört dann zum Zeitraum dazu."""
+    _titel, sql, _einheit = REIHEN[reihe]
+    try:
+        zeilen = [tuple(z) for z in store._conn.execute(  # noqa: SLF001
+            f"SELECT * FROM ({sql}) ORDER BY 1").fetchall()]  # noqa: S608
+    except sqlite3.OperationalError:
+        zeilen = []
+    treffer = [z for z in zeilen if von <= int(z[0]) <= bis]
+    if reihe.startswith("hebesatz"):
+        davor = [z for z in zeilen if int(z[0]) < von]
+        if davor:
+            treffer = [davor[-1], *treffer]
+    return zeilen, treffer
+
+
 def zeitreihe(store, args: dict) -> Ergebnis:
     reihe = str(args.get("reihe") or "")
     if reihe not in REIHEN:
         return Ergebnis(f"Unbekannte Reihe „{reihe}“. Es gibt: {', '.join(sorted(REIHEN))}.")
-    titel, sql, einheit = REIHEN[reihe]
+    titel, _sql, einheit = REIHEN[reihe]
     von, bis = _jahre(args)
-    try:
-        zeilen = store._conn.execute(f"SELECT * FROM ({sql}) ORDER BY 1").fetchall()  # noqa: SLF001, S608
-    except sqlite3.OperationalError:
-        zeilen = []
-    # Hebesätze gelten AB einem Jahr — der Satz vor dem Anfang gehört dazu.
-    ab = reihe.startswith("hebesatz")
-    treffer = [z for z in zeilen if von <= int(z[0]) <= bis]
-    if ab:
-        davor = [z for z in zeilen if int(z[0]) < von]
-        if davor:
-            treffer = [davor[-1], *treffer]
+    zeilen, treffer = zeitreihe_daten(store, reihe, von, bis)
     if not treffer:
         vorhanden = f"{int(zeilen[0][0])}–{int(zeilen[-1][0])}" if zeilen else "keine"
         return Ergebnis(f"{titel}: für {von}–{bis} keine Werte (vorhanden: {vorhanden}).",
@@ -416,13 +424,20 @@ def zeitreihe(store, args: dict) -> Ergebnis:
     return Ergebnis("\n".join(text), _sauber(belege), f"Lotti sieht die Reihe „{_kurz(titel)}“ an")
 
 
+def produkt_daten(store, name: str, von: int, bis: int) -> list[tuple]:
+    """``(jahr, produkt, aufwendungen, ertraege, herkunft_id)`` je Planjahr."""
+    if not name:
+        return []
+    return [tuple(z) for z in store._conn.execute(  # noqa: SLF001
+        "SELECT year, product_name, expenses, revenues, herkunft_id FROM council_products "
+        "WHERE product_name LIKE ? AND year BETWEEN ? AND ? ORDER BY product_name, year",
+        (f"%{name}%", von, bis)).fetchall()]
+
+
 def produkt_zeitreihe(store, args: dict) -> Ergebnis:
     name = str(args.get("produkt") or "").strip()[:120]
     von, bis = _jahre(args)
-    zeilen = store._conn.execute(  # noqa: SLF001
-        "SELECT year, product_name, expenses, revenues, herkunft_id FROM council_products "
-        "WHERE product_name LIKE ? AND year BETWEEN ? AND ? ORDER BY product_name, year",
-        (f"%{name}%", von, bis)).fetchall() if name else []
+    zeilen = produkt_daten(store, name, von, bis)
     namen = sorted({z[1] for z in zeilen})
     if not zeilen:
         return Ergebnis(f"Kein Produkt „{name}“ im Haushalt {von}–{bis}.",
@@ -759,15 +774,23 @@ def beschluesse_zaehlen_daten(store, jahr: int, feld: str = "",
             store._conn.execute(sql + " GROUP BY d.outcome", werte).fetchall()]  # noqa: SLF001
 
 
-def betrieb_zeitreihe(store, args: dict) -> Ergebnis:
-    name = str(args.get("betrieb") or "").strip()[:80]
-    von, bis = _jahre(args)
-    zeilen = store._conn.execute(  # noqa: SLF001
+def betrieb_daten(store, name: str, von: int, bis: int) -> list[tuple]:
+    """``(betrieb, jahr, ertraege, aufwendungen, ergebnis, herkunft_id)`` aus den
+    Wirtschaftsplänen (PLAN des jeweiligen Jahres)."""
+    if not name:
+        return []
+    return [tuple(z) for z in store._conn.execute(  # noqa: SLF001
         """SELECT enterprise_name, year, revenues, expenses, result, herkunft_id
            FROM council_business_plans
            WHERE (enterprise = ? OR enterprise_name LIKE ?) AND year BETWEEN ? AND ?
            ORDER BY enterprise_name, year""",
-        (name.lower(), f"%{name}%", von, bis)).fetchall() if name else []
+        (name.lower(), f"%{name}%", von, bis)).fetchall()]
+
+
+def betrieb_zeitreihe(store, args: dict) -> Ergebnis:
+    name = str(args.get("betrieb") or "").strip()[:80]
+    von, bis = _jahre(args)
+    zeilen = betrieb_daten(store, name, von, bis)
     schritt = f"Lotti sieht die Wirtschaftspläne an: {name}"
     if not zeilen:
         return Ergebnis(f"Kein Wirtschaftsplan für „{name}“ {von}–{bis}.", schritt=schritt)
@@ -792,13 +815,20 @@ def betrieb_zeitreihe(store, args: dict) -> Ergebnis:
     return Ergebnis("\n".join(text), _sauber(belege[:6]), schritt)
 
 
+def gebuehren_daten(store, name: str, von: int, bis: int) -> list[tuple]:
+    """``(bereich, jahr, zu_deckende_kosten, gebuehr, bezugseinheit, herkunft_id)``."""
+    if not name:
+        return []
+    return [tuple(z) for z in store._conn.execute(  # noqa: SLF001
+        """SELECT area_name, year, costs_to_cover, fee, reference_unit, herkunft_id
+           FROM council_fees WHERE (area = ? OR area_name LIKE ?) AND year BETWEEN ? AND ?
+           ORDER BY area_name, year""", (name.lower(), f"%{name}%", von, bis)).fetchall()]
+
+
 def gebuehren_zeitreihe(store, args: dict) -> Ergebnis:
     name = str(args.get("bereich") or "").strip()[:80]
     von, bis = _jahre(args)
-    zeilen = store._conn.execute(  # noqa: SLF001
-        """SELECT area_name, year, costs_to_cover, fee, reference_unit, herkunft_id
-           FROM council_fees WHERE (area = ? OR area_name LIKE ?) AND year BETWEEN ? AND ?
-           ORDER BY area_name, year""", (name.lower(), f"%{name}%", von, bis)).fetchall() if name else []
+    zeilen = gebuehren_daten(store, name, von, bis)
     schritt = f"Lotti sieht die Gebühren an: {name}"
     if not zeilen:
         return Ergebnis(f"Keine Gebührenkalkulation für „{name}“ {von}–{bis}.", schritt=schritt)
@@ -820,11 +850,16 @@ def gebuehren_zeitreihe(store, args: dict) -> Ergebnis:
     return Ergebnis("\n".join(text), _sauber(belege[:6]), schritt)
 
 
+def kassenstand_daten(store, von: str, bis: str) -> list[tuple]:
+    """``(monat, betrag, herkunft_id)`` je Monatsende, Monate als ``JJJJ-MM``."""
+    return [tuple(z) for z in store._conn.execute(  # noqa: SLF001
+        "SELECT month, amount, herkunft_id FROM council_liquidity WHERE month BETWEEN ? AND ? "
+        "ORDER BY month", (min(von, bis), max(von, bis))).fetchall()]
+
+
 def kassenstand(store, args: dict) -> Ergebnis:
     von, bis = str(args.get("von_monat") or "")[:7], str(args.get("bis_monat") or "")[:7]
-    zeilen = store._conn.execute(  # noqa: SLF001
-        "SELECT month, amount, herkunft_id FROM council_liquidity WHERE month BETWEEN ? AND ? "
-        "ORDER BY month", (min(von, bis), max(von, bis))).fetchall()
+    zeilen = kassenstand_daten(store, von, bis)
     schritt = "Lotti sieht den Kassenstand an"
     if not zeilen:
         return Ergebnis(f"Kein Kassenstand für {von} bis {bis}.", schritt=schritt)

@@ -141,6 +141,23 @@ Gelingt es nicht, bleibt der Stapel liegen und geht mit dem nächsten.
 | `get_agenda` | Die Tagesordnung einer Sitzung samt Ergebnissen, Vorlagennummer und den Anlagen, die nur am Punkt hängen |
 | `count_decisions` | Beschlüsse eines Jahres nach Ergebnis, Themenfeld, Gremium |
 
+Mit dem Recht `budget` kommen sieben Haushaltswerkzeuge dazu — dieselben
+Abfragen wie Lottis Haushaltswerkzeuge (`council/lotti_werkzeuge.py`,
+`*_daten`), hier mit einem Beleg je Wert (`source` verweist in `sources`):
+
+| Werkzeug | Was es liefert |
+|---|---|
+| `budget_search` | Suche in den Haushaltsdaten, derselbe Block wie in der KI-Frage (jede Zahl unter ihrem Jahr, Plan und Ist getrennt) |
+| `budget_series` | Eine Kennzahl über Jahre: Schulden, Steuern, Investitionen, Personal, Ergebnis, Einwohner, Stellen, Hebesätze |
+| `budget_product` | Geplante Aufwendungen und Erträge einer Aufgabe (Produkt) über Planjahre |
+| `enterprise_plans` | Wirtschaftspläne der Betriebe (Erträge, Aufwendungen, geplantes Ergebnis) |
+| `fee_calculations` | Gebührenkalkulationen: zu deckende Kosten, Gebührensatz |
+| `cash_position` | Kassenstand je Monatsende |
+| `budget_document` | Ein ganzer Bestand Zeile für Zeile: Finanzhaushalt (Investitionen), Vorbericht (Eckdaten, Erläuterungen), Schuldenübersicht, Verpflichtungsermächtigungen, Abschlüsse der Gesellschaften, Bilanz-Erläuterungen. Diese sieben standen bis 10/2026 nur auf den Haushaltsseiten. Je Abruf höchstens 100 Zeilen und 20.000 Zeichen |
+
+`rechnen` und `seite_lesen` aus Lottis Satz fehlen bewusst: Rechnen kann der
+Agent selbst, und die Haushaltsseiten sind Oberfläche, keine Daten.
+
 Alle Werkzeuge antworten mit **JSON**, auch die vier, deren Abfragen Lotti
 teilt (`council/lotti_werkzeuge.py`, die `…_daten`-Funktionen): Lotti formt
 daraus ihren Fließtext, der MCP-Server gibt die Daten selbst aus. Bis 10/2026
@@ -156,10 +173,13 @@ angehängte Anlagen.
 
 ## Grenzen
 
-- **Nur lesend, nur öffentliche Ratsdaten.** Nichts Kontogebundenes (Themen,
-  Lesezeichen, Gespräche) und **kein Haushalt**: Der hängt am Recht `budget`
-  und bleibt der eigenen Oberfläche vorbehalten. `tests/test_mcp.py` prüft am
-  Quelltext, dass die Werkzeuge keine dieser Tabellen anfassen.
+- **Nur lesend.** Nichts Kontogebundenes (Themen, Lesezeichen, Gespräche).
+  **Den Haushalt nur mit dem Recht `budget`** (seit 21.10.2026, Ratsmitglieder
+  und Fachpublikum): Die sieben Haushaltswerkzeuge tragen `recht="budget"`, und
+  ein Konto ohne das Recht sieht sie weder in `tools/list` noch in der
+  Anleitung; ein Aufruf antwortet wie für ein unbekanntes Werkzeug.
+  `tests/test_mcp.py` prüft am Quelltext, dass kein Werkzeug eine
+  kontogebundene Tabelle anfasst und keines ohne Recht eine Haushaltstabelle.
 - **Kein Sprachmodell auf unserer Seite.** Das Denken macht der Agent mit
   seinem eigenen Modell; bei uns laufen SQLite und die Volltextsuche. Die
   KI-Frage und die ausführliche Recherche fehlen deshalb mit Absicht, sonst

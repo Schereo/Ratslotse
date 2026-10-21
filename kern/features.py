@@ -208,7 +208,8 @@ FEATURES: dict[str, Feature] = {
         key="mcp-server",
         description="Der MCP-Server unter /api/mcp: Wer die Rolle „MCP-Zugang“ hat, stellt "
                     "sich in den Einstellungen einen persönlichen Schlüssel aus und schließt "
-                    "damit einen eigenen Agenten an die Ratsdaten an — lesend, ohne Haushalt "
+                    "damit einen eigenen Agenten an die Ratsdaten an — lesend; den Haushalt nur "
+                    "mit dem Recht `budget` "
                     "(council/mcp_tools.py, web/backend/app/routers/mcp.py).",
         fertig_wenn="Ein paar Konten haben ihn auf dev und Prod mit Claude/ChatGPT/Cursor "
                     "benutzt, die Last ist gemessen (mcp_tokens.calls) und die Bremse hat "
