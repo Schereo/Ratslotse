@@ -15,6 +15,7 @@ from council.kontaktdaten import maskieren
 from kern.dbfehler import tabelle_fehlt
 from kern.maintenance import require_database_available
 from kern.einrichtung import einmal_einrichten
+from council.decision_search import count_rows, has_relaxed_fallback, text_filter
 from council.store_helfer import _dedup_keys, _int_or_none
 from council.store_fundstuecke import FundstueckeMixin
 from council.store_bplan import BplanMixin
@@ -627,8 +628,9 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
 
     def _decision_where(self, query, committee, outcome, faction, date_from, date_to,
                         kind, category, field="", party_ids=None, include_subvotes=False,
-                        only_ids=None, district="", location_slug=""):
-        """Build the WHERE clause + params shared by search and count."""
+                        only_ids=None, district="", location_slug="", relaxed=False):
+        """Build the WHERE clause + params shared by search and count.
+        ``relaxed``: der Rückfall der Textsuche (s. ``decision_search``)."""
         filters: list[str] = []
         params: list = []
         if only_ids is not None:
@@ -649,10 +651,10 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 params += party_ids
             else:
                 filters.append("0")  # party given but no matches
-        if query:
-            filters.append("(d.title LIKE ? OR d.official_text LIKE ? OR d.summary LIKE ?)")
-            like = f"%{query}%"
-            params += [like, like, like]
+        text = text_filter(query, relaxed=relaxed) if query else None
+        if text:
+            filters.append(text[0])
+            params += text[1]
         if committee:
             filters.append("cs.committee = ?")
             params.append(committee)
@@ -754,20 +756,31 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
             "interest": "d.interest IS NULL, d.interest DESC, cs.session_date DESC",
         }.get(sort, "cs.session_date DESC, d.position")
         party_ids = self.decision_ids_for_party(party) if party else None
-        where, params = self._decision_where(query, committee, outcome, faction,
-                                              date_from, date_to, kind, category, field, party_ids,
-                                              include_subvotes=include_subvotes, only_ids=only_ids,
-                                              district=district, location_slug=location_slug)
-        rows = self._conn.execute(
-            f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
-                FROM council_decisions d
-                JOIN council_sessions cs ON cs.ksinr = d.ksinr
-                LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
-                {where}
-                ORDER BY {order}
-                LIMIT ? OFFSET ?""",
-            [*params, limit, offset],
-        ).fetchall()
+        def where_for(relaxed: bool):
+            return self._decision_where(query, committee, outcome, faction,
+                                        date_from, date_to, kind, category, field, party_ids,
+                                        include_subvotes=include_subvotes, only_ids=only_ids,
+                                        district=district, location_slug=location_slug,
+                                        relaxed=relaxed)
+
+        def fetch(where: str, params: list):
+            return self._conn.execute(
+                f"""SELECT d.*, cs.committee, cs.session_date, p.document_url AS protocol_url
+                    FROM council_decisions d
+                    JOIN council_sessions cs ON cs.ksinr = d.ksinr
+                    LEFT JOIN council_protocols p ON p.ksinr = d.ksinr
+                    {where}
+                    ORDER BY {order}
+                    LIMIT ? OFFSET ?""",
+                [*params, limit, offset],
+            ).fetchall()
+
+        where, params = where_for(False)
+        rows = fetch(where, params)
+        # Leer kann auch heißen „hinter der letzten Seite“ — der Rückfall nur,
+        # wenn die strenge Suche GAR nichts findet (wie in count_decisions).
+        if not rows and has_relaxed_fallback(query) and count_rows(self._conn, where, params) == 0:
+            rows = fetch(*where_for(True))
         return [self._decision_row(r) for r in rows]
 
     def backfill_importance(self, only_missing: bool = False) -> int:
@@ -807,16 +820,19 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         only_ids: list[int] | None = None, district: str = "", location_slug: str = "",
     ) -> int:
         party_ids = self.decision_ids_for_party(party) if party else None
-        where, params = self._decision_where(query, committee, outcome, faction,
-                                             date_from, date_to, kind, category, field, party_ids,
-                                             include_subvotes=include_subvotes, only_ids=only_ids,
-                                             district=district, location_slug=location_slug)
-        row = self._conn.execute(
-            f"""SELECT COUNT(*) FROM council_decisions d
-                JOIN council_sessions cs ON cs.ksinr = d.ksinr {where}""",
-            params,
-        ).fetchone()
-        return row[0] if row else 0
+        n = 0
+        for relaxed in (False, True):
+            if relaxed and not has_relaxed_fallback(query):
+                break
+            where, params = self._decision_where(query, committee, outcome, faction,
+                                                 date_from, date_to, kind, category, field,
+                                                 party_ids, include_subvotes=include_subvotes,
+                                                 only_ids=only_ids, district=district,
+                                                 location_slug=location_slug, relaxed=relaxed)
+            n = count_rows(self._conn, where, params)
+            if n:
+                break
+        return n
 
 
     def decisions_needing_simple_summary(self, limit: int | None = None) -> list[dict]:
