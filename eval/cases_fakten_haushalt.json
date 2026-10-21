@@ -7045,5 +7045,201 @@
    }
   ],
   "verboten": []
+ },
+ {
+  "id": "hh-finanz-fehlbetrag-2026-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch ist der Finanzmittelfehlbetrag im Finanzhaushalt 2026?",
+  "kategorie": "haushalt/finanzhaushalt",
+  "baustein": "council/geld/finanzhaushalt.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 66303828.0,
+    "einheit": "€",
+    "bezeichnung": "Finanzmittelüberschuss/-fehlbetrag 2026 (Ansatz)",
+    "quelle": "SELECT amount FROM council_finance_budget WHERE plan_budget_year = 2026 AND year = 2026 AND role = 'cash_surplus'",
+    "jahr": 2026
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-finanz-laufend-2027-rat",
+  "kanal": "rat",
+  "frage": "Welchen Saldo aus laufender Verwaltungstätigkeit sieht die Finanzplanung für 2027 vor?",
+  "kategorie": "haushalt/finanzhaushalt",
+  "baustein": "council/geld/finanzhaushalt.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 93964779.0,
+    "einheit": "€",
+    "bezeichnung": "Saldo laufende Verwaltung 2027 (Finanzplanung im Plan 2026)",
+    "quelle": "SELECT amount FROM council_finance_budget WHERE plan_budget_year = 2026 AND year = 2027 AND role = 'balance_operating'",
+    "jahr": 2027
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": -57712718.0,
+    "einheit": "€",
+    "grund": "Ansatz 2026 als Finanzplanung 2027",
+    "quelle": "SELECT amount FROM council_finance_budget WHERE plan_budget_year = 2026 AND year = 2026 AND role = 'balance_operating'",
+    "als_jahr": 2027
+   }
+  ]
+ },
+ {
+  "id": "hh-vorbericht-gewerbe-prognose-rat",
+  "kanal": "rat",
+  "frage": "Mit wie viel Gewerbesteuer rechnet die Stadt laut Prognose im Vorbericht für 2025?",
+  "kategorie": "haushalt/vorbericht",
+  "baustein": "council/geld/vorbericht.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 210000000.0,
+    "einheit": "€",
+    "bezeichnung": "Gewerbesteuer 2025, Prognose im Vorbericht 2026",
+    "quelle": "SELECT amount FROM council_budget_preface_figures WHERE plan_budget_year = 2026 AND series = 'tax_trade' AND year = 2025 AND variant = 'forecast'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": 169000000.0,
+    "einheit": "€",
+    "grund": "Vorjahresansatz als Prognose",
+    "quelle": "SELECT amount FROM council_budget_preface_figures WHERE plan_budget_year = 2026 AND series = 'tax_trade' AND year = 2025 AND variant = 'prior_budget'",
+    "als_jahr": 2025
+   },
+   {
+    "art": "zahl",
+    "wert": 218000000.0,
+    "einheit": "€",
+    "grund": "Ansatz 2026 als Prognose 2025",
+    "quelle": "SELECT amount FROM council_budget_preface_figures WHERE plan_budget_year = 2026 AND series = 'tax_trade' AND year = 2026 AND variant = 'budget'",
+    "als_jahr": 2025
+   }
+  ]
+ },
+ {
+  "id": "hh-schuldenplan-egh-rat",
+  "kanal": "rat",
+  "frage": "Mit welchen Schulden geht der Eigenbetrieb Gebäudewirtschaft und Hochbau voraussichtlich ins Jahr 2026?",
+  "kategorie": "haushalt/schuldenplan",
+  "baustein": "council/geld/schuldenplan.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 265946000.0,
+    "einheit": "€",
+    "bezeichnung": "Schulden EGH, voraussichtlich 31.12.2025 (Schuldenübersicht Plan 2026)",
+    "quelle": "SELECT start_expected FROM council_debt_plan WHERE budget_year = 2026 AND entity = 'Eigenbetrieb Gebäudewirtschaft und Hochbau' AND code = 'total'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-ve-faellig-2027-rat",
+  "kanal": "rat",
+  "frage": "Wie viel aus den Verpflichtungsermächtigungen des Haushalts 2026 wird 2027 fällig?",
+  "kategorie": "haushalt/ve",
+  "baustein": "council/geld/ve.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 27419000.0,
+    "einheit": "€",
+    "bezeichnung": "VE des Plans 2026, fällig 2027",
+    "quelle": "SELECT amount FROM council_commitments WHERE budget_year = 2026 AND plan_year = 2026 AND due_year = 2027",
+    "jahr": 2027
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-abschluss-bbgo-2025-rat",
+  "kanal": "rat",
+  "frage": "Welches Jahresergebnis hatte die Bäderbetriebsgesellschaft 2025 laut Jahresabschluss?",
+  "kategorie": "haushalt/gesellschaften",
+  "baustein": "council/geld/gesellschaft_abschluss.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 10447445.02,
+    "einheit": "€",
+    "bezeichnung": "Jahresergebnis BBGO 2025 (Ist)",
+    "quelle": "SELECT value FROM council_company_accounts WHERE company = 'bbgo' AND year = 2025 AND indicator = 'jahresergebnis'",
+    "jahr": 2025
+   }
+  ],
+  "verboten": [
+   {
+    "art": "zahl",
+    "wert": -5709452.79,
+    "einheit": "€",
+    "grund": "Ergebnis 2024 als 2025",
+    "quelle": "SELECT value FROM council_company_accounts WHERE company = 'bbgo' AND year = 2024 AND indicator = 'jahresergebnis'",
+    "als_jahr": 2025
+   }
+  ]
+ },
+ {
+  "id": "hh-abschluss-vwg-bilanz-rat",
+  "kanal": "rat",
+  "frage": "Wie hoch war die Bilanzsumme der Verkehr und Wasser GmbH im Jahresabschluss 2024?",
+  "kategorie": "haushalt/gesellschaften",
+  "baustein": "council/geld/gesellschaft_abschluss.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 68966726.15,
+    "einheit": "€",
+    "bezeichnung": "Bilanzsumme VWG 2024",
+    "quelle": "SELECT value FROM council_company_accounts WHERE company = 'vwg' AND year = 2024 AND indicator = 'bilanzsumme'",
+    "jahr": 2024
+   }
+  ],
+  "verboten": []
+ },
+ {
+  "id": "hh-bilanz-rueckstellung-erl-rat",
+  "kanal": "rat",
+  "frage": "Was steckt hinter den Rückstellungen in der Bilanz der Stadt 2025?",
+  "kategorie": "haushalt/bilanz",
+  "baustein": "council/geld/bilanz_erlaeuterung.py",
+  "antwort_in_daten": true,
+  "gold": [
+   {
+    "art": "zahl",
+    "wert": 20900000.0,
+    "einheit": "€",
+    "bezeichnung": "Erhöhung der Pensionsrückstellungen 2025 (Erläuterung zur Bilanz: „um 20,9 Millionen Euro erhöht“)",
+    "quelle": "SELECT 20.9e6",
+    "jahr": 2025
+   },
+   {
+    "art": "text",
+    "muss": [
+     [
+      "Pension"
+     ]
+    ],
+    "quelle": "council_balance_sheet_notes year=2025 heading='Rückstellungen'"
+   }
+  ],
+  "verboten": []
  }
 ]
