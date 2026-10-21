@@ -2079,6 +2079,280 @@
         "title": "AdminMailVielempfaenger",
         "type": "object"
       },
+      "AdminMcp": {
+        "description": "``GET /api/admin/stats/mcp``: Wie Agenten den MCP-Server benutzen.\n\nEine Sitzung ist eine Folge von Aufrufen derselben Verbindung ohne Pause\nüber 30 Minuten. ``transitions`` zählt Schritte innerhalb einer Sitzung\n(„search_decisions → get_decision“), ``entries`` den ersten Aufruf.",
+        "properties": {
+          "accounts": {
+            "title": "Accounts",
+            "type": "integer"
+          },
+          "accounts_list": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpAccount"
+            },
+            "title": "Accounts List",
+            "type": "array"
+          },
+          "arguments": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpZeile"
+            },
+            "title": "Arguments",
+            "type": "array"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "calls_per_session": {
+            "title": "Calls Per Session",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpZeile"
+            },
+            "title": "Clients",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "empty_queries": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpQuery"
+            },
+            "title": "Empty Queries",
+            "type": "array"
+          },
+          "empty_searches": {
+            "title": "Empty Searches",
+            "type": "integer"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpZeile"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "p50_ms": {
+            "title": "P50 Ms",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "per_day": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpTag"
+            },
+            "title": "Per Day",
+            "type": "array"
+          },
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpQuery"
+            },
+            "title": "Queries",
+            "type": "array"
+          },
+          "searches": {
+            "title": "Searches",
+            "type": "integer"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpTool"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "transitions": {
+            "items": {
+              "$ref": "#/components/schemas/AdminMcpZeile"
+            },
+            "title": "Transitions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days",
+          "calls",
+          "accounts",
+          "sessions",
+          "calls_per_session",
+          "errors",
+          "searches",
+          "empty_searches",
+          "p50_ms",
+          "per_day",
+          "tools",
+          "clients",
+          "accounts_list",
+          "entries",
+          "transitions",
+          "arguments",
+          "queries",
+          "empty_queries"
+        ],
+        "title": "AdminMcp",
+        "type": "object"
+      },
+      "AdminMcpAccount": {
+        "properties": {
+          "clients": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Clients",
+            "type": "array"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "title": "Email",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last": {
+            "title": "Last",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "owner_id": {
+            "title": "Owner Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "owner_id",
+          "email",
+          "display_name",
+          "n",
+          "last",
+          "clients"
+        ],
+        "title": "AdminMcpAccount",
+        "type": "object"
+      },
+      "AdminMcpQuery": {
+        "properties": {
+          "empty": {
+            "title": "Empty",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "n",
+          "empty"
+        ],
+        "title": "AdminMcpQuery",
+        "type": "object"
+      },
+      "AdminMcpTag": {
+        "properties": {
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "n"
+        ],
+        "title": "AdminMcpTag",
+        "type": "object"
+      },
+      "AdminMcpTool": {
+        "properties": {
+          "empty": {
+            "title": "Empty",
+            "type": "integer"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p50_ms": {
+            "title": "P50 Ms",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "n",
+          "errors",
+          "empty",
+          "p50_ms"
+        ],
+        "title": "AdminMcpTool",
+        "type": "object"
+      },
+      "AdminMcpZeile": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "n"
+        ],
+        "title": "AdminMcpZeile",
+        "type": "object"
+      },
       "AdminNewsList": {
         "properties": {
           "releases": {
@@ -3857,6 +4131,81 @@
         "title": "Attendance",
         "type": "object"
       },
+      "AuthorizeDecision": {
+        "properties": {
+          "approve": {
+            "default": false,
+            "title": "Approve",
+            "type": "boolean"
+          },
+          "client_id": {
+            "maxLength": 500,
+            "title": "Client Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code_challenge": {
+            "maxLength": 200,
+            "title": "Code Challenge",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code_challenge_method": {
+            "maxLength": 20,
+            "title": "Code Challenge Method",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "redirect_uri": {
+            "maxLength": 500,
+            "title": "Redirect Uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resource": {
+            "maxLength": 500,
+            "title": "Resource",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "response_type": {
+            "maxLength": 50,
+            "title": "Response Type",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {
+            "maxLength": 1000,
+            "title": "Scope",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "maxLength": 1000,
+            "title": "State",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "title": "AuthorizeDecision",
+        "type": "object"
+      },
       "Badge": {
         "properties": {
           "earned": {
@@ -4132,6 +4481,70 @@
           "dateien"
         ],
         "title": "Body_medien_ablegen_api_social_media__day__post",
+        "type": "object"
+      },
+      "Body_revoke_api_oauth_revoke_post": {
+        "properties": {
+          "token": {
+            "default": "",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "title": "Body_revoke_api_oauth_revoke_post",
+        "type": "object"
+      },
+      "Body_token_api_oauth_token_post": {
+        "properties": {
+          "client_id": {
+            "title": "Client Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "title": "Code",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code_verifier": {
+            "title": "Code Verifier",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "grant_type": {
+            "default": "",
+            "title": "Grant Type",
+            "type": "string"
+          },
+          "redirect_uri": {
+            "title": "Redirect Uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "refresh_token": {
+            "title": "Refresh Token",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resource": {
+            "title": "Resource",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "title": "Body_token_api_oauth_token_post",
         "type": "object"
       },
       "BookmarkEntry": {
@@ -16038,6 +16451,70 @@
         "title": "MayorNight",
         "type": "object"
       },
+      "McpGrant": {
+        "description": "Ein über OAuth verbundener Agent (Freigabe), wie ihn die Liste zeigt.\n\n``client_name`` hat sich der Agent selbst gegeben; ``redirect_host`` ist\ndas, was wirklich zählt — wohin die Freigabe zurückgeschickt wurde.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "client_name": {
+            "title": "Client Name",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_used": {
+            "title": "Last Used",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "redirect_host": {
+            "title": "Redirect Host",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "client_name",
+          "redirect_host",
+          "created",
+          "last_used",
+          "calls"
+        ],
+        "title": "McpGrant",
+        "type": "object"
+      },
+      "McpGrantList": {
+        "description": "``GET /api/account/mcp-grants``: die verbundenen Agenten und die Höchstzahl.",
+        "properties": {
+          "grants": {
+            "items": {
+              "$ref": "#/components/schemas/McpGrant"
+            },
+            "title": "Grants",
+            "type": "array"
+          },
+          "max": {
+            "title": "Max",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "grants",
+          "max"
+        ],
+        "title": "McpGrantList",
+        "type": "object"
+      },
       "McpMessage": {
         "description": "Eine JSON-RPC-2.0-Antwort des MCP-Servers (``POST /api/mcp``).\n\n``result`` bzw. ``error`` tragen, was die MCP-Spezifikation für die\njeweilige Methode vorsieht (``initialize``, ``tools/list``,\n``tools/call``, ``ping``) — deshalb ``dict[str, Any]`` und keine\nAufzählung: Den Vertrag hält die Spezifikation, nicht diese Datei.",
         "properties": {
@@ -16940,6 +17417,336 @@
           "window_days"
         ],
         "title": "NumberOfTheWeekCount",
+        "type": "object"
+      },
+      "OAuthAuthorizeCheck": {
+        "description": "``GET /api/oauth/authorize``: was die Freigabe-Seite zeigen soll.\n\n``status``: ``ready`` (Knöpfe zeigen), ``login`` (erst anmelden),\n``forbidden`` (Konto darf nicht; ``cancel_url`` schickt die Absage\nzurück), ``error`` (Anfrage kaputt; mit ``cancel_url`` nur, wenn die\nRücksprungadresse geprüft ist — sonst wird NIE weitergeleitet).\n``redirect_kind``: ``web`` (https), ``local`` (localhost) oder ``app``\n(eigenes Schema eines Programms auf dem Gerät); die letzten beiden\nbekommen eine Warnung.",
+        "properties": {
+          "already_connected": {
+            "title": "Already Connected",
+            "type": "boolean"
+          },
+          "at_limit": {
+            "title": "At Limit",
+            "type": "boolean"
+          },
+          "cancel_url": {
+            "title": "Cancel Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "client_id_host": {
+            "title": "Client Id Host",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "client_name": {
+            "title": "Client Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "title": "Message",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "redirect_host": {
+            "title": "Redirect Host",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "redirect_kind": {
+            "enum": [
+              "web",
+              "local",
+              "app"
+            ],
+            "title": "Redirect Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "login",
+              "forbidden",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "client_name",
+          "client_id_host",
+          "redirect_host",
+          "redirect_kind",
+          "cancel_url",
+          "already_connected",
+          "at_limit"
+        ],
+        "title": "OAuthAuthorizeCheck",
+        "type": "object"
+      },
+      "OAuthAuthorizeResult": {
+        "description": "``POST /api/oauth/authorize``: wohin der Browser jetzt geht — mit Code\noder mit der Absage.",
+        "properties": {
+          "redirect": {
+            "title": "Redirect",
+            "type": "string"
+          }
+        },
+        "required": [
+          "redirect"
+        ],
+        "title": "OAuthAuthorizeResult",
+        "type": "object"
+      },
+      "OAuthClientRegistered": {
+        "description": "RFC 7591: der neu registrierte Client. Immer öffentlich\n(``token_endpoint_auth_method: none``) — das Geheimnis ist PKCE.",
+        "properties": {
+          "client_id": {
+            "title": "Client Id",
+            "type": "string"
+          },
+          "client_id_issued_at": {
+            "title": "Client Id Issued At",
+            "type": "integer"
+          },
+          "client_name": {
+            "title": "Client Name",
+            "type": "string"
+          },
+          "grant_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Grant Types",
+            "type": "array"
+          },
+          "redirect_uris": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Redirect Uris",
+            "type": "array"
+          },
+          "response_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Response Types",
+            "type": "array"
+          },
+          "token_endpoint_auth_method": {
+            "title": "Token Endpoint Auth Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "client_id_issued_at",
+          "client_name",
+          "redirect_uris",
+          "grant_types",
+          "response_types",
+          "token_endpoint_auth_method"
+        ],
+        "title": "OAuthClientRegistered",
+        "type": "object"
+      },
+      "OAuthProtectedResource": {
+        "description": "RFC 9728: Wer schützt ``/api/mcp``, und mit welchen Rechten?",
+        "properties": {
+          "authorization_servers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Authorization Servers",
+            "type": "array"
+          },
+          "bearer_methods_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Bearer Methods Supported",
+            "type": "array"
+          },
+          "resource": {
+            "title": "Resource",
+            "type": "string"
+          },
+          "resource_documentation": {
+            "title": "Resource Documentation",
+            "type": "string"
+          },
+          "resource_name": {
+            "title": "Resource Name",
+            "type": "string"
+          },
+          "scopes_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes Supported",
+            "type": "array"
+          }
+        },
+        "required": [
+          "resource",
+          "resource_name",
+          "authorization_servers",
+          "scopes_supported",
+          "bearer_methods_supported",
+          "resource_documentation"
+        ],
+        "title": "OAuthProtectedResource",
+        "type": "object"
+      },
+      "OAuthServerMetadata": {
+        "description": "RFC 8414: was der Autorisierungsserver kann. ChatGPT bricht ab, wenn\n``code_challenge_methods_supported`` kein ``S256`` nennt.",
+        "properties": {
+          "authorization_endpoint": {
+            "title": "Authorization Endpoint",
+            "type": "string"
+          },
+          "authorization_response_iss_parameter_supported": {
+            "title": "Authorization Response Iss Parameter Supported",
+            "type": "boolean"
+          },
+          "client_id_metadata_document_supported": {
+            "title": "Client Id Metadata Document Supported",
+            "type": "boolean"
+          },
+          "code_challenge_methods_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Code Challenge Methods Supported",
+            "type": "array"
+          },
+          "grant_types_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Grant Types Supported",
+            "type": "array"
+          },
+          "issuer": {
+            "title": "Issuer",
+            "type": "string"
+          },
+          "registration_endpoint": {
+            "title": "Registration Endpoint",
+            "type": "string"
+          },
+          "response_types_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Response Types Supported",
+            "type": "array"
+          },
+          "revocation_endpoint": {
+            "title": "Revocation Endpoint",
+            "type": "string"
+          },
+          "revocation_endpoint_auth_methods_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Revocation Endpoint Auth Methods Supported",
+            "type": "array"
+          },
+          "scopes_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes Supported",
+            "type": "array"
+          },
+          "service_documentation": {
+            "title": "Service Documentation",
+            "type": "string"
+          },
+          "token_endpoint": {
+            "title": "Token Endpoint",
+            "type": "string"
+          },
+          "token_endpoint_auth_methods_supported": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Token Endpoint Auth Methods Supported",
+            "type": "array"
+          }
+        },
+        "required": [
+          "issuer",
+          "authorization_endpoint",
+          "token_endpoint",
+          "registration_endpoint",
+          "revocation_endpoint",
+          "response_types_supported",
+          "grant_types_supported",
+          "code_challenge_methods_supported",
+          "token_endpoint_auth_methods_supported",
+          "revocation_endpoint_auth_methods_supported",
+          "scopes_supported",
+          "client_id_metadata_document_supported",
+          "authorization_response_iss_parameter_supported",
+          "service_documentation"
+        ],
+        "title": "OAuthServerMetadata",
+        "type": "object"
+      },
+      "OAuthToken": {
+        "description": "Antwort des Token-Endpunkts (OAuth 2.1, Abschnitt 3.2.3).",
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "refresh_token": {
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "Bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in",
+          "refresh_token",
+          "scope"
+        ],
+        "title": "OAuthToken",
         "type": "object"
       },
       "Ok": {
@@ -26656,6 +27463,72 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/.well-known/oauth-authorization-server": {
+      "get": {
+        "description": "RFC 8414 — öffentlich.",
+        "operationId": "authorization_server__well_known_oauth_authorization_server_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthServerMetadata"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Authorization Server",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
+    "/.well-known/oauth-protected-resource": {
+      "get": {
+        "description": "RFC 9728 — öffentlich, wie es die Spezifikation verlangt.",
+        "operationId": "protected_resource__well_known_oauth_protected_resource_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthProtectedResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Protected Resource",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
+    "/.well-known/oauth-protected-resource/api/mcp": {
+      "get": {
+        "description": "Dieselben Metadaten unter der Pfad-Variante, die Clients zuerst probieren.",
+        "operationId": "protected_resource_path__well_known_oauth_protected_resource_api_mcp_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthProtectedResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Protected Resource Path",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
     "/api/account": {
       "delete": {
         "description": "Permanently delete the account and all data keyed to it (DSGVO right to\nerasure). Verlangt eine frische Bestätigung — eine Session allein (offener\nLaptop, gestohlenes Cookie) darf das Konto nicht zerstören können:\nPasswort-Konten bestätigen mit dem Passwort, Apple-only-Konten mit einem\nfrischen Apple-Identity-Token (Re-Auth in der App, RL-1002).\n\nGeräumt werden **alle drei** Datenbanken. Zwischen ihnen gibt es keine\nFremdschlüssel, und in ``council.sqlite`` steht mit\n``committee_notifications``/``session_followups_sent``, welche Sitzungen\ndiesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss. In\n``cities.sqlite`` liegen die Rückmeldungen zu den Städte-Urteilen samt\nFreitext (``CITIES_USER_OWNED_TABLES``).",
@@ -26875,6 +27748,71 @@
         "summary": "Set Display Name",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/api/account/mcp-grants": {
+      "get": {
+        "description": "Die Agenten, die dieses Konto per OAuth verbunden hat.",
+        "operationId": "list_grants_api_account_mcp_grants_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpGrantList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Grants",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
+    "/api/account/mcp-grants/{grant_id}": {
+      "delete": {
+        "description": "Einen Agenten trennen — Zugangs- und Erneuerungs-Token gelten sofort nicht mehr.",
+        "operationId": "delete_grant_api_account_mcp_grants__grant_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "title": "Grant Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Grant",
+        "tags": [
+          "mcp"
         ]
       }
     },
@@ -28391,6 +29329,50 @@
           }
         },
         "summary": "Stats Growth",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/mcp": {
+      "get": {
+        "description": "Wie Agenten den MCP-Server benutzen: Werkzeuge, Abfolgen, Suchen\nohne Treffer, Konten.\n\nMit Konto und Suchtext (Tims Entscheidung 18.10.2026) — beides sagen die\nFreigabe-Seite und die Einstellungskarte, bevor jemand verbindet. Der\nSuchtext ist gekürzt, Kontaktdaten sind maskiert, nach 90 Tagen ist er\nweg (``Store.purge_mcp_calls``).",
+        "operationId": "stats_mcp_api_admin_stats_mcp_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMcp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Mcp",
         "tags": [
           "admin"
         ]
@@ -33958,7 +34940,7 @@
     },
     "/api/mcp": {
       "post": {
-        "description": "Der MCP-Endpunkt (Streamable HTTP, zustandslos, nur Werkzeuge).\n\n**Öffentlich erreichbar, aber nur mit Schlüssel** — autorisiert über\n``Authorization: Bearer rlmcp_…``, ausdrücklich NICHT über das\nSitzungs-Cookie. Ohne Schalter ``mcp-server`` ein 404.\n\nSynchron wie die übrigen Endpunkte: Die Stores öffnen ihre\nSQLite-Verbindung im Threadpool, und eine Verbindung darf den Thread\nnicht wechseln.",
+        "description": "Der MCP-Endpunkt (Streamable HTTP, zustandslos, nur Werkzeuge).\n\n**Öffentlich erreichbar, aber nur mit Schlüssel** — autorisiert über\n``Authorization: Bearer rlmcp_…`` oder ein OAuth-Zugangs-Token\n(``rloat_…``), ausdrücklich NICHT über das\nSitzungs-Cookie. Ohne Schalter ``mcp-server`` ein 404.\n\nSynchron wie die übrigen Endpunkte: Die Stores öffnen ihre\nSQLite-Verbindung im Threadpool, und eine Verbindung darf den Thread\nnicht wechseln.",
         "operationId": "mcp_api_mcp_post",
         "requestBody": {
           "content": {
@@ -34061,6 +35043,307 @@
         "summary": "Mark Seen",
         "tags": [
           "news"
+        ]
+      }
+    },
+    "/api/oauth/authorize": {
+      "get": {
+        "description": "Für die Freigabe-Seite: Ist die Anfrage gültig, wer fragt, wohin geht\nes zurück? Öffentlich, weil die Seite auch ohne Anmeldung erklären muss,\nwarum es erst zur Anmeldung geht. Verrät nichts über ein Konto.",
+        "operationId": "authorize_check_api_oauth_authorize_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "response_type",
+            "required": false,
+            "schema": {
+              "maxLength": 50,
+              "title": "Response Type",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "client_id",
+            "required": false,
+            "schema": {
+              "maxLength": 500,
+              "title": "Client Id",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "redirect_uri",
+            "required": false,
+            "schema": {
+              "maxLength": 500,
+              "title": "Redirect Uri",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "code_challenge",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "title": "Code Challenge",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "code_challenge_method",
+            "required": false,
+            "schema": {
+              "maxLength": 20,
+              "title": "Code Challenge Method",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "maxLength": 1000,
+              "title": "State",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "maxLength": 1000,
+              "title": "Scope",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "resource",
+            "required": false,
+            "schema": {
+              "maxLength": 500,
+              "title": "Resource",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthAuthorizeCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Authorize Check",
+        "tags": [
+          "mcp"
+        ]
+      },
+      "post": {
+        "description": "„Erlauben“ oder „Ablehnen“ — nur mit Sitzung, nur von Ratslotse selbst\n(``kein_fremder_aufruf``; die Seite lässt sich außerdem nicht einbetten,\n``frame-ancestors 'none'``).",
+        "operationId": "authorize_decide_api_oauth_authorize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizeDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthAuthorizeResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Authorize Decide",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
+    "/api/oauth/register": {
+      "post": {
+        "description": "Öffentlich, aber gebremst: Ein Agent registriert sich, bevor es ein\nKonto zu ihm gibt. Die Registrierung allein öffnet nichts — erst eine\nFreigabe durch ein Konto mit dem Recht ``mcp``.",
+        "operationId": "register_api_oauth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "title": "Meta"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthClientRegistered"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
+    "/api/oauth/revoke": {
+      "post": {
+        "description": "RFC 7009: Ein Agent meldet sich ab. Antwortet immer 200 — ob es das\nToken gab, erfährt niemand.",
+        "operationId": "revoke_api_oauth_revoke_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_revoke_api_oauth_revoke_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke",
+        "tags": [
+          "mcp"
+        ]
+      }
+    },
+    "/api/oauth/token": {
+      "post": {
+        "description": "Code bzw. Erneuerungs-Token gegen ein neues Token-Paar.\n\nÖffentlich (der Agent hat keine Sitzung), aber gebremst: je Adresse 60\nAnfragen in der Minute, und nach 20 Fehlversuchen in zehn Minuten nimmt\nder Endpunkt von dort gar nichts mehr an.",
+        "operationId": "token_api_oauth_token_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_token_api_oauth_token_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthToken"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Token",
+        "tags": [
+          "mcp"
         ]
       }
     },

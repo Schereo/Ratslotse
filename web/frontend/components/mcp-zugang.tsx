@@ -13,7 +13,7 @@
  */
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Copy, KeyRound, Trash2 } from "lucide-react";
+import { Bot, Copy, KeyRound, Link2, Trash2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
@@ -22,9 +22,11 @@ import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { Button, Card, ConfirmDialog, Input, Label, toast } from "@/components/ui";
 
 type Schluessel = ApiAntwort<"/account/mcp-tokens", "get">["tokens"][number];
+type Verbindung = ApiAntwort<"/account/mcp-grants", "get">["grants"][number];
 type Ausgestellt = ApiAntwort<"/account/mcp-tokens", "post">;
 
 const SCHLUESSEL = ["mcp-tokens"] as const;
+const VERBINDUNGEN = ["mcp-grants"] as const;
 
 function datum(iso: string): string {
   return new Date(iso).toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "numeric" });
@@ -51,8 +53,20 @@ function McpKarte() {
   const [label, setLabel] = useState("");
   const [neu, setNeu] = useState<Ausgestellt | null>(null);
   const [loeschen, setLoeschen] = useState<Schluessel | null>(null);
+  const [trennen, setTrennen] = useState<Verbindung | null>(null);
 
   const liste = useQuery({ queryKey: SCHLUESSEL, queryFn: () => vertrag.get("/account/mcp-tokens") });
+  const verbunden = useQuery({ queryKey: VERBINDUNGEN, queryFn: () => vertrag.get("/account/mcp-grants") });
+
+  const verbindungTrennen = useMutation({
+    mutationFn: (id: number) =>
+      api.del<ApiAntwort<"/account/mcp-grants/{grant_id}", "delete">>(`/account/mcp-grants/${id}`),
+    onSuccess: () => {
+      toast.success("Agent getrennt.");
+      void qc.invalidateQueries({ queryKey: VERBINDUNGEN });
+    },
+    onError: () => toast.error("Der Agent konnte nicht getrennt werden."),
+  });
 
   const ausstellen = useMutation({
     mutationFn: () => vertrag.post("/account/mcp-tokens", { label: label.trim() }),
@@ -91,6 +105,10 @@ function McpKarte() {
         Er sucht dann selbst in Beschlüssen, Vorlagen und Tagesordnungen. Er kann nur lesen, und der
         Haushalt ist nicht dabei.
       </p>
+      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+        Ratslotse speichert zu deinem Konto, welche Werkzeuge dein Agent aufruft und wonach er sucht,
+        um den Zugang zu verbessern. Den Suchtext löschen wir nach 90 Tagen.
+      </p>
 
       {daten && (
         <div className="mt-4">
@@ -104,6 +122,38 @@ function McpKarte() {
               <Copy />
             </Button>
           </div>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            ChatGPT, Claude im Browser und auf dem iPad brauchen nur diese Adresse. Beim Verbinden
+            meldest du dich hier an und gibst den Agenten frei. Für Claude Code, Cursor und andere
+            Programme geht auch ein Schlüssel.
+          </p>
+        </div>
+      )}
+
+      {verbunden.data && verbunden.data.grants.length > 0 && (
+        <div className="mt-5">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Verbundene Agenten</p>
+          <ul className="mt-1 divide-y divide-border/60 border-y border-border/60">
+            {verbunden.data.grants.map((g) => (
+              <li key={g.id} className="flex items-center gap-3 py-2.5">
+                <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{g.client_name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    <span className="font-mono">{g.redirect_host}</span>
+                    {" · "}
+                    {g.last_used
+                      ? `zuletzt ${datum(g.last_used)}, ${g.calls.toLocaleString("de-DE")} ${g.calls === 1 ? "Aufruf" : "Aufrufe"}`
+                      : `verbunden ${datum(g.created)}, noch nicht benutzt`}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setTrennen(g)} aria-label={`„${g.client_name}" trennen`}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-destructive">
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -153,7 +203,10 @@ function McpKarte() {
       )}
 
       {daten && daten.tokens.length > 0 && (
-        <ul className="mt-4 divide-y divide-border/60 border-y border-border/60">
+        <p className="mt-5 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Persönliche Schlüssel</p>
+      )}
+      {daten && daten.tokens.length > 0 && (
+        <ul className="mt-1 divide-y divide-border/60 border-y border-border/60">
           {daten.tokens.map((t) => (
             <li key={t.id} className="flex items-center gap-3 py-2.5">
               <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -203,6 +256,15 @@ function McpKarte() {
         confirmLabel="Zurückziehen"
         variant="danger"
         onConfirm={() => { if (loeschen) zurueckziehen.mutate(loeschen.id); setLoeschen(null); }}
+      />
+      <ConfirmDialog
+        open={!!trennen}
+        onOpenChange={(o) => { if (!o) setTrennen(null); }}
+        title="Agent trennen?"
+        description={trennen ? `„${trennen.client_name}" verliert sofort den Zugang. Neu verbinden geht jederzeit, mit einer neuen Freigabe.` : ""}
+        confirmLabel="Trennen"
+        variant="danger"
+        onConfirm={() => { if (trennen) verbindungTrennen.mutate(trennen.id); setTrennen(null); }}
       />
     </Card>
   );

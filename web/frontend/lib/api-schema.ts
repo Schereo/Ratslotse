@@ -4,6 +4,66 @@
  */
 
 export interface paths {
+    "/.well-known/oauth-authorization-server": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Authorization Server
+         * @description RFC 8414 — öffentlich.
+         */
+        get: operations["authorization_server__well_known_oauth_authorization_server_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Protected Resource
+         * @description RFC 9728 — öffentlich, wie es die Spezifikation verlangt.
+         */
+        get: operations["protected_resource__well_known_oauth_protected_resource_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource/api/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Protected Resource Path
+         * @description Dieselben Metadaten unter der Pfad-Variante, die Clients zuerst probieren.
+         */
+        get: operations["protected_resource_path__well_known_oauth_protected_resource_api_mcp_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/account": {
         parameters: {
             query?: never;
@@ -132,6 +192,46 @@ export interface paths {
          */
         post: operations["set_display_name_api_account_display_name_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/mcp-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Grants
+         * @description Die Agenten, die dieses Konto per OAuth verbunden hat.
+         */
+        get: operations["list_grants_api_account_mcp_grants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/mcp-grants/{grant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Grant
+         * @description Einen Agenten trennen — Zugangs- und Erneuerungs-Token gelten sofort nicht mehr.
+         */
+        delete: operations["delete_grant_api_account_mcp_grants__grant_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -921,6 +1021,32 @@ export interface paths {
          * @description Wachstums-Verläufe + WAU + Ratsinfo-Import für den Statistik-Tab (20a).
          */
         get: operations["stats_growth_api_admin_stats_growth_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/stats/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Mcp
+         * @description Wie Agenten den MCP-Server benutzen: Werkzeuge, Abfolgen, Suchen
+         *     ohne Treffer, Konten.
+         *
+         *     Mit Konto und Suchtext (Tims Entscheidung 18.10.2026) — beides sagen die
+         *     Freigabe-Seite und die Einstellungskarte, bevor jemand verbindet. Der
+         *     Suchtext ist gekürzt, Kontaktdaten sind maskiert, nach 90 Tagen ist er
+         *     weg (``Store.purge_mcp_calls``).
+         */
+        get: operations["stats_mcp_api_admin_stats_mcp_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4562,7 +4688,8 @@ export interface paths {
          * @description Der MCP-Endpunkt (Streamable HTTP, zustandslos, nur Werkzeuge).
          *
          *     **Öffentlich erreichbar, aber nur mit Schlüssel** — autorisiert über
-         *     ``Authorization: Bearer rlmcp_…``, ausdrücklich NICHT über das
+         *     ``Authorization: Bearer rlmcp_…`` oder ein OAuth-Zugangs-Token
+         *     (``rloat_…``), ausdrücklich NICHT über das
          *     Sitzungs-Cookie. Ohne Schalter ``mcp-server`` ein 404.
          *
          *     Synchron wie die übrigen Endpunkte: Die Stores öffnen ihre
@@ -4620,6 +4747,101 @@ export interface paths {
          *     miterledigen, das nie jemand gesehen hat.
          */
         post: operations["mark_seen_api_news_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/oauth/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Authorize Check
+         * @description Für die Freigabe-Seite: Ist die Anfrage gültig, wer fragt, wohin geht
+         *     es zurück? Öffentlich, weil die Seite auch ohne Anmeldung erklären muss,
+         *     warum es erst zur Anmeldung geht. Verrät nichts über ein Konto.
+         */
+        get: operations["authorize_check_api_oauth_authorize_get"];
+        put?: never;
+        /**
+         * Authorize Decide
+         * @description „Erlauben“ oder „Ablehnen“ — nur mit Sitzung, nur von Ratslotse selbst
+         *     (``kein_fremder_aufruf``; die Seite lässt sich außerdem nicht einbetten,
+         *     ``frame-ancestors 'none'``).
+         */
+        post: operations["authorize_decide_api_oauth_authorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/oauth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register
+         * @description Öffentlich, aber gebremst: Ein Agent registriert sich, bevor es ein
+         *     Konto zu ihm gibt. Die Registrierung allein öffnet nichts — erst eine
+         *     Freigabe durch ein Konto mit dem Recht ``mcp``.
+         */
+        post: operations["register_api_oauth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/oauth/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke
+         * @description RFC 7009: Ein Agent meldet sich ab. Antwortet immer 200 — ob es das
+         *     Token gab, erfährt niemand.
+         */
+        post: operations["revoke_api_oauth_revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/oauth/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Token
+         * @description Code bzw. Erneuerungs-Token gegen ein neues Token-Paar.
+         *
+         *     Öffentlich (der Agent hat keine Sitzung), aber gebremst: je Adresse 60
+         *     Anfragen in der Minute, und nach 20 Fehlversuchen in zehn Minuten nimmt
+         *     der Endpunkt von dort gar nichts mehr an.
+         */
+        post: operations["token_api_oauth_token_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7290,6 +7512,103 @@ export interface components {
             /** Owner Id */
             owner_id: number;
         };
+        /**
+         * AdminMcp
+         * @description ``GET /api/admin/stats/mcp``: Wie Agenten den MCP-Server benutzen.
+         *
+         *     Eine Sitzung ist eine Folge von Aufrufen derselben Verbindung ohne Pause
+         *     über 30 Minuten. ``transitions`` zählt Schritte innerhalb einer Sitzung
+         *     („search_decisions → get_decision“), ``entries`` den ersten Aufruf.
+         */
+        AdminMcp: {
+            /** Accounts */
+            accounts: number;
+            /** Accounts List */
+            accounts_list: components["schemas"]["AdminMcpAccount"][];
+            /** Arguments */
+            arguments: components["schemas"]["AdminMcpZeile"][];
+            /** Calls */
+            calls: number;
+            /** Calls Per Session */
+            calls_per_session: number | null;
+            /** Clients */
+            clients: components["schemas"]["AdminMcpZeile"][];
+            /** Days */
+            days: number;
+            /** Empty Queries */
+            empty_queries: components["schemas"]["AdminMcpQuery"][];
+            /** Empty Searches */
+            empty_searches: number;
+            /** Entries */
+            entries: components["schemas"]["AdminMcpZeile"][];
+            /** Errors */
+            errors: number;
+            /** P50 Ms */
+            p50_ms: number | null;
+            /** Per Day */
+            per_day: components["schemas"]["AdminMcpTag"][];
+            /** Queries */
+            queries: components["schemas"]["AdminMcpQuery"][];
+            /** Searches */
+            searches: number;
+            /** Sessions */
+            sessions: number;
+            /** Tools */
+            tools: components["schemas"]["AdminMcpTool"][];
+            /** Transitions */
+            transitions: components["schemas"]["AdminMcpZeile"][];
+        };
+        /** AdminMcpAccount */
+        AdminMcpAccount: {
+            /** Clients */
+            clients: string[];
+            /** Display Name */
+            display_name: string | null;
+            /** Email */
+            email: string | null;
+            /** Last */
+            last: string;
+            /** N */
+            n: number;
+            /** Owner Id */
+            owner_id: number;
+        };
+        /** AdminMcpQuery */
+        AdminMcpQuery: {
+            /** Empty */
+            empty: number;
+            /** N */
+            n: number;
+            /** Query */
+            query: string;
+        };
+        /** AdminMcpTag */
+        AdminMcpTag: {
+            /** Day */
+            day: string;
+            /** N */
+            n: number;
+        };
+        /** AdminMcpTool */
+        AdminMcpTool: {
+            /** Empty */
+            empty: number;
+            /** Errors */
+            errors: number;
+            /** Key */
+            key: string;
+            /** N */
+            n: number;
+            /** P50 Ms */
+            p50_ms: number | null;
+        };
+        /** AdminMcpZeile */
+        AdminMcpZeile: {
+            /** Key */
+            key: string;
+            /** N */
+            n: number;
+        };
         /** AdminNewsList */
         AdminNewsList: {
             /** Releases */
@@ -8099,6 +8418,30 @@ export interface components {
             /** Role */
             role: string | null;
         };
+        /** AuthorizeDecision */
+        AuthorizeDecision: {
+            /**
+             * Approve
+             * @default false
+             */
+            approve: boolean;
+            /** Client Id */
+            client_id?: string | null;
+            /** Code Challenge */
+            code_challenge?: string | null;
+            /** Code Challenge Method */
+            code_challenge_method?: string | null;
+            /** Redirect Uri */
+            redirect_uri?: string | null;
+            /** Resource */
+            resource?: string | null;
+            /** Response Type */
+            response_type?: string | null;
+            /** Scope */
+            scope?: string | null;
+            /** State */
+            state?: string | null;
+        };
         /** Badge */
         Badge: {
             /** Earned */
@@ -8207,6 +8550,34 @@ export interface components {
         Body_medien_ablegen_api_social_media__day__post: {
             /** Dateien */
             dateien: string[];
+        };
+        /** Body_revoke_api_oauth_revoke_post */
+        Body_revoke_api_oauth_revoke_post: {
+            /**
+             * Token
+             * @default
+             */
+            token: string;
+        };
+        /** Body_token_api_oauth_token_post */
+        Body_token_api_oauth_token_post: {
+            /** Client Id */
+            client_id?: string | null;
+            /** Code */
+            code?: string | null;
+            /** Code Verifier */
+            code_verifier?: string | null;
+            /**
+             * Grant Type
+             * @default
+             */
+            grant_type: string;
+            /** Redirect Uri */
+            redirect_uri?: string | null;
+            /** Refresh Token */
+            refresh_token?: string | null;
+            /** Resource */
+            resource?: string | null;
         };
         /**
          * BookmarkEntry
@@ -13028,6 +13399,37 @@ export interface components {
             valid_votes: number | null;
         };
         /**
+         * McpGrant
+         * @description Ein über OAuth verbundener Agent (Freigabe), wie ihn die Liste zeigt.
+         *
+         *     ``client_name`` hat sich der Agent selbst gegeben; ``redirect_host`` ist
+         *     das, was wirklich zählt — wohin die Freigabe zurückgeschickt wurde.
+         */
+        McpGrant: {
+            /** Calls */
+            calls: number;
+            /** Client Name */
+            client_name: string;
+            /** Created */
+            created: string;
+            /** Id */
+            id: number;
+            /** Last Used */
+            last_used: string | null;
+            /** Redirect Host */
+            redirect_host: string;
+        };
+        /**
+         * McpGrantList
+         * @description ``GET /api/account/mcp-grants``: die verbundenen Agenten und die Höchstzahl.
+         */
+        McpGrantList: {
+            /** Grants */
+            grants: components["schemas"]["McpGrant"][];
+            /** Max */
+            max: number;
+        };
+        /**
          * McpMessage
          * @description Eine JSON-RPC-2.0-Antwort des MCP-Servers (``POST /api/mcp``).
          *
@@ -13442,6 +13844,146 @@ export interface components {
             kind: "count";
             /** Window Days */
             window_days: number;
+        };
+        /**
+         * OAuthAuthorizeCheck
+         * @description ``GET /api/oauth/authorize``: was die Freigabe-Seite zeigen soll.
+         *
+         *     ``status``: ``ready`` (Knöpfe zeigen), ``login`` (erst anmelden),
+         *     ``forbidden`` (Konto darf nicht; ``cancel_url`` schickt die Absage
+         *     zurück), ``error`` (Anfrage kaputt; mit ``cancel_url`` nur, wenn die
+         *     Rücksprungadresse geprüft ist — sonst wird NIE weitergeleitet).
+         *     ``redirect_kind``: ``web`` (https), ``local`` (localhost) oder ``app``
+         *     (eigenes Schema eines Programms auf dem Gerät); die letzten beiden
+         *     bekommen eine Warnung.
+         */
+        OAuthAuthorizeCheck: {
+            /** Already Connected */
+            already_connected: boolean;
+            /** At Limit */
+            at_limit: boolean;
+            /** Cancel Url */
+            cancel_url: string | null;
+            /** Client Id Host */
+            client_id_host: string | null;
+            /** Client Name */
+            client_name: string | null;
+            /** Message */
+            message: string | null;
+            /** Redirect Host */
+            redirect_host: string | null;
+            /**
+             * Redirect Kind
+             * @enum {string|null}
+             */
+            redirect_kind: "web" | "local" | "app" | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "login" | "forbidden" | "error";
+        };
+        /**
+         * OAuthAuthorizeResult
+         * @description ``POST /api/oauth/authorize``: wohin der Browser jetzt geht — mit Code
+         *     oder mit der Absage.
+         */
+        OAuthAuthorizeResult: {
+            /** Redirect */
+            redirect: string;
+        };
+        /**
+         * OAuthClientRegistered
+         * @description RFC 7591: der neu registrierte Client. Immer öffentlich
+         *     (``token_endpoint_auth_method: none``) — das Geheimnis ist PKCE.
+         */
+        OAuthClientRegistered: {
+            /** Client Id */
+            client_id: string;
+            /** Client Id Issued At */
+            client_id_issued_at: number;
+            /** Client Name */
+            client_name: string;
+            /** Grant Types */
+            grant_types: string[];
+            /** Redirect Uris */
+            redirect_uris: string[];
+            /** Response Types */
+            response_types: string[];
+            /** Token Endpoint Auth Method */
+            token_endpoint_auth_method: string;
+        };
+        /**
+         * OAuthProtectedResource
+         * @description RFC 9728: Wer schützt ``/api/mcp``, und mit welchen Rechten?
+         */
+        OAuthProtectedResource: {
+            /** Authorization Servers */
+            authorization_servers: string[];
+            /** Bearer Methods Supported */
+            bearer_methods_supported: string[];
+            /** Resource */
+            resource: string;
+            /** Resource Documentation */
+            resource_documentation: string;
+            /** Resource Name */
+            resource_name: string;
+            /** Scopes Supported */
+            scopes_supported: string[];
+        };
+        /**
+         * OAuthServerMetadata
+         * @description RFC 8414: was der Autorisierungsserver kann. ChatGPT bricht ab, wenn
+         *     ``code_challenge_methods_supported`` kein ``S256`` nennt.
+         */
+        OAuthServerMetadata: {
+            /** Authorization Endpoint */
+            authorization_endpoint: string;
+            /** Authorization Response Iss Parameter Supported */
+            authorization_response_iss_parameter_supported: boolean;
+            /** Client Id Metadata Document Supported */
+            client_id_metadata_document_supported: boolean;
+            /** Code Challenge Methods Supported */
+            code_challenge_methods_supported: string[];
+            /** Grant Types Supported */
+            grant_types_supported: string[];
+            /** Issuer */
+            issuer: string;
+            /** Registration Endpoint */
+            registration_endpoint: string;
+            /** Response Types Supported */
+            response_types_supported: string[];
+            /** Revocation Endpoint */
+            revocation_endpoint: string;
+            /** Revocation Endpoint Auth Methods Supported */
+            revocation_endpoint_auth_methods_supported: string[];
+            /** Scopes Supported */
+            scopes_supported: string[];
+            /** Service Documentation */
+            service_documentation: string;
+            /** Token Endpoint */
+            token_endpoint: string;
+            /** Token Endpoint Auth Methods Supported */
+            token_endpoint_auth_methods_supported: string[];
+        };
+        /**
+         * OAuthToken
+         * @description Antwort des Token-Endpunkts (OAuth 2.1, Abschnitt 3.2.3).
+         */
+        OAuthToken: {
+            /** Access Token */
+            access_token: string;
+            /** Expires In */
+            expires_in: number;
+            /** Refresh Token */
+            refresh_token: string;
+            /** Scope */
+            scope: string;
+            /**
+             * Token Type
+             * @constant
+             */
+            token_type: "Bearer";
         };
         /**
          * Ok
@@ -17409,6 +17951,66 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    authorization_server__well_known_oauth_authorization_server_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthServerMetadata"];
+                };
+            };
+        };
+    };
+    protected_resource__well_known_oauth_protected_resource_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthProtectedResource"];
+                };
+            };
+        };
+    };
+    protected_resource_path__well_known_oauth_protected_resource_api_mcp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthProtectedResource"];
+                };
+            };
+        };
+    };
     delete_account_api_account_delete: {
         parameters: {
             query?: never;
@@ -17571,6 +18173,57 @@ export interface operations {
                 "application/json": components["schemas"]["DisplayNameIn"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_grants_api_account_mcp_grants_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpGrantList"];
+                };
+            };
+        };
+    };
+    delete_grant_api_account_mcp_grants__grant_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grant_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -18683,6 +19336,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminGrowth"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_mcp_api_admin_stats_mcp_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMcp"];
                 };
             };
             /** @description Validation Error */
@@ -22667,6 +23351,176 @@ export interface operations {
             };
         };
     };
+    authorize_check_api_oauth_authorize_get: {
+        parameters: {
+            query?: {
+                response_type?: string | null;
+                client_id?: string | null;
+                redirect_uri?: string | null;
+                code_challenge?: string | null;
+                code_challenge_method?: string | null;
+                state?: string | null;
+                scope?: string | null;
+                resource?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthAuthorizeCheck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    authorize_decide_api_oauth_authorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthorizeDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthAuthorizeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_api_oauth_register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthClientRegistered"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_api_oauth_revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_revoke_api_oauth_revoke_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    token_api_oauth_token_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_token_api_oauth_token_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthToken"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_onboarding_api_onboarding_get: {
         parameters: {
             query?: never;
@@ -25582,4 +26436,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 982e72b57ba4f97a5a9498a49cea03a36085f39cdb5a64f24108b30d7f6fac9b
+// vertrag-sha256: be89d58280b11447e03d8a9006acb6141d8098cf26ae406147ad3165a279484a

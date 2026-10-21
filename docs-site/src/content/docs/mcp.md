@@ -41,8 +41,90 @@ claude mcp add --transport http ratslotse https://ratslotse.de/api/mcp \
 ```
 
 Andere Clients fragen nach denselben zwei Angaben, also Adresse und
-Kopfzeile. Das Sitzungs-Cookie öffnet den Server **nicht**: Sonst könnte jede
+Kopfzeile. Clients, die keine feste Kopfzeile können, melden sich per OAuth
+an (s. u.). Das Sitzungs-Cookie öffnet den Server **nicht**: Sonst könnte jede
 fremde Seite im Namen einer angemeldeten Person Anfragen stellen.
+
+## Anmelden per OAuth (ChatGPT, Claude im Browser)
+
+ChatGPT schickt einem eigenen MCP-Server keinen festen Schlüssel. Es
+kennt nur OAuth 2.1 mit PKCE: Laut OpenAI kann ChatGPT „can not present
+custom API keys“. Ratslotse ist deshalb selbst Autorisierungsserver
+(`web/backend/app/routers/mcp_oauth.py`). In ChatGPT trägt man im
+Entwicklermodus nur die Adresse ein, unter chatgpt.com/plugins und auf dem
+iPad in Safari. Danach geht es so weiter:
+
+1. Der Agent ruft `/api/mcp` ohne Token. Die 401-Antwort nennt in
+   `WWW-Authenticate` die Schutz-Metadaten
+   `/.well-known/oauth-protected-resource` (RFC 9728). Von dort kommt er zu
+   `/.well-known/oauth-authorization-server` (RFC 8414). Beide liegen im
+   Backend; Next leitet sie durch, weil der Proxy nur `/api` weiterreicht.
+2. Er meldet sich als Client an, auf einem von zwei Wegen. Entweder per
+   *Dynamic Client Registration* (`POST /api/oauth/register`), oder er nennt
+   als `client_id` eine https-Adresse, unter der sein Steckbrief liegt
+   (*Client ID Metadata Document*; ChatGPT bevorzugt das).
+3. Der Browser öffnet `/oauth/freigeben`. Wer nicht angemeldet ist, meldet
+   sich erst an und landet danach wieder dort. Die Seite zeigt, was der
+   Agent darf und was nicht, und vor allem, **wohin es danach zurückgeht**.
+   Den Namen gibt sich ein Agent selbst, die Adresse nicht. Freigeben kann
+   nur ein Konto mit dem Recht `mcp`.
+4. Der Agent tauscht den Code gegen ein Zugangs-Token (`rloat_…`, gültig eine
+   Stunde) und ein Erneuerungs-Token (`rlort_…`). Das Erneuerungs-Token
+   verfällt nach 30 Tagen ohne Nutzung und wird bei jedem Gebrauch ersetzt.
+
+Die Grenzen:
+
+- **Rücksprungadressen exakt**, so wie registriert. Erlaubt sind https,
+  `http://localhost` bzw. `127.0.0.1` und das eigene Schema einer App
+  (`cursor://…`). Die letzten beiden zeigt die Seite mit einer Warnung, weil
+  dort ein beliebiges Programm auf dem Gerät mithören kann. Stimmt die
+  Adresse nicht, leitet die Seite **nicht** weiter, sondern zeigt nur den
+  Fehler.
+- **PKCE mit S256 ist Pflicht.** Andere Verfahren nimmt der Server nicht an.
+- **Audience:** Ein Token gilt nur für `/api/mcp` dieser Instanz. Ein
+  `resource`-Parameter für etwas anderes wird abgewiesen.
+- **Einmal heißt einmal.** Wird ein Code zum zweiten Mal eingelöst oder ein
+  abgelöstes Erneuerungs-Token wieder benutzt, fällt die ganze Freigabe.
+- **Bremsen:** Registrierung 10 je Stunde und Adresse, insgesamt 200 je
+  Stunde. Token-Endpunkt 60 je Minute, und nach 20 Fehlversuchen in zehn
+  Minuten ist für diese Adresse Pause. Freigaben 30 je Stunde und Konto.
+- **Steckbrief-Abruf ohne Umweg ins eigene Netz:** nur https, nur öffentliche
+  Adressen, keine Weiterleitung, drei Sekunden, zehn Kilobyte, einen Tag
+  zwischengespeichert.
+- **Trennen:** Die Einstellungen listen die verbundenen Agenten (höchstens
+  zehn); jeder lässt sich einzeln trennen. „Überall abmelden“ und ein neues
+  Passwort beenden alle Freigaben, ebenso ein entzogenes Recht. Wird das
+  Konto gelöscht, gehen sie mit (`USER_OWNED_TABLES`).
+
+Gespeichert werden nur die SHA-256 von Code und Tokens. Die Tokens sind
+opak, keine JWT, damit ein Widerruf sofort wirkt. Per DCR angelegte
+Clients, die nach einem Tag niemand freigegeben hat, räumt der Server
+wieder ab.
+
+## Auswertung
+
+Jeder Werkzeugaufruf landet als Zeile in `mcp_calls` (`ratslotse.sqlite`). Das
+Admin-Panel zeigt die Auswertung unter *Nutzung → Agenten (MCP)*: Aufrufe je
+Tag, Werkzeuge mit Fehlern und leeren Antworten, den Einstieg einer Sitzung,
+die Schritte darin („search_decisions → get_decision“), welche Argumente
+gesetzt werden, wonach gesucht wird, was ohne Treffer bleibt, und welche
+Konten mit welchen Agenten fragen. Eine Sitzung ist eine Folge von Aufrufen
+derselben Verbindung ohne Pause über 30 Minuten.
+
+Gespeichert werden **mit Konto** (Tims Entscheidung 18.10.2026) Zeitpunkt,
+Werkzeug, der Name des Agenten, Dauer, Ergebnis (`ok`, `tool_error`,
+`internal`), die Trefferzahl und die **Namen** der gesetzten Argumente. Ihre
+Werte werden nicht gespeichert, mit einer Ausnahme: den Suchtext (`query`).
+Der wird auf 200 Zeichen gekürzt, Kontaktdaten werden maskiert, auch eine
+nackte Telefonnummer, die `kontaktdaten.maskieren` allein nicht erkennt.
+Nach 90 Tagen ist der Suchtext leer, nach einem Jahr ist die Zeile weg, und
+mit dem Konto geht alles (`USER_OWNED_TABLES`). Die Freigabe-Seite, die
+Einstellungskarte und die Datenschutzerklärung sagen das, bevor jemand
+verbindet.
+
+Geschrieben wird gesammelt, nie während der Antwort: höchstens alle
+15 Sekunden bzw. alle 50 Aufrufe, ohne auf eine Schreibsperre zu warten.
+Gelingt es nicht, bleibt der Stapel liegen und geht mit dem nächsten.
 
 ## Werkzeuge
 
