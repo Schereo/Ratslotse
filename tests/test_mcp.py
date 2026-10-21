@@ -229,7 +229,8 @@ def test_werkzeuge_lesen_beschluesse(client):
     token = _schluessel(client)
     did = _beschluss()
     werkzeuge = _rpc(token, "tools/list").json()["result"]["tools"]
-    assert {w["name"] for w in werkzeuge} == set(mcp_tools.TOOLS)
+    # Ein Konto ohne Haushaltsrecht sieht genau die Werkzeuge ohne Recht.
+    assert {w["name"] for w in werkzeuge} == {t.name for t in mcp_tools.erlaubt(set())}
     assert all(w["annotations"]["readOnlyHint"] for w in werkzeuge)
 
     r = _rpc(token, "tools/call", {"name": "get_decision",
@@ -544,7 +545,8 @@ def test_die_anleitung_nennt_jedes_werkzeug():
     """Die Anleitung ist das Erste, was ein Agent liest. Kennt sie ein Werkzeug
     nicht, findet der Agent es nur, wenn er zufällig die Beschreibung liest —
     so ging es bis 10/2026 dem Protokollabschnitt und den Anlagen."""
-    fehlt = sorted(n for n in mcp_tools.TOOLS if n not in mcp_router.ANLEITUNG)
+    anleitung = mcp_router.ANLEITUNG + mcp_router.ANLEITUNG_HAUSHALT
+    fehlt = sorted(n for n in mcp_tools.TOOLS if n not in anleitung)
     assert not fehlt, (f"ANLEITUNG in web/backend/app/routers/mcp.py nennt {fehlt} nicht — "
                        "dort in einen der typischen Wege aufnehmen.")
 
@@ -559,23 +561,90 @@ def test_aufrufe_werden_gezaehlt(client):
 
 # ---- Grenzen der Werkzeuge ---------------------------------------------------
 
-def test_kein_haushalt_und_nichts_kontogebundenes():
-    """Die Werkzeuge fassen weder den Haushalt noch eine Tabelle an, die an
-    einem Konto hängt. Geprüft am Quelltext des Werkzeug-Moduls UND der von
-    ihm benutzten Lotti-Werkzeuge — eine neue Abfrage auf ``bookmarks`` oder
-    ``council_budget`` soll hier auffallen, nicht erst in einem Agenten."""
+#: Lotti-Funktionen, die ein Werkzeug OHNE Recht benutzen darf — keine davon
+#: fasst den Haushalt an.
+LW_OHNE_HAUSHALT = {"sitzungen_daten", "tagesordnung_daten", "beratungsfolge_daten",
+                    "beschluesse_zaehlen_daten", "VORLAGEN_NR"}
+_HAUSHALT_RE = re.compile(
+    r"\bcouncil_(budget|debt|taxes|tax_plan|tax_rates|liquidity|staff_plan|products|"
+    r"business_plans|fees|income_statement|investments_actual|einwohner)\b|\bqa\.geld_")
+
+
+def test_haushalt_nur_mit_budget_und_nichts_kontogebundenes():
+    """Kein Werkzeug fasst eine Tabelle an, die an einem Konto hängt — und den
+    Haushalt nur eines mit ``recht="budget"``. Geprüft am Quelltext jedes
+    Werkzeugs UND der Lotti-Funktionen, die es benutzt: Eine neue Abfrage auf
+    ``bookmarks`` oder ``council_debt`` in einem Werkzeug ohne Recht soll hier
+    auffallen, nicht erst in einem fremden Agenten (bis 21.10.2026 galt
+    „gar kein Haushalt“, seitdem „nur mit budget“)."""
+    import inspect
+
     from council import lotti_werkzeuge as lw
 
-    quellen = (ROOT / "council" / "mcp_tools.py").read_text()
-    benutzt = set(re.findall(r"lw\.(\w+)\(", quellen))
-    assert benutzt <= {"sitzungen_daten", "tagesordnung_daten", "beratungsfolge_daten",
-                       "beschluesse_zaehlen_daten"}, (
-        "council/mcp_tools.py benutzt ein weiteres Lotti-Werkzeug. Ist es frei von Haushalt "
-        "und Kontodaten? Dann hier aufnehmen.")
-    import inspect
-    text = quellen + "".join(inspect.getsource(getattr(lw, n)) for n in benutzt)
     verboten = {t for t, _ in USER_OWNED_TABLES} | {t for t, _ in COUNCIL_USER_OWNED_TABLES}
+    quellen = (ROOT / "council" / "mcp_tools.py").read_text()
+    alle_lw = set(re.findall(r"lw\.(\w+)", quellen))
+    text = quellen + "".join(inspect.getsource(getattr(lw, n)) for n in alle_lw
+                             if callable(getattr(lw, n)))
     treffer = sorted(t for t in verboten if re.search(rf"\b{t}\b", text))
     assert not treffer, f"Die MCP-Werkzeuge lesen kontogebundene Tabellen: {treffer}"
-    assert not re.search(r"\bcouncil_(budget|debt|taxes|liquidity|staff_plan)\b", text)
-    assert not any("haushalt" in n or "budget" in n for n in mcp_tools.TOOLS)
+
+    for tool in mcp_tools.TOOLS.values():
+        if tool.recht == "budget":
+            continue
+        assert tool.recht is None, f"{tool.name}: unbekanntes Recht {tool.recht}"
+        quelle = inspect.getsource(tool.run)
+        benutzt = set(re.findall(r"lw\.(\w+)", quelle))
+        assert benutzt <= LW_OHNE_HAUSHALT, (
+            f"{tool.name} hat kein Recht, benutzt aber {benutzt - LW_OHNE_HAUSHALT}. "
+            "Haushalt? Dann recht=\"budget\" setzen; sonst hier aufnehmen.")
+        assert not _HAUSHALT_RE.search(quelle), (
+            f"{tool.name} liest Haushaltsdaten ohne recht=\"budget\".")
+    assert {t.name for t in mcp_tools.erlaubt(set())} == {
+        t.name for t in mcp_tools.TOOLS.values() if t.recht is None}
+
+
+def _schuldenstand() -> None:
+    cs = CouncilStore(COUNCIL_DB)
+    cur = cs._conn.execute(
+        "INSERT INTO council_provenance (key, kind, label, url, citation, probe, as_of, "
+        "fetched_at) VALUES ('t:schulden', 'jahrbuch', 'Jahrbuch Tabelle 1108', "
+        "'https://www.oldenburg.de/jahrbuch.pdf', 'Tabelle 1108', 'x', 'Stand 31.12.2025', "
+        "datetime('now'))")
+    cs._conn.executemany(
+        "INSERT INTO council_debt (year, total, per_capita, herkunft_id, fetched_at) "
+        "VALUES (?, ?, ?, ?, datetime('now'))",
+        [(2024, 290_000_000, 1700, cur.lastrowid), (2025, 310_000_000, 1800, cur.lastrowid)])
+    cs._conn.commit()
+    cs.close()
+
+
+def test_haushaltswerkzeuge_nur_mit_budget(client):
+    """Ohne ``budget`` stehen die Haushaltswerkzeuge nicht in der Liste und
+    lassen sich nicht rufen — als gäbe es sie nicht. Mit dem Recht
+    (Ratsmitglied) kommen Werte mit Beleg."""
+    _schuldenstand()
+    _konto(client, email="ohne@example.org")
+    ohne = _schluessel(client)
+    namen = {w["name"] for w in _rpc(ohne, "tools/list").json()["result"]["tools"]}
+    assert not any(n.startswith(("budget_", "enterprise_", "fee_", "cash_")) for n in namen)
+    r = _rpc(ohne, "tools/call", {"name": "budget_series",
+                                  "arguments": {"series": "schulden"}}).json()
+    assert r["error"]["code"] == -32602
+
+    client.cookies.clear()
+    _konto(client, email="rat@example.org", rollen=("mcp_access", "council_member"))
+    mit = _schluessel(client)
+    assert "budget_search" in _rpc(mit, "initialize", {}).json()["result"]["instructions"]
+    assert "budget_search" not in _rpc(ohne, "initialize", {}).json()["result"]["instructions"]
+    namen = {w["name"] for w in _rpc(mit, "tools/list").json()["result"]["tools"]}
+    assert {"budget_search", "budget_series", "budget_product", "enterprise_plans",
+            "fee_calculations", "cash_position"} <= namen
+    s = _rufe(mit, "budget_series", series="schulden", year_from=2024, year_to=2025)
+    assert [v["value"] for v in s["values"]] == [290_000_000, 310_000_000]
+    assert s["unit"] == "EUR" and s["values"][0]["source"] == 0
+    assert s["sources"][0]["url"] == "https://www.oldenburg.de/jahrbuch.pdf"
+
+    r = _rpc(mit, "tools/call", {"name": "cash_position",
+                                 "arguments": {"month_from": "2025", "month_to": "2025-03"}})
+    assert r.json()["result"]["isError"] is True
