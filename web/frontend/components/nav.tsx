@@ -672,6 +672,8 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
     return () => { document.body.style.overflow = alt; };
   }, []);
   // Wisch nach unten schließt (9a④) — simple Geste, kein Mitzieh-Effekt.
+  // Aber nur, wenn das Blatt oben steht: Ist es gescrollt, heißt derselbe
+  // Wisch „zurück nach oben", nicht „weg damit".
   const startY = useRef<number | null>(null);
   /** Auffangnetz für den Abgang: Normalerweise räumt `onAnimationEnd` das
    *  Blatt weg. Feuert das Ereignis nicht — der Tab wechselt mitten in der
@@ -698,7 +700,12 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
         className={cn("scrim absolute inset-0", abgang ? "animate-scrim-zu" : "animate-scrim-auf")} />
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 rounded-t-[20px] bg-card px-4 pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]",
+          // Höher als der Schirm wird das Blatt leicht (Admin-Zeile, drei
+          // Gruppen, Safaris Werkzeugleiste): Ohne Deckel und eigenen Scroll
+          // war oben die Konto-Zeile abgeschnitten, und weil der Hintergrund
+          // eingefroren ist, ließ sich gar nichts mehr scrollen (Tims Befund
+          // 21.10.2026). `overscroll-contain` hält den Schwung im Blatt.
+          "absolute inset-x-0 bottom-0 overflow-y-auto overscroll-contain rounded-t-[20px] bg-card px-4 pt-2 shadow-[0_-18px_50px_-12px_rgba(2,32,71,0.45)]",
           abgang ? "animate-sheet-zu" : "animate-sheet-auf",
         )}
         onAnimationEnd={(e) => {
@@ -709,8 +716,15 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
         }}
         /* Das Sheet dockt UNTER der Leiste an — sein Fuß hält deren Höhe frei,
            plus 0,75 rem Luft. Aus derselben Quelle wie die Leiste selbst. */
-        style={{ paddingBottom: `calc(${TABLEISTE_HOEHE} + 0.75rem)` }}
-        onTouchStart={(e) => { startY.current = e.touches[0]?.clientY ?? null; }}
+        style={{
+          paddingBottom: `calc(${TABLEISTE_HOEHE} + 0.75rem)`,
+          // Oben bleibt ein Streifen Scrim stehen, damit es als Blatt lesbar
+          // bleibt und ein Tipper daneben es schließt.
+          maxHeight: "calc(100dvh - env(safe-area-inset-top) - 1.5rem)",
+        }}
+        onTouchStart={(e) => {
+          startY.current = e.currentTarget.scrollTop <= 0 ? (e.touches[0]?.clientY ?? null) : null;
+        }}
         onTouchMove={(e) => {
           const y = e.touches[0]?.clientY;
           if (startY.current != null && y != null && y - startY.current > 60) onClose();
