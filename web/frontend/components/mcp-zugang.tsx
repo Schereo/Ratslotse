@@ -45,10 +45,12 @@ export function McpCard() {
   const { user } = useAuth();
   const an = useFeature("mcp-server");
   if (!an || !hatRecht(user, "mcp")) return null;
-  return <McpKarte />;
+  return <McpKarte haushalt={hatRecht(user, "budget")} />;
 }
 
-function McpKarte() {
+/** ``haushalt``: Das Konto hat das Recht `budget` — dann bekommt auch der
+ *  Agent die Haushaltswerkzeuge (seit 21.10.2026). */
+function McpKarte({ haushalt }: { haushalt: boolean }) {
   const qc = useQueryClient();
   const [label, setLabel] = useState("");
   const [neu, setNeu] = useState<Ausgestellt | null>(null);
@@ -102,8 +104,9 @@ function McpKarte() {
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Schließ Claude, ChatGPT, Cursor oder einen anderen MCP-fähigen Agenten an die Ratsdaten an.
-        Er sucht dann selbst in Beschlüssen, Vorlagen und Tagesordnungen. Er kann nur lesen, und der
-        Haushalt ist nicht dabei.
+        Er sucht dann selbst in Beschlüssen, Vorlagen und Tagesordnungen
+        {haushalt ? " und in den Haushaltszahlen" : ""}. Er kann nur lesen
+        {haushalt ? "." : ", und der Haushalt ist nicht dabei."}
       </p>
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
         Ratslotse speichert zu deinem Konto, welche Werkzeuge dein Agent aufruft und wonach er sucht,
