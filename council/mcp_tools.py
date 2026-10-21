@@ -10,8 +10,9 @@ Sitzungs-Werkzeuge hier wiederverwendet werden.
 
 - Sie **lesen nur**, und nur öffentliche Ratsdaten: Beschlüsse, Vorlagen,
   Sitzungen, Tagesordnungen, Gremien. Nichts Kontogebundenes (Themen,
-  Lesezeichen, Gespräche), **kein Haushalt** (der hängt am Recht ``budget``
-  und bleibt der eigenen Oberfläche vorbehalten).
+  Lesezeichen, Gespräche). **Den Haushalt nur mit dem Recht ``budget``**
+  (seit 21.10.2026, s. ``Tool.recht``): Konten ohne das Recht sehen die
+  Haushaltswerkzeuge gar nicht.
 - **Kein Sprachmodell auf unserer Seite.** Das Denken macht der Agent der
   Nutzerin mit ihrem eigenen Modell; bei uns laufen SQLite und die
   Volltextsuche. Deshalb fehlen die KI-Frage und die ausführliche Recherche
@@ -83,6 +84,10 @@ class Tool:
     #: Greift das Werkzeug über unseren Bestand hinaus (lädt ein PDF aus dem
     #: Ratsinformationssystem)? Das sagt der Client der Nutzerin.
     open_world: bool = False
+    #: Das Recht, das ein Konto für dieses Werkzeug braucht (``kern/roles.py``).
+    #: ``None`` = jedes Konto mit MCP-Zugang. Ohne das Recht steht das Werkzeug
+    #: gar nicht erst in ``tools/list``.
+    recht: str | None = None
 
     def beschreibung(self) -> dict:
         return {"name": self.name, "title": self.title, "description": self.description,
@@ -665,6 +670,180 @@ def count_decisions(store, args: dict, base: str) -> str:
     })
 
 
+# --------------------------------------------------------------------------- #
+# Haushalt — nur mit dem Recht ``budget`` (21.10.2026)
+# --------------------------------------------------------------------------- #
+#
+# Dieselben Abfragen wie Lottis Haushaltswerkzeuge (``lw.*_daten``), hier als
+# Daten mit Beleg je Wert. Bis 10/2026 stand im Modulkopf „kein Haushalt“: Der
+# Bereich hing an ``budget`` und war der eigenen Oberfläche vorbehalten. Tims
+# Entscheidung 21.10.: Konten MIT diesem Recht (Ratsmitglieder, Fachpublikum)
+# bekommen ihn auch im Agenten; alle anderen sehen die Werkzeuge nicht einmal.
+# ``rechnen`` und ``seite_lesen`` fehlen bewusst: Rechnen kann der Agent
+# selbst, und die Seiten sind Oberfläche, keine Daten.
+
+BUDGET = "budget"
+
+
+class _Quellen:
+    """Sammelt die Belege einer Antwort; jeder Wert verweist mit ``source``
+    auf einen Eintrag in ``sources`` — so steht dieselbe Fundstelle nicht
+    bei jedem Jahr noch einmal da."""
+
+    def __init__(self, store) -> None:
+        self._store = store
+        self._index: dict[int, int] = {}
+        self.liste: list[dict] = []
+
+    def nr(self, herkunft_id: int | None) -> int | None:
+        if herkunft_id is None:
+            return None
+        if herkunft_id not in self._index:
+            b = self._store._beleg(herkunft_id)  # noqa: SLF001 — derselbe Beleg wie bei Lotti
+            if not b or not b.get("url"):
+                return None
+            self._index[herkunft_id] = len(self.liste)
+            self.liste.append({"label": _sauber(b.get("label")), "citation": b.get("citation"),
+                               "page": b.get("page"), "as_of": b.get("as_of"), "url": b["url"]})
+        return self._index[herkunft_id]
+
+
+def _jahre(args: dict) -> tuple[int, int]:
+    von = _int(args, "year_from", 2015, 1990, 2035)
+    bis = _int(args, "year_to", 2035, 1990, 2035)
+    return (von, bis) if von <= bis else (bis, von)
+
+
+def _betrag(v: Any) -> float | None:
+    return None if v is None else round(float(v), 2)
+
+
+def budget_search(store, args: dict, base: str) -> str:
+    from council import qa
+    begriffe = str(args.get("query") or "").strip()[:200]
+    if not begriffe:
+        raise ToolError("query fehlt, z. B. „Kindertagesbetreuung 2024“ oder "
+                        "„Gewerbesteuer Plan 2026“.")
+    geld = qa.geld_kontext(store, begriffe, begriffe, "money")
+    text = qa.geld_block(geld, max_chars=lw.BLOCK_MAX) if geld else ""
+    aus: dict[str, Any] = {
+        "query": begriffe,
+        # Der Block ist derselbe, den die KI-Frage bekommt: jede Zahl unter
+        # ihrem eigenen Jahr, Plan und Ist ausdrücklich getrennt.
+        "text": _sauber(text) or None,
+        "sources": [{"label": _sauber(b.get("label")), "year": b.get("year"), "url": b["url"]}
+                    for b in (qa.geld_belege(geld, max_chars=lw.BLOCK_MAX, max_n=10)
+                              if geld else [])],
+        "related_series": [k for k, woerter in lw._REIHEN_WOERTER.items()  # noqa: SLF001
+                           if any(w in begriffe.lower() for w in woerter)],
+    }
+    if not text:
+        aus["hint"] = ("Dazu steht in den Haushaltsdaten nichts. Andere Stichwörter "
+                       "versuchen, budget_series für Kennzahlen über Jahre, oder "
+                       "search_decisions, wenn die Zahl in einem Ratsbeschluss steht.")
+    return _json(aus)
+
+
+def budget_series(store, args: dict, base: str) -> str:
+    reihe = str(args.get("series") or "")
+    if reihe not in lw.REIHEN:
+        raise ToolError(f"series muss eines sein von: {', '.join(sorted(lw.REIHEN))}.")
+    titel, _sql, einheit = lw.REIHEN[reihe]
+    von, bis = _jahre(args)
+    alle, treffer = lw.zeitreihe_daten(store, reihe, von, bis)
+    q = _Quellen(store)
+    aus: dict[str, Any] = {
+        "series": reihe, "label": titel,
+        "unit": {"€": "EUR", "%": "percent"}.get(einheit, "count"),
+        "values": [{"year": int(j), "value": _betrag(w), "source": q.nr(h)}
+                   for j, w, h in treffer if w is not None],
+        "available_years": [int(alle[0][0]), int(alle[-1][0])] if alle else None,
+    }
+    aus["sources"] = q.liste
+    return _json(aus)
+
+
+def budget_product(store, args: dict, base: str) -> str:
+    name = str(args.get("product") or "").strip()[:120]
+    if not name:
+        raise ToolError("product fehlt, z. B. „Kindertagesbetreuung“.")
+    von, bis = _jahre(args)
+    zeilen = lw.produkt_daten(store, name, von, bis)
+    namen = sorted({z[1] for z in zeilen})
+    if len(namen) > 4:
+        return _json({"product": name, "matches": namen[:30],
+                      "hint": "Mehrere Produkte passen — mit einem dieser Namen erneut fragen."})
+    q = _Quellen(store)
+    aus = {"product": name, "kind": "Plan (Haushaltsplan des jeweiligen Jahres)", "unit": "EUR",
+           "values": [{"year": int(j), "product": p, "expenses": _betrag(a),
+                       "revenues": _betrag(e), "source": q.nr(h)}
+                      for j, p, a, e, h in zeilen],
+           "sources": q.liste}
+    if not zeilen:
+        aus["hint"] = "Kein passendes Produkt im Zeitraum. Teilwort oder budget_search versuchen."
+    return _json(aus)
+
+
+def enterprise_plans(store, args: dict, base: str) -> str:
+    name = str(args.get("enterprise") or "").strip()[:80]
+    if not name:
+        raise ToolError("enterprise fehlt, z. B. „awb“, „Bäder“ oder „Stadion“.")
+    von, bis = _jahre(args)
+    q = _Quellen(store)
+    zeilen = lw.betrieb_daten(store, name, von, bis)
+    aus = {"enterprise": name, "kind": "Plan (Wirtschaftsplan des jeweiligen Jahres)",
+           "unit": "EUR",
+           "values": [{"year": int(j), "enterprise": b, "revenues": _betrag(e),
+                       "expenses": _betrag(a), "planned_result": _betrag(r), "source": q.nr(h)}
+                      for b, j, e, a, r, h in zeilen],
+           "sources": q.liste}
+    if not zeilen:
+        aus["hint"] = ("Kein Wirtschaftsplan dazu. Betriebe: awb, bbgo, bbo, egh, Hafen, "
+                       "Stadion, Stadionplanung.")
+    return _json(aus)
+
+
+def fee_calculations(store, args: dict, base: str) -> str:
+    name = str(args.get("area") or "").strip()[:80]
+    if not name:
+        raise ToolError("area fehlt, z. B. „Straßenreinigung“ oder „Abfall“.")
+    von, bis = _jahre(args)
+    q = _Quellen(store)
+    zeilen = lw.gebuehren_daten(store, name, von, bis)
+    aus = {"area": name, "kind": "Gebührenbedarfsberechnung des jeweiligen Jahres",
+           "values": [{"year": int(j), "area": b, "costs_to_cover_eur": _betrag(k),
+                       "fee_eur": _betrag(f), "per": e or None, "source": q.nr(h)}
+                      for b, j, k, f, e, h in zeilen],
+           "sources": q.liste}
+    if not zeilen:
+        aus["hint"] = ("Keine Kalkulation dazu. Bereiche: Straßenreinigung, Abfallsammlung, "
+                       "Abfallbehandlungsanlagen.")
+    return _json(aus)
+
+
+_MONAT = re.compile(r"\d{4}-\d{2}")
+
+
+def cash_position(store, args: dict, base: str) -> str:
+    von = str(args.get("month_from") or "").strip()[:7]
+    bis = str(args.get("month_to") or "").strip()[:7]
+    if not (_MONAT.fullmatch(von) and _MONAT.fullmatch(bis)):
+        raise ToolError("month_from und month_to in der Form JJJJ-MM angeben.")
+    q = _Quellen(store)
+    zeilen = lw.kassenstand_daten(store, von, bis)[:60]
+    aus = {"label": "Kassenstand (Liquidität) am Monatsende", "unit": "EUR",
+           "values": [{"month": m, "amount": _betrag(b), "source": q.nr(h)}
+                      for m, b, h in zeilen],
+           "sources": q.liste}
+    if not zeilen:
+        aus["hint"] = "Für diesen Zeitraum ist kein Kassenstand erfasst."
+    return _json(aus)
+
+
+_JAHR = {"type": "integer", "minimum": 1990, "maximum": 2035}
+_JAHRE = {"year_from": _JAHR, "year_to": _JAHR}
+
+
 TOOLS: dict[str, Tool] = {t.name: t for t in (
     Tool("search_decisions", "Beschlüsse suchen",
          "Durchsucht die Beschlüsse des Oldenburger Stadtrats und seiner Ausschüsse "
@@ -748,13 +927,61 @@ TOOLS: dict[str, Tool] = {t.name: t for t in (
                   "policy_field": {"type": "string", "enum": list(_FELDER)},
                   "committee": {"type": "string"}}, ["year"]),
          count_decisions),
+    Tool("budget_search", "Haushalt durchsuchen",
+         "Schlägt in den geprüften Haushaltsdaten der Stadt Oldenburg nach — Haushaltsplan, "
+         "Jahresabschlüsse, Teilhaushalte, Produkte, Investitionen, Steuern, Schulden, "
+         "Wirtschaftspläne, Gebühren. Stichwörter auf DEUTSCH, gern mit Jahr: "
+         "„Kindertagesbetreuung 2024“, „Gewerbesteuer Plan 2026“, „Investitionen "
+         "Fliegerhorst“. Jede Zahl steht unter ihrem Jahr, Plan und Ist sind getrennt; "
+         "dazu die Belege. Für Kennzahlen über viele Jahre: budget_series.",
+         _schema({"query": {"type": "string"}}, ["query"]), budget_search, recht=BUDGET),
+    Tool("budget_series", "Haushalts-Kennzahl über Jahre",
+         "Eine Kennzahl des Stadthaushalts über mehrere Jahre, jeder Wert mit Beleg "
+         "(Schulden, Steuereinnahmen, Investitionen, Personalaufwand, Ergebnis, "
+         "Einwohner, Stellen, Hebesätze …). Plan- und Ist-Reihen sind getrennt benannt.",
+         _schema({"series": {"type": "string", "enum": sorted(lw.REIHEN)}, **_JAHRE},
+                 ["series"]), budget_series, recht=BUDGET),
+    Tool("budget_product", "Haushalts-Produkt über Jahre",
+         "Geplante Aufwendungen und Erträge einer Aufgabe des Haushalts (Produkt, z. B. "
+         "„Kindertagesbetreuung“, „Brand- und Katastrophenschutz“) über mehrere Planjahre.",
+         _schema({"product": {"type": "string"}, **_JAHRE}, ["product"]),
+         budget_product, recht=BUDGET),
+    Tool("enterprise_plans", "Wirtschaftspläne der Betriebe",
+         "Wirtschaftspläne städtischer Betriebe über die Jahre: Erträge, Aufwendungen, "
+         "geplantes Ergebnis (negativ = Verlust). Betriebe: Abfallwirtschaftsbetrieb (awb), "
+         "Bäderbetriebsgesellschaft (bbgo), Bäderbetrieb (bbo), Gebäudewirtschaft und "
+         "Hochbau (egh), Hafen, Stadion, Stadionplanung.",
+         _schema({"enterprise": {"type": "string"}, **_JAHRE}, ["enterprise"]),
+         enterprise_plans, recht=BUDGET),
+    Tool("fee_calculations", "Gebührenkalkulationen",
+         "Gebührenbedarfsberechnungen über die Jahre: zu deckende Kosten und Gebührensatz. "
+         "Bereiche: Straßenreinigung, Abfallsammlung, Abfallbehandlungsanlagen.",
+         _schema({"area": {"type": "string"}, **_JAHRE}, ["area"]),
+         fee_calculations, recht=BUDGET),
+    Tool("cash_position", "Kassenstand",
+         "Der Kassenstand (Liquidität) der Stadt je Monatsende.",
+         _schema({"month_from": {"type": "string", "pattern": r"^\d{4}-\d{2}$",
+                                 "description": "JJJJ-MM"},
+                  "month_to": {"type": "string", "pattern": r"^\d{4}-\d{2}$",
+                               "description": "JJJJ-MM"}}, ["month_from", "month_to"]),
+         cash_position, recht=BUDGET),
 )}
 
 
-def ausfuehren(store, name: str, args: dict | None, base: str) -> str:
-    """Führt ein Werkzeug aus. Wirft ``KeyError`` für einen unbekannten Namen
-    und ``ToolError`` für Eingaben, die der Agent korrigieren kann."""
+def erlaubt(rechte: frozenset[str] | set[str]) -> list[Tool]:
+    """Die Werkzeuge, die ein Konto mit diesen Rechten sieht und rufen darf."""
+    return [t for t in TOOLS.values() if t.recht is None or t.recht in rechte]
+
+
+def ausfuehren(store, name: str, args: dict | None, base: str,
+               rechte: frozenset[str] | set[str] = frozenset()) -> str:
+    """Führt ein Werkzeug aus. Wirft ``KeyError`` für einen unbekannten Namen —
+    auch für eines, das dem Konto nicht zusteht (es soll nicht einmal erfahren,
+    dass es das gibt) — und ``ToolError`` für Eingaben, die der Agent
+    korrigieren kann."""
     tool = TOOLS[name]
+    if tool.recht is not None and tool.recht not in rechte:
+        raise KeyError(name)
     if args is not None and not isinstance(args, dict):
         raise ToolError("arguments muss ein Objekt sein.")
     return tool.run(store, args or {}, base.rstrip("/"))
