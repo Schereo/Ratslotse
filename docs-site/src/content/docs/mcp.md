@@ -141,7 +141,7 @@ Gelingt es nicht, bleibt der Stapel liegen und geht mit dem nächsten.
 | `get_agenda` | Die Tagesordnung einer Sitzung samt Ergebnissen, Vorlagennummer und den Anlagen, die nur am Punkt hängen |
 | `count_decisions` | Beschlüsse eines Jahres nach Ergebnis, Themenfeld, Gremium |
 
-Mit dem Recht `budget` kommen sechs Haushaltswerkzeuge dazu — dieselben
+Mit dem Recht `budget` kommen sieben Haushaltswerkzeuge dazu — dieselben
 Abfragen wie Lottis Haushaltswerkzeuge (`council/lotti_werkzeuge.py`,
 `*_daten`), hier mit einem Beleg je Wert (`source` verweist in `sources`):
 
@@ -153,6 +153,7 @@ Abfragen wie Lottis Haushaltswerkzeuge (`council/lotti_werkzeuge.py`,
 | `enterprise_plans` | Wirtschaftspläne der Betriebe (Erträge, Aufwendungen, geplantes Ergebnis) |
 | `fee_calculations` | Gebührenkalkulationen: zu deckende Kosten, Gebührensatz |
 | `cash_position` | Kassenstand je Monatsende |
+| `budget_document` | Ein ganzer Bestand Zeile für Zeile: Finanzhaushalt (Investitionen), Vorbericht (Eckdaten, Erläuterungen), Schuldenübersicht, Verpflichtungsermächtigungen, Abschlüsse der Gesellschaften, Bilanz-Erläuterungen. Diese sieben standen bis 10/2026 nur auf den Haushaltsseiten. Je Abruf höchstens 100 Zeilen und 20.000 Zeichen |
 
 `rechnen` und `seite_lesen` aus Lottis Satz fehlen bewusst: Rechnen kann der
 Agent selbst, und die Haushaltsseiten sind Oberfläche, keine Daten.
@@ -174,7 +175,7 @@ angehängte Anlagen.
 
 - **Nur lesend.** Nichts Kontogebundenes (Themen, Lesezeichen, Gespräche).
   **Den Haushalt nur mit dem Recht `budget`** (seit 21.10.2026, Ratsmitglieder
-  und Fachpublikum): Die sechs Haushaltswerkzeuge tragen `recht="budget"`, und
+  und Fachpublikum): Die sieben Haushaltswerkzeuge tragen `recht="budget"`, und
   ein Konto ohne das Recht sieht sie weder in `tools/list` noch in der
   Anleitung; ein Aufruf antwortet wie für ein unbekanntes Werkzeug.
   `tests/test_mcp.py` prüft am Quelltext, dass kein Werkzeug eine
