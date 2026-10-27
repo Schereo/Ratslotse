@@ -34,6 +34,7 @@ from __future__ import annotations
 import logging
 import sys
 import tempfile
+import threading
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -64,7 +65,8 @@ MAX_WAIT_HOURS = 5
 RECORDING_ROOT = Path(tempfile.gettempdir()) / "council-livestream"
 
 
-def _record_fresh(ksinr: int, on_chunk=None) -> list[tuple[float, str]]:
+def _record_fresh(ksinr: int, on_chunk=None,
+                  stop: threading.Event | None = None) -> list[tuple[float, str]]:
     """Eine Aufnahme in einem garantiert leeren, danach gelöschten Run-Pfad.
 
     Vor dem Löschen wird eine feste Auswahl der Stücke aufgehoben
@@ -77,7 +79,7 @@ def _record_fresh(ksinr: int, on_chunk=None) -> list[tuple[float, str]]:
         run_path = Path(run_dir)
         texte: dict[int, str] = {}
         segments = livestream.record_and_transcribe(
-            run_path, on_chunk=on_chunk,
+            run_path, on_chunk=on_chunk, stop=stop,
             on_transcribed=lambda idx, path, text: texte.__setitem__(idx, text))
         stuecke = sorted(run_path.glob("chunk_*.mp3"))
         stt_retain.retain(ksinr, "chunks",
@@ -103,12 +105,14 @@ def _record(ksinr: int, tracker: livetracker.LiveTracker | None) -> tuple[list[t
             return stream_stt.record_and_transcribe(
                 on_window=tracker.on_window if tracker else None,
                 people=tracker.people if tracker else None,
+                stop=tracker.session_over if tracker else None,
                 ksinr=ksinr), "gladia"
         except stream_stt.StreamUnavailable as exc:
             log.warning("Streaming nicht möglich (%s) — Rückfall auf Stücke", exc)
             if tracker:
                 tracker.chunk_seconds = livestream.CHUNK_SECONDS
-    return _record_fresh(ksinr, on_chunk=tracker.on_chunk if tracker else None), "chunks"
+    return _record_fresh(ksinr, on_chunk=tracker.on_chunk if tracker else None,
+                         stop=tracker.session_over if tracker else None), "chunks"
 
 
 def main() -> dict:
@@ -163,6 +167,8 @@ def main() -> dict:
     stats["transkript_segmente"] = len(segments)
     if tracker:
         stats["live_staende"] = tracker.updates
+        # Hat die Live-Verfolgung die Aufnahme beendet (Sitzung vorbei)?
+        stats["sitzung_vorbei"] = int(tracker.session_over.is_set())
     if not segments:
         return stats
 

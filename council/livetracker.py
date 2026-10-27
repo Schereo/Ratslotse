@@ -54,6 +54,13 @@ ohne dass im ganzen Abend ein einziger Punkt aufgerufen worden wäre. Deshalb:
 - Gezeigt wird erst ab dem ersten solchen Aufruf (``on_air``). Läuft
   ``OFF_AIR_SECONDS`` lang etwas anderes, wird der Stand zurückgezogen;
   kommt die Sitzung zurück, erscheint er nach ``RESUME_SECONDS`` wieder.
+
+**Ist die Sitzung vorbei, endet die Aufnahme.** Am 26.10.2026 sendete O1
+ab 20:57 Uhr wieder sein Programm; der Stand war um 21:01 zurückgezogen, der
+Mitschnitt lief aber bis zur Kappe um 23:55 weiter, drei Stunden Gladia für
+nichts. Die Schlussformel war im Stream nicht gefallen. Läuft nach einer
+gesehenen Ratssitzung ``SESSION_OVER_SECONDS`` lang anderes Programm, setzt
+der Tracker ``session_over``, und der Recorder hört auf.
 """
 from __future__ import annotations
 
@@ -62,6 +69,7 @@ import json
 import logging
 import os
 import re
+import threading
 from datetime import datetime, timedelta
 
 from council.videos import strip_prefix
@@ -99,6 +107,15 @@ OFF_AIR_SECONDS = 5 * 60
 #: wieder erscheint (ohne neuen Aufruf — die Übertragung setzt mitten im
 #: Punkt wieder ein).
 RESUME_SECONDS = 90
+#: So lange anderes Programm nach einer gesehenen Ratssitzung, bis die
+#: Aufnahme endet. Bewusst weit über ``OFF_AIR_SECONDS``: Eine Sitzungspause,
+#: in der O1 etwas mit Sprache sendet, darf den Rest der Sitzung nicht kosten;
+#: 45 Minuten zu lang mitzuschneiden kostet dagegen gut 50 ct. Stille oder Musik
+#: ohne Text zählt gar nicht mit (ein Fenster ohne Segmente fragt kein Modell).
+#: Zurück auf null nur nach ``RESUME_SECONDS`` Ratssitzung am Stück — ein
+#: einzelnes Fenster, das das Modell für den Rat hält (eine Talkrunde über
+#: Stadtpolitik), soll die Uhr nicht anhalten.
+SESSION_OVER_SECONDS = 45 * 60
 #: Wie genau ein Zitat im Fenster stehen muss (Anteil des längsten
 #: gemeinsamen Stücks an der Länge des Zitats, ohne Satzzeichen).
 QUOTE_MIN_RATIO = 0.8
@@ -349,6 +366,12 @@ class LiveTracker:
         self.council_seconds = 0.0
         #: Fenster, die das Modell als etwas anderes als eine Ratssitzung sah.
         self.off_air_windows = 0
+        #: Anderes Programm seit der letzten Ratssitzung am Stück (s. SESSION_OVER_SECONDS).
+        self.gone_seconds = 0.0
+        #: Gesetzt, sobald die Sitzung vorbei ist; der Recorder reicht es als
+        #: ``stop`` an die Aufnahme (s. Modulkopf). Ein Event, weil der
+        #: Tracker beim Streaming in einem eigenen Faden läuft.
+        self.session_over = threading.Event()
         store.clear_live_state(ksinr)
         if not self.people:
             log.warning("Sitzung %s: kein Sprecher-Verzeichnis — Fraktionen bleiben leer", ksinr)
@@ -468,13 +491,21 @@ class LiveTracker:
         seconds = max(float(seconds), 0.0)
         if broadcast == "anderes":
             self.off_air_seconds += seconds
+            self.gone_seconds += seconds
             self.council_seconds = 0.0
         elif broadcast == "rat":
             self.council_seconds += seconds
             self.off_air_seconds = 0.0
+            if self.council_seconds >= RESUME_SECONDS:
+                self.gone_seconds = 0.0
 
     def _update_air(self, called: bool) -> None:
-        """Zeigen, zurückziehen, wieder zeigen — s. Modulkopf."""
+        """Zeigen, zurückziehen, wieder zeigen, Schluss — s. Modulkopf."""
+        if (self.seen_council and self.gone_seconds >= SESSION_OVER_SECONDS
+                and not self.session_over.is_set()):
+            self.session_over.set()
+            log.info("Sitzung %s: seit %d min keine Ratssitzung im Stream — "
+                     "Sitzung vorbei, Aufnahme endet", self.ksinr, self.gone_seconds // 60)
         if self.on_air:
             if self.off_air_seconds >= OFF_AIR_SECONDS:
                 self.on_air = False
@@ -484,6 +515,11 @@ class LiveTracker:
                             "Live-Stand zurückgezogen", self.ksinr, self.off_air_seconds // 60)
             return
         if called and self.off_air_seconds == 0:
+            if not self.seen_council:
+                # Programm VOR der Sitzung zählt nicht: Beginnt die
+                # Übertragung eine Stunde zu spät, wäre sie sonst beim
+                # ersten Aufruf schon „vorbei“.
+                self.gone_seconds = 0.0
             self.on_air = self.seen_council = True
         elif (self.seen_council and self.state.get("top")
               and self.council_seconds >= RESUME_SECONDS):
