@@ -431,3 +431,23 @@ def test_programme_before_a_late_start_does_not_end_the_recording(tmp_path):
         assert tracker.on_air and not tracker.session_over.is_set()
     finally:
         store.close()
+
+
+def test_roster_since_ignores_lists_from_the_old_term(tmp_path):
+    """``since`` = Beginn der Wahlperiode: Eine Liste davor zeigt den alten Rat."""
+    store = _store(tmp_path)
+    try:
+        assert store.council_roster_before(200, since="2026-08-01") == []
+        assert [p["name"] for p in store.council_roster_before(200, since="2026-06-01")]
+    finally:
+        store.close()
+
+
+def test_tracker_takes_a_roster_handed_in(tmp_path):
+    store = _store(tmp_path)
+    try:
+        neu = [{"name": "Lena Nzume", "party": "Grüne", "role": "member"}]
+        tracker = livetracker.LiveTracker(store, 200, chunk_seconds=15, people=neu)
+        assert tracker.people == neu
+    finally:
+        store.close()
