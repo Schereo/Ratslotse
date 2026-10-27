@@ -393,3 +393,55 @@ def test_parse_segments_spreads_unmarked_paragraphs_over_the_chunk():
     assert 120 < segs[1][0] < segs[2][0] < 240
     # Ohne Stücklänge bleibt es beim alten Verhalten: alles auf den Anfang.
     assert livestream.parse_segments(text, 120) == [(120.0, text.strip())]
+
+
+
+# ------------------------------------------------- Das eigene Transkript
+
+def test_transcript_file_keeps_each_utterance_and_rewrites_it_sorted(tmp_path):
+    """26.10.2026: Gladia hatte die ersten 19 Minuten nicht gespeichert. Die
+    eigene Datei bekommt jede Äußerung sofort und am Ende alles sortiert."""
+    from datetime import datetime
+
+    start = datetime(2026, 11, 2, 17, 55, 0, tzinfo=record_council_livestream.TZ)
+    t = record_council_livestream._Transcript(4709, start, folder=tmp_path)
+    assert t.path.name == "rat-2026-11-02-4709.txt"
+    t.add(660.0, 664.0, "Wir kommen zur Feststellung der Tagesordnung.")
+    t.add(5.0, 9.0, "Guten Abend.")
+    zeilen = t.path.read_text(encoding="utf-8").splitlines()
+    assert zeilen[1:] == ["[18:06:00] Wir kommen zur Feststellung der Tagesordnung.",
+                          "[17:55:05] Guten Abend."]
+    t.write_all([(660.0, "Wir kommen zur Feststellung der Tagesordnung."), (5.0, "Guten Abend."),
+                 (9300.0, "Nach der Neuverbindung geht die Zeit weiter.")], "gladia")
+    zeilen = t.path.read_text(encoding="utf-8").splitlines()
+    assert zeilen[0].endswith("Mitschnitt ab 17:55:00, Weg gladia")
+    assert zeilen[1:] == ["[17:55:05] Guten Abend.",
+                          "[18:06:00] Wir kommen zur Feststellung der Tagesordnung.",
+                          "[20:30:00] Nach der Neuverbindung geht die Zeit weiter."]
+    assert not t.path.with_suffix(".tmp").exists()
+
+
+def test_unwritable_transcript_never_stops_the_recording(tmp_path, caplog):
+    from datetime import datetime
+
+    (tmp_path / "datei").write_text("kein Ordner")
+    t = record_council_livestream._Transcript(
+        4709, datetime(2026, 11, 2, 17, 55, tzinfo=record_council_livestream.TZ),
+        folder=tmp_path / "datei")
+    t.add(1.0, 2.0, "Text")          # wirft nicht
+    t.write_all([(1.0, "Text")], "gladia")
+    assert "nicht schreibbar" in caplog.text
+
+
+def test_streaming_hands_each_utterance_to_the_transcript(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(record_council_livestream.stream_stt, "configured", lambda: True)
+
+    def streaming(**kwargs):
+        seen.update(kwargs)
+        return [(1.0, "x")]
+
+    monkeypatch.setattr(record_council_livestream.stream_stt, "record_and_transcribe", streaming)
+    transcript = mock.Mock()
+    assert record_council_livestream._record(4709, None, transcript) == ([(1.0, "x")], "gladia")
+    assert seen["on_segment"] is transcript.add

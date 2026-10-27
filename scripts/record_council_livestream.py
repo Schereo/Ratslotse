@@ -19,6 +19,10 @@ streamend (``council/stream_stt.py``, Verzug wenige Sekunden, Fenster von 15 s
 für die Verfolgung); ohne Schlüssel — oder wenn die Streaming-Sitzung nicht
 zustande kommt — in Audio-Stücken (``council/livestream.py``).
 
+Das ganze Transkript landet zusätzlich als Text mit Uhrzeiten in
+``data/transkripte/rat-<datum>-<ksinr>.txt`` — Gladias eigene Ablage ist
+lückenhaft (s. ``_Transcript``).
+
 An Tagen ohne Ratssitzung ist der Lauf ein billiger Leerlauf (Kennzahl
 ``sitzung_heute: 0``) — die Überfällig-Ampel braucht den täglichen Takt.
 
@@ -67,6 +71,68 @@ MAX_WAIT_HOURS = 5
 #: abgebrochener Vorgängerlauf darf seine ``chunk_*.mp3`` nie in einen Retry
 #: hineinreichen.
 RECORDING_ROOT = Path(tempfile.gettempdir()) / "council-livestream"
+#: Das ganze Transkript jeder Sitzung, als Text mit Uhrzeiten (``_Transcript``).
+TRANSCRIPT_DIR = ROOT / "data" / "transkripte"
+
+
+class _Transcript:
+    """Das Transkript einer Sitzung als eigene Datei, eine Zeile je Äußerung.
+
+    Gladia hebt die Live-Sitzungen zwar auf, aber nicht verlässlich: Am
+    26.10.2026 fehlten in der ersten der drei Sitzungen die ersten 19 Minuten
+    (Eröffnung bis Einwohnerfragestunde), obwohl sie live ankamen und die
+    Live-Verfolgung daraus TOP 2 bis 5 erkannte. Die beiden anderen waren
+    vollständig. Deshalb schreibt der Recorder selbst mit.
+
+    Beim Streaming kommt jede Äußerung sofort in die Datei (``add``), damit
+    auch ein abgebrochener Lauf seinen Text behält; am Ende schreibt
+    ``write_all`` sie sortiert und vollständig neu, auch für den Stück-Weg.
+    Ein Schreibfehler kostet nur die Datei, nie den Mitschnitt."""
+
+    def __init__(self, ksinr: int, started_at: datetime, folder: Path | None = None):
+        self.ksinr = ksinr
+        self.started_at = started_at
+        folder = folder or TRANSCRIPT_DIR
+        self.path = folder / f"rat-{started_at.date().isoformat()}-{ksinr}.txt"
+        self._broken = False
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(self._head(), encoding="utf-8")
+        except OSError:
+            self._fail()
+
+    def _head(self, weg: str | None = None) -> str:
+        zusatz = f", Weg {weg}" if weg else ""
+        return (f"# Ratssitzung {self.ksinr} am {self.started_at.date().isoformat()}, "
+                f"Mitschnitt ab {self.started_at.strftime('%H:%M:%S')}{zusatz}\n")
+
+    def _line(self, start: float, text: str) -> str:
+        clock = (self.started_at + timedelta(seconds=start)).strftime("%H:%M:%S")
+        return f"[{clock}] {text}\n"
+
+    def _fail(self) -> None:
+        if not self._broken:
+            log.exception("Transkript-Datei %s nicht schreibbar", self.path)
+        self._broken = True
+
+    def add(self, start: float, end: float, text: str) -> None:
+        """Haken ``on_segment`` des Streaming-Wegs."""
+        if self._broken:
+            return
+        try:
+            with self.path.open("a", encoding="utf-8") as f:
+                f.write(self._line(start, text))
+        except OSError:
+            self._fail()
+
+    def write_all(self, segments: list[tuple[float, str]], weg: str) -> None:
+        tmp = self.path.with_suffix(".tmp")
+        try:
+            tmp.write_text(self._head(weg) + "".join(self._line(a, t) for a, t in sorted(segments)),
+                           encoding="utf-8")
+            tmp.replace(self.path)
+        except OSError:
+            log.exception("Transkript-Datei %s nicht geschrieben", self.path)
 
 
 def _record_fresh(ksinr: int, on_chunk=None,
@@ -133,7 +199,8 @@ def _tracker(store: CouncilStore, ksinr: int, window_seconds: int,
         return None
 
 
-def _record(ksinr: int, tracker: livetracker.LiveTracker | None) -> tuple[list[tuple[float, str]], str]:
+def _record(ksinr: int, tracker: livetracker.LiveTracker | None,
+            transcript: _Transcript | None = None) -> tuple[list[tuple[float, str]], str]:
     """Streamend, wenn möglich; sonst (oder wenn die Streaming-Sitzung nicht
     zustande kommt) in Stücken. Gibt die Segmente und den gegangenen Weg."""
     if stream_stt.configured():
@@ -142,6 +209,7 @@ def _record(ksinr: int, tracker: livetracker.LiveTracker | None) -> tuple[list[t
                 on_window=tracker.on_window if tracker else None,
                 people=tracker.people if tracker else None,
                 stop=tracker.session_over if tracker else None,
+                on_segment=transcript.add if transcript else None,
                 ksinr=ksinr), "gladia"
         except stream_stt.StreamUnavailable as exc:
             log.warning("Streaming nicht möglich (%s) — Rückfall auf Stücke", exc)
@@ -192,8 +260,9 @@ def main() -> dict:
     people = _roster(store, s)
     stats["verzeichnis"] = "gewaehlt" if people is not None else "anwesenheit"
     tracker = _tracker(store, s["ksinr"], window, people)
+    transcript = _Transcript(s["ksinr"], datetime.now(TZ))
     try:
-        segments, stats["stt"] = _record(s["ksinr"], tracker)
+        segments, stats["stt"] = _record(s["ksinr"], tracker, transcript)
     finally:
         # Auch nach einem Abbruch darf die Karte nicht „gerade" sagen.
         if tracker:
@@ -203,6 +272,11 @@ def main() -> dict:
                 log.exception("Live-Stand für Sitzung %s nicht abgeschlossen", s["ksinr"])
     stats["aufnahme_min"] = int((time.monotonic() - t0) / 60)
     stats["transkript_segmente"] = len(segments)
+    if segments:
+        # Nach einem Abbruch kommt der Lauf nicht hierher; was beim Streaming
+        # schon in der Datei stand, bleibt dann so stehen.
+        transcript.write_all(segments, stats["stt"])
+        log.info("Sitzung %s: Transkript in %s", s["ksinr"], transcript.path)
     if tracker:
         stats["live_staende"] = tracker.updates
         # Hat die Live-Verfolgung die Aufnahme beendet (Sitzung vorbei)?
