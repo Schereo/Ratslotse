@@ -366,3 +366,68 @@ def test_off_air_withdraws_the_state_and_the_session_brings_it_back(tmp_path):
         assert state["since"] == "2026-08-31T18:00:02+00:00"
     finally:
         store.close()
+
+
+def test_long_off_air_after_the_session_ends_the_recording(tmp_path):
+    """26.10.2026: Nach der Sitzung lief O1-Programm, der Mitschnitt aber bis
+    zur 6-h-Kappe. Nach SESSION_OVER_SECONDS anderem Programm meldet der
+    Tracker „Sitzung vorbei“. Ein einzelnes Rats-Fenster hält die Uhr nicht
+    an, RESUME_SECONDS Rat am Stück setzen sie zurück (eine Pause mit
+    Programm ist kein Ende)."""
+    store = _store(tmp_path)
+    call = ('{"broadcast": "rat", "transitions": [{"at": "0:02", "kind": "top", "top": "9.3",'
+            ' "evidence": "Punkt 9.3"}], "top": "9.3", "phase": "aufruf"}')
+    other = '{"broadcast": "anderes", "transitions": [], "top": null, "phase": "unklar"}'
+    council = '{"broadcast": "rat", "transitions": [], "top": "9.3", "phase": "aussprache"}'
+    over = livetracker.SESSION_OVER_SECONDS // 15
+    back = livetracker.RESUME_SECONDS // 15
+    script = ([call] + [other] * (over - 1) + [council] * back
+              + [other] * (over - 2) + [council] + [other] * 2)
+    try:
+        tracker, fake = _tracker(store, script)
+        t = 0
+
+        def window(text):
+            nonlocal t
+            tracker.on_window(t, t + 15, [(t + 1.0, text)], False)
+            t += 15
+
+        with mock.patch.object(livetracker.llm, "chat_complete", fake):
+            window("Wir kommen zu Punkt 9.3.")
+            for _ in range(over - 1):
+                window("Es folgt ein Vortrag.")
+            for _ in range(back):
+                window("Herr Baak, bitte.")
+            assert not tracker.session_over.is_set()
+            for _ in range(over - 2):
+                window("Es folgt ein Vortrag.")
+            window("Eine Talkrunde über den Rat.")   # einzeln: hält die Uhr nicht an
+            assert not tracker.session_over.is_set()
+            window("Es folgt ein Vortrag.")
+            assert not tracker.session_over.is_set()
+            window("Es folgt ein Vortrag.")
+            assert tracker.session_over.is_set()
+    finally:
+        store.close()
+
+
+def test_programme_before_a_late_start_does_not_end_the_recording(tmp_path):
+    """Beginnt die Übertragung später als angesetzt, zählt das Programm davor
+    nicht — sonst wäre die Sitzung beim ersten Aufruf schon „vorbei“. Und ohne
+    gesehene Ratssitzung gibt es gar kein „vorbei“ (28.09.2026 kam sie nie)."""
+    store = _store(tmp_path)
+    call = ('{"broadcast": "rat", "transitions": [{"at": "0:02", "kind": "top", "top": "9.3",'
+            ' "evidence": "Punkt 9.3"}], "top": "9.3", "phase": "aufruf"}')
+    other = '{"broadcast": "anderes", "transitions": [], "top": null, "phase": "unklar"}'
+    over = livetracker.SESSION_OVER_SECONDS // 15
+    try:
+        tracker, fake = _tracker(store, [other] * (over + 4) + [call])
+        with mock.patch.object(livetracker.llm, "chat_complete", fake):
+            for i in range(over + 4):
+                tracker.on_window(i * 15, i * 15 + 15, [(i * 15 + 1.0, "Kinder-Uni.")], False)
+            assert not tracker.session_over.is_set()
+            t = (over + 4) * 15
+            tracker.on_window(t, t + 15, [(t + 2.0, "Wir kommen zu Punkt 9.3.")], False)
+        assert tracker.on_air and not tracker.session_over.is_set()
+    finally:
+        store.close()
