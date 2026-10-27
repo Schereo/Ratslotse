@@ -343,7 +343,8 @@ class LiveTracker:
     weiterlaufen — der Live-Stand ist Zugabe, nicht Auftrag."""
 
     def __init__(self, store, ksinr: int, chunk_seconds: int,
-                 started_at: datetime | None = None, model: str = TRACKER_MODEL):
+                 started_at: datetime | None = None, model: str = TRACKER_MODEL,
+                 people: list[dict] | None = None):
         self.store = store
         self.ksinr = ksinr
         self.chunk_seconds = chunk_seconds
@@ -351,7 +352,10 @@ class LiveTracker:
         self.started_at = started_at or datetime.now().astimezone()
         self.agenda = [it for it in store.agenda_items(ksinr) if it.get("is_public")]
         self.titles = {norm_top(it["item_number"]): it["title"] for it in self.agenda}
-        self.people = store.council_roster_before(ksinr)
+        #: Das Sprecher-Verzeichnis. Vorgabe: die Anwesenheitsliste der
+        #: letzten Ratssitzung; zu Beginn einer Wahlperiode reicht der
+        #: Recorder den gewählten Rat herein (``elected.live_roster``).
+        self.people = people if people is not None else store.council_roster_before(ksinr)
         self._agenda_text = agenda_text(self.agenda)
         self._roster_text = roster_text(self.people)
         self.state: dict = {"top": None, "speaker": None, "party": None}

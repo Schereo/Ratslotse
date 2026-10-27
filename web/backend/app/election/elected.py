@@ -211,6 +211,57 @@ def split_name(register_name: str) -> tuple[str, str]:
     return first.strip(), last[len(m.group(1)):].strip() if m else last
 
 
+def live_roster(election: str | None = None) -> tuple[str, list[dict]] | None:
+    """Der gewählte Rat als Sprecher-Verzeichnis der Live-Verfolgung.
+
+    Gibt ``(Beginn der Wahlperiode, Zeilen)`` mit ``name``, ``party`` und
+    ``role`` in der Form von ``CouncilStore.council_roster_before``; ohne
+    fertig ausgezählte Ratswahl ``None``. Die Fraktion ist die Liste, über die
+    jemand gewählt ist, außer ``mandatswechsel.json`` sagt etwas anderes
+    (Baak: „fraktionslos"). Ist die Wahl der Oberbürgermeisterin oder des
+    Oberbürgermeisters im selben Jahr entschieden, steht sie oder er als
+    Verwaltung dabei — die Dezernent*innen kennt das Wahlergebnis nicht, die
+    ergänzt der Recorder aus der letzten Anwesenheitsliste.
+
+    Wozu: Die erste Sitzung einer Wahlperiode hat keine Vorgängerin mit dem
+    neuen Rat. Am 02.11.2026 hätte die Live-Verfolgung sonst die Liste vom
+    26.10. genommen, in der gut die Hälfte der neuen Mitglieder fehlt — und
+    mit ihr das Gladia-Vokabular (``stream_stt.vocabulary``)."""
+    teile = _load(election or elections.active().slug)
+    if teile is None:
+        return None
+    head, raw, _ = teile
+    rows = [{"name": e["name"],
+             "party": e["affiliation"]["label"].split(" (")[0] if e["affiliation"] else e["list_short"],
+             "role": "member"} for e in raw]
+    mayor = _new_mayor(head["date"][:4])
+    if mayor:
+        rows.append({"name": mayor, "party": "", "role": "administration"})
+    return head["term_start"], rows
+
+
+def _new_mayor(year: str) -> str | None:
+    """Wer die Mehrheitswahl dieses Jahres gewonnen hat — die Stichwahl, oder
+    ein erster Wahlgang mit absoluter Mehrheit. Ein erster Wahlgang, der in
+    die Stichwahl geht, trägt ``runoff`` und zählt nicht."""
+    from . import mayor
+
+    best: tuple[str, str] | None = None
+    for wahl in elections.all().values():
+        if wahl.kind != "mayor" or wahl.date[:4] != year or wahl.archive_folder is None:
+            continue
+        datei = wahl.archive_folder / "praesentation-ob.json"
+        if not datei.is_file():
+            continue
+        stand = mayor.parse(json.loads(datei.read_text(encoding="utf-8")), mayor.candidates(wahl))
+        if stand is None or stand.phase != "complete" or stand.runoff or not stand.candidates:
+            continue
+        winner = max(stand.candidates, key=lambda c: c.votes or 0)
+        if best is None or wahl.date > best[0]:
+            best = (wahl.date, winner.name)
+    return best[1] if best else None
+
+
 def council(slug_of, history, known: dict[str, str], election: str | None = None) -> ElectedCouncil | None:
     """Der gewählte Rat der aktiven (oder genannten) Ratswahl.
 
