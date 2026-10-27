@@ -182,14 +182,18 @@ def test_open_session_without_key_is_unavailable(monkeypatch):
 
 def test_recorder_falls_back_to_chunks_when_streaming_is_unavailable(monkeypatch):
     monkeypatch.setattr(stream_stt, "API_KEY", "geheim")
-    monkeypatch.setattr(stream_stt, "record_and_transcribe",
-                        mock.Mock(side_effect=stream_stt.StreamUnavailable("Sitzung nicht eröffnet")))
-    tracker = SimpleNamespace(on_chunk=lambda *a: None, on_window=lambda *a: None, people=[], chunk_seconds=15)
+    streaming = mock.Mock(side_effect=stream_stt.StreamUnavailable("Sitzung nicht eröffnet"))
+    monkeypatch.setattr(stream_stt, "record_and_transcribe", streaming)
+    tracker = SimpleNamespace(on_chunk=lambda *a: None, on_window=lambda *a: None, people=[],
+                              chunk_seconds=15, session_over=threading.Event())
     with mock.patch.object(record_council_livestream, "_record_fresh", return_value=[(0.0, "x")]) as fresh:
         segs, weg = record_council_livestream._record(4702, tracker)
     assert (segs, weg) == ([(0.0, "x")], "chunks")
     assert tracker.chunk_seconds == livestream.CHUNK_SECONDS
     fresh.assert_called_once()
+    # Beide Wege enden, sobald die Live-Verfolgung die Sitzung für vorbei hält.
+    assert streaming.call_args.kwargs["stop"] is tracker.session_over
+    assert fresh.call_args.kwargs["stop"] is tracker.session_over
 
 
 def test_recorder_prefers_streaming_when_configured(monkeypatch):

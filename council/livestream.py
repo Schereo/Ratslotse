@@ -48,6 +48,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 from pathlib import Path
 
@@ -276,7 +277,8 @@ def record_and_transcribe(dest_dir: Path,
                           max_seconds: int | None = None,
                           poll_seconds: int = 20,
                           on_chunk=None,
-                          on_transcribed=None) -> list[tuple[float, str]]:
+                          on_transcribed=None,
+                          stop: threading.Event | None = None) -> list[tuple[float, str]]:
     """Aufnehmen + parallel transkribieren, bis die Schlussformel fällt.
 
     Gibt die Transkript-Segmente der ganzen Sitzung zurück (für
@@ -291,13 +293,18 @@ def record_and_transcribe(dest_dir: Path,
     ``on_transcribed(idx, path, text)`` bekommt je Stück den ROHEN
     Transkript-Text (vor ``parse_segments``) — der Haken für
     ``council/stt_retain.py``: Sie legt daraus ab, was der laufende Weg
-    tatsächlich transkribiert hat, als Vergleich zur Eval-Referenz."""
+    tatsächlich transkribiert hat, als Vergleich zur Eval-Referenz.
+
+    ``stop`` beendet die Aufnahme von außen wie die Schlussformel: Die
+    Live-Verfolgung setzt es, wenn nach der Sitzung nur noch anderes Programm
+    läuft (``LiveTracker.session_over``)."""
     proc = start_recording(dest_dir, max_seconds)
     if proc is None:
         return []
     segments: list[tuple[float, str]] = []
     done: set[int] = set()
     closing = False
+    stopped = False
     exit_code: int | None = None
     try:
         while True:
@@ -327,7 +334,8 @@ def record_and_transcribe(dest_dir: Path,
                         on_chunk(idx, chunk_segments, closing)
                     except Exception:  # noqa: BLE001 — Live-Stand ist Zugabe
                         log.exception("Live-Verfolgung für Stück %d fehlgeschlagen", idx)
-            if closing and running:
+            stopped = stopped or (stop is not None and stop.is_set())
+            if (closing or stopped) and running:
                 proc.terminate()
             if not running and len(done) >= len(chunks):
                 break
@@ -339,11 +347,11 @@ def record_and_transcribe(dest_dir: Path,
                 proc.wait(timeout=30)
             except subprocess.TimeoutExpired:
                 proc.kill()
-    # Eine erkannte Schlussformel beendet ffmpeg absichtlich per SIGTERM.
+    # Eine erkannte Schlussformel (oder ``stop``) beendet ffmpeg absichtlich per SIGTERM.
     # Jeder andere Fehler muss den Cron-Lauf fehlschlagen lassen: Ein still
     # akzeptierter Teilmitschnitt würde unvollständige Ergebnisse veröffentlichen
     # und in Kombination mit alten Chunks wie ein erfolgreicher Retry wirken.
-    if exit_code not in (None, 0) and not closing:
+    if exit_code not in (None, 0) and not closing and not stopped:
         raise RuntimeError(
             f"ffmpeg-Aufnahme mit Exitcode {exit_code} abgebrochen "
             f"({len(done)} fertige Stücke)"

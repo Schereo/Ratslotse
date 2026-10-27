@@ -2,6 +2,7 @@
 Schlussformel, Parallel-Transkription (ffmpeg und LLM gemockt)."""
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -225,6 +226,28 @@ def test_record_and_transcribe_accepts_intentional_sigterm(tmp_path):
         "Damit schließe ich die Sitzung.", "Abspann."]
 
 
+def test_stop_ends_the_recording_like_the_closing_formula(tmp_path):
+    """26.10.2026: O1 sendete nach der Sitzung wieder Programm, ohne dass die
+    Schlussformel fiel. Setzt die Live-Verfolgung ``stop``, endet ffmpeg per
+    SIGTERM, das letzte Stück wird noch gelesen, und der Abbruch ist kein
+    Fehler des Laufs."""
+    (tmp_path / "chunk_000.mp3").write_bytes(b"a")
+    (tmp_path / "chunk_001.mp3").write_bytes(b"b")
+    texts = {"chunk_000.mp3": "[00:05] Es folgt die Kinder-Uni.",
+             "chunk_001.mp3": "[00:01] Noch mehr Kinder-Uni."}
+    stop = threading.Event()
+    proc = _TerminatedProc()
+    with mock.patch.object(livestream, "start_recording", return_value=proc), \
+         mock.patch.object(livestream, "transcribe_chunk",
+                           side_effect=lambda p, attempt=0: texts[p.name]):
+        segments = livestream.record_and_transcribe(
+            tmp_path, poll_seconds=0, stop=stop,
+            on_chunk=lambda idx, segs, closing: stop.set())
+    assert proc.terminated
+    assert [text for _, text in segments] == [
+        "Es folgt die Kinder-Uni.", "Noch mehr Kinder-Uni."]
+
+
 def test_livestream_retry_uses_fresh_directory(tmp_path, monkeypatch):
     """Chunks eines abgebrochenen Laufs dürfen nie im Retry auftauchen."""
     root = tmp_path / "recordings"
@@ -234,7 +257,7 @@ def test_livestream_retry_uses_fresh_directory(tmp_path, monkeypatch):
 
     seen: list[Path] = []
 
-    def fake_record(run_dir: Path, on_chunk=None, on_transcribed=None):
+    def fake_record(run_dir: Path, on_chunk=None, on_transcribed=None, stop=None):
         seen.append(run_dir)
         assert not list(run_dir.glob("chunk_*.mp3"))
         (run_dir / "chunk_000.mp3").write_bytes(b"dieser lauf")
