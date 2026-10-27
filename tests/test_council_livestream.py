@@ -12,6 +12,8 @@ import pytest
 from council import livestream
 from scripts import record_council_livestream
 
+from app.election import elected  # noqa: E402 — Pfad setzt record_council_livestream
+
 
 @pytest.fixture(autouse=True)
 def _schlussformel_sofort(monkeypatch):
@@ -293,6 +295,52 @@ def test_recorder_does_not_repeat_existing_livestream_results():
          mock.patch.object(record_council_livestream, "_record_fresh") as record:
         assert record_council_livestream.main() == {"sitzung_heute": 0}
     record.assert_not_called()
+
+
+
+# ------------------------------------------------- Verzeichnis einer neuen Wahlperiode
+
+_GEWAEHLT = ("2026-11-01", [{"name": "Lena Nzume", "party": "Grüne", "role": "member"},
+                            {"name": "Jascha Rohr", "party": "", "role": "administration"}])
+_ALTE_LISTE = [{"name": "Christoph Baak", "party": "CDU", "role": "member"},
+               {"name": "Jürgen Krogmann", "party": "", "role": "administration"},
+               {"name": "Dr. Julia Figura", "party": "", "role": "administration"}]
+
+
+def _roster_store(neue_liste: list[dict]):
+    store = mock.Mock()
+    store.council_roster_before.side_effect = (
+        lambda ksinr, since=None: neue_liste if since else _ALTE_LISTE)
+    return store
+
+
+def test_first_session_of_a_new_term_hears_the_elected_council(monkeypatch):
+    """02.11.2026: Die letzte Liste zeigt den alten Rat. Dann gilt der
+    gewählte, und die Verwaltung kommt aus der alten Liste dazu."""
+    monkeypatch.setattr(elected, "live_roster", lambda: _GEWAEHLT)
+    people = record_council_livestream._roster(
+        _roster_store([]), {"ksinr": 4709, "session_date": "2026-11-02"})
+    assert [p["name"] for p in people] == [
+        "Lena Nzume", "Jascha Rohr", "Jürgen Krogmann", "Dr. Julia Figura"]
+
+
+def test_old_term_and_a_new_list_keep_the_attendance(monkeypatch):
+    """Vor dem Beginn der Wahlperiode gilt die Liste ohnehin; danach, sobald
+    eine Sitzung des neuen Rats ihre Liste hat, wieder."""
+    monkeypatch.setattr(elected, "live_roster", lambda: _GEWAEHLT)
+    vorher = {"ksinr": 4708, "session_date": "2026-10-26"}
+    spaeter = {"ksinr": 4720, "session_date": "2026-12-14"}
+    assert record_council_livestream._roster(_roster_store([]), vorher) is None
+    assert record_council_livestream._roster(_roster_store(_ALTE_LISTE[:1]), spaeter) is None
+
+
+def test_unreadable_election_falls_back_to_the_attendance(monkeypatch):
+    def kaputt():
+        raise ValueError("mandatswechsel.json kaputt")
+
+    monkeypatch.setattr(elected, "live_roster", kaputt)
+    assert record_council_livestream._roster(
+        _roster_store([]), {"ksinr": 4709, "session_date": "2026-11-02"}) is None
 
 
 # ------------------------------------------------- Haken für die Live-Verfolgung

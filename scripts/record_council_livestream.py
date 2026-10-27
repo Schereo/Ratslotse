@@ -49,6 +49,10 @@ load_dotenv(ROOT / ".env")
 from council import livestream, livetracker, stream_stt, stt_retain, videos  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
+# Für den gewählten Rat (``_roster``); importiert wird erst dort, damit ein
+# Fehler im Wahl-Code nie den Mitschnitt verhindert.
+sys.path.insert(0, str(ROOT / "web" / "backend"))
+
 log = logging.getLogger(__name__)
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -87,11 +91,43 @@ def _record_fresh(ksinr: int, on_chunk=None,
         return segments
 
 
-def _tracker(store: CouncilStore, ksinr: int, window_seconds: int) -> livetracker.LiveTracker | None:
+def _roster(store: CouncilStore, session: dict) -> list[dict] | None:
+    """Das Sprecher-Verzeichnis zu Beginn einer Wahlperiode — oder None für
+    die Vorgabe des Trackers (die Anwesenheitsliste der letzten Ratssitzung).
+
+    Die erste Sitzung des neuen Rats (02.11.2026) hat keine Vorgängerin mit
+    ihm: Die letzte Liste zeigt den alten, gut die Hälfte der Gewählten fehlte
+    im Verzeichnis und im Gladia-Vokabular. Bis eine Sitzung der neuen
+    Wahlperiode ihre Liste hat, gilt deshalb der gewählte Rat samt neuer
+    Verwaltungsspitze; die Dezernent*innen kommen aus der letzten Liste."""
+    try:
+        from app.election import elected
+
+        neu = elected.live_roster()
+    except Exception:  # noqa: BLE001 — dann eben die alte Liste
+        log.exception("Gewählter Rat für Sitzung %s nicht lesbar", session["ksinr"])
+        return None
+    if neu is None:
+        return None
+    beginn, rows = neu
+    if session["session_date"][:10] < beginn:
+        return None
+    if store.council_roster_before(session["ksinr"], since=beginn):
+        return None  # Die neue Wahlperiode hat schon eine echte Liste.
+    namen = {r["name"] for r in rows}
+    verwaltung = [p for p in store.council_roster_before(session["ksinr"])
+                  if p["role"] == "administration" and p["name"] not in namen]
+    log.info("Sitzung %s: Verzeichnis aus dem gewählten Rat (%d Personen, %d aus der Verwaltung)",
+             session["ksinr"], len(rows), len(verwaltung))
+    return rows + verwaltung
+
+
+def _tracker(store: CouncilStore, ksinr: int, window_seconds: int,
+             people: list[dict] | None = None) -> livetracker.LiveTracker | None:
     """Die Live-Verfolgung anwerfen — oder ohne sie aufnehmen, wenn sie
     schon beim Aufbau scheitert (fehlende Tagesordnung, DB-Fehler)."""
     try:
-        return livetracker.LiveTracker(store, ksinr, window_seconds)
+        return livetracker.LiveTracker(store, ksinr, window_seconds, people=people)
     except Exception:  # noqa: BLE001 — Zugabe, s. Modulkopf
         log.exception("Live-Verfolgung für Sitzung %s nicht gestartet", ksinr)
         return None
@@ -153,7 +189,9 @@ def main() -> dict:
 
     t0 = time.monotonic()
     window = stream_stt.WINDOW_SECONDS if stream_stt.configured() else livestream.CHUNK_SECONDS
-    tracker = _tracker(store, s["ksinr"], window)
+    people = _roster(store, s)
+    stats["verzeichnis"] = "gewaehlt" if people is not None else "anwesenheit"
+    tracker = _tracker(store, s["ksinr"], window, people)
     try:
         segments, stats["stt"] = _record(s["ksinr"], tracker)
     finally:

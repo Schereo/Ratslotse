@@ -95,7 +95,7 @@ class PersonenMixin(StoreBasis):
     #: zugeordnet.
     _ANREDEN_ANZEIGE = {"herr", "frau", "ratsherr", "ratsfrau"}
 
-    def council_roster_before(self, ksinr: int) -> list[dict]:
+    def council_roster_before(self, ksinr: int, since: str | None = None) -> list[dict]:
         """Die Anwesenheitsliste der jüngsten Ratssitzung VOR dieser — das
         Sprecher-Verzeichnis für die Live-Verfolgung (``council/livetracker``).
 
@@ -104,7 +104,10 @@ class PersonenMixin(StoreBasis):
         Vorsitz und Verwaltung (Gäste und Protokollführung reden nicht zur
         Sache) mit ``name``, ``party``, ``role``. Ohne Vorgängerin mit
         Liste: leer — dann rät der Tracker die Fraktion nicht, er lässt sie
-        weg."""
+        weg.
+
+        ``since`` (ISO-Datum) lässt nur Vorgängerinnen ab diesem Tag gelten:
+        der Beginn einer Wahlperiode, vor dem die Liste den alten Rat zeigt."""
         from council import live as live_mod
 
         datum = self._conn.execute(
@@ -113,12 +116,14 @@ class PersonenMixin(StoreBasis):
         if not datum:
             return []
         kandidaten = self._conn.execute(
-            """SELECT s.ksinr, s.committee FROM council_sessions s
+            """SELECT s.ksinr, s.committee, s.session_date FROM council_sessions s
                WHERE s.session_date < ? AND s.ksinr <> ?
                  AND EXISTS (SELECT 1 FROM council_attendance a WHERE a.ksinr = s.ksinr)
                ORDER BY s.session_date DESC, s.ksinr DESC""",
             (datum[0], ksinr),
         ).fetchall()
+        if since:
+            kandidaten = [r for r in kandidaten if r["session_date"] >= since]
         quelle = next((r["ksinr"] for r in kandidaten if live_mod.is_council(r["committee"])), None)
         if quelle is None:
             return []

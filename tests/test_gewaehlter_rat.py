@@ -271,3 +271,21 @@ def test_ratsgeschichte_findet_zweiten_vornamen_und_perioden(tmp_path):
         assert h[5] == {"slug": None, "terms": []}
     finally:
         store.close()
+
+
+def test_sprecher_verzeichnis_der_live_verfolgung():
+    """Ab dem 02.11.2026 hört die Live-Verfolgung den neuen Rat: dieselben 52
+    Sitze samt Mandatswechseln, die Fraktion aus der Liste oder der
+    eingetragenen Zugehörigkeit, dazu der neue Oberbürgermeister aus der
+    entschiedenen Stichwahl als Verwaltung (nicht der erste Wahlgang, der in
+    die Stichwahl ging)."""
+    beginn, rows = elected.live_roster(WAHL)
+    assert beginn == "2026-11-01"
+    mitglieder = [r for r in rows if r["role"] == "member"]
+    assert len(mitglieder) == 52
+    namen = {r["name"] for r in mitglieder}
+    assert "Holger Martin Wilkens" in namen and "Andreas Sander" not in namen
+    assert next(r for r in mitglieder if r["name"] == "Christoph Baak")["party"] == "fraktionslos"
+    assert all(r["party"] for r in mitglieder)
+    assert [r for r in rows if r["role"] == "administration"] == [
+        {"name": "Jascha Rohr", "party": "", "role": "administration"}]
