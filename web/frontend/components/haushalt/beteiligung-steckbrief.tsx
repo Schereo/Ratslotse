@@ -26,7 +26,8 @@
 //     dieselbe Autorität wie eine gedruckte.
 //  3. **Wer sie beaufsichtigt, wird zu Personen.** Mit Partei-Punkt und Link
 //     ins Personenverzeichnis, in derselben Sprache wie die Personen-Badges
-//     der KI-Antworten (`parteiDot`/`parteiKuerzel` aus qa-bausteine) — nicht
+//     der KI-Antworten (`parteiDot` aus qa-bausteine, `parteiKuerzel` aus
+//     lib/person-badge) — nicht
 //     in einer dritten. Wer keinen Eintrag hat, bleibt ein Element ohne Link;
 //     erfunden wird nichts.
 //
@@ -64,7 +65,8 @@ import { Einordnung } from "@/components/grafik/einordnung";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { FormZeichen } from "@/components/haushalt/konzernkarte";
 import { Beleg } from "@/components/haushalt/source";
-import { parteiDot, parteiKuerzel } from "@/components/qa-bausteine";
+import { parteiDot } from "@/components/qa-bausteine";
+import { parteiKuerzel } from "@/lib/person-badge";
 import { cn } from "@/lib/utils";
 
 /** Die Kennzahlen im Kopf, in dieser Reihenfolge. */
