@@ -173,6 +173,45 @@ test("ein Themenfeld unter „Einzelne Ideen“ holt den Abschnitt nach oben, st
   }
 });
 
+test("ein Themenfeld blättert durch alle Ideen, nicht nur durch die ersten 30", async ({ page }) => {
+  // Tims Befund 01.11.2026: Oben stand „1228 Ideen", die Liste hörte nach 30
+  // auf. Die Seite steht in der Adresse (`ideenseite`), getrennt von der der
+  // Bewegungen, und ein anderes Feld fängt wieder vorn an.
+  await mocks(page);
+  const seiten: string[] = [];
+  await page.route((u) => u.pathname === "/api/council/cities/ideas", (route) => {
+    const url = new URL(route.request().url());
+    const seite = Number(url.searchParams.get("page") ?? "1");
+    seiten.push(`${url.searchParams.get("field")}:${seite}`);
+    const anfang = (seite - 1) * 30;
+    const items = Array.from({ length: Math.max(0, Math.min(30, 70 - anfang)) },
+      (_, i) => idee(anfang + i));
+    return route.fulfill({ json: {
+      field: url.searchParams.get("field"), total: 70, page: seite, per_page: 30, counts: {}, items,
+    } });
+  });
+
+  await page.goto("/council/ideen");
+  const abschnitt = page.getByRole("region", { name: "Einzelne Ideen" });
+  await abschnitt.getByRole("button", { name: /Verkehr/ }).click();
+  const blaettern = abschnitt.getByRole("navigation", { name: "Seiten der Ideen" });
+  await expect(blaettern).toContainText("Seite 1 von 3");
+  await expect(abschnitt.getByText("Fahrradbügel aufstellen 29", { exact: true })).toBeVisible();
+
+  await blaettern.getByRole("button", { name: /Weiter/ }).click();
+  await expect(page).toHaveURL(/feld=verkehr&ideenseite=2/, { timeout: 10_000 });
+  await expect(abschnitt.getByText("Fahrradbügel aufstellen 30", { exact: true })).toBeVisible();
+  await expect(blaettern).toContainText("Seite 2 von 3");
+  expect(seiten).toContain("verkehr:2");
+  // Geblättert wird hier, nicht in den Bewegungen darüber.
+  await expect(page).not.toHaveURL(/[?&]seite=/);
+
+  await abschnitt.getByRole("button", { name: "Alle Themenfelder" }).click();
+  await abschnitt.getByRole("button", { name: /Klima/ }).click();
+  await expect(page).toHaveURL(/feld=klima_umwelt$/, { timeout: 10_000 });
+  await expect(blaettern).toContainText("Seite 1 von 3");
+});
+
 test("die Ideen-Seite: je Stadt eine Zeile, alle Vorlagen, Beleg und Verwandtes getrennt", async ({ page }) => {
   await mocks(page);
   await page.goto("/council/ideen/bewegung?id=14");

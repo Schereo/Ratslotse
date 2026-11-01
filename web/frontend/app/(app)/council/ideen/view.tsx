@@ -451,10 +451,16 @@ function IdeenKarte({ idee }: { idee: Idee }) {
 
 // -------------------------------------------------------------- Ein Feld
 
-function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
+/** Ein Themenfeld, seitenweise. Bis 11/2026 holte die Liste nur Seite 1: Oben
+ *  stand „1228 Ideen", darunter waren es 30, und nach der dreißigsten ging es
+ *  nicht weiter (Tims Befund 01.11.2026). */
+function Feld({ feld, seite, onSeite, zurueck }: {
+  feld: string; seite: number; onSeite: (seite: number) => void; zurueck: () => void;
+}) {
   const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["ideen", feld],
-    queryFn: () => api.get<Ideen>(`/council/cities/ideas?field=${encodeURIComponent(feld)}`),
+    queryKey: ["ideen", feld, seite],
+    queryFn: () => api.get<Ideen>(
+      `/council/cities/ideas?field=${encodeURIComponent(feld)}&page=${seite}`),
     staleTime: 60 * 60 * 1000,
   });
 
@@ -491,10 +497,26 @@ function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
           <IdeenKarte key={i.paper_id} idee={i} />
         ))}
       </div>
-      {data && !data.items.length && (
+      {data && !data.items.length && (seite > 1 ? (
+        // Ein alter Link auf eine Seite, die es nach einem Abgleich nicht
+        // mehr gibt — „noch nichts geprüft" wäre hier falsch.
+        <p className="mt-4 text-sm text-muted-foreground">
+          Diese Seite gibt es nicht mehr.{" "}
+          <button type="button" onClick={() => onSeite(1)}
+                  className="font-semibold text-primary hover:underline">
+            Zur ersten Seite
+          </button>
+        </p>
+      ) : (
         <p className="mt-4 text-sm text-muted-foreground">
           In diesem Themenfeld ist noch nichts geprüft.
         </p>
+      ))}
+      {data && (
+        <div className="mt-6">
+          <Blaettern seite={seite} gesamt={data.total} proSeite={data.per_page}
+                     onSeite={onSeite} label="Seiten der Ideen" />
+        </div>
       )}
     </div>
   );
@@ -554,7 +576,12 @@ const PRO_SEITE = 12;
 /** Der Zustand der Übersicht steht in der ADRESSE, nicht im Speicher: Wer
  *  von einer Ideen-Seite zurückkommt, findet Feld, Filter und Suche wieder,
  *  und ein geteilter Link zeigt dasselbe. */
-type Zustand = { feld: string; stand: string; q: string; sort: string; seite: number };
+type Zustand = {
+  feld: string; stand: string; q: string; sort: string; seite: number;
+  /** Die Seite unter „Einzelne Ideen" — getrennt von `seite` (Bewegungen):
+   *  Wer in den Ideen blättert, soll die Bewegungen darüber nicht mitblättern. */
+  ideenSeite: number;
+};
 
 function zustandAus(params: URLSearchParams | null): Zustand {
   const stand = params?.get("stand") ?? "offen";
@@ -564,6 +591,7 @@ function zustandAus(params: URLSearchParams | null): Zustand {
     q: params?.get("q") ?? "",
     sort: params?.get("sort") === "zuletzt" ? "zuletzt" : "staedte",
     seite: Math.max(1, Number(params?.get("seite") ?? "1") || 1),
+    ideenSeite: Math.max(1, Number(params?.get("ideenseite") ?? "1") || 1),
   };
 }
 
@@ -574,6 +602,7 @@ function adresse(z: Zustand): string {
   if (z.q) p.set("q", z.q);
   if (z.sort !== "staedte") p.set("sort", z.sort);
   if (z.seite > 1) p.set("seite", String(z.seite));
+  if (z.feld && z.ideenSeite > 1) p.set("ideenseite", String(z.ideenSeite));
   const s = p.toString();
   return s ? `/council/ideen?${s}` : "/council/ideen";
 }
@@ -779,23 +808,26 @@ function Leer({ gefiltert, zuruecksetzen }: { gefiltert: boolean; zuruecksetzen:
 }
 
 function Blaettern({
-  seite, gesamt, setze,
-}: { seite: number; gesamt: number; setze: (z: Partial<Zustand>) => void }) {
-  const seiten = Math.max(1, Math.ceil(gesamt / PRO_SEITE));
+  seite, gesamt, proSeite = PRO_SEITE, onSeite, label = "Seiten",
+}: {
+  seite: number; gesamt: number; proSeite?: number;
+  onSeite: (seite: number) => void; label?: string;
+}) {
+  const seiten = Math.max(1, Math.ceil(gesamt / proSeite));
   if (seiten <= 1) return null;
   const knopf =
     "inline-flex h-10 items-center gap-1 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground disabled:opacity-40 enabled:hover:border-primary/30";
   return (
-    <nav aria-label="Seiten" className="flex items-center justify-center gap-3">
+    <nav aria-label={label} className="flex items-center justify-center gap-3">
       <button type="button" className={knopf} disabled={seite <= 1}
-              onClick={() => setze({ seite: seite - 1 })}>
+              onClick={() => onSeite(seite - 1)}>
         <ChevronLeft className="h-4 w-4" aria-hidden /> Zurück
       </button>
       <span className="font-mono text-meta text-muted-foreground">
         Seite {seite} von {seiten}
       </span>
       <button type="button" className={knopf} disabled={seite >= seiten}
-              onClick={() => setze({ seite: seite + 1 })}>
+              onClick={() => onSeite(seite + 1)}>
         Weiter <ChevronRight className="h-4 w-4" aria-hidden />
       </button>
     </nav>
@@ -838,7 +870,8 @@ function BewegungenListe({
               <BewegungKarte key={b.cluster_id} bewegung={b} achse={data.axis} href={zielFuer(b, zustand)} />
             ))}
           </div>
-          <Blaettern seite={zustand.seite} gesamt={data.total} setze={setze} />
+          <Blaettern seite={zustand.seite} gesamt={data.total} label="Seiten der Bewegungen"
+                     onSeite={(s) => setze({ seite: s })} />
         </>
       ) : (
         <Leer gefiltert={gefiltert} zuruecksetzen={() => setze({ feld: "", stand: "offen", q: "", seite: 1 })} />
@@ -863,7 +896,11 @@ export default function View() {
   // — die Seite schrumpft um gut 1.000 px, und wer unten geklickt hatte, sah
   // danach die Bewegungen statt der geladenen Ideen (Tims Befund 01.11.2026).
   const setze = (neu: Partial<Zustand>, zumAbschnitt = false) => {
-    const ziel = adresse({ ...zustand, ...neu });
+    const naechster = { ...zustand, ...neu };
+    // Ein anderes Feld fängt vorn an — Seite 7 von „Verkehr" gibt es in
+    // „Migration" vielleicht gar nicht.
+    if (neu.feld !== undefined && neu.feld !== zustand.feld) naechster.ideenSeite = 1;
+    const ziel = adresse(naechster);
     alsFilterwechsel(ziel);
     zuEinzeln.current = zumAbschnitt;
     router.replace(ziel, { scroll: false });
@@ -872,7 +909,7 @@ export default function View() {
     if (!zuEinzeln.current || !einzeln.current) return;
     zuEinzeln.current = false;
     return imBlickHalten(einzeln.current);
-  }, [zustand.feld]);
+  }, [zustand.feld, zustand.ideenSeite]);
   const felderAbfrage = useQuery({
     queryKey: ["ideen-felder"],
     queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
@@ -962,7 +999,9 @@ export default function View() {
         {zustand.q ? (
           <Suchergebnis frage={zustand.q} />
         ) : zustand.feld ? (
-          <Feld feld={zustand.feld} zurueck={() => setze({ feld: "", seite: 1 }, true)} />
+          <Feld feld={zustand.feld} seite={zustand.ideenSeite}
+                onSeite={(s) => setze({ ideenSeite: s }, true)}
+                zurueck={() => setze({ feld: "", seite: 1 }, true)} />
         ) : (
           <Uebersicht felder={felder} fehler={felderFehler} onFeld={(f) => setze({ feld: f, seite: 1 }, true)} />
         )}
