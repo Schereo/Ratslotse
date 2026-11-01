@@ -246,6 +246,12 @@ ERLAUBT_STELLE = {
     ("QuestionsView.swift", "vorlage"): "Quellenart aus dem deutschen Quelltitel",
     ("QuestionsView.swift", "stadt"): "Beschriftung der Quellen-Herkunft",
     ("QuestionsView.swift", "beratend"): "`art` der Personen-Bausteine, im Backend deutsch",
+    ("QuestionsView.swift", "mitglied"): "Amts-Wortende im Fließtext-Abgleich der Personen-Badges "
+                                         "(„Ausschussmitglied Danke“) — ein deutsches Wort der "
+                                         "KI-Antwort, kein gelesener Wert",
+    ("QuestionsView.swift", "einwohner"): "dasselbe Verzeichnis („Einwohnerin Pieper“)",
+    ("person-badge.ts", "mitglied"): "dasselbe Verzeichnis im Web (NAME_OFFICE_ENDINGS)",
+    ("person-badge.ts", "einwohner"): "dasselbe Verzeichnis im Web (NAME_OFFICE_ENDINGS)",
     ("ProfileAndQuizViews.swift", "verwaltung"): "`typ` des Personen-Profils, im Backend deutsch",
     ("ProfileAndQuizViews.swift", "rat"): "`art` des Personen-Profils, im Backend deutsch",
     ("ProfileAndQuizViews.swift", "beratend"): "`art` des Personen-Profils, im Backend deutsch",

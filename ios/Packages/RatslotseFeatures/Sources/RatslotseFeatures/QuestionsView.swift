@@ -3612,6 +3612,93 @@ func questionPersonBadgeLabel(_ person: QuestionPerson) -> String {
     }
 }
 
+// Steht ein Nachname ALS NAME da — oder ist er nur ein Wort? „Danke der
+// Nachfrage" bekam das Badge von André Danke, „gab es Streit" das von Tim
+// Streit (Tims Befund 01.11.2026). Begründung und Messung stehen in
+// `web/frontend/lib/person-badge.ts`; die Listen hier sind dieselben, und
+// `tests/test_personen_badge_gleich.py` hält sie gleich.
+
+let questionNameTitles = ["herr", "herrn", "frau", "dr", "prof"]
+
+let questionNameOfficeEndings = [
+    "ratsmitglied", "ratsherr", "ratsherrn", "ratsfrau", "mitglied",
+    "buergermeister", "buergermeisterin", "stadtrat", "stadtraetin",
+    "stadtbaurat", "stadtbauraetin", "kaemmerer", "kaemmerin",
+    "beigeordnete", "beigeordneter", "dezernent", "dezernentin",
+    "vorsitzende", "vorsitzender", "vertreter", "vertreterin",
+    "sprecher", "sprecherin", "redner", "rednerin",
+    "leiter", "leiterin", "einwohner", "einwohnerin",
+]
+
+let questionNameVerbs = [
+    "sagte", "sprach", "betonte", "kritisierte", "verwies", "erklaerte",
+    "forderte", "beantragte", "bezeichnete", "aeusserte", "ergaenzte", "wandte",
+    "schlug", "begruesste", "erwartete", "unterstuetzte", "fragte", "antwortete",
+    "meinte", "warnte", "mahnte", "entgegnete", "widersprach", "plaedierte",
+    "berichtete", "regte", "lehnte", "stimmte", "kuendigte", "wuenschte",
+    "bemaengelte", "bedauerte", "lobte", "bat", "raeumte", "monierte",
+    "sicherte", "schilderte", "nannte", "verlangte", "wies", "beklagte",
+    "bekraeftigte", "erinnerte", "appellierte", "versprach", "bestaetigte",
+    "begruendete", "vertrat",
+]
+
+let questionNameParticles = ["van", "von", "de", "ter", "ten"]
+
+private func questionIsOffice(_ word: String) -> Bool {
+    questionNameOfficeEndings.contains { word.hasSuffix($0) }
+}
+
+/// Ein Verb aus der Liste, auch im Plural („kritisierten", „baten").
+private func questionIsSpeechVerb(_ word: String) -> Bool {
+    questionNameVerbs.contains(word)
+        || (word.hasSuffix("n") && questionNameVerbs.contains(String(word.dropLast())))
+        || (word.hasSuffix("en") && questionNameVerbs.contains(String(word.dropLast(2))))
+}
+
+/// Das Wort direkt vor `position` — nur wenn dazwischen nichts als Leerraum
+/// steht. Ein Satzzeichen trennt („sagte. Krogmann"); einzige Ausnahme ist
+/// der Abkürzungspunkt („Dr. Baak").
+private func questionWordBefore(_ text: NSString, _ position: Int) -> (word: String, start: Int)? {
+    let head = text.substring(to: position) as NSString
+    guard let regex = try? NSRegularExpression(pattern: #"([A-Za-zÄÖÜäöüßÀ-ÿ-]+)(\.?)\s+$"#),
+          let match = regex.firstMatch(in: head as String, range: NSRange(location: 0, length: head.length))
+    else { return nil }
+    let word = questionFoldedName(head.substring(with: match.range(at: 1)))
+    if match.range(at: 2).length > 0 && !questionNameTitles.contains(word) { return nil }
+    return (word, match.range.location)
+}
+
+func questionHasNameSignal(_ text: NSString, _ range: NSRange, firstName: String?) -> Bool {
+    var before = questionWordBefore(text, range.location)
+    if let current = before, questionNameParticles.contains(current.word) {
+        before = questionWordBefore(text, current.start)
+    }
+    if let before {
+        var given = Set((firstName ?? "").split(whereSeparator: { $0 == " " || $0 == "-" }).map(String.init))
+        if let firstName, !firstName.isEmpty { given.insert(firstName) }
+        if given.contains(before.word) { return true }
+        if questionNameTitles.contains(before.word) || questionIsOffice(before.word) { return true }
+        if questionIsSpeechVerb(before.word) { return true }
+        // „sprach sich Prange für … aus"
+        if before.word == "sich",
+           let further = questionWordBefore(text, before.start),
+           questionIsSpeechVerb(further.word) {
+            return true
+        }
+    }
+    let tail = text.substring(from: NSMaxRange(range)) as NSString
+    let tailRange = NSRange(location: 0, length: tail.length)
+    if let afterRegex = try? NSRegularExpression(pattern: #"^\s+([A-Za-zÄÖÜäöüß]+)"#),
+       let after = afterRegex.firstMatch(in: tail as String, range: tailRange),
+       questionIsSpeechVerb(questionFoldedName(tail.substring(with: after.range(at: 1)))) {
+        return true
+    }
+    guard let bracketRegex = try? NSRegularExpression(pattern: #"^\s*\(([^()]{2,60})\)"#),
+          let bracket = bracketRegex.firstMatch(in: tail as String, range: tailRange)
+    else { return false }
+    return questionPartyAbbreviation(tail.substring(with: bracket.range(at: 1))) != "Rat"
+}
+
 func questionPersonBadgeMarkdown(text: String, people: [QuestionPerson]) -> String {
     guard !people.isEmpty,
           let wordRegex = try? NSRegularExpression(pattern: #"[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}"#)
@@ -3632,7 +3719,9 @@ func questionPersonBadgeMarkdown(text: String, people: [QuestionPerson]) -> Stri
 
         let person: QuestionPerson?
         if candidates.count == 1 {
-            person = candidates[0]
+            // Ein eindeutiger Nachname ist noch kein Name — s. questionHasNameSignal.
+            person = questionHasNameSignal(source, match.range, firstName: candidates[0].vorname)
+                ? candidates[0] : nil
         } else {
             let previousMatches = wordRegex.matches(
                 in: text,

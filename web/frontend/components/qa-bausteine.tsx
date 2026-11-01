@@ -29,6 +29,7 @@ import {
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
 import { markiereBegriffe } from "@/components/glossary-text";
+import { hasNameSignal, parteiKuerzel, personBadgeLabel } from "@/lib/person-badge";
 import { api, apiUrl, authHeaders } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
@@ -155,21 +156,6 @@ function usePersonenLexikon(): PersonEintrag[] {
   return lex;
 }
 
-const _PARTEI_KUERZEL: [RegExp, string][] = [
-  [/grün/i, "Grüne"], [/linke/i, "Linke"], [/spd/i, "SPD"], [/cdu/i, "CDU"],
-  [/bsw/i, "BSW"], [/afd/i, "AfD"], [/^volt$/i, "Volt"], [/^fdp$/i, "FDP"],
-  [/fdp\/volt/i, "FDP/Volt"], [/für oldenburg/i, "FO"], [/piraten/i, "Piraten"],
-];
-
-/** Das kurze Parteilabel neben einem Namen. Exportiert, weil dieselbe
- *  Schreibweise auch außerhalb der KI-Antworten gilt (Aufsichtsorgane im
- *  Beteiligungs-Steckbrief) — zwei Listen mit „Grüne" und „GRÜNE" wären zwei
- *  Sprachen für dieselbe Fraktion. */
-export function parteiKuerzel(label: string | null): string {
-  for (const [re, k] of _PARTEI_KUERZEL) if (label && re.test(label)) return k;
-  return "Rat";
-}
-
 const falteName = (t: string) =>
   t.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
 
@@ -288,21 +274,6 @@ function parteienPassen(a: string, b: string): boolean {
 function jahrAus(date?: string | null): number | null {
   const treffer = (date || "").match(/\d{4}/);
   return treffer ? Number(treffer[0]) : null;
-}
-
-/** Was auf dem Badge STEHT — „ehem.", „Stadt", „beratend", „Aufsicht" oder das
- *  Parteikürzel. Muss mit
- *  `PersonBadge` deckungsgleich bleiben: `SprecherName` entscheidet daran, ob
- *  die Fraktion daneben noch etwas hinzufügt oder nur dasselbe wiederholt. */
-function personBadgeLabel(p: PersonEintrag): string {
-  return !p.aktiv ? "ehem."
-    : p.art === "city" ? "Stadt"
-    : p.art === "participation" ? "Aufsicht"
-    // Beratende Ausschuss-Mitglieder sind keine Ratsleute: „Rat" (das Ergebnis
-    // von parteiKuerzel(null)) behauptete bei ihnen ein Mandat, das sie nicht
-    // haben (Tims Skiba-Befund 21.08.2026).
-    : p.art === "advisory" ? "advisory"
-    : parteiKuerzel(p.party);
 }
 
 /** Sprechername mit Badge, wenn die Person eindeutig im Lexikon steht.
@@ -531,8 +502,14 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
       const kandidaten = personenMap.get(falteName(m[0]));
       if (!kandidaten) continue;
       let p: PersonEintrag | null = null;
-      if (kandidaten.length === 1) p = kandidaten[0];
-      else {
+      // Ein eindeutiger Nachname ist noch kein Name: „Danke der Nachfrage",
+      // „gab es Streit" (s. lib/person-badge.ts). Ohne Zeichen im Text bleibt
+      // er hier ohne Badge — eine spätere Nennung mit Vorname bekommt es.
+      if (kandidaten.length === 1) {
+        if (hasNameSignal(s, m.index, m.index + m[0].length, kandidaten[0].vorname)) {
+          p = kandidaten[0];
+        }
+      } else {
         const davor = falteName((s.slice(0, m.index).trimEnd().split(/\s+/).pop() || "")
           .replace(/[^A-Za-zÄÖÜäöüß-]/g, ""));
         const perVorname = kandidaten.filter((k) => k.vorname && k.vorname === davor);
