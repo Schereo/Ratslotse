@@ -64,6 +64,26 @@ export function routeAus(pathname: string | null | undefined, search = ""): stri
   return p;
 }
 
+/** Der Query-Parameter, der Lottis Fenster beim Ankommen öffnet
+ *  (`/dashboard?lotti=1`) — das Ziel von „Lotti-Chat ausprobieren" auf der
+ *  Karte „Neu bei Ratslotse" und dem Link in ihrer Mail. */
+export const OEFFNEN_PARAM = "lotti";
+
+/** Will diese Adresse das Fenster offen haben? Nur `1` zählt — ein
+ *  `?lotti=` ohne Wert oder mit Unsinn öffnet nichts. */
+export function oeffnenGewuenscht(search = ""): boolean {
+  return new URLSearchParams(search).get(OEFFNEN_PARAM) === "1";
+}
+
+/** Dieselbe Adresse ohne den Parameter — alles andere bleibt, wie es war.
+ *  Ohne das öffnete jedes Neuladen das Fenster wieder. */
+export function ohneOeffnen(pathname: string | null | undefined, search = "", hash = ""): string {
+  const q = new URLSearchParams(search);
+  q.delete(OEFFNEN_PARAM);
+  const rest = q.toString();
+  return `${pathname || "/"}${rest ? `?${rest}` : ""}${hash}`;
+}
+
 /**
  * Die Kennungen aus der Query — und nur sie.
  *

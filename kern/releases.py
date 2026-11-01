@@ -249,9 +249,15 @@ RELEASES: tuple[Release, ...] = (
                      "willst; im Browser erklärt sie auch ein markiertes Wort. Für "
                      "die Antwort schlägt sie selbst in Sitzungen und Beschlüssen "
                      "nach.",
-                url="/council/decision?id=21966",
+                # Bis 11/2026 der Beschluss aus dem Clip (``?id=21966``). Die
+                # Nummer ist aber eine Zeilennummer, und die ist je Umgebung
+                # eine andere: Auf dev heißt derselbe Beschluss 9491, der
+                # Knopf führte dort auf „Diesen Beschluss finde ich nicht“
+                # (Tims Befund 01.11.). ``?lotti=1`` öffnet stattdessen gleich
+                # das Fenster — überall, ohne Daten vorauszusetzen.
+                url="/dashboard?lotti=1",
                 tagline="Tipp auf die Möwe — sie schlägt selbst nach.",
-                action="Lotti ausprobieren",
+                action="Lotti-Chat ausprobieren",
                 # Signal-Orange ist die Farbe der KI (Funken, Tipp-Anzeige):
                 # Was Lotti tut, trägt sie.
                 color="signal",

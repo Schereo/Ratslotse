@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useFeature } from "@/lib/features";
 import { pfad } from "@/lib/utils";
@@ -10,7 +10,7 @@ import { Anstupser, merkeBenutzung } from "./anstupser";
 import { LottiKnopf } from "./knopf";
 import { MarkierKnopf, type MarkierFrage } from "./markier-knopf";
 import { LottiPanel, useMarkierung, useTastatur } from "./panel";
-import { routeAus } from "@/lib/assistentin";
+import { oeffnenGewuenscht, ohneOeffnen, routeAus } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
 import { anstupserErlaubt } from "@/lib/anstupser-seiten";
 import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
@@ -73,8 +73,10 @@ export function LottiAssistentin() {
 
 function LottiInner() {
   const an = useFeature("lotti-assistentin");
-  const pathname = pfad(usePathname());
+  const rohPfad = usePathname();
+  const pathname = pfad(rohPfad);
   const sp = useSearchParams();
+  const router = useRouter();
   const [offen, setOffen] = useState(false);
   // Eine Markierung, zu der gerade gefragt wurde („Lotti fragen" an der
   // Auswahl). Gesetzt heißt: Das Fenster stellt die Frage sofort.
@@ -127,6 +129,18 @@ function LottiInner() {
     window.addEventListener(EREIGNIS, auf);
     return () => window.removeEventListener(EREIGNIS, auf);
   }, []);
+
+  // `?lotti=1` öffnet das Fenster beim Ankommen: „Lotti-Chat ausprobieren"
+  // auf der Karte „Neu bei Ratslotse" führt so direkt in den Chat, statt auf
+  // eine Seite, auf der man die Möwe erst suchen muss. Danach fliegt der
+  // Parameter aus der Adresse — ein Neuladen soll das Fenster nicht wieder
+  // aufreißen. Solange der Schalter aus ist oder ein Vollbild-Ablauf läuft,
+  // bleibt er stehen und greift, sobald das Fenster gehen darf.
+  useEffect(() => {
+    if (!an || vollbild || !oeffnenGewuenscht(sp.toString())) return;
+    setOffen(true);
+    router.replace(ohneOeffnen(rohPfad, sp.toString(), window.location.hash), { scroll: false });
+  }, [an, vollbild, sp, rohPfad, router]);
 
   // Das Küken tritt beiseite, solange das Fenster offen ist: Zwei Möwen in
   // derselben Ecke sind eine zu viel.

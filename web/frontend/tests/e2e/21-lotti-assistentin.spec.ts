@@ -206,6 +206,17 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await expect(knopf(page)).toBeFocused();
   });
 
+  test("?lotti=1 öffnet das Fenster beim Ankommen und verschwindet aus der Adresse", async ({ page }) => {
+    // Das Ziel von „Lotti-Chat ausprobieren“ auf der Karte „Neu bei Ratslotse“.
+    // Bleibt der Parameter stehen, öffnet jedes Neuladen das Fenster wieder.
+    await page.goto("/dashboard?lotti=1");
+    await expect(fenster(page)).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    await page.reload();
+    await expect(knopf(page)).toBeVisible();
+    await expect(fenster(page)).toBeHidden();
+  });
+
   test("beim Laden bleibt der Fokus, wo er war — die erste Tabulatortaste trifft „Zum Inhalt springen“", async ({ page }) => {
     // Bis 10/2026 gab das Fenster den Fokus schon beim ERSTEN Rendern an den
     // Knopf zurück („Fenster zu" galt als „gerade geschlossen"). Wer per

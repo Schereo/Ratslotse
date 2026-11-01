@@ -109,6 +109,17 @@ def test_jedes_highlight_zeigt_in_die_app():
             assert notify.ist_app_pfad(h.url), f"{release.version}: {h.url!r}"
 
 
+def test_kein_highlight_zeigt_auf_eine_zeilennummer():
+    """Eine ``?id=<Zahl>`` ist eine Zeilennummer, und die ist je Umgebung eine
+    andere: Der Beschluss aus dem Lotti-Clip heißt auf Prod 21966, auf dev
+    9491. Auf dev führte der Knopf deshalb auf „Diesen Beschluss finde ich
+    nicht“ (Tims Befund 01.11.2026) — und die Karte prüft man dort, bevor
+    sie auf Prod geht."""
+    for release in releases.RELEASES:
+        for h in release.highlights:
+            assert not re.search(r"[?&]id=\d", h.url), f"{release.version}: {h.url!r}"
+
+
 def test_bilder_gibt_es_ganz_oder_gar_nicht():
     """Eine Bühne mit einem Loch darin ist schlechter als eine Liste.
 
