@@ -507,6 +507,52 @@ import Testing
     #expect(questionPersonBadgeLabel(oldUlf) == "ehem.")
 }
 
+/// Tims Befund 01.11.2026: „Danke der Nachfrage!" trug das Badge von André
+/// Danke. Ein eindeutiger Nachname bekommt es nur noch mit einem Zeichen im
+/// Text — dieselbe Regel wie `web/frontend/lib/person-badge.ts`.
+@Test func personBadgeNeedsNameSignalForUniqueSurname() {
+    let danke = QuestionPerson(
+        slug: "andre-danke",
+        name: "André Danke",
+        vorname: "andré",
+        nachname: "danke",
+        art: "advisory",
+        party: nil,
+        aktiv: true
+    )
+    let streit = QuestionPerson(
+        slug: "tim-streit",
+        name: "Tim Streit",
+        vorname: "tim",
+        nachname: "streit",
+        art: "city",
+        party: nil,
+        aktiv: true
+    )
+    let sprenger = QuestionPerson(
+        slug: "robert-sprenger",
+        name: "Robert Sprenger",
+        vorname: "robert",
+        nachname: "sprenger",
+        art: "city",
+        party: nil,
+        aktiv: true
+    )
+    let people = [danke, streit, sprenger]
+
+    let smallTalk = "Danke der Nachfrage! Laut Protokoll gab es Streit über die Kosten."
+    #expect(questionPersonBadgeMarkdown(text: smallTalk, people: people) == smallTalk)
+
+    #expect(questionPersonBadgeMarkdown(text: "Das sagt André Danke.", people: people)
+        .contains("Danke [●\u{202F}beratend](ratslotse://person/andre-danke)"))
+    #expect(questionPersonBadgeMarkdown(text: "Sprenger sagte, es werde geprüft.", people: people)
+        .contains("ratslotse://person/robert-sprenger"))
+    #expect(questionPersonBadgeMarkdown(text: "Darauf antwortete Herr Streit.", people: people)
+        .contains("ratslotse://person/tim-streit"))
+    #expect(questionPersonBadgeMarkdown(text: "Er sagte. Sprenger ist zuständig.", people: people)
+        == "Er sagte. Sprenger ist zuständig.")
+}
+
 @Test func extraEvidenceFollowsBackendSelectedChannels() {
     let generic = QuestionEvidenceAvailability(fields: ["qtype": .string("thema")])
     #expect(!generic.showsPartyOpinions)
