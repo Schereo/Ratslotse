@@ -87,6 +87,11 @@ public final class AppModel {
     /// Deep-Link beim Kaltstart kommt oft VOR der Antwort — bis dahin heißt ein
     /// leeres `features` „weiß noch nicht", nicht „aus".
     public var featuresLoaded = false
+    /// Lottis Blatt soll über „Heute" aufgehen — gesetzt von `/dashboard?lotti=1`
+    /// (`AppRoute.assistant`), eingelöst oder verworfen von `LottiHost`. Eine
+    /// Bitte und kein sofortiges Öffnen, weil der Link beim Kaltstart vor
+    /// `/api/app-config` und vor der Anmeldung ankommt.
+    var lottiRequested = false
     /// Ein Beschlussort von der Stadtkarte (Ebene „Themen-Orte"), den die
     /// Beschluss-Suche als Filter übernehmen soll — wie `punktHref` im Web,
     /// das auf `/council?location=…` zeigt. Die Suche liest ihn beim Erscheinen
@@ -650,6 +655,13 @@ public final class AppModel {
             selectedTab = tab
             if tab == .council { councilSection = .decisions }
             navigation.removeAll()
+        case .assistant:
+            // Erst Heute, wie `/dashboard` ohne Parameter — Lotti erklärt
+            // dann die Seite, auf der man steht. Ob der Schalter an ist,
+            // entscheidet `LottiHost`: Hier ist er beim Kaltstart oft noch
+            // gar nicht bekannt.
+            handle(route: .tab(.today))
+            lottiRequested = true
         case .question(let prefill, let share):
             selectedTab = .questions
             questionPrefill = prefill ?? ""

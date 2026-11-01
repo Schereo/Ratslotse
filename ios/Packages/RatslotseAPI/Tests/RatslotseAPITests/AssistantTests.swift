@@ -248,3 +248,25 @@ func ohneLottiKeinRand() {
     let fremd = AppRoute.web(URL(string: "https://example.org")!)
     #expect(LottiPlacement.pageInset(for: fremd, enabled: true, keyboardVisible: false) == 0)
 }
+
+@Test("Ein Link mit ?lotti=1 öffnet Lotti nur über Heute und nur mit Schalter")
+func lottiBitte() throws {
+    let heute = try #require(ExplainScreen.from(.tab(.today)))
+    let beschluss = ExplainScreen.from(.decision(id: 42))
+    func ergebnis(featuresLoaded: Bool = true, enabled: Bool = true, mainView: Bool = true,
+                  busy: Bool = false, screen: ExplainScreen? = heute) -> LottiRequest.Outcome {
+        LottiRequest.outcome(featuresLoaded: featuresLoaded, enabled: enabled,
+                             mainView: mainView, busy: busy, screen: screen)
+    }
+    #expect(ergebnis() == .open)
+    // Schalter aus: Es bleibt bei Heute, wie in der ausgelieferten App.
+    #expect(ergebnis(enabled: false) == .drop)
+    // Kaltstart: Der Link kommt vor `/api/app-config` — leer heißt dann
+    // „weiß noch nicht", nicht „aus".
+    #expect(ergebnis(featuresLoaded: false, enabled: false) == .wait)
+    // Anmeldung, Einrichtung, Mehr-Blatt oder Tour: warten, nicht verwerfen.
+    #expect(ergebnis(mainView: false, screen: nil) == .wait)
+    #expect(ergebnis(busy: true) == .wait)
+    // Inzwischen auf einer anderen Seite: Ein Blatt zu Heute wäre falsch.
+    #expect(ergebnis(screen: beschluss) == .drop)
+}

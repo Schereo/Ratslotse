@@ -138,6 +138,22 @@ import Testing
     #expect(model.selectedTab == .questions)
 }
 
+/// `/dashboard?lotti=1` landet auf Heute — ganz oben, nicht über einer
+/// geschobenen Seite — und hinterlässt die Bitte, die `LottiHost` einlöst.
+@MainActor
+@Test func assistantRouteOpensTodayAndAsksForLotti() {
+    let model = AppModel()
+    model.selectedTab = .council
+    model.navigation = [.decision(id: 42)]
+
+    model.handle(route: .assistant)
+
+    #expect(model.selectedTab == .today)
+    #expect(model.navigation.isEmpty)
+    #expect(model.lottiRequested)
+    #expect(model.currentExplainScreen == ExplainScreen.from(.tab(.today)))
+}
+
 @MainActor
 @Test func sharedQuestionRouteIsHandedToTheNativeChat() {
     let model = AppModel()

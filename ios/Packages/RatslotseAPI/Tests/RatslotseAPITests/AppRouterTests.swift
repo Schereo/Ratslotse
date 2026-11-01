@@ -97,3 +97,41 @@ func mapsHistoricalUniversalLinks(input: String, expected: AppRoute) throws {
     #expect(link.path == "/bookmarks")
     #expect(router.route(for: link) == .web(link))
 }
+
+/** „Lotti-Chat ausprobieren" auf der Karte „Neu bei Ratslotse" (3.0.0) führt
+ *  auf `/dashboard?lotti=1` — wie im Web öffnet das Lottis Blatt über Heute. */
+@Test(arguments: [
+    "https://ratslotse.de/dashboard?lotti=1",
+    "https://ratslotse.de/dashboard/?lotti=1",
+    "https://ratslotse.de/?lotti=1",
+    "https://ratslotse.de/dashboard?foo=bar&lotti=1",
+])
+func lottiParameterOpensTheAssistant(input: String) throws {
+    let url = try #require(URL(string: input))
+    #expect(router.route(for: url) == .assistant)
+}
+
+/** Nur `1` zählt (`oeffnenGewuenscht` im Web). Alles andere ist Heute — und
+ *  Heute ohne Parameter bleibt, was die ausgelieferte App auch daraus macht. */
+@Test(arguments: [
+    "https://ratslotse.de/dashboard",
+    "https://ratslotse.de/dashboard?lotti",
+    "https://ratslotse.de/dashboard?lotti=",
+    "https://ratslotse.de/dashboard?lotti=0",
+    "https://ratslotse.de/dashboard?lotti=true",
+    "https://ratslotse.de/dashboard?lotti=ja",
+    "https://ratslotse.de/dashboard?lotti=11",
+    "https://ratslotse.de/dashboard?Lotti=1",
+])
+func otherLottiValuesStayOnToday(input: String) throws {
+    let url = try #require(URL(string: input))
+    #expect(router.route(for: url) == .tab(.today))
+}
+
+@Test func assistantLinkRoundTrips() throws {
+    let link = try #require(router.universalLink(for: .assistant))
+    #expect(link.absoluteString == "https://ratslotse.de/dashboard?lotti=1")
+    #expect(router.route(for: link) == .assistant)
+    // Lotti erklärt dabei Heute — dieselbe Seite wie ohne den Parameter.
+    #expect(ExplainScreen.from(.assistant) == ExplainScreen.from(.tab(.today)))
+}
