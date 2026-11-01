@@ -21,10 +21,68 @@ import { usePathname, useSearchParams } from "next/navigation";
  *    Unmount-Ereignis in der App nicht zuverlässig kommt, wenn das Betriebs-
  *    system die WebView einfriert.
  */
+
+/** Die Adresse, die gleich als Filter auf derselben Seite kommt. */
+let filterZiel: string | null = null;
+
+/** Pfad ohne Schlussstrich plus sortenreine Query — der statische Export
+ *  hängt einen Schrägstrich an, `router.replace` bekommt keinen. */
+function vergleichbar(pfad: string, query: string): string {
+  return `${pfad.replace(/\/+$/, "") || "/"}?${new URLSearchParams(query).toString()}`;
+}
+
+/** Der Wechsel auf `adresse` ist ein Filter auf DERSELBEN Seite, kein Besuch.
+ *
+ *  Die Position merkt sich das Gedächtnis je Adresse, und ein Filter steht in
+ *  der Adresse (`?feld=verkehr`). Wer ein Themenfeld zum zweiten Mal wählte,
+ *  bekam deshalb die Stelle vom ersten Mal zurück — mitten in einen Seitenteil,
+ *  der nichts mit dem Klick zu tun hatte (Tims Befund 01.11.2026 auf
+ *  `/council/ideen`). Gemerkt wird die Zieladresse, keine Frist: Im Dev-Modus
+ *  dauerte der Wechsel über eine Sekunde, eine Frist wäre schon abgelaufen.
+ *  Kommt eine andere Adresse an, verfällt die Markierung. */
+export function alsFilterwechsel(adresse: string) {
+  const [pfad, query = ""] = adresse.split("#")[0].split("?");
+  filterZiel = vergleichbar(pfad, query);
+}
+
+/** Hält `el` oben im Blick, während sich die Seite darum herum noch setzt.
+ *
+ *  Ein Klick, der über UND unter dem Element neu lädt, verschiebt es danach
+ *  noch ein paar Mal — erst schrumpft die Seite, dann kommen die Daten. Der
+ *  Browser hält es nicht von selbst fest: Safari kennt keine Scroll-Verankerung,
+ *  und wer am Seitenende stand, landet nach dem Schrumpfen irgendwo darüber.
+ *  Dieselben Abbruch-Regeln wie beim Wiederherstellen: Wer selbst scrollt, hat
+ *  Vorrang, und nach fünf Sekunden ist Schluss. Gibt das Aufräumen zurück. */
+export function imBlickHalten(el: HTMLElement): () => void {
+  const start = Date.now();
+  let vorbei = false;
+  const ausrichten = () => {
+    if (vorbei) return;
+    if (Date.now() - start > 5000) return aufhoeren();
+    el.scrollIntoView({ block: "start" });
+  };
+  const beobachter = typeof ResizeObserver !== "undefined"
+    ? new ResizeObserver(ausrichten) : undefined;
+  const aufhoeren = () => {
+    vorbei = true;
+    beobachter?.disconnect();
+    window.removeEventListener("wheel", aufhoeren);
+    window.removeEventListener("touchmove", aufhoeren);
+    window.removeEventListener("keydown", aufhoeren);
+  };
+  window.addEventListener("wheel", aufhoeren, { passive: true, once: true });
+  window.addEventListener("touchmove", aufhoeren, { passive: true, once: true });
+  window.addEventListener("keydown", aufhoeren, { once: true });
+  beobachter?.observe(document.documentElement);
+  ausrichten();
+  return aufhoeren;
+}
+
 export function ScrollMemory() {
   const pathname = usePathname();
   const sp = useSearchParams();
   const scrollKey = `ratslotse:scroll:${pathname}?${sp.toString()}`;
+  const hier = vergleichbar(pathname, sp.toString());
 
   useEffect(() => {
     // Der Schlüssel gehört ZU DIESEM Effekt (kein Ref!): React rendert die
@@ -32,6 +90,8 @@ export function ScrollMemory() {
     // beim Aufräumen längst auf die neue Route und schrieb die gemerkte
     // Position unter den falschen Schlüssel (erst gemessen, dann behoben).
     const key = scrollKey;
+    const nurFilter = filterZiel === hier;
+    filterZiel = null;
     let abgebrochen = false;
     // NICHT window.scrollY beim Aufräumen lesen: Der Router setzt die Seite
     // beim Navigieren auf 0, bevor der Effekt abgebaut wird — gespeichert
@@ -45,7 +105,10 @@ export function ScrollMemory() {
       } catch { /* privater Modus */ }
     };
     let ziel = 0;
-    try { ziel = Number(sessionStorage.getItem(key) || 0); } catch { /* s. o. */ }
+    // Ein Filter bleibt, wo man ist — s. `alsFilterwechsel`.
+    if (!nurFilter) {
+      try { ziel = Number(sessionStorage.getItem(key) || 0); } catch { /* s. o. */ }
+    }
     const aufraeumen: (() => void)[] = [];
 
     // NICHT bei touchstart abbrechen: Der Tipp auf die Tab-Leiste erzeugt auf
@@ -102,7 +165,7 @@ export function ScrollMemory() {
       document.removeEventListener("visibilitychange", merken);
       for (const f of aufraeumen) f();
     };
-  }, [scrollKey]);
+  }, [scrollKey, hier]);
 
   return null;
 }
