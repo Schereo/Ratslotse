@@ -16,7 +16,7 @@
  * **Keine Prozentzahl, kein Rang.** Wie sicher sich das Modell ist, steht als
  * Wort da, wo es etwas ändert — und sonst gar nicht.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpRight, Building2, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
@@ -26,8 +26,9 @@ import { BewegungKarte, type Bewegung } from "@/components/ideen/bewegung-karte"
 import { STAND } from "@/components/ideen/stand";
 import { ZeitleisteLegende } from "@/components/ideen/zeitleiste";
 import { Lotti } from "@/components/lotti";
+import { alsFilterwechsel, imBlickHalten } from "@/components/scroll-memory";
 import { Card } from "@/components/ui/card";
-import { DetailSkeleton, ErrorState, PageHeader } from "@/components/ui";
+import { CardListSkeleton, DetailSkeleton, ErrorState, PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
 import { featureAktiv, useAppConfig } from "@/lib/features";
 import { aufzaehlung, rueckmeldungsFehler, standZeilen } from "@/lib/ideen";
@@ -481,6 +482,10 @@ function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
           Räte beantragt oder beschlossen haben und Oldenburg fehlt.
         </p>
       )}
+      {/* Platzhalter in Bildschirmhöhe: Ohne ihn stand während des Ladens gar
+          nichts da, und die Seite war zu kurz, um den Abschnitt nach oben zu
+          holen — er rutschte erst mit den Daten an seinen Platz. */}
+      {isPending && <div className="mt-4 min-h-[80vh]"><CardListSkeleton rows={6} /></div>}
       <div className="mt-4 space-y-3">
         {(data?.items ?? []).map((i) => (
           <IdeenKarte key={i.paper_id} idee={i} />
@@ -850,8 +855,24 @@ export default function View() {
   const router = useRouter();
   const params = useSearchParams();
   const zustand = useMemo(() => zustandAus(params), [params]);
-  const setze = (neu: Partial<Zustand>) =>
-    router.replace(adresse({ ...zustand, ...neu }), { scroll: false });
+  const einzeln = useRef<HTMLElement>(null);
+  const zuEinzeln = useRef(false);
+  // `zumAbschnitt`: Der Wechsel kam aus „Einzelne Ideen“ selbst (Themenfeld
+  // gewählt oder „Alle Themenfelder“). Darüber verschwindet dabei die Tafel,
+  // die Bewegungen filtern mit, und das Raster weicht einer noch leeren Liste
+  // — die Seite schrumpft um gut 1.000 px, und wer unten geklickt hatte, sah
+  // danach die Bewegungen statt der geladenen Ideen (Tims Befund 01.11.2026).
+  const setze = (neu: Partial<Zustand>, zumAbschnitt = false) => {
+    const ziel = adresse({ ...zustand, ...neu });
+    alsFilterwechsel(ziel);
+    zuEinzeln.current = zumAbschnitt;
+    router.replace(ziel, { scroll: false });
+  };
+  useEffect(() => {
+    if (!zuEinzeln.current || !einzeln.current) return;
+    zuEinzeln.current = false;
+    return imBlickHalten(einzeln.current);
+  }, [zustand.feld]);
   const felderAbfrage = useQuery({
     queryKey: ["ideen-felder"],
     queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
@@ -929,7 +950,7 @@ export default function View() {
           Vorlage einzeln. Sie bleiben (Tims Entscheidung vom 22.09.2026),
           stehen aber unter den Bewegungen: 89 % aller Ideen stehen nur in
           einer Stadt, und eine Stadt ist eine Beobachtung, noch kein Trend. */}
-      <section aria-labelledby="einzeln-titel" className="grid gap-3 border-t border-border pt-6">
+      <section ref={einzeln} aria-labelledby="einzeln-titel" className="grid scroll-mt-20 gap-3 border-t border-border pt-6">
         <div>
           <h2 id="einzeln-titel" className="font-display text-[19px] font-bold text-foreground">
             Einzelne Ideen
@@ -941,9 +962,9 @@ export default function View() {
         {zustand.q ? (
           <Suchergebnis frage={zustand.q} />
         ) : zustand.feld ? (
-          <Feld feld={zustand.feld} zurueck={() => setze({ feld: "", seite: 1 })} />
+          <Feld feld={zustand.feld} zurueck={() => setze({ feld: "", seite: 1 }, true)} />
         ) : (
-          <Uebersicht felder={felder} fehler={felderFehler} onFeld={(f) => setze({ feld: f, seite: 1 })} />
+          <Uebersicht felder={felder} fehler={felderFehler} onFeld={(f) => setze({ feld: f, seite: 1 }, true)} />
         )}
       </section>
     </div>
