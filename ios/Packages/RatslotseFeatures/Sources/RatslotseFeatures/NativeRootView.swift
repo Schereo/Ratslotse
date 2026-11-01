@@ -141,6 +141,9 @@ public struct NativeRootView: View {
             // im Bild (Mein Viertel, Ideen, Wahlen). Kommagetrennt.
             if let raw = ratsDebugValue("RATSLOTSE_DEBUG_FEATURES") {
                 model.features = Set(raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
+                // Die Liste steht hier für die Antwort von `/api/app-config` —
+                // ohne das wartete ein `/dashboard?lotti=1` ewig auf sie.
+                model.featuresLoaded = true
             }
             if ratsDebugValue("RATSLOTSE_DEBUG_BADGES") == "1",
                let snapshot = debugBadgeSnapshot() {
