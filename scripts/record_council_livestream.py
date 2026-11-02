@@ -51,6 +51,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council import livestream, livetracker, stream_stt, stt_retain, videos  # noqa: E402
+from council.scraper import CouncilScraper  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 # Für den gewählten Rat (``_roster``); importiert wird erst dort, damit ein
@@ -188,6 +189,29 @@ def _roster(store: CouncilStore, session: dict) -> list[dict] | None:
     return rows + verwaltung
 
 
+def _refresh_agenda(store: CouncilStore, ksinr: int) -> int:
+    """Die Tagesordnung kurz vor Beginn noch einmal aus dem RIS lesen.
+
+    ``check_council`` liest sie zuletzt am frühen Nachmittag; was die Stadt
+    danach tauscht, stand bis zum nächsten Morgen falsch da. Am 02.11.2026 ersetzte
+    sie am Nachmittag zwei Listen der konstituierenden Sitzung — die alten
+    ``getfile``-Adressen antworten seitdem mit 403, und genau die standen an
+    der Tagesordnung, während die Sitzung lief. Die Live-Verfolgung bekommt
+    so außerdem die Punkte, die erst am Sitzungstag dazukamen.
+
+    Gibt die Zahl der Punkte zurück, 0 wenn nichts zu holen war. Scheitert
+    der Abruf, bleibt der alte Stand — der Mitschnitt geht vor."""
+    try:
+        session = CouncilScraper().fetch_session(ksinr)
+        if not session or not session.agenda_items:
+            return 0
+        store.save_session(session)
+        return len(session.agenda_items)
+    except Exception:  # noqa: BLE001 — Zugabe, s. Docstring
+        log.exception("Tagesordnung für Sitzung %s nicht neu gelesen", ksinr)
+        return 0
+
+
 def _tracker(store: CouncilStore, ksinr: int, window_seconds: int,
              people: list[dict] | None = None) -> livetracker.LiveTracker | None:
     """Die Live-Verfolgung anwerfen — oder ohne sie aufnehmen, wenn sie
@@ -255,6 +279,7 @@ def main() -> dict:
                  wait.total_seconds() // 60, s["ksinr"], s["session_time"])
         time.sleep(wait.total_seconds())
 
+    stats["tagesordnung_neu"] = _refresh_agenda(store, s["ksinr"])
     t0 = time.monotonic()
     window = stream_stt.WINDOW_SECONDS if stream_stt.configured() else livestream.CHUNK_SECONDS
     people = _roster(store, s)

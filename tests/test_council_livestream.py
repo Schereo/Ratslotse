@@ -445,3 +445,55 @@ def test_streaming_hands_each_utterance_to_the_transcript(monkeypatch):
     transcript = mock.Mock()
     assert record_council_livestream._record(4709, None, transcript) == ([(1.0, "x")], "gladia")
     assert seen["on_segment"] is transcript.add
+
+
+def _sitzung(ksinr: int, anlagen: list[dict]):
+    from council.scraper import AgendaItem, CouncilSession
+
+    item = AgendaItem(item_number="Ö 13.3", title="Benennung der Ratsmitglieder",
+                      template_number="26/0797", anlagen=anlagen)
+    return CouncilSession(ksinr=ksinr, committee="Rat", session_date="2026-11-02",
+                          session_time="18:00", location="PFL", agenda_items=[item])
+
+
+def test_agenda_is_reread_before_the_recording(tmp_path):
+    """Am 02.11.2026 tauschte die Stadt nach dem letzten check_council-Lauf
+    eine Liste aus; die alte getfile-Adresse lieferte 403, stand aber noch an
+    der Tagesordnung."""
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "council.sqlite")
+    alt = "https://buergerinfo.oldenburg.de/getfile.php?id=315820&type=do"
+    neu = "https://buergerinfo.oldenburg.de/getfile.php?id=315863&type=do"
+    store.save_session(_sitzung(4709, [{"label": "Liste Ausschussbesetzung RM", "url": alt}]))
+
+    scraper = mock.Mock()
+    scraper.fetch_session.return_value = _sitzung(
+        4709, [{"label": "ENTWURF Vorlage Ausschussbesetzung RM", "url": neu}])
+    with mock.patch.object(record_council_livestream, "CouncilScraper", return_value=scraper):
+        assert record_council_livestream._refresh_agenda(store, 4709) == 1
+
+    urls = [r[0] for r in store._conn.execute(
+        "SELECT url FROM council_agenda_attachments WHERE ksinr = 4709")]
+    assert urls == [neu]
+
+
+def test_failed_agenda_refresh_keeps_the_old_state(tmp_path, caplog):
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "council.sqlite")
+    alt = "https://buergerinfo.oldenburg.de/getfile.php?id=315820&type=do"
+    store.save_session(_sitzung(4709, [{"label": "Liste", "url": alt}]))
+
+    scraper = mock.Mock()
+    scraper.fetch_session.side_effect = OSError("RIS nicht erreichbar")
+    with mock.patch.object(record_council_livestream, "CouncilScraper", return_value=scraper):
+        assert record_council_livestream._refresh_agenda(store, 4709) == 0
+    scraper.fetch_session.return_value = None
+    scraper.fetch_session.side_effect = None
+    with mock.patch.object(record_council_livestream, "CouncilScraper", return_value=scraper):
+        assert record_council_livestream._refresh_agenda(store, 4709) == 0
+
+    urls = [r[0] for r in store._conn.execute(
+        "SELECT url FROM council_agenda_attachments WHERE ksinr = 4709")]
+    assert urls == [alt]
