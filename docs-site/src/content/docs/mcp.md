@@ -45,6 +45,38 @@ Kopfzeile. Clients, die keine feste Kopfzeile können, melden sich per OAuth
 an (s. u.). Das Sitzungs-Cookie öffnet den Server **nicht**: Sonst könnte jede
 fremde Seite im Namen einer angemeldeten Person Anfragen stellen.
 
+## Claude per OAuth verbinden
+
+Ohne Schlüssel, nur mit der Adresse: Claude meldet sich selbst als Client an
+und öffnet die Freigabe-Seite. Nötig sind das Recht `mcp` und auf Claude-Seite
+ein Plan, der eigene Connectoren erlaubt (Pro, Max, Team, Enterprise).
+
+**Im Browser, in der Desktop-App und auf dem iPad/iPhone:**
+
+1. Auf claude.ai *Settings → Connectors* öffnen, dort *Add custom connector*.
+2. Name `Ratslotse`, URL `https://ratslotse.de/api/mcp`. Die erweiterten
+   Einstellungen (Client-ID, Secret) bleiben leer.
+3. *Add*, dann *Connect*. Es öffnet sich ratslotse.de: anmelden und auf der
+   Freigabe-Seite freigeben. Als Rücksprungziel muss dort `claude.ai` stehen.
+4. Im Chat schaltet man Ratslotse über das Werkzeug-Menü ein und aus.
+
+Ein im Web eingerichteter Connector steht auch in der Desktop-App und auf dem
+Telefon bereit. In Team- und Enterprise-Organisationen fügt ihn zuerst ein
+Owner für die Organisation hinzu.
+
+**In Claude Code:**
+
+```bash
+claude mcp add --transport http ratslotse https://ratslotse.de/api/mcp
+```
+
+Danach in Claude Code `/mcp`, `ratslotse` wählen, *Authenticate* und im
+Browser freigeben. Claude Code springt über `http://localhost` zurück; die
+Freigabe-Seite zeigt dazu eine Warnung, das ist hier erwartet.
+
+**Trennen** lässt sich jeder verbundene Agent einzeln in den Einstellungen
+unter *Eigener Agent (MCP)*; er verliert den Zugang sofort.
+
 ## Anmelden per OAuth (ChatGPT, Claude im Browser)
 
 ChatGPT schickt einem eigenen MCP-Server keinen festen Schlüssel. Es
