@@ -3229,20 +3229,28 @@ def test_reset_bestaetigt_eine_vorab_registrierte_adresse(client):
     assert angreifer.get("/api/auth/me").status_code == 401
 
 
-def test_cors_preflight_allows_app_webview_origin():
-    """The Capacitor WebView origins are allowed by default (no .env needed):
-    the app's cross-origin fetches must pass the browser-engine CORS preflight."""
+@pytest.mark.parametrize("origin", ["capacitor://localhost", "https://localhost"])
+def test_cors_preflight_rejects_former_app_webview_origins(origin, monkeypatch):
+    """The Capacitor WebView origins are gone with the Capacitor shells (11/2026).
+
+    They used to be appended to every CORS list. ``https://localhost`` in
+    particular is any page a developer serves locally over TLS — with
+    ``allow_credentials`` it could read signed-in responses. The native iOS
+    app sends no Origin and is not affected."""
+    from app.config import Settings
+
+    monkeypatch.delenv("CORS_ORIGINS", raising=False)
+    assert Settings(_env_file=None).cors_origin_list == ["http://localhost:3000"]
     r = TestClient(app).options(
         "/api/auth/login",
         headers={
-            "Origin": "capacitor://localhost",
+            "Origin": origin,
             "Access-Control-Request-Method": "POST",
             "Access-Control-Request-Headers": "content-type,x-client,authorization",
         },
     )
-    assert r.status_code == 200
-    assert r.headers["access-control-allow-origin"] == "capacitor://localhost"
-    assert r.headers.get("access-control-allow-credentials") == "true"
+    assert r.status_code == 400
+    assert "access-control-allow-origin" not in r.headers
 
 
 # ---- Sign in with Apple (RL-1002) ----

@@ -220,7 +220,7 @@ def kein_fremder_aufruf(request: Request) -> None:
     Formular auslösen kann: Das Sitzungs-Cookie ist ``SameSite=Lax`` und
     reist bei einer Navigation von außen mit. ``Sec-Fetch-Site`` setzt der
     Browser selbst, eine Seite kann es nicht fälschen. Ein erlaubter Ursprung
-    aus ``CORS_ORIGINS`` (etwa die App-Hülle) geht immer; Clients ohne den
+    aus ``CORS_ORIGINS`` geht immer; Clients ohne den
     Kopf (die native App, ältere Browser) gehen durch — der Schutz gilt dem
     Browser, in dem eine fremde Seite offen ist.
     """
