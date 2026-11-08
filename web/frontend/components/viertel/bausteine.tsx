@@ -11,7 +11,7 @@ import type { DecisionOutcome, Topic } from "@/lib/types";
 import { decisionHref, sitzungHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { cn, formatDate } from "@/lib/utils";
-import { STAND } from "@/lib/viertel-einblick";
+import { STAND, ZEITPLAN } from "@/lib/viertel-einblick";
 import { Badge, Button, Card, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Label, Spinner, Textarea, toast } from "@/components/ui";
 import { STAND_FARBE } from "@/components/viertel-zeichner";
 import { loadOrtsbereiche, ortsbereichFor } from "@/lib/districts";
@@ -84,14 +84,7 @@ export function sortiert(projects: Vorhaben[]): Vorhaben[] {
     || (b.last_date ?? "").localeCompare(a.last_date ?? ""));
 }
 
-/** Kurzform des abgeleiteten Zustands für Zeile und Badge. Ob ein Vorhaben
- *  so heißt, entscheidet der Server (`council/viertel_zeitplan.py`); hier
- *  steht nur, wie es heißt. Der ganze Satz kommt als `schedule_note`. */
-export const ZEITPLAN: Record<string, string> = {
-  likely_done: "vermutlich abgeschlossen",
-  overdue: "Zeitplan überschritten",
-  quiet: "lange kein Beschluss",
-};
+export { ZEITPLAN };
 
 /** „Beschlüsse bis 27.08.2026" — der Datenstand des Registers. Bis 10/2026
  *  stand hier „Stand" mit dem Tag des Laufs; der jüngste Beschluss war dann
