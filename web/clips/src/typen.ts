@@ -19,6 +19,11 @@ export type Zeitachse = {
   steps: { t: number; text: string }[];
   navigations: { t: number; url: string }[];
   startUrl: string;
+  /** Die Bahn des Zeigers: Stützpunkte, dazwischen die Kurve `ruck`
+   *  (Zeiger.tsx). Fehlt in App-Clips — der Simulator hat keinen Zeiger. */
+  pointer?: { t: number; x: number; y: number }[];
+  /** Spannen mit gedrückter Taste (Klick, Markieren). */
+  presses?: { a: number; b: number }[];
 };
 
 export type Meta = {

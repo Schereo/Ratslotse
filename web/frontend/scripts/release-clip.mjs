@@ -3,20 +3,28 @@
 //
 // Das Drehbuch liegt in release-clips/<version>.mjs (eine Datei je Ausgabe),
 // der Schnitt danach in scripts/release_clips.py (Repo-Wurzel). Dieses Skript
-// macht nur die Aufnahme: Chrome fahren, den Zeiger sichtbar machen, die
-// Klicks des Drehbuchs ausführen und dabei festhalten, WANN und WO geklickt
-// wurde — daraus macht highlight_clip.py den Zoom. Nichts wird geraten.
+// macht nur die Aufnahme: Chrome fahren, die Klicks des Drehbuchs ausführen
+// und dabei festhalten, WANN und WO geklickt wurde und wie der Zeiger fuhr —
+// daraus macht der Schnitt Zoom, Spotlight und Zeiger. Nichts wird geraten.
 //
 //   node scripts/release-clip.mjs 2.2.0 teilen --out DIR   → eine JSON-Zeile auf stdout
 //   node scripts/release-clip.mjs 2.2.0 --list
 //
-// Aufgenommen wird Bild für Bild über `page.screenshot`, jedes mit
-// Zeitstempel, nicht über Playwrights recordVideo: Dessen Zeitachse ist die
-// Bildzahl durch 25, und bei einem Seitenwechsel fehlten darin gemessen
-// 0,5–0,9 s (08.09.2026) — der Zoom saß dann neben dem Klick. Die Bilder
-// tragen dieselbe Uhr wie die Klicks; der Schnitt legt beides übereinander.
-// Zwischen zwei Bildern hat sich nichts bewegt, das letzte Bild steht bis zum
-// nächsten.
+// Aufgenommen wird über Chromes Screencast (CDP), jedes Bild mit dem
+// Zeitstempel, zu dem Chrome es gemalt hat — nicht über Playwrights
+// recordVideo: Dessen Zeitachse ist die Bildzahl durch 25, und bei einem
+// Seitenwechsel fehlten darin gemessen 0,5–0,9 s (08.09.2026) — der Zoom saß
+// dann neben dem Klick. Die Bilder tragen dieselbe Uhr wie die Klicks; der
+// Schnitt legt beides übereinander. Chrome schickt nur, wenn sich etwas
+// bewegt: Das letzte Bild steht bis zum nächsten.
+//
+// Der Zeiger ist NICHT Teil der Seite. Bis 11/2026 zeichnete ihn ein
+// Init-Skript in die Seite, und die Aufnahme erwischte nur einzelne
+// Stellungen — Tims Befund zur 3.0.0: „hakelig“. Jetzt schreibt der Recorder
+// die Bahn mit (Stützpunkte samt Zeit, dazu jeder Druck), und der
+// Remotion-Schnitt zeichnet den Zeiger in jedes Bild neu, auf derselben Kurve.
+// Die echte Maus fährt dieselbe Bahn mit, damit Hover-Zustände dort
+// entstehen, wo der gezeichnete Zeiger steht.
 //
 // Was ein Drehbuch bekommt (`stage`):
 //   page            die Playwright-Seite, für Aufbau und Routen
@@ -58,13 +66,16 @@ const FRONTEND = path.resolve(HERE, '..');
 // Seitenverhältnis aus dem Medium; springt es beim Blättern, wackelt sie.
 const DEFAULT_VIEWPORT = { width: 980, height: 620 };
 // Aufgenommen wird in doppelter Pixeldichte, am Telefon wie am Schreibtisch.
-// Bis 10/2026 lief die Schreibtisch-Aufnahme über Chromes Screencast (CDP) —
-// und der liefert Bilder in CSS-Pixeln, egal welcher deviceScaleFactor,
-// welche maxWidth oder welcher Geräte-Override eingestellt ist (gemessen
-// 08.09. und 11.10.2026). Der Clip zeigte also 1280 Pixel Seite, verkleinert
-// in ein Browserfenster und auf einem Retina-Schirm wieder hochgezogen: Tims
-// Befund „relativ unscharf". `page.screenshot` liefert 2× — bei 1280×800 rund
-// 25 Bilder je Sekunde (gemessen 11.10.2026), am Telefon rund 20.
+// Der Screencast liefert Bilder in CSS-Pixeln, solange die Pixeldichte nur
+// EMULIERT ist (deviceScaleFactor, maxWidth, Geräte-Override — gemessen
+// 08.09. und 11.10.2026; der Clip war „relativ unscharf"). Deshalb lief die
+// Aufnahme bis 11/2026 über eine `page.screenshot`-Schleife in 2× — mit 12–17
+// unregelmäßigen Bildern je Sekunde, Tims Befund zur 3.0.0: „zuckt“.
+// Was beides löst (gemessen 08.11.2026): Playwrights Headless-Shell mit
+// ECHTER Pixeldichte (`--force-device-scale-factor=2`) und einer
+// Fenstergröße statt eines emulierten Viewports. Dann liefert der Screencast
+// 2× bei rund 60 Bildern je Sekunde. Im installierten Chrome gilt die
+// Fenstergröße samt Rahmen — die Seite wäre 87 px niedriger als bestellt.
 const PIXELDICHTE = 2;
 const MOBIL_VIEWPORT = { width: 390, height: 844 };
 const DEFAULT_ACCOUNT = 'nutzerin@example.org';
@@ -93,52 +104,17 @@ const BASE = flag('--base') ?? process.env.RELEASE_CLIP_BASE ?? 'http://localhos
 const FRAMES = path.join(OUT, 'frames');
 mkdirSync(FRAMES, { recursive: true });
 
-/** Der Zeiger — Playwright zeichnet keinen. Läuft als Init-Skript in der
- *  Seite und hängt an den ECHTEN Mausereignissen: Er zeigt, was wirklich
- *  passiert. Falle: Init-Skripte laufen vor dem ersten DOM-Knoten,
- *  `document.documentElement` ist dort null — deshalb der Fallback. */
-const CURSOR = () => {
-  const attach = (el) => {
-    if (document.documentElement) document.documentElement.appendChild(el);
-    else addEventListener('DOMContentLoaded', () => document.documentElement.appendChild(el), { once: true });
-  };
-  const style = document.createElement('style');
-  // Das Drücken schrumpft den Pfeil — als Teil von `transform`, NICHT als
-  // eigenes `scale`: Die Einzel-Eigenschaft wirkt vor der Verschiebung und
-  // multipliziert sie mit — der Zeiger sprang beim Klick 100 px Richtung
-  // Ecke (gemessen 08.09.2026).
-  style.textContent = `
-    #rl-cursor { position: fixed; left: 0; top: 0; z-index: 2147483647;
-      pointer-events: none; width: 26px; height: 26px; display: none; }
-  `;
-  attach(style);
-  const cursor = document.createElement('div');
-  cursor.id = 'rl-cursor';
-  // Ein gewöhnlicher Pfeil, kräftig umrandet — auf hellem Grund und in
-  // 980 px Breite noch lesbar.
-  cursor.innerHTML = `<svg viewBox="0 0 24 24" width="26" height="26"
-      style="filter: drop-shadow(0 2px 5px rgba(0,0,0,.45))">
-    <path d="M5 2.5 L5 19.2 L9.3 15.2 L12.1 21.6 L15.2 20.2 L12.4 14 L18.3 13.6 Z"
-          fill="#111827" stroke="#ffffff" stroke-width="1.7" stroke-linejoin="round"/>
-  </svg>`;
-  attach(cursor);
-  let x = 0, y = 0, down = false;
-  const render = () => {
-    cursor.style.transform = `translate(${x - 2}px, ${y - 2}px) scale(${down ? 0.82 : 1})`;
-  };
-  addEventListener('mousemove', (e) => {
-    cursor.style.display = 'block';
-    x = e.clientX; y = e.clientY; render();
-  }, true);
-  addEventListener('mousedown', () => { down = true; render(); }, true);
-  addEventListener('mouseup', () => { down = false; render(); }, true);
-};
-
 const MOBIL = Boolean(storyboard.mobil);
 const viewport = storyboard.viewport ?? (MOBIL ? MOBIL_VIEWPORT : DEFAULT_VIEWPORT);
-const browser = await chromium.launch({ channel: 'chrome' });
+// Die Headless-Shell (kein `channel`), echte Pixeldichte, die Fenstergröße
+// IST der Viewport — s. PIXELDICHTE. Ohne emulierten Viewport kennt
+// Playwright kein `isMobile`; am Telefon zählen Breite und Touch (die Seite
+// fragt `pointer: coarse`, und die meldet die Shell mit `hasTouch`).
+const browser = await chromium.launch({
+  args: [`--force-device-scale-factor=${PIXELDICHTE}`, `--window-size=${viewport.width},${viewport.height}`],
+});
 const ctx = await browser.newContext({
-  viewport, deviceScaleFactor: PIXELDICHTE, isMobile: MOBIL, hasTouch: MOBIL, colorScheme: 'light',
+  viewport: null, hasTouch: MOBIL, colorScheme: 'light',
   locale: 'de-DE', timezoneId: 'Europe/Berlin',
   permissions: ['clipboard-write', 'clipboard-read'],
 });
@@ -146,8 +122,11 @@ const ctx = await browser.newContext({
 // ist sichtbar („Link kopiert.“). Mit ihr öffnet Chrome das Blatt des
 // Betriebssystems, das in der Aufnahme nicht vorkommt: Der Klick sähe aus wie nichts.
 await ctx.addInitScript(() => { try { delete Navigator.prototype.share; } catch { /* egal */ } });
-if (!MOBIL) await ctx.addInitScript(CURSOR);
 const page = await ctx.newPage();
+const groesse = await page.evaluate(() => [innerWidth, innerHeight, devicePixelRatio]);
+if (groesse[0] !== viewport.width || groesse[1] !== viewport.height || groesse[2] !== PIXELDICHTE) {
+  fail(`Fenster ${groesse[0]}×${groesse[1]} @${groesse[2]}x statt ${viewport.width}×${viewport.height} @${PIXELDICHTE}x`);
+}
 // Die Karte „Neu bei Ratslotse“ selbst hat in ihren Clips nichts verloren.
 await page.route('**/api/news', (route) => (
   route.request().method() === 'GET'
@@ -163,28 +142,26 @@ await page.route('**/api/badges', async (route) => {
   await route.fulfill({ response: r, json: { ...(await r.json()), newly_earned: [] } });
 });
 
-// ---- Aufnahme: Einzelbilder mit Zeitstempeln --------------------------------
+// ---- Aufnahme: Screencast mit Zeitstempeln ----------------------------------
+// `metadata.timestamp` ist Wanduhr-Zeit in Sekunden wie `clock()` — gemessen
+// 08.11.2026: Ein Bild kommt 2–10 ms nach seinem Zeitstempel an.
 const clock = () => Date.now() / 1000;
 const frames = [];
-let aufnahmeLaeuft = true;
-// Ein Bild nach dem anderen; die Zeit ist die Mitte der Aufnahme. Während
-// eines Seitenwechsels scheitert `screenshot` mitunter — dann steht das
-// vorige Bild etwas länger.
-const bildschleife = (async () => {
-  while (aufnahmeLaeuft) {
-    const a = clock();
-    try {
-      const bild = await page.screenshot({ type: 'jpeg', quality: 90, animations: 'allow', caret: 'initial', timeout: 4000 });
-      const f = path.join(FRAMES, `f${String(frames.length).padStart(5, '0')}.jpg`);
-      writeFileSync(f, bild);
-      frames.push({ t: (a + clock()) / 2, file: f });
-    } catch {
-      await new Promise((r) => setTimeout(r, 40));
-    }
-  }
-})();
+const cdp = await ctx.newCDPSession(page);
+cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
+  // Erst quittieren, dann schreiben: Chrome schickt das nächste Bild erst
+  // nach der Quittung.
+  cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
+  const f = path.join(FRAMES, `f${String(frames.length).padStart(5, '0')}.jpg`);
+  writeFileSync(f, Buffer.from(data, 'base64'));
+  frames.push({ t: metadata.timestamp ?? clock(), file: f });
+});
+await cdp.send('Page.startScreencast', {
+  format: 'jpeg', quality: 90, everyNthFrame: 1,
+  maxWidth: viewport.width * PIXELDICHTE, maxHeight: viewport.height * PIXELDICHTE,
+});
 
-const marks = { begin: null, beats: [], navigations: [], steps: [], cuts: [] };
+const marks = { begin: null, beats: [], navigations: [], steps: [], cuts: [], pointer: [], presses: [] };
 // Jede Navigation mit Zeitstempel — im JSON sichtbar, damit sich ein Clip,
 // in dem „die Seite zu früh wechselt“, ohne Raten erklären lässt.
 page.on('framenavigated', (frame) => {
@@ -194,6 +171,53 @@ let cursor = null;   // wo der Zeiger gerade steht (CSS-Pixel), null = noch nich
 
 const locate = (target) => (typeof target === 'string' ? page.locator(target).first() : target);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// ---- Der Zeiger: Bahn mitschreiben, echte Maus mitführen ---------------------
+// `marks.pointer` sind Stützpunkte `{t, x, y}`; zwischen zweien fährt der
+// Zeiger auf der Kurve `ruck` (web/clips/src/Zeiger.tsx rechnet dieselbe).
+// Steht er, stehen zwei Punkte am selben Ort. Der erste Punkt ist sein
+// Auftritt. `marks.presses` sind die Spannen mit gedrückter Taste.
+
+/** Minimaler Ruck (Flash & Hogan 1985): So beschleunigt und bremst eine
+ *  Hand, die zu einem Ziel greift — kein Schlingern am Anfang, kein Einrasten
+ *  am Ende. */
+const ruck = (p) => p * p * p * (10 - 15 * p + 6 * p * p);
+
+/** Den Zeiger an einer Stelle auftauchen lassen (ohne Fahrt). */
+async function zeige(x, y) {
+  cursor = { x, y };
+  marks.pointer.push({ t: clock(), x, y });
+  await page.mouse.move(x, y);
+}
+
+/** Vom aktuellen Ort nach (x, y) fahren. Die Dauer wächst mit dem Weg, wie
+ *  bei einer Hand: kurze Wege knapp eine halbe Sekunde, lange bis 0,9 s. */
+async function fahre(x, y, { dauer } = {}) {
+  const { x: x0, y: y0 } = cursor;
+  const d = dauer ?? clamp(0.32 + Math.hypot(x - x0, y - y0) / 1500, 0.42, 0.9);
+  const a = clock();
+  marks.pointer.push({ t: a, x: x0, y: y0 });
+  marks.pointer.push({ t: a + d, x, y });
+  for (;;) {
+    const p = Math.min(1, (clock() - a) / d);
+    const e = ruck(p);
+    await page.mouse.move(x0 + (x - x0) * e, y0 + (y - y0) * e);
+    if (p >= 1) break;
+    await page.waitForTimeout(12);
+  }
+  cursor = { x, y };
+}
+
+async function druecke() {
+  marks.presses.push({ a: clock(), b: null });
+  await page.mouse.down();
+}
+
+async function loslassen() {
+  await page.mouse.up();
+  const offen = marks.presses[marks.presses.length - 1];
+  if (offen && offen.b === null) offen.b = clock();
+}
 async function center(target) {
   const l = locate(target);
   await l.scrollIntoViewIfNeeded();
@@ -244,10 +268,11 @@ const stage = {
     marks.beats.length = 0;
     marks.steps.length = 0;
     marks.cuts.length = 0;
+    marks.pointer.length = 0;
+    marks.presses.length = 0;
     // Der Zeiger erscheint erst mit der ersten Fahrt — ein Aufbau-Klick
     // davor (Playwright) darf keinen Sprung hinterlassen.
     cursor = null;
-    return page.evaluate(() => { const c = document.getElementById('rl-cursor'); if (c) c.style.display = 'none'; });
   },
   pause: (seconds) => page.waitForTimeout(seconds * 1000),
   /** Der Schritt, der ab jetzt als Untertitel steht. */
@@ -264,13 +289,10 @@ const stage = {
     const z = await center(target);
     if (MOBIL) return z;   // am Telefon gibt es keinen Zeiger, der hinfährt
     if (!cursor) {
-      cursor = { x: clamp(z.x + from[0], 8, viewport.width - 8), y: clamp(z.y + from[1], 8, viewport.height - 8) };
-      await page.mouse.move(cursor.x, cursor.y);
+      await zeige(clamp(z.x + from[0], 8, viewport.width - 8), clamp(z.y + from[1], 8, viewport.height - 8));
       await page.waitForTimeout(500);
     }
-    const distance = Math.hypot(z.x - cursor.x, z.y - cursor.y);
-    await page.mouse.move(z.x, z.y, { steps: clamp(Math.round(distance / 9), 18, 60) });
-    cursor = { x: z.x, y: z.y };
+    await fahre(z.x, z.y);
     return z;
   },
   /** Hinfahren, kurz verweilen (Hover-Zustand zeigen), klicken — ein Beat. */
@@ -282,9 +304,9 @@ const stage = {
       await page.touchscreen.tap(z.x, z.y);
       return;
     }
-    await page.mouse.down();
+    await druecke();
     await page.waitForTimeout(140);
-    await page.mouse.up();
+    await loslassen();
   },
   /** Hinfahren und hinsehen — der Zoom kommt, die Tipp-Markierung nicht. */
   async look(target, { from, hover = 0.4 } = {}) {
@@ -347,17 +369,15 @@ const stage = {
     if (!box) throw new Error(`Text nicht gefunden: ${text}`);
     if (!cursor) {
       const [dx, dy] = from ?? [-380, 160];
-      cursor = { x: clamp(box.x0 + dx, 8, viewport.width - 8), y: clamp(box.y0 + dy, 8, viewport.height - 8) };
-      await page.mouse.move(cursor.x, cursor.y);
+      await zeige(clamp(box.x0 + dx, 8, viewport.width - 8), clamp(box.y0 + dy, 8, viewport.height - 8));
       await page.waitForTimeout(500);
     }
-    const weg = Math.hypot(box.x0 - cursor.x, box.y0 - cursor.y);
-    await page.mouse.move(box.x0, box.y0, { steps: clamp(Math.round(weg / 9), 18, 60) });
+    await fahre(box.x0, box.y0);
     await page.waitForTimeout(350);
-    await page.mouse.down();
-    await page.mouse.move(box.x1, box.y1, { steps: clamp(Math.round((box.x1 - box.x0) / 6), 12, 40) });
-    await page.mouse.up();
-    cursor = { x: box.x1, y: box.y1 };
+    await druecke();
+    // Beim Markieren zieht die Hand gleichmäßiger als beim Greifen.
+    await fahre(box.x1, box.y1, { dauer: clamp((box.x1 - box.x0) / 260, 0.45, 1.1) });
+    await loslassen();
     marks.beats.push({ t: clock(), x: (box.x0 + box.x1) / 2, y: box.y1, tap: false,
       box: { x: box.x0 - 4, y: box.y0 - 12, w: box.x1 - box.x0 + 8, h: 24 } });
   },
@@ -380,7 +400,7 @@ try {
   await storyboard.run(stage);
 } catch (e) {
   // Das letzte Bild hilft beim Suchen: Wo stand die Seite, als es hakte?
-  aufnahmeLaeuft = false;
+  await cdp.send('Page.stopScreencast').catch(() => {});
   await page.screenshot({ path: path.join(OUT, 'fehler.png') }).catch(() => {});
   await ctx.close().catch(() => {});
   await browser.close().catch(() => {});
@@ -388,8 +408,7 @@ try {
 }
 const end = clock();
 await page.waitForTimeout(300);   // späte Bilder noch einsammeln
-aufnahmeLaeuft = false;
-await bildschleife;
+await cdp.send('Page.stopScreencast');
 await ctx.close();
 await browser.close();
 
@@ -402,6 +421,8 @@ const result = {
     ...(b.lupe ? { lupe: b.lupe } : {}) })),
   steps: marks.steps,
   cuts: marks.cuts,
+  pointer: marks.pointer,
+  presses: marks.presses.map((p) => ({ a: p.a, b: p.b ?? end })),
   // Was der Remotion-Schnitt fürs Intro und Outro braucht (Titel, Weg …).
   meta: Object.fromEntries(Object.entries(storyboard)
     .filter(([k, v]) => k !== 'run' && typeof v !== 'function')),

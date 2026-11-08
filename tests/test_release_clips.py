@@ -147,3 +147,37 @@ def test_jedes_remotion_drehbuch_nennt_weg_und_lotti_gibt_es():
             for bild in (meta.get("lotti"), meta.get("titelbild_lotti")):
                 if bild:
                     assert (release_clips.LOTTI / bild).exists(), (name, bild)
+
+
+# --- Flackern und Zeiger (08.11.2026) ----------------------------------------
+
+def test_ein_aufblitzendes_bild_wird_gefunden():
+    """A-B-A: Ein Bild, das von beiden Nachbarn weit weg ist, während die
+    sich gleichen — so sahen die kaputten Bilder der 3.0.0-Clips aus (weiß
+    zwischen zwei gleichen Bildern)."""
+    def bild(hell: int) -> Image.Image:
+        return Image.new("L", (16, 9), hell)
+    assert release_clips.flicker_frames([bild(40), bild(40), bild(255), bild(40), bild(41)]) == [2]
+
+
+def test_schnitt_und_blende_blitzen_nicht():
+    """Ein Seitenwechsel bleibt stehen, eine Blende wandert — beides ist kein
+    Aufblitzen, auch wenn sich das Bild stark ändert."""
+    def bild(hell: int) -> Image.Image:
+        return Image.new("L", (16, 9), hell)
+    assert release_clips.flicker_frames([bild(40), bild(40), bild(255), bild(255), bild(255)]) == []
+    assert release_clips.flicker_frames([bild(v) for v in range(40, 240, 20)]) == []
+    assert release_clips.flicker_frames([bild(40)]) == []
+
+
+def test_zeigerbahn_und_druck_laufen_mit_den_schnitten():
+    """Der Zeiger kommt nicht mehr mit der Aufnahme: Seine Stützpunkte und
+    Klicks reisen in der Zeitachse an Remotion und rücken über einen
+    herausgeschnittenen Ladevorgang genauso vor wie Klicks und Untertitel."""
+    a = _aufnahme(cuts=[(103.0, 106.0)])
+    a.manifest["pointer"] = [{"t": 102.0, "x": 10, "y": 20}, {"t": 107.0, "x": 300.25, "y": 40}]
+    a.manifest["presses"] = [{"a": 107.5, "b": 107.65}]
+    z = release_clips.remotion_timeline(a)
+    assert [p["t"] for p in z["pointer"]] == pytest.approx([1.0, 3.0])
+    assert z["pointer"][1]["x"] == pytest.approx(300.2, abs=0.06)
+    assert z["presses"][0]["a"] == pytest.approx(3.5) and z["presses"][0]["b"] == pytest.approx(3.65)

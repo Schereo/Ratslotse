@@ -94,6 +94,13 @@ export const HochClip: React.FC<ClipProps> = (props) => {
   const s = BREITE_HOCH / W;
   const tv = t - INTRO_HOCH;
   const ende = INTRO_HOCH + duration;
+  // Die Aufnahme läuft in ganzen Bildern, und das Schlussbild übernimmt im
+  // ersten Bild danach. Bis 11/2026 kam es erst ab `t >= ende`: Bei krummer
+  // Länge lag ein Bild dazwischen, in dem keins von beiden stand — ein
+  // leeres Fenster, Tims „Flackern“ (08.11.2026).
+  const aufnahmeVon = Math.round(INTRO_HOCH * fps);
+  const aufnahmeBilder = Math.round(duration * fps);
+  const schlussbild = frame >= aufnahmeVon + aufnahmeBilder;
   const opt = { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease } as const;
   const rein = interpolate(t, [INTRO_HOCH - 0.5, INTRO_HOCH + 0.15], [0, 1], opt);
   const raus = interpolate(t, [ende, ende + 0.7], [0, 1], opt);
@@ -128,10 +135,10 @@ export const HochClip: React.FC<ClipProps> = (props) => {
           boxShadow: raus > 0 ? "0 50px 100px -40px rgba(2,32,64,.6)" : undefined,
         }}>
           <div style={{ position: "absolute", left: 0, top: 0, width: W, height: H, transform: `scale(${s})`, transformOrigin: "0 0" }}>
-            <Sequence from={Math.round(INTRO_HOCH * fps)} durationInFrames={Math.round(duration * fps)} layout="none">
+            <Sequence from={aufnahmeVon} durationInFrames={aufnahmeBilder} layout="none">
               <Aufnahme props={props} t={tv} />
             </Sequence>
-            {t >= ende && <Img src={staticFile(props.letztesBild)} style={{ position: "absolute", inset: 0, width: W, height: H }} />}
+            {schlussbild && <Img src={staticFile(props.letztesBild)} style={{ position: "absolute", inset: 0, width: W, height: H }} />}
           </div>
         </div>
       )}

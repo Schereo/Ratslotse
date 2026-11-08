@@ -174,7 +174,7 @@ export default {
       await pause(1.6);
       await look(page.locator('h1, h2', { hasText: 'Fliegerhorst' }).first());
       await pause(1.4);
-      const vorhaben = page.locator('a, button', { hasText: 'Neue Grundschule und Dreifeldhalle' }).first();
+      const vorhaben = page.locator('a, button', { hasText: 'Grundschule und Dreifeldhalle' }).first();
       say('Ein Vorhaben öffnen: Stand, Zeitplan und die Beschlüsse dazu');
       await click(vorhaben);
       await ohne(async () => {
@@ -185,7 +185,7 @@ export default {
       // Titel, Beschreibung und Stufenleiste — nicht die Beschlussliste
       // darunter, sonst wird die Lupe kleiner als das Original.
       await lupe([
-        page.locator(':is(h1,h2,h3):visible', { hasText: 'Neue Grundschule und Dreifeldhalle' }).first(),
+        page.locator(':is(h1,h2,h3):visible', { hasText: 'Grundschule und Dreifeldhalle' }).first(),
         page.locator('ol[aria-label="Stand des Vorhabens"]:visible').first(),
       ], { dauer: 3.6 });
       const beschluesse = page.locator('text=/\\d Beschlüsse?/').first();
@@ -230,7 +230,7 @@ export default {
       });
       say('Alle Vorhaben auf Karte und Liste');
       await pause(1.8);
-      const vorhaben = page.locator('a:visible, button:visible', { hasText: 'Neue Grundschule und Dreifeldhalle' }).first();
+      const vorhaben = page.locator('a:visible, button:visible', { hasText: 'Grundschule und Dreifeldhalle' }).first();
       await scrollTo(vorhaben, { settle: 1.4 });
       say('Ein Vorhaben antippen: Stand, Zeitplan und Beschlüsse');
       await pause(0.6);
@@ -244,7 +244,7 @@ export default {
       // Termin, darunter die Stufen) — die Stufen allein sind am Telefon nur
       // Punkte ohne Beschriftung.
       await lupe([
-        page.locator(':is(h1,h2,h3):visible', { hasText: 'Neue Grundschule und Dreifeldhalle' }).first(),
+        page.locator(':is(h1,h2,h3):visible', { hasText: 'Grundschule und Dreifeldhalle' }).first(),
         page.locator('ol[aria-label="Stand des Vorhabens"]:visible').first(),
         page.locator(':text("In Planung"):visible').last(),
       ], { dauer: 3.0 });

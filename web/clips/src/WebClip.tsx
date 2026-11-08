@@ -11,6 +11,7 @@ import {
 } from "remotion";
 import { C, INTER } from "./theme";
 import { Hintergrund, Intro, Outro, Untertitel, ease, huelle } from "./Bausteine";
+import { Zeiger } from "./Zeiger";
 import type { Beat, ClipProps } from "./typen";
 
 export const INTRO = 2.2;   // Sekunden
@@ -18,7 +19,7 @@ export const OUTRO = 2.6;
 const CHROME = 46;          // Höhe der Fensterleiste
 const MAX_ZOOM = 0.25;      // 1 + 0,25
 
-/** Die Aufnahme mit Kamera, Spotlight und Klick-Welle — in Pixeln der Aufnahme. */
+/** Die Aufnahme mit Kamera, Spotlight, Klick-Welle und Zeiger — in Pixeln der Aufnahme. */
 function Aufnahme({ props, t }: { props: ClipProps; t: number }) {
   const { width: W, height: H, beats } = props.timeline;
 
@@ -76,6 +77,7 @@ function Aufnahme({ props, t }: { props: ClipProps; t: number }) {
             }} />
           );
         })}
+        <Zeiger timeline={props.timeline} t={t} />
       </div>
     </div>
   );
@@ -173,6 +175,13 @@ export const WebClip: React.FC<ClipProps> = (props) => {
 
   const tv = t - INTRO;   // Zeit in der Aufnahme
   const ende = INTRO + duration;
+  // Die Aufnahme läuft in ganzen Bildern, und das Schlussbild übernimmt im
+  // ersten Bild danach. Bis 11/2026 kam es erst ab `t >= ende`: Bei krummer
+  // Länge lag ein Bild dazwischen, in dem keins von beiden stand — ein
+  // leeres Fenster, Tims „Flackern“ (08.11.2026).
+  const aufnahmeVon = Math.round(INTRO * fps);
+  const aufnahmeBilder = Math.round(duration * fps);
+  const schlussbild = frame >= aufnahmeVon + aufnahmeBilder;
   const opt = { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease } as const;
   const rein = interpolate(t, [INTRO - 0.55, INTRO + 0.1], [0, 1], opt);
   const raus = interpolate(t, [ende, ende + 0.6], [0, 1], opt);
@@ -193,10 +202,10 @@ export const WebClip: React.FC<ClipProps> = (props) => {
           <Adresse props={props} t={Math.max(0, Math.min(tv, duration))} />
           <div style={{ position: "relative", width: fensterW, height: innenH }}>
             <div style={{ position: "absolute", left: 0, top: 0, width: W, height: H, transform: `scale(${s})`, transformOrigin: "0 0" }}>
-              <Sequence from={Math.round(INTRO * fps)} durationInFrames={Math.round(duration * fps)} layout="none">
+              <Sequence from={aufnahmeVon} durationInFrames={aufnahmeBilder} layout="none">
                 <Aufnahme props={props} t={tv} />
               </Sequence>
-              {t >= ende && (
+              {schlussbild && (
                 <Img src={staticFile(props.letztesBild)} style={{ position: "absolute", inset: 0, width: W, height: H }} />
               )}
             </div>
@@ -205,7 +214,7 @@ export const WebClip: React.FC<ClipProps> = (props) => {
       )}
 
       {/* Lupen über allem außer dem Untertitel — in derselben Zeit wie die Aufnahme */}
-      <Sequence from={Math.round(INTRO * fps)} durationInFrames={Math.round(duration * fps)} layout="none">
+      <Sequence from={aufnahmeVon} durationInFrames={aufnahmeBilder} layout="none">
         <Lupen props={props} t={tv} fy={(900 - fensterH) / 2 + CHROME} s={s} />
       </Sequence>
       {tv >= 0 && tv < duration && <Untertitel steps={props.timeline.steps} t={tv} farbeName={props.farbe} />}
