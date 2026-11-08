@@ -306,3 +306,23 @@ def test_der_bildschirm_erreicht_den_prompt(name, monkeypatch):
         list(ergebnis or [])  # der Generator läuft erst beim Auslesen
     assert "<<<SCREEN" in gesehen["prompt"]
     assert "Rate-Treppe" in gesehen["prompt"]
+
+
+def test_hier_auf_der_karte_meint_das_viertel():
+    """08.11.2026: „Was ist hier gerade im Bau?" kam aus Lottis Fenster auf der
+    Karte von Donnerschwee ohne Ort ans Archiv, das zurückfragte."""
+    karte = {"route": "/karte", "heading": "Donnerschwee", "refs": {"place_id": "donnerschwee"}}
+    ort = qa.screen_ort(None, karte, "Was ist hier gerade im Bau?")
+    assert ort and ort["id"] == "donnerschwee"
+    # Ohne Hinweis auf den Bildschirm bleibt die Frage, wie sie ist …
+    assert qa.screen_ort(None, karte, "Wie hoch sind die Schulden der Stadt?") is None
+    # … außer die Analyse findet keinen Gegenstand.
+    assert qa.screen_ort(None, karte, "Was ist geplant?", unklar=True)["id"] == "donnerschwee"
+    # Kein Ort auf dem Bildschirm, kein Ort im Filter.
+    assert qa.screen_ort(None, {"route": "/karte", "refs": {}}, "Was ist hier los?") is None
+    assert qa.screen_ort(None, {"refs": {"place_id": "gibt-es-nicht"}}, "hier?") is None
+
+
+def test_der_router_holt_den_ort_vom_bildschirm():
+    quelle = (Path(__file__).parent.parent / "web/backend/app/routers/council.py").read_text()
+    assert "ort = qa.screen_ort(store, bildschirm, q, unklar=" in quelle
