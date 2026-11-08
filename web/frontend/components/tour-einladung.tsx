@@ -9,7 +9,7 @@ import { startGuidedTour, tourGesehen } from "@/components/tour";
 import {
   ONBOARDING_DONE_EVENT,
   ONBOARDING_FINISHED_EVENT,
-} from "@/components/onboarding-flow";
+} from "@/lib/onboarding-state";
 import { einladungStand, meldeTour, merkeEinladung } from "@/lib/tour-einladung";
 import { useVollbildMelden } from "@/lib/vollbild";
 

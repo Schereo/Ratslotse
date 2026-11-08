@@ -2,6 +2,8 @@
 // httpOnly session cookie.
 import { toast } from "sonner";
 import { entwurfSichern, entwurfZiel } from "./draft";
+import { takeEarlyAuth } from "./early-auth";
+import { apiUrl } from "./api-url";
 
 /** Feldnamen aus Pydantics ``loc`` in etwas, das man vorlesen kann. */
 const FIELD_LABELS: Record<string, string> = {
@@ -93,12 +95,25 @@ function mitGrenze(eigenes: AbortSignal | null | undefined, ms: number): { signa
   return { signal: ctrl.signal, zeitUm: () => um, fertig: () => clearTimeout(t) };
 }
 
+/** Ein schon laufender Abruf, aber mit derselben Grenze wie ein eigener: Bricht
+ *  das Signal ab, gibt der Aufrufer auf (der Abruf selbst läuft aus). */
+function mitAbbruch(laufend: Promise<Response>, signal: AbortSignal): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const abbrechen = () => reject(new DOMException("Aborted", "AbortError"));
+    if (signal.aborted) { abbrechen(); return; }
+    signal.addEventListener("abort", abbrechen, { once: true });
+    laufend.then(resolve, reject);
+  });
+}
+
 async function request<T>(path: string, options: RequestInit & { grenzeMs?: number } = {}): Promise<T> {
   const { grenzeMs = ANFRAGE_GRENZE_MS, ...rest } = options;
   const grenze = mitGrenze(rest.signal, grenzeMs);
+  // Der erste `/auth/me` der Seite läuft schon seit dem <head> (lib/early-auth.ts).
+  const vorab = path === "/auth/me" && !rest.method ? takeEarlyAuth() : null;
   let res: Response;
   try {
-    res = await fetch(apiUrl(path), {
+    res = vorab ? await mitAbbruch(vorab, grenze.signal) : await fetch(apiUrl(path), {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
@@ -186,9 +201,7 @@ export const api = {
 
 /** URL for a backend path, for manual fetches (e.g. SSE streaming) that bypass
  *  the `api` wrapper. */
-export function apiUrl(path: string): string {
-  return `/api${path}`;
-}
+export { apiUrl };
 
 export function qs(params: Record<string, string | number | undefined>): string {
   const parts = Object.entries(params)

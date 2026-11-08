@@ -24,10 +24,10 @@ import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
 import { decisionHref, fragenHref } from "@/lib/routes";
 import type { ElementFrage } from "./index";
 import type { MarkierFrage } from "./markier-knopf";
-import { auswahlText, frageMitZitat } from "@/lib/markieren";
+import { useTastatur } from "./hooks";
+import { frageMitZitat } from "@/lib/markieren";
 import { leseSseStrom } from "@/lib/sse";
 import { lottiSchrittText } from "@/lib/qa-schritte";
-import { tastaturHoehe } from "@/lib/tastatur";
 import { cn } from "@/lib/utils";
 
 /**
@@ -1488,52 +1488,4 @@ function Chip({ children, onClick, disabled, sekundaer }: {
       {children}
     </button>
   );
-}
-
-/**
- * Wie hoch die Bildschirmtastatur gerade steht.
- *
- * Nötig, weil das Fenster `position: fixed` ist: Auf iOS schrumpft der
- * Layout-Viewport nicht, wenn die Tastatur aufgeht — die Eingabezeile läge
- * dahinter, und der Browser kann ein fixiertes Fenster nicht hereinscrollen.
- * Die Rechnung selbst steht in `lib/tastatur.ts` und ist dort geprüft.
- */
-export function useTastatur(): number {
-  const [hoehe, setHoehe] = useState(0);
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const messen = () => setHoehe(tastaturHoehe(vv, window.innerHeight));
-    messen();
-    vv.addEventListener("resize", messen);
-    vv.addEventListener("scroll", messen);
-    return () => {
-      vv.removeEventListener("resize", messen);
-      vv.removeEventListener("scroll", messen);
-    };
-  }, []);
-  return hoehe;
-}
-
-/** Der markierte Text der Seite — als Hook, damit Knopf und Fenster dieselbe
- *  Quelle haben. Läuft über `selectionchange` mit kurzer Ruhepause: Während
- *  man mit der Maus zieht, feuert das Ereignis bei jedem Pixel. */
-export function useMarkierung(): string {
-  const [text, setText] = useState("");
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    const onChange = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        const fenster = document.querySelector("[data-lotti-fenster]");
-        setText(auswahlText(document.getSelection(), fenster, document.activeElement));
-      }, 250);
-    };
-    document.addEventListener("selectionchange", onChange);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener("selectionchange", onChange);
-    };
-  }, []);
-  return text;
 }

@@ -9,6 +9,7 @@
  */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { Sparkles } from "lucide-react";
 import { BrandMark } from "@/components/brand";
 import { ShareAktionen } from "@/components/share-aktionen";
@@ -42,7 +43,11 @@ type Share = {
 // Server-seitig direkt ans Backend (gleiche env wie der /api-Rewrite).
 const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
 
-async function ladeShare(token: string): Promise<Share | null> {
+// `cache`: Metadaten und Seite fragen dasselbe Token ab — einmal je Aufruf
+// statt zweimal. Reacts eigene fetch-Merkliste greift hier nicht, sie steigt
+// bei einem fremden `signal` (der Zeitgrenze unten) aus; bis 11/2026 ging
+// deshalb jeder Aufruf, auch jede Link-Vorschau, zweimal ans Backend.
+const ladeShare = cache(async (token: string): Promise<Share | null> => {
   if (!token || token.length > 64) return null;
   try {
     const r = await fetch(`${BACKEND}/api/council/qa-share/${encodeURIComponent(token)}`,
@@ -54,7 +59,7 @@ async function ladeShare(token: string): Promise<Share | null> {
   } catch {
     return null;
   }
-}
+});
 
 function fmtDatum(iso: string | null | undefined): string {
   if (!iso || iso.length < 10) return "";
@@ -104,7 +109,10 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
           <BrandMark className="h-7 w-7" />
           <span className="font-display text-lg font-bold tracking-tight">Ratslotse</span>
         </Link>
-        <Link href="/fragen"
+        {/* prefetch={false}: /fragen verlangt ein Konto. Vorgeladen wurde für
+            Empfänger*innen ohne Konto das ganze App-Gerüst (gut 100 KB JS),
+            und der Klick führt dann doch zur Anmeldung. */}
+        <Link href="/fragen" prefetch={false}
           className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
           <Sparkles className="h-3.5 w-3.5" aria-hidden /> Selbst den Rat fragen
         </Link>
@@ -119,7 +127,7 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
             Der Link ist abgelaufen oder wurde gelöscht — du kannst dem Rat die Frage selbst stellen.
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
-            <Link href="/fragen"
+            <Link href="/fragen" prefetch={false}
               className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
               <Sparkles className="h-3.5 w-3.5" aria-hidden /> Selbst fragen
             </Link>
