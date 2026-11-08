@@ -94,6 +94,58 @@ test.describe("Ein frisches Konto", () => {
       .toHaveAttribute("aria-pressed", "false");
   });
 
+  test("ein Stadtthema steht nur an seiner Kachel — anwählen, anpassen, abwählen", async ({ page }) => {
+    // Bis 11/2026 stand ein gewähltes Stadtthema zusätzlich oben in „Deine
+    // Themen" und wiederholte, was die Kachel schon zeigte. Die Kachel ist
+    // jetzt der Umschalter und trägt „anpassen" selbst.
+    //
+    // In der CI ist die Ratsdatenbank leer — dort gäbe es keine Kachel (zu
+    // wenig Beschlüsse). Vorschläge und Themenliste sind deshalb gesetzt.
+    let themen: { id: number; name: string; description: string; image_key: string; matched: boolean; hits_12m: number }[] = [];
+    await page.route("**/api/topics", (r) => {
+      if (r.request().method() === "GET") return r.fulfill({ json: themen });
+      if (r.request().method() === "POST") {
+        const t = { id: themen.length + 1, ...r.request().postDataJSON(), image_key: "cycling", matched: true, hits_12m: 7 };
+        themen.push(t);
+        return r.fulfill({ json: t });
+      }
+      return r.continue();
+    });
+    await page.route("**/api/topics/*", (r) => {
+      if (r.request().method() !== "DELETE") return r.continue();
+      const id = Number(new URL(r.request().url()).pathname.split("/").pop());
+      themen = themen.filter((t) => t.id !== id);
+      return r.fulfill({ status: 204 });
+    });
+    // Nach der allgemeinen Regel angelegt: Die zuletzt angelegte gewinnt.
+    await page.route("**/api/topics/suggestions**", (r) => r.fulfill({ json: {
+      city: [{ name: "Radverkehr", description: "Radwege, Fahrradstraßen und Abstellanlagen.", n: 7, key: "cycling" }],
+      suggestions: [], districts: [],
+    } }));
+    await registrieren(page);
+    await bisZuDenGremien(page);
+    await page.getByRole("button", { name: /Weiter/ }).last().click();
+    await expect(page.getByText("Worüber willst du Bescheid wissen?")).toBeVisible({ timeout: 15_000 });
+
+    const kachel = page.locator("button[aria-pressed]", { hasText: "Radverkehr" });
+    const anpassen = page.getByRole("button", { name: "Radverkehr anpassen" });
+    await expect(kachel).toHaveAttribute("aria-pressed", "false");
+    await expect(anpassen).toHaveCount(0);
+
+    await kachel.click();
+    await expect(kachel).toHaveAttribute("aria-pressed", "true");
+    await expect(anpassen).toBeEnabled();
+    await expect(page.getByText(/Deine Themen/)).toHaveCount(0);
+    expect(themen.map((t) => t.name)).toEqual(["Radverkehr"]);
+
+    // Ein zweiter Klick nimmt es wieder heraus.
+    await kachel.click();
+    await expect(kachel).toHaveAttribute("aria-pressed", "false");
+    await expect(anpassen).toHaveCount(0);
+    // Die Anzeige springt sofort um; gelöscht ist erst, wenn der Server es war.
+    await expect.poll(() => themen.length).toBe(0);
+  });
+
   test("der Server kennt den Stand — nicht nur der Browser", async ({ page }) => {
     // Wer die App mittendrin schließt, macht dort weiter. Das kann nur
     // funktionieren, wenn der Schritt auf dem Server steht.
