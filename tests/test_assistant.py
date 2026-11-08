@@ -1303,19 +1303,14 @@ def test_kein_name_und_keine_adresse_im_prompt(client, monkeypatch, konto):
 
 # --- 10. Die Befunde der Durchsicht vom 21.09.2026 --------------------------
 
-def test_ohne_das_recht_gibt_es_keine_erklaerung(client, konto):
-    """**Der Knopf ist Höflichkeit, der Endpunkt ist die Sperre.**
-
-    Auf einer Haushalts-Seite erscheint der Knopf ohne das Recht `budget`
-    gar nicht — aber das hindert niemanden daran, die Route zu schicken.
-    Gemessen vor dem Riegel: Status 200 samt Seiten-Wissen und, bei einer
-    eigenen Frage, den Haushaltszahlen aus `geld_kontext`.
-    """
+def test_jedes_konto_bekommt_den_haushalt_erklaert(client, konto):
+    """Seit 08.11.2026 trägt die Standardrolle `budget` (kern/roles.py) —
+    bis dahin antwortete diese Route einem regulären Konto mit 403. Der Riegel
+    im Endpunkt bleibt für ein Recht, das künftig wieder enger wird."""
     konto["roles"] = ["user"]
     r = client.post("/api/council/explain", json={
         "route": "/haushalt/schulden", "question": "Was sehe ich hier?"})
-    assert r.status_code == 403
-    assert "Konto" in r.json()["detail"]
+    assert r.status_code == 200
 
 
 def test_mit_dem_recht_antwortet_dieselbe_seite(client, konto):
@@ -1818,15 +1813,14 @@ def test_startfragen_einer_gesperrten_seite_sind_leer(client):
     assert r.json()["starters"] == []
 
 
-def test_startfragen_ohne_das_recht_sind_leer_nicht_403(client, konto):
-    """Anders als `/explain`: Hier steckt kein geschützter Inhalt hinter dem
-    Riegel, nur derselbe kuratierte Text, der schon im Repo steht — und das
-    Fenster ruft diesen Endpunkt von selbst beim Öffnen auf, nicht auf einen
-    Klick. Ein 403 wäre eine Fehlermeldung für nichts, was passiert ist."""
+def test_startfragen_zum_haushalt_fuer_jedes_konto(client, konto):
+    """Seit 08.11.2026 trägt die Standardrolle `budget` — bis dahin waren die
+    Startfragen auf Haushalts-Seiten für ein reguläres Konto leer (nie 403:
+    das Fenster ruft den Endpunkt von selbst beim Öffnen auf)."""
     konto["roles"] = ["user"]
     r = client.get("/api/council/assistant/starters", params={"route": "/haushalt/schulden"})
     assert r.status_code == 200
-    assert r.json()["starters"] == []
+    assert r.json()["starters"]
 
 
 def test_startfragen_mit_dem_recht(client, konto):

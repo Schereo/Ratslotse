@@ -7531,14 +7531,16 @@ def test_council_parties_liefert_kanonische_filterwerte(client):
 
 
 # ---- Rollen und Rechte ----
-def test_haushalt_ist_zu_fuer_regulaere_konten_und_offen_fuer_ratsmitglieder(client):
+def test_haushalt_ist_offen_fuer_jedes_konto_und_zu_ohne_anmeldung(client):
     """Der Beweis am laufenden Server statt an der Signatur.
 
-    Alle drei Fälle in einem Test, weil sie nur zusammen etwas aussagen: Ein
-    403 für jeden wäre auch dann grün, wenn die Rolle gar nichts bewirkte.
+    Seit 08.11.2026 (Tims Entscheidung) trägt die Standardrolle das Recht
+    `budget`: Jedes angemeldete Konto sieht den Haushalt, ohne Anmeldung
+    bleibt er zu. Bis dahin bekam ein reguläres Konto hier 403.
     """
+    assert client.get("/api/council/budget/data-status").status_code == 401
     _register(client, "buerger@example.org")
-    assert client.get("/api/council/budget/data-status").status_code == 403
+    assert client.get("/api/council/budget/data-status").status_code == 200
 
     store = Store(RATSLOTSE_DB)
     try:
@@ -7563,7 +7565,7 @@ def test_konto_schickt_seine_rechte_mit(client):
     Rolle bräuchte ein App-Update im Store."""
     _register(client, "wer@example.org")
     me = client.get("/api/auth/me").json()
-    assert me["roles"] == [] and me["permissions"] == []
+    assert me["roles"] == [] and me["permissions"] == ["budget"]   # Standardrolle, s. kern/roles.py
     # `role` bleibt gefüllt: Die ausgelieferte App liest es als Pflichtfeld.
     assert me["role"] == "user"
 

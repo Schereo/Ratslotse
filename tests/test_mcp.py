@@ -25,6 +25,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
 from app.routers import mcp as mcp_router  # noqa: E402
 from council import mcp_tools  # noqa: E402
+from kern import roles  # noqa: E402
 from council.scraper import AgendaItem, CouncilSession  # noqa: E402
 from council.store import COUNCIL_USER_OWNED_TABLES, CouncilStore  # noqa: E402
 from kern.store import USER_OWNED_TABLES, Store  # noqa: E402
@@ -230,7 +231,7 @@ def test_werkzeuge_lesen_beschluesse(client):
     did = _beschluss()
     werkzeuge = _rpc(token, "tools/list").json()["result"]["tools"]
     # Ein Konto ohne Haushaltsrecht sieht genau die Werkzeuge ohne Recht.
-    assert {w["name"] for w in werkzeuge} == {t.name for t in mcp_tools.erlaubt(set())}
+    assert {w["name"] for w in werkzeuge} == {t.name for t in mcp_tools.erlaubt(set(roles.permissions_for([])))}
     assert all(w["annotations"]["readOnlyHint"] for w in werkzeuge)
 
     r = _rpc(token, "tools/call", {"name": "get_decision",
@@ -659,23 +660,16 @@ def _schuldenstand() -> None:
 
 
 def test_haushaltswerkzeuge_nur_mit_budget(client):
-    """Ohne ``budget`` stehen die Haushaltswerkzeuge nicht in der Liste und
-    lassen sich nicht rufen — als gäbe es sie nicht. Mit dem Recht
-    (Ratsmitglied) kommen Werte mit Beleg."""
+    """Ohne ``budget`` stehen die Haushaltswerkzeuge nicht in der Liste — als
+    gäbe es sie nicht. Seit 08.11.2026 trägt jedes Konto das Recht
+    (Standardrolle), ein MCP-Schlüssel ohne Ratsmandat bekommt sie also mit;
+    die Filterung selbst prüft der erste Teil direkt."""
+    assert not any(t.name.startswith(("budget_", "enterprise_", "fee_", "cash_"))
+                   for t in mcp_tools.erlaubt(set()))
     _schuldenstand()
-    _konto(client, email="ohne@example.org")
-    ohne = _schluessel(client)
-    namen = {w["name"] for w in _rpc(ohne, "tools/list").json()["result"]["tools"]}
-    assert not any(n.startswith(("budget_", "enterprise_", "fee_", "cash_")) for n in namen)
-    r = _rpc(ohne, "tools/call", {"name": "budget_series",
-                                  "arguments": {"series": "schulden"}}).json()
-    assert r["error"]["code"] == -32602
-
-    client.cookies.clear()
-    _konto(client, email="rat@example.org", rollen=("mcp_access", "council_member"))
+    _konto(client, email="mcp@example.org")
     mit = _schluessel(client)
     assert "budget_search" in _rpc(mit, "initialize", {}).json()["result"]["instructions"]
-    assert "budget_search" not in _rpc(ohne, "initialize", {}).json()["result"]["instructions"]
     namen = {w["name"] for w in _rpc(mit, "tools/list").json()["result"]["tools"]}
     assert {"budget_search", "budget_series", "budget_product", "enterprise_plans",
             "fee_calculations", "cash_position", "budget_document"} <= namen

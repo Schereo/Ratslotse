@@ -35,12 +35,13 @@ def test_admin_traegt_jedes_recht():
     assert roles.permissions_for(["admin"]) == frozenset(roles.PERMISSIONS)
 
 
-def test_die_standardrolle_traegt_keine_rechte():
-    """Was alle dürfen, hängt an `require_active` und braucht kein Recht.
-    Gäbe die Standardrolle eines, hätte es jedes Konto — und die Prüfung wäre
-    eine Prüfung, die nie etwas verhindert."""
-    assert roles.permissions_for([roles.DEFAULT_ROLE]) == frozenset()
-    assert roles.permissions_for([]) == frozenset()
+def test_die_standardrolle_traegt_den_haushalt():
+    """Seit 08.11.2026 (Tims Entscheidung) hat jedes Konto den Haushalt — die
+    Standardrolle trägt `budget`, und sie gilt auch ohne Zeile in
+    `web_user_roles`. Bis dahin trug sie bewusst kein Recht."""
+    assert roles.permissions_for([roles.DEFAULT_ROLE]) == frozenset({"budget"})
+    assert roles.permissions_for([]) == frozenset({"budget"})
+    assert "mandate" not in roles.permissions_for([])
 
 
 def test_ratsmitglied_darf_den_haushalt_und_sonst_nichts_besonderes():
@@ -78,7 +79,9 @@ def test_recherche_plus_traegt_nur_das_modell_recht():
     Trüge sie ``budget`` mit, öffnete das größere Modell nebenbei den
     Haushalt; trüge sie gar nichts, wäre sie eine Rolle ohne Wirkung.
     """
-    assert roles.permissions_for(["research_plus"]) == frozenset({"premium_models"})
+    # `budget` kommt seit 11/2026 aus der Standardrolle, nicht aus dieser.
+    assert roles.ROLES["research_plus"].permissions == frozenset({"premium_models"})
+    assert roles.permissions_for(["research_plus"]) == frozenset({"premium_models", "budget"})
     assert roles.permissions_for(["council_member", "research_plus"]) == frozenset(
         {"budget", "mandate", "premium_models"})
     assert roles.ROLES["research_plus"].assignable is True
@@ -112,7 +115,7 @@ def test_unbekannte_rollen_fliegen_raus_statt_zu_werfen():
     """Eine gewachsene Datenbank kann eine abgeschaffte Rolle tragen. Ein
     500er beim Anmelden wäre der schlechteste Umgang damit."""
     assert roles.known_roles(["admin", "hausmeister", None]) == ["admin"]
-    assert roles.permissions_for(["hausmeister"]) == frozenset()
+    assert roles.permissions_for(["hausmeister"]) == roles.permissions_for([])
 
 
 def test_staerkste_rolle_gewinnt_fuer_die_alt_spalte():

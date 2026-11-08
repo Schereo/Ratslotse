@@ -461,7 +461,8 @@ def test_rechte_werden_vor_dem_zwischenspeicher_geprueft(frische_dbs):
     for url in ("/api/council/budget/documents", "/api/council/budget/journey",
                 "/api/council/budget/shareholdings"):
         assert client.get(url, headers=koepfe["ratsfrau"]).status_code == 200
-        assert client.get(url, headers=koepfe["leserin"]).status_code == 403
+        # Seit 08.11.2026 hat jedes Konto den Haushalt (Standardrolle).
+        assert client.get(url, headers=koepfe["leserin"]).status_code == 200
         assert client.get(url).status_code == 401
     assert client.get("/api/council/districts").status_code == 401
     assert client.get("/api/council/analysis").status_code == 401

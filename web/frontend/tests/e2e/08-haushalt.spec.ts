@@ -12,8 +12,8 @@
  * halbleere Seite sehen.
  *
  * Die Konten kommen aus `scripts/saat_konten.py`, das der E2E-Backend-Start
- * ausführt: `ratsfrau@example.org` trägt die Rolle *Ratsmitglied* (Recht
- * `budget`), `nutzerin@example.org` trägt keine.
+ * ausführt: `ratsfrau@example.org` trägt die Rolle *Ratsmitglied*,
+ * `nutzerin@example.org` keine — seit 08.11.2026 haben beide `budget`.
  */
 import { expect, test } from "@playwright/test";
 import { zustandsDatei } from "./konten";
@@ -42,28 +42,16 @@ const SEITEN = [
   "/haushalt/vergleich",
 ];
 
-test.describe("Ohne das Recht `budget`", () => {
+test.describe("Jedes Konto, auch ohne Rolle", () => {
+  // Seit 08.11.2026 (Tims Entscheidung) trägt die Standardrolle `budget`
+  // (kern/roles.py). Bis dahin stand hier „ohne das Recht: 404, kein Link“.
   test.use({ storageState: zustandsDatei("nutzerin") });
 
-  test("die Übersicht ist nicht da — und zwar als 404, nicht als leere Seite", async ({ page }) => {
-    await page.goto("/haushalt");
-    // `notFound()` im Layout landet auf `app/(app)/not-found.tsx`. Eine leere
-    // Seite wäre schlechter: Sie sieht aus wie „noch keine Daten" und lädt zum
-    // Nachfragen ein.
-    await expect(page.getByText(NICHT_GEFUNDEN).first()).toBeVisible({ timeout: 15_000 });
-  });
-
-  test("auch die Unterseiten nicht", async ({ page }) => {
-    for (const pfad of ["/haushalt/schulden", "/haushalt/produkte", "/haushalt/labor"]) {
-      await page.goto(pfad);
-      await expect(page.getByText(NICHT_GEFUNDEN).first(), pfad)
-        .toBeVisible({ timeout: 15_000 });
-    }
-  });
-
-  test("die Navigation bietet den Bereich gar nicht erst an", async ({ page }) => {
+  test("die Navigation führt hin, und die Übersicht geht auf", async ({ page }) => {
     await page.goto("/dashboard");
-    await expect(page.getByRole("link", { name: /^Haushalt$/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Haushalt/ }).first()).toBeVisible();
+    await page.goto("/haushalt");
+    await expect(page.getByText(NICHT_GEFUNDEN)).toHaveCount(0);
   });
 });
 
