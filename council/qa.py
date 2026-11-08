@@ -140,7 +140,11 @@ def deep_model_for(premium: bool) -> str:
 # 3.1 bei 80 % — nicht wegen des Modells, sondern weil es die Frage ungefragt
 # umschrieb (s. dort). Behält ZDR (Gemini über Google hat einen
 # ZDR-Endpunkt). Dieselbe Variable liest council/cities/evidence.py.
-EXPAND_MODEL = os.environ.get("COUNCIL_QA_EXPAND_MODEL", "google/gemini-3.1-flash-lite")
+# GPT-5.6 Luna über Azure EU seit 08.11.2026: Gemini 3.1 Flash Lite hat zwar
+# einen EU-Endpunkt (google-vertex/eu), lief dort mit ZDR aber in 13 von 70
+# Aufrufen in den Timeout; Azure EU in 0 von 120, Gold-Set 100 % statt 97 %
+# (s. kern/llm.py::EU_ZUERST).
+EXPAND_MODEL = os.environ.get("COUNCIL_QA_EXPAND_MODEL", "openai/gpt-5.6-luna")
 
 _STOP = {
     "wurde", "wurden", "wird", "werden", "beschlossen", "beschluss", "stadt", "stadtrat",
