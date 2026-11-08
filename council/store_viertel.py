@@ -446,20 +446,38 @@ class ViertelMixin(StoreBasis):
             if hidden and not include_hidden:
                 continue
             decisions = self._conn.execute(
-                "SELECT d.id, d.title, d.outcome, se.session_date AS date, se.committee "
+                # Ein Beschluss ohne Titel (Fliegerhorst, 9501) ließ die ganze
+                # Tafel mit 500 abbrechen — der Vertrag sagt ``title: str``.
+                "SELECT d.id, COALESCE(d.title, d.summary, '') AS title, d.outcome, "
+                "se.session_date AS date, se.committee, d.summary "
                 "FROM council_district_project_decisions pd "
                 "JOIN council_decisions d ON d.id = pd.decision_id "
                 "JOIN council_sessions se ON se.ksinr = d.ksinr "
                 "WHERE pd.project_id = ? ORDER BY se.session_date DESC, d.id DESC", (r["id"],)).fetchall()
             ids = [d["id"] for d in decisions]
             locations = self._project_locations(ids, place_id) if ids else []
+            # „Zuletzt im Rat" allein sagt nicht, WAS dort war: Der jüngste
+            # Beschluss kommt mit seinem Kernsatz, damit Heute und App den Stand
+            # nennen können, ohne die Beschlussliste selbst zu sortieren. Am
+            # selben Tag geht ein Beschluss einer Kenntnisnahme vor — sonst
+            # stünde „Bericht zur Kenntnis genommen" statt „Aufstellung
+            # beschlossen" (Krusenbusch, 21.05.2026).
+            juengste = [d for d in decisions if d["date"] == decisions[0]["date"]] if decisions else []
+            neuester = next((d for d in juengste if d["outcome"] not in (None, "noted")),
+                            juengste[0] if juengste else None)
+            latest_update = {
+                "decision_id": neuester["id"], "date": neuester["date"], "committee": neuester["committee"],
+                "title": neuester["title"], "outcome": neuester["outcome"], "summary": neuester["summary"],
+            } if neuester else None
             out.append({
                 "id": r["id"], "project_key": r["project_key"], "place_id": r["place_id"],
                 "name": r["name"], "what": r["what"], "stage": r["stage"], "when": r["when_text"],
                 "category": r["category"], "confidence": r["confidence"],
                 "first_date": r["first_date"], "last_date": r["last_date"],
                 "report_count": r["report_count"], "hidden": hidden,
-                "decisions": [dict(d) for d in decisions],
+                "decisions": [{k: d[k] for k in ("id", "title", "outcome", "date", "committee")}
+                              for d in decisions],
+                "latest_update": latest_update,
                 "locations": locations,
                 **schedule_state(r["stage"], r["when_text"], r["last_date"]),
             })

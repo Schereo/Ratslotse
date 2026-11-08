@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { letzterViertelStand, naechsteViertelBeratung, type ViertelTafel } from "./viertel-einblick";
+import { letzterViertelStand, naechsteViertelBeratung, viertelVorhaben, wegStufe, type ViertelTafel } from "./viertel-einblick";
 
 function projekt(id: number, last_date: string | null, stage = "planning", hidden = false): ViertelTafel["projects"][number] {
   return { id, last_date, stage, hidden, first_date: null, project_key: String(id), place_id: "krusenbusch",
@@ -24,5 +24,16 @@ describe("Viertel-Einblick", () => {
     expect(naechsteViertelBeratung([termin(1, "2026-09-11"), termin(2, "2026-09-27")], "2026-09-12")).toBeUndefined();
     expect(naechsteViertelBeratung([termin(2, "2026-09-12", "19:00"), termin(3, "2026-09-26"), termin(1, "2026-09-12", "16:00")], "2026-09-12")?.id).toBe(1);
     expect(naechsteViertelBeratung([termin(1, "2026-09-26")], "2026-09-12")?.id).toBe(1);
+  });
+
+  it("blättert die Vorhaben nach jüngster Beratung, ausgeblendete fehlen", () => {
+    const projects = [projekt(1, "2025-08-18"), projekt(2, null), projekt(3, "2026-05-21"), projekt(4, "2026-06-01", "planning", true)];
+    expect(viertelVorhaben(projects).map(p => p.id)).toEqual([3, 1, 2]);
+  });
+
+  it("legt „abgelehnt“ neben den Weg", () => {
+    expect(wegStufe("idea")).toBe(0);
+    expect(wegStufe("building")).toBe(3);
+    expect(wegStufe("rejected")).toBe(-1);
   });
 });
