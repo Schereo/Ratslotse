@@ -167,10 +167,22 @@ describe("committeeImage — Lotti je Ausschuss", () => {
       "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit",
       "Betriebsausschuss Abfallwirtschaftsbetrieb", "Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau",
       "Jugendhilfeausschuss", "Kulturausschuss", "Schulausschuss", "Sozialausschuss",
-      "Sportausschuss", "Verkehrsausschuss",
+      "Sportausschuss", "Verkehrsausschuss", "Ausschuss für Gesundheit und Soziales",
     ]) {
       expect(committeeImage(lang), lang).toMatch(/^\/gremien\/[a-z]+\.webp$/);
     }
+  });
+
+  it("der Ausschuss der neuen Wahlperiode ist vollständig da, nicht nur per Heuristik", () => {
+    // Tims Befund 08.11.2026: „Gesundheit & Soziales“ stand im Assistenten
+    // ohne Bild, ohne Satz und ganz unten — der Name kam aus der Heuristik,
+    // alles andere fehlte.
+    const lang = "Ausschuss für Gesundheit und Soziales";
+    expect(shortCommittee(lang)).toBe("Gesundheit & Soziales");
+    expect(committeeImage(lang)).toBe("/gremien/health.webp");
+    expect(committeeExplains(lang)).not.toBe("");
+    expect(committeeRank(lang)).toBe(committeeRank("Sozialausschuss"));
+    expect(committeeIcon(lang)).not.toBe(committeeIcon(null));
   });
 
   it("die historische Umbenennung trägt dasselbe Bild wie der heutige Name", () => {

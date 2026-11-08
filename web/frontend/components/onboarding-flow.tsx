@@ -597,7 +597,7 @@ function CommitteeStep({ onNext }: { onNext: () => void }) {
               <button key={c} type="button" aria-pressed={on}
                 onClick={() => toggle.mutate({ committee: c, on: !on })}
                 className={cn(
-                  "relative flex items-start gap-3 rounded-xl border p-3 pr-9 text-left transition-colors",
+                  "relative flex items-center gap-3 rounded-xl border p-3 pr-9 text-left transition-colors",
                   // Auf dem Blatt (Desktop) eine Stufe leiser als das Blatt
                   // selbst — Container im Container; am Telefon, wo kein Blatt
                   // ist, bleibt die Kachel weiß auf der Seite.
@@ -636,12 +636,20 @@ function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolea
   const Icon = committeeIcon(committee);
   const bild = committeeImage(committee);
   if (bild) {
+    // 80 px und leicht herangezoomt: Bei 56 px war Lotti samt Requisit kaum zu
+    // erkennen, und im Bild selbst füllt das Motiv nur rund zwei Drittel
+    // (Tims Befund 08.11.2026). Der Zoom schneidet nur Hintergrund ab — die
+    // Motive halten zum Rand gut ein Sechstel Abstand.
     return (
-      // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={bild} alt="" width={56} height={56} loading="lazy" decoding="async"
-        className={cn("h-14 w-14 shrink-0 rounded-xl bg-muted object-cover transition-shadow",
-                      aktiv && "ring-2 ring-primary ring-offset-2 ring-offset-background")} />
+      <span aria-hidden className={cn(
+        "block h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted transition-shadow",
+        aktiv && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+      )}>
+        {/* Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={bild} alt="" width={80} height={80} loading="lazy" decoding="async"
+          className="h-full w-full scale-[1.1] object-cover" />
+      </span>
     );
   }
   return (

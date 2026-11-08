@@ -534,17 +534,20 @@ private struct CommitteeChoiceRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 // Lotti mit einem Requisit aus dem Sachbereich (Asset-Katalog,
                 // `Committee<Key>`); Gremien ohne Bild behalten das Kästchen vorn.
+                // 72 pt und leicht herangezoomt: Bei 52 pt war die Figur kaum zu
+                // erkennen (Tims Befund 08.11.2026, im Web dasselbe mit 80 px).
                 if let asset = CommitteeCopy.imageAssetName(committee) {
                     Image(asset)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 52, height: 52)
-                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        .scaleEffect(1.1)
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            RoundedRectangle(cornerRadius: 13, style: .continuous)
                                 .stroke(selected ? RatsColor.primary : Color.clear, lineWidth: 2)
                         )
                         .accessibilityHidden(true)
@@ -1367,6 +1370,7 @@ private enum CommitteeCopy {
         "Kulturausschuss": "Kultur",
         "Schulausschuss": "Schule",
         "Sozialausschuss": "Soziales",
+        "Ausschuss für Gesundheit und Soziales": "Gesundheit & Soziales",
         "Sportausschuss": "Sport",
         "Verkehrsausschuss": "Verkehr",
     ]
@@ -1386,13 +1390,14 @@ private enum CommitteeCopy {
         "Kultur": "Museen, Theater, Bibliotheken und die Förderung der freien Szene.",
         "Schule": "Schulen, Ganztagsbetreuung und neue Bildungsstandorte.",
         "Soziales": "Wohnen, Pflege, Teilhabe und soziale Angebote der Stadt.",
+        "Gesundheit & Soziales": "Gesundheit, Pflege, Wohnen, Teilhabe und soziale Angebote der Stadt.",
         "Sport": "Sportstätten, Vereinsförderung und Bäder.",
         "Verkehr": "Radwege, Straßen, Bus & Bahn, Parken und Verkehrsberuhigung.",
     ]
 
     private static let ranks = [
         "Rat": 0, "Stadtplanung & Bauen": 1, "Verkehr": 2, "Stadtgrün & Klima": 3,
-        "Schule": 4, "Soziales": 5, "Jugendhilfe": 6, "Finanzen & Beteiligungen": 7,
+        "Schule": 4, "Soziales": 5, "Gesundheit & Soziales": 5, "Jugendhilfe": 6, "Finanzen & Beteiligungen": 7,
         "Kultur": 8, "Sport": 9, "Wirtschaft & Digitales": 10,
         "Integration & Migration": 11, "Verwaltungsausschuss": 12,
         "Allgemeine Angelegenheiten": 13, "Betrieb Gebäudewirtschaft": 14,
@@ -1420,7 +1425,7 @@ private enum CommitteeCopy {
         "Wirtschaft & Digitales": "business", "Abfallwirtschaft": "waste",
         "Betrieb Gebäudewirtschaft": "buildings", "Jugendhilfe": "youth",
         "Kultur": "culture", "Schule": "school", "Soziales": "social",
-        "Sport": "sport", "Verkehr": "traffic",
+        "Gesundheit & Soziales": "health", "Sport": "sport", "Verkehr": "traffic",
     ]
 
     static var imageKeyList: [String] { Array(Set(imageKeys.values)).sorted() }
