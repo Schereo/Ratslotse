@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bell, Check, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Bell, Check, ChevronDown, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand } from "@/lib/onboarding-setup";
 import { isNativeApp } from "@/lib/platform";
@@ -17,6 +17,7 @@ import { TopicSheet, type Described } from "@/components/topic-sheet";
 import { einladungStand, merkeEinladung } from "@/lib/tour-einladung";
 import { StadtteilKarte } from "@/components/stadtteil-karte";
 import { useVollbildMelden } from "@/lib/vollbild";
+import { useScrollRestUnten } from "@/lib/use-scroll-rand";
 import { meldeChips, stadtthemaBild, stadtthemaChip } from "@/lib/onboarding-chips";
 
 /** Design 26a — geführtes Onboarding: einrichten statt nur vorstellen.
@@ -576,6 +577,7 @@ function CommitteeStep({ onNext }: { onNext: () => void }) {
       title="Welche Gremien interessieren dich?"
       lead="Du bekommst eine Mitteilung, sobald eine Tagesordnung erscheint. Diese Auswahl kannst du später ändern."
       pose="point"
+      mehr="Weitere Gremien"
       footer={
         <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext}>
           {active.length > 0 ? `${active.length} abonniert · Weiter` : "Weiter"}
@@ -1121,6 +1123,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
       title="Worüber willst du Bescheid wissen?"
       lead="Lege Themen an — Lotti meldet sich, sobald der Rat dazu entscheidet."
       pose="search"
+      mehr="Weitere Themen"
       footer={<Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext}>Weiter</Button>}
     >
       <form onSubmit={(e) => { e.preventDefault(); meldeChips([], ["own"]); void add(name); }} className="flex gap-2">
@@ -1800,41 +1803,82 @@ function SchrittPfad({ aktuell, native }: { aktuell: Step; native: boolean }) {
   );
 }
 
-function StepShell({ title, lead, pose, children, footer }: {
+function StepShell({ title, lead, pose, children, footer, mehr = "Mehr" }: {
   title: string;
   lead: string;
   pose: MascotPose;
   children: React.ReactNode;
   footer: React.ReactNode;
+  /** Was die Pille über der Fußleiste verspricht, solange unten noch etwas liegt. */
+  mehr?: string;
 }) {
   const step = useContext(SchrittKontext);
   const native = isNativeApp();
+  const blattRef = useRef<HTMLDivElement>(null);
+  const rest = useScrollRestUnten(blattRef);
+  // Die Pille lädt zum ersten Scrollen ein; wer einmal gescrollt hat, weiß
+  // Bescheid — ab dann trägt der Ausblendrand allein den Hinweis.
+  const pille = rest.verdeckt && rest.oben;
+  const weiter = () => {
+    const el = blattRef.current;
+    if (!el) return;
+    const ruhig = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollBy({ top: Math.max(160, el.clientHeight * 0.7), behavior: ruhig ? "auto" : "smooth" });
+  };
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className={cn(SPALTE, "px-[18px] pt-5 lg:px-8 lg:pt-6")}>
-          <div className={ZWEISPALTIG}>
-            {/* Lotti steht neben der Frage, nicht darüber: Sie fragt, man
-                antwortet — das trägt den Ton des ganzen Flows. Am Desktop
-                rutscht sie über den Titel und wird größer, und die Frage bleibt
-                beim Scrollen stehen: Auf einem langen Schritt wie den Themen
-                verliert man sonst aus dem Blick, was gefragt war. */}
-            <div className="lg:sticky lg:top-6 lg:self-start">
-              <div className="flex items-center gap-3 lg:block">
-                <Mascot pose={pose} decorative className="h-11 w-11 shrink-0 lg:mb-5 lg:h-24 lg:w-24" />
-                {/* `hyphens-none`: In der schmalen Spalte trennte der Browser die
-                    Frage mitten im Wort („Worüber willst du Be-scheid wissen?").
-                    Silbentrennung taugt für Fließtext, nicht für eine Überschrift
-                    aus vier Wörtern — die soll am Wort umbrechen. */}
-                <h1 className="font-display text-xl font-extrabold leading-tight tracking-tight text-foreground [hyphens:none] lg:text-[26px]">{title}</h1>
+      {/* Liegt unter dem sichtbaren Teil noch etwas, läuft die letzte Zeile per
+          Maske aus und eine Pille sagt, was noch kommt (Tim, 08.11.2026): Endete
+          eine Kachel zufällig genau über der Fußleiste, sah die Auswahl fertig
+          aus. Maske statt Farbverlauf (DESIGNSPRACHE § 6) — am Desktop liegt
+          das Blatt auf `bg-card`, am Telefon auf `bg-background`. */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div ref={blattRef} className={cn("min-h-0 flex-1 overflow-y-auto", rest.verdeckt && "gb-maske-unten")}>
+          <div className={cn(SPALTE, "px-[18px] pt-5 lg:px-8 lg:pt-6")}>
+            <div className={ZWEISPALTIG}>
+              {/* Lotti steht neben der Frage, nicht darüber: Sie fragt, man
+                  antwortet — das trägt den Ton des ganzen Flows. Am Desktop
+                  rutscht sie über den Titel und wird größer, und die Frage bleibt
+                  beim Scrollen stehen: Auf einem langen Schritt wie den Themen
+                  verliert man sonst aus dem Blick, was gefragt war. */}
+              <div className="lg:sticky lg:top-6 lg:self-start">
+                <div className="flex items-center gap-3 lg:block">
+                  <Mascot pose={pose} decorative className="h-11 w-11 shrink-0 lg:mb-5 lg:h-24 lg:w-24" />
+                  {/* `hyphens-none`: In der schmalen Spalte trennte der Browser die
+                      Frage mitten im Wort („Worüber willst du Be-scheid wissen?").
+                      Silbentrennung taugt für Fließtext, nicht für eine Überschrift
+                      aus vier Wörtern — die soll am Wort umbrechen. */}
+                  <h1 className="font-display text-xl font-extrabold leading-tight tracking-tight text-foreground [hyphens:none] lg:text-[26px]">{title}</h1>
+                </div>
+                <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted-foreground lg:text-[14px]">{lead}</p>
+                <SchrittPfad aktuell={step} native={native} />
               </div>
-              <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted-foreground lg:text-[14px]">{lead}</p>
-              <SchrittPfad aktuell={step} native={native} />
+              {/* Reichlich Luft unten: Die Fußzeile liegt fest, der Inhalt
+                  scrollt darunter durch — mit knappem Abstand endete die letzte
+                  Zeile am Telefon mittendrin und sah kaputt aus statt scrollbar. */}
+              <div className="mt-4 pb-8 lg:mt-0 lg:pb-6">{children}</div>
             </div>
-            {/* Reichlich Luft unten: Die Fußzeile liegt fest, der Inhalt
-                scrollt darunter durch — mit knappem Abstand endete die letzte
-                Zeile am Telefon mittendrin und sah kaputt aus statt scrollbar. */}
-            <div className="mt-4 pb-8 lg:mt-0 lg:pb-6">{children}</div>
+          </div>
+        </div>
+        {/* Dasselbe Raster wie der Inhalt, damit die Pille am Desktop unter der
+            Antwortspalte steht und nicht auf der Fuge zur Frage. Aus der
+            Tab-Reihenfolge und dem Vorlesen heraus: Sie ersetzt nur das Scrollen,
+            und wer per Tastatur oder Vorlesefunktion durchgeht, kommt ohnehin an
+            jeder Kachel vorbei. */}
+        <div aria-hidden className={cn(SPALTE, "pointer-events-none absolute inset-x-0 bottom-3 px-[18px] lg:px-8")}>
+          <div className={ZWEISPALTIG}>
+            <div className="hidden lg:block" />
+            <div className="flex justify-center">
+              <button type="button" tabIndex={-1} onClick={weiter}
+                className={cn(
+                  "inline-flex h-11 items-center gap-1.5 rounded-full border border-primary/30 bg-card px-4 text-[13px] font-medium text-primary shadow-lifted maus:h-9",
+                  "transition-[opacity,transform] duration-fluss ease-out-strong motion-reduce:transition-none",
+                  pille ? "pointer-events-auto opacity-100" : "translate-y-1 opacity-0",
+                )}>
+                {mehr}
+                <ChevronDown className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
           </div>
         </div>
       </div>
