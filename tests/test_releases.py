@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -627,3 +628,14 @@ def test_der_probe_versand_veraendert_keine_marke(store):
     _konto(store)
     news.body_html(RELEASE)  # baut nur den Text
     assert len(news.recipients(store, RELEASE)) == 1
+
+
+def test_ein_konto_vom_release_tag_sieht_die_karte_nicht():
+    """Tims Entscheidung 08.11.2026: Die Karte ist für Wiederkehrende. Wer sich
+    am Release-Tag registriert, hat die Features von Anfang an."""
+    r = releases.RELEASES[0]
+    tag = r.date
+    vortag = (date.fromisoformat(tag) - timedelta(days=1)).isoformat()
+    assert r not in releases.pending_for(None, f"{tag}T19:00:00")[0]
+    if releases.freigeschaltet(r):
+        assert r in releases.pending_for(None, f"{vortag}T19:00:00")[0]
