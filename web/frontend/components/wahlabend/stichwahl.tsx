@@ -755,7 +755,7 @@ export function StichwahlView() {
       <>
         <div className="mx-auto w-full max-w-3xl pb-6">
           <ZurueckZuWahlen />
-          <div className="mt-10 h-40 animate-pulse rounded-2xl bg-muted" />
+          <div className="mt-10 h-40 animate-pulse rounded-2xl bg-skeleton" />
         </div>
       </>
     );

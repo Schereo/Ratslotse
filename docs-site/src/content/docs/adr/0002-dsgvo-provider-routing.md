@@ -155,3 +155,47 @@ Verzicht gilt damit nur noch für den Rückfall.
 
 Die Datenschutzerklärung sagt seitdem: im Regelfall EU ohne Speicherung,
 bei einer Störung ausnahmsweise OpenAI in den USA ohne diese Zusage.
+
+## Nachtrag 08.11.2026: nur noch EU, kein Rückfall
+
+**Entscheidung (Tim):** Alle KI-Aufrufe mit Nutzereingabe laufen
+ausschließlich über Anbieter in der EU — „dass wir wirklich sagen können,
+die KI-Anfragen werden ausschließlich auf europäischen Servern verarbeitet“.
+Der Rückfall in die USA aus dem vorigen Nachtrag ist aus. Gezählt hatte er
+auf dev 0 von rund 620 Antwort-Aufrufen seit dem 23.09.
+
+- **Für welche Features:** jedes, das `kern/llm.py::nutzereingabe` als
+  Nutzereingabe kennt (auch Aufrufe ohne `_feature`), nicht mehr nur die aus
+  `ZDR_VERZICHT`. Öffentliche Ratsdaten (Crons) bleiben beim bisherigen
+  Routing.
+- **Welche Endpunkte:** `EU_ZUERST` je Modell, geprüft bei OpenRouter
+  (`/api/v1/models/<id>/endpoints`): GPT-6 Luna/Sol und GPT-5.6 Luna über
+  `azure/eu`, Gemini 3.1 Flash Lite über `google-vertex/eu`, Claude Haiku
+  und Opus 5.5 über `google-vertex/europe` bzw. `amazon-bedrock/eu-west-1`.
+  Ein Modell ohne Eintrag ist für Nutzereingaben gesperrt (`KeinEuAnbieter`),
+  statt still umzuleiten.
+- **Modellwechsel, die das erzwang:** DeepSeek (Themen-Beschreibung,
+  Vagheits-Prüfung) und Gemini 3 Flash (Lottis Prüfer) haben keinen
+  EU-Anbieter. Die Frage-Analyse lief auf Gemini 3.1 Flash Lite; dessen
+  EU-Endpunkt war mit ZDR unzuverlässig. Gemessen am 08.11.2026:
+
+  | Frage-Analyse (30 Gold-Fragen, Analyse + Suchbegriffe) | Fehler | Analyse p50 | Gold-Set |
+  |---|---:|---:|---:|
+  | Gemini 3.1 Flash Lite, global (bisher) | 2/62 | 2,1 s | 96,7 % |
+  | Gemini 3.1 Flash Lite, `google-vertex/eu` | 13/70 | 2,1 s (p95 6,2) | 93,3 % |
+  | GPT-6 Luna, `azure/eu` | 0/60 | 3,6 s | 100 % |
+  | **GPT-5.6 Luna, `azure/eu`** (neu) | 0/60 | 2,9 s | 100 % |
+
+  Themen-Beschreibung und Vagheits-Prüfung: GPT-5.6 Luna an zehn Themen
+  gleichwertig zu DeepSeek, gleiche Einordnung, rund halbe Kosten; die
+  Vagheits-Prüfung ist eine Spur strenger („Ausbau der Kita-Plätze“ gilt als
+  zu allgemein). Lottis Prüfer: Claude Haiku 5.5 (EU), am Fakten-Lauf vom
+  25.09. Fehlalarme 0/29 statt 1/29, Absagen 30/30, halber Preis.
+- **Notausgang:** `RATSLOTSE_KI_AUSSERHALB_EU=1` stellt das Verhalten des
+  vorigen Nachtrags wieder her (Rückfall, Modelle ohne EU-Anbieter). Gedacht
+  für eine längere Störung bei Azure EU. Wer ihn setzt, ändert, was die
+  Oberfläche verspricht („KI in der EU“), und die Datenschutzerklärung muss
+  es dann sagen.
+- **Was bleibt:** OpenRouter selbst sitzt in den USA und vermittelt jede
+  Anfrage. Die Datenschutzerklärung nennt das unter „Drittlandübermittlung“.
+

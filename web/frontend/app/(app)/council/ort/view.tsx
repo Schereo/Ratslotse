@@ -76,7 +76,7 @@ function PlaceInner() {
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted-foreground">Gehört zu:</span>
           {place.parents.map((parent) => (
-            <Link key={parent.id} href={ortHref(parent.id)}
+            <Link key={parent.id} href={ortHref(parent.id)} prefetch={false}
               className="rounded-full border border-border px-3 py-1 text-foreground hover:border-primary/40 hover:bg-muted">
               {parent.name}
             </Link>
@@ -89,7 +89,7 @@ function PlaceInner() {
           <h2 className="text-sm font-semibold text-muted-foreground">Orte in diesem Bereich</h2>
           <div className="mt-2 flex flex-wrap gap-2">
             {data.children.map((child) => (
-              <Link key={child.id} href={ortHref(child.id)}
+              <Link key={child.id} href={ortHref(child.id)} prefetch={false}
                 className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground hover:border-primary/40 hover:bg-muted">
                 {child.name} <span className="text-muted-foreground">· {child.kind_label}</span>
               </Link>

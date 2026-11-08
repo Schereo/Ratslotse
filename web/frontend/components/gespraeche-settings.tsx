@@ -1,5 +1,6 @@
 "use client";
 
+import { EuFlagge } from "@/components/eu-flagge";
 import { useEffect, useState } from "react";
 import { MessagesSquare } from "lucide-react";
 import { Button, Card, toast } from "@/components/ui";
@@ -116,8 +117,8 @@ export function GespraecheCard() {
           unter dem Composer und kostete dort Platz — er gehört hierher, zu den
           übrigen Entscheidungen über die eigenen Daten. */}
       <p className="mt-4 border-t border-border/60 pt-3 text-xs leading-relaxed text-muted-foreground">
-        Fragen an den Rat gehen an einen externen KI-Dienst — bitte keine
-        personenbezogenen Daten eingeben.
+        Fragen an den Rat gehen an KI-Modelle in Rechenzentren in der EU <EuFlagge />,
+        vermittelt über OpenRouter (USA) — bitte keine personenbezogenen Daten eingeben.
       </p>
     </Card>
   );

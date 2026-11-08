@@ -21,6 +21,7 @@ import { Card, DetailSkeleton, PageHeader, Segmented } from "@/components/ui";
 import { personHref } from "@/lib/routes";
 import { ratsjahre } from "@/lib/ratsjahre";
 import { useFeature } from "@/lib/features";
+import { usePrefetchRoute } from "@/lib/route-prefetch";
 
 type Filter = "all" | Gewaehlt["council_status"];
 
@@ -30,7 +31,7 @@ function PersonKarte({ g, letzte }: { g: Gewaehlt; letzte: number }) {
   const info = steckbrief(g);
   const jahre = ratsjahre(g.council_terms, letzte);
   return (
-    <Link href={personHref(g.slug)} className="block">
+    <Link href={personHref(g.slug)} prefetch={false} className="block">
       <Card className="card-interactive h-full p-3.5">
         <div className="flex items-start justify-between gap-2">
           <p className="min-w-0 text-[15px] font-semibold leading-snug text-foreground">{g.name}</p>
@@ -86,6 +87,8 @@ export default function View() {
     }
     return out;
   }, [data, filter]);
+  // Rund fünfzig Karten auf dieselbe Route: einmal vorladen statt je Karte.
+  usePrefetchRoute(data?.members[0] ? personHref(data.members[0].slug) : null);
 
   if (laedt) return <DetailSkeleton />;
   if (!an || !data) notFound();

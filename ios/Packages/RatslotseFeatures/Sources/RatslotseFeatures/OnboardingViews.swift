@@ -516,12 +516,12 @@ private struct CommitteeOnboardingStep: View {
 
     var body: some View {
         OnboardingStepPage(
-            title: "Welche Gremien interessieren dich?",
+            title: "Welche Ausschüsse interessieren dich?",
             lead: "Du bekommst eine Mitteilung, sobald eine Tagesordnung erscheint. Jederzeit änderbar.",
             scene: .children,
-            moreLabel: "Weitere Gremien",
+            moreLabel: "Weitere Ausschüsse",
             content: { Group {
-                if loading { RatsInlineLoadingState(message: "Gremien werden geladen …") }
+                if loading { RatsInlineLoadingState(message: "Ausschüsse werden geladen …") }
                 if let error { ErrorCard(message: error) { Task { await load() } } }
                 LazyVStack(spacing: 8) {
                     ForEach(committees, id: \.self) { committee in

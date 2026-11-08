@@ -11,8 +11,22 @@
  *
  * Die Probe kostet einen eigenen Kontext. Browser erlauben nur eine Handvoll
  * davon je Seite (Chrome: 16), deshalb wird er gleich wieder freigegeben.
+ *
+ * NUR MIT GRAFIKKARTE (seit 11/2026, `failIfMajorPerformanceCaveat`). Bis
+ * dahin fragte die Probe nur, OB es einen Kontext gibt. Software-GL gibt aber
+ * auch einen her — SwiftShader in Lighthouse/PageSpeed, in VMs, bei
+ * gesperrtem Grafiktreiber —, und dann übersetzte die CPU die Shader und
+ * rechnete jedes Bild selbst: gemessen rund eine Sekunde lange Tasks beim
+ * Laden, danach alle 100 ms ein Bild von 50–80 ms, dazu 190 KB three.js.
+ * Mit dem Attribut liefert der Browser in diesem Fall `null`, und es bleibt
+ * bei der gezeichneten Familie. Mit Grafikkarte ändert sich nichts — geprüft
+ * in Chromium mit ANGLE/Metal und in WebKit (WKWebView) auf einem Mac.
+ * Firefox setzt das Attribut nach seiner Grundeinstellung außer Kraft
+ * (`webgl.disable-fail-if-major-performance-caveat`); dort nicht nachgemessen.
  */
 let gemerkt: boolean | undefined;
+
+const REQUIRE_GPU: WebGLContextAttributes = { failIfMajorPerformanceCaveat: true };
 
 export function webglVerfuegbar(): boolean {
   if (gemerkt !== undefined) return gemerkt;
@@ -20,7 +34,8 @@ export function webglVerfuegbar(): boolean {
   try {
     const leinwand = document.createElement("canvas");
     const kontext =
-      leinwand.getContext("webgl2") ?? leinwand.getContext("webgl");
+      leinwand.getContext("webgl2", REQUIRE_GPU) ??
+      leinwand.getContext("webgl", REQUIRE_GPU);
     if (!kontext) {
       gemerkt = false;
       return false;

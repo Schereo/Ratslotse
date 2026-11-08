@@ -11,6 +11,7 @@
  */
 
 import { api } from "@/lib/api";
+import { geoUrl } from "@/lib/asset-paths";
 
 export interface OrtsbereichFeature {
   type: "Feature";
@@ -56,7 +57,7 @@ let geometryCache: Promise<OrtsbereichFeature[]> | null = null;
 let catalogCache: Promise<OrtsbereichCatalog> | null = null;
 
 export function loadOrtsbereiche(): Promise<OrtsbereichFeature[]> {
-  geometryCache ??= fetch("/geo/stadtteile-oldenburg.json")
+  geometryCache ??= fetch(geoUrl("stadtteile-oldenburg.json"))
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
     .then((fc) => fc.features as OrtsbereichFeature[])
     .catch(() => {

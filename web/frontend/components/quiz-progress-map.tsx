@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 // Leaflet ist client-only und schwer — erst laden, wenn die Karte dran ist.
 const QuizMap = dynamic(() => import("@/components/quiz-map").then((m) => m.QuizMap), {
   ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse rounded-xl bg-muted" />,
+  loading: () => <div className="h-full w-full animate-pulse rounded-xl bg-skeleton" />,
 });
 
 // Dieselben Deckkräfte wie auf der Karte (quiz-map.tsx, LEVEL).

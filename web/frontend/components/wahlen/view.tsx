@@ -276,7 +276,7 @@ export function WahlenView() {
     <div className="mx-auto w-full max-w-3xl pb-6">
       <PageHeader title="Wahlen" description="Die nächste Wahl in Oldenburg und die gelaufenen mit ihrem Ergebnis." />
       <div className="mt-6">
-        {isLoading ? <div className="h-56 animate-pulse rounded-3xl bg-muted" /> : null}
+        {isLoading ? <div className="h-56 animate-pulse rounded-3xl bg-skeleton" /> : null}
         {fokus ? <Buehne z={fokus} /> : null}
         {gesperrt ? <Anreiz z={gesperrt} /> : null}
 
