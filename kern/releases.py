@@ -239,10 +239,9 @@ class Release:
 RELEASES: tuple[Release, ...] = (
     Release(
         version="3.0.0",
-        # Vorläufig: der Tag, an dem die Karte entstand. Der Versionsschnitt
-        # im Release-PR setzt den echten Release-Tag — das Datum entscheidet,
-        # wer die Karte sieht (``pending_for``).
-        date="2026-10-06",
+        # Der Release-Tag — das Datum entscheidet, wer die Karte sieht
+        # (``pending_for``).
+        date="2026-11-08",
         title="Das Erklär-Update",
         schalter=("lotti-assistentin", "mein-viertel", "ideen-anderswo", "andere-staedte"),
         teaser="Drei neue Wege durch den Rat — je ein kurzes Video.",
