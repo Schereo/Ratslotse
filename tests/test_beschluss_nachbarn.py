@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import os
 import sys
-import time
 from pathlib import Path
 
 import pytest
@@ -113,8 +112,9 @@ def test_personenverzeichnis_nur_verwaltung_mit_amt(client, monkeypatch):
         {"slug": "c", "name": "Cora Rat", "art": "council", "role": "Ratsfrau"},
         {"slug": "d", "name": "Dirk Dezernent", "art": "city", "role": "Dezernent"},
     ]
-    monkeypatch.setitem(council_router._PERSONEN_LEXIKON_CACHE, "daten", lexikon)
-    monkeypatch.setitem(council_router._PERSONEN_LEXIKON_CACHE, "as_of", time.time())
+    # Seit dem Zwischenspeicher je Datenstand (#1775) kommt das Lexikon aus
+    # `_personen_lexikon`; dessen Liste gilt als geteilt und darf sich nicht ändern.
+    monkeypatch.setattr(council_router, "_personen_lexikon", lambda store: lexikon)
 
     voll = client.get("/api/council/people-directory")
     assert [p["slug"] for p in voll.json()["people"]] == ["a", "b", "c", "d"]
@@ -123,4 +123,4 @@ def test_personenverzeichnis_nur_verwaltung_mit_amt(client, monkeypatch):
     assert schmal.status_code == 200
     assert [p["slug"] for p in schmal.json()["people"]] == ["a", "d"]
     assert schmal.headers["cache-control"] == voll.headers["cache-control"]
-    assert len(council_router._PERSONEN_LEXIKON_CACHE["daten"]) == 4
+    assert len(lexikon) == 4
