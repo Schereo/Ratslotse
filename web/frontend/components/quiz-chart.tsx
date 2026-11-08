@@ -45,7 +45,7 @@ import { cn } from "@/lib/utils";
 // sind der Regelfall und sollen ohne Nachladeschritt dastehen.
 const Zeitreihe = dynamic(
   () => import("@/components/grafik/zeitreihe").then((m) => m.Zeitreihe),
-  { ssr: false, loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-muted" /> },
+  { ssr: false, loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-skeleton" /> },
 );
 
 /** Diagramm-Daten aus dem Answer-Payload (council/haushalt.py):
