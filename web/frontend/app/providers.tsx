@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth";
-import { OnboardingFlow } from "@/components/onboarding-flow";
 import { AufrufZaehler } from "@/components/aufruf-zaehler";
 import { OfflinePill } from "@/components/offline-pill";
 import { Toaster } from "@/components/ui";
@@ -39,12 +38,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         {children}
-        {/* 26a: richtet ein statt nur vorzustellen — ersetzt die drei
-            Intro-Karten (RL-1103). Wer die schon gesehen hat, gilt als
-            Bestandsnutzer und wird nicht nachträglich durchgeschickt.
-            Muss INNERHALB des AuthProviders hängen: Der Flow richtet Abos und
-            Themen ein, die es ohne Konto nicht gibt. */}
-        <OnboardingFlow />
+        {/* Der Einrichtungs-Assistent (26a) hing bis 11/2026 hier und kam so
+            auf jede Seite. Er erscheint aber nur in der App (APP_BEREICHE),
+            und die liegt ganz unter app/(app) — dort hängt jetzt sein Tor
+            (components/onboarding-gate.tsx), das ihn erst bei Bedarf lädt. */}
         {/* Zählt Seitenaufrufe (anonym, ohne Cookie). Muss INNERHALB des
             AuthProviders hängen: Ob jemand angemeldet ist, geht als Ja/Nein
             mit, damit der Server dafür kein Konto auflösen muss. */}

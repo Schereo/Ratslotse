@@ -23,48 +23,39 @@ import { openCommandPalette } from "@/components/command-palette";
 import { useGleitMarker, GleitMarker } from "@/components/gleit-marker";
 import { karteHref } from "@/lib/routes";
 import { abmeldenMerken } from "@/lib/abmelden";
-import { useMeineOrtsbereiche, useUebersicht } from "@/components/viertel/bausteine";
+import type { Topic } from "@/lib/types";
+import { TABLEISTE_HOEHE } from "@/lib/tableiste";
 
 /** Wohin „Mein Viertel" führt: auf den eigenen Stadtteil, wenn einer gewählt
  *  ist (Tims Entscheidung 5, STADTKARTE-PLAN.md), sonst auf die Stadt-Stufe.
- *  Die Übersicht wird nur geholt, wenn der Schalter an und jemand angemeldet
- *  ist — die Startseite fragt denselben Schlüssel, es kostet also nichts
- *  Zweites. */
+ *
+ *  Welches Thema ein Stadtteil ist, sagt der Server (`place_id` an jedem
+ *  Thema). Bis 11/2026 rechnete die Navigation das selbst und holte dafür auf
+ *  jeder Seite die ganze Viertel-Übersicht (`/districts/projects`) — als
+ *  dritte Stufe im Wasserfall, weil sie erst nach `/app-config` startete.
+ *  Bei mehreren Stadtteil-Themen gilt wie bisher der im Alphabet erste. */
 function useViertelZiel(an: boolean): string {
-  const uebersicht = useUebersicht(an);
-  const meine = useMeineOrtsbereiche(an ? uebersicht.data?.districts : undefined);
-  return karteHref(meine[0]?.place_id ?? null);
+  const { user } = useAuth();
+  // Bewusst NICHT am Schalter: Die Themenliste startet so gleich mit der
+  // Hülle statt erst nach `/app-config`. Derselbe Schlüssel wie „Meine Themen".
+  const topics = useQuery({ queryKey: ["topics"], queryFn: () => api.get<Topic[]>("/topics"), enabled: !!user });
+  let ort: { name: string; place_id: string } | null = null;
+  if (an) {
+    for (const t of topics.data ?? []) {
+      if (t.place_id && (!ort || t.name.toLowerCase() < ort.name.toLowerCase())) ort = { name: t.name, place_id: t.place_id };
+    }
+  }
+  return karteHref(ort?.place_id ?? null);
 }
 
 // `tour` markiert Elemente als Anker für die Lotti-Tour (components/tour.tsx);
 // Sidebar und Bottom-Nav tragen denselben Wert — die Tour nimmt das sichtbare.
 type Item = { href: string; label: string; icon: typeof Home; tour?: string };
 
-/** Höhe der Tab-Leiste (inkl. Sicherheitszone) — die EINE Quelle dafür.
- *
- *  Bis 16.08. war die Leiste inhaltsgetrieben hoch, und alles, was auf ihr
- *  aufsitzt, riet ihre Höhe mit einer eigenen Zahl: der fixierte Composer im
- *  Ratsgespräch mit `4rem`, das „Mehr"-Sheet und der Platzhalter in `main` mit
- *  `4.75rem`. Nachgemessen war sie aber je Breakpoint verschieden hoch — 63 px
- *  auf dem Telefon, 61 px ab `md` (dort `py-1` statt `py-2`, dafür größere
- *  Symbole). Zwischen Composer-Unterkante und Leisten-Oberkante blieb dadurch
- *  ein Streifen offen, durch den der Antworttext scrollte (Tims iPad-Befund
- *  16.08.). Zwei Zahlen an zwei Orten laufen immer wieder auseinander; deshalb
- *  ERZWINGT die Leiste diese Höhe, und wer an ihr andockt, importiert
- *  denselben Ausdruck, statt ihn nachzubauen.
- *
- *  Wer hier etwas ändert, ändert damit auch die Andockkante des Composers —
- *  das ist der Sinn. Nur `main` in app/(app)/layout.tsx rechnet noch mit einer
- *  eigenen Zahl (4.75rem = diese Höhe + Luft); das ist ein Platzhalter im
- *  Fluss, der ein paar Pixel Toleranz verträgt. */
-const TABLEISTE_INHALT = "4rem"; // die Leiste selbst, ohne Sicherheitszone
-export const TABLEISTE_HOEHE = `calc(env(safe-area-inset-bottom) + ${TABLEISTE_INHALT})`;
-
-/** Höhe der mobilen Kopfleiste (inkl. Sicherheitszone) — dieselbe Rolle für
- *  oben: `pt-0.75rem` + Inhalt `h-9` + `pb-3` + 1 px Rahmen = 3.8125rem. Wer
- *  etwas unter dem Kopf festpinnt (die Belege-Spalte auf dem iPad), nimmt das
- *  hier statt einer geschätzten Zahl. */
-export const KOPFLEISTE_HOEHE = "calc(env(safe-area-inset-top) + 3.8125rem)";
+// Höhe von Tab- und Kopfleiste: Die eine Quelle steht in lib/tableiste.ts
+// (ohne Abhängigkeiten, damit ein Import der Zahl nicht die ganze Navigation
+// mitbringt). Hier weitergereicht für die bestehenden Importe.
+export { TABLEISTE_HOEHE, KOPFLEISTE_HOEHE } from "@/lib/tableiste";
 
 /** RL-903: Zahl ungesehener Themen-Treffer — der Orange-Zähler an
  *  „Meine Themen". Ruhig gepollt (60 s), 0 blendet aus. */

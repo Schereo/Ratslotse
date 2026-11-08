@@ -44,7 +44,7 @@ import { Suspense, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
-import { useFetch } from "@/lib/use-fetch";
+import { useFetch, usePreload } from "@/lib/use-fetch";
 import {
   ErgebnisPosten, HaushaltAuswahl, haushaltUrl, PLAN_ART_LABEL, PlanArt,
   deMio, grundZuPosten, gruendeFuerBereich, kassensicht, mio, pruefberichtZuJahr,
@@ -62,7 +62,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ScrollZeile } from "@/components/ui";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
-import { VorberichtZahlen } from "@/components/haushalt/vorbericht-zahlen";
+import { VorberichtZahlen, prefaceFiguresUrl } from "@/components/haushalt/vorbericht-zahlen";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { Vollzug } from "@/components/haushalt/vollzug";
@@ -75,10 +75,13 @@ import { berichteUrls, type VollzugDaten } from "@/lib/haushalt-vollzug";
  *  Die Karte behauptet das nicht selbst, sondern zeigt den Wortlaut des
  *  jüngsten Befundes zu diesem Abschnitt — und verlinkt den Rest. Ohne Daten
  *  (Feature noch nicht eingelesen) erscheint sie gar nicht. */
+const AUDIT_REPEATED_URL = "/council/budget/audit-reports?mark=WB";
+const RESULT_SERIES = [{ key: "result", label: "Jahresergebnis (ordentlich + außerordentlich)" }];
+
 function PruefungsHinweis() {
   // Nur die wiederholten Beanstandungen: Der volle Bestand ist rund 250 kB
   // Prosa und wird auf dieser Seite nirgends angezeigt.
-  const { data } = useFetch<PruefberichtDaten>("/council/budget/audit-reports?mark=WB");
+  const { data } = useFetch<PruefberichtDaten>(AUDIT_REPEATED_URL, { shared: true });
   const chain = useMemo(() => {
     if (!data?.findings?.length) return null;
     return wiederholungsketten(data.findings)
@@ -161,6 +164,8 @@ type Bereich = {
 function PlanIstInner() {
   const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
+  // Prüfungs-Hinweis und Vorbericht-Karte hängen nicht an den Hauptdaten.
+  usePreload([AUDIT_REPEATED_URL, prefaceFiguresUrl(RESULT_SERIES.map((r) => r.key))]);
   const [zahlenOffen, setZahlenOffen] = useState(false);
   // Der Haushaltsvollzug hat seinen eigenen Jahrgang: Er läuft dem Abschluss
   // um zwei Jahre voraus. Ohne Wahl zeigt er den jüngsten; die Teilhaushalte
@@ -442,7 +447,7 @@ function PlanIstInner() {
           <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
             <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
               {years.map((j) => (
-                <Link key={j} href={`/haushalt/plan-ist?year=${j}`} scroll={false}
+                <Link key={j} href={`/haushalt/plan-ist?year=${j}`} prefetch={false} scroll={false}
                   className={cn("rounded-full px-3 py-1 text-[12.5px]",
                     j === year ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>
                   {j}
@@ -865,7 +870,7 @@ function PlanIstInner() {
           die PROGNOSE des laufenden (Stand Entwurf) und der Plan danach — die
           Zeile, die zwischen „geplant" und „geworden" sonst fehlt. */}
       <VorberichtZahlen kicker="Jahresergebnis" titel="Überschuss oder Fehlbetrag — Ist, Prognose und Plan"
-        reihen={[{ key: "result", label: "Jahresergebnis (ordentlich + außerordentlich)" }]} />
+        reihen={RESULT_SERIES} />
 
       <SchrittWeiter href="/haushalt/plan-ist" />
 

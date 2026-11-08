@@ -23,10 +23,12 @@ gleichzeitigen Bundestagswahl NICHT als Wanderungsschätzung taugt.
 """
 from __future__ import annotations
 
+import copy
 import json
 import statistics
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 from ..antworten import (
@@ -39,7 +41,7 @@ from ..antworten import (
     RunoffPotentialDistrict,
     RunoffStrengthGroup,
 )
-from . import mayor_districts
+from . import mayor_districts, repo_files
 
 #: Repo-Wurzel: web/backend/app/election/ -> vier Ebenen hoch.
 ROOT = Path(__file__).resolve().parents[4]
@@ -93,9 +95,18 @@ class Regler:
 
 
 def _lade_2026() -> dict[int, mayor_districts.MayorDistrict]:
+    """Der erste Wahlgang je Bezirk — je Fassung der Datei einmal gelesen
+    (``repo_files``). Nicht verändern: ``compute`` liest nur."""
+    return _lade_2026_aus(repo_files.stamp(REFERENZ))
+
+
+@lru_cache(maxsize=1)
+def _lade_2026_aus(stempel: repo_files.Stamp) -> dict[int, mayor_districts.MayorDistrict]:
     known = {s: "" for s in DUELL + tuple(AUSGESCHIEDEN) if s != "others"}
-    aus = {d.number: d for d in mayor_districts.parse_overview(json.loads(REFERENZ.read_text(encoding="utf-8")), known)}
+    roh = json.loads(Path(stempel[0]).read_text(encoding="utf-8"))
+    aus = {d.number: d for d in mayor_districts.parse_overview(roh, known)}
     for d in aus.values():
+        # Einmal beim Einlesen ergänzt, danach nie wieder angefasst.
         d.votes["others"] = max(0, (d.valid_votes or 0) - sum(v or 0 for v in d.votes.values()))
     return aus
 
@@ -115,7 +126,14 @@ class Ratswahl:
 def _ratswahl_2026() -> Ratswahl:
     """Aus der Open-Data-CSV der Ratswahl 2026 — nicht aus der Generalprobe,
     die trägt die Zahlen von 2021 (der Fehler bis 16.09.2026: 37.430 CDU-
-    Stimmen von 2021 statt 34.608 von 2026)."""
+    Stimmen von 2021 statt 34.608 von 2026). Je Fassung der beiden CSVs
+    einmal gelesen."""
+    return _ratswahl_2026_aus(repo_files.stamp(RATSWAHL26 / "ratswahl-2026-wahlbezirke.csv"),
+                              repo_files.stamp(RATSWAHL26 / "ratswahl-2026-stadt.csv"))
+
+
+@lru_cache(maxsize=1)
+def _ratswahl_2026_aus(_bezirke: repo_files.Stamp, _stadt: repo_files.Stamp) -> Ratswahl:
     import csv
 
     from . import reference
@@ -161,7 +179,7 @@ def compute(regler: Regler | None = None) -> RunoffPotential:
     """Die ganze Rechnung zu einem Reglerstand."""
     r = regler or Regler.vorgabe()
     D = _lade_2026()
-    geo = {f["properties"]["nr"]: f["properties"] for f in json.loads(GEO.read_text(encoding="utf-8"))["features"]}
+    geo = {f["properties"]["nr"]: f["properties"] for f in repo_files.json_file(GEO)["features"]}
     rat = _ratswahl_2026()
     t_r, t_p, t_pool = r.turnout_rohr / 100, r.turnout_prange / 100, r.turnout_pool / 100
     # Nichtwählende je Urnenbezirk: Wer einen Wahlschein hatte, hat meist per
@@ -253,7 +271,11 @@ def compute(regler: Regler | None = None) -> RunoffPotential:
         net_total=round(sum(z["net_total"] for z in rows)),
         balance=round(sum(z["projected_rohr"] - z["projected_prange"] for z in rows)),
         strategy_counts=dict(zaehler), pool_pct_median=round(pool_median, 1),
-        districts=rows, bundles=bundles, lessons_2021=lessons_2021(), lessons_2014=lessons_2014(),
+        districts=rows, bundles=bundles,
+        # Die Lehren aus 2021 und 2014 hängen an keinem Regler — je Fassung
+        # der Fixtures einmal gerechnet, als Kopie ausgeliefert.
+        lessons_2021=copy.deepcopy(_lessons_2021(*(repo_files.stamp(f) for f in _FIX21_DATEIEN))),
+        lessons_2014=copy.deepcopy(_lessons_2014(*(repo_files.stamp(f) for f in _FIX14_DATEIEN))),
         caveats=[
             "Die Regler beschreiben Annahmen. Die Bezirksergebnisse zeigen, wo Stimmen abgegeben wurden, aber nicht, wie einzelne Menschen bei der Stichwahl abstimmen werden.",
             "Die CDU erhielt bei der Ratswahl Stimmen, keine bestimmte Zahl von Personen: Jede Person konnte bis zu drei Stimmen abgeben. Das Modell schätzt eine Personenzahl anhand der durchschnittlichen Stimmen je Wählendem. Der CDU-Regler verändert nur den Saldo, denn diese Menschen haben bereits im ersten Wahlgang gewählt.",
@@ -262,6 +284,20 @@ def compute(regler: Regler | None = None) -> RunoffPotential:
             "2014 waren die Ausgangsbedingungen anders: SPD gegen CDU, die Grünen nicht mehr in der Stichwahl und keine weitere Wahl am selben Tag. Die Zahlen vergleichen Gesamtergebnisse, kein individuelles Wahlverhalten.",
         ],
     )
+
+
+_FIX21_DATEIEN = (FIX21 / "uebersicht-223-erster-wahlgang.json", FIX21 / "uebersicht-224-stichwahl.json")
+_FIX14_DATEIEN = (FIX14 / "hauptwahl-wahlbezirke.csv", FIX14 / "stichwahl-wahlbezirke.csv")
+
+
+@lru_cache(maxsize=1)
+def _lessons_2021(*_stempel: repo_files.Stamp) -> RunoffLessons2021:
+    return lessons_2021()
+
+
+@lru_cache(maxsize=1)
+def _lessons_2014(*_stempel: repo_files.Stamp) -> RunoffLessons2014:
+    return lessons_2014()
 
 
 def lessons_2021() -> RunoffLessons2021:

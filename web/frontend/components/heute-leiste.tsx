@@ -134,8 +134,11 @@ export function HeuteLeiste() {
             Zum O1-Stream <ArrowRight className="h-3.5 w-3.5" />
           </a>
         ) : data ? (
+          // prefetch={false}: Die Leiste steht nur auf der Startseite, das Ziel
+          // verlangt ein Konto — vorgeladen wurde dafür das ganze App-Gerüst.
           <Link
             href="/council?tab=sessions"
+            prefetch={false}
             className="hidden shrink-0 items-center gap-1 font-medium text-primary hover:underline sm:inline-flex"
           >
             {data.state === "heute" ? "Zur Tagesordnung" : "Kalender"} <ArrowRight className="h-3.5 w-3.5" />

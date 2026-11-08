@@ -148,3 +148,63 @@ test.describe("Dashboard", () => {
     await page.screenshot({ path: "test-results/screenshots/02-mobile-nav.png", fullPage: true });
   });
 });
+
+/** Was „Heute" beim Laden abfragt, und dass Angemeldete gar nicht erst die
+ *  Landing laden (Leistungsrunde 11/2026). */
+test.describe("Heute ohne Umwege", () => {
+  test.use({ storageState: zustandsDatei("admin") });
+
+  test("ein Aufruf für Besuch und Rückblick, eine Sitzungsliste für beide Karten", async ({ page }) => {
+    const aufrufe: string[] = [];
+    page.on("request", (r) => {
+      const u = new URL(r.url());
+      if (u.pathname.startsWith("/api/today/") || u.pathname === "/api/council/sessions") {
+        aufrufe.push(`${r.method()} ${u.pathname}${u.search}`);
+      }
+    });
+    await page.goto("/dashboard");
+    await expect(page.locator("main").getByRole("heading", { name: /Dein erster Rückblick|Seit deinem letzten Besuch/ })).toBeVisible();
+    // Ein doppelter POST käme direkt nach dem Einhängen — eine Sekunde reicht.
+    await page.waitForTimeout(1000);
+    expect(aufrufe.filter((a) => a.startsWith("POST "))).toEqual(["POST /api/today/visit/updates"]);
+    expect(aufrufe.filter((a) => a.startsWith("GET /api/today/"))).toEqual([]);
+    expect(aufrufe.filter((a) => a.includes("/council/sessions"))).toEqual(["GET /api/council/sessions?scope=upcoming&limit=12"]);
+  });
+
+  test("„/“ leitet schon der Server aufs Dashboard, ohne die Landing zu laden", async ({ page }) => {
+    const landing: string[] = [];
+    page.on("request", (r) => { if (/\/api\/council\/(heute|public-stats)/.test(r.url())) landing.push(r.url()); });
+    const antwort = await page.goto("/");
+    expect(antwort!.url()).toMatch(/\/dashboard$/);
+    // Die Umleitung kam vom Server: Der Seitenaufruf selbst wurde umgelenkt,
+    // nicht erst die geladene Landing per Skript ersetzt.
+    expect(antwort!.request().redirectedFrom()?.url()).toMatch(/\/$/);
+    await expect(page.getByRole("heading", { name: /^Moin/ })).toBeVisible();
+    expect(landing).toEqual([]);
+  });
+
+  test("die Fluchttür ?start=1 hält die Landing, auch beim nächsten Aufruf", async ({ page }) => {
+    await page.goto("/?start=1");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Was beschließt");
+    const antwort = await page.goto("/");
+    expect(antwort!.request().redirectedFrom()).toBeNull();
+    await page.waitForTimeout(1500);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Was beschließt");
+  });
+});
+
+test("ein ungültiges Sitzungs-Cookie sperrt niemanden von der Startseite aus", async ({ browser, baseURL }) => {
+  // Widerrufen (Passwort anderswo geändert) oder mit altem Geheimnis signiert:
+  // Das Cookie liegt noch da, die Sitzung gilt nicht mehr. Dann muss die
+  // Landing stehen — kein Umweg über /dashboard auf /login.
+  const ctx = await browser.newContext({ baseURL });
+  await ctx.addCookies([{ name: "access_token", value: "eyJhbGciOiJIUzI1NiJ9.e30.ungueltig", url: baseURL! }]);
+  const page = await ctx.newPage();
+  const antwort = await page.goto("/");
+  expect(antwort!.request().redirectedFrom()).toBeNull();
+  await page.waitForTimeout(1500);
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Was beschließt");
+  await ctx.close();
+});

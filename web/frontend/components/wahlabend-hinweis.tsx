@@ -175,8 +175,10 @@ export function WahlabendHinweis() {
 export function WahlenFussLink({ className }: { className?: string }) {
   const an = useFeature("wahlabend");
   if (!an) return null;
+  // prefetch={false}: Ein Link in der Fußzeile der Startseite — vorgeladen
+  // hätte er für alle Besucher*innen das App-Gerüst samt Navigation.
   return (
-    <Link href="/wahlen" className={className}>
+    <Link href="/wahlen" prefetch={false} className={className}>
       Wahlen
     </Link>
   );

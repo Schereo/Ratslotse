@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { EARLY_AUTH_SCRIPT } from "@/lib/early-auth";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 // Display-Schrift für Überschriften und Wortmarke — gibt der UI ihren Charakter.
@@ -50,6 +51,14 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de" className={`${inter.variable} ${bricolage.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Wer ist da? Jede Seite fragt das als Erstes — hier startet der
+            Abruf schon, während das JS noch lädt (lib/early-auth.ts; dort
+            auch, warum kein <link rel="preload">). Auf dem Telefon spart das
+            eine volle Netzlaufzeit vor allem anderen. Dass dabei genau EINE
+            Anfrage rausgeht, prüft der Browsertest 01-auth. */}
+        <script dangerouslySetInnerHTML={{ __html: EARLY_AUTH_SCRIPT }} />
+      </head>
       <body>
         <Providers>{children}</Providers>
       </body>

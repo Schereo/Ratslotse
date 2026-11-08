@@ -192,6 +192,56 @@ describe("Netz und Zeitgrenze", () => {
   });
 });
 
+describe("Vorab gestartetes /auth/me (lib/early-auth.ts)", () => {
+  // Das Skript im <head> legt den laufenden Abruf ans Fenster. Der erste
+  // `/auth/me` nimmt ihn, statt neu zu fragen — und nur der erste.
+  const vorab = (res: Promise<Response>) => {
+    (window as unknown as Record<string, unknown>).__ratslotseAuthMe = res;
+  };
+
+  it("nimmt den laufenden Abruf, genau einmal", async () => {
+    let netz = 0;
+    vi.stubGlobal("fetch", () => { netz++; return Promise.resolve(antwort(200, { id: 2 })); });
+    vorab(Promise.resolve(antwort(200, { id: 1 })));
+    await expect(a.api.get("/auth/me")).resolves.toEqual({ id: 1 });
+    expect(netz).toBe(0);
+    await expect(a.api.get("/auth/me")).resolves.toEqual({ id: 2 });
+    expect(netz).toBe(1);
+  });
+
+  it("gilt nur für das Abfragen von /auth/me", async () => {
+    mitAntwort(antwort(200, { ok: true }));
+    vorab(Promise.resolve(antwort(200, { id: 1 })));
+    await a.api.get("/auth/menu");
+    await a.api.post("/auth/me");
+    expect(letzterRuf!.url).toBe("/api/auth/me");
+    await expect(a.api.get("/auth/me")).resolves.toEqual({ id: 1 });
+  });
+
+  it("ein 401 bleibt ein 401 — „nicht angemeldet“, kein Netzfehler", async () => {
+    vorab(Promise.resolve(antwort(401, { detail: "Nicht angemeldet" })));
+    await expect(a.api.get("/auth/me")).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("ein gescheiterter Vorab-Abruf wird ein Satz wie jeder andere Netzfehler", async () => {
+    vorab(Promise.reject(new TypeError("Failed to fetch")));
+    await expect(a.api.get("/auth/me")).rejects.toMatchObject({ status: 0, message: a.FEHLER_OFFLINE });
+  });
+
+  it("hängt er, greift dieselbe Zeitgrenze", async () => {
+    vi.useFakeTimers();
+    try {
+      vorab(new Promise<Response>(() => {}));
+      const p = a.api.get("/auth/me");
+      const pruefung = expect(p).rejects.toMatchObject({ status: 0, message: a.FEHLER_ZEIT });
+      await vi.advanceTimersByTimeAsync(a.ANFRAGE_GRENZE_MS + 1);
+      await pruefung;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("Abgelaufene Sitzung", () => {
   it("rettet den getippten Text und sagt das auch", async () => {
     mitAntwort(antwort(401, { detail: "abgelaufen" }));

@@ -4,7 +4,6 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { History, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { sitzungHref } from "@/lib/routes";
@@ -28,10 +27,11 @@ export function SeitBesuchWidget({ size }: { size?: WidgetSize }) {
   const { user } = useAuth();
   const query = useQuery({
     queryKey: ["today-updates", user?.id],
-    queryFn: async () => {
-      await api.post("/today/visit", {});
-      return vertrag.get("/today/updates");
-    },
+    // Besuch aufzeichnen und Rückblick lesen in EINEM Aufruf — vorher erst
+    // POST /today/visit und danach GET /today/updates, eine Netzlaufzeit mehr.
+    // Die Reihenfolge hält der Server (routers/today.py), und solange diese
+    // Abfrage läuft, lässt BesuchErfassen seinen eigenen POST weg.
+    queryFn: () => vertrag.post("/today/visit/updates"),
     enabled: !!user,
   });
   const data = query.data;

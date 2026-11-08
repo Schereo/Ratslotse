@@ -131,6 +131,7 @@ function Zeile({ z, skala, breit, aktiv }: {
   return (
     <Link
       href={`/haushalt/bereich?name=${z.slug}`}
+      prefetch={false}
       aria-current={aktiv ? "page" : undefined}
       className={cn(
         "group block rounded-xl px-2.5 py-3 transition-colors hover:bg-accent",

@@ -9,7 +9,9 @@ import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
 import { AppleSignInButton } from "@/components/apple-sign-in-button";
-import { ONBOARDING_NEEDS_LOGIN_EVENT } from "@/components/onboarding-flow";
+// Aus lib/, nicht aus dem Assistenten: Für eine Konstante kam sonst sein
+// ganzes Modul (gut 90 KB Quelltext) auf die Anmeldeseite.
+import { ONBOARDING_NEEDS_LOGIN_EVENT } from "@/lib/onboarding-state";
 
 export default function LoginPage() {
   const { login } = useAuth();

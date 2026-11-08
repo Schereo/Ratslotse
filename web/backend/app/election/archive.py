@@ -15,13 +15,13 @@ Eingang — der Unterschied steht in ``dataset: "archive"``.
 """
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, UTC
 from functools import lru_cache
+from pathlib import Path
 
 from ..antworten import ElectionDistrictList, ElectionNight, ElectionTopEntry
-from . import elections, reference, register
+from . import elections, reference, register, repo_files
 from .rounding import half_up
 from .votemanager import Snapshot, parse
 
@@ -51,12 +51,8 @@ def _eingefroren(slug: str):
         return None
     ordner = wahl.archive_folder
     praefix = reference.meta_path(ordner).stem
-    lies = lambda name: (ordner / f"{praefix}-{name}.csv").read_text(encoding="utf-8-sig")  # noqa: E731
-    schnapp = Snapshot(
-        city=parse(lies("stadt")), areas=parse(lies("wahlbereiche")),
-        districts=parse(lies("wahlbezirke")),
-        fetched_at=datetime.now(UTC), last_modified=None, ok=True, error=None,
-    )
+    schnapp = _frozen_snapshot(tuple(repo_files.stamp(ordner / f"{praefix}-{name}.csv")
+                                     for name in ("stadt", "wahlbereiche", "wahlbezirke")))
     # Das Register DIESER Wahl — `verfuegbar` hat schon dafür gesorgt, dass es
     # eines gibt.
     assert wahl.register_path is not None
@@ -68,6 +64,20 @@ def _eingefroren(slug: str):
         # und `previous_label` ist bei so einer Wahl ohnehin leer.
         ref = reference.load(ordner)
     return reg, ref, schnapp
+
+
+@lru_cache(maxsize=8)
+def _frozen_snapshot(stempel: tuple[repo_files.Stamp, ...]) -> Snapshot:
+    """Die drei eingefrorenen CSVs als ``Snapshot`` — je Fassung einmal
+    geparst. Bis 11/2026 bei jedem Aufruf: Die Reiter „Kandidaten" und
+    „Kandidatur" des Rückblicks lasen dafür je Anfrage 60 KB CSV (26 ms
+    gegen 1,8 ms live). Den Stand teilen sich alle Aufrufer — nicht
+    verändern."""
+    stadt, bereiche, bezirke = (Path(s[0]).read_text(encoding="utf-8-sig") for s in stempel)
+    return Snapshot(
+        city=parse(stadt), areas=parse(bereiche), districts=parse(bezirke),
+        fetched_at=datetime.now(UTC), last_modified=None, ok=True, error=None,
+    )
 
 
 def snapshot(slug: str):
@@ -151,7 +161,7 @@ def summary(wahl: elections.Election) -> str | None:
         return None
     try:
         if wahl.kind == "council":
-            meta = json.loads(reference.meta_path(wahl.archive_folder).read_text(encoding="utf-8"))
+            meta = repo_files.json_file(reference.meta_path(wahl.archive_folder))
             nach_label: dict[str, int] = {}
             for m in meta["sitzverteilung"]:
                 nach_label[m["party"]] = nach_label.get(m["party"], 0) + 1
@@ -181,7 +191,7 @@ def top(wahl: elections.Election, n: int = 5) -> list[ElectionTopEntry]:
     try:
         if wahl.kind != "council":
             return _mayor_top(wahl, n)
-        meta = json.loads(reference.meta_path(wahl.archive_folder).read_text(encoding="utf-8"))
+        meta = repo_files.json_file(reference.meta_path(wahl.archive_folder))
         slug_by_label = {p["label"]: p.get("slug") for p in meta["parteien"]}
         sitze: dict[str, int] = {}
         for m in meta["sitzverteilung"]:
@@ -213,7 +223,7 @@ def _mayor_top(wahl: elections.Election, n: int) -> list[ElectionTopEntry]:
     datei = wahl.archive_folder / "praesentation-ob.json" if wahl.archive_folder else None
     if datei is None or not datei.is_file():
         return []
-    stand = mayor.parse(json.loads(datei.read_text(encoding="utf-8")), mayor.candidates(wahl))
+    stand = mayor.parse(repo_files.json_file(datei), mayor.candidates(wahl))
     if stand is None:
         return []
     beste = sorted(stand.candidates, key=lambda c: -(c.votes or 0))[:n]
@@ -236,7 +246,7 @@ def _mayor_summary(wahl: elections.Election) -> str | None:
     datei = wahl.archive_folder / "praesentation-ob.json"
     if not datei.is_file():
         return None
-    stand = mayor.parse(json.loads(datei.read_text(encoding="utf-8")), mayor.candidates(wahl))
+    stand = mayor.parse(repo_files.json_file(datei), mayor.candidates(wahl))
     if stand is None or not stand.candidates:
         return None
     beste = max(stand.candidates, key=lambda c: c.votes or 0)
@@ -257,11 +267,14 @@ def result_status(wahl: elections.Election) -> str:
     if ordner is None or not ordner.is_dir():
         return "vorlaeufig"
     try:
+        # Je Fassung einmal gelesen (`repo_files`): Die Frage kommt bei jedem
+        # Aufruf von `/api/wahlabend` (Takt des Abrufs) und viermal je
+        # `/api/wahlen`.
         if wahl.kind == "council":
-            meta = json.loads(reference.meta_path(ordner).read_text(encoding="utf-8"))
+            meta = repo_files.json_file(reference.meta_path(ordner))
             stand = (meta.get("quelle") or {}).get("stand")
         else:
-            stand = json.loads((ordner / "quelle.json").read_text(encoding="utf-8")).get("stand")
+            stand = repo_files.json_file(ordner / "quelle.json").get("stand")
     except (OSError, ValueError):
         return "vorlaeufig"
     return "amtlich" if stand == "amtlich" else "vorlaeufig"
@@ -270,3 +283,5 @@ def result_status(wahl: elections.Election) -> str:
 def reset() -> None:
     night.cache_clear()
     districts.cache_clear()
+    _frozen_snapshot.cache_clear()
+    repo_files.reset()

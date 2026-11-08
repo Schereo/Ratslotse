@@ -35,7 +35,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
-import { useFetch } from "@/lib/use-fetch";
+import { useFetch, usePreload } from "@/lib/use-fetch";
 import {
   StellenTeil, StellenplanDaten, TEILE, TEIL_LABEL,
   deDatum, deStellen, fehlt, gesamt, groessteLuecken, herkunftVon,
@@ -45,7 +45,7 @@ import { StellenPaare, StellenPaareLegende } from "@/components/haushalt/stellen
 import { Waffel } from "@/components/grafik/waffel";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
-import { VorberichtZahlen } from "@/components/haushalt/vorbericht-zahlen";
+import { VorberichtZahlen, prefaceFiguresUrl } from "@/components/haushalt/vorbericht-zahlen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -77,6 +77,14 @@ function pct(anteil: number): string {
   return (anteil * 100).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }
 
+const PERSONNEL_SERIES = [
+  { key: "personnel_active", label: "Aktives Personal" },
+  { key: "personnel_pension", label: "Versorgung" },
+  { key: "personnel_total", label: "Summe" },
+  { key: "personnel_provisions", label: "davon Zuführungen zu Rückstellungen" },
+  { key: "personnel_net", label: "Personalaufwand ohne Rückstellungen" },
+];
+
 export default function PersonalPage() {
   const [year, setJahr] = useState<number | null>(null);
   const [part, setTeil] = useState<StellenTeil>("A");
@@ -84,6 +92,8 @@ export default function PersonalPage() {
   // immer offen — die Klassen dazu stehen in globals.css (gb-nur-mobil).
   const [gruppenOffen, setGruppenOffen] = useState(false);
   const jahrgaenge = useFetch<StellenplanDaten>("/council/budget/staff-plan");
+  // Die Vorbericht-Karte steht unter den Hauptdaten, ihre Reihen sind fest.
+  usePreload([prefaceFiguresUrl(PERSONNEL_SERIES.map((r) => r.key))]);
   const alle = jahrgaenge.data?.editions ?? [];
   const aktJahr = year && alle.includes(year) ? year : alle.at(-1) ?? null;
 
@@ -455,13 +465,7 @@ export default function PersonalPage() {
             dem Aufwand ohne sie — beides steht im Ergebnishaushalt nicht. */}
         <VorberichtZahlen genau kicker="Personalaufwand samt Rückstellungen"
           titel="Was das Personal kostet — mit und ohne Rückstellungen"
-          reihen={[
-            { key: "personnel_active", label: "Aktives Personal" },
-            { key: "personnel_pension", label: "Versorgung" },
-            { key: "personnel_total", label: "Summe" },
-            { key: "personnel_provisions", label: "davon Zuführungen zu Rückstellungen" },
-            { key: "personnel_net", label: "Personalaufwand ohne Rückstellungen" },
-          ]} />
+          reihen={PERSONNEL_SERIES} />
 
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">

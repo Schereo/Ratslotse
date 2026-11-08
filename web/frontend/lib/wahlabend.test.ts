@@ -82,6 +82,11 @@ describe("Sortierung und Sitzband", () => {
     expect(abfragePfad(null, null)).toBe("/wahlabend");
     expect(abfragePfad("2021", "60")).toBe("/wahlabend?probe=2021&counted=60");
     expect(abfragePfad("2021", "x")).toBe("/wahlabend?probe=2021");
+    // Ohne die Kandidaturen je Wahlbereich — nur, wenn ausdrücklich verlangt.
+    expect(abfragePfad(null, null, null, false)).toBe("/wahlabend?area_candidates=false");
+    expect(abfragePfad("2021", "60", null, false)).toBe("/wahlabend?probe=2021&counted=60&area_candidates=false");
+    expect(abfragePfad(null, null, "ratswahl-2026", false)).toBe("/wahlabend?wahl=ratswahl-2026&area_candidates=false");
+    expect(abfragePfad(null, null, "ratswahl-2026")).toBe("/wahlabend?wahl=ratswahl-2026");
   });
 });
 

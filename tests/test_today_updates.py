@@ -144,6 +144,60 @@ def test_api_requires_account_no_topics_and_keeps_pagination_window(stores):
         with users._conn:
             users._conn.execute("UPDATE web_users SET status='disabled' WHERE id=?", (uid,))
         assert client.get('/api/today/updates').status_code == 403
+        assert client.post('/api/today/visit/updates').status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_visit_with_updates_matches_visit_then_updates_over_two_visits(stores):
+    """`POST /visit/updates` ersetzt auf „Heute" die Kette `POST /visit` →
+    `GET /updates`. Das Fenster „seit deinem letzten Besuch" hängt an genau
+    dieser Reihenfolge — also über zwei Besuche gegen die alte Kette halten,
+    an einem Zwilling mit demselben Stand."""
+    users, council, uid = stores
+    seed_updates(council)
+    twin = users.create_web_user('zwilling@example.org', 'unused', status='active', email_verified=True)
+    app.dependency_overrides[get_store] = lambda: users
+    app.dependency_overrides[get_council_store] = lambda: council
+    try:
+        combined = TestClient(app)
+        assert combined.post('/api/today/visit/updates').status_code == 401
+        combined.headers['Authorization'] = 'Bearer ' + create_access_token(uid)
+        sequential = TestClient(app)
+        sequential.headers['Authorization'] = 'Bearer ' + create_access_token(twin)
+
+        def both() -> tuple[dict, dict]:
+            new = combined.post('/api/today/visit/updates').json()
+            assert sequential.post('/api/today/visit').status_code == 200
+            return new, sequential.get('/api/today/updates').json()
+
+        def without(data: dict, *keys: str) -> dict:
+            return {k: v for k, v in data.items() if k not in keys}
+
+        # Erster Besuch überhaupt: die letzten sieben Tage.
+        new, old = both()
+        assert new['first_visit'] is True and old['first_visit'] is True
+        assert datetime.fromisoformat(new['until']) - datetime.fromisoformat(new['since']) == timedelta(days=7)
+        assert without(new, 'since', 'until') == without(old, 'since', 'until')
+        # Nachlesen verschiebt nichts: dieselbe Antwort wie die alte Kette danach.
+        assert combined.get('/api/today/updates').json() == new
+
+        # Der Besuch lag am 01.09. und ist lange vorbei — der nächste Aufruf
+        # beginnt einen neuen, und der Rückblick reicht bis zum Beginn des alten.
+        with users._conn:
+            users._conn.executemany(
+                'UPDATE web_users SET visit_started_at = ?, visit_active_at = ?, visit_previous_at = NULL WHERE id = ?',
+                [('2026-09-01T00:00:00+00:00', '2026-09-01T00:00:00+00:00', owner) for owner in (uid, twin)])
+        new, old = both()
+        assert new['first_visit'] is False
+        assert new['since'] == old['since'] == '2026-09-01T00:00:00Z'
+        assert new['total'] == 3 and len(new['items']) == 3
+        assert without(new, 'until') == without(old, 'until')
+        assert users.visit_window(uid) == {k: new[k] for k in ('since', 'until', 'first_visit')}
+
+        # Gleich noch einmal (zweiter Tab, Neuladen): derselbe Besuch, dasselbe Fenster.
+        again, _ = both()
+        assert again == new
     finally:
         app.dependency_overrides.clear()
 

@@ -27,10 +27,13 @@ type Antwort = ApiAntwort<"/council/budget/measures">;
 const euro = (v: number | null | undefined) => (v == null ? "—" : `${deZahl(v, 0)} €`);
 const datum = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
 
+/** Ohne Stichtag: der jüngste Bericht — die Adresse, die die Seite vorlädt. */
+export const measuresUrl = (subBudget: number) => `/council/budget/measures?sub_budget=${subBudget}`;
+
 export function BudgetberichtBereich({ subBudget }: { subBudget: number }) {
   const [asOf, setAsOf] = useState<string | null>(null);
   const { data } = useFetch<Antwort>(
-    `/council/budget/measures?sub_budget=${subBudget}${asOf ? `&as_of=${asOf}` : ""}`);
+    `${measuresUrl(subBudget)}${asOf ? `&as_of=${asOf}` : ""}`, { shared: true });
   // Je Haushaltsjahr der jüngste Bericht — vier Stichtage im Jahr wären als
   // Auswahl zu viel; der jüngste ist der mit der besten Prognose.
   const jahre = useMemo(() => {

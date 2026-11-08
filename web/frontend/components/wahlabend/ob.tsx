@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Mascot } from "@/components/mascot";
 import { KICKER } from "@/components/wahlabend/bausteine";
-import { Herkunft } from "@/components/wahlabend/stichwahl";
+import { Herkunft } from "@/components/wahlabend/herkunft";
 import { ZurueckZuWahlen } from "@/components/wahlen/zurueck";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
@@ -90,10 +90,12 @@ function Hinweis({ titel, text }: { titel: string; text: string }) {
 
 export function ObWahlView() {
   const frei = useFeature("wahlabend");
+  // Ohne `enabled: frei`: Die Abfrage startet zusammen mit `/api/app-config`
+  // statt danach. Bei ausgeschaltetem Schalter antwortet das Backend 404, und
+  // die Seite zeigt dasselbe wie vorher — der Zweig `!frei` steht zuerst.
   const { data, isLoading, isError } = useQuery({
     queryKey: ["wahlabend-ob"],
     queryFn: () => api.get<ObWahl>("/wahlabend/ob"),
-    enabled: frei,
     staleTime: 5 * 60_000,
   });
 

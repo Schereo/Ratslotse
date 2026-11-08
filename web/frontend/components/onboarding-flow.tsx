@@ -5,19 +5,31 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Bell, CalendarDays, Check, ChevronDown, Gavel, Landmark, ListChecks, Loader2, Mail, MapPin, Moon, Plus, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
-import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand } from "@/lib/onboarding-setup";
-import { cn, pfad } from "@/lib/utils";
+import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand, type SetupStand } from "@/lib/onboarding-setup";
+import { cn } from "@/lib/utils";
 import { Button, Input, toast } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { committeeExplains, committeeIcon, committeeImage, committeeRank, shortCommittee } from "@/lib/committees";
 import { useAuth } from "@/lib/auth";
-import { darfAdmin } from "@/lib/rechte";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
-import { einladungStand, merkeEinladung } from "@/lib/tour-einladung";
+import { merkeEinladung } from "@/lib/tour-einladung";
 import { StadtteilKarteGrund } from "@/components/stadtteil-karte-grund";
 import { useVollbildMelden } from "@/lib/vollbild";
 import { useScrollRestUnten } from "@/lib/use-scroll-rand";
 import { meldeChips, stadtthemaBild, stadtthemaChip } from "@/lib/onboarding-chips";
+import {
+  ONBOARDING_DONE_EVENT, ONBOARDING_FINISHED_EVENT, ONBOARDING_NEEDS_LOGIN_EVENT,
+  imAppBereich, isFlowDeciding, isUsable, setFlowDeciding, setFlowVisible,
+} from "@/lib/onboarding-state";
+
+// Zustand, Bereichs-Liste und Ereignisse stehen seit 11/2026 in
+// lib/onboarding-state.ts: Abzeichen, Tour-Einladung und Anmeldung brauchen
+// sie, bevor dieser Assistent geladen ist (er kommt per next/dynamic, s.
+// components/onboarding-gate.tsx). Hier weitergereicht für alte Importe.
+export {
+  ONBOARDING_DONE_EVENT, ONBOARDING_FINISHED_EVENT, ONBOARDING_NEEDS_LOGIN_EVENT,
+  einrichtungLiefHier, isOnboardingVisible,
+} from "@/lib/onboarding-state";
 
 /** Design 26a — geführtes Onboarding: einrichten statt nur vorstellen.
  *
@@ -83,90 +95,12 @@ const SCHRITTE = 4;
  *  und jeder Pixel davon fehlt rechts, wo die Arbeit passiert. */
 const ZWEISPALTIG = "lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-10";
 
-/** Im Browser darf der Assistent nur INNERHALB der App auftauchen.
- *
- *  Er hängt global in `app/providers.tsx` (in der App muss er das: dort liegt
- *  er über dem Login). Im Web liegt darunter aber auch die Landingpage, das
- *  Changelog, Impressum und Datenschutz — und ein deckender Vollbild-Assistent
- *  über dem Impressum wäre schlicht falsch, gerade weil solche Seiten aus
- *  Rechtsgründen erreichbar bleiben müssen.
- *
- *  Bewusst eine Positivliste der Bereiche aus `app/(app)/`: Eine Negativliste
- *  müsste bei jeder neuen öffentlichen Seite nachgezogen werden, und wer das
- *  vergisst, merkt es nicht — der Fehler zeigt sich nur angemeldeten
- *  Erstnutzer*innen auf genau dieser Seite. */
-const APP_BEREICHE = [
-  "/dashboard", "/council", "/fragen", "/topics", "/abos",
-  "/bookmarks", "/quiz", "/account", "/admin", "/haushalt",
-];
-
-function imAppBereich(pathname: string | null): boolean {
-  const p = pfad(pathname);
-  return APP_BEREICHE.some((b) => p === b || p.startsWith(`${b}/`));
-}
-
-/** Läuft der Flow gerade? Der Abzeichen-Toast fragt das ab und schweigt so
- *  lange: Beim Anmelden registriert die App den Push-Token, was sofort das
- *  „Frühwarner"-Abzeichen auslöst — die Meldung knallte damit über den
- *  Willkommens-Gruß, bevor man überhaupt etwas getan hatte. Modul-State statt
- *  Context, damit der Celebrator nicht am Flow hängen muss. */
-let flowVisible = false;
-/** Der Flow WEISS noch nicht, ob er sich zeigt — er wartet auf `/onboarding/setup`.
- *
- *  Diese zweite Marke war nötig, seit die Entscheidung serverseitig fällt: In
- *  der Lücke zwischen Seitenaufbau und Antwort war `flowVisible` noch `false`,
- *  und der Abzeichen-Toast fuhr genau dort hinein — quer über den Willkommens-
- *  Gruß, also exakt der Fall, den der Riegel verhindern soll. Vorher las der
- *  Flow den localStorage synchron und war sofort „sichtbar"; es gab keine Lücke.
- */
-let flowEntscheidet = false;
-/** Die Tour-Einladung (`tour-einladung.tsx`) ist der letzte Takt der Einrichtung:
- *  Solange sie offen steht, halten die Abzeichen-Meldungen genauso still wie
- *  unter dem Assistenten — sonst knallte das „Frühwarner"-Abzeichen genau in
- *  Lottis Frage hinein. Gefragt wird die gemerkte Marke, nicht ein Zustand im
- *  Speicher dieser Sitzung: Nach einem Neuladen mit offener Einladung ist die
- *  Komponente noch gar nicht da, wenn die Abzeichen das erste Mal fragen. */
-export function isOnboardingVisible(): boolean {
-  return flowVisible || flowEntscheidet || einladungStand() === "offen";
-}
-/** Stand der Assistent auf dieser Seite schon einmal offen? Dann ist, was
- *  währenddessen verdient wurde, ein Abzeichen der Einrichtung — und das feiert
- *  der Celebrator nicht (Tims Befund 08.11.2026, s. `BadgeCelebrator`). */
-let flowWarSichtbar = false;
-export function einrichtungLiefHier(): boolean {
-  return flowWarSichtbar;
-}
-/** Wird beim Abschluss/Abbruch gefeuert, damit, was auf das Ende wartet, loslegen
- *  kann: der Push-Hinweis und geparkte Abzeichen-Meldungen. Feuert AUCH, wenn der Flow nur entschieden hat,
- *  sich nicht zu zeigen — für „jemand hat die Einrichtung gerade wirklich
- *  beendet" gibt es deshalb das zweite Ereignis darunter. */
-export const ONBOARDING_DONE_EVENT = "ratslotse:onboarding-done";
-/** Nur beim echten Abschluss des letzten Schritts (auch per „Überspringen"
- *  dort) — das Signal, auf das die Tour-Einladung wartet. Vorher landete man
- *  nach dem letzten Schritt unvermittelt auf „Heute" und musste die Tour in
- *  der „Erste Schritte"-Karte erst einmal finden. */
-export const ONBOARDING_FINISHED_EVENT = "ratslotse:onboarding-finished";
-/** Der Auftakt tritt beiseite und gibt den Login frei. Die Login-Seite liegt
- *  darunter längst gemountet — ohne dieses Signal begrüßte sie eine:n
- *  Erstnutzer*in mit „Willkommen zurück". */
-export const ONBOARDING_NEEDS_LOGIN_EVENT = "ratslotse:onboarding-needs-login";
-
 /** Den erreichten Schritt auch am Konto festhalten (fire-and-forget).
  *  Der lokale Speicher merkt sich den Stand fürs Gerät; erst der Server-Stand
  *  überlebt eine Neuinstallation — und nur er erlaubt es, nach zwei Tagen an
  *  eine liegengebliebene Einrichtung zu erinnern (scripts/remind_setup.py). */
 function reportSetupStep(step: number, done = false) {
   api.post("/onboarding/setup", { step: gemeldeterSetupSchritt(step), done }).catch(() => {});
-}
-
-/** Ein Konto allein reicht nicht — frisch registriert ist es „pending" und
- *  unbestätigt, und die Schritte 1–3 (Abos, Themen) laufen dann in 403. Erst
- *  wenn es freigeschaltet ist, geht es weiter; bis dahin liegt die
- *  Bestätigungs-Aufforderung frei. Admins sind wie im App-Layout ausgenommen. */
-function isUsable(user: { status?: string; email_verified?: boolean; permissions?: readonly string[] | null } | null): boolean {
-  if (!user) return false;
-  if (darfAdmin(user)) return true;
-  return user.status === "active" && !!user.email_verified;
 }
 
 /** Server-Stand des Assistenten. `pending` beantwortet „ist er dran?" — die
@@ -193,6 +127,7 @@ export function OnboardingFlow() {
   // liegende Server-Antwort (`pending: true`) den Assistenten sofort wieder
   // hoch, sobald der Effekt erneut läuft — der Abschluss ist ja fire-and-forget.
   const fertig = useRef(false);
+  const queryClient = useQueryClient();
 
   const setup = useQuery({
     queryKey: SETUP_QUERY_KEY,
@@ -255,6 +190,12 @@ export function OnboardingFlow() {
     }
     if (next === "done") {
       fertig.current = true;
+      // Der Riegel oben gilt nur, solange DIESE Instanz lebt. Seit der
+      // Assistent im App-Layout hängt (components/onboarding-gate.tsx), wird er
+      // abgebaut, sobald man die App-Hülle verlässt (Mehr → Hilfe) — und beim
+      // Zurückkehren schob ihn die noch gecachte Antwort (`pending: true`)
+      // wieder hoch, beim Auftakt. Deshalb auch der Cache: erledigt.
+      queryClient.setQueryData<SetupStand>(SETUP_QUERY_KEY, (d) => (d ? { ...d, pending: false } : d));
       try {
         localStorage.setItem(DONE_KEY, "1");
         localStorage.removeItem(STEP_KEY);
@@ -315,17 +256,16 @@ export function OnboardingFlow() {
     return () => document.removeEventListener("focusin", onFocusIn, true);
   }, [step]);
 
-  // Solange der Flow oben liegt, halten Abzeichen-Toasts still (s. flowVisible),
-  // und was er verdient, wird hinterher nicht gefeiert (s. flowWarSichtbar).
+  // Solange der Flow oben liegt, halten Abzeichen-Toasts still, und was er
+  // verdient, wird hinterher nicht gefeiert (lib/onboarding-state.ts).
   useEffect(() => {
-    flowVisible = step !== null;
-    if (step !== null) flowWarSichtbar = true;
-    return () => { flowVisible = false; };
+    setFlowVisible(step !== null);
+    return () => { setFlowVisible(false); };
   }, [step]);
 
   // …und der Lotti-Knopf tritt ganz weg. Gemeldet wird erst, wenn der Flow
   // WIRKLICH steht — nicht schon, während er auf `/onboarding/setup` wartet
-  // (`flowEntscheidet`): Bleibt diese Antwort aus, hinge der Knopf sonst
+  // (`isFlowDeciding`): Bleibt diese Antwort aus, hinge der Knopf sonst
   // dauerhaft an einer Entscheidung, die nie fällt. Ein Wimpernschlag Knopf
   // vor dem Assistenten ist der bessere Ausfall als gar kein Knopf mehr.
   useVollbildMelden("onboarding", step !== null);
@@ -336,12 +276,12 @@ export function OnboardingFlow() {
   useEffect(() => {
     const wartet = !loading && isUsable(user) && !setupData && step === null
       && imAppBereich(pathname);
-    const vorher = flowEntscheidet;
-    flowEntscheidet = wartet;
+    const vorher = isFlowDeciding();
+    setFlowDeciding(wartet);
     if (vorher && !wartet && step === null) {
       window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
     }
-    return () => { flowEntscheidet = false; };
+    return () => { setFlowDeciding(false); };
   }, [loading, user, setupData, step, pathname]);
 
   if (step === null) return null;

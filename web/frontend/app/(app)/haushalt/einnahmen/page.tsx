@@ -15,7 +15,7 @@
 
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { useFetch } from "@/lib/use-fetch";
+import { useFetch, usePreload } from "@/lib/use-fetch";
 import {
   HaushaltAuswahl, haushaltUrl, deMio, einnahmearten,
   spendenGremien, spendenJahre, spendenLaufend,
@@ -28,7 +28,7 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { FinanzausgleichDaempfer } from "@/components/haushalt/fiscal-equalization-daempfer";
 import { ZuweisungDreiteilig } from "@/components/haushalt/zuweisung-dreiteilig";
-import { FoerdermittelKarte } from "@/components/haushalt/foerdermittel-karte";
+import { FoerdermittelKarte, GRANTS_RECEIVED_URL } from "@/components/haushalt/foerdermittel-karte";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
@@ -89,7 +89,12 @@ const FELDER = ["years", "taxes", "tax_capacity", "fiscal_equalization", "donati
   "income_statement", "income_budget"] as const;
 
 export default function EinnahmenPage() {
-  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
+  // Nur die Kernverwaltung der Ergebnisrechnung: Die Seite liest sie allein
+  // (`entgeltJahr`, `sub_budget_no === null`) und reicht sie nicht weiter.
+  // Die Teilhaushalts-Ebene waren 1.554 von 1.762 Zeilen, 720 von 1.037 KB.
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "keine"));
+  // Die Fördermittel-Karte steht unter den Hauptdaten, braucht sie aber nicht.
+  usePreload([GRANTS_RECEIVED_URL]);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Einnahmen werden geladen …</div>;
@@ -305,7 +310,7 @@ export default function EinnahmenPage() {
           </div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {g.karten.map(({ art, amount, year: bJahr }) => (
-              <Link key={art.slug} href={`/haushalt/steuer?art=${art.slug}`}
+              <Link key={art.slug} href={`/haushalt/steuer?art=${art.slug}`} prefetch={false}
                 className={cn(
                   "flex flex-col rounded-xl border bg-card p-3.5 shadow-sm transition-colors hover:border-primary/40",
                   // Die erste Gruppe trägt einen Primär-Tint: Sie ist die

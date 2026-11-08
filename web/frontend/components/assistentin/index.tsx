@@ -1,20 +1,89 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState, type ComponentProps, type ComponentType } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useFeature } from "@/lib/features";
 import { pfad } from "@/lib/utils";
 
 import { Anstupser, merkeBenutzung } from "./anstupser";
+import { useMarkierung, useTastatur } from "./hooks";
 import { LottiKnopf } from "./knopf";
 import { MarkierKnopf, type MarkierFrage } from "./markier-knopf";
-import { LottiPanel, useMarkierung, useTastatur } from "./panel";
+// Nur der Typ: Ein Wert-Import zöge das ganze Fenster wieder ins Bündel.
+import type { LottiPanel as LottiPanelTyp } from "./panel";
 import { oeffnenGewuenscht, ohneOeffnen, routeAus } from "@/lib/assistentin";
 import { useAuth } from "@/lib/auth";
+import { chunkFehlerHeilen } from "@/lib/chunk-fehler";
 import { anstupserErlaubt } from "@/lib/anstupser-seiten";
 import { knopfVersteckt, LOTTI_SICHT_EVENT } from "@/lib/lotti-sichtbar";
 import { useVollbild } from "@/lib/vollbild";
+
+/** Das Fenster selbst — mit Antwort-Bausteinen, Glossar und Diagrammen gut
+ *  50 KB (gzip). Bis 11/2026 hing es statisch an jeder Seite der App, obwohl
+ *  es zu ist, bis jemand den Knopf drückt. Jetzt kommt es im Leerlauf nach
+ *  dem Laden (s. `fensterVorladen`) — oder beim ersten Öffnen, falls jemand
+ *  schneller ist —, damit der erste Klick in aller Regel nicht wartet.
+ *
+ *  **Bewusst ohne `next/dynamic`.** Das lädt über `React.lazy` und eine
+ *  Suspense-Grenze, und React drosselt das Aufdecken danach auf bis zu
+ *  300 ms. Gemessen stand das Fenster so erst nach gut 300 ms statt nach
+ *  10 ms da. Hier liegt die geladene Komponente fertig in einer Variablen.
+ *
+ *  `onBereit` meldet, dass das Fenster eingehängt ist. Es wird bewusst ZU
+ *  eingehängt und erst danach geöffnet — wie vorher, als es mit der Seite kam.
+ *  Seine Effekte (Frage zur Markierung, gespeichertes Gespräch laden) laufen
+ *  beim Öffnen; käme es gleich offen zur Welt, liefen sie zusammen mit dem
+ *  Einhängen, und Reacts StrictMode spielt das zur Probe doppelt ab (Frage
+ *  doppelt gestellt bzw. vom Seitenwechsel-Abbruch sofort wieder gekappt). */
+type FensterProps = ComponentProps<typeof LottiPanelTyp> & { onBereit: (bereit: boolean) => void };
+type Fenster = ComponentType<FensterProps>;
+let geladenesFenster: Fenster | null = null;
+let fensterLaedt: Promise<Fenster> | null = null;
+
+function fensterHolen(): Promise<Fenster> {
+  fensterLaedt ??= import("./panel").then(({ LottiPanel }) => {
+    function GeladenesFenster({ onBereit, ...props }: FensterProps) {
+      useEffect(() => {
+        onBereit(true);
+        return () => onBereit(false);
+      }, [onBereit]);
+      return <LottiPanel {...props} />;
+    }
+    geladenesFenster = GeladenesFenster;
+    return GeladenesFenster;
+  }, (e: unknown) => {
+    // Beim nächsten Versuch neu holen, statt am alten Fehler zu hängen.
+    fensterLaedt = null;
+    throw e;
+  });
+  return fensterLaedt;
+}
+
+/** Das Fenster-Bündel holen, sobald der Browser nichts Dringenderes vorhat:
+ *  nach dem `load`-Ereignis, in der nächsten Leerlaufphase. */
+function fensterVorladen(geladen: (f: Fenster) => void): () => void {
+  const w = window as Window & {
+    requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number;
+    cancelIdleCallback?: (id: number) => void;
+  };
+  let idle: number | undefined;
+  let zeit: ReturnType<typeof setTimeout> | undefined;
+  // Scheitert das Vorladen (Funkloch, alte Seite nach einem Deploy), holt das
+  // erste Öffnen es noch einmal — kein Grund für eine Fehlermeldung.
+  const holen = () => { fensterHolen().then(geladen, () => {}); };
+  const imLeerlauf = () => {
+    if (w.requestIdleCallback) idle = w.requestIdleCallback(holen, { timeout: 4000 });
+    else zeit = setTimeout(holen, 1500);
+  };
+  if (document.readyState === "complete") imLeerlauf();
+  else window.addEventListener("load", imLeerlauf, { once: true });
+  return () => {
+    window.removeEventListener("load", imLeerlauf);
+    if (idle !== undefined) w.cancelIdleCallback?.(idle);
+    if (zeit !== undefined) clearTimeout(zeit);
+  };
+}
 
 /**
  * Lotti als Assistentin — Knopf und Fenster, eingehängt in die App-Hülle.
@@ -152,19 +221,43 @@ function LottiInner() {
   }, [offen]);
 
   const gesperrt = OHNE_LOTTI.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
+  // Das Fenster wird eingehängt, sobald sein Bündel da ist — im Leerlauf oder
+  // beim ersten Öffnen, was früher kommt — und bleibt es dann: Der Verlauf
+  // soll den Seitenwechsel überleben (s. o.).
+  const [GeladenesFenster, setGeladenesFenster] = useState<Fenster | null>(() => geladenesFenster);
+  const [fensterBereit, setFensterBereit] = useState(false);
+  const knopfDa = an && !gesperrt;
+  useEffect(
+    () => (knopfDa && !GeladenesFenster ? fensterVorladen((f) => setGeladenesFenster(() => f)) : undefined),
+    [knopfDa, GeladenesFenster],
+  );
+  useEffect(() => {
+    if (!offen || GeladenesFenster) return;
+    fensterHolen().then((f) => setGeladenesFenster(() => f), (e: unknown) => {
+      // Nach einem Deploy fehlt das alte Bündel: einmal neu laden, wie die
+      // Fehlerseite es täte. Sonst den Knopf zurückstellen, statt „offen" zu
+      // zeigen, ohne dass ein Fenster kommt.
+      if (!chunkFehlerHeilen(e)) setOffen(false);
+    });
+  }, [offen, GeladenesFenster]);
+
   if (!an || gesperrt || vollbild) return null;
 
   return (
     <>
-      <LottiPanel
-        offen={offen}
-        onSchliessen={schliessen}
-        markierung={markierung}
-        markiert={markiert}
-        onMarkiertVerbraucht={() => setMarkiert(null)}
-        ladeGespraech={ladeGespraech}
-        onGespraechGeladen={() => setLadeGespraech(null)}
-      />
+      {GeladenesFenster && (
+        <GeladenesFenster
+          offen={offen && fensterBereit}
+          onBereit={setFensterBereit}
+          onSchliessen={schliessen}
+          markierung={markierung}
+          markiert={markiert}
+          onMarkiertVerbraucht={() => setMarkiert(null)}
+          ladeGespraech={ladeGespraech}
+          onGespraechGeladen={() => setLadeGespraech(null)}
+        />
+      )}
       {/* „Lotti fragen" an der Markierung. **Dieselben Bedingungen wie der
           schwebende Knopf**: ausgeblendet heißt auch hier ausgeblendet — wer
           Lotti aus dem Weg haben will, will keinen Knopf an jeder Markierung.

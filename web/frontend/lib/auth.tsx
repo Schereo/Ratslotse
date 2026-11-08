@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AppleCredential } from "./apple";
 import { api, ApiError, setUnauthorizedHandler } from "./api";
@@ -45,11 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Einmal je Seitenaufruf, auch wenn der Effekt doppelt läuft (StrictMode in
+  // der Entwicklung): Der erste Abruf nimmt die Antwort, die schon seit dem
+  // <head> unterwegs ist (lib/early-auth.ts) — ein zweiter ginge neu ans Netz.
+  const ersterAbruf = useRef<Promise<void> | null>(null);
   useEffect(() => {
-    (async () => {
-      await refresh();
-      setLoading(false);
-    })();
+    ersterAbruf.current ??= refresh();
+    void ersterAbruf.current.then(() => setLoading(false));
   }, [refresh]);
 
   const queryClient = useQueryClient();
