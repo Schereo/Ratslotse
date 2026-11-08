@@ -51,9 +51,15 @@ test.describe("Dashboard", () => {
       await route.fulfill({ json: await (await route.fetch({ method: "GET" })).json() });
     });
     await page.goto("/dashboard");
-    await page.evaluate(() => window.dispatchEvent(new Event("ratslotse:start-tour")));
+    // Das Startsignal ist ein Ereignis ohne Gedächtnis: Hängt die Tour noch
+    // nicht in der Hülle (die wartet auf /api/auth/me), verhallt es. Lokal und
+    // auf dem eigenen PR ging das gut, in der CI nach weiteren Merges nicht
+    // mehr. Also senden, bis die Tour steht — ein zweiter Start ist harmlos.
     const tour = page.getByRole("dialog", { name: /^Tour:/ });
-    await expect(tour).toBeVisible();
+    await expect(async () => {
+      await page.evaluate(() => window.dispatchEvent(new Event("ratslotse:start-tour")));
+      await expect(tour).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
     // Willkommen → Fragen → Beispiel → Suche → Analyse → Karte, jede Station
     // erst, wenn die vorige steht — so klickt auch ein Mensch.
     for (const titel of ["Frag den Rat", "So sieht eine Antwort aus", "Beschlüsse durchsuchen",
