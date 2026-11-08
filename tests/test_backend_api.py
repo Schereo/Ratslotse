@@ -3525,6 +3525,31 @@ def test_badges_kartograf_distinct_and_derived(client):
     assert {b["id"]: b["earned"] for b in client.get("/api/badges").json()["badges"]}["fruehwarner"] is True
 
 
+def test_badges_from_setup_are_earned_but_not_celebrated(client):
+    # Tims Befund 08.11.2026: Das Thema aus dem Einrichtungs-Assistenten löste
+    # beim Start der Tour die Feier „Themen-Lotse" aus. Was die Einrichtung
+    # verdient, gilt bei ihrem Abschluss als bekannt — verdient, aber nie „neu".
+    _register(client)
+    r = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau in Oldenburg"})
+    assert r.status_code == 201
+    assert client.post("/api/onboarding/setup", json={"step": 4, "done": True}).status_code == 200
+    data = client.get("/api/badges").json()
+    assert {b["id"]: b["earned"] for b in data["badges"]}["themen-lotse"] is True
+    assert data["newly_earned"] == []
+    # Was NACH der Einrichtung verdient wird, feiert weiter wie bisher.
+    client.post("/api/badges/event", json={"type": "frage"})
+    assert [n["id"] for n in client.get("/api/badges").json()["newly_earned"]] == ["erste-frage"]
+
+
+def test_setup_step_without_done_silences_nothing(client):
+    # Nur der Abschluss verbucht still — ein Zwischenschritt nicht. Während
+    # der Einrichtung schweigt ohnehin die Oberfläche (`BadgeCelebrator`).
+    _register(client)
+    client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau in Oldenburg"})
+    client.post("/api/onboarding/setup", json={"step": 2, "done": False})
+    assert "themen-lotse" in [n["id"] for n in client.get("/api/badges").json()["newly_earned"]]
+
+
 def test_badges_are_per_account(client):
     _register(client)
     client.post("/api/badges/event", json={"type": "sitzung"})

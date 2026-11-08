@@ -72,6 +72,12 @@ def set_setup(
     # `le=3`, und dieser Kommentar behauptete eine Grenze, die nie erreicht
     # wurde: Der letzte Schritt des Browsers kam als 422 zurück.
     store.set_setup_step(user["id"], max(0, min(4, payload.step)), done=payload.done)
+    if payload.done:
+        # Was die Einrichtung verdient hat (Thema, Push-Gerät), wird nicht
+        # gefeiert — s. ``badges.still_verbuchen``.
+        from .badges import still_verbuchen
+
+        still_verbuchen(store, user["id"])
     return store.get_setup(user["id"])
 
 
