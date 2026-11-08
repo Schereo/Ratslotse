@@ -59,7 +59,10 @@ export function FeedbackDaumen({ question, answer, source = "ask", answerId = nu
   const [frageGrund, setFrageGrund] = useState(false);
   const [reason, setGrund] = useState("");
   const [art, setArt] = useState<GrundArt | null>(null);
-  const [freigeben, setFreigeben] = useState(false);
+  // Ab Werk an (Tim 08.11.2026): Ohne die ganze Antwort samt Quellen lässt
+  // sich ein gemeldeter Fehler kaum finden, und das Häkchen setzte fast
+  // niemand. Abwählen bleibt ein Klick, die Datenschutzerklärung sagt es.
+  const [freigeben, setFreigeben] = useState(true);
   const post = (rating: "up" | "down", extra?: { reason?: string; art?: GrundArt | null; freigeben?: boolean }) =>
     sendAndForget(apiUrl("/council/qa-feedback"), {
       method: "POST",

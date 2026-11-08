@@ -45,7 +45,6 @@ import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseSseStrom } from "@/lib/sse";
 import { ASK_SCHRITTE, type AskSchritt } from "@/lib/qa-schritte";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
-import { KiInDerEu } from "@/components/eu-flagge";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
 // Die beiden Kanten, an denen der fixierte Composer und die Belege-Spalte
@@ -68,7 +67,7 @@ import {
 // Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
-  AnlagenBlock, AntwortText, DebattenBaustein, GrafikKarte, MehrKnopf, ParteienListe, PresseBlock,
+  AnlagenBlock, AntwortText, BelegeSkelett, DebattenBaustein, GrafikKarte, MehrKnopf, ParteienListe, PresseBlock,
   QuellenAbschnitt, TagesordnungBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
   type QaGrafik, type SitzungsInfo,
@@ -1825,7 +1824,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Antwort eintraf (Tims Befund 19.08., gemessen 355 → 826 px statt
     // konstant 1096). Mit `w-full` zählt wieder `max-w-*`, wie im
     // Block-Layout davor.
-    <div className="mx-auto mt-3 w-full max-w-3xl breit:grid breit:max-w-[1220px] breit:grid-cols-[minmax(0,1fr)_320px] breit:items-start breit:gap-6 desk:min-h-0 desk:flex-1 desk:items-stretch weit:max-w-none weit:justify-center weit:grid-cols-[minmax(0,980px)_420px] weit:gap-10">
+    <div className="qa-druck mx-auto mt-3 w-full max-w-3xl breit:grid breit:max-w-[1220px] breit:grid-cols-[minmax(0,1fr)_320px] breit:items-start breit:gap-6 desk:min-h-0 desk:flex-1 desk:items-stretch weit:max-w-none weit:justify-center weit:grid-cols-[minmax(0,980px)_420px] weit:gap-10">
       {/* Chat-Spalte. Die mobile min-height-Krücke (Design 2①: „Composer
           klebt auch im Empty State unten") ist seit dem FIXED-Composer
           obsolet — und machte die Seite höher als den Viewport, sodass das
@@ -2296,7 +2295,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           "--rl-unten": TABLEISTE_HOEHE,
         } as React.CSSProperties}>
         <div className="flex-1 overflow-y-auto p-4">
-          {letzter && letzter.answer && !letzter.fehler ? (
+          {/* Die Belege stehen, sobald sie gefunden sind — nicht erst mit dem
+              ersten Wort der Antwort. Bis dahin hält jede Art ihren Platz
+              (`BelegeSkelett`), damit nichts hineinspringt (Tim 08.11.2026). */}
+          {letzter && !letzter.fehler && (letzter.answer || hatBelege(letzter)) ? (
             <>
               {/* Die Spalte zeigt immer die Belege des JÜNGSTEN Turns — beim
                   Mitlaufen steht sie damit auch neben älteren Antworten. Ein
@@ -2318,14 +2320,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 onFlash={flash} />
             </>
           ) : loading || deepAktiv ? (
-            <div aria-hidden className="space-y-3 pt-1">
-              <div className="h-3 w-24 animate-pulse rounded bg-skeleton" />
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-8 animate-pulse rounded-full bg-skeleton"
-                  style={{ animationDelay: `${i * 120}ms` }} />
-              ))}
-              <div className="h-3 w-32 animate-pulse rounded bg-skeleton" />
-            </div>
+            <BelegeSkelett />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
               <Sparkles className="h-5 w-5 text-muted-foreground/50" aria-hidden />
@@ -2687,6 +2682,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               <DebattenBaustein question={turn.context || turn.question}
                 beschlussIds={turn.sources.slice(0, 40).map((q) => q.id)}
                 debates={turn.debates ?? []}
+                wartet={beschaeftigt && !turn.fehler}
                 nachladen={!beschaeftigt && !!turn.answer && !turn.fehler && !turn.abgebrochen
                   && !nurGeschaeftsordnung} />
             )}
@@ -2749,8 +2745,6 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                   : zitierte.length === 0 && turn.rules_of_procedure
                   ? <>Automatische Antwort aus der Geschäftsordnung des Rates — kann unvollständig sein. Wortlaut prüfen.</>
                   : <>Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.</>}
-                {/* Ohne Trennpunkt: Bricht die Zeile um, stünde sonst ein „·“ am Zeilenanfang. */}
-                {!turn.unclear && <KiInDerEu className="ml-2" />}
               </span>
             </div>
           )}
@@ -3043,6 +3037,13 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
 
 /* ------------------- Belege-Spalte (Desktop, Design 2⑤) ------------------- */
 
+/** Ist für diesen Turn schon etwas gefunden? (Das `sources`-Ereignis kommt vor
+ *  dem ersten Wort der Antwort.) */
+function hatBelege(t: Turn): boolean {
+  return t.sources.length > 0 || t.press_releases.length > 0 || (t.debates?.length ?? 0) > 0
+    || (t.attachments?.length ?? 0) > 0 || !!t.rules_of_procedure;
+}
+
 function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen, fertig = true }: {
   turn: Turn; flashId: number | null; onFlash: (id: number) => void;
   onDazuFragen?: (title: string) => void;
@@ -3053,9 +3054,7 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen, fertig = true }: {
   const idToNum = useIdToNum(turn);
   const anlBuchstaben = useAnlagenBuchstaben(turn);
   const zitierte = useMemo(() => zitierteVon(turn, idToNum), [turn, idToNum]);
-  if (turn.sources.length === 0 && turn.press_releases.length === 0
-      && (turn.debates?.length ?? 0) === 0 && (turn.attachments?.length ?? 0) === 0
-      && !turn.rules_of_procedure) return null;
+  if (!hatBelege(turn)) return null;
   // Scroll und Höhe übernimmt seit Design 4a die Karten-Hülle im QaTab.
   return (
     <div className="flex flex-col gap-3.5">
@@ -3068,6 +3067,7 @@ function BelegeSpalte({ turn, flashId, onFlash, onDazuFragen, fertig = true }: {
       <DebattenBaustein question={turn.context || turn.question}
         beschlussIds={turn.sources.slice(0, 40).map((q) => q.id)}
         debates={turn.debates ?? []}
+        wartet={!fertig && !turn.research && !turn.unclear}
         nachladen={fertig && !turn.research && !turn.unclear && !!turn.answer && !turn.fehler
           && !turn.abgebrochen && !(turn.rules_of_procedure && zitierte.length === 0)} />
       {(turn.attachments?.length ?? 0) > 0 && (
