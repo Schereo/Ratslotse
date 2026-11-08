@@ -77,6 +77,24 @@ def _compute(store: Store, user_id: int, state: dict) -> list[Badge]:
     return result
 
 
+def still_verbuchen(store: Store, user_id: int) -> None:
+    """Was bis jetzt verdient ist, gilt als bekannt — ohne Feier.
+
+    Der Einrichtungs-Assistent legt Themen an und registriert das Push-Gerät;
+    beides verdient sofort ein Abzeichen („Themen-Lotse", „Frühwarner").
+    Gefeiert direkt danach, beim Start der Tour, wirkte das verwirrend: Man
+    hatte nichts dafür getan, außer einzurichten (Tims Befund 08.11.2026).
+    Verdient bleibt verdient und steht in der Sammlung; nur ``newly_earned``
+    liefert es nicht mehr — auch nicht beim nächsten Neuladen.
+    """
+    state = store.get_badge_state(user_id)
+    neu = [b["id"] for b in _compute(store, user_id, state)
+           if b["earned"] and b["id"] not in state["earned"]]
+    if neu:
+        state["earned"] = state["earned"] + neu
+        store.save_badge_state(user_id, state)
+
+
 @router.get("")
 def get_badges(user: dict = Depends(require_active),
                store: Store = Depends(get_store)) -> BadgeState:
