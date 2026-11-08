@@ -5962,6 +5962,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/today/visit/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Visit With Updates
+         * @description Besuch aufzeichnen und gleich die erste Seite des Rückblicks liefern.
+         *
+         *     Dasselbe wie ``POST /visit`` und danach ``GET /updates``, nur in EINEM
+         *     Aufruf: Der Rückblick auf „Heute" wartete sonst eine ganze Netzlaufzeit auf
+         *     den POST, bevor er überhaupt fragen konnte. Die Reihenfolge bleibt dieselbe
+         *     — erst aufzeichnen (das setzt beim ersten Aufruf eines neuen Besuchs
+         *     ``visit_previous_at``), dann das Fenster lesen.
+         *
+         *     Ein eigener Pfad statt eines Schalters an ``/visit``: Den einfachen POST
+         *     schickt die Hülle auf jeder Seite und alle fünf Minuten, und nur dieser hier
+         *     braucht die Rats-Datenbank.
+         */
+        post: operations["visit_with_updates_api_today_visit_updates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/topics": {
         parameters: {
             query?: never;
@@ -25567,6 +25597,26 @@ export interface operations {
             };
         };
     };
+    visit_with_updates_api_today_visit_updates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayUpdates"];
+                };
+            };
+        };
+    };
     list_topics_api_topics_get: {
         parameters: {
             query?: never;
@@ -26650,4 +26700,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b9c15a0a594c9c4f799771778c961840797b7be40cbfe6ee059307934dc108ba
+// vertrag-sha256: 067882e1d9d8626d587973dc3c5a5a02b9fe28271c60ce34c58654eeb96718ef

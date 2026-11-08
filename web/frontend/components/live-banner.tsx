@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
-import { api } from "@/lib/api";
+import { UPCOMING_SESSIONS_KEY, fetchUpcomingSessions } from "@/lib/upcoming-sessions";
 import { Button } from "@/components/ui";
 import {
   currentSessionToday, isStadtrat, runningTimeText, O1_STREAM_URL,
@@ -35,7 +35,8 @@ type Session = {
  *
  * Das `limit` deckt den längsten Sitzungstag ab (Ratstage bringen drei
  * Gremien nacheinander, s. `lib/live`): Wer knapper lädt, hat die laufende
- * Sitzung womöglich gar nicht in der Hand.
+ * Sitzung womöglich gar nicht in der Hand. Die Liste teilt sie sich mit der
+ * Karte „Nächste Sitzung" (`lib/upcoming-sessions.ts`).
  */
 export function LiveBanner() {
   // Minütlich neu bewerten — die Karte erscheint/verschwindet von selbst.
@@ -46,8 +47,9 @@ export function LiveBanner() {
   }, []);
 
   const { data } = useQuery({
-    queryKey: ["upcoming-sessions"],
-    queryFn: () => api.get<{ sessions: Session[] }>("/council/sessions?scope=upcoming&limit=6"),
+    // Geteilt mit der Karte „Nächste Sitzung" (lib/upcoming-sessions.ts).
+    queryKey: UPCOMING_SESSIONS_KEY,
+    queryFn: () => fetchUpcomingSessions<{ sessions: Session[] }>(),
     // Der Übertragungsstand wechselt alle 30 Sekunden — die Karte holt ihn
     // alle 20 s nach, solange sie steht (sonst zeigte sie den TOP vom
     // Seitenaufruf, bis jemand neu lädt). Billig: nur an Sitzungstagen.

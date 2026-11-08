@@ -19,6 +19,12 @@ const MERKER = "ratslotse:landing-gewollt";
  *
  *  `replace` statt `push`: Sonst führte „Zurück" vom Dashboard sofort wieder
  *  in die Weiterleitung.
+ *
+ *  Seit 11/2026 leitet bei einem ganzen Seitenaufruf schon der Server um
+ *  (`middleware.ts`, `lib/landing-redirect.ts`), bevor die Landing samt
+ *  3D-Lotti lädt. Diese Komponente bleibt der Rückfall für alles, was dort
+ *  durchgeht: Client-Navigation, ein langsames Backend. Die Fluchttür merkt
+ *  sich der Server zusätzlich als Cookie — `sessionStorage` sieht er nicht.
  */
 export function LandingRedirect() {
   const router = useRouter();
