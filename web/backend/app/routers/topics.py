@@ -47,6 +47,7 @@ from council.store import CouncilStore
 from ..antworten import (CityTopicMatch, MarkedHits, Ok, SubscriptionRemoved, SubscriptionSet,
                          Subscriptions, TopicDecisions, TopicDescription, TopicHit, TopicHitList,
                          TopicSuggestions, UnreadTopicHits)
+from .. import response_cache
 from ..clients import client_kind
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
@@ -776,7 +777,12 @@ def topic_suggestions(
     stadtweit = _build_suggestions(
         council, council.suggested_entity_topics(days_back=365, limit=16),
         existing_tokens, chosen_tokens, limit=6) if citywide else []
-    stadtthemen = city_topic_suggestions(council) if city else []
+    # Die Zählung der Stadtthemen ist für alle Konten gleich und kostete je
+    # Aufruf rund 110 ms (19 Muster über ein Jahr Beschlusstexte) — einmal je
+    # Datenstand und Tag reicht (``app/response_cache.py``).
+    stadtthemen = response_cache.cached(
+        "topics.city", [council],
+        lambda: city_topic_suggestions(council)) if city else []
     return {"city": stadtthemen, "suggestions": stadtweit, "districts": gruppen}
 
 
