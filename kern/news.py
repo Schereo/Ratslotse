@@ -125,13 +125,15 @@ def body_html(release: Release) -> str:
         # und in der Mail läuft keins. Und keine App: Die neue ist noch nicht
         # im Store, die Videos zeigt die Karte beim nächsten Besuch.
         f"<p style='margin:0 0 22px;font-size:15px;line-height:1.55;color:{_TEXT}'>"
-        f"in Ratslotse gibt es {zahl} neue Wege, den Rat zu verstehen. "
-        "Wenn du dich das nächste Mal anmeldest, zeigt dir zu jedem ein kurzes Video, "
-        "wie es geht.</p>",
+        f"bei Ratslotse gibt es {zahl} neue Möglichkeiten, die Arbeit des Rates "
+        "nachzuvollziehen. Wenn du dich das nächste Mal anmeldest, findest du zu jeder "
+        "Neuerung ein kurzes Video.</p>",
         f"<div style='font-size:12px;font-weight:700;letter-spacing:0.12em;color:{_SIGNAL}'>"
         f"NEU IN VERSION {html.escape(_version_kurz(release.version))}</div>",
+        # Nicht der Name der Karte („Das Erklär-Update“): In der Mail sagt die
+        # Überschrift, was drinsteht (Tims Text 08.11.2026).
         f"<div style='margin-top:6px;font-size:26px;font-weight:800;line-height:1.2;color:{_TEXT}'>"
-        f"{html.escape(release.title)}</div>",
+        f"{str(zahl).capitalize()} Neuerungen bei Ratslotse</div>",
     ]
     teile += [_highlight_block(h, i) for i, h in enumerate(gross, start=1)]
     # Das kleine Feature unter „Außerdem neu": Titel, Satz und — wenn es eins
@@ -159,11 +161,11 @@ def body_html(release: Release) -> str:
             + "".join(zeilen)
             + "</div>"
         )
-    teile.append(digest_email.knopf(TAP_ZIEL, "Jetzt in Ratslotse ansehen"))
+    teile.append(digest_email.knopf(TAP_ZIEL, "Jetzt Ratslotse öffnen"))
     teile.append(
         f"<p style='margin:22px 0 0;font-size:15px;line-height:1.55;color:{_TEXT}'>"
-        "Viel Spaß beim Entdecken! Fällt dir etwas auf, freue ich mich über eine Nachricht "
-        "über „Feedback“ in Ratslotse.<br>Lotti</p>"
+        "Viel Spaß beim Ausprobieren! Wenn dir etwas auffällt, schreib mir gern über die "
+        "Feedbackfunktion in Ratslotse.<br>Lotti</p>"
     )
     teile.append(
         digest_email.nebenlink(

@@ -358,7 +358,8 @@ def _abmelde_hinweis() -> str:
     Selbst-Suchen (Tims Wunsch 26.08.2026)."""
     return (
         f"<div style='margin-top:10px;color:{_LEISE};font-size:12px;line-height:1.5'>"
-        "Du bekommst diese E-Mail, weil du bei Ratslotse die E-Mail-Zustellung aktiviert hast. "
-        f"Den Kanal änderst du jederzeit unter <a href='{APP_BASE_URL}/account?zeig=zustellung' "
-        f"style='color:{_LEISE};text-decoration:underline'>„Mein Konto“</a>.</div>"
+        "Du erhältst diese Mail, weil du bei Ratslotse den Mailversand aktiviert hast. "
+        f"Unter <a href='{APP_BASE_URL}/account?zeig=zustellung' "
+        f"style='color:{_LEISE};text-decoration:underline'>„Mein Konto“</a> "
+        "kannst du das jederzeit ändern.</div>"
     )
