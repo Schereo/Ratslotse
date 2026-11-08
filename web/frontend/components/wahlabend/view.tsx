@@ -14,7 +14,7 @@ import Link from "next/link";
 import { FrageChips } from "@/components/frage-chips";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Mascot } from "@/components/mascot";
 import { KICKER, Punkt, TON } from "@/components/wahlabend/bausteine";
 import { Halbkreis } from "@/components/wahlabend/halbkreis";
@@ -916,17 +916,25 @@ export function WahlabendView() {
       holen && !istNichtGefunden(abfrage.state.error) && abfrage.state.data?.phase !== "complete" ? 60_000 : false,
     refetchOnWindowFocus: holen,
     staleTime: rueckblick ? Infinity : gestartet ? 30_000 : 15 * 60_000,
-    // Nur beim Wechsel des Reiters (mit/ohne Kandidaturen) bleibt der Stand
-    // stehen — nicht beim Wechsel der Wahl oder der Probe: Dort wäre der alte
-    // Stand der einer anderen Rechnung.
-    placeholderData: (vorher, vorherige) => {
-      const [, p, c, r] = vorherige?.queryKey ?? [];
-      return p === probe && c === counted && r === rueckblick ? keepPreviousData(vorher) : undefined;
-    },
   });
+  // Beim Wechsel des Reiters (mit/ohne Kandidaturen) bleibt der Stand des
+  // anderen stehen, bis die eigene Antwort da ist — und auch, wenn sie
+  // scheitert: Es ist derselbe Abend, nur mit bzw. ohne Kandidaturen. Als
+  // `placeholderData` ging beides schief: Eine gescheiterte Antwort warf die
+  // Seite auf „Gerade keine Zahlen", und die Tafel nannte „Zuletzt abgefragt
+  // 01:00 Uhr" (`dataUpdatedAt` einer Abfrage ohne Antwort ist 0). Nicht beim
+  // Wechsel der Wahl oder der Probe: Dort wäre der alte Stand der einer
+  // anderen Rechnung — deshalb genau dieser eine Schlüssel.
+  const queryClient = useQueryClient();
+  const nebenan =
+    abfrage.data === undefined
+      ? queryClient.getQueryState<Wahlabend>(["wahlabend", probe, counted, rueckblick, !mitKandidaten])
+      : undefined;
+  const daten = abfrage.data ?? nebenan?.data;
+  const aktualisiert = abfrage.data !== undefined ? abfrage.dataUpdatedAt : (nebenan?.dataUpdatedAt ?? 0);
   // Erst wenn die Antwort MIT Kandidaturen da ist — nicht der stehen
   // gebliebene Stand des ersten Reiters.
-  const kandidatenDa = mitKandidaten && !abfrage.isPlaceholderData;
+  const kandidatenDa = mitKandidaten && abfrage.data !== undefined;
 
   const [liste, setListe] = useState<string | null>(null);
   useEffect(() => {
@@ -990,7 +998,6 @@ export function WahlabendView() {
     [setzeQuery],
   );
 
-  const daten = abfrage.data;
   let inhalt: React.ReactNode;
   if (config.isLoading) {
     inhalt = null;
@@ -1030,7 +1037,7 @@ export function WahlabendView() {
             ein Ergebnis dieser Wahl.
           </p>
         ) : null}
-        <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
+        <Tafel daten={daten} aktualisiert={aktualisiert} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
         {daten.dataset === "archive" ? null : <StichwahlHinweis />}
         {daten.phase !== "before" && daten.dataset !== "archive" ? <NeuKarten liste={liste} /> : null}
         <Vorbehalt daten={daten} />
