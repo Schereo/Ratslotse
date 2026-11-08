@@ -217,6 +217,46 @@ class ThemenMixin(StoreBasis):
         ).fetchall()
         return [f"{r[0] or ''} {r[1] or ''}" for r in rows]
 
+    def decision_texts_dated(self) -> list[tuple[int, str, str]]:
+        """``(id, Sitzungsdatum, Titel + Zusammenfassung)`` jedes Beschlusses —
+        dasselbe Zählgut wie ``decision_texts_since``, aber mit Kennung und
+        Datum: Die Stadtthemen brauchen die Liste selbst, nicht nur die Zahl."""
+        rows = self._conn.execute(
+            """SELECT d.id, s.session_date, d.title, d.summary FROM council_decisions d
+               JOIN council_sessions s ON s.ksinr = d.ksinr
+               WHERE d.kind = 'decision'""",
+        ).fetchall()
+        return [(int(r[0]), r[1] or "", f"{r[2] or ''} {r[3] or ''}") for r in rows]
+
+    def city_topic_decisions(self) -> dict[str, list[tuple[int, float, str]]]:
+        """Die gespeicherten Trefferlisten der Stadtthemen → ``{key: [(id,
+        score, Sitzungsdatum)]}``. Nur Beschlüsse, die es noch gibt: Eine
+        Neu-Extraktion vergibt neue IDs, und eine tote Zeile zählte sonst mit."""
+        rows = self._conn.execute(
+            """SELECT c.topic_key, c.decision_id, c.score, s.session_date
+               FROM council_city_topic_decisions c
+               JOIN council_decisions d ON d.id = c.decision_id
+               JOIN council_sessions s ON s.ksinr = d.ksinr""",
+        ).fetchall()
+        out: dict[str, list[tuple[int, float, str]]] = {}
+        for r in rows:
+            out.setdefault(r[0], []).append((int(r[1]), float(r[2]), r[3] or ""))
+        return out
+
+    def replace_city_topic_decisions(self, key: str,
+                                     rows: list[tuple[int, float, str]]) -> None:
+        """Die Trefferliste eines Stadtthemas ersetzen. ``rows`` = ``(id, score,
+        Quelle)`` mit Quelle ``muster`` oder ``semantisch``."""
+        from datetime import datetime
+
+        jetzt = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_city_topic_decisions WHERE topic_key = ?", (key,))
+            self._conn.executemany(
+                "INSERT INTO council_city_topic_decisions "
+                "(topic_key, decision_id, score, source, computed_at) VALUES (?,?,?,?,?)",
+                [(key, did, score, quelle, jetzt) for did, score, quelle in rows])
+
     def suggested_entity_topics(self, days_back: int = 365, limit: int = 12,
                                 place_id: str | None = None) -> list[dict]:
         """Konkrete Orte/Projekte mit jüngster Ratsaktivität — Futter für die
