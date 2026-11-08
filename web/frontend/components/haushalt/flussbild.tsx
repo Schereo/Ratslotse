@@ -38,6 +38,7 @@ import { Beleg } from "@/components/haushalt/source";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { ausblick, type Antwort as DatenstandAntwort } from "@/components/haushalt/datenstand";
 import { useFetch } from "@/lib/use-fetch";
+import { DATA_STATUS_URL } from "@/components/haushalt/datenstand";
 import { cn } from "@/lib/utils";
 import { useErklaerAnker } from "@/lib/erklaer-anker";
 
@@ -318,7 +319,7 @@ export function Flussbild({ daten, year, onJahrWechsel }: {
   const nurHerkunft = useMemo(() => einnahmearten(daten, year), [daten, year]);
   // Wann die Stadt den fehlenden Jahrgang üblicherweise vorlegt — derselbe
   // Satz, den der Datenstand am Seitenfuß baut, statt einer zweiten Fassung.
-  const { data: stand_ } = useFetch<DatenstandAntwort>("/council/budget/data-status");
+  const { data: stand_ } = useFetch<DatenstandAntwort>(DATA_STATUS_URL, { shared: true });
   const ausblickText = useMemo(() => {
     const schicht = stand_?.layers.find((x) => x.key === "jahresabschluss");
     return schicht && stand_ ? ausblick(schicht, stand_.today).text : null;

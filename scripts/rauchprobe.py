@@ -121,10 +121,12 @@ MIT_KONTO: tuple[str, ...] = (
     "/api/council/budget/journey",
     "/api/council/budget/liquidity",
     "/api/council/budget/loans",
-    # `budget/products` fehlt hier bewusst: Es verlangt ein Pflicht-Jahr in
-    # der Abfrage, und eine fest eingetragene Jahreszahl wäre eine Probe mit
-    # Verfallsdatum. Der Test unten hält fest, dass keine Probe einen
-    # Pflichtparameter hat — sonst meldet sie für immer 422.
+    # `budget/products` fehlt hier bewusst: Bis 11/2026 verlangte es ein
+    # Pflicht-Jahr (der Test unten hält fest, dass keine Probe einen
+    # Pflichtparameter hat — sonst meldet sie für immer 422). Ohne Jahr nimmt
+    # es jetzt das jüngste der Produktebene, antwortet aber mit 404, wo es
+    # keine gibt — auf einer frischen Instanz wäre der Deploy rot, ohne dass
+    # etwas kaputt ist.
     "/api/council/budget/shareholdings",
     "/api/council/budget/staff-plan",
 )

@@ -70,8 +70,10 @@ function vielfachesText(v: number): string {
   return `das ${deMio(v)}-Fache`;
 }
 
+export const BALANCE_SHEET_URL = "/council/budget/balance-sheet";
+
 export function BilanzBlock() {
-  const { data } = useFetch<BilanzDaten>("/council/budget/balance-sheet");
+  const { data } = useFetch<BilanzDaten>(BALANCE_SHEET_URL, { shared: true });
   const s = juengsterStichtag(data);
   // Ohne vollständige Bilanz gibt es diesen Block nicht. Kein Platzhalter,
   // keine halbe Bilanz: Eine Vermögensseite, bei der ein Hauptposten fehlt,

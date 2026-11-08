@@ -121,15 +121,18 @@ export default function PflichtPage() {
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
 
   // Die Produktebene reicht nicht bis ins Planjahr — welches Jahr sie trägt,
-  // sagt die Übersicht. Deshalb erst der zweite Aufruf, und nur wenn es
-  // überhaupt eines gibt (`useFetch(null)` überspringt).
+  // sagt die Übersicht.
   const produktJahr = data?.product_years?.length ? Math.max(...data.product_years) : null;
   // Der erste Jahrgang kommt ebenfalls aus den Daten. „2018" als feste Zahl in
   // den Satz zu schreiben hieße, beim nächsten Nachzug still zu lügen.
   const produktVon = data?.product_years?.length ? Math.min(...data.product_years) : null;
-  const { data: produktdaten } = useFetch<ProdukteAntwort>(
-    produktJahr ? `/council/budget/products?year=${produktJahr}` : null,
-  );
+  // Ohne `year` liefert der Endpunkt das jüngste Jahr mit Produktebene —
+  // dieselbe Liste wie `product_years`. Der Abruf startet damit zusammen mit
+  // der Übersicht statt erst nach ihr (eine Wasserfall-Stufe weniger); ohne
+  // Produktebene kommt ein 404 und `produktdaten` bleibt leer. Benutzt wird
+  // die Antwort nur, wenn ihr Jahr das der Übersicht ist.
+  const { data: latestProducts } = useFetch<ProdukteAntwort>("/council/budget/products");
+  const produktdaten = latestProducts && latestProducts.year === produktJahr ? latestProducts : null;
 
   const befunde = useMemo<Map<BereichSchluessel, SpielraumBefund>>(
     () => (produktdaten && produktJahr
@@ -558,6 +561,7 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
                 `min-w-0` nicht unter seine längste unteilbare Stelle. */}
             <Link
               href={`/haushalt/bereich?name=${bereichSlug(r.z.area)}`}
+              prefetch={false}
               className="min-w-0 text-[13px] font-bold leading-snug break-words hover:text-primary"
             >
               {kanon.name}
@@ -709,6 +713,7 @@ function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: numbe
               </p>
               <Link
                 href={`/haushalt/produkte?nr=${encodeURIComponent(groesste.product_no)}`}
+                prefetch={false}
                 className="mt-1.5 inline-block text-[11.5px] font-semibold text-primary"
               >
                 Steckbrief dieser Aufgabe

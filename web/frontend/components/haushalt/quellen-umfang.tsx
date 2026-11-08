@@ -79,8 +79,10 @@ function Zeile({ titel, unter, dokumente, zahlen, groesste }: {
   );
 }
 
+export const SOURCE_STATS_URL = "/council/budget/source-stats";
+
 export function QuellenUmfang() {
-  const { data } = useFetch<Antwort>("/council/budget/source-stats");
+  const { data } = useFetch<Antwort>(SOURCE_STATS_URL, { shared: true });
   const [alle, setAlle] = useState(false);
   if (!data || data.documents === 0) return null;
 

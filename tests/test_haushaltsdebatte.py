@@ -426,3 +426,53 @@ def test_gedaechtnis_gibt_kopien_heraus(store):
 
     zweite = store.haushalt_streit()[0]["stationen"][-1]["debatte"]
     assert zweite[0]["name"] != "verbogen"
+
+
+def test_endpunkt_liefert_den_wortlaut_nur_fuer_einen_jahrgang():
+    """``/budget/debate?texts=<Jahr>`` (Leistungsrunde 11/2026): Die Seite zeigt
+    einen Jahrgang, gezählt wird über alle. Die übrigen Runden behalten deshalb
+    jeden Beitrag — wer, welche Fraktion, welche Rolle —, nur ``text`` wird
+    ``null``. Ohne den Parameter bleibt die Antwort, wie sie war, und die
+    Runden aus dem Store werden nicht verändert (er hält ein Gedächtnis)."""
+    import copy
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
+    from app.routers.council import haushalt_streit
+
+    def runde(jahr):
+        return {"year": jahr, "stationen": [{
+            "ksinr": jahr, "committee": "Rat", "date": f"{jahr}-02-01", "top": "6",
+            "official_text": None, "antraege": [], "minutes_url": None,
+            "debatte": [{"anrede": "Ratsfrau", "name": "A", "text": f"Rede {jahr}",
+                         "fraktion": "SPD", "fraktion_unklar": False,
+                         "role": "council", "zeichen": 9}]}]}
+
+    class Bestand:
+        def __init__(self):
+            self.runden = [runde(2026), runde(2025)]
+
+        def haushalt_streit(self, year=None):
+            return [r for r in self.runden if year is None or r["year"] == year]
+
+    def texte(antwort):
+        return {r["year"]: [b["text"] for s in r["stationen"] for b in s["debatte"]]
+                for r in antwort["rounds"]}
+
+    bestand = Bestand()
+    unberuehrt = copy.deepcopy(bestand.runden)
+
+    assert haushalt_streit(year=None, texts=None, _user={}, store=bestand) == {"rounds": unberuehrt}
+    alt = haushalt_streit(year=None, texts="2025", _user={}, store=bestand)
+    assert texte(alt) == {2026: [None], 2025: ["Rede 2025"]}
+    # Gezählt werden kann weiter: Der Beitrag steht da, nur ohne Wortlaut.
+    beitrag = alt["rounds"][0]["stationen"][0]["debatte"][0]
+    assert {k: v for k, v in beitrag.items() if k != "text"} == {
+        k: v for k, v in unberuehrt[0]["stationen"][0]["debatte"][0].items() if k != "text"}
+    assert texte(haushalt_streit(year=None, texts="latest", _user={}, store=bestand)) == {
+        2026: ["Rede 2026"], 2025: [None]}
+    # Ein Jahr ohne Runde fällt auf den jüngsten zurück — wie die Seite.
+    assert texte(haushalt_streit(year=None, texts="2017", _user={}, store=bestand)) == {
+        2026: ["Rede 2026"], 2025: [None]}
+    assert bestand.runden == unberuehrt

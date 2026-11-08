@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { darfHaushalt } from "@/lib/rechte";
 import { Spinner } from "@/components/ui";
+import { usePreload } from "@/lib/use-fetch";
 import { FortschrittMerker } from "@/components/haushalt/fortschritt-merker";
+import { DOCUMENTS_URL } from "@/components/haushalt/source";
 
 // Rechte-Gate für den gesamten Haushalts-Bereich — die zwanzig Seiten unter
 // /haushalt (die Übersicht und neunzehn Unterseiten) sind Ratsmitgliedern und
@@ -31,6 +33,12 @@ import { FortschrittMerker } from "@/components/haushalt/fortschritt-merker";
 // liegt. Hier steht deshalb nur das Gate, keine Kopf- oder Fußzeile.
 export default function HaushaltLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  // Das Belegverzeichnis braucht jede Seite des Bereichs (`Quellenkontext`),
+  // gerendert wird es aber erst nach ihren Hauptdaten — der Abruf kam deshalb
+  // als eigene zweite Welle und war auf zehn Seiten die letzte Antwort. Hier
+  // startet er zusammen mit den Hauptdaten und gilt danach für alle Schritte.
+  // ERST NACH dem Rechte-Gate: Ohne Recht `budget` wird nichts angefragt.
+  usePreload([!loading && darfHaushalt(user) ? DOCUMENTS_URL : null]);
 
   // Solange die Sitzung geladen wird, ist noch NICHTS entschieden. Ein
   // notFound() an dieser Stelle träfe jedes Ratsmitglied beim ersten Aufruf

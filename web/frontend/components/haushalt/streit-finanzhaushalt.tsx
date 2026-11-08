@@ -117,6 +117,7 @@ function ListenKarte({ liste, year }: { liste: FhhListeImJahr; year: number }) {
                 {z.product && (
                   <Link
                     href={`/haushalt/investitionen?vorhaben=${encodeURIComponent(vorhabenNummer(z.product))}&year=${z.year}#vorhaben`}
+                    prefetch={false}
                     // Bewusst „suchen" und nicht „zum Vorhaben": Der Link
                     // führt auf eine SUCHE, und die findet ihr Vorhaben in gut
                     // der Hälfte der Fälle (gemessen 32 von 56). Ein Link, der
