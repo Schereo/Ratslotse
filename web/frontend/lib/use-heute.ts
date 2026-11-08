@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 /** Das heutige Datum — aber erst NACH dem Mount.
  *
- *  Zwei Gründe für den Umweg: Der statische Export (App) rendert die Seiten
- *  zur Build-Zeit; ein dort berechnetes „morgen“ wäre eine Woche später
+ *  Zwei Gründe für den Umweg: Next rendert statische Seiten zur Build-Zeit
+ *  vor; ein dort berechnetes „morgen“ wäre eine Woche später
  *  schlicht falsch und gäbe beim Hydrieren eine Abweichung. Und eine App, die
  *  über Mitternacht offen bleibt (auf dem Handy die Regel, nicht die
  *  Ausnahme), zeigte sonst weiter „heute“ für gestern — deshalb der Blick auf

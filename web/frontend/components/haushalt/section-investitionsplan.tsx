@@ -174,8 +174,8 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
 
   // Welcher Bereich in den Vorhaben offen ist, steht in der URL: Ein Link auf
   // ein einzelnes Vorhaben soll teilbar sein, und der Zurück-Knopf des
-  // Browsers soll ihn schließen. Query-Parameter statt Route-Segment, weil der
-  // Export (Capacitor) keine dynamischen Segmente kennt.
+  // Browsers soll ihn schließen. Query-Parameter statt Route-Segment, wie
+  // überall im Haushalt.
   const router = useRouter();
   const params = useSearchParams();
   const gewaehlterBereich = Number(params.get("area")) || null;

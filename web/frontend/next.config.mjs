@@ -3,11 +3,6 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 // Next's dev server (HMR/React Refresh) needs 'unsafe-eval'; a production build
 // does not — so only allow it in development to keep the prod CSP tight.
 const isDev = process.env.NODE_ENV !== "production";
-// The native-app build (`MOBILE=1 next build`) is a static export bundled into
-// the Capacitor shell. Static export has no server, so it can't run rewrites()
-// or headers(): the app talks to the backend at an absolute origin (see
-// lib/platform.ts) and its CSP/security headers come from the app shell instead.
-const MOBILE = process.env.MOBILE === "1";
 
 // Proxy API calls to the FastAPI backend so the web frontend always talks to a
 // same-origin /api (no CORS, cookies work). In production Caddy may handle /api
@@ -66,10 +61,6 @@ async function redirects() {
     { source: "/technik", destination: "/docs", permanent: true },
     // Die Etappe „Mitreden" war bis 21.08.2026 auf drei Seiten verteilt; sie
     // beantworten eine Frage und stehen jetzt als Abschnitte auf einer.
-    //
-    // ACHTUNG, DAS GILT NUR IM WEB-BUILD. Der Capacitor-Export (`output:
-    // "export"`) kennt `redirects` nicht — für die App zählt allein, dass
-    // KEIN interner Link mehr auf die alten Pfade zeigt. Beim Umbau geprüft.
     { source: "/haushalt/jahr", destination: "/haushalt/mitreden#termine", permanent: true },
     { source: "/haushalt/streit", destination: "/haushalt/mitreden#streit", permanent: true },
     // `/haushalt/labor → mitreden#labor` stand hier vom 21. bis 24.08.2026 —
@@ -166,17 +157,18 @@ const nextConfig = {
   reactStrictMode: true,
   // Don't advertise the framework in the X-Powered-By header.
   poweredByHeader: false,
-  ...(MOBILE
-    ? {
-        // Static HTML export for Capacitor: written to ./out, bundled as the app.
-        output: "export",
-        // Each route exports as <route>/index.html — friendliest for the
-        // Capacitor local file server.
-        trailingSlash: true,
-        // The static export can't run the Next image optimizer.
-        images: { unoptimized: true },
-      }
-    : { rewrites, redirects, headers }),
+  // No image optimizer: `/_next/image` answers 404. Next 14 runs it through
+  // `sharp`, and the copy it found (0.32.6, pulled in only by
+  // `@capacitor/assets`) carried the libvips/libheif flaws behind two
+  // unauthenticated RCE advisories (GHSA-2464-fhr4-w9xw, GHSA-2xp9-vwfh-vxw4;
+  // fixed only from sharp 0.35.5 / Next 15.5.28). `@capacitor/assets` is gone
+  // since 11/2026, but the optimizer stays off: we use `next/image` for a
+  // handful of our own small PNG icons, which lose nothing by being served
+  // as they are.
+  images: { unoptimized: true },
+  rewrites,
+  redirects,
+  headers,
 };
 
 export default (phase) => ({

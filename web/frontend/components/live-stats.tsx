@@ -14,8 +14,6 @@ export function LiveStats({ inline = false }: { inline?: boolean } = {}) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Über `lib/api`, nicht per nacktem fetch — siehe `heute-leiste.tsx`:
-    // relativ aufgelöst zeigt der Pfad in der Capacitor-Hülle ins Nichts.
     api.get<Stats>("/council/public-stats")
       .then((d) => d && setStats(d))
       .catch(() => {});

@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { XCircle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
-import { setToken } from "@/lib/token";
 import type { User } from "@/lib/types";
 import { Button, Spinner, toast } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
@@ -38,10 +37,7 @@ function VerifyInner() {
     ran.current = true; // verify exactly once, even under StrictMode double-mount
     (async () => {
       try {
-        const u = await api.post<User>("/auth/verify-email", { token });
-        // Native app via deep link: the backend hands back a bearer token so the
-        // user lands logged-in. On the web access_token is null → no-op.
-        if (u.access_token) await setToken(u.access_token);
+        await api.post<User>("/auth/verify-email", { token });
         try { await refresh(); } catch { /* not logged in — fine */ }
         if (istWechsel) {
           // Ein Adresswechsel ist kein Einstieg: Wer hier landet, benutzt

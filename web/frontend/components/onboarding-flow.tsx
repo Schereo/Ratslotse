@@ -6,7 +6,6 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { ArrowLeft, Bell, Check, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand } from "@/lib/onboarding-setup";
-import { isNativeApp } from "@/lib/platform";
 import { cn, pfad } from "@/lib/utils";
 import { Button, Input, toast } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
@@ -31,33 +30,20 @@ import { meldeChips, stadtthemaBild, stadtthemaChip } from "@/lib/onboarding-chi
  *  - **Abbruch merkt sich den Schritt.** Wer die App mittendrin schließt, macht
  *    beim nächsten Start dort weiter, statt von vorn zu beginnen.
  *
- *  **Seit 09/2026 läuft der Assistent auch im Browser.** Vorher stand hier ein
- *  `if (!isNativeApp()) return` — der ganze Ablauf existierte, war im Web aber
- *  unsichtbar, und wer sich dort registrierte, landete unvermittelt auf einem
- *  leeren „Heute". Drei Dinge unterscheiden die beiden Plattformen:
+ *  Drei Dinge, die im Browser anders laufen als in der nativen iOS-App:
  *
  *  1. **Wer ihn zu sehen bekommt, entscheidet der Server** (`/onboarding/setup`,
- *     Feld `pending`). Der localStorage taugte dafür nur in der App: Im Browser
- *     wechselt man das Gerät, und ein zweiter Rechner finge sonst von vorn an.
- *     Die Regel steht damit an einer Stelle für beide Frontends.
- *  2. **Der Auftakt begrüßt in der App VOR dem Login** — dort gibt es keine
- *     Startseite, die das täte. Im Browser ist das die Landingpage; der
- *     Assistent beginnt deshalb erst nach der Anmeldung.
- *  3. **Schritt 3 fragt etwas anderes.** Im Browser gibt es keine Push-Erlaubnis
- *     (das Backend kennt nur APNs/FCM), also geht es dort um die E-Mail-
- *     Zustellung — siehe `PushStep`/`MailStep`.
+ *     Feld `pending`). Im Browser wechselt man das Gerät, und ein zweiter
+ *     Rechner finge mit dem localStorage allein von vorn an. Die Regel steht
+ *     damit an einer Stelle für beide Frontends.
+ *  2. **Der Auftakt begrüßt erst nach der Anmeldung** — davor tut das die
+ *     Landingpage.
+ *  3. **Der letzte Schritt fragt nach der E-Mail.** Im Browser gibt es keine
+ *     Push-Erlaubnis (das Backend kennt nur APNs/FCM) — siehe `MailStep`.
  */
 
 const DONE_KEY = "ratslotse.onboarding.done";
 const STEP_KEY = "ratslotse.onboarding.step";
-/** Muss zum Schlüssel in push-primer.tsx passen: Schritt 3 IST der Primer
- *  (26a zieht ihn nach vorn). Ohne das Setzen fragt die Karte auf „Heute"
- *  unmittelbar danach ein zweites Mal — im Simulator genau so beobachtet. */
-const PUSH_SNOOZE_KEY = "ratslotse.push-primer.snoozed-until";
-const PUSH_SNOOZE_DAYS = 7;
-/** Der alte First-Run-Schlüssel: Wer die Intro-Karten schon gesehen hat, ist
- *  kein Erstnutzer mehr und wird nicht nachträglich durchs Onboarding geschickt. */
-const LEGACY_INTRO_KEY = "ratslotse.intro.done";
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 /** Schritt 5 ist kein Schritt im Pfad, sondern ein Auffangnetz: Er erscheint
@@ -195,7 +181,6 @@ export function OnboardingFlow() {
   // Haken-Schritt ÜBER der Tour-Einladung (Browsertest, 06.10.2026).
   const hakenLaeuft = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const native = isNativeApp();
   // In DIESER Sitzung abgeschlossen. Ohne den Riegel schöbe die noch im Cache
   // liegende Server-Antwort (`pending: true`) den Assistenten sofort wieder
   // hoch, sobald der Effekt erneut läuft — der Abschluss ist ja fire-and-forget.
@@ -215,42 +200,14 @@ export function OnboardingFlow() {
     // einen angemeldeten Rückkehrer für abgemeldet und träte kurz beiseite.
     if (loading || fertig.current) return;
 
-    // --- Ohne (nutzbares) Konto ---
-    // In der App begrüßt der Auftakt VOR dem Login; im Browser tut das die
-    // Landingpage, dort gibt es hier also nichts zu zeigen.
-    if (!isUsable(user)) {
-      if (!native) { setStep(null); return; }
-      try {
-        if (localStorage.getItem(DONE_KEY) || localStorage.getItem(LEGACY_INTRO_KEY)) {
-          setStep(null);
-          return;
-        }
-        const raw = Number(localStorage.getItem(STEP_KEY) ?? 0);
-        const saved = (Number.isFinite(raw) && raw >= 0 && raw <= 3 ? raw : 0) as Step;
-        // Die Schritte 1–3 brauchen ein Konto (Abos und Themen hängen daran):
-        // Ohne eins tritt der Flow beiseite und gibt den Login frei; sobald
-        // angemeldet, macht er genau dort weiter.
-        setStep(saved > 0 ? null : saved);
-      } catch {
-        setStep(0);
-      }
-      return;
-    }
+    // Ohne (nutzbares) Konto gibt es nichts einzurichten: Begrüßt wird auf
+    // der Landingpage.
+    if (!isUsable(user)) { setStep(null); return; }
 
-    // Im Browser nur innerhalb der App — nicht über Landingpage oder Impressum.
-    if (!native && !imAppBereich(pathname)) { setStep(null); return; }
+    // Nur innerhalb der App — nicht über Landingpage oder Impressum.
+    if (!imAppBereich(pathname)) { setStep(null); return; }
 
     // --- Angemeldet: der Server entscheidet ---
-    // In der App zählt zusätzlich der lokale „schon erledigt"-Riegel. Er kann
-    // nur NEIN sagen, nie ja — für Stände aus der Zeit vor der Server-Persistenz.
-    if (native) {
-      try {
-        if (localStorage.getItem(DONE_KEY) || localStorage.getItem(LEGACY_INTRO_KEY)) {
-          setStep(null);
-          return;
-        }
-      } catch { /* unlesbarer Speicher — dann entscheidet allein der Server */ }
-    }
     if (!setupData) return;              // Antwort steht noch aus: nichts zeigen
     if (!setupData.pending) { setStep(null); return; }
     // Bis 4, nicht bis 3: Der letzte Schritt (Mitteilungen) IST ein Schritt,
@@ -258,7 +215,7 @@ export function OnboardingFlow() {
     // dafür gesorgt, dass ein Wiedereinstieg beim Themen-Schritt landet — man
     // hätte ihn ein zweites Mal gemacht.
     setStep(Math.max(0, Math.min(4, setupData.step)) as Step);
-  }, [user, loading, native, setupData, pathname]);
+  }, [user, loading, setupData, pathname]);
 
   /** Hat das Konto irgendetwas, woran sich eine Meldung hängen ließe? */
   const hatHaken = async (): Promise<boolean> => {
@@ -292,12 +249,7 @@ export function OnboardingFlow() {
       fertig.current = true;
       try {
         localStorage.setItem(DONE_KEY, "1");
-        localStorage.setItem(LEGACY_INTRO_KEY, "1"); // die alte Intro nicht nachschieben
         localStorage.removeItem(STEP_KEY);
-        // Push wurde in Schritt 3 gefragt — die Karte auf „Heute" schweigt jetzt
-        // dieselbe Frist wie nach einem „Später" dort.
-        localStorage.setItem(PUSH_SNOOZE_KEY,
-          String(Date.now() + PUSH_SNOOZE_DAYS * 24 * 60 * 60 * 1000));
       } catch { /* Speicher voll/gesperrt — dann eben nochmal beim nächsten Start */ }
       // Lottis Einladung ist ab jetzt dran. Die Marke setzt der Assistent
       // selbst, nicht erst der Empfänger des Ereignisses unten: Der hängt in
@@ -373,14 +325,14 @@ export function OnboardingFlow() {
   // freigibt — sonst warteten sie bis zum nächsten neuen Abzeichen.
   useEffect(() => {
     const wartet = !loading && isUsable(user) && !setupData && step === null
-      && (native || imAppBereich(pathname));
+      && imAppBereich(pathname);
     const vorher = flowEntscheidet;
     flowEntscheidet = wartet;
     if (vorher && !wartet && step === null) {
       window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
     }
     return () => { flowEntscheidet = false; };
-  }, [loading, user, setupData, step, native, pathname]);
+  }, [loading, user, setupData, step, pathname]);
 
   if (step === null) return null;
 
@@ -460,12 +412,9 @@ export function OnboardingFlow() {
               unter; vor den Themen (bis 30.09.2026) verdrängte er sie. */}
           {step === 2 && <TopicStep onNext={() => go(3)} />}
           {step === 3 && <StadtteilStep onNext={() => go(4)} />}
-          {/* Schritt 4 fragt auf beiden Plattformen dasselbe („Soll Lotti sich
-              melden?") — aber der Browser kann keine Push-Erlaubnis geben, dort
-              geht es um die E-Mail. */}
-          {step === 4 && (native
-            ? <PushStep onDone={() => go("done")} />
-            : <MailStep onDone={() => go("done")} />)}
+          {/* Schritt 4 fragt, ob Lotti sich melden soll — im Browser per
+              E-Mail, eine Push-Erlaubnis gibt es dort nicht. */}
+          {step === 4 && <MailStep onDone={() => go("done")} />}
           {step === HAKEN_SCHRITT && <HakenStep onDone={() => go("done")} />}
         </section>
       )}
@@ -637,7 +586,7 @@ function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolea
   const bild = committeeImage(committee);
   if (bild) {
     return (
-      // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+      // Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs).
       // eslint-disable-next-line @next/next/no-img-element
       <img src={bild} alt="" width={56} height={56} loading="lazy" decoding="async"
         className={cn("h-14 w-14 shrink-0 rounded-xl bg-muted object-cover transition-shadow",
@@ -1268,7 +1217,7 @@ function StadtthemenKacheln({ vorschlaege, vorhanden, busy, onWaehlen }: {
                      : "border-border bg-card hover:border-primary/40 hover:bg-muted disabled:opacity-50",
               )}>
               {v.key ? (
-                // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+                // Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs).
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={stadtthemaBild(v.key)} alt="" width={52} height={52} loading="lazy" decoding="async"
                   className="h-11 w-11 shrink-0 rounded-lg bg-muted object-cover sm:h-[52px] sm:w-[52px]" />
@@ -1393,7 +1342,7 @@ function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
   return (
     <li className="flex items-center gap-2 py-1.5 text-[13px]" title={topic.description}>
       {topic.image_key ? (
-        // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+        // Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs).
         // eslint-disable-next-line @next/next/no-img-element
         <img src={stadtthemaBild(topic.image_key)} alt="" width={28} height={28} loading="lazy"
           className="h-7 w-7 shrink-0 rounded-md bg-muted object-cover" />
@@ -1423,7 +1372,7 @@ function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
   );
 }
 
-/* --------------------------------------------- Schritt 3 (Web): E-Mail --- */
+/* ---------------------------------------------------- Schritt 4: E-Mail --- */
 
 /** Im Browser gibt es keine Push-Erlaubnis — das Backend kennt nur APNs und
  *  FCM (`kern/push.py`), Web-Push (VAPID) existiert nicht. Der Schritt stellt
@@ -1555,58 +1504,6 @@ function MailStep({ onDone }: { onDone: () => void }) {
           {fehler}
         </p>
       )}
-    </StepShell>
-  );
-}
-
-/* ------------------------------------------------------- Schritt 3: Push --- */
-
-function PushStep({ onDone }: { onDone: () => void }) {
-  const { user, refresh } = useAuth();
-  const [busy, setBusy] = useState(false);
-  const allow = async () => {
-    setBusy(true);
-    try {
-      const { enablePush } = await import("@/lib/push");
-      // Die iOS-Erlaubnis registriert nur das Gerät. Ohne das Umstellen des
-      // Zustellwegs bliebe das Konto auf „nur E-Mail" — man hätte zugestimmt
-      // und trotzdem nie eine Mitteilung bekommen. (Genau so beobachtet:
-      // „Heute" bat danach weiter um Erlaubnis, und zwar zu Recht.)
-      if (await enablePush()) {
-        // Wer vorher ganz abgeschaltet hatte, bekommt nur Push zurück — nicht
-        // zusätzlich wieder E-Mails, die er ausdrücklich abbestellt hatte.
-        const vorher = user?.delivery_channel;
-        const channel = vorher === "push" || vorher === "off" ? "push" : "both";
-        await api.put("/account/delivery", { delivery_channel: channel });
-        await refresh();
-      }
-    } catch { /* Ablehnen ist eine gültige Antwort — nicht drängeln */ }
-    setBusy(false);
-    onDone();
-  };
-  return (
-    <StepShell
-      title="Soll Lotti sich melden?"
-      lead="Lotti meldet sich nur, wenn der Rat zu deinen Themen entscheidet oder eine Tagesordnung erscheint. Keine Werbung, versprochen."
-      pose="wave"
-      footer={
-        <div className="flex flex-col gap-2">
-          <Button className="w-full" onClick={allow} disabled={busy}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mitteilungen erlauben"}
-          </Button>
-          <button type="button" onClick={onDone} className="py-2 text-sm text-muted-foreground">
-            Vielleicht später
-          </button>
-        </div>
-      }
-    >
-      <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-3">
-        <Mascot pose="point" decorative className="h-10 w-10 shrink-0" />
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Neu zu deinen Themen</p>
-          <p className="mt-0.5 text-sm text-foreground">Cäcilienbrücke: Rat fordert schnelleren Neubau</p>
-        </div>
-      </div>
     </StepShell>
   );
 }
@@ -1762,8 +1659,8 @@ function HakenStep({ onDone }: { onDone: () => void }) {
   );
 }
 
-function SchrittPfad({ aktuell, native }: { aktuell: Step; native: boolean }) {
-  const namen = [...SCHRITT_NAMEN, native ? "Mitteilungen" : "Benachrichtigungen"];
+function SchrittPfad({ aktuell }: { aktuell: Step }) {
+  const namen = [...SCHRITT_NAMEN, "Benachrichtigungen"];
   return (
     <ol aria-label="Schritte der Einrichtung" className="relative mt-8 hidden flex-col gap-3.5 lg:flex">
       {/* Der Faden hinter den Punkten — die Punkte decken ihn mit ihrer Fläche. */}
@@ -1800,7 +1697,6 @@ function StepShell({ title, lead, pose, children, footer }: {
   footer: React.ReactNode;
 }) {
   const step = useContext(SchrittKontext);
-  const native = isNativeApp();
   return (
     <>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -1821,7 +1717,7 @@ function StepShell({ title, lead, pose, children, footer }: {
                 <h1 className="font-display text-xl font-extrabold leading-tight tracking-tight text-foreground [hyphens:none] lg:text-[26px]">{title}</h1>
               </div>
               <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted-foreground lg:text-[14px]">{lead}</p>
-              <SchrittPfad aktuell={step} native={native} />
+              <SchrittPfad aktuell={step} />
             </div>
             {/* Reichlich Luft unten: Die Fußzeile liegt fest, der Inhalt
                 scrollt darunter durch — mit knappem Abstand endete die letzte

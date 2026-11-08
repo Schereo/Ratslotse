@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
-import { WebThemeSwitch } from "@/components/web-theme-switch";
+import { LottiThemeSwitch } from "@/components/theme-switch";
 
 export function Kopf({ label }: { label: string }) {
   return (
@@ -20,7 +20,7 @@ export function Kopf({ label }: { label: string }) {
           <span className="truncate border-l border-border pl-2.5 text-[13px] text-muted-foreground">{label}</span>
         </div>
         <div className="flex flex-none items-center gap-3 sm:gap-4">
-          <WebThemeSwitch />
+          <LottiThemeSwitch />
           <Link href="/" className="hidden text-[13px] font-medium text-primary sm:inline">
             ← Zurück zu Ratslotse
           </Link>

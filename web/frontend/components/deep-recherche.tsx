@@ -12,7 +12,6 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Check, FlaskConical, Loader2, RotateCcw, Square, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
-import { isNativeApp } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 /** Künftige Beratungsstation einer zitierten Vorlage (Sitzungskalender). */
@@ -115,11 +114,6 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
     const id = setInterval(() => setTick((t) => t + 1), 2000);
     return () => clearInterval(id);
   }, [phase]);
-  // „Wir melden uns" gilt nur in der App — im Browser gibt es kein Gerät für
-  // den Push. Nach dem Mount bestimmt, damit der statische Export sauber
-  // hydriert.
-  const [nativ, setNativ] = useState(false);
-  useEffect(() => { setNativ(isNativeApp()); }, []);
   const percent =
     phase === "zerlegen" ? 8
     : phase === "suchen" ? 10 + (facets.length ? (facettenFertig / facets.length) * 45 : 20)
@@ -201,10 +195,6 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
       <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground/70">
         Du kannst währenddessen weiterlesen oder die App schließen — der Bericht
         erscheint hier im Gespräch, sobald er fertig ist.
-        {/* Nur in der App: Der Push kommt über APNs/FCM, im Browser gibt es
-            kein Gerät, dem man etwas schicken könnte. Erst nach dem Mount
-            prüfen, sonst weicht das Markup des statischen Exports ab. */}
-        {nativ && " Die App schickt dir eine Mitteilung, wenn er da ist."}
       </p>
     </div>
   );

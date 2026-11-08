@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ApiError, api, apiUrl, authHeaders } from "@/lib/api";
+import { ApiError, api, apiUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { AdminRequestFehler, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
@@ -1144,7 +1144,7 @@ function LiveProbeTab() {
     try {
       const res = await fetch(apiUrl(`/admin/live-probe?seconds=${seconds}`), {
         credentials: "include", signal: ctrl.signal,
-        headers: { Accept: "text/event-stream", ...authHeaders() },
+        headers: { Accept: "text/event-stream" },
       });
       if (!res.ok || !res.body) {
         let msg = `Probe nicht gestartet (${res.status}).`;

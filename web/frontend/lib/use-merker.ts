@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
  *  sessionStorage (nicht localStorage: beim nächsten App-Start soll wieder
  *  der frische Zustand stehen, nicht die Suche von vorgestern).
  *
- *  Gelesen wird erst NACH dem Mount, damit der statische Export keine
+ *  Gelesen wird erst NACH dem Mount, damit das vorgerenderte HTML keine
  *  Hydration-Abweichung bekommt — der erste Frame zeigt den Startwert.
  */
 export function useMerker<T>(key: string, start: T): [T, (value: T) => void] {

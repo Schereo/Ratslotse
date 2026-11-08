@@ -34,7 +34,7 @@ export const ULTRA_BREIT: readonly string[] = [
 ];
 
 function ohneSchraegstrich(pfad: string): string {
-  // Der statische Export hängt einen Schrägstrich an (s. lib/public-routes.ts).
+  // Mit und ohne Schluss-Schrägstrich (s. `pfad` in lib/utils.ts).
   return pfad.length > 1 && pfad.endsWith("/") ? pfad.slice(0, -1) : pfad;
 }
 

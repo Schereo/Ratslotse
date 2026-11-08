@@ -795,7 +795,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `APP_MIN_BUILD` | Kleinste noch zugelassene iOS-Buildnummer; `GET /api/app-config` liefert sie beim App-Start aus | nein | `0` (keine Sperre) |
 | `APP_UPDATE_NOTICE` | Optionaler Hinweistext für native Builds, z. B. zu einem empfohlenen Update | nein | leer |
 | `CORS_ORIGINS` | Kommaliste erlaubter Web-Origins (in Prod läuft das Frontend same-origin) | nein | `http://localhost:3000` |
-| `APP_CORS_ORIGINS` | Feste Origins der Capacitor-Apps, immer zusätzlich erlaubt | nein | `capacitor://localhost,https://localhost` |
+| `APP_CORS_ORIGINS` | Feste Origins der (seit 11/2026 entfernten) Capacitor-Hüllen, immer zusätzlich erlaubt | nein | `capacitor://localhost,https://localhost` |
 | `APPLE_BUNDLE_ID` | Erlaubter `aud`-Wert von „Sign in with Apple" in der nativen App | nein | `de.ratslotse.app` |
 | `APPLE_SERVICE_ID` | Services-ID für den Apple-Web-Flow (`aud` des Browser-Tokens). **Leeren schaltet den Web-Login ab** — genau das war der Fehler, den #328 behoben hat. | nein | `de.ratslotse.web` |
 | `APPLE_TEAM_ID` | Apple Developer Team-ID; für den Token-Widerruf bei Kontolöschung erforderlich | für App Store | – |

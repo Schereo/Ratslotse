@@ -1,9 +1,8 @@
 // Central URL builders for the auth-gated council detail views.
 //
-// They use query params (not path segments) so the whole (app) area static-
-// exports cleanly for the native app (no dynamic [id]/[slug] routes to enumerate).
-// These pages sit behind login, so path-based SEO URLs would add nothing — see
-// the sitemap note and next.config.mjs (MOBILE export).
+// They use query params (not path segments): one page per kind, no dynamic
+// [id]/[slug] routes. These pages sit behind login, so path-based SEO URLs
+// would add nothing — see the sitemap note.
 export const decisionHref = (id: number | string) => `/council/decision?id=${id}`;
 /** Die KI-Frage als eigene Seite (Split 12.08.): Headliner mit eigener
  *  Adresse. `q` befüllt den Composer vor, `share` öffnet einen geteilten

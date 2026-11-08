@@ -5,7 +5,7 @@
  * sich nach dem Monat (Nordhalbkugel); besondere Tage überschreiben die
  * Jahreszeit-Kleidung (z. B. Weihnachtsmütze statt Wintermütze).
  *
- * Wichtig: Bei statischem Export ist das Build-Datum ≠ Besuchsdatum. Deshalb wird
+ * Wichtig: In vorgerenderten Seiten ist das Build-Datum ≠ Besuchsdatum. Deshalb wird
  * das Datum im `useMascotTheme`-Hook erst nach dem Mount clientseitig bestimmt —
  * serverseitig bleibt Lotti neutral (kein Hydration-Mismatch).
  */

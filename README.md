@@ -68,8 +68,7 @@ Lotti, unsere Lotsenmöwe, begleitet dich dabei durch die Anwendung.
 
 Ratslotse gibt es als Website und als native SwiftUI-App für iPhone und iPad.
 Der Haushaltsbereich im Web ist für Konten mit entsprechender Berechtigung
-verfügbar. Ein Android-Gerüst liegt im Repository, ist aber noch nicht
-veröffentlicht.
+verfügbar.
 
 ## Mit Quellen, zum Nachlesen
 

@@ -188,8 +188,9 @@ export function TopicsView() {
     );
   }
 
-  // Array.isArray statt ?? []: schützt vor einem alt-persistierten Cache, in dem
-  // die Query-Daten fälschlich ein Objekt sind (siehe push-primer.tsx).
+  // Array.isArray statt ?? []: schützt vor Query-Daten, die fälschlich ein
+  // Objekt sind — teilen sich zwei Abfragen einen Schlüssel mit verschiedener
+  // Form, entscheidet die Ladereihenfolge.
   const topics = Array.isArray(topicsQuery.data) ? topicsQuery.data : [];
   const vorschlaege = suggestionsQuery.data ?? [];
 

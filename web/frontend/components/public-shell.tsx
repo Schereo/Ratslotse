@@ -32,7 +32,7 @@ export function PublicShell({ children, hinweis, onAbmelden }: {
   onAbmelden?: () => void;
 }) {
   // Erst nach dem Mounten lesbar; `useSearchParams` würde die Seite in eine
-  // Suspense-Grenze zwingen und den statischen Export (MOBILE=1) brechen.
+  // Suspense-Grenze zwingen.
   const [zurueck, setZurueck] = useState("/dashboard");
   useEffect(() => {
     setZurueck(window.location.pathname + window.location.search);

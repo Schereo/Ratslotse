@@ -329,9 +329,8 @@ export function StreitAbschnitt({ onBestand }: {
           </p>
         </div>
 
-        {/* Jahrgangs-Umschalter. Query-Param statt dynamischem Segment: Der
-            Capacitor-Export kennt die Jahre zur Bauzeit nicht — dieselbe
-            Konvention wie /haushalt/plan-ist?year=… */}
+        {/* Jahrgangs-Umschalter. Query-Param statt dynamischem Segment —
+            dieselbe Konvention wie /haushalt/plan-ist?year=… */}
         <div className="rounded-2xl border border-border bg-card p-3.5 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Haushaltsjahr

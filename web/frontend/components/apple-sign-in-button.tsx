@@ -19,8 +19,8 @@ function AppleLogo() {
 }
 
 /** „Mit Apple fortfahren" (RL-1001/1002): steht auf den Auth-Seiten IMMER an
- *  erster Position — gerendert wird er aber nur in der nativen App (der
- *  Web-Flow bräuchte eine Apple-Service-ID). Nach dem Mount geprüft, damit
+ *  erster Position — gerendert wird er aber nur auf den Domains, die an der
+ *  Apple-Services-ID hängen (s. lib/apple.ts). Nach dem Mount geprüft, damit
  *  SSR/Hydration deckungsgleich bleiben. */
 export function AppleSignInButton({ label = "Mit Apple fortfahren" }: { label?: string }) {
   const { loginWithApple } = useAuth();

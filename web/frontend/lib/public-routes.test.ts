@@ -13,9 +13,8 @@ describe("istOeffentlich", () => {
   });
 
   it("erkennt auch die Schreibweise mit Schluss-Schrägstrich", () => {
-    // Der statische Export legt die Seiten als Verzeichnis ab, der Browser
-    // hängt dann einen Schrägstrich an. Beide müssen treffen — sonst stünde
-    // in der App vor einem geteilten Link doch wieder die Anmeldewand.
+    // Beide Schreibweisen müssen treffen — sonst stünde vor einem geteilten
+    // Link mit Schrägstrich doch wieder die Anmeldewand.
     for (const p of OEFFENTLICHE_PFADE) expect(istOeffentlich(`${p}/`)).toBe(true);
   });
 

@@ -34,10 +34,8 @@ export function HeuteLeiste() {
   const [data, setData] = useState<Heute | null>(null);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    // Über `lib/api`, nicht per nacktem fetch: Ein relativer Pfad zeigt in der
-    // Capacitor-Hülle ins Nichts (das Bundle läuft dort unter
-    // capacitor://localhost). Fehler bleiben still — die Leiste hat einen
-    // Leerzustand und soll die Landing nicht mit einer Meldung stören.
+    // Fehler bleiben still — die Leiste hat einen Leerzustand und soll die
+    // Landing nicht mit einer Meldung stören.
     api.get<Heute>("/council/heute")
       .then((d) => d && setData(d))
       .catch(() => {});
