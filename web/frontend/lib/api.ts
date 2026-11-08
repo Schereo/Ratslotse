@@ -3,6 +3,7 @@
 import { toast } from "sonner";
 import { entwurfSichern, entwurfZiel } from "./draft";
 import { takeEarlyAuth } from "./early-auth";
+import { apiUrl } from "./api-url";
 
 /** Feldnamen aus Pydantics ``loc`` in etwas, das man vorlesen kann. */
 const FIELD_LABELS: Record<string, string> = {
@@ -200,9 +201,7 @@ export const api = {
 
 /** URL for a backend path, for manual fetches (e.g. SSE streaming) that bypass
  *  the `api` wrapper. */
-export function apiUrl(path: string): string {
-  return `/api${path}`;
-}
+export { apiUrl };
 
 export function qs(params: Record<string, string | number | undefined>): string {
   const parts = Object.entries(params)

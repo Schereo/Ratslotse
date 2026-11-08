@@ -16,7 +16,10 @@
 // App fragt oft erst danach — die Vorladung kostete dann eine Anfrage, statt
 // eine Netzlaufzeit zu sparen. Das Versprechen hier hält, bis es abgeholt wird.
 //
-// Ohne Abhängigkeiten: app/layout.tsx ist eine Server-Komponente.
+// Ohne Abhängigkeiten außer der Adresse (lib/api-url.ts): app/layout.tsx ist
+// eine Server-Komponente.
+
+import { apiUrl } from "./api-url";
 
 const KEY = "__ratslotseAuthMe";
 
@@ -26,7 +29,7 @@ const KEY = "__ratslotseAuthMe";
  *  sonst ein „unbehandeltes" Versprechen. Der Abholer bekommt den Fehler
  *  trotzdem — und behandelt ihn wie jeden anderen Netzfehler. */
 export const EARLY_AUTH_SCRIPT =
-  `try{var p=fetch("/api/auth/me",{credentials:"include"});p.catch(function(){});window.${KEY}=p}catch(e){}`;
+  `try{var p=fetch(${JSON.stringify(apiUrl("/auth/me"))},{credentials:"include"});p.catch(function(){});window.${KEY}=p}catch(e){}`;
 
 /** Den vorab gestarteten Abruf holen — genau einmal, danach ist er weg.
  *  Ohne Skript (Tests, alte Seite) `null`: dann fragt lib/api.ts selbst. */
