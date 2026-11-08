@@ -1672,15 +1672,30 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Baums, und muss trotzdem über dem Composer bleiben — sonst deckt er
     // den Senden-Pfeil ab (derselbe Konflikt, wegen dem `BackToTop` auf
     // dieser Seite gar nicht erst erscheint).
-    const melden = (h: number) => {
+    //
+    // NUR solange er wirklich unten angedockt ist (`fixed`): Ab `desk` steht
+    // er statisch in der Bühne, weit links vom Knopf — dort hob die Variable
+    // Lotti trotzdem um seine Höhe an, und sie schwebte auf `/fragen` 118 px
+    // über der Stelle, an der sie überall sonst sitzt (Tims Befund
+    // 08.11.2026).
+    const melden = () => {
+      const h = el.offsetHeight;
       setComposerHoehe(h);
-      document.documentElement.style.setProperty("--rl-composer", `${h}px`);
+      if (getComputedStyle(el).position === "fixed") {
+        document.documentElement.style.setProperty("--rl-composer", `${h}px`);
+      } else {
+        document.documentElement.style.removeProperty("--rl-composer");
+      }
     };
-    const ro = new ResizeObserver(() => melden(el.offsetHeight));
+    const ro = new ResizeObserver(melden);
     ro.observe(el);
-    melden(el.offsetHeight);
+    // Der Wechsel über die `desk`-Grenze ändert die Andock-Art, nicht
+    // zwingend die Höhe — darauf allein reagiert der Beobachter nicht.
+    window.addEventListener("resize", melden);
+    melden();
     return () => {
       ro.disconnect();
+      window.removeEventListener("resize", melden);
       // Beim Verlassen der Fragen-Seite zurücksetzen: Sonst hielte der Knopf
       // auf jeder anderen Seite weiter Abstand zu einem Composer, der dort
       // gar nicht steht.
