@@ -75,6 +75,11 @@ async function lottiAntwort(page, tun) {
   }, null, { timeout: 60_000 });
 }
 
+/** Die Stand-Pille unter „Und in Oldenburg?“ — welches Urteil, ist Sache der
+ *  Daten (components/ideen/stand.tsx): Der Hitzeaktionsplan stand im Oktober
+ *  auf „Teilweise vorhanden“, im November auf „In Oldenburg nicht gefunden“. */
+const URTEIL = ':text-matches("^(Teilweise vorhanden|In Oldenburg nicht gefunden|Oldenburg hat das|Für Oldenburg nicht anwendbar)$"):visible';
+
 export default {
   lotti: {
     // Lotti erklärt dir jede Seite. Beschluss: Bebauungsplan 837, Rat
@@ -361,7 +366,7 @@ export default {
       await pause(0.6);
       const kopf = page.locator(':text("Und in Oldenburg?"):visible').first();
       await scrollTo(kopf, { settle: 1.2 });
-      const urteil = page.locator(':text("Teilweise vorhanden"):visible').first();
+      const urteil = page.locator(URTEIL).first();
       await lupe([kopf, urteil, urteil.locator('xpath=following::p[1]')], { dauer: 3.8 });
       say('Die Zeitleiste: welche Stadt wann was beschlossen hat');
       await scrollTo(page.locator('#buehne-titel:visible').first(), { settle: 1.4 });
@@ -475,7 +480,7 @@ export default {
       await pause(1.2);
       // Überschrift, Urteil und der erste Satz — der ganze Abschnitt wäre zu
       // hoch für eine Lupe, die wirklich vergrößert.
-      const urteil = page.locator(':text("Teilweise vorhanden"):visible').first();
+      const urteil = page.locator(URTEIL).first();
       await lupe([
         page.locator(':text("Und in Oldenburg?"):visible').first(),
         urteil,
