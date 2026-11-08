@@ -166,6 +166,14 @@ const nextConfig = {
   reactStrictMode: true,
   // Don't advertise the framework in the X-Powered-By header.
   poweredByHeader: false,
+  // No image optimizer, in either build: `/_next/image` answers 404. Next 14
+  // runs it through `sharp`, and the copy it finds (0.32.6, pulled in only by
+  // `@capacitor/assets`) carries the libvips/libheif flaws behind two
+  // unauthenticated RCE advisories (GHSA-2464-fhr4-w9xw, GHSA-2xp9-vwfh-vxw4;
+  // fixed only from sharp 0.35.5 / Next 15.5.28). We use `next/image` for a
+  // handful of our own small PNG icons, which lose nothing by being served
+  // as they are. The static export can't run the optimizer anyway.
+  images: { unoptimized: true },
   ...(MOBILE
     ? {
         // Static HTML export for Capacitor: written to ./out, bundled as the app.
@@ -173,8 +181,6 @@ const nextConfig = {
         // Each route exports as <route>/index.html — friendliest for the
         // Capacitor local file server.
         trailingSlash: true,
-        // The static export can't run the Next image optimizer.
-        images: { unoptimized: true },
       }
     : { rewrites, redirects, headers }),
 };
