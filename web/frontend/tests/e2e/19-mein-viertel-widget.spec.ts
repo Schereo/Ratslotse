@@ -9,7 +9,7 @@ const districts = [
 ];
 const titles = ["Fußgängerbrücke zwischen Krusenbusch und Bümmerstede", "Bebauungsplan Fliegerhorst/Hallensichel-Ost", "Wohnquartier am Krusenbusch"];
 const widget = (page: Page) => page.locator('[data-heute-widget="mein-viertel"]');
-async function stub(page: Page, options: { upcoming?: boolean; failed?: boolean; selected?: boolean } = {}) {
+async function stub(page: Page, options: { upcoming?: boolean; failed?: boolean; selected?: boolean; zwei?: boolean } = {}) {
   const requests: string[] = [];
   await page.route("**/api/app-config", route => route.fulfill({ json: { min_build: 0, features: ["mein-viertel"] } }));
   await page.route("**/api/topics", route => route.fulfill({ json: options.selected === false ? [] : districts.map((d, id) => ({ id, name: d.name, description: "Mein Viertel" })) }));
@@ -20,7 +20,10 @@ async function stub(page: Page, options: { upcoming?: boolean; failed?: boolean;
     if (id === "fliegerhorst" && options.failed) return route.fulfill({ status: 503, json: { detail: "Offline" } });
     const i = districts.findIndex(d => d.place_id === id);
     const date = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    return route.fulfill({ json: { place: {}, projects: [{ id: 140 + i, place_id: id, name: titles[i], what: "Hier wird ein Vorhaben vorbereitet. Der letzte belegte Stand stammt aus den Ratsunterlagen.", stage: "planning", last_date: districts[i].last_date, first_date: "2025-01-01", hidden: false }],
+    const projects = [{ id: 140 + i, place_id: id, name: titles[i], what: "Hier wird ein Vorhaben vorbereitet. Der letzte belegte Stand stammt aus den Ratsunterlagen.", stage: "planning", last_date: districts[i].last_date, first_date: "2025-01-01", hidden: false,
+      ...(options.zwei && { latest_update: { decision_id: 8597, date: districts[i].last_date, committee: "Ausschuss für Stadtplanung und Bauen", title: "Bebauungsplan 865", outcome: "accepted", summary: "Die Aufstellung des Bebauungsplans wurde beschlossen." } }) }];
+    if (options.zwei && id === "krusenbusch") projects.push({ id: 150, place_id: id, name: "Straßenausbau Tweelbäker Tredde", what: "Der Abschnitt soll erneuert werden.", stage: "decided", last_date: "2025-05-19", first_date: "2025-01-01", hidden: false });
+    return route.fulfill({ json: { place: {}, projects,
       upcoming: options.upcoming && id === "krusenbusch" ? [{ id: 1, ksinr: 42, session_date: date, item_number: "Ö 5", session_time: "17:00", title: "Neue Kita am Quartier", committee: "Jugendhilfeausschuss" }] : [],
       investments: [], participations: [], closures: [], press: [], neighbours: [], updated_at: "2026-09-12" } });
   });
@@ -82,4 +85,26 @@ test("ohne gewähltes Viertel lädt die Karte keine fremden Viertel", async ({ p
   await page.goto("/dashboard");
   await expect(widget(page).getByRole("link", { name: "Viertel auswählen" })).toHaveAttribute("href", "/karte");
   expect(requests).toEqual([]);
+});
+
+test("blättert zwischen den Vorhaben eines Viertels und nennt, was zuletzt im Rat war", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await stub(page, { zwei: true });
+  await page.goto("/dashboard");
+  const krusenbusch = widget(page).getByRole("article", { name: "Krusenbusch" });
+  await expect(krusenbusch.getByRole("group", { name: "Vorhaben blättern" })).toHaveText("1 von 2 Vorhaben");
+  await expect(krusenbusch.getByRole("group", { name: "Vorhaben blättern" }).getByText("Vorhaben")).toHaveClass(/sr-only/);
+  // Der Kernsatz des jüngsten Beschlusses statt nur eines Datums, verlinkt auf den Beschluss.
+  await expect(krusenbusch.getByRole("link", { name: /Aufstellung des Bebauungsplans wurde beschlossen/ })).toHaveAttribute("href", "/council/decision?id=8597");
+  await expect(krusenbusch.getByRole("list", { name: "Stand: In Planung" })).toBeVisible();
+  await expect(krusenbusch.getByRole("button", { name: "Vorheriges Vorhaben" })).toBeDisabled();
+  await krusenbusch.getByRole("button", { name: "Nächstes Vorhaben" }).click();
+  await expect(krusenbusch.getByRole("group", { name: "Vorhaben blättern" })).toHaveText("2 von 2 Vorhaben");
+  await expect(krusenbusch.getByText("Straßenausbau Tweelbäker Tredde", { exact: true })).toBeVisible();
+  await expect(krusenbusch.getByRole("list", { name: "Stand: Beschlossen" })).toBeVisible();
+  // Ohne latest_update (älterer Server) bleibt das Datum.
+  await expect(krusenbusch).toContainText("Zuletzt im Rat: 19.05.2025");
+  await expect(krusenbusch.getByRole("button", { name: "Nächstes Vorhaben" })).toBeDisabled();
+  // Ein Viertel mit einem Vorhaben blättert nicht.
+  await expect(widget(page).getByRole("article", { name: "Bümmerstede" }).getByRole("button", { name: "Nächstes Vorhaben" })).toHaveCount(0);
 });

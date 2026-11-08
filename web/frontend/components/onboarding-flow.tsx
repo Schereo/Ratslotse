@@ -6,7 +6,6 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { ArrowLeft, Bell, Check, ChevronDown, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand } from "@/lib/onboarding-setup";
-import { isNativeApp } from "@/lib/platform";
 import { cn, pfad } from "@/lib/utils";
 import { Button, Input, toast } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
@@ -15,7 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
 import { einladungStand, merkeEinladung } from "@/lib/tour-einladung";
-import { StadtteilKarte } from "@/components/stadtteil-karte";
+import { StadtteilKarteGrund } from "@/components/stadtteil-karte-grund";
 import { useVollbildMelden } from "@/lib/vollbild";
 import { useScrollRestUnten } from "@/lib/use-scroll-rand";
 import { meldeChips, stadtthemaBild, stadtthemaChip } from "@/lib/onboarding-chips";
@@ -32,33 +31,20 @@ import { meldeChips, stadtthemaBild, stadtthemaChip } from "@/lib/onboarding-chi
  *  - **Abbruch merkt sich den Schritt.** Wer die App mittendrin schließt, macht
  *    beim nächsten Start dort weiter, statt von vorn zu beginnen.
  *
- *  **Seit 09/2026 läuft der Assistent auch im Browser.** Vorher stand hier ein
- *  `if (!isNativeApp()) return` — der ganze Ablauf existierte, war im Web aber
- *  unsichtbar, und wer sich dort registrierte, landete unvermittelt auf einem
- *  leeren „Heute". Drei Dinge unterscheiden die beiden Plattformen:
+ *  Drei Dinge, die im Browser anders laufen als in der nativen iOS-App:
  *
  *  1. **Wer ihn zu sehen bekommt, entscheidet der Server** (`/onboarding/setup`,
- *     Feld `pending`). Der localStorage taugte dafür nur in der App: Im Browser
- *     wechselt man das Gerät, und ein zweiter Rechner finge sonst von vorn an.
- *     Die Regel steht damit an einer Stelle für beide Frontends.
- *  2. **Der Auftakt begrüßt in der App VOR dem Login** — dort gibt es keine
- *     Startseite, die das täte. Im Browser ist das die Landingpage; der
- *     Assistent beginnt deshalb erst nach der Anmeldung.
- *  3. **Schritt 3 fragt etwas anderes.** Im Browser gibt es keine Push-Erlaubnis
- *     (das Backend kennt nur APNs/FCM), also geht es dort um die E-Mail-
- *     Zustellung — siehe `PushStep`/`MailStep`.
+ *     Feld `pending`). Im Browser wechselt man das Gerät, und ein zweiter
+ *     Rechner finge mit dem localStorage allein von vorn an. Die Regel steht
+ *     damit an einer Stelle für beide Frontends.
+ *  2. **Der Auftakt begrüßt erst nach der Anmeldung** — davor tut das die
+ *     Landingpage.
+ *  3. **Der letzte Schritt fragt nach der E-Mail.** Im Browser gibt es keine
+ *     Push-Erlaubnis (das Backend kennt nur APNs/FCM) — siehe `MailStep`.
  */
 
 const DONE_KEY = "ratslotse.onboarding.done";
 const STEP_KEY = "ratslotse.onboarding.step";
-/** Muss zum Schlüssel in push-primer.tsx passen: Schritt 3 IST der Primer
- *  (26a zieht ihn nach vorn). Ohne das Setzen fragt die Karte auf „Heute"
- *  unmittelbar danach ein zweites Mal — im Simulator genau so beobachtet. */
-const PUSH_SNOOZE_KEY = "ratslotse.push-primer.snoozed-until";
-const PUSH_SNOOZE_DAYS = 7;
-/** Der alte First-Run-Schlüssel: Wer die Intro-Karten schon gesehen hat, ist
- *  kein Erstnutzer mehr und wird nicht nachträglich durchs Onboarding geschickt. */
-const LEGACY_INTRO_KEY = "ratslotse.intro.done";
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 /** Schritt 5 ist kein Schritt im Pfad, sondern ein Auffangnetz: Er erscheint
@@ -143,8 +129,15 @@ let flowEntscheidet = false;
 export function isOnboardingVisible(): boolean {
   return flowVisible || flowEntscheidet || einladungStand() === "offen";
 }
-/** Wird beim Abschluss/Abbruch gefeuert, damit aufgeschobene Abzeichen-Meldungen
- *  nachgeholt werden können. Feuert AUCH, wenn der Flow nur entschieden hat,
+/** Stand der Assistent auf dieser Seite schon einmal offen? Dann ist, was
+ *  währenddessen verdient wurde, ein Abzeichen der Einrichtung — und das feiert
+ *  der Celebrator nicht (Tims Befund 08.11.2026, s. `BadgeCelebrator`). */
+let flowWarSichtbar = false;
+export function einrichtungLiefHier(): boolean {
+  return flowWarSichtbar;
+}
+/** Wird beim Abschluss/Abbruch gefeuert, damit, was auf das Ende wartet, loslegen
+ *  kann: der Push-Hinweis und geparkte Abzeichen-Meldungen. Feuert AUCH, wenn der Flow nur entschieden hat,
  *  sich nicht zu zeigen — für „jemand hat die Einrichtung gerade wirklich
  *  beendet" gibt es deshalb das zweite Ereignis darunter. */
 export const ONBOARDING_DONE_EVENT = "ratslotse:onboarding-done";
@@ -196,7 +189,6 @@ export function OnboardingFlow() {
   // Haken-Schritt ÜBER der Tour-Einladung (Browsertest, 06.10.2026).
   const hakenLaeuft = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const native = isNativeApp();
   // In DIESER Sitzung abgeschlossen. Ohne den Riegel schöbe die noch im Cache
   // liegende Server-Antwort (`pending: true`) den Assistenten sofort wieder
   // hoch, sobald der Effekt erneut läuft — der Abschluss ist ja fire-and-forget.
@@ -216,42 +208,14 @@ export function OnboardingFlow() {
     // einen angemeldeten Rückkehrer für abgemeldet und träte kurz beiseite.
     if (loading || fertig.current) return;
 
-    // --- Ohne (nutzbares) Konto ---
-    // In der App begrüßt der Auftakt VOR dem Login; im Browser tut das die
-    // Landingpage, dort gibt es hier also nichts zu zeigen.
-    if (!isUsable(user)) {
-      if (!native) { setStep(null); return; }
-      try {
-        if (localStorage.getItem(DONE_KEY) || localStorage.getItem(LEGACY_INTRO_KEY)) {
-          setStep(null);
-          return;
-        }
-        const raw = Number(localStorage.getItem(STEP_KEY) ?? 0);
-        const saved = (Number.isFinite(raw) && raw >= 0 && raw <= 3 ? raw : 0) as Step;
-        // Die Schritte 1–3 brauchen ein Konto (Abos und Themen hängen daran):
-        // Ohne eins tritt der Flow beiseite und gibt den Login frei; sobald
-        // angemeldet, macht er genau dort weiter.
-        setStep(saved > 0 ? null : saved);
-      } catch {
-        setStep(0);
-      }
-      return;
-    }
+    // Ohne (nutzbares) Konto gibt es nichts einzurichten: Begrüßt wird auf
+    // der Landingpage.
+    if (!isUsable(user)) { setStep(null); return; }
 
-    // Im Browser nur innerhalb der App — nicht über Landingpage oder Impressum.
-    if (!native && !imAppBereich(pathname)) { setStep(null); return; }
+    // Nur innerhalb der App — nicht über Landingpage oder Impressum.
+    if (!imAppBereich(pathname)) { setStep(null); return; }
 
     // --- Angemeldet: der Server entscheidet ---
-    // In der App zählt zusätzlich der lokale „schon erledigt"-Riegel. Er kann
-    // nur NEIN sagen, nie ja — für Stände aus der Zeit vor der Server-Persistenz.
-    if (native) {
-      try {
-        if (localStorage.getItem(DONE_KEY) || localStorage.getItem(LEGACY_INTRO_KEY)) {
-          setStep(null);
-          return;
-        }
-      } catch { /* unlesbarer Speicher — dann entscheidet allein der Server */ }
-    }
     if (!setupData) return;              // Antwort steht noch aus: nichts zeigen
     if (!setupData.pending) { setStep(null); return; }
     // Bis 4, nicht bis 3: Der letzte Schritt (Mitteilungen) IST ein Schritt,
@@ -259,7 +223,7 @@ export function OnboardingFlow() {
     // dafür gesorgt, dass ein Wiedereinstieg beim Themen-Schritt landet — man
     // hätte ihn ein zweites Mal gemacht.
     setStep(Math.max(0, Math.min(4, setupData.step)) as Step);
-  }, [user, loading, native, setupData, pathname]);
+  }, [user, loading, setupData, pathname]);
 
   /** Hat das Konto irgendetwas, woran sich eine Meldung hängen ließe? */
   const hatHaken = async (): Promise<boolean> => {
@@ -293,12 +257,7 @@ export function OnboardingFlow() {
       fertig.current = true;
       try {
         localStorage.setItem(DONE_KEY, "1");
-        localStorage.setItem(LEGACY_INTRO_KEY, "1"); // die alte Intro nicht nachschieben
         localStorage.removeItem(STEP_KEY);
-        // Push wurde in Schritt 3 gefragt — die Karte auf „Heute" schweigt jetzt
-        // dieselbe Frist wie nach einem „Später" dort.
-        localStorage.setItem(PUSH_SNOOZE_KEY,
-          String(Date.now() + PUSH_SNOOZE_DAYS * 24 * 60 * 60 * 1000));
       } catch { /* Speicher voll/gesperrt — dann eben nochmal beim nächsten Start */ }
       // Lottis Einladung ist ab jetzt dran. Die Marke setzt der Assistent
       // selbst, nicht erst der Empfänger des Ereignisses unten: Der hängt in
@@ -356,9 +315,11 @@ export function OnboardingFlow() {
     return () => document.removeEventListener("focusin", onFocusIn, true);
   }, [step]);
 
-  // Solange der Flow oben liegt, halten Abzeichen-Toasts still (s. flowVisible).
+  // Solange der Flow oben liegt, halten Abzeichen-Toasts still (s. flowVisible),
+  // und was er verdient, wird hinterher nicht gefeiert (s. flowWarSichtbar).
   useEffect(() => {
     flowVisible = step !== null;
+    if (step !== null) flowWarSichtbar = true;
     return () => { flowVisible = false; };
   }, [step]);
 
@@ -374,14 +335,14 @@ export function OnboardingFlow() {
   // freigibt — sonst warteten sie bis zum nächsten neuen Abzeichen.
   useEffect(() => {
     const wartet = !loading && isUsable(user) && !setupData && step === null
-      && (native || imAppBereich(pathname));
+      && imAppBereich(pathname);
     const vorher = flowEntscheidet;
     flowEntscheidet = wartet;
     if (vorher && !wartet && step === null) {
       window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
     }
     return () => { flowEntscheidet = false; };
-  }, [loading, user, setupData, step, native, pathname]);
+  }, [loading, user, setupData, step, pathname]);
 
   if (step === null) return null;
 
@@ -461,12 +422,9 @@ export function OnboardingFlow() {
               unter; vor den Themen (bis 30.09.2026) verdrängte er sie. */}
           {step === 2 && <TopicStep onNext={() => go(3)} />}
           {step === 3 && <StadtteilStep onNext={() => go(4)} />}
-          {/* Schritt 4 fragt auf beiden Plattformen dasselbe („Soll Lotti sich
-              melden?") — aber der Browser kann keine Push-Erlaubnis geben, dort
-              geht es um die E-Mail. */}
-          {step === 4 && (native
-            ? <PushStep onDone={() => go("done")} />
-            : <MailStep onDone={() => go("done")} />)}
+          {/* Schritt 4 fragt, ob Lotti sich melden soll — im Browser per
+              E-Mail, eine Push-Erlaubnis gibt es dort nicht. */}
+          {step === 4 && <MailStep onDone={() => go("done")} />}
           {step === HAKEN_SCHRITT && <HakenStep onDone={() => go("done")} />}
         </section>
       )}
@@ -647,7 +605,7 @@ function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolea
         "block h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted transition-shadow",
         aktiv && "ring-2 ring-primary ring-offset-2 ring-offset-background",
       )}>
-        {/* Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts. */}
+        {/* Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs). */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={bild} alt="" width={80} height={80} loading="lazy" decoding="async"
           className="h-full w-full scale-[1.1] object-cover" />
@@ -816,7 +774,12 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
   const gewaehlt = useMemo(() => liste.filter((o) => namen.has(o.name)), [liste, namen]);
   const auswaehlbar = useMemo(() => new Set(liste.map((o) => o.name)), [liste]);
   const bereit = !topics.isPending && !orte.isPending;
-  const vorschlaege = useStadtteilVorschlaege(gewaehlteOrtsbereiche(meine, liste), bereit);
+  // An der AUSWAHL, nicht am Serverstand: Bis 11/2026 fragten die Vorschläge
+  // erst, wenn das Anlegen des Stadtteils zurück war — und das gleicht den
+  // Stadtteil sofort gegen den Bestand ab (`_erstabgleich`, Cross-Encoder).
+  // Man sah also erst den Stadtteil laden und danach die Vorschläge (Tims
+  // Befund 08.11.2026). Jetzt laufen beide nebeneinander.
+  const vorschlaege = useStadtteilVorschlaege(gewaehlt, bereit);
   useEffect(() => {
     if (vorschlaege.chips.length === 0 || gemeldet.current.vorschlaege) return;
     gemeldet.current.vorschlaege = true;
@@ -840,7 +803,7 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
     if (!ort) return;
     const an = !namen.has(name);
     if (an && namen.size >= MAX_STADTTEILE) {
-      setFehler(`${MAX_STADTTEILE} Stadtteile reichen für den Anfang — so bleibt die Übersicht ruhig. Weitere kannst du jederzeit unter „Themen" ergänzen.`);
+      setFehler(`Für den Anfang reichen drei Stadtteile — so bleibt die Übersicht ruhig. Nimm einen heraus, um ${name} zu wählen; weitere kannst du später unter „Themen" ergänzen.`);
       return;
     }
     if (an) meldeChips([], ["district"]);
@@ -853,8 +816,11 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
         else if (an && !vorhanden) await api.post("/topics", { name: ort.name, description: ortsBeschreibung(ort) });
         // Erst den Serverstand holen, DANN die Absicht fallen lassen — sonst
         // flackert die Pille kurz zurück, bevor die neue Liste da ist.
+        // Die Vorschläge NICHT neu holen: Ein Stadtteil-Thema verändert sie
+        // nicht (Ortsnamen zählen beim Aussortieren bewusst nicht mit, s.
+        // `topic_suggestions`), und das Neuholen ließ jede Gruppe nach dem
+        // Speichern ein zweites Mal laden.
         await qc.invalidateQueries({ queryKey: ["topics"] });
-        qc.invalidateQueries({ queryKey: ["topic-suggestions"] });
       } catch {
         setFehler(`${name} ließ sich gerade nicht ${an ? "anlegen" : "entfernen"}. Versuch es gleich noch einmal.`);
       } finally {
@@ -883,43 +849,45 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
   return (
     <StepShell
       title="Welche Stadtteile interessieren dich?"
-      lead="Zum Beispiel der, in dem du wohnst — aber genauso einer, in dem gerade etwas passiert. Lotti meldet neue Beschlüsse und Planungen von dort. Bis zu drei, alles jederzeit änderbar."
+      // Die Grenze von drei steht hier bewusst NICHT: „Bis zu drei" und
+      // „2 von 3" lasen sich wie eine Aufgabe, drei zu wählen (Tims Befund
+      // 08.11.2026). Sie meldet sich erst, wenn jemand an sie stößt.
+      lead="Zum Beispiel der, in dem du wohnst — aber genauso einer, in dem gerade etwas passiert. Lotti meldet neue Beschlüsse und Planungen von dort. Alles jederzeit änderbar."
       pose="point"
       footer={
         <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext} disabled={unterwegs.size > 0 || !!anlegend}>
           {unterwegs.size > 0 ? <><Loader2 className="h-4 w-4 animate-spin" /> Speichert …</>
             : gewaehlt.length === 0 ? "Überspringen"
               : gewaehlt.length === 1 ? `${gewaehlt[0].name} · Weiter`
-                : `${gewaehlt.length} von ${MAX_STADTTEILE} Stadtteilen · Weiter`}
+                : `${gewaehlt.length} Stadtteile · Weiter`}
         </Button>
       }
     >
       {/* Die Karte am Desktop, wo Platz ist. Die Liste steht auf JEDER Breite
           da — sie ist nicht bloß der Ersatz fürs kleine Fenster, sondern auch
           der Weg für Tastatur und Screenreader. */}
-      <div className="hidden rounded-2xl border border-border bg-background p-3 lg:block">
-        <StadtteilKarte gewaehlt={namen} auswaehlbar={auswaehlbar}
-          onWaehlen={umschalten} />
-      </div>
+      <StadtteilKarteGrund className="hidden h-[400px] lg:block" gewaehlt={namen}
+        auswaehlbar={auswaehlbar} onWaehlen={umschalten} />
 
       <div className={cn("flex flex-wrap gap-1.5", liste.length && "lg:mt-4")}>
         {liste.map((o) => {
           const an = namen.has(o.name);
           return (
             // Nur DIESE Pille ist gesperrt, solange sie unterwegs ist — die
-            // anderen bleiben klickbar. Sie zeigt schon den Zielzustand und
-            // daneben den Spinner statt des Häkchens.
+            // anderen bleiben klickbar. Sie zeigt sofort den Zielzustand samt
+            // Häkchen und atmet, bis der Server ihn bestätigt. Bis 11/2026
+            // stand hier ein 12-px-Spinner statt des Häkchens — „so klein,
+            // dass er nicht wirklich schön aussieht" (Tim, 08.11.2026).
             <button key={o.place_id} type="button" aria-pressed={an} aria-busy={unterwegs.has(o.name) || undefined}
               disabled={unterwegs.has(o.name)}
               onClick={() => umschalten(o.name)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-[6px] text-[12.5px] transition-colors disabled:opacity-80",
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-[6px] text-[12.5px] transition-colors",
                 an ? "border-primary bg-primary font-semibold text-primary-foreground"
                    : "border-border bg-card text-foreground hover:bg-muted",
+                unterwegs.has(o.name) && "animate-pulse",
               )}>
-              {unterwegs.has(o.name)
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : an && <Check className="h-3 w-3" />}
+              {an && <Check className="h-3 w-3" />}
               {o.name}
             </button>
           );
@@ -962,7 +930,6 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
                 · bis zu {Math.round(vorschlaege.weitestesFenster / 12)} Jahre zurück
               </span>
             )}
-            {vorschlaege.nochUnterwegs.length > 0 && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
           </Kicker>
           {vorschlaege.chips.length > 0
             ? <OrtsVorschlaege vorschlaege={vorschlaege.chips} vorhanden={meine}
@@ -979,8 +946,9 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
             </p>
           )}
           {vorschlaege.nochUnterwegs.length > 0 && (
-            <p role="status" className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+            // Ohne Spinner: Die Platzhalter-Karten darüber zeigen schon, dass
+            // gleich etwas kommt; der Satz sagt nur noch, was.
+            <p role="status" className="mt-3 text-xs text-muted-foreground">
               Lotti liest noch, was in {vorschlaege.nochUnterwegs.join(" und ")} läuft — du kannst
               schon auswählen.
             </p>
@@ -1279,7 +1247,7 @@ function StadtthemenKacheln({ vorschlaege, vorhanden, busy, onWaehlen }: {
                      : "border-border bg-card hover:border-primary/40 hover:bg-muted disabled:opacity-50",
               )}>
               {v.key ? (
-                // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+                // Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs).
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={stadtthemaBild(v.key)} alt="" width={52} height={52} loading="lazy" decoding="async"
                   className="h-11 w-11 shrink-0 rounded-lg bg-muted object-cover sm:h-[52px] sm:w-[52px]" />
@@ -1404,7 +1372,7 @@ function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
   return (
     <li className="flex items-center gap-2 py-1.5 text-[13px]" title={topic.description}>
       {topic.image_key ? (
-        // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+        // Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs).
         // eslint-disable-next-line @next/next/no-img-element
         <img src={stadtthemaBild(topic.image_key)} alt="" width={28} height={28} loading="lazy"
           className="h-7 w-7 shrink-0 rounded-md bg-muted object-cover" />
@@ -1434,7 +1402,7 @@ function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
   );
 }
 
-/* --------------------------------------------- Schritt 3 (Web): E-Mail --- */
+/* ---------------------------------------------------- Schritt 4: E-Mail --- */
 
 /** Im Browser gibt es keine Push-Erlaubnis — das Backend kennt nur APNs und
  *  FCM (`kern/push.py`), Web-Push (VAPID) existiert nicht. Der Schritt stellt
@@ -1566,58 +1534,6 @@ function MailStep({ onDone }: { onDone: () => void }) {
           {fehler}
         </p>
       )}
-    </StepShell>
-  );
-}
-
-/* ------------------------------------------------------- Schritt 3: Push --- */
-
-function PushStep({ onDone }: { onDone: () => void }) {
-  const { user, refresh } = useAuth();
-  const [busy, setBusy] = useState(false);
-  const allow = async () => {
-    setBusy(true);
-    try {
-      const { enablePush } = await import("@/lib/push");
-      // Die iOS-Erlaubnis registriert nur das Gerät. Ohne das Umstellen des
-      // Zustellwegs bliebe das Konto auf „nur E-Mail" — man hätte zugestimmt
-      // und trotzdem nie eine Mitteilung bekommen. (Genau so beobachtet:
-      // „Heute" bat danach weiter um Erlaubnis, und zwar zu Recht.)
-      if (await enablePush()) {
-        // Wer vorher ganz abgeschaltet hatte, bekommt nur Push zurück — nicht
-        // zusätzlich wieder E-Mails, die er ausdrücklich abbestellt hatte.
-        const vorher = user?.delivery_channel;
-        const channel = vorher === "push" || vorher === "off" ? "push" : "both";
-        await api.put("/account/delivery", { delivery_channel: channel });
-        await refresh();
-      }
-    } catch { /* Ablehnen ist eine gültige Antwort — nicht drängeln */ }
-    setBusy(false);
-    onDone();
-  };
-  return (
-    <StepShell
-      title="Soll Lotti sich melden?"
-      lead="Lotti meldet sich nur, wenn der Rat zu deinen Themen entscheidet oder eine Tagesordnung erscheint. Keine Werbung, versprochen."
-      pose="wave"
-      footer={
-        <div className="flex flex-col gap-2">
-          <Button className="w-full" onClick={allow} disabled={busy}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mitteilungen erlauben"}
-          </Button>
-          <button type="button" onClick={onDone} className="py-2 text-sm text-muted-foreground">
-            Vielleicht später
-          </button>
-        </div>
-      }
-    >
-      <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-3">
-        <Mascot pose="point" decorative className="h-10 w-10 shrink-0" />
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Neu zu deinen Themen</p>
-          <p className="mt-0.5 text-sm text-foreground">Cäcilienbrücke: Rat fordert schnelleren Neubau</p>
-        </div>
-      </div>
     </StepShell>
   );
 }
@@ -1773,8 +1689,8 @@ function HakenStep({ onDone }: { onDone: () => void }) {
   );
 }
 
-function SchrittPfad({ aktuell, native }: { aktuell: Step; native: boolean }) {
-  const namen = [...SCHRITT_NAMEN, native ? "Mitteilungen" : "Benachrichtigungen"];
+function SchrittPfad({ aktuell }: { aktuell: Step }) {
+  const namen = [...SCHRITT_NAMEN, "Benachrichtigungen"];
   return (
     <ol aria-label="Schritte der Einrichtung" className="relative mt-8 hidden flex-col gap-3.5 lg:flex">
       {/* Der Faden hinter den Punkten — die Punkte decken ihn mit ihrer Fläche. */}
@@ -1813,7 +1729,6 @@ function StepShell({ title, lead, pose, children, footer, mehr = "Mehr" }: {
   mehr?: string;
 }) {
   const step = useContext(SchrittKontext);
-  const native = isNativeApp();
   const blattRef = useRef<HTMLDivElement>(null);
   const rest = useScrollRestUnten(blattRef);
   // Die Pille lädt zum ersten Scrollen ein; wer einmal gescrollt hat, weiß
@@ -1841,7 +1756,11 @@ function StepShell({ title, lead, pose, children, footer, mehr = "Mehr" }: {
                   rutscht sie über den Titel und wird größer, und die Frage bleibt
                   beim Scrollen stehen: Auf einem langen Schritt wie den Themen
                   verliert man sonst aus dem Blick, was gefragt war. */}
-              <div className="lg:sticky lg:top-6 lg:self-start">
+              {/* `lg:pb-6` wie die Inhaltsspalte daneben: Ist der Schritt kurz
+                  (Benachrichtigungen), bestimmt DIESE Spalte die Höhe, und die
+                  Schrittliste stieß ohne Abstand an die Linie der Fußleiste
+                  (Tims Befund 08.11.2026: „sieht gequetscht aus"). */}
+              <div className="lg:sticky lg:top-6 lg:self-start lg:pb-6">
                 <div className="flex items-center gap-3 lg:block">
                   <Mascot pose={pose} decorative className="h-11 w-11 shrink-0 lg:mb-5 lg:h-24 lg:w-24" />
                   {/* `hyphens-none`: In der schmalen Spalte trennte der Browser die
@@ -1851,7 +1770,7 @@ function StepShell({ title, lead, pose, children, footer, mehr = "Mehr" }: {
                   <h1 className="font-display text-xl font-extrabold leading-tight tracking-tight text-foreground [hyphens:none] lg:text-[26px]">{title}</h1>
                 </div>
                 <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted-foreground lg:text-[14px]">{lead}</p>
-                <SchrittPfad aktuell={step} native={native} />
+                <SchrittPfad aktuell={step} />
               </div>
               {/* Reichlich Luft unten: Die Fußzeile liegt fest, der Inhalt
                   scrollt darunter durch — mit knappem Abstand endete die letzte

@@ -20,7 +20,7 @@ import { useState } from "react";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 
 import { toast } from "@/components/ui";
-import { apiUrl, authHeaders } from "@/lib/api";
+import { apiUrl } from "@/lib/api";
 import { sendAndForget } from "@/lib/send-and-forget";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +64,7 @@ export function FeedbackDaumen({ question, answer, source = "ask", answerId = nu
     sendAndForget(apiUrl("/council/qa-feedback"), {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         question: question.slice(0, 300),
         answer_excerpt: answer.slice(0, 500) || null,

@@ -240,6 +240,11 @@ def test_endpunkte_mit_konto_und_melden():
     assert tafel["place"]["id"] == "kreyenbrueck"
     assert [p["name"] for p in tafel["projects"]] == ["Wohnungen Sandkruger Straße"]
     assert tafel["projects"][0]["decisions"][0]["id"] == 10
+    # „Zuletzt im Rat" nennt, WAS dort war: den Kernsatz des jüngsten Beschlusses.
+    assert tafel["projects"][0]["latest_update"] == {
+        "decision_id": 10, "date": "2026-05-04", "committee": "Rat",
+        "title": "Bebauungsplan 81 (Sandkruger Straße) - Aufstellungsbeschluss",
+        "outcome": "accepted", "summary": "70 Wohnungen an der Sandkruger Straße."}
     assert tafel["projects"][0]["reported"] is False
     assert len(tafel["neighbours"]) == 3
     # Eine laufende Beteiligung zum Plan bekommt den Umring als Fläche (Schritt 4
@@ -543,3 +548,31 @@ def test_abschnittsgrenzen_sind_kein_gegenstand():
     assert ortsrollen(["Rüschenweg"], ["Flächen zwischen der A 29 und dem Rüschenweg"]) == {"Rüschenweg": "boundary"}
     # Nicht im Text (Katalog-Variante) → Gegenstand, nie still weg.
     assert ortsrollen(["Huntemannstr"], ["Kita an der Huntemannstraße"]) == {"Huntemannstr": "subject"}
+
+
+def test_letztes_update_beschluss_vor_kenntnisnahme():
+    """Am selben Sitzungstag zählt der Beschluss, nicht der Bericht daneben —
+    sonst hieße das Update „zur Kenntnis genommen" (Krusenbusch, 21.05.2026)."""
+    store = _store()
+    _seed(store)
+    with store._conn as c:
+        c.execute("INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+                  "VALUES (2, 'Ausschuss für Stadtplanung und Bauen', '2026-06-01', '17:00', 'Rathaus', '2026-05-01')")
+        c.executemany(
+            "INSERT INTO council_decisions (id, ksinr, position, title, summary, official_text, outcome, kind) "
+            "VALUES (?, 2, ?, ?, ?, '', ?, 'decision')",
+            [(20, 1, "Bebauungsplan 81 - Aufstellung", "Aufstellung beschlossen.", "accepted"),
+             (21, 2, "Bebauungsplan 81 - Grundzüge", "Bericht zur Kenntnis genommen.", "noted"),
+             # Ohne Titel brach die ganze Tafel mit 500 ab (Vertrag: title str).
+             (22, 3, None, "Die Verwaltung prüft.", "noted")])
+    store.replace_district_projects("kreyenbrueck", [
+        {"name": "Wohnungen Sandkruger Straße", "what": "70 Wohnungen.", "stage": "planning", "when": None,
+         "category": "housing", "decision_ids": [10, 20, 21, 22], "confidence": 97},
+    ])
+    projekt = store.district_projects("kreyenbrueck")[0]
+    store.close()
+    assert [d["id"] for d in projekt["decisions"]] == [22, 21, 20, 10]
+    assert projekt["decisions"][0]["title"] == "Die Verwaltung prüft."
+    assert projekt["latest_update"]["decision_id"] == 20
+    assert projekt["latest_update"]["summary"] == "Aufstellung beschlossen."
+    assert "summary" not in projekt["decisions"][0]

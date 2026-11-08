@@ -16,8 +16,8 @@ export type Hinweis = { key: string; label: string; node: ReactNode };
  * Inhalt unter die Falz: vier Kästen, von denen keiner dringend war.
  *
  * Der Slot zeigt genau den ersten Hinweis, der etwas zu sagen hat. Die
- * Reihenfolge der Liste IST die Priorität (Live > Pause > Erste Schritte >
- * Push) — das Dringlichste zuerst. Was übrig bleibt, wandert in eine Pille und
+ * Reihenfolge der Liste IST die Priorität (Live > Pause > Erste Schritte) —
+ * das Dringlichste zuerst. Was übrig bleibt, wandert in eine Pille und
  * ist einen Tipp entfernt, statt zu verschwinden.
  *
  * Ob ein Hinweis überhaupt etwas rendert, weiß nur er selbst (jeder hängt an

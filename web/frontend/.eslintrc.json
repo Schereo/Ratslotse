@@ -9,11 +9,11 @@
       "error",
       {
         "selector": "CallExpression[callee.name='fetch'] > Literal[value=/^\\u002fapi\\u002f/]",
-        "message": "Nacktes fetch(\"/api/…\"): In der nativen App läuft das Bundle unter capacitor://localhost, der relative Pfad zeigt dort ins Nichts. api.get/post/put/del aus lib/api.ts nehmen — oder, wo der Wrapper nicht passt (Streams), apiUrl() und authHeaders() aus demselben Modul."
+        "message": "Nacktes fetch(\"/api/…\"): Der Wrapper übersetzt Fehler, behandelt 401 zentral und setzt die Zeitgrenze. api.get/post/put/del aus lib/api.ts nehmen — oder, wo der Wrapper nicht passt (Streams), apiUrl() aus demselben Modul."
       },
       {
         "selector": "CallExpression[callee.name='fetch'] > TemplateLiteral > TemplateElement:first-child[value.raw=/^\\u002fapi\\u002f/]",
-        "message": "Nacktes fetch(`/api/…`): In der nativen App läuft das Bundle unter capacitor://localhost, der relative Pfad zeigt dort ins Nichts. api.get/post/put/del aus lib/api.ts nehmen — oder, wo der Wrapper nicht passt (Streams), apiUrl() und authHeaders() aus demselben Modul."
+        "message": "Nacktes fetch(`/api/…`): Der Wrapper übersetzt Fehler, behandelt 401 zentral und setzt die Zeitgrenze. api.get/post/put/del aus lib/api.ts nehmen — oder, wo der Wrapper nicht passt (Streams), apiUrl() aus demselben Modul."
       }
     ]
   }

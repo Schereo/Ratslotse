@@ -8,7 +8,6 @@ import { Check } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { appleIdentityToken, appleSignInAvailable } from "@/lib/apple";
-import { isNativeApp } from "@/lib/platform";
 import type { User } from "@/lib/types";
 import { applyTheme, getTheme, isDarkNow, THEME_EVENT, type Theme } from "@/lib/theme";
 import { Button, Card, ConfirmDialog, Input, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
@@ -23,21 +22,18 @@ import { cn } from "@/lib/utils";
 /**
  * RL-U09 (Design 9a): „Erscheinungsbild" mit Vorschau-Kacheln im
  * iOS-Settings-Stil — Auswahl = Primär-Ring + Häkchen. „Automatisch"
- * (folgt dem System) gibt es nur in der App; im Web ist der Schalter
+ * (folgt dem System) gibt es nur in der iOS-App; hier ist der Schalter
  * binär, ein gespeicherter System-Modus zeigt den aktuellen Ist-Zustand.
  */
 function AppearanceCard() {
   const [ready, setReady] = useState(false);
-  const [native, setNative] = useState(false);
   const [theme, setTheme] = useState<Theme>("light");
   useEffect(() => {
-    const isNative = isNativeApp();
-    setNative(isNative);
     // Auswahl synchron halten, wenn ein anderer Regler (Sidebar-Schalter,
     // ⌘K-Palette) das Theme wechselt — beide sind gleichzeitig sichtbar.
     const sync = () => {
       const stored = getTheme();
-      setTheme(!isNative && stored === "system" ? (isDarkNow() ? "dark" : "light") : stored);
+      setTheme(stored === "system" ? (isDarkNow() ? "dark" : "light") : stored);
     };
     sync();
     setReady(true);
@@ -51,14 +47,13 @@ function AppearanceCard() {
   const options: { value: Theme; label: string; preview: React.ReactNode }[] = [
     { value: "light", label: "Hell", preview: <TilePreview mode="light" /> },
     { value: "dark", label: "Dunkel", preview: <TilePreview mode="dark" /> },
-    ...(native ? [{ value: "system" as Theme, label: "Automatisch", preview: <TilePreview mode="split" /> }] : []),
   ];
   return (
     <Card className="p-6">
       <h2 className="font-semibold text-foreground">Erscheinungsbild</h2>
       {ready && (
         <>
-          <div className={cn("mt-4 grid gap-2.5", native ? "grid-cols-3" : "grid-cols-2")} role="radiogroup" aria-label="Erscheinungsbild">
+          <div className="mt-4 grid grid-cols-2 gap-2.5" role="radiogroup" aria-label="Erscheinungsbild">
             {options.map((o) => (
               <button
                 key={o.value}
@@ -79,11 +74,6 @@ function AppearanceCard() {
               </button>
             ))}
           </div>
-          {native && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              „Automatisch" folgt der iOS-Einstellung deines Geräts.
-            </p>
-          )}
         </>
       )}
     </Card>
@@ -91,9 +81,8 @@ function AppearanceCard() {
 }
 
 /** Mini-Vorschau einer Kachel: helle/dunkle Fläche mit angedeuteten Zeilen. */
-function TilePreview({ mode }: { mode: "light" | "dark" | "split" }) {
-  const bg =
-    mode === "light" ? "bg-white" : mode === "dark" ? "bg-[#0d1826]" : "bg-[linear-gradient(105deg,#ffffff_50%,#0d1826_50%)]";
+function TilePreview({ mode }: { mode: "light" | "dark" }) {
+  const bg = mode === "light" ? "bg-white" : "bg-[#0d1826]";
   return (
     <span className={cn("block h-14 overflow-hidden rounded-lg border border-border", bg)} aria-hidden>
       <span className="mx-2 mt-2 block h-1.5 w-8 rounded-full bg-[#9db2c4]/70" />
@@ -113,8 +102,8 @@ export default function AccountPage() {
   const [deletePassword, setDeletePassword] = useState("");
   // Apple-only-Konten (RL-1002): Löschung per Apple-Re-Auth statt Passwort.
   const hasPassword = user?.has_password !== false;
-  const [nativeApple, setNativeApple] = useState(false);
-  useEffect(() => setNativeApple(appleSignInAvailable()), []);
+  const [appleMoeglich, setAppleMoeglich] = useState(false);
+  useEffect(() => setAppleMoeglich(appleSignInAvailable()), []);
 
   const deleteMutation = useMutation({
     // Löschung verlangt eine frische Bestätigung — eine offene Session allein
@@ -345,7 +334,7 @@ export default function AccountPage() {
                       autoComplete="current-password"
                     />
                   </div>
-                ) : !nativeApple ? (
+                ) : !appleMoeglich ? (
                   <p className="text-sm text-muted-foreground @3xl/konto:max-w-xs">
                     Die Apple-Bestätigung funktioniert nur in der App — oder richte dir oben
                     zuerst ein Passwort ein.
@@ -354,7 +343,7 @@ export default function AccountPage() {
                 <Button
                   variant="danger"
                   onClick={() => setDeleteOpen(true)}
-                  disabled={(hasPassword ? !deletePassword : !nativeApple) || deleteMutation.isPending}
+                  disabled={(hasPassword ? !deletePassword : !appleMoeglich) || deleteMutation.isPending}
                 >
                   {deleteMutation.isPending ? "Lösche…" : hasPassword ? "Konto löschen" : "Mit Apple bestätigen & löschen"}
                 </Button>
@@ -415,8 +404,8 @@ function EmailCard() {
   const [neu, setNeu] = useState("");
   const [passwort, setPasswort] = useState("");
   const hatPasswort = user?.has_password !== false;
-  const [nativeApple, setNativeApple] = useState(false);
-  useEffect(() => setNativeApple(appleSignInAvailable()), []);
+  const [appleMoeglich, setAppleMoeglich] = useState(false);
+  useEffect(() => setAppleMoeglich(appleSignInAvailable()), []);
   const schwebend = user?.pending_email ?? null;
 
   const wechseln = useMutation({
@@ -505,7 +494,7 @@ function EmailCard() {
             </button>
           </div>
         </div>
-      ) : hatPasswort || nativeApple ? (
+      ) : hatPasswort || appleMoeglich ? (
         <form
           onSubmit={(e: React.FormEvent) => {
             e.preventDefault();

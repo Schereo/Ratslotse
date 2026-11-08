@@ -4,8 +4,8 @@
  * Die Ideen-Seite: EINE Idee, wie sie durch die Räte lief — und ob Oldenburg
  * sie hat.
  *
- * Adresse `?id=<cluster_id>` statt eines Pfadsegments: Der statische Export
- * kennt keine dynamischen Pfade (`web/frontend/CLAUDE.md`). `von` trägt den
+ * Adresse `?id=<cluster_id>` statt eines Pfadsegments, wie alle Detailseiten
+ * (`web/frontend/CLAUDE.md`). `von` trägt den
  * Zustand der Übersicht (Feld, Filter, Suche), damit „Zurück" ihn wiederfindet
  * — in der Adresse, nicht im Speicher.
  *

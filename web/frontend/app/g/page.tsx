@@ -5,8 +5,7 @@
  * Server-Komponente mit dynamischer Metadata (Task 31b): Messenger-Crawler
  * (WhatsApp, Signal, Slack …) lesen og:title/description aus dem initialen
  * HTML ohne JavaScript — deshalb passiert der Snapshot-Fetch hier auf dem
- * Server. Im MOBILE-Export existiert diese Route nicht (build-mobile.mjs
- * stasht app/g wie app/api): geteilte Links öffnen immer im Browser.
+ * Server.
  */
 import type { Metadata } from "next";
 import Link from "next/link";

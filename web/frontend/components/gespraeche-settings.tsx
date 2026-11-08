@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessagesSquare } from "lucide-react";
 import { Button, Card, toast } from "@/components/ui";
-import { apiUrl, authHeaders } from "@/lib/api";
+import { apiUrl } from "@/lib/api";
 
 /** Konto-Einstellung „Gespräche speichern" (Design 6a②): beidseitig änderbar
  *  zur Erstnutzungs-Frage im Ratsgespräch. Der Ausschalt-Dialog entscheidet
@@ -18,7 +18,7 @@ export function GespraecheCard() {
     // `limit=0` holt nur die Zahlen: Hier zählt der Bestand, die Zeilen selbst
     // zeigt diese Karte nie. Vorher zählte sie die gelieferte Liste — und die
     // war auf 50 gedeckelt, „Alle löschen (50)" log also bei größeren Konten.
-    fetch(apiUrl("/council/conversations?limit=0"), { credentials: "include", headers: authHeaders() })
+    fetch(apiUrl("/council/conversations?limit=0"), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
         if (!b) return;
@@ -35,7 +35,7 @@ export function GespraecheCard() {
     try {
       const r = await fetch(apiUrl("/council/conversations/setting"), {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ an }),
       });
       if (!r.ok) throw new Error();
@@ -51,7 +51,7 @@ export function GespraecheCard() {
   const alleLoeschen = async () => {
     try {
       const r = await fetch(apiUrl("/council/conversations"), {
-        method: "DELETE", credentials: "include", headers: authHeaders(),
+        method: "DELETE", credentials: "include",
       });
       if (!r.ok) throw new Error();
       setAnzahl(0);

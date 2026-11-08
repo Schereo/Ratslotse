@@ -43,9 +43,9 @@ test.describe("Der aktive Punkt leuchtet", () => {
       .toHaveAttribute("aria-current", "page");
   });
 
-  test("auch mit Schluss-Schrägstrich — der Fall aus der App", async ({ page }) => {
-    // `next.config.mjs` setzt für den App-Export `trailingSlash: true`. Ein
-    // exakter Vergleich (`pathname === "/topics"`) ist damit in der App blind.
+  test("auch mit Schluss-Schrägstrich in der Adresse", async ({ page }) => {
+    // Ein exakter Vergleich (`pathname === "/topics"`) wäre bei „/topics/"
+    // blind; der aktive Punkt geht deshalb über `pfad()`.
     await page.goto("/topics/");
     await expect(page.getByRole("link", { name: "Meine Themen", exact: true }).first())
       .toHaveAttribute("aria-current", "page");

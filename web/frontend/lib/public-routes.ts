@@ -35,8 +35,8 @@ export const OEFFENTLICHE_PFADE = [
 /** Ist dieser Pfad ohne Konto lesbar? */
 export function istOeffentlich(pfad: string | null | undefined): boolean {
   if (!pfad) return false;
-  // Der statische Export legt die Seiten als Verzeichnis ab, der Browser hängt
-  // dann einen Schrägstrich an — beide Schreibweisen müssen treffen.
+  // Mit und ohne Schluss-Schrägstrich — beide Schreibweisen müssen treffen
+  // (s. `pfad` in lib/utils.ts).
   const p = pfad.length > 1 && pfad.endsWith("/") ? pfad.slice(0, -1) : pfad;
   return (OEFFENTLICHE_PFADE as readonly string[]).includes(p);
 }
@@ -76,7 +76,7 @@ export function mitRuecksprung(ziel: "/login" | "/register", weiter: string): st
  *  Wer sich von einem geteilten Beschluss aus anmeldet, will zurück zu diesem
  *  Beschluss und nicht aufs Dashboard. Bewusst erst beim Absenden aus der
  *  Adresszeile gelesen statt über `useSearchParams`: Der Hook zwingt die Seite
- *  in eine Suspense-Grenze, und der statische Export (MOBILE=1) bricht daran ab.
+ *  in eine Suspense-Grenze.
  */
 export function zielNachAnmeldung(): string {
   if (typeof window === "undefined") return "/dashboard";
@@ -90,7 +90,7 @@ export function zielNachAnmeldung(): string {
  *  Ohne das verliert man das Ziel beim ersten Klick: Wer von einem geteilten
  *  Beschluss auf „Anmelden" geht und dort merkt, dass er noch kein Konto hat,
  *  landet nach dem Umweg über „Registrieren" sonst wieder auf dem Dashboard.
- *  Nach dem Mounten gelesen, damit der statische Export nichts einbackt.
+ *  Nach dem Mounten gelesen, damit das Vorrendern nichts einbackt.
  */
 export function useWeiterSuffix(): string {
   const [suffix, setSuffix] = useState("");

@@ -65,7 +65,7 @@ export function ThemenKarte({
           {/* Das Bild, mit dem das Thema im Assistenten angelegt wurde (nur die
               kuratierten Stadtthemen — ein selbst getipptes hat keins). */}
           {topic.image_key && (
-            // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
+            // Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs).
             // eslint-disable-next-line @next/next/no-img-element
             <img src={`/themen/${topic.image_key}.webp`} alt="" width={36} height={36}
               loading="lazy" decoding="async"

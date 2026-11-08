@@ -10,7 +10,7 @@ import { Mascot } from "@/components/mascot";
 import { AntwortText } from "@/components/qa-bausteine";
 import { GlossarAufklappBereich } from "@/components/glossary-text";
 import { FeedbackDaumen } from "@/components/feedback-daumen";
-import { api, apiUrl, authHeaders, qs } from "@/lib/api";
+import { api, apiUrl, qs } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import {
   ankerKennung, ankerListe, ankerTreffer, anschlussfragen, belegName,
@@ -444,7 +444,7 @@ export function LottiPanel({
       const res = await fetch(apiUrl("/council/ask"), {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: frageText,
           // **Dasselbe Gespräch wie die Erklärungen.** Der Plan sagt, der
@@ -650,7 +650,7 @@ export function LottiPanel({
       const res = await fetch(apiUrl("/council/explain"), {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           route: bildschirm.route,
           page_title: bildschirm.page_title,
@@ -808,7 +808,7 @@ export function LottiPanel({
     (async () => {
       try {
         const r = await fetch(apiUrl(`/council/conversations/${ladeGespraech}`),
-                              { credentials: "include", headers: authHeaders() });
+                              { credentials: "include" });
         if (!r.ok) throw new Error();
         const g = await r.json();
         if (abgebrochen) return;

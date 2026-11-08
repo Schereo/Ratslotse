@@ -67,7 +67,7 @@ export type LottiRegung =
  * sommer: Sonnenbrille, herbst/winter: Schal, weihnachten: roter Schal) —
  * gewählt wird nur der ORDNER, der Abspieler bleibt derselbe. Bestimmt wird
  * das Datum erst nach dem Mount (wie useMascotTheme, gegen eingebrannte
- * Build-Jahreszeiten im statischen Export); bis dahin steht die neutrale
+ * Build-Jahreszeiten im vorgerenderten HTML); bis dahin steht die neutrale
  * Lotti da. Die übrigen Feiertage (Pride, Halloween, Ostern) tragen wie in
  * der 3D-Szene ihr Jahreszeiten-Outfit weiter — dafür gibt es keine Blätter.
  * Der Hook lebt hier statt in seasonal-mascot.tsx, weil der Weg dorthin ein

@@ -3190,6 +3190,20 @@ class DistrictProjectDecision(TypedDict):
     committee: str | None
 
 
+class DistrictProjectUpdate(TypedDict):
+    """Der jüngste Beschluss eines Vorhabens — „was war zuletzt im Rat?". Am
+    selben Sitzungstag geht ein Beschluss einer Kenntnisnahme vor.
+    ``summary`` ist der Kernsatz des Beschlusses (``council_decisions.summary``)
+    und fehlt nur, solange das Protokoll noch nicht ausgewertet ist; dann
+    bleibt der Titel."""
+    decision_id: int
+    date: str
+    committee: str | None
+    title: str
+    outcome: str | None
+    summary: str | None
+
+
 class DistrictPlanInfo(TypedDict):
     """Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und
     die Stationen des Verfahrens aus den offenen Geodaten der Stadt."""
@@ -3245,6 +3259,9 @@ class DistrictProject(TypedDict):
     hidden: bool
     reported: bool
     decisions: list[DistrictProjectDecision]
+    #: Der jüngste Beschluss samt Kurzfassung; null ohne Beschluss. Optional,
+    #: weil ältere Server es nicht kennen.
+    latest_update: NotRequired[DistrictProjectUpdate | None]
     locations: list[DistrictProjectLocation]
     #: Abgeleitet aus ``when`` und dem heutigen Datum (``council/viertel_zeitplan.py``):
     #: ``likely_done`` (im Bau, Zeitraum vorbei), ``overdue`` (Planung/beschlossen,

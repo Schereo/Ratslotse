@@ -10598,6 +10598,28 @@ export interface components {
             id: number;
             /** Last Date */
             last_date: string | null;
+            /**
+             * DistrictProjectUpdate
+             * @description Der jüngste Beschluss eines Vorhabens — „was war zuletzt im Rat?". Am
+             *     selben Sitzungstag geht ein Beschluss einer Kenntnisnahme vor.
+             *     ``summary`` ist der Kernsatz des Beschlusses (``council_decisions.summary``)
+             *     und fehlt nur, solange das Protokoll noch nicht ausgewertet ist; dann
+             *     bleibt der Titel.
+             */
+            latest_update?: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number;
+                /** Outcome */
+                outcome: string | null;
+                /** Summary */
+                summary: string | null;
+                /** Title */
+                title: string;
+            } | null;
             /** Locations */
             locations: components["schemas"]["DistrictProjectLocation"][];
             /** Name */
@@ -10678,6 +10700,28 @@ export interface components {
             report_count: number;
             /** Reported */
             reported?: boolean;
+        };
+        /**
+         * DistrictProjectUpdate
+         * @description Der jüngste Beschluss eines Vorhabens — „was war zuletzt im Rat?". Am
+         *     selben Sitzungstag geht ein Beschluss einer Kenntnisnahme vor.
+         *     ``summary`` ist der Kernsatz des Beschlusses (``council_decisions.summary``)
+         *     und fehlt nur, solange das Protokoll noch nicht ausgewertet ist; dann
+         *     bleibt der Titel.
+         */
+        DistrictProjectUpdate: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Title */
+            title: string;
         };
         /**
          * DistrictProjects
@@ -26436,4 +26480,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: be89d58280b11447e03d8a9006acb6141d8098cf26ae406147ad3165a279484a
+// vertrag-sha256: d7d91e50e0cc66677e27110f99518cf8c8b290869ac24aba61c0460cd2f7b9c2

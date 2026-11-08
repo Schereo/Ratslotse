@@ -7,13 +7,13 @@ import { Mascot } from "@/components/mascot";
 import { PeekingChick } from "@/components/peeking-chick";
 import { LandingQaDemo } from "@/components/landing-qa-demo";
 import { HeaderCTA } from "@/components/landing-cta";
-import { NativeRedirect } from "@/components/native-redirect";
+import { LandingRedirect } from "@/components/landing-redirect";
 import { LiveStats } from "@/components/live-stats";
 import { HeuteLeiste } from "@/components/heute-leiste";
 import { LottiHero } from "@/components/lotti-hero";
 import { KommunalwahlBanner } from "@/components/kommunalwahl-banner";
 import { WahlabendBanner, WahlenFussLink } from "@/components/wahlabend-hinweis";
-import { WebThemeSwitch } from "@/components/web-theme-switch";
+import { LottiThemeSwitch } from "@/components/theme-switch";
 import { Reveal } from "@/components/reveal";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +41,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       {/* useSearchParams (Fluchttür ?start=1) braucht eine Suspense-Grenze. */}
       <Suspense fallback={null}>
-        <NativeRedirect />
+        <LandingRedirect />
       </Suspense>
       <PeekingChick />
       {/* Tastatur-Nutzer*innen springen direkt zum Inhalt (visuell versteckt bis fokussiert). */}
@@ -63,7 +63,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Gäste haben kein Konto → „Erscheinungsbild" — der Schalter ist
                 hier der einzige Weg, das Farbschema zu wählen. */}
-            <WebThemeSwitch />
+            <LottiThemeSwitch />
             <HeaderCTA />
           </div>
         </div>
