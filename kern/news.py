@@ -209,7 +209,7 @@ def recipients(store, release: Release) -> list[int]:
         konto["id"] for konto in store.news_candidates()
         if not erledigt(konto.get("news_sent_version"))
         and not erledigt(konto.get("news_seen_version"))
-        and (konto.get("created_at") or "")[:10] <= release.date
+        and (konto.get("created_at") or "")[:10] < release.date
     ]
 
 

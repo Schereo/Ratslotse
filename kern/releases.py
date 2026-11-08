@@ -603,15 +603,16 @@ def pending_for(seen_version: str | None,
     """
     marke = version_key(seen_version) if seen_version else None
     # Nur das Datum vergleichen: ``created_at`` trägt eine Uhrzeit, ``date``
-    # nicht. Wer am Release-Tag dazugekommen ist, zählt als „war schon da" —
-    # der mildere Irrtum, denn eine Karte zu viel ist ein Wisch, eine
-    # verpasste Ankündigung ist weg.
+    # nicht. Wer am Release-Tag dazugekommen ist, zählt als neu — Tims
+    # Entscheidung 08.11.2026: Ein frisch registriertes Konto sah über dem
+    # Einrichtungs-Assistenten „Das Erklär-Update“, als wäre es zurückgekehrt.
+    # Bis dahin galt der Release-Tag als „war schon da“.
     erstellt = (account_created or "")[:10]
 
     offen = [
         r for r in RELEASES
         if (marke is None or version_key(r.version) > marke)
-        and (not erstellt or erstellt <= r.date)
+        and (not erstellt or erstellt < r.date)
         # Eine Karte, deren Features noch aus sind, kündigt nichts an, was es
         # gibt — sie wartet, bis der Schalter umgelegt ist (``Release.schalter``).
         and freigeschaltet(r)
