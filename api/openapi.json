@@ -38127,6 +38127,28 @@
         ]
       }
     },
+    "/api/today/visit/updates": {
+      "post": {
+        "description": "Besuch aufzeichnen und gleich die erste Seite des Rückblicks liefern.\n\nDasselbe wie ``POST /visit`` und danach ``GET /updates``, nur in EINEM\nAufruf: Der Rückblick auf „Heute\" wartete sonst eine ganze Netzlaufzeit auf\nden POST, bevor er überhaupt fragen konnte. Die Reihenfolge bleibt dieselbe\n— erst aufzeichnen (das setzt beim ersten Aufruf eines neuen Besuchs\n``visit_previous_at``), dann das Fenster lesen.\n\nEin eigener Pfad statt eines Schalters an ``/visit``: Den einfachen POST\nschickt die Hülle auf jeder Seite und alle fünf Minuten, und nur dieser hier\nbraucht die Rats-Datenbank.",
+        "operationId": "visit_with_updates_api_today_visit_updates_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayUpdates"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Visit With Updates",
+        "tags": [
+          "today"
+        ]
+      }
+    },
     "/api/topics": {
       "get": {
         "operationId": "list_topics_api_topics_get",

@@ -3,22 +3,24 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CalendarDays } from "lucide-react";
-import { api } from "@/lib/api";
-import type { ApiAntwort } from "@/lib/vertrag";
+import { UPCOMING_SESSIONS_KEY, fetchUpcomingSessions } from "@/lib/upcoming-sessions";
 import { HeuteWidget, type WidgetSize } from "@/components/heute-widget";
 import { shortCommittee } from "@/lib/committees";
-
-type Sitzungen = ApiAntwort<"/council/sessions">;
 
 /** „Die Woche im Rat" ohne Woche: Tagt in den nächsten sieben Tagen nichts,
  *  fiel die Karte bis 10/2026 einfach weg — und oben auf „Heute" standen nur
  *  noch ein leerer Rückblick und eine Null. Dabei ist das Nächste bekannt.
  *  Diese Karte nennt es: den nächsten Sitzungstag, wie weit er weg ist, und
- *  wer dann tagt. */
+ *  wer dann tagt.
+ *
+ *  Die Liste teilt sie mit der Live-Karte, die sie schon beim Seitenaufruf
+ *  holt (`lib/upcoming-sessions.ts`) — die Karte selbst hängt erst ein, wenn
+ *  die Wochenvorschau leer zurückkommt, und fände sonst erst DANN die
+ *  Sitzungen. */
 export function NaechsteSitzungKarte({ size, heute }: { size?: WidgetSize; heute: Date | null }) {
   const { data } = useQuery({
-    queryKey: ["sitzungen", "naechste"],
-    queryFn: () => api.get<Sitzungen>("/council/sessions?scope=upcoming&limit=12"),
+    queryKey: UPCOMING_SESSIONS_KEY,
+    queryFn: () => fetchUpcomingSessions(),
     staleTime: 60 * 60 * 1000,
   });
   const alle = data?.sessions ?? [];
