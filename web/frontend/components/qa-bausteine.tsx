@@ -17,7 +17,7 @@
 import { teileKursiv } from "@/lib/kursiv";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ChevronDown, ChevronUp, ExternalLink, FileDown, FileText, MessageSquarePlus, MessagesSquare, Newspaper, type LucideIcon } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, ChevronUp, ExternalLink, FileDown, FileText, Landmark, MessageSquarePlus, MessagesSquare, Newspaper, type LucideIcon } from "lucide-react";
 import { vielfaeltigeAuswahl } from "@/lib/debatten";
 import { cn } from "@/lib/utils";
 import { personHref } from "@/lib/routes";
@@ -741,6 +741,43 @@ export function QuellenAbschnitt({ icon: Icon, titel, zusatz, extern = false, ch
   );
 }
 
+/** Ein Kasten, der noch lädt — in derselben Hülle wie der fertige.
+ *
+ *  Bis 11/2026 stand vor der Antwort ein einziger Block grauer Balken, und
+ *  dann sprangen die Kästen einzeln hinein; die Wortbeiträge kamen sogar erst
+ *  nach der Antwort (Tim 08.11.2026: „einfach so aufgeploppt“). Jetzt hat jede
+ *  Art ihren Platzhalter mit ihrer Kopfzeile — Beschlüsse, Wortbeiträge,
+ *  Pressemitteilungen —, und der fertige Kasten tritt an seine Stelle. */
+export function QuellenAbschnittSkelett({ icon, titel, extern = false, zeilen = 3 }: {
+  icon: LucideIcon; titel: string; extern?: boolean; zeilen?: number;
+}) {
+  return (
+    <QuellenAbschnitt icon={icon} titel={titel} extern={extern} className="motion-safe:animate-in motion-safe:fade-in-0"
+      zusatz={<span aria-hidden className="inline-block h-2.5 w-10 animate-pulse rounded bg-skeleton align-middle" />}>
+      <div aria-busy="true" aria-label={`${titel} werden geladen`} className="space-y-3 py-0.5">
+        {Array.from({ length: zeilen }, (_, i) => (
+          <div key={i} className="space-y-1.5">
+            <div className="h-3 animate-pulse rounded bg-skeleton"
+              style={{ width: `${[94, 78, 86, 70][i % 4]}%`, animationDelay: `${i * 120}ms` }} />
+            <div className="h-2.5 w-2/5 animate-pulse rounded bg-skeleton" style={{ animationDelay: `${i * 120 + 60}ms` }} />
+          </div>
+        ))}
+      </div>
+    </QuellenAbschnitt>
+  );
+}
+
+/** Die Platzhalter der ganzen Belege-Spalte, solange noch nichts gefunden ist. */
+export function BelegeSkelett() {
+  return (
+    <div className="flex flex-col gap-3.5">
+      <QuellenAbschnittSkelett icon={Landmark} titel="Beschlüsse" zeilen={4} />
+      <QuellenAbschnittSkelett icon={MessagesSquare} titel="Wortbeiträge" zeilen={3} />
+      <QuellenAbschnittSkelett icon={Newspaper} titel="Pressemitteilungen" extern zeilen={2} />
+    </div>
+  );
+}
+
 /** „N weitere" / „Weniger" — derselbe Knopf unter jedem Kasten. */
 export function MehrKnopf({ offen, anzahl, onClick, einheit }: {
   offen: boolean; anzahl: number; onClick: () => void;
@@ -1060,10 +1097,13 @@ function ladeDebatten(question: string, decisionIds: number[]): Promise<Debatten
  *  (`POST /council/debates`, ohne Sprachmodell) und hängt an, was fehlt.
  *  Anlass: Die Aussage der Verwaltung vom 16.04.2026 zum Schlossplatz-
  *  Spielplatz stand weder in der Antwort noch sonst irgendwo zum Nachlesen. */
-export function DebattenBaustein({ question, beschlussIds, debates, nachladen = true }: {
+export function DebattenBaustein({ question, beschlussIds, debates, nachladen = true, wartet = false }: {
   question: string; beschlussIds: number[]; debates: DebattenHinweis[];
   /** Aus, solange die Antwort noch streamt — erst danach lohnt es. */
   nachladen?: boolean;
+  /** Die Antwort läuft noch, das Nachladen kommt erst danach: Bis dahin
+   *  steht der Platzhalter da, statt dass der Kasten später hineinspringt. */
+  wartet?: boolean;
 }) {
   const [weitere, setWeitere] = useState<DebattenHinweis[] | null>(
     () => debattenCache.get(question) ?? null);
@@ -1086,7 +1126,11 @@ export function DebattenBaustein({ question, beschlussIds, debates, nachladen = 
     return { liste: [...debates, ...neu], neu: neu.length };
   }, [debates, weitere]);
 
-  if (alle.liste.length === 0) return null;
+  if (alle.liste.length === 0) {
+    return wartet || (nachladen && weitere === null)
+      ? <QuellenAbschnittSkelett icon={MessagesSquare} titel="Wortbeiträge" zeilen={3} />
+      : null;
+  }
   return <DebattenBlock debates={alle.liste} nachgeladen={alle.neu}
     laedt={nachladen && weitere === null} />;
 }

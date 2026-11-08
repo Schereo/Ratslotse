@@ -592,6 +592,14 @@ lotti-placeholder {
   body {
     background: #fff;
   }
+  /* Ein gedrucktes Gespräch liest sich wie ein Brief, nicht wie der
+     Bildschirm: Auf A4 ergaben fünf Absätze vier Seiten (Tim 08.11.2026).
+     `zoom` statt kleinerer rem-Basis, weil viele Größen hier in px stehen. */
+  .qa-druck {
+    zoom: 0.72;
+    max-width: none !important;
+    margin-top: 0 !important;
+  }
 }
 
 /* Die Glocke läutet einmal, wenn man ein Gremium abonniert (Abo-Seite).
