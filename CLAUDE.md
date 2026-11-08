@@ -481,6 +481,7 @@ WEB_ADMIN_EMAIL=...                  # wird Admin, sobald diese Adresse registri
 CORS_ORIGINS=https://ratslotse.de
 RESEND_API_KEY=...                   # E-Mail-Versand (Resend), sending-only Key
 EMAIL_FROM=Ratslotse <noreply@ratslotse.de>
+EMAIL_REPLY_TO=...                   # Antwortadresse aller Mails (sonst ginge eine Antwort an noreply@)
 APP_BASE_URL=https://ratslotse.de
 FEEDBACK_EMAIL=...                   # Empfänger des Nutzer-Feedbacks
 ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_EMAIL)
