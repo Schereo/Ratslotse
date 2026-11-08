@@ -61,6 +61,9 @@ _RAHMEN = "#dbe5ee"
 _FLAECHE = "#f3f7fb"
 
 
+_ZAHLWORT = {2: "zwei", 3: "drei", 4: "vier"}
+
+
 def _version_kurz(version: str) -> str:
     """„3.0.0" → „3.0" — so steht die Zahl auch auf der Karte."""
     teile = version.split(".")
@@ -121,20 +124,26 @@ def body_html(release: Release) -> str:
         f"<p style='margin:10px 0 0;font-size:15px;line-height:1.55;color:{_TEXT}'>"
         # Nicht der Teaser der Karte: Der verspricht „je ein kurzes Video“,
         # und in der Mail läuft keins.
-        f"Ratslotse hat ein großes Update bekommen — {len(gross)} neue Wege durch den Rat. "
+        f"Ratslotse hat ein großes Update bekommen — {_ZAHLWORT.get(len(gross), len(gross))} neue Wege durch den Rat. "
         "In der App zeigt dir zu jedem ein kurzes Video, wie es geht.</p>",
     ]
     teile += [_highlight_block(h, i) for i, h in enumerate(gross, start=1)]
-    zeilen = [
-        "<div style='margin-top:10px'>"
-        f"<a href='{digest_email.absolut(h.url)}' style='color:{_TEXT};font-weight:700;"
-        f"text-decoration:none'>{html.escape(h.title)}</a>"
-        f"<div style='margin-top:2px;color:{_TEXT}'>{html.escape(h.text)}</div></div>"
-        for h in nebenbei
-    ] + [
-        f"<div style='margin-top:10px;color:{_TEXT}'>{html.escape(z)}</div>"
-        for z in release.mail_extras
-    ]
+    # Das kleine Feature unter „Außerdem neu": Titel, Satz und — wenn es eins
+    # hat — sein Bild darunter (für 3.0 eine kleine Zeitleiste).
+    zeilen = []
+    for h in nebenbei:
+        bild = (
+            f"<a href='{digest_email.absolut(h.url)}' style='display:block;margin-top:10px'>"
+            f"<img src='{digest_email.absolut(h.mail_image)}' alt='' width='516' "
+            "style='display:block;width:100%;max-width:516px;height:auto;border:0;border-radius:10px'></a>"
+            if h.mail_image else ""
+        )
+        zeilen.append(
+            "<div style='margin-top:10px'>"
+            f"<a href='{digest_email.absolut(h.url)}' style='color:{_TEXT};font-weight:700;"
+            f"text-decoration:none'>{html.escape(h.title)}</a>"
+            f"<div style='margin-top:2px;color:{_TEXT}'>{html.escape(h.text)}</div>{bild}</div>"
+        )
     if zeilen:
         teile.append(
             f"<div style='margin-top:22px;padding:16px 18px;border-radius:13px;background:{_FLAECHE};"

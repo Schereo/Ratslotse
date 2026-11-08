@@ -229,10 +229,6 @@ class Release:
     #: gezeigt — samt Lotti, Mein Viertel und Ideen aus anderen Städten, die
     #: dort aus sind. Auf dev (``FEATURE_FLAGS=*``) bleibt sie sichtbar.
     schalter: tuple[str, ...] = ()
-    #: Kurze Zeilen **nur für die Mail** unter „Außerdem neu“ — Neuerungen ohne
-    #: eigenen Clip, die in der Ankündigung trotzdem nicht fehlen sollen. Die
-    #: Karte in der App zeigt sie nicht.
-    mail_extras: tuple[str, ...] = ()
 
 
 #: Alle Releases mit Karte, **neueste zuerst**.
@@ -250,10 +246,6 @@ RELEASES: tuple[Release, ...] = (
         title="Das Erklär-Update",
         schalter=("lotti-assistentin", "mein-viertel", "ideen-anderswo", "andere-staedte"),
         teaser="Drei neue Wege durch den Rat — je ein kurzes Video.",
-        mail_extras=(
-            "Die KI läuft jetzt ausschließlich in Rechenzentren in der EU — "
-            "ohne Speicherung beim Anbieter und ohne Training mit deinen Fragen.",
-        ),
         highlights=(
             Highlight(
                 mail_image="/neuigkeiten/3.0.0/lotti-szene.jpg",
@@ -396,10 +388,13 @@ RELEASES: tuple[Release, ...] = (
                 ),
             ),
             Highlight(
-                mail_image="/neuigkeiten/3.0.0/akte-szene.jpg",
-                title="Frag den Rat liest den ganzen Vorgang",
-                text="Fragst du nach einem Vorhaben, stehen unter der Antwort jetzt "
-                     "sein Verlauf als Zeitleiste und die Eckdaten.",
+                mail_image="/neuigkeiten/3.0.0/vorgang-zeitstrahl.jpg",
+                # Umformuliert 08.11.2026 (Tim: „liest den ganzen Vorgang" war
+                # komisch) — gemeint ist, dass Vorgänge vollständig erfasst
+                # werden, vom ersten bis zum aktuellen Stand.
+                title="Frag den Rat erfasst Vorgänge vollständig",
+                text="Fragst du nach einem Vorhaben, siehst du den ersten und den aktuellen "
+                     "Stand und alles dazwischen — als Zeitleiste mit den Eckdaten.",
                 url="/fragen",
                 tagline="Zeitleiste und Eckdaten unter jeder Antwort.",
                 action="Frag den Rat ausprobieren",
