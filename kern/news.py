@@ -116,16 +116,22 @@ def body_html(release: Release) -> str:
     """
     gross = [h for h in release.highlights if not h.aside]
     nebenbei = [h for h in release.highlights if h.aside]
+    zahl = _ZAHLWORT.get(len(gross), len(gross))
     teile = [
+        # Der Satz gehört direkt unter die Anrede („Moin Tim,“ setzt
+        # ``deliver_message``), erst danach Version und Name — Tim 08.11.2026:
+        # Anrede und dann sofort „NEU IN VERSION 3.0“ las sich abgehackt.
+        # Nicht der Teaser der Karte: Der verspricht „je ein kurzes Video“,
+        # und in der Mail läuft keins. Und keine App: Die neue ist noch nicht
+        # im Store, die Videos zeigt die Karte beim nächsten Besuch.
+        f"<p style='margin:0 0 22px;font-size:15px;line-height:1.55;color:{_TEXT}'>"
+        f"in Ratslotse gibt es {zahl} neue Wege, den Rat zu verstehen. "
+        "Wenn du dich das nächste Mal anmeldest, zeigt dir zu jedem ein kurzes Video, "
+        "wie es geht.</p>",
         f"<div style='font-size:12px;font-weight:700;letter-spacing:0.12em;color:{_SIGNAL}'>"
         f"NEU IN VERSION {html.escape(_version_kurz(release.version))}</div>",
         f"<div style='margin-top:6px;font-size:26px;font-weight:800;line-height:1.2;color:{_TEXT}'>"
         f"{html.escape(release.title)}</div>",
-        f"<p style='margin:10px 0 0;font-size:15px;line-height:1.55;color:{_TEXT}'>"
-        # Nicht der Teaser der Karte: Der verspricht „je ein kurzes Video“,
-        # und in der Mail läuft keins.
-        f"Ratslotse hat ein großes Update bekommen — {_ZAHLWORT.get(len(gross), len(gross))} neue Wege durch den Rat. "
-        "In der App zeigt dir zu jedem ein kurzes Video, wie es geht.</p>",
     ]
     teile += [_highlight_block(h, i) for i, h in enumerate(gross, start=1)]
     # Das kleine Feature unter „Außerdem neu": Titel, Satz und — wenn es eins
@@ -157,7 +163,7 @@ def body_html(release: Release) -> str:
     teile.append(
         f"<p style='margin:22px 0 0;font-size:15px;line-height:1.55;color:{_TEXT}'>"
         "Viel Spaß beim Entdecken! Fällt dir etwas auf, freue ich mich über eine Nachricht "
-        "über „Feedback“ in der App.<br>Lotti</p>"
+        "über „Feedback“ in Ratslotse.<br>Lotti</p>"
     )
     teile.append(
         digest_email.nebenlink(

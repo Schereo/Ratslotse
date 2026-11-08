@@ -307,9 +307,9 @@ RELEASES: tuple[Release, ...] = (
             Highlight(
                 mail_image="/neuigkeiten/3.0.0/viertel-szene.jpg",
                 title="Mein Viertel",
-                text="Gib deine Straße oder deinen Stadtteil ein und sieh, was der "
-                     "Rat dort beschlossen hat — jedes Vorhaben von der Idee bis "
-                     "zum Bau, mit Bebauungsplänen und den Beschlüssen dazu.",
+                text="Wähl dein Viertel und sieh, was der Rat dort beschlossen hat: "
+                     "jedes Vorhaben von der Idee bis zum Bau, mit Bebauungsplänen "
+                     "und den Beschlüssen dazu.",
                 url="/karte",
                 tagline="Was sich vor deiner Haustür tut.",
                 action="Mein Viertel ausprobieren",
@@ -351,7 +351,7 @@ RELEASES: tuple[Release, ...] = (
                 title="Ideen aus anderen Städten",
                 text="Was haben Hannover, Münster oder Potsdam schon beantragt oder "
                      "beschlossen, das Oldenburg noch fehlt? Je Idee siehst du, wie "
-                     "sie durch die Räte lief — und mit Belegen, was es in "
+                     "sie durch die Räte lief und, mit Belegen, was es in "
                      "Oldenburg dazu schon gibt.",
                 url="/council/ideen",
                 tagline="Was andere Räte schon beschlossen haben.",
@@ -394,7 +394,7 @@ RELEASES: tuple[Release, ...] = (
                 # werden, vom ersten bis zum aktuellen Stand.
                 title="Frag den Rat erfasst Vorgänge vollständig",
                 text="Fragst du nach einem Vorhaben, siehst du den ersten und den aktuellen "
-                     "Stand und alles dazwischen — als Zeitleiste mit den Eckdaten.",
+                     "Stand und alles dazwischen, als Zeitleiste mit den Eckdaten.",
                 url="/fragen",
                 tagline="Zeitleiste und Eckdaten unter jeder Antwort.",
                 action="Frag den Rat ausprobieren",
