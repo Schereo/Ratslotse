@@ -1992,6 +1992,10 @@ class MovementDetail(TypedDict):
     #: Oldenburgs eigene Vorlagen in derselben Gruppe, aufgelöst wie Belege.
     oldenburg_documents: list[IdeaEvidence]
     similar: list[MovementSimilar]
+    #: Wie frisch der Bestand der Städte DIESER Idee ist („Stand: …"). Seit
+    #: 11/2026 hier statt über die ganze Themenfeld-Übersicht; fehlt bei
+    #: älteren Servern.
+    data_status: NotRequired[IdeaDataStatus]
 
 
 class ElsewhereResponse(TypedDict):

@@ -33,7 +33,7 @@ import { api } from "@/lib/api";
 import { featureAktiv, useAppConfig } from "@/lib/features";
 import { aufzaehlung, rueckmeldungsFehler, standZeilen } from "@/lib/ideen";
 import type { ApiAntwort } from "@/lib/vertrag";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type Felder = ApiAntwort<"/council/cities/ideas/fields">;
 type Ideen = ApiAntwort<"/council/cities/ideas">;
@@ -457,12 +457,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
 function Feld({ feld, seite, onSeite, zurueck }: {
   feld: string; seite: number; onSeite: (seite: number) => void; zurueck: () => void;
 }) {
-  const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["ideen", feld, seite],
-    queryFn: () => api.get<Ideen>(
-      `/council/cities/ideas?field=${encodeURIComponent(feld)}&page=${seite}`),
-    staleTime: 60 * 60 * 1000,
-  });
+  const { data, isPending, isError, refetch, isFetching } = useQuery(fieldIdeasQuery(feld, seite));
 
   const label = POLICY_FIELD_LABELS[feld] ?? feld;
   return (
@@ -525,11 +520,7 @@ function Feld({ feld, seite, onSeite, zurueck }: {
 // --------------------------------------------------------------- Suche
 
 function Suchergebnis({ frage }: { frage: string }) {
-  const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["ideen-suche", frage],
-    queryFn: () => api.get<Suche>(`/council/cities/search?q=${encodeURIComponent(frage)}`),
-    staleTime: 60 * 60 * 1000,
-  });
+  const { data, isPending, isError, refetch, isFetching } = useQuery(ideaSearchQuery(frage));
   return (
     <div>
       {isError && !data && (
@@ -620,6 +611,52 @@ function bewegungsAnfrage(z: Zustand, extra: Record<string, string> = {}): strin
   return `/council/cities/movements?${p.toString()}`;
 }
 
+// Die Abfragen der Abschnitte, an EINER Stelle: Die Abschnitte lesen sie, und
+// die Seite stößt sie schon an, solange /app-config noch unterwegs ist (s.
+// `View`). Zwei Fassungen mit verschiedenen Schlüsseln hießen zwei Abrufe.
+function boardQuery() {
+  return queryOptions({
+    queryKey: ["bewegungen-tafel"],
+    queryFn: () =>
+      api.get<Bewegungen>(
+        "/council/cities/movements?min_cities=5&oldenburg=missing,partial&sort=zuletzt&per_page=3"),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+function movementsQuery(z: Zustand) {
+  return queryOptions({
+    queryKey: ["bewegungen", z.feld, z.stand, z.q, z.sort, z.seite],
+    queryFn: () => api.get<Bewegungen>(bewegungsAnfrage(z)),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+function fieldIdeasQuery(feld: string, seite: number) {
+  return queryOptions({
+    queryKey: ["ideen", feld, seite],
+    queryFn: () => api.get<Ideen>(
+      `/council/cities/ideas?field=${encodeURIComponent(feld)}&page=${seite}`),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+function ideaSearchQuery(frage: string) {
+  return queryOptions({
+    queryKey: ["ideen-suche", frage],
+    queryFn: () => api.get<Suche>(`/council/cities/search?q=${encodeURIComponent(frage)}`),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+function fieldsQuery() {
+  return queryOptions({
+    queryKey: ["ideen-felder"],
+    queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 function zielFuer(b: Bewegung, z: Zustand): string {
   const von = adresse(z).split("?")[1] ?? "";
   return `/council/ideen/bewegung?id=${b.cluster_id}${von ? `&von=${encodeURIComponent(von)}` : ""}`;
@@ -633,13 +670,7 @@ function zielFuer(b: Bewegung, z: Zustand): string {
  *  Regel). Sie steht nur in der ungefilterten Ansicht: Mit einem Feld oder
  *  einer Suche gewählt wäre sie eine zweite, kleinere Kopie der Liste. */
 function Tafel({ zustand }: { zustand: Zustand }) {
-  const { data } = useQuery({
-    queryKey: ["bewegungen-tafel"],
-    queryFn: () =>
-      api.get<Bewegungen>(
-        "/council/cities/movements?min_cities=5&oldenburg=missing,partial&sort=zuletzt&per_page=3"),
-    staleTime: 60 * 60 * 1000,
-  });
+  const { data } = useQuery(boardQuery());
   if (!data || data.items.length === 0) return null;
   return (
     <section aria-labelledby="tafel-titel" className="hh-tafel grid gap-3.5 rounded-[18px] p-4 sm:p-5">
@@ -838,9 +869,7 @@ function BewegungenListe({
   zustand, setze, felder,
 }: { zustand: Zustand; setze: (z: Partial<Zustand>) => void; felder: Felder | undefined }) {
   const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["bewegungen", zustand.feld, zustand.stand, zustand.q, zustand.sort, zustand.seite],
-    queryFn: () => api.get<Bewegungen>(bewegungsAnfrage(zustand)),
-    staleTime: 10 * 60 * 1000,
+    ...movementsQuery(zustand),
     placeholderData: (vorher) => vorher,
   });
   const gefiltert = Boolean(zustand.feld || zustand.q || zustand.stand !== "offen");
@@ -910,12 +939,24 @@ export default function View() {
     zuEinzeln.current = false;
     return imBlickHalten(einzeln.current);
   }, [zustand.feld, zustand.ideenSeite]);
-  const felderAbfrage = useQuery({
-    queryKey: ["ideen-felder"],
-    queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
-    staleTime: 60 * 60 * 1000,
-    enabled: an,
-  });
+  // Die Seitendaten warten nicht auf /app-config. Bis 11/2026 stießen die
+  // Abschnitte ihre Abrufe erst an, wenn der Schalter geantwortet hatte — eine
+  // Netzlaufzeit mehr (auth/me → app-config → Seitendaten). Die Endpunkte
+  // prüfen den Schalter nicht; ein früher Abruf zeigt also nichts, was die
+  // Seite nicht ohnehin zeigen darf, und ist der Schalter aus, bleibt es beim
+  // 404 unten. Nur beim ersten Aufruf nötig: Ist die Konfiguration schon im
+  // Speicher, stehen die Abschnitte sofort da und holen selbst.
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!cfg.isPending) return;
+    if (!zustand.feld && !zustand.q && zustand.stand === "offen") void qc.prefetchQuery(boardQuery());
+    void qc.prefetchQuery(movementsQuery(zustand));
+    if (zustand.q) void qc.prefetchQuery(ideaSearchQuery(zustand.q));
+    else if (zustand.feld) void qc.prefetchQuery(fieldIdeasQuery(zustand.feld, zustand.ideenSeite));
+    // Einmal beim Einstieg, mit dem Zustand aus der Adresse.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const felderAbfrage = useQuery({ ...fieldsQuery(), enabled: an || cfg.isPending });
   const felder = felderAbfrage.data;
   // „A, B und C" — die letzte mit „und", wie man es schreibt.
   const staedte = useMemo(() => {

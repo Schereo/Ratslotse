@@ -17183,6 +17183,9 @@
           "axis": {
             "$ref": "#/components/schemas/TimeAxis"
           },
+          "data_status": {
+            "$ref": "#/components/schemas/IdeaDataStatus"
+          },
           "documents": {
             "items": {
               "$ref": "#/components/schemas/MovementDocument"

@@ -139,6 +139,15 @@ async function redirects() {
     { source: "/haushalt/beteiligungen", destination: "/haushalt/konzern#gesellschaften", permanent: true },
     { source: "/haushalt/betriebe", destination: "/haushalt/konzern#betriebe", permanent: true },
     { source: "/haushalt/gebuehren", destination: "/haushalt/konzern#gebuehren", permanent: true },
+    // „Mein Viertel" lebt seit dem Umzug auf der Karte (`/karte?ort=…&v=…`).
+    // Alte Links (Mails, geteilte Links) leitet seit 11/2026 der SERVER weiter;
+    // vorher tat es die Seite erst nach dem Hydrieren — App-Hülle, Skelett, ein
+    // zweiter Seitenaufruf, dann die Karte (LCP 524 statt 244 ms). Temporär,
+    // nie permanent: Ein 308 klebt im Browser (s. das Labor oben). Die übrigen
+    // Parameter (`v`, auch `id`) reicht Next von selbst durch; die Karte räumt
+    // die Adresse danach auf. `app/(app)/viertel/view.tsx` bleibt als Rückfall.
+    { source: "/viertel", has: [{ type: "query", key: "id", value: "(?<id>.+)" }], destination: "/karte?ort=:id", permanent: false },
+    { source: "/viertel", destination: "/karte", permanent: false },
   ];
 }
 

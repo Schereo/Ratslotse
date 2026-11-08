@@ -149,6 +149,20 @@ def test_die_ideen_seite(client):
     assert client.get("/api/council/cities/movements/detail?id=999").status_code == 404
 
 
+def test_movement_detail_carries_its_data_status(client, cities_db):
+    """„Stand: …" kommt mit der Bewegung, für IHRE Städte. Die Seite holte
+    dafür bis 11/2026 die ganze Themenfeld-Übersicht (`/cities/ideas/fields`,
+    gut 100 ms Rechnung) und filterte im Browser."""
+    with cities_db._conn:
+        cities_db._conn.execute(
+            "UPDATE bodies SET last_fetched = '2026-09-14T03:00:00' WHERE id = 'osnabrueck'")
+    d = client.get("/api/council/cities/movements/detail?id=1").json()
+    # Als Körperschaft steht hier nur Osnabrück im Bestand; seine jüngste
+    # Vorlage liegt weit vor dem Abgleich — also „hinkt hinterher".
+    assert d["data_status"] == {"as_of": "2026-09-14", "lagging": [
+        {"body_id": "osnabrueck", "city": "Osnabrück", "latest_paper": "2023-06-01"}]}
+
+
 def test_die_uebersicht_zaehlt_bewegungen(client):
     felder = {f["field"]: f for f in client.get(
         "/api/council/cities/ideas/fields").json()["fields"]}
