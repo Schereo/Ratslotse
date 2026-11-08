@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Globe2, ShieldAlert } from "lucide-react";
+import { ChevronDown, ShieldAlert } from "lucide-react";
 
 import { Aufklapp } from "@/components/aufklapp";
+import { EuFlagge } from "@/components/eu-flagge";
 import { Mascot } from "@/components/mascot";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -69,8 +70,8 @@ export function GespraecheEinwilligung({ onEntschieden, kompakt = false, classNa
               unterbricht ohnehin genau einmal. */}
           <ul className="mt-2.5 space-y-1.5 text-hinweis text-foreground/90">
             <li className="flex gap-2">
-              <Globe2 className="mt-[0.2rem] h-4 w-4 shrink-0 text-primary" aria-hidden />
-              <span>Deine Frage geht für die Antwort an den KI-Dienst OpenRouter, auch außerhalb der EU.</span>
+              <EuFlagge className="mt-[0.3rem] h-[11px] w-4" />
+              <span>Die KI läuft ausschließlich in Rechenzentren in der EU.</span>
             </li>
             <li className="flex gap-2">
               <ShieldAlert className="mt-[0.2rem] h-4 w-4 shrink-0 text-signal" aria-hidden />
@@ -107,9 +108,10 @@ export function GespraecheEinwilligung({ onEntschieden, kompakt = false, classNa
           <Aufklapp offen={mehr}>
             <div className="space-y-1.5 pt-1.5 text-hinweis text-muted-foreground">
               <p>
-                Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet; eine
-                Drittlandverarbeitung ist möglich. Mit einer Auswahl erlaubst du diese Übermittlung —
-                ohne sie kann die KI keine Antwort erzeugen.
+                Frage und passende Ratsauszüge gehen über den Vermittler OpenRouter (USA) an
+                KI-Modelle bei Microsoft Azure in der EU, die nichts speichern und nicht damit
+                trainieren. Mit einer Auswahl erlaubst du diese Übermittlung — ohne sie kann die KI
+                keine Antwort erzeugen.
               </p>
               <p>
                 Gemerkte Gespräche stehen oben unter „Gespräche&#8220;. Ohne Merken wird ein Gespräch

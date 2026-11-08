@@ -45,6 +45,7 @@ import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseSseStrom } from "@/lib/sse";
 import { ASK_SCHRITTE, type AskSchritt } from "@/lib/qa-schritte";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
+import { KiInDerEu } from "@/components/eu-flagge";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
 // Die beiden Kanten, an denen der fixierte Composer und die Belege-Spalte
@@ -2748,6 +2749,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                   : zitierte.length === 0 && turn.rules_of_procedure
                   ? <>Automatische Antwort aus der Geschäftsordnung des Rates — kann unvollständig sein. Wortlaut prüfen.</>
                   : <>Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.</>}
+                {/* Ohne Trennpunkt: Bricht die Zeile um, stünde sonst ein „·“ am Zeilenanfang. */}
+                {!turn.unclear && <KiInDerEu className="ml-2" />}
               </span>
             </div>
           )}

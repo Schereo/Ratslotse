@@ -222,6 +222,10 @@ jobs:
             --exclude 'web/frontend/node_modules/'
             --exclude 'web/frontend/.next/'
             --exclude 'web/frontend/.next-dev/'
+            # Der Build neben dem laufenden Server und der Rest eines
+            # abgebrochenen Umschaltens (s. „Restart services and rebuild web").
+            --exclude 'web/frontend/.next-build/'
+            --exclude 'web/frontend/.next-alt/'
             --exclude 'web/frontend/public/docs/'
             # Die Instagram-Karten legt der Bot per POST /api/social/media
             # hier ab; sie entstehen NUR auf dem Server. Ohne diese Regel
@@ -239,6 +243,8 @@ jobs:
             --filter 'P /web/frontend/node_modules/'
             --filter 'P /web/frontend/.next/'
             --filter 'P /web/frontend/.next-dev/'
+            --filter 'P /web/frontend/.next-build/'
+            --filter 'P /web/frontend/.next-alt/'
             --filter 'P /web/frontend/public/docs/'
             --filter 'P /web/frontend/public/social/'
             --filter 'P /docs-site/node_modules/'
@@ -282,18 +288,44 @@ jobs:
             .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
               -c constraints.txt
             cd web/frontend && npm ci --no-audit --no-fund
+            # NEBEN DEM LAUFENDEN SERVER BAUEN. Bis 11/2026 schrieb der Build
+            # direkt in `.next`: `next build` leert das Verzeichnis als
+            # Erstes, und der alte `next start` lieferte weiter HTML aus, das
+            # auf CSS und Skripte zeigte, die es nicht mehr gab. Vom Build
+            # über API-Stopp, Migration und Vorprobe bis zum Neustart des
+            # Frontends — gemessen rund eine Minute je Deploy — kam
+            # ratslotse.de ungestaltet. Jetzt entsteht der Build in
+            # `.next-build` (next.config.mjs, NEXT_DIST_DIR) und rückt erst
+            # unmittelbar vor `restart nwz-web-frontend` an die Stelle von
+            # `.next` („Umschalten" unten). Bricht der Lauf vorher ab, läuft
+            # das Frontend auf dem alten, heilen Build weiter.
+            #
+            # OHNE WEBPACK-CACHE: Das `rm -rf` lässt jeden Build leer
+            # beginnen. Der persistente Cache hat zweimal einen in sich
+            # verdrehten Build geliefert (15.09.2026 hier, 08.11.2026 auf dev)
+            # und spart Sekunden, auf die seit dem Bau daneben niemand wartet.
+            rm -rf .next-build
             # CARTO_API_KEY: Key für die Kartenkacheln, zur Build-Zeit ins
             # Client-Bundle einkompiliert (NEXT_PUBLIC_, s. lib/basemap.ts).
             # Fehlt das Secret, baut der Build trotzdem durch — die Karten
             # tragen dann nur wieder CARTOs „API KEY REQUIRED"-Wasserzeichen.
+            NEXT_DIST_DIR=.next-build \
             NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" npm run build
+            # Gebraucht hat ihn nur der Build (rund 450 MB).
+            rm -rf .next-build/cache/webpack
             cd ~/app
             # Ist der Build in sich stimmig? Am 15.09.2026 (v2.6.1) verlangte
             # die vorgerenderte /wahlabend ein Skript, das der Build nicht
             # geschrieben hatte — der Name kam aus dem alten Webpack-Cache,
-            # die Seite blieb weiß, Deploy und Rauchprobe waren grün. Hier,
-            # VOR dem API-Stopp, bricht so ein Build folgenlos ab.
-            .venv/bin/python scripts/pruefe_build_chunks.py web/frontend/.next
+            # die Seite blieb weiß, Deploy und Rauchprobe waren grün. Seit
+            # 11/2026 prüft er auch die Schriftklassen gegen das verlinkte CSS
+            # (08.11.2026 auf dev: alles in Times). Hier, VOR dem API-Stopp,
+            # bricht so ein Build folgenlos ab.
+            .venv/bin/python scripts/pruefe_build_chunks.py web/frontend/.next-build
+            # Fertig und geprüft. Bricht der Cutover unten ab, liegt dieser Build
+            # ungenutzt neben dem alten; ops-wartungsbarriere.yml
+            # (frontend-restart) schaltet ihn nur mit dieser Marke ein.
+            touch web/frontend/.next-build/.geprueft
 
             # Ab hier darf kein alter Prozess mehr schreiben: Neue Store-
             # Instanzen respektieren den Marker, der API-Dienst wird gestoppt,
@@ -409,7 +441,17 @@ jobs:
             cutover_aktiv=0
             trap - EXIT
             sudo /bin/systemctl start nwz-web-api
+            # UMSCHALTEN, unmittelbar vor dem Neustart des Frontends: zwei
+            # Umbenennungen auf derselben Platte, dann stoppt systemd den
+            # alten Prozess. Ein Rest eines abgebrochenen Laufs wird davor
+            # weggeräumt, der alte Build danach — beides kostet Sekunden, die
+            # nicht zwischen Umschalten und Neustart gehören. Die sudo-Zeilen
+            # bleiben wörtlich dieselben (sudoers erlaubt genau diese).
+            rm -rf web/frontend/.next-alt
+            if [ -d web/frontend/.next ]; then mv web/frontend/.next web/frontend/.next-alt; fi
+            mv web/frontend/.next-build web/frontend/.next
             sudo /bin/systemctl restart nwz-web-frontend
+            rm -rf web/frontend/.next-alt
 
             # Erst wenn beide Dienste wirklich antworten, gilt der Deploy als
             # geglückt. Ohne diese Prüfung meldete der Lauf „success", während

@@ -432,6 +432,9 @@ export interface DecisionDetail {
     /** 1 = Planzeichnung gerendert (scripts/render_plaene.py). */
     bild?: number;
   }[];
+  /** Nachbar-Beschlüsse derselben Sitzung (nach TOP-Nummer). `null` bei
+   *  Subvotes; fehlt bei Antworten von vor 11/2026. */
+  neighbors?: S["DecisionNeighbors"] | null;
 }
 
 export type Topic = S["TopicOut"];

@@ -1586,6 +1586,45 @@ class SitzungenMixin(StoreBasis):
             "SELECT id FROM council_decisions WHERE ksinr = ? AND kind = 'decision' "
             "ORDER BY position", (int(ksinr),))]
 
+    @staticmethod
+    def _natural_item_key(item_number: str | None) -> tuple:
+        """Sortierschlüssel wie ``localeCompare(…, "de", {numeric: true})``:
+        Ziffernfolgen zählen als Zahl, „4" vor „6.1", „15.9" vor „15.10".
+
+        Bewusst NICHT ``_top_sortierung``: Die kennt nur „Ö 5"-Formen, die
+        Beschluss-Nummern tragen auch „10.2/10.3". Der Wechsel bei
+        ``re.split`` hält Text und Zahl immer an derselben Stelle, Tupel
+        vergleichen deshalb nie ``str`` mit ``int``.
+        """
+        teile = re.split(r"(\d+)", item_number or "")
+        return tuple(int(t) if i % 2 else t for i, t in enumerate(teile))
+
+    def decision_neighbors(self, ksinr: int, decision_id: int) -> dict | None:
+        """Vorheriger und nächster Beschluss derselben Sitzung — für die
+        Leiste „TOP 6.1 · 3 von 32 Beschlüssen · TOP 6.3" auf der
+        Beschluss-Seite.
+
+        Bis 11/2026 rechnete das Web sie selbst aus und lud dafür die GANZE
+        Sitzung nach (69 KB, eine eigene Wasserfall-Stufe), von der es drei
+        Spalten brauchte. Reihenfolge wie dort: nach TOP-Nummer, nicht nach
+        Protokoll-Position (die stellt „4" hinter „7.1"); gleiche Nummern
+        behalten die Protokoll-Reihenfolge. Subvotes zählen nicht mit — für
+        sie gibt es ``None``, wie für eine unbekannte id.
+        """
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT id, item_number, title FROM council_decisions "
+            "WHERE ksinr = ? AND kind = 'decision' ORDER BY position", (int(ksinr),)).fetchall()]
+        rows.sort(key=lambda r: self._natural_item_key(r["item_number"]))
+        pos = next((i for i, r in enumerate(rows) if r["id"] == decision_id), None)
+        if pos is None:
+            return None
+        return {
+            "position": pos + 1,
+            "total": len(rows),
+            "prev": rows[pos - 1] if pos > 0 else None,
+            "next": rows[pos + 1] if pos + 1 < len(rows) else None,
+        }
+
     def rules_of_procedure_decisions(self, after: str) -> list[dict]:
         """Ratsbeschlüsse NACH ``after``, deren Titel eine Geschäftsordnung
         nennt — grob, neueste zuerst. Fein entscheidet

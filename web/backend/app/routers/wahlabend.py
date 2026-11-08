@@ -32,6 +32,8 @@ from ..antworten import (
     STICHWAHL_PNG,
     WAHLABEND_KARTE_PNG,
     WAHLABEND_PNG,
+    ElectionArea,
+    ElectionAreaParty,
     ElectionCandidateDetail,
     ElectionCandidateRanking,
     ElectionDistrictList,
@@ -107,6 +109,9 @@ def wahlabend(
     probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
     counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
     wahl: str | None = Query(default=None, description="Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf"),
+    area_candidates: bool = Query(default=True, description="false = die Kandidaturen je Wahlbereich "
+                                  "(areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem "
+                                  "Reiter, der sie zeigt"),
 ) -> ElectionNight:
     """Der Wahlabend: live, als Generalprobe oder als Rückblick.
 
@@ -114,9 +119,26 @@ def wahlabend(
     dem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine
     Rückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den
     Wahltag im Pfad und wandern irgendwann ins Archiv.
+
+    ``?area_candidates=false`` lässt die Kandidaturen je Wahlbereich weg: gut
+    60 % der Antwort, die der erste Reiter („Ergebnis") nicht braucht. Ohne
+    den Parameter bleibt die Antwort, wie sie war.
     """
     _frei()
-    return _night(probe, counted, wahl)
+    night = _night(probe, counted, wahl)
+    return night if area_candidates else _without_area_candidates(night)
+
+
+def _without_area_candidates(night: ElectionNight) -> ElectionNight:
+    """Dieselbe Antwort mit leeren ``areas[].parties[].candidates`` — als
+    Kopie: Das Bild aus ``service.live`` bzw. ``archive.night`` ist
+    zwischengespeichert und teilen sich alle Aufrufer."""
+    out = cast(ElectionNight, dict(night))
+    out["areas"] = [
+        cast(ElectionArea, {**a, "parties": [cast(ElectionAreaParty, {**p, "candidates": []}) for p in a["parties"]]})
+        for a in night["areas"]
+    ]
+    return out
 
 
 def _night(probe: str | None, counted: int | None, wahl: str | None) -> ElectionNight:

@@ -861,11 +861,10 @@ def describe_topic(
 
     name = body.name.strip()
     own = (body.description or "").strip()
-    # Gezählt wird auf „Name. eigener Text" — ohne eigenen Text auf den Namen
-    # allein. Kein zweiter Durchlauf auf die frisch erzeugte Beschreibung: Die
-    # Bewertung des Cross-Encoders hängt am Namen (er ist die Rerank-Anfrage),
-    # der Fließtext steuert nur die Kandidatenauswahl — ein zweiter Lauf kostete
-    # einen weiteren LLM-Aufruf und verschöbe die Zahl kaum.
+    # Gezählt wird auf „Name. Beschreibung" — die eigene, sonst die gerade
+    # erzeugte —, also auf genau den Text, den das Anlegen speichert und
+    # ``_erstabgleich`` nachrechnet. Bis 11/2026 zählte das Anlegen auf den
+    # Namen allein; „Entlastungsstraße" kam so auf 0 und als Thema auf 6.
     result = topic_intel.analyse(council, name, own)
     # Vagheit nur für selbst geschriebene Texte: Was wir selbst erzeugt haben,
     # ist per Konstruktion aus Beschlüssen abgeleitet und damit konkret.
@@ -882,6 +881,9 @@ def describe_topic(
         "verdict": result["verdict"],
         "is_council_topic": result["is_council_topic"],
         "reason": result["reason"],
+        # Dasselbe Fenster wie ``hits_12m`` an der Themenzeile — fehlt nur,
+        # wenn der Cross-Encoder gerade nicht zählen konnte.
+        **({"matches_12m": result["matches_12m"]} if "matches_12m" in result else {}),
         **check,
     }
 

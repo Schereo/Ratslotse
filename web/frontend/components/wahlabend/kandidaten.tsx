@@ -396,6 +396,7 @@ export function Kandidaten({
   filter,
   setFilter,
   live,
+  kandidatenDa = true,
 }: {
   daten: Wahlabend;
   probe: string | null;
@@ -404,6 +405,9 @@ export function Kandidaten({
   filter: KandidatenFilter;
   setFilter: (f: KandidatenFilter) => void;
   live: boolean;
+  /** Trägt `daten` schon die Kandidaturen je Wahlbereich? Aus ihnen kommt
+   *  der Maßstab der Balken; bis sie da sind, wartet die Rangliste. */
+  kandidatenDa?: boolean;
 }) {
   const beobachtet = useBeobachtet(rueckblick, probe, counted);
   const pfad = kandidatenPfad(probe, counted, rueckblick, filter.sortierung, filter.liste, filter.bereich, filter.bezirk);
@@ -503,7 +507,7 @@ export function Kandidaten({
 
       {abfrage.isError && !liste ? (
         <p className="mt-6 text-[13px] text-muted-foreground">Die Rangliste ließ sich gerade nicht laden — die Seite versucht es von selbst noch einmal.</p>
-      ) : !liste ? (
+      ) : !liste || !kandidatenDa ? (
         <p className="mt-6 text-center text-[13px] text-muted-foreground">Rangliste wird geladen …</p>
       ) : (
         <>

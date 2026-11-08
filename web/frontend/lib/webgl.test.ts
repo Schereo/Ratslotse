@@ -38,6 +38,18 @@ describe("webglVerfuegbar", () => {
     expect(getContext).toHaveBeenCalledTimes(1);
   });
 
+  it("sagt nein bei Software-GL: Kontext nur ohne Leistungsvorbehalt", () => {
+    // So verhält sich Chromium mit SwiftShader (Lighthouse, VMs, gesperrter
+    // Treiber): Ohne Attribut gibt es einen Kontext, mit
+    // failIfMajorPerformanceCaveat keinen. Dann bleibt es bei der Zeichnung.
+    const getContext = vi.fn((_art: string, attrs?: WebGLContextAttributes) =>
+      attrs?.failIfMajorPerformanceCaveat ? null : { getExtension: () => null });
+    dokumentMit(getContext);
+    expect(webglVerfuegbar()).toBe(false);
+    expect(getContext).toHaveBeenCalledWith("webgl2", { failIfMajorPerformanceCaveat: true });
+    expect(getContext).toHaveBeenCalledWith("webgl", { failIfMajorPerformanceCaveat: true });
+  });
+
   it("sagt nein, wenn getContext selbst wirft", () => {
     dokumentMit(() => {
       throw new Error("kaputt");
