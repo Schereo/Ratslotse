@@ -515,7 +515,7 @@ COUNCIL_LIVE_WINDOW_SECONDS=15              # Takt der Live-Verfolgung beim Stre
 COUNCIL_LIVE_TRACKER_MODEL=google/gemini-3.5-flash-lite  # Modell der Live-Verfolgung (welcher TOP läuft)
 COUNCIL_ASSISTANT_MODEL=openai/gpt-6-luna        # Lottis Erklärungen (ohne ZDR: llm.ZDR_VERZICHT; Default passt)
 COUNCIL_QA_MODEL=openai/gpt-6-luna               # Antwort-Modell der KI-Frage (genau vor schnell; Default passt)
-COUNCIL_QA_EXPAND_MODEL=google/gemini-3.1-flash-lite  # Frage-Analyse der KI-Frage (schnell, mit ZDR; Default passt)
+COUNCIL_QA_EXPAND_MODEL=openai/gpt-5.6-luna  # Frage-Analyse der KI-Frage (Azure EU, mit ZDR; Default passt)
 COUNCIL_DEEP_MODEL=                  # Bericht der ausführlichen Recherche; leer = COUNCIL_QA_MODEL
 COUNCIL_DEEP_PLUS_MODEL=openai/gpt-6-sol  # derselbe Bericht für Konten mit Recht premium_models (Rolle „Recherche Plus“); leer = wie COUNCIL_DEEP_MODEL
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
@@ -533,6 +533,7 @@ LLM_TAGESKOSTEN_ALARM_USD=5          # Mail, wenn die Modellkosten des Vortags d
 NWZ_OPENROUTER_ROUTING=on            # "off" = Notausschalter
 NWZ_OPENROUTER_IGNORE=deepseek,baidu,streamlake,siliconflow,alibaba
 NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflicht (gilt ohnehin nur für Nutzer-Pfade, s. kern/llm.py::OHNE_NUTZEREINGABE)
+RATSLOTSE_KI_AUSSERHALB_EU=           # Notausgang: "1" lässt Nutzereingaben bei Ausfall wieder außerhalb der EU laufen (s. kern/llm.py::EU_ZUERST); sonst NUR EU
 # Umweg über Tims NAS für Ziele, die Hetzner-Adressen sperren (kern/proxy.py)
 RATSLOTSE_PROXY_URL=socks5h://nutzer:passwort@100.118.52.13:1080   # SOCKS auf dem NAS, nur übers Tailnet
 RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese Hosts (+ Subdomains) gehen den Umweg

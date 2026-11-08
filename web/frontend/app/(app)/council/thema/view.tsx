@@ -20,7 +20,7 @@ import { useZurueck } from "@/lib/zurueck";
 // Leaflet needs `window` → load the map client-only.
 const EntityMap = dynamic(() => import("@/components/entity-map").then((m) => m.EntityMap), {
   ssr: false,
-  loading: () => <div className="h-64 w-full animate-pulse rounded-lg border border-border bg-muted/40" />,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-lg border border-border bg-skeleton/60" />,
 });
 
 /** Verwandte Themen als zwei Chip-Zeilen.
@@ -47,6 +47,9 @@ function RelatedThemes({ related }: { related: RelatedEntity[] }) {
               <Link
                 key={r.slug}
                 href={themaHref(r.slug)}
+                // Dieselbe Route wie diese Seite: ihr Code ist da, ein
+                // Vorladen je Chip wäre nur ein weiteres RSC-Rendering.
+                prefetch={false}
                 className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-muted"
               >
                 <k.Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

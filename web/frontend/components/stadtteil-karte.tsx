@@ -88,7 +88,7 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, gewichte, tit
       {!flaechen.length ? (
         // Kein Platzhalter-Text: Die Karte ist Beiwerk zur Liste daneben, und
         // ein „wird geladen" an dieser Stelle zöge den Blick von der Auswahl ab.
-        <div className="h-[220px] w-full animate-pulse rounded-2xl border border-dashed border-border bg-muted/30" />
+        <div className="h-[220px] w-full animate-pulse rounded-2xl border border-dashed border-border bg-skeleton/50" />
       ) : (
         <svg viewBox={`0 0 ${breite} ${hoehe}`} width="100%" height={hoehe}
           className="overflow-visible" role="img"

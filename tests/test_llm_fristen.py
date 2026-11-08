@@ -108,7 +108,8 @@ def test_chat_complete_mit_frist_ist_gedeckelt(stumm):
 
     t0 = time.monotonic()
     with pytest.raises(APITimeoutError):
-        llm.chat_complete(model="x", messages=[{"role": "user", "content": "hi"}], timeout=0.5)
+        llm.chat_complete(model="x", messages=[{"role": "user", "content": "hi"}], timeout=0.5,
+                          _feature="impact_rating")
     dauer = time.monotonic() - t0
     time.sleep(0.2)
     assert stumm.verbindungen == 2, stumm.verbindungen
@@ -122,7 +123,7 @@ def test_strom_mit_frist_ist_gedeckelt(stumm):
     t0 = time.monotonic()
     with pytest.raises(APITimeoutError):
         list(llm.chat_stream(model="x", messages=[{"role": "user", "content": "hi"}],
-                             timeout=0.5))
+                             timeout=0.5, _feature="impact_rating"))
     dauer = time.monotonic() - t0
     time.sleep(0.2)
     assert stumm.verbindungen == 2, stumm.verbindungen

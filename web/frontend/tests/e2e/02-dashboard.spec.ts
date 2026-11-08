@@ -22,6 +22,65 @@ test.describe("Dashboard", () => {
     await page.goto("/dashboard");
   });
 
+  test("die Tour zeigt das eigene Viertel und die eigenen Themen", async ({ page }) => {
+    // Tims Wunsch 08.11.2026: Wer im Assistenten ein Viertel und Themen gewählt
+    // hat, sieht sie in der Tour wieder — die Karte fliegt ins Viertel, und die
+    // Themen-Station öffnet „Meine Themen" und nennt sie beim Namen. Viertel
+    // und Themen kommen gestellt: In der CI ist die Rats-Datenbank leer.
+    // Fünf Seiten nacheinander, `/karte` mit Leaflet: `next dev` übersetzt
+    // jede beim ersten Aufruf, und die Adresse wechselt erst danach.
+    test.slow();
+    const themen = [
+      { id: 9001, name: "Donnerschwee", description: "Neue Beschlüsse mit Bezug zu Donnerschwee.",
+        created_at: "2026-11-08T08:00:00", decision_count: 3, decision_count_capped: false, matched: true },
+      { id: 9002, name: "Radverkehr", description: "Radwege und Fahrradstraßen in Oldenburg.",
+        created_at: "2026-11-08T08:00:01", decision_count: 10, decision_count_capped: false, matched: true },
+    ];
+    await page.route((u) => u.pathname === "/api/topics", (route) =>
+      route.request().method() === "GET" ? route.fulfill({ json: themen }) : route.continue());
+    await page.route((u) => u.pathname === "/api/council/districts", (route) =>
+      route.fulfill({ json: { districts: [{ place_id: "donnerschwee", name: "Donnerschwee", kind: "local_area" }] } }));
+    await page.route("**/api/app-config", async (route) => {
+      const echt = await (await route.fetch()).json();
+      await route.fulfill({ json: { ...echt, features: [...new Set([...(echt.features ?? []), "mein-viertel"])] } });
+    });
+    // Die Tour hakt „Erste Schritte" ab — am GETEILTEN Testkonto. Ohne das
+    // stünde die Leiste für die Tests danach auf „Geschafft".
+    await page.route((u) => u.pathname === "/api/onboarding", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      await route.fulfill({ json: await (await route.fetch({ method: "GET" })).json() });
+    });
+    await page.goto("/dashboard");
+    // Das Startsignal ist ein Ereignis ohne Gedächtnis: Hängt die Tour noch
+    // nicht in der Hülle (die wartet auf /api/auth/me), verhallt es. Lokal und
+    // auf dem eigenen PR ging das gut, in der CI nach weiteren Merges nicht
+    // mehr. Also senden, bis die Tour steht — ein zweiter Start ist harmlos.
+    const tour = page.getByRole("dialog", { name: /^Tour:/ });
+    await expect(async () => {
+      await page.evaluate(() => window.dispatchEvent(new Event("ratslotse:start-tour")));
+      await expect(tour).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
+    // Willkommen → Fragen → Beispiel → Suche → Analyse → Karte, jede Station
+    // erst, wenn die vorige steht — so klickt auch ein Mensch.
+    for (const titel of ["Frag den Rat", "So sieht eine Antwort aus", "Beschlüsse durchsuchen",
+      "Zahlen zum Rat", "Dein Viertel"]) {
+      await tour.getByRole("button", { name: "Weiter" }).click();
+      await expect(tour).toContainText(titel);
+    }
+    await expect(tour).toContainText("Dein Viertel: Donnerschwee");
+    await expect(tour).toContainText("Das ist gerade in Donnerschwee los");
+    // Erst die Stadt, dann der Flug ins Viertel.
+    await expect(page).toHaveURL(/\/karte\?ort=donnerschwee/, { timeout: 45_000 });
+    await page.waitForTimeout(1500); // der Flug dauert 0,7 s
+    await page.screenshot({ path: "test-results/screenshots/02-tour-viertel.png" });
+
+    await tour.getByRole("button", { name: "Weiter" }).click();
+    await expect(page).toHaveURL(/\/topics/, { timeout: 45_000 });
+    await expect(tour).toContainText("die du eben eingerichtet hast: Radverkehr — dazu dein Viertel Donnerschwee.");
+    await expect(page.locator("main").getByText("Radverkehr").first()).toBeVisible({ timeout: 45_000 });
+    await page.screenshot({ path: "test-results/screenshots/02-tour-themen.png" });
+  });
+
   test("begrüßt und zeigt die Signal-Handlung", async ({ page }) => {
     // Mit Anzeigenamen „Moin, X!", ohne bloß „Moin!" — beides fängt gleich an.
     await expect(page.getByRole("heading", { name: /^Moin/ })).toBeVisible();
