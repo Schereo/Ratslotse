@@ -1212,11 +1212,11 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
         <div aria-hidden className="mt-3 flex animate-pulse flex-col gap-3.5">
           {[34, 28, 40].map((w, i) => (
             <div key={i} className="flex gap-2.5">
-              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted" />
+              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-skeleton" />
               <span className="flex flex-1 flex-col gap-1.5">
-                <span className="h-2.5 rounded bg-muted" style={{ width: `${w}%` }} />
-                <span className="h-2 w-[92%] rounded bg-muted/70" />
-                {i !== 1 && <span className="h-2 w-[60%] rounded bg-muted/70" />}
+                <span className="h-2.5 rounded bg-skeleton" style={{ width: `${w}%` }} />
+                <span className="h-2 w-[92%] rounded bg-skeleton/70" />
+                {i !== 1 && <span className="h-2 w-[60%] rounded bg-skeleton/70" />}
               </span>
             </div>
           ))}
