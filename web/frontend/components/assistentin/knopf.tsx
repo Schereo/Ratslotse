@@ -22,7 +22,9 @@ import { cn } from "@/lib/utils";
  * - `--rl-composer` ist die Höhe des Andock-Composers auf `/fragen` (dort live
  *   gemessen, weil sie mit Chips und Karten wächst). Ohne sie läge der Knopf
  *   genau auf dem Senden-Pfeil — derselbe Konflikt, wegen dem `BackToTop` auf
- *   der Fragen-Seite gar nicht erst erscheint.
+ *   der Fragen-Seite gar nicht erst erscheint. Gesetzt ist sie nur, solange
+ *   der Composer wirklich unten andockt; am Schreibtisch steht er in der
+ *   Bühne, und der Knopf sitzt dort wie auf jeder anderen Seite.
  *
  * **`z-[45]` — die Lotti-Ebene** (Knopf, Fenster, Anstupser, Markier-Knopf;
  * Release-Prüfung 03.10.2026): über der Tab-Leiste und dem Composer (`z-40`)

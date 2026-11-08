@@ -193,6 +193,21 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     }
   });
 
+  test("am Schreibtisch sitzt er auf /fragen wie überall — der Composer steht dort in der Bühne", async ({ page }) => {
+    // Tims Befund 08.11.2026: `--rl-composer` hob den Knopf auch am
+    // Schreibtisch um die Composer-Höhe an, obwohl der Composer dort nicht
+    // unten andockt — Lotti schwebte 118 px über ihrer Ecke.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const abstandUnten = async (pfad: string) => {
+      await page.goto(pfad);
+      await expect(knopf(page)).toBeVisible();
+      const box = (await knopf(page).boundingBox())!;
+      return 800 - (box.y + box.height);
+    };
+    const ueberall = await abstandUnten("/dashboard");
+    await expect.poll(() => abstandUnten("/fragen")).toBeCloseTo(ueberall, 0);
+  });
+
   test("er öffnet das Fenster, wird zum Kreuz, und Esc schließt wieder", async ({ page }) => {
     await page.goto("/dashboard");
     await expect(fenster(page)).toBeHidden();
