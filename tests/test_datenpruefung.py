@@ -189,3 +189,58 @@ def test_der_herzschlag_meldet_den_befund(tmp_path, monkeypatch):
     assert ergebnis["daten_ergebnis_widerspricht"] == 1
     assert gesendet and gesendet[-1][0] == "Ratslotse – Datenprüfung"
     assert "Beschluss 7" in gesendet[-1][1]
+
+
+# ---------------------------------------------------------------- Gremienbilder
+
+def test_die_gremientabelle_der_oberflaeche_ist_lesbar():
+    """Liest die ECHTE ``committees.ts`` — wird sie umgebaut, fällt das hier
+    auf und nicht erst als stumme Regel auf dem Server."""
+    kurz, mit_bild = dp.gremien_tabellen(dp.GREMIEN_TABELLE.read_text(encoding="utf-8"))
+    assert kurz["Ausschuss für Gesundheit und Soziales"] == "Gesundheit & Soziales"
+    assert kurz["Verkehrsausschuss"] == "Verkehr"
+    assert {"Gesundheit & Soziales", "Verkehr", "Rat"} <= mit_bild
+
+
+def test_alle_heutigen_gremien_haben_ein_bild():
+    """Die Gremienliste vom 08.11.2026 (dev), samt dem Neuzugang der
+    Wahlperiode 2026–2031."""
+    heute = [
+        "Rat", "Verwaltungsausschuss", "Ausschuss für Allgemeine Angelegenheiten",
+        "Ausschuss für Finanzen und Beteiligungen", "Ausschuss für Gesundheit und Soziales",
+        "Ausschuss für Integration und Migration", "Ausschuss für Stadtgrün, Umwelt und Klima",
+        "Ausschuss für Stadtplanung und Bauen",
+        "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit",
+        "Betriebsausschuss Abfallwirtschaftsbetrieb",
+        "Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau",
+        "Jugendhilfeausschuss", "Kulturausschuss", "Schulausschuss", "Sozialausschuss",
+        "Sportausschuss", "Verkehrsausschuss",
+    ]
+    assert dp.gremien_ohne_bild(heute, dp.GREMIEN_TABELLE.read_text(encoding="utf-8")) == []
+
+
+def test_ein_neues_gremium_ohne_eintrag_oder_ohne_bild_wird_gemeldet():
+    quelltext = (
+        'const SHORT: Record<string, string> = {\n'
+        '  "Rat": "Rat",\n'
+        '  "Ausschuss für Halbes": "Halbes",\n'
+        '};\n'
+        'const BILDER: Record<string, string> = {\n'
+        '  "Rat": "council",\n'
+        '};\n')
+    namen = ["Rat", "Ausschuss für Halbes", "Ausschuss für ganz Neues"]
+    assert dp.gremien_ohne_bild(namen, quelltext) == ["Ausschuss für Halbes", "Ausschuss für ganz Neues"]
+
+
+def test_eine_umgebaute_tabelle_ist_ein_fehler_kein_alles_gut():
+    with pytest.raises(ValueError):
+        dp.gremien_tabellen("export const KURZ = {};")
+
+
+def test_der_herzschlag_nennt_das_gremium_ohne_bild(store):
+    store._conn.execute("INSERT INTO committees (name, kgrnr) VALUES ('Rat', 22), "
+                        "('Ausschuss für ganz Neues', 9999)")
+    store._conn.commit()
+    erg = _pruefen(store, datetime.now(UTC))
+    assert erg["kennzahlen"]["gremien_ohne_bild"] == 1
+    assert any("Ausschuss für ganz Neues" in b and "ohne Bild" in b for b in erg["befunde"])

@@ -8,8 +8,10 @@ Imageset in ``ios/Resources/Assets.xcassets``:
     ThemeCycling.imageset      ← public/themen/cycling.webp
     CommitteeCouncil.imageset  ← public/gremien/council.webp
 
-Asset-Kataloge nehmen kein WebP, deshalb PNG (192 px: die Bilder stehen mit
-52 pt in der App, das trägt die dreifache Pixeldichte). Wer ein Bild neu
+Asset-Kataloge nehmen kein WebP, deshalb PNG. Die Kante hängt am Satz: Themen
+stehen mit 52 pt in der App (192 px trägt die dreifache Pixeldichte), Gremien
+seit 11/2026 mit 72 pt und leicht herangezoomt, dafür die volle Quelle mit
+256 px. Wer ein Bild neu
 erzeugt, ruft das Skript danach noch einmal auf; ``--pruefen`` meldet, ob
 Katalog und Web auseinanderlaufen, und schreibt nichts.
 
@@ -27,9 +29,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PUBLIC = ROOT / "web" / "frontend" / "public"
 KATALOG = ROOT / "ios" / "Resources" / "Assets.xcassets"
-KANTE = 192
-
-SAETZE = (("themen", "Theme"), ("gremien", "Committee"))
+#: (Ordner unter ``public``, Präfix im Katalog, Kantenlänge in px)
+SAETZE = (("themen", "Theme", 192), ("gremien", "Committee", 256))
 
 
 def asset_name(praefix: str, key: str) -> str:
@@ -37,10 +38,10 @@ def asset_name(praefix: str, key: str) -> str:
     return praefix + key[:1].upper() + key[1:]
 
 
-def _png(quelle: Path) -> bytes:
+def _png(quelle: Path, kante: int) -> bytes:
     from PIL import Image
 
-    bild = Image.open(quelle).convert("RGB").resize((KANTE, KANTE), Image.Resampling.LANCZOS)
+    bild = Image.open(quelle).convert("RGB").resize((kante, kante), Image.Resampling.LANCZOS)
     puffer = io.BytesIO()
     bild.save(puffer, "PNG", optimize=True)
     return puffer.getvalue()
@@ -57,12 +58,12 @@ def _contents(datei: str) -> str:
     }, indent=2, ensure_ascii=False) + "\n"
 
 
-def quellen() -> dict[str, Path]:
-    """Asset-Name → Quelldatei, für alle vorhandenen Webbilder."""
-    out: dict[str, Path] = {}
-    for ordner, praefix in SAETZE:
+def quellen() -> dict[str, tuple[Path, int]]:
+    """Asset-Name → (Quelldatei, Kantenlänge), für alle vorhandenen Webbilder."""
+    out: dict[str, tuple[Path, int]] = {}
+    for ordner, praefix, kante in SAETZE:
         for datei in sorted((PUBLIC / ordner).glob("*.webp")):
-            out[asset_name(praefix, datei.stem)] = datei
+            out[asset_name(praefix, datei.stem)] = (datei, kante)
     return out
 
 
@@ -81,10 +82,10 @@ def main() -> int:
         print(f"{len(soll)} Bilder im Katalog.")
         return 0
 
-    for name, quelle in soll.items():
+    for name, (quelle, kante) in soll.items():
         ziel = KATALOG / f"{name}.imageset"
         ziel.mkdir(parents=True, exist_ok=True)
-        (ziel / f"{name}.png").write_bytes(_png(quelle))
+        (ziel / f"{name}.png").write_bytes(_png(quelle, kante))
         (ziel / "Contents.json").write_text(_contents(f"{name}.png"))
     print(f"{len(soll)} Imagesets geschrieben ({len(fehlen)} neu).")
     return 0

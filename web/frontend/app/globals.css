@@ -189,6 +189,12 @@
     -webkit-mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
     mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
   }
+  /* Dasselbe senkrecht, am Blatt des Assistenten (`useScrollRestUnten`):
+     Die letzte sichtbare Zeile läuft aus, statt wie ein Ende auszusehen. */
+  .gb-maske-unten {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent);
+  }
   /* Der Abdunkler unter jedem Dialog — eine Klasse statt einer Farbe je
      Komponente, weil genau daran ein Blatt zerbrochen ist.
      „Thema anpassen" trug `rgba(9,17,27,0.42)`; das ist Pixel für Pixel die
