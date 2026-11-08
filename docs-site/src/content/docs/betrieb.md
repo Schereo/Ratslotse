@@ -118,15 +118,36 @@ Sechs Workflows in `.github/workflows/`:
 2. `docs-site` mit Node 22 bauen (`npm ci && npm run build`).
 3. `rsync -az --delete` des Repos auf die App-VM. Ausgespart bleiben `.env`,
    `data/`, `.venv/`, `.git/`, `web/frontend/node_modules/`,
-   `web/frontend/.next/`, `web/frontend/public/docs/`, `docs-site/node_modules/`
-   und `docs-site/dist/` — Datenbanken und Secrets überlebt jeder Deploy also
-   unverändert.
+   `web/frontend/.next/` (samt `.next-build/` und `.next-alt/`, s. Schritt 5),
+   `web/frontend/public/docs/`, `docs-site/node_modules/` und `docs-site/dist/`
+   — Datenbanken und Secrets überlebt jeder Deploy also unverändert.
 4. Zweiter rsync: das gebaute `docs-site/dist/` in das `public/docs/`-Verzeichnis
    des Frontends. Next.js liefert die Doku damit unter `/docs` aus; die Edge
    braucht dafür keine eigene Konfiguration.
 5. Per SSH auf der App-VM: Backend-Abhängigkeiten nachinstallieren (idempotent),
    `npm ci` + `next build` im Frontend, dann Neustart der Services für
    Backend-API und Frontend.
+
+**Das Frontend wird neben dem laufenden Server gebaut** (seit 11/2026, in
+allen drei Deploys gleich). `next build` leert sein Ausgabeverzeichnis als
+Erstes; schrieb es direkt nach `.next`, zog es dem alten `next start` CSS und
+Skripte weg, und bis zum Neustart — gemessen rund eine Minute — kam jede Seite
+ungestaltet. Deshalb:
+
+1. `rm -rf .next-build`, dann `NEXT_DIST_DIR=.next-build npm run build`
+   (`next.config.mjs` nimmt die Variable nur in der Build-Phase). Jeder Build
+   beginnt leer, **ohne Webpack-Cache**: Der hat zweimal einen in sich
+   verdrehten Build geliefert und spart auf der Dev-VM nur 10–25 Sekunden.
+2. `scripts/pruefe_build_chunks.py web/frontend/.next-build` — jede verlinkte
+   Datei da, jede next/font-Klasse am `<html>` im verlinkten CSS definiert.
+   Scheitert er, bleibt `.next` unberührt.
+3. Unmittelbar vor dem Neustart des Frontends: `.next` → `.next-alt`,
+   `.next-build` → `.next`, `systemctl restart`, dann `.next-alt` löschen.
+
+Auf Prod liegt Schritt 3 hinter Migration und Vorprobe. Bricht der Cutover
+vorher ab, läuft das Frontend heil auf dem alten Build; der neue liegt mit der
+Marke `.geprueft` daneben, und `ops-wartungsbarriere.yml` (Aktion
+`frontend-restart`) schaltet ihn ein.
 
 Warum der Umweg über den gemergten PR statt „Push auf `main` deployt": siehe
 [ADR 0008](/docs/adr/0008-deploy-nur-bei-merge/). Kurz — ein direkter Push auf
