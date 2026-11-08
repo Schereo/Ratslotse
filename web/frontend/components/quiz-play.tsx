@@ -18,7 +18,7 @@ import { FrageChips } from "@/components/frage-chips";
 // Leaflet ist client-only + schwer → erst laden, wenn eine Karte gebraucht wird.
 const LocatorMap = dynamic(() => import("@/components/quiz-locator-map").then((m) => m.LocatorMap), {
   ssr: false,
-  loading: () => <div className="h-44 w-full animate-pulse rounded-lg bg-muted" />,
+  loading: () => <div className="h-44 w-full animate-pulse rounded-lg bg-skeleton" />,
 });
 
 export const CATEGORY_LABEL: Record<string, string> = {

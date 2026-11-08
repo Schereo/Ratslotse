@@ -22,6 +22,10 @@
     --secondary-foreground: 212 55% 14%;
     --muted: 206 40% 94%;
     --muted-foreground: 207 18% 38.5%;
+    /* Platzhalter beim Laden (Skelette). Eigener Wert, weil `--muted` im
+       Dunkeln nur fünf Punkte über der Karte liegt — mit dem Pulsieren auf
+       halbe Deckkraft verschwanden die Zeilen fast ganz (Tim 08.11.2026). */
+    --skeleton: 206 40% 92%;
     --accent: 206 45% 93%;
     --accent-foreground: 212 55% 14%;
     --destructive: 0 72% 48%;
@@ -125,6 +129,9 @@
     --secondary-foreground: 204 40% 96%;
     --muted: 211 36% 16%;
     --muted-foreground: 206 23% 72.5%;
+    /* 14 Punkte über der Karte (11 %), 18 über dem Grund — dieselbe Schwelle
+       wie für das ferne Rampenende der Haushalt-Tafel. */
+    --skeleton: 211 30% 25%;
     --accent: 211 36% 18%;
     --accent-foreground: 204 40% 96%;
     /* Heller und mit dunkler Schrift darauf, wie beim Primär im Dunkeln:
@@ -1023,6 +1030,7 @@ lotti-figur {
   --popover-foreground: 204 40% 97%;
   --muted: 211 30% 19%;
   --muted-foreground: 206 22% 68%;
+  --skeleton: 211 28% 30%;
   --accent: 211 30% 19%;
   --accent-foreground: 204 40% 97%;
   --border: 211 36% 19%;
@@ -1096,6 +1104,7 @@ lotti-figur {
   --card-foreground: 204 40% 97%;
   --muted: 209 36% 19%;
   --muted-foreground: 206 26% 74%;
+  --skeleton: 209 30% 31%;
   --border: 207 36% 24%;
   --primary: 202 88% 64%;
   --primary-foreground: 213 48% 9%;
