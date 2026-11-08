@@ -419,7 +419,7 @@ export function PruefungAbschnitt({ onBestand }: {
             <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
               <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                 {years.map((j) => (
-                  <Link key={j} href={`/haushalt/pruefung?year=${j}`} scroll={false}
+                  <Link key={j} href={`/haushalt/pruefung?year=${j}`} prefetch={false} scroll={false}
                     className={cn("rounded-full px-3 py-1 text-[12.5px]",
                       j === year ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>
                     {j}

@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { QueryClientContext } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import { cachedShared, fetchShared, preloadShared } from "@/lib/shared-fetch";
 import { toast } from "@/components/ui";
 
 /** GET `path` on mount (and whenever it changes). Returns `{ data, loading,
@@ -25,13 +27,26 @@ import { toast } from "@/components/ui";
  *  Still heißt NICHT unbemerkt: Der Server hält den 500er weiter in
  *  `request_errors` fest und meldet ihn beim ersten Mal per Mail. Unterdrückt
  *  wird nur die Beunruhigung dessen, der nichts davon hat.
+ *
+ *  `shared` (seit 11/2026) teilt den Abruf über `lib/shared-fetch.ts`: Zwei
+ *  Komponenten mit derselben Adresse fragen einmal, eine Antwort gilt zehn
+ *  Minuten, und was `usePreload` schon angestoßen hat, wird abgeholt statt
+ *  neu gefragt. **Nur für Antworten, die für alle Berechtigten gleich sind** —
+ *  nie für Persönliches (Begründung dort).
  */
 export function useFetch<T>(
   path: string | null,
-  { quiet = false }: { quiet?: boolean } = {},
+  { quiet = false, shared = false }: { quiet?: boolean; shared?: boolean } = {},
 ): { data: T | null; loading: boolean; error: unknown; refetch: () => void } {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(path !== null);
+  // Ohne QueryClientProvider (sollte es nicht geben) fällt `shared` still auf
+  // den einzelnen Abruf zurück, statt die Seite zu sprengen.
+  const client = useContext(QueryClientContext);
+  const pool = shared ? client ?? null : null;
+  const fromPool = (p: string | null): T | null =>
+    pool && p !== null ? cachedShared<T>(pool, p) : null;
+
+  const [data, setData] = useState<T | null>(() => fromPool(path));
+  const [loading, setLoading] = useState(() => path !== null && fromPool(path) === null);
   const [error, setError] = useState<unknown>(null);
   const [runde, setRunde] = useState(0);
   const refetch = useCallback(() => setRunde((r) => r + 1), []);
@@ -41,18 +56,28 @@ export function useFetch<T>(
   // unter der Adresse von B.
   const [letzterPfad, setLetzterPfad] = useState(path);
   if (letzterPfad !== path) {
+    const cached = fromPool(path);
     setLetzterPfad(path);
-    setData(null);
+    setData(cached);
     setError(null);
-    setLoading(path !== null);
+    setLoading(path !== null && cached === null);
   }
 
   useEffect(() => {
     if (path === null) return;
     let active = true;
+    // Geteilt und noch gültig: kein Abruf, kein Ladezustand. Nur beim
+    // ersten Durchlauf — ein `refetch` will ausdrücklich frische Daten.
+    const cached = pool && runde === 0 ? cachedShared<T>(pool, path) : null;
+    if (cached !== null) {
+      setData(cached);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
-    api.get<T>(path)
+    (pool ? fetchShared<T>(pool, path, { fresh: runde > 0 }) : api.get<T>(path))
       .then((d) => { if (active) setData(d); })
       .catch((e) => {
         if (!active) return;
@@ -61,7 +86,7 @@ export function useFetch<T>(
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [path, quiet, runde]);
+  }, [path, quiet, runde, pool]);
 
   // Wieder online: einmal nachladen, was gescheitert war — sonst blieb die
   // Seite nach dem Funkloch leer, obwohl das Netz längst zurück ist.
@@ -73,4 +98,22 @@ export function useFetch<T>(
   }, [error, refetch]);
 
   return { data, loading, error, refetch };
+}
+
+/** Stößt die geteilten Abrufe von `paths` an, sobald die Komponente steht —
+ *  für Abschnitte, die erst nach den Hauptdaten montieren, deren Daten aber
+ *  nicht von ihnen abhängen. Die Seite fragt so alles in EINER Welle; der
+ *  Abschnitt holt sich später mit `useFetch(path, { shared: true })` die
+ *  laufende oder fertige Antwort. `null`/`false` werden übersprungen.
+ *
+ *  Die Adressen müssen Zeichen für Zeichen die sein, die der Abschnitt
+ *  fragt — deshalb exportieren die Abschnitte sie (`DATA_STATUS_URL` …),
+ *  statt dass die Seite sie nachschreibt. */
+export function usePreload(paths: readonly (string | null | false | undefined)[]): void {
+  const client = useContext(QueryClientContext);
+  const key = paths.filter((p): p is string => !!p).join("\n");
+  useEffect(() => {
+    if (!client || !key) return;
+    for (const p of key.split("\n")) preloadShared(client, p);
+  }, [client, key]);
 }

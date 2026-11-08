@@ -69,7 +69,7 @@ function geberText(z: Zeile): string {
 function VorlageLink({ v }: { v: Vorlage }) {
   const text = `Vorlage ${v.template_number}`;
   return v.decision_id != null
-    ? <Link href={decisionHref(v.decision_id)} className="font-medium text-primary hover:underline">{text}</Link>
+    ? <Link href={decisionHref(v.decision_id)} prefetch={false} className="font-medium text-primary hover:underline">{text}</Link>
     : <span className="font-medium text-foreground">{text}</span>;
 }
 
@@ -78,8 +78,10 @@ function Beratung({ v }: { v: Vorlage }) {
   return <>{v.committee ?? "Rat"}, {datum(v.date)}, {STUFE_TEXT[stufe(v.outcome)]}</>;
 }
 
+export const GRANTS_RECEIVED_URL = "/council/budget/grants-received";
+
 export function FoerdermittelKarte() {
-  const { data } = useFetch<Antwort>("/council/budget/grants-received");
+  const { data } = useFetch<Antwort>(GRANTS_RECEIVED_URL, { shared: true });
   const [geber, setGeber] = useState<Geber>("alle");
   const [alleZeigen, setAlleZeigen] = useState(false);
   const [alleAntraege, setAlleAntraege] = useState(false);

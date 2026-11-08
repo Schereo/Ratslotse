@@ -81,7 +81,7 @@ import {
 import type { DokumenteAntwort } from "@/lib/haushalt-dokumente";
 import { Zeitstrahl, ZeitstrahlStation } from "@/components/grafik/zeitstrahl";
 import { StationsZeile } from "@/components/haushalt/weg-stationen";
-import { Beleg } from "@/components/haushalt/source";
+import { Beleg, DOCUMENTS_URL } from "@/components/haushalt/source";
 import { OUTCOME_META, voteLabel } from "@/components/decision-ui";
 import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -105,7 +105,9 @@ export function TermineAbschnitt({ onBestand }: {
   }) => void;
 } = {}) {
   const { data, loading } = useFetch<WegDaten>("/council/budget/journey");
-  const { data: dokumente } = useFetch<DokumenteAntwort>("/council/budget/documents");
+  // Dieselbe Adresse wie im `Quellenkontext` der Seite — geteilt, sonst
+  // fragte /haushalt/mitreden das Verzeichnis zweimal.
+  const { data: dokumente } = useFetch<DokumenteAntwort>(DOCUMENTS_URL, { shared: true });
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   // Einmal gemerkt statt je Render neu: `heute` ist Anker des Strahls.
   const heute = useMemo(() => new Date(), []);
@@ -487,7 +489,7 @@ function Weg({ runde }: { runde: WegRunde }) {
             <p className="mt-1 max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/85">
               {deDatum(d.date)} — {d.title}
             </p>
-            <Link href={sessionHref(d.ksinr, d.top ? [d.top] : undefined)}
+            <Link href={sessionHref(d.ksinr, d.top ? [d.top] : undefined)} prefetch={false}
               className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-semibold text-primary">
               Sitzung ansehen
               {d.top && <span className="font-mono font-normal text-muted-foreground">{d.top}</span>}
@@ -520,7 +522,7 @@ function Votum({ votum }: { votum: NonNullable<WegStation["votum"]> }) {
   return (
     <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
       Abstimmung über die Haushaltssatzung:{" "}
-      <Link href={decisionHref(votum.id)} className="font-semibold text-primary">
+      <Link href={decisionHref(votum.id)} prefetch={false} className="font-semibold text-primary">
         {(votum.outcome && OUTCOME_META[votum.outcome as DecisionOutcome]?.label) ?? "Ergebnis im Protokoll"}
       </Link>
       {teile.length > 0 && ` · ${teile.join(", ")}`}
@@ -532,6 +534,7 @@ function SitzungsLink({ station }: { station: WegStation }) {
   return (
     <Link
       href={sessionHref(station.ksinr, station.top ? [station.top] : undefined)}
+      prefetch={false}
       className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-semibold text-primary"
     >
       Sitzung ansehen

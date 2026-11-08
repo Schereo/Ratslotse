@@ -121,7 +121,7 @@ function RatsListe({ posten }: { posten: Nachbewilligung[] }) {
             className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-border/60 pt-1.5 first:border-t-0 first:pt-0">
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
               {n.decision_id != null ? (
-                <Link href={decisionHref(n.decision_id)}
+                <Link href={decisionHref(n.decision_id)} prefetch={false}
                   className="text-[12.5px] leading-snug text-primary hover:underline">
                   {n.title}
                 </Link>

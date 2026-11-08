@@ -100,6 +100,10 @@ function zeigeImVerzeichnis(k: QuellenSchluessel) {
   eintrag?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
+/** Das Belegverzeichnis des Bereichs — eine Adresse für `Quellenkontext`, den
+ *  Haushaltsweg und das Vorladen im Layout (`usePreload`). */
+export const DOCUMENTS_URL = "/council/budget/documents";
+
 /** Klammert die Seite: legt fest, welche Quellen sie nutzt, in welcher
  *  Reihenfolge sie nummeriert werden — und welchen Jahrgang sie zeigt.
  *
@@ -126,7 +130,11 @@ export function Quellenkontext({ keys, jeDokument = LEER, year = null, children 
   // Ein Aufruf je Seite, wenige Dutzend Zeilen. Bewusst hier und nicht in
   // jeder Seite: Sonst müsste jede von ihnen dieselbe Verkabelung tragen,
   // und die eine, die es vergisst, zeigt wieder auf die Startseite.
-  const { data } = useFetch<DokumenteAntwort>("/council/budget/documents");
+  //
+  // Geteilt (11/2026): Das Haushalt-Layout stößt den Abruf schon zusammen mit
+  // den Hauptdaten an, und beim Weiterklicken durch die Schritte kommt das
+  // Verzeichnis aus dem Speicher statt jedes Mal neu (383 KB entpackt).
+  const { data } = useFetch<DokumenteAntwort>(DOCUMENTS_URL, { shared: true });
   const eintraege = useMemo(
     () => nummerierung(keys, jeDokument, data?.documents, year),
     [keys, jeDokument, data?.documents, year]);

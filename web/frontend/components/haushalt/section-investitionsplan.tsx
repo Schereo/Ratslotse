@@ -62,6 +62,7 @@ import {
   ProgrammDaten, count, passenderJahrgang,
 } from "@/lib/haushalt-investitionsprogramm";
 import { Beleg } from "@/components/haushalt/source";
+import { INVESTMENTS_URL } from "@/components/haushalt/finanzhaushalt-plan";
 import { Fundstelle } from "@/components/haushalt/fundstelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Vorhaben } from "@/components/haushalt/vorhaben";
@@ -152,7 +153,7 @@ export function InvestitionsplanAbschnitt({ onBestand }: {
    *  damit die Zahl nicht am Jahr-Umschalter hängt. */
   onBestand?: (b: { vorhaben: number; von: number; bis: number } | null) => void;
 } = {}) {
-  const { data, loading } = useFetch<InvestitionenDaten>("/council/budget/investments");
+  const { data, loading } = useFetch<InvestitionenDaten>(INVESTMENTS_URL, { shared: true });
   // Die Vorhaben kommen aus einer anderen Quelle (Haushaltsplan statt
   // Open-Data-Portal) und reichen weiter zurück. Eigener Abruf, eigene
   // Jahresliste — zusammengelegt wäre einer von beiden immer beschnitten.

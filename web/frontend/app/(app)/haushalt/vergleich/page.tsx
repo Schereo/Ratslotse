@@ -32,7 +32,7 @@
 
 import Link from "next/link";
 import { ArrowRight, ExternalLink, FileText } from "lucide-react";
-import { useFetch } from "@/lib/use-fetch";
+import { useFetch, usePreload } from "@/lib/use-fetch";
 import { decisionHref } from "@/lib/routes";
 import {
   AUSGLIEDERUNGEN_2018, ROLLEN, VergleichDaten, WOLFSBURG,
@@ -40,8 +40,10 @@ import {
   juengstesJahr, platzVonOldenburg, series, steuerkraftJeEinwohner, change,
 } from "@/lib/haushalt-vergleich";
 import { Staedtevergleich, Zeitreihe } from "@/components/haushalt/staedtevergleich";
-import { Bundesvergleich } from "@/components/haushalt/bundesvergleich";
-import { SchuldenMitEinrichtungen } from "@/components/haushalt/schulden-mit-einrichtungen";
+import { Bundesvergleich, FEDERAL_COMPARISON_URL } from "@/components/haushalt/bundesvergleich";
+import {
+  DEBT_COMPARISON_URL, SchuldenMitEinrichtungen,
+} from "@/components/haushalt/schulden-mit-einrichtungen";
 import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { Fundstelle } from "@/components/haushalt/fundstelle";
@@ -77,6 +79,9 @@ function Abschnitt({ kicker, zusatz, id, children }: {
 
 export default function VergleichSeite() {
   const { data, loading } = useFetch<VergleichDaten>("/council/budget/comparison");
+  // Beide Abschnitte unter dem Städtevergleich holen ihre eigenen Daten —
+  // gleich mit, statt erst nach ihm.
+  usePreload([DEBT_COMPARISON_URL, FEDERAL_COMPARISON_URL]);
 
   if (loading) {
     return (
