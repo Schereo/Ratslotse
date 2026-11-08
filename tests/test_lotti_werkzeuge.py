@@ -308,6 +308,27 @@ def test_die_naechste_sitzung_steht_auch_bei_einem_alten_zeitraum_dabei(kalender
     assert "2025-04-02" in liste and "STEHT NOCH BEVOR" not in liste
 
 
+def test_der_kurzname_findet_den_amtlichen_ausschuss(kalender):
+    """08.11.2026 auf Prod: „Finanzausschuss“ fand den „Ausschuss für Finanzen
+    und Beteiligungen“ nicht, Lotti meldete keine Sitzung."""
+    e = lw.sitzungen(kalender, {"gremium": "Finanzausschuss"}, tag=date(2026, 11, 8))
+    assert "Nächste Sitzung ab heute: 2026-11-23" in e.text
+    assert "Ausschuss für Finanzen und Beteiligungen" in e.text
+
+
+def test_ein_alter_exakter_name_fuehrt_zum_nachfolger(kalender):
+    kalender._conn.execute("INSERT INTO council_sessions (ksinr, committee, session_date, "
+                           "session_time, location, fetched_at) VALUES (8, 'Finanzausschuss', "
+                           "'2021-03-01', '17:00', 'PFL', 'x')")
+    e = lw.sitzungen(kalender, {"gremium": "Finanzausschuss"}, tag=date(2026, 11, 8))
+    assert "Nächste Sitzung ab heute: 2026-11-23" in e.text
+
+
+def test_ein_kurzname_ohne_treffer_bleibt_leer(kalender):
+    e = lw.sitzungen(kalender, {"gremium": "Kulturausschuss"}, tag=date(2026, 11, 8))
+    assert "Ab heute ist keine Sitzung dieses Gremiums im Kalender." in e.text
+
+
 def test_der_zeitraum_ist_optional_im_schema():
     s = next(x for x in lw.schemas(frozenset()) if x["function"]["name"] == "sitzungen")
     assert s["function"]["parameters"]["required"] == ["gremium"]
