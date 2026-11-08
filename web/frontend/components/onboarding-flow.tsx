@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
 import { einladungStand, merkeEinladung } from "@/lib/tour-einladung";
-import { StadtteilKarte } from "@/components/stadtteil-karte";
+import { StadtteilKarteGrund } from "@/components/stadtteil-karte-grund";
 import { useVollbildMelden } from "@/lib/vollbild";
 import { meldeChips, stadtthemaBild, stadtthemaChip } from "@/lib/onboarding-chips";
 
@@ -806,7 +806,12 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
   const gewaehlt = useMemo(() => liste.filter((o) => namen.has(o.name)), [liste, namen]);
   const auswaehlbar = useMemo(() => new Set(liste.map((o) => o.name)), [liste]);
   const bereit = !topics.isPending && !orte.isPending;
-  const vorschlaege = useStadtteilVorschlaege(gewaehlteOrtsbereiche(meine, liste), bereit);
+  // An der AUSWAHL, nicht am Serverstand: Bis 11/2026 fragten die Vorschläge
+  // erst, wenn das Anlegen des Stadtteils zurück war — und das gleicht den
+  // Stadtteil sofort gegen den Bestand ab (`_erstabgleich`, Cross-Encoder).
+  // Man sah also erst den Stadtteil laden und danach die Vorschläge (Tims
+  // Befund 08.11.2026). Jetzt laufen beide nebeneinander.
+  const vorschlaege = useStadtteilVorschlaege(gewaehlt, bereit);
   useEffect(() => {
     if (vorschlaege.chips.length === 0 || gemeldet.current.vorschlaege) return;
     gemeldet.current.vorschlaege = true;
@@ -830,7 +835,7 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
     if (!ort) return;
     const an = !namen.has(name);
     if (an && namen.size >= MAX_STADTTEILE) {
-      setFehler(`${MAX_STADTTEILE} Stadtteile reichen für den Anfang — so bleibt die Übersicht ruhig. Weitere kannst du jederzeit unter „Themen" ergänzen.`);
+      setFehler(`Für den Anfang reichen drei Stadtteile — so bleibt die Übersicht ruhig. Nimm einen heraus, um ${name} zu wählen; weitere kannst du später unter „Themen" ergänzen.`);
       return;
     }
     if (an) meldeChips([], ["district"]);
@@ -843,8 +848,11 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
         else if (an && !vorhanden) await api.post("/topics", { name: ort.name, description: ortsBeschreibung(ort) });
         // Erst den Serverstand holen, DANN die Absicht fallen lassen — sonst
         // flackert die Pille kurz zurück, bevor die neue Liste da ist.
+        // Die Vorschläge NICHT neu holen: Ein Stadtteil-Thema verändert sie
+        // nicht (Ortsnamen zählen beim Aussortieren bewusst nicht mit, s.
+        // `topic_suggestions`), und das Neuholen ließ jede Gruppe nach dem
+        // Speichern ein zweites Mal laden.
         await qc.invalidateQueries({ queryKey: ["topics"] });
-        qc.invalidateQueries({ queryKey: ["topic-suggestions"] });
       } catch {
         setFehler(`${name} ließ sich gerade nicht ${an ? "anlegen" : "entfernen"}. Versuch es gleich noch einmal.`);
       } finally {
@@ -873,43 +881,45 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
   return (
     <StepShell
       title="Welche Stadtteile interessieren dich?"
-      lead="Zum Beispiel der, in dem du wohnst — aber genauso einer, in dem gerade etwas passiert. Lotti meldet neue Beschlüsse und Planungen von dort. Bis zu drei, alles jederzeit änderbar."
+      // Die Grenze von drei steht hier bewusst NICHT: „Bis zu drei" und
+      // „2 von 3" lasen sich wie eine Aufgabe, drei zu wählen (Tims Befund
+      // 08.11.2026). Sie meldet sich erst, wenn jemand an sie stößt.
+      lead="Zum Beispiel der, in dem du wohnst — aber genauso einer, in dem gerade etwas passiert. Lotti meldet neue Beschlüsse und Planungen von dort. Alles jederzeit änderbar."
       pose="point"
       footer={
         <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext} disabled={unterwegs.size > 0 || !!anlegend}>
           {unterwegs.size > 0 ? <><Loader2 className="h-4 w-4 animate-spin" /> Speichert …</>
             : gewaehlt.length === 0 ? "Überspringen"
               : gewaehlt.length === 1 ? `${gewaehlt[0].name} · Weiter`
-                : `${gewaehlt.length} von ${MAX_STADTTEILE} Stadtteilen · Weiter`}
+                : `${gewaehlt.length} Stadtteile · Weiter`}
         </Button>
       }
     >
       {/* Die Karte am Desktop, wo Platz ist. Die Liste steht auf JEDER Breite
           da — sie ist nicht bloß der Ersatz fürs kleine Fenster, sondern auch
           der Weg für Tastatur und Screenreader. */}
-      <div className="hidden rounded-2xl border border-border bg-background p-3 lg:block">
-        <StadtteilKarte gewaehlt={namen} auswaehlbar={auswaehlbar}
-          onWaehlen={umschalten} />
-      </div>
+      <StadtteilKarteGrund className="hidden h-[400px] lg:block" gewaehlt={namen}
+        auswaehlbar={auswaehlbar} onWaehlen={umschalten} />
 
       <div className={cn("flex flex-wrap gap-1.5", liste.length && "lg:mt-4")}>
         {liste.map((o) => {
           const an = namen.has(o.name);
           return (
             // Nur DIESE Pille ist gesperrt, solange sie unterwegs ist — die
-            // anderen bleiben klickbar. Sie zeigt schon den Zielzustand und
-            // daneben den Spinner statt des Häkchens.
+            // anderen bleiben klickbar. Sie zeigt sofort den Zielzustand samt
+            // Häkchen und atmet, bis der Server ihn bestätigt. Bis 11/2026
+            // stand hier ein 12-px-Spinner statt des Häkchens — „so klein,
+            // dass er nicht wirklich schön aussieht" (Tim, 08.11.2026).
             <button key={o.place_id} type="button" aria-pressed={an} aria-busy={unterwegs.has(o.name) || undefined}
               disabled={unterwegs.has(o.name)}
               onClick={() => umschalten(o.name)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-[6px] text-[12.5px] transition-colors disabled:opacity-80",
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-[6px] text-[12.5px] transition-colors",
                 an ? "border-primary bg-primary font-semibold text-primary-foreground"
                    : "border-border bg-card text-foreground hover:bg-muted",
+                unterwegs.has(o.name) && "animate-pulse",
               )}>
-              {unterwegs.has(o.name)
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : an && <Check className="h-3 w-3" />}
+              {an && <Check className="h-3 w-3" />}
               {o.name}
             </button>
           );
@@ -952,7 +962,6 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
                 · bis zu {Math.round(vorschlaege.weitestesFenster / 12)} Jahre zurück
               </span>
             )}
-            {vorschlaege.nochUnterwegs.length > 0 && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
           </Kicker>
           {vorschlaege.chips.length > 0
             ? <OrtsVorschlaege vorschlaege={vorschlaege.chips} vorhanden={meine}
@@ -969,8 +978,9 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
             </p>
           )}
           {vorschlaege.nochUnterwegs.length > 0 && (
-            <p role="status" className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+            // Ohne Spinner: Die Platzhalter-Karten darüber zeigen schon, dass
+            // gleich etwas kommt; der Satz sagt nur noch, was.
+            <p role="status" className="mt-3 text-xs text-muted-foreground">
               Lotti liest noch, was in {vorschlaege.nochUnterwegs.join(" und ")} läuft — du kannst
               schon auswählen.
             </p>
