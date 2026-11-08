@@ -97,13 +97,28 @@ jobs:
               -c constraints.txt
             cd web/frontend
             npm ci --no-audit --no-fund
+            # Neben dem laufenden Server bauen, ohne Webpack-Cache, und erst
+            # unmittelbar vor dem Neustart umschalten — warum, steht
+            # ausführlich in deploy-dev.yml (Kurzform: ein Build in `.next`
+            # zieht dem alten `next start` CSS und Skripte weg, die Seiten
+            # kommen bis zum Neustart ungestaltet).
+            rm -rf .next-build
             # Umgebungs-Gate: dieselbe Marke wie auf dev, damit die dort
             # freigeschalteten Seiten auch hier sichtbar sind (sonst wäre die
             # Instanz für genau die Features blind, für die man sie baut).
+            NEXT_DIST_DIR=.next-build \
             NEXT_PUBLIC_RATSLOTSE_ENV=dev \
             NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" \
             npm run build
+            rm -rf .next-build/cache/webpack
+            cd ~/app-feature
+            # Der Build in sich stimmig? Sonst bleibt `.next` unberührt.
+            .venv/bin/python scripts/pruefe_build_chunks.py web/frontend/.next-build
+            rm -rf web/frontend/.next-alt
+            if [ -d web/frontend/.next ]; then mv web/frontend/.next web/frontend/.next-alt; fi
+            mv web/frontend/.next-build web/frontend/.next
             sudo systemctl restart nwz-feature-api nwz-feature-frontend
+            rm -rf web/frontend/.next-alt
             # Auf den Dienst WARTEN statt drei Sekunden zu raten: Am 20.09.2026
             # lief die Rauchprobe drei Sekunden nach dem Neustart gegen einen
             # Dienst, der noch nicht lauschte — 47 × „Connection refused", der

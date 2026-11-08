@@ -107,6 +107,24 @@ jobs:
               -c constraints.txt
             cd web/frontend
             npm ci --no-audit --no-fund
+            # NEBEN DEM LAUFENDEN SERVER BAUEN. Bis 11/2026 schrieb der Build
+            # direkt in `.next`, aus dem der alte `next start` weiter
+            # auslieferte: `next build` leert das Verzeichnis als Erstes, das
+            # alte HTML zeigte also auf CSS und Skripte, die es nicht mehr
+            # gab. Vom Build bis zum Neustart — gemessen rund eine Minute —
+            # kam jede Seite ungestaltet, das App-Icon in 1024 px darauf.
+            # Jetzt entsteht der Build in `.next-build` (next.config.mjs,
+            # NEXT_DIST_DIR) und rückt erst unmittelbar vor dem Neustart an
+            # die Stelle von `.next` (unten, „Umschalten").
+            #
+            # OHNE WEBPACK-CACHE: Das `rm -rf` lässt jeden Build leer
+            # beginnen. Der persistente Cache unter `<distDir>/cache/webpack`
+            # hat zweimal einen in sich verdrehten Build geliefert (15.09.2026
+            # auf Prod ein fehlender Chunk, 08.11.2026 hier veraltete
+            # Schriftklassen im CSS, Cache 1,7 GB) und spart auf dieser VM
+            # 10 bis 25 Sekunden. Seit der Build neben dem laufenden Dienst
+            # stattfindet, wartet auf diese Sekunden niemand mehr.
+            rm -rf .next-build
             # Umgebungs-Gate: Features, die nur auf dev.ratslotse.de sichtbar
             # sein sollen, prüfen NEXT_PUBLIC_RATSLOTSE_ENV === "dev". Der
             # Prod-Build (deploy.yml) setzt die Variable nicht — dort werden
@@ -115,9 +133,18 @@ jobs:
             # CARTO_API_KEY: Key für die Kartenkacheln (lib/basemap.ts). Fehlt
             # das Secret, baut der Build trotzdem durch — die Karten tragen dann
             # nur wieder das „API KEY REQUIRED"-Wasserzeichen von CARTO.
+            NEXT_DIST_DIR=.next-build \
             NEXT_PUBLIC_RATSLOTSE_ENV=dev \
             NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" \
             npm run build
+            # Gebraucht hat ihn nur der Build; er liegt sonst als 450 MB Ballast
+            # im ausgelieferten Verzeichnis.
+            rm -rf .next-build/cache/webpack
+            cd ~/app
+            # Ist der Build in sich stimmig — jede Datei da, jede Schriftklasse
+            # im verlinkten CSS? Scheitert das, bleibt `.next` unberührt und
+            # dev auf dem alten, heilen Stand.
+            .venv/bin/python scripts/pruefe_build_chunks.py web/frontend/.next-build
             # VORPROBE — der neue Stand auf einem Ersatzport, BEVOR der
             # laufende Dienst angefasst wird. Scheitert sie, bleibt dev auf dem
             # alten Stand stehen, statt den kaputten auszuliefern.
@@ -177,7 +204,19 @@ jobs:
             wait "$vorprobe_pid" 2>/dev/null || true
             trap - EXIT
 
+            # UMSCHALTEN, unmittelbar vor dem Neustart: zwei Umbenennungen auf
+            # derselben Platte, Mikrosekunden auseinander, dann stoppt systemd
+            # den alten Prozess. Bis hierher hat er aus einem `.next`
+            # ausgeliefert, das niemand angefasst hat. Ein Rest von einem
+            # abgebrochenen Lauf (`.next-alt`) wird VOR dem Umschalten
+            # weggeräumt, das Löschen des alten Builds erst NACH dem Neustart
+            # — beides kostet Sekunden, die nicht zwischen die zwei Schritte
+            # gehören.
+            rm -rf web/frontend/.next-alt
+            if [ -d web/frontend/.next ]; then mv web/frontend/.next web/frontend/.next-alt; fi
+            mv web/frontend/.next-build web/frontend/.next
             sudo systemctl restart nwz-web-api nwz-web-frontend
+            rm -rf web/frontend/.next-alt
             # Auf den Dienst WARTEN statt drei Sekunden zu raten: Am 20.09.2026
             # lief die Rauchprobe drei Sekunden nach dem Neustart gegen einen
             # Dienst, der noch nicht lauschte — 47 × „Connection refused", der
