@@ -1273,7 +1273,7 @@ function KachelPlatzhalter() {
     <div className={KACHEL_RASTER} aria-busy="true">
       {Array.from({ length: 8 }, (_, i) => (
         <span key={i}
-          className={cn(KACHEL_HOEHE, "animate-pulse rounded-xl border border-dashed border-border bg-muted/40")} />
+          className={cn(KACHEL_HOEHE, "animate-pulse rounded-xl border border-dashed border-border bg-skeleton/50")} />
       ))}
     </div>
   );
@@ -1361,7 +1361,7 @@ function StadtthemenKacheln({ vorschlaege, vorhanden, laufend, onUmschalten, onA
                 {laeuft ? (
                   // Ein Balken, wo gleich wieder die Zahl steht — die Kachel
                   // springt nicht, und ein Kreisel in 12 px wäre kaum zu sehen.
-                  <span className="mt-1.5 block h-2 w-16 animate-pulse rounded-full bg-primary/20" aria-hidden />
+                  <span className="mt-1.5 block h-2 w-16 animate-pulse rounded-full bg-skeleton" aria-hidden />
                 ) : (
                   <span className="mt-0.5 block text-[12px] text-muted-foreground">
                     {zahl} {zahl === 1 ? "Beschluss" : "Beschlüsse"}
@@ -1452,7 +1452,7 @@ function KartenPlatzhalter({ anzahl }: { anzahl: number }) {
     <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2" aria-busy="true">
       {Array.from({ length: anzahl }, (_, i) => (
         <span key={i}
-          className="h-[52px] animate-pulse rounded-xl border border-dashed border-border bg-muted/40" />
+          className="h-[52px] animate-pulse rounded-xl border border-dashed border-border bg-skeleton/50" />
       ))}
     </div>
   );
