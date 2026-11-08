@@ -69,6 +69,23 @@ def test_ein_fehlendes_stylesheet_zaehlt_auch(tmp_path):
     assert [v for _, v in missing_files(nxt)] == ["/_next/static/css/fb8ffdbd.css"]
 
 
+# Dynamische Routen: Next schreibt den Verweis URL-kodiert, die Datei heißt
+# im Klartext. Am 08.11.2026 hielt das den Dev-Deploy an (21 Phantom-Befunde).
+DYNAMISCH_HTML = ('<script src="/_next/static/chunks/app/kommunalwahl/liste/%5Bliste%5D/page-7e4ed721.js"'
+                  ' async=""></script>')
+
+
+def test_ein_kodierter_verweis_findet_seine_datei(tmp_path):
+    nxt = _build(tmp_path, DYNAMISCH_HTML, ["chunks/app/kommunalwahl/liste/[liste]/page-7e4ed721.js"])
+    assert missing_files(nxt) == []
+
+
+def test_ein_kodierter_verweis_ohne_datei_bleibt_ein_befund(tmp_path):
+    nxt = _build(tmp_path, DYNAMISCH_HTML, ["chunks/app/kommunalwahl/liste/[liste]/page-0fff7c93.js"])
+    assert [v for _, v in missing_files(nxt)] == [
+        "/_next/static/chunks/app/kommunalwahl/liste/%5Bliste%5D/page-7e4ed721.js"]
+
+
 # --- Schriftklassen (08.11.2026) -------------------------------------------
 
 #: So sah das ``<html>`` auf dev aus — und so steht es in einem heutigen Build.
