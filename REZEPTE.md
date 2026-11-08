@@ -184,7 +184,7 @@ Die Dinge, die man dabei vergisst:
    python scripts/release_clips.py skeleton 2.3.0   # Drehbuch-Gerüst aus der Registry
    #   → web/frontend/release-clips/2.3.0.mjs ausfüllen: goto, begin, click, look, pause
    python scripts/release_clips.py web 2.3.0        # nimmt auf, schneidet, legt MP4 + WebP ab
-   python scripts/release_clips.py check 2.3.0      # Registry ↔ Drehbücher, beide Richtungen
+   python scripts/release_clips.py check 2.3.0      # Registry ↔ Drehbücher, beide Richtungen; kein Video flackert
    ```
 
    Voraussetzung: Frontend und Backend laufen lokal mit echten Daten. Ein
@@ -220,17 +220,37 @@ Die Dinge, die man dabei vergisst:
    `<name>-mobil` mit `mobil: true`): Im Spieler am Telefon stand der
    16:9-Clip vom Schreibtisch 340 px breit, die Untertitel ~11 px hoch. Die
    Telefon-Fassung wird bei 390×844 mit Touch aufgenommen, in doppelter
-   Auflösung (Einzelbilder statt Screencast, der nur CSS-Pixel liefert) und
-   randlos im Hochformat geschnitten (`HochClip`) — ohne Telefon-Rahmen, der
+   Auflösung und randlos im Hochformat geschnitten (`HochClip`) — ohne Telefon-Rahmen, der
    den Inhalt noch einmal halbiert hätte. Der Spieler nimmt sie unter 640 px
    und macht seinen Fuß dann zur Knopfzeile.
 
-   Drei Messungen vom 08.09.2026, die im Recorder als Kommentar stehen, damit
-   sie niemand wiederholt: Chromes Screencast liefert nur CSS-Pixel, 2× gibt
-   es nicht. Playwrights `recordVideo` verliert bei einem Seitenwechsel
-   0,5–0,9 s — deshalb der eigene Screencast mit Zeitstempeln. Und ein `scale`
-   als Einzel-Eigenschaft am Zeiger multipliziert dessen Verschiebung: Der
-   Pfeil sprang beim Klick 100 px weg.
+   **Aufnahme und Zeiger (seit 11/2026).** Tims Befund zur 3.0.0: Die Clips
+   „zucken, flackern manchmal, und die Maus bewegt sich hakelig“. Drei
+   Ursachen, drei Antworten:
+
+   - *Zucken:* Aufgenommen wurde über eine `page.screenshot`-Schleife mit
+     12–17 unregelmäßigen Bildern je Sekunde. Jetzt über Chromes Screencast
+     in **echter** 2×-Dichte — Playwrights Headless-Shell mit
+     `--force-device-scale-factor=2` und Fenster- statt Viewport-Größe; das
+     liefert rund 60 Bilder je Sekunde. Mit nur emulierter Pixeldichte
+     (deviceScaleFactor) bleibt der Screencast bei CSS-Pixeln, das war die
+     Messung vom 08.09.2026.
+   - *Hakelige Maus:* Der Zeiger war Teil der Seite, die Aufnahme erwischte
+     ihn an einzelnen Stellen. Jetzt schreibt der Recorder seine Bahn mit
+     (`pointer`, `presses` im Manifest), und Remotion zeichnet ihn in jedes
+     Bild (`web/clips/src/Zeiger.tsx`) — auf der Kurve, die auch die echte
+     Maus fährt. Hover-Zustände entstehen deshalb weiter dort, wo er steht.
+   - *Flackern:* Am Übergang von der Aufnahme zum Schlussbild lag bei krummer
+     Länge ein leeres Bild; dazu kamen einzelne kaputte Bilder (weiß, halb
+     schwarz, gekachelt). `release_clips.py` prüft jetzt Aufnahme und
+     fertiges Video auf Bilder, die von beiden Nachbarn abweichen, während
+     die sich gleichen, rendert bei Bedarf neu und gibt sonst auf;
+     `release_clips.py check <version>` hält dasselbe für alle Videos der
+     Karte fest.
+
+   Playwrights `recordVideo` bleibt draußen: Es verliert bei einem
+   Seitenwechsel 0,5–0,9 s (08.09.2026) — deshalb der eigene Screencast mit
+   Zeitstempeln.
 
    **Für die App dieselben Szenen aus der App** (`media_ios`, Tims Wunsch
    07.09.2026): Wer auf dem iPhone liest, soll das iPhone sehen. Aufgenommen im

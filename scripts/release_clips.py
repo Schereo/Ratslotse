@@ -16,7 +16,7 @@ Drei Aufrufe, in dieser Reihenfolge beim Release::
 
 **Browser:** ``web/frontend/scripts/release-clip.mjs`` spielt das Drehbuch aus
 ``web/frontend/release-clips/<version>.mjs`` in Chrome ab (Playwright,
-sichtbarer Zeiger) und liefert Einzelbilder in doppelter Pixeldichte mit Uhrzeit
+Zeigerbahn mitgeschrieben) und liefert Bilder in doppelter Pixeldichte mit Uhrzeit
 sowie je Klick Uhrzeit und Ort. Hier werden die Bilder ab ``begin()`` zu
 einem Video mit 30 fps gelegt, von ``highlight_clip.py`` gezoomt und als
 MP4 + WebP-Standbild abgelegt. Voraussetzung: Frontend und
@@ -54,7 +54,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -88,6 +88,11 @@ CHANGE_THRESHOLD = 6.0  # mittlere Graustufen-Differenz, ab der ein Bild „ande
 #: Text (3.0.0: die Frage an Lotti) bewegt im ganzen Telefonbild im Mittel
 #: kaum zwei Graustufen — unter 6 bliebe der Tipp „ohne Wirkung“.
 SMALL_CHANGE_THRESHOLD = 1.5
+#: Ab dieser mittleren Graustufen-Differenz zu beiden Nachbarn „blitzt“ ein
+#: Bild auf (``flicker_frames``). Gemessen 08.11.2026: Das kleinste echte
+#: Flackern der alten 3.0.0-Clips lag bei 10 (ein weißer Kasten über dem
+#: Outro); in sauberen Clips kommt das ähnlichste Muster auf 0,01.
+FLICKER_JUMP = 4.0
 
 #: Ein Drehbuch-Eintrag steht in ``release-clips/<version>.mjs`` als Schlüssel
 #: mit zwei Leerzeichen Einzug: ``  teilen: {`` — mit Bindestrich in
@@ -163,6 +168,40 @@ def first_change(frames: Iterable[Image.Image], threshold: float = CHANGE_THRESH
         if mittel > threshold:
             return i
     return None
+
+
+def _abstand(a: Image.Image, b: Image.Image) -> float:
+    return ImageStat.Stat(ImageChops.difference(a, b)).mean[0]
+
+
+def flicker_frames(frames: Sequence[Image.Image], jump: float = FLICKER_JUMP) -> list[int]:
+    """Bilder, die aufblitzen: weit weg von BEIDEN Nachbarn, die sich
+    untereinander gleichen (A-B-A).
+
+    Kein Inhalt der Seite tut das in 1/30 s — ein Schnitt, eine Animation,
+    eine neue Seite bleiben stehen. Gefunden hat das Tim in den 3.0.0-Clips
+    (08.11.2026): einzelne Bilder ganz weiß, halb schwarz oder als Kachelmuster
+    aus kleinen Kopien, sieben von elf Clips betroffen.
+    """
+    grau = [f.convert("L") for f in frames]
+    treffer: list[int] = []
+    for i in range(1, len(grau) - 1):
+        vor, nach = _abstand(grau[i - 1], grau[i]), _abstand(grau[i], grau[i + 1])
+        if min(vor, nach) > jump and _abstand(grau[i - 1], grau[i + 1]) < min(vor, nach) / 4:
+            treffer.append(i)
+    return treffer
+
+
+def video_frames(video: Path, width: int = 96) -> list[Image.Image]:
+    """Jedes Bild eines Videos, klein und in Graustufen — für Vergleiche."""
+    w, h = (int(x) for x in subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v", "-show_entries", "stream=width,height",
+         "-of", "csv=p=0", str(video)], capture_output=True, text=True, check=True).stdout.strip().split(",")[:2])
+    hoehe = max(2, round(h * width / w / 2) * 2)
+    roh = subprocess.run(["ffmpeg", "-v", "error", "-i", str(video), "-vf", f"scale={width}:{hoehe}",
+                          "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+    n = width * hoehe
+    return [Image.frombytes("L", (width, hoehe), roh[i:i + n]) for i in range(0, len(roh) - n + 1, n)]
 
 
 # --------------------------------------------------------------------------
@@ -381,6 +420,11 @@ def remotion_timeline(aufnahme: Recording) -> dict:
         "navigations": [{"t": rel(n["t"]), "url": n["url"]}
                         for n in m.get("navigations", []) if n["t"] > start],
         "startUrl": davor[-1] if davor else "",
+        # Der Zeiger kommt nicht mehr mit der Aufnahme, Remotion zeichnet ihn
+        # aus seiner Bahn (web/clips/src/Zeiger.tsx).
+        "pointer": [{"t": rel(p["t"]), "x": round(p["x"], 1), "y": round(p["y"], 1)}
+                    for p in m.get("pointer", [])],
+        "presses": [{"a": rel(p["a"]), "b": rel(p["b"])} for p in m.get("presses", [])],
     }
 
 
@@ -412,12 +456,15 @@ SKALA = {"WebClip": 1.2, "HochClip": 1.0}
 CRF = 26
 X264_PRESET = "slow"
 
-#: Remotion rendert mit dem installierten Chrome, wenn es einen gibt — wie
-#: der Recorder (``channel: 'chrome'``). Die mitgebrachte Headless-Shell blieb
-#: am 11.10.2026 in jedem Worktree bei „Waiting for root component to load"
-#: hängen, auch für ``remotion compositions`` ohne eine einzige Prop; mit
-#: Chrome lief dieselbe Wurzel sofort.
-SYSTEM_CHROME = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+#: Remotion rendert mit seiner eigenen Headless-Shell. Bis 11/2026 lief es
+#: mit dem installierten Chrome, weil die Shell am 11.10.2026 bei „Waiting
+#: for root component to load" hängen blieb; am 08.11.2026 lud sie frisch
+#: herunter und lief — doppelt so schnell. Aus derselben Zeit stammen
+#: einzelne kaputte Bilder in den 3.0.0-Clips (weiß, halb schwarz, als
+#: Kachelmuster); ein Nachbau mit beiden Browsern blieb sauber, der Fehler
+#: tritt also nicht bei jedem Lauf auf. Deshalb prüft ``remotion`` jedes
+#: fertige Video auf aufblitzende Bilder und rendert neu, bevor es aufgibt.
+FLICKER_RETRIES = 3
 
 
 def remotion(komposition: str, props: dict, ziel: Path, oeffentlich: Path, *,
@@ -427,16 +474,34 @@ def remotion(komposition: str, props: dict, ziel: Path, oeffentlich: Path, *,
     datei.write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
     befehl = ["npx", "remotion", "still" if still else "render", "src/index.ts", komposition, str(ziel),
               f"--public-dir={oeffentlich}", f"--props={datei}", "--log=error"]
-    if SYSTEM_CHROME.exists():
-        befehl.append(f"--browser-executable={SYSTEM_CHROME}")
     if not still:
         befehl += ["--codec=h264", f"--crf={CRF}", f"--x264-preset={X264_PRESET}",
                    "--pixel-format=yuv420p", f"--scale={SKALA.get(komposition, 1.0)}"]
     if frame is not None:
         befehl.append(f"--frame={frame}")
-    lauf = subprocess.run(befehl, cwd=CLIPS, capture_output=True, text=True)
-    if lauf.returncode:
-        raise SystemExit(f"Remotion ({komposition}) gescheitert:\n{lauf.stderr.strip()[-2000:]}")
+    for versuch in range(1, FLICKER_RETRIES + 1):
+        lauf = subprocess.run(befehl, cwd=CLIPS, capture_output=True, text=True)
+        if lauf.returncode:
+            raise SystemExit(f"Remotion ({komposition}) gescheitert:\n{lauf.stderr.strip()[-2000:]}")
+        if still:
+            return
+        blitze = flicker_frames(video_frames(ziel))
+        if not blitze:
+            return
+        print(f"  ! {ziel.name}: Bild {', '.join(map(str, blitze))} blitzt auf — Versuch {versuch} von "
+              f"{FLICKER_RETRIES}", flush=True)
+    raise SystemExit(f"{ziel.name} flackert nach {FLICKER_RETRIES} Versuchen noch (Bild "
+                     f"{', '.join(map(str, blitze))}). Liegt es schon in der Aufnahme? "
+                     f"Prüfen: scripts/release_clips.py check <version>")
+
+
+def steady_recording(roh: Path, name: str) -> None:
+    """Blitzt schon in der Aufnahme ein Bild auf, hilft kein neuer Schnitt —
+    dann lieber gleich mit dem Befund aufhören als nach drei Renderläufen."""
+    blitze = flicker_frames(video_frames(roh))
+    if blitze:
+        raise SystemExit(f"Aufnahme „{name}“: Bild {', '.join(map(str, blitze))} (bei 30 fps) blitzt schon "
+                         f"in der Seite auf — noch einmal aufnehmen.")
 
 
 def schnitt_remotion(version: str, name: str, aufnahme: Recording, ziel: Path, tmp: Path) -> float:
@@ -449,6 +514,7 @@ def schnitt_remotion(version: str, name: str, aufnahme: Recording, ziel: Path, t
     schnitte = [(c["a"], c["b"]) for c in (aufnahme.manifest or {}).get("cuts", [])]
     plan = cut_plan(aufnahme.frames, aufnahme.begin, aufnahme.end, schnitte)
     assemble(plan, oeffentlich / "roh.mp4")
+    steady_recording(oeffentlich / "roh.mp4", name)
     ffmpeg("-sseof", "-0.1", "-i", str(oeffentlich / "roh.mp4"), "-frames:v", "1", "-update", "1",
            str(oeffentlich / "letztes-bild.png"))
     meta = remotion_meta(version, (aufnahme.manifest or {}).get("meta", {}))
@@ -493,6 +559,7 @@ def schnitt_remotion_hoch(version: str, name: str, aufnahme: Recording, ziel: Pa
     schnitte = [(c["a"], c["b"]) for c in (aufnahme.manifest or {}).get("cuts", [])]
     plan = cut_plan(aufnahme.frames, aufnahme.begin, aufnahme.end, schnitte)
     assemble(plan, oeffentlich / "roh.mp4")
+    steady_recording(oeffentlich / "roh.mp4", name)
     ffmpeg("-sseof", "-0.1", "-i", str(oeffentlich / "roh.mp4"), "-frames:v", "1", "-update", "1",
            str(oeffentlich / "letztes-bild.png"))
     meta = {**remotion_meta(version, (aufnahme.manifest or {}).get("meta", {})), "ort": "browser"}
@@ -554,6 +621,9 @@ def cmd_web(args: argparse.Namespace) -> int:
                 groesse = (ziel / f"{name}.mp4").stat().st_size // 1024
                 print(f"  ✓ {name}.mp4 ({sekunden:.1f} s, {groesse} KB, Remotion) + {name}.webp + {name}-titel.webp")
                 continue
+            # Der Zoom-Schnitt von 2.2.0: Der Zeiger kam damals mit der
+            # Seite, seit 11/2026 zeichnet ihn nur noch Remotion.
+            print(f"  ! {name}: ohne `titel` kein Remotion-Schnitt — und damit kein Zeiger im Clip", flush=True)
             start = clip_start(aufnahme.frames, aufnahme.begin)
             plan = frame_plan(aufnahme.frames, aufnahme.begin, aufnahme.end)
             roh = Path(tmp) / "roh.mp4"
@@ -781,7 +851,29 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"✗ Drehbuch „{name}“ hat kein Video in kern/releases.py ({release.version})")
     if not fehlend and not verwaist:
         print(f"✓ {release.version}: {len(web_video_names(release))} Clips, jeder mit Drehbuch")
-    return 1 if (fehlend or verwaist) else 0
+    flackert = flickering_videos(release)
+    for datei, blitze in flackert.items():
+        stamm = Path(datei).stem
+        abhilfe = (f"scripts/release_clips.py ios {release.version} {stamm.removesuffix('-ios')} --segment …"
+                   if stamm.endswith("-ios") else f"scripts/release_clips.py web {release.version} --only {stamm}")
+        print(f"✗ {datei}: Bild {', '.join(map(str, blitze))} blitzt auf (weicht von beiden Nachbarn ab, "
+              f"die sich gleichen) — neu schneiden: {abhilfe}")
+    if not flackert:
+        print(f"✓ {release.version}: kein Video blitzt auf")
+    return 1 if (fehlend or verwaist or flackert) else 0
+
+
+def flickering_videos(release: releases.Release) -> dict[str, list[int]]:
+    """Jedes Video der Karte (Browser und App), das aufblitzende Bilder hat."""
+    befund: dict[str, list[int]] = {}
+    for h in release.highlights:
+        for m in (h.media, h.media_narrow, h.media_ios):
+            if m is None or m.kind != "video":
+                continue
+            datei = FRONTEND / "public" / m.src.lstrip("/")
+            if datei.exists() and (blitze := flicker_frames(video_frames(datei))):
+                befund[m.src] = blitze
+    return befund
 
 
 def main() -> int:

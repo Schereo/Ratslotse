@@ -278,7 +278,7 @@ RELEASES: tuple[Release, ...] = (
                     src="/neuigkeiten/3.0.0/lotti.mp4",
                     poster="/neuigkeiten/3.0.0/lotti.webp",
                     cover="/neuigkeiten/3.0.0/lotti-titel.webp",
-                    duration=29.4,
+                    duration=28.3,
                     alt="Eine Beschluss-Seite: Ein Klick auf Lotti unten rechts "
                         "öffnet ihr Fenster, auf „Wie viele haben dagegen "
                         "gestimmt?“ antwortet sie „16“. Danach wird "
@@ -288,7 +288,7 @@ RELEASES: tuple[Release, ...] = (
                 media_narrow=Media(
                     kind="video", aspect="6/13",
                     src="/neuigkeiten/3.0.0/lotti-mobil.mp4", poster="/neuigkeiten/3.0.0/lotti-mobil.webp",
-                    cover="/neuigkeiten/3.0.0/lotti-titel.webp", duration=20.3,
+                    cover="/neuigkeiten/3.0.0/lotti-titel.webp", duration=19.9,
                     alt="Dieselbe Beschluss-Seite am Telefon: Ein Tipp auf Lotti unten "
                         "rechts öffnet ihr Fenster; auf „Wie viele haben dagegen "
                         "gestimmt?“ antwortet sie mit den Zahlen aus dem Protokoll, "
@@ -320,9 +320,9 @@ RELEASES: tuple[Release, ...] = (
                     src="/neuigkeiten/3.0.0/viertel.mp4",
                     poster="/neuigkeiten/3.0.0/viertel.webp",
                     cover="/neuigkeiten/3.0.0/viertel-titel.webp",
-                    duration=29.9,
+                    duration=25.7,
                     alt="Von „Heute“ über „Mein Viertel“ in der Seitenleiste in den "
-                        "eigenen Stadtteil Fliegerhorst: Ein Klick auf „Neue "
+                        "eigenen Stadtteil Fliegerhorst: Ein Klick auf „Neubau "
                         "Grundschule und Dreifeldhalle“ zeigt den Stand des Vorhabens "
                         "und die Beschlüsse dazu, „Stadt zeigen“ führt in jedes "
                         "andere Viertel.",
@@ -330,9 +330,9 @@ RELEASES: tuple[Release, ...] = (
                 media_narrow=Media(
                     kind="video", aspect="6/13",
                     src="/neuigkeiten/3.0.0/viertel-mobil.mp4", poster="/neuigkeiten/3.0.0/viertel-mobil.webp",
-                    cover="/neuigkeiten/3.0.0/viertel-titel.webp", duration=21.0,
+                    cover="/neuigkeiten/3.0.0/viertel-titel.webp", duration=20.6,
                     alt="Am Telefon: „Mehr“, dann „Mein Viertel“ — der eigene Stadtteil "
-                        "Fliegerhorst mit Karte und Liste; ein Tipp auf „Neue "
+                        "Fliegerhorst mit Karte und Liste; ein Tipp auf „Neubau "
                         "Grundschule und Dreifeldhalle“ zeigt Stand, Zeitplan und die "
                         "Beschlüsse.",
                 ),
@@ -363,7 +363,7 @@ RELEASES: tuple[Release, ...] = (
                     src="/neuigkeiten/3.0.0/ideen.mp4",
                     poster="/neuigkeiten/3.0.0/ideen.webp",
                     cover="/neuigkeiten/3.0.0/ideen-titel.webp",
-                    duration=30.2,
+                    duration=28.8,
                     alt="Über „Analyse“ zu „Ideen aus anderen Städten“: Ein Klick auf "
                         "„Hitzeaktionsplan aufstellen“ zeigt unter „Und in "
                         "Oldenburg?“, was es hier schon gibt; die Zeitleiste zeigt, "
@@ -372,7 +372,7 @@ RELEASES: tuple[Release, ...] = (
                 media_narrow=Media(
                     kind="video", aspect="6/13",
                     src="/neuigkeiten/3.0.0/ideen-mobil.mp4", poster="/neuigkeiten/3.0.0/ideen-mobil.webp",
-                    cover="/neuigkeiten/3.0.0/ideen-titel.webp", duration=26.0,
+                    cover="/neuigkeiten/3.0.0/ideen-titel.webp", duration=25.6,
                     alt="Am Telefon: „Mehr“, „Analyse“, Reiter „Ideen aus anderen "
                         "Städten“; ein Tipp auf „Hitzeaktionsplan aufstellen“ zeigt, "
                         "was es in Oldenburg schon gibt, und die Zeitleiste durch die "
@@ -408,7 +408,7 @@ RELEASES: tuple[Release, ...] = (
                     src="/neuigkeiten/3.0.0/akte.mp4",
                     poster="/neuigkeiten/3.0.0/akte.webp",
                     cover="/neuigkeiten/3.0.0/akte-titel.webp",
-                    duration=32.3,
+                    duration=27.1,
                     alt="Frag den Rat: Auf die Frage nach dem neuen Fußballstadion "
                         "stehen unter der Antwort „Kurz gesagt“, die Eckdaten — 18 "
                         "Gegenstimmen, 57,3 Mio. € — und der Verlauf bis zum "
@@ -417,7 +417,7 @@ RELEASES: tuple[Release, ...] = (
                 media_narrow=Media(
                     kind="video", aspect="6/13",
                     src="/neuigkeiten/3.0.0/akte-mobil.mp4", poster="/neuigkeiten/3.0.0/akte-mobil.webp",
-                    cover="/neuigkeiten/3.0.0/akte-titel.webp", duration=26.1,
+                    cover="/neuigkeiten/3.0.0/akte-titel.webp", duration=24.5,
                     alt="Am Telefon: Unter „Fragen“ die Frage nach dem neuen "
                         "Fußballstadion; unter der Antwort „Kurz gesagt“, die Eckdaten "
                         "und der Verlauf bis zum aktuellen Stand.",
