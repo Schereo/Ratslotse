@@ -281,6 +281,89 @@ def bild_key(name: str | None) -> str | None:
     return next((t.key for t in CITY_TOPICS if t.name.casefold() == wanted), None)
 
 
+#: Score eines reinen Mustertreffers. Die Trefferzeile braucht einen; bewusst
+#: die Relevanzschwelle des Cross-Encoders (``topic_intel.SCHWELLE``): Ein
+#: Mustertreffer gilt als „gerade eben relevant", nie als bester Treffer.
+#: Als Zahl und nicht als Import: ``topic_intel`` zieht ``kern.llm`` und das
+#: openai-SDK nach, und der Themen-Router importiert dieses Modul beim Start
+#: (``tests/test_stadtthemen.py`` hält beide Werte gleich).
+MUSTER_SCORE = -1.0
+
+
+def zu_thema(name: str | None, description: str | None) -> CityTopic | None:
+    """Das Stadtthema, das GENAU so angelegt ist — Name und Beschreibung
+    unverändert aus der Kachel — oder ``None``.
+
+    Wer die Beschreibung anpasst, hat ein eigenes Thema; dann gelten der
+    semantische Abgleich und die Vagheits-Prüfung wie für jedes andere. Der
+    Leerraum zählt nicht mit, ein Zeilenumbruch im Textfeld macht noch kein
+    neues Thema.
+    """
+    n = (name or "").strip().casefold()
+    d = " ".join((description or "").split())
+    return next((t for t in CITY_TOPICS
+                 if t.name.casefold() == n and " ".join(t.description.split()) == d), None)
+
+
+def treffer(council, topic: CityTopic, *, texte: list[tuple[int, str, str]] | None = None,
+            gespeichert: dict[str, list[tuple[int, float, str]]] | None = None,
+            seit: str | None = None) -> list[tuple[int, float, str]]:
+    """Die Beschlüsse eines Stadtthemas → ``[(id, score, Sitzungsdatum)]``,
+    neueste zuerst. Kachel, Anlegen, „anpassen" und der Wochenlauf lesen alle
+    diese eine Liste.
+
+    Sie besteht aus der gespeicherten Liste des Wochenlaufs (``abgleichen``:
+    Muster und semantischer Abgleich) und dem, was das Muster JETZT findet —
+    ein Beschluss von heute zählt so schon heute, nicht erst nach Sonntag. Auf
+    einer Umgebung ohne Cron (dev) ist die gespeicherte Liste leer; dann
+    bleibt es beim Muster, und die Zahl an der Kachel stimmt trotzdem mit der
+    am Thema überein.
+
+    Kein Modell, kein Netz — ein Klick im Assistenten soll nicht auf einen
+    Cross-Encoder warten. Für ein Thema über den ganzen Bestand (gut 8.000
+    Texte) sind das rund 0,2 s. ``texte`` und ``gespeichert`` reicht herein,
+    wer mehrere Themen auf einmal zählt; ``seit`` (ISO-Datum) beschränkt auf
+    ein Fenster. Die Kachel braucht nur die letzten zwölf Monate, und alle
+    zwanzig Themen über den ganzen Bestand kosteten gemessen 3,9 s statt 0,6.
+    """
+    texte = texte if texte is not None else council.decision_texts_dated()
+    gespeichert = gespeichert if gespeichert is not None else council.city_topic_decisions()
+    rx = _COMPILED[topic.key]
+    liste = {did: (score, datum) for did, score, datum in gespeichert.get(topic.key, [])
+             if seit is None or datum >= seit}
+    for did, datum, text in texte:
+        if (seit is None or datum >= seit) and did not in liste and rx.search(text):
+            liste[did] = (MUSTER_SCORE, datum)
+    return sorted(((did, s, datum) for did, (s, datum) in liste.items()),
+                  key=lambda r: (r[2], r[0]), reverse=True)
+
+
+def abgleichen(council) -> dict[str, int]:
+    """Die Trefferlisten aller Stadtthemen neu schreiben — Muster und
+    semantischer Abgleich zusammen → ``{key: Anzahl}``.
+
+    Läuft im Wochenlauf VOR dem Abgleich der Nutzer-Themen
+    (``scripts/match_topics_decisions.py``), der dann dieselben Listen liest.
+    Der semantische Teil ist derselbe wie für jedes eigene Thema
+    (``topic_intel.treffer``) und wirft wie dort, wenn der Cross-Encoder
+    fehlt: Die Listen der letzten Woche sind besser als halbe.
+    """
+    from council import topic_intel
+
+    texte = council.decision_texts_dated()
+    anzahl: dict[str, int] = {}
+    for t in CITY_TOPICS:
+        semantisch, _, _ = topic_intel.treffer(council, t.name, f"{t.name}. {t.description}")
+        zeilen = {did: (score, "semantisch") for did, score in semantisch}
+        rx = _COMPILED[t.key]
+        for did, _, text in texte:
+            if did not in zeilen and rx.search(text):
+                zeilen[did] = (MUSTER_SCORE, "muster")
+        council.replace_city_topic_decisions(t.key, [(d, s, q) for d, (s, q) in zeilen.items()])
+        anzahl[t.key] = len(zeilen)
+    return anzahl
+
+
 def count_topics(texts: list[str]) -> dict[str, int]:
     """Wie viele der Texte jedes Thema trifft — ein Text zählt je Thema einmal."""
     counts = {t.key: 0 for t in CITY_TOPICS}
@@ -300,7 +383,15 @@ def city_topic_suggestions(council, today: date | None = None,
     Kachel in der Oberfläche, ein Klick legt das Thema an.
     """
     cutoff = ((today or date.today()) - timedelta(days=WINDOW_DAYS)).isoformat()
-    counts = count_topics(council.decision_texts_since(cutoff))
+    # Gezählt wird die Liste, die das Thema nach dem Klick bekommt (``treffer``),
+    # nicht eine eigene Wortsuche daneben: Sonst stand an der Kachel 18 und
+    # im Blatt danach 35 (Tims Befund 08.11.2026).
+    # Das Fenster einmal vorab schneiden, nicht je Thema: 20 Muster über den
+    # ganzen Bestand dauerten 3,9 s, über ein Jahr 0,6.
+    texte = [t for t in council.decision_texts_dated() if t[1] >= cutoff]
+    gespeichert = council.city_topic_decisions()
+    counts = {t.key: len(treffer(council, t, texte=texte, gespeichert=gespeichert, seit=cutoff))
+              for t in CITY_TOPICS}
     out = [{
         "key": t.key, "name": t.name, "description": t.description,
         "context": t.context, "n": counts[t.key], "months": round(WINDOW_DAYS / 30.4),

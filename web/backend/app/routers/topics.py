@@ -126,7 +126,23 @@ def _erstabgleich(store: Store, council: CouncilStore, topic, owner_id: int) -> 
     ``abgeglichen=False`` heißt „ließ sich hier gerade nicht rechnen" — dann
     bleibt es beim Wochenlauf, und die Karte sagt „wird noch gezählt" statt
     eine 0 zu behaupten.
+
+    **Ein unverändertes Stadtthema** bekommt die Liste, die schon an seiner
+    Kachel stand (``city_topics.treffer``) — ohne Modell, ohne Deckel. Vorher
+    wartete jeder Klick im Assistenten auf den Cross-Encoder, und das Thema
+    trug danach eine andere Zahl als die Kachel (Tims Befund 08.11.2026). Ein
+    Deckel bei 40 machte aus „55 Beschlüsse" an der Kachel „40+" am Thema.
     """
+    from council import city_topics
+
+    stadtthema = city_topics.zu_thema(topic.name, topic.description)
+    if stadtthema is not None:
+        hits = [(did, score) for did, score, _ in city_topics.treffer(council, stadtthema)]
+        store.save_topic_decision_matches(topic.id, owner_id, hits, gedeckelt=False,
+                                          kandidaten=len(hits), als_neu=False)
+        store.mark_topic_hits_seen(owner_id, topic.id)
+        return len(hits), False, True
+
     from council import topic_intel
 
     name = (topic.name or "").strip()
@@ -764,6 +780,35 @@ def topic_suggestions(
     return {"city": stadtthemen, "suggestions": stadtweit, "districts": gruppen}
 
 
+def _stadtthema_beschreiben(council: CouncilStore, stadtthema) -> TopicDescription:
+    """``/topics/describe`` für ein unverändertes Stadtthema — dieselbe Liste
+    wie an seiner Kachel, ohne Modell. ``matches`` ist der ganze Bestand,
+    ``matches_12m`` das Fenster der Kachel; das Blatt zeigt beide mit ihrem
+    Zeitraum, damit 18 an der Kachel und 35 im Blatt nicht wie ein Widerspruch
+    aussehen. ``parts`` bleibt leer: „Theater, Museen und Kultur" ist eine
+    kuratierte Klammer, keine Liste zum Aufteilen."""
+    from council import city_topics
+
+    liste = city_topics.treffer(council, stadtthema)
+    grenze = _vor_zwoelf_monaten().isoformat()
+    neueste = council.get_decisions_by_ids([did for did, _, _ in liste[:3]])
+    return {
+        "name": stadtthema.name,
+        "description": stadtthema.description,
+        "matches": len(liste),
+        "matches_capped": False,
+        "matches_12m": sum(1 for _, _, datum in liste if datum >= grenze),
+        "parts": [],
+        "examples": [(d.get("title") or "").strip() for d in neueste if d.get("title")][:2],
+        "verdict": "belegt",
+        "is_council_topic": True,
+        "reason": "",
+        "vague": False,
+        "hint": "",
+        "suggestion": "",
+    }
+
+
 @router.post("/describe")
 def describe_topic(
     body: TopicDescribeIn,
@@ -790,7 +835,21 @@ def describe_topic(
     Trefferliste macht. Vorher lief hier eine eigene Suche mit eigener
     Schwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema
     „12 Beschlüsse", während die Karte „40+" sagte.
+
+    **Ein unverändertes Stadtthema** (Name und Beschreibung wie an der Kachel)
+    kommt ohne Modell zurück: dieselbe Liste wie an der Kachel, dazu
+    ``matches_12m`` im Zählfenster der Kachel. Die Vagheits-Prüfung läuft
+    dort nicht — sie nannte unsere eigenen, bewusst als Interessen gebauten
+    Themen „zu unkonkret" (Tims Befund 08.11.2026). Wer die Beschreibung
+    ändert, hat ein eigenes Thema, und dann prüft sie wie immer.
     """
+    from council import city_topics
+
+    stadtthema = (city_topics.zu_thema(body.name, body.description)
+                  if (body.description or "").strip() else None)
+    if stadtthema is not None:
+        return _stadtthema_beschreiben(council, stadtthema)
+
     topic_describe_limiter.check(request)
     from council import topic_intel
 
@@ -842,8 +901,14 @@ def add_topic(
             "oder „Grundschule Krusenbusch“.",
         )
     # Erst die billige Struktur-Prüfung, dann die Bremse: Ein abgelehnter Satz
-    # hat keine Rechnung ausgelöst und soll auch kein Kontingent kosten.
-    topic_match_limiter.check(request)
+    # hat keine Rechnung ausgelöst und soll auch kein Kontingent kosten. Ein
+    # Stadtthema kostet ebenfalls nichts (s. ``_erstabgleich``) — sonst hielte
+    # die Bremse ausgerechnet die Kacheln auf, die man im Assistenten in
+    # schneller Folge anklickt.
+    from council import city_topics
+
+    if city_topics.zu_thema(body.name, body.description) is None:
+        topic_match_limiter.check(request)
     t = store.add_topic(user["id"], body.name, body.description)
     count, gedeckelt, abgeglichen = _erstabgleich(store, council, t, user["id"])
     # Der Haken, an dem alles Weitere hängt: Ohne ein Thema (oder ein Gremium)
@@ -871,7 +936,10 @@ def update_topic(
 ) -> TopicOut:
     owner_id = user["id"]
     _own_topic(store, owner_id, topic_id)
-    topic_match_limiter.check(request)
+    from council import city_topics
+
+    if city_topics.zu_thema(body.name, body.description) is None:
+        topic_match_limiter.check(request)
     store.update_topic(topic_id, body.name, body.description)
     t = store.get_topic_for_owner(owner_id, topic_id)
     # Wer die Beschreibung ändert, ändert die Trefferliste — deshalb wird auch

@@ -14,6 +14,9 @@ export type Described = {
   matches: number;
   /** Die Zahl ist der Deckel, nicht das Ergebnis → „40+" (wie auf der Karte). */
   matches_capped: boolean;
+  /** Nur bei unveränderten Stadtthemen: die Treffer im Zwölf-Monats-Fenster
+   *  ihrer Kachel im Einrichtungs-Assistenten. */
+  matches_12m?: number;
   verdict: "belegt" | "plausibel" | "ungeeignet";
   examples: string[];
   is_council_topic: boolean;
@@ -219,9 +222,23 @@ export function TopicSheet({ topic, nameEditable = false, onClose, onSaved }: {
             <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
               {!check ? "—" : check.matches > 0 ? (
                 <>
-                  <strong className="font-semibold text-foreground">
+                  {/* Jede Zahl mit ihrem Zeitraum. An der Kachel im Assistenten
+                      stehen zwölf Monate, hier stand der Bestand seit 2018 —
+                      ohne Beschriftung lasen sich 18 und 35 wie ein Fehler
+                      (Tims Befund 08.11.2026). */}
+                  {typeof check.matches_12m === "number" && (
+                    <>
+                      <strong className="font-semibold text-foreground">
+                        {check.matches_12m} {check.matches_12m === 1 ? "Beschluss" : "Beschlüsse"} in 12 Monaten
+                      </strong>
+                      {" · "}
+                    </>
+                  )}
+                  <strong className={typeof check.matches_12m === "number" ? "font-medium" : "font-semibold text-foreground"}>
                     {check.matches}{check.matches_capped ? "+" : ""}{" "}
-                    {check.matches === 1 && !check.matches_capped ? "Beschluss" : "Beschlüsse"}
+                    {typeof check.matches_12m === "number" ? ""
+                      : check.matches === 1 && !check.matches_capped ? "Beschluss " : "Beschlüsse "}
+                    seit 2018
                   </strong>
                   {check.examples.length > 0 && <> — u. a. „{check.examples.slice(0, 2).join("“, „")}“.</>}
                 </>

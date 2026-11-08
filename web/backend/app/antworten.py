@@ -876,6 +876,10 @@ class TopicDescription(TypedDict):
     #: Feld ergaben elf Treffer mit durchweg negativer Relevanz, als sieben
     #: Themen wäre es je Stadtteil eine saubere Meldung gewesen.
     parts: list[str]
+    #: Die Treffer im Zwölf-Monats-Fenster der Kachel im Einrichtungs-
+    #: Assistenten. Nur für unveränderte Stadtthemen gesetzt; sonst steht in
+    #: ``matches`` allein der Bestand seit 2018.
+    matches_12m: NotRequired[int]
 
 
 class UnreadTopicHits(TypedDict):

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bell, Check, ChevronDown, Landmark, Loader2, Mail, MapPin, Plus, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Bell, Check, ChevronDown, Landmark, Loader2, Mail, MapPin, Plus, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand } from "@/lib/onboarding-setup";
 import { cn, pfad } from "@/lib/utils";
@@ -987,15 +987,6 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing] = useState<TopicRow | null>(null);
-  // Die Zahl, die am angeklickten Chip stand — damit sie oben in „Deine
-  // Themen" dieselbe bleibt. Vorher trat dort die Gesamtzahl seit 2018 an ihre
-  // Stelle: Ein Klick auf „Digitale Verwaltung 7" ergab die Zeile „23
-  // Beschlüsse", und beides las sich wie dieselbe Größe (Tim, 03.09.2026).
-  //
-  // In diesem Schritt zählt ausschließlich das Zwölf-Monats-Fenster — der
-  // Chip-Wert hier, sonst `hits_12m` vom Server. Der Bestand seit 2018 ist die
-  // Frage der Themen-Karte, nicht die der Einrichtung.
-  const [chipZahl, setChipZahl] = useState<Record<string, number>>({});
   const topics = useQuery({
     queryKey: ["topics"],
     queryFn: () => api.get<TopicRow[]>("/topics"),
@@ -1033,7 +1024,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
    *    kam nur noch nicht vor. Genau dafür ist ein Thema ja da.
    *  - **ungeeignet** — NICHT anlegen. Vorher wurde auch das gespeichert und die
    *    Warnung erschien danach; so landeten ganze Anweisungssätze als Thema. */
-  const add = async (topicName: string, presetDescription?: string, presetMatches?: number) => {
+  const add = async (topicName: string) => {
     const clean = topicName.trim();
     if (clean.length < 2 || busy) return;
     setBusy(true);
@@ -1041,33 +1032,25 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     setWarn(null);
     setNote(null);
     try {
-      let description = presetDescription ?? "";
-      if (typeof presetMatches === "number") setChipZahl((m) => ({ ...m, [clean]: presetMatches }));
-      if (!description) {
-        const d = await api.post<Described>("/topics/describe", { name: clean });
-        if (d.verdict === "ungeeignet") {
-          setWarn(d.reason || "Das sieht nicht nach einem Thema des Oldenburger Stadtrats aus.");
-          return;
-        }
-        description = d.description;
-        // `d.matches` ist die Gesamtzahl seit 2018 — sie steht hier bewusst
-        // NICHT in der Zeile. Bis die frische Themenliste da ist (eine
-        // Sekunde später, mit `hits_12m`), bleibt die Zeile lieber ohne Zahl
-        // als mit einer aus einem anderen Zeitraum.
-        if (d.verdict === "plausibel") {
-          setNote(`Über „${clean}" hat der Rat bisher nichts entschieden — Lotti meldet sich, sobald es so weit ist.`);
-        }
+      const d = await api.post<Described>("/topics/describe", { name: clean });
+      if (d.verdict === "ungeeignet") {
+        setWarn(d.reason || "Das sieht nicht nach einem Thema des Oldenburger Stadtrats aus.");
+        return;
       }
-      await api.post("/topics", { name: clean, description });
+      // `d.matches` ist die Gesamtzahl seit 2018 — sie steht hier bewusst
+      // NICHT in der Zeile. Bis die frische Themenliste da ist (eine
+      // Sekunde später, mit `hits_12m`), bleibt die Zeile lieber ohne Zahl
+      // als mit einer aus einem anderen Zeitraum.
+      if (d.verdict === "plausibel") {
+        setNote(`Über „${clean}" hat der Rat bisher nichts entschieden — Lotti meldet sich, sobald es so weit ist.`);
+      }
+      await api.post("/topics", { name: clean, description: d.description });
       setName("");
       // Erst die Liste holen, dann die Vorschau-Zeile wegnehmen — sonst
       // verschwindet das Thema für einen Moment, bevor es wiederkommt.
       await qc.invalidateQueries({ queryKey: ["topics"] });
-      // Die Vorschläge bleiben, wie sie sind. Der angeklickte Chip zeigt über
-      // „Deine Themen" von selbst sein Häkchen — sie neu zu holen, würde ihn
-      // dagegen aus der Liste nehmen (er ist ja jetzt ein vorhandenes Thema)
-      // und die Gruppen darunter neu anstoßen, weil sie in der Kette hängen.
-      // Man klickt einen Vorschlag und die halbe Fläche fängt neu an zu laden.
+      // Die Vorschläge nicht neu holen: Die Kacheln stehen fest, ihr Häkchen
+      // kommt aus der Themenliste.
     } catch {
       setWarn("Das Thema konnte gerade nicht angelegt werden. Versuch es gleich nochmal.");
     } finally {
@@ -1076,23 +1059,76 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     }
   };
 
+  const mine = topics.data ?? [];
+
+  // Die Stadtthemen-Kacheln sind Umschalter, jede für sich: was gerade
+  // unterwegs ist und WOHIN (an oder aus) — dieselbe Grammatik wie die
+  // Stadtteil-Pillen. Bis 11/2026 teilten sie `busy` mit dem Formular: Ein
+  // Klick sperrte alle Kacheln, bis der Server fertig war, und das dauerte,
+  // solange jedes Thema auf den Cross-Encoder wartete (Tims Befund
+  // 08.11.2026). Ein Stadtthema braucht seitdem kein Modell mehr
+  // (`council.city_topics.treffer`), und mehrere dürfen gleichzeitig
+  // unterwegs sein.
+  const [stadtLaeufe, setStadtLaeufe] = useState<ReadonlyMap<string, boolean>>(() => new Map());
+  const umschaltenStadtthema = async (v: Vorschlag) => {
+    const clean = v.name.trim();
+    if (stadtLaeufe.has(clean)) return;
+    const vorhanden = mine.find((t) => t.name === clean);
+    const an = !vorhanden;
+    if (an && v.key) meldeChips([], [stadtthemaChip(v.key)]);
+    setStadtLaeufe((m) => new Map(m).set(clean, an));
+    setWarn(null);
+    try {
+      // Die Beschreibung der Kachel unverändert mitschicken: Daran erkennt
+      // der Server das Stadtthema und nimmt dessen Liste statt des Modells.
+      if (vorhanden) await api.del(`/topics/${vorhanden.id}`);
+      else await api.post("/topics", { name: clean, description: v.description });
+      // Erst den Serverstand holen, DANN die Absicht fallen lassen — sonst
+      // flackert die Kachel kurz zurück, bevor die neue Liste da ist.
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+    } catch {
+      setWarn(`„${clean}“ ließ sich gerade nicht ${an ? "anlegen" : "entfernen"}. Versuch es gleich nochmal.`);
+    } finally {
+      setStadtLaeufe((m) => {
+        const rest = new Map(m);
+        rest.delete(clean);
+        return rest;
+      });
+    }
+  };
+
+  // Ein Stadtthema steht NUR an seiner Kachel: Häkchen heißt gewählt,
+  // darunter „anpassen". Bis 11/2026 stand es oben in „Deine Themen" ein
+  // zweites Mal, und die Liste wiederholte, was die Kacheln schon zeigten
+  // (Tim, 08.11.2026). Oben bleibt, was keine Kachel hat: selbst getippte
+  // Themen, Stadtteile aus dem Schritt danach — und ein Stadtthema, das unter
+  // die Schwelle gefallen ist und deshalb keine Kachel mehr bekommt; sonst
+  // wäre es nirgends zu sehen. Solange die Kacheln laden, hält das Bild
+  // (`image_key`) sie auseinander, damit oben nichts kurz auf- und abtaucht.
+  const kachelNamen = useMemo(() => new Set((stadtQuery.data ?? []).map((v) => v.name)), [stadtQuery.data]);
+  const eigene = mine.filter((t) => (stadtQuery.isPending ? !t.image_key : !kachelNamen.has(t.name)));
+  const unterwegs = anlegend && !mine.some((t) => t.name === anlegend) ? [anlegend] : [];
+
   const remove = async (id: number) => {
     try {
       await api.del(`/topics/${id}`);
       qc.invalidateQueries({ queryKey: ["topics"] });
-      // Vorschläge: s. `add` — der Chip wird durch die frische Themenliste
-      // wieder anklickbar, dafür braucht es keinen neuen Aufruf.
     } catch { /* bleibt stehen — beim nächsten Laden wieder korrekt */ }
   };
 
-  const mine = topics.data ?? [];
   return (
     <StepShell
       title="Worüber willst du Bescheid wissen?"
       lead="Lege Themen an — Lotti meldet sich, sobald der Rat dazu entscheidet."
       pose="search"
       mehr="Weitere Themen"
-      footer={<Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext}>Weiter</Button>}
+      footer={
+        // Erst weiter, wenn alles angelegt ist — sonst fehlte ein gerade
+        // geklicktes Thema im nächsten Schritt, und der Fehler, falls einer
+        // kommt, stünde auf einer Seite, die man schon verlassen hat.
+        <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext}
+          disabled={busy || stadtLaeufe.size > 0}>Weiter</Button>
+      }
     >
       <form onSubmit={(e) => { e.preventDefault(); meldeChips([], ["own"]); void add(name); }} className="flex gap-2">
         <Input ref={inputRef} value={name} onChange={(e) => setName(e.target.value)}
@@ -1121,19 +1157,23 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           unter dem sichtbaren Bereich: Man legte ein Thema an und sah es
           nicht (Tims Befund, 02.09.2026). Kompakt als Zeilen, nicht als
           Karten; die Beschreibung steht als Tooltip und im Blatt „anpassen". */}
-      {(mine.length > 0 || anlegend) && (
+      {(eigene.length > 0 || unterwegs.length > 0) && (
         <div className="mt-4 rounded-2xl border border-border bg-card p-3 lg:bg-background">
-          <Kicker>Deine Themen ({mine.length})</Kicker>
+          <Kicker>Deine Themen ({eigene.length + unterwegs.length})</Kicker>
           <ul className="mt-2 flex flex-col divide-y divide-border">
-            {anlegend && (
-              <li className="flex items-center gap-2 py-1.5 text-[13px] text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
-                <span className="font-semibold text-foreground">{anlegend}</span>
-                <span>— Lotti liest die Beschlüsse dazu …</span>
+            {/* Was gerade angelegt wird, steht schon da — mit einem Balken
+                dort, wo gleich die Zahl steht, statt eines kleinen Kreisels. */}
+            {unterwegs.map((n) => (
+              <li key={`unterwegs-${n}`} aria-busy="true"
+                className="flex items-center gap-2 py-1.5 text-[13px] text-muted-foreground">
+                <span className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-primary/10" aria-hidden />
+                <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{n}</span>
+                <span className="h-2.5 w-24 shrink-0 animate-pulse rounded-full bg-primary/15" aria-hidden />
+                <span className="sr-only">wird angelegt</span>
               </li>
-            )}
-            {mine.map((t) => (
-              <TopicZeile key={t.id} topic={t} chipZahl={chipZahl[t.name]}
+            ))}
+            {eigene.map((t) => (
+              <TopicZeile key={t.id} topic={t}
                 istStadtteil={stadtteile.some((o) => o.name.toLowerCase() === t.name.toLowerCase())}
                 onEdit={() => setEditing(t)} onRemove={() => void remove(t.id)} />
             ))}
@@ -1145,7 +1185,8 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           Vorgänge, die der Rat zuletzt benannt hat. Jeder Chip trägt die Zahl
           der Beschlüsse aus zwölf Monaten; was darunter zu dünn ist, kommt
           gar nicht erst aus dem Server (Zusage: nichts anbieten, wozu Lotti
-          nicht liefert). Die Liste ist stabil, Angelegtes wird markiert. */}
+          nicht liefert). Die Liste ist stabil; ein Klick wählt, ein zweiter
+          nimmt das Thema wieder heraus. */}
       <div className="mt-4">
         <Kicker className="text-primary">
           <Sparkles className="h-3 w-3" />
@@ -1157,11 +1198,8 @@ function TopicStep({ onNext }: { onNext: () => void }) {
         </Kicker>
         {stadtQuery.isPending
           ? <KachelPlatzhalter />
-          : <StadtthemenKacheln vorschlaege={stadtQuery.data ?? []} vorhanden={mine} busy={busy}
-              onWaehlen={(v) => {
-                if (v.key) meldeChips([], [stadtthemaChip(v.key)]);
-                void add(v.name, v.description, v.n);
-              }} />}
+          : <StadtthemenKacheln vorschlaege={stadtQuery.data ?? []} vorhanden={mine} laufend={stadtLaeufe}
+              onUmschalten={(v) => void umschaltenStadtthema(v)} onAnpassen={setEditing} />}
       </div>
 
       {editing && (
@@ -1227,46 +1265,85 @@ function istPlannummer(name: string): boolean {
  *
  *  Waagerecht gebaut (Bild links, Text rechts): 20 senkrechte Kacheln wären
  *  fünf Reihen Bildschirm, so sind es sieben Zeilen, die man überfliegt. */
-function StadtthemenKacheln({ vorschlaege, vorhanden, busy, onWaehlen }: {
+function StadtthemenKacheln({ vorschlaege, vorhanden, laufend, onUmschalten, onAnpassen }: {
   vorschlaege: Vorschlag[];
-  vorhanden: { name: string }[];
-  busy: boolean;
-  onWaehlen: (v: Vorschlag) => void;
+  vorhanden: TopicRow[];
+  /** Kacheln, die gerade an- oder ausgeschaltet werden, mit ihrem Ziel.
+   *  Jede sperrt nur sich selbst. */
+  laufend: ReadonlyMap<string, boolean>;
+  onUmschalten: (v: Vorschlag) => void;
+  onAnpassen: (t: TopicRow) => void;
 }) {
   return (
     <ul className="mt-2.5 grid grid-cols-2 gap-2 lg:grid-cols-3">
       {vorschlaege.map((v) => {
-        const have = vorhanden.some((t) => t.name === v.name);
+        const thema = vorhanden.find((t) => t.name === v.name);
+        const ziel = laufend.get(v.name.trim());
+        const laeuft = ziel !== undefined;
+        // Die Anzeige folgt sofort der Absicht, nicht erst dem Server.
+        const an = ziel ?? !!thema;
+        // Wer die Beschreibung angepasst hat, sieht die Zahl SEINER Fassung —
+        // sonst stünde an der Kachel die des Stadtthemas und im Blatt eine andere.
+        const zahl = thema && thema.description !== v.description && thema.matched
+          && typeof thema.hits_12m === "number" ? thema.hits_12m : v.n;
         return (
-          <li key={v.key ?? v.name} className="contents">
-            <button type="button" disabled={busy || have} onClick={() => onWaehlen(v)}
-              aria-pressed={have} title={v.context || undefined}
-              className={cn(
-                "group relative flex items-center gap-2 rounded-xl border p-2 text-left transition-colors sm:gap-2.5",
-                have ? "border-primary/40 bg-primary/5"
-                     : "border-border bg-card hover:border-primary/40 hover:bg-muted disabled:opacity-50",
-              )}>
-              {v.key ? (
-                // Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs).
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={stadtthemaBild(v.key)} alt="" width={52} height={52} loading="lazy" decoding="async"
-                  className="h-11 w-11 shrink-0 rounded-lg bg-muted object-cover sm:h-[52px] sm:w-[52px]" />
-              ) : (
-                <span aria-hidden className="h-11 w-11 shrink-0 rounded-lg bg-muted sm:h-[52px] sm:w-[52px]" />
-              )}
+          <li key={v.key ?? v.name}
+            className={cn(
+              "flex flex-col overflow-hidden rounded-xl border transition-colors",
+              an ? "border-primary/40 bg-primary/5"
+                 : "border-border bg-card hover:border-primary/40 hover:bg-muted",
+            )}>
+            <button type="button" disabled={laeuft} onClick={() => onUmschalten(v)}
+              aria-pressed={an} aria-busy={laeuft || undefined} title={v.context || undefined}
+              className="group flex flex-1 items-center gap-2 p-2 text-left sm:gap-2.5">
+              <span className="relative shrink-0">
+                {v.key ? (
+                  // Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs).
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={stadtthemaBild(v.key)} alt="" width={52} height={52} loading="lazy" decoding="async"
+                    className="h-11 w-11 rounded-lg bg-muted object-cover sm:h-[52px] sm:w-[52px]" />
+                ) : (
+                  <span aria-hidden className="block h-11 w-11 rounded-lg bg-muted sm:h-[52px] sm:w-[52px]" />
+                )}
+                {/* Auf dem Handy sitzt das Häkchen auf dem Bild: Neben dem
+                    Text nahm es der Spalte so viel Breite, dass „Schwimmbäder"
+                    hineinlief und bei 320 px jeder Name zerbrach. */}
+                {an && (
+                  <span aria-hidden className="absolute -right-1 -top-1 rounded-full bg-primary p-0.5 text-primary-foreground ring-2 ring-card sm:hidden">
+                    <Check className="h-3 w-3" />
+                  </span>
+                )}
+              </span>
               <span className="min-w-0 flex-1">
-                <span className={cn("block text-[13px] font-semibold leading-tight",
-                                    have ? "text-primary" : "text-foreground")}>
+                <span className={cn("block hyphens-auto break-words text-[13px] font-semibold leading-tight",
+                                    an ? "text-primary" : "text-foreground")}>
                   {v.name}
                 </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  {v.n} {v.n === 1 ? "Beschluss" : "Beschlüsse"}
-                </span>
+                {laeuft ? (
+                  // Ein Balken, wo gleich wieder die Zahl steht — die Kachel
+                  // springt nicht, und ein Kreisel in 11 px wäre kaum zu sehen.
+                  <span className="mt-1.5 block h-2 w-16 animate-pulse rounded-full bg-primary/20" aria-hidden />
+                ) : (
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    {zahl} {zahl === 1 ? "Beschluss" : "Beschlüsse"}
+                  </span>
+                )}
               </span>
-              {have
-                ? <Check className="h-4 w-4 shrink-0 text-primary" aria-label="angelegt" />
+              {an
+                ? <Check className="hidden h-4 w-4 shrink-0 text-primary sm:block" aria-hidden />
                 : <Plus className="hidden h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary sm:block" aria-hidden />}
             </button>
+            {/* Anpassen hängt an der Kachel selbst. Er erscheint mit dem Klick
+                (nicht erst mit der Antwort), damit die Kachel nur einmal ihre
+                Höhe ändert, und wird bedienbar, sobald das Thema angelegt ist. */}
+            {an && (
+              <button type="button" disabled={!thema || laeuft} onClick={() => thema && onAnpassen(thema)}
+                aria-label={`${v.name} anpassen`}
+                className="flex items-center gap-1 border-t border-primary/15 px-2 py-1 text-left text-[11px] font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50">
+                <SlidersHorizontal className="h-3 w-3 shrink-0" aria-hidden />
+                anpassen
+              </button>
+            )}
           </li>
         );
       })}
@@ -1347,14 +1424,8 @@ function KartenPlatzhalter({ anzahl }: { anzahl: number }) {
  *  „anpassen" — als Absatz auf der Karte trug sie 60 % der Höhe, und die
  *  Liste rutschte unter den sichtbaren Bereich. Die Trefferzahl bleibt: Sie
  *  ist der Beleg dafür, dass die Beschreibung etwas taugt. */
-function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
+function TopicZeile({ topic, istStadtteil, onEdit, onRemove }: {
   topic: TopicRow;
-  /** Die Zahl, die am angeklickten Vorschlags-Chip stand. Sie hat Vorrang:
-   *  Wer „Digitale Verwaltung 7" anklickt, soll oben keine andere Zahl für
-   *  dasselbe Thema lesen. Fehlt sie (selbst getippt, Stadtteil aus dem Stadtteil-Schritt),
-   *  zählt `hits_12m` vom Server — dasselbe Fenster, andere Rechnung
-   *  (Stichwörter am Chip, semantischer Abgleich am Thema). */
-  chipZahl?: number;
   /** Dieses Thema ist einer der im Stadtteil-Schritt gewählten Stadtteile. Es steht mit in der
    *  Liste — es IST ein Thema, nur so löst es Hinweise aus —, sagt das aber
    *  auch: Sonst wirkte die Trennung der beiden Schritte hinterher hinfällig,
@@ -1368,7 +1439,7 @@ function TopicZeile({ topic, chipZahl, istStadtteil, onEdit, onRemove }: {
   // Themen-Karte („was liegt vor"), während dieser Schritt neben Chips steht,
   // die „Beschlüsse der letzten 12 Monate" zählen. Beides nebeneinander waren
   // zwei Zahlen für dasselbe Thema (Tim, 03.09.2026).
-  const zahl = chipZahl ?? (topic.matched ? topic.hits_12m : undefined);
+  const zahl = topic.matched ? topic.hits_12m : undefined;
   return (
     <li className="flex items-center gap-2 py-1.5 text-[13px]" title={topic.description}>
       {topic.image_key ? (
