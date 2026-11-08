@@ -1603,6 +1603,19 @@ def test_topics_work_for_active_user(client):
     assert len(client.get("/api/topics").json()) == 1
 
 
+def test_stadtteil_thema_traegt_seinen_ortsbereich(client):
+    """Ein Thema, das wie ein Stadtteil heißt, IST der Stadtteil (Einrichtungs-
+    Assistent). `place_id` sagt das der Navigation — „Mein Viertel" führt
+    dorthin, ohne dass sie dafür die ganze Viertel-Übersicht holt. Die Regel:
+    gleicher Name wie ein Ortsbereich, ohne Groß-/Kleinschreibung, keine Aliase."""
+    _register(client)
+    for name in ("Radwege", "fliegerhorst"):
+        r = client.post("/api/topics", json={"name": name, "description": "Was dort passiert"})
+        assert r.status_code == 201, r.text
+    orte = {t["name"]: t.get("place_id") for t in client.get("/api/topics").json()}
+    assert orte == {"Radwege": None, "fliegerhorst": "fliegerhorst"}
+
+
 def test_themen_bubble_verstummt_nach_uebersichtsbesuch(client):
     """Tims Wunsch 18.08.: Ein Blick auf die Übersicht lässt den Zähler an
     „Meine Themen" verstummen — ohne dass die „n neu"-Marker an den Themen

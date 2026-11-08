@@ -174,10 +174,14 @@ export default function LandingPage() {
                 const linkClass = "block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
                 return (
                   <Reveal key={f.title} delay={i * 80} className={f.wide ? "lg:col-span-2" : undefined}>
-                    {/* /docs liegt außerhalb des App-Routers — plain <a>. */}
+                    {/* /docs liegt außerhalb des App-Routers — plain <a>.
+                        prefetch={false}: Alle Ziele verlangen ein Konto. Ohne
+                        Konto führt der Klick zur Anmeldung, mit Konto leitet
+                        die Startseite ohnehin nach /dashboard um — vorgeladen
+                        wurde trotzdem für jede Karte das App-Gerüst. */}
                     {f.href === "/docs"
                       ? <a href={f.href} className={linkClass}>{card}</a>
-                      : <Link href={f.href} className={linkClass}>{card}</Link>}
+                      : <Link href={f.href} prefetch={false} className={linkClass}>{card}</Link>}
                   </Reveal>
                 );
               })}
@@ -203,14 +207,16 @@ export default function LandingPage() {
           <span className="max-w-md text-balance">
             © Ratslotse — Ratsinformationen für Oldenburg. Ein privates Bürgerprojekt, kein Angebot der Stadt.
           </span>
+          {/* Fußzeile ohne Vorladen: selten geklickt, und allein /changelog
+              brachte beim Herunterscrollen 78 KB mit. */}
           <div className="flex flex-wrap gap-4">
             <WahlenFussLink className="hover:text-foreground" />
-            <Link href="/hilfe" className="hover:text-foreground">Hilfe &amp; Kontakt</Link>
+            <Link href="/hilfe" prefetch={false} className="hover:text-foreground">Hilfe &amp; Kontakt</Link>
             <a href="/docs" className="hover:text-foreground">Technik-Doku</a>
-            <Link href="/changelog" className="hover:text-foreground">Changelog</Link>
-            <Link href="/impressum" className="hover:text-foreground">Impressum</Link>
-            <Link href="/datenschutz" className="hover:text-foreground">Datenschutz</Link>
-            <Link href="/barrierefreiheit" className="hover:text-foreground">Barrierefreiheit</Link>
+            <Link href="/changelog" prefetch={false} className="hover:text-foreground">Changelog</Link>
+            <Link href="/impressum" prefetch={false} className="hover:text-foreground">Impressum</Link>
+            <Link href="/datenschutz" prefetch={false} className="hover:text-foreground">Datenschutz</Link>
+            <Link href="/barrierefreiheit" prefetch={false} className="hover:text-foreground">Barrierefreiheit</Link>
           </div>
         </div>
       </footer>

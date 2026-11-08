@@ -19,6 +19,7 @@ import { FeedbackDialog } from "@/components/feedback";
 import { BesuchErfassen } from "@/components/besuch-erfassen";
 import { OnboardingTracker } from "@/components/onboarding";
 import { BadgeCelebrator } from "@/components/badges";
+import { OnboardingGate } from "@/components/onboarding-gate";
 import { BackToTop } from "@/components/back-to-top";
 import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
@@ -167,6 +168,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </Suspense>
       {/* RL-U12: feiert neu verdiente Lotsen-Abzeichen — auf jeder Seite. */}
       <BadgeCelebrator />
+      {/* 26a: richtet ein statt nur vorzustellen. Das Tor fragt den Server,
+          ob die Einrichtung dran ist, und lädt den Assistenten erst dann. */}
+      <OnboardingGate />
       {/* BackToTop liest useSearchParams (im Ratsgespräch ausgeblendet). */}
       <Suspense fallback={null}>
         <BackToTop />

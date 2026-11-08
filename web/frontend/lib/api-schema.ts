@@ -17553,6 +17553,8 @@ export interface components {
             matched: boolean;
             /** Name */
             name: string;
+            /** Place Id */
+            place_id?: string | null;
             /**
              * Recent Hits
              * @default []
@@ -26489,4 +26491,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a68dad1bd5c3feb19cd365d09871d74b0187b7f21f4392f094d5ec5fff976e5f
+// vertrag-sha256: 5e92c3d834822954719a91bac80798f13692a1e5efddbafc7e2ba030623c5d87

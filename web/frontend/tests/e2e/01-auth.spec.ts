@@ -79,6 +79,37 @@ test.describe("Auth", () => {
     await page.screenshot({ path: "test-results/screenshots/01-password-visible.png", fullPage: true });
   });
 
+  // app/layout.tsx lädt /api/auth/me im HTML-Kopf vor. Das hilft nur, wenn der
+  // spätere Abruf aus lib/api.ts die vorgeladene Antwort auch NIMMT — passen
+  // Modus und Credentials nicht exakt, lädt der Browser stumm ein zweites Mal,
+  // und die Vorladung kostet eine Anfrage, statt eine Netzlaufzeit zu sparen.
+  test("/api/auth/me geht je Seitenaufruf genau einmal raus", async ({ page }) => {
+    const zaehlen = () => {
+      const typen: string[] = [];
+      const mit = (r: { url(): string; resourceType(): string }) => {
+        if (new URL(r.url()).pathname === "/api/auth/me") typen.push(r.resourceType());
+      };
+      page.on("request", mit);
+      return { typen, fertig: () => page.off("request", mit) };
+    };
+
+    // Ohne Konto, auf einer öffentlichen Seite (401 ist dort die Antwort).
+    let z = zaehlen();
+    await page.goto("/impressum");
+    await page.waitForLoadState("networkidle");
+    z.fertig();
+    expect(z.typen, "anonym").toHaveLength(1);
+
+    // Angemeldet, in der App-Hülle.
+    await loginAdmin(page);
+    z = zaehlen();
+    await page.goto("/bookmarks");
+    await expect(page.getByRole("navigation").first()).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    z.fertig();
+    expect(z.typen, "angemeldet").toHaveLength(1);
+  });
+
   test("logout clears session and redirects to login", async ({ page }) => {
     await loginAdmin(page);
     await page.getByRole("button", { name: "Abmelden" }).click();

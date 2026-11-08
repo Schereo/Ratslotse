@@ -26445,6 +26445,13 @@
             "title": "Name",
             "type": "string"
           },
+          "place_id": {
+            "title": "Place Id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "recent_hits": {
             "default": [],
             "items": {

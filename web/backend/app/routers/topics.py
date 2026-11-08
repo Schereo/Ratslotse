@@ -201,6 +201,12 @@ def list_topics(
     unseen_ids = store.unseen_hit_ids(owner_id)
     as_of_date = _vor_sechs_monaten().isoformat()
     as_of_12m = _vor_zwoelf_monaten().isoformat()
+    # Welches Thema ein Stadtteil ist: derselbe Name wie ein Ortsbereich, ohne
+    # Groß-/Kleinschreibung — dieselbe Regel wie im Einrichtungs-Assistenten
+    # und auf der Karte. Nur die Ortsbereiche (`is_primary`), keine Aliase:
+    # „Mein Viertel" führt auf eine Tafel, und Tafeln gibt es nur für sie.
+    districts = ({p.name.lower(): p.id for p in council.all_places() if p.is_primary}
+                 if topics else {})
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
@@ -214,6 +220,7 @@ def list_topics(
                 description=t.description,
                 created_at=t.created_at,
                 image_key=bild_key(t.name),
+                place_id=districts.get(t.name.lower()),
                 decision_count=dec_counts.get(t.id, 0),
                 decision_count_capped=capped.get(t.id, False),
                 matched=t.id in capped,
