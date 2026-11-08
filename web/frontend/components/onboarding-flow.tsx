@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Bell, Check, ChevronDown, Landmark, Loader2, Mail, MapPin, Plus, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
-import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand } from "@/lib/onboarding-setup";
+import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand, type SetupStand } from "@/lib/onboarding-setup";
 import { cn } from "@/lib/utils";
 import { Button, Input, toast } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
@@ -127,6 +127,7 @@ export function OnboardingFlow() {
   // liegende Server-Antwort (`pending: true`) den Assistenten sofort wieder
   // hoch, sobald der Effekt erneut läuft — der Abschluss ist ja fire-and-forget.
   const fertig = useRef(false);
+  const queryClient = useQueryClient();
 
   const setup = useQuery({
     queryKey: SETUP_QUERY_KEY,
@@ -189,6 +190,12 @@ export function OnboardingFlow() {
     }
     if (next === "done") {
       fertig.current = true;
+      // Der Riegel oben gilt nur, solange DIESE Instanz lebt. Seit der
+      // Assistent im App-Layout hängt (components/onboarding-gate.tsx), wird er
+      // abgebaut, sobald man die App-Hülle verlässt (Mehr → Hilfe) — und beim
+      // Zurückkehren schob ihn die noch gecachte Antwort (`pending: true`)
+      // wieder hoch, beim Auftakt. Deshalb auch der Cache: erledigt.
+      queryClient.setQueryData<SetupStand>(SETUP_QUERY_KEY, (d) => (d ? { ...d, pending: false } : d));
       try {
         localStorage.setItem(DONE_KEY, "1");
         localStorage.removeItem(STEP_KEY);
