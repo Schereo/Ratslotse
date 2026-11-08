@@ -1,6 +1,6 @@
 import {
   Baby, Building2, Bus, ClipboardList, Coins, Drama, Gavel, Globe, GraduationCap,
-  Hammer, HeartHandshake, Landmark, Laptop, Leaf, Recycle, Trophy, Users, type LucideIcon,
+  Hammer, HeartHandshake, HeartPulse, Landmark, Laptop, Leaf, Recycle, Trophy, Users, type LucideIcon,
 } from "lucide-react";
 
 // Kurznamen für die (langen) Oldenburger Gremiennamen — eine Funktion, überall
@@ -29,6 +29,8 @@ const SHORT: Record<string, string> = {
   "Kulturausschuss": "Kultur",
   "Schulausschuss": "Schule",
   "Sozialausschuss": "Soziales",
+  // Seit der Wahlperiode 2026–2031 (erste Sitzungen 11/2026).
+  "Ausschuss für Gesundheit und Soziales": "Gesundheit & Soziales",
   "Sportausschuss": "Sport",
   "Verkehrsausschuss": "Verkehr",
   // historische Umbenennungen (Bestand seit 2018)
@@ -81,6 +83,7 @@ const EXPLAINS: Record<string, string> = {
   "Kultur": "Museen, Theater, Bibliotheken und die Förderung der freien Szene.",
   "Schule": "Schulen, Ganztagsbetreuung und neue Bildungsstandorte.",
   "Soziales": "Wohnen, Pflege, Teilhabe und soziale Angebote der Stadt.",
+  "Gesundheit & Soziales": "Gesundheit, Pflege, Wohnen, Teilhabe und soziale Angebote der Stadt.",
   "Sport": "Sportstätten, Vereinsförderung und Bäder.",
   "Verkehr": "Radwege, Straßen, Bus & Bahn, Parken und Verkehrsberuhigung.",
 };
@@ -104,6 +107,7 @@ const RANK: Record<string, number> = {
   "Umwelt & Klima": 3,
   "Schule": 4,
   "Soziales": 5,
+  "Gesundheit & Soziales": 5,
   "Jugendhilfe": 6,
   "Finanzen & Beteiligungen": 7,
   "Kultur": 8,
@@ -152,6 +156,7 @@ const ICONS: Record<string, LucideIcon> = {
   "Kultur": Drama,
   "Schule": GraduationCap,
   "Soziales": HeartHandshake,
+  "Gesundheit & Soziales": HeartPulse,
   "Sport": Trophy,
   "Verkehr": Bus,
 };
@@ -177,6 +182,7 @@ const BILDER: Record<string, string> = {
   "Kultur": "culture",
   "Schule": "school",
   "Soziales": "social",
+  "Gesundheit & Soziales": "health",
   "Sport": "sport",
   "Verkehr": "traffic",
 };

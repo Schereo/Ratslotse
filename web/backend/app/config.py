@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     # ist. Die Hälfte der Laufzeit heißt „höchstens ein Set-Cookie alle 45
     # Tage" — danach ist das Token wieder frisch. 0 schaltet die Verlängerung ab.
     session_renew_within_minutes: int = 60 * 24 * 45  # 45 Tage
-    # Native-app clients (Capacitor) store the JWT in secure device storage and
-    # can't rely on cookies at all; they refresh it on every /auth/me instead.
+    # The native iOS app stores the JWT in the Keychain and can't rely on
+    # cookies at all; it refreshes the token on every /auth/me instead.
     # Revocation still works via token_version (bumped on password change/reset).
     app_access_token_expire_minutes: int = 60 * 24 * 90  # 90 days
     # Native builds check this value before authenticated bootstrap requests.
@@ -90,11 +90,6 @@ class Settings(BaseSettings):
     # CORS: comma-separated origins for local dev. In production the frontend is
     # served same-origin behind nginx, so this is only needed during development.
     cors_origins: str = "http://localhost:3000"
-    # The Capacitor apps load the UI from a local WebView origin and call the
-    # backend cross-origin (bearer auth): iOS pages live on capacitor://localhost,
-    # Android on https://localhost. Fixed non-web origins, always appended so the
-    # apps work without extra .env setup.
-    app_cors_origins: str = "capacitor://localhost,https://localhost"
 
     # Email (Resend) — used to notify admins about pending registrations.
     # Read from .env directly (the cron jobs use os.environ via load_dotenv;
@@ -111,9 +106,8 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        merged = f"{self.cors_origins},{self.app_cors_origins}"
         out: list[str] = []
-        for o in (s.strip() for s in merged.split(",")):
+        for o in (s.strip() for s in self.cors_origins.split(",")):
             if o and o not in out:
                 out.append(o)
         return out
