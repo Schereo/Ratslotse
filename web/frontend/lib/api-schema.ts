@@ -13657,6 +13657,7 @@ export interface components {
          */
         MovementDetail: {
             axis: components["schemas"]["TimeAxis"];
+            data_status?: components["schemas"]["IdeaDataStatus"];
             /** Documents */
             documents: components["schemas"]["MovementDocument"][];
             movement: components["schemas"]["Movement"];
@@ -26489,4 +26490,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a68dad1bd5c3feb19cd365d09871d74b0187b7f21f4392f094d5ec5fff976e5f
+// vertrag-sha256: b1a96f488d34a27b335d43f0b9c0fd38faa0b3b110a2da7c62bfe5ae51369b11

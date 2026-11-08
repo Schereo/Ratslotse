@@ -1311,8 +1311,12 @@ class CitiesStore:
         """
         c_ann, c_ver = self.IDEEN_CLASSIFY
         f_ann, f_ver = self.IDEEN_FIT
+        # Das `+` vor dem Themenfeld hält diese Abfrage vom Ausdrucksindex
+        # `idx_annotations_field` fern (es ändert keinen Wert). Sie zählt über
+        # ALLE Felder; mit dem Index gruppierte der Planer über ihn und wurde
+        # langsamer (gemessen 11/2026: 103 → 135 bis 172 ms, mit `+` 91 ms).
         rows = self._conn.execute(
-            "SELECT json_extract(c.payload, '$.field') AS field, COUNT(*) AS total, "
+            "SELECT +json_extract(c.payload, '$.field') AS field, COUNT(*) AS total, "
             "  SUM(json_extract(f.payload,'$.status')='missing') AS missing, "
             "  SUM(json_extract(f.payload,'$.status')='partial') AS partial, "
             "  SUM(json_extract(f.payload,'$.status')='present') AS present, "
@@ -1341,7 +1345,7 @@ class CitiesStore:
             "  AND f.annotator=? AND f.version=? "
             "JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
             "  AND c.annotator=? AND c.version=? "
-            "WHERE p.body_id != 'oldenburg' AND field IS NOT NULL "
+            "WHERE p.body_id != 'oldenburg' AND +field IS NOT NULL "
             "GROUP BY 1 ORDER BY multi_city DESC, missing DESC, total DESC",
             (f_ann, f_ver, c_ann, c_ver))
         return [dict(r) for r in rows]

@@ -2300,10 +2300,14 @@ def cities_ideas(
         limit=max(1, min(per_page, 100)),
         offset=max(0, (page - 1) * per_page))
 
-    peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
+    # Kein `peers_by_paper` hier: Die Zeilen der Liste tragen `peers` selbst
+    # (aus `idea_group_status`, nie NULL), das Dict wurde nie gelesen — und
+    # zählte die Nachbarstädte für ALLE Vorlagen des Bestands, um dreißig zu
+    # zeigen (gemessen 11/2026: 50 ms von rund 215). Die Suche braucht es
+    # weiter, ihre Zeilen haben die Spalte nicht.
     eigenes = _eigene_rueckmeldungen(cities, user)
     abschnitte = cities.section_counts()
-    items = [_idee_aus_zeile(store, cities, r, peers, eigenes, abschnitte)
+    items = [_idee_aus_zeile(store, cities, r, None, eigenes, abschnitte)
              for r in zeilen]
     return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
             "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
@@ -2394,11 +2398,18 @@ def cities_movement_detail(
          "cities": int(a["cities"]), "members": int(a["members"])}
         for a in cities.similar_idea_groups(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION,
                                             zeile["field"], id, BEWEGUNG_AB_STAEDTEN)]
-    return {"movement": _bewegung(store, zeile, namen),
+    bewegung = _bewegung(store, zeile, namen)
+    return {"movement": bewegung,
             "axis": _achse(cities, CLUSTER_VERSION, BEWEGUNG_AB_STAEDTEN),
             "documents": dokumente,
             "oldenburg_documents": _belege_aufloesen(store, oldenburger, hoechstens=6),
-            "similar": aehnliche}
+            "similar": aehnliche,
+            # „Stand: …" für die Städte DIESER Idee. Bis 11/2026 holte die Seite
+            # dafür die ganze Themenfeld-Übersicht (`/cities/ideas/fields`, gut
+            # 100 ms Rechnung, in jeder Messung die letzte Antwort) und filterte
+            # im Browser auf die Städte der Bewegung. `coverage` für die paar
+            # Städte kostet hier weniger als eine Millisekunde.
+            "data_status": _datenstand(cities, [c["body_id"] for c in bewegung["cities"]])}
 
 
 def _stadtnamen() -> dict[str, str]:

@@ -161,3 +161,25 @@ def test_zaehler_und_zeilen_sehen_dasselbe(cities):
     sie auseinander, springt das Blättern."""
     zeilen, gesamt, zaehler = cities.ideas("kultur_sport", status=("missing",))
     assert gesamt == len(zeilen) == sum(zaehler.values())
+
+
+def test_rows_carry_their_peer_count(cities):
+    """Die Liste rechnet `peers_by_paper` nicht mehr (``cities_ideas``): Die
+    Zahl der anderen Städte kommt aus der Zeile selbst, aus
+    `idea_group_status`, und ist nie NULL. Fehlte die Spalte, stünde auf jeder
+    Karte stumm „0 andere Städte"."""
+    rows, _, _ = cities.ideas("kultur_sport", status=("missing",))
+    assert rows and all("peers" in r and r["peers"] is not None for r in rows)
+    assert {r["body_id"]: r["peers"] for r in rows} == {"potsdam": 1, "muenster": 1}
+
+
+def test_field_filter_uses_the_expression_index(cities):
+    """Ohne `idx_annotations_field` begann jede der drei Abfragen bei allen
+    Urteilen und las deren Nutzlast (11/2026: je 50 bis 58 ms). Die Übersicht
+    über alle Felder hält sich mit `+` bewusst davon fern."""
+    args = cities._ideen_args("kultur_sport", ("missing",), None, ())
+    for sql in (cities._IDEEN_ZAEHLEN, cities._IDEEN_JE_STATUS, cities._IDEEN_ZEILEN):
+        extra = [30, 0] if sql is cities._IDEEN_ZEILEN else []
+        plan = " | ".join(r[3] for r in cities._conn.execute("EXPLAIN QUERY PLAN " + sql, args + extra))
+        assert "idx_annotations_field" in plan, plan
+    assert cities.idea_fields()[0]["field"] == "kultur_sport"

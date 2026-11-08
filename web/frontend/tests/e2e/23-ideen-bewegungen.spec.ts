@@ -80,6 +80,8 @@ async function mocks(page: Page) {
       })),
       oldenburg_documents: [],
       similar: [{ cluster_id: 3, label: "Kommunale Wärmeplanung erstellen", cities: 8, members: 27 }],
+      data_status: { as_of: "2026-09-14", lagging: [
+        { body_id: "potsdam", city: "Potsdam", latest_paper: "2026-06-25" }] },
     } }));
   return anfragen;
 }
@@ -214,9 +216,16 @@ test("ein Themenfeld blättert durch alle Ideen, nicht nur durch die ersten 30",
 
 test("die Ideen-Seite: je Stadt eine Zeile, alle Vorlagen, Beleg und Verwandtes getrennt", async ({ page }) => {
   await mocks(page);
+  // „Stand: …" kommt mit der Bewegung — die ganze Themenfeld-Übersicht holt
+  // die Seite dafür nicht mehr (bis 11/2026 ihre langsamste Anfrage).
+  const fieldRequests: string[] = [];
+  page.on("request", (r) => { if (r.url().includes("/api/council/cities/ideas/fields")) fieldRequests.push(r.url()); });
   await page.goto("/council/ideen/bewegung?id=14");
 
   await expect(page.getByRole("heading", { level: 1, name: "Hitzeaktionsplan aufstellen" })).toBeVisible();
+  await expect(page.getByText("Stand: 14.09.2026")).toBeVisible();
+  await expect(page.getByText("Aus Potsdam liegen Vorlagen nur bis 25.06.2026 vor.")).toBeVisible();
+  expect(fieldRequests).toEqual([]);
   const buehne = page.getByRole("region", { name: "Wie die Idee durch die Räte lief" });
   await expect(buehne.getByRole("img")).toHaveCount(6);
   await expect(buehne.getByRole("img").first()).toHaveAttribute("aria-label", /^Osnabrück: 1 Stadt/);
