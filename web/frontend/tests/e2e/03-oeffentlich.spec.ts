@@ -150,3 +150,16 @@ test.describe("Unbestätigtes Konto", () => {
     await expect(page.locator("#password")).toBeVisible();
   });
 });
+
+test.describe("Kein Bildoptimierer", () => {
+  test("/_next/image antwortet 404, die Icons kommen direkt", async ({ page }) => {
+    // Der Optimierer lief über ein veraltetes `sharp` mit zwei RCE-Advisories
+    // (s. `next.config.mjs`). Kommt `images.unoptimized` beim nächsten
+    // Next-Sprung abhanden, steht der Endpunkt wieder offen — ohne dass sich
+    // auf einer Seite etwas ändert.
+    const optimierer = await page.request.get("/_next/image?url=%2Ficon-192.png&w=64&q=75");
+    expect(optimierer.status()).toBe(404);
+    const icon = await page.request.get("/icon-192.png");
+    expect(icon.status()).toBe(200);
+  });
+});
