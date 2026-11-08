@@ -45,7 +45,7 @@ from council import places
 
 from kern.store import Store
 
-from .. import deepresearch
+from .. import deepresearch, response_cache
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
@@ -237,7 +237,7 @@ def parties(
     Parteienvergleich. So filtern Web und native App mit exakt den Labels, die
     ``decision_ids_for_party`` versteht, statt Schreibvarianten zu erfinden.
     """
-    stats = store.party_analysis()["success_rates"]
+    stats = _party_analysis(store)["success_rates"]
     return {
         "parties": [
             {"key": row["party"], "label": row["party"], "count": row["motions"]}
@@ -252,6 +252,14 @@ def districts(
     store: CouncilStore = Depends(get_council_store),
 ) -> Districts:
     """Belegte Ratslotse-Ortsbereiche für den Beschlussfilter."""
+    # Für alle Konten gleich und nur vom Bestand abhängig — deshalb einmal je
+    # Datenstand gerechnet (app/response_cache.py). Die Seite lädt das beim
+    # Öffnen der Suche sofort mit; ungepuffert war es ihre letzte Anfrage.
+    return response_cache.cached("council.districts", [store],
+                                 lambda: _districts(store))
+
+
+def _districts(store: CouncilStore) -> Districts:
     rows = []
     for row in store.decision_location_place_stats():
         place = store.resolve_place(row["place_id"])
@@ -902,7 +910,7 @@ def _lexikon_zuordnung(store: CouncilStore,
                             if t.lower().rstrip(".") not in CouncilStore._HONORIFICS))
 
     nach_paar: dict[tuple[str, str], list[dict]] = {}
-    for e in store.personen_lexikon():
+    for e in _personen_lexikon(store):
         # Blocker tragen keinen Namen, nur einen Nachnamen — sie sind für die
         # Badge-Logik da (Gäste dürfen keinen Treffer erzeugen) und haben hier
         # nichts zu suchen: Ohne Vornamen können sie ohnehin nicht passen.
@@ -992,6 +1000,14 @@ def haushalt_beteiligungen(
 
     Gelesen werden die Berichte ab 2022; davor ist das Dokument anders
     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``)."""
+    # Für alle mit dem Recht gleich — einmal je Datenstand
+    # (app/response_cache.py), hinter `require_budget`. Ungepuffert war das die
+    # letzte Antwort von /haushalt/konzern (70 ms, fast alles im Personen-Lexikon).
+    return response_cache.cached("council.budget_shareholdings", [store],
+                                 lambda: _beteiligungen(store))
+
+
+def _beteiligungen(store: CouncilStore) -> BudgetHoldings:
     berichtsjahre = store.beteiligungsbericht_jahre()
     gesellschaften = store.get_gesellschaften()
     # Eine Reihe, zwei Quellen (Tims Entscheidung 24.09.2026): Der
@@ -1352,8 +1368,11 @@ def haushalt_dokumente(
     ab?"), wird an derselben Stelle gebraucht — im Quellenverzeichnis — und
     ist eine Abfrage je Quelle, keine je Zeile. Zwei Endpunkte dafür hießen
     zwei Rundreisen für einen Seitenfuß."""
-    return {"documents": store.haushalt_dokumente(),
-            "editions": store.haushalt_jahrgaenge()}
+    # Läuft auf jeder der 15 Haushalts-Seiten mit und ändert sich nur mit dem
+    # Ingest — einmal je Datenstand (app/response_cache.py), hinter `require_budget`.
+    return response_cache.cached("council.budget_documents", [store], lambda: {
+        "documents": store.haushalt_dokumente(),
+        "editions": store.haushalt_jahrgaenge()})
 
 
 @router.get("/budget")
@@ -1862,7 +1881,10 @@ def haushalt_weg(
     ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
     sagen, welche der kommenden Sitzungen die Haushaltssitzung wird, und raten
     es auch nicht."""
-    return {"rounds": store.haushalt_weg(year)}
+    # Je `year` einmal je Datenstand (app/response_cache.py).
+    return response_cache.cached("council.budget_journey", [store],
+                                 lambda: {"rounds": store.haushalt_weg(year)},
+                                 key=year, maxsize=16)
 
 
 @router.get("/budget/debate")
@@ -2186,6 +2208,14 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
     Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
     dasselbe schon hat.
     """
+    # Die Zählung läuft über rund 50.000 Urteile im Städte-Speicher (gut 100 ms)
+    # und ändert sich nur mit dem Cron check_cities — deshalb einmal je
+    # Datenstand von cities.sqlite (app/response_cache.py).
+    return response_cache.cached("cities.idea_fields", [cities],
+                                 lambda: _idea_fields(cities))
+
+
+def _idea_fields(cities: CitiesStore) -> IdeaFields:
     from council.cities.clusters import CLUSTER_VERSION
 
     # ALLE Bewegungen des Feldes, nicht nur die offenen: Solange `idea_fit`
@@ -3845,7 +3875,7 @@ def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples
     zeilen: list[QaExampleSession] = [
         {"committee": str(z["committee"]), "session_date": str(z["session_date"]),
          "n": int(z["n"]),
-         "top_titel": qa.vorschlags_gegenstand(z.get("top_titel") or "") or None}
+         "top_titel": qa.erster_gegenstand(z.get("top_titel_kandidaten") or z.get("top_titel")) or None}
         for z in store.juengste_sitzungen_mit_beschluessen(
             limit=2, mindest_tops=qa.RUECKFRAGE_MINDEST_TOPS)]
     return {"sessions": zeilen}
@@ -3948,15 +3978,34 @@ def analysis(user: dict = Depends(require_active),
     """Party behaviour: topic heatmap, success rates, contention, alliances —
     plus Erfolgsquoten der eingereichten Fraktions-Anträge (aus den Anlagen)."""
     ratslotse.record_activity(user["id"], "analysis")  # Admin-Statistik (20a)
-    data = store.party_analysis()
+    return response_cache.cached("council.analysis", [store],
+                                 lambda: _analysis(store))
+
+
+def _party_analysis(store: CouncilStore) -> dict:
+    """``party_analysis()`` einmal je Datenstand — für ``/analysis`` und den
+    Parteifilter ``/parties``. CPU-gebunden (gut 1.200 Texte, 16.000
+    Regex-Suchen, 20 ms) und für alle gleich. Geteilt: nicht verändern."""
+    return response_cache.cached("council.party_analysis", [store],
+                                 store.party_analysis)
+
+
+def _analysis(store: CouncilStore) -> AnalysisData:
+    # Ein neues dict: Das Ergebnis von `party_analysis` ist geteilt (s. oben).
+    data = {**_party_analysis(store)}
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["topic_matrix"]["fields"]}
     data["antrag_stats"] = store.antrag_stats()
-    return data
+    return cast(AnalysisData, data)
 
 
 @router.get("/finance")
 def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Finances:
     """Largest € decisions + recognised volume per policy field (excl. accounting reports)."""
+    # Einmal je Datenstand (app/response_cache.py).
+    return response_cache.cached("council.finance", [store], lambda: _finance(store))
+
+
+def _finance(store: CouncilStore) -> Finances:
     by_field = store.money_by_field()
     return {
         "decisions": store.largest_financial_decisions(limit=25),
@@ -4006,9 +4055,13 @@ def public_stats(store: CouncilStore = Depends(get_council_store)) -> PublicNumb
 
 # Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch 12.08.).
 # Public wie public-stats: Die geteilten Antwort-Seiten (app/g) brauchen es
-# ohne Konto, und der Inhalt sind amtliche RIS-Daten. Prozess-Cache mit
-# Tages-TTL — die Quelle ändert sich höchstens mit dem täglichen Import.
-_PERSONEN_LEXIKON_CACHE: dict = {"as_of": 0.0, "daten": None}
+# ohne Konto, und der Inhalt sind amtliche RIS-Daten. Bis 11/2026 ein eigener
+# Prozess-Cache mit sechs Stunden TTL, an dem der Steckbrief der Beteiligungen
+# vorbeirechnete (50 ms je Aufruf); jetzt einmal je Datenstand und Tag für
+# beide — das Lexikon rechnet mit „zwölf Monate zurück".
+def _personen_lexikon(store: CouncilStore) -> list[dict]:
+    """``personen_lexikon()`` einmal je Datenstand. Geteilt: nicht verändern."""
+    return response_cache.cached("council.people_directory", [store], store.personen_lexikon)
 
 
 @router.get("/people-directory")
@@ -4018,13 +4071,8 @@ def personen_lexikon(response: Response,
                          False, description="Nur Verwaltungsleute mit erkanntem Amt "
                          "(art=city mit role) — die Handvoll Einträge, die das "
                          "Personenverzeichnis zeigt, statt des ganzen Lexikons.")) -> PeopleDirectory:
-    import time as _time
-    if _PERSONEN_LEXIKON_CACHE["daten"] is None or \
-            _time.time() - _PERSONEN_LEXIKON_CACHE["as_of"] > 6 * 3600:
-        _PERSONEN_LEXIKON_CACHE["daten"] = store.personen_lexikon()
-        _PERSONEN_LEXIKON_CACHE["as_of"] = _time.time()
     response.headers["Cache-Control"] = "public, max-age=21600"
-    return _people_directory_view({"people": _PERSONEN_LEXIKON_CACHE["daten"]}, administration)
+    return _people_directory_view({"people": _personen_lexikon(store)}, administration)
 
 
 def _people_directory_view(answer: PeopleDirectory, administration: bool) -> PeopleDirectory:
@@ -4187,12 +4235,39 @@ def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> Entit
 def members(_user: dict = Depends(require_active),
             store: CouncilStore = Depends(get_council_store)) -> CouncilMembers:
     """Directory of council members (from attendance): party, sessions, committees."""
-    return {"members": store.list_members()}
+    # `list_members` fasst die ganzen Anwesenheitslisten in Python zusammen
+    # (45 ms) — einmal je Datenstand, geteilt mit dem gewählten Rat.
+    return {"members": _list_members(store)}
+
+
+def _list_members(store: CouncilStore) -> list[dict]:
+    """``list_members()`` einmal je Datenstand. Geteilt: nicht verändern."""
+    return response_cache.cached("council.list_members", [store], store.list_members)
 
 
 def _elected(store: CouncilStore) -> ElectedCouncil | None:
-    known = {m["slug"]: m.get("art") or "council" for m in store.list_members()}
+    """Der gewählte Rat, einmal je Datenstand: Verzeichnis plus der Abgleich
+    jeder Namensform mit jeder gewählten Person (zusammen rund 70 ms). Die
+    Wahldateien selbst liest ``elected_mod`` ohnehin nur einmal je Prozess."""
+    return response_cache.cached("council.elected", [store], lambda: _elected_build(store))
+
+
+def _elected_build(store: CouncilStore) -> ElectedCouncil | None:
+    known = {m["slug"]: m.get("art") or "council" for m in _list_members(store)}
     return elected_mod.council(store.person_slug, store.council_history, known)
+
+
+def _elected_lookup(store: CouncilStore) -> tuple[dict[str, str], dict[str, ElectedMember]]:
+    """Namensform → kanonischer Slug und Slug → gewählte Person, je Datenstand.
+
+    ``/elected/{slug}`` baute bis 11/2026 für 0,4 KB Antwort den ganzen Rat
+    und die Kanon-Karte neu (70 ms); die Personen-Seite wartet darauf."""
+    def bauen() -> tuple[dict[str, str], dict[str, ElectedMember]]:
+        nach_slug: dict[str, ElectedMember] = {}
+        for m in (_elected(store) or {}).get("members", []):
+            nach_slug.setdefault(m["slug"], m)   # wie `next(…)`: der erste gewinnt
+        return dict(store.personen_kanon()), nach_slug
+    return response_cache.cached("council.elected_lookup", [store], bauen)
 
 
 @router.get("/elected")
@@ -4217,9 +4292,8 @@ def elected_council(response: Response,
 def elected_member(slug: str, store: CouncilStore = Depends(get_council_store)) -> ElectedMember:
     """Eine Person aus dem gewählten Rat — für die Personen-Seite, auch wenn
     es aus den Protokollen noch kein Profil gibt. Öffentlich wie ``/elected``."""
-    data = _elected(store)
-    slug = store.personen_kanon().get(slug, slug)
-    hit = next((m for m in (data or {}).get("members", []) if m["slug"] == slug), None)
+    kanon, nach_slug = _elected_lookup(store)
+    hit = nach_slug.get(kanon.get(slug, slug))
     if hit is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht im gewählten Rat.")
     return hit
@@ -4239,6 +4313,14 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
     Protokolle — keine Privatperson wird hier auffindbar, die es nicht
     ohnehin schon ist.
     """
+    # Je Slug einmal je Datenstand (app/response_cache.py): `member_detail`
+    # kostet rund 30 ms, ein Verwaltungs-Steckbrief über das Lexikon 50 ms
+    # mehr. Ein unbekannter Slug (404) wird nicht gespeichert.
+    return response_cache.cached("council.person", [store],
+                                 lambda: _person(store, slug), key=slug, maxsize=128)
+
+
+def _person(store: CouncilStore, slug: str) -> PersonDetail:
     data = store.member_detail(slug)
     if data:
         data["type"] = "council"

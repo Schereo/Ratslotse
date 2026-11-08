@@ -20,7 +20,7 @@ import { useZurueck } from "@/lib/zurueck";
 // Leaflet needs `window` → load the map client-only.
 const EntityMap = dynamic(() => import("@/components/entity-map").then((m) => m.EntityMap), {
   ssr: false,
-  loading: () => <div className="h-64 w-full animate-pulse rounded-lg border border-border bg-muted/40" />,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-lg border border-border bg-skeleton/60" />,
 });
 
 /** Verwandte Themen als zwei Chip-Zeilen.

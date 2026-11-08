@@ -1,14 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useVollbildMelden } from "@/lib/vollbild";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { aufzaehlung } from "@/lib/ideen";
+import { karteHref } from "@/lib/routes";
+import { gewaehlteOrtsbereiche, useOrtsbereiche } from "@/components/onboarding-flow";
 import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { reportBadgeEvent } from "@/components/badges";
 import { useOnboarding, type StepId } from "@/components/onboarding";
 import { meldeTour } from "@/lib/tour-einladung";
+import { TOUR_STEP_KEY } from "@/lib/tour-state";
+import { cn } from "@/lib/utils";
 
 /**
  * Geführte Lotti-Tour: Spotlight auf echte UI-Elemente (per data-tour-Anker),
@@ -36,7 +43,48 @@ type TourStep = {
    *  greift nur, wenn eine Tour-Route zufällig exakt einer Kurs-Seite
    *  entspricht — genau daran hakte die Tour vorher fast nichts ab. */
   marks?: StepId[];
+  /** Die Seite selbst ist der Inhalt (Karte, eigene Themen): nur leicht
+   *  abgedunkelt, die Sprechblase unten statt mittig darüber. */
+  blick?: true;
+  /** Nach dem Ankommen dorthin weiterschalten — die Karte fliegt dann von der
+   *  Stadt ins eigene Viertel, statt schon gezoomt dazustehen. */
+  zoomZu?: string;
 };
+
+/** Was die Tour über das Konto weiß: das erste gewählte Viertel und die
+ *  übrigen eigenen Themen — beides meist aus dem Einrichtungs-Assistenten. */
+type Persoenlich = { viertel: { id: string; name: string } | null; themen: string[] };
+
+/** Die Station auf das Konto zuschneiden (Tims Wunsch 08.11.2026): Wer im
+ *  Assistenten ein Viertel und Themen gewählt hat, soll sie in der Tour
+ *  wiedersehen — „das ist in DEINEM Viertel los", „hier liegen DEINE Themen" —,
+ *  statt nur die ganze Stadt und einen Menüpunkt gezeigt zu bekommen. Ohne
+ *  Auswahl bleibt es bei der allgemeinen Station. */
+function persoenlich(step: TourStep, p: Persoenlich): TourStep {
+  if (step.id === "karte" && p.viertel) {
+    return {
+      ...step, blick: true, zoomZu: karteHref(p.viertel.id),
+      title: `Dein Viertel: ${p.viertel.name}`,
+      text: `Das ist gerade in ${p.viertel.name} los — Vorhaben, Pläne und die Beschlüsse dazu, jedes mit seinem Stand. `
+        + "Zoom hinein, um Einzelnes anzusehen, und wieder heraus, um in ein anderes Viertel zu wechseln.",
+    };
+  }
+  if (step.id === "karte") return { ...step, blick: true };
+  if (step.id === "themen" && (p.themen.length > 0 || p.viertel)) {
+    const genannt = p.themen.length > 3
+      ? `${p.themen.slice(0, 3).join(", ")} und ${p.themen.length - 3} weitere`
+      : aufzaehlung(p.themen);
+    const was = p.themen.length === 0
+      ? `Hier liegt dein Viertel ${p.viertel!.name} — als Thema, wie alles, was du verfolgst.`
+      : `Hier liegen die Themen, die du eben eingerichtet hast: ${genannt}`
+        + (p.viertel ? ` — dazu dein Viertel ${p.viertel.name}.` : ".");
+    return {
+      ...step, route: "/topics", anchor: undefined, blick: true,
+      text: `${was} Bei neuen Beschlüssen dazu melde ich mich per Push oder E-Mail — und du kannst jederzeit weitere anlegen.`,
+    };
+  }
+  return step;
+}
 
 const STEPS: TourStep[] = [
   {
@@ -89,7 +137,7 @@ const STEPS: TourStep[] = [
     id: "karte", route: "/karte", pose: "search",
     marks: ["karten"],
     title: "Die Stadtkarte",
-    text: "Beschlüsse an ihrem Ort: Von der Stadt ins Viertel bis zum Vorhaben — Pläne, Sperrungen und Themen als Ebenen auf einer Karte.",
+    text: "Beschlüsse an ihrem Ort: Von der Stadt ins Viertel bis zum Vorhaben — Pläne, Sperrungen und Themen als Ebenen auf einer Karte. Tipp auf ein Viertel oder zoom hinein, um es genauer anzusehen.",
   },
   {
     // Ohne Route: Der Anker steht in Sidebar bzw. Tab-Bar, also auf jeder
@@ -191,7 +239,6 @@ function TourQaDemo() {
 }
 
 const SEEN_KEY = "ratslotse:tour-seen";
-const TOUR_SCHRITT_KEY = "ratslotse:tour-schritt";
 /** Hat dieses Gerät die Tour schon einmal beendet? Die Einladung nach der
  *  Einrichtung fragt das, bevor sie ein zweites Mal einlädt. */
 export function tourGesehen(): boolean {
@@ -230,6 +277,21 @@ function routeMatches(route: string): boolean {
   return true;
 }
 
+/** Nach einem Seitenwechsel warten, bis die Zielseite steht: Route angekommen,
+ *  keine Skelette mehr (`aria-busy`). Vorher stand Lottis Karte schon da,
+ *  während darunter noch Inhalte nachrückten und aufploppten (Tim 08.11.2026).
+ *  Gedeckelt — eine langsame Seite hält die Tour nicht auf. */
+async function settle(route: string, cancelled: () => boolean) {
+  const routeBis = Date.now() + 3000;
+  while (!cancelled() && !routeMatches(route) && Date.now() < routeBis) await sleep(60);
+  const ladenBis = Date.now() + 1500;
+  while (!cancelled() && Date.now() < ladenBis && document.querySelector('[aria-busy="true"]')) await sleep(80);
+  await sleep(140);
+}
+
+/** Der Menüpunkt der aktuellen Seite, als Kopie über der Abdunkelung. */
+type NavLight = { top: number; left: number; width: number; height: number; radius: string; html: string; fresh: boolean };
+
 function toRect(el: HTMLElement): Rect {
   const r = el.getBoundingClientRect();
   const pad = 8;
@@ -244,12 +306,35 @@ export function GuidedTour() {
   const [ready, setReady] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
+  // Beim Weiterschalten blendet die Karte erst aus, dann wechselt der Inhalt —
+  // vorher sprang der neue Text in die alte Karte, bevor sie verschwand.
+  const [leaving, setLeaving] = useState(false);
+  const leavingRef = useRef(false);
+  const [navLight, setNavLight] = useState<NavLight | null>(null);
+  const lastNavKey = useRef<string | null>(null);
 
   const active = stepIndex >= 0;
   // Solange die Tour läuft, gibt es keinen Lotti-Knopf daneben: Sie ist selbst
   // Lottis Führung, und der Knopf läge unter ihrer Abdunkelung (lib/vollbild.ts).
   useVollbildMelden("tour", active);
-  const step = active ? STEPS[stepIndex] : null;
+  // Nur geladen, solange die Tour läuft (sie hängt in der App-Hülle). Fehlt
+  // eines davon noch, zeigt die Station die allgemeine Fassung.
+  const themenAbfrage = useQuery({
+    queryKey: ["topics"],
+    queryFn: () => api.get<{ name: string }[]>("/topics"),
+    enabled: active,
+  });
+  const orte = useOrtsbereiche(active);
+  const konto = useMemo<Persoenlich>(() => {
+    const themen = themenAbfrage.data ?? [];
+    const viertel = gewaehlteOrtsbereiche(themen, orte.data ?? []);
+    const viertelNamen = new Set(viertel.map((o) => o.name.toLowerCase()));
+    return {
+      viertel: viertel[0] ? { id: viertel[0].place_id, name: viertel[0].name } : null,
+      themen: themen.map((t) => t.name).filter((n) => !viertelNamen.has(n.toLowerCase())),
+    };
+  }, [themenAbfrage.data, orte.data]);
+  const step = active ? persoenlich(STEPS[stepIndex], konto) : null;
   const isLast = stepIndex === STEPS.length - 1;
 
   // Der Schritt überlebt das Neuladen (sessionStorage, nur dieser Tab): Bis
@@ -257,15 +342,15 @@ export function GuidedTour() {
   // ohne Tour und ohne Hinweis, wie es weitergeht.
   useEffect(() => {
     try {
-      const roh = sessionStorage.getItem(TOUR_SCHRITT_KEY);
+      const roh = sessionStorage.getItem(TOUR_STEP_KEY);
       const n = roh === null ? -1 : Number(roh);
       if (Number.isInteger(n) && n >= 0 && n < STEPS.length) setStepIndex(n);
     } catch { /* gesperrter Speicher: dann eben ohne */ }
   }, []);
   useEffect(() => {
     try {
-      if (stepIndex >= 0) sessionStorage.setItem(TOUR_SCHRITT_KEY, String(stepIndex));
-      else sessionStorage.removeItem(TOUR_SCHRITT_KEY);
+      if (stepIndex >= 0) sessionStorage.setItem(TOUR_STEP_KEY, String(stepIndex));
+      else sessionStorage.removeItem(TOUR_STEP_KEY);
     } catch { /* egal */ }
   }, [stepIndex]);
 
@@ -273,11 +358,22 @@ export function GuidedTour() {
     setStepIndex(-1);
     setRect(null);
     setReady(false);
+    setNavLight(null);
+    lastNavKey.current = null;
     try { localStorage.setItem(SEEN_KEY, "1"); } catch { /* ignore */ }
   }, []);
 
-  const next = useCallback(() => setStepIndex((i) => (i >= STEPS.length - 1 ? i : i + 1)), []);
-  const prev = useCallback(() => setStepIndex((i) => (i <= 0 ? i : i - 1)), []);
+  const go = useCallback((delta: number) => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    setLeaving(true);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => {
+      setStepIndex((i) => Math.min(Math.max(i + delta, 0), STEPS.length - 1));
+    }, reduce ? 0 : 170);
+  }, []);
+  const next = useCallback(() => go(1), [go]);
+  const prev = useCallback(() => go(-1), [go]);
 
   const finishToQa = useCallback(() => {
     reportBadgeEvent("tour"); // RL-U12: Kompass — nur beim echten Durchlauf
@@ -315,9 +411,20 @@ export function GuidedTour() {
     let cancelled = false;
     setReady(false);
     setCardPos(null); // keine Position vom vorigen Schritt weiterverwenden
+    leavingRef.current = false;
+    setLeaving(false);
+    const navigiert = !!step.route && !routeMatches(step.route);
+    // Beim Seitenwechsel schließt sich das Spotlight-Loch erst (die Seite
+    // darunter wechselt gerade) und öffnet sich am neuen Ziel. Auf derselben
+    // Seite gleitet es direkt von Anker zu Anker.
+    if (navigiert) { setRect(null); setNavLight(null); }
 
     (async () => {
-      if (step.route && !routeMatches(step.route)) router.push(step.route);
+      if (navigiert) {
+        router.push(step.route!);
+        await settle(step.route!, () => cancelled);
+        if (cancelled) return;
+      }
       if (!step.anchor) {
         if (!cancelled) { setRect(null); setReady(true); }
         return;
@@ -349,6 +456,20 @@ export function GuidedTour() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex, active]);
 
+  // Ins eigene Viertel: erst steht die ganze Stadt da, dann fliegt die Karte
+  // hinein (`stadt-karte.tsx` fliegt bei jedem Wechsel des Viertels). Direkt
+  // mit `?ort=` geöffnet stünde sie schon gezoomt da, und man sähe nicht, WO
+  // das Viertel liegt.
+  useEffect(() => {
+    if (!active || !ready || !step?.zoomZu) return;
+    const ziel = step.zoomZu;
+    const t = setTimeout(() => {
+      if (!routeMatches(ziel)) router.replace(ziel, { scroll: false });
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, ready, stepIndex, step?.zoomZu]);
+
   // Spotlight folgt bei Scroll/Resize.
   useEffect(() => {
     if (!active || !ready || !step?.anchor) return;
@@ -363,6 +484,32 @@ export function GuidedTour() {
       window.removeEventListener("resize", update);
     };
   }, [active, ready, step]);
+
+  // Wohin die Tour gewechselt ist, steht in der Navigation: Der Menüpunkt der
+  // Seite liegt als Kopie über der Abdunkelung und leuchtet beim Wechsel
+  // einmal auf (Tim 08.11.2026: „dass man weiß, wo man das später
+  // wiederfindet"). Eine Kopie, weil das Original im Stapel der Seitenleiste
+  // steckt und nicht über die Tour gehoben werden kann.
+  useEffect(() => {
+    if (!active || !ready || !step) return;
+    // Zeigt der Schritt selbst auf einen Menüpunkt, steht der schon im Licht.
+    if (step.anchor?.startsWith("nav-")) { setNavLight(null); return; }
+    const el = Array.from(document.querySelectorAll<HTMLElement>('nav [aria-current="page"]'))
+      .find((e) => e.offsetParent !== null);
+    if (!el) { setNavLight(null); return; }
+    const r = el.getBoundingClientRect();
+    const kopie = el.cloneNode(true) as HTMLElement;
+    kopie.removeAttribute("id");
+    kopie.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    const key = el.getAttribute("href") ?? el.textContent ?? "";
+    setNavLight({
+      top: r.top, left: r.left, width: r.width, height: r.height,
+      radius: getComputedStyle(el).borderRadius, html: kopie.outerHTML,
+      fresh: key !== lastNavKey.current,
+    });
+    lastNavKey.current = key;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, ready, stepIndex]);
 
   // Karte positionieren: unterm Ziel, sonst darüber; horizontal geklemmt.
   // Der ankerlose Fall (Finale) wird rein per CSS zentriert — kein Messen nötig.
@@ -401,23 +548,26 @@ export function GuidedTour() {
 
   return (
     <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label={`Tour: ${step.title}`}>
-      {/* Abdunkelung — mit Spotlight-Loch, solange es ein Ziel gibt. */}
-      {rect ? (
+      {/* Abdunkelung mit Spotlight-Loch. EIN Element für alle Schritte: Ohne
+          Ziel schrumpft das Loch auf die Mitte, statt dass ein zweites Element
+          hart einspringt — so blendet die Tour zwischen Seiten über, statt zu
+          schneiden. `blick` (die Seite ist der Inhalt) dunkelt nur leicht ab. */}
+      <div
+        className="pointer-events-none fixed rounded-xl transition-[top,left,width,height,box-shadow] duration-500 ease-in-out-strong motion-reduce:transition-none"
+        style={{
+          ...(rect ?? { top: window.innerHeight / 2, left: window.innerWidth / 2, width: 0, height: 0 }),
+          boxShadow: `0 0 0 9999px hsl(213 60% 5% / ${!rect && step.blick ? 0.18 : 0.62})`,
+        }}
+        aria-hidden
+      />
+
+      {navLight && (
         <div
-          // Der Spotlight wandert zwischen Zielen (Onboarding, selten) — Bewegung
-          // auf dem Screen bekommt die starke in-out-Kurve; Properties explizit.
-          className="pointer-events-none fixed rounded-xl transition-[top,left,width,height] duration-300 ease-in-out-strong"
-          style={{
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            boxShadow: "0 0 0 9999px hsl(213 60% 5% / 0.62)",
-          }}
           aria-hidden
+          className={cn("pointer-events-none fixed overflow-hidden bg-card", navLight.fresh ? "tour-nav-glow" : "tour-nav-ring")}
+          style={{ top: navLight.top, left: navLight.left, width: navLight.width, height: navLight.height, borderRadius: navLight.radius }}
+          dangerouslySetInnerHTML={{ __html: navLight.html }}
         />
-      ) : (
-        <div className="fixed inset-0 bg-[hsl(213_60%_5%/0.62)]" aria-hidden />
       )}
 
       <div
@@ -425,7 +575,16 @@ export function GuidedTour() {
         tabIndex={-1}
         // Ankerlos (Finale): über ein Grid zentriert — bewusst ohne Transform,
         // damit kein Compositing-Versatz entsteht. Mit Anker: gemessene Position.
-        className={rect ? "fixed w-[min(92vw,360px)] outline-none" : "fixed inset-0 grid place-items-center p-4 outline-none"}
+        // `blick`: unten, damit die Mitte der Seite frei bleibt.
+        className={cn(
+          rect ? "fixed w-[min(92vw,360px)] outline-none"
+            : step.blick ? "fixed inset-x-0 bottom-0 grid place-items-center p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] outline-none"
+              : "fixed inset-0 grid place-items-center p-4 outline-none",
+          // Aus- und Einblenden statt Springen: unsichtbar, solange der Schritt
+          // noch lädt oder die Karte gerade geht.
+          "transition-opacity duration-200 ease-out motion-reduce:transition-none",
+          ready && !leaving ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
         style={rect ? (cardPos ? { top: cardPos.top, left: cardPos.left } : { visibility: "hidden", top: 0, left: 0 }) : undefined}
       >
         <div className={rect ? "flex items-end gap-2" : "flex w-[min(92vw,360px)] items-end gap-2"}>

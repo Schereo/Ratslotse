@@ -3549,6 +3549,17 @@ def test_badges_from_setup_are_earned_but_not_celebrated(client):
     assert [n["id"] for n in client.get("/api/badges").json()["newly_earned"]] == ["erste-frage"]
 
 
+def test_analyst_needs_own_visit_not_the_tour_mark(client):
+    # Die Tour hakt den Kurs-Schritt „analyse" ab, wenn sie auf die Analyse
+    # führt. Das Abzeichen verdient erst der eigene Besuch (Ereignis aus dem
+    # Web, das während der Tour schweigt) — sonst feierte es jede Tour mit.
+    _register(client)
+    client.post("/api/onboarding", json={"steps": ["analyse"]})
+    assert {b["id"]: b["earned"] for b in client.get("/api/badges").json()["badges"]}["analyst"] is False
+    client.post("/api/badges/event", json={"type": "analyse"})
+    assert [n["id"] for n in client.get("/api/badges").json()["newly_earned"]] == ["analyst"]
+
+
 def test_setup_step_without_done_silences_nothing(client):
     # Nur der Abschluss verbucht still — ein Zwischenschritt nicht. Während
     # der Einrichtung schweigt ohnehin die Oberfläche (`BadgeCelebrator`).

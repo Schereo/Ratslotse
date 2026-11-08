@@ -513,13 +513,10 @@ function kurzerGegenstand(roh: string): string {
   // dem Doppelpunkt sagt nichts über die Sache, der Teil dahinter alles.
   const teile = t.match(/^(.{3,70}?):\s+(.{8,})$/);
   if (teile && /\b(GmbH|AG|KG|mbH|e\.\s?V\.|Stiftung|Verband|Betrieb)\b/.test(teile[1])) t = teile[2];
-  if (t.length > 58) {
-    const schnitt = t.slice(0, 58);
-    const luecke = schnitt.lastIndexOf(" ");
-    // Nur an einer Wortgrenze kürzen — sonst lieber gar keinen Vorschlag.
-    if (luecke < 20) return "";
-    t = `${schnitt.slice(0, luecke).replace(/[,;:.\-–—]+$/, "")} …`;
-  }
+  // Zu lang heißt: kein Vorschlag — nicht gekürzt. Ein „…" schnitt genau den
+  // Teil ab, um den es ging („Satzung zur Änderung der Satzung … über …",
+  // Tim 08.11.2026); dieselbe Grenze wie `qa.vorschlags_gegenstand`.
+  if (t.length > 60) return "";
   return t.length >= 8 ? t : "";
 }
 
@@ -2012,8 +2009,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                          0,5 s auf den Moment des Austauschs verschoben. */
                       className="flex items-center gap-2.5 rounded-[13px] border border-primary/25 bg-primary/[0.04] px-3 py-2 text-[13.5px]">
                       <div className="flex min-h-[3em] min-w-0 flex-1 flex-col justify-center gap-1.5">
-                        <div className="h-2.5 w-full animate-pulse rounded-full bg-muted-foreground/15" />
-                        <div className="h-2.5 w-2/3 animate-pulse rounded-full bg-muted-foreground/15" />
+                        <div className="h-2.5 w-full animate-pulse rounded-full bg-skeleton" />
+                        <div className="h-2.5 w-2/3 animate-pulse rounded-full bg-skeleton" />
                       </div>
                     </div>
                   ))
@@ -2321,12 +2318,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             </>
           ) : loading || deepAktiv ? (
             <div aria-hidden className="space-y-3 pt-1">
-              <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-24 animate-pulse rounded bg-skeleton" />
               {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-8 animate-pulse rounded-full bg-muted"
+                <div key={i} className="h-8 animate-pulse rounded-full bg-skeleton"
                   style={{ animationDelay: `${i * 120}ms` }} />
               ))}
-              <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-32 animate-pulse rounded bg-skeleton" />
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center">

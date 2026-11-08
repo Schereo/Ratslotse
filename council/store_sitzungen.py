@@ -1974,7 +1974,7 @@ class SitzungenMixin(StoreBasis):
         Zeile ist untruncated genauso wertlos. Die Auswahl muss stimmen.
         """
         rows = self._conn.execute(
-            """SELECT cs.committee, cs.session_date, COUNT(*) AS n,
+            """SELECT cs.ksinr, cs.committee, cs.session_date, COUNT(*) AS n,
                       (SELECT d2.title FROM council_decisions d2
                        WHERE d2.ksinr = cs.ksinr AND d2.kind = 'decision'
                          AND d2.title IS NOT NULL
@@ -1986,4 +1986,13 @@ class SitzungenMixin(StoreBasis):
                ORDER BY cs.session_date DESC LIMIT ?""",
             (max(1, int(mindest_tops)), int(limit)),
         ).fetchall()
-        return [dict(r) for r in rows]
+        aus = [dict(r) for r in rows]
+        # Die nächstwichtigen Titel dazu: Ist der wichtigste zu lang für einen
+        # Vorschlag, nimmt der Vorschlag den nächsten (qa.erster_gegenstand).
+        for z in aus:
+            z["top_titel_kandidaten"] = [r[0] for r in self._conn.execute(
+                """SELECT title FROM council_decisions
+                   WHERE ksinr = ? AND kind = 'decision' AND title IS NOT NULL
+                   ORDER BY COALESCE(importance, 0) DESC, id LIMIT 6""",
+                (z.pop("ksinr"),)).fetchall()]
+        return aus
