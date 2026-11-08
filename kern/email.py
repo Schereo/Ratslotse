@@ -32,6 +32,18 @@ def _sender() -> str:
     return os.environ.get("EMAIL_FROM", DEFAULT_FROM)
 
 
+def _antwort_an() -> str | None:
+    """Wohin eine Antwort geht, wenn der Aufruf keine eigene nennt.
+
+    Der Absender ist ``noreply@…`` — eine Antwort darauf kam bei niemandem an,
+    und Antworten auf die Release-Mail sind genau die Rückmeldungen, um die sie
+    bittet (Tim 08.11.2026). Die Adresse steht in der ``.env``
+    (``EMAIL_REPLY_TO``), nicht im öffentlichen Repo. Wer ``reply_to`` selbst
+    setzt (etwa das Feedback-Formular mit der Adresse der Person), gewinnt.
+    """
+    return os.environ.get("EMAIL_REPLY_TO") or None
+
+
 def send_email(
     to: str | list[str],
     subject: str,
@@ -67,6 +79,7 @@ def send_email(
     }
     if text:
         payload["text"] = text
+    reply_to = reply_to or _antwort_an()
     if reply_to:
         payload["reply_to"] = reply_to
 
