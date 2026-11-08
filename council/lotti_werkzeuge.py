@@ -593,6 +593,31 @@ def _sitzung_zeile(z: tuple, tag_heute: str) -> str:
     return "- " + " · ".join(t for t in teile if t)
 
 
+#: Wörter, die in einem Gremiumsnamen nichts unterscheiden.
+_GREMIUM_FUELLWOERTER = {"für", "fuer", "und", "der", "die", "das", "des", "den"}
+
+
+def _gremien_zum_kurznamen(store, gremium: str) -> list[str]:
+    """Die amtlichen Gremiennamen zu einem Kurznamen wie „Finanzausschuss“.
+
+    Das Modell fragt so, wie man spricht; die Stadt nennt das Gremium seit
+    der Wahlperiode 2026 „Ausschuss für Finanzen und Beteiligungen“. Das
+    Namensstück „Finanzausschuss“ steckt darin nicht, und Lotti antwortete am
+    08.11.2026 auf Prod „keine Sitzung im Kalender“, obwohl am 23.11. eine
+    stand. Gesucht wird deshalb über die Wortstämme ohne „Ausschuss“: Jeder
+    Stamm (fünf Zeichen) muss im amtlichen Namen vorkommen.
+    """
+    rest = re.sub(r"(?i)ausschuss", " ", gremium)
+    staemme = [w.lower()[:5] for w in re.findall(r"\w{3,}", rest)
+               if w.lower() not in _GREMIUM_FUELLWOERTER]
+    if not staemme:
+        return []
+    namen = {z[0] for z in store._conn.execute(  # noqa: SLF001
+        "SELECT DISTINCT committee FROM council_sessions "
+        "UNION SELECT DISTINCT committee FROM council_scheduled_sessions") if z[0]}
+    return sorted(n for n in namen if all(s in n.lower() for s in staemme))
+
+
 def sitzungen_daten(store, gremium: str, von: str = "", bis: str = "",
                     tag: date | None = None) -> dict:
     """Die Sitzungen eines Gremiums als Daten — für Lotti (``sitzungen``) und
@@ -619,6 +644,18 @@ def sitzungen_daten(store, gremium: str, von: str = "", bis: str = "",
     naechste = store._conn.execute(  # noqa: SLF001
         _SITZUNGEN_SQL + " LIMIT 1",
         (muster, tag_heute, "9999-12-31", muster, tag_heute, "9999-12-31")).fetchone()
+    # Auch bei einem exakten alten Namen: „Sozialausschuss“ gibt es noch aus
+    # der vorigen Wahlperiode, tagen wird aber der Nachfolger.
+    if not zeilen and not naechste:
+        for name in _gremien_zum_kurznamen(store, gremium):
+            zeilen += store._conn.execute(  # noqa: SLF001
+                _SITZUNGEN_SQL, (name, von, bis, name, von, bis)).fetchall()
+            kandidat = store._conn.execute(  # noqa: SLF001
+                _SITZUNGEN_SQL + " LIMIT 1",
+                (name, tag_heute, "9999-12-31", name, tag_heute, "9999-12-31")).fetchone()
+            if kandidat and (not naechste or kandidat[2] < naechste[2]):
+                naechste = kandidat
+        zeilen.sort(key=lambda z: z[2])
     return {"heute": tag_heute, "von": von, "bis": bis,
             "naechste": tuple(naechste) if naechste else None,
             "zeilen": [tuple(z) for z in zeilen]}
