@@ -158,9 +158,29 @@ async function headers() {
 //
 // Die Konfiguration als FUNKTION zu exportieren, löst das ohne Disziplin:
 // Next reicht die Phase herein, und der Dev-Server bekommt `.next-dev`.
-// `next build` und `next start` bleiben bei `.next` — Deploy, Dockerfile und
-// der rsync-Ausschluss in deploy.yml sind unberührt.
+// `next start` bleibt bei `.next`.
 const DEV_PHASE = "phase-development-server";
+
+// DER DEPLOY BAUT NEBEN DEM LAUFENDEN SERVER.
+//
+// Dasselbe Bild auf den Servern, nur dass dort der alte `next start` der
+// Leidtragende war: `next build` leert `.next` als Erstes und schreibt neue
+// Chunk- und CSS-Namen hinein, während der alte Server weiter HTML ausliefert,
+// das auf die alten zeigt. Bis zum Neustart — gemessen auf dev und Prod rund
+// eine Minute je Deploy — kam jede Seite ohne Stylesheet, und das App-Icon
+// stand in voller Größe (1024 px) darauf (Tims Befund 08.11.2026).
+//
+// Deshalb setzen die Deploys `NEXT_DIST_DIR=.next-build`, prüfen den fertigen
+// Build dort und tauschen ihn erst unmittelbar vor `systemctl restart` gegen
+// `.next` aus. Nur in der Build-Phase: `next start` liest immer `.next`, auch
+// wenn die Variable versehentlich in seiner Umgebung stünde.
+const BUILD_PHASE = "phase-production-build";
+
+function distDir(phase) {
+  if (phase === DEV_PHASE) return ".next-dev";
+  if (phase === BUILD_PHASE && process.env.NEXT_DIST_DIR) return process.env.NEXT_DIST_DIR;
+  return null;
+}
 
 const nextConfig = {
   reactStrictMode: true,
@@ -185,7 +205,7 @@ const nextConfig = {
     : { rewrites, redirects, headers }),
 };
 
-export default (phase) => ({
-  ...nextConfig,
-  ...(phase === DEV_PHASE ? { distDir: ".next-dev" } : {}),
-});
+export default (phase) => {
+  const dir = distDir(phase);
+  return { ...nextConfig, ...(dir ? { distDir: dir } : {}) };
+};
