@@ -156,7 +156,8 @@ NOTIFY_LABELS: dict[str, tuple[str, str]] = {
     N6_WOCHE: ("Wochenüberblick",
                "Sonntag 18 Uhr, alles in einer Nachricht"),
     N7_NEWS: ("Neu bei Ratslotse",
-              "Was eine neue Version bringt — ein paar Mal im Jahr"),
+              "Was eine neue Version bringt — ein paar Mal im Jahr, per Mail auch dann, "
+              "wenn die übrigen Benachrichtigungen aus sind"),
 }
 
 
@@ -170,8 +171,24 @@ NOTIFY_PARENT: dict[str, str] = {
 
 
 #: Zustellweg „gar nicht". Wer das wählt, hört von Ratslotse nichts mehr —
-#: keine Meldung, kein Bündel, keine Erinnerung.
+#: keine Meldung, kein Bündel, keine Erinnerung. Ausnahme: die Release-
+#: Ankündigung (``IMMER_PER_MAIL``).
 KANAL_AUS = "off"
+
+#: Anlässe, die per Mail kommen, egal welchen Zustellweg das Konto gewählt hat
+#: — abschaltbar nur einzeln (der Schalter bleibt in den Einstellungen dafür
+#: bedienbar). Tims Entscheidung 08.11.2026: Die Ankündigung einer neuen
+#: Version kommt ein paar Mal im Jahr, und genau die, die sonst nichts
+#: bekommen, sollen von ihr hören. Ihre Fußzeile sagt das und verlinkt den
+#: Schalter (``kern.digest_email``).
+IMMER_PER_MAIL = (N7_NEWS,)
+
+
+def kanal_fuer(kanal: str | None, art: str | None) -> str | None:
+    """Der Zustellweg für diesen Anlass: bei ``IMMER_PER_MAIL`` mit Mail."""
+    if art not in IMMER_PER_MAIL:
+        return kanal
+    return {KANAL_AUS: "email", "push": "both", None: "email", "": "email"}.get(kanal, kanal)
 
 
 def zustellung_aus(store, owner_id: int) -> bool:
@@ -205,7 +222,7 @@ def gewuenscht(store, owner_id: int, art: str) -> bool:
     zählten gegen die Tagesgrenze. Wer sie später wieder anschaltet, bekäme
     dann eine Nachlieferung aus der Zeit, in der er ausdrücklich nichts wollte.
     """
-    if zustellung_aus(store, owner_id):
+    if zustellung_aus(store, owner_id) and art not in IMMER_PER_MAIL:
         return False
     prefs = store.get_notify_prefs(owner_id)
     vorgaben = vorgaben_fuer(store, owner_id)
@@ -373,11 +390,11 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
     # werden verworfen statt dreimal vergeblich verschickt — sonst lägen sie
     # noch da, wenn jemand kurz darauf wieder einschaltet.
     if owner.get("delivery_channel") == KANAL_AUS:
-        weg = store.drop_pending_notifications(owner_id)
+        weg = store.drop_pending_notifications(owner_id, ausser=IMMER_PER_MAIL)
         if weg:
             logger.info("owner %s hat abgeschaltet — %d wartende Meldung(en) verworfen",
                         owner_id, weg)
-        return 0
+        # Was bleibt, ist nur noch Post aus IMMER_PER_MAIL — die geht weiter.
     # Reservieren statt bloß lesen: Ein zweiter, gleichzeitiger Lauf sieht die
     # Posten dann nicht mehr und verschickt sie nicht ein zweites Mal.
     token = uuid.uuid4().hex
@@ -404,7 +421,8 @@ def _zustellen_reserviert(store, owner: dict, owner_id: int, offen: list[dict],
         **nichts** rausgegangen. Früher wurde trotzdem ``sent_at`` gesetzt — ein
         Resend-Ausfall ließ Meldungen also lautlos für immer verschwinden.
         """
-        channels = deliver_message(owner, html, email_subject=title, push_url=url,
+        empfaenger = {**owner, "delivery_channel": kanal_fuer(owner.get("delivery_channel"), anlass)}
+        channels = deliver_message(empfaenger, html, email_subject=title, push_url=url,
                                   push_text=push_text, anlass=anlass, store=store)
         if not channels:
             store.bump_notification_attempts(posten_ids)

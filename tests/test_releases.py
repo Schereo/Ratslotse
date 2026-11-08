@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 import sys
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -24,7 +24,7 @@ import pytest
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
-from kern import news, notify, releases  # noqa: E402
+from kern import digest_email, news, notify, releases  # noqa: E402
 from kern.store import Store  # noqa: E402
 
 
@@ -604,11 +604,36 @@ def test_ein_abgeschalteter_anlass_gilt_als_erledigt(store):
     assert news.recipients(store, RELEASE) == []
 
 
-def test_wer_nichts_hoeren_will_bekommt_auch_das_nicht(store):
+def test_die_ankuendigung_kommt_auch_bei_ausgeschalteter_zustellung_per_mail(store, monkeypatch):
+    """Tims Entscheidung 08.11.2026: ein paar Mal im Jahr, an alle — auch an
+    Konten mit Zustellung „aus“ oder nur Push. Abbestellen geht einzeln
+    (vorheriger Test), die Fußzeile sagt es und verlinkt den Schalter."""
+    raus: list[tuple[str | None, str]] = []
+    monkeypatch.setattr("kern.delivery.deliver_message",
+                        lambda o, html, **_: (raus.append((o.get("delivery_channel"), html)), ["email"])[1])
+    aus = _konto(store)
+    store.set_delivery_channel(aus, notify.KANAL_AUS)
+    nur_push = _konto(store, "push@example.org")
+    store.set_delivery_channel(nur_push, "push")
+    assert news.announce(store, RELEASE)["queued"] == 2
+    notify.zustellen(store, jetzt=datetime(2026, 11, 9, 10, 0, tzinfo=UTC))
+    assert sorted(k for k, _ in raus) == ["both", "email"]
+
+
+def test_die_fusszeile_der_ankuendigung_fuehrt_zum_schalter():
+    html = digest_email.render_html_email("Neu", "<p>x</p>", anlass=notify.N7_NEWS)
+    assert "/account?zeig=n7_news" in html
+    assert "auch dann, wenn deine übrigen Benachrichtigungen aus sind" in html
+    # Andere Anlässe behalten ihre Fußzeile.
+    assert "/account?zeig=n7_news" not in digest_email.render_html_email(
+        "Tagesordnung", "<p>x</p>", anlass=notify.N1_TAGESORDNUNG)
+
+
+def test_andere_anlaesse_bleiben_bei_ausgeschalteter_zustellung_still(store):
     uid = _konto(store)
     store.set_delivery_channel(uid, notify.KANAL_AUS)
-    assert news.announce(store, RELEASE)["queued"] == 0
-    assert store.due_notifications(uid, "2999-01-01") == []
+    assert not notify.gewuenscht(store, uid, notify.N1_TAGESORDNUNG)
+    assert notify.gewuenscht(store, uid, notify.N7_NEWS)
 
 
 def test_ein_konto_juenger_als_das_release_wird_nicht_angeschrieben(store):

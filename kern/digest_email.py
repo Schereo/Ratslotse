@@ -327,7 +327,7 @@ def render_html_email(
         f"<div style='margin-top:{abstand}px;white-space:pre-wrap;font-size:15px;line-height:1.55'>"
         f"{body_html_or_text}</div>"
         "</div></div>"
-        f"{_fuss(fusszeile)}"
+        f"{_fuss(fusszeile if fusszeile is not None or anlass != 'n7_news' else _news_hinweis())}"
         "</div></div>"
     ), anlass, APP_BASE_URL)
 
@@ -349,6 +349,21 @@ def _fuss(fusszeile: str | None) -> str:
         "font-size:14px;font-weight:600'>Zu Ratslotse &rarr;</a>"
         f"{note}"
         "</div>"
+    )
+
+
+def _news_hinweis() -> str:
+    """Fußzeile der Release-Ankündigung. Sie kommt per Mail auch an Konten,
+    die Benachrichtigungen ausgeschaltet haben (``kern.notify.IMMER_PER_MAIL``)
+    — deshalb sagt sie das und führt direkt zum einen Schalter, der sie
+    abbestellt (``/account?zeig=n7_news``)."""
+    return (
+        "Du erhältst diese Mail, weil es bei Ratslotse etwas Neues gibt. Das kommt nur ein "
+        "paar Mal im Jahr, deshalb auch dann, wenn deine übrigen Benachrichtigungen aus sind. "
+        f"Wenn du auch diese seltenen Mails nicht möchtest, schalte "
+        f"<a href='{APP_BASE_URL}/account?zeig=n7_news' "
+        f"style='color:{_LEISE};text-decoration:underline'>„Neu bei Ratslotse“</a> "
+        "in deinen Einstellungen ab."
     )
 
 
