@@ -9428,6 +9428,57 @@
               "null"
             ]
           },
+          "latest_update": {
+            "description": "Der jüngste Beschluss eines Vorhabens — „was war zuletzt im Rat?\". Am\nselben Sitzungstag geht ein Beschluss einer Kenntnisnahme vor.\n``summary`` ist der Kernsatz des Beschlusses (``council_decisions.summary``)\nund fehlt nur, solange das Protokoll noch nicht ausgewertet ist; dann\nbleibt der Titel.",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "decision_id": {
+                "title": "Decision Id",
+                "type": "integer"
+              },
+              "outcome": {
+                "title": "Outcome",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "summary": {
+                "title": "Summary",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "decision_id",
+              "date",
+              "committee",
+              "title",
+              "outcome",
+              "summary"
+            ],
+            "title": "DistrictProjectUpdate",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "locations": {
             "items": {
               "$ref": "#/components/schemas/DistrictProjectLocation"
@@ -9625,6 +9676,54 @@
           "hidden"
         ],
         "title": "DistrictProjectReportOut",
+        "type": "object"
+      },
+      "DistrictProjectUpdate": {
+        "description": "Der jüngste Beschluss eines Vorhabens — „was war zuletzt im Rat?\". Am\nselben Sitzungstag geht ein Beschluss einer Kenntnisnahme vor.\n``summary`` ist der Kernsatz des Beschlusses (``council_decisions.summary``)\nund fehlt nur, solange das Protokoll noch nicht ausgewertet ist; dann\nbleibt der Titel.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "date",
+          "committee",
+          "title",
+          "outcome",
+          "summary"
+        ],
+        "title": "DistrictProjectUpdate",
         "type": "object"
       },
       "DistrictProjects": {

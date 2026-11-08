@@ -146,6 +146,38 @@ test.describe("Ein frisches Konto", () => {
     await expect.poll(() => themen.length).toBe(0);
   });
 
+  test("die Stadtteile nennen keine Grenze, bis man an sie stößt", async ({ page }) => {
+    // Tims Befund 08.11.2026: „2 von 3 Stadtteilen · Weiter" las sich wie die
+    // Aufgabe, drei zu wählen. Die Grenze steht erst da, wenn jemand einen
+    // vierten antippt. Die Liste ist gesetzt — in der CI fehlen Beschlüsse,
+    // und ohne sie ist kein Stadtteil wählbar.
+    await page.route("**/api/council/districts**", (r) => r.fulfill({ json: { districts: [
+      { place_id: "donnerschwee", name: "Donnerschwee", kind: "local_area", count: 12 },
+      { place_id: "eversten", name: "Eversten", kind: "local_area", count: 9 },
+      { place_id: "haarentor", name: "Haarentor", kind: "local_area", count: 7 },
+      { place_id: "nadorst", name: "Nadorst", kind: "local_area", count: 5 },
+    ] } }));
+    await registrieren(page);
+    await bisZuDenGremien(page);
+    await page.getByRole("button", { name: "Überspringen" }).first().click();   // Gremien
+    await expect(page.getByText(/Worüber willst du/)).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Überspringen" }).first().click();   // Themen
+    await expect(page.getByText("Welche Stadtteile interessieren dich?")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Bis zu drei/)).toHaveCount(0);
+
+    const pille = (name: string) => page.getByRole("button", { name, exact: true });
+    await pille("Donnerschwee").click();
+    await pille("Eversten").click();
+    await expect(page.getByRole("button", { name: "2 Stadtteile · Weiter" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/von 3/)).toHaveCount(0);
+
+    await pille("Haarentor").click();
+    await expect(page.getByRole("button", { name: "3 Stadtteile · Weiter" })).toBeVisible({ timeout: 15_000 });
+    await pille("Nadorst").click();
+    await expect(page.getByText(/Für den Anfang reichen drei Stadtteile/)).toBeVisible();
+    await expect(pille("Nadorst")).toHaveAttribute("aria-pressed", "false");
+  });
+
   test("der Server kennt den Stand — nicht nur der Browser", async ({ page }) => {
     // Wer die App mittendrin schließt, macht dort weiter. Das kann nur
     // funktionieren, wenn der Schritt auf dem Server steht.
