@@ -2863,6 +2863,10 @@ def decision_detail(
         "template_journey": [],
         "similar": store.get_similar(decision_id, limit=5),
         "entities": store.entities_for_decision(decision_id),
+        # Nachbar-TOPs derselben Sitzung — vorher lud das Web dafür die
+        # ganze Sitzung nach (eine Stufe später, 69 KB statt einer Zeile).
+        "neighbors": (store.decision_neighbors(d["ksinr"], decision_id)
+                      if d.get("kind") == "decision" else None),
     }
     # Läuft zu diesem Bauleitplan GERADE eine Beteiligung? Dann gehört der
     # Hinweis samt Frist an den Beschluss — Stellungnahme ist eine der wenigen
@@ -4062,9 +4066,24 @@ def _personen_lexikon(store: CouncilStore) -> list[dict]:
 
 @router.get("/people-directory")
 def personen_lexikon(response: Response,
-                     store: CouncilStore = Depends(get_council_store)) -> PeopleDirectory:
+                     store: CouncilStore = Depends(get_council_store),
+                     administration: bool = Query(
+                         False, description="Nur Verwaltungsleute mit erkanntem Amt "
+                         "(art=city mit role) — die Handvoll Einträge, die das "
+                         "Personenverzeichnis zeigt, statt des ganzen Lexikons.")) -> PeopleDirectory:
     response.headers["Cache-Control"] = "public, max-age=21600"
-    return {"people": _personen_lexikon(store)}
+    return _people_directory_view({"people": _personen_lexikon(store)}, administration)
+
+
+def _people_directory_view(answer: PeopleDirectory, administration: bool) -> PeopleDirectory:
+    """Die fertige Lexikon-Antwort, auf Wunsch auf die Verwaltung mit Amt
+    eingeschränkt. Das Personenverzeichnis brauchte von 263 KB genau diese
+    Einträge (dieselbe Bedingung stand vorher im Browser). Gefiltert wird in
+    eine NEUE Liste — die zwischengespeicherte bleibt unangetastet."""
+    if not administration:
+        return answer
+    return {"people": [p for p in answer["people"] or []
+                       if p.get("art") == "city" and p.get("role")]}
 
 
 # ---- Link-Vorschau (Design 29a, P1) ----

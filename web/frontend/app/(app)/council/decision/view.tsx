@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
-import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
+import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { OutcomeDot, OUTCOME_META, voteLabel, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref, sitzungHref } from "@/lib/routes";
@@ -614,16 +614,6 @@ function DecisionDetailInner() {
     // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
     // daneben sagte denselben Satz ein zweites Mal.
     { quiet: true });
-  // Design 28a/S2: Die Sitzung dazu — sie liefert die Nachbar-TOPs und das Ziel
-  // für „Zurück". Zweitrangig, deshalb erst nach dem Beschluss und ohne eigenen
-  // Ladezustand: fehlt sie, verhält sich die Seite wie bisher.
-  //
-  // Und deshalb auch `quiet`: „zweitrangig" muss der Hook wissen, sonst meldet
-  // er ein Ausbleiben, das die Seite gerade selbst wegsteckt.
-  const ksinr = data?.decision.ksinr;
-  const { data: session } = useFetch<SessionDetail>(
-    ksinr ? `/council/session/${ksinr}` : null, { quiet: true });
-
   // Für „Zuletzt angesehen" (Dashboard) und die Command-Palette merken.
   useEffect(() => {
     const dec = data?.decision;
@@ -647,14 +637,13 @@ function DecisionDetailInner() {
     byParty[p] = (byParty[p] ?? 0) + 1;
   }
 
-  /* Design 28a/S2: Nachbar-TOPs derselben Sitzung. Sortiert nach der Position
-     im Protokoll (nicht nach item_number — „4.10" käme sonst vor „4.2"). */
-  const siblings = (session?.decisions ?? [])
-    .filter((x) => x.kind === "decision")
-    .sort((a, b) => (a.item_number ?? "").localeCompare(b.item_number ?? "", "de", { numeric: true }));
-  const pos = siblings.findIndex((x) => x.id === d.id);
-  const prev = pos > 0 ? siblings[pos - 1] : null;
-  const next = pos >= 0 && pos < siblings.length - 1 ? siblings[pos + 1] : null;
+  /* Design 28a/S2: Nachbar-TOPs derselben Sitzung, nach TOP-Nummer („4.2" vor
+     „4.10"). Sie kommen mit dem Beschluss (`neighbors`); bis 11/2026 lud die
+     Seite dafür die ganze Sitzung nach, und die Leiste rutschte eine
+     Antwort später ins Bild. */
+  const neighbors = data.neighbors ?? null;
+  const prev = neighbors?.prev ?? null;
+  const next = neighbors?.next ?? null;
   /* „Zurück" führte per router.back() aus der App heraus, wenn die Seite aus
      Push, geteiltem Link oder Kaltstart geöffnet wurde (leere History). Jetzt
      zeigt der Knopf sein Ziel und fällt auf die Sitzung zurück. Gäste sehen ihn
@@ -806,7 +795,7 @@ function DecisionDetailInner() {
 
       {/* Nachbar-TOPs: Wer eine Sitzung durchgeht, musste bisher für jeden TOP
           zurück und neu suchen. */}
-      {pos >= 0 && siblings.length > 1 && (
+      {neighbors && neighbors.total > 1 && (
         <nav className="print-hidden mt-2 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2 py-1.5">
           {prev ? (
             <Link href={nachbarHref(prev.id)} title={prev.title ?? ""}
@@ -819,7 +808,7 @@ function DecisionDetailInner() {
               Tagesordnung hat mehr Punkte als Beschlüsse — „TOP 8 von 6" wäre
               das Ergebnis. Die TOP-Nummer selbst steht in der Statuszeile. */}
           <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
-            {pos + 1} von {siblings.length} Beschlüssen
+            {neighbors.position} von {neighbors.total} Beschlüssen
           </span>
           {next ? (
             <Link href={nachbarHref(next.id)} title={next.title ?? ""}
