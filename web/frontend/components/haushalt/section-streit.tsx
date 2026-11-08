@@ -282,8 +282,13 @@ export function StreitAbschnitt({ onBestand }: {
   // 450 KB, und die Seite zeigt einen. Gezählt wird über alle Jahrgänge
   // weiter — die Beiträge stehen in jeder Runde, nur ohne Text. Geteilt, damit
   // ein schon besuchter Jahrgang ohne Netz zurückkommt.
+  // Nur ein vierstelliges Jahr geht als `texts=` an den Server — eine kaputte
+  // Adresse (?year=99, ?year=2022.5) bekam sonst einen 422, und der Abschnitt
+  // blieb dauerhaft bei „Wird geladen …". So zeigt sie wie früher den jüngsten
+  // Jahrgang (Befund der Prüfung zu diesem PR).
+  const textsJahr = gewaehltesJahr !== null && /^\d{4}$/.test(String(gewaehltesJahr)) ? gewaehltesJahr : "latest";
   const { data: fetched, loading } = useFetch<StreitDaten>(
-    `/council/budget/debate?texts=${gewaehltesJahr ?? "latest"}`, { shared: true });
+    `/council/budget/debate?texts=${textsJahr}`, { shared: true });
   // Beim Jahrgangswechsel bleibt die vorige Antwort stehen, bis die neue da
   // ist: Sie trägt alles außer dem neuen Wortlaut. Ohne das fiele der ganze
   // Abschnitt kurz auf „Wird geladen …" zusammen, und die Seite spränge.
