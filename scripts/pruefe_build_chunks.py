@@ -39,6 +39,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 #: Alles, was eine Seite unter /_next/static/ verlangt — Skripte und Stylesheets.
 ASSET_REF = re.compile(r"/_next/static/(?:chunks/[^\"' >]+?\.js|css/[^\"' >]+?\.css)")
@@ -62,13 +63,26 @@ def _pages(next_dir: Path) -> list[tuple[Path, str]]:
     return out
 
 
+def _static_file(static: Path, ref: str) -> Path:
+    """Die Datei hinter einem ``/_next/static/…``-Verweis.
+
+    Der Verweis steht URL-kodiert in der HTML, die Datei heißt im Klartext:
+    ``…/liste/%5Bliste%5D/page-….js`` liegt unter ``…/liste/[liste]/``. Ohne
+    das Dekodieren meldete der Wächter am 08.11.2026 auf dev 21 Verweise als
+    fehlend, die alle da waren — jede dynamische Route mit vorgerenderten
+    Seiten (dort ``/kommunalwahl/liste/[liste]`` und ``/thema/[thema]``, die
+    nur der Dev-Build freischaltet) hätte den Deploy angehalten.
+    """
+    return static / unquote(ref.removeprefix("/_next/static/"))
+
+
 def missing_files(next_dir: Path) -> list[tuple[Path, str]]:
     """(Seite, fehlender Verweis) für jeden Verweis ohne Datei."""
     static = next_dir / "static"
     out: list[tuple[Path, str]] = []
     for page, text in _pages(next_dir):
         for ref in sorted(set(ASSET_REF.findall(text))):
-            if not (static / ref.removeprefix("/_next/static/")).is_file():
+            if not _static_file(static, ref).is_file():
                 out.append((page, ref))
     return out
 
@@ -104,7 +118,7 @@ def undefined_font_classes(next_dir: Path) -> list[tuple[Path, str]]:
         for ref in sorted(set(CSS_REF.findall(text))):
             if ref not in css_cache:
                 try:
-                    css_cache[ref] = (static / ref.removeprefix("/_next/static/")).read_text(
+                    css_cache[ref] = _static_file(static, ref).read_text(
                         encoding="utf-8", errors="replace")
                 except OSError:
                     css_cache[ref] = ""

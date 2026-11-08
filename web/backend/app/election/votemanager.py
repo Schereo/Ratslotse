@@ -13,7 +13,8 @@ Ein Einzelwahlvorschlag hat nur ``D<n>_4``. Davor: ``A`` Wahlberechtigte,
 Stimmen, und ``max-schnellmeldungen`` / ``anz-schnellmeldungen`` als
 Auszählungsstand des Gebiets. **Leer heißt „liegt noch nicht vor"**, nicht null.
 
-Der Abruf hält ein Ergebnis 60 s (so lange cacht auch der Votemanager).
+Der Abruf hält ein Ergebnis 60 s (so lange cacht auch der Votemanager) —
+ist das Ergebnis amtlich festgestellt, einen Tag (``TTL_SECONDS_SETTLED``).
 
 **Welche Wahl gemeint ist, steht nicht hier**, sondern in
 ``kommunalwahl/wahlen/`` (``elections.active()``): Basis-URL, Dateinamen und
@@ -84,6 +85,31 @@ def ttl_seconds(now: datetime | None = None) -> int:
     Viertelstundentakt."""
     now = now or datetime.now(UTC)
     return TTL_SECONDS if now >= elections.active().polls_close else TTL_SECONDS_BEFORE
+
+
+#: Ist das Ergebnis amtlich festgestellt, ändert sich an den Zahlen nichts
+#: mehr. Bis 11/2026 galt trotzdem für immer der Minutentakt: Wochen nach der
+#: Wahl holte jeder Aufruf nach einer Minute wieder drei CSVs, und der
+#: Wahlabend rechnete 1,1–1,3 s lang die Abstände neu — im einzigen
+#: uvicorn-Prozess, dessen übrige Anfragen in der Zeit fast stillstanden.
+#: Ein Abruf am Tag reicht, und auch der nur, solange der letzte gut war.
+TTL_SECONDS_SETTLED = 24 * 3600
+
+
+def settled() -> bool:
+    """Ist der Stand der aktiven Wahl amtlich festgestellt?
+
+    Die Regel steht in ``archive.result_status`` (der Vermerk, den
+    ``scripts/wahl_einfrieren.py --stand amtlich`` schreibt). Im Zweifel
+    nein — dann bleibt es beim Minutentakt, wie bisher."""
+    from . import archive  # archive liest Snapshot und parse von hier
+
+    try:
+        return archive.result_status(elections.active()) == "amtlich"
+    except Exception:
+        return False
+
+
 #: (verbinden, lesen). Drei Dateien nacheinander, jede Minute eine Runde: Ein
 #: langes Lese-Zeitlimit hielte den Request-Thread fest, während die Seite
 #: schon längst den alten Stand hätte zeigen können.
@@ -456,7 +482,10 @@ def fetch(force: bool = False) -> Snapshot:
     global _cache
     with _lock:
         now = time.monotonic()
-        if _cache and not force and now - _cache[0] < ttl_seconds():
+        takt = ttl_seconds()
+        if _cache and _cache[1].ok and settled():
+            takt = max(takt, TTL_SECONDS_SETTLED)
+        if _cache and not force and now - _cache[0] < takt:
             return _cache[1]
         base = base_url()
         failed: list[tuple[str, str]] = []

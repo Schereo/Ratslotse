@@ -14,7 +14,7 @@ import Link from "next/link";
 import { FrageChips } from "@/components/frage-chips";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Mascot } from "@/components/mascot";
 import { KICKER, Punkt, TON } from "@/components/wahlabend/bausteine";
 import { Halbkreis } from "@/components/wahlabend/halbkreis";
@@ -29,7 +29,7 @@ import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
 import { Verlauf } from "@/components/wahlabend/verlauf";
 import { useFrisch, useTween } from "@/lib/use-tween";
 import { useWahlabendZeit } from "@/components/wahlabend-hinweis";
-import { api, apiUrl } from "@/lib/api";
+import { api, apiUrl, istNichtGefunden } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 import { istAmtlich } from "@/lib/wahlen";
@@ -730,7 +730,17 @@ function BereichKarte({
   );
 }
 
-function Bereiche({ daten, liste, probe, counted, rueckblick }: { daten: Wahlabend; liste: string | null; probe: string | null; counted: string | null; rueckblick: string | null }) {
+function Bereiche({ daten, liste, probe, counted, rueckblick, kandidatenDa }: {
+  daten: Wahlabend;
+  liste: string | null;
+  probe: string | null;
+  counted: string | null;
+  rueckblick: string | null;
+  /** Trägt `daten` schon die Kandidaturen je Wahlbereich? Der erste Reiter
+   *  holt den Stand ohne sie; Karte und Rangfolge brauchen sie nicht, die
+   *  Karten der Wahlbereiche schon. */
+  kandidatenDa: boolean;
+}) {
   if (!liste) return null;
   const partei = daten.parties.find((p) => p.slug === liste);
   if (!partei) return null;
@@ -776,23 +786,27 @@ function Bereiche({ daten, liste, probe, counted, rueckblick }: { daten: Wahlabe
           stärksten ist, soll IV zuerst zeigen. Wahlbereiche, in denen sie
           nicht antritt, hängt der Server nicht an `areas` an; sie stehen
           hinten und behalten ihre Erklärung. */}
-      <div className="mt-3 grid gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
-        {sortiert.map((b) => {
-          const z = rangZeilen.get(b.number);
-          return (
-            <BereichKarte
-              key={b.number}
-              bereich={b}
-              slug={liste}
-              daten={daten}
-              probe={probe}
-              counted={counted}
-              rang={z?.rank ?? null}
-              zugriff={z?.took_last_seat ? "letzter Sitz" : z?.next_seat ? "nächster Sitz" : null}
-            />
-          );
-        })}
-      </div>
+      {kandidatenDa ? (
+        <div className="mt-3 grid gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
+          {sortiert.map((b) => {
+            const z = rangZeilen.get(b.number);
+            return (
+              <BereichKarte
+                key={b.number}
+                bereich={b}
+                slug={liste}
+                daten={daten}
+                probe={probe}
+                counted={counted}
+                rang={z?.rank ?? null}
+                zugriff={z?.took_last_seat ? "letzter Sitz" : z?.next_seat ? "nächster Sitz" : null}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-6 text-center text-[13px] text-muted-foreground">Kandidat*innen werden geladen …</p>
+      )}
     </section>
   );
 }
@@ -882,18 +896,45 @@ export function WahlabendView() {
   // ausgezählt ist.
   const gestartet = zeit.phase !== "vorher";
   const holen = gestartet && !rueckblick;
+  const ansicht = ansichtAus(params.get("ansicht"), params.get("liste"));
+  // Die Kandidaturen je Wahlbereich (gut 60 % der Antwort) lesen nur die
+  // Reiter „Wahlbereiche" und „Kandidat*innen" — der erste Reiter holt den
+  // Stand ohne sie (`area_candidates=false`). Wer wechselt, bekommt sie mit
+  // derselben Abfrage nach; bis dahin bleibt der Stand stehen.
+  const mitKandidaten = ansicht !== "ergebnis";
 
   const abfrage = useQuery({
-    queryKey: ["wahlabend", probe, counted, rueckblick],
-    queryFn: () => api.get<Wahlabend>(abfragePfad(probe, counted, rueckblick)),
-    enabled: schalterAn,
+    queryKey: ["wahlabend", probe, counted, rueckblick, mitKandidaten],
+    queryFn: () => api.get<Wahlabend>(abfragePfad(probe, counted, rueckblick, mitKandidaten)),
+    // Kein `enabled: schalterAn` mehr: Die Abfrage startet zusammen mit
+    // `/api/app-config` statt danach. Ist der Schalter aus, antwortet das
+    // Backend 404, und die Seite zeigt dasselbe wie vorher — der Zweig
+    // `!schalterAn` steht unten vor dem Fehlerzweig.
     // Ein Rückblick ändert sich nicht mehr — kein Minutentakt, kein
-    // Nachfragen beim Zurückschalten ins Fenster.
+    // Nachfragen beim Zurückschalten ins Fenster. Nach einem 404 auch nicht.
     refetchInterval: (abfrage) =>
-      holen && abfrage.state.data?.phase !== "complete" ? 60_000 : false,
+      holen && !istNichtGefunden(abfrage.state.error) && abfrage.state.data?.phase !== "complete" ? 60_000 : false,
     refetchOnWindowFocus: holen,
     staleTime: rueckblick ? Infinity : gestartet ? 30_000 : 15 * 60_000,
   });
+  // Beim Wechsel des Reiters (mit/ohne Kandidaturen) bleibt der Stand des
+  // anderen stehen, bis die eigene Antwort da ist — und auch, wenn sie
+  // scheitert: Es ist derselbe Abend, nur mit bzw. ohne Kandidaturen. Als
+  // `placeholderData` ging beides schief: Eine gescheiterte Antwort warf die
+  // Seite auf „Gerade keine Zahlen", und die Tafel nannte „Zuletzt abgefragt
+  // 01:00 Uhr" (`dataUpdatedAt` einer Abfrage ohne Antwort ist 0). Nicht beim
+  // Wechsel der Wahl oder der Probe: Dort wäre der alte Stand der einer
+  // anderen Rechnung — deshalb genau dieser eine Schlüssel.
+  const queryClient = useQueryClient();
+  const nebenan =
+    abfrage.data === undefined
+      ? queryClient.getQueryState<Wahlabend>(["wahlabend", probe, counted, rueckblick, !mitKandidaten])
+      : undefined;
+  const daten = abfrage.data ?? nebenan?.data;
+  const aktualisiert = abfrage.data !== undefined ? abfrage.dataUpdatedAt : (nebenan?.dataUpdatedAt ?? 0);
+  // Erst wenn die Antwort MIT Kandidaturen da ist — nicht der stehen
+  // gebliebene Stand des ersten Reiters.
+  const kandidatenDa = mitKandidaten && abfrage.data !== undefined;
 
   const [liste, setListe] = useState<string | null>(null);
   useEffect(() => {
@@ -923,7 +964,6 @@ export function WahlabendView() {
     },
     [params, router],
   );
-  const ansicht = ansichtAus(params.get("ansicht"), params.get("liste"));
   const sortParam = params.get("sort");
   const bereichParam = params.get("bereich");
   const bezirkParam = params.get("bezirk");
@@ -958,7 +998,6 @@ export function WahlabendView() {
     [setzeQuery],
   );
 
-  const daten = abfrage.data;
   let inhalt: React.ReactNode;
   if (config.isLoading) {
     inhalt = null;
@@ -998,7 +1037,7 @@ export function WahlabendView() {
             ein Ergebnis dieser Wahl.
           </p>
         ) : null}
-        <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
+        <Tafel daten={daten} aktualisiert={aktualisiert} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
         {daten.dataset === "archive" ? null : <StichwahlHinweis />}
         {daten.phase !== "before" && daten.dataset !== "archive" ? <NeuKarten liste={liste} /> : null}
         <Vorbehalt daten={daten} />
@@ -1036,7 +1075,7 @@ export function WahlabendView() {
         </ReiterTafel>
         <ReiterTafel id="bereiche" aktiv={ansicht}>
           <ListenWahl parteien={daten.parties} liste={liste} waehle={waehle} />
-          <Bereiche daten={daten} liste={liste} probe={probe} counted={counted} rueckblick={rueckblick} />
+          <Bereiche daten={daten} liste={liste} probe={probe} counted={counted} rueckblick={rueckblick} kandidatenDa={kandidatenDa} />
         </ReiterTafel>
         <ReiterTafel id="kandidaten" aktiv={ansicht}>
           <Kandidaten
@@ -1047,6 +1086,7 @@ export function WahlabendView() {
             filter={kandidatenFilter}
             setFilter={setKandidatenFilter}
             live={holen}
+            kandidatenDa={kandidatenDa}
           />
         </ReiterTafel>
       </>

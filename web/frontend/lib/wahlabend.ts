@@ -199,8 +199,13 @@ export function sitzband(
     .filter((p) => p.n > 0);
 }
 
-/** Query-String für den Abruf: Generalprobe und Auszählungsstand durchreichen. */
-export function abfragePfad(probe: string | null, counted: string | null, wahl?: string | null): string {
+/** Query-String für den Abruf: Generalprobe und Auszählungsstand durchreichen.
+ *
+ *  `kandidaten: false` lässt die Kandidaturen je Wahlbereich weg
+ *  (`area_candidates=false`): gut 60 % der Antwort, die nur die Reiter
+ *  „Wahlbereiche" und „Kandidat*innen" lesen. Alle anderen Pfade, die hierauf
+ *  aufbauen (Bilder, Karten), bleiben ohne den Parameter. */
+export function abfragePfad(probe: string | null, counted: string | null, wahl?: string | null, kandidaten = true): string {
   const q = new URLSearchParams();
   // `wahl` und `probe` schließen sich aus: Der Rückblick IST die echte Zahl,
   // eine Generalprobe darauf ergäbe nichts.
@@ -209,6 +214,7 @@ export function abfragePfad(probe: string | null, counted: string | null, wahl?:
     if (probe) q.set("probe", probe);
     if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
   }
+  if (!kandidaten) q.set("area_candidates", "false");
   const s = q.toString();
   return s ? `/wahlabend?${s}` : "/wahlabend";
 }

@@ -5152,6 +5152,8 @@ class ElectionAreaParty(TypedDict):
     share_pct: float | None
     seats: int | None
     projected_seats: int | None
+    #: Leer bei ``/api/wahlabend?area_candidates=false`` — die Seite holt die
+    #: Kandidaturen erst mit dem Reiter, der sie zeigt.
     candidates: list[ElectionCandidate]
 
 

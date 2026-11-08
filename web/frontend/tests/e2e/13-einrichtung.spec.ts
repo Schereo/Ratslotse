@@ -77,6 +77,41 @@ test.describe("Ein frisches Konto", () => {
     await expect(page.getByRole("button", { name: "Überspringen" })).toHaveCount(0, { timeout: 15_000 });
   });
 
+  test("bleibt erledigt, wenn man die App kurz verlässt und zurückkommt", async ({ page }) => {
+    // Der Assistent hängt seit 11/2026 im App-Layout (components/onboarding-
+    // gate.tsx) statt im Wurzel-Layout. Verlässt man die App-Hülle per
+    // Client-Navigation, wird er abgebaut — und beim Zurückkehren schob ihn
+    // die noch gecachte Server-Antwort (`pending: true`) wieder hoch, beim
+    // Auftakt, obwohl der Server ihn längst für erledigt hielt.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await registrieren(page);
+    await bisZuDenGremien(page);
+    // Alles überspringen, auch den Auffang-Schritt „noch kein Thema, kein
+    // Gremium" am Ende („Später, ohne Thema").
+    const weiter = page.getByRole("button", { name: /^Überspringen$|^Später, ohne Thema$/ });
+    for (let i = 0; i < 8; i++) {
+      if (await weiter.count() === 0) break;
+      await weiter.first().click();
+      await page.waitForTimeout(400);
+    }
+    await expect(weiter).toHaveCount(0, { timeout: 15_000 });
+    const einladung = page.getByRole("button", { name: "Erst mal selbst umschauen" });
+    await einladung.waitFor({ timeout: 5_000 }).catch(() => {});
+    if (await einladung.count()) await einladung.click();
+
+    // Hinaus (Mehr → Hilfe liegt außerhalb von app/(app)) und zurück, beides
+    // ohne Neuladen.
+    await page.getByRole("button", { name: "Mehr" }).first().click();
+    await page.getByRole("dialog", { name: "Mehr" }).getByRole("link", { name: "Hilfe" }).click();
+    await page.waitForURL(/\/hilfe/);
+    await page.goBack();
+    await page.waitForURL(/\/dashboard/);
+    await expect(page.getByRole("navigation").first()).toBeVisible();
+    await page.waitForTimeout(1_500);
+    await expect(page.getByText(/Willkommen bei/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Los geht/ })).toHaveCount(0);
+  });
+
   test("die Gremien-Auswahl merkt sich, was angetippt wurde", async ({ page }) => {
     // Die Liste kommt aus der API. In der CI ist die Ratsdatenbank leer, also
     // gesetzt statt gehofft — sonst prüfte der Test dort nichts.

@@ -1106,6 +1106,81 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     assert str(z["herkunft_id"]) in b["provenance"]
 
 
+def test_haushalt_schlanke_ausschnitte_lassen_die_vorgabe_unberuehrt(client):
+    """Drei optionale Parameter machen Antworten für EINE Seite schlanker
+    (Leistungsrunde 11/2026) — und ohne sie bleibt jede Antwort, wie sie war:
+    Die ausgelieferte iOS-App und /haushalt/investitionen bzw. /mitreden
+    brauchen die vollen Bestände.
+
+    * ``investment-programme?year=latest`` — nur der jüngste Jahrgang (Labor),
+      ``years`` bleibt die volle Liste,
+    * ``amendment-lists?fields=totals`` — nur die Summen samt ihrer Herkunft,
+    * ``products`` ohne ``year`` — das jüngste Jahr mit Produktebene."""
+    from council import herkunft
+    from council.aenderungslisten import Ergebnis, SummenZeile, Zeile, herkunft_fuer
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        for jahr, betrag in ((2025, 100), (2026, 250)):
+            cs.save_investitionsprogramm(jahr, {
+                "abschnitte": {1: {"name": "Verwaltungsführung", "summe": betrag,
+                                   "massnahmen": [{"code": f"I{jahr}", "label": "Dach",
+                                                   "grand_total": betrag}]}},
+                "kopfsumme": betrag,
+            }, herkunft.Herkunft(kind="ris", probe="capital_programme_section_total",
+                                 document_id=jahr, label=f"{jahr} 004 Investitionsprogramm"))
+        cs.save_haushalt_aenderungen(
+            4711, "administration_1",
+            Ergebnis(zeilen=[Zeile(2026, 1, 4, 123, "1.100", "Schulbudget", None, 500_000)],
+                     summen=[SummenZeile(2026, "draft", "Verwaltungsentwurf", 0, 0, 0),
+                             SummenZeile(2026, "final_total", "Endsumme", 0, 500_000, -500_000)],
+                     eigene_zeile={2026: "Änderungsliste Verw. I"}),
+            herkunft_fuer("Änderungsliste Verw. I",
+                          "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do", 4711))
+    finally:
+        cs.close()
+
+    # --- Investitionsprogramm ---
+    voll = client.get("/api/council/budget/investment-programme").json()
+    assert voll["years"] == [2025, 2026]
+    assert {m["year"] for m in voll["measures"]} == {2025, 2026}
+    jung = client.get("/api/council/budget/investment-programme?year=latest").json()
+    assert jung["years"] == [2025, 2026]
+    assert [m["code"] for m in jung["measures"]] == ["I2026"]
+    assert {z["year"] for z in jung["sub_budgets"] + jung["totals"]} == {2026}
+    # Die Herkunft trägt nur, worauf die gelieferten Zeilen zeigen.
+    assert set(jung["provenance"]) == {str(jung["measures"][0]["herkunft_id"])}
+    alt = client.get("/api/council/budget/investment-programme?year=2025").json()
+    assert [m["code"] for m in alt["measures"]] == ["I2025"]
+    assert client.get("/api/council/budget/investment-programme?year=neu").status_code == 422
+
+    # --- Änderungslisten ---
+    alles = client.get("/api/council/budget/amendment-lists").json()
+    summen = client.get("/api/council/budget/amendment-lists?fields=totals").json()
+    assert alles["rows"] and summen["rows"] == []
+    assert summen["totals"] == alles["totals"]
+    assert summen["cash_budget_rows"] == [] and summen["cash_budget_totals"] == []
+    assert {str(s["herkunft_id"]) for s in summen["totals"]} <= set(summen["provenance"])
+    assert client.get("/api/council/budget/amendment-lists?fields=totals,quatsch").status_code == 400
+
+    # --- Produkte ohne Jahr ---
+    assert client.get("/api/council/budget/products").status_code == 404
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        q = herkunft.Herkunft(kind="ris", probe="product_row", document_id=7, label="007 THH01")
+        for jahr in (2023, 2024):
+            cs.save_produkte(jahr, [{"product_no": "P10.111023", "product_name": "Archivierung",
+                                     "sub_budget_no": 1, "revenues": 1.0, "expenses": float(jahr),
+                                     "result": -1.0}], q)
+    finally:
+        cs.close()
+    ohne = client.get("/api/council/budget/products").json()
+    mit = client.get("/api/council/budget/products?year=2024").json()
+    assert ohne == mit
+    assert ohne["year"] == 2024 and ohne["all_years"] == [2023, 2024]
+
+
 def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
     """/haushalt/investitionen liefert die Investitionen je Teilhaushalt — und
     hält die Bezugsgröße davon getrennt.
@@ -1601,6 +1676,19 @@ def test_topics_work_for_active_user(client):
     r = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau in Oldenburg"})
     assert r.status_code == 201
     assert len(client.get("/api/topics").json()) == 1
+
+
+def test_stadtteil_thema_traegt_seinen_ortsbereich(client):
+    """Ein Thema, das wie ein Stadtteil heißt, IST der Stadtteil (Einrichtungs-
+    Assistent). `place_id` sagt das der Navigation — „Mein Viertel" führt
+    dorthin, ohne dass sie dafür die ganze Viertel-Übersicht holt. Die Regel:
+    gleicher Name wie ein Ortsbereich, ohne Groß-/Kleinschreibung, keine Aliase."""
+    _register(client)
+    for name in ("Radwege", "fliegerhorst"):
+        r = client.post("/api/topics", json={"name": name, "description": "Was dort passiert"})
+        assert r.status_code == 201, r.text
+    orte = {t["name"]: t.get("place_id") for t in client.get("/api/topics").json()}
+    assert orte == {"Radwege": None, "fliegerhorst": "fliegerhorst"}
 
 
 def test_themen_bubble_verstummt_nach_uebersichtsbesuch(client):

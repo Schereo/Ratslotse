@@ -10,7 +10,7 @@ import {
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { ONBOARDING_DONE_EVENT, einrichtungLiefHier, isOnboardingVisible } from "@/components/onboarding-flow";
+import { ONBOARDING_DONE_EVENT, einrichtungLiefHier, isOnboardingVisible } from "@/lib/onboarding-state";
 
 /**
  * RL-U12 (Design 10a/11a/27a): Lotsen-Abzeichen — Sammeln fürs ERKUNDEN, nie

@@ -35,8 +35,12 @@ const KURZ: Record<string, string> = {
 const mioText = (euro: number | null | undefined) =>
   euro == null ? "—" : `${deMio(euro / 1e6)} Mio. €`;
 
+/** Dieselbe Adresse liest die Schulden-Seite selbst — geteilt, sonst kam
+ *  `debt` dort zweimal. */
+export const DEBT_URL = "/council/budget/debt";
+
 export function SchuldenLautPlan() {
-  const { data } = useFetch<Antwort>("/council/budget/debt");
+  const { data } = useFetch<Antwort>(DEBT_URL, { shared: true });
   const plan = useMemo(() => data?.debt_plan ?? [], [data]);
   const ve = useMemo(() => data?.commitments ?? [], [data]);
 

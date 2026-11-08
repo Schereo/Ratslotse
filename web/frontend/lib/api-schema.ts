@@ -2007,6 +2007,13 @@ export interface paths {
          *       und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
          *     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
          *       für beide Haushalte gemeinsam.
+         *
+         *     ``fields`` (kommagetrennt aus ``rows``, ``totals``, ``cash_budget_rows``,
+         *     ``cash_budget_totals``) liefert nur diese Teile; die übrigen Schlüssel
+         *     bleiben als leere Listen stehen, ``provenance`` trägt nur, worauf die
+         *     gelieferten Zeilen zeigen. Das Labor braucht für seinen Maßstab allein die
+         *     Summen (``fields=totals``: 56 statt 554 KB). Ohne ``fields`` kommt alles
+         *     wie bisher — ``/haushalt/mitreden`` zeigt die Positionen.
          */
         get: operations["haushalt_aenderungslisten_api_council_budget_amendment_lists_get"];
         put?: never;
@@ -2258,13 +2265,21 @@ export interface paths {
          *     **Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
          *     aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
          *     über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
-         *     die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
-         *     Jahrgängen um.
+         *     bis 11/2026 lud die Seite sie einmal und schaltete danach ohne Netz
+         *     zwischen den Jahrgängen um — heute fragt sie mit ``texts`` (s. u.).
          *
          *     Was hier **nicht** steht: der Inhalt der Änderungslisten — den liefert
          *     seit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position
          *     für Position aus den gelesenen EHH-Dokumenten. Hier bleibt die
          *     Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam.
+         *
+         *     ``texts`` (ein Jahr oder ``latest``; ein Jahr ohne Runde gilt als
+         *     ``latest``) behält den Wortlaut nur für diesen Jahrgang. In allen anderen
+         *     stehen die Wortbeiträge weiter da — Name, Fraktion, Rolle, also alles,
+         *     was die Seite über die Jahre zählt —, nur ``text`` ist ``null``. Die
+         *     Seite zeigt ohnehin einen Jahrgang; die Texte waren 395 der 450 KB
+         *     (gzip 20 statt 130 KB). Beim Jahrgangswechsel holt sie den nächsten.
+         *     Ohne ``texts`` kommt alles wie bisher.
          */
         get: operations["haushalt_streit_api_council_budget_debate_get"];
         put?: never;
@@ -2609,6 +2624,12 @@ export interface paths {
          *        Gesamtkosten eines Vorhabens über alle Jahre, der Finanzhaushalt die
          *        Zahlungen eines Jahres — und die zu aktivierenden Eigenleistungen
          *        gehören nur ins Programm. Das Dokument sagt das in einer Fußnote selbst.
+         *
+         *     ``year`` schneidet auf **einen** Jahrgang, ``latest`` auf den jüngsten —
+         *     für Seiten, die nur ihn zeigen: Das Labor braucht die Vorhaben des
+         *     jüngsten Programms, nicht alle acht (161 statt 1.057 KB). ``years`` bleibt
+         *     die volle Liste, ``latest`` ist also ``years[-1]``. Ohne ``year`` kommt
+         *     alles wie bisher — ``/haushalt/investitionen`` zählt über die Jahrgänge.
          */
         get: operations["haushalt_investitionsprogramm_api_council_budget_investment_programme_get"];
         put?: never;
@@ -2894,6 +2915,11 @@ export interface paths {
          *     Bestand steht. Gegen ``all_years`` gehalten wird daraus das
          *     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
          *     vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen.
+         *
+         *     Ohne ``year`` gilt das jüngste Jahr mit Produktebene (``all_years[-1]``,
+         *     dieselbe Liste wie ``product_years`` der Übersicht; 404, wenn es keines
+         *     gibt). Seiten, die nur den jüngsten Stand zeigen, müssen so nicht erst die
+         *     Jahresliste abwarten, bevor sie fragen dürfen.
          */
         get: operations["haushalt_produkte_api_council_budget_products_get"];
         put?: never;
@@ -6303,6 +6329,10 @@ export interface paths {
          *     dem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine
          *     Rückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den
          *     Wahltag im Pfad und wandern irgendwann ins Archiv.
+         *
+         *     ``?area_candidates=false`` lässt die Kandidaturen je Wahlbereich weg: gut
+         *     60 % der Antwort, die der erste Reiter („Ergebnis") nicht braucht. Ohne
+         *     den Parameter bleibt die Antwort, wie sie war.
          */
         get: operations["wahlabend_api_wahlabend_get"];
         put?: never;
@@ -17675,6 +17705,8 @@ export interface components {
             matched: boolean;
             /** Name */
             name: string;
+            /** Place Id */
+            place_id?: string | null;
             /**
              * Recent Hits
              * @default []
@@ -20628,7 +20660,9 @@ export interface operations {
     };
     haushalt_aenderungslisten_api_council_budget_amendment_lists_get: {
         parameters: {
-            query?: never;
+            query?: {
+                fields?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -20642,6 +20676,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetAmendmentLists"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -20761,6 +20804,7 @@ export interface operations {
         parameters: {
             query?: {
                 year?: number | null;
+                texts?: string | null;
             };
             header?: never;
             path?: never;
@@ -20973,7 +21017,9 @@ export interface operations {
     };
     haushalt_investitionsprogramm_api_council_budget_investment_programme_get: {
         parameters: {
-            query?: never;
+            query?: {
+                year?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -20987,6 +21033,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetInvestmentProgram"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -21178,8 +21233,8 @@ export interface operations {
     };
     haushalt_produkte_api_council_budget_products_get: {
         parameters: {
-            query: {
-                year: number;
+            query?: {
+                year?: number | null;
                 sub_budget?: number | null;
                 q?: string | null;
                 office?: string | null;
@@ -25960,6 +26015,8 @@ export interface operations {
                 counted?: number | null;
                 /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
                 wahl?: string | null;
+                /** @description false = die Kandidaturen je Wahlbereich (areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem Reiter, der sie zeigt */
+                area_candidates?: boolean;
             };
             header?: never;
             path?: never;
@@ -26643,4 +26700,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c1f8ffa1cb32b3e22243f0b47cd6c46a385f4c16fc318a565745796c1713233e
+// vertrag-sha256: 067882e1d9d8626d587973dc3c5a5a02b9fe28271c60ce34c58654eeb96718ef

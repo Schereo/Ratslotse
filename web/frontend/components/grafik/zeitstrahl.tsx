@@ -366,7 +366,10 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
  *  Zeilen in beiden Richtungen, damit kein Gerät weniger erfährt. */
 function StationsText({ s, kompakt = false }: { s: ZeitstrahlStation; kompakt?: boolean }) {
   const label = s.href ? (
-    <Link href={s.href} className="underline-offset-2 hover:underline focus-visible:underline">
+    // Ziele mit Suchparametern (Sitzungs-Links) nicht einzeln vorladen: Next
+    // rendert jedes davon dynamisch, und der Strahl führt höchstens einen Klick.
+    <Link href={s.href} prefetch={s.href.includes("?") ? false : undefined}
+      className="underline-offset-2 hover:underline focus-visible:underline">
       {s.label}
     </Link>
   ) : (

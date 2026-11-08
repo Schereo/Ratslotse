@@ -34,6 +34,13 @@ const ART: Record<string, string> = {
 };
 const REIHENFOLGE = ["actual", "prior_budget", "forecast", "budget", "financial_plan"];
 
+/** Die Adresse zu den Reihen — exportiert, damit die Seite sie mit ihren
+ *  Hauptdaten vorladen kann (`usePreload`), statt dass die Karte erst nach
+ *  ihnen fragt. */
+export function prefaceFiguresUrl(keys: readonly string[]): string {
+  return `/council/budget/preface-figures?${keys.map((k) => `series=${k}`).join("&")}`;
+}
+
 export function VorberichtZahlen({ reihen, titel, kicker, genau = false, children }: {
   /** Reihen-Schlüssel mit Zeilenbeschriftung, in Anzeigefolge. */
   reihen: { key: string; label: string }[];
@@ -43,8 +50,7 @@ export function VorberichtZahlen({ reihen, titel, kicker, genau = false, childre
   genau?: boolean;
   children?: React.ReactNode;
 }) {
-  const url = `/council/budget/preface-figures?${reihen.map((r) => `series=${r.key}`).join("&")}`;
-  const { data } = useFetch<Antwort>(url);
+  const { data } = useFetch<Antwort>(prefaceFiguresUrl(reihen.map((r) => r.key)), { shared: true });
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   const plan = data?.plans.find((p) => p.plan_budget_year === gewaehlt) ?? data?.plans[0];
   const spalten = useMemo(() => {

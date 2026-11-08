@@ -54,7 +54,10 @@
 
 import { useCallback, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { bisectCenter } from "d3-array";
-import { TABLEISTE_HOEHE } from "@/components/nav";
+// Aus lib/, nicht aus components/nav: Dort hinge die ganze Navigation samt
+// Lotti-Fenster an jeder Seite mit einer Zeitreihe — auch an der öffentlichen
+// Teilen-Seite /g, die gar keine Navigation hat.
+import { TABLEISTE_HOEHE } from "@/lib/tableiste";
 import { deZahl } from "@/components/grafik/format";
 import { cn } from "@/lib/utils";
 
@@ -269,7 +272,7 @@ export function Ablesekarte({
  *  die Karte im Bild ist, bleibt die Wertzeile über der Tab-Leiste sichtbar —
  *  wer eine hohe Grafik antippt und wischt, liest den Wert, ohne zu
  *  scrollen. Der Abstand nach unten ist die Andockkante der Tab-Leiste
- *  (`TABLEISTE_HOEHE` aus `components/nav.tsx`) plus etwas Luft; das
+ *  (`TABLEISTE_HOEHE` aus `lib/tableiste.ts`) plus etwas Luft; das
  *  Verhalten selbst steht in `.gb-ablese-leiste` (app/globals.css). */
 export function Ableseleiste({ stelle, steuerung, note, className, haftet = true }: {
   stelle: AbleseStelle;

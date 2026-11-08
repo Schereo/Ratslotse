@@ -130,7 +130,7 @@ function Finanzkachel({ z, daten, year }: {
             {posten.map((p, i) => (
               <Fragment key={p.slug}>
                 {i > 0 && " · "}
-                <Link href={`/haushalt/steuer?art=${p.slug}`}
+                <Link href={`/haushalt/steuer?art=${p.slug}`} prefetch={false}
                   className="font-semibold text-primary hover:underline">
                   {p.title}
                 </Link>{" "}
@@ -157,7 +157,7 @@ function Finanzkachel({ z, daten, year }: {
         </>
       )}
 
-      <Link href={`/haushalt/bereich?name=${bereichSlug(z.area)}`}
+      <Link href={`/haushalt/bereich?name=${bereichSlug(z.area)}`} prefetch={false}
         className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
         Diesen Bereich im Einzelnen
         <ArrowRight aria-hidden className="h-3.5 w-3.5" />
