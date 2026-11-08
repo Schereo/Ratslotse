@@ -7,6 +7,7 @@ Zwei Betriebsarten:
   viele Stimmen bis zum Sitz" sind je Kandidat*in eine Binärsuche über die
   ganze Zuteilung); deshalb wird das fertige Bild gehalten und nach Ablauf im
   Hintergrund erneuert, während die alte Antwort weiter ausgeliefert wird.
+  Ist das Ergebnis amtlich festgestellt, hält es einen Tag (``_ttl``).
 * **probe** — die Zahlen von 2021 im Register von 2026 (Generalprobe), auf
   Wunsch mit nur den ersten ``counted`` Wahlbezirken ausgezählt. So lässt sich
   die Seite vor dem Wahlabend mit echten Zahlen ansehen, und die Hochrechnung
@@ -963,6 +964,21 @@ def _refresh() -> None:
         _cond.notify_all()
 
 
+def _ttl(night: ElectionNight) -> int:
+    """Wie lange dieses Bild gilt: der Takt des Abrufs — und einen Tag, wenn
+    es das fertige, amtlich festgestellte Ergebnis ist.
+
+    Nur ein gutes Bild hält so lange: vollständig ausgezählt, ohne Fehler im
+    Abruf und mit Abständen (nicht die abgespeckte Stufe). Alles andere
+    versucht es weiter im Minutentakt — ein Aussetzer soll nicht einen Tag
+    lang stehen bleiben."""
+    takt = votemanager.ttl_seconds()
+    if (night["phase"] == "complete" and night["source"]["ok"]
+            and NOTE_REDUCED not in night["notes"] and votemanager.settled()):
+        return max(takt, votemanager.TTL_SECONDS_SETTLED)
+    return takt
+
+
 def live() -> ElectionNight:
     """Das aktuelle Bild; nach Ablauf wird im Hintergrund erneuert.
 
@@ -971,7 +987,7 @@ def live() -> ElectionNight:
     global _building
     with _cond:
         cached = _live
-        if cached and time.monotonic() - cached[0] < votemanager.ttl_seconds():
+        if cached and time.monotonic() - cached[0] < _ttl(cached[1]):
             return cached[1]
         if cached:
             # Der alte Stand geht sofort raus, erneuert wird nebenher.

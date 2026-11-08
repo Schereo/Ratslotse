@@ -6273,6 +6273,10 @@ export interface paths {
          *     dem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine
          *     Rückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den
          *     Wahltag im Pfad und wandern irgendwann ins Archiv.
+         *
+         *     ``?area_candidates=false`` lässt die Kandidaturen je Wahlbereich weg: gut
+         *     60 % der Antwort, die der erste Reiter („Ergebnis") nicht braucht. Ohne
+         *     den Parameter bleibt die Antwort, wie sie war.
          */
         get: operations["wahlabend_api_wahlabend_get"];
         put?: never;
@@ -25806,6 +25810,8 @@ export interface operations {
                 counted?: number | null;
                 /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
                 wahl?: string | null;
+                /** @description false = die Kandidaturen je Wahlbereich (areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem Reiter, der sie zeigt */
+                area_candidates?: boolean;
             };
             header?: never;
             path?: never;
@@ -26489,4 +26495,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a68dad1bd5c3feb19cd365d09871d74b0187b7f21f4392f094d5ec5fff976e5f
+// vertrag-sha256: abfd46a8ffbf1d2834432aa085de34206117e31bd335d44640734b9da337cfd5
