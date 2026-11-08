@@ -22,6 +22,10 @@
     --secondary-foreground: 212 55% 14%;
     --muted: 206 40% 94%;
     --muted-foreground: 207 18% 38.5%;
+    /* Platzhalter beim Laden (Skelette). Eigener Wert, weil `--muted` im
+       Dunkeln nur fünf Punkte über der Karte liegt — mit dem Pulsieren auf
+       halbe Deckkraft verschwanden die Zeilen fast ganz (Tim 08.11.2026). */
+    --skeleton: 206 40% 92%;
     --accent: 206 45% 93%;
     --accent-foreground: 212 55% 14%;
     --destructive: 0 72% 48%;
@@ -125,6 +129,9 @@
     --secondary-foreground: 204 40% 96%;
     --muted: 211 36% 16%;
     --muted-foreground: 206 23% 72.5%;
+    /* 14 Punkte über der Karte (11 %), 18 über dem Grund — dieselbe Schwelle
+       wie für das ferne Rampenende der Haushalt-Tafel. */
+    --skeleton: 211 30% 25%;
     --accent: 211 36% 18%;
     --accent-foreground: 204 40% 96%;
     /* Heller und mit dunkler Schrift darauf, wie beim Primär im Dunkeln:
@@ -311,8 +318,12 @@
 /* ── Sprite-Lotti (<lotti-figur>, components/lotti.tsx) ────────────────────
    Bevor der Abspieler geladen und das Element aufgerüstet ist, ist
    <lotti-figur> ein unbekanntes Inline-Element — ohne diese Regel wären
-   h-*- und w--Klassen wirkungslos und das Layout spränge beim Aufrüsten. */
-lotti-figur {
+   h-*- und w--Klassen wirkungslos und das Layout spränge beim Aufrüsten.
+   <lotti-placeholder> steht da, bis die Figur in Sichtnähe kommt, und muss
+   denselben Kasten haben. Ein Elementselektor, damit `hidden`/`sm:block`
+   aus der className weiter gewinnen. */
+lotti-figur,
+lotti-placeholder {
   display: inline-block;
   line-height: 0;
 }
@@ -1023,6 +1034,7 @@ lotti-figur {
   --popover-foreground: 204 40% 97%;
   --muted: 211 30% 19%;
   --muted-foreground: 206 22% 68%;
+  --skeleton: 211 28% 30%;
   --accent: 211 30% 19%;
   --accent-foreground: 204 40% 97%;
   --border: 211 36% 19%;
@@ -1096,6 +1108,7 @@ lotti-figur {
   --card-foreground: 204 40% 97%;
   --muted: 209 36% 19%;
   --muted-foreground: 206 26% 74%;
+  --skeleton: 209 30% 31%;
   --border: 207 36% 24%;
   --primary: 202 88% 64%;
   --primary-foreground: 213 48% 9%;
@@ -1610,4 +1623,26 @@ lotti-figur {
 @keyframes zwischenbild-lauf {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
+}
+
+/* Lotti-Tour: Der Menüpunkt der neuen Station leuchtet beim Wechsel einmal auf
+   und bleibt dann umrandet stehen — sonst sah man unter der Abdunkelung kaum,
+   dass die Tour gerade zu „Analyse" gewechselt war (Tim 08.11.2026). Die Kopie
+   des Menüpunkts legt `components/tour.tsx` über die Abdunkelung. */
+.tour-nav-ring {
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.7), 0 0 16px 3px hsl(var(--primary) / 0.28);
+}
+.tour-nav-glow {
+  animation: tour-nav-glow 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes tour-nav-glow {
+  0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0), 0 0 0 0 hsl(var(--primary) / 0); }
+  35% { box-shadow: 0 0 0 3px hsl(var(--primary) / 0.85), 0 0 34px 10px hsl(var(--primary) / 0.55); }
+  100% { box-shadow: 0 0 0 2px hsl(var(--primary) / 0.7), 0 0 16px 3px hsl(var(--primary) / 0.28); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-nav-glow {
+    animation: none;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.7), 0 0 16px 3px hsl(var(--primary) / 0.28);
+  }
 }

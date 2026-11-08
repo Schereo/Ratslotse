@@ -6299,6 +6299,10 @@ export interface paths {
          *     dem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine
          *     Rückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den
          *     Wahltag im Pfad und wandern irgendwann ins Archiv.
+         *
+         *     ``?area_candidates=false`` lässt die Kandidaturen je Wahlbereich weg: gut
+         *     60 % der Antwort, die der erste Reiter („Ergebnis") nicht braucht. Ohne
+         *     den Parameter bleibt die Antwort, wie sie war.
          */
         get: operations["wahlabend_api_wahlabend_get"];
         put?: never;
@@ -10076,6 +10080,46 @@ export interface components {
             follow?: components["schemas"]["DecisionFollow"];
             importance_breakdown: components["schemas"]["ImportanceBreakdown"];
             /**
+             * DecisionNeighbors
+             * @description Wo der Beschluss unter den Beschlüssen seiner Sitzung steht
+             *     (``CouncilStore.decision_neighbors``).
+             *
+             *     ``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist
+             *     NICHT die TOP-Nummer und nicht die Protokoll-Position: Eine
+             *     Tagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am
+             *     Rand als ``null``.
+             */
+            neighbors?: {
+                /**
+                 * DecisionNeighbor
+                 * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+                 */
+                next: {
+                    /** Id */
+                    id: number;
+                    /** Item Number */
+                    item_number: string | null;
+                    /** Title */
+                    title: string | null;
+                } | null;
+                /** Position */
+                position: number;
+                /**
+                 * DecisionNeighbor
+                 * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+                 */
+                prev: {
+                    /** Id */
+                    id: number;
+                    /** Item Number */
+                    item_number: string | null;
+                    /** Title */
+                    title: string | null;
+                } | null;
+                /** Total */
+                total: number;
+            } | null;
+            /**
              * DecisionParticipation
              * @description Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.
              */
@@ -10137,6 +10181,58 @@ export interface components {
         DecisionList: {
             /** Decisions */
             decisions: components["schemas"]["DecisionRow"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * DecisionNeighbor
+         * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+         */
+        DecisionNeighbor: {
+            /** Id */
+            id: number;
+            /** Item Number */
+            item_number: string | null;
+            /** Title */
+            title: string | null;
+        };
+        /**
+         * DecisionNeighbors
+         * @description Wo der Beschluss unter den Beschlüssen seiner Sitzung steht
+         *     (``CouncilStore.decision_neighbors``).
+         *
+         *     ``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist
+         *     NICHT die TOP-Nummer und nicht die Protokoll-Position: Eine
+         *     Tagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am
+         *     Rand als ``null``.
+         */
+        DecisionNeighbors: {
+            /**
+             * DecisionNeighbor
+             * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+             */
+            next: {
+                /** Id */
+                id: number;
+                /** Item Number */
+                item_number: string | null;
+                /** Title */
+                title: string | null;
+            } | null;
+            /** Position */
+            position: number;
+            /**
+             * DecisionNeighbor
+             * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+             */
+            prev: {
+                /** Id */
+                id: number;
+                /** Item Number */
+                item_number: string | null;
+                /** Title */
+                title: string | null;
+            } | null;
             /** Total */
             total: number;
         };
@@ -22506,7 +22602,10 @@ export interface operations {
     };
     personen_lexikon_api_council_people_directory_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Nur Verwaltungsleute mit erkanntem Amt (art=city mit role) — die Handvoll Einträge, die das Personenverzeichnis zeigt, statt des ganzen Lexikons. */
+                administration?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -22520,6 +22619,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PeopleDirectory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -25855,6 +25963,8 @@ export interface operations {
                 counted?: number | null;
                 /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
                 wahl?: string | null;
+                /** @description false = die Kandidaturen je Wahlbereich (areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem Reiter, der sie zeigt */
+                area_candidates?: boolean;
             };
             header?: never;
             path?: never;
@@ -26538,4 +26648,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e53b750c820658bca2290992d3dd20bd49db6f4493fb0d7914c3a79bc907071f
+// vertrag-sha256: 00b9e3b8a343b83dc53bf76bfcb7c7be0e78812e2daf394ab22fa97e8faf88ad

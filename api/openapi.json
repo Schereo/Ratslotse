@@ -7979,6 +7979,96 @@
           "importance_breakdown": {
             "$ref": "#/components/schemas/ImportanceBreakdown"
           },
+          "neighbors": {
+            "description": "Wo der Beschluss unter den Beschlüssen seiner Sitzung steht\n(``CouncilStore.decision_neighbors``).\n\n``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist\nNICHT die TOP-Nummer und nicht die Protokoll-Position: Eine\nTagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am\nRand als ``null``.",
+            "properties": {
+              "next": {
+                "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+                "properties": {
+                  "id": {
+                    "title": "Id",
+                    "type": "integer"
+                  },
+                  "item_number": {
+                    "title": "Item Number",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "item_number",
+                  "title"
+                ],
+                "title": "DecisionNeighbor",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "position": {
+                "title": "Position",
+                "type": "integer"
+              },
+              "prev": {
+                "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+                "properties": {
+                  "id": {
+                    "title": "Id",
+                    "type": "integer"
+                  },
+                  "item_number": {
+                    "title": "Item Number",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "item_number",
+                  "title"
+                ],
+                "title": "DecisionNeighbor",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "position",
+              "total",
+              "prev",
+              "next"
+            ],
+            "title": "DecisionNeighbors",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "participation": {
             "description": "Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.",
             "properties": {
@@ -8175,6 +8265,123 @@
           "total"
         ],
         "title": "DecisionList",
+        "type": "object"
+      },
+      "DecisionNeighbor": {
+        "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "item_number",
+          "title"
+        ],
+        "title": "DecisionNeighbor",
+        "type": "object"
+      },
+      "DecisionNeighbors": {
+        "description": "Wo der Beschluss unter den Beschlüssen seiner Sitzung steht\n(``CouncilStore.decision_neighbors``).\n\n``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist\nNICHT die TOP-Nummer und nicht die Protokoll-Position: Eine\nTagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am\nRand als ``null``.",
+        "properties": {
+          "next": {
+            "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "item_number": {
+                "title": "Item Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "item_number",
+              "title"
+            ],
+            "title": "DecisionNeighbor",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "prev": {
+            "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "item_number": {
+                "title": "Item Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "item_number",
+              "title"
+            ],
+            "title": "DecisionNeighbor",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position",
+          "total",
+          "prev",
+          "next"
+        ],
+        "title": "DecisionNeighbors",
         "type": "object"
       },
       "DecisionParticipation": {
@@ -33886,6 +34093,20 @@
     "/api/council/people-directory": {
       "get": {
         "operationId": "personen_lexikon_api_council_people_directory_get",
+        "parameters": [
+          {
+            "description": "Nur Verwaltungsleute mit erkanntem Amt (art=city mit role) — die Handvoll Einträge, die das Personenverzeichnis zeigt, statt des ganzen Lexikons.",
+            "in": "query",
+            "name": "administration",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Nur Verwaltungsleute mit erkanntem Amt (art=city mit role) — die Handvoll Einträge, die das Personenverzeichnis zeigt, statt des ganzen Lexikons.",
+              "title": "Administration",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -33896,6 +34117,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Personen Lexikon",
@@ -38785,7 +39016,7 @@
     },
     "/api/wahlabend": {
       "get": {
-        "description": "Der Wahlabend: live, als Generalprobe oder als Rückblick.\n\n``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus\ndem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine\nRückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den\nWahltag im Pfad und wandern irgendwann ins Archiv.",
+        "description": "Der Wahlabend: live, als Generalprobe oder als Rückblick.\n\n``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus\ndem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine\nRückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den\nWahltag im Pfad und wandern irgendwann ins Archiv.\n\n``?area_candidates=false`` lässt die Kandidaturen je Wahlbereich weg: gut\n60 % der Antwort, die der erste Reiter („Ergebnis\") nicht braucht. Ohne\nden Parameter bleibt die Antwort, wie sie war.",
         "operationId": "wahlabend_api_wahlabend_get",
         "parameters": [
           {
@@ -38830,6 +39061,18 @@
                 "string",
                 "null"
               ]
+            }
+          },
+          {
+            "description": "false = die Kandidaturen je Wahlbereich (areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem Reiter, der sie zeigt",
+            "in": "query",
+            "name": "area_candidates",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "false = die Kandidaturen je Wahlbereich (areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem Reiter, der sie zeigt",
+              "title": "Area Candidates",
+              "type": "boolean"
             }
           }
         ],

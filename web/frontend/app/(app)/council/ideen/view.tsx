@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpRight, Building2, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
-import { AnalyseReiter } from "@/components/council-analysis";
+import { AnalyseReiter } from "@/components/analyse-reiter";
 import { DecisionLinkCard, POLICY_FIELD_LABELS } from "@/components/decision-ui";
 import { BewegungKarte, type Bewegung } from "@/components/ideen/bewegung-karte";
 import { STAND } from "@/components/ideen/stand";

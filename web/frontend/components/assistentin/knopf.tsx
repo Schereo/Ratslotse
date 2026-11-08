@@ -4,6 +4,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { LOTTI_BASE } from "@/lib/asset-paths";
 
 /**
  * Der schwebende Lotti-Knopf — unten rechts, auf jeder Seite, auf jedem Gerät.
@@ -101,7 +102,7 @@ export function LottiKnopf({ offen, onToggle, className }: {
         ? <X className="h-6 w-6" aria-hidden />
         : (
           <Image
-            src="/lotti/kopf.png"
+            src={`${LOTTI_BASE}kopf.png`}
             alt=""
             width={192}
             height={192}

@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       aktion:
-        description: "status = nur anzeigen · aufheben = Barriere entfernen (nur nach abgebrochenem Deploy) · api-start = Barriere weg + nwz-web-api starten (nach abgebrochenem Cutover) · frontend-restart = nwz-web-frontend neu starten (alter Prozess auf neuem Build) · probe = Generalprobe der Streaming-Transkription (60 s O1-Stream)"
+        description: "status = nur anzeigen · aufheben = Barriere entfernen (nur nach abgebrochenem Deploy) · api-start = Barriere weg + nwz-web-api starten (nach abgebrochenem Cutover) · frontend-restart = nwz-web-frontend neu starten (schaltet einen geprüften, liegengebliebenen neuen Build ein) · probe = Generalprobe der Streaming-Transkription (60 s O1-Stream)"
         type: choice
         options: [status, aufheben, api-start, frontend-restart, probe]
         default: status
@@ -120,17 +120,33 @@ jobs:
             exit 1
           '
 
-      # Bricht der Cutover NACH dem `npm run build` ab, läuft der alte
-      # Frontend-Prozess auf dem neuen Build weiter: Seine HTML-Seiten
-      # verweisen auf Chunks, die es auf der Platte nicht mehr gibt (06.09.:
-      # webpack-….js → 400). Ein Neustart bringt Prozess und Build zusammen.
+      # Bricht der Cutover NACH dem `npm run build` ab, lief bis 11/2026 der
+      # alte Frontend-Prozess auf dem neuen Build weiter: Seine HTML-Seiten
+      # verwiesen auf Chunks, die es auf der Platte nicht mehr gab (06.09.:
+      # webpack-….js → 400). Seitdem baut der Deploy in `.next-build` und
+      # schaltet erst unmittelbar vor dem Frontend-Neustart um — nach einem
+      # Abbruch läuft das Frontend also heil auf dem ALTEN Build, und der neue
+      # liegt daneben. Diese Aktion schaltet ihn ein, wenn der Deploy ihn als
+      # geprüft markiert hat (`.geprueft`, nach pruefe_build_chunks.py), und
+      # startet neu; ohne Marke startet sie nur neu.
       - name: Frontend neu starten
         if: ${{ inputs.aktion == 'frontend-restart' }}
         run: |
           ssh target '
             set -u
             cd ~/app
+            if [ -f web/frontend/.next-build/.geprueft ]; then
+              if .venv/bin/python scripts/pruefe_build_chunks.py web/frontend/.next-build; then
+                echo "Schalte den geprüften neuen Build ein."
+                rm -rf web/frontend/.next-alt
+                if [ -d web/frontend/.next ]; then mv web/frontend/.next web/frontend/.next-alt; fi
+                mv web/frontend/.next-build web/frontend/.next
+              else
+                echo "Neuer Build unstimmig — das Frontend bleibt auf dem alten."
+              fi
+            fi
             sudo -n /bin/systemctl restart nwz-web-frontend
+            rm -rf web/frontend/.next-alt
             for i in $(seq 1 45); do
               sleep 2
               if curl -sf -o /dev/null --max-time 3 http://127.0.0.1:3000/; then

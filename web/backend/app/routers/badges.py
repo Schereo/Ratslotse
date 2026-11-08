@@ -33,7 +33,11 @@ BADGES: list[dict] = [
     {"id": "kompass", "title": "Kompass", "hint": "Mach die Lotti-Tour einmal ganz durch."},
 ]
 
-EVENT_FLAGS = {"frage", "sitzung", "tour"}
+# „analyse" kam bis 11/2026 aus dem Kurs-Schritt gleichen Namens — den hakt
+# aber auch die Tour ab, sobald sie auf die Analyse führt. Das Abzeichen
+# feierte deshalb am Ende jeder Tour mit, obwohl niemand etwas erkundet hatte
+# (Tim 08.11.2026). Jetzt meldet das Web den eigenen Besuch, außerhalb der Tour.
+EVENT_FLAGS = {"frage", "sitzung", "tour", "analyse"}
 
 
 class BadgeEvent(BaseModel):
@@ -45,7 +49,6 @@ def _compute(store: Store, user_id: int, state: dict) -> list[Badge]:
     """Ist-Zustand aller Abzeichen (earned + Fortschritt), Reihenfolge wie BADGES."""
     flags = set(state["flags"])
     places = len(set(state["map_places"]))
-    onboarding = store.get_onboarding(user_id)["steps"]
     result = []
     for b in BADGES:
         earned = False
@@ -62,7 +65,7 @@ def _compute(store: Store, user_id: int, state: dict) -> list[Badge]:
             earned = places >= KARTOGRAF_TARGET
             progress = {"current": min(places, KARTOGRAF_TARGET), "target": KARTOGRAF_TARGET}
         elif b["id"] == "analyst":
-            earned = "analyse" in onboarding
+            earned = "analyse" in flags
         elif b["id"] == "sitzungsgast":
             earned = "sitzung" in flags
         elif b["id"] == "fruehwarner":

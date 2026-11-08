@@ -183,6 +183,10 @@ def _attrappen_suite(laufen, features=("impact_rating",)) -> ps.Suite:
 
 @pytest.fixture
 def eigene_kostendatei(tmp_path, monkeypatch):
+    # Die Mess-Mechanik läuft mit Phantasiemodellen — mit dem Notausgang aus
+    # „nur EU" (kern/llm.py), sonst wären sie für Nutzer-Features gesperrt.
+    # Was ohne ihn gilt: test_modell_ohne_eu_anbieter_ist_nicht_zulaessig.
+    monkeypatch.setenv(llm.AUSSERHALB_EU_ENV, "1")
     monkeypatch.setenv("RATSLOTSE_SQLITE", str(tmp_path / "usage.sqlite"))
     monkeypatch.setenv("COUNCIL_DB", str(tmp_path / "keine.sqlite"))
 
@@ -609,3 +613,17 @@ def test_viertel_zaehlt_fremde_vorhaben_auf_der_tafel():
     assert not z["richtig"] and z["fremd_auf_der_tafel"]
     assert not run_district.bewerten(fall, None)["richtig"]
     assert run_district.bewerten({**fall, "im_viertel": True}, {"relation": "district"})["richtig"]
+
+
+def test_modell_ohne_eu_anbieter_ist_nicht_zulaessig(monkeypatch, eigene_kostendatei):
+    """Nutzereingaben laufen nur in der EU: Ein Kandidat ohne EU-Anbieter ist
+    für so ein Feature „nicht zulässig" — kein Ausfall, kein Abbruch der Suite."""
+    monkeypatch.delenv(llm.AUSSERHALB_EU_ENV, raising=False)
+    monkeypatch.setattr(llm, "_create", lambda **kw: pytest.fail("darf gar nicht rufen"))
+
+    def laufen():
+        llm.chat_complete(model="test/modell", messages=[], _feature="qa_answer")
+        return {}
+
+    erg = ps.messen(_attrappen_suite(laufen, features=("qa_answer",)), modell="test/modell")
+    assert erg["nicht_zulaessig"] and erg["ausfaelle"] == 0

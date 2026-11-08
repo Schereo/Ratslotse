@@ -361,10 +361,53 @@ def zdr_pflicht(feature: str | None) -> bool:
 #: Eintrag hier bleibt beim bisherigen Routing — ein EU-Versuch bei einem
 #: Modell, das dort nicht angeboten wird, wäre ein sicherer 404 und würde
 #: jeden Aufruf als Rückfall zählen.
+#:
+#: **Seit 11/2026 gilt der EU-Weg für JEDES Feature mit Nutzereingabe**, nicht
+#: nur für die mit ZDR-Verzicht, und ohne Rückfall (Tims Entscheidung
+#: 08.11.2026: „dass wir wirklich sagen können, die KI-Anfragen werden
+#: ausschließlich auf europäischen Servern verarbeitet"). Ein Modell OHNE
+#: Eintrag hier ist für Nutzereingaben gesperrt (:class:`KeinEuAnbieter`) —
+#: wer eins einträgt, prüft vorher bei OpenRouter, dass der Endpunkt wirklich
+#: in der EU liegt (``/api/v1/models/<id>/endpoints``, Tag ``…/eu`` bzw.
+#: ``…/europe``). Gemessen 08.11.2026 an der Frage-Analyse (30 Gold-Fragen,
+#: Analyse + Suchbegriffe): ``google-vertex/eu`` mit ZDR lief in 13 von 70
+#: Aufrufen in den Timeout (einzelne über 50 s), ``azure/eu`` in 0 von 120.
+#: Deshalb steht Gemini zwar hier (es IST in der EU), die Vorgaben zeigen
+#: aber auf GPT-5.6 Luna.
 EU_ZUERST: dict[str, tuple[str, ...]] = {
     "openai/gpt-6-luna": ("azure/eu",),
     "openai/gpt-6-sol": ("azure/eu",),
+    "openai/gpt-5.6-luna": ("azure/eu",),
+    "google/gemini-3.1-flash-lite": ("google-vertex/eu",),
+    # Lottis Prüfer (`assistant_check`): bewusst nicht aus der Familie der
+    # Antwort (OpenAI), s. council/self_check.py.
+    "anthropic/claude-haiku-5.5": ("google-vertex/europe", "amazon-bedrock/eu-west-1"),
+    # Nur der Richter der Gold-Evals (`quality_judge`) — keine echten Nutzerfragen.
+    "anthropic/claude-opus-5.5": ("google-vertex/europe", "amazon-bedrock/eu-west-1"),
 }
+
+#: **Der Notausgang aus „nur EU".** Gesetzt (``1``), darf ein Aufruf mit
+#: Nutzereingabe wieder außerhalb der EU landen: Fällt der EU-Weg aus, läuft
+#: derselbe Aufruf über das bisherige Routing (OpenAI direkt u. a.), und ein
+#: Modell ohne EU-Anbieter ist nicht mehr gesperrt. Gedacht für eine längere
+#: Störung bei Azure EU — ohne Schalter scheitert der Aufruf lieber, als die
+#: Frage in die USA zu schicken. Jeder Rückfall bleibt gezählt
+#: (:data:`RUECKFALL_MARKE`). Wer ihn setzt, ändert, was die Oberfläche
+#: verspricht („KI in der EU") — also nur vorübergehend und bewusst.
+AUSSERHALB_EU_ENV = "RATSLOTSE_KI_AUSSERHALB_EU"
+
+
+def ausserhalb_eu_erlaubt() -> bool:
+    """Ist der Notausgang :data:`AUSSERHALB_EU_ENV` gesetzt?"""
+    return os.environ.get(AUSSERHALB_EU_ENV, "").strip().lower() in ("1", "true", "on", "ja", "yes")
+
+
+class KeinEuAnbieter(RuntimeError):
+    """Ein Feature mit Nutzereingabe soll ein Modell ohne EU-Anbieter rufen.
+
+    Kein Rückfall, kein stilles Umleiten: Die Konfiguration ist falsch (meist
+    ein Modell in der ``.env``), und das soll man sehen — im Fehler-Sammler
+    und in der Mail an ``ALERT_EMAIL``."""
 
 #: **Ein reiner Messschalter** wie ``TARIF_ENV``: ersetzt die Anbieterliste
 #: aus :data:`EU_ZUERST` (kommagetrennt). Ein Anbieter, den es nicht gibt
@@ -380,8 +423,13 @@ RUECKFALL_MARKE = "@fallback-no-zdr"
 
 
 def eu_zuerst(feature: str | None, model: str | None) -> tuple[str, ...] | None:
-    """Die EU-Anbieter für den ersten Weg — ``None``: nur das bisherige Routing."""
-    if feature not in ZDR_VERZICHT:
+    """Die EU-Anbieter für den ersten Weg — ``None``: nur das bisherige Routing.
+
+    Für jedes Feature mit Nutzereingabe (:func:`nutzereingabe`), dessen Modell
+    einen EU-Anbieter hat. Öffentliche Ratsdaten (Crons) bleiben beim
+    bisherigen Routing — dort steht nichts, was jemand selbst geschrieben hat.
+    """
+    if not nutzereingabe(feature):
         return None
     if os.environ.get("NWZ_OPENROUTER_ROUTING", "on").strip().lower() == "off":
         return None
@@ -744,7 +792,23 @@ def _anbieter(obj: Any) -> str | None:
 def _melde_rueckfall(feature: str | None, model: str | None, exc: BaseException) -> None:
     """Der Rückfall steht im Log — die Zählung übernimmt ``llm_usage``."""
     print(f"  🇪🇺↩️ {feature}/{model}: EU-Weg ausgefallen ({exc!r}) — "
-          "Rückfall auf das Routing ohne ZDR", flush=True)
+          f"Rückfall außerhalb der EU ({AUSSERHALB_EU_ENV} ist gesetzt)", flush=True)
+
+
+def _nur_eu_pruefen(feature: str | None, model: str | None) -> None:
+    """Sperrt ein Feature mit Nutzereingabe, dessen Modell keinen EU-Anbieter hat.
+
+    Ausnahmen: der Notausgang :data:`AUSSERHALB_EU_ENV` und der
+    Routing-Notausschalter ``NWZ_OPENROUTER_ROUTING=off`` (dann gibt es gar
+    keine Anbietervorgabe, auch keine EU)."""
+    if not nutzereingabe(feature) or ausserhalb_eu_erlaubt():
+        return
+    if os.environ.get("NWZ_OPENROUTER_ROUTING", "on").strip().lower() == "off":
+        return
+    raise KeinEuAnbieter(
+        f"{model!r} hat keinen EU-Anbieter (Feature {feature or 'ohne _feature'!r}). "
+        f"Nutzereingaben laufen nur in der EU — Modell mit Eintrag in EU_ZUERST wählen "
+        f"oder vorübergehend {AUSSERHALB_EU_ENV}=1 setzen.")
 
 
 def _frist_von(kwargs: dict[str, Any]) -> float | None:
@@ -813,6 +877,10 @@ def _create_eu_zuerst(kwargs: dict[str, Any], anbieter: tuple[str, ...],
     Aufrufers.
     """
     eu = {**kwargs, "_zdr": True, "_only": anbieter}
+    if not ausserhalb_eu_erlaubt():
+        # Nur EU: der EU-Weg mit den vollen Anläufen — kein zweiter Weg, auf
+        # den ein einzelner Anlauf Zeit sparen müsste.
+        return (_create_geduldig(eu) if geduld else _anlauf(kwargs)(**eu)), False
     try:
         resp = _eu_anlauf(kwargs)(**eu)
         if getattr(resp, "choices", None):
@@ -912,6 +980,8 @@ def chat_complete(**kwargs: Any):
         versuch = {**kwargs, "model": model}
         # Flex gibt es für die EU-Features nie (s. o., FlexNichtErlaubt).
         anbieter = eu_zuerst(feature, model) if tarif == "normal" else None
+        if not anbieter:
+            _nur_eu_pruefen(feature, model)
         rueckfall = False
         try:
             if tarif == "flex":
@@ -1031,14 +1101,22 @@ def chat_stream_events(**kwargs: Any) -> Generator[tuple[str, Any], None, None]:
     # Die Wege, der Reihe nach: für die EU-Features (EU_ZUERST) erst EU mit
     # ZDR, dann das Verzicht-Routing — sonst nur der eine Weg wie bisher.
     anbieter = eu_zuerst(feature, kwargs.get("model"))
-    wege: list[tuple[bool, tuple[str, ...] | None]] = (
-        [(True, anbieter), (False, None)] if anbieter else [(zdr_pflicht(feature), None)])
+    if not anbieter:
+        _nur_eu_pruefen(feature, kwargs.get("model"))
+    # Der zweite Weg (außerhalb der EU) nur mit dem Notausgang.
+    wege: list[tuple[bool, tuple[str, ...] | None]]
+    if anbieter:
+        wege = [(True, anbieter)]
+        if ausserhalb_eu_erlaubt():
+            wege.append((zdr_pflicht(feature), None))
+    else:
+        wege = [(zdr_pflicht(feature), None)]
     rueckfall = False
     try:
         for nr, (zdr, only) in enumerate(wege):
             ausgeliefert = False
             try:
-                erzeugen = _eu_anlauf(kwargs) if only else _anlauf(kwargs)
+                erzeugen = _eu_anlauf(kwargs) if only and len(wege) > 1 else _anlauf(kwargs)
                 for chunk in erzeugen(stream=True, _zdr=zdr, _only=only, **kwargs):
                     if antwort_anbieter is None:
                         antwort_anbieter = _anbieter(chunk)
