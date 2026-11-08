@@ -1082,20 +1082,30 @@ def test_notausgang_erlaubt_rueckfall_und_modelle_ausserhalb(_eu_umgebung, monke
     assert _eu_umgebung[0] == ("qa_answer", "openai/gpt-6-luna" + llm.RUECKFALL_MARKE)
 
 
-def test_vorgabe_modelle_aller_nutzer_features_haben_einen_eu_anbieter(monkeypatch):
+def test_vorgabe_modelle_aller_nutzer_features_haben_einen_eu_anbieter():
     """Die Vorgaben im Code — was ohne Eintrag in der .env gilt — laufen alle in
-    der EU. Wer eine Vorgabe ändert, nimmt ein Modell aus EU_ZUERST."""
-    import importlib
-    for var in ("COUNCIL_QA_MODEL", "COUNCIL_QA_EXPAND_MODEL", "COUNCIL_ASSISTANT_MODEL",
-                "COUNCIL_DEEP_MODEL", "COUNCIL_DEEP_PLUS_MODEL", "COUNCIL_WATCHER_MODEL",
-                "TOPIC_INTEL_MODEL", "COUNCIL_ASSISTANT_PRUEFER_MODEL"):
-        monkeypatch.delenv(var, raising=False)
-    from council import qa, self_check, topic_intel, watcher
-    vorgaben = {
-        "qa.EXPAND_MODEL": importlib.reload(qa).EXPAND_MODEL,
-        "topic_intel.MODEL": importlib.reload(topic_intel).MODEL,
-        "self_check.MODEL": importlib.reload(self_check).MODEL,
-        "watcher.MODEL": importlib.reload(watcher).MODEL,
+    der EU. Wer eine Vorgabe ändert, nimmt ein Modell aus EU_ZUERST.
+
+    Gelesen wird der Quelltext, nicht das geladene Modul: Ein
+    ``importlib.reload`` zum Abstreifen der Umgebung tauschte die Funktionen
+    der Module aus, und Identitätsprüfungen anderer Tests
+    (``test_stichtag_ist_ueberall_derselbe``) scheiterten dann je nach
+    Reihenfolge — zuerst im Release-PR 3.0.0.
+    """
+    import re
+    from pathlib import Path
+    wurzel = Path(__file__).resolve().parents[1] / "council"
+    stellen = {
+        "qa.EXPAND_MODEL": ("qa.py", "COUNCIL_QA_EXPAND_MODEL"),
+        "topic_intel.MODEL": ("topic_intel.py", "TOPIC_INTEL_MODEL"),
+        "self_check.MODEL": ("self_check.py", "COUNCIL_ASSISTANT_PRUEFER_MODEL"),
+        "watcher.MODEL": ("watcher.py", "COUNCIL_WATCHER_MODEL"),
     }
+    vorgaben = {}
+    for name, (datei, var) in stellen.items():
+        treffer = re.search(rf'os\.environ\.get\("{var}",\s*"([^"]+)"\)',
+                            (wurzel / datei).read_text(encoding="utf-8"))
+        assert treffer, f"{name}: Vorgabe nicht gefunden"
+        vorgaben[name] = treffer.group(1)
     ohne = {name: modell for name, modell in vorgaben.items() if modell not in llm.EU_ZUERST}
     assert not ohne, f"ohne EU-Anbieter: {ohne}"
