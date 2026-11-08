@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useVollbildMelden } from "@/lib/vollbild";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { aufzaehlung } from "@/lib/ideen";
+import { karteHref } from "@/lib/routes";
+import { gewaehlteOrtsbereiche, useOrtsbereiche } from "@/components/onboarding-flow";
 import { Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
@@ -36,7 +41,48 @@ type TourStep = {
    *  greift nur, wenn eine Tour-Route zufällig exakt einer Kurs-Seite
    *  entspricht — genau daran hakte die Tour vorher fast nichts ab. */
   marks?: StepId[];
+  /** Die Seite selbst ist der Inhalt (Karte, eigene Themen): nur leicht
+   *  abgedunkelt, die Sprechblase unten statt mittig darüber. */
+  blick?: true;
+  /** Nach dem Ankommen dorthin weiterschalten — die Karte fliegt dann von der
+   *  Stadt ins eigene Viertel, statt schon gezoomt dazustehen. */
+  zoomZu?: string;
 };
+
+/** Was die Tour über das Konto weiß: das erste gewählte Viertel und die
+ *  übrigen eigenen Themen — beides meist aus dem Einrichtungs-Assistenten. */
+type Persoenlich = { viertel: { id: string; name: string } | null; themen: string[] };
+
+/** Die Station auf das Konto zuschneiden (Tims Wunsch 08.11.2026): Wer im
+ *  Assistenten ein Viertel und Themen gewählt hat, soll sie in der Tour
+ *  wiedersehen — „das ist in DEINEM Viertel los", „hier liegen DEINE Themen" —,
+ *  statt nur die ganze Stadt und einen Menüpunkt gezeigt zu bekommen. Ohne
+ *  Auswahl bleibt es bei der allgemeinen Station. */
+function persoenlich(step: TourStep, p: Persoenlich): TourStep {
+  if (step.id === "karte" && p.viertel) {
+    return {
+      ...step, blick: true, zoomZu: karteHref(p.viertel.id),
+      title: `Dein Viertel: ${p.viertel.name}`,
+      text: `Das ist gerade in ${p.viertel.name} los — Vorhaben, Pläne und die Beschlüsse dazu, jedes mit seinem Stand. `
+        + "Zoom hinein, um Einzelnes anzusehen, und wieder heraus, um in ein anderes Viertel zu wechseln.",
+    };
+  }
+  if (step.id === "karte") return { ...step, blick: true };
+  if (step.id === "themen" && (p.themen.length > 0 || p.viertel)) {
+    const genannt = p.themen.length > 3
+      ? `${p.themen.slice(0, 3).join(", ")} und ${p.themen.length - 3} weitere`
+      : aufzaehlung(p.themen);
+    const was = p.themen.length === 0
+      ? `Hier liegt dein Viertel ${p.viertel!.name} — als Thema, wie alles, was du verfolgst.`
+      : `Hier liegen die Themen, die du eben eingerichtet hast: ${genannt}`
+        + (p.viertel ? ` — dazu dein Viertel ${p.viertel.name}.` : ".");
+    return {
+      ...step, route: "/topics", anchor: undefined, blick: true,
+      text: `${was} Bei neuen Beschlüssen dazu melde ich mich per Push oder E-Mail — und du kannst jederzeit weitere anlegen.`,
+    };
+  }
+  return step;
+}
 
 const STEPS: TourStep[] = [
   {
@@ -89,7 +135,7 @@ const STEPS: TourStep[] = [
     id: "karte", route: "/karte", pose: "search",
     marks: ["karten"],
     title: "Die Stadtkarte",
-    text: "Beschlüsse an ihrem Ort: Von der Stadt ins Viertel bis zum Vorhaben — Pläne, Sperrungen und Themen als Ebenen auf einer Karte.",
+    text: "Beschlüsse an ihrem Ort: Von der Stadt ins Viertel bis zum Vorhaben — Pläne, Sperrungen und Themen als Ebenen auf einer Karte. Tipp auf ein Viertel oder zoom hinein, um es genauer anzusehen.",
   },
   {
     // Ohne Route: Der Anker steht in Sidebar bzw. Tab-Bar, also auf jeder
@@ -249,7 +295,24 @@ export function GuidedTour() {
   // Solange die Tour läuft, gibt es keinen Lotti-Knopf daneben: Sie ist selbst
   // Lottis Führung, und der Knopf läge unter ihrer Abdunkelung (lib/vollbild.ts).
   useVollbildMelden("tour", active);
-  const step = active ? STEPS[stepIndex] : null;
+  // Nur geladen, solange die Tour läuft (sie hängt in der App-Hülle). Fehlt
+  // eines davon noch, zeigt die Station die allgemeine Fassung.
+  const themenAbfrage = useQuery({
+    queryKey: ["topics"],
+    queryFn: () => api.get<{ name: string }[]>("/topics"),
+    enabled: active,
+  });
+  const orte = useOrtsbereiche(active);
+  const konto = useMemo<Persoenlich>(() => {
+    const themen = themenAbfrage.data ?? [];
+    const viertel = gewaehlteOrtsbereiche(themen, orte.data ?? []);
+    const viertelNamen = new Set(viertel.map((o) => o.name.toLowerCase()));
+    return {
+      viertel: viertel[0] ? { id: viertel[0].place_id, name: viertel[0].name } : null,
+      themen: themen.map((t) => t.name).filter((n) => !viertelNamen.has(n.toLowerCase())),
+    };
+  }, [themenAbfrage.data, orte.data]);
+  const step = active ? persoenlich(STEPS[stepIndex], konto) : null;
   const isLast = stepIndex === STEPS.length - 1;
 
   // Der Schritt überlebt das Neuladen (sessionStorage, nur dieser Tab): Bis
@@ -349,6 +412,20 @@ export function GuidedTour() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex, active]);
 
+  // Ins eigene Viertel: erst steht die ganze Stadt da, dann fliegt die Karte
+  // hinein (`stadt-karte.tsx` fliegt bei jedem Wechsel des Viertels). Direkt
+  // mit `?ort=` geöffnet stünde sie schon gezoomt da, und man sähe nicht, WO
+  // das Viertel liegt.
+  useEffect(() => {
+    if (!active || !ready || !step?.zoomZu) return;
+    const ziel = step.zoomZu;
+    const t = setTimeout(() => {
+      if (!routeMatches(ziel)) router.replace(ziel, { scroll: false });
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, ready, stepIndex, step?.zoomZu]);
+
   // Spotlight folgt bei Scroll/Resize.
   useEffect(() => {
     if (!active || !ready || !step?.anchor) return;
@@ -417,7 +494,9 @@ export function GuidedTour() {
           aria-hidden
         />
       ) : (
-        <div className="fixed inset-0 bg-[hsl(213_60%_5%/0.62)]" aria-hidden />
+        // `blick`: Die Seite ist der Inhalt (die Karte fliegt ins Viertel, die
+        // eigenen Themen stehen da) — unter 62 % Schwarz sähe man davon nichts.
+        <div className={`fixed inset-0 ${step.blick ? "bg-[hsl(213_60%_5%/0.18)]" : "bg-[hsl(213_60%_5%/0.62)]"}`} aria-hidden />
       )}
 
       <div
@@ -425,7 +504,10 @@ export function GuidedTour() {
         tabIndex={-1}
         // Ankerlos (Finale): über ein Grid zentriert — bewusst ohne Transform,
         // damit kein Compositing-Versatz entsteht. Mit Anker: gemessene Position.
-        className={rect ? "fixed w-[min(92vw,360px)] outline-none" : "fixed inset-0 grid place-items-center p-4 outline-none"}
+        // `blick`: unten, damit die Mitte der Seite frei bleibt.
+        className={rect ? "fixed w-[min(92vw,360px)] outline-none"
+          : step.blick ? "fixed inset-x-0 bottom-0 grid place-items-center p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] outline-none"
+            : "fixed inset-0 grid place-items-center p-4 outline-none"}
         style={rect ? (cardPos ? { top: cardPos.top, left: cardPos.left } : { visibility: "hidden", top: 0, left: 0 }) : undefined}
       >
         <div className={rect ? "flex items-end gap-2" : "flex w-[min(92vw,360px)] items-end gap-2"}>

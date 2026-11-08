@@ -670,7 +670,9 @@ type Ortsbereich = {
  *  richtig, hier nicht: Auf dem Prod-Bestand standen dadurch 40 Pillen unter
  *  einer Karte mit 31 Flächen, und „Alte Fleiwa" als Stadtteil anzubieten ist
  *  schlicht falsch. Die 31 flächendeckenden Ortsbereiche sind die Auswahl. */
-function useOrtsbereiche() {
+/** `enabled`: Die Lotti-Tour fragt dieselbe Liste, aber nur, solange sie läuft —
+ *  sie hängt in der App-Hülle und soll nicht auf jeder Seite mitladen. */
+export function useOrtsbereiche(enabled = true) {
   return useQuery({
     queryKey: ["council-districts"],
     queryFn: () => api.get<{ districts: Ortsbereich[] }>("/council/districts")
@@ -678,6 +680,7 @@ function useOrtsbereiche() {
         .filter((o) => o.kind === "local_area")
         .sort((a, b) => a.name.localeCompare(b.name, "de"))),
     staleTime: 10 * 60_000,
+    enabled,
   });
 }
 
@@ -688,7 +691,7 @@ function useOrtsbereiche() {
  *  überlebt die Auswahl einen Neuladen mitten im Ablauf — ein Zustand in React
  *  täte das nicht, und der Assistent nimmt seinen Stand sonst überall vom
  *  Server. */
-function gewaehlteOrtsbereiche(topics: { name: string }[], orte: Ortsbereich[]): Ortsbereich[] {
+export function gewaehlteOrtsbereiche(topics: { name: string }[], orte: Ortsbereich[]): Ortsbereich[] {
   return orte.filter((o) => topics.some((t) => t.name.toLowerCase() === o.name.toLowerCase()));
 }
 
