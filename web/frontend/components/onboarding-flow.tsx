@@ -1811,7 +1811,11 @@ function StepShell({ title, lead, pose, children, footer }: {
                 rutscht sie über den Titel und wird größer, und die Frage bleibt
                 beim Scrollen stehen: Auf einem langen Schritt wie den Themen
                 verliert man sonst aus dem Blick, was gefragt war. */}
-            <div className="lg:sticky lg:top-6 lg:self-start">
+            {/* `lg:pb-6` wie die Inhaltsspalte daneben: Ist der Schritt kurz
+                (Benachrichtigungen), bestimmt DIESE Spalte die Höhe, und die
+                Schrittliste stieß ohne Abstand an die Linie der Fußleiste
+                (Tims Befund 08.11.2026: „sieht gequetscht aus"). */}
+            <div className="lg:sticky lg:top-6 lg:self-start lg:pb-6">
               <div className="flex items-center gap-3 lg:block">
                 <Mascot pose={pose} decorative className="h-11 w-11 shrink-0 lg:mb-5 lg:h-24 lg:w-24" />
                 {/* `hyphens-none`: In der schmalen Spalte trennte der Browser die
