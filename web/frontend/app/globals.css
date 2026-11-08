@@ -1620,3 +1620,25 @@ lotti-figur {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
+
+/* Lotti-Tour: Der Menüpunkt der neuen Station leuchtet beim Wechsel einmal auf
+   und bleibt dann umrandet stehen — sonst sah man unter der Abdunkelung kaum,
+   dass die Tour gerade zu „Analyse" gewechselt war (Tim 08.11.2026). Die Kopie
+   des Menüpunkts legt `components/tour.tsx` über die Abdunkelung. */
+.tour-nav-ring {
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.7), 0 0 16px 3px hsl(var(--primary) / 0.28);
+}
+.tour-nav-glow {
+  animation: tour-nav-glow 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes tour-nav-glow {
+  0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0), 0 0 0 0 hsl(var(--primary) / 0); }
+  35% { box-shadow: 0 0 0 3px hsl(var(--primary) / 0.85), 0 0 34px 10px hsl(var(--primary) / 0.55); }
+  100% { box-shadow: 0 0 0 2px hsl(var(--primary) / 0.7), 0 0 16px 3px hsl(var(--primary) / 0.28); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-nav-glow {
+    animation: none;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.7), 0 0 16px 3px hsl(var(--primary) / 0.28);
+  }
+}
