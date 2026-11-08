@@ -15,14 +15,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, istNichtGefunden } from "@/lib/api";
 import { useFeature } from "@/lib/features";
 import { applyTheme, getTheme } from "@/lib/theme";
 import { mitRunde, probePfad, rundeAus } from "@/lib/tipp";
 import { cn } from "@/lib/utils";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Lotti } from "@/components/lotti";
-import { WebThemeSwitch } from "@/components/web-theme-switch";
+import { LottiThemeSwitch } from "@/components/theme-switch";
 import { BeamerMitmachen } from "./beamer-mitmachen";
 import { BeamerVergleich } from "./beamer-vergleich";
 import { HandyRangliste, Scoreboard } from "./scoreboard";
@@ -77,14 +77,18 @@ export function TippLive() {
     if (getTheme() === "system") applyTheme("dark");
   }, []);
 
+  // Beide Abfragen starten zusammen mit `/api/app-config`, nicht danach. Ist
+  // der Schalter aus, antwortet das Backend 404: Die Seite zeigt dann, was sie
+  // immer zeigte (der Zweig `!schalterAn` steht zuerst), und fragt nicht im
+  // Takt weiter.
   const standQuery = useQuery({
     queryKey: ["tipp", "stand-live", standPfad],
     queryFn: () => holeStand(standPfad),
-    enabled: schalterAn,
     placeholderData: keepPreviousData,
-    refetchInterval: (q) => (q.state.data && hatZahlen(q.state.data) ? 30_000 : 60_000),
+    refetchInterval: (q) =>
+      istNichtGefunden(q.state.error) ? false : q.state.data && hatZahlen(q.state.data) ? 30_000 : 60_000,
   });
-  const setupQuery = useQuery({ queryKey: ["tipp", "setup-live", runde], queryFn: () => holeSetup(setupPfad), enabled: schalterAn });
+  const setupQuery = useQuery({ queryKey: ["tipp", "setup-live", runde], queryFn: () => holeSetup(setupPfad) });
 
   const stand = standQuery.data;
   const hatErgebnis = stand ? hatZahlen(stand) : false;
@@ -209,7 +213,7 @@ export function TippLive() {
               ))}
             </div>
           )}
-          <WebThemeSwitch />
+          <LottiThemeSwitch />
         </div>
       </div>
       {schmal ? (

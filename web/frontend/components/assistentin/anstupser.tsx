@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
-import { apiUrl, authHeaders } from "@/lib/api";
+import { apiUrl } from "@/lib/api";
 import { sendAndForget } from "@/lib/send-and-forget";
 import {
   darfAnstupsen, leseStand, merkeStand, nachAnzeige, nachJa, nachNein,
@@ -75,7 +75,7 @@ function melde(kind: string): void {
   sendAndForget(apiUrl("/council/assistant/event"), {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ kind }),
     keepalive: true,
   });

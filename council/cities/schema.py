@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -181,6 +181,15 @@ CREATE TABLE IF NOT EXISTS annotations (
     PRIMARY KEY (object_kind, object_id, annotator, version)
 );
 CREATE INDEX IF NOT EXISTS idx_annotations_annotator ON annotations(annotator, version);
+-- Das Themenfeld der Einordnung, für die Ideen-Liste je Feld. Ihre drei
+-- Abfragen (`CitiesStore._IDEEN_*`) filtern über `json_extract(c.payload,
+-- '$.field') = ?`; ohne diesen Index begann jede bei allen rund 12.000
+-- Urteilen und las deren Nutzlast (gemessen 11/2026: je 50 bis 58 ms, die
+-- Liste eines Feldes gut 215 ms). Ein Index trägt keine Meinung — er ordnet
+-- nur, was in `annotations` schon steht.
+CREATE INDEX IF NOT EXISTS idx_annotations_field
+    ON annotations(annotator, version, json_extract(payload, '$.field'))
+    WHERE object_kind = 'paper';
 
 -- Die Suchwörter, unter denen OLDENBURG dieselbe Sache führen würde
 -- (`evidence.search_terms`). **Ein Zwischenspeicher, kein Urteil** — deshalb
@@ -630,5 +639,15 @@ MIGRATIONS: list[tuple[int, str]] = [
         PRIMARY KEY (model, version, cluster_id)
     );
     CREATE INDEX IF NOT EXISTS idx_idea_groups_field ON idea_groups(field, cities);
+    """),
+    # 10 — Das Themenfeld als Ausdrucksindex (11/2026). Reines Anlegen; die
+    # Begründung samt Messung steht am SCHEMA oben. Der Bau läuft einmal, beim
+    # ersten Öffnen nach dem Deploy: auf einer frischen Kopie des Abzugs
+    # (2,4 GB, 110.000 Zeilen mit `object_kind='paper'`) 0,8 s — gemessen bei
+    # einer Last von 37 auf zehn Kernen, also eher die obere Grenze.
+    (10, """
+    CREATE INDEX IF NOT EXISTS idx_annotations_field
+        ON annotations(annotator, version, json_extract(payload, '$.field'))
+        WHERE object_kind = 'paper';
     """),
 ]

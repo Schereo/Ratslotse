@@ -62,6 +62,15 @@ import {
  */
 export default function KarteView() {
   const cfg = useAppConfig();
+  const sp = useSearchParams();
+  // Übersicht und Tafel nicht erst nach /app-config holen: Bis 11/2026 starteten
+  // sie, wenn der Schalter geantwortet hatte — eine Netzlaufzeit mehr
+  // (auth/me → app-config → Seitendaten). Dieselben Schlüssel wie in `Buehne`,
+  // react-query legt die Abrufe zusammen. Die Endpunkte prüfen den Schalter
+  // nicht; ist er aus, bleibt es beim 404 hier unten.
+  const fetchEarly = cfg.isPending || (cfg.isSuccess && featureAktiv(cfg.data, "mein-viertel"));
+  useUebersicht(fetchEarly);
+  useTafel(fetchEarly ? sp.get("ort") : null);
   // `undefined` heißt „noch nicht geladen" und wäre AUS — ein notFound() in
   // diesem Moment träfe jeden beim ersten Aufruf. Deshalb erst nach Antwort.
   if (cfg.isSuccess && !featureAktiv(cfg.data, "mein-viertel")) notFound();

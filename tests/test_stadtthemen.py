@@ -73,8 +73,15 @@ def test_baum_muster_trifft_keine_baumassnahme_und_kein_parken():
 
 
 class _Zaehlgut:
-    def __init__(self, texte): self.texte = texte
-    def decision_texts_since(self, date_from): return self.texte
+    """Attrappe des Rats-Stores — nur, was die Zählung liest. Bloße Texte
+    bekommen fortlaufende Kennungen und ein junges Datum."""
+    def __init__(self, texte, gespeichert=None):
+        jung = (date.today() - timedelta(days=20)).isoformat()
+        self.texte = [t if isinstance(t, tuple) else (i, jung, t)
+                      for i, t in enumerate(texte, start=1)]
+        self.gespeichert = gespeichert or {}
+    def decision_texts_dated(self): return self.texte
+    def city_topic_decisions(self): return self.gespeichert
 
 
 def test_schwelle_laesst_duenne_themen_weg():
@@ -189,3 +196,120 @@ def test_themen_liste_nennt_das_bild_nur_fuer_kuratierte_themen(client):
     assert bilder == {"Radverkehr": "cycling", "Schulwegsicherheit": None}
     assert city_topics.bild_key(" radverkehr ") == "cycling"
     assert city_topics.bild_key(None) is None
+
+
+# --- Eine Liste je Stadtthema (Tims Befund 08.11.2026) -----------------------
+#
+# Die Kachel im Assistenten zählte per Wortsuche (Theater 18), das Thema bekam
+# danach den semantischen Abgleich (35 bzw. 2 seit 2018), und jeder Klick
+# wartete auf den Cross-Encoder. Jetzt lesen Kachel, Anlegen, „anpassen" und
+# der Wochenlauf dieselbe Liste: ``city_topics.treffer``.
+
+def _rad():
+    return next(t for t in city_topics.CITY_TOPICS if t.key == "cycling")
+
+
+def test_muster_score_ist_die_relevanzschwelle():
+    """Als Zahl gesetzt, damit der Router beim Start nicht ``topic_intel``
+    (und damit das openai-SDK) lädt — gleich bleiben müssen beide trotzdem."""
+    assert city_topics.MUSTER_SCORE == topic_intel.SCHWELLE
+
+
+def test_zu_thema_erkennt_nur_das_unveraenderte_stadtthema():
+    rad = _rad()
+    assert city_topics.zu_thema("Radverkehr", rad.description) is rad
+    # Leerraum und Groß-/Kleinschreibung des Namens machen kein neues Thema.
+    assert city_topics.zu_thema("  radverkehr ", rad.description.replace(" ", "\n", 1)) is rad
+    # Eine geänderte Beschreibung schon: Dann gelten Modell und Vagheits-Prüfung.
+    assert city_topics.zu_thema("Radverkehr", rad.description + " Auch Lastenräder.") is None
+    assert city_topics.zu_thema("Radwege", rad.description) is None
+    assert city_topics.zu_thema("Radverkehr", None) is None
+
+
+def test_treffer_vereint_gespeicherte_liste_und_muster_neueste_zuerst():
+    texte = [(1, "2026-01-10", "Neuer Radweg am Hafen"), (2, "2026-03-01", "Haushalt 2026"),
+             (3, "2025-06-01", "Fahrradstraße Ofener Straße")]
+    # Nr. 2 trifft das Muster nicht — der semantische Abgleich des Wochenlaufs
+    # hat sie gefunden, und sie behält ihren Score.
+    gespeichert = {"cycling": [(2, 3.5, "2026-03-01")]}
+    liste = city_topics.treffer(_Zaehlgut(texte, gespeichert), _rad())
+    assert [d for d, _, _ in liste] == [2, 1, 3]
+    assert {d: s for d, s, _ in liste} == {2: 3.5, 1: city_topics.MUSTER_SCORE,
+                                           3: city_topics.MUSTER_SCORE}
+
+
+def test_kachel_zaehlt_dieselbe_liste_im_zwoelf_monats_fenster():
+    jung = (date.today() - timedelta(days=20)).isoformat()
+    alt = (date.today() - timedelta(days=400)).isoformat()
+    texte = [(i, jung, "Radweg") for i in range(1, 7)] + [(99, alt, "Radweg")]
+    gespeichert = {"cycling": [(50, 2.0, jung)]}
+    out = city_topics.city_topic_suggestions(_Zaehlgut(texte, gespeichert))
+    # Sechs Mustertreffer plus der semantische, ohne den von vor 400 Tagen.
+    assert out[0]["key"] == "cycling" and out[0]["n"] == 7
+
+
+def _darf_nicht(*_a, **_k):
+    raise AssertionError("Ein Stadtthema darf kein Modell rufen")
+
+
+def test_stadtthema_legt_ohne_modell_mit_der_zahl_der_kachel_an(client, monkeypatch):
+    _saat_stadtthema(city_topics.MIN_DECISIONS)
+    _register(client)
+    monkeypatch.setattr(topic_intel, "treffer", _darf_nicht)
+    rad = _rad()
+    r = client.post("/api/topics", json={"name": rad.name, "description": rad.description})
+    assert r.status_code == 201, r.text
+    body = r.json()
+    kachel = client.get("/api/topics/suggestions?citywide=0").json()["city"][0]["n"]
+    assert body["matched"] and not body["decision_count_capped"]
+    assert body["decision_count"] == kachel == city_topics.MIN_DECISIONS
+    # „Deine Themen" zählt dasselbe Fenster wie die Kachel.
+    assert client.get("/api/topics").json()[0]["hits_12m"] == kachel
+
+
+def test_describe_fuer_ein_stadtthema_ohne_modell_und_ohne_vagheitswarnung(client, monkeypatch):
+    _saat_stadtthema(city_topics.MIN_DECISIONS)
+    _register(client)
+    monkeypatch.setattr(topic_intel, "analyse", _darf_nicht)
+    monkeypatch.setattr(topic_intel, "check_vagueness", _darf_nicht)
+    rad = _rad()
+    r = client.post("/api/topics/describe", json={"name": rad.name, "description": rad.description})
+    assert r.status_code == 200, r.text
+    b = r.json()
+    assert (b["verdict"], b["vague"], b["parts"]) == ("belegt", False, [])
+    assert b["matches"] == b["matches_12m"] == city_topics.MIN_DECISIONS
+    assert len(b["examples"]) == 2 and all(e.startswith("Neuer Radweg") for e in b["examples"])
+
+
+def test_geaenderte_beschreibung_prueft_wie_jedes_eigene_thema(client, monkeypatch):
+    _register(client)
+    monkeypatch.setattr(topic_intel, "analyse", lambda *a, **k: {
+        "description": "x", "matches": 3, "matches_capped": False, "examples": [],
+        "verdict": "belegt", "is_council_topic": True, "reason": ""})
+    monkeypatch.setattr(topic_intel, "check_vagueness",
+                        lambda *a, **k: {"vague": True, "hint": "breit", "suggestion": ""})
+    r = client.post("/api/topics/describe",
+                    json={"name": "Radverkehr", "description": _rad().description + " Und Lastenräder."})
+    assert r.status_code == 200, r.text
+    assert r.json()["vague"] is True and "matches_12m" not in r.json()
+
+
+def test_wochenlauf_gibt_dem_stadtthema_die_liste_seiner_kachel(client, monkeypatch):
+    """Der Wochenlauf schreibt die Liste neu und gleicht danach die Themen ab —
+    ein Stadtthema darf dabei nicht auf den Cross-Encoder zurückfallen, sonst
+    hieße es nach dem Anlegen „6" und am Sonntag etwas anderes."""
+    from scripts import match_topics_decisions as lauf
+
+    _saat_stadtthema(city_topics.MIN_DECISIONS)
+    _register(client)
+    rad = _rad()
+    assert client.post("/api/topics", json={"name": rad.name, "description": rad.description}).status_code == 201
+    monkeypatch.setattr(lauf, "RATSLOTSE_DB", Path(_pfade()[0]))
+    monkeypatch.setattr(lauf, "COUNCIL_DB", Path(_pfade()[1]))
+    # Der semantische Teil braucht den Cross-Encoder; hier steht er für „nichts
+    # Zusätzliches gefunden".
+    monkeypatch.setattr(topic_intel, "treffer", lambda *a, **k: ([], False, 0))
+    monkeypatch.setattr(lauf, "treffer", _darf_nicht)
+    ergebnis = lauf.process()
+    assert ergebnis["stadtthemen_treffer"] >= city_topics.MIN_DECISIONS
+    assert ergebnis["matches"] == city_topics.MIN_DECISIONS

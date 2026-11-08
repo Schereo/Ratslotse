@@ -1,35 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AppleCredential } from "./apple";
 import { api, ApiError, setUnauthorizedHandler } from "./api";
-import { loadToken, setToken } from "./token";
-import { unregisterPush } from "./push";
 import { kontoDatenRaeumen } from "./konto-raeumen";
 import { User } from "./types";
-import { isNativeApp } from "./platform";
-
-/** In der App: das zuletzt bestätigte Konto, für den Start im Funkloch. Der
- *  Abfrage-Zwischenspeicher überlebt dort den Neustart (RL-1103) — ohne Konto
- *  stand davor aber die Anmeldung, und die gespeicherten Daten waren wertlos.
- *  Rechte setzt ohnehin der Server durch; das hier entscheidet nur, ob die
- *  Hülle steht. */
-const LETZTES_KONTO = "ratslotse.letztes-konto";
-function kontoMerken(u: User | null) {
-  if (!isNativeApp()) return;
-  try {
-    if (u) localStorage.setItem(LETZTES_KONTO, JSON.stringify({ ...u, access_token: null }));
-    else localStorage.removeItem(LETZTES_KONTO);
-  } catch { /* gesperrter Speicher: dann eben ohne */ }
-}
-function letztesKonto(): User | null {
-  if (!isNativeApp()) return null;
-  try {
-    const roh = localStorage.getItem(LETZTES_KONTO);
-    return roh ? (JSON.parse(roh) as User) : null;
-  } catch { return null; }
-}
 
 interface AuthContextValue {
   user: User | null;
@@ -54,33 +30,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const u = await api.get<User>("/auth/me");
-      // Die App bekommt hier ein frisch datiertes Token — wegschreiben, sonst
-      // läuft das gespeicherte irgendwann ab und der Login kommt zurück. Im
-      // Web ist das Feld null (die Sitzung steckt im Cookie), also passiert
-      // nichts.
-      if (u.access_token) await setToken(u.access_token);
       setUser(u);
-      kontoMerken(u);
       setAuthFehler(false);
     } catch (e) {
       // Nur ein 401 heißt „nicht angemeldet". Bis 10/2026 landete auch jeder
       // 5xx und jedes Funkloch beim ersten Laden auf der Anmeldung — bei
       // jedem Deploy also alle, die gerade eine Seite öffneten.
       if (e instanceof ApiError && e.status === 401) {
-        setUser(null); kontoMerken(null); setAuthFehler(false);
+        setUser(null); setAuthFehler(false);
       } else {
+        // Ein schon geladenes Konto bleibt stehen.
         setAuthFehler(true);
-        setUser((jetzt) => jetzt ?? letztesKonto());
       }
     }
   }, []);
 
+  // Einmal je Seitenaufruf, auch wenn der Effekt doppelt läuft (StrictMode in
+  // der Entwicklung): Der erste Abruf nimmt die Antwort, die schon seit dem
+  // <head> unterwegs ist (lib/early-auth.ts) — ein zweiter ginge neu ans Netz.
+  const ersterAbruf = useRef<Promise<void> | null>(null);
   useEffect(() => {
-    (async () => {
-      await loadToken(); // hydrate the stored bearer token (native app) before the first /me
-      await refresh();
-      setLoading(false);
-    })();
+    ersterAbruf.current ??= refresh();
+    void ersterAbruf.current.then(() => setLoading(false));
   }, [refresh]);
 
   const queryClient = useQueryClient();
@@ -91,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setUnauthorizedHandler(() => {
       setUser(null);
-      kontoMerken(null);
       queryClient.clear();
       kontoDatenRaeumen({ mitEntwurf: false });
     });
@@ -100,7 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const u = await api.post<User>("/auth/login", { email, password });
-    await setToken(u.access_token ?? null); // persist bearer token (native app only)
     setUser(u);
   };
 
@@ -108,7 +77,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Der Name ist Pflicht (Backend weist einen leeren ab) — deshalb kein
     // `|| null` mehr, das die Prüfung nur zum Server verschöbe.
     const u = await api.post<User>("/auth/register", { email, password, display_name: displayName.trim() });
-    await setToken(u.access_token ?? null);
     setUser(u);
   };
 
@@ -120,7 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       given_name: cred.givenName,
       family_name: cred.familyName,
     });
-    await setToken(u.access_token ?? null);
     setUser(u);
     // Zurückgegeben, damit der Knopf sofort sehen kann, ob Apple einen Namen
     // mitgeliefert hat — `user` aus dem Context steht erst im nächsten Rendern.
@@ -128,11 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    await unregisterPush(); // while still authenticated — stops pushes for this account
     await api.post("/auth/logout");
-    await setToken(null);
     setUser(null);
-    kontoMerken(null);
     // Was das Konto im Tab hinterlassen hat, gehört nicht der nächsten
     // Person an diesem Gerät (zweite Sicherheitsprüfung, F8/F17).
     queryClient.clear();

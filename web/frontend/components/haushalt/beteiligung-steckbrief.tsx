@@ -343,7 +343,7 @@ function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boole
             }} />
         )}
         {p.slug ? (
-          <Link href={personHref(p.slug)}
+          <Link href={personHref(p.slug)} prefetch={false}
             className="text-[13px] font-semibold leading-snug text-foreground hover:text-primary hover:underline">
             {p.name}
           </Link>

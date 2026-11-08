@@ -67,17 +67,25 @@ export default function LaborPage() {
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "keine"));
   // Die Produktebene liegt nur für abgeschlossene Jahre vor — wir nehmen das
   // jüngste. Fehlt sie ganz, läuft das Labor ohne Vergleichsgrößen weiter.
+  // Ohne `year` liefert der Endpunkt genau dieses Jahr, der Abruf wartet also
+  // nicht auf die Übersicht (s. /haushalt/pflicht).
   const produktJahr = data?.product_years?.at(-1) ?? null;
-  const { data: produkte } = useFetch<ProdukteAntwort>(
-    produktJahr ? `/council/budget/products?year=${produktJahr}` : null);
+  const { data: latestProducts } = useFetch<ProdukteAntwort>("/council/budget/products");
+  const produkte = latestProducts && latestProducts.year === produktJahr ? latestProducts : null;
   // Die drei Zugaben — jede Komponente kommt mit `null` zurecht und lässt
   // ihren Baustein dann weg, statt mit halben Daten zu rechnen.
   const { data: vergleich } = useFetch<VergleichDaten>("/council/budget/comparison");
-  const { data: programm } = useFetch<ProgrammDaten>("/council/budget/investment-programme");
+  // Nur der jüngste Jahrgang des Programms: Die Invest-Werkbank zeigt und
+  // rechnet allein mit ihm (`programm.years.at(-1)`), alle acht wären 1.057
+  // statt 161 KB.
+  const { data: programm } = useFetch<ProgrammDaten>(
+    "/council/budget/investment-programme?year=latest");
   const { data: schulden } = useFetch<SchuldenDaten>("/council/budget/debt");
   // Der Maßstab unter dem Labor: was das echte Verfahren bewegt hat.
   // Vierte Zugabe — fehlt sie, entfällt die Karte, das Labor rechnet weiter.
-  const { data: listen } = useFetch<AenderungslistenDaten>("/council/budget/amendment-lists");
+  // Nur die Summen — `verfahrensWeg` liest keine Positionszeilen (56 statt 554 KB).
+  const { data: listen } = useFetch<AenderungslistenDaten>(
+    "/council/budget/amendment-lists?fields=totals");
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Labor wird geladen …</div>;

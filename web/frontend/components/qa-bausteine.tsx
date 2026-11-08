@@ -17,7 +17,8 @@
 import { teileKursiv } from "@/lib/kursiv";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, ChevronDown, ExternalLink, FileDown, MessageSquarePlus } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, ChevronUp, ExternalLink, FileDown, FileText, MessageSquarePlus, MessagesSquare, Newspaper, type LucideIcon } from "lucide-react";
+import { vielfaeltigeAuswahl } from "@/lib/debatten";
 import { cn } from "@/lib/utils";
 import { personHref } from "@/lib/routes";
 import { nurHttps } from "@/lib/externer-link";
@@ -30,7 +31,7 @@ import {
 } from "@/lib/qa-belege";
 import { markiereBegriffe } from "@/components/glossary-text";
 import { hasNameSignal, parteiKuerzel, personBadgeLabel } from "@/lib/person-badge";
-import { api, apiUrl, authHeaders } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import { useAuth } from "@/lib/auth";
@@ -143,7 +144,7 @@ function usePersonenLexikon(): PersonEintrag[] {
   const [lex, setLex] = useState<PersonEintrag[]>([]);
   useEffect(() => {
     _lexikonPromise ||= fetch(apiUrl("/council/people-directory"),
-      { credentials: "include", headers: authHeaders() })
+      { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { people: [] }))
       // Das Feld heißt seit dem englischen Vertrag `people`; das alte
       // `personen` las still eine leere Liste — die Marken fehlten.
@@ -704,6 +705,58 @@ export function GeteilterAntwortText({ text, quellenIds, attachments }: {
 
 /* ------------------------ Belege-Bausteine -------------------------- */
 
+/** Ein Kasten der Belege-Spalte: Beschlüsse, Wortbeiträge, Anlagen,
+ *  Pressemitteilungen.
+ *
+ *  **Gleich gebaut, klar getrennt** (Tim 08.11.2026). Vorher sah jede Art
+ *  anders aus — eigene Kopfzeile, eigene Schriftgröße, mal Karte, mal Liste —,
+ *  und man erkannte auf den ersten Blick nicht, dass drei verschiedene Dinge
+ *  untereinander stehen; es las sich wie eine lange Liste. Jetzt trägt jeder
+ *  Kasten dieselbe Kopfzeile (Zeichen, Name, Zahl) und dieselbe Zeilen-
+ *  Typografie. Was von außen kommt, bleibt gestrichelt und sagt „extern"
+ *  (DESIGNSPRACHE § 8: Externes nie wie Beschlüsse). */
+export function QuellenAbschnitt({ icon: Icon, titel, zusatz, extern = false, children, className }: {
+  icon: LucideIcon;
+  titel: string;
+  /** Rechts in der Kopfzeile, kurz: die Zahl („3 zitiert · 32"). Längeres
+   *  gehört in den Kasten — in der schmalen Spalte brach es sonst über drei
+   *  Zeilen um. */
+  zusatz?: React.ReactNode;
+  extern?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn("rounded-xl border p-3",
+      extern ? "border-dashed border-border" : "border-border bg-card", className)}>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-foreground/80">
+          <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="truncate">{titel}</span>
+        </h3>
+        {zusatz && <span className="shrink-0 whitespace-nowrap text-[11.5px] text-muted-foreground">{zusatz}</span>}
+      </div>
+      <div className="mt-2">{children}</div>
+    </section>
+  );
+}
+
+/** „N weitere" / „Weniger" — derselbe Knopf unter jedem Kasten. */
+export function MehrKnopf({ offen, anzahl, onClick, einheit }: {
+  offen: boolean; anzahl: number; onClick: () => void;
+  /** „weitere Beiträge", „weitere" … */
+  einheit?: string;
+}) {
+  return (
+    <button type="button" onClick={onClick} aria-expanded={offen}
+      className="mt-2 flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+      {offen
+        ? (<><ChevronUp className="h-3.5 w-3.5" aria-hidden /> Weniger</>)
+        : (<><ChevronDown className="h-3.5 w-3.5" aria-hidden /> {anzahl} {einheit ?? "weitere"}</>)}
+    </button>
+  );
+}
+
 /** Task 33: Anlagen-Treffer der Gründlichen Recherche — Gutachten und
  *  Konzepte, verlinkt aufs öffentliche PDF im Ratsinformationssystem. */
 export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
@@ -713,11 +766,8 @@ export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
 }) {
   const belegt = [...buchstaben.keys()].length;
   return (
-    <div className="rounded-xl border border-dashed border-border p-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-        Aus den Anlagen <span className="text-muted-foreground/60">· Gutachten &amp; Konzepte</span>
-      </p>
-      <ul className="mt-1.5 space-y-2">
+    <QuellenAbschnitt icon={FileText} titel="Anlagen" zusatz={attachments.length}>
+      <ul className="space-y-2">
         {attachments.map((a, i) => {
           const nr = anlageNummer(a, i);
           const b = buchstaben.get(nr);
@@ -752,34 +802,39 @@ export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
       </ul>
       {belegt > 0 && belegt < attachments.length && (
         <p className="mt-2 text-hinweis text-muted-foreground">
-          Die übrigen wurden documents_read, aber im Bericht nicht belegt.
+          Die übrigen wurden gelesen, aber im Bericht nicht belegt.
         </p>
       )}
-    </div>
+    </QuellenAbschnitt>
   );
 }
 
+/** So viele Pressemitteilungen stehen ohne Klick da. */
+const PRESSE_SICHTBAR = 3;
+
 export function PresseBlock({ press_releases }: { press_releases: PresseHinweis[] }) {
+  const [alle, setAlle] = useState(false);
+  const sichtbar = alle ? press_releases : press_releases.slice(0, PRESSE_SICHTBAR);
   return (
-    <div className="rounded-xl border border-dashed border-border p-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-        Aktuelles von der Stadt <span className="text-muted-foreground/60">· extern</span>
-      </p>
-      <ul className="mt-1.5 space-y-1">
-        {press_releases.map((p) => (
+    // Bis 11/2026 hieß der Kasten „Aktuelles von der Stadt" — es sind aber
+    // ausschließlich Pressemitteilungen (RSS der Stadt, scripts/check_presse.py).
+    <QuellenAbschnitt icon={Newspaper} titel="Pressemitteilungen" extern
+      zusatz={<>{press_releases.length} · Stadt, extern</>}>
+      <ul className="space-y-1">
+        {sichtbar.map((p) => (
           <li key={p.url}>
             <a href={nurHttps(p.url)} target="_blank" rel="noopener noreferrer"
-              className="group block rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
-              <span className="flex flex-wrap items-baseline gap-2">
-                <span className="min-w-0 flex-1 break-words text-quelle group-hover:underline">{p.title}</span>
-                <span className="font-mono text-meta text-muted-foreground">{fmtDatumKurz(p.date)}</span>
-                <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              className="group -mx-1.5 block rounded-lg px-1.5 py-1.5 transition-colors hover:bg-muted">
+              <span className="flex items-baseline gap-2">
+                <span className="min-w-0 flex-1 break-words text-sm font-medium leading-snug group-hover:underline">{p.title}</span>
+                <ExternalLink className="h-3 w-3 shrink-0 self-center text-muted-foreground" aria-hidden />
               </span>
+              <span className="mt-0.5 block font-mono text-[11.5px] text-muted-foreground">{fmtDatumKurz(p.date)}</span>
               {/* Die Meldung SELBST, nicht nur ihre Überschrift: Ohne den
                   Anriss war die Karte eine reine Weiterleitung auf die
                   Stadt-Seite (Tims Befund 01.09.2026). */}
               {p.excerpt && (
-                <span className="mt-1 line-clamp-3 block text-hinweis text-muted-foreground">
+                <span className="mt-1 line-clamp-2 text-[13px] leading-snug text-muted-foreground">
                   {p.excerpt}
                 </span>
               )}
@@ -787,7 +842,10 @@ export function PresseBlock({ press_releases }: { press_releases: PresseHinweis[
           </li>
         ))}
       </ul>
-    </div>
+      {press_releases.length > PRESSE_SICHTBAR && (
+        <MehrKnopf offen={alle} anzahl={press_releases.length - PRESSE_SICHTBAR} onClick={() => setAlle((v) => !v)} />
+      )}
+    </QuellenAbschnitt>
   );
 }
 
@@ -1033,51 +1091,69 @@ export function DebattenBaustein({ question, beschlussIds, debates, nachladen = 
     laedt={nachladen && weitere === null} />;
 }
 
+/** So viele Wortbeiträge stehen ohne Klick da — aus möglichst vielen
+ *  verschiedenen Stimmen (`lib/debatten.ts`). */
+const DEBATTEN_SICHTBAR = 5;
+
 export function DebattenBlock({ debates, nachgeladen = 0, laedt = false }: {
   debates: DebattenHinweis[];
   /** Wie viele der Beiträge erst nach der Antwort dazukamen. */
   nachgeladen?: number;
   laedt?: boolean;
 }) {
+  const [alle, setAlle] = useState(false);
   const artLabel: Record<string, string> = {
     speech: "Rede", inquiry: "Anfrage", citizen_question: "Einwohnerfrage", pledge: "Zusage",
   };
+  // Erst aus den Beiträgen, auf die sich die Antwort stützt; was nach der
+  // Antwort zum Thema nachgeladen wurde, füllt nur auf. Sonst stand oben ein
+  // Beitrag der jüngsten Sitzung, der mit der Frage wenig zu tun hatte.
+  const auswahl = useMemo(() => {
+    const basis = debates.slice(0, debates.length - nachgeladen);
+    if (basis.length >= DEBATTEN_SICHTBAR) return vielfaeltigeAuswahl(basis, DEBATTEN_SICHTBAR);
+    return [...basis, ...vielfaeltigeAuswahl(debates.slice(basis.length), DEBATTEN_SICHTBAR - basis.length)];
+  }, [debates, nachgeladen]);
+  const zugeklappt = !alle && debates.length > DEBATTEN_SICHTBAR;
   return (
-    <div className="rounded-xl border border-dashed border-border p-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-        Aus den Ratsdebatten <span className="text-muted-foreground/60">· Protokolle</span>
-        {debates.length > 1 && (
-          <span className="text-muted-foreground/60"> · {debates.length} Beiträge</span>
-        )}
-      </p>
-      {/* Erst die Beiträge, auf die sich die Antwort stützt; darunter, klar
-          abgesetzt, was nach der Antwort dazukam (neueste Sitzung zuerst).
-          Ohne die Trennung sprang die Datumsfolge mitten in der Liste. */}
-      <ul className="mt-1.5 space-y-2">
-        {debates.slice(0, debates.length - nachgeladen).map((d, i) => (
-          <DebattenZeile key={i} d={d} artLabel={artLabel} />
-        ))}
-      </ul>
-      {nachgeladen > 0 && (
+    <QuellenAbschnitt icon={MessagesSquare} titel="Wortbeiträge" zusatz={debates.length}>
+      {zugeklappt ? (
+        <ul className="space-y-2.5">
+          {auswahl.map((d, i) => <DebattenZeile key={`a${i}`} d={d} artLabel={artLabel} />)}
+        </ul>
+      ) : (
         <>
-          <p className="mt-3 border-t border-dashed border-border pt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            Weitere Beiträge zum Thema <span className="text-muted-foreground/60">· neueste zuerst</span>
-          </p>
-          <ul className="mt-1.5 space-y-2">
-            {debates.slice(debates.length - nachgeladen).map((d, i) => (
-              <DebattenZeile key={`n${i}`} d={d} artLabel={artLabel} />
+          {/* Erst die Beiträge, auf die sich die Antwort stützt; darunter, klar
+              abgesetzt, was nach der Antwort dazukam (neueste Sitzung zuerst).
+              Ohne die Trennung sprang die Datumsfolge mitten in der Liste. */}
+          <ul className="space-y-2.5">
+            {debates.slice(0, debates.length - nachgeladen).map((d, i) => (
+              <DebattenZeile key={i} d={d} artLabel={artLabel} />
             ))}
           </ul>
+          {nachgeladen > 0 && (
+            <>
+              <p className="mt-3 border-t border-dashed border-border pt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                Weitere Beiträge zum Thema <span className="text-muted-foreground/60">· neueste zuerst</span>
+              </p>
+              <ul className="mt-1.5 space-y-2.5">
+                {debates.slice(debates.length - nachgeladen).map((d, i) => (
+                  <DebattenZeile key={`n${i}`} d={d} artLabel={artLabel} />
+                ))}
+              </ul>
+              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/60">
+                Die Antwort oben stützt sich nur auf die Beiträge über der Linie.
+              </p>
+            </>
+          )}
         </>
+      )}
+      {debates.length > DEBATTEN_SICHTBAR && (
+        <MehrKnopf offen={alle} anzahl={debates.length - auswahl.length} einheit="weitere Beiträge"
+          onClick={() => setAlle((v) => !v)} />
       )}
       {laedt && (
         <p className="mt-2 text-[11px] text-muted-foreground" aria-live="polite">
           Weitere Beiträge zum Thema werden geladen …
-        </p>
-      )}
-      {nachgeladen > 0 && (
-        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/60">
-          Die Antwort oben stützt sich nur auf die Beiträge über der Linie.
         </p>
       )}
       {/* Ehrlichkeit zur Quelle: Ratsprotokolle sind Verlaufsprotokolle —
@@ -1086,7 +1162,7 @@ export function DebattenBlock({ debates, nachgeladen = 0, laedt = false }: {
         Die Protokolle fassen Wortbeiträge sinngemäß zusammen — keine wörtlichen
         Zitate, ohne Anspruch auf Vollständigkeit.
       </p>
-    </div>
+    </QuellenAbschnitt>
   );
 }
 
@@ -1098,7 +1174,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
   // Ab dieser Länge lohnt der Toggle; kürzere Beiträge stehen einfach ganz da.
   const lang = d.excerpt.length > 260;
   return (
-    <li className="text-[12.5px] leading-snug">
+    <li className="text-[13px] leading-snug">
       <p className="flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">
           {d.speaker
@@ -1212,11 +1288,11 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
         <div aria-hidden className="mt-3 flex animate-pulse flex-col gap-3.5">
           {[34, 28, 40].map((w, i) => (
             <div key={i} className="flex gap-2.5">
-              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted" />
+              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-skeleton" />
               <span className="flex flex-1 flex-col gap-1.5">
-                <span className="h-2.5 rounded bg-muted" style={{ width: `${w}%` }} />
-                <span className="h-2 w-[92%] rounded bg-muted/70" />
-                {i !== 1 && <span className="h-2 w-[60%] rounded bg-muted/70" />}
+                <span className="h-2.5 rounded bg-skeleton" style={{ width: `${w}%` }} />
+                <span className="h-2 w-[92%] rounded bg-skeleton/70" />
+                {i !== 1 && <span className="h-2 w-[60%] rounded bg-skeleton/70" />}
               </span>
             </div>
           ))}

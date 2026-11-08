@@ -1,7 +1,8 @@
 # Regeln für `web/frontend/`
 
-Next.js. Derselbe Code wird zusätzlich als statischer Export in die
-Capacitor-Hülle gebaut — die meisten Fallen hier kommen daher.
+Next.js, nur die Webanwendung. Bis 11/2026 wurde derselbe Code zusätzlich als
+statischer Export in eine Capacitor-Hülle gebaut (Android, nie
+veröffentlicht); einige Konventionen unten stammen daher und gelten weiter.
 
 **Pflichtlektüre vor UI-Arbeit:** [`DESIGNSPRACHE.md`](DESIGNSPRACHE.md).
 Grafiken zusätzlich: [`components/grafik/README.md`](components/grafik/README.md).
@@ -31,14 +32,15 @@ Wurzel-[`CLAUDE.md`](../../CLAUDE.md).
 
 ## Ans Backend nur über `lib/api.ts`
 
-`api.get/post/put/del` setzt die Basis-URL, die Anmeldeform (Cookie im Web,
-Bearer in der App), übersetzt Validierungsfehler in deutsche Sätze und
+`api.get/post/put/del` setzt die Adresse, schickt das Sitzungs-Cookie mit,
+übersetzt Validierungsfehler in deutsche Sätze, setzt eine Zeitgrenze und
 behandelt 401 zentral.
 
-**Ein nacktes `fetch("/api/…")` ist ein Fehler**, auch wenn es im Browser
-funktioniert: In der nativen App läuft das Bundle unter `capacitor://localhost`,
-der relative Pfad zeigt dort ins Nichts. Wo der Wrapper wirklich nicht passt
-(Streams), nimm `apiUrl()` und `authHeaders()` aus demselben Modul.
+**Ein nacktes `fetch("/api/…")` ist ein Fehler**, auch wenn es funktioniert:
+Es umgeht all das. Wo der Wrapper wirklich nicht passt (Streams), nimm
+`apiUrl()` aus demselben Modul. Entstanden ist die Regel, weil der relative
+Pfad in der Capacitor-Hülle ins Nichts zeigte; sie bleibt, weil eine Stelle
+für die Adresse besser ist als achtzig.
 
 Seit 09/2026 ist das keine Bitte mehr, sondern eine ESLint-Regel
 (`no-restricted-syntax` in `.eslintrc.json`) und damit Teil von `npm run lint`
@@ -58,18 +60,21 @@ dem Backend. Sie veraltet lautlos, und zwar in jedem Frontend einzeln. Neue
 Typen also aus `lib/vertrag.ts`; die verbliebenen Handtypen sind Restschuld,
 kein Vorbild.
 
-## Der statische Export bricht an anderen Dingen als der Server
+## Konventionen aus der Zeit des statischen Exports
 
-- `generateMetadata` darf `searchParams` nur im Server-Build anfassen; jede
-  Hülle beginnt deshalb mit der Kurzschlusszeile für den Export.
-- `useSearchParams` zwingt die Seite in eine Suspense-Grenze, an der der
-  Export abbricht. Wo es unvermeidlich ist, muss die Grenze wirklich da sein.
-- Detailseiten arbeiten mit Query-Parametern statt dynamischer Pfadsegmente,
-  damit der Bereich sich überhaupt exportieren lässt.
-- `trailingSlash` ist an: Ein exakter Pfadvergleich (`pathname === "/council"`)
-  ist in der App blind. Dafür gibt es genau eine Hilfsfunktion, benutze sie.
-- `redirects` und `headers` aus `next.config.mjs` gibt es im Export **nicht**.
-  Ein Redirect ersetzt also nie das Nachziehen der internen Links.
+Der Export ist weg, diese Regeln bleiben:
+
+- `useSearchParams` zwingt die Seite in eine Suspense-Grenze; ohne sie bricht
+  `next build` beim Vorrendern ab. Wo es unvermeidlich ist, muss die Grenze
+  wirklich da sein — sonst `window.location` nach dem Mount.
+- Detailseiten arbeiten mit Query-Parametern statt dynamischer Pfadsegmente
+  (`lib/routes.ts`). Mails, geteilte Links und die iOS-App kennen diese
+  Adressen; ein Umbau bräuchte für jede eine Weiterleitung.
+- Pfade werden über `pfad()` aus `lib/utils.ts` verglichen, nicht roh
+  (`pathname === "/council"`): Ein Schluss-Schrägstrich machte den exakten
+  Vergleich schon einmal blind.
+- Ein Redirect in `next.config.mjs` ersetzt nie das Nachziehen der internen
+  Links.
 
 ## Gemessene Fallen
 
@@ -125,10 +130,9 @@ Zwei Dinge, die daran hängen:
 ## Was die Prüfungen NICHT sehen
 
 `tsc --noEmit` fängt Typfehler, sonst nichts: keine CSS-Klasse, kein Layout,
-keinen `next build`, keine Export-Variante. Die beiden Grafik-Proben rechnen
-Skalen und Kachelgeometrie nach, weil beide Fehler typkorrekt waren. Ein Bild
-vor dem Merge ersetzt keine dieser Prüfungen — und keine von ihnen ersetzt das
-Bild.
+keinen `next build`. Die beiden Grafik-Proben rechnen Skalen und
+Kachelgeometrie nach, weil beide Fehler typkorrekt waren. Ein Bild vor dem
+Merge ersetzt keine dieser Prüfungen — und keine von ihnen ersetzt das Bild.
 
 
 ## Logik in `lib/` gehört unter Test

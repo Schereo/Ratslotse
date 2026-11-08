@@ -200,13 +200,33 @@ def test_der_gegenstand_wird_vom_verwaltungsapparat_befreit():
         "Bebauungsplan 810 (Krugweg) mit örtlichen Bauvorschriften - "
         "Prüfung der Stellungnahmen - Satzungsbeschluss"
     ) == "Bebauungsplan 810 (Krugweg) mit örtlichen Bauvorschriften"
-    # Das „(Oldb)" hinter dem Stadtnamen trägt null Information.
+    # „der Stadt Oldenburg (Oldb)" trägt in einer Frage an Ratslotse null
+    # Information — die Stadt ist immer Oldenburg.
     assert qa.vorschlags_gegenstand(
         "Richtlinien der Stadt Oldenburg (Oldb) zur Jugendarbeit"
-    ) == "Richtlinien der Stadt Oldenburg zur Jugendarbeit"
+    ) == "Richtlinien zur Jugendarbeit"
     # Und ein Titel, der schon ein Gegenstand ist, bleibt einer.
     assert qa.vorschlags_gegenstand("Sanierung der Cäcilienbrücke") == (
         "Sanierung der Cäcilienbrücke")
+
+
+def test_der_gegenstand_wird_nie_abgeschnitten():
+    """Tim 08.11.2026: „Was wurde zu ‚Satzung zur Änderung der Satzung der
+    Stadt Oldenburg über …' entschieden?" — der Schnitt nahm genau den Teil
+    weg, um den es ging. Nennt der Titel seinen Kurznamen, gewinnt der; sonst
+    lieber kein Gegenstand als ein Stummel."""
+    lang = ("Satzung zur Änderung der Satzung der Stadt Oldenburg (Oldb) über die "
+            "Entschädigung der Mitglieder des Rates und der ehrenamtlich Tätigen "
+            "(Entschädigungssatzung)")
+    assert qa.vorschlags_gegenstand(lang) == "Änderung der Entschädigungssatzung"
+    zu_lang = ("Überplanmäßige Bewilligung von Mehraufwendungen in Höhe von "
+               "9.512.500 Euro für den Teilhaushalt 10, Budget 50")
+    assert qa.vorschlags_gegenstand(zu_lang) == ""
+    # Eine Abkürzung in der Schlussklammer ist kein Kurzname.
+    assert "KOL" not in qa.vorschlags_gegenstand("Liquiditätskredit für die Klinikum AöR (KOL)")
+    # Der Vorschlag nimmt dann den nächsten Beschluss der Sitzung.
+    assert qa.erster_gegenstand([zu_lang, "Sanierung der Cäcilienbrücke"]) == "Sanierung der Cäcilienbrücke"
+    assert qa.erster_gegenstand([zu_lang]) == ""
 
 
 def test_die_rueckfrage_ist_als_solche_markiert(client, monkeypatch):

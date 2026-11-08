@@ -10,7 +10,7 @@
  * **Warum hier und nicht in der Komponente.** Jede Funktion in dieser Datei
  * ist rein und damit prüfbar (`assistentin.test.ts`). Die Grenzfälle — eine
  * Markierung, die im Lotti-Fenster selbst beginnt; ein Pfad mit
- * angehängtem Schrägstrich aus dem statischen Export — sind in einem
+ * angehängtem Schrägstrich — sind in einem
  * Browsertest kaum herstellbar und hier eine Zeile.
  */
 
@@ -49,8 +49,8 @@ const COUNCIL_TABS = ["decisions", "sessions", "themen", "analysis"];
 /**
  * Pfad + Query → die Route, unter der das Backend sein Wissen ablegt.
  *
- * Spiegelt `kern/seitenaufrufe.py::normalisieren`: Schrägstrich am Ende weg
- * (der statische Export hängt ihn an), Query weg — mit der einen Ausnahme
+ * Spiegelt `kern/seitenaufrufe.py::normalisieren`: Schrägstrich am Ende weg,
+ * Query weg — mit der einen Ausnahme
  * `?tab=` auf `/council`, wo vier Register hinter einer Adresse liegen.
  */
 export function routeAus(pathname: string | null | undefined, search = ""): string {
@@ -62,6 +62,26 @@ export function routeAus(pathname: string | null | undefined, search = ""): stri
     if (tab && COUNCIL_TABS.includes(tab)) return `/council?tab=${tab}`;
   }
   return p;
+}
+
+/** Der Query-Parameter, der Lottis Fenster beim Ankommen öffnet
+ *  (`/dashboard?lotti=1`) — das Ziel von „Lotti-Chat ausprobieren" auf der
+ *  Karte „Neu bei Ratslotse" und dem Link in ihrer Mail. */
+export const OEFFNEN_PARAM = "lotti";
+
+/** Will diese Adresse das Fenster offen haben? Nur `1` zählt — ein
+ *  `?lotti=` ohne Wert oder mit Unsinn öffnet nichts. */
+export function oeffnenGewuenscht(search = ""): boolean {
+  return new URLSearchParams(search).get(OEFFNEN_PARAM) === "1";
+}
+
+/** Dieselbe Adresse ohne den Parameter — alles andere bleibt, wie es war.
+ *  Ohne das öffnete jedes Neuladen das Fenster wieder. */
+export function ohneOeffnen(pathname: string | null | undefined, search = "", hash = ""): string {
+  const q = new URLSearchParams(search);
+  q.delete(OEFFNEN_PARAM);
+  const rest = q.toString();
+  return `${pathname || "/"}${rest ? `?${rest}` : ""}${hash}`;
 }
 
 /**

@@ -193,6 +193,21 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     }
   });
 
+  test("am Schreibtisch sitzt er auf /fragen wie überall — der Composer steht dort in der Bühne", async ({ page }) => {
+    // Tims Befund 08.11.2026: `--rl-composer` hob den Knopf auch am
+    // Schreibtisch um die Composer-Höhe an, obwohl der Composer dort nicht
+    // unten andockt — Lotti schwebte 118 px über ihrer Ecke.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const abstandUnten = async (pfad: string) => {
+      await page.goto(pfad);
+      await expect(knopf(page)).toBeVisible();
+      const box = (await knopf(page).boundingBox())!;
+      return 800 - (box.y + box.height);
+    };
+    const ueberall = await abstandUnten("/dashboard");
+    await expect.poll(() => abstandUnten("/fragen")).toBeCloseTo(ueberall, 0);
+  });
+
   test("er öffnet das Fenster, wird zum Kreuz, und Esc schließt wieder", async ({ page }) => {
     await page.goto("/dashboard");
     await expect(fenster(page)).toBeHidden();
@@ -204,6 +219,17 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     // Der Fokus kehrt auf den Knopf zurück — sonst beginnt die nächste
     // Tabulatortaste wieder ganz oben auf der Seite (BITV).
     await expect(knopf(page)).toBeFocused();
+  });
+
+  test("?lotti=1 öffnet das Fenster beim Ankommen und verschwindet aus der Adresse", async ({ page }) => {
+    // Das Ziel von „Lotti-Chat ausprobieren“ auf der Karte „Neu bei Ratslotse“.
+    // Bleibt der Parameter stehen, öffnet jedes Neuladen das Fenster wieder.
+    await page.goto("/dashboard?lotti=1");
+    await expect(fenster(page)).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    await page.reload();
+    await expect(knopf(page)).toBeVisible();
+    await expect(fenster(page)).toBeHidden();
   });
 
   test("beim Laden bleibt der Fokus, wo er war — die erste Tabulatortaste trifft „Zum Inhalt springen“", async ({ page }) => {
@@ -995,7 +1021,8 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await page.goto("/dashboard");
     await knopf(page).click();
     await expect(fenster(page).getByText(/Soll ich mir deine Gespräche merken/)).toBeVisible();
-    await expect(fenster(page).getByText(/OpenRouter/)).toBeVisible();
+    // Seit 11/2026 steht sichtbar, wo die KI läuft; OpenRouter steht unter „Mehr dazu“.
+    await expect(fenster(page).getByText(/Rechenzentren in der EU/)).toBeVisible();
     await expect(fenster(page).getByRole("button", { name: "Fragen" })).toBeDisabled();
     await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" })).toBeDisabled();
   });

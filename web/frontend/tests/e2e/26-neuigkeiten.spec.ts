@@ -56,7 +56,7 @@ async function stellen(page: Page): Promise<string[]> {
   // auch die Sitzungspause). Kommt sie erst nach dem Aufklappen an, rutscht
   // die Karte zurück in die Pille — deshalb beide stillgelegt.
   await page.route("**/api/council/session-break", (route) => route.fulfill({ json: { active: false } }));
-  await page.route("**/api/council/sessions?scope=upcoming&limit=6", (route) => route.fulfill({ json: { sessions: [] } }));
+  await page.route("**/api/council/sessions?scope=upcoming&limit=12", (route) => route.fulfill({ json: { sessions: [] } }));
   await page.addInitScript(() => {
     try { localStorage.removeItem("ratslotse.neuigkeiten.gesehen.3.0.0"); } catch { /* egal */ }
   });

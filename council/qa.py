@@ -140,7 +140,11 @@ def deep_model_for(premium: bool) -> str:
 # 3.1 bei 80 % — nicht wegen des Modells, sondern weil es die Frage ungefragt
 # umschrieb (s. dort). Behält ZDR (Gemini über Google hat einen
 # ZDR-Endpunkt). Dieselbe Variable liest council/cities/evidence.py.
-EXPAND_MODEL = os.environ.get("COUNCIL_QA_EXPAND_MODEL", "google/gemini-3.1-flash-lite")
+# GPT-5.6 Luna über Azure EU seit 08.11.2026: Gemini 3.1 Flash Lite hat zwar
+# einen EU-Endpunkt (google-vertex/eu), lief dort mit ZDR aber in 13 von 70
+# Aufrufen in den Timeout; Azure EU in 0 von 120, Gold-Set 100 % statt 97 %
+# (s. kern/llm.py::EU_ZUERST).
+EXPAND_MODEL = os.environ.get("COUNCIL_QA_EXPAND_MODEL", "openai/gpt-5.6-luna")
 
 _STOP = {
     "wurde", "wurden", "wird", "werden", "beschlossen", "beschluss", "stadt", "stadtrat",
@@ -499,7 +503,8 @@ def research_plan_log_record(question: str, plan: dict, typ: str,
 
 def analyse_query(question: str, model: str = EXPAND_MODEL,
                   verlauf: list[dict] | None = None,
-                  orte: list[tuple[str, str]] | None = None) -> dict:
+                  orte: list[tuple[str, str]] | None = None,
+                  themen: list[tuple[int, str]] | None = None) -> dict:
     """{"question", "terms", "kind", "party"} zur Frage. ``question`` ist die
     EIGENSTÄNDIGE Fassung: Bei mitgegebenem Gesprächsverlauf (Chat) löst die
     Analyse Rückbezüge auf („Und was kostet das?" → „Was kostet der Neubau der
@@ -511,7 +516,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
                 "rechercheplan": _research_plan({})}
     verlauf = verlauf_ohne_dieselbe_frage(verlauf, question)
     vtext = _verlauf_zeilen(verlauf)
-    ortsblock = _ortsblock(orte)
+    ortsblock = _ortsblock(orte) + _themenblock(themen)
     key = f"{model}|{hash(vtext)}|{hash(ortsblock)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
     if hit is not None:
@@ -579,6 +584,19 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         ort_id = str(data.get("ort") or "").strip()
         if orte and ort_id in {i for i, _ in orte}:
             out["ort_id"] = ort_id
+        # Dasselbe für Themen: nur ids AUS der Liste, höchstens drei.
+        if themen:
+            erlaubt = {i for i, _ in themen}
+            gewaehlt = []
+            for roh in (data.get("themen") or []) if isinstance(data.get("themen"), list) else []:
+                try:
+                    tid = int(roh)
+                except (TypeError, ValueError):
+                    continue
+                if tid in erlaubt and tid not in gewaehlt:
+                    gewaehlt.append(tid)
+            if gewaehlt:
+                out["themen_ids"] = gewaehlt[:3]
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
                 _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))
@@ -1477,6 +1495,64 @@ def braucht_ortsliste(wort_ort: dict | None) -> bool:
     return wort_ort is None or wort_ort.get("kind") == "local_area"
 
 
+#: Erste Wörter von Entitäts-Namen, die fast jede Frage träfen.
+_THEMEN_GENERISCH = {"oldenburger", "oldenburgische", "oldenburgisch", "oldenburg",
+                     "ausschuss", "stadtrat", "stadtteil", "beschluss", "antrag"}
+#: So viele Beschlüsse eines erkannten Vorgangs kommen bei Stand-, Verlaufs- und
+#: Geldfragen zusätzlich in den Prompt (Schalter `suche-ausbau`).
+VORGANG_MAX = 10
+#: So viele Themen-Kandidaten sieht die Analyse höchstens.
+THEMEN_KANDIDATEN = 20
+
+
+def themen_kandidaten(store, question: str, max_n: int = THEMEN_KANDIDATEN) -> list[tuple[int, str]]:
+    """Themen (Entitäten), die die Frage MEINEN könnte — als Auswahl für die
+    Analyse, nicht als Treffer.
+
+    **Warum.** ``finde_entitaeten`` verlangt den Namen wörtlich. „Wie stehen
+    die Fraktionen zum neuen Stadion?“ traf deshalb keine der fünf
+    Stadion-Entitäten („Stadion Oldenburg“, „Stadionneubau Maastrichter
+    Straße“ …), „Bürgschaften für das Klinikum“ nicht „Klinikum Oldenburg“ —
+    und ohne Anker fehlten die Ratsbeschlüsse vom 01.06.2026 (Gold 18.10.2026).
+    Dasselbe Muster wie bei den Orten (``_ortsblock``): Wortanfänge (ab sechs
+    Buchstaben, „Stadion“ ↔ „Stadionneubau“) liefern Kandidaten, das
+    Analyse-Modell wählt. Allein wären Wortanfänge zu grob — „Oldenburger …“
+    und „Grundschule …“ träfen Dutzende.
+    """
+    woerter = {w for w in _falte(question).split() if len(w) >= 6 and w not in _THEMEN_GENERISCH}
+    if not woerter:
+        return []
+    try:
+        index = store.entity_suchindex()
+    except Exception:  # noqa: BLE001
+        return []
+    exakt = {e["id"] for e in finde_entitaeten(store, question, max_n=5)}
+    name_von: dict[int, str] = {}
+    beste: dict[int, tuple[int, int]] = {}
+    for eid, name, n in index:
+        name_von.setdefault(eid, name)   # die Entitäts-Zeilen stehen vor den Aliassen
+        if eid in exakt:
+            continue
+        toks = [t for t in _falte(name).split() if len(t) >= 6 and t not in _THEMEN_GENERISCH]
+        treffer = sum(1 for w in woerter if any(w.startswith(t) or t.startswith(w) for t in toks))
+        if treffer and (treffer, n or 0) > beste.get(eid, (0, 0)):
+            beste[eid] = (treffer, n or 0)
+    geordnet = sorted(beste, key=lambda e: (-beste[e][0], -beste[e][1]))[:max_n]
+    return [(eid, name_von[eid]) for eid in geordnet]
+
+
+def _themenblock(themen: list[tuple[int, str]] | None) -> str:
+    """Die Themen-Auswahl als Nachsatz zum Analyse-Prompt — leer ohne Kandidaten."""
+    if not themen:
+        return ""
+    zeilen = "\n".join(f"- {i}: {name}" for i, name in themen)
+    return (
+        "\n\nTHEMEN aus dem Archiv (Auswahl):\n" + zeilen + "\n"
+        'Ergänze das JSON um "themen": die ids von höchstens DREI Themen aus dieser Liste, '
+        "um die es in der Frage geht — auch wenn sie anders heißen („neues Stadion“ → "
+        "Stadionneubau, Stadion Oldenburg). Nur, was die Frage wirklich meint; sonst [].\n")
+
+
 def ort_hinweis(wort_ort: dict | None, ort_id: str | None, store=None) -> dict | None:
     """Der Ort, den die Analyse aus dem Katalog gewählt hat — als HINWEIS.
 
@@ -1689,6 +1765,15 @@ _OLDB_RE = re.compile(r"\s*\(Oldb\.?\)", re.IGNORECASE)
 _NACHKLAMMER_RE = re.compile(r"\s*\([^()]*\)\s*$")
 
 
+#: Der Kurzname, den ein Titel am Ende selbst nennt: „… (Entschädigungssatzung)".
+#: Ein Wort, groß geschrieben, mindestens acht Zeichen — Abkürzungen wie
+#: „(KOL)" und Antragsteller-Klammern fallen damit heraus.
+_KURZNAME_RE = re.compile(r"\(([A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜa-zäöüß]+)*)\)\s*$")
+#: „Satzung der Stadt Oldenburg über …" — in einer Frage an Ratslotse ist die
+#: Stadt immer Oldenburg.
+_STADT_RE = re.compile(r"\s+der Stadt Oldenburg\b")
+
+
 def vorschlags_gegenstand(titel: str, grenze: int = 60) -> str:
     """Aus einem Beschlusstitel den Gegenstand, den man jemandem hinhält.
 
@@ -1699,14 +1784,45 @@ def vorschlags_gegenstand(titel: str, grenze: int = 60) -> str:
     jedes Wort Apparat ein Wort Inhalt. Aus „Bebauungsplan 810 (Krugweg) …
     - Prüfung der Stellungnahmen - Satzungsbeschluss" wird so wieder ein Ding,
     nach dem man fragen kann.
+
+    **Nennt der Titel seinen Kurznamen selbst**, gewinnt der: „Satzung zur
+    Änderung der Satzung der Stadt Oldenburg (Oldb) über die Entschädigung der
+    Mitglieder des Rates … (Entschädigungssatzung)" wird „Änderung der
+    Entschädigungssatzung".
+
+    **Leer statt abgeschnitten.** Bis 11/2026 kappte die Funktion bei
+    ``grenze`` mit „…" — und schnitt genau den Teil ab, um den es ging: „Was
+    wurde zu ‚Satzung zur Änderung der Satzung der Stadt Oldenburg über …'
+    entschieden?" (Tim 08.11.2026). So eine Frage hilft niemandem, und das
+    Modell sucht dann nach dem Stummel. Wer einen Vorschlag braucht, nimmt den
+    nächsten Beschluss (:func:`erster_gegenstand`).
     """
     t = _OLDB_RE.sub("", " ".join((titel or "").split()))
+    kurz = _KURZNAME_RE.search(t)
+    if kurz and len(kurz.group(1)) >= 8:
+        name = kurz.group(1)
+        if re.match(r"(Satzung zur Änderung|Änderung)\b", t) and re.search(r"(satzung|ordnung)$", name):
+            return f"Änderung der {name}"
+        return name
     # Erst den Verfahrensstand hinter dem Gedankenstrich abschneiden, dann den
-    # Klammerzusatz — und erst DANN kürzen. Andersherum kappt die Länge die
-    # schließende Klammer weg, und der Apparat bleibt genau dort stehen, wo er
-    # weg sollte („… Kennedystraße (Fraktionen…").
+    # Klammerzusatz — und erst DANN die Länge prüfen. Andersherum bliebe der
+    # Apparat genau dort stehen, wo er weg sollte („… Kennedystraße (Fraktionen…").
     t = _NACHKLAMMER_RE.sub("", re.split(r"\s+[—–-]\s+|:\s+", t)[0]).strip(" -–—:,")
-    return (t[:grenze].rstrip(" -–—:,") + "…") if len(t) > grenze else t
+    t = _STADT_RE.sub("", t)
+    return t if len(t) <= grenze else ""
+
+
+def erster_gegenstand(titel: list[str] | str | None, grenze: int = 60) -> str:
+    """Der erste Titel, aus dem ein ganzer Gegenstand wird — sonst leer.
+
+    Eine Sitzung hat viele Beschlüsse; ist der wichtigste zu lang für einen
+    Vorschlag, fragt der Vorschlag eben nach dem nächsten, statt ihn zu kappen.
+    """
+    for t in ([titel] if isinstance(titel, str) else (titel or [])):
+        kurz = vorschlags_gegenstand(t or "", grenze)
+        if len(kurz) >= 8:
+            return kurz
+    return ""
 
 
 def rueckfrage_vorschlaege(store, frage: str, limit: int = 3) -> list[str]:
@@ -1732,8 +1848,8 @@ def rueckfrage_vorschlaege(store, frage: str, limit: int = 3) -> list[str]:
     try:
         for sitzung in store.juengste_sitzungen_mit_beschluessen(
                 limit=limit * 2, mindest_tops=RUECKFRAGE_MINDEST_TOPS):
-            kurz = vorschlags_gegenstand(sitzung.get("top_titel") or "")
-            if len(kurz) < 8:
+            kurz = erster_gegenstand(sitzung.get("top_titel_kandidaten") or sitzung.get("top_titel"))
+            if not kurz:
                 continue
             satz = f'Was wurde zu „{kurz}“ entschieden?'
             if satz not in fragen:

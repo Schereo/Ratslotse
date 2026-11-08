@@ -22,6 +22,12 @@ modell.js eine andere MODELL_VERSION als im Bündel, wurde am Modell gedreht,
 ohne die Blätter neu zu backen — dann liefe die 3D-Lotti der Startseite
 einer anderen Figur voraus als die Sprites. Das Skript warnt und nennt den
 Backen-Befehl.
+
+Zwischenspeichern: Die Web-App lädt das Bündel unter /lotti/v/<abdruck>/,
+und der Abdruck entsteht in next.config.mjs aus dem Inhalt dieses Ordners.
+Nach der Übernahme ändert er sich mit dem nächsten Build von selbst, und
+Browser holen alles neu. Der Dev-Server setzt keine Lebensdauer; dort
+erscheint die neue Fassung auch ohne Neustart.
 """
 from __future__ import annotations
 

@@ -32,9 +32,9 @@ import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Wegweiser } from "@/components/haushalt/wegweiser";
-import { Datenstand } from "@/components/haushalt/datenstand";
-import { QuellenUmfang } from "@/components/haushalt/quellen-umfang";
-import { useFetch } from "@/lib/use-fetch";
+import { DATA_STATUS_URL, Datenstand } from "@/components/haushalt/datenstand";
+import { QuellenUmfang, SOURCE_STATS_URL } from "@/components/haushalt/quellen-umfang";
+import { useFetch, usePreload } from "@/lib/use-fetch";
 import { Tafel } from "@/components/haushalt/tafel";
 import { VollzugKarte } from "@/components/haushalt/vollzug";
 import { berichteUrls, type VollzugDaten } from "@/lib/haushalt-vollzug";
@@ -65,6 +65,9 @@ export default function HaushaltPage() {
   // Nur den Aufwands-Posten je Teilhaushalt: Das Flussbild zeichnet rechts
   // genau ihn. Die volle Ebene wären 795 statt 178 KB — bei identischem Bild.
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "20"));
+  // Datenstand, Flussbild und Quellen-Umfang montieren erst mit den
+  // Hauptdaten, hängen aber nicht an ihnen — ihre Abrufe laufen gleich mit.
+  usePreload([DATA_STATUS_URL, SOURCE_STATS_URL]);
   // Der jüngste Zwischenstand des laufenden Jahres — nur die Summenzeilen,
   // die Übersicht braucht die Teilhaushalte nicht (Endpunkt ohne Jahrgang).
   const vollzug = useFetch<VollzugDaten>("/council/budget/execution");

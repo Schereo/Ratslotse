@@ -54,6 +54,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
+from council import city_topics  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.topic_intel import DECKEL, SCHWELLE, meldestichtage, treffer  # noqa: E402
 from kern.store import Store  # noqa: E402
@@ -168,6 +169,16 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
         # Mitte die Grenze verschiebt.
         stichtage = meldestichtage()
 
+        # Die Stadtthemen zuerst: ihre Liste (Muster ∪ semantisch) liegt danach
+        # in der Rats-DB, und die Kachel im Assistenten, das Anlegen und die
+        # Themen unten lesen alle dieselbe (``council.city_topics``). Wirft
+        # ohne Cross-Encoder wie ``treffer`` — dann bleibt die von letzter Woche.
+        stadtthemen = city_topics.abgleichen(council)
+        print(f"  Stadtthemen abgeglichen: {sum(stadtthemen.values())} Treffer "
+              f"in {len(stadtthemen)} Themen")
+        texte = council.decision_texts_dated()
+        gespeichert = council.city_topic_decisions()
+
         by_owner = ratslotse.get_all_owner_topics()  # {owner_id: [TopicRow]}
         n_topics = sum(len(v) for v in by_owner.values())
         total = 0
@@ -183,11 +194,20 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                 old_ids = {m["decision_id"] for m in ratslotse.get_topic_decision_matches(t.id)}
                 name = (t.name or "").strip()
                 text = f"{name}. {t.description}".strip()
-                # Bricht der Cross-Encoder weg, wirft `treffer` — und der Lauf
-                # endet, statt Rauschen zu speichern. Die Treffer von letzter
-                # Woche sind besser als frisches Rauschen.
-                hits, gedeckelt, kandidaten = treffer(council, name, text,
-                                                      deckel=top_k, schwelle=threshold)
+                # Ein unverändertes Stadtthema bekommt die Liste seiner Kachel,
+                # ohne Deckel — sonst hieße es nach dem Anlegen „55" und am
+                # Sonntag „40+", und eine neue Zeile darin bliebe ohne Meldung.
+                stadtthema = city_topics.zu_thema(t.name, t.description)
+                if stadtthema is not None:
+                    hits = [(did, score) for did, score, _ in city_topics.treffer(
+                        council, stadtthema, texte=texte, gespeichert=gespeichert)]
+                    gedeckelt, kandidaten = False, len(hits)
+                else:
+                    # Bricht der Cross-Encoder weg, wirft `treffer` — und der
+                    # Lauf endet, statt Rauschen zu speichern. Die Treffer von
+                    # letzter Woche sind besser als frisches Rauschen.
+                    hits, gedeckelt, kandidaten = treffer(council, name, text,
+                                                          deckel=top_k, schwelle=threshold)
                 # als_neu=False im Reparaturlauf: Die neu angelegten Zeilen
                 # dürfen nicht als Treffer dieser Woche gelten — sonst holt der
                 # Wochenüberblick nach, was die abgeschalteten Meldungen gerade
@@ -218,7 +238,8 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
 
         zugestellt = notify.zustellen(ratslotse)
         return {"topics": n_topics, "matches": total, "notified": notified,
-                "gedeckelt": gedeckelte, "zugestellt": zugestellt}
+                "gedeckelt": gedeckelte, "zugestellt": zugestellt,
+                "stadtthemen_treffer": sum(stadtthemen.values())}
     finally:
         ratslotse.close()
         council.close()

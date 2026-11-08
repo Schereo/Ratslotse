@@ -80,6 +80,8 @@ async function mocks(page: Page) {
       })),
       oldenburg_documents: [],
       similar: [{ cluster_id: 3, label: "Kommunale Wärmeplanung erstellen", cities: 8, members: 27 }],
+      data_status: { as_of: "2026-09-14", lagging: [
+        { body_id: "potsdam", city: "Potsdam", latest_paper: "2026-06-25" }] },
     } }));
   return anfragen;
 }
@@ -119,11 +121,111 @@ test("die Übersicht: Tafel, Filter als Anfrage, Weg zur Ideen-Seite und zurück
   await expect(page).toHaveURL(/feld=klima_umwelt/, { timeout: 20_000 });
 });
 
+function idee(i: number) {
+  return {
+    paper_id: `p-verkehr-${i}`, body_id: "muenster", body_name: "Münster",
+    name: `Fahrradbügel aufstellen ${i}`, date: "2025-03-01", kind: "motion",
+    web: "https://example.org/vo", outcome: "accepted", field: "verkehr",
+    instrument: "Fahrradbügel aufstellen", summary: "Mehr Fahrradbügel aufstellen.",
+    transfer: "adaptable", competence: "administration", originator: null,
+    status: "missing", votes: "2/2", reason: "Kein Beleg.", confidence: "high",
+    evidence: [], protocol: null, protocol_source: "withheld", window_since: "2023-01-01",
+    effort: "budget", siblings: [], stance: "for", peer_stances: {}, addressee: null,
+    feedback: "", peers: 0,
+  };
+}
+
+test("ein Themenfeld unter „Einzelne Ideen“ holt den Abschnitt nach oben, statt die Ansicht springen zu lassen", async ({ page }) => {
+  // Tims Befund 01.11.2026: Mit dem Feld verschwindet oben die Tafel, die
+  // Bewegungen filtern mit (hier: von zwölf auf keine), und das Raster weicht
+  // einer Liste, die erst noch lädt. Die Seite schrumpft, und wer unten
+  // geklickt hatte, sah danach die Bewegungen statt der Ideen. Dazu sprang das
+  // Scroll-Gedächtnis auf die Stelle vom letzten Besuch DIESES Feldes.
+  await mocks(page);
+  const viele = Array.from({ length: 12 }, (_, i) =>
+    bewegung(100 + i, `Bewegung ${i}`, ["Münster", "Potsdam", "Osnabrück"], "missing"));
+  await page.route((u) => u.pathname === "/api/council/cities/movements", (route) => {
+    const url = new URL(route.request().url());
+    const items = url.searchParams.get("field") === "verkehr" ? [] : viele;
+    return route.fulfill({ json: {
+      items, total: items.length, page: 1, per_page: 12, axis: ACHSE,
+      counts: { missing: items.length, partial: 0, present: 0 },
+    } });
+  });
+  await page.route((u) => u.pathname === "/api/council/cities/ideas", async (route) => {
+    await new Promise((r) => setTimeout(r, 800));
+    return route.fulfill({ json: {
+      field: "verkehr", total: 20, page: 1, per_page: 30, counts: {},
+      items: Array.from({ length: 20 }, (_, i) => idee(i)),
+    } });
+  });
+
+  for (const grosse of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(grosse);
+    await page.goto("/council/ideen");
+    await page.evaluate(() =>
+      sessionStorage.setItem("ratslotse:scroll:/council/ideen?feld=verkehr", "300"));
+    const abschnitt = page.getByRole("region", { name: "Einzelne Ideen" });
+    await abschnitt.getByRole("button", { name: /Verkehr/ }).click();
+    await expect(abschnitt.getByText("Fahrradbügel aufstellen 0")).toBeVisible();
+    // Oben, unter der Kopfleiste — nicht irgendwo darunter.
+    const kopf = page.getByRole("heading", { name: "Einzelne Ideen" });
+    await expect.poll(async () => (await kopf.boundingBox())?.y ?? -1).toBeGreaterThanOrEqual(0);
+    await expect.poll(async () => (await kopf.boundingBox())?.y ?? 9999).toBeLessThan(200);
+  }
+});
+
+test("ein Themenfeld blättert durch alle Ideen, nicht nur durch die ersten 30", async ({ page }) => {
+  // Tims Befund 01.11.2026: Oben stand „1228 Ideen", die Liste hörte nach 30
+  // auf. Die Seite steht in der Adresse (`ideenseite`), getrennt von der der
+  // Bewegungen, und ein anderes Feld fängt wieder vorn an.
+  await mocks(page);
+  const seiten: string[] = [];
+  await page.route((u) => u.pathname === "/api/council/cities/ideas", (route) => {
+    const url = new URL(route.request().url());
+    const seite = Number(url.searchParams.get("page") ?? "1");
+    seiten.push(`${url.searchParams.get("field")}:${seite}`);
+    const anfang = (seite - 1) * 30;
+    const items = Array.from({ length: Math.max(0, Math.min(30, 70 - anfang)) },
+      (_, i) => idee(anfang + i));
+    return route.fulfill({ json: {
+      field: url.searchParams.get("field"), total: 70, page: seite, per_page: 30, counts: {}, items,
+    } });
+  });
+
+  await page.goto("/council/ideen");
+  const abschnitt = page.getByRole("region", { name: "Einzelne Ideen" });
+  await abschnitt.getByRole("button", { name: /Verkehr/ }).click();
+  const blaettern = abschnitt.getByRole("navigation", { name: "Seiten der Ideen" });
+  await expect(blaettern).toContainText("Seite 1 von 3");
+  await expect(abschnitt.getByText("Fahrradbügel aufstellen 29", { exact: true })).toBeVisible();
+
+  await blaettern.getByRole("button", { name: /Weiter/ }).click();
+  await expect(page).toHaveURL(/feld=verkehr&ideenseite=2/, { timeout: 10_000 });
+  await expect(abschnitt.getByText("Fahrradbügel aufstellen 30", { exact: true })).toBeVisible();
+  await expect(blaettern).toContainText("Seite 2 von 3");
+  expect(seiten).toContain("verkehr:2");
+  // Geblättert wird hier, nicht in den Bewegungen darüber.
+  await expect(page).not.toHaveURL(/[?&]seite=/);
+
+  await abschnitt.getByRole("button", { name: "Alle Themenfelder" }).click();
+  await abschnitt.getByRole("button", { name: /Klima/ }).click();
+  await expect(page).toHaveURL(/feld=klima_umwelt$/, { timeout: 10_000 });
+  await expect(blaettern).toContainText("Seite 1 von 3");
+});
+
 test("die Ideen-Seite: je Stadt eine Zeile, alle Vorlagen, Beleg und Verwandtes getrennt", async ({ page }) => {
   await mocks(page);
+  // „Stand: …" kommt mit der Bewegung — die ganze Themenfeld-Übersicht holt
+  // die Seite dafür nicht mehr (bis 11/2026 ihre langsamste Anfrage).
+  const fieldRequests: string[] = [];
+  page.on("request", (r) => { if (r.url().includes("/api/council/cities/ideas/fields")) fieldRequests.push(r.url()); });
   await page.goto("/council/ideen/bewegung?id=14");
 
   await expect(page.getByRole("heading", { level: 1, name: "Hitzeaktionsplan aufstellen" })).toBeVisible();
+  await expect(page.getByText("Stand: 14.09.2026")).toBeVisible();
+  await expect(page.getByText("Aus Potsdam liegen Vorlagen nur bis 25.06.2026 vor.")).toBeVisible();
+  expect(fieldRequests).toEqual([]);
   const buehne = page.getByRole("region", { name: "Wie die Idee durch die Räte lief" });
   await expect(buehne.getByRole("img")).toHaveCount(6);
   await expect(buehne.getByRole("img").first()).toHaveAttribute("aria-label", /^Osnabrück: 1 Stadt/);
@@ -154,13 +256,13 @@ test("eine unbekannte Idee zeigt einen Leerzustand statt eines Fehlers", async (
 test("die Ideen sind ein Reiter der Analyse, kein eigener Punkt in der Navigation", async ({ page }) => {
   await mocks(page);
   await page.goto("/council/ideen");
-  const reiter = page.getByRole("button", { name: /Ideen aus anderen Städten/ });
+  const reiter = page.getByRole("button", { name: "Ideen aus anderen Städten", exact: true });
   await expect(reiter).toHaveAttribute("aria-pressed", "true");
   // Zurück in die Analyse über dieselbe Leiste.
   await page.getByRole("button", { name: /^Trends$/ }).click();
   await expect(page).toHaveURL(/\/council\?tab=analysis$/, { timeout: 20_000 });
   // Und von dort wieder hin.
-  await page.getByRole("button", { name: /Ideen aus anderen Städten/ }).click();
+  await page.getByRole("button", { name: "Ideen aus anderen Städten", exact: true }).click();
   await expect(page).toHaveURL(/\/council\/ideen$/, { timeout: 20_000 });
 });
 

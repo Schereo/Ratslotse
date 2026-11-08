@@ -40,11 +40,21 @@ merkt das niemand, solange niemand hinsieht. Gemeldet wird erst, wenn der
 Beschluss im Archiv steht: Vorher gibt es nichts nachzuziehen, und die
 Antwort sagt nach dem Ende der Wahlperiode ohnehin dazu, dass die Fassung
 für die alte galt.
+
+**Und jedes Gremium hat sein Bild** (seit 11/2026). Mit der neuen Wahlperiode
+kam der „Ausschuss für Gesundheit und Soziales“ in die Gremienliste — im
+Einrichtungs-Assistenten stand er ohne Bild, ohne Satz und ganz unten, weil
+ihn keine Tabelle in ``web/frontend/lib/committees.ts`` kannte (Tims Befund
+08.11.2026). Die Tabelle wird gelesen, nicht importiert: Sie ist TypeScript,
+und die App spiegelt sie von Hand (``ios/…/Committees.swift``,
+``OnboardingViews.swift``).
 """
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta, UTC
+from pathlib import Path
 from typing import Any
 
 from council.outcome_note import NOT_ADOPTED, states_outcome
@@ -68,6 +78,8 @@ BEITRAEGE_OHNE_AKTE_MAX = 0.40
 AKTEN_MIN_BEITRAEGE = 200
 #: So viele Kennungen nennt eine Meldung höchstens.
 ZEIGEN = 5
+#: Wo die Oberfläche je Gremium Kurzname und Bild führt.
+GREMIEN_TABELLE = Path(__file__).resolve().parent.parent / "web" / "frontend" / "lib" / "committees.ts"
 
 
 def _ids(werte: list) -> str:
@@ -116,6 +128,30 @@ def protokoll_verzug(store: Any, seit: date, heute: date) -> list[dict]:
     if von > bis:
         return []
     return store.pruef_sitzungen_ohne_beschluss(von.isoformat(), bis.isoformat())
+
+
+def gremien_tabellen(quelltext: str) -> tuple[dict[str, str], set[str]]:
+    """Aus ``committees.ts``: ``SHORT`` (amtlicher Name → Kurzname) und die
+    Kurznamen, die in ``BILDER`` ein Bild haben.
+
+    Wirft ``ValueError``, wenn eine der beiden Tabellen nicht zu finden ist —
+    eine umgebaute Datei soll als Befund auffallen, nicht als „alles hat ein
+    Bild“."""
+    def block(name: str) -> dict[str, str]:
+        m = re.search(rf"const {name}: Record<string, string> = \{{(.*?)\n\}};", quelltext, re.S)
+        if not m:
+            raise ValueError(f"Tabelle {name} nicht gefunden")
+        return dict(re.findall(r'^\s*"([^"]+)":\s*"([^"]+)",', m.group(1), re.M))
+
+    return block("SHORT"), set(block("BILDER"))
+
+
+def gremien_ohne_bild(namen: list[str], quelltext: str) -> list[str]:
+    """Gremien, die keine Kachel im Assistenten tragen könnten: ohne Eintrag in
+    ``SHORT`` (dann rät die Heuristik den Namen, und es fehlen Satz, Rang und
+    Bild) oder mit einem Kurznamen ohne Bild."""
+    kurz, mit_bild = gremien_tabellen(quelltext)
+    return [n for n in namen if n not in kurz or kurz[n] not in mit_bild]
 
 
 def _stunden_seit(zeitpunkt: str, jetzt: datetime) -> float:
@@ -217,6 +253,25 @@ def pruefen(store: Any, seit: str, jetzt: datetime | None = None) -> dict:
             f"vom {rules_of_procedure.load().version_date} und sagt das dazu. Nachziehen: "
             "<code>python scripts/fetch_rules_of_procedure.py --check</code>, dann mit "
             "<code>--pdf … --adopted … --template … --term-end …</code> neu schreiben.")
+
+    if GREMIEN_TABELLE.exists():
+        try:
+            ohne_bild = gremien_ohne_bild(store.get_all_committee_names(),
+                                          GREMIEN_TABELLE.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            ohne_bild = []
+            befunde.append(f"<b>Die Gremientabelle ist nicht lesbar</b> ({exc}) — "
+                           "<code>web/frontend/lib/committees.ts</code> wurde umgebaut; "
+                           "<code>council/datenpruefung.py::gremien_tabellen</code> nachziehen.")
+        k["gremien_ohne_bild"] = len(ohne_bild)
+        if ohne_bild:
+            befunde.append(
+                f"<b>{len(ohne_bild)} Gremium/Gremien ohne Bild im Einrichtungs-Assistenten</b>: "
+                + _ids(ohne_bild) + ". Nachziehen in <code>web/frontend/lib/committees.ts</code> "
+                "(SHORT, EXPLAINS, RANK, ICONS, BILDER) und in der App "
+                "(<code>Committees.swift</code>, <code>OnboardingViews.swift</code>); das Bild "
+                "mit <code>scripts/themen_grafiken.py --satz gremien --erzeugen</code>, danach "
+                "<code>scripts/ios_themenbilder.py</code>.")
 
     k["befunde"] = len(befunde)
     return {"kennzahlen": k, "befunde": befunde}

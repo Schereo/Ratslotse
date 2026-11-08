@@ -1,29 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { AuthProvider } from "@/lib/auth";
-import { OnboardingFlow } from "@/components/onboarding-flow";
 import { AufrufZaehler } from "@/components/aufruf-zaehler";
 import { OfflinePill } from "@/components/offline-pill";
-import { PullToRefresh } from "@/components/pull-to-refresh";
 import { Toaster } from "@/components/ui";
 import { fehlerMelderAnhaengen } from "@/lib/fehler-melden";
 import { initTheme } from "@/lib/theme";
-import { initAppUrlOpen } from "@/lib/app-links";
-import { isNativeApp } from "@/lib/platform";
 import { lohntWiederholen } from "@/lib/api";
 
-// In der App überlebt der Query-Cache den Neustart (RL-1103): beim Start im
-// Zug/Funkloch zeigt Ratslotse die zuletzt geladenen Daten statt Skeletons.
-// gcTime muss die maxAge überdauern, sonst räumt der GC vor dem Persist auf.
-const PERSIST_MAX_AGE = 24 * 60 * 60 * 1000;
-
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [native] = useState(() => isNativeApp());
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -34,13 +21,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
             // bleibt beim zweiten Mal derselbe und kostete nur eine Sekunde
             // mehr Spinner.
             retry: (n, e) => n < 1 && lohntWiederholen(e),
-            ...(native ? { gcTime: PERSIST_MAX_AGE } : {}),
           },
         },
       }),
   );
-
-  const router = useRouter();
 
   useEffect(() => {
     initTheme();
@@ -50,63 +34,22 @@ export function Providers({ children }: { children: React.ReactNode }) {
     fehlerMelderAnhaengen();
   }, []);
 
-  // In der nativen App ist Pinch-/Auto-Zoom aus — App-UIs zoomen nicht, und
-  // ein versehentlicher Zoom blieb sonst dauerhaft hängen. Nur die WKWebView
-  // respektiert maximum-scale; der iOS-System-Zoom (Bedienungshilfen)
-  // funktioniert weiterhin. Im Web bleibt Pinch-Zoom unangetastet.
-  useEffect(() => {
-    if (!native) return;
-    document
-      .querySelector('meta[name="viewport"]')
-      ?.setAttribute(
-        "content",
-        "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
-      );
-  }, [native]);
-
-  // Route incoming Universal/App Links (email verify/reset) into the app.
-  useEffect(() => {
-    void initAppUrlOpen((path) => router.push(path));
-  }, [router]);
-
-  const inner = (
-    <>
+  return (
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         {children}
-        {/* 26a: richtet ein statt nur vorzustellen — ersetzt die drei
-            Intro-Karten (RL-1103). Wer die schon gesehen hat, gilt als
-            Bestandsnutzer und wird nicht nachträglich durchgeschickt.
-            Muss INNERHALB des AuthProviders hängen: Der Flow richtet Abos und
-            Themen ein, die es ohne Konto nicht gibt. */}
-        <OnboardingFlow />
+        {/* Der Einrichtungs-Assistent (26a) hing bis 11/2026 hier und kam so
+            auf jede Seite. Er erscheint aber nur in der App (APP_BEREICHE),
+            und die liegt ganz unter app/(app) — dort hängt jetzt sein Tor
+            (components/onboarding-gate.tsx), das ihn erst bei Bedarf lädt. */}
         {/* Zählt Seitenaufrufe (anonym, ohne Cookie). Muss INNERHALB des
             AuthProviders hängen: Ob jemand angemeldet ist, geht als Ja/Nein
             mit, damit der Server dafür kein Konto auflösen muss. */}
         <AufrufZaehler />
       </AuthProvider>
-      {/* RL-1103/1104: Offline-Hinweis (web + app) und Pull-to-Refresh (nur App). */}
+      {/* RL-1103: Offline-Hinweis. */}
       <OfflinePill />
-      <PullToRefresh />
       <Toaster />
-    </>
+    </QueryClientProvider>
   );
-
-  if (native) {
-    const persister = createSyncStoragePersister({
-      storage: window.localStorage,
-      key: "ratslotse.query-cache",
-    });
-    return (
-      <PersistQueryClientProvider
-        client={queryClient}
-        // buster v2: verwirft bestehende Caches, in denen ["subscriptions"]
-        // fälschlich als rohes Objekt statt als Array lag (Crash auf /topics).
-        persistOptions={{ persister, maxAge: PERSIST_MAX_AGE, buster: "v2" }}
-      >
-        {inner}
-      </PersistQueryClientProvider>
-    );
-  }
-
-  return <QueryClientProvider client={queryClient}>{inner}</QueryClientProvider>;
 }

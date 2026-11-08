@@ -49,8 +49,10 @@ function Wortlaut({ titel, a }: { titel: string; a: Abschnitt }) {
   );
 }
 
+export const notesUrl = (subBudget: number) => `/council/budget/notes?sub_budget=${subBudget}`;
+
 export function VorberichtBereich({ subBudget }: { subBudget: number }) {
-  const { data } = useFetch<Antwort>(`/council/budget/notes?sub_budget=${subBudget}`);
+  const { data } = useFetch<Antwort>(notesUrl(subBudget), { shared: true });
   const jahre = useMemo(
     () => [...new Set((data?.notes ?? []).map((n) => n.budget_year))].sort((a, b) => b - a),
     [data]);

@@ -1,13 +1,61 @@
+import { createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 // Next's dev server (HMR/React Refresh) needs 'unsafe-eval'; a production build
 // does not — so only allow it in development to keep the prod CSP tight.
 const isDev = process.env.NODE_ENV !== "production";
-// The native-app build (`MOBILE=1 next build`) is a static export bundled into
-// the Capacitor shell. Static export has no server, so it can't run rewrites()
-// or headers(): the app talks to the backend at an absolute origin (see
-// lib/platform.ts) and its CSP/security headers come from the app shell instead.
-const MOBILE = process.env.MOBILE === "1";
+
+// FINGERABDRUCK DER BÜNDEL IN public/lotti UND public/geo (lib/asset-paths.ts).
+//
+// Dateien aus public/ liefert Next mit `max-age=0` aus, jeder Besuch fragt sie
+// also neu nach. Die Lotti-Dateien gehören aber zusammen (Verzeichnis und
+// Blätter), eine Lebensdauer allein ließe ein neues lotti.json auf ein altes
+// Blatt treffen. Deshalb steckt der Inhalt in der Adresse: Über alle Dateien
+// des Ordners (Pfad + Inhalt) entsteht ein Abdruck, und nur unter
+// /lotti/v/<abdruck>/… gibt es ein Jahr Lebensdauer. 29 MB, gemessen 40–80 ms
+// je Start. Fehlt der Ordner, bleibt es bei den alten Adressen.
+const PUBLIC_DIR = fileURLToPath(new URL("./public/", import.meta.url));
+
+function contentFingerprint(folder) {
+  const root = path.join(PUBLIC_DIR, folder);
+  const hash = createHash("sha256");
+  const walk = (dir) => {
+    const entries = readdirSync(dir, { withFileTypes: true })
+      .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile()) {
+        hash.update(path.relative(root, full));
+        hash.update("\0");
+        hash.update(readFileSync(full));
+        hash.update("\0");
+      }
+    }
+  };
+  try {
+    walk(root);
+  } catch {
+    return "";
+  }
+  return hash.digest("hex").slice(0, 12);
+}
+
+const LOTTI_VERSION = contentFingerprint("lotti");
+const GEO_VERSION = contentFingerprint("geo");
+
+// Nur der AKTUELLE Abdruck wird umgeleitet und darf lange liegen. Eine alte
+// Adresse (ein Tab von vor dem Deploy) bekommt ein 404 statt der neuen Dateien
+// unter altem Namen — und dieses 404 bekommt keine Lebensdauer, falls der alte
+// Stand nach einem Revert mit demselben Abdruck zurückkommt.
+const versionedBundles = [
+  ["lotti", LOTTI_VERSION],
+  ["geo", GEO_VERSION],
+].filter(([, version]) => version);
 
 // Proxy API calls to the FastAPI backend so the web frontend always talks to a
 // same-origin /api (no CORS, cookies work). In production Caddy may handle /api
@@ -55,6 +103,11 @@ async function rewrites() {
     // damit keinen eigenen Webserver auf der Edge.
     { source: "/docs", destination: "/docs/index.html" },
     { source: "/docs/:path*", destination: "/docs/:path*/index.html" },
+    // Versionierte Bündel-Adressen auf die echten Dateien (s. versionedBundles).
+    ...versionedBundles.map(([folder, version]) => ({
+      source: `/${folder}/v/${version}/:path*`,
+      destination: `/${folder}/:path*`,
+    })),
   ];
   return { afterFiles: dateien, fallback: api };
 }
@@ -66,10 +119,6 @@ async function redirects() {
     { source: "/technik", destination: "/docs", permanent: true },
     // Die Etappe „Mitreden" war bis 21.08.2026 auf drei Seiten verteilt; sie
     // beantworten eine Frage und stehen jetzt als Abschnitte auf einer.
-    //
-    // ACHTUNG, DAS GILT NUR IM WEB-BUILD. Der Capacitor-Export (`output:
-    // "export"`) kennt `redirects` nicht — für die App zählt allein, dass
-    // KEIN interner Link mehr auf die alten Pfade zeigt. Beim Umbau geprüft.
     { source: "/haushalt/jahr", destination: "/haushalt/mitreden#termine", permanent: true },
     { source: "/haushalt/streit", destination: "/haushalt/mitreden#streit", permanent: true },
     // `/haushalt/labor → mitreden#labor` stand hier vom 21. bis 24.08.2026 —
@@ -90,6 +139,15 @@ async function redirects() {
     { source: "/haushalt/beteiligungen", destination: "/haushalt/konzern#gesellschaften", permanent: true },
     { source: "/haushalt/betriebe", destination: "/haushalt/konzern#betriebe", permanent: true },
     { source: "/haushalt/gebuehren", destination: "/haushalt/konzern#gebuehren", permanent: true },
+    // „Mein Viertel" lebt seit dem Umzug auf der Karte (`/karte?ort=…&v=…`).
+    // Alte Links (Mails, geteilte Links) leitet seit 11/2026 der SERVER weiter;
+    // vorher tat es die Seite erst nach dem Hydrieren — App-Hülle, Skelett, ein
+    // zweiter Seitenaufruf, dann die Karte (LCP 524 statt 244 ms). Temporär,
+    // nie permanent: Ein 308 klebt im Browser (s. das Labor oben). Die übrigen
+    // Parameter (`v`, auch `id`) reicht Next von selbst durch; die Karte räumt
+    // die Adresse danach auf. `app/(app)/viertel/view.tsx` bleibt als Rückfall.
+    { source: "/viertel", has: [{ type: "query", key: "id", value: "(?<id>.+)" }], destination: "/karte?ort=:id", permanent: false },
+    { source: "/viertel", destination: "/karte", permanent: false },
   ];
 }
 
@@ -140,6 +198,16 @@ async function headers() {
       source: "/docs",
       headers: [...BASE_HEADERS, { key: "Content-Security-Policy", value: csp({ wasm: true }) }],
     },
+    // Versionierte Bündel: Der Inhalt steckt in der Adresse, also darf der
+    // Browser sie behalten, ohne nachzufragen. Nicht im Dev-Server — dort
+    // ändert `lotti_uebernehmen.py` Dateien, ohne dass sich der Abdruck des
+    // laufenden Servers mitändert.
+    ...(isDev
+      ? []
+      : versionedBundles.map(([folder, version]) => ({
+          source: `/${folder}/v/${version}/:path*`,
+          headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+        }))),
   ];
 }
 
@@ -186,23 +254,21 @@ const nextConfig = {
   reactStrictMode: true,
   // Don't advertise the framework in the X-Powered-By header.
   poweredByHeader: false,
-  // No image optimizer, in either build: `/_next/image` answers 404. Next 14
-  // runs it through `sharp`, and the copy it finds (0.32.6, pulled in only by
-  // `@capacitor/assets`) carries the libvips/libheif flaws behind two
+  // No image optimizer: `/_next/image` answers 404. Next 14 runs it through
+  // `sharp`, and the copy it found (0.32.6, pulled in only by
+  // `@capacitor/assets`) carried the libvips/libheif flaws behind two
   // unauthenticated RCE advisories (GHSA-2464-fhr4-w9xw, GHSA-2xp9-vwfh-vxw4;
-  // fixed only from sharp 0.35.5 / Next 15.5.28). We use `next/image` for a
+  // fixed only from sharp 0.35.5 / Next 15.5.28). `@capacitor/assets` is gone
+  // since 11/2026, but the optimizer stays off: we use `next/image` for a
   // handful of our own small PNG icons, which lose nothing by being served
-  // as they are. The static export can't run the optimizer anyway.
+  // as they are.
   images: { unoptimized: true },
-  ...(MOBILE
-    ? {
-        // Static HTML export for Capacitor: written to ./out, bundled as the app.
-        output: "export",
-        // Each route exports as <route>/index.html — friendliest for the
-        // Capacitor local file server.
-        trailingSlash: true,
-      }
-    : { rewrites, redirects, headers }),
+  // Die Abdrücke der Bündel für lib/asset-paths.ts (zur Bauzeit einkompiliert,
+  // passend zu den Dateien, die derselbe Build ausliefert).
+  env: { LOTTI_BUNDLE_VERSION: LOTTI_VERSION, GEO_BUNDLE_VERSION: GEO_VERSION },
+  rewrites,
+  redirects,
+  headers,
 };
 
 export default (phase) => {

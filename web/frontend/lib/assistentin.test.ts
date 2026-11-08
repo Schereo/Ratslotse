@@ -4,9 +4,26 @@ import {
   ankerListe, ankerTreffer, anschlussfragen, auswahlErlaubt, belegName, BELEG_NAME_MAX,
   chipTitel, daumenZeigen,
   erklaerAktion, erklaerFehler, ernteElement, FRAGE_MAX, FRAGE_ZAEHLER_AB, frageZaehler,
-  gedaechtnis, kuerze, ohneNamen, ortsfrage, refsAus, routeAus, seitenTitel,
-  seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
+  gedaechtnis, kuerze, oeffnenGewuenscht, ohneNamen, ohneOeffnen, ortsfrage, refsAus,
+  routeAus, seitenTitel, seitenUeberschrift, trenneWeiter, ueberschriftenPfad, zaesur,
 } from "./assistentin";
+
+describe("oeffnenGewuenscht und ohneOeffnen", () => {
+  it("öffnet nur bei lotti=1", () => {
+    expect(oeffnenGewuenscht("?lotti=1")).toBe(true);
+    expect(oeffnenGewuenscht("tab=sessions&lotti=1")).toBe(true);
+    expect(oeffnenGewuenscht("?lotti=")).toBe(false);
+    expect(oeffnenGewuenscht("?lotti=ja")).toBe(false);
+    expect(oeffnenGewuenscht("")).toBe(false);
+  });
+
+  it("nimmt nur den Parameter heraus, der Rest der Adresse bleibt", () => {
+    expect(ohneOeffnen("/dashboard", "lotti=1")).toBe("/dashboard");
+    expect(ohneOeffnen("/council/", "tab=sessions&lotti=1", "#heute"))
+      .toBe("/council/?tab=sessions#heute");
+    expect(ohneOeffnen(null, "lotti=1")).toBe("/");
+  });
+});
 
 describe("routeAus", () => {
   it("wirft die Query weg — sie trägt alles Persönliche", () => {
@@ -23,7 +40,7 @@ describe("routeAus", () => {
     expect(routeAus("/council", "?tab=geheim")).toBe("/council");
   });
 
-  it("schneidet den Schrägstrich ab, den der statische Export anhängt", () => {
+  it("schneidet den Schrägstrich am Ende ab", () => {
     expect(routeAus("/haushalt/schulden/")).toBe("/haushalt/schulden");
     expect(routeAus("/")).toBe("/");
   });

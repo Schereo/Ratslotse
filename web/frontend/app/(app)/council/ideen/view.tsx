@@ -16,23 +16,24 @@
  * **Keine Prozentzahl, kein Rang.** Wie sicher sich das Modell ist, steht als
  * Wort da, wo es etwas ändert — und sonst gar nicht.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpRight, Building2, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
-import { AnalyseReiter } from "@/components/council-analysis";
+import { AnalyseReiter } from "@/components/analyse-reiter";
 import { DecisionLinkCard, POLICY_FIELD_LABELS } from "@/components/decision-ui";
 import { BewegungKarte, type Bewegung } from "@/components/ideen/bewegung-karte";
 import { STAND } from "@/components/ideen/stand";
 import { ZeitleisteLegende } from "@/components/ideen/zeitleiste";
 import { Lotti } from "@/components/lotti";
+import { alsFilterwechsel, imBlickHalten } from "@/components/scroll-memory";
 import { Card } from "@/components/ui/card";
-import { DetailSkeleton, ErrorState, PageHeader } from "@/components/ui";
+import { CardListSkeleton, DetailSkeleton, ErrorState, PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
 import { featureAktiv, useAppConfig } from "@/lib/features";
 import { aufzaehlung, rueckmeldungsFehler, standZeilen } from "@/lib/ideen";
 import type { ApiAntwort } from "@/lib/vertrag";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type Felder = ApiAntwort<"/council/cities/ideas/fields">;
 type Ideen = ApiAntwort<"/council/cities/ideas">;
@@ -450,12 +451,13 @@ function IdeenKarte({ idee }: { idee: Idee }) {
 
 // -------------------------------------------------------------- Ein Feld
 
-function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
-  const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["ideen", feld],
-    queryFn: () => api.get<Ideen>(`/council/cities/ideas?field=${encodeURIComponent(feld)}`),
-    staleTime: 60 * 60 * 1000,
-  });
+/** Ein Themenfeld, seitenweise. Bis 11/2026 holte die Liste nur Seite 1: Oben
+ *  stand „1228 Ideen", darunter waren es 30, und nach der dreißigsten ging es
+ *  nicht weiter (Tims Befund 01.11.2026). */
+function Feld({ feld, seite, onSeite, zurueck }: {
+  feld: string; seite: number; onSeite: (seite: number) => void; zurueck: () => void;
+}) {
+  const { data, isPending, isError, refetch, isFetching } = useQuery(fieldIdeasQuery(feld, seite));
 
   const label = POLICY_FIELD_LABELS[feld] ?? feld;
   return (
@@ -481,15 +483,35 @@ function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
           Räte beantragt oder beschlossen haben und Oldenburg fehlt.
         </p>
       )}
+      {/* Platzhalter in Bildschirmhöhe: Ohne ihn stand während des Ladens gar
+          nichts da, und die Seite war zu kurz, um den Abschnitt nach oben zu
+          holen — er rutschte erst mit den Daten an seinen Platz. */}
+      {isPending && <div className="mt-4 min-h-[80vh]"><CardListSkeleton rows={6} /></div>}
       <div className="mt-4 space-y-3">
         {(data?.items ?? []).map((i) => (
           <IdeenKarte key={i.paper_id} idee={i} />
         ))}
       </div>
-      {data && !data.items.length && (
+      {data && !data.items.length && (seite > 1 ? (
+        // Ein alter Link auf eine Seite, die es nach einem Abgleich nicht
+        // mehr gibt — „noch nichts geprüft" wäre hier falsch.
+        <p className="mt-4 text-sm text-muted-foreground">
+          Diese Seite gibt es nicht mehr.{" "}
+          <button type="button" onClick={() => onSeite(1)}
+                  className="font-semibold text-primary hover:underline">
+            Zur ersten Seite
+          </button>
+        </p>
+      ) : (
         <p className="mt-4 text-sm text-muted-foreground">
           In diesem Themenfeld ist noch nichts geprüft.
         </p>
+      ))}
+      {data && (
+        <div className="mt-6">
+          <Blaettern seite={seite} gesamt={data.total} proSeite={data.per_page}
+                     onSeite={onSeite} label="Seiten der Ideen" />
+        </div>
       )}
     </div>
   );
@@ -498,11 +520,7 @@ function Feld({ feld, zurueck }: { feld: string; zurueck: () => void }) {
 // --------------------------------------------------------------- Suche
 
 function Suchergebnis({ frage }: { frage: string }) {
-  const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["ideen-suche", frage],
-    queryFn: () => api.get<Suche>(`/council/cities/search?q=${encodeURIComponent(frage)}`),
-    staleTime: 60 * 60 * 1000,
-  });
+  const { data, isPending, isError, refetch, isFetching } = useQuery(ideaSearchQuery(frage));
   return (
     <div>
       {isError && !data && (
@@ -549,7 +567,12 @@ const PRO_SEITE = 12;
 /** Der Zustand der Übersicht steht in der ADRESSE, nicht im Speicher: Wer
  *  von einer Ideen-Seite zurückkommt, findet Feld, Filter und Suche wieder,
  *  und ein geteilter Link zeigt dasselbe. */
-type Zustand = { feld: string; stand: string; q: string; sort: string; seite: number };
+type Zustand = {
+  feld: string; stand: string; q: string; sort: string; seite: number;
+  /** Die Seite unter „Einzelne Ideen" — getrennt von `seite` (Bewegungen):
+   *  Wer in den Ideen blättert, soll die Bewegungen darüber nicht mitblättern. */
+  ideenSeite: number;
+};
 
 function zustandAus(params: URLSearchParams | null): Zustand {
   const stand = params?.get("stand") ?? "offen";
@@ -559,6 +582,7 @@ function zustandAus(params: URLSearchParams | null): Zustand {
     q: params?.get("q") ?? "",
     sort: params?.get("sort") === "zuletzt" ? "zuletzt" : "staedte",
     seite: Math.max(1, Number(params?.get("seite") ?? "1") || 1),
+    ideenSeite: Math.max(1, Number(params?.get("ideenseite") ?? "1") || 1),
   };
 }
 
@@ -569,6 +593,7 @@ function adresse(z: Zustand): string {
   if (z.q) p.set("q", z.q);
   if (z.sort !== "staedte") p.set("sort", z.sort);
   if (z.seite > 1) p.set("seite", String(z.seite));
+  if (z.feld && z.ideenSeite > 1) p.set("ideenseite", String(z.ideenSeite));
   const s = p.toString();
   return s ? `/council/ideen?${s}` : "/council/ideen";
 }
@@ -586,6 +611,52 @@ function bewegungsAnfrage(z: Zustand, extra: Record<string, string> = {}): strin
   return `/council/cities/movements?${p.toString()}`;
 }
 
+// Die Abfragen der Abschnitte, an EINER Stelle: Die Abschnitte lesen sie, und
+// die Seite stößt sie schon an, solange /app-config noch unterwegs ist (s.
+// `View`). Zwei Fassungen mit verschiedenen Schlüsseln hießen zwei Abrufe.
+function boardQuery() {
+  return queryOptions({
+    queryKey: ["bewegungen-tafel"],
+    queryFn: () =>
+      api.get<Bewegungen>(
+        "/council/cities/movements?min_cities=5&oldenburg=missing,partial&sort=zuletzt&per_page=3"),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+function movementsQuery(z: Zustand) {
+  return queryOptions({
+    queryKey: ["bewegungen", z.feld, z.stand, z.q, z.sort, z.seite],
+    queryFn: () => api.get<Bewegungen>(bewegungsAnfrage(z)),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+function fieldIdeasQuery(feld: string, seite: number) {
+  return queryOptions({
+    queryKey: ["ideen", feld, seite],
+    queryFn: () => api.get<Ideen>(
+      `/council/cities/ideas?field=${encodeURIComponent(feld)}&page=${seite}`),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+function ideaSearchQuery(frage: string) {
+  return queryOptions({
+    queryKey: ["ideen-suche", frage],
+    queryFn: () => api.get<Suche>(`/council/cities/search?q=${encodeURIComponent(frage)}`),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
+function fieldsQuery() {
+  return queryOptions({
+    queryKey: ["ideen-felder"],
+    queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 function zielFuer(b: Bewegung, z: Zustand): string {
   const von = adresse(z).split("?")[1] ?? "";
   return `/council/ideen/bewegung?id=${b.cluster_id}${von ? `&von=${encodeURIComponent(von)}` : ""}`;
@@ -599,13 +670,7 @@ function zielFuer(b: Bewegung, z: Zustand): string {
  *  Regel). Sie steht nur in der ungefilterten Ansicht: Mit einem Feld oder
  *  einer Suche gewählt wäre sie eine zweite, kleinere Kopie der Liste. */
 function Tafel({ zustand }: { zustand: Zustand }) {
-  const { data } = useQuery({
-    queryKey: ["bewegungen-tafel"],
-    queryFn: () =>
-      api.get<Bewegungen>(
-        "/council/cities/movements?min_cities=5&oldenburg=missing,partial&sort=zuletzt&per_page=3"),
-    staleTime: 60 * 60 * 1000,
-  });
+  const { data } = useQuery(boardQuery());
   if (!data || data.items.length === 0) return null;
   return (
     <section aria-labelledby="tafel-titel" className="hh-tafel grid gap-3.5 rounded-[18px] p-4 sm:p-5">
@@ -774,23 +839,26 @@ function Leer({ gefiltert, zuruecksetzen }: { gefiltert: boolean; zuruecksetzen:
 }
 
 function Blaettern({
-  seite, gesamt, setze,
-}: { seite: number; gesamt: number; setze: (z: Partial<Zustand>) => void }) {
-  const seiten = Math.max(1, Math.ceil(gesamt / PRO_SEITE));
+  seite, gesamt, proSeite = PRO_SEITE, onSeite, label = "Seiten",
+}: {
+  seite: number; gesamt: number; proSeite?: number;
+  onSeite: (seite: number) => void; label?: string;
+}) {
+  const seiten = Math.max(1, Math.ceil(gesamt / proSeite));
   if (seiten <= 1) return null;
   const knopf =
     "inline-flex h-10 items-center gap-1 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground disabled:opacity-40 enabled:hover:border-primary/30";
   return (
-    <nav aria-label="Seiten" className="flex items-center justify-center gap-3">
+    <nav aria-label={label} className="flex items-center justify-center gap-3">
       <button type="button" className={knopf} disabled={seite <= 1}
-              onClick={() => setze({ seite: seite - 1 })}>
+              onClick={() => onSeite(seite - 1)}>
         <ChevronLeft className="h-4 w-4" aria-hidden /> Zurück
       </button>
       <span className="font-mono text-meta text-muted-foreground">
         Seite {seite} von {seiten}
       </span>
       <button type="button" className={knopf} disabled={seite >= seiten}
-              onClick={() => setze({ seite: seite + 1 })}>
+              onClick={() => onSeite(seite + 1)}>
         Weiter <ChevronRight className="h-4 w-4" aria-hidden />
       </button>
     </nav>
@@ -801,9 +869,7 @@ function BewegungenListe({
   zustand, setze, felder,
 }: { zustand: Zustand; setze: (z: Partial<Zustand>) => void; felder: Felder | undefined }) {
   const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["bewegungen", zustand.feld, zustand.stand, zustand.q, zustand.sort, zustand.seite],
-    queryFn: () => api.get<Bewegungen>(bewegungsAnfrage(zustand)),
-    staleTime: 10 * 60 * 1000,
+    ...movementsQuery(zustand),
     placeholderData: (vorher) => vorher,
   });
   const gefiltert = Boolean(zustand.feld || zustand.q || zustand.stand !== "offen");
@@ -833,7 +899,8 @@ function BewegungenListe({
               <BewegungKarte key={b.cluster_id} bewegung={b} achse={data.axis} href={zielFuer(b, zustand)} />
             ))}
           </div>
-          <Blaettern seite={zustand.seite} gesamt={data.total} setze={setze} />
+          <Blaettern seite={zustand.seite} gesamt={data.total} label="Seiten der Bewegungen"
+                     onSeite={(s) => setze({ seite: s })} />
         </>
       ) : (
         <Leer gefiltert={gefiltert} zuruecksetzen={() => setze({ feld: "", stand: "offen", q: "", seite: 1 })} />
@@ -850,14 +917,46 @@ export default function View() {
   const router = useRouter();
   const params = useSearchParams();
   const zustand = useMemo(() => zustandAus(params), [params]);
-  const setze = (neu: Partial<Zustand>) =>
-    router.replace(adresse({ ...zustand, ...neu }), { scroll: false });
-  const felderAbfrage = useQuery({
-    queryKey: ["ideen-felder"],
-    queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
-    staleTime: 60 * 60 * 1000,
-    enabled: an,
-  });
+  const einzeln = useRef<HTMLElement>(null);
+  const zuEinzeln = useRef(false);
+  // `zumAbschnitt`: Der Wechsel kam aus „Einzelne Ideen“ selbst (Themenfeld
+  // gewählt oder „Alle Themenfelder“). Darüber verschwindet dabei die Tafel,
+  // die Bewegungen filtern mit, und das Raster weicht einer noch leeren Liste
+  // — die Seite schrumpft um gut 1.000 px, und wer unten geklickt hatte, sah
+  // danach die Bewegungen statt der geladenen Ideen (Tims Befund 01.11.2026).
+  const setze = (neu: Partial<Zustand>, zumAbschnitt = false) => {
+    const naechster = { ...zustand, ...neu };
+    // Ein anderes Feld fängt vorn an — Seite 7 von „Verkehr" gibt es in
+    // „Migration" vielleicht gar nicht.
+    if (neu.feld !== undefined && neu.feld !== zustand.feld) naechster.ideenSeite = 1;
+    const ziel = adresse(naechster);
+    alsFilterwechsel(ziel);
+    zuEinzeln.current = zumAbschnitt;
+    router.replace(ziel, { scroll: false });
+  };
+  useEffect(() => {
+    if (!zuEinzeln.current || !einzeln.current) return;
+    zuEinzeln.current = false;
+    return imBlickHalten(einzeln.current);
+  }, [zustand.feld, zustand.ideenSeite]);
+  // Die Seitendaten warten nicht auf /app-config. Bis 11/2026 stießen die
+  // Abschnitte ihre Abrufe erst an, wenn der Schalter geantwortet hatte — eine
+  // Netzlaufzeit mehr (auth/me → app-config → Seitendaten). Die Endpunkte
+  // prüfen den Schalter nicht; ein früher Abruf zeigt also nichts, was die
+  // Seite nicht ohnehin zeigen darf, und ist der Schalter aus, bleibt es beim
+  // 404 unten. Nur beim ersten Aufruf nötig: Ist die Konfiguration schon im
+  // Speicher, stehen die Abschnitte sofort da und holen selbst.
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!cfg.isPending) return;
+    if (!zustand.feld && !zustand.q && zustand.stand === "offen") void qc.prefetchQuery(boardQuery());
+    void qc.prefetchQuery(movementsQuery(zustand));
+    if (zustand.q) void qc.prefetchQuery(ideaSearchQuery(zustand.q));
+    else if (zustand.feld) void qc.prefetchQuery(fieldIdeasQuery(zustand.feld, zustand.ideenSeite));
+    // Einmal beim Einstieg, mit dem Zustand aus der Adresse.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const felderAbfrage = useQuery({ ...fieldsQuery(), enabled: an || cfg.isPending });
   const felder = felderAbfrage.data;
   // „A, B und C" — die letzte mit „und", wie man es schreibt.
   const staedte = useMemo(() => {
@@ -929,7 +1028,7 @@ export default function View() {
           Vorlage einzeln. Sie bleiben (Tims Entscheidung vom 22.09.2026),
           stehen aber unter den Bewegungen: 89 % aller Ideen stehen nur in
           einer Stadt, und eine Stadt ist eine Beobachtung, noch kein Trend. */}
-      <section aria-labelledby="einzeln-titel" className="grid gap-3 border-t border-border pt-6">
+      <section ref={einzeln} aria-labelledby="einzeln-titel" className="grid scroll-mt-20 gap-3 border-t border-border pt-6">
         <div>
           <h2 id="einzeln-titel" className="font-display text-[19px] font-bold text-foreground">
             Einzelne Ideen
@@ -941,9 +1040,11 @@ export default function View() {
         {zustand.q ? (
           <Suchergebnis frage={zustand.q} />
         ) : zustand.feld ? (
-          <Feld feld={zustand.feld} zurueck={() => setze({ feld: "", seite: 1 })} />
+          <Feld feld={zustand.feld} seite={zustand.ideenSeite}
+                onSeite={(s) => setze({ ideenSeite: s }, true)}
+                zurueck={() => setze({ feld: "", seite: 1 }, true)} />
         ) : (
-          <Uebersicht felder={felder} fehler={felderFehler} onFeld={(f) => setze({ feld: f, seite: 1 })} />
+          <Uebersicht felder={felder} fehler={felderFehler} onFeld={(f) => setze({ feld: f, seite: 1 }, true)} />
         )}
       </section>
     </div>

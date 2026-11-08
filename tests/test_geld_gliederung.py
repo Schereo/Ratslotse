@@ -103,6 +103,13 @@ FRAGEN = [
     # Die Kontenebene (10/2026): eine einzelne Einnahmeart mit Ist, Ansatz und
     # Soll-Ist-Vergleich — die echte Frage vom 10.10.2026.
     "Wie hoch sind die Einnahmen durch die Parkgebühren im Jahr?",
+    # Die sieben Bestände, die bis 10/2026 nur auf den Haushaltsseiten standen.
+    "Wie hoch ist der Finanzmittelfehlbetrag im Finanzhaushalt 2026?",
+    "Mit wie viel Gewerbesteuer rechnet die Stadt laut Prognose im Vorbericht für 2025?",
+    "Mit welchen Schulden geht der Eigenbetrieb Gebäudewirtschaft und Hochbau voraussichtlich ins Jahr 2026?",
+    "Wie viel aus den Verpflichtungsermächtigungen des Haushalts 2026 wird 2027 fällig?",
+    "Welches Jahresergebnis hatte die Bäderbetriebsgesellschaft 2025 laut Jahresabschluss?",
+    "Was steckt hinter den Rückstellungen in der Bilanz der Stadt 2025?",
 ]
 
 

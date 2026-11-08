@@ -165,7 +165,7 @@ export function PotenzialView() {
       <>
         <Kopf label="Stichwahl" />
         <main className="mx-auto w-full max-w-5xl px-4 pb-16 sm:px-6">
-          <div className="mt-10 h-40 animate-pulse rounded-2xl bg-muted" />
+          <div className="mt-10 h-40 animate-pulse rounded-2xl bg-skeleton" />
         </main>
       </>
     );

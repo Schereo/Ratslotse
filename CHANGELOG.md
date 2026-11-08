@@ -7,6 +7,348 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [3.0.0] – 2026-11-08
+
+### Hinzugefügt
+- **Frag den Rat kennt sieben weitere Haushaltsbestände.** Den Finanzhaushalt
+  mit seiner Finanzplanung, die Eckdaten und Prognosen aus dem Vorbericht, die
+  Schuldenübersicht des Haushaltsplans, die Verpflichtungsermächtigungen nach
+  Fälligkeit, die Jahresabschlüsse der städtischen Gesellschaften und die
+  Erläuterungen zur Bilanz gab es bisher nur auf den Haushaltsseiten. Jetzt
+  antwortet die KI-Frage auch darauf, etwa „Mit wie viel Gewerbesteuer rechnet
+  die Stadt dieses Jahr?“ oder „Welchen Verlust hat die
+  Bäderbetriebsgesellschaft 2025 gemacht?“, und jede Zahl sagt, ob sie Plan,
+  Prognose oder abgerechnet ist. (#1744)
+- **Frag den Rat sucht nach, wenn etwas fehlt.** Nach der ersten Suche prüft ein
+  kleines Modell, ob in den gefundenen Beschlüssen ein Teil der Frage fehlt, und
+  sucht dann gezielt nach — in der Sprache der Verwaltung statt der
+  Alltagssprache („kostenloser Bus am Samstag“ → „Samstagsfahrten“). Vorerst
+  hinter dem Schalter `nachrecherche`. (#1711)
+- **Admin-Panel: wie Agenten den MCP-Server nutzen.** Unter *Nutzung → Agenten
+  (MCP)* steht jetzt, welche Werkzeuge Agenten aufrufen und in welcher
+  Reihenfolge, wonach sie suchen, welche Suchen ohne Treffer bleiben, wo Fehler
+  auftreten und welche Konten mit welchen Agenten fragen. Gespeichert wird je
+  Aufruf mit Konto. Der Suchtext wird gekürzt, ohne Kontaktdaten, und nach 90
+  Tagen gelöscht. Die Freigabe-Seite, die Einstellungskarte und die
+  Datenschutzerklärung sagen das vorher. (#1738)
+- **Eigener Agent: auch die Haushaltszahlen.** Wer den Haushaltsbereich in
+  Ratslotse sehen darf, also Ratsmitglieder und Fachpublikum, bekommt ihn jetzt
+  auch im eigenen Agenten: Suche in den Haushaltsdaten, Kennzahlen über die
+  Jahre, Aufgaben des Haushalts, Wirtschaftspläne der Betriebe,
+  Gebührenkalkulationen und den Kassenstand, dazu ganze Bestände wie
+  Finanzhaushalt, Vorbericht, Schuldenübersicht, Verpflichtungsermächtigungen
+  und die Abschlüsse der städtischen Gesellschaften, jeder Wert mit seinem
+  Beleg. Für alle anderen Konten bleibt der Haushalt außen vor; ihr Agent sieht
+  diese Werkzeuge gar nicht. (#1742)
+- **ChatGPT verbindet sich jetzt per Anmeldung.** ChatGPT kann einem eigenen
+  MCP-Server keinen festen Schlüssel schicken. Deshalb meldet man sich beim
+  Verbinden jetzt mit dem eigenen Ratslotse-Konto an und gibt den Agenten auf
+  einer Freigabe-Seite frei. Die Seite zeigt groß, wohin es danach zurückgeht,
+  und warnt, wenn das Ziel ein Programm auf dem eigenen Gerät ist. Das
+  funktioniert auch mit Claude im Browser und auf dem iPad sowie mit allen
+  Clients, die OAuth 2.1 sprechen. Die verbundenen Agenten stehen in den
+  Einstellungen unter „Eigener Agent (MCP)“ und lassen sich dort einzeln
+  trennen. Ein neues Passwort oder „Überall abmelden“ trennt sie alle. Die
+  persönlichen Schlüssel funktionieren weiter. (#1738)
+- **Eigener Agent: Ratsdaten über MCP.** Konten mit der neuen Rolle „MCP-Zugang“
+  stellen sich in den Einstellungen persönliche Schlüssel aus, bis zu fünf, und
+  schließen damit Claude, ChatGPT, Cursor oder einen anderen MCP-fähigen Agenten
+  an `/api/mcp` an. Der Agent sucht dann selbst in Beschlüssen, liest Vorlagen
+  samt ihren Anlagen, Beratungsfolgen, Sitzungen, Tagesordnungen und den
+  Protokollabschnitt zu jedem Punkt, und er zählt Beschlüsse. Eine noch nicht
+  geladene Anlage holt Ratslotse beim ersten Abruf nach. Jede Antwort kommt als
+  JSON und bringt die Adressen auf Ratslotse und im Ratsinformationssystem mit.
+  Er kann nur lesen, der Haushalt ist nicht dabei, und auf unserer Seite läuft
+  kein Sprachmodell. Vorerst nur auf dev, hinter dem Schalter `mcp-server`.
+  (#1698)
+- **„Neu bei Ratslotse“ stellt Version 3.0 vor.** Die Karte auf der Startseite
+  zeigt die großen Neuerungen in kurzen Clips: Lotti erklärt, was du siehst,
+  Mein Viertel, Ideen aus anderen Städten und — im Browser — die Zeitleiste
+  unter einer Antwort von „Frag den Rat“. In der App stammen die Clips aus der
+  App selbst. (#1659)
+
+### Geändert
+- **Die Ausschuss-Abos zeigen Lotti mit dem Requisit jedes Ausschusses.** Bisher
+  standen dort noch die alten, kleinen Zeichen, während der
+  Einrichtungs-Assistent schon die Bilder trug. Ein abonnierter Ausschuss
+  bekommt einen Ring ums Bild. (#1770)
+- **Abzeichen aus der Einrichtung kommen ohne Feier.** Wer im
+  Einrichtungs-Assistenten sein erstes Thema anlegt oder Mitteilungen
+  einschaltet, bekommt die Abzeichen dafür weiterhin — sie stehen mit „neu“ in
+  der Sammlung. Die Glückwunsch-Karte erschien bisher aber direkt beim Start der
+  Tour, und die verwirrte mehr, als sie freute. (#1762)
+- **Der Einrichtungs-Assistent zeigt die Stadtteile auf einem echten
+  Stadtplan.** Statt weißer Umrisse liegt die Auswahl über der Karte mit
+  Straßen, Grün und Wasser, und jeder gewählte Stadtteil trägt sein
+  Namensschild. Die Vorschläge „Aus deinen Stadtteilen“ laden, sobald ein
+  Stadtteil angetippt ist, statt erst nach dem Speichern, und laden danach nicht
+  noch einmal. Der Knopf nennt keine Obergrenze mehr („2 von 3 Stadtteilen“) —
+  die meldet sich erst, wenn jemand einen vierten antippt. Statt eines winzigen
+  Ladekreises in der Pille pulsiert sie, bis sie gespeichert ist. (#1759)
+- **Das nie veröffentlichte Android-Gerüst ist entfernt.** Die Webseite hat
+  dafür bisher die Bausteine einer App-Hülle mitgeschleppt, darunter
+  Bibliotheken mit bekannten Sicherheitslücken; für Nutzer*innen der Webseite
+  und der iOS-App ändert sich nichts. (#1760)
+- **Der Server nimmt keine Anfragen der entfernten App-Hüllen mehr an.** Er ließ
+  bisher zwei feste Adressen der früheren Capacitor-Apps zu, die es nicht mehr
+  gibt; für Nutzer*innen der Webseite und der iOS-App ändert sich nichts.
+  (#1765)
+- **Der Einrichtungs-Assistent ist aufgeräumter: größere Themenbilder, eine
+  größere Stadtteilkarte und weniger Text.** Die Stadtthemen stehen in zwei
+  Spalten statt drei, am Telefon in einer, und die Liste scrollt in sich,
+  während Eingabefeld und Überschrift stehen bleiben. Eine gewählte Kachel ist
+  so hoch wie die anderen, weil „anpassen“ jetzt rechts in der Kachel sitzt
+  statt in einer Zeile darunter. Wer ein eigenes Thema anlegt, sieht, dass Lotti
+  gerade nach passenden Beschlüssen sucht. Die Stadtteilkarte wächst mit dem
+  Fenster und zeigt Oldenburg statt viel Umland, die Stadtteile darunter stehen
+  kompakter. Der letzte Schritt nennt die drei Anlässe für eine Benachrichtigung
+  mit je einem Symbol und die Grenzen in einer Zeile. Der erste Schritt heißt
+  „Ausschüsse“ statt „Gremien“, weil dort genau die Ausschüsse und der Rat zur
+  Wahl stehen, im Browser wie in der App. (#1772)
+- **Die Frage „Soll ich mir deine Gespräche merken?“ ist kurz geworden.** Statt
+  zwölf Zeilen Fließtext stehen vor der ersten KI-Frage nur noch zwei Zeilen mit
+  Symbol: wohin die Frage geht und was man nicht eingeben sollte. Die
+  Einzelheiten zur Übermittlung und zum Merken stehen unter „Mehr dazu“, dazu
+  der Weg in die Kontoeinstellungen und die Datenschutzerklärung. (#1769)
+- **Der Einrichtungs-Assistent kennt den neuen Ausschuss für Gesundheit und
+  Soziales, und die Gremienbilder sind größer.** Der Ausschuss der neuen
+  Wahlperiode stand bisher ohne Bild und ohne Erklärung ganz unten in der
+  Auswahl; jetzt hat er beides und steht neben „Soziales“. Die Bilder in den
+  Gremien-Kacheln sind größer und besser zu erkennen, im Browser wie in der App.
+  Kommt künftig ein Gremium ohne Bild dazu, meldet sich das von selbst. Und wenn
+  nicht alle Gremien oder Themen auf den Bildschirm passen, sagt eine
+  Schaltfläche „Weitere Ausschüsse“ am unteren Rand, dass darunter noch mehr
+  kommt. (#1764)
+- **„Ideen aus anderen Städten“ heißt überall gleich, sagt ehrlicher, was es
+  zeigt, und vergisst nichts beim Löschen eines Kontos.** Der Block auf
+  Beschluss-Seiten heißt jetzt „In anderen Städten“ statt „Anderswo beschlossen“
+  – beschlossen war nur gut ein Drittel der Treffer –, und formale Beschlüsse
+  wie Widmungen, über- und außerplanmäßige Bewilligungen oder
+  Bebauungsplanänderungen bekommen gar keinen mehr; Treffer aus einem anderen
+  Themenfeld fallen heraus. Die Ideen-Seite nennt ihren Datenstand und Städte
+  mit älterem Bestand, unterscheidet einen Ladefehler (mit „Nochmal versuchen“)
+  von „gibt es nicht“, und ohne Freischaltung ist sie eine 404-Seite statt einer
+  leeren. Rückmeldungen („Stimmt das?“) geben nur noch bestätigte Konten, sie
+  werden mit dem Konto gelöscht, und in der App klappen sie jetzt auch bei
+  Vorlagen, deren Kennung eine Webadresse ist. Namen von Privatpersonen in
+  fremden Vorlagentiteln stehen nur noch mit Anfangsbuchstaben da. Wer unter
+  „Einzelne Ideen“ ein Themenfeld wählt, landet bei dessen Ideen, statt dass die
+  Ansicht irgendwo darüber stehen bleibt, und kann durch alle Ideen eines Feldes
+  blättern statt nur durch die ersten 30. (#1648)
+- **In der App lassen sich die Zeitleisten einer Idee ablesen.** Ein Tippen auf
+  die Zeitleiste oder waagerechtes Wischen wählt eine Vorlage: Ein Strich läuft
+  durch alle Städte, darunter stehen Titel, Stadt, Datum, Art und Ergebnis, und
+  „In der Chronik zeigen" springt zum Eintrag. Mit VoiceOver geht man die
+  Vorlagen per Wischen nach oben und unten durch, auf dem iPad genügt der
+  Zeiger. (#1502)
+- **Auch in der App steht zwischen zwei Clips von „Neu bei Ratslotse“ jetzt eine
+  kurze Tafel.** Bisher begann dort der nächste Clip ohne Übergang. Jetzt nennt
+  die Tafel, was man gerade gesehen hat, und bietet an, es gleich auszuprobieren
+  oder noch einmal anzusehen. Ein Balken unter „Als Nächstes“ läuft acht
+  Sekunden, dann geht es weiter. Steht VoiceOver auf einem der anderen beiden
+  Knöpfe, hält der Balken an. Mit „Bewegung reduzieren“ gibt es weiterhin keinen
+  Selbstlauf. (#1684)
+- **Die KI läuft ausschließlich in Rechenzentren in der EU.** Frag den Rat,
+  Lotti, die Themen-Beschreibung und die Prüfung, ob ein Thema zu allgemein ist,
+  schicken deine Eingaben an KI-Modelle in der EU — ohne Speicherung beim
+  Anbieter und ohne Training. Unter jeder Antwort steht dafür jetzt „KI in der
+  EU“ mit der Europaflagge; die Datenschutzerklärung ist angepasst. (#1783)
+- **Frag den Rat liest weniger, aber gezielter.** Statt bis zu hundert
+  Wortbeiträgen aus den Ratsprotokollen bekommt das Antwort-Modell höchstens 24
+  — die Aussprache zu den Beschlüssen, um die es geht, zuerst. In zu viel
+  Material gehen wichtige Stellen unter. Die Liste der Wortbeiträge unter der
+  Antwort bleibt vollständig. Vorerst hinter dem Schalter `kontext-diaet`.
+  (#1725)
+- **„Mein Viertel“ auf Heute sagt, was zuletzt im Rat war.** Statt nur des
+  Datums steht unter jedem Vorhaben der Kernsatz des jüngsten Beschlusses samt
+  Gremium, verlinkt auf den Beschluss. Eine kleine Grafik zeigt, wo das Vorhaben
+  auf dem Weg von der Idee bis zur Fertigstellung steht, und hat ein Viertel
+  mehrere Vorhaben, lässt sich zwischen ihnen blättern. Eine anstehende Beratung
+  bleibt oben stehen, statt die Vorhaben zu verdrängen. Außerdem lädt die
+  Viertel-Tafel wieder, wenn einer ihrer Beschlüsse keinen Titel trägt. (#1757)
+- **Zwischen zwei Clips von „Neu bei Ratslotse“ steht jetzt eine kurze Tafel.**
+  Bisher begann der nächste Clip ohne Übergang, und man merkte kaum, dass schon
+  ein anderes Feature lief. Jetzt sagt die Tafel, was man gerade gesehen hat,
+  bietet an, es gleich auszuprobieren, und zeigt, was als Nächstes kommt; ein
+  Balken läuft acht Sekunden, dann geht es weiter. Die Clips selbst sind
+  schärfer: aufgenommen in doppelter Auflösung und ausgeliefert in Full HD.
+  (#1688)
+- **Die Belege neben einer Antwort sind geordnet und kompakter.** Beschlüsse,
+  Wortbeiträge und Pressemitteilungen stehen in drei gleich gebauten, klar
+  beschrifteten Kästen statt in einer langen, unterschiedlich gestalteten Liste.
+  Die zitierten Beschlüsse stehen eine Stufe kleiner da, von den Wortbeiträgen
+  zuerst fünf — aus möglichst vielen verschiedenen Fraktionen —, der Rest auf
+  Knopfdruck, und Pressemitteilungen rücken damit nach oben. (#1782)
+- **„Neu bei Ratslotse“ zeigt die Neuerungen als Video-Kacheln.** Statt einer
+  Bühne zum Durchklicken steht jede große Neuerung als eigene Kachel mit
+  Titelbild, Farbe und Länge des Clips auf der Startseite — am Telefon zum
+  Wischen. Ein Tipp öffnet einen Spieler wie bei Stories: Balken zeigen, wie
+  lange der Clip noch läuft, am Ende kommt der nächste, und ein Knopf führt
+  direkt zum Feature. Wer Bewegung reduziert hat, startet die Clips selbst.
+  Kleinere Neuerungen stehen als Zeile „Außerdem“ darunter. Der Rückblick für
+  den ersten Besuch heißt jetzt „Dein erster Rückblick“, damit nicht zwei Karten
+  „Neu bei Ratslotse“ untereinander stehen. (#1662)
+- **Sicherheitsupdates für die Bibliotheken auf dem Server.** Zwölf
+  Python-Bibliotheken laufen jetzt in Fassungen ohne bekannte Lücken, darunter
+  die für PDFs (pypdf) und für Bilder (Pillow). Die automatische
+  Bildverkleinerung von Next.js ist abgeschaltet; die wenigen Symbole, die sie
+  betraf, kommen jetzt unverändert. (#1756)
+- **Die Themen im Einrichtungs-Assistenten sind sofort da, und ihre Zahl stimmt
+  überall.** Ein Klick auf eine Kachel wie „Radverkehr“ oder „Theater, Museen
+  und Kultur“ legt das Thema jetzt in einem Augenblick an, statt auf die
+  Auswertung zu warten, und mehrere Kacheln lassen sich nacheinander anklicken,
+  während die erste noch lädt. Ein zweiter Klick nimmt das Thema wieder heraus;
+  „anpassen“ steht direkt an der Kachel, und unter „Deine Themen“ stehen nur
+  noch selbst angelegte Themen statt derselben Auswahl ein zweites Mal. Die Zahl
+  an der Kachel ist dieselbe wie danach am Thema und im Fenster „anpassen“; dort
+  steht jetzt dazu, für welchen Zeitraum sie gilt („18 Beschlüsse in 12 Monaten
+  · 127 seit 2018“). Die vorgeschlagenen Themen gelten dort auch nicht mehr als
+  „zu unkonkret“. (#1763)
+- **Frag den Rat findet Vorgänge auch ohne ihren genauen Namen.** Wer nach dem
+  „neuen Stadion“ oder den „Bürgschaften fürs Klinikum“ fragt, bekommt jetzt
+  auch die Beschlüsse zu „Stadion Oldenburg“, „Stadionneubau Maastrichter
+  Straße“ oder „Klinikum Oldenburg“ — die Frage-Analyse wählt die gemeinten
+  Themen aus einer Vorschlagsliste. Und eine Frage zu einem Ort wie dem
+  Heidbrook findet auch die Beschlüsse, die am gleichnamigen Thema hängen.
+  Vorerst hinter dem Schalter `suche-ausbau`. (#1735)
+- **Bei Fragen nach dem Stand eines Vorhabens liest Frag den Rat den ganzen
+  Vorgang.** Erkennt die Frage ein Vorhaben wie das Klinikum oder den
+  Stadionneubau, kommen dessen jüngste Beschlüsse mit in die Antwort — auch die,
+  die anders heißen als die Frage („Eigenkapitalstärkung“ bei einer Frage nach
+  Bürgschaften). Und eine Frage zu einem Ort findet auch Beschlüsse, die den Ort
+  nur im Text nennen. Vorerst hinter dem Schalter `suche-ausbau`. (#1736)
+- **Die Bilder auf „Meine Themen“ sind so groß wie auf den Ausschuss-Abos.**
+  Lotti mit dem Requisit des Themas steht jetzt in 64 px neben Titel und
+  Beschreibung statt klein in der Titelzeile. (#1780)
+- **Lottis Tour zeigt dein Viertel und deine Themen.** Wer im
+  Einrichtungs-Assistenten ein Viertel gewählt hat, sieht in der Tour erst die
+  ganze Stadt, dann fliegt die Karte in dieses Viertel, und Lotti sagt, was dort
+  gerade los ist und wie man hinein- und herauszoomt. Die Station „Deine Themen"
+  öffnet die Seite „Meine Themen" und nennt die Themen beim Namen, die man
+  gerade eingerichtet hat. (#1761)
+- **Die Tour blendet weich über und zeigt, wo du gerade bist.** Beim
+  Weiterschalten blendet Lottis Karte aus, die Tour wartet, bis die nächste
+  Seite fertig geladen ist, und blendet dann wieder ein — statt dass Inhalte
+  hinter der Karte aufploppen. Der Menüpunkt der neuen Seite leuchtet dabei
+  einmal auf und bleibt hervorgehoben, damit man ihn später wiederfindet. Das
+  Abzeichen „Analyst“ gibt es erst, wenn du die Analyse selbst aufrufst, nicht
+  schon, weil die Tour dich hinführt. (#1768)
+
+### Behoben
+- **Die Beschluss-Suche findet Beschlüsse auch, wenn die Wörter anders stehen.**
+  Bisher suchte sie die Eingabe wörtlich am Stück: „PAK-Belastung“ fand den
+  Ratsbeschluss vom 31.08.2026, „PAK Belastung“ fand nichts — und ein aus dem
+  Protokoll kopierter Tagesordnungspunkt auch nicht, weil dort „Ö 10.5“
+  davorsteht und der Titel weitergeht. Jetzt muss jedes Wort vorkommen, gleich
+  in welcher Reihenfolge und ob im Titel, im Beschlusstext oder in der
+  Kurzfassung; findet das nichts, reichen drei Viertel der Wörter. Einen
+  Wortlaut sucht man weiter in Anführungszeichen. „Strasse“ findet „Straße“,
+  „änderung“ findet „Änderung“, die Vorlagennummer („22/0257“) führt zum
+  Beschluss, und wer „Fliegerhorststraße“ sucht, bekommt auch die Beschlüsse zur
+  „Entlastungsstraße“, wie die Straße in den Unterlagen heißt. (#1739)
+- **Während eines Updates kommt Ratslotse nicht mehr ohne Gestaltung.** Bei
+  jedem Update lieferte die Seite rund eine Minute lang Text ohne Stylesheet
+  aus, mit dem App-Symbol in voller Größe darauf: Die neue Fassung wurde in
+  dasselbe Verzeichnis gebaut, aus dem die alte noch ausgeliefert wurde. Jetzt
+  entsteht sie daneben und wird erst im Moment des Neustarts eingesetzt. Eine
+  Fassung, deren Schriften nicht zu ihren Stylesheets passen, geht gar nicht
+  erst online; am 08.11.2026 stand die Testumgebung deshalb in einer
+  Ersatzschrift. (#1766)
+- **Ein eigenes Thema zeigt beim Anlegen, in der Liste und im Fenster „anpassen“
+  dieselbe Zahl.** Bisher konnte beim Anlegen „Der Rat hat bisher nichts
+  entschieden“ stehen, während das Thema danach „6 Beschlüsse in 12 Monaten“
+  trug und das Fenster „anpassen“ wieder „Noch nichts“ sagte. Gezählt wird jetzt
+  überall auf dieselbe Weise, nämlich mit dem Namen samt der gespeicherten
+  Beschreibung, und der Hinweis erscheint nur noch, wenn wirklich kein Beschluss
+  gefunden wurde. (#1772)
+- **In der App öffnen sich Ideen aus dem Mehr-Menü wieder sichtbar, und Lotti
+  ist auf jeder Seite da.** Wer über „Mehr → Ideen aus anderen Städten“ eine
+  Idee unter „Gerade in Bewegung“ antippte, sah nichts: Sie öffnete sich hinter
+  dem Menü und erschien erst, wenn man es wegwischte. Analyse, Ideen,
+  Ausschuss-Abos, Merkliste und Quiz öffnen sich jetzt wie jede andere Seite,
+  das Menü schließt sich dabei, und „Zurück“ führt dorthin, wo man herkam.
+  Ebenso öffnet ein Beschluss aus den Themenfeldern der Analyse. Außerdem fehlte
+  Lottis Knopf auf allen Seiten, die sich über die Ansicht legen — Beschluss,
+  Sitzung, Person, Thema, Ort, Idee, Mein Viertel. Dort ist er jetzt erreichbar
+  und erklärt die Seite, auf der man gerade ist. (#1660)
+- **Lotti kennt das heutige Datum, sieht „In anderen Städten“ und reicht Fragen
+  sauber ans Ratsarchiv weiter.** „Wann tagt der Finanzausschuss als nächstes?“
+  nennt jetzt die kommende Sitzung statt einer von 2025; auf Beschluss-Seiten
+  kennt Lotti die Vorlagen aus anderen Städten, die darunter stehen. Gibt sie
+  eine Frage ans Archiv weiter, kommt dort eine richtige Antwort statt „Eine
+  neue Frage ist in Ihrer Nachricht nicht enthalten“ — und beide duzen. Eine zu
+  lange Frage bleibt im Eingabefeld (mit Zähler bis 300 Zeichen), auf der Karte
+  verdecken die Ebenen-Chips das Lotti-Fenster nicht mehr, in der App steht bei
+  einer Weiterreichung ein erklärender Satz samt direktem Weg ins Archiv, und je
+  Konto gibt es ein Tageskontingent von 100 Erklärungen. (#1649)
+- **Das „Mehr“-Blatt lässt sich auf kleinen Telefonen wieder scrollen.** War es
+  höher als der Bildschirm – etwa mit Admin-Zeile oder eingeblendeter
+  Safari-Leiste –, war oben die Konto-Zeile abgeschnitten, und nichts ließ sich
+  verschieben. Jetzt scrollt das Blatt in sich, und ein Wisch nach unten
+  schließt es nur, wenn es ganz oben steht. (#1740)
+- **Personen-Marken in KI-Antworten hängen nicht mehr an gewöhnlichen Wörtern.**
+  Ein Nachname, den genau eine Person trägt, bekam seine Marke bisher überall,
+  wo das Wort großgeschrieben stand — „Danke der Nachfrage!" zeigte so ein
+  beratendes Mitglied namens Danke an, „gab es Streit" einen Mitarbeiter der
+  Stadtverwaltung. Jetzt braucht der Name ein Zeichen im Text: einen Vornamen,
+  eine Anrede oder ein Amt davor, ein „sagte“ oder „kritisierte“ daneben oder
+  die Partei in Klammern. Außerdem steht auf der Marke beratender Mitglieder
+  wieder „beratend“ statt „advisory“. (#1750)
+- **Ladeplatzhalter sind im Dunkelmodus wieder zu sehen.** Die grauen Zeilen,
+  die beim Laden einer Seite den Platz des Inhalts halten, lagen im Dunkeln kaum
+  über dem Hintergrund und verschwanden beim Pulsieren fast ganz. Sie haben
+  jetzt einen eigenen, helleren Farbton; im hellen Modus sind sie eine Spur
+  kräftiger. (#1767)
+- **„Oldenburg hat das" steht bei Ideen aus anderen Städten wieder mit Beleg.**
+  Die Beschluss-Belege verwiesen auf Zeilennummern einer anderen Datenbank und
+  liefen auf ratslotse.de ins Leere — 48 von 207 Ideen zeigten deshalb gar
+  keinen oder einen unvollständigen Beleg. Sie verweisen jetzt auf Sitzung und
+  Tagesordnungspunkt. Außerdem bekommen neue Oldenburger Beschlüsse wieder ihren
+  Abschnitt „Anderswo", Gegenanträge zählen in der Bilanz einer Idee nicht mehr
+  als Zustimmung oder Ablehnung, doppelte Ideen mit derselben Überschrift sind
+  zusammengeführt, und Vorlagen aus Magdeburg und Münster verlinken ins
+  Original. (#1651)
+- **Anlagen, die die Stadt am Sitzungstag austauscht, führen nicht mehr ins
+  Leere.** Kurz vor Beginn einer Ratssitzung liest Ratslotse die Tagesordnung
+  noch einmal neu. Bisher blieb bis zum nächsten Morgen die alte Adresse stehen,
+  wenn die Stadt am Nachmittag eine Liste ersetzte – und die alte Datei gibt das
+  Ratsinformationssystem dann nicht mehr heraus. (#1754)
+- **Mein Viertel zeigt ehrlich, was vorbei ist, und zählt richtig.** Ein
+  Vorhaben, dessen genannter Zeitraum abgelaufen ist, steht nicht mehr als „Im
+  Bau“ ganz oben unter „Gerade in der Stadt“, sondern trägt auf seiner Tafel den
+  Hinweis „vermutlich abgeschlossen“ oder „Zeitplan überschritten“; lange ohne
+  neuen Beschluss heißt „lange kein Beschluss“. Die Stadtzahl zählt gemeldete
+  Vorhaben nicht mehr mit und Vorhaben an einer Viertelgrenze nur einmal, und
+  die Aufteilung nach Stand geht in der Kopfzahl auf. Statt „Stand“ mit dem Tag
+  der Berechnung steht jetzt „Beschlüsse bis“ mit dem jüngsten berücksichtigten
+  Beschluss. Bebauungspläne landen nur noch in dem Viertel, in dem ihre Fläche
+  liegt, eine Schule auf dem Fliegerhorst nicht mehr in Dietrichsfeld, und ein
+  bloßer Bericht oder ein Vergleichsort („analog zur Kampstraße“) macht kein
+  Vorhaben mehr. Die Sperrungen-Ebene wird auf dem Server wieder befüllt, ein
+  Ladefehler der Karte bietet „Erneut versuchen“ an, statt zu behaupten, den
+  Ortsbereich gebe es nicht, und in der App heißt die Karte „Mein Viertel“.
+  (#1650)
+- **Mein Viertel: Eine Meldung blendet kein Vorhaben mehr aus, und Links auf ein
+  Vorhaben halten.** „Gehört nicht hierher“ fragt jetzt erst nach (mit
+  freiwilligem Grund) und lässt sich zurücknehmen; die Meldung geht an die
+  Redaktion, die erste je Vorhaben auch per Mail, und ausgeblendet wird erst,
+  wenn dort jemand bestätigt — im Admin-Bereich unter *Inhalte →
+  Viertel-Meldungen*, samt „Passt doch“ und Rücknahme. Bisher reichten zwei
+  Meldungen, um ein Vorhaben dauerhaft von der Tafel zu nehmen. Vorhaben
+  behalten außerdem ihre Nummer über die wöchentliche Neuberechnung, sodass
+  geteilte Links und Links aus Mails weiter das Vorhaben öffnen; ein Link auf
+  ein Vorhaben, das es nicht mehr gibt, öffnet das Viertel. In der App öffnet
+  ein solcher Link jetzt auch das Vorhaben selbst und beachtet, ob „Mein
+  Viertel“ freigeschaltet ist. Teilen sagt dazu, dass man zum Öffnen ein Konto
+  braucht, und die Datenschutzerklärung nennt, dass deine Viertel als Themen im
+  Konto liegen. (#1646)
+- **Beispielfragen in Frag den Rat brechen nicht mehr mitten im Titel ab.** Aus
+  „Was wurde zu ‚Satzung zur Änderung der Satzung der Stadt Oldenburg über …‘
+  entschieden?“ wird „Was wurde zu ‚Änderung der Entschädigungssatzung‘
+  entschieden?“: Nennt ein Beschluss seinen Kurznamen, steht der im Vorschlag.
+  Ist ein Titel zu lang, fragt der Vorschlag nach dem nächstwichtigen Beschluss
+  der Sitzung, statt ihn abzuschneiden. (#1779)
+
 ## [2.11.0] – 2026-10-18
 
 ### Hinzugefügt
@@ -9949,7 +10291,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.11.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v3.0.0...main
+[3.0.0]: https://github.com/Schereo/Ratslotse/compare/v2.11.0...v3.0.0
 [2.11.0]: https://github.com/Schereo/Ratslotse/compare/v2.10.0...v2.11.0
 [2.10.0]: https://github.com/Schereo/Ratslotse/compare/v2.9.0...v2.10.0
 [2.9.0]: https://github.com/Schereo/Ratslotse/compare/v2.8.0...v2.9.0

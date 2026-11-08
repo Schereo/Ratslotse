@@ -21,8 +21,7 @@
 //   Wirkungskreis" bekommt eine Erklärung (Glossar), „Grad der
 //   Beeinflussbarkeit: niedrig" wird zu einem Satz, den man lesen kann.
 //
-// Query-Param statt dynamischem Segment (?nr=P10.111023): Der Capacitor-Export
-// (output: export) kennt die Produktnummern zur Bauzeit nicht — dieselbe
+// Query-Param statt dynamischem Segment (?nr=P10.111023) — dieselbe
 // Konvention wie /haushalt/bereich?name= und /haushalt/steuer?art=.
 //
 // Gesucht und gefiltert wird SERVERSEITIG: Mit dem Steckbrief trägt jede der
@@ -169,6 +168,10 @@ function Treffer({ p, max, aktiv, alleJahre, eingebettet = false }: {
       // (Tims Befund 18.08.2026). Gescrollt wird jetzt gar nicht mehr: Der
       // Steckbrief klappt direkt unter dieser Karte auf (`SteckbriefKarte`).
       scroll={false}
+      // Nicht vorladen: Dieselbe Seite, nur ein anderes `?nr=` — und Next
+      // rendert jede Karte im Sichtbereich einzeln vor, beim Scrollen durch
+      // die Liste Dutzende Male.
+      prefetch={false}
       className={cn(
         // `min-w-0`: Ein Rasterkind ist von Haus aus `min-width: auto` und
         // damit so breit wie sein längster Produktname — auf 375 px schob die
@@ -444,7 +447,7 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
           {p.sub_budget_name && (
             <>
               <span aria-hidden>·</span>
-              <Link href={`/haushalt/bereich?name=${bereichSlug(p.sub_budget_name)}`}
+              <Link href={`/haushalt/bereich?name=${bereichSlug(p.sub_budget_name)}`} prefetch={false}
                 className="font-semibold text-primary hover:underline">
                 {p.sub_budget_name}
               </Link>
@@ -594,7 +597,7 @@ function Steckbrief({ p, year, alleJahre }: { p: Produkt; year: number; alleJahr
             <Search className="h-3.5 w-3.5" /> Beschlüsse dazu suchen
           </Link>
           {p.sub_budget_name && (
-            <Link href={`/haushalt/bereich?name=${bereichSlug(p.sub_budget_name)}`}>
+            <Link href={`/haushalt/bereich?name=${bereichSlug(p.sub_budget_name)}`} prefetch={false}>
               Bereich „{p.sub_budget_name}“ ansehen →
             </Link>
           )}

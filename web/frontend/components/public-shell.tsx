@@ -32,7 +32,7 @@ export function PublicShell({ children, hinweis, onAbmelden }: {
   onAbmelden?: () => void;
 }) {
   // Erst nach dem Mounten lesbar; `useSearchParams` würde die Seite in eine
-  // Suspense-Grenze zwingen und den statischen Export (MOBILE=1) brechen.
+  // Suspense-Grenze zwingen.
   const [zurueck, setZurueck] = useState("/dashboard");
   useEffect(() => {
     setZurueck(window.location.pathname + window.location.search);
@@ -91,7 +91,9 @@ export function PublicShell({ children, hinweis, onAbmelden }: {
           {" · "}
           <Link href="/datenschutz" className="hover:text-foreground">Datenschutz</Link>
           {" · "}
-          <Link href="/changelog" className="hover:text-foreground">Changelog</Link>
+          {/* Nicht vorladen: Der Changelog ist die schwerste öffentliche Seite
+              (rund 78 KB RSC) und wird von hier kaum geöffnet. */}
+          <Link href="/changelog" prefetch={false} className="hover:text-foreground">Changelog</Link>
           {" · "}
           <Link href="/barrierefreiheit" className="hover:text-foreground">Barrierefreiheit</Link>
           <span className="mt-1.5 block px-4 text-balance">

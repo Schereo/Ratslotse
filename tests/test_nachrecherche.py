@@ -130,3 +130,12 @@ def test_belegnotizen_fehler_heisst_ohne_notiz(monkeypatch):
         raise TimeoutError
     monkeypatch.setattr(qa.llm, "chat_complete", kaputt)
     assert qa.belegnotizen("Frage?", [{"id": 1, "title": "T"}], []) == []
+
+
+def test_fraktionsfragen_bekommen_keine_diaet():
+    """Wächter am Quelltext: Die Reden je Fraktion sind bei einer
+    Fraktionsfrage die Antwort — die Diät darf sie nicht kürzen (18.10.2026)."""
+    from pathlib import Path
+    quelle = (Path(__file__).parent.parent / "web/backend/app/routers/council.py").read_text()
+    i = quelle.index('features.an("kontext-diaet") and typ not in')
+    assert "not qa.fraktionsfrage(analyse)" in quelle[i:i + 200]

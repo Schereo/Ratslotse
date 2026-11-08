@@ -7,6 +7,22 @@ from kern import llm
 
 
 @pytest.fixture(autouse=True)
+def _notausgang_fuer_die_mechanik(monkeypatch):
+    """Die meisten Tests hier prüfen Mechanik — Anläufe, Mitschnitt, Routing-
+    Block, Rückfall — mit Phantasiemodellen und Nutzer-Features. Sie laufen
+    mit dem Notausgang aus „nur EU" (:data:`llm.AUSSERHALB_EU_ENV`), also mit
+    dem Verhalten von vor 11/2026. Was ohne Notausgang gilt, prüfen die Tests
+    mit der Vorrichtung ``_nur_eu`` (unten)."""
+    monkeypatch.setenv(llm.AUSSERHALB_EU_ENV, "1")
+
+
+@pytest.fixture
+def _nur_eu(monkeypatch):
+    """Der Normalbetrieb seit 11/2026: kein Notausgang."""
+    monkeypatch.delenv(llm.AUSSERHALB_EU_ENV, raising=False)
+
+
+@pytest.fixture(autouse=True)
 def _reset_client():
     """Ensure the cached client singleton is cleared between tests."""
     saved = llm._client
@@ -248,14 +264,15 @@ def _stub_create(monkeypatch, plan):
 def test_ohne_geduld_bleibt_alles_wie_es_war(monkeypatch):
     aufrufe, pausen = _stub_create(monkeypatch, [llm.EmptyResponseError("429 rate-limited")])
     with pytest.raises(llm.EmptyResponseError):
-        llm.chat_complete(model="openai/gpt-5.6-luna", messages=[])
+        llm.chat_complete(model="openai/gpt-5.6-luna", messages=[], _feature="impact_rating")
     assert aufrufe == ["openai/gpt-5.6-luna"] and pausen == []
 
 
 def test_geduld_wartet_minuten_und_versucht_es_wieder(monkeypatch):
     aufrufe, pausen = _stub_create(monkeypatch, [
         llm.EmptyResponseError("429"), llm.EmptyResponseError("429"), _Antwort()])
-    resp = llm.chat_complete(model="openai/gpt-5.6-luna", messages=[], _geduld=True)
+    resp = llm.chat_complete(model="openai/gpt-5.6-luna", messages=[], _geduld=True,
+                             _feature="impact_rating")
     assert resp.choices[0].message.content == "ok"
     assert aufrufe == ["openai/gpt-5.6-luna"] * 3
     assert pausen == [30, 90]
@@ -267,12 +284,12 @@ def test_ersatzmodell_uebernimmt_nach_der_geduld(monkeypatch):
     plan = [llm.EmptyResponseError("429")] * 4 + [_Antwort("vom Ersatz")]
     aufrufe, pausen = _stub_create(monkeypatch, plan)
     resp = llm.chat_complete(model="openai/gpt-5.6-luna", messages=[], _geduld=True,
-                             _ersatz=["deepseek/deepseek-v4-pro"], _feature="probe")
+                             _ersatz=["deepseek/deepseek-v4-pro"], _feature="impact_rating")
     assert resp.choices[0].message.content == "vom Ersatz"
     assert aufrufe == ["openai/gpt-5.6-luna"] * 4 + ["deepseek/deepseek-v4-pro"]
     assert pausen == [30, 90, 180]
     # Die Kosten stehen beim Modell, das WIRKLICH geantwortet hat.
-    assert aufgezeichnet == [("probe", "deepseek/deepseek-v4-pro")]
+    assert aufgezeichnet == [("impact_rating", "deepseek/deepseek-v4-pro")]
 
 
 def test_kein_ersatz_bei_dauerhaftem_fehler(monkeypatch):
@@ -850,17 +867,18 @@ def test_eu_anderer_client_fehler_faellt_nicht_zurueck(_eu_umgebung, monkeypatch
     assert len(aufrufe) == 1
 
 
-def test_eu_nur_fuer_zdr_verzicht_und_gemessene_modelle(_eu_umgebung, monkeypatch):
-    """Außerhalb von ZDR_VERZICHT und für Modelle ohne EU-Weg bleibt alles, wie es war."""
+def test_eu_fuer_jede_nutzereingabe_aber_nicht_fuer_ratsdaten(_eu_umgebung, monkeypatch):
+    """Seit 11/2026 geht JEDES Feature mit Nutzereingabe zuerst in die EU —
+    auch die Analyse vor der Suche und Aufrufe ohne ``_feature``. Öffentliche
+    Ratsdaten (Crons) bleiben beim bisherigen Routing."""
     aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()] * 4)
     llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="impact_rating")
-    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="qa_analysis")
+    llm.chat_complete(model="openai/gpt-5.6-luna", messages=[], _feature="qa_analysis")
     llm.chat_complete(model="google/gemini-3.1-flash-lite", messages=[], _feature="qa_answer")
     llm.chat_complete(model="openai/gpt-6-luna", messages=[])
-    assert [a.get("_only") for a in aufrufe] == [None] * 4
-    assert [a["_zdr"] for a in aufrufe] == [False, True, False, True]
+    assert [a.get("_only") for a in aufrufe] == [None, ("azure/eu",), ("google-vertex/eu",), ("azure/eu",)]
+    assert [a["_zdr"] for a in aufrufe] == [False, True, True, True]
     assert llm.eu_zuerst("deep_report", "openai/gpt-6-sol") == ("azure/eu",)
-    assert set(llm.EU_ZUERST) == {"openai/gpt-6-luna", "openai/gpt-6-sol"}
 
 
 def test_eu_notausschalter_und_messschalter(_eu_umgebung, monkeypatch):
@@ -975,9 +993,10 @@ def test_eu_strom_zaehlt_den_rueckfall(_eu_umgebung, monkeypatch):
 
 
 def test_strom_ausserhalb_bleibt_ein_weg(_eu_umgebung, monkeypatch):
+    """Öffentliche Ratsdaten: ein Weg, kein EU-Versuch, kein Rückfall."""
     aufrufe = _strom_mit(monkeypatch, [[llm.EmptyResponseError("leer")], [_strom_teil("nie")]])
     with pytest.raises(llm.EmptyResponseError):
-        list(llm.chat_stream(model="openai/gpt-6-luna", messages=[], _feature="qa_analysis"))
+        list(llm.chat_stream(model="openai/gpt-6-luna", messages=[], _feature="impact_rating"))
     assert len(aufrufe) == 1 and aufrufe[0]["_only"] is None
 
 
@@ -1003,3 +1022,90 @@ def test_mit_frist_bekommt_der_eu_weg_einen_anlauf(monkeypatch):
                                        _zdr=True, _only=("azure/eu",))
     assert len(aufrufe) == 1
     assert llm._eu_anlauf({}) is llm._create
+
+
+# --------------------------------------------------------------------------- #
+# Nur EU (Tims Entscheidung 08.11.2026): Nutzereingaben laufen ausschließlich
+# über EU-Anbieter. Kein Rückfall in die USA, kein Modell ohne EU-Anbieter —
+# außer mit dem Notausgang RATSLOTSE_KI_AUSSERHALB_EU.
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("fehler", [
+    _fehler(429, "temporarily rate-limited upstream"),
+    _fehler(503),
+    _fehler(404, "No allowed providers are available for the selected model"),
+])
+def test_nur_eu_kein_rueckfall_in_die_usa(_eu_umgebung, _nur_eu, monkeypatch, fehler):
+    aufrufe = _stub_create_kwargs(monkeypatch, [fehler, _Antwort("aus den USA")])
+    with pytest.raises(type(fehler)):
+        llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="qa_answer")
+    assert [a.get("_only") for a in aufrufe] == [("azure/eu",)]
+    assert _eu_umgebung == []
+
+
+def test_nur_eu_strom_kein_rueckfall(_eu_umgebung, _nur_eu, monkeypatch):
+    from openai import APIStatusError
+    aufrufe = _strom_mit(monkeypatch, [[_fehler(503)], [_strom_teil("aus den USA")]])
+    with pytest.raises(APIStatusError):
+        list(llm.chat_stream(model="openai/gpt-6-luna", messages=[], _feature="assistant_explain"))
+    assert [a.get("_only") for a in aufrufe] == [("azure/eu",)]
+
+
+def test_nur_eu_sperrt_modelle_ohne_eu_anbieter(_eu_umgebung, _nur_eu, monkeypatch):
+    """Ein Modell ohne EU-Anbieter (DeepSeek: keiner in der EU) wird für
+    Nutzereingaben gar nicht erst gerufen — für Ratsdaten schon."""
+    aufrufe = _stub_create_kwargs(monkeypatch, [_Antwort()] * 2)
+    for feature in ("vagueness_check", "topic_auto_description", "qa_analysis", None):
+        with pytest.raises(llm.KeinEuAnbieter):
+            llm.chat_complete(model="deepseek/deepseek-v4-pro", messages=[], _feature=feature)
+    with pytest.raises(llm.KeinEuAnbieter):
+        list(llm.chat_stream(model="deepseek/deepseek-v4-pro", messages=[], _feature="qa_answer"))
+    assert aufrufe == []
+    llm.chat_complete(model="deepseek/deepseek-v4-pro", messages=[], _feature="impact_rating")
+    assert len(aufrufe) == 1 and aufrufe[0].get("_only") is None
+
+
+def test_nur_eu_ersatzmodell_braucht_ebenfalls_einen_eu_anbieter(_eu_umgebung, _nur_eu, monkeypatch):
+    """Auch der Ersatz nach einem Ausfall bleibt in der EU — oder scheitert."""
+    _stub_create(monkeypatch, [llm.EmptyResponseError("429")] * 4)
+    with pytest.raises(llm.KeinEuAnbieter):
+        llm.chat_complete(model="openai/gpt-5.6-luna", messages=[], _geduld=True,
+                          _ersatz=["deepseek/deepseek-v4-pro"], _feature="council_watcher")
+
+
+def test_notausgang_erlaubt_rueckfall_und_modelle_ausserhalb(_eu_umgebung, monkeypatch):
+    """Mit RATSLOTSE_KI_AUSSERHALB_EU=1 gilt das Verhalten von vor 11/2026."""
+    monkeypatch.setenv(llm.AUSSERHALB_EU_ENV, "1")
+    aufrufe = _stub_create_kwargs(monkeypatch, [_fehler(503), _Antwort("aus den USA"), _Antwort("ds")])
+    llm.chat_complete(model="openai/gpt-6-luna", messages=[], _feature="qa_answer")
+    llm.chat_complete(model="deepseek/deepseek-v4-pro", messages=[], _feature="vagueness_check")
+    assert [a.get("_only") for a in aufrufe] == [("azure/eu",), None, None]
+    assert _eu_umgebung[0] == ("qa_answer", "openai/gpt-6-luna" + llm.RUECKFALL_MARKE)
+
+
+def test_vorgabe_modelle_aller_nutzer_features_haben_einen_eu_anbieter():
+    """Die Vorgaben im Code — was ohne Eintrag in der .env gilt — laufen alle in
+    der EU. Wer eine Vorgabe ändert, nimmt ein Modell aus EU_ZUERST.
+
+    Gelesen wird der Quelltext, nicht das geladene Modul: Ein
+    ``importlib.reload`` zum Abstreifen der Umgebung tauschte die Funktionen
+    der Module aus, und Identitätsprüfungen anderer Tests
+    (``test_stichtag_ist_ueberall_derselbe``) scheiterten dann je nach
+    Reihenfolge — zuerst im Release-PR 3.0.0.
+    """
+    import re
+    from pathlib import Path
+    wurzel = Path(__file__).resolve().parents[1] / "council"
+    stellen = {
+        "qa.EXPAND_MODEL": ("qa.py", "COUNCIL_QA_EXPAND_MODEL"),
+        "topic_intel.MODEL": ("topic_intel.py", "TOPIC_INTEL_MODEL"),
+        "self_check.MODEL": ("self_check.py", "COUNCIL_ASSISTANT_PRUEFER_MODEL"),
+        "watcher.MODEL": ("watcher.py", "COUNCIL_WATCHER_MODEL"),
+    }
+    vorgaben = {}
+    for name, (datei, var) in stellen.items():
+        treffer = re.search(rf'os\.environ\.get\("{var}",\s*"([^"]+)"\)',
+                            (wurzel / datei).read_text(encoding="utf-8"))
+        assert treffer, f"{name}: Vorgabe nicht gefunden"
+        vorgaben[name] = treffer.group(1)
+    ohne = {name: modell for name, modell in vorgaben.items() if modell not in llm.EU_ZUERST}
+    assert not ohne, f"ohne EU-Anbieter: {ohne}"

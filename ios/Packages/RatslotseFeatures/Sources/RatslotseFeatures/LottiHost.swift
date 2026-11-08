@@ -119,7 +119,12 @@ struct LottiHost: ViewModifier {
                 // anderer (ein Push, ein Link von außen), geht es zu — sonst
                 // läge die neue Seite unsichtbar dahinter.
                 if let offen = presence.sitzung, offen.screen != neu { presence.sitzung = nil }
+                bitteEinloesen()
             }
+            // `/dashboard?lotti=1`: Die Bitte wartet, bis entschieden werden
+            // kann — Schalter bekannt, Hauptansicht da, kein Blatt obenauf.
+            .onChange(of: [model.lottiRequested, model.featuresLoaded, active, presence.busy],
+                      initial: true) { _, _ in bitteEinloesen() }
             .task(id: "\(active)-\(model.feature("lotti-anstupser"))") { await klopfUhr() }
             .task {
                 for await _ in NotificationCenter.default.notifications(named: UIResponder.keyboardWillShowNotification) {
@@ -144,6 +149,25 @@ struct LottiHost: ViewModifier {
         presence.clock.sheetWasOpen = true
         NudgeStore().markUsed()
         presence.sitzung = LottiSitzung(screen: screen, title: model.currentScreenTitle)
+    }
+
+    /// Die Bitte eines Links auf `/dashboard?lotti=1` einlösen oder verwerfen
+    /// (`LottiRequest`). Geöffnet wird über denselben Weg wie der Knopf.
+    private func bitteEinloesen() {
+        guard model.lottiRequested else { return }
+        let ergebnis = LottiRequest.outcome(
+            featuresLoaded: model.featuresLoaded,
+            enabled: model.feature("lotti-assistentin"),
+            mainView: active,
+            busy: presence.busy,
+            screen: model.currentExplainScreen)
+        switch ergebnis {
+        case .wait: return
+        case .drop: model.lottiRequested = false
+        case .open:
+            model.lottiRequested = false
+            if let screen { open(screen) }
+        }
     }
 
     /// Die Uhr, die alle fünf Sekunden nachsieht, ob angeklopft werden darf.

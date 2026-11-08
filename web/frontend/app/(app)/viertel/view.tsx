@@ -9,9 +9,10 @@ import { karteHref } from "@/lib/routes";
  *  Einstieg: Mails, geteilte Links und die ausgelieferte iOS-App kennen die
  *  Adresse, die Tafel lebt unter `/karte?ort=…&v=…`.
  *
- *  Eine Weiterleitung im Browser, keine in `next.config.mjs`: Die gibt es im
- *  statischen Export nicht — und sie wäre ohnehin temporär, nie permanent
- *  (permanente Redirects kleben im Browser, s. Notiz Haushalts-Labor). Die
+ *  Seit 11/2026 leitet schon der Server weiter (`redirects()` in
+ *  `next.config.mjs`, temporär — permanente Redirects kleben im Browser, s.
+ *  Notiz Haushalts-Labor). Diese Seite ist nur noch der Rückfall, falls die
+ *  Regel einmal nicht greift. Die
  *  Anmeldung regelt das App-Layout: `/viertel` steht seit dem Umzug nicht
  *  mehr in `OEFFENTLICHE_PFADE`, ohne Konto landet man mit `?weiter=` auf der
  *  Anmeldung und danach auf der Karte.

@@ -17,18 +17,11 @@
     "api:typen": "node scripts/api-typen.mjs"
   },
   "dependencies": {
-    "@capacitor-community/apple-sign-in": "7.1.0",
-    "@capacitor/app": "^8.1.0",
-    "@capacitor/core": "^8.4.1",
-    "@capacitor/preferences": "^8.0.1",
-    "@capacitor/push-notifications": "^8.1.1",
     "@radix-ui/react-dialog": "1.1.2",
     "@radix-ui/react-label": "2.1.0",
     "@radix-ui/react-popover": "1.1.2",
     "@radix-ui/react-slot": "1.1.0",
-    "@tanstack/query-sync-storage-persister": "5.56.2",
     "@tanstack/react-query": "5.56.2",
-    "@tanstack/react-query-persist-client": "5.56.2",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "0.7.0",
     "clsx": "2.1.1",
@@ -48,9 +41,6 @@
     "three": "^0.184.0"
   },
   "devDependencies": {
-    "@capacitor/android": "^8.4.1",
-    "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^8.4.1",
     "@playwright/test": "^1.61.0",
     "@tailwindcss/container-queries": "^0.1.1",
     "@types/canvas-confetti": "^1.9.0",

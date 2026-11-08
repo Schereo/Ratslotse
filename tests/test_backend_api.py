@@ -1106,6 +1106,81 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     assert str(z["herkunft_id"]) in b["provenance"]
 
 
+def test_haushalt_schlanke_ausschnitte_lassen_die_vorgabe_unberuehrt(client):
+    """Drei optionale Parameter machen Antworten für EINE Seite schlanker
+    (Leistungsrunde 11/2026) — und ohne sie bleibt jede Antwort, wie sie war:
+    Die ausgelieferte iOS-App und /haushalt/investitionen bzw. /mitreden
+    brauchen die vollen Bestände.
+
+    * ``investment-programme?year=latest`` — nur der jüngste Jahrgang (Labor),
+      ``years`` bleibt die volle Liste,
+    * ``amendment-lists?fields=totals`` — nur die Summen samt ihrer Herkunft,
+    * ``products`` ohne ``year`` — das jüngste Jahr mit Produktebene."""
+    from council import herkunft
+    from council.aenderungslisten import Ergebnis, SummenZeile, Zeile, herkunft_fuer
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        for jahr, betrag in ((2025, 100), (2026, 250)):
+            cs.save_investitionsprogramm(jahr, {
+                "abschnitte": {1: {"name": "Verwaltungsführung", "summe": betrag,
+                                   "massnahmen": [{"code": f"I{jahr}", "label": "Dach",
+                                                   "grand_total": betrag}]}},
+                "kopfsumme": betrag,
+            }, herkunft.Herkunft(kind="ris", probe="capital_programme_section_total",
+                                 document_id=jahr, label=f"{jahr} 004 Investitionsprogramm"))
+        cs.save_haushalt_aenderungen(
+            4711, "administration_1",
+            Ergebnis(zeilen=[Zeile(2026, 1, 4, 123, "1.100", "Schulbudget", None, 500_000)],
+                     summen=[SummenZeile(2026, "draft", "Verwaltungsentwurf", 0, 0, 0),
+                             SummenZeile(2026, "final_total", "Endsumme", 0, 500_000, -500_000)],
+                     eigene_zeile={2026: "Änderungsliste Verw. I"}),
+            herkunft_fuer("Änderungsliste Verw. I",
+                          "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do", 4711))
+    finally:
+        cs.close()
+
+    # --- Investitionsprogramm ---
+    voll = client.get("/api/council/budget/investment-programme").json()
+    assert voll["years"] == [2025, 2026]
+    assert {m["year"] for m in voll["measures"]} == {2025, 2026}
+    jung = client.get("/api/council/budget/investment-programme?year=latest").json()
+    assert jung["years"] == [2025, 2026]
+    assert [m["code"] for m in jung["measures"]] == ["I2026"]
+    assert {z["year"] for z in jung["sub_budgets"] + jung["totals"]} == {2026}
+    # Die Herkunft trägt nur, worauf die gelieferten Zeilen zeigen.
+    assert set(jung["provenance"]) == {str(jung["measures"][0]["herkunft_id"])}
+    alt = client.get("/api/council/budget/investment-programme?year=2025").json()
+    assert [m["code"] for m in alt["measures"]] == ["I2025"]
+    assert client.get("/api/council/budget/investment-programme?year=neu").status_code == 422
+
+    # --- Änderungslisten ---
+    alles = client.get("/api/council/budget/amendment-lists").json()
+    summen = client.get("/api/council/budget/amendment-lists?fields=totals").json()
+    assert alles["rows"] and summen["rows"] == []
+    assert summen["totals"] == alles["totals"]
+    assert summen["cash_budget_rows"] == [] and summen["cash_budget_totals"] == []
+    assert {str(s["herkunft_id"]) for s in summen["totals"]} <= set(summen["provenance"])
+    assert client.get("/api/council/budget/amendment-lists?fields=totals,quatsch").status_code == 400
+
+    # --- Produkte ohne Jahr ---
+    assert client.get("/api/council/budget/products").status_code == 404
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        q = herkunft.Herkunft(kind="ris", probe="product_row", document_id=7, label="007 THH01")
+        for jahr in (2023, 2024):
+            cs.save_produkte(jahr, [{"product_no": "P10.111023", "product_name": "Archivierung",
+                                     "sub_budget_no": 1, "revenues": 1.0, "expenses": float(jahr),
+                                     "result": -1.0}], q)
+    finally:
+        cs.close()
+    ohne = client.get("/api/council/budget/products").json()
+    mit = client.get("/api/council/budget/products?year=2024").json()
+    assert ohne == mit
+    assert ohne["year"] == 2024 and ohne["all_years"] == [2023, 2024]
+
+
 def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
     """/haushalt/investitionen liefert die Investitionen je Teilhaushalt — und
     hält die Bezugsgröße davon getrennt.
@@ -1601,6 +1676,19 @@ def test_topics_work_for_active_user(client):
     r = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau in Oldenburg"})
     assert r.status_code == 201
     assert len(client.get("/api/topics").json()) == 1
+
+
+def test_stadtteil_thema_traegt_seinen_ortsbereich(client):
+    """Ein Thema, das wie ein Stadtteil heißt, IST der Stadtteil (Einrichtungs-
+    Assistent). `place_id` sagt das der Navigation — „Mein Viertel" führt
+    dorthin, ohne dass sie dafür die ganze Viertel-Übersicht holt. Die Regel:
+    gleicher Name wie ein Ortsbereich, ohne Groß-/Kleinschreibung, keine Aliase."""
+    _register(client)
+    for name in ("Radwege", "fliegerhorst"):
+        r = client.post("/api/topics", json={"name": name, "description": "Was dort passiert"})
+        assert r.status_code == 201, r.text
+    orte = {t["name"]: t.get("place_id") for t in client.get("/api/topics").json()}
+    assert orte == {"Radwege": None, "fliegerhorst": "fliegerhorst"}
 
 
 def test_themen_bubble_verstummt_nach_uebersichtsbesuch(client):
@@ -3229,20 +3317,28 @@ def test_reset_bestaetigt_eine_vorab_registrierte_adresse(client):
     assert angreifer.get("/api/auth/me").status_code == 401
 
 
-def test_cors_preflight_allows_app_webview_origin():
-    """The Capacitor WebView origins are allowed by default (no .env needed):
-    the app's cross-origin fetches must pass the browser-engine CORS preflight."""
+@pytest.mark.parametrize("origin", ["capacitor://localhost", "https://localhost"])
+def test_cors_preflight_rejects_former_app_webview_origins(origin, monkeypatch):
+    """The Capacitor WebView origins are gone with the Capacitor shells (11/2026).
+
+    They used to be appended to every CORS list. ``https://localhost`` in
+    particular is any page a developer serves locally over TLS — with
+    ``allow_credentials`` it could read signed-in responses. The native iOS
+    app sends no Origin and is not affected."""
+    from app.config import Settings
+
+    monkeypatch.delenv("CORS_ORIGINS", raising=False)
+    assert Settings(_env_file=None).cors_origin_list == ["http://localhost:3000"]
     r = TestClient(app).options(
         "/api/auth/login",
         headers={
-            "Origin": "capacitor://localhost",
+            "Origin": origin,
             "Access-Control-Request-Method": "POST",
             "Access-Control-Request-Headers": "content-type,x-client,authorization",
         },
     )
-    assert r.status_code == 200
-    assert r.headers["access-control-allow-origin"] == "capacitor://localhost"
-    assert r.headers.get("access-control-allow-credentials") == "true"
+    assert r.status_code == 400
+    assert "access-control-allow-origin" not in r.headers
 
 
 # ---- Sign in with Apple (RL-1002) ----
@@ -3523,6 +3619,42 @@ def test_badges_kartograf_distinct_and_derived(client):
     assert {b["id"]: b["earned"] for b in client.get("/api/badges").json()["badges"]}["fruehwarner"] is True
     store.remove_push_token("tok-1")
     assert {b["id"]: b["earned"] for b in client.get("/api/badges").json()["badges"]}["fruehwarner"] is True
+
+
+def test_badges_from_setup_are_earned_but_not_celebrated(client):
+    # Tims Befund 08.11.2026: Das Thema aus dem Einrichtungs-Assistenten löste
+    # beim Start der Tour die Feier „Themen-Lotse" aus. Was die Einrichtung
+    # verdient, gilt bei ihrem Abschluss als bekannt — verdient, aber nie „neu".
+    _register(client)
+    r = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau in Oldenburg"})
+    assert r.status_code == 201
+    assert client.post("/api/onboarding/setup", json={"step": 4, "done": True}).status_code == 200
+    data = client.get("/api/badges").json()
+    assert {b["id"]: b["earned"] for b in data["badges"]}["themen-lotse"] is True
+    assert data["newly_earned"] == []
+    # Was NACH der Einrichtung verdient wird, feiert weiter wie bisher.
+    client.post("/api/badges/event", json={"type": "frage"})
+    assert [n["id"] for n in client.get("/api/badges").json()["newly_earned"]] == ["erste-frage"]
+
+
+def test_analyst_needs_own_visit_not_the_tour_mark(client):
+    # Die Tour hakt den Kurs-Schritt „analyse" ab, wenn sie auf die Analyse
+    # führt. Das Abzeichen verdient erst der eigene Besuch (Ereignis aus dem
+    # Web, das während der Tour schweigt) — sonst feierte es jede Tour mit.
+    _register(client)
+    client.post("/api/onboarding", json={"steps": ["analyse"]})
+    assert {b["id"]: b["earned"] for b in client.get("/api/badges").json()["badges"]}["analyst"] is False
+    client.post("/api/badges/event", json={"type": "analyse"})
+    assert [n["id"] for n in client.get("/api/badges").json()["newly_earned"]] == ["analyst"]
+
+
+def test_setup_step_without_done_silences_nothing(client):
+    # Nur der Abschluss verbucht still — ein Zwischenschritt nicht. Während
+    # der Einrichtung schweigt ohnehin die Oberfläche (`BadgeCelebrator`).
+    _register(client)
+    client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau in Oldenburg"})
+    client.post("/api/onboarding/setup", json={"step": 2, "done": False})
+    assert "themen-lotse" in [n["id"] for n in client.get("/api/badges").json()["newly_earned"]]
 
 
 def test_badges_are_per_account(client):
@@ -6160,7 +6292,7 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
     _register(client)
     gesehen = {}
 
-    def fake_analyse(q, model=None, verlauf=None, orte=None):
+    def fake_analyse(q, model=None, verlauf=None, orte=None, themen=None):
         gesehen["question"] = q
         gesehen["verlauf"] = verlauf
         return {"question": "Was kostet der Neubau der Cäcilienbrücke?",

@@ -15,6 +15,8 @@ const full = { ...first, total: 849, counts: { protocol: 849 }, groups, items: [
 const widget = (page: Page) => page.locator('[data-heute-widget="seit-besuch"]');
 async function stub(page: Page, data = full) {
   await page.route("**/api/today/visit", route => route.fulfill({ json: first }));
+  // Die erste Seite kommt im selben Aufruf, der den Besuch aufzeichnet.
+  await page.route("**/api/today/visit/updates", route => route.fulfill({ json: data }));
   await page.route("**/api/today/updates**", route => {
     const params = new URL(route.request().url()).searchParams;
     if (params.has("committee")) {
@@ -166,6 +168,7 @@ test("Woche, Zahl und Rückblick halten beim Laden ihren Platz statt aufzuploppe
   let freigeben!: () => void;
   const frei = new Promise<void>(res => { freigeben = res; });
   await page.route("**/api/today/visit", async route => { await frei; await route.fulfill({ json: first }); });
+  await page.route("**/api/today/visit/updates", async route => { await frei; await route.fulfill({ json: full }); });
   await page.route("**/api/today/updates**", async route => { await frei; await route.fulfill({ json: full }); });
   await page.route("**/api/council/zahl-der-woche", async route => { await frei;
     await route.fulfill({ json: { kind: "count", count: 4, window_days: 7 } }); });

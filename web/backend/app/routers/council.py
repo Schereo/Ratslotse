@@ -45,7 +45,7 @@ from council import places
 
 from kern.store import Store
 
-from .. import deepresearch
+from .. import deepresearch, response_cache
 from ..config import get_settings
 from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
@@ -237,7 +237,7 @@ def parties(
     Parteienvergleich. So filtern Web und native App mit exakt den Labels, die
     ``decision_ids_for_party`` versteht, statt Schreibvarianten zu erfinden.
     """
-    stats = store.party_analysis()["success_rates"]
+    stats = _party_analysis(store)["success_rates"]
     return {
         "parties": [
             {"key": row["party"], "label": row["party"], "count": row["motions"]}
@@ -252,6 +252,14 @@ def districts(
     store: CouncilStore = Depends(get_council_store),
 ) -> Districts:
     """Belegte Ratslotse-Ortsbereiche für den Beschlussfilter."""
+    # Für alle Konten gleich und nur vom Bestand abhängig — deshalb einmal je
+    # Datenstand gerechnet (app/response_cache.py). Die Seite lädt das beim
+    # Öffnen der Suche sofort mit; ungepuffert war es ihre letzte Anfrage.
+    return response_cache.cached("council.districts", [store],
+                                 lambda: _districts(store))
+
+
+def _districts(store: CouncilStore) -> Districts:
     rows = []
     for row in store.decision_location_place_stats():
         place = store.resolve_place(row["place_id"])
@@ -564,7 +572,7 @@ def zahl_der_woche(
 
 @router.get("/budget/products")
 def haushalt_produkte(
-    year: int,
+    year: int | None = None,
     sub_budget: int | None = None,
     q: str | None = None,
     office: str | None = None,
@@ -596,7 +604,17 @@ def haushalt_produkte(
     Jedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im
     Bestand steht. Gegen ``all_years`` gehalten wird daraus das
     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
-    vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen."""
+    vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen.
+
+    Ohne ``year`` gilt das jüngste Jahr mit Produktebene (``all_years[-1]``,
+    dieselbe Liste wie ``product_years`` der Übersicht; 404, wenn es keines
+    gibt). Seiten, die nur den jüngsten Stand zeigen, müssen so nicht erst die
+    Jahresliste abwarten, bevor sie fragen dürfen."""
+    if year is None:
+        years = store.produkte_jahre()
+        if not years:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Keine Produktebene im Bestand.")
+        year = years[-1]
     produkte = store.get_produkte(year, sub_budget, suche=q, office=office,
                                   controllability=controllability)
     abdeckung = store.produkt_abdeckung()
@@ -902,7 +920,7 @@ def _lexikon_zuordnung(store: CouncilStore,
                             if t.lower().rstrip(".") not in CouncilStore._HONORIFICS))
 
     nach_paar: dict[tuple[str, str], list[dict]] = {}
-    for e in store.personen_lexikon():
+    for e in _personen_lexikon(store):
         # Blocker tragen keinen Namen, nur einen Nachnamen — sie sind für die
         # Badge-Logik da (Gäste dürfen keinen Treffer erzeugen) und haben hier
         # nichts zu suchen: Ohne Vornamen können sie ohnehin nicht passen.
@@ -992,6 +1010,14 @@ def haushalt_beteiligungen(
 
     Gelesen werden die Berichte ab 2022; davor ist das Dokument anders
     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``)."""
+    # Für alle mit dem Recht gleich — einmal je Datenstand
+    # (app/response_cache.py), hinter `require_budget`. Ungepuffert war das die
+    # letzte Antwort von /haushalt/konzern (70 ms, fast alles im Personen-Lexikon).
+    return response_cache.cached("council.budget_shareholdings", [store],
+                                 lambda: _beteiligungen(store))
+
+
+def _beteiligungen(store: CouncilStore) -> BudgetHoldings:
     berichtsjahre = store.beteiligungsbericht_jahre()
     gesellschaften = store.get_gesellschaften()
     # Eine Reihe, zwei Quellen (Tims Entscheidung 24.09.2026): Der
@@ -1236,6 +1262,7 @@ def haushalt_investitionen(
 
 @router.get("/budget/investment-programme")
 def haushalt_investitionsprogramm(
+    year: Annotated[str | None, Query(pattern=r"^(\d{4}|latest)$")] = None,
     _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetInvestmentProgram:
@@ -1264,11 +1291,22 @@ def haushalt_investitionsprogramm(
        Gesamtkosten eines Vorhabens über alle Jahre, der Finanzhaushalt die
        Zahlungen eines Jahres — und die zu aktivierenden Eigenleistungen
        gehören nur ins Programm. Das Dokument sagt das in einer Fußnote selbst.
+
+    ``year`` schneidet auf **einen** Jahrgang, ``latest`` auf den jüngsten —
+    für Seiten, die nur ihn zeigen: Das Labor braucht die Vorhaben des
+    jüngsten Programms, nicht alle acht (161 statt 1.057 KB). ``years`` bleibt
+    die volle Liste, ``latest`` ist also ``years[-1]``. Ohne ``year`` kommt
+    alles wie bisher — ``/haushalt/investitionen`` zählt über die Jahrgänge.
     """
-    zeilen = store.get_investitionsmassnahmen()
+    years = store.investitionsprogramm_jahre()
+    if year is None:
+        zeilen = store.get_investitionsmassnahmen()
+    else:
+        chosen = (years[-1] if years else None) if year == "latest" else int(year)
+        zeilen = store.get_investitionsmassnahmen(year=chosen) if chosen is not None else []
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
-        "years": store.investitionsprogramm_jahre(),
+        "years": years,
         "measures": [z for z in zeilen if z["level"] == "measure"],
         "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
         "totals": [z for z in zeilen if z["level"] == "total"],
@@ -1352,8 +1390,11 @@ def haushalt_dokumente(
     ab?"), wird an derselben Stelle gebraucht — im Quellenverzeichnis — und
     ist eine Abfrage je Quelle, keine je Zeile. Zwei Endpunkte dafür hießen
     zwei Rundreisen für einen Seitenfuß."""
-    return {"documents": store.haushalt_dokumente(),
-            "editions": store.haushalt_jahrgaenge()}
+    # Läuft auf jeder der 15 Haushalts-Seiten mit und ändert sich nur mit dem
+    # Ingest — einmal je Datenstand (app/response_cache.py), hinter `require_budget`.
+    return response_cache.cached("council.budget_documents", [store], lambda: {
+        "documents": store.haushalt_dokumente(),
+        "editions": store.haushalt_jahrgaenge()})
 
 
 @router.get("/budget")
@@ -1862,12 +1903,16 @@ def haushalt_weg(
     ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
     sagen, welche der kommenden Sitzungen die Haushaltssitzung wird, und raten
     es auch nicht."""
-    return {"rounds": store.haushalt_weg(year)}
+    # Je `year` einmal je Datenstand (app/response_cache.py).
+    return response_cache.cached("council.budget_journey", [store],
+                                 lambda: {"rounds": store.haushalt_weg(year)},
+                                 key=year, maxsize=16)
 
 
 @router.get("/budget/debate")
 def haushalt_streit(
     year: int | None = None,
+    texts: Annotated[str | None, Query(pattern=r"^(\d{4}|latest)$")] = None,
     _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetDispute:
@@ -1881,18 +1926,41 @@ def haushalt_streit(
     **Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
     aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
     über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
-    die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
-    Jahrgängen um.
+    bis 11/2026 lud die Seite sie einmal und schaltete danach ohne Netz
+    zwischen den Jahrgängen um — heute fragt sie mit ``texts`` (s. u.).
 
     Was hier **nicht** steht: der Inhalt der Änderungslisten — den liefert
     seit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position
     für Position aus den gelesenen EHH-Dokumenten. Hier bleibt die
-    Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam."""
-    return {"rounds": store.haushalt_streit(year)}
+    Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam.
+
+    ``texts`` (ein Jahr oder ``latest``; ein Jahr ohne Runde gilt als
+    ``latest``) behält den Wortlaut nur für diesen Jahrgang. In allen anderen
+    stehen die Wortbeiträge weiter da — Name, Fraktion, Rolle, also alles,
+    was die Seite über die Jahre zählt —, nur ``text`` ist ``null``. Die
+    Seite zeigt ohnehin einen Jahrgang; die Texte waren 395 der 450 KB
+    (gzip 20 statt 130 KB). Beim Jahrgangswechsel holt sie den nächsten.
+    Ohne ``texts`` kommt alles wie bisher."""
+    rounds = store.haushalt_streit(year)
+    if texts is None:
+        return {"rounds": rounds}
+    years = {r["year"] for r in rounds}
+    target = int(texts) if texts != "latest" and int(texts) in years else max(years, default=None)
+    # Neue Objekte statt die Runden zu verändern — der Store hält ein
+    # Gedächtnis (`haushaltsdebatte`), dessen Fassung vollständig bleiben muss.
+    return {"rounds": [
+        r if r["year"] == target else {**r, "stationen": [
+            {**st, "debatte": [{**b, "text": None} for b in st["debatte"]]}
+            for st in r["stationen"]]}
+        for r in rounds]}
+
+
+_AMENDMENT_PARTS = ("rows", "totals", "cash_budget_rows", "cash_budget_totals")
 
 
 @router.get("/budget/amendment-lists")
 def haushalt_aenderungslisten(
+    fields: Annotated[str | None, Query(pattern=r"^[a-z_]+(,[a-z_]+)*$")] = None,
     _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetAmendmentLists:
@@ -1923,17 +1991,34 @@ def haushalt_aenderungslisten(
       und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
       für beide Haushalte gemeinsam.
+
+    ``fields`` (kommagetrennt aus ``rows``, ``totals``, ``cash_budget_rows``,
+    ``cash_budget_totals``) liefert nur diese Teile; die übrigen Schlüssel
+    bleiben als leere Listen stehen, ``provenance`` trägt nur, worauf die
+    gelieferten Zeilen zeigen. Das Labor braucht für seinen Maßstab allein die
+    Summen (``fields=totals``: 56 statt 554 KB). Ohne ``fields`` kommt alles
+    wie bisher — ``/haushalt/mitreden`` zeigt die Positionen.
     """
-    d = store.get_haushalt_aenderungen()
-    f = store.get_haushalt_aenderungen_fhh()
-    zeilen = [z for z in d["zeilen"] if z["year"] == z["budget_year"]]
-    fhh_zeilen = [z for z in f["zeilen"] if z["year"] == z["budget_year"]]
+    parts = set(_AMENDMENT_PARTS) if fields is None else set(fields.split(","))
+    if unknown := parts - set(_AMENDMENT_PARTS):
+        raise HTTPException(400, f"fields kennt nur {', '.join(_AMENDMENT_PARTS)}: "
+                                 f"{', '.join(sorted(unknown))}")
+    empty: dict = {"zeilen": [], "summen": []}
+    d = store.get_haushalt_aenderungen() if parts & {"rows", "totals"} else empty
+    f = (store.get_haushalt_aenderungen_fhh()
+         if parts & {"cash_budget_rows", "cash_budget_totals"} else empty)
+    zeilen = ([z for z in d["zeilen"] if z["year"] == z["budget_year"]]
+              if "rows" in parts else [])
+    fhh_zeilen = ([z for z in f["zeilen"] if z["year"] == z["budget_year"]]
+                  if "cash_budget_rows" in parts else [])
+    totals = d["summen"] if "totals" in parts else []
+    cash_totals = f["summen"] if "cash_budget_totals" in parts else []
     ids = sorted({z["herkunft_id"] for z in zeilen + fhh_zeilen
                   if z["herkunft_id"] is not None}
-                 | {s["herkunft_id"] for s in d["summen"] + f["summen"]
+                 | {s["herkunft_id"] for s in totals + cash_totals
                     if s["herkunft_id"] is not None})
-    return {"rows": zeilen, "totals": d["summen"],
-            "cash_budget_rows": fhh_zeilen, "cash_budget_totals": f["summen"],
+    return {"rows": zeilen, "totals": totals,
+            "cash_budget_rows": fhh_zeilen, "cash_budget_totals": cash_totals,
             "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)}}
 
 
@@ -2186,6 +2271,14 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
     Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
     dasselbe schon hat.
     """
+    # Die Zählung läuft über rund 50.000 Urteile im Städte-Speicher (gut 100 ms)
+    # und ändert sich nur mit dem Cron check_cities — deshalb einmal je
+    # Datenstand von cities.sqlite (app/response_cache.py).
+    return response_cache.cached("cities.idea_fields", [cities],
+                                 lambda: _idea_fields(cities))
+
+
+def _idea_fields(cities: CitiesStore) -> IdeaFields:
     from council.cities.clusters import CLUSTER_VERSION
 
     # ALLE Bewegungen des Feldes, nicht nur die offenen: Solange `idea_fit`
@@ -2300,10 +2393,14 @@ def cities_ideas(
         limit=max(1, min(per_page, 100)),
         offset=max(0, (page - 1) * per_page))
 
-    peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
+    # Kein `peers_by_paper` hier: Die Zeilen der Liste tragen `peers` selbst
+    # (aus `idea_group_status`, nie NULL), das Dict wurde nie gelesen — und
+    # zählte die Nachbarstädte für ALLE Vorlagen des Bestands, um dreißig zu
+    # zeigen (gemessen 11/2026: 50 ms von rund 215). Die Suche braucht es
+    # weiter, ihre Zeilen haben die Spalte nicht.
     eigenes = _eigene_rueckmeldungen(cities, user)
     abschnitte = cities.section_counts()
-    items = [_idee_aus_zeile(store, cities, r, peers, eigenes, abschnitte)
+    items = [_idee_aus_zeile(store, cities, r, None, eigenes, abschnitte)
              for r in zeilen]
     return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
             "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
@@ -2394,11 +2491,18 @@ def cities_movement_detail(
          "cities": int(a["cities"]), "members": int(a["members"])}
         for a in cities.similar_idea_groups(EMBED_MODEL_FUER_SUCHE, CLUSTER_VERSION,
                                             zeile["field"], id, BEWEGUNG_AB_STAEDTEN)]
-    return {"movement": _bewegung(store, zeile, namen),
+    bewegung = _bewegung(store, zeile, namen)
+    return {"movement": bewegung,
             "axis": _achse(cities, CLUSTER_VERSION, BEWEGUNG_AB_STAEDTEN),
             "documents": dokumente,
             "oldenburg_documents": _belege_aufloesen(store, oldenburger, hoechstens=6),
-            "similar": aehnliche}
+            "similar": aehnliche,
+            # „Stand: …" für die Städte DIESER Idee. Bis 11/2026 holte die Seite
+            # dafür die ganze Themenfeld-Übersicht (`/cities/ideas/fields`, gut
+            # 100 ms Rechnung, in jeder Messung die letzte Antwort) und filterte
+            # im Browser auf die Städte der Bewegung. `coverage` für die paar
+            # Städte kostet hier weniger als eine Millisekunde.
+            "data_status": _datenstand(cities, [c["body_id"] for c in bewegung["cities"]])}
 
 
 def _stadtnamen() -> dict[str, str]:
@@ -2833,6 +2937,10 @@ def decision_detail(
         "template_journey": [],
         "similar": store.get_similar(decision_id, limit=5),
         "entities": store.entities_for_decision(decision_id),
+        # Nachbar-TOPs derselben Sitzung — vorher lud das Web dafür die
+        # ganze Sitzung nach (eine Stufe später, 69 KB statt einer Zeile).
+        "neighbors": (store.decision_neighbors(d["ksinr"], decision_id)
+                      if d.get("kind") == "decision" else None),
     }
     # Läuft zu diesem Bauleitplan GERADE eine Beteiligung? Dann gehört der
     # Hinweis samt Frist an den Beschluss — Stellungnahme ist eine der wenigen
@@ -3841,7 +3949,7 @@ def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples
     zeilen: list[QaExampleSession] = [
         {"committee": str(z["committee"]), "session_date": str(z["session_date"]),
          "n": int(z["n"]),
-         "top_titel": qa.vorschlags_gegenstand(z.get("top_titel") or "") or None}
+         "top_titel": qa.erster_gegenstand(z.get("top_titel_kandidaten") or z.get("top_titel")) or None}
         for z in store.juengste_sitzungen_mit_beschluessen(
             limit=2, mindest_tops=qa.RUECKFRAGE_MINDEST_TOPS)]
     return {"sessions": zeilen}
@@ -3944,15 +4052,34 @@ def analysis(user: dict = Depends(require_active),
     """Party behaviour: topic heatmap, success rates, contention, alliances —
     plus Erfolgsquoten der eingereichten Fraktions-Anträge (aus den Anlagen)."""
     ratslotse.record_activity(user["id"], "analysis")  # Admin-Statistik (20a)
-    data = store.party_analysis()
+    return response_cache.cached("council.analysis", [store],
+                                 lambda: _analysis(store))
+
+
+def _party_analysis(store: CouncilStore) -> dict:
+    """``party_analysis()`` einmal je Datenstand — für ``/analysis`` und den
+    Parteifilter ``/parties``. CPU-gebunden (gut 1.200 Texte, 16.000
+    Regex-Suchen, 20 ms) und für alle gleich. Geteilt: nicht verändern."""
+    return response_cache.cached("council.party_analysis", [store],
+                                 store.party_analysis)
+
+
+def _analysis(store: CouncilStore) -> AnalysisData:
+    # Ein neues dict: Das Ergebnis von `party_analysis` ist geteilt (s. oben).
+    data = {**_party_analysis(store)}
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["topic_matrix"]["fields"]}
     data["antrag_stats"] = store.antrag_stats()
-    return data
+    return cast(AnalysisData, data)
 
 
 @router.get("/finance")
 def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Finances:
     """Largest € decisions + recognised volume per policy field (excl. accounting reports)."""
+    # Einmal je Datenstand (app/response_cache.py).
+    return response_cache.cached("council.finance", [store], lambda: _finance(store))
+
+
+def _finance(store: CouncilStore) -> Finances:
     by_field = store.money_by_field()
     return {
         "decisions": store.largest_financial_decisions(limit=25),
@@ -4002,21 +4129,35 @@ def public_stats(store: CouncilStore = Depends(get_council_store)) -> PublicNumb
 
 # Personen-Lexikon für die Badges im Antwort-Text (Tims Wunsch 12.08.).
 # Public wie public-stats: Die geteilten Antwort-Seiten (app/g) brauchen es
-# ohne Konto, und der Inhalt sind amtliche RIS-Daten. Prozess-Cache mit
-# Tages-TTL — die Quelle ändert sich höchstens mit dem täglichen Import.
-_PERSONEN_LEXIKON_CACHE: dict = {"as_of": 0.0, "daten": None}
+# ohne Konto, und der Inhalt sind amtliche RIS-Daten. Bis 11/2026 ein eigener
+# Prozess-Cache mit sechs Stunden TTL, an dem der Steckbrief der Beteiligungen
+# vorbeirechnete (50 ms je Aufruf); jetzt einmal je Datenstand und Tag für
+# beide — das Lexikon rechnet mit „zwölf Monate zurück".
+def _personen_lexikon(store: CouncilStore) -> list[dict]:
+    """``personen_lexikon()`` einmal je Datenstand. Geteilt: nicht verändern."""
+    return response_cache.cached("council.people_directory", [store], store.personen_lexikon)
 
 
 @router.get("/people-directory")
 def personen_lexikon(response: Response,
-                     store: CouncilStore = Depends(get_council_store)) -> PeopleDirectory:
-    import time as _time
-    if _PERSONEN_LEXIKON_CACHE["daten"] is None or \
-            _time.time() - _PERSONEN_LEXIKON_CACHE["as_of"] > 6 * 3600:
-        _PERSONEN_LEXIKON_CACHE["daten"] = store.personen_lexikon()
-        _PERSONEN_LEXIKON_CACHE["as_of"] = _time.time()
+                     store: CouncilStore = Depends(get_council_store),
+                     administration: bool = Query(
+                         False, description="Nur Verwaltungsleute mit erkanntem Amt "
+                         "(art=city mit role) — die Handvoll Einträge, die das "
+                         "Personenverzeichnis zeigt, statt des ganzen Lexikons.")) -> PeopleDirectory:
     response.headers["Cache-Control"] = "public, max-age=21600"
-    return {"people": _PERSONEN_LEXIKON_CACHE["daten"]}
+    return _people_directory_view({"people": _personen_lexikon(store)}, administration)
+
+
+def _people_directory_view(answer: PeopleDirectory, administration: bool) -> PeopleDirectory:
+    """Die fertige Lexikon-Antwort, auf Wunsch auf die Verwaltung mit Amt
+    eingeschränkt. Das Personenverzeichnis brauchte von 263 KB genau diese
+    Einträge (dieselbe Bedingung stand vorher im Browser). Gefiltert wird in
+    eine NEUE Liste — die zwischengespeicherte bleibt unangetastet."""
+    if not administration:
+        return answer
+    return {"people": [p for p in answer["people"] or []
+                       if p.get("art") == "city" and p.get("role")]}
 
 
 # ---- Link-Vorschau (Design 29a, P1) ----
@@ -4168,12 +4309,39 @@ def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> Entit
 def members(_user: dict = Depends(require_active),
             store: CouncilStore = Depends(get_council_store)) -> CouncilMembers:
     """Directory of council members (from attendance): party, sessions, committees."""
-    return {"members": store.list_members()}
+    # `list_members` fasst die ganzen Anwesenheitslisten in Python zusammen
+    # (45 ms) — einmal je Datenstand, geteilt mit dem gewählten Rat.
+    return {"members": _list_members(store)}
+
+
+def _list_members(store: CouncilStore) -> list[dict]:
+    """``list_members()`` einmal je Datenstand. Geteilt: nicht verändern."""
+    return response_cache.cached("council.list_members", [store], store.list_members)
 
 
 def _elected(store: CouncilStore) -> ElectedCouncil | None:
-    known = {m["slug"]: m.get("art") or "council" for m in store.list_members()}
+    """Der gewählte Rat, einmal je Datenstand: Verzeichnis plus der Abgleich
+    jeder Namensform mit jeder gewählten Person (zusammen rund 70 ms). Die
+    Wahldateien selbst liest ``elected_mod`` ohnehin nur einmal je Prozess."""
+    return response_cache.cached("council.elected", [store], lambda: _elected_build(store))
+
+
+def _elected_build(store: CouncilStore) -> ElectedCouncil | None:
+    known = {m["slug"]: m.get("art") or "council" for m in _list_members(store)}
     return elected_mod.council(store.person_slug, store.council_history, known)
+
+
+def _elected_lookup(store: CouncilStore) -> tuple[dict[str, str], dict[str, ElectedMember]]:
+    """Namensform → kanonischer Slug und Slug → gewählte Person, je Datenstand.
+
+    ``/elected/{slug}`` baute bis 11/2026 für 0,4 KB Antwort den ganzen Rat
+    und die Kanon-Karte neu (70 ms); die Personen-Seite wartet darauf."""
+    def bauen() -> tuple[dict[str, str], dict[str, ElectedMember]]:
+        nach_slug: dict[str, ElectedMember] = {}
+        for m in (_elected(store) or {}).get("members", []):
+            nach_slug.setdefault(m["slug"], m)   # wie `next(…)`: der erste gewinnt
+        return dict(store.personen_kanon()), nach_slug
+    return response_cache.cached("council.elected_lookup", [store], bauen)
 
 
 @router.get("/elected")
@@ -4198,9 +4366,8 @@ def elected_council(response: Response,
 def elected_member(slug: str, store: CouncilStore = Depends(get_council_store)) -> ElectedMember:
     """Eine Person aus dem gewählten Rat — für die Personen-Seite, auch wenn
     es aus den Protokollen noch kein Profil gibt. Öffentlich wie ``/elected``."""
-    data = _elected(store)
-    slug = store.personen_kanon().get(slug, slug)
-    hit = next((m for m in (data or {}).get("members", []) if m["slug"] == slug), None)
+    kanon, nach_slug = _elected_lookup(store)
+    hit = nach_slug.get(kanon.get(slug, slug))
     if hit is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht im gewählten Rat.")
     return hit
@@ -4220,6 +4387,14 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
     Protokolle — keine Privatperson wird hier auffindbar, die es nicht
     ohnehin schon ist.
     """
+    # Je Slug einmal je Datenstand (app/response_cache.py): `member_detail`
+    # kostet rund 30 ms, ein Verwaltungs-Steckbrief über das Lexikon 50 ms
+    # mehr. Ein unbekannter Slug (404) wird nicht gespeichert.
+    return response_cache.cached("council.person", [store],
+                                 lambda: _person(store, slug), key=slug, maxsize=128)
+
+
+def _person(store: CouncilStore, slug: str) -> PersonDetail:
     data = store.member_detail(slug)
     if data:
         data["type"] = "council"
@@ -5249,7 +5424,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Findet der Wortlaut keinen Katalogort, wählt die Analyse aus der
             # Liste (`qa._ortsblock`) — kostet keinen zusätzlichen Aufruf.
             orte = qa.ortsliste(store) if qa.braucht_ortsliste(qa.finde_ort(q, store)) else None
-            analyse = qa.analyse_query(q, verlauf=verlauf, orte=orte)
+            # Themen ohne wörtlichen Namen (Schalter `suche-ausbau`): die Analyse
+            # wählt aus Kandidaten nach Wortanfang (`qa.themen_kandidaten`).
+            suche_ausbau = features.an("suche-ausbau")
+            themen = qa.themen_kandidaten(store, q) if suche_ausbau else None
+            analyse = qa.analyse_query(q, verlauf=verlauf, orte=orte, themen=themen)
             expanded, typ = analyse["terms"], analyse["kind"]
             # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
             # der Befund kam aus einer echten Nutzer-Frage, der nach dem
@@ -5395,6 +5574,27 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             t0 = time.perf_counter()
             place_ids = (store.decision_ids_for_place(ort["id"], limit=120)
                          if ort else None)
+            if ort and suche_ausbau:
+                # Ein Ort heißt oft wie ein Thema (Heidbrook): Beschlüsse, die am
+                # gleichnamigen Thema hängen, aber nicht als Ort verortet sind,
+                # fielen sonst durch den Filter — „Schutzgebietsausweisung“ und
+                # „Heuschreckengutachten“ zum Heidbrook (Gold 18.10.2026).
+                gleichnamig = [e["id"] for e in qa.finde_entitaeten(store, ort["name"], max_n=3)
+                               if qa._falte(e["name"]) == qa._falte(ort["name"])]
+                if gleichnamig:
+                    schon = set(place_ids or [])
+                    place_ids = (place_ids or []) + [
+                        i for i in store.decision_ids_for_entities(gleichnamig, je=60)
+                        if i not in schon]
+                # … und Beschlüsse, die einen einwortigen Ort wörtlich nennen,
+                # ohne ihm zugeordnet zu sein („Schutzgebietsausweisung“ zum
+                # Heidbrook). Mehrwortige Namen nicht: Die Volltextsuche
+                # verknüpft Wörter mit ODER, „Alter Stadthafen“ träfe jedes „alter“.
+                if len(ort["name"].split()) == 1:
+                    schon = set(place_ids or [])
+                    place_ids = (place_ids or []) + [
+                        i for i, _s, _snip in store.search_decisions_fts(ort["name"], limit=40)
+                        if i not in schon]
             allowed_place_ids = set(place_ids or []) if ort else None
             if latest_place:
                 # Bei einer reinen Ortsfrage nach dem „zuletzt“ ist das Datum
@@ -5408,9 +5608,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
                                                 varianten=analyse.get("variants"),
                                                 place_ids=place_ids,
-                                                hinweis_ids=(store.decision_ids_for_place(
-                                                    ort_hinweis["id"], limit=40)
-                                                    if ort_hinweis else None))
+                                                hinweis_ids=(
+                                                    (store.decision_ids_for_place(
+                                                        ort_hinweis["id"], limit=40)
+                                                     if ort_hinweis else [])
+                                                    + (store.decision_ids_for_entities(
+                                                        analyse["themen_ids"])
+                                                       if analyse.get("themen_ids") else []))
+                                                or None)
+                if analyse.get("themen_ids"):
+                    zeiten["themen_hinweis"] = analyse["themen_ids"]
                 if ort_hinweis:
                     zeiten["ort_hinweis"] = ort_hinweis["id"]
             # Nachrecherche (Schalter `nachrecherche`): Ein kleines Modell sieht
@@ -6074,6 +6281,27 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Stationen, die anders klingen (Bürgschaft, B-Plan, Vertrag).
                 im_ctx = {c["id"] for c in ctx}
                 ctx = ctx + [d for d in akte_beschluesse if d["id"] not in im_ctx]
+            # Vorgang als Zeitleiste (Schalter `suche-ausbau`): Bei Stand-,
+            # Verlaufs- und Geldfragen mit klar erkanntem Thema kommen dessen
+            # jüngste Beschlüsse dazu — OHNE die Mindestpunktzahl des Rerankers.
+            # Die „Akte“ fasst nur je Vorlage zusammen; ein Vorhaben läuft über
+            # viele Vorlagen. Bei „Bürgschaften für das Klinikum“ fielen die
+            # Eigenkapitalstärkungen 2022–2024 unter die Schwelle, obwohl sie
+            # zum Vorgang gehören (Gold 18.10.2026).
+            if (suche_ausbau and not vorher_ids and not einfach and not latest_place
+                    and typ not in ("session", "person")
+                    and (typ in ("history", "money") or qa.stand_or_recency(q_suche))):
+                haupt = [e["id"] for e in qa.finde_entitaeten(store, q_suche, max_n=2)]
+                haupt += [i for i in (analyse.get("themen_ids") or [])[:2] if i not in haupt]
+                if haupt:
+                    im_ctx = {c["id"] for c in ctx}
+                    vorgang_ids = [i for i in store.decision_ids_for_entities(haupt, je=qa.VORGANG_MAX)
+                                   if i not in im_ctx
+                                   and (allowed_place_ids is None or i in allowed_place_ids)]
+                    vorgang = store.get_decisions_by_ids(vorgang_ids[:qa.VORGANG_MAX])
+                    if vorgang:
+                        ctx = ctx + vorgang
+                        zeiten["vorgang"] = len(vorgang)
             if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
             if typ == "session" and sitzung_ids and not einfach:
@@ -6207,8 +6435,12 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # ganz gefragt) und nicht für Personenfragen (dort SIND die
             # Beiträge die Antwort).
             debatten_prompt = debatten_rows
+            # Auch nicht bei Fraktionsfragen: Deren Reden je Fraktion (#1704)
+            # SIND die Antwort; in vier Gold-Läufen mit Diät wurden beide
+            # Fraktions-Fälle schlechter (Stadion 31/19 → 12–25 %,
+            # Zweckentfremdung 70/70 → 40–65 %, 18.10.2026).
             if (features.an("kontext-diaet") and typ not in ("session", "person")
-                    and not einfach):
+                    and not qa.fraktionsfrage(analyse) and not einfach):
                 debatten_prompt = qa.debatten_diaet(
                     debatten_rows, ctx, set(akte_prompt["speech_ids"]) if akte_prompt else None)
                 zeiten["kontext_debatten_ids"] = [d["id"] for d in debatten_prompt]

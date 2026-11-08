@@ -16,6 +16,7 @@ Ratsbeschluss, Aufstellungs- und Satzungsbeschluss EIN Vorhaben mit Stand.
 """
 from __future__ import annotations
 
+import functools
 import json
 import re
 import sqlite3
@@ -446,20 +447,38 @@ class ViertelMixin(StoreBasis):
             if hidden and not include_hidden:
                 continue
             decisions = self._conn.execute(
-                "SELECT d.id, d.title, d.outcome, se.session_date AS date, se.committee "
+                # Ein Beschluss ohne Titel (Fliegerhorst, 9501) ließ die ganze
+                # Tafel mit 500 abbrechen — der Vertrag sagt ``title: str``.
+                "SELECT d.id, COALESCE(d.title, d.summary, '') AS title, d.outcome, "
+                "se.session_date AS date, se.committee, d.summary "
                 "FROM council_district_project_decisions pd "
                 "JOIN council_decisions d ON d.id = pd.decision_id "
                 "JOIN council_sessions se ON se.ksinr = d.ksinr "
                 "WHERE pd.project_id = ? ORDER BY se.session_date DESC, d.id DESC", (r["id"],)).fetchall()
             ids = [d["id"] for d in decisions]
             locations = self._project_locations(ids, place_id) if ids else []
+            # „Zuletzt im Rat" allein sagt nicht, WAS dort war: Der jüngste
+            # Beschluss kommt mit seinem Kernsatz, damit Heute und App den Stand
+            # nennen können, ohne die Beschlussliste selbst zu sortieren. Am
+            # selben Tag geht ein Beschluss einer Kenntnisnahme vor — sonst
+            # stünde „Bericht zur Kenntnis genommen" statt „Aufstellung
+            # beschlossen" (Krusenbusch, 21.05.2026).
+            juengste = [d for d in decisions if d["date"] == decisions[0]["date"]] if decisions else []
+            neuester = next((d for d in juengste if d["outcome"] not in (None, "noted")),
+                            juengste[0] if juengste else None)
+            latest_update = {
+                "decision_id": neuester["id"], "date": neuester["date"], "committee": neuester["committee"],
+                "title": neuester["title"], "outcome": neuester["outcome"], "summary": neuester["summary"],
+            } if neuester else None
             out.append({
                 "id": r["id"], "project_key": r["project_key"], "place_id": r["place_id"],
                 "name": r["name"], "what": r["what"], "stage": r["stage"], "when": r["when_text"],
                 "category": r["category"], "confidence": r["confidence"],
                 "first_date": r["first_date"], "last_date": r["last_date"],
                 "report_count": r["report_count"], "hidden": hidden,
-                "decisions": [dict(d) for d in decisions],
+                "decisions": [{k: d[k] for k in ("id", "title", "outcome", "date", "committee")}
+                              for d in decisions],
+                "latest_update": latest_update,
                 "locations": locations,
                 **schedule_state(r["stage"], r["when_text"], r["last_date"]),
             })
@@ -482,7 +501,6 @@ class ViertelMixin(StoreBasis):
             f"SELECT ? AS name))) AND ld.share >= ? AND l.lat IS NOT NULL AND l.lon IS NOT NULL "
             f"AND l.kind != 'district' ORDER BY l.kind, l.name",
             (*decision_ids, place_id, self._place_name(place_id), CANDIDATE_MIN_SHARE)).fetchall()
-        from council import geo
         place_name = self._place_name(place_id)
         # Die Texte des Vorhabens entscheiden, welcher Ort Gegenstand ist und
         # welcher nur eine Abschnittsgrenze („Am Schmeel bis Brahmweg") — in
@@ -512,22 +530,14 @@ class ViertelMixin(StoreBasis):
         out = []
         for r in rows:
             geometry = None
-            lat, lon = r["lat"], r["lon"]
+            lat, lon = _rounded(r["lat"]), _rounded(r["lon"])
             if r["geojson"]:
-                try:
-                    g = json.loads(r["geojson"])
-                except ValueError:
-                    g = None
-                if isinstance(g, dict) and g.get("type") in ("LineString", "MultiLineString"):
-                    # Eine lange Straße bekommt nur ihr Stück im Viertel — und
-                    # ihren Pin auf dieses Stück, nicht auf die Mitte der ganzen
-                    # Straße, die außerhalb liegen kann.
-                    geometry = geo.auf_ortsbereich_beschneiden(g, place_name)
-                    mitte = geo.linien_mittelpunkt(geometry)
-                    if mitte:
-                        lat, lon = mitte
-                elif isinstance(g, dict) and g.get("type") in ("Polygon", "MultiPolygon"):
-                    geometry = g
+                geometry_json, pin = _board_geometry(r["geojson"], place_name)
+                # Je Aufruf ein frisches Objekt: Der Zwischenspeicher hält
+                # Text, kein dict, das ein Aufrufer verändern könnte.
+                geometry = json.loads(geometry_json) if geometry_json else None
+                if pin:
+                    lat, lon = pin
             out.append({"slug": r["slug"], "name": r["name"], "kind": r["kind"],
                         "lat": lat, "lon": lon, "geometry": geometry,
                         "role": rollen.get(r["name"], "subject")})
@@ -550,7 +560,7 @@ class ViertelMixin(StoreBasis):
         ``BPLAN_MIN_SHARE`` in diesem Ortsbereich liegt — sonst zöge ein
         stadtweit genannter Plan Flächen aus fremden Vierteln herein.
         """
-        from council import bplan, geo
+        from council import bplan
         je_titel = [bplan.plannummern_im_titel(t) for t in titles]
         alle = [k for keys in je_titel for k in keys]
         if not alle:
@@ -563,21 +573,20 @@ class ViertelMixin(StoreBasis):
             if not treffer or treffer["key"] in gesehen:
                 continue
             gesehen.add(treffer["key"])
-            try:
-                geometrie = json.loads(treffer["geojson"])
-            except (TypeError, ValueError):
+            geometry_json, _ = _board_geometry(treffer["geojson"], None)
+            if not geometry_json:
                 continue
-            anteile = geo.ortsbereiche_der_geometrie(geometrie)
-            gesamt = sum(anteile.values()) or 1
-            if anteile.get(place_name, 0) / gesamt < self.BPLAN_MIN_SHARE:
+            # Der Flächenanteil hängt nur am Umring — derselbe Zwischenspeicher
+            # wie im Register-Lauf, statt ihn je Tafel-Aufruf neu zu zählen.
+            if _umring_anteile(treffer).get(place_name, 0) < self.BPLAN_MIN_SHARE:
                 continue
             if treffer["lat"] is None or treffer["lon"] is None:
                 continue
             out.append({
                 "slug": f"bplan-{treffer['key'].lower().replace(' ', '-')}",
                 "name": f"Bebauungsplan {treffer['nr']}",
-                "kind": "bplan", "lat": treffer["lat"], "lon": treffer["lon"],
-                "geometry": geometrie, "role": "subject",
+                "kind": "bplan", "lat": _rounded(treffer["lat"]), "lon": _rounded(treffer["lon"]),
+                "geometry": json.loads(geometry_json), "role": "subject",
                 "plan": {
                     "nr": treffer["nr"], "name": treffer["name"], "status": treffer["status"],
                     "resolution_date": treffer["resolution_date"],
@@ -968,9 +977,18 @@ class ViertelMixin(StoreBasis):
             "SELECT code, label, grand_total FROM council_investment_measures "
             "WHERE year = ? AND level = 'measure' AND grand_total > 0 ORDER BY grand_total DESC",
             (jahr,)).fetchall()
+        # EINE Alternation über alle Namen als Vorfilter. Bis 11/2026 lief jede
+        # Maßnahme gegen jeden Namen einzeln — 543 × rund 90 Suchen, 37 ms für
+        # eine Antwort von 0,4 KB. Die Schleife darunter bleibt: Sie entscheidet
+        # weiter, WELCHER Name gilt (der längste, so ist `names` sortiert), und
+        # läuft nur noch für die paar Maßnahmen, in denen überhaupt einer steht.
+        prefilter = re.compile("(?:" + "|".join(re.escape(n) for n in names) + r")(?![a-zäöüß])",
+                               re.IGNORECASE)
         out = []
         for r in rows:
             label = r["label"] or ""
+            if not prefilter.search(label):
+                continue
             for name in names:
                 if re.search(re.escape(name) + r"(?![a-zäöüß])", label, re.IGNORECASE):
                     out.append({"programme_year": jahr, "code": r["code"], "label": label,
@@ -1155,6 +1173,65 @@ def _ist_grenzfund(blob: str, m: re.Match) -> bool:
         return False
     return ("zwischen" in davor.lower() or "(" in davor[-3:] or bool(re.search(r"\bvon\b", davor, re.IGNORECASE))
             or re.match(r"\s*bis\s", danach, re.IGNORECASE) is not None)
+
+
+#: Nachkommastellen der Koordinaten auf der Tafel. Fünf Stellen sind gut ein
+#: Meter, mehr braucht keine Karte; OSM und das Geoportal liefern sieben (ein
+#: Zentimeter). Die Geometrie war der größte Teil der Tafel-Antwort — gemessen
+#: 11/2026: Eversten 27 von 49 KB, Drielaker Moor 66 von 90 KB.
+COORDINATE_DECIMALS = 5
+
+
+def _rounded(value):
+    """Eine Koordinate oder eine GeoJSON-Koordinatenliste (beliebig tief) gerundet."""
+    if isinstance(value, float):
+        return round(value, COORDINATE_DECIMALS)
+    if isinstance(value, list):
+        return [_rounded(v) for v in value]
+    return value
+
+
+@functools.lru_cache(maxsize=1024)
+def _board_geometry(geojson: str, place_name: str | None
+                    ) -> tuple[str | None, tuple[float, float] | None]:
+    """Die Geometrie eines Orts für die Tafel — als JSON-Text, gerundet — und
+    ihr Pin, wo die Geometrie ihn bestimmt (sonst ``None``).
+
+    Eine Straße bekommt nur ihr Stück im Viertel (``place_name``) und ihren
+    Pin auf dieses Stück, nicht auf die Mitte der ganzen Straße, die außerhalb
+    liegen kann. Flächen bleiben ganz; ohne ``place_name`` wird nur gerundet.
+
+    **Zwischengespeichert, weil das Ergebnis nur an (Geometrie, Ortsbereich)
+    hängt.** Der Zuschnitt prüft jeden Stützpunkt gegen alle 31 Polygone und
+    war 82 % der Tafel (gemessen 11/2026: 15.185 Punkt-Abfragen je fünf
+    Aufrufe von Drielaker Moor). Der Schlüssel ist der GeoJSON-Text selbst,
+    nicht der Ort: Ändert die Orts-Pipeline eine Geometrie, ist das ein neuer
+    Schlüssel und kein veralteter Treffer. Gehalten wird Text, damit kein
+    Aufrufer das gespeicherte Objekt verändern kann. Rund 400 Orte mit
+    zusammen 0,4 MB GeoJSON stehen auf allen Tafeln — die Grenze ist Luft.
+    """
+    from council import geo
+    try:
+        parsed = json.loads(geojson)
+    except (TypeError, ValueError):
+        return None, None
+    if not isinstance(parsed, dict):
+        return None, None
+    kind = parsed.get("type")
+    pin = None
+    if kind in ("LineString", "MultiLineString"):
+        geometry = geo.auf_ortsbereich_beschneiden(parsed, place_name) if place_name else parsed
+        middle = geo.linien_mittelpunkt(geometry)
+        if middle:
+            pin = (round(float(middle[0]), COORDINATE_DECIMALS), round(float(middle[1]), COORDINATE_DECIMALS))
+    elif kind in ("Polygon", "MultiPolygon"):
+        geometry = parsed
+    else:
+        return None, None
+    if not isinstance(geometry, dict):
+        return None, pin
+    rounded = {**geometry, "coordinates": _rounded(geometry.get("coordinates") or [])}
+    return json.dumps(rounded, ensure_ascii=False, separators=(",", ":")), pin
 
 
 #: Flächenanteile je Umring — die Geometrie ändert sich innerhalb eines

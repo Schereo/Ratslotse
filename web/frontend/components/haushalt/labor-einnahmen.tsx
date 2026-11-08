@@ -173,7 +173,7 @@ export function EinnahmenWerkbank({
             geaendert={punkte !== 0}
           />
           <HistorieTreppe series={historie} bisJahr={basisJahr} />
-          <Link href="/haushalt/steuer?art=gewerbesteuer"
+          <Link href="/haushalt/steuer?art=gewerbesteuer" prefetch={false}
             className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
             Wer den Hebesatz beschließt →
           </Link>

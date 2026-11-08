@@ -22,7 +22,7 @@ import Link from "next/link";
 import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
   MessageSquarePlus, MoreHorizontal, Share2, Trash2, Volume2, X,
-  BookOpen, Check, MapPin, SearchX, Bell } from "lucide-react";
+  BookOpen, Check, MapPin, SearchX, Bell, Landmark } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import { openLotti } from "@/components/assistentin";
@@ -35,7 +35,7 @@ import { limitArt } from "@/lib/frage-limit";
 import { QaSource } from "@/lib/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { chipEinloesen } from "@/lib/chip-frage";
-import { api, apiUrl, authHeaders } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import { sendAndForget } from "@/lib/send-and-forget";
 // Der Vertrag statt einer abgetippten Form: ein umbenanntes Feld bricht
 // damit hier den Build statt still eine leere Kachel zu zeigen.
@@ -45,6 +45,7 @@ import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseSseStrom } from "@/lib/sse";
 import { ASK_SCHRITTE, type AskSchritt } from "@/lib/qa-schritte";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
+import { KiInDerEu } from "@/components/eu-flagge";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
 // Die beiden Kanten, an denen der fixierte Composer und die Belege-Spalte
@@ -57,7 +58,6 @@ import { AkteZeitleiste, type AkteZeitleisteDaten } from "@/components/akte-zeit
 import { KeyFactsCard, type KeyFacts } from "@/components/key-facts";
 import { ResearchOffer, type ResearchOfferData } from "@/components/research-offer";
 import { pfad, cn } from "@/lib/utils";
-import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
 import { useLaengerAls } from "@/lib/use-laenger";
 import {
@@ -68,8 +68,8 @@ import {
 // Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
-  AnlagenBlock, AntwortText, DebattenBaustein, GrafikKarte, ParteienListe, PresseBlock,
-  TagesordnungBlock,
+  AnlagenBlock, AntwortText, DebattenBaustein, GrafikKarte, MehrKnopf, ParteienListe, PresseBlock,
+  QuellenAbschnitt, TagesordnungBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
   type QaGrafik, type SitzungsInfo,
   RulesOfProcedureBlock, type RulesOfProcedureCard,
@@ -136,8 +136,8 @@ function themenStaemme(question: string): string[] {
 
 /** Vorschläge aus dem bewährten Pool ziehen — bei jedem Besuch andere, aber
  *  keine, die ein frischer Vorschlag schon abdeckt: sonst steht das Stadion
- *  zweimal untereinander. Wird bewusst erst nach dem Mount aufgerufen; der
- *  statische Export darf nicht gegen ein zufälliges Ergebnis hydrieren. */
+ *  zweimal untereinander. Wird bewusst erst nach dem Mount aufgerufen; das
+ *  vorgerenderte HTML darf nicht gegen ein zufälliges Ergebnis hydrieren. */
 function waehleBeispiele(frisch: string[], count: number): string[] {
   if (count <= 0) return [];
   const belegt = new Set(frisch.flatMap(themenStaemme));
@@ -514,13 +514,10 @@ function kurzerGegenstand(roh: string): string {
   // dem Doppelpunkt sagt nichts über die Sache, der Teil dahinter alles.
   const teile = t.match(/^(.{3,70}?):\s+(.{8,})$/);
   if (teile && /\b(GmbH|AG|KG|mbH|e\.\s?V\.|Stiftung|Verband|Betrieb)\b/.test(teile[1])) t = teile[2];
-  if (t.length > 58) {
-    const schnitt = t.slice(0, 58);
-    const luecke = schnitt.lastIndexOf(" ");
-    // Nur an einer Wortgrenze kürzen — sonst lieber gar keinen Vorschlag.
-    if (luecke < 20) return "";
-    t = `${schnitt.slice(0, luecke).replace(/[,;:.\-–—]+$/, "")} …`;
-  }
+  // Zu lang heißt: kein Vorschlag — nicht gekürzt. Ein „…" schnitt genau den
+  // Teil ab, um den es ging („Satzung zur Änderung der Satzung … über …",
+  // Tim 08.11.2026); dieselbe Grenze wie `qa.vorschlags_gegenstand`.
+  if (t.length > 60) return "";
   return t.length >= 8 ? t : "";
 }
 
@@ -883,7 +880,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       const res = await fetch(apiUrl("/council/ask"), {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: text, history: verlauf, conversation_id: gespraechId,
                                previous_answer: vorherigeAntwort,
                                from_suggestion: ausVorschlag }),
@@ -1079,7 +1076,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // markiert und der nächste Besuch fände ein leeres Gespräch vor.
     if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
     sendAndForget(apiUrl(`/council/deep-research/${jobId}/seen`), {
-      method: "POST", credentials: "include", headers: authHeaders(),
+      method: "POST", credentials: "include",
     });
   };
 
@@ -1087,7 +1084,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const ladeDeepSnapshot = async (jobId: string, turnKey: number) => {
     try {
       const r = await fetch(apiUrl(`/council/deep-research/${jobId}`), {
-        credentials: "include", headers: authHeaders() });
+        credentials: "include" });
       if (!r.ok) throw new Error();
       const job = await r.json();
       const t = deepSnapshotTurn(job);
@@ -1177,7 +1174,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         try {
           const ab = deepAb.current.get(jobId) ?? 0;
           const res = await fetch(apiUrl(`/council/deep-research/${jobId}/events?ab=${ab}`), {
-            credentials: "include", headers: authHeaders(), signal: ctrl.signal });
+            credentials: "include", signal: ctrl.signal });
           if (res.status === 410) {
             // Job lebt nicht mehr im Speicher → Endzustand aus der DB.
             await ladeDeepSnapshot(jobId, turnKey);
@@ -1237,7 +1234,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     try {
       const res = await fetch(apiUrl("/council/deep-research"), {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: text, conversation_id: gespraechId,
                                history: baueVerlauf(),
                                // Nur für die Statistik: aus dem Angebot unter
@@ -1286,7 +1283,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (!t.deepJobId) return;
     try {
       const r = await fetch(apiUrl(`/council/deep-research/${t.deepJobId}/stop`), {
-        method: "POST", credentials: "include", headers: authHeaders() });
+        method: "POST", credentials: "include" });
       if (!r.ok) throw new Error();
       const b = await r.json();
       patchTurn(t.key, { deepStatus: "gestoppt",
@@ -1302,7 +1299,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     patchTurn(t.key, { deepStatus: "laeuft", deepPhase: "schreiben" });
     try {
       const r = await fetch(apiUrl(`/council/deep-research/${t.deepJobId}/partial-report`), {
-        method: "POST", credentials: "include", headers: authHeaders() });
+        method: "POST", credentials: "include" });
       if (!r.ok) throw new Error();
       // Weiter am bestehenden Event-Zähler — der Teilbericht hängt seine
       // Events an dieselbe Liste an.
@@ -1325,7 +1322,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // ein ungesehener Bericht), holt der leere Tab sie zurück ins Gespräch —
   // „der Bericht erscheint hier im Gespräch" gilt damit wirklich (8d).
   useEffect(() => {
-    fetch(apiUrl("/council/deep-research/current"), { credentials: "include", headers: authHeaders() })
+    fetch(apiUrl("/council/deep-research/current"), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       // Typ aus dem Vertrag: Bis 10/2026 las diese Stelle `frei` und
       // `gesehen` — beides hieß längst `remaining`/`seen`. Ohne Typ fiel das
@@ -1351,7 +1348,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         } else if (!job.seen && (job.status === "fertig" || job.status === "teilbericht" || job.status === "fehler")) {
           setTurns((ts) => {
             if (ts.length > 0) return ts;
-            fetch(apiUrl(`/council/deep-research/${job.id}`), { credentials: "include", headers: authHeaders() })
+            fetch(apiUrl(`/council/deep-research/${job.id}`), { credentials: "include" })
               .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
               .then((voll) => {
                 setTurns((alt) => (alt.length > 0 ? alt : [deepSnapshotTurn(voll)]));
@@ -1443,7 +1440,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     const p = new URLSearchParams({ limit: String(GESPRAECHE_SEITE), offset: String(offset) });
     if (q.trim()) p.set("q", q.trim());
     const r = await fetch(apiUrl(`/council/conversations?${p.toString()}`),
-      { credentials: "include", headers: authHeaders() });
+      { credentials: "include" });
     if (!r.ok) throw new Error("gespraeche");
     return r.json();
   };
@@ -1521,7 +1518,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     try {
       const r = await fetch(apiUrl("/council/conversations/setting"), {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ an }),
       });
       if (!r.ok) throw new Error();
@@ -1541,7 +1538,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     setLoading(false);
     setStep(null);
     try {
-      const r = await fetch(apiUrl(`/council/conversations/${id}`), { credentials: "include", headers: authHeaders() });
+      const r = await fetch(apiUrl(`/council/conversations/${id}`), { credentials: "include" });
       if (!r.ok) throw new Error();
       const g = await r.json();
       // Presse/Debatten/Anlagen/Planungen stecken seit dem 10.08. mit im
@@ -1627,7 +1624,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (gespraechId === id) setGespraechId(null);
     try { sessionStorage.removeItem("ratslotse:qa-gespraech"); } catch { /* egal */ }
     try {
-      await fetch(apiUrl(`/council/conversations/${id}`), { method: "DELETE", credentials: "include", headers: authHeaders() });
+      await fetch(apiUrl(`/council/conversations/${id}`), { method: "DELETE", credentials: "include" });
     } catch { /* Liste wird beim nächsten Öffnen neu geladen */ }
   };
   const gespraechUmbenennen = async (id: number, title: string) => {
@@ -1637,7 +1634,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     try {
       const r = await fetch(apiUrl(`/council/conversations/${id}`), {
         method: "PATCH", credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: sauber }),
       });
       if (!r.ok) throw new Error();
@@ -1673,15 +1670,30 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Baums, und muss trotzdem über dem Composer bleiben — sonst deckt er
     // den Senden-Pfeil ab (derselbe Konflikt, wegen dem `BackToTop` auf
     // dieser Seite gar nicht erst erscheint).
-    const melden = (h: number) => {
+    //
+    // NUR solange er wirklich unten angedockt ist (`fixed`): Ab `desk` steht
+    // er statisch in der Bühne, weit links vom Knopf — dort hob die Variable
+    // Lotti trotzdem um seine Höhe an, und sie schwebte auf `/fragen` 118 px
+    // über der Stelle, an der sie überall sonst sitzt (Tims Befund
+    // 08.11.2026).
+    const melden = () => {
+      const h = el.offsetHeight;
       setComposerHoehe(h);
-      document.documentElement.style.setProperty("--rl-composer", `${h}px`);
+      if (getComputedStyle(el).position === "fixed") {
+        document.documentElement.style.setProperty("--rl-composer", `${h}px`);
+      } else {
+        document.documentElement.style.removeProperty("--rl-composer");
+      }
     };
-    const ro = new ResizeObserver(() => melden(el.offsetHeight));
+    const ro = new ResizeObserver(melden);
     ro.observe(el);
-    melden(el.offsetHeight);
+    // Der Wechsel über die `desk`-Grenze ändert die Andock-Art, nicht
+    // zwingend die Höhe — darauf allein reagiert der Beobachter nicht.
+    window.addEventListener("resize", melden);
+    melden();
     return () => {
       ro.disconnect();
+      window.removeEventListener("resize", melden);
       // Beim Verlassen der Fragen-Seite zurücksetzen: Sonst hielte der Knopf
       // auf jeder anderen Seite weiter Abstand zu einem Composer, der dort
       // gar nicht steht.
@@ -1745,7 +1757,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Notbremse: Hängt der Endpoint, bleiben die Platzhalter nicht stehen —
     // nach 1,2 s zeigen wir die Klassiker, die es ohnehin schon gibt.
     const bremse = setTimeout(fertig, 1200);
-    fetch(apiUrl("/council/qa-beispiele"), { credentials: "include", headers: authHeaders() })
+    fetch(apiUrl("/council/qa-beispiele"), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
         const rows = (b?.sessions ?? []) as { committee: string; session_date: string; top_titel?: string | null }[];
@@ -1998,8 +2010,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                          0,5 s auf den Moment des Austauschs verschoben. */
                       className="flex items-center gap-2.5 rounded-[13px] border border-primary/25 bg-primary/[0.04] px-3 py-2 text-[13.5px]">
                       <div className="flex min-h-[3em] min-w-0 flex-1 flex-col justify-center gap-1.5">
-                        <div className="h-2.5 w-full animate-pulse rounded-full bg-muted-foreground/15" />
-                        <div className="h-2.5 w-2/3 animate-pulse rounded-full bg-muted-foreground/15" />
+                        <div className="h-2.5 w-full animate-pulse rounded-full bg-skeleton" />
+                        <div className="h-2.5 w-2/3 animate-pulse rounded-full bg-skeleton" />
                       </div>
                     </div>
                   ))
@@ -2307,12 +2319,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             </>
           ) : loading || deepAktiv ? (
             <div aria-hidden className="space-y-3 pt-1">
-              <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-24 animate-pulse rounded bg-skeleton" />
               {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-8 animate-pulse rounded-full bg-muted"
+                <div key={i} className="h-8 animate-pulse rounded-full bg-skeleton"
                   style={{ animationDelay: `${i * 120}ms` }} />
               ))}
-              <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-32 animate-pulse rounded bg-skeleton" />
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
@@ -2737,6 +2749,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                   : zitierte.length === 0 && turn.rules_of_procedure
                   ? <>Automatische Antwort aus der Geschäftsordnung des Rates — kann unvollständig sein. Wortlaut prüfen.</>
                   : <>Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.</>}
+                {/* Ohne Trennpunkt: Bricht die Zeile um, stünde sonst ein „·“ am Zeilenanfang. */}
+                {!turn.unclear && <KiInDerEu className="ml-2" />}
               </span>
             </div>
           )}
@@ -3084,32 +3098,29 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
     () => turn.sources.filter((s) => !idToNum.has(s.id)),
     [turn.sources, idToNum]);
   return (
-    <div>
-      <p className="font-mono text-meta uppercase tracking-[0.08em] text-muted-foreground">
-        Quellen
-        <span className="ml-1.5 normal-case tracking-normal">
-          {zitierte.length > 0 ? `${zitierte.length} zitiert · ` : ""}{turn.sources.length} gefunden
-          {turn.mode ? ` · ${MODE_LABEL[turn.mode] ?? turn.mode}` : ""}
-        </span>
-      </p>
+    <QuellenAbschnitt icon={Landmark} titel="Beschlüsse"
+      zusatz={zitierte.length > 0 ? `${zitierte.length} zitiert · ${turn.sources.length}` : `${turn.sources.length} gefunden`}>
       {/* Titel, Gremium und Datum bleiben vollständig lesbar — gerade der
-          Projektname steht in amtlichen Titeln oft erst am Ende. */}
+          Projektname steht in amtlichen Titeln oft erst am Ende. Eine Stufe
+          leiser als bis 11/2026 (16 px fett, je eine eigene Karte): Drei
+          zitierte Beschlüsse füllten die halbe Spalte, und darunter sah man
+          die Wortbeiträge kaum noch (Tim 08.11.2026). */}
       {zitierte.length > 0 && (
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="-mx-1.5 flex flex-col">
           {zitierte.map((s) => (
             <button key={s.id} type="button" id={`${ankerPrefix}-${s.id}`}
               onClick={() => router.push(decisionHref(s.id))}
               title={`${s.title ?? ""} — ${s.committee} · ${fmtDatum(s.session_date)}`}
               className={cn(
-                "flex w-full items-start gap-2.5 rounded-xl border border-border bg-card p-3 text-left transition-[background-color,box-shadow] hover:bg-muted",
+                "flex w-full items-start gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-[background-color,box-shadow] hover:bg-muted",
                 flashId === s.id && "ring-2 ring-primary",
               )}>
-              <span aria-hidden className="mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md bg-primary px-1 text-meta font-bold text-primary-foreground">
+              <span aria-hidden className="mt-px flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-primary px-1 text-[11px] font-bold text-primary-foreground">
                 {idToNum.get(s.id)}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block break-words text-quelle font-semibold">{s.title}</span>
-                <span className="mt-1 block break-words font-mono text-meta text-muted-foreground">
+                <span className="block break-words text-sm font-medium leading-snug">{s.title}</span>
+                <span className="mt-0.5 block break-words font-mono text-[11.5px] text-muted-foreground">
                   {[s.committee, fmtDatum(s.session_date)].filter(Boolean).join(" · ")}
                 </span>
                 {turn.qtype === "party" && s.factions && s.factions.length > 0 && (
@@ -3132,46 +3143,47 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
       {/* Ausklapper: die übrigen Treffer in Relevanz-Reihenfolge, mit Gremium ·
           Datum + Score. */}
       {weitere.length > 0 && (
-        <button type="button" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}
-          className="mt-2 flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          {showAll ? (<><ChevronUp className="h-3.5 w-3.5" /> Weniger</>)
-            : zitierte.length > 0
-              ? (<><ChevronDown className="h-3.5 w-3.5" /> {weitere.length} weitere</>)
-              : (<><ChevronDown className="h-3.5 w-3.5" /> Alle {weitere.length}</>)}
-        </button>
+        <MehrKnopf offen={showAll} anzahl={weitere.length} einheit={zitierte.length > 0 ? "weitere" : "gefunden"}
+          onClick={() => setShowAll((v) => !v)} />
+      )}
+      {/* Wie gesucht wurde, stand bis 11/2026 in der Kopfzeile und brach sie
+          in der schmalen Spalte über drei Zeilen um. */}
+      {turn.mode && (
+        <p className="mt-2 text-[11.5px] text-muted-foreground">Suchweg: {MODE_LABEL[turn.mode] ?? turn.mode}</p>
       )}
       {showAll && weitere.length > 0 && (
-        <div className="mt-2 space-y-1">
+        <div className="-mx-1.5 mt-2 space-y-0.5">
           {zitierte.length > 0 && (
-            <p className="px-2 pb-0.5 text-hinweis text-muted-foreground">
-              Gefunden und documents_read, in der Antwort aber nicht zitiert:
+            <p className="px-1.5 pb-1 text-[12.5px] text-muted-foreground">
+              Gefunden und gelesen, in der Antwort aber nicht zitiert:
             </p>
           )}
           {weitere.map((s) => (
             <div key={s.id} id={`${ankerPrefix}-alle-${s.id}`}
               className={cn(
-                "group flex w-full flex-wrap items-start gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted",
+                "group flex w-full items-start gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-muted",
                 flashId === s.id && "ring-2 ring-primary",
               )}>
               <button type="button" onClick={() => router.push(decisionHref(s.id))}
                 className="flex min-w-0 flex-1 items-baseline gap-2 text-left">
                 <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 self-start rounded-full bg-border" />
                 <span className="min-w-0 flex-1">
-                  <span className="block break-words text-quelle font-medium">{s.title}</span>
-                  <span className="mt-1 block break-words font-mono text-meta text-muted-foreground">
+                  <span className="block break-words text-sm font-medium leading-snug">{s.title}</span>
+                  {/* Die Trefferstärke leise in der Zeile darunter — als eigene
+                      Spalte neben dem Titel drückte „Score 96" den Titel
+                      zusammen und las sich wie ein Teil davon. */}
+                  <span className="mt-0.5 block break-words font-mono text-[11.5px] text-muted-foreground">
                     {s.committee} · {fmtDatum(s.session_date)}
+                    {typeof s.score === "number" && <> · Treffer {Math.round(s.score * 100)}&thinsp;%</>}
                   </span>
                   {s.location_matches?.[0] && (
-                    <span className="mt-1 flex items-center gap-1 text-meta text-muted-foreground">
+                    <span className="mt-1 flex items-center gap-1 text-[11.5px] text-muted-foreground">
                       <MapPin className="h-3 w-3" aria-hidden />
                       Ortsbezug: {s.location_matches[0].name}
                     </span>
                   )}
                 </span>
               </button>
-              {typeof s.score === "number" && (
-                <span className="font-mono text-meta text-muted-foreground">Score {Math.round(s.score * 100)}</span>
-              )}
               {/* 5a/I-08: das Gespräch direkt an einer Quelle weiterführen. */}
               {onDazuFragen && (
                 <button type="button" onClick={() => onDazuFragen(s.title ?? "")}
@@ -3184,7 +3196,7 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
           ))}
         </div>
       )}
-    </div>
+    </QuellenAbschnitt>
   );
 }
 
@@ -3218,7 +3230,7 @@ function TeilenKnopf({ turn }: { turn: Turn }) {
         }
         const r = await fetch(apiUrl("/council/qa-share"), {
           method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json", ...authHeaders() },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(kennung),
         });
         if (!r.ok) throw new Error(String(r.status));
@@ -3231,8 +3243,7 @@ function TeilenKnopf({ turn }: { turn: Turn }) {
         setLaedt(false);
       }
     }
-    const base = isNativeApp() ? "https://ratslotse.de" : window.location.origin;
-    const url = `${base}/g?t=${token}`;
+    const url = `${window.location.origin}/g?t=${token}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: `Ratslotse: ${turn.question}`, url });
@@ -3503,7 +3514,7 @@ function ParteienBaustein({ question, beschlussIds, answerId, onFrageStellen }: 
     let aktiv = true;
     fetch(apiUrl("/council/party-meinungen"), {
       method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json" },
       // Die belegten Beschlüsse mitgeben: Über sie holt der Endpoint die
       // Aussprache, die ZU diesen Stationen gehört — die Ähnlichkeitssuche
       // allein fand je Fraktion oft nur einen Beitrag (Tims Befund 21.08.).

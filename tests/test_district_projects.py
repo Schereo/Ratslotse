@@ -240,6 +240,11 @@ def test_endpunkte_mit_konto_und_melden():
     assert tafel["place"]["id"] == "kreyenbrueck"
     assert [p["name"] for p in tafel["projects"]] == ["Wohnungen Sandkruger Straße"]
     assert tafel["projects"][0]["decisions"][0]["id"] == 10
+    # „Zuletzt im Rat" nennt, WAS dort war: den Kernsatz des jüngsten Beschlusses.
+    assert tafel["projects"][0]["latest_update"] == {
+        "decision_id": 10, "date": "2026-05-04", "committee": "Rat",
+        "title": "Bebauungsplan 81 (Sandkruger Straße) - Aufstellungsbeschluss",
+        "outcome": "accepted", "summary": "70 Wohnungen an der Sandkruger Straße."}
     assert tafel["projects"][0]["reported"] is False
     assert len(tafel["neighbours"]) == 3
     # Eine laufende Beteiligung zum Plan bekommt den Umring als Fläche (Schritt 4
@@ -470,6 +475,92 @@ def test_linie_wird_auf_den_ortsbereich_beschnitten():
     assert geo.auf_ortsbereich_beschneiden(flaeche, "Kreyenbrück") == flaeche
 
 
+def _line_kreyenbrueck_to_innenstadt(n: int = 40) -> list[list[float]]:
+    from council import geo
+    k = geo.ortsbereich_center("Kreyenbrück")
+    i = geo.ortsbereich_center("Innenstadt")
+    assert k and i
+    # Sieben Nachkommastellen wie bei OSM — die Tafel rundet sie auf fünf.
+    return [[round(k[1] + (i[1] - k[1]) * j / n, 7) + 1.3e-7,
+             round(k[0] + (i[0] - k[0]) * j / n, 7) + 1.3e-7] for j in range(n + 1)]
+
+
+def test_board_geometry_is_rounded_and_matches_the_clip():
+    """Die Tafel zeigt den Zuschnitt aus ``geo`` — gerundet auf fünf Stellen
+    (gut ein Meter), Pin auf dem Stück im Viertel. Flächen bleiben ganz, ohne
+    Ortsbereich wird nur gerundet, und was keine Linie oder Fläche ist, hat
+    keine Geometrie."""
+    from council import geo
+    from council.store_viertel import _board_geometry
+    line = {"type": "LineString", "coordinates": _line_kreyenbrueck_to_innenstadt()}
+    text, pin = _board_geometry(json.dumps(line), "Kreyenbrück")
+    expected = geo.auf_ortsbereich_beschneiden(line, "Kreyenbrück")
+    assert json.loads(text) == {"type": expected["type"],
+                                "coordinates": [[round(x, 5), round(y, 5)] for x, y in expected["coordinates"]]}
+    middle = geo.linien_mittelpunkt(expected)
+    assert pin == (round(middle[0], 5), round(middle[1], 5))
+    assert _board_geometry(json.dumps(line), "Nordmoslesfehn") == (None, None)
+
+    area = {"type": "Polygon", "coordinates": [line["coordinates"][:3] + [line["coordinates"][0]]]}
+    text, pin = _board_geometry(json.dumps(area), "Innenstadt")
+    assert pin is None
+    assert json.loads(text)["coordinates"] == [[[round(x, 5), round(y, 5)] for x, y in area["coordinates"][0]]]
+    text, _ = _board_geometry(json.dumps(line), None)
+    assert len(json.loads(text)["coordinates"]) == len(line["coordinates"]), "ohne Ortsbereich kein Zuschnitt"
+    assert _board_geometry(json.dumps({"type": "Point", "coordinates": [8.2, 53.1]}), "Kreyenbrück") == (None, None)
+    assert _board_geometry("kein json", "Kreyenbrück") == (None, None)
+
+
+def test_board_returns_fresh_geometries_per_call():
+    """Der Zuschnitt ist zwischengespeichert. Wer die gelieferte Geometrie
+    verändert, darf damit nicht den nächsten Aufruf — einer anderen Person —
+    verändern: Der Speicher hält Text, jede Antwort bekommt ihr eigenes Objekt."""
+    store = _store()
+    _seed(store)
+    points = _line_kreyenbrueck_to_innenstadt()
+    with store._conn:
+        store._conn.execute("UPDATE council_locations SET lat = ?, lon = ?, geojson = ? WHERE slug = 'sandkruger-strasse'",
+                            (points[0][1], points[0][0], json.dumps({"type": "LineString", "coordinates": points})))
+    store.replace_district_projects("kreyenbrueck", [
+        {"name": "Wohnungen Sandkruger Straße", "what": "70 Wohnungen.", "stage": "planning", "when": "2028",
+         "category": "housing", "decision_ids": [10], "confidence": 97},
+    ])
+    first = store.district_projects("kreyenbrueck")[0]["locations"][0]
+    assert first["geometry"]["type"] == "LineString"
+    assert all(len(str(x).split(".")[1]) <= 5 for p in first["geometry"]["coordinates"] for x in p)
+    assert len(str(first["lat"]).split(".")[1]) <= 5 and len(str(first["lon"]).split(".")[1]) <= 5
+    before = json.dumps(first["geometry"])
+    first["geometry"]["coordinates"].clear()
+    second = store.district_projects("kreyenbrueck")[0]["locations"][0]
+    assert json.dumps(second["geometry"]) == before
+    store.close()
+
+
+def test_investments_name_the_longest_location():
+    """Der Vorfilter (eine Alternation über alle Namen) ändert nichts an der
+    Auswahl: ganzes Wort, ohne Groß/Klein, der längste Name gewinnt."""
+    store = _store()
+    _seed(store)
+    with store._conn:
+        store._conn.executemany(
+            "INSERT INTO council_locations (slug, name, kind, district, local_area_id, updated_at) "
+            "VALUES (?, ?, 'street', 'Kreyenbrück', 'kreyenbrueck', '2026-01-01')",
+            [("sandkruger-strasse-nord", "Sandkruger Straße Nord"), ("am-bahndamm", "Am Bahndamm")])
+        store._conn.executemany(
+            "INSERT INTO council_location_districts (location_slug, district, place_id, share) "
+            "VALUES (?, 'Kreyenbrück', 'kreyenbrueck', 1.0)", [("sandkruger-strasse-nord",), ("am-bahndamm",)])
+        store._conn.executemany(
+            "INSERT INTO council_investment_measures (year, level, code, label, grand_total, fetched_at) "
+            "VALUES (2026, 'measure', ?, ?, ?, '2026-01-01')",
+            [("I1", "Ausbau Sandkruger Straße Nord", 900.0), ("I2", "Radweg sandkruger straße", 800.0),
+             ("I3", "Sandkruger Straßenfest", 700.0), ("I4", "Brücke Am Bahndammweg", 600.0),
+             ("I5", "Schule am Bahndamm", 500.0), ("I6", "Rathaus", 400.0)])
+    place = store.resolve_place("kreyenbrueck")
+    hits = [(i["code"], i["location"]) for i in store.district_investments(place)]
+    assert hits == [("I1", "Sandkruger Straße Nord"), ("I2", "Sandkruger Straße"), ("I5", "Am Bahndamm")]
+    store.close()
+
+
 def test_lauf_ueberlebt_einen_scheiternden_ortsbereich(monkeypatch):
     """Ein Rate-Limit in der Bündelung eines Viertels darf nicht die übrigen
     30 mitreißen — auf dev starb der erste Stadtlauf nach vier von 31."""
@@ -543,3 +634,31 @@ def test_abschnittsgrenzen_sind_kein_gegenstand():
     assert ortsrollen(["Rüschenweg"], ["Flächen zwischen der A 29 und dem Rüschenweg"]) == {"Rüschenweg": "boundary"}
     # Nicht im Text (Katalog-Variante) → Gegenstand, nie still weg.
     assert ortsrollen(["Huntemannstr"], ["Kita an der Huntemannstraße"]) == {"Huntemannstr": "subject"}
+
+
+def test_letztes_update_beschluss_vor_kenntnisnahme():
+    """Am selben Sitzungstag zählt der Beschluss, nicht der Bericht daneben —
+    sonst hieße das Update „zur Kenntnis genommen" (Krusenbusch, 21.05.2026)."""
+    store = _store()
+    _seed(store)
+    with store._conn as c:
+        c.execute("INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
+                  "VALUES (2, 'Ausschuss für Stadtplanung und Bauen', '2026-06-01', '17:00', 'Rathaus', '2026-05-01')")
+        c.executemany(
+            "INSERT INTO council_decisions (id, ksinr, position, title, summary, official_text, outcome, kind) "
+            "VALUES (?, 2, ?, ?, ?, '', ?, 'decision')",
+            [(20, 1, "Bebauungsplan 81 - Aufstellung", "Aufstellung beschlossen.", "accepted"),
+             (21, 2, "Bebauungsplan 81 - Grundzüge", "Bericht zur Kenntnis genommen.", "noted"),
+             # Ohne Titel brach die ganze Tafel mit 500 ab (Vertrag: title str).
+             (22, 3, None, "Die Verwaltung prüft.", "noted")])
+    store.replace_district_projects("kreyenbrueck", [
+        {"name": "Wohnungen Sandkruger Straße", "what": "70 Wohnungen.", "stage": "planning", "when": None,
+         "category": "housing", "decision_ids": [10, 20, 21, 22], "confidence": 97},
+    ])
+    projekt = store.district_projects("kreyenbrueck")[0]
+    store.close()
+    assert [d["id"] for d in projekt["decisions"]] == [22, 21, 20, 10]
+    assert projekt["decisions"][0]["title"] == "Die Verwaltung prüft."
+    assert projekt["latest_update"]["decision_id"] == 20
+    assert projekt["latest_update"]["summary"] == "Aufstellung beschlossen."
+    assert "summary" not in projekt["decisions"][0]

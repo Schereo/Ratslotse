@@ -8,7 +8,7 @@ import { MemberDetail, PersonProfil, VerwaltungDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { PartyBadge, partyBrand, AffiliationBadge } from "@/components/decision-ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { apiUrl, authHeaders, istNichtGefunden } from "@/lib/api";
+import { apiUrl, istNichtGefunden } from "@/lib/api";
 import { useFetch } from "@/lib/use-fetch";
 import { AbrufFehler } from "@/components/abruf-fehler";
 import { cn } from "@/lib/utils";
@@ -518,7 +518,7 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
       const p = new URLSearchParams({ offset: String(ab), limit: "20" });
       if (naechstesGremium) p.set("committee", naechstesGremium);
       const r = await fetch(apiUrl(`/council/person/${encodeURIComponent(slug)}/speeches?${p}`),
-        { credentials: "include", headers: authHeaders() });
+        { credentials: "include" });
       if (!r.ok) throw new Error();
       const b = await r.json();
       setItems((alt) => (ab === 0 ? b.items : [...alt, ...b.items]));

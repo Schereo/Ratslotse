@@ -332,3 +332,33 @@ public enum LottiPlacement {
         enabled && !keyboardVisible && ExplainScreen.from(route) != nil ? pageInset : 0
     }
 }
+
+// MARK: - Ein Link, der Lotti öffnet
+
+/// Was aus der Bitte eines Links auf `/dashboard?lotti=1` wird
+/// (`AppRoute.assistant`) — ohne Oberfläche, wie `LottiPlacement`.
+///
+/// Im Web greift der Parameter, sobald das Fenster gehen darf, und bis dahin
+/// bleibt er stehen (#1749). Hier dasselbe, nur dass die App keine Adresse
+/// hat, an der er stehen bliebe: Die Bitte wartet in `AppModel`.
+public enum LottiRequest {
+    public enum Outcome: Sendable, Equatable {
+        /// Noch nicht zu entscheiden: Der Schalter ist unbekannt (der Link
+        /// kam beim Kaltstart vor `/api/app-config`), Anmeldung oder
+        /// Einrichtung laufen, das Mehr-Blatt oder die Tour liegen obenauf.
+        case wait
+        case open
+        /// Schalter aus — dann bleibt es bei Heute, wie in der ausgelieferten
+        /// App. Oder man steht inzwischen woanders: Ein Blatt zu „Heute" über
+        /// einer anderen Seite erklärte die falsche Sache.
+        case drop
+    }
+
+    public static func outcome(featuresLoaded: Bool, enabled: Bool, mainView: Bool,
+                               busy: Bool, screen: ExplainScreen?) -> Outcome {
+        guard featuresLoaded else { return .wait }
+        guard enabled else { return .drop }
+        guard mainView, !busy else { return .wait }
+        return screen == ExplainScreen.from(.tab(.today)) ? .open : .drop
+    }
+}

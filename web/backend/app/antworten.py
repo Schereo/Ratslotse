@@ -876,6 +876,10 @@ class TopicDescription(TypedDict):
     #: Feld ergaben elf Treffer mit durchweg negativer Relevanz, als sieben
     #: Themen wäre es je Stadtteil eine saubere Meldung gewesen.
     parts: list[str]
+    #: Die Treffer im Zwölf-Monats-Fenster der Themenzeile (``hits_12m``).
+    #: Fehlt nur, wenn der Cross-Encoder gerade nicht zählen konnte; dann
+    #: steht in ``matches`` allein der Bestand seit 2018.
+    matches_12m: NotRequired[int]
 
 
 class UnreadTopicHits(TypedDict):
@@ -1988,6 +1992,10 @@ class MovementDetail(TypedDict):
     #: Oldenburgs eigene Vorlagen in derselben Gruppe, aufgelöst wie Belege.
     oldenburg_documents: list[IdeaEvidence]
     similar: list[MovementSimilar]
+    #: Wie frisch der Bestand der Städte DIESER Idee ist („Stand: …"). Seit
+    #: 11/2026 hier statt über die ganze Themenfeld-Übersicht; fehlt bei
+    #: älteren Servern.
+    data_status: NotRequired[IdeaDataStatus]
 
 
 class ElsewhereResponse(TypedDict):
@@ -2761,6 +2769,28 @@ class DecisionFollow(TypedDict):
     following: bool
 
 
+class DecisionNeighbor(TypedDict):
+    """Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht."""
+    id: int
+    item_number: str | None
+    title: str | None
+
+
+class DecisionNeighbors(TypedDict):
+    """Wo der Beschluss unter den Beschlüssen seiner Sitzung steht
+    (``CouncilStore.decision_neighbors``).
+
+    ``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist
+    NICHT die TOP-Nummer und nicht die Protokoll-Position: Eine
+    Tagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am
+    Rand als ``null``.
+    """
+    position: int
+    total: int
+    prev: DecisionNeighbor | None
+    next: DecisionNeighbor | None
+
+
 class SimilarDecision(TypedDict):
     """Ein semantischer Nachbar (``CouncilStore.get_similar``)."""
     id: int
@@ -2848,6 +2878,9 @@ class DecisionDetail(TypedDict):
     plan_image: NotRequired[int | None]
     deliberation_path: NotRequired[list[DeliberationStation]]
     follow: NotRequired[DecisionFollow]
+    # Optional, weil die ausgelieferte App das Feld nicht kennt und ältere
+    # Antworten (Fixturen, Schnappschüsse) es nicht tragen.
+    neighbors: NotRequired[DecisionNeighbors | None]
 
 
 class QaShare(TypedDict):
@@ -3190,6 +3223,20 @@ class DistrictProjectDecision(TypedDict):
     committee: str | None
 
 
+class DistrictProjectUpdate(TypedDict):
+    """Der jüngste Beschluss eines Vorhabens — „was war zuletzt im Rat?". Am
+    selben Sitzungstag geht ein Beschluss einer Kenntnisnahme vor.
+    ``summary`` ist der Kernsatz des Beschlusses (``council_decisions.summary``)
+    und fehlt nur, solange das Protokoll noch nicht ausgewertet ist; dann
+    bleibt der Titel."""
+    decision_id: int
+    date: str
+    committee: str | None
+    title: str
+    outcome: str | None
+    summary: str | None
+
+
 class DistrictPlanInfo(TypedDict):
     """Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und
     die Stationen des Verfahrens aus den offenen Geodaten der Stadt."""
@@ -3245,6 +3292,9 @@ class DistrictProject(TypedDict):
     hidden: bool
     reported: bool
     decisions: list[DistrictProjectDecision]
+    #: Der jüngste Beschluss samt Kurzfassung; null ohne Beschluss. Optional,
+    #: weil ältere Server es nicht kennen.
+    latest_update: NotRequired[DistrictProjectUpdate | None]
     locations: list[DistrictProjectLocation]
     #: Abgeleitet aus ``when`` und dem heutigen Datum (``council/viertel_zeitplan.py``):
     #: ``likely_done`` (im Bau, Zeitraum vorbei), ``overdue`` (Planung/beschlossen,
@@ -5106,6 +5156,8 @@ class ElectionAreaParty(TypedDict):
     share_pct: float | None
     seats: int | None
     projected_seats: int | None
+    #: Leer bei ``/api/wahlabend?area_candidates=false`` — die Seite holt die
+    #: Kandidaturen erst mit dem Reiter, der sie zeigt.
     candidates: list[ElectionCandidate]
 
 

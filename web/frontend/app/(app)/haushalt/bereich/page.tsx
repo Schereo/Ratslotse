@@ -4,9 +4,8 @@
 // Karte für Karte der Beleg — Anzeigetafel mit Gegenbalken im Kopf,
 // Brutto-gegen-Netto-Umschalter (das Lehrstück), Was steckt drin, Entwicklung.
 //
-// Query-Param statt dynamischem Segment (/haushalt/bereich?name=…): Der
-// Capacitor-Export (output: export) kennt die Bereichs-Slugs zur Bauzeit
-// nicht — dieselbe Konvention wie die Beschluss-Seite (/council/decision?id=).
+// Query-Param statt dynamischem Segment (/haushalt/bereich?name=…) — dieselbe
+// Konvention wie die Beschluss-Seite (/council/decision?id=).
 //
 // DREI ÄNDERUNGEN AM BESTAND, jede mit einem Grund:
 //
@@ -38,7 +37,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ChevronRight, MessageCircle, Search } from "lucide-react";
 import { Segmented } from "@/components/ui";
-import { useFetch } from "@/lib/use-fetch";
+import { useFetch, usePreload } from "@/lib/use-fetch";
 import { fragenHref } from "@/lib/routes";
 import {
   ERTRAGSART_KURZ, HaushaltAuswahl, haushaltUrl, HaushaltZeile, PLAN_ART_LABEL, PlanArt,
@@ -55,8 +54,8 @@ import { Summe } from "@/components/haushalt/tafel";
 import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { Datenstand } from "@/components/haushalt/datenstand";
 import { ZuschuesseBereich } from "@/components/haushalt/zuschuesse-bereich";
-import { VorberichtBereich } from "@/components/haushalt/vorbericht-bereich";
-import { BudgetberichtBereich } from "@/components/haushalt/budgetbericht-bereich";
+import { VorberichtBereich, notesUrl } from "@/components/haushalt/vorbericht-bereich";
+import { BudgetberichtBereich, measuresUrl } from "@/components/haushalt/budgetbericht-bereich";
 import { cn } from "@/lib/utils";
 import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
@@ -179,9 +178,32 @@ function bereichAusParam(zeilen: HaushaltZeile[], eingang: string): HaushaltZeil
   return liste.find((r) => bereichSchluessel(r.area) === kanon.key);
 }
 
+/** Die Produkte eines Teilhaushalts im jüngsten Jahr mit Produktebene —
+ *  ohne `year` wählt der Endpunkt es selbst (dieselbe Liste wie
+ *  `product_years`). */
+const productsUrl = (subBudget: number) => `/council/budget/products?sub_budget=${subBudget}`;
+
+/** Der Teilhaushalt zur Adresse, allein aus der festen Tabelle — für das
+ *  Vorladen, bevor die Hauptdaten da sind. Trifft der Name nur über die
+ *  Zeilen der Hauptdaten (`bereichAusParam`), gibt es kein Vorladen; dann
+ *  fragen die Abschnitte wie bisher selbst. Ein Fehlgriff kostet nur eine
+ *  überflüssige Anfrage, angezeigt wird immer, was zum echten Bereich gehört. */
+function subBudgetFromSlug(slug: string): number | null {
+  const wanted = bereichSlug(slug);
+  if (!wanted) return null;
+  return BEREICHE.find((b) => bereichSlug(b.name) === wanted
+    || b.aliase.some((a) => bereichSlug(a) === wanted))?.sub_budget ?? null;
+}
+
 function BereichInner() {
   const slug = useSearchParams().get("name") ?? "";
   const { data, loading } = useFetch<Daten>(haushaltUrl(FELDER));
+  // Vorbericht, Budgetbericht und Produkte montieren erst mit den
+  // Hauptdaten — ihre Abrufe laufen über die feste Tabelle gleich mit.
+  const staticSubBudget = subBudgetFromSlug(slug);
+  usePreload(staticSubBudget != null
+    ? [notesUrl(staticSubBudget), measuresUrl(staticSubBudget), productsUrl(staticSubBudget)]
+    : []);
   const [ranking, setRanking] = useState<"netto" | "brutto">("netto");
   const [reiter, setReiter] = useState<ReiterId>("ueberblick");
 
@@ -197,10 +219,11 @@ function BereichInner() {
     const js = (data?.product_years ?? []).slice().sort((a, b) => a - b);
     return js[js.length - 1] ?? null;
   }, [data]);
-  const { data: produkte } = useFetch<ProdukteAntwort>(
-    produktJahr != null && kanon?.sub_budget != null
-      ? `/council/budget/products?year=${produktJahr}&sub_budget=${kanon.sub_budget}`
-      : null);
+  // Ohne `year`: der Endpunkt nimmt das jüngste Jahr — benutzt wird die
+  // Antwort nur, wenn es das der Übersicht ist.
+  const { data: latestProducts } = useFetch<ProdukteAntwort>(
+    kanon?.sub_budget != null ? productsUrl(kanon.sub_budget) : null, { shared: true });
+  const produkte = latestProducts && latestProducts.year === produktJahr ? latestProducts : null;
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
@@ -218,7 +241,7 @@ function BereichInner() {
           <ul className="mt-4 flex flex-wrap justify-center gap-1.5">
             {auswahl.map((r) => (
               <li key={r.area}>
-                <Link href={`/haushalt/bereich?name=${bereichSlug(r.area)}`}
+                <Link href={`/haushalt/bereich?name=${bereichSlug(r.area)}`} prefetch={false}
                   className="inline-flex min-h-[32px] items-center rounded-full border border-border bg-card px-3 text-[12.5px] font-semibold text-foreground hover:border-primary/40">
                   {r.area}
                 </Link>
@@ -531,6 +554,7 @@ function BereichInner() {
                 return (
                   <Link key={p.product_no}
                     href={`/haushalt/produkte?nr=${encodeURIComponent(p.product_no)}`}
+                    prefetch={false}
                     className="flex items-baseline gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
                     <span className="min-w-0 flex-1 truncate text-[12.5px]">{p.product_name}</span>
                     <span className="flex-none whitespace-nowrap font-mono text-[11.5px] tabular-nums">

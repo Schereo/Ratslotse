@@ -178,7 +178,15 @@ def _judge(case: dict, bericht: str) -> dict:
     return {}
 
 
-def _bewerten(case: dict, urteil: dict) -> dict:
+def _bewerten(case: dict, urteil: dict, punktregel: bool = False) -> dict:
+    """Abdeckung, Verstöße, bestanden.
+
+    ``punktregel`` (nur „Frag den Rat“): Ein Fall mit ``"punktfrage": true``
+    gilt als bestanden, sobald die Kernfakten (Gewicht 3) erfüllt sind und
+    nichts Verbotenes fällt — ohne die 60-%-Schwelle. Eine Punktfrage
+    („Wann hat der Rat … beschlossen?“) trug bis zu zehn Pflichtfakten; eine
+    knappe, richtige Antwort fiel damit durch (Tim, 18.10.2026). Die
+    Recherche schreibt einen Bericht und behält die volle Regel."""
     gesamt = sum(p["gewicht"] for p in case["pflicht"])
     erfuellt = [p["id"] for p in case["pflicht"]
                 if (urteil.get("pflicht", {}).get(p["id"]) or {}).get("ok")]
@@ -186,7 +194,8 @@ def _bewerten(case: dict, urteil: dict) -> dict:
     verstoesse = [v["id"] for v in case["verboten"]
                   if (urteil.get("verboten", {}).get(v["id"]) or {}).get("verstoss")]
     kern = [p["id"] for p in case["pflicht"] if p["gewicht"] >= 3]
-    bestanden = (abdeckung >= 0.6 and all(k in erfuellt for k in kern) and not verstoesse)
+    schwelle = 0.0 if (punktregel and case.get("punktfrage")) else 0.6
+    bestanden = (abdeckung >= schwelle and all(k in erfuellt for k in kern) and not verstoesse)
     return {"abdeckung": round(abdeckung, 2), "erfuellt": erfuellt,
             "verfehlt": [p["id"] for p in case["pflicht"] if p["id"] not in erfuellt],
             "verstoesse": verstoesse, "bestanden": bestanden}

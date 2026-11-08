@@ -915,10 +915,20 @@ die volle Breite. Nur horizontale Sitzungstrenner, keine seitliche Linie
 oder dekorativen Aufzählungspunkte.
 Der breite Rückblick kann zwei Sitzungen als direkte Vorschau zeigen.
 „Mein Viertel“ zeigt pro gewähltem Viertel die jüngste belegte Entwicklung:
-Vorhaben, kurze Erklärung, Stand und ausdrücklich das Datum der letzten
-Ratsberatung. Eine Beratung in den nächsten 14 Tagen bekommt Vorrang und
-führt direkt zum Tagesordnungspunkt. Das Indexdatum ist kein Neuigkeitsdatum.
-Zahlen heißen immer „Vorhaben“. Kompakt zunächst zwei Viertel, sonst drei,
+Vorhaben, kurze Erklärung, Stand und ausdrücklich, **was** zuletzt im Rat
+war — Datum, Gremium und der Kernsatz des jüngsten Beschlusses (vom Server
+als `latest_update`; am selben Tag geht ein Beschluss einer Kenntnisnahme
+vor), verlinkt auf die Beschlussseite. Ein Datum allein ließ offen, was das
+Update war (Tims Befund 08.11.2026). Der Stand steht als Weg aus fünf
+Segmenten (Idee, Planung, Beschluss, Bau, Fertig) in der Farbe der
+Kartenpunkte; beschriftet erst ab 24 rem eigener Breite, schmaler nennt
+eine Zeile darunter nur die erreichte Stufe. „Abgelehnt“ liegt neben dem
+Weg und bleibt ein Abzeichen. Hat ein Viertel mehrere Vorhaben, blättern
+stille Pfeile im Kopf („‹ 1 von 2 ›“ — das Wort „Vorhaben“ nur für den
+Screenreader, sichtbar machte es den Kopf schwer), die jüngste Beratung zuerst.
+Eine Beratung in den nächsten 14 Tagen bekommt Vorrang: Sie steht als
+getönte Zeile über dem Vorhaben und führt direkt zum Tagesordnungspunkt.
+Das Indexdatum ist kein Neuigkeitsdatum. Zahlen heißen immer „Vorhaben“. Kompakt zunächst zwei Viertel, sonst drei,
 weitere auf Knopfdruck; die jüngsten Ratsstände zuerst. Breit stehen die
 Viertel nebeneinander, schmal untereinander. Ortsnamen als leiser Kicker,
 Vorhabentitel als Hauptinformation, Stand als kleines beschriftetes Abzeichen.

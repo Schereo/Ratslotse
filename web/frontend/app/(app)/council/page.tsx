@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { istExport, vorschauMetadata } from "@/lib/share-metadata";
+import { vorschauMetadata } from "@/lib/share-metadata";
 import View from "./view";
 
 type Props = { searchParams: { ksinr?: string; q?: string; tab?: string } };
@@ -8,7 +8,6 @@ type Props = { searchParams: { ksinr?: string; q?: string; tab?: string } };
  *  (lib/routes.ts sessionHref). Mit Sitzung im Link zeigt die Vorschau Gremium
  *  und Datum, sonst bleibt es beim sprechenden Seitentitel. */
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  if (istExport()) return {};
   const ksinr = searchParams?.ksinr;
   if (ksinr) {
     return vorschauMetadata("sitzung", ksinr, `/council?tab=sessions&ksinr=${ksinr}`);

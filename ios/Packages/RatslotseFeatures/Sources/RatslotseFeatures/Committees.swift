@@ -65,6 +65,8 @@ enum Committee {
             "Kulturausschuss": e("Kultur", "Museen, Theater, Bibliotheken und die Förderung der freien Szene.", .drama, .people),
             "Schulausschuss": e("Schule", "Schulen, Ganztagsbetreuung und neue Bildungsstandorte.", .graduationCap, .people),
             "Sozialausschuss": e("Soziales", "Wohnen, Pflege, Teilhabe und soziale Angebote der Stadt.", .heartHandshake, .people),
+            // Seit der Wahlperiode 2026–2031 (erste Sitzungen 11/2026).
+            "Ausschuss für Gesundheit und Soziales": e("Gesundheit & Soziales", "Gesundheit, Pflege, Wohnen, Teilhabe und soziale Angebote der Stadt.", .heartHandshake, .people),
             "Sportausschuss": e("Sport", "Sportstätten, Vereinsförderung und Bäder.", .quiz, .people),
             "Verkehrsausschuss": e("Verkehr", "Radwege, Straßen, Bus & Bahn, Parken und Verkehrsberuhigung.", .bus, .built),
             // historische Umbenennungen (Bestand seit 2018)

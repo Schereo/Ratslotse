@@ -15,14 +15,14 @@ import Link from "next/link";
 import { deZahl } from "@/components/grafik/format";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { useFetch } from "@/lib/use-fetch";
+import { useFetch, usePreload } from "@/lib/use-fetch";
 import { HaushaltAuswahl, haushaltUrl, deMio } from "@/lib/haushalt";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import {
   STEUERARTEN, SPIELRAUM_LABEL, type SteuerArt, steuerartNachSlug,
 } from "@/lib/haushalt-taxes";
 import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
-import { VorberichtZahlen } from "@/components/haushalt/vorbericht-zahlen";
+import { VorberichtZahlen, prefaceFiguresUrl } from "@/components/haushalt/vorbericht-zahlen";
 
 /** Steuerart → Reihe im Vorbericht (council/vorbericht_zahlen.py). Nur die
  *  vier, für die der Vorbericht je ein Diagramm führt. */
@@ -83,13 +83,18 @@ const HEBESATZ_ABGELEHNT = {
 
 function SteuerInner() {
   const slug = useSearchParams().get("art") ?? "gewerbesteuer";
-  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
+  const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(
+    haushaltUrl(FELDER, NON_TAX_ITEMS));
   // Die Satzung kommt in einem EIGENEN Aufruf (wie auf /haushalt/schulden):
   // Sie trägt nur den vorgeschlagenen Hebesatz für den Befund unten, und der
   // Hauptaufruf dieser Seite soll dafür nicht wachsen.
   const { data: satzungDaten } = useFetch<
     HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
   const art = steuerartFinden(slug);
+  // Die Vorbericht-Karte fragt erst, wenn die Seite steht — die Reihe hängt
+  // aber nur an der Steuerart aus der Adresse.
+  const prefaceSeries = art ? VORBERICHT_REIHE[art.slug] : undefined;
+  usePreload([prefaceSeries ? prefaceFiguresUrl([prefaceSeries.key]) : null]);
 
   const series = useMemo(() => {
     if (!data || !art?.datenArt) return [];
@@ -746,7 +751,7 @@ function SteuerInner() {
 
       <div className="flex flex-wrap gap-2">
         {STEUERARTEN.filter((a) => a.slug !== art.slug).map((a) => (
-          <Link key={a.slug} href={`/haushalt/steuer?art=${a.slug}`}
+          <Link key={a.slug} href={`/haushalt/steuer?art=${a.slug}`} prefetch={false}
             className="rounded-full border border-border bg-card px-3 py-1.5 text-[11.5px] hover:border-primary/40">
             {a.title}
           </Link>
@@ -767,10 +772,19 @@ function SteuerInner() {
 // Befund zum abgelehnten Hebesatz-Vorschlag nicht überlebt, was er beschreibt.
 // `income_statement` kam am 24.08.2026 dazu — der zweite Weg an die Zahl, für
 // Einnahmearten, die keine Steuer sind (`ergebnisPosten`). Die Liste trägt
-// alle Jahrgänge und Teilhaushalte; gefiltert wird hier, nicht im Backend, wie
-// auf /haushalt/bereich und /haushalt/plan-ist auch.
+// alle Jahrgänge; gefiltert wird hier, wie auf /haushalt/bereich und
+// /haushalt/plan-ist auch — nur die Teilhaushalts-Ebene schneidet seit
+// 11/2026 schon das Backend auf die Posten zu, die hier vorkommen
+// (`NON_TAX_ITEMS`).
 const FELDER = ["taxes", "tax_capacity", "tax_plan", "tax_rates", "population",
   "budgeted_years", "income_statement", "trade_tax_statistics"] as const;
+/** Von der Teilhaushalts-Ebene braucht die Seite nur die Posten der
+ *  Einnahmearten, die keine Steuer sind (`EntgelteBereiche`) — abgeleitet aus
+ *  `STEUERARTEN`, damit eine neue Art ihren Posten von selbst mitbringt. Die
+ *  Kernverwaltung kommt ohnehin vollständig (auch Posten 12, der Nenner).
+ *  Ohne den Schnitt waren es 836 statt rund 260 KB je Aufruf. */
+const NON_TAX_ITEMS = [...new Set(STEUERARTEN.flatMap((a) => a.ergebnisPosten ?? []))]
+  .sort((a, b) => a - b).join(",");
 const SATZUNG_FELDER = ["budget_bylaw"] as const;
 
 export default function SteuerPage() {

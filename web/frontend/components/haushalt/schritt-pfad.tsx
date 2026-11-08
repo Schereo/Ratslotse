@@ -50,6 +50,13 @@
 //    bleibt schmaler als die Zeile darunter, die Blockbreite ändert sich
 //    also nicht.
 //
+// **Die Punkte laden nicht vor (`prefetch={false}`, 11/2026).** Der Pfad
+// steht im Seitenkopf, also sofort im Sichtbereich, und Next lädt jeden
+// sichtbaren `<Link>` samt RSC-Paket und Seiten-JS vor: zwölf Ziele auf jeder
+// Schritt-Seite, gemessen rund 200 KB JS, von denen man höchstens eines
+// braucht. Ein Klick auf einen Punkt kostet jetzt eine Rundreise. Vorgeladen
+// bleibt der Weiter-Link am Seitenende (`SchrittWeiter`) — der übliche Weg.
+//
 // Vergrößert wird der Punkt aus dem React-Zustand heraus, nicht per
 // `:hover` — dann gilt dieselbe Hervorhebung für die Tastatur (`focus`), und
 // das Fähnchen, das ohnehin am Zustand hängt, kann nicht danebenliegen.
@@ -165,6 +172,7 @@ export function SchrittPfad({ href, className }: {
                 <Link
                   key={s.nr}
                   href={s.href}
+                  prefetch={false}
                   aria-current={zustand === "aktuell" ? "page" : undefined}
                   aria-label={`Schritt ${s.nr}: ${s.title}${
                     zustand === "aktuell" ? " (diese Seite)"
@@ -187,6 +195,7 @@ export function SchrittPfad({ href, className }: {
           ALLE Punkte heißen, landet an der Liste, die sie erklärt. */}
       <Link
         href="/haushalt#wegweiser"
+        prefetch={false}
         className="font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:text-primary"
       >
         Schritt {schritt.nr} von {SCHRITTE.length} · {etappe.kicker}

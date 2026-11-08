@@ -60,55 +60,62 @@ export function ThemenKarte({
       className={cn("rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:px-[18px]", STAFFEL)}
       style={staffelStil(rang)}
     >
-      <div className="flex items-start justify-between gap-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          {/* Das Bild, mit dem das Thema im Assistenten angelegt wurde (nur die
-              kuratierten Stadtthemen — ein selbst getipptes hat keins). */}
-          {topic.image_key && (
-            // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={`/themen/${topic.image_key}.webp`} alt="" width={36} height={36}
-              loading="lazy" decoding="async"
-              className="h-9 w-9 shrink-0 rounded-lg bg-muted object-cover" />
-          )}
-          <h3 className="truncate font-display text-base font-semibold text-foreground">{topic.name}</h3>
-          {/* Das Abzeichen IST der Knopf, der es wegräumt. Vorher ging es nur
-              weg, wenn man „alle ansehen" antippte — wer die Treffer direkt auf
-              der Karte gelesen hatte, trug es weiter vor sich her (Tims Frage
-              28.08.2026). Einzelne Zeilen abzuhaken wäre die feinere, aber
-              mühsamere Lösung; gemeint ist ja „ich habe das hier gesehen". */}
-          {neu > 0 && (
-            <button
-              type="button" onClick={onAlleGelesen}
-              title="Alle als gelesen markieren"
-              aria-label={neu === 1
-                ? `1 neuen Treffer bei ${topic.name} als gelesen markieren`
-                : `${neu} neue Treffer bei ${topic.name} als gelesen markieren`}
-              className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-signal/[0.12] px-2 py-0.5 text-[11px] font-semibold text-signal transition-colors hover:bg-signal/20"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-signal group-hover:hidden" aria-hidden />
-              <Check className="hidden h-3 w-3 group-hover:block" aria-hidden />
-              {neu} {neu === 1 ? "neuer" : "neue"}
-            </button>
-          )}
-        </div>
-        <div className="flex shrink-0 gap-0.5">
-          <button
-            type="button" onClick={onEdit} title="Bearbeiten" aria-label={`${topic.name} bearbeiten`}
-            className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button" onClick={() => onLoeschFrage(true)} title="Löschen" aria-label={`${topic.name} löschen`}
-            className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+      <div className="flex items-start gap-3">
+        {/* Das Bild, mit dem das Thema im Assistenten angelegt wurde (nur die
+            kuratierten Stadtthemen — ein selbst getipptes hat keins). 64 px
+            wie auf den Ausschuss-Abos und leicht herangezoomt: Bei 36 px in
+            der Titelzeile war Lotti samt Requisit kaum zu erkennen (Tim
+            08.11.2026). Es steht deshalb neben Titel UND Beschreibung. */}
+        {topic.image_key && (
+          <span aria-hidden className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+            {/* Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs). */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/themen/${topic.image_key}.webp`} alt="" width={64} height={64}
+              loading="lazy" decoding="async" className="h-full w-full scale-[1.1] object-cover" />
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <h3 className="truncate font-display text-base font-semibold text-foreground">{topic.name}</h3>
+              {/* Das Abzeichen IST der Knopf, der es wegräumt. Vorher ging es nur
+                  weg, wenn man „alle ansehen" antippte — wer die Treffer direkt auf
+                  der Karte gelesen hatte, trug es weiter vor sich her (Tims Frage
+                  28.08.2026). Einzelne Zeilen abzuhaken wäre die feinere, aber
+                  mühsamere Lösung; gemeint ist ja „ich habe das hier gesehen". */}
+              {neu > 0 && (
+                <button
+                  type="button" onClick={onAlleGelesen}
+                  title="Alle als gelesen markieren"
+                  aria-label={neu === 1
+                    ? `1 neuen Treffer bei ${topic.name} als gelesen markieren`
+                    : `${neu} neue Treffer bei ${topic.name} als gelesen markieren`}
+                  className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-signal/[0.12] px-2 py-0.5 text-[11px] font-semibold text-signal transition-colors hover:bg-signal/20"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-signal group-hover:hidden" aria-hidden />
+                  <Check className="hidden h-3 w-3 group-hover:block" aria-hidden />
+                  {neu} {neu === 1 ? "neuer" : "neue"}
+                </button>
+              )}
+            </div>
+            <div className="flex shrink-0 gap-0.5">
+              <button
+                type="button" onClick={onEdit} title="Bearbeiten" aria-label={`${topic.name} bearbeiten`}
+                className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button" onClick={() => onLoeschFrage(true)} title="Löschen" aria-label={`${topic.name} löschen`}
+                className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+          <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">{topic.description}</p>
         </div>
       </div>
-
-      <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">{topic.description}</p>
 
       {/* Die Rückfrage steht IN der Karte, nicht in einem Dialog über der
           Seite: Sie betrifft genau dieses Thema, und man sieht beim Antworten

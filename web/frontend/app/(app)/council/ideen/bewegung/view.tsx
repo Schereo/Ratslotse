@@ -4,8 +4,8 @@
  * Die Ideen-Seite: EINE Idee, wie sie durch die Räte lief — und ob Oldenburg
  * sie hat.
  *
- * Adresse `?id=<cluster_id>` statt eines Pfadsegments: Der statische Export
- * kennt keine dynamischen Pfade (`web/frontend/CLAUDE.md`). `von` trägt den
+ * Adresse `?id=<cluster_id>` statt eines Pfadsegments, wie alle Detailseiten
+ * (`web/frontend/CLAUDE.md`). `von` trägt den
  * Zustand der Übersicht (Feld, Filter, Suche), damit „Zurück" ihn wiederfindet
  * — in der Adresse, nicht im Speicher.
  *
@@ -429,18 +429,13 @@ export default function View() {
   const { data, isPending, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["bewegung", id],
     queryFn: () => api.get<Detail>(`/council/cities/movements/detail?id=${id}`),
-    enabled: an && Number.isFinite(id) && id > 0,
+    // Nicht erst nach /app-config: Der Endpunkt prüft den Schalter nicht, ein
+    // früher Abruf spart eine Netzlaufzeit — und ist der Schalter aus, bleibt
+    // es beim 404 unten.
+    enabled: (an || cfg.isPending) && Number.isFinite(id) && id > 0,
     staleTime: 10 * 60 * 1000,
     // Ein 404 wird nicht wiederholt — die Idee kommt davon nicht zurück.
     retry: (n, e) => !istNichtGefunden(e) && n < 2,
-  });
-  // Derselbe Abruf wie auf der Übersicht (gleicher Schlüssel, also meist
-  // schon im Speicher) — für „Stand: …" unter der Überschrift.
-  const { data: felder } = useQuery({
-    queryKey: ["ideen-felder"],
-    queryFn: () => api.get<ApiAntwort<"/council/cities/ideas/fields">>("/council/cities/ideas/fields"),
-    staleTime: 60 * 60 * 1000,
-    enabled: an,
   });
   const dokumente = useMemo(
     () => [...(data?.documents ?? [])].sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999")),
@@ -482,12 +477,11 @@ export default function View() {
     );
   }
   if (!data) return <DetailSkeleton />;
-  // Der Hinweis auf alten Bestand nur für Städte, die in DIESER Idee stehen.
-  const dabei = new Set(data.movement.cities.map((c) => c.body_id));
-  const { stand, luecke } = standZeilen(felder?.data_status && {
-    ...felder.data_status,
-    lagging: felder.data_status.lagging.filter((h) => dabei.has(h.body_id)),
-  });
+  // „Stand: …" für die Städte DIESER Idee — der Server rechnet ihn mit der
+  // Bewegung aus. Bis 11/2026 holte die Seite dafür die ganze
+  // Themenfeld-Übersicht und filterte hier; die war in jeder Messung die
+  // letzte Antwort.
+  const { stand, luecke } = standZeilen(data.data_status);
 
   const b = data.movement;
   const feld = b.field ? POLICY_FIELD_LABELS[b.field] ?? b.field : null;

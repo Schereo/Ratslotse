@@ -90,7 +90,7 @@ describe("relativerTag", () => {
     expect(relativerTag("2026-12-31", new Date("2027-01-01T10:00:00"))).toBe("gestern");
   });
 
-  it("schweigt ohne „heute“ — der statische Export hätte sonst das Build-Datum", () => {
+  it("schweigt ohne „heute“ — das Vorrendern hätte sonst das Build-Datum", () => {
     expect(relativerTag("2026-09-03", null)).toBeNull();
   });
 
@@ -100,9 +100,9 @@ describe("relativerTag", () => {
 });
 
 describe("pfad — die eine Stelle für den Schluss-Schrägstrich", () => {
-  // `next.config.mjs` setzt für den App-Export `trailingSlash: true`. In der
-  // App heißt der Pfad „/council/", im Web „/council". Jeder exakte Vergleich
-  // war damit in der App blind — der Sitzungen-Tab leuchtete nie.
+  // Mit `trailingSlash: true` (der statische Export bis 11/2026) hieß der Pfad
+  // „/council/". Jeder exakte Vergleich war damit blind — der Sitzungen-Tab
+  // leuchtete nie.
   it.each([
     ["/council/", "/council"],
     ["/council", "/council"],

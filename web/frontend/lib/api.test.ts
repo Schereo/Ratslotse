@@ -14,15 +14,6 @@ vi.mock("./draft", () => ({
   entwurfZiel: () => gerettet.ziel,
 }));
 
-let nativ = false;
-let token: string | null = null;
-vi.mock("./platform", () => ({
-  isNativeApp: () => nativ,
-  apiBase: () => (nativ ? "https://ratslotse.de" : ""),
-  clientMarke: () => "ios",
-}));
-vi.mock("./token", () => ({ getCachedToken: () => token }));
-
 let a: typeof import("./api");
 let letzterRuf: { url: string; init: RequestInit } | null = null;
 
@@ -40,8 +31,6 @@ function antwort(status: number, body?: unknown) {
 beforeEach(async () => {
   toasts.length = 0;
   gerettet.ziel = null;
-  nativ = false;
-  token = null;
   letzterRuf = null;
   vi.stubGlobal("window", { location: { pathname: "/fragen", search: "?q=x" } });
   vi.resetModules();
@@ -62,7 +51,7 @@ describe("Adresse und Kopfzeilen", () => {
     expect(letzterRuf!.init.credentials).toBe("include");
   });
 
-  it("schickt im Web KEINEN Token und keine Client-Marke", async () => {
+  it("schickt KEINEN Token und keine Client-Marke", async () => {
     // Im Browser trägt das httpOnly-Cookie die Anmeldung — ein Token im
     // JavaScript wäre eine zusätzliche Angriffsfläche ohne Gegenwert.
     mitAntwort(antwort(200, {}));
@@ -70,17 +59,6 @@ describe("Adresse und Kopfzeilen", () => {
     const h = letzterRuf!.init.headers as Record<string, string>;
     expect(h.Authorization).toBeUndefined();
     expect(h["X-Client"]).toBeUndefined();
-  });
-
-  it("schickt in der App Token und Plattform", async () => {
-    nativ = true; token = "jwt123";
-    vi.resetModules(); a = await import("./api");
-    mitAntwort(antwort(200, {}));
-    await a.api.get("/x");
-    const h = letzterRuf!.init.headers as Record<string, string>;
-    expect(h.Authorization).toBe("Bearer jwt123");
-    expect(h["X-Client"]).toBe("ios");
-    expect(letzterRuf!.url).toBe("https://ratslotse.de/api/x");
   });
 
   it("baut die vier Verben richtig", async () => {
@@ -214,6 +192,56 @@ describe("Netz und Zeitgrenze", () => {
   });
 });
 
+describe("Vorab gestartetes /auth/me (lib/early-auth.ts)", () => {
+  // Das Skript im <head> legt den laufenden Abruf ans Fenster. Der erste
+  // `/auth/me` nimmt ihn, statt neu zu fragen — und nur der erste.
+  const vorab = (res: Promise<Response>) => {
+    (window as unknown as Record<string, unknown>).__ratslotseAuthMe = res;
+  };
+
+  it("nimmt den laufenden Abruf, genau einmal", async () => {
+    let netz = 0;
+    vi.stubGlobal("fetch", () => { netz++; return Promise.resolve(antwort(200, { id: 2 })); });
+    vorab(Promise.resolve(antwort(200, { id: 1 })));
+    await expect(a.api.get("/auth/me")).resolves.toEqual({ id: 1 });
+    expect(netz).toBe(0);
+    await expect(a.api.get("/auth/me")).resolves.toEqual({ id: 2 });
+    expect(netz).toBe(1);
+  });
+
+  it("gilt nur für das Abfragen von /auth/me", async () => {
+    mitAntwort(antwort(200, { ok: true }));
+    vorab(Promise.resolve(antwort(200, { id: 1 })));
+    await a.api.get("/auth/menu");
+    await a.api.post("/auth/me");
+    expect(letzterRuf!.url).toBe("/api/auth/me");
+    await expect(a.api.get("/auth/me")).resolves.toEqual({ id: 1 });
+  });
+
+  it("ein 401 bleibt ein 401 — „nicht angemeldet“, kein Netzfehler", async () => {
+    vorab(Promise.resolve(antwort(401, { detail: "Nicht angemeldet" })));
+    await expect(a.api.get("/auth/me")).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("ein gescheiterter Vorab-Abruf wird ein Satz wie jeder andere Netzfehler", async () => {
+    vorab(Promise.reject(new TypeError("Failed to fetch")));
+    await expect(a.api.get("/auth/me")).rejects.toMatchObject({ status: 0, message: a.FEHLER_OFFLINE });
+  });
+
+  it("hängt er, greift dieselbe Zeitgrenze", async () => {
+    vi.useFakeTimers();
+    try {
+      vorab(new Promise<Response>(() => {}));
+      const p = a.api.get("/auth/me");
+      const pruefung = expect(p).rejects.toMatchObject({ status: 0, message: a.FEHLER_ZEIT });
+      await vi.advanceTimersByTimeAsync(a.ANFRAGE_GRENZE_MS + 1);
+      await pruefung;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("Abgelaufene Sitzung", () => {
   it("rettet den getippten Text und sagt das auch", async () => {
     mitAntwort(antwort(401, { detail: "abgelaufen" }));
@@ -246,19 +274,12 @@ describe("Abgelaufene Sitzung", () => {
   });
 });
 
-describe("apiUrl und authHeaders", () => {
-  it("apiUrl baut dieselbe Adresse wie der Wrapper", async () => {
+describe("apiUrl", () => {
+  it("baut dieselbe Adresse wie der Wrapper", async () => {
     expect(a.apiUrl("/council/ask")).toBe("/api/council/ask");
-    nativ = true;
-    vi.resetModules(); a = await import("./api");
-    expect(a.apiUrl("/council/ask")).toBe("https://ratslotse.de/api/council/ask");
-  });
-
-  it("authHeaders ist im Web leer und trägt in der App den Token", async () => {
-    expect(a.authHeaders()).toEqual({});
-    nativ = true; token = "t";
-    vi.resetModules(); a = await import("./api");
-    expect(a.authHeaders()).toEqual({ "X-Client": "ios", Authorization: "Bearer t" });
+    mitAntwort(antwort(200, {}));
+    await a.api.get("/council/ask");
+    expect(letzterRuf!.url).toBe(a.apiUrl("/council/ask"));
   });
 });
 

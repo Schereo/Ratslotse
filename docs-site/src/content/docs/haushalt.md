@@ -105,8 +105,8 @@ Wer eine Seite einfügt oder zusammenlegt, zieht also nur noch **diese
 Tabelle** nach.
 :::
 
-Query-Parameter statt dynamischer Segmente, weil der Capacitor-Export die
-Slugs zur Bauzeit nicht kennt — dieselbe Konvention wie `/council/decision?id=`.
+Query-Parameter statt dynamischer Segmente — dieselbe Konvention wie
+`/council/decision?id=`.
 
 ## Woher die Daten kommen
 

@@ -2068,6 +2068,19 @@ class SchemaMixin(StoreBasis):
             "slug TEXT PRIMARY KEY, name TEXT NOT NULL, vague INTEGER NOT NULL, "
             "hint TEXT, suggestion TEXT, checked_at TEXT NOT NULL)"
         )
+        # Die Trefferliste je kuratiertem Stadtthema (``council.city_topics``):
+        # Wortmuster und semantischer Abgleich zusammen, geschrieben vom
+        # Wochenlauf (``scripts/match_topics_decisions.py``). Kachel, Anlegen
+        # und Themen-Karte lesen dieselbe Liste — vorher zählte die Kachel per
+        # Wortsuche (18) und das Thema danach per Cross-Encoder (35 bzw. 2),
+        # und jeder Klick im Einrichtungs-Assistenten wartete auf das Modell
+        # (Tims Befund 08.11.2026). Keyed by topic key, rebuilt per topic.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_city_topic_decisions ("
+            "topic_key TEXT NOT NULL, decision_id INTEGER NOT NULL, "
+            "score REAL NOT NULL, source TEXT NOT NULL, computed_at TEXT NOT NULL, "
+            "PRIMARY KEY (topic_key, decision_id))"
+        )
         # Related entities ("Hängt zusammen mit…") — precomputed by council.related
         # via scripts/build_entity_relations.py. rel_type separates the two sources:
         # 'belegt' = co-occurrence in shared decisions (evidence = how many),

@@ -107,20 +107,36 @@ function wahlabendMock(page: Page) {
 }
 
 test.describe("Schalter aus", () => {
-  test("die Seite sagt Bescheid und fragt gar nicht erst nach Zahlen", async ({ page }) => {
+  test("die Seite sagt Bescheid, und der 404 bleibt eine einzige Frage", async ({ page }) => {
     await appConfig(page, []);
-    const zaehler = wahlabendMock(page);
+    // So antwortet das Backend bei ausgeschaltetem Schalter
+    // (`routers/wahlabend._frei`) — und zwar, BEVOR es den Votemanager der
+    // Stadt fragt. Eine versehentlich geöffnete Seite erreicht ihn also nicht.
+    const zaehler = { rufe: 0 };
+    await page.route("**/api/wahlabend*", (route) => {
+      zaehler.rufe += 1;
+      return route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Der Wahlabend ist noch nicht freigeschaltet." }),
+      });
+    });
+    await page.clock.install();
 
     await page.goto("/wahlabend");
     await expect(
       page.getByRole("heading", { name: /noch nicht freigeschaltet/ }),
     ).toBeVisible();
 
-    // Der Abruf hängt an `enabled: schalterAn` — steht der Schalter aus, geht
-    // keine Anfrage raus. Sonst liefe am 13.09. jede versehentlich geöffnete
-    // Seite gegen den Votemanager der Stadt.
-    await page.waitForTimeout(1500);
-    expect(zaehler.rufe, "/api/wahlabend wurde trotz ausgeschaltetem Schalter abgefragt").toBe(0);
+    // Bis 11/2026 hing der Abruf an `enabled: schalterAn` und wartete damit
+    // eine Netzrunde auf `/api/app-config`. Jetzt startet er gleichzeitig; bei
+    // ausgeschaltetem Schalter ist das genau EIN 404 — keine Wiederholung,
+    // kein Minutentakt und keine Fehlerfläche.
+    await page.clock.fastForward(65_000);
+    await page.clock.fastForward(65_000);
+    await page.waitForTimeout(500);
+    expect(zaehler.rufe, "/api/wahlabend fragt nach dem 404 weiter").toBeLessThanOrEqual(1);
+    await expect(page.getByText(/Gerade keine Zahlen/)).toHaveCount(0);
 
     // Und nichts von der Tafel steht da.
     await expect(page.getByText(/Wahlbezirken ausgez/)).toHaveCount(0);

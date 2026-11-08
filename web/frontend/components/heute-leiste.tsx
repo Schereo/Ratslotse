@@ -34,10 +34,8 @@ export function HeuteLeiste() {
   const [data, setData] = useState<Heute | null>(null);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    // Über `lib/api`, nicht per nacktem fetch: Ein relativer Pfad zeigt in der
-    // Capacitor-Hülle ins Nichts (das Bundle läuft dort unter
-    // capacitor://localhost). Fehler bleiben still — die Leiste hat einen
-    // Leerzustand und soll die Landing nicht mit einer Meldung stören.
+    // Fehler bleiben still — die Leiste hat einen Leerzustand und soll die
+    // Landing nicht mit einer Meldung stören.
     api.get<Heute>("/council/heute")
       .then((d) => d && setData(d))
       .catch(() => {});
@@ -136,8 +134,11 @@ export function HeuteLeiste() {
             Zum O1-Stream <ArrowRight className="h-3.5 w-3.5" />
           </a>
         ) : data ? (
+          // prefetch={false}: Die Leiste steht nur auf der Startseite, das Ziel
+          // verlangt ein Konto — vorgeladen wurde dafür das ganze App-Gerüst.
           <Link
             href="/council?tab=sessions"
+            prefetch={false}
             className="hidden shrink-0 items-center gap-1 font-medium text-primary hover:underline sm:inline-flex"
           >
             {data.state === "heute" ? "Zur Tagesordnung" : "Kalender"} <ArrowRight className="h-3.5 w-3.5" />

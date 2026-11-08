@@ -7979,6 +7979,96 @@
           "importance_breakdown": {
             "$ref": "#/components/schemas/ImportanceBreakdown"
           },
+          "neighbors": {
+            "description": "Wo der Beschluss unter den Beschlüssen seiner Sitzung steht\n(``CouncilStore.decision_neighbors``).\n\n``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist\nNICHT die TOP-Nummer und nicht die Protokoll-Position: Eine\nTagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am\nRand als ``null``.",
+            "properties": {
+              "next": {
+                "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+                "properties": {
+                  "id": {
+                    "title": "Id",
+                    "type": "integer"
+                  },
+                  "item_number": {
+                    "title": "Item Number",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "item_number",
+                  "title"
+                ],
+                "title": "DecisionNeighbor",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "position": {
+                "title": "Position",
+                "type": "integer"
+              },
+              "prev": {
+                "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+                "properties": {
+                  "id": {
+                    "title": "Id",
+                    "type": "integer"
+                  },
+                  "item_number": {
+                    "title": "Item Number",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "item_number",
+                  "title"
+                ],
+                "title": "DecisionNeighbor",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "position",
+              "total",
+              "prev",
+              "next"
+            ],
+            "title": "DecisionNeighbors",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "participation": {
             "description": "Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.",
             "properties": {
@@ -8175,6 +8265,123 @@
           "total"
         ],
         "title": "DecisionList",
+        "type": "object"
+      },
+      "DecisionNeighbor": {
+        "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "item_number",
+          "title"
+        ],
+        "title": "DecisionNeighbor",
+        "type": "object"
+      },
+      "DecisionNeighbors": {
+        "description": "Wo der Beschluss unter den Beschlüssen seiner Sitzung steht\n(``CouncilStore.decision_neighbors``).\n\n``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist\nNICHT die TOP-Nummer und nicht die Protokoll-Position: Eine\nTagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am\nRand als ``null``.",
+        "properties": {
+          "next": {
+            "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "item_number": {
+                "title": "Item Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "item_number",
+              "title"
+            ],
+            "title": "DecisionNeighbor",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "prev": {
+            "description": "Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.",
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "integer"
+              },
+              "item_number": {
+                "title": "Item Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "item_number",
+              "title"
+            ],
+            "title": "DecisionNeighbor",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position",
+          "total",
+          "prev",
+          "next"
+        ],
+        "title": "DecisionNeighbors",
         "type": "object"
       },
       "DecisionParticipation": {
@@ -9428,6 +9635,57 @@
               "null"
             ]
           },
+          "latest_update": {
+            "description": "Der jüngste Beschluss eines Vorhabens — „was war zuletzt im Rat?\". Am\nselben Sitzungstag geht ein Beschluss einer Kenntnisnahme vor.\n``summary`` ist der Kernsatz des Beschlusses (``council_decisions.summary``)\nund fehlt nur, solange das Protokoll noch nicht ausgewertet ist; dann\nbleibt der Titel.",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "decision_id": {
+                "title": "Decision Id",
+                "type": "integer"
+              },
+              "outcome": {
+                "title": "Outcome",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "summary": {
+                "title": "Summary",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "decision_id",
+              "date",
+              "committee",
+              "title",
+              "outcome",
+              "summary"
+            ],
+            "title": "DistrictProjectUpdate",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "locations": {
             "items": {
               "$ref": "#/components/schemas/DistrictProjectLocation"
@@ -9625,6 +9883,54 @@
           "hidden"
         ],
         "title": "DistrictProjectReportOut",
+        "type": "object"
+      },
+      "DistrictProjectUpdate": {
+        "description": "Der jüngste Beschluss eines Vorhabens — „was war zuletzt im Rat?\". Am\nselben Sitzungstag geht ein Beschluss einer Kenntnisnahme vor.\n``summary`` ist der Kernsatz des Beschlusses (``council_decisions.summary``)\nund fehlt nur, solange das Protokoll noch nicht ausgewertet ist; dann\nbleibt der Titel.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "date",
+          "committee",
+          "title",
+          "outcome",
+          "summary"
+        ],
+        "title": "DistrictProjectUpdate",
         "type": "object"
       },
       "DistrictProjects": {
@@ -16876,6 +17182,9 @@
         "properties": {
           "axis": {
             "$ref": "#/components/schemas/TimeAxis"
+          },
+          "data_status": {
+            "$ref": "#/components/schemas/IdeaDataStatus"
           },
           "documents": {
             "items": {
@@ -26047,6 +26356,10 @@
             "title": "Matches",
             "type": "integer"
           },
+          "matches_12m": {
+            "title": "Matches 12M",
+            "type": "integer"
+          },
           "matches_capped": {
             "title": "Matches Capped",
             "type": "boolean"
@@ -26341,6 +26654,13 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "recent_hits": {
             "default": [],
@@ -30794,8 +31114,23 @@
     },
     "/api/council/budget/amendment-lists": {
       "get": {
-        "description": "Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.\n\nDort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,\nwas drinstand: je Dokument (Verw. I–III und die Beschluss-Datei des\nFinanzausschusses) die Einzelpositionen samt der „Zusammenstellung der\nVeränderungen\", gegen die jede Positionsliste beim Einlesen bewiesen\nwurde (``council/aenderungslisten.py``).\n\n- ``rows``: NUR die Positionen des Haushaltsjahrgangs selbst\n  (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je\n  Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das\n  Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den\n  Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur\n  beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte\n  „Vorschlag von“ führt; sonst ``null``.\n- ``totals``: die Zusammenstellungen ALLER Planjahre, inklusive der\n  Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit\n  Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige\n  digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.\n- ``cash_budget_rows``/``cash_budget_totals``: dasselbe für den FINANZhaushalt\n  (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich\n  fließt und vor allem investiert wird. Getrennte Schlüssel statt einer\n  gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf\n  Betragsspalten statt zwei, dazu ``product`` mit dem Investitionscode),\n  und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.\n- ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —\n  für beide Haushalte gemeinsam.",
+        "description": "Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.\n\nDort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,\nwas drinstand: je Dokument (Verw. I–III und die Beschluss-Datei des\nFinanzausschusses) die Einzelpositionen samt der „Zusammenstellung der\nVeränderungen\", gegen die jede Positionsliste beim Einlesen bewiesen\nwurde (``council/aenderungslisten.py``).\n\n- ``rows``: NUR die Positionen des Haushaltsjahrgangs selbst\n  (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je\n  Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das\n  Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den\n  Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur\n  beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte\n  „Vorschlag von“ führt; sonst ``null``.\n- ``totals``: die Zusammenstellungen ALLER Planjahre, inklusive der\n  Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit\n  Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige\n  digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.\n- ``cash_budget_rows``/``cash_budget_totals``: dasselbe für den FINANZhaushalt\n  (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich\n  fließt und vor allem investiert wird. Getrennte Schlüssel statt einer\n  gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf\n  Betragsspalten statt zwei, dazu ``product`` mit dem Investitionscode),\n  und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.\n- ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —\n  für beide Haushalte gemeinsam.\n\n``fields`` (kommagetrennt aus ``rows``, ``totals``, ``cash_budget_rows``,\n``cash_budget_totals``) liefert nur diese Teile; die übrigen Schlüssel\nbleiben als leere Listen stehen, ``provenance`` trägt nur, worauf die\ngelieferten Zeilen zeigen. Das Labor braucht für seinen Maßstab allein die\nSummen (``fields=totals``: 56 statt 554 KB). Ohne ``fields`` kommt alles\nwie bisher — ``/haushalt/mitreden`` zeigt die Positionen.",
         "operationId": "haushalt_aenderungslisten_api_council_budget_amendment_lists_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[a-z_]+(,[a-z_]+)*$",
+              "title": "Fields",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -30806,6 +31141,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Haushalt Aenderungslisten",
@@ -30951,7 +31296,7 @@
     },
     "/api/council/budget/debate": {
       "get": {
-        "description": "Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.\n\nJe Haushaltsjahr eine ``round`` mit ihren Stationen (Finanzausschuss und\nRat), und je Station die Änderungslisten, die Debatte und die\nSchlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,\nAnwesenheitsliste und Protokoll-Volltext derselben Sitzung.\n\n**Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und\naus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst\nüber die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);\ndie Seite lädt sie einmal und schaltet danach ohne Netz zwischen den\nJahrgängen um.\n\nWas hier **nicht** steht: der Inhalt der Änderungslisten — den liefert\nseit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position\nfür Position aus den gelesenen EHH-Dokumenten. Hier bleibt die\nVerfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam.",
+        "description": "Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.\n\nJe Haushaltsjahr eine ``round`` mit ihren Stationen (Finanzausschuss und\nRat), und je Station die Änderungslisten, die Debatte und die\nSchlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,\nAnwesenheitsliste und Protokoll-Volltext derselben Sitzung.\n\n**Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und\naus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst\nüber die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);\nbis 11/2026 lud die Seite sie einmal und schaltete danach ohne Netz\nzwischen den Jahrgängen um — heute fragt sie mit ``texts`` (s. u.).\n\nWas hier **nicht** steht: der Inhalt der Änderungslisten — den liefert\nseit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position\nfür Position aus den gelesenen EHH-Dokumenten. Hier bleibt die\nVerfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam.\n\n``texts`` (ein Jahr oder ``latest``; ein Jahr ohne Runde gilt als\n``latest``) behält den Wortlaut nur für diesen Jahrgang. In allen anderen\nstehen die Wortbeiträge weiter da — Name, Fraktion, Rolle, also alles,\nwas die Seite über die Jahre zählt —, nur ``text`` ist ``null``. Die\nSeite zeigt ohnehin einen Jahrgang; die Texte waren 395 der 450 KB\n(gzip 20 statt 130 KB). Beim Jahrgangswechsel holt sie den nächsten.\nOhne ``texts`` kommt alles wie bisher.",
         "operationId": "haushalt_streit_api_council_budget_debate_get",
         "parameters": [
           {
@@ -30962,6 +31307,19 @@
               "title": "Year",
               "type": [
                 "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "texts",
+            "required": false,
+            "schema": {
+              "pattern": "^(\\d{4}|latest)$",
+              "title": "Texts",
+              "type": [
+                "string",
                 "null"
               ]
             }
@@ -31233,8 +31591,23 @@
     },
     "/api/council/budget/investment-programme": {
       "get": {
-        "description": "Die einzelnen Vorhaben — die Ebene unter ``/haushalt/investitionen``.\n\nAus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €\",\nsondern „BBS Haarentor: Ausstattung\". Acht Jahrgänge, rund 4.500 Vorhaben.\n\n- ``years``: Jahrgänge, für die ein Programm vorliegt,\n- ``measures``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und\n  **Gesamtinvestitionssumme**,\n- ``sub_budgets``: je Teilhaushalt die Gesamtsumme, die das Dokument am\n  Ende seines Abschnitts ausweist — das **Ziel der Rechenprobe**, nicht\n  unsere Addition,\n- ``totals``: je Jahrgang die Gesamtsumme des Investitionsprogramms,\n- ``herkunft``: Dokument, Fundstelle und die drei bestandenen Proben.\n\nDrei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\n\n1. **Nur die Gesamtinvestitionssumme**, keine Jahresraten — im Textextrakt\n   fallen leere Zellen ersatzlos weg, die Spaltenzuordnung wäre geraten.\n2. **Plan, nicht Ist.** Was am Jahresende wirklich gebaut wurde, steht\n   nicht darin.\n3. **Nicht deckungsgleich mit** ``/haushalt/investitionen``. Beide Zahlen\n   stimmen und zählen Verschiedenes: Das Investitionsprogramm führt die\n   Gesamtkosten eines Vorhabens über alle Jahre, der Finanzhaushalt die\n   Zahlungen eines Jahres — und die zu aktivierenden Eigenleistungen\n   gehören nur ins Programm. Das Dokument sagt das in einer Fußnote selbst.",
+        "description": "Die einzelnen Vorhaben — die Ebene unter ``/haushalt/investitionen``.\n\nAus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €\",\nsondern „BBS Haarentor: Ausstattung\". Acht Jahrgänge, rund 4.500 Vorhaben.\n\n- ``years``: Jahrgänge, für die ein Programm vorliegt,\n- ``measures``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und\n  **Gesamtinvestitionssumme**,\n- ``sub_budgets``: je Teilhaushalt die Gesamtsumme, die das Dokument am\n  Ende seines Abschnitts ausweist — das **Ziel der Rechenprobe**, nicht\n  unsere Addition,\n- ``totals``: je Jahrgang die Gesamtsumme des Investitionsprogramms,\n- ``herkunft``: Dokument, Fundstelle und die drei bestandenen Proben.\n\nDrei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:\n\n1. **Nur die Gesamtinvestitionssumme**, keine Jahresraten — im Textextrakt\n   fallen leere Zellen ersatzlos weg, die Spaltenzuordnung wäre geraten.\n2. **Plan, nicht Ist.** Was am Jahresende wirklich gebaut wurde, steht\n   nicht darin.\n3. **Nicht deckungsgleich mit** ``/haushalt/investitionen``. Beide Zahlen\n   stimmen und zählen Verschiedenes: Das Investitionsprogramm führt die\n   Gesamtkosten eines Vorhabens über alle Jahre, der Finanzhaushalt die\n   Zahlungen eines Jahres — und die zu aktivierenden Eigenleistungen\n   gehören nur ins Programm. Das Dokument sagt das in einer Fußnote selbst.\n\n``year`` schneidet auf **einen** Jahrgang, ``latest`` auf den jüngsten —\nfür Seiten, die nur ihn zeigen: Das Labor braucht die Vorhaben des\njüngsten Programms, nicht alle acht (161 statt 1.057 KB). ``years`` bleibt\ndie volle Liste, ``latest`` ist also ``years[-1]``. Ohne ``year`` kommt\nalles wie bisher — ``/haushalt/investitionen`` zählt über die Jahrgänge.",
         "operationId": "haushalt_investitionsprogramm_api_council_budget_investment_programme_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "pattern": "^(\\d{4}|latest)$",
+              "title": "Year",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -31245,6 +31618,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Haushalt Investitionsprogramm",
@@ -31511,16 +31894,19 @@
     },
     "/api/council/budget/products": {
       "get": {
-        "description": "Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,\nsamt Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,\nWirkungskreis, Zielgruppe) aus den Teilhaushalts-Plänen.\n\nAus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung\nist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als\nauslesbares Dokument vor); ``coverage_percent`` sagt, wie viel der\ngeplanten Aufwendungen die gefundenen Produkte erklären — damit die\nOberfläche das nicht als Vollbild ausgeben kann.\n\n``q``/``office``/``controllability`` filtern **serverseitig**: Mit dem Steckbrief\nträgt jede der knapp 400 Zeilen mehrere hundert Zeichen Fließtext, die\nniemand im Browser sortieren muss. ``number`` holt zusätzlich ein einzelnes\nProdukt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade\ngesetzte Filter es aus der Liste nähme.\n\n``facets`` liefert die Filterwerte mit Anzahl und dazu, wie viele\nProdukte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die\nLücke aus, statt sie zu verschweigen.\n\nJedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im\nBestand steht. Gegen ``all_years`` gehalten wird daraus das\nAbdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021\nvorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen.",
+        "description": "Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,\nsamt Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,\nWirkungskreis, Zielgruppe) aus den Teilhaushalts-Plänen.\n\nAus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung\nist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als\nauslesbares Dokument vor); ``coverage_percent`` sagt, wie viel der\ngeplanten Aufwendungen die gefundenen Produkte erklären — damit die\nOberfläche das nicht als Vollbild ausgeben kann.\n\n``q``/``office``/``controllability`` filtern **serverseitig**: Mit dem Steckbrief\nträgt jede der knapp 400 Zeilen mehrere hundert Zeichen Fließtext, die\nniemand im Browser sortieren muss. ``number`` holt zusätzlich ein einzelnes\nProdukt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade\ngesetzte Filter es aus der Liste nähme.\n\n``facets`` liefert die Filterwerte mit Anzahl und dazu, wie viele\nProdukte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die\nLücke aus, statt sie zu verschweigen.\n\nJedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im\nBestand steht. Gegen ``all_years`` gehalten wird daraus das\nAbdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021\nvorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen.\n\nOhne ``year`` gilt das jüngste Jahr mit Produktebene (``all_years[-1]``,\ndieselbe Liste wie ``product_years`` der Übersicht; 404, wenn es keines\ngibt). Seiten, die nur den jüngsten Stand zeigen, müssen so nicht erst die\nJahresliste abwarten, bevor sie fragen dürfen.",
         "operationId": "haushalt_produkte_api_council_budget_products_get",
         "parameters": [
           {
             "in": "query",
             "name": "year",
-            "required": true,
+            "required": false,
             "schema": {
               "title": "Year",
-              "type": "integer"
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           {
@@ -33717,6 +34103,20 @@
     "/api/council/people-directory": {
       "get": {
         "operationId": "personen_lexikon_api_council_people_directory_get",
+        "parameters": [
+          {
+            "description": "Nur Verwaltungsleute mit erkanntem Amt (art=city mit role) — die Handvoll Einträge, die das Personenverzeichnis zeigt, statt des ganzen Lexikons.",
+            "in": "query",
+            "name": "administration",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Nur Verwaltungsleute mit erkanntem Amt (art=city mit role) — die Handvoll Einträge, die das Personenverzeichnis zeigt, statt des ganzen Lexikons.",
+              "title": "Administration",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -33727,6 +34127,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Personen Lexikon",
@@ -38024,6 +38434,28 @@
         ]
       }
     },
+    "/api/today/visit/updates": {
+      "post": {
+        "description": "Besuch aufzeichnen und gleich die erste Seite des Rückblicks liefern.\n\nDasselbe wie ``POST /visit`` und danach ``GET /updates``, nur in EINEM\nAufruf: Der Rückblick auf „Heute\" wartete sonst eine ganze Netzlaufzeit auf\nden POST, bevor er überhaupt fragen konnte. Die Reihenfolge bleibt dieselbe\n— erst aufzeichnen (das setzt beim ersten Aufruf eines neuen Besuchs\n``visit_previous_at``), dann das Fenster lesen.\n\nEin eigener Pfad statt eines Schalters an ``/visit``: Den einfachen POST\nschickt die Hülle auf jeder Seite und alle fünf Minuten, und nur dieser hier\nbraucht die Rats-Datenbank.",
+        "operationId": "visit_with_updates_api_today_visit_updates_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayUpdates"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Visit With Updates",
+        "tags": [
+          "today"
+        ]
+      }
+    },
     "/api/topics": {
       "get": {
         "operationId": "list_topics_api_topics_get",
@@ -38133,7 +38565,7 @@
     },
     "/api/topics/describe": {
       "post": {
-        "description": "Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.\n\nDer Nutzer tippt nur „Cäcilienbrücke\". Wir suchen die Beschlüsse dazu und\nlassen daraus einen präzisen Satz formulieren — das ist der Text, an dem der\nThemen-Wächter später jeden neuen Beschluss misst, also lohnt die Mühe.\n\nNichts hier blockiert: Wer keinen Rats-Bezug hat oder zu vage schreibt,\nbekommt einen Hinweis und darf trotzdem speichern. Der Endpunkt urteilt,\ner verbietet nicht.\n\nMit ``description`` im Body wird zusätzlich die (bis 26a brachliegende)\nVagheits-Prüfung auf den selbst getippten Text angewandt.\n\n``matches``/``matches_capped`` zählen nach derselben Definition wie die\nThemen-Karte (s. Modul-Kopf), nur eben auf den Text, der gerade im Feld\nsteht: Wer die Beschreibung ändert, soll vorher sehen, was das mit der\nTrefferliste macht. Vorher lief hier eine eigene Suche mit eigener\nSchwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema\n„12 Beschlüsse\", während die Karte „40+\" sagte.",
+        "description": "Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.\n\nDer Nutzer tippt nur „Cäcilienbrücke\". Wir suchen die Beschlüsse dazu und\nlassen daraus einen präzisen Satz formulieren — das ist der Text, an dem der\nThemen-Wächter später jeden neuen Beschluss misst, also lohnt die Mühe.\n\nNichts hier blockiert: Wer keinen Rats-Bezug hat oder zu vage schreibt,\nbekommt einen Hinweis und darf trotzdem speichern. Der Endpunkt urteilt,\ner verbietet nicht.\n\nMit ``description`` im Body wird zusätzlich die (bis 26a brachliegende)\nVagheits-Prüfung auf den selbst getippten Text angewandt.\n\n``matches``/``matches_capped`` zählen nach derselben Definition wie die\nThemen-Karte (s. Modul-Kopf), nur eben auf den Text, der gerade im Feld\nsteht: Wer die Beschreibung ändert, soll vorher sehen, was das mit der\nTrefferliste macht. Vorher lief hier eine eigene Suche mit eigener\nSchwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema\n„12 Beschlüsse\", während die Karte „40+\" sagte.\n\n**Ein unverändertes Stadtthema** (Name und Beschreibung wie an der Kachel)\nkommt ohne Modell zurück: dieselbe Liste wie an der Kachel, dazu\n``matches_12m`` im Zählfenster der Kachel. Die Vagheits-Prüfung läuft\ndort nicht — sie nannte unsere eigenen, bewusst als Interessen gebauten\nThemen „zu unkonkret\" (Tims Befund 08.11.2026). Wer die Beschreibung\nändert, hat ein eigenes Thema, und dann prüft sie wie immer.",
         "operationId": "describe_topic_api_topics_describe_post",
         "requestBody": {
           "content": {
@@ -38616,7 +39048,7 @@
     },
     "/api/wahlabend": {
       "get": {
-        "description": "Der Wahlabend: live, als Generalprobe oder als Rückblick.\n\n``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus\ndem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine\nRückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den\nWahltag im Pfad und wandern irgendwann ins Archiv.",
+        "description": "Der Wahlabend: live, als Generalprobe oder als Rückblick.\n\n``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus\ndem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine\nRückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den\nWahltag im Pfad und wandern irgendwann ins Archiv.\n\n``?area_candidates=false`` lässt die Kandidaturen je Wahlbereich weg: gut\n60 % der Antwort, die der erste Reiter („Ergebnis\") nicht braucht. Ohne\nden Parameter bleibt die Antwort, wie sie war.",
         "operationId": "wahlabend_api_wahlabend_get",
         "parameters": [
           {
@@ -38661,6 +39093,18 @@
                 "string",
                 "null"
               ]
+            }
+          },
+          {
+            "description": "false = die Kandidaturen je Wahlbereich (areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem Reiter, der sie zeigt",
+            "in": "query",
+            "name": "area_candidates",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "false = die Kandidaturen je Wahlbereich (areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem Reiter, der sie zeigt",
+              "title": "Area Candidates",
+              "type": "boolean"
             }
           }
         ],

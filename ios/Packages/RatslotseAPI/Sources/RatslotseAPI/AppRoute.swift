@@ -10,6 +10,15 @@ public enum AppTab: String, Codable, Sendable, Hashable {
 
 public enum AppRoute: Sendable, Hashable {
     case tab(AppTab)
+    /// „Heute" mit Lottis Blatt darüber (`/dashboard?lotti=1`) — das Ziel von
+    /// „Lotti-Chat ausprobieren" auf der Karte „Neu bei Ratslotse", wie im
+    /// Web seit #1749. Kommt nie auf den Stapel: `AppModel.handle(route:)`
+    /// macht daraus `.tab(.today)` und eine Bitte an `LottiHost`.
+    ///
+    /// Ein eigener Fall statt eines Parameters an `.tab`: Die ausgelieferte
+    /// App kennt ihn nicht und liest den Link weiter als `.tab(.today)` —
+    /// sie landet auf Heute, ohne Blatt, aber auch ohne Fehler.
+    case assistant
     case verifyEmail(token: String)
     case resetPassword(token: String)
     case question(prefill: String?, share: String?)
@@ -63,7 +72,9 @@ public struct AppRouter: Sendable {
         }
 
         switch path {
-        case "/", "/dashboard": return .tab(.today)
+        // Nur `1` öffnet Lotti — ein `?lotti=` ohne Wert oder mit Unsinn
+        // nicht, wie `oeffnenGewuenscht` im Web.
+        case "/", "/dashboard": return value("lotti") == "1" ? .assistant : .tab(.today)
         case "/login", "/register": return .tab(.account)
         case "/verify-email":
             guard let token = value("token"), !token.isEmpty else { return .tab(.account) }
@@ -151,6 +162,8 @@ public struct AppRouter: Sendable {
         case .tab(.council): components.path = "/council"
         case .tab(.topics): components.path = "/topics"
         case .tab(.account): return nil
+        case .assistant:
+            components.path = "/dashboard"; components.queryItems = [.init(name: "lotti", value: "1")]
         case .verifyEmail(let token):
             components.path = "/verify-email"; components.queryItems = [.init(name: "token", value: token)]
         case .resetPassword(let token):

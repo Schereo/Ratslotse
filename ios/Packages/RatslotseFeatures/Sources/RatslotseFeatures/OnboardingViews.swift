@@ -278,61 +278,113 @@ private struct OnboardingStepPage<Content: View, Footer: View>: View {
     let title: String
     let lead: String
     let scene: Lotti3DScene
+    /// What the pill above the footer promises while more lies below.
+    var moreLabel: String = "Mehr"
     @ViewBuilder let content: Content
     @ViewBuilder let footer: Footer
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// The padded content in the scroll view's own coordinates: `minY` turns
+    /// negative while scrolling, `maxY` beyond the viewport means hidden rows.
+    @State private var contentFrame: CGRect = .zero
+
+    private static var space: String { "onboardingPage" }
+    /// Scroll marks every `markStep` points, so the pill can scroll by most of
+    /// a screen on iOS 17 — `scrollTo` needs an id, and an offset API only
+    /// arrived with iOS 18.
+    private static var markStep: CGFloat { 80 }
 
     var body: some View {
         GeometryReader { proxy in
-            ScrollView {
-                Group {
-                    if horizontalSizeClass == .regular {
-                        HStack(alignment: .top, spacing: 34) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Lotti3DView(scene: scene)
-                                    .frame(width: 240, height: 190)
-                                    .accessibilityHidden(true)
-                                Text(title)
-                                    .font(RatsFont.title(30, weight: .heavy))
-                                    .foregroundStyle(RatsColor.text)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Text(lead)
-                                    .font(RatsFont.body(15))
-                                    .foregroundStyle(RatsColor.secondary)
-                                    .lineSpacing(4)
-                            }
-                            .frame(width: 284, alignment: .leading)
+            // More below (Tim, 08.11.2026): when the last visible row happened
+            // to end right above the footer, the list looked complete. The pill
+            // invites the first scroll and leaves once someone has scrolled; the
+            // threshold is the bottom padding, which hides nothing.
+            let hiddenBelow = contentFrame.maxY - proxy.size.height > 40
+            let showsMore = hiddenBelow && contentFrame.minY > -8
+            ScrollViewReader { reader in
+                ScrollView {
+                    Group {
+                        if horizontalSizeClass == .regular {
+                            HStack(alignment: .top, spacing: 34) {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Lotti3DView(scene: scene)
+                                        .frame(width: 240, height: 190)
+                                        .accessibilityHidden(true)
+                                    Text(title)
+                                        .font(RatsFont.title(30, weight: .heavy))
+                                        .foregroundStyle(RatsColor.text)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Text(lead)
+                                        .font(RatsFont.body(15))
+                                        .foregroundStyle(RatsColor.secondary)
+                                        .lineSpacing(4)
+                                }
+                                .frame(width: 284, alignment: .leading)
 
-                            content
-                                .frame(maxWidth: 620, alignment: .leading)
-                                .padding(.top, 10)
-                        }
-                        .frame(maxWidth: 980, alignment: .topLeading)
-                    } else {
-                        VStack(alignment: .leading, spacing: 0) {
-                            HStack(spacing: 12) {
-                                Lotti3DView(scene: scene)
-                                    .frame(width: 92, height: 70)
-                                    .accessibilityHidden(true)
-                                Text(title)
-                                    .font(RatsFont.title(22, weight: .heavy))
-                                    .foregroundStyle(RatsColor.text)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                content
+                                    .frame(maxWidth: 620, alignment: .leading)
+                                    .padding(.top, 10)
                             }
-                            Text(lead)
-                                .font(RatsFont.body(13.5))
-                                .foregroundStyle(RatsColor.secondary)
-                                .lineSpacing(3)
-                                .padding(.top, 9)
-                            content.padding(.top, 16)
+                            .frame(maxWidth: 980, alignment: .topLeading)
+                        } else {
+                            VStack(alignment: .leading, spacing: 0) {
+                                HStack(spacing: 12) {
+                                    Lotti3DView(scene: scene)
+                                        .frame(width: 92, height: 70)
+                                        .accessibilityHidden(true)
+                                    Text(title)
+                                        .font(RatsFont.title(22, weight: .heavy))
+                                        .foregroundStyle(RatsColor.text)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                Text(lead)
+                                    .font(RatsFont.body(13.5))
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .lineSpacing(3)
+                                    .padding(.top, 9)
+                                content.padding(.top, 16)
+                            }
+                            .frame(maxWidth: 620, alignment: .leading)
                         }
-                        .frame(maxWidth: 620, alignment: .leading)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: max(0, proxy.size.height - 28), alignment: .center)
+                    .padding(.horizontal, horizontalSizeClass == .regular ? 28 : 18)
+                    .padding(.vertical, 14)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
+                        contentFrame = $0
+                    }
+                    .background(alignment: .top) {
+                        VStack(spacing: 0) {
+                            ForEach(0..<max(1, Int(contentFrame.height / Self.markStep)), id: \.self) { mark in
+                                Color.clear.frame(height: Self.markStep).id(mark)
+                            }
+                        }
+                        .accessibilityHidden(true)
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: max(0, proxy.size.height - 28), alignment: .center)
-                .padding(.horizontal, horizontalSizeClass == .regular ? 28 : 18)
-                .padding(.vertical, 14)
+                .coordinateSpace(.named(Self.space))
+                .scrollIndicatorsFlash(onAppear: true)
+                .overlay(alignment: .bottom) {
+                    Group {
+                        if horizontalSizeClass == .regular {
+                            HStack(spacing: 34) {
+                                Color.clear.frame(width: 284, height: 1)
+                                moreButton(reader: reader, viewport: proxy.size.height)
+                                    .frame(maxWidth: 620)
+                            }
+                            .frame(maxWidth: 980)
+                        } else {
+                            moreButton(reader: reader, viewport: proxy.size.height)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 12)
+                    .opacity(showsMore ? 1 : 0)
+                    .offset(y: showsMore ? 0 : 4)
+                    .allowsHitTesting(showsMore)
+                    .animation(.easeOut(duration: 0.2), value: showsMore)
+                }
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -352,6 +404,32 @@ private struct OnboardingStepPage<Content: View, Footer: View>: View {
             .padding(.top, 7)
             .padding(.bottom, 10)
         }
+    }
+
+    /// Scrolls by most of a screen, to the mark just below that point. Hidden
+    /// from VoiceOver: it only replaces the swipe, and VoiceOver reaches every
+    /// row on its own.
+    private func moreButton(reader: ScrollViewProxy, viewport: CGFloat) -> some View {
+        Button {
+            let target = -contentFrame.minY + viewport * 0.7
+            withAnimation(.easeOut(duration: 0.35)) {
+                reader.scrollTo(Int(target / Self.markStep), anchor: .top)
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(moreLabel)
+                RatsIcon(.chevronDown, size: 14)
+            }
+            .font(RatsFont.body(13, weight: .medium))
+            .foregroundStyle(RatsColor.primary)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 40)
+            .background(Capsule().fill(RatsColor.card))
+            .overlay(Capsule().stroke(RatsColor.primary.opacity(0.3), lineWidth: 1))
+            .shadow(color: RatsColor.primary.opacity(0.18), radius: 12, y: 6)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHidden(true)
     }
 }
 
@@ -438,11 +516,12 @@ private struct CommitteeOnboardingStep: View {
 
     var body: some View {
         OnboardingStepPage(
-            title: "Welche Gremien interessieren dich?",
+            title: "Welche Ausschüsse interessieren dich?",
             lead: "Du bekommst eine Mitteilung, sobald eine Tagesordnung erscheint. Jederzeit änderbar.",
             scene: .children,
+            moreLabel: "Weitere Ausschüsse",
             content: { Group {
-                if loading { RatsInlineLoadingState(message: "Gremien werden geladen …") }
+                if loading { RatsInlineLoadingState(message: "Ausschüsse werden geladen …") }
                 if let error { ErrorCard(message: error) { Task { await load() } } }
                 LazyVStack(spacing: 8) {
                     ForEach(committees, id: \.self) { committee in
@@ -534,17 +613,20 @@ private struct CommitteeChoiceRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 // Lotti mit einem Requisit aus dem Sachbereich (Asset-Katalog,
                 // `Committee<Key>`); Gremien ohne Bild behalten das Kästchen vorn.
+                // 72 pt und leicht herangezoomt: Bei 52 pt war die Figur kaum zu
+                // erkennen (Tims Befund 08.11.2026, im Web dasselbe mit 80 px).
                 if let asset = CommitteeCopy.imageAssetName(committee) {
                     Image(asset)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 52, height: 52)
-                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        .scaleEffect(1.1)
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            RoundedRectangle(cornerRadius: 13, style: .continuous)
                                 .stroke(selected ? RatsColor.primary : Color.clear, lineWidth: 2)
                         )
                         .accessibilityHidden(true)
@@ -783,6 +865,7 @@ private struct TopicOnboardingStep: View {
             title: "Worüber willst du Bescheid wissen?",
             lead: "Lege Themen an — Lotti meldet sich, sobald der Rat dazu entscheidet.",
             scene: .questions,
+            moreLabel: "Weitere Themen",
             content: { VStack(alignment: .leading, spacing: 14) {
                 Group {
                     if horizontalSizeClass == .regular {
@@ -1367,6 +1450,7 @@ private enum CommitteeCopy {
         "Kulturausschuss": "Kultur",
         "Schulausschuss": "Schule",
         "Sozialausschuss": "Soziales",
+        "Ausschuss für Gesundheit und Soziales": "Gesundheit & Soziales",
         "Sportausschuss": "Sport",
         "Verkehrsausschuss": "Verkehr",
     ]
@@ -1386,13 +1470,14 @@ private enum CommitteeCopy {
         "Kultur": "Museen, Theater, Bibliotheken und die Förderung der freien Szene.",
         "Schule": "Schulen, Ganztagsbetreuung und neue Bildungsstandorte.",
         "Soziales": "Wohnen, Pflege, Teilhabe und soziale Angebote der Stadt.",
+        "Gesundheit & Soziales": "Gesundheit, Pflege, Wohnen, Teilhabe und soziale Angebote der Stadt.",
         "Sport": "Sportstätten, Vereinsförderung und Bäder.",
         "Verkehr": "Radwege, Straßen, Bus & Bahn, Parken und Verkehrsberuhigung.",
     ]
 
     private static let ranks = [
         "Rat": 0, "Stadtplanung & Bauen": 1, "Verkehr": 2, "Stadtgrün & Klima": 3,
-        "Schule": 4, "Soziales": 5, "Jugendhilfe": 6, "Finanzen & Beteiligungen": 7,
+        "Schule": 4, "Soziales": 5, "Gesundheit & Soziales": 5, "Jugendhilfe": 6, "Finanzen & Beteiligungen": 7,
         "Kultur": 8, "Sport": 9, "Wirtschaft & Digitales": 10,
         "Integration & Migration": 11, "Verwaltungsausschuss": 12,
         "Allgemeine Angelegenheiten": 13, "Betrieb Gebäudewirtschaft": 14,
@@ -1420,7 +1505,7 @@ private enum CommitteeCopy {
         "Wirtschaft & Digitales": "business", "Abfallwirtschaft": "waste",
         "Betrieb Gebäudewirtschaft": "buildings", "Jugendhilfe": "youth",
         "Kultur": "culture", "Schule": "school", "Soziales": "social",
-        "Sport": "sport", "Verkehr": "traffic",
+        "Gesundheit & Soziales": "health", "Sport": "sport", "Verkehr": "traffic",
     ]
 
     static var imageKeyList: [String] { Array(Set(imageKeys.values)).sorted() }

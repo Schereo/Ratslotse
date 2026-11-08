@@ -47,89 +47,26 @@ xcodebuild -project ios/Ratslotse.xcodeproj -scheme Ratslotse \
 
 ## Mobiler Plattformstand
 
-Die frühere Capacitor/WebView-App für iOS wurde nach dem Paritätsabgleich
-entfernt. iOS-Builds entstehen ausschließlich aus dem SwiftUI-Projekt unter
-`ios/`. Das unveröffentlichte Android-Gerüst unter `web/frontend/android/`
-bleibt vorerst separat baubar; seine Anleitung steht in
-`web/frontend/MOBILE.md`.
+Es gibt genau eine App: die SwiftUI-App unter `ios/`. Die frühere
+Capacitor/WebView-App für iOS wurde nach dem Paritätsabgleich entfernt, das
+unveröffentlichte Android-Gerüst (statischer Next-Export in einer WebView) im
+November 2026 ebenfalls — samt `capacitor.config.ts`, `build:mobile` und den
+JS-Brücken für Token, Push und App-Links. `web/frontend/` ist seitdem nur noch
+die Webanwendung.
 
-### Vom Next-Build zur App
+Was davon im Web geblieben ist, gilt dort für sich:
 
-```bash
-cd web/frontend
-npm run build:mobile   # = node scripts/build-mobile.mjs
-npm run cap:sync       # kopiert ./out in das Android-Projekt
-npm run cap:android    # öffnet Android Studio
-```
-
-`scripts/build-mobile.mjs` erledigt dabei drei Dinge, die ein nacktes
-`next build` nicht kann:
-
-1. **Statischer Export** statt Server: `MOBILE=1 next build` schaltet in
-   `next.config.mjs` auf `output: "export"` (+ `trailingSlash`, unoptimierte
-   Bilder) und schreibt nach `./out` — das ist `webDir` in
-   `capacitor.config.ts`.
-2. Der **web-only Route-Handler** unter `app/api/` (SSE-Proxy) wird für den
-   Build beiseitegeschoben und danach zurückgelegt — Route Handler lassen sich
-   nicht statisch exportieren.
-3. Eine **Content-Security-Policy** wird als `<meta http-equiv>` in jede
-   exportierte `.html` injiziert, weil der Export keine Header setzen kann.
-
-Es gibt **keine `server.url`** in der Capacitor-Konfiguration: Die App lädt ihre
-Assets lokal aus der WebView und ruft das Backend an einem **absoluten Origin**
-auf — `NEXT_PUBLIC_API_BASE`, sonst `https://ratslotse.de`
-(`lib/platform.ts`). Damit das ohne `.env`-Änderung funktioniert, hängt das
-Backend die festen App-WebView-Origins immer an die CORS-Liste an
-(`capacitor://localhost`, `https://localhost` — `app_cors_origins` in
-`web/backend/app/config.py`).
-
-| Datei | Rolle |
-|---|---|
-| `web/frontend/capacitor.config.ts` | `appId` `de.ratslotse.app`, `appName` „Ratslotse", `webDir: "out"`, `androidScheme: "https"`, Push-Präsentationsoptionen |
-| `web/frontend/scripts/build-mobile.mjs` | Export-Build + CSP-Injektion |
-| `web/frontend/lib/platform.ts` | `isNativeApp()`, `nativePlatform()`, `apiBase()` |
-| `web/frontend/MOBILE.md` | Android-Sonderbuild und gemeinsame produktive Voraussetzungen |
-
-### Was die App vom Web unterscheidet
-
-| Verhalten | Umsetzung | Ort |
-|---|---|---|
-| Safe-Area / Notch | `viewportFit: "cover"` liefert echte `env(safe-area-inset-*)`-Werte; Topbar, Tab-Leiste, Hauptbereich, Offline-Pille und Intro rechnen damit | `app/layout.tsx`, `components/nav.tsx`, `app/(app)/layout.tsx` |
-| Zurückwischen vom Bildschirmrand | `MainViewController` setzt `webView.allowsBackForwardNavigationGestures = true`; da der Next-Router über die History-API navigiert, entspricht das exakt der Zurück-Navigation (als `customClass` in `Main.storyboard` eingehängt) | `ios/App/App/AppDelegate.swift` |
-| Zoom-Sperre | nur nativ: das Viewport-Meta wird auf `maximum-scale=1, user-scalable=no` umgeschrieben (der System-Zoom der Bedienungshilfen bleibt); im Web bleibt Pinch-Zoom unangetastet | `app/providers.tsx` |
-| Tab-Leiste unten statt Sidebar | `MobileBottomNav` (`md:hidden`) mit 4 Zielen + angehobener „Fragen"-Taste vs. `DesktopSidebar` (`hidden md:flex`) — greift auf allen schmalen Viewports, in der App also immer | `components/nav.tsx` |
-| Pull-to-Refresh | nur App: Touch-Handler am Seitenanfang, Schwelle 70 px, danach `invalidateQueries()` (kein harter Reload) | `components/pull-to-refresh.tsx` |
-| Startseite überspringen | `/` ersetzt sich in der App sofort durch `/dashboard` | `components/native-redirect.tsx` |
-| Universal / App Links | `appUrlOpen` → In-App-Route (E-Mail-Bestätigung, Passwort-Reset, Push-Tap) | `lib/app-links.ts` |
-| Anmeldung | Bearer-Token aus `@capacitor/preferences` statt httpOnly-Cookie | `lib/token.ts`, `lib/api.ts` |
-
-### Offline
-
-Zwei getrennte Bausteine:
-
-- **Offline-Pille** (`components/offline-pill.tsx`): hört auf `navigator.onLine`
-  und die `online`/`offline`-Events und blendet unten „Offline — du siehst
-  gespeicherte Inhalte" ein. Bewusst **auch im Web** aktiv.
-- **Persistenter Query-Cache** (`app/providers.tsx`): **nur in der App** wird der
-  React-Query-Client in einen `PersistQueryClientProvider` gehängt.
-
-```
-Storage   window.localStorage, Schlüssel „ratslotse.query-cache"
-maxAge    24 h  (gcTime der Queries ist auf denselben Wert gehoben,
-                 sonst räumt der Garbage Collector vor dem Persist auf)
-buster    "v2"  (verwirft ältere, inkompatible Caches)
-staleTime 30 s, retry 1  (Query-Defaults, web wie app)
-```
-
-Gecacht werden damit genau die **API-Antworten der besuchten Seiten**, die über
-React Query laufen — keine PDFs, keine Kartenkacheln. Beim Start im Funkloch
-zeigt die App den letzten Stand statt Skeletons oder Fehlern.
-
-### Android-Erststart
-
-Das verbleibende Android-Gerüst verwendet weiterhin den Web-Erststart aus
-`components/onboarding-flow.tsx`. Die native iOS-Variante und ihre Lotti-
-Animationen liegen vollständig im SwiftUI-Projekt unter `ios/`.
+- **Tab-Leiste unten statt Sidebar** (`MobileBottomNav` vs. `DesktopSidebar`
+  in `components/nav.tsx`) greift auf allen schmalen Viewports.
+- **Safe-Area:** `viewportFit: "cover"` liefert echte
+  `env(safe-area-inset-*)`-Werte, Topbar, Tab-Leiste und Offline-Pille rechnen
+  damit (`app/layout.tsx`).
+- **Offline-Pille** (`components/offline-pill.tsx`): hört auf
+  `navigator.onLine` und die `online`/`offline`-Events.
+- **Query-Parameter statt Pfadsegmente** für Detailseiten
+  (`/council/decision?id=…`, `lib/routes.ts`). Entstanden ist die Regel für
+  den statischen Export; sie bleibt als Konvention, weil Mails, geteilte Links
+  und die iOS-App diese Adressen kennen.
 
 ## Anmeldung
 
@@ -143,9 +80,9 @@ Laufzeit `ACCESS_TOKEN_EXPIRE_MINUTES` (Default 90 Tage). Page-JS sieht das
 Token nie.
 
 **App:** Der Client schickt den Header `X-Client` und nennt darin seine
-Plattform — `ios` aus der nativen App, `android` aus der Capacitor-Hülle;
-Browser schicken den Header gar nicht. `app` bleibt als Altwert gültig, weil im
-Feld Stände laufen, die ihn noch senden. Die Zuordnung macht
+Plattform — `ios` aus der nativen App; Browser schicken den Header gar nicht.
+`android` (aus der entfernten Capacitor-Hülle) und `app` bleiben als Altwerte
+gültig, weil im Feld Stände laufen, die `app` noch senden. Die Zuordnung macht
 `web/backend/app/clients.py`; Fremdwerte werden dort **nicht** durchgereicht,
 sondern zu `web`, damit über den Header nichts Beliebiges in die
 Statistiktabelle wandert. Erkennt das Backend einen der nativen Werte,

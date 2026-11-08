@@ -110,6 +110,7 @@ function Reihe({ z, skala }: { z: Zeile; skala: number }) {
   return (
     <Link
       href={`/haushalt/bereich?name=${bereichSlug(z.roh)}`}
+      prefetch={false}
       className="grid grid-cols-1 gap-2 border-t border-border py-3 text-[12.5px] transition-colors hover:bg-accent/60 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_64px_64px_14px] sm:items-center sm:gap-x-3.5 sm:gap-y-0"
     >
       <span className="min-w-0">

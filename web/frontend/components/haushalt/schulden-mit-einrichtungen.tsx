@@ -25,8 +25,10 @@ type Antwort = ApiAntwort<"/council/budget/debt-comparison">;
 
 const euro = (v: number | null | undefined) => (v == null ? "—" : `${deZahl(v, 0)} €`);
 
+export const DEBT_COMPARISON_URL = "/council/budget/debt-comparison";
+
 export function SchuldenMitEinrichtungen() {
-  const { data } = useFetch<Antwort>("/council/budget/debt-comparison");
+  const { data } = useFetch<Antwort>(DEBT_COMPARISON_URL, { shared: true });
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   if (!data || data.years.length === 0) return null;
   const jahr = data.years.find((y) => y.year === gewaehlt) ?? data.years[0];

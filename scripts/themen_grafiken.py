@@ -128,6 +128,9 @@ GREMIEN: dict[str, tuple[str, str, str, str]] = {
     "culture": ("a small paint palette with a brush, resting on the ground right next to her, and one floating music note above it", "standing in the middle of the picture, one wing raised as if conducting", "orange", "light lavender"),
     "school": ("a school bag, an open book and a pencil", "standing next to the bag, reading the book", "orange", "light yellow"),
     "social": ("a big heart-shaped cushion and a steaming cup", "sitting on the cushion with the small chick, sharing it", "orange", "light peach"),
+    # Seit der Wahlperiode 2026–2031 („Ausschuss für Gesundheit und Soziales").
+    # Kein rotes Kreuz: Das Zeichen ist geschützt (GenfA I, Art. 38).
+    "health": ("a stethoscope and a small white first-aid bag with a heart on it", "wearing the stethoscope around her neck, holding the bag, with the small chick beside her", "orange", "light rose"),
     "sport": ("a whistle, a medal on a ribbon and a small cone", "wearing the medal around her neck, blowing the whistle", "orange", "light green"),
     "traffic": ("a zebra crossing, a round traffic sign and a bicycle helmet", "wearing the bicycle helmet over her cap, standing on the crossing", "blue", "light sky blue"),
 }

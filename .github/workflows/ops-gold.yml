@@ -42,6 +42,10 @@ on:
         description: "Messkonto von den Rate-Limitern befreien (Tims Freigabe 02.10.2026; zurücknehmen im Admin-Panel)"
         type: boolean
         default: true
+      ohne_richter:
+        description: "Nur die Suche messen (Kontext-Recall), ohne Richter-Modell — nur Frag den Rat"
+        type: boolean
+        default: false
 
 concurrency:
   group: ops-gold-${{ inputs.umgebung }}
@@ -57,6 +61,7 @@ jobs:
           LABEL: ${{ inputs.label }}
           NUR: ${{ inputs.nur }}
           BEFREIEN: ${{ inputs.befreien }}
+          OHNE_RICHTER: ${{ inputs.ohne_richter }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
@@ -69,7 +74,7 @@ jobs:
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           command_timeout: 60m
           # Eingaben über `envs` und geprüft, nicht als `${{ … }}` im Skripttext.
-          envs: WEG,LABEL,NUR,BEFREIEN
+          envs: WEG,LABEL,NUR,BEFREIEN,OHNE_RICHTER
           script: |
             set -e
             cd ~/app
@@ -80,6 +85,9 @@ jobs:
               echo "nur muss eine Fall-id oder eine Komma-Liste davon sein: $NUR"; exit 2
             fi
             PY=.venv/bin/python
+            # Als Umgebungsvariable statt Schalter — die Aufrufe unten sind
+            # wegen zsh schon je Kombination ausgeschrieben.
+            export GOLD_OHNE_RICHTER="$OHNE_RICHTER"
             # Die Login-Shell auf dem Server ist zsh: Ein unquotiertes
             # "--nur $NUR" in einer Variablen wird dort NICHT in zwei Argumente
             # geteilt (01.10.2026: „unrecognized arguments: --nur …“). Deshalb

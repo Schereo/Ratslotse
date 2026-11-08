@@ -9,7 +9,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
-import { initPush } from "@/lib/push";
 import { DesktopSidebar, MobileTopbar, MobileBottomNav, TABLEISTE_HOEHE } from "@/components/nav";
 import { SlashSearchShortcut } from "@/components/keyboard-shortcuts";
 import { GuidedTour } from "@/components/tour";
@@ -20,6 +19,7 @@ import { FeedbackDialog } from "@/components/feedback";
 import { BesuchErfassen } from "@/components/besuch-erfassen";
 import { OnboardingTracker } from "@/components/onboarding";
 import { BadgeCelebrator } from "@/components/badges";
+import { OnboardingGate } from "@/components/onboarding-gate";
 import { BackToTop } from "@/components/back-to-top";
 import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
@@ -88,12 +88,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (abmeldenAbholen()) { router.replace("/login"); return; }
     router.replace(ziel === "/dashboard" ? "/login" : mitRuecksprung("/login", ziel));
   }, [user, loading, router, oeffentlich, authFehler]);
-
-  // Wire native push once a user is present: device token → backend, tap → route.
-  // No-op on the web and when notifications aren't permitted.
-  useEffect(() => {
-    if (user) void initPush((path) => router.push(path));
-  }, [user, router]);
 
   // Ganzseitig laden: mittig statt oben. Ohne das klebte der Spinner am
   // oberen Rand — in der App halb hinter der Dynamic Island.
@@ -174,6 +168,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </Suspense>
       {/* RL-U12: feiert neu verdiente Lotsen-Abzeichen — auf jeder Seite. */}
       <BadgeCelebrator />
+      {/* 26a: richtet ein statt nur vorzustellen. Das Tor fragt den Server,
+          ob die Einrichtung dran ist, und lädt den Assistenten erst dann. */}
+      <OnboardingGate />
       {/* BackToTop liest useSearchParams (im Ratsgespräch ausgeblendet). */}
       <Suspense fallback={null}>
         <BackToTop />

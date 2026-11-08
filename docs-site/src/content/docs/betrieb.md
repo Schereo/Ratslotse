@@ -790,9 +790,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_FUNDSTUECK_MODEL` | Story zum „Fundstück des Tages" | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_RECAP_MODEL` | Themenfeld-Rückblicke | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_QA_MODEL` | „Frag den Rat": Antwort, vereinfachte Antwort, Deep-Research-Bericht, Partei-Meinungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
-| `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (mit ZDR); auch die Städte-Suchbegriffe | `google/gemini-3.1-flash-lite` |
+| `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (Azure EU, mit ZDR); auch die Städte-Suchbegriffe | `openai/gpt-5.6-luna` |
 | `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
-| `COUNCIL_ASSISTANT_PRUEFER_MODEL` | Lottis Selbstprüfung: Prüfer-Modell einer anderen Familie (`council/self_check.py`, Schalter `lotti-selbstpruefung`) | `google/gemini-3-flash-preview` |
+| `COUNCIL_ASSISTANT_PRUEFER_MODEL` | Lottis Selbstprüfung: Prüfer-Modell einer anderen Familie, in der EU (`council/self_check.py`, Schalter `lotti-selbstpruefung`) | `anthropic/claude-haiku-5.5` |
 | `COUNCIL_ASSISTANT_PRUEFER_ANTEIL` | Anteil der Erklärungen, die nachträglich geprüft werden (0–1) | `0.1` |
 | `COUNCIL_DISTRICT_MODEL` | „Mein Viertel": Vorhaben aus Beschlüssen bündeln und einordnen (`council/viertel.py`) | `openai/gpt-6-luna` |
 | `COUNCIL_QUIZ_MODEL` | Quizfragen erzeugen | `deepseek/deepseek-v4-pro` |
@@ -801,7 +801,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_EMBED_MODEL` | Embeddings (fastembed, lokal) | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |
 | `COUNCIL_RERANK_MODEL` | Reranker für die hybride Suche | `jinaai/jina-reranker-v2-base-multilingual` |
 | `COUNCIL_ALIAS_MODEL` | Prüft Themen-Dubletten (`council/aliases.py`) | `deepseek/deepseek-v4-pro` |
-| `TOPIC_INTEL_MODEL` | Themen-Beschreibung und Relevanzprüfung (`council/topic_intel.py`) — bricht die `COUNCIL_`-Namenskonvention | `deepseek/deepseek-v4-pro` |
+| `TOPIC_INTEL_MODEL` | Themen-Beschreibung und Relevanzprüfung (`council/topic_intel.py`, Azure EU) — bricht die `COUNCIL_`-Namenskonvention | `openai/gpt-5.6-luna` |
 
 ### Web-Backend
 
@@ -816,7 +816,6 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `APP_MIN_BUILD` | Kleinste noch zugelassene iOS-Buildnummer; `GET /api/app-config` liefert sie beim App-Start aus | nein | `0` (keine Sperre) |
 | `APP_UPDATE_NOTICE` | Optionaler Hinweistext für native Builds, z. B. zu einem empfohlenen Update | nein | leer |
 | `CORS_ORIGINS` | Kommaliste erlaubter Web-Origins (in Prod läuft das Frontend same-origin) | nein | `http://localhost:3000` |
-| `APP_CORS_ORIGINS` | Feste Origins der Capacitor-Apps, immer zusätzlich erlaubt | nein | `capacitor://localhost,https://localhost` |
 | `APPLE_BUNDLE_ID` | Erlaubter `aud`-Wert von „Sign in with Apple" in der nativen App | nein | `de.ratslotse.app` |
 | `APPLE_SERVICE_ID` | Services-ID für den Apple-Web-Flow (`aud` des Browser-Tokens). **Leeren schaltet den Web-Login ab** — genau das war der Fehler, den #328 behoben hat. | nein | `de.ratslotse.web` |
 | `APPLE_TEAM_ID` | Apple Developer Team-ID; für den Token-Widerruf bei Kontolöschung erforderlich | für App Store | – |

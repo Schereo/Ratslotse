@@ -5,8 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellRing, Moon } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { isNativeApp } from "@/lib/platform";
-import { enablePush } from "@/lib/push";
 import { Button, Card, Switch, toast } from "@/components/ui";
 import type { DeliveryChannel, User } from "@/lib/types";
 
@@ -33,10 +31,6 @@ type NotifyPrefs = {
  *  wenn sich jemand über eine unabschaltbare Meldung ärgert. */
 export function DeliverySettings() {
   const { user, refresh } = useAuth();
-  // Detected after mount to avoid a hydration mismatch between the static export
-  // (rendered as web) and the app runtime.
-  const [native, setNative] = useState(false);
-  useEffect(() => { setNative(isNativeApp()); }, []);
 
   const mutation = useMutation({
     mutationFn: (channel: DeliveryChannel) =>
@@ -87,7 +81,7 @@ export function DeliverySettings() {
   // „Nur Änderungs-Meldungen abschalten"): zum gemeinten Schalter springen und
   // ihn kurz hervorheben. `zustellung` meint den Kanal-Block, alles andere den
   // Anlass mit diesem Schlüssel. Bewusst window.location statt useSearchParams
-  // (der statische MOBILE-Export bricht an der Suspense-Grenze, wie in
+  // (der Hook zwänge die Seite in eine Suspense-Grenze, wie in
   // lib/public-routes.ts) — und als Query statt #-Anker, weil nur Pfad + Query
   // den Login-Umweg über ?weiter= überleben.
   const [flashZiel, setFlashZiel] = useState<string | null>(null);
@@ -113,9 +107,9 @@ export function DeliverySettings() {
   const emailOn = current === "email" || current === "both";
   const pushOn = current === "push" || current === "both";
   const alleAus = !emailOn && !pushOn;
-  // Push nur in der App aktivierbar; ist er (auf einem anderen Gerät) schon an,
-  // bleibt der Schalter auch im Web sichtbar/bedienbar.
-  const pushAvailable = native || pushOn;
+  // Push lässt sich nur in der iOS-App einschalten; ist er dort schon an, kann
+  // man ihn hier abschalten.
+  const pushAvailable = pushOn;
 
   /** Beide Schalter aus heißt aus — und wird auch so gespeichert.
    *
@@ -126,17 +120,6 @@ export function DeliverySettings() {
    *  sie. Eine App, die man nicht abstellen kann, verliert man ganz. */
   const apply = (email: boolean, push: boolean) => {
     mutation.mutate(email && push ? "both" : email ? "email" : push ? "push" : "off");
-  };
-
-  const togglePush = async (next: boolean) => {
-    if (next) {
-      const ok = await enablePush();
-      if (!ok) {
-        toast.error("Bitte Mitteilungen für Ratslotse in den Geräte-Einstellungen erlauben.");
-        return;
-      }
-    }
-    apply(emailOn, next);
   };
 
   return (
@@ -178,7 +161,7 @@ export function DeliverySettings() {
             checked={pushOn}
             aria-label="Push-Benachrichtigungen"
             disabled={!pushAvailable || mutation.isPending}
-            onCheckedChange={togglePush}
+            onCheckedChange={(v) => apply(emailOn, v)}
           />
         </div>
       </div>

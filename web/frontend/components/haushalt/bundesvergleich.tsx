@@ -128,8 +128,10 @@ function Einordnung({ k, j }: { k: Kennzahl; j: Jahr }) {
   );
 }
 
+export const FEDERAL_COMPARISON_URL = "/council/budget/federal-comparison";
+
 export function Bundesvergleich() {
-  const { data } = useFetch<Antwort>("/council/budget/federal-comparison");
+  const { data } = useFetch<Antwort>(FEDERAL_COMPARISON_URL, { shared: true });
   const jahre = useMemo(
     () => [...new Set((data?.indicators ?? []).flatMap((k) => k.years.map((y) => y.year)))].sort(),
     [data]);
