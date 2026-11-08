@@ -142,8 +142,15 @@ let flowEntscheidet = false;
 export function isOnboardingVisible(): boolean {
   return flowVisible || flowEntscheidet || einladungStand() === "offen";
 }
-/** Wird beim Abschluss/Abbruch gefeuert, damit aufgeschobene Abzeichen-Meldungen
- *  nachgeholt werden können. Feuert AUCH, wenn der Flow nur entschieden hat,
+/** Stand der Assistent auf dieser Seite schon einmal offen? Dann ist, was
+ *  währenddessen verdient wurde, ein Abzeichen der Einrichtung — und das feiert
+ *  der Celebrator nicht (Tims Befund 08.11.2026, s. `BadgeCelebrator`). */
+let flowWarSichtbar = false;
+export function einrichtungLiefHier(): boolean {
+  return flowWarSichtbar;
+}
+/** Wird beim Abschluss/Abbruch gefeuert, damit, was auf das Ende wartet, loslegen
+ *  kann: der Push-Hinweis und geparkte Abzeichen-Meldungen. Feuert AUCH, wenn der Flow nur entschieden hat,
  *  sich nicht zu zeigen — für „jemand hat die Einrichtung gerade wirklich
  *  beendet" gibt es deshalb das zweite Ereignis darunter. */
 export const ONBOARDING_DONE_EVENT = "ratslotse:onboarding-done";
@@ -355,9 +362,11 @@ export function OnboardingFlow() {
     return () => document.removeEventListener("focusin", onFocusIn, true);
   }, [step]);
 
-  // Solange der Flow oben liegt, halten Abzeichen-Toasts still (s. flowVisible).
+  // Solange der Flow oben liegt, halten Abzeichen-Toasts still (s. flowVisible),
+  // und was er verdient, wird hinterher nicht gefeiert (s. flowWarSichtbar).
   useEffect(() => {
     flowVisible = step !== null;
+    if (step !== null) flowWarSichtbar = true;
     return () => { flowVisible = false; };
   }, [step]);
 

@@ -10,7 +10,7 @@ import {
 import { api } from "@/lib/api";
 import { Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { isOnboardingVisible } from "@/components/onboarding-flow";
+import { ONBOARDING_DONE_EVENT, einrichtungLiefHier, isOnboardingVisible } from "@/components/onboarding-flow";
 
 /**
  * RL-U12 (Design 10a/11a/27a): Lotsen-Abzeichen — Sammeln fürs ERKUNDEN, nie
@@ -125,26 +125,46 @@ export function BadgeCelebrator() {
     return () => window.removeEventListener(DIRTY_EVENT, onDirty);
   }, [qc]);
 
-  // Was während der Einrichtung (26a) verdient wird, feiern wir GAR NICHT.
-  // Bis 11/2026 wurde es nur geparkt und nach dem Flow gefeiert — und kam
-  // damit genau beim Start der Tour: „Themen-Lotse" für das Thema aus dem
-  // Assistenten, „Frühwarner" für das Push-Gerät vom Anmelden. Man hatte
-  // dafür nichts getan, außer einzurichten (Tims Befund 08.11.2026). Verdient
-  // bleibt verdient: Das „NEU" in der Sammlung steht trotzdem, und der Server
-  // verbucht beim Abschluss der Einrichtung alles still
-  // (`badges.still_verbuchen`), damit es auch nach einem Neuladen nicht kommt.
+  // Während des Onboardings (26a) nicht dazwischenfunken — und was die
+  // Einrichtung selbst verdient, feiern wir GAR NICHT. Bis 11/2026 wurde es
+  // nur geparkt und danach gefeiert, und kam damit genau beim Start der Tour:
+  // „Themen-Lotse" für das Thema aus dem Assistenten, „Frühwarner" für das
+  // Push-Gerät vom Anmelden. Man hatte dafür nichts getan, außer einzurichten
+  // (Tims Befund 08.11.2026). Verdient bleibt verdient: Das „NEU" in der
+  // Sammlung steht trotzdem, und der Server verbucht beim Abschluss alles
+  // still (`badges.still_verbuchen`), damit es auch nach einem Neuladen nicht
+  // kommt.
+  //
+  // Geparkt wird weiter — für den Moment, in dem der Flow beim Seitenaufbau
+  // noch entscheidet, ob er sich zeigt. Zeigt er sich nicht (eingerichtetes
+  // Konto), wird nachgeholt; lief er auf dieser Seite, fällt das Geparkte weg.
+  const [pending, setPending] = useState<{ id: string; title: string }[]>([]);
+
   useEffect(() => {
     const fresh = (data?.newly_earned ?? []).filter((b) => !shown.current.has(b.id));
     if (!fresh.length) return;
     fresh.forEach((b) => shown.current.add(b.id));
     // Das „NEU" in der Sammlung hängt am Verdienen, nicht am Zusehen.
     markNewIds(fresh.map((b) => b.id));
-    if (isOnboardingVisible()) return;
-    // Mehrere auf einmal laufen NACHEINANDER durch die Warteschlange.
-    // Gestapelt (wie früher die Toasts) las man keine einzige zu Ende;
-    // jede Karte geht nach 6 s von selbst, „Weiter" überspringt sofort.
-    setQueue((q) => [...q, ...fresh]);
+    setPending((p) => [...p, ...fresh]);
   }, [data]);
+
+  useEffect(() => {
+    const flush = () => {
+      if (isOnboardingVisible()) return;
+      setPending((p) => {
+        if (!p.length) return p;
+        // Mehrere auf einmal laufen NACHEINANDER durch die Warteschlange.
+        // Gestapelt (wie früher die Toasts) las man keine einzige zu Ende;
+        // jede Karte geht nach 6 s von selbst, „Weiter" überspringt sofort.
+        if (!einrichtungLiefHier()) setQueue((q) => [...q, ...p]);
+        return [];
+      });
+    };
+    flush();
+    window.addEventListener(ONBOARDING_DONE_EVENT, flush);
+    return () => window.removeEventListener(ONBOARDING_DONE_EVENT, flush);
+  }, [pending]);
 
   const dismiss = useCallback(() => setQueue((q) => q.slice(1)), []);
 
