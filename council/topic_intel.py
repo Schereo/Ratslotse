@@ -33,7 +33,11 @@ from kern import llm, prompts
 
 logger = logging.getLogger("council.topic_intel")
 
-MODEL = os.environ.get("TOPIC_INTEL_MODEL", "deepseek/deepseek-v4-pro")
+# Seit 08.11.2026 GPT-5.6 Luna über Azure EU: Die Themen-Beschreibung und die
+# Vagheits-Prüfung lesen, was jemand eingetippt hat — das läuft nur noch in der
+# EU, und DeepSeek hat dort keinen Anbieter. Gegenprobe an zehn Themen: gleiche
+# Einordnung, Beschreibungen gleichwertig, Kosten etwa halb.
+MODEL = os.environ.get("TOPIC_INTEL_MODEL", "openai/gpt-5.6-luna")
 #: Frist der beiden Aufrufe, die im Web-Request laufen (Beschreibung,
 #: Vagheits-Urteil): Sekunden ohne Lebenszeichen, wie Lottis ``LLM_FRIST_S``.
 #: Beide haben einen Rückfall ohne Modell — eine Schablone bzw. „nicht vage".

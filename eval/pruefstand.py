@@ -105,7 +105,11 @@ OHNE_DENKEN_ENV = "PRUEFSTAND_OHNE_DENKEN"
 #: nur im Unterprozess eines Laufs. Für teure Modelle die Vorgabe
 #: (eval/kostenbremse.py, Tims Regel vom 23.09.2026).
 STICHPROBE_ENV = "PRUEFSTAND_STICHPROBE"
-_ZDR_404 = re.compile(r"data policy|zero data retention|no endpoints found matching", re.I)
+#: Seit 11/2026 ebenso: Ein Feature mit Nutzereingabe läuft nur über
+#: EU-Anbieter (``kern/llm.py::KeinEuAnbieter``) — ein Modell ohne EU-Anbieter
+#: ist dafür „nicht zulässig", kein Ausfall.
+_ZDR_404 = re.compile(r"data policy|zero data retention|no endpoints found matching"
+                      r"|keinen EU-Anbieter", re.I)
 
 
 def _council_db() -> Path:

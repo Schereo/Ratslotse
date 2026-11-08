@@ -59,7 +59,15 @@ ANTEIL = float(os.environ.get("COUNCIL_ASSISTANT_PRUEFER_ANTEIL", "0.1"))
 #: kostete 1,8 Cent und brauchte p50 7,6–8,2 s, und fand in der Stichprobe
 #: (15 + 15 Fälle) nicht mehr: 1 von 15 bekannten Mängeln. Gemini 3.5 Flash
 #: Lite fand von 7 zu vorsichtigen Antworten keine.
-MODEL = os.environ.get("COUNCIL_ASSISTANT_PRUEFER_MODEL", "google/gemini-3-flash-preview")
+# Seit 08.11.2026 Claude Haiku 5.5 in der EU (Google Vertex Europa / Bedrock
+# eu-west-1): Die Prüfung sieht Frage und Antwort, also Nutzereingabe — und
+# Gemini 3 Flash hat keinen EU-Anbieter. Bewusst KEIN OpenAI-Modell (s. u.:
+# nicht aus der Familie der Antwort). Kalibrierung am Fakten-Lauf vom
+# 25.09.2026 (eval/run_selbstpruefung.py, je 30 Fälle): Treffer 1/1,
+# Fehlalarme 0/29 (Gemini 1/29), Absagen 30/30 wie Gemini; halber Preis
+# (0,14 statt 0,29 ct je Prüfung), dafür p50 3,6 statt 1,4 s — die Prüfung
+# läuft als Stichprobe nach der Antwort, niemand wartet auf sie.
+MODEL = os.environ.get("COUNCIL_ASSISTANT_PRUEFER_MODEL", "anthropic/claude-haiku-5.5")
 #: Unter diesem Namen stehen die Prüfer-Aufrufe in ``llm_usage`` (Admin →
 #: Kosten). Trägt Nutzereingaben (die Frage), also gilt ZDR — Gemini hat
 #: ZDR-Anbieter, anders als GPT-6 Luna (``kern/llm.py::ZDR_VERZICHT``).

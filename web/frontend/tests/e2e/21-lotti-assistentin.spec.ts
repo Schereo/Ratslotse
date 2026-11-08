@@ -1021,7 +1021,8 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await page.goto("/dashboard");
     await knopf(page).click();
     await expect(fenster(page).getByText(/Soll ich mir deine Gespräche merken/)).toBeVisible();
-    await expect(fenster(page).getByText(/OpenRouter/)).toBeVisible();
+    // Seit 11/2026 steht sichtbar, wo die KI läuft; OpenRouter steht unter „Mehr dazu“.
+    await expect(fenster(page).getByText(/Rechenzentren in der EU/)).toBeVisible();
     await expect(fenster(page).getByRole("button", { name: "Fragen" })).toBeDisabled();
     await expect(fenster(page).getByRole("button", { name: "Was sehe ich hier?" })).toBeDisabled();
   });
