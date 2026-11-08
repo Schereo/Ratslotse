@@ -6,6 +6,7 @@ import { MapPin, Building2, Boxes, Search, Map as MapIcon } from "lucide-react";
 import { Entity } from "@/lib/types";
 import { Card, Input, TableSkeleton, EmptyState } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
+import { usePrefetchRoute } from "@/lib/route-prefetch";
 import { cn } from "@/lib/utils";
 import { themaHref, karteHref } from "@/lib/routes";
 import { KIND_COLOR } from "@/components/council-map";
@@ -29,7 +30,7 @@ export const ENTITY_KIND: Record<string, { label: string; plural: string; Icon: 
 export function EntityChip({ e }: { e: Entity }) {
   const k = ENTITY_KIND[e.kind] ?? ENTITY_KIND.project;
   return (
-    <Link href={themaHref(e.slug)} className="block">
+    <Link href={themaHref(e.slug)} prefetch={false} className="block">
       <Card className="card-interactive flex items-center gap-2.5 p-3">
         <k.Icon className="h-4 w-4 shrink-0" style={{ color: KIND_COLOR[e.kind] ?? KIND_COLOR.projekt }} />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{e.name}</span>
@@ -55,7 +56,7 @@ function TopEntityCard({ e, maxRecent }: { e: Entity; maxRecent: number }) {
   const recent = e.n_recent ?? 0;
   const last = lastLabel(e.last_date);
   return (
-    <Link href={themaHref(e.slug)} className="block">
+    <Link href={themaHref(e.slug)} prefetch={false} className="block">
       <Card className="card-interactive h-full p-4">
         <div className="flex items-start justify-between gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: `${color}1a`, color }}>
@@ -91,8 +92,14 @@ export function EntitiesTab() {
     for (const e of all) c[e.kind] = (c[e.kind] ?? 0) + 1;
     return c;
   }, [all]);
+  // Bis zu 400 Kacheln, alle auf dieselbe Route: einmal vorladen statt je
+  // Kachel (s. lib/route-prefetch.ts).
+  usePrefetchRoute(all[0] ? themaHref(all[0].slug) : null);
 
-  if (loading) return <div className="py-4"><TableSkeleton rows={8} cols={3} /></div>;
+  // `mt-4` wie der Inhalt darunter, nicht `py-4`: React tauscht beim Laden
+  // nur die Klasse desselben <div> — mit `py-4` rutschte die Kiste dabei um
+  // 16 px nach unten (gemessen als Layout-Shift, seit der Reiter nachlädt).
+  if (loading) return <div className="mt-4"><TableSkeleton rows={8} cols={3} /></div>;
   if (all.length === 0) {
     return <EmptyState mascot="sleep" title="Noch keine Themen" hint="Hier gibt es noch keine Themen aus den Beschlüssen." />;
   }

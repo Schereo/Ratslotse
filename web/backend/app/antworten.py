@@ -2765,6 +2765,28 @@ class DecisionFollow(TypedDict):
     following: bool
 
 
+class DecisionNeighbor(TypedDict):
+    """Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht."""
+    id: int
+    item_number: str | None
+    title: str | None
+
+
+class DecisionNeighbors(TypedDict):
+    """Wo der Beschluss unter den Beschlüssen seiner Sitzung steht
+    (``CouncilStore.decision_neighbors``).
+
+    ``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist
+    NICHT die TOP-Nummer und nicht die Protokoll-Position: Eine
+    Tagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am
+    Rand als ``null``.
+    """
+    position: int
+    total: int
+    prev: DecisionNeighbor | None
+    next: DecisionNeighbor | None
+
+
 class SimilarDecision(TypedDict):
     """Ein semantischer Nachbar (``CouncilStore.get_similar``)."""
     id: int
@@ -2852,6 +2874,9 @@ class DecisionDetail(TypedDict):
     plan_image: NotRequired[int | None]
     deliberation_path: NotRequired[list[DeliberationStation]]
     follow: NotRequired[DecisionFollow]
+    # Optional, weil die ausgelieferte App das Feld nicht kennt und ältere
+    # Antworten (Fixturen, Schnappschüsse) es nicht tragen.
+    neighbors: NotRequired[DecisionNeighbors | None]
 
 
 class QaShare(TypedDict):
