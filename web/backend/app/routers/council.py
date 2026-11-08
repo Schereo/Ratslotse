@@ -5477,6 +5477,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
             # die stabile Orts-ID ``neu-donnerschwee`` aufgelöst.
             ort = qa.finde_ort(q_suche, store) or qa.finde_ort(q, store)
+            # Aus Lottis Fenster auf der Karte: „hier" meint das Viertel dort.
+            if not ort:
+                ort = qa.screen_ort(store, bildschirm, q, unklar=bool(analyse.get("unklar")))
             # Der Ort, den die Analyse aus dem Katalog GEWÄHLT hat, ist nur ein
             # Hinweis, kein Filter: Seine Beschlüsse kommen zusätzlich in den
             # Rerank-Pool, mehr nicht. Als harter Filter (#1702) ordnete die

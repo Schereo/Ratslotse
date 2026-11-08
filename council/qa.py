@@ -5415,6 +5415,31 @@ def screen_decision(store, screen: dict | None) -> dict | None:
         return None
 
 
+#: „hier", „dort", „in diesem Viertel" — die Frage zeigt auf den Bildschirm.
+_HIER_RE = re.compile(
+    r"\b(hier|dort|da|vor ort|in der nähe|in der gegend|in diesem (viertel|stadtteil)"
+    r"|im viertel|in meinem viertel|bei mir)\b", re.IGNORECASE)
+
+
+def screen_ort(store, screen: dict | None, frage: str, *, unklar: bool = False) -> dict | None:
+    """Das Viertel der Karte, wenn die Frage auf den Bildschirm zeigt.
+
+    Lotti reicht eine Frage wörtlich ans Archiv weiter. Auf der Karte von
+    Donnerschwee hieß das am 08.11.2026: „Was ist hier gerade im Bau?" ohne
+    „Donnerschwee", und das Archiv fragte zurück, worum es gehen soll. Der
+    Ort reist als ``refs.place_id`` mit (``lib/assistentin.ts::refsAus``).
+
+    Nur, wenn die Frage auf den Bildschirm zeigt (``hier``, ``dort`` …) oder
+    sonst keinen Gegenstand hat: Der Ort wird zum Filter, und eine Frage zum
+    Haushalt soll nicht still auf ein Viertel schrumpfen, nur weil jemand
+    gerade die Karte offen hat.
+    """
+    pid = ((screen or {}).get("refs") or {}).get("place_id")
+    if not pid or not (unklar or _HIER_RE.search(frage or "")):
+        return None
+    return ort_aus_id(str(pid), store)
+
+
 def screen_session_ids(store, screen: dict | None) -> list[int]:
     """Die Beschlüsse der Sitzung, die der Bildschirm zeigt.
 
