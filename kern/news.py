@@ -52,42 +52,104 @@ def push_text_for(release: Release) -> str:
     return text[:179] + "…" if len(text) > 180 else text
 
 
+#: Die Farben der Ankündigung — dieselben wie die Hülle (``kern.digest_email``).
+_BLAU = "#0764a6"
+_SIGNAL = "#d9480f"
+_TEXT = "#0f172a"
+_GRAU = "#64748b"
+_RAHMEN = "#dbe5ee"
+_FLAECHE = "#f3f7fb"
+
+
+def _version_kurz(version: str) -> str:
+    """„3.0.0" → „3.0" — so steht die Zahl auch auf der Karte."""
+    teile = version.split(".")
+    return ".".join(teile[:2]) if len(teile) >= 2 else version
+
+
+def _highlight_block(h: releases.Highlight, nr: int) -> str:
+    """Ein Feature als eigene Karte: Szene oben (verlinkt), darunter Nummer,
+    Titel, Satz und der Weg dorthin als Verb („Mein Viertel ausprobieren →")."""
+    ziel = digest_email.absolut(h.url)
+    quelle = h.mail_image or (
+        (h.media.poster if h.media.kind == "video" else h.media.src) if h.media else None)
+    bild = ""
+    if quelle:
+        alt = html.escape(h.media.alt if h.media else h.title, quote=True)
+        bild = (
+            f"<a href='{ziel}' style='display:block;text-decoration:none'>"
+            f"<img src='{digest_email.absolut(quelle)}' alt='{alt}' width='552' "
+            "style='display:block;width:100%;max-width:552px;height:auto;border:0;"
+            "border-radius:12px 12px 0 0'></a>"
+        )
+    return (
+        f"<div style='margin-top:20px;border:1px solid {_RAHMEN};border-radius:13px;"
+        "overflow:hidden;background:#ffffff'>"
+        f"{bild}"
+        "<div style='padding:16px 18px 18px'>"
+        f"<div style='font-size:12px;font-weight:700;letter-spacing:0.08em;color:{_BLAU}'>"
+        f"NEU · {nr}</div>"
+        f"<div style='margin-top:4px;font-size:18px;font-weight:700;line-height:1.3;color:{_TEXT}'>"
+        f"{html.escape(h.title)}</div>"
+        f"<div style='margin-top:6px;font-size:15px;line-height:1.55;color:{_TEXT}'>"
+        f"{html.escape(h.text)}</div>"
+        f"<div style='margin-top:12px'><a href='{ziel}' style='color:{_BLAU};font-size:15px;"
+        f"font-weight:600;text-decoration:none'>{html.escape(h.action or 'Ansehen')} &rarr;</a></div>"
+        "</div></div>"
+    )
+
+
 def body_html(release: Release) -> str:
     """Der Meldungskörper für Mail und Warteschlange.
 
     Ohne Hülle und ohne Anrede — beides setzt ``kern.delivery.deliver_message``
-    beim Zustellen. Je Highlight ein Block mit Titel, Satz und leisem Weg
-    dorthin; darunter der eine Knopf zurück in die App und der Verweis auf den
-    vollständigen Changelog.
+    beim Zustellen. Oben Version und Name des Updates, dann je großes Feature
+    eine Karte mit einer **Szene aus dem Clip** (nicht dessen Titelbild),
+    darunter „Außerdem neu" für die kleinen Dinge, der eine Knopf zurück in die
+    App und ein Gruß. Überarbeitet am 08.11.2026 (Tim: „ein bisschen
+    aufwerten, dass sie schöner wirkt"): Vorher standen vier gleich gebaute
+    Absätze mit Titelbildern untereinander, und das kleine Nebenbei-Feature
+    wog so viel wie die drei großen.
     """
+    gross = [h for h in release.highlights if not h.aside]
+    nebenbei = [h for h in release.highlights if h.aside]
     teile = [
-        "<p style='margin:0'>Ratslotse hat ein Update bekommen. "
-        "Das Wichtigste in Kürze:</p>"
+        f"<div style='font-size:12px;font-weight:700;letter-spacing:0.12em;color:{_SIGNAL}'>"
+        f"NEU IN VERSION {html.escape(_version_kurz(release.version))}</div>",
+        f"<div style='margin-top:6px;font-size:26px;font-weight:800;line-height:1.2;color:{_TEXT}'>"
+        f"{html.escape(release.title)}</div>",
+        f"<p style='margin:10px 0 0;font-size:15px;line-height:1.55;color:{_TEXT}'>"
+        # Nicht der Teaser der Karte: Der verspricht „je ein kurzes Video“,
+        # und in der Mail läuft keins.
+        f"Ratslotse hat ein großes Update bekommen — {len(gross)} neue Wege durch den Rat. "
+        "In der App zeigt dir zu jedem ein kurzes Video, wie es geht.</p>",
     ]
-    for h in release.highlights:
-        # Dasselbe Bild wie auf der Karte, nur eben still: Ein Clip liefe in
-        # keinem Postfach, sein Standbild schon.
-        bild = ""
-        if h.media:
-            quelle = h.media.poster if h.media.kind == "video" else h.media.src
-            if quelle:
-                bild = (
-                    f"<div style='margin-top:10px'><img src='{digest_email.absolut(quelle)}' "
-                    f"alt='{html.escape(h.media.alt, quote=True)}' width='552' "
-                    "style='display:block;width:100%;max-width:552px;height:auto;"
-                    "border-radius:12px;border:1px solid #e2e8f0'></div>"
-                )
+    teile += [_highlight_block(h, i) for i, h in enumerate(gross, start=1)]
+    zeilen = [
+        "<div style='margin-top:10px'>"
+        f"<a href='{digest_email.absolut(h.url)}' style='color:{_TEXT};font-weight:700;"
+        f"text-decoration:none'>{html.escape(h.title)}</a>"
+        f"<div style='margin-top:2px;color:{_TEXT}'>{html.escape(h.text)}</div></div>"
+        for h in nebenbei
+    ] + [
+        f"<div style='margin-top:10px;color:{_TEXT}'>{html.escape(z)}</div>"
+        for z in release.mail_extras
+    ]
+    if zeilen:
         teile.append(
-            "<div style='margin-top:18px'>"
-            f"<div style='font-size:15px;font-weight:700;line-height:1.35'>"
-            f"{html.escape(h.title)}</div>"
-            f"<div style='margin-top:4px;font-size:15px;line-height:1.55'>"
-            f"{html.escape(h.text)}</div>"
-            f"{bild}"
-            f"{digest_email.nebenlink(digest_email.absolut(h.url), 'Ansehen')}"
-            "</div>"
+            f"<div style='margin-top:22px;padding:16px 18px;border-radius:13px;background:{_FLAECHE};"
+            "font-size:15px;line-height:1.55'>"
+            f"<div style='font-size:12px;font-weight:700;letter-spacing:0.08em;color:{_GRAU}'>"
+            "AUSSERDEM NEU</div>"
+            + "".join(zeilen)
+            + "</div>"
         )
-    teile.append(digest_email.knopf(TAP_ZIEL, "In Ratslotse ansehen"))
+    teile.append(digest_email.knopf(TAP_ZIEL, "Jetzt in Ratslotse ansehen"))
+    teile.append(
+        f"<p style='margin:22px 0 0;font-size:15px;line-height:1.55;color:{_TEXT}'>"
+        "Viel Spaß beim Entdecken! Fällt dir etwas auf, freue ich mich über eine Nachricht "
+        "über „Feedback“ in der App.<br>Lotti</p>"
+    )
     teile.append(
         digest_email.nebenlink(
             digest_email.absolut("/changelog"), "Alle Änderungen dieser Version"))

@@ -195,6 +195,13 @@ class Highlight:
     #: eines Highlights ist oft ein ganzer Satz, „Lotti erklärt dir, was du
     #: siehst ausprobieren" wäre keiner. Ohne Wert: „Ausprobieren".
     action: str | None = None
+    #: Die **Szene für die Mail**: ein Standbild aus dem Clip, in dem man das
+    #: Feature bedient sieht (JPEG, 1104 px breit — Outlook kennt kein WebP).
+    #: Bis 11/2026 stand dort das Standbild (``poster``), also das Titelbild
+    #: des Clips: Es wiederholte nur die Überschrift darüber und war zu zwei
+    #: Dritteln leere Fläche (Tim 08.11.2026). Ohne Szene nimmt die Mail das
+    #: Standbild.
+    mail_image: str | None = None
 
 
 @dataclass(frozen=True)
@@ -222,6 +229,10 @@ class Release:
     #: gezeigt — samt Lotti, Mein Viertel und Ideen aus anderen Städten, die
     #: dort aus sind. Auf dev (``FEATURE_FLAGS=*``) bleibt sie sichtbar.
     schalter: tuple[str, ...] = ()
+    #: Kurze Zeilen **nur für die Mail** unter „Außerdem neu“ — Neuerungen ohne
+    #: eigenen Clip, die in der Ankündigung trotzdem nicht fehlen sollen. Die
+    #: Karte in der App zeigt sie nicht.
+    mail_extras: tuple[str, ...] = ()
 
 
 #: Alle Releases mit Karte, **neueste zuerst**.
@@ -239,8 +250,13 @@ RELEASES: tuple[Release, ...] = (
         title="Das Erklär-Update",
         schalter=("lotti-assistentin", "mein-viertel", "ideen-anderswo", "andere-staedte"),
         teaser="Drei neue Wege durch den Rat — je ein kurzes Video.",
+        mail_extras=(
+            "Die KI läuft jetzt ausschließlich in Rechenzentren in der EU — "
+            "ohne Speicherung beim Anbieter und ohne Training mit deinen Fragen.",
+        ),
         highlights=(
             Highlight(
+                mail_image="/neuigkeiten/3.0.0/lotti-szene.jpg",
                 title="Lotti erklärt dir, was du siehst",
                 # „Markieren“ nur als Zusatz für den Browser: Die App kennt
                 # keine Textauswahl (ios/…/AssistantSheet.swift, „Was in v1
@@ -297,6 +313,7 @@ RELEASES: tuple[Release, ...] = (
                 ),
             ),
             Highlight(
+                mail_image="/neuigkeiten/3.0.0/viertel-szene.jpg",
                 title="Mein Viertel",
                 text="Gib deine Straße oder deinen Stadtteil ein und sieh, was der "
                      "Rat dort beschlossen hat — jedes Vorhaben von der Idee bis "
@@ -338,6 +355,7 @@ RELEASES: tuple[Release, ...] = (
                 ),
             ),
             Highlight(
+                mail_image="/neuigkeiten/3.0.0/ideen-szene.jpg",
                 title="Ideen aus anderen Städten",
                 text="Was haben Hannover, Münster oder Potsdam schon beantragt oder "
                      "beschlossen, das Oldenburg noch fehlt? Je Idee siehst du, wie "
@@ -378,6 +396,7 @@ RELEASES: tuple[Release, ...] = (
                 ),
             ),
             Highlight(
+                mail_image="/neuigkeiten/3.0.0/akte-szene.jpg",
                 title="Frag den Rat liest den ganzen Vorgang",
                 text="Fragst du nach einem Vorhaben, stehen unter der Antwort jetzt "
                      "sein Verlauf als Zeitleiste und die Eckdaten.",
