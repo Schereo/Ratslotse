@@ -513,13 +513,10 @@ function kurzerGegenstand(roh: string): string {
   // dem Doppelpunkt sagt nichts über die Sache, der Teil dahinter alles.
   const teile = t.match(/^(.{3,70}?):\s+(.{8,})$/);
   if (teile && /\b(GmbH|AG|KG|mbH|e\.\s?V\.|Stiftung|Verband|Betrieb)\b/.test(teile[1])) t = teile[2];
-  if (t.length > 58) {
-    const schnitt = t.slice(0, 58);
-    const luecke = schnitt.lastIndexOf(" ");
-    // Nur an einer Wortgrenze kürzen — sonst lieber gar keinen Vorschlag.
-    if (luecke < 20) return "";
-    t = `${schnitt.slice(0, luecke).replace(/[,;:.\-–—]+$/, "")} …`;
-  }
+  // Zu lang heißt: kein Vorschlag — nicht gekürzt. Ein „…" schnitt genau den
+  // Teil ab, um den es ging („Satzung zur Änderung der Satzung … über …",
+  // Tim 08.11.2026); dieselbe Grenze wie `qa.vorschlags_gegenstand`.
+  if (t.length > 60) return "";
   return t.length >= 8 ? t : "";
 }
 

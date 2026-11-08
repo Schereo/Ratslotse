@@ -1761,6 +1761,15 @@ _OLDB_RE = re.compile(r"\s*\(Oldb\.?\)", re.IGNORECASE)
 _NACHKLAMMER_RE = re.compile(r"\s*\([^()]*\)\s*$")
 
 
+#: Der Kurzname, den ein Titel am Ende selbst nennt: „… (Entschädigungssatzung)".
+#: Ein Wort, groß geschrieben, mindestens acht Zeichen — Abkürzungen wie
+#: „(KOL)" und Antragsteller-Klammern fallen damit heraus.
+_KURZNAME_RE = re.compile(r"\(([A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜa-zäöüß]+)*)\)\s*$")
+#: „Satzung der Stadt Oldenburg über …" — in einer Frage an Ratslotse ist die
+#: Stadt immer Oldenburg.
+_STADT_RE = re.compile(r"\s+der Stadt Oldenburg\b")
+
+
 def vorschlags_gegenstand(titel: str, grenze: int = 60) -> str:
     """Aus einem Beschlusstitel den Gegenstand, den man jemandem hinhält.
 
@@ -1771,14 +1780,45 @@ def vorschlags_gegenstand(titel: str, grenze: int = 60) -> str:
     jedes Wort Apparat ein Wort Inhalt. Aus „Bebauungsplan 810 (Krugweg) …
     - Prüfung der Stellungnahmen - Satzungsbeschluss" wird so wieder ein Ding,
     nach dem man fragen kann.
+
+    **Nennt der Titel seinen Kurznamen selbst**, gewinnt der: „Satzung zur
+    Änderung der Satzung der Stadt Oldenburg (Oldb) über die Entschädigung der
+    Mitglieder des Rates … (Entschädigungssatzung)" wird „Änderung der
+    Entschädigungssatzung".
+
+    **Leer statt abgeschnitten.** Bis 11/2026 kappte die Funktion bei
+    ``grenze`` mit „…" — und schnitt genau den Teil ab, um den es ging: „Was
+    wurde zu ‚Satzung zur Änderung der Satzung der Stadt Oldenburg über …'
+    entschieden?" (Tim 08.11.2026). So eine Frage hilft niemandem, und das
+    Modell sucht dann nach dem Stummel. Wer einen Vorschlag braucht, nimmt den
+    nächsten Beschluss (:func:`erster_gegenstand`).
     """
     t = _OLDB_RE.sub("", " ".join((titel or "").split()))
+    kurz = _KURZNAME_RE.search(t)
+    if kurz and len(kurz.group(1)) >= 8:
+        name = kurz.group(1)
+        if re.match(r"(Satzung zur Änderung|Änderung)\b", t) and re.search(r"(satzung|ordnung)$", name):
+            return f"Änderung der {name}"
+        return name
     # Erst den Verfahrensstand hinter dem Gedankenstrich abschneiden, dann den
-    # Klammerzusatz — und erst DANN kürzen. Andersherum kappt die Länge die
-    # schließende Klammer weg, und der Apparat bleibt genau dort stehen, wo er
-    # weg sollte („… Kennedystraße (Fraktionen…").
+    # Klammerzusatz — und erst DANN die Länge prüfen. Andersherum bliebe der
+    # Apparat genau dort stehen, wo er weg sollte („… Kennedystraße (Fraktionen…").
     t = _NACHKLAMMER_RE.sub("", re.split(r"\s+[—–-]\s+|:\s+", t)[0]).strip(" -–—:,")
-    return (t[:grenze].rstrip(" -–—:,") + "…") if len(t) > grenze else t
+    t = _STADT_RE.sub("", t)
+    return t if len(t) <= grenze else ""
+
+
+def erster_gegenstand(titel: list[str] | str | None, grenze: int = 60) -> str:
+    """Der erste Titel, aus dem ein ganzer Gegenstand wird — sonst leer.
+
+    Eine Sitzung hat viele Beschlüsse; ist der wichtigste zu lang für einen
+    Vorschlag, fragt der Vorschlag eben nach dem nächsten, statt ihn zu kappen.
+    """
+    for t in ([titel] if isinstance(titel, str) else (titel or [])):
+        kurz = vorschlags_gegenstand(t or "", grenze)
+        if len(kurz) >= 8:
+            return kurz
+    return ""
 
 
 def rueckfrage_vorschlaege(store, frage: str, limit: int = 3) -> list[str]:
@@ -1804,8 +1844,8 @@ def rueckfrage_vorschlaege(store, frage: str, limit: int = 3) -> list[str]:
     try:
         for sitzung in store.juengste_sitzungen_mit_beschluessen(
                 limit=limit * 2, mindest_tops=RUECKFRAGE_MINDEST_TOPS):
-            kurz = vorschlags_gegenstand(sitzung.get("top_titel") or "")
-            if len(kurz) < 8:
+            kurz = erster_gegenstand(sitzung.get("top_titel_kandidaten") or sitzung.get("top_titel"))
+            if not kurz:
                 continue
             satz = f'Was wurde zu „{kurz}“ entschieden?'
             if satz not in fragen:

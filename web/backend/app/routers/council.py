@@ -3841,7 +3841,7 @@ def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples
     zeilen: list[QaExampleSession] = [
         {"committee": str(z["committee"]), "session_date": str(z["session_date"]),
          "n": int(z["n"]),
-         "top_titel": qa.vorschlags_gegenstand(z.get("top_titel") or "") or None}
+         "top_titel": qa.erster_gegenstand(z.get("top_titel_kandidaten") or z.get("top_titel")) or None}
         for z in store.juengste_sitzungen_mit_beschluessen(
             limit=2, mindest_tops=qa.RUECKFRAGE_MINDEST_TOPS)]
     return {"sessions": zeilen}
