@@ -12,9 +12,10 @@ Genau das lag am 02.09.2026 auf ``dev``: Der Umbau der Adressen auf Englisch
 Typprüfung noch die Testsuite noch der Vertragstest konnten das sehen.
 
 Dazu die zweite Regel dieser Schicht: **ans Backend nur über ``lib/api.ts``.**
-Ein nacktes ``fetch("/api/…")`` funktioniert im Browser und zeigt in der
-Capacitor-Hülle ins Nichts, weil das Bundle dort unter
-``capacitor://localhost`` läuft.
+Ein nacktes ``fetch("/api/…")`` funktioniert, umgeht aber Fehlertexte,
+Zeitgrenze und die 401-Behandlung des Wrappers. (Entstanden ist die Regel in
+der Capacitor-Hülle, wo der relative Pfad ins Nichts zeigte; die Hülle ist seit
+11/2026 weg.)
 
 Der Test steht in der Python-Suite und nicht im Frontend-Workflow, aus dem
 gleichen Grund wie die Prüfung der generierten Typen: Der Frontend-Workflow
@@ -31,8 +32,7 @@ WURZEL = Path(__file__).resolve().parents[1]
 FRONTEND = WURZEL / "web" / "frontend"
 
 #: Dateien, die den Wrapper selbst bauen und deshalb roh zugreifen dürfen.
-EIGENE_SACHE = {"lib/api.ts", "lib/platform.ts", "lib/api-schema.ts",
-                "lib/vertrag.ts"}
+EIGENE_SACHE = {"lib/api.ts", "lib/api-schema.ts", "lib/vertrag.ts"}
 
 
 def _dateien():
@@ -155,7 +155,7 @@ def test_jeder_aufgerufene_pfad_steht_im_vertrag():
 
 
 def test_ans_backend_nur_ueber_den_wrapper():
-    """Ein nacktes ``fetch("/api/…")`` zeigt in der App-Hülle ins Nichts."""
+    """Ein nacktes ``fetch("/api/…")`` umgeht den Wrapper."""
     treffer: list[str] = []
     roh = re.compile(r"""fetch\s*\(\s*["'`]/api/""")
     for rel, text in _dateien():
@@ -165,9 +165,8 @@ def test_ans_backend_nur_ueber_den_wrapper():
     assert not treffer, (
         "Diese Stellen gehen mit einem relativen Pfad direkt ans Backend:\n  "
         + "\n  ".join(treffer)
-        + "\n\nDer Pfad wird im Browser aufgelöst, in der Capacitor-Hülle "
-          "läuft das Bundle aber unter capacitor://localhost und der Aufruf "
-          "geht ins Leere. Nimm `api.get/post/put/del` aus `lib/api.ts` — "
-          "oder, wenn der Wrapper nicht passt (Streams), `apiUrl()` und "
-          "`authHeaders()` aus demselben Modul."
+        + "\n\nDamit fehlen Fehlertexte, Zeitgrenze und die 401-Behandlung "
+          "des Wrappers. Nimm `api.get/post/put/del` aus `lib/api.ts` — "
+          "oder, wenn der Wrapper nicht passt (Streams), `apiUrl()` aus "
+          "demselben Modul."
     )

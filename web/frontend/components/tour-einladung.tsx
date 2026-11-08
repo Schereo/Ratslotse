@@ -76,8 +76,10 @@ export function TourEinladung() {
   const schliessen = useCallback(() => {
     merkeEinladung("erledigt");
     setOffen(false);
-    // Die zurückgehaltenen Abzeichen dürfen jetzt — die Marke steht nicht mehr
-    // auf „offen", der Riegel in isOnboardingVisible() ist damit weg.
+    // Über die zurückgehaltenen Abzeichen wird jetzt entschieden — die Marke
+    // steht nicht mehr auf „offen", der Riegel in isOnboardingVisible() ist
+    // damit weg. Was die Einrichtung verdient hat, fällt dabei still weg
+    // (`einrichtungLiefHier`), sonst kam es genau beim Start der Tour.
     window.dispatchEvent(new Event(ONBOARDING_DONE_EVENT));
   }, []);
 

@@ -25,8 +25,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 /** Die Adresse, die gleich als Filter auf derselben Seite kommt. */
 let filterZiel: string | null = null;
 
-/** Pfad ohne Schlussstrich plus sortenreine Query — der statische Export
- *  hängt einen Schrägstrich an, `router.replace` bekommt keinen. */
+/** Pfad ohne Schlussstrich plus sortenreine Query — `usePathname` und
+ *  `router.replace` sollen dieselbe Adresse ergeben, mit oder ohne Schrägstrich. */
 function vergleichbar(pfad: string, query: string): string {
   return `${pfad.replace(/\/+$/, "") || "/"}?${new URLSearchParams(query).toString()}`;
 }

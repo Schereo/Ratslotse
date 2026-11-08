@@ -12,9 +12,8 @@
 // Backend selbst und reicht dessen ReadableStream UNGEPUFFERT durch.
 // `no-transform` hält Caddy davon ab, den Stream am Rand zu gzip-puffern.
 //
-// CORS wie in der ask-Route: Die native App ruft cross-origin auf
-// (capacitor://localhost → ratslotse.de) und authentifiziert per Bearer-Token;
-// ein Next-Route-Handler setzt von sich aus KEINE CORS-Header.
+// Bearer-Token und `X-Client` der nativen iOS-App werden wie in der ask-Route
+// durchgereicht.
 
 import type { NextRequest } from "next/server";
 
@@ -23,32 +22,12 @@ export const dynamic = "force-dynamic";
 
 const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
 
-const APP_ORIGINS = new Set(["capacitor://localhost", "https://localhost"]);
-
-function corsHeaders(req: NextRequest): Record<string, string> {
-  const origin = req.headers.get("origin");
-  if (!origin || !APP_ORIGINS.has(origin)) return {};
-  const requested = req.headers.get("access-control-request-headers");
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": requested || "Content-Type, Authorization, X-Client",
-    "Vary": "Origin, Access-Control-Request-Headers",
-  };
-}
-
-export function OPTIONS(req: NextRequest) {
-  return new Response(null, { status: 204, headers: corsHeaders(req) });
-}
-
 export async function GET(req: NextRequest, { params }: { params: { jobId: string } }) {
-  const cors = corsHeaders(req);
   // Job-IDs sind token_urlsafe(12) — alles andere gar nicht erst ans Backend
   // weiterreichen, damit hier kein Pfad zusammengebaut werden kann.
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(params.jobId)) {
     return new Response(JSON.stringify({ detail: "Unbekannter Job." }), {
-      status: 404, headers: { "Content-Type": "application/json", ...cors },
+      status: 404, headers: { "Content-Type": "application/json" },
     });
   }
   const ab = req.nextUrl.searchParams.get("ab");
@@ -75,7 +54,6 @@ export async function GET(req: NextRequest, { params }: { params: { jobId: strin
       status: upstream.status,
       headers: {
         "Content-Type": upstream.headers.get("Content-Type") ?? "application/json",
-        ...cors,
       },
     });
   }
@@ -86,7 +64,6 @@ export async function GET(req: NextRequest, { params }: { params: { jobId: strin
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       "X-Accel-Buffering": "no",
-      ...cors,
     },
   });
 }

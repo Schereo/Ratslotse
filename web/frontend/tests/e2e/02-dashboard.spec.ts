@@ -32,7 +32,7 @@ test.describe("Dashboard", () => {
 
   test("Erste Schritte zeigen Fortschritt und führen zur ersten Station", async ({ page }) => {
     // Der Hinweis-Platz zeigt EINEN Hinweis, nach Priorität: Live > Neu bei
-    // Ratslotse > Pause > Erste Schritte > Mitteilungen. Was gerade gewinnt, hängt am Datenstand —
+    // Ratslotse > Pause > Erste Schritte. Was gerade gewinnt, hängt am Datenstand —
     // in der CI ist die Rats-Datenbank leer, und dann meldet der Server eine
     // Sitzungspause, hinter der die Leiste unter „Mehr" verschwindet. Der Test
     // hat lokal bestanden und in der CI nicht.

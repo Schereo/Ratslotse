@@ -128,7 +128,7 @@ xcodebuild -exportArchive \
 ## Plattformstand
 
 Die frühere Capacitor/WebView-Ausgabe für iOS wurde nach dem Paritätsabgleich
-entfernt. Unter iOS wird ausschließlich dieses SwiftUI-Projekt gebaut. Das
-unveröffentlichte Android-Gerüst bleibt separat unter `web/frontend/android`.
-Landingpage, Changelog, Doku und geteilte `/g`-Snapshots bleiben bewusst im
+entfernt, das unveröffentlichte Android-Gerüst unter `web/frontend/android`
+im November 2026 ebenfalls. Unter iOS wird ausschließlich dieses
+SwiftUI-Projekt gebaut. Landingpage, Changelog, Doku und geteilte `/g`-Snapshots bleiben bewusst im
 Web.

@@ -40,7 +40,7 @@ describe("routeAus", () => {
     expect(routeAus("/council", "?tab=geheim")).toBe("/council");
   });
 
-  it("schneidet den Schrägstrich ab, den der statische Export anhängt", () => {
+  it("schneidet den Schrägstrich am Ende ab", () => {
     expect(routeAus("/haushalt/schulden/")).toBe("/haushalt/schulden");
     expect(routeAus("/")).toBe("/");
   });

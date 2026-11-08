@@ -13,12 +13,11 @@ import { api } from "@/lib/api";
 import { vertrag } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
-import { LANDING_HREF } from "@/components/native-redirect";
-import { isNativeApp } from "@/lib/platform";
+import { LANDING_HREF } from "@/components/landing-redirect";
 import { darfAdmin, darfHaushalt } from "@/lib/rechte";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton, openFeedback } from "@/components/feedback";
-import { WebThemeSwitch } from "@/components/web-theme-switch";
+import { LottiThemeSwitch } from "@/components/theme-switch";
 import { cn, pfad } from "@/lib/utils";
 import { openCommandPalette } from "@/components/command-palette";
 import { useGleitMarker, GleitMarker } from "@/components/gleit-marker";
@@ -197,7 +196,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   || (pathname.startsWith("/council/") && !pathname.startsWith("/council/sitzung"))
   || ["/wahlen", "/wahlabend", "/karte", "/viertel", "/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
-// RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
+// RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (LottiThemeSwitch)
 // nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
 // „Erscheinungsbild", die Topbar bleibt schlank (Tim, 22.07.).
 
@@ -373,7 +372,7 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
             <span className="block truncate">{user?.email}</span>
           </span>
         </Link>
-        {showTheme && <WebThemeSwitch />}
+        {showTheme && <LottiThemeSwitch />}
       </div>
       <FeedbackButton onNavigate={onNavigate} />
       <button
@@ -391,11 +390,6 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
  *  „Mehr"-Sheet (mobil, 9a④) — der sticky Seiten-Footer, der auf jeder Seite
  *  mitscrollte, entfällt dafür. */
 function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
-  // Die Technik-Doku (/docs) liegt nur auf dem Server, nicht im App-Bundle —
-  // in der nativen App wäre der Link tot (Review-Befund P4). Erst nach dem
-  // Mount entscheiden, gleiches Hydration-Muster wie beim Druck-Knopf.
-  const [mitDocs, setMitDocs] = useState(false);
-  useEffect(() => { setMitDocs(!isNativeApp()); }, []);
   const link = cn("hover:text-foreground", zentriert && "inline-block py-2");
   return (
     <p className={cn(
@@ -413,20 +407,12 @@ function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
       <a href="/barrierefreiheit" className={link}>Barrierefreiheit</a>
       {" · "}
       <a href="/changelog" className={link}>Changelog</a>
-      {mitDocs && (
-        <>
-          {" · "}
-          {/* Angemeldete werden von „/" aufs Dashboard geschickt — dieser
-              Link ist die Fluchttür zur Startseite (Tims Wunsch 12.08.). */}
-          <a href={LANDING_HREF} className={link}>Startseite</a>
-        </>
-      )}
-      {mitDocs && (
-        <>
-          {" · "}
-          <a href="/docs" className={link}>Technik-Doku</a>
-        </>
-      )}
+      {" · "}
+      {/* Angemeldete werden von „/" aufs Dashboard geschickt — dieser
+          Link ist die Fluchttür zur Startseite (Tims Wunsch 12.08.). */}
+      <a href={LANDING_HREF} className={link}>Startseite</a>
+      {" · "}
+      <a href="/docs" className={link}>Technik-Doku</a>
     </p>
   );
 }

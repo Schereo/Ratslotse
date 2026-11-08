@@ -35,7 +35,7 @@ import { limitArt } from "@/lib/frage-limit";
 import { QaSource } from "@/lib/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { chipEinloesen } from "@/lib/chip-frage";
-import { api, apiUrl, authHeaders } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import { sendAndForget } from "@/lib/send-and-forget";
 // Der Vertrag statt einer abgetippten Form: ein umbenanntes Feld bricht
 // damit hier den Build statt still eine leere Kachel zu zeigen.
@@ -57,7 +57,6 @@ import { AkteZeitleiste, type AkteZeitleisteDaten } from "@/components/akte-zeit
 import { KeyFactsCard, type KeyFacts } from "@/components/key-facts";
 import { ResearchOffer, type ResearchOfferData } from "@/components/research-offer";
 import { pfad, cn } from "@/lib/utils";
-import { isNativeApp } from "@/lib/platform";
 import { reportBadgeEvent } from "@/components/badges";
 import { useLaengerAls } from "@/lib/use-laenger";
 import {
@@ -136,8 +135,8 @@ function themenStaemme(question: string): string[] {
 
 /** Vorschläge aus dem bewährten Pool ziehen — bei jedem Besuch andere, aber
  *  keine, die ein frischer Vorschlag schon abdeckt: sonst steht das Stadion
- *  zweimal untereinander. Wird bewusst erst nach dem Mount aufgerufen; der
- *  statische Export darf nicht gegen ein zufälliges Ergebnis hydrieren. */
+ *  zweimal untereinander. Wird bewusst erst nach dem Mount aufgerufen; das
+ *  vorgerenderte HTML darf nicht gegen ein zufälliges Ergebnis hydrieren. */
 function waehleBeispiele(frisch: string[], count: number): string[] {
   if (count <= 0) return [];
   const belegt = new Set(frisch.flatMap(themenStaemme));
@@ -883,7 +882,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       const res = await fetch(apiUrl("/council/ask"), {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: text, history: verlauf, conversation_id: gespraechId,
                                previous_answer: vorherigeAntwort,
                                from_suggestion: ausVorschlag }),
@@ -1079,7 +1078,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // markiert und der nächste Besuch fände ein leeres Gespräch vor.
     if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
     sendAndForget(apiUrl(`/council/deep-research/${jobId}/seen`), {
-      method: "POST", credentials: "include", headers: authHeaders(),
+      method: "POST", credentials: "include",
     });
   };
 
@@ -1087,7 +1086,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const ladeDeepSnapshot = async (jobId: string, turnKey: number) => {
     try {
       const r = await fetch(apiUrl(`/council/deep-research/${jobId}`), {
-        credentials: "include", headers: authHeaders() });
+        credentials: "include" });
       if (!r.ok) throw new Error();
       const job = await r.json();
       const t = deepSnapshotTurn(job);
@@ -1177,7 +1176,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         try {
           const ab = deepAb.current.get(jobId) ?? 0;
           const res = await fetch(apiUrl(`/council/deep-research/${jobId}/events?ab=${ab}`), {
-            credentials: "include", headers: authHeaders(), signal: ctrl.signal });
+            credentials: "include", signal: ctrl.signal });
           if (res.status === 410) {
             // Job lebt nicht mehr im Speicher → Endzustand aus der DB.
             await ladeDeepSnapshot(jobId, turnKey);
@@ -1237,7 +1236,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     try {
       const res = await fetch(apiUrl("/council/deep-research"), {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: text, conversation_id: gespraechId,
                                history: baueVerlauf(),
                                // Nur für die Statistik: aus dem Angebot unter
@@ -1286,7 +1285,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (!t.deepJobId) return;
     try {
       const r = await fetch(apiUrl(`/council/deep-research/${t.deepJobId}/stop`), {
-        method: "POST", credentials: "include", headers: authHeaders() });
+        method: "POST", credentials: "include" });
       if (!r.ok) throw new Error();
       const b = await r.json();
       patchTurn(t.key, { deepStatus: "gestoppt",
@@ -1302,7 +1301,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     patchTurn(t.key, { deepStatus: "laeuft", deepPhase: "schreiben" });
     try {
       const r = await fetch(apiUrl(`/council/deep-research/${t.deepJobId}/partial-report`), {
-        method: "POST", credentials: "include", headers: authHeaders() });
+        method: "POST", credentials: "include" });
       if (!r.ok) throw new Error();
       // Weiter am bestehenden Event-Zähler — der Teilbericht hängt seine
       // Events an dieselbe Liste an.
@@ -1325,7 +1324,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // ein ungesehener Bericht), holt der leere Tab sie zurück ins Gespräch —
   // „der Bericht erscheint hier im Gespräch" gilt damit wirklich (8d).
   useEffect(() => {
-    fetch(apiUrl("/council/deep-research/current"), { credentials: "include", headers: authHeaders() })
+    fetch(apiUrl("/council/deep-research/current"), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       // Typ aus dem Vertrag: Bis 10/2026 las diese Stelle `frei` und
       // `gesehen` — beides hieß längst `remaining`/`seen`. Ohne Typ fiel das
@@ -1351,7 +1350,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         } else if (!job.seen && (job.status === "fertig" || job.status === "teilbericht" || job.status === "fehler")) {
           setTurns((ts) => {
             if (ts.length > 0) return ts;
-            fetch(apiUrl(`/council/deep-research/${job.id}`), { credentials: "include", headers: authHeaders() })
+            fetch(apiUrl(`/council/deep-research/${job.id}`), { credentials: "include" })
               .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
               .then((voll) => {
                 setTurns((alt) => (alt.length > 0 ? alt : [deepSnapshotTurn(voll)]));
@@ -1443,7 +1442,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     const p = new URLSearchParams({ limit: String(GESPRAECHE_SEITE), offset: String(offset) });
     if (q.trim()) p.set("q", q.trim());
     const r = await fetch(apiUrl(`/council/conversations?${p.toString()}`),
-      { credentials: "include", headers: authHeaders() });
+      { credentials: "include" });
     if (!r.ok) throw new Error("gespraeche");
     return r.json();
   };
@@ -1521,7 +1520,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     try {
       const r = await fetch(apiUrl("/council/conversations/setting"), {
         method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ an }),
       });
       if (!r.ok) throw new Error();
@@ -1541,7 +1540,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     setLoading(false);
     setStep(null);
     try {
-      const r = await fetch(apiUrl(`/council/conversations/${id}`), { credentials: "include", headers: authHeaders() });
+      const r = await fetch(apiUrl(`/council/conversations/${id}`), { credentials: "include" });
       if (!r.ok) throw new Error();
       const g = await r.json();
       // Presse/Debatten/Anlagen/Planungen stecken seit dem 10.08. mit im
@@ -1627,7 +1626,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (gespraechId === id) setGespraechId(null);
     try { sessionStorage.removeItem("ratslotse:qa-gespraech"); } catch { /* egal */ }
     try {
-      await fetch(apiUrl(`/council/conversations/${id}`), { method: "DELETE", credentials: "include", headers: authHeaders() });
+      await fetch(apiUrl(`/council/conversations/${id}`), { method: "DELETE", credentials: "include" });
     } catch { /* Liste wird beim nächsten Öffnen neu geladen */ }
   };
   const gespraechUmbenennen = async (id: number, title: string) => {
@@ -1637,7 +1636,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     try {
       const r = await fetch(apiUrl(`/council/conversations/${id}`), {
         method: "PATCH", credentials: "include",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: sauber }),
       });
       if (!r.ok) throw new Error();
@@ -1760,7 +1759,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Notbremse: Hängt der Endpoint, bleiben die Platzhalter nicht stehen —
     // nach 1,2 s zeigen wir die Klassiker, die es ohnehin schon gibt.
     const bremse = setTimeout(fertig, 1200);
-    fetch(apiUrl("/council/qa-beispiele"), { credentials: "include", headers: authHeaders() })
+    fetch(apiUrl("/council/qa-beispiele"), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
         const rows = (b?.sessions ?? []) as { committee: string; session_date: string; top_titel?: string | null }[];
@@ -3233,7 +3232,7 @@ function TeilenKnopf({ turn }: { turn: Turn }) {
         }
         const r = await fetch(apiUrl("/council/qa-share"), {
           method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json", ...authHeaders() },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(kennung),
         });
         if (!r.ok) throw new Error(String(r.status));
@@ -3246,8 +3245,7 @@ function TeilenKnopf({ turn }: { turn: Turn }) {
         setLaedt(false);
       }
     }
-    const base = isNativeApp() ? "https://ratslotse.de" : window.location.origin;
-    const url = `${base}/g?t=${token}`;
+    const url = `${window.location.origin}/g?t=${token}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: `Ratslotse: ${turn.question}`, url });
@@ -3518,7 +3516,7 @@ function ParteienBaustein({ question, beschlussIds, answerId, onFrageStellen }: 
     let aktiv = true;
     fetch(apiUrl("/council/party-meinungen"), {
       method: "POST", credentials: "include",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json" },
       // Die belegten Beschlüsse mitgeben: Über sie holt der Endpoint die
       // Aussprache, die ZU diesen Stationen gehört — die Ähnlichkeitssuche
       // allein fand je Fraktion oft nur einen Beitrag (Tims Befund 21.08.).

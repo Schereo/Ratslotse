@@ -3,12 +3,10 @@
 import { Share2 } from "lucide-react";
 import { Button, toast } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { isNativeApp } from "@/lib/platform";
 
 /**
  * Teilt die öffentliche Web-URL der Seite: Web Share API wo vorhanden (mobil),
- * sonst Link in die Zwischenablage. Aus der nativen App heraus wird immer die
- * ratslotse.de-URL geteilt — der capacitor://-Origin wäre für Empfänger nutzlos.
+ * sonst Link in die Zwischenablage.
  */
 export function ShareButton({ path, title, className, iconOnly, kompakt, still, label = "Teilen", hinweis }: {
   path: string; title: string; className?: string; iconOnly?: boolean;
@@ -30,15 +28,14 @@ export function ShareButton({ path, title, className, iconOnly, kompakt, still, 
   const share = async (event?: React.MouseEvent) => {
     event?.preventDefault();
     event?.stopPropagation();
-    const base = isNativeApp() ? "https://ratslotse.de" : window.location.origin;
-    const url = `${base}${path}`;
+    const url = `${window.location.origin}${path}`;
     if (navigator.share) {
       try {
         await navigator.share(hinweis ? { title, text: hinweis, url } : { title, url });
         return;
       } catch (e) {
         if ((e as Error).name === "AbortError") return; // Nutzer*in hat den Share-Dialog geschlossen
-        /* Share-API vorhanden, aber blockiert (z. B. WKWebView) → Clipboard-Fallback */
+        /* Share-API vorhanden, aber blockiert → Clipboard-Fallback */
       }
     }
     try {

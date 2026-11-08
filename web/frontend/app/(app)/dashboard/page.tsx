@@ -22,7 +22,6 @@ import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, WocheImRatSkelett, type Wochenvorschau } from "@/components/woche-im-rat";
 import { NaechsteSitzungKarte } from "@/components/naechste-sitzung-karte";
 import { HinweisSlot } from "@/components/note-slot";
-import { PushPrimer } from "@/components/push-primer";
 import { WahlabendHinweis } from "@/components/wahlabend-hinweis";
 import { ReleaseNewsCard } from "@/components/release-news-card";
 import { formatEuro } from "@/components/decision-ui";
@@ -121,10 +120,7 @@ export default function DashboardPage() {
 
       {/* Design 28a/R4: ein Platz für Hinweise statt bis zu vier gestapelter
           Banner. Die Reihenfolge ist die Priorität — Live schlägt Pause (die
-          beiden schließen sich ohnehin aus), erst danach kommt Kür.
-          RL-1102: der Push-Primer erscheint nur in der App, solange Push aus
-          ist (7-Tage-Snooze) — er steht hier zuletzt, weil er sich am ehesten
-          vertagen lässt. */}
+          beiden schließen sich ohnehin aus), erst danach kommt Kür. */}
       <HinweisSlot
         className={cn("mt-6", STAFFEL)}
         style={staffelStil(1)}
@@ -141,7 +137,6 @@ export default function DashboardPage() {
           { key: "neuigkeiten", label: "Neu bei Ratslotse", node: <ReleaseNewsCard /> },
           { key: "pause", label: "Sitzungspause", node: <SitzungspauseBanner /> },
           { key: "erste-schritte", label: "Erste Schritte", node: <FirstStepsBar /> },
-          { key: "push", label: "Mitteilungen", node: <PushPrimer /> },
         ]}
       />
 

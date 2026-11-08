@@ -30,7 +30,7 @@ import {
 } from "@/lib/qa-belege";
 import { markiereBegriffe } from "@/components/glossary-text";
 import { hasNameSignal, parteiKuerzel, personBadgeLabel } from "@/lib/person-badge";
-import { api, apiUrl, authHeaders } from "@/lib/api";
+import { api, apiUrl } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import { useAuth } from "@/lib/auth";
@@ -143,7 +143,7 @@ function usePersonenLexikon(): PersonEintrag[] {
   const [lex, setLex] = useState<PersonEintrag[]>([]);
   useEffect(() => {
     _lexikonPromise ||= fetch(apiUrl("/council/people-directory"),
-      { credentials: "include", headers: authHeaders() })
+      { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { people: [] }))
       // Das Feld heißt seit dem englischen Vertrag `people`; das alte
       // `personen` las still eine leere Liste — die Marken fehlten.

@@ -35,9 +35,8 @@
 // steht nie allein.
 //
 // DETAILANSICHT ÜBER QUERY-PARAMETER (`?g=vwg`), nicht über ein
-// Route-Segment: Der mobile Build ist ein statischer Export (Capacitor), und
-// dynamische Segmente brauchen dort eine vorab bekannte Pfadliste. Dieselbe
-// Entscheidung wie bei /haushalt/produkte (`?nr=`) und /haushalt/bereich.
+// Route-Segment — dieselbe Konvention wie bei /haushalt/produkte (`?nr=`) und
+// /haushalt/bereich.
 //
 // DER STECKBRIEF SELBST steht in `components/haushalt/beteiligung-steckbrief.tsx`
 // — er ist kein Textausguss mehr, sondern Zahlenkopf, Anteilsstreifen und

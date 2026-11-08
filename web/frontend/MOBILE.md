@@ -13,19 +13,10 @@ und über `/api/onboarding/setup` am Konto fortgesetzt.
 ## Plattformstand
 
 Für iOS existiert ausschließlich die native SwiftUI-App unter `../../ios/`.
-Das frühere Capacitor/Xcode-Projekt wurde nach dem Paritätsabgleich entfernt.
-Das unveröffentlichte Android-Gerüst bleibt vorerst als statischer Next-Export
-in einer WebView erhalten.
-
-```bash
-cd web/frontend
-npm install
-npm run build:mobile
-npm run cap:sync
-npm run cap:android   # unveröffentlichtes Android-Gerüst öffnen
-```
-
-Neue iOS-Funktionen und iOS-Releases werden nur noch aus `ios/` gebaut.
+Das frühere Capacitor/Xcode-Projekt wurde nach dem Paritätsabgleich entfernt,
+das unveröffentlichte Android-Gerüst (statischer Next-Export in einer WebView)
+im November 2026 ebenfalls. Neue iOS-Funktionen und iOS-Releases werden nur
+aus `ios/` gebaut.
 
 ## Gemeinsame produktive Voraussetzungen
 
@@ -63,7 +54,5 @@ der Einreichung insbesondere prüfen:
 5. Altersfreigabe, Support-URL und Datenschutz-URL sind bestätigt.
 6. `/api/council/ask` wird für native Requests direkt zu FastAPI geroutet.
 
-Wenn das unveröffentlichte Android-Gerüst später ebenfalls entfällt, können
-der verbleibende Capacitor-Sonderbuild und die JS-Brücken separat entfernt
-werden. Web-only bleiben Landingpage, Changelog, Dokumentation und
+Web-only bleiben Landingpage, Changelog, Dokumentation und
 `/g`-Share-Snapshots.

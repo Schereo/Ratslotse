@@ -10,16 +10,8 @@ import type { Metadata } from "next";
  *  geschrieben.
  *
  *  Die Seiten der App arbeiten mit Query-Parametern (`?id=`) statt Pfad-
- *  Segmenten, damit der (app)-Bereich sauber statisch exportiert (siehe
- *  lib/routes.ts). `generateMetadata` darf `searchParams` deshalb NUR im
- *  Server-Build anfassen — im Export (MOBILE=1) würde jeder Zugriff die Seite
- *  dynamisch machen und den Build abbrechen. Darum steht in jeder Hülle die
- *  Kurzschluss-Zeile `if (istExport()) return {}`.
+ *  Segmenten (siehe lib/routes.ts); die Hüllen lesen sie in `generateMetadata`.
  */
-
-/** Der native App-Build ist ein statischer Export ohne Server — dort gibt es
- *  keine Link-Vorschau zu bauen (und keine geben zu dürfen). */
-export const istExport = () => process.env.MOBILE === "1";
 
 export type VorschauArt = "decision" | "person" | "thema" | "sitzung" | "ort";
 
@@ -59,7 +51,7 @@ export async function vorschauMetadata(
   key: string | undefined,
   pfad: string,
 ): Promise<Metadata> {
-  if (istExport() || !key) return {};
+  if (!key) return {};
   const v = await holeVorschau(art, key);
   if (!v) return {};
   return {

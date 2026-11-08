@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
-import { WebThemeSwitch } from "@/components/web-theme-switch";
+import { LottiThemeSwitch } from "@/components/theme-switch";
 import { cn } from "@/lib/utils";
 import type { Pos } from "@/lib/kommunalwahl-types";
 
@@ -15,12 +15,10 @@ import type { Pos } from "@/lib/kommunalwahl-types";
  *  Absolut auf die Prod-Seite, nicht relativ: Der Vergleich wird auch von
  *  dev.ratslotse.de aus geteilt, und wer sich dort registriert, legt sein
  *  Konto in der Wegwerf-Datenbank der Dev-VM an. Auf Prod ist die absolute
- *  URL identisch mit der relativen — es gibt also keinen Preis dafür.
- *  Einzige Ausnahme ist der App-Build (MOBILE=1, statischer Export): Dort
- *  soll die native Registrierung übernehmen, nicht der System-Browser. */
-const PROD = process.env.MOBILE === "1" ? "" : "https://ratslotse.de";
+ *  URL identisch mit der relativen — es gibt also keinen Preis dafür. */
+const PROD = "https://ratslotse.de";
 export const REGISTER_HREF = `${PROD}/register`;
-export const ENTDECKEN_HREF = PROD || "/";
+export const ENTDECKEN_HREF = PROD;
 
 /* ── Ampel (Bauplan E6): eigene semantische Skala, Glyphe IMMER zur Farbe ── */
 
@@ -197,7 +195,7 @@ export function KwKopf({ crumb }: { crumb: React.ReactNode }) {
         <div className="flex flex-none items-center gap-3 sm:gap-4">
           {/* Ohne Konto gibt es kein „Erscheinungsbild" — der Schalter ist hier
               der einzige Weg zum Farbschema (auch mobil). */}
-          <WebThemeSwitch />
+          <LottiThemeSwitch />
           <a href={ENTDECKEN_HREF} className="hidden text-[13px] font-medium text-primary sm:inline">
             ← Zurück zu Ratslotse
           </a>

@@ -25,7 +25,7 @@ export function formatDateTime(iso: string): string {
  *
  *  Tims Wunsch 12.08.: Ein Termin am nächsten Tag soll das auch sagen, statt
  *  „Do., 13.08.“ zu zeigen und die Rechnung dem Kopf zu überlassen.
- *  `heute` kommt als Parameter, weil der statische Export sonst das
+ *  `heute` kommt als Parameter, weil das Vorrendern beim Bauen sonst das
  *  Build-Datum einbacken würde (siehe `useHeute`).
  */
 /** Wochentag kurz („Mi") — im Sitzungstab steht sonst nur „AUG 13", und man
@@ -58,15 +58,15 @@ export function relativerTag(iso: string, heute: Date | null): string | null {
   return null;
 }
 
-/** Pfad ohne Schluss-Schrägstrich — die EINE Stelle, an der die Eigenheit des
- *  App-Exports aufgefangen wird.
+/** Pfad ohne Schluss-Schrägstrich — die EINE Stelle, an der er aufgefangen
+ *  wird.
  *
- *  `next.config.mjs` setzt für den statischen Export `trailingSlash: true`:
- *  In der iOS/Android-App heißt der Pfad also `/council/`, im Web `/council`.
- *  Jeder exakte Vergleich (`pathname === "/council"`) war damit in der App
- *  blind — der Sitzungen-Tab leuchtete nie (Tims Befund 12.08.), und nach dem
- *  Split hätten dieselben Vergleiche das Ratsgespräch daran gehindert, eine
- *  vorbefüllte Frage oder einen geteilten Snapshot zu übernehmen.
+ *  Bis 11/2026 setzte `next.config.mjs` für den statischen Export der
+ *  Capacitor-Hülle `trailingSlash: true`; dort hieß der Pfad `/council/`. Jeder
+ *  exakte Vergleich (`pathname === "/council"`) war damit blind — der
+ *  Sitzungen-Tab leuchtete nie (Tims Befund 12.08.). Die Hülle ist weg, die
+ *  Regel bleibt: Vergleiche laufen über diese Funktion, nicht über den rohen
+ *  Pfad.
  */
 export function pfad(pathname: string | null | undefined): string {
   const p = String(pathname ?? "");

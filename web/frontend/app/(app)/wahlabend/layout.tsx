@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { datumLang, holeWahl, istExport } from "@/lib/share-metadata";
+import { datumLang, holeWahl } from "@/lib/share-metadata";
 
 // Der Wahlabend lebt seit 10/2026 IN der App-Hülle (wie /wahlen, s. dort):
 // angemeldet mit Seitenleiste, ohne Konto in der PublicShell — die Pfade stehen
@@ -12,7 +12,7 @@ import { datumLang, holeWahl, istExport } from "@/lib/share-metadata";
 // geteilten Vorschau und in jedem Suchtreffer, und beim nächsten Mal stünde
 // dort sonst die Wahl von 2026.
 export async function generateMetadata(): Promise<Metadata> {
-  const wahl = istExport() ? null : await holeWahl();
+  const wahl = await holeWahl();
   const name = wahl && wahl.kind === "council" ? wahl.short_title : "Ratswahl Oldenburg";
   const wann = wahl && wahl.kind === "council" ? ` am ${datumLang(wahl.date)}` : "";
   return {

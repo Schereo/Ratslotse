@@ -1,8 +1,8 @@
 // /kommunalwahl/thema/[thema] — ein Themenfeld quer über alle Listen (Design 3a).
 //
 // Anders als im (app)-Bereich sind das echte Pfadsegmente: die Menge ist zur
-// Bauzeit bekannt (12 Themenfelder), generateStaticParams zählt sie auf, der
-// statische Export läuft durch (Bauplan §5.3).
+// Bauzeit bekannt (12 Themenfelder), generateStaticParams zählt sie auf
+// (Bauplan §5.3).
 
 import type { Metadata } from "next";
 import Link from "next/link";

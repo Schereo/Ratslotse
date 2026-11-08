@@ -4,9 +4,8 @@
 // Karte für Karte der Beleg — Anzeigetafel mit Gegenbalken im Kopf,
 // Brutto-gegen-Netto-Umschalter (das Lehrstück), Was steckt drin, Entwicklung.
 //
-// Query-Param statt dynamischem Segment (/haushalt/bereich?name=…): Der
-// Capacitor-Export (output: export) kennt die Bereichs-Slugs zur Bauzeit
-// nicht — dieselbe Konvention wie die Beschluss-Seite (/council/decision?id=).
+// Query-Param statt dynamischem Segment (/haushalt/bereich?name=…) — dieselbe
+// Konvention wie die Beschluss-Seite (/council/decision?id=).
 //
 // DREI ÄNDERUNGEN AM BESTAND, jede mit einem Grund:
 //

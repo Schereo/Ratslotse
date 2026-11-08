@@ -14,15 +14,6 @@ vi.mock("./draft", () => ({
   entwurfZiel: () => gerettet.ziel,
 }));
 
-let nativ = false;
-let token: string | null = null;
-vi.mock("./platform", () => ({
-  isNativeApp: () => nativ,
-  apiBase: () => (nativ ? "https://ratslotse.de" : ""),
-  clientMarke: () => "ios",
-}));
-vi.mock("./token", () => ({ getCachedToken: () => token }));
-
 let a: typeof import("./api");
 let letzterRuf: { url: string; init: RequestInit } | null = null;
 
@@ -40,8 +31,6 @@ function antwort(status: number, body?: unknown) {
 beforeEach(async () => {
   toasts.length = 0;
   gerettet.ziel = null;
-  nativ = false;
-  token = null;
   letzterRuf = null;
   vi.stubGlobal("window", { location: { pathname: "/fragen", search: "?q=x" } });
   vi.resetModules();
@@ -62,7 +51,7 @@ describe("Adresse und Kopfzeilen", () => {
     expect(letzterRuf!.init.credentials).toBe("include");
   });
 
-  it("schickt im Web KEINEN Token und keine Client-Marke", async () => {
+  it("schickt KEINEN Token und keine Client-Marke", async () => {
     // Im Browser trägt das httpOnly-Cookie die Anmeldung — ein Token im
     // JavaScript wäre eine zusätzliche Angriffsfläche ohne Gegenwert.
     mitAntwort(antwort(200, {}));
@@ -70,17 +59,6 @@ describe("Adresse und Kopfzeilen", () => {
     const h = letzterRuf!.init.headers as Record<string, string>;
     expect(h.Authorization).toBeUndefined();
     expect(h["X-Client"]).toBeUndefined();
-  });
-
-  it("schickt in der App Token und Plattform", async () => {
-    nativ = true; token = "jwt123";
-    vi.resetModules(); a = await import("./api");
-    mitAntwort(antwort(200, {}));
-    await a.api.get("/x");
-    const h = letzterRuf!.init.headers as Record<string, string>;
-    expect(h.Authorization).toBe("Bearer jwt123");
-    expect(h["X-Client"]).toBe("ios");
-    expect(letzterRuf!.url).toBe("https://ratslotse.de/api/x");
   });
 
   it("baut die vier Verben richtig", async () => {
@@ -246,19 +224,12 @@ describe("Abgelaufene Sitzung", () => {
   });
 });
 
-describe("apiUrl und authHeaders", () => {
-  it("apiUrl baut dieselbe Adresse wie der Wrapper", async () => {
+describe("apiUrl", () => {
+  it("baut dieselbe Adresse wie der Wrapper", async () => {
     expect(a.apiUrl("/council/ask")).toBe("/api/council/ask");
-    nativ = true;
-    vi.resetModules(); a = await import("./api");
-    expect(a.apiUrl("/council/ask")).toBe("https://ratslotse.de/api/council/ask");
-  });
-
-  it("authHeaders ist im Web leer und trägt in der App den Token", async () => {
-    expect(a.authHeaders()).toEqual({});
-    nativ = true; token = "t";
-    vi.resetModules(); a = await import("./api");
-    expect(a.authHeaders()).toEqual({ "X-Client": "ios", Authorization: "Bearer t" });
+    mitAntwort(antwort(200, {}));
+    await a.api.get("/council/ask");
+    expect(letzterRuf!.url).toBe(a.apiUrl("/council/ask"));
   });
 });
 
