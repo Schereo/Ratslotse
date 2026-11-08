@@ -22,7 +22,7 @@ import Link from "next/link";
 import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
   MessageSquarePlus, MoreHorizontal, Share2, Trash2, Volume2, X,
-  BookOpen, Check, MapPin, SearchX, Bell } from "lucide-react";
+  BookOpen, Check, MapPin, SearchX, Bell, Landmark } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import { openLotti } from "@/components/assistentin";
@@ -45,6 +45,7 @@ import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseSseStrom } from "@/lib/sse";
 import { ASK_SCHRITTE, type AskSchritt } from "@/lib/qa-schritte";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
+import { KiInDerEu } from "@/components/eu-flagge";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
 // Die beiden Kanten, an denen der fixierte Composer und die Belege-Spalte
@@ -67,8 +68,8 @@ import {
 // Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
-  AnlagenBlock, AntwortText, DebattenBaustein, GrafikKarte, ParteienListe, PresseBlock,
-  TagesordnungBlock,
+  AnlagenBlock, AntwortText, DebattenBaustein, GrafikKarte, MehrKnopf, ParteienListe, PresseBlock,
+  QuellenAbschnitt, TagesordnungBlock,
   type AnlagenHinweis, type DebattenHinweis, type ParteiMeinung, type PresseHinweis,
   type QaGrafik, type SitzungsInfo,
   RulesOfProcedureBlock, type RulesOfProcedureCard,
@@ -513,13 +514,10 @@ function kurzerGegenstand(roh: string): string {
   // dem Doppelpunkt sagt nichts über die Sache, der Teil dahinter alles.
   const teile = t.match(/^(.{3,70}?):\s+(.{8,})$/);
   if (teile && /\b(GmbH|AG|KG|mbH|e\.\s?V\.|Stiftung|Verband|Betrieb)\b/.test(teile[1])) t = teile[2];
-  if (t.length > 58) {
-    const schnitt = t.slice(0, 58);
-    const luecke = schnitt.lastIndexOf(" ");
-    // Nur an einer Wortgrenze kürzen — sonst lieber gar keinen Vorschlag.
-    if (luecke < 20) return "";
-    t = `${schnitt.slice(0, luecke).replace(/[,;:.\-–—]+$/, "")} …`;
-  }
+  // Zu lang heißt: kein Vorschlag — nicht gekürzt. Ein „…" schnitt genau den
+  // Teil ab, um den es ging („Satzung zur Änderung der Satzung … über …",
+  // Tim 08.11.2026); dieselbe Grenze wie `qa.vorschlags_gegenstand`.
+  if (t.length > 60) return "";
   return t.length >= 8 ? t : "";
 }
 
@@ -2012,8 +2010,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                          0,5 s auf den Moment des Austauschs verschoben. */
                       className="flex items-center gap-2.5 rounded-[13px] border border-primary/25 bg-primary/[0.04] px-3 py-2 text-[13.5px]">
                       <div className="flex min-h-[3em] min-w-0 flex-1 flex-col justify-center gap-1.5">
-                        <div className="h-2.5 w-full animate-pulse rounded-full bg-muted-foreground/15" />
-                        <div className="h-2.5 w-2/3 animate-pulse rounded-full bg-muted-foreground/15" />
+                        <div className="h-2.5 w-full animate-pulse rounded-full bg-skeleton" />
+                        <div className="h-2.5 w-2/3 animate-pulse rounded-full bg-skeleton" />
                       </div>
                     </div>
                   ))
@@ -2321,12 +2319,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             </>
           ) : loading || deepAktiv ? (
             <div aria-hidden className="space-y-3 pt-1">
-              <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-24 animate-pulse rounded bg-skeleton" />
               {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-8 animate-pulse rounded-full bg-muted"
+                <div key={i} className="h-8 animate-pulse rounded-full bg-skeleton"
                   style={{ animationDelay: `${i * 120}ms` }} />
               ))}
-              <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-32 animate-pulse rounded bg-skeleton" />
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
@@ -2751,6 +2749,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                   : zitierte.length === 0 && turn.rules_of_procedure
                   ? <>Automatische Antwort aus der Geschäftsordnung des Rates — kann unvollständig sein. Wortlaut prüfen.</>
                   : <>Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.</>}
+                {/* Ohne Trennpunkt: Bricht die Zeile um, stünde sonst ein „·“ am Zeilenanfang. */}
+                {!turn.unclear && <KiInDerEu className="ml-2" />}
               </span>
             </div>
           )}
@@ -3098,32 +3098,29 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
     () => turn.sources.filter((s) => !idToNum.has(s.id)),
     [turn.sources, idToNum]);
   return (
-    <div>
-      <p className="font-mono text-meta uppercase tracking-[0.08em] text-muted-foreground">
-        Quellen
-        <span className="ml-1.5 normal-case tracking-normal">
-          {zitierte.length > 0 ? `${zitierte.length} zitiert · ` : ""}{turn.sources.length} gefunden
-          {turn.mode ? ` · ${MODE_LABEL[turn.mode] ?? turn.mode}` : ""}
-        </span>
-      </p>
+    <QuellenAbschnitt icon={Landmark} titel="Beschlüsse"
+      zusatz={zitierte.length > 0 ? `${zitierte.length} zitiert · ${turn.sources.length}` : `${turn.sources.length} gefunden`}>
       {/* Titel, Gremium und Datum bleiben vollständig lesbar — gerade der
-          Projektname steht in amtlichen Titeln oft erst am Ende. */}
+          Projektname steht in amtlichen Titeln oft erst am Ende. Eine Stufe
+          leiser als bis 11/2026 (16 px fett, je eine eigene Karte): Drei
+          zitierte Beschlüsse füllten die halbe Spalte, und darunter sah man
+          die Wortbeiträge kaum noch (Tim 08.11.2026). */}
       {zitierte.length > 0 && (
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="-mx-1.5 flex flex-col">
           {zitierte.map((s) => (
             <button key={s.id} type="button" id={`${ankerPrefix}-${s.id}`}
               onClick={() => router.push(decisionHref(s.id))}
               title={`${s.title ?? ""} — ${s.committee} · ${fmtDatum(s.session_date)}`}
               className={cn(
-                "flex w-full items-start gap-2.5 rounded-xl border border-border bg-card p-3 text-left transition-[background-color,box-shadow] hover:bg-muted",
+                "flex w-full items-start gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-[background-color,box-shadow] hover:bg-muted",
                 flashId === s.id && "ring-2 ring-primary",
               )}>
-              <span aria-hidden className="mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md bg-primary px-1 text-meta font-bold text-primary-foreground">
+              <span aria-hidden className="mt-px flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-primary px-1 text-[11px] font-bold text-primary-foreground">
                 {idToNum.get(s.id)}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block break-words text-quelle font-semibold">{s.title}</span>
-                <span className="mt-1 block break-words font-mono text-meta text-muted-foreground">
+                <span className="block break-words text-sm font-medium leading-snug">{s.title}</span>
+                <span className="mt-0.5 block break-words font-mono text-[11.5px] text-muted-foreground">
                   {[s.committee, fmtDatum(s.session_date)].filter(Boolean).join(" · ")}
                 </span>
                 {turn.qtype === "party" && s.factions && s.factions.length > 0 && (
@@ -3146,46 +3143,47 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
       {/* Ausklapper: die übrigen Treffer in Relevanz-Reihenfolge, mit Gremium ·
           Datum + Score. */}
       {weitere.length > 0 && (
-        <button type="button" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}
-          className="mt-2 flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          {showAll ? (<><ChevronUp className="h-3.5 w-3.5" /> Weniger</>)
-            : zitierte.length > 0
-              ? (<><ChevronDown className="h-3.5 w-3.5" /> {weitere.length} weitere</>)
-              : (<><ChevronDown className="h-3.5 w-3.5" /> Alle {weitere.length}</>)}
-        </button>
+        <MehrKnopf offen={showAll} anzahl={weitere.length} einheit={zitierte.length > 0 ? "weitere" : "gefunden"}
+          onClick={() => setShowAll((v) => !v)} />
+      )}
+      {/* Wie gesucht wurde, stand bis 11/2026 in der Kopfzeile und brach sie
+          in der schmalen Spalte über drei Zeilen um. */}
+      {turn.mode && (
+        <p className="mt-2 text-[11.5px] text-muted-foreground">Suchweg: {MODE_LABEL[turn.mode] ?? turn.mode}</p>
       )}
       {showAll && weitere.length > 0 && (
-        <div className="mt-2 space-y-1">
+        <div className="-mx-1.5 mt-2 space-y-0.5">
           {zitierte.length > 0 && (
-            <p className="px-2 pb-0.5 text-hinweis text-muted-foreground">
-              Gefunden und documents_read, in der Antwort aber nicht zitiert:
+            <p className="px-1.5 pb-1 text-[12.5px] text-muted-foreground">
+              Gefunden und gelesen, in der Antwort aber nicht zitiert:
             </p>
           )}
           {weitere.map((s) => (
             <div key={s.id} id={`${ankerPrefix}-alle-${s.id}`}
               className={cn(
-                "group flex w-full flex-wrap items-start gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted",
+                "group flex w-full items-start gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-muted",
                 flashId === s.id && "ring-2 ring-primary",
               )}>
               <button type="button" onClick={() => router.push(decisionHref(s.id))}
                 className="flex min-w-0 flex-1 items-baseline gap-2 text-left">
                 <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 self-start rounded-full bg-border" />
                 <span className="min-w-0 flex-1">
-                  <span className="block break-words text-quelle font-medium">{s.title}</span>
-                  <span className="mt-1 block break-words font-mono text-meta text-muted-foreground">
+                  <span className="block break-words text-sm font-medium leading-snug">{s.title}</span>
+                  {/* Die Trefferstärke leise in der Zeile darunter — als eigene
+                      Spalte neben dem Titel drückte „Score 96" den Titel
+                      zusammen und las sich wie ein Teil davon. */}
+                  <span className="mt-0.5 block break-words font-mono text-[11.5px] text-muted-foreground">
                     {s.committee} · {fmtDatum(s.session_date)}
+                    {typeof s.score === "number" && <> · Treffer {Math.round(s.score * 100)}&thinsp;%</>}
                   </span>
                   {s.location_matches?.[0] && (
-                    <span className="mt-1 flex items-center gap-1 text-meta text-muted-foreground">
+                    <span className="mt-1 flex items-center gap-1 text-[11.5px] text-muted-foreground">
                       <MapPin className="h-3 w-3" aria-hidden />
                       Ortsbezug: {s.location_matches[0].name}
                     </span>
                   )}
                 </span>
               </button>
-              {typeof s.score === "number" && (
-                <span className="font-mono text-meta text-muted-foreground">Score {Math.round(s.score * 100)}</span>
-              )}
               {/* 5a/I-08: das Gespräch direkt an einer Quelle weiterführen. */}
               {onDazuFragen && (
                 <button type="button" onClick={() => onDazuFragen(s.title ?? "")}
@@ -3198,7 +3196,7 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
           ))}
         </div>
       )}
-    </div>
+    </QuellenAbschnitt>
   );
 }
 

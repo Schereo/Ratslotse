@@ -10050,6 +10050,46 @@ export interface components {
             follow?: components["schemas"]["DecisionFollow"];
             importance_breakdown: components["schemas"]["ImportanceBreakdown"];
             /**
+             * DecisionNeighbors
+             * @description Wo der Beschluss unter den Beschlüssen seiner Sitzung steht
+             *     (``CouncilStore.decision_neighbors``).
+             *
+             *     ``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist
+             *     NICHT die TOP-Nummer und nicht die Protokoll-Position: Eine
+             *     Tagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am
+             *     Rand als ``null``.
+             */
+            neighbors?: {
+                /**
+                 * DecisionNeighbor
+                 * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+                 */
+                next: {
+                    /** Id */
+                    id: number;
+                    /** Item Number */
+                    item_number: string | null;
+                    /** Title */
+                    title: string | null;
+                } | null;
+                /** Position */
+                position: number;
+                /**
+                 * DecisionNeighbor
+                 * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+                 */
+                prev: {
+                    /** Id */
+                    id: number;
+                    /** Item Number */
+                    item_number: string | null;
+                    /** Title */
+                    title: string | null;
+                } | null;
+                /** Total */
+                total: number;
+            } | null;
+            /**
              * DecisionParticipation
              * @description Eine laufende oder beendete Bauleitplan-Beteiligung zum Beschluss.
              */
@@ -10111,6 +10151,58 @@ export interface components {
         DecisionList: {
             /** Decisions */
             decisions: components["schemas"]["DecisionRow"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * DecisionNeighbor
+         * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+         */
+        DecisionNeighbor: {
+            /** Id */
+            id: number;
+            /** Item Number */
+            item_number: string | null;
+            /** Title */
+            title: string | null;
+        };
+        /**
+         * DecisionNeighbors
+         * @description Wo der Beschluss unter den Beschlüssen seiner Sitzung steht
+         *     (``CouncilStore.decision_neighbors``).
+         *
+         *     ``position`` zählt ab 1 unter den Beschlüssen nach TOP-Nummer — es ist
+         *     NICHT die TOP-Nummer und nicht die Protokoll-Position: Eine
+         *     Tagesordnung hat mehr Punkte als Beschlüsse. ``prev``/``next`` fehlen am
+         *     Rand als ``null``.
+         */
+        DecisionNeighbors: {
+            /**
+             * DecisionNeighbor
+             * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+             */
+            next: {
+                /** Id */
+                id: number;
+                /** Item Number */
+                item_number: string | null;
+                /** Title */
+                title: string | null;
+            } | null;
+            /** Position */
+            position: number;
+            /**
+             * DecisionNeighbor
+             * @description Ein Nachbar-Beschluss derselben Sitzung — nur, was der Link braucht.
+             */
+            prev: {
+                /** Id */
+                id: number;
+                /** Item Number */
+                item_number: string | null;
+                /** Title */
+                title: string | null;
+            } | null;
             /** Total */
             total: number;
         };
@@ -22458,7 +22550,10 @@ export interface operations {
     };
     personen_lexikon_api_council_people_directory_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Nur Verwaltungsleute mit erkanntem Amt (art=city mit role) — die Handvoll Einträge, die das Personenverzeichnis zeigt, statt des ganzen Lexikons. */
+                administration?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -22472,6 +22567,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PeopleDirectory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -26490,4 +26594,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b1a96f488d34a27b335d43f0b9c0fd38faa0b3b110a2da7c62bfe5ae51369b11
+// vertrag-sha256: c14ae9c348c1d6669fa48d7a28330b287f1ae88d9ef3f79fbe155b0c741389f0

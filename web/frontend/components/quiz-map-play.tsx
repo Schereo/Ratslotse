@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 // Leaflet ist client-only + schwer → erst beim Spielen laden.
 const QuizMap = dynamic(() => import("@/components/quiz-map").then((m) => m.QuizMap), {
   ssr: false,
-  loading: () => <div className="h-[clamp(340px,55dvh,720px)] w-full animate-pulse rounded-xl bg-muted" />,
+  loading: () => <div className="h-[clamp(340px,55dvh,720px)] w-full animate-pulse rounded-xl bg-skeleton" />,
 });
 
 type MapResult = { correct: boolean; points: number };

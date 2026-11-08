@@ -9,7 +9,8 @@ import { vertrag } from "@/lib/vertrag";
 import type { CommitteeDetail } from "@/lib/types";
 import { Button, CardListSkeleton, ErrorState, PageHeader, formatDate, toast } from "@/components/ui";
 import { wochentagKurz } from "@/lib/utils";
-import { committeeExplains, committeeIcon, committeeRank, shortCommittee } from "@/lib/committees";
+import { committeeExplains, committeeRank, shortCommittee } from "@/lib/committees";
+import { CommitteePicture } from "@/components/committee-picture";
 
 /** Der Termin in zwei Längen — oder gar nicht.
  *
@@ -32,10 +33,6 @@ function terminText(d: CommitteeDetail): { kurz: string; lang: string } | null {
   return { kurz: `${praefix}${ohneJahr}${zeit}`, lang: `${praefix}${voll}${zeit}` };
 }
 
-/** Das Zeichen des Gremiums auf getönter Scheibe — dieselbe Bauform wie im
- *  Einrichtungs-Assistenten (`GremiumZeichen` in onboarding-flow.tsx), damit
- *  ein Gremium überall gleich aussieht: Kelle für den Bau, Blatt fürs Grün.
- *  Abonniert = gefüllt, wie dort „gewählt = gefüllt". */
 /** Sitzungen im Jahr → „ungefähr so viele Meldungen im Monat".
  *
  *  Bewusst gerundet und mit „≈": Die Zahl ist eine Erwartung aus den letzten
@@ -48,18 +45,6 @@ function meldungenText(sitzungen: number): string {
     return `≈ ${n} ${n === 1 ? "Meldung" : "Meldungen"} im Monat`;
   }
   return sitzungen === 1 ? "1 Meldung im Jahr" : `≈ ${sitzungen} Meldungen im Jahr`;
-}
-
-function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolean }) {
-  const Icon = committeeIcon(committee);
-  return (
-    <span aria-hidden className={
-      "flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] transition-colors "
-      + (aktiv ? "bg-primary text-primary-foreground" : "bg-primary/[0.08] text-primary")
-    }>
-      <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-    </span>
-  );
 }
 
 /** Eine Kachel je Gremium — Zeichen, Name, Erklärsatz, Termin, Beschlusszahl,
@@ -89,7 +74,7 @@ function Kachel({ d, abonniert, onToggle, busy, laeutet }: {
       + (abonniert ? "border-primary bg-primary/5" : "border-border bg-card")
     }>
       <div className="flex items-start gap-3 pb-3">
-        <GremiumZeichen committee={d.name} aktiv={abonniert} />
+        <CommitteePicture committee={d.name} active={abonniert} />
         <div className="min-w-0 flex-1">
           {/* Der amtliche Name bleibt im title erreichbar — angezeigt wird der
               Kurzname, wie im Einrichtungs-Assistenten (Design 28a/R3). */}

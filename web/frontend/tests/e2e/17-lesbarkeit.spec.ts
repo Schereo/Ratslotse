@@ -106,7 +106,9 @@ for (const variante of [
       await expect(quelle).toBeVisible();
       await page.addStyleTag({ content: `html { font-size: ${variante.schrift * 100}% !important; }` });
       await vollstaendig(quelle);
-      await expect(quelle).toHaveCSS("font-size", `${16 * variante.schrift}px`);
+      // 14 px seit 11/2026 (Tim: die zitierten Quellen waren „extrem fett“ und
+      // groß) — weiter in rem, wächst also mit der Systemschrift mit.
+      await expect(quelle).toHaveCSS("font-size", `${14 * variante.schrift}px`);
       const meta = quelle.locator("..").getByText("Allgemeine Angelegenheiten · 29.06.2026", { exact: true });
       await vollstaendig(meta);
       await keineUeberbreite(page);
@@ -117,7 +119,7 @@ for (const variante of [
         saves_conversations: null, conversations: [], total: 0, matches: 0, has_more: false,
       } }));
       await page.goto("/fragen");
-      const hinweis = page.getByText("Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet;", { exact: false });
+      const hinweis = page.getByText("Die KI läuft ausschließlich in Rechenzentren in der EU", { exact: false });
       await expect(hinweis).toBeVisible();
       await page.addStyleTag({ content: `html { font-size: ${variante.schrift * 100}% !important; }` });
       await vollstaendig(hinweis);

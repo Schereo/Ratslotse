@@ -10,6 +10,7 @@
  */
 
 import type { GeoFlaeche } from "@/lib/gebiete";
+import { geoUrl } from "@/lib/asset-paths";
 
 /** Ein Wahlbereich: `nr` ist 1…6, im Wahlabend die römische Ziffer. */
 export type Wahlbereichflaeche = GeoFlaeche<{ nr: number }>;
@@ -23,7 +24,7 @@ const speicher = new Map<string, Promise<unknown[]>>();
 function lade<T>(datei: string): Promise<T[]> {
   const vorhanden = speicher.get(datei) as Promise<T[]> | undefined;
   if (vorhanden) return vorhanden;
-  const versprechen = fetch(`/geo/${datei}`)
+  const versprechen = fetch(geoUrl(datei))
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
     .then((fc) => fc.features as T[])
     .catch(() => {
