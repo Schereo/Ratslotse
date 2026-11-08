@@ -92,13 +92,14 @@ test("blättert zwischen den Vorhaben eines Viertels und nennt, was zuletzt im R
   await stub(page, { zwei: true });
   await page.goto("/dashboard");
   const krusenbusch = widget(page).getByRole("article", { name: "Krusenbusch" });
-  await expect(krusenbusch).toContainText("1 von 2 Vorhaben");
+  await expect(krusenbusch.getByRole("group", { name: "Vorhaben blättern" })).toHaveText("1 von 2 Vorhaben");
+  await expect(krusenbusch.getByRole("group", { name: "Vorhaben blättern" }).getByText("Vorhaben")).toHaveClass(/sr-only/);
   // Der Kernsatz des jüngsten Beschlusses statt nur eines Datums, verlinkt auf den Beschluss.
   await expect(krusenbusch.getByRole("link", { name: /Aufstellung des Bebauungsplans wurde beschlossen/ })).toHaveAttribute("href", "/council/decision?id=8597");
   await expect(krusenbusch.getByRole("list", { name: "Stand: In Planung" })).toBeVisible();
   await expect(krusenbusch.getByRole("button", { name: "Vorheriges Vorhaben" })).toBeDisabled();
   await krusenbusch.getByRole("button", { name: "Nächstes Vorhaben" }).click();
-  await expect(krusenbusch).toContainText("2 von 2 Vorhaben");
+  await expect(krusenbusch.getByRole("group", { name: "Vorhaben blättern" })).toHaveText("2 von 2 Vorhaben");
   await expect(krusenbusch.getByText("Straßenausbau Tweelbäker Tredde", { exact: true })).toBeVisible();
   await expect(krusenbusch.getByRole("list", { name: "Stand: Beschlossen" })).toBeVisible();
   // Ohne latest_update (älterer Server) bleibt das Datum.

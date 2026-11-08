@@ -111,13 +111,17 @@ function ViertelEinblick({ viertel, heuteIso }: { viertel: Viertel; heuteIso: st
   </article>;
 }
 
-/** „‹ 1 von 2 Vorhaben ›“ — stille runde Pfeile (§ 6), am Anschlag gedimmt
+/** „‹ 1 von 2 ›“ — stille runde Pfeile (§ 6), am Anschlag gedimmt
  *  statt versteckt, damit der Zähler nicht springt. Die Trefferfläche ist
  *  44 px, der sichtbare Kreis 28 px. */
 function Blaettern({ index, anzahl, onIndex }: { index: number; anzahl: number; onIndex: (i: number) => void }) {
   return <div role="group" aria-label="Vorhaben blättern" className="-mr-2.5 flex items-center">
     <Pfeil richtung="zurueck" aus={index === 0} onClick={() => onIndex(index - 1)} />
-    <span className="min-w-[7.5em] text-center text-meta tabular-nums text-muted-foreground" aria-live="polite">{index + 1} von {anzahl} Vorhaben</span>
+    {/* Sichtbar nur „1 von 2“ — dass es um Vorhaben geht, sagt der Inhalt
+        darunter (Tim 08.11.2026); der Screenreader bekommt das Wort dazu. */}
+    <span className="min-w-[3.5em] text-center text-meta tabular-nums text-muted-foreground" aria-live="polite">
+      {index + 1} von {anzahl}<span className="sr-only"> Vorhaben</span>
+    </span>
     <Pfeil richtung="vor" aus={index >= anzahl - 1} onClick={() => onIndex(index + 1)} />
   </div>;
 }

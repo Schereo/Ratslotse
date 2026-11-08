@@ -924,7 +924,8 @@ Segmenten (Idee, Planung, Beschluss, Bau, Fertig) in der Farbe der
 Kartenpunkte; beschriftet erst ab 24 rem eigener Breite, schmaler nennt
 eine Zeile darunter nur die erreichte Stufe. „Abgelehnt“ liegt neben dem
 Weg und bleibt ein Abzeichen. Hat ein Viertel mehrere Vorhaben, blättern
-stille Pfeile im Kopf („‹ 1 von 2 Vorhaben ›“), die jüngste Beratung zuerst.
+stille Pfeile im Kopf („‹ 1 von 2 ›“ — das Wort „Vorhaben“ nur für den
+Screenreader, sichtbar machte es den Kopf schwer), die jüngste Beratung zuerst.
 Eine Beratung in den nächsten 14 Tagen bekommt Vorrang: Sie steht als
 getönte Zeile über dem Vorhaben und führt direkt zum Tagesordnungspunkt.
 Das Indexdatum ist kein Neuigkeitsdatum. Zahlen heißen immer „Vorhaben“. Kompakt zunächst zwei Viertel, sonst drei,
