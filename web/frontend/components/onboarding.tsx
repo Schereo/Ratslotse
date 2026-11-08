@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { pfad } from "@/lib/utils";
+import { tourRunning } from "@/lib/tour-state";
+import { reportBadgeEvent } from "@/components/badges";
 
 /** Onboarding-Fortschritt („Erste Schritte mit Lotti") — serverseitig am Konto,
  *  damit der Kurs auf jedem Gerät denselben Stand hat und nach Abschluss
@@ -104,6 +106,18 @@ export function OnboardingTracker() {
     // markSteps ist stabil genug (react-query mutate); state.steps als Guard reicht.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, pathname, searchParams, state.steps, state.celebrated]);
+
+  // Abzeichen „Analyst": Den Kurs-Schritt hakt auch die Tour ab, das Abzeichen
+  // verdient nur, wer die Analyse SELBST aufruft. Unabhängig vom Kurs, denn
+  // der verschwindet nach dem letzten Haken; einmal je Sitzung reicht, der
+  // Server verbucht ohnehin nur das erste Mal.
+  const analyseGemeldet = useRef(false);
+  useEffect(() => {
+    if (analyseGemeldet.current || tourRunning()) return;
+    if (stepForLocation(pathname, searchParams) !== "analyse") return;
+    analyseGemeldet.current = true;
+    reportBadgeEvent("analyse");
+  }, [pathname, searchParams]);
 
   return null;
 }
