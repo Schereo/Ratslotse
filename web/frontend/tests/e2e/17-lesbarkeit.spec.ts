@@ -117,7 +117,7 @@ for (const variante of [
         saves_conversations: null, conversations: [], total: 0, matches: 0, has_more: false,
       } }));
       await page.goto("/fragen");
-      const hinweis = page.getByText("Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet;", { exact: false });
+      const hinweis = page.getByText("Deine Frage geht für die Antwort an den KI-Dienst OpenRouter", { exact: false });
       await expect(hinweis).toBeVisible();
       await page.addStyleTag({ content: `html { font-size: ${variante.schrift * 100}% !important; }` });
       await vollstaendig(hinweis);
