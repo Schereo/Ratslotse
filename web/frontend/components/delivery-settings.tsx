@@ -8,6 +8,10 @@ import { useAuth } from "@/lib/auth";
 import { Button, Card, Switch, toast } from "@/components/ui";
 import type { DeliveryChannel, User } from "@/lib/types";
 
+/** Anlässe, die per Mail auch ohne gewählten Kanal kommen — Spiegel von
+ *  `kern.notify.IMMER_PER_MAIL`. */
+const IMMER_PER_MAIL = ["n7_news"];
+
 /** Ein Anlass aus 30a/B — was das Backend über sich selbst erzählt.
  *  `parent`: Unter-Option, die nur wirkt, solange der Eltern-Anlass an ist —
  *  sie wird eingerückt und ist ohne Elternteil nicht bedienbar. */
@@ -174,9 +178,9 @@ export function DeliverySettings() {
           Hälfte dieser Auskunft, der Zusatz an der Überschrift die hörbare.
           Wer den Block ausblendet, nimmt Screenreader-Nutzenden beides. */}
       {prefsQuery.data && (
-        <div className={`mt-6 border-t border-border pt-5 ${alleAus ? "opacity-45" : ""}`}>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Wofür {alleAus && <span className="font-medium normal-case tracking-normal">— erst wieder, wenn ein Kanal an ist</span>}
+        <div className="mt-6 border-t border-border pt-5">
+          <p className={`text-[11px] font-bold uppercase tracking-wider text-muted-foreground ${alleAus ? "opacity-45" : ""}`}>
+            Wofür {alleAus && <span className="font-medium normal-case tracking-normal">— erst wieder, wenn ein Kanal an ist (bis auf „Neu bei Ratslotse“)</span>}
           </p>
           <div className="mt-3 space-y-3">
             {prefsQuery.data.kinds.map((k) => {
@@ -185,13 +189,19 @@ export function DeliverySettings() {
               // das Backend würde sie ohnehin nicht zustellen.
               const elternAn = !k.parent
                 || (prefsQuery.data?.kinds.find((p) => p.key === k.parent)?.enabled ?? true);
+              // Die Release-Ankündigung kommt per Mail auch ohne Kanal
+              // (kern/notify.py: IMMER_PER_MAIL) — ihr Schalter muss deshalb
+              // bedienbar bleiben, sonst gäbe es für genau diese Konten keinen
+              // Weg, sie abzubestellen. Die Fußzeile der Mail führt hierher.
+              const ohneKanal = IMMER_PER_MAIL.includes(k.key);
+              const wirkungslos = (alleAus && !ohneKanal) || !elternAn;
               return (
                 <div
                   key={k.key}
                   id={`anlass-${k.key}`}
                   className={`flex items-center justify-between gap-3 scroll-mt-24 rounded-lg transition-shadow ${
                     k.parent ? "ml-3 border-l-2 border-border pl-3" : ""
-                  } ${!elternAn ? "opacity-45" : ""} ${
+                  } ${wirkungslos ? "opacity-45" : ""} ${
                     flashZiel === k.key ? "ring-2 ring-primary bg-primary/[0.07]" : ""
                   }`}
                 >
@@ -202,7 +212,7 @@ export function DeliverySettings() {
                   <Switch
                     checked={k.enabled}
                     aria-label={k.label}
-                    disabled={alleAus || !elternAn || kindMutation.isPending}
+                    disabled={wirkungslos || kindMutation.isPending}
                     onCheckedChange={(v) => toggleKind(k.key, v)}
                   />
                 </div>

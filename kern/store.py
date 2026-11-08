@@ -3353,7 +3353,7 @@ class Store:
                 tuple(ids),
             )
 
-    def drop_pending_notifications(self, owner_id: int) -> int:
+    def drop_pending_notifications(self, owner_id: int, ausser: tuple[str, ...] = ()) -> int:
         """Alles Unzugestellte dieses Kontos verwerfen. Gibt die Anzahl zurück.
 
         Gedacht für den Moment, in dem jemand Benachrichtigungen abschaltet:
@@ -3363,11 +3363,16 @@ class Store:
 
         Bereits Zugestelltes (``sent_at`` gesetzt) bleibt unangetastet — das ist
         die Historie, keine offene Post.
+
+        ``ausser``: Anlässe, die trotzdem bleiben (die Release-Ankündigung
+        geht auch bei ausgeschalteter Zustellung per Mail raus).
         """
+        platz = ",".join("?" * len(ausser))
+        bedingung = f" AND kind NOT IN ({platz})" if ausser else ""
         with self._conn:
             cur = self._conn.execute(
-                "DELETE FROM notification_queue WHERE owner_id = ? AND sent_at IS NULL",
-                (owner_id,))
+                "DELETE FROM notification_queue WHERE owner_id = ? AND sent_at IS NULL"
+                + bedingung, (owner_id, *ausser))
         return cur.rowcount or 0
 
     def undeliverable_notifications(self, limit: int = 50) -> list[dict]:
