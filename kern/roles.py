@@ -68,17 +68,18 @@ class Role:
 
 
 #: Die Rolle, die jedes Konto hat — auch ohne Zeile in ``web_user_roles``.
-#: Sie trägt bewusst KEINE Rechte: Was alle dürfen, hängt an ``require_active``
-#: und braucht kein Recht. Sie steht hier, damit „Nutzer*in" ein Name mit
-#: Bedeutung ist und nicht die Abwesenheit von Rollen.
+#: Ihre Rechte gelten für alle (``permissions_for``). Bis 11/2026 trug sie
+#: keine; seit Tims Entscheidung vom 08.11.2026 gehört der Haushalt allen
+#: (``budget``) — kurz vor den Haushaltsberatungen des neuen Rats.
 DEFAULT_ROLE = "user"
 
 ROLES: dict[str, Role] = {
     "user": Role(
         key="user",
         label="Nutzer*in",
-        description="Der Standard: Ratsinhalte, eigene Themen, Benachrichtigungen, KI-Frage.",
-        permissions=frozenset(),
+        description="Der Standard: Ratsinhalte, eigene Themen, Benachrichtigungen, KI-Frage "
+                    "und der Haushalts-Bereich.",
+        permissions=frozenset({"budget"}),
         assignable=False,
     ),
     "research_plus": Role(
@@ -161,8 +162,9 @@ def known_roles(roles) -> list[str]:
 
 
 def permissions_for(roles) -> frozenset[str]:
-    """Die Vereinigung der Rechte aller (bekannten) Rollen."""
-    aus: set[str] = set()
+    """Die Vereinigung der Rechte aller (bekannten) Rollen — immer samt der
+    Standardrolle, die jedes Konto trägt."""
+    aus: set[str] = set(ROLES[DEFAULT_ROLE].permissions)
     for key in known_roles(roles):
         aus |= ROLES[key].permissions
     return frozenset(aus)
