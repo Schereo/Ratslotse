@@ -22,7 +22,7 @@ import { mitRunde, probePfad, rundeAus } from "@/lib/tipp";
 import { cn } from "@/lib/utils";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Lotti } from "@/components/lotti";
-import { WebThemeSwitch } from "@/components/web-theme-switch";
+import { LottiThemeSwitch } from "@/components/theme-switch";
 import { BeamerMitmachen } from "./beamer-mitmachen";
 import { BeamerVergleich } from "./beamer-vergleich";
 import { HandyRangliste, Scoreboard } from "./scoreboard";
@@ -209,7 +209,7 @@ export function TippLive() {
               ))}
             </div>
           )}
-          <WebThemeSwitch />
+          <LottiThemeSwitch />
         </div>
       </div>
       {schmal ? (

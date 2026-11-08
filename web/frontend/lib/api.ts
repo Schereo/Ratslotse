@@ -1,10 +1,7 @@
-// Thin fetch wrapper around the /api backend.
-// On the web this is same-origin and auth rides in the httpOnly cookie. In the
-// native app the base is the absolute backend origin and auth is a bearer token.
+// Thin fetch wrapper around the /api backend: same-origin, auth rides in the
+// httpOnly session cookie.
 import { toast } from "sonner";
 import { entwurfSichern, entwurfZiel } from "./draft";
-import { apiBase, clientMarke, isNativeApp } from "./platform";
-import { getCachedToken } from "./token";
 
 /** Feldnamen aus Pydantics ``loc`` in etwas, das man vorlesen kann. */
 const FIELD_LABELS: Record<string, string> = {
@@ -97,22 +94,14 @@ function mitGrenze(eigenes: AbortSignal | null | undefined, ms: number): { signa
 }
 
 async function request<T>(path: string, options: RequestInit & { grenzeMs?: number } = {}): Promise<T> {
-  const native = isNativeApp();
-  const token = native ? getCachedToken() : null;
   const { grenzeMs = ANFRAGE_GRENZE_MS, ...rest } = options;
   const grenze = mitGrenze(rest.signal, grenzeMs);
   let res: Response;
   try {
-    res = await fetch(`${apiBase()}/api${path}`, {
+    res = await fetch(apiUrl(path), {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        // The native app has no cross-site cookie: it flags itself so the backend
-        // returns a long-lived token on login, and carries that token as a bearer.
-        // Der Wert nennt die Plattform (ios | android), damit das Backend „App
-        // oder Web?" beantworten kann; Browser schicken den Header gar nicht.
-        ...(native ? { "X-Client": clientMarke() } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(rest.headers || {}),
       },
       ...rest,
@@ -195,20 +184,10 @@ export const api = {
     request<T>(path, { method: "DELETE", body: body ? JSON.stringify(body) : undefined }),
 };
 
-/** Absolute URL for a backend path: same-origin on web, absolute in the native app. */
+/** URL for a backend path, for manual fetches (e.g. SSE streaming) that bypass
+ *  the `api` wrapper. */
 export function apiUrl(path: string): string {
-  return `${apiBase()}/api${path}`;
-}
-
-/** Auth headers for manual fetches (e.g. SSE streaming) that bypass the `api` wrapper.
- *  Empty on web (the cookie handles auth); bearer + client marker in the app. */
-export function authHeaders(): Record<string, string> {
-  const native = isNativeApp();
-  const token = native ? getCachedToken() : null;
-  return {
-    ...(native ? { "X-Client": clientMarke() } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+  return `/api${path}`;
 }
 
 export function qs(params: Record<string, string | number | undefined>): string {

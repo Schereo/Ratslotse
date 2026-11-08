@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { holeWahl, istExport } from "@/lib/share-metadata";
+import { holeWahl } from "@/lib/share-metadata";
 
 // /tipp lebt wie /wahlabend AUSSERHALB von app/(app)/: kein Konto-Gate,
 // eigener Kopf. Anders als der Wahlabend hängt es an einem EIGENEN
@@ -13,7 +13,7 @@ import { holeWahl, istExport } from "@/lib/share-metadata";
 export async function generateMetadata(): Promise<Metadata> {
   // Die Wahl im Fokus (`elections.focus`): Vor dem 27.09.2026 ist das die
   // Stichwahl, und dann wird nicht verteilt, sondern in Prozent getippt.
-  const wahl = istExport() ? null : await holeWahl();
+  const wahl = await holeWahl();
   const name = wahl?.short_title ?? "Ratswahl Oldenburg";
   const sitzwahl = !wahl || wahl.kind === "council";
   const beschreibung = sitzwahl

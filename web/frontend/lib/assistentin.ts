@@ -10,7 +10,7 @@
  * **Warum hier und nicht in der Komponente.** Jede Funktion in dieser Datei
  * ist rein und damit prüfbar (`assistentin.test.ts`). Die Grenzfälle — eine
  * Markierung, die im Lotti-Fenster selbst beginnt; ein Pfad mit
- * angehängtem Schrägstrich aus dem statischen Export — sind in einem
+ * angehängtem Schrägstrich — sind in einem
  * Browsertest kaum herstellbar und hier eine Zeile.
  */
 
@@ -49,8 +49,8 @@ const COUNCIL_TABS = ["decisions", "sessions", "themen", "analysis"];
 /**
  * Pfad + Query → die Route, unter der das Backend sein Wissen ablegt.
  *
- * Spiegelt `kern/seitenaufrufe.py::normalisieren`: Schrägstrich am Ende weg
- * (der statische Export hängt ihn an), Query weg — mit der einen Ausnahme
+ * Spiegelt `kern/seitenaufrufe.py::normalisieren`: Schrägstrich am Ende weg,
+ * Query weg — mit der einen Ausnahme
  * `?tab=` auf `/council`, wo vier Register hinter einer Adresse liegen.
  */
 export function routeAus(pathname: string | null | undefined, search = ""): string {

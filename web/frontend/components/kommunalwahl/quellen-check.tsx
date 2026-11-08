@@ -2,12 +2,12 @@
 
 // Live-Prüfung der Programm-Quelle: Führt der Partei-Link noch zu genau der
 // Datei, die ausgewertet wurde? Das Backend vergleicht die Prüfsumme
-// (/api/kommunalwahl/quelle/{slug}, 24-h-Cache) — hier wird das Ergebnis in
+// (/api/kommunalwahl/source/{slug}, 24-h-Cache) — hier wird das Ergebnis in
 // Alltagssprache übersetzt. Kein „SHA256", kein „Hash": Wer das Detail will,
 // findet es auf der Methodikseite.
 
 import { useEffect, useState } from "react";
-import { apiBase } from "@/lib/platform";
+import { apiUrl } from "@/lib/api";
 
 type Status = "laeuft" | "unveraendert" | "veraendert" | "nicht_erreichbar";
 
@@ -16,7 +16,7 @@ export function QuellenCheck({ slug, stand }: { slug: string; stand: string }) {
 
   useEffect(() => {
     let aktiv = true;
-    fetch(`${apiBase()}/api/kommunalwahl/quelle/${slug}`)
+    fetch(apiUrl(`/kommunalwahl/source/${slug}`))
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d: { status: Status }) => aktiv && setStatus(d.status))
       .catch(() => aktiv && setStatus("nicht_erreichbar"));

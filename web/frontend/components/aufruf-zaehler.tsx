@@ -4,7 +4,6 @@ import { Suspense, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { meldeAufruf } from "@/lib/aufrufe-melden";
-import { isNativeApp, clientMarke } from "@/lib/platform";
 import { pfad } from "@/lib/utils";
 
 /**
@@ -49,7 +48,7 @@ function ZaehlerInner() {
     if (loading) return;
     const p = pfad(pathname);
     const route = p === "/council" && tab ? `${p}?tab=${tab}` : p;
-    meldeAufruf(route, Boolean(user), isNativeApp() ? clientMarke() : "web", von);
+    meldeAufruf(route, Boolean(user), "web", von);
   }, [pathname, tab, von, user, loading]);
 
   return null;
@@ -57,9 +56,8 @@ function ZaehlerInner() {
 
 /**
  * `useSearchParams` zwingt jede Seite, die es benutzt, in eine
- * Suspense-Grenze — und ohne eine solche bricht der statische Export
- * (`MOBILE=1`) beim Bauen ab. Weil dieser Zähler in der Wurzel-Hülle hängt,
- * beträfe das die GANZE App. Die Grenze steht deshalb hier, so eng wie
+ * Suspense-Grenze. Weil dieser Zähler in der Wurzel-Hülle hängt, beträfe das
+ * die GANZE App. Die Grenze steht deshalb hier, so eng wie
  * möglich um den Hook herum; der Fallback ist nichts, denn die Komponente
  * rendert ohnehin nichts.
  */

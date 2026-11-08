@@ -21,8 +21,7 @@
 //   Wirkungskreis" bekommt eine Erklärung (Glossar), „Grad der
 //   Beeinflussbarkeit: niedrig" wird zu einem Satz, den man lesen kann.
 //
-// Query-Param statt dynamischem Segment (?nr=P10.111023): Der Capacitor-Export
-// (output: export) kennt die Produktnummern zur Bauzeit nicht — dieselbe
+// Query-Param statt dynamischem Segment (?nr=P10.111023) — dieselbe
 // Konvention wie /haushalt/bereich?name= und /haushalt/steuer?art=.
 //
 // Gesucht und gefiltert wird SERVERSEITIG: Mit dem Steckbrief trägt jede der
