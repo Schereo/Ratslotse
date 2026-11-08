@@ -32,8 +32,12 @@ export type StreitWortbeitrag = {
   anrede: string;
   /** Anzeigename: aus der Anwesenheitsliste, sonst wie im Protokoll. */
   name: string;
-  /** Wortlaut des Protokolls, geglättet. Indirekte Rede — siehe `HINWEIS_REDE`. */
-  text: string;
+  /** Wortlaut des Protokolls, geglättet. Indirekte Rede — siehe `HINWEIS_REDE`.
+   *
+   *  `null` heißt: nicht mitgeliefert. Die Seite fragt mit `?texts=<Jahr>`
+   *  und bekommt den Wortlaut nur für den gezeigten Jahrgang; in den übrigen
+   *  stehen die Beiträge (wer, welche Fraktion) zum Zählen da, ohne Text. */
+  text: string | null;
   /** Gruppen-bewusstes Label („FDP/Volt" bleibt die Gruppe), null bei Verwaltung/Leitung. */
   fraktion: string | null;
   /** Namensvettern im Rat: Fraktion nicht eindeutig bestimmbar. */

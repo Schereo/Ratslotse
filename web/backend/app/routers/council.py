@@ -564,7 +564,7 @@ def zahl_der_woche(
 
 @router.get("/budget/products")
 def haushalt_produkte(
-    year: int,
+    year: int | None = None,
     sub_budget: int | None = None,
     q: str | None = None,
     office: str | None = None,
@@ -596,7 +596,17 @@ def haushalt_produkte(
     Jedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im
     Bestand steht. Gegen ``all_years`` gehalten wird daraus das
     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
-    vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen."""
+    vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen.
+
+    Ohne ``year`` gilt das jüngste Jahr mit Produktebene (``all_years[-1]``,
+    dieselbe Liste wie ``product_years`` der Übersicht; 404, wenn es keines
+    gibt). Seiten, die nur den jüngsten Stand zeigen, müssen so nicht erst die
+    Jahresliste abwarten, bevor sie fragen dürfen."""
+    if year is None:
+        years = store.produkte_jahre()
+        if not years:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Keine Produktebene im Bestand.")
+        year = years[-1]
     produkte = store.get_produkte(year, sub_budget, suche=q, office=office,
                                   controllability=controllability)
     abdeckung = store.produkt_abdeckung()
@@ -1236,6 +1246,7 @@ def haushalt_investitionen(
 
 @router.get("/budget/investment-programme")
 def haushalt_investitionsprogramm(
+    year: Annotated[str | None, Query(pattern=r"^(\d{4}|latest)$")] = None,
     _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetInvestmentProgram:
@@ -1264,11 +1275,22 @@ def haushalt_investitionsprogramm(
        Gesamtkosten eines Vorhabens über alle Jahre, der Finanzhaushalt die
        Zahlungen eines Jahres — und die zu aktivierenden Eigenleistungen
        gehören nur ins Programm. Das Dokument sagt das in einer Fußnote selbst.
+
+    ``year`` schneidet auf **einen** Jahrgang, ``latest`` auf den jüngsten —
+    für Seiten, die nur ihn zeigen: Das Labor braucht die Vorhaben des
+    jüngsten Programms, nicht alle acht (161 statt 1.057 KB). ``years`` bleibt
+    die volle Liste, ``latest`` ist also ``years[-1]``. Ohne ``year`` kommt
+    alles wie bisher — ``/haushalt/investitionen`` zählt über die Jahrgänge.
     """
-    zeilen = store.get_investitionsmassnahmen()
+    years = store.investitionsprogramm_jahre()
+    if year is None:
+        zeilen = store.get_investitionsmassnahmen()
+    else:
+        chosen = (years[-1] if years else None) if year == "latest" else int(year)
+        zeilen = store.get_investitionsmassnahmen(year=chosen) if chosen is not None else []
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
-        "years": store.investitionsprogramm_jahre(),
+        "years": years,
         "measures": [z for z in zeilen if z["level"] == "measure"],
         "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
         "totals": [z for z in zeilen if z["level"] == "total"],
@@ -1868,6 +1890,7 @@ def haushalt_weg(
 @router.get("/budget/debate")
 def haushalt_streit(
     year: int | None = None,
+    texts: Annotated[str | None, Query(pattern=r"^(\d{4}|latest)$")] = None,
     _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetDispute:
@@ -1881,18 +1904,41 @@ def haushalt_streit(
     **Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
     aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
     über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
-    die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
-    Jahrgängen um.
+    bis 11/2026 lud die Seite sie einmal und schaltete danach ohne Netz
+    zwischen den Jahrgängen um — heute fragt sie mit ``texts`` (s. u.).
 
     Was hier **nicht** steht: der Inhalt der Änderungslisten — den liefert
     seit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position
     für Position aus den gelesenen EHH-Dokumenten. Hier bleibt die
-    Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam."""
-    return {"rounds": store.haushalt_streit(year)}
+    Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam.
+
+    ``texts`` (ein Jahr oder ``latest``; ein Jahr ohne Runde gilt als
+    ``latest``) behält den Wortlaut nur für diesen Jahrgang. In allen anderen
+    stehen die Wortbeiträge weiter da — Name, Fraktion, Rolle, also alles,
+    was die Seite über die Jahre zählt —, nur ``text`` ist ``null``. Die
+    Seite zeigt ohnehin einen Jahrgang; die Texte waren 395 der 450 KB
+    (gzip 20 statt 130 KB). Beim Jahrgangswechsel holt sie den nächsten.
+    Ohne ``texts`` kommt alles wie bisher."""
+    rounds = store.haushalt_streit(year)
+    if texts is None:
+        return {"rounds": rounds}
+    years = {r["year"] for r in rounds}
+    target = int(texts) if texts != "latest" and int(texts) in years else max(years, default=None)
+    # Neue Objekte statt die Runden zu verändern — der Store hält ein
+    # Gedächtnis (`haushaltsdebatte`), dessen Fassung vollständig bleiben muss.
+    return {"rounds": [
+        r if r["year"] == target else {**r, "stationen": [
+            {**st, "debatte": [{**b, "text": None} for b in st["debatte"]]}
+            for st in r["stationen"]]}
+        for r in rounds]}
+
+
+_AMENDMENT_PARTS = ("rows", "totals", "cash_budget_rows", "cash_budget_totals")
 
 
 @router.get("/budget/amendment-lists")
 def haushalt_aenderungslisten(
+    fields: Annotated[str | None, Query(pattern=r"^[a-z_]+(,[a-z_]+)*$")] = None,
     _user: dict = Depends(require_budget),
     store: CouncilStore = Depends(get_council_store),
 ) -> BudgetAmendmentLists:
@@ -1923,17 +1969,34 @@ def haushalt_aenderungslisten(
       und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
     - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
       für beide Haushalte gemeinsam.
+
+    ``fields`` (kommagetrennt aus ``rows``, ``totals``, ``cash_budget_rows``,
+    ``cash_budget_totals``) liefert nur diese Teile; die übrigen Schlüssel
+    bleiben als leere Listen stehen, ``provenance`` trägt nur, worauf die
+    gelieferten Zeilen zeigen. Das Labor braucht für seinen Maßstab allein die
+    Summen (``fields=totals``: 56 statt 554 KB). Ohne ``fields`` kommt alles
+    wie bisher — ``/haushalt/mitreden`` zeigt die Positionen.
     """
-    d = store.get_haushalt_aenderungen()
-    f = store.get_haushalt_aenderungen_fhh()
-    zeilen = [z for z in d["zeilen"] if z["year"] == z["budget_year"]]
-    fhh_zeilen = [z for z in f["zeilen"] if z["year"] == z["budget_year"]]
+    parts = set(_AMENDMENT_PARTS) if fields is None else set(fields.split(","))
+    if unknown := parts - set(_AMENDMENT_PARTS):
+        raise HTTPException(400, f"fields kennt nur {', '.join(_AMENDMENT_PARTS)}: "
+                                 f"{', '.join(sorted(unknown))}")
+    empty: dict = {"zeilen": [], "summen": []}
+    d = store.get_haushalt_aenderungen() if parts & {"rows", "totals"} else empty
+    f = (store.get_haushalt_aenderungen_fhh()
+         if parts & {"cash_budget_rows", "cash_budget_totals"} else empty)
+    zeilen = ([z for z in d["zeilen"] if z["year"] == z["budget_year"]]
+              if "rows" in parts else [])
+    fhh_zeilen = ([z for z in f["zeilen"] if z["year"] == z["budget_year"]]
+                  if "cash_budget_rows" in parts else [])
+    totals = d["summen"] if "totals" in parts else []
+    cash_totals = f["summen"] if "cash_budget_totals" in parts else []
     ids = sorted({z["herkunft_id"] for z in zeilen + fhh_zeilen
                   if z["herkunft_id"] is not None}
-                 | {s["herkunft_id"] for s in d["summen"] + f["summen"]
+                 | {s["herkunft_id"] for s in totals + cash_totals
                     if s["herkunft_id"] is not None})
-    return {"rows": zeilen, "totals": d["summen"],
-            "cash_budget_rows": fhh_zeilen, "cash_budget_totals": f["summen"],
+    return {"rows": zeilen, "totals": totals,
+            "cash_budget_rows": fhh_zeilen, "cash_budget_totals": cash_totals,
             "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)}}
 
 

@@ -142,7 +142,18 @@ function Fraktion({ label, unklar = false }: { label: string | null; unklar?: bo
  *  Gekürzt wird dadurch nichts: Der Wortlaut bleibt Zeichen für Zeichen der
  *  des Protokolls. */
 /** Die Debatte als Liste, in der Reihenfolge des Protokolls. */
-function DebattenListe({ reden }: { reden: StreitWortbeitrag[] }) {
+function DebattenListe({ reden, loading }: { reden: StreitWortbeitrag[]; loading: boolean }) {
+  // Der Wortlaut dieses Jahrgangs ist noch nicht da — er kommt beim
+  // Jahrgangswechsel einen Abruf später (`?texts=`). Bis dahin eine Zeile
+  // statt halber Karten ohne Text.
+  if (reden.some((b) => b.text === null)) {
+    return (
+      <p className="py-2 text-[12.5px] text-muted-foreground">
+        {loading ? "Die Wortbeiträge werden geladen …"
+          : "Die Wortbeiträge ließen sich gerade nicht laden."}
+      </p>
+    );
+  }
   // Seit 02.09.2026 eine Liste statt des Schlangenpfads: 19 Karten im
   // Zickzack machten den Schritt 11.800 px hoch, und der Fraktionspunkt saß
   // am Seitenrand, weit weg von seiner Karte. Der Punkt steht jetzt am Namen.
@@ -155,7 +166,8 @@ function DebattenListe({ reden }: { reden: StreitWortbeitrag[] }) {
 
 function Rede({ b }: { b: StreitWortbeitrag }) {
   const [offen, setOffen] = useState(false);
-  const { kopf, rest } = vorschau(b.text);
+  const text = b.text ?? "";
+  const { kopf, rest } = vorschau(text);
 
   return (
     <li>
@@ -182,7 +194,7 @@ function Rede({ b }: { b: StreitWortbeitrag }) {
           </span>
         </div>
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-foreground/90">
-          {offen ? b.text : kopf}
+          {offen ? text : kopf}
           {!offen && rest && <span className="text-muted-foreground"> …</span>}
         </p>
         {rest && (
@@ -266,7 +278,18 @@ export function StreitAbschnitt({ onBestand }: {
   onBestand?: (b: { contributions: number; von: number; bis: number } | null) => void;
 } = {}) {
   const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
-  const { data, loading } = useFetch<StreitDaten>("/council/budget/debate");
+  // Den Wortlaut nur für den gezeigten Jahrgang (`?texts=`): Er war 395 der
+  // 450 KB, und die Seite zeigt einen. Gezählt wird über alle Jahrgänge
+  // weiter — die Beiträge stehen in jeder Runde, nur ohne Text. Geteilt, damit
+  // ein schon besuchter Jahrgang ohne Netz zurückkommt.
+  const { data: fetched, loading } = useFetch<StreitDaten>(
+    `/council/budget/debate?texts=${gewaehltesJahr ?? "latest"}`, { shared: true });
+  // Beim Jahrgangswechsel bleibt die vorige Antwort stehen, bis die neue da
+  // ist: Sie trägt alles außer dem neuen Wortlaut. Ohne das fiele der ganze
+  // Abschnitt kurz auf „Wird geladen …" zusammen, und die Seite spränge.
+  const [previous, setPrevious] = useState<StreitDaten | null>(null);
+  useEffect(() => { if (fetched) setPrevious(fetched); }, [fetched]);
+  const data = fetched ?? previous;
 
   useEffect(() => {
     if (!onBestand || loading) return;
@@ -274,8 +297,9 @@ export function StreitAbschnitt({ onBestand }: {
     onBestand(q && q.contributions > 0
       ? { contributions: q.contributions, von: q.von, bis: q.bis } : null);
   }, [onBestand, loading, data]);
-  // Die Inhalts-Ebene lädt getrennt: Die Streit-Antwort ist schon ein halbes
-  // MB Protokolle, und die Listen braucht erst, wer bis zu ihrem Block liest.
+  // Die Inhalts-Ebene lädt getrennt: Die Streit-Antwort trägt schon den
+  // Wortlaut einer ganzen Debatte, und die Listen braucht erst, wer bis zu
+  // ihrem Block liest.
   const { data: listen } = useFetch<AenderungslistenDaten>("/council/budget/amendment-lists");
 
   const years = useMemo(() => jahrgaenge(data ?? null), [data]);
@@ -303,7 +327,7 @@ export function StreitAbschnitt({ onBestand }: {
   const zuordnung = useMemo(() => ohneZuordnung(data ?? null), [data]);
   const source = useMemo(() => balance(data ?? null), [data]);
 
-  if (loading || !data) {
+  if (!data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
   }
   if (!year || !r) {
@@ -343,6 +367,7 @@ export function StreitAbschnitt({ onBestand }: {
               <Link
                 key={j}
                 href={`/haushalt/mitreden?year=${j}#streit`}
+                prefetch={false}
                 scroll={false}
                 className={cn(
                   "flex-none rounded-full border px-3 py-1 font-mono text-[12px] font-medium tabular-nums transition-colors",
@@ -435,6 +460,7 @@ export function StreitAbschnitt({ onBestand }: {
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-dashed border-border pt-2.5">
               <Link
                 href={sessionHref(schluss.ksinr, schluss.official_text.top ? [schluss.official_text.top] : undefined)}
+                prefetch={false}
                 className="text-[11.5px] font-semibold text-primary"
               >
                 Sitzung im Ratsinformationssystem
@@ -542,7 +568,7 @@ export function StreitAbschnitt({ onBestand }: {
             <div className="mt-3 border-t border-dashed border-border pt-4">
               {/* `key` je Jahrgang: setzt Pfad und Beobachter des
                   Bausteins beim Jahrgangswechsel neu auf. */}
-              <DebattenListe key={year ?? 0} reden={debatte.debatte} />
+              <DebattenListe key={year ?? 0} reden={debatte.debatte} loading={loading} />
             </div>
             <p className="mt-3 max-w-[86ch] border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
               {HINWEIS_REDE}

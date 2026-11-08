@@ -48,9 +48,9 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
-import { useFetch } from "@/lib/use-fetch";
+import { useFetch, usePreload } from "@/lib/use-fetch";
 import { KrediteBlock } from "@/components/haushalt/kredite";
-import { SchuldenLautPlan } from "@/components/haushalt/schulden-laut-plan";
+import { DEBT_URL, SchuldenLautPlan } from "@/components/haushalt/schulden-laut-plan";
 import { LiquiditaetsBlock } from "@/components/haushalt/liquiditaet";
 import type { LiquiditaetsDaten } from "@/lib/haushalt-liquiditaet";
 import type { KrediteDaten } from "@/lib/haushalt-kredite";
@@ -72,7 +72,7 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
-import { BilanzBlock } from "@/components/haushalt/bilanz-block";
+import { BALANCE_SHEET_URL, BilanzBlock } from "@/components/haushalt/bilanz-block";
 import { Fundstelle } from "@/components/haushalt/fundstelle";
 
 // `jahresabschluss` stand bis zum 21.08.2026 NICHT hier, obwohl die Seite
@@ -548,7 +548,9 @@ function RahmenBlock({ row, herkunft, beschlossen, herkunftBeschlossen }: {
 
 
 export default function SchuldenPage() {
-  const { data, loading } = useFetch<SchuldenDaten>("/council/budget/debt");
+  // Geteilt mit `SchuldenLautPlan` weiter unten — eine Anfrage statt zwei.
+  const { data, loading } = useFetch<SchuldenDaten>(DEBT_URL, { shared: true });
+  usePreload([BALANCE_SHEET_URL]);
   const { data: krediteDaten } = useFetch<KrediteDaten>("/council/budget/loans");
   const { data: liquiDaten } = useFetch<LiquiditaetsDaten>("/council/budget/liquidity");
   const { data: satzungDaten } = useFetch<

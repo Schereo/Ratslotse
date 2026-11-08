@@ -42,8 +42,12 @@ function auszahlung(zeilen: Zeile[], plan: number, year: number): number | null 
   return z ? z.amount : null;
 }
 
+/** Dieselbe Adresse liest der Investitionsplan-Abschnitt — geteilt, sonst
+ *  kam `investments` auf /haushalt/investitionen zweimal. */
+export const INVESTMENTS_URL = "/council/budget/investments";
+
 export function FinanzhaushaltPlan() {
-  const { data } = useFetch<Antwort>("/council/budget/investments");
+  const { data } = useFetch<Antwort>(INVESTMENTS_URL, { shared: true });
   const zeilen = useMemo(() => data?.finance_budget ?? [], [data]);
 
   const plaene = useMemo(

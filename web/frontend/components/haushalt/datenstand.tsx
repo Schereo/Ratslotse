@@ -170,8 +170,12 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
   );
 }
 
+/** Auch das Flussbild der Übersicht liest den Datenstand — eine Adresse,
+ *  geteilt abgerufen, und /haushalt lädt sie gleich mit den Hauptdaten vor. */
+export const DATA_STATUS_URL = "/council/budget/data-status";
+
 export function Datenstand() {
-  const { data } = useFetch<Antwort>("/council/budget/data-status");
+  const { data } = useFetch<Antwort>(DATA_STATUS_URL, { shared: true });
   // Still bleiben, solange nichts da ist: Ein Skelett für einen Nachtrag am
   // Seitenende wäre mehr Unruhe als Information.
   if (!data || data.layers.length === 0) return null;
