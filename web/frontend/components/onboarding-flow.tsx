@@ -1098,6 +1098,39 @@ function TopicStep({ onNext }: { onNext: () => void }) {
     }
   };
 
+  // Die Stadtthemen-Kacheln, die gerade angelegt werden — jede für sich. Bis
+  // 11/2026 teilten sie `busy` mit dem Formular: Ein Klick sperrte alle
+  // Kacheln, bis der Server fertig war, und das dauerte, solange jedes Thema
+  // auf den Cross-Encoder wartete (Tims Befund 08.11.2026). Ein Stadtthema
+  // braucht seitdem kein Modell mehr (`council.city_topics.treffer`), und
+  // mehrere dürfen gleichzeitig unterwegs sein.
+  const [stadtLaeufe, setStadtLaeufe] = useState<ReadonlySet<string>>(new Set());
+  const addStadtthema = async (v: Vorschlag) => {
+    const clean = v.name.trim();
+    if (stadtLaeufe.has(clean)) return;
+    setStadtLaeufe((s) => new Set(s).add(clean));
+    setWarn(null);
+    if (typeof v.n === "number") setChipZahl((m) => ({ ...m, [clean]: v.n! }));
+    try {
+      // Die Beschreibung der Kachel unverändert mitschicken: Daran erkennt
+      // der Server das Stadtthema und nimmt dessen Liste statt des Modells.
+      await api.post("/topics", { name: clean, description: v.description });
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+    } catch {
+      setWarn(`„${clean}“ konnte gerade nicht angelegt werden. Versuch es gleich nochmal.`);
+    } finally {
+      setStadtLaeufe((s) => {
+        const rest = new Set(s);
+        rest.delete(clean);
+        return rest;
+      });
+    }
+  };
+  const unterwegs = [
+    ...(anlegend ? [anlegend] : []),
+    ...[...stadtLaeufe].filter((n) => n !== anlegend),
+  ].filter((n) => !(topics.data ?? []).some((t) => t.name === n));
+
   const remove = async (id: number) => {
     try {
       await api.del(`/topics/${id}`);
@@ -1113,7 +1146,13 @@ function TopicStep({ onNext }: { onNext: () => void }) {
       title="Worüber willst du Bescheid wissen?"
       lead="Lege Themen an — Lotti meldet sich, sobald der Rat dazu entscheidet."
       pose="search"
-      footer={<Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext}>Weiter</Button>}
+      footer={
+        // Erst weiter, wenn alles angelegt ist — sonst fehlte ein gerade
+        // geklicktes Thema im nächsten Schritt, und der Fehler, falls einer
+        // kommt, stünde auf einer Seite, die man schon verlassen hat.
+        <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext}
+          disabled={busy || stadtLaeufe.size > 0}>Weiter</Button>
+      }
     >
       <form onSubmit={(e) => { e.preventDefault(); meldeChips([], ["own"]); void add(name); }} className="flex gap-2">
         <Input ref={inputRef} value={name} onChange={(e) => setName(e.target.value)}
@@ -1142,17 +1181,21 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           unter dem sichtbaren Bereich: Man legte ein Thema an und sah es
           nicht (Tims Befund, 02.09.2026). Kompakt als Zeilen, nicht als
           Karten; die Beschreibung steht als Tooltip und im Blatt „anpassen". */}
-      {(mine.length > 0 || anlegend) && (
+      {(mine.length > 0 || unterwegs.length > 0) && (
         <div className="mt-4 rounded-2xl border border-border bg-card p-3 lg:bg-background">
-          <Kicker>Deine Themen ({mine.length})</Kicker>
+          <Kicker>Deine Themen ({mine.length + unterwegs.length})</Kicker>
           <ul className="mt-2 flex flex-col divide-y divide-border">
-            {anlegend && (
-              <li className="flex items-center gap-2 py-1.5 text-[13px] text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
-                <span className="font-semibold text-foreground">{anlegend}</span>
-                <span>— Lotti liest die Beschlüsse dazu …</span>
+            {/* Was gerade angelegt wird, steht schon da — mit einem Balken
+                dort, wo gleich die Zahl steht, statt eines kleinen Kreisels. */}
+            {unterwegs.map((n) => (
+              <li key={`unterwegs-${n}`} aria-busy="true"
+                className="flex items-center gap-2 py-1.5 text-[13px] text-muted-foreground">
+                <span className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-primary/10" aria-hidden />
+                <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{n}</span>
+                <span className="h-2.5 w-24 shrink-0 animate-pulse rounded-full bg-primary/15" aria-hidden />
+                <span className="sr-only">wird angelegt</span>
               </li>
-            )}
+            ))}
             {mine.map((t) => (
               <TopicZeile key={t.id} topic={t} chipZahl={chipZahl[t.name]}
                 istStadtteil={stadtteile.some((o) => o.name.toLowerCase() === t.name.toLowerCase())}
@@ -1178,10 +1221,10 @@ function TopicStep({ onNext }: { onNext: () => void }) {
         </Kicker>
         {stadtQuery.isPending
           ? <KachelPlatzhalter />
-          : <StadtthemenKacheln vorschlaege={stadtQuery.data ?? []} vorhanden={mine} busy={busy}
+          : <StadtthemenKacheln vorschlaege={stadtQuery.data ?? []} vorhanden={mine} laufend={stadtLaeufe}
               onWaehlen={(v) => {
                 if (v.key) meldeChips([], [stadtthemaChip(v.key)]);
-                void add(v.name, v.description, v.n);
+                void addStadtthema(v);
               }} />}
       </div>
 
@@ -1248,24 +1291,26 @@ function istPlannummer(name: string): boolean {
  *
  *  Waagerecht gebaut (Bild links, Text rechts): 20 senkrechte Kacheln wären
  *  fünf Reihen Bildschirm, so sind es sieben Zeilen, die man überfliegt. */
-function StadtthemenKacheln({ vorschlaege, vorhanden, busy, onWaehlen }: {
+function StadtthemenKacheln({ vorschlaege, vorhanden, laufend, onWaehlen }: {
   vorschlaege: Vorschlag[];
   vorhanden: { name: string }[];
-  busy: boolean;
+  /** Kacheln, deren Thema gerade angelegt wird. Jede sperrt nur sich selbst. */
+  laufend: ReadonlySet<string>;
   onWaehlen: (v: Vorschlag) => void;
 }) {
   return (
     <ul className="mt-2.5 grid grid-cols-2 gap-2 lg:grid-cols-3">
       {vorschlaege.map((v) => {
         const have = vorhanden.some((t) => t.name === v.name);
+        const laeuft = laufend.has(v.name.trim()) && !have;
         return (
           <li key={v.key ?? v.name} className="contents">
-            <button type="button" disabled={busy || have} onClick={() => onWaehlen(v)}
-              aria-pressed={have} title={v.context || undefined}
+            <button type="button" disabled={have || laeuft} onClick={() => onWaehlen(v)}
+              aria-pressed={have} aria-busy={laeuft || undefined} title={v.context || undefined}
               className={cn(
                 "group relative flex items-center gap-2 rounded-xl border p-2 text-left transition-colors sm:gap-2.5",
-                have ? "border-primary/40 bg-primary/5"
-                     : "border-border bg-card hover:border-primary/40 hover:bg-muted disabled:opacity-50",
+                have || laeuft ? "border-primary/40 bg-primary/5"
+                     : "border-border bg-card hover:border-primary/40 hover:bg-muted",
               )}>
               {v.key ? (
                 // Feste 256-px-Dateien aus dem Repo; `next/image` bringt im statischen Export nichts.
@@ -1280,9 +1325,15 @@ function StadtthemenKacheln({ vorschlaege, vorhanden, busy, onWaehlen }: {
                                     have ? "text-primary" : "text-foreground")}>
                   {v.name}
                 </span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  {v.n} {v.n === 1 ? "Beschluss" : "Beschlüsse"}
-                </span>
+                {laeuft ? (
+                  // Ein Balken, wo gleich wieder die Zahl steht — die Kachel
+                  // springt nicht, und ein Kreisel in 11 px wäre kaum zu sehen.
+                  <span className="mt-1.5 block h-2 w-16 animate-pulse rounded-full bg-primary/20" aria-hidden />
+                ) : (
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    {v.n} {v.n === 1 ? "Beschluss" : "Beschlüsse"}
+                  </span>
+                )}
               </span>
               {have
                 ? <Check className="h-4 w-4 shrink-0 text-primary" aria-label="angelegt" />

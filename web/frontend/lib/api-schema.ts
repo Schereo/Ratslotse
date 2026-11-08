@@ -6007,6 +6007,13 @@ export interface paths {
          *     Trefferliste macht. Vorher lief hier eine eigene Suche mit eigener
          *     Schwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema
          *     „12 Beschlüsse", während die Karte „40+" sagte.
+         *
+         *     **Ein unverändertes Stadtthema** (Name und Beschreibung wie an der Kachel)
+         *     kommt ohne Modell zurück: dieselbe Liste wie an der Kachel, dazu
+         *     ``matches_12m`` im Zählfenster der Kachel. Die Vagheits-Prüfung läuft
+         *     dort nicht — sie nannte unsere eigenen, bewusst als Interessen gebauten
+         *     Themen „zu unkonkret" (Tims Befund 08.11.2026). Wer die Beschreibung
+         *     ändert, hat ein eigenes Thema, und dann prüft sie wie immer.
          */
         post: operations["describe_topic_api_topics_describe_post"];
         delete?: never;
@@ -17363,6 +17370,8 @@ export interface components {
             is_council_topic: boolean;
             /** Matches */
             matches: number;
+            /** Matches 12M */
+            matches_12m?: number;
             /** Matches Capped */
             matches_capped: boolean;
             /** Name */
@@ -26436,4 +26445,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: be89d58280b11447e03d8a9006acb6141d8098cf26ae406147ad3165a279484a
+// vertrag-sha256: 7d438913881cef60f6c46ff479c3fbab24f627bd82f1c449e81e0b994adf64cc

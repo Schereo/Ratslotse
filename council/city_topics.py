@@ -38,8 +38,6 @@ import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from council.topic_intel import SCHWELLE
-
 #: Unter so vielen Beschlüssen in ``WINDOW_DAYS`` wird ein Thema nicht
 #: angeboten: Wer es anklickt, soll in den nächsten Wochen etwas hören.
 MIN_DECISIONS = 6
@@ -286,7 +284,10 @@ def bild_key(name: str | None) -> str | None:
 #: Score eines reinen Mustertreffers. Die Trefferzeile braucht einen; bewusst
 #: die Relevanzschwelle des Cross-Encoders (``topic_intel.SCHWELLE``): Ein
 #: Mustertreffer gilt als „gerade eben relevant", nie als bester Treffer.
-MUSTER_SCORE = SCHWELLE
+#: Als Zahl und nicht als Import: ``topic_intel`` zieht ``kern.llm`` und das
+#: openai-SDK nach, und der Themen-Router importiert dieses Modul beim Start
+#: (``tests/test_stadtthemen.py`` hält beide Werte gleich).
+MUSTER_SCORE = -1.0
 
 
 def zu_thema(name: str | None, description: str | None) -> CityTopic | None:
@@ -306,7 +307,7 @@ def zu_thema(name: str | None, description: str | None) -> CityTopic | None:
 
 def treffer(council, topic: CityTopic, *, texte: list[tuple[int, str, str]] | None = None,
             gespeichert: dict[str, list[tuple[int, float, str]]] | None = None,
-            ) -> list[tuple[int, float, str]]:
+            seit: str | None = None) -> list[tuple[int, float, str]]:
     """Die Beschlüsse eines Stadtthemas → ``[(id, score, Sitzungsdatum)]``,
     neueste zuerst. Kachel, Anlegen, „anpassen" und der Wochenlauf lesen alle
     diese eine Liste.
@@ -318,17 +319,20 @@ def treffer(council, topic: CityTopic, *, texte: list[tuple[int, str, str]] | No
     bleibt es beim Muster, und die Zahl an der Kachel stimmt trotzdem mit der
     am Thema überein.
 
-    Kein Modell, kein Netz: Eine Wortsuche über gut 9.000 Texte dauert
-    Millisekunden. Genau darum geht es — ein Klick im Assistenten soll nicht
-    auf einen Cross-Encoder warten. ``texte`` und ``gespeichert`` reicht
-    herein, wer mehrere Themen auf einmal zählt.
+    Kein Modell, kein Netz — ein Klick im Assistenten soll nicht auf einen
+    Cross-Encoder warten. Für ein Thema über den ganzen Bestand (gut 8.000
+    Texte) sind das rund 0,2 s. ``texte`` und ``gespeichert`` reicht herein,
+    wer mehrere Themen auf einmal zählt; ``seit`` (ISO-Datum) beschränkt auf
+    ein Fenster. Die Kachel braucht nur die letzten zwölf Monate, und alle
+    zwanzig Themen über den ganzen Bestand kosteten gemessen 3,9 s statt 0,6.
     """
     texte = texte if texte is not None else council.decision_texts_dated()
     gespeichert = gespeichert if gespeichert is not None else council.city_topic_decisions()
     rx = _COMPILED[topic.key]
-    liste = {did: (score, datum) for did, score, datum in gespeichert.get(topic.key, [])}
+    liste = {did: (score, datum) for did, score, datum in gespeichert.get(topic.key, [])
+             if seit is None or datum >= seit}
     for did, datum, text in texte:
-        if did not in liste and rx.search(text):
+        if (seit is None or datum >= seit) and did not in liste and rx.search(text):
             liste[did] = (MUSTER_SCORE, datum)
     return sorted(((did, s, datum) for did, (s, datum) in liste.items()),
                   key=lambda r: (r[2], r[0]), reverse=True)
@@ -382,10 +386,11 @@ def city_topic_suggestions(council, today: date | None = None,
     # Gezählt wird die Liste, die das Thema nach dem Klick bekommt (``treffer``),
     # nicht eine eigene Wortsuche daneben: Sonst stand an der Kachel 18 und
     # im Blatt danach 35 (Tims Befund 08.11.2026).
-    texte = council.decision_texts_dated()
+    # Das Fenster einmal vorab schneiden, nicht je Thema: 20 Muster über den
+    # ganzen Bestand dauerten 3,9 s, über ein Jahr 0,6.
+    texte = [t for t in council.decision_texts_dated() if t[1] >= cutoff]
     gespeichert = council.city_topic_decisions()
-    counts = {t.key: sum(1 for _, _, datum in treffer(council, t, texte=texte, gespeichert=gespeichert)
-                         if datum >= cutoff)
+    counts = {t.key: len(treffer(council, t, texte=texte, gespeichert=gespeichert, seit=cutoff))
               for t in CITY_TOPICS}
     out = [{
         "key": t.key, "name": t.name, "description": t.description,

@@ -26047,6 +26047,10 @@
             "title": "Matches",
             "type": "integer"
           },
+          "matches_12m": {
+            "title": "Matches 12M",
+            "type": "integer"
+          },
           "matches_capped": {
             "title": "Matches Capped",
             "type": "boolean"
@@ -38133,7 +38137,7 @@
     },
     "/api/topics/describe": {
       "post": {
-        "description": "Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.\n\nDer Nutzer tippt nur „Cäcilienbrücke\". Wir suchen die Beschlüsse dazu und\nlassen daraus einen präzisen Satz formulieren — das ist der Text, an dem der\nThemen-Wächter später jeden neuen Beschluss misst, also lohnt die Mühe.\n\nNichts hier blockiert: Wer keinen Rats-Bezug hat oder zu vage schreibt,\nbekommt einen Hinweis und darf trotzdem speichern. Der Endpunkt urteilt,\ner verbietet nicht.\n\nMit ``description`` im Body wird zusätzlich die (bis 26a brachliegende)\nVagheits-Prüfung auf den selbst getippten Text angewandt.\n\n``matches``/``matches_capped`` zählen nach derselben Definition wie die\nThemen-Karte (s. Modul-Kopf), nur eben auf den Text, der gerade im Feld\nsteht: Wer die Beschreibung ändert, soll vorher sehen, was das mit der\nTrefferliste macht. Vorher lief hier eine eigene Suche mit eigener\nSchwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema\n„12 Beschlüsse\", während die Karte „40+\" sagte.",
+        "description": "Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.\n\nDer Nutzer tippt nur „Cäcilienbrücke\". Wir suchen die Beschlüsse dazu und\nlassen daraus einen präzisen Satz formulieren — das ist der Text, an dem der\nThemen-Wächter später jeden neuen Beschluss misst, also lohnt die Mühe.\n\nNichts hier blockiert: Wer keinen Rats-Bezug hat oder zu vage schreibt,\nbekommt einen Hinweis und darf trotzdem speichern. Der Endpunkt urteilt,\ner verbietet nicht.\n\nMit ``description`` im Body wird zusätzlich die (bis 26a brachliegende)\nVagheits-Prüfung auf den selbst getippten Text angewandt.\n\n``matches``/``matches_capped`` zählen nach derselben Definition wie die\nThemen-Karte (s. Modul-Kopf), nur eben auf den Text, der gerade im Feld\nsteht: Wer die Beschreibung ändert, soll vorher sehen, was das mit der\nTrefferliste macht. Vorher lief hier eine eigene Suche mit eigener\nSchwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema\n„12 Beschlüsse\", während die Karte „40+\" sagte.\n\n**Ein unverändertes Stadtthema** (Name und Beschreibung wie an der Kachel)\nkommt ohne Modell zurück: dieselbe Liste wie an der Kachel, dazu\n``matches_12m`` im Zählfenster der Kachel. Die Vagheits-Prüfung läuft\ndort nicht — sie nannte unsere eigenen, bewusst als Interessen gebauten\nThemen „zu unkonkret\" (Tims Befund 08.11.2026). Wer die Beschreibung\nändert, hat ein eigenes Thema, und dann prüft sie wie immer.",
         "operationId": "describe_topic_api_topics_describe_post",
         "requestBody": {
           "content": {
