@@ -44,11 +44,13 @@ import threading
 import time
 from dataclasses import dataclass, replace
 from datetime import datetime, UTC
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import requests
 
-from . import crosscheck, elections, mayor_districts, presentation
+from . import crosscheck, elections, mayor_districts, presentation, repo_files
 from .register import KOMMUNALWAHL
 from .rounding import exact_pct
 from .votemanager import TIMEOUT, TTL_SECONDS_BEFORE, UA
@@ -191,9 +193,20 @@ def candidates(w: elections.Election | None = None) -> tuple[MayorCandidate, ...
     ``only`` in der Registry grenzt ein — eine Stichwahl führt genau die zwei
     Kandidaturen, die in die zweite Runde gekommen sind. Ein Slug, den die
     Datei nicht kennt, ist ein Fehler und kein stilles Weglassen: Eine
-    Stichwahl mit einer statt zwei Personen wäre keine."""
-    datei, schluessel, nur = (w or wahl()).candidates or (KOMMUNALWAHL / "wahl-fakten.json", "ob_kandidaten", ())
-    raw = json.loads(datei.read_text(encoding="utf-8"))
+    Stichwahl mit einer statt zwei Personen wäre keine.
+
+    Einmal je Fassung der Datei gelesen (``repo_files``): Jede Antwort der
+    OB-Wahl und der Stichwahl fragt mehrmals danach."""
+    w = w or wahl()
+    datei, schluessel, nur = w.candidates or (KOMMUNALWAHL / "wahl-fakten.json", "ob_kandidaten", ())
+    return _candidates(repo_files.stamp(datei), schluessel, nur, w.slug)
+
+
+@lru_cache(maxsize=8)
+def _candidates(stempel: repo_files.Stamp, schluessel: str, nur: tuple[str, ...],
+                wahl_slug: str) -> tuple[MayorCandidate, ...]:
+    datei = Path(stempel[0])
+    raw = repo_files.json_file(datei)
     out = []
     for k in raw[schluessel]:
         slug = slug_of(k["name"])
@@ -217,7 +230,7 @@ def candidates(w: elections.Election | None = None) -> tuple[MayorCandidate, ...
         ))
     if nur and len(out) != len(nur):
         fehlend = sorted(set(nur) - {c.slug for c in out})
-        raise LookupError(f"{(w or wahl()).slug}: „only“ nennt Kandidaturen, die es in "
+        raise LookupError(f"{wahl_slug}: „only“ nennt Kandidaturen, die es in "
                           f"{datei.name} nicht gibt: {', '.join(fehlend)}")
     return tuple(out)
 
@@ -579,17 +592,18 @@ def probe_payload(w: elections.Election | None = None) -> tuple[object, str]:
     in ``kommunalwahl/referenz-2026/praesentation-ob.json`` (PR „Ratswahl 2026
     einfrieren"). Das ist die ehrlichere Probe: dieselbe Stadt, dieselben zwei
     Namen, dieselben 133 Wahlbezirke.
-    """
-    from pathlib import Path
 
+    Einmal je Fassung gelesen; das JSON teilen sich alle Aufrufer
+    (``repo_files``) — nicht verändern.
+    """
     wurzel = Path(__file__).resolve().parents[4]
     w = w or wahl()
     if w.first_round:
         datei = wurzel / "kommunalwahl" / "referenz-2026" / "praesentation-ob.json"
         if datei.is_file():
-            return json.loads(datei.read_text(encoding="utf-8")), "erster Wahlgang"
+            return repo_files.json_file(datei), "erster Wahlgang"
     datei = wurzel / "tests" / "fixtures" / "wahlabend" / "ob-2021.json"
-    return json.loads(datei.read_text(encoding="utf-8")), "OB-Wahl 2021"
+    return repo_files.json_file(datei), "OB-Wahl 2021"
 
 
 def _nur_die_beiden(voll: MayorResult, known: tuple[MayorCandidate, ...]) -> MayorResult:
@@ -626,18 +640,23 @@ def probe_districts(counted: int | None, known: tuple[MayorCandidate, ...],
     """Die Bezirke der Generalprobe: der erste Wahlgang je Bezirk, eingefroren
     in ``referenz-2026/praesentation-ob-wahlbezirke.json`` — die ersten
     ``counted`` in Dateireihenfolge gelten als gemeldet, der Rest wartet.
-    Nur für eine Stichwahl; der erste Wahlgang probt gegen 2021 ohne Bezirke."""
-    from pathlib import Path
+    Nur für eine Stichwahl; der erste Wahlgang probt gegen 2021 ohne Bezirke.
 
+    Die Datei (399 KB) wird je Fassung einmal gelesen und geparst: Jede
+    Antwort der Stichwahl fragt zweimal danach, ihre Bezirke einmal, und am
+    Abend fragte jede offene Seite alle 15 s — gut 80 % der Rechenzeit.
+    ``MayorDistrict`` ist frozen; das ``votes`` darin teilen sich alle
+    Aufrufer — nicht verändern."""
     w = w or wahl()
     if not w.first_round:
         return ()
     datei = Path(__file__).resolve().parents[4] / "kommunalwahl" / "referenz-2026" / "praesentation-ob-wahlbezirke.json"
     if not datei.is_file():
         return ()
-    alle = mayor_districts.parse_overview(json.loads(datei.read_text(encoding="utf-8")),
-                                          {c.slug: c.name for c in known})
+    alle = _first_round_districts(repo_files.stamp(datei), tuple((c.slug, c.name) for c in known))
     n = len(alle) if counted is None else max(0, min(len(alle), counted))
+    if n == len(alle):
+        return alle
     out = []
     for i, d in enumerate(alle):
         if i < n:
@@ -706,9 +725,22 @@ def probe(counted: int | None, w: elections.Election | None = None) -> MayorResu
     )
 
 
+@lru_cache(maxsize=4)
+def _first_round_districts(stempel: repo_files.Stamp,
+                           known: tuple[tuple[str, str], ...]) -> tuple[mayor_districts.MayorDistrict, ...]:
+    """Die Bezirke des ersten Wahlgangs, geparst — je Fassung der Datei und je
+    Kandidaturen einmal. Bewusst nicht über ``repo_files.json_file``: Das rohe
+    JSON (399 KB) braucht nach dem Parsen niemand mehr im Speicher."""
+    roh = json.loads(Path(stempel[0]).read_text(encoding="utf-8"))
+    return tuple(mayor_districts.parse_overview(roh, dict(known)))
+
+
 def reset() -> None:
     """Cache, gefundene Ids und letzten guten Stand vergessen (für Tests)."""
     with _lock:
         _cache.clear()
         _good.clear()
         _ids.clear()
+    _candidates.cache_clear()
+    _first_round_districts.cache_clear()
+    repo_files.reset()

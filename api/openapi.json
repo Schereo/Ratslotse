@@ -38950,7 +38950,7 @@
     },
     "/api/wahlabend": {
       "get": {
-        "description": "Der Wahlabend: live, als Generalprobe oder als Rückblick.\n\n``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus\ndem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine\nRückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den\nWahltag im Pfad und wandern irgendwann ins Archiv.",
+        "description": "Der Wahlabend: live, als Generalprobe oder als Rückblick.\n\n``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus\ndem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine\nRückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den\nWahltag im Pfad und wandern irgendwann ins Archiv.\n\n``?area_candidates=false`` lässt die Kandidaturen je Wahlbereich weg: gut\n60 % der Antwort, die der erste Reiter („Ergebnis\") nicht braucht. Ohne\nden Parameter bleibt die Antwort, wie sie war.",
         "operationId": "wahlabend_api_wahlabend_get",
         "parameters": [
           {
@@ -38995,6 +38995,18 @@
                 "string",
                 "null"
               ]
+            }
+          },
+          {
+            "description": "false = die Kandidaturen je Wahlbereich (areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem Reiter, der sie zeigt",
+            "in": "query",
+            "name": "area_candidates",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "false = die Kandidaturen je Wahlbereich (areas[].parties[].candidates) bleiben leer — die Seite holt sie erst mit dem Reiter, der sie zeigt",
+              "title": "Area Candidates",
+              "type": "boolean"
             }
           }
         ],
