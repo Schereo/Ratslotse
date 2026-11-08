@@ -195,6 +195,13 @@ class Highlight:
     #: eines Highlights ist oft ein ganzer Satz, „Lotti erklärt dir, was du
     #: siehst ausprobieren" wäre keiner. Ohne Wert: „Ausprobieren".
     action: str | None = None
+    #: Die **Szene für die Mail**: ein Standbild aus dem Clip, in dem man das
+    #: Feature bedient sieht (JPEG, 1104 px breit — Outlook kennt kein WebP).
+    #: Bis 11/2026 stand dort das Standbild (``poster``), also das Titelbild
+    #: des Clips: Es wiederholte nur die Überschrift darüber und war zu zwei
+    #: Dritteln leere Fläche (Tim 08.11.2026). Ohne Szene nimmt die Mail das
+    #: Standbild.
+    mail_image: str | None = None
 
 
 @dataclass(frozen=True)
@@ -241,14 +248,15 @@ RELEASES: tuple[Release, ...] = (
         teaser="Drei neue Wege durch den Rat — je ein kurzes Video.",
         highlights=(
             Highlight(
+                mail_image="/neuigkeiten/3.0.0/lotti-szene.jpg",
                 title="Lotti erklärt dir, was du siehst",
                 # „Markieren“ nur als Zusatz für den Browser: Die App kennt
                 # keine Textauswahl (ios/…/AssistantSheet.swift, „Was in v1
                 # fehlt“) — der Satz muss auf beiden Geräten stimmen.
-                text="Tipp auf Lotti unten rechts und frag, was du zur Seite wissen "
-                     "willst; im Browser erklärt sie auch ein markiertes Wort. Für "
-                     "die Antwort schlägt sie selbst in Sitzungen und Beschlüssen "
-                     "nach.",
+                text="Tipp unten rechts auf Lotti und frag sie, was du über die Seite "
+                     "wissen möchtest. Im Browser kannst du auch ein Wort markieren und "
+                     "dir erklären lassen. Lotti sucht die Antwort in Sitzungen und "
+                     "Beschlüssen.",
                 # Bis 11/2026 der Beschluss aus dem Clip (``?id=21966``). Die
                 # Nummer ist aber eine Zeilennummer, und die ist je Umgebung
                 # eine andere: Auf dev heißt derselbe Beschluss 9491, der
@@ -257,7 +265,7 @@ RELEASES: tuple[Release, ...] = (
                 # das Fenster — überall, ohne Daten vorauszusetzen.
                 url="/dashboard?lotti=1",
                 tagline="Tipp auf die Möwe — sie schlägt selbst nach.",
-                action="Lotti-Chat ausprobieren",
+                action="Mit Lotti chatten",
                 # Signal-Orange ist die Farbe der KI (Funken, Tipp-Anzeige):
                 # Was Lotti tut, trägt sie.
                 color="signal",
@@ -297,10 +305,11 @@ RELEASES: tuple[Release, ...] = (
                 ),
             ),
             Highlight(
+                mail_image="/neuigkeiten/3.0.0/viertel-szene.jpg",
                 title="Mein Viertel",
-                text="Gib deine Straße oder deinen Stadtteil ein und sieh, was der "
-                     "Rat dort beschlossen hat — jedes Vorhaben von der Idee bis "
-                     "zum Bau, mit Bebauungsplänen und den Beschlüssen dazu.",
+                text="Wähle dein Viertel aus und sieh, was der Rat dort beschlossen hat. "
+                     "Zu jedem Vorhaben findest du den Weg von der ersten Idee bis zum "
+                     "Bau, dazu die Bebauungspläne und Beschlüsse.",
                 url="/karte",
                 tagline="Was sich vor deiner Haustür tut.",
                 action="Mein Viertel ausprobieren",
@@ -338,11 +347,13 @@ RELEASES: tuple[Release, ...] = (
                 ),
             ),
             Highlight(
+                mail_image="/neuigkeiten/3.0.0/ideen-szene.jpg",
                 title="Ideen aus anderen Städten",
-                text="Was haben Hannover, Münster oder Potsdam schon beantragt oder "
-                     "beschlossen, das Oldenburg noch fehlt? Je Idee siehst du, wie "
-                     "sie durch die Räte lief — und mit Belegen, was es in "
-                     "Oldenburg dazu schon gibt.",
+                text="Was wurde in Hannover, Münster oder Potsdam beantragt oder "
+                     "beschlossen, das in Oldenburg noch fehlt? Du kannst nachlesen, wie "
+                     "die Räte darüber beraten haben. Ratslotse zeigt dir auch, welche "
+                     "ähnlichen Vorhaben es in Oldenburg schon gibt. Die Informationen "
+                     "sind mit Belegen versehen.",
                 url="/council/ideen",
                 tagline="Was andere Räte schon beschlossen haben.",
                 action="Ideen entdecken",
@@ -378,9 +389,13 @@ RELEASES: tuple[Release, ...] = (
                 ),
             ),
             Highlight(
-                title="Frag den Rat liest den ganzen Vorgang",
-                text="Fragst du nach einem Vorhaben, stehen unter der Antwort jetzt "
-                     "sein Verlauf als Zeitleiste und die Eckdaten.",
+                mail_image="/neuigkeiten/3.0.0/vorgang-zeitstrahl.jpg",
+                # Umformuliert 08.11.2026 (Tim: „liest den ganzen Vorgang" war
+                # komisch) — gemeint ist, dass Vorgänge vollständig erfasst
+                # werden, vom ersten bis zum aktuellen Stand.
+                title="Frag den Rat zeigt jetzt den ganzen Verlauf",
+                text="Du siehst den ersten Antrag, die Beratungen, den Beschluss und den "
+                     "aktuellen Stand. Ratslotse zeigt alles in einer Zeitleiste.",
                 url="/fragen",
                 tagline="Zeitleiste und Eckdaten unter jeder Antwort.",
                 action="Frag den Rat ausprobieren",
