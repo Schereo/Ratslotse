@@ -276,6 +276,25 @@ def test_fehler_wird_nicht_gespeichert(db):
     assert len(aufrufe) == 2
 
 
+def test_fehler_hinterlaesst_kein_schloss(db):
+    """`/person/{slug}` ist öffentlich: Jeder erfundene Slug ist eine 404. Ein
+    Schloss je fehlgeschlagenem Schlüssel wüchse unbegrenzt bis zum Neustart."""
+    def bauen():
+        raise LookupError("404")
+
+    for i in range(50):
+        with pytest.raises(LookupError):
+            rc.cached("person", [db], bauen, key=f"gibt-es-nicht-{i}", maxsize=8)
+    assert rc._build_locks == {}
+    # Ein Schlüssel MIT Eintrag behält sein Schloss, auch wenn ein späterer
+    # Neubau scheitert — er ist durch `maxsize` begrenzt.
+    rc.cached("person", [db], lambda: "da", key="da", maxsize=8)
+    _schreiben(db)
+    with pytest.raises(LookupError):
+        rc.cached("person", [db], bauen, key="da", maxsize=8)
+    assert list(rc._build_locks) == [("person", "da")]
+
+
 def test_gleichzeitige_anfragen_rechnen_einmal(db):
     """Nach einem Cron-Commit kommen mehrere Anfragen gleichzeitig — nur eine
     rechnet, die anderen warten auf sie."""

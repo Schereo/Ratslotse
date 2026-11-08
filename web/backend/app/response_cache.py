@@ -262,7 +262,18 @@ def cached(name: str, sources: Sequence[object], build: Callable[[], T], *,
         # Der Stand wurde VOR dem Rechnen gelesen. Schreibt jemand währenddessen,
         # trägt der Eintrag den alten Stand, und die nächste Anfrage rechnet neu —
         # nie umgekehrt (alter Inhalt unter neuem Stand).
-        value = build()
+        try:
+            value = build()
+        except BaseException:
+            # Ein Fehler hinterlässt auch kein Schloss. Sonst wüchse
+            # `_build_locks` mit jedem Schlüssel, der nur Fehler liefert,
+            # unbegrenzt — `/person/{slug}` ist öffentlich, jeder erfundene
+            # Slug ist eine 404 und bliebe ein Eintrag bis zum Neustart.
+            with _lock:
+                if key not in _entries.get(name, {}) and \
+                        _build_locks.get((name, key)) is build_lock:
+                    del _build_locks[(name, key)]
+            raise
         with _lock:
             bucket = _entries.setdefault(name, OrderedDict())
             bucket[key] = (stand, value)
