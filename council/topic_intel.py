@@ -269,6 +269,7 @@ def treffer(store, name: str, text: str, *, deckel: int = DECKEL,
 
 def zaehle_treffer(store, name: str, text: str) -> tuple[int, bool] | None:
     """``(count, gedeckelt)`` nach derselben Definition — oder ``None``.
+    Die Treffer selbst liefert ``treffer_sicher``; das hier ist ihre Zahl.
 
     Die ausfallsichere Fassung für den Web-Request: ``None`` heißt „lässt sich
     hier gerade nicht nach der einen Definition bestimmen" (kein fastembed,
@@ -280,13 +281,20 @@ def zaehle_treffer(store, name: str, text: str) -> tuple[int, bool] | None:
     Lauf ohnehin nie etwas gespeichert, und der Aufruf würde in Tests und
     frischen Umgebungen nur das ~1 GB große Reranker-Modell nachladen.
     """
+    gefunden = treffer_sicher(store, name, text)
+    return None if gefunden is None else (len(gefunden[0]), gefunden[1])
+
+
+def treffer_sicher(store, name: str, text: str) -> tuple[list[tuple[int, float]], bool] | None:
+    """``(treffer, gedeckelt)`` nach der einen Definition — oder ``None``,
+    wenn sie sich hier gerade nicht bestimmen lässt (s. ``zaehle_treffer``)."""
     try:
         if not store.embeddings_version()[0]:
             return None
         hits, gedeckelt, _ = treffer(store, name, text)
     except Exception:  # noqa: BLE001 — fastembed fehlt, Modell hakt, Store leer
         return None
-    return len(hits), gedeckelt
+    return hits, gedeckelt
 
 
 def find_matches(store, name: str, limit: int = _MAX_CONTEXT) -> list[dict]:
@@ -426,9 +434,6 @@ def _call_model(name: str, matches: list[dict]) -> dict | None:
         return None
 
 
-VERDICTS = ("belegt", "plausibel", "ungeeignet")
-
-
 def analyse(store, name: str, description: str = "") -> dict:
     """Ein Themen-Name → Einordnung + Beschreibung.
 
@@ -437,12 +442,15 @@ def analyse(store, name: str, description: str = "") -> dict:
     Das ist etwas völlig anderes als „Vergiss deine Anweisungen": das eine darf
     man anlegen (und wird benachrichtigt, sobald es so weit ist), das andere nicht.
 
-      ``verdict``          — "belegt" | "plausibel" | "ungeeignet"
+      ``verdict``          — "belegt" | "plausibel" | "ungeeignet"; „plausibel"
+                             heißt: ein Ratsthema, zu dem es noch keinen Treffer gibt
       ``is_council_topic`` — alles außer "ungeeignet" (Altlast, Frontend nutzt verdict)
       ``description``      — ein Satz, direkt als Themen-Beschreibung nutzbar
       ``matches``          — Beschlüsse zu diesem Thema nach der EINEN Definition
-                             (s. ``treffer``); 0, wenn nur plausibel
+                             (s. ``treffer``), auf „Name. Beschreibung"
       ``matches_capped``   — die Zahl ist der Deckel, nicht das Ergebnis → „40+"
+      ``matches_12m``      — dieselben Treffer im Zwölf-Monats-Fenster der
+                             Themenzeile; fehlt, wenn der Cross-Encoder ausfiel
       ``examples``         — bis zu 3 Titel als sichtbarer Beleg
       ``reason``           — kurze Begründung, wenn es kein Ratsthema ist
 
@@ -471,46 +479,67 @@ def analyse(store, name: str, description: str = "") -> dict:
                        "etwa „Cäcilienbrücke\" oder „Grundschule Krusenbusch\"."),
         }
 
-    # Die eine Definition, angewandt auf den Text, der gespeichert würde.
-    # Fällt sie aus (kein Reranker, kein Embedding-Bestand), zählen ersatzweise
-    # die Belege — dann ist die Zahl grob, aber wenigstens nicht aus einer
-    # zweiten, dauerhaft danebenliegenden Quelle.
-    gezaehlt = zaehle_treffer(store, clean, f"{clean}. {(description or '').strip()}".strip())
-    count, gedeckelt = gezaehlt if gezaehlt is not None else (len(belege), False)
-
     obj = _call_model(clean, belege)
+    eigen = (description or "").strip()
 
-    if not obj:
-        # Modell weg: Wir dürfen weder fälschlich anlegen noch grundlos ablehnen.
-        # Belege entscheiden — mit genug Treffern gilt es als belegt, sonst als
-        # plausibel. „Ungeeignet" behaupten wir ohne Urteil nie.
-        belegt = count >= MIN_MATCHES
+    if obj:
+        verdict = str(obj.get("einordnung") or "").strip().lower()
+        if verdict == "ungeeignet":
+            return {"verdict": "ungeeignet", "is_council_topic": False, "description": "",
+                    "matches": 0, "matches_capped": False, "examples": [],
+                    "reason": str(obj.get("begruendung") or "").strip()[:200]}
+        desc = str(obj.get("beschreibung") or "").strip()[:_MAX_DESC] or _fallback_description(clean, belege)
+    else:
+        # Modell weg: Wir dürfen weder fälschlich anlegen noch grundlos
+        # ablehnen. „Ungeeignet" behaupten wir ohne Urteil nie.
+        verdict = ""
+        desc = _fallback_description(clean, belege)
+
+    # Die eine Definition (s. ``treffer``), angewandt auf GENAU den Text, der
+    # gespeichert wird: „Name. Beschreibung" — die eigene, sonst die gerade
+    # erzeugte. Damit rechnet ``_erstabgleich`` beim Anlegen dasselbe nach,
+    # und Hinweis, Themenzeile und Vorschau im Blatt zeigen eine Zahl.
+    #
+    # Bis 11/2026 zählte das Anlegen auf den Namen allein, und sagte das
+    # Modell „plausibel", wurde die Zahl auf 0 gesetzt. Gespeichert wurden
+    # trotzdem die Treffer des Cross-Encoders: Bei „Entlastungsstraße" stand
+    # „hat der Rat bisher nichts entschieden" über einer Zeile mit
+    # „6 Beschlüsse in 12 Monaten", und das Blatt sagte wieder „Noch nichts"
+    # (Tims Befund 08.11.2026). Das Modell entscheidet deshalb nur noch, ob
+    # etwas überhaupt ein Ratsthema ist; ob der Rat dazu schon entschieden
+    # hat, sagt die Zahl.
+    gefunden = treffer_sicher(store, clean, f"{clean}. {eigen or desc}")
+    if gefunden is None:
+        # Ohne Cross-Encoder zählen ersatzweise die Belege — grob, aber nicht
+        # aus einer zweiten, dauerhaft danebenliegenden Quelle. Gespeichert
+        # wird in dem Fall gar keine Zahl (``_erstabgleich``), deshalb gilt
+        # hier die alte Schwelle gegen Zufallstreffer.
+        count, gedeckelt = len(belege), False
+        belegt = count >= MIN_MATCHES and verdict != "plausibel"
         return {"verdict": "belegt" if belegt else "plausibel", "is_council_topic": True,
-                "description": _fallback_description(clean, belege),
+                "description": desc,
                 "matches": count if belegt else 0,
-                "matches_capped": gedeckelt if belegt else False,
+                "matches_capped": False,
                 "examples": examples if belegt else [], "reason": ""}
 
-    desc = str(obj.get("beschreibung") or "").strip()[:_MAX_DESC]
-    verdict = str(obj.get("einordnung") or "").strip().lower()
-    if verdict not in VERDICTS:
-        verdict = "belegt" if count >= MIN_MATCHES else "plausibel"
-    # Das Modell darf nur nach unten korrigieren: Es sieht die Beschlüsse und
-    # erkennt, dass „Grundschule Krusenbusch" von der Wunderburg-Schule handelt —
-    # eine Trefferzahl allein kann das nicht.
-    if verdict == "belegt" and count < MIN_MATCHES:
-        verdict = "plausibel"
-    belegt = verdict == "belegt"
+    hits, gedeckelt = gefunden
+    zeilen = store.get_decisions_by_ids([did for did, _ in hits]) if hits else []
+    from council.city_topics import WINDOW_DAYS
+
+    grenze = (date.today() - timedelta(days=WINDOW_DAYS)).isoformat()
     return {
-        "verdict": verdict,
-        "is_council_topic": verdict != "ungeeignet",
-        "description": "" if verdict == "ungeeignet" else (desc or _fallback_description(clean, belege)),
-        # Nur belegte Treffer zählen: Sonst stünde „12 Beschlüsse passen dazu"
-        # unter einem Thema, zu dem das Modell gerade das Gegenteil gesagt hat.
-        "matches": count if belegt else 0,
-        "matches_capped": gedeckelt if belegt else False,
-        "examples": examples if belegt else [],
-        "reason": str(obj.get("begruendung") or "").strip()[:200] if verdict == "ungeeignet" else "",
+        "verdict": "belegt" if hits else "plausibel",
+        "is_council_topic": True,
+        "description": desc,
+        "matches": len(hits),
+        "matches_capped": gedeckelt,
+        # Dasselbe Fenster wie ``hits_12m`` an der Themenzeile.
+        "matches_12m": sum(1 for z in zeilen if (z.get("session_date") or "") >= grenze),
+        # Die Beispiele aus den GEZÄHLTEN Treffern, nicht aus den Belegen für
+        # den Prompt — sonst stünde neben der Zahl ein Titel, der gar nicht
+        # mitzählt.
+        "examples": [(z.get("title") or "").strip() for z in zeilen[:3] if z.get("title")],
+        "reason": "",
     }
 
 
