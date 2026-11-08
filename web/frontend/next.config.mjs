@@ -1,8 +1,61 @@
+import { createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 // Next's dev server (HMR/React Refresh) needs 'unsafe-eval'; a production build
 // does not — so only allow it in development to keep the prod CSP tight.
 const isDev = process.env.NODE_ENV !== "production";
+
+// FINGERABDRUCK DER BÜNDEL IN public/lotti UND public/geo (lib/asset-paths.ts).
+//
+// Dateien aus public/ liefert Next mit `max-age=0` aus, jeder Besuch fragt sie
+// also neu nach. Die Lotti-Dateien gehören aber zusammen (Verzeichnis und
+// Blätter), eine Lebensdauer allein ließe ein neues lotti.json auf ein altes
+// Blatt treffen. Deshalb steckt der Inhalt in der Adresse: Über alle Dateien
+// des Ordners (Pfad + Inhalt) entsteht ein Abdruck, und nur unter
+// /lotti/v/<abdruck>/… gibt es ein Jahr Lebensdauer. 29 MB, gemessen 40–80 ms
+// je Start. Fehlt der Ordner, bleibt es bei den alten Adressen.
+const PUBLIC_DIR = fileURLToPath(new URL("./public/", import.meta.url));
+
+function contentFingerprint(folder) {
+  const root = path.join(PUBLIC_DIR, folder);
+  const hash = createHash("sha256");
+  const walk = (dir) => {
+    const entries = readdirSync(dir, { withFileTypes: true })
+      .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile()) {
+        hash.update(path.relative(root, full));
+        hash.update("\0");
+        hash.update(readFileSync(full));
+        hash.update("\0");
+      }
+    }
+  };
+  try {
+    walk(root);
+  } catch {
+    return "";
+  }
+  return hash.digest("hex").slice(0, 12);
+}
+
+const LOTTI_VERSION = contentFingerprint("lotti");
+const GEO_VERSION = contentFingerprint("geo");
+
+// Nur der AKTUELLE Abdruck wird umgeleitet und darf lange liegen. Eine alte
+// Adresse (ein Tab von vor dem Deploy) bekommt ein 404 statt der neuen Dateien
+// unter altem Namen — und dieses 404 bekommt keine Lebensdauer, falls der alte
+// Stand nach einem Revert mit demselben Abdruck zurückkommt.
+const versionedBundles = [
+  ["lotti", LOTTI_VERSION],
+  ["geo", GEO_VERSION],
+].filter(([, version]) => version);
 
 // Proxy API calls to the FastAPI backend so the web frontend always talks to a
 // same-origin /api (no CORS, cookies work). In production Caddy may handle /api
@@ -50,6 +103,11 @@ async function rewrites() {
     // damit keinen eigenen Webserver auf der Edge.
     { source: "/docs", destination: "/docs/index.html" },
     { source: "/docs/:path*", destination: "/docs/:path*/index.html" },
+    // Versionierte Bündel-Adressen auf die echten Dateien (s. versionedBundles).
+    ...versionedBundles.map(([folder, version]) => ({
+      source: `/${folder}/v/${version}/:path*`,
+      destination: `/${folder}/:path*`,
+    })),
   ];
   return { afterFiles: dateien, fallback: api };
 }
@@ -131,6 +189,16 @@ async function headers() {
       source: "/docs",
       headers: [...BASE_HEADERS, { key: "Content-Security-Policy", value: csp({ wasm: true }) }],
     },
+    // Versionierte Bündel: Der Inhalt steckt in der Adresse, also darf der
+    // Browser sie behalten, ohne nachzufragen. Nicht im Dev-Server — dort
+    // ändert `lotti_uebernehmen.py` Dateien, ohne dass sich der Abdruck des
+    // laufenden Servers mitändert.
+    ...(isDev
+      ? []
+      : versionedBundles.map(([folder, version]) => ({
+          source: `/${folder}/v/${version}/:path*`,
+          headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+        }))),
   ];
 }
 
@@ -149,9 +217,29 @@ async function headers() {
 //
 // Die Konfiguration als FUNKTION zu exportieren, löst das ohne Disziplin:
 // Next reicht die Phase herein, und der Dev-Server bekommt `.next-dev`.
-// `next build` und `next start` bleiben bei `.next` — Deploy, Dockerfile und
-// der rsync-Ausschluss in deploy.yml sind unberührt.
+// `next start` bleibt bei `.next`.
 const DEV_PHASE = "phase-development-server";
+
+// DER DEPLOY BAUT NEBEN DEM LAUFENDEN SERVER.
+//
+// Dasselbe Bild auf den Servern, nur dass dort der alte `next start` der
+// Leidtragende war: `next build` leert `.next` als Erstes und schreibt neue
+// Chunk- und CSS-Namen hinein, während der alte Server weiter HTML ausliefert,
+// das auf die alten zeigt. Bis zum Neustart — gemessen auf dev und Prod rund
+// eine Minute je Deploy — kam jede Seite ohne Stylesheet, und das App-Icon
+// stand in voller Größe (1024 px) darauf (Tims Befund 08.11.2026).
+//
+// Deshalb setzen die Deploys `NEXT_DIST_DIR=.next-build`, prüfen den fertigen
+// Build dort und tauschen ihn erst unmittelbar vor `systemctl restart` gegen
+// `.next` aus. Nur in der Build-Phase: `next start` liest immer `.next`, auch
+// wenn die Variable versehentlich in seiner Umgebung stünde.
+const BUILD_PHASE = "phase-production-build";
+
+function distDir(phase) {
+  if (phase === DEV_PHASE) return ".next-dev";
+  if (phase === BUILD_PHASE && process.env.NEXT_DIST_DIR) return process.env.NEXT_DIST_DIR;
+  return null;
+}
 
 const nextConfig = {
   reactStrictMode: true,
@@ -166,12 +254,15 @@ const nextConfig = {
   // handful of our own small PNG icons, which lose nothing by being served
   // as they are.
   images: { unoptimized: true },
+  // Die Abdrücke der Bündel für lib/asset-paths.ts (zur Bauzeit einkompiliert,
+  // passend zu den Dateien, die derselbe Build ausliefert).
+  env: { LOTTI_BUNDLE_VERSION: LOTTI_VERSION, GEO_BUNDLE_VERSION: GEO_VERSION },
   rewrites,
   redirects,
   headers,
 };
 
-export default (phase) => ({
-  ...nextConfig,
-  ...(phase === DEV_PHASE ? { distDir: ".next-dev" } : {}),
-});
+export default (phase) => {
+  const dir = distDir(phase);
+  return { ...nextConfig, ...(dir ? { distDir: dir } : {}) };
+};

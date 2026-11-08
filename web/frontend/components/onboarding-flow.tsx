@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bell, Check, ChevronDown, Landmark, Loader2, Mail, MapPin, Plus, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Bell, CalendarDays, Check, ChevronDown, Gavel, Landmark, ListChecks, Loader2, Mail, MapPin, Moon, Plus, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { SETUP_QUERY_KEY, gemeldeterSetupSchritt, holeSetupStand, type SetupStand } from "@/lib/onboarding-setup";
 import { cn } from "@/lib/utils";
@@ -472,17 +472,17 @@ function CommitteeStep({ onNext }: { onNext: () => void }) {
 
   return (
     <StepShell
-      title="Welche Gremien interessieren dich?"
+      title="Welche Ausschüsse interessieren dich?"
       lead="Du bekommst eine Mitteilung, sobald eine Tagesordnung erscheint. Diese Auswahl kannst du später ändern."
       pose="point"
-      mehr="Weitere Gremien"
+      mehr="Weitere Ausschüsse"
       footer={
         <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext}>
           {active.length > 0 ? `${active.length} abonniert · Weiter` : "Weiter"}
         </Button>
       }
     >
-      {committees.isLoading && <p className="text-sm text-muted-foreground">Gremien werden geladen …</p>}
+      {committees.isLoading && <p className="text-sm text-muted-foreground">Ausschüsse werden geladen …</p>}
       {/* Zwei Spalten, sobald die Antwortfläche 576 px hergibt (Container-
           Query, nicht Fensterbreite — DESIGNSPRACHE §4). Zwölf Gremien
           untereinander waren zwölf Kacheln à 125 px: Man scrollte durch eine
@@ -578,7 +578,9 @@ type Ortsbereich = {
  *  richtig, hier nicht: Auf dem Prod-Bestand standen dadurch 40 Pillen unter
  *  einer Karte mit 31 Flächen, und „Alte Fleiwa" als Stadtteil anzubieten ist
  *  schlicht falsch. Die 31 flächendeckenden Ortsbereiche sind die Auswahl. */
-function useOrtsbereiche() {
+/** `enabled`: Die Lotti-Tour fragt dieselbe Liste, aber nur, solange sie läuft —
+ *  sie hängt in der App-Hülle und soll nicht auf jeder Seite mitladen. */
+export function useOrtsbereiche(enabled = true) {
   return useQuery({
     queryKey: ["council-districts"],
     queryFn: () => api.get<{ districts: Ortsbereich[] }>("/council/districts")
@@ -586,6 +588,7 @@ function useOrtsbereiche() {
         .filter((o) => o.kind === "local_area")
         .sort((a, b) => a.name.localeCompare(b.name, "de"))),
     staleTime: 10 * 60_000,
+    enabled,
   });
 }
 
@@ -596,7 +599,7 @@ function useOrtsbereiche() {
  *  überlebt die Auswahl einen Neuladen mitten im Ablauf — ein Zustand in React
  *  täte das nicht, und der Assistent nimmt seinen Stand sonst überall vom
  *  Server. */
-function gewaehlteOrtsbereiche(topics: { name: string }[], orte: Ortsbereich[]): Ortsbereich[] {
+export function gewaehlteOrtsbereiche(topics: { name: string }[], orte: Ortsbereich[]): Ortsbereich[] {
   return orte.filter((o) => topics.some((t) => t.name.toLowerCase() === o.name.toLowerCase()));
 }
 
@@ -794,6 +797,7 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
       // 08.11.2026). Sie meldet sich erst, wenn jemand an sie stößt.
       lead="Zum Beispiel der, in dem du wohnst — aber genauso einer, in dem gerade etwas passiert. Lotti meldet neue Beschlüsse und Planungen von dort. Alles jederzeit änderbar."
       pose="point"
+      mehr="Alle Stadtteile"
       footer={
         <Button className="w-full lg:w-auto lg:min-w-44" onClick={onNext} disabled={unterwegs.size > 0 || !!anlegend}>
           {unterwegs.size > 0 ? <><Loader2 className="h-4 w-4 animate-spin" /> Speichert …</>
@@ -805,11 +809,19 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
     >
       {/* Die Karte am Desktop, wo Platz ist. Die Liste steht auf JEDER Breite
           da — sie ist nicht bloß der Ersatz fürs kleine Fenster, sondern auch
-          der Weg für Tastatur und Screenreader. */}
-      <StadtteilKarteGrund className="hidden h-[400px] lg:block" gewaehlt={namen}
+          der Weg für Tastatur und Screenreader.
+
+          Die Höhe folgt dem Fenster: Oldenburg ist fast quadratisch, die
+          Spalte aber breit — mit festen 400 px füllte die Stadt nur das
+          mittlere Drittel, „die Karte ist wirklich sehr klein auf normalen
+          Screens" (Tim, 08.11.2026). Sie reicht jetzt fast bis zur
+          Fußleiste; die Liste darunter beginnt knapp über ihr, damit man
+          sieht, dass noch etwas kommt. */}
+      <StadtteilKarteGrund className="hidden lg:block lg:h-[clamp(340px,calc(100dvh_-_300px),620px)]" gewaehlt={namen}
         auswaehlbar={auswaehlbar} onWaehlen={umschalten} />
 
-      <div className={cn("flex flex-wrap gap-1.5", liste.length && "lg:mt-4")}>
+      {/* Kompakt: 31 Pillen in voller Größe waren sechs Reihen unter der Karte. */}
+      <div className={cn("flex flex-wrap gap-1", liste.length && "lg:mt-3")}>
         {liste.map((o) => {
           const an = namen.has(o.name);
           return (
@@ -822,7 +834,7 @@ function StadtteilStep({ onNext }: { onNext: () => void }) {
               disabled={unterwegs.has(o.name)}
               onClick={() => umschalten(o.name)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-[6px] text-[12.5px] transition-colors",
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] transition-colors",
                 an ? "border-primary bg-primary font-semibold text-primary-foreground"
                    : "border-border bg-card text-foreground hover:bg-muted",
                 unterwegs.has(o.name) && "animate-pulse",
@@ -957,13 +969,13 @@ function TopicStep({ onNext }: { onNext: () => void }) {
    *  Beschlüssen. Sie ist es, an der der Wächter später misst, deshalb wird sie
    *  nicht generisch gefüllt.
    *
-   *  Drei Ausgänge, weil zwei zu grob sind:
-   *  - **belegt**     — anlegen, Trefferzahl zeigen.
-   *  - **plausibel**  — anlegen, aber ehrlich sagen, dass der Rat dazu noch
-   *    nichts entschieden hat. „Grundschule Krusenbusch" gibt es wirklich; sie
-   *    kam nur noch nicht vor. Genau dafür ist ein Thema ja da.
-   *  - **ungeeignet** — NICHT anlegen. Vorher wurde auch das gespeichert und die
-   *    Warnung erschien danach; so landeten ganze Anweisungssätze als Thema. */
+   *  **Ungeeignet** heißt: NICHT anlegen. Vorher wurde auch das gespeichert und
+   *  die Warnung erschien danach; so landeten ganze Anweisungssätze als Thema.
+   *  Alles andere wird angelegt — und ob der Rat dazu schon entschieden hat,
+   *  sagt die Antwort des Anlegens, also dieselbe Zahl, die danach an der
+   *  Zeile steht. Bis 11/2026 kam der Hinweis aus dem Urteil vorher, und bei
+   *  „Entlastungsstraße" stand „hat der Rat bisher nichts entschieden" über
+   *  „6 Beschlüsse in 12 Monaten" (Tims Befund 08.11.2026). */
   const add = async (topicName: string) => {
     const clean = topicName.trim();
     if (clean.length < 2 || busy) return;
@@ -977,14 +989,12 @@ function TopicStep({ onNext }: { onNext: () => void }) {
         setWarn(d.reason || "Das sieht nicht nach einem Thema des Oldenburger Stadtrats aus.");
         return;
       }
-      // `d.matches` ist die Gesamtzahl seit 2018 — sie steht hier bewusst
-      // NICHT in der Zeile. Bis die frische Themenliste da ist (eine
-      // Sekunde später, mit `hits_12m`), bleibt die Zeile lieber ohne Zahl
-      // als mit einer aus einem anderen Zeitraum.
-      if (d.verdict === "plausibel") {
+      const t = await api.post<TopicRow>("/topics", { name: clean, description: d.description });
+      // Nur wenn der Abgleich wirklich lief (`matched`) und nichts fand. Lief
+      // er nicht, steht an der Zeile „wird noch gezählt" statt einer 0.
+      if (t.matched && t.decision_count === 0) {
         setNote(`Über „${clean}" hat der Rat bisher nichts entschieden — Lotti meldet sich, sobald es so weit ist.`);
       }
-      await api.post("/topics", { name: clean, description: d.description });
       setName("");
       // Erst die Liste holen, dann die Vorschau-Zeile wegnehmen — sonst
       // verschwindet das Thema für einen Moment, bevor es wiederkommt.
@@ -1062,6 +1072,7 @@ function TopicStep({ onNext }: { onNext: () => void }) {
       lead="Lege Themen an — Lotti meldet sich, sobald der Rat dazu entscheidet."
       pose="search"
       mehr="Weitere Themen"
+      fuellt
       footer={
         // Erst weiter, wenn alles angelegt ist — sonst fehlte ein gerade
         // geklicktes Thema im nächsten Schritt, und der Fehler, falls einer
@@ -1100,16 +1111,25 @@ function TopicStep({ onNext }: { onNext: () => void }) {
       {(eigene.length > 0 || unterwegs.length > 0) && (
         <div className="mt-4 rounded-2xl border border-border bg-card p-3 lg:bg-background">
           <Kicker>Deine Themen ({eigene.length + unterwegs.length})</Kicker>
-          <ul className="mt-2 flex flex-col divide-y divide-border">
-            {/* Was gerade angelegt wird, steht schon da — mit einem Balken
-                dort, wo gleich die Zahl steht, statt eines kleinen Kreisels. */}
+          {/* Gedeckelt: Die Liste steht über den Kacheln und nähme ihnen sonst
+              mit jedem eigenen Thema eine Zeile weg. */}
+          <ul className="mt-2 flex max-h-[9.5rem] flex-col divide-y divide-border overflow-y-auto">
+            {/* Was gerade angelegt wird, steht schon da — und sagt, was
+                passiert. Bis 11/2026 standen dort zwei blasse Balken, und
+                man sah nicht, dass nach dem Tippen überhaupt etwas lief
+                (Tims Befund 08.11.2026). Das Anlegen dauert ein paar
+                Sekunden: Lotti sucht die Beschlüsse und schreibt daraus die
+                Beschreibung. */}
             {unterwegs.map((n) => (
               <li key={`unterwegs-${n}`} aria-busy="true"
-                className="flex items-center gap-2 py-1.5 text-[13px] text-muted-foreground">
-                <span className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-primary/10" aria-hidden />
-                <span className="min-w-0 flex-1 truncate font-semibold text-foreground">{n}</span>
-                <span className="h-2.5 w-24 shrink-0 animate-pulse rounded-full bg-primary/15" aria-hidden />
-                <span className="sr-only">wird angelegt</span>
+                className="flex items-center gap-2.5 rounded-lg bg-primary/5 px-2 py-2">
+                <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-foreground">{n}</span>
+                  <span role="status" className="block text-[12px] font-medium text-primary">
+                    Lotti sucht passende Beschlüsse und schreibt eine Beschreibung …
+                  </span>
+                </span>
               </li>
             ))}
             {eigene.map((t) => (
@@ -1126,8 +1146,10 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           der Beschlüsse aus zwölf Monaten; was darunter zu dünn ist, kommt
           gar nicht erst aus dem Server (Zusage: nichts anbieten, wozu Lotti
           nicht liefert). Die Liste ist stabil; ein Klick wählt, ein zweiter
-          nimmt das Thema wieder heraus. */}
-      <div className="mt-4">
+          nimmt das Thema wieder heraus. Sie scrollt in sich (Tim, 08.11.2026):
+          Feld und Überschrift bleiben stehen, und die Bilder dürfen größer
+          sein, weil nicht mehr alle Kacheln auf einen Schirm müssen. */}
+      <div className="mt-4 flex min-h-0 flex-1 flex-col">
         <Kicker className="text-primary">
           <Sparkles className="h-3 w-3" />
           Gerade in Oldenburg
@@ -1136,10 +1158,12 @@ function TopicStep({ onNext }: { onNext: () => void }) {
           </span>
           {stadtQuery.isPending && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
         </Kicker>
-        {stadtQuery.isPending
-          ? <KachelPlatzhalter />
-          : <StadtthemenKacheln vorschlaege={stadtQuery.data ?? []} vorhanden={mine} laufend={stadtLaeufe}
-              onUmschalten={(v) => void umschaltenStadtthema(v)} onAnpassen={setEditing} />}
+        <ScrollListe mehr="Weitere Themen">
+          {stadtQuery.isPending
+            ? <KachelPlatzhalter />
+            : <StadtthemenKacheln vorschlaege={stadtQuery.data ?? []} vorhanden={mine} laufend={stadtLaeufe}
+                onUmschalten={(v) => void umschaltenStadtthema(v)} onAnpassen={setEditing} />}
+        </ScrollListe>
       </div>
 
       {editing && (
@@ -1175,14 +1199,21 @@ type Vorschlag = {
   place_reason?: string | null;
 };
 
+/** Eine Spalte am Telefon, zwei daneben: Mit größeren Bildern bliebe in zwei
+ *  Spalten à 170 px für „Schwimmbäder" nur noch „Schwimm-bäder". */
+const KACHEL_RASTER = "grid gap-2 sm:grid-cols-2";
+/** Jede Kachel gleich hoch — auch eine gewählte; „anpassen" sitzt in der
+ *  Spalte rechts, die jede Kachel freihält, nicht in einer Zeile darunter. */
+const KACHEL_HOEHE = "min-h-[76px] sm:min-h-[84px]";
+
 /** Kacheln in Wartestellung: gleiche Höhe wie die echten, damit nichts springt,
  *  wenn die Liste eintrifft. */
 function KachelPlatzhalter() {
   return (
-    <div className="mt-2.5 grid grid-cols-2 gap-2 lg:grid-cols-3" aria-busy="true">
-      {Array.from({ length: 9 }, (_, i) => (
+    <div className={KACHEL_RASTER} aria-busy="true">
+      {Array.from({ length: 8 }, (_, i) => (
         <span key={i}
-          className="h-[68px] animate-pulse rounded-xl border border-dashed border-border bg-muted/40" />
+          className={cn(KACHEL_HOEHE, "animate-pulse rounded-xl border border-dashed border-border bg-skeleton/50")} />
       ))}
     </div>
   );
@@ -1203,8 +1234,10 @@ function istPlannummer(name: string): boolean {
  *  nicht nach Zahl); die Zahl der Beschlüsse steht darunter als Beleg dafür,
  *  dass Lotti bei dem Thema wirklich etwas zu melden hat.
  *
- *  Waagerecht gebaut (Bild links, Text rechts): 20 senkrechte Kacheln wären
- *  fünf Reihen Bildschirm, so sind es sieben Zeilen, die man überfliegt. */
+ *  Waagerecht gebaut (Bild links, Text rechts), damit man die Namen
+ *  überfliegt. Bis 11/2026 standen drei Spalten mit 52-px-Bildern auf einem
+ *  Schirm — alles auf einmal, die Bilder kaum zu erkennen (Tim, 08.11.2026).
+ *  Seitdem zwei Spalten (am Telefon eine) mit 64 px, und die Liste scrollt. */
 function StadtthemenKacheln({ vorschlaege, vorhanden, laufend, onUmschalten, onAnpassen }: {
   vorschlaege: Vorschlag[];
   vorhanden: TopicRow[];
@@ -1215,7 +1248,7 @@ function StadtthemenKacheln({ vorschlaege, vorhanden, laufend, onUmschalten, onA
   onAnpassen: (t: TopicRow) => void;
 }) {
   return (
-    <ul className="mt-2.5 grid grid-cols-2 gap-2 lg:grid-cols-3">
+    <ul className={KACHEL_RASTER}>
       {vorschlaege.map((v) => {
         const thema = vorhanden.find((t) => t.name === v.name);
         const ziel = laufend.get(v.name.trim());
@@ -1229,58 +1262,64 @@ function StadtthemenKacheln({ vorschlaege, vorhanden, laufend, onUmschalten, onA
         return (
           <li key={v.key ?? v.name}
             className={cn(
-              "flex flex-col overflow-hidden rounded-xl border transition-colors",
+              "relative flex rounded-xl border transition-colors",
+              KACHEL_HOEHE,
               an ? "border-primary/40 bg-primary/5"
                  : "border-border bg-card hover:border-primary/40 hover:bg-muted",
             )}>
+            {/* Der Umschalter ist die ganze Kachel. Rechts hält er IMMER eine
+                Spalte frei: ungewählt steht dort das Plus, gewählt liegt
+                „anpassen" darüber. So hat der Name in beiden Zuständen dieselbe
+                Breite und bricht nicht um — bis 11/2026 hing „anpassen" als
+                Zeile unter der Kachel, und mit jedem Klick wurde die ganze
+                Reihe höher (Tim, 08.11.2026). */}
             <button type="button" disabled={laeuft} onClick={() => onUmschalten(v)}
               aria-pressed={an} aria-busy={laeuft || undefined} title={v.context || undefined}
-              className="group flex flex-1 items-center gap-2 p-2 text-left sm:gap-2.5">
+              className="group flex min-w-0 flex-1 items-center gap-3 rounded-xl py-2.5 pl-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
               <span className="relative shrink-0">
                 {v.key ? (
                   // Feste 256-px-Dateien aus dem Repo; `next/image` optimiert hier nichts (s. next.config.mjs).
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={stadtthemaBild(v.key)} alt="" width={52} height={52} loading="lazy" decoding="async"
-                    className="h-11 w-11 rounded-lg bg-muted object-cover sm:h-[52px] sm:w-[52px]" />
+                  <img src={stadtthemaBild(v.key)} alt="" width={64} height={64} loading="lazy" decoding="async"
+                    className="h-14 w-14 rounded-lg bg-muted object-cover sm:h-16 sm:w-16" />
                 ) : (
-                  <span aria-hidden className="block h-11 w-11 rounded-lg bg-muted sm:h-[52px] sm:w-[52px]" />
+                  <span aria-hidden className="block h-14 w-14 rounded-lg bg-muted sm:h-16 sm:w-16" />
                 )}
-                {/* Auf dem Handy sitzt das Häkchen auf dem Bild: Neben dem
-                    Text nahm es der Spalte so viel Breite, dass „Schwimmbäder"
-                    hineinlief und bei 320 px jeder Name zerbrach. */}
+                {/* Das Häkchen sitzt auf dem Bild — der Platz rechts gehört
+                    „anpassen". */}
                 {an && (
-                  <span aria-hidden className="absolute -right-1 -top-1 rounded-full bg-primary p-0.5 text-primary-foreground ring-2 ring-card sm:hidden">
-                    <Check className="h-3 w-3" />
+                  <span aria-hidden className="absolute -right-1.5 -top-1.5 rounded-full bg-primary p-0.5 text-primary-foreground ring-2 ring-card">
+                    <Check className="h-3.5 w-3.5" />
                   </span>
                 )}
               </span>
               <span className="min-w-0 flex-1">
-                <span className={cn("block hyphens-auto break-words text-[13px] font-semibold leading-tight",
+                <span className={cn("block hyphens-auto break-words text-[14px] font-semibold leading-tight",
                                     an ? "text-primary" : "text-foreground")}>
                   {v.name}
                 </span>
                 {laeuft ? (
                   // Ein Balken, wo gleich wieder die Zahl steht — die Kachel
-                  // springt nicht, und ein Kreisel in 11 px wäre kaum zu sehen.
-                  <span className="mt-1.5 block h-2 w-16 animate-pulse rounded-full bg-primary/20" aria-hidden />
+                  // springt nicht, und ein Kreisel in 12 px wäre kaum zu sehen.
+                  <span className="mt-1.5 block h-2 w-16 animate-pulse rounded-full bg-skeleton" aria-hidden />
                 ) : (
-                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">
                     {zahl} {zahl === 1 ? "Beschluss" : "Beschlüsse"}
                   </span>
                 )}
               </span>
-              {an
-                ? <Check className="hidden h-4 w-4 shrink-0 text-primary sm:block" aria-hidden />
-                : <Plus className="hidden h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary sm:block" aria-hidden />}
+              <span aria-hidden className="flex w-[4.25rem] shrink-0 items-center justify-center">
+                {!an && <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />}
+              </span>
             </button>
-            {/* Anpassen hängt an der Kachel selbst. Er erscheint mit dem Klick
-                (nicht erst mit der Antwort), damit die Kachel nur einmal ihre
-                Höhe ändert, und wird bedienbar, sobald das Thema angelegt ist. */}
+            {/* „anpassen" erscheint mit dem Klick (nicht erst mit der Antwort)
+                und wird bedienbar, sobald das Thema angelegt ist. Es liegt über
+                der freigehaltenen Spalte — ein Knopf IM Knopf wäre ungültig. */}
             {an && (
               <button type="button" disabled={!thema || laeuft} onClick={() => thema && onAnpassen(thema)}
                 aria-label={`${v.name} anpassen`}
-                className="flex items-center gap-1 border-t border-primary/15 px-2 py-1 text-left text-[11px] font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50">
-                <SlidersHorizontal className="h-3 w-3 shrink-0" aria-hidden />
+                className="absolute inset-y-2 right-2 flex w-[3.75rem] flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+                <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
                 anpassen
               </button>
             )}
@@ -1353,7 +1392,7 @@ function KartenPlatzhalter({ anzahl }: { anzahl: number }) {
     <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2" aria-busy="true">
       {Array.from({ length: anzahl }, (_, i) => (
         <span key={i}
-          className="h-[52px] animate-pulse rounded-xl border border-dashed border-border bg-muted/40" />
+          className="h-[52px] animate-pulse rounded-xl border border-dashed border-border bg-skeleton/50" />
       ))}
     </div>
   );
@@ -1459,7 +1498,7 @@ function MailStep({ onDone }: { onDone: () => void }) {
   return (
     <StepShell
       title="Soll Lotti sich melden?"
-      lead="Ohne Benachrichtigung merkst du nicht, wenn dein Thema auf einer Tagesordnung landet — und genau darum geht es hier."
+      lead="Sonst merkst du nicht, wenn dein Thema auf einer Tagesordnung landet."
       pose="wave"
       // Am Desktop nebeneinander in der Fußleiste, der Knopf rechts außen; am
       // Telefon untereinander, der Knopf oben. `flex-row-reverse`, damit der
@@ -1507,37 +1546,36 @@ function MailStep({ onDone }: { onDone: () => void }) {
         </div>
       </div>
 
-      {/* Drei Gründe, alle konkret. Kein „verpasse nichts". */}
-      <ul className="mt-3 flex flex-col gap-2">
-        {[
-          ["Dein Thema kommt auf den Tisch",
-           "Auch in Gremien, die du gar nicht abonniert hast — sonst erführst du es nie."],
-          ["Der Rat hat entschieden",
-           "Ergebnisse stehen erst im Protokoll, oft Wochen nach der Sitzung. Von allein sieht man das nicht."],
-          ["Eine Tagesordnung erscheint",
-           "Meist wenige Tage vor der Sitzung — früh genug, um noch etwas zu sagen."],
-        ].map(([titel, text]) => (
-          <li key={titel} className="flex items-start gap-2.5">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <span className="min-w-0 text-[13px] leading-relaxed text-foreground">
-              <strong className="font-semibold">{titel}</strong>
-              <span className="block text-muted-foreground">{text}</span>
+      {/* Drei Anlässe, je ein Bild und ein paar Wörter. Bis 11/2026 stand
+          unter jedem ein Erklärsatz und darunter ein Kasten zu Höchstzahl,
+          Nachtruhe und Abbestellen — „so viel Text, dass es keiner lesen
+          würde" (Tim, 08.11.2026). Die Zahlen bleiben, als eine Zeile. */}
+      <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+        {([
+          [CalendarDays, "Dein Thema kommt auf den Tisch"],
+          [Gavel, "Der Rat hat entschieden"],
+          [ListChecks, "Eine Tagesordnung erscheint"],
+        ] as const).map(([Icon, titel]) => (
+          <li key={titel} className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-primary/10 text-primary">
+              <Icon className="h-4 w-4" aria-hidden />
             </span>
+            <span className="min-w-0 text-[13px] font-semibold leading-snug text-foreground">{titel}</span>
           </li>
         ))}
       </ul>
 
-      {/* Die Gegenfrage, die jede:r stellt — mit Zahlen beantwortet. */}
-      <p className="mt-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-        <strong className="font-semibold text-foreground">Höchstens zwei Benachrichtigungen am Tag</strong>, zwischen
-        21 und 7 Uhr gar keine — mehr wird gebündelt. Welche Anlässe du bekommst, stellst du
-        jederzeit im Konto ein; abbestellen geht mit einem Klick in jeder Mail.
+      {/* Die Gegenfrage, die jede:r stellt — mit Zahlen beantwortet
+          (`kern/notify.py`), in einer Zeile. */}
+      <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <Moon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span>Höchstens zwei am Tag, nachts keine · abbestellen mit einem Klick</span>
       </p>
 
       {an && (
-        <p className="mt-2.5 flex items-center gap-1.5 text-xs text-primary">
+        <p className="mt-2 flex items-center gap-2 text-xs text-primary">
           <Check className="h-3.5 w-3.5 shrink-0" />
-          E-Mail-Benachrichtigungen sind für {user?.email} bereits eingeschaltet.
+          <span className="min-w-0 break-words">Per E-Mail an {user?.email} — schon eingeschaltet.</span>
         </p>
       )}
       {fehler && (
@@ -1565,7 +1603,7 @@ function Kicker({ children, className }: { children: React.ReactNode; className?
   );
 }
 
-const SCHRITT_NAMEN = ["Gremien", "Themen", "Stadtteile"] as const;
+const SCHRITT_NAMEN = ["Ausschüsse", "Themen", "Stadtteile"] as const;
 
 /** Der Schritt-Pfad in der Frage-Spalte (nur `lg`). Vorher stand dort unter der
  *  Frage nichts — 400 px Luft auf jedem Schritt. Jetzt trägt die Spalte, wo man
@@ -1730,7 +1768,56 @@ function SchrittPfad({ aktuell }: { aktuell: Step }) {
   );
 }
 
-function StepShell({ title, lead, pose, children, footer, mehr = "Mehr" }: {
+/** Die Pille „Weitere …" über dem unteren Rand einer scrollenden Fläche.
+ *  Sie lädt zum ersten Scrollen ein; wer einmal gescrollt hat, weiß Bescheid —
+ *  ab dann trägt der Ausblendrand allein den Hinweis. */
+function MehrPille({ blatt, rest, children }: {
+  blatt: React.RefObject<HTMLDivElement | null>;
+  rest: { verdeckt: boolean; oben: boolean };
+  children: React.ReactNode;
+}) {
+  const sichtbar = rest.verdeckt && rest.oben;
+  const weiter = () => {
+    const el = blatt.current;
+    if (!el) return;
+    const ruhig = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollBy({ top: Math.max(160, el.clientHeight * 0.7), behavior: ruhig ? "auto" : "smooth" });
+  };
+  return (
+    <div className="flex justify-center">
+      <button type="button" tabIndex={-1} onClick={weiter}
+        className={cn(
+          "inline-flex h-11 items-center gap-1.5 rounded-full border border-primary/30 bg-card px-4 text-[13px] font-medium text-primary shadow-lifted maus:h-9",
+          "transition-[opacity,transform] duration-fluss ease-out-strong motion-reduce:transition-none",
+          sichtbar ? "pointer-events-auto opacity-100" : "translate-y-1 opacity-0",
+        )}>
+        {children}
+        <ChevronDown className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+/** Eine Liste, die in sich scrollt, während darüber Feld und Überschrift
+ *  stehen bleiben (`StepShell fuellt`). Unten dieselbe Grammatik wie am Blatt:
+ *  Maske und Pille, solange noch etwas kommt. `overscroll-contain`, damit das
+ *  Ende der Liste nicht die Seite dahinter anschiebt. */
+function ScrollListe({ mehr, children }: { mehr: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const rest = useScrollRestUnten(ref);
+  return (
+    <div className="relative mt-2.5 flex min-h-0 flex-1 flex-col">
+      <div ref={ref} className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3", rest.verdeckt && "gb-maske-unten")}>
+        {children}
+      </div>
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-2">
+        <MehrPille blatt={ref} rest={rest}>{mehr}</MehrPille>
+      </div>
+    </div>
+  );
+}
+
+function StepShell({ title, lead, pose, children, footer, mehr = "Mehr", fuellt = false }: {
   title: string;
   lead: string;
   pose: MascotPose;
@@ -1738,19 +1825,15 @@ function StepShell({ title, lead, pose, children, footer, mehr = "Mehr" }: {
   footer: React.ReactNode;
   /** Was die Pille über der Fußleiste verspricht, solange unten noch etwas liegt. */
   mehr?: string;
+  /** Der Schritt bringt eine eigene scrollende Liste mit (`ScrollListe`): Das
+   *  Blatt reicht genau bis zur Fußleiste, Feld und Überschrift bleiben stehen,
+   *  und nur die Liste scrollt. Auf einem sehr kurzen Schirm scrollt das Blatt
+   *  doch — sonst bliebe für die Liste ein Streifen von zwei Zeilen. */
+  fuellt?: boolean;
 }) {
   const step = useContext(SchrittKontext);
   const blattRef = useRef<HTMLDivElement>(null);
   const rest = useScrollRestUnten(blattRef);
-  // Die Pille lädt zum ersten Scrollen ein; wer einmal gescrollt hat, weiß
-  // Bescheid — ab dann trägt der Ausblendrand allein den Hinweis.
-  const pille = rest.verdeckt && rest.oben;
-  const weiter = () => {
-    const el = blattRef.current;
-    if (!el) return;
-    const ruhig = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    el.scrollBy({ top: Math.max(160, el.clientHeight * 0.7), behavior: ruhig ? "auto" : "smooth" });
-  };
   return (
     <>
       {/* Liegt unter dem sichtbaren Teil noch etwas, läuft die letzte Zeile per
@@ -1759,9 +1842,11 @@ function StepShell({ title, lead, pose, children, footer, mehr = "Mehr" }: {
           aus. Maske statt Farbverlauf (DESIGNSPRACHE § 6) — am Desktop liegt
           das Blatt auf `bg-card`, am Telefon auf `bg-background`. */}
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <div ref={blattRef} className={cn("min-h-0 flex-1 overflow-y-auto", rest.verdeckt && "gb-maske-unten")}>
-          <div className={cn(SPALTE, "px-[18px] pt-5 lg:px-8 lg:pt-6")}>
-            <div className={ZWEISPALTIG}>
+        <div ref={blattRef} className={cn("min-h-0 flex-1 overflow-y-auto", fuellt && "flex flex-col",
+                                          rest.verdeckt && "gb-maske-unten")}>
+          <div className={cn(SPALTE, "px-[18px] pt-5 lg:px-8 lg:pt-6",
+                             fuellt && "flex min-h-[34rem] flex-1 flex-col lg:min-h-[26rem]")}>
+            <div className={cn(ZWEISPALTIG, fuellt && "flex min-h-0 flex-1 flex-col lg:grid-rows-[minmax(0,1fr)]")}>
               {/* Lotti steht neben der Frage, nicht darüber: Sie fragt, man
                   antwortet — das trägt den Ton des ganzen Flows. Am Desktop
                   rutscht sie über den Titel und wird größer, und die Frage bleibt
@@ -1786,7 +1871,10 @@ function StepShell({ title, lead, pose, children, footer, mehr = "Mehr" }: {
               {/* Reichlich Luft unten: Die Fußzeile liegt fest, der Inhalt
                   scrollt darunter durch — mit knappem Abstand endete die letzte
                   Zeile am Telefon mittendrin und sah kaputt aus statt scrollbar. */}
-              <div className="mt-4 pb-8 lg:mt-0 lg:pb-6">{children}</div>
+              <div className={cn("mt-4 lg:mt-0",
+                                 fuellt ? "flex min-h-0 flex-1 flex-col pb-3 lg:pb-5" : "pb-8 lg:pb-6")}>
+                {children}
+              </div>
             </div>
           </div>
         </div>
@@ -1798,17 +1886,7 @@ function StepShell({ title, lead, pose, children, footer, mehr = "Mehr" }: {
         <div aria-hidden className={cn(SPALTE, "pointer-events-none absolute inset-x-0 bottom-3 px-[18px] lg:px-8")}>
           <div className={ZWEISPALTIG}>
             <div className="hidden lg:block" />
-            <div className="flex justify-center">
-              <button type="button" tabIndex={-1} onClick={weiter}
-                className={cn(
-                  "inline-flex h-11 items-center gap-1.5 rounded-full border border-primary/30 bg-card px-4 text-[13px] font-medium text-primary shadow-lifted maus:h-9",
-                  "transition-[opacity,transform] duration-fluss ease-out-strong motion-reduce:transition-none",
-                  pille ? "pointer-events-auto opacity-100" : "translate-y-1 opacity-0",
-                )}>
-                {mehr}
-                <ChevronDown className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
+            <MehrPille blatt={blattRef} rest={rest}>{mehr}</MehrPille>
           </div>
         </div>
       </div>

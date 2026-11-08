@@ -184,6 +184,13 @@ def _prozess_gedaechtnis_leeren():
         # Ungedrosselt wie vor 10/2026: Tests zählen Anfragen genau. Die
         # Drosselung selbst prüft tests/test_sitzungszaehler.py.
         alt, deps._SITZUNG_TAKT_S = deps._SITZUNG_TAKT_S, 0.0
+        # Der Antwort-Zwischenspeicher (app/response_cache.py) erkennt jeden
+        # Commit, aber keinen Ersatz per monkeypatch — und seine Wächter
+        # hielten je Test-Datenbank drei Dateien offen. Also je Test frisch,
+        # davor und danach.
+        from app import response_cache
+        response_cache.reset()
     yield
     if deps is not None:
         deps._SITZUNG_TAKT_S = alt
+        response_cache.reset()

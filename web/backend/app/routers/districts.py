@@ -30,6 +30,7 @@ from ..antworten import (
     DistrictProjectsOverview,
     Ok,
 )
+from .. import response_cache
 from ..deps import get_council_store, require_active, require_admin
 from ..ratelimit import district_report_limiter
 
@@ -58,6 +59,13 @@ def district_projects_overview(
     Dazu die Stadtzahlen (wie viele Vorhaben, wie viele je Stand) und die
     Vorhaben, die gerade herausstechen: Die Seite ohne gewähltes Viertel soll
     schon etwas zeigen, nicht nur fragen."""
+    # Die Hülle fragt das auf jeder Seite ab (Ziel von „Mein Viertel") — einmal
+    # je Datenstand gerechnet (app/response_cache.py).
+    return response_cache.cached("districts.overview", [store],
+                                 lambda: _overview(store))
+
+
+def _overview(store: CouncilStore) -> DistrictProjectsOverview:
     overview = store.district_projects_overview()
     rows = []
     updated: str | None = None
@@ -116,13 +124,26 @@ def district_projects(
     Rat ansteht, was im Investitionsprogramm steht, wo gerade eine
     Beteiligung läuft, was die Stadt gesperrt hat und was sie zum Viertel
     mitgeteilt hat."""
+    # Die Tafel ist für alle Konten gleich bis auf `reported` je Vorhaben
+    # („Gehört nicht hierher" — von DIESEM Konto gemeldet?). Gespeichert wird
+    # deshalb nur die Tafel ohne das Feld, einmal je Ortsbereich und Datenstand
+    # (app/response_cache.py); `reported` kommt je Anfrage dazu, in neue dicts —
+    # die gespeicherten bleiben unberührt.
     place = store.resolve_place(place_id)
     if not place or not place.is_primary:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ortsbereich nicht gefunden.")
+    board = response_cache.cached("districts.board", [store],
+                                  lambda: _board(store, place), key=place.id, maxsize=64)
     reported = store.district_project_reports_by(user["id"], place.id) if user else set()
-    projects = []
-    for p in store.district_projects(place.id):
-        projects.append({**p, "reported": p["project_key"] in reported})
+    return cast(DistrictProjects, {
+        **board,
+        "projects": [{**p, "reported": p["project_key"] in reported}
+                     for p in board["projects"]],
+    })
+
+
+def _board(store: CouncilStore, place) -> dict:
+    """Die Tafel eines Ortsbereichs ohne die persönlichen Felder."""
     overview = store.district_projects_overview()
     by_name = {p.name: p for p in _primary_places(store)}
     neighbours = []
@@ -132,10 +153,11 @@ def district_projects(
             neighbours.append({"place_id": nb.id, "name": nb.name,
                                "count": (overview.get(nb.id) or {}).get("count", 0)})
     # Der Store liefert lose dicts; die Form hält der Vertrag (antworten.py),
-    # geprüft von der Rauchprobe — hier nur die Zusage an den Typprüfer.
-    return cast(DistrictProjects, {
+    # geprüft von der Rauchprobe — die Zusage an den Typprüfer steht im
+    # Endpunkt, wo `reported` dazukommt.
+    return {
         "place": store.public_place(place),
-        "projects": projects,
+        "projects": store.district_projects(place.id),
         "upcoming": store.district_upcoming_items(place),
         "investments": store.district_investments(place),
         "participations": store.district_participations(place),
@@ -144,7 +166,7 @@ def district_projects(
         "neighbours": neighbours,
         "updated_at": store.district_projects_updated_at(place.id),
         "decisions_until": store.district_decisions_until(),
-    })
+    }
 
 
 def _melde_redaktion(project: dict, place_name: str, reason: str | None) -> None:

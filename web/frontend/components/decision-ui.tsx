@@ -9,6 +9,7 @@ import { Card, formatDate } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { cn } from "@/lib/utils";
+import { usePrefetchRoute } from "@/lib/route-prefetch";
 
 /** Format a euro amount compactly: 563.000 € / 3,4 Mio. €. */
 export function formatEuro(n: number): string {
@@ -33,8 +34,12 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
   score?: number;
   amount?: number | null;
 }) {
+  // Listen dieser Karten (Thema, Ort, Ziele, Ähnliche) zählen bis zu ein
+  // paar hundert Einträge: nicht jede einzeln vorladen, sondern die Route
+  // einmal (lib/route-prefetch.ts).
+  usePrefetchRoute(decisionHref(id));
   return (
-    <Link href={decisionHref(id)} className="block">
+    <Link href={decisionHref(id)} prefetch={false} className="block">
       <Card className="card-interactive group flex items-start gap-3 p-3">
         {leading}
         <div className="min-w-0 flex-1">

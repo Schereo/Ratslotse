@@ -92,7 +92,10 @@ export function StadtteilKarteGrund({ gewaehlt, auswaehlbar, onWaehlen, classNam
         el.innerHTML = "";
         delete (el as HTMLDivElement & { _leaflet_id?: number })._leaflet_id;
         const map = L.map(el, {
-          scrollWheelZoom: false, keyboard: false, attributionControl: true, zoomSnap: 0.5,
+          // Feine Zoomstufen: Mit 0,5 sprang `fitBounds` auf die nächste
+          // halbe Stufe darunter, und rund um die Stadt blieb bis zu 40 %
+          // Umland stehen.
+          scrollWheelZoom: false, keyboard: false, attributionControl: true, zoomSnap: 0.1,
         });
         mapRef.current = map;
         map.setView([53.1435, 8.2146], 11);
@@ -122,14 +125,14 @@ export function StadtteilKarteGrund({ gewaehlt, auswaehlbar, onWaehlen, classNam
           },
         }).addTo(map);
         layerRef.current = gj;
-        if (gj.getBounds().isValid()) map.fitBounds(gj.getBounds(), { padding: [8, 8], animate: false });
+        if (gj.getBounds().isValid()) map.fitBounds(gj.getBounds(), { padding: [6, 6], animate: false });
         umfaerben();
         groesse = new ResizeObserver(() => {
           const m = mapRef.current;
           const g = layerRef.current;
           if (!m) return;
           m.invalidateSize();
-          if (g?.getBounds().isValid()) m.fitBounds(g.getBounds(), { padding: [8, 8], animate: false });
+          if (g?.getBounds().isValid()) m.fitBounds(g.getBounds(), { padding: [6, 6], animate: false });
         });
         groesse.observe(el);
       } catch (err) {

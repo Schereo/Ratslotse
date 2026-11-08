@@ -4,6 +4,7 @@ import { BeschlussVorschau, istVorschauKlick } from "@/components/beschluss-vors
 import { useWeit } from "@/lib/use-ultra";
 import { Fragment, useEffect, useMemo, useRef, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
@@ -31,11 +32,12 @@ import { isLiveNow, isStadtrat, liveItemKeys, liveSpeakerText, liveStateFresh, L
 import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
-import { AnalysisTab } from "@/components/council-analysis";
+import { AnalyseReiter, ANALYSE_FRAGEN, analysisSub } from "@/components/analyse-reiter";
 import { FrageChips } from "@/components/frage-chips";
-import { EntitiesTab } from "@/components/council-entities";
+import { ChartSkeleton, TableSkeleton } from "@/components/ui/skeleton";
 import { cn, relativerTag, wochentagKurz } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
+import { usePrefetchRoute } from "@/lib/route-prefetch";
 import { useMerker } from "@/lib/use-merker";
 import { merkeSuchtreffer, useSuchparameter, useSuchposition } from "@/lib/use-suchkontext";
 import { BookmarkButton } from "@/components/bookmark-button";
@@ -46,6 +48,31 @@ import {
   useTopSprung, videoKey,
   useTopsAusLink,
 } from "@/components/tagesordnung";
+
+/* Analyse und Themen kommen erst, wenn ihr Reiter offen ist. Statisch
+   eingebunden lud und parste die Suche — der Standard-Reiter — den Code aller
+   Reiter mit (11/2026: rund 17 KB gzip). Solange der Code lädt, steht schon
+   da, was der Reiter selbst zuerst zeigt: Reiterleiste samt Fragen bzw. das
+   Listen-Skeleton. */
+const AnalysisTab = dynamic(
+  () => import("@/components/council-analysis").then((m) => m.AnalysisTab),
+  { loading: () => <AnalyseReiterPlatzhalter /> },
+);
+const EntitiesTab = dynamic(
+  () => import("@/components/council-entities").then((m) => m.EntitiesTab),
+  { loading: () => <div className="mt-4"><TableSkeleton rows={8} cols={3} /></div> },
+);
+
+function AnalyseReiterPlatzhalter() {
+  const sub = analysisSub(useSearchParams().get("sub"));
+  return (
+    <div className="mt-4 space-y-4">
+      <AnalyseReiter aktiv={sub} />
+      <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
+      <ChartSkeleton />
+    </div>
+  );
+}
 
 type Scope = "all" | "upcoming" | "recent";
 type Tab = "sessions" | "decisions" | "themen" | "analysis";
@@ -122,6 +149,9 @@ function DecisionCard({ d, query, rang = 0, suchadresse, onVorschau, gewaehlt = 
   const isSub = d.kind === "subvote";
   const sub = d.subvote_summary;
   const locationMatches = d.location_matches ?? [];
+  // Bis zu 50 Treffer je Seite, jeder mit eigener `suche=`-Adresse: nicht
+  // jeden einzeln vorladen, sondern die Route einmal (lib/route-prefetch.ts).
+  usePrefetchRoute(decisionHref(d.id));
   const primaryLocation = locationMatches[0];
   const locationProfileId = primaryLocation?.place_id ?? primaryLocation?.local_area_id;
   const router = useRouter();
@@ -141,6 +171,7 @@ function DecisionCard({ d, query, rang = 0, suchadresse, onVorschau, gewaehlt = 
     <Link
       id={`beschluss-${d.id}`}
       href={`${decisionHref(d.id)}&suche=${encodeURIComponent(`${suchadresse}#beschluss-${d.id}`)}`}
+      prefetch={false}
       onClick={(e) => {
         if (onVorschau && istVorschauKlick(e)) {
           e.preventDefault();

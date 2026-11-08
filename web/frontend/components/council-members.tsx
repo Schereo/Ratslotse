@@ -9,12 +9,13 @@ import { PartyBadge } from "@/components/decision-ui";
 import { AnalysisIntro } from "@/components/analysis-intro";
 import { personHref } from "@/lib/routes";
 import { useFetch } from "@/lib/use-fetch";
+import { usePrefetchRoute } from "@/lib/route-prefetch";
 import { PersonEintrag } from "@/components/qa-bausteine";
-import { NeuerRatTeaser } from "@/components/neuer-rat";
+import { NeuerRatTeaser, useGewaehlt, type GewaehlterRat } from "@/components/neuer-rat";
 
 function MemberChip({ m }: { m: Member }) {
   return (
-    <Link href={personHref(m.slug)} className="block">
+    <Link href={personHref(m.slug)} prefetch={false} className="block">
       <Card className="card-interactive flex items-center gap-3 p-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{m.name}</p>
@@ -36,7 +37,7 @@ function MemberChip({ m }: { m: Member }) {
  *  Verwaltung ist parteilos, ein Partei-Badge wäre hier falsch. */
 function VerwaltungChip({ p }: { p: PersonEintrag }) {
   return (
-    <Link href={personHref(p.slug)} className="block">
+    <Link href={personHref(p.slug)} prefetch={false} className="block">
       <Card className="card-interactive flex items-center gap-3 p-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{p.name}</p>
@@ -53,14 +54,21 @@ function VerwaltungChip({ p }: { p: PersonEintrag }) {
 
 export function PersonenView() {
   const { data, loading } = useFetch<{ members: Member[] }>("/council/members");
-  // Öffentlich, sechs Stunden gecacht (dieselbe Quelle wie die Badges im
-  // KI-Antworttext) — kein eigener Verwaltungs-Endpunkt nötig.
-  const { data: lexikon } = useFetch<{ people: PersonEintrag[] }>("/council/people-directory");
+  // Dieselbe Quelle wie die Badges im KI-Antworttext, aber nur die
+  // Verwaltung mit Amt: Das ganze Lexikon waren 263 KB für eine Handvoll
+  // Einträge (11/2026: acht).
+  const { data: lexikon } = useFetch<{ people: PersonEintrag[] }>("/council/people-directory?administration=true");
+  // Der gewählte Rat für den Teaser — HIER angestoßen, parallel zu
+  // /members. Bis 11/2026 startete erst der Teaser selbst den Abruf, also
+  // nach dem Skeleton, und sprang dann über die fertige Liste. React Query
+  // teilt die Antwort über den Schlüssel mit <NeuerRatTeaser/>.
+  const gewaehlt = useGewaehlt<GewaehlterRat>();
   const [q, setQ] = useState("");
   const [party, setParty] = useState("");
   const [alleBeratenden, setAlleBeratenden] = useState(false);
+  usePrefetchRoute(data?.members?.[0] ? personHref(data.members[0].slug) : null);
 
-  if (loading) return <div className="py-4"><TableSkeleton rows={8} cols={4} /></div>;
+  if (loading || gewaehlt.laedt) return <div className="py-4"><TableSkeleton rows={8} cols={4} /></div>;
   const all = data?.members ?? [];
   if (all.length === 0) {
     return <EmptyState mascot="sleep" title="Keine Ratsmitglieder" hint="Es wurden noch keine Anwesenheiten aus den Protokollen erfasst." />;

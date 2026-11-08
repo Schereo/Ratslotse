@@ -83,6 +83,12 @@ Der Export ist weg, diese Regeln bleiben:
   danach für jede Chunk-URL eine 404-Seite. Das sieht aus wie ein Fehler im
   Code und ist keiner. Die Konfiguration ist deshalb eine Funktion über die
   Phase — nicht zu einem Objekt zurückbauen.
+- **Der Deploy baut ebenfalls daneben.** Dasselbe Bild traf den alten
+  `next start` auf den Servern: jede Seite ungestaltet, bis zum Neustart.
+  Die Deploys bauen deshalb mit `NEXT_DIST_DIR=.next-build` (wirkt nur in der
+  Build-Phase) und schalten erst unmittelbar vor `systemctl restart` um;
+  `tests/test_pruefe_build_chunks.py` hält die Reihenfolge in allen drei
+  Workflows fest.
 - **Tailwinds `min-[…]`-Kurzform ist in diesem Projekt aus.** Die Klasse steht
   im DOM, CSS gibt es keins. Benannte Breakpoints benutzen.
 - **Breiten mit `getBoundingClientRect()` messen**, nicht `clientWidth` — das

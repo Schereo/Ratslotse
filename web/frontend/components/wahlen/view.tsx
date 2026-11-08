@@ -21,7 +21,7 @@ import { Mascot } from "@/components/mascot";
 import { Reveal } from "@/components/reveal";
 import { STAFFEL, staffelStil } from "@/components/staffel";
 import { PageHeader } from "@/components/ui/page-header";
-import { api } from "@/lib/api";
+import { api, lohntWiederholen } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
@@ -239,12 +239,15 @@ function Zeile({ z, i }: { z: Wahlzeile; i: number }) {
 export function WahlenView() {
   const frei = useFeature("wahlabend");
   const { user, loading } = useAuth();
+  // Gewartet wird nur auf das Konto (der Schlüssel hängt daran, sonst ginge
+  // die Abfrage zweimal), nicht mehr auf `/api/app-config`: Ist der Schalter
+  // aus, antwortet das Backend 404, und der Zweig `!frei` steht zuerst.
   const { data, isLoading } = useQuery({
     queryKey: ["wahlen", user?.id ?? null],
     queryFn: () => api.get<Wahlliste>("/wahlen"),
-    enabled: frei,
+    enabled: !loading,
     staleTime: 15 * 60_000,
-    retry: 1,
+    retry: (n, e) => n < 1 && lohntWiederholen(e),
   });
 
   if (!frei) {
@@ -273,7 +276,7 @@ export function WahlenView() {
     <div className="mx-auto w-full max-w-3xl pb-6">
       <PageHeader title="Wahlen" description="Die nächste Wahl in Oldenburg und die gelaufenen mit ihrem Ergebnis." />
       <div className="mt-6">
-        {isLoading ? <div className="h-56 animate-pulse rounded-3xl bg-muted" /> : null}
+        {isLoading ? <div className="h-56 animate-pulse rounded-3xl bg-skeleton" /> : null}
         {fokus ? <Buehne z={fokus} /> : null}
         {gesperrt ? <Anreiz z={gesperrt} /> : null}
 

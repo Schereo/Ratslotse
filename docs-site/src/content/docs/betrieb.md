@@ -118,15 +118,36 @@ Sechs Workflows in `.github/workflows/`:
 2. `docs-site` mit Node 22 bauen (`npm ci && npm run build`).
 3. `rsync -az --delete` des Repos auf die App-VM. Ausgespart bleiben `.env`,
    `data/`, `.venv/`, `.git/`, `web/frontend/node_modules/`,
-   `web/frontend/.next/`, `web/frontend/public/docs/`, `docs-site/node_modules/`
-   und `docs-site/dist/` — Datenbanken und Secrets überlebt jeder Deploy also
-   unverändert.
+   `web/frontend/.next/` (samt `.next-build/` und `.next-alt/`, s. Schritt 5),
+   `web/frontend/public/docs/`, `docs-site/node_modules/` und `docs-site/dist/`
+   — Datenbanken und Secrets überlebt jeder Deploy also unverändert.
 4. Zweiter rsync: das gebaute `docs-site/dist/` in das `public/docs/`-Verzeichnis
    des Frontends. Next.js liefert die Doku damit unter `/docs` aus; die Edge
    braucht dafür keine eigene Konfiguration.
 5. Per SSH auf der App-VM: Backend-Abhängigkeiten nachinstallieren (idempotent),
    `npm ci` + `next build` im Frontend, dann Neustart der Services für
    Backend-API und Frontend.
+
+**Das Frontend wird neben dem laufenden Server gebaut** (seit 11/2026, in
+allen drei Deploys gleich). `next build` leert sein Ausgabeverzeichnis als
+Erstes; schrieb es direkt nach `.next`, zog es dem alten `next start` CSS und
+Skripte weg, und bis zum Neustart — gemessen rund eine Minute — kam jede Seite
+ungestaltet. Deshalb:
+
+1. `rm -rf .next-build`, dann `NEXT_DIST_DIR=.next-build npm run build`
+   (`next.config.mjs` nimmt die Variable nur in der Build-Phase). Jeder Build
+   beginnt leer, **ohne Webpack-Cache**: Der hat zweimal einen in sich
+   verdrehten Build geliefert und spart auf der Dev-VM nur 10–25 Sekunden.
+2. `scripts/pruefe_build_chunks.py web/frontend/.next-build` — jede verlinkte
+   Datei da, jede next/font-Klasse am `<html>` im verlinkten CSS definiert.
+   Scheitert er, bleibt `.next` unberührt.
+3. Unmittelbar vor dem Neustart des Frontends: `.next` → `.next-alt`,
+   `.next-build` → `.next`, `systemctl restart`, dann `.next-alt` löschen.
+
+Auf Prod liegt Schritt 3 hinter Migration und Vorprobe. Bricht der Cutover
+vorher ab, läuft das Frontend heil auf dem alten Build; der neue liegt mit der
+Marke `.geprueft` daneben, und `ops-wartungsbarriere.yml` (Aktion
+`frontend-restart`) schaltet ihn ein.
 
 Warum der Umweg über den gemergten PR statt „Push auf `main` deployt": siehe
 [ADR 0008](/docs/adr/0008-deploy-nur-bei-merge/). Kurz — ein direkter Push auf
@@ -769,9 +790,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_FUNDSTUECK_MODEL` | Story zum „Fundstück des Tages" | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_RECAP_MODEL` | Themenfeld-Rückblicke | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_QA_MODEL` | „Frag den Rat": Antwort, vereinfachte Antwort, Deep-Research-Bericht, Partei-Meinungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
-| `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (mit ZDR); auch die Städte-Suchbegriffe | `google/gemini-3.1-flash-lite` |
+| `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (Azure EU, mit ZDR); auch die Städte-Suchbegriffe | `openai/gpt-5.6-luna` |
 | `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
-| `COUNCIL_ASSISTANT_PRUEFER_MODEL` | Lottis Selbstprüfung: Prüfer-Modell einer anderen Familie (`council/self_check.py`, Schalter `lotti-selbstpruefung`) | `google/gemini-3-flash-preview` |
+| `COUNCIL_ASSISTANT_PRUEFER_MODEL` | Lottis Selbstprüfung: Prüfer-Modell einer anderen Familie, in der EU (`council/self_check.py`, Schalter `lotti-selbstpruefung`) | `anthropic/claude-haiku-5.5` |
 | `COUNCIL_ASSISTANT_PRUEFER_ANTEIL` | Anteil der Erklärungen, die nachträglich geprüft werden (0–1) | `0.1` |
 | `COUNCIL_DISTRICT_MODEL` | „Mein Viertel": Vorhaben aus Beschlüssen bündeln und einordnen (`council/viertel.py`) | `openai/gpt-6-luna` |
 | `COUNCIL_QUIZ_MODEL` | Quizfragen erzeugen | `deepseek/deepseek-v4-pro` |
@@ -780,7 +801,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_EMBED_MODEL` | Embeddings (fastembed, lokal) | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |
 | `COUNCIL_RERANK_MODEL` | Reranker für die hybride Suche | `jinaai/jina-reranker-v2-base-multilingual` |
 | `COUNCIL_ALIAS_MODEL` | Prüft Themen-Dubletten (`council/aliases.py`) | `deepseek/deepseek-v4-pro` |
-| `TOPIC_INTEL_MODEL` | Themen-Beschreibung und Relevanzprüfung (`council/topic_intel.py`) — bricht die `COUNCIL_`-Namenskonvention | `deepseek/deepseek-v4-pro` |
+| `TOPIC_INTEL_MODEL` | Themen-Beschreibung und Relevanzprüfung (`council/topic_intel.py`, Azure EU) — bricht die `COUNCIL_`-Namenskonvention | `openai/gpt-5.6-luna` |
 
 ### Web-Backend
 

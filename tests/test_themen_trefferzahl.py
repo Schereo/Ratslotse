@@ -58,8 +58,14 @@ def test_stichtag_ist_ueberall_derselbe():
 class _Store:
     """Gerade genug Store, damit ``zaehle_treffer`` nicht vorzeitig abbricht."""
 
+    def __init__(self, zeilen: dict[int, dict] | None = None):
+        self.zeilen = zeilen or {}
+
     def embeddings_version(self):
         return (5, 5, 1)
+
+    def get_decisions_by_ids(self, ids):
+        return [self.zeilen[i] for i in ids if i in self.zeilen]
 
 
 def test_blatt_zaehlt_wie_die_karte(monkeypatch):
@@ -76,6 +82,74 @@ def test_blatt_zaehlt_wie_die_karte(monkeypatch):
     r = topic_intel.analyse(_Store(), "Fliegerhorststraße", "Alles rund um den Fliegerhorst.")
     assert r["matches"] == topic_intel.DECKEL
     assert r["matches_capped"] is True
+
+
+def test_anlegen_zaehlt_auf_den_text_der_gespeichert_wird(monkeypatch):
+    """„Entlastungsstraße" (Tims Befund 08.11.2026): Beim Anlegen stand „hat
+    der Rat bisher nichts entschieden", darunter die Themenzeile mit „6
+    Beschlüsse in 12 Monaten", und das Blatt sagte wieder „Noch nichts".
+
+    Zwei Ursachen, beide hier festgehalten: Gezählt wurde auf den Namen allein
+    statt auf „Name. Beschreibung" (das zählt ``_erstabgleich`` nach), und ein
+    „plausibel" des Modells setzte die Zahl auf 0, während die Treffer des
+    Cross-Encoders trotzdem gespeichert wurden. Jetzt zählt die Rechnung, die
+    auch gespeichert wird — samt Fenster und Beispielen aus genau diesen
+    Treffern.
+    """
+    from datetime import date, timedelta
+
+    heute = date.today()
+    zeilen = {
+        1: {"title": "Entlastungsstraße: Variantenvergleich", "session_date": (heute - timedelta(days=30)).isoformat()},
+        2: {"title": "Verkehrsentwicklungsplan", "session_date": (heute - timedelta(days=200)).isoformat()},
+        3: {"title": "Netzergänzung Ost", "session_date": (heute - timedelta(days=900)).isoformat()},
+    }
+    gezaehlt: list[str] = []
+
+    def treffer(store, name, text, **k):
+        gezaehlt.append(text)
+        return [(1, 0.4), (2, -0.2), (3, -0.8)], False, 60
+
+    monkeypatch.setattr(topic_intel, "find_matches", lambda *a, **k: [{"title": "Etwas anderes"}])
+    monkeypatch.setattr(topic_intel, "treffer", treffer)
+    monkeypatch.setattr(topic_intel, "_call_model", lambda *a, **k: {
+        "einordnung": "plausibel", "beschreibung": "Planungen zu einer Entlastungsstraße.",
+        "begruendung": ""})
+
+    r = topic_intel.analyse(_Store(zeilen), "Entlastungsstraße")
+    assert gezaehlt == ["Entlastungsstraße. Planungen zu einer Entlastungsstraße."]
+    assert (r["verdict"], r["matches"], r["matches_12m"]) == ("belegt", 3, 2)
+    assert r["examples"][0] == "Entlastungsstraße: Variantenvergleich"
+
+    # Das Blatt fragt mit der gespeicherten Beschreibung — und zählt dieselben.
+    r2 = topic_intel.analyse(_Store(zeilen), "Entlastungsstraße", "Planungen zu einer Entlastungsstraße.")
+    assert gezaehlt[-1] == gezaehlt[0]
+    assert (r2["matches"], r2["matches_12m"]) == (3, 2)
+
+
+def test_plausibel_heisst_kein_treffer(monkeypatch):
+    """Ohne einen einzigen Treffer bleibt es bei „plausibel" — auch wenn das
+    Modell „belegt" sagt. Das ist der Fall, für den der Hinweis „hat der Rat
+    bisher nichts entschieden" gedacht ist."""
+    monkeypatch.setattr(topic_intel, "find_matches", lambda *a, **k: [])
+    monkeypatch.setattr(topic_intel, "treffer", lambda *a, **k: ([], False, 40))
+    monkeypatch.setattr(topic_intel, "_call_model", lambda *a, **k: {
+        "einordnung": "belegt", "beschreibung": "Ein Satz.", "begruendung": ""})
+    r = topic_intel.analyse(_Store(), "Grundschule Krusenbusch")
+    assert (r["verdict"], r["matches"], r["matches_12m"], r["examples"]) == ("plausibel", 0, 0, [])
+
+
+def test_ungeeignet_zaehlt_gar_nicht(monkeypatch):
+    """Was kein Ratsthema ist, braucht keinen Cross-Encoder-Lauf."""
+    def darf_nicht(*a, **k):
+        raise AssertionError("ein abgelehntes Thema wird nicht gezählt")
+
+    monkeypatch.setattr(topic_intel, "find_matches", lambda *a, **k: [])
+    monkeypatch.setattr(topic_intel, "treffer", darf_nicht)
+    monkeypatch.setattr(topic_intel, "_call_model", lambda *a, **k: {
+        "einordnung": "ungeeignet", "beschreibung": "", "begruendung": "Privat."})
+    r = topic_intel.analyse(_Store(), "Geburtstag")
+    assert (r["verdict"], r["matches"]) == ("ungeeignet", 0)
 
 
 def test_schablone_meldet_sich_im_log(monkeypatch, caplog):

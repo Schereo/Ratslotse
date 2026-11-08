@@ -101,7 +101,7 @@ export function Gebietskarte<P extends Gebiet>({
   return (
     <div ref={boxRef} className={cn("relative", className)}>
       {!pfade.length ? (
-        <div className="h-[200px] w-full animate-pulse rounded-2xl border border-dashed border-border bg-muted/30" />
+        <div className="h-[200px] w-full animate-pulse rounded-2xl border border-dashed border-border bg-skeleton/50" />
       ) : (
         <svg
           viewBox={`0 0 ${breite} ${gemessen}`}

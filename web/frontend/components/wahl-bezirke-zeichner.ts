@@ -1,6 +1,7 @@
 import type { GeoJSON as GeoJSONLayer, LayerGroup, Map as LeafletMap, Path } from "leaflet";
 import type { GeoFlaeche } from "@/lib/gebiete";
 import { escapeHtml } from "@/components/viertel-zeichner";
+import { geoUrl } from "@/lib/asset-paths";
 import {
   anteilIn, deckkraft, farbe, fuehrungText, lageSatz, prozent, punkte, werNachSlug,
   type Wahlkarte, type WahlkarteBezirk,
@@ -30,7 +31,7 @@ export const WAHL_PANE = "wahlbezirke";
 
 let geometrie: Promise<BezirkFlaeche[]> | null = null;
 export function ladeWahlbezirke(): Promise<BezirkFlaeche[]> {
-  geometrie ??= fetch("/geo/wahlbezirke-oldenburg.json")
+  geometrie ??= fetch(geoUrl("wahlbezirke-oldenburg.json"))
     .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
     .then((j: { features: BezirkFlaeche[] }) => j.features)
     .catch((e) => { geometrie = null; throw e; });

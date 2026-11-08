@@ -19,6 +19,6 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts",
-    ".next-dev/types/**/*.ts"],
+    ".next-dev/types/**/*.ts", ".next-build/types/**/*.ts"],
   "exclude": ["node_modules", "playwright.config.ts", "tests", "playwright-report", "test-results"]
 }

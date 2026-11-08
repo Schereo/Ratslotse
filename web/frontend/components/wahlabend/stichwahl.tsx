@@ -14,9 +14,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ChevronDown, Info } from "lucide-react";
-import { Aufklapp } from "@/components/aufklapp";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Info } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ZurueckZuWahlen } from "@/components/wahlen/zurueck";
@@ -26,6 +25,7 @@ import { StichwahlKarte } from "@/components/wahlabend/stichwahl-karte";
 import { Mitfiebern, StichwahlMomente } from "@/components/wahlabend/stichwahl-momente";
 import { BezirksTicker, BildTeilen, Countdown } from "@/components/wahlabend/stichwahl-bausteine";
 import { StichwahlVerlauf } from "@/components/wahlabend/stichwahl-verlauf";
+import { Herkunft } from "@/components/wahlabend/herkunft";
 import {
   AreasView,
   ComparisonView,
@@ -34,12 +34,13 @@ import {
   useRunoffAnalysis,
 } from "@/components/wahlabend/runoff-analysis";
 import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
-import { api } from "@/lib/api";
+import { api, istNichtGefunden, lohntWiederholen } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
 import { useFrisch, useTween } from "@/lib/use-tween";
 import { cn } from "@/lib/utils";
 import { fixed, prozent, uhrzeit, zahl } from "@/lib/wahlabend";
+import { ladeWahlbezirke } from "@/lib/wahlgebiete";
 import {
   abfragePfad,
   TAKT_LIVE_MS,
@@ -56,12 +57,14 @@ import {
   letzterWechsel,
   nachStimmen,
   nachname,
+  stichwahlBezirkePfad,
   verschiebung,
   vorsprung,
   zeitlage,
   type RunoffPot,
   type RunoffSort,
   type Stichwahl,
+  type StichwahlBezirke,
   type StichwahlHochrechnung,
   type StichwahlKandidat,
 } from "@/lib/stichwahl";
@@ -202,85 +205,6 @@ function AbfrageTakt({ seit, ms }: { seit: number; ms: number }) {
 }
 
 /* ── Die beiden ─────────────────────────────────────────────────────────── */
-
-/** Was der Parteiname über dem Namen NICHT sagt: ob die Person Mitglied ist,
- *  und wer sie sonst noch unterstützt.
- *
- *  Beides steht nicht in der amtlichen Bekanntmachung — das Backend liefert
- *  es nur mit eigener Quelle, und die steht hier als Beleg daneben. Ohne
- *  Angaben bleibt die Zeile weg; sie ist kein Platzhalter. */
-export function Herkunft({ k }: { k: StichwahlKandidat }) {
-  // Eingeklappt, was nur Erklärung ist (Tim 23.09.2026: „sehr viel Text
-  // dafür, dass es eigentlich nur ein Disclaimer ist"): Die Zeile mit den
-  // Parteien bleibt stehen, die Begründung zum Stimmzettel und die Belege
-  // kommen auf Tipp.
-  const [offen, setOffen] = useState(false);
-  // Drei Stufen, die der Stimmzettel nicht unterscheidet: aufgestellt (eine
-  // eigene Versammlung, wie bei Grünen UND CDU für Rohr), unterstützt (ein
-  // Beschluss ohne Aufstellung, wie Volt) — und darüber die Frage, warum
-  // dann nur eine Partei auf dem Zettel steht (`ballot_note`).
-  const aufgestellt = k.co_nominated_by.length
-    ? `aufgestellt von ${[k.party, ...k.co_nominated_by].filter(Boolean).join(" und ")}`
-    : null;
-  const teile = [
-    k.independent ? "parteilos" : null,
-    aufgestellt,
-    k.supported_by.length ? `unterstützt von ${k.supported_by.join(", ")}` : null,
-  ].filter(Boolean);
-  if (!teile.length) return null;
-  // Mehrere Belege bekommen ihren Absender als Beschriftung: Seit Volt
-  // (15.09.2026) neben der CDU steht, deckt EIN Link nicht mehr beide
-  // Aussagen — und zwei gleich beschriftete „Beleg"-Links wären ein Rätsel.
-  const mehrere = k.note_sources.length > 1;
-  const mehr = Boolean(k.ballot_note) || k.note_sources.length > 0;
-  return (
-    <div className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-      <p>{teile.join(" · ")}</p>
-      {mehr ? (
-        <>
-          <button
-            type="button"
-            onClick={() => setOffen((o) => !o)}
-            aria-expanded={offen}
-            className="mt-0.5 inline-flex items-center gap-1 rounded-md text-[12px] font-medium text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {k.ballot_note ? `Warum nur ${k.party || "eine Partei"} auf dem Stimmzettel?` : "Belege"}
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fluss", offen && "rotate-180")} aria-hidden />
-          </button>
-          <Aufklapp offen={offen}>
-            <p className="pt-1 text-[12px] leading-relaxed">
-              {k.ballot_note}
-              {k.note_sources.map((quelle, i) => (
-                <span key={quelle}>
-                  {i === 0 ? (k.ballot_note ? " " : "") : " · "}
-                  <a
-                    href={quelle}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-primary underline-offset-2 hover:underline"
-                  >
-                    {mehrere ? `${absender(quelle)} ↗` : "Beleg ↗"}
-                  </a>
-                </span>
-              ))}
-            </p>
-          </Aufklapp>
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-/** „gruene-oldenburg.de" aus einer Beleg-Adresse — ohne „www.", damit die
- *  Zeile schmal bleibt. Eine kaputte Adresse gibt es selbst zurück, statt zu
- *  werfen: Ein Beleg-Link ist nie eine Seite wert. */
-function absender(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
 
 function Person({
   k,
@@ -750,21 +674,44 @@ export function StichwahlView() {
     [params, router],
   );
 
+  // Startet zusammen mit `/api/app-config`, nicht danach (bis 11/2026
+  // `enabled: frei`). Ist der Schalter aus, antwortet das Backend 404 — die
+  // Seite zeigt dasselbe wie vorher, denn `!frei` steht unten zuerst.
   const { data, isLoading, isError, dataUpdatedAt, refetch } = useQuery({
     queryKey: ["stichwahl", probe, counted],
     queryFn: () => api.get<Stichwahl>(abfragePfad(probe, counted)),
-    enabled: frei,
     // Ab 18 Uhr alle 15 s, sonst jede Minute (`abrufTakt`). Auch im
     // Hintergrund-Tab: Der Fenstertitel trägt den Stand, und genau dafür
-    // hat man den Tab im Hintergrund (Standard wäre: dort anhalten).
-    refetchInterval: (q) => abrufTakt(q.state.data),
+    // hat man den Tab im Hintergrund (Standard wäre: dort anhalten). Nach
+    // einem 404 (Schalter aus, keine Stichwahl im Kalender) nicht im Takt
+    // weiterfragen.
+    refetchInterval: (q) => (istNichtGefunden(q.state.error) ? false : abrufTakt(q.state.data)),
     refetchIntervalInBackground: true,
     // Der Simulator der Generalprobe wechselt den Schlüssel; ohne das stünde
     // bei jedem Schritt kurz das Skelett da — und die Momente sähen nie
     // einen Vorgängerstand.
     placeholderData: keepPreviousData,
-    retry: 1,
+    retry: (n, e) => n < 1 && lohntWiederholen(e),
   });
+  // Die Karte steht im ersten Reiter („Der Abend"). Ihre Bezirke und Flächen
+  // werden hier schon angestoßen, statt erst, wenn die Tafel da ist und die
+  // Karte sich zeigt — sonst warteten sie eine Runde auf die Tafel. Die Karte
+  // findet beides dann unter demselben Schlüssel bzw. im selben Versprechen.
+  const queryClient = useQueryClient();
+  const ersteAnsicht = params.get("ansicht");
+  const kartePfad = stichwahlBezirkePfad(probe, counted);
+  useEffect(() => {
+    if (ersteAnsicht && ersteAnsicht !== "abend") return;
+    void queryClient.prefetchQuery({
+      queryKey: ["stichwahl-bezirke", kartePfad],
+      queryFn: () => api.get<StichwahlBezirke>(kartePfad),
+      staleTime: 10_000,
+      retry: false,
+    });
+    void ladeWahlbezirke();
+    // Nur beim Aufruf: Ein späterer Wechsel des Reiters holt, was er braucht, selbst.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kartePfad]);
   // Wem man die Daumen drückt — erst nach dem Laden gelesen: Der Speicher
   // gehört dem Browser, der Server-Durchlauf kennt ihn nicht.
   const [favorit, setFavorit] = useState<string | null>(null);
@@ -777,8 +724,11 @@ export function StichwahlView() {
   }, [wahlSlug, slugs]);
   // Vor den frühen Ausstiegen — Hooks laufen in jeder Runde in derselben Reihenfolge.
   const frisch = useFrisch(data?.reports_received);
-  // Der Rückblick gibt es nur zu einer fertigen, echten Stichwahl — nie zur Probe.
-  const analysis = useRunoffAnalysis(frei && data?.phase === "complete" && data?.dataset !== "probe");
+  // Der Rückblick gibt es nur zu einer fertigen, echten Stichwahl — nie zur
+  // Probe. Gefragt wird sofort, nicht erst nach der Tafel: Vor dem Einfrieren
+  // (und bei ausgeschaltetem Schalter) antwortet das Backend 404, und das
+  // fängt `useRunoffAnalysis` ohne Wiederholung ab.
+  const analysis = useRunoffAnalysis(!probe);
   useEffect(() => {
     if (data) document.title = fensterTitel(data);
   }, [data]);
@@ -805,7 +755,7 @@ export function StichwahlView() {
       <>
         <div className="mx-auto w-full max-w-3xl pb-6">
           <ZurueckZuWahlen />
-          <div className="mt-10 h-40 animate-pulse rounded-2xl bg-muted" />
+          <div className="mt-10 h-40 animate-pulse rounded-2xl bg-skeleton" />
         </div>
       </>
     );

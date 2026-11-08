@@ -15,6 +15,10 @@ web/frontend/.next/
 # Eigenes Build-Verzeichnis des Dev-Servers (next.config.mjs) — trennt
 # `next dev` von `next build`, die sich sonst .next zerlegen.
 web/frontend/.next-dev/
+# Der Deploy baut neben dem laufenden Server (NEXT_DIST_DIR=.next-build) und
+# schiebt den alten Build beim Umschalten kurz nach `.next-alt`.
+web/frontend/.next-build/
+web/frontend/.next-alt/
 # Ohne Schrägstrich: Die Regel mit Schrägstrich trifft nur das Verzeichnis,
 # nicht einen Symlink gleichen Namens — genau so kam am 06.09.2026 ein
 # Symlink in main.

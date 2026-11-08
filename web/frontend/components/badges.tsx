@@ -88,7 +88,7 @@ function clearNewIds() {
 }
 
 /** Ereignis melden (fire-and-forget) — Fehler stören den eigentlichen Flow nie. */
-export function reportBadgeEvent(type: "frage" | "sitzung" | "tour" | "map_place", key?: string) {
+export function reportBadgeEvent(type: "frage" | "sitzung" | "tour" | "analyse" | "map_place", key?: string) {
   api
     .post("/badges/event", { type, key })
     .then(() => window.dispatchEvent(new Event(DIRTY_EVENT)))

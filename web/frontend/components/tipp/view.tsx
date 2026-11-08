@@ -152,7 +152,7 @@ function LadeSchirm() {
   return (
     <Rahmen>
       <Kopf />
-      <div className="mt-8 h-2 w-24 animate-pulse rounded-full bg-muted" />
+      <div className="mt-8 h-2 w-24 animate-pulse rounded-full bg-skeleton" />
     </Rahmen>
   );
 }

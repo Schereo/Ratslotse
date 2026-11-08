@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 
 const PinMap = dynamic(() => import("@/components/quiz-pin-map").then((m) => m.PinMap), {
   ssr: false,
-  loading: () => <div className="h-[clamp(340px,55dvh,720px)] w-full animate-pulse rounded-xl bg-muted" />,
+  loading: () => <div className="h-[clamp(340px,55dvh,720px)] w-full animate-pulse rounded-xl bg-skeleton" />,
 });
 
 export type PinQuestion = { slug: string; name: string; kind_label: string };

@@ -8,6 +8,7 @@ import {
   knopfPosition, markierungAufbereiten, markierungInZeile, type KnopfLage, type Rechteck,
 } from "@/lib/markieren";
 import { cn } from "@/lib/utils";
+import { LOTTI_BASE } from "@/lib/asset-paths";
 
 import type { ElementFrage } from "./index";
 
@@ -367,7 +368,7 @@ export function MarkierKnopf({ aktiv, anzeigename, onFragen }: {
         >
           <span className="flex h-7 w-7 flex-none items-center justify-center overflow-hidden rounded-full bg-primary">
             <Image
-              src="/lotti/kopf.png"
+              src={`${LOTTI_BASE}kopf.png`}
               alt=""
               width={192}
               height={192}
