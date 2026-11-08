@@ -311,8 +311,12 @@
 /* ── Sprite-Lotti (<lotti-figur>, components/lotti.tsx) ────────────────────
    Bevor der Abspieler geladen und das Element aufgerüstet ist, ist
    <lotti-figur> ein unbekanntes Inline-Element — ohne diese Regel wären
-   h-*- und w--Klassen wirkungslos und das Layout spränge beim Aufrüsten. */
-lotti-figur {
+   h-*- und w--Klassen wirkungslos und das Layout spränge beim Aufrüsten.
+   <lotti-placeholder> steht da, bis die Figur in Sichtnähe kommt, und muss
+   denselben Kasten haben. Ein Elementselektor, damit `hidden`/`sm:block`
+   aus der className weiter gewinnen. */
+lotti-figur,
+lotti-placeholder {
   display: inline-block;
   line-height: 0;
 }
