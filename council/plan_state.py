@@ -6,8 +6,8 @@ Bausteinen, und keiner davon bewertet:
 1. **Berichtsstand** — wird über den Plan berichtet? (:func:`report_state`)
 2. **Stand laut Stadt** — die Verteilung im Wortlaut der Stadt, mit Datum und
    Beleg, und was sich seit dem vorigen Bericht bewegt hat (:func:`city_status`)
-3. **Eigene Termine** — Laufzeit und Überprüfungsfrist als Tatsachen
-   (:func:`own_dates`)
+3. **Eigene Termine** — Laufzeit und Überprüfungsfrist als Tatsachen; die
+   baut ``council/plan_pages.py`` selbst (``since``, ``remaining``).
 
 Die Momentaufnahmen liegen als geprüfte Dateien unter ``council/plan_status/``
 (geschrieben von ``scripts/plan_status.py``, festgehalten im PR). ``status_norm``
@@ -70,12 +70,6 @@ def period_end(iso: str) -> date:
         return date(*parts[:3])
     month = parts[1] if len(parts) > 1 else 12
     return date(parts[0], month, calendar.monthrange(parts[0], month)[1])
-
-
-def _months(a: date, b: date) -> int:
-    """Volle Monate von ``a`` bis ``b`` (nie negativ)."""
-    months = (b.year - a.year) * 12 + b.month - a.month - (1 if b.day < a.day else 0)
-    return max(months, 0)
 
 
 # ── 1. Berichtsstand ───────────────────────────────────────────────────────
@@ -171,33 +165,4 @@ def city_status(key: str) -> dict | None:
         "movement": movement(snapshots[-2], latest) if len(snapshots) > 1 else None,
         "series": [{"as_of": s["as_of"], "total": s["total"], "counts": s["counts"]} for s in snapshots],
         "notes": data.get("notes") or [],
-    }
-
-
-# ── 3. Eigene Termine ──────────────────────────────────────────────────────
-
-
-def own_dates(plan: register.Plan, today: str) -> dict | None:
-    """Was sich der Plan selbst vorgenommen hat: Laufzeit und Überprüfung, als Tatsachen.
-
-    Gerechnet wird in vollen Monaten; ob daraus „knapp vier von dreizehn
-    Jahren“ wird, entscheidet die Anzeige. Bewertet wird hier nichts — wer
-    Termin und Stand nebeneinander sieht, zieht den Schluss selbst.
-    """
-    begin_iso = plan.start or (plan.adopted.date if plan.adopted else None)
-    if begin_iso is None:
-        return None
-    now = date.fromisoformat(today)
-    begin = period_start(begin_iso)
-    end = period_end(plan.end) if plan.end else None
-    review = period_end(plan.review_due) if plan.review_due else None
-    return {
-        "start": begin_iso,
-        "end": plan.end,
-        "elapsed_months": _months(begin, min(now, end) if end else now),
-        "total_months": _months(begin, end) if end else None,
-        "end_passed": bool(end and end < now),
-        "review_due": plan.review_due,
-        "review_passed": bool(review and review < now),
-        "months_to_review": _months(now, review) if review and review >= now else None,
     }

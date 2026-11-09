@@ -4469,6 +4469,79 @@ class PlanLane(TypedDict):
     review: float | None
 
 
+PlanStatusNorm = Literal["open", "started", "in_progress", "done", "paused", "unclear"]
+PlanReportStateKey = Literal["continued", "in_preparation", "evaluated", "expired_no_evaluation",
+                             "reported", "not_yet_due", "no_report_found"]
+
+
+class PlanReportState(TypedDict):
+    """Der Berichtsstand (Plan § 3.3a): Wird über den Plan berichtet? Keine Aussage über die Arbeit."""
+    state: PlanReportStateKey
+    label: str
+    #: Nur bei „Noch kein Bericht fällig“: woran das liegt („Überprüfung laut Plan 06/2031.“).
+    hint: str | None
+
+
+class PlanStatusCount(TypedDict):
+    #: Das Wort der Stadt — nur das wird angezeigt.
+    status_raw: str
+    #: Nur zum Gruppieren und für den Farbton.
+    status_norm: PlanStatusNorm
+    count: int
+
+
+class PlanStatusBrief(TypedDict):
+    """Die jüngste Verteilung laut Stadt, für die Übersicht."""
+    as_of: str
+    as_of_label: str
+    #: „Nach Angaben der Verwaltung“ oder „Klimaportal der Stadt“ (§ 3.4 Nr. 3).
+    origin_label: str
+    #: Zahl der Maßnahmen, von denen die Momentaufnahme spricht.
+    total: int
+    #: ``False``: Die Stadt ordnet nur einen Teil ein; die Zähler gehen nicht in ``total`` auf.
+    complete: bool
+    counts: list[PlanStatusCount]
+
+
+class PlanStatusMove(PlanStatusCount):
+    before: int
+    delta: int
+
+
+class PlanStatusMovement(TypedDict):
+    """Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis."""
+    since: str
+    since_label: str
+    total_before: int
+    total_delta: int
+    counts: list[PlanStatusMove]
+
+
+class PlanStatusSnapshot(TypedDict):
+    as_of: str
+    as_of_label: str
+    total: int
+    counts: list[PlanStatusCount]
+
+
+class PlanStatusNote(TypedDict):
+    """Ein Vorbehalt, den die Stadt selbst nennt (in unseren Worten, mit Quelle)."""
+    text: str
+    url: str | None
+
+
+class PlanCityStatus(PlanStatusBrief):
+    """Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``)."""
+    source_label: str
+    source_url: str | None
+    #: Vorlage, aus der der Stand stammt oder die ihn im Rat bestätigt.
+    template_number: str | None
+    confirmed: bool
+    movement: PlanStatusMovement | None
+    series: list[PlanStatusSnapshot]
+    notes: list[PlanStatusNote]
+
+
 class PlanCard(TypedDict):
     """Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4)."""
     key: str
@@ -4496,6 +4569,9 @@ class PlanCard(TypedDict):
     successor: PlanNeighbour | None
     #: Zahl der Maßnahmen laut geprüfter Liste; ``None``: keine Liste.
     measure_count: int | None
+    report_state: PlanReportState
+    #: Nur wo die Stadt selbst eine Verteilung meldet.
+    status_brief: PlanStatusBrief | None
 
 
 class PlanGroup(TypedDict):
@@ -4685,6 +4761,9 @@ class PlanMeasure(TypedDict):
     title: str
     package: str | None
     page: int
+    #: Stand im Wortlaut der Stadt; ``None``, wo sie für diese Maßnahme keinen nennt.
+    status_raw: str | None
+    status_norm: PlanStatusNorm | None
 
 
 class PlanMeasureGroup(TypedDict):
@@ -4708,6 +4787,9 @@ class PlanMeasures(TypedDict):
     #: Die Zahl, die die Stadt selbst nennt; ``None``, wo sie keine nennt.
     count_city: int | None
     count_note: str | None
+    #: Für wie viele Maßnahmen die Stadt einen Stand nennt.
+    status_count: int
+    status_as_of_label: str | None
     source: PlanMeasureSource
     groups: list[PlanMeasureGroup]
 
@@ -4729,6 +4811,7 @@ class PlanDetail(PlanCard):
     concluded: PlanTemplateRef | None
     predecessor: PlanNeighbour | None
     measures: PlanMeasures | None
+    city_status: PlanCityStatus | None
     timeline: PlanTimeline
     runway: PlanRunway | None
     #: „Seit dem Beschluss · 3 Jahre, 10 Monate“ — nur für Pläne, die laufen oder in Arbeit sind.

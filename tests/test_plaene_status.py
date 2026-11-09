@@ -126,14 +126,32 @@ def test_jeder_plan_im_register_bekommt_einen_stand():
         assert plan_state.report_state(plan, [], "2026-11-09")["state"] in known, plan.key
 
 
-def test_eigene_termine_sind_tatsachen():
-    ksp = plan_state.own_dates(plans.PLANS["klimaschutzplan_2035"], "2026-11-09")
-    assert ksp["end"] == "2035" and ksp["end_passed"] is False and ksp["review_passed"] is False
-    assert 0 < ksp["elapsed_months"] < ksp["total_months"]
-    late = plan_state.own_dates(plans.PLANS["klimaschutzplan_2035"], "2036-02-01")
-    assert late["end_passed"] and late["elapsed_months"] == late["total_months"]
-    assert late["review_passed"] and late["months_to_review"] is None
-    open_end = plan_state.own_dates(plans.PLANS["waermeplan"], "2026-11-09")
-    assert open_end["total_months"] is None and open_end["months_to_review"] == 55
-    assert plan_state.period_end("2031-06").isoformat() == "2031-06-30"
-    assert plan_state.period_end("2028-02").isoformat() == "2028-02-29"
+def test_bloecke_der_planseite():
+    """Was die Seiten bekommen: der Stand im Wortlaut der Stadt, mit Herkunft und Stichtag."""
+    brief = plan_pages.status_brief("klimaschutzplan_2035")
+    assert brief["as_of_label"] == "2026" and brief["origin_label"] == "Klimaportal der Stadt"
+    assert brief["total"] == 97 and brief["complete"] and sum(c["count"] for c in brief["counts"]) == 97
+    full = plan_pages.city_status_block("klimaschutzplan_2035")
+    assert full["confirmed"] and full["template_number"] == "26/0750"
+    assert full["movement"]["since_label"] == "2025" and len(full["series"]) == 5 and full["notes"]
+    assert plan_pages.status_brief("masterplan_stadtgruen") is None
+    assert plan_pages.city_status_block("masterplan_stadtgruen") is None
+
+    waerme = plan_pages.city_status_block("waermeplan")
+    assert waerme["origin_label"] == "Nach Angaben der Verwaltung" and waerme["as_of_label"] == "03/2026"
+    assert not waerme["complete"] and waerme["movement"] is None and waerme["template_number"] == "26/0236"
+    block = plan_pages.measures_block("waermeplan")
+    with_state = [m["code"] for g in block["groups"] for m in g["measures"] if m["status_raw"]]
+    assert sorted(with_state) == ["F2", "K1", "K2", "K3", "T2", "T5"] and block["status_count"] == 6
+    assert block["status_as_of_label"] == "03/2026"
+    ksp = plan_pages.measures_block("klimaschutzplan_2035")  # je Maßnahme meldet die Stadt nichts Verlässliches
+    assert ksp["status_count"] == 0 and ksp["status_as_of_label"] is None
+
+
+def test_berichtsstand_auf_der_karte():
+    block = plan_pages.report_state_block(plans.PLANS["waermeplan"], [], "2026-11-09")
+    assert block == {"state": "not_yet_due", "label": "Noch kein Bericht fällig",
+                     "hint": "Überprüfung laut Plan 06/2031."}
+    plain = dataclasses.replace(plans.PLANS["waermeplan"], review_due=None)
+    assert plan_pages.report_state_block(plain, [], "2026-11-09")["hint"] == "Der Plan ist jünger als zwei Jahre."
+    assert plan_pages.report_state_block(plain, [_item("report", "2026-10-01")], "2026-11-09")["hint"] is None
