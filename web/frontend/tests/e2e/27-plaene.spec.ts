@@ -55,6 +55,17 @@ test("der Filter zeigt nur die Pläne eines Themenfelds", async ({ page }) => {
   await expect(page.locator(`#plans-running ${CLIMATE_PLAN}`)).toBeVisible();
 });
 
+test("der Stand steht in den Worten der Stadt, mit Herkunft und ohne Quote", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=klimaschutzplan_2035");
+  // Die Statusdatei ist eingecheckt — der Stand steht auch gegen die leere Ratsdatenbank der CI.
+  const status = page.locator('section[aria-labelledby="plan-city-status"]');
+  await expect(status.getByText("Klimaportal der Stadt · Stand 2026")).toBeVisible();
+  await expect(status.getByText("Zählbasis: 90 → 97 Maßnahmen")).toBeVisible();
+  await expect(status.getByRole("row", { name: /Realisiert 11 15 20 22 20/ })).toBeVisible();
+  await expect(status).not.toContainText("%");
+});
+
 test("die Maßnahmen lassen sich durchsuchen", async ({ page }) => {
   await schalter(page, true);
   await page.goto("/council/plan?key=klimaschutzplan_2035");
@@ -80,7 +91,7 @@ for (const breite of [390, 320]) {
     await page.setViewportSize({ width: breite, height: 800 });
     await schalter(page, true);
     for (const pfad of ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
-      "/council/plan?key=klimaanpassungskonzept"]) {
+      "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035"]) {
       await page.goto(pfad, { waitUntil: "networkidle" });
       expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
     }

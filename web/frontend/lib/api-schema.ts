@@ -14888,11 +14888,30 @@ export interface components {
             report_count: number;
             /** Report Note */
             report_note: string | null;
+            report_state: components["schemas"]["PlanReportState"];
             /**
              * Status
              * @enum {string}
              */
             status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /**
+             * PlanStatusBrief
+             * @description Die jüngste Verteilung laut Stadt, für die Übersicht.
+             */
+            status_brief: {
+                /** As Of */
+                as_of: string;
+                /** As Of Label */
+                as_of_label: string;
+                /** Complete */
+                complete: boolean;
+                /** Counts */
+                counts: components["schemas"]["PlanStatusCount"][];
+                /** Origin Label */
+                origin_label: string;
+                /** Total */
+                total: number;
+            } | null;
             /** Status Label */
             status_label: string;
             /** PlanNeighbour */
@@ -14908,6 +14927,52 @@ export interface components {
             timing: string;
             /** Title */
             title: string;
+        };
+        /**
+         * PlanCityStatus
+         * @description Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).
+         */
+        PlanCityStatus: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            /** Complete */
+            complete: boolean;
+            /** Confirmed */
+            confirmed: boolean;
+            /** Counts */
+            counts: components["schemas"]["PlanStatusCount"][];
+            /**
+             * PlanStatusMovement
+             * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+             */
+            movement: {
+                /** Counts */
+                counts: components["schemas"]["PlanStatusMove"][];
+                /** Since */
+                since: string;
+                /** Since Label */
+                since_label: string;
+                /** Total Before */
+                total_before: number;
+                /** Total Delta */
+                total_delta: number;
+            } | null;
+            /** Notes */
+            notes: components["schemas"]["PlanStatusNote"][];
+            /** Origin Label */
+            origin_label: string;
+            /** Series */
+            series: components["schemas"]["PlanStatusSnapshot"][];
+            /** Source Label */
+            source_label: string;
+            /** Source Url */
+            source_url: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Total */
+            total: number;
         };
         /** PlanDecisionEntry */
         PlanDecisionEntry: {
@@ -15012,6 +15077,52 @@ export interface components {
              * @enum {string|null}
              */
             adoption_mode: "adopted" | "noted" | null;
+            /**
+             * PlanCityStatus
+             * @description Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).
+             */
+            city_status: {
+                /** As Of */
+                as_of: string;
+                /** As Of Label */
+                as_of_label: string;
+                /** Complete */
+                complete: boolean;
+                /** Confirmed */
+                confirmed: boolean;
+                /** Counts */
+                counts: components["schemas"]["PlanStatusCount"][];
+                /**
+                 * PlanStatusMovement
+                 * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+                 */
+                movement: {
+                    /** Counts */
+                    counts: components["schemas"]["PlanStatusMove"][];
+                    /** Since */
+                    since: string;
+                    /** Since Label */
+                    since_label: string;
+                    /** Total Before */
+                    total_before: number;
+                    /** Total Delta */
+                    total_delta: number;
+                } | null;
+                /** Notes */
+                notes: components["schemas"]["PlanStatusNote"][];
+                /** Origin Label */
+                origin_label: string;
+                /** Series */
+                series: components["schemas"]["PlanStatusSnapshot"][];
+                /** Source Label */
+                source_label: string;
+                /** Source Url */
+                source_url: string | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Total */
+                total: number;
+            } | null;
             /** PlanTemplateRef */
             commissioned: {
                 /** Date */
@@ -15103,6 +15214,10 @@ export interface components {
                 /** Groups */
                 groups: components["schemas"]["PlanMeasureGroup"][];
                 source: components["schemas"]["PlanMeasureSource"];
+                /** Status As Of Label */
+                status_as_of_label: string | null;
+                /** Status Count */
+                status_count: number;
             } | null;
             /** Note */
             note: string | null;
@@ -15136,6 +15251,7 @@ export interface components {
             report_count: number;
             /** Report Note */
             report_note: string | null;
+            report_state: components["schemas"]["PlanReportState"];
             /** Review Due */
             review_due: string | null;
             /** Review Label */
@@ -15209,6 +15325,24 @@ export interface components {
              * @enum {string}
              */
             status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /**
+             * PlanStatusBrief
+             * @description Die jüngste Verteilung laut Stadt, für die Übersicht.
+             */
+            status_brief: {
+                /** As Of */
+                as_of: string;
+                /** As Of Label */
+                as_of_label: string;
+                /** Complete */
+                complete: boolean;
+                /** Counts */
+                counts: components["schemas"]["PlanStatusCount"][];
+                /** Origin Label */
+                origin_label: string;
+                /** Total */
+                total: number;
+            } | null;
             /** Status Label */
             status_label: string;
             /** PlanNeighbour */
@@ -15316,6 +15450,13 @@ export interface components {
             package: string | null;
             /** Page */
             page: number;
+            /**
+             * Status Norm
+             * @enum {string|null}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear" | null;
+            /** Status Raw */
+            status_raw: string | null;
             /** Title */
             title: string;
         };
@@ -15355,6 +15496,10 @@ export interface components {
             /** Groups */
             groups: components["schemas"]["PlanMeasureGroup"][];
             source: components["schemas"]["PlanMeasureSource"];
+            /** Status As Of Label */
+            status_as_of_label: string | null;
+            /** Status Count */
+            status_count: number;
         };
         /** PlanNeighbour */
         PlanNeighbour: {
@@ -15409,6 +15554,21 @@ export interface components {
             template_number: string | null;
             /** Title */
             title: string;
+        };
+        /**
+         * PlanReportState
+         * @description Der Berichtsstand (Plan § 3.3a): Wird über den Plan berichtet? Keine Aussage über die Arbeit.
+         */
+        PlanReportState: {
+            /** Hint */
+            hint: string | null;
+            /** Label */
+            label: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "continued" | "in_preparation" | "evaluated" | "expired_no_evaluation" | "reported" | "not_yet_due" | "no_report_found";
         };
         /**
          * PlanRunway
@@ -15487,6 +15647,89 @@ export interface components {
             x0: number;
             /** X1 */
             x1: number;
+        };
+        /**
+         * PlanStatusBrief
+         * @description Die jüngste Verteilung laut Stadt, für die Übersicht.
+         */
+        PlanStatusBrief: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            /** Complete */
+            complete: boolean;
+            /** Counts */
+            counts: components["schemas"]["PlanStatusCount"][];
+            /** Origin Label */
+            origin_label: string;
+            /** Total */
+            total: number;
+        };
+        /** PlanStatusCount */
+        PlanStatusCount: {
+            /** Count */
+            count: number;
+            /**
+             * Status Norm
+             * @enum {string}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear";
+            /** Status Raw */
+            status_raw: string;
+        };
+        /** PlanStatusMove */
+        PlanStatusMove: {
+            /** Before */
+            before: number;
+            /** Count */
+            count: number;
+            /** Delta */
+            delta: number;
+            /**
+             * Status Norm
+             * @enum {string}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear";
+            /** Status Raw */
+            status_raw: string;
+        };
+        /**
+         * PlanStatusMovement
+         * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+         */
+        PlanStatusMovement: {
+            /** Counts */
+            counts: components["schemas"]["PlanStatusMove"][];
+            /** Since */
+            since: string;
+            /** Since Label */
+            since_label: string;
+            /** Total Before */
+            total_before: number;
+            /** Total Delta */
+            total_delta: number;
+        };
+        /**
+         * PlanStatusNote
+         * @description Ein Vorbehalt, den die Stadt selbst nennt (in unseren Worten, mit Quelle).
+         */
+        PlanStatusNote: {
+            /** Text */
+            text: string;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanStatusSnapshot */
+        PlanStatusSnapshot: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            /** Counts */
+            counts: components["schemas"]["PlanStatusCount"][];
+            /** Total */
+            total: number;
         };
         /** PlanTemplateRef */
         PlanTemplateRef: {
@@ -27830,4 +28073,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7d3690005cc25900c41f67a07895a8c1f91c897d3eb222cc1555f2ad1e689755
+// vertrag-sha256: 32c62f62722da83edab9852db95fa426161854c4c400b7dbfbdc865c86bd7536

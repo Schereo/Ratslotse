@@ -229,7 +229,14 @@ export function PlanHeader({ plan, onStation }: { plan: PlanDetail; onStation: (
         {
           // Die Null steht als Strich: „keinen gefunden“ ist eine Aussage über den Bestand, keine Messung.
           label: "Berichte im Rat", value: plan.report_count > 0 ? `${plan.report_count}` : "–",
-          detail: plan.report_count === 0 ? "keinen gefunden" : <>
+          // Der Berichtsstand (§ 3.3a) steht dabei: eine Aussage über die Berichte, nicht über die Arbeit.
+          detail: plan.report_count === 0 ? <>
+            <span className="block">keinen gefunden</span>
+            {plan.report_state.state === "not_yet_due" && (
+              <span className="block">{plan.report_state.label}{plan.report_state.hint ? ` · ${plan.report_state.hint}` : ""}</span>
+            )}
+          </> : <>
+            <span className="block font-medium text-foreground">{plan.report_state.label}</span>
             {latest && <span className="block">zuletzt {formatDate(latest.date)}</span>}
             {plan.oral_report_count > 0 && <span className="block">davon {plan.oral_report_count} mündlich, ohne Text</span>}
           </>,

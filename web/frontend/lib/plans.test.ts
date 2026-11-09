@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  byField, byPackage, committeeList, filterMeasures, formatDate, percent, reportCount, stationKind, statusTone, yearSpan,
+  byField, byPackage, committeeList, filterMeasures, formatDate, percent, reportCount, signed, stationKind,
+  statusLabels, statusLine, statusTone, yearSpan,
   type PlanCard, type PlanMeasureField,
 } from "./plans";
 
@@ -79,12 +80,12 @@ describe("byField", () => {
 
 const FIELDS: PlanMeasureField[] = [
   { field: "Mobilität", measures: [
-    { code: "FußRad_01", title: "Raumerweiterung Fuß- und Radverkehr", package: "Fuß- und Fahrradverkehr", page: 2 },
-    { code: "FußRad_02", title: "Fahrradstraßen", package: "Fuß- und Fahrradverkehr", page: 2 },
-    { code: "ÖPNV_01", title: "Taktverdichtung", package: "ÖPNV", page: 2 },
+    { code: "FußRad_01", title: "Raumerweiterung Fuß- und Radverkehr", package: "Fuß- und Fahrradverkehr", page: 2, status_raw: null, status_norm: null },
+    { code: "FußRad_02", title: "Fahrradstraßen", package: "Fuß- und Fahrradverkehr", page: 2, status_raw: null, status_norm: null },
+    { code: "ÖPNV_01", title: "Taktverdichtung", package: "ÖPNV", page: 2, status_raw: null, status_norm: null },
   ] },
   { field: "Stadtverwaltung", measures: [
-    { code: "Verwaltung_01", title: "Klimagerechtes Beschaffungs- und Vergabewesen", package: null, page: 2 },
+    { code: "Verwaltung_01", title: "Klimagerechtes Beschaffungs- und Vergabewesen", package: null, page: 2, status_raw: null, status_norm: null },
   ] },
 ];
 
@@ -115,5 +116,36 @@ describe("byPackage", () => {
   });
   it("macht aus einem Feld ohne Pakete ein Stück", () => {
     expect(byPackage(FIELDS[1].measures)).toEqual([{ name: null, measures: FIELDS[1].measures }]);
+  });
+});
+
+describe("statusLine", () => {
+  const counts = [
+    { status_raw: "Neu", status_norm: "open" as const, count: 0 },
+    { status_raw: "In Umsetzung", status_norm: "in_progress" as const, count: 34 },
+    { status_raw: "Realisiert", status_norm: "done" as const, count: 20 },
+  ];
+  it("zählt in den Worten der Stadt und lässt leere Stufen weg", () => {
+    expect(statusLine({ counts, total: 54, complete: true })).toBe("34 In Umsetzung · 20 Realisiert");
+  });
+  it("nennt die Zählbasis, wenn die Stadt nur einen Teil einordnet", () => {
+    expect(statusLine({ counts: [{ status_raw: "in Umsetzung", status_norm: "in_progress", count: 6 }], total: 18, complete: false }))
+      .toBe("6 von 18 in Umsetzung");
+  });
+});
+
+describe("signed", () => {
+  it("schreibt Vorzeichen aus", () => {
+    expect([signed(9), signed(-2), signed(0)]).toEqual(["+9", "−2", "±0"]);
+  });
+});
+
+describe("statusLabels", () => {
+  it("folgt dem jüngsten Stand und hängt alte Wörter an", () => {
+    const series = [
+      { counts: [{ status_raw: "In Planung" }, { status_raw: "Realisiert" }] },
+      { counts: [{ status_raw: "Planung" }, { status_raw: "Realisiert" }] },
+    ];
+    expect(statusLabels(series)).toEqual(["Planung", "Realisiert", "In Planung"]);
   });
 });

@@ -19364,6 +19364,9 @@
               "null"
             ]
           },
+          "report_state": {
+            "$ref": "#/components/schemas/PlanReportState"
+          },
           "status": {
             "enum": [
               "running",
@@ -19374,6 +19377,51 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "status_brief": {
+            "description": "Die jüngste Verteilung laut Stadt, für die Übersicht.",
+            "properties": {
+              "as_of": {
+                "title": "As Of",
+                "type": "string"
+              },
+              "as_of_label": {
+                "title": "As Of Label",
+                "type": "string"
+              },
+              "complete": {
+                "title": "Complete",
+                "type": "boolean"
+              },
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusCount"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "origin_label": {
+                "title": "Origin Label",
+                "type": "string"
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "as_of",
+              "as_of_label",
+              "origin_label",
+              "total",
+              "complete",
+              "counts"
+            ],
+            "title": "PlanStatusBrief",
+            "type": [
+              "object",
+              "null"
+            ]
           },
           "status_label": {
             "title": "Status Label",
@@ -19434,9 +19482,136 @@
           "lane",
           "report_count",
           "successor",
-          "measure_count"
+          "measure_count",
+          "report_state",
+          "status_brief"
         ],
         "title": "PlanCard",
+        "type": "object"
+      },
+      "PlanCityStatus": {
+        "description": "Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "counts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusCount"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "movement": {
+            "description": "Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.",
+            "properties": {
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusMove"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "since": {
+                "title": "Since",
+                "type": "string"
+              },
+              "since_label": {
+                "title": "Since Label",
+                "type": "string"
+              },
+              "total_before": {
+                "title": "Total Before",
+                "type": "integer"
+              },
+              "total_delta": {
+                "title": "Total Delta",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "since",
+              "since_label",
+              "total_before",
+              "total_delta",
+              "counts"
+            ],
+            "title": "PlanStatusMovement",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "origin_label": {
+            "title": "Origin Label",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusSnapshot"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "as_of_label",
+          "origin_label",
+          "total",
+          "complete",
+          "counts",
+          "source_label",
+          "source_url",
+          "template_number",
+          "confirmed",
+          "movement",
+          "series",
+          "notes"
+        ],
+        "title": "PlanCityStatus",
         "type": "object"
       },
       "PlanDecisionEntry": {
@@ -19735,6 +19910,134 @@
               "null"
             ]
           },
+          "city_status": {
+            "description": "Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).",
+            "properties": {
+              "as_of": {
+                "title": "As Of",
+                "type": "string"
+              },
+              "as_of_label": {
+                "title": "As Of Label",
+                "type": "string"
+              },
+              "complete": {
+                "title": "Complete",
+                "type": "boolean"
+              },
+              "confirmed": {
+                "title": "Confirmed",
+                "type": "boolean"
+              },
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusCount"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "movement": {
+                "description": "Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.",
+                "properties": {
+                  "counts": {
+                    "items": {
+                      "$ref": "#/components/schemas/PlanStatusMove"
+                    },
+                    "title": "Counts",
+                    "type": "array"
+                  },
+                  "since": {
+                    "title": "Since",
+                    "type": "string"
+                  },
+                  "since_label": {
+                    "title": "Since Label",
+                    "type": "string"
+                  },
+                  "total_before": {
+                    "title": "Total Before",
+                    "type": "integer"
+                  },
+                  "total_delta": {
+                    "title": "Total Delta",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "since",
+                  "since_label",
+                  "total_before",
+                  "total_delta",
+                  "counts"
+                ],
+                "title": "PlanStatusMovement",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "notes": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusNote"
+                },
+                "title": "Notes",
+                "type": "array"
+              },
+              "origin_label": {
+                "title": "Origin Label",
+                "type": "string"
+              },
+              "series": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusSnapshot"
+                },
+                "title": "Series",
+                "type": "array"
+              },
+              "source_label": {
+                "title": "Source Label",
+                "type": "string"
+              },
+              "source_url": {
+                "title": "Source Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "as_of",
+              "as_of_label",
+              "origin_label",
+              "total",
+              "complete",
+              "counts",
+              "source_label",
+              "source_url",
+              "template_number",
+              "confirmed",
+              "movement",
+              "series",
+              "notes"
+            ],
+            "title": "PlanCityStatus",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "commissioned": {
             "properties": {
               "date": {
@@ -19999,12 +20302,25 @@
               },
               "source": {
                 "$ref": "#/components/schemas/PlanMeasureSource"
+              },
+              "status_as_of_label": {
+                "title": "Status As Of Label",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status_count": {
+                "title": "Status Count",
+                "type": "integer"
               }
             },
             "required": [
               "count",
               "count_city",
               "count_note",
+              "status_count",
+              "status_as_of_label",
               "source",
               "groups"
             ],
@@ -20107,6 +20423,9 @@
               "string",
               "null"
             ]
+          },
+          "report_state": {
+            "$ref": "#/components/schemas/PlanReportState"
           },
           "review_due": {
             "title": "Review Due",
@@ -20300,6 +20619,51 @@
             "title": "Status",
             "type": "string"
           },
+          "status_brief": {
+            "description": "Die jüngste Verteilung laut Stadt, für die Übersicht.",
+            "properties": {
+              "as_of": {
+                "title": "As Of",
+                "type": "string"
+              },
+              "as_of_label": {
+                "title": "As Of Label",
+                "type": "string"
+              },
+              "complete": {
+                "title": "Complete",
+                "type": "boolean"
+              },
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusCount"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "origin_label": {
+                "title": "Origin Label",
+                "type": "string"
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "as_of",
+              "as_of_label",
+              "origin_label",
+              "total",
+              "complete",
+              "counts"
+            ],
+            "title": "PlanStatusBrief",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "status_label": {
             "title": "Status Label",
             "type": "string"
@@ -20363,6 +20727,8 @@
           "report_count",
           "successor",
           "measure_count",
+          "report_state",
+          "status_brief",
           "note",
           "owner",
           "source",
@@ -20379,6 +20745,7 @@
           "concluded",
           "predecessor",
           "measures",
+          "city_status",
           "timeline",
           "runway",
           "since",
@@ -20609,6 +20976,28 @@
             "title": "Page",
             "type": "integer"
           },
+          "status_norm": {
+            "enum": [
+              "open",
+              "started",
+              "in_progress",
+              "done",
+              "paused",
+              "unclear"
+            ],
+            "title": "Status Norm",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status_raw": {
+            "title": "Status Raw",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -20618,7 +21007,9 @@
           "code",
           "title",
           "package",
-          "page"
+          "page",
+          "status_raw",
+          "status_norm"
         ],
         "title": "PlanMeasure",
         "type": "object"
@@ -20724,12 +21115,25 @@
           },
           "source": {
             "$ref": "#/components/schemas/PlanMeasureSource"
+          },
+          "status_as_of_label": {
+            "title": "Status As Of Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status_count": {
+            "title": "Status Count",
+            "type": "integer"
           }
         },
         "required": [
           "count",
           "count_city",
           "count_note",
+          "status_count",
+          "status_as_of_label",
           "source",
           "groups"
         ],
@@ -20875,6 +21279,42 @@
           "decision_id"
         ],
         "title": "PlanReport",
+        "type": "object"
+      },
+      "PlanReportState": {
+        "description": "Der Berichtsstand (Plan § 3.3a): Wird über den Plan berichtet? Keine Aussage über die Arbeit.",
+        "properties": {
+          "hint": {
+            "title": "Hint",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "continued",
+              "in_preparation",
+              "evaluated",
+              "expired_no_evaluation",
+              "reported",
+              "not_yet_due",
+              "no_report_found"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "label",
+          "hint"
+        ],
+        "title": "PlanReportState",
         "type": "object"
       },
       "PlanRunway": {
@@ -21072,6 +21512,210 @@
           "x1"
         ],
         "title": "PlanSpan",
+        "type": "object"
+      },
+      "PlanStatusBrief": {
+        "description": "Die jüngste Verteilung laut Stadt, für die Übersicht.",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "counts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusCount"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "origin_label": {
+            "title": "Origin Label",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "as_of_label",
+          "origin_label",
+          "total",
+          "complete",
+          "counts"
+        ],
+        "title": "PlanStatusBrief",
+        "type": "object"
+      },
+      "PlanStatusCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "status_norm": {
+            "enum": [
+              "open",
+              "started",
+              "in_progress",
+              "done",
+              "paused",
+              "unclear"
+            ],
+            "title": "Status Norm",
+            "type": "string"
+          },
+          "status_raw": {
+            "title": "Status Raw",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_raw",
+          "status_norm",
+          "count"
+        ],
+        "title": "PlanStatusCount",
+        "type": "object"
+      },
+      "PlanStatusMove": {
+        "properties": {
+          "before": {
+            "title": "Before",
+            "type": "integer"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "delta": {
+            "title": "Delta",
+            "type": "integer"
+          },
+          "status_norm": {
+            "enum": [
+              "open",
+              "started",
+              "in_progress",
+              "done",
+              "paused",
+              "unclear"
+            ],
+            "title": "Status Norm",
+            "type": "string"
+          },
+          "status_raw": {
+            "title": "Status Raw",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_raw",
+          "status_norm",
+          "count",
+          "before",
+          "delta"
+        ],
+        "title": "PlanStatusMove",
+        "type": "object"
+      },
+      "PlanStatusMovement": {
+        "description": "Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.",
+        "properties": {
+          "counts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusMove"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "since_label": {
+            "title": "Since Label",
+            "type": "string"
+          },
+          "total_before": {
+            "title": "Total Before",
+            "type": "integer"
+          },
+          "total_delta": {
+            "title": "Total Delta",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "since",
+          "since_label",
+          "total_before",
+          "total_delta",
+          "counts"
+        ],
+        "title": "PlanStatusMovement",
+        "type": "object"
+      },
+      "PlanStatusNote": {
+        "description": "Ein Vorbehalt, den die Stadt selbst nennt (in unseren Worten, mit Quelle).",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "text",
+          "url"
+        ],
+        "title": "PlanStatusNote",
+        "type": "object"
+      },
+      "PlanStatusSnapshot": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": "string"
+          },
+          "counts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusCount"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "as_of_label",
+          "total",
+          "counts"
+        ],
+        "title": "PlanStatusSnapshot",
         "type": "object"
       },
       "PlanTemplateRef": {

@@ -7,14 +7,15 @@
 // Plan besteht und wo sein Gewicht liegt, bevor man eine Zeile gelesen hat —
 // die Liste ist ihr eigenes Bild, ohne dass darüber noch eines stünde.
 //
-// Die Kästchen sind alle gleich getönt: Einen Stand je Maßnahme gibt es erst
-// mit den Statusberichten (Phase 3). Bis dahin sagt das Bild nur, WAS
-// vorgesehen ist — nichts darüber, was daraus wurde.
+// Wo die Stadt einen Stand je Maßnahme meldet, tragen die Kästchen ihn als
+// Farbton und die Zeile das Wort der Stadt. Wo nicht, sind alle gleich
+// getönt: Dann sagt das Bild nur, WAS vorgesehen ist — nichts darüber, was
+// daraus wurde. Ein Kästchen ohne Stand ist gestrichelt, nicht „offen“.
 
 import { useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Search, X } from "lucide-react";
 import { Aufklapp } from "@/components/aufklapp";
-import { Kicker } from "@/components/plans/parts";
+import { Kicker, STATUS_SQUARE, StatusChip } from "@/components/plans/parts";
 import { Input } from "@/components/ui";
 import { byPackage, filterMeasures, type PlanMeasure, type PlanMeasureField, type PlanMeasures } from "@/lib/plans";
 import { cn } from "@/lib/utils";
@@ -27,14 +28,14 @@ const SEARCH_FROM = 25;
 const fieldName = (field: PlanMeasureField) => field.field ?? "Maßnahmen";
 
 /** Die Maßnahmen eines Felds als Kästchen, an den Paketgrenzen abgesetzt. */
-function Squares({ measures }: { measures: readonly PlanMeasure[] }) {
+function Squares({ measures, tinted }: { measures: readonly PlanMeasure[]; tinted: boolean }) {
   return (
     <span aria-hidden className="flex flex-wrap gap-x-[7px] gap-y-[3px]">
       {byPackage(measures).map((pkg, i) => (
         <span key={`${pkg.name}-${i}`} className="flex flex-wrap gap-[3px]">
           {pkg.measures.map((m) => (
-            <span key={m.code} title={`${m.code} · ${m.title}`}
-              className="h-3 w-3 rounded-[3px] border border-primary/40 bg-primary/15" />
+            <span key={m.code} title={[m.code, m.title, m.status_raw].filter(Boolean).join(" · ")}
+              className={cn("h-3 w-3 rounded-[3px] border", tinted ? STATUS_SQUARE[m.status_norm ?? "none"] : "border-primary/40 bg-primary/15")} />
           ))}
         </span>
       ))}
@@ -56,7 +57,10 @@ function Rows({ measures }: { measures: readonly PlanMeasure[] }) {
             {pkg.measures.map((m) => (
               <li key={m.code} className="col-span-2 grid grid-cols-subgrid">
                 <span className="py-1 font-mono text-meta text-muted-foreground">{m.code}</span>
-                <span className="break-words py-1 text-[14px] leading-snug text-foreground">{m.title}</span>
+                <span className="break-words py-1 text-[14px] leading-snug text-foreground">
+                  {m.title}
+                  {m.status_raw && <StatusChip raw={m.status_raw} norm={m.status_norm} className="ml-2 align-[1px]" />}
+                </span>
               </li>
             ))}
           </ul>
@@ -129,7 +133,7 @@ export function Measures({ measures }: { measures: PlanMeasures }) {
                   className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 py-2.5 text-left hover:bg-primary/[0.03] disabled:cursor-default disabled:hover:bg-transparent @xl:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_auto]">
                   <span className="min-w-0 break-words text-[14px] font-semibold leading-snug text-foreground">{name}</span>
                   <span className="col-span-2 row-start-2 min-w-0 @xl:col-span-1 @xl:col-start-2 @xl:row-start-1">
-                    <Squares measures={field.measures} />
+                    <Squares measures={field.measures} tinted={measures.status_count > 0} />
                   </span>
                   <span className="col-start-2 row-start-1 flex items-center gap-2 @xl:col-start-3">
                     <span className="font-mono text-meta text-muted-foreground">{field.measures.length}</span>
@@ -145,9 +149,23 @@ export function Measures({ measures }: { measures: PlanMeasures }) {
         </div>
       )}
       <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="h-3 w-3 rounded-[3px] border border-primary/40 bg-primary/15" /> eine Maßnahme
-        </span>
+        {measures.status_count > 0 ? (
+          <>
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden className={cn("h-3 w-3 rounded-[3px] border", STATUS_SQUARE.in_progress)} /> Stand laut Stadt
+              {measures.status_as_of_label && `, ${measures.status_as_of_label}`}
+            </span>
+            {measures.status_count < measures.count && (
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden className={cn("h-3 w-3 rounded-[3px] border", STATUS_SQUARE.none)} /> kein Stand genannt
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden className="h-3 w-3 rounded-[3px] border border-primary/40 bg-primary/15" /> eine Maßnahme
+          </span>
+        )}
         <span>
           Quelle:{" "}
           <a href={measures.source.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
