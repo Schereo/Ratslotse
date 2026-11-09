@@ -57,6 +57,12 @@ PROTOCOL_MONTHS = 24
 #: messen und nicht wissen: Eine Stadt, die morgen repariert, wird morgen
 #: wieder geholt.
 PROTOCOL_NIETEN = 3
+#: Dasselbe für die Vorlagen-Dateien, mit mehr Spielraum: Bei ihnen ist eine
+#: einzelne Niete normal (eine nichtöffentliche Anlage liefert HTML statt PDF,
+#: Wolfsburg 444 von 1.798), zwanzig in Folge sind es nicht. Osnabrück
+#: antwortete am 09.11.2026 auf jede Dokument-Adresse mit 403 — 86 Abrufe,
+#: bis die Liste zu Ende war.
+FILE_NIETEN = 20
 
 
 def raw_path_for(raw_dir: str | Path, body_id: str) -> Path:
@@ -238,6 +244,14 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
                             client, zahlen, "Vorlagen", spec.id, stopp):
             zahlen["papers"] += 1
         logger.info("%s: %s Vorlagen", spec.id, zahlen["papers"])
+        # Gar nichts geerntet — weder Gremien noch Sitzungen noch Vorlagen — ist
+        # kein ruhiger Tag, sondern ein Zugangsproblem: Wolfsburg antwortete am
+        # 09.11.2026 dem Server mit „403 Request forbidden by administrative
+        # rules", der Adapter schrieb „0 Gremien", und der Lauf sah gesund aus.
+        if not (zahlen["organizations"] or zahlen["meetings"] or zahlen["papers"]):
+            zahlen["harvest_empty"] = 1
+            logger.warning("%s: nichts geerntet — keine Gremien, Sitzungen oder Vorlagen",
+                           spec.id)
 
         if zahlen.get("abgebrochen"):
             zahlen["requests"] = client.requests_made
@@ -249,7 +263,8 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             batch = adapter.normalize(spec.id, raw)
             raw.upsert_batch(batch)
             offen = raw.files_without_bytes(spec.id, FETCH_ROLES, limit=max_files)
-            _hole(client, raw, spec.id, offen, zahlen, "Dateien", stopp=stopp)
+            _hole(client, raw, spec.id, offen, zahlen, "Dateien", nieten_max=FILE_NIETEN,
+                  stopp=stopp)
 
             # Die Niederschriften bekommen ein EIGENES Budget, keinen Rest:
             # Vorlagen gibt es zehnmal so viele, und ein geteiltes Budget

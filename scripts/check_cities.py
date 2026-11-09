@@ -312,6 +312,9 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
             if ernte.get("files_gated"):
                 zaehler["files_gated"] = zaehler.get("files_gated", 0) + 1
                 gruende[f"gated_{spec.id}"] = "Dateien hinter einer Zugangsprüfung (ALTCHA)"
+            if ernte.get("harvest_empty"):
+                zaehler["harvests_empty"] = zaehler.get("harvests_empty", 0) + 1
+                gruende[f"empty_{spec.id}"] = "nichts geerntet (Zugang prüfen)"
             if ernte.get("host_unreachable"):
                 zaehler["hosts_unreachable"] = zaehler.get("hosts_unreachable", 0) + 1
                 gruende[f"unreachable_{spec.id}"] = "Server nimmt keine Verbindung an"
