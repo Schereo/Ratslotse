@@ -33,6 +33,9 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 - **Neu: „Offene Aufträge“** (§ 3.5, Phase 4b) — wo etwas beschlossen ist und
   keine Umsetzung, kein Bericht, kein Folgebeschluss zu finden ist. Für alle
   interessant, für Ratsmitglieder der Anlass nachzufragen.
+- **Einordnung in drei Bausteinen** (§ 3.3a, entschieden nach der
+  Überarbeitung): Berichtsstand, Stand laut Stadt und eigene Termine des
+  Plans ersetzen die fünf Stufen nach Dritteln.
 
 ## Stand der Umsetzung
 
@@ -70,9 +73,9 @@ Gemessen im Abzug nach den Phasen 0 bis 2:
 2. **Die Drittel-Regel der Einordnung trägt nicht** (§ 3.3a). An den
    Pilotplänen geprüft, passt beim Klimaschutzplan keine Stufe, und welche
    passt, hängt davon ab, welche Wörter der Stadt wir als „umgesetzt“ zählen —
-   das wäre unser Urteil und nicht ihres. Vorschlag: drei Bausteine statt
-   einer Stufe. **Das berührt Tims Entscheidung und wartet auf sein Ja
-   (§ 8, Frage A).**
+   das wäre unser Urteil und nicht ihres. Stattdessen drei Bausteine:
+   Berichtsstand, Stand laut Stadt, eigene Termine. **Tim hat das am
+   09.11.2026 so entschieden.**
 3. **Die offenen Aufträge sind drei verschieden riskante Dinge** (§ 3.5).
    „Plan ohne Bericht“ fällt in Phase 3 ohne Zusatzkosten ab. „Ratsauftrag
    ohne Folge“ ist der heikle Teil und bekommt, so der Vorschlag, einen
@@ -403,7 +406,7 @@ und zeigt, wo er fehlt. Sie gilt für laufende Pläne (als Zwischenstand) und
 für den Rückblick. **Gemessen wird am Plan selbst, nicht an uns:** Maßstab
 sind die eigenen Maßnahmen, Termine und Zielwerte des Plans.
 
-**Offen ist das Wie** (§ 8, Frage A). Die erste Fassung sah fünf Stufen nach
+**Geändert hat sich das Wie.** Die erste Fassung sah fünf Stufen nach
 einer Drittel-Regel vor: „Weitgehend umgesetzt“ ab zwei Dritteln der
 Maßnahmen, „Auf dem Weg“ zwischen einem und zwei Dritteln, „Hinter dem eigenen
 Zeitplan“ unter einem Drittel nach mehr als der halben Laufzeit, dazu „Neu
@@ -429,7 +432,8 @@ geeicht“ werden. Das ist geschehen, und sie trägt nicht:
   rechnen. Alle übrigen hießen „Stand unbekannt“ oder fielen durch — auch
   solche, über die regelmäßig berichtet wird.
 
-**Vorschlag: drei Bausteine statt einer Stufe.** Jeder beantwortet eine Frage,
+**Deshalb drei Bausteine statt einer Stufe** (Tims Entscheidung 09.11.2026).
+Jeder beantwortet eine Frage,
 die sich aus dem Bestand beantworten lässt, und keiner verlangt, dass wir die
 Wörter der Stadt in „umgesetzt“ und „nicht umgesetzt“ sortieren.
 
@@ -517,9 +521,8 @@ erscheint unter den offenen Aufträgen (§ 3.5, Art 1).
   zitierend. Was eingeordnet wird, rechnet die Regel — reproduzierbar und
   angreifbar, wo sie falsch ist.
 
-**Bis Tim entschieden hat,** baut Phase 3 nur, was beide Fassungen brauchen:
-die Statusdaten und den Berichtsstand. „Stand unbekannt“ der ersten Fassung
-steckt in derselben Rechnung (Zeilen 5 bis 7).
+Phase 3 baut alle drei Bausteine. „Stand unbekannt“ der ersten Fassung steckt
+im Berichtsstand (Zeilen 5 bis 7); ein bewertendes Wort je Plan gibt es nicht.
 
 ### 3.4 Neutralität und Scheinpräzision: die Regeln
 
@@ -756,6 +759,11 @@ Was sich ohne Modell lesen lässt, zuerst:
 - **Kennzahl:** THG-Bilanz als `council/plan_indicators/klimaschutzplan_2035.json`
   aus `23/0653`, `25/0131` und `25/0866`, getrennt nach Soll und Ist, mit dem
   Hinweis des Berichts auf den Strommix.
+- **Stand laut Stadt:** Die Bewegung zwischen zwei Momentaufnahmen rechnet
+  das Backend; Gründe und Vorbehalte der Stadt kommen als kurze Zitate mit
+  Vorlage und Seite in die Statusdatei.
+- **Eigene Termine:** Laufzeit, vergangener Anteil und Überprüfungsfrist aus
+  dem Register, im Backend als Tatsachen formuliert.
 
 Dann, jeweils erst nach einer Messung mit `limit=20`:
 
@@ -767,8 +775,9 @@ Dann, jeweils erst nach einer Messung mit `limit=20`:
   `23/0562`, `25/0041` und `26/0190`. Die Antwort „unklar“ ist erlaubt und
   kein Fehler.
 
-- **Lieferbar:** Statuszeile auf den Karten, Statuschips mit Verlauf, der
-  Block KENNZAHL, der Berichtsstand. Bild vor dem Merge.
+- **Lieferbar:** die drei Bausteine der Einordnung (Berichtsstand, Stand laut
+  Stadt mit Statuszeile auf den Karten und Statuschips mit Verlauf, eigene
+  Termine) und der Block KENNZAHL. Bild vor dem Merge.
 - **Messziel:** 100 % der Status aus Portal, Parser und Farben stimmen mit
   der Quelle überein (Stichprobe von 30). Beim Mobilitätsplan wird höchstens
   1 von 20 einer falschen Maßnahme zugeordnet.
@@ -903,7 +912,7 @@ Stichprobe und den Befunden im PR.
 
 - **Die Stadt ändert ihre Zählung** (KSP 90 → 97, „Realisiert“ 22 → 20).
   Deshalb zeigen wir eine Zeitreihe mit dem Wortlaut der Stadt und keine
-  eigene Quote — und deshalb der Vorschlag in § 3.3a.
+  eigene Quote — und deshalb die drei Bausteine in § 3.3a.
 - **Das Klimaportal ist eine fremde Seite.** Ihr Aufbau kann sich ändern (die
   Daten stehen in Attributen eines Seitengenerators, nicht in einer
   Schnittstelle), eine Lizenz nennt sie nicht, und sie kann den Abruf
@@ -934,7 +943,7 @@ Stichprobe und den Befunden im PR.
 
 ### Entschieden (09.11.2026)
 
-Die Nummern sind die der ersten Fassung.
+Die Nummern 1 bis 6 sind die der ersten Fassung.
 
 1. **Was zählt als Plan der Stadt?** Wie vorgeschlagen: Klasse 1 sind Pläne
    mit Maßnahmen und Ratsbeschluss (A), Klasse 2 Rahmenstrategien (B),
@@ -942,7 +951,7 @@ Die Nummern sind die der ersten Fassung.
    Steuerungskonzepte wie das EEK laufen nur als Verweis mit.
 2. **Externe Quellen:** ja, beides — Klimaportal und Pläne von vor 2018.
 3. **Rückblick und Einordnung:** ja zu einer eigenen, fairen Einordnung je
-   Plan (§ 3.3a). *Das Wie steht mit Frage A neu zur Entscheidung.*
+   Plan (§ 3.3a). Das Wie regelt Nr. 7.
 4. **Die sechs Ziele und der Stempel:** Die alte Bewertung („bringt voran /
    bremst“ samt Stempel, täglich per Modell aus `track_goals`) läuft weiter,
    bis „Pläne“ auf Prod ist. Dann hört der tägliche Lauf auf, und die alten
@@ -951,19 +960,13 @@ Die Nummern sind die der ersten Fassung.
 5. **Sichtbarkeit:** dev zuerst, Prod mit dem nächsten Release, sobald
    fertig.
 6. **Prüfaufwand:** Der Agent prüft, mit vollständigem Zählabgleich.
+7. **Einordnung in drei Bausteinen** (neu, nach der Überarbeitung):
+   Berichtsstand, Stand laut Stadt und eigene Termine des Plans ersetzen die
+   fünf Stufen nach Dritteln (§ 3.3a). Ein bewertendes Wort je Plan gibt es
+   nicht; auch eine Zwischenlösung (Stufen nur für ausgezählte, abgelaufene
+   Pläne) entfällt.
 
 ### Offen
-
-**A. Einordnung: drei Bausteine statt der Drittel-Regel?** (§ 3.3a) Der
-Vorschlag ersetzt die fünf Stufen durch Berichtsstand, Stand laut Stadt und
-eigene Termine. Was dabei verloren geht: ein einzelnes Wort je Plan, das
-*Umsetzung* bewertet („Weitgehend umgesetzt“, „Hinter dem eigenen Zeitplan“).
-Was gewonnen wird: Jeder der 43 Pläne bekommt eine Einordnung, die sich aus
-dem Bestand belegen lässt, und keine hängt an einer Zählweise, die die Stadt
-selbst für unscharf erklärt. Eine Zwischenlösung wäre möglich — die Stufen
-nur dort, wo die Stadt selbst „umgesetzt“ auszählt und die Laufzeit vorbei
-ist (heute etwa Aktionsplan Gewalt 2020 und Schulentwicklungsplan 2018). Bis zur
-Antwort baut Phase 3 nur, was beide Wege brauchen.
 
 **B. Eigener Schalter für „Ratsauftrag ohne Folge“?** (§ 3.5) Vorschlag: ja,
 `offene-auftraege`. Dann fährt „Pläne“ ohne die riskanteste Liste nach Prod,
