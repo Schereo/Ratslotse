@@ -64,6 +64,21 @@ test("der Stand steht in den Worten der Stadt, mit Herkunft und ohne Quote", asy
   await expect(status.getByText("Zählbasis: 90 → 97 Maßnahmen")).toBeVisible();
   await expect(status.getByRole("row", { name: /Realisiert 11 15 20 22 20/ })).toBeVisible();
   await expect(status).not.toContainText("%");
+  // Die Kennzahl steht neben dem Plan: Soll, Ist, Quelle — und der Vorbehalt des Berichts.
+  const indicator = page.locator('section[aria-labelledby="plan-indicators"]');
+  await expect(indicator.getByRole("row", { name: /2023 969\.000 .* 935\.792 −17,9 % 25\/0866/ })).toBeVisible();
+  await expect(indicator.getByText(/Strommix/)).toBeVisible();
+});
+
+test("der Stand je Empfehlung kommt aus den Zellfarben der Evaluation", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=aktionsplan_gewalt_2020");
+  const status = page.locator('section[aria-labelledby="plan-city-status"]');
+  await expect(status.getByText("Nach Angaben der Verwaltung · Stand 08/2026")).toBeVisible();
+  await expect(status.getByText(/Der Text zählt 90 Empfehlungen, die Tabelle im Anhang hat 91 Zeilen/)).toBeVisible();
+  const measures = page.locator('section[aria-labelledby="plan-measures"]');
+  await measures.getByRole("button", { name: /Übergreifende Handlungsempfehlungen/ }).click();
+  await expect(measures.getByText("nicht umgesetzt, wird weiterhin gebraucht").first()).toBeVisible();
 });
 
 test("die Maßnahmen lassen sich durchsuchen", async ({ page }) => {

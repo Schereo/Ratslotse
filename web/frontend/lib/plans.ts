@@ -23,6 +23,7 @@ export type PlanMeasureField = PlanMeasures["groups"][number];
 export type PlanMeasure = PlanMeasureField["measures"][number];
 export type PlanStatusBrief = NonNullable<PlanCard["status_brief"]>;
 export type PlanCityStatus = NonNullable<PlanDetail["city_status"]>;
+export type PlanIndicator = PlanDetail["indicators"][number];
 export type PlanStatusNorm = PlanStatusBrief["counts"][number]["status_norm"];
 
 /** „19.12.2022“ aus dem ISO-Datum — ohne `new Date`, das rutscht je nach
@@ -148,4 +149,18 @@ export function statusLabels(series: readonly { counts: readonly { status_raw: s
     for (const c of snapshot.counts) if (!out.includes(c.status_raw)) out.push(c.status_raw);
   }
   return out;
+}
+
+/** „935.792“ — ganze Zahlen mit Tausenderpunkt. */
+export function formatAmount(value: number): string {
+  return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+/** Eine Änderung als Anteil (−0,1791 …) in Prozent mit einer Nachkommastelle:
+ *  „−17,9 %“. Gerundet wird genau hier, einmal — das Backend liefert exakt. */
+export function formatChange(ratio: number): string {
+  const tenths = Math.round(ratio * 1000);
+  const sign = tenths > 0 ? "+" : tenths < 0 ? "−" : "±";
+  const abs = Math.abs(tenths);
+  return `${sign}${Math.floor(abs / 10)},${abs % 10} %`;
 }

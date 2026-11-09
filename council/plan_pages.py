@@ -496,6 +496,17 @@ def city_status_block(key: str) -> dict | None:
     }
 
 
+def indicator_blocks(key: str) -> list[dict]:
+    """KENNZAHL (§ 3.2 Nr. 5): Soll und Ist mit Bilanzjahr und Quelle, die Vorbehalte des Berichts dabei."""
+    return [{
+        "key": ind["key"], "label": ind["label"], "unit": ind["unit"],
+        "baseline_year": ind["baseline"]["year"], "baseline_value": ind["baseline"]["value"],
+        "baseline_label": ind["baseline"]["label"], "baseline_template": ind["baseline"].get("template"),
+        "rows": plan_state.indicator_rows(ind),
+        "notes": [{"text": n["text"], "template_number": n.get("template")} for n in ind.get("notes") or []],
+    } for ind in plan_state.indicators(key)]
+
+
 def _card(plan: register.Plan, items: list[dict], today: str) -> dict:
     state = status(plan, today)
     latest = _latest_report(plan, items)
@@ -717,6 +728,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "predecessor": _neighbour(plan.predecessor),
         "measures": measures_block(key),
         "city_status": city_status_block(key),
+        "indicators": indicator_blocks(key),
         "timeline": tl,
         "runway": runway(plan, items, state, today, tl["stations"]),
         "since": since(plan, items, state, today),

@@ -15168,6 +15168,8 @@ export interface components {
             group: "running" | "preparing" | "ended";
             /** Horizon Note */
             horizon_note: string | null;
+            /** Indicators */
+            indicators: components["schemas"]["PlanIndicator"][];
             /** Key */
             key: string;
             /** Kicker */
@@ -15387,6 +15389,54 @@ export interface components {
             label: string;
             /** Plans */
             plans: components["schemas"]["PlanCard"][];
+        };
+        /**
+         * PlanIndicator
+         * @description Eine Kennzahl neben dem Plan — nicht sein Ergebnis (Plan § 3.4 Nr. 4).
+         */
+        PlanIndicator: {
+            /** Baseline Label */
+            baseline_label: string;
+            /** Baseline Template */
+            baseline_template: string | null;
+            /** Baseline Value */
+            baseline_value: number;
+            /** Baseline Year */
+            baseline_year: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Notes */
+            notes: components["schemas"]["PlanIndicatorNote"][];
+            /** Rows */
+            rows: components["schemas"]["PlanIndicatorRow"][];
+            /** Unit */
+            unit: string;
+        };
+        /** PlanIndicatorNote */
+        PlanIndicatorNote: {
+            /** Template Number */
+            template_number: string | null;
+            /** Text */
+            text: string;
+        };
+        /** PlanIndicatorRow */
+        PlanIndicatorRow: {
+            /** Actual */
+            actual: number | null;
+            /** Actual Change */
+            actual_change: number | null;
+            /** Target */
+            target: number | null;
+            /** Target Change */
+            target_change: number | null;
+            /** Target Label */
+            target_label: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Year */
+            year: number;
         };
         /**
          * PlanLane
@@ -28073,4 +28123,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 32c62f62722da83edab9852db95fa426161854c4c400b7dbfbdc865c86bd7536
+// vertrag-sha256: 2be19ca318228edf6d8f3cbd05a0e97a1ec5b8bd6f2877cd05fde1eab396fafc

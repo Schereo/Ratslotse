@@ -1,0 +1,515 @@
+{
+ "plan": "aktionsplan_gewalt_2020",
+ "snapshots": [
+  {
+   "as_of": "2026-08",
+   "source": {
+    "kind": "attachment",
+    "label": "Evaluation und Fortschreibung, Kapitel 2 und Anhang 4.1",
+    "template": "26/0681/1",
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314635&type=do",
+    "fetched": null
+   },
+   "total": 90,
+   "complete": true,
+   "counts": [
+    {
+     "status_raw": "umgesetzt",
+     "status_norm": "done",
+     "count": 56
+    },
+    {
+     "status_raw": "aktuell in der Umsetzung",
+     "status_norm": "in_progress",
+     "count": 3
+    },
+    {
+     "status_raw": "angegangen, liegt nicht mehr beim Gleichstellungsbüro",
+     "status_norm": "started",
+     "count": 8
+    },
+    {
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open",
+     "count": 14
+    },
+    {
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused",
+     "count": 9
+    }
+   ],
+   "measures": [
+    {
+     "code": "1",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "2",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "3",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "4",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "5",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "6",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "7",
+     "status_raw": "angegangen, liegt nicht mehr beim Gleichstellungsbüro",
+     "status_norm": "started"
+    },
+    {
+     "code": "8",
+     "status_raw": "angegangen, liegt nicht mehr beim Gleichstellungsbüro",
+     "status_norm": "started"
+    },
+    {
+     "code": "9",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "10",
+     "status_raw": "angegangen, liegt nicht mehr beim Gleichstellungsbüro",
+     "status_norm": "started"
+    },
+    {
+     "code": "11",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "12",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "13",
+     "status_raw": "angegangen, liegt nicht mehr beim Gleichstellungsbüro",
+     "status_norm": "started"
+    },
+    {
+     "code": "14",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "15",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "16",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "17",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "18",
+     "status_raw": "begonnen",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "19",
+     "status_raw": "begonnen",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "20",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "21",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "22",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "23",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "24",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "25",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "26",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "27",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "28",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "29",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "30",
+     "status_raw": "angegangen, liegt nicht mehr beim Gleichstellungsbüro",
+     "status_norm": "started"
+    },
+    {
+     "code": "31",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "32",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "33",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "34",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "35",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "36",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "37",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "38",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "39",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "40",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "41",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "42",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "43",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "44",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "45",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "46",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "47",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "48",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "49",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "50",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "51",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "52",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "53",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "54",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "55",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "56",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "57",
+     "status_raw": "begonnen",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "58",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "59",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "60",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "61",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "62",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "63",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "64",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "65",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "66",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "67",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "68",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "69",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "70",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "71",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "72",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "73",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "74",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "75",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "76",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "77",
+     "status_raw": "angegangen, liegt nicht mehr beim Gleichstellungsbüro",
+     "status_norm": "started"
+    },
+    {
+     "code": "78",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "79",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "80",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "81",
+     "status_raw": "angegangen, liegt nicht mehr beim Gleichstellungsbüro",
+     "status_norm": "started"
+    },
+    {
+     "code": "82",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "83",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "84",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "85",
+     "status_raw": "erste Umsetzung, wiederholungsbedürftig",
+     "status_norm": "done"
+    },
+    {
+     "code": "86",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "87",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "88",
+     "status_raw": "umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "89",
+     "status_raw": "nicht umgesetzt, wird weiterhin gebraucht",
+     "status_norm": "open"
+    },
+    {
+     "code": "90",
+     "status_raw": "nicht umgesetzt, wird nicht weiterverfolgt",
+     "status_norm": "paused"
+    },
+    {
+     "code": "91",
+     "status_raw": "angegangen, liegt nicht mehr beim Gleichstellungsbüro",
+     "status_norm": "started"
+    }
+   ]
+  }
+ ],
+ "notes": [
+  {
+   "text": "Vier der fünf Zahlen nennt der Text der Evaluation. Die 8 Empfehlungen „angegangen, liegt nicht mehr beim Gleichstellungsbüro“ zählt er nicht aus; sie stehen so in der Tabelle im Anhang und sind zugleich der Rest zur Gesamtzahl.",
+   "url": null
+  },
+  {
+   "text": "Den Stand je Empfehlung zeigt die Evaluation als Zellfarbe in Anhang 4.1; die Wörter dazu stammen aus der Legende dort.",
+   "url": null
+  },
+  {
+   "text": "Der Text zählt 90 Empfehlungen, die Tabelle im Anhang hat 91 Zeilen („nicht umgesetzt, wird nicht weiterverfolgt“: Text 9, Tabelle 10).",
+   "url": null
+  }
+ ]
+}

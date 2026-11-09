@@ -24,6 +24,9 @@ Quellen:
   mehreren Seiten mit verschiedenen Ständen, Kennungen sind vertauscht, und
   die Summe geht nicht in der Reihe auf (gemessen 09.11.2026: 57 von 90
   eindeutig, 6 widersprüchlich). ``--portal-massnahmen`` zeigt den Abgleich.
+- **Aktionsplan Gewalt 2020:** die Evaluation (Anlage 314635 zu 26/0681/1). Die
+  Verteilung zählt ihr Text, den Stand je Empfehlung trägt die Zellfarbe im
+  Anhang 4.1; das Skript prüft beides gegeneinander.
 - **Wärmeplan:** die Beschlussvorlage 26/0236. Sie ordnet sechs der 18
   Maßnahmen als „in Umsetzung“ ein; für die übrigen nennt sie ein Vorhaben
   und keinen Stand.
@@ -44,6 +47,7 @@ import re
 import sys
 import time
 import urllib.request
+from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 
@@ -52,7 +56,7 @@ sys.path.insert(0, str(WURZEL))
 
 from council import plan_state, plans  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from scripts.plan_massnahmen import CACHE, USER_AGENT  # noqa: E402
+from scripts.plan_massnahmen import CACHE, RIS_DATEI, USER_AGENT, _seiten, violence_rows  # noqa: E402
 
 PORTAL = "https://klimaportal.oldenburg.de"
 PORTAL_CACHE = CACHE / "klimaportal"
@@ -313,8 +317,8 @@ def klimaschutzplan(store: CouncilStore) -> dict:
 # ── Wärmeplan ──────────────────────────────────────────────────────────────
 
 _WAERME_HEAD = re.compile(r"^([KFTO]\d)\s*[-–]\s+\S.*$", re.M)
-_NUMBER_WORDS = {"zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6, "sieben": 7, "acht": 8, "neun": 9,
-                 "zehn": 10, "elf": 11, "zwölf": 12}
+_NUMBER_WORDS = {"eine": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6, "sieben": 7, "acht": 8,
+                 "neun": 9, "zehn": 10, "elf": 11, "zwölf": 12}
 
 
 def waermeplan(store: CouncilStore) -> dict:
@@ -353,10 +357,92 @@ def waermeplan(store: CouncilStore) -> dict:
     }
 
 
+# ── Aktionsplan Gewalt 2020 ────────────────────────────────────────────────
+
+#: Farbe in Anhang 4.1 → das Wort der Legende dort, und die Gruppe für den Farbton.
+_VIOLENCE_LEGEND = {
+    "dark_green": ("umgesetzt", "done"),
+    "light_green": ("erste Umsetzung, wiederholungsbedürftig", "done"),
+    "pastel_green": ("angegangen, liegt nicht mehr beim Gleichstellungsbüro", "started"),
+    "yellow": ("begonnen", "in_progress"),
+    "red": ("nicht umgesetzt, wird weiterhin gebraucht", "open"),
+    "grey": ("nicht umgesetzt, wird nicht weiterverfolgt", "paused"),
+}
+#: Was der Text der Evaluation (Kapitel 2) selbst zählt: Satzmuster → (Wort, Gruppe, Farben im Anhang).
+_VIOLENCE_COUNTS = (
+    (r"konnten (\w+) Handlungsempfehlungen, also mehr als die Hälfte umgesetzt werden", "umgesetzt", "done",
+     ("dark_green", "light_green")),
+    (r"(\w+) Handlungsempfehlungen sind aktuell in der Umsetzung", "aktuell in der Umsetzung", "in_progress",
+     ("yellow",)),
+    (r"(\w+) Handlungsempfehlungen wurden im Aktionszeitraum nicht umgesetzt, werden aber weiterhin gebraucht",
+     "nicht umgesetzt, wird weiterhin gebraucht", "open", ("red",)),
+    (r"(\w+) Handlungsempfehlungen konnten im Aktionszeitraum nicht umgesetzt werden und werden aus verschiedenen "
+     r"Gründen nicht weiterverfolgt", "nicht umgesetzt, wird nicht weiterverfolgt", "paused", ("grey",)),
+)
+
+
+def _number(word: str) -> int:
+    return int(word) if word.isdigit() else _NUMBER_WORDS[word.lower()]
+
+
+def aktionsplan_gewalt_2020(store: CouncilStore) -> dict:
+    """Die Verteilung zählt der Text der Evaluation selbst (Kapitel 2); den Stand je
+    Empfehlung trägt die Zellfarbe im Anhang. Beides muss zusammenpassen — die eine
+    Abweichung, die es gibt (Text 90 Empfehlungen, Tabelle 91 Zeilen), steht als Hinweis da."""
+    rows = violence_rows()
+    text = " ".join(" ".join(page.split()) for page in _seiten(314635)[15:30])
+    total = re.search(r"alle (\d+) Handlungsempfehlungen des Aktionsplans betrachtet", text)
+    if not total:
+        raise SystemExit("Aktionsplan Gewalt: Gesamtzahl im Text der Evaluation nicht gefunden")
+    by_color = Counter(row["color"] for row in rows)
+    counts, off = [], []
+    for pattern, raw, norm, colors in _VIOLENCE_COUNTS:
+        m = re.search(pattern, text)
+        if not m:
+            raise SystemExit(f"Aktionsplan Gewalt: Satz zu „{raw}“ nicht gefunden")
+        said, seen = _number(m.group(1)), sum(by_color[c] for c in colors)
+        if abs(said - seen) > 1:
+            raise SystemExit(f"Aktionsplan Gewalt: „{raw}“ — Text {said}, Tabelle {seen}")
+        if said != seen:
+            off.append(f"„{raw}“: Text {said}, Tabelle {seen}")
+        counts.append({"status_raw": raw, "status_norm": norm, "count": said})
+    # Die sechste Gruppe zählt der Text nicht aus. Sie steht in der Tabelle — und muss
+    # zugleich der Rest zur Gesamtzahl des Textes sein, sonst stimmt etwas nicht.
+    rest = int(total.group(1)) - sum(c["count"] for c in counts)
+    if rest != by_color["pastel_green"]:
+        raise SystemExit(f"Aktionsplan Gewalt: Rest zur Gesamtzahl {rest}, pastellgrüne Zeilen {by_color['pastel_green']}")
+    raw, norm = _VIOLENCE_LEGEND["pastel_green"]
+    counts.insert(2, {"status_raw": raw, "status_norm": norm, "count": rest})
+    stated = sum(c["count"] for c in counts)
+    notes = [{"text": f"Vier der fünf Zahlen nennt der Text der Evaluation. Die {rest} Empfehlungen „{raw}“ zählt er "
+                      "nicht aus; sie stehen so in der Tabelle im Anhang und sind zugleich der Rest zur Gesamtzahl.",
+              "url": None},
+             {"text": "Den Stand je Empfehlung zeigt die Evaluation als Zellfarbe in Anhang 4.1; die Wörter "
+                      "dazu stammen aus der Legende dort.", "url": None}]
+    if len(rows) != int(total.group(1)) or off:
+        notes.append({"text": f"Der Text zählt {total.group(1)} Empfehlungen, die Tabelle im Anhang hat {len(rows)} "
+                              "Zeilen" + (f" ({'; '.join(off)})." if off else "."), "url": None})
+    return {
+        "plan": "aktionsplan_gewalt_2020",
+        "snapshots": [{
+            "as_of": "2026-08",
+            "source": {"kind": "attachment", "label": "Evaluation und Fortschreibung, Kapitel 2 und Anhang 4.1",
+                       "template": "26/0681/1", "url": RIS_DATEI.format(id=314635), "fetched": None},
+            "total": int(total.group(1)),
+            "complete": stated == int(total.group(1)),
+            "counts": counts,
+            "measures": [{"code": str(n), "status_raw": _VIOLENCE_LEGEND[row["color"]][0],
+                          "status_norm": _VIOLENCE_LEGEND[row["color"]][1]} for n, row in enumerate(rows, start=1)],
+        }],
+        "notes": notes,
+    }
+
+
 #: plan → Leser. Jeder prüft seine Zahlen selbst gegen die Quelle und bricht ab, wenn sie nicht aufgehen.
 SOURCES: dict[str, Callable[[CouncilStore], dict]] = {
     "klimaschutzplan_2035": klimaschutzplan,
     "waermeplan": waermeplan,
+    "aktionsplan_gewalt_2020": aktionsplan_gewalt_2020,
 }
 
 
