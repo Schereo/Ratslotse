@@ -61,6 +61,31 @@ def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
+def test_besuchstage_zeigen_minuten_bereiche_und_funktionen(client):
+    """Admin-Panel, Nutzer-Detail (Tims Befund 09.11.2026): Statt eines Balkens
+    mit der Zahl der Anfragen eine Zeile je Tag — aktive Minuten, Funktionen,
+    besuchte Bereiche. Gespeichert wird nur der Bereich, nie der Pfad; ohne
+    Konto gibt es nichts zu zählen."""
+    assert client.post("/api/activity/page", json={"route": "/fragen"}).status_code == 401
+    _register(client)
+    client.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"})
+    admin = client.get("/api/auth/me").json()
+    for pfad in ("/fragen", "/council/decision?id=8525", "/fragen", "/impressum", "/haushalt/schulden"):
+        assert client.post("/api/activity/page", json={"route": pfad}).json() == {"ok": True}
+
+    tage = client.get(f"/api/admin/users/{admin['id']}").json()["visit_days"]
+    assert len(tage) == 1
+    heute = tage[0]
+    assert [b["label"] for b in heute["areas"]] == ["Fragen", "Beschlüsse", "Haushalt"]
+    assert heute["minutes"] >= 1
+    store = Store(RATSLOTSE_DB)
+    features = {r["feature"] for r in store._conn.execute(
+        "SELECT feature FROM user_activity WHERE owner_id = ?", (admin["id"],))}
+    store.close()
+    # Kein Pfad, keine Kennung — nur Bereiche.
+    assert not any("8525" in f or "/" in f for f in features)
+
+
 def test_native_app_config_contract(client):
     """Die Antwort, die JEDE Oberfläche vor allem anderen abfragt.
 

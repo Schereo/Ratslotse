@@ -1379,6 +1379,27 @@ class AdminUserFeatures(TypedDict):
     karte: int
 
 
+class AdminVisitAction(TypedDict):
+    """Eine genutzte Funktion an einem Tag — ``key`` wie in ``features``."""
+    key: str
+    count: int
+
+
+class AdminVisitArea(TypedDict):
+    """Ein besuchter Bereich (``kern/activity_areas.py``)."""
+    key: str
+    label: str
+
+
+class AdminVisitDay(TypedDict):
+    """Ein Tag mit Aktivität im Nutzer-Detail. ``minutes`` ist ``None`` für
+    Tage vor der Minutenzählung (11/2026)."""
+    day: str
+    minutes: int | None
+    actions: list[AdminVisitAction]
+    areas: list[AdminVisitArea]
+
+
 class AdminUserDetail(TypedDict):
     """``Store.admin_user_detail`` — ein festes Literal, deshalb vollständig
     aufgeschrieben und ohne ``NotRequired``. ``history`` ist die 30-Tage-Reihe
@@ -1403,6 +1424,9 @@ class AdminUserDetail(TypedDict):
     subscriptions: list[str]
     history: list[int]
     history_days: list[str]
+    #: Die Tage mit Aktivität der letzten 30 Tage, neueste zuerst — was das
+    #: Panel statt des Balkens zeigt.
+    visit_days: list[AdminVisitDay]
     #: Womit das Konto angelegt wurde: web | ios | android | app. ``None`` =
     #: vor Einführung der Messung registriert.
     signup_client: str | None

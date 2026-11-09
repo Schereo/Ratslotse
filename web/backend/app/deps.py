@@ -119,6 +119,11 @@ def _sitzung_zaehlen(store: Store, owner_id: int, client: str) -> None:
     if not store.record_activity(owner_id, "session", client, anzahl=n, warten=False):
         with _sitzung_sperre:
             _sitzung_offen[key] = _sitzung_offen.get(key, 0) + n
+    # Aktive Minuten (seit 11/2026): Geschrieben wird höchstens einmal je
+    # Minute, also ist jeder Schreibvorgang eine Minute mit Aktivität. Die
+    # Zahl der Anfragen daneben sagt das nicht — eine Seite löst ein Dutzend
+    # aus. Gezählt wird nur, OB in einer Minute etwas war, nie wann.
+    store.record_activity(owner_id, "minutes", client, warten=False)
 
 
 def optional_user(request: Request, store: Store = Depends(get_store)) -> dict | None:
