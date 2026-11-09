@@ -16,7 +16,8 @@ from ..config import get_settings
 from ..antworten import Ok
 from ..deps import get_store, require_active
 from ..ratelimit import client_error_limiter, feedback_limiter, page_view_limiter, support_limiter
-from ..schemas import ClientErrorIn, FeedbackIn, PageViewIn, SupportIn
+from ..clients import client_kind
+from ..schemas import ActivityPageIn, ClientErrorIn, FeedbackIn, PageViewIn, SupportIn
 
 logger = logging.getLogger("ratslotse.web.feedback")
 
@@ -252,4 +253,30 @@ def seitenaufruf(payload: PageViewIn, request: Request,
             store.merke_mail_rueckkehr(payload.von, angemeldet=bool(payload.logged_in))
     except Exception:  # noqa: BLE001 — die Zählung bleibt folgenlos
         logger.exception("Seitenaufruf ließ sich nicht zählen")
+    return {"ok": True}
+
+
+# Bereiche je Konto (seit 11/2026, Tims Entscheidung 09.11.): Was ein Konto an
+# einem Tag ungefähr gemacht hat, für das Admin-Panel. Eigener Router, weil der
+# Seitenaufruf oben bewusst anonym bleibt.
+activity_router = APIRouter(prefix="/api/activity", tags=["activity"])
+
+
+@activity_router.post("/page")
+def bereich_gesehen(payload: ActivityPageIn, request: Request,
+                    user: dict = Depends(require_active),
+                    store: Store = Depends(get_store)) -> Ok:
+    """Den Bereich eines Seitenwechsels für dieses Konto zählen.
+
+    Gespeichert wird nur ``area:<bereich>`` je Tag in ``user_activity`` — kein
+    Pfad, keine Query, keine Uhrzeit (``kern/activity_areas.py``). Ein Pfad
+    ohne Bereich wird nicht gezählt. **Immer 200**, wie der Seitenaufruf: Ein
+    Zähler erzeugt keine Fehlermeldung.
+    """
+    from kern import activity_areas
+
+    bereich = activity_areas.area_for(payload.route)
+    if bereich:
+        store.record_activity(user["id"], activity_areas.PREFIX + bereich,
+                              client_kind(request), warten=False)
     return {"ok": True}

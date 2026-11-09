@@ -1,6 +1,19 @@
 {
   "components": {
     "schemas": {
+      "ActivityPageIn": {
+        "description": "Ein Seitenwechsel eines angemeldeten Kontos — für die Bereiche je Konto.\n\nGetrennt von ``PageViewIn``: Der Seitenaufruf bleibt anonym und schaut in\nkein Token. Hier ist das Konto der Punkt; gespeichert wird aber nur der\nBEREICH, auf den ``kern/activity_areas.py`` den Pfad abbildet.",
+        "properties": {
+          "route": {
+            "default": "/",
+            "maxLength": 200,
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "title": "ActivityPageIn",
+        "type": "object"
+      },
       "AdminAbweisung": {
         "properties": {
           "n": {
@@ -3203,6 +3216,13 @@
             },
             "title": "Topics",
             "type": "array"
+          },
+          "visit_days": {
+            "items": {
+              "$ref": "#/components/schemas/AdminVisitDay"
+            },
+            "title": "Visit Days",
+            "type": "array"
           }
         },
         "required": [
@@ -3225,6 +3245,7 @@
           "subscriptions",
           "history",
           "history_days",
+          "visit_days",
           "signup_client",
           "clients"
         ],
@@ -3400,6 +3421,82 @@
           "clients"
         ],
         "title": "AdminUserRow",
+        "type": "object"
+      },
+      "AdminVisitAction": {
+        "description": "Eine genutzte Funktion an einem Tag — ``key`` wie in ``features``.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "count"
+        ],
+        "title": "AdminVisitAction",
+        "type": "object"
+      },
+      "AdminVisitArea": {
+        "description": "Ein besuchter Bereich (``kern/activity_areas.py``).",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "AdminVisitArea",
+        "type": "object"
+      },
+      "AdminVisitDay": {
+        "description": "Ein Tag mit Aktivität im Nutzer-Detail. ``minutes`` ist ``None`` für\nTage vor der Minutenzählung (11/2026).",
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/AdminVisitAction"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/AdminVisitArea"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "minutes": {
+            "title": "Minutes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "day",
+          "minutes",
+          "actions",
+          "areas"
+        ],
+        "title": "AdminVisitDay",
         "type": "object"
       },
       "Affiliation": {
@@ -28321,6 +28418,48 @@
         "summary": "Test Notification",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/api/activity/page": {
+      "post": {
+        "description": "Den Bereich eines Seitenwechsels für dieses Konto zählen.\n\nGespeichert wird nur ``area:<bereich>`` je Tag in ``user_activity`` — kein\nPfad, keine Query, keine Uhrzeit (``kern/activity_areas.py``). Ein Pfad\nohne Bereich wird nicht gezählt. **Immer 200**, wie der Seitenaufruf: Ein\nZähler erzeugt keine Fehlermeldung.",
+        "operationId": "bereich_gesehen_api_activity_page_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityPageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bereich Gesehen",
+        "tags": [
+          "activity"
         ]
       }
     },
