@@ -129,6 +129,18 @@ def test_ruhige_lage_nennt_die_sitzungen_dazwischen():
     assert "nichts zu dieser Sache entschieden" in regel
 
 
+def test_ruhige_lage_verankert_seitdem_am_datum():
+    """Gold Prod 09.11.2026: „Seitdem hat der Rat dazu nichts Neues beschlossen“
+    stand hinter der Prognose von 2023 — die Aussetzung vom 25.11.2024 fehlte nur
+    im Kontext. Die Regel nennt deshalb das Datum und verbietet „seitdem nichts“
+    hinter einem älteren Beschluss."""
+    regel = qa.aktenstand_regel(
+        qa.aktenstand(_StoreStub(), _kandidaten("2025-06-05"), heute=HEUTE))
+    assert "Seit dem 05.06.2025" in regel
+    assert "NIE hinter einen älteren Beschluss" in regel
+    assert "die gefragte Sache selbst betrifft" in regel
+
+
 def test_die_regel_steht_wirklich_im_antwort_prompt():
     """Ohne diesen Durchstich nützt die schönste Regel nichts — sie muss durch
     `_answer_messages` bis in den Prompt kommen."""

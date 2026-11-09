@@ -923,6 +923,28 @@ def _umlaut_mehrzahl(gefaltet: str) -> str:
     return gefaltet[:anfang] + gruppe[0] + "e" + gefaltet[anfang + 1:]
 
 
+#: Kompositum-Teile müssen mindestens so lang sein — sonst trüge „mehr“ +
+#: „einnahmen“ jeden Titel, der beide Wörter irgendwo hat.
+_COMPOUND_PART_MIN = 5
+
+
+def _compound_splits(folded: str) -> list[tuple[str, str]]:
+    """„parkgebuehrenerhoehung“ → [(„parkgebuehren“, „erhoehung“), …].
+
+    Ein Titel nennt die Sache oft getrennt: „Erhöhung der Parkgebühren“ statt
+    „Parkgebührenerhöhung“ — die Teilwortsuche findet das Kompositum darin
+    nicht (Gold Prod 09.11.2026: die Aussetzung vom 25.11.2024 lag hinter dem
+    Kontext-Deckel und rückte nicht nach). Jede Trennstelle mit zwei langen
+    Teilen, das erste auch ohne Fugen-s („verkehrs|beruhigung“)."""
+    out: list[tuple[str, str]] = []
+    for i in range(_COMPOUND_PART_MIN, len(folded) - _COMPOUND_PART_MIN + 1):
+        head, tail = folded[:i], folded[i:]
+        out.append((head, tail))
+        if head.endswith("s") and len(head) > _COMPOUND_PART_MIN:
+            out.append((head[:-1], tail))
+    return out
+
+
 def nachzuegler(candidates: list[dict], ctx_n: int, question: str, terms: str,
                 max_n: int = NACHZUEGLER_MAX) -> list[dict]:
     """Treffer hinter dem Kontext-Deckel, deren Titel ein SELTENES Fragewort trägt.
@@ -954,9 +976,11 @@ def nachzuegler(candidates: list[dict], ctx_n: int, question: str, terms: str,
     # („Baum" → „Bäume", „Platz" → „Plätze"), sonst träfe „Baum" den Titel
     # „Erhalt von Bäumen" nicht.
     formen: dict[str, tuple[str, ...]] = {}
+    splits: dict[str, list[tuple[str, str]]] = {}
     for w in woerter:
         g = _falte(w).rstrip("n") if w.endswith("en") else _falte(w)
         formen[g] = (g, _umlaut_mehrzahl(g))
+        splits[g] = _compound_splits(g)
     # Titel plus Anfang der Kurzfassung: Der Bericht zur Ortsbegehung an der
     # Nadorster Straße trägt „Bäume" nur in der Kurzfassung — mit dem Titel
     # allein blieb er hinter dem Deckel (dev, 20.09.2026).
@@ -966,7 +990,8 @@ def nachzuegler(candidates: list[dict], ctx_n: int, question: str, terms: str,
     haeufig_ab = max(2, int(len(candidates) * _NACHZUEGLER_HAEUFIG))
 
     def trifft(w: str, t: str) -> bool:
-        return any(f and f in t for f in formen[w])
+        return (any(f and f in t for f in formen[w])
+                or any(a in t and b in t for a, b in splits[w]))
 
     # Selten heißt: in den TITELN selten — die Kurzfassung ist zum Zählen zu
     # breit. Ein Wort, das in keinem Titel steht, ist erst recht selten (es
@@ -1977,10 +2002,18 @@ def aktenstand_regel(stand: dict | None) -> str:
             "ein Beschluss von 2018 — ob er umgesetzt ist, steht nicht in den "
             "Akten, also behaupte es in keine Richtung.")
     elif stand["level"] == "quiet" and letzte and letzte > stand["latest"]:
+        # Mit Datum und mit Bedingung (Gold Prod 09.11.2026): Das Modell hängte
+        # „Seitdem hat der Rat dazu nichts Neues beschlossen“ an die Prognose
+        # von 2023 — die Aussetzung vom 25.11.2024 fehlte nur im Kontext. Und
+        # der jüngste Beschluss unter 40 Treffern betrifft nicht immer die Sache.
+        datum = _datum_de(stand["latest"])
         zeilen.append(
-            " Der Rat hat seitdem getagt, aber nichts zu dieser Sache entschieden "
-            "— wenn die Frage auf den aktuellen Stand zielt, gehört das in die "
-            "Antwort.")
+            f" Seit dem {datum} hat der Rat getagt, aber im Kontext nichts zu dieser "
+            f"Sache entschieden. Zielt die Frage auf den aktuellen Stand, gehört das in "
+            f"die Antwort — mit genau diesem Datum („Seit dem {datum} …“) und nur, wenn "
+            f"der Beschluss vom {datum} die gefragte Sache selbst betrifft. Schreibe "
+            f"„seitdem nichts“ NIE hinter einen älteren Beschluss: Was zwischen ihm und "
+            f"dem {datum} geschah, kann im Kontext fehlen.")
     return "".join(zeilen)
 
 
@@ -3216,6 +3249,11 @@ DEEP_DEBATTE_ANTWORT_MAX = 600
 ASK_WORTBEITRAG_TOP = 8
 ASK_WORTBEITRAG_KANDIDATEN = 40
 ASK_WORTBEITRAG_PAIR_MAX = 700
+#: Personenfragen: So viele Beiträge der Person kommen in den Prompt. Sie SIND
+#: dort die Antwort — „Was hat Behrens zum Baumschutz gesagt?“ fragt nach
+#: zehn Stationen über drei Jahre (Gold behrens-baumschutz). Der Rerank kostet
+#: dasselbe; er prüft ohnehin das ganze Feld (embeddings.WB_PERSON_POOL).
+PERSON_SPEECHES_TOP = 12
 # Pressemitteilungen in /ask: Feld vor dem Cross-Encoder und Zahl der Treffer.
 # Bei Stand-Fragen mehr, denn dort ist die jüngste Meldung oft die Antwort
 # (Stadion: „EU und Kommunalaufsicht geben endgültig grünes Licht“, 12.08.2026).
@@ -3326,6 +3364,38 @@ def title_match_decisions(store, question: str, candidates: list[dict],
     out = [c for c in rest
            if all(w in (c.get("title") or "").lower() for w in rare)]
     return out[:max_extra]
+
+
+#: Aussprache zu den JÜNGSTEN Beschlüssen im Prompt, wenn die ersten acht
+#: älter sind: höchstens so viele Beschlüsse, so viele Beiträge, und je
+#: Tagesordnungspunkt so viele (die Protokollnotiz steht am Ende des Punkts).
+DEBATTE_NEUESTE_N = 3
+DEBATTE_NEUESTE_MAX = 8
+DEBATTE_NEUESTE_JE_TOP = 6
+
+
+def newest_beyond_head(candidates: list[dict], head: int = DEBATTE_ANKER_KOPF,
+                       limit: int = 20, n: int = DEBATTE_NEUESTE_N) -> list[dict]:
+    """Candidates in ``[head:limit]`` that are NEWER than everything in the head.
+
+    Die Aussprache koppelt sich an die ersten acht Beschlüsse — nach Rang,
+    nicht nach Datum. Steht der jüngste Stand dahinter, fehlt seine Debatte:
+    Im Gold-Lauf auf Prod (09.11.2026) lagen so in vier Fällen die
+    entscheidenden Aussagen nur im nachgeladenen Baustein, nicht im Prompt —
+    die Protokollnotiz „Klärung 2027 mit dem KLAK“ (Trinkwasserspender,
+    16.04.2026), die Plangenehmigung am Bahnübergang (11.05.2026), die
+    Personalengpässe in Heidbrook (11.06.2026), Behrens' Informationspflicht
+    (16.04.2026). Die ersten acht reichten dort nur bis 2025.
+
+    Nur Beschlüsse, die jünger sind als JEDER der ersten acht: Liegt der
+    jüngste Stand schon vorn, ändert sich nichts.
+    """
+    top = [str(c.get("session_date") or "")[:10] for c in candidates[:head]]
+    newest_head = max((d for d in top if d), default="")
+    later = [c for c in candidates[head:limit]
+             if c.get("ksinr") and str(c.get("session_date") or "")[:10] > newest_head]
+    later.sort(key=lambda c: str(c.get("session_date") or ""), reverse=True)
+    return later[:n]
 ASK_DEBATTE_TEXT_MAX = 800
 ASK_DEBATTE_ANTWORT_MAX = 600
 

@@ -320,3 +320,25 @@ def test_echte_vorgeschichte_bleibt_stehen():
     # Kurze Fragen nur bei Gleichheit: „Und warum?“ ist keine Dublette von „warum“.
     assert f([{"question": "Und warum?", "answer": "x"}], "warum") != []
     assert f(None, "egal") == []
+
+
+def test_nachzuegler_trennt_komposita():
+    """Gold Prod 09.11.2026: „Parkgebührenerhöhung“ in der Frage, „Erhöhung der
+    Parkgebühren“ im Titel — die Aussetzung vom 25.11.2024 lag hinter dem
+    Deckel und rückte nicht nach, weil das Kompositum als Ganzes gesucht wurde."""
+    cands = [_kand(i, f"Änderung der Gebühren für Bewohnerparkausweise {i}") for i in range(24)]
+    cands.append(_kand(60, "Aussetzung der Erhöhung der Parkgebühren auf städtischen Parkflächen",
+                       "2024-11-25"))
+    cands.append(_kand(61, "Mehreinnahmen aus der Hundesteuer"))
+    nach = qa.nachzuegler(cands, 20, "Wie hoch wären die Mehreinnahmen durch die letzte "
+                          "Parkgebührenerhöhung?", "Parkgebührenerhöhung Mehreinnahmen")
+    assert [c["id"] for c in nach][0] == 60
+
+
+def test_kompositum_teile_sind_lang():
+    """Kurze Teile („mehr“ + „einnahmen“) träfen jeden Titel mit beiden Wörtern."""
+    teile = qa._compound_splits("mehreinnahmen")
+    assert ("mehr", "einnahmen") not in teile
+    assert ("parkgebuehren", "erhoehung") in qa._compound_splits("parkgebuehrenerhoehung")
+    assert ("verkehr", "beruhigung") in qa._compound_splits("verkehrsberuhigung")
+    assert qa._compound_splits("baeume") == []

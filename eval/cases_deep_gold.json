@@ -1031,7 +1031,7 @@
    },
    {
     "id": "X4",
-    "behauptung": "Der Rat hat beschlossen, dass jede Fraktion mindestens ein Mitglied in den Beirat entsendet."
+    "behauptung": "Der RAT hat beschlossen, dass jede Fraktion mindestens ein Mitglied in den Beirat entsendet. (KEIN Verstoß: dass der SPD-Änderungsantrag im Umweltausschuss am 16.04.2026 mindestens ein Mitglied je Fraktion vorsah und dort angenommen wurde — so steht es im Protokoll.)"
    }
   ],
   "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (17). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
@@ -4092,6 +4092,10 @@
    {
     "id": "X2",
     "behauptung": "Der Gebührenpfad wurde vollständig umgesetzt, die Gebühr in Zone 1 liegt heute bei 1,10 oder 1,30 Euro je Viertelstunde."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Seit der Prognose bzw. seit 2023 habe der Rat zu den Parkgebühren nichts Neues beschlossen (die Aussetzung der weiteren Stufen am 25.11.2024 übergangen)."
    }
   ],
   "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (8). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
@@ -4231,8 +4235,8 @@
    "ask"
   ],
   "akte": false,
-  "note": "Echte Frage vom 29.09.2026 („Was ist gestern beim allgemeinen Ausschuss rausgekommen?“), hier mit Datum, damit der Fall nicht am Tag hängt. Damals: Berichte vom Mai/Juni statt der Sitzung. Handgeprüft am 11.10.2026 auf Prod: Sitzung ksinr 4703 mit 11 Tagesordnungspunkten (council_agenda_items), keine Beschlüsse (council_decisions leer, kein Protokoll). Sobald das Protokoll ausgewertet ist, F1 und X1 auf die Ergebnisse umstellen.",
-  "stand": "2026-10-11 (Prod)",
+  "note": "Echte Frage vom 29.09.2026 („Was ist gestern beim allgemeinen Ausschuss rausgekommen?“), hier mit Datum, damit der Fall nicht am Tag hängt. Damals: Berichte vom Mai/Juni statt der Sitzung. Bis 11/2026 erwartete der Fall „noch kein Protokoll“ (Prod 11.10.2026: 11 TOPs, keine Beschlüsse). Am 09.11.2026 war das Protokoll ausgewertet — der Gold-Lauf auf Prod wertete die richtige Antwort mit den Ergebnissen als Verstoß. Seitdem prüft der Fall die Ergebnisse.",
+  "stand": "2026-11-09 (Prod und dev: Beschlüsse ksinr 4703 eingelesen)",
   "question": "Was ist am 28.09.2026 beim allgemeinen Ausschuss herausgekommen?",
   "varianten": [
    "Was hat der Ausschuss für Allgemeine Angelegenheiten am 28. September 2026 beschlossen?"
@@ -4241,43 +4245,73 @@
    {
     "id": "F1",
     "gewicht": 3,
-    "fakt": "Zur Sitzung des Ausschusses für Allgemeine Angelegenheiten am 28.09.2026 liegt noch kein ausgewertetes Protokoll vor; Ergebnisse lassen sich deshalb noch nicht nennen.",
-    "beleg": "council_sessions ksinr 4703; council_decisions ohne Einträge (Stand 11.10.2026)"
+    "fakt": "Der Ausschuss genehmigte die Dienstreise zum städtischen Empfang auf den Promotiedagen in Groningen und beschloss die Änderung der Entschädigungssatzung.",
+    "beleg": "council_decisions ksinr 4703, TOP Ö 5 und Ö 6 (angenommen)"
    },
    {
     "id": "F2",
     "gewicht": 2,
-    "fakt": "Auf der Tagesordnung standen u. a. eine Dienstreise nach Groningen (Promotiedagen), eine Änderung der Entschädigungssatzung, die Zuständigkeit des Verwaltungsausschusses für Auftragsvergaben und ein Antrag der Grünen, Ratsaufzeichnungen unter Creative-Commons-Lizenz zu veröffentlichen (mindestens zwei Punkte).",
-    "beleg": "council_agenda_items ksinr 4703, TOP Ö 5, Ö 6, Ö 7, Ö 9.1"
+    "fakt": "Die Zuständigkeit des Verwaltungsausschusses für Auftragsvergaben wurde einstimmig auf die Sitzung des neuen Stadtrats am 30. November vertagt.",
+    "beleg": "council_decisions ksinr 4703, TOP Ö 7"
    },
    {
     "id": "F3",
+    "gewicht": 2,
+    "fakt": "Der Grünen-Antrag, Ratsaufzeichnungen unter Creative-Commons-Lizenz zu veröffentlichen, wurde einstimmig in den Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit (Sitzung am 07.12.2026) verwiesen — beschlossen ist er nicht.",
+    "beleg": "council_decisions ksinr 4703, TOP Ö 9.1"
+   },
+   {
+    "id": "F4",
     "gewicht": 1,
-    "fakt": "Protokolle erscheinen in der Regel einige Wochen bis ein, zwei Monate nach der Sitzung; das ist der normale Ablauf.",
-    "beleg": "gemessener Protokollverzug (council/qa.py, _sitzungen_block)"
+    "fakt": "Der Bericht über die Beratung nichtöffentlicher Tagesordnungspunkte im Verwaltungsausschuss wurde zur Kenntnis genommen.",
+    "beleg": "council_decisions ksinr 4703, TOP Ö 8"
    }
   ],
   "verboten": [
    {
     "id": "X1",
-    "behauptung": "Der Ausschuss habe am 28.09.2026 einen der Punkte beschlossen, abgelehnt oder vertagt."
+    "behauptung": "Zur Sitzung vom 28.09.2026 lägen noch keine Ergebnisse oder kein Protokoll vor."
    },
    {
     "id": "X2",
     "behauptung": "Als Ergebnis der Sitzung werden Berichte oder Beschlüsse aus früheren Sitzungen (etwa Mai oder Juni 2026) genannt."
+   },
+   {
+    "id": "X3",
+    "behauptung": "Der Creative-Commons-Antrag oder die Zuständigkeit für Auftragsvergaben sei beschlossen oder abgelehnt worden."
    }
   ],
-  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (6). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
+  "bewertung": "Abdeckung = Summe der Gewichte erfüllter Pflichtfakten / Gesamtgewicht (8). Jede verbotene Behauptung ist ein harter Fehler. Bestanden: Abdeckung >= 0,6, F1 erfüllt, keine verbotene Behauptung.",
   "material": [
    {
     "id": "M1",
     "fuer": [
-     "F2"
+     "F1"
     ],
-    "art": "beratung",
+    "art": "beschluss",
     "session_date": "2026-09-28",
     "committee": "Allgemeine Angelegenheiten",
     "titel_enthaelt": "Groningen"
+   },
+   {
+    "id": "M2",
+    "fuer": [
+     "F2"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-09-28",
+    "committee": "Allgemeine Angelegenheiten",
+    "titel_enthaelt": "Auftragsvergaben"
+   },
+   {
+    "id": "M3",
+    "fuer": [
+     "F3"
+    ],
+    "art": "beschluss",
+    "session_date": "2026-09-28",
+    "committee": "Allgemeine Angelegenheiten",
+    "titel_enthaelt": "Creative Commons"
    }
   ]
  },
