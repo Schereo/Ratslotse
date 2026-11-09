@@ -233,8 +233,7 @@ verschiedenen Formen:
 | Form | Beispiel | Lesbar wie |
 |---|---|---|
 | a) Zählblock im Vorlagentext | KSP: „Aktuell sind die 97 Klimaschutzmaßnahmen wie folgt umgesetzt: 10 Zuordnung Amt, 15 In Planung, 9 Umsetzungsreif, 34 In Umsetzung, 20 Realisiert, 9 Ein-/Zurückgestellt“ (`26/0750`) | per Regex — aber **nur in zwei der 15 Berichte** (s. u.) |
-| b) Abschnitt oder Tabelle je Maßnahme im Text | Wärmeplan `26/0236`: sechs der 18 Maßnahmen stehen unter „Maßnahmen in Umsetzung“, für die übrigen zwölf nennt die Vorlage ein Vorhaben und keinen Stand. Ernährungsstrategie `26/0431`: 13 der 68 Zeilen (A1 bis A12, A44, A52) | Parser |
-| b′) dieselbe Tabelle **als Bild** | Ernährungsstrategie `26/0431`: die übrigen 55 Zeilen in fünf JPEG-Bildern auf den Seiten 3 bis 6 | Texterkennung (`council/ocr.py`, ein Bildmodell, also mit Kostenmessung) oder 55 Zeilen von Hand. Bis dahin zeigen wir keine Verteilung — 13 von 68 wären ein schiefes Bild. |
+| b) Abschnitt oder Tabelle je Maßnahme im Text | Wärmeplan `26/0236`: sechs der 18 Maßnahmen stehen unter „Maßnahmen in Umsetzung“, für die übrigen zwölf nennt die Vorlage ein Vorhaben und keinen Stand. Ernährungsstrategie `26/0431`: alle 68 Ansätze mit Priorität und Stufe (die Tabellen sind Text; Bilder sind nur die Kreisdiagramme darunter — die frühere Angabe „ab A11 nur als Bild“ war falsch) | Parser, ohne Modell |
 | c) Tabelle je Maßnahme in einer PDF-Anlage, Stand **als Zellfarbe** | Aktionsplan Gewalt, Anhang 4.1: dunkelgrün = umgesetzt, hellgrün = einmal umgesetzt, wiederholungsbedürftig, pastellgrün = abgegeben, gelb = begonnen, rot = nicht umgesetzt, weiter nötig, grau = eingestellt | Der Text allein verliert den Stand. Die Füllfarben lassen sich mit PyMuPDF (`page.get_drawings()`) lesen. |
 | d) Fließtext-Sachstand | Mobilitätsplan `26/0190`, Integrationskonzept `26/0670`, Wohnungslosenhilfe | Modell je Maßnahme mit Zitat, danach Review |
 | e) Mündlicher Bericht ohne Text | 7 zum Aktionsplan Gewalt (2019–2025); im ganzen Bestand stehen rund 540 Tagesordnungspunkte „mündlicher Bericht“ | nur Termin und Gremium, dazu das Protokoll, falls vorhanden |
@@ -788,10 +787,10 @@ Was sich ohne Modell lesen lässt, zuerst:
 
 Dann, jeweils erst nach einer Messung mit `limit=20`:
 
-- **Ernährungsstrategie:** 13 Zeilen per Parser aus `26/0431`; die übrigen 55
-  aus fünf Bildern über `council/ocr.py` (ein Bildmodell) — oder von
-  Hand, falls die Texterkennung an Prozentstufen und Kennungen scheitert.
-  Gegenprobe: 68 Zeilen, jede Kennung genau einmal.
+- **Ernährungsstrategie (gebaut, ohne Modell):** alle 68 Zeilen per Parser aus
+  `26/0431`. Gegenprobe: jede Kennung der Maßnahmenliste genau einmal, die Zahl
+  des Berichts (68) und je Handlungsfeld die Zählung der Kreisdiagramme (zwei
+  von fünf von Hand verglichen).
 - **Mobilitätsplan:** ein Modell je Maßnahme mit wörtlichem Beleg aus
   `23/0562`, `25/0041` und `26/0190`. Die Antwort „unklar“ ist erlaubt und
   kein Fehler.

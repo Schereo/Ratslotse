@@ -192,3 +192,14 @@ def test_kennzahl_steht_neben_dem_plan():
             assert plans.TEMPLATE_RE.match(ind["baseline"]["template"])
             for point in ind["points"]:
                 assert point["kind"] in ("target", "actual") and plans.TEMPLATE_RE.match(point["template"])
+
+
+def test_ernaehrungsstrategie_stufen_nie_gemittelt():
+    """§ 3.4 Nr. 1: Die Stufen sind laut Stadt eine qualitative Einschätzung — fünf Zähler, kein Mittelwert."""
+    stand = plan_pages.city_status_block("ernaehrungsstrategie")
+    assert stand["total"] == 68 and stand["complete"] and stand["template_number"] == "26/0431"
+    assert [c["count"] for c in stand["counts"]] == [10, 6, 11, 16, 25]
+    assert all("Stufe" in c["status_raw"] for c in stand["counts"])
+    assert any("qualitative Einschätzung" in n["text"] for n in stand["notes"])
+    block = plan_pages.measures_block("ernaehrungsstrategie")
+    assert block["status_count"] == 68
