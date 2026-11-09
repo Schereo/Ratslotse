@@ -68,6 +68,29 @@ bestanden 13 → 16 von 24. Den größten Sprung machte `behrens-baumschutz`
 (18 % → 65 %): Die Personensuche nahm bis dahin die 120 *neuesten* Beiträge
 eines Redners, und die reichten bei Paul Behrens nicht bis 2024 zurück.
 
+### Teilläufe (`-f nur=…`)
+
+Einzelne Fälle, um einen gezielten Fix zu prüfen. Nicht mit den vollen Läufen
+oben vergleichen: Die Auswahl sind gerade die schwachen Fälle.
+
+| Datum | Umgebung | Label | Stand | Fall | Abdeckung |
+|---|---|---|---|---|---:|
+| 09.11. | dev | `nov09-dev-nach-1803` | + jüngste Aussprache nach der Akte (#1803) | trinkwasserspender-draussen | 8 % |
+| | | | | bahnuebergang-am-stadtrand-verlauf | 40 % |
+| | | | | heidbrook-zusagen | 39 % |
+| | | | | behrens-baumschutz | 71 % |
+| | | | | parkgebuehren-mehreinnahmen | 62 % |
+| | | | | klinikum-buergschaften-stand | 62 % |
+| 09.11. | dev | `nov09-dev-nach-1811` | + Zusagen auch bei Termin- und Faktenfragen (#1811) | trinkwasserspender-draussen | 33 % |
+| | | | | bahnuebergang-am-stadtrand-verlauf | 40 % |
+| | | | | heidbrook-zusagen | 33 % |
+
+#1803 griff bei den drei oberen Fällen nicht: Der Forschungsplan schaltete bei
+Termin- und Faktenfragen die Aussprache ganz ab, und damit auch den neuen
+Block. #1811 holt in diesem Fall die Zusagen der Verwaltung trotzdem; beim
+Trinkwasserspender steht der fehlende Beleg seitdem im Kontext. Bahnübergang
+und Heidbrook fehlt weiter Material in der Suche, nicht in den Zusagen.
+
 ## Zeit bis zum ersten Wort (Prod, 09.11.2026)
 
 | | Erstes Wort (Median) | Gesamt (Median) | Analyse | Suche (davon Rerank) | Notizen |
