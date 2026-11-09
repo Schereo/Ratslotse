@@ -274,11 +274,53 @@ Ein fester Aufbau, kein freier Text:
 - Gibt es keine Evaluation, steht dort genau das: „Eine Auswertung liegt im
   Ratsinformationssystem nicht vor.“
 
+### 3.3a Die Einordnung je Plan
+
+Tims Entscheidung (09.11.2026): Ratslotse ordnet jeden Plan ein — fair, ohne
+die Stadt abzustrafen. Begründung: Die Stadt hat die Aufgabe, über den Stand
+ihrer Pläne zu berichten; eine Einordnung macht diesen Bericht lesbar und
+zeigt, wo er fehlt. Gilt für laufende Pläne (als Zwischenstand) und für den
+Rückblick.
+
+**Gemessen am Plan selbst, nicht an uns.** Maßstab sind die eigenen Maßnahmen,
+Termine und Zielwerte des Plans — nicht, was Ratslotse für richtig hielte.
+
+**Fünf Stufen, nach einer offengelegten Regel** (im Code, im PR sichtbar,
+unter jeder Einordnung verlinkt als „So ordnen wir ein“):
+
+| Stufe | Regel (Entwurf, an den fünf Pilotplänen zu eichen) |
+|---|---|
+| **Weitgehend umgesetzt** | mindestens zwei Drittel der Maßnahmen von der Stadt als umgesetzt gemeldet, oder Zielwert erreicht |
+| **Auf dem Weg** | ein Drittel bis zwei Drittel umgesetzt, und der Zeitplan ist laut Plan noch offen |
+| **Hinter dem eigenen Zeitplan** | weniger als ein Drittel umgesetzt, obwohl mehr als die Hälfte der Laufzeit vorbei ist |
+| **Neu ausgerichtet** | die Stadt hat Maßnahmen gestrichen, ersetzt oder den Plan fortgeschrieben — „anders gedacht“, kein Scheitern |
+| **Stand unbekannt** | kein Umsetzungsbericht im Rat seit dem Beschluss oder seit über zwei Jahren |
+
+**Was die Einordnung fair hält:**
+
+- **Daneben steht immer die Stadt selbst:** ihre eigene Einschätzung im
+  Wortlaut und die Gründe, die sie nennt (Personal, Geld, Fördermittel,
+  Prioritäten, Bundesrecht). „Hinter dem eigenen Zeitplan · laut Stadt fehlen
+  Personal und Mittel (Bericht 10/2026, S. 12)“.
+- **Bewegung zählt mit:** „seit dem letzten Bericht 3 Maßnahmen mehr
+  umgesetzt“. Ein Plan, der aufholt, steht nicht wie einer, der stillsteht.
+- **Neu ausrichten ist kein Makel.** Gestrichene oder ersetzte Maßnahmen
+  erscheinen unter „Was anders gedacht wurde“, mit Begründung der Stadt.
+- **Stand unbekannt ist eine Aussage über den Bericht, nicht über die
+  Arbeit.** Der Text sagt das ausdrücklich: „Ob umgesetzt wurde, wissen wir
+  nicht — berichtet wurde im Rat nicht.“
+- **Keine Rangliste der Pläne, keine Ampel in Rot.** Die Stufen tragen neutrale
+  Tints; Grün nur für „weitgehend umgesetzt“.
+- **Ein Modell formuliert höchstens die Zusammenfassung**, und zwar zitierend;
+  die Stufe selbst rechnet die Regel aus den Statusdaten. So ist sie
+  reproduzierbar und angreifbar, wo sie falsch ist.
+
 ### 3.4 Neutralität und Scheinpräzision: die Regeln
 
-1. **Keine Gesamtnote und keine Quote über Pläne hinweg.** Die
-   Prozent-Stufen der Ernährungsstrategie sind laut Stadt eine „qualitative
-   Einschätzung“. Wir zeigen sie als Stufen und mitteln sie nie.
+1. **Keine Gesamtnote über alle Pläne und keine Quote über Pläne hinweg.**
+   Die Einordnung gilt je Plan, nach der Regel in § 3.3a. Die Prozent-Stufen
+   der Ernährungsstrategie sind laut Stadt eine „qualitative Einschätzung“.
+   Wir zeigen sie als Stufen und mitteln sie nie.
 2. **Jede Zahl trägt Datum und Beleg.** Ändert sich die Zählbasis, steht das
    dabei.
 3. **Selbstauskunft kennzeichnen.** Der Kicker heißt „NACH ANGABEN DER
@@ -562,13 +604,12 @@ Golden-Sets und die „offen“-Fälle. Das übernimmt der Agent (Tims Entscheid
 ## 8. Was zu entscheiden ist
 
 Stand 09.11.2026: Entschieden sind 1 (wie vorgeschlagen), 2 (ja, beides),
-5 (dev zuerst, Prod mit dem nächsten Release, sobald fertig) und 6 (der Agent
-prüft). Für 4 gilt bis auf Widerruf: Die alte Bewertung („bringt voran /
+3 (ja zu einer eigenen, fairen Einordnung je Plan, § 3.3a), 5 (dev zuerst,
+Prod mit dem nächsten Release, sobald fertig) und 6 (der Agent prüft). Für 4 gilt bis auf Widerruf: Die alte Bewertung („bringt voran /
 bremst“ samt Stempel „überwiegend vorangebracht“, täglich per Modell aus
 `track_goals`) läuft weiter, bis „Pläne“ auf Prod ist; dann hört der tägliche
 Lauf auf, und die alten Endpunkte liefern den letzten Stand für die
-ausgelieferte App, bis deren nächster Build „Pläne“ kennt. Offen bleiben 3 und
-7; 7 klärt der Agent erst selbst (MCP, oldenburg.de) und fragt nur, was übrig
+ausgelieferte App, bis deren nächster Build „Pläne“ kennt. Offen bleibt 7; den klärt der Agent erst selbst (MCP, oldenburg.de) und fragt nur, was übrig
 bleibt.
 
 1. **Was zählt als Plan der Stadt?** Vorschlag: Klasse 1 sind Pläne mit
