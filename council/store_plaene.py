@@ -59,6 +59,22 @@ class PlaeneMixin(StoreBasis):
             "SELECT template_number, title, raw_text FROM council_templates "
             "WHERE template_number IS NOT NULL AND raw_text IS NOT NULL AND raw_text != ''")]
 
+    def mandate_decisions(self) -> list[dict]:
+        """Alle Beschlüsse zu einer Vorlage, mit Beschlusstext und Sitzung — für die Suche nach
+        Aufträgen an die Verwaltung (``council/open_mandates.py``)."""
+        return [dict(r) for r in self._conn.execute(
+            """SELECT d.id, d.title, d.template_number, d.outcome, d.official_text,
+                      s.session_date, s.committee
+               FROM council_decisions d JOIN council_sessions s ON s.ksinr = d.ksinr
+               WHERE d.template_number IS NOT NULL""")]
+
+    def agenda_titles(self) -> list[dict]:
+        """Jeder Tagesordnungspunkt mit Titel, Datum, Gremium und Vorlage."""
+        return [dict(r) for r in self._conn.execute(
+            """SELECT a.title, a.template_number, s.session_date AS date, s.committee
+               FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr
+               WHERE a.title IS NOT NULL""")]
+
     def plan_decisions_by_stem(self) -> dict[str, list[int]]:
         """Vorlagenstamm → Beschlüsse (alle Gremien), für den Verweis über die Nummer."""
         out: dict[str, list[int]] = {}

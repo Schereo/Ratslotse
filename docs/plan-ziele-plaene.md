@@ -904,6 +904,52 @@ den Plan beim Namen (`plan_judge.checked_relation`).
   den Inhalt statt über Titel — also ein Modell und ein Golden-Set. Frage B
   (eigener Schalter) stellt sich erst dann.
 
+**Zweite Messung, mit Modell (10.11.2026) — wieder verfehlt, weiter nicht
+ausgeliefert.** Zwei Modellschritte (`council/plan_judge.py`, Luna): erst die
+Art des Auftrags — soll dem Rat etwas vorgelegt werden (Bericht, Prüfergebnis,
+Konzept) oder ist es Vollzug? —, dann je Berichtsauftrag die Frage, ob einer
+der späteren Tagesordnungspunkte mit passenden Titelwörtern die Folge ist.
+
+| Schritt | Zahl |
+|---|---:|
+| Aufträge nach enger Regel | 153 |
+| davon Berichtsaufträge (Modell; Golden-Set 19 von 20 vertretbar) | 57 |
+| davon älter als sechs Monate | 51 |
+| ohne gefundene Folge | 16 |
+| **davon von Hand nachgeprüft falsch** | **mindestens 8** |
+
+Die Präzision für „ohne Folge“ liegt damit bei höchstens 50 %, das Messziel
+sind 90 %. Von den neun Aufträgen des Golden-Sets, die nachweislich
+fortgeführt wurden, landete nach dem Weiten der Kandidatensuche keiner mehr
+unter „ohne Folge“ — die Fehler sitzen woanders:
+
+1. **Die Folge kam unter anderem Namen oder ging in etwas Größerem auf.** Das
+   Park-and-Ride-Konzept von 2019 wurde ein Teilkonzept des Mobilitätsplans,
+   das Aufforstungs- und Baumprogramm die Baumerhalt- und Stadtgrünstrategie,
+   das Verpflegungskonzept die Rahmenkonzepte für Schulen und Kitas, die
+   Leitlinien für die Beschaffung kamen fünf Jahre später als „Nachhaltige
+   Beschaffung“. Eine Suche über Titelwörter findet das nicht.
+2. **Das Modell übersieht eine passende Folge**, obwohl sie unter den
+   Kandidaten steht (Evaluation des step2025, `21/0217`).
+3. **Verfahrensaufträge:** „für die Sitzung am selben Tag eine aktualisierte
+   Vorlage erstellen“ ist ein Auftrag, dessen Folge die Fassung `/1` ist.
+4. **Vollzug als Berichtsauftrag eingeordnet** (Schottergärten beseitigen
+   lassen).
+
+Fünf bis sieben der 16 sind vermutlich wirklich ohne Folge geblieben
+(Wärmeversorgungsleitlinie, Bündelung der Wettbewerbe, jährlicher Bericht zum
+Begrüßungsgeld) — aber „vermutlich“ reicht für eine Liste nicht, die sagt, wo
+die Stadt etwas schuldig geblieben ist. Was ein dritter Anlauf bräuchte: eine
+Suche über den INHALT späterer Vorlagen (die Embeddings liegen auf dem Server,
+nicht im lokalen Abzug) statt über Titel, und einen Menschen, der jede Zeile
+vor dem Erscheinen bestätigt. Naheliegender ist eine andere Form: nicht
+„ohne Folge“ behaupten, sondern zu jedem Auftrag die gefundenen späteren
+Punkte zeigen — das wäre eine Auskunft und kein Vorwurf.
+
+**Kosten gemessen:** 0,0034 $ für das Golden-Set, 0,018 $ für alle 153; mit
+Wiederholungen rund 0,03 $. Die Messung lässt sich wiederholen:
+`python scripts/plan_modell.py auftraege [--golden]`.
+
 Art 3 steht seit Phase 3. Hier kommen die beiden anderen, in dieser
 Reihenfolge:
 

@@ -6,6 +6,8 @@ Drei Aufgaben, alle über öffentliche Ratsdokumente, keine mit Nutzereingabe:
   (Mobilitätsplan, § 1.3 Form d).
 - :func:`judge_links` — ob eine Vorlage, die einen Plan beim Namen nennt, ihn
   umsetzt oder nur erwähnt (Phase 4, Teil 2).
+- :func:`classify_mandates` und :func:`find_follow_up` — die Gegenprobe für
+  „Ratsauftrag ohne Folge“ (§ 3.5, Art 2).
 
 Das Modell **sucht heraus, es urteilt nicht frei**: Jede Angabe trägt ein
 wörtliches Zitat, und :func:`verified` wirft alles weg, dessen Zitat nicht
@@ -203,3 +205,72 @@ def checked_relation(answer: dict, passages: list[str], name: re.Pattern) -> tup
     if not (quote and len(quote) <= 320 and name.search(quote) and any(quote in p for p in passages)):
         return "mentions", ""
     return relation, quote
+
+
+# ── Ratsaufträge: Art des Auftrags und Folge im Rat (§ 3.5, Art 2) ─────────
+
+MANDATE_TYPES = ("report_back", "execute")
+
+_MANDATE_PROMPT = """Der Oldenburger Rat hat die Verwaltung in den Beschlüssen unten beauftragt. Ordne jeden Auftrag ein.
+
+Antworte nur mit JSON: {{"results": [{{"id": 1, "type": "…", "subject": ["…", "…"]}}]}}
+
+type ist genau eines von:
+- "report_back": Die Verwaltung soll dem Rat oder einem Ausschuss etwas VORLEGEN — einen Bericht, ein Prüfergebnis, ein Konzept, eine Richtlinie, einen Zeitplan, Beschlussvorschläge. Im Rat ist also eine Folge zu erwarten.
+- "execute": Die Verwaltung soll etwas TUN — einen Antrag stellen, einen Vertrag schließen, bauen, umbenennen, etwas sicherstellen oder weiterführen. Darauf muss im Rat nichts folgen.
+Im Zweifel "execute".
+
+subject: drei bis fünf Suchwörter für eine spätere Folge im Rat — Eigennamen, Orte und die Sache selbst („Park-and-Ride“, „Haarenesch“, „Wärmeversorgungsleitlinie“), je ein Wort oder fester Begriff, so wie er in einem Titel stünde. Keine allgemeinen Wörter wie „Konzept“, „Verwaltung“, „Stadt“.
+
+Beschlüsse:
+{items}"""
+
+
+def classify_mandates(mandates: list[dict], model: str = MODEL) -> tuple[list[dict], float]:
+    """Art jedes Auftrags (``{"stem", "title", "quote"}``) und Suchwörter für seine Folge."""
+    out: list[dict] = []
+    spent = 0.0
+    for start in range(0, len(mandates), BATCH):
+        batch = mandates[start:start + BATCH]
+        items = "\n\n".join(f"[{i}] {m['title']}\n   „{m['quote']}“" for i, m in enumerate(batch, start=1))
+        response = llm.chat_complete(model=model, _feature="plan_mandate_check", temperature=0,
+                                     response_format={"type": "json_object"}, max_tokens=4000,
+                                     messages=[{"role": "user", "content": _MANDATE_PROMPT.format(items=items)}])
+        spent += cost_usd(response, model)
+        by_id = {r.get("id"): r for r in _json(response).get("results") or [] if isinstance(r, dict)}
+        for i, m in enumerate(batch, start=1):
+            r = by_id.get(i) or {}
+            kind = r.get("type")
+            words = [squash(str(w)) for w in (r.get("subject") or []) if isinstance(w, str) and len(squash(w)) >= 4]
+            out.append({"stem": m["stem"], "type": kind if isinstance(kind, str) and kind in MANDATE_TYPES else "execute",
+                        "subject": words[:5]})
+    return out, spent
+
+
+_FOLLOW_PROMPT = """Der Oldenburger Rat hat die Verwaltung beauftragt:
+
+Beschluss vom {since}: {title}
+„{quote}“
+
+Unten stehen spätere Tagesordnungspunkte aus Rat und Ausschüssen. Ist einer davon die FOLGE dieses Auftrags — also der Bericht, das Prüfergebnis, das Konzept oder die Vorlage, die der Auftrag verlangt, oder eine spätere Beratung genau dieser Sache?
+
+Antworte nur mit JSON: {{"follow_up": <Nummer oder null>, "reason": "…"}}
+
+Sei großzügig mit „ja“: Wenn ein späterer Punkt dieselbe Sache behandelt, ist der Auftrag nicht ohne Folge geblieben — auch wenn der Titel anders lautet. Nur wenn KEINER der Punkte die Sache betrifft, null.
+
+Spätere Tagesordnungspunkte:
+{items}"""
+
+
+def find_follow_up(mandate: dict, candidates: list[dict], model: str = MODEL) -> tuple[int | None, float]:
+    """Index des Kandidaten, der die Folge des Auftrags ist — oder ``None``. Ohne Kandidaten kein Aufruf."""
+    if not candidates:
+        return None, 0.0
+    items = "\n".join(f"[{i}] {c['date']} · {c['committee'] or '—'} · {c['title']}" for i, c in enumerate(candidates, start=1))
+    response = llm.chat_complete(model=model, _feature="plan_mandate_check", temperature=0,
+                                 response_format={"type": "json_object"}, max_tokens=600,
+                                 messages=[{"role": "user", "content": _FOLLOW_PROMPT.format(
+                                     since=mandate["since"], title=mandate["title"], quote=mandate["quote"], items=items)}])
+    answer = _json(response).get("follow_up")
+    index = answer - 1 if isinstance(answer, int) and 1 <= answer <= len(candidates) else None
+    return index, cost_usd(response, model)

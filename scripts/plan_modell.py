@@ -27,7 +27,7 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
-from council import plan_judge, plan_state, plans  # noqa: E402
+from council import open_mandates, plan_judge, plan_state, plans  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 GOLDEN = WURZEL / "eval"
@@ -231,15 +231,57 @@ def nennungen(args: argparse.Namespace) -> int:
         store.close()
 
 
+# ── § 3.5, Art 2: Ratsaufträge ohne gefundene Folge ────────────────────────
+
+
+def auftraege(args: argparse.Namespace) -> int:
+    """Zwei Modellschritte: Art des Auftrags (soll dem Rat etwas vorgelegt werden?), dann je
+    Berichtsauftrag die Frage, ob ein späterer Tagesordnungspunkt die Folge ist."""
+    store = CouncilStore(args.db)
+    try:
+        found = open_mandates.mandates(store.mandate_decisions())
+        agenda = store.agenda_titles()
+        today = max(a["date"] for a in agenda)
+        gold = json.loads((GOLDEN / "cases_plan_mandates.json").read_text(encoding="utf-8"))
+        if args.golden:
+            found = [m for m in found if m["stem"] in gold["types"] or m["stem"] in gold["followed"]]
+        elif args.limit:
+            found = found[:args.limit]
+        kinds, spent = plan_judge.classify_mandates(found)
+        kind_of = {k["stem"]: k for k in kinds}
+        wrong_type = sorted(s for s, accept in gold["types"].items() if s in kind_of and kind_of[s]["type"] not in accept)
+        typed = sum(1 for s in gold["types"] if s in kind_of)
+        report = [m for m in found if kind_of[m["stem"]]["type"] == "report_back"]
+        due = [m for m in report if open_mandates.old_enough(m, today)]
+        still_open = []
+        for m in due:
+            candidates = open_mandates.follow_up_candidates(m, kind_of[m["stem"]]["subject"], agenda)
+            index, cost = plan_judge.find_follow_up(m, candidates)
+            spent += cost
+            if index is None:
+                still_open.append({**m, "subject": kind_of[m["stem"]]["subject"], "candidates": len(candidates)})
+        print(f"{len(found)} Aufträge · {len(report)} Berichtsaufträge · {len(due)} älter als sechs Monate · "
+              f"{len(still_open)} ohne gefundene Folge · {spent:.4f} $")
+        print(f"Golden-Set: Art des Auftrags {typed - len(wrong_type)} von {typed} vertretbar {wrong_type or ''}")
+        false_open = sorted(m["stem"] for m in still_open if m["stem"] in gold["followed"])
+        print(f"Golden-Set: nachweislich fortgeführte Aufträge unter „ohne Folge“: {false_open or 'keine'}")
+        if args.out:
+            Path(args.out).write_text(json.dumps(still_open, ensure_ascii=False, indent=1), encoding="utf-8")
+        return 0
+    finally:
+        store.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     sub = ap.add_subparsers(dest="task", required=True)
-    for name, run in (("mobilitaet", mobilitaet), ("nennungen", nennungen)):
+    for name, run in (("mobilitaet", mobilitaet), ("nennungen", nennungen), ("auftraege", auftraege)):
         p = sub.add_parser(name)
         p.add_argument("--limit", type=int, help="nur so viele Aufrufe, zum Kostenmessen; schreibt nichts")
         p.add_argument("--golden", action="store_true", help="gegen das Golden-Set auswerten")
         p.add_argument("--pruefen", action="store_true", help="ohne Modell: die Datei gegen den Bestand prüfen")
         p.add_argument("--db", type=Path, default=WURZEL / "data" / "council.sqlite")
+        p.add_argument("--out", help="Ergebnis zusätzlich als JSON hierhin (zum Durchsehen von Hand)")
         p.set_defaults(run=run)
     args = ap.parse_args(argv)
     return args.run(args)
