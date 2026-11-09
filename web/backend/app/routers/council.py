@@ -5992,27 +5992,43 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     _log.exception("Akte nicht geladen")
             # Aussprache zu den Beschlüssen im Prompt, die JÜNGER sind als die
             # ersten acht (qa.newest_beyond_head). Erst hier, nach der Akte: Der
-            # jüngste Stand kommt oft über sie herein. Vor der Akte griff der
-            # Schritt nie (Gold dev 09.11.2026: der Trinkwasser-Bericht vom
-            # 16.04.2026 zitiert, seine Protokollnotiz „2027 mit dem KLAK“
-            # fehlte). Ihre Beiträge hält die Diät fest wie die der Akte.
-            if debates_enabled and not latest_place and typ != "session" and not person:
+            # jüngste Stand kommt oft über sie herein. Ihre Beiträge hält die
+            # Diät fest wie die der Akte.
+            #
+            # Und die ZUSAGEN der Verwaltung zu den ersten acht und den jüngsten
+            # — auch wenn der Rechercheplan die Debatten abschaltet. Er tut das
+            # bei Termin- und Faktenfragen, und genau deren Antwort steht oft in
+            # einer Protokollnotiz: „Wann kommen öffentliche Trinkwasserspender?“
+            # — „Klärung 2027 mit Abschluss des KLAK“ (16.04.2026). Der Bericht
+            # stand auf Rang 7, seine Zusage trotzdem nie im Prompt (Gold dev
+            # 09.11.2026, nach #1803). Eine Zusage ist keine Debatte, sondern
+            # eine datierte Tatsache der Verwaltung.
+            if not latest_place and typ != "session" and not person:
                 head = candidates[:QA_ANSWER_N]
                 in_head = {c["id"] for c in head}
                 pool = head + [d for d in akte_beschluesse if d["id"] not in in_head]
                 newest = qa.newest_beyond_head(pool, limit=len(pool))
-                if newest:
-                    try:
-                        have = {d["id"] for d in debatten_rows}
-                        newest_rows = [w for w in store.wortbeitraege_zu_beschluessen(
+                try:
+                    have = {d["id"] for d in debatten_rows}
+                    if debates_enabled:
+                        extra_rows = [w for w in store.wortbeitraege_zu_beschluessen(
                             newest, max_gesamt=qa.DEBATTE_NEUESTE_MAX,
-                            max_je_top=qa.DEBATTE_NEUESTE_JE_TOP) if w["id"] not in have]
-                        qa.parteien_aufloesen(store, newest_rows)
-                        debatten_rows += newest_rows
-                        newest_speech_ids = {w["id"] for w in newest_rows}
-                        zeiten["aussprache_neueste"] = len(newest_rows)
-                    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
-                        _log.exception("Aussprache der jüngsten Beschlüsse nicht geladen")
+                            max_je_top=qa.DEBATTE_NEUESTE_JE_TOP)
+                            if w["id"] not in have] if newest else []
+                    else:
+                        extra_rows = [w for w in store.wortbeitraege_zu_beschluessen(
+                            candidates[:qa.DEBATTE_ANKER_KOPF] + newest,
+                            max_gesamt=qa.ZUSAGEN_POOL, max_je_top=qa.ZUSAGEN_POOL)
+                            if w["id"] not in have and w.get("kind") == "pledge"
+                        ][:qa.ZUSAGEN_MAX]
+                    if extra_rows:
+                        qa.parteien_aufloesen(store, extra_rows)
+                        debatten_rows += extra_rows
+                        newest_speech_ids = {w["id"] for w in extra_rows}
+                        zeiten["aussprache_neueste" if debates_enabled
+                               else "zusagen_ohne_debatten"] = len(extra_rows)
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Aussprache der jüngsten Beschlüsse nicht geladen")
             # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
             # seines Protokolls (Tims Wunsch 18.08.).
             qa.protokolle_verlinken(store, debatten_rows)
