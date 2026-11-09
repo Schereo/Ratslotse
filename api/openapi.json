@@ -19638,6 +19638,13 @@
             "title": "Deliberations",
             "type": "integer"
           },
+          "measure_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Measure Codes",
+            "type": "array"
+          },
           "outcome": {
             "enum": [
               "accepted",
@@ -19672,7 +19679,8 @@
           "decision_id",
           "outcome",
           "template_number",
-          "deliberations"
+          "deliberations",
+          "measure_codes"
         ],
         "title": "PlanDecisionEntry",
         "type": "object"
@@ -19692,7 +19700,8 @@
               "implementation",
               "motion",
               "decision",
-              "mentions"
+              "mentions",
+              "measures"
             ],
             "title": "Key",
             "type": "string"
@@ -21118,6 +21127,10 @@
             "title": "Code",
             "type": "string"
           },
+          "decision_count": {
+            "title": "Decision Count",
+            "type": "integer"
+          },
           "package": {
             "title": "Package",
             "type": [
@@ -21162,7 +21175,8 @@
           "package",
           "page",
           "status_raw",
-          "status_norm"
+          "status_norm",
+          "decision_count"
         ],
         "title": "PlanMeasure",
         "type": "object"

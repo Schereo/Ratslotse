@@ -81,12 +81,12 @@ describe("byField", () => {
 
 const FIELDS: PlanMeasureField[] = [
   { field: "Mobilität", measures: [
-    { code: "FußRad_01", title: "Raumerweiterung Fuß- und Radverkehr", package: "Fuß- und Fahrradverkehr", page: 2, status_raw: null, status_norm: null },
-    { code: "FußRad_02", title: "Fahrradstraßen", package: "Fuß- und Fahrradverkehr", page: 2, status_raw: null, status_norm: null },
-    { code: "ÖPNV_01", title: "Taktverdichtung", package: "ÖPNV", page: 2, status_raw: null, status_norm: null },
+    { code: "FußRad_01", title: "Raumerweiterung Fuß- und Radverkehr", package: "Fuß- und Fahrradverkehr", page: 2, status_raw: null, status_norm: null, decision_count: 0 },
+    { code: "FußRad_02", title: "Fahrradstraßen", package: "Fuß- und Fahrradverkehr", page: 2, status_raw: null, status_norm: null, decision_count: 0 },
+    { code: "ÖPNV_01", title: "Taktverdichtung", package: "ÖPNV", page: 2, status_raw: null, status_norm: null, decision_count: 0 },
   ] },
   { field: "Stadtverwaltung", measures: [
-    { code: "Verwaltung_01", title: "Klimagerechtes Beschaffungs- und Vergabewesen", package: null, page: 2, status_raw: null, status_norm: null },
+    { code: "Verwaltung_01", title: "Klimagerechtes Beschaffungs- und Vergabewesen", package: null, page: 2, status_raw: null, status_norm: null, decision_count: 0 },
   ] },
 ];
 

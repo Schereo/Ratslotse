@@ -44,6 +44,14 @@ class PlaeneMixin(StoreBasis):
             "SELECT template_number, raw_text FROM council_templates "
             "WHERE template_number IS NOT NULL AND raw_text LIKE '%/____%'")]
 
+    def plan_measure_candidates(self) -> list[tuple[str, str]]:
+        """(Vorlagennummer, Text) der Vorlagen, in denen eine Maßnahmen-Kennung stehen kann —
+        grob vorgefiltert über die Plannamen; das Muster prüft ``plan_tracking``."""
+        return [(r[0], r[1]) for r in self._conn.execute(
+            "SELECT template_number, raw_text FROM council_templates "
+            "WHERE template_number IS NOT NULL AND (raw_text LIKE '%Klimaschutz%' "
+            "OR raw_text LIKE '%Wärmeplan%' OR raw_text LIKE '%Ernährungsstrategie%')")]
+
     def plan_decisions_by_stem(self) -> dict[str, list[int]]:
         """Vorlagenstamm → Beschlüsse (alle Gremien), für den Verweis über die Nummer."""
         out: dict[str, list[int]] = {}
@@ -93,6 +101,25 @@ class PlaeneMixin(StoreBasis):
             seen.add(stem)
             out.append(dict(r))
         return out
+
+    def plan_measure_links(self, plan_key: str) -> list[dict]:
+        """Beschlüsse, deren Vorlage eine Maßnahme des Plans nennt — je Vorlage der jüngste,
+        mit allen Kennungen, die sie nennt."""
+        rows = self._conn.execute(
+            """SELECT d.id, d.title, d.template_number, d.outcome, s.session_date, s.committee, l.measure_code
+               FROM council_plan_links l
+               JOIN council_decisions d ON d.id = l.decision_id
+               JOIN council_sessions s ON s.ksinr = d.ksinr
+               WHERE l.plan_key = ? AND l.relation = 'names_measure'
+               ORDER BY s.session_date DESC, d.id DESC""", (plan_key,)).fetchall()
+        by_stem: dict[str, dict] = {}
+        for r in rows:
+            stem = "/".join(str(r["template_number"]).split("/")[:2])
+            entry = by_stem.setdefault(stem, {**{k: r[k] for k in r.keys() if k != "measure_code"}, "codes": set(), "ids": set()})
+            entry["codes"].add(r["measure_code"])
+            entry["ids"].add(r["id"])
+        return [{**{k: v for k, v in e.items() if k not in ("codes", "ids")},
+                 "measure_codes": sorted(e["codes"]), "deliberations": len(e["ids"])} for e in by_stem.values()]
 
     def plan_template_kvonr(self, numbers: list[str]) -> dict[str, int]:
         """Vorlagennummer → kvonr, für Links auf die Vorlage."""

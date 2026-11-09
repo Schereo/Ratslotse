@@ -60,6 +60,11 @@ function Rows({ measures }: { measures: readonly PlanMeasure[] }) {
                 <span className="break-words py-1 text-[14px] leading-snug text-foreground">
                   {m.title}
                   {m.status_raw && <StatusChip raw={m.status_raw} norm={m.status_norm} className="ml-2 align-[1px]" />}
+                  {m.decision_count > 0 && (
+                    <a href="#plan-decisions" className="ml-2 whitespace-nowrap font-mono text-meta text-primary hover:underline">
+                      {m.decision_count === 1 ? "1 Beschluss" : `${m.decision_count} Beschlüsse`}
+                    </a>
+                  )}
                 </span>
               </li>
             ))}

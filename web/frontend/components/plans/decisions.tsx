@@ -36,6 +36,9 @@ function Entries({ group }: { group: PlanDecisionGroup }) {
               <span>{[entry.committee, formatDate(entry.date)].filter(Boolean).join(" · ")}</span>
               {entry.template_number && <span className="font-mono">{entry.template_number}</span>}
               {entry.deliberations > 1 && <span>{entry.deliberations} Beratungen</span>}
+              {entry.measure_codes.length > 0 && (
+                <span className="font-mono text-foreground">{entry.measure_codes.join(" · ")}</span>
+              )}
             </p>
           </li>
         ))}
@@ -64,6 +67,11 @@ export function Decisions({ plan }: { plan: PlanDetail }) {
             <h3 className="text-[13px] font-semibold text-foreground">
               {g.label} <span className="font-normal text-muted-foreground">· {g.entries.length}</span>
             </h3>
+            {g.key === "measures" && (
+              <p className="mt-0.5 text-hinweis text-muted-foreground">
+                Die Vorlage nennt die Maßnahme bei ihrer Kennung. Ob der Beschluss sie umsetzt, sagt das nicht.
+              </p>
+            )}
             <Entries group={g} />
           </div>
         ))}

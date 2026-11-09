@@ -806,6 +806,19 @@ Dann, jeweils erst nach einer Messung mit `limit=20`:
 
 ### Phase 4: Beschlüsse den Maßnahmen zuordnen
 
+**Erster Teil gebaut, ohne Modell:** Eine Vorlage, die eine Maßnahme bei ihrer
+Kennung nennt (`PV_05`, „Wärmeplan-Maßnahme O7“, „Handlungsansatz A12“),
+ordnet ihre Beschlüsse dieser Maßnahme zu (`council_plan_links`, Beziehung
+`names_measure`). Kurze Kennungen zählen nur, wenn die Vorlage den Plan nennt
+und die Kennung als Maßnahme anspricht; Übersichten mit mehr als fünf
+Kennungen und die Berichte des Plans selbst zählen nicht. Gemessen: 9
+Vorlagen mit 21 Beschlüssen (8 zum Klimaschutzplan, 1 zum Wärmeplan), alle
+neun von Hand gegen Titel und Maßnahme geprüft. Die Seite sagt „nennt eine
+Maßnahme“, nicht „setzt um“ — das wäre ein Urteil.
+
+**Offen bleibt der zweite Teil** (Modell und Golden-Set, wie unten
+beschrieben): die Vorlagen, die einen Plan nur beim Namen nennen.
+
 - Kandidaten kommen über den Plannamen, die Kennungen aus den
   Maßnahmendateien, die Akte (Vorlagen einer Akte mit Planbezug) und die
   vorhandenen Embeddings. Das Modell urteilt über die Beziehung (*setzt

@@ -650,16 +650,23 @@ def _entries(items: list[dict]) -> list[dict]:
         best = with_decision[-1] if with_decision else last
         out.append({"title": best["title"], "date": best["date"], "committee": best["committee"],
                     "decision_id": best["decision_id"], "outcome": best["outcome"],
-                    "template_number": best["template_number"], "deliberations": len(g)})
+                    "template_number": best["template_number"], "deliberations": len(g), "measure_codes": []})
     out.sort(key=lambda e: e["date"], reverse=True)
     return out
 
 
-def measures_block(key: str) -> dict | None:
-    """Die geprüfte Maßnahmenliste, nach Handlungsfeld gruppiert (Reihenfolge der Quelle)."""
+def measures_block(key: str, links: list[dict] | None = None) -> dict | None:
+    """Die geprüfte Maßnahmenliste, nach Handlungsfeld gruppiert (Reihenfolge der Quelle).
+
+    ``links``: Beschlüsse, die eine Maßnahme nennen (``store.plan_measure_links``) —
+    daraus die Zahl je Maßnahme."""
     data = register.measures(key)
     if not data:
         return None
+    named: dict[str, int] = {}
+    for link in links or []:
+        for code in link["measure_codes"]:
+            named[code] = named.get(code, 0) + 1
     stand = plan_state.city_status(key)
     states = {m["code"]: m for m in (stand["latest"].get("measures") or [])} if stand else {}
     groups: dict[str, list[dict]] = {}
@@ -667,7 +674,8 @@ def measures_block(key: str) -> dict | None:
         state = states.get(m["code"]) or {}
         groups.setdefault(m.get("field") or "", []).append(
             {"code": m["code"], "title": m["title"], "package": m.get("package"), "page": m["page"],
-             "status_raw": state.get("status_raw"), "status_norm": state.get("status_norm")})
+             "status_raw": state.get("status_raw"), "status_norm": state.get("status_norm"),
+             "decision_count": named.get(m["code"], 0)})
     src = data["source"]
     return {
         "count": len(data["measures"]),
@@ -704,9 +712,17 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
     reports = [s for s in tl["stations"] if s["kind"] in REPORT_ROLES]
     groups = [{"key": k, "label": label, "entries": _entries([i for i in items if i["role"] in roles])}
               for k, label, roles in DECISION_GROUPS]
+    measure_links = store.plan_measure_links(key)
+    # Wer eine Maßnahme nennt, steht dort — nicht noch einmal unter den bloßen Erwähnungen.
+    linked = {m["id"] for m in measure_links}
+    groups.append({"key": "measures", "label": "Nennt eine Maßnahme des Plans",
+                   "entries": [{"title": m["title"], "date": m["session_date"], "committee": m["committee"],
+                                "decision_id": m["id"], "outcome": m["outcome"],
+                                "template_number": m["template_number"], "deliberations": m["deliberations"],
+                                "measure_codes": m["measure_codes"]} for m in measure_links]})
     mentions = [{"title": m["title"], "date": m["session_date"], "committee": m["committee"],
                  "decision_id": m["id"], "outcome": m["outcome"], "template_number": m["template_number"],
-                 "deliberations": 1} for m in store.plan_mentions(key)]
+                 "deliberations": 1, "measure_codes": []} for m in store.plan_mentions(key) if m["id"] not in linked]
     groups.append({"key": "mentions", "label": "Erwähnt den Plan über seine Vorlagennummer",
                    "entries": mentions})
     return {
@@ -726,7 +742,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "commissioned": _template_ref(store, plan.commissioned, items),
         "concluded": _template_ref(store, plan.concluded, items),
         "predecessor": _neighbour(plan.predecessor),
-        "measures": measures_block(key),
+        "measures": measures_block(key, measure_links),
         "city_status": city_status_block(key),
         "indicators": indicator_blocks(key),
         "timeline": tl,

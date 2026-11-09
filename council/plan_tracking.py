@@ -13,8 +13,13 @@ Zwei Wege, beide sicher genug, um ohne Prüfung angezeigt zu werden
    Eine andere Vorlage nennt die Nummer des Plans in ihrem Text. Das ist eine
    Erwähnung, keine Umsetzung, und steht auf der Seite hinter „Weitere“.
 
+3. **Kennung einer Maßnahme im Text** (``council_plan_links``, ``names_measure``,
+   Phase 4): Eine Vorlage nennt eine Maßnahme des Plans bei ihrer Kennung
+   (``PV_05``, „Handlungsansatz A12“). Das ordnet den Beschluss der Maßnahme
+   zu — es sagt, dass er sie NENNT, nicht, dass er sie umsetzt.
+
 Ein Verweis über den **Namen** („Klimaschutzplan“ in 103 Vorlagen) ist nur ein
-Kandidat und kommt erst mit dem Modellurteil in Phase 4.
+Kandidat; ob daraus eine Umsetzung wird, braucht ein Urteil und steht aus.
 
 **Ketten teilen sich Muster.** Aktionsplan Gewalt 2020 und 2026, die drei
 Gleichstellungspläne: Ein Bericht gehört dem Glied, das zu seinem Datum galt —
@@ -198,16 +203,90 @@ def build_mentions(templates: Iterable[tuple[str, str | None]],
     return list(out.values())
 
 
+#: Nennt eine Vorlage mehr Kennungen eines Plans, ist sie eine Übersicht über
+#: den Plan (Sachstand, Zuordnungsliste) und kein Beschluss zu einer Maßnahme.
+MAX_CODES_PER_TEMPLATE = 5
+
+#: Kurze Kennungen („K1“, „A12“) gibt es überall. Sie zählen nur, wenn die
+#: Vorlage den Plan nennt UND die Kennung als Maßnahme anspricht.
+_MEASURE_CONTEXT: dict[str, tuple[str, str]] = {
+    "waermeplan": (r"Wärmeplan", r"(?:Wärmeplan-Maßnahmen?|Maßnahmen?)\s+({codes})(?!\w)"),
+    "ernaehrungsstrategie": (r"Ernährungsstrategie",
+                             r"(?:Handlungsans[aä]tz\w*|Ans[aä]tz\w*|Maßnahmen?)\s+({codes})(?!\w)"),
+}
+#: Pläne, deren Kennungen für sich stehen („Gebäude_02“).
+_MEASURE_DISTINCT = ("klimaschutzplan_2035",)
+
+
+def measure_matchers(plans: dict[str, register.Plan] | None = None) -> dict[str, tuple[re.Pattern | None, re.Pattern, dict[str, str]]]:
+    """Je Plan mit Maßnahmenliste: (Muster für den Plannamen | None, Muster für die Kennung, Schreibweise → Kennung)."""
+    plans = plans if plans is not None else register.PLANS
+    out = {}
+    for key in (*_MEASURE_DISTINCT, *_MEASURE_CONTEXT):
+        data = register.measures(key) if key in plans else None
+        if not data:
+            continue
+        codes = sorted((m["code"] for m in data["measures"]), key=len, reverse=True)
+        alternatives = "|".join(re.escape(c) for c in codes)
+        if key in _MEASURE_CONTEXT:
+            context, template = _MEASURE_CONTEXT[key]
+            out[key] = (re.compile(context), re.compile(template.format(codes=alternatives)), {c: c for c in codes})
+        else:
+            # „Pkw_03“ wie „PKW_03“: Die Stadt schreibt ihre eigenen Kennungen nicht einheitlich.
+            out[key] = (None, re.compile(rf"(?<![\wÄÖÜäöüß])({alternatives})(?!\d)", re.I),
+                        {c.lower(): c for c in codes})
+    return out
+
+
+def build_measure_links(templates: Iterable[tuple[str, str | None]],
+                        decisions_by_stem: dict[str, list[int]],
+                        items: list[dict],
+                        plans: dict[str, register.Plan] | None = None) -> list[dict]:
+    """Beschlüsse zu Vorlagen, die eine Maßnahme eines Plans bei ihrer Kennung nennen.
+
+    Nicht dabei: die Vorlagen des Plans selbst und was schon als Bericht oder
+    Beschluss zum Plan gehört (ein Sachstandsbericht nennt Maßnahmen, setzt
+    aber keine um), und Übersichten mit mehr als ``MAX_CODES_PER_TEMPLATE``
+    Kennungen.
+    """
+    plans = plans if plans is not None else register.PLANS
+    matchers = measure_matchers(plans)
+    own = {key: {register.template_stem(t) for t in register.all_templates(plans[key])} for key in matchers}
+    known = {(i["plan_key"], _stem(i["template_number"])) for i in items if i["template_number"]}
+    out: dict[tuple[str, int, str], dict] = {}
+    for number, text in templates:
+        if not text:
+            continue
+        stem = register.template_stem(number)
+        for key, (context, pattern, canonical) in matchers.items():
+            if stem in own[key] or (key, stem) in known or (context and not context.search(text)):
+                continue
+            codes = {canonical.get(m.group(1), canonical.get(m.group(1).lower(), "")) for m in pattern.finditer(text)}
+            codes.discard("")
+            if not codes or len(codes) > MAX_CODES_PER_TEMPLATE:
+                continue
+            for decision_id in decisions_by_stem.get(stem, []):
+                for code in codes:
+                    out[(key, decision_id, code)] = {
+                        "plan_key": key, "decision_id": decision_id, "measure_code": code,
+                        "relation": "names_measure", "method": "code", "confidence": 1.0}
+    return list(out.values())
+
+
 def build(store) -> dict:
     """Baut beide Tabellen neu. Für den Cron (``scripts/check_protocols.py``)."""
     rows = [AgendaRow(**r) for r in store.plan_tracking_rows()]
     items = build_items(rows)
-    links = build_mentions(store.plan_citing_templates(), store.plan_decisions_by_stem(), items)
+    by_stem = store.plan_decisions_by_stem()
+    links = build_mentions(store.plan_citing_templates(), by_stem, items)
+    measure_links = build_measure_links(store.plan_measure_candidates(), by_stem, items)
+    links += measure_links
     store.replace_plan_tracking(items, links)
     per_plan = {key: sum(1 for i in items if i["plan_key"] == key) for key in register.PLANS}
     return {
         "plan_items": len(items),
         "plan_reports": sum(1 for i in items if i["role"] in ("report", "evaluation")),
-        "plan_mentions": len(links),
+        "plan_mentions": len(links) - len(measure_links),
+        "plan_measure_links": len(measure_links),
         "plans_without_items": sum(1 for n in per_plan.values() if n == 0),
     }
