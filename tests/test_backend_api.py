@@ -6433,6 +6433,57 @@ def _deep_events(client, job_id, ab=0):
                 if line.startswith("data: ")]
 
 
+def test_recherche_zeigt_zusatzquellen_und_restzeit(client, monkeypatch):
+    """Fortschritt der Recherche (09.11.2026): Bis dahin stand die Karte nach
+    der letzten Teilfrage eine halbe Minute (dev) still auf „Teilfragen
+    durchsuchen" — Debatten, Presse und Anlagen liefen ohne ein Zeichen, und
+    die Karte versprach „~ noch 30 Sek" bei gemessenen 36 bis 106 s.
+
+    Jetzt beginnt „lesen" direkt nach den Teilfragen und nennt die Kanäle,
+    jeder Kanal meldet sich fertig, jeder Rahmen trägt die Laufzeit und jeder
+    Fortschrittsrahmen eine Restzeit."""
+    from web.backend.app import deepresearch
+
+    _deep_mocks(monkeypatch)
+    _register(client, "zeit@example.org")
+    client.post("/api/auth/login", json={"email": "zeit@example.org", "password": "password123"})
+    job = client.post("/api/council/deep-research",
+                      json={"question": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
+    events = _deep_events(client, job)
+    typen = [e["type"] for e in events]
+
+    assert all(isinstance(e.get("elapsed"), (int, float)) for e in events if e["type"] != "token")
+    lesen = typen.index("phase", typen.index("facets"))
+    assert events[lesen]["phase"] == "lesen"
+    assert events[lesen]["channels"] == ["press", "speeches", "attachments"]
+    assert lesen < typen.index("sources")
+    kanaele = [e for e in events if e["type"] == "channel"]
+    assert [(k["name"], k["hits"]) for k in kanaele] == [
+        ("press", 0), ("speeches", 0), ("attachments", 1)]
+
+    fortschritt = [e for e in events if e["type"] in ("phase", "facets", "facette", "channel")]
+    assert all(isinstance(e.get("remaining"), int) for e in fortschritt)
+    schreiben = next(e for e in events if e.get("phase") == "schreiben")
+    assert schreiben["remaining"] == round(deepresearch.FIRST_TEXT_SECONDS)
+
+
+def test_restzeit_rechnet_mit_dem_gemessenen_tempo():
+    """Die Schätzung skaliert mit der Dauer je Teilfrage: Am 09.11.2026 lief
+    dieselbe Recherche auf Prod in rund 50 s und auf dev in 100 s."""
+    from web.backend.app import deepresearch as dr
+
+    job = dr.DeepJob(id="x", user_id=1, question="?")
+    vorher = dr.remaining_seconds(job, "zerlegen")
+    job.facetten_gesamt, job.facetten_fertig, job.per_facet = 4, 1, 10.0
+    # drei offene Teilfragen à 10 s, Zusatzquellen wie drei Teilfragen, erster Satz
+    assert dr.remaining_seconds(job, "suchen") == round(3 * 10 + dr.EXTRAS_IN_FACETS * 10
+                                                       + dr.FIRST_TEXT_SECONDS)
+    assert dr.remaining_seconds(job, "lesen", dr.EXTRAS_LEFT_AFTER["speeches"]) < \
+        dr.remaining_seconds(job, "lesen", dr.EXTRAS_LEFT_AFTER["press"])
+    assert dr.remaining_seconds(job, "lesen", 0.0) == round(dr.FIRST_TEXT_SECONDS)
+    assert 40 <= vorher <= 70
+
+
 def test_recherche_plus_waehlt_das_groessere_modell(client, monkeypatch):
     """Recherche Plus (23.09.2026): Das Recht `premium_models` entscheidet
     beim EINREICHEN, welches Modell den Bericht schreibt — am Konto geprüft

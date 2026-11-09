@@ -62,8 +62,9 @@ import { useLaengerAls } from "@/lib/use-laenger";
 import {
   berichtAbschnitte, RechercheFehlerKarte, RechercheFortschritt, RechercheGestoppt,
   RechercheHinweisKarte, RechercheLimitKarte, RechercheToggle, Sprungmarken, WieEsWeitergeht,
-  type DeepFacette, type DeepPhase, type Planung,
+  type DeepChannel, type DeepFacette, type DeepPhase, type Planung,
 } from "@/components/deep-recherche";
+import { nextTiming, type DeepTiming } from "@/lib/recherche-zeit";
 // Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
@@ -239,6 +240,10 @@ type Turn = {
   deepDokumente?: number | null;
   deepFacetten?: DeepFacette[];
   deepFacettenFertig?: number;
+  /** Zusatzquellen des Schritts „lesen" (Presse, Debatten, Anlagen). */
+  deepChannels?: DeepChannel[];
+  /** Laufzeit und Restzeit-Schätzung des Servers für die Fortschrittskarte. */
+  deepTiming?: DeepTiming;
   deepTeilberichtMoeglich?: boolean;
   /** Recherche Plus: Der Bericht entstand mit dem größeren Modell (Recht
    *  `premium_models`, beim Einreichen serverseitig festgehalten). */
@@ -1108,9 +1113,24 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     }
 
     const verarbeite = (msg: { type: string; [k: string]: unknown }): boolean => {
+      if (typeof msg.elapsed === "number") {
+        const elapsed = msg.elapsed;
+        const remaining = typeof msg.remaining === "number" ? msg.remaining : null;
+        patchTurn(turnKey, (t) => ({ deepTiming: nextTiming(t.deepTiming, elapsed, remaining) }));
+      }
       if (msg.type === "phase") {
         patchTurn(turnKey, { deepPhase: msg.phase as DeepPhase,
-          deepDokumente: (msg.dokumente as number) ?? null });
+          // Zahl und Kanäle nur übernehmen, wo der Rahmen sie trägt: Bis
+          // 11/2026 setzte „schreiben" die Dokumentzahl wieder auf null, und
+          // der erledigte Schritt hieß nur noch „Dokumente gelesen".
+          ...(typeof msg.dokumente === "number" ? { deepDokumente: msg.dokumente } : {}),
+          ...(Array.isArray(msg.channels)
+            ? { deepChannels: (msg.channels as string[]).map((name) => ({ name })) } : {}) });
+      } else if (msg.type === "channel") {
+        patchTurn(turnKey, (t) => ({
+          deepChannels: (t.deepChannels ?? []).map((c) =>
+            c.name === msg.name ? { ...c, hits: (msg.hits as number) ?? 0 } : c),
+        }));
       } else if (msg.type === "facets") {
         patchTurn(turnKey, {
           deepFacetten: ((msg.facets as string[]) ?? []).map((name) => ({ name })),
@@ -2234,7 +2254,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 <RechercheToggle aktiv={rechercheModus} frei={deepFrei} onToggle={toggleRecherche} />
                 {rechercheModus && !deepHinweis && (
                   <span className="text-[10.5px] text-muted-foreground/70">
-                    ~30 Sek{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
+                    ~1 Min{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
                   </span>
                 )}
                 <span className="flex-1" />
@@ -2438,6 +2458,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           facets={turn.deepFacetten ?? []}
           facettenFertig={turn.deepFacettenFertig ?? 0}
           dokumente={turn.deepDokumente ?? null}
+          channels={turn.deepChannels ?? []}
+          timing={turn.deepTiming ?? null}
           onStop={() => onDeepStop?.()}
         />
       )}

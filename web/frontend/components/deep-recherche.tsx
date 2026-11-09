@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Check, FlaskConical, Loader2, RotateCcw, Square, X } from "lucide-react";
 
 import { Mascot } from "@/components/mascot";
+import { clock, restLabel, timeline, type DeepTiming } from "@/lib/recherche-zeit";
 import { cn } from "@/lib/utils";
 
 /** Künftige Beratungsstation einer zitierten Vorlage (Sitzungskalender). */
@@ -41,7 +42,7 @@ export function RechercheToggle({ aktiv, frei, onToggle }: {
       onClick={onToggle}
       disabled={leer && !aktiv}
       aria-pressed={aktiv}
-      title={leer ? "Tageslimit erreicht — ab Mitternacht wieder verfügbar" : "Gründliche Recherche: dauert etwa 30 Sekunden und liest deutlich mehr Beschlüsse"}
+      title={leer ? "Tageslimit erreicht — ab Mitternacht wieder verfügbar" : "Gründliche Recherche: dauert etwa eine Minute und liest deutlich mehr Beschlüsse"}
       className={cn(
         "inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-semibold transition-colors",
         aktiv
@@ -59,7 +60,9 @@ export function RechercheToggle({ aktiv, frei, onToggle }: {
 }
 
 /** Erwartungs-Hinweis beim Aktivieren (8a①): einmal täglich ausführlich als
- *  Karte — die Kurzform („~30 Sek · noch n heute") steht daneben im Composer. */
+ *  Karte — die Kurzform („~1 Min · noch n heute") steht daneben im Composer.
+ *  Bis 11/2026 stand hier „etwa 30 Sekunden"; gemessen sind es auf Prod
+ *  36 bis 58 s (s. `remaining_seconds` in `deepresearch.py`). */
 export function RechercheHinweisKarte({ frei }: { frei: number | null }) {
   return (
     <div className="mb-1.5 flex items-start gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
@@ -67,7 +70,7 @@ export function RechercheHinweisKarte({ frei }: { frei: number | null }) {
       <p className="text-[11.5px] leading-relaxed text-muted-foreground">
         <strong className="text-foreground">Gründliche Recherche:</strong>{" "}
         teilt deine Frage in mehrere Aspekte, liest deutlich mehr Beschlüsse und
-        schreibt einen gegliederten Bericht. <strong>Dauert etwa 30 Sekunden</strong>
+        schreibt einen gegliederten Bericht. <strong>Dauert etwa eine Minute</strong>
         {frei !== null && <> · noch {frei} von 5 heute</>}.
       </p>
     </div>
@@ -95,43 +98,45 @@ export function RechercheLimitKarte({ onSchnelleFrage }: { onSchnelleFrage: () =
   );
 }
 
+/** Zusatzquelle des Schritts „lesen": Kennung vom Server, Treffer sobald fertig. */
+export type DeepChannel = { name: string; hits?: number };
+
+const KANAL_TEXT: Record<string, string> = {
+  press: "Pressemitteilungen", speeches: "Ratsdebatten", attachments: "Anlagen",
+};
+
 /** Fortschritts-Karte (8a②): Phasen-Checkliste, Facetten-Chips, Balken mit
- *  grober Restzeit, Abbrechen. Lotti macht die PHASE mit (Tims Wahl
- *  01.09.26): Sie jongliert beim Zerlegen und Suchen („dauert eine halbe
- *  Minute, ich unterhalte dich solange"), liest, wenn Dokumente gelesen
- *  werden, und schreibt beim Bericht — alles Schleifen aus dem
- *  Werkzeug-Blatt, sie laufen durch, bis der Bericht kommt. */
-export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente, onStop }: {
+ *  Laufzeit und Restzeit, Abbrechen. Lotti macht die PHASE mit (Tims Wahl
+ *  01.09.26): Sie jongliert beim Zerlegen und Suchen, liest, wenn Dokumente
+ *  gelesen werden, und schreibt beim Bericht — alles Schleifen aus dem
+ *  Werkzeug-Blatt, sie laufen durch, bis der Bericht kommt.
+ *
+ *  Bis 11/2026 versprach die Karte „~ noch 30 Sek" und stand danach eine
+ *  halbe Minute (dev) bzw. zehn Sekunden (Prod) auf „Teilfragen durchsuchen",
+ *  obwohl alle fertig waren: Die Zusatzquellen liefen ohne ein Zeichen. Jetzt
+ *  sind sie ein eigener Schritt mit je einem Haken pro Kanal, und die Zeit
+ *  kommt vom Server (`lib/recherche-zeit.ts`). */
+export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente, channels, timing, onStop }: {
   phase: DeepPhase; facets: DeepFacette[]; facettenFertig: number;
-  dokumente: number | null; onStop: () => void;
+  dokumente: number | null; channels: DeepChannel[]; timing: DeepTiming | null;
+  onStop: () => void;
 }) {
-  // Grobe Fortschritts-Heuristik: zerlegen 8 %, suchen bis 55 %, lesen 62 %,
-  // schreiben wächst mit der Zeit gegen 95 % (der Balken soll Leben zeigen,
-  // keine Präzision behaupten).
-  const [tick, setTick] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (phase !== "schreiben") return;
-    const id = setInterval(() => setTick((t) => t + 1), 2000);
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [phase]);
-  const percent =
-    phase === "zerlegen" ? 8
-    : phase === "suchen" ? 10 + (facets.length ? (facettenFertig / facets.length) * 45 : 20)
-    : phase === "lesen" ? 62
-    : Math.min(95, 68 + tick);
-  // Zeitangaben an echten Läufen gemessen (11.08.: 28 s und 36 s für eine
-  // komplette Recherche) — vorher versprach die Karte „1–2 Minuten" und war
-  // damit doppelt so pessimistisch wie die Wirklichkeit (Tims Befund).
-  // Steht eine Phase doppelt so lange wie gemessen, stimmt die Schätzung
-  // nicht mehr — bis 10/2026 hieß es dann minutenlang weiter „~ noch 15 Sek".
-  const [ueberfaellig, setUeberfaellig] = useState(false);
-  useEffect(() => {
-    setUeberfaellig(false);
-    const t = setTimeout(() => setUeberfaellig(true), phase === "schreiben" || phase === "lesen" ? 30_000 : 60_000);
-    return () => clearTimeout(t);
-  }, [phase]);
-  const restzeit = ueberfaellig ? "dauert länger als gedacht"
-    : phase === "schreiben" || phase === "lesen" ? "~ noch 15 Sek" : "~ noch 30 Sek";
+  }, []);
+  const zeit = timing ? timeline(timing, now) : null;
+  // Ohne Schätzung (Rahmen eines älteren Servers) die grobe Phasen-Stufe.
+  const stufenwert =
+    phase === "zerlegen" ? 6
+    : phase === "suchen" ? 10 + (facets.length ? (facettenFertig / facets.length) * 50 : 0)
+    : phase === "lesen" ? 70 : 90;
+  // Der Balken läuft nie rückwärts, auch wenn die Schätzung nach der ersten
+  // gemessenen Teilfrage wächst — die Zeit daneben darf das ehrlich zeigen.
+  const hoechster = useRef(0);
+  hoechster.current = Math.max(hoechster.current, zeit?.percent ?? stufenwert);
+  const percent = hoechster.current;
 
   const schritt = (zustand: "fertig" | "aktiv" | "offen", text: string) => (
     <span className={cn("flex items-center gap-2 text-xs",
@@ -147,6 +152,8 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
   const stufe = sort_order.indexOf(phase);
   const zustand = (i: number) => (i < stufe ? "fertig" : i === stufe ? "aktiv" : "offen") as
     "fertig" | "aktiv" | "offen";
+  const beschluesse = facets.reduce((n, f) => n + (f.neu ?? 0), 0);
+  const kanaeleFertig = channels.filter((c) => c.hits != null).length;
 
   return (
     <div role="status" className="rounded-[14px] border-2 border-dashed border-border bg-card/60 p-3.5">
@@ -157,9 +164,36 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
           {schritt(zustand(0), stufe > 0 && facets.length > 0
             ? `Frage in ${facets.length} Teilfragen aufgeteilt` : "Frage aufteilen …")}
-          {schritt(zustand(1), phase === "suchen" ? "Teilfragen durchsuchen …" : "Teilfragen durchsuchen")}
-          {schritt(zustand(2), dokumente ? `${dokumente} Dokumente lesen` : "Dokumente lesen")}
-          {schritt(zustand(3), "Bericht schreiben")}
+          {schritt(zustand(1), stufe > 1 && facets.length > 0
+            ? `${facets.length} Teilfragen durchsucht${beschluesse > 0 ? ` · ${beschluesse} Beschlüsse` : ""}`
+            : phase === "suchen" && facets.length > 0
+              ? `Teilfragen durchsuchen · ${facettenFertig} von ${facets.length}`
+              : "Teilfragen durchsuchen")}
+          {schritt(zustand(2), stufe > 2
+            ? (dokumente ? `${dokumente} Dokumente gelesen` : "Dokumente gelesen")
+            : channels.length > 0 || stufe < 2
+              ? `Ratsdebatten, Presse und Anlagen lesen${phase === "lesen" ? " …" : ""}`
+              : "Dokumente lesen …")}
+          {phase === "lesen" && channels.length > 0 && (
+            <span className="ml-[22px] flex flex-wrap gap-1">
+              {channels.map((c, i) => {
+                const fertig = c.hits != null;
+                const aktiv = !fertig && i === kanaeleFertig;
+                return (
+                  <span key={c.name} className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium",
+                    fertig ? "border-green-600/25 bg-green-600/5 text-green-700 dark:text-green-500"
+                      : aktiv ? "border-primary/35 bg-primary/[0.06] text-primary"
+                        : "border-border bg-card text-muted-foreground/70")}>
+                    {fertig ? <Check className="h-2.5 w-2.5" aria-hidden />
+                      : aktiv ? <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden /> : null}
+                    {KANAL_TEXT[c.name] ?? c.name}{fertig ? ` · ${c.hits}` : ""}
+                  </span>
+                );
+              })}
+            </span>
+          )}
+          {schritt(zustand(3), phase === "schreiben" ? "Bericht schreiben …" : "Bericht schreiben")}
         </div>
       </div>
       {facets.length > 0 && (
@@ -183,10 +217,12 @@ export function RechercheFortschritt({ phase, facets, facettenFertig, dokumente,
       )}
       <div className="mt-3 flex items-center gap-2.5">
         <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-primary/10">
-          <span className="block h-full rounded-full bg-primary transition-[width] duration-700"
+          <span className="block h-full rounded-full bg-primary transition-[width] duration-1000 ease-linear"
             style={{ width: `${percent}%` }} />
         </span>
-        <span className="whitespace-nowrap font-mono text-[10px] text-muted-foreground">{restzeit}</span>
+        <span className="whitespace-nowrap font-mono text-[10px] tabular-nums text-muted-foreground">
+          {zeit ? `${clock(zeit.elapsed)} · ` : ""}{restLabel(zeit?.rest ?? null)}
+        </span>
         <button type="button" onClick={onStop}
           className="inline-flex items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted">
           <Square className="h-2.5 w-2.5 fill-current" aria-hidden /> Abbrechen

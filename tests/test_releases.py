@@ -616,7 +616,12 @@ def test_die_ankuendigung_kommt_auch_bei_ausgeschalteter_zustellung_per_mail(sto
     nur_push = _konto(store, "push@example.org")
     store.set_delivery_channel(nur_push, "push")
     assert news.announce(store, RELEASE)["queued"] == 2
-    notify.zustellen(store, jetzt=datetime(2026, 11, 9, 10, 0, tzinfo=UTC))
+    # Morgen 10 Uhr UTC: nach der Einreihung (sie trägt die ECHTE Uhrzeit) und
+    # außerhalb der Nachtruhe. Bis 09.11.2026 stand hier ein festes Datum —
+    # ab 10:00 UTC an diesem Tag war die Meldung damit „noch nicht fällig",
+    # und der Test fiel für jeden Zweig gegen dev.
+    morgen = (datetime.now(UTC) + timedelta(days=1)).replace(hour=10, minute=0)
+    notify.zustellen(store, jetzt=morgen)
     assert sorted(k for k, _ in raus) == ["both", "email"]
 
 
