@@ -3584,6 +3584,8 @@ class NumberOfTheWeekCount(TypedDict):
     kind: Literal["count"]
     count: int
     window_days: int
+    #: Erster Tag des gezählten Fensters — Ziel des Links auf die Liste.
+    date_from: NotRequired[str]
 
 
 NumberOfTheWeek = NumberOfTheWeekAmount | NumberOfTheWeekCount

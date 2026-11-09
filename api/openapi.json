@@ -17823,6 +17823,10 @@
             "title": "Count",
             "type": "integer"
           },
+          "date_from": {
+            "title": "Date From",
+            "type": "string"
+          },
           "kind": {
             "const": "count",
             "title": "Kind",

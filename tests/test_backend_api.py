@@ -8040,3 +8040,34 @@ def test_ask_aussprache_der_juengsten_station_aus_der_akte(client, monkeypatch):
 
     texte = [d.get("text") or "" for d in gesehen["debatten"]]
     assert any("KLAK" in t for t in texte), texte
+
+
+def test_zahl_der_woche_zaehlt_wie_die_liste(client):
+    """„159 Beschlüsse in den letzten 90 Tagen“ führte auf eine Liste mit 91
+    (Tims Befund 09.11.2026): Die Karte zählte auch Änderungsanträge und
+    Berichte, die Liste zeigt unter „Beschlüsse“ nur Abstimmungen. Zahl und
+    Liste hinter dem Link müssen gleich sein."""
+    _register(client)
+    tag = (date.today() - timedelta(days=2)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(97, "Rat", tag, "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.executemany(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,outcome,kind) "
+            "VALUES (?,97,?,'5',?,'accepted',?)",
+            [(9701, 1, "Hauptbeschluss", "decision"), (9702, 2, "Änderungsantrag", "subvote"),
+             (9703, 3, "Zweiter Beschluss", "decision")])
+        # Ein Bericht: Die Liste zeigt ihn unter „Beschlüsse“ nicht.
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,outcome,kind) "
+            "VALUES (9704,97,4,'6','Sachstandsbericht','noted','decision')")
+    cs.close()
+
+    zahl = client.get("/api/council/zahl-der-woche").json()
+    if zahl["kind"] != "count":
+        pytest.skip("ein Betrag im Fenster — die Karte zeigt dann keine Anzahl")
+    # So fragt die Seite hinter dem Link: Reiter „Beschlüsse“ = category=vote
+    # (web/frontend/app/(app)/council/view.tsx, `mode`).
+    liste = client.get("/api/council/decisions",
+                       params={"date_from": zahl["date_from"], "category": "vote", "limit": 1}).json()
+    assert zahl["count"] == liste["total"] == 2
