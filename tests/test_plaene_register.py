@@ -139,3 +139,15 @@ def test_register_gegen_den_bestand():
     fehler = [b for b in befunde if b.schwere == "fehler"]
     assert not fehler, "\n".join(str(b) for b in fehler) + (
         "\n→ python scripts/pruefe_plaene.py zeigt alle Befunde")
+
+
+def test_seiten_der_stadt():
+    """Phase 5b: Der Verweis auf die Seite der Stadt zeigt auf einen Plan im Register und auf
+    eine der beiden Seiten der Stadt — nirgendwohin sonst."""
+    assert len(plans.PLAN_WEBSITES) >= 20
+    for key, url in plans.PLAN_WEBSITES.items():
+        assert key in plans.PLANS, f"{key} steht nicht im Register"
+        assert url.startswith(("https://www.oldenburg.de/startseite/", "https://klimaportal.oldenburg.de/")), url
+        assert "?" not in url and " " not in url
+    assert plans.website("klimaschutzplan_2035") == "https://klimaportal.oldenburg.de/massnahmen"
+    assert plans.website("luftreinhalteplan") is None

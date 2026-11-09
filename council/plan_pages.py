@@ -808,6 +808,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "city_status": city_status_block(key),
         "indicators": indicator_blocks(key),
         "review": review_block(plan, state, _template_ref(store, plan.concluded, items)),
+        "website": register.website(key),
         "timeline": tl,
         "runway": runway(plan, items, state, today, tl["stations"]),
         "since": since(plan, items, state, today),

@@ -20837,6 +20837,13 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "website": {
+            "title": "Website",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -20881,6 +20888,7 @@
           "city_status",
           "indicators",
           "review",
+          "website",
           "timeline",
           "runway",
           "since",

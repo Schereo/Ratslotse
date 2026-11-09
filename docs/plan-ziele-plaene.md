@@ -932,6 +932,27 @@ nichts.
 
 ### Phase 5b: Pläne von vor 2018
 
+**Gebaut (09.11.2026): der Verweis auf die Seite der Stadt.** `robots.txt` von
+oldenburg.de erlaubt den Abruf (gesperrt sind nur Systemordner und Adressen
+mit `?id=`). Aus der Seitenübersicht der Stadt (2.072 Adressen, vier Abrufe)
+sind 21 Pläne des Registers ihrer Seite zugeordnet, jede Adresse einzeln
+abgerufen und gegen ihre Überschrift geprüft (`PLAN_WEBSITES` in
+`council/plans.py`). Die Planseite verlinkt sie als „Seite der Stadt“;
+übernommen wird nur der Verweis, kein Text und kein Dokument.
+
+**Was die Seiten zu den offenen Fällen sagen:**
+
+- *Wohnkonzept:* Die Stadt stellt weiter das Wohnkonzept 2025 vor (Kurzfassung,
+  Ratsbeschluss 28.10.2013); eine neue Gesamtfassung nennt die Seite nicht.
+- *Sportentwicklungsplan:* Die Seite stellt den Plan von 2009 als geltend vor
+  (Ratsbeschluss Juni 2009, einstimmig); eine Fortschreibung nennt sie nicht.
+- *Innenstadtstrategie:* Die Seite beschreibt die Strategie, nennt aber keinen
+  Stand. *Luftreinhalteplan* und *Rad- und Fußverkehrsprogramm* haben in der
+  Seitenübersicht keine eigene Seite.
+
+**Offen:** die Dokumente der Pläne von vor 2018 selbst (PDF) als Quelle mit
+Maßnahmenliste aufzunehmen (`source = "website"`).
+
 Das Klimaportal ist nach Phase 3 gewandert. Hier bleibt:
 
 - **Pläne vor 2018 von oldenburg.de:** die Planseiten der Stadt durchsehen

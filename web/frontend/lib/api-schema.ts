@@ -15399,6 +15399,8 @@ export interface components {
             timing: string;
             /** Title */
             title: string;
+            /** Website */
+            website: string | null;
         };
         /** PlanFact */
         PlanFact: {
@@ -28245,4 +28247,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c01c8dcd8478aaf1d5c2b94814c794e7e30f9de743fb4d38f080349d0f485ea7
+// vertrag-sha256: 5cd0277cf122237fb02009aa63ad8f29c314b2c676444b960f9bd6eaaf0a6bee

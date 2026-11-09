@@ -165,6 +165,12 @@ function Title({ plan }: { plan: PlanDetail }) {
           </span>
         )}
         <StatusBadge plan={plan} short />
+        {plan.website && (
+          <a href={plan.website} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-0.5 text-meta text-primary hover:underline">
+            Seite der Stadt <ExternalLink className="h-3 w-3" aria-hidden />
+          </a>
+        )}
       </div>
     </header>
   );
