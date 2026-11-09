@@ -185,6 +185,7 @@ def _card(plan: register.Plan, items: list[dict], today: str) -> dict:
         "report_count": len({_stem(i["template_number"]) or f"top{i['agenda_item_id']}"
                              for i in items if i["role"] in REPORT_ROLES}),
         "successor": _neighbour(plan.successor),
+        "measure_count": len(m["measures"]) if (m := register.measures(plan.key)) else None,
     }
 
 
@@ -285,6 +286,35 @@ def _entries(items: list[dict]) -> list[dict]:
     return out
 
 
+def measures_block(key: str) -> dict | None:
+    """Die geprüfte Maßnahmenliste, nach Handlungsfeld gruppiert (Reihenfolge der Quelle)."""
+    data = register.measures(key)
+    if not data:
+        return None
+    groups: dict[str, list[dict]] = {}
+    for m in data["measures"]:
+        groups.setdefault(m.get("field") or "", []).append(
+            {"code": m["code"], "title": m["title"], "package": m.get("package"), "page": m["page"]})
+    src = data["source"]
+    return {
+        "count": len(data["measures"]),
+        "count_city": data.get("count_city"),
+        "count_note": data.get("count_note"),
+        "source": {"label": src["label"], "template_number": src.get("template"),
+                   "document_id": src["document_id"], "url": src["url"],
+                   "as_of": src.get("as_of"), "as_of_label": _datum_lang(src.get("as_of"))},
+        "groups": [{"field": f or None, "measures": ms} for f, ms in groups.items()],
+    }
+
+
+def _datum_lang(iso: str | None) -> str | None:
+    """``"2022-11-25"`` → ``"25.11.2022"``, ``"2024-04"`` → ``"04/2024"``."""
+    if not iso:
+        return None
+    teile = iso.split("-")
+    return ".".join(reversed(teile)) if len(teile) == 3 else _month(iso)
+
+
 def detail(store, key: str, today: str | None = None) -> dict | None:
     plan = register.PLANS.get(key)
     if plan is None:
@@ -316,6 +346,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "commissioned": _template_ref(store, plan.commissioned, items),
         "concluded": _template_ref(store, plan.concluded, items),
         "predecessor": _neighbour(plan.predecessor),
+        "measures": measures_block(key),
         "timeline": timeline(items),
         "decision_groups": [g for g in groups if g["entries"]],
         "goal": plan.goal,

@@ -74,7 +74,11 @@ function PlanKarteView({ karte }: { karte: PlanKarte }) {
           </h3>
           <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
         </div>
-        {karte.office && <p className="mt-0.5 text-meta text-muted-foreground">{karte.office}</p>}
+        {(karte.office || karte.measure_count) && (
+          <p className="mt-0.5 text-meta text-muted-foreground">
+            {[karte.office, karte.measure_count ? `${karte.measure_count} Maßnahmen` : null].filter(Boolean).join(" · ")}
+          </p>
+        )}
         <div className="mt-2"><StatusAbzeichen karte={karte} /></div>
         <div className="mt-auto">
           <LetzterBericht karte={karte} />

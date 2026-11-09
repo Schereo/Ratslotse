@@ -19186,6 +19186,13 @@
               "null"
             ]
           },
+          "measure_count": {
+            "title": "Measure Count",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "office": {
             "title": "Office",
             "type": [
@@ -19270,7 +19277,8 @@
           "latest_report",
           "report_note",
           "report_count",
-          "successor"
+          "successor",
+          "measure_count"
         ],
         "title": "PlanCard",
         "type": "object"
@@ -19795,6 +19803,58 @@
               "null"
             ]
           },
+          "measure_count": {
+            "title": "Measure Count",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "measures": {
+            "description": "Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).",
+            "properties": {
+              "count": {
+                "title": "Count",
+                "type": "integer"
+              },
+              "count_city": {
+                "title": "Count City",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "count_note": {
+                "title": "Count Note",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "groups": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanMeasureGroup"
+                },
+                "title": "Groups",
+                "type": "array"
+              },
+              "source": {
+                "$ref": "#/components/schemas/PlanMeasureSource"
+              }
+            },
+            "required": [
+              "count",
+              "count_city",
+              "count_note",
+              "source",
+              "groups"
+            ],
+            "title": "PlanMeasures",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "note": {
             "title": "Note",
             "type": [
@@ -19959,6 +20019,7 @@
           "report_note",
           "report_count",
           "successor",
+          "measure_count",
           "note",
           "owner",
           "source",
@@ -19974,6 +20035,7 @@
           "commissioned",
           "concluded",
           "predecessor",
+          "measures",
           "timeline",
           "decision_groups",
           "goal"
@@ -20010,6 +20072,150 @@
           "plans"
         ],
         "title": "PlanGroup",
+        "type": "object"
+      },
+      "PlanMeasure": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "package": {
+            "title": "Package",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "title",
+          "package",
+          "page"
+        ],
+        "title": "PlanMeasure",
+        "type": "object"
+      },
+      "PlanMeasureGroup": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/PlanMeasure"
+            },
+            "title": "Measures",
+            "type": "array"
+          }
+        },
+        "required": [
+          "field",
+          "measures"
+        ],
+        "title": "PlanMeasureGroup",
+        "type": "object"
+      },
+      "PlanMeasureSource": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "template_number",
+          "document_id",
+          "url",
+          "as_of",
+          "as_of_label"
+        ],
+        "title": "PlanMeasureSource",
+        "type": "object"
+      },
+      "PlanMeasures": {
+        "description": "Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "count_city": {
+            "title": "Count City",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "count_note": {
+            "title": "Count Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanMeasureGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "source": {
+            "$ref": "#/components/schemas/PlanMeasureSource"
+          }
+        },
+        "required": [
+          "count",
+          "count_city",
+          "count_note",
+          "source",
+          "groups"
+        ],
+        "title": "PlanMeasures",
         "type": "object"
       },
       "PlanNeighbour": {

@@ -2,8 +2,8 @@
 
 // Die Detailseite eines Plans (Schalter `plaene`, docs/plan-ziele-plaene.md § 3.2).
 //
-// Phase 1: Kopf, Laufzeit, Berichte, Beschlüsse zum Plan. Maßnahmen (Phase 2)
-// und Kennzahl (Phase 3) kommen dazu, sobald es sie gibt — kein leerer Platzhalter.
+// Kopf, Laufzeit, Maßnahmen (wo es eine geprüfte Liste gibt), Berichte und
+// Beschlüsse zum Plan. Kein leerer Platzhalter für das, was fehlt.
 // Alles Rechnen steht in council/plan_pages.py; hier wird gezeichnet.
 
 import { Suspense, useState, type CSSProperties } from "react";
@@ -158,6 +158,78 @@ function Laufzeit({ d }: { d: PlanDetail }) {
   );
 }
 
+/** Ab so vielen Maßnahmen stehen die Handlungsfelder zugeklappt da. */
+const OFFEN_BIS = 20;
+
+function Massnahmen({ m }: { m: NonNullable<PlanDetail["measures"]> }) {
+  const [offen, setOffen] = useState<Set<number>>(
+    () => new Set(m.count <= OFFEN_BIS ? m.groups.map((_, i) => i) : []));
+  const alleOffen = offen.size === m.groups.length;
+  const umschalten = (i: number) => setOffen((alt) => {
+    const neu = new Set(alt);
+    if (neu.has(i)) neu.delete(i); else neu.add(i);
+    return neu;
+  });
+  const stand = m.source.as_of_label ? `Stand ${m.source.as_of_label}` : undefined;
+  return (
+    <Abschnitt kicker="Maßnahmen" rechts={[`${m.count}`, stand].filter(Boolean).join(" · ")}>
+      {m.count_note && <p className="mb-3 text-hinweis text-muted-foreground">{m.count_note}</p>}
+      {m.groups.length > 1 && (
+        <button type="button" onClick={() => setOffen(new Set(alleOffen ? [] : m.groups.map((_, i) => i)))}
+          className="mb-2 text-meta text-primary hover:underline">
+          {alleOffen ? "Alle zuklappen" : "Alle aufklappen"}
+        </button>
+      )}
+      <div className="divide-y divide-border/70 border-y border-border/70">
+        {m.groups.map((g, i) => {
+          const auf = offen.has(i);
+          let letztesPaket: string | null = null;
+          return (
+            <div key={g.field ?? i}>
+              <button type="button" onClick={() => umschalten(i)} aria-expanded={auf}
+                className="flex min-h-11 w-full items-center gap-2 py-2 text-left">
+                <span className="min-w-0 flex-1 break-words text-[14px] font-semibold text-foreground">
+                  {g.field ?? "Maßnahmen"}
+                </span>
+                <span className="font-mono text-meta text-muted-foreground">{g.measures.length}</span>
+                {auf ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
+              </button>
+              {auf && (
+                // Ein Raster je Feld: Die Kennungsspalte ist so breit wie die
+                // längste Kennung („K1“ wie „Klimapakt_07“), der Titel nimmt den Rest.
+                <ul className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 pb-3">
+                  {g.measures.map((x) => {
+                    const neuesPaket = x.package && x.package !== letztesPaket ? x.package : null;
+                    letztesPaket = x.package ?? letztesPaket;
+                    return (
+                      <li key={x.code} className="col-span-2 grid grid-cols-subgrid">
+                        {neuesPaket && (
+                          <p className="col-span-2 mt-2 font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">{neuesPaket}</p>
+                        )}
+                        <span className="py-1 font-mono text-meta text-muted-foreground">{x.code}</span>
+                        <span className="break-words py-1 text-[14px] leading-snug text-foreground">{x.title}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-meta text-muted-foreground">
+        Quelle:{" "}
+        <a href={m.source.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+          {m.source.label}
+          <ExternalLink className="ml-1 inline h-3 w-3 -translate-y-px" aria-hidden />
+        </a>
+        {m.source.template_number && <span className="font-mono"> · {m.source.template_number}</span>}
+      </p>
+    </Abschnitt>
+  );
+}
+
 function stufe(zeile: number): CSSProperties {
   return { "--zl-i": Math.max(0, Math.min(zeile, 15)) } as CSSProperties;
 }
@@ -198,8 +270,8 @@ function Berichte({ d }: { d: PlanDetail }) {
   const [alle, setAlle] = useState(false);
   const stationen = d.timeline.stations;
   const verborgen = alle ? 0 : Math.max(0, stationen.length - SICHTBAR);
-  const rechts = stationen.length > 0
-    ? `${d.report_count} ${d.report_count === 1 ? "Bericht" : "Berichte"} · ${d.timeline.span}` : undefined;
+  const rechts = stationen.length === 0 ? undefined : d.report_count > 0
+    ? `${d.report_count} ${d.report_count === 1 ? "Bericht" : "Berichte"} · ${d.timeline.span}` : d.timeline.span;
   return (
     <Abschnitt kicker="Berichte im Rat" rechts={rechts}>
       {d.report_note && <p className="mb-3 text-hinweis text-muted-foreground">{d.report_note}</p>}
@@ -319,6 +391,7 @@ function PlanInner() {
       <div className="mt-5 space-y-4 weit:grid weit:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] weit:items-start weit:gap-6 weit:space-y-0">
         <div className="min-w-0 space-y-4">
           <Laufzeit d={data} />
+          {data.measures && <Massnahmen m={data.measures} />}
           <Berichte d={data} />
         </div>
         <div className="min-w-0 space-y-4">

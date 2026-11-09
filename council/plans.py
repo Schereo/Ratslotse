@@ -31,9 +31,11 @@ Wächter: ``tests/test_plaene_register.py`` (Form, ohne Datenbank) und
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from functools import cache
+from pathlib import Path
 from typing import Literal
 
 PlanKind = Literal["action", "framework", "statutory", "reference"]
@@ -129,8 +131,7 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
         predecessor="aktionsplan_energie",
         report_patterns=(r"Klimaschutz-Aktivit",),
         goal="klima_2035",
-        note="2022 mit 90 Maßnahmen beschlossen, laut Bericht 3/2026 sind es 97. "
-             "Eine Fortschreibung ist für 2027 angekündigt (26/0750).",
+        note="Eine Fortschreibung ist für 2027 angekündigt (26/0750).",
     ),
     Plan(
         key="waermeplan",
@@ -653,6 +654,19 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
              "ist im Bestand nicht zu finden.",
     ),
 )}
+
+
+#: Die geprüften Maßnahmenlisten (Phase 2): eine JSON-Datei je Plan, gebaut von
+#: ``scripts/plan_massnahmen.py`` aus den Dokumenten der Stadt und im PR geprüft.
+MEASURES_DIR = Path(__file__).resolve().parent / "plan_measures"
+
+
+def measures(key: str) -> dict | None:
+    """Die Maßnahmenliste eines Plans samt Quelle — oder ``None``, wenn es keine gibt."""
+    pfad = MEASURES_DIR / f"{key}.json"
+    if not pfad.exists():
+        return None
+    return json.loads(pfad.read_text(encoding="utf-8"))
 
 
 TEMPLATE_RE = re.compile(r"^\d{2}/\d{4}(/\d+)?$")

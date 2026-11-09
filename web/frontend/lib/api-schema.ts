@@ -14810,6 +14810,8 @@ export interface components {
                 /** Title */
                 title: string;
             } | null;
+            /** Measure Count */
+            measure_count: number | null;
             /** Office */
             office: string | null;
             /** Policy Field */
@@ -15014,6 +15016,23 @@ export interface components {
                 /** Title */
                 title: string;
             } | null;
+            /** Measure Count */
+            measure_count: number | null;
+            /**
+             * PlanMeasures
+             * @description Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).
+             */
+            measures: {
+                /** Count */
+                count: number;
+                /** Count City */
+                count_city: number | null;
+                /** Count Note */
+                count_note: string | null;
+                /** Groups */
+                groups: components["schemas"]["PlanMeasureGroup"][];
+                source: components["schemas"]["PlanMeasureSource"];
+            } | null;
             /** Note */
             note: string | null;
             /** Office */
@@ -15079,6 +15098,54 @@ export interface components {
             label: string;
             /** Plans */
             plans: components["schemas"]["PlanCard"][];
+        };
+        /** PlanMeasure */
+        PlanMeasure: {
+            /** Code */
+            code: string;
+            /** Package */
+            package: string | null;
+            /** Page */
+            page: number;
+            /** Title */
+            title: string;
+        };
+        /** PlanMeasureGroup */
+        PlanMeasureGroup: {
+            /** Field */
+            field: string | null;
+            /** Measures */
+            measures: components["schemas"]["PlanMeasure"][];
+        };
+        /** PlanMeasureSource */
+        PlanMeasureSource: {
+            /** As Of */
+            as_of: string | null;
+            /** As Of Label */
+            as_of_label: string | null;
+            /** Document Id */
+            document_id: number;
+            /** Label */
+            label: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Url */
+            url: string;
+        };
+        /**
+         * PlanMeasures
+         * @description Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).
+         */
+        PlanMeasures: {
+            /** Count */
+            count: number;
+            /** Count City */
+            count_city: number | null;
+            /** Count Note */
+            count_note: string | null;
+            /** Groups */
+            groups: components["schemas"]["PlanMeasureGroup"][];
+            source: components["schemas"]["PlanMeasureSource"];
         };
         /** PlanNeighbour */
         PlanNeighbour: {
@@ -27389,4 +27456,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 5c853a0099c19796c9971684d635ed14c3126e3f2cd5b58d42acdbcd48191447
+// vertrag-sha256: 192e16787d763e24c3d488f8f83a56ba49d641e3a710089d83e9b6ad7fbb2abf

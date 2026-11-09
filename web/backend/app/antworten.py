@@ -4428,6 +4428,8 @@ class PlanCard(TypedDict):
     report_note: str | None
     report_count: int
     successor: PlanNeighbour | None
+    #: Zahl der Maßnahmen laut geprüfter Liste; ``None``: keine Liste.
+    measure_count: int | None
 
 
 class PlanGroup(TypedDict):
@@ -4509,6 +4511,38 @@ class PlanDecisionGroup(TypedDict):
     entries: list[PlanDecisionEntry]
 
 
+class PlanMeasure(TypedDict):
+    code: str
+    title: str
+    package: str | None
+    page: int
+
+
+class PlanMeasureGroup(TypedDict):
+    #: Handlungsfeld in den Worten des Plans; ``None``, wo der Plan keins nennt.
+    field: str | None
+    measures: list[PlanMeasure]
+
+
+class PlanMeasureSource(TypedDict):
+    label: str
+    template_number: str | None
+    document_id: int
+    url: str
+    as_of: str | None
+    as_of_label: str | None
+
+
+class PlanMeasures(TypedDict):
+    """Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``)."""
+    count: int
+    #: Die Zahl, die die Stadt selbst nennt; ``None``, wo sie keine nennt.
+    count_city: int | None
+    count_note: str | None
+    source: PlanMeasureSource
+    groups: list[PlanMeasureGroup]
+
+
 class PlanDetail(PlanCard):
     note: str | None
     owner: str | None
@@ -4525,6 +4559,7 @@ class PlanDetail(PlanCard):
     commissioned: PlanTemplateRef | None
     concluded: PlanTemplateRef | None
     predecessor: PlanNeighbour | None
+    measures: PlanMeasures | None
     timeline: PlanTimeline
     decision_groups: list[PlanDecisionGroup]
     goal: str | None
