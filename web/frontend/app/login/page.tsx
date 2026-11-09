@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { entwurfZiel } from "@/lib/draft";
 import { useWeiterSuffix, zielNachAnmeldung } from "@/lib/public-routes";
+import { zugangAus } from "@/lib/zugangslink";
 import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
@@ -14,7 +15,7 @@ import { AppleSignInButton } from "@/components/apple-sign-in-button";
 import { ONBOARDING_NEEDS_LOGIN_EVENT } from "@/lib/onboarding-state";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginPerLink } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,6 +35,19 @@ export default function LoginPage() {
     check();
     window.addEventListener(ONBOARDING_NEEDS_LOGIN_EVENT, check);
     return () => window.removeEventListener(ONBOARDING_NEEDS_LOGIN_EVENT, check);
+  }, []);
+
+  // Ein Anmeldelink im Rücksprungziel (lib/zugangslink.ts) — der Normalfall
+  // löst die Hülle schon vor der Umleitung ein. Kommt doch einer bis hierher,
+  // wird er ebenso still eingelöst; gilt er nicht, bleibt das Formular ohne
+  // Fehlermeldung, und `weiter=` führt ohne Token zum selben Ziel.
+  useEffect(() => {
+    const zugang = zugangAus(new URLSearchParams(window.location.search).get("weiter"));
+    if (!zugang) return;
+    loginPerLink(zugang.token).then(
+      () => router.replace(zugang.ziel),
+      () => window.history.replaceState(null, "", `/login?weiter=${encodeURIComponent(zugang.ziel)}`));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- einmal beim Ankommen
   }, []);
 
   const onSubmit = async (e: React.FormEvent) => {

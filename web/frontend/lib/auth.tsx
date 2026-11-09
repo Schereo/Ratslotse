@@ -14,6 +14,8 @@ interface AuthContextValue {
    *  Die Hülle zeigt dann „antwortet gerade nicht" statt der Anmeldung. */
   authFehler: boolean;
   login: (email: string, password: string) => Promise<void>;
+  /** Einen Anmeldelink aus einer Mail einlösen (`lib/zugangslink.ts`). */
+  loginPerLink: (token: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   loginWithApple: (cred: AppleCredential) => Promise<User>;
   logout: () => Promise<void>;
@@ -73,6 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
+  const loginPerLink = async (token: string) => {
+    const u = await api.post<User>("/auth/magic", { token });
+    setUser(u);
+  };
+
   const register = async (email: string, password: string, displayName: string) => {
     // Der Name ist Pflicht (Backend weist einen leeren ab) — deshalb kein
     // `|| null` mehr, das die Prüfung nur zum Server verschöbe.
@@ -104,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, authFehler, login, register, loginWithApple, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, authFehler, login, loginPerLink, register, loginWithApple, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

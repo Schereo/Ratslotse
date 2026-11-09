@@ -20,7 +20,8 @@ import re
 
 from .email import email_ready, send_email
 from .push import push_ready, send_push
-from .digest_email import render_html_email
+from . import zugangslink
+from .digest_email import APP_BASE_URL, render_html_email
 
 logger = logging.getLogger("kern.delivery")
 
@@ -158,12 +159,14 @@ def deliver_message(owner: dict, message_html: str, email_subject: str,
     sent: list[str] = []
     if wants_email(owner):
         try:
-            message_id = send_email(
-                owner["email"], email_subject,
-                render_html_email(email_subject, message_html,
-                                  greeting_name=owner.get("display_name"), anlass=anlass),
-                text=None,
-            )
+            html = render_html_email(email_subject, message_html,
+                                     greeting_name=owner.get("display_name"), anlass=anlass)
+            # Anmeldelinks je Empfänger*in (kern/zugangslink.py) — nach der
+            # Hülle, damit auch ihr Fuß sie trägt (der Abmeldelink führt auf
+            # einen Schalter, den eine Link-Sitzung umlegen darf).
+            html = zugangslink.fuer_mail(store, owner.get("owner_id") or owner.get("id"),
+                                         anlass, html, APP_BASE_URL)
+            message_id = send_email(owner["email"], email_subject, html, text=None)
             sent.append("email")
             _protokoll(store, owner, anlass, email_subject, True, message_id)
         except Exception:

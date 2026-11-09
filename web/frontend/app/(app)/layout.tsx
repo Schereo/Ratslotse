@@ -29,12 +29,16 @@ import { CodeEingabe } from "@/components/code-eingabe";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
+import { useZugangAusAdresseRaeumen, zugangAus } from "@/lib/zugangslink";
 import { abmeldenAbholen, abmeldenMerken } from "@/lib/abmelden";
 import { breiteFuer, huellenKlasse } from "@/lib/vollbreit";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, authFehler, refresh, logout } = useAuth();
+  const { user, loading, authFehler, refresh, logout, loginPerLink } = useAuth();
+  // Angemeldet und aus einer Mail mit Anmeldelink gekommen: Das Token hat hier
+  // nichts mehr zu suchen (lib/zugangslink.ts).
+  useZugangAusAdresseRaeumen(!!user);
   const router = useRouter();
   const abmelden = async () => {
     abmeldenMerken();
@@ -76,10 +80,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     enabled: gated,
   });
 
+  // Anmeldelink aus einer Mail (lib/zugangslink.ts): einmal einlösen, BEVOR
+  // zur Anmeldung umgeleitet wird — wer aus der Mail kommt, steht direkt auf
+  // der Seite (Tims Vorgabe 09.11.2026). `null` = noch nicht nachgesehen.
+  // Gilt der Link nicht mehr, fliegt nur das Token aus der Adresse, und es
+  // geht still weiter wie ohne Link: Anmeldung mit Rücksprung, keine
+  // Fehlermeldung (gezählt wird serverseitig, s. `/api/auth/magic`).
+  const [zugangOffen, setZugangOffen] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (loading) return;
+    const zugang = user ? null : zugangAus(
+      window.location.pathname + window.location.search + window.location.hash);
+    if (!zugang) { setZugangOffen(false); return; }
+    setZugangOffen(true);
+    const ohneToken = () => window.history.replaceState(window.history.state, "", zugang.ziel);
+    loginPerLink(zugang.token).then(ohneToken, ohneToken).finally(() => setZugangOffen(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- genau einmal nach dem ersten Auth-Stand
+  }, [loading]);
+
   useEffect(() => {
     // `authFehler`: Der Server kam nicht an — das ist kein Abmelden. Der
     // Rauswurf hier traf bei jedem Deploy alle, die gerade eine Seite luden.
-    if (loading || user || oeffentlich || authFehler) return;
+    if (loading || user || oeffentlich || authFehler || zugangOffen !== false) return;
     // Das Ziel mitnehmen, statt es zu verlieren: Wer aus einem Lesezeichen oder
     // einer angetippten Mitteilung auf „Meine Themen" kommt und sich anmelden
     // muss, landete danach stumpf auf dem Dashboard.
@@ -87,7 +109,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Bewusst abgemeldet (lib/abmelden.ts): ohne Rücksprung.
     if (abmeldenAbholen()) { router.replace("/login"); return; }
     router.replace(ziel === "/dashboard" ? "/login" : mitRuecksprung("/login", ziel));
-  }, [user, loading, router, oeffentlich, authFehler]);
+  }, [user, loading, router, oeffentlich, authFehler, zugangOffen]);
 
   // Ganzseitig laden: mittig statt oben. Ohne das klebte der Spinner am
   // oberen Rand — in der App halb hinter der Dynamic Island.

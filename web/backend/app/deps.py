@@ -10,7 +10,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from .clients import client_kind
 from .config import get_settings
-from .security import decode_access_token
+from .security import VIA_LINK, decode_access_token, token_via
 
 from kern import roles as rollen
 from kern.store import Store
@@ -71,6 +71,8 @@ def get_current_user(request: Request, store: Store = Depends(get_store)) -> dic
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Konto nicht gefunden.")
     if token_version != user.get("token_version", 0):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sitzung wurde beendet. Bitte neu anmelden.")
+    if token_via(token) == VIA_LINK:
+        user = {**user, "per_link": True}
     # Aktivität fürs Admin-Dashboard (20a). Best-effort — darf den Request
     # nie brechen, und seit 10/2026 auch nicht mehr aufhalten (s. unten).
     _sitzung_zaehlen(store, user["id"], client_kind(request))
@@ -161,12 +163,34 @@ def require_active(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
+def require_volle_anmeldung(user: dict = Depends(get_current_user)) -> dict:
+    """Für alles, was das Konto übernimmt: Passwort, Adresse, Löschen,
+    Schlüssel für fremde Agenten, das Admin-Panel.
+
+    Eine Sitzung aus einem Anmeldelink (``security.VIA_LINK``) darf lesen,
+    fragen und einstellen — aber wer eine weitergeleitete Mail hat, soll damit
+    nicht Adresse und Passwort tauschen können. Dafür braucht es die echte
+    Anmeldung; die Meldung sagt das so, wie sie in beiden Frontends erscheint.
+    """
+    _nicht_per_link(user)
+    return user
+
+
+def _nicht_per_link(user: dict) -> None:
+    if user.get("per_link"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Dafür melde dich bitte mit deinem Passwort an — "
+                            "über einen Link aus einer Mail geht das nicht.")
+
+
 def require_admin(user: dict = Depends(require_active)) -> dict:
     """Adminrechte. Bewusst eigene Meldung statt `require_permission("admin")`
     — „Adminrechte erforderlich" sagt mehr als „Fehlende Berechtigung", und die
     ausgelieferte iOS-App zeigt den Text unverändert an."""
     if not ist_admin(user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Adminrechte erforderlich.")
+    # Das Admin-Panel nie aus einer Sitzung, die eine Mail geöffnet hat.
+    _nicht_per_link(user)
     return user
 
 

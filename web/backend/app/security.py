@@ -73,19 +73,74 @@ def _sign(message: bytes, secret: str) -> str:
     return _b64url_encode(sig)
 
 
+def _signiert(nutzlast: dict) -> str:
+    header = _b64url_encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
+    payload = _b64url_encode(json.dumps(nutzlast).encode())
+    signing_input = f"{header}.{payload}".encode()
+    return f"{header}.{payload}.{_sign(signing_input, get_settings().web_jwt_secret)}"
+
+
+#: Woher eine Sitzung stammt, wenn nicht aus Passwort, Apple oder Bestätigung:
+#: aus einem Anmeldelink in einer Mail (``create_magic_token``). Eine solche
+#: Sitzung darf lesen und einstellen, aber nichts, was das Konto übernimmt
+#: (``deps.require_volle_anmeldung``).
+VIA_LINK = "magic"
+
+
 def create_access_token(
-    subject: str | int, token_version: int = 0, expires_minutes: int | None = None
+    subject: str | int, token_version: int = 0, expires_minutes: int | None = None,
+    via: str | None = None,
 ) -> str:
     settings = get_settings()
     minutes = settings.access_token_expire_minutes if expires_minutes is None else expires_minutes
-    exp = int(time.time()) + minutes * 60
-    header = _b64url_encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
-    payload = _b64url_encode(
-        json.dumps({"sub": str(subject), "exp": exp, "ver": token_version}).encode()
-    )
-    signing_input = f"{header}.{payload}".encode()
-    signature = _sign(signing_input, settings.web_jwt_secret)
-    return f"{header}.{payload}.{signature}"
+    nutzlast: dict = {"sub": str(subject), "exp": int(time.time()) + minutes * 60,
+                      "ver": token_version}
+    if via:
+        nutzlast["via"] = via
+    return _signiert(nutzlast)
+
+
+#: So lange gilt ein Anmeldelink aus einer Mail (Tims Vorgabe 08.11.2026).
+MAGIC_TAGE = 10
+
+
+def create_magic_token(subject: str | int, token_version: int = 0, tage: int = MAGIC_TAGE) -> str:
+    """Ein Anmeldelink-Token für eine Mail — **kein** Sitzungs-Token.
+
+    Es trägt ``zweck: magic``, und ``decode_access_token`` weist jedes Token
+    mit Zweck ab: Ein zehn Tage gültiger Schlüssel, der zugleich als Sitzung
+    gälte, wäre ein Generalschlüssel im Postfach. Eingelöst wird es nur über
+    ``POST /api/auth/magic`` — per Klick, damit Mail-Scanner, die Links vorab
+    öffnen, nichts auslösen. ``ver`` bindet es an ``token_version``: Abmelden
+    überall, Passwortwechsel oder Sperre machen alle offenen Links wertlos.
+    """
+    return _signiert({"sub": str(subject), "exp": int(time.time()) + tage * 86400,
+                      "ver": token_version, "zweck": VIA_LINK})
+
+
+def magic_grund(token: str) -> str:
+    """Warum ein Anmeldelink nicht gilt: ``abgelaufen`` (echt, aber zu alt)
+    oder ``ungueltig`` (falsche Signatur, kein Anmeldelink, Unsinn)."""
+    payload = _verified_payload(token)
+    if payload and payload.get("zweck") == VIA_LINK and payload.get("exp", 0) < int(time.time()):
+        return "abgelaufen"
+    return "ungueltig"
+
+
+def decode_magic_token(token: str) -> tuple[str, int] | None:
+    """``(Konto, token_version)`` eines gültigen Anmeldelinks — sonst ``None``."""
+    payload = _verified_payload(token)
+    if not payload or payload.get("zweck") != VIA_LINK:
+        return None
+    if payload.get("exp", 0) < int(time.time()) or payload.get("sub") is None:
+        return None
+    return str(payload["sub"]), int(payload.get("ver", 0))
+
+
+def token_via(token: str) -> str | None:
+    """Woher die Sitzung stammt (``VIA_LINK``) — ``None`` für eine gewöhnliche."""
+    payload = _verified_payload(token)
+    return (payload or {}).get("via") or None
 
 
 # --- RS256-Verifikation (Sign in with Apple, RL-1002) ------------------------
@@ -181,6 +236,9 @@ def decode_access_token(token: str) -> tuple[str, int] | None:
     if payload is None:
         return None
     if payload.get("exp", 0) < int(time.time()):
+        return None
+    # Ein Token mit Zweck (der Anmeldelink) ist nie eine Sitzung.
+    if payload.get("zweck"):
         return None
     sub = payload.get("sub")
     if sub is None:

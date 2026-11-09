@@ -43,6 +43,11 @@ class RegisterRequest(BaseModel):
     display_name: str | None = Field(default=None, max_length=60)
 
 
+class MagicLinkRequest(BaseModel):
+    """Ein Anmeldelink aus einer Mail (``security.create_magic_token``)."""
+    token: str = Field(min_length=20, max_length=800)
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

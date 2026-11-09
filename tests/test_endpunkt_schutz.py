@@ -55,6 +55,9 @@ OEFFENTLICH = {
     # schlecht.
     ("post", "/api/auth/register"),
     ("post", "/api/auth/login"),
+    # Anmeldelink aus einer Mail (kern/zugangslink.py): Der Zweck IST die
+    # Anmeldung ohne Sitzung; das signierte Token ersetzt das Passwort.
+    ("post", "/api/auth/magic"),
     ("post", "/api/auth/logout"),
     ("post", "/api/auth/apple"),
     ("post", "/api/auth/verify-email"),

@@ -16145,6 +16145,22 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MagicLinkRequest": {
+        "description": "Ein Anmeldelink aus einer Mail (``security.create_magic_token``).",
+        "properties": {
+          "token": {
+            "maxLength": 800,
+            "minLength": 20,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "MagicLinkRequest",
+        "type": "object"
+      },
       "MarkedHits": {
         "properties": {
           "marked": {
@@ -30352,6 +30368,48 @@
           }
         },
         "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/magic": {
+      "post": {
+        "description": "Einen Anmeldelink aus einer Mail einlösen.\n\nDie Seite ruft das beim Ankommen von selbst auf (Tims Vorgabe 09.11.2026:\ndirekt angemeldet, kein Zwischenschritt). Ein POST statt des Links selbst\nbleibt es trotzdem: Ein GET, der anmeldet, liefe in jedem Vorschau-Abruf\nmit. Die Sitzung trägt ``via: magic`` und darf nichts, was das Konto\nübernimmt (``deps.require_volle_anmeldung``).\n\nAbgelaufen, widerrufen (``token_version``) oder gesperrt: 401 — die Seite\nzeigt dann ohne Fehlermeldung die normale Anmeldung mit Rücksprung. Bei uns\nlandet der Fall im Fehlersammler (``_link_fehler_merken``), gruppiert nach\nGrund, ohne Token und ohne Konto: Häufen sich abgelaufene Links, sind zehn\nTage zu kurz; häufen sich ungültige, stimmt etwas am Bau der Links nicht.",
+        "operationId": "magic_einloesen_api_auth_magic_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MagicLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Magic Einloesen",
         "tags": [
           "auth"
         ]

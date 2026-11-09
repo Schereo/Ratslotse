@@ -1382,6 +1382,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/magic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Magic Einloesen
+         * @description Einen Anmeldelink aus einer Mail einlösen.
+         *
+         *     Die Seite ruft das beim Ankommen von selbst auf (Tims Vorgabe 09.11.2026:
+         *     direkt angemeldet, kein Zwischenschritt). Ein POST statt des Links selbst
+         *     bleibt es trotzdem: Ein GET, der anmeldet, liefe in jedem Vorschau-Abruf
+         *     mit. Die Sitzung trägt ``via: magic`` und darf nichts, was das Konto
+         *     übernimmt (``deps.require_volle_anmeldung``).
+         *
+         *     Abgelaufen, widerrufen (``token_version``) oder gesperrt: 401 — die Seite
+         *     zeigt dann ohne Fehlermeldung die normale Anmeldung mit Rücksprung. Bei uns
+         *     landet der Fall im Fehlersammler (``_link_fehler_merken``), gruppiert nach
+         *     Grund, ohne Token und ohne Konto: Häufen sich abgelaufene Links, sind zehn
+         *     Tage zu kurz; häufen sich ungültige, stimmt etwas am Bau der Links nicht.
+         */
+        post: operations["magic_einloesen_api_auth_magic_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -13359,6 +13391,14 @@ export interface components {
             /** Password */
             password: string;
         };
+        /**
+         * MagicLinkRequest
+         * @description Ein Anmeldelink aus einer Mail (``security.create_magic_token``).
+         */
+        MagicLinkRequest: {
+            /** Token */
+            token: string;
+        };
         /** MarkedHits */
         MarkedHits: {
             /** Marked */
@@ -20046,6 +20086,39 @@ export interface operations {
             };
         };
     };
+    magic_einloesen_api_auth_magic_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MagicLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     me_api_auth_me_get: {
         parameters: {
             query?: never;
@@ -26701,4 +26774,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: caed2b0eac5c9959ab72a03c90590aad8724ee69226e81fad6ef1124d2599f28
+// vertrag-sha256: f30fc4fd5f808f0e5b171095f58139bbf6b59925f1740123714a276f5bbcd516
