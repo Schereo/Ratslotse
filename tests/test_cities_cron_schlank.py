@@ -300,3 +300,63 @@ def test_der_volltextindex_schreibt_nur_was_sich_geaendert_hat(tmp_path):
         s.upsert_batch(Batch(papers=[Paper("b", "hannover", "Zweiter, neu benannt")]))
         assert build_fts(s) == 1
         assert [t["paper_id"] for t in s.fts_search("benannt")] == ["b"]
+
+
+def test_nach_der_kostengrenze_laufen_die_kostenlosen_stufen_weiter(monkeypatch, tmp_path):
+    """Trockenlauf Prod 09.11.2026: 5 $ Rückstand, 2 $ Grenze. Bis dahin hörte
+    der Lauf nach der Einordnung ganz auf — Index und Gruppen liefen nie, und
+    neue Vorlagen kamen nie in eine Idee. Jetzt halten nur Deploy und Frist sie
+    auf; ihre Modellaufrufe fragen die Grenze selbst."""
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location("check_cities_test_grenze",
+                                                  Path("scripts/check_cities.py"))
+    modul = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(modul)
+
+    monkeypatch.setattr(modul, "active_bodies", list)
+    for name in ("fetch", "normalize", "extract_inline", "extract"):
+        monkeypatch.setattr(modul.pipeline, name, lambda *a, **k: {})
+    gelaufen: list[str] = []
+
+    def einordnen(main, limit=None, stopp=None, nach_index=False, **k):
+        gelaufen.append("fit" if nach_index else "classify")
+        if stopp is not None and not nach_index:
+            stopp.ausgeben(5.0)  # die Grenze ist danach erreicht
+        return {}
+
+    monkeypatch.setattr(modul.pipeline, "annotate", einordnen)
+    monkeypatch.setattr(modul.pipeline, "index_all",
+                        lambda main, body_id=None: gelaufen.append(f"index:{body_id}") or {})
+    monkeypatch.setattr(modul.pipeline, "cluster_all",
+                        lambda main, stopp=None: gelaufen.append("cluster") or {})
+    from council.cities import pruefung
+    monkeypatch.setattr(pruefung, "pruefe", lambda *a, **k: gelaufen.append("pruefung") or [])
+    monkeypatch.setenv("CITIES_DB", str(tmp_path / "c.sqlite"))
+    monkeypatch.setenv("CITIES_MAX_USD", "2")
+
+    zahlen = modul.main()
+    assert gelaufen[:2] == ["index:oldenburg", "classify"]
+    assert "index:None" in gelaufen and "cluster" in gelaufen and "pruefung" in gelaufen
+    assert "fit" not in gelaufen, "das Urteil ruft ein Modell — nach der Grenze nicht mehr"
+    assert zahlen["kostengrenze_erreicht"] == 1 and zahlen["abgebrochen_kosten"] == 1
+
+
+def test_gesperrte_hosts_gehen_ueber_den_umweg(monkeypatch):
+    """Osnabrück sperrt die Server-Adresse (Prod 403, Notebook 200, 09.11.2026)."""
+    import requests
+
+    from council.cities.oparl import ProxyAwareSession
+
+    monkeypatch.setenv("RATSLOTSE_PROXY_URL", "socks5h://nas:1080")
+    monkeypatch.setenv("RATSLOTSE_PROXY_HOSTS", "osnabrueck.sitzung-online.de")
+    gesehen: list = []
+    monkeypatch.setattr(requests.Session, "request",
+                        lambda self, method, url, *a, **k: gesehen.append((url, k.get("proxies"))))
+    s = ProxyAwareSession()
+    s.get("https://www.osnabrueck.sitzung-online.de/oparl/system")
+    s.get("https://ratsinfo.braunschweig.de/oparl/system")
+    assert gesehen[0][1] == {"http": "socks5h://nas:1080", "https": "socks5h://nas:1080"}
+    assert not gesehen[1][1], "alles andere bleibt direkt"
