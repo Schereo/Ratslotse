@@ -24,7 +24,7 @@ FILES = sorted(plan_state.STATUS_DIR.glob("*.json"))
 
 
 def test_es_gibt_statusdateien():
-    assert {p.stem for p in FILES} >= {"klimaschutzplan_2035", "waermeplan"}
+    assert {p.stem for p in FILES} >= {"klimaschutzplan_2035", "waermeplan", "aktionsplan_gewalt_2020"}
 
 
 @pytest.mark.parametrize("path", FILES, ids=[p.stem for p in FILES])
@@ -155,3 +155,40 @@ def test_berichtsstand_auf_der_karte():
     plain = dataclasses.replace(plans.PLANS["waermeplan"], review_due=None)
     assert plan_pages.report_state_block(plain, [], "2026-11-09")["hint"] == "Der Plan ist jünger als zwei Jahre."
     assert plan_pages.report_state_block(plain, [_item("report", "2026-10-01")], "2026-11-09")["hint"] is None
+
+
+def test_aktionsplan_gewalt_2020_farben_und_text_passen_zusammen():
+    """Die Verteilung zählt der Text der Evaluation, den Stand je Empfehlung trägt die
+    Zellfarbe im Anhang. Die eine Abweichung (90 im Text, 91 Zeilen) steht als Hinweis da."""
+    stand = plan_pages.city_status_block("aktionsplan_gewalt_2020")
+    assert stand["total"] == 90 and stand["complete"] and stand["origin_label"] == "Nach Angaben der Verwaltung"
+    assert [c["count"] for c in stand["counts"]] == [56, 3, 8, 14, 9]
+    assert any("91 Zeilen" in n["text"] for n in stand["notes"])
+    block = plan_pages.measures_block("aktionsplan_gewalt_2020")
+    assert block["count"] == 91 and block["status_count"] == 91 and block["count_city"] is None
+    assert [g["field"] for g in block["groups"]] == [
+        "Übergreifende Handlungsempfehlungen", "Gewalt gegen Frauen*", "Häusliche Gewalt"]
+    assert [len(g["measures"]) for g in block["groups"]] == [8, 58, 25]
+    titles = [m["title"] for g in block["groups"] for m in g["measures"]]
+    assert all(t[:1].isupper() and len(t) >= 20 for t in titles), [t for t in titles if not t[:1].isupper() or len(t) < 20]
+    assert not any("ungsund " in t or "- und" in t.replace(" - und", "") and "-und" in t for t in titles)
+
+
+def test_kennzahl_steht_neben_dem_plan():
+    """§ 3.4 Nr. 4: Soll und Ist mit Quelle — und der Vorbehalt des Berichts dabei."""
+    (ghg,) = plan_pages.indicator_blocks("klimaschutzplan_2035")
+    assert ghg["baseline_year"] == 2020 and ghg["baseline_value"] == 1140000
+    rows = {r["year"]: r for r in ghg["rows"]}
+    assert rows[2023]["actual"] == 935792 and rows[2023]["target"] == 969000
+    assert round(rows[2023]["actual_change"] * 100, 1) == -17.9  # so nennt es auch der Bericht 25/0866
+    assert round(rows[2022]["actual_change"] * 100, 1) == -11.9 and rows[2022]["target"] is None
+    assert rows[2023]["template_number"] == "25/0866"
+    assert any("Strommix" in n["text"] for n in ghg["notes"])
+    assert plan_pages.indicator_blocks("waermeplan") == []
+    for path in plan_state.INDICATOR_DIR.glob("*.json"):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert data["plan"] == path.stem and data["plan"] in plans.PLANS
+        for ind in data["indicators"]:
+            assert plans.TEMPLATE_RE.match(ind["baseline"]["template"])
+            for point in ind["points"]:
+                assert point["kind"] in ("target", "actual") and plans.TEMPLATE_RE.match(point["template"])

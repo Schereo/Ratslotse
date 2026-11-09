@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  byField, byPackage, committeeList, filterMeasures, formatDate, percent, reportCount, signed, stationKind,
+  byField, byPackage, committeeList, filterMeasures, formatAmount, formatChange, formatDate, percent, reportCount,
+  signed, stationKind,
   statusLabels, statusLine, statusTone, yearSpan,
   type PlanCard, type PlanMeasureField,
 } from "./plans";
@@ -147,5 +148,16 @@ describe("statusLabels", () => {
       { counts: [{ status_raw: "Planung" }, { status_raw: "Realisiert" }] },
     ];
     expect(statusLabels(series)).toEqual(["Planung", "Realisiert", "In Planung"]);
+  });
+});
+
+describe("formatAmount und formatChange", () => {
+  it("setzt Tausenderpunkte", () => {
+    expect([formatAmount(935792), formatAmount(1140000), formatAmount(950)]).toEqual(["935.792", "1.140.000", "950"]);
+  });
+  it("rundet die Änderung genau einmal auf eine Nachkommastelle", () => {
+    expect(formatChange((935792 - 1140000) / 1140000)).toBe("−17,9 %");
+    expect(formatChange((1083000 - 1140000) / 1140000)).toBe("−5,0 %");
+    expect([formatChange(0.0504), formatChange(0)]).toEqual(["+5,0 %", "±0,0 %"]);
   });
 });

@@ -4542,6 +4542,37 @@ class PlanCityStatus(PlanStatusBrief):
     notes: list[PlanStatusNote]
 
 
+class PlanIndicatorRow(TypedDict):
+    year: int
+    target: float | None
+    actual: float | None
+    #: Änderung gegenüber dem Ausgangswert als Anteil (−0,179 …), ungerundet.
+    target_change: float | None
+    actual_change: float | None
+    #: Das Ziel in den Worten des Beschlusses („−15 % gegenüber 2020“).
+    target_label: str | None
+    #: Vorlage, aus der der Ist-Wert stammt.
+    template_number: str | None
+
+
+class PlanIndicatorNote(TypedDict):
+    text: str
+    template_number: str | None
+
+
+class PlanIndicator(TypedDict):
+    """Eine Kennzahl neben dem Plan — nicht sein Ergebnis (Plan § 3.4 Nr. 4)."""
+    key: str
+    label: str
+    unit: str
+    baseline_year: int
+    baseline_value: float
+    baseline_label: str
+    baseline_template: str | None
+    rows: list[PlanIndicatorRow]
+    notes: list[PlanIndicatorNote]
+
+
 class PlanCard(TypedDict):
     """Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4)."""
     key: str
@@ -4812,6 +4843,7 @@ class PlanDetail(PlanCard):
     predecessor: PlanNeighbour | None
     measures: PlanMeasures | None
     city_status: PlanCityStatus | None
+    indicators: list[PlanIndicator]
     timeline: PlanTimeline
     runway: PlanRunway | None
     #: „Seit dem Beschluss · 3 Jahre, 10 Monate“ — nur für Pläne, die laufen oder in Arbeit sind.

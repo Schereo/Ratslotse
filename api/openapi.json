@@ -20188,6 +20188,13 @@
               "null"
             ]
           },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/PlanIndicator"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -20745,6 +20752,7 @@
           "predecessor",
           "measures",
           "city_status",
+          "indicators",
           "timeline",
           "runway",
           "since",
@@ -20826,6 +20834,151 @@
           "plans"
         ],
         "title": "PlanGroup",
+        "type": "object"
+      },
+      "PlanIndicator": {
+        "description": "Eine Kennzahl neben dem Plan — nicht sein Ergebnis (Plan § 3.4 Nr. 4).",
+        "properties": {
+          "baseline_label": {
+            "title": "Baseline Label",
+            "type": "string"
+          },
+          "baseline_template": {
+            "title": "Baseline Template",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "baseline_value": {
+            "title": "Baseline Value",
+            "type": "number"
+          },
+          "baseline_year": {
+            "title": "Baseline Year",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanIndicatorNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PlanIndicatorRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "unit",
+          "baseline_year",
+          "baseline_value",
+          "baseline_label",
+          "baseline_template",
+          "rows",
+          "notes"
+        ],
+        "title": "PlanIndicator",
+        "type": "object"
+      },
+      "PlanIndicatorNote": {
+        "properties": {
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "template_number"
+        ],
+        "title": "PlanIndicatorNote",
+        "type": "object"
+      },
+      "PlanIndicatorRow": {
+        "properties": {
+          "actual": {
+            "title": "Actual",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "actual_change": {
+            "title": "Actual Change",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "target": {
+            "title": "Target",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "target_change": {
+            "title": "Target Change",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "target_label": {
+            "title": "Target Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "target",
+          "actual",
+          "target_change",
+          "actual_change",
+          "target_label",
+          "template_number"
+        ],
+        "title": "PlanIndicatorRow",
         "type": "object"
       },
       "PlanLane": {

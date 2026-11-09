@@ -142,7 +142,7 @@ Register, und `scripts/pruefe_plaene.py` hält es gegen den Bestand.
 | **Klimaschutzplan Oldenburg 2035** (mit Klimaziel) | Klimaziel `21/0249/2`, Rat 26.04.2021, einstimmig; Plan `22/0910`, Rat 19.12.2022, angenommen | bis 2035; Vorschlag zur Fortschreibung für 2027 angekündigt (`26/0750`) | 90 (`26/0074`), inzwischen 97 (`26/0750`); Kennungen wie `Gebäude_05`, `Klimapakt_07`, `Beratung_01` | „Klimaschutz-Aktivitäten n/JJJJ“ dreimal im Jahr, 15 Stück von `22/0037` (02/2022) bis `26/0750` (ASUK 08.10.2026), Berichtswesen nach `22/0036`; Statusverteilung in `26/0074` und `26/0750`; externes Fortschrittsbarometer auf klimaportal.oldenburg.de/monitoring | THG-Bilanz (`23/0653`, `25/0131`, `25/0866`): Zwischenziel 2023 −15 %, erreicht −17,9 % gegenüber 2020 (1,14 Mio. t) |
 | **Oldenburger Wärmeplan** | `26/0236`, Rat 01.06.2026, mehrheitlich | Überprüfung spätestens nach fünf Jahren (§ 25 WPG); alle Maßnahmen „kurz- oder mittelfristig“ | 18 (K1–K3, F1–F2, T1–T5, O1–O8), je Maßnahme mit Stand und Zielsetzung in der Vorlage | Ergebnisbericht `25/0743`; danach über die Klimaschutz-Berichte (z. B. O7 in `26/0750`) | Zielsetzung je Maßnahme fürs Monitoring (in `26/0236`) |
 | **Mobilitätsplan Oldenburg 2030** | `23/0211/2`, Rat 26.06.2023, mehrheitlich; Vorgehen `23/0867`, Rat 27.11.2023; Priorisierung `24/0216`, Rat 27.05.2024 | bis 2030 | über 250 Einzelmaßnahmen, rund 70 priorisiert (Anlage 1 zu `24/0216`) | jährlich im Verkehrsausschuss: `23/0562`, `25/0041`, `26/0190`; Zuordnung zum Klimaschutzplan `25/0379` | Zielzahlen in der Priorisierung (7 Premiumrouten, 4 umgestaltete und 9 neue Fahrradstraßen, Ladepunkte je Quartal); Modal-Split-Erhebung lief 2024 an |
-| **Aktionsplan gegen Gewalt an Frauen\* und Häusliche Gewalt** | `20/0564`, Rat 28.09.2020, einstimmig; Evaluation und Fortschreibung `26/0681/1`, Rat 28.09.2026, einstimmig | kein Enddatum; Umsetzungszeitraum 2020–2025, Fortschreibung „für die kommenden Jahre“ | 2020: 87 (8 übergreifend, 56 Gewalt gegen Frauen\*, 23 Häusliche Gewalt); 2026: 6 Fokusthemen × 5 = 30 Empfehlungen | schriftlich `21/0704`, `22/0494`, `23/0356`, `26/0080`; 7 Berichte ohne Vorlage und ohne Text (08/2019, dazu sechs „mündliche“ 10/2023–03/2025); Evaluation mit dem Stand **jeder** der 87 Empfehlungen (Anlage 314635, Anhang 4.1, S. 64–89); künftig jährlicher Bericht | Fallzahlen 2020–2025 (Kap. 1.3), keine Zielwerte |
+| **Aktionsplan gegen Gewalt an Frauen\* und Häusliche Gewalt** | `20/0564`, Rat 28.09.2020, einstimmig; Evaluation und Fortschreibung `26/0681/1`, Rat 28.09.2026, einstimmig | kein Enddatum; Umsetzungszeitraum 2020–2025, Fortschreibung „für die kommenden Jahre“ | 2020: laut Evaluation 90 (8 übergreifend, 57 Gewalt gegen Frauen\*, 25 Häusliche Gewalt); die Tabelle im Anhang hat 91 Zeilen; 2026: 6 Fokusthemen × 5 = 30 Empfehlungen | schriftlich `21/0704`, `22/0494`, `23/0356`, `26/0080`; 7 Berichte ohne Vorlage und ohne Text (08/2019, dazu sechs „mündliche“ 10/2023–03/2025); Evaluation mit dem Stand **jeder** Empfehlung (Anlage 314635, Anhang 4.1, S. 64–89); künftig jährlicher Bericht | Fallzahlen 2020–2025 (Kap. 1.3), keine Zielwerte |
 | **Ernährungsstrategie** | `24/0810` und `24/0811`, Rat 24.02.2025, mehrheitlich | offen | 9 Ziele, 68 Handlungsansätze (A1 …), davon 5 zur Umsetzung beschlossen | `23/0151`, `23/0741`, `24/0390`; Umsetzungsstand **je Ansatz** in `26/0431` (ASUK 06/2026) | qualitative Stufe 0/25/50/75/100 % je Ansatz |
 | **Lärmaktionsplan** (Fortschreibung) | `24/0293/1`, Rat 30.09.2024, mehrheitlich; Vorgängerprüfung `20/0049` | Tempo 30, Stufe 1 seit 14.12.2025, Stufe 2 geplant Ende 2027 | offen (Anlage 3 nicht ausgewertet); Tempo-30-Abschnitte auf neun Straßen namentlich im Beschluss | `25/0696` (Umsetzung Tempo 30) | offen |
 | **Digitalisierungsstrategie** | `23/0708`, Rat 18.12.2023, einstimmig | Vision bis 2045; erste Phase des Umsetzungsplans 2025–2027 | offen (Umsetzungsplan `24/0574`, 25 Seiten) | Statusbericht `25/0796` (11/2025) | z. B. 248 digitale Leistungen im Serviceportal (`25/0796`) |
@@ -769,8 +769,15 @@ Was sich ohne Modell lesen lässt, zuerst:
 - **Wärmeplan:** aus `26/0236`, Parser: sechs von 18 Maßnahmen „in
   Umsetzung“, gegen das Zahlwort der Vorlage geprüft.
 - **Aktionsplan Gewalt 2020:** Liste und Zellfarben aus Anhang 4.1 der
-  Evaluation mit PyMuPDF. Gegenprobe: 87 Zeilen, aufgeteilt 8 + 56 + 23.
-- **Kennzahl:** THG-Bilanz als `council/plan_indicators/klimaschutzplan_2035.json`
+  Evaluation mit PyMuPDF — gebaut. Die Verteilung zählt der Text der
+  Evaluation (56 umgesetzt, 3 in Umsetzung, 14 nicht umgesetzt und weiter
+  gebraucht, 9 nicht weiterverfolgt; der Rest von 8 steht nur in der Tabelle),
+  den Stand je Empfehlung trägt die Zellfarbe. Das Skript prüft beides
+  gegeneinander. Zwei Abweichungen von der ersten Fassung dieses Plans: Die
+  Evaluation zählt 90 Empfehlungen, nicht 87, und ihre Tabelle hat 91 Zeilen
+  (bei „nicht weiterverfolgt“ Text 9, Tabelle 10). Beides steht auf der Seite
+  als Hinweis.
+- **Kennzahl (gebaut):** THG-Bilanz als `council/plan_indicators/klimaschutzplan_2035.json`
   aus `23/0653`, `25/0131` und `25/0866`, getrennt nach Soll und Ist, mit dem
   Hinweis des Berichts auf den Strommix.
 - **Stand laut Stadt:** Die Bewegung zwischen zwei Momentaufnahmen rechnet

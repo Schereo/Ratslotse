@@ -15,6 +15,7 @@ import { ArrowLeft } from "lucide-react";
 import { DetailSkeleton } from "@/components/ui";
 import { CityStatus } from "@/components/plans/city-status";
 import { Decisions } from "@/components/plans/decisions";
+import { Indicators } from "@/components/plans/indicators";
 import { Measures } from "@/components/plans/measures";
 import { PlanHeader } from "@/components/plans/plan-header";
 import { ReportLog } from "@/components/plans/report-log";
@@ -71,6 +72,7 @@ function PlanInner() {
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
           <ReportLog plan={data} target={target} />
           {data.city_status && <CityStatus status={data.city_status} />}
+          <Indicators indicators={data.indicators} />
           {data.measures && <Measures measures={data.measures} />}
         </div>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">

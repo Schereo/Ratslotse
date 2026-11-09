@@ -27,6 +27,7 @@ from pathlib import Path
 from council import plans as register
 
 STATUS_DIR = Path(__file__).resolve().parent / "plan_status"
+INDICATOR_DIR = Path(__file__).resolve().parent / "plan_indicators"
 
 #: Fünf Stufen plus „unklar“. Reihenfolge = Reihenfolge der Anzeige.
 STATUS_NORM: tuple[str, ...] = ("open", "started", "in_progress", "done", "paused", "unclear")
@@ -166,3 +167,38 @@ def city_status(key: str) -> dict | None:
         "series": [{"as_of": s["as_of"], "total": s["total"], "counts": s["counts"]} for s in snapshots],
         "notes": data.get("notes") or [],
     }
+
+
+# ── Kennzahlen ─────────────────────────────────────────────────────────────
+
+
+@cache
+def indicators(key: str) -> list[dict]:
+    """Die kuratierten Kennzahlen eines Plans (``council/plan_indicators/<key>.json``).
+
+    Eine Kennzahl steht NEBEN dem Plan, nicht als sein Ergebnis (§ 3.4 Nr. 4):
+    Die Treibhausgasbilanz misst die Stadt, nicht die Wirkung der Maßnahmen.
+    Jede Zahl trägt ihre Vorlage; die Vorbehalte der Berichte stehen dabei.
+    """
+    path = INDICATOR_DIR / f"{key}.json"
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))["indicators"]
+
+
+def indicator_rows(indicator: dict) -> list[dict]:
+    """Soll und Ist je Jahr nebeneinander, dazu die Änderung gegenüber dem Ausgangswert —
+    ungerundet; gerundet wird genau einmal, in der Anzeige."""
+    base = indicator["baseline"]["value"]
+    years: dict[int, dict] = {}
+    for point in indicator["points"]:
+        row = years.setdefault(point["year"], {"year": point["year"], "target": None, "actual": None,
+                                               "target_change": None, "actual_change": None,
+                                               "target_label": None, "template_number": None})
+        row[point["kind"]] = point["value"]
+        row[f"{point['kind']}_change"] = (point["value"] - base) / base
+        if point["kind"] == "target":
+            row["target_label"] = point.get("label")
+        else:
+            row["template_number"] = point.get("template")
+    return [years[y] for y in sorted(years)]

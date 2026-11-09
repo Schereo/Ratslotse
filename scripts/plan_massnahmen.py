@@ -14,6 +14,8 @@ geholt — eigener User-Agent, mindestens 1 s Abstand — und unter
 - Wärmeplan: Abschlussbericht, Anlage 306748 zu 26/0236, Tabelle 7 (18)
 - Ernährungsstrategie: Strategie-Entwurf, Anlage 286179 zu 24/0810 (68)
 - Aktionsplan Gewalt 2026: Evaluation und Fortschreibung, Anlage 314635 zu 26/0681/1 (30)
+- Aktionsplan Gewalt 2020: dieselbe Anlage, Anhang 4.1 — die Tabelle hat 91 Zeilen, der
+  Text zählt 90 Empfehlungen. Der Stand steht dort als Zellfarbe (``violence_rows``).
 - Mobilitätsplan: Ergebnis der Priorisierung, Anlage 275932 zu 24/0216 — die
   Anlage zählt nicht durch; aufgenommen ist, was sie namentlich nennt.
 
@@ -78,6 +80,8 @@ def sauber(text: str) -> str:
         text = text.replace(alt, neu)
     # Dieselbe Ligatur, schon aufgelöst, aber mit Lücke: „Verpfl egung“, „fi nden“.
     text = re.sub(r"(?<=\w)(fl|fi|ff) (?=[a-zäöüß])", r"\1", text)
+    # „Koordinierungs-\nund Beratungsstelle“ ist ein Ergänzungsstrich, keine Silbentrennung.
+    text = re.sub(r"(\w)-\s*\n\s*(?=(?:und|oder|bzw\.|sowie|bis)\b)", r"\1- ", text)
     text = re.sub(r"(\w)-\s*\n\s*(?=[a-zäöüß])", r"\1", text)
     text = re.sub(r"(\w)-\s*\n\s*(?=[A-ZÄÖÜ])", r"\1-", text)  # „Bio-\nZertifizierung“
     text = re.sub(r"\s*/\s*(?=[A-ZÄÖÜ])", " / ", text)  # „Gebäude/ Strom/ Wärme“
@@ -114,6 +118,99 @@ def klimaschutzplan() -> list[dict]:
                     elif titel and out:
                         out[-1]["title"] = sauber(out[-1]["title"] + " " + titel)
     return out
+
+
+# ── Aktionsplan Gewalt 2020 ────────────────────────────────────────────────
+
+#: Füllfarbe der Zelle „Evaluation“ in Anhang 4.1 → Name der Farbe in der Legende dort.
+VIOLENCE_COLORS: dict[tuple[float, float, float], str] = {
+    (0.33, 0.86, 0.24): "dark_green", (0.71, 0.88, 0.52): "light_green", (0.84, 0.91, 0.79): "pastel_green",
+    (1.0, 0.75, 0.0): "yellow", (1.0, 0.67, 0.67): "red", (0.75, 0.75, 0.75): "grey",
+}
+_HEADER_GREY = (0.85, 0.85, 0.85)
+#: Anhang 4.1 steht auf den PDF-Seiten 69–94 (gedruckt 64–89), quer gesetzt.
+_VIOLENCE_PAGES = range(68, 94)
+#: Spalten der Tabelle als y-Bereiche der gedrehten Seite.
+_COL_EVALUATION, _COL_RECOMMENDATION, _COL_THEME = (63, 346), (437, 567), (678, 780)
+
+
+def violence_rows() -> list[dict]:
+    """Jede Zeile der Tabelle „Umsetzungsstand aller Handlungsempfehlungen“ mit ihrer Farbe.
+
+    Der Stand steht dort **nur als Zellfarbe** — der Text allein verliert ihn.
+    Eine Zeile ist, was zwischen zwei Linien liegt, die Empfehlung UND
+    Evaluation queren (Themenfeld und Zuständigkeit sind über mehrere Zeilen
+    verbunden). Läuft eine Zeile über den Seitenumbruch, setzt die erste Zeile
+    der Folgeseite sie fort: gleiche Farbe, und der Text der Empfehlung fehlt
+    oder schließt an einen offenen Satz an.
+    """
+    import pymupdf
+
+    def fill(drawing) -> tuple | None:
+        return tuple(round(x, 2) for x in drawing["fill"]) if drawing.get("fill") else None
+
+    rows: list[dict] = []
+    part = "Übergreifende Handlungsempfehlungen"
+    with pymupdf.open(holen(314635)) as doc:
+        for pno in _VIOLENCE_PAGES:
+            page = doc[pno]
+            drawings = page.get_drawings()
+            evaluation: dict[int, float] = {}
+            recommendation: dict[int, float] = {}
+            for d in drawings:
+                r = d["rect"]
+                if fill(d) != (0.0, 0.0, 0.0) or r.width > 2.5 or r.height <= 20:
+                    continue
+                if r.y1 <= 350:
+                    evaluation[round(r.x0)] = evaluation.get(round(r.x0), 0) + r.height
+                elif r.y0 >= 430 and r.y1 <= 570:
+                    recommendation[round(r.x0)] = recommendation.get(round(r.x0), 0) + r.height
+            lines = sorted(x for x, h in evaluation.items()
+                           if h >= 260 and sum(recommendation.get(x + k, 0) for k in (-1, 0, 1)) >= 110)
+            lines = [x for i, x in enumerate(lines) if i == 0 or x - lines[i - 1] > 2]
+            marks = []
+            for m in re.finditer(r"Themenschwerpunkt „([^“]+)“", str(page.get_text())):
+                hits = page.search_for("Themenschwerpunkt")
+                if hits:
+                    marks.append((min(h.x0 for h in hits), m.group(1)))
+            first_on_page = True
+            for a, b in zip(lines, lines[1:], strict=False):
+                if b - a < 8:
+                    continue
+                for x, name in marks:
+                    if a >= x - 3:
+                        part = name
+                inside = [d for d in drawings if d["rect"].x0 >= a - 1 and d["rect"].x1 <= b + 1]
+                if any(fill(d) == _HEADER_GREY for d in inside):
+                    continue  # Kopfzeile oder Zwischentitel
+
+                def cell(column: tuple[int, int], a=a, b=b, page=page) -> str:
+                    return sauber(str(page.get_text("text", clip=pymupdf.Rect(a + 1, column[0] + 1, b - 1, column[1] - 1))))
+
+                colors = {VIOLENCE_COLORS[fill(d)] for d in inside
+                          if fill(d) in VIOLENCE_COLORS and d["rect"].y1 <= 350 and d["rect"].width >= 3}
+                title = cell(_COL_RECOMMENDATION)
+                if not title and not colors:
+                    continue
+                if len(colors) > 1:
+                    raise RuntimeError(f"Aktionsplan Gewalt, Seite {pno + 1}: Zeile mit zwei Farben {sorted(colors)}")
+                last = rows[-1] if rows else None
+                continues = bool(first_on_page and last and colors == {last["color"]} and (
+                    not title or title[:1].islower() or not last["title"].rstrip().endswith((".", ")", "“"))))
+                first_on_page = False
+                if continues and last:
+                    last["title"] = sauber(f"{last['title']} {title}")
+                elif title and colors:
+                    rows.append({"title": title, "field": part, "page": pno + 1, "color": colors.pop()})
+                else:
+                    raise RuntimeError(f"Aktionsplan Gewalt, Seite {pno + 1}: Zeile ohne Text oder ohne Farbe ({title[:40]!r})")
+    return rows
+
+
+def aktionsplan_gewalt_2020() -> list[dict]:
+    """Die Stadt nummeriert die Empfehlungen nicht; die Kennung ist die Reihenfolge in ihrer Tabelle."""
+    return [{"code": str(n), "title": row["title"], "field": row["field"], "page": row["page"]}
+            for n, row in enumerate(violence_rows(), start=1)]
 
 
 # ── Wärmeplan ──────────────────────────────────────────────────────────────
@@ -253,6 +350,11 @@ QUELLEN: dict[str, tuple[Callable[[], list[dict]], dict, int | None, str | None]
         "label": "Ernährungsstrategie", "document_id": 286179, "template": "24/0810",
         "as_of": "2024-12-12"}, 68,
         "68 Handlungsansätze; fünf davon hat der Rat zur Umsetzung beschlossen (24/0811)."),
+    "aktionsplan_gewalt_2020": (aktionsplan_gewalt_2020, {
+        "label": "Evaluation und Fortschreibung, Anhang 4.1", "document_id": 314635,
+        "template": "26/0681/1", "as_of": "2026-08"}, None,
+        "Die Evaluation zählt 90 Handlungsempfehlungen; ihre Tabelle im Anhang hat 91 Zeilen. "
+        "Die Stadt nummeriert sie nicht — die Nummer ist die Reihenfolge in ihrer Tabelle."),
     "aktionsplan_gewalt_2026": (aktionsplan_gewalt_2026, {
         "label": "Evaluation und Fortschreibung, Kapitel 3", "document_id": 314635,
         "template": "26/0681/1", "as_of": "2026-08"}, 30,
