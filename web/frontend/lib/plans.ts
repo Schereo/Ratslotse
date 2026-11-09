@@ -1,0 +1,122 @@
+/**
+ * Pläne der Stadt (Schalter `plaene`, docs/plan-ziele-plaene.md): die
+ * Typen aus dem Vertrag und das bisschen Darstellungslogik, das nicht im
+ * Backend steht. Gruppen, Kicker, Zeitbänder (als Anteile einer Achse),
+ * „letzter Bericht“ und die Sätze, wenn der Bestand schweigt, kommen fertig
+ * aus `council/plan_pages.py`.
+ */
+import type { ApiAntwort } from "./vertrag";
+
+export type PlanOverview = ApiAntwort<"/council/plans">;
+export type PlanGroup = PlanOverview["groups"][number];
+export type PlanCard = PlanGroup["plans"][number];
+export type PlanAxis = PlanOverview["axis"];
+export type PlanLane = PlanCard["lane"];
+export type PlanBand = NonNullable<PlanLane["band"]>;
+export type PlanDetail = ApiAntwort<"/council/plan/{key}">;
+export type PlanStation = PlanDetail["timeline"]["stations"][number];
+export type PlanLogEntry = PlanDetail["timeline"]["log"][number];
+export type PlanRunway = NonNullable<PlanDetail["runway"]>;
+export type PlanDecisionGroup = PlanDetail["decision_groups"][number];
+export type PlanMeasures = NonNullable<PlanDetail["measures"]>;
+export type PlanMeasureField = PlanMeasures["groups"][number];
+export type PlanMeasure = PlanMeasureField["measures"][number];
+
+/** „19.12.2022“ aus dem ISO-Datum — ohne `new Date`, das rutscht je nach
+ *  Zeitzone auf den Vortag (wie in `akte-zeitleiste.tsx`). */
+export function formatDate(iso: string): string {
+  const [year, month, day] = iso.split("-");
+  if (day && month && year) return `${day}.${month}.${year}`;
+  if (month && year) return `${month}/${year}`;
+  return iso;
+}
+
+/** Was eine Station im Zeitstrahl ist, in einem Wort. Mündliche Berichte
+ *  sagen dazu, dass es keinen Text gibt (Plan § 3.2). */
+export function stationKind(station: Pick<PlanStation, "kind" | "oral">): string {
+  switch (station.kind) {
+    case "adoption": return "Beschluss des Plans";
+    case "amendment": return "Beschluss zum Plan";
+    case "evaluation": return "Auswertung";
+    case "preparation": return station.oral ? "Vor dem Beschluss · mündlich, ohne Text" : "Vor dem Beschluss";
+    default: return station.oral ? "Mündlicher Bericht, ohne Text" : "Bericht";
+  }
+}
+
+/** Die Gremien einer Station in der Reihenfolge der Beratung: Ausschüsse
+ *  vorn, „Rat“ zuletzt. */
+export function committeeList(committees: readonly string[]): string {
+  const others = committees.filter((c) => c !== "Rat");
+  return committees.includes("Rat") ? [...others, "Rat"].join(" · ") : others.join(" · ");
+}
+
+/** Tönung des Status-Abzeichens. Kein Rot, kein Fehler-Ton (§ 3.4 Regel 5):
+ *  Abgelaufen und abgelöst ist neutral, „in Arbeit“ trägt den Primär-Tint. */
+export function statusTone(status: PlanCard["status"]): "neutral" | "primary" | "none" {
+  if (status === "running") return "none";
+  if (status === "preparing") return "primary";
+  return "neutral";
+}
+
+/** Ein Anteil der Zeitachse (0–1) als CSS-Länge. */
+export function percent(x: number): string {
+  return `${Math.round(Math.min(1, Math.max(0, x)) * 10000) / 100}%`;
+}
+
+/** „12 Berichte“, „1 Bericht“ — die Null schreibt die Seite als Satz, nicht als Zahl. */
+export function reportCount(n: number): string {
+  return n === 1 ? "1 Bericht" : `${n} Berichte`;
+}
+
+/** Die Jahre eines Zeitstrahl-Abschnitts: „2025“ oder „2020–2026“. */
+export function yearSpan(entry: Pick<PlanLogEntry, "year" | "year_to">): string {
+  return entry.year === entry.year_to ? `${entry.year}` : `${entry.year}–${entry.year_to}`;
+}
+
+/** Die Pläne einer Gruppe nach Themenfeld. Die Reihenfolge kommt aus dem
+ *  Backend (nach Feld, darin der jüngste Bericht zuerst) und bleibt stehen —
+ *  hier wird nur an den Feldgrenzen geschnitten. */
+export function byField(plans: readonly PlanCard[]): { key: string; label: string; plans: PlanCard[] }[] {
+  const out: { key: string; label: string; plans: PlanCard[] }[] = [];
+  for (const plan of plans) {
+    const last = out[out.length - 1];
+    if (last && last.key === plan.policy_field) last.plans.push(plan);
+    else out.push({ key: plan.policy_field, label: plan.field_label, plans: [plan] });
+  }
+  return out;
+}
+
+/** Klein, ohne Akzente, „ß“ als „ss“ — damit „strasse“ die „Straße“ findet. */
+function fold(text: string): string {
+  return text.toLocaleLowerCase("de").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ß/g, "ss");
+}
+
+/** Die Maßnahmen, die zur Suche passen — in Kennung, Titel, Paket oder Feld;
+ *  jedes Wort muss vorkommen. Umlaute und Großschreibung zählen nicht. Felder
+ *  ohne Treffer fallen heraus. */
+export function filterMeasures(fields: readonly PlanMeasureField[], query: string): PlanMeasureField[] {
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [...fields];
+  return fields
+    .map((field) => ({
+      ...field,
+      measures: field.measures.filter((m) => {
+        const haystack = fold(`${m.code} ${m.title} ${m.package ?? ""} ${field.field ?? ""}`);
+        return words.every((w) => haystack.includes(w));
+      }),
+    }))
+    .filter((field) => field.measures.length > 0);
+}
+
+/** Die Maßnahmen eines Feldes, an den Paketgrenzen geschnitten (Reihenfolge
+ *  der Quelle). Ein Feld ohne Pakete ist ein einziges Stück. */
+export function byPackage(measures: readonly PlanMeasure[]): { name: string | null; measures: PlanMeasure[] }[] {
+  const out: { name: string | null; measures: PlanMeasure[] }[] = [];
+  for (const m of measures) {
+    const name = m.package ?? null;
+    const last = out[out.length - 1];
+    if (last && last.name === name) last.measures.push(m);
+    else out.push({ name, measures: [m] });
+  }
+  return out;
+}

@@ -31,9 +31,11 @@ Wächter: ``tests/test_plaene_register.py`` (Form, ohne Datenbank) und
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from functools import cache
+from pathlib import Path
 from typing import Literal
 
 PlanKind = Literal["action", "framework", "statutory", "reference"]
@@ -98,8 +100,6 @@ class Plan:
     report_patterns: tuple[str, ...] = ()
     #: Titelmuster, die trotz Treffer oben NICHT dazugehören.
     exclude_patterns: tuple[str, ...] = ()
-    #: Berichte, die kein Titelmuster trifft.
-    report_templates: tuple[str, ...] = ()
     #: Titelmuster einer Reihe, die den Plan umsetzt (Kita-Maßnahmenplanung).
     implementation_patterns: tuple[str, ...] = ()
     #: Plan eines Dritten (Zweckverband), nur bei ``kind="reference"``.
@@ -113,7 +113,7 @@ class Plan:
     note: str | None = None
 
 
-_AKTIONSPLAN_GEWALT = (r"Aktionsplan(e?s)? (gegen )?Gewalt",)
+_AKTIONSPLAN_GEWALT = (r"Aktionsplan(e?s)?\W*(gegen )?Gewalt",)
 _INTEGRATIONSKONZEPT = (r"Integrationskonzept",)
 _GLEICHSTELLUNGSPLAN = (r"Gleichstellungsplan",)
 
@@ -131,8 +131,7 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
         predecessor="aktionsplan_energie",
         report_patterns=(r"Klimaschutz-Aktivit",),
         goal="klima_2035",
-        note="2022 mit 90 Maßnahmen beschlossen, laut Bericht 3/2026 sind es 97. "
-             "Eine Fortschreibung ist für 2027 angekündigt (26/0750).",
+        note="Eine Fortschreibung ist für 2027 angekündigt (26/0750).",
     ),
     Plan(
         key="waermeplan",
@@ -541,7 +540,8 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
                          label="zur Kenntnis genommen, mit Auftrag zu Beschlussvorschlägen"),
         start="2018-06",
         concluded="19/0942",
-        report_patterns=(r"Schulentwicklungsplan", r"Empfehlungen des Gutachtens zur Schulentwicklung"),
+        report_patterns=(r"Schulentwicklungsplan",),
+        implementation_patterns=(r"Umsetzung der Empfehlungen des Gutachtens zur Schulentwicklung",),
         goal="bildung_betreuung",
         note="Zehn Empfehlungen führten zu zwölf Vorlagen. Im Abschlussbericht 19/0942 steht: "
              "„Alle Beschlussvorschläge wurden angenommen.“",
@@ -650,11 +650,23 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
         adopted=Decision("2009-06-22", None),
         start="2009-06",
         report_patterns=(r"Sportentwicklungsplan",),
-        report_templates=("18/0192", "18/0917"),
         note="Vor dem Bestand beschlossen; zitiert in 18/0192 und 18/0917. Eine Fortschreibung "
              "ist im Bestand nicht zu finden.",
     ),
 )}
+
+
+#: Die geprüften Maßnahmenlisten (Phase 2): eine JSON-Datei je Plan, gebaut von
+#: ``scripts/plan_massnahmen.py`` aus den Dokumenten der Stadt und im PR geprüft.
+MEASURES_DIR = Path(__file__).resolve().parent / "plan_measures"
+
+
+def measures(key: str) -> dict | None:
+    """Die Maßnahmenliste eines Plans samt Quelle — oder ``None``, wenn es keine gibt."""
+    pfad = MEASURES_DIR / f"{key}.json"
+    if not pfad.exists():
+        return None
+    return json.loads(pfad.read_text(encoding="utf-8"))
 
 
 TEMPLATE_RE = re.compile(r"^\d{2}/\d{4}(/\d+)?$")
@@ -670,7 +682,7 @@ def matches_title(plan: Plan, title: str | None) -> bool:
     """Gehört ein Tagesordnungspunkt oder eine Vorlage dem Titel nach zum Plan?"""
     if not title:
         return False
-    if not any(rx.search(title) for rx in _compiled(plan.report_patterns)):
+    if not any(rx.search(title) for rx in _compiled(plan.report_patterns + plan.implementation_patterns)):
         return False
     return not any(rx.search(title) for rx in _compiled(plan.exclude_patterns))
 
@@ -686,7 +698,7 @@ def all_templates(plan: Plan) -> list[str]:
     for d in ((plan.adopted,) if plan.adopted else ()) + plan.decisions:
         if d.template:
             out.append(d.template)
-    for t in (plan.commissioned, plan.concluded, *plan.report_templates):
+    for t in (plan.commissioned, plan.concluded):
         if t:
             out.append(t)
     return out

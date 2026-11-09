@@ -23,6 +23,7 @@ from council.store_haushalt import HaushaltMixin
 from council.store_orte import OrteMixin
 from council.store_personen import PersonenMixin
 from council.store_presse import PresseMixin
+from council.store_plaene import PlaeneMixin
 from council.store_pruefung import PruefungMixin
 from council.store_rueckmeldungen import RueckmeldungenMixin
 from council.store_quiz import QuizMixin
@@ -158,7 +159,7 @@ def _produkt_stufe(begriffe: list[str]) -> str | None:
 # arbeitet. Der Stern ist Absicht — wer eine Facette baut, fasst diese
 # Datei nicht an.
 class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
-                   PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
+                   PlaeneMixin, PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
                    RueckmeldungenMixin, ThemenMixin, ViertelMixin, WortbeitraegeMixin,
                    *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None,
