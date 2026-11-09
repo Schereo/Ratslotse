@@ -52,6 +52,13 @@ class PlaeneMixin(StoreBasis):
             "WHERE template_number IS NOT NULL AND (raw_text LIKE '%Klimaschutz%' "
             "OR raw_text LIKE '%Wärmeplan%' OR raw_text LIKE '%Ernährungsstrategie%')")]
 
+    def plan_templates_with_text(self) -> list[tuple[str, str, str]]:
+        """(Vorlagennummer, Titel, Text) aller Vorlagen mit Text — für die Suche nach Plannamen
+        (``scripts/plan_modell.py``; läuft von Hand, nicht im Cron)."""
+        return [(r[0], r[1] or "", r[2]) for r in self._conn.execute(
+            "SELECT template_number, title, raw_text FROM council_templates "
+            "WHERE template_number IS NOT NULL AND raw_text IS NOT NULL AND raw_text != ''")]
+
     def plan_decisions_by_stem(self) -> dict[str, list[int]]:
         """Vorlagenstamm → Beschlüsse (alle Gremien), für den Verweis über die Nummer."""
         out: dict[str, list[int]] = {}
@@ -120,6 +127,22 @@ class PlaeneMixin(StoreBasis):
             entry["ids"].add(r["id"])
         return [{**{k: v for k, v in e.items() if k not in ("codes", "ids")},
                  "measure_codes": sorted(e["codes"]), "deliberations": len(e["ids"])} for e in by_stem.values()]
+
+    def plan_judged_links(self, plan_key: str) -> list[dict]:
+        """Beschlüsse zu Vorlagen, die laut ihrem Text der Umsetzung des Plans dienen — je Vorlage der jüngste."""
+        rows = self._conn.execute(
+            """SELECT d.id, d.title, d.template_number, d.outcome, s.session_date, s.committee
+               FROM council_plan_links l
+               JOIN council_decisions d ON d.id = l.decision_id
+               JOIN council_sessions s ON s.ksinr = d.ksinr
+               WHERE l.plan_key = ? AND l.relation = 'implements'
+               ORDER BY s.session_date DESC, d.id DESC""", (plan_key,)).fetchall()
+        by_stem: dict[str, dict] = {}
+        for r in rows:
+            stem = "/".join(str(r["template_number"]).split("/")[:2])
+            entry = by_stem.setdefault(stem, {**dict(r), "ids": set()})
+            entry["ids"].add(r["id"])
+        return [{**{k: v for k, v in e.items() if k != "ids"}, "deliberations": len(e["ids"])} for e in by_stem.values()]
 
     def plan_template_kvonr(self, numbers: list[str]) -> dict[str, int]:
         """Vorlagennummer → kvonr, für Links auf die Vorlage."""

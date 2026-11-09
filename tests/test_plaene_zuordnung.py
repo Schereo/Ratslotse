@@ -287,3 +287,44 @@ def test_kennung_ordnet_den_beschluss_der_massnahme_zu():
     # Was schon als Bericht zum Plan gehört, wird nicht noch einmal Maßnahmen-Beschluss.
     known = [{"plan_key": "klimaschutzplan_2035", "template_number": "23/0419"}]
     assert not [link for link in plan_tracking.build_measure_links(templates[:1], by_stem, items=known)]
+
+
+def test_umsetzung_nur_mit_woertlichem_beleg_der_den_plan_nennt():
+    """Phase 4 Teil 2: Das Modell schlägt vor, belegt wird ohne Modell. „implements“ bleibt nur,
+    wenn das Zitat wörtlich in der Textstelle steht UND den Plan beim Namen nennt."""
+    import re
+
+    from council import plan_judge
+    name = re.compile(plan_judge.NAME_PATTERNS["klimaschutzplan_2035"])
+    passage = "Die Nutzungsänderung dient der Umsetzung der Klimaziele aus dem Klimaschutzplan 2035. Diese werden umgesetzt."
+    ok = "Die Nutzungsänderung dient der Umsetzung der Klimaziele aus dem Klimaschutzplan 2035."
+    check = lambda relation, quote: plan_judge.checked_relation({"relation": relation, "quote": quote}, [passage], name)  # noqa: E731
+    assert check("implements", ok) == ("implements", ok)
+    assert check("implements", "Diese werden umgesetzt.") == ("mentions", "")            # nennt den Plan nicht
+    assert check("implements", "Der Klimaschutzplan wird umgesetzt.") == ("mentions", "")  # steht so nicht da
+    assert check("implements", "") == ("mentions", "")
+    assert check("motion", ok) == ("motion", "") and check("erfunden", ok) == ("mentions", "")
+
+
+def test_gepruefte_umsetzungs_verweise():
+    """Die eingecheckten Dateien: jeder Verweis mit Vorlage und einem Zitat, das den Plan nennt —
+    und Anträge aus dem Rat sind nie darunter (sie können einen Plan nicht umsetzen)."""
+    import re
+
+    from council import plan_judge, plan_state
+    from scripts import plan_modell
+    assert set(plan_state.judged_keys()) <= set(plan_judge.NAME_PATTERNS)
+    total = 0
+    for key in plan_state.judged_keys():
+        name = re.compile(plan_judge.NAME_PATTERNS[key])
+        for link in plan_state.judged_links(key):
+            total += 1
+            assert plans.TEMPLATE_RE.match(link["template"]) and link["relation"] == "implements"
+            assert name.search(link["quote"]) and len(link["quote"]) <= 320, (key, link["template"])
+    assert total >= 20
+    assert plan_modell.MOTION_TITLE.search("Einführung vergünstigter Parkgebühren (Antrag der CDU vom 05.03.2025)")
+    assert plan_modell.MOTION_TITLE.search("Aufgaben und Ressourcen (beratendes Mitglied Herr Mustermann)")
+    assert not plan_modell.MOTION_TITLE.search("Bebauungsplan 845 (Nadorster Straße) - Satzungsbeschluss")
+    rows = plan_tracking.build_judged_links({"25/0725": [7, 8], "99/9999": [9]})
+    assert {(r["plan_key"], r["decision_id"], r["relation"], r["method"]) for r in rows} == {
+        ("klimaschutzplan_2035", 7, "implements", "model"), ("klimaschutzplan_2035", 8, "implements", "model")}

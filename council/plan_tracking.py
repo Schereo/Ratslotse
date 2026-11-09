@@ -275,6 +275,19 @@ def build_measure_links(templates: Iterable[tuple[str, str | None]],
     return list(out.values())
 
 
+def build_judged_links(decisions_by_stem: dict[str, list[int]]) -> list[dict]:
+    """Beschlüsse zu Vorlagen, die laut ihrem eigenen Text der Umsetzung eines Plans dienen —
+    aus den geprüften Dateien (``council/plan_links/``), nicht aus einem Modellaufruf: Der Lauf
+    hier bleibt ohne Netz und ohne Modell."""
+    out: dict[tuple[str, int], dict] = {}
+    for key in plan_state.judged_keys():
+        for link in plan_state.judged_links(key):
+            for decision_id in decisions_by_stem.get(register.template_stem(link["template"]), []):
+                out[(key, decision_id)] = {"plan_key": key, "decision_id": decision_id, "measure_code": "",
+                                           "relation": "implements", "method": "model", "confidence": 1.0}
+    return list(out.values())
+
+
 def build(store) -> dict:
     """Baut beide Tabellen neu. Für den Cron (``scripts/check_protocols.py``)."""
     rows = [AgendaRow(**r) for r in store.plan_tracking_rows()]
@@ -282,7 +295,8 @@ def build(store) -> dict:
     by_stem = store.plan_decisions_by_stem()
     links = build_mentions(store.plan_citing_templates(), by_stem, items)
     measure_links = build_measure_links(store.plan_measure_candidates(), by_stem, items)
-    links += measure_links
+    judged = build_judged_links(by_stem)
+    links += measure_links + judged
     store.replace_plan_tracking(items, links)
     per_plan = {key: sum(1 for i in items if i["plan_key"] == key) for key in register.PLANS}
     # Pflege (Phase 6): Was nachzuziehen ist, landet als Kennzahl im Cron-Protokoll —
@@ -294,8 +308,9 @@ def build(store) -> dict:
     return {
         "plan_items": len(items),
         "plan_reports": sum(1 for i in items if i["role"] in ("report", "evaluation")),
-        "plan_mentions": len(links) - len(measure_links),
+        "plan_mentions": len(links) - len(measure_links) - len(judged),
         "plan_measure_links": len(measure_links),
+        "plan_judged_links": len(judged),
         "plans_without_items": sum(1 for n in per_plan.values() if n == 0),
         "plan_status_stale": len(upkeep["stale_status"]),
         "plans_due": len(upkeep["due"]),

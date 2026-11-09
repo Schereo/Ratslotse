@@ -19660,6 +19660,13 @@
               "null"
             ]
           },
+          "quote": {
+            "title": "Quote",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "template_number": {
             "title": "Template Number",
             "type": [
@@ -19680,7 +19687,8 @@
           "outcome",
           "template_number",
           "deliberations",
-          "measure_codes"
+          "measure_codes",
+          "quote"
         ],
         "title": "PlanDecisionEntry",
         "type": "object"
@@ -19701,7 +19709,8 @@
               "motion",
               "decision",
               "mentions",
-              "measures"
+              "measures",
+              "judged"
             ],
             "title": "Key",
             "type": "string"

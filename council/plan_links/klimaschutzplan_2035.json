@@ -1,0 +1,46 @@
+{
+ "plan": "klimaschutzplan_2035",
+ "judged": 84,
+ "links": [
+  {
+   "template": "23/0049",
+   "relation": "implements",
+   "quote": "Die zur Beschluss vorgelegte Neufassung der Förderrichtlinie Photovoltaik beinhaltet die mit dem Klimaschutzplan Oldenburg 2035 definierten Anpassungen."
+  },
+  {
+   "template": "23/0630",
+   "relation": "implements",
+   "quote": "Die Nutzungsänderung der Flächen dient unter anderem der Umsetzung der städtischen Klimaziele aus dem Klimaschutzplan 2035 sowie der Umsetzung des Niedersächsischen Klimagesetzes (NKlimaG)."
+  },
+  {
+   "template": "23/0631",
+   "relation": "implements",
+   "quote": "Die Nutzungsänderung der Flächen dient unter anderem der Umsetzung der städtischen Klimaziele aus dem Klimaschutzplan 2035 sowie der Umsetzung des Niedersächsischen Klimagesetzes (NKlimaG)."
+  },
+  {
+   "template": "25/0132",
+   "relation": "implements",
+   "quote": "Klimakommunikation ist originärer Auftrag aus dem Klimaschutzplan Oldenburg 2035."
+  },
+  {
+   "template": "25/0480",
+   "relation": "implements",
+   "quote": "Die Nutzungsänderung der Flächen dient unter anderem der Umsetzung der städtischen Klimaziele aus dem Klimaschutzplan 2035"
+  },
+  {
+   "template": "25/0481",
+   "relation": "implements",
+   "quote": "Die Nutzungsänderung der Flächen dient unter anderem der Umsetzung der städtischen Klimaziele aus dem Klimaschutzplan 2035"
+  },
+  {
+   "template": "25/0725",
+   "relation": "implements",
+   "quote": "Die Konzepterstellung ist Bestandteil des Klimaschutzplans Oldenburg 2035."
+  },
+  {
+   "template": "25/0778",
+   "relation": "implements",
+   "quote": "Der Schwerpunkt der Tätigkeit liegt in der Umsetzung der Maßnahmen aus dem Klimaschutzplan 2035, die die Wirtschaft betreffen."
+  }
+ ]
+}

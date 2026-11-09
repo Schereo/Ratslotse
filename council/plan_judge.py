@@ -4,6 +4,8 @@ Drei Aufgaben, alle über öffentliche Ratsdokumente, keine mit Nutzereingabe:
 
 - :func:`measure_status` — der Stand je Maßnahme aus einem Fließtext-Bericht
   (Mobilitätsplan, § 1.3 Form d).
+- :func:`judge_links` — ob eine Vorlage, die einen Plan beim Namen nennt, ihn
+  umsetzt oder nur erwähnt (Phase 4, Teil 2).
 
 Das Modell **sucht heraus, es urteilt nicht frei**: Jede Angabe trägt ein
 wörtliches Zitat, und :func:`verified` wirft alles weg, dessen Zitat nicht
@@ -17,6 +19,7 @@ import json
 import os
 import re
 
+from council import plans as register
 from kern import llm, usage
 
 #: Luna: günstig, und für Dokumente ohne Nutzereingabe zulässig (``llm.OHNE_NUTZEREINGABE``).
@@ -105,3 +108,98 @@ def verified(results: list, text: str, codes: set[str]) -> list[dict]:
             continue
         out[code] = {"code": code, "status_raw": words, "status_norm": status, "quote": quote}
     return [out[c] for c in sorted(out)]
+
+
+# ── Vorlagen, die einen Plan beim Namen nennen (Phase 4, Teil 2) ───────────
+
+#: Woran eine Vorlage den Plan beim Namen nennt. Von Hand gesetzt — und bewusst
+#: nur für Pläne, deren Name eindeutig genug ist. „ISEK“ heißt in Oldenburg auch
+#: das Entwicklungskonzept eines Sanierungsgebiets; das Modell kennt den Fall („none“).
+NAME_PATTERNS: dict[str, str] = {
+    "klimaschutzplan_2035": r"Klimaschutzplan",
+    "mobilitaetsplan_2030": r"Mobilitätsplan|Teilkonzept Radverkehr",
+    "waermeplan": r"Wärmeplan(?!ung)|[Kk]ommunale[nr]? Wärmeplanung",
+    "ernaehrungsstrategie": r"Ernährungsstrategie",
+    "isek_2035": r"\bISEK\b|Integrierte[sn]? Stadtentwicklungskonzept",
+    "eek": r"Einzelhandelsentwicklungskonzept|\bEEKs?\b",
+    "laermaktionsplan": r"Lärmaktionsplan",
+    "masterplan_stadtgruen": r"Masterplan Stadtgrün",
+    "digitalisierungsstrategie": r"Digitalisierungsstrategie",
+}
+RELATIONS = ("implements", "motion", "mentions", "none")
+#: So viele Vorlagen prüft ein Aufruf.
+BATCH = 8
+
+
+def passages(text: str, pattern: str, width: int = 350, limit: int = 2) -> list[str]:
+    """Die Stellen, an denen der Text den Plan nennt — die erste und die letzte, je ``width`` Zeichen Umfeld."""
+    text = squash(text)
+    hits = [m.span() for m in re.finditer(pattern, text)]
+    if not hits:
+        return []
+    chosen = [hits[0]] + ([hits[-1]] if len(hits) > 1 and hits[-1][0] - hits[0][1] > width else [])
+    return [text[max(0, a - width): b + width] for a, b in chosen[:limit]]
+
+
+_LINK_PROMPT = """Du prüfst, in welcher Beziehung Vorlagen des Oldenburger Rats zu einem Plan der Stadt stehen.
+
+Plan: {title}
+
+Zu jeder Vorlage stehen unten ihr Titel und die Textstellen, die den Plan nennen.
+
+Antworte nur mit JSON: {{"results": [{{"id": 1, "relation": "…", "quote": "…"}}]}}
+
+relation ist genau eines von:
+- "implements": Die Vorlage selbst setzt etwas aus dem Plan um oder dient ausdrücklich seiner Umsetzung — ein Förderprogramm, eine Satzung, ein Bau- oder Planungsbeschluss, Personal oder Geld dafür — und der Text SAGT das („dient der Umsetzung“, „setzt … um“, „Ziel ist …“).
+- "motion": ein Antrag oder eine Anfrage aus dem Rat, die sich auf den Plan bezieht.
+- "mentions": Der Plan wird nur genannt — als Hintergrund, Begründung, Rahmenplanung, in einer Aufzählung oder weil das Vorhaben ihm „entspricht“. Ein Bebauungsplan, der den Plan unter „Konzepten und Rahmenplanungen“ aufführt, ist immer "mentions". Ein Bericht über den Stand ist "mentions".
+- "none": Gemeint ist etwas anderes als dieser Plan (gleiches Wort, anderes Konzept).
+
+Im Zweifel "mentions": Eine Nennung ist keine Umsetzung. Wendungen wie „im Sinne von“, „trägt bei zu“, \
+„unterstützt die Ziele“, „wie im Plan beschrieben“ oder „passt zu den Fokusthemen“ sind "mentions" — \
+"implements" verlangt, dass die Vorlage eine KONKRETE Maßnahme oder Festlegung des Plans ausführt.
+quote: nur bei "implements" — der wörtliche Satz oder Satzteil aus der Textstelle (höchstens 300 Zeichen), der die Umsetzung belegt. Sonst "".
+
+Vorlagen:
+{items}"""
+
+
+def judge_links(plan_key: str, candidates: list[dict], model: str = MODEL) -> tuple[list[dict], float]:
+    """Urteil je Vorlage (``{"template", "title", "passages"}``). Zurück: je Vorlage Beziehung und —
+    bei „implements“ — das wörtliche Zitat.
+
+    „implements“ zählt nur mit Beleg, den man ohne Modell prüfen kann: Das Zitat steht wörtlich in
+    der Textstelle UND nennt den Plan selbst beim Namen. Sonst bleibt es eine Erwähnung. Die zweite
+    Bedingung kam aus der Durchsicht aller Treffer von Hand (27, 09.11.2026): Die beiden unklaren
+    waren genau die, deren Zitat den Plan nicht nannte („Diese werden … umgesetzt“)."""
+    plan = register.PLANS[plan_key]
+    name = re.compile(NAME_PATTERNS[plan_key])
+    out: list[dict] = []
+    spent = 0.0
+    for start in range(0, len(candidates), BATCH):
+        batch = candidates[start:start + BATCH]
+        items = "\n\n".join(
+            f"[{i}] {c['title']}\n" + "\n".join(f"   … {p} …" for p in c["passages"])
+            for i, c in enumerate(batch, start=1))
+        response = llm.chat_complete(model=model, _feature="plan_link_judgement", temperature=0,
+                                     response_format={"type": "json_object"}, max_tokens=4000,
+                                     messages=[{"role": "user", "content": _LINK_PROMPT.format(title=plan.title, items=items)}])
+        spent += cost_usd(response, model)
+        by_id = {r.get("id"): r for r in _json(response).get("results") or [] if isinstance(r, dict)}
+        for i, c in enumerate(batch, start=1):
+            relation, quote = checked_relation(by_id.get(i) or {}, c["passages"], name)
+            out.append({"template": c["template"], "relation": relation, "quote": quote})
+    return out, spent
+
+
+def checked_relation(answer: dict, passages: list[str], name: re.Pattern) -> tuple[str, str]:
+    """Das Urteil des Modells, soweit es sich ohne Modell belegen lässt: (Beziehung, Zitat).
+    Unbekanntes wird zur Erwähnung; „implements“ ohne wörtliches Zitat, das den Plan nennt, auch."""
+    said = answer.get("relation")
+    relation = said if isinstance(said, str) and said in RELATIONS else "mentions"
+    quote = squash(str(answer.get("quote") or ""))
+    if relation != "implements":
+        return relation, ""
+    if not (quote and len(quote) <= 320 and name.search(quote) and any(quote in p for p in passages)):
+        return "mentions", ""
+    return relation, quote

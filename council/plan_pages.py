@@ -714,7 +714,8 @@ def _entries(items: list[dict]) -> list[dict]:
         best = with_decision[-1] if with_decision else last
         out.append({"title": best["title"], "date": best["date"], "committee": best["committee"],
                     "decision_id": best["decision_id"], "outcome": best["outcome"],
-                    "template_number": best["template_number"], "deliberations": len(g), "measure_codes": []})
+                    "template_number": best["template_number"], "deliberations": len(g), "measure_codes": [],
+                    "quote": None})
     out.sort(key=lambda e: e["date"], reverse=True)
     return out
 
@@ -788,10 +789,23 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
                    "entries": [{"title": m["title"], "date": m["session_date"], "committee": m["committee"],
                                 "decision_id": m["id"], "outcome": m["outcome"],
                                 "template_number": m["template_number"], "deliberations": m["deliberations"],
-                                "measure_codes": m["measure_codes"]} for m in measure_links]})
+                                "measure_codes": m["measure_codes"], "quote": None} for m in measure_links]})
+    # Vorlagen, die laut ihrem eigenen Text der Umsetzung dienen (Phase 4 Teil 2) — mit dem Satz, der es sagt.
+    # Wer schon bei einer Maßnahme steht, steht nur dort.
+    quotes = {register.template_stem(link["template"]): link["quote"] for link in plan_state.judged_links(key)}
+    stems_named = {register.template_stem(m["template_number"]) for m in measure_links}
+    judged = [m for m in store.plan_judged_links(key) if register.template_stem(m["template_number"]) not in stems_named]
+    groups.append({"key": "judged", "label": "Dient laut Vorlage der Umsetzung des Plans",
+                   "entries": [{"title": m["title"], "date": m["session_date"], "committee": m["committee"],
+                                "decision_id": m["id"], "outcome": m["outcome"],
+                                "template_number": m["template_number"], "deliberations": m["deliberations"],
+                                "measure_codes": [], "quote": quotes.get(register.template_stem(m["template_number"]))}
+                               for m in judged]})
+    shown = {register.template_stem(m["template_number"]) for m in judged} | stems_named
     mentions = [{"title": m["title"], "date": m["session_date"], "committee": m["committee"],
                  "decision_id": m["id"], "outcome": m["outcome"], "template_number": m["template_number"],
-                 "deliberations": 1, "measure_codes": []} for m in store.plan_mentions(key) if m["id"] not in linked]
+                 "deliberations": 1, "measure_codes": [], "quote": None} for m in store.plan_mentions(key)
+                if m["id"] not in linked and register.template_stem(m["template_number"]) not in shown]
     groups.append({"key": "mentions", "label": "Erwähnt den Plan über seine Vorlagennummer",
                    "entries": mentions})
     return {

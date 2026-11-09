@@ -4809,10 +4809,12 @@ class PlanDecisionEntry(TypedDict):
     deliberations: int
     #: Kennungen der Maßnahmen, die die Vorlage nennt (nur in der Gruppe ``measures``).
     measure_codes: list[str]
+    #: Der wörtliche Satz der Vorlage, der die Umsetzung belegt (nur in der Gruppe ``judged``).
+    quote: str | None
 
 
 class PlanDecisionGroup(TypedDict):
-    key: Literal["plan", "implementation", "motion", "decision", "mentions", "measures"]
+    key: Literal["plan", "implementation", "motion", "decision", "mentions", "measures", "judged"]
     label: str
     entries: list[PlanDecisionEntry]
 

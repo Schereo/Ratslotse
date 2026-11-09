@@ -13,11 +13,14 @@ Kosten: jeder Lauf nennt, was er gekostet hat. Vor einem ganzen Lauf mit
     python scripts/plan_modell.py mobilitaet --limit 1 --golden   # ein Bericht, gegen das Golden-Set
     python scripts/plan_modell.py mobilitaet                      # alle Berichte, Datei schreiben
     python scripts/plan_modell.py mobilitaet --pruefen            # ohne Modell: Zitate gegen den Bestand
+    python scripts/plan_modell.py nennungen --golden              # Phase 4 Teil 2 gegen das Golden-Set (40 Paare)
+    python scripts/plan_modell.py nennungen                       # alle Paare, Dateien schreiben
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -120,10 +123,118 @@ def mobilitaet(args: argparse.Namespace) -> int:
         store.close()
 
 
+# ── Phase 4, Teil 2: Vorlagen, die einen Plan beim Namen nennen ────────────
+
+#: Antrag oder Anfrage aus dem Rat: „(Fraktion … vom 05.03.2025)“, „(beratendes Mitglied …)“.
+MOTION_TITLE = re.compile(r"\((?:[^)]*\b(?:Fraktion|Fraktionen|Gruppe|Ratsfrau|Ratsherr)\b|beratendes Mitglied|Antrag der)[^)]*\)?", re.I)
+
+
+def link_candidates(store: CouncilStore) -> dict[str, list[dict]]:
+    """Je Plan die Vorlagen mit Beschluss, die ihn beim Namen nennen — ohne die Vorlagen des Plans
+    selbst und ohne das, was schon als Bericht oder Beschluss zum Plan gehört. Je Vorlagenstamm die
+    jüngste Fassung.
+
+    Zwei Arten von Vorlagen können einen Plan nicht umsetzen und werden gar nicht erst gefragt
+    (beide fielen bei der Durchsicht aller Treffer von Hand als die einzigen Fehler auf): der
+    Sachstandsbericht IRGENDEINES Plans — er beschreibt Umsetzung, ist aber keine — und Anträge
+    oder Anfragen aus dem Rat."""
+    by_stem = store.plan_decisions_by_stem()
+    items = store.plan_items()
+    known = {(i["plan_key"], plans.template_stem(i["template_number"])) for i in items if i["template_number"]}
+    reports = {plans.template_stem(i["template_number"]) for i in items
+               if i["template_number"] and i["role"] in plan_state.REPORT_ROLES}
+    own = {key: {plans.template_stem(n) for n in plans.all_templates(plans.PLANS[key])} for key in plan_judge.NAME_PATTERNS}
+    found: dict[str, dict[str, dict]] = {key: {} for key in plan_judge.NAME_PATTERNS}
+    for number, title, text in sorted(store.plan_templates_with_text()):
+        stem = plans.template_stem(number)
+        if stem not in by_stem or stem in reports or MOTION_TITLE.search(title):
+            continue
+        for key, pattern in plan_judge.NAME_PATTERNS.items():
+            if stem in own[key] or (key, stem) in known:
+                continue
+            hits = plan_judge.passages(text, pattern)
+            if hits:
+                found[key][stem] = {"template": number, "title": plan_judge.squash(title), "passages": hits}
+    return {key: list(by.values()) for key, by in found.items()}
+
+
+def links_check(store: CouncilStore) -> list[str]:
+    """Ohne Modell: Steht jedes Zitat der Dateien wörtlich in seiner Vorlage?"""
+    problems = []
+    for key in plan_state.judged_keys():
+        for link in plan_state.judged_links(key):
+            row = store.get_vorlage_by_nr(link["template"])
+            if not row or link["quote"] not in plan_judge.squash(row.get("raw_text") or ""):
+                problems.append(f"{key}: Zitat nicht in {link['template']}")
+    return problems
+
+
+def nennungen(args: argparse.Namespace) -> int:
+    store = CouncilStore(args.db)
+    try:
+        if args.pruefen:
+            problems = links_check(store)
+            print("\n".join(problems) or "✓ alle Zitate stehen wörtlich in ihren Vorlagen")
+            return 1 if problems else 0
+        candidates = link_candidates(store)
+        total = sum(len(v) for v in candidates.values())
+        gold = {}
+        if args.golden:
+            cases = json.loads((GOLDEN / "cases_plan_links.json").read_text(encoding="utf-8"))["cases"]
+            gold = {(c["plan"], plans.template_stem(c["template"])): c["accept"] for c in cases}
+            candidates = {key: [c for c in items if (key, plans.template_stem(c["template"])) in gold]
+                          for key, items in candidates.items()}
+        elif args.limit:
+            rest = args.limit
+            for key in candidates:
+                candidates[key], rest = candidates[key][:rest], max(0, rest - len(candidates[key]))
+        judged, spent, tally = {}, 0.0, {}
+        for key, items in candidates.items():
+            if not items:
+                continue
+            results, cost = plan_judge.judge_links(key, items)
+            spent += cost
+            judged[key] = results
+            for r in results:
+                tally[r["relation"]] = tally.get(r["relation"], 0) + 1
+        n = sum(len(v) for v in judged.values())
+        print(f"{n} von {total} Paaren beurteilt: {tally} · {spent:.4f} $"
+              + (f" — hochgerechnet auf alle: {spent / n * total:.4f} $" if n and n < total else ""))
+        if args.golden:
+            wrong, said, said_ok = [], 0, 0
+            for key, results in judged.items():
+                for r in results:
+                    accept = gold[(key, plans.template_stem(r["template"]))]
+                    if r["relation"] == "implements":
+                        said += 1
+                        said_ok += "implements" in accept
+                    if r["relation"] not in accept:
+                        wrong.append(f"{key} {r['template']}: {r['relation']} statt {accept}")
+            print(f"Golden-Set: {n - len(wrong)} von {n} vertretbar · „dient der Umsetzung“: {said_ok} von {said} richtig")
+            print("\n".join("   " + w for w in wrong))
+            return 0
+        if args.limit:
+            return 0
+        plan_state.LINKS_DIR.mkdir(exist_ok=True)
+        for key, results in judged.items():
+            links = [{"template": r["template"], "relation": "implements", "quote": r["quote"]}
+                     for r in results if r["relation"] == "implements"]
+            path = plan_state.LINKS_DIR / f"{key}.json"
+            if links:
+                path.write_text(json.dumps({"plan": key, "judged": len(results), "links": links},
+                                           ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+                print(f"✓ {key}: {len(links)} von {len(results)} → {path.relative_to(WURZEL)}")
+            elif path.exists():
+                path.unlink()
+        return 0
+    finally:
+        store.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     sub = ap.add_subparsers(dest="task", required=True)
-    for name, run in (("mobilitaet", mobilitaet),):
+    for name, run in (("mobilitaet", mobilitaet), ("nennungen", nennungen)):
         p = sub.add_parser(name)
         p.add_argument("--limit", type=int, help="nur so viele Aufrufe, zum Kostenmessen; schreibt nichts")
         p.add_argument("--golden", action="store_true", help="gegen das Golden-Set auswerten")
