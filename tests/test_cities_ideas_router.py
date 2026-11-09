@@ -219,7 +219,7 @@ def test_ohne_staedte_datenbank_antwortet_er_trotzdem(rats_db, tmp_path):
         assert c.get("/api/council/cities/ideas/fields").json() == {
             "fields": [], "bodies": [],
             # Ohne Abgleich auch kein „Stand" — kein erfundenes Datum.
-            "data_status": {"as_of": None, "lagging": []}}
+            "data_status": {"as_of": None, "lagging": [], "blocked": []}}
         daten = c.get("/api/council/cities/ideas?field=verkehr").json()
         assert daten["items"] == [] and daten["total"] == 0
     finally:
@@ -426,3 +426,34 @@ def test_der_datenstand_nennt_den_aeltesten_abgleich_und_wer_hinterherhinkt(clie
     assert stand["lagging"] == [
         {"body_id": "wolfsburg", "city": "Wolfsburg", "latest_paper": "2026-06-25"}]
 
+    assert stand["blocked"] == []
+
+
+def test_gesperrte_staedte_stehen_mit_grund_statt_als_nachzuegler(client, cities_db):
+    """Wolfsburg gab am 09.11.2026 gar nichts mehr heraus, Braunschweig nur
+    die Dokumente nicht. Beide bleiben mit ihrem Bestand auf der Seite; die
+    Zeile sagt, warum nichts Neues kommt — und Wolfsburg steht nicht ein
+    zweites Mal als „liegt nur bis … vor" da."""
+    cities_db.upsert_body(Body("wolfsburg", "Wolfsburg", "NI", "allris4_html"))
+    cities_db.upsert_body(Body("braunschweig", "Braunschweig", "NI", "allris4"))
+    cities_db.upsert_batch(Batch(papers=[
+        Paper("wob:p:1", "wolfsburg", "Altes Papier", date="2026-06-25"),
+        Paper("bs:p:1", "braunschweig", "Neues Papier", date="2026-11-02"),
+    ]))
+    for pid in ("wob:p:1", "bs:p:1"):
+        cities_db.put_annotation("paper", pid, *FIT_FASSUNG, _urteil("missing"), "fw")
+    cities_db.set_access("wolfsburg", "blocked", "nichts geerntet")
+    cities_db.set_access("braunschweig", "documents_blocked", "Zugangsprüfung (ALTCHA)")
+    cities_db.set_access("osnabrueck", "ok")
+    with cities_db._conn:
+        cities_db._conn.execute(
+            "UPDATE bodies SET last_fetched='2026-11-09T18:51:49' WHERE id='wolfsburg'")
+    stand = client.get("/api/council/cities/ideas/fields").json()["data_status"]
+    assert "wolfsburg" not in {h["body_id"] for h in stand["lagging"]}
+    heute = __import__("datetime").datetime.utcnow().date().isoformat()
+    assert stand["blocked"] == [
+        {"body_id": "braunschweig", "city": "Braunschweig", "status": "documents_blocked",
+         "since": heute, "latest_paper": "2026-11-02"},
+        {"body_id": "wolfsburg", "city": "Wolfsburg", "status": "blocked",
+         "since": heute, "latest_paper": "2026-06-25"},
+    ]

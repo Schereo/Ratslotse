@@ -287,7 +287,7 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
         if wartet():
             break
         try:
-            ernte = pipeline.fetch(spec, raw_dir, files_dir, seit)
+            ernte = pipeline.fetch(spec, raw_dir, files_dir, seit, stopp=stopp)
             pipeline.normalize(spec, raw_dir, main_store)
             pipeline.extract_inline(main_store, spec, raw_dir)
             text = pipeline.extract(main_store, files_dir, spec.id)
@@ -295,6 +295,11 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
             # Schnitt ist Regelarbeit ohne Modell und ohne Netz, und der
             # `reason`-Lauf weiter unten braucht die Abschnitte.
             schnitt = pipeline.split_protocols(main_store, spec.id)
+            # Was die Ideen-Seite über die Stadt sagt: kommt noch etwas, und
+            # mit Dokumenten? Ein unterbrochener Lauf lässt den Stand stehen.
+            zugang = pipeline.access_status(ernte)
+            if zugang is not None:
+                main_store.set_access(spec.id, *zugang)
             zaehler["bodies"] += 1
             zaehler["files_fetched"] += ernte.get("files_fetched", 0)
             zaehler["files_failed"] += ernte.get("files_failed", 0)
@@ -307,6 +312,9 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
             if ernte.get("files_gated"):
                 zaehler["files_gated"] = zaehler.get("files_gated", 0) + 1
                 gruende[f"gated_{spec.id}"] = "Dateien hinter einer Zugangsprüfung (ALTCHA)"
+            if ernte.get("host_unreachable"):
+                zaehler["hosts_unreachable"] = zaehler.get("hosts_unreachable", 0) + 1
+                gruende[f"unreachable_{spec.id}"] = "Server nimmt keine Verbindung an"
             # Eine abgebrochene Ernte ist kein Absturz — sie bekommt trotzdem
             # eine Zahl, sonst fällt sie nur dem auf, der das Log liest.
             if ernte.get("abgebrochen"):

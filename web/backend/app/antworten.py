@@ -1861,6 +1861,23 @@ class IdeaLaggingCity(TypedDict):
     latest_paper: str
 
 
+class IdeaBlockedCity(TypedDict):
+    """Eine Stadt, die uns bei der letzten Ernte nicht alles herausgab.
+
+    Was schon vorliegt, bleibt auf der Seite — die Zeile sagt nur, warum
+    nichts Neues dazukommt.
+    """
+    body_id: str
+    city: str
+    #: ``documents_blocked``: Vorlagen kommen, ihre Dokumente nicht.
+    #: ``blocked``: Es kommt gar nichts mehr.
+    status: Literal["documents_blocked", "blocked"]
+    #: Seit wann (ISO-Datum) die Ernte das so vorfindet.
+    since: str
+    #: Die jüngste Vorlage dieser Stadt (ISO-Datum), sofern es eine gibt.
+    latest_paper: str | None
+
+
 class IdeaDataStatus(TypedDict):
     """Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
 
@@ -1874,6 +1891,9 @@ class IdeaDataStatus(TypedDict):
     #: Abgleich liegt — dort fehlt vermutlich etwas (Wolfsburg endete am
     #: 25.06.2026, abgeglichen am 14.09.2026).
     lagging: list[IdeaLaggingCity]
+    #: Städte, deren Server den Abruf bei der letzten Ernte (teils) abwiesen.
+    #: Sie stehen NICHT zusätzlich unter ``lagging`` — ihr Grund ist bekannt.
+    blocked: list[IdeaBlockedCity]
 
 
 class IdeaFields(TypedDict):

@@ -13058,6 +13058,28 @@ export interface components {
             window_since: string | null;
         };
         /**
+         * IdeaBlockedCity
+         * @description Eine Stadt, die uns bei der letzten Ernte nicht alles herausgab.
+         *
+         *     Was schon vorliegt, bleibt auf der Seite — die Zeile sagt nur, warum
+         *     nichts Neues dazukommt.
+         */
+        IdeaBlockedCity: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Latest Paper */
+            latest_paper: string | null;
+            /** Since */
+            since: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "documents_blocked" | "blocked";
+        };
+        /**
          * IdeaDataStatus
          * @description Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
          *
@@ -13068,6 +13090,8 @@ export interface components {
         IdeaDataStatus: {
             /** As Of */
             as_of: string | null;
+            /** Blocked */
+            blocked: components["schemas"]["IdeaBlockedCity"][];
             /** Lagging */
             lagging: components["schemas"]["IdeaLaggingCity"][];
         };
@@ -27806,4 +27830,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: add4933b3e1a436dbcc142ced9048eb8e9125ee3d7b3cac2b6d4ce8efab74072
+// vertrag-sha256: 619885bacef5c48e06e4f4b8ae8d5b4520161f03dde04f475dd3330b9ba31b39

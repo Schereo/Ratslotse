@@ -62,8 +62,17 @@ HEADERS = {"User-Agent": USER_AGENT, "Accept": "application/json"}
 #: kleiner als ein verlorener Zugang: Hildesheims Daten wachsen nicht mehr
 #: nach, und dagegen hilft keine Geschwindigkeit.
 RATE_SECONDS = max(1.0, float(os.environ.get("CITIES_RATE_SECONDS") or 1.0))
-TIMEOUT_JSON = 60
-TIMEOUT_FILE = 120
+#: (Verbindungsaufbau, Lesen) in Sekunden. Der Aufbau ist kurz: Ein Server,
+#: der in 15 s keine Verbindung annimmt, nimmt sie auch in 120 s nicht an.
+#: Bis 11/2026 galten die 120 s für beides, und Potsdam — das den Server am
+#: 09.11.2026 nach ein paar Minuten Abrufen nicht mehr hereinließ — kostete je
+#: Datei vier Minuten (zwei Versuche), während ein Deploy darauf wartete.
+CONNECT_TIMEOUT = 15
+TIMEOUT_JSON = (CONNECT_TIMEOUT, 60)
+TIMEOUT_FILE = (CONNECT_TIMEOUT, 120)
+#: Nach so vielen Verbindungsfehlern in Folge gilt der Server für diesen Lauf
+#: als nicht erreichbar (``OParlClient.host_unreachable``).
+UNREACHABLE_AFTER = 3
 
 _locks: dict[str, tuple[threading.Lock, list[float]]] = {}
 _locks_guard = threading.Lock()
@@ -134,6 +143,11 @@ class OParlClient:
         #: (ALTCHA, „Zugriff prüfen")? Dann holt dieser Lauf keine weitere —
         #: s. ``_is_access_gate``.
         self.files_gated = False
+        #: Nimmt der Server keine Verbindung mehr an (``UNREACHABLE_AFTER``
+        #: Fehler in Folge)? Dann fragt dieser Lauf ihn nicht weiter — ob es
+        #: eine Sperre ist oder ein Ausfall, sagt erst der nächste Lauf.
+        self.host_unreachable = False
+        self._verbindungsfehler = 0
         #: Wann dieser Lauf begann (ISO, UTC — wie ``store.now()``). Daran
         #: erkennen die Adapter, welche Sitzungen in DIESEM Lauf neu oder
         #: geändert hereinkamen; nur deren Vorlagen müssen noch einmal geholt
@@ -264,7 +278,7 @@ class OParlClient:
         if not url.lower().startswith(("http://", "https://")):
             logger.info("Datei-Adresse ist keine Netzadresse: %s", url[:60])
             return None
-        if self.files_gated:
+        if self.files_gated or self.host_unreachable:
             return None
         for versuch in range(tries):
             throttle(url)
@@ -272,6 +286,7 @@ class OParlClient:
                 r = self.session.get(url, headers={"User-Agent": USER_AGENT},
                                      timeout=TIMEOUT_FILE, allow_redirects=True)
                 self.requests_made += 1
+                self._verbindungsfehler = 0
                 if 400 <= r.status_code < 500:
                     logger.info("Datei nicht abrufbar (%s): %s", r.status_code, url)
                     return None
@@ -299,6 +314,15 @@ class OParlClient:
                     return None
                 return r.content, mime
             except requests.RequestException as e:
+                if isinstance(e, requests.ConnectionError):
+                    self._verbindungsfehler += 1
+                    if self._verbindungsfehler >= UNREACHABLE_AFTER:
+                        if not self.host_unreachable:
+                            logger.warning("%s: Server nimmt nach %s Versuchen keine Verbindung "
+                                           "an — keine weiteren Abrufe in diesem Lauf: %s",
+                                           self.body_id, self._verbindungsfehler, url)
+                        self.host_unreachable = True
+                        return None
                 if versuch == tries - 1:
                     logger.info("Datei-Abruf gescheitert: %s (%s)", url, type(e).__name__)
                     return None
