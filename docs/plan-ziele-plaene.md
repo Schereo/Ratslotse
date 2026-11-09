@@ -45,8 +45,13 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 | 1 Zuordnung, Endpunkte, erste Seite | auf dev | #1818 (#1813 ist darin aufgegangen) |
 | 2 Maßnahmenlisten der fünf Pilotpläne | auf dev | #1818 |
 | Gestaltungsrunde | auf dev: Zeitbänder auf einer Achse, Kopfbühne, Zeitstrahl mit Lücken | #1818; § 3 beschreibt die Inhalte, die Form steht in `DESIGNSPRACHE.md` |
-| 3 Stand, Berichtsstand, Kennzahlen | erster Teil gebaut: Berichtsstand für alle Pläne, Stand laut Stadt für Klimaschutzplan und Wärmeplan | § 5 nennt, was offen ist |
-| 4 bis 6 | nicht begonnen | § 5 |
+| 3 Stand, Berichtsstand, Kennzahlen | auf dev: Berichtsstand für alle Pläne; Stand laut Stadt für Klimaschutzplan, Wärmeplan, Aktionsplan Gewalt 2020 und Ernährungsstrategie; THG-Kennzahl. Offen: Mobilitätsplan (Fließtext, braucht ein Modell) | #1819, #1822, #1823 |
+| 4 Beschlüsse zu Maßnahmen | auf dev: Zuordnung über die Kennung der Maßnahme (ohne Modell). Offen: Vorlagen, die einen Plan nur beim Namen nennen (Modell und Golden-Set) | #1824 |
+| 4b Wo man nachfragen kann | auf dev: Pläne ohne aktuellen Bericht. „Ratsauftrag ohne Folge“ gemessen, Messziel verfehlt, nicht gebaut | #1825 |
+| 5 Rückblick | auf dev für die zehn abgelaufenen Pläne. Offen: weitere Maßnahmenlisten, iOS-Ansicht | #1825 |
+| 5b Seite der Stadt | Verweise für 21 Pläne. Offen: Dokumente der Pläne von vor 2018 | mit Phase 6 |
+| 6 Pflege | Kennzahlen im Cron-Protokoll, Hinweise im Prüfskript | mit Phase 5b |
+| Kosten | kein Modellaufruf, 0 $ | — |
 
 Gemessen im Abzug nach den Phasen 0 bis 2:
 
@@ -1074,15 +1079,23 @@ Die Nummern 1 bis 6 sind die der ersten Fassung.
 
 ### Offen
 
-**B. Eigener Schalter für „Ratsauftrag ohne Folge“?** (§ 3.5) Vorschlag: ja,
-`offene-auftraege`. Dann fährt „Pläne“ ohne die riskanteste Liste nach Prod,
-und sie kommt nach, wenn das Golden-Set ≥ 90 % zeigt.
+**B. Eigener Schalter für „Ratsauftrag ohne Folge“?** Stellt sich vorerst
+nicht: Die Liste verfehlt das Messziel und ist nicht gebaut (§ 5, Phase 4b).
+Die Frage kommt wieder, wenn eine Gegenprobe über den Inhalt die 90 % erreicht.
 
-**C. Die offenen Fälle** (alte Frage 7): Luftreinhalteplan, Wohnkonzept,
-Innenstadtstrategie und Rad- und Fußverkehrsprogramm nach 2022. Der Agent
-klärt sie in Phase 5b selbst (MCP, oldenburg.de) und fragt nur, was übrig
-bleibt. Falls Tim einen der Stände aus eigener Kenntnis weiß, spart das die
-Suche.
+**C. Die offenen Fälle** (alte Frage 7): Zum Wohnkonzept und zum
+Sportentwicklungsplan sagen die Seiten der Stadt, dass die alten Fassungen
+weiter gelten (§ 5, Phase 5b). Luftreinhalteplan und Rad- und
+Fußverkehrsprogramm nach 2022 bleiben ungeklärt; sie stehen unter „Wo man
+nachfragen kann“. Falls Tim einen der Stände aus eigener Kenntnis weiß, spart
+das die Suche.
+
+**D. Wie weiter mit dem, was ein Modell braucht?** Drei Stücke sind bewusst
+offen, weil sie ein Modell und ein Golden-Set brauchen und nicht nachts ohne
+Rückfrage laufen sollten: der Stand je Maßnahme beim Mobilitätsplan, die
+Zuordnung von Vorlagen, die einen Plan nur beim Namen nennen, und die
+Gegenprobe für „Ratsauftrag ohne Folge“. Jedes kostet nach Schätzung unter
+1 $; teurer ist das Prüfen.
 
 ## Anhang: Messbefehle
 
