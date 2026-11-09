@@ -970,7 +970,7 @@ export default function View() {
   if (!cfg.isSuccess && !cfg.isError) return <DetailSkeleton />;
   if (!an) notFound();
   const ungefiltert = !zustand.feld && !zustand.q;
-  const { stand, luecke } = standZeilen(felder?.data_status);
+  const { stand, luecke, sperre } = standZeilen(felder?.data_status);
   const felderFehler = felderAbfrage.isError ? (
     <ErrorState title="Die Themenfelder konnten nicht geladen werden"
                 onRetry={() => void felderAbfrage.refetch()} busy={felderAbfrage.isFetching} />
@@ -1017,6 +1017,11 @@ export default function View() {
             {stand}
             {luecke && <span className="font-sans"> · {luecke}</span>}
           </p>
+        )}
+        {sperre && (
+          // Städte, die uns nichts (Neues) mehr herausgeben. Ihr Bestand
+          // bleibt auf der Seite; der Satz sagt, warum nichts dazukommt.
+          <p className="mt-1 text-hinweis text-muted-foreground">{sperre}</p>
         )}
       </div>
 

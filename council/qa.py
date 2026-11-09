@@ -3372,6 +3372,10 @@ def title_match_decisions(store, question: str, candidates: list[dict],
 DEBATTE_NEUESTE_N = 3
 DEBATTE_NEUESTE_MAX = 8
 DEBATTE_NEUESTE_JE_TOP = 6
+#: Zusagen der Verwaltung, wenn der Rechercheplan die Debatten abschaltet:
+#: aus so vielen Beiträgen der Aussprache gesiebt, höchstens so viele.
+ZUSAGEN_POOL = 80
+ZUSAGEN_MAX = 6
 
 
 def newest_beyond_head(candidates: list[dict], head: int = DEBATTE_ANKER_KOPF,

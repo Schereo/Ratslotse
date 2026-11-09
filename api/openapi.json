@@ -15104,6 +15104,47 @@
         "title": "Idea",
         "type": "object"
       },
+      "IdeaBlockedCity": {
+        "description": "Eine Stadt, die uns bei der letzten Ernte nicht alles herausgab.\n\nWas schon vorliegt, bleibt auf der Seite — die Zeile sagt nur, warum\nnichts Neues dazukommt.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "latest_paper": {
+            "title": "Latest Paper",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "documents_blocked",
+              "blocked"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body_id",
+          "city",
+          "status",
+          "since",
+          "latest_paper"
+        ],
+        "title": "IdeaBlockedCity",
+        "type": "object"
+      },
       "IdeaDataStatus": {
         "description": "Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ\" auf der Seite.\n\n**Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein\nDatum, liest man es als „bis dahin ist alles drin\"; das stimmt nur für\ndas früheste der Städte.",
         "properties": {
@@ -15113,6 +15154,13 @@
               "string",
               "null"
             ]
+          },
+          "blocked": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaBlockedCity"
+            },
+            "title": "Blocked",
+            "type": "array"
           },
           "lagging": {
             "items": {
@@ -15124,7 +15172,8 @@
         },
         "required": [
           "as_of",
-          "lagging"
+          "lagging",
+          "blocked"
         ],
         "title": "IdeaDataStatus",
         "type": "object"
