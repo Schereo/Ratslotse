@@ -15129,7 +15129,8 @@
           "status": {
             "enum": [
               "documents_blocked",
-              "blocked"
+              "blocked",
+              "paused"
             ],
             "title": "Status",
             "type": "string"

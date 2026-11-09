@@ -457,3 +457,27 @@ def test_gesperrte_staedte_stehen_mit_grund_statt_als_nachzuegler(client, cities
         {"body_id": "wolfsburg", "city": "Wolfsburg", "status": "blocked",
          "since": heute, "latest_paper": "2026-06-25"},
     ]
+
+
+def test_eine_stadt_die_der_lauf_nicht_holt_haelt_den_stand_nicht_fest(client, cities_db):
+    """Hildesheim steht seit dem 13.09.2026 hinter einer ALTCHA-Prüfung und
+    ist in der Registry aus. Auf Prod stand deshalb „Stand: 13.09.2026" über
+    einer Seite, deren übrige Städte am 09.11. abgeglichen waren — und über
+    Hildesheim selbst kein Wort."""
+    from council.cities.registry import BODIES
+
+    assert not BODIES["hildesheim"].active and BODIES["hildesheim"].access_blocked
+    cities_db.upsert_body(Body("hildesheim", "Hildesheim", "NI", "allris_classic"))
+    cities_db.upsert_batch(Batch(papers=[
+        Paper("hi:p:1", "hildesheim", "Altes Papier", date="2026-09-07")]))
+    cities_db.put_annotation("paper", "hi:p:1", *FIT_FASSUNG, _urteil("missing"), "fw")
+    with cities_db._conn:
+        cities_db._conn.execute(
+            "UPDATE bodies SET last_fetched='2026-09-13T08:00:00' WHERE id='hildesheim'")
+        cities_db._conn.execute(
+            "UPDATE bodies SET last_fetched='2026-11-09T18:36:00' WHERE id='osnabrueck'")
+    stand = client.get("/api/council/cities/ideas/fields").json()["data_status"]
+    assert stand["as_of"] == "2026-11-09"
+    assert {"body_id": "hildesheim", "city": "Hildesheim", "status": "blocked",
+            "since": "2026-09-13", "latest_paper": "2026-09-07"} in stand["blocked"]
+    assert "hildesheim" not in {h["body_id"] for h in stand["lagging"]}

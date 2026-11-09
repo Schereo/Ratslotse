@@ -1871,8 +1871,11 @@ class IdeaBlockedCity(TypedDict):
     city: str
     #: ``documents_blocked``: Vorlagen kommen, ihre Dokumente nicht.
     #: ``blocked``: Es kommt gar nichts mehr.
-    status: Literal["documents_blocked", "blocked"]
-    #: Seit wann (ISO-Datum) die Ernte das so vorfindet.
+    #: ``paused``: Der Wochenlauf holt die Stadt derzeit nicht (in der
+    #: Registry abgeschaltet), ohne dass eine Sperre gemessen wäre.
+    status: Literal["documents_blocked", "blocked", "paused"]
+    #: Seit wann (ISO-Datum) das so ist: bei den geernteten Städten der erste
+    #: Lauf mit diesem Befund, bei den abgeschalteten ihr letzter Abgleich.
     since: str
     #: Die jüngste Vorlage dieser Stadt (ISO-Datum), sofern es eine gibt.
     latest_paper: str | None

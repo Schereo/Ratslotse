@@ -68,6 +68,11 @@ function sperrSatz(gesperrt: Datenstand["blocked"]): string | null {
     saetze.push(`Aus ${aufzaehlung(ohne.map((g) => g.city))} kommen neue Vorlagen derzeit ohne Dokumente, `
       + "die Städte lassen sie nicht automatisch abrufen.");
   }
+  const ruht = gesperrt.filter((g) => g.status === "paused");
+  if (ruht.length) {
+    saetze.push(`${aufzaehlung(ruht.map((g) => g.city))} ${ruht.length === 1 ? "wird" : "werden"} `
+      + "derzeit nicht abgeglichen.");
+  }
   if (!saetze.length) return null;
   return `${saetze.join(" ")} Was schon vorliegt, bleibt hier sichtbar.`;
 }
