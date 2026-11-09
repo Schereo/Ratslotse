@@ -59,7 +59,8 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
-                         Idea, IdeaDataStatus, IdeaEvidence, IdeaFields, IdeaFieldSummary,
+                         Idea, IdeaBlockedCity, IdeaDataStatus, IdeaEvidence, IdeaFields,
+                         IdeaFieldSummary,
                          IdeaLaggingCity, IdeaProtocol,
                          IdeaSibling, Movement, MovementCity, MovementDetail,
                          MovementDocument, MovementSimilar, MovementsResponse,
@@ -2312,7 +2313,8 @@ STAND_LUECKE_TAGE = 60
 
 
 def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
-    """„Stand: …" für die Seite — und welche Stadt deutlich älter endet."""
+    """„Stand: …" für die Seite — welche Stadt deutlich älter endet, und
+    welche uns bei der letzten Ernte nicht alles herausgab."""
     from datetime import date as _date
 
     from council.cities.registry import BODIES
@@ -2320,7 +2322,16 @@ def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
     zeilen = cities.coverage(body_ids)
     abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
     hinten: list[IdeaLaggingCity] = []
+    gesperrt: list[IdeaBlockedCity] = []
     for z in zeilen:
+        b = str(z["body_id"])
+        stadt = BODIES[b].name if b in BODIES else b
+        if z.get("access") in ("documents_blocked", "blocked"):
+            gesperrt.append({"body_id": b, "city": stadt, "status": z["access"],
+                             "since": str(z["access_since"])[:10],
+                             "latest_paper": (str(z["latest_paper"])[:10]
+                                              if z.get("latest_paper") else None)})
+            continue
         if not z.get("last_fetched") or not z.get("latest_paper"):
             continue
         try:
@@ -2329,11 +2340,11 @@ def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
         except ValueError:
             continue
         if luecke > STAND_LUECKE_TAGE:
-            b = str(z["body_id"])
-            hinten.append({"body_id": b, "city": BODIES[b].name if b in BODIES else b,
+            hinten.append({"body_id": b, "city": stadt,
                            "latest_paper": str(z["latest_paper"])[:10]})
     return {"as_of": min(abgleiche) if abgleiche else None,
-            "lagging": sorted(hinten, key=lambda h: h["city"])}
+            "lagging": sorted(hinten, key=lambda h: h["city"]),
+            "blocked": sorted(gesperrt, key=lambda g: g["city"])}
 
 
 @router.get("/cities/search")
