@@ -4782,10 +4782,12 @@ class PlanDecisionEntry(TypedDict):
     outcome: Beschlussergebnis | None
     template_number: str | None
     deliberations: int
+    #: Kennungen der Maßnahmen, die die Vorlage nennt (nur in der Gruppe ``measures``).
+    measure_codes: list[str]
 
 
 class PlanDecisionGroup(TypedDict):
-    key: Literal["plan", "implementation", "motion", "decision", "mentions"]
+    key: Literal["plan", "implementation", "motion", "decision", "mentions", "measures"]
     label: str
     entries: list[PlanDecisionEntry]
 
@@ -4798,6 +4800,8 @@ class PlanMeasure(TypedDict):
     #: Stand im Wortlaut der Stadt; ``None``, wo sie für diese Maßnahme keinen nennt.
     status_raw: str | None
     status_norm: PlanStatusNorm | None
+    #: Beschlüsse, deren Vorlage diese Maßnahme bei ihrer Kennung nennt.
+    decision_count: int
 
 
 class PlanMeasureGroup(TypedDict):

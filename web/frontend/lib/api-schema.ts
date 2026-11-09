@@ -14984,6 +14984,8 @@ export interface components {
             decision_id: number | null;
             /** Deliberations */
             deliberations: number;
+            /** Measure Codes */
+            measure_codes: string[];
             /**
              * Outcome
              * @enum {string|null}
@@ -15002,7 +15004,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "plan" | "implementation" | "motion" | "decision" | "mentions";
+            key: "plan" | "implementation" | "motion" | "decision" | "mentions" | "measures";
             /** Label */
             label: string;
         };
@@ -15496,6 +15498,8 @@ export interface components {
         PlanMeasure: {
             /** Code */
             code: string;
+            /** Decision Count */
+            decision_count: number;
             /** Package */
             package: string | null;
             /** Page */
@@ -28123,4 +28127,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2be19ca318228edf6d8f3cbd05a0e97a1ec5b8bd6f2877cd05fde1eab396fafc
+// vertrag-sha256: 80dc352551f7a6ec2ad98c46171326818c0aabb4fb4ad289e268f712dc163980

@@ -265,3 +265,25 @@ def test_messziele_phase_1():
     ksp = {i["template_number"] for i in items if i["plan_key"] == "klimaschutzplan_2035"
            and "Klimaschutz-Aktivit" in i["title"]}
     assert len(ksp) == 15, "Plan § 5 Phase 1: alle 15 Berichte „Klimaschutz-Aktivitäten“"
+
+
+def test_kennung_ordnet_den_beschluss_der_massnahme_zu():
+    """Phase 4: Eine Vorlage nennt eine Maßnahme bei ihrer Kennung. Kurze Kennungen („K1“,
+    „A12“) zählen nur mit Plannamen und Anrede; Übersichten mit vielen Kennungen zählen nicht."""
+    by_stem = {"23/0419": [11, 12], "26/0238": [13], "24/0001": [14], "25/0002": [15], "25/0003": [16]}
+    overview = " ".join(f"Maßnahme {c}" for c in ("PV_01", "PV_02", "PV_03", "PV_04", "PV_05", "PV_06"))
+    templates = [
+        ("23/0419", "Die Richtlinie setzt die Maßnahme pv_05 des Klimaschutzplans um."),  # Schreibweise der Stadt schwankt
+        ("26/0238/1", "Der Beirat ist die Wärmeplan-Maßnahme O7; siehe Wärmeplan."),
+        ("24/0001", "Der Raum K1 im Rathaus wird saniert."),          # kurze Kennung ohne Plan und Anrede
+        ("25/0002", "Im Wärmeplan steht nichts zum Raum K1."),         # Plan genannt, Kennung nicht als Maßnahme
+        ("25/0003", overview),                                          # Übersicht, kein Beschluss zu EINER Maßnahme
+    ]
+    links = plan_tracking.build_measure_links(templates, by_stem, items=[])
+    got = sorted((link["plan_key"], link["decision_id"], link["measure_code"]) for link in links)
+    assert got == [("klimaschutzplan_2035", 11, "PV_05"), ("klimaschutzplan_2035", 12, "PV_05"),
+                   ("waermeplan", 13, "O7")]
+    assert {link["relation"] for link in links} == {"names_measure"}
+    # Was schon als Bericht zum Plan gehört, wird nicht noch einmal Maßnahmen-Beschluss.
+    known = [{"plan_key": "klimaschutzplan_2035", "template_number": "23/0419"}]
+    assert not [link for link in plan_tracking.build_measure_links(templates[:1], by_stem, items=known)]
