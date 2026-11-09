@@ -1,7 +1,7 @@
 "use client";
 
-// /wahlen — alle Wahlen, die wir zeigen: oben als Bühne die, auf die gerade
-// alles zeigt, darunter die gelaufenen mit ihrem Ergebnis.
+// /wahlen — alle Wahlen, die wir zeigen: oben als Bühne die, die ansteht oder
+// gerade ausgezählt wird, darunter die gelaufenen mit ihrem Ergebnis.
 //
 // Warum es diese Seite gibt: `/wahlabend` ist der Name EINES Abends. Für die
 // 51 Wochen dazwischen stimmt er nicht, und für einen Rückblick auch nicht.
@@ -21,6 +21,7 @@ import { Mascot } from "@/components/mascot";
 import { Reveal } from "@/components/reveal";
 import { STAFFEL, staffelStil } from "@/components/staffel";
 import { PageHeader } from "@/components/ui/page-header";
+import { AnalyseReiter } from "@/components/analyse-reiter";
 import { api, lohntWiederholen } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
@@ -266,7 +267,16 @@ export function WahlenView() {
   }
 
   const zeilen = data?.elections ?? [];
-  const { fokus, weitere } = geteilt(zeilen);
+  // Die Bühne nur für eine Wahl, die ansteht oder gerade ausgezählt wird —
+  // bis Mitternacht am Wahltag (`wahlabendZeit`, nicht `status`: der bleibt in
+  // kommunalwahl/wahlen/ nach der Wahl auf „live“ stehen). Bis 11/2026 stand
+  // dort die Wahl im Fokus des Backends, Wochen danach noch die Ratswahl vom
+  // 13.09. groß, obwohl die Stichwahl jünger war (Tims Befund 09.11.2026).
+  // Gelaufene Wahlen stehen in der Liste, neueste zuerst.
+  const geteiltNach = geteilt(zeilen);
+  const fokus = geteiltNach.fokus && wahlabendZeit(geteiltNach.fokus.polls_close).phase !== "danach"
+    ? geteiltNach.fokus : null;
+  const weitere = fokus ? geteiltNach.weitere : zeilen;
   // Erst drängen, wenn feststeht, dass niemand angemeldet ist — sonst
   // blitzt der Anreiz kurz auf und verschwindet (Designsprache: nichts
   // erscheinen lassen, was gleich wieder weg ist).
@@ -274,17 +284,32 @@ export function WahlenView() {
 
   return (
     <div className="mx-auto w-full max-w-3xl pb-6">
-      <PageHeader title="Wahlen" description="Die nächste Wahl in Oldenburg und die gelaufenen mit ihrem Ergebnis." />
+      {/* Angemeldet ist „Wahlen“ ein Reiter der Analyse — dieselbe Kopfzeile
+          und Leiste wie dort, sonst verschwand sie beim Wechsel hierher (Tims
+          Befund 09.11.2026). Ohne Konto gibt es die Analyse nicht; dann
+          bleibt die Seite für sich. */}
+      {user ? (
+        <>
+          <PageHeader title="Analyse" description="Trends, Parteien, Personen und Ziele im Überblick." />
+          <div className="mt-4">
+            <AnalyseReiter aktiv="wahlen" />
+          </div>
+          <h2 className="mt-6 font-display text-[22px] font-bold tracking-tight">Wahlen in Oldenburg</h2>
+          <p className="mt-1 text-hinweis text-muted-foreground">Die gelaufenen Wahlen mit ihrem Ergebnis, die nächste, sobald sie ansteht.</p>
+        </>
+      ) : (
+        <PageHeader title="Wahlen" description="Die nächste Wahl in Oldenburg und die gelaufenen mit ihrem Ergebnis." />
+      )}
       <div className="mt-6">
         {isLoading ? <div className="h-56 animate-pulse rounded-3xl bg-skeleton" /> : null}
         {fokus ? <Buehne z={fokus} /> : null}
         {gesperrt ? <Anreiz z={gesperrt} /> : null}
 
         {weitere.length > 0 ? (
-          <section className="mt-9">
-            <h2 className="font-display text-[17px] font-bold tracking-tight">Weitere Wahlen</h2>
+          <section className={fokus || gesperrt ? "mt-9" : undefined}>
+            {fokus ? <h2 className="font-display text-[17px] font-bold tracking-tight">Weitere Wahlen</h2> : null}
             {nachJahren(weitere).map((g, gi) => (
-              <div key={g.jahr} className="mt-4">
+              <div key={g.jahr} className={fokus || gi > 0 ? "mt-4" : undefined}>
                 <p className={KICKER}>{g.jahr}</p>
                 <ol className="mt-2 flex flex-col gap-2.5">
                   {g.zeilen.map((z, i) => (

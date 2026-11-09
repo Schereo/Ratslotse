@@ -6,41 +6,49 @@
  *
  * Bis 11/2026 lag sie in `council-analysis.tsx`, und die Ideen-Seite zog mit
  * diesem einen Import den Code aller Analyse-Ansichten mit (Trends, Ziele,
- * Personen, Parteien, Finanzen), obwohl sie nur die Leiste zeigt. Dieselbe
+ * Personen, Parteien), obwohl sie nur die Leiste zeigt. Dieselbe
  * Trennung erlaubt `/council`, den ganzen Reiter erst bei Bedarf zu laden
  * und solange die Leiste schon richtig hinzustellen.
  */
 import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Users, Euro, TrendingUp, Target, User, Lightbulb, Vote } from "lucide-react";
+import { Users, TrendingUp, Target, User, Lightbulb, Vote } from "lucide-react";
 import { useFeature } from "@/lib/features";
 import { Segmented } from "@/components/ui";
 import { ScrollZeile } from "@/components/ui/scroll-zeile";
 
-export type AnalysisSub = "parties" | "finanzen" | "trends" | "ziele" | "personen";
+export type AnalysisSub = "parties" | "trends" | "ziele" | "personen";
 // Trends zuerst und als Default: Die Themenfeld-Rückblicke sind der
 // zugänglichste Einstieg in die Analyse — Parteien/Personen sind die Vertiefung.
 const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
   ["trends", "Trends", TrendingUp],
   ["parties", "Parteien", Users],
   ["personen", "Personen", User],
-  ["finanzen", "Finanzen", Euro],
+  // „Finanzen“ stand hier bis 11/2026 — Summen aus Beschlusstexten neben dem
+  // echten Haushalt, der dasselbe besser beantwortet (Tim, 09.11.2026).
   ["ziele", "Ziele", Target],
 ];
 
 /** Der Unterreiter aus `?sub=` — alles Unbekannte ist „Trends". */
 export function analysisSub(raw: string | null): AnalysisSub {
-  return raw === "finanzen" || raw === "parties" || raw === "ziele" || raw === "personen" ? raw : "trends";
+  return raw === "parties" || raw === "ziele" || raw === "personen" ? raw : "trends";
 }
 
 /** Fragen, die zum jeweiligen Unterreiter passen — und die die Beschlüsse
- *  hergeben. Wer hier eine Sackgasse einbaut, zeigt sie Neuen als Erstes. */
+ *  hergeben. Wer hier eine Sackgasse einbaut, zeigt sie Neuen als Erstes.
+ *
+ *  Jede ist auf Prod gestellt worden, bevor sie hier steht (09.11.2026,
+ *  ops-frage-probe). Herausgeflogen sind „Wobei stimmen SPD und CDU
+ *  gegeneinander?“ (wer wie gestimmt hat, steht in keinem Protokoll), „Welche
+ *  Themen hat der Rat 2026 am häufigsten behandelt?“ (die Suche zählt nicht),
+ *  „Was hat der Rat zuletzt beschlossen?“ (das Protokoll der letzten Sitzung
+ *  fehlt fast immer noch) und „Welche Klimaziele hat sich der Rat gesetzt?“
+ *  (die Antwort widersprach sich). */
 export const ANALYSE_FRAGEN: Record<AnalysisSub, readonly string[]> = {
-  trends: ["Welche Themen hat der Rat 2026 am häufigsten behandelt?", "Was hat der Rat zuletzt beschlossen?"],
-  parties: ["Wobei stimmen SPD und CDU gegeneinander?", "Was hat die FDP zuletzt beantragt?"],
+  trends: ["Was hat der Rat 2026 zum Radverkehr beschlossen?", "Was wurde 2026 zum Fliegerhorst entschieden?"],
+  parties: ["Welche Anträge hat die SPD 2026 eingebracht?", "Was hat die FDP zuletzt beantragt?"],
   personen: ["Wer hat sich zum Stadionneubau geäußert?", "Was sagte der Oberbürgermeister zur Cäcilienbrücke?"],
-  finanzen: ["Wie viele Schulden hat die Stadt Oldenburg?", "Wofür gibt die Stadt am meisten Geld aus?"],
-  ziele: ["Welche Klimaziele hat sich der Rat gesetzt?", "Bis wann will Oldenburg klimaneutral sein?"],
+  ziele: ["Was steht im Klimaschutzplan 2035?", "Was hat der Rat zur Wärmeplanung beschlossen?"],
 };
 
 /** Ein Reiter mehr als die Analyse selbst kennt: „Ideen aus anderen Städten"

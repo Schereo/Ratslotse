@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { PartyAnalysis, FinanceData } from "@/lib/types";
+import { PartyAnalysis } from "@/lib/types";
 import { Card, ChartSkeleton, EmptyState } from "@/components/ui";
-import { POLICY_FIELD_LABELS, PartyBadge, DecisionLinkCard, formatEuro } from "@/components/decision-ui";
+import { POLICY_FIELD_LABELS, PartyBadge } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
 import { ChartExplainer } from "@/components/chart-explainer";
 import { AnalysisIntro } from "@/components/analysis-intro";
@@ -286,97 +286,21 @@ function PartiesView() {
   );
 }
 
-function MoneyByField({ data }: { data: FinanceData }) {
-  const router = useRouter();
-  const rows = data.by_field;
-  if (!rows.length) return null;
-  const max = Math.max(1, ...rows.map((f) => f.total));
-  const label = (f: string) => data.field_labels[f] ?? POLICY_FIELD_LABELS[f] ?? f;
-  return (
-    <div className="space-y-1.5">
-      {rows.map((f) => (
-        <button key={f.field} type="button"
-          onClick={() => router.push(`/council?tab=decisions&field=${f.field}`)}
-          className="group flex w-full items-center gap-3 rounded-md px-1 py-1 text-left transition-colors hover:bg-muted/50">
-          <div className="w-28 shrink-0 truncate text-sm text-foreground sm:w-44">{label(f.field)}</div>
-          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-emerald-500/70 transition-colors group-hover:bg-emerald-500" style={{ width: `${(f.total / max) * 100}%` }} />
-          </div>
-          <div className="w-32 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-            {formatEuro(f.total)} <span className="text-muted-foreground/60">· {f.n}</span>
-          </div>
-        </button>
-      ))}
-      <p className="pt-1.5 text-xs leading-relaxed text-muted-foreground/70">
-        Summe der automatisch erkannten Beträge je Themenfeld. Jahresabschlüsse und Haushaltspläne sind
-        ausgenommen. Die Zahl zeigt, in wie vielen Beschlüssen ein Betrag vorkommt. Antippen öffnet die Beschlüsse.
-      </p>
-    </div>
-  );
-}
-
-function FinanceHeadline({ total, count }: { total: number; count: number }) {
-  return (
-    <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-transparent p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Genannte Gesamtsumme</p>
-      <p className="mt-1 font-display text-[2rem] font-extrabold leading-none tracking-tight text-emerald-700 dark:text-emerald-400">≈ {formatEuro(total)}</p>
-      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-        aus <strong className="font-semibold text-foreground">{count} {count === 1 ? "Beschluss" : "Beschlüssen"}</strong> mit
-        Beträgen · ohne Jahresabschlüsse und Haushaltspläne · grobe Größenordnung
-      </p>
-    </div>
-  );
-}
-
-function FinanceView() {
-  const { data, loading } = useFetch<FinanceData>("/council/finance");
-  if (loading) return <div className="py-4"><ChartSkeleton bars={6} /></div>;
-  if (!data || (data.decisions.length === 0 && data.by_field.length === 0)) {
-    return <EmptyState mascot="sleep" title="Noch keine Finanzdaten" hint="Es wurden noch keine €-Beträge aus Beschlüssen erkannt." />;
-  }
-  const total = data.by_field.reduce((s, f) => s + f.total, 0);
-  const count = data.by_field.reduce((s, f) => s + f.n, 0);
-  return (
-    <div className="space-y-4">
-      <Block
-        title="Welche Summen nennt der Rat?"
-        hint="In welchen Themenfeldern die größten Beträge in Beschlüssen vorkommen."
-        explain={
-          <>
-            Summiert die Euro-Beträge, die in den Beschlusstexten automatisch erkannt wurden — das ist{" "}
-            <em>nicht der offizielle Haushalt</em>, sondern eine Größenordnung aus den Entscheidungen selbst.
-            Jahresabschlüsse und Haushaltspläne sind bewusst ausgenommen, sonst würden sie alles überstrahlen.
-            Ein Klick auf eine Zeile öffnet die Beschlüsse dahinter.
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <FinanceHeadline total={total} count={count} />
-          <MoneyByField data={data} />
-        </div>
-      </Block>
-      {data.decisions.length > 0 && (
-        <Block title="Größte Finanzbeschlüsse"
-          hint="Beschlüsse mit dem höchsten im Text genannten Betrag (ohne Jahresabschlüsse/Haushaltspläne — automatisch erkannt).">
-          <div className="space-y-2">
-            {data.decisions.map((d) => (
-              <DecisionLinkCard key={d.id} id={d.id} title={d.title} committee={d.committee}
-                session_date={d.session_date} field={d.policy_field} amount={d.amount_eur} />
-            ))}
-          </div>
-        </Block>
-      )}
-    </div>
-  );
-}
-
 // Reiterleiste, Unterreiter und ihre Fragen stehen seit 11/2026 in
 // components/analyse-reiter.tsx — die Ideen-Seite braucht nur die Leiste und
 // zog vorher mit ihr den ganzen Analyse-Code mit.
 
 export function AnalysisTab() {
   const sp = useSearchParams();
+  const router = useRouter();
   const sub = analysisSub(sp.get("sub"));
+  // Den Reiter „Finanzen“ gibt es seit 11/2026 nicht mehr: Er summierte die
+  // Euro-Beträge aus Beschlusstexten, der Haushalt zeigt die echten Zahlen
+  // (Tims Entscheidung 09.11.2026). Alte Links landen dort statt bei Trends.
+  const alterFinanzLink = sp.get("sub") === "finanzen";
+  useEffect(() => {
+    if (alterFinanzLink) router.replace("/haushalt");
+  }, [alterFinanzLink, router]);
 
   return (
     <div className="mt-4 space-y-4">
@@ -386,7 +310,7 @@ export function AnalysisTab() {
           es. Zwei Fragen je Reiter, die die Zahlen darunter zur Sprache bringen. */}
       <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
       {sub === "parties" ? <PartiesView /> : sub === "personen" ? <PersonenView />
-        : sub === "finanzen" ? <FinanceView /> : sub === "trends" ? <TrendsView /> : <GoalsView />}
+        : sub === "trends" ? <TrendsView /> : <GoalsView />}
     </div>
   );
 }
