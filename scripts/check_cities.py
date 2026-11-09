@@ -302,6 +302,11 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
                                             + ernte.get("protocols_fetched", 0))
             zaehler["texts_new"] += text.get("ok", 0) + text.get("thin", 0)
             zaehler["sections"] = zaehler.get("sections", 0) + schnitt["sections"]
+            # Dateien hinter einer Zugangsprüfung (ALTCHA): kein Fehler unserer
+            # Seite, aber der Grund, warum dieser Stadt neue Texte fehlen.
+            if ernte.get("files_gated"):
+                zaehler["files_gated"] = zaehler.get("files_gated", 0) + 1
+                gruende[f"gated_{spec.id}"] = "Dateien hinter einer Zugangsprüfung (ALTCHA)"
             # Eine abgebrochene Ernte ist kein Absturz — sie bekommt trotzdem
             # eine Zahl, sonst fällt sie nur dem auf, der das Log liest.
             if ernte.get("abgebrochen"):

@@ -85,3 +85,47 @@ def test_eine_kaputte_adresse_kostet_keinen_abruf(tmp_path):
     assert client.get_file("file:///C:/Users/vorname-n/Downloads/x.pdf") is None
     assert client.session.abrufe == [], "es darf kein Abruf stattgefunden haben"
     client.raw.close()
+
+
+_ALTCHA = (b'<!DOCTYPE html>\n<html lang="de"><head><title>Zugriff pruefen</title>'
+           b'<script async defer src="/public/_gate/assets/altcha.js" type="module"></script>'
+           b"</head><body>Zum Schutz vor automatisierten Zugriffen</body></html>")
+
+
+def test_eine_zugangspruefung_beendet_die_dateiabrufe_der_stadt(tmp_path):
+    """Braunschweig, 09.11.2026: Jede Dokument-Adresse liefert die ALTCHA-Seite
+    „Zugriff prüfen". Der Lauf fragte 240-mal nach. Umgangen wird sie nicht —
+    aber nach der ersten hört der Lauf auf zu klopfen und sagt, warum."""
+    sitzung = _Sitzung(_Antwort(_ALTCHA, "text/html; charset=UTF-8"))
+    client = OParlClient(CitiesStore(tmp_path / "raw.sqlite"), "braunschweig",
+                         tmp_path / "files", session=sitzung)
+    assert client.get_file("https://bs.example.org/public/doc?DOLFDNR=1") is None
+    assert client.files_gated
+    assert client.get_file("https://bs.example.org/public/doc?DOLFDNR=2") is None
+    assert len(sitzung.abrufe) == 1, "nach der Zugangsprüfung kein weiterer Abruf"
+    client.raw.close()
+
+
+def test_eine_gewoehnliche_webseite_sperrt_nichts(tmp_path):
+    """„Keine Information verfügbar" (nichtöffentlich) ist keine Zugangsprüfung —
+    die nächste Datei derselben Stadt kann ein PDF sein."""
+    client = _client(tmp_path, _Antwort(
+        b"<!DOCTYPE html><html><body>Keine Information verf\xc3\xbcgbar</body></html>",
+        "text/html"))
+    assert client.get_file("https://x.example.org/a.pdf") is None
+    assert not client.files_gated
+    client.raw.close()
+
+
+def test_die_ernte_merkt_die_zugangspruefung(tmp_path):
+    from council.cities import pipeline
+
+    sitzung = _Sitzung(_Antwort(_ALTCHA, "text/html"))
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    client = OParlClient(store, "braunschweig", tmp_path / "files", session=sitzung)
+    offen = [{"id": f"f{i}", "access_url": f"https://bs.example.org/doc?{i}"} for i in range(5)]
+    zahlen: dict = {}
+    pipeline._hole(client, store, "braunschweig", offen, zahlen, "Dateien")
+    assert zahlen["files_gated"] == 1 and zahlen["files_failed"] == 1
+    assert len(sitzung.abrufe) == 1
+    store.close()
