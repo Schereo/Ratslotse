@@ -19,6 +19,7 @@ import { Indicators } from "@/components/plans/indicators";
 import { Measures } from "@/components/plans/measures";
 import { PlanHeader } from "@/components/plans/plan-header";
 import { ReportLog } from "@/components/plans/report-log";
+import { Review } from "@/components/plans/review";
 import { AbrufFehler } from "@/components/abruf-fehler";
 import { ShareButton } from "@/components/share-button";
 import { useFetch } from "@/lib/use-fetch";
@@ -70,6 +71,7 @@ function PlanInner() {
       <div className={cn("mt-4 flex flex-col gap-4 @4xl:mt-5 @4xl:gap-5",
         hasAside && "@4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-start")}>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
+          {data.review && <Review review={data.review} />}
           <ReportLog plan={data} target={target} />
           {data.city_status && <CityStatus status={data.city_status} />}
           <Indicators indicators={data.indicators} />

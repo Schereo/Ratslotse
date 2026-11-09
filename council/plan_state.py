@@ -28,6 +28,7 @@ from council import plans as register
 
 STATUS_DIR = Path(__file__).resolve().parent / "plan_status"
 INDICATOR_DIR = Path(__file__).resolve().parent / "plan_indicators"
+REVIEW_DIR = Path(__file__).resolve().parent / "plan_reviews"
 
 #: Fünf Stufen plus „unklar“. Reihenfolge = Reihenfolge der Anzeige.
 STATUS_NORM: tuple[str, ...] = ("open", "started", "in_progress", "done", "paused", "unclear")
@@ -202,3 +203,24 @@ def indicator_rows(indicator: dict) -> list[dict]:
         else:
             row["template_number"] = point.get("template")
     return [years[y] for y in sorted(years)]
+
+
+# ── Rückblick ──────────────────────────────────────────────────────────────
+
+#: Was eine Aussage im Rückblick ist: ein Ergebnis oder eine Grenze, die der Bericht selbst nennt.
+REVIEW_KINDS: tuple[str, ...] = ("result", "limit")
+
+
+@cache
+def review_statements(key: str) -> list[dict]:
+    """Wörtliche Sätze aus der Auswertung eines abgelaufenen Plans
+    (``council/plan_reviews/<key>.json``), jeder mit seiner Vorlage.
+
+    Der Rückblick bewertet nicht (§ 3.3): Er zeigt, was die Verwaltung selbst
+    meldet und welche Grenzen sie selbst nennt — im Wortlaut. Gegen den Bestand
+    prüft ``scripts/pruefe_plaene.py``, dass jeder Satz so in seiner Vorlage steht.
+    """
+    path = REVIEW_DIR / f"{key}.json"
+    if not path.exists():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))["statements"]

@@ -19,14 +19,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, CircleDashed, Info } from "lucide-react";
+import { ChevronRight, CircleDashed, Info, MessageCircleQuestion } from "lucide-react";
 import { ChartSkeleton, EmptyState, ScrollZeile } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Kicker, StatusBadge } from "@/components/plans/parts";
 import { AxisGrid, Diamond, MarkGlyph, TimeAxis, TimeBand } from "@/components/plans/time-band";
 import { STAFFEL, staffelStil } from "@/components/staffel";
 import { useFetch } from "@/lib/use-fetch";
-import { planHref } from "@/lib/routes";
+import { fragenHref, planHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { byField, formatDate, reportCount, type PlanAxis, type PlanCard, type PlanGroup, type PlanOverview, statusLine } from "@/lib/plans";
 
@@ -281,6 +281,44 @@ function GroupCard({ group, axis, splitByField, showField }: {
   );
 }
 
+/** Wo man nachfragen kann (§ 3.5): Pläne, zu denen kein aktueller Bericht zu
+ *  finden ist. Die Zeile nennt die Tatsache mit Datum, nie eine Wertung, und
+ *  bietet die vorbereitete Frage an. Der feste Satz darunter sagt, was
+ *  Ratslotse nicht sieht. */
+function FollowUps({ items, caveat }: { items: PlanOverview["follow_ups"]; caveat: string }) {
+  if (items.length === 0) return null;
+  return (
+    <section aria-labelledby="plans-follow-ups" className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <Kicker className="text-[11px] font-medium tracking-[0.1em]"><span id="plans-follow-ups">Wo man nachfragen kann</span></Kicker>
+        <p className="font-mono text-meta text-muted-foreground">{items.length}</p>
+      </div>
+      <p className="max-w-[76ch] text-hinweis text-muted-foreground">
+        Zu diesen Plänen hat Ratslotse keinen aktuellen Bericht im Rat gefunden. Das sagt etwas über die Berichte,
+        nicht über die Arbeit.
+      </p>
+      <ul className="mt-2 divide-y divide-border/70">
+        {items.map((item) => (
+          <li key={item.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5">
+            <div className="min-w-0 flex-1 basis-64">
+              <Link href={planHref(item.key)} prefetch={false}
+                className="break-words text-[14px] font-medium leading-snug text-foreground hover:text-primary hover:underline">
+                {item.title}
+              </Link>
+              <p className="mt-0.5 text-meta text-muted-foreground">{item.field_label} · {item.fact}</p>
+            </div>
+            <Link href={fragenHref({ q: item.question })} prefetch={false}
+              className="inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap text-[13px] font-medium text-primary hover:underline">
+              <MessageCircleQuestion className="h-4 w-4 shrink-0" aria-hidden /> Den Rat fragen
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 max-w-[76ch] text-hinweis text-muted-foreground">{caveat}</p>
+    </section>
+  );
+}
+
 export function PlansView() {
   const { data, loading } = useFetch<PlanOverview>("/council/plans");
   const [field, setField] = useState<string | null>(null);
@@ -303,6 +341,8 @@ export function PlansView() {
         // Nach Feldern gegliedert wird nur die lange Gruppe — und nur, solange kein Feld gewählt ist.
         <GroupCard key={g.key} group={g} axis={data.axis} splitByField={!field && g.plans.length > 12} showField={!field} />
       ))}
+      <FollowUps items={field ? data.follow_ups.filter((f) => f.policy_field === field) : data.follow_ups}
+        caveat={data.follow_up_caveat} />
       {references.length > 0 && (
         <section aria-labelledby="plans-references">
           <h3 id="plans-references" className="font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground">

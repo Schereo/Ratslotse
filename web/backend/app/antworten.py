@@ -4576,6 +4576,14 @@ class PlanIndicator(TypedDict):
     notes: list[PlanIndicatorNote]
 
 
+class PlanReviewStatement(TypedDict):
+    """Ein wörtlicher Satz aus der Auswertung: ein Ergebnis oder eine Grenze, die der Bericht selbst nennt."""
+    kind: Literal["result", "limit"]
+    text: str
+    source_label: str
+    template_number: str | None
+
+
 class PlanCard(TypedDict):
     """Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4)."""
     key: str
@@ -4658,6 +4666,20 @@ class PlanUpcoming(TypedDict):
     text: str
 
 
+class PlanFollowUp(TypedDict):
+    """Ein Plan, zu dem kein aktueller Bericht zu finden ist (Plan § 3.5): eine Tatsache, keine Wertung."""
+    key: str
+    title: str
+    policy_field: str
+    field_label: str
+    state: PlanReportStateKey
+    #: „Seit 03/2022 kein Bericht im Rat.“
+    fact: str
+    last_report: str | None
+    #: Vorbereitete Frage für „Frag den Rat“.
+    question: str
+
+
 class Plans(TypedDict):
     as_of: str
     as_of_label: str
@@ -4670,6 +4692,9 @@ class Plans(TypedDict):
     fields: list[PlanFieldCount]
     recent: list[PlanRecentReport]
     upcoming: list[PlanUpcoming]
+    #: Wo man nachfragen kann: Pläne ohne aktuellen Bericht, am längsten Stillen zuerst.
+    follow_ups: list[PlanFollowUp]
+    follow_up_caveat: str
 
 
 class PlanDecisionRef(TypedDict):
@@ -4832,6 +4857,18 @@ class PlanMeasures(TypedDict):
     groups: list[PlanMeasureGroup]
 
 
+class PlanReview(TypedDict):
+    """Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung."""
+    planned: list[PlanFact]
+    evaluation: PlanTemplateRef | None
+    #: Der Satz, wenn Ratslotse keine Auswertung findet — „nicht gefunden“, nicht „gibt es nicht“.
+    no_evaluation_note: str | None
+    statements: list[PlanReviewStatement]
+    continued_by: PlanNeighbour | None
+    #: Die Verteilung aus der Auswertung steht im Block „Stand laut Stadt“.
+    has_status: bool
+
+
 class PlanDetail(PlanCard):
     note: str | None
     owner: str | None
@@ -4851,6 +4888,8 @@ class PlanDetail(PlanCard):
     measures: PlanMeasures | None
     city_status: PlanCityStatus | None
     indicators: list[PlanIndicator]
+    #: Nur für abgelaufene und abgelöste Pläne.
+    review: PlanReview | None
     timeline: PlanTimeline
     runway: PlanRunway | None
     #: „Seit dem Beschluss · 3 Jahre, 10 Monate“ — nur für Pläne, die laufen oder in Arbeit sind.

@@ -15256,6 +15256,42 @@ export interface components {
             /** Report Note */
             report_note: string | null;
             report_state: components["schemas"]["PlanReportState"];
+            /**
+             * PlanReview
+             * @description Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.
+             */
+            review: {
+                /** PlanNeighbour */
+                continued_by: {
+                    /** Adopted */
+                    adopted: boolean;
+                    /** Key */
+                    key: string;
+                    /** Title */
+                    title: string;
+                } | null;
+                /** PlanTemplateRef */
+                evaluation: {
+                    /** Date */
+                    date: string | null;
+                    /** Kvonr */
+                    kvonr: number | null;
+                    /** Template Number */
+                    template_number: string;
+                    /** Title */
+                    title: string | null;
+                    /** Url */
+                    url: string | null;
+                } | null;
+                /** Has Status */
+                has_status: boolean;
+                /** No Evaluation Note */
+                no_evaluation_note: string | null;
+                /** Planned */
+                planned: components["schemas"]["PlanFact"][];
+                /** Statements */
+                statements: components["schemas"]["PlanReviewStatement"][];
+            } | null;
             /** Review Due */
             review_due: string | null;
             /** Review Label */
@@ -15379,6 +15415,31 @@ export interface components {
             key: string;
             /** Label */
             label: string;
+        };
+        /**
+         * PlanFollowUp
+         * @description Ein Plan, zu dem kein aktueller Bericht zu finden ist (Plan § 3.5): eine Tatsache, keine Wertung.
+         */
+        PlanFollowUp: {
+            /** Fact */
+            fact: string;
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /** Last Report */
+            last_report: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** Question */
+            question: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "continued" | "in_preparation" | "evaluated" | "expired_no_evaluation" | "reported" | "not_yet_due" | "no_report_found";
+            /** Title */
+            title: string;
         };
         /** PlanGroup */
         PlanGroup: {
@@ -15623,6 +15684,59 @@ export interface components {
              * @enum {string}
              */
             state: "continued" | "in_preparation" | "evaluated" | "expired_no_evaluation" | "reported" | "not_yet_due" | "no_report_found";
+        };
+        /**
+         * PlanReview
+         * @description Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.
+         */
+        PlanReview: {
+            /** PlanNeighbour */
+            continued_by: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** PlanTemplateRef */
+            evaluation: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /** Has Status */
+            has_status: boolean;
+            /** No Evaluation Note */
+            no_evaluation_note: string | null;
+            /** Planned */
+            planned: components["schemas"]["PlanFact"][];
+            /** Statements */
+            statements: components["schemas"]["PlanReviewStatement"][];
+        };
+        /**
+         * PlanReviewStatement
+         * @description Ein wörtlicher Satz aus der Auswertung: ein Ergebnis oder eine Grenze, die der Bericht selbst nennt.
+         */
+        PlanReviewStatement: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "result" | "limit";
+            /** Source Label */
+            source_label: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Text */
+            text: string;
         };
         /**
          * PlanRunway
@@ -15905,6 +16019,10 @@ export interface components {
             count: number;
             /** Fields */
             fields: components["schemas"]["PlanFieldCount"][];
+            /** Follow Up Caveat */
+            follow_up_caveat: string;
+            /** Follow Ups */
+            follow_ups: components["schemas"]["PlanFollowUp"][];
             /** Groups */
             groups: components["schemas"]["PlanGroup"][];
             /** Recent */
@@ -28127,4 +28245,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 80dc352551f7a6ec2ad98c46171326818c0aabb4fb4ad289e268f712dc163980
+// vertrag-sha256: c01c8dcd8478aaf1d5c2b94814c794e7e30f9de743fb4d38f080349d0f485ea7

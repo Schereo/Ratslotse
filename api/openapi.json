@@ -20443,6 +20443,123 @@
           "report_state": {
             "$ref": "#/components/schemas/PlanReportState"
           },
+          "review": {
+            "description": "Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.",
+            "properties": {
+              "continued_by": {
+                "properties": {
+                  "adopted": {
+                    "title": "Adopted",
+                    "type": "boolean"
+                  },
+                  "key": {
+                    "title": "Key",
+                    "type": "string"
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key",
+                  "title",
+                  "adopted"
+                ],
+                "title": "PlanNeighbour",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "evaluation": {
+                "properties": {
+                  "date": {
+                    "title": "Date",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "kvonr": {
+                    "title": "Kvonr",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "template_number": {
+                    "title": "Template Number",
+                    "type": "string"
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "title": "Url",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "template_number",
+                  "title",
+                  "kvonr",
+                  "url",
+                  "date"
+                ],
+                "title": "PlanTemplateRef",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "has_status": {
+                "title": "Has Status",
+                "type": "boolean"
+              },
+              "no_evaluation_note": {
+                "title": "No Evaluation Note",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "planned": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanFact"
+                },
+                "title": "Planned",
+                "type": "array"
+              },
+              "statements": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanReviewStatement"
+                },
+                "title": "Statements",
+                "type": "array"
+              }
+            },
+            "required": [
+              "planned",
+              "evaluation",
+              "no_evaluation_note",
+              "statements",
+              "continued_by",
+              "has_status"
+            ],
+            "title": "PlanReview",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "review_due": {
             "title": "Review Due",
             "type": [
@@ -20763,6 +20880,7 @@
           "measures",
           "city_status",
           "indicators",
+          "review",
           "timeline",
           "runway",
           "since",
@@ -20813,6 +20931,67 @@
           "count"
         ],
         "title": "PlanFieldCount",
+        "type": "object"
+      },
+      "PlanFollowUp": {
+        "description": "Ein Plan, zu dem kein aktueller Bericht zu finden ist (Plan § 3.5): eine Tatsache, keine Wertung.",
+        "properties": {
+          "fact": {
+            "title": "Fact",
+            "type": "string"
+          },
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "last_report": {
+            "title": "Last Report",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "continued",
+              "in_preparation",
+              "evaluated",
+              "expired_no_evaluation",
+              "reported",
+              "not_yet_due",
+              "no_report_found"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "policy_field",
+          "field_label",
+          "state",
+          "fact",
+          "last_report",
+          "question"
+        ],
+        "title": "PlanFollowUp",
         "type": "object"
       },
       "PlanGroup": {
@@ -21482,6 +21661,156 @@
           "hint"
         ],
         "title": "PlanReportState",
+        "type": "object"
+      },
+      "PlanReview": {
+        "description": "Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.",
+        "properties": {
+          "continued_by": {
+            "properties": {
+              "adopted": {
+                "title": "Adopted",
+                "type": "boolean"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "title",
+              "adopted"
+            ],
+            "title": "PlanNeighbour",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "evaluation": {
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "template_number",
+              "title",
+              "kvonr",
+              "url",
+              "date"
+            ],
+            "title": "PlanTemplateRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "has_status": {
+            "title": "Has Status",
+            "type": "boolean"
+          },
+          "no_evaluation_note": {
+            "title": "No Evaluation Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planned": {
+            "items": {
+              "$ref": "#/components/schemas/PlanFact"
+            },
+            "title": "Planned",
+            "type": "array"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/PlanReviewStatement"
+            },
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "planned",
+          "evaluation",
+          "no_evaluation_note",
+          "statements",
+          "continued_by",
+          "has_status"
+        ],
+        "title": "PlanReview",
+        "type": "object"
+      },
+      "PlanReviewStatement": {
+        "description": "Ein wörtlicher Satz aus der Auswertung: ein Ergebnis oder eine Grenze, die der Bericht selbst nennt.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "result",
+              "limit"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "source_label",
+          "template_number"
+        ],
+        "title": "PlanReviewStatement",
         "type": "object"
       },
       "PlanRunway": {
@@ -22200,6 +22529,17 @@
             "title": "Fields",
             "type": "array"
           },
+          "follow_up_caveat": {
+            "title": "Follow Up Caveat",
+            "type": "string"
+          },
+          "follow_ups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanFollowUp"
+            },
+            "title": "Follow Ups",
+            "type": "array"
+          },
           "groups": {
             "items": {
               "$ref": "#/components/schemas/PlanGroup"
@@ -22238,7 +22578,9 @@
           "axis",
           "fields",
           "recent",
-          "upcoming"
+          "upcoming",
+          "follow_ups",
+          "follow_up_caveat"
         ],
         "title": "Plans",
         "type": "object"
