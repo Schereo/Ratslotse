@@ -146,8 +146,9 @@ def violence_rows() -> list[dict]:
     """
     import pymupdf
 
-    def fill(drawing) -> tuple | None:
-        return tuple(round(x, 2) for x in drawing["fill"]) if drawing.get("fill") else None
+    def fill(drawing) -> tuple[float, float, float] | None:
+        f = drawing.get("fill")
+        return (round(f[0], 2), round(f[1], 2), round(f[2], 2)) if f else None
 
     rows: list[dict] = []
     part = "Übergreifende Handlungsempfehlungen"
@@ -187,8 +188,11 @@ def violence_rows() -> list[dict]:
                 def cell(column: tuple[int, int], a=a, b=b, page=page) -> str:
                     return sauber(str(page.get_text("text", clip=pymupdf.Rect(a + 1, column[0] + 1, b - 1, column[1] - 1))))
 
-                colors = {VIOLENCE_COLORS[fill(d)] for d in inside
-                          if fill(d) in VIOLENCE_COLORS and d["rect"].y1 <= 350 and d["rect"].width >= 3}
+                colors: set[str] = set()
+                for d in inside:
+                    key = fill(d)
+                    if key is not None and key in VIOLENCE_COLORS and d["rect"].y1 <= 350 and d["rect"].width >= 3:
+                        colors.add(VIOLENCE_COLORS[key])
                 title = cell(_COL_RECOMMENDATION)
                 if not title and not colors:
                     continue
