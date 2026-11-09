@@ -1,0 +1,11 @@
+{
+ "plan": "masterplan_stadtgruen",
+ "judged": 14,
+ "links": [
+  {
+   "template": "26/0257",
+   "relation": "implements",
+   "quote": "Die Maßnahmen werden anteilig aus dem Masterplan Stadtgrün finanziert."
+  }
+ ]
+}

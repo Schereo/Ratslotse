@@ -1,0 +1,21 @@
+{
+ "plan": "mobilitaetsplan_2030",
+ "judged": 50,
+ "links": [
+  {
+   "template": "25/0110",
+   "relation": "implements",
+   "quote": "Der Rat der Stadt Oldenburg hatte in den Haushalt 2024 Mittel für zusätzliche Personalkapazitäten zur Umsetzung des Mobilitätsplans Oldenburg 2030 eingestellt."
+  },
+  {
+   "template": "26/0079",
+   "relation": "implements",
+   "quote": "Für die Umsetzung des Teilkonzepts Mobilitätsstationen aus dem Mobilitätsplan Oldenburg 2030 schreibt die Stadt Oldenburg Dienstleistungskonzessionen im Bereich Carsharing nach § 18a des Niedersächsischen Straßengesetzes (NStrG) aus."
+  },
+  {
+   "template": "26/0221",
+   "relation": "implements",
+   "quote": "Mit dem 2023 beschlossenen Mobilitätsplan Oldenburg 2030 wurde im Teilkonzept Radverkehr beschlossen, in Oldenburg ein einheitliches Erscheinungsbild für Fahrradstraßen umzusetzen."
+  }
+ ]
+}

@@ -834,8 +834,30 @@ Vorlagen mit 21 Beschlüssen (8 zum Klimaschutzplan, 1 zum Wärmeplan), alle
 neun von Hand gegen Titel und Maßnahme geprüft. Die Seite sagt „nennt eine
 Maßnahme“, nicht „setzt um“ — das wäre ein Urteil.
 
-**Offen bleibt der zweite Teil** (Modell und Golden-Set, wie unten
-beschrieben): die Vorlagen, die einen Plan nur beim Namen nennen.
+**Zweiter Teil gebaut, mit Modell (10.11.2026):** die Vorlagen, die einen Plan
+nur beim Namen nennen — neun Pläne mit eindeutigem Namen, 302 Paare aus Plan
+und Vorlage. Ein Sprachmodell (Luna) urteilt je Paar *dient der Umsetzung* |
+*Antrag oder Anfrage* | *erwähnt* | *etwas anderes gemeint*; im Zweifel
+„erwähnt“. Gezeigt wird nur *dient der Umsetzung*, und nur mit einem Beleg,
+der ohne Modell prüfbar ist: Das Zitat steht wörtlich in der Vorlage und nennt
+den Plan beim Namen (`plan_judge.checked_relation`).
+
+- **Golden-Set** (`eval/cases_plan_links.json`): 40 Paare, von Hand bewertet,
+  geschichtet gezogen, darunter sechs EEK-Nennungen in Bebauungsplänen als
+  Fallen und ein falscher Freund (ein anderes „ISEK“). Gemessen in zwei
+  Läufen: 39 von 40 Urteilen vertretbar, „dient der Umsetzung“ 3 von 3 richtig,
+  keine Erwähnung in der Umsetzungsliste. Die eine Abweichung ist eine
+  übersehene Umsetzung — die vorsichtige Richtung.
+- **Alle Treffer von Hand durchgesehen:** 27 im vollen Lauf, davon 25 richtig.
+  Die zwei falschen waren ein Sachstandsbericht und eine Anfrage; beide Arten
+  werden seitdem gar nicht mehr gefragt (Berichte irgendeines Plans, Anträge
+  und Anfragen nach Titel). Eingecheckt sind die 25 geprüften
+  (`council/plan_links/`, acht Pläne).
+- **Kosten gemessen:** 0,0031 $ für die 40 Paare, 0,025 $ für alle 302;
+  mit Wiederholungen beim Schärfen der Regel zusammen rund 0,09 $.
+- Das Modell antwortet von Lauf zu Lauf nicht völlig gleich (27 Treffer, aber
+  nicht dieselben). Deshalb gilt die eingecheckte Datei, nicht der Lauf; wer
+  neu laufen lässt, sieht den Unterschied im PR und prüft ihn.
 
 - Kandidaten kommen über den Plannamen, die Kennungen aus den
   Maßnahmendateien, die Akte (Vorlagen einer Akte mit Planbezug) und die

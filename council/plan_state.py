@@ -29,6 +29,7 @@ from council import plans as register
 STATUS_DIR = Path(__file__).resolve().parent / "plan_status"
 INDICATOR_DIR = Path(__file__).resolve().parent / "plan_indicators"
 REVIEW_DIR = Path(__file__).resolve().parent / "plan_reviews"
+LINKS_DIR = Path(__file__).resolve().parent / "plan_links"
 
 #: Fünf Stufen plus „unklar“. Reihenfolge = Reihenfolge der Anzeige.
 STATUS_NORM: tuple[str, ...] = ("open", "started", "in_progress", "done", "paused", "unclear")
@@ -276,3 +277,20 @@ def maintenance(items_by_plan: dict[str, list[dict]], today: str) -> dict:
     due = {plan.key: found for plan in register.PLANS.values()
            if plan.kind != "reference" and (found := due_dates(plan, today))}
     return {"stale_status": stale, "due": due}
+
+
+# ── Vorlagen, die der Umsetzung dienen (Phase 4, Teil 2) ───────────────────
+
+
+@cache
+def judged_links(key: str) -> list[dict]:
+    """Vorlagen, die laut ihrem eigenen Text der Umsetzung des Plans dienen
+    (``council/plan_links/<key>.json``): ein Sprachmodell hat sie herausgesucht, jede trägt den
+    wörtlichen Satz, der das belegt und den Plan beim Namen nennt. Alle Einträge sind von Hand
+    durchgesehen; ``scripts/plan_modell.py nennungen --pruefen`` prüft die Zitate gegen den Bestand."""
+    path = LINKS_DIR / f"{key}.json"
+    return json.loads(path.read_text(encoding="utf-8"))["links"] if path.exists() else []
+
+
+def judged_keys() -> list[str]:
+    return sorted(p.stem for p in LINKS_DIR.glob("*.json")) if LINKS_DIR.exists() else []

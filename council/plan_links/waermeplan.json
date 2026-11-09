@@ -1,0 +1,16 @@
+{
+ "plan": "waermeplan",
+ "judged": 19,
+ "links": [
+  {
+   "template": "26/0073",
+   "relation": "implements",
+   "quote": "Damit bildet das Förderprogramm einen sehr zentralen Baustein des Klimaschutzplans und in der Umsetzung der Kommunalen Wärmeplanung (KWP)."
+  },
+  {
+   "template": "26/0238/1",
+   "relation": "implements",
+   "quote": "Die Einrichtung eines Wärmewende-Beirats ist Teil der Maßnahmen der Kommunalen Wärmeplanung (KWP) der Stadt Oldenburg (Maßnahme O7, siehe Vorlage 26/0236 und www.klimaportal.oldenburg.de)."
+  }
+ ]
+}

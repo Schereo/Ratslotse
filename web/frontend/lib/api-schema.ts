@@ -14991,6 +14991,8 @@ export interface components {
              * @enum {string|null}
              */
             outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+            /** Quote */
+            quote: string | null;
             /** Template Number */
             template_number: string | null;
             /** Title */
@@ -15004,7 +15006,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "plan" | "implementation" | "motion" | "decision" | "mentions" | "measures";
+            key: "plan" | "implementation" | "motion" | "decision" | "mentions" | "measures" | "judged";
             /** Label */
             label: string;
         };
@@ -28257,4 +28259,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 75bd053555af0f19bd13c81337c3d4b05388cb30d95d424c6a4d028342fc0155
+// vertrag-sha256: 92ad09df9b9f037cfdd4a11710776a64c64d817e1ebcd7991e67ad2c91af1a0a

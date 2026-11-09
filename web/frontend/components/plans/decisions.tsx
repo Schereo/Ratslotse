@@ -40,6 +40,7 @@ function Entries({ group }: { group: PlanDecisionGroup }) {
                 <span className="font-mono text-foreground">{entry.measure_codes.join(" · ")}</span>
               )}
             </p>
+            {entry.quote && <p className="mt-1 text-hinweis text-muted-foreground">„{entry.quote}“</p>}
           </li>
         ))}
       </ul>
@@ -67,6 +68,12 @@ export function Decisions({ plan }: { plan: PlanDetail }) {
             <h3 className="text-[13px] font-semibold text-foreground">
               {g.label} <span className="font-normal text-muted-foreground">· {g.entries.length}</span>
             </h3>
+            {g.key === "judged" && (
+              <p className="mt-0.5 text-hinweis text-muted-foreground">
+                Ein Sprachmodell hat diese Vorlagen herausgesucht. Der Satz darunter steht wörtlich in der
+                Vorlage und nennt den Plan.
+              </p>
+            )}
             {g.key === "measures" && (
               <p className="mt-0.5 text-hinweis text-muted-foreground">
                 Die Vorlage nennt die Maßnahme bei ihrer Kennung. Ob der Beschluss sie umsetzt, sagt das nicht.
