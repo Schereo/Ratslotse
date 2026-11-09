@@ -14765,6 +14765,47 @@ export interface components {
             url: string;
         };
         /**
+         * PlanAxis
+         * @description Die gemeinsame Zeitachse der Übersicht: Beginn des Bestands bis zehn Jahre nach vorn.
+         */
+        PlanAxis: {
+            /** End */
+            end: string;
+            /** Fade */
+            fade: number;
+            /** Start */
+            start: string;
+            /** Ticks */
+            ticks: components["schemas"]["PlanAxisTick"][];
+            /** Today */
+            today: number;
+        };
+        /** PlanAxisTick */
+        PlanAxisTick: {
+            /** Label */
+            label: string;
+            /** X */
+            x: number;
+        };
+        /**
+         * PlanBand
+         * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+         *
+         *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+         */
+        PlanBand: {
+            /** Beyond */
+            beyond: boolean;
+            /** Open End */
+            open_end: boolean;
+            /** Open Start */
+            open_start: boolean;
+            /** X0 */
+            x0: number;
+            /** X1 */
+            x1: number;
+        };
+        /**
          * PlanCard
          * @description Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).
          */
@@ -14792,6 +14833,7 @@ export interface components {
             kind: "action" | "framework" | "statutory" | "reference";
             /** Kind Label */
             kind_label: string;
+            lane: components["schemas"]["PlanLane"];
             /**
              * PlanReport
              * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
@@ -14816,6 +14858,8 @@ export interface components {
             office: string | null;
             /** Policy Field */
             policy_field: string;
+            /** Report Caveat */
+            report_caveat: string | null;
             /** Report Count */
             report_count: number;
             /** Report Note */
@@ -14836,6 +14880,8 @@ export interface components {
                 /** Title */
                 title: string;
             } | null;
+            /** Timing */
+            timing: string;
             /** Title */
             title: string;
         };
@@ -14998,6 +15044,7 @@ export interface components {
             kind: "action" | "framework" | "statutory" | "reference";
             /** Kind Label */
             kind_label: string;
+            lane: components["schemas"]["PlanLane"];
             /**
              * PlanReport
              * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
@@ -15037,6 +15084,8 @@ export interface components {
             note: string | null;
             /** Office */
             office: string | null;
+            /** Oral Report Count */
+            oral_report_count: number;
             /** Owner */
             owner: string | null;
             /** Policy Field */
@@ -15050,6 +15099,15 @@ export interface components {
                 /** Title */
                 title: string;
             } | null;
+            /** PlanFact */
+            remaining: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /** Report Caveat */
+            report_caveat: string | null;
             /** Report Count */
             report_count: number;
             /** Report Note */
@@ -15058,6 +15116,61 @@ export interface components {
             review_due: string | null;
             /** Review Label */
             review_label: string | null;
+            /**
+             * PlanRunway
+             * @description Das Zeitband der Detailseite: eine eigene Achse je Plan.
+             */
+            runway: {
+                /** Archive From */
+                archive_from: number | null;
+                /**
+                 * PlanBand
+                 * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+                 *
+                 *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+                 */
+                band: {
+                    /** Beyond */
+                    beyond: boolean;
+                    /** Open End */
+                    open_end: boolean;
+                    /** Open Start */
+                    open_start: boolean;
+                    /** X0 */
+                    x0: number;
+                    /** X1 */
+                    x1: number;
+                } | null;
+                /** End */
+                end: string;
+                /** Marks */
+                marks: components["schemas"]["PlanRunwayMark"][];
+                /** PlanRunwayPoint */
+                review: {
+                    /** Label */
+                    label: string;
+                    /** X */
+                    x: number;
+                } | null;
+                /** Start */
+                start: string;
+                /**
+                 * Style
+                 * @enum {string}
+                 */
+                style: "adopted" | "noted" | "preparing";
+                /** Ticks */
+                ticks: components["schemas"]["PlanAxisTick"][];
+                /** Today */
+                today: number | null;
+            } | null;
+            /** PlanFact */
+            since: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
             /**
              * Source
              * @enum {string}
@@ -15084,8 +15197,26 @@ export interface components {
                 title: string;
             } | null;
             timeline: components["schemas"]["PlanTimeline"];
+            /** Timing */
+            timing: string;
             /** Title */
             title: string;
+        };
+        /** PlanFact */
+        PlanFact: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /** PlanFieldCount */
+        PlanFieldCount: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
         };
         /** PlanGroup */
         PlanGroup: {
@@ -15098,6 +15229,60 @@ export interface components {
             label: string;
             /** Plans */
             plans: components["schemas"]["PlanCard"][];
+        };
+        /**
+         * PlanLane
+         * @description Das Zeitband einer Karte auf der gemeinsamen Achse der Übersicht (``Plans.axis``).
+         */
+        PlanLane: {
+            /**
+             * PlanBand
+             * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+             *
+             *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+             */
+            band: {
+                /** Beyond */
+                beyond: boolean;
+                /** Open End */
+                open_end: boolean;
+                /** Open Start */
+                open_start: boolean;
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Marks */
+            marks: components["schemas"]["PlanLaneMark"][];
+            /** PlanSpan */
+            predecessor: {
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Review */
+            review: number | null;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "adopted" | "noted" | "preparing";
+        };
+        /** PlanLaneMark */
+        PlanLaneMark: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** X */
+            x: number;
         };
         /** PlanMeasure */
         PlanMeasure: {
@@ -15157,6 +15342,33 @@ export interface components {
             title: string;
         };
         /**
+         * PlanRecentReport
+         * @description Ein jüngster Bericht über alle Pläne hinweg.
+         */
+        PlanRecentReport: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** Plan Key */
+            plan_key: string;
+            /** Plan Title */
+            plan_title: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
          * PlanReport
          * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
          */
@@ -15173,6 +15385,84 @@ export interface components {
             template_number: string | null;
             /** Title */
             title: string;
+        };
+        /**
+         * PlanRunway
+         * @description Das Zeitband der Detailseite: eine eigene Achse je Plan.
+         */
+        PlanRunway: {
+            /** Archive From */
+            archive_from: number | null;
+            /**
+             * PlanBand
+             * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+             *
+             *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+             */
+            band: {
+                /** Beyond */
+                beyond: boolean;
+                /** Open End */
+                open_end: boolean;
+                /** Open Start */
+                open_start: boolean;
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** End */
+            end: string;
+            /** Marks */
+            marks: components["schemas"]["PlanRunwayMark"][];
+            /** PlanRunwayPoint */
+            review: {
+                /** Label */
+                label: string;
+                /** X */
+                x: number;
+            } | null;
+            /** Start */
+            start: string;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "adopted" | "noted" | "preparing";
+            /** Ticks */
+            ticks: components["schemas"]["PlanAxisTick"][];
+            /** Today */
+            today: number | null;
+        };
+        /** PlanRunwayMark */
+        PlanRunwayMark: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** Station */
+            station: number;
+            /** X */
+            x: number;
+        };
+        /** PlanRunwayPoint */
+        PlanRunwayPoint: {
+            /** Label */
+            label: string;
+            /** X */
+            x: number;
+        };
+        /** PlanSpan */
+        PlanSpan: {
+            /** X0 */
+            x0: number;
+            /** X1 */
+            x1: number;
         };
         /** PlanTemplateRef */
         PlanTemplateRef: {
@@ -15191,6 +15481,8 @@ export interface components {
         PlanTimeline: {
             /** Count */
             count: number;
+            /** Log */
+            log: components["schemas"]["PlanTimelineYear"][];
             /** Span */
             span: string;
             /** Stations */
@@ -15223,8 +15515,15 @@ export interface components {
              * @enum {string}
              */
             kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Label */
+            label: string | null;
             /** Members */
             members: components["schemas"]["PlanTimelineMember"][];
+            /**
+             * Mode
+             * @enum {string|null}
+             */
+            mode: "adopted" | "noted" | null;
             /** Oral */
             oral: boolean;
             /** Template Number */
@@ -15232,16 +15531,67 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * PlanTimelineYear
+         * @description Ein Abschnitt des Zeitstrahls, das jüngste Jahr zuerst.
+         *
+         *     ``gap``: In diesen Jahren war kein Bericht zu finden — „keinen gefunden“, nicht „es gab keinen“.
+         */
+        PlanTimelineYear: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "year" | "gap";
+            /** Stations */
+            stations: number[];
+            /** Text */
+            text: string | null;
+            /** Year */
+            year: number;
+            /** Year To */
+            year_to: number;
+        };
+        /**
+         * PlanUpcoming
+         * @description Was ein Plan selbst als Nächstes vorsieht — eine Angabe aus dem Plan, keine Frist von uns.
+         */
+        PlanUpcoming: {
+            /** Date */
+            date: string;
+            /** Date Label */
+            date_label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "end" | "review";
+            /** Plan Key */
+            plan_key: string;
+            /** Plan Title */
+            plan_title: string;
+            /** Text */
+            text: string;
+        };
         /** Plans */
         Plans: {
             /** As Of */
             as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            axis: components["schemas"]["PlanAxis"];
             /** Count */
             count: number;
+            /** Fields */
+            fields: components["schemas"]["PlanFieldCount"][];
             /** Groups */
             groups: components["schemas"]["PlanGroup"][];
+            /** Recent */
+            recent: components["schemas"]["PlanRecentReport"][];
             /** References */
             references: components["schemas"]["PlanCard"][];
+            /** Upcoming */
+            upcoming: components["schemas"]["PlanUpcoming"][];
         };
         /** PolicyField */
         PolicyField: {
@@ -27456,4 +27806,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 192e16787d763e24c3d488f8f83a56ba49d641e3a710089d83e9b6ad7fbb2abf
+// vertrag-sha256: add4933b3e1a436dbcc142ced9048eb8e9125ee3d7b3cac2b6d4ce8efab74072

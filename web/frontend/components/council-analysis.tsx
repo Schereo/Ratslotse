@@ -11,7 +11,7 @@ import { AnalysisIntro } from "@/components/analysis-intro";
 import { FrageChips } from "@/components/frage-chips";
 import { TrendsView } from "@/components/council-trends";
 import { GoalsView } from "@/components/council-goals";
-import { PlaeneView } from "@/components/council-plaene";
+import { PlansView } from "@/components/council-plans";
 import { useFeature } from "@/lib/features";
 import { PersonenView } from "@/components/council-members";
 import { AnalyseReiter, ANALYSE_FRAGEN, analysisSub } from "@/components/analyse-reiter";
@@ -391,7 +391,7 @@ export function AnalysisTab() {
       <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
       {sub === "parties" ? <PartiesView /> : sub === "personen" ? <PersonenView />
         : sub === "finanzen" ? <FinanceView /> : sub === "trends" ? <TrendsView />
-        : plaene ? <PlaeneView /> : <GoalsView />}
+        : plaene ? <PlansView /> : <GoalsView />}
     </div>
   );
 }

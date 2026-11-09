@@ -9,6 +9,7 @@ Was die Seite NICHT tut (§ 2, § 3.4): keine Note, keine Quote über Pläne, ke
 """
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import date as _date
 
 from council import plans as register
@@ -59,6 +60,18 @@ DECISION_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
 #: Ab wie vielen Tagen ohne Bericht die Karte das sagt (§ 3.3a: zwei Jahre).
 STALE_DAYS = 730
 
+#: Der Satz neben „kein Bericht“ (§ 3.3a): Die Lücke sagt etwas über die
+#: Berichte, nichts über die Arbeit.
+REPORT_CAVEAT = ("Das ist eine Aussage über die Berichte, nicht über die Arbeit: "
+                 "Ob umgesetzt wurde, wissen wir nicht.")
+
+#: Die gemeinsame Zeitachse der Übersicht beginnt, wo der Bestand beginnt
+#: (Sitzungen ab 01/2018), und reicht zehn Jahre nach vorn.
+ARCHIVE_START = "2018-01-01"
+AXIS_YEARS_AHEAD = 10
+#: So viele Jahre hinter heute läuft ein Band ohne Enddatum blass aus.
+OPEN_END_YEARS = 3
+
 #: Die Vorlage im Ratsinformationssystem der Stadt.
 VORLAGE_URL = "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
 
@@ -80,7 +93,8 @@ def _end_date(iso: str) -> str:
     if len(teile) == 1:
         return f"{iso}-12-31"
     if len(teile) == 2:
-        return f"{iso}-31"
+        # Der echte Monatsletzte — „2029-09-31“ gibt es nicht, und das Zeitband rechnet mit dem Tag.
+        return f"{iso}-{monthrange(int(teile[0]), int(teile[1]))[1]:02d}"
     return iso
 
 
@@ -116,7 +130,16 @@ def _first_date(items: list[dict], number: str | None) -> str | None:
     return min(dates) if dates else None
 
 
+def timing(plan: register.Plan, items: list[dict]) -> str:
+    """Der Kicker ohne Themenfeld: „beschlossen 12/2022 · bis 2035“."""
+    return " · ".join(_kicker_parts(plan, items)[1:])
+
+
 def kicker(plan: register.Plan, items: list[dict]) -> str:
+    return " · ".join(_kicker_parts(plan, items))
+
+
+def _kicker_parts(plan: register.Plan, items: list[dict]) -> list[str]:
     teile = [FIELD_SHORT.get(plan.policy_field, plan.policy_field)]
     if plan.source == "website":
         teile.append(f"veröffentlicht {_month(plan.start)}")
@@ -128,7 +151,7 @@ def kicker(plan: register.Plan, items: list[dict]) -> str:
         teile.append(f"in Arbeit seit {_month(seit)}" if seit else "in Arbeit")
     if plan.end:
         teile.append(f"bis {_month(plan.end)}")
-    return " · ".join(teile)
+    return teile
 
 
 def _days_between(a: str, b: str) -> int:
@@ -164,9 +187,263 @@ def report_note(plan: register.Plan, latest: dict | None, state: str, today: str
     return None
 
 
+def _silence_is_news(plan: register.Plan, today: str) -> bool:
+    """Braucht der Lücken-Satz die Einordnung? Nicht bei Plänen, die jünger als ein Jahr sind."""
+    if plan.adopted is None:
+        return False
+    return _days_between(_start_date(plan.adopted.date), today) >= 365
+
+
+# ── Zeitband ──────────────────────────────────────────────────────────────
+#
+# Ein Plan ist eine Strecke in der Zeit: vom Beschluss bis zum Laufzeitende,
+# dazwischen die Berichte. Die Übersicht legt alle Pläne auf EINE Achse
+# (Bestand ab 2018 bis zehn Jahre nach vorn), die Detailseite jeden auf seine
+# eigene. Gerechnet wird hier, gezeichnet im Frontend: Lagen sind Anteile der
+# Achse von 0 bis 1.
+#
+# Das Band ist KEIN Fortschrittsbalken (§ 3.4): Es zeigt, wann ein Plan gilt
+# und wann berichtet wurde — nicht, wie viel erledigt ist.
+
+def _mid_date(iso: str) -> str:
+    """Eine Angabe ohne Tag in die Mitte ihres Zeitraums: ``"2027"`` → Juli, ``"2031-06"`` → der 15."""
+    teile = iso.split("-")
+    if len(teile) == 1:
+        return f"{iso}-07-01"
+    if len(teile) == 2:
+        return f"{iso}-15"
+    return iso
+
+
+def _pos(iso: str, start: str, end: str) -> float:
+    """Lage eines Tages auf der Achse ``start``…``end`` (ungekappt, vier Stellen)."""
+    a, b = _date.fromisoformat(start).toordinal(), _date.fromisoformat(end).toordinal()
+    return round((_date.fromisoformat(iso).toordinal() - a) / (b - a), 4)
+
+
+def _clip(x: float) -> float:
+    return min(1.0, max(0.0, x))
+
+
+def overview_axis(today: str) -> tuple[str, str]:
+    return ARCHIVE_START, f"{int(today[:4]) + AXIS_YEARS_AHEAD}-12-31"
+
+
+def _ticks(start: str, end: str) -> list[dict]:
+    """Jahresmarken: jedes Jahr, ab zehn Jahren jedes zweite, ab zwanzig jedes fünfte."""
+    first, last = int(start[:4]), int(end[:4])
+    years = last - first + 1
+    step = 1 if years <= 9 else 2 if years <= 19 else 5
+    return [{"label": str(y), "x": _pos(f"{y}-01-01", start, end)}
+            for y in range(first, last + 1) if y % step == 0 or (step == 1)]
+
+
+def _band(plan: register.Plan, items: list[dict], state: str, today: str) -> tuple[str | None, str | None, bool]:
+    """Beginn und Ende des Bandes als Tage, dazu: Ist das Ende offen?
+
+    In Arbeit: vom Beginn der Arbeit bis heute. Ohne Enddatum: bis heute, das
+    Band läuft dahinter blass aus. Abgelöst ohne Enddatum: bis der Nachfolger
+    beschlossen wurde.
+    """
+    if plan.adopted is None:
+        begin = _first_date(items, plan.commissioned) or min((i["date"] for i in items), default=None)
+        return begin, (today if begin else None), False
+    begin = _start_date(plan.start or plan.adopted.date)
+    if plan.end:
+        return begin, _end_date(plan.end), False
+    successor = register.PLANS[plan.successor].adopted if plan.successor else None
+    if state == "superseded" and successor:
+        return begin, _start_date(successor.date), False
+    if state == "concluded":
+        end = _first_date(items, plan.concluded) or max((i["date"] for i in items), default=None)
+        return begin, end or begin, False
+    return begin, today, True
+
+
+def _mark_date(station: dict) -> str:
+    """Ein Beschluss liegt am Tag des Beschlusses (der letzten Beratung), ein Bericht an seinem ersten."""
+    if station["kind"] in ("adoption", "amendment", "evaluation"):
+        return station["date_end"] or station["date"]
+    return station["date"]
+
+
+def lane(plan: register.Plan, items: list[dict], state: str, today: str) -> dict:
+    """Das Zeitband eines Plans auf der gemeinsamen Achse der Übersicht."""
+    start, end = overview_axis(today)
+    begin, until, open_end = _band(plan, items, state, today)
+    band = None
+    if begin and until:
+        x0, x1 = _pos(begin, start, end), _pos(until, start, end)
+        if x1 > 0 and x0 < 1:
+            band = {"x0": _clip(x0), "x1": _clip(x1), "open_start": x0 < 0, "beyond": x1 > 1,
+                    "open_end": open_end}
+    marks = []
+    for s in timeline(items)["stations"]:
+        # Die Vorgeschichte (Beratungen vor dem Beschluss) steht auf der Detailseite;
+        # hier zeigt das Band, was SEIT dem Beschluss berichtet wurde.
+        if s["kind"] == "preparation":
+            continue
+        x = _pos(_mark_date(s), start, end)
+        if 0 <= x <= 1:
+            marks.append({"x": x, "date": _mark_date(s), "kind": s["kind"], "oral": s["oral"]})
+    tail = None
+    if plan.predecessor and begin:
+        before = register.PLANS[plan.predecessor]
+        if before.adopted:
+            t0 = _pos(_start_date(before.start or before.adopted.date), start, end)
+            t1 = _pos(_end_date(before.end) if before.end else begin, start, end)
+            if t1 > 0 and t1 > t0:
+                tail = {"x0": _clip(t0), "x1": _clip(t1)}
+    review = _pos(_mid_date(plan.review_due), start, end) if plan.review_due else None
+    return {
+        "style": "preparing" if plan.adopted is None else plan.adopted.mode,
+        "band": band,
+        "marks": marks,
+        "predecessor": tail,
+        "review": review if review is not None and 0 <= review <= 1 else None,
+    }
+
+
+def _months_between(a: str, b: str) -> int:
+    d0, d1 = _date.fromisoformat(a), _date.fromisoformat(b)
+    months = (d1.year - d0.year) * 12 + (d1.month - d0.month) - (1 if d1.day < d0.day else 0)
+    return max(months, 0)
+
+
+def duration(months: int) -> str:
+    """``46`` → ``"3 Jahre, 10 Monate"``; ab fünf Jahren ohne Monate."""
+    years, rest = divmod(months, 12)
+    months_text = "1 Monat" if rest == 1 else f"{rest} Monate"
+    if years == 0:
+        return months_text if rest else "weniger als ein Monat"
+    years_text = "1 Jahr" if years == 1 else f"{years} Jahre"
+    return years_text if rest == 0 or years >= 5 else f"{years_text}, {months_text}"
+
+
+def since(plan: register.Plan, items: list[dict], state: str, today: str) -> dict | None:
+    """Wie lange der Plan schon gilt (oder in Arbeit ist) — nur für Pläne, die noch laufen."""
+    if state == "preparing":
+        begin, _, _ = _band(plan, items, state, today)
+        return {"label": "In Arbeit seit", "value": duration(_months_between(begin, today))} if begin else None
+    if state != "running" or plan.adopted is None or len(plan.adopted.date) < 10:
+        return None
+    label = "Seit der Kenntnisnahme" if plan.adopted.mode == "noted" else "Seit dem Beschluss"
+    return {"label": label, "value": duration(_months_between(plan.adopted.date, today))}
+
+
+def remaining(plan: register.Plan, state: str, today: str) -> dict | None:
+    if state != "running" or not plan.end:
+        return None
+    return {"label": "Laufzeit noch", "value": duration(_months_between(today, _end_date(plan.end)))}
+
+
+def runway(plan: register.Plan, items: list[dict], state: str, today: str, stations: list[dict]) -> dict | None:
+    """Das Zeitband der Detailseite: eine eigene Achse je Plan, jede Station eine Marke."""
+    begin, until, open_end = _band(plan, items, state, today)
+    days = [d for s in stations for d in (s["date"], s["date_end"]) if d]
+    if not begin and not days:
+        return None
+    alive = state in ("running", "preparing")
+    highs = days + [d for d in (until, today if alive else None,
+                                _mid_date(plan.review_due) if plan.review_due else None) if d]
+    start = f"{min(days + ([begin] if begin else []))[:4]}-01-01"
+    last = max(int(max(highs)[:4]), int(today[:4]) + OPEN_END_YEARS if open_end else 0)
+    end = f"{last}-12-31"
+    band = None
+    if begin and until:
+        band = {"x0": _clip(_pos(begin, start, end)), "x1": _clip(_pos(until, start, end)),
+                "open_start": False, "beyond": False, "open_end": open_end}
+    return {
+        "start": start,
+        "end": end,
+        "ticks": _ticks(start, end),
+        "today": _pos(today, start, end) if start <= today <= end else None,
+        "style": "preparing" if plan.adopted is None else plan.adopted.mode,
+        "band": band,
+        "marks": [{"x": _pos(_mark_date(s), start, end), "date": _mark_date(s), "kind": s["kind"],
+                   "oral": s["oral"], "station": i} for i, s in enumerate(stations)],
+        "review": ({"x": _pos(_mid_date(plan.review_due), start, end), "label": _month(plan.review_due)}
+                   if plan.review_due else None),
+        #: Vor 2018 kennt das Ratsinformationssystem keine Sitzungen: Dort
+        #: stehen keine Marken, weil es keine Daten gibt — nicht, weil nichts war.
+        "archive_from": _pos(ARCHIVE_START, start, end) if start < ARCHIVE_START else None,
+    }
+
+
+def year_log(plan: register.Plan, items: list[dict], state: str, today: str, stations: list[dict]) -> list[dict]:
+    """Der Zeitstrahl nach Jahren, das jüngste zuerst — samt der Jahre, in denen nichts zu finden war.
+
+    Eine Lücke ist eine Aussage über den Bestand („keinen gefunden“), nie über
+    die Arbeit. Sie zählt erst nach dem Jahr des Beschlusses und frühestens ab
+    2018; aufeinanderfolgende Jahre stehen als ein Eintrag.
+    """
+    by_year: dict[int, list[int]] = {}
+    for i, s in enumerate(stations):
+        by_year.setdefault(int(s["date"][:4]), []).append(i)
+    begin, until, _ = _band(plan, items, state, today)
+    this_year = int(today[:4])
+    gaps: list[int] = []
+    if begin and plan.kind != "reference":
+        last = this_year if state in ("running", "preparing") else min(this_year, int((until or today)[:4]))
+        first = int(begin[:4]) + 1 if begin >= ARCHIVE_START else int(ARCHIVE_START[:4])
+        gaps = [y for y in range(first, last + 1) if y not in by_year]
+    out: list[dict] = []
+    years = sorted(set(by_year) | set(gaps), reverse=True)
+    for y in years:
+        if y in by_year:
+            out.append({"kind": "year", "year": y, "year_to": y, "stations": sorted(by_year[y], reverse=True),
+                        "text": None})
+        elif out and out[-1]["kind"] == "gap" and out[-1]["year"] == y + 1:
+            out[-1]["year"] = y
+        else:
+            out.append({"kind": "gap", "year": y, "year_to": y, "stations": [], "text": None})
+    for e in out:
+        if e["kind"] == "gap":
+            only_now = e["year"] == e["year_to"] == this_year
+            e["text"] = ("bisher kein Bericht im Rat gefunden" if only_now
+                         else "kein Bericht im Rat gefunden")
+    return out
+
+
+def _recent_reports(by_plan: dict[str, list[dict]], limit: int = 4) -> list[dict]:
+    """Die jüngsten Berichte über alle Pläne — ein Eintrag je Vorlage."""
+    out = []
+    for plan in register.PLANS.values():
+        if plan.kind == "reference":
+            continue
+        for s in timeline(by_plan.get(plan.key, []))["stations"]:
+            if s["kind"] not in REPORT_ROLES:
+                continue
+            out.append({"plan_key": plan.key, "plan_title": plan.title, "title": s["title"],
+                        "date": s["date_end"] or s["date"], "committee": s["members"][-1]["committee"],
+                        "oral": s["oral"], "kind": s["kind"], "template_number": s["template_number"],
+                        "decision_id": s["decision_id"]})
+    out.sort(key=lambda r: (r["date"], r["plan_title"]), reverse=True)
+    return out[:limit]
+
+
+def _upcoming(today: str, limit: int = 4) -> list[dict]:
+    """Was die Pläne selbst als Nächstes vorsehen: Laufzeitende, Überprüfung oder Fortschreibung."""
+    out = []
+    for plan in register.PLANS.values():
+        if plan.kind == "reference" or status(plan, today) != "running":
+            continue
+        if plan.end and _end_date(plan.end) >= today:
+            label = f"Ende {plan.end}" if len(plan.end) == 4 else _month(plan.end)
+            out.append({"plan_key": plan.key, "plan_title": plan.title, "kind": "end",
+                        "date": _end_date(plan.end), "date_label": label, "text": "Laufzeit endet"})
+        if plan.review_due and _end_date(plan.review_due) >= today:
+            out.append({"plan_key": plan.key, "plan_title": plan.title, "kind": "review",
+                        "date": _end_date(plan.review_due), "date_label": _month(plan.review_due),
+                        "text": "Überprüfung oder Fortschreibung vorgesehen"})
+    out.sort(key=lambda u: (u["date"], u["plan_title"]))
+    return out[:limit]
+
+
 def _card(plan: register.Plan, items: list[dict], today: str) -> dict:
     state = status(plan, today)
     latest = _latest_report(plan, items)
+    note = report_note(plan, latest, state, today)
     return {
         "key": plan.key,
         "title": plan.title,
@@ -176,12 +453,15 @@ def _card(plan: register.Plan, items: list[dict], today: str) -> dict:
         "policy_field": plan.policy_field,
         "field_label": FIELD_SHORT.get(plan.policy_field, plan.policy_field),
         "kicker": kicker(plan, items),
+        "timing": timing(plan, items),
         "status": state,
         "status_label": STATUS_LABELS[state],
         "group": group_of(state),
         "adoption_mode": plan.adopted.mode if plan.adopted else None,
         "latest_report": latest,
-        "report_note": report_note(plan, latest, state, today),
+        "report_note": note,
+        "report_caveat": REPORT_CAVEAT if note and _silence_is_news(plan, today) else None,
+        "lane": lane(plan, items, state, today),
         "report_count": len({_stem(i["template_number"]) or f"top{i['agenda_item_id']}"
                              for i in items if i["role"] in REPORT_ROLES}),
         "successor": _neighbour(plan.successor),
@@ -216,8 +496,20 @@ def overview(store, today: str | None = None) -> dict:
         members = _sorted([c for c in cards if c["group"] == key and c["kind"] != "reference"])
         groups.append({"key": key, "label": label, "plans": members})
     references = _sorted([c for c in cards if c["kind"] == "reference"])
-    return {"as_of": today, "groups": groups, "references": references,
-            "count": sum(len(g["plans"]) for g in groups)}
+    start, end = overview_axis(today)
+    fields: dict[str, dict] = {}
+    for c in cards:
+        if c["kind"] != "reference":
+            f = fields.setdefault(c["policy_field"], {"key": c["policy_field"], "label": c["field_label"], "count": 0})
+            f["count"] += 1
+    return {"as_of": today, "as_of_label": _datum_lang(today), "groups": groups, "references": references,
+            "count": sum(len(g["plans"]) for g in groups),
+            "axis": {"start": start, "end": end, "today": _pos(today, start, end),
+                     "ticks": [t for t in _ticks(start, end) if int(t["label"]) % 2 == 0],
+                     "fade": round(_pos(f"{int(start[:4]) + OPEN_END_YEARS}-01-01", start, end), 4)},
+            "fields": sorted(fields.values(), key=lambda f: f["label"]),
+            "recent": _recent_reports(by_plan),
+            "upcoming": _upcoming(today)}
 
 
 def _decision_ref(store, d: register.Decision | None, items: list[dict]) -> dict | None:
@@ -253,11 +545,19 @@ def _grouped(items: list[dict]) -> list[list[dict]]:
     return sorted(groups.values(), key=lambda g: (g[0]["date"], g[0]["agenda_item_id"]))
 
 
-def timeline(items: list[dict]) -> dict:
+def timeline(items: list[dict], plan: register.Plan | None = None) -> dict:
+    labels: dict[str, register.Decision] = {}
+    if plan is not None:
+        for d in ((plan.adopted,) if plan.adopted else ()) + plan.decisions:
+            if d.template:
+                labels[register.template_stem(d.template)] = d
     stations = []
     for g in _grouped([i for i in items if i["role"] in TIMELINE_ROLES]):
         last = g[-1]
+        about = labels.get(_stem(last["template_number"]) or "") if last["role"] in ("adoption", "amendment") else None
         stations.append({
+            "label": about.label if about else None,
+            "mode": about.mode if about else None,
             "date": g[0]["date"],
             "date_end": last["date"] if last["date"] != g[0]["date"] else None,
             "kind": last["role"],
@@ -322,6 +622,10 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
     today = today or _date.today().isoformat()
     items = store.plan_items(key)
     card = _card(plan, items, today)
+    state = card["status"]
+    tl = timeline(items, plan)
+    tl["log"] = year_log(plan, items, state, today, tl["stations"])
+    reports = [s for s in tl["stations"] if s["kind"] in REPORT_ROLES]
     groups = [{"key": k, "label": label, "entries": _entries([i for i in items if i["role"] in roles])}
               for k, label, roles in DECISION_GROUPS]
     mentions = [{"title": m["title"], "date": m["session_date"], "committee": m["committee"],
@@ -347,7 +651,11 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "concluded": _template_ref(store, plan.concluded, items),
         "predecessor": _neighbour(plan.predecessor),
         "measures": measures_block(key),
-        "timeline": timeline(items),
+        "timeline": tl,
+        "runway": runway(plan, items, state, today, tl["stations"]),
+        "since": since(plan, items, state, today),
+        "remaining": remaining(plan, state, today),
+        "oral_report_count": sum(1 for s in reports if s["oral"]),
         "decision_groups": [g for g in groups if g["entries"]],
         "goal": plan.goal,
     }

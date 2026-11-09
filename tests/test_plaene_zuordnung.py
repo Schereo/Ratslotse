@@ -216,6 +216,11 @@ def test_uebersicht_und_detail_nach_dem_aufbau(client, rats_db):
     assert d["adoption"]["decision_id"] == 55 and d["adoption"]["kvonr"] == 10
     assert [s["kind"] for s in d["timeline"]["stations"]] == ["adoption", "report"]
     assert d["decision_groups"][0]["key"] == "plan"
+    # Das Zeitband kommt durch den Vertrag (tests/test_plan_time_band.py hält, was es sagt).
+    assert [m["kind"] for m in ksp["lane"]["marks"]] == ["adoption", "report"]
+    assert [m["station"] for m in d["runway"]["marks"]] == [0, 1]
+    assert d["timeline"]["stations"][0]["mode"] == "adopted"
+    assert [e["kind"] for e in d["timeline"]["log"]][-1] == "year"
 
 
 def test_unbekannter_plan_ist_404(client):
