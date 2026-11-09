@@ -7982,3 +7982,61 @@ def test_quiz_duel_expires(client):
         store._conn.execute("UPDATE quiz_duels SET created_at = '2020-01-01T00:00:00'")
     store.close()
     assert client.get(f"/api/quiz/duel/{code}").status_code == 404
+
+
+def test_ask_aussprache_der_juengsten_station_aus_der_akte(client, monkeypatch):
+    """Den jüngsten Stand bringt oft erst die Akte — und mit ihm muss seine
+    Aussprache kommen. Am 09.11.2026 stand dieser Schritt VOR der Akte und griff
+    nie: Der Trinkwasser-Bericht vom 16.04.2026 wurde zitiert, seine
+    Protokollnotiz („2027 mit Abschluss des KLAK“) fehlte im Prompt."""
+    from app.routers import council as council_router
+    from council import akte_suche
+    from council import qa as qa_mod
+
+    monkeypatch.setenv("FEATURE_FLAGS", "akten-suche,kontext-diaet")
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(93, "Ausschuss für Stadtgrün, Umwelt und Klima",
+                                   "2026-04-16", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (6001,93,1,'11.1','Prüfung öffentlicher Trinkwasserspender - Bericht',"
+            "'Bericht','noted','decision')")
+    cs.save_wortbeitraege(93, [
+        {"art": "rede", "top": "11.1 Prüfung öffentlicher Trinkwasserspender",
+         "speaker": "Thomas Klein", "party": "SPD", "text": "Wie lange dauert die Prüfung?",
+         "answer": None},
+        {"art": "pledge", "top": "11.1 Prüfung öffentlicher Trinkwasserspender",
+         "speaker": "Robert Sprenger", "party": None,
+         "text": "Die Klärung wird 2027 mit Abschluss des KLAK angestrebt.", "answer": None},
+    ])
+    neu = cs.get_decisions_by_ids([6001])
+    cs.close()
+    alt = [{"id": 7000 + i, "title": f"Trinkwasserbrunnen Innenstadt {i}", "summary": "alt",
+            "session_date": "2020-02-13", "committee": "Rat", "outcome": "rejected",
+            "ksinr": 9000 + i, "score": 1.0 - i / 100} for i in range(9)]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (list(alt), "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(akte_suche, "material", lambda store, q, cands: {
+        "decisions": neu, "speeches": [], "press": [], "akte": "trinkwasser"})
+    # Wie im Betrieb: Keine Ähnlichkeitssuche findet die Notiz (Rerank −2,08,
+    # Gold-Test 01.10.2026) — nur die Kopplung an den Beschluss trägt sie.
+    from council import embeddings as emb
+    monkeypatch.setattr(emb, "search_wortbeitraege", lambda *a, **k: [])
+    monkeypatch.setattr(emb, "search_zusagen", lambda *a, **k: [])
+    gesehen: dict = {}
+
+    def fake_stream(*args, **kwargs):
+        gesehen["debatten"] = kwargs.get("debatten") or []
+        yield "Ein Termin steht nicht fest [6001]."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    with client.stream("POST", "/api/council/ask",
+                       json={"question": "Wann kommen öffentliche Trinkwasserspender?"}) as r:
+        assert r.status_code == 200
+        "".join(r.iter_text())
+
+    texte = [d.get("text") or "" for d in gesehen["debatten"]]
+    assert any("KLAK" in t for t in texte), texte
