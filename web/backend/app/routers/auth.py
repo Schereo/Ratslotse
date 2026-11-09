@@ -436,8 +436,8 @@ def magic_einloesen(
              else "kein_konto" if not user
              else "widerrufen" if decoded[1] != user.get("token_version", 0)
              else "gesperrt" if user.get("status") != "active" else None)
-    if grund:
-        _link_fehler_merken(store, grund)
+    if grund or not user:
+        _link_fehler_merken(store, grund or "kein_konto")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,
                             "Der Link ist abgelaufen oder gilt nicht mehr. Melde dich bitte an.")
     set_session_cookie(response, create_access_token(
