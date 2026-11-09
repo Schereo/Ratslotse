@@ -129,3 +129,59 @@ def test_die_ernte_merkt_die_zugangspruefung(tmp_path):
     assert zahlen["files_gated"] == 1 and zahlen["files_failed"] == 1
     assert len(sitzung.abrufe) == 1
     store.close()
+
+
+class _KeineVerbindung(_Sitzung):
+    def get(self, url, **_):
+        self.abrufe.append(url)
+        raise requests.ConnectTimeout("keine Verbindung")
+
+
+def test_ein_server_ohne_verbindung_wird_nicht_weiter_gefragt(tmp_path, monkeypatch):
+    """Potsdam, 09.11.2026: Nach ein paar Minuten nahm der Server keine
+    Verbindung mehr an, und jede Datei kostete zwei Versuche à 120 s, während
+    ein Deploy wartete. Nach drei Verbindungsfehlern in Folge ist Schluss."""
+    from council.cities import oparl, pipeline
+
+    monkeypatch.setattr(oparl.time, "sleep", lambda s: None)
+    sitzung = _KeineVerbindung(None)
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    client = OParlClient(store, "potsdam", tmp_path / "files", session=sitzung)
+    offen = [{"id": f"f{i}", "access_url": f"https://pd.example.org/doc?{i}"} for i in range(10)]
+    zahlen: dict = {}
+    pipeline._hole(client, store, "potsdam", offen, zahlen, "Dateien")
+    assert client.host_unreachable and zahlen["host_unreachable"] == 1
+    assert len(sitzung.abrufe) == oparl.UNREACHABLE_AFTER
+    store.close()
+
+
+def test_der_verbindungsaufbau_hat_eine_kurze_frist():
+    from council.cities import oparl
+    assert oparl.TIMEOUT_FILE[0] <= 15 and oparl.TIMEOUT_JSON[0] <= 15
+    assert oparl.TIMEOUT_FILE[1] >= 60, "das Lesen großer Dateien darf dauern"
+
+
+def test_die_ernte_tritt_fuer_einen_deploy_zur_seite(tmp_path):
+    """Der Deploy legt `data/.deploy-wartet`; die Ernte hört an der nächsten
+    Datei auf, statt die Stadt zu Ende zu holen."""
+    from council.cities import pipeline
+    from kern.stopp import WARTET_NAME, Stopp
+
+    (tmp_path / WARTET_NAME).touch()
+    sitzung = _Sitzung(_Antwort(b"%PDF-1.7", "application/pdf"))
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    client = OParlClient(store, "potsdam", tmp_path / "files", session=sitzung)
+    offen = [{"id": f"f{i}", "access_url": f"https://pd.example.org/doc?{i}"} for i in range(3)]
+    zahlen: dict = {}
+    pipeline._hole(client, store, "potsdam", offen, zahlen, "Dateien", stopp=Stopp(tmp_path))
+    assert "Deploy" in zahlen["abgebrochen"] and sitzung.abrufe == []
+    store.close()
+
+
+def test_die_kostengrenze_haelt_die_ernte_nicht_auf(tmp_path):
+    from council.cities import pipeline
+    from kern.stopp import Stopp
+
+    stopp = Stopp(tmp_path, max_kosten=1.0)
+    stopp.ausgeben(5.0)
+    assert pipeline._soll_aufhoeren(stopp) is None
