@@ -76,6 +76,10 @@ FEATURES: dict[str, Feature] = {
         description="„Frag den Rat“ lässt vor der Antwort ein kleines Modell je Dokument "
                     "notieren, was es zur Frage beiträgt; die Notizen stehen oben im "
                     "Kontext (qa.belegnotizen).",
+        # Auf Prod am 09.11.2026 gemessen und wieder aus: 62 → 61 %, aber +8 s
+        # bis zum ersten Wort (Notizen seit #1783 auf GPT-5.6 Luna statt Flash
+        # Lite). Der Oktober-Gewinn kam zum Teil aus der Aussprache, die
+        # `kontext-diaet` trägt — docs/gold-messbuch.md.
         fertig_wenn="Zwei Gold-Läufe auf dev mit weniger „im Prompt, aber weggelassen“ und "
                     "ohne Rückschritt, Laufzeit auf Prod gemessen; dann Normalweg.",
     ),
