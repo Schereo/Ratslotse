@@ -13,7 +13,21 @@ abgelaufene Pläne, jeweils mit Quelle, Laufzeit, Maßnahmen und
 Umsetzungsstand. Bei alten Plänen soll die Seite zeigen, was aus ihnen geworden
 ist. Das Programm ist auf mehrere Wochen angelegt.
 
-**Tims Entscheidung 09.11.2026:** Die neue Seite entsteht zuerst auf dev, hinter dem Schalter `plaene`, und fährt mit dem nächsten Release. Die heutige Ziele-Seite bleibt auf Prod stehen, bis der Schalter dort angeht.
+**Tims Entscheidungen 09.11.2026:**
+
+- Die neue Seite entsteht zuerst auf dev, hinter dem Schalter `plaene`, und
+  fährt mit dem nächsten Release. Die heutige Ziele-Seite bleibt auf Prod
+  stehen, bis der Schalter dort angeht.
+- **Was als Plan zählt:** wie in § 8.1 vorgeschlagen (Klassen 1–3, Pläne
+  Dritter und Steuerungskonzepte nur als Verweis).
+- **Externe Quellen ja:** das Monitoring im Klimaportal und Pläne von vor 2018
+  von oldenburg.de (Phase 5b).
+- **Möglichst wenig Handarbeit:** Die Maßnahmenlisten prüft der Agent selbst —
+  vollständiger Zählabgleich gegen die Zahl der Stadt, Stichprobe gegen die
+  Quelle, Befunde im PR. Tim prüft nicht jede Liste.
+- **Neu: „Offene Aufträge“** (§ 3.5, Phase 4b) — wo etwas beschlossen ist und
+  keine Umsetzung, kein Bericht, kein Folgebeschluss zu finden ist. Für alle
+  interessant, für Ratsmitglieder der Anlass nachzufragen.
 
 ## 1. Befund
 
@@ -280,6 +294,51 @@ Ein fester Aufbau, kein freier Text:
    Schulentwicklungsplan 2018, die Integrationskonzept-Fortschreibung 2020,
    die Demografiestrategie und den Gleichstellungsplan.
 
+### 3.5 Offene Aufträge: wo man nachfragen kann
+
+Tims Wunsch (09.11.2026): sehen, wo Beschlossenes auf Umsetzung wartet, wo
+nichts mehr nachkam und wo man nachfragen kann — auch als Werkzeug für
+Ratsmitglieder. Drei Arten, alle aus dem Bestand ableitbar:
+
+1. **Maßnahme mit verstrichenem Termin.** Der Plan nennt für eine Maßnahme
+   einen Zeitraum („bis 2025“), und der jüngste Bericht meldet sie nicht als
+   umgesetzt. Anzeige: „Laut Plan bis 2025 · letzter gemeldeter Stand
+   ‚in Umsetzung‘ (Bericht vom 08.10.2026)“.
+2. **Ratsauftrag ohne Folge.** Ein angenommener Beschluss beauftragt die
+   Verwaltung, zu prüfen, zu berichten oder etwas vorzulegen („Die
+   Verwaltung wird beauftragt …“), und danach findet sich keine Station mehr:
+   keine Vorlage derselben Akte, kein Bericht, kein Tagesordnungspunkt in der
+   Beratungsfolge, keine Zusage der Verwaltung dazu. Anzeige: „Auftrag vom
+   16.04.2025 · seither keine Vorlage und kein Bericht im Rat gefunden“.
+   Dazu gehören auch **Zusagen der Verwaltung** aus den Protokollen mit Datum
+   („bis zum Sommer“), deren Datum verstrichen ist.
+3. **Plan ohne Bericht oder mit fälliger Fortschreibung.** „Seit dem
+   Beschluss 2021 kein Umsetzungsbericht im Rat“, „Fortschreibung laut Plan
+   2026 fällig“.
+
+**Regeln, damit das fair bleibt** — ein falscher Treffer behauptet, die Stadt
+sei säumig, wo der Bericht in Wahrheit existiert:
+
+- **Nie „zu langsam“, nie eine Wertung.** Angezeigt wird die Tatsache mit
+  Datum („seit 19 Monaten keine Station gefunden“), nicht ihre Deutung.
+- **„Nicht gefunden“ statt „gibt es nicht“.** Ein fester Satz unter jeder
+  Liste: Nichtöffentliche Sitzungen, Mitteilungen ohne Vorlage und Berichte
+  außerhalb des Ratsinformationssystems sieht Ratslotse nicht.
+- **Lieber zu wenig als zu viel.** Ein Auftrag erscheint nur, wenn die
+  Gegenprobe (Akte, Beratungsfolge, Titelähnlichkeit, Volltext, Zusagen)
+  nichts findet und mindestens sechs Monate vergangen sind. Die Präzision
+  wird an einem Golden-Set gemessen (Phase 4b), nicht angenommen.
+- **Keine Parteibrille.** Wer den Auftrag beantragt hat, steht wie überall
+  dabei; sortiert wird nach Alter des Auftrags, nicht nach Fraktion.
+- **Nachfragen leicht machen:** Jede Zeile führt zu „Frag den Rat“ mit
+  vorbereiteter Frage („Was ist aus dem Auftrag vom … geworden?“) und zur
+  Vorlage. Für Konten mit dem Recht `mandate` (Ratsmitglieder) später
+  optional ein Entwurf für eine Anfrage — erst nach einem eigenen Beschluss
+  von Tim.
+
+Ort: ein eigener Block „Offene Aufträge“ auf jeder Planseite und eine
+stadtweite Liste in der Übersicht (filterbar nach Themenfeld und Gremium).
+
 ## 4. Architektur
 
 - **Register als Code:** `council/plans.py` (Code auf Englisch), nach dem
@@ -422,6 +481,38 @@ Anlage 275932).
 - **Kosten (Schätzung):** weitere ≈ 1–1,50 $ für rund 20 Pläne. Das liegt über
   1 $, also vorher fragen.
 
+### Phase 4b: Offene Aufträge (Woche 6–7)
+
+- **Aufträge erkennen:** angenommene Beschlüsse, deren Text die Verwaltung
+  beauftragt (prüfen, berichten, vorlegen, erarbeiten, umsetzen). Erst Regeln
+  über den Beschlusstext, ein Modell nur für die unklaren Fälle. Dazu die
+  Zusagen der Verwaltung aus den Wortbeiträgen (`kind = pledge`) mit Datum.
+- **Gegenprobe ohne Modell:** Beratungsfolge der Vorlage, Akte, spätere
+  Vorlagen mit gleichem Gegenstand (Titelähnlichkeit, Embeddings), Volltext
+  nach Vorlagennummer. Was danach offen bleibt, prüft ein Modell noch einmal
+  gegen die drei nächsten Kandidaten („ist das die Folge?“).
+- Tabelle `council_open_mandates(decision_id | speech_id, kind, since,
+  last_station_date, checked_at, method)`, im Cron neu gebaut;
+  Endpunkt `GET /council/open-mandates` (Filter Themenfeld, Gremium, Plan).
+- **Golden-Set:** 40 Aufträge von Hand (durch den Agenten, gegen Protokolle
+  und Beratungsfolge) als „offen“ oder „erledigt“ bewertet.
+- **Messziel:** Präzision für „offen“ ≥ 90 %; jeder falsche Treffer im
+  Golden-Set bekommt eine Ursache (fehlende Akte, Bericht ohne Vorlage …).
+- **Kosten (Schätzung):** rund 2.000 Auftrags-Kandidaten, Modell nur für
+  unklare und Gegenproben ≈ 0,30–0,60 $; vorher mit `limit=20` messen.
+
+### Phase 5b: Externe Quellen (Woche 7–8)
+
+- **Klimaportal-Monitoring:** Stand je Maßnahme des Klimaschutzplans aus dem
+  Portal der Stadt — vorher Nutzungsbedingungen und `robots.txt` prüfen,
+  höflich abrufen (Regeln wie bei den Städten: ≥ 1 s, eigener User-Agent),
+  Quelle sichtbar als „Klimaportal der Stadt, Stand …“.
+- **Pläne vor 2018 von oldenburg.de:** die Planseiten der Stadt durchsehen,
+  PDFs mit Datum und Herkunft ablegen, ins Register mit `source = "website"`.
+  Ohne Ratsbeschluss im Bestand heißt der Kicker „VERÖFFENTLICHT 2014“, nicht
+  „BESCHLOSSEN“.
+- **Kosten:** Abruf und Text 0 $, Maßnahmenlisten wie Phase 2 ≈ 0,50 $.
+
 ### Phase 6: Pflege (laufend)
 
 - Neue Berichte einer Reihe hängen sich im Cron selbst an.
@@ -441,11 +532,14 @@ Anlage 275932).
 | 2 Maßnahmen, 5 Pläne | Luna flex, Gegenprobe größer | ≈ 1 $ |
 | 3 Status | Regex, Parser, Luna für Fließtext | ≈ 0,30 $ |
 | 4 Zuordnung | Luna/DeepSeek, Golden-Set | ≈ 0,40 $ + laufend Cent |
+| 4b offene Aufträge | Regeln, Luna für Unklares und Gegenprobe | ≈ 0,60 $ |
 | 5 übrige Pläne, Rückblick | Luna | ≈ 1,50 $ |
-| **Summe Erstaufbau** | | **≈ 3–4 $** |
+| 5b externe Quellen | Abruf, Luna für Maßnahmen | ≈ 0,50 $ |
+| **Summe Erstaufbau** | | **≈ 4–5 $** |
 
 Die Modellkosten sind klein. Teuer ist das **Prüfen**: Maßnahmenlisten,
-Golden-Set und die „offen“-Fälle.
+Golden-Sets und die „offen“-Fälle. Das übernimmt der Agent (Tims Entscheidung
+09.11.2026) — mit Zählabgleich, Stichprobe und den Befunden im PR.
 
 ## 7. Risiken
 
@@ -466,6 +560,16 @@ Golden-Set und die „offen“-Fälle.
   Endpunkte gepflegt werden.
 
 ## 8. Was zu entscheiden ist
+
+Stand 09.11.2026: Entschieden sind 1 (wie vorgeschlagen), 2 (ja, beides),
+5 (dev zuerst, Prod mit dem nächsten Release, sobald fertig) und 6 (der Agent
+prüft). Für 4 gilt bis auf Widerruf: Die alte Bewertung („bringt voran /
+bremst“ samt Stempel „überwiegend vorangebracht“, täglich per Modell aus
+`track_goals`) läuft weiter, bis „Pläne“ auf Prod ist; dann hört der tägliche
+Lauf auf, und die alten Endpunkte liefern den letzten Stand für die
+ausgelieferte App, bis deren nächster Build „Pläne“ kennt. Offen bleiben 3 und
+7; 7 klärt der Agent erst selbst (MCP, oldenburg.de) und fragt nur, was übrig
+bleibt.
 
 1. **Was zählt als Plan der Stadt?** Vorschlag: Klasse 1 sind Pläne mit
    Maßnahmen und Ratsbeschluss (A), Klasse 2 Rahmenstrategien (B), Klasse 3
