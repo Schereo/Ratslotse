@@ -82,7 +82,7 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
                 messages=[{"role": "system", "content": system},
                           {"role": "user", "content": prompts.render(
                               ann.prompt_user, gruppe=f["gruppe"], paper=text)}],
-                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                temperature=ann.temperature, **ann.token_args(),
                 extra_body={},
                 _feature=ann.feature)
             nutzlast = ann.payload.model_validate(

@@ -40,7 +40,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
-from council.cities.annotate import parse_json
+from council.cities.annotate import call_cost, parse_json
 from council.cities.annotators import LLM_TIMEOUT_S, USABLE, Annotator, OldenburgStatus
 from council.cities import evidence as beleg_modul
 from council.cities.evidence import (
@@ -545,9 +545,8 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                                                ann, aufwand.get(p["id"])),
                               cluster=cluster_je.get(p["id"], ""),
                               evidence=evidence_text(belege))}],
-                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                temperature=ann.temperature, **ann.token_args(),
                 extra_body=extra, timeout=LLM_TIMEOUT_S, _feature=ann.feature)
-            daten = parse_json(antwort.choices[0].message.content or "")
         except Exception as e:  # noqa: BLE001 — eine Vorlage, nicht der Lauf
             with sperre:
                 stand["errors"] += 1
@@ -555,8 +554,9 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                         str(e)[:120])
             return None
 
+        # Erst abrechnen, dann lesen (s. `annotate.call_cost`).
         verbrauch = getattr(antwort, "usage", None)
-        kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+        kosten = call_cost(antwort)
         if korb is not None:
             korb.append(kosten)
         if stopp is not None:
@@ -566,6 +566,14 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                 stand["prompt_tokens"] += verbrauch.prompt_tokens or 0
                 stand["completion_tokens"] += verbrauch.completion_tokens or 0
                 stand["cost_usd"] += kosten
+        try:
+            daten = parse_json(antwort.choices[0].message.content or "")
+        except Exception as e:  # noqa: BLE001 — eine Vorlage, nicht der Lauf
+            with sperre:
+                stand["errors"] += 1
+            logger.info("fit gescheitert (%s): %s: %s", p["id"], type(e).__name__,
+                        str(e)[:120])
+            return None
         try:
             nutzlast = ann.payload.model_validate(daten)
             if not isinstance(nutzlast, OldenburgStatus):

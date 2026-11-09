@@ -509,6 +509,23 @@ class Annotator:
     #: Reasoning-Modelle verbrauchen ihr Budget beim Denken; ein knapper Wert
     #: liefert eine LEERE Antwort mit Status 200 statt eines Fehlers.
     max_tokens: int = 16000
+    #: Harte Decke für Denken UND Antwort — nur dort gesetzt, wo die Verteilung
+    #: gemessen ist. ``max_tokens`` oben ist für DeepSeek nur ein Wunsch:
+    #: ``kern/llm.py`` hebt ihn auf den Boden von 24.000, und ein Aufruf, der
+    #: sich festdenkt, verbraucht sie ganz. Gemessen am Wochenlauf vom
+    #: 09.11.2026 (Prod, ``llm_usage``, Tokens je Aufruf):
+    #:
+    #:     Stufe      < 8k    8–12k  12–16k  16–24k  = 24k (leer)   davon $
+    #:     classify    585      21      0       0        6          0,07
+    #:     effort      707      15      2       0       52          0,57
+    #:     fit         189       0      0       0        9          0,10
+    #:     stance     1088       6      3       1        4          0,04
+    #:
+    #: Wer bei 24.000 ankommt, liefert nichts mehr; darunter ist fast alles
+    #: fertig. Eine Decke von 12.000 (stance: 16.000) halbiert den Verlust
+    #: und hätte drei gelungene Aufrufe gekostet — die kommen im Nachlauf
+    #: bzw. im nächsten Lauf wieder dran.
+    token_cap: int | None = None
     temperature: float = 0.2
     #: So viele Zeichen des Volltexts gehen ins Modell. 2.200 waren im
     #: Probelauf der Punkt, an dem mehr Text die Trefferquote nicht mehr hob.
@@ -545,6 +562,16 @@ class Annotator:
     #: den Feature-Schaltern.
     gut_wenn: str = ""
 
+    def token_args(self) -> dict:
+        """Die Token-Grenze als Argumente für ``llm.chat_complete``.
+
+        An jeder Aufrufstelle dieselbe Zeile (``**ann.token_args()``), damit
+        Lauf und Eval dieselbe Grenze fahren.
+        """
+        if self.token_cap:
+            return {"max_tokens": self.token_cap, "_no_token_floor": True}
+        return {"max_tokens": self.max_tokens}
+
     @property
     def feature(self) -> str:
         """Der Schlüssel fürs Kosten-Tracking (``llm_usage.feature``).
@@ -561,7 +588,7 @@ ANNOTATORS: dict[str, Annotator] = {
         key="classify", version="2", applies_to=("paper",),
         prompt_system="cities_classify_system", prompt_user="cities_classify_user",
         model=os.environ.get("CITIES_CLASSIFY_MODEL", "deepseek/deepseek-v4-flash"),
-        payload=PaperClassification,
+        payload=PaperClassification, token_cap=12000,
         gut_wenn="eval/run_cities_transfer.py bleibt bei „taugt/taugt nicht“ über "
                  "80 % — darunter ist es eine Regression, darüber Rauschen "
                  "(gemessen: fünf Läufe zwischen 84 und 91 %).",
@@ -593,7 +620,7 @@ ANNOTATORS: dict[str, Annotator] = {
         # statt acht heißen mehr abzuwägen, und ein zu knappes Budget liefert
         # keine Fehlermeldung, sondern eine ABGESCHNITTENE Antwort mit Status
         # 200 — im Prüfstand als „unlesbare Antwort“ sichtbar geworden.
-        batch_size=1, input_chars=3500, max_tokens=6000, needs_index=True,
+        batch_size=1, input_chars=3500, max_tokens=6000, token_cap=12000, needs_index=True,
         gut_wenn="eval/run_cities_fit.py hält drei Schranken, und ZWEI davon "
                  "sind harte Zusagen, die bei NULL stehen: erfundene "
                  "Beleg-Kennungen und falsche „vorhanden“ (das Modell "
@@ -644,7 +671,7 @@ ANNOTATORS: dict[str, Annotator] = {
         # 4.000 nicht, weil die Antwort lang wird — sie ist zwei Felder —,
         # sondern weil ein knappes Budget keine Fehlermeldung liefert,
         # sondern eine ABGESCHNITTENE Antwort mit Status 200.
-        batch_size=1, input_chars=1200, max_tokens=4000,
+        batch_size=1, input_chars=1200, max_tokens=4000, token_cap=16000,
         # Nur Vorlagen in einer Gruppe: Ohne gemeinsame Sache gibt es keine
         # Richtung, auf die sich das Urteil beziehen könnte.
         only_usable=True, needs_index=True, own_stage="cluster",
@@ -719,7 +746,7 @@ ANNOTATORS: dict[str, Annotator] = {
         # Vorlagenart, nicht am Volltext. 1.500 Zeichen reichen, und acht
         # Einträge je Aufruf halten die Antwort kurz genug, dass keiner
         # ausgelassen wird.
-        batch_size=8, input_chars=1500, max_tokens=4000, only_usable=True,
+        batch_size=8, input_chars=1500, max_tokens=4000, token_cap=12000, only_usable=True,
         gut_wenn="eval/run_cities_effort.py bleibt über 80 % über fünf Klassen. "
                  "Die Kanten sind schärfer als bei `transfer` — eine Anfrage ist "
                  "keine Satzung —, deshalb liegt die Schranke höher.",

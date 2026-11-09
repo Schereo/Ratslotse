@@ -321,3 +321,70 @@ def test_nur_uebertragbares_kostet_ein_viertel():
     assert get("effort").only_usable is True
     assert get("classify").only_usable is False, \
         "die Einordnung entscheidet ERST, was übertragbar ist"
+
+
+# ------------------------------------------------- Kosten leerer Antworten
+
+def _leer(kosten=0.012):
+    """Wie DeepSeek antwortet, wenn es sich festgedacht hat: Status 200, kein
+    Text, die volle Rechnung."""
+    return SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=""))],
+        usage=SimpleNamespace(prompt_tokens=900, completion_tokens=24000, cost=kosten))
+
+
+def test_eine_leere_antwort_zaehlt_gegen_die_kostengrenze(store, monkeypatch, tmp_path):
+    """Wochenlauf 09.11.2026: 71 Aufrufe kamen nach 24.000 Tokens leer zurück.
+    Sie kosteten 0,78 $ und zählten nirgends — der Lauf meldete 2,02 $ an
+    seiner Grenze von 2 $, ``llm_usage`` zeigte 2,89 $."""
+    from kern.stopp import Stopp
+
+    monkeypatch.setattr(annotate.llm, "chat_complete", lambda **kw: _leer())
+    stopp = Stopp(tmp_path, max_kosten=100.0)
+    stand = annotate.run(store, get("classify"), workers=1, stopp=stopp)
+    assert stand["annotated"] == 0 and stand["errors"] >= 1
+    assert stand["cost_usd"] > 0, "die Stufe meldet, was die leeren Antworten gekostet haben"
+    assert stopp.kosten == pytest.approx(stand["cost_usd"])
+
+
+def test_die_token_decke_reist_mit_dem_aufruf(store, monkeypatch):
+    """Die gemessene Decke ersetzt den Boden aus ``kern/llm.py`` — sonst hebt
+    der sie still wieder auf 24.000."""
+    gesendet = []
+    monkeypatch.setattr(annotate.llm, "chat_complete",
+                        lambda **kw: (gesendet.append(kw), _antwort(["p0", "p1", "p2"]))[1])
+    ann = get("classify")
+    annotate.run(store, ann, workers=1)
+    assert ann.token_cap, "classify hat eine gemessene Decke"
+    assert gesendet[0]["max_tokens"] == ann.token_cap
+    assert gesendet[0]["_no_token_floor"] is True
+
+
+def test_ohne_decke_bleibt_der_boden():
+    """Wer nichts gemessen hat, behält den Schutz vor der leeren Antwort."""
+    ohne = [a for a in ANNOTATORS.values() if not a.token_cap]
+    assert ohne, "mindestens ein Annotator läuft noch ohne Decke"
+    for ann in ohne:
+        assert ann.token_args() == {"max_tokens": ann.max_tokens}
+
+
+def test_jede_aufrufstelle_rechnet_vor_dem_lesen_ab():
+    """Der Wächter für alle sechs Stellen: In keinem ``try`` steht der
+    Modellaufruf zusammen mit ``parse_json`` — sonst springt eine leere
+    Antwort an der Abrechnung vorbei."""
+    import ast
+    from pathlib import Path
+
+    wurzel = Path(__file__).resolve().parents[1] / "council" / "cities"
+    for datei in ("annotate.py", "fit.py", "idea_fit.py", "clusters.py", "reasons.py"):
+        baum = ast.parse((wurzel / datei).read_text())
+        for knoten in ast.walk(baum):
+            if not isinstance(knoten, ast.Try):
+                continue
+            namen = {n.attr if isinstance(n, ast.Attribute) else getattr(n, "id", "")
+                     for stmt in knoten.body for n in ast.walk(stmt)
+                     if isinstance(n, (ast.Attribute, ast.Name))}
+            assert not {"chat_complete", "parse_json"} <= namen, (
+                f"{datei}:{knoten.lineno}: `chat_complete` und `parse_json` stehen im "
+                "selben try. Erst abrechnen (`annotate.call_cost`, `stopp.ausgeben`), "
+                "dann lesen — sonst kostet eine leere Antwort scheinbar nichts.")

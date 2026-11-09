@@ -57,6 +57,17 @@ describe("standZeilen", () => {
       + "Was schon vorliegt, bleibt hier sichtbar.");
   });
 
+  it("nennt eine Stadt, die der Wochenlauf nicht holt, ohne eine Sperre zu behaupten", () => {
+    const z = standZeilen({
+      as_of: "2026-11-09",
+      lagging: [],
+      blocked: [{ body_id: "peine", city: "Peine", status: "paused",
+        since: "2026-09-10", latest_paper: "2026-09-08" }],
+    });
+    expect(z.sperre).toBe("Peine wird derzeit nicht abgeglichen. Was schon vorliegt, bleibt hier sichtbar.");
+    expect(z.sperre).not.toMatch(/weist|lässt/);
+  });
+
   it("schweigt, wenn alle Städte liefern", () => {
     expect(standZeilen({ as_of: "2026-11-09", lagging: [], blocked: [] }).sperre).toBeNull();
   });

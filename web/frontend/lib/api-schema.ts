@@ -13077,7 +13077,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "documents_blocked" | "blocked";
+            status: "documents_blocked" | "blocked" | "paused";
         };
         /**
          * IdeaDataStatus
@@ -28123,4 +28123,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 89e2567b26cb8797deb1d3ccb6a04782e424b5bfa7eef9260e2db2a3d1f1b58e
+// vertrag-sha256: 2be19ca318228edf6d8f3cbd05a0e97a1ec5b8bd6f2877cd05fde1eab396fafc

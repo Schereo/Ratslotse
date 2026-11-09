@@ -156,7 +156,7 @@ def urteilen(faelle: list[dict], model: str) -> tuple[dict[str, dict], float]:
                               ann.prompt_user, paper=_vorlage(fall),
                               cluster=fall.get("cluster") or _KEIN_CLUSTER,
                               evidence=fit_modul.evidence_text(_belege(fall)))}],
-                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                temperature=ann.temperature, **ann.token_args(),
                 extra_body={},
                 _feature="eval_cities_fit")
             ergebnis[fall["id"]] = parse_json(antwort.choices[0].message.content or "")

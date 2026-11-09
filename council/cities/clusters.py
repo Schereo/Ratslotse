@@ -417,7 +417,7 @@ def stance_all(main: CitiesStore, model: str = EMBED_MODEL,
     import threading
     from concurrent.futures import ThreadPoolExecutor
 
-    from council.cities.annotate import parse_json
+    from council.cities.annotate import call_cost, parse_json
     from council.cities.annotators import get as get_annotator
     from kern import llm, prompts
 
@@ -466,18 +466,29 @@ def stance_all(main: CitiesStore, model: str = EMBED_MODEL,
                           {"role": "user", "content": prompts.render(
                               ann.prompt_user, gruppe=gruppe,
                               paper=text[:ann.input_chars * 4])}],
-                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                temperature=ann.temperature, **ann.token_args(),
                 extra_body={}, timeout=LLM_TIMEOUT_S,
                 _feature=ann.feature)
-            nutzlast = ann.payload.model_validate(
-                parse_json(antwort.choices[0].message.content or ""))
         except Exception as e:  # noqa: BLE001 — eine Vorlage, nicht der Lauf
             with sperre:
                 stand["errors"] += 1
             logger.info("stance gescheitert (%s): %s", m["paper_id"], type(e).__name__)
             return None
-        verbrauch = getattr(antwort, "usage", None)
-        kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+        kosten = call_cost(antwort)
+        try:
+            nutzlast = ann.payload.model_validate(
+                parse_json(antwort.choices[0].message.content or ""))
+        except Exception as e:  # noqa: BLE001 — eine Vorlage, nicht der Lauf
+            # Bezahlt ist der Aufruf trotzdem (s. `annotate.call_cost`). Die
+            # gelungenen rechnet die Schleife unten ab; dieser hier kommt dort
+            # nie an.
+            with sperre:
+                stand["errors"] += 1
+                stand["cost_usd"] += kosten
+            if stopp is not None:
+                stopp.ausgeben(kosten)
+            logger.info("stance gescheitert (%s): %s", m["paper_id"], type(e).__name__)
+            return None
         return m["paper_id"], nutzlast.model_dump(), text_hash(gruppe + text), kosten
 
     # Geschrieben wird nur im Hauptthread (`council/cities/fit.py` erklärt,
@@ -607,7 +618,7 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
     aus: Wer wissen will, warum ein Papier nicht mehr mitzählt, sieht beides
     nebeneinander.
     """
-    from council.cities.annotate import parse_json
+    from council.cities.annotate import call_cost, parse_json
     from council.cities.annotators import get as get_annotator
     from kern import llm, prompts
 
@@ -627,22 +638,32 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
     system = prompts.get(ann.prompt_system)
 
     def eine_stimme(zeilen: str, erlaubt: set[str]):
-        """Ein Gegenlesen. Gibt ``(nutzlast, entfernen)`` oder wirft."""
+        """Ein Gegenlesen. Gibt ``(nutzlast, entfernen)`` oder wirft.
+
+        Läuft im Hauptthread (die Schleife unten ruft sie der Reihe nach) —
+        deshalb darf sie ``stand`` ohne Sperre anfassen.
+        """
         antwort = llm.chat_complete(
             model=ann.model, response_format={"type": "json_object"},
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": prompts.render(
                           ann.prompt_user, items=zeilen)}],
-            max_tokens=ann.max_tokens, temperature=ann.temperature,
+            temperature=ann.temperature, **ann.token_args(),
             extra_body={}, timeout=LLM_TIMEOUT_S,
             _feature=ann.feature)
+        # Erst abrechnen, dann lesen (s. `annotate.call_cost`) — hier gleich
+        # an Ort und Stelle, weil eine unlesbare Antwort unten wirft und ihr
+        # Betrag sonst nie beim Aufrufer ankäme.
+        kosten = call_cost(antwort)
+        stand["cost_usd"] += kosten
+        if stopp is not None:
+            stopp.ausgeben(kosten)
         last = ann.payload.model_validate(
             parse_json(antwort.choices[0].message.content or ""))
-        verbrauch = getattr(antwort, "usage", None)
         # Erfundene Kennungen fliegen raus — dieselbe Regel wie bei `fit`:
         # Was dem Modell nicht vorlag, kann es nicht entfernen.
         weg = {k for k in getattr(last, "drop", []) if k in erlaubt}
-        return last, weg, float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+        return last, weg
 
     for cid, mitglieder in offen:
         abbruch = stopp.grund() if stopp else None
@@ -674,11 +695,8 @@ def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
         nutzlast = None
         try:
             for _ in range(wie_oft):
-                nutzlast, weg, kosten = eine_stimme(zeilen, erlaubt)
+                nutzlast, weg = eine_stimme(zeilen, erlaubt)
                 stimmen.append(weg)
-                stand["cost_usd"] += kosten
-                if stopp is not None:
-                    stopp.ausgeben(kosten)
         except Exception as e:  # noqa: BLE001 — eine Gruppe, nicht der Lauf
             stand["errors"] += 1
             logger.info("cluster_check gescheitert (%s): %s", cid, type(e).__name__)
