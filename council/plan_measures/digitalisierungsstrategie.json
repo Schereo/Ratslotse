@@ -1,0 +1,254 @@
+{
+ "plan": "digitalisierungsstrategie",
+ "source": {
+  "label": "Umsetzungsplan zur Digitalisierungsstrategie, Abschnitte 2.2.1 bis 2.2.5",
+  "document_id": 284226,
+  "template": "24/0574",
+  "as_of": "2024-10-24",
+  "url": "https://buergerinfo.oldenburg.de/getfile.php?id=284226&type=do"
+ },
+ "count_city": null,
+ "count_note": "Erste Phase des Umsetzungsplans (2025 bis 2027). Die Stadt zählt und nummeriert die Maßnahmen nicht — die Nummer ist die Reihenfolge im Umsetzungsplan.",
+ "measures": [
+  {
+   "code": "1",
+   "title": "Fortführung der Umsetzung OZG: Online-Services und 24/7-Stadtverwaltung weiter ausbauen",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 9
+  },
+  {
+   "code": "2",
+   "title": "Bereitstellung und Fortführung des Open Data-Portals",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 9
+  },
+  {
+   "code": "3",
+   "title": "Bürgerfreundliche Dokumentenausfüllung basierend auf KI (BUKI)",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 10
+  },
+  {
+   "code": "4",
+   "title": "IoT- und LoRa-Anwendungen (erproben, evaluieren, implementieren)",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 10
+  },
+  {
+   "code": "5",
+   "title": "Analoge Teilhabe",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 11
+  },
+  {
+   "code": "6",
+   "title": "Stärkung der digitalen Kompetenz der Bevölkerung",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 11
+  },
+  {
+   "code": "7",
+   "title": "Online-Service für Ganztagsangebote inklusive Mittagsverpflegung einführen",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 12
+  },
+  {
+   "code": "8",
+   "title": "Ausbau digitaler Partizipationsangebote",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 12
+  },
+  {
+   "code": "9",
+   "title": "Online-Services für Studierende ausbauen",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 12
+  },
+  {
+   "code": "10",
+   "title": "Ehrenamtliche IT-Lotsinnen und Lotsen",
+   "field": "Mit Außenwirkung, bereits laufend",
+   "page": 13
+  },
+  {
+   "code": "11",
+   "title": "Weiterentwicklung und Vergrößern der städtischen Kommunikationswege und deren Akzeptanz als Erstinformation",
+   "field": "Mit Außenwirkung, neu",
+   "page": 13
+  },
+  {
+   "code": "12",
+   "title": "Video-Termine evaluieren",
+   "field": "Mit Außenwirkung, neu",
+   "page": 13
+  },
+  {
+   "code": "13",
+   "title": "Chatbot für Service-Anfragen",
+   "field": "Mit Außenwirkung, neu",
+   "page": 14
+  },
+  {
+   "code": "14",
+   "title": "Self Service-Terminals",
+   "field": "Mit Außenwirkung, neu",
+   "page": 14
+  },
+  {
+   "code": "15",
+   "title": "Erproben hybrider und adaptiver Unterrichtsformen",
+   "field": "Mit Außenwirkung, neu",
+   "page": 14
+  },
+  {
+   "code": "16",
+   "title": "Schaffung virtueller Orte als Kultur- und Bildungsangebote",
+   "field": "Mit Außenwirkung, neu",
+   "page": 15
+  },
+  {
+   "code": "17",
+   "title": "Neue Technologien und Entwicklungen beobachten, prüfen, evaluieren, einführen",
+   "field": "Mit Außenwirkung, neu",
+   "page": 15
+  },
+  {
+   "code": "18",
+   "title": "E-Akte / DMS flächendeckend einführen",
+   "field": "Verwaltungsintern, laufend",
+   "page": 16
+  },
+  {
+   "code": "19",
+   "title": "Prozessmanagement und Prozessoptimierung",
+   "field": "Verwaltungsintern, laufend",
+   "page": 16
+  },
+  {
+   "code": "20",
+   "title": "Zentrales Datenmanagement",
+   "field": "Verwaltungsintern, laufend",
+   "page": 16
+  },
+  {
+   "code": "21",
+   "title": "Evaluation von Online-Services",
+   "field": "Verwaltungsintern, laufend",
+   "page": 17
+  },
+  {
+   "code": "22",
+   "title": "Digitale Postausgangsstrategie (Hybridpost)",
+   "field": "Verwaltungsintern, neu",
+   "page": 17
+  },
+  {
+   "code": "23",
+   "title": "Cloud- und Kollaborationstools",
+   "field": "Verwaltungsintern, neu",
+   "page": 18
+  },
+  {
+   "code": "24",
+   "title": "Neues Intranet",
+   "field": "Verwaltungsintern, neu",
+   "page": 18
+  },
+  {
+   "code": "25",
+   "title": "Pilotierung von Robotic Process Automation-Anwendungen (RPA)",
+   "field": "Verwaltungsintern, neu",
+   "page": 18
+  },
+  {
+   "code": "26",
+   "title": "Zentralen Einkaufskatalog einführen",
+   "field": "Verwaltungsintern, neu",
+   "page": 19
+  },
+  {
+   "code": "27",
+   "title": "Nachhaltigkeitscontrolling",
+   "field": "Verwaltungsintern, neu",
+   "page": 19
+  },
+  {
+   "code": "28",
+   "title": "Ganzheitliche digitale Beratungsstruktur zum Beispiel für Gesundheit und Pflege für Bürgerinnen und Bürger",
+   "field": "Verwaltungsintern, neu",
+   "page": 19
+  },
+  {
+   "code": "29",
+   "title": "Konzept für Digital-Lotsinnen und Digital-Lotsen in der Verwaltung",
+   "field": "Verwaltungsintern, neu",
+   "page": 20
+  },
+  {
+   "code": "30",
+   "title": "Einsatz von KI im Posteingang und Geschäftslauf",
+   "field": "Verwaltungsintern, neu",
+   "page": 20
+  },
+  {
+   "code": "31",
+   "title": "Digitalisierung der Stadtgrünpflege",
+   "field": "Verwaltungsintern, neu",
+   "page": 20
+  },
+  {
+   "code": "32",
+   "title": "Laufende Sicherstellung von IT-Security",
+   "field": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+   "page": 21
+  },
+  {
+   "code": "33",
+   "title": "Erstellung von IT-Notfallplänen",
+   "field": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+   "page": 21
+  },
+  {
+   "code": "34",
+   "title": "Internes Notfallmanagement (Business Continuity Management)",
+   "field": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+   "page": 22
+  },
+  {
+   "code": "35",
+   "title": "Gestaltung zeitgemäßer Arbeitsplätze",
+   "field": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+   "page": 22
+  },
+  {
+   "code": "36",
+   "title": "Stärkung der digitalen Kompetenzen der Mitarbeitenden",
+   "field": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+   "page": 22
+  },
+  {
+   "code": "37",
+   "title": "Erhalt IuK-Support für Verwaltung und Schulen",
+   "field": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+   "page": 23
+  },
+  {
+   "code": "38",
+   "title": "Einbindung IT-Dienstleister",
+   "field": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+   "page": 23
+  },
+  {
+   "code": "39",
+   "title": "IT-Ausstattung und Haushaltsmittel nachhaltig planen",
+   "field": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+   "page": 24
+  },
+  {
+   "code": "40",
+   "title": "Einsatz von Hyperscaler- oder Open Source-Lösungen",
+   "field": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+   "page": 24
+  }
+ ]
+}

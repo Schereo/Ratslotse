@@ -88,9 +88,14 @@ test("der Rückblick zeigt, was die Verwaltung meldet — und sagt, wenn er nich
   await expect(review.getByText("Grenzen, die der Bericht selbst nennt")).toBeVisible();
   await expect(review.getByText(/scheiterte an fehlenden finanziellen Mitteln/)).toBeVisible();
   await expect(review.getByRole("link", { name: /Aktionsplan/ })).toBeVisible();
-  await page.goto("/council/plan?key=smv2025");
+  await page.goto("/council/plan?key=kai_2015");
   await expect(page.locator('section[aria-labelledby="plan-review"]')
     .getByText("Eine Auswertung hat Ratslotse im Ratsinformationssystem nicht gefunden.")).toBeVisible();
+  // Ein Stand je Maßnahme ohne eigene Vorlage ist ein Stand, keine Auswertung — die Seite sagt beides.
+  await page.goto("/council/plan?key=smv2025");
+  await expect(page.locator('section[aria-labelledby="plan-review"]')
+    .getByText(/Eine eigene Vorlage zur Auswertung .* nicht gefunden/)).toBeVisible();
+  await expect(page.locator("#plan-city-status")).toBeVisible();
   // Ein laufender Plan hat keinen Rückblick.
   await page.goto("/council/plan?key=klimaschutzplan_2035");
   await expect(page.locator("#plan-city-status")).toBeVisible();

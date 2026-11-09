@@ -1,0 +1,170 @@
+{
+ "plan": "agenda_2025_alter",
+ "source": {
+  "label": "Agenda 2025, Maßnahmenpakete der vier zentralen Bausteine",
+  "document_id": 293527,
+  "template": "25/0403",
+  "as_of": "2025-06",
+  "url": "https://buergerinfo.oldenburg.de/getfile.php?id=293527&type=do"
+ },
+ "count_city": null,
+ "count_note": "Die Agenda nummeriert ihre Maßnahmenpakete je Baustein, nennt aber keine Gesamtzahl. Ein Paket kann mehrere Teilmaßnahmen (A, B, …) enthalten.",
+ "measures": [
+  {
+   "code": "1.1",
+   "title": "Informationskampagnen",
+   "field": "Information und Beratung, gesellschaftliche Teilhabe und Partizipation",
+   "page": 15
+  },
+  {
+   "code": "1.2",
+   "title": "Digitale Teilhabe",
+   "field": "Information und Beratung, gesellschaftliche Teilhabe und Partizipation",
+   "page": 15
+  },
+  {
+   "code": "1.3",
+   "title": "Inklusive Quartiere",
+   "field": "Information und Beratung, gesellschaftliche Teilhabe und Partizipation",
+   "page": 15
+  },
+  {
+   "code": "1.4",
+   "title": "Bürgerschaftliches Engagement",
+   "field": "Information und Beratung, gesellschaftliche Teilhabe und Partizipation",
+   "page": 15
+  },
+  {
+   "code": "1.5",
+   "title": "Betroffene werden Beteiligte",
+   "field": "Information und Beratung, gesellschaftliche Teilhabe und Partizipation",
+   "page": 15
+  },
+  {
+   "code": "1.6",
+   "title": "Vereinbarkeit Pflege und Beruf",
+   "field": "Information und Beratung, gesellschaftliche Teilhabe und Partizipation",
+   "page": 16
+  },
+  {
+   "code": "1.7",
+   "title": "Existenzgründungsberatung 50+",
+   "field": "Information und Beratung, gesellschaftliche Teilhabe und Partizipation",
+   "page": 16
+  },
+  {
+   "code": "1.8",
+   "title": "Zugänglichkeit Sozialleistungen",
+   "field": "Information und Beratung, gesellschaftliche Teilhabe und Partizipation",
+   "page": 16
+  },
+  {
+   "code": "2.1",
+   "title": "Fachkräftesicherung in Pflege- und Gesundheitssektor",
+   "field": "Gesundheitliche und pflegerische Versorgung",
+   "page": 18
+  },
+  {
+   "code": "2.2",
+   "title": "Gesundheitsförderung und Prävention",
+   "field": "Gesundheitliche und pflegerische Versorgung",
+   "page": 18
+  },
+  {
+   "code": "2.3",
+   "title": "Pflegenotfall-Hotline",
+   "field": "Gesundheitliche und pflegerische Versorgung",
+   "page": 18
+  },
+  {
+   "code": "2.4",
+   "title": "Nachbarschaftspflege",
+   "field": "Gesundheitliche und pflegerische Versorgung",
+   "page": 18
+  },
+  {
+   "code": "2.5",
+   "title": "Diversitätsbewusst Pflegen",
+   "field": "Gesundheitliche und pflegerische Versorgung",
+   "page": 18
+  },
+  {
+   "code": "2.6",
+   "title": "Hochaltrige",
+   "field": "Gesundheitliche und pflegerische Versorgung",
+   "page": 19
+  },
+  {
+   "code": "2.7",
+   "title": "Smart Ageing",
+   "field": "Gesundheitliche und pflegerische Versorgung",
+   "page": 19
+  },
+  {
+   "code": "3.1",
+   "title": "Altersgerechte Mobilität und Barrierefreiheit",
+   "field": "Wohnen und Mobilität",
+   "page": 21
+  },
+  {
+   "code": "3.2",
+   "title": "Altersgerechtes Wohnen",
+   "field": "Wohnen und Mobilität",
+   "page": 21
+  },
+  {
+   "code": "4.1",
+   "title": "Demografischer Wandel als Querschnittsthema",
+   "field": "Steuerung und Vernetzung",
+   "page": 24
+  },
+  {
+   "code": "4.2",
+   "title": "Altenhilfe- und Pflegeplanung",
+   "field": "Steuerung und Vernetzung",
+   "page": 24
+  },
+  {
+   "code": "4.3",
+   "title": "Stadtteilszenarien",
+   "field": "Steuerung und Vernetzung",
+   "page": 24
+  },
+  {
+   "code": "4.4",
+   "title": "Bündnis Pflege",
+   "field": "Steuerung und Vernetzung",
+   "page": 25
+  },
+  {
+   "code": "4.5",
+   "title": "(De-)Zentrale Verantwortungsgemeinschaften",
+   "field": "Steuerung und Vernetzung",
+   "page": 25
+  },
+  {
+   "code": "4.6",
+   "title": "Forschung und Transfer",
+   "field": "Steuerung und Vernetzung",
+   "page": 25
+  },
+  {
+   "code": "4.7",
+   "title": "Interkommunaler Austausch",
+   "field": "Steuerung und Vernetzung",
+   "page": 25
+  },
+  {
+   "code": "4.8",
+   "title": "Vernetzung Wohlfahrtsverbände",
+   "field": "Steuerung und Vernetzung",
+   "page": 25
+  },
+  {
+   "code": "4.9",
+   "title": "Interessensvertretung",
+   "field": "Steuerung und Vernetzung",
+   "page": 25
+  }
+ ]
+}

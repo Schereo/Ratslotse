@@ -197,6 +197,22 @@ def client(rats_db):
     app.dependency_overrides.clear()
 
 
+def test_ein_gescheiterter_aenderungsantrag_macht_den_plan_nicht_abgelehnt(rats_db):
+    """Unter derselben TOP-Nummer stehen der Hauptbeschluss und die Einzelabstimmungen über
+    Änderungsanträge. Zum Plan gehört der Hauptbeschluss, egal in welcher Reihenfolge die
+    Zeilen in der Tabelle liegen."""
+    with rats_db._conn:
+        rats_db._conn.executemany(
+            "INSERT INTO council_decisions (id, ksinr, position, kind, item_number, parent_item, title, outcome) "
+            "VALUES (?, 1, ?, 'subvote', '5', '5', ?, 'rejected')",
+            [(56, 2, "Änderungsantrag: Punkt 20 streichen"), (54, 0, "Änderungsantrag: Punkt 3 ergänzen")])
+    punkt = next(r for r in rats_db.plan_tracking_rows() if r["agenda_item_id"] == 1)
+    assert (punkt["decision_id"], punkt["outcome"]) == (55, "accepted")
+    plan_tracking.build(rats_db)
+    beschluss = next(i for i in rats_db.plan_items("klimaschutzplan_2035") if i["role"] == "adoption")
+    assert beschluss["outcome"] == "accepted"
+
+
 def test_leer_ist_kein_fehler(client):
     r = client.get("/api/council/plans")
     assert r.status_code == 200

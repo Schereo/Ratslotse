@@ -285,3 +285,21 @@ def test_modell_sucht_heraus_und_wird_ohne_modell_geprueft():
     quoted = [m for g in block["groups"] for m in g["measures"] if m["status_quote"]]
     assert len(quoted) == block["status_count"]
     assert plan_pages.measures_block("waermeplan")["status_by_model"] is False
+
+
+def test_smv2025_stand_aus_dem_anhang_zum_laermaktionsplan():
+    """Der Stand jeder Einzelmaßnahme steht in einem Anhang zu einem ANDEREN Beschluss (24/0293/1).
+    Jede Maßnahme der Liste hat genau einen Stand, die Verteilung geht in der Gesamtzahl auf,
+    und die Abweichung zwischen Wort und Kürzel steht als Hinweis da."""
+    status = plan_state.load("smv2025")
+    snap = status["snapshots"][-1]
+    codes = [m["code"] for m in plans.measures("smv2025")["measures"]]
+    assert [m["code"] for m in snap["measures"]] == codes and snap["total"] == len(codes) == 112
+    assert sum(c["count"] for c in snap["counts"]) == 112 and snap["complete"]
+    assert {c["status_raw"]: c["count"] for c in snap["counts"]} == {
+        "Umgesetzt": 40, "in Umsetzung": 35, "in Planung": 11, "Vorüberlegungen": 15,
+        "noch nicht begonnen": 2, "nicht umgesetzt / aufgegeben": 9}
+    assert snap["source"]["template"] == "24/0293/1" and snap["as_of"] == "2023-10"
+    assert any("weicht das Wort" in n["text"] for n in status["notes"])
+    # Abgelöst vom Mobilitätsplan: Der Berichtsstand bleibt „fortgeschrieben“, der Stand ändert daran nichts.
+    assert plan_state.report_state(plans.PLANS["smv2025"], [], "2026-11-10")["state"] == "continued"

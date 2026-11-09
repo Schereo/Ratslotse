@@ -511,6 +511,10 @@ def indicator_blocks(key: str) -> list[dict]:
 
 #: „Nicht gefunden“ statt „gibt es nicht“: Ratslotse sieht nur das Ratsinformationssystem.
 NO_EVALUATION = "Eine Auswertung hat Ratslotse im Ratsinformationssystem nicht gefunden."
+#: Es gibt einen Stand je Maßnahme, aber keine Vorlage, die den Plan auswertet (smv2025:
+#: der Stand steht in einem Anhang zu einem anderen Beschluss).
+NO_EVALUATION_TEMPLATE = ("Eine eigene Vorlage zur Auswertung hat Ratslotse im Ratsinformationssystem nicht "
+                          "gefunden. Den Stand der Maßnahmen nennt die Stadt in einer Anlage.")
 
 
 def review_block(plan: register.Plan, state: str, evaluation: dict | None) -> dict | None:
@@ -529,13 +533,14 @@ def review_block(plan: register.Plan, state: str, evaluation: dict | None) -> di
         planned.append({"label": "Maßnahmen", "value": str(len(listed["measures"]))})
     statements = [{"kind": s["kind"], "text": s["text"], "source_label": s["source_label"],
                    "template_number": s.get("template")} for s in plan_state.review_statements(plan.key)]
+    has_status = plan_state.load(plan.key) is not None
     return {
         "planned": planned,
         "evaluation": evaluation,
-        "no_evaluation_note": None if evaluation else NO_EVALUATION,
+        "no_evaluation_note": None if evaluation else (NO_EVALUATION_TEMPLATE if has_status else NO_EVALUATION),
         "statements": statements,
         "continued_by": _neighbour(plan.successor),
-        "has_status": plan_state.load(plan.key) is not None,
+        "has_status": has_status,
     }
 
 
