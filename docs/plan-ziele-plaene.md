@@ -42,10 +42,11 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 | Phase | Stand | Wo |
 |---|---|---|
 | 0 Register und Wächter | auf dev | #1812 |
-| 1 Zuordnung, Endpunkte, erste Seite | PR offen, wartet auf Tims Bild-OK | #1813 |
-| 2 Maßnahmenlisten der fünf Pilotpläne | fertig, PR folgt nach #1813 | Zweig `claude/plaene-phase-2` |
-| Gestaltungsrunde | läuft in einer eigenen Sitzung und überarbeitet Übersicht und Detailseite | Ergebnis wird in § 3 nachgezogen |
-| 3 bis 6 | nicht begonnen | § 5 |
+| 1 Zuordnung, Endpunkte, erste Seite | auf dev | #1818 (#1813 ist darin aufgegangen) |
+| 2 Maßnahmenlisten der fünf Pilotpläne | auf dev | #1818 |
+| Gestaltungsrunde | auf dev: Zeitbänder auf einer Achse, Kopfbühne, Zeitstrahl mit Lücken | #1818; § 3 beschreibt die Inhalte, die Form steht in `DESIGNSPRACHE.md` |
+| 3 Stand, Berichtsstand, Kennzahlen | erster Teil gebaut: Berichtsstand für alle Pläne, Stand laut Stadt für Klimaschutzplan und Wärmeplan | § 5 nennt, was offen ist |
+| 4 bis 6 | nicht begonnen | § 5 |
 
 Gemessen im Abzug nach den Phasen 0 bis 2:
 
@@ -232,8 +233,8 @@ verschiedenen Formen:
 | Form | Beispiel | Lesbar wie |
 |---|---|---|
 | a) Zählblock im Vorlagentext | KSP: „Aktuell sind die 97 Klimaschutzmaßnahmen wie folgt umgesetzt: 10 Zuordnung Amt, 15 In Planung, 9 Umsetzungsreif, 34 In Umsetzung, 20 Realisiert, 9 Ein-/Zurückgestellt“ (`26/0750`) | per Regex — aber **nur in zwei der 15 Berichte** (s. u.) |
-| b) Tabelle je Maßnahme im Text | Wärmeplan `26/0236` (Stand und Zielsetzung je Maßnahme); Ernährungsstrategie `26/0431` für A1 bis A10 | Parser |
-| b′) dieselbe Tabelle **als Bild** | Ernährungsstrategie `26/0431` ab A11: fünf JPEG-Bilder auf den Seiten 3 bis 6 | Texterkennung (`council/ocr.py`, ein Bildmodell, also mit Kostenmessung) oder 58 Zeilen von Hand |
+| b) Abschnitt oder Tabelle je Maßnahme im Text | Wärmeplan `26/0236`: sechs der 18 Maßnahmen stehen unter „Maßnahmen in Umsetzung“, für die übrigen zwölf nennt die Vorlage ein Vorhaben und keinen Stand. Ernährungsstrategie `26/0431`: 13 der 68 Zeilen (A1 bis A12, A44, A52) | Parser |
+| b′) dieselbe Tabelle **als Bild** | Ernährungsstrategie `26/0431`: die übrigen 55 Zeilen in fünf JPEG-Bildern auf den Seiten 3 bis 6 | Texterkennung (`council/ocr.py`, ein Bildmodell, also mit Kostenmessung) oder 55 Zeilen von Hand. Bis dahin zeigen wir keine Verteilung — 13 von 68 wären ein schiefes Bild. |
 | c) Tabelle je Maßnahme in einer PDF-Anlage, Stand **als Zellfarbe** | Aktionsplan Gewalt, Anhang 4.1: dunkelgrün = umgesetzt, hellgrün = einmal umgesetzt, wiederholungsbedürftig, pastellgrün = abgegeben, gelb = begonnen, rot = nicht umgesetzt, weiter nötig, grau = eingestellt | Der Text allein verliert den Stand. Die Füllfarben lassen sich mit PyMuPDF (`page.get_drawings()`) lesen. |
 | d) Fließtext-Sachstand | Mobilitätsplan `26/0190`, Integrationskonzept `26/0670`, Wohnungslosenhilfe | Modell je Maßnahme mit Zitat, danach Review |
 | e) Mündlicher Bericht ohne Text | 7 zum Aktionsplan Gewalt (2019–2025); im ganzen Bestand stehen rund 540 Tagesordnungspunkte „mündlicher Bericht“ | nur Termin und Gremium, dazu das Protokoll, falls vorhanden |
@@ -267,7 +268,19 @@ Vorlagen taugen als Gegenprobe. Was das Portal sonst hergibt und was nicht:
 - **Stand je Maßnahme** steht auf den Paketseiten
   (`/massnahmen/<handlungsfeld>/<paket>`), im Wortlaut der Stadt („in
   Umsetzung“, „Realisiert, Daueraufgabe“, „Planung“), mit Kennung
-  (`FußRad_07`) und Federführung.
+  (`FußRad_07`) und Federführung — **aber nicht verlässlich, und deshalb
+  übernehmen wir ihn nicht** (Tims Entscheidung 09.11.2026, § 8 Nr. 8).
+  Gemessen: Dieselbe Maßnahme steht auf mehreren Seiten mit verschiedenen
+  Ständen (sechs Fälle, etwa `Parken_02` einmal „Planung“ und einmal
+  „Realisiert“), drei verschiedene Maßnahmen tragen die Kennung `Bildung_01`,
+  und nur 57 der 90 Maßnahmen unserer Liste lassen sich nach Kennung und Titel
+  eindeutig lesen. Die Summe geht nicht in der Reihe auf. Ein veraltetes
+  „Planung“ neben einer Maßnahme, die die Stadt anderswo als „Realisiert“
+  führt, wäre ein falscher Vorwurf mit Quellenangabe.
+  `python scripts/plan_status.py --portal-massnahmen` zeigt den Abgleich.
+- **Die Kurzübersicht der Stadt hat selbst einen Fehler:** `FußRad_01` und
+  `FußRad_02` tragen dort denselben Titel. Unsere Liste gibt die Quelle
+  wieder; das Portal nummeriert an der Stelle anders.
 - **Technik:** eine statische Astro-Seite; die Daten stehen als JSON in den
   `props` der `<astro-island>`-Elemente und lassen sich ohne Browser lesen.
   Das Diagramm „Fortschrittsbarometer“ lädt dagegen erst zur Laufzeit aus
@@ -747,13 +760,14 @@ Was sich ohne Modell lesen lässt, zuerst:
   die Gegenprobe der zehn Pläne „Kein Bericht gefunden“ gegen ihren Plantext
   und, wo nötig, `review_due` im Register. Daraus fällt Art 3 der offenen
   Aufträge ab (§ 3.5).
-- **Klimaschutzplan:** die Reihe 2022 bis 2026 und der Stand je Maßnahme aus
-  dem Klimaportal (`scripts/plan_status.py`, eigener User-Agent, mindestens
+- **Klimaschutzplan:** die Reihe 2022 bis 2026 aus dem Klimaportal — ohne den
+  Stand je Maßnahme, s. § 1.3 (`scripts/plan_status.py`, eigener User-Agent, mindestens
   zwei Sekunden Abstand, Abzug im Zwischenspeicher). Gegenprobe: Die Spalten
   2025 und 2026 müssen den Zählblöcken in `26/0074` und `26/0750`
   entsprechen. Sperrt das Portal den Abruf, fragen wir Tim — es gibt keinen
   Umweg auf eigene Faust.
-- **Wärmeplan:** Stand und Zielsetzung je Maßnahme aus `26/0236`, Parser.
+- **Wärmeplan:** aus `26/0236`, Parser: sechs von 18 Maßnahmen „in
+  Umsetzung“, gegen das Zahlwort der Vorlage geprüft.
 - **Aktionsplan Gewalt 2020:** Liste und Zellfarben aus Anhang 4.1 der
   Evaluation mit PyMuPDF. Gegenprobe: 87 Zeilen, aufgeteilt 8 + 56 + 23.
 - **Kennzahl:** THG-Bilanz als `council/plan_indicators/klimaschutzplan_2035.json`
@@ -767,8 +781,8 @@ Was sich ohne Modell lesen lässt, zuerst:
 
 Dann, jeweils erst nach einer Messung mit `limit=20`:
 
-- **Ernährungsstrategie:** A1 bis A10 per Parser aus `26/0431`; ab A11 die
-  fünf Bilder über `council/ocr.py` (ein Bildmodell) — oder 58 Zeilen von
+- **Ernährungsstrategie:** 13 Zeilen per Parser aus `26/0431`; die übrigen 55
+  aus fünf Bildern über `council/ocr.py` (ein Bildmodell) — oder von
   Hand, falls die Texterkennung an Prozentstufen und Kennungen scheitert.
   Gegenprobe: 68 Zeilen, jede Kennung genau einmal.
 - **Mobilitätsplan:** ein Modell je Maßnahme mit wörtlichem Beleg aus
@@ -965,6 +979,9 @@ Die Nummern 1 bis 6 sind die der ersten Fassung.
    fünf Stufen nach Dritteln (§ 3.3a). Ein bewertendes Wort je Plan gibt es
    nicht; auch eine Zwischenlösung (Stufen nur für ausgezählte, abgelaufene
    Pläne) entfällt.
+8. **Kein Stand je Maßnahme aus dem Klimaportal** (neu, 09.11.2026): Die
+   Paketseiten widersprechen sich selbst (§ 1.3). Übernommen wird nur die
+   Jahresreihe, die sich mit den Ratsvorlagen deckt.
 
 ### Offen
 

@@ -28,7 +28,7 @@ import { STAFFEL, staffelStil } from "@/components/staffel";
 import { useFetch } from "@/lib/use-fetch";
 import { planHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
-import { byField, formatDate, reportCount, type PlanAxis, type PlanCard, type PlanGroup, type PlanOverview } from "@/lib/plans";
+import { byField, formatDate, reportCount, type PlanAxis, type PlanCard, type PlanGroup, type PlanOverview, statusLine } from "@/lib/plans";
 
 /** Text · Zeitband · Berichtslage. Schmal untereinander, ab Tablet-Breite
  *  steht das Band neben dem Text, breit bekommt die Berichtslage ihre Spalte.
@@ -192,6 +192,20 @@ function ReportState({ plan }: { plan: PlanCard }) {
         <p className="flex gap-1.5 text-muted-foreground">
           <CircleDashed className="mt-[3px] h-3.5 w-3.5 shrink-0" aria-hidden />
           <span className="min-w-0">{plan.report_note}</span>
+        </p>
+      )}
+      {plan.report_state.state === "not_yet_due" && (
+        <p className="text-muted-foreground">
+          {plan.report_state.label}{plan.report_state.hint ? ` · ${plan.report_state.hint}` : ""}
+        </p>
+      )}
+      {plan.status_brief && (
+        // In den Worten der Stadt, mit Herkunft und Stichtag — keine Quote, kein Balken (§ 3.1).
+        <p className="text-foreground">
+          {statusLine(plan.status_brief)}
+          <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+            {plan.status_brief.origin_label} · Stand {plan.status_brief.as_of_label}
+          </span>
         </p>
       )}
     </div>

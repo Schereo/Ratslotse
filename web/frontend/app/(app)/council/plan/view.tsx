@@ -13,6 +13,7 @@ import { Suspense, useState } from "react";
 import { notFound, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { DetailSkeleton } from "@/components/ui";
+import { CityStatus } from "@/components/plans/city-status";
 import { Decisions } from "@/components/plans/decisions";
 import { Measures } from "@/components/plans/measures";
 import { PlanHeader } from "@/components/plans/plan-header";
@@ -69,6 +70,7 @@ function PlanInner() {
         hasAside && "@4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-start")}>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
           <ReportLog plan={data} target={target} />
+          {data.city_status && <CityStatus status={data.city_status} />}
           {data.measures && <Measures measures={data.measures} />}
         </div>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
