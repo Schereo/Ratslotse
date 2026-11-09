@@ -946,6 +946,13 @@ Das Klimaportal ist nach Phase 3 gewandert. Hier bleibt:
 
 ### Phase 6: Pflege (laufend)
 
+**Gebaut:** Der nächtliche Protokoll-Lauf trägt zwei Kennzahlen ins
+Cron-Protokoll des Admin-Panels: „Pläne: Stand veraltet“ (ein Bericht ist
+jünger als die geprüfte Statusdatei) und „Pläne: Frist fällig“ (Laufzeitende
+oder Überprüfung in den nächsten sechs Monaten oder schon verstrichen, ohne
+Nachfolger). `scripts/pruefe_plaene.py` nennt die Pläne beim Namen; beide
+rechnen mit derselben Regel (`plan_state.maintenance`).
+
 - Neue Berichte einer Reihe hängen sich im Cron selbst an.
 - **Neuer Bericht, alter Stand:** `pruefe_plaene.py` meldet es; der Stand wird
   per Skript und PR nachgezogen. Beim Klimaschutzplan ist das dreimal im

@@ -283,10 +283,21 @@ def build(store) -> dict:
     links += measure_links
     store.replace_plan_tracking(items, links)
     per_plan = {key: sum(1 for i in items if i["plan_key"] == key) for key in register.PLANS}
+    # Pflege (Phase 6): Was nachzuziehen ist, landet als Kennzahl im Cron-Protokoll —
+    # ein neuer Bericht ohne neuen Stand, eine Frist, die ein Plan sich selbst gesetzt hat.
+    from datetime import date  # noqa: PLC0415
+
+    from council import plan_state  # noqa: PLC0415 — plan_state importiert das Register, nicht umgekehrt
+    by_plan: dict[str, list[dict]] = {}
+    for item in items:
+        by_plan.setdefault(item["plan_key"], []).append(item)
+    upkeep = plan_state.maintenance(by_plan, date.today().isoformat())
     return {
         "plan_items": len(items),
         "plan_reports": sum(1 for i in items if i["role"] in ("report", "evaluation")),
         "plan_mentions": len(links) - len(measure_links),
         "plan_measure_links": len(measure_links),
         "plans_without_items": sum(1 for n in per_plan.values() if n == 0),
+        "plan_status_stale": len(upkeep["stale_status"]),
+        "plans_due": len(upkeep["due"]),
     }

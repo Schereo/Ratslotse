@@ -235,6 +235,9 @@ def main(fehler: list[str] | None = None) -> dict:
         "Wortbeiträge": wstats["contributions"],
         "Grundakten": akten["akten"],
         "Plan-Berichte": plaene["plan_reports"],
+        # Pflege der Pläne: > 0 heißt „scripts/pruefe_plaene.py ansehen“.
+        "Pläne: Stand veraltet": plaene.get("plan_status_stale", 0),
+        "Pläne: Frist fällig": plaene.get("plans_due", 0),
         "Vorlagen geladen": vstats["fetched"],
         "Beschlüsse mit Ortszuordnung": lstats["assigned"],
         "Orte geokodiert": geostats["located"],
