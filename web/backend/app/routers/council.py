@@ -5816,6 +5816,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     staedte_rows = []
 
             debatten_rows: list[dict] = []
+            newest_speech_ids: set[int] = set()
             # Kommende oder protokolllose Sitzung: Es KANN noch keine Debatte
             # dieser Sitzung geben — die Ähnlichkeitssuche fände nur Beiträge
             # aus ALTEN Sitzungen, und die stünden als „Aus den Ratsdebatten"
@@ -5865,7 +5866,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                             candidates = linked + candidates
                     elif person:
                         debatten_rows = emb.search_wortbeitraege_von_person(
-                            store, q_suche, person["nachname"])
+                            store, q_suche, person["nachname"],
+                            top_k=qa.PERSON_SPEECHES_TOP, name=person["name"])
                     else:
                         hits_w = emb.search_wortbeitraege(
                             store, q_suche, expanded, top_k=qa.ASK_WORTBEITRAG_TOP,
@@ -5908,6 +5910,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                             debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
                                 extra, max_gesamt=qa.DEBATTE_TITEL_EXTRA * 2)
                                 if w["id"] not in have]
+                        # … und zu den Beschlüssen im Prompt, die JÜNGER sind
+                        # als die ersten acht (qa.newest_beyond_head). Ihre
+                        # Beiträge hält die Diät fest wie die der Akte.
+                        newest = qa.newest_beyond_head(candidates, limit=QA_ANSWER_N)
+                        if newest:
+                            have = {d["id"] for d in debatten_rows}
+                            newest_rows = [w for w in store.wortbeitraege_zu_beschluessen(
+                                newest, max_gesamt=qa.DEBATTE_NEUESTE_MAX,
+                                max_je_top=qa.DEBATTE_NEUESTE_JE_TOP) if w["id"] not in have]
+                            debatten_rows += newest_rows
+                            newest_speech_ids = {w["id"] for w in newest_rows}
                     # Zusagen der Verwaltung als EIGENER Kanal: Im allgemeinen
                     # Debatten-Ranking gingen sie unter (1 von 19 Belegen; selbst
                     # auf „Was hat die Verwaltung zugesagt?" kam keine), weil sie
@@ -6444,8 +6457,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Zweckentfremdung 70/70 → 40–65 %, 18.10.2026).
             if (features.an("kontext-diaet") and typ not in ("session", "person")
                     and not qa.fraktionsfrage(analyse) and not einfach):
-                debatten_prompt = qa.debatten_diaet(
-                    debatten_rows, ctx, set(akte_prompt["speech_ids"]) if akte_prompt else None)
+                keep = set(akte_prompt["speech_ids"]) if akte_prompt else set()
+                debatten_prompt = qa.debatten_diaet(debatten_rows, ctx, keep | newest_speech_ids)
                 zeiten["kontext_debatten_ids"] = [d["id"] for d in debatten_prompt]
             # Belegnotizen (Schalter `belegnotizen`): vor der Antwort je Dokument
             # eine Notiz, was es zur Frage beiträgt — oben im Kontext, wo das
