@@ -4890,6 +4890,8 @@ class PlanDetail(PlanCard):
     indicators: list[PlanIndicator]
     #: Nur für abgelaufene und abgelöste Pläne.
     review: PlanReview | None
+    #: Die Seite, auf der die Stadt den Plan selbst vorstellt (oldenburg.de oder Klimaportal).
+    website: str | None
     timeline: PlanTimeline
     runway: PlanRunway | None
     #: „Seit dem Beschluss · 3 Jahre, 10 Monate“ — nur für Pläne, die laufen oder in Arbeit sind.

@@ -224,3 +224,55 @@ def review_statements(key: str) -> list[dict]:
     if not path.exists():
         return []
     return json.loads(path.read_text(encoding="utf-8"))["statements"]
+
+
+# ── Pflege ─────────────────────────────────────────────────────────────────
+
+#: So viele Tage vor einer Frist des Plans (Laufzeitende, Überprüfung) fällt sie auf.
+DUE_SOON_DAYS = 183
+
+
+def stale_status(key: str, items: list[dict]) -> str | None:
+    """Datum eines Berichts, der jünger ist als der geprüfte Stand des Plans — oder ``None``.
+
+    Die Statusdateien wachsen nicht von selbst. Der Bericht, aus dem der Stand
+    stammt (oder der ihn bestätigt), zählt nicht: Er wird nur später beraten.
+    """
+    stand = city_status(key)
+    if not stand:
+        return None
+    latest = stand["latest"]
+    source = latest["source"].get("template") or (latest.get("confirmed_by") or {}).get("template")
+    stem = "/".join(source.split("/")[:2]) if source else None
+    until = period_end(latest["as_of"]).isoformat()
+    newer = [i["date"] for i in items if i["role"] in REPORT_ROLES and i["date"] > until
+             and not (stem and (i.get("template_number") or "").startswith(stem))]
+    return max(newer, default=None)
+
+
+def due_dates(plan: register.Plan, today: str) -> list[dict]:
+    """Fristen, die der Plan sich selbst gesetzt hat und die verstrichen sind oder bald anstehen.
+
+    Für die Pflege des Registers, nicht für die Seite: Ein abgelaufener Plan
+    ohne Nachfolger braucht einen Blick, ob es inzwischen einen gibt.
+    """
+    if plan.successor or plan.concluded or plan.adopted is None:
+        return []
+    now = date.fromisoformat(today)
+    out = []
+    for kind, iso in (("end", plan.end), ("review", plan.review_due)):
+        if not iso:
+            continue
+        when = period_end(iso)
+        if (when - now).days <= DUE_SOON_DAYS:
+            out.append({"kind": kind, "date": when.isoformat(), "passed": when < now})
+    return out
+
+
+def maintenance(items_by_plan: dict[str, list[dict]], today: str) -> dict:
+    """Was am Register und an den Statusdateien nachzuziehen ist — für Cron-Kennzahlen und Prüfskript."""
+    stale = {key: found for key in keys()
+             if key in register.PLANS and (found := stale_status(key, items_by_plan.get(key, [])))}
+    due = {plan.key: found for plan in register.PLANS.values()
+           if plan.kind != "reference" and (found := due_dates(plan, today))}
+    return {"stale_status": stale, "due": due}

@@ -409,6 +409,10 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
         office="Amt für Personal- und Verwaltungsmanagement",
         adopted=Decision("2024-06-17", "24/0362", mode="noted"),
         start="2024", end="2026",
+        # Der Plan sieht keinen Zwischenbericht vor: Ausgewertet wird er im Folgeplan,
+        # nach Ablauf. Ohne diese Frist stünde er zwei Jahre nach der Kenntnisnahme
+        # unter „Kein Bericht gefunden“ — ein Vorwurf, den der Plan selbst nicht trägt (§ 3.3a).
+        review_due="2026",
         predecessor="gleichstellungsplan_2021",
         report_patterns=_GLEICHSTELLUNGSPLAN,
         note="Pflichtplan nach dem Niedersächsischen Gleichberechtigungsgesetz für das "
@@ -658,6 +662,40 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
 
 #: Die geprüften Maßnahmenlisten (Phase 2): eine JSON-Datei je Plan, gebaut von
 #: ``scripts/plan_massnahmen.py`` aus den Dokumenten der Stadt und im PR geprüft.
+#: Die Seite der Stadt zum Plan (Phase 5b). Aus der Seitenübersicht von oldenburg.de und
+#: dem Klimaportal, jede Adresse einzeln abgerufen und gegen ihre Überschrift geprüft
+#: (09.11.2026; ``robots.txt`` beider Seiten erlaubt den Abruf). Nur der Verweis —
+#: Texte und Dokumente der Seiten übernimmt Ratslotse nicht.
+PLAN_WEBSITES: dict[str, str] = {
+    "eek": "https://www.oldenburg.de/startseite/stadtraum/planen-bauen/stadtentwicklungsplanung/konzepte/einzelhandelsentwicklungskonzept.html",
+    "step2025": "https://www.oldenburg.de/startseite/stadtraum/planen-bauen/stadtentwicklungsplanung/konzepte/stadtentwicklungsprogramm-step2025.html",
+    "innenstadtstrategie": "https://www.oldenburg.de/startseite/stadtraum/planen-bauen/stadtentwicklungsplanung/konzepte/innenstadtstrategie.html",
+    "integrationskonzept_2020": "https://www.oldenburg.de/startseite/leben-in-oldenburg/gesellschaft-soziales/zuwanderung-integration/amt-fuer-zuwanderung-und-integration/integrationskonzept.html",
+    "mobilitaetsplan_2030": "https://www.oldenburg.de/startseite/leben-umwelt/verkehr-mobilitaet/mobilitaetsplan-oldenburg-2030.html",
+    "masterplan_stadtgruen": "https://www.oldenburg.de/startseite/stadtraum/umwelt/gruenes-oldenburg/masterplan-stadtgruen.html",
+    "isek_2035": "https://www.oldenburg.de/startseite/stadtraum/planen-bauen/isek-oldenburg-2050-2035.html",
+    "demografiestrategie": "https://www.oldenburg.de/startseite/leben-in-oldenburg/gesellschaft-soziales/strategische-sozialplanung/themen-und-projekte/demografiestrategie.html",
+    "digitalisierungsstrategie": "https://www.oldenburg.de/startseite/rathaus/digitalisierung/digitalisierungsstrategie.html",
+    "nachhaltigkeitsleitbild": "https://www.oldenburg.de/startseite/stadtraum/umwelt/nachhaltigkeit/nachhaltigkeitsleitbild.html",
+    "klimaanpassungskonzept": "https://www.oldenburg.de/startseite/stadtraum/umwelt/klima/klimaanpassung/klimaanpassungskonzept.html",
+    "kita_ausbau": "https://www.oldenburg.de/startseite/wissenschaft-bildung/kindertagesbetreuung/kita-ausbau.html",
+    "baumstrategie": "https://www.oldenburg.de/startseite/stadtraum/umwelt/naturschutz-und-landschaftspflege/baum-und-gehoelzschutz/baumerhalt-und-entwicklungsstrategie.html",
+    "agenda_2025_alter": "https://www.oldenburg.de/startseite/leben-in-oldenburg/gesellschaft-soziales/strategische-sozialplanung/themen-und-projekte/agenda-2025.html",
+    "smv2025": "https://www.oldenburg.de/startseite/stadtraum/verkehr-mobilitaet/strategieplan-mobilitaet-und-verkehr.html",
+    "wohnraumversorgungskonzept": "https://www.oldenburg.de/startseite/leben-in-oldenburg/wohnen/wohnkonzept.html",
+    "sportentwicklungsplan_2009": "https://www.oldenburg.de/startseite/leben-in-oldenburg/sport-freizeit/sport/sportbuero/sportentwicklungsplanung.html",
+    "inklusion_stadt_fuer_alle": "https://www.oldenburg.de/startseite/leben-in-oldenburg/gesellschaft-soziales/strategische-sozialplanung/politischer-auftrag/inklusion-und-teilhabe-in-oldenburg.html",
+    "klimaschutzplan_2035": "https://klimaportal.oldenburg.de/massnahmen",
+    "waermeplan": "https://klimaportal.oldenburg.de/kwp",
+    "kai_2015": "https://www.oldenburg.de/startseite/leben-in-oldenburg/gesellschaft-soziales/strategische-sozialplanung/politischer-auftrag/inklusion-und-teilhabe-in-oldenburg.html",
+}
+
+
+def website(key: str) -> str | None:
+    """Adresse der Seite, auf der die Stadt den Plan selbst vorstellt — oder ``None``."""
+    return PLAN_WEBSITES.get(key)
+
+
 MEASURES_DIR = Path(__file__).resolve().parent / "plan_measures"
 
 

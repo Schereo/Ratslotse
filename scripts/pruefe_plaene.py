@@ -118,7 +118,7 @@ def pruefe(conn: sqlite3.Connection, heute: str | None = None) -> list[Befund]:
         if plan.review_due and _ende_als_datum(plan.review_due) < heute and not plan.successor:
             befunde.append(Befund(plan.key, "hinweis",
                                   f"Überprüfung war bis {plan.review_due} vorgesehen"))
-    befunde.extend(_pruefe_stand(conn))
+    befunde.extend(_pruefe_stand(conn, heute))
     befunde.extend(_pruefe_rueckblick(conn))
     return befunde
 
@@ -143,29 +143,28 @@ def _pruefe_rueckblick(conn: sqlite3.Connection) -> list[Befund]:
     return befunde
 
 
-def _pruefe_stand(conn: sqlite3.Connection) -> list[Befund]:
-    """Neuer Bericht, alter Stand: Die Statusdateien (``council/plan_status/``) wachsen
-    nicht von selbst. Liegt der jüngste Bericht einer Reihe hinter der jüngsten
-    Momentaufnahme, ist ``scripts/plan_status.py`` dran."""
-    befunde: list[Befund] = []
-    for key in plan_state.keys():
-        stand = plan_state.city_status(key)
-        if key not in plans.PLANS or not stand:
-            continue
-        # Der Bericht, aus dem der Stand stammt, ist kein „neuerer Bericht“ — er wird nur später beraten.
-        quelle = stand["latest"]["source"].get("template") or (stand["latest"].get("confirmed_by") or {}).get("template")
-        stamm = "/".join(quelle.split("/")[:2]) + "%" if quelle else ""
-        try:
-            bericht = conn.execute(
-                "select max(date) from council_plan_items where plan_key = ? and role in ('report', 'evaluation') "
-                "and (template_number is null or template_number not like ?)", (key, stamm)).fetchone()[0]
-        except sqlite3.OperationalError:  # Zuordnung noch nie gebaut
-            return befunde
-        bis = plan_state.period_end(stand["latest"]["as_of"]).isoformat()
-        if bericht and bericht > bis:
-            befunde.append(Befund(key, "hinweis",
-                                  f"Bericht vom {bericht} ist jünger als der Stand ({stand['latest']['as_of']}) — "
-                                  f"python scripts/plan_status.py --nur {key}"))
+def _pruefe_stand(conn: sqlite3.Connection, heute: str) -> list[Befund]:
+    """Pflege (Phase 6): Neuer Bericht, alter Stand — die Statusdateien (``council/plan_status/``)
+    wachsen nicht von selbst. Dazu die Fristen, die ein Plan sich selbst gesetzt hat und die
+    in den nächsten sechs Monaten anstehen. Dieselbe Regel wie die Kennzahlen im Cron
+    (``plan_state.maintenance``)."""
+    try:
+        zeilen = conn.execute("select plan_key, role, date, template_number from council_plan_items").fetchall()
+    except sqlite3.OperationalError:  # Zuordnung noch nie gebaut
+        return []
+    je_plan: dict[str, list[dict]] = {}
+    for key, role, datum, nummer in zeilen:
+        je_plan.setdefault(key, []).append({"role": role, "date": datum, "template_number": nummer})
+    pflege = plan_state.maintenance(je_plan, heute)
+    befunde = [Befund(key, "hinweis", f"Bericht vom {bericht} ist jünger als der Stand — "
+                                      f"python scripts/plan_status.py --nur {key}")
+               for key, bericht in sorted(pflege["stale_status"].items())]
+    worte = {"end": "Laufzeit endet", "review": "Überprüfung laut Plan"}
+    for key, fristen in sorted(pflege["due"].items()):
+        for frist in fristen:
+            if not frist["passed"]:  # Verstrichene Fristen meldet die Schleife in ``pruefe`` schon.
+                befunde.append(Befund(key, "hinweis",
+                                      f"{worte[frist['kind']]} am {frist['date']} — Nachfolger oder Auswertung im Blick?"))
     return befunde
 
 

@@ -45,8 +45,13 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 | 1 Zuordnung, Endpunkte, erste Seite | auf dev | #1818 (#1813 ist darin aufgegangen) |
 | 2 Maßnahmenlisten der fünf Pilotpläne | auf dev | #1818 |
 | Gestaltungsrunde | auf dev: Zeitbänder auf einer Achse, Kopfbühne, Zeitstrahl mit Lücken | #1818; § 3 beschreibt die Inhalte, die Form steht in `DESIGNSPRACHE.md` |
-| 3 Stand, Berichtsstand, Kennzahlen | erster Teil gebaut: Berichtsstand für alle Pläne, Stand laut Stadt für Klimaschutzplan und Wärmeplan | § 5 nennt, was offen ist |
-| 4 bis 6 | nicht begonnen | § 5 |
+| 3 Stand, Berichtsstand, Kennzahlen | auf dev: Berichtsstand für alle Pläne; Stand laut Stadt für Klimaschutzplan, Wärmeplan, Aktionsplan Gewalt 2020 und Ernährungsstrategie; THG-Kennzahl. Offen: Mobilitätsplan (Fließtext, braucht ein Modell) | #1819, #1822, #1823 |
+| 4 Beschlüsse zu Maßnahmen | auf dev: Zuordnung über die Kennung der Maßnahme (ohne Modell). Offen: Vorlagen, die einen Plan nur beim Namen nennen (Modell und Golden-Set) | #1824 |
+| 4b Wo man nachfragen kann | auf dev: Pläne ohne aktuellen Bericht. „Ratsauftrag ohne Folge“ gemessen, Messziel verfehlt, nicht gebaut | #1825 |
+| 5 Rückblick | auf dev für die zehn abgelaufenen Pläne. Offen: weitere Maßnahmenlisten, iOS-Ansicht | #1825 |
+| 5b Seite der Stadt | Verweise für 21 Pläne. Offen: Dokumente der Pläne von vor 2018 | mit Phase 6 |
+| 6 Pflege | Kennzahlen im Cron-Protokoll, Hinweise im Prüfskript | mit Phase 5b |
+| Kosten | kein Modellaufruf, 0 $ | — |
 
 Gemessen im Abzug nach den Phasen 0 bis 2:
 
@@ -482,6 +487,12 @@ Gerechnet gegen das Register am 09.11.2026 (zusammen 43):
 - *In Arbeit:* Integrationskonzept 2026, Klimaanpassungskonzept.
   *Ausgewertet:* Schulentwicklungsplan 2018. *Laufzeit abgelaufen, keine
   Auswertung gefunden:* „Oldenburg – eine Stadt für alle“.
+
+Nach der Gegenprobe im Review (09.11.2026) trägt der Gleichstellungsplan
+2024–2026 seine eigene Frist im Register: Er sieht keinen Zwischenbericht vor
+und wird im Folgeplan ausgewertet. Damit stehen heute 8 Pläne unter „Noch
+kein Bericht fällig“ und 9 unter „Kein Bericht gefunden“; die Tabelle oben
+zeigt den Stand der ersten Rechnung.
 
 Zwei Folgen der Regel, die man kennen muss:
 
@@ -932,6 +943,27 @@ nichts.
 
 ### Phase 5b: Pläne von vor 2018
 
+**Gebaut (09.11.2026): der Verweis auf die Seite der Stadt.** `robots.txt` von
+oldenburg.de erlaubt den Abruf (gesperrt sind nur Systemordner und Adressen
+mit `?id=`). Aus der Seitenübersicht der Stadt (2.072 Adressen, vier Abrufe)
+sind 21 Pläne des Registers ihrer Seite zugeordnet, jede Adresse einzeln
+abgerufen und gegen ihre Überschrift geprüft (`PLAN_WEBSITES` in
+`council/plans.py`). Die Planseite verlinkt sie als „Seite der Stadt“;
+übernommen wird nur der Verweis, kein Text und kein Dokument.
+
+**Was die Seiten zu den offenen Fällen sagen:**
+
+- *Wohnkonzept:* Die Stadt stellt weiter das Wohnkonzept 2025 vor (Kurzfassung,
+  Ratsbeschluss 28.10.2013); eine neue Gesamtfassung nennt die Seite nicht.
+- *Sportentwicklungsplan:* Die Seite stellt den Plan von 2009 als geltend vor
+  (Ratsbeschluss Juni 2009, einstimmig); eine Fortschreibung nennt sie nicht.
+- *Innenstadtstrategie:* Die Seite beschreibt die Strategie, nennt aber keinen
+  Stand. *Luftreinhalteplan* und *Rad- und Fußverkehrsprogramm* haben in der
+  Seitenübersicht keine eigene Seite.
+
+**Offen:** die Dokumente der Pläne von vor 2018 selbst (PDF) als Quelle mit
+Maßnahmenliste aufzunehmen (`source = "website"`).
+
 Das Klimaportal ist nach Phase 3 gewandert. Hier bleibt:
 
 - **Pläne vor 2018 von oldenburg.de:** die Planseiten der Stadt durchsehen
@@ -945,6 +977,13 @@ Das Klimaportal ist nach Phase 3 gewandert. Hier bleibt:
 - **Kosten:** Abruf und Text 0 $, Maßnahmenlisten ≈ 0,30 $.
 
 ### Phase 6: Pflege (laufend)
+
+**Gebaut:** Der nächtliche Protokoll-Lauf trägt zwei Kennzahlen ins
+Cron-Protokoll des Admin-Panels: „Pläne: Stand veraltet“ (ein Bericht ist
+jünger als die geprüfte Statusdatei) und „Pläne: Frist fällig“ (Laufzeitende
+oder Überprüfung in den nächsten sechs Monaten oder schon verstrichen, ohne
+Nachfolger). `scripts/pruefe_plaene.py` nennt die Pläne beim Namen; beide
+rechnen mit derselben Regel (`plan_state.maintenance`).
 
 - Neue Berichte einer Reihe hängen sich im Cron selbst an.
 - **Neuer Bericht, alter Stand:** `pruefe_plaene.py` meldet es; der Stand wird
@@ -1040,15 +1079,23 @@ Die Nummern 1 bis 6 sind die der ersten Fassung.
 
 ### Offen
 
-**B. Eigener Schalter für „Ratsauftrag ohne Folge“?** (§ 3.5) Vorschlag: ja,
-`offene-auftraege`. Dann fährt „Pläne“ ohne die riskanteste Liste nach Prod,
-und sie kommt nach, wenn das Golden-Set ≥ 90 % zeigt.
+**B. Eigener Schalter für „Ratsauftrag ohne Folge“?** Stellt sich vorerst
+nicht: Die Liste verfehlt das Messziel und ist nicht gebaut (§ 5, Phase 4b).
+Die Frage kommt wieder, wenn eine Gegenprobe über den Inhalt die 90 % erreicht.
 
-**C. Die offenen Fälle** (alte Frage 7): Luftreinhalteplan, Wohnkonzept,
-Innenstadtstrategie und Rad- und Fußverkehrsprogramm nach 2022. Der Agent
-klärt sie in Phase 5b selbst (MCP, oldenburg.de) und fragt nur, was übrig
-bleibt. Falls Tim einen der Stände aus eigener Kenntnis weiß, spart das die
-Suche.
+**C. Die offenen Fälle** (alte Frage 7): Zum Wohnkonzept und zum
+Sportentwicklungsplan sagen die Seiten der Stadt, dass die alten Fassungen
+weiter gelten (§ 5, Phase 5b). Luftreinhalteplan und Rad- und
+Fußverkehrsprogramm nach 2022 bleiben ungeklärt; sie stehen unter „Wo man
+nachfragen kann“. Falls Tim einen der Stände aus eigener Kenntnis weiß, spart
+das die Suche.
+
+**D. Wie weiter mit dem, was ein Modell braucht?** Drei Stücke sind bewusst
+offen, weil sie ein Modell und ein Golden-Set brauchen und nicht nachts ohne
+Rückfrage laufen sollten: der Stand je Maßnahme beim Mobilitätsplan, die
+Zuordnung von Vorlagen, die einen Plan nur beim Namen nennen, und die
+Gegenprobe für „Ratsauftrag ohne Folge“. Jedes kostet nach Schätzung unter
+1 $; teurer ist das Prüfen.
 
 ## Anhang: Messbefehle
 
