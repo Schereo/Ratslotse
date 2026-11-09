@@ -98,8 +98,6 @@ class Plan:
     report_patterns: tuple[str, ...] = ()
     #: Titelmuster, die trotz Treffer oben NICHT dazugehören.
     exclude_patterns: tuple[str, ...] = ()
-    #: Berichte, die kein Titelmuster trifft.
-    report_templates: tuple[str, ...] = ()
     #: Titelmuster einer Reihe, die den Plan umsetzt (Kita-Maßnahmenplanung).
     implementation_patterns: tuple[str, ...] = ()
     #: Plan eines Dritten (Zweckverband), nur bei ``kind="reference"``.
@@ -113,7 +111,7 @@ class Plan:
     note: str | None = None
 
 
-_AKTIONSPLAN_GEWALT = (r"Aktionsplan(e?s)? (gegen )?Gewalt",)
+_AKTIONSPLAN_GEWALT = (r"Aktionsplan(e?s)?\W*(gegen )?Gewalt",)
 _INTEGRATIONSKONZEPT = (r"Integrationskonzept",)
 _GLEICHSTELLUNGSPLAN = (r"Gleichstellungsplan",)
 
@@ -541,7 +539,8 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
                          label="zur Kenntnis genommen, mit Auftrag zu Beschlussvorschlägen"),
         start="2018-06",
         concluded="19/0942",
-        report_patterns=(r"Schulentwicklungsplan", r"Empfehlungen des Gutachtens zur Schulentwicklung"),
+        report_patterns=(r"Schulentwicklungsplan",),
+        implementation_patterns=(r"Umsetzung der Empfehlungen des Gutachtens zur Schulentwicklung",),
         goal="bildung_betreuung",
         note="Zehn Empfehlungen führten zu zwölf Vorlagen. Im Abschlussbericht 19/0942 steht: "
              "„Alle Beschlussvorschläge wurden angenommen.“",
@@ -650,7 +649,6 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
         adopted=Decision("2009-06-22", None),
         start="2009-06",
         report_patterns=(r"Sportentwicklungsplan",),
-        report_templates=("18/0192", "18/0917"),
         note="Vor dem Bestand beschlossen; zitiert in 18/0192 und 18/0917. Eine Fortschreibung "
              "ist im Bestand nicht zu finden.",
     ),
@@ -670,7 +668,7 @@ def matches_title(plan: Plan, title: str | None) -> bool:
     """Gehört ein Tagesordnungspunkt oder eine Vorlage dem Titel nach zum Plan?"""
     if not title:
         return False
-    if not any(rx.search(title) for rx in _compiled(plan.report_patterns)):
+    if not any(rx.search(title) for rx in _compiled(plan.report_patterns + plan.implementation_patterns)):
         return False
     return not any(rx.search(title) for rx in _compiled(plan.exclude_patterns))
 
@@ -686,7 +684,7 @@ def all_templates(plan: Plan) -> list[str]:
     for d in ((plan.adopted,) if plan.adopted else ()) + plan.decisions:
         if d.template:
             out.append(d.template)
-    for t in (plan.commissioned, plan.concluded, *plan.report_templates):
+    for t in (plan.commissioned, plan.concluded):
         if t:
             out.append(t)
     return out

@@ -4387,6 +4387,149 @@ class GoalDetail(TypedDict):
     decisions: list[GoalDecision]
 
 
+PlanStatus = Literal["running", "preparing", "superseded", "concluded", "expired"]
+PlanKind = Literal["action", "framework", "statutory", "reference"]
+PlanItemRole = Literal["adoption", "amendment", "evaluation", "report", "preparation"]
+
+
+class PlanReport(TypedDict):
+    """Der jüngste Bericht zu einem Plan (``council/plan_pages.py``)."""
+    title: str
+    date: str
+    committee: str | None
+    oral: bool
+    template_number: str | None
+    decision_id: int | None
+
+
+class PlanNeighbour(TypedDict):
+    key: str
+    title: str
+    adopted: bool
+
+
+class PlanCard(TypedDict):
+    """Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4)."""
+    key: str
+    title: str
+    office: str | None
+    kind: PlanKind
+    kind_label: str
+    policy_field: str
+    field_label: str
+    #: „Klima & Umwelt · beschlossen 12/2022 · bis 2035“ — Versalien setzt die Oberfläche.
+    kicker: str
+    status: PlanStatus
+    status_label: str
+    group: Literal["running", "preparing", "ended"]
+    adoption_mode: Literal["adopted", "noted"] | None
+    latest_report: PlanReport | None
+    #: Der Satz, wenn der Bestand schweigt („Seit 03/2022 kein Bericht im Rat.“).
+    report_note: str | None
+    report_count: int
+    successor: PlanNeighbour | None
+
+
+class PlanGroup(TypedDict):
+    key: Literal["running", "preparing", "ended"]
+    label: str
+    plans: list[PlanCard]
+
+
+class Plans(TypedDict):
+    as_of: str
+    count: int
+    groups: list[PlanGroup]
+    #: Pläne Dritter und Steuerungskonzepte, nur als Verweis (§ 8.1).
+    references: list[PlanCard]
+
+
+class PlanDecisionRef(TypedDict):
+    """Ein Beschluss über den Plan selbst, wie ihn das Register nennt."""
+    date: str
+    committee: str
+    mode: Literal["adopted", "noted"]
+    label: str | None
+    #: ``None``: vor dem Bestand des Ratsinformationssystems (vor 2018).
+    template_number: str | None
+    kvonr: int | None
+    #: Die Vorlage im Ratsinformationssystem der Stadt.
+    url: str | None
+    decision_id: int | None
+    outcome: Beschlussergebnis | None
+    vote: str | None
+
+
+class PlanTemplateRef(TypedDict):
+    template_number: str
+    title: str | None
+    kvonr: int | None
+    url: str | None
+    date: str | None
+
+
+class PlanTimelineMember(TypedDict):
+    date: str
+    committee: str | None
+    decision_id: int | None
+
+
+class PlanTimelineStation(TypedDict):
+    """Eine Station im Zeitstrahl BERICHTE: eine Vorlage mit allen Beratungen oder ein mündlicher Bericht."""
+    date: str
+    date_end: str | None
+    kind: PlanItemRole
+    title: str
+    template_number: str | None
+    oral: bool
+    committees: list[str]
+    decision_id: int | None
+    members: list[PlanTimelineMember]
+
+
+class PlanTimeline(TypedDict):
+    span: str
+    count: int
+    stations: list[PlanTimelineStation]
+
+
+class PlanDecisionEntry(TypedDict):
+    title: str
+    date: str
+    committee: str | None
+    decision_id: int | None
+    outcome: Beschlussergebnis | None
+    template_number: str | None
+    deliberations: int
+
+
+class PlanDecisionGroup(TypedDict):
+    key: Literal["plan", "implementation", "motion", "decision", "mentions"]
+    label: str
+    entries: list[PlanDecisionEntry]
+
+
+class PlanDetail(PlanCard):
+    note: str | None
+    owner: str | None
+    source: Literal["council", "website"]
+    start: str | None
+    end: str | None
+    start_label: str | None
+    end_label: str | None
+    horizon_note: str | None
+    review_due: str | None
+    review_label: str | None
+    adoption: PlanDecisionRef | None
+    decisions: list[PlanDecisionRef]
+    commissioned: PlanTemplateRef | None
+    concluded: PlanTemplateRef | None
+    predecessor: PlanNeighbour | None
+    timeline: PlanTimeline
+    decision_groups: list[PlanDecisionGroup]
+    goal: str | None
+
+
 class BudgetComparison(TypedDict):
     citation: Any
     provenance: Provenance

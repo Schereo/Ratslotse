@@ -248,6 +248,15 @@ FEATURES: dict[str, Feature] = {
                     "Nach der konstituierenden Sitzung (02.11.2026) prüfen, ob die "
                     "Vorab-Liste noch gebraucht wird.",
     ),
+    "plaene": Feature(
+        key="plaene",
+        description="„Pläne der Stadt“ statt „Ziele“ in der Analyse: jeder Plan mit Beschluss, "
+                    "Laufzeit, Berichten im Rat und den Beschlüssen dazu (council/plans.py, "
+                    "docs/plan-ziele-plaene.md).",
+        fertig_wenn="Alle Phasen des Plans stehen auf dev und Tim hat die Seite freigegeben; mit dem "
+                    "nächsten Release auf Prod an. Danach fliegt der Schalter raus, und die alte "
+                    "Ziel-Ansicht geht, sobald APP_MIN_BUILD auf einem App-Build mit „Pläne“ steht.",
+    ),
     "tippspiel": Feature(
         key="tippspiel",
         description="Das Tippspiel zu den Wahlen 2026: zur Ratswahl am 13.09. Sitze je "

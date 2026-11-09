@@ -11,6 +11,8 @@ import { AnalysisIntro } from "@/components/analysis-intro";
 import { FrageChips } from "@/components/frage-chips";
 import { TrendsView } from "@/components/council-trends";
 import { GoalsView } from "@/components/council-goals";
+import { PlaeneView } from "@/components/council-plaene";
+import { useFeature } from "@/lib/features";
 import { PersonenView } from "@/components/council-members";
 import { AnalyseReiter, ANALYSE_FRAGEN, analysisSub } from "@/components/analyse-reiter";
 
@@ -376,6 +378,8 @@ function FinanceView() {
 
 export function AnalysisTab() {
   const sp = useSearchParams();
+  // „Pläne der Stadt“ ersetzt hinter dem Schalter die Ziel-Seite (docs/plan-ziele-plaene.md).
+  const plaene = useFeature("plaene");
   const sub = analysisSub(sp.get("sub"));
 
   return (
@@ -386,7 +390,8 @@ export function AnalysisTab() {
           es. Zwei Fragen je Reiter, die die Zahlen darunter zur Sprache bringen. */}
       <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
       {sub === "parties" ? <PartiesView /> : sub === "personen" ? <PersonenView />
-        : sub === "finanzen" ? <FinanceView /> : sub === "trends" ? <TrendsView /> : <GoalsView />}
+        : sub === "finanzen" ? <FinanceView /> : sub === "trends" ? <TrendsView />
+        : plaene ? <PlaeneView /> : <GoalsView />}
     </div>
   );
 }

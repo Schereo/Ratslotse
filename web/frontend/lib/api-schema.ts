@@ -4240,6 +4240,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/plan/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Detail
+         * @description Ein Plan mit Beschluss, Laufzeit, Berichten und den Beschlüssen dazu.
+         */
+        get: operations["plan_detail_api_council_plan__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plans Overview
+         * @description Alle Pläne im Register: laufend, in Arbeit, abgelaufen oder abgelöst.
+         */
+        get: operations["plans_overview_api_council_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/preview/{kind}/{key}": {
         parameters: {
             query?: never;
@@ -14724,6 +14764,418 @@ export interface components {
             /** Url */
             url: string;
         };
+        /**
+         * PlanCard
+         * @description Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).
+         */
+        PlanCard: {
+            /**
+             * Adoption Mode
+             * @enum {string|null}
+             */
+            adoption_mode: "adopted" | "noted" | null;
+            /** Field Label */
+            field_label: string;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "running" | "preparing" | "ended";
+            /** Key */
+            key: string;
+            /** Kicker */
+            kicker: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "action" | "framework" | "statutory" | "reference";
+            /** Kind Label */
+            kind_label: string;
+            /**
+             * PlanReport
+             * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+             */
+            latest_report: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Oral */
+                oral: boolean;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string;
+            } | null;
+            /** Office */
+            office: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** Report Count */
+            report_count: number;
+            /** Report Note */
+            report_note: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /** Status Label */
+            status_label: string;
+            /** PlanNeighbour */
+            successor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** Title */
+            title: string;
+        };
+        /** PlanDecisionEntry */
+        PlanDecisionEntry: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Deliberations */
+            deliberations: number;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /** PlanDecisionGroup */
+        PlanDecisionGroup: {
+            /** Entries */
+            entries: components["schemas"]["PlanDecisionEntry"][];
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "plan" | "implementation" | "motion" | "decision" | "mentions";
+            /** Label */
+            label: string;
+        };
+        /**
+         * PlanDecisionRef
+         * @description Ein Beschluss über den Plan selbst, wie ihn das Register nennt.
+         */
+        PlanDecisionRef: {
+            /** Committee */
+            committee: string;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Label */
+            label: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "adopted" | "noted";
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Url */
+            url: string | null;
+            /** Vote */
+            vote: string | null;
+        };
+        /** PlanDetail */
+        PlanDetail: {
+            /**
+             * PlanDecisionRef
+             * @description Ein Beschluss über den Plan selbst, wie ihn das Register nennt.
+             */
+            adoption: {
+                /** Committee */
+                committee: string;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Label */
+                label: string | null;
+                /**
+                 * Mode
+                 * @enum {string}
+                 */
+                mode: "adopted" | "noted";
+                /**
+                 * Outcome
+                 * @enum {string|null}
+                 */
+                outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Url */
+                url: string | null;
+                /** Vote */
+                vote: string | null;
+            } | null;
+            /**
+             * Adoption Mode
+             * @enum {string|null}
+             */
+            adoption_mode: "adopted" | "noted" | null;
+            /** PlanTemplateRef */
+            commissioned: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /** PlanTemplateRef */
+            concluded: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /** Decision Groups */
+            decision_groups: components["schemas"]["PlanDecisionGroup"][];
+            /** Decisions */
+            decisions: components["schemas"]["PlanDecisionRef"][];
+            /** End */
+            end: string | null;
+            /** End Label */
+            end_label: string | null;
+            /** Field Label */
+            field_label: string;
+            /** Goal */
+            goal: string | null;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "running" | "preparing" | "ended";
+            /** Horizon Note */
+            horizon_note: string | null;
+            /** Key */
+            key: string;
+            /** Kicker */
+            kicker: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "action" | "framework" | "statutory" | "reference";
+            /** Kind Label */
+            kind_label: string;
+            /**
+             * PlanReport
+             * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+             */
+            latest_report: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Oral */
+                oral: boolean;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string;
+            } | null;
+            /** Note */
+            note: string | null;
+            /** Office */
+            office: string | null;
+            /** Owner */
+            owner: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** PlanNeighbour */
+            predecessor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** Report Count */
+            report_count: number;
+            /** Report Note */
+            report_note: string | null;
+            /** Review Due */
+            review_due: string | null;
+            /** Review Label */
+            review_label: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "council" | "website";
+            /** Start */
+            start: string | null;
+            /** Start Label */
+            start_label: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /** Status Label */
+            status_label: string;
+            /** PlanNeighbour */
+            successor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            timeline: components["schemas"]["PlanTimeline"];
+            /** Title */
+            title: string;
+        };
+        /** PlanGroup */
+        PlanGroup: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "running" | "preparing" | "ended";
+            /** Label */
+            label: string;
+            /** Plans */
+            plans: components["schemas"]["PlanCard"][];
+        };
+        /** PlanNeighbour */
+        PlanNeighbour: {
+            /** Adopted */
+            adopted: boolean;
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanReport
+         * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+         */
+        PlanReport: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Oral */
+            oral: boolean;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /** PlanTemplateRef */
+        PlanTemplateRef: {
+            /** Date */
+            date: string | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Template Number */
+            template_number: string;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanTimeline */
+        PlanTimeline: {
+            /** Count */
+            count: number;
+            /** Span */
+            span: string;
+            /** Stations */
+            stations: components["schemas"]["PlanTimelineStation"][];
+        };
+        /** PlanTimelineMember */
+        PlanTimelineMember: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+        };
+        /**
+         * PlanTimelineStation
+         * @description Eine Station im Zeitstrahl BERICHTE: eine Vorlage mit allen Beratungen oder ein mündlicher Bericht.
+         */
+        PlanTimelineStation: {
+            /** Committees */
+            committees: string[];
+            /** Date */
+            date: string;
+            /** Date End */
+            date_end: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Members */
+            members: components["schemas"]["PlanTimelineMember"][];
+            /** Oral */
+            oral: boolean;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /** Plans */
+        Plans: {
+            /** As Of */
+            as_of: string;
+            /** Count */
+            count: number;
+            /** Groups */
+            groups: components["schemas"]["PlanGroup"][];
+            /** References */
+            references: components["schemas"]["PlanCard"][];
+        };
         /** PolicyField */
         PolicyField: {
             /** Count */
@@ -23007,6 +23459,57 @@ export interface operations {
             };
         };
     };
+    plan_detail_api_council_plan__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plans_overview_api_council_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plans"];
+                };
+            };
+        };
+    };
     preview_api_council_preview__kind___key__get: {
         parameters: {
             query?: never;
@@ -26886,4 +27389,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8944cbab0542d5ed41e74d3bed24c2e978d9900a47962bda72422781bd8d0271
+// vertrag-sha256: 5c853a0099c19796c9971684d635ed14c3126e3f2cd5b58d42acdbcd48191447

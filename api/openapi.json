@@ -19086,6 +19086,1213 @@
         "title": "PlaceSource",
         "type": "object"
       },
+      "PlanCard": {
+        "description": "Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).",
+        "properties": {
+          "adoption_mode": {
+            "enum": [
+              "adopted",
+              "noted"
+            ],
+            "title": "Adoption Mode",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "group": {
+            "enum": [
+              "running",
+              "preparing",
+              "ended"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kicker": {
+            "title": "Kicker",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "action",
+              "framework",
+              "statutory",
+              "reference"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "latest_report": {
+            "description": "Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "decision_id": {
+                "title": "Decision Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "oral": {
+                "title": "Oral",
+                "type": "boolean"
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "date",
+              "committee",
+              "oral",
+              "template_number",
+              "decision_id"
+            ],
+            "title": "PlanReport",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "office": {
+            "title": "Office",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": "string"
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "report_note": {
+            "title": "Report Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "running",
+              "preparing",
+              "superseded",
+              "concluded",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "successor": {
+            "properties": {
+              "adopted": {
+                "title": "Adopted",
+                "type": "boolean"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "title",
+              "adopted"
+            ],
+            "title": "PlanNeighbour",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "office",
+          "kind",
+          "kind_label",
+          "policy_field",
+          "field_label",
+          "kicker",
+          "status",
+          "status_label",
+          "group",
+          "adoption_mode",
+          "latest_report",
+          "report_note",
+          "report_count",
+          "successor"
+        ],
+        "title": "PlanCard",
+        "type": "object"
+      },
+      "PlanDecisionEntry": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "deliberations": {
+            "title": "Deliberations",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision",
+              "settled"
+            ],
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "date",
+          "committee",
+          "decision_id",
+          "outcome",
+          "template_number",
+          "deliberations"
+        ],
+        "title": "PlanDecisionEntry",
+        "type": "object"
+      },
+      "PlanDecisionGroup": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/PlanDecisionEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "key": {
+            "enum": [
+              "plan",
+              "implementation",
+              "motion",
+              "decision",
+              "mentions"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "entries"
+        ],
+        "title": "PlanDecisionGroup",
+        "type": "object"
+      },
+      "PlanDecisionRef": {
+        "description": "Ein Beschluss über den Plan selbst, wie ihn das Register nennt.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode": {
+            "enum": [
+              "adopted",
+              "noted"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision",
+              "settled"
+            ],
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "committee",
+          "mode",
+          "label",
+          "template_number",
+          "kvonr",
+          "url",
+          "decision_id",
+          "outcome",
+          "vote"
+        ],
+        "title": "PlanDecisionRef",
+        "type": "object"
+      },
+      "PlanDetail": {
+        "properties": {
+          "adoption": {
+            "description": "Ein Beschluss über den Plan selbst, wie ihn das Register nennt.",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": "string"
+              },
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "decision_id": {
+                "title": "Decision Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "label": {
+                "title": "Label",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mode": {
+                "enum": [
+                  "adopted",
+                  "noted"
+                ],
+                "title": "Mode",
+                "type": "string"
+              },
+              "outcome": {
+                "enum": [
+                  "accepted",
+                  "rejected",
+                  "postponed",
+                  "noted",
+                  "no_decision",
+                  "settled"
+                ],
+                "title": "Outcome",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vote": {
+                "title": "Vote",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "date",
+              "committee",
+              "mode",
+              "label",
+              "template_number",
+              "kvonr",
+              "url",
+              "decision_id",
+              "outcome",
+              "vote"
+            ],
+            "title": "PlanDecisionRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "adoption_mode": {
+            "enum": [
+              "adopted",
+              "noted"
+            ],
+            "title": "Adoption Mode",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "commissioned": {
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "template_number",
+              "title",
+              "kvonr",
+              "url",
+              "date"
+            ],
+            "title": "PlanTemplateRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "concluded": {
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "template_number",
+              "title",
+              "kvonr",
+              "url",
+              "date"
+            ],
+            "title": "PlanTemplateRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "decision_groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanDecisionGroup"
+            },
+            "title": "Decision Groups",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/PlanDecisionRef"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "end": {
+            "title": "End",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "end_label": {
+            "title": "End Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "goal": {
+            "title": "Goal",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "group": {
+            "enum": [
+              "running",
+              "preparing",
+              "ended"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "horizon_note": {
+            "title": "Horizon Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kicker": {
+            "title": "Kicker",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "action",
+              "framework",
+              "statutory",
+              "reference"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "latest_report": {
+            "description": "Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "decision_id": {
+                "title": "Decision Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "oral": {
+                "title": "Oral",
+                "type": "boolean"
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "date",
+              "committee",
+              "oral",
+              "template_number",
+              "decision_id"
+            ],
+            "title": "PlanReport",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "office": {
+            "title": "Office",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "owner": {
+            "title": "Owner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": "string"
+          },
+          "predecessor": {
+            "properties": {
+              "adopted": {
+                "title": "Adopted",
+                "type": "boolean"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "title",
+              "adopted"
+            ],
+            "title": "PlanNeighbour",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "report_note": {
+            "title": "Report Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "review_due": {
+            "title": "Review Due",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "review_label": {
+            "title": "Review Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "enum": [
+              "council",
+              "website"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "start_label": {
+            "title": "Start Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "running",
+              "preparing",
+              "superseded",
+              "concluded",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "successor": {
+            "properties": {
+              "adopted": {
+                "title": "Adopted",
+                "type": "boolean"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "title",
+              "adopted"
+            ],
+            "title": "PlanNeighbour",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "timeline": {
+            "$ref": "#/components/schemas/PlanTimeline"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "office",
+          "kind",
+          "kind_label",
+          "policy_field",
+          "field_label",
+          "kicker",
+          "status",
+          "status_label",
+          "group",
+          "adoption_mode",
+          "latest_report",
+          "report_note",
+          "report_count",
+          "successor",
+          "note",
+          "owner",
+          "source",
+          "start",
+          "end",
+          "start_label",
+          "end_label",
+          "horizon_note",
+          "review_due",
+          "review_label",
+          "adoption",
+          "decisions",
+          "commissioned",
+          "concluded",
+          "predecessor",
+          "timeline",
+          "decision_groups",
+          "goal"
+        ],
+        "title": "PlanDetail",
+        "type": "object"
+      },
+      "PlanGroup": {
+        "properties": {
+          "key": {
+            "enum": [
+              "running",
+              "preparing",
+              "ended"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PlanCard"
+            },
+            "title": "Plans",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "plans"
+        ],
+        "title": "PlanGroup",
+        "type": "object"
+      },
+      "PlanNeighbour": {
+        "properties": {
+          "adopted": {
+            "title": "Adopted",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "adopted"
+        ],
+        "title": "PlanNeighbour",
+        "type": "object"
+      },
+      "PlanReport": {
+        "description": "Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "oral": {
+            "title": "Oral",
+            "type": "boolean"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "date",
+          "committee",
+          "oral",
+          "template_number",
+          "decision_id"
+        ],
+        "title": "PlanReport",
+        "type": "object"
+      },
+      "PlanTemplateRef": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "template_number",
+          "title",
+          "kvonr",
+          "url",
+          "date"
+        ],
+        "title": "PlanTemplateRef",
+        "type": "object"
+      },
+      "PlanTimeline": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "span": {
+            "title": "Span",
+            "type": "string"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/PlanTimelineStation"
+            },
+            "title": "Stations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "span",
+          "count",
+          "stations"
+        ],
+        "title": "PlanTimeline",
+        "type": "object"
+      },
+      "PlanTimelineMember": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "committee",
+          "decision_id"
+        ],
+        "title": "PlanTimelineMember",
+        "type": "object"
+      },
+      "PlanTimelineStation": {
+        "description": "Eine Station im Zeitstrahl BERICHTE: eine Vorlage mit allen Beratungen oder ein mündlicher Bericht.",
+        "properties": {
+          "committees": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Committees",
+            "type": "array"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "date_end": {
+            "title": "Date End",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "adoption",
+              "amendment",
+              "evaluation",
+              "report",
+              "preparation"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/PlanTimelineMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "oral": {
+            "title": "Oral",
+            "type": "boolean"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "date_end",
+          "kind",
+          "title",
+          "template_number",
+          "oral",
+          "committees",
+          "decision_id",
+          "members"
+        ],
+        "title": "PlanTimelineStation",
+        "type": "object"
+      },
+      "Plans": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/PlanCard"
+            },
+            "title": "References",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "count",
+          "groups",
+          "references"
+        ],
+        "title": "Plans",
+        "type": "object"
+      },
       "PolicyField": {
         "properties": {
           "count": {
@@ -34592,6 +35799,71 @@
           }
         },
         "summary": "Plan Bild",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/plan/{key}": {
+      "get": {
+        "description": "Ein Plan mit Beschluss, Laufzeit, Berichten und den Beschlüssen dazu.",
+        "operationId": "plan_detail_api_council_plan__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan Detail",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/plans": {
+      "get": {
+        "description": "Alle Pläne im Register: laufend, in Arbeit, abgelaufen oder abgelöst.",
+        "operationId": "plans_overview_api_council_plans_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plans"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plans Overview",
         "tags": [
           "council"
         ]

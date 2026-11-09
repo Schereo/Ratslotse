@@ -334,6 +334,40 @@ CREATE TABLE IF NOT EXISTS council_goal_links (
 );
 CREATE INDEX IF NOT EXISTS idx_goal_links_goal ON council_goal_links(goal);
 
+-- Pläne der Stadt (council/plans.py, docs/plan-ziele-plaene.md). Abgeleitet:
+-- council/plan_tracking.py baut beide Tabellen im Protokoll-Cron neu.
+-- Jeder Tagesordnungspunkt, der dem Titel oder der Vorlage nach zu einem Plan
+-- gehört — Beschluss des Plans, Bericht, Antrag, Vorbereitung.
+CREATE TABLE IF NOT EXISTS council_plan_items (
+    plan_key        TEXT NOT NULL,
+    agenda_item_id  INTEGER NOT NULL,
+    ksinr           INTEGER NOT NULL,
+    item_number     TEXT,
+    date            TEXT NOT NULL,
+    committee       TEXT,
+    title           TEXT NOT NULL,
+    template_number TEXT,
+    kvonr           INTEGER,
+    role            TEXT NOT NULL,   -- adoption|amendment|evaluation|report|preparation|implementation|motion|decision
+    oral            INTEGER NOT NULL DEFAULT 0,
+    decision_id     INTEGER,
+    outcome         TEXT,
+    PRIMARY KEY (plan_key, agenda_item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_plan_items_plan ON council_plan_items(plan_key, date);
+-- Beschlüsse, die auf anderem Weg zu einem Plan finden als über den Titel:
+-- Verweis über die Vorlagennummer, später Maßnahmen-Kennung und Modellurteil.
+CREATE TABLE IF NOT EXISTS council_plan_links (
+    plan_key     TEXT NOT NULL,
+    decision_id  INTEGER NOT NULL,
+    measure_code TEXT NOT NULL DEFAULT '',
+    relation     TEXT NOT NULL,      -- mentions (Phase 1); implements|amends|motion (ab Phase 4)
+    method       TEXT NOT NULL,      -- number|code|model
+    confidence   REAL NOT NULL DEFAULT 1.0,
+    PRIMARY KEY (plan_key, decision_id, measure_code, relation)
+);
+CREATE INDEX IF NOT EXISTS idx_plan_links_plan ON council_plan_links(plan_key);
+
 -- Precomputed nearest neighbours per decision (semantic embeddings, council.embeddings).
 CREATE TABLE IF NOT EXISTS council_similar (
     decision_id INTEGER NOT NULL,
