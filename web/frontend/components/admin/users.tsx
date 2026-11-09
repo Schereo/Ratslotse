@@ -4,12 +4,10 @@ import { useState } from "react";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { AdminUserDetail } from "@/lib/types";
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { Button, Card, ConfirmDialog, ErrorState, Spinner, formatDate, toast } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
-import { AdminVerlauf } from "@/components/grafik/admin-verlauf";
 import { UserMailHistory } from "./mail";
 
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
@@ -36,6 +34,9 @@ function activitySignal(lastSeen: string | null): { dot: string; label: string }
   const w = Math.round(days / 7);
   return { dot: "bg-muted-foreground/50", label: w <= 1 ? "vor 1 Woche" : `vor ${w} Wochen` };
 }
+
+type AdminUserDetail = ApiAntwort<"/admin/users/{user_id}">;
+type Besuchstag = AdminUserDetail["visit_days"][number];
 
 const USER_FEATURE_LABEL: [keyof AdminUserDetail["features"], string][] = [
   ["ki_frage", "KI-Frage"], ["research", "Gründliche Recherche"], ["suche", "Beschluss-Suche"],
@@ -254,7 +255,7 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
           <p className="font-display text-xl font-bold text-foreground">{data.display_name || data.email}</p>
           {data.display_name && <p className="text-sm text-muted-foreground">{data.email}</p>}
           <p className="text-xs text-muted-foreground">
-            seit {formatDate(data.created_at.slice(0, 10))} · {sig.label} · {login}
+            seit {data.created_at ? formatDate(data.created_at.slice(0, 10)) : "unbekannt"} · {sig.label} · {login}
             {woher && <> · über {woher} registriert</>}
           </p>
         </div>
@@ -329,8 +330,8 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
         <DetailRow label="Gespräche speichern" value={data.saves_conversations === 1 ? "An" : data.saves_conversations === 0 ? "Bewusst aus" : "Nie gefragt"} />
       </div>
 
-      <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>
-      <AdminVerlauf values={data.history} days={data.history_days} label="Aktivitäten" />
+      <StatKickerSpaced>Besuche (30 Tage)</StatKickerSpaced>
+      <Besuchstage tage={data.visit_days} />
       </>}
       {section === "administration" && <>
 
@@ -445,6 +446,57 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
         Alles server-aggregiert & nur für Admins; nur eigene App-Aktivität, keine Dritt-Analytics.
       </p>
     </Card>
+  );
+}
+
+/** Einzahl und Mehrzahl je Funktion — die Schlüssel sind die von `features`. */
+const TAG_AKTION: Record<string, [string, string]> = {
+  ki_frage: ["Frage", "Fragen"], research: ["Recherche", "Recherchen"],
+  suche: ["Suche", "Suchen"], analyse: ["Analyse", "Analysen"],
+  karte: ["Kartenaufruf", "Kartenaufrufe"], quiz: ["Quizfrage", "Quizfragen"],
+};
+
+/** Statt des Balkens mit der Zahl der Anfragen (Tims Befund 09.11.2026: „ob und
+ *  wie viel die Person wirklich da war und was sie ungefähr gemacht hat") eine
+ *  Zeile je Tag: aktive Minuten, Funktionen, besuchte Bereiche. Tage vor der
+ *  Minutenzählung zeigen nur „da". */
+function Besuchstage({ tage }: { tage: Besuchstag[] }) {
+  if (!tage.length) {
+    return <p className="mt-2 text-xs text-muted-foreground">In den letzten 30 Tagen nicht da.</p>;
+  }
+  return (
+    <div className="mt-2 overflow-hidden rounded-lg border border-border bg-card">
+      {tage.map((t) => {
+        const aktionen = t.actions.map((a) => {
+          const [eins, viele] = TAG_AKTION[a.key] ?? [a.key, a.key];
+          // Geschütztes Leerzeichen: „1 / Recherche" brach sonst auf dem Handy um.
+          return `${a.count}\u00a0${a.count === 1 ? eins : viele}`;
+        });
+        const datum = new Date(`${t.day}T12:00:00`).toLocaleDateString("de-DE",
+          { weekday: "short", day: "2-digit", month: "2-digit" });
+        return (
+          <div key={t.day}
+            className="grid grid-cols-[5.5rem_3.75rem_1fr] items-baseline gap-x-2 border-b border-border px-3 py-2 last:border-b-0">
+            <span className="text-xs tabular-nums text-muted-foreground">{datum}</span>
+            <span className="text-sm tabular-nums text-foreground">
+              {t.minutes != null ? `${t.minutes} Min` : "da"}
+            </span>
+            {/* Oben, was getan wurde; darunter, wo — sonst stand „3 Fragen ·
+                Fragen" hintereinander und las sich wie ein Fehler. */}
+            <span className="min-w-0 text-sm">
+              {aktionen.length > 0 && <span className="block font-medium text-foreground">{aktionen.join(" · ")}</span>}
+              {t.areas.length > 0 && (
+                <span className="block text-xs text-muted-foreground">{t.areas.map((b) => b.label).join(" · ")}</span>
+              )}
+              {aktionen.length === 0 && t.areas.length === 0 && <span className="text-muted-foreground">—</span>}
+            </span>
+          </div>
+        );
+      })}
+      <p className="border-t border-border bg-muted/30 px-3 py-1.5 text-[11px] leading-snug text-muted-foreground">
+        Minuten mit Aktivität und besuchte Bereiche werden seit 09.11.2026 gezählt — ohne Uhrzeit und ohne einzelne Seiten.
+      </p>
+    </div>
   );
 }
 

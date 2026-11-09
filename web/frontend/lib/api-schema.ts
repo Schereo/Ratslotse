@@ -329,6 +329,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/activity/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bereich Gesehen
+         * @description Den Bereich eines Seitenwechsels für dieses Konto zählen.
+         *
+         *     Gespeichert wird nur ``area:<bereich>`` je Tag in ``user_activity`` — kein
+         *     Pfad, keine Query, keine Uhrzeit (``kern/activity_areas.py``). Ein Pfad
+         *     ohne Bereich wird nicht gezählt. **Immer 200**, wie der Seitenaufruf: Ein
+         *     Zähler erzeugt keine Fehlermeldung.
+         */
+        post: operations["bereich_gesehen_api_activity_page_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/cities": {
         parameters: {
             query?: never;
@@ -6782,6 +6807,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ActivityPageIn
+         * @description Ein Seitenwechsel eines angemeldeten Kontos — für die Bereiche je Konto.
+         *
+         *     Getrennt von ``PageViewIn``: Der Seitenaufruf bleibt anonym und schaut in
+         *     kein Token. Hier ist das Konto der Punkt; gespeichert wird aber nur der
+         *     BEREICH, auf den ``kern/activity_areas.py`` den Pfad abbildet.
+         */
+        ActivityPageIn: {
+            /**
+             * Route
+             * @default /
+             */
+            route: string;
+        };
         /** AdminAbweisung */
         AdminAbweisung: {
             /** N */
@@ -8043,6 +8083,8 @@ export interface components {
             subscriptions: string[];
             /** Topics */
             topics: string[];
+            /** Visit Days */
+            visit_days: components["schemas"]["AdminVisitDay"][];
         };
         /**
          * AdminUserEmails
@@ -8116,6 +8158,41 @@ export interface components {
             signup_client: string | null;
             /** Status */
             status: string;
+        };
+        /**
+         * AdminVisitAction
+         * @description Eine genutzte Funktion an einem Tag — ``key`` wie in ``features``.
+         */
+        AdminVisitAction: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+        };
+        /**
+         * AdminVisitArea
+         * @description Ein besuchter Bereich (``kern/activity_areas.py``).
+         */
+        AdminVisitArea: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * AdminVisitDay
+         * @description Ein Tag mit Aktivität im Nutzer-Detail. ``minutes`` ist ``None`` für
+         *     Tage vor der Minutenzählung (11/2026).
+         */
+        AdminVisitDay: {
+            /** Actions */
+            actions: components["schemas"]["AdminVisitAction"][];
+            /** Areas */
+            areas: components["schemas"]["AdminVisitArea"][];
+            /** Day */
+            day: string;
+            /** Minutes */
+            minutes: number | null;
         };
         /**
          * Affiliation
@@ -18650,6 +18727,39 @@ export interface operations {
             };
         };
     };
+    bereich_gesehen_api_activity_page_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityPageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cities_stats_api_admin_cities_get: {
         parameters: {
             query?: never;
@@ -26774,4 +26884,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f30fc4fd5f808f0e5b171095f58139bbf6b59925f1740123714a276f5bbcd516
+// vertrag-sha256: 0ddbb8aaa79f22484f2cb7e55964254bb2f2e677f1e5afcf1d0db2a2f24c1bb2

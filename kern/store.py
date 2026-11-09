@@ -5556,6 +5556,42 @@ class Store:
                  "signup_client": r["signup_client"],
                  "clients": nutzung.get(r["id"], {})} for r in rows]
 
+    #: Funktionen je Tag im Admin-Panel: API-Name → Feature in ``user_activity``.
+    #: Dieselben Namen wie ``features`` im Nutzer-Detail, damit das Panel eine
+    #: Beschriftung für beide hat.
+    _TAG_FUNKTIONEN = {"ki_frage": "ai_question", "research": "research", "suche": "search",
+                       "analyse": "analysis", "karte": "map"}
+
+    def _besuchstage(self, uid: int, since: str) -> list[dict]:
+        """Die Tage mit Aktivität seit ``since``, neueste zuerst: aktive
+        Minuten, genutzte Funktionen und besuchte Bereiche.
+
+        Bis 11/2026 zeigte das Panel nur die Summe aller Zähler je Tag — im
+        Wesentlichen die Zahl der API-Anfragen, aus der sich weder Dauer noch
+        Tun lesen ließ. ``minutes`` ist ``None`` für Tage vor der Minuten-
+        zählung (an ihnen gibt es nur ``session``)."""
+        from kern import activity_areas
+
+        tage: dict[str, dict[str, int]] = {}
+        for r in self._conn.execute(
+                "SELECT day, feature, SUM(count) c FROM user_activity "
+                "WHERE owner_id = ? AND day >= ? GROUP BY day, feature", (uid, since)):
+            tage.setdefault(r["day"], {})[r["feature"]] = r["c"]
+        quiz = {r["d"]: r["c"] for r in self._conn.execute(
+            "SELECT substr(answered_at, 1, 10) d, COUNT(*) c FROM quiz_answers "
+            "WHERE owner_id = ? AND answered_at >= ? GROUP BY d", (uid, since))}
+        aus = []
+        for tag in sorted(set(tage) | set(quiz), reverse=True):
+            f = tage.get(tag, {})
+            aktionen = [{"key": name, "count": f[feature]}
+                        for name, feature in self._TAG_FUNKTIONEN.items() if f.get(feature)]
+            if quiz.get(tag):
+                aktionen.append({"key": "quiz", "count": quiz[tag]})
+            bereiche = {k[len(activity_areas.PREFIX):] for k in f if k.startswith(activity_areas.PREFIX)}
+            aus.append({"day": tag, "minutes": f.get("minutes"),
+                        "actions": aktionen, "areas": activity_areas.ordered(bereiche)})
+        return aus
+
     def admin_user_detail(self, uid: int) -> dict | None:
         """Nutzer-Detail (Design 20a): Feature-Nutzung, Angelegtes, 30-Tage-
         Aktivitätsverlauf. Nur eigene App-Aktivität, kein Dritt-Tracking."""
@@ -5582,6 +5618,7 @@ class Store:
         history_days = [(date.today() - timedelta(days=29 - i)).isoformat() for i in range(30)]
         verlauf = [by_day.get(d, 0) for d in history_days]
         return {
+            "visit_days": self._besuchstage(uid, since),
             "id": u["id"], "email": u["email"], "display_name": u.get("display_name"),
             "role": u["role"], "status": u["status"],
             # `roles` ist die Wahrheit, `role` daneben nur die stärkste davon —
