@@ -233,8 +233,12 @@ def ersatz_fuer(model: str | None) -> list[str]:
     return list(ERSATZ.get(model or "", ()))
 
 
-def _with_model_params(kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Merge the stored params for kwargs['model'] into the caller's kwargs."""
+def _with_model_params(kwargs: dict[str, Any], apply_floor: bool = True) -> dict[str, Any]:
+    """Merge the stored params for kwargs['model'] into the caller's kwargs.
+
+    ``apply_floor=False`` lets the caller's ``max_tokens`` stand (see
+    ``_no_token_floor`` at :func:`_create`).
+    """
     defaults = MODEL_PARAMS.get(kwargs.get("model", ""))
     if not defaults:
         return kwargs
@@ -243,7 +247,7 @@ def _with_model_params(kwargs: dict[str, Any]) -> dict[str, Any]:
     merged = {**defaults, **kwargs}
     if "extra_body" in defaults and "extra_body" in kwargs:
         merged["extra_body"] = {**defaults["extra_body"], **kwargs["extra_body"]}
-    if floor is not None:
+    if floor is not None and apply_floor:
         merged["max_tokens"] = max(kwargs.get("max_tokens") or 0, floor)
     return merged
 
@@ -741,8 +745,17 @@ def _is_transient(exc: BaseException) -> bool:
     reraise=True,
 )
 def _create(*, _allow_empty_response: bool = False, _zdr: bool = True,
-            _only: tuple[str, ...] | None = None, **kwargs: Any):
-    merged = _with_model_params(_with_routing(kwargs, _zdr, _only))
+            _only: tuple[str, ...] | None = None, _no_token_floor: bool = False,
+            **kwargs: Any):
+    # `_no_token_floor`: Der Boden aus MODEL_PARAMS schützt vor der leeren
+    # Antwort, wenn das Denken das Budget aufzehrt. Er ist aber auch der
+    # Preis eines Aufrufs, der sich festdenkt: Im Städtelauf vom 09.11.2026
+    # liefen 71 von 2.749 DeepSeek-Aufrufen bis genau 24.000 Tokens und kamen
+    # trotzdem leer zurück (0,78 $ von 2,81 $). Wer die Verteilung SEINER
+    # Aufgabe gemessen hat, darf deshalb eine eigene Decke setzen — die
+    # Aufrufstelle trägt dann die Verantwortung für die leere Antwort.
+    merged = _with_model_params(_with_routing(kwargs, _zdr, _only),
+                                apply_floor=not _no_token_floor)
     # OpenRouter soll die ECHTEN Kosten des Aufrufs mitliefern (usage.cost, in
     # USD, inkl. Provider-Routing) — Modellpreise von Hand pflegen entfällt
     # damit dort, wo der Wert ankommt (Admin-Statistik, Eval-Kostenzeile).

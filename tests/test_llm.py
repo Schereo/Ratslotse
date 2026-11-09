@@ -1109,3 +1109,34 @@ def test_vorgabe_modelle_aller_nutzer_features_haben_einen_eu_anbieter():
         vorgaben[name] = treffer.group(1)
     ohne = {name: modell for name, modell in vorgaben.items() if modell not in llm.EU_ZUERST}
     assert not ohne, f"ohne EU-Anbieter: {ohne}"
+
+
+def test_der_boden_laesst_sich_fuer_eine_gemessene_decke_abschalten(monkeypatch):
+    """``_no_token_floor``: Der Boden schützt vor der leeren Antwort, ist aber
+    auch der Preis eines Aufrufs, der sich festdenkt (Städtelauf 09.11.2026:
+    71 Aufrufe bis genau 24.000 Tokens, alle leer)."""
+    from types import SimpleNamespace
+
+    modell = "deepseek/deepseek-v4-flash"
+    assert llm._with_model_params({"model": modell, "max_tokens": 12000})[
+        "max_tokens"] == llm.DEEPSEEK_MIN_MAX_TOKENS
+    assert llm._with_model_params({"model": modell, "max_tokens": 12000},
+                                  apply_floor=False)["max_tokens"] == 12000
+
+    gesendet = {}
+
+    class _Completions:
+        def create(self, **kw):
+            gesendet.update(kw)
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content="{}"),
+                                         finish_reason="stop")],
+                usage=None, model=modell)
+
+    monkeypatch.setattr(llm, "get_client", lambda: SimpleNamespace(
+        chat=SimpleNamespace(completions=_Completions())))
+    monkeypatch.setattr(llm, "_record_usage", lambda *a, **k: None)
+    llm.chat_complete(model=modell, messages=[{"role": "user", "content": "x"}],
+                      max_tokens=12000, _no_token_floor=True, _feature="cities_classify")
+    assert gesendet["max_tokens"] == 12000
+    assert "_no_token_floor" not in gesendet, "der private Schalter geht nicht an den Anbieter"

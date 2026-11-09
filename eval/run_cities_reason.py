@@ -180,7 +180,7 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
                               ann.prompt_user, stadt=f["body"], gremium=f["organization"],
                               datum=f["date"], punkt=f["item"],
                               abschnitt=f["section"][:ann.input_chars])}],
-                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                temperature=ann.temperature, **ann.token_args(),
                 extra_body={},
                 _feature=ann.feature)
             nutzlast = ann.payload.model_validate(

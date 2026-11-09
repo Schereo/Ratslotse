@@ -46,7 +46,7 @@ def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
     ein Deploy oder ist die Frist um, hört der Lauf auf und behält, was schon
     geschrieben ist.
     """
-    from council.cities.annotate import parse_json
+    from council.cities.annotate import call_cost, parse_json
     from council.cities.annotators import LLM_TIMEOUT_S
     from council.cities.annotators import get as get_annotator
     from kern import llm, prompts
@@ -78,14 +78,27 @@ def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
                               datum=(a.get("start") or "")[:10],
                               punkt=f"{a.get('number') or ''} {a.get('title') or ''}".strip(),
                               abschnitt=abschnitt)}],
-                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                temperature=ann.temperature, **ann.token_args(),
                 extra_body={},
                 timeout=LLM_TIMEOUT_S, _feature=ann.feature)
-            nutzlast = ann.payload.model_validate(
-                parse_json(antwort.choices[0].message.content or ""))
         except Exception as e:  # noqa: BLE001 — ein Abschnitt, nicht der Lauf
             with sperre:
                 stand["errors"] += 1
+            logger.info("reason gescheitert (%s): %s", a["agenda_item_id"], type(e).__name__)
+            return None
+        kosten = call_cost(antwort)
+        try:
+            nutzlast = ann.payload.model_validate(
+                parse_json(antwort.choices[0].message.content or ""))
+        except Exception as e:  # noqa: BLE001 — ein Abschnitt, nicht der Lauf
+            # Bezahlt ist der Aufruf trotzdem (s. `annotate.call_cost`). Die
+            # gelungenen rechnet die Schleife unten ab; dieser hier kommt dort
+            # nie an.
+            with sperre:
+                stand["errors"] += 1
+                stand["cost_usd"] += kosten
+            if stopp is not None:
+                stopp.ausgeben(kosten)
             logger.info("reason gescheitert (%s): %s", a["agenda_item_id"], type(e).__name__)
             return None
         # Eine behauptete Begründung ohne Text ist keine. Das Modell antwortet
@@ -96,8 +109,6 @@ def run(main: CitiesStore, body_id: str | None = None, limit: int | None = None,
         daten = nutzlast.model_dump()
         if daten.get("grounded") and not str(daten.get("why") or "").strip():
             daten["grounded"] = False
-        verbrauch = getattr(antwort, "usage", None)
-        kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
         return a["agenda_item_id"], daten, text_hash(abschnitt), kosten
 
     abbruch = None
