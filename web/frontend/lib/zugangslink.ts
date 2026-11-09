@@ -34,11 +34,17 @@ export function ohneZugang(pfadMitQuery: string): string {
 
 /** Wer schon angemeldet ist und einen Link aus der Mail öffnet, braucht das
  *  Token nicht — es verschwindet still aus der Adresszeile (und damit aus
- *  Lesezeichen, geteilten Links und dem Verlauf). */
-export function useZugangAusAdresseRaeumen(): void {
+ *  Lesezeichen, geteilten Links und dem Verlauf).
+ *
+ *  NUR mit `angemeldet`: Für alle anderen muss das Token in der Adresse
+ *  stehen bleiben, bis die Hülle daraus `/login?weiter=…` baut — sonst kommt
+ *  die Anmeldeseite ohne Token an und bietet keinen Knopf (so gemessen beim
+ *  ersten Probelauf). */
+export function useZugangAusAdresseRaeumen(angemeldet: boolean): void {
   useEffect(() => {
+    if (!angemeldet) return;
     const jetzt = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     const sauber = ohneZugang(jetzt);
     if (sauber !== jetzt) window.history.replaceState(window.history.state, "", sauber);
-  }, []);
+  }, [angemeldet]);
 }

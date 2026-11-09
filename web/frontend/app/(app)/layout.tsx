@@ -38,7 +38,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, authFehler, refresh, logout } = useAuth();
   // Angemeldet und aus einer Mail mit Anmeldelink gekommen: Das Token hat hier
   // nichts mehr zu suchen (lib/zugangslink.ts).
-  useZugangAusAdresseRaeumen();
+  useZugangAusAdresseRaeumen(!!user);
   const router = useRouter();
   const abmelden = async () => {
     abmeldenMerken();
