@@ -70,9 +70,20 @@ def protokoll_fenster(monate: int = PROTOCOL_MONTHS, heute: date | None = None) 
     return f"{tag.year + jahre:04d}-{monat + 1:02d}-01"
 
 
+def _soll_aufhoeren(stopp: Stopp | None) -> str | None:
+    """Wartet ein Deploy oder ist die Frist um? Dann den Grund, sonst ``None``.
+
+    Die Kostengrenze zählt hier nicht: Die Ernte ruft kein Modell. Bis 11/2026
+    fragte die Ernte gar nicht nach — der Deploy vom 09.11.2026 wartete, während
+    Potsdam Datei um Datei in den Timeout lief."""
+    grund = stopp.grund() if stopp is not None else None
+    return grund.text if grund is not None and grund.schluessel != "kosten" else None
+
+
 def _hole(client, raw: CitiesStore, body_id: str, offen: list[dict], zahlen: dict,
           was: str, nieten_max: int | None = None,
-          schluessel: tuple[str, str] = ("files_fetched", "files_failed")) -> dict:
+          schluessel: tuple[str, str] = ("files_fetched", "files_failed"),
+          stopp: Stopp | None = None) -> dict:
     """Bytes zu einer Arbeitsliste holen. Bricht nach ``nieten_max`` Nieten ab."""
     gut, schlecht = schluessel
     nieten = 0
@@ -82,6 +93,13 @@ def _hole(client, raw: CitiesStore, body_id: str, offen: list[dict], zahlen: dic
             # bleiben offen statt als Fehler markiert — es hat sie niemand
             # abgerufen, und der nächste Lauf sieht wieder nach.
             zahlen["files_gated"] = 1
+            break
+        if getattr(client, "host_unreachable", False):
+            zahlen["host_unreachable"] = 1
+            break
+        grund = _soll_aufhoeren(stopp)
+        if grund:
+            zahlen["abgebrochen"] = grund
             break
         antwort = client.get_file(datei["access_url"])
         if not antwort:
@@ -118,7 +136,8 @@ MEDIAN_MAX = 15.0
 WACHE_TAKT = 200
 
 
-def _mit_wache(objekte, client, zahlen: dict, was: str, body_id: str):
+def _mit_wache(objekte, client, zahlen: dict, was: str, body_id: str,
+               stopp: Stopp | None = None):
     """Einen Ernte-Abschnitt begleiten und abbrechen, wenn der Server einknickt.
 
     **Langsam ist auch kaputt.** Die Hildesheim-Ernte lief am 11.09.2026 elf
@@ -133,6 +152,11 @@ def _mit_wache(objekte, client, zahlen: dict, was: str, body_id: str):
         yield objekt
         if n % WACHE_TAKT:
             continue
+        grund = _soll_aufhoeren(stopp)
+        if grund:
+            zahlen["abgebrochen"] = f"{was}: {grund}"
+            logger.info("%s: Ernte unterbrochen — %s", body_id, grund)
+            return
         mittel = client.langsam(MEDIAN_MAX)
         if mittel is not None:
             zahlen["abgebrochen"] = (
@@ -166,7 +190,8 @@ def _sitzungstage(main_path: str | Path | None, body_id: str) -> dict[str, str]:
 
 def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
           since: str | None = None, with_files: bool = True,
-          max_files: int | None = None, main_path: str | Path | None = None) -> dict:
+          max_files: int | None = None, main_path: str | Path | None = None,
+          stopp: Stopp | None = None) -> dict:
     """Alles Öffentliche einer Stadt holen und roh ablegen.
 
     ``main_path`` zeigt auf die Hauptdatenbank und wird nur **gelesen**: Aus
@@ -190,7 +215,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
                              spec.dialect, spec.system_url, gefunden.get("license")))
 
         for _ in _mit_wache(adapter.iter_organizations(client, body),
-                            client, zahlen, "Gremien", spec.id):
+                            client, zahlen, "Gremien", spec.id, stopp):
             zahlen["organizations"] += 1
         logger.info("%s: %s Gremien", spec.id, zahlen["organizations"])
 
@@ -201,7 +226,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             return zahlen
 
         for _ in _mit_wache(adapter.iter_meetings(client, body, seit),
-                            client, zahlen, "Sitzungen", spec.id):
+                            client, zahlen, "Sitzungen", spec.id, stopp):
             zahlen["meetings"] += 1
         logger.info("%s: %s Sitzungen", spec.id, zahlen["meetings"])
 
@@ -210,7 +235,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             return zahlen
 
         for _ in _mit_wache(adapter.iter_papers(client, body, seit),
-                            client, zahlen, "Vorlagen", spec.id):
+                            client, zahlen, "Vorlagen", spec.id, stopp):
             zahlen["papers"] += 1
         logger.info("%s: %s Vorlagen", spec.id, zahlen["papers"])
 
@@ -224,7 +249,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             batch = adapter.normalize(spec.id, raw)
             raw.upsert_batch(batch)
             offen = raw.files_without_bytes(spec.id, FETCH_ROLES, limit=max_files)
-            _hole(client, raw, spec.id, offen, zahlen, "Dateien")
+            _hole(client, raw, spec.id, offen, zahlen, "Dateien", stopp=stopp)
 
             # Die Niederschriften bekommen ein EIGENES Budget, keinen Rest:
             # Vorlagen gibt es zehnmal so viele, und ein geteiltes Budget
@@ -234,7 +259,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
                 meeting_since=protokoll_fenster())
             _hole(client, raw, spec.id, protokolle, zahlen, "Niederschriften",
                   nieten_max=PROTOCOL_NIETEN,
-                  schluessel=("protocols_fetched", "protocols_failed"))
+                  schluessel=("protocols_fetched", "protocols_failed"), stopp=stopp)
         zahlen["requests"] = client.requests_made
     finally:
         raw.close()
