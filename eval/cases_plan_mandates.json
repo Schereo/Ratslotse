@@ -1,0 +1,80 @@
+{
+ "_comment": "Golden-Set für „Ratsauftrag ohne Folge“ (Plan „Pläne“ § 3.5, Art 2). types: 20 Aufträge von Hand eingeordnet — report_back = die Verwaltung soll dem Rat etwas vorlegen, berichten, prüfen oder ein Konzept erarbeiten (eine Folge im Rat ist zu erwarten); execute = Vollzug (Antrag stellen, umbenennen, sicherstellen), auf den kein Bericht folgen muss. followed: Aufträge, zu denen es nachweislich eine Folge im Rat gibt — sie dürfen NIE als offen erscheinen (aus der ersten Messung ohne Modell und aus dem Planregister).",
+ "types": {
+  "18/0420": [
+   "report_back"
+  ],
+  "18/0581": [
+   "execute"
+  ],
+  "19/0207": [
+   "execute"
+  ],
+  "19/0991": [
+   "execute"
+  ],
+  "19/0697": [
+   "report_back"
+  ],
+  "20/0498": [
+   "report_back",
+   "execute"
+  ],
+  "20/0668": [
+   "execute"
+  ],
+  "20/0609": [
+   "execute"
+  ],
+  "20/0778": [
+   "execute",
+   "report_back"
+  ],
+  "20/0832": [
+   "execute"
+  ],
+  "21/0043": [
+   "report_back"
+  ],
+  "21/0393": [
+   "report_back"
+  ],
+  "21/0037": [
+   "report_back"
+  ],
+  "21/0548": [
+   "report_back"
+  ],
+  "22/0154": [
+   "execute"
+  ],
+  "23/0211": [
+   "report_back"
+  ],
+  "23/0311": [
+   "report_back",
+   "execute"
+  ],
+  "25/0061": [
+   "execute"
+  ],
+  "25/0887": [
+   "execute",
+   "report_back"
+  ],
+  "26/0329": [
+   "report_back"
+  ]
+ },
+ "followed": {
+  "18/0420": "zwölf Vorlagen bis Ende 2019, Abschlussbericht 19/0942",
+  "23/0211": "Priorisierung 23/0867 und 24/0216",
+  "19/0697": "Maßnahmenkatalog 21/0287",
+  "19/0207": "Stadtmuseum, laufende Vorlagen",
+  "19/0501": "Haus der Jugend, laufende Vorlagen",
+  "21/0138": "Smart City, laufende Vorlagen",
+  "21/0372": "Bewohnerparkzone Haarenesch 24/0823",
+  "21/0225": "Bahnübergang Alexanderstraße, laufende Vorlagen",
+  "19/0602": "Kita-Ausbau, jährliche Maßnahmenplanung"
+ }
+}
