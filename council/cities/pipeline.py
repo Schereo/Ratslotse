@@ -77,6 +77,12 @@ def _hole(client, raw: CitiesStore, body_id: str, offen: list[dict], zahlen: dic
     gut, schlecht = schluessel
     nieten = 0
     for i, datei in enumerate(offen, 1):
+        if getattr(client, "files_gated", False):
+            # Zugangsprüfung erkannt (OParlClient._is_access_gate): Die übrigen
+            # bleiben offen statt als Fehler markiert — es hat sie niemand
+            # abgerufen, und der nächste Lauf sieht wieder nach.
+            zahlen["files_gated"] = 1
+            break
         antwort = client.get_file(datei["access_url"])
         if not antwort:
             zahlen[schlecht] = zahlen.get(schlecht, 0) + 1

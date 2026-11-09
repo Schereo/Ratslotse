@@ -32,6 +32,8 @@ from typing import Any
 
 import requests
 
+from kern.proxy import proxies_for
+
 from council.cities.store import CitiesStore, now
 
 logger = logging.getLogger("council.cities.oparl")
@@ -85,6 +87,38 @@ def throttle(url: str, gap: float = RATE_SECONDS) -> None:
         last[0] = time.monotonic()
 
 
+def _is_access_gate(body: bytes) -> bool:
+    """Ist diese Seite eine Zugangsprüfung gegen automatisierte Abrufe?
+
+    Braunschweig liefert seit 11/2026 unter jeder Dokument-Adresse
+    (``/public/doc?DOCTYP=…``) die Seite „Zugriff prüfen" mit einem
+    ALTCHA-Rätsel — lokal wie vom Server, HTTP 200. Der Lauf vom 09.11.2026
+    fragte sie trotzdem 240-mal ab, je eine Sekunde, ehe die Niederschriften
+    nach drei Nieten aufgaben. **Umgangen wird sie nicht** (dieselbe Regel wie
+    bei Hildesheim und Hannover): Eine angekündigte Absage an automatisierte
+    Zugriffe ist eine Absage. Erkannt wird sie, damit der Lauf aufhört zu
+    klopfen und die Kennzahl sagt, warum Texte fehlen."""
+    kopf = body[:4096].lower()
+    return b"/_gate/" in kopf or b"altcha" in kopf
+
+
+class ProxyAwareSession(requests.Session):
+    """``requests.Session``, die Hosts aus ``RATSLOTSE_PROXY_HOSTS`` über den
+    Umweg schickt (``kern/proxy.py``) — alles andere bleibt direkt.
+
+    Osnabrücks Ratsinformationssystem sperrt die Server-Adresse: Prod bekam am
+    09.11.2026 auf ``/oparl/system`` ein 403, das Notebook ein 200 — dieselbe
+    Lage wie beim Geoportal. Jeder Abruf der Städte läuft über diese eine
+    Session, also genügt es, den Host in die ``.env`` zu schreiben."""
+
+    def request(self, method, url, *args, **kwargs):  # type: ignore[override]
+        if not kwargs.get("proxies"):
+            umweg = proxies_for(str(url))
+            if umweg:
+                kwargs["proxies"] = umweg
+        return super().request(method, url, *args, **kwargs)
+
+
 class OParlClient:
     """Abrufe für **eine** Stadt, mit Rohablage und Dateispeicher."""
 
@@ -93,9 +127,13 @@ class OParlClient:
         self.raw = raw
         self.body_id = body_id
         self.files_dir = Path(files_dir)
-        self.session = session or requests.Session()
+        self.session = session or ProxyAwareSession()
         self.session.headers.update({"User-Agent": USER_AGENT})
         self.requests_made = 0
+        #: Stehen die Dateien dieser Stadt hinter einer Zugangsprüfung
+        #: (ALTCHA, „Zugriff prüfen")? Dann holt dieser Lauf keine weitere —
+        #: s. ``_is_access_gate``.
+        self.files_gated = False
         #: Wann dieser Lauf begann (ISO, UTC — wie ``store.now()``). Daran
         #: erkennen die Adapter, welche Sitzungen in DIESEM Lauf neu oder
         #: geändert hereinkamen; nur deren Vorlagen müssen noch einmal geholt
@@ -226,6 +264,8 @@ class OParlClient:
         if not url.lower().startswith(("http://", "https://")):
             logger.info("Datei-Adresse ist keine Netzadresse: %s", url[:60])
             return None
+        if self.files_gated:
+            return None
         for versuch in range(tries):
             throttle(url)
             try:
@@ -248,6 +288,13 @@ class OParlClient:
                 kopf = r.content[:64].lstrip().lower()
                 if mime.startswith("text/html") or kopf.startswith(
                         (b"<!doctype", b"<html")):
+                    if _is_access_gate(r.content):
+                        if not self.files_gated:
+                            logger.warning("%s: Dateien stehen hinter einer Zugangsprüfung "
+                                           "(ALTCHA) — keine weiteren Dateiabrufe in diesem "
+                                           "Lauf: %s", self.body_id, url)
+                        self.files_gated = True
+                        return None
                     logger.info("Dokument-Adresse liefert eine Webseite: %s", url)
                     return None
                 return r.content, mime
