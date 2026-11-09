@@ -33,7 +33,7 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
-from council import plans  # noqa: E402
+from council import plan_state, plans  # noqa: E402
 
 #: Ergebnisse, die zu „beschlossen“ passen. „noted“ gehört zu ``mode="noted"``;
 #: ein „accepted“ mit „zur Kenntnis genommen“ im Text auch (der Rat nimmt
@@ -118,6 +118,30 @@ def pruefe(conn: sqlite3.Connection, heute: str | None = None) -> list[Befund]:
         if plan.review_due and _ende_als_datum(plan.review_due) < heute and not plan.successor:
             befunde.append(Befund(plan.key, "hinweis",
                                   f"Überprüfung war bis {plan.review_due} vorgesehen"))
+    befunde.extend(_pruefe_stand(conn))
+    return befunde
+
+
+def _pruefe_stand(conn: sqlite3.Connection) -> list[Befund]:
+    """Neuer Bericht, alter Stand: Die Statusdateien (``council/plan_status/``) wachsen
+    nicht von selbst. Liegt der jüngste Bericht einer Reihe hinter der jüngsten
+    Momentaufnahme, ist ``scripts/plan_status.py`` dran."""
+    befunde: list[Befund] = []
+    for key in plan_state.keys():
+        stand = plan_state.city_status(key)
+        if key not in plans.PLANS or not stand:
+            continue
+        try:
+            bericht = conn.execute(
+                "select max(date) from council_plan_items where plan_key = ? and role in ('report', 'evaluation')",
+                (key,)).fetchone()[0]
+        except sqlite3.OperationalError:  # Zuordnung noch nie gebaut
+            return befunde
+        bis = plan_state.period_end(stand["latest"]["as_of"]).isoformat()
+        if bericht and bericht > bis:
+            befunde.append(Befund(key, "hinweis",
+                                  f"Bericht vom {bericht} ist jünger als der Stand ({stand['latest']['as_of']}) — "
+                                  f"python scripts/plan_status.py --nur {key}"))
     return befunde
 
 

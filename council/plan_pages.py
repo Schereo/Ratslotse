@@ -12,6 +12,7 @@ from __future__ import annotations
 from calendar import monthrange
 from datetime import date as _date
 
+from council import plan_state
 from council import plans as register
 
 #: Kurze Themenfeld-Namen für den Kicker. Die langen stehen in
@@ -440,6 +441,61 @@ def _upcoming(today: str, limit: int = 4) -> list[dict]:
     return out[:limit]
 
 
+# ── Die Einordnung (§ 3.3a): Berichtsstand und Stand laut Stadt ────────────
+
+#: § 3.4 Nr. 3: Selbstauskunft kennzeichnen — und sagen, woher sie kommt.
+ORIGIN_LABELS = {"template": "Nach Angaben der Verwaltung", "attachment": "Nach Angaben der Verwaltung",
+                 "klimaportal": "Klimaportal der Stadt"}
+
+
+def report_state_block(plan: register.Plan, items: list[dict], today: str) -> dict:
+    """Der Berichtsstand samt dem einen Satz, den er braucht, wenn noch nichts fällig ist."""
+    rs = plan_state.report_state(plan, items, today)
+    hint = None
+    if rs["state"] == "not_yet_due":
+        hint = (f"Überprüfung laut Plan {_month(plan.review_due)}." if rs["due_from_plan"]
+                else "Der Plan ist jünger als zwei Jahre.")
+    return {"state": rs["state"], "label": rs["label"], "hint": hint}
+
+
+def _status_counts(snapshot: dict) -> list[dict]:
+    return [{"status_raw": c["status_raw"], "status_norm": c["status_norm"], "count": c["count"]}
+            for c in snapshot["counts"]]
+
+
+def status_brief(key: str) -> dict | None:
+    """Die jüngste Verteilung im Wortlaut der Stadt — nur wo die Stadt eine meldet."""
+    stand = plan_state.city_status(key)
+    if not stand:
+        return None
+    s = stand["latest"]
+    return {"as_of": s["as_of"], "as_of_label": _month(s["as_of"]),
+            "origin_label": ORIGIN_LABELS[s["source"]["kind"]],
+            "total": s["total"], "complete": s["complete"], "counts": _status_counts(s)}
+
+
+def city_status_block(key: str) -> dict | None:
+    """Stand laut Stadt für die Planseite: Verteilung, Bewegung, Reihe, Vorbehalte."""
+    brief = status_brief(key)
+    stand = plan_state.city_status(key)
+    if not brief or not stand:
+        return None
+    s, move = stand["latest"], stand["movement"]
+    src = s["source"]
+    return {
+        **brief,
+        "source_label": src["label"],
+        "source_url": src.get("url"),
+        # Die Vorlage, aus der der Stand stammt — oder die ihn im Rat bestätigt.
+        "template_number": src.get("template") or (s.get("confirmed_by") or {}).get("template"),
+        "confirmed": bool(s.get("confirmed_by")),
+        "movement": {**move, "since_label": _month(move["since"])} if move else None,
+        "series": [{"as_of": x["as_of"], "as_of_label": _month(x["as_of"]), "total": x["total"],
+                    "counts": _status_counts(x)} for x in stand["series"]],
+        "notes": [{"text": n["text"], "url": n.get("url")} for n in stand["notes"]],
+    }
+
+
 def _card(plan: register.Plan, items: list[dict], today: str) -> dict:
     state = status(plan, today)
     latest = _latest_report(plan, items)
@@ -466,6 +522,8 @@ def _card(plan: register.Plan, items: list[dict], today: str) -> dict:
                              for i in items if i["role"] in REPORT_ROLES}),
         "successor": _neighbour(plan.successor),
         "measure_count": len(m["measures"]) if (m := register.measures(plan.key)) else None,
+        "report_state": report_state_block(plan, items, today),
+        "status_brief": status_brief(plan.key),
     }
 
 
@@ -591,15 +649,22 @@ def measures_block(key: str) -> dict | None:
     data = register.measures(key)
     if not data:
         return None
+    stand = plan_state.city_status(key)
+    states = {m["code"]: m for m in (stand["latest"].get("measures") or [])} if stand else {}
     groups: dict[str, list[dict]] = {}
     for m in data["measures"]:
+        state = states.get(m["code"]) or {}
         groups.setdefault(m.get("field") or "", []).append(
-            {"code": m["code"], "title": m["title"], "package": m.get("package"), "page": m["page"]})
+            {"code": m["code"], "title": m["title"], "package": m.get("package"), "page": m["page"],
+             "status_raw": state.get("status_raw"), "status_norm": state.get("status_norm")})
     src = data["source"]
     return {
         "count": len(data["measures"]),
         "count_city": data.get("count_city"),
         "count_note": data.get("count_note"),
+        # Für wie viele Maßnahmen die Stadt einen Stand nennt, und von wann.
+        "status_count": len(states),
+        "status_as_of_label": _month(stand["latest"]["as_of"]) if stand and states else None,
         "source": {"label": src["label"], "template_number": src.get("template"),
                    "document_id": src["document_id"], "url": src["url"],
                    "as_of": src.get("as_of"), "as_of_label": _datum_lang(src.get("as_of"))},
@@ -651,6 +716,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "concluded": _template_ref(store, plan.concluded, items),
         "predecessor": _neighbour(plan.predecessor),
         "measures": measures_block(key),
+        "city_status": city_status_block(key),
         "timeline": tl,
         "runway": runway(plan, items, state, today, tl["stations"]),
         "since": since(plan, items, state, today),

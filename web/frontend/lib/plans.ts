@@ -21,6 +21,9 @@ export type PlanDecisionGroup = PlanDetail["decision_groups"][number];
 export type PlanMeasures = NonNullable<PlanDetail["measures"]>;
 export type PlanMeasureField = PlanMeasures["groups"][number];
 export type PlanMeasure = PlanMeasureField["measures"][number];
+export type PlanStatusBrief = NonNullable<PlanCard["status_brief"]>;
+export type PlanCityStatus = NonNullable<PlanDetail["city_status"]>;
+export type PlanStatusNorm = PlanStatusBrief["counts"][number]["status_norm"];
 
 /** „19.12.2022“ aus dem ISO-Datum — ohne `new Date`, das rutscht je nach
  *  Zeitzone auf den Vortag (wie in `akte-zeitleiste.tsx`). */
@@ -117,6 +120,32 @@ export function byPackage(measures: readonly PlanMeasure[]): { name: string | nu
     const last = out[out.length - 1];
     if (last && last.name === name) last.measures.push(m);
     else out.push({ name, measures: [m] });
+  }
+  return out;
+}
+
+/** Die Verteilung laut Stadt in einer Zeile, in ihren Worten: „34 In Umsetzung
+ *  · 20 Realisiert“. Stufen ohne Maßnahme entfallen. Ordnet die Stadt nur
+ *  einen Teil ein, steht die Zählbasis dabei („6 von 18 in Umsetzung“) —
+ *  sonst läse sich der Rest als „nichts geschehen“. */
+export function statusLine(brief: Pick<PlanStatusBrief, "counts" | "total" | "complete">): string {
+  return brief.counts
+    .filter((c) => c.count > 0)
+    .map((c) => (brief.complete ? `${c.count} ${c.status_raw}` : `${c.count} von ${brief.total} ${c.status_raw}`))
+    .join(" · ");
+}
+
+/** „+9“, „−2“ — mit echtem Minuszeichen. */
+export function signed(n: number): string {
+  return n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "±0";
+}
+
+/** Die Stufen einer Reihe in der Reihenfolge des jüngsten Stands; was die
+ *  Stadt früher anders nannte, hängt hinten an. */
+export function statusLabels(series: readonly { counts: readonly { status_raw: string }[] }[]): string[] {
+  const out: string[] = [];
+  for (const snapshot of [...series].reverse()) {
+    for (const c of snapshot.counts) if (!out.includes(c.status_raw)) out.push(c.status_raw);
   }
   return out;
 }
