@@ -254,6 +254,28 @@ Konto zugeordnet werden — die API antwortet mit 400 und dem Hinweis, Ratslotse
 in den Apple-ID-Einstellungen unter „Mit Apple anmelden" zu entfernen und es
 erneut zu versuchen (Apple sendet die Adresse nur bei der Erstautorisierung).
 
+### Anmeldelinks in Mails
+
+Hinter dem Schalter `zugangslinks` tragen die Links der Release-Ankündigung
+(„Neu bei Ratslotse“) einen Anmeldelink je Empfänger*in: `?ml=<token>`
+(`kern/zugangslink.py`). Wer nicht angemeldet ist, landet über die Hülle auf
+`/login?weiter=…`; dort steht ein Knopf „Anmelden und weiter“, der das Token
+per `POST /api/auth/magic` einlöst.
+
+| Regel | Warum |
+|---|---|
+| zehn Tage gültig, danach das normale Formular mit `weiter=` | ein alter Link führt weiter zum Ziel, nur eben über die Anmeldung |
+| an `token_version` gebunden | Abmelden überall, Passwortwechsel und Sperre machen jeden offenen Link wertlos |
+| Zweck `magic`, nie eine Sitzung | `decode_access_token` weist jedes Token mit Zweck ab — sonst wäre der Link ein zehn Tage gültiger Generalschlüssel |
+| Einlösen nur per Klick | Mail-Scanner öffnen Links vorab (und führen Skripte aus); ein Aufruf allein meldet niemanden an |
+| Sitzung `via: magic`, auch über die Verlängerung | Passwort, Adresse, Konto löschen, MCP-Schlüssel, OAuth-Freigabe und das Admin-Panel verlangen die echte Anmeldung (`deps.require_volle_anmeldung`) |
+| nur im Browser | die App meldet sich per Bearer an und kennt keine Mail-Links (400) |
+
+Eine weitergeleitete Mail meldet damit an, übergibt aber kein Konto. Das Token
+entsteht in `kern/` (die Zustellung läuft dort), mit derselben HS256-Formel
+wie `app.security`; `tests/test_zugangslink.py` hält fest, dass das Backend es
+annimmt und nie als Sitzung gelten lässt.
+
 ### Rollen und Status
 
 | Spalte | Werte | Bedeutung |

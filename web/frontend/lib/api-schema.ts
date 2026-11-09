@@ -1382,6 +1382,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/magic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Magic Einloesen
+         * @description Einen Anmeldelink aus einer Mail einlösen — per Klick auf der Anmeldeseite.
+         *
+         *     Bewusst ein POST hinter einem Knopf und nicht der Aufruf des Links selbst:
+         *     Mail-Scanner (Outlook, Gmail) öffnen Links vorab, und ein GET, der anmeldet,
+         *     hätte sie angemeldet. Die Sitzung trägt ``via: magic`` und darf nichts,
+         *     was das Konto übernimmt (``deps.require_volle_anmeldung``).
+         *
+         *     Abgelaufen, widerrufen (``token_version``) oder gesperrt: 401 mit einem
+         *     Satz, den die Anmeldeseite über ihr normales Formular stellt.
+         */
+        post: operations["magic_einloesen_api_auth_magic_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -13359,6 +13387,14 @@ export interface components {
             /** Password */
             password: string;
         };
+        /**
+         * MagicLinkRequest
+         * @description Ein Anmeldelink aus einer Mail (``security.create_magic_token``).
+         */
+        MagicLinkRequest: {
+            /** Token */
+            token: string;
+        };
         /** MarkedHits */
         MarkedHits: {
             /** Marked */
@@ -20046,6 +20082,39 @@ export interface operations {
             };
         };
     };
+    magic_einloesen_api_auth_magic_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MagicLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     me_api_auth_me_get: {
         parameters: {
             query?: never;
@@ -26701,4 +26770,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: caed2b0eac5c9959ab72a03c90590aad8724ee69226e81fad6ef1124d2599f28
+// vertrag-sha256: 704f47086024aec322612526f00c8385734471506c9b226ad77dda4763803c54

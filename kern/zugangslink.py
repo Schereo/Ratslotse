@@ -95,7 +95,7 @@ def fuer_mail(store, owner_id: int | None, anlass: str | None, html: str, basis:
     Ohne Schalter, ohne passenden Anlass, ohne Konto oder ohne Store: die Mail
     unverändert. Ein Fehler hier darf die Zustellung nie aufhalten.
     """
-    if anlass not in ANLAESSE or not owner_id or store is None or not features.an(SCHALTER):
+    if anlass not in ANLAESSE or not owner_id or store is None or not features.an("zugangslinks"):
         return html
     try:
         zeile = store._conn.execute(  # noqa: SLF001

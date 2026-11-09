@@ -16145,6 +16145,22 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MagicLinkRequest": {
+        "description": "Ein Anmeldelink aus einer Mail (``security.create_magic_token``).",
+        "properties": {
+          "token": {
+            "maxLength": 800,
+            "minLength": 20,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "MagicLinkRequest",
+        "type": "object"
+      },
       "MarkedHits": {
         "properties": {
           "marked": {
@@ -30352,6 +30368,48 @@
           }
         },
         "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/magic": {
+      "post": {
+        "description": "Einen Anmeldelink aus einer Mail einlösen — per Klick auf der Anmeldeseite.\n\nBewusst ein POST hinter einem Knopf und nicht der Aufruf des Links selbst:\nMail-Scanner (Outlook, Gmail) öffnen Links vorab, und ein GET, der anmeldet,\nhätte sie angemeldet. Die Sitzung trägt ``via: magic`` und darf nichts,\nwas das Konto übernimmt (``deps.require_volle_anmeldung``).\n\nAbgelaufen, widerrufen (``token_version``) oder gesperrt: 401 mit einem\nSatz, den die Anmeldeseite über ihr normales Formular stellt.",
+        "operationId": "magic_einloesen_api_auth_magic_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MagicLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Magic Einloesen",
         "tags": [
           "auth"
         ]
