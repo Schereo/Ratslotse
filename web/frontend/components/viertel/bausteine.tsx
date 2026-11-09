@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CalendarDays, Check, ExternalLink, Flag, Hammer, LocateFixed, MapPinned, Megaphone, Newspaper, Search, TrafficCone, X } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, CalendarDays, Check, ExternalLink, Flag, Hammer, Loader2, LocateFixed, MapPinned, Megaphone, Newspaper, Plus, Search, TrafficCone, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -12,11 +12,12 @@ import { decisionHref, sitzungHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { cn, formatDate } from "@/lib/utils";
 import { STAND, ZEITPLAN } from "@/lib/viertel-einblick";
-import { Badge, Button, Card, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Label, Spinner, Textarea, toast } from "@/components/ui";
+import { Badge, Button, Card, ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Label, Spinner, Textarea, toast } from "@/components/ui";
 import { STAND_FARBE } from "@/components/viertel-zeichner";
 import { loadOrtsbereiche, ortsbereichFor } from "@/lib/districts";
 import { formatEuro, OUTCOME_META } from "@/components/decision-ui";
 import { STAFFEL, staffelStil } from "@/components/staffel";
+import { ortsBeschreibung, useOrtsbereiche } from "@/components/onboarding-flow";
 
 /** Die Bausteine von „Mein Viertel" — Tafel-Kopf, Karten, Liste, Detail,
  *  Suche, Standort — als eigene Komponenten.
@@ -141,6 +142,67 @@ export function Stadtzahl({ data, orte, kompakt }: { data: Uebersicht; orte: Ueb
         </p>
       )}
     </div>
+  );
+}
+
+/** „Zu meinen Vierteln“ auf der Tafel eines Viertels.
+ *
+ *  Ein gewähltes Viertel IST ein Thema mit seinem Namen — dieselbe Ableitung
+ *  wie im Einrichtungs-Assistenten (`gewaehlteOrtsbereiche`) und auf der
+ *  Startseite. Bis 11/2026 ließ es sich nur dort wählen: Das Widget „Mein
+ *  Viertel“ schickte mit „Viertel auswählen“ auf die Karte, und dort gab es
+ *  keinen Knopf dafür (Tims Befund 09.11.2026).
+ *
+ *  Entfernen fragt nach, denn es löscht das Thema samt seinen Treffern. */
+export function ViertelMerken({ name, className }: { name: string; className?: string }) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const topics = useQuery({ queryKey: ["topics"], queryFn: () => api.get<Topic[]>("/topics"), enabled: !!user });
+  // Für die Beschreibung des Themas, an der der Wächter misst — dieselbe wie
+  // im Assistenten (gemeinsamer Query-Key).
+  const orte = useOrtsbereiche(!!user);
+  const [unterwegs, setUnterwegs] = useState<boolean | null>(null);
+  const [frage, setFrage] = useState(false);
+  if (!user) return null;
+  const thema = topics.data?.find((t) => t.name.toLowerCase() === name.toLowerCase());
+  const gemerkt = unterwegs ?? !!thema;
+
+  const setzen = async (an: boolean) => {
+    setUnterwegs(an);
+    try {
+      if (an && !thema) {
+        const ort = orte.data?.find((o) => o.name.toLowerCase() === name.toLowerCase()) ?? { name };
+        await api.post("/topics", { name, description: ortsBeschreibung(ort) });
+      } else if (!an && thema) {
+        await api.del(`/topics/${thema.id}`);
+      }
+      // Erst den Serverstand holen, DANN die Absicht fallen lassen — sonst
+      // springt der Knopf kurz zurück (wie im Assistenten).
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+      toast.success(an
+        ? `${name} steht jetzt auf deiner Startseite unter „Mein Viertel“. Neue Beschlüsse meldet Ratslotse wie bei jedem Thema.`
+        : `${name} ist nicht mehr unter deinen Vierteln.`);
+    } catch {
+      toast.error(`${name} ließ sich gerade nicht ${an ? "hinzufügen" : "entfernen"}. Versuch es gleich noch einmal.`);
+    } finally {
+      setUnterwegs(null);
+    }
+  };
+
+  return (
+    <>
+      <Button size="sm" variant={gemerkt ? "secondary" : "primary"} aria-pressed={gemerkt}
+        disabled={topics.isPending || unterwegs !== null}
+        onClick={() => (gemerkt ? setFrage(true) : void setzen(true))}
+        className={cn("min-h-11", className)}>
+        {unterwegs !== null ? <Loader2 className="animate-spin" /> : gemerkt ? <Check /> : <Plus />}
+        {gemerkt ? "Mein Viertel" : "Zu meinen Vierteln"}
+      </Button>
+      <ConfirmDialog open={frage} onOpenChange={setFrage}
+        title={`${name} aus deinen Vierteln nehmen?`}
+        description={`Das Thema „${thema?.name ?? name}“ wird gelöscht, samt seinen bisherigen Treffern. Neue Beschlüsse zu ${name} meldet Ratslotse dir dann nicht mehr.`}
+        confirmLabel="Entfernen" onConfirm={() => void setzen(false)} />
+    </>
   );
 }
 
