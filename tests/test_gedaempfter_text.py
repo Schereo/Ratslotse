@@ -19,7 +19,7 @@ from pathlib import Path
 FRONTEND = Path(__file__).resolve().parent.parent / "web" / "frontend"
 
 #: Stand nach dem Review vom 06.10.2026. Sinkt die Zahl, hier nachziehen.
-SCHULD = 93
+SCHULD = 88
 
 _MUSTER = re.compile(r"text-muted-foreground/\d+")
 
