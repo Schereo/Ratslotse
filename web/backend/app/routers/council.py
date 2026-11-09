@@ -563,11 +563,16 @@ def zahl_der_woche(
     # Wahl stand wochenlang eine orange „0" oben auf „Heute", obwohl die
     # Ausschüsse längst wieder tagten (ihre Protokolle kommen ein bis drei
     # Wochen später). Die App liest `window_days` mit (TodayView.swift).
+    # `date_from` geht mit: Der Link „Diese N ansehen“ filtert die Liste ab
+    # genau diesem Tag. Rechnete das Frontend ihn selbst (in UTC), lag er um
+    # Mitternacht einen Tag neben dem gezählten Fenster.
     for days in (7, 30, 90):
-        anzahl = store.count_decisions_since((today - timedelta(days=days)).isoformat())
+        seit = (today - timedelta(days=days)).isoformat()
+        anzahl = store.count_decisions_since(seit)
         if anzahl:
-            return {"kind": "count", "count": anzahl, "window_days": days}
-    return {"kind": "count", "count": 0, "window_days": 90}
+            return {"kind": "count", "count": anzahl, "window_days": days, "date_from": seit}
+    return {"kind": "count", "count": 0, "window_days": 90,
+            "date_from": (today - timedelta(days=90)).isoformat()}
 
 
 @router.get("/budget/products")

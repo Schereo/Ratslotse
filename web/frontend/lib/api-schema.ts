@@ -14158,6 +14158,8 @@ export interface components {
         NumberOfTheWeekCount: {
             /** Count */
             count: number;
+            /** Date From */
+            date_from?: string;
             /**
              * Kind
              * @constant
@@ -26884,4 +26886,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0ddbb8aaa79f22484f2cb7e55964254bb2f2e677f1e5afcf1d0db2a2f24c1bb2
+// vertrag-sha256: 8944cbab0542d5ed41e74d3bed24c2e978d9900a47962bda72422781bd8d0271
