@@ -583,6 +583,36 @@ def _sorted(cards: list[dict]) -> list[dict]:
     return out
 
 
+#: § 3.5: der feste Satz unter jeder Liste, die sagt, wo man nachfragen kann.
+FOLLOW_UP_CAVEAT = ("Nichtöffentliche Sitzungen, Mitteilungen ohne Vorlage und Berichte außerhalb des "
+                    "Ratsinformationssystems sieht Ratslotse nicht. „Nicht gefunden“ heißt nicht „gibt es nicht“.")
+#: Berichtsstände, bei denen sich eine Nachfrage anbietet (§ 3.5, Art 3).
+FOLLOW_UP_STATES = ("no_report_found", "expired_no_evaluation")
+
+
+def follow_ups(cards: list[dict]) -> list[dict]:
+    """Wo man nachfragen kann: Pläne, zu denen kein aktueller Bericht zu finden ist.
+
+    Angezeigt wird die Tatsache mit Datum, nie eine Wertung (§ 3.5) — und am
+    längsten Stillen zuerst, nicht nach Fraktion oder Feld. Die Frage ist
+    vorbereitet; stellen muss sie jemand.
+    """
+    out = []
+    for c in cards:
+        state = c["report_state"]["state"]
+        if c["kind"] == "reference" or state not in FOLLOW_UP_STATES:
+            continue
+        out.append({
+            "key": c["key"], "title": c["title"], "policy_field": c["policy_field"], "field_label": c["field_label"],
+            "state": state,
+            "fact": c["report_note"] or f"{c['report_state']['label']}.",
+            "last_report": (c["latest_report"] or {}).get("date"),
+            "question": f"Was ist aus dem Plan „{c['title']}“ geworden? Gibt es einen Bericht zum Stand der Umsetzung?",
+        })
+    out.sort(key=lambda f: (f["last_report"] or "", f["title"]))
+    return out
+
+
 def overview(store, today: str | None = None) -> dict:
     today = today or _date.today().isoformat()
     by_plan: dict[str, list[dict]] = {}
@@ -608,7 +638,9 @@ def overview(store, today: str | None = None) -> dict:
                      "fade": round(_pos(f"{int(start[:4]) + OPEN_END_YEARS}-01-01", start, end), 4)},
             "fields": sorted(fields.values(), key=lambda f: f["label"]),
             "recent": _recent_reports(by_plan),
-            "upcoming": _upcoming(today)}
+            "upcoming": _upcoming(today),
+            "follow_ups": follow_ups(cards),
+            "follow_up_caveat": FOLLOW_UP_CAVEAT}
 
 
 def _decision_ref(store, d: register.Decision | None, items: list[dict]) -> dict | None:

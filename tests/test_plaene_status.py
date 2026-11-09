@@ -203,3 +203,22 @@ def test_ernaehrungsstrategie_stufen_nie_gemittelt():
     assert any("qualitative Einschätzung" in n["text"] for n in stand["notes"])
     block = plan_pages.measures_block("ernaehrungsstrategie")
     assert block["status_count"] == 68
+
+
+def test_wo_man_nachfragen_kann():
+    """§ 3.5, Art 3: Tatsache mit Datum, nie eine Wertung — und nur Pläne ohne aktuellen Bericht."""
+    card = lambda key, state, note, last: {  # noqa: E731
+        "key": key, "title": key.title(), "kind": "action", "policy_field": "verkehr", "field_label": "Verkehr",
+        "report_state": {"state": state, "label": plan_state.REPORT_STATE_LABELS[state], "hint": None},
+        "report_note": note, "latest_report": {"date": last} if last else None}
+    cards = [card("a", "reported", None, "2026-05-01"), card("b", "no_report_found", "Seit 03/2022 kein Bericht im Rat.", "2022-03-01"),
+             card("c", "no_report_found", "Kein Umsetzungsbericht im Rat seit dem Beschluss.", None),
+             card("d", "expired_no_evaluation", None, "2024-01-01"), card("e", "not_yet_due", None, None),
+             {**card("f", "no_report_found", None, None), "kind": "reference"}]
+    found = plan_pages.follow_ups(cards)
+    assert [f["key"] for f in found] == ["c", "b", "d"]  # am längsten Stillen zuerst; ohne jeden Bericht ganz vorn
+    assert found[2]["fact"] == "Laufzeit abgelaufen, keine Auswertung gefunden."
+    assert all(f["question"].startswith("Was ist aus dem Plan") for f in found)
+    for word in ("langsam", "säumig", "versäumt", "Verzug"):
+        assert word not in " ".join(f["fact"] + f["question"] for f in found)
+    assert "nicht gefunden" in plan_pages.FOLLOW_UP_CAVEAT.lower()

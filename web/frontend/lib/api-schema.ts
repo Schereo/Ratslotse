@@ -15416,6 +15416,31 @@ export interface components {
             /** Label */
             label: string;
         };
+        /**
+         * PlanFollowUp
+         * @description Ein Plan, zu dem kein aktueller Bericht zu finden ist (Plan § 3.5): eine Tatsache, keine Wertung.
+         */
+        PlanFollowUp: {
+            /** Fact */
+            fact: string;
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /** Last Report */
+            last_report: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** Question */
+            question: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "continued" | "in_preparation" | "evaluated" | "expired_no_evaluation" | "reported" | "not_yet_due" | "no_report_found";
+            /** Title */
+            title: string;
+        };
         /** PlanGroup */
         PlanGroup: {
             /**
@@ -15994,6 +16019,10 @@ export interface components {
             count: number;
             /** Fields */
             fields: components["schemas"]["PlanFieldCount"][];
+            /** Follow Up Caveat */
+            follow_up_caveat: string;
+            /** Follow Ups */
+            follow_ups: components["schemas"]["PlanFollowUp"][];
             /** Groups */
             groups: components["schemas"]["PlanGroup"][];
             /** Recent */
@@ -28216,4 +28245,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 04d6f122ce88602b98906996c7f9bbc597ee86989e74c939e9868f6fff603a97
+// vertrag-sha256: c01c8dcd8478aaf1d5c2b94814c794e7e30f9de743fb4d38f080349d0f485ea7

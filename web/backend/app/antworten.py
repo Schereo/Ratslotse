@@ -4666,6 +4666,20 @@ class PlanUpcoming(TypedDict):
     text: str
 
 
+class PlanFollowUp(TypedDict):
+    """Ein Plan, zu dem kein aktueller Bericht zu finden ist (Plan § 3.5): eine Tatsache, keine Wertung."""
+    key: str
+    title: str
+    policy_field: str
+    field_label: str
+    state: PlanReportStateKey
+    #: „Seit 03/2022 kein Bericht im Rat.“
+    fact: str
+    last_report: str | None
+    #: Vorbereitete Frage für „Frag den Rat“.
+    question: str
+
+
 class Plans(TypedDict):
     as_of: str
     as_of_label: str
@@ -4678,6 +4692,9 @@ class Plans(TypedDict):
     fields: list[PlanFieldCount]
     recent: list[PlanRecentReport]
     upcoming: list[PlanUpcoming]
+    #: Wo man nachfragen kann: Pläne ohne aktuellen Bericht, am längsten Stillen zuerst.
+    follow_ups: list[PlanFollowUp]
+    follow_up_caveat: str
 
 
 class PlanDecisionRef(TypedDict):

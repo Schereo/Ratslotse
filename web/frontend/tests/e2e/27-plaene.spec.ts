@@ -97,6 +97,17 @@ test("der Rückblick zeigt, was die Verwaltung meldet — und sagt, wenn er nich
   await expect(page.locator('section[aria-labelledby="plan-review"]')).toHaveCount(0);
 });
 
+test("die Übersicht sagt, wo man nachfragen kann — als Tatsache, nicht als Vorwurf", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council?tab=analysis&sub=ziele");
+  const list = page.locator('section[aria-labelledby="plans-follow-ups"]');
+  await expect(list.getByText("Das sagt etwas über die Berichte, nicht über die Arbeit.")).toBeVisible();
+  await expect(list.getByText(/„Nicht gefunden“ heißt nicht „gibt es nicht“/)).toBeVisible();
+  // Gegen die leere Ratsdatenbank der CI hat kein Plan einen Bericht — die Liste ist dort lang, hier kürzer.
+  const ask = list.getByRole("link", { name: "Den Rat fragen" }).first();
+  await expect(ask).toHaveAttribute("href", /^\/fragen\?q=Was(\+|%20)ist/);
+});
+
 test("die Maßnahmen lassen sich durchsuchen", async ({ page }) => {
   await schalter(page, true);
   await page.goto("/council/plan?key=klimaschutzplan_2035");

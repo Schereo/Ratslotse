@@ -841,6 +841,29 @@ beschrieben): die Vorlagen, die einen Plan nur beim Namen nennen.
 
 ### Phase 4b: Offene Aufträge
 
+**Stand nach dem Bau (09.11.2026):**
+
+- **Art 3 — Plan ohne aktuellen Bericht: gebaut.** Die Übersicht trägt den
+  Block „Wo man nachfragen kann“: die Pläne mit Berichtsstand „Kein Bericht
+  gefunden“ oder „Laufzeit abgelaufen, keine Auswertung gefunden“, am längsten
+  Stillen zuerst, je Zeile die Tatsache mit Datum und die vorbereitete Frage
+  für „Frag den Rat“. Darunter der feste Satz, was Ratslotse nicht sieht.
+- **Art 1 — Maßnahme mit verstrichenem Termin: nichts zu zeigen.** Keine der
+  sieben Maßnahmenlisten nennt einen Termin je Maßnahme.
+- **Art 2 — Ratsauftrag ohne Folge: gemessen, verfehlt, nicht gebaut.** Die
+  enge Regel („Die Verwaltung wird beauftragt / gebeten / aufgefordert“ in
+  einem angenommenen Beschluss) findet 153 Aufträge. Nach der Gegenprobe ohne
+  Modell (spätere Station in der Akte, spätere Vorlage, die die Nummer zitiert,
+  späterer Tagesordnungspunkt mit seltenen Titelwörtern) bleiben 22 ohne
+  gefundene Folge. In einer Stichprobe von zehn sind mindestens sechs falsch:
+  Es gibt Folgevorlagen unter anderem Titel (Stadtmuseum, Haus der Jugend,
+  Smart City, Haarenesch), oder der Auftrag war ein Vollzugsauftrag, auf den
+  gar kein Bericht folgen muss. Das Messziel von 90 % ist damit weit verfehlt;
+  nach der Regel unten erscheint die Liste nicht. Was sie bräuchte: die
+  Unterscheidung von Berichts- und Vollzugsaufträgen und eine Gegenprobe über
+  den Inhalt statt über Titel — also ein Modell und ein Golden-Set. Frage B
+  (eigener Schalter) stellt sich erst dann.
+
 Art 3 steht seit Phase 3. Hier kommen die beiden anderen, in dieser
 Reihenfolge:
 
