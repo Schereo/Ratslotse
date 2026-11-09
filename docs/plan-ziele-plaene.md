@@ -878,6 +878,19 @@ Reihenfolge:
 
 ### Phase 5: Rückblick, restliche Pläne, iOS
 
+**Rückblick gebaut, ohne Modell:** Jeder der zehn abgelaufenen oder abgelösten
+Pläne trägt den festen Aufbau aus § 3.3 — was vorgesehen war, was die
+Verwaltung meldet, welche Grenzen der Bericht selbst nennt, was weiterläuft.
+Die Sätze der Verwaltung sind wörtlich und kuratiert
+(`council/plan_reviews/<key>.json`, bisher Schulentwicklungsplan 2018,
+step2025 und Aktionsplan Gewalt 2020); `scripts/pruefe_plaene.py` prüft gegen
+den Bestand, dass jeder Satz so in seiner Vorlage steht. Wo es keine
+Auswertung gibt, steht „Eine Auswertung hat Ratslotse im
+Ratsinformationssystem nicht gefunden“ — fünf Pläne. Ein Modell schreibt
+nichts.
+
+**Offen:** Maßnahmenlisten für die übrigen Pläne und die iOS-Ansicht (unten).
+
 - Rückblick nach § 3.3 für den Schulentwicklungsplan 2018, den Aktionsplan
   Gewalt 2020–2025, das Integrationskonzept 2020–2025, step2025 und den KAI.
   Die Teile kommen aus Register, Stand und Berichten. Ein Modell schreibt

@@ -81,6 +81,22 @@ test("der Stand je Empfehlung kommt aus den Zellfarben der Evaluation", async ({
   await expect(measures.getByText("nicht umgesetzt, wird weiterhin gebraucht").first()).toBeVisible();
 });
 
+test("der Rückblick zeigt, was die Verwaltung meldet — und sagt, wenn er nichts findet", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=aktionsplan_gewalt_2020");
+  const review = page.locator('section[aria-labelledby="plan-review"]');
+  await expect(review.getByText("Grenzen, die der Bericht selbst nennt")).toBeVisible();
+  await expect(review.getByText(/scheiterte an fehlenden finanziellen Mitteln/)).toBeVisible();
+  await expect(review.getByRole("link", { name: /Aktionsplan/ })).toBeVisible();
+  await page.goto("/council/plan?key=smv2025");
+  await expect(page.locator('section[aria-labelledby="plan-review"]')
+    .getByText("Eine Auswertung hat Ratslotse im Ratsinformationssystem nicht gefunden.")).toBeVisible();
+  // Ein laufender Plan hat keinen Rückblick.
+  await page.goto("/council/plan?key=klimaschutzplan_2035");
+  await expect(page.locator("#plan-city-status")).toBeVisible();
+  await expect(page.locator('section[aria-labelledby="plan-review"]')).toHaveCount(0);
+});
+
 test("die Maßnahmen lassen sich durchsuchen", async ({ page }) => {
   await schalter(page, true);
   await page.goto("/council/plan?key=klimaschutzplan_2035");

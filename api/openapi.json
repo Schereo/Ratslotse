@@ -20443,6 +20443,123 @@
           "report_state": {
             "$ref": "#/components/schemas/PlanReportState"
           },
+          "review": {
+            "description": "Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.",
+            "properties": {
+              "continued_by": {
+                "properties": {
+                  "adopted": {
+                    "title": "Adopted",
+                    "type": "boolean"
+                  },
+                  "key": {
+                    "title": "Key",
+                    "type": "string"
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key",
+                  "title",
+                  "adopted"
+                ],
+                "title": "PlanNeighbour",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "evaluation": {
+                "properties": {
+                  "date": {
+                    "title": "Date",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "kvonr": {
+                    "title": "Kvonr",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "template_number": {
+                    "title": "Template Number",
+                    "type": "string"
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "title": "Url",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "template_number",
+                  "title",
+                  "kvonr",
+                  "url",
+                  "date"
+                ],
+                "title": "PlanTemplateRef",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "has_status": {
+                "title": "Has Status",
+                "type": "boolean"
+              },
+              "no_evaluation_note": {
+                "title": "No Evaluation Note",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "planned": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanFact"
+                },
+                "title": "Planned",
+                "type": "array"
+              },
+              "statements": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanReviewStatement"
+                },
+                "title": "Statements",
+                "type": "array"
+              }
+            },
+            "required": [
+              "planned",
+              "evaluation",
+              "no_evaluation_note",
+              "statements",
+              "continued_by",
+              "has_status"
+            ],
+            "title": "PlanReview",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "review_due": {
             "title": "Review Due",
             "type": [
@@ -20763,6 +20880,7 @@
           "measures",
           "city_status",
           "indicators",
+          "review",
           "timeline",
           "runway",
           "since",
@@ -21482,6 +21600,156 @@
           "hint"
         ],
         "title": "PlanReportState",
+        "type": "object"
+      },
+      "PlanReview": {
+        "description": "Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.",
+        "properties": {
+          "continued_by": {
+            "properties": {
+              "adopted": {
+                "title": "Adopted",
+                "type": "boolean"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "title",
+              "adopted"
+            ],
+            "title": "PlanNeighbour",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "evaluation": {
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "template_number",
+              "title",
+              "kvonr",
+              "url",
+              "date"
+            ],
+            "title": "PlanTemplateRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "has_status": {
+            "title": "Has Status",
+            "type": "boolean"
+          },
+          "no_evaluation_note": {
+            "title": "No Evaluation Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planned": {
+            "items": {
+              "$ref": "#/components/schemas/PlanFact"
+            },
+            "title": "Planned",
+            "type": "array"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/PlanReviewStatement"
+            },
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "planned",
+          "evaluation",
+          "no_evaluation_note",
+          "statements",
+          "continued_by",
+          "has_status"
+        ],
+        "title": "PlanReview",
+        "type": "object"
+      },
+      "PlanReviewStatement": {
+        "description": "Ein wörtlicher Satz aus der Auswertung: ein Ergebnis oder eine Grenze, die der Bericht selbst nennt.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "result",
+              "limit"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "source_label",
+          "template_number"
+        ],
+        "title": "PlanReviewStatement",
         "type": "object"
       },
       "PlanRunway": {

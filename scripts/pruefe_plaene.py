@@ -119,6 +119,27 @@ def pruefe(conn: sqlite3.Connection, heute: str | None = None) -> list[Befund]:
             befunde.append(Befund(plan.key, "hinweis",
                                   f"Überprüfung war bis {plan.review_due} vorgesehen"))
     befunde.extend(_pruefe_stand(conn))
+    befunde.extend(_pruefe_rueckblick(conn))
+    return befunde
+
+
+def _pruefe_rueckblick(conn: sqlite3.Connection) -> list[Befund]:
+    """Der Rückblick zitiert wörtlich. Steht ein Satz nicht so in seiner Vorlage, ist das ein Fehler —
+    verglichen ohne Leerraum und Trennstriche, weil der PDF-Text Zeilen bricht („be- reits“).
+    Sätze aus Anlagen (PDF) prüft dieser Lauf nicht: Deren Text liegt nicht im Abzug."""
+    def squash(text: str) -> str:
+        return re.sub(r"[\s\-]+", "", text)
+
+    befunde: list[Befund] = []
+    for pfad in sorted(plan_state.REVIEW_DIR.glob("*.json")):
+        for satz in plan_state.review_statements(pfad.stem):
+            nummer = satz.get("template")
+            zeile = conn.execute("select raw_text from council_templates where template_number = ?",
+                                 (nummer,)).fetchone() if nummer else None
+            if zeile and zeile[0] and squash(satz["text"]) not in squash(zeile[0]):
+                # Bei einer Fassung („/1“) steht der Satz oft in der Anlage, nicht im Vorlagentext.
+                if "Evaluation" not in satz["source_label"] or "/" not in (nummer or "")[3:]:
+                    befunde.append(Befund(pfad.stem, "fehler", f"Zitat steht nicht in {nummer}: {satz['text'][:60]}…"))
     return befunde
 
 
@@ -131,10 +152,13 @@ def _pruefe_stand(conn: sqlite3.Connection) -> list[Befund]:
         stand = plan_state.city_status(key)
         if key not in plans.PLANS or not stand:
             continue
+        # Der Bericht, aus dem der Stand stammt, ist kein „neuerer Bericht“ — er wird nur später beraten.
+        quelle = stand["latest"]["source"].get("template") or (stand["latest"].get("confirmed_by") or {}).get("template")
+        stamm = "/".join(quelle.split("/")[:2]) + "%" if quelle else ""
         try:
             bericht = conn.execute(
-                "select max(date) from council_plan_items where plan_key = ? and role in ('report', 'evaluation')",
-                (key,)).fetchone()[0]
+                "select max(date) from council_plan_items where plan_key = ? and role in ('report', 'evaluation') "
+                "and (template_number is null or template_number not like ?)", (key, stamm)).fetchone()[0]
         except sqlite3.OperationalError:  # Zuordnung noch nie gebaut
             return befunde
         bis = plan_state.period_end(stand["latest"]["as_of"]).isoformat()

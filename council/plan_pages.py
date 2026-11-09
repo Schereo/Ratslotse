@@ -507,6 +507,36 @@ def indicator_blocks(key: str) -> list[dict]:
     } for ind in plan_state.indicators(key)]
 
 
+#: „Nicht gefunden“ statt „gibt es nicht“: Ratslotse sieht nur das Ratsinformationssystem.
+NO_EVALUATION = "Eine Auswertung hat Ratslotse im Ratsinformationssystem nicht gefunden."
+
+
+def review_block(plan: register.Plan, state: str, evaluation: dict | None) -> dict | None:
+    """RÜCKBLICK für abgelaufene und abgelöste Pläne (§ 3.3) — ein fester Aufbau, kein freier Text:
+    was vorgesehen war, was die Verwaltung meldet, welche Grenzen sie selbst nennt, was weiterläuft.
+
+    ``evaluation``: die Vorlage, in der der Plan ausgewertet wurde (``_template_ref``)."""
+    if group_of(state) != "ended":
+        return None
+    planned = []
+    begin = plan.start or (plan.adopted.date if plan.adopted else None)
+    if begin:
+        planned.append({"label": "Laufzeit",
+                        "value": f"{_month(begin)} bis {_month(plan.end)}" if plan.end else f"ab {_month(begin)}"})
+    if listed := register.measures(plan.key):
+        planned.append({"label": "Maßnahmen", "value": str(len(listed["measures"]))})
+    statements = [{"kind": s["kind"], "text": s["text"], "source_label": s["source_label"],
+                   "template_number": s.get("template")} for s in plan_state.review_statements(plan.key)]
+    return {
+        "planned": planned,
+        "evaluation": evaluation,
+        "no_evaluation_note": None if evaluation else NO_EVALUATION,
+        "statements": statements,
+        "continued_by": _neighbour(plan.successor),
+        "has_status": plan_state.load(plan.key) is not None,
+    }
+
+
 def _card(plan: register.Plan, items: list[dict], today: str) -> dict:
     state = status(plan, today)
     latest = _latest_report(plan, items)
@@ -745,6 +775,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "measures": measures_block(key, measure_links),
         "city_status": city_status_block(key),
         "indicators": indicator_blocks(key),
+        "review": review_block(plan, state, _template_ref(store, plan.concluded, items)),
         "timeline": tl,
         "runway": runway(plan, items, state, today, tl["stations"]),
         "since": since(plan, items, state, today),
