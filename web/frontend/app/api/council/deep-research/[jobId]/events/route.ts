@@ -19,6 +19,15 @@ import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Ohne diese Zeile puffert Next 14 den Strom trotz allem oben: Ein GET-fetch
+// gilt seinem fetch-Patch als zwischenspeicherbar, und dann liest er die
+// Antwort ganz ein, bevor er sie weitergibt (`next/dist/server/lib/
+// patch-fetch.js`). `cache: "no-store"` am Aufruf allein half im Versuch
+// nicht, erst die Einstellung für das ganze Segment. Die /ask-Route ist ein
+// POST und war nie betroffen. Gemessen am 09.11.2026 auf dev: Alle Rahmen
+// kamen gebündelt nach 104 s, die Fortschrittskarte stand so lange auf
+// „Frage aufteilen …". `tests/test_strom_routen.py` hält die Zeile fest.
+export const fetchCache = "force-no-store";
 
 const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
 

@@ -40,7 +40,7 @@ export function ResearchOffer({ offer, frei, onStart }: {
           <FlaskConical className="h-3.5 w-3.5" aria-hidden /> Diese Frage gründlich recherchieren
         </button>
         <span className="text-meta text-muted-foreground">
-          ~30 Sek{frei != null ? ` · noch ${frei} heute` : ""}
+          ~1 Min{frei != null ? ` · noch ${frei} heute` : ""}
         </span>
       </div>
     </section>
