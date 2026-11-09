@@ -27,6 +27,8 @@ Quellen:
 - **Aktionsplan Gewalt 2020:** die Evaluation (Anlage 314635 zu 26/0681/1). Die
   Verteilung zählt ihr Text, den Stand je Empfehlung trägt die Zellfarbe im
   Anhang 4.1; das Skript prüft beides gegeneinander.
+- **Ernährungsstrategie:** der Bericht 26/0431 mit der Stufe je Handlungsansatz
+  (alle 68; die Tabellen sind Text, nur die Kreisdiagramme sind Bilder).
 - **Wärmeplan:** die Beschlussvorlage 26/0236. Sie ordnet sechs der 18
   Maßnahmen als „in Umsetzung“ ein; für die übrigen nennt sie ein Vorhaben
   und keinen Stand.
@@ -56,7 +58,7 @@ sys.path.insert(0, str(WURZEL))
 
 from council import plan_state, plans  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from scripts.plan_massnahmen import CACHE, RIS_DATEI, USER_AGENT, _seiten, violence_rows  # noqa: E402
+from scripts.plan_massnahmen import CACHE, RIS_DATEI, USER_AGENT, _seiten, holen, violence_rows  # noqa: E402
 
 PORTAL = "https://klimaportal.oldenburg.de"
 PORTAL_CACHE = CACHE / "klimaportal"
@@ -438,11 +440,88 @@ def aktionsplan_gewalt_2020(store: CouncilStore) -> dict:
     }
 
 
+# ── Ernährungsstrategie ────────────────────────────────────────────────────
+
+#: Die fünf Stufen des Berichts 26/0431 in seinen Worten. Laut Stadt eine „qualitative
+#: Einschätzung“ — wir zeigen sie als Stufen und mitteln sie nie (§ 3.4 Nr. 1).
+_NUTRITION_STAGES = {
+    100: ("wird vollständig umgesetzt (Stufe 100 %)", "done"),
+    75: ("Umsetzung steht kurz bevor, erste Schritte erfolgt (Stufe 75 %)", "in_progress"),
+    50: ("Grundlagen für die Umsetzung geschaffen (Stufe 50 %)", "in_progress"),
+    25: ("Umsetzung aufgegriffen (Stufe 25 %)", "started"),
+    0: ("keine Umsetzungsaktivitäten (Stufe 0 %)", "open"),
+}
+#: Der Bericht „Ernährungsstrategie: Umsetzungsstand“ (26/0431) als PDF.
+_NUTRITION_DOCUMENT = 309762
+
+
+def nutrition_rows() -> list[dict]:
+    """Die fünf Tabellen „Nr. · Handlungsfeld · Priorität · Stand Umsetzung“ des Berichts.
+
+    Die Tabellen sind Text (Bilder sind nur die Kreisdiagramme darunter). Die
+    Stufe steht in der letzten Zelle über einem gezeichneten Balken;
+    ``find_tables`` verliert sie dort, darum wird sie je Zeile nachgelesen.
+    """
+    import pymupdf
+
+    rows: list[dict] = []
+    with pymupdf.open(holen(_NUTRITION_DOCUMENT)) as doc:
+        for pno in range(doc.page_count):
+            page = doc[pno]
+            for table in page.find_tables().tables:  # type: ignore[attr-defined]  # pymupdf ohne Typen
+                cells = table.extract()
+                if (cells[0][0] or "").strip() != "Nr.":
+                    continue
+                for values, row in zip(cells[1:], table.rows[1:], strict=True):
+                    x0, y0, x1, y1 = row.bbox
+                    last = row.cells[-1] or (x1 - 110, y0, x1, y1)
+                    text = str(page.get_text("text", clip=pymupdf.Rect(last[0] - 2, y0 + 1, x1 + 2, y1 - 1)))
+                    stage = re.search(r"(\d{1,3})\s*%", text)
+                    if not stage or int(stage.group(1)) not in _NUTRITION_STAGES:
+                        raise SystemExit(f"Ernährungsstrategie, Seite {pno + 1}: Zeile {values[0]!r} ohne Stufe")
+                    rows.append({"code": (values[0] or "").strip(), "stage": int(stage.group(1)), "page": pno + 1})
+    return rows
+
+
+def ernaehrungsstrategie(store: CouncilStore) -> dict:
+    rows = nutrition_rows()
+    codes = [m["code"] for m in (plans.measures("ernaehrungsstrategie") or {"measures": []})["measures"]]
+    if sorted(r["code"] for r in rows) != sorted(codes):
+        raise SystemExit(f"Ernährungsstrategie: Bericht nennt {len(rows)} Ansätze, die Liste {len(codes)} — "
+                         "oder die Kennungen weichen ab")
+    said = re.search(r"Umsetzungsstand aller (\d+) Ansätze", " ".join(template_text(store, "26/0431").split()))
+    if not said or int(said.group(1)) != len(rows):
+        raise SystemExit(f"Ernährungsstrategie: {len(rows)} Zeilen gelesen, der Bericht sagt "
+                         f"{said.group(1) if said else '—'}")
+    tally = Counter(r["stage"] for r in rows)
+    return {
+        "plan": "ernaehrungsstrategie",
+        "snapshots": [{
+            "as_of": "2026-05",
+            "source": {"kind": "template", "label": "Bericht „Ernährungsstrategie: Umsetzungsstand“",
+                       "template": "26/0431", "url": RIS_DATEI.format(id=_NUTRITION_DOCUMENT), "fetched": None},
+            "total": len(rows),
+            "complete": True,
+            "counts": [{"status_raw": raw, "status_norm": norm, "count": tally[stage]}
+                       for stage, (raw, norm) in _NUTRITION_STAGES.items()],
+            "measures": [{"code": r["code"], "status_raw": _NUTRITION_STAGES[r["stage"]][0],
+                          "status_norm": _NUTRITION_STAGES[r["stage"]][1]} for r in rows],
+        }],
+        "notes": [
+            {"text": "Die Stufen sind laut Bericht eine qualitative Einschätzung der Verwaltung, kein Messwert.",
+             "url": None},
+            {"text": "Zur Umsetzung beschlossen hat der Rat fünf der 68 Ansätze (24/0811); der Bericht ordnet "
+                     "trotzdem alle ein.", "url": None},
+        ],
+    }
+
+
 #: plan → Leser. Jeder prüft seine Zahlen selbst gegen die Quelle und bricht ab, wenn sie nicht aufgehen.
 SOURCES: dict[str, Callable[[CouncilStore], dict]] = {
     "klimaschutzplan_2035": klimaschutzplan,
     "waermeplan": waermeplan,
     "aktionsplan_gewalt_2020": aktionsplan_gewalt_2020,
+    "ernaehrungsstrategie": ernaehrungsstrategie,
 }
 
 
