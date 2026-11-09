@@ -193,7 +193,18 @@ ERSATZ: dict[str, tuple[str, ...]] = {
 #: (``run_assistant``) sah bei ``low`` keinen Verlust — sie prüft Zusagen,
 #: nicht Vollständigkeit; die Fakten-Eval zählt jede ausgelassene Pflicht-
 #: Angabe. Tims Regel: „Akkuratheit schlägt Geschwindigkeit“.
-WEB_DENKAUFWAND: dict[tuple[str, str], str] = {}
+WEB_DENKAUFWAND: dict[tuple[str, str], str] = {
+    # Die Frage-Analyse und die Zerlegung der gründlichen Recherche liefern nur
+    # Suchbegriffe, Fragetyp und Facetten als JSON — dafür braucht es kein
+    # langes Nachdenken. Gemessen am 09.11.2026 (GPT-5.6 Luna über azure/eu,
+    # „Was hat der Rat zur Kongresshalle beschlossen?“, je drei Läufe): Vorgabe
+    # 2,7–3,9 s, ``low`` 1,6–1,7 s bei gleichem JSON. ``minimal`` hatte einen
+    # Ausreißer von 11 s. Auf Prod kostete die Analyse 5 s vor dem ersten
+    # Treffer, die Zerlegung trägt die Facetten der gründlichen Recherche.
+    ("openai/gpt-5.6-luna", "qa_analysis"): "low",
+    ("openai/gpt-5.6-luna", "qa_query_expansion"): "low",
+    ("openai/gpt-5.6-luna", "deep_decomposition"): "low",
+}
 
 #: **Ein reiner Messschalter** wie ``TARIF_ENV``: überschreibt den Denkaufwand
 #: aller Web-Antworten, damit die Fakten-Eval (``eval/run_fakten.py``, die ein
