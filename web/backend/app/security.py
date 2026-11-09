@@ -118,6 +118,15 @@ def create_magic_token(subject: str | int, token_version: int = 0, tage: int = M
                       "ver": token_version, "zweck": VIA_LINK})
 
 
+def magic_grund(token: str) -> str:
+    """Warum ein Anmeldelink nicht gilt: ``abgelaufen`` (echt, aber zu alt)
+    oder ``ungueltig`` (falsche Signatur, kein Anmeldelink, Unsinn)."""
+    payload = _verified_payload(token)
+    if payload and payload.get("zweck") == VIA_LINK and payload.get("exp", 0) < int(time.time()):
+        return "abgelaufen"
+    return "ungueltig"
+
+
 def decode_magic_token(token: str) -> tuple[str, int] | None:
     """``(Konto, token_version)`` eines gültigen Anmeldelinks — sonst ``None``."""
     payload = _verified_payload(token)

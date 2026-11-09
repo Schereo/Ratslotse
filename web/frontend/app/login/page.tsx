@@ -37,30 +37,18 @@ export default function LoginPage() {
     return () => window.removeEventListener(ONBOARDING_NEEDS_LOGIN_EVENT, check);
   }, []);
 
-  // Ein Anmeldelink aus einer Mail im Rücksprungziel (lib/zugangslink.ts).
-  // Nach dem Mounten gelesen, damit das Vorrendern nichts einbackt.
-  const [zugang, setZugang] = useState<{ token: string; ziel: string } | null>(null);
-  const [zugangFehler, setZugangFehler] = useState("");
+  // Ein Anmeldelink im Rücksprungziel (lib/zugangslink.ts) — der Normalfall
+  // löst die Hülle schon vor der Umleitung ein. Kommt doch einer bis hierher,
+  // wird er ebenso still eingelöst; gilt er nicht, bleibt das Formular ohne
+  // Fehlermeldung, und `weiter=` führt ohne Token zum selben Ziel.
   useEffect(() => {
-    setZugang(zugangAus(new URLSearchParams(window.location.search).get("weiter")));
-  }, []);
-  const perLink = async () => {
+    const zugang = zugangAus(new URLSearchParams(window.location.search).get("weiter"));
     if (!zugang) return;
-    setBusy(true);
-    setZugangFehler("");
-    try {
-      await loginPerLink(zugang.token);
-      router.replace(zugang.ziel);
-    } catch (err) {
-      // Abgelaufen oder widerrufen: Der Knopf geht, das Formular bleibt — und
-      // es führt nach der Anmeldung zum selben Ziel, ohne das alte Token.
-      setZugangFehler(err instanceof Error ? err.message : "Der Link gilt nicht mehr.");
-      window.history.replaceState(null, "", `/login?weiter=${encodeURIComponent(zugang.ziel)}`);
-      setZugang(null);
-    } finally {
-      setBusy(false);
-    }
-  };
+    loginPerLink(zugang.token).then(
+      () => router.replace(zugang.ziel),
+      () => window.history.replaceState(null, "", `/login?weiter=${encodeURIComponent(zugang.ziel)}`));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- einmal beim Ankommen
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,18 +86,6 @@ export default function LoginPage() {
             <Link href={`/register${weiter}`} className="font-medium text-primary hover:underline">Kostenlos registrieren</Link>
           </p>
         )}
-        {zugang && (
-          <div className="mt-5 rounded-xl border border-primary/30 bg-primary/[0.06] p-4">
-            <p className="text-sm font-medium text-foreground">Du kommst aus einer Mail von Ratslotse.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Mit dem Link darin meldest du dich ohne Passwort an. Er gilt zehn Tage.
-            </p>
-            <Button type="button" onClick={perLink} disabled={busy} className="mt-3 h-11 w-full">
-              {busy ? "Einen Moment …" : "Anmelden und weiter"}
-            </Button>
-          </div>
-        )}
-        {zugangFehler && <p className="mt-4 text-sm text-destructive">{zugangFehler}</p>}
         <div className="mt-6">
           {/* RL-1001: Apple steht immer an erster Stelle (nur in der App sichtbar). */}
           <AppleSignInButton label="Mit Apple anmelden" />

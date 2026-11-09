@@ -258,16 +258,19 @@ erneut zu versuchen (Apple sendet die Adresse nur bei der Erstautorisierung).
 
 Hinter dem Schalter `zugangslinks` tragen die Links der Release-Ankündigung
 („Neu bei Ratslotse“) einen Anmeldelink je Empfänger*in: `?ml=<token>`
-(`kern/zugangslink.py`). Wer nicht angemeldet ist, landet über die Hülle auf
-`/login?weiter=…`; dort steht ein Knopf „Anmelden und weiter“, der das Token
-per `POST /api/auth/magic` einlöst.
+(`kern/zugangslink.py`). Wer nicht angemeldet ist, wird von der Hülle direkt
+angemeldet (`POST /api/auth/magic`) und steht auf der Seite, ohne
+Zwischenschritt. Gilt der Link nicht mehr, verschwindet nur das Token aus der
+Adresse, und es geht ohne Fehlermeldung zur normalen Anmeldung mit
+`weiter=` — gezählt wird der Fall je Grund im Fehlersammler (Admin →
+*Fehler*, „AnmeldelinkNichtEingeloest“), ohne Token und ohne Konto.
 
 | Regel | Warum |
 |---|---|
 | zehn Tage gültig, danach das normale Formular mit `weiter=` | ein alter Link führt weiter zum Ziel, nur eben über die Anmeldung |
 | an `token_version` gebunden | Abmelden überall, Passwortwechsel und Sperre machen jeden offenen Link wertlos |
 | Zweck `magic`, nie eine Sitzung | `decode_access_token` weist jedes Token mit Zweck ab — sonst wäre der Link ein zehn Tage gültiger Generalschlüssel |
-| Einlösen nur per Klick | Mail-Scanner öffnen Links vorab (und führen Skripte aus); ein Aufruf allein meldet niemanden an |
+| eingelöst per POST aus der Seite, nicht durch den Aufruf selbst | ein GET, der anmeldet, liefe in jeder Link-Vorschau mit; ein Scanner, der die Seite samt Skript ausführt, verbraucht das Token nicht (es gilt mehrfach) und bekommt nur die eingeschränkte Sitzung |
 | Sitzung `via: magic`, auch über die Verlängerung | Passwort, Adresse, Konto löschen, MCP-Schlüssel, OAuth-Freigabe und das Admin-Panel verlangen die echte Anmeldung (`deps.require_volle_anmeldung`) |
 | nur im Browser | die App meldet sich per Bearer an und kennt keine Mail-Links (400) |
 

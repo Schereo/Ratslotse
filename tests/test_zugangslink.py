@@ -101,6 +101,22 @@ def test_abgelaufen_widerrufen_oder_falsch_gibt_401(client):
     assert client.post("/api/auth/magic", json={"token": sitzung}).status_code == 401
 
 
+def test_ein_abgelaufener_link_landet_im_fehlersammler_ohne_token(client):
+    uid = _konto(client)
+    alt = _link(uid, jetzt=time.time() - 11 * 86400)
+    assert client.post("/api/auth/magic", json={"token": alt}).status_code == 401
+    assert client.post("/api/auth/magic", json={"token": _link(uid, ver=1)}).status_code == 401
+    store = Store(RATSLOTSE_DB)
+    try:
+        zeilen = store._conn.execute(
+            "SELECT exc_type, message, count FROM request_errors WHERE route = '/api/auth/magic'").fetchall()
+    finally:
+        store.close()
+    texte = {z[1] for z in zeilen}
+    assert any("abgelaufen" in t for t in texte) and any("widerrufen" in t for t in texte)
+    assert all(alt not in t for t in texte)
+
+
 def test_die_app_loest_keine_links_ein(client):
     uid = _konto(client)
     r = client.post("/api/auth/magic", json={"token": _link(uid)}, headers={"X-Client": "ios"})

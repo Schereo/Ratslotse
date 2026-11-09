@@ -41,7 +41,7 @@ from ..schemas import (
 )
 from ..security import (
     DUMMY_PASSWORD_HASH, VIA_LINK, create_access_token, decode_magic_token, hash_password,
-    verify_password,
+    magic_grund, verify_password,
 )
 from ..session import clear_session_cookie, set_session_cookie
 
@@ -412,15 +412,19 @@ def magic_einloesen(
     response: Response,
     store: Store = Depends(get_store),
 ) -> UserOut:
-    """Einen Anmeldelink aus einer Mail einlösen — per Klick auf der Anmeldeseite.
+    """Einen Anmeldelink aus einer Mail einlösen.
 
-    Bewusst ein POST hinter einem Knopf und nicht der Aufruf des Links selbst:
-    Mail-Scanner (Outlook, Gmail) öffnen Links vorab, und ein GET, der anmeldet,
-    hätte sie angemeldet. Die Sitzung trägt ``via: magic`` und darf nichts,
-    was das Konto übernimmt (``deps.require_volle_anmeldung``).
+    Die Seite ruft das beim Ankommen von selbst auf (Tims Vorgabe 09.11.2026:
+    direkt angemeldet, kein Zwischenschritt). Ein POST statt des Links selbst
+    bleibt es trotzdem: Ein GET, der anmeldet, liefe in jedem Vorschau-Abruf
+    mit. Die Sitzung trägt ``via: magic`` und darf nichts, was das Konto
+    übernimmt (``deps.require_volle_anmeldung``).
 
-    Abgelaufen, widerrufen (``token_version``) oder gesperrt: 401 mit einem
-    Satz, den die Anmeldeseite über ihr normales Formular stellt.
+    Abgelaufen, widerrufen (``token_version``) oder gesperrt: 401 — die Seite
+    zeigt dann ohne Fehlermeldung die normale Anmeldung mit Rücksprung. Bei uns
+    landet der Fall im Fehlersammler (``_link_fehler_merken``), gruppiert nach
+    Grund, ohne Token und ohne Konto: Häufen sich abgelaufene Links, sind zehn
+    Tage zu kurz; häufen sich ungültige, stimmt etwas am Bau der Links nicht.
     """
     login_limiter.check(request)
     if _is_app_client(request):
@@ -428,13 +432,35 @@ def magic_einloesen(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Anmeldelinks gelten nur im Browser.")
     decoded = decode_magic_token(body.token)
     user = store.get_web_user_by_id(int(decoded[0])) if decoded else None
-    if (not decoded or not user or decoded[1] != user.get("token_version", 0)
-            or user.get("status") != "active"):
+    grund = (magic_grund(body.token) if not decoded
+             else "kein_konto" if not user
+             else "widerrufen" if decoded[1] != user.get("token_version", 0)
+             else "gesperrt" if user.get("status") != "active" else None)
+    if grund:
+        _link_fehler_merken(store, grund)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,
                             "Der Link ist abgelaufen oder gilt nicht mehr. Melde dich bitte an.")
     set_session_cookie(response, create_access_token(
         user["id"], user.get("token_version", 0), via=VIA_LINK))
     return _to_out(user)
+
+
+def _link_fehler_merken(store: Store, grund: str) -> None:
+    """Einen nicht einlösbaren Anmeldelink im Fehlersammler zählen — je Grund
+    eine Gruppe, ohne Token, Konto oder Adresse. Ohne Alarm-Mail: Abgelaufene
+    Links sind erwartbar; gezählt wird, damit man sieht, wie oft."""
+    import hashlib
+
+    logger.info("Anmeldelink nicht eingelöst: %s", grund)
+    store.merke_request_fehler({
+        "fingerprint": hashlib.sha1(f"magic|{grund}".encode(), usedforsecurity=False).hexdigest()[:16],
+        "exc_type": "AnmeldelinkNichtEingeloest",
+        "message": f"Anmeldelink aus einer Mail nicht eingelöst: {grund}",
+        "route": "/api/auth/magic",
+        "method": "POST",
+        "trace": "",
+        "quelle": "server",
+    })
 
 
 @router.post("/logout")
