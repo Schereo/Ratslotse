@@ -202,6 +202,14 @@ def main(fehler: list[str] | None = None) -> dict:
     except Exception as exc:  # noqa: BLE001 — abgeleitete Daten, nie Blocker des Nachtlaufs
         akten = {"akten": 0}
         print(f"Grundakten übersprungen: {exc}")
+    # Pläne der Stadt (docs/plan-ziele-plaene.md): Berichte, Planbeschlüsse und
+    # Verweise je Plan, ohne Modell, unter einer Sekunde — ebenfalls nach
+    # Vorlagen und Beratungsfolge, damit ein frischer Bericht am selben Tag
+    # auf seiner Planseite steht.
+    from council import plan_tracking
+    plaene = _schritt(fehler, "Pläne", lambda: plan_tracking.build(_store), {"plan_reports": 0})
+    print(f"Pläne: {plaene.get('plan_items', 0)} Tagesordnungspunkte, "
+          f"{plaene['plan_reports']} Berichte, {plaene.get('plan_mentions', 0)} Verweise.")
 
     # N3 „Es ist entschieden" (Design 30a): Erst hier — beim Protokoll-Import —
     # steht das Ergebnis überhaupt fest. Die Sitzung selbst liegt dann meist
@@ -226,6 +234,7 @@ def main(fehler: list[str] | None = None) -> dict:
         "Tragweite bewertet": prated,
         "Wortbeiträge": wstats["contributions"],
         "Grundakten": akten["akten"],
+        "Plan-Berichte": plaene["plan_reports"],
         "Vorlagen geladen": vstats["fetched"],
         "Beschlüsse mit Ortszuordnung": lstats["assigned"],
         "Orte geokodiert": geostats["located"],

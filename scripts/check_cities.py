@@ -218,9 +218,20 @@ def main(nur_oldenburg: bool = False, staedte: list[str] | None = None,
     gruende: dict[str, str] = {"mode": "oldenburg" if nur_oldenburg else "full"}
     t0 = time.time()
 
-    def wartet() -> bool:
-        """Wartet jemand auf diesen Prozess? Dann keine Stufe mehr BEGINNEN."""
+    def wartet(kostenfrei: bool = False) -> bool:
+        """Wartet jemand auf diesen Prozess? Dann keine Stufe mehr BEGINNEN.
+
+        ``kostenfrei``: Die Stufe ruft selbst kein Modell, oder ihre
+        Modellaufrufe fragen die Kostengrenze selbst (Gruppen-Prüfung,
+        Richtung). Eine erreichte Kostengrenze hält sie dann nicht auf, nur
+        Deploy und Frist. Bis 11/2026 übersprang der Lauf nach der Grenze
+        ALLES Weitere: Index, Gruppen, Status, Prüfung. Bei 5 $ Rückstand und
+        2 $ Grenze endete jeder Sonntag nach der Einordnung, und die neuen
+        Vorlagen kamen nie in eine Idee (Trockenlauf Prod 09.11.2026)."""
         grund = stopp.grund()
+        if grund and kostenfrei and grund.schluessel == "kosten":
+            zaehler["kostengrenze_erreicht"] = 1
+            return False
         if grund:
             zaehler[f"abgebrochen_{grund.schluessel}"] = 1
             gruende["abgebrochen"] = grund.text
@@ -276,7 +287,7 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
         if wartet():
             break
         try:
-            ernte = pipeline.fetch(spec, raw_dir, files_dir, seit)
+            ernte = pipeline.fetch(spec, raw_dir, files_dir, seit, stopp=stopp)
             pipeline.normalize(spec, raw_dir, main_store)
             pipeline.extract_inline(main_store, spec, raw_dir)
             text = pipeline.extract(main_store, files_dir, spec.id)
@@ -284,6 +295,11 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
             # Schnitt ist Regelarbeit ohne Modell und ohne Netz, und der
             # `reason`-Lauf weiter unten braucht die Abschnitte.
             schnitt = pipeline.split_protocols(main_store, spec.id)
+            # Was die Ideen-Seite über die Stadt sagt: kommt noch etwas, und
+            # mit Dokumenten? Ein unterbrochener Lauf lässt den Stand stehen.
+            zugang = pipeline.access_status(ernte)
+            if zugang is not None:
+                main_store.set_access(spec.id, *zugang)
             zaehler["bodies"] += 1
             zaehler["files_fetched"] += ernte.get("files_fetched", 0)
             zaehler["files_failed"] += ernte.get("files_failed", 0)
@@ -291,6 +307,14 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
                                             + ernte.get("protocols_fetched", 0))
             zaehler["texts_new"] += text.get("ok", 0) + text.get("thin", 0)
             zaehler["sections"] = zaehler.get("sections", 0) + schnitt["sections"]
+            # Dateien hinter einer Zugangsprüfung (ALTCHA): kein Fehler unserer
+            # Seite, aber der Grund, warum dieser Stadt neue Texte fehlen.
+            if ernte.get("files_gated"):
+                zaehler["files_gated"] = zaehler.get("files_gated", 0) + 1
+                gruende[f"gated_{spec.id}"] = "Dateien hinter einer Zugangsprüfung (ALTCHA)"
+            if ernte.get("host_unreachable"):
+                zaehler["hosts_unreachable"] = zaehler.get("hosts_unreachable", 0) + 1
+                gruende[f"unreachable_{spec.id}"] = "Server nimmt keine Verbindung an"
             # Eine abgebrochene Ernte ist kein Absturz — sie bekommt trotzdem
             # eine Zahl, sonst fällt sie nur dem auf, der das Log liest.
             if ernte.get("abgebrochen"):
@@ -317,7 +341,7 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
 
     # 4. Der Index über alle Städte: Text UND Einordnung der neuen Vorlagen.
     try:
-        for name, wert in ({} if wartet() else pipeline.index_all(main_store)).items():
+        for name, wert in ({} if wartet(kostenfrei=True) else pipeline.index_all(main_store)).items():
             zaehler[f"index_{name}"] = wert
     except Exception as e:  # noqa: BLE001
         zaehler["errors"] += 1
@@ -329,7 +353,7 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
     #    Zeitleiste samt Kurztiteln). Nur Zählen; die Modellaufrufe darin
     #    betreffen ausschließlich, was noch kein Urteil hat.
     try:
-        for name, wert in ({} if wartet()
+        for name, wert in ({} if wartet(kostenfrei=True)
                            else pipeline.cluster_all(main_store, stopp=stopp)).items():
             zaehler[f"cluster_{name}"] = wert
     except Exception as e:  # noqa: BLE001
@@ -363,7 +387,7 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
         from council.cities.annotators import get as get_annotator
         from council.cities.clusters import CLUSTER_VERSION
         from council.cities.index import EMBED_MODEL
-        if not wartet():
+        if not wartet(kostenfrei=True):
             zaehler["group_status"] = main_store.rebuild_group_status(
                 EMBED_MODEL, CLUSTER_VERSION, get_annotator("fit").version)
     except Exception as e:  # noqa: BLE001 — Kennzahl, nicht der Lauf
@@ -393,7 +417,7 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
         from council.cities import pruefung
         from council.cities.index import EMBED_MODEL
 
-        befunde = [] if wartet() else pruefung.pruefe(main_store, EMBED_MODEL)
+        befunde = [] if wartet(kostenfrei=True) else pruefung.pruefe(main_store, EMBED_MODEL)
         zaehler["implausibel"] = len(befunde)
         for b in befunde:
             logger.warning("unplausibel: %s", b)

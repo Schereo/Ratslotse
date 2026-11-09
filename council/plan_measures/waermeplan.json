@@ -1,0 +1,122 @@
+{
+ "plan": "waermeplan",
+ "source": {
+  "label": "Abschlussbericht Kommunale Wärmeplanung, Tabelle 7",
+  "document_id": 306748,
+  "template": "26/0236",
+  "as_of": "2026-03-23",
+  "url": "https://buergerinfo.oldenburg.de/getfile.php?id=306748&type=do"
+ },
+ "count_city": 18,
+ "count_note": null,
+ "measures": [
+  {
+   "code": "K1",
+   "title": "Kommunikation und Aktivierung Oldenburger Wärmewende",
+   "field": "Kommunikation",
+   "page": 122
+  },
+  {
+   "code": "K2",
+   "title": "Beratungsangebote Oldenburger Wärmewende",
+   "field": "Kommunikation",
+   "page": 122
+  },
+  {
+   "code": "K3",
+   "title": "Klimapakt als Katalysator für die Wärmewende in Gewerbegebieten",
+   "field": "Kommunikation",
+   "page": 122
+  },
+  {
+   "code": "O1",
+   "title": "Kriterien zur Abwägung von Nutzungskonflikten auf städtischen Flächen",
+   "field": "Organisation",
+   "page": 122
+  },
+  {
+   "code": "O2",
+   "title": "Integration der KWP in die Bauleitplanung und Stadtentwicklung",
+   "field": "Organisation",
+   "page": 122
+  },
+  {
+   "code": "O3",
+   "title": "Initiierung einer Gesellschaft zur Umsetzung der Wärmewende",
+   "field": "Organisation",
+   "page": 122
+  },
+  {
+   "code": "O4",
+   "title": "Integrierte Planung von Tiefbaumaßnahmen",
+   "field": "Organisation",
+   "page": 122
+  },
+  {
+   "code": "O5",
+   "title": "Koordination von Energy Sharing Gemeinschaften",
+   "field": "Organisation",
+   "page": 122
+  },
+  {
+   "code": "O6",
+   "title": "Serieller Einbau von Wärmepumpen",
+   "field": "Organisation",
+   "page": 122
+  },
+  {
+   "code": "O7",
+   "title": "Wärmewende-Beirat",
+   "field": "Organisation",
+   "page": 122
+  },
+  {
+   "code": "O8",
+   "title": "Kriterien für die Ausgestaltung von Gestattungsverträgen",
+   "field": "Organisation",
+   "page": 122
+  },
+  {
+   "code": "F1",
+   "title": "Förderung gemeinschaftliche Wärmeinitiativen",
+   "field": "Förderung",
+   "page": 122
+  },
+  {
+   "code": "F2",
+   "title": "Verstetigung bestehender Förderprogramme",
+   "field": "Förderung",
+   "page": 122
+  },
+  {
+   "code": "T1",
+   "title": "Erstellung von Machbarkeitsstudien für Wärmenetzeignungsgebiete",
+   "field": "Technik",
+   "page": 122
+  },
+  {
+   "code": "T2",
+   "title": "Unterstützung der Umsetzung von Wärmenetzen",
+   "field": "Technik",
+   "page": 122
+  },
+  {
+   "code": "T3",
+   "title": "Analysen zu Wärmepotenzialen",
+   "field": "Technik",
+   "page": 122
+  },
+  {
+   "code": "T4",
+   "title": "Zukunftsstrategie Gasnetz",
+   "field": "Technik",
+   "page": 122
+  },
+  {
+   "code": "T5",
+   "title": "Klimaneutrale Wärmeversorgung kommunaler Gebäude",
+   "field": "Technik",
+   "page": 122
+  }
+ ]
+}

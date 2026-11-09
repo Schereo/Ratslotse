@@ -23,6 +23,7 @@ from council.store_haushalt import HaushaltMixin
 from council.store_orte import OrteMixin
 from council.store_personen import PersonenMixin
 from council.store_presse import PresseMixin
+from council.store_plaene import PlaeneMixin
 from council.store_pruefung import PruefungMixin
 from council.store_rueckmeldungen import RueckmeldungenMixin
 from council.store_quiz import QuizMixin
@@ -158,7 +159,7 @@ def _produkt_stufe(begriffe: list[str]) -> str | None:
 # arbeitet. Der Stern ist Absicht — wer eine Facette baut, fasst diese
 # Datei nicht an.
 class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
-                   PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
+                   PlaeneMixin, PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
                    RueckmeldungenMixin, ThemenMixin, ViertelMixin, WortbeitraegeMixin,
                    *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None,
@@ -2159,13 +2160,15 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         return dict(row) if row else None
 
     def count_decisions_since(self, date_from: str) -> int:
-        """Anzahl Beschlüsse seit ``date_from`` (Fallback der Zahl der Woche)."""
-        return int(self._conn.execute(
-            """SELECT COUNT(*) FROM council_decisions d
-               JOIN council_sessions s ON s.ksinr = d.ksinr
-               WHERE s.session_date >= ?""",
-            (date_from,),
-        ).fetchone()[0])
+        """Anzahl Beschlüsse seit ``date_from`` (Fallback der Zahl der Woche).
+
+        Dieselbe Zählung wie die Beschlussliste, auf die die Karte verlinkt
+        (``count_decisions``, Reiter „Beschlüsse“): nur Abstimmungen —
+        angenommen, abgelehnt, vertagt —, ohne Berichte, Kenntnisnahmen und
+        Änderungsanträge. Bis 11/2026 zählte hier jede Zeile: „159 Beschlüsse
+        in den letzten 90 Tagen“ führte auf eine Liste mit 91 (Prod: 15
+        Änderungsanträge und 53 Berichte zu viel, Tims Befund 09.11.2026)."""
+        return self.count_decisions(date_from=date_from, category="vote")
 
     def antrag_stats(self) -> dict:
         """Erfolgsquoten der Fraktions-Anträge: Antrag-Anlage → Vorlage → deren

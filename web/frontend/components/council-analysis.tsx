@@ -11,6 +11,8 @@ import { AnalysisIntro } from "@/components/analysis-intro";
 import { FrageChips } from "@/components/frage-chips";
 import { TrendsView } from "@/components/council-trends";
 import { GoalsView } from "@/components/council-goals";
+import { PlansView } from "@/components/council-plans";
+import { useFeature } from "@/lib/features";
 import { PersonenView } from "@/components/council-members";
 import { AnalyseReiter, ANALYSE_FRAGEN, analysisSub } from "@/components/analyse-reiter";
 
@@ -293,6 +295,8 @@ function PartiesView() {
 export function AnalysisTab() {
   const sp = useSearchParams();
   const router = useRouter();
+  // „Pläne der Stadt“ ersetzt hinter dem Schalter die Ziel-Seite (docs/plan-ziele-plaene.md).
+  const plaene = useFeature("plaene");
   const sub = analysisSub(sp.get("sub"));
   // Den Reiter „Finanzen“ gibt es seit 11/2026 nicht mehr: Er summierte die
   // Euro-Beträge aus Beschlusstexten, der Haushalt zeigt die echten Zahlen
@@ -310,7 +314,7 @@ export function AnalysisTab() {
           es. Zwei Fragen je Reiter, die die Zahlen darunter zur Sprache bringen. */}
       <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
       {sub === "parties" ? <PartiesView /> : sub === "personen" ? <PersonenView />
-        : sub === "trends" ? <TrendsView /> : <GoalsView />}
+        : sub === "trends" ? <TrendsView /> : plaene ? <PlansView /> : <GoalsView />}
     </div>
   );
 }

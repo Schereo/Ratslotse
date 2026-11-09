@@ -75,8 +75,11 @@ export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; 
   const sp = useSearchParams();
   const router = useRouter();
   const staedte = useFeature("ideen-anderswo");
+  // „Pläne“ statt „Ziele“ (Schalter `plaene`): dieselbe Adresse `sub=ziele`,
+  // damit alte Links und die App weiter dort landen.
+  const plaene = useFeature("plaene");
   const optionen: { value: AnalyseReiterWert; label: string; icon: typeof Users }[] =
-    SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: lbl, icon: Icon }));
+    SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: s === "ziele" && plaene ? "Pläne" : lbl, icon: Icon }));
   const wahlen = useFeature("wahlabend");
   if (staedte) optionen.push({ value: "staedte", label: "Ideen aus anderen Städten", icon: Lightbulb });
   if (wahlen) optionen.push({ value: "wahlen", label: "Wahlen", icon: Vote });

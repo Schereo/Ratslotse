@@ -4240,6 +4240,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/plan/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Detail
+         * @description Ein Plan mit Beschluss, Laufzeit, Berichten und den Beschlüssen dazu.
+         */
+        get: operations["plan_detail_api_council_plan__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plans Overview
+         * @description Alle Pläne im Register: laufend, in Arbeit, abgelaufen oder abgelöst.
+         */
+        get: operations["plans_overview_api_council_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/preview/{kind}/{key}": {
         parameters: {
             query?: never;
@@ -13018,6 +13058,28 @@ export interface components {
             window_since: string | null;
         };
         /**
+         * IdeaBlockedCity
+         * @description Eine Stadt, die uns bei der letzten Ernte nicht alles herausgab.
+         *
+         *     Was schon vorliegt, bleibt auf der Seite — die Zeile sagt nur, warum
+         *     nichts Neues dazukommt.
+         */
+        IdeaBlockedCity: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Latest Paper */
+            latest_paper: string | null;
+            /** Since */
+            since: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "documents_blocked" | "blocked";
+        };
+        /**
          * IdeaDataStatus
          * @description Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
          *
@@ -13028,6 +13090,8 @@ export interface components {
         IdeaDataStatus: {
             /** As Of */
             as_of: string | null;
+            /** Blocked */
+            blocked: components["schemas"]["IdeaBlockedCity"][];
             /** Lagging */
             lagging: components["schemas"]["IdeaLaggingCity"][];
         };
@@ -14158,6 +14222,8 @@ export interface components {
         NumberOfTheWeekCount: {
             /** Count */
             count: number;
+            /** Date From */
+            date_from?: string;
             /**
              * Kind
              * @constant
@@ -14721,6 +14787,835 @@ export interface components {
             type: string;
             /** Url */
             url: string;
+        };
+        /**
+         * PlanAxis
+         * @description Die gemeinsame Zeitachse der Übersicht: Beginn des Bestands bis zehn Jahre nach vorn.
+         */
+        PlanAxis: {
+            /** End */
+            end: string;
+            /** Fade */
+            fade: number;
+            /** Start */
+            start: string;
+            /** Ticks */
+            ticks: components["schemas"]["PlanAxisTick"][];
+            /** Today */
+            today: number;
+        };
+        /** PlanAxisTick */
+        PlanAxisTick: {
+            /** Label */
+            label: string;
+            /** X */
+            x: number;
+        };
+        /**
+         * PlanBand
+         * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+         *
+         *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+         */
+        PlanBand: {
+            /** Beyond */
+            beyond: boolean;
+            /** Open End */
+            open_end: boolean;
+            /** Open Start */
+            open_start: boolean;
+            /** X0 */
+            x0: number;
+            /** X1 */
+            x1: number;
+        };
+        /**
+         * PlanCard
+         * @description Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).
+         */
+        PlanCard: {
+            /**
+             * Adoption Mode
+             * @enum {string|null}
+             */
+            adoption_mode: "adopted" | "noted" | null;
+            /** Field Label */
+            field_label: string;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "running" | "preparing" | "ended";
+            /** Key */
+            key: string;
+            /** Kicker */
+            kicker: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "action" | "framework" | "statutory" | "reference";
+            /** Kind Label */
+            kind_label: string;
+            lane: components["schemas"]["PlanLane"];
+            /**
+             * PlanReport
+             * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+             */
+            latest_report: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Oral */
+                oral: boolean;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string;
+            } | null;
+            /** Measure Count */
+            measure_count: number | null;
+            /** Office */
+            office: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** Report Caveat */
+            report_caveat: string | null;
+            /** Report Count */
+            report_count: number;
+            /** Report Note */
+            report_note: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /** Status Label */
+            status_label: string;
+            /** PlanNeighbour */
+            successor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** Timing */
+            timing: string;
+            /** Title */
+            title: string;
+        };
+        /** PlanDecisionEntry */
+        PlanDecisionEntry: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Deliberations */
+            deliberations: number;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /** PlanDecisionGroup */
+        PlanDecisionGroup: {
+            /** Entries */
+            entries: components["schemas"]["PlanDecisionEntry"][];
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "plan" | "implementation" | "motion" | "decision" | "mentions";
+            /** Label */
+            label: string;
+        };
+        /**
+         * PlanDecisionRef
+         * @description Ein Beschluss über den Plan selbst, wie ihn das Register nennt.
+         */
+        PlanDecisionRef: {
+            /** Committee */
+            committee: string;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Label */
+            label: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "adopted" | "noted";
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Url */
+            url: string | null;
+            /** Vote */
+            vote: string | null;
+        };
+        /** PlanDetail */
+        PlanDetail: {
+            /**
+             * PlanDecisionRef
+             * @description Ein Beschluss über den Plan selbst, wie ihn das Register nennt.
+             */
+            adoption: {
+                /** Committee */
+                committee: string;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Label */
+                label: string | null;
+                /**
+                 * Mode
+                 * @enum {string}
+                 */
+                mode: "adopted" | "noted";
+                /**
+                 * Outcome
+                 * @enum {string|null}
+                 */
+                outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Url */
+                url: string | null;
+                /** Vote */
+                vote: string | null;
+            } | null;
+            /**
+             * Adoption Mode
+             * @enum {string|null}
+             */
+            adoption_mode: "adopted" | "noted" | null;
+            /** PlanTemplateRef */
+            commissioned: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /** PlanTemplateRef */
+            concluded: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /** Decision Groups */
+            decision_groups: components["schemas"]["PlanDecisionGroup"][];
+            /** Decisions */
+            decisions: components["schemas"]["PlanDecisionRef"][];
+            /** End */
+            end: string | null;
+            /** End Label */
+            end_label: string | null;
+            /** Field Label */
+            field_label: string;
+            /** Goal */
+            goal: string | null;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "running" | "preparing" | "ended";
+            /** Horizon Note */
+            horizon_note: string | null;
+            /** Key */
+            key: string;
+            /** Kicker */
+            kicker: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "action" | "framework" | "statutory" | "reference";
+            /** Kind Label */
+            kind_label: string;
+            lane: components["schemas"]["PlanLane"];
+            /**
+             * PlanReport
+             * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+             */
+            latest_report: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Oral */
+                oral: boolean;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string;
+            } | null;
+            /** Measure Count */
+            measure_count: number | null;
+            /**
+             * PlanMeasures
+             * @description Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).
+             */
+            measures: {
+                /** Count */
+                count: number;
+                /** Count City */
+                count_city: number | null;
+                /** Count Note */
+                count_note: string | null;
+                /** Groups */
+                groups: components["schemas"]["PlanMeasureGroup"][];
+                source: components["schemas"]["PlanMeasureSource"];
+            } | null;
+            /** Note */
+            note: string | null;
+            /** Office */
+            office: string | null;
+            /** Oral Report Count */
+            oral_report_count: number;
+            /** Owner */
+            owner: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** PlanNeighbour */
+            predecessor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** PlanFact */
+            remaining: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /** Report Caveat */
+            report_caveat: string | null;
+            /** Report Count */
+            report_count: number;
+            /** Report Note */
+            report_note: string | null;
+            /** Review Due */
+            review_due: string | null;
+            /** Review Label */
+            review_label: string | null;
+            /**
+             * PlanRunway
+             * @description Das Zeitband der Detailseite: eine eigene Achse je Plan.
+             */
+            runway: {
+                /** Archive From */
+                archive_from: number | null;
+                /**
+                 * PlanBand
+                 * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+                 *
+                 *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+                 */
+                band: {
+                    /** Beyond */
+                    beyond: boolean;
+                    /** Open End */
+                    open_end: boolean;
+                    /** Open Start */
+                    open_start: boolean;
+                    /** X0 */
+                    x0: number;
+                    /** X1 */
+                    x1: number;
+                } | null;
+                /** End */
+                end: string;
+                /** Marks */
+                marks: components["schemas"]["PlanRunwayMark"][];
+                /** PlanRunwayPoint */
+                review: {
+                    /** Label */
+                    label: string;
+                    /** X */
+                    x: number;
+                } | null;
+                /** Start */
+                start: string;
+                /**
+                 * Style
+                 * @enum {string}
+                 */
+                style: "adopted" | "noted" | "preparing";
+                /** Ticks */
+                ticks: components["schemas"]["PlanAxisTick"][];
+                /** Today */
+                today: number | null;
+            } | null;
+            /** PlanFact */
+            since: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "council" | "website";
+            /** Start */
+            start: string | null;
+            /** Start Label */
+            start_label: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /** Status Label */
+            status_label: string;
+            /** PlanNeighbour */
+            successor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            timeline: components["schemas"]["PlanTimeline"];
+            /** Timing */
+            timing: string;
+            /** Title */
+            title: string;
+        };
+        /** PlanFact */
+        PlanFact: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /** PlanFieldCount */
+        PlanFieldCount: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /** PlanGroup */
+        PlanGroup: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "running" | "preparing" | "ended";
+            /** Label */
+            label: string;
+            /** Plans */
+            plans: components["schemas"]["PlanCard"][];
+        };
+        /**
+         * PlanLane
+         * @description Das Zeitband einer Karte auf der gemeinsamen Achse der Übersicht (``Plans.axis``).
+         */
+        PlanLane: {
+            /**
+             * PlanBand
+             * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+             *
+             *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+             */
+            band: {
+                /** Beyond */
+                beyond: boolean;
+                /** Open End */
+                open_end: boolean;
+                /** Open Start */
+                open_start: boolean;
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Marks */
+            marks: components["schemas"]["PlanLaneMark"][];
+            /** PlanSpan */
+            predecessor: {
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Review */
+            review: number | null;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "adopted" | "noted" | "preparing";
+        };
+        /** PlanLaneMark */
+        PlanLaneMark: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** X */
+            x: number;
+        };
+        /** PlanMeasure */
+        PlanMeasure: {
+            /** Code */
+            code: string;
+            /** Package */
+            package: string | null;
+            /** Page */
+            page: number;
+            /** Title */
+            title: string;
+        };
+        /** PlanMeasureGroup */
+        PlanMeasureGroup: {
+            /** Field */
+            field: string | null;
+            /** Measures */
+            measures: components["schemas"]["PlanMeasure"][];
+        };
+        /** PlanMeasureSource */
+        PlanMeasureSource: {
+            /** As Of */
+            as_of: string | null;
+            /** As Of Label */
+            as_of_label: string | null;
+            /** Document Id */
+            document_id: number;
+            /** Label */
+            label: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Url */
+            url: string;
+        };
+        /**
+         * PlanMeasures
+         * @description Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).
+         */
+        PlanMeasures: {
+            /** Count */
+            count: number;
+            /** Count City */
+            count_city: number | null;
+            /** Count Note */
+            count_note: string | null;
+            /** Groups */
+            groups: components["schemas"]["PlanMeasureGroup"][];
+            source: components["schemas"]["PlanMeasureSource"];
+        };
+        /** PlanNeighbour */
+        PlanNeighbour: {
+            /** Adopted */
+            adopted: boolean;
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanRecentReport
+         * @description Ein jüngster Bericht über alle Pläne hinweg.
+         */
+        PlanRecentReport: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** Plan Key */
+            plan_key: string;
+            /** Plan Title */
+            plan_title: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanReport
+         * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+         */
+        PlanReport: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Oral */
+            oral: boolean;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanRunway
+         * @description Das Zeitband der Detailseite: eine eigene Achse je Plan.
+         */
+        PlanRunway: {
+            /** Archive From */
+            archive_from: number | null;
+            /**
+             * PlanBand
+             * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+             *
+             *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+             */
+            band: {
+                /** Beyond */
+                beyond: boolean;
+                /** Open End */
+                open_end: boolean;
+                /** Open Start */
+                open_start: boolean;
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** End */
+            end: string;
+            /** Marks */
+            marks: components["schemas"]["PlanRunwayMark"][];
+            /** PlanRunwayPoint */
+            review: {
+                /** Label */
+                label: string;
+                /** X */
+                x: number;
+            } | null;
+            /** Start */
+            start: string;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "adopted" | "noted" | "preparing";
+            /** Ticks */
+            ticks: components["schemas"]["PlanAxisTick"][];
+            /** Today */
+            today: number | null;
+        };
+        /** PlanRunwayMark */
+        PlanRunwayMark: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** Station */
+            station: number;
+            /** X */
+            x: number;
+        };
+        /** PlanRunwayPoint */
+        PlanRunwayPoint: {
+            /** Label */
+            label: string;
+            /** X */
+            x: number;
+        };
+        /** PlanSpan */
+        PlanSpan: {
+            /** X0 */
+            x0: number;
+            /** X1 */
+            x1: number;
+        };
+        /** PlanTemplateRef */
+        PlanTemplateRef: {
+            /** Date */
+            date: string | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Template Number */
+            template_number: string;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanTimeline */
+        PlanTimeline: {
+            /** Count */
+            count: number;
+            /** Log */
+            log: components["schemas"]["PlanTimelineYear"][];
+            /** Span */
+            span: string;
+            /** Stations */
+            stations: components["schemas"]["PlanTimelineStation"][];
+        };
+        /** PlanTimelineMember */
+        PlanTimelineMember: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+        };
+        /**
+         * PlanTimelineStation
+         * @description Eine Station im Zeitstrahl BERICHTE: eine Vorlage mit allen Beratungen oder ein mündlicher Bericht.
+         */
+        PlanTimelineStation: {
+            /** Committees */
+            committees: string[];
+            /** Date */
+            date: string;
+            /** Date End */
+            date_end: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Label */
+            label: string | null;
+            /** Members */
+            members: components["schemas"]["PlanTimelineMember"][];
+            /**
+             * Mode
+             * @enum {string|null}
+             */
+            mode: "adopted" | "noted" | null;
+            /** Oral */
+            oral: boolean;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanTimelineYear
+         * @description Ein Abschnitt des Zeitstrahls, das jüngste Jahr zuerst.
+         *
+         *     ``gap``: In diesen Jahren war kein Bericht zu finden — „keinen gefunden“, nicht „es gab keinen“.
+         */
+        PlanTimelineYear: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "year" | "gap";
+            /** Stations */
+            stations: number[];
+            /** Text */
+            text: string | null;
+            /** Year */
+            year: number;
+            /** Year To */
+            year_to: number;
+        };
+        /**
+         * PlanUpcoming
+         * @description Was ein Plan selbst als Nächstes vorsieht — eine Angabe aus dem Plan, keine Frist von uns.
+         */
+        PlanUpcoming: {
+            /** Date */
+            date: string;
+            /** Date Label */
+            date_label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "end" | "review";
+            /** Plan Key */
+            plan_key: string;
+            /** Plan Title */
+            plan_title: string;
+            /** Text */
+            text: string;
+        };
+        /** Plans */
+        Plans: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            axis: components["schemas"]["PlanAxis"];
+            /** Count */
+            count: number;
+            /** Fields */
+            fields: components["schemas"]["PlanFieldCount"][];
+            /** Groups */
+            groups: components["schemas"]["PlanGroup"][];
+            /** Recent */
+            recent: components["schemas"]["PlanRecentReport"][];
+            /** References */
+            references: components["schemas"]["PlanCard"][];
+            /** Upcoming */
+            upcoming: components["schemas"]["PlanUpcoming"][];
         };
         /** PolicyField */
         PolicyField: {
@@ -23005,6 +23900,57 @@ export interface operations {
             };
         };
     };
+    plan_detail_api_council_plan__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plans_overview_api_council_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plans"];
+                };
+            };
+        };
+    };
     preview_api_council_preview__kind___key__get: {
         parameters: {
             query?: never;
@@ -26884,4 +27830,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0ddbb8aaa79f22484f2cb7e55964254bb2f2e677f1e5afcf1d0db2a2f24c1bb2
+// vertrag-sha256: 619885bacef5c48e06e4f4b8ae8d5b4520161f03dde04f475dd3330b9ba31b39

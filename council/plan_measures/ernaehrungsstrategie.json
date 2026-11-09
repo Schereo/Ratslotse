@@ -1,0 +1,422 @@
+{
+ "plan": "ernaehrungsstrategie",
+ "source": {
+  "label": "Ernährungsstrategie",
+  "document_id": 286179,
+  "template": "24/0810",
+  "as_of": "2024-12-12",
+  "url": "https://buergerinfo.oldenburg.de/getfile.php?id=286179&type=do"
+ },
+ "count_city": 68,
+ "count_note": "68 Handlungsansätze; fünf davon hat der Rat zur Umsetzung beschlossen (24/0811).",
+ "measures": [
+  {
+   "code": "A1",
+   "title": "Rahmenkonzept „Schulverpflegung in Oldenburg“",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 21
+  },
+  {
+   "code": "A2",
+   "title": "Rahmenkonzept „Kitaverpflegung in Oldenburg“",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 21
+  },
+  {
+   "code": "A3",
+   "title": "Lösungen für den Umgang mit der Variabilität der Essensmengen in Kitas finden",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 21
+  },
+  {
+   "code": "A4",
+   "title": "Frühstück in städtischen Kitas selbst organisieren",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 21
+  },
+  {
+   "code": "A5",
+   "title": "Selbstkochen in Kitas etablieren, wo es möglich ist und Praxis-Erfahrungen von nicht-städtischen Trägern nutzen",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 21
+  },
+  {
+   "code": "A6",
+   "title": "Rahmenkonzept für die Verpflegung im Klinikum Oldenburg erstellen",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 22
+  },
+  {
+   "code": "A7",
+   "title": "Rahmenkonzept für die Verpflegung in Weser-Ems-Hallen und Bäderbetrieben der Stadt Oldenburg erstellen",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 22
+  },
+  {
+   "code": "A8",
+   "title": "Einkaufsgemeinschaft städtischer Beteiligungen im Bereich Verpflegung prüfen",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 22
+  },
+  {
+   "code": "A9",
+   "title": "Die Zahl der Anlieferungen bei städtischen Einrichtungen und städtischen Beteiligungen soweit wie möglich reduzieren",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 22
+  },
+  {
+   "code": "A10",
+   "title": "Dialog mit Akteurinnen und Akteuren zur Weiterentwicklung einer gesunden und klimafreundlichen Ernährung für Seniorinnen und Senioren führen",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 23
+  },
+  {
+   "code": "A11",
+   "title": "Faire Produkte in der kommunalen Außer-Haus-Verpflegung stärken",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 23
+  },
+  {
+   "code": "A12",
+   "title": "Nachhaltige Beschaffungsvorgaben (Beschaffungshandbuch) im Bereich Lebensmittel und Verpflegung für kommunale Einrichtungen und Beteiligungen etablieren",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 23
+  },
+  {
+   "code": "A13",
+   "title": "Qualifizierte Unterstützung zur Bio-Zertifizierung anbieten",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 23
+  },
+  {
+   "code": "A14",
+   "title": "Durchführung von Bio-Zertifizierung finanziell unterstützen",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 23
+  },
+  {
+   "code": "A15",
+   "title": "Bio-Zertifizierung wird zur Vorgabe für Caterinnen und Caterer, die von der Stadt Oldenburg beauftragt werden",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 23
+  },
+  {
+   "code": "A16",
+   "title": "Kompetenzzentrum für die AHV aufbauen",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 24
+  },
+  {
+   "code": "A17",
+   "title": "Kompetenzzentrum für die AHV erweitern",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 24
+  },
+  {
+   "code": "A18",
+   "title": "Bauvorhaben berücksichtigen den Bereich „Küche und Essen“",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 24
+  },
+  {
+   "code": "A19",
+   "title": "Rahmenkonzept für Veranstaltungs- und Sitzungsbetreuung festlegen",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 25
+  },
+  {
+   "code": "A20",
+   "title": "Rahmenkonzept für Märkte und Großveranstaltungen erstellen",
+   "field": "Außer-Haus-Verpflegung",
+   "page": 25
+  },
+  {
+   "code": "A21",
+   "title": "Aktionsbündnis zur Verwertung nichtverkäuflicher und -verkaufter Lebensmittel aufbauen",
+   "field": "Lebensmittelverschwendung",
+   "page": 27
+  },
+  {
+   "code": "A22",
+   "title": "Eine Messwoche von Lebensmittelabfällen einführen",
+   "field": "Lebensmittelverschwendung",
+   "page": 27
+  },
+  {
+   "code": "A23",
+   "title": "Lösungen für die Lebensmittelweitergabe auf Grundlage der rechtlichen Bestimmungen entwickeln",
+   "field": "Lebensmittelverschwendung",
+   "page": 27
+  },
+  {
+   "code": "A24",
+   "title": "Bedarf für eine Vortagsbäckerei erfassen",
+   "field": "Lebensmittelverschwendung",
+   "page": 27
+  },
+  {
+   "code": "A25",
+   "title": "Erntebörse für Obst von städtischen Flächen und aus privaten Gärten aufbauen",
+   "field": "Lebensmittelverschwendung",
+   "page": 27
+  },
+  {
+   "code": "A26",
+   "title": "Die Organisation Foodsharing in Oldenburg unterstützen",
+   "field": "Lebensmittelverschwendung",
+   "page": 28
+  },
+  {
+   "code": "A27",
+   "title": "Nachhaltige Mitnahmeboxen auf städtischen Veranstaltungen und in Einrichtungen der städtischen AHV bereitstellen",
+   "field": "Lebensmittelverschwendung",
+   "page": 28
+  },
+  {
+   "code": "A28",
+   "title": "Infokampagne zur Lebensmittelwertschätzung durchführen",
+   "field": "Lebensmittelverschwendung",
+   "page": 28
+  },
+  {
+   "code": "A29",
+   "title": "Wettbewerb „Oldenburg isst den Teller leer!“ entwickeln",
+   "field": "Lebensmittelverschwendung",
+   "page": 28
+  },
+  {
+   "code": "A30",
+   "title": "Ein Konzept für ein einheitliches Mehrwegsystem für Oldenburg erarbeiten",
+   "field": "Mehrweg",
+   "page": 30
+  },
+  {
+   "code": "A31",
+   "title": "Verpackungssteuer für To go- und Takeaway-Produkte einführen",
+   "field": "Mehrweg",
+   "page": 30
+  },
+  {
+   "code": "A32",
+   "title": "Nutzung von Einweg auf städtischen Veranstaltungen unterbinden",
+   "field": "Mehrweg",
+   "page": 30
+  },
+  {
+   "code": "A33",
+   "title": "Gesetzliche Rahmenbedingungen bezüglich des Mehrweg-Angebots kontrollieren",
+   "field": "Mehrweg",
+   "page": 30
+  },
+  {
+   "code": "A34",
+   "title": "Mobile Spülinfrastruktur schaffen",
+   "field": "Mehrweg",
+   "page": 30
+  },
+  {
+   "code": "A35",
+   "title": "Innovative Verpackungen in Zusammenarbeit mit städtischen Zulieferern erproben",
+   "field": "Mehrweg",
+   "page": 30
+  },
+  {
+   "code": "A36",
+   "title": "Mehrweg in kleinen Gastronomie-Betrieben fördern",
+   "field": "Mehrweg",
+   "page": 31
+  },
+  {
+   "code": "A37",
+   "title": "Sensibilisierungs-Kampagne zur Nutzung von Mehrweg entwickeln und durchführen",
+   "field": "Mehrweg",
+   "page": 31
+  },
+  {
+   "code": "A38",
+   "title": "Öffentlichkeitsarbeit zum Thema „Klimagesunde Ernährung“ stärken",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 33
+  },
+  {
+   "code": "A39",
+   "title": "Digitales Angebot „Oldenburg is(s)t“",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 33
+  },
+  {
+   "code": "A40",
+   "title": "Die Woche gegen Lebensmittelverschwendung durchführen",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 33
+  },
+  {
+   "code": "A41",
+   "title": "Fortbildungen zum Thema „Klimagesunde Ernährung“ anbieten",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 33
+  },
+  {
+   "code": "A42",
+   "title": "Projekt „Kostprobe“ fortführen und erweitern",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 33
+  },
+  {
+   "code": "A43",
+   "title": "Projekt „Klimagesunde Mensa“ in weiteren Schulen etablieren",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 33
+  },
+  {
+   "code": "A44",
+   "title": "Bildungsangebote zum Thema „klimagesunde Ernährung“ für den Aufenthalt von Gruppen und Schulklassen im Schullandheim Bissel schaffen",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 34
+  },
+  {
+   "code": "A45",
+   "title": "Schulgarten AGs stärken",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 34
+  },
+  {
+   "code": "A46",
+   "title": "Dezentrale Lehrküchen für Kitas und Schulen schaffen",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 34
+  },
+  {
+   "code": "A47",
+   "title": "Schnippeldiskos in den Stadtteilen Oldenburgs ausrichten",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 34
+  },
+  {
+   "code": "A48",
+   "title": "Eine regelmäßige „Regio Challenge“ für Oldenburg organisieren",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 34
+  },
+  {
+   "code": "A49",
+   "title": "Stadtteilgärten etablieren",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 35
+  },
+  {
+   "code": "A50",
+   "title": "Einen „Weltacker“ für Oldenburg aufbauen",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 35
+  },
+  {
+   "code": "A51",
+   "title": "Oldenburg wird „Essbare Stadt“",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 35
+  },
+  {
+   "code": "A52",
+   "title": "Mitmachprojekte in den Bereichen Kochen und Gärtnern für Seniorinnen und Senioren in Betreuungs- und Pflegeeinrichtungen organisieren",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 35
+  },
+  {
+   "code": "A53",
+   "title": "Veranstaltungsreihe zu gesellschaftskritischen Ernährungsthemen in Oldenburg und Umgebung organisieren",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 36
+  },
+  {
+   "code": "A54",
+   "title": "Dialog mit der Tafel zur Unterstützung gesunder und nachhaltiger Ernährung führen",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 36
+  },
+  {
+   "code": "A55",
+   "title": "Nothilfefonds für Menschen mit geringem Einkommen zu klimagesunden Lebensmitteln etablieren",
+   "field": "Ernährungsbildung und Mitmach-Projekte",
+   "page": 36
+  },
+  {
+   "code": "A56",
+   "title": "Arbeitskreis zur regionalen Versorgung der Stadt Oldenburg aufbauen",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 38
+  },
+  {
+   "code": "A57",
+   "title": "Austausch mit überwachenden Behörden zur einfacheren Ansiedlung der Verarbeitungsbetriebe etablieren",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 38
+  },
+  {
+   "code": "A58",
+   "title": "Regionalen Proteinpflanzen-Anbau stärken",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 38
+  },
+  {
+   "code": "A59",
+   "title": "Ansiedlung von verarbeitenden Betrieben auf dem Stadtgebiet und im Umland fördern",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 38
+  },
+  {
+   "code": "A60",
+   "title": "Eine beispielhafte Wertschöpfungskette mit geeigneten Betrieben der städtischen Außer-Haus-Verpflegung aufbauen",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 38
+  },
+  {
+   "code": "A61",
+   "title": "Förderlotsen für Angebote und Förderungen einsetzen",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 39
+  },
+  {
+   "code": "A62",
+   "title": "Ökolandbau durch zweckgebundene Verpachtung städtischer Flächen stärken",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 39
+  },
+  {
+   "code": "A63",
+   "title": "Nutzung einer Online-Plattform für die Vermarktung regionaler Lebensmittel stärken",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 39
+  },
+  {
+   "code": "A64",
+   "title": "Regionalvermarktung und alternative Betriebsformen unterstützen",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 39
+  },
+  {
+   "code": "A65",
+   "title": "Regionale Herkunft auf dem Wochenmarkt einheitlich kennzeichnen",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 40
+  },
+  {
+   "code": "A66",
+   "title": "Betriebe der Außer-Haus-Verpflegung und regionalen Erzeugerinnen und Erzeugern vernetzen",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 40
+  },
+  {
+   "code": "A67",
+   "title": "Bedarf an regionalen (vorrangig) Bio-Produkten für die Außer-Haus-Verpflegung ermitteln",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 40
+  },
+  {
+   "code": "A68",
+   "title": "Transparenz bezüglich regionaler Zutaten in der AHV verbessern",
+   "field": "Regionale Wertschöpfung und Stadt-Land-Kooperation",
+   "page": 40
+  }
+ ]
+}

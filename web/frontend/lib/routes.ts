@@ -18,6 +18,10 @@ export const fragenHref = (opts?: { q?: string; share?: string }) => {
 export const personHref = (slug: string) => `/council/person?slug=${encodeURIComponent(slug)}`;
 export const themaHref = (slug: string) => `/council/thema?slug=${encodeURIComponent(slug)}`;
 export const ortHref = (id: string) => `/council/ort?id=${encodeURIComponent(id)}`;
+/** Ein Plan der Stadt (Schalter `plaene`); Schlüssel aus `council/plans.py`. */
+export const planHref = (key: string) => `/council/plan?key=${encodeURIComponent(key)}`;
+/** Die Übersicht der Pläne — der Analyse-Reiter, der vorher „Ziele" hieß. */
+export const plaeneHref = "/council?tab=analysis&sub=ziele";
 /** Die vereinte Stadtkarte (`/karte`, STADTKARTE-PLAN.md): ohne `ort` die
  *  Stadt-Stufe, mit `ort` das Viertel, mit `vorhaben` das Detail. */
 export const karteHref = (ort?: string | null, vorhaben?: number | null) =>

@@ -1861,6 +1861,23 @@ class IdeaLaggingCity(TypedDict):
     latest_paper: str
 
 
+class IdeaBlockedCity(TypedDict):
+    """Eine Stadt, die uns bei der letzten Ernte nicht alles herausgab.
+
+    Was schon vorliegt, bleibt auf der Seite — die Zeile sagt nur, warum
+    nichts Neues dazukommt.
+    """
+    body_id: str
+    city: str
+    #: ``documents_blocked``: Vorlagen kommen, ihre Dokumente nicht.
+    #: ``blocked``: Es kommt gar nichts mehr.
+    status: Literal["documents_blocked", "blocked"]
+    #: Seit wann (ISO-Datum) die Ernte das so vorfindet.
+    since: str
+    #: Die jüngste Vorlage dieser Stadt (ISO-Datum), sofern es eine gibt.
+    latest_paper: str | None
+
+
 class IdeaDataStatus(TypedDict):
     """Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
 
@@ -1874,6 +1891,9 @@ class IdeaDataStatus(TypedDict):
     #: Abgleich liegt — dort fehlt vermutlich etwas (Wolfsburg endete am
     #: 25.06.2026, abgeglichen am 14.09.2026).
     lagging: list[IdeaLaggingCity]
+    #: Städte, deren Server den Abruf bei der letzten Ernte (teils) abwiesen.
+    #: Sie stehen NICHT zusätzlich unter ``lagging`` — ihr Grund ist bekannt.
+    blocked: list[IdeaBlockedCity]
 
 
 class IdeaFields(TypedDict):
@@ -3584,6 +3604,8 @@ class NumberOfTheWeekCount(TypedDict):
     kind: Literal["count"]
     count: int
     window_days: int
+    #: Erster Tag des gezählten Fensters — Ziel des Links auf die Liste.
+    date_from: NotRequired[str]
 
 
 NumberOfTheWeek = NumberOfTheWeekAmount | NumberOfTheWeekCount
@@ -4383,6 +4405,340 @@ class GoalDetail(TypedDict):
     description: str
     summary: GoalMetrics
     decisions: list[GoalDecision]
+
+
+PlanStatus = Literal["running", "preparing", "superseded", "concluded", "expired"]
+PlanKind = Literal["action", "framework", "statutory", "reference"]
+PlanItemRole = Literal["adoption", "amendment", "evaluation", "report", "preparation"]
+
+
+class PlanReport(TypedDict):
+    """Der jüngste Bericht zu einem Plan (``council/plan_pages.py``)."""
+    title: str
+    date: str
+    committee: str | None
+    oral: bool
+    template_number: str | None
+    decision_id: int | None
+
+
+class PlanNeighbour(TypedDict):
+    key: str
+    title: str
+    adopted: bool
+
+
+class PlanBand(TypedDict):
+    """Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+
+    KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+    """
+    #: Beginn und Ende, auf die Achse gekappt.
+    x0: float
+    x1: float
+    #: Der Plan begann vor der Achse; das Band kommt von links herein.
+    open_start: bool
+    #: Das Laufzeitende liegt hinter der Achse.
+    beyond: bool
+    #: Ohne Enddatum: ``to`` ist heute, dahinter läuft das Band blass aus.
+    open_end: bool
+
+
+class PlanSpan(TypedDict):
+    x0: float
+    x1: float
+
+
+class PlanLaneMark(TypedDict):
+    x: float
+    date: str
+    kind: PlanItemRole
+    oral: bool
+
+
+class PlanLane(TypedDict):
+    """Das Zeitband einer Karte auf der gemeinsamen Achse der Übersicht (``Plans.axis``)."""
+    #: ``adopted``: beschlossen · ``noted``: zur Kenntnis genommen · ``preparing``: in Arbeit.
+    style: Literal["adopted", "noted", "preparing"]
+    #: ``None``: kein Beginn bekannt (leerer Bestand) oder ganz außerhalb der Achse.
+    band: PlanBand | None
+    marks: list[PlanLaneMark]
+    #: Die Laufzeit des Vorgängers, als dünne Spur vor dem Band.
+    predecessor: PlanSpan | None
+    #: Nächste vorgesehene Überprüfung oder Fortschreibung.
+    review: float | None
+
+
+class PlanCard(TypedDict):
+    """Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4)."""
+    key: str
+    title: str
+    office: str | None
+    kind: PlanKind
+    kind_label: str
+    policy_field: str
+    field_label: str
+    #: „Klima & Umwelt · beschlossen 12/2022 · bis 2035“ — Versalien setzt die Oberfläche.
+    kicker: str
+    #: Der Kicker ohne Themenfeld („beschlossen 12/2022 · bis 2035“) — für Listen, die schon nach Feld gliedern.
+    timing: str
+    status: PlanStatus
+    status_label: str
+    group: Literal["running", "preparing", "ended"]
+    adoption_mode: Literal["adopted", "noted"] | None
+    latest_report: PlanReport | None
+    #: Der Satz, wenn der Bestand schweigt („Seit 03/2022 kein Bericht im Rat.“).
+    report_note: str | None
+    #: Der Satz daneben: Die Lücke sagt etwas über die Berichte, nicht über die Arbeit (§ 3.3a).
+    report_caveat: str | None
+    lane: PlanLane
+    report_count: int
+    successor: PlanNeighbour | None
+    #: Zahl der Maßnahmen laut geprüfter Liste; ``None``: keine Liste.
+    measure_count: int | None
+
+
+class PlanGroup(TypedDict):
+    key: Literal["running", "preparing", "ended"]
+    label: str
+    plans: list[PlanCard]
+
+
+class PlanAxisTick(TypedDict):
+    label: str
+    x: float
+
+
+class PlanAxis(TypedDict):
+    """Die gemeinsame Zeitachse der Übersicht: Beginn des Bestands bis zehn Jahre nach vorn."""
+    start: str
+    end: str
+    today: float
+    ticks: list[PlanAxisTick]
+    #: So weit läuft ein Band ohne Enddatum hinter heute blass aus (Anteil der Achse).
+    fade: float
+
+
+class PlanFieldCount(TypedDict):
+    key: str
+    label: str
+    count: int
+
+
+class PlanRecentReport(TypedDict):
+    """Ein jüngster Bericht über alle Pläne hinweg."""
+    plan_key: str
+    plan_title: str
+    title: str
+    date: str
+    committee: str | None
+    oral: bool
+    kind: PlanItemRole
+    template_number: str | None
+    decision_id: int | None
+
+
+class PlanUpcoming(TypedDict):
+    """Was ein Plan selbst als Nächstes vorsieht — eine Angabe aus dem Plan, keine Frist von uns."""
+    plan_key: str
+    plan_title: str
+    kind: Literal["end", "review"]
+    date: str
+    date_label: str
+    text: str
+
+
+class Plans(TypedDict):
+    as_of: str
+    as_of_label: str
+    count: int
+    groups: list[PlanGroup]
+    #: Pläne Dritter und Steuerungskonzepte, nur als Verweis (§ 8.1).
+    references: list[PlanCard]
+    axis: PlanAxis
+    #: Themenfelder der Pläne mit Anzahl, für den Filter.
+    fields: list[PlanFieldCount]
+    recent: list[PlanRecentReport]
+    upcoming: list[PlanUpcoming]
+
+
+class PlanDecisionRef(TypedDict):
+    """Ein Beschluss über den Plan selbst, wie ihn das Register nennt."""
+    date: str
+    committee: str
+    mode: Literal["adopted", "noted"]
+    label: str | None
+    #: ``None``: vor dem Bestand des Ratsinformationssystems (vor 2018).
+    template_number: str | None
+    kvonr: int | None
+    #: Die Vorlage im Ratsinformationssystem der Stadt.
+    url: str | None
+    decision_id: int | None
+    outcome: Beschlussergebnis | None
+    vote: str | None
+
+
+class PlanTemplateRef(TypedDict):
+    template_number: str
+    title: str | None
+    kvonr: int | None
+    url: str | None
+    date: str | None
+
+
+class PlanTimelineMember(TypedDict):
+    date: str
+    committee: str | None
+    decision_id: int | None
+
+
+class PlanTimelineStation(TypedDict):
+    """Eine Station im Zeitstrahl BERICHTE: eine Vorlage mit allen Beratungen oder ein mündlicher Bericht."""
+    date: str
+    date_end: str | None
+    kind: PlanItemRole
+    title: str
+    template_number: str | None
+    oral: bool
+    committees: list[str]
+    decision_id: int | None
+    members: list[PlanTimelineMember]
+    #: Bei Beschlüssen über den Plan: was er am Plan tut, laut Register („Klimaziel: klimaneutral bis 2035“).
+    label: str | None
+    #: Bei Beschlüssen über den Plan: beschlossen oder zur Kenntnis genommen.
+    mode: Literal["adopted", "noted"] | None
+
+
+class PlanTimelineYear(TypedDict):
+    """Ein Abschnitt des Zeitstrahls, das jüngste Jahr zuerst.
+
+    ``gap``: In diesen Jahren war kein Bericht zu finden — „keinen gefunden“, nicht „es gab keinen“.
+    """
+    kind: Literal["year", "gap"]
+    year: int
+    #: Bei einer Lücke über mehrere Jahre das letzte; sonst gleich ``year``.
+    year_to: int
+    #: Stellen in ``PlanTimeline.stations``, die jüngste zuerst.
+    stations: list[int]
+    text: str | None
+
+
+class PlanTimeline(TypedDict):
+    span: str
+    count: int
+    stations: list[PlanTimelineStation]
+    log: list[PlanTimelineYear]
+
+
+class PlanRunwayMark(TypedDict):
+    x: float
+    date: str
+    kind: PlanItemRole
+    oral: bool
+    #: Stelle in ``PlanTimeline.stations``.
+    station: int
+
+
+class PlanRunwayPoint(TypedDict):
+    x: float
+    label: str
+
+
+class PlanRunway(TypedDict):
+    """Das Zeitband der Detailseite: eine eigene Achse je Plan."""
+    start: str
+    end: str
+    ticks: list[PlanAxisTick]
+    #: ``None``: Heute liegt nicht auf der Achse (lange abgeschlossener Plan).
+    today: float | None
+    style: Literal["adopted", "noted", "preparing"]
+    band: PlanBand | None
+    marks: list[PlanRunwayMark]
+    review: PlanRunwayPoint | None
+    #: Wo der Bestand des Ratsinformationssystems beginnt (2018), falls die Achse früher anfängt.
+    archive_from: float | None
+
+
+class PlanFact(TypedDict):
+    label: str
+    value: str
+
+
+class PlanDecisionEntry(TypedDict):
+    title: str
+    date: str
+    committee: str | None
+    decision_id: int | None
+    outcome: Beschlussergebnis | None
+    template_number: str | None
+    deliberations: int
+
+
+class PlanDecisionGroup(TypedDict):
+    key: Literal["plan", "implementation", "motion", "decision", "mentions"]
+    label: str
+    entries: list[PlanDecisionEntry]
+
+
+class PlanMeasure(TypedDict):
+    code: str
+    title: str
+    package: str | None
+    page: int
+
+
+class PlanMeasureGroup(TypedDict):
+    #: Handlungsfeld in den Worten des Plans; ``None``, wo der Plan keins nennt.
+    field: str | None
+    measures: list[PlanMeasure]
+
+
+class PlanMeasureSource(TypedDict):
+    label: str
+    template_number: str | None
+    document_id: int
+    url: str
+    as_of: str | None
+    as_of_label: str | None
+
+
+class PlanMeasures(TypedDict):
+    """Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``)."""
+    count: int
+    #: Die Zahl, die die Stadt selbst nennt; ``None``, wo sie keine nennt.
+    count_city: int | None
+    count_note: str | None
+    source: PlanMeasureSource
+    groups: list[PlanMeasureGroup]
+
+
+class PlanDetail(PlanCard):
+    note: str | None
+    owner: str | None
+    source: Literal["council", "website"]
+    start: str | None
+    end: str | None
+    start_label: str | None
+    end_label: str | None
+    horizon_note: str | None
+    review_due: str | None
+    review_label: str | None
+    adoption: PlanDecisionRef | None
+    decisions: list[PlanDecisionRef]
+    commissioned: PlanTemplateRef | None
+    concluded: PlanTemplateRef | None
+    predecessor: PlanNeighbour | None
+    measures: PlanMeasures | None
+    timeline: PlanTimeline
+    runway: PlanRunway | None
+    #: „Seit dem Beschluss · 3 Jahre, 10 Monate“ — nur für Pläne, die laufen oder in Arbeit sind.
+    since: PlanFact | None
+    #: „Laufzeit noch · 9 Jahre“ — nur mit Enddatum.
+    remaining: PlanFact | None
+    #: Berichte ohne Vorlage und ohne Text.
+    oral_report_count: int
+    decision_groups: list[PlanDecisionGroup]
+    goal: str | None
 
 
 class BudgetComparison(TypedDict):

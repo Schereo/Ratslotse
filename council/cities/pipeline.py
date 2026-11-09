@@ -70,13 +70,37 @@ def protokoll_fenster(monate: int = PROTOCOL_MONTHS, heute: date | None = None) 
     return f"{tag.year + jahre:04d}-{monat + 1:02d}-01"
 
 
+def _soll_aufhoeren(stopp: Stopp | None) -> str | None:
+    """Wartet ein Deploy oder ist die Frist um? Dann den Grund, sonst ``None``.
+
+    Die Kostengrenze zählt hier nicht: Die Ernte ruft kein Modell. Bis 11/2026
+    fragte die Ernte gar nicht nach — der Deploy vom 09.11.2026 wartete, während
+    Potsdam Datei um Datei in den Timeout lief."""
+    grund = stopp.grund() if stopp is not None else None
+    return grund.text if grund is not None and grund.schluessel != "kosten" else None
+
+
 def _hole(client, raw: CitiesStore, body_id: str, offen: list[dict], zahlen: dict,
           was: str, nieten_max: int | None = None,
-          schluessel: tuple[str, str] = ("files_fetched", "files_failed")) -> dict:
+          schluessel: tuple[str, str] = ("files_fetched", "files_failed"),
+          stopp: Stopp | None = None) -> dict:
     """Bytes zu einer Arbeitsliste holen. Bricht nach ``nieten_max`` Nieten ab."""
     gut, schlecht = schluessel
     nieten = 0
     for i, datei in enumerate(offen, 1):
+        if getattr(client, "files_gated", False):
+            # Zugangsprüfung erkannt (OParlClient._is_access_gate): Die übrigen
+            # bleiben offen statt als Fehler markiert — es hat sie niemand
+            # abgerufen, und der nächste Lauf sieht wieder nach.
+            zahlen["files_gated"] = 1
+            break
+        if getattr(client, "host_unreachable", False):
+            zahlen["host_unreachable"] = 1
+            break
+        grund = _soll_aufhoeren(stopp)
+        if grund:
+            zahlen["abgebrochen"] = grund
+            break
         antwort = client.get_file(datei["access_url"])
         if not antwort:
             zahlen[schlecht] = zahlen.get(schlecht, 0) + 1
@@ -112,7 +136,8 @@ MEDIAN_MAX = 15.0
 WACHE_TAKT = 200
 
 
-def _mit_wache(objekte, client, zahlen: dict, was: str, body_id: str):
+def _mit_wache(objekte, client, zahlen: dict, was: str, body_id: str,
+               stopp: Stopp | None = None):
     """Einen Ernte-Abschnitt begleiten und abbrechen, wenn der Server einknickt.
 
     **Langsam ist auch kaputt.** Die Hildesheim-Ernte lief am 11.09.2026 elf
@@ -127,6 +152,11 @@ def _mit_wache(objekte, client, zahlen: dict, was: str, body_id: str):
         yield objekt
         if n % WACHE_TAKT:
             continue
+        grund = _soll_aufhoeren(stopp)
+        if grund:
+            zahlen["abgebrochen"] = f"{was}: {grund}"
+            logger.info("%s: Ernte unterbrochen — %s", body_id, grund)
+            return
         mittel = client.langsam(MEDIAN_MAX)
         if mittel is not None:
             zahlen["abgebrochen"] = (
@@ -160,7 +190,8 @@ def _sitzungstage(main_path: str | Path | None, body_id: str) -> dict[str, str]:
 
 def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
           since: str | None = None, with_files: bool = True,
-          max_files: int | None = None, main_path: str | Path | None = None) -> dict:
+          max_files: int | None = None, main_path: str | Path | None = None,
+          stopp: Stopp | None = None) -> dict:
     """Alles Öffentliche einer Stadt holen und roh ablegen.
 
     ``main_path`` zeigt auf die Hauptdatenbank und wird nur **gelesen**: Aus
@@ -184,7 +215,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
                              spec.dialect, spec.system_url, gefunden.get("license")))
 
         for _ in _mit_wache(adapter.iter_organizations(client, body),
-                            client, zahlen, "Gremien", spec.id):
+                            client, zahlen, "Gremien", spec.id, stopp):
             zahlen["organizations"] += 1
         logger.info("%s: %s Gremien", spec.id, zahlen["organizations"])
 
@@ -195,7 +226,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             return zahlen
 
         for _ in _mit_wache(adapter.iter_meetings(client, body, seit),
-                            client, zahlen, "Sitzungen", spec.id):
+                            client, zahlen, "Sitzungen", spec.id, stopp):
             zahlen["meetings"] += 1
         logger.info("%s: %s Sitzungen", spec.id, zahlen["meetings"])
 
@@ -204,7 +235,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             return zahlen
 
         for _ in _mit_wache(adapter.iter_papers(client, body, seit),
-                            client, zahlen, "Vorlagen", spec.id):
+                            client, zahlen, "Vorlagen", spec.id, stopp):
             zahlen["papers"] += 1
         logger.info("%s: %s Vorlagen", spec.id, zahlen["papers"])
 
@@ -218,7 +249,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             batch = adapter.normalize(spec.id, raw)
             raw.upsert_batch(batch)
             offen = raw.files_without_bytes(spec.id, FETCH_ROLES, limit=max_files)
-            _hole(client, raw, spec.id, offen, zahlen, "Dateien")
+            _hole(client, raw, spec.id, offen, zahlen, "Dateien", stopp=stopp)
 
             # Die Niederschriften bekommen ein EIGENES Budget, keinen Rest:
             # Vorlagen gibt es zehnmal so viele, und ein geteiltes Budget
@@ -228,11 +259,55 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
                 meeting_since=protokoll_fenster())
             _hole(client, raw, spec.id, protokolle, zahlen, "Niederschriften",
                   nieten_max=PROTOCOL_NIETEN,
-                  schluessel=("protocols_fetched", "protocols_failed"))
+                  schluessel=("protocols_fetched", "protocols_failed"), stopp=stopp)
         zahlen["requests"] = client.requests_made
     finally:
         raw.close()
     return zahlen
+
+
+#: Zugangsstand einer Stadt (Tabelle ``body_access``).
+ACCESS_OK = "ok"
+#: Gremien, Sitzungen und Vorlagen kommen, ihre Dokumente nicht.
+ACCESS_DOCUMENTS_BLOCKED = "documents_blocked"
+#: Es kommt gar nichts mehr.
+ACCESS_BLOCKED = "blocked"
+
+#: Ab so vielen fehlgeschlagenen Dokumentabrufen OHNE einen einzigen Treffer
+#: gilt der Abruf als gesperrt. Einzelne Nieten sind normal (nichtöffentliche
+#: Anlagen, Wolfsburg 444 von 1.798); Osnabrück antwortete am 09.11.2026 auf
+#: jede seiner 86 Dokument-Adressen mit 403.
+DOCUMENTS_BLOCKED_AFTER = 20
+
+
+def access_status(ernte: dict) -> tuple[str, str | None] | None:
+    """Gibt die Stadt ihre Daten noch heraus? Gelesen aus den Zahlen von ``fetch``.
+
+    ``None`` heißt „aus diesem Lauf nicht zu sagen": Die Ernte wurde
+    unterbrochen (Deploy, Frist, ein überlasteter Server), bevor sich der
+    Zugang zeigen konnte — dann bleibt der alte Stand stehen. Eine Ausnahme
+    in ``fetch`` landet gar nicht hier; auch dann bleibt er stehen.
+
+    **Nichts geerntet ist kein ruhiger Tag.** Gremien liest jeder Dialekt bei
+    jedem Lauf vollständig; null Gremien, null Sitzungen und null Vorlagen
+    heißt, dass der Server nichts herausgibt. So am 09.11.2026 bei Wolfsburg
+    („403 Request forbidden by administrative rules").
+    """
+    if ernte.get("abgebrochen"):
+        return None
+    if not (ernte.get("organizations") or ernte.get("meetings") or ernte.get("papers")):
+        return ACCESS_BLOCKED, "nichts geerntet"
+    if ernte.get("files_gated"):
+        return ACCESS_DOCUMENTS_BLOCKED, "Zugangsprüfung (ALTCHA)"
+    if ernte.get("host_unreachable"):
+        return ACCESS_DOCUMENTS_BLOCKED, "Server nimmt keine Verbindung an"
+    if not ernte.get("files_fetched") and ernte.get("files_failed"):
+        if ernte["files_failed"] >= DOCUMENTS_BLOCKED_AFTER:
+            return ACCESS_DOCUMENTS_BLOCKED, "jeder Dokumentabruf abgewiesen"
+        # Drei Nieten und kein Treffer: Das können drei nichtöffentliche
+        # Anlagen sein. Zu wenig, um den Stand umzuwerfen — in beide Richtungen.
+        return None
+    return ACCESS_OK, None
 
 
 # --------------------------------------------------------------- normalize

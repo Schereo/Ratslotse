@@ -34,6 +34,7 @@ import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { AnalyseReiter, ANALYSE_FRAGEN, analysisSub } from "@/components/analyse-reiter";
 import { FrageChips } from "@/components/frage-chips";
+import { useFeature } from "@/lib/features";
 import { ChartSkeleton, TableSkeleton } from "@/components/ui/skeleton";
 import { cn, relativerTag, wochentagKurz } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
@@ -1582,6 +1583,8 @@ function CouncilInner() {
     : param === "sessions" || param === "themen" || param === "analysis" ? param
     : "decisions";
   const [committees, setCommittees] = useState<string[]>([]);
+  // „Pläne der Stadt“ statt „Ziele“ (Schalter `plaene`, docs/plan-ziele-plaene.md).
+  const plaene = useFeature("plaene");
 
   // Keep old links working by redirecting them to their new home. Seit dem
   // Split (12.08.) gilt das vor allem für den früheren Fragen-Modus: Links
@@ -1617,7 +1620,7 @@ function CouncilInner() {
           Suchen/Fragen) waren der Kern von Tims Mobil-Befund. */}
       <PageHeader
         title={meta.title}
-        description={meta.description}
+        description={tab === "analysis" && plaene ? meta.description.replace("Ziele", "Pläne") : meta.description}
         action={tab === "decisions" ? <FragenBruecke /> : undefined}
       />
       {tab === "decisions" ? <DecisionsTab committees={committees} />

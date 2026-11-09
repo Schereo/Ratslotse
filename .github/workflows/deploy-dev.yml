@@ -256,6 +256,10 @@ jobs:
             # wirkungslos. Ohne LLM, rund 12 Sekunden; scheitert er, ist der
             # Deploy trotzdem gut (die Suche fällt auf den heutigen Weg zurück).
             .venv/bin/python scripts/build_matters.py || echo "Grundakten nicht gebaut"
+            # Pläne der Stadt (docs/plan-ziele-plaene.md): dieselbe Lage —
+            # check_protocols.py ordnet sie auf Prod jede Nacht zu. Ohne
+            # Modell, rund eine Sekunde; ein Fehler lässt den alten Stand stehen.
+            .venv/bin/python scripts/build_plans.py || echo "Pläne nicht zugeordnet"
             if [ "$rand_rot" = "1" ]; then
               echo "::warning::Deploy durch, aber Rand-Proben der Rauchprobe sind rot (siehe oben)."
             fi

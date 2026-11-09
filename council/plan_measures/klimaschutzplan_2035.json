@@ -1,0 +1,644 @@
+{
+ "plan": "klimaschutzplan_2035",
+ "source": {
+  "label": "Kurzübersicht der Maßnahmen",
+  "document_id": 255735,
+  "template": "22/0910",
+  "as_of": "2022-11-25",
+  "url": "https://buergerinfo.oldenburg.de/getfile.php?id=255735&type=do"
+ },
+ "count_city": 90,
+ "count_note": "So beschlossen am 19.12.2022. Laut Bericht 3/2026 (26/0750) sind es inzwischen 97 Maßnahmen.",
+ "measures": [
+  {
+   "code": "Planung_01",
+   "title": "Aktionsstelle flächensparende Wohnraumnutzung",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Stadtplanung",
+   "page": 1
+  },
+  {
+   "code": "Planung_02",
+   "title": "Integration Klimaschutzbelange in Bebauungs- und Flächennutzungspläne",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Stadtplanung",
+   "page": 1
+  },
+  {
+   "code": "Gebäude_01",
+   "title": "Energiesparprojekt „abgedreht?!“",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Gebäudebestand – dezentrale Maßnahmen",
+   "page": 1
+  },
+  {
+   "code": "Gebäude_02",
+   "title": "Förderung Altbau",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Gebäudebestand – dezentrale Maßnahmen",
+   "page": 1
+  },
+  {
+   "code": "Gebäude_03",
+   "title": "Verbrennungsverbot im Gebäudebestand",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Gebäudebestand – dezentrale Maßnahmen",
+   "page": 1
+  },
+  {
+   "code": "Gebäude_04",
+   "title": "Klimagerechte Sanierung / Bau städtische Gebäude",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Gebäudebestand – dezentrale Maßnahmen",
+   "page": 1
+  },
+  {
+   "code": "Gebäude_05",
+   "title": "Klimaneutrale Verwaltung",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Gebäudebestand – dezentrale Maßnahmen",
+   "page": 1
+  },
+  {
+   "code": "Gebäude_06",
+   "title": "Leuchtturmprojekt klimaneutrale Gebäude",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Gebäudebestand – dezentrale Maßnahmen",
+   "page": 1
+  },
+  {
+   "code": "Gebäude_07",
+   "title": "Progressivitätsanalyse Gebäudebestand",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Gebäudebestand – dezentrale Maßnahmen",
+   "page": 1
+  },
+  {
+   "code": "Gebäude_08",
+   "title": "Ausbau Wärmepumpen-Contractings",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Gebäudebestand – dezentrale Maßnahmen",
+   "page": 1
+  },
+  {
+   "code": "Wärme_01",
+   "title": "Energetische Quartiersentwicklung",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Wärmeverbundplanungen",
+   "page": 1
+  },
+  {
+   "code": "Wärme_02",
+   "title": "Anschluss und Benutzungsgebot Nahwärme",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Wärmeverbundplanungen",
+   "page": 1
+  },
+  {
+   "code": "Wärme_03",
+   "title": "Interimslösung zur Wärmeversorgung",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Wärmeverbundplanungen",
+   "page": 1
+  },
+  {
+   "code": "Wärme_04",
+   "title": "Zukunftsstrategie Gasnetz",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Wärmeverbundplanungen",
+   "page": 1
+  },
+  {
+   "code": "Wärme_05",
+   "title": "Wärmeplanung",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Wärmeverbundplanungen",
+   "page": 1
+  },
+  {
+   "code": "Bildung_01",
+   "title": "Qualifizierung und Imagekampagne Handwerk",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Weiterbildung",
+   "page": 1
+  },
+  {
+   "code": "Bildung_02",
+   "title": "Qualifizierungsprogramm Schornsteinfegende",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Weiterbildung",
+   "page": 1
+  },
+  {
+   "code": "PV_01",
+   "title": "Solardachpotentialkataster",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Photovoltaik",
+   "page": 1
+  },
+  {
+   "code": "PV_02",
+   "title": "Solarleitlinie",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Photovoltaik",
+   "page": 1
+  },
+  {
+   "code": "PV_03",
+   "title": "PV auf städtischen Dachflächen",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Photovoltaik",
+   "page": 1
+  },
+  {
+   "code": "PV_04",
+   "title": "Beratungsangebot Mieterstrom",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Photovoltaik",
+   "page": 1
+  },
+  {
+   "code": "PV_05",
+   "title": "Förderung Photovoltaik",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Photovoltaik",
+   "page": 1
+  },
+  {
+   "code": "PV_06",
+   "title": "PV auf Freiflächen",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Photovoltaik",
+   "page": 1
+  },
+  {
+   "code": "Wind_01",
+   "title": "Windenergieanlagen",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Windenergie",
+   "page": 1
+  },
+  {
+   "code": "Wind_02",
+   "title": "Kleinwindkraftanlagen",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Windenergie",
+   "page": 1
+  },
+  {
+   "code": "Strom_01",
+   "title": "Bioabfallvergärung",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Stromsektor allgemein",
+   "page": 1
+  },
+  {
+   "code": "Strom_02",
+   "title": "Effiziente Straßenbeleuchtung",
+   "field": "Gebäude / Strom / Wärme",
+   "package": "Stromsektor allgemein",
+   "page": 1
+  },
+  {
+   "code": "Klimapakt_01",
+   "title": "Mitarbeiterinformation Energieeinsparmöglichkeiten",
+   "field": "Wirtschaft",
+   "package": "Klimapakt",
+   "page": 1
+  },
+  {
+   "code": "Klimapakt_02",
+   "title": "Energieeffizienztische Unternehmen",
+   "field": "Wirtschaft",
+   "package": "Klimapakt",
+   "page": 1
+  },
+  {
+   "code": "Klimapakt_03",
+   "title": "Klima-Netzwerk Wirtschaft-Forschung",
+   "field": "Wirtschaft",
+   "package": "Klimapakt",
+   "page": 1
+  },
+  {
+   "code": "Klimapakt_04",
+   "title": "Impulsberatung KMU",
+   "field": "Wirtschaft",
+   "package": "Klimapakt",
+   "page": 1
+  },
+  {
+   "code": "Klimapakt_05",
+   "title": "Beratungsangebote „klimaneutrale Unternehmen“",
+   "field": "Wirtschaft",
+   "package": "Klimapakt",
+   "page": 1
+  },
+  {
+   "code": "Klimapakt_06",
+   "title": "Beratung grünes Finanzmanagement",
+   "field": "Wirtschaft",
+   "package": "Klimapakt",
+   "page": 1
+  },
+  {
+   "code": "Klimapakt_07",
+   "title": "Klimapakt Oldenburg",
+   "field": "Wirtschaft",
+   "package": "Klimapakt",
+   "page": 1
+  },
+  {
+   "code": "Klimapakt_08",
+   "title": "Fördermittelberatung Unternehmen",
+   "field": "Wirtschaft",
+   "package": "Klimapakt",
+   "page": 1
+  },
+  {
+   "code": "Liefer_01",
+   "title": "Stadt-Umlandkooperation regionale Wertschöpfungsketten",
+   "field": "Wirtschaft",
+   "package": "Unternehmerische Lieferketten",
+   "page": 1
+  },
+  {
+   "code": "Liefer_02",
+   "title": "Regionale Wertschöpfungsketten",
+   "field": "Wirtschaft",
+   "package": "Unternehmerische Lieferketten",
+   "page": 1
+  },
+  {
+   "code": "Liefer_03",
+   "title": "Klimafreundlicher Lieferverkehr",
+   "field": "Wirtschaft",
+   "package": "Unternehmerische Lieferketten",
+   "page": 1
+  },
+  {
+   "code": "Ernährung_01",
+   "title": "Ernährungsstrategie",
+   "field": "Ernährung / Konsum",
+   "package": "Ernährung",
+   "page": 1
+  },
+  {
+   "code": "Ernährung_02",
+   "title": "Lebensmittelverschwendung",
+   "field": "Ernährung / Konsum",
+   "package": "Ernährung",
+   "page": 1
+  },
+  {
+   "code": "Ernährung_03",
+   "title": "Mehrwegsystem Handel / Gastronomie",
+   "field": "Ernährung / Konsum",
+   "package": "Ernährung",
+   "page": 1
+  },
+  {
+   "code": "Ernährung_04",
+   "title": "Pfandretter",
+   "field": "Ernährung / Konsum",
+   "package": "Ernährung",
+   "page": 1
+  },
+  {
+   "code": "Ernährung_05",
+   "title": "Gemeinschaftsverpflegung und Veranstaltungscatering",
+   "field": "Ernährung / Konsum",
+   "package": "Ernährung",
+   "page": 1
+  },
+  {
+   "code": "FußRad_01",
+   "title": "Raumerweiterung Fuß- und Radverkehr",
+   "field": "Mobilität",
+   "package": "Fuß- und Fahrradverkehr",
+   "page": 2
+  },
+  {
+   "code": "FußRad_02",
+   "title": "Raumerweiterung Fuß- und Radverkehr",
+   "field": "Mobilität",
+   "package": "Fuß- und Fahrradverkehr",
+   "page": 2
+  },
+  {
+   "code": "FußRad_03",
+   "title": "Barrierefreiheit und Sicherheit Fußverkehr",
+   "field": "Mobilität",
+   "package": "Fuß- und Fahrradverkehr",
+   "page": 2
+  },
+  {
+   "code": "FußRad_04",
+   "title": "Fahrradverleihsysteme",
+   "field": "Mobilität",
+   "package": "Fuß- und Fahrradverkehr",
+   "page": 2
+  },
+  {
+   "code": "FußRad_05",
+   "title": "Bike+Ride",
+   "field": "Mobilität",
+   "package": "Fuß- und Fahrradverkehr",
+   "page": 2
+  },
+  {
+   "code": "FußRad_06",
+   "title": "Fahrradzonen",
+   "field": "Mobilität",
+   "package": "Fuß- und Fahrradverkehr",
+   "page": 2
+  },
+  {
+   "code": "FußRad_07",
+   "title": "Fahrradgerechter Ausbau zentraler Verbindungen",
+   "field": "Mobilität",
+   "package": "Fuß- und Fahrradverkehr",
+   "page": 2
+  },
+  {
+   "code": "ÖPNV_01",
+   "title": "P+R-Angebot",
+   "field": "Mobilität",
+   "package": "ÖPNV",
+   "page": 2
+  },
+  {
+   "code": "ÖPNV_02",
+   "title": "Umstellung VWG-Flottenbetrieb",
+   "field": "Mobilität",
+   "package": "ÖPNV",
+   "page": 2
+  },
+  {
+   "code": "ÖPNV_03",
+   "title": "Sanierung ZOB",
+   "field": "Mobilität",
+   "package": "ÖPNV",
+   "page": 2
+  },
+  {
+   "code": "ÖPNV_04",
+   "title": "Busspuren Wallring",
+   "field": "Mobilität",
+   "package": "ÖPNV",
+   "page": 2
+  },
+  {
+   "code": "ÖPNV_05",
+   "title": "ÖPNV-Bedienung",
+   "field": "Mobilität",
+   "package": "ÖPNV",
+   "page": 2
+  },
+  {
+   "code": "Parken_01",
+   "title": "Anwohnerparken und Quartiersparken",
+   "field": "Mobilität",
+   "package": "Parkraummanagement",
+   "page": 2
+  },
+  {
+   "code": "Parken_02",
+   "title": "Reduzierung der Stellplatzanforderungen",
+   "field": "Mobilität",
+   "package": "Parkraummanagement",
+   "page": 2
+  },
+  {
+   "code": "Parken_03",
+   "title": "Parkgebühren",
+   "field": "Mobilität",
+   "package": "Parkraummanagement",
+   "page": 2
+  },
+  {
+   "code": "Parken_04",
+   "title": "Öffentliches PKW-Stellplatzangebot",
+   "field": "Mobilität",
+   "package": "Parkraummanagement",
+   "page": 2
+  },
+  {
+   "code": "PKW_01",
+   "title": "Verringerung MIV-Durchgangsverkehr in Wohngebieten",
+   "field": "Mobilität",
+   "package": "Pkw-Verkehr",
+   "page": 2
+  },
+  {
+   "code": "PKW_02",
+   "title": "Öffentliche Ladeinfrastruktur",
+   "field": "Mobilität",
+   "package": "Pkw-Verkehr",
+   "page": 2
+  },
+  {
+   "code": "PKW_03",
+   "title": "Reduzierung PKW-Privilegierung in der Stadtverwaltung",
+   "field": "Mobilität",
+   "package": "Pkw-Verkehr",
+   "page": 2
+  },
+  {
+   "code": "PKW_04",
+   "title": "Stationäres Carsharing",
+   "field": "Mobilität",
+   "package": "Pkw-Verkehr",
+   "page": 2
+  },
+  {
+   "code": "PKW_05",
+   "title": "Ausweitung von Geschwindigkeitsbegrenzungen",
+   "field": "Mobilität",
+   "package": "Pkw-Verkehr",
+   "page": 2
+  },
+  {
+   "code": "PKW_06",
+   "title": "Car-Pooling und Ride-Sharing",
+   "field": "Mobilität",
+   "package": "Pkw-Verkehr",
+   "page": 2
+  },
+  {
+   "code": "PKW_07",
+   "title": "City-Maut",
+   "field": "Mobilität",
+   "package": "Pkw-Verkehr",
+   "page": 2
+  },
+  {
+   "code": "Verkehr_01",
+   "title": "Multifunktionale Hauptverkehrsstraßen",
+   "field": "Mobilität",
+   "package": "Verkehrsträgerübergreifende Maßnahmen",
+   "page": 2
+  },
+  {
+   "code": "Verkehr_02",
+   "title": "Verkehrsleitsysteme",
+   "field": "Mobilität",
+   "package": "Verkehrsträgerübergreifende Maßnahmen",
+   "page": 2
+  },
+  {
+   "code": "Verkehr_03",
+   "title": "Einfahrbeschränkungen im Innenbereich",
+   "field": "Mobilität",
+   "package": "Verkehrsträgerübergreifende Maßnahmen",
+   "page": 2
+  },
+  {
+   "code": "Verkehr_04",
+   "title": "Mobilitätsstationen",
+   "field": "Mobilität",
+   "package": "Verkehrsträgerübergreifende Maßnahmen",
+   "page": 2
+  },
+  {
+   "code": "Verkehr_05",
+   "title": "Mobilitätsmanagement",
+   "field": "Mobilität",
+   "package": "Verkehrsträgerübergreifende Maßnahmen",
+   "page": 2
+  },
+  {
+   "code": "Beratung_01",
+   "title": "Zentrale Klimaschutz-Beratungsstelle",
+   "field": "Beratung / Kommunikation",
+   "package": "Anlaufstelle Klimaschutz",
+   "page": 2
+  },
+  {
+   "code": "Beratung_02",
+   "title": "Gebäudeenergieberatung",
+   "field": "Beratung / Kommunikation",
+   "package": "Anlaufstelle Klimaschutz",
+   "page": 2
+  },
+  {
+   "code": "Beratung_03",
+   "title": "Fördermittel- / Antragsberatung",
+   "field": "Beratung / Kommunikation",
+   "package": "Anlaufstelle Klimaschutz",
+   "page": 2
+  },
+  {
+   "code": "Beratung_04",
+   "title": "Stromsparberatung",
+   "field": "Beratung / Kommunikation",
+   "package": "Anlaufstelle Klimaschutz",
+   "page": 2
+  },
+  {
+   "code": "Kommunik_01",
+   "title": "Wettbewerbe und Kampagnen zu Ernährung und Konsum",
+   "field": "Beratung / Kommunikation",
+   "package": "Kommunikation",
+   "page": 2
+  },
+  {
+   "code": "Kommunik_02",
+   "title": "Förderung / Wettbewerb „Alle fürs Klima“",
+   "field": "Beratung / Kommunikation",
+   "package": "Kommunikation",
+   "page": 2
+  },
+  {
+   "code": "Kommunik_03",
+   "title": "Klima-Grid",
+   "field": "Beratung / Kommunikation",
+   "package": "Kommunikation",
+   "page": 2
+  },
+  {
+   "code": "Kommunik_04",
+   "title": "Strategie Klimakommunikation",
+   "field": "Beratung / Kommunikation",
+   "package": "Kommunikation",
+   "page": 2
+  },
+  {
+   "code": "Landw_01",
+   "title": "Ökolandbau auf Pachtflächen",
+   "field": "Landwirtschaft / Landnutzung",
+   "package": "Landwirtschaft",
+   "page": 2
+  },
+  {
+   "code": "Landw_02",
+   "title": "Dialog Landwirtschaft",
+   "field": "Landwirtschaft / Landnutzung",
+   "package": "Landwirtschaft",
+   "page": 2
+  },
+  {
+   "code": "LULUCF_01",
+   "title": "Baumprogramm",
+   "field": "Landwirtschaft / Landnutzung",
+   "package": "Landnutzung, Landnutzungs-änderung & Forstwirtschaft (LULUCF)",
+   "page": 2
+  },
+  {
+   "code": "LULUCF_02",
+   "title": "Moorschutz und Wiedervernässung",
+   "field": "Landwirtschaft / Landnutzung",
+   "package": "Landnutzung, Landnutzungs-änderung & Forstwirtschaft (LULUCF)",
+   "page": 2
+  },
+  {
+   "code": "LULUCF_03",
+   "title": "Nachpflanzungen gefällter Bäume",
+   "field": "Landwirtschaft / Landnutzung",
+   "package": "Landnutzung, Landnutzungs-änderung & Forstwirtschaft (LULUCF)",
+   "page": 2
+  },
+  {
+   "code": "LULUCF_04",
+   "title": "Pyrolyseanlage",
+   "field": "Landwirtschaft / Landnutzung",
+   "package": "Landnutzung, Landnutzungs-änderung & Forstwirtschaft (LULUCF)",
+   "page": 2
+  },
+  {
+   "code": "LULUCF_05",
+   "title": "Flächensparende Stadtentwicklung",
+   "field": "Landwirtschaft / Landnutzung",
+   "package": "Landnutzung, Landnutzungs-änderung & Forstwirtschaft (LULUCF)",
+   "page": 2
+  },
+  {
+   "code": "Verwaltung_01",
+   "title": "Klimagerechtes Beschaffungs- und Vergabewesen",
+   "field": "Stadtverwaltung",
+   "package": "Stadtverwaltung",
+   "page": 2
+  },
+  {
+   "code": "Verwaltung_02",
+   "title": "Klimarelevanz-Vorlagenprüfung",
+   "field": "Stadtverwaltung",
+   "package": "Stadtverwaltung",
+   "page": 2
+  },
+  {
+   "code": "Verwaltung_03",
+   "title": "Leitbildprojekt klimaneutrale Schulen",
+   "field": "Stadtverwaltung",
+   "package": "Stadtverwaltung",
+   "page": 2
+  },
+  {
+   "code": "Verwaltung_04",
+   "title": "Klimaneutrale Eigenbetriebe und Beteiligungen",
+   "field": "Stadtverwaltung",
+   "package": "Stadtverwaltung",
+   "page": 2
+  }
+ ]
+}

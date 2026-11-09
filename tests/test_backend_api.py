@@ -8040,3 +8040,87 @@ def test_ask_aussprache_der_juengsten_station_aus_der_akte(client, monkeypatch):
 
     texte = [d.get("text") or "" for d in gesehen["debatten"]]
     assert any("KLAK" in t for t in texte), texte
+
+
+def test_zahl_der_woche_zaehlt_wie_die_liste(client):
+    """„159 Beschlüsse in den letzten 90 Tagen“ führte auf eine Liste mit 91
+    (Tims Befund 09.11.2026): Die Karte zählte auch Änderungsanträge und
+    Berichte, die Liste zeigt unter „Beschlüsse“ nur Abstimmungen. Zahl und
+    Liste hinter dem Link müssen gleich sein."""
+    _register(client)
+    tag = (date.today() - timedelta(days=2)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(97, "Rat", tag, "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.executemany(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,outcome,kind) "
+            "VALUES (?,97,?,'5',?,'accepted',?)",
+            [(9701, 1, "Hauptbeschluss", "decision"), (9702, 2, "Änderungsantrag", "subvote"),
+             (9703, 3, "Zweiter Beschluss", "decision")])
+        # Ein Bericht: Die Liste zeigt ihn unter „Beschlüsse“ nicht.
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,outcome,kind) "
+            "VALUES (9704,97,4,'6','Sachstandsbericht','noted','decision')")
+    cs.close()
+
+    zahl = client.get("/api/council/zahl-der-woche").json()
+    if zahl["kind"] != "count":
+        pytest.skip("ein Betrag im Fenster — die Karte zeigt dann keine Anzahl")
+    # So fragt die Seite hinter dem Link: Reiter „Beschlüsse“ = category=vote
+    # (web/frontend/app/(app)/council/view.tsx, `mode`).
+    liste = client.get("/api/council/decisions",
+                       params={"date_from": zahl["date_from"], "category": "vote", "limit": 1}).json()
+    assert zahl["count"] == liste["total"] == 2
+
+
+def test_ask_zusagen_auch_wenn_der_plan_keine_debatten_will(client, monkeypatch):
+    """„Wann kommen öffentliche Trinkwasserspender?“ ist eine Terminfrage, und der
+    Rechercheplan schaltet für sie die Debatten ab. Die Antwort steht aber in
+    einer Zusage der Verwaltung („2027 mit Abschluss des KLAK“) zum Bericht auf
+    Rang 7 — die gehört trotzdem in den Prompt, die Reden nicht (Gold dev
+    09.11.2026)."""
+    from app.routers import council as council_router
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(94, "Ausschuss für Stadtgrün, Umwelt und Klima",
+                                   "2026-04-16", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (6101,94,1,'11.1','Prüfung öffentlicher Trinkwasserspender - Bericht',"
+            "'Bericht','noted','decision')")
+    cs.save_wortbeitraege(94, [
+        {"kind": "speech", "top": "11.1 Prüfung öffentlicher Trinkwasserspender",
+         "speaker": "Thomas Klein", "party": "SPD", "text": "Wie lange dauert die Prüfung?",
+         "answer": None},
+        {"kind": "pledge", "top": "11.1 Prüfung öffentlicher Trinkwasserspender",
+         "speaker": "Robert Sprenger", "party": None,
+         "text": "Die Klärung wird 2027 mit Abschluss des KLAK angestrebt.", "answer": None},
+    ])
+    bericht = cs.get_decisions_by_ids([6101])
+    cs.close()
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (list(bericht), "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "research_plan_with_mandatory",
+                        lambda *a, **k: {"valid": True, "channels": ["decisions"]})
+    monkeypatch.setattr(emb, "search_wortbeitraege", lambda *a, **k: [])
+    monkeypatch.setattr(emb, "search_zusagen", lambda *a, **k: [])
+    gesehen: dict = {}
+
+    def fake_stream(*args, **kwargs):
+        gesehen["debatten"] = kwargs.get("debatten") or []
+        yield "Ein Termin steht nicht fest [6101]."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    with client.stream("POST", "/api/council/ask",
+                       json={"question": "Wann kommen öffentliche Trinkwasserspender?"}) as r:
+        assert r.status_code == 200
+        "".join(r.iter_text())
+
+    texte = [d.get("text") or "" for d in gesehen["debatten"]]
+    assert any("KLAK" in t for t in texte), texte
+    assert not any("Wie lange" in t for t in texte), "Reden bleiben draußen, der Plan will keine"
