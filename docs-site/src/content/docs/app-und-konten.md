@@ -705,7 +705,7 @@ selbst entstehen:
 | gesehene Treffer, Onboarding-Fortschritt, Abzeichen-Stand | `topic_hits_seen`, `web_users.onboarding`, `web_users.badges` |
 | Quiz-Antworten (Punkte je Gebiet) | `quiz_answers` |
 | Push-Geräte-Token | `push_tokens` |
-| Aktivität für die Admin-Statistik: eine Zeile je Konto/Tag/Feature/Client mit Zähler | `user_activity` |
+| Aktivität für die Admin-Statistik: eine Zeile je Konto/Tag/Feature/Client mit Zähler. Features sind die genutzten Funktionen, seit 11/2026 außerdem `minutes` (Minuten mit Aktivität) und `area:<bereich>` (besuchte Bereiche aus `kern/activity_areas.py`, keine einzelnen Seiten, keine Uhrzeit) | `user_activity` |
 | Womit das Konto angelegt wurde (Browser oder App) | `web_users.signup_client` |
 
 Verarbeiter sind **Resend** (E-Mail-Versand), **Apple/APNs** bzw.

@@ -94,6 +94,19 @@ export function meldeAufruf(pfad: string, angemeldet: boolean, client = "web",
         ...(mailHerkunft ? { von: mailHerkunft } : {}),
       }),
     });
+    // Angemeldet zusätzlich den BEREICH fürs Konto (seit 11/2026, Tims
+    // Entscheidung): Der Aufruf oben bleibt anonym, dieser trägt bewusst das
+    // Cookie. Der Server macht aus dem Pfad nur „Fragen", „Karte" usw.
+    // (`kern/activity_areas.py`), Unbekanntes zählt er gar nicht.
+    if (angemeldet) {
+      sendAndForget(apiUrl("/activity/page"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        keepalive: true,
+        body: JSON.stringify({ route: pfad.slice(0, 200) }),
+      });
+    }
   } catch {
     /* dito */
   }

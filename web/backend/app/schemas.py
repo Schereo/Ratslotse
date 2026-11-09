@@ -655,6 +655,17 @@ class PageViewIn(BaseModel):
     von: str | None = Field(default=None, max_length=40)
 
 
+class ActivityPageIn(BaseModel):
+    """Ein Seitenwechsel eines angemeldeten Kontos — für die Bereiche je Konto.
+
+    Getrennt von ``PageViewIn``: Der Seitenaufruf bleibt anonym und schaut in
+    kein Token. Hier ist das Konto der Punkt; gespeichert wird aber nur der
+    BEREICH, auf den ``kern/activity_areas.py`` den Pfad abbildet.
+    """
+    #: Pfad wie beim Seitenaufruf; die Query fällt serverseitig weg.
+    route: str = Field(default="/", max_length=200)
+
+
 class ClientErrorIn(BaseModel):
     """Eine Fehlermeldung aus dem Browser.
 

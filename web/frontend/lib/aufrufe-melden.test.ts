@@ -50,7 +50,9 @@ describe("was gemeldet wird", () => {
   it("schickt Route, Client und den Anmeldestatus als Ja/Nein", async () => {
     const { meldeAufruf } = await frisch();
     meldeAufruf("/haushalt/schulden", true, "ios");
-    expect(aufrufe).toHaveLength(1);
+    // Angemeldet zwei Meldungen: der anonyme Aufruf und der Bereich fürs Konto.
+    expect(aufrufe).toHaveLength(2);
+    expect(aufrufe[0].url).toContain("/page-views");
     const b = körper(aufrufe[0]);
     expect(b).toEqual({
       route: "/haushalt/schulden",
@@ -58,6 +60,21 @@ describe("was gemeldet wird", () => {
       first: true,
       logged_in: true,
     });
+  });
+
+  it("meldet angemeldet zusätzlich den Bereich — nur den Pfad, mit Cookie", async () => {
+    // Seit 11/2026 (Tims Entscheidung): Der Server macht daraus „Haushalt",
+    // nie mehr. Abgemeldet geht diese Meldung gar nicht erst raus.
+    const { meldeAufruf } = await frisch();
+    meldeAufruf("/haushalt/schulden", true);
+    const bereich = aufrufe.find((a) => a.url.includes("/activity/page"));
+    expect(bereich).toBeDefined();
+    expect(körper(bereich!)).toEqual({ route: "/haushalt/schulden" });
+    expect(bereich!.init.credentials).toBe("include");
+
+    const abgemeldet = await frisch();
+    abgemeldet.meldeAufruf("/haushalt/schulden", false);
+    expect(aufrufe.some((a) => a.url.includes("/activity/page"))).toBe(false);
   });
 
   it("meldet den ersten Aufruf im Tab als Besuch, den zweiten nicht", async () => {
