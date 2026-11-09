@@ -252,3 +252,36 @@ def test_gleichstellungsplan_traegt_seine_eigene_frist():
     assert plan_state.report_state(plan, [], "2026-11-09")["state"] == "not_yet_due"
     assert plan_pages.report_state_block(plan, [], "2026-11-09")["hint"] == "Überprüfung laut Plan 2026."
     assert plan_state.report_state(plan, [], "2027-02-01")["state"] == "expired_no_evaluation"
+
+
+def test_modell_sucht_heraus_und_wird_ohne_modell_geprueft():
+    """Mobilitätsplan: Die Stadt zählt den Stand nicht aus. Was ein Modell im Bericht findet, zählt nur
+    mit wörtlichem Zitat — ``verified`` wirft alles andere weg, ohne das Modell noch einmal zu fragen."""
+    from council import plan_judge
+    text = "Die Bewohnerparkzone Haarenesch wurde zum 1. Januar 2026 umgesetzt. Mehr nicht."
+    ok = {"code": "M25", "quote": "Die Bewohnerparkzone Haarenesch wurde zum 1. Januar 2026 umgesetzt.",
+          "status_words": "umgesetzt", "status": "done"}
+    rejected = [
+        {**ok, "code": "M99"},                                        # Kennung gibt es nicht
+        {**ok, "code": "M24", "quote": "Die Zone wurde umgesetzt."},   # Zitat steht so nicht im Bericht
+        {**ok, "code": "M26", "status_words": "abgeschlossen"},        # Statuswort steht nicht im Zitat
+        {**ok, "code": "M27", "status": "gut"},                        # keine bekannte Stufe
+        "kein Objekt",
+    ]
+    assert plan_judge.verified([ok, {**ok, "status": "open"}, *rejected], text, {"M24", "M25", "M26", "M27"}) == [
+        {"code": "M25", "status_raw": "umgesetzt", "status_norm": "done", "quote": ok["quote"]}]
+
+    data = plan_state.load("mobilitaetsplan_2030")
+    assert [s["source"]["template"] for s in data["snapshots"]] == ["23/0562", "25/0041", "26/0190"]
+    assert all(s["source"]["read_by"] == "model" and s["counts"] == [] and not s["complete"] for s in data["snapshots"])
+    for snap in data["snapshots"]:
+        for m in snap["measures"]:
+            assert m["status_raw"] in m["quote"] and len(m["quote"]) <= 320
+    # Ohne Zähler keine Verteilung auf Karte und Planseite — der Stand steht an der Maßnahme, mit Zitat.
+    assert plan_pages.status_brief("mobilitaetsplan_2030") is None
+    assert plan_pages.city_status_block("mobilitaetsplan_2030") is None
+    block = plan_pages.measures_block("mobilitaetsplan_2030")
+    assert block["status_by_model"] and block["status_template"] == "26/0190" and block["status_count"] >= 15
+    quoted = [m for g in block["groups"] for m in g["measures"] if m["status_quote"]]
+    assert len(quoted) == block["status_count"]
+    assert plan_pages.measures_block("waermeplan")["status_by_model"] is False

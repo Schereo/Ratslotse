@@ -65,6 +65,9 @@ function Rows({ measures }: { measures: readonly PlanMeasure[] }) {
                       {m.decision_count === 1 ? "1 Beschluss" : `${m.decision_count} Beschlüsse`}
                     </a>
                   )}
+                  {m.status_quote && (
+                    <span className="mt-0.5 block text-hinweis text-muted-foreground">„{m.status_quote}“</span>
+                  )}
                 </span>
               </li>
             ))}
@@ -153,11 +156,19 @@ export function Measures({ measures }: { measures: PlanMeasures }) {
           })}
         </div>
       )}
+      {measures.status_by_model && (
+        <p className="mt-3 max-w-[76ch] text-hinweis text-muted-foreground">
+          Die Stadt zählt den Stand hier nicht aus. Ein Sprachmodell hat die Stellen im Bericht herausgesucht;
+          jedes Zitat steht wörtlich so im Bericht und ist dagegen geprüft. Wo nichts steht, sagt der Bericht nichts.
+        </p>
+      )}
       <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
         {measures.status_count > 0 ? (
           <>
             <span className="inline-flex items-center gap-1.5">
-              <span aria-hidden className={cn("h-3 w-3 rounded-[3px] border", STATUS_SQUARE.in_progress)} /> Stand laut Stadt
+              <span aria-hidden className={cn("h-3 w-3 rounded-[3px] border", STATUS_SQUARE.in_progress)} />
+              {measures.status_by_model ? "Stand laut Bericht" : "Stand laut Stadt"}
+              {measures.status_template && measures.status_by_model && <span className="font-mono">{measures.status_template}</span>}
               {measures.status_as_of_label && `, ${measures.status_as_of_label}`}
             </span>
             {measures.status_count < measures.count && (

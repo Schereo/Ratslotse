@@ -802,9 +802,16 @@ Dann, jeweils erst nach einer Messung mit `limit=20`:
   `26/0431`. Gegenprobe: jede Kennung der Maßnahmenliste genau einmal, die Zahl
   des Berichts (68) und je Handlungsfeld die Zählung der Kreisdiagramme (zwei
   von fünf von Hand verglichen).
-- **Mobilitätsplan:** ein Modell je Maßnahme mit wörtlichem Beleg aus
-  `23/0562`, `25/0041` und `26/0190`. Die Antwort „unklar“ ist erlaubt und
-  kein Fehler.
+- **Mobilitätsplan (gebaut, mit Modell):** Ein Sprachmodell sucht je Bericht
+  (`23/0562`, `25/0041`, `26/0190`) heraus, was er über die 33 benannten
+  Maßnahmen sagt — ein Aufruf je Bericht, jede Angabe mit wörtlichem Zitat.
+  Was sich nicht belegen lässt, fällt ohne Modell weg (`council/plan_judge.py`);
+  `scripts/plan_modell.py mobilitaet --pruefen` prüft die Datei später gegen
+  den Bestand. Golden-Set von Hand aus `26/0190`: 16 Maßnahmen mit Stand, 16
+  ohne Nennung — gemessen 0 falsch zugeordnet, 0 übersehen, 0 Stufen
+  abweichend. **Kosten gemessen: 0,0038 $** für alle drei Berichte (Luna).
+  Die Stadt zählt den Stand hier nicht aus, deshalb gibt es keine Verteilung;
+  der Stand steht an der Maßnahme, mit Zitat.
 
 - **Lieferbar:** die drei Bausteine der Einordnung (Berichtsstand, Stand laut
   Stadt mit Statuszeile auf den Karten und Statuschips mit Verlauf, eigene

@@ -466,7 +466,9 @@ def _status_counts(snapshot: dict) -> list[dict]:
 def status_brief(key: str) -> dict | None:
     """Die jüngste Verteilung im Wortlaut der Stadt — nur wo die Stadt eine meldet."""
     stand = plan_state.city_status(key)
-    if not stand:
+    # Ohne Zähler keine Verteilung: Beim Mobilitätsplan zählt die Stadt den Stand nicht aus —
+    # dort gibt es nur den Stand einzelner Maßnahmen, und der steht in der Maßnahmenliste.
+    if not stand or not stand["latest"]["counts"]:
         return None
     s = stand["latest"]
     return {"as_of": s["as_of"], "as_of_label": _month(s["as_of"]),
@@ -737,6 +739,8 @@ def measures_block(key: str, links: list[dict] | None = None) -> dict | None:
         groups.setdefault(m.get("field") or "", []).append(
             {"code": m["code"], "title": m["title"], "package": m.get("package"), "page": m["page"],
              "status_raw": state.get("status_raw"), "status_norm": state.get("status_norm"),
+             # Wörtliches Zitat aus dem Bericht — nur wo ein Modell den Stand herausgesucht hat.
+             "status_quote": state.get("quote"),
              "decision_count": named.get(m["code"], 0)})
     src = data["source"]
     return {
@@ -746,6 +750,9 @@ def measures_block(key: str, links: list[dict] | None = None) -> dict | None:
         # Für wie viele Maßnahmen die Stadt einen Stand nennt, und von wann.
         "status_count": len(states),
         "status_as_of_label": _month(stand["latest"]["as_of"]) if stand and states else None,
+        "status_template": stand["latest"]["source"].get("template") if stand and states else None,
+        # ``True``: Ein Sprachmodell hat die Stellen im Bericht gefunden; jedes Zitat ist wörtlich.
+        "status_by_model": bool(stand and states and stand["latest"]["source"].get("read_by") == "model"),
         "source": {"label": src["label"], "template_number": src.get("template"),
                    "document_id": src["document_id"], "url": src["url"],
                    "as_of": src.get("as_of"), "as_of_label": _datum_lang(src.get("as_of"))},

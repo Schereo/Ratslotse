@@ -4825,6 +4825,8 @@ class PlanMeasure(TypedDict):
     #: Stand im Wortlaut der Stadt; ``None``, wo sie für diese Maßnahme keinen nennt.
     status_raw: str | None
     status_norm: PlanStatusNorm | None
+    #: Wörtliches Zitat aus dem Bericht, wo ein Sprachmodell den Stand herausgesucht hat.
+    status_quote: str | None
     #: Beschlüsse, deren Vorlage diese Maßnahme bei ihrer Kennung nennt.
     decision_count: int
 
@@ -4853,6 +4855,10 @@ class PlanMeasures(TypedDict):
     #: Für wie viele Maßnahmen die Stadt einen Stand nennt.
     status_count: int
     status_as_of_label: str | None
+    #: Vorlage, aus der der Stand je Maßnahme stammt.
+    status_template: str | None
+    #: Ein Sprachmodell hat die Stellen im Bericht gefunden (jedes Zitat ist wörtlich und geprüft).
+    status_by_model: bool
     source: PlanMeasureSource
     groups: list[PlanMeasureGroup]
 

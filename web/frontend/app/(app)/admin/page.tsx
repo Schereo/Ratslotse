@@ -116,6 +116,7 @@ const FEATURE_LABELS: Record<string, string> = {
   exp_session_classification: "Experiment: Sitzungs-Klassifikation",
   field_recap: "Themenfeld-Rückblick",
   goal_rating: "Ziel-Bewertung",
+  plan_measure_status: "Pläne: Stand je Maßnahme",
   impact_rating: "Tragweite eines Beschlusses",
   impact_rating_agenda: "Tragweite eines Tagesordnungspunkts",
   interest_rating: "Gesprächswert",

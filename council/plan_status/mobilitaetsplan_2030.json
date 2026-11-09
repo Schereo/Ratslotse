@@ -1,0 +1,227 @@
+{
+ "plan": "mobilitaetsplan_2030",
+ "snapshots": [
+  {
+   "as_of": "2023-09",
+   "source": {
+    "kind": "template",
+    "label": "Sachstandsbericht Mobilitätsplan",
+    "template": "23/0562",
+    "url": null,
+    "fetched": null,
+    "read_by": "model"
+   },
+   "total": 33,
+   "complete": false,
+   "counts": [],
+   "measures": [
+    {
+     "code": "M21",
+     "status_raw": "Gutachtervorschlag für die durchgehende ÖPNV-Spur",
+     "status_norm": "started",
+     "quote": "Schwerpunktthema war der Gutachtervorschlag für die durchgehende ÖPNV-Spur auf dem Wallring, die betriebliche Notwendigkeit für die VWG und einhergehende Möglichkeiten für die Umgestaltung des öffentlichen Raums."
+    },
+    {
+     "code": "M24",
+     "status_raw": "in Bearbeitung",
+     "status_norm": "in_progress",
+     "quote": "Neuaufteilung von Verkehrsflächen (Beispiel Damm) – in Bearbeitung, Vergabe wird vorbereitet"
+    },
+    {
+     "code": "M33",
+     "status_raw": "Umfrage läuft",
+     "status_norm": "in_progress",
+     "quote": "Modal Split Untersuchung (bereits in Bearbeitung, Umfrage läuft)"
+    }
+   ]
+  },
+  {
+   "as_of": "2025-02",
+   "source": {
+    "kind": "template",
+    "label": "Sachstandsbericht Mobilitätsplan",
+    "template": "25/0041",
+    "url": null,
+    "fetched": null,
+    "read_by": "model"
+   },
+   "total": 33,
+   "complete": false,
+   "counts": [],
+   "measures": [
+    {
+     "code": "M01",
+     "status_raw": "wurde ebenfalls umgesetzt",
+     "status_norm": "in_progress",
+     "quote": "Der südliche Abschnitt der Premiumroute FAST FLIN von der Innenstadt Richtung Fliegerhorst mit Saarstraße, Sedanstraße, Friedrich-August-Platz und Wardenburgstraße wurde ebenfalls umgesetzt."
+    },
+    {
+     "code": "M02",
+     "status_raw": "vorgesehen",
+     "status_norm": "started",
+     "quote": "Für die Beauftragung externer Planungsleistungen im Zusammenhang mit der Premiumroute Hatten/Sandkrug wurden zusätzlich 150.000 Euro im THH 09 vorgesehen."
+    },
+    {
+     "code": "M12",
+     "status_raw": "verkehrlich fertiggestellt werden",
+     "status_norm": "done",
+     "quote": "Aus dem Teilkonzept Radverkehr konnte im Jahr 2024 die Fahrradstraße Quellenweg verkehrlich fertiggestellt werden."
+    },
+    {
+     "code": "M21",
+     "status_raw": "vorgesehen",
+     "status_norm": "started",
+     "quote": "Für 2025 ist die Vergabe einer umfassenden Rahmenplanung an ein externes Büro/Konsortium vorgesehen."
+    },
+    {
+     "code": "M22",
+     "status_raw": "sollen die ersten neuen Carsharing-Standorte",
+     "status_norm": "started",
+     "quote": "Ab Mitte 2025 sollen die ersten neuen Carsharing-Standorte mit dem neuen Verfahren vergeben werden."
+    },
+    {
+     "code": "M23",
+     "status_raw": "in Abstimmung mit anderen Akteuren",
+     "status_norm": "started",
+     "quote": "Neben der Durchführung der ersten Runde zur Vergabe von Konzessionen steht für 2025 auch der Aufbau einer Koordinierungsstelle für Ladeinfrastruktur in Abstimmung mit anderen Akteuren im Mittelpunkt."
+    },
+    {
+     "code": "M24",
+     "status_raw": "noch nicht mit der Bearbeitung",
+     "status_norm": "open",
+     "quote": "Aufgrund personeller Engpässe konnte trotz hoher Priorität noch nicht mit der Bearbeitung des Teilkonzeptes Damm begonnen werden."
+    },
+    {
+     "code": "M33",
+     "status_raw": "Komplett abgeschlossen",
+     "status_norm": "done",
+     "quote": "Komplett abgeschlossen wurde mittlerweile das Teilkonzept Modal Split-Erhebung zur Verkehrsmittelwahl"
+    }
+   ]
+  },
+  {
+   "as_of": "2026-04",
+   "source": {
+    "kind": "template",
+    "label": "Sachstandsbericht Mobilitätsplan",
+    "template": "26/0190",
+    "url": null,
+    "fetched": null,
+    "read_by": "model"
+   },
+   "total": 33,
+   "complete": false,
+   "counts": [],
+   "measures": [
+    {
+     "code": "M01",
+     "status_raw": "Restarbeiten Markierungen in 2026",
+     "status_norm": "in_progress",
+     "quote": "Rückbau der Aufpflasterungen Würzburger Straße und Beschilderung als Fahrradstraße (Restarbeiten Markierungen in 2026) – Teil der Premiumroute 1 FAST-FLIN"
+    },
+    {
+     "code": "M02",
+     "status_raw": "Vergabe von Planungsaufträgen",
+     "status_norm": "started",
+     "quote": "Vergabe von Planungsaufträgen für drei Rad-Premiumrouten: P2 Hatten-Sandkrug, P3 Wahnbek, P4 Bad Zwischenahn – für alle drei Projekte zeichnet sich eine Verzögerung um mindestens ein Jahr ab."
+    },
+    {
+     "code": "M03",
+     "status_raw": "Vergabe von Planungsaufträgen",
+     "status_norm": "started",
+     "quote": "Vergabe von Planungsaufträgen für drei Rad-Premiumrouten: P2 Hatten-Sandkrug, P3 Wahnbek, P4 Bad Zwischenahn – für alle drei Projekte zeichnet sich eine Verzögerung um mindestens ein Jahr ab."
+    },
+    {
+     "code": "M04",
+     "status_raw": "Vergabe von Planungsaufträgen",
+     "status_norm": "started",
+     "quote": "Vergabe von Planungsaufträgen für drei Rad-Premiumrouten: P2 Hatten-Sandkrug, P3 Wahnbek, P4 Bad Zwischenahn – für alle drei Projekte zeichnet sich eine Verzögerung um mindestens ein Jahr ab."
+    },
+    {
+     "code": "M08",
+     "status_raw": "Restarbeiten Markierungen in 2026",
+     "status_norm": "in_progress",
+     "quote": "Neugestaltung der Fahrradstraßen Katharinenstraße und Haareneschstraße (Restarbeiten Markierungen in 2026)"
+    },
+    {
+     "code": "M09",
+     "status_raw": "Restarbeiten Markierungen in 2026",
+     "status_norm": "in_progress",
+     "quote": "Neugestaltung der Fahrradstraßen Katharinenstraße und Haareneschstraße (Restarbeiten Markierungen in 2026)"
+    },
+    {
+     "code": "M13",
+     "status_raw": "Umsetzung der Fahrradstraße Lindenallee",
+     "status_norm": "started",
+     "quote": "Für 2026 sind folgende Planungen und Umsetzungen vorgesehen: Umsetzung der Fahrradstraße Lindenallee"
+    },
+    {
+     "code": "M21",
+     "status_raw": "finalen Ämterabstimmung",
+     "status_norm": "started",
+     "quote": "Die Leistungsbeschreibung für den entsprechenden Planungsauftrag (integriertes Umgestaltungskonzept) befindet sich in der finalen Ämterabstimmung. Die Vergabe soll im Frühjahr/Sommer 2026 erfolgen."
+    },
+    {
+     "code": "M22",
+     "status_raw": "im Jahr 2026 eingerichtet werden",
+     "status_norm": "started",
+     "quote": "In einer ersten Vergaberunde wurden 9 Stellplatzpakete (18 Stellflächen) vergeben, die im Jahr 2026 eingerichtet werden."
+    },
+    {
+     "code": "M23",
+     "status_raw": "erste Ausschreibung erfolgen",
+     "status_norm": "started",
+     "quote": "Voraussichtlich im dritten Quartal 2026 wird die erste Ausschreibung erfolgen. Für die nächsten Jahre werden 20 neue Ladepunkte pro Quartal angestrebt."
+    },
+    {
+     "code": "M24",
+     "status_raw": "noch nicht mit der Bearbeitung",
+     "status_norm": "open",
+     "quote": "Aufgrund personeller Engpässe konnte trotz hoher Priorität noch nicht mit der Bearbeitung des Teilkonzeptes Damm begonnen werden."
+    },
+    {
+     "code": "M25",
+     "status_raw": "zum 1. Januar 2026 umgesetzt",
+     "status_norm": "done",
+     "quote": "Die Bewohnerparkzone Haarenesch wurde zum 1. Januar 2026 umgesetzt."
+    },
+    {
+     "code": "M28",
+     "status_raw": "Bike & Ride-Möglichkeiten geschaffen",
+     "status_norm": "in_progress",
+     "quote": "An fünf Standorten wurden in 2025 Bike & Ride-Möglichkeiten geschaffen. In 2026 sollen weitere, vom Gutachter des Teilkonzepts identifizierte Standorte folgen."
+    },
+    {
+     "code": "M29",
+     "status_raw": "erste positive Zeichen",
+     "status_norm": "started",
+     "quote": "Zur angestrebten Kooperation mit den Gemeinden Wardenburg und Hatten zur Ausweitung von Park & Ride-Angeboten, gab es erste positive Zeichen von der Landesregierung, die um Unterstützung bei der Suche nach Fördermitteln gebeten worden war."
+    },
+    {
+     "code": "M30",
+     "status_raw": "geplant",
+     "status_norm": "started",
+     "quote": "In 2026 werden darüber hinaus Pflege- und Optimierungsmaßnahmen an bestehenden Park & Ride-Anlagen geplant."
+    },
+    {
+     "code": "M31",
+     "status_raw": "untersucht nun eingehender",
+     "status_norm": "started",
+     "quote": "Die Landesnahverkehrsgesellschaft (LNVG) hält nach einem Austausch einen Haltepunkt Ofenerdiek für prüfwürdig und untersucht nun eingehender die Rahmenbedingungen."
+    },
+    {
+     "code": "M32",
+     "status_raw": "stets eine wichtige Rolle",
+     "status_norm": "in_progress",
+     "quote": "Bei aktuellen Planungen nimmt der Fußverkehr jedoch ohnehin stets eine wichtige Rolle ein."
+    }
+   ]
+  }
+ ],
+ "notes": [
+  {
+   "text": "Die Stadt zählt den Stand beim Mobilitätsplan nicht aus. Was hier steht, hat ein Sprachmodell aus den Sachstandsberichten herausgesucht; jedes Zitat steht wörtlich im Bericht.",
+   "url": null
+  }
+ ]
+}
