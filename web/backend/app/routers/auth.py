@@ -162,7 +162,20 @@ def _set_auth_cookie(response: Response, user: dict, request: Request) -> None:
     """
     if _is_app_client(request):
         return
-    set_session_cookie(response, create_access_token(user["id"], user.get("token_version", 0)))
+    set_session_cookie(response, create_access_token(
+        user["id"], user.get("token_version", 0), via=_herkunft(user)))
+
+
+def _herkunft(sitzung: dict) -> str | None:
+    """Das ``via`` für ein Token, das aus einer bestehenden Sitzung entsteht.
+
+    Eine Sitzung aus einem Anmeldelink (``deps.get_current_user`` setzt dann
+    ``per_link``) bleibt eine — auch im frisch ausgestellten Token. Bis 11/2026
+    stellte ``_app_access_token`` es ohne ``via`` aus: ``GET /api/auth/me`` mit
+    ``X-Client: ios`` machte aus der eingeschränkten Sitzung eine volle, und
+    ``require_volle_anmeldung`` ließ Adresswechsel und Löschen wieder durch.
+    """
+    return VIA_LINK if sitzung.get("per_link") else None
 
 
 def _is_app_client(request: Request) -> bool:
@@ -176,19 +189,26 @@ def _is_app_client(request: Request) -> bool:
     return is_app_client(request)
 
 
-def _app_access_token(request: Request, user: dict) -> str | None:
+def _app_access_token(request: Request, user: dict,
+                      sitzung: dict | None = None) -> str | None:
     """Mint a long-lived bearer token for native-app clients to store on-device.
 
     Browsers rely on the httpOnly cookie set by ``_set_auth_cookie`` and get
     ``None`` here (the token is never exposed to page JS). The app can't persist
     cross-site cookies reliably, so it carries the token in the Authorization
     header instead — which ``deps.get_current_user`` already accepts.
+
+    The token keeps the origin of the session it is minted from (``sitzung``,
+    else ``user`` itself — see ``_herkunft``): a session from a sign-in link
+    gets a link token back, never a full one. Pass ``sitzung`` whenever
+    ``user`` was re-read from the store, because that copy has lost the flag.
     """
     if not _is_app_client(request):
         return None
     settings = get_settings()
     return create_access_token(
-        user["id"], user.get("token_version", 0), settings.app_access_token_expire_minutes
+        user["id"], user.get("token_version", 0), settings.app_access_token_expire_minutes,
+        via=_herkunft(sitzung if sitzung is not None else user),
     )
 
 
@@ -631,6 +651,10 @@ def reset_password(
     # man sich jetzt einmal selbst an.
     if aufrufer is None:
         return _to_out(user, None)
+    # Bewusst eine VOLLE Sitzung, auch wenn ``aufrufer`` aus einem Anmeldelink
+    # stammt: Wer hier ankommt, hat eben das Passwort neu gesetzt — das wiegt
+    # so viel wie eine Anmeldung damit. ``user`` ist frisch gelesen und trägt
+    # deshalb kein ``per_link``.
     _set_auth_cookie(response, user, request)
     # Reset links can open directly in the native app. Returning the refreshed
     # account and its app token avoids an unnecessary login immediately after
@@ -918,7 +942,7 @@ def _bestaetigung_abschliessen(request: Request, background: BackgroundTasks, st
         user = _promote_configured_admin(store, user)
     # Die App bekommt ihr frisches Token nur, wenn sie schon als genau dieses
     # Konto angemeldet ist (s. o.) — ein Link aus einer Mail meldet niemanden an.
-    return _to_out(user, _app_access_token(request, user) if aufrufer else None)
+    return _to_out(user, _app_access_token(request, user, aufrufer) if aufrufer else None)
 
 
 @router.post("/verify-code", response_model=UserOut)
