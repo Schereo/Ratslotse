@@ -25,6 +25,7 @@ import threading
 import time
 from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -69,6 +70,20 @@ def parse_json(content: str) -> dict:
         if isinstance(daten, dict):
             return daten
     raise ValueError(f"unlesbare Antwort: {text[:120]!r}")
+
+
+def call_cost(antwort: Any) -> float:
+    """Was DIESER Aufruf gekostet hat (OpenRouters ``usage.cost``, USD).
+
+    **Vor dem Lesen der Antwort abrechnen, nicht danach.** Eine leere oder
+    unlesbare Antwort ist bezahlt wie jede andere — bei einem Aufruf, der sich
+    festgedacht hat, sogar am teuersten. Bis 11/2026 stand die Abrechnung an
+    jeder Aufrufstelle hinter ``parse_json``; wer dort scheiterte, kostete
+    nichts. Im Wochenlauf vom 09.11.2026 meldete der Lauf 2,02 $ und hielt an
+    seiner Grenze von 2 $ an — ``llm_usage`` zeigte 2,89 $.
+    """
+    verbrauch = getattr(antwort, "usage", None)
+    return float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
 
 
 def _kandidaten(text: str) -> Iterator[str]:
@@ -184,17 +199,17 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
                           {"role": "user", "content":
                               prompts.render(ann.prompt_user,
                                              items=batch_text(chunk, texte, ann))}],
-                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                temperature=ann.temperature, **ann.token_args(),
                 # Ohne Frist hing am 03.10.2026 ein einzelner Aufruf über zehn
                 # Minuten und hielt den ganzen Lauf fest — dieselbe Lehre wie
                 # bei `fit`, `idea_fit` und `reason`.
                 extra_body=extra, timeout=LLM_TIMEOUT_S, _feature=ann.feature)
-            daten = parse_json(antwort.choices[0].message.content or "")
         except Exception as e:  # noqa: BLE001 — ein Batch, nicht der Lauf
             return [], sorted(erwartet), f"{type(e).__name__}: {str(e)[:120]}"
 
+        # Erst abrechnen, dann lesen (s. `call_cost`).
         verbrauch = getattr(antwort, "usage", None)
-        kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+        kosten = call_cost(antwort)
         with sperre:
             if verbrauch:
                 stand["prompt_tokens"] += verbrauch.prompt_tokens or 0
@@ -202,6 +217,10 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
                 stand["cost_usd"] += kosten
         if stopp is not None:
             stopp.ausgeben(kosten)
+        try:
+            daten = parse_json(antwort.choices[0].message.content or "")
+        except Exception as e:  # noqa: BLE001 — ein Batch, nicht der Lauf
+            return [], sorted(erwartet), f"{type(e).__name__}: {str(e)[:120]}"
 
         fertig: list[tuple[str, dict, float]] = []
         ergebnisse = daten.get("results")
