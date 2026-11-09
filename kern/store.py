@@ -5243,6 +5243,11 @@ class Store:
     #: ``record_activity``-Aufrufe im Backend.
     EREIGNISSE: tuple[tuple[str, str], ...] = (
         ("session", "Zugriffe"),
+        # Seit 11/2026: höchstens eins je Minute (``app.deps._sitzung_zaehlen``)
+        # — die Dauer eines Besuchs, die „Zugriffe" nicht sagen. Daneben stehen
+        # Bereiche als ``area:<bereich>`` (``kern/activity_areas.py``); sie
+        # sind keine Ereignisse, sondern Orte, und fehlen hier deshalb.
+        ("minutes", "Minuten mit Aktivität"),
         ("ai_question", "Fragen gestellt"),
         ("ai_question_chip", "davon aus einem Vorschlag"),
         ("ai_answer_empty", "Antworten ohne Quelle"),

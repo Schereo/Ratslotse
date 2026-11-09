@@ -255,7 +255,7 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, section }: {
           <p className="font-display text-xl font-bold text-foreground">{data.display_name || data.email}</p>
           {data.display_name && <p className="text-sm text-muted-foreground">{data.email}</p>}
           <p className="text-xs text-muted-foreground">
-            seit {data.created_at ? formatDate(data.created_at.slice(0, 10)) : "unbekannt"} · {sig.label} · {login}
+            seit {data.created_at ? formatDate(data.created_at.slice(0, 10)) : "—"} · {sig.label} · {login}
             {woher && <> · über {woher} registriert</>}
           </p>
         </div>

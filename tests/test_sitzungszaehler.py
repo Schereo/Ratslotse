@@ -23,9 +23,15 @@ from kern.store import Store  # noqa: E402
 class _Aufzeichner:
     def __init__(self, gelingt: bool = True):
         self.rufe: list[tuple[int, str, int, bool]] = []
+        #: Die aktiven Minuten (seit 11/2026) laufen getrennt mit — je
+        #: geschriebenem Sitzungs-Zähler eine, nie wartend.
+        self.minuten: list[tuple[int, str, bool]] = []
         self.gelingt = gelingt
 
     def record_activity(self, owner_id, feature, client, *, anzahl=1, warten=True):
+        if feature == "minutes":
+            self.minuten.append((owner_id, client, warten))
+            return self.gelingt
         self.rufe.append((owner_id, client, anzahl, warten))
         return self.gelingt
 
@@ -42,6 +48,7 @@ def test_erste_anfrage_schreibt_sofort_und_ohne_warten(gedrosselt):
     s = _Aufzeichner()
     deps._sitzung_zaehlen(s, 7, "web")
     assert s.rufe == [(7, "web", 1, False)]
+    assert s.minuten == [(7, "web", False)]
 
 
 def test_weitere_anfragen_sammeln_sich_und_kommen_gebuendelt(gedrosselt, monkeypatch):
