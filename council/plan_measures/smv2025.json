@@ -1,0 +1,686 @@
+{
+ "plan": "smv2025",
+ "source": {
+  "label": "Anhang 1 zur Fortschreibung des Lärmaktionsplans: Einzelmaßnahmen des smv2025",
+  "document_id": 280377,
+  "template": "24/0293/1",
+  "as_of": "2023-10",
+  "url": "https://buergerinfo.oldenburg.de/getfile.php?id=280377&type=do"
+ },
+ "count_city": null,
+ "count_note": "Der Anhang nummeriert bis 126, enthält aber 112 Zeilen: Die Nummern 86, 87 und 89 bis 100 kommen darin nicht vor. Die Gruppen sind die Fristen des Plans (kurz-, mittel-, langfristig).",
+ "measures": [
+  {
+   "code": "1",
+   "title": "Neue Wegeverbindung vom Hbf. Nord / ZOB zur BBS II und BBS III",
+   "field": "Kurzfristig",
+   "page": 1
+  },
+  {
+   "code": "2",
+   "title": "Lückenschluss Gehweg am Pferdemarkt / Südostecke-Donnerschweer Straße",
+   "field": "Kurzfristig",
+   "page": 1
+  },
+  {
+   "code": "3",
+   "title": "Straßburger Straße / Arena Weser-Ems-Halle: Fußgängererschließung in die Planungen für WEH-Gelände integrieren",
+   "field": "Kurzfristig",
+   "page": 1
+  },
+  {
+   "code": "4",
+   "title": "Neue Wegeverbindung Lappan-Heiligengeiststr. (Schlüsselprojekt 7)",
+   "field": "Mittelfristig",
+   "page": 1
+  },
+  {
+   "code": "5",
+   "title": "Prüfung neuer Wegeverbindung vom Hbf. Nord zum Pferdemarkt; Gleisparallele Wegeverbindung über EWE-Gelände",
+   "field": "Mittelfristig",
+   "page": 1
+  },
+  {
+   "code": "6",
+   "title": "Osterstraße - Brücke Sanierung und Erhalt der Wegeverbindung",
+   "field": "Mittelfristig",
+   "page": 1
+  },
+  {
+   "code": "7",
+   "title": "Gehweg Hafenpromenade: Weiterführung der Wegeverbindung",
+   "field": "Mittelfristig",
+   "page": 1
+  },
+  {
+   "code": "8",
+   "title": "Prüfung Zweite Wegeverbindung über die Eisenbahnbrücke / Westseite (auch Radverkehr)",
+   "field": "Mittelfristig",
+   "page": 1
+  },
+  {
+   "code": "9",
+   "title": "Herrenweg Herstellen eines Gehweges, Schulwegsicherung",
+   "field": "Mittelfristig",
+   "page": 1
+  },
+  {
+   "code": "10",
+   "title": "Verbindung Doktorsklappe-Hafenpromenade (Brücke); Kurze Wegeverbindung Stadtsüden-Hbf. (Schlüsselprojekt 2)",
+   "field": "Langfristig",
+   "page": 1
+  },
+  {
+   "code": "11",
+   "title": "Prüfung dritter Wegeverbindung vom Hbf. Süd zur Innenstadt (Staugraben - Staulinie",
+   "field": "Langfristig",
+   "page": 1
+  },
+  {
+   "code": "88",
+   "title": "Umgestaltung Waffenplatz unter besonderer Berücksichtigung der Fußgänger",
+   "field": "Kurzfristig",
+   "page": 1
+  },
+  {
+   "code": "12",
+   "title": "Fußgänger-Bewegungsfreiheit in der Fußgängerzone (Schlüsselprojekt 1)",
+   "field": "Kurzfristig",
+   "page": 1
+  },
+  {
+   "code": "13",
+   "title": "Fußgänger-Bewegungsfreiheit in Hauptverkehrsstraßen (Schlüsselprojekt 1)",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "14",
+   "title": "Berücksichtigung der Fußgängerbelange bei gemeinsamer Führung mit Radverkehr (Schlüsselprojekt 1)",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "15",
+   "title": "Schaffung von Sitzmöglichkeiten in der Innenstadt ( Schlüsselprojekt 1)",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "16",
+   "title": "Amalienstraße / Nordstraße: Querungen schaffen",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "17",
+   "title": "Damm: Querungen schaffen",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "18",
+   "title": "Nadorster Straße: Verringerung Straßenbreite, Verbesserung für Radverkehr, Querungen schaffen ( vgl. Schlüsselprojekt 6 und Nr.32)",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "19",
+   "title": "Alexanderstraße: Querungen schaffen",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "20",
+   "title": "Fußgängerquerung verbessern: Heiligengeiststraße - Lange Straße",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "21",
+   "title": "Wallring: Querungen schaffen",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "22",
+   "title": "Auguststraße – Industriestraße: Erschließung Gesundheitsamt",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "23",
+   "title": "Auguststraße: Abschnittsweise Tempo 30",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "24",
+   "title": "Stedinger Straße: Querungen schaffen",
+   "field": "Kurzfristig",
+   "page": 2
+  },
+  {
+   "code": "25",
+   "title": "Umgestaltung der Wallstraße (mittlerer Abschnitt) zur Fußgängerzone",
+   "field": "Mittelfristig",
+   "page": 3
+  },
+  {
+   "code": "26",
+   "title": "Kasernengelände Donnerschwee: Durchlässigkeit f. alle Verkehrsmittel herstellen",
+   "field": "Mittelfristig",
+   "page": 3
+  },
+  {
+   "code": "27",
+   "title": "Damm: Verbesserung Radwege",
+   "field": "Kurzfristig",
+   "page": 3
+  },
+  {
+   "code": "28",
+   "title": "Gartenstraße: Grundstückszufahrten und Einmündungen verbessern",
+   "field": "Kurzfristig",
+   "page": 3
+  },
+  {
+   "code": "29",
+   "title": "Peterstraße: Grundstückszufahrten und Einmündungen verbessern",
+   "field": "Kurzfristig",
+   "page": 3
+  },
+  {
+   "code": "30",
+   "title": "Pferdemarkt: Austausch Material (Restbereiche) ( vgl. Nr.2)",
+   "field": "Kurzfristig",
+   "page": 3
+  },
+  {
+   "code": "31",
+   "title": "Heiligengeiststraße Nord / Pferdemarkt (Westseite): Verbesserung Radweg (vgl. Nr.2, Nr.30)",
+   "field": "Kurzfristig",
+   "page": 3
+  },
+  {
+   "code": "32",
+   "title": "Nadorster Straße (insbes. Abschnitt Friedhofsmauer): Radweg verbreitern ( Schlüsselprojekt 6 und Nr.18)",
+   "field": "Kurzfristig",
+   "page": 3
+  },
+  {
+   "code": "33",
+   "title": "Ofener Straße: Radweg stadtauswärts verbessern",
+   "field": "Kurzfristig",
+   "page": 3
+  },
+  {
+   "code": "34",
+   "title": "Haareneschstraße / Katharinenstraße: Fahrradstraße verdeutlichen",
+   "field": "Kurzfristig",
+   "page": 3
+  },
+  {
+   "code": "35",
+   "title": "Stautorkreisel / Huntestraße / Amalienstraße: Einmündungen / Gegenläufigkeit",
+   "field": "Kurzfristig",
+   "page": 3
+  },
+  {
+   "code": "36",
+   "title": "Auguststraße / Ziegelhofstraße: Grundstückszufahrten und Einmündungen verbessern",
+   "field": "Mittelfristig",
+   "page": 3
+  },
+  {
+   "code": "37",
+   "title": "Staugraben: Austausch Material",
+   "field": "Mittelfristig",
+   "page": 3
+  },
+  {
+   "code": "38",
+   "title": "Ofener Straße: Radweg stadteinwärts baulich optimieren",
+   "field": "Langfristig",
+   "page": 3
+  },
+  {
+   "code": "39",
+   "title": "Ofener Straße: Alternative, z. B. Haarenufer, für Radweg stadteinwärts prüfen",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "40",
+   "title": "Umgestaltung Hermann-Ehlers-Straße als Fahrradstraße ( Schlüsselprojekt 2)",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "41",
+   "title": "Umgestaltung Kanalstraße als Fahrradstraße ( Schlüsselprojekt 2)",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "42",
+   "title": "Amalienbrücke: Gegenläufigkeit einrichten",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "43",
+   "title": "Ausbau Huntestraße (Abschnitt Stadthafen) als Fahrradstraße ( Schlüsselprojekt 2)",
+   "field": "Mittelfristig",
+   "page": 4
+  },
+  {
+   "code": "44",
+   "title": "Umgestaltung Steinweg als Fahrradstraße (nach Verlegung Eingang Ev. Krankenhaus)",
+   "field": "Mittelfristig",
+   "page": 4
+  },
+  {
+   "code": "45",
+   "title": "Friedensplatz: Führung des Radverkehrs verbessern (in Verbindung mit Maßnahme Steinweg)",
+   "field": "Mittelfristig",
+   "page": 4
+  },
+  {
+   "code": "46",
+   "title": "Lappan: Überdachte Abstellanlage mit Pedelec-Ladestation ( Schlüsselprojekt 7)",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "47",
+   "title": "Schlossplatz und Umfeld: Überprüfung / Nachrüstung der Standorte",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "48",
+   "title": "Heiligengeiststraße: Ergänzung durch Einsatz mobiler Abstelleinlagen (u. a. Traumgärten)",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "49",
+   "title": "Industriestraße: Überdachte Abstellanlage (Fahrradkäfig) mit Pedelec-Ladestation",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "50",
+   "title": "Roonstraße / Theaterwall: Überprüfung / Nachrüstung des Standorts",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "51",
+   "title": "Fernmeldeamt / Ritterstraße: Überprüfung / Nachrüstung des Standorts",
+   "field": "Kurzfristig",
+   "page": 4
+  },
+  {
+   "code": "52",
+   "title": "Pferdemarkt Überprüfung / Nachrüstung des Standorts",
+   "field": "Kurzfristig",
+   "page": 5
+  },
+  {
+   "code": "53",
+   "title": "Konzept und Umsetzung überdachtes Fahrradparken Innenstadt",
+   "field": "Mittelfristig",
+   "page": 5
+  },
+  {
+   "code": "54",
+   "title": "Hbf. Nord: Beratung und Ausstattung VHS und weitere Anlieger",
+   "field": "Mittelfristig",
+   "page": 5
+  },
+  {
+   "code": "55",
+   "title": "Haltstellen-Standorte mit (weiterem) Bedarf; In Zusammenarbeit mit VWG",
+   "field": "Kurzfristig",
+   "page": 5
+  },
+  {
+   "code": "56",
+   "title": "S-Haltepunkt Wechloy (insbes. Zusatzanlagen Zuwegung Ost)",
+   "field": "Kurzfristig",
+   "page": 5
+  },
+  {
+   "code": "57",
+   "title": "Gepäckstation 91er Straße (Fahrrad Abstellanlage / Carsharing)",
+   "field": "Kurzfristig",
+   "page": 5
+  },
+  {
+   "code": "58",
+   "title": "Gepäckstation Haarenufer (Fahrrad-Abstellanlage / Carsharing)",
+   "field": "Mittelfristig",
+   "page": 5
+  },
+  {
+   "code": "59",
+   "title": "Fahrradstation Hbf. Süd: Fahrradverleih optimieren",
+   "field": "Kurzfristig",
+   "page": 5
+  },
+  {
+   "code": "60",
+   "title": "Verkehrsmittelübergreifende Mobilitätszentrale; Behindertengerechte Gestaltung; Prüfung der Nutzungsmöglichkeit bestehender Gebäude / Neubau (Schlüsselprojekte 4 und 7)",
+   "field": "Langfristig",
+   "page": 5
+  },
+  {
+   "code": "61",
+   "title": "Einbeziehung weiterer wichtiger Haltestellen; Ergänzung durch kleinere Anzeiger für Veranstaltungshinweise",
+   "field": "Kurzfristig",
+   "page": 5
+  },
+  {
+   "code": "62",
+   "title": "P+R Messestraße / Weser-Ems-Halle: Sanierung; Einbeziehung bei Veranstaltungen (auch Sonderverkehre)",
+   "field": "Kurzfristig",
+   "page": 5
+  },
+  {
+   "code": "63",
+   "title": "P+R Prinzessinweg / Eversten: Sanierung; verstärkte Einbeziehung bei Veranstaltungen (auch Sonderverkehre)",
+   "field": "Kurzfristig",
+   "page": 5
+  },
+  {
+   "code": "64",
+   "title": "P+R Westfalendamm / Olantis: Sanierung; verstärkte Einbeziehung bei Veranstaltungen (auch Sonderverkehre)",
+   "field": "Kurzfristig",
+   "page": 5
+  },
+  {
+   "code": "65",
+   "title": "Julius-Mosen-Platz: Bussteig C (Westseite) vergrößern",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "66",
+   "title": "ZOB: Auffrischungsmaßnahmen; Überprüfung Möblierung, Sauberkeit, soziale Sicherheit",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "67",
+   "title": "Erweiterung der Bevorrechtigung des ÖPNV um die Wallanlagen durch verlängerte Busspur Schlossplatz – Pulverturm; Umsetzbarkeit prüfen",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "68",
+   "title": "Marschweg / Sodenstich / Niedersachsendamm: Verkehrsführung verbessern",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "69",
+   "title": "Haltestelle Wiesenstraße: Haltestellenbereich umbauen (Baumstandort)",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "70",
+   "title": "Auguststraße: Parkhaus Ev. Krankenhaus / FH",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "71",
+   "title": "Angebot um den Hbf. (insbesondere Nord) erweitern (Quartiersparken; i. V. m. Entwicklung EWE-Gelände)",
+   "field": "Mittelfristig",
+   "page": 6
+  },
+  {
+   "code": "72",
+   "title": "Entwicklungsbereich Alter Stadthafen (Nord): Anlage für Quartiersparken",
+   "field": "Mittelfristig",
+   "page": 6
+  },
+  {
+   "code": "73",
+   "title": "Bahnhofsviertel: Anlage für Quartiersparken",
+   "field": "Langfristig",
+   "page": 6
+  },
+  {
+   "code": "74",
+   "title": "Gerichtsviertel: Anlage für Quartiersparken",
+   "field": "Langfristig",
+   "page": 6
+  },
+  {
+   "code": "75",
+   "title": "Reisebusse: Ausstattung am ZOB verbessern (Linienfernverkehr); Innenstadtnahes Angebot verbessern (Gelegenheitsverkehr)",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "76",
+   "title": "Krafträder: Innenstadtnahe Abstellmöglichkeiten schaffen",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "77",
+   "title": "Neuer Standort Lappan ( Schlüsselprojekt 7)",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "78",
+   "title": "Neuer Standort Stautor",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "79",
+   "title": "Weitere Standorte zusammen mit Betreiber erarbeiten; Bedarfsgerechte Kapazitätserweiterungen bestehender Stationen vornehmen (vgl. InEKK)",
+   "field": "Kurzfristig",
+   "page": 6
+  },
+  {
+   "code": "80",
+   "title": "Neuer Standort Alter Stadthafen (Nord)",
+   "field": "Mittelfristig",
+   "page": 6
+  },
+  {
+   "code": "81",
+   "title": "Cloppenburger Straße: Stärkung des Stadtteilzentrums",
+   "field": "Mittelfristig",
+   "page": 7
+  },
+  {
+   "code": "82",
+   "title": "Bremer Straße: Stärkung des Stadteilzentrums",
+   "field": "Mittelfristig",
+   "page": 7
+  },
+  {
+   "code": "83",
+   "title": "Umgestaltung der Ritterstraße und Platzsituation an der Poststraße",
+   "field": "Kurzfristig",
+   "page": 7
+  },
+  {
+   "code": "84",
+   "title": "City-Logistik: Prüfauftrag (in Zusammenarbeit mit CMO)",
+   "field": "Mittelfristig",
+   "page": 7
+  },
+  {
+   "code": "85",
+   "title": "Einsatzstandorte Grünpfeil überprüfen: Verkehrssicherheit, Verkehrsfluss",
+   "field": "Kurzfristig",
+   "page": 7
+  },
+  {
+   "code": "101",
+   "title": "Lieferzonenmanagement",
+   "field": "Kurzfristig",
+   "page": 7
+  },
+  {
+   "code": "102",
+   "title": "Einsatz Lastenräder",
+   "field": "Kurzfristig",
+   "page": 7
+  },
+  {
+   "code": "103",
+   "title": "Emissionsarme Fahrzeuge",
+   "field": "Kurzfristig",
+   "page": 7
+  },
+  {
+   "code": "104",
+   "title": "Gemeinsame Transportfahrzeuge",
+   "field": "Kurzfristig",
+   "page": 7
+  },
+  {
+   "code": "105",
+   "title": "Betriebliches Mobilitätsmanagement",
+   "field": "Kurzfristig",
+   "page": 7
+  },
+  {
+   "code": "106",
+   "title": "Ausbau des ÖPNV",
+   "field": "Kurzfristig",
+   "page": 7
+  },
+  {
+   "code": "107",
+   "title": "Ausbau Radinfrastruktur",
+   "field": "Kurzfristig",
+   "page": 8
+  },
+  {
+   "code": "108",
+   "title": "Aufbau eines Systems zur Zählung und Klassifizierung des Verkehrs",
+   "field": "Kurzfristig",
+   "page": 8
+  },
+  {
+   "code": "109",
+   "title": "Beschleunigte Modernisierung der ÖPNV-Flotte",
+   "field": "Kurzfristig",
+   "page": 8
+  },
+  {
+   "code": "110",
+   "title": "Entwicklung einer Parkplatz-App",
+   "field": "Kurzfristig",
+   "page": 8
+  },
+  {
+   "code": "111",
+   "title": "Weiterentwicklung eines Logistikkonzeptes für die Innenstadt",
+   "field": "Kurzfristig",
+   "page": 8
+  },
+  {
+   "code": "112",
+   "title": "Einrichtung zusätzlicher Fahrradabstellplätze",
+   "field": "Kurzfristig",
+   "page": 8
+  },
+  {
+   "code": "113",
+   "title": "Elektrifizierung des Verkehrs",
+   "field": "Kurzfristig",
+   "page": 8
+  },
+  {
+   "code": "114",
+   "title": "Umrüstung auf emissionsarme Antriebe: städtische Fahrzeugflotte",
+   "field": "Kurzfristig",
+   "page": 8
+  },
+  {
+   "code": "115",
+   "title": "Verlagerung von PKW-Fahrten zwischen Region und Stadt auf den ÖPNV",
+   "field": "Kurzfristig",
+   "page": 9
+  },
+  {
+   "code": "116",
+   "title": "Aufbau eines Multimodalen Mobilitätsverbunds",
+   "field": "Kurzfristig",
+   "page": 9
+  },
+  {
+   "code": "117",
+   "title": "Sicherstellung der Erreichbarkeit der Innenstadt und des Wirtschaftsverkehrs",
+   "field": "Kurzfristig",
+   "page": 9
+  },
+  {
+   "code": "118",
+   "title": "E-Mobilität: Kommunales E-Mobil-Konzept",
+   "field": "Kurzfristig",
+   "page": 9
+  },
+  {
+   "code": "119",
+   "title": "E-Mobilität: Konzeption und Umsetzung einer eMobilstation",
+   "field": "Kurzfristig",
+   "page": 9
+  },
+  {
+   "code": "120",
+   "title": "Entlastungsstraße Fliegerhorst",
+   "field": "Kurzfristig",
+   "page": 9
+  },
+  {
+   "code": "121",
+   "title": "Bau eines Parkhauses im Bereich des Evangelischen Krankenhauses",
+   "field": "Kurzfristig",
+   "page": 9
+  },
+  {
+   "code": "122",
+   "title": "Barrierefreiheit: Verstärkte Trennung von Fuß-und Radverkehr",
+   "field": "Kurzfristig",
+   "page": 9
+  },
+  {
+   "code": "123",
+   "title": "Steigerung der jährlichen Fahrgastzahlen der VWG von 19 Mio. auf 30 Mio. bis 2030",
+   "field": "Mittelfristig",
+   "page": 10
+  },
+  {
+   "code": "124",
+   "title": "Ausweitung der B+R-Infrastruktur an den wichtigsten Haltestellen-insbesondere in den Vororten",
+   "field": "Mittelfristig",
+   "page": 10
+  },
+  {
+   "code": "125",
+   "title": "Schaffung der infrastrukturellen Voraussetzungen für Angebotserweiterungen und Fahrgaststeigerungen",
+   "field": "Mittelfristig",
+   "page": 10
+  },
+  {
+   "code": "126",
+   "title": "Konsequente Verkehrslenkung zu Gunsten der Verkehrsmittel des Umweltverbunds",
+   "field": "Kurzfristig",
+   "page": 10
+  }
+ ]
+}

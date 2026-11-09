@@ -72,7 +72,7 @@ export function Review({ review }: { review: Review }) {
           {results.length > 0 && <div className="mt-2"><Statements statements={results} /></div>}
           {review.has_status && (
             <p className="mt-2 text-hinweis text-muted-foreground">
-              Die Verteilung aus der Auswertung steht unter <a href="#plan-city-status" className="text-primary hover:underline">Stand laut Stadt</a>.
+              Die Verteilung steht unter <a href="#plan-city-status" className="text-primary hover:underline">Stand laut Stadt</a>.
             </p>
           )}
         </Part>

@@ -45,13 +45,13 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 | 1 Zuordnung, Endpunkte, erste Seite | auf dev | #1818 (#1813 ist darin aufgegangen) |
 | 2 Maßnahmenlisten der fünf Pilotpläne | auf dev | #1818 |
 | Gestaltungsrunde | auf dev: Zeitbänder auf einer Achse, Kopfbühne, Zeitstrahl mit Lücken | #1818; § 3 beschreibt die Inhalte, die Form steht in `DESIGNSPRACHE.md` |
-| 3 Stand, Berichtsstand, Kennzahlen | auf dev: Berichtsstand für alle Pläne; Stand laut Stadt für Klimaschutzplan, Wärmeplan, Aktionsplan Gewalt 2020 und Ernährungsstrategie; THG-Kennzahl. Offen: Mobilitätsplan (Fließtext, braucht ein Modell) | #1819, #1822, #1823 |
-| 4 Beschlüsse zu Maßnahmen | auf dev: Zuordnung über die Kennung der Maßnahme (ohne Modell). Offen: Vorlagen, die einen Plan nur beim Namen nennen (Modell und Golden-Set) | #1824 |
-| 4b Wo man nachfragen kann | auf dev: Pläne ohne aktuellen Bericht. „Ratsauftrag ohne Folge“ gemessen, Messziel verfehlt, nicht gebaut | #1825 |
-| 5 Rückblick | auf dev für die zehn abgelaufenen Pläne. Offen: weitere Maßnahmenlisten, iOS-Ansicht | #1825 |
+| 3 Stand, Berichtsstand, Kennzahlen | auf dev: Berichtsstand für alle Pläne; Stand laut Stadt für Klimaschutzplan, Wärmeplan, Aktionsplan Gewalt 2020, Ernährungsstrategie und smv2025; Mobilitätsplan mit Zitat je Maßnahme aus den Sachstandsberichten (ein Modell sucht, geprüft wird ohne Modell); THG-Kennzahl | #1819, #1822, #1823, #1827, #1830 |
+| 4 Beschlüsse zu Maßnahmen | auf dev: Zuordnung über die Kennung der Maßnahme (ohne Modell) und Vorlagen, die laut eigenem Text der Umsetzung eines Plans dienen (Modell mit Golden-Set, 25 von Hand geprüfte Bezüge) | #1824, #1828 |
+| 4b Wo man nachfragen kann | auf dev: Pläne ohne aktuellen Bericht. „Ratsauftrag ohne Folge“ zweimal gemessen (ohne und mit Modell), Messziel beide Male verfehlt, nicht ausgeliefert | #1825, #1829 |
+| 5 Rückblick | auf dev für die zehn abgelaufenen Pläne; Maßnahmenlisten für neun Pläne. Offen: iOS-Ansicht | #1825, #1830 |
 | 5b Seite der Stadt | Verweise für 21 Pläne. Offen: Dokumente der Pläne von vor 2018 | mit Phase 6 |
 | 6 Pflege | Kennzahlen im Cron-Protokoll, Hinweise im Prüfskript | mit Phase 5b |
-| Kosten | kein Modellaufruf, 0 $ | — |
+| Kosten | Modell insgesamt rund 0,13 $ (Mobilitätsplan 0,004 $, Bezüge laut Vorlage 0,09 $, Ratsaufträge 0,03 $); alles andere ohne Modell | gemessen 10.11.2026 |
 
 Gemessen im Abzug nach den Phasen 0 bis 2:
 
@@ -150,9 +150,9 @@ Register, und `scripts/pruefe_plaene.py` hält es gegen den Bestand.
 | **Aktionsplan gegen Gewalt an Frauen\* und Häusliche Gewalt** | `20/0564`, Rat 28.09.2020, einstimmig; Evaluation und Fortschreibung `26/0681/1`, Rat 28.09.2026, einstimmig | kein Enddatum; Umsetzungszeitraum 2020–2025, Fortschreibung „für die kommenden Jahre“ | 2020: laut Evaluation 90 (8 übergreifend, 57 Gewalt gegen Frauen\*, 25 Häusliche Gewalt); die Tabelle im Anhang hat 91 Zeilen; 2026: 6 Fokusthemen × 5 = 30 Empfehlungen | schriftlich `21/0704`, `22/0494`, `23/0356`, `26/0080`; 7 Berichte ohne Vorlage und ohne Text (08/2019, dazu sechs „mündliche“ 10/2023–03/2025); Evaluation mit dem Stand **jeder** Empfehlung (Anlage 314635, Anhang 4.1, S. 64–89); künftig jährlicher Bericht | Fallzahlen 2020–2025 (Kap. 1.3), keine Zielwerte |
 | **Ernährungsstrategie** | `24/0810` und `24/0811`, Rat 24.02.2025, mehrheitlich | offen | 9 Ziele, 68 Handlungsansätze (A1 …), davon 5 zur Umsetzung beschlossen | `23/0151`, `23/0741`, `24/0390`; Umsetzungsstand **je Ansatz** in `26/0431` (ASUK 06/2026) | qualitative Stufe 0/25/50/75/100 % je Ansatz |
 | **Lärmaktionsplan** (Fortschreibung) | `24/0293/1`, Rat 30.09.2024, mehrheitlich; Vorgängerprüfung `20/0049` | Tempo 30, Stufe 1 seit 14.12.2025, Stufe 2 geplant Ende 2027 | offen (Anlage 3 nicht ausgewertet); Tempo-30-Abschnitte auf neun Straßen namentlich im Beschluss | `25/0696` (Umsetzung Tempo 30) | offen |
-| **Digitalisierungsstrategie** | `23/0708`, Rat 18.12.2023, einstimmig | Vision bis 2045; erste Phase des Umsetzungsplans 2025–2027 | offen (Umsetzungsplan `24/0574`, 25 Seiten) | Statusbericht `25/0796` (11/2025) | z. B. 248 digitale Leistungen im Serviceportal (`25/0796`) |
+| **Digitalisierungsstrategie** | `23/0708`, Rat 18.12.2023, einstimmig | Vision bis 2045; erste Phase des Umsetzungsplans 2025–2027 | 40 in fünf Gruppen, nicht nummeriert (Umsetzungsplan `24/0574`) | Statusbericht `25/0796` (11/2025) | z. B. 248 digitale Leistungen im Serviceportal (`25/0796`) |
 | **Kita-Ausbaukonzept** | Grundkonzept Rat 30.06.2008 (vor dem Bestand); 4. Fortschreibung `18/0308`, Rat 25.06.2018; 5. Fortschreibung `22/0620`, Rat 26.09.2022 | Ausbau bis 2030 | Gruppenzahlen je Fortschreibung; laufende Vorlagen „Maßnahmenplanung … Kindertagesbetreuung“ | jährlich mit der Kita-Situation (laut `18/0308`) | Zielquoten 55 % Krippe, 10 % Tagespflege, 99,5 % Kindergarten; die Ist-Werte sind offen |
-| **Agenda 2025 „Selbstbestimmt und mittendrin!“** (altersgerechte Stadt) | `25/0403`, Rat 30.06.2025, einstimmig | Evaluation 2028 | 4 Bausteine; Kapitel „Monitoring“ | noch keiner | offen |
+| **Agenda 2025 „Selbstbestimmt und mittendrin!“** (altersgerechte Stadt) | `25/0403`, Rat 30.06.2025, einstimmig | Evaluation 2028 | 4 Bausteine mit 26 Maßnahmenpaketen (1.1 … 4.9); Kapitel „Monitoring“ | noch keiner | offen |
 | **Handlungskonzept Kinder- und Jugendbeteiligung** | `26/0710/1`, Rat 28.09.2026, einstimmig | **3 Jahre**, danach Evaluation | 8 Handlungsfelder mit Zielen für die Laufzeit | noch keiner | offen |
 | **Konzept treibhausgasneutrale Verwaltung** | `25/0896`, Rat 23.02.2026, einstimmig (am 15.12.2025 ohne Beschluss) | Ziel 2035 (gesetzlich 2040) | offen (identisch mit KSP-Maßnahme `Gebäude_05`) | über die Klimaschutz-Berichte | Ausgangsbilanz der Verwaltung |
 
@@ -208,7 +208,7 @@ Register, und `scripts/pruefe_plaene.py` hält es gegen den Bestand.
 | Aktionsplan gegen Gewalt 2020–2025 | `26/0681/1` | Evaluation mit dem Stand jeder Empfehlung; danach fortgeschrieben (s. A) |
 | Integrationskonzept 2020–2025 | `26/0191` | 2025 evaluiert, Nachfolger 2026 |
 | Stadtentwicklungsprogramm step2025 | Rat 31.03.2014; Evaluation `21/0217` | Viele Maßnahmen umgesetzt oder in Umsetzung, Fortschreibung empfohlen; abgelöst durch das ISEK |
-| Strategieplan Mobilität und Verkehr smv2025 | `18/0254`, Rat 27.08.2018 | abgelöst durch den Mobilitätsplan 2030 (`23/0211/2`) |
+| Strategieplan Mobilität und Verkehr smv2025 | `18/0254`, Rat 27.08.2018 | abgelöst durch den Mobilitätsplan 2030 (`23/0211/2`); Stand jeder der 112 Einzelmaßnahmen (10/2023) im Anhang 1 zur Fortschreibung des Lärmaktionsplans (`24/0293/1`, Anlage 280377) |
 | Rad- und Fußverkehrsprogramm (jährlich) | `18/0056` (Rat 19.02.2018), `19/0080`, `19/0916`, `20/0163`, `22/0072` | nach 2022 im Bestand nicht mehr gefunden, Stand **offen** |
 | Aktionsplan Energie 2019/2020 | `18/0516`, `19/0836`, `20/0076` | Vorläufer des Klimaschutzplans |
 | KAI 2015 / Fokusthemen bis 2025 | `21/0355`, `23/0189` | Stand 2020 bekannt, Ausgang **offen** |
@@ -995,10 +995,46 @@ Die Sätze der Verwaltung sind wörtlich und kuratiert
 step2025 und Aktionsplan Gewalt 2020); `scripts/pruefe_plaene.py` prüft gegen
 den Bestand, dass jeder Satz so in seiner Vorlage steht. Wo es keine
 Auswertung gibt, steht „Eine Auswertung hat Ratslotse im
-Ratsinformationssystem nicht gefunden“ — fünf Pläne. Ein Modell schreibt
+Ratsinformationssystem nicht gefunden“ — vier Pläne. Ein Modell schreibt
 nichts.
 
-**Offen:** Maßnahmenlisten für die übrigen Pläne und die iOS-Ansicht (unten).
+**Drei weitere Maßnahmenlisten, ohne Modell (10.11.2026, #1830):**
+
+| Plan | Quelle | Gelesen | Wie |
+|---|---|---:|---|
+| Digitalisierungsstrategie | Umsetzungsplan `24/0574`, Abschnitte 2.2.1–2.2.5 | 40 | fette Zeilen unter ihrer Abschnittsüberschrift; die Stadt nummeriert nicht |
+| Agenda 2025 (altersgerechte Stadt) | `25/0403`, Tabellen der vier Bausteine | 26 | Nummer am Rand, Titel aus der Spalte daneben; je Baustein lückenlos |
+| smv2025 | Anhang 1 zu `24/0293/1` | 112 | Tabelle mit neun Spalten, **mit Stand je Maßnahme** |
+
+Der Fund dabei: Den Stand jeder Einzelmaßnahme des smv2025 hat die Stadt nie
+als eigene Vorlage vorgelegt — er steht in einem Anhang zur Fortschreibung des
+**Lärmaktionsplans** (Grundlage laut Anhang: Evaluationsbericht des
+Fachdienstes Mobilität von 2021, aktualisiert 10/2023). Verteilung: 40
+umgesetzt, 35 in Umsetzung, 11 in Planung, 15 Vorüberlegungen, 2 noch nicht
+begonnen, 9 nicht umgesetzt oder aufgegeben. Der Anhang nummeriert bis 126,
+enthält aber 112 Zeilen; bei zehn Zeilen weicht das Wort der Spalte „Status“
+vom Kürzel der letzten Spalte ab. Beides steht als Hinweis auf der Seite. Im
+Rückblick heißt es dazu: keine eigene Vorlage zur Auswertung gefunden, den
+Stand nennt die Stadt in einer Anlage — ein Stand ist keine Auswertung.
+
+Nicht aufgenommen, weil die Dokumente es nicht hergeben: das Handlungskonzept
+Kinder- und Jugendbeteiligung (`26/0710/1` nennt operative Ziele, keine
+Maßnahmen), der Maßnahmenkatalog zum Integrationskonzept (`21/0287`, nur das
+Handlungsfeld Bildung und Arbeit) und der Lärmaktionsplan selbst (172 Seiten
+Fließtext; die Tempo-30-Abschnitte stehen im Beschluss). Die Agenda 2025 nennt
+je Paket auch einen Stand („laufend“, „ggf. zu entwickeln“) — das ist der
+Stand bei Beschluss, kein Bericht, und ist bewusst nicht übernommen.
+
+**Ein Fehler, den diese Durchsicht fand:** 44 Tagesordnungspunkte trugen das
+Ergebnis einer Einzelabstimmung über einen Änderungsantrag statt das des
+Hauptbeschlusses (beide stehen unter derselben TOP-Nummer). Bei 17 davon war
+das Ergebnis dadurch falsch — der Ratsbeschluss zur Ernährungsstrategie, zum
+ISEK, zum Einzelhandelsentwicklungskonzept und zum smv2025 stand als
+„abgelehnt“ da. Behoben in `store_plaene.plan_tracking_rows`, mit Wächter in
+`tests/test_plaene_zuordnung.py`.
+
+**Offen:** die iOS-Ansicht (unten) und Listen für Pläne, deren Maßnahmen nur
+im Fließtext stehen.
 
 - Rückblick nach § 3.3 für den Schulentwicklungsplan 2018, den Aktionsplan
   Gewalt 2020–2025, das Integrationskonzept 2020–2025, step2025 und den KAI.

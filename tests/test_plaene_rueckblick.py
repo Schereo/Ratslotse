@@ -44,7 +44,17 @@ def test_rueckblick_fester_aufbau():
 
 def test_ohne_auswertung_sagt_die_seite_genau_das():
     """„Nicht gefunden“ statt „gibt es nicht“ — Ratslotse sieht nur das Ratsinformationssystem."""
-    block = plan_pages.review_block(plans.PLANS["smv2025"], "superseded", None)
-    assert block["evaluation"] is None and "nicht gefunden" in block["no_evaluation_note"]
-    assert block["statements"] == [] and block["continued_by"]["key"] == "mobilitaetsplan_2030"
+    block = plan_pages.review_block(plans.PLANS["kai_2015"], "superseded", None)
+    assert block["evaluation"] is None and block["no_evaluation_note"] == plan_pages.NO_EVALUATION
+    assert block["statements"] == [] and block["continued_by"]["key"] == plans.PLANS["kai_2015"].successor
     assert not block["has_status"]
+
+
+def test_stand_ohne_eigene_vorlage_wird_nicht_zur_auswertung():
+    """smv2025: Den Stand jeder Maßnahme nennt ein Anhang zum Lärmaktionsplan. Das ist ein Stand,
+    keine Vorlage, die den Plan auswertet — der Rückblick sagt beides."""
+    block = plan_pages.review_block(plans.PLANS["smv2025"], "superseded", None)
+    assert block["evaluation"] is None and block["has_status"]
+    assert block["no_evaluation_note"] == plan_pages.NO_EVALUATION_TEMPLATE
+    assert {"label": "Maßnahmen", "value": "112"} in block["planned"]
+    assert block["continued_by"]["key"] == "mobilitaetsplan_2030"

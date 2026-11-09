@@ -341,6 +341,172 @@ def mobilitaetsplan() -> list[dict]:
     return out
 
 
+# ── Digitalisierungsstrategie und Agenda 2025: Titel aus dem Satzbild ──────
+
+def _lines(page) -> list[tuple[float, float, float, bool, str]]:
+    """(x, y, Schriftgröße, fett, Text) je Textzeile. Hochgestellte Fußnotenziffern
+    („IoT⁴“) fallen weg — sie gehören nicht zum Titel."""
+    out = []
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
+            spans = [s for s in line["spans"] if s["text"].strip() and not s["flags"] & 1]
+            if not spans:
+                continue
+            first = spans[0]
+            out.append((first["origin"][0], first["origin"][1], round(first["size"], 1),
+                        "Bold" in first["font"], " ".join("".join(s["text"] for s in spans).split())))
+    return out
+
+
+#: Der Umsetzungsplan (24/0574) gliedert seine Maßnahmen nach Wirkungskreis und Status
+#: (Abschnitte 2.2.1 bis 2.2.5); 2.2.6 sind Indikatoren, keine Maßnahmen.
+_DIGITAL_GROUPS = {
+    "2.2.1": "Mit Außenwirkung, bereits laufend",
+    "2.2.2": "Mit Außenwirkung, neu",
+    "2.2.3": "Verwaltungsintern, laufend",
+    "2.2.4": "Verwaltungsintern, neu",
+    "2.2.5": "Aufrechterhaltung des Verwaltungsbetriebes, laufend",
+}
+
+
+def digitalisierungsstrategie() -> list[dict]:
+    """Jede Maßnahme ist eine fette Zeile (11,2 pt) unter ihrer Abschnittsüberschrift (12 pt).
+
+    Die Stadt nummeriert nicht; die Nummer ist die Reihenfolge im Umsetzungsplan. Eine zweite
+    fette Zeile direkt darunter setzt den Titel fort.
+    """
+    import pymupdf
+    out: list[dict] = []
+    parts: list[list[str]] = []
+    field: str | None = None
+    last_y: float | None = None
+    with pymupdf.open(holen(284226)) as doc:
+        for pno in range(doc.page_count):
+            for _x, y, size, bold, text in _lines(doc[pno]):
+                section = re.match(r"(2\.2\.\d) ", text)
+                if not bold or size not in (11.2, 12.0):
+                    last_y = None
+                    continue
+                if size == 12.0:
+                    field = _DIGITAL_GROUPS.get(section.group(1)) if section else None
+                    last_y = None
+                    continue
+                if field is None:
+                    continue
+                if last_y is not None and 0 < y - last_y < 16:
+                    parts[-1].append(text)
+                else:
+                    parts.append([text])
+                    out.append({"code": str(len(out) + 1), "title": "", "field": field, "page": pno + 1})
+                last_y = y
+    for row, lines in zip(out, parts, strict=True):
+        row["title"] = sauber("\n".join(lines))
+    if {r["field"] for r in out} != set(_DIGITAL_GROUPS.values()):
+        raise RuntimeError("Digitalisierungsstrategie: nicht alle fünf Abschnitte 2.2.1–2.2.5 gefunden")
+    return out
+
+
+#: Die vier „zentralen Bausteine“ der Agenda 2025; die Nummer eines Maßnahmenpakets beginnt mit ihrer Ziffer.
+_AGENDA_BLOCKS = {
+    "1": "Information und Beratung, gesellschaftliche Teilhabe und Partizipation",
+    "2": "Gesundheitliche und pflegerische Versorgung",
+    "3": "Wohnen und Mobilität",
+    "4": "Steuerung und Vernetzung",
+}
+
+
+def agenda_2025_alter() -> list[dict]:
+    """Die Tabellen „Nr. · Maßnahmenpakete · Beschreibung · Status · Federführung“ je Baustein.
+
+    Gelesen wird über die Lage der Wörter: Die Nummer steht am linken Rand, der Titel in der
+    Spalte daneben bis zur nächsten Nummer; wo die Spalte endet, sagt der Kopf „BESCHREIBUNG“.
+    """
+    import pymupdf
+    out: list[dict] = []
+    with pymupdf.open(holen(293527)) as doc:
+        text = " ".join(" ".join(str(doc[i].get_text()).split()) for i in range(doc.page_count))
+        for name in _AGENDA_BLOCKS.values():
+            if name not in text:
+                raise RuntimeError(f"Agenda 2025: Baustein „{name}“ steht nicht im Dokument")
+        right: float | None = None
+        for pno in range(doc.page_count):
+            page = doc[pno]
+            # (x, y, Wort) — pymupdf liefert die Wortliste ohne Typen.
+            words = [(float(w[0]), float(w[1]), str(w[4])) for w in page.get_text("words")]
+            head = [x for x, _y, word in words if word == "BESCHREIBUNG"]
+            if head:
+                right = head[0] - 4
+            numbers = sorted((y, word) for x, y, word in words if re.fullmatch(r"[1-4]\.\d{1,2}", word) and x < 90)
+            if not numbers or right is None:
+                continue
+            column = [ln for ln in _lines(page) if 95 < ln[0] < right and ln[2] > 9]
+            for i, (y, code) in enumerate(numbers):
+                until = numbers[i + 1][0] if i + 1 < len(numbers) else float("inf")
+                title = sauber("\n".join(t for _x, ty, _size, _bold, t in column if y - 4 <= ty < until - 4))
+                out.append({"code": code, "title": title, "field": _AGENDA_BLOCKS[code[0]], "page": pno + 1})
+    # Je Baustein lückenlos durchnummeriert: 1.1, 1.2, … — sonst fehlt eine Zeile.
+    for digit in _AGENDA_BLOCKS:
+        codes = [r["code"] for r in out if r["code"].startswith(digit + ".")]
+        if codes != [f"{digit}.{n}" for n in range(1, len(codes) + 1)] or not codes:
+            raise RuntimeError(f"Agenda 2025: Baustein {digit} ist nicht lückenlos nummeriert: {codes}")
+    return out
+
+
+# ── Strategieplan Mobilität und Verkehr (smv2025) ──────────────────────────
+
+#: Anhang 1 zur Fortschreibung des Lärmaktionsplans (24/0293/1): alle Einzelmaßnahmen des
+#: smv2025 mit ihrem Umsetzungsstand, Stand Oktober 2023.
+SMV_DOCUMENT = 280377
+#: Kürzel der letzten Spalte → Wortlaut der Legende auf Seite 1 und unsere Einordnung.
+#: Die Tabelle schreibt die Kürzel uneinheitlich („u“ und „U“); die Legende ist maßgeblich.
+SMV_LEGEND = {
+    "u": ("Umgesetzt", "done"),
+    "iu": ("in Umsetzung", "in_progress"),
+    "ip": ("in Planung", "started"),
+    "v": ("Vorüberlegungen", "started"),
+    "nb": ("noch nicht begonnen", "open"),
+    "-": ("nicht umgesetzt / aufgegeben", "paused"),
+}
+#: Spalte 4 des Anhangs, in seinen Worten.
+_SMV_HORIZON = {"k": "Kurzfristig", "m": "Mittelfristig", "l": "Langfristig"}
+
+
+def smv_rows() -> list[dict]:
+    """Die neun Spalten des Anhangs: Nr. · Maßnahme · Ziel · k/m/l · Status (Wort) · Erläuterung ·
+    Weitere Umsetzung · Haushaltsmittel · Kürzel.
+
+    Das Kürzel der letzten Spalte ist laut Anhang der Umsetzungsstand; das Wort in Spalte 5
+    weicht bei einzelnen Zeilen davon ab und kommt als ``status_word`` mit.
+    """
+    import pymupdf
+    rows: list[dict] = []
+    with pymupdf.open(holen(SMV_DOCUMENT)) as doc:
+        first = " ".join(str(doc[0].get_text()).split())
+        for code, (label, _norm) in SMV_LEGEND.items():
+            if not re.search(re.escape(label) + r"\s*\(" + re.escape(code) + r"\)", first, re.I):
+                raise RuntimeError(f"smv2025: Legende „{label} ({code})“ steht nicht auf Seite 1")
+        for pno in range(doc.page_count):
+            for table in doc[pno].find_tables().tables:  # type: ignore[attr-defined]  # pymupdf ohne Typen
+                for raw in table.extract():
+                    if not (raw[0] or "").strip().isdigit():
+                        continue  # Kopfzeile, Legende
+                    if len(raw) != 9:
+                        raise RuntimeError(f"smv2025, Seite {pno + 1}: Zeile {raw[0]!r} hat {len(raw)} Spalten")
+                    code = " ".join((raw[8] or "").split()).lower()
+                    horizon = (raw[3] or "").strip().lower()
+                    if code not in SMV_LEGEND or horizon not in _SMV_HORIZON:
+                        raise RuntimeError(f"smv2025, Seite {pno + 1}: Zeile {raw[0]!r} — Kürzel {raw[8]!r}, Frist {raw[3]!r}")
+                    rows.append({"code": (raw[0] or "").strip(), "title": sauber(raw[1] or ""),
+                                 "horizon": horizon, "status_code": code,
+                                 "status_word": sauber(raw[4] or ""), "page": pno + 1})
+    return rows
+
+
+def smv2025() -> list[dict]:
+    return [{"code": r["code"], "title": r["title"], "field": _SMV_HORIZON[r["horizon"]], "page": r["page"]}
+            for r in smv_rows()]
+
+
 #: plan → (Extraktor, Quelle, Zahl der Stadt, Hinweis zur Zählung)
 QUELLEN: dict[str, tuple[Callable[[], list[dict]], dict, int | None, str | None]] = {
     "klimaschutzplan_2035": (klimaschutzplan, {
@@ -368,6 +534,21 @@ QUELLEN: dict[str, tuple[Callable[[], list[dict]], dict, int | None, str | None]
         "template": "24/0216", "as_of": "2024-04"}, None,
         "Die Anlage nennt diese Maßnahmen namentlich. Insgesamt wurden laut Anlage „ca. 70“ "
         "von über 250 Einzelmaßnahmen priorisiert; eine vollständige Liste liegt dem Rat nicht vor."),
+    "digitalisierungsstrategie": (digitalisierungsstrategie, {
+        "label": "Umsetzungsplan zur Digitalisierungsstrategie, Abschnitte 2.2.1 bis 2.2.5", "document_id": 284226,
+        "template": "24/0574", "as_of": "2024-10-24"}, None,
+        "Erste Phase des Umsetzungsplans (2025 bis 2027). Die Stadt zählt und nummeriert die Maßnahmen "
+        "nicht — die Nummer ist die Reihenfolge im Umsetzungsplan."),
+    "agenda_2025_alter": (agenda_2025_alter, {
+        "label": "Agenda 2025, Maßnahmenpakete der vier zentralen Bausteine", "document_id": 293527,
+        "template": "25/0403", "as_of": "2025-06"}, None,
+        "Die Agenda nummeriert ihre Maßnahmenpakete je Baustein, nennt aber keine Gesamtzahl. "
+        "Ein Paket kann mehrere Teilmaßnahmen (A, B, …) enthalten."),
+    "smv2025": (smv2025, {
+        "label": "Anhang 1 zur Fortschreibung des Lärmaktionsplans: Einzelmaßnahmen des smv2025",
+        "document_id": SMV_DOCUMENT, "template": "24/0293/1", "as_of": "2023-10"}, None,
+        "Der Anhang nummeriert bis 126, enthält aber 112 Zeilen: Die Nummern 86, 87 und 89 bis 100 "
+        "kommen darin nicht vor. Die Gruppen sind die Fristen des Plans (kurz-, mittel-, langfristig)."),
 }
 
 

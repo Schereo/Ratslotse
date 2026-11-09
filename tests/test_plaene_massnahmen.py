@@ -61,3 +61,23 @@ def test_block_auf_der_planseite():
     assert sum(len(g["measures"]) for g in block["groups"]) == 90
     assert block["source"]["as_of_label"] == "25.11.2022"
     assert plan_pages.measures_block("masterplan_stadtgruen") is None
+
+
+def test_zahlen_der_weiteren_listen():
+    """Drei Listen ohne Zahl der Stadt (10.11.2026, ohne Modell gelesen). Die Zahl hier ist unsere
+    eigene Zählung am Dokument — sie hält fest, dass der Leser nichts verliert."""
+    erwartet = {"digitalisierungsstrategie": 40, "agenda_2025_alter": 26, "smv2025": 112}
+    for key, zahl in erwartet.items():
+        liste = plans.measures(key)
+        assert len(liste["measures"]) == zahl and liste["count_city"] is None, key
+    # Die Agenda nummeriert je Baustein; der Anhang zum smv2025 überspringt Nummern.
+    assert [m["code"] for m in plans.measures("agenda_2025_alter")["measures"]][:3] == ["1.1", "1.2", "1.3"]
+    nummern = {int(m["code"]) for m in plans.measures("smv2025")["measures"]}
+    assert max(nummern) == 126 and not nummern & {86, 87, *range(89, 101)}
+
+
+def test_neue_listen_werden_nicht_ueber_kennungen_zugeordnet():
+    """„1.1“ oder „12“ sind keine Kennungen, die man in fremden Vorlagen suchen darf — die
+    Zuordnung über Kennungen bleibt den Plänen mit eigenen Kürzeln vorbehalten."""
+    from council import plan_tracking
+    assert not {"digitalisierungsstrategie", "agenda_2025_alter", "smv2025"} & set(plan_tracking.measure_matchers())

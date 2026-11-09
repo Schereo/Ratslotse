@@ -27,8 +27,16 @@ class PlaeneMixin(StoreBasis):
                JOIN council_sessions s ON s.ksinr = a.ksinr
                LEFT JOIN council_templates t ON t.kvonr = a.kvonr
                WHERE a.title IS NOT NULL AND a.title != ''""").fetchall()
-        decisions = {(r[0], r[1]): (r[2], r[3]) for r in self._conn.execute(
-            "SELECT ksinr, item_number, id, outcome FROM council_decisions")}
+        # Ein TOP kann mehrere Zeilen tragen: den Hauptbeschluss und die Einzelabstimmungen
+        # über Änderungsanträge (``kind = 'subvote'``), alle unter derselben TOP-Nummer. Zum
+        # Plan gehört der Hauptbeschluss — sonst steht ein beschlossener Plan als „abgelehnt“
+        # da, weil ein Änderungsantrag scheiterte (gemessen 10.11.2026: 44 Punkte, 17 mit
+        # falschem Ergebnis, darunter der Ratsbeschluss zur Ernährungsstrategie).
+        decisions: dict[tuple, tuple] = {}
+        for ksinr, number, decision_id, outcome in self._conn.execute(
+                "SELECT ksinr, item_number, id, outcome FROM council_decisions "
+                "ORDER BY (kind = 'subvote'), position, id"):
+            decisions.setdefault((ksinr, number), (decision_id, outcome))
         out = []
         for r in rows:
             d = dict(r)

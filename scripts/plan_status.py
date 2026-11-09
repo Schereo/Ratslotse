@@ -29,6 +29,11 @@ Quellen:
   Anhang 4.1; das Skript prüft beides gegeneinander.
 - **Ernährungsstrategie:** der Bericht 26/0431 mit der Stufe je Handlungsansatz
   (alle 68; die Tabellen sind Text, nur die Kreisdiagramme sind Bilder).
+- **Strategieplan Mobilität und Verkehr (smv2025):** Anhang 1 zur Fortschreibung des
+  Lärmaktionsplans (Anlage 280377 zu 24/0293/1) — jede Einzelmaßnahme mit ihrem
+  Umsetzungsstand, Stand Oktober 2023. Eine eigene Vorlage zur Auswertung gibt
+  es im Ratsinformationssystem nicht; gefunden hat den Anhang die Durchsicht der
+  Anlagen am 10.11.2026.
 - **Wärmeplan:** die Beschlussvorlage 26/0236. Sie ordnet sechs der 18
   Maßnahmen als „in Umsetzung“ ein; für die übrigen nennt sie ein Vorhaben
   und keinen Stand.
@@ -58,7 +63,9 @@ sys.path.insert(0, str(WURZEL))
 
 from council import plan_state, plans  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
-from scripts.plan_massnahmen import CACHE, RIS_DATEI, USER_AGENT, _seiten, holen, violence_rows  # noqa: E402
+from scripts.plan_massnahmen import (  # noqa: E402
+    CACHE, RIS_DATEI, SMV_DOCUMENT, SMV_LEGEND, USER_AGENT, _seiten, holen, smv_rows, violence_rows,
+)
 
 PORTAL = "https://klimaportal.oldenburg.de"
 PORTAL_CACHE = CACHE / "klimaportal"
@@ -516,12 +523,62 @@ def ernaehrungsstrategie(store: CouncilStore) -> dict:
     }
 
 
+# ── Strategieplan Mobilität und Verkehr (smv2025) ──────────────────────────
+
+def smv2025(store: CouncilStore) -> dict:
+    """Der Stand jeder Einzelmaßnahme aus dem Anhang zum Lärmaktionsplan.
+
+    Maßgeblich ist das Kürzel der letzten Spalte — laut Anhang „stellt [sie] den
+    Umsetzungsstand dar“. Das Wort in der Spalte „Status“ weicht bei einzelnen
+    Zeilen ab; wie oft, steht als Hinweis da, statt dass wir eine der beiden
+    Spalten still bevorzugen.
+    """
+    rows = smv_rows()
+    codes = [m["code"] for m in (plans.measures("smv2025") or {"measures": []})["measures"]]
+    if [r["code"] for r in rows] != codes:
+        raise SystemExit("smv2025: Anhang und Maßnahmenliste nennen nicht dieselben Nummern — "
+                         "python scripts/plan_massnahmen.py --nur smv2025")
+    tally = Counter(r["status_code"] for r in rows)
+    def agrees(row: dict) -> bool:
+        # „Nicht umgesetzt“ in Spalte 5 heißt in der Legende „nicht umgesetzt / aufgegeben“.
+        word = row["status_word"].lower()
+        return bool(word) and SMV_LEGEND[row["status_code"]][0].lower().startswith(word)
+
+    differs = [r["code"] for r in rows if not agrees(r)]
+    notes = [
+        {"text": "Grundlage ist laut Anhang der Evaluationsbericht des Fachdienstes Mobilität von 2021, "
+                 "aktualisiert im Oktober 2023. Dem Rat lag er als Anhang zur Fortschreibung des "
+                 "Lärmaktionsplans vor; eine eigene Vorlage dazu hat Ratslotse nicht gefunden.", "url": None},
+    ]
+    if differs:
+        notes.append({"text": f"Bei {len(differs)} Maßnahmen weicht das Wort in der Spalte „Status“ vom Kürzel "
+                              "der letzten Spalte ab oder fehlt. Gezeigt ist das Kürzel, das laut Anhang den "
+                              "Umsetzungsstand darstellt.", "url": None})
+    return {
+        "plan": "smv2025",
+        "snapshots": [{
+            "as_of": "2023-10",
+            "source": {"kind": "attachment",
+                       "label": "Anhang 1 zur Fortschreibung des Lärmaktionsplans",
+                       "template": "24/0293/1", "url": RIS_DATEI.format(id=SMV_DOCUMENT), "fetched": None},
+            "total": len(rows),
+            "complete": True,
+            "counts": [{"status_raw": raw, "status_norm": norm, "count": tally[code]}
+                       for code, (raw, norm) in SMV_LEGEND.items()],
+            "measures": [{"code": r["code"], "status_raw": SMV_LEGEND[r["status_code"]][0],
+                          "status_norm": SMV_LEGEND[r["status_code"]][1]} for r in rows],
+        }],
+        "notes": notes,
+    }
+
+
 #: plan → Leser. Jeder prüft seine Zahlen selbst gegen die Quelle und bricht ab, wenn sie nicht aufgehen.
 SOURCES: dict[str, Callable[[CouncilStore], dict]] = {
     "klimaschutzplan_2035": klimaschutzplan,
     "waermeplan": waermeplan,
     "aktionsplan_gewalt_2020": aktionsplan_gewalt_2020,
     "ernaehrungsstrategie": ernaehrungsstrategie,
+    "smv2025": smv2025,
 }
 
 
