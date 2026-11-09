@@ -32,6 +32,8 @@ from typing import Any
 
 import requests
 
+from kern.proxy import proxies_for
+
 from council.cities.store import CitiesStore, now
 
 logger = logging.getLogger("council.cities.oparl")
@@ -85,6 +87,23 @@ def throttle(url: str, gap: float = RATE_SECONDS) -> None:
         last[0] = time.monotonic()
 
 
+class ProxyAwareSession(requests.Session):
+    """``requests.Session``, die Hosts aus ``RATSLOTSE_PROXY_HOSTS`` über den
+    Umweg schickt (``kern/proxy.py``) — alles andere bleibt direkt.
+
+    Osnabrücks Ratsinformationssystem sperrt die Server-Adresse: Prod bekam am
+    09.11.2026 auf ``/oparl/system`` ein 403, das Notebook ein 200 — dieselbe
+    Lage wie beim Geoportal. Jeder Abruf der Städte läuft über diese eine
+    Session, also genügt es, den Host in die ``.env`` zu schreiben."""
+
+    def request(self, method, url, *args, **kwargs):  # type: ignore[override]
+        if not kwargs.get("proxies"):
+            umweg = proxies_for(str(url))
+            if umweg:
+                kwargs["proxies"] = umweg
+        return super().request(method, url, *args, **kwargs)
+
+
 class OParlClient:
     """Abrufe für **eine** Stadt, mit Rohablage und Dateispeicher."""
 
@@ -93,7 +112,7 @@ class OParlClient:
         self.raw = raw
         self.body_id = body_id
         self.files_dir = Path(files_dir)
-        self.session = session or requests.Session()
+        self.session = session or ProxyAwareSession()
         self.session.headers.update({"User-Agent": USER_AGENT})
         self.requests_made = 0
         #: Wann dieser Lauf begann (ISO, UTC — wie ``store.now()``). Daran
