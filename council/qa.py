@@ -521,7 +521,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     hit = _ANALYSE_CACHE.get(key)
     if hit is not None:
         return dict(hit)
-    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    extra = llm.web_denk_extra(model, "qa_analysis")
     try:
         block = f"\nBisheriges Gespräch (für Rückbezüge):\n{vtext}\n" if vtext else ""
         prompt = prompts.render("qa_analysis", question=question.strip()[:300], verlauf=block) + ortsblock
@@ -1150,7 +1150,7 @@ def expand_query(question: str, model: str = EXPAND_MODEL) -> str:
     hit = _EXPAND_CACHE.get(key)
     if hit is not None:
         return hit
-    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    extra = llm.web_denk_extra(model, "qa_query_expansion")
     try:
         prompt = prompts.render("qa_search_terms", question=question.strip()[:300])
         # timeout: Die Expansion steht auf dem kritischen Pfad VOR den Quellen —
@@ -2799,7 +2799,7 @@ def deep_zerlege(question: str, model: str = EXPAND_MODEL) -> list[dict]:
     """Deep Research (Task 34): Frage → 3-5 Recherche-Facetten
     [{name, frage, begriffe}]. Fallback: eine Facette = die Frage selbst."""
     fallback = [{"name": "Gesamtbild", "question": question, "terms": question}]
-    extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
+    extra = llm.web_denk_extra(model, "deep_decomposition")
     try:
         resp = llm.chat_complete(
             model=model, _feature="deep_decomposition", temperature=0, max_tokens=500,
