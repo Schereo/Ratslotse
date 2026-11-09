@@ -225,6 +225,16 @@ FEATURES: dict[str, Feature] = {
                     "nicht zugeschlagen, wo sie nicht sollte — dann Schalter raus; der "
                     "Zugang hängt ohnehin am Recht `mcp`.",
     ),
+    "zugangslinks": Feature(
+        key="zugangslinks",
+        description="Anmeldelinks in der Release-Ankündigung: Jeder Link der Mail meldet "
+                    "zehn Tage lang per Klick an — mit einer Sitzung, die weder Passwort "
+                    "noch Adresse ändern, das Konto löschen oder ins Admin-Panel darf "
+                    "(kern/zugangslink.py).",
+        fertig_wenn="Eine Release-Mail ist mit Anmeldelinks rausgegangen, die Klickquote "
+                    "(mail_returns, angemeldet vs. nicht) ist gelesen und keine "
+                    "Fehlermeldung zu `/api/auth/magic` aufgelaufen — dann Normalweg.",
+    ),
     "neuer-rat": Feature(
         key="neuer-rat",
         description="Der gewählte Rat vor seiner ersten Sitzung: die Liste der 52 "

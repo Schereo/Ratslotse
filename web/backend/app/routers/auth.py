@@ -22,7 +22,7 @@ from ..clients import client_kind, is_app_client
 from ..config import get_settings
 from ..mailprotokoll import protokolliere
 from ..antworten import Ok
-from ..deps import get_current_user, get_store
+from ..deps import get_current_user, get_store, kein_fremder_aufruf
 from ..ratelimit import (forgot_password_limiter, login_fail_limiter, login_limiter,
                          register_duplicate_limiter, register_limiter, register_notice_limiter,
                          verify_code_limiter, verify_email_limiter)
@@ -31,6 +31,7 @@ from ..schemas import (
     NAME_UNZULAESSIG,
     ForgotPasswordRequest,
     LoginRequest,
+    MagicLinkRequest,
     RegisterRequest,
     ResetPasswordRequest,
     UserOut,
@@ -38,7 +39,10 @@ from ..schemas import (
     VerifyEmailRequest,
     name_zulaessig,
 )
-from ..security import DUMMY_PASSWORD_HASH, create_access_token, hash_password, verify_password
+from ..security import (
+    DUMMY_PASSWORD_HASH, VIA_LINK, create_access_token, decode_magic_token, hash_password,
+    verify_password,
+)
 from ..session import clear_session_cookie, set_session_cookie
 
 # Email-verification links stay valid for 24h (more forgiving than the 1h reset link).
@@ -399,6 +403,38 @@ def login(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-Mail oder Passwort falsch.")
     _set_auth_cookie(response, user, request)
     return _to_out(user, _app_access_token(request, user))
+
+
+@router.post("/magic", response_model=UserOut, dependencies=[Depends(kein_fremder_aufruf)])
+def magic_einloesen(
+    request: Request,
+    body: MagicLinkRequest,
+    response: Response,
+    store: Store = Depends(get_store),
+) -> UserOut:
+    """Einen Anmeldelink aus einer Mail einlösen — per Klick auf der Anmeldeseite.
+
+    Bewusst ein POST hinter einem Knopf und nicht der Aufruf des Links selbst:
+    Mail-Scanner (Outlook, Gmail) öffnen Links vorab, und ein GET, der anmeldet,
+    hätte sie angemeldet. Die Sitzung trägt ``via: magic`` und darf nichts,
+    was das Konto übernimmt (``deps.require_volle_anmeldung``).
+
+    Abgelaufen, widerrufen (``token_version``) oder gesperrt: 401 mit einem
+    Satz, den die Anmeldeseite über ihr normales Formular stellt.
+    """
+    login_limiter.check(request)
+    if _is_app_client(request):
+        # Die App meldet sich per Bearer an und kennt keine Mail-Links.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Anmeldelinks gelten nur im Browser.")
+    decoded = decode_magic_token(body.token)
+    user = store.get_web_user_by_id(int(decoded[0])) if decoded else None
+    if (not decoded or not user or decoded[1] != user.get("token_version", 0)
+            or user.get("status") != "active"):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            "Der Link ist abgelaufen oder gilt nicht mehr. Melde dich bitte an.")
+    set_session_cookie(response, create_access_token(
+        user["id"], user.get("token_version", 0), via=VIA_LINK))
+    return _to_out(user)
 
 
 @router.post("/logout")

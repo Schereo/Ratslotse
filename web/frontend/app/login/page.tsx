@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { entwurfZiel } from "@/lib/draft";
 import { useWeiterSuffix, zielNachAnmeldung } from "@/lib/public-routes";
+import { zugangAus } from "@/lib/zugangslink";
 import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
@@ -14,7 +15,7 @@ import { AppleSignInButton } from "@/components/apple-sign-in-button";
 import { ONBOARDING_NEEDS_LOGIN_EVENT } from "@/lib/onboarding-state";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginPerLink } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,6 +36,31 @@ export default function LoginPage() {
     window.addEventListener(ONBOARDING_NEEDS_LOGIN_EVENT, check);
     return () => window.removeEventListener(ONBOARDING_NEEDS_LOGIN_EVENT, check);
   }, []);
+
+  // Ein Anmeldelink aus einer Mail im Rücksprungziel (lib/zugangslink.ts).
+  // Nach dem Mounten gelesen, damit das Vorrendern nichts einbackt.
+  const [zugang, setZugang] = useState<{ token: string; ziel: string } | null>(null);
+  const [zugangFehler, setZugangFehler] = useState("");
+  useEffect(() => {
+    setZugang(zugangAus(new URLSearchParams(window.location.search).get("weiter")));
+  }, []);
+  const perLink = async () => {
+    if (!zugang) return;
+    setBusy(true);
+    setZugangFehler("");
+    try {
+      await loginPerLink(zugang.token);
+      router.replace(zugang.ziel);
+    } catch (err) {
+      // Abgelaufen oder widerrufen: Der Knopf geht, das Formular bleibt — und
+      // es führt nach der Anmeldung zum selben Ziel, ohne das alte Token.
+      setZugangFehler(err instanceof Error ? err.message : "Der Link gilt nicht mehr.");
+      window.history.replaceState(null, "", `/login?weiter=${encodeURIComponent(zugang.ziel)}`);
+      setZugang(null);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +98,18 @@ export default function LoginPage() {
             <Link href={`/register${weiter}`} className="font-medium text-primary hover:underline">Kostenlos registrieren</Link>
           </p>
         )}
+        {zugang && (
+          <div className="mt-5 rounded-xl border border-primary/30 bg-primary/[0.06] p-4">
+            <p className="text-sm font-medium text-foreground">Du kommst aus einer Mail von Ratslotse.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Mit dem Link darin meldest du dich ohne Passwort an. Er gilt zehn Tage.
+            </p>
+            <Button type="button" onClick={perLink} disabled={busy} className="mt-3 h-11 w-full">
+              {busy ? "Einen Moment …" : "Anmelden und weiter"}
+            </Button>
+          </div>
+        )}
+        {zugangFehler && <p className="mt-4 text-sm text-destructive">{zugangFehler}</p>}
         <div className="mt-6">
           {/* RL-1001: Apple steht immer an erster Stelle (nur in der App sichtbar). */}
           <AppleSignInButton label="Mit Apple anmelden" />

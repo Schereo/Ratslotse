@@ -29,12 +29,16 @@ import { CodeEingabe } from "@/components/code-eingabe";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
+import { useZugangAusAdresseRaeumen } from "@/lib/zugangslink";
 import { abmeldenAbholen, abmeldenMerken } from "@/lib/abmelden";
 import { breiteFuer, huellenKlasse } from "@/lib/vollbreit";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, authFehler, refresh, logout } = useAuth();
+  // Angemeldet und aus einer Mail mit Anmeldelink gekommen: Das Token hat hier
+  // nichts mehr zu suchen (lib/zugangslink.ts).
+  useZugangAusAdresseRaeumen();
   const router = useRouter();
   const abmelden = async () => {
     abmeldenMerken();
