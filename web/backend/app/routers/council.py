@@ -5910,17 +5910,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                             debatten_rows += [w for w in store.wortbeitraege_zu_beschluessen(
                                 extra, max_gesamt=qa.DEBATTE_TITEL_EXTRA * 2)
                                 if w["id"] not in have]
-                        # … und zu den Beschlüssen im Prompt, die JÜNGER sind
-                        # als die ersten acht (qa.newest_beyond_head). Ihre
-                        # Beiträge hält die Diät fest wie die der Akte.
-                        newest = qa.newest_beyond_head(candidates, limit=QA_ANSWER_N)
-                        if newest:
-                            have = {d["id"] for d in debatten_rows}
-                            newest_rows = [w for w in store.wortbeitraege_zu_beschluessen(
-                                newest, max_gesamt=qa.DEBATTE_NEUESTE_MAX,
-                                max_je_top=qa.DEBATTE_NEUESTE_JE_TOP) if w["id"] not in have]
-                            debatten_rows += newest_rows
-                            newest_speech_ids = {w["id"] for w in newest_rows}
                     # Zusagen der Verwaltung als EIGENER Kanal: Im allgemeinen
                     # Debatten-Ranking gingen sie unter (1 von 19 Belegen; selbst
                     # auf „Was hat die Verwaltung zugesagt?" kam keine), weil sie
@@ -5996,6 +5985,29 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     zeiten["akte"] = akte["akte"]
                 except Exception:  # noqa: BLE001 — die Akte ist Zusatz, nie Blocker
                     _log.exception("Akte nicht geladen")
+            # Aussprache zu den Beschlüssen im Prompt, die JÜNGER sind als die
+            # ersten acht (qa.newest_beyond_head). Erst hier, nach der Akte: Der
+            # jüngste Stand kommt oft über sie herein. Vor der Akte griff der
+            # Schritt nie (Gold dev 09.11.2026: der Trinkwasser-Bericht vom
+            # 16.04.2026 zitiert, seine Protokollnotiz „2027 mit dem KLAK“
+            # fehlte). Ihre Beiträge hält die Diät fest wie die der Akte.
+            if debates_enabled and not latest_place and typ != "session" and not person:
+                head = candidates[:QA_ANSWER_N]
+                in_head = {c["id"] for c in head}
+                pool = head + [d for d in akte_beschluesse if d["id"] not in in_head]
+                newest = qa.newest_beyond_head(pool, limit=len(pool))
+                if newest:
+                    try:
+                        have = {d["id"] for d in debatten_rows}
+                        newest_rows = [w for w in store.wortbeitraege_zu_beschluessen(
+                            newest, max_gesamt=qa.DEBATTE_NEUESTE_MAX,
+                            max_je_top=qa.DEBATTE_NEUESTE_JE_TOP) if w["id"] not in have]
+                        qa.parteien_aufloesen(store, newest_rows)
+                        debatten_rows += newest_rows
+                        newest_speech_ids = {w["id"] for w in newest_rows}
+                        zeiten["aussprache_neueste"] = len(newest_rows)
+                    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                        _log.exception("Aussprache der jüngsten Beschlüsse nicht geladen")
             # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
             # seines Protokolls (Tims Wunsch 18.08.).
             qa.protokolle_verlinken(store, debatten_rows)
