@@ -28,7 +28,7 @@ import { STAFFEL, staffelStil } from "@/components/staffel";
 import { useFetch } from "@/lib/use-fetch";
 import { fragenHref, planHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
-import { byField, formatDate, reportCount, type PlanAxis, type PlanCard, type PlanGroup, type PlanOverview, statusLine } from "@/lib/plans";
+import { byField, formatDate, reportCount, type PlanAxis, type PlanCard, type PlanGroup, type PlanOverview, statusSummary } from "@/lib/plans";
 
 /** Text · Zeitband · Berichtslage. Schmal untereinander, ab Tablet-Breite
  *  steht das Band neben dem Text, breit bekommt die Berichtslage ihre Spalte.
@@ -202,7 +202,7 @@ function ReportState({ plan }: { plan: PlanCard }) {
       {plan.status_brief && (
         // In den Worten der Stadt, mit Herkunft und Stichtag — keine Quote, kein Balken (§ 3.1).
         <p className="text-foreground">
-          {statusLine(plan.status_brief)}
+          {statusSummary(plan.status_brief)}
           <span className="mt-0.5 block font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
             {plan.status_brief.origin_label} · Stand {plan.status_brief.as_of_label}
           </span>

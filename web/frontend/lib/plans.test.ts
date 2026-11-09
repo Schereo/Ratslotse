@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   byField, byPackage, committeeList, filterMeasures, formatAmount, formatChange, formatDate, percent, reportCount,
   signed, stationKind,
-  statusLabels, statusLine, statusTone, yearSpan,
+  statusLabels, statusLine, statusSummary, statusTone, yearSpan,
   type PlanCard, type PlanMeasureField,
 } from "./plans";
 
@@ -159,5 +159,19 @@ describe("formatAmount und formatChange", () => {
     expect(formatChange((935792 - 1140000) / 1140000)).toBe("−17,9 %");
     expect(formatChange((1083000 - 1140000) / 1140000)).toBe("−5,0 %");
     expect([formatChange(0.0504), formatChange(0)]).toEqual(["+5,0 %", "±0,0 %"]);
+  });
+});
+
+describe("statusSummary", () => {
+  it("lässt kurze Verteilungen stehen und fasst lange zusammen, ohne auszuwählen", () => {
+    const short = { counts: [{ status_raw: "in Umsetzung", status_norm: "in_progress" as const, count: 6 }], total: 18, complete: false };
+    expect(statusSummary(short)).toBe("6 von 18 in Umsetzung");
+    const long = {
+      total: 68, complete: true,
+      counts: [100, 75, 50, 25, 0].map((stage, i) => ({
+        status_raw: `eine lange Beschreibung der Stufe in den Worten der Stadt (Stufe ${stage} %)`,
+        status_norm: "started" as const, count: [10, 6, 11, 16, 25][i] })),
+    };
+    expect(statusSummary(long)).toBe("68 Maßnahmen, von der Stadt in 5 Stufen eingeordnet");
   });
 });

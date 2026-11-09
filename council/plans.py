@@ -409,6 +409,10 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
         office="Amt für Personal- und Verwaltungsmanagement",
         adopted=Decision("2024-06-17", "24/0362", mode="noted"),
         start="2024", end="2026",
+        # Der Plan sieht keinen Zwischenbericht vor: Ausgewertet wird er im Folgeplan,
+        # nach Ablauf. Ohne diese Frist stünde er zwei Jahre nach der Kenntnisnahme
+        # unter „Kein Bericht gefunden“ — ein Vorwurf, den der Plan selbst nicht trägt (§ 3.3a).
+        review_due="2026",
         predecessor="gleichstellungsplan_2021",
         report_patterns=_GLEICHSTELLUNGSPLAN,
         note="Pflichtplan nach dem Niedersächsischen Gleichberechtigungsgesetz für das "

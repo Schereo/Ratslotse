@@ -483,6 +483,12 @@ Gerechnet gegen das Register am 09.11.2026 (zusammen 43):
   *Ausgewertet:* Schulentwicklungsplan 2018. *Laufzeit abgelaufen, keine
   Auswertung gefunden:* „Oldenburg – eine Stadt für alle“.
 
+Nach der Gegenprobe im Review (09.11.2026) trägt der Gleichstellungsplan
+2024–2026 seine eigene Frist im Register: Er sieht keinen Zwischenbericht vor
+und wird im Folgeplan ausgewertet. Damit stehen heute 8 Pläne unter „Noch
+kein Bericht fällig“ und 9 unter „Kein Bericht gefunden“; die Tabelle oben
+zeigt den Stand der ersten Rechnung.
+
 Zwei Folgen der Regel, die man kennen muss:
 
 - **Die eigene Frist des Plans schlägt unsere zwei Jahre.** Der Wärmeplan

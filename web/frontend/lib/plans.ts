@@ -136,6 +136,20 @@ export function statusLine(brief: Pick<PlanStatusBrief, "counts" | "total" | "co
     .join(" · ");
 }
 
+/** Die Statuszeile der Übersicht. Kurze Verteilungen stehen ausgeschrieben da;
+ *  wo die Wörter der Stadt lang sind (fünf Stufen der Ernährungsstrategie),
+ *  sagt die Zeile nur, dass und wie fein die Stadt einordnet — die Verteilung
+ *  selbst steht auf der Planseite. Gekürzt oder ausgewählt wird nichts. */
+export function statusSummary(brief: Pick<PlanStatusBrief, "counts" | "total" | "complete">, maxLength = 90): string {
+  const line = statusLine(brief);
+  if (line.length <= maxLength) return line;
+  const stages = brief.counts.filter((c) => c.count > 0).length;
+  const counted = brief.counts.reduce((n, c) => n + c.count, 0);
+  return brief.complete
+    ? `${brief.total} Maßnahmen, von der Stadt in ${stages} Stufen eingeordnet`
+    : `${counted} von ${brief.total} Maßnahmen von der Stadt eingeordnet`;
+}
+
 /** „+9“, „−2“ — mit echtem Minuszeichen. */
 export function signed(n: number): string {
   return n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : "±0";

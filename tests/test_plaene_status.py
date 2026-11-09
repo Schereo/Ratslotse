@@ -235,9 +235,20 @@ def test_pflege_meldet_neuen_bericht_und_faellige_frist():
     assert plan_state.stale_status("masterplan_stadtgruen", [new]) is None                # ohne Statusdatei nichts zu pflegen
 
     equal = plans.PLANS["gleichstellungsplan_2024"]                                        # endet 31.12.2026
-    assert plan_state.due_dates(equal, "2026-11-09") == [{"kind": "end", "date": "2026-12-31", "passed": False}]
+    # Laufzeitende und die eigene Frist für die Auswertung fallen auf denselben Tag.
+    assert plan_state.due_dates(equal, "2026-11-09") == [
+        {"kind": "end", "date": "2026-12-31", "passed": False}, {"kind": "review", "date": "2026-12-31", "passed": False}]
     assert plan_state.due_dates(equal, "2026-01-15") == []                                 # mehr als ein halbes Jahr hin
     assert plan_state.due_dates(equal, "2027-02-01")[0]["passed"] is True
     assert plan_state.due_dates(plans.PLANS["aktionsplan_gewalt_2020"], "2026-11-09") == []  # hat einen Nachfolger
     upkeep = plan_state.maintenance({"klimaschutzplan_2035": [own, new]}, "2026-11-09")
     assert upkeep["stale_status"] == {"klimaschutzplan_2035": "2027-02-11"} and "gleichstellungsplan_2024" in upkeep["due"]
+
+
+def test_gleichstellungsplan_traegt_seine_eigene_frist():
+    """Review 09.11.2026: Der Plan sieht keinen Zwischenbericht vor und wird im Folgeplan ausgewertet.
+    Bis dahin ist „Kein Bericht gefunden“ ein Vorwurf, den der Plan selbst nicht trägt."""
+    plan = plans.PLANS["gleichstellungsplan_2024"]
+    assert plan_state.report_state(plan, [], "2026-11-09")["state"] == "not_yet_due"
+    assert plan_pages.report_state_block(plan, [], "2026-11-09")["hint"] == "Überprüfung laut Plan 2026."
+    assert plan_state.report_state(plan, [], "2027-02-01")["state"] == "expired_no_evaluation"

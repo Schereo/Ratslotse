@@ -32,7 +32,9 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import date
 
+from council import plan_state
 from council import plans as register
 
 #: Das RIS hängt das Ergebnis an den Titel an („… - Bericht Beschluss: zur
@@ -285,9 +287,6 @@ def build(store) -> dict:
     per_plan = {key: sum(1 for i in items if i["plan_key"] == key) for key in register.PLANS}
     # Pflege (Phase 6): Was nachzuziehen ist, landet als Kennzahl im Cron-Protokoll —
     # ein neuer Bericht ohne neuen Stand, eine Frist, die ein Plan sich selbst gesetzt hat.
-    from datetime import date  # noqa: PLC0415
-
-    from council import plan_state  # noqa: PLC0415 — plan_state importiert das Register, nicht umgekehrt
     by_plan: dict[str, list[dict]] = {}
     for item in items:
         by_plan.setdefault(item["plan_key"], []).append(item)
