@@ -108,6 +108,17 @@ test("die Übersicht sagt, wo man nachfragen kann — als Tatsache, nicht als Vo
   await expect(ask).toHaveAttribute("href", /^\/fragen\?q=Was(\+|%20)ist/);
 });
 
+test("wo ein Modell den Stand herausgesucht hat, steht das wörtliche Zitat dabei", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=mobilitaetsplan_2030");
+  const measures = page.locator('section[aria-labelledby="plan-measures"]');
+  await expect(measures.getByText(/Ein Sprachmodell hat die Stellen im Bericht herausgesucht/)).toBeVisible();
+  await measures.getByRole("button", { name: "Alle aufklappen" }).click();
+  await expect(measures.getByText("„Die Bewohnerparkzone Haarenesch wurde zum 1. Januar 2026 umgesetzt.“")).toBeVisible();
+  // Die Stadt zählt hier nichts aus — also auch keine Verteilung.
+  await expect(page.locator('section[aria-labelledby="plan-city-status"]')).toHaveCount(0);
+});
+
 test("die Maßnahmen lassen sich durchsuchen", async ({ page }) => {
   await schalter(page, true);
   await page.goto("/council/plan?key=klimaschutzplan_2035");

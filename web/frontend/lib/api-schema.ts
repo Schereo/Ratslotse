@@ -15220,8 +15220,12 @@ export interface components {
                 source: components["schemas"]["PlanMeasureSource"];
                 /** Status As Of Label */
                 status_as_of_label: string | null;
+                /** Status By Model */
+                status_by_model: boolean;
                 /** Status Count */
                 status_count: number;
+                /** Status Template */
+                status_template: string | null;
             } | null;
             /** Note */
             note: string | null;
@@ -15572,6 +15576,8 @@ export interface components {
              * @enum {string|null}
              */
             status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear" | null;
+            /** Status Quote */
+            status_quote: string | null;
             /** Status Raw */
             status_raw: string | null;
             /** Title */
@@ -15615,8 +15621,12 @@ export interface components {
             source: components["schemas"]["PlanMeasureSource"];
             /** Status As Of Label */
             status_as_of_label: string | null;
+            /** Status By Model */
+            status_by_model: boolean;
             /** Status Count */
             status_count: number;
+            /** Status Template */
+            status_template: string | null;
         };
         /** PlanNeighbour */
         PlanNeighbour: {
@@ -28247,4 +28257,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 5cd0277cf122237fb02009aa63ad8f29c314b2c676444b960f9bd6eaaf0a6bee
+// vertrag-sha256: 75bd053555af0f19bd13c81337c3d4b05388cb30d95d424c6a4d028342fc0155

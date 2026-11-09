@@ -20326,9 +20326,20 @@
                   "null"
                 ]
               },
+              "status_by_model": {
+                "title": "Status By Model",
+                "type": "boolean"
+              },
               "status_count": {
                 "title": "Status Count",
                 "type": "integer"
+              },
+              "status_template": {
+                "title": "Status Template",
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -20337,6 +20348,8 @@
               "count_note",
               "status_count",
               "status_as_of_label",
+              "status_template",
+              "status_by_model",
               "source",
               "groups"
             ],
@@ -21344,6 +21357,13 @@
               "null"
             ]
           },
+          "status_quote": {
+            "title": "Status Quote",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "status_raw": {
             "title": "Status Raw",
             "type": [
@@ -21363,6 +21383,7 @@
           "page",
           "status_raw",
           "status_norm",
+          "status_quote",
           "decision_count"
         ],
         "title": "PlanMeasure",
@@ -21477,9 +21498,20 @@
               "null"
             ]
           },
+          "status_by_model": {
+            "title": "Status By Model",
+            "type": "boolean"
+          },
           "status_count": {
             "title": "Status Count",
             "type": "integer"
+          },
+          "status_template": {
+            "title": "Status Template",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -21488,6 +21520,8 @@
           "count_note",
           "status_count",
           "status_as_of_label",
+          "status_template",
+          "status_by_model",
           "source",
           "groups"
         ],

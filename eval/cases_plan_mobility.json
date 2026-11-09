@@ -1,0 +1,20 @@
+{
+ "_comment": "Golden-Set für den Stand je Maßnahme beim Mobilitätsplan (Plan „Pläne“, Phase 3). Von Hand aus dem Bericht 26/0190 gelesen: welche der 33 benannten Maßnahmen der Bericht anspricht und welche Stufe dazu passt. Mehrere Stufen heißen: beide Lesarten sind vertretbar. M21 (ÖPNV-Spur Wallring) ist Auslegungssache — der Bericht spricht vom Teilkonzept Wallring — und zählt weder als Treffer noch als Fehler.",
+ "template": "26/0190",
+ "mentioned": {
+  "M01": ["in_progress", "started", "done"],
+  "M02": ["started"], "M03": ["started"], "M04": ["started"],
+  "M08": ["done", "in_progress"], "M09": ["done", "in_progress"],
+  "M13": ["started"],
+  "M22": ["in_progress", "started"],
+  "M23": ["started"],
+  "M24": ["open"],
+  "M25": ["done"],
+  "M28": ["in_progress"],
+  "M29": ["started"],
+  "M30": ["started"],
+  "M31": ["in_progress", "started"],
+  "M32": ["started", "in_progress"]
+ },
+ "optional": ["M21"]
+}

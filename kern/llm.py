@@ -293,6 +293,8 @@ OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
     "district_projects",
     # Social-Texte über Beschlüsse
     "social_card_text", "social_critic",
+    # Pläne der Stadt: Stand und Bezüge aus Vorlagen und Berichten heraussuchen
+    "plan_measure_status",
     # Städtevergleich: fremde Ratsdokumente
     "cities_evidence_terms",
 })
