@@ -30,7 +30,9 @@ import {
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
 import { markiereBegriffe } from "@/components/glossary-text";
-import { hasNameSignal, parteiKuerzel, personBadgeLabel } from "@/lib/person-badge";
+import {
+  hasNameSignal, namensWoerterDavor, parteiAusListenpunkt, parteienPassen, parteiKuerzel, perPartei, personBadgeLabel, perVollname,
+} from "@/lib/person-badge";
 import { api, apiUrl } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
@@ -215,6 +217,10 @@ function usePersonSuche(): (name: string, party?: string | null,
     const treffer = kandidaten.filter(
       (p) => p.name && vornamen.some((v) => falteName(p.name!.split(" ")[0] || "") === v));
     if (treffer.length === 1 && treffer[0].art !== "blocker") return treffer[0];
+    // Derselbe Mensch zweimal im Lexikon („Ruth Regina" und „Ruth
+    // Drügemöller"): Der volle Name der Zeile entscheidet.
+    const voll = perVollname(kandidaten, woerter.slice(0, -1), woerter[woerter.length - 1]);
+    if (voll && voll.art !== "blocker") return voll;
     // Kein Vorname im Protokoll — dann entscheiden die anderen BELEGTEN
     // Merkmale der Zeile: erst die Fraktion, dann das Sitzungsjahr. Beides
     // steht in den Daten, nichts davon ist geraten.
@@ -263,11 +269,8 @@ function hatteFraktion(p: PersonEintrag, kuerzel: string, year?: number | null):
  *  Gruppe („FDP/Volt"), mal die Einzelpartei — Daniela Pfeiffer steht im
  *  Lexikon als FDP, ihre Wortbeiträge tragen „FDP/Volt". Beides ist dieselbe
  *  Zugehörigkeit; alles andere muss exakt stimmen. */
-function parteienPassen(a: string, b: string): boolean {
-  if (a === b) return true;
-  const gruppe = new Set(["FDP", "Volt", "FDP/Volt"]);
-  return gruppe.has(a) && gruppe.has(b) && (a === "FDP/Volt" || b === "FDP/Volt");
-}
+// `parteienPassen` steht in lib/person-badge.ts — dieselbe Gruppen-Toleranz
+// gilt dort für die Partei aus einem Listenpunkt.
 
 /** Jahreszahl aus einem Datum — die Zeilen tragen es mal als ISO
  *  („2025-06-30"), mal deutsch („30.06.2025"); die erste vierstellige Zahl
@@ -492,6 +495,9 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
     return m;
   }, [personenEff]);
   const badgesGesetzt = new Set<string>();
+  // Die Partei, die der gerade gezeichnete Listenpunkt vorne fett nennt
+  // („**FDP** unterstützt …") — sie trennt Namensvettern darin.
+  let parteiHinweis: string | null = null;
 
   const mitPersonen = (s: string, keyBase: string): React.ReactNode => {
     if (personenMap.size === 0) return s;
@@ -515,6 +521,12 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
           .replace(/[^A-Za-zÄÖÜäöüß-]/g, ""));
         const perVorname = kandidaten.filter((k) => k.vorname && k.vorname === davor);
         if (perVorname.length === 1) p = perVorname[0];
+        if (!p) p = perVollname(kandidaten, namensWoerterDavor(s, m.index), m[0]);
+        if (!p && parteiHinweis) {
+          const k = perPartei(kandidaten, parteiHinweis);
+          // Auch hier muss der Nachname ALS Name dastehen („Paul erklärte").
+          if (k && hasNameSignal(s, m.index, m.index + m[0].length, k.vorname)) p = k;
+        }
       }
       if (!p || p.art === "blocker" || badgesGesetzt.has(p.slug)) continue;
       badgesGesetzt.add(p.slug);
@@ -675,7 +687,13 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
                   {g.zeilen.filter((z) => z.trim()).map((z, zi) => (
                     <li key={zi} className="flex gap-2">
                       <span aria-hidden className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-primary/60" />
-                      <span className="min-w-0 whitespace-normal">{inline(z.trim().replace(/^[-*]\s+/, ""), `${bi}-${gi}-${zi}`)}</span>
+                      <span className="min-w-0 whitespace-normal">{(() => {
+                        const zeile = z.trim().replace(/^[-*]\s+/, "");
+                        parteiHinweis = parteiAusListenpunkt(zeile);
+                        const knoten = inline(zeile, `${bi}-${gi}-${zi}`);
+                        parteiHinweis = null;
+                        return knoten;
+                      })()}</span>
                     </li>
                   ))}
                 </ul>

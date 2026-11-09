@@ -145,3 +145,83 @@ export function hasNameSignal(text: string, start: number, end: number,
   const bracket = text.slice(end).match(/^\s*\(([^()]{2,60})\)/);
   return !!bracket && parteiKuerzel(bracket[1]) !== "Rat";
 }
+
+// ---------------------------------------------------------------------------
+// Mehrere Personen mit demselben Nachnamen — was der Text sonst noch belegt
+// ---------------------------------------------------------------------------
+//
+// Bis 11/2026 entschied bei Namensvettern NUR das eine Wort direkt vor dem
+// Nachnamen. Drei Fälle aus einer Antwort zu den Weser-Ems-Hallen (Tims Befund
+// 09.11.2026) blieben dadurch ohne Badge:
+//
+// * „Ruth Regina Drügemöller": Das Lexikon führt sie zweimal (mit und ohne
+//   Zweitnamen), beide mit Vorname Ruth — und vor dem Nachnamen steht
+//   „Regina". Der volle Name im Text passt aber genau auf EINEN Eintrag.
+// * „Pfeiffer" und „Paul" in Listenpunkten, die mit „**FDP** …" bzw.
+//   „**AfD** …" beginnen: Unter Daniela (FDP) und Anna Pfeiffer (Caritas) bzw.
+//   Andreas (AfD), Anna (Caritas) und Matthias Paul (Verwaltung) ist genau
+//   eine Person dieser Fraktion im Rat. Die Partei steht im Text, nur nicht
+//   direkt am Namen.
+//
+// Beides ist belegt, nichts davon geraten — dieselbe Regel wie bei den
+// Debattenzeilen, die ihre Fraktion mitbringen.
+
+type Kandidat = {
+  name: string | null; party: string | null; art: string;
+  phasen?: { party: string | null }[] | null;
+};
+
+const TITEL_IM_NAMEN = /^(dr|prof)\.?$/i;
+
+/** Die großgeschriebenen Wörter direkt vor `pos`, nur durch Leerraum getrennt
+ *  (höchstens `max`) — „Ruth Regina" vor „Drügemöller". */
+export function namensWoerterDavor(text: string, pos: number, max = 3): string[] {
+  const woerter: string[] = [];
+  let kopf = text.slice(0, pos);
+  while (woerter.length < max) {
+    const m = kopf.match(/([A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]+)\s+$/);
+    if (!m) break;
+    woerter.unshift(m[1]);
+    kopf = kopf.slice(0, kopf.length - m[0].length);
+  }
+  return woerter;
+}
+
+/** Unter mehreren Kandidaten den, dessen voller Name genau so im Text steht. */
+export function perVollname<T extends Kandidat>(kandidaten: T[], vornamen: string[],
+                                                 nachname: string): T | null {
+  if (vornamen.length === 0) return null;
+  // Von hinten: „Laut Protokoll sagte Ruth Regina Drügemöller" — die Wörter
+  // davor gehören nicht zum Namen; probiert wird die längste passende Folge.
+  for (let ab = 0; ab < vornamen.length; ab++) {
+    const ziel = fold([...vornamen.slice(ab), nachname].join(" "));
+    const treffer = kandidaten.filter((k) => k.name && fold(
+      k.name.split(/\s+/).filter((w) => !TITEL_IM_NAMEN.test(w)).join(" ")) === ziel);
+    if (treffer.length === 1) return treffer[0];
+  }
+  return null;
+}
+
+/** FDP und Volt bilden eine Gruppe: Die Protokolle labeln mal die Gruppe
+ *  („FDP/Volt"), mal die Einzelpartei. Alles andere muss exakt stimmen. */
+export function parteienPassen(a: string, b: string): boolean {
+  if (a === b) return true;
+  const gruppe = new Set(["FDP", "Volt", "FDP/Volt"]);
+  return gruppe.has(a) && gruppe.has(b) && (a === "FDP/Volt" || b === "FDP/Volt");
+}
+
+/** Die Partei, die ein Listenpunkt vorne fett nennt: „**FDP** unterstützt …". */
+export function parteiAusListenpunkt(zeile: string): string | null {
+  const m = zeile.trim().match(/^\*\*([^*]{2,40})\*\*/);
+  if (!m) return null;
+  const k = parteiKuerzel(m[1]);
+  return k === "Rat" ? null : k;
+}
+
+/** Unter mehreren Kandidaten das EINE Ratsmitglied dieser Fraktion. */
+export function perPartei<T extends Kandidat>(kandidaten: T[], kuerzel: string): T | null {
+  const treffer = kandidaten.filter((k) => k.art === "council" && (
+    parteienPassen(parteiKuerzel(k.party), kuerzel)
+    || (k.phasen ?? []).some((ph) => parteienPassen(parteiKuerzel(ph.party), kuerzel))));
+  return treffer.length === 1 ? treffer[0] : null;
+}

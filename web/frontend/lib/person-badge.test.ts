@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { hasNameSignal, personBadgeLabel } from "./person-badge";
+import {
+  hasNameSignal, namensWoerterDavor, parteiAusListenpunkt, perPartei, perVollname, personBadgeLabel,
+} from "./person-badge";
 
 describe("personBadgeLabel", () => {
   it("nennt beratende Mitglieder auf Deutsch, nicht mit dem Datenbankwert", () => {
@@ -69,5 +71,35 @@ describe("hasNameSignal — Zeichen, die einen Namen ausweisen", () => {
   it("ohne solches Zeichen bleibt auch ein echter Name ohne Badge", () => {
     // Der Preis der Regel, bewusst: lieber kein Badge als ein geratenes.
     expect(signal("während Höpken die Containerlösung kritisierte", "Höpken", "jonas christopher")).toBe(false);
+  });
+});
+
+describe("Namensvettern: was der Text sonst noch belegt (09.11.2026)", () => {
+  const ruth = [
+    { name: "Ruth Regina Drügemöller", party: "Grüne", art: "council" },
+    { name: "Ruth Drügemöller", party: "Grüne", art: "council" },
+  ];
+  it("der volle Name passt genau auf einen Eintrag", () => {
+    const text = "Laut Protokoll sagte Tim Harms zu; Ruth Regina Drügemöller wollte zustimmen.";
+    const pos = text.indexOf("Drügemöller");
+    const davor = namensWoerterDavor(text, pos);
+    expect(davor).toEqual(["Ruth", "Regina"]);
+    expect(perVollname(ruth, davor, "Drügemöller")?.name).toBe("Ruth Regina Drügemöller");
+    expect(perVollname(ruth, ["Ruth"], "Drügemöller")?.name).toBe("Ruth Drügemöller");
+    expect(perVollname(ruth, ["Anna"], "Drügemöller")).toBeNull();
+  });
+  it("die Partei aus dem Listenpunkt trennt Namensvettern", () => {
+    expect(parteiAusListenpunkt("**AfD** stellte sich gegen … Paul erklärte, er werde sich enthalten.")).toBe("AfD");
+    expect(parteiAusListenpunkt("**Kosten** stiegen")).toBeNull();
+    const paul = [
+      { name: "Andreas Paul", party: "AfD", art: "council" },
+      { name: "Anna Paul", party: null, art: "advisory" },
+      { name: "Matthias Paul", party: null, art: "city" },
+    ];
+    expect(perPartei(paul, "AfD")?.name).toBe("Andreas Paul");
+    expect(perPartei(paul, "SPD")).toBeNull();
+    const pfeiffer = [{ name: "Daniela Pfeiffer", party: "FDP", art: "council" },
+                      { name: "Anna Pfeiffer", party: null, art: "advisory" }];
+    expect(perPartei(pfeiffer, "FDP/Volt")?.name).toBe("Daniela Pfeiffer");
   });
 });
