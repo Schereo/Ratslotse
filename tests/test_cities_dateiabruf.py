@@ -185,3 +185,47 @@ def test_die_kostengrenze_haelt_die_ernte_nicht_auf(tmp_path):
     stopp = Stopp(tmp_path, max_kosten=1.0)
     stopp.ausgeben(5.0)
     assert pipeline._soll_aufhoeren(stopp) is None
+
+
+def test_zwanzig_nieten_in_folge_beenden_die_dateien(tmp_path, monkeypatch):
+    """Osnabrück, 09.11.2026: 403 auf jede Dokument-Adresse — der Lauf fragte
+    86-mal, bis die Liste zu Ende war."""
+    from council.cities import oparl, pipeline
+
+    monkeypatch.setattr(oparl, "throttle", lambda url, gap=0: None)
+
+    sitzung = _Sitzung(_Antwort(b"<html>403 Forbidden</html>", "text/html", status=403))
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    client = OParlClient(store, "osnabrueck", tmp_path / "files", session=sitzung)
+    offen = [{"id": f"f{i}", "access_url": f"https://os.example.org/doc?{i}"} for i in range(50)]
+    zahlen: dict = {}
+    pipeline._hole(client, store, "osnabrueck", offen, zahlen, "Dateien",
+                   nieten_max=pipeline.FILE_NIETEN)
+    assert len(sitzung.abrufe) == pipeline.FILE_NIETEN
+    store.close()
+
+
+def test_eine_leere_ernte_wird_sichtbar(tmp_path, monkeypatch):
+    """Wolfsburg, 09.11.2026: 403 „administrative rules" auf die Gremienliste —
+    der Adapter meldete „0 Gremien", und der Lauf sah gesund aus."""
+    from council.cities import pipeline
+    from council.cities.registry import BodySpec
+
+    class _Leer:
+        def discover(self, client, spec):
+            return {"body": {"id": "https://wb.example.org"}, "name": "Wolfsburg"}
+
+        def iter_organizations(self, client, body):
+            return iter(())
+
+        def iter_meetings(self, client, body, seit):
+            return iter(())
+
+        def iter_papers(self, client, body, seit):
+            return iter(())
+
+    monkeypatch.setattr(pipeline, "get_adapter", lambda dialect: _Leer())
+    spec = BodySpec("wolfsburg", "Wolfsburg", "NI", "allris4_html", "https://wb.example.org")
+    zahlen = pipeline.fetch(spec, tmp_path / "raw", tmp_path / "files", "2026-01-01",
+                            with_files=False, main_path=tmp_path / "fehlt.sqlite")
+    assert zahlen["harvest_empty"] == 1
