@@ -2320,12 +2320,28 @@ def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
     from council.cities.registry import BODIES
 
     zeilen = cities.coverage(body_ids)
-    abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
+    # Städte, die der Wochenlauf gar nicht mehr holt (in der Registry aus),
+    # zählen nicht in den Stand: Hildesheim steht seit 13.09.2026 still, und
+    # „Stand: 13.09.2026" stand damit über einer Seite, deren übrige Städte
+    # am selben Tag abgeglichen waren. Sie bekommen stattdessen ihren Satz.
+    ruht = {str(z["body_id"]) for z in zeilen
+            if str(z["body_id"]) in BODIES and not BODIES[str(z["body_id"])].active}
+    abgleiche = [str(z["last_fetched"])[:10] for z in zeilen
+                 if z.get("last_fetched") and str(z["body_id"]) not in ruht]
+    if not abgleiche:  # nur ruhende Städte: dann ist ihr Abgleich der Stand
+        abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
     hinten: list[IdeaLaggingCity] = []
     gesperrt: list[IdeaBlockedCity] = []
     for z in zeilen:
         b = str(z["body_id"])
         stadt = BODIES[b].name if b in BODIES else b
+        if b in ruht:
+            gesperrt.append({"body_id": b, "city": stadt,
+                             "status": "blocked" if BODIES[b].access_blocked else "paused",
+                             "since": str(z.get("last_fetched") or "")[:10],
+                             "latest_paper": (str(z["latest_paper"])[:10]
+                                              if z.get("latest_paper") else None)})
+            continue
         if z.get("access") in ("documents_blocked", "blocked"):
             gesperrt.append({"body_id": b, "city": stadt, "status": z["access"],
                              "since": str(z["access_since"])[:10],
