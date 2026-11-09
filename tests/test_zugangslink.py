@@ -139,6 +139,63 @@ def test_mit_der_link_sitzung_kein_passwort_keine_adresse_kein_loeschen(client):
     assert client.put("/api/account/notifications", json={"prefs": {"n7_news": False}}).status_code == 200
 
 
+def test_der_app_kopf_macht_aus_der_link_sitzung_keine_volle(client):
+    """``GET /api/auth/me`` stellt App-Clients ein frisches Token aus. Bis
+    11/2026 ohne ``via`` — mit ``X-Client: ios`` tauschte eine Link-Sitzung
+    sich so ein volles Token ein, und Adresswechsel wie Löschen gingen durch."""
+    uid = _konto(client)
+    assert client.post("/api/auth/magic", json={"token": _link(uid)}).status_code == 200
+    r = client.get("/api/auth/me", headers={"X-Client": "ios"})
+    assert r.status_code == 200, r.text
+    token = r.json()["access_token"]
+    assert token and security.token_via(token) == security.VIA_LINK
+
+    client.cookies.clear()
+    app_kopf = {"Authorization": f"Bearer {token}", "X-Client": "ios"}
+    # Lesen darf das Token weiter, und die nächste Erneuerung bleibt markiert.
+    erneut = client.get("/api/auth/me", headers=app_kopf)
+    assert erneut.status_code == 200
+    assert security.token_via(erneut.json()["access_token"]) == security.VIA_LINK
+    # Übernehmen nicht.
+    r = client.delete("/api/account/change-email", headers=app_kopf)
+    assert r.status_code == 403, r.text
+    assert "Passwort" in r.json()["detail"]
+
+
+def test_die_bestaetigung_vergisst_die_herkunft_nicht(client):
+    """Derselbe Weg über ``_bestaetigung_abschliessen``: Dort ist das Konto neu
+    gelesen und trägt kein ``per_link`` mehr — die Herkunft kommt von der
+    Sitzung, die den Code einlöst."""
+    import hashlib
+    from datetime import datetime, timedelta
+    from app.routers.auth import _code_hash
+
+    uid = _konto(client)
+    store = Store(RATSLOTSE_DB)
+    try:
+        ablauf = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
+        store.create_email_verification(uid, hashlib.sha256(b"x").hexdigest(), ablauf,
+                                        new_email="neu@example.org",
+                                        code_hash=_code_hash(uid, "123456"))
+    finally:
+        store.close()
+    assert client.post("/api/auth/magic", json={"token": _link(uid)}).status_code == 200
+    r = client.post("/api/auth/verify-code", json={"code": "123456"}, headers={"X-Client": "ios"})
+    assert r.status_code == 200, r.text
+    assert security.token_via(r.json()["access_token"]) == security.VIA_LINK
+
+
+def test_eine_echte_anmeldung_bleibt_voll(client):
+    _konto(client)
+    r = client.post("/api/auth/login", json={"email": "leserin@example.org", "password": "password123"},
+                    headers={"X-Client": "ios"})
+    assert r.status_code == 200, r.text
+    token = r.json()["access_token"]
+    assert token and security.token_via(token) is None
+    r = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}", "X-Client": "ios"})
+    assert security.token_via(r.json()["access_token"]) is None
+
+
 def test_die_verlaengerung_vergisst_die_herkunft_nicht(monkeypatch):
     from app import session
     from starlette.requests import Request as _R
