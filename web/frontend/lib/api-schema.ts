@@ -1393,15 +1393,19 @@ export interface paths {
         put?: never;
         /**
          * Magic Einloesen
-         * @description Einen Anmeldelink aus einer Mail einlösen — per Klick auf der Anmeldeseite.
+         * @description Einen Anmeldelink aus einer Mail einlösen.
          *
-         *     Bewusst ein POST hinter einem Knopf und nicht der Aufruf des Links selbst:
-         *     Mail-Scanner (Outlook, Gmail) öffnen Links vorab, und ein GET, der anmeldet,
-         *     hätte sie angemeldet. Die Sitzung trägt ``via: magic`` und darf nichts,
-         *     was das Konto übernimmt (``deps.require_volle_anmeldung``).
+         *     Die Seite ruft das beim Ankommen von selbst auf (Tims Vorgabe 09.11.2026:
+         *     direkt angemeldet, kein Zwischenschritt). Ein POST statt des Links selbst
+         *     bleibt es trotzdem: Ein GET, der anmeldet, liefe in jedem Vorschau-Abruf
+         *     mit. Die Sitzung trägt ``via: magic`` und darf nichts, was das Konto
+         *     übernimmt (``deps.require_volle_anmeldung``).
          *
-         *     Abgelaufen, widerrufen (``token_version``) oder gesperrt: 401 mit einem
-         *     Satz, den die Anmeldeseite über ihr normales Formular stellt.
+         *     Abgelaufen, widerrufen (``token_version``) oder gesperrt: 401 — die Seite
+         *     zeigt dann ohne Fehlermeldung die normale Anmeldung mit Rücksprung. Bei uns
+         *     landet der Fall im Fehlersammler (``_link_fehler_merken``), gruppiert nach
+         *     Grund, ohne Token und ohne Konto: Häufen sich abgelaufene Links, sind zehn
+         *     Tage zu kurz; häufen sich ungültige, stimmt etwas am Bau der Links nicht.
          */
         post: operations["magic_einloesen_api_auth_magic_post"];
         delete?: never;
@@ -26770,4 +26774,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 704f47086024aec322612526f00c8385734471506c9b226ad77dda4763803c54
+// vertrag-sha256: f30fc4fd5f808f0e5b171095f58139bbf6b59925f1740123714a276f5bbcd516
