@@ -295,6 +295,11 @@ def _voller_lauf(main_store: CitiesStore, raw_dir: Path, files_dir: Path, seit: 
             # Schnitt ist Regelarbeit ohne Modell und ohne Netz, und der
             # `reason`-Lauf weiter unten braucht die Abschnitte.
             schnitt = pipeline.split_protocols(main_store, spec.id)
+            # Was die Ideen-Seite über die Stadt sagt: kommt noch etwas, und
+            # mit Dokumenten? Ein unterbrochener Lauf lässt den Stand stehen.
+            zugang = pipeline.access_status(ernte)
+            if zugang is not None:
+                main_store.set_access(spec.id, *zugang)
             zaehler["bodies"] += 1
             zaehler["files_fetched"] += ernte.get("files_fetched", 0)
             zaehler["files_failed"] += ernte.get("files_failed", 0)

@@ -266,6 +266,50 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
     return zahlen
 
 
+#: Zugangsstand einer Stadt (Tabelle ``body_access``).
+ACCESS_OK = "ok"
+#: Gremien, Sitzungen und Vorlagen kommen, ihre Dokumente nicht.
+ACCESS_DOCUMENTS_BLOCKED = "documents_blocked"
+#: Es kommt gar nichts mehr.
+ACCESS_BLOCKED = "blocked"
+
+#: Ab so vielen fehlgeschlagenen Dokumentabrufen OHNE einen einzigen Treffer
+#: gilt der Abruf als gesperrt. Einzelne Nieten sind normal (nichtöffentliche
+#: Anlagen, Wolfsburg 444 von 1.798); Osnabrück antwortete am 09.11.2026 auf
+#: jede seiner 86 Dokument-Adressen mit 403.
+DOCUMENTS_BLOCKED_AFTER = 20
+
+
+def access_status(ernte: dict) -> tuple[str, str | None] | None:
+    """Gibt die Stadt ihre Daten noch heraus? Gelesen aus den Zahlen von ``fetch``.
+
+    ``None`` heißt „aus diesem Lauf nicht zu sagen": Die Ernte wurde
+    unterbrochen (Deploy, Frist, ein überlasteter Server), bevor sich der
+    Zugang zeigen konnte — dann bleibt der alte Stand stehen. Eine Ausnahme
+    in ``fetch`` landet gar nicht hier; auch dann bleibt er stehen.
+
+    **Nichts geerntet ist kein ruhiger Tag.** Gremien liest jeder Dialekt bei
+    jedem Lauf vollständig; null Gremien, null Sitzungen und null Vorlagen
+    heißt, dass der Server nichts herausgibt. So am 09.11.2026 bei Wolfsburg
+    („403 Request forbidden by administrative rules").
+    """
+    if ernte.get("abgebrochen"):
+        return None
+    if not (ernte.get("organizations") or ernte.get("meetings") or ernte.get("papers")):
+        return ACCESS_BLOCKED, "nichts geerntet"
+    if ernte.get("files_gated"):
+        return ACCESS_DOCUMENTS_BLOCKED, "Zugangsprüfung (ALTCHA)"
+    if ernte.get("host_unreachable"):
+        return ACCESS_DOCUMENTS_BLOCKED, "Server nimmt keine Verbindung an"
+    if not ernte.get("files_fetched") and ernte.get("files_failed"):
+        if ernte["files_failed"] >= DOCUMENTS_BLOCKED_AFTER:
+            return ACCESS_DOCUMENTS_BLOCKED, "jeder Dokumentabruf abgewiesen"
+        # Drei Nieten und kein Treffer: Das können drei nichtöffentliche
+        # Anlagen sein. Zu wenig, um den Stand umzuwerfen — in beide Richtungen.
+        return None
+    return ACCESS_OK, None
+
+
 # --------------------------------------------------------------- normalize
 
 def normalize(spec: BodySpec, raw_dir: str | Path, main: CitiesStore) -> dict:
