@@ -4773,7 +4773,6 @@ class PlanCard(TypedDict):
     #: Der Satz, wenn der Bestand schweigt („Seit 03/2022 kein Bericht im Rat.“).
     report_note: str | None
     #: Der Satz daneben: Die Lücke sagt etwas über die Berichte, nicht über die Arbeit (§ 3.3a).
-    report_caveat: str | None
     lane: PlanLane
     report_count: int
     successor: PlanNeighbour | None

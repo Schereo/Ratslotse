@@ -221,7 +221,7 @@ def test_wo_man_nachfragen_kann():
     assert all(f["question"].startswith("Was ist aus dem Plan") for f in found)
     for word in ("langsam", "säumig", "versäumt", "Verzug"):
         assert word not in " ".join(f["fact"] + f["question"] for f in found)
-    assert "nicht gefunden" in plan_pages.FOLLOW_UP_CAVEAT.lower()
+    assert "sieht ratslotse nicht" in plan_pages.FOLLOW_UP_CAVEAT.lower()
 
 
 def test_pflege_meldet_neuen_bericht_und_faellige_frist():

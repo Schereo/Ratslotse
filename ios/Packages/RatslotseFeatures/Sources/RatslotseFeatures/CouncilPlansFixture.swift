@@ -224,7 +224,6 @@ enum CouncilPlanFixture {
   "hint": "Überprüfung laut Plan 06/2031."
  },
  "report_note": "Seit dem Beschluss 06/2026 noch kein Bericht im Rat.",
- "report_caveat": null,
  "report_count": 0,
  "measures": {
   "count": 18,

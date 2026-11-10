@@ -195,7 +195,6 @@ def test_overview_has_axis_and_fields_without_data():
     assert o["recent"] == [] and len(o["upcoming"]) == 4
     cards = [c for g in o["groups"] for c in g["plans"]]
     assert all(c["lane"]["marks"] == [] for c in cards)
-    # Der zweite Satz zur Lücke steht nur, wo ein Plan seit über einem Jahr gilt.
+    # Die Lücke steht als Tatsache da, ohne Einordnung dahinter.
     by_key = {c["key"]: c for c in cards}
-    assert by_key["masterplan_stadtgruen"]["report_caveat"] == plan_pages.REPORT_CAVEAT
-    assert by_key["waermeplan"]["report_note"] and by_key["waermeplan"]["report_caveat"] is None
+    assert by_key["waermeplan"]["report_note"] and "report_caveat" not in by_key["waermeplan"]

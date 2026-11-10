@@ -193,7 +193,6 @@ def test_ansichten_reihen_nach_datum():
     # ist oder im letzten Jahr berichtet hat, steht nicht darin; ein abgelaufener auch nicht.
     assert views["silent"]["plans"] == ["still", "alt"]
     assert all("fremd" not in v["plans"] for v in views.values())
-    assert plan_pages.REPORT_CAVEAT in views["silent"]["hint"], "die Lücke sagt etwas über die Berichte, nicht über die Arbeit"
 
 
 def test_ansichten_der_echten_uebersicht_kennen_nur_plaene_der_liste(store):
