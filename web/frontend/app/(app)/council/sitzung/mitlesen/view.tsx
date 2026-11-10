@@ -86,6 +86,31 @@ function Mitlesen({ data, ksinr }: { data: SessionWithCourse; ksinr: number }) {
   const schritt = alle[state.index];
   const titelRef = useRef<HTMLHeadingElement>(null);
   const ersterLauf = useRef(true);
+  const leiste = useRef<HTMLDivElement>(null);
+
+  // Die Leiste unten deckte Lottis schwebenden Knopf zu (und er sie). Wie der
+  // Composer auf /fragen meldet sie ihre Höhe als `--rl-composer`, solange
+  // sie wirklich unten steht; ab `breit` ist sie weg.
+  useEffect(() => {
+    const el = leiste.current;
+    if (!el) return;
+    const melden = () => {
+      if (getComputedStyle(el).display !== "none") {
+        document.documentElement.style.setProperty("--rl-composer", `${el.offsetHeight}px`);
+      } else {
+        document.documentElement.style.removeProperty("--rl-composer");
+      }
+    };
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(melden) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", melden);
+    melden();
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", melden);
+      document.documentElement.style.removeProperty("--rl-composer");
+    };
+  }, []);
 
   const gehe = useCallback((i: number) => {
     const neu = move(alle, state, i);
@@ -179,7 +204,7 @@ function Mitlesen({ data, ksinr }: { data: SessionWithCourse; ksinr: number }) {
 
       {/* Handy: Zurück und Weiter kleben am unteren Rand — die kleinen Punkte
           im Kurs sind dort nicht antippbar. */}
-      <div className="fixed inset-x-0 bottom-[var(--rl-unten,0px)] z-[var(--ebene-schwebend)] border-t border-border bg-card/95 p-3 backdrop-blur breit:hidden">
+      <div ref={leiste} className="fixed inset-x-0 bottom-[var(--rl-unten,0px)] z-[var(--ebene-schwebend)] border-t border-border bg-card/95 p-3 backdrop-blur breit:hidden">
         <Steuerung vorher={vorher} nachher={nachher} onZurueck={() => gehe(state.index - 1)} onWeiter={() => gehe(state.index + 1)} />
       </div>
     </div>
@@ -226,9 +251,11 @@ function JetztDran({ ksinr, schritt, course, titelRef, fuss, punktSeite }: {
   return (
     <article className="min-w-0 scroll-mt-24 rounded-2xl border border-primary/40 bg-card shadow-sm">
       <div className="p-5 sm:p-6">
-        <p className={cn(KICKER, "flex flex-wrap items-center gap-2")}>
-          <span className="inline-flex items-center gap-1.5 text-foreground"><span className="h-2 w-2 rounded-full bg-signal" aria-hidden /> Jetzt dran</span>
-          Etappe {schritt.stage + 1} von {course.stages.length} · {etappe.name}
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className={cn(KICKER, "inline-flex items-center gap-1.5 text-foreground")}>
+            <span className="h-2 w-2 rounded-full bg-signal" aria-hidden /> Jetzt dran
+          </span>
+          <span className="text-sm text-muted-foreground">Etappe {schritt.stage + 1} von {course.stages.length} · {etappe.name}</span>
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
           <p className="font-display text-[40px] font-bold leading-none tabular-nums" aria-hidden>

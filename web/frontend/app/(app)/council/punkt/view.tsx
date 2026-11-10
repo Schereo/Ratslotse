@@ -128,13 +128,13 @@ function PunktView({ p }: { p: Punkt }) {
             </p>
           )}
         </div>
-        <div role="group" aria-label="Aktionen zum Punkt" className="flex gap-1">
-          <BookmarkButton target={{ kind: "agenda_item", ksinr: p.ksinr, item_number: it.item_number }} compact />
+        <div role="group" aria-label="Aktionen zum Punkt" className="flex items-center gap-1">
+          <BookmarkButton target={{ kind: "agenda_item", ksinr: p.ksinr, item_number: it.item_number }} compact className="h-11 w-11" />
           <button type="button" onClick={() => window.print()} aria-label="Drucken" title="Drucken"
             className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Printer className="h-4 w-4" aria-hidden />
           </button>
-          <ShareButton path={punktHref(p.ksinr, it.item_number)} iconOnly title={`${it.item_number} · ${titel}`} />
+          <ShareButton path={punktHref(p.ksinr, it.item_number)} iconOnly title={`${it.item_number} · ${titel}`} className="h-11 w-11 justify-center rounded-lg hover:bg-accent" />
         </div>
       </header>
 
@@ -180,15 +180,15 @@ function PunktView({ p }: { p: Punkt }) {
             {p.previous && (
               <Link href={punktHref(p.ksinr, p.previous.item_number)}
                 className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm hover:bg-accent">
-                <ArrowLeft className="h-4 w-4" aria-hidden />
-                <span><span className="block text-xs text-muted-foreground">Zurück</span>{p.previous.item_number} · {p.previous.short_title}</span>
+                <ArrowLeft className="h-4 w-4 flex-none" aria-hidden />
+                <span className="min-w-0"><span className="block text-xs text-muted-foreground">Zurück</span>{p.previous.item_number} · {p.previous.short_title}</span>
               </Link>
             )}
             {p.next && (
               <Link href={punktHref(p.ksinr, p.next.item_number)}
                 className="ml-auto inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-xl border border-primary bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
-                <span><span className="block text-xs opacity-90">Weiter</span>{p.next.item_number} · {p.next.short_title}</span>
-                <ArrowRight className="h-4 w-4" aria-hidden />
+                <span className="min-w-0"><span className="block text-xs opacity-90">Weiter</span>{p.next.item_number} · {p.next.short_title}</span>
+                <ArrowRight className="h-4 w-4 flex-none" aria-hidden />
               </Link>
             )}
           </nav>

@@ -536,7 +536,6 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
             )}
             {video && <VideoResultChip r={video} />}
             {item.type_label && !frame && <Chip tone="outline">{item.type_label}</Chip>}
-            {frame && item.type === "question_time" && <Chip tone="outline">Fragestunde</Chip>}
             {item.important && <Chip tone="primary">Wichtig</Chip>}
             {!item.important && item.postponed > 0 && (
               <Chip tone="amber">{item.postponed === 1 ? "Schon einmal vertagt" : `${item.postponed}-mal vertagt`}</Chip>
@@ -712,13 +711,17 @@ function FormalActCard({ ctx, nrs, onVorschau }: { ctx: Ctx; nrs: string[]; onVo
           const domId = topDomId(ctx.ksinr, nr);
           const inhalt = (
             <>
-              <span className="w-14 flex-none font-display text-lg font-bold text-foreground">
+              <span className="w-11 flex-none whitespace-nowrap font-display text-lg font-bold text-foreground sm:w-14">
                 <span className="text-muted-foreground">{splitNumber(nr).prefix} </span>{splitNumber(nr).rest}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block font-medium text-foreground">{item?.short_title}</span>
-                <span className="block text-sm text-muted-foreground">
-                  {[agenda?.template_number ? `Vorlage ${agenda.template_number}` : null, agenda ? kurzfassung(agenda) : null].filter(Boolean).join(" · ")}
+                {/* Schlanke Zeilen (Plan § 4.2): Vorlage und höchstens zwei Zeilen
+                    Text — nach dem Protokoll, was beschlossen wurde, statt der
+                    Ankündigung („Der Ausschuss berät …"). */}
+                <span className="line-clamp-2 text-sm text-muted-foreground">
+                  {[agenda?.template_number ? `Vorlage ${agenda.template_number}` : null,
+                    ctx.decisionTextByItem[topKey(nr)] ?? (agenda ? kurzfassung(agenda) : null)].filter(Boolean).join(" · ")}
                 </span>
               </span>
               {!alleGleich && ergebnisse[i] && <OutcomeDot outcome={ergebnisse[i]} />}
