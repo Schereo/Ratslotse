@@ -7,10 +7,11 @@
  * der echte nur Blobs hält (Form und Version prüft `tests/test_notizen.py`).
  * So läuft der Test auch gegen das Backend der CI, das den Schalter nicht kennt.
  */
-import { test, expect, type Page, type Route } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { zustandsDatei } from "./konten";
+import { notizenSchein, type Ablage } from "./notizen-schein";
 
 test.use({ storageState: zustandsDatei("nutzerin") });
 
@@ -18,42 +19,10 @@ const PUNKT = JSON.parse(readFileSync(join(__dirname, "fixtures", "punkt-4654-11
 const URL = "/council/punkt?ksinr=4654&top=%C3%96%2011.1";
 const PASS = "Lotti liest mit 2026";
 
-type Ablage = { keys: Record<string, unknown> | null; notes: Map<string, Record<string, unknown>> };
-
 async function schein(page: Page, ablage: Ablage) {
   await page.route("**/api/app-config", (r) => r.fulfill({ json: { min_build: 0, features: ["punkt-seite", "notizen"] } }));
   await page.route("**/api/council/session/4654/item**", (r) => r.fulfill({ json: PUNKT }));
-  await page.route("**/api/notes**", async (route: Route) => {
-    const req = route.request();
-    const pfad = new globalThis.URL(req.url()).pathname.replace(/^\/api\/notes/, "");
-    const body = req.postData() ? JSON.parse(req.postData()!) : null;
-    const jetzt = new Date().toISOString().slice(0, 19);
-    if (pfad === "/keys") {
-      if (req.method() === "GET") return route.fulfill({ json: { configured: !!ablage.keys, keys: ablage.keys } });
-      if (req.method() === "DELETE") { ablage.keys = null; ablage.notes.clear(); return route.fulfill({ json: { deleted: 0 } }); }
-      if (body.wrapped_recovery) {
-        if (ablage.keys) return route.fulfill({ status: 409, json: { detail: "Notizen sind schon eingerichtet." } });
-        ablage.keys = { ...body, updated_at: jetzt };
-      } else {
-        ablage.keys = { ...ablage.keys, ...body, updated_at: jetzt };
-      }
-      return route.fulfill({ json: { configured: true, keys: ablage.keys } });
-    }
-    if (pfad === "" || pfad === "/") {
-      return route.fulfill({ json: { notes: [...ablage.notes.values()] } });
-    }
-    const [, kind, key, art] = pfad.split("/").map(decodeURIComponent);
-    const id = `${kind}|${key}|${art}`;
-    const alt = ablage.notes.get(id);
-    if (req.method() === "DELETE") { ablage.notes.delete(id); return route.fulfill({ status: 204, body: "" }); }
-    if ((alt?.version ?? 0) !== body.version) {
-      return route.fulfill({ status: 409, json: { detail: { message: "geändert", current: alt ?? null } } });
-    }
-    const neu = { target_kind: kind, target_key: key, kind: art, iv: body.iv, ciphertext: body.ciphertext,
-                  key_version: body.key_version, version: (alt?.version as number ?? 0) + 1, updated_at: jetzt };
-    ablage.notes.set(id, neu);
-    return route.fulfill({ json: neu });
-  });
+  await notizenSchein(page, ablage);
 }
 
 const karte = (page: Page) => page.locator("section", { has: page.locator("#meine-notiz") });

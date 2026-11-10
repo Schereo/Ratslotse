@@ -193,4 +193,17 @@ describe("courseInput — vom Vertrag zur Eingabe", () => {
       title: "Ö 4 · Titel Ö 4 · Vertagt (vorläufig)" });
     expect(zu).toMatchObject({ closed: true, closedLabel: "N 5–6", closedCount: 2 });
   });
+
+  it("der eigene Mitschrieb färbt nur, wo Protokoll und Übertragung schweigen", () => {
+    const e = courseInput(kurs, {
+      outcomeByItem: { "3": "accepted" },
+      provisionalByItem: {},
+      ownByItem: { "3": "rejected", "4": "noted", "1": "accepted" },
+    });
+    const [start, inhalt] = e.stages;
+    expect(start.buoys[0]).toMatchObject({ outcome: null });                       // Formalien bleiben ohne
+    expect(inhalt.buoys[0]).toMatchObject({ outcome: "accepted", provisional: false });   // Protokoll geht vor
+    expect(inhalt.buoys[1]).toMatchObject({ outcome: "noted", provisional: true,
+      title: "Ö 4 · Titel Ö 4 · Zur Kenntnis (mein Mitschrieb)" });
+  });
 });
