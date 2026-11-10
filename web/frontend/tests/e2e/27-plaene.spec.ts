@@ -460,17 +460,24 @@ test("ohne Schalter bleibt es bei den Zielen", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Klimaschutzplan Oldenburg 2035" })).toHaveCount(0);
 });
 
+// Zwei Gruppen statt einer: Jede Seite mit Karte wartet auf ihre Kacheln, und zwölf Seiten in einem Test
+// rissen in der CI die 30 Sekunden je Test (#1849) — ohne dass eine Seite zu breit war.
+const BREITE_SEITEN = {
+  "Pläne": ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
+    "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035",
+    "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau", "/council/plan?key=mobilitaetsplan_2030"],
+  "Karten aus dem Plan": ["/council/plan?key=laermaktionsplan", "/council/plan?key=waermeplan", "/council/plan?key=eek",
+    "/council/plan?key=masterplan_stadtgruen", "/council/plan?key=spielleitplanung"],
+};
 for (const breite of [390, 320]) {
-  test(`keine Seite scrollt seitwärts (${breite} px)`, async ({ page }) => {
-    await page.setViewportSize({ width: breite, height: 800 });
-    await schalter(page, true);
-    for (const pfad of ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
-      "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035",
-      "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau", "/council/plan?key=mobilitaetsplan_2030",
-      "/council/plan?key=laermaktionsplan", "/council/plan?key=waermeplan", "/council/plan?key=eek",
-      "/council/plan?key=masterplan_stadtgruen", "/council/plan?key=spielleitplanung"]) {
-      await page.goto(pfad, { waitUntil: "networkidle" });
-      expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
-    }
-  });
+  for (const [gruppe, pfade] of Object.entries(BREITE_SEITEN)) {
+    test(`keine Seite scrollt seitwärts (${gruppe}, ${breite} px)`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 800 });
+      await schalter(page, true);
+      for (const pfad of pfade) {
+        await page.goto(pfad, { waitUntil: "networkidle" });
+        expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
+      }
+    });
+  }
 }
