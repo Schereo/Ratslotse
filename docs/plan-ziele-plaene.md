@@ -48,7 +48,7 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 | 3 Stand, Berichtsstand, Kennzahlen | auf dev: Berichtsstand für alle Pläne; Stand laut Stadt für Klimaschutzplan, Wärmeplan, Aktionsplan Gewalt 2020, Ernährungsstrategie und smv2025; Mobilitätsplan mit Zitat je Maßnahme aus den Sachstandsberichten (ein Modell sucht, geprüft wird ohne Modell); THG-Kennzahl | #1819, #1822, #1823, #1827, #1830 |
 | 4 Beschlüsse zu Maßnahmen | auf dev: Zuordnung über die Kennung der Maßnahme (ohne Modell) und Vorlagen, die laut eigenem Text der Umsetzung eines Plans dienen (Modell mit Golden-Set, 25 von Hand geprüfte Bezüge) | #1824, #1828 |
 | 4b Wo man nachfragen kann | auf dev: Pläne ohne aktuellen Bericht. „Ratsauftrag ohne Folge“ zweimal gemessen (ohne und mit Modell), Messziel beide Male verfehlt, nicht ausgeliefert | #1825, #1829 |
-| 5 Rückblick | auf dev für die zehn abgelaufenen Pläne; Maßnahmenlisten für neun Pläne. Offen: iOS-Ansicht | #1825, #1830 |
+| 5 Rückblick | auf dev für die zehn abgelaufenen Pläne; Maßnahmenlisten für neun Pläne; iOS-Ansicht im Code (kommt mit dem nächsten App-Build) | #1825, #1830, #1831 |
 | 5b Seite der Stadt | Verweise für 21 Pläne. Offen: Dokumente der Pläne von vor 2018 | mit Phase 6 |
 | 6 Pflege | Kennzahlen im Cron-Protokoll, Hinweise im Prüfskript | mit Phase 5b |
 | Kosten | Modell insgesamt rund 0,13 $ (Mobilitätsplan 0,004 $, Bezüge laut Vorlage 0,09 $, Ratsaufträge 0,03 $); alles andere ohne Modell | gemessen 10.11.2026 |
@@ -1033,8 +1033,31 @@ ISEK, zum Einzelhandelsentwicklungskonzept und zum smv2025 stand als
 „abgelehnt“ da. Behoben in `store_plaene.plan_tracking_rows`, mit Wächter in
 `tests/test_plaene_zuordnung.py`.
 
-**Offen:** die iOS-Ansicht (unten) und Listen für Pläne, deren Maßnahmen nur
-im Fließtext stehen.
+**iOS-Ansicht gebaut (10.11.2026):** In der Analyse steht an der Stelle des
+Reiters „Ziele“ der Reiter „Pläne“, solange der Schalter `plaene` an ist
+(`CouncilPlansView.swift`). Die Übersicht zeigt alle Pläne mit Berichtsstand
+und — wo die Stadt eine Verteilung meldet — einem Band; die Planseite öffnet
+als Blatt mit Rückblick, Berichten im Rat, Stand laut Stadt, Kennzahl,
+Maßnahmen und Beschlüssen. Die Modelle sind handgeschrieben und laufen durch
+`scripts/ios_vertrag.py` (beide Aufrufstellen gebunden, null Befunde). Alle
+Sätze kommen vom Server. Bewusst klein gehalten: keine eigene Route (ein Link
+`/council/plan?key=…` öffnet weiter das Web), kein Zeitband, keine Suche in
+den Maßnahmen. Die alten Ziel-Endpunkte bleiben, bis die ausgelieferte App
+sie nicht mehr braucht.
+
+Geprüft im Simulator gegen ein lokales Backend mit dem echten Bestand, nicht
+nur gegen die Sichtprobe — und dabei fiel auf, dass die **Analyse-Seite der
+App seit 09/2026 gar nicht mehr lud** („unerwartetes Format“): Der Server
+sendet `accepted`/`rejected`/`postponed`, die App las `angenommen`/
+`abgelehnt`/`vertagt`, nicht optional. Der Vertrag führte diese Felder als
+`Any`, also hatte `ios_vertrag.py` nichts zu prüfen. Behoben an drei Stellen:
+die App liest die englischen Namen; die Antwortform ist ausgeschrieben
+(`AnalysisSuccessRate` u. a.), sodass der Wächter die Felder jetzt bindet; und
+der Server schickt die alten Namen daneben, bis `APP_MIN_BUILD` über dem
+Build mit der Korrektur liegt — damit auch die installierte App wieder lädt.
+
+**Offen:** der App-Build mit dieser Ansicht (TestFlight), danach
+`APP_MIN_BUILD`; Listen für Pläne, deren Maßnahmen nur im Fließtext stehen.
 
 - Rückblick nach § 3.3 für den Schulentwicklungsplan 2018, den Aktionsplan
   Gewalt 2020–2025, das Integrationskonzept 2020–2025, step2025 und den KAI.

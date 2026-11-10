@@ -2990,17 +2990,76 @@ class AnalysisCoverage(TypedDict):
     total: int
 
 
+class AnalysisTopicMatrix(TypedDict):
+    parties: list[str]
+    fields: list[str]
+    #: Partei → Themenfeld → Zahl der Anträge.
+    matrix: dict[str, dict[str, int]]
+
+
+class AnalysisSuccessRate(TypedDict):
+    """Erfolgsquote der Anträge einer Partei."""
+    party: str
+    motions: int
+    accepted: int
+    rejected: int
+    postponed: int
+    #: Anteil der angenommenen an den entschiedenen Anträgen; ``None`` ohne Entscheidung.
+    rate: float | None
+    #: Dieselben drei Zahlen unter den alten Namen — nur für die ausgelieferte iOS-App
+    #: (bis Build 22), die sie nicht optional liest. Neue Clients lesen die englischen.
+    angenommen: int
+    abgelehnt: int
+    vertagt: int
+
+
+class AnalysisContention(TypedDict):
+    field: str
+    total: int
+    contested: int
+    contested_rate: float
+
+
+class AnalysisAlliance(TypedDict):
+    a: str
+    b: str
+    count: int
+
+
+class AnalysisApplicationParty(TypedDict):
+    party: str
+    n: int
+    accepted: int
+    rejected: int
+    #: Alte Namen für die ausgelieferte iOS-App, s. ``AnalysisSuccessRate``.
+    angenommen: int
+    abgelehnt: int
+
+
+class AnalysisApplicationStats(TypedDict):
+    """Erfolgsquoten der eingereichten Antragsdokumente (``CouncilStore.antrag_stats``)."""
+    parties: list[AnalysisApplicationParty]
+    n_antraege: int
+    n_mit_beschluss: int
+
+
 class AnalysisData(TypedDict):
-    """``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind
-    verschachtelte Auswertungen und bleiben offen."""
+    """``CouncilStore.party_analysis``.
+
+    Bis 11/2026 standen die Innereien als ``Any`` im Vertrag. Genau darum blieb
+    unbemerkt, dass die iOS-App ``angenommen``/``abgelehnt``/``vertagt`` las,
+    während der Server seit 09/2026 ``accepted``/``rejected``/``postponed``
+    sendet: Die Analyse-Seite der App zeigte nur noch „unerwartetes Format“,
+    und ``scripts/ios_vertrag.py`` hatte nichts, wogegen es hätte prüfen können.
+    """
     coverage: AnalysisCoverage
-    topic_matrix: dict[str, Any]
-    success_rates: Any
-    contention: Any
-    alliances: Any
+    topic_matrix: AnalysisTopicMatrix
+    success_rates: list[AnalysisSuccessRate]
+    contention: list[AnalysisContention]
+    alliances: list[AnalysisAlliance]
     # legt der Router dazu
     field_labels: dict[str, str]
-    antrag_stats: Any
+    antrag_stats: AnalysisApplicationStats
 
 
 class MoneyDriver(TypedDict):

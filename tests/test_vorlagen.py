@@ -235,7 +235,8 @@ def test_anlagen_store_and_stats(store):
     # Erfolgsquote: 1 SPD-Antrag, Vorlage im Rat angenommen
     stats = store.antrag_stats()
     assert stats["n_antraege"] == 1 and stats["n_mit_beschluss"] == 1
-    assert stats["parties"] == [{"party": "SPD", "n": 1, "accepted": 1, "rejected": 0}]
+    assert stats["parties"] == [{"party": "SPD", "n": 1, "accepted": 1, "rejected": 0,
+                                 "angenommen": 1, "abgelehnt": 0}]  # alte Namen: ausgelieferte iOS-App
 
 
 def test_antrag_stats_prefers_rat_decision(store):
@@ -250,7 +251,8 @@ def test_antrag_stats_prefers_rat_decision(store):
     store.save_anlagen(700, [{"document_id": 95, "url": "u", "label": "Antrag der CDU-Fraktion",
                               "is_motion": 1, "applicants": ["CDU"], "status": "ok"}])
     stats = store.antrag_stats()
-    assert stats["parties"] == [{"party": "CDU", "n": 1, "accepted": 1, "rejected": 0}]
+    assert stats["parties"] == [{"party": "CDU", "n": 1, "accepted": 1, "rejected": 0,
+                                 "angenommen": 1, "abgelehnt": 0}]  # alte Namen: ausgelieferte iOS-App
 
 
 def test_fts_includes_antrag_text(store):

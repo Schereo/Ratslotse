@@ -2222,6 +2222,9 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 s[decision["outcome"]] += 1
 
         stats = sorted(per_party.values(), key=lambda s: (-s["n"], order_key(s["party"])))
+        for s in stats:
+            # Für die ausgelieferte iOS-App (s. ``party_analysis``): die alten Namen daneben.
+            s["angenommen"], s["abgelehnt"] = s["accepted"], s["rejected"]
         return {
             "parties": stats,
             "n_antraege": len(antraege),
@@ -2802,6 +2805,11 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 "party": p, "motions": party_total[p],
                 "accepted": oc["accepted"], "rejected": oc["rejected"], "postponed": oc["postponed"],
                 "rate": round(oc["accepted"] / decided, 3) if decided else None,
+                # Die ausgelieferte iOS-App (bis einschließlich Build 22) liest die deutschen
+                # Namen, und zwar nicht optional: Ohne sie kippt dort der Decode der GANZEN
+                # Analyse („unerwartetes Format“) — so stand es von 09/2026 bis 11/2026.
+                # Die drei Felder gehen, sobald APP_MIN_BUILD über dem Build mit der Korrektur liegt.
+                "angenommen": oc["accepted"], "abgelehnt": oc["rejected"], "vertagt": oc["postponed"],
             })
         success.sort(key=lambda s: s["motions"], reverse=True)
 

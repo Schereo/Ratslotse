@@ -8327,6 +8327,53 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** AnalysisAlliance */
+        AnalysisAlliance: {
+            /** A */
+            a: string;
+            /** B */
+            b: string;
+            /** Count */
+            count: number;
+        };
+        /** AnalysisApplicationParty */
+        AnalysisApplicationParty: {
+            /** Abgelehnt */
+            abgelehnt: number;
+            /** Accepted */
+            accepted: number;
+            /** Angenommen */
+            angenommen: number;
+            /** N */
+            n: number;
+            /** Party */
+            party: string;
+            /** Rejected */
+            rejected: number;
+        };
+        /**
+         * AnalysisApplicationStats
+         * @description Erfolgsquoten der eingereichten Antragsdokumente (``CouncilStore.antrag_stats``).
+         */
+        AnalysisApplicationStats: {
+            /** N Antraege */
+            n_antraege: number;
+            /** N Mit Beschluss */
+            n_mit_beschluss: number;
+            /** Parties */
+            parties: components["schemas"]["AnalysisApplicationParty"][];
+        };
+        /** AnalysisContention */
+        AnalysisContention: {
+            /** Contested */
+            contested: number;
+            /** Contested Rate */
+            contested_rate: number;
+            /** Field */
+            field: string;
+            /** Total */
+            total: number;
+        };
         /** AnalysisCoverage */
         AnalysisCoverage: {
             /** Total */
@@ -8336,27 +8383,65 @@ export interface components {
         };
         /**
          * AnalysisData
-         * @description ``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind
-         *     verschachtelte Auswertungen und bleiben offen.
+         * @description ``CouncilStore.party_analysis``.
+         *
+         *     Bis 11/2026 standen die Innereien als ``Any`` im Vertrag. Genau darum blieb
+         *     unbemerkt, dass die iOS-App ``angenommen``/``abgelehnt``/``vertagt`` las,
+         *     während der Server seit 09/2026 ``accepted``/``rejected``/``postponed``
+         *     sendet: Die Analyse-Seite der App zeigte nur noch „unerwartetes Format“,
+         *     und ``scripts/ios_vertrag.py`` hatte nichts, wogegen es hätte prüfen können.
          */
         AnalysisData: {
             /** Alliances */
-            alliances: unknown;
-            /** Antrag Stats */
-            antrag_stats: unknown;
+            alliances: components["schemas"]["AnalysisAlliance"][];
+            antrag_stats: components["schemas"]["AnalysisApplicationStats"];
             /** Contention */
-            contention: unknown;
+            contention: components["schemas"]["AnalysisContention"][];
             coverage: components["schemas"]["AnalysisCoverage"];
             /** Field Labels */
             field_labels: {
                 [key: string]: string;
             };
             /** Success Rates */
-            success_rates: unknown;
-            /** Topic Matrix */
-            topic_matrix: {
-                [key: string]: unknown;
+            success_rates: components["schemas"]["AnalysisSuccessRate"][];
+            topic_matrix: components["schemas"]["AnalysisTopicMatrix"];
+        };
+        /**
+         * AnalysisSuccessRate
+         * @description Erfolgsquote der Anträge einer Partei.
+         */
+        AnalysisSuccessRate: {
+            /** Abgelehnt */
+            abgelehnt: number;
+            /** Accepted */
+            accepted: number;
+            /** Angenommen */
+            angenommen: number;
+            /** Motions */
+            motions: number;
+            /** Party */
+            party: string;
+            /** Postponed */
+            postponed: number;
+            /** Rate */
+            rate: number | null;
+            /** Rejected */
+            rejected: number;
+            /** Vertagt */
+            vertagt: number;
+        };
+        /** AnalysisTopicMatrix */
+        AnalysisTopicMatrix: {
+            /** Fields */
+            fields: string[];
+            /** Matrix */
+            matrix: {
+                [key: string]: {
+                    [key: string]: number;
+                };
             };
+            /** Parties */
+            parties: string[];
         };
         /**
          * AppConfigOut
@@ -28259,4 +28344,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 92ad09df9b9f037cfdd4a11710776a64c64d817e1ebcd7991e67ad2c91af1a0a
+// vertrag-sha256: 7b8f08478997e3a9206d5a69eadf49de40aab0379e15dcd304eba69e61c04002
