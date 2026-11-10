@@ -3678,6 +3678,122 @@
         "title": "AgendaItemRow",
         "type": "object"
       },
+      "AnalysisAlliance": {
+        "properties": {
+          "a": {
+            "title": "A",
+            "type": "string"
+          },
+          "b": {
+            "title": "B",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "count"
+        ],
+        "title": "AnalysisAlliance",
+        "type": "object"
+      },
+      "AnalysisApplicationParty": {
+        "properties": {
+          "abgelehnt": {
+            "title": "Abgelehnt",
+            "type": "integer"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "angenommen": {
+            "title": "Angenommen",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "party",
+          "n",
+          "accepted",
+          "rejected",
+          "angenommen",
+          "abgelehnt"
+        ],
+        "title": "AnalysisApplicationParty",
+        "type": "object"
+      },
+      "AnalysisApplicationStats": {
+        "description": "Erfolgsquoten der eingereichten Antragsdokumente (``CouncilStore.antrag_stats``).",
+        "properties": {
+          "n_antraege": {
+            "title": "N Antraege",
+            "type": "integer"
+          },
+          "n_mit_beschluss": {
+            "title": "N Mit Beschluss",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/AnalysisApplicationParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parties",
+          "n_antraege",
+          "n_mit_beschluss"
+        ],
+        "title": "AnalysisApplicationStats",
+        "type": "object"
+      },
+      "AnalysisContention": {
+        "properties": {
+          "contested": {
+            "title": "Contested",
+            "type": "integer"
+          },
+          "contested_rate": {
+            "title": "Contested Rate",
+            "type": "number"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "field",
+          "total",
+          "contested",
+          "contested_rate"
+        ],
+        "title": "AnalysisContention",
+        "type": "object"
+      },
       "AnalysisCoverage": {
         "properties": {
           "total": {
@@ -3697,16 +3813,24 @@
         "type": "object"
       },
       "AnalysisData": {
-        "description": "``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind\nverschachtelte Auswertungen und bleiben offen.",
+        "description": "``CouncilStore.party_analysis``.\n\nBis 11/2026 standen die Innereien als ``Any`` im Vertrag. Genau darum blieb\nunbemerkt, dass die iOS-App ``angenommen``/``abgelehnt``/``vertagt`` las,\nwährend der Server seit 09/2026 ``accepted``/``rejected``/``postponed``\nsendet: Die Analyse-Seite der App zeigte nur noch „unerwartetes Format“,\nund ``scripts/ios_vertrag.py`` hatte nichts, wogegen es hätte prüfen können.",
         "properties": {
           "alliances": {
-            "title": "Alliances"
+            "items": {
+              "$ref": "#/components/schemas/AnalysisAlliance"
+            },
+            "title": "Alliances",
+            "type": "array"
           },
           "antrag_stats": {
-            "title": "Antrag Stats"
+            "$ref": "#/components/schemas/AnalysisApplicationStats"
           },
           "contention": {
-            "title": "Contention"
+            "items": {
+              "$ref": "#/components/schemas/AnalysisContention"
+            },
+            "title": "Contention",
+            "type": "array"
           },
           "coverage": {
             "$ref": "#/components/schemas/AnalysisCoverage"
@@ -3719,12 +3843,14 @@
             "type": "object"
           },
           "success_rates": {
-            "title": "Success Rates"
+            "items": {
+              "$ref": "#/components/schemas/AnalysisSuccessRate"
+            },
+            "title": "Success Rates",
+            "type": "array"
           },
           "topic_matrix": {
-            "additionalProperties": true,
-            "title": "Topic Matrix",
-            "type": "object"
+            "$ref": "#/components/schemas/AnalysisTopicMatrix"
           }
         },
         "required": [
@@ -3737,6 +3863,98 @@
           "antrag_stats"
         ],
         "title": "AnalysisData",
+        "type": "object"
+      },
+      "AnalysisSuccessRate": {
+        "description": "Erfolgsquote der Anträge einer Partei.",
+        "properties": {
+          "abgelehnt": {
+            "title": "Abgelehnt",
+            "type": "integer"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "angenommen": {
+            "title": "Angenommen",
+            "type": "integer"
+          },
+          "motions": {
+            "title": "Motions",
+            "type": "integer"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "postponed": {
+            "title": "Postponed",
+            "type": "integer"
+          },
+          "rate": {
+            "title": "Rate",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "vertagt": {
+            "title": "Vertagt",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "party",
+          "motions",
+          "accepted",
+          "rejected",
+          "postponed",
+          "rate",
+          "angenommen",
+          "abgelehnt",
+          "vertagt"
+        ],
+        "title": "AnalysisSuccessRate",
+        "type": "object"
+      },
+      "AnalysisTopicMatrix": {
+        "properties": {
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "matrix": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "title": "Matrix",
+            "type": "object"
+          },
+          "parties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parties",
+          "fields",
+          "matrix"
+        ],
+        "title": "AnalysisTopicMatrix",
         "type": "object"
       },
       "AppConfigOut": {
@@ -9573,6 +9791,58 @@
         "title": "DistrictParticipation",
         "type": "object"
       },
+      "DistrictPlan": {
+        "description": "Ein laufender oder entstehender Plan mit mindestens einem Ort in diesem Ortsbereich.",
+        "properties": {
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "place_count": {
+            "title": "Place Count",
+            "type": "integer"
+          },
+          "places": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "via_measures": {
+            "title": "Via Measures",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "field_label",
+          "status",
+          "status_label",
+          "places",
+          "place_count",
+          "via_measures"
+        ],
+        "title": "DistrictPlan",
+        "type": "object"
+      },
       "DistrictPlanInfo": {
         "description": "Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und\ndie Stationen des Verfahrens aus den offenen Geodaten der Stadt.",
         "properties": {
@@ -10070,6 +10340,13 @@
           },
           "place": {
             "title": "Place"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictPlan"
+            },
+            "title": "Plans",
+            "type": "array"
           },
           "press": {
             "items": {
@@ -15104,6 +15381,48 @@
         "title": "Idea",
         "type": "object"
       },
+      "IdeaBlockedCity": {
+        "description": "Eine Stadt, die uns bei der letzten Ernte nicht alles herausgab.\n\nWas schon vorliegt, bleibt auf der Seite — die Zeile sagt nur, warum\nnichts Neues dazukommt.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "latest_paper": {
+            "title": "Latest Paper",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "documents_blocked",
+              "blocked",
+              "paused"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body_id",
+          "city",
+          "status",
+          "since",
+          "latest_paper"
+        ],
+        "title": "IdeaBlockedCity",
+        "type": "object"
+      },
       "IdeaDataStatus": {
         "description": "Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ\" auf der Seite.\n\n**Der älteste Abgleich, nicht der jüngste.** Steht über der Seite ein\nDatum, liest man es als „bis dahin ist alles drin\"; das stimmt nur für\ndas früheste der Städte.",
         "properties": {
@@ -15113,6 +15432,13 @@
               "string",
               "null"
             ]
+          },
+          "blocked": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaBlockedCity"
+            },
+            "title": "Blocked",
+            "type": "array"
           },
           "lagging": {
             "items": {
@@ -15124,7 +15450,8 @@
         },
         "required": [
           "as_of",
-          "lagging"
+          "lagging",
+          "blocked"
         ],
         "title": "IdeaDataStatus",
         "type": "object"
@@ -17823,6 +18150,10 @@
             "title": "Count",
             "type": "integer"
           },
+          "date_from": {
+            "title": "Date From",
+            "type": "string"
+          },
           "kind": {
             "const": "count",
             "title": "Kind",
@@ -19080,6 +19411,4780 @@
           "url"
         ],
         "title": "PlaceSource",
+        "type": "object"
+      },
+      "PlanAxis": {
+        "description": "Die gemeinsame Zeitachse der Übersicht: Beginn des Bestands bis zehn Jahre nach vorn.",
+        "properties": {
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "fade": {
+            "title": "Fade",
+            "type": "number"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "ticks": {
+            "items": {
+              "$ref": "#/components/schemas/PlanAxisTick"
+            },
+            "title": "Ticks",
+            "type": "array"
+          },
+          "today": {
+            "title": "Today",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "today",
+          "ticks",
+          "fade"
+        ],
+        "title": "PlanAxis",
+        "type": "object"
+      },
+      "PlanAxisTick": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "x"
+        ],
+        "title": "PlanAxisTick",
+        "type": "object"
+      },
+      "PlanBand": {
+        "description": "Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).\n\nKEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.",
+        "properties": {
+          "beyond": {
+            "title": "Beyond",
+            "type": "boolean"
+          },
+          "open_end": {
+            "title": "Open End",
+            "type": "boolean"
+          },
+          "open_start": {
+            "title": "Open Start",
+            "type": "boolean"
+          },
+          "x0": {
+            "title": "X0",
+            "type": "number"
+          },
+          "x1": {
+            "title": "X1",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x0",
+          "x1",
+          "open_start",
+          "beyond",
+          "open_end"
+        ],
+        "title": "PlanBand",
+        "type": "object"
+      },
+      "PlanBrief": {
+        "description": "Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "heading",
+          "purpose",
+          "points",
+          "count"
+        ],
+        "title": "PlanBrief",
+        "type": "object"
+      },
+      "PlanBudget": {
+        "description": "``GET /api/council/budget/plan/{key}`` — nur mit dem Recht ``budget``.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlanBudgetItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "note"
+        ],
+        "title": "PlanBudget",
+        "type": "object"
+      },
+      "PlanBudgetAmount": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "PlanBudgetAmount",
+        "type": "object"
+      },
+      "PlanBudgetItem": {
+        "description": "Ein Haushaltsposten, dessen eigener Text den Plan nennt.",
+        "properties": {
+          "amounts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanBudgetAmount"
+            },
+            "title": "Amounts",
+            "type": "array"
+          },
+          "context": {
+            "title": "Context",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "product",
+              "investment",
+              "change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "since": {
+            "title": "Since",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "number",
+          "context",
+          "quote",
+          "amounts",
+          "since",
+          "source_url"
+        ],
+        "title": "PlanBudgetItem",
+        "type": "object"
+      },
+      "PlanCard": {
+        "description": "Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).",
+        "properties": {
+          "adopted_on": {
+            "title": "Adopted On",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "adoption_mode": {
+            "enum": [
+              "adopted",
+              "noted"
+            ],
+            "title": "Adoption Mode",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "brief": {
+            "description": "Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.",
+            "properties": {
+              "count": {
+                "title": "Count",
+                "type": "integer"
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "points": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Points",
+                "type": "array"
+              },
+              "purpose": {
+                "title": "Purpose",
+                "type": "string"
+              }
+            },
+            "required": [
+              "heading",
+              "purpose",
+              "points",
+              "count"
+            ],
+            "title": "PlanBrief",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "ends_in": {
+            "title": "Ends In",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_on": {
+            "title": "Ends On",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "group": {
+            "enum": [
+              "running",
+              "preparing",
+              "ended"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kicker": {
+            "title": "Kicker",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "action",
+              "framework",
+              "statutory",
+              "reference"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "lane": {
+            "$ref": "#/components/schemas/PlanLane"
+          },
+          "latest_report": {
+            "description": "Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "decision_id": {
+                "title": "Decision Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "oral": {
+                "title": "Oral",
+                "type": "boolean"
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "date",
+              "committee",
+              "oral",
+              "template_number",
+              "decision_id"
+            ],
+            "title": "PlanReport",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "measure_count": {
+            "title": "Measure Count",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "office": {
+            "title": "Office",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": "string"
+          },
+          "report_caveat": {
+            "title": "Report Caveat",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "report_note": {
+            "title": "Report Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "report_state": {
+            "$ref": "#/components/schemas/PlanReportState"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "preparing",
+              "superseded",
+              "concluded",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_brief": {
+            "description": "Die jüngste Verteilung laut Stadt, für die Übersicht.",
+            "properties": {
+              "as_of": {
+                "title": "As Of",
+                "type": "string"
+              },
+              "as_of_label": {
+                "title": "As Of Label",
+                "type": "string"
+              },
+              "complete": {
+                "title": "Complete",
+                "type": "boolean"
+              },
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusCount"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "origin_label": {
+                "title": "Origin Label",
+                "type": "string"
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "as_of",
+              "as_of_label",
+              "origin_label",
+              "total",
+              "complete",
+              "counts"
+            ],
+            "title": "PlanStatusBrief",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "successor": {
+            "properties": {
+              "adopted": {
+                "title": "Adopted",
+                "type": "boolean"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "title",
+              "adopted"
+            ],
+            "title": "PlanNeighbour",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "timing": {
+            "title": "Timing",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "office",
+          "kind",
+          "kind_label",
+          "policy_field",
+          "field_label",
+          "kicker",
+          "timing",
+          "status",
+          "status_label",
+          "group",
+          "adoption_mode",
+          "latest_report",
+          "report_note",
+          "report_caveat",
+          "lane",
+          "report_count",
+          "successor",
+          "measure_count",
+          "report_state",
+          "status_brief",
+          "brief",
+          "ends_in",
+          "ends_on",
+          "adopted_on"
+        ],
+        "title": "PlanCard",
+        "type": "object"
+      },
+      "PlanCityStatus": {
+        "description": "Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "counts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusCount"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "movement": {
+            "description": "Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.",
+            "properties": {
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusMove"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "since": {
+                "title": "Since",
+                "type": "string"
+              },
+              "since_label": {
+                "title": "Since Label",
+                "type": "string"
+              },
+              "total_before": {
+                "title": "Total Before",
+                "type": "integer"
+              },
+              "total_delta": {
+                "title": "Total Delta",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "since",
+              "since_label",
+              "total_before",
+              "total_delta",
+              "counts"
+            ],
+            "title": "PlanStatusMovement",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "origin_label": {
+            "title": "Origin Label",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusSnapshot"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "as_of_label",
+          "origin_label",
+          "total",
+          "complete",
+          "counts",
+          "source_label",
+          "source_url",
+          "template_number",
+          "confirmed",
+          "movement",
+          "series",
+          "notes"
+        ],
+        "title": "PlanCityStatus",
+        "type": "object"
+      },
+      "PlanContent": {
+        "description": "Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg\n(``council/plan_key_points/<key>.json``), nach Art gegliedert.",
+        "properties": {
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanContentGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/PlanContentStatement"
+          }
+        },
+        "required": [
+          "heading",
+          "as_of_label",
+          "purpose",
+          "groups",
+          "count",
+          "note"
+        ],
+        "title": "PlanContent",
+        "type": "object"
+      },
+      "PlanContentDue": {
+        "description": "Der Termin, den der Kernpunkt nennt.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "label"
+        ],
+        "title": "PlanContentDue",
+        "type": "object"
+      },
+      "PlanContentFigure": {
+        "description": "Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "PlanContentFigure",
+        "type": "object"
+      },
+      "PlanContentGroup": {
+        "description": "Kernpunkte einer Art: Ziele, Zahlen (als Kacheln), Regeln, Vorhaben und Termine.",
+        "properties": {
+          "key": {
+            "enum": [
+              "goals",
+              "figures",
+              "rules",
+              "steps"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "layout": {
+            "enum": [
+              "list",
+              "tiles"
+            ],
+            "title": "Layout",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PlanContentStatement"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "layout",
+          "points"
+        ],
+        "title": "PlanContentGroup",
+        "type": "object"
+      },
+      "PlanContentSource": {
+        "description": "Wo ein Kernpunkt steht: Beschlusstext, Vorlage oder Anlage (mit Seite).",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_label": {
+            "title": "Date Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "decision",
+              "template",
+              "attachment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "label",
+          "template_number",
+          "page",
+          "date",
+          "date_label",
+          "decision_id",
+          "url"
+        ],
+        "title": "PlanContentSource",
+        "type": "object"
+      },
+      "PlanContentStatement": {
+        "properties": {
+          "amended": {
+            "title": "Amended",
+            "type": "boolean"
+          },
+          "due": {
+            "description": "Der Termin, den der Kernpunkt nennt.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "label": {
+                "title": "Label",
+                "type": "string"
+              }
+            },
+            "required": [
+              "date",
+              "label"
+            ],
+            "title": "PlanContentDue",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "figure": {
+            "description": "Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.",
+            "properties": {
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "label"
+            ],
+            "title": "PlanContentFigure",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "index": {
+            "title": "Index",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "goal",
+              "standard",
+              "figure",
+              "responsibility",
+              "deadline",
+              "measure"
+            ],
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/PlanContentSource"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "quote",
+          "source",
+          "amended",
+          "index",
+          "kind",
+          "tag",
+          "figure",
+          "due"
+        ],
+        "title": "PlanContentStatement",
+        "type": "object"
+      },
+      "PlanDecisionEntry": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "deliberations": {
+            "title": "Deliberations",
+            "type": "integer"
+          },
+          "measure_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Measure Codes",
+            "type": "array"
+          },
+          "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision",
+              "settled"
+            ],
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "date",
+          "committee",
+          "decision_id",
+          "outcome",
+          "template_number",
+          "deliberations",
+          "measure_codes",
+          "quote"
+        ],
+        "title": "PlanDecisionEntry",
+        "type": "object"
+      },
+      "PlanDecisionGroup": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/PlanDecisionEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "key": {
+            "enum": [
+              "plan",
+              "implementation",
+              "motion",
+              "decision",
+              "mentions",
+              "measures",
+              "judged"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "entries"
+        ],
+        "title": "PlanDecisionGroup",
+        "type": "object"
+      },
+      "PlanDecisionRef": {
+        "description": "Ein Beschluss über den Plan selbst, wie ihn das Register nennt.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode": {
+            "enum": [
+              "adopted",
+              "noted"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision",
+              "settled"
+            ],
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "committee",
+          "mode",
+          "label",
+          "template_number",
+          "kvonr",
+          "url",
+          "decision_id",
+          "outcome",
+          "vote"
+        ],
+        "title": "PlanDecisionRef",
+        "type": "object"
+      },
+      "PlanDetail": {
+        "properties": {
+          "adopted_on": {
+            "title": "Adopted On",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "adoption": {
+            "description": "Ein Beschluss über den Plan selbst, wie ihn das Register nennt.",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": "string"
+              },
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "decision_id": {
+                "title": "Decision Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "label": {
+                "title": "Label",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mode": {
+                "enum": [
+                  "adopted",
+                  "noted"
+                ],
+                "title": "Mode",
+                "type": "string"
+              },
+              "outcome": {
+                "enum": [
+                  "accepted",
+                  "rejected",
+                  "postponed",
+                  "noted",
+                  "no_decision",
+                  "settled"
+                ],
+                "title": "Outcome",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vote": {
+                "title": "Vote",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "date",
+              "committee",
+              "mode",
+              "label",
+              "template_number",
+              "kvonr",
+              "url",
+              "decision_id",
+              "outcome",
+              "vote"
+            ],
+            "title": "PlanDecisionRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "adoption_mode": {
+            "enum": [
+              "adopted",
+              "noted"
+            ],
+            "title": "Adoption Mode",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "brief": {
+            "description": "Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.",
+            "properties": {
+              "count": {
+                "title": "Count",
+                "type": "integer"
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "points": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Points",
+                "type": "array"
+              },
+              "purpose": {
+                "title": "Purpose",
+                "type": "string"
+              }
+            },
+            "required": [
+              "heading",
+              "purpose",
+              "points",
+              "count"
+            ],
+            "title": "PlanBrief",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "city_status": {
+            "description": "Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).",
+            "properties": {
+              "as_of": {
+                "title": "As Of",
+                "type": "string"
+              },
+              "as_of_label": {
+                "title": "As Of Label",
+                "type": "string"
+              },
+              "complete": {
+                "title": "Complete",
+                "type": "boolean"
+              },
+              "confirmed": {
+                "title": "Confirmed",
+                "type": "boolean"
+              },
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusCount"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "movement": {
+                "description": "Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.",
+                "properties": {
+                  "counts": {
+                    "items": {
+                      "$ref": "#/components/schemas/PlanStatusMove"
+                    },
+                    "title": "Counts",
+                    "type": "array"
+                  },
+                  "since": {
+                    "title": "Since",
+                    "type": "string"
+                  },
+                  "since_label": {
+                    "title": "Since Label",
+                    "type": "string"
+                  },
+                  "total_before": {
+                    "title": "Total Before",
+                    "type": "integer"
+                  },
+                  "total_delta": {
+                    "title": "Total Delta",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "since",
+                  "since_label",
+                  "total_before",
+                  "total_delta",
+                  "counts"
+                ],
+                "title": "PlanStatusMovement",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "notes": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusNote"
+                },
+                "title": "Notes",
+                "type": "array"
+              },
+              "origin_label": {
+                "title": "Origin Label",
+                "type": "string"
+              },
+              "series": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusSnapshot"
+                },
+                "title": "Series",
+                "type": "array"
+              },
+              "source_label": {
+                "title": "Source Label",
+                "type": "string"
+              },
+              "source_url": {
+                "title": "Source Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "as_of",
+              "as_of_label",
+              "origin_label",
+              "total",
+              "complete",
+              "counts",
+              "source_label",
+              "source_url",
+              "template_number",
+              "confirmed",
+              "movement",
+              "series",
+              "notes"
+            ],
+            "title": "PlanCityStatus",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "commissioned": {
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "template_number",
+              "title",
+              "kvonr",
+              "url",
+              "date"
+            ],
+            "title": "PlanTemplateRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "concluded": {
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "template_number",
+              "title",
+              "kvonr",
+              "url",
+              "date"
+            ],
+            "title": "PlanTemplateRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "content": {
+            "description": "Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg\n(``council/plan_key_points/<key>.json``), nach Art gegliedert.",
+            "properties": {
+              "as_of_label": {
+                "title": "As Of Label",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "count": {
+                "title": "Count",
+                "type": "integer"
+              },
+              "groups": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanContentGroup"
+                },
+                "title": "Groups",
+                "type": "array"
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "note": {
+                "title": "Note",
+                "type": "string"
+              },
+              "purpose": {
+                "$ref": "#/components/schemas/PlanContentStatement"
+              }
+            },
+            "required": [
+              "heading",
+              "as_of_label",
+              "purpose",
+              "groups",
+              "count",
+              "note"
+            ],
+            "title": "PlanContent",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "decision_groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanDecisionGroup"
+            },
+            "title": "Decision Groups",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/PlanDecisionRef"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "end": {
+            "title": "End",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "end_label": {
+            "title": "End Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_in": {
+            "title": "Ends In",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_on": {
+            "title": "Ends On",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "goal": {
+            "title": "Goal",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "group": {
+            "enum": [
+              "running",
+              "preparing",
+              "ended"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "horizon_note": {
+            "title": "Horizon Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/PlanIndicator"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kicker": {
+            "title": "Kicker",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "action",
+              "framework",
+              "statutory",
+              "reference"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "kind_label": {
+            "title": "Kind Label",
+            "type": "string"
+          },
+          "lane": {
+            "$ref": "#/components/schemas/PlanLane"
+          },
+          "latest_report": {
+            "description": "Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).",
+            "properties": {
+              "committee": {
+                "title": "Committee",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "decision_id": {
+                "title": "Decision Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "oral": {
+                "title": "Oral",
+                "type": "boolean"
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "date",
+              "committee",
+              "oral",
+              "template_number",
+              "decision_id"
+            ],
+            "title": "PlanReport",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "measure_count": {
+            "title": "Measure Count",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "measures": {
+            "description": "Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).",
+            "properties": {
+              "count": {
+                "title": "Count",
+                "type": "integer"
+              },
+              "count_city": {
+                "title": "Count City",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "count_note": {
+                "title": "Count Note",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "groups": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanMeasureGroup"
+                },
+                "title": "Groups",
+                "type": "array"
+              },
+              "source": {
+                "$ref": "#/components/schemas/PlanMeasureSource"
+              },
+              "status_as_of_label": {
+                "title": "Status As Of Label",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status_by_model": {
+                "title": "Status By Model",
+                "type": "boolean"
+              },
+              "status_count": {
+                "title": "Status Count",
+                "type": "integer"
+              },
+              "status_template": {
+                "title": "Status Template",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "count",
+              "count_city",
+              "count_note",
+              "status_count",
+              "status_as_of_label",
+              "status_template",
+              "status_by_model",
+              "source",
+              "groups"
+            ],
+            "title": "PlanMeasures",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "news": {
+            "description": "Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.",
+            "properties": {
+              "decision_id": {
+                "title": "Decision Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "from_date_label": {
+                "title": "From Date Label",
+                "type": "string"
+              },
+              "items": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanQuoted"
+                },
+                "title": "Items",
+                "type": "array"
+              },
+              "note": {
+                "title": "Note",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "to_date": {
+                "title": "To Date",
+                "type": "string"
+              },
+              "to_date_label": {
+                "title": "To Date Label",
+                "type": "string"
+              },
+              "to_template": {
+                "title": "To Template",
+                "type": "string"
+              }
+            },
+            "required": [
+              "to_template",
+              "to_date",
+              "to_date_label",
+              "from_date_label",
+              "title",
+              "decision_id",
+              "items",
+              "note"
+            ],
+            "title": "PlanNews",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "office": {
+            "title": "Office",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "oral_report_count": {
+            "title": "Oral Report Count",
+            "type": "integer"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "places": {
+            "description": "Die Karte zum Plan — ab drei Orten.",
+            "properties": {
+              "decision_places": {
+                "title": "Decision Places",
+                "type": "integer"
+              },
+              "items": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanPlace"
+                },
+                "title": "Items",
+                "type": "array"
+              },
+              "measure_places": {
+                "title": "Measure Places",
+                "type": "integer"
+              },
+              "measures_named": {
+                "title": "Measures Named",
+                "type": "integer"
+              },
+              "measures_total": {
+                "title": "Measures Total",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "note": {
+                "title": "Note",
+                "type": "string"
+              }
+            },
+            "required": [
+              "items",
+              "measure_places",
+              "measures_named",
+              "measures_total",
+              "decision_places",
+              "note"
+            ],
+            "title": "PlanPlaces",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "plain": {
+            "description": "Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.",
+            "properties": {
+              "note": {
+                "title": "Note",
+                "type": "string"
+              },
+              "questions": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Questions",
+                "type": "array"
+              },
+              "sentences": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Sentences",
+                "type": "array"
+              }
+            },
+            "required": [
+              "sentences",
+              "questions",
+              "note"
+            ],
+            "title": "PlanPlain",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": "string"
+          },
+          "predecessor": {
+            "properties": {
+              "adopted": {
+                "title": "Adopted",
+                "type": "boolean"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "title",
+              "adopted"
+            ],
+            "title": "PlanNeighbour",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/PlanRelated"
+            },
+            "title": "Related",
+            "type": "array"
+          },
+          "remaining": {
+            "properties": {
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "title": "PlanFact",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "report_caveat": {
+            "title": "Report Caveat",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "report_note": {
+            "title": "Report Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "report_state": {
+            "$ref": "#/components/schemas/PlanReportState"
+          },
+          "review": {
+            "description": "Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.",
+            "properties": {
+              "continued_by": {
+                "properties": {
+                  "adopted": {
+                    "title": "Adopted",
+                    "type": "boolean"
+                  },
+                  "key": {
+                    "title": "Key",
+                    "type": "string"
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key",
+                  "title",
+                  "adopted"
+                ],
+                "title": "PlanNeighbour",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "evaluation": {
+                "properties": {
+                  "date": {
+                    "title": "Date",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "kvonr": {
+                    "title": "Kvonr",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "template_number": {
+                    "title": "Template Number",
+                    "type": "string"
+                  },
+                  "title": {
+                    "title": "Title",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "title": "Url",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "template_number",
+                  "title",
+                  "kvonr",
+                  "url",
+                  "date"
+                ],
+                "title": "PlanTemplateRef",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "has_status": {
+                "title": "Has Status",
+                "type": "boolean"
+              },
+              "no_evaluation_note": {
+                "title": "No Evaluation Note",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "planned": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanFact"
+                },
+                "title": "Planned",
+                "type": "array"
+              },
+              "statements": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanReviewStatement"
+                },
+                "title": "Statements",
+                "type": "array"
+              }
+            },
+            "required": [
+              "planned",
+              "evaluation",
+              "no_evaluation_note",
+              "statements",
+              "continued_by",
+              "has_status"
+            ],
+            "title": "PlanReview",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "review_due": {
+            "title": "Review Due",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "review_label": {
+            "title": "Review Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "runway": {
+            "description": "Das Zeitband der Detailseite: eine eigene Achse je Plan.",
+            "properties": {
+              "archive_from": {
+                "title": "Archive From",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "band": {
+                "description": "Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).\n\nKEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.",
+                "properties": {
+                  "beyond": {
+                    "title": "Beyond",
+                    "type": "boolean"
+                  },
+                  "open_end": {
+                    "title": "Open End",
+                    "type": "boolean"
+                  },
+                  "open_start": {
+                    "title": "Open Start",
+                    "type": "boolean"
+                  },
+                  "x0": {
+                    "title": "X0",
+                    "type": "number"
+                  },
+                  "x1": {
+                    "title": "X1",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x0",
+                  "x1",
+                  "open_start",
+                  "beyond",
+                  "open_end"
+                ],
+                "title": "PlanBand",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "dues": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanRunwayDue"
+                },
+                "title": "Dues",
+                "type": "array"
+              },
+              "end": {
+                "title": "End",
+                "type": "string"
+              },
+              "marks": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanRunwayMark"
+                },
+                "title": "Marks",
+                "type": "array"
+              },
+              "review": {
+                "properties": {
+                  "label": {
+                    "title": "Label",
+                    "type": "string"
+                  },
+                  "x": {
+                    "title": "X",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "label"
+                ],
+                "title": "PlanRunwayPoint",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "start": {
+                "title": "Start",
+                "type": "string"
+              },
+              "style": {
+                "enum": [
+                  "adopted",
+                  "noted",
+                  "preparing"
+                ],
+                "title": "Style",
+                "type": "string"
+              },
+              "ticks": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanAxisTick"
+                },
+                "title": "Ticks",
+                "type": "array"
+              },
+              "today": {
+                "title": "Today",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "start",
+              "end",
+              "ticks",
+              "today",
+              "style",
+              "band",
+              "marks",
+              "review",
+              "dues",
+              "archive_from"
+            ],
+            "title": "PlanRunway",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/PlanSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "since": {
+            "properties": {
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "title": "PlanFact",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "source": {
+            "enum": [
+              "council",
+              "website"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "start_label": {
+            "title": "Start Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "running",
+              "preparing",
+              "superseded",
+              "concluded",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_brief": {
+            "description": "Die jüngste Verteilung laut Stadt, für die Übersicht.",
+            "properties": {
+              "as_of": {
+                "title": "As Of",
+                "type": "string"
+              },
+              "as_of_label": {
+                "title": "As Of Label",
+                "type": "string"
+              },
+              "complete": {
+                "title": "Complete",
+                "type": "boolean"
+              },
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusCount"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "origin_label": {
+                "title": "Origin Label",
+                "type": "string"
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "as_of",
+              "as_of_label",
+              "origin_label",
+              "total",
+              "complete",
+              "counts"
+            ],
+            "title": "PlanStatusBrief",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "successor": {
+            "properties": {
+              "adopted": {
+                "title": "Adopted",
+                "type": "boolean"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "title",
+              "adopted"
+            ],
+            "title": "PlanNeighbour",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "timeline": {
+            "$ref": "#/components/schemas/PlanTimeline"
+          },
+          "timing": {
+            "title": "Timing",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "website": {
+            "title": "Website",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "office",
+          "kind",
+          "kind_label",
+          "policy_field",
+          "field_label",
+          "kicker",
+          "timing",
+          "status",
+          "status_label",
+          "group",
+          "adoption_mode",
+          "latest_report",
+          "report_note",
+          "report_caveat",
+          "lane",
+          "report_count",
+          "successor",
+          "measure_count",
+          "report_state",
+          "status_brief",
+          "brief",
+          "ends_in",
+          "ends_on",
+          "adopted_on",
+          "note",
+          "owner",
+          "source",
+          "start",
+          "end",
+          "start_label",
+          "end_label",
+          "horizon_note",
+          "review_due",
+          "review_label",
+          "adoption",
+          "decisions",
+          "commissioned",
+          "concluded",
+          "predecessor",
+          "content",
+          "plain",
+          "news",
+          "related",
+          "places",
+          "measures",
+          "city_status",
+          "indicators",
+          "review",
+          "website",
+          "timeline",
+          "runway",
+          "since",
+          "remaining",
+          "oral_report_count",
+          "decision_groups",
+          "goal",
+          "sections"
+        ],
+        "title": "PlanDetail",
+        "type": "object"
+      },
+      "PlanFact": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "PlanFact",
+        "type": "object"
+      },
+      "PlanFieldCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "count"
+        ],
+        "title": "PlanFieldCount",
+        "type": "object"
+      },
+      "PlanFollowUp": {
+        "description": "Ein Plan, zu dem kein aktueller Bericht zu finden ist (Plan § 3.5): eine Tatsache, keine Wertung.",
+        "properties": {
+          "fact": {
+            "title": "Fact",
+            "type": "string"
+          },
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "last_report": {
+            "title": "Last Report",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policy_field": {
+            "title": "Policy Field",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "continued",
+              "in_preparation",
+              "evaluated",
+              "expired_no_evaluation",
+              "reported",
+              "not_yet_due",
+              "no_report_found"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "policy_field",
+          "field_label",
+          "state",
+          "fact",
+          "last_report",
+          "question"
+        ],
+        "title": "PlanFollowUp",
+        "type": "object"
+      },
+      "PlanGroup": {
+        "properties": {
+          "key": {
+            "enum": [
+              "running",
+              "preparing",
+              "ended"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PlanCard"
+            },
+            "title": "Plans",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "plans"
+        ],
+        "title": "PlanGroup",
+        "type": "object"
+      },
+      "PlanIndicator": {
+        "description": "Eine Kennzahl neben dem Plan — nicht sein Ergebnis (Plan § 3.4 Nr. 4).",
+        "properties": {
+          "baseline_label": {
+            "title": "Baseline Label",
+            "type": "string"
+          },
+          "baseline_template": {
+            "title": "Baseline Template",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "baseline_value": {
+            "title": "Baseline Value",
+            "type": "number"
+          },
+          "baseline_year": {
+            "title": "Baseline Year",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanIndicatorNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PlanIndicatorRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "unit",
+          "baseline_year",
+          "baseline_value",
+          "baseline_label",
+          "baseline_template",
+          "rows",
+          "notes"
+        ],
+        "title": "PlanIndicator",
+        "type": "object"
+      },
+      "PlanIndicatorNote": {
+        "properties": {
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "template_number"
+        ],
+        "title": "PlanIndicatorNote",
+        "type": "object"
+      },
+      "PlanIndicatorRow": {
+        "properties": {
+          "actual": {
+            "title": "Actual",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "actual_change": {
+            "title": "Actual Change",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "target": {
+            "title": "Target",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "target_change": {
+            "title": "Target Change",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "target_label": {
+            "title": "Target Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "target",
+          "actual",
+          "target_change",
+          "actual_change",
+          "target_label",
+          "template_number"
+        ],
+        "title": "PlanIndicatorRow",
+        "type": "object"
+      },
+      "PlanLane": {
+        "description": "Das Zeitband einer Karte auf der gemeinsamen Achse der Übersicht (``Plans.axis``).",
+        "properties": {
+          "band": {
+            "description": "Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).\n\nKEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.",
+            "properties": {
+              "beyond": {
+                "title": "Beyond",
+                "type": "boolean"
+              },
+              "open_end": {
+                "title": "Open End",
+                "type": "boolean"
+              },
+              "open_start": {
+                "title": "Open Start",
+                "type": "boolean"
+              },
+              "x0": {
+                "title": "X0",
+                "type": "number"
+              },
+              "x1": {
+                "title": "X1",
+                "type": "number"
+              }
+            },
+            "required": [
+              "x0",
+              "x1",
+              "open_start",
+              "beyond",
+              "open_end"
+            ],
+            "title": "PlanBand",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/PlanLaneMark"
+            },
+            "title": "Marks",
+            "type": "array"
+          },
+          "predecessor": {
+            "properties": {
+              "x0": {
+                "title": "X0",
+                "type": "number"
+              },
+              "x1": {
+                "title": "X1",
+                "type": "number"
+              }
+            },
+            "required": [
+              "x0",
+              "x1"
+            ],
+            "title": "PlanSpan",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "review": {
+            "title": "Review",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "style": {
+            "enum": [
+              "adopted",
+              "noted",
+              "preparing"
+            ],
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "style",
+          "band",
+          "marks",
+          "predecessor",
+          "review"
+        ],
+        "title": "PlanLane",
+        "type": "object"
+      },
+      "PlanLaneMark": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "adoption",
+              "amendment",
+              "evaluation",
+              "report",
+              "preparation"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "oral": {
+            "title": "Oral",
+            "type": "boolean"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "date",
+          "kind",
+          "oral"
+        ],
+        "title": "PlanLaneMark",
+        "type": "object"
+      },
+      "PlanMeasure": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "decision_count": {
+            "title": "Decision Count",
+            "type": "integer"
+          },
+          "package": {
+            "title": "Package",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "status_norm": {
+            "enum": [
+              "open",
+              "started",
+              "in_progress",
+              "done",
+              "paused",
+              "unclear"
+            ],
+            "title": "Status Norm",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status_quote": {
+            "title": "Status Quote",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status_raw": {
+            "title": "Status Raw",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "title",
+          "package",
+          "page",
+          "status_raw",
+          "status_norm",
+          "status_quote",
+          "decision_count"
+        ],
+        "title": "PlanMeasure",
+        "type": "object"
+      },
+      "PlanMeasureGroup": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/PlanMeasure"
+            },
+            "title": "Measures",
+            "type": "array"
+          }
+        },
+        "required": [
+          "field",
+          "measures"
+        ],
+        "title": "PlanMeasureGroup",
+        "type": "object"
+      },
+      "PlanMeasureSource": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "template_number",
+          "document_id",
+          "url",
+          "as_of",
+          "as_of_label"
+        ],
+        "title": "PlanMeasureSource",
+        "type": "object"
+      },
+      "PlanMeasures": {
+        "description": "Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "count_city": {
+            "title": "Count City",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "count_note": {
+            "title": "Count Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanMeasureGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "source": {
+            "$ref": "#/components/schemas/PlanMeasureSource"
+          },
+          "status_as_of_label": {
+            "title": "Status As Of Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status_by_model": {
+            "title": "Status By Model",
+            "type": "boolean"
+          },
+          "status_count": {
+            "title": "Status Count",
+            "type": "integer"
+          },
+          "status_template": {
+            "title": "Status Template",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "count",
+          "count_city",
+          "count_note",
+          "status_count",
+          "status_as_of_label",
+          "status_template",
+          "status_by_model",
+          "source",
+          "groups"
+        ],
+        "title": "PlanMeasures",
+        "type": "object"
+      },
+      "PlanNeighbour": {
+        "properties": {
+          "adopted": {
+            "title": "Adopted",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "adopted"
+        ],
+        "title": "PlanNeighbour",
+        "type": "object"
+      },
+      "PlanNews": {
+        "description": "Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.",
+        "properties": {
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "from_date_label": {
+            "title": "From Date Label",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlanQuoted"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "to_date": {
+            "title": "To Date",
+            "type": "string"
+          },
+          "to_date_label": {
+            "title": "To Date Label",
+            "type": "string"
+          },
+          "to_template": {
+            "title": "To Template",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to_template",
+          "to_date",
+          "to_date_label",
+          "from_date_label",
+          "title",
+          "decision_id",
+          "items",
+          "note"
+        ],
+        "title": "PlanNews",
+        "type": "object"
+      },
+      "PlanPlace": {
+        "description": "Ein Ort zum Plan: aus einem Maßnahmentitel (mit Verlauf) oder aus Beschlüssen (als Punkt).",
+        "properties": {
+          "decision_count": {
+            "title": "Decision Count",
+            "type": "integer"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/PlanPlaceDecision"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "geometry": {
+            "title": "Geometry"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/PlanPlaceMeasure"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "lat",
+          "lon",
+          "geometry",
+          "measures",
+          "decisions",
+          "decision_count"
+        ],
+        "title": "PlanPlace",
+        "type": "object"
+      },
+      "PlanPlaceDecision": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "date"
+        ],
+        "title": "PlanPlaceDecision",
+        "type": "object"
+      },
+      "PlanPlaceMeasure": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "status_norm": {
+            "enum": [
+              "open",
+              "started",
+              "in_progress",
+              "done",
+              "paused",
+              "unclear"
+            ],
+            "title": "Status Norm",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status_raw": {
+            "title": "Status Raw",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "title",
+          "status_raw",
+          "status_norm"
+        ],
+        "title": "PlanPlaceMeasure",
+        "type": "object"
+      },
+      "PlanPlaces": {
+        "description": "Die Karte zum Plan — ab drei Orten.",
+        "properties": {
+          "decision_places": {
+            "title": "Decision Places",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlanPlace"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "measure_places": {
+            "title": "Measure Places",
+            "type": "integer"
+          },
+          "measures_named": {
+            "title": "Measures Named",
+            "type": "integer"
+          },
+          "measures_total": {
+            "title": "Measures Total",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "measure_places",
+          "measures_named",
+          "measures_total",
+          "decision_places",
+          "note"
+        ],
+        "title": "PlanPlaces",
+        "type": "object"
+      },
+      "PlanPlain": {
+        "description": "Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.",
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "sentences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sentences",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sentences",
+          "questions",
+          "note"
+        ],
+        "title": "PlanPlain",
+        "type": "object"
+      },
+      "PlanQuoted": {
+        "description": "Ein Satz mit der wörtlichen Stelle, die ihn belegt.",
+        "properties": {
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "quote"
+        ],
+        "title": "PlanQuoted",
+        "type": "object"
+      },
+      "PlanRecentReport": {
+        "description": "Ein jüngster Bericht über alle Pläne hinweg.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "adoption",
+              "amendment",
+              "evaluation",
+              "report",
+              "preparation"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "oral": {
+            "title": "Oral",
+            "type": "boolean"
+          },
+          "plan_key": {
+            "title": "Plan Key",
+            "type": "string"
+          },
+          "plan_title": {
+            "title": "Plan Title",
+            "type": "string"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_key",
+          "plan_title",
+          "title",
+          "date",
+          "committee",
+          "oral",
+          "kind",
+          "template_number",
+          "decision_id"
+        ],
+        "title": "PlanRecentReport",
+        "type": "object"
+      },
+      "PlanRelated": {
+        "description": "Ein verwandter Plan — ohne Grad und ohne Begründung.",
+        "properties": {
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "preparing",
+              "superseded",
+              "concluded",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "field_label",
+          "status",
+          "status_label"
+        ],
+        "title": "PlanRelated",
+        "type": "object"
+      },
+      "PlanReport": {
+        "description": "Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "oral": {
+            "title": "Oral",
+            "type": "boolean"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "date",
+          "committee",
+          "oral",
+          "template_number",
+          "decision_id"
+        ],
+        "title": "PlanReport",
+        "type": "object"
+      },
+      "PlanReportState": {
+        "description": "Der Berichtsstand (Plan § 3.3a): Wird über den Plan berichtet? Keine Aussage über die Arbeit.",
+        "properties": {
+          "hint": {
+            "title": "Hint",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "continued",
+              "in_preparation",
+              "evaluated",
+              "expired_no_evaluation",
+              "reported",
+              "not_yet_due",
+              "no_report_found"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "label",
+          "hint"
+        ],
+        "title": "PlanReportState",
+        "type": "object"
+      },
+      "PlanReview": {
+        "description": "Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.",
+        "properties": {
+          "continued_by": {
+            "properties": {
+              "adopted": {
+                "title": "Adopted",
+                "type": "boolean"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "title",
+              "adopted"
+            ],
+            "title": "PlanNeighbour",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "evaluation": {
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kvonr": {
+                "title": "Kvonr",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "title": "Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "template_number",
+              "title",
+              "kvonr",
+              "url",
+              "date"
+            ],
+            "title": "PlanTemplateRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "has_status": {
+            "title": "Has Status",
+            "type": "boolean"
+          },
+          "no_evaluation_note": {
+            "title": "No Evaluation Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planned": {
+            "items": {
+              "$ref": "#/components/schemas/PlanFact"
+            },
+            "title": "Planned",
+            "type": "array"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/PlanReviewStatement"
+            },
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "planned",
+          "evaluation",
+          "no_evaluation_note",
+          "statements",
+          "continued_by",
+          "has_status"
+        ],
+        "title": "PlanReview",
+        "type": "object"
+      },
+      "PlanReviewStatement": {
+        "description": "Ein wörtlicher Satz aus der Auswertung: ein Ergebnis oder eine Grenze, die der Bericht selbst nennt.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "result",
+              "limit"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "source_label",
+          "template_number"
+        ],
+        "title": "PlanReviewStatement",
+        "type": "object"
+      },
+      "PlanRunway": {
+        "description": "Das Zeitband der Detailseite: eine eigene Achse je Plan.",
+        "properties": {
+          "archive_from": {
+            "title": "Archive From",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "band": {
+            "description": "Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).\n\nKEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.",
+            "properties": {
+              "beyond": {
+                "title": "Beyond",
+                "type": "boolean"
+              },
+              "open_end": {
+                "title": "Open End",
+                "type": "boolean"
+              },
+              "open_start": {
+                "title": "Open Start",
+                "type": "boolean"
+              },
+              "x0": {
+                "title": "X0",
+                "type": "number"
+              },
+              "x1": {
+                "title": "X1",
+                "type": "number"
+              }
+            },
+            "required": [
+              "x0",
+              "x1",
+              "open_start",
+              "beyond",
+              "open_end"
+            ],
+            "title": "PlanBand",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "dues": {
+            "items": {
+              "$ref": "#/components/schemas/PlanRunwayDue"
+            },
+            "title": "Dues",
+            "type": "array"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/PlanRunwayMark"
+            },
+            "title": "Marks",
+            "type": "array"
+          },
+          "review": {
+            "properties": {
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "x": {
+                "title": "X",
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "label"
+            ],
+            "title": "PlanRunwayPoint",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "style": {
+            "enum": [
+              "adopted",
+              "noted",
+              "preparing"
+            ],
+            "title": "Style",
+            "type": "string"
+          },
+          "ticks": {
+            "items": {
+              "$ref": "#/components/schemas/PlanAxisTick"
+            },
+            "title": "Ticks",
+            "type": "array"
+          },
+          "today": {
+            "title": "Today",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "ticks",
+          "today",
+          "style",
+          "band",
+          "marks",
+          "review",
+          "dues",
+          "archive_from"
+        ],
+        "title": "PlanRunway",
+        "type": "object"
+      },
+      "PlanRunwayDue": {
+        "description": "Ein Termin, den der Plan selbst nennt — keine Frist von uns, und keine Aussage, ob er gehalten wurde.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "point": {
+            "title": "Point",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "date",
+          "label",
+          "text",
+          "point"
+        ],
+        "title": "PlanRunwayDue",
+        "type": "object"
+      },
+      "PlanRunwayMark": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "adoption",
+              "amendment",
+              "evaluation",
+              "report",
+              "preparation"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "oral": {
+            "title": "Oral",
+            "type": "boolean"
+          },
+          "station": {
+            "title": "Station",
+            "type": "integer"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "date",
+          "kind",
+          "oral",
+          "station"
+        ],
+        "title": "PlanRunwayMark",
+        "type": "object"
+      },
+      "PlanRunwayPoint": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "label"
+        ],
+        "title": "PlanRunwayPoint",
+        "type": "object"
+      },
+      "PlanSection": {
+        "description": "Ein Abschnitt der Planseite, für die Sprungleiste.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "key": {
+            "enum": [
+              "content",
+              "review",
+              "reports",
+              "status",
+              "indicators",
+              "measures",
+              "places",
+              "decisions"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "count"
+        ],
+        "title": "PlanSection",
+        "type": "object"
+      },
+      "PlanSpan": {
+        "properties": {
+          "x0": {
+            "title": "X0",
+            "type": "number"
+          },
+          "x1": {
+            "title": "X1",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x0",
+          "x1"
+        ],
+        "title": "PlanSpan",
+        "type": "object"
+      },
+      "PlanStatusBrief": {
+        "description": "Die jüngste Verteilung laut Stadt, für die Übersicht.",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": "string"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "counts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusCount"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "origin_label": {
+            "title": "Origin Label",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "as_of_label",
+          "origin_label",
+          "total",
+          "complete",
+          "counts"
+        ],
+        "title": "PlanStatusBrief",
+        "type": "object"
+      },
+      "PlanStatusCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "status_norm": {
+            "enum": [
+              "open",
+              "started",
+              "in_progress",
+              "done",
+              "paused",
+              "unclear"
+            ],
+            "title": "Status Norm",
+            "type": "string"
+          },
+          "status_raw": {
+            "title": "Status Raw",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_raw",
+          "status_norm",
+          "count"
+        ],
+        "title": "PlanStatusCount",
+        "type": "object"
+      },
+      "PlanStatusMove": {
+        "properties": {
+          "before": {
+            "title": "Before",
+            "type": "integer"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "delta": {
+            "title": "Delta",
+            "type": "integer"
+          },
+          "status_norm": {
+            "enum": [
+              "open",
+              "started",
+              "in_progress",
+              "done",
+              "paused",
+              "unclear"
+            ],
+            "title": "Status Norm",
+            "type": "string"
+          },
+          "status_raw": {
+            "title": "Status Raw",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_raw",
+          "status_norm",
+          "count",
+          "before",
+          "delta"
+        ],
+        "title": "PlanStatusMove",
+        "type": "object"
+      },
+      "PlanStatusMovement": {
+        "description": "Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.",
+        "properties": {
+          "counts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusMove"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "since_label": {
+            "title": "Since Label",
+            "type": "string"
+          },
+          "total_before": {
+            "title": "Total Before",
+            "type": "integer"
+          },
+          "total_delta": {
+            "title": "Total Delta",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "since",
+          "since_label",
+          "total_before",
+          "total_delta",
+          "counts"
+        ],
+        "title": "PlanStatusMovement",
+        "type": "object"
+      },
+      "PlanStatusNote": {
+        "description": "Ein Vorbehalt, den die Stadt selbst nennt (in unseren Worten, mit Quelle).",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "text",
+          "url"
+        ],
+        "title": "PlanStatusNote",
+        "type": "object"
+      },
+      "PlanStatusSnapshot": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": "string"
+          },
+          "counts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStatusCount"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "movement": {
+            "description": "Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.",
+            "properties": {
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusMove"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "since": {
+                "title": "Since",
+                "type": "string"
+              },
+              "since_label": {
+                "title": "Since Label",
+                "type": "string"
+              },
+              "total_before": {
+                "title": "Total Before",
+                "type": "integer"
+              },
+              "total_delta": {
+                "title": "Total Delta",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "since",
+              "since_label",
+              "total_before",
+              "total_delta",
+              "counts"
+            ],
+            "title": "PlanStatusMovement",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "as_of_label",
+          "total",
+          "counts",
+          "movement"
+        ],
+        "title": "PlanStatusSnapshot",
+        "type": "object"
+      },
+      "PlanTemplateRef": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "template_number",
+          "title",
+          "kvonr",
+          "url",
+          "date"
+        ],
+        "title": "PlanTemplateRef",
+        "type": "object"
+      },
+      "PlanTimeline": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "log": {
+            "items": {
+              "$ref": "#/components/schemas/PlanTimelineYear"
+            },
+            "title": "Log",
+            "type": "array"
+          },
+          "span": {
+            "title": "Span",
+            "type": "string"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/PlanTimelineStation"
+            },
+            "title": "Stations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "span",
+          "count",
+          "stations",
+          "log"
+        ],
+        "title": "PlanTimeline",
+        "type": "object"
+      },
+      "PlanTimelineMember": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "committee",
+          "decision_id"
+        ],
+        "title": "PlanTimelineMember",
+        "type": "object"
+      },
+      "PlanTimelineStation": {
+        "properties": {
+          "committees": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Committees",
+            "type": "array"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "date_end": {
+            "title": "Date End",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "adoption",
+              "amendment",
+              "evaluation",
+              "report",
+              "preparation"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/PlanTimelineMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "mode": {
+            "enum": [
+              "adopted",
+              "noted"
+            ],
+            "title": "Mode",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "oral": {
+            "title": "Oral",
+            "type": "boolean"
+          },
+          "summary": {
+            "description": "Ein Satz mit der wörtlichen Stelle, die ihn belegt.",
+            "properties": {
+              "quote": {
+                "title": "Quote",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "quote"
+            ],
+            "title": "PlanQuoted",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "date",
+          "date_end",
+          "kind",
+          "title",
+          "template_number",
+          "oral",
+          "committees",
+          "decision_id",
+          "members",
+          "label",
+          "mode"
+        ],
+        "title": "PlanTimelineStation",
+        "type": "object"
+      },
+      "PlanTimelineYear": {
+        "description": "Ein Abschnitt des Zeitstrahls, das jüngste Jahr zuerst.\n\n``gap``: In diesen Jahren war kein Bericht zu finden — „keinen gefunden“, nicht „es gab keinen“.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "year",
+              "gap"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "stations": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Stations",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          },
+          "year_to": {
+            "title": "Year To",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "year",
+          "year_to",
+          "stations",
+          "text"
+        ],
+        "title": "PlanTimelineYear",
+        "type": "object"
+      },
+      "PlanUpcoming": {
+        "description": "Was ein Plan selbst als Nächstes vorsieht — eine Angabe aus dem Plan, keine Frist von uns.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "date_label": {
+            "title": "Date Label",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "end",
+              "review"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "plan_key": {
+            "title": "Plan Key",
+            "type": "string"
+          },
+          "plan_title": {
+            "title": "Plan Title",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_key",
+          "plan_title",
+          "kind",
+          "date",
+          "date_label",
+          "text"
+        ],
+        "title": "PlanUpcoming",
+        "type": "object"
+      },
+      "PlanView": {
+        "description": "Eine Ansicht der Übersicht: eine Auswahl von Plänen in einer Reihenfolge — eine Tatsache mit\nDatum, keine Rangfolge nach gut oder schlecht.",
+        "properties": {
+          "hint": {
+            "title": "Hint",
+            "type": "string"
+          },
+          "key": {
+            "enum": [
+              "recent",
+              "ending",
+              "silent"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "plans": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Plans",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "hint",
+          "plans"
+        ],
+        "title": "PlanView",
+        "type": "object"
+      },
+      "Plans": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": "string"
+          },
+          "axis": {
+            "$ref": "#/components/schemas/PlanAxis"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/PlanFieldCount"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "follow_up_caveat": {
+            "title": "Follow Up Caveat",
+            "type": "string"
+          },
+          "follow_ups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanFollowUp"
+            },
+            "title": "Follow Ups",
+            "type": "array"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/PlanRecentReport"
+            },
+            "title": "Recent",
+            "type": "array"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/PlanCard"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/PlanUpcoming"
+            },
+            "title": "Upcoming",
+            "type": "array"
+          },
+          "views": {
+            "items": {
+              "$ref": "#/components/schemas/PlanView"
+            },
+            "title": "Views",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "as_of_label",
+          "count",
+          "groups",
+          "references",
+          "axis",
+          "fields",
+          "views",
+          "recent",
+          "upcoming",
+          "follow_ups",
+          "follow_up_caveat"
+        ],
+        "title": "Plans",
         "type": "object"
       },
       "PolicyField": {
@@ -32043,6 +37148,49 @@
         ]
       }
     },
+    "/api/council/budget/plan/{key}": {
+      "get": {
+        "description": "Haushaltsposten, deren eigener Text den Plan nennt — nur mit dem Recht ``budget``.",
+        "operationId": "plan_budget_api_council_budget_plan__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanBudget"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan Budget",
+        "tags": [
+          "council"
+        ]
+      }
+    },
     "/api/council/budget/preface-figures": {
       "get": {
         "description": "Zahlen aus dem Vorbericht der Haushaltspläne (``council/vorbericht_zahlen.py``):\nPersonalaufwand samt Rückstellungen, Steuerarten mit Prognose und\nFinanzplanung, Jahresergebnisse. Je Plan, jüngster zuerst — die Seite\nzeigt den jüngsten und lässt ältere wählen.",
@@ -34588,6 +39736,71 @@
           }
         },
         "summary": "Plan Bild",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/plan/{key}": {
+      "get": {
+        "description": "Ein Plan mit Beschluss, Laufzeit, Berichten und den Beschlüssen dazu.",
+        "operationId": "plan_detail_api_council_plan__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan Detail",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/plans": {
+      "get": {
+        "description": "Alle Pläne im Register: laufend, in Arbeit, abgelaufen oder abgelöst.",
+        "operationId": "plans_overview_api_council_plans_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plans"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plans Overview",
         "tags": [
           "council"
         ]

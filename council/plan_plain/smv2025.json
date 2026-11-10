@@ -1,0 +1,18 @@
+{
+ "plan": "smv2025",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "31e0e663e6349484",
+ "plain": [
+  "Der Plan legt die Grundlage dafür, wie sich Verkehr und Fortbewegung in der Stadt entwickeln sollen.",
+  "Die VWG soll die jährlichen Fahrgastzahlen im öffentlichen Nahverkehr von derzeit 19 Millionen auf 30 Millionen bis 2030 steigern.",
+  "Busverbindungen aus dem Umland sollen spürbar verbessert werden; der Regionalverkehr soll in den Stadtverkehr eingebunden werden."
+ ],
+ "questions": [
+  "Was wurde zuletzt in Oldenburg zum Strategieplan Mobilität und Verkehr smv2025 berichtet?",
+  "Welches ÖPNV-Fahrgastziel setzt der Strategieplan smv2025 für Oldenburg bis 2030?",
+  "Wo soll Oldenburg laut Strategieplan smv2025 die B+R-Infrastruktur ausbauen?"
+ ]
+}

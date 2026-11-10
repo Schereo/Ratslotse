@@ -1,0 +1,18 @@
+{
+ "plan": "gewerbeflaechenkonzept",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "959c03ca31963774",
+ "plain": [
+  "Der Plan soll den schonenden Umgang mit Flächen für Gewerbe regeln.",
+  "Betriebe sollen städtische Flächen nur erwerben können, wenn ihre Tätigkeit einen bestimmten Personaleinsatz erfordert und/oder sie eine nachhaltige Zukunftsperspektive haben.",
+  "Frei werdende Gewerbeflächen sollen grundsätzlich für Gewerbe erhalten bleiben."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Gewerbeflächenentwicklungskonzept 2018 berichtet oder beschlossen?",
+  "Was sieht Oldenburgs Gewerbeflächenentwicklungskonzept 2018 für die Hallensichel vor?",
+  "Bleiben frei werdende Flächen laut Gewerbeflächenentwicklungskonzept 2018 gewerblich?"
+ ]
+}

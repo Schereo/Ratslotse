@@ -2916,6 +2916,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/plan/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Budget
+         * @description Haushaltsposten, deren eigener Text den Plan nennt — nur mit dem Recht ``budget``.
+         */
+        get: operations["plan_budget_api_council_budget_plan__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/preface-figures": {
         parameters: {
             query?: never;
@@ -4232,6 +4252,46 @@ export interface paths {
          *     Dateien schreibt scripts/render_plaene.py nach ``data/plaene/``.
          */
         get: operations["plan_bild_api_council_plan_bild__document_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/plan/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Detail
+         * @description Ein Plan mit Beschluss, Laufzeit, Berichten und den Beschlüssen dazu.
+         */
+        get: operations["plan_detail_api_council_plan__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plans Overview
+         * @description Alle Pläne im Register: laufend, in Arbeit, abgelaufen oder abgelöst.
+         */
+        get: operations["plans_overview_api_council_plans_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8287,6 +8347,53 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** AnalysisAlliance */
+        AnalysisAlliance: {
+            /** A */
+            a: string;
+            /** B */
+            b: string;
+            /** Count */
+            count: number;
+        };
+        /** AnalysisApplicationParty */
+        AnalysisApplicationParty: {
+            /** Abgelehnt */
+            abgelehnt: number;
+            /** Accepted */
+            accepted: number;
+            /** Angenommen */
+            angenommen: number;
+            /** N */
+            n: number;
+            /** Party */
+            party: string;
+            /** Rejected */
+            rejected: number;
+        };
+        /**
+         * AnalysisApplicationStats
+         * @description Erfolgsquoten der eingereichten Antragsdokumente (``CouncilStore.antrag_stats``).
+         */
+        AnalysisApplicationStats: {
+            /** N Antraege */
+            n_antraege: number;
+            /** N Mit Beschluss */
+            n_mit_beschluss: number;
+            /** Parties */
+            parties: components["schemas"]["AnalysisApplicationParty"][];
+        };
+        /** AnalysisContention */
+        AnalysisContention: {
+            /** Contested */
+            contested: number;
+            /** Contested Rate */
+            contested_rate: number;
+            /** Field */
+            field: string;
+            /** Total */
+            total: number;
+        };
         /** AnalysisCoverage */
         AnalysisCoverage: {
             /** Total */
@@ -8296,27 +8403,65 @@ export interface components {
         };
         /**
          * AnalysisData
-         * @description ``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind
-         *     verschachtelte Auswertungen und bleiben offen.
+         * @description ``CouncilStore.party_analysis``.
+         *
+         *     Bis 11/2026 standen die Innereien als ``Any`` im Vertrag. Genau darum blieb
+         *     unbemerkt, dass die iOS-App ``angenommen``/``abgelehnt``/``vertagt`` las,
+         *     während der Server seit 09/2026 ``accepted``/``rejected``/``postponed``
+         *     sendet: Die Analyse-Seite der App zeigte nur noch „unerwartetes Format“,
+         *     und ``scripts/ios_vertrag.py`` hatte nichts, wogegen es hätte prüfen können.
          */
         AnalysisData: {
             /** Alliances */
-            alliances: unknown;
-            /** Antrag Stats */
-            antrag_stats: unknown;
+            alliances: components["schemas"]["AnalysisAlliance"][];
+            antrag_stats: components["schemas"]["AnalysisApplicationStats"];
             /** Contention */
-            contention: unknown;
+            contention: components["schemas"]["AnalysisContention"][];
             coverage: components["schemas"]["AnalysisCoverage"];
             /** Field Labels */
             field_labels: {
                 [key: string]: string;
             };
             /** Success Rates */
-            success_rates: unknown;
-            /** Topic Matrix */
-            topic_matrix: {
-                [key: string]: unknown;
+            success_rates: components["schemas"]["AnalysisSuccessRate"][];
+            topic_matrix: components["schemas"]["AnalysisTopicMatrix"];
+        };
+        /**
+         * AnalysisSuccessRate
+         * @description Erfolgsquote der Anträge einer Partei.
+         */
+        AnalysisSuccessRate: {
+            /** Abgelehnt */
+            abgelehnt: number;
+            /** Accepted */
+            accepted: number;
+            /** Angenommen */
+            angenommen: number;
+            /** Motions */
+            motions: number;
+            /** Party */
+            party: string;
+            /** Postponed */
+            postponed: number;
+            /** Rate */
+            rate: number | null;
+            /** Rejected */
+            rejected: number;
+            /** Vertagt */
+            vertagt: number;
+        };
+        /** AnalysisTopicMatrix */
+        AnalysisTopicMatrix: {
+            /** Fields */
+            fields: string[];
+            /** Matrix */
+            matrix: {
+                [key: string]: {
+                    [key: string]: number;
+                };
             };
+            /** Parties */
+            parties: string[];
         };
         /**
          * AppConfigOut
@@ -10798,6 +10943,28 @@ export interface components {
             valid_until: string | null;
         };
         /**
+         * DistrictPlan
+         * @description Ein laufender oder entstehender Plan mit mindestens einem Ort in diesem Ortsbereich.
+         */
+        DistrictPlan: {
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /** Place Count */
+            place_count: number;
+            /** Places */
+            places: string[];
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Title */
+            title: string;
+            /** Via Measures */
+            via_measures: boolean;
+        };
+        /**
          * DistrictPlanInfo
          * @description Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und
          *     die Stationen des Verfahrens aus den offenen Geodaten der Stadt.
@@ -11008,6 +11175,8 @@ export interface components {
             participations: components["schemas"]["DistrictParticipation"][];
             /** Place */
             place: unknown;
+            /** Plans */
+            plans?: components["schemas"]["DistrictPlan"][];
             /** Press */
             press: components["schemas"]["DistrictPressItem"][];
             /** Projects */
@@ -13018,6 +13187,28 @@ export interface components {
             window_since: string | null;
         };
         /**
+         * IdeaBlockedCity
+         * @description Eine Stadt, die uns bei der letzten Ernte nicht alles herausgab.
+         *
+         *     Was schon vorliegt, bleibt auf der Seite — die Zeile sagt nur, warum
+         *     nichts Neues dazukommt.
+         */
+        IdeaBlockedCity: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Latest Paper */
+            latest_paper: string | null;
+            /** Since */
+            since: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "documents_blocked" | "blocked" | "paused";
+        };
+        /**
          * IdeaDataStatus
          * @description Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
          *
@@ -13028,6 +13219,8 @@ export interface components {
         IdeaDataStatus: {
             /** As Of */
             as_of: string | null;
+            /** Blocked */
+            blocked: components["schemas"]["IdeaBlockedCity"][];
             /** Lagging */
             lagging: components["schemas"]["IdeaLaggingCity"][];
         };
@@ -14158,6 +14351,8 @@ export interface components {
         NumberOfTheWeekCount: {
             /** Count */
             count: number;
+            /** Date From */
+            date_from?: string;
             /**
              * Kind
              * @constant
@@ -14721,6 +14916,1762 @@ export interface components {
             type: string;
             /** Url */
             url: string;
+        };
+        /**
+         * PlanAxis
+         * @description Die gemeinsame Zeitachse der Übersicht: Beginn des Bestands bis zehn Jahre nach vorn.
+         */
+        PlanAxis: {
+            /** End */
+            end: string;
+            /** Fade */
+            fade: number;
+            /** Start */
+            start: string;
+            /** Ticks */
+            ticks: components["schemas"]["PlanAxisTick"][];
+            /** Today */
+            today: number;
+        };
+        /** PlanAxisTick */
+        PlanAxisTick: {
+            /** Label */
+            label: string;
+            /** X */
+            x: number;
+        };
+        /**
+         * PlanBand
+         * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+         *
+         *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+         */
+        PlanBand: {
+            /** Beyond */
+            beyond: boolean;
+            /** Open End */
+            open_end: boolean;
+            /** Open Start */
+            open_start: boolean;
+            /** X0 */
+            x0: number;
+            /** X1 */
+            x1: number;
+        };
+        /**
+         * PlanBrief
+         * @description Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.
+         */
+        PlanBrief: {
+            /** Count */
+            count: number;
+            /** Heading */
+            heading: string;
+            /** Points */
+            points: string[];
+            /** Purpose */
+            purpose: string;
+        };
+        /**
+         * PlanBudget
+         * @description ``GET /api/council/budget/plan/{key}`` — nur mit dem Recht ``budget``.
+         */
+        PlanBudget: {
+            /** Items */
+            items: components["schemas"]["PlanBudgetItem"][];
+            /** Note */
+            note: string;
+        };
+        /** PlanBudgetAmount */
+        PlanBudgetAmount: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * PlanBudgetItem
+         * @description Ein Haushaltsposten, dessen eigener Text den Plan nennt.
+         */
+        PlanBudgetItem: {
+            /** Amounts */
+            amounts: components["schemas"]["PlanBudgetAmount"][];
+            /** Context */
+            context: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "product" | "investment" | "change";
+            /** Number */
+            number: string | null;
+            /** Quote */
+            quote: string;
+            /** Since */
+            since: number | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanCard
+         * @description Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).
+         */
+        PlanCard: {
+            /** Adopted On */
+            adopted_on: string | null;
+            /**
+             * Adoption Mode
+             * @enum {string|null}
+             */
+            adoption_mode: "adopted" | "noted" | null;
+            /**
+             * PlanBrief
+             * @description Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.
+             */
+            brief: {
+                /** Count */
+                count: number;
+                /** Heading */
+                heading: string;
+                /** Points */
+                points: string[];
+                /** Purpose */
+                purpose: string;
+            } | null;
+            /** Ends In */
+            ends_in: string | null;
+            /** Ends On */
+            ends_on: string | null;
+            /** Field Label */
+            field_label: string;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "running" | "preparing" | "ended";
+            /** Key */
+            key: string;
+            /** Kicker */
+            kicker: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "action" | "framework" | "statutory" | "reference";
+            /** Kind Label */
+            kind_label: string;
+            lane: components["schemas"]["PlanLane"];
+            /**
+             * PlanReport
+             * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+             */
+            latest_report: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Oral */
+                oral: boolean;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string;
+            } | null;
+            /** Measure Count */
+            measure_count: number | null;
+            /** Office */
+            office: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** Report Caveat */
+            report_caveat: string | null;
+            /** Report Count */
+            report_count: number;
+            /** Report Note */
+            report_note: string | null;
+            report_state: components["schemas"]["PlanReportState"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /**
+             * PlanStatusBrief
+             * @description Die jüngste Verteilung laut Stadt, für die Übersicht.
+             */
+            status_brief: {
+                /** As Of */
+                as_of: string;
+                /** As Of Label */
+                as_of_label: string;
+                /** Complete */
+                complete: boolean;
+                /** Counts */
+                counts: components["schemas"]["PlanStatusCount"][];
+                /** Origin Label */
+                origin_label: string;
+                /** Total */
+                total: number;
+            } | null;
+            /** Status Label */
+            status_label: string;
+            /** PlanNeighbour */
+            successor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** Timing */
+            timing: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanCityStatus
+         * @description Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).
+         */
+        PlanCityStatus: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            /** Complete */
+            complete: boolean;
+            /** Confirmed */
+            confirmed: boolean;
+            /** Counts */
+            counts: components["schemas"]["PlanStatusCount"][];
+            /**
+             * PlanStatusMovement
+             * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+             */
+            movement: {
+                /** Counts */
+                counts: components["schemas"]["PlanStatusMove"][];
+                /** Since */
+                since: string;
+                /** Since Label */
+                since_label: string;
+                /** Total Before */
+                total_before: number;
+                /** Total Delta */
+                total_delta: number;
+            } | null;
+            /** Notes */
+            notes: components["schemas"]["PlanStatusNote"][];
+            /** Origin Label */
+            origin_label: string;
+            /** Series */
+            series: components["schemas"]["PlanStatusSnapshot"][];
+            /** Source Label */
+            source_label: string;
+            /** Source Url */
+            source_url: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Total */
+            total: number;
+        };
+        /**
+         * PlanContent
+         * @description Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
+         *     (``council/plan_key_points/<key>.json``), nach Art gegliedert.
+         */
+        PlanContent: {
+            /** As Of Label */
+            as_of_label: string | null;
+            /** Count */
+            count: number;
+            /** Groups */
+            groups: components["schemas"]["PlanContentGroup"][];
+            /** Heading */
+            heading: string;
+            /** Note */
+            note: string;
+            purpose: components["schemas"]["PlanContentStatement"];
+        };
+        /**
+         * PlanContentDue
+         * @description Der Termin, den der Kernpunkt nennt.
+         */
+        PlanContentDue: {
+            /** Date */
+            date: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * PlanContentFigure
+         * @description Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.
+         */
+        PlanContentFigure: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * PlanContentGroup
+         * @description Kernpunkte einer Art: Ziele, Zahlen (als Kacheln), Regeln, Vorhaben und Termine.
+         */
+        PlanContentGroup: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "goals" | "figures" | "rules" | "steps";
+            /** Label */
+            label: string;
+            /**
+             * Layout
+             * @enum {string}
+             */
+            layout: "list" | "tiles";
+            /** Points */
+            points: components["schemas"]["PlanContentStatement"][];
+        };
+        /**
+         * PlanContentSource
+         * @description Wo ein Kernpunkt steht: Beschlusstext, Vorlage oder Anlage (mit Seite).
+         */
+        PlanContentSource: {
+            /** Date */
+            date: string | null;
+            /** Date Label */
+            date_label: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "decision" | "template" | "attachment";
+            /** Label */
+            label: string;
+            /** Page */
+            page: number | null;
+            /** Template Number */
+            template_number: string;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanContentStatement */
+        PlanContentStatement: {
+            /** Amended */
+            amended: boolean;
+            /**
+             * PlanContentDue
+             * @description Der Termin, den der Kernpunkt nennt.
+             */
+            due: {
+                /** Date */
+                date: string;
+                /** Label */
+                label: string;
+            } | null;
+            /**
+             * PlanContentFigure
+             * @description Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.
+             */
+            figure: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /** Index */
+            index: number | null;
+            /**
+             * Kind
+             * @enum {string|null}
+             */
+            kind: "goal" | "standard" | "figure" | "responsibility" | "deadline" | "measure" | null;
+            /** Quote */
+            quote: string;
+            source: components["schemas"]["PlanContentSource"];
+            /** Tag */
+            tag: string | null;
+            /** Text */
+            text: string;
+        };
+        /** PlanDecisionEntry */
+        PlanDecisionEntry: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Deliberations */
+            deliberations: number;
+            /** Measure Codes */
+            measure_codes: string[];
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+            /** Quote */
+            quote: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /** PlanDecisionGroup */
+        PlanDecisionGroup: {
+            /** Entries */
+            entries: components["schemas"]["PlanDecisionEntry"][];
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "plan" | "implementation" | "motion" | "decision" | "mentions" | "measures" | "judged";
+            /** Label */
+            label: string;
+        };
+        /**
+         * PlanDecisionRef
+         * @description Ein Beschluss über den Plan selbst, wie ihn das Register nennt.
+         */
+        PlanDecisionRef: {
+            /** Committee */
+            committee: string;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Label */
+            label: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "adopted" | "noted";
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Url */
+            url: string | null;
+            /** Vote */
+            vote: string | null;
+        };
+        /** PlanDetail */
+        PlanDetail: {
+            /** Adopted On */
+            adopted_on: string | null;
+            /**
+             * PlanDecisionRef
+             * @description Ein Beschluss über den Plan selbst, wie ihn das Register nennt.
+             */
+            adoption: {
+                /** Committee */
+                committee: string;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Label */
+                label: string | null;
+                /**
+                 * Mode
+                 * @enum {string}
+                 */
+                mode: "adopted" | "noted";
+                /**
+                 * Outcome
+                 * @enum {string|null}
+                 */
+                outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Url */
+                url: string | null;
+                /** Vote */
+                vote: string | null;
+            } | null;
+            /**
+             * Adoption Mode
+             * @enum {string|null}
+             */
+            adoption_mode: "adopted" | "noted" | null;
+            /**
+             * PlanBrief
+             * @description Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.
+             */
+            brief: {
+                /** Count */
+                count: number;
+                /** Heading */
+                heading: string;
+                /** Points */
+                points: string[];
+                /** Purpose */
+                purpose: string;
+            } | null;
+            /**
+             * PlanCityStatus
+             * @description Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).
+             */
+            city_status: {
+                /** As Of */
+                as_of: string;
+                /** As Of Label */
+                as_of_label: string;
+                /** Complete */
+                complete: boolean;
+                /** Confirmed */
+                confirmed: boolean;
+                /** Counts */
+                counts: components["schemas"]["PlanStatusCount"][];
+                /**
+                 * PlanStatusMovement
+                 * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+                 */
+                movement: {
+                    /** Counts */
+                    counts: components["schemas"]["PlanStatusMove"][];
+                    /** Since */
+                    since: string;
+                    /** Since Label */
+                    since_label: string;
+                    /** Total Before */
+                    total_before: number;
+                    /** Total Delta */
+                    total_delta: number;
+                } | null;
+                /** Notes */
+                notes: components["schemas"]["PlanStatusNote"][];
+                /** Origin Label */
+                origin_label: string;
+                /** Series */
+                series: components["schemas"]["PlanStatusSnapshot"][];
+                /** Source Label */
+                source_label: string;
+                /** Source Url */
+                source_url: string | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Total */
+                total: number;
+            } | null;
+            /** PlanTemplateRef */
+            commissioned: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /** PlanTemplateRef */
+            concluded: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /**
+             * PlanContent
+             * @description Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
+             *     (``council/plan_key_points/<key>.json``), nach Art gegliedert.
+             */
+            content: {
+                /** As Of Label */
+                as_of_label: string | null;
+                /** Count */
+                count: number;
+                /** Groups */
+                groups: components["schemas"]["PlanContentGroup"][];
+                /** Heading */
+                heading: string;
+                /** Note */
+                note: string;
+                purpose: components["schemas"]["PlanContentStatement"];
+            } | null;
+            /** Decision Groups */
+            decision_groups: components["schemas"]["PlanDecisionGroup"][];
+            /** Decisions */
+            decisions: components["schemas"]["PlanDecisionRef"][];
+            /** End */
+            end: string | null;
+            /** End Label */
+            end_label: string | null;
+            /** Ends In */
+            ends_in: string | null;
+            /** Ends On */
+            ends_on: string | null;
+            /** Field Label */
+            field_label: string;
+            /** Goal */
+            goal: string | null;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "running" | "preparing" | "ended";
+            /** Horizon Note */
+            horizon_note: string | null;
+            /** Indicators */
+            indicators: components["schemas"]["PlanIndicator"][];
+            /** Key */
+            key: string;
+            /** Kicker */
+            kicker: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "action" | "framework" | "statutory" | "reference";
+            /** Kind Label */
+            kind_label: string;
+            lane: components["schemas"]["PlanLane"];
+            /**
+             * PlanReport
+             * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+             */
+            latest_report: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Oral */
+                oral: boolean;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string;
+            } | null;
+            /** Measure Count */
+            measure_count: number | null;
+            /**
+             * PlanMeasures
+             * @description Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).
+             */
+            measures: {
+                /** Count */
+                count: number;
+                /** Count City */
+                count_city: number | null;
+                /** Count Note */
+                count_note: string | null;
+                /** Groups */
+                groups: components["schemas"]["PlanMeasureGroup"][];
+                source: components["schemas"]["PlanMeasureSource"];
+                /** Status As Of Label */
+                status_as_of_label: string | null;
+                /** Status By Model */
+                status_by_model: boolean;
+                /** Status Count */
+                status_count: number;
+                /** Status Template */
+                status_template: string | null;
+            } | null;
+            /**
+             * PlanNews
+             * @description Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.
+             */
+            news: {
+                /** Decision Id */
+                decision_id: number | null;
+                /** From Date Label */
+                from_date_label: string;
+                /** Items */
+                items: components["schemas"]["PlanQuoted"][];
+                /** Note */
+                note: string;
+                /** Title */
+                title: string;
+                /** To Date */
+                to_date: string;
+                /** To Date Label */
+                to_date_label: string;
+                /** To Template */
+                to_template: string;
+            } | null;
+            /** Note */
+            note: string | null;
+            /** Office */
+            office: string | null;
+            /** Oral Report Count */
+            oral_report_count: number;
+            /** Owner */
+            owner: string | null;
+            /**
+             * PlanPlaces
+             * @description Die Karte zum Plan — ab drei Orten.
+             */
+            places: {
+                /** Decision Places */
+                decision_places: number;
+                /** Items */
+                items: components["schemas"]["PlanPlace"][];
+                /** Measure Places */
+                measure_places: number;
+                /** Measures Named */
+                measures_named: number;
+                /** Measures Total */
+                measures_total: number | null;
+                /** Note */
+                note: string;
+            } | null;
+            /**
+             * PlanPlain
+             * @description Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.
+             */
+            plain: {
+                /** Note */
+                note: string;
+                /** Questions */
+                questions: string[];
+                /** Sentences */
+                sentences: string[];
+            } | null;
+            /** Policy Field */
+            policy_field: string;
+            /** PlanNeighbour */
+            predecessor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** Related */
+            related: components["schemas"]["PlanRelated"][];
+            /** PlanFact */
+            remaining: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /** Report Caveat */
+            report_caveat: string | null;
+            /** Report Count */
+            report_count: number;
+            /** Report Note */
+            report_note: string | null;
+            report_state: components["schemas"]["PlanReportState"];
+            /**
+             * PlanReview
+             * @description Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.
+             */
+            review: {
+                /** PlanNeighbour */
+                continued_by: {
+                    /** Adopted */
+                    adopted: boolean;
+                    /** Key */
+                    key: string;
+                    /** Title */
+                    title: string;
+                } | null;
+                /** PlanTemplateRef */
+                evaluation: {
+                    /** Date */
+                    date: string | null;
+                    /** Kvonr */
+                    kvonr: number | null;
+                    /** Template Number */
+                    template_number: string;
+                    /** Title */
+                    title: string | null;
+                    /** Url */
+                    url: string | null;
+                } | null;
+                /** Has Status */
+                has_status: boolean;
+                /** No Evaluation Note */
+                no_evaluation_note: string | null;
+                /** Planned */
+                planned: components["schemas"]["PlanFact"][];
+                /** Statements */
+                statements: components["schemas"]["PlanReviewStatement"][];
+            } | null;
+            /** Review Due */
+            review_due: string | null;
+            /** Review Label */
+            review_label: string | null;
+            /**
+             * PlanRunway
+             * @description Das Zeitband der Detailseite: eine eigene Achse je Plan.
+             */
+            runway: {
+                /** Archive From */
+                archive_from: number | null;
+                /**
+                 * PlanBand
+                 * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+                 *
+                 *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+                 */
+                band: {
+                    /** Beyond */
+                    beyond: boolean;
+                    /** Open End */
+                    open_end: boolean;
+                    /** Open Start */
+                    open_start: boolean;
+                    /** X0 */
+                    x0: number;
+                    /** X1 */
+                    x1: number;
+                } | null;
+                /** Dues */
+                dues: components["schemas"]["PlanRunwayDue"][];
+                /** End */
+                end: string;
+                /** Marks */
+                marks: components["schemas"]["PlanRunwayMark"][];
+                /** PlanRunwayPoint */
+                review: {
+                    /** Label */
+                    label: string;
+                    /** X */
+                    x: number;
+                } | null;
+                /** Start */
+                start: string;
+                /**
+                 * Style
+                 * @enum {string}
+                 */
+                style: "adopted" | "noted" | "preparing";
+                /** Ticks */
+                ticks: components["schemas"]["PlanAxisTick"][];
+                /** Today */
+                today: number | null;
+            } | null;
+            /** Sections */
+            sections: components["schemas"]["PlanSection"][];
+            /** PlanFact */
+            since: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "council" | "website";
+            /** Start */
+            start: string | null;
+            /** Start Label */
+            start_label: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /**
+             * PlanStatusBrief
+             * @description Die jüngste Verteilung laut Stadt, für die Übersicht.
+             */
+            status_brief: {
+                /** As Of */
+                as_of: string;
+                /** As Of Label */
+                as_of_label: string;
+                /** Complete */
+                complete: boolean;
+                /** Counts */
+                counts: components["schemas"]["PlanStatusCount"][];
+                /** Origin Label */
+                origin_label: string;
+                /** Total */
+                total: number;
+            } | null;
+            /** Status Label */
+            status_label: string;
+            /** PlanNeighbour */
+            successor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            timeline: components["schemas"]["PlanTimeline"];
+            /** Timing */
+            timing: string;
+            /** Title */
+            title: string;
+            /** Website */
+            website: string | null;
+        };
+        /** PlanFact */
+        PlanFact: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /** PlanFieldCount */
+        PlanFieldCount: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * PlanFollowUp
+         * @description Ein Plan, zu dem kein aktueller Bericht zu finden ist (Plan § 3.5): eine Tatsache, keine Wertung.
+         */
+        PlanFollowUp: {
+            /** Fact */
+            fact: string;
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /** Last Report */
+            last_report: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** Question */
+            question: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "continued" | "in_preparation" | "evaluated" | "expired_no_evaluation" | "reported" | "not_yet_due" | "no_report_found";
+            /** Title */
+            title: string;
+        };
+        /** PlanGroup */
+        PlanGroup: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "running" | "preparing" | "ended";
+            /** Label */
+            label: string;
+            /** Plans */
+            plans: components["schemas"]["PlanCard"][];
+        };
+        /**
+         * PlanIndicator
+         * @description Eine Kennzahl neben dem Plan — nicht sein Ergebnis (Plan § 3.4 Nr. 4).
+         */
+        PlanIndicator: {
+            /** Baseline Label */
+            baseline_label: string;
+            /** Baseline Template */
+            baseline_template: string | null;
+            /** Baseline Value */
+            baseline_value: number;
+            /** Baseline Year */
+            baseline_year: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Notes */
+            notes: components["schemas"]["PlanIndicatorNote"][];
+            /** Rows */
+            rows: components["schemas"]["PlanIndicatorRow"][];
+            /** Unit */
+            unit: string;
+        };
+        /** PlanIndicatorNote */
+        PlanIndicatorNote: {
+            /** Template Number */
+            template_number: string | null;
+            /** Text */
+            text: string;
+        };
+        /** PlanIndicatorRow */
+        PlanIndicatorRow: {
+            /** Actual */
+            actual: number | null;
+            /** Actual Change */
+            actual_change: number | null;
+            /** Target */
+            target: number | null;
+            /** Target Change */
+            target_change: number | null;
+            /** Target Label */
+            target_label: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Year */
+            year: number;
+        };
+        /**
+         * PlanLane
+         * @description Das Zeitband einer Karte auf der gemeinsamen Achse der Übersicht (``Plans.axis``).
+         */
+        PlanLane: {
+            /**
+             * PlanBand
+             * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+             *
+             *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+             */
+            band: {
+                /** Beyond */
+                beyond: boolean;
+                /** Open End */
+                open_end: boolean;
+                /** Open Start */
+                open_start: boolean;
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Marks */
+            marks: components["schemas"]["PlanLaneMark"][];
+            /** PlanSpan */
+            predecessor: {
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Review */
+            review: number | null;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "adopted" | "noted" | "preparing";
+        };
+        /** PlanLaneMark */
+        PlanLaneMark: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** X */
+            x: number;
+        };
+        /** PlanMeasure */
+        PlanMeasure: {
+            /** Code */
+            code: string;
+            /** Decision Count */
+            decision_count: number;
+            /** Package */
+            package: string | null;
+            /** Page */
+            page: number;
+            /**
+             * Status Norm
+             * @enum {string|null}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear" | null;
+            /** Status Quote */
+            status_quote: string | null;
+            /** Status Raw */
+            status_raw: string | null;
+            /** Title */
+            title: string;
+        };
+        /** PlanMeasureGroup */
+        PlanMeasureGroup: {
+            /** Field */
+            field: string | null;
+            /** Measures */
+            measures: components["schemas"]["PlanMeasure"][];
+        };
+        /** PlanMeasureSource */
+        PlanMeasureSource: {
+            /** As Of */
+            as_of: string | null;
+            /** As Of Label */
+            as_of_label: string | null;
+            /** Document Id */
+            document_id: number;
+            /** Label */
+            label: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Url */
+            url: string;
+        };
+        /**
+         * PlanMeasures
+         * @description Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).
+         */
+        PlanMeasures: {
+            /** Count */
+            count: number;
+            /** Count City */
+            count_city: number | null;
+            /** Count Note */
+            count_note: string | null;
+            /** Groups */
+            groups: components["schemas"]["PlanMeasureGroup"][];
+            source: components["schemas"]["PlanMeasureSource"];
+            /** Status As Of Label */
+            status_as_of_label: string | null;
+            /** Status By Model */
+            status_by_model: boolean;
+            /** Status Count */
+            status_count: number;
+            /** Status Template */
+            status_template: string | null;
+        };
+        /** PlanNeighbour */
+        PlanNeighbour: {
+            /** Adopted */
+            adopted: boolean;
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanNews
+         * @description Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.
+         */
+        PlanNews: {
+            /** Decision Id */
+            decision_id: number | null;
+            /** From Date Label */
+            from_date_label: string;
+            /** Items */
+            items: components["schemas"]["PlanQuoted"][];
+            /** Note */
+            note: string;
+            /** Title */
+            title: string;
+            /** To Date */
+            to_date: string;
+            /** To Date Label */
+            to_date_label: string;
+            /** To Template */
+            to_template: string;
+        };
+        /**
+         * PlanPlace
+         * @description Ein Ort zum Plan: aus einem Maßnahmentitel (mit Verlauf) oder aus Beschlüssen (als Punkt).
+         */
+        PlanPlace: {
+            /** Decision Count */
+            decision_count: number;
+            /** Decisions */
+            decisions: components["schemas"]["PlanPlaceDecision"][];
+            /** Geometry */
+            geometry: unknown;
+            /** Kind */
+            kind: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Measures */
+            measures: components["schemas"]["PlanPlaceMeasure"][];
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /** PlanPlaceDecision */
+        PlanPlaceDecision: {
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+        };
+        /** PlanPlaceMeasure */
+        PlanPlaceMeasure: {
+            /** Code */
+            code: string;
+            /**
+             * Status Norm
+             * @enum {string|null}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear" | null;
+            /** Status Raw */
+            status_raw: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanPlaces
+         * @description Die Karte zum Plan — ab drei Orten.
+         */
+        PlanPlaces: {
+            /** Decision Places */
+            decision_places: number;
+            /** Items */
+            items: components["schemas"]["PlanPlace"][];
+            /** Measure Places */
+            measure_places: number;
+            /** Measures Named */
+            measures_named: number;
+            /** Measures Total */
+            measures_total: number | null;
+            /** Note */
+            note: string;
+        };
+        /**
+         * PlanPlain
+         * @description Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.
+         */
+        PlanPlain: {
+            /** Note */
+            note: string;
+            /** Questions */
+            questions: string[];
+            /** Sentences */
+            sentences: string[];
+        };
+        /**
+         * PlanQuoted
+         * @description Ein Satz mit der wörtlichen Stelle, die ihn belegt.
+         */
+        PlanQuoted: {
+            /** Quote */
+            quote: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * PlanRecentReport
+         * @description Ein jüngster Bericht über alle Pläne hinweg.
+         */
+        PlanRecentReport: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** Plan Key */
+            plan_key: string;
+            /** Plan Title */
+            plan_title: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanRelated
+         * @description Ein verwandter Plan — ohne Grad und ohne Begründung.
+         */
+        PlanRelated: {
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /** Status Label */
+            status_label: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanReport
+         * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+         */
+        PlanReport: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Oral */
+            oral: boolean;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanReportState
+         * @description Der Berichtsstand (Plan § 3.3a): Wird über den Plan berichtet? Keine Aussage über die Arbeit.
+         */
+        PlanReportState: {
+            /** Hint */
+            hint: string | null;
+            /** Label */
+            label: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "continued" | "in_preparation" | "evaluated" | "expired_no_evaluation" | "reported" | "not_yet_due" | "no_report_found";
+        };
+        /**
+         * PlanReview
+         * @description Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.
+         */
+        PlanReview: {
+            /** PlanNeighbour */
+            continued_by: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** PlanTemplateRef */
+            evaluation: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /** Has Status */
+            has_status: boolean;
+            /** No Evaluation Note */
+            no_evaluation_note: string | null;
+            /** Planned */
+            planned: components["schemas"]["PlanFact"][];
+            /** Statements */
+            statements: components["schemas"]["PlanReviewStatement"][];
+        };
+        /**
+         * PlanReviewStatement
+         * @description Ein wörtlicher Satz aus der Auswertung: ein Ergebnis oder eine Grenze, die der Bericht selbst nennt.
+         */
+        PlanReviewStatement: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "result" | "limit";
+            /** Source Label */
+            source_label: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * PlanRunway
+         * @description Das Zeitband der Detailseite: eine eigene Achse je Plan.
+         */
+        PlanRunway: {
+            /** Archive From */
+            archive_from: number | null;
+            /**
+             * PlanBand
+             * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+             *
+             *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+             */
+            band: {
+                /** Beyond */
+                beyond: boolean;
+                /** Open End */
+                open_end: boolean;
+                /** Open Start */
+                open_start: boolean;
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Dues */
+            dues: components["schemas"]["PlanRunwayDue"][];
+            /** End */
+            end: string;
+            /** Marks */
+            marks: components["schemas"]["PlanRunwayMark"][];
+            /** PlanRunwayPoint */
+            review: {
+                /** Label */
+                label: string;
+                /** X */
+                x: number;
+            } | null;
+            /** Start */
+            start: string;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "adopted" | "noted" | "preparing";
+            /** Ticks */
+            ticks: components["schemas"]["PlanAxisTick"][];
+            /** Today */
+            today: number | null;
+        };
+        /**
+         * PlanRunwayDue
+         * @description Ein Termin, den der Plan selbst nennt — keine Frist von uns, und keine Aussage, ob er gehalten wurde.
+         */
+        PlanRunwayDue: {
+            /** Date */
+            date: string;
+            /** Label */
+            label: string;
+            /** Point */
+            point: number;
+            /** Text */
+            text: string;
+            /** X */
+            x: number;
+        };
+        /** PlanRunwayMark */
+        PlanRunwayMark: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** Station */
+            station: number;
+            /** X */
+            x: number;
+        };
+        /** PlanRunwayPoint */
+        PlanRunwayPoint: {
+            /** Label */
+            label: string;
+            /** X */
+            x: number;
+        };
+        /**
+         * PlanSection
+         * @description Ein Abschnitt der Planseite, für die Sprungleiste.
+         */
+        PlanSection: {
+            /** Count */
+            count: number | null;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "content" | "review" | "reports" | "status" | "indicators" | "measures" | "places" | "decisions";
+            /** Label */
+            label: string;
+        };
+        /** PlanSpan */
+        PlanSpan: {
+            /** X0 */
+            x0: number;
+            /** X1 */
+            x1: number;
+        };
+        /**
+         * PlanStatusBrief
+         * @description Die jüngste Verteilung laut Stadt, für die Übersicht.
+         */
+        PlanStatusBrief: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            /** Complete */
+            complete: boolean;
+            /** Counts */
+            counts: components["schemas"]["PlanStatusCount"][];
+            /** Origin Label */
+            origin_label: string;
+            /** Total */
+            total: number;
+        };
+        /** PlanStatusCount */
+        PlanStatusCount: {
+            /** Count */
+            count: number;
+            /**
+             * Status Norm
+             * @enum {string}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear";
+            /** Status Raw */
+            status_raw: string;
+        };
+        /** PlanStatusMove */
+        PlanStatusMove: {
+            /** Before */
+            before: number;
+            /** Count */
+            count: number;
+            /** Delta */
+            delta: number;
+            /**
+             * Status Norm
+             * @enum {string}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear";
+            /** Status Raw */
+            status_raw: string;
+        };
+        /**
+         * PlanStatusMovement
+         * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+         */
+        PlanStatusMovement: {
+            /** Counts */
+            counts: components["schemas"]["PlanStatusMove"][];
+            /** Since */
+            since: string;
+            /** Since Label */
+            since_label: string;
+            /** Total Before */
+            total_before: number;
+            /** Total Delta */
+            total_delta: number;
+        };
+        /**
+         * PlanStatusNote
+         * @description Ein Vorbehalt, den die Stadt selbst nennt (in unseren Worten, mit Quelle).
+         */
+        PlanStatusNote: {
+            /** Text */
+            text: string;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanStatusSnapshot */
+        PlanStatusSnapshot: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            /** Counts */
+            counts: components["schemas"]["PlanStatusCount"][];
+            /**
+             * PlanStatusMovement
+             * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+             */
+            movement: {
+                /** Counts */
+                counts: components["schemas"]["PlanStatusMove"][];
+                /** Since */
+                since: string;
+                /** Since Label */
+                since_label: string;
+                /** Total Before */
+                total_before: number;
+                /** Total Delta */
+                total_delta: number;
+            } | null;
+            /** Total */
+            total: number;
+        };
+        /** PlanTemplateRef */
+        PlanTemplateRef: {
+            /** Date */
+            date: string | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Template Number */
+            template_number: string;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanTimeline */
+        PlanTimeline: {
+            /** Count */
+            count: number;
+            /** Log */
+            log: components["schemas"]["PlanTimelineYear"][];
+            /** Span */
+            span: string;
+            /** Stations */
+            stations: components["schemas"]["PlanTimelineStation"][];
+        };
+        /** PlanTimelineMember */
+        PlanTimelineMember: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+        };
+        /** PlanTimelineStation */
+        PlanTimelineStation: {
+            /** Committees */
+            committees: string[];
+            /** Date */
+            date: string;
+            /** Date End */
+            date_end: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Label */
+            label: string | null;
+            /** Members */
+            members: components["schemas"]["PlanTimelineMember"][];
+            /**
+             * Mode
+             * @enum {string|null}
+             */
+            mode: "adopted" | "noted" | null;
+            /** Oral */
+            oral: boolean;
+            /**
+             * PlanQuoted
+             * @description Ein Satz mit der wörtlichen Stelle, die ihn belegt.
+             */
+            summary: {
+                /** Quote */
+                quote: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanTimelineYear
+         * @description Ein Abschnitt des Zeitstrahls, das jüngste Jahr zuerst.
+         *
+         *     ``gap``: In diesen Jahren war kein Bericht zu finden — „keinen gefunden“, nicht „es gab keinen“.
+         */
+        PlanTimelineYear: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "year" | "gap";
+            /** Stations */
+            stations: number[];
+            /** Text */
+            text: string | null;
+            /** Year */
+            year: number;
+            /** Year To */
+            year_to: number;
+        };
+        /**
+         * PlanUpcoming
+         * @description Was ein Plan selbst als Nächstes vorsieht — eine Angabe aus dem Plan, keine Frist von uns.
+         */
+        PlanUpcoming: {
+            /** Date */
+            date: string;
+            /** Date Label */
+            date_label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "end" | "review";
+            /** Plan Key */
+            plan_key: string;
+            /** Plan Title */
+            plan_title: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * PlanView
+         * @description Eine Ansicht der Übersicht: eine Auswahl von Plänen in einer Reihenfolge — eine Tatsache mit
+         *     Datum, keine Rangfolge nach gut oder schlecht.
+         */
+        PlanView: {
+            /** Hint */
+            hint: string;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "recent" | "ending" | "silent";
+            /** Label */
+            label: string;
+            /** Plans */
+            plans: string[];
+        };
+        /** Plans */
+        Plans: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            axis: components["schemas"]["PlanAxis"];
+            /** Count */
+            count: number;
+            /** Fields */
+            fields: components["schemas"]["PlanFieldCount"][];
+            /** Follow Up Caveat */
+            follow_up_caveat: string;
+            /** Follow Ups */
+            follow_ups: components["schemas"]["PlanFollowUp"][];
+            /** Groups */
+            groups: components["schemas"]["PlanGroup"][];
+            /** Recent */
+            recent: components["schemas"]["PlanRecentReport"][];
+            /** References */
+            references: components["schemas"]["PlanCard"][];
+            /** Upcoming */
+            upcoming: components["schemas"]["PlanUpcoming"][];
+            /** Views */
+            views: components["schemas"]["PlanView"][];
         };
         /** PolicyField */
         PolicyField: {
@@ -21384,6 +23335,37 @@ export interface operations {
             };
         };
     };
+    plan_budget_api_council_budget_plan__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanBudget"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get: {
         parameters: {
             query: {
@@ -23001,6 +24983,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plan_detail_api_council_plan__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plans_overview_api_council_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plans"];
                 };
             };
         };
@@ -26884,4 +28917,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0ddbb8aaa79f22484f2cb7e55964254bb2f2e677f1e5afcf1d0db2a2f24c1bb2
+// vertrag-sha256: 45194e1957ad4af1cac164d908e2b5badd7cc3e71d002c2487b407a5af3fdc73

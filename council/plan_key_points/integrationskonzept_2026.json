@@ -1,0 +1,78 @@
+{
+ "plan": "integrationskonzept_2026",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Entwurf sieht vor, die Integrationsarbeit in Oldenburg an gleichberechtigter Teilhabe für alle auszurichten.",
+  "quote": "Bedeutend für die Integrationsarbeit war und ist das Leitbild des Konzeptes, das auf der Förderung der gleichberechtigten Teilhabe für alle basiert.",
+  "source": {
+   "kind": "template",
+   "template": "26/0191"
+  }
+ },
+ "points": [
+  {
+   "text": "Der Entwurf ordnet dem Ziel gleichberechtigter Teilhabe Vorhaben in Bildung, Deutschförderung und Teilhabeangebote zu.",
+   "kind": "goal",
+   "quote": "Die drei strategischen Ziele sind auf der individuellen Ebene: „Förderung von gleichberechtigter Teilhabe“, die unter anderem Vorhaben in den Bereichen der Bildung, Deutschförderung und Teilhabeangebote beinhaltet.",
+   "source": {
+    "kind": "template",
+    "template": "26/0191"
+   }
+  },
+  {
+   "text": "Der Entwurf setzt sich zum Ziel, nachhaltige Strukturen für eine vielfältige Gesellschaft zu schaffen und Verwaltungsabläufe sowie Kooperationen einzubeziehen.",
+   "kind": "goal",
+   "quote": "Auf der strukturellen Ebene wird die „Schaffung nachhaltiger Strukturen für eine vielfältige Gesellschaft“ als Ziel beschrieben, die die Prozesse, Verwaltungsabläufe, Kooperationen und die vorhandenen Rahmenbedingungen für die Integrationsarbeit mit in den Blick nimmt.",
+   "source": {
+    "kind": "template",
+    "template": "26/0191"
+   }
+  },
+  {
+   "text": "Der Entwurf setzt sich zum Ziel, Vielfalt anzuerkennen und Zusammenhalt, Partizipation sowie Antirassismus- und Antidiskriminierungsarbeit zu stärken.",
+   "kind": "goal",
+   "quote": "Auf der Ebene der Gesellschaft lautet die Zielformulierung: „Anerkennung von Vielfalt als Bereicherung“. Hier werden Ziele zur Stärkung von Zusammenhalt und Partizipation, sowie zu Antirassismus- und Antidiskriminierungsarbeit benannt.",
+   "source": {
+    "kind": "template",
+    "template": "26/0191"
+   }
+  },
+  {
+   "text": "Der Entwurf sieht vor, ein kommunales Konzept zur Antirassismus- und Antidiskriminierungsarbeit zu erstellen.",
+   "kind": "measure",
+   "quote": "Um die Bekämpfung von Rassismus und Diskriminierung als gesamtgesellschaftliches Querschnittsthema zu setzen und strukturell zu verankern, soll ein Konzept zur kommunalen Antirassismus- und Antidiskriminierungsarbeit erstellt werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0191",
+    "document_id": 304665,
+    "label": "Integrationskonzept 2026",
+    "page": 25
+   }
+  },
+  {
+   "text": "Der Entwurf sieht alle zwei Jahre Fachtage zu den strategischen Zielen vor.",
+   "kind": "deadline",
+   "quote": "Um aktuelle Diskurse und Entwicklungen direkt aufgreifen und mit in den Umsetzungsprozess einbauen zu können, werden alle zwei Jahre Fachtage zu den jeweiligen strategischen Zielen organisiert.",
+   "source": {
+    "kind": "template",
+    "template": "26/0191"
+   }
+  },
+  {
+   "text": "Für die Umsetzung sieht der Entwurf jährlich 40.000 Euro vor.",
+   "kind": "figure",
+   "figure": {
+    "value": "40.000 €",
+    "label": "jährlich für die Umsetzung"
+   },
+   "quote": "Für die Umsetzung des Konzeptes stehen jährlich 40.000 Euro zur Verfügung.",
+   "source": {
+    "kind": "template",
+    "template": "26/0191"
+   }
+  }
+ ]
+}

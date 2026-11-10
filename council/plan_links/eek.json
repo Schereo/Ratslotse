@@ -1,0 +1,41 @@
+{
+ "plan": "eek",
+ "judged": 64,
+ "links": [
+  {
+   "template": "19/0093",
+   "relation": "implements",
+   "quote": "Um zukünftig anstehende Erweiterungen und Neuansiedlungen entsprechend den Inhalten des EEKs nachhaltig steuern zu können"
+  },
+  {
+   "template": "22/0073",
+   "relation": "implements",
+   "quote": "Ziel der Planung ist es, den Einzelhandel im Plangebiet entsprechend den Inhalten des durch den Rat der Stadt Oldenburg beschlossenen Einzelhandelsentwicklungskonzepts (EEK) zu steuern."
+  },
+  {
+   "template": "24/0259",
+   "relation": "implements",
+   "quote": "Diese Festsetzung setzt die Ziele des EEKs um, indem der über die direkte Nahversorgung hinausgehende Einzelhandel auf die zentralen Versorgungsbereiche konzentriert wird."
+  },
+  {
+   "template": "25/0377",
+   "relation": "implements",
+   "quote": "Um die Ziele des Vergnügungsstättenkonzepts und des Einzelhandelsentwicklungskonzepts zu wahren und umzusetzen sowie zur städtebaulichen Verdichtung und Qualifizierung, ist der Aufstellungsbeschluss zu fassen, da ansonsten eine ungewollte städtebauliche Entwicklung zu erwarten ist."
+  },
+  {
+   "template": "25/0652",
+   "relation": "implements",
+   "quote": "Zudem werden mit dieser Bauleitplanung Ziele des Einzelhandelsentwicklungskonzeptes umgesetzt."
+  },
+  {
+   "template": "26/0048",
+   "relation": "implements",
+   "quote": "Entsprechend der Maßgaben des Einzelhandelsentwicklungskonzepts der Stadt Oldenburg (EEK) sollen die planungsrechtlichen Voraussetzungen für eine Ansiedlung geschaffen werden."
+  },
+  {
+   "template": "26/0049",
+   "relation": "implements",
+   "quote": "Zur Versorgung des Gebiets soll die Ansiedlung des Einzelhandels entsprechend der Maßgaben des Einzelhandelsentwicklungskonzepts der Stadt Oldenburg (EEK) ermöglicht und die Ansiedlung von Vergnügungsstätten gemäß des Vergnügungsstättenkonzeptes der Stadt Oldenburg gesteuert werden."
+  }
+ ]
+}

@@ -1,0 +1,77 @@
+{
+ "plan": "baederstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Die Strategie soll Angebotslücken bei Gesundheits-, Bewegungs- und Sportbädern schließen.",
+  "quote": "Zur Deckung der Angebotslücke im Bereich der Gesundheits-, Bewegungs- und Sportbäder wird im Norden der Stadt am Flötenteich ein Sport- und Gesundheitsbad als Ganzjahresangebot errichtet.",
+  "source": {
+   "kind": "decision",
+   "template": "18/0889/1",
+   "date": "2019-01-14",
+   "committee": "Rat"
+  }
+ },
+ "points": [
+  {
+   "text": "Die Stadtteilbäder in Kreyenbrück und Eversten bleiben erhalten und werden umfassend saniert.",
+   "kind": "measure",
+   "quote": "Zur Abdeckung des ermittelten Bedarfs an Schwimmbahnen und Wasserzeiten werden die Stadtteilbäder in Kreyenbrück und Eversten erhalten und umfassend saniert.",
+   "source": {
+    "kind": "decision",
+    "template": "18/0889/1",
+    "date": "2019-01-14",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Das OLantis wird weiterentwickelt, um wettbewerbsfähig zu bleiben.",
+   "kind": "measure",
+   "quote": "Zur Sicherung der Wettbewerbsfähigkeit der Oldenburger Bäder wird das O-Lantis qualifiziert weiterentwickelt.",
+   "source": {
+    "kind": "decision",
+    "template": "18/0889/1",
+    "date": "2019-01-14",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Am Flötenteich ist ein wettkampftaugliches Sportbecken mit neun 25-Meter-Bahnen, Hubboden und beweglichem Steg vorgesehen.",
+   "kind": "standard",
+   "quote": "Ein wettkampftaugliches Sportbecken mit neun Bahnen à 25 Meter inkl. Hubboden zur Flexibilisierung der Beckenhöhe sowie einem beweglichen Steg in Längsrichtung und einer Verbreiterung der Wasserfläche an den Außenbahnen.",
+   "source": {
+    "kind": "template",
+    "template": "19/0832/1"
+   }
+  },
+  {
+   "text": "Geplant sind Lehr- und Kursbecken (je 125 m²), ein Eltern-Kind-Becken (70 m²) und ein Außenbecken (100 m²).",
+   "kind": "standard",
+   "quote": "Ein Lehrschwimmbecken (125 m²), ein Kursbecken (125 m²), ein Eltern-Kind-Becken (70 m²) sowie ein Außenbecken (100 m²).",
+   "source": {
+    "kind": "template",
+    "template": "19/0832/1"
+   }
+  },
+  {
+   "text": "Das Gesundheitsangebot umfasst ein Bewegungs-/Gesundheitsbecken, eine Sauna und Physiotherapie.",
+   "kind": "standard",
+   "quote": "Ein Gesundheitsangebot bestehend aus einem Bewegungs-/Gesundheitsbecken (250 m²), einer Sauna (116 m²) sowie einem Physiotherapiebereich (504 m²).",
+   "source": {
+    "kind": "template",
+    "template": "19/0832/1"
+   }
+  },
+  {
+   "text": "Der Bäderbetrieb Oldenburg (BBO) plant den Neubau und erstellt ein umfassendes Konzept zur Nutzung regenerativer Energien.",
+   "kind": "responsibility",
+   "quote": "Der Bäderbetrieb der Stadt Oldenburg (BBO) wird mit der Planung des Neubaus beauftragt und erhält den Auftrag, ein umfassendes Konzept zur Nutzung regenerativer Energien zu erstellen.",
+   "source": {
+    "kind": "template",
+    "template": "19/0832/1"
+   }
+  }
+ ]
+}

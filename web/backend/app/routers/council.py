@@ -59,7 +59,8 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
-                         Idea, IdeaDataStatus, IdeaEvidence, IdeaFields, IdeaFieldSummary,
+                         Idea, IdeaBlockedCity, IdeaDataStatus, IdeaEvidence, IdeaFields,
+                         IdeaFieldSummary,
                          IdeaLaggingCity, IdeaProtocol,
                          IdeaSibling, Movement, MovementCity, MovementDetail,
                          MovementDocument, MovementSimilar, MovementsResponse,
@@ -563,11 +564,16 @@ def zahl_der_woche(
     # Wahl stand wochenlang eine orange „0" oben auf „Heute", obwohl die
     # Ausschüsse längst wieder tagten (ihre Protokolle kommen ein bis drei
     # Wochen später). Die App liest `window_days` mit (TodayView.swift).
+    # `date_from` geht mit: Der Link „Diese N ansehen“ filtert die Liste ab
+    # genau diesem Tag. Rechnete das Frontend ihn selbst (in UTC), lag er um
+    # Mitternacht einen Tag neben dem gezählten Fenster.
     for days in (7, 30, 90):
-        anzahl = store.count_decisions_since((today - timedelta(days=days)).isoformat())
+        seit = (today - timedelta(days=days)).isoformat()
+        anzahl = store.count_decisions_since(seit)
         if anzahl:
-            return {"kind": "count", "count": anzahl, "window_days": days}
-    return {"kind": "count", "count": 0, "window_days": 90}
+            return {"kind": "count", "count": anzahl, "window_days": days, "date_from": seit}
+    return {"kind": "count", "count": 0, "window_days": 90,
+            "date_from": (today - timedelta(days=90)).isoformat()}
 
 
 @router.get("/budget/products")
@@ -2307,15 +2313,41 @@ STAND_LUECKE_TAGE = 60
 
 
 def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
-    """„Stand: …" für die Seite — und welche Stadt deutlich älter endet."""
+    """„Stand: …" für die Seite — welche Stadt deutlich älter endet, und
+    welche uns bei der letzten Ernte nicht alles herausgab."""
     from datetime import date as _date
 
     from council.cities.registry import BODIES
 
     zeilen = cities.coverage(body_ids)
-    abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
+    # Städte, die der Wochenlauf gar nicht mehr holt (in der Registry aus),
+    # zählen nicht in den Stand: Hildesheim steht seit 13.09.2026 still, und
+    # „Stand: 13.09.2026" stand damit über einer Seite, deren übrige Städte
+    # am selben Tag abgeglichen waren. Sie bekommen stattdessen ihren Satz.
+    ruht = {str(z["body_id"]) for z in zeilen
+            if str(z["body_id"]) in BODIES and not BODIES[str(z["body_id"])].active}
+    abgleiche = [str(z["last_fetched"])[:10] for z in zeilen
+                 if z.get("last_fetched") and str(z["body_id"]) not in ruht]
+    if not abgleiche:  # nur ruhende Städte: dann ist ihr Abgleich der Stand
+        abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
     hinten: list[IdeaLaggingCity] = []
+    gesperrt: list[IdeaBlockedCity] = []
     for z in zeilen:
+        b = str(z["body_id"])
+        stadt = BODIES[b].name if b in BODIES else b
+        if b in ruht:
+            gesperrt.append({"body_id": b, "city": stadt,
+                             "status": "blocked" if BODIES[b].access_blocked else "paused",
+                             "since": str(z.get("last_fetched") or "")[:10],
+                             "latest_paper": (str(z["latest_paper"])[:10]
+                                              if z.get("latest_paper") else None)})
+            continue
+        if z.get("access") in ("documents_blocked", "blocked"):
+            gesperrt.append({"body_id": b, "city": stadt, "status": z["access"],
+                             "since": str(z["access_since"])[:10],
+                             "latest_paper": (str(z["latest_paper"])[:10]
+                                              if z.get("latest_paper") else None)})
+            continue
         if not z.get("last_fetched") or not z.get("latest_paper"):
             continue
         try:
@@ -2324,11 +2356,11 @@ def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
         except ValueError:
             continue
         if luecke > STAND_LUECKE_TAGE:
-            b = str(z["body_id"])
-            hinten.append({"body_id": b, "city": BODIES[b].name if b in BODIES else b,
+            hinten.append({"body_id": b, "city": stadt,
                            "latest_paper": str(z["latest_paper"])[:10]})
     return {"as_of": min(abgleiche) if abgleiche else None,
-            "lagging": sorted(hinten, key=lambda h: h["city"])}
+            "lagging": sorted(hinten, key=lambda h: h["city"]),
+            "blocked": sorted(gesperrt, key=lambda g: g["city"])}
 
 
 @router.get("/cities/search")
@@ -5987,27 +6019,43 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     _log.exception("Akte nicht geladen")
             # Aussprache zu den Beschlüssen im Prompt, die JÜNGER sind als die
             # ersten acht (qa.newest_beyond_head). Erst hier, nach der Akte: Der
-            # jüngste Stand kommt oft über sie herein. Vor der Akte griff der
-            # Schritt nie (Gold dev 09.11.2026: der Trinkwasser-Bericht vom
-            # 16.04.2026 zitiert, seine Protokollnotiz „2027 mit dem KLAK“
-            # fehlte). Ihre Beiträge hält die Diät fest wie die der Akte.
-            if debates_enabled and not latest_place and typ != "session" and not person:
+            # jüngste Stand kommt oft über sie herein. Ihre Beiträge hält die
+            # Diät fest wie die der Akte.
+            #
+            # Und die ZUSAGEN der Verwaltung zu den ersten acht und den jüngsten
+            # — auch wenn der Rechercheplan die Debatten abschaltet. Er tut das
+            # bei Termin- und Faktenfragen, und genau deren Antwort steht oft in
+            # einer Protokollnotiz: „Wann kommen öffentliche Trinkwasserspender?“
+            # — „Klärung 2027 mit Abschluss des KLAK“ (16.04.2026). Der Bericht
+            # stand auf Rang 7, seine Zusage trotzdem nie im Prompt (Gold dev
+            # 09.11.2026, nach #1803). Eine Zusage ist keine Debatte, sondern
+            # eine datierte Tatsache der Verwaltung.
+            if not latest_place and typ != "session" and not person:
                 head = candidates[:QA_ANSWER_N]
                 in_head = {c["id"] for c in head}
                 pool = head + [d for d in akte_beschluesse if d["id"] not in in_head]
                 newest = qa.newest_beyond_head(pool, limit=len(pool))
-                if newest:
-                    try:
-                        have = {d["id"] for d in debatten_rows}
-                        newest_rows = [w for w in store.wortbeitraege_zu_beschluessen(
+                try:
+                    have = {d["id"] for d in debatten_rows}
+                    if debates_enabled:
+                        extra_rows = [w for w in store.wortbeitraege_zu_beschluessen(
                             newest, max_gesamt=qa.DEBATTE_NEUESTE_MAX,
-                            max_je_top=qa.DEBATTE_NEUESTE_JE_TOP) if w["id"] not in have]
-                        qa.parteien_aufloesen(store, newest_rows)
-                        debatten_rows += newest_rows
-                        newest_speech_ids = {w["id"] for w in newest_rows}
-                        zeiten["aussprache_neueste"] = len(newest_rows)
-                    except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
-                        _log.exception("Aussprache der jüngsten Beschlüsse nicht geladen")
+                            max_je_top=qa.DEBATTE_NEUESTE_JE_TOP)
+                            if w["id"] not in have] if newest else []
+                    else:
+                        extra_rows = [w for w in store.wortbeitraege_zu_beschluessen(
+                            candidates[:qa.DEBATTE_ANKER_KOPF] + newest,
+                            max_gesamt=qa.ZUSAGEN_POOL, max_je_top=qa.ZUSAGEN_POOL)
+                            if w["id"] not in have and w.get("kind") == "pledge"
+                        ][:qa.ZUSAGEN_MAX]
+                    if extra_rows:
+                        qa.parteien_aufloesen(store, extra_rows)
+                        debatten_rows += extra_rows
+                        newest_speech_ids = {w["id"] for w in extra_rows}
+                        zeiten["aussprache_neueste" if debates_enabled
+                               else "zusagen_ohne_debatten"] = len(extra_rows)
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Aussprache der jüngsten Beschlüsse nicht geladen")
             # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
             # seines Protokolls (Tims Wunsch 18.08.).
             qa.protokolle_verlinken(store, debatten_rows)

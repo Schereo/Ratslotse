@@ -1,0 +1,15 @@
+{
+ "plan": "ernaehrungsstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "26/0431",
+   "date": "2026-06-11",
+   "text": "Die Aktionswoche wurde 2024 und 2025 durchgeführt; dieses Jahr liegt der Fokus auf der Messung von Lebensmittelabfällen in fünf Einrichtungen.",
+   "quote": "Die Aktionswoche wurde im Jahr 2024 und 2025 durchgeführt. Bestandteil waren Infostände, Podiumsdiskussionen, die Herstellung eines „Rettergerichts“ aus saisonalen Überschüssen sowie Kino-Vorführungen. Aufgrund der geringen Resonanz dieser Angebote wird der Fokus in diesem Jahr auf die Messung von Lebensmittelabfällen in fünf Einrichtungen gelegt."
+  }
+ ]
+}

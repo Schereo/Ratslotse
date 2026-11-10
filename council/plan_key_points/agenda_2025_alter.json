@@ -1,0 +1,92 @@
+{
+ "plan": "agenda_2025_alter",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Die Agenda stellt die Sicherung der sozialen Daseinsvorsorge für ältere und hochaltrige Menschen in den Mittelpunkt.",
+  "quote": "Im Mittelpunkt der Agenda 2025 sollen daher die drängenden Fragen der Sicherung der sozialen Daseinsvorsorge für ältere und hochaltrige Menschen stehen.",
+  "source": {
+   "kind": "attachment",
+   "template": "25/0403",
+   "document_id": 293527,
+   "label": "Agenda 2025 „Selbstbestimmt und mittendrin!“",
+   "page": 12
+  }
+ },
+ "points": [
+  {
+   "text": "Wohnen und Quartier sind ein ausdrücklicher Schwerpunkt der Agenda.",
+   "kind": "goal",
+   "quote": "Weiterhin soll die neue Agenda ihren Fokus auf das Thema Wohnen und Quartier richten.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0403",
+    "document_id": 293527,
+    "label": "Agenda 2025 „Selbstbestimmt und mittendrin!“",
+    "page": 12
+   }
+  },
+  {
+   "text": "Als Ansätze nennt der Plan alters- und klimagerechtes Sanieren sowie neue gemeinschaftliche Wohnangebote.",
+   "kind": "measure",
+   "quote": "Hierzu empfehlen sich alters- und klimagerechtes Sanieren im Bestand sowie neue gemeinschaftliche Wohnangebote für sogenannte alternde Quartiere.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0403",
+    "document_id": 293527,
+    "label": "Agenda 2025 „Selbstbestimmt und mittendrin!“",
+    "page": 12
+   }
+  },
+  {
+   "text": "Ziel ist ein bekanntes, breites und bezahlbares Angebot barrierearmer und barrierefreier Wohnungen.",
+   "kind": "goal",
+   "quote": "Ein breites und bezahlbares Angebot von barrierearmen und barrierefreien Wohnmöglichkeiten ist vorhanden und bekannt.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0403",
+    "document_id": 293527,
+    "label": "Agenda 2025 „Selbstbestimmt und mittendrin!“",
+    "page": 20
+   }
+  },
+  {
+   "text": "Der Plan zielt auf dichten, bezahlbaren Nahverkehr und barrierefreie, gut beleuchtete, beschilderte Wege für Mobilität ohne Auto bis ins hohe Alter.",
+   "kind": "goal",
+   "quote": "Ein sicheres, dichtes und bezahlbares öffentliches Nahverkehrsangebot sowie ein barrierefreies, gut ausgeleuchtetes und beschildertes Straßen- und Wegenetz. Es ermöglicht im gesamten Stadtgebiet eine zunehmend autounabhängige Mobilität bis ins hohe Alter.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0403",
+    "document_id": 293527,
+    "label": "Agenda 2025 „Selbstbestimmt und mittendrin!“",
+    "page": 20
+   }
+  },
+  {
+   "text": "Präventive Angebote im Quartier, aufsuchende Beratung und Smart-Ageing-Technologien sollen älteren Menschen bekannt sein und genutzt werden.",
+   "kind": "goal",
+   "quote": "Präventive Angebote (ehrenamtliche Unterstützungsstrukturen im Quartier, aufsuchende Beratung, Smart Ageing Technologien) sind bei älteren Menschen bekannt und werden genutzt.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0403",
+    "document_id": 293527,
+    "label": "Agenda 2025 „Selbstbestimmt und mittendrin!“",
+    "page": 17
+   }
+  },
+  {
+   "text": "Der Plan setzt auf Quartiersarbeit und Dritte Orte für Begegnung im Stadtteil.",
+   "kind": "measure",
+   "quote": "Auch die Quartiersarbeit und das Vorhandensein Dritter Orte als Treffpunkte und Möglichkeiten der Begegnung im Stadtteil unterstützen die Entwicklung zur altersgerechten Stadt.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0403",
+    "document_id": 293527,
+    "label": "Agenda 2025 „Selbstbestimmt und mittendrin!“",
+    "page": 12
+   }
+  }
+ ]
+}

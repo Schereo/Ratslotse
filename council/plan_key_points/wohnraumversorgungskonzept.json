@@ -1,0 +1,89 @@
+{
+ "plan": "wohnraumversorgungskonzept",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan soll die örtliche Wohnungsmarktlage und daraus entstehende Bedarfe darstellen.",
+  "quote": "So werden die Entwicklungen auf dem Wohnungsmarkt, die Veränderungen der Rahmenbedingungen sowie die daraus resultierenden Bedarfe und Handlungsschritte aufgezeigt.",
+  "source": {
+   "kind": "template",
+   "template": "22/0755"
+  }
+ },
+ "points": [
+  {
+   "text": "Der Plan beziffert den Bedarf an bezahlbarem Wohnraum bis 2030 auf 930 bis 1.440 Wohnungen.",
+   "kind": "figure",
+   "figure": {
+    "value": "930–1.440",
+    "label": "bezahlbare Wohnungen: Bedarf bis 2030"
+   },
+   "quote": "Der prognostizierte Bedarf an bezahlbarem Wohnraum liegt zwischen 930 und 1.440 Wohnungen bis zum Jahr 2030.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0755",
+    "document_id": 254112,
+    "label": "Wohnraumversorgungskonzept",
+    "page": 30
+   }
+  },
+  {
+   "text": "Für 2021 bis 2030 schätzt der Plan einen Bedarf von 1.800 bis 2.900 neuen Wohnungen, jährlich 180 bis 290.",
+   "kind": "figure",
+   "figure": {
+    "value": "1.800–2.900",
+    "label": "neue Wohnungen: Bedarf 2021 bis 2030"
+   },
+   "quote": "Unter Zugrundelegung dieser Indikatoren müssen von 2021 bis zum Jahr 2030 zur Bedarfsdeckung insgesamt zwischen 1.800 bis 2.900 Wohnungen gebaut werden beziehungsweise pro Jahr zwischen 180 bis 290 Wohnungen.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0755",
+    "document_id": 254112,
+    "label": "Wohnraumversorgungskonzept",
+    "page": 27
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt vor allem Mehrfamilienhäuser mit kleineren Wohnungen bis zu 60 Quadratmetern, ergänzt um größere und barrierearme/-freie Wohnungen.",
+   "kind": "standard",
+   "quote": "Der Fokus sollte auf dem Mehrfamilienhausbau liegen, vorwiegend auf dem Bau von kleineren Wohnungen bis zu 60 Quadratmetern. Bedarfsgerecht ergänzt durch größere Wohnungen sowie barrierearme/-freie Wohnungen.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0755",
+    "document_id": 254112,
+    "label": "Wohnraumversorgungskonzept",
+    "page": 26
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt, den Erhalt und bedarfsgerechten Bau von Wohnraum für junge Familien stärker in den Fokus zu nehmen.",
+   "kind": "goal",
+   "quote": "Damit besonders junge Familien ihren Lebensmittelpunkt in Oldenburg beibehalten, ist es in den kommenden Jahren notwendig, den Fokus wieder stärker auf den Erhalt und auf den bedarfsgerechten Bau von Wohnraum für diese Zielgruppe zu legen.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0755",
+    "document_id": 254112,
+    "label": "Wohnraumversorgungskonzept",
+    "page": 29
+   }
+  },
+  {
+   "text": "Über die Quote für bezahlbaren Wohnraum sollen rund 800 Wohnungen mit Mietpreis- und Belegungsbindungen entstehen.",
+   "kind": "figure",
+   "figure": {
+    "value": "rund 800",
+    "label": "Wohnungen mit Mietpreis- und Belegungsbindung über die Quote"
+   },
+   "quote": "So sind bezie-hungswiese werden über die Quotenregelung zur Schaffung bezahlbaren Wohnraumes rund 800 Wohnungen mit Mietpreis- und Belegungsbindungen entstehen.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0755",
+    "document_id": 254112,
+    "label": "Wohnraumversorgungskonzept",
+    "page": 30
+   }
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "plan": "schulverpflegung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "ef1c95104deef20e",
+ "plain": [
+  "Das Rahmenkonzept legt fest, wie Mensen an Oldenburgs Schulen stadtweit gestaltet werden.",
+  "Bestimmte Lebensmittelgruppen müssen beim Mittagessen zu 100 Prozent bio sein; langfristig soll das ganze Mittagessen bio sein.",
+  "Für Mittagessen und Zwischenverpflegung gilt ein verbindlicher Qualitätsstandard; in der Zwischenverpflegung sind höchstens zwei Saftschorlen und sechs Süßwaren erlaubt."
+ ],
+ "questions": [
+  "Was wurde zuletzt zur „Schulverpflegung in Oldenburg“ berichtet oder beschlossen?",
+  "Wie wird bei Neuvergaben zur Schulverpflegung in Oldenburg der Bio-Anteil überwacht?",
+  "Welcher Qualitätsstandard gilt für Mittagessen und Zwischenverpflegung an Oldenburgs Schulen?"
+ ]
+}

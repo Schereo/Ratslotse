@@ -30,7 +30,7 @@ import { ShareButton } from "@/components/share-button";
 import { Mascot } from "@/components/mascot";
 import { STAFFEL, staffelStil } from "@/components/staffel";
 import {
-  BeteiligungKarte, DemnaechstKarte, Highlights, InvestitionenKarte, MeineKnoepfe, Nachbarn, OrtSuche, PresseBlock, ViertelMerken,
+  BeteiligungKarte, DemnaechstKarte, Highlights, InvestitionenKarte, MeineKnoepfe, Nachbarn, OrtSuche, PlaeneKarte, PresseBlock, ViertelMerken,
   QUELLEN_HINWEIS, Rangliste, SperrungenKarte, StandChips, StandortKnopf, Stadtzahl, VorhabenDetail, VorhabenListe,
   datenstand, useMeineOrtsbereiche, useTafel, useTafelZustand, useUebersicht,
 } from "@/components/viertel/bausteine";
@@ -594,6 +594,8 @@ function ViertelTafel({ data, place, z, wahl, nebenan }: {
    *  jedes Mal zurück zu müssen. */
   nebenan?: React.ReactNode;
 }) {
+  // „Pläne, die dein Viertel betreffen“ steht hinter dem Schalter der Pläne-Seiten.
+  const plaene = featureAktiv(useAppConfig().data, "plaene");
   // Ab `ultra` zwei Spalten: links Kopf, Stand und die Vorhaben-Liste (sie
   // gehört zu den Pins der Karte), rechts Termine, Sperrungen, Beteiligung,
   // Geld, Presse. Darunter lösen sich die Spalten auf (`contents`), und
@@ -649,6 +651,7 @@ function ViertelTafel({ data, place, z, wahl, nebenan }: {
       <BeteiligungKarte items={data.participations} className={STAFFEL} style={staffelStil(2)} />
       <div className="order-2 flex flex-col gap-4">
       <InvestitionenKarte items={data.investments} />
+      {plaene && data.plans && <PlaeneKarte items={data.plans} className={STAFFEL} style={staffelStil(3)} />}
       <PresseBlock items={data.press} className={STAFFEL} style={staffelStil(3)} />
 
       {z.vorhaben.length > 0 && data.neighbours.length > 0 && (

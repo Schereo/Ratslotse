@@ -40,7 +40,7 @@ from pydantic import ValidationError
 
 from council.cities import evidence as beleg_modul
 from council.cities import fit
-from council.cities.annotate import parse_json
+from council.cities.annotate import call_cost, parse_json
 from council.cities.annotators import LLM_TIMEOUT_S, Annotator, IdeaVerdict
 from council.cities.annotators import get as get_annotator
 from council.cities.clusters import CLUSTER_VERSION
@@ -287,20 +287,26 @@ class Richter:
                 model=ann.model, response_format={"type": "json_object"},
                 messages=[{"role": "system", "content": self.system},
                           {"role": "user", "content": self.nutzer_text(g, mitglieder, belege)}],
-                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                temperature=ann.temperature, **ann.token_args(),
                 extra_body={},
                 timeout=TIMEOUT_S, _feature=ann.feature)
+        except Exception as e:  # noqa: BLE001 — eine Idee, nicht der Lauf
+            self._zaehle("errors")
+            logger.info("idea_fit gescheitert (%s): %s: %s", g.get("cluster_id"),
+                        type(e).__name__, str(e)[:120])
+            return None
+        # Erst abrechnen, dann lesen (s. `annotate.call_cost`).
+        kosten = call_cost(antwort)
+        korb.append(kosten)
+        if self.stopp is not None:
+            self.stopp.ausgeben(kosten)
+        try:
             daten = parse_json(antwort.choices[0].message.content or "")
         except Exception as e:  # noqa: BLE001 — eine Idee, nicht der Lauf
             self._zaehle("errors")
             logger.info("idea_fit gescheitert (%s): %s: %s", g.get("cluster_id"),
                         type(e).__name__, str(e)[:120])
             return None
-        verbrauch = getattr(antwort, "usage", None)
-        kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
-        korb.append(kosten)
-        if self.stopp is not None:
-            self.stopp.ausgeben(kosten)
         try:
             nutzlast = bereinigen(IdeaVerdict.model_validate(daten))
         except ValidationError as e:

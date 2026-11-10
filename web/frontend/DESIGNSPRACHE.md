@@ -422,6 +422,47 @@ iOS-Schrift.
   und teilen sich `OUTCOME_META` — die Farben gehen nie auseinander.
 - **Zeitstrahl** (RG-03): 16-px-Rail, Punkte 10 ⌀, letzte Station = gefüllter
   Punkt mit Halo + primary/6-Box „AKTUELLER STAND".
+- **Zeitband** (Pläne der Stadt, `components/plans/time-band.tsx`): ein Plan
+  als Strecke auf einer Zeitachse — vom Beschluss bis zum Laufzeitende, darauf
+  jede Station im Rat. **Kein Fortschrittsbalken:** durchgehend ein Ton, die
+  Gegenwart ist ein 1,5-px-Strich in Signal-Orange (ein Marker, keine Fläche)
+  quer durch alle Bänder; nichts ist „bis heute gefüllt“. Was das Band sagt,
+  sagt es über die Form: gefüllt im Primär-Tint (bg /20, Rahmen /45) =
+  beschlossen · gefüllt neutral (Muted /15, Rahmen /45) = zur Kenntnis
+  genommen · 1,5 px gestrichelt = in Arbeit (gestrichelt heißt „noch nicht“,
+  § 4) · läuft per Maske blass aus = ohne Enddatum, kommt blass herein =
+  begann vor der Achse. Marken: Punkt 7 ⌀ gefüllt = Bericht mit Vorlage, Ring
+  = mündlich, ohne Text · Strich 2,5 × 16 = Beschluss über den Plan · Raute
+  7 px = vorgesehene Überprüfung · 2-px-Spur davor = Laufzeit des Vorgängers,
+  gepunktet bis zum Band verbunden. Höhe 10 px (Übersicht) / 14 px (Kopfbühne,
+  Marken 11 ⌀). Lagen kommen als Anteile der Achse aus dem Backend
+  (`council/plan_pages.py`); gezeichnet wird mit Prozent-Lagen, kein SVG.
+  **Übersicht:** alle Pläne auf EINER Achse (Bestand ab 2018 bis zehn Jahre
+  voraus), drei Spalten Text · Band · Berichtslage; die Kopfzeile der Gruppe
+  mit den Jahren bleibt beim Scrollen stehen, die Jahreslinien laufen von
+  Zeile zu Zeile durch. Unter 672 px Kartenbreite steht das Band unter dem
+  Titel — dieselbe Achse, der Strich für heute liegt in jeder Karte an
+  derselben Stelle. Das Band ist rein bildlich (`aria-hidden`): Was es zeigt,
+  steht als Text daneben. **Kopfbühne der Planseite:** eigene Achse je Plan,
+  jede Marke ein Knopf zum Eintrag im Zeitstrahl; vor 2018 liegt eine neutrale
+  Fläche „vor 2018“ — dort fehlen die Daten, nicht die Berichte. Einmal beim
+  Aufbau fährt das Band von seinem Beginn her auf und die Marken gehen
+  chronologisch auf (Richtung der Zeit, kein Füllstand).
+- **Lücke im Zeitstrahl** (`components/plans/report-log.tsx`): Der Zeitstrahl
+  eines Plans steht nach Jahren, das jüngste zuerst; jedes Jahr ist eine
+  Mono-Zwischenzeile mit Haarlinie. Jahre, in denen kein Bericht zu finden
+  war, stehen als EIN Eintrag mit gestrichelter Linie und kursivem Satz
+  („2025–2026 · kein Bericht im Rat gefunden“, im laufenden Jahr „bisher …“) —
+  neutral, ohne Warnfarbe. Steht über der jüngsten Station eine Lücke, heißt
+  ihr Kasten „Zuletzt im Rat“ statt „Aktueller Stand“. Der Satz dazu steht
+  einmal in einem gestrichelten Kasten über dem Strahl, mit der Einordnung:
+  eine Aussage über die Berichte, nicht über die Arbeit. In einer breiten
+  Karte (ab 672 px) steht das Datum als eigene Spalte vor dem Titel.
+- **Maßnahmen als Kästchen** (`components/plans/measures.tsx`): Jedes
+  Handlungsfeld trägt in seiner Kopfzeile ein 12-px-Kästchen je Maßnahme
+  (Radius 3, bg primary/15, Rahmen /40), Pakete 7 px abgesetzt. Alle gleich
+  getönt, solange es keinen Stand je Maßnahme gibt; die Liste ist ihr eigenes
+  Bild, keine zweite Grafik darüber.
 - **Geld** (RG-04): Bricolage-Großbetrag + Vergleichszeilen (Label · Balken h 6 ·
   Betrag), Delta in Signal-Orange, jeder Betrag mit [n].
 - **Eckdaten** (Plan „Akte“, `components/key-facts.tsx`): Kicker ECKDATEN, darunter
@@ -792,6 +833,31 @@ unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
   der Seiten-Einstieg (`page-in`) blendet nur ein, statt anzuheben: Der
   Chat-Composer hing sonst die ersten 0,34 s jeder Navigation 164 px zu hoch
   (Tims Befund 15.08.). Wer eine neue Ein-Animation schreibt, prüft beides.
+- **Was sortiert oder gefiltert wird, gleitet an seinen Platz**
+  (`lib/flip.ts`, seit 11/2026). Eine Liste, die in neuer Reihenfolge einfach
+  dasteht, zeigt zwei Zustände und keinen Weg — man sucht die Zeile, die man
+  eben noch im Blick hatte. `useFlip` misst vor und nach der Änderung und
+  fährt jedes Element per `transform` vom alten Platz zum neuen; was neu
+  dazukommt, blendet ein. Gemessen wird gegen die Wurzel der Liste (nicht das
+  Fenster), bewegt wird nur, was vorher oder nachher im Bild liegt, und ein
+  Weg länger als das Fenster wird gekappt. Erste Anwendungen: die Zeilen der
+  Pläne-Übersicht beim Wechsel der Ansicht, die Kästchen im „Stand laut
+  Stadt“ beim Wechsel des Jahres. **Wo die Bewegung mehr behauptet, als die
+  Daten hergeben, steht das dabei:** Die Stadt meldet je Stand nur Summen —
+  welches Kästchen die Stufe wechselt, ist gerechnet, und der Satz darunter
+  sagt es.
+- **Ein Übergang zwischen zwei Seiten ist Zugabe.** Das Band einer Zeile der
+  Pläne-Übersicht wird zum Band im Kopf der Planseite
+  (`components/plans/band-transition.ts`, View Transitions API): Es ist
+  dasselbe Band, einmal auf der gemeinsamen Achse, einmal auf seiner eigenen.
+  Benannt wird NUR die Form des Bandes, nicht die ganze Zeile — zwei
+  verschieden beschriftete Achsen ineinander zu blenden ergibt ein Geisterbild.
+  Ohne die API, bei reduzierter Bewegung, mit Strg/Cmd-Klick und wenn die
+  Zielseite nicht binnen 0,9 s steht, ist es ein gewöhnlicher Link.
+- **Ein Beleg wird markiert, nicht hervorgezaubert** (`.zitat-marker`). Klappt
+  ein Zitat auf, fährt einmal ein Textmarker darüber: Unter dem Text liegt die
+  Markierung, eine Decke in Kartenfarbe fährt per `transform` zur Seite weg.
+  Kein animiertes `background-size`.
 - **Gestaffelt heißt gedeckelt.** Der Versatz endet bei der sechsten Zeile
   (`components/staffel.tsx`); ohne Deckel käme die 40. Zeile einer
   Trefferliste 1,8 s nach der ersten und die Seite wirkte lahm statt lebendig.

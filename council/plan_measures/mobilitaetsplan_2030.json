@@ -1,0 +1,212 @@
+{
+ "plan": "mobilitaetsplan_2030",
+ "source": {
+  "label": "Ergebnis der Maßnahmenpriorisierung, Anlage 1",
+  "document_id": 275932,
+  "template": "24/0216",
+  "as_of": "2024-04",
+  "url": "https://buergerinfo.oldenburg.de/getfile.php?id=275932&type=do"
+ },
+ "count_city": null,
+ "count_note": "Die Anlage nennt diese Maßnahmen namentlich. Insgesamt wurden laut Anlage „ca. 70“ von über 250 Einzelmaßnahmen priorisiert; eine vollständige Liste liegt dem Rat nicht vor.",
+ "measures": [
+  {
+   "code": "M01",
+   "title": "Premiumroute FAST FLIN (Fliegerhorst)",
+   "field": "Radverkehr – Premiumrouten",
+   "page": 8
+  },
+  {
+   "code": "M02",
+   "title": "Premiumroute Hatten-Sandkrug",
+   "field": "Radverkehr – Premiumrouten",
+   "page": 8
+  },
+  {
+   "code": "M03",
+   "title": "Premiumroute Wahnbek",
+   "field": "Radverkehr – Premiumrouten",
+   "page": 8
+  },
+  {
+   "code": "M04",
+   "title": "Premiumroute Bad Zwischenahn",
+   "field": "Radverkehr – Premiumrouten",
+   "page": 8
+  },
+  {
+   "code": "M05",
+   "title": "Premiumroute Tungeln-Wardenburg",
+   "field": "Radverkehr – Premiumrouten",
+   "page": 8
+  },
+  {
+   "code": "M06",
+   "title": "Premiumroute Ofen",
+   "field": "Radverkehr – Premiumrouten",
+   "page": 8
+  },
+  {
+   "code": "M07",
+   "title": "Premiumroute Petersfehn-Friedrichsfehn-Edewecht",
+   "field": "Radverkehr – Premiumrouten",
+   "page": 8
+  },
+  {
+   "code": "M08",
+   "title": "Fahrradstraße Haareneschstraße nach neuen Standards",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M09",
+   "title": "Fahrradstraße Katharinenstraße nach neuen Standards",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M10",
+   "title": "Fahrradstraße Haarenufer nach neuen Standards",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M11",
+   "title": "Fahrradstraße Huntestraße nach neuen Standards",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M12",
+   "title": "Neue Fahrradstraße Quellenweg",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M13",
+   "title": "Neue Fahrradstraße Lindenallee",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M14",
+   "title": "Neue Fahrradstraße Herbartstraße",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M15",
+   "title": "Neue Fahrradstraße Bismarckstraße",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M16",
+   "title": "Neue Fahrradstraße Roggemannstraße",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M17",
+   "title": "Neue Fahrradstraße Am Schloßgarten",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M18",
+   "title": "Neue Fahrradstraße Schleusenstraße",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M19",
+   "title": "Neue Fahrradstraße Kanalstraße",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M20",
+   "title": "Neue Fahrradstraße Herrenweg",
+   "field": "Radverkehr – Fahrradstraßen",
+   "page": 8
+  },
+  {
+   "code": "M21",
+   "title": "Wallring – durchgehende ÖPNV-Spur",
+   "field": "ÖPNV",
+   "page": 10
+  },
+  {
+   "code": "M22",
+   "title": "Teilkonzept Mobilitätsstationen (Carsharing, Stationen, Bikesharing)",
+   "field": "Mobilitätsstationen",
+   "page": 11
+  },
+  {
+   "code": "M23",
+   "title": "Teilkonzept Ladeinfrastruktur (öffentliche Ladepunkte quartalsweise)",
+   "field": "Ladeinfrastruktur",
+   "page": 14
+  },
+  {
+   "code": "M24",
+   "title": "Neuaufteilung von Verkehrsflächen am Beispiel Damm",
+   "field": "Konzepterstellung",
+   "page": 16
+  },
+  {
+   "code": "M25",
+   "title": "Bewohnerparkzone Haarenesch",
+   "field": "Parkraummanagement",
+   "page": 17
+  },
+  {
+   "code": "M26",
+   "title": "Quartiersparklösungen (z. B. Fliegerhorst)",
+   "field": "Parkraummanagement",
+   "page": 17
+  },
+  {
+   "code": "M27",
+   "title": "Erneuerung dynamisches Parkleitsystem",
+   "field": "Parkraummanagement",
+   "page": 17
+  },
+  {
+   "code": "M28",
+   "title": "B+R: sieben neue Stationen",
+   "field": "P+R und B+R",
+   "page": 17
+  },
+  {
+   "code": "M29",
+   "title": "P+R: Stadt-Umland-Kooperation",
+   "field": "P+R und B+R",
+   "page": 17
+  },
+  {
+   "code": "M30",
+   "title": "P+R: Pflege und Aufwertung des Bestands",
+   "field": "P+R und B+R",
+   "page": 17
+  },
+  {
+   "code": "M31",
+   "title": "Haltepunkt Ofenerdiek prüfen",
+   "field": "SPNV",
+   "page": 17
+  },
+  {
+   "code": "M32",
+   "title": "Fußverkehr bei allen Planungen berücksichtigen und stärken",
+   "field": "Fußverkehr",
+   "page": 17
+  },
+  {
+   "code": "M33",
+   "title": "Modal-Split-Untersuchung",
+   "field": "Grundlagenarbeit",
+   "page": 17
+  }
+ ]
+}

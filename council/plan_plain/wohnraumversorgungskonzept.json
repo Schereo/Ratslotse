@@ -1,0 +1,18 @@
+{
+ "plan": "wohnraumversorgungskonzept",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "cc54599ba05d16af",
+ "plain": [
+  "Der Plan soll die örtliche Wohnungsmarktlage und den daraus entstehenden Bedarf darstellen.",
+  "Der Plan beziffert den Bedarf an bezahlbarem Wohnraum bis 2030 auf 930 bis 1.440 Wohnungen.",
+  "Er empfiehlt kleinere Wohnungen in Mehrfamilienhäusern und mehr Fokus auf Erhalt und bedarfsgerechten Bau für junge Familien."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Wohnraumversorgungskonzept berichtet oder beschlossen?",
+  "Wie viel bezahlbaren Wohnraum braucht Oldenburg laut Wohnraumversorgungskonzept bis 2030?",
+  "Welche Wohnungsgrößen empfiehlt das Wohnraumversorgungskonzept für Oldenburg?"
+ ]
+}

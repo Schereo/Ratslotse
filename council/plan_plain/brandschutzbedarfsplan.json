@@ -1,0 +1,18 @@
+{
+ "plan": "brandschutzbedarfsplan",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "73c4fb8dba7e2ec0",
+ "plain": [
+  "Der Plan legt das Ziel der Feuerwehrplanung und den dafür nötigen Umfang der kommunalen Feuerwehr fest.",
+  "Das Einsatzkonzept bindet sechs freiwillige Ortsfeuerwehren ein, von denen jede grundsätzlich ein Löschfahrzeug mit Wasser haben soll.",
+  "Der Plan sieht Umbauten an Feuerwehrstandorten vor und soll spätestens nach fünf Jahren auf Aktualisierungsbedarf geprüft werden."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Brandschutzbedarfsplan berichtet oder beschlossen?",
+  "Wie bindet das einsatztaktische Grundkonzept Oldenburgs sechs Ortsfeuerwehren ein?",
+  "Was sieht Oldenburgs Brandschutzbedarfsplan an baulichen Maßnahmen vor?"
+ ]
+}

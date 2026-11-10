@@ -1,0 +1,621 @@
+{
+ "plan": "smv2025",
+ "snapshots": [
+  {
+   "as_of": "2023-10",
+   "source": {
+    "kind": "attachment",
+    "label": "Anhang 1 zur Fortschreibung des Lärmaktionsplans",
+    "template": "24/0293/1",
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=280377&type=do",
+    "fetched": null
+   },
+   "total": 112,
+   "complete": true,
+   "counts": [
+    {
+     "status_raw": "Umgesetzt",
+     "status_norm": "done",
+     "count": 40
+    },
+    {
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress",
+     "count": 35
+    },
+    {
+     "status_raw": "in Planung",
+     "status_norm": "started",
+     "count": 11
+    },
+    {
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started",
+     "count": 15
+    },
+    {
+     "status_raw": "noch nicht begonnen",
+     "status_norm": "open",
+     "count": 2
+    },
+    {
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused",
+     "count": 9
+    }
+   ],
+   "measures": [
+    {
+     "code": "1",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "2",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "3",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "4",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "5",
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused"
+    },
+    {
+     "code": "6",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "7",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "8",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "9",
+     "status_raw": "noch nicht begonnen",
+     "status_norm": "open"
+    },
+    {
+     "code": "10",
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused"
+    },
+    {
+     "code": "11",
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused"
+    },
+    {
+     "code": "88",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "12",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "13",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "14",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "15",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "16",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "17",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "18",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "19",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "20",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "21",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "22",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "23",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "24",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "25",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "26",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "27",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "28",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "29",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "30",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "31",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "32",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "33",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "34",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "35",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "36",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "37",
+     "status_raw": "noch nicht begonnen",
+     "status_norm": "open"
+    },
+    {
+     "code": "38",
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused"
+    },
+    {
+     "code": "39",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "40",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "41",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "42",
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused"
+    },
+    {
+     "code": "43",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "44",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "45",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "46",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "47",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "48",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "49",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "50",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "51",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "52",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "53",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "54",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "55",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "56",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "57",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "58",
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused"
+    },
+    {
+     "code": "59",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "60",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "61",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "62",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "63",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "64",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "65",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "66",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "67",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "68",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "69",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "70",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "71",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "72",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "73",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "74",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "75",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "76",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "77",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "78",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "79",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "80",
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused"
+    },
+    {
+     "code": "81",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "82",
+     "status_raw": "in Planung",
+     "status_norm": "started"
+    },
+    {
+     "code": "83",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "84",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "85",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "101",
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused"
+    },
+    {
+     "code": "102",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "103",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "104",
+     "status_raw": "nicht umgesetzt / aufgegeben",
+     "status_norm": "paused"
+    },
+    {
+     "code": "105",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "106",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "107",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "108",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "109",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "110",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "111",
+     "status_raw": "Vorüberlegungen",
+     "status_norm": "started"
+    },
+    {
+     "code": "112",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "113",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "114",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "115",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "116",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "117",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "118",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "119",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "120",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "121",
+     "status_raw": "Umgesetzt",
+     "status_norm": "done"
+    },
+    {
+     "code": "122",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "123",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "124",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "125",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "126",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    }
+   ]
+  }
+ ],
+ "notes": [
+  {
+   "text": "Grundlage ist laut Anhang der Evaluationsbericht des Fachdienstes Mobilität von 2021, aktualisiert im Oktober 2023. Dem Rat lag er als Anhang zur Fortschreibung des Lärmaktionsplans vor; eine eigene Vorlage dazu hat Ratslotse nicht gefunden.",
+   "url": null
+  },
+  {
+   "text": "Bei 10 Maßnahmen weicht das Wort in der Spalte „Status“ vom Kürzel der letzten Spalte ab oder fehlt. Gezeigt ist das Kürzel, das laut Anhang den Umsetzungsstand darstellt.",
+   "url": null
+  }
+ ]
+}

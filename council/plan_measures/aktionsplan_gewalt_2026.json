@@ -1,0 +1,194 @@
+{
+ "plan": "aktionsplan_gewalt_2026",
+ "source": {
+  "label": "Evaluation und Fortschreibung, Kapitel 3",
+  "document_id": 314635,
+  "template": "26/0681/1",
+  "as_of": "2026-08",
+  "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314635&type=do"
+ },
+ "count_city": 30,
+ "count_note": "Sechs Fokusthemen mit je fünf Handlungsempfehlungen.",
+ "measures": [
+  {
+   "code": "1.1",
+   "title": "Entwicklung einer Kampagnenstrategie",
+   "field": "Informations- und Öffentlichkeitsarbeit",
+   "page": 46
+  },
+  {
+   "code": "1.2",
+   "title": "Bündelung der Aktionen und Initiativen zum Internationalen Tag gegen Gewalt an Frauen* (25. November)",
+   "field": "Informations- und Öffentlichkeitsarbeit",
+   "page": 46
+  },
+  {
+   "code": "1.3",
+   "title": "Einführung eines regelmäßigen, digitalen Informationsangebotes zu gewaltspezifischen Themen",
+   "field": "Informations- und Öffentlichkeitsarbeit",
+   "page": 47
+  },
+  {
+   "code": "1.4",
+   "title": "Platzierung der Themen Gewalt gegen Frauen* und Häusliche Gewalt bei vielfältigen Anlässen",
+   "field": "Informations- und Öffentlichkeitsarbeit",
+   "page": 47
+  },
+  {
+   "code": "1.5",
+   "title": "Erarbeitung eines Flyers mit den wichtigsten Informationen für Betroffene von geschlechtsspezifischer Gewalt im Visitenkartenformat",
+   "field": "Informations- und Öffentlichkeitsarbeit",
+   "page": 47
+  },
+  {
+   "code": "2.1",
+   "title": "Verstetigung und Ausweitung des StoP-Angebotes",
+   "field": "Prävention",
+   "page": 50
+  },
+  {
+   "code": "2.2",
+   "title": "Verstetigung der Präventionsstelle Häusliche und sexualisierte Gewalt",
+   "field": "Prävention",
+   "page": 50
+  },
+  {
+   "code": "2.3",
+   "title": "Aufbau der Angebote von sexueller Bildung",
+   "field": "Prävention",
+   "page": 50
+  },
+  {
+   "code": "2.4",
+   "title": "Konzeptadaption des Escape Rooms zum Thema Häusliche Gewalt in Oldenburg für Schulen und Jugendgruppen",
+   "field": "Prävention",
+   "page": 50
+  },
+  {
+   "code": "2.5",
+   "title": "Etablierung des Präventionsansatzes „Herzsprung“ in Schulen",
+   "field": "Prävention",
+   "page": 50
+  },
+  {
+   "code": "3.1",
+   "title": "Entwicklung von Kampagnen und Aktionen zum Thema „Männer* gegen Gewalt an Frauen*“",
+   "field": "Männer* im Kontext Häusliche Gewalt",
+   "page": 54
+  },
+  {
+   "code": "3.2",
+   "title": "Stärkere Bekanntmachung des Unterstützungssystems für Männer* als Betroffene von Häuslicher Gewalt",
+   "field": "Männer* im Kontext Häusliche Gewalt",
+   "page": 54
+  },
+  {
+   "code": "3.3",
+   "title": "Entwicklung von Workshopangeboten zum Thema „Männlichkeit und Gewalt“",
+   "field": "Männer* im Kontext Häusliche Gewalt",
+   "page": 54
+  },
+  {
+   "code": "3.4",
+   "title": "Ausbau der Täter*arbeit im Kontext Häusliche Gewalt",
+   "field": "Männer* im Kontext Häusliche Gewalt",
+   "page": 54
+  },
+  {
+   "code": "3.5",
+   "title": "Organisation von Fachtagen oder ähnlichen Angeboten zum Themenkomplex Männlichkeit und Gewalt",
+   "field": "Männer* im Kontext Häusliche Gewalt",
+   "page": 54
+  },
+  {
+   "code": "4.1",
+   "title": "Stärkung des Gewalthilfenetzwerks durch Kurzsteckbriefe der Teilnehmenden aus den beteiligten Arbeitskreisen",
+   "field": "Vernetzung",
+   "page": 57
+  },
+  {
+   "code": "4.2",
+   "title": "Etablierung regelmäßiger Vernetzungstreffen des erweiterten Gewalthilfenetzwerks",
+   "field": "Vernetzung",
+   "page": 57
+  },
+  {
+   "code": "4.3",
+   "title": "Akquise von Bündnispartner*innen über das Gewalthilfenetzwerk hinaus",
+   "field": "Vernetzung",
+   "page": 57
+  },
+  {
+   "code": "4.4",
+   "title": "Durchführung einer Netzwerkanalyse außerhalb des Gewalthilfenetzwerks",
+   "field": "Vernetzung",
+   "page": 58
+  },
+  {
+   "code": "4.5",
+   "title": "Konzeptionierung eines Frauen*beratungszentrums",
+   "field": "Vernetzung",
+   "page": 58
+  },
+  {
+   "code": "5.1",
+   "title": "Finanzielle Planungssicherheit für die Gewaltberatungsstellen",
+   "field": "Schutz und Unterstützung",
+   "page": 61
+  },
+  {
+   "code": "5.2",
+   "title": "Sensibilisierung der Fachkräfte aus den Bereichen Soziales, Gesundheit und Verwaltung, um Anzeichen von Gewalt bei Betroffenen zu erkennen",
+   "field": "Schutz und Unterstützung",
+   "page": 61
+  },
+  {
+   "code": "5.3",
+   "title": "Verstetigung von mobilen Beratungsangeboten (niedrigschwellige Zugänge)",
+   "field": "Schutz und Unterstützung",
+   "page": 61
+  },
+  {
+   "code": "5.4",
+   "title": "Entwicklung eines Übergangsmanagements nach Frauenhausaufenthalt",
+   "field": "Schutz und Unterstützung",
+   "page": 61
+  },
+  {
+   "code": "5.5",
+   "title": "Aufbau eines unabhängigen Beratungsangebotes für Kinder und Jugendliche, die Häusliche und geschlechtsspezifische Gewalt miterleben mussten",
+   "field": "Schutz und Unterstützung",
+   "page": 61
+  },
+  {
+   "code": "6.1",
+   "title": "Schaffung einer aufsuchenden Anlaufstelle (Fachberatung / Prävention / Beratung für Alle) bei digitaler Gewalt in Oldenburg",
+   "field": "Digitale Gewalt",
+   "page": 65
+  },
+  {
+   "code": "6.2",
+   "title": "Verstetigung der Medienpädagogik",
+   "field": "Digitale Gewalt",
+   "page": 65
+  },
+  {
+   "code": "6.3",
+   "title": "Gründung eines Arbeitskreises Medien und digitale Gewalt",
+   "field": "Digitale Gewalt",
+   "page": 65
+  },
+  {
+   "code": "6.4",
+   "title": "Durchführung regelmäßiger Schulungen von Fachkräften",
+   "field": "Digitale Gewalt",
+   "page": 65
+  },
+  {
+   "code": "6.5",
+   "title": "Ausbau der Täter*innenarbeit im Kontext digitale Gewalt bei Jugendlichen",
+   "field": "Digitale Gewalt",
+   "page": 65
+  }
+ ]
+}

@@ -53,8 +53,11 @@ private struct ApplicationParty: Decodable, Sendable, Identifiable {
     var id: String { party }
     let party: String
     let n: Int
-    let angenommen: Int
-    let abgelehnt: Int
+    // Der Server sendet die englischen Namen seit 09/2026 (#950). Bis 11/2026 las die App
+    // hier `angenommen`/`abgelehnt` — nicht optional, also kippte der Decode der GANZEN
+    // Analyse, und die Seite zeigte nur „unerwartetes Format".
+    let accepted: Int
+    let rejected: Int
 }
 
 private struct Coverage: Decodable, Sendable {
@@ -67,9 +70,9 @@ private struct PartySuccess: Decodable, Sendable, Identifiable {
     var id: String { party }
     let party: String
     let motions: Int
-    let angenommen: Int
-    let abgelehnt: Int
-    let vertagt: Int
+    let accepted: Int
+    let rejected: Int
+    let postponed: Int
     let rate: Double?
 }
 
@@ -255,7 +258,7 @@ struct CouncilInsightsView: View {
                     MonoKicker("Ratsdaten verstehen")
                     Text("Analyse")
                         .font(RatsFont.title(28))
-                    Text("Trends, Parteien, Personen, Finanzen und Stadtziele – aus den öffentlichen Unterlagen des Rats.")
+                    Text("Trends, Parteien, Personen, Finanzen und \(model.feature("plaene") ? "die Pläne der Stadt" : "Stadtziele") – aus den öffentlichen Unterlagen des Rats.")
                         .font(RatsFont.body(13))
                         .foregroundStyle(RatsColor.secondary)
                         .lineSpacing(2)
@@ -273,7 +276,9 @@ struct CouncilInsightsView: View {
                     case .parties: partiesView
                     case .people: peopleView
                     case .finance: financeView
-                    case .goals: goalsView
+                    case .goals:
+                        // „Pläne der Stadt" löst die Ziele ab, sobald der Schalter an ist.
+                        if model.feature("plaene") { CouncilPlansSection(model: model) } else { goalsView }
                     }
                 }
             }
@@ -312,7 +317,7 @@ struct CouncilInsightsView: View {
 
     private func sectionButton(_ item: InsightSection) -> some View {
         Button { withAnimation(.easeOut(duration: 0.18)) { section = item } } label: {
-            Text(item.rawValue)
+            Text(item == .goals && model.feature("plaene") ? "Pläne" : item.rawValue)
                 .font(RatsFont.body(12, weight: .semibold))
                 .foregroundStyle(section == item ? RatsColor.primaryText : RatsColor.bodyText)
                 .padding(.horizontal, 13)
@@ -801,14 +806,14 @@ struct CouncilInsightsView: View {
                     matrix: ["SPD": ["verkehr": 6, "soziales": 8], "CDU": ["verkehr": 7, "soziales": 3], "GRÜNE": ["verkehr": 9, "soziales": 5]]
                 ),
                 successRates: [
-                    PartySuccess(party: "SPD", motions: 14, angenommen: 9, abgelehnt: 3, vertagt: 2, rate: 0.64),
-                    PartySuccess(party: "CDU", motions: 11, angenommen: 6, abgelehnt: 4, vertagt: 1, rate: 0.55),
-                    PartySuccess(party: "GRÜNE", motions: 9, angenommen: 6, abgelehnt: 2, vertagt: 1, rate: 0.67),
+                    PartySuccess(party: "SPD", motions: 14, accepted: 9, rejected: 3, postponed: 2, rate: 0.64),
+                    PartySuccess(party: "CDU", motions: 11, accepted: 6, rejected: 4, postponed: 1, rate: 0.55),
+                    PartySuccess(party: "GRÜNE", motions: 9, accepted: 6, rejected: 2, postponed: 1, rate: 0.67),
                 ],
                 applicationStats: ApplicationStats(
                     parties: [
-                        ApplicationParty(party: "SPD", n: 12, angenommen: 8, abgelehnt: 4),
-                        ApplicationParty(party: "CDU", n: 10, angenommen: 6, abgelehnt: 4),
+                        ApplicationParty(party: "SPD", n: 12, accepted: 8, rejected: 4),
+                        ApplicationParty(party: "CDU", n: 10, accepted: 6, rejected: 4),
                     ],
                     applicationCount: 28,
                     decidedCount: 22
@@ -959,13 +964,13 @@ private struct ApplicationOutcomeRow: View {
             HStack {
                 Text(row.party).font(RatsFont.body(12, weight: .semibold))
                 Spacer()
-                Text("\(Int((Double(row.angenommen) / Double(total) * 100).rounded())) % angenommen · \(row.n)")
+                Text("\(Int((Double(row.accepted) / Double(total) * 100).rounded())) % angenommen · \(row.n)")
                     .font(RatsFont.body(10)).foregroundStyle(RatsColor.secondary)
             }
             GeometryReader { proxy in
                 HStack(spacing: 1) {
-                    Rectangle().fill(RatsColor.success).frame(width: proxy.size.width * Double(row.angenommen) / Double(total))
-                    Rectangle().fill(RatsColor.danger).frame(width: proxy.size.width * Double(row.abgelehnt) / Double(total))
+                    Rectangle().fill(RatsColor.success).frame(width: proxy.size.width * Double(row.accepted) / Double(total))
+                    Rectangle().fill(RatsColor.danger).frame(width: proxy.size.width * Double(row.rejected) / Double(total))
                 }.clipShape(Capsule())
             }.frame(height: 10)
         }
@@ -1053,7 +1058,7 @@ private struct PartyOutcomeRow: View {
     let row: PartySuccess
 
     var body: some View {
-        let total = max(1, row.angenommen + row.abgelehnt + row.vertagt)
+        let total = max(1, row.accepted + row.rejected + row.postponed)
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(row.party).font(RatsFont.body(12, weight: .semibold))
@@ -1063,9 +1068,9 @@ private struct PartyOutcomeRow: View {
             }
             GeometryReader { proxy in
                 HStack(spacing: 1) {
-                    Rectangle().fill(RatsColor.success).frame(width: proxy.size.width * Double(row.angenommen) / Double(total))
-                    Rectangle().fill(RatsColor.danger).frame(width: proxy.size.width * Double(row.abgelehnt) / Double(total))
-                    Rectangle().fill(RatsColor.signal).frame(width: proxy.size.width * Double(row.vertagt) / Double(total))
+                    Rectangle().fill(RatsColor.success).frame(width: proxy.size.width * Double(row.accepted) / Double(total))
+                    Rectangle().fill(RatsColor.danger).frame(width: proxy.size.width * Double(row.rejected) / Double(total))
+                    Rectangle().fill(RatsColor.signal).frame(width: proxy.size.width * Double(row.postponed) / Double(total))
                 }
                 .clipShape(Capsule())
             }

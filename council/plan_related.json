@@ -1,0 +1,138 @@
+{
+ "method": "Nähe der Kernpunkte (Einbettung, ohne Sprachmodell) im selben Themenfeld, von Hand durchgesehen; dazu Paare, die das Register nennt",
+ "generated": "2026-11-10",
+ "pairs": [
+  {
+   "a": "agenda_2025_alter",
+   "b": "demografiestrategie",
+   "score": 0.64,
+   "basis": "content"
+  },
+  {
+   "a": "agenda_2025_alter",
+   "b": "inklusion_stadt_fuer_alle",
+   "score": 0.6,
+   "basis": "content"
+  },
+  {
+   "a": "aktionsplan_energie",
+   "b": "waermeplan",
+   "score": 0.8,
+   "basis": "content"
+  },
+  {
+   "a": "baumstrategie",
+   "b": "masterplan_stadtgruen",
+   "score": 0.57,
+   "basis": "content"
+  },
+  {
+   "a": "baumstrategie",
+   "b": "nachhaltigkeitsleitbild",
+   "score": 0.67,
+   "basis": "content"
+  },
+  {
+   "a": "demografiestrategie",
+   "b": "inklusion_stadt_fuer_alle",
+   "score": 0.7,
+   "basis": "content"
+  },
+  {
+   "a": "eek",
+   "b": "gewerbeflaechenkonzept",
+   "score": 0.57,
+   "basis": "content"
+  },
+  {
+   "a": "ernaehrungsstrategie",
+   "b": "klimaschutzplan_2035",
+   "score": 0.66,
+   "basis": "content"
+  },
+  {
+   "a": "ernaehrungsstrategie",
+   "b": "schulverpflegung",
+   "score": null,
+   "basis": "register"
+  },
+  {
+   "a": "inklusion_stadt_fuer_alle",
+   "b": "integrationskonzept_2026",
+   "score": 0.75,
+   "basis": "content"
+  },
+  {
+   "a": "inklusion_stadt_fuer_alle",
+   "b": "orte_fuer_alle",
+   "score": 0.67,
+   "basis": "content"
+  },
+  {
+   "a": "isek_2035",
+   "b": "nachhaltigkeitsleitbild",
+   "score": 0.79,
+   "basis": "content"
+  },
+  {
+   "a": "isek_2035",
+   "b": "wohnraumversorgungskonzept",
+   "score": 0.57,
+   "basis": "content"
+  },
+  {
+   "a": "kita_ausbau",
+   "b": "schulentwicklungsplan_2018",
+   "score": 0.71,
+   "basis": "content"
+  },
+  {
+   "a": "klimaschutzplan_2035",
+   "b": "nachhaltigkeitsleitbild",
+   "score": 0.79,
+   "basis": "content"
+  },
+  {
+   "a": "klimaschutzplan_2035",
+   "b": "thg_neutrale_verwaltung",
+   "score": 0.92,
+   "basis": "content"
+  },
+  {
+   "a": "klimaschutzplan_2035",
+   "b": "waermeplan",
+   "score": 0.79,
+   "basis": "content"
+  },
+  {
+   "a": "masterplan_stadtgruen",
+   "b": "nachhaltigkeitsleitbild",
+   "score": 0.71,
+   "basis": "content"
+  },
+  {
+   "a": "mobilitaetsplan_2030",
+   "b": "rad_fussverkehrsprogramm",
+   "score": 0.71,
+   "basis": "content"
+  },
+  {
+   "a": "nachhaltigkeitsleitbild",
+   "b": "thg_neutrale_verwaltung",
+   "score": 0.82,
+   "basis": "content"
+  },
+  {
+   "a": "rad_fussverkehrsprogramm",
+   "b": "smv2025",
+   "score": 0.59,
+   "basis": "content"
+  },
+  {
+   "a": "thg_neutrale_verwaltung",
+   "b": "waermeplan",
+   "score": 0.73,
+   "basis": "content"
+  }
+ ]
+}

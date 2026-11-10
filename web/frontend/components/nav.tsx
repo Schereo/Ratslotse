@@ -303,6 +303,8 @@ const COUNCIL_DETAIL_BEREICH: [string, string][] = [
   ["/council/ideen", "analysis"],
   ["/council/person", "analysis"],
   ["/council/neuer-rat", "analysis"],
+  // Ein Plan der Stadt gehört zum Reiter „Pläne“ der Analyse (Schalter `plaene`).
+  ["/council/plan", "analysis"],
   // Die Wahlen erreicht man über die Analyse; seit sie in der App-Hülle
   // liegen, soll die Seitenleiste das auch zeigen (Tims Befund 16.10.2026).
   ["/wahlen", "analysis"],

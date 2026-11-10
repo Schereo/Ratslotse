@@ -1,0 +1,18 @@
+{
+ "plan": "isek_2035",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "a697f4401e236bbd",
+ "plain": [
+  "Der Plan gibt die strategische Richtung für weitere ISEK-Schritte vor und setzt Ziele für Stadtklima, Produktion und regionale Zusammenarbeit.",
+  "Bis 2035 soll jeder Stadtteil mindestens einen öffentlichen Ort für sichere Begegnungen und Kultur sowie inklusive Koordination im Stadtteil haben.",
+  "Bis 2050 sollen alle Menschen in Oldenburg wichtige Alltagsorte ab der Haustür in zehn Minuten zu Fuß oder per Rad erreichen."
+ ],
+ "questions": [
+  "Was wurde zum ISEK Oldenburg 2035 / Zukunft 2050 zuletzt berichtet oder beschlossen?",
+  "Was plant Oldenburg bis 2035 für sichere öffentliche Begegnungsorte in jedem Stadtteil?",
+  "Wie will Oldenburg bis 2050 wichtige Alltagsorte in zehn Minuten erreichbar machen?"
+ ]
+}

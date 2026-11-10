@@ -1,0 +1,18 @@
+{
+ "plan": "integrationskonzept_2026",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "f3acb5f8ecdbbdc0",
+ "plain": [
+  "Der Entwurf soll in Oldenburg allen gleiche Teilhabe ermöglichen und Vorhaben zu Bildung, Deutschlernen und Teilhabe vorsehen.",
+  "Er soll Vielfalt anerkennen, Zusammenhalt stärken, dauerhafte Strukturen schaffen und Verwaltungsabläufe sowie Kooperationen einbeziehen.",
+  "Vorgesehen sind ein Konzept gegen Rassismus und Benachteiligung, Fachtage alle zwei Jahre und jährlich 40.000 Euro."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Integrationskonzept 2026 berichtet oder beschlossen?",
+  "Was plant Oldenburgs Integrationskonzept 2026 gegen Rassismus und Diskriminierung?",
+  "Wie oft sind Fachtage zu den Zielen in Oldenburgs Integrationskonzept 2026 geplant?"
+ ]
+}

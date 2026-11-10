@@ -1,0 +1,70 @@
+{
+ "plan": "klimaschutzplan_2035",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Der Plan bündelt Oldenburgs Klimaschutzmaßnahmen und soll den Weg zur Klimaneutralität der Stadt weisen.",
+  "quote": "Im April 2021 hat der Stadtrat ein neues Klimaschutzziel beschlossen (Beschluss 21/0249/2): Oldenburg will bis 2035 klimaneutral werden. Um dieses Ziel erreichen zu können, wurde als Arbeitsgrundlage ein konsistenter Maßnahmenplan erarbeitet.",
+  "source": {
+   "kind": "template",
+   "template": "22/0910"
+  }
+ },
+ "points": [
+  {
+   "text": "Der Plan enthält 90 Maßnahmen in 20 Maßnahmenpaketen.",
+   "kind": "figure",
+   "figure": {
+    "value": "90",
+    "label": "Maßnahmen in 20 Paketen"
+   },
+   "quote": "Der neue „Klimaschutzplan Oldenburg 2035“ enthält 90 Maßnahmen, die in 20 Maßnahmenpaketen gegliedert sind.",
+   "source": {
+    "kind": "template",
+    "template": "22/0910"
+   }
+  },
+  {
+   "text": "Die Maßnahmen sollen energiebedingte und nicht-energiebedingte Emissionen senken.",
+   "kind": "standard",
+   "quote": "Die Maßnahmen zielen sowohl auf die Reduktion energiebedingter, als auch nicht-energiebedingter Emissionen.",
+   "source": {
+    "kind": "template",
+    "template": "22/0910"
+   }
+  },
+  {
+   "text": "Alle Maßnahmen sollen unabhängig von ihrer Priorität sofort und vollständig umgesetzt werden.",
+   "kind": "standard",
+   "quote": "Für Oldenburg ergibt sich daraus die Konsequenz, dass unmittelbar alle Maßnahmen, unabhängig von ihrer Priorität, vollumfänglich in die Umsetzung kommen.",
+   "source": {
+    "kind": "template",
+    "template": "22/0910"
+   }
+  },
+  {
+   "text": "Das Szenario hält Klimaneutralität bis 2035 trotz ambitioniertem Vorgehen für nicht erreichbar; fast 400.000 Tonnen CO2e bleiben, vor allem in Verkehr und privaten Haushalten.",
+   "kind": "figure",
+   "figure": {
+    "value": "fast 400.000 t",
+    "label": "CO₂e bleiben laut Szenario bis 2035 übrig"
+   },
+   "quote": "Nach dem Szenario des Hamburg Instituts ist die Klimaneutralität bis 2035 auch mit dem ambitionierten Vorgehen nicht zu erreichen. An den verbleibenden Emissionen von fast 400.000 Tonnen CO2e haben die Sektoren Verkehr und private Haushalte die größten Anteile.",
+   "source": {
+    "kind": "template",
+    "template": "22/0910"
+   }
+  },
+  {
+   "text": "Zur Kontrolle ist ab dem Berichtsjahr 2021 jährlich eine Energie- und Treibhausgas-Bilanz der Verwaltung vorgesehen.",
+   "kind": "deadline",
+   "quote": "Um zu überprüfen, ob auch die quantitativen CO2-Minderungsziele erreicht werden (Controlling), ist ab dem Berichtsjahr 2021 eine jährliche Energie- und Treibhausgas-Bilanz seitens der Verwaltung vorgesehen.",
+   "source": {
+    "kind": "template",
+    "template": "22/0910"
+   }
+  }
+ ]
+}

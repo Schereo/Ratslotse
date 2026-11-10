@@ -1,0 +1,94 @@
+{
+ "plan": "nachhaltigkeitsleitbild",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan soll der Stadtverwaltung als Kompass dienen, um ihr Handeln in allen Bereichen nachhaltig auszurichten.",
+  "quote": "Das Nachhaltigkeitsleitbild soll der Stadtverwaltung Oldenburg künftig als Kompass dienen, um das eigene Handeln in allen Bereichen konsequent nachhaltig auszurichten.",
+  "source": {
+   "kind": "template",
+   "template": "22/0240/1"
+  }
+ },
+ "points": [
+  {
+   "text": "Städtische Gebäude sollen bis 2035 klimaneutral werden.",
+   "kind": "deadline",
+   "due": {
+    "date": "2035",
+    "at": "end",
+    "label": "bis 2035"
+   },
+   "quote": "Klimaneutralität der städtischen Gebäude bis 2035 erreichen",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0240/1",
+    "document_id": 248420,
+    "label": "Nachhaltigkeitsleitbild, Vorschlag der Verwaltung",
+    "page": 20
+   }
+  },
+  {
+   "text": "Oldenburg will Fuß- und Radverkehr sowie klimaneutralen ÖPNV umfangreich fördern, um den Umstieg vom Auto zu ermöglichen.",
+   "kind": "goal",
+   "quote": "Durch umfangreiche Förderung von Fuß-, Radverkehr und klimaneutralem ÖPNV den Umstieg von motorisiertem Individualverkehr zu Umweltverbund ermöglichen",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0240/1",
+    "document_id": 248420,
+    "label": "Nachhaltigkeitsleitbild, Vorschlag der Verwaltung",
+    "page": 17
+   }
+  },
+  {
+   "text": "Oldenburg will Stadtnatur und biologische Vielfalt erhalten und entwickeln.",
+   "kind": "goal",
+   "quote": "Die Stadtnatur in ihrer biologischen Vielfalt erhalten und entwickeln",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0240/1",
+    "document_id": 248420,
+    "label": "Nachhaltigkeitsleitbild, Vorschlag der Verwaltung",
+    "page": 16
+   }
+  },
+  {
+   "text": "Die Stadt will inklusive, barrierefreie Quartiere mit preiswertem Wohnraum und gesundem Wohnumfeld fördern.",
+   "kind": "goal",
+   "quote": "Inklusive, barrierefreie Quartiere mit preiswertem Wohnraum und gesundem Wohnumfeld fördern und gestalten",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0240/1",
+    "document_id": 248420,
+    "label": "Nachhaltigkeitsleitbild, Vorschlag der Verwaltung",
+    "page": 17
+   }
+  },
+  {
+   "text": "Die Stadt will Bildungsangebote für nachhaltige Entwicklung ausbauen.",
+   "kind": "goal",
+   "quote": "Bildungsangebote für nachhaltige Entwicklung (BNE) ausbauen",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0240/1",
+    "document_id": 248420,
+    "label": "Nachhaltigkeitsleitbild, Vorschlag der Verwaltung",
+    "page": 18
+   }
+  },
+  {
+   "text": "Die Stadt will Unterstützungsangebote für Menschen in Krisen und vulnerable Gruppen zugänglich machen.",
+   "kind": "goal",
+   "quote": "Unterstützungsangebote für Menschen in krisenhaften Lebenslagen und vulnerable Gruppen – armutsgefährdete Kinder, Jugendliche, Alleinerziehende und ältere Menschen – vorhalten und zugänglich machen",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0240/1",
+    "document_id": 248420,
+    "label": "Nachhaltigkeitsleitbild, Vorschlag der Verwaltung",
+    "page": 18
+   }
+  }
+ ]
+}

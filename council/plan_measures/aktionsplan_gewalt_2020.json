@@ -1,0 +1,560 @@
+{
+ "plan": "aktionsplan_gewalt_2020",
+ "source": {
+  "label": "Evaluation und Fortschreibung, Anhang 4.1",
+  "document_id": 314635,
+  "template": "26/0681/1",
+  "as_of": "2026-08",
+  "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314635&type=do"
+ },
+ "count_city": null,
+ "count_note": "Die Evaluation zählt 90 Handlungsempfehlungen; ihre Tabelle im Anhang hat 91 Zeilen. Die Stadt nummeriert sie nicht — die Nummer ist die Reihenfolge in ihrer Tabelle.",
+ "measures": [
+  {
+   "code": "1",
+   "title": "Erhöhung der personellen Kapazitäten in Schutz- und Beratungsstellen, um dem Bedarf gerecht zu werden. Verbesserung der Förderung von Gewaltberatungsstellen.",
+   "field": "Übergreifende Handlungsempfehlungen",
+   "page": 69
+  },
+  {
+   "code": "2",
+   "title": "Konzeptionierung und Einrichtung einer Koordinierungs- und Beratungsstelle gegen geschlechtsspezifische Gewalt.",
+   "field": "Übergreifende Handlungsempfehlungen",
+   "page": 70
+  },
+  {
+   "code": "3",
+   "title": "Konzept zur Einrichtung eines zentral gelegenen Frauenberatungszentrums unter Beteiligung der bestehenden Beratungseinrichtungen.",
+   "field": "Übergreifende Handlungsempfehlungen",
+   "page": 70
+  },
+  {
+   "code": "4",
+   "title": "Konzeptionierung und Aufbau eines Frauennotrufes.",
+   "field": "Übergreifende Handlungsempfehlungen",
+   "page": 70
+  },
+  {
+   "code": "5",
+   "title": "Einrichtung eines mobilen Beratungsangebotes für Fachkräfte.",
+   "field": "Übergreifende Handlungsempfehlungen",
+   "page": 71
+  },
+  {
+   "code": "6",
+   "title": "Entwicklung eines langfristigen Projektes, das Männer* als Bündnispartner* adressiert.",
+   "field": "Übergreifende Handlungsempfehlungen",
+   "page": 71
+  },
+  {
+   "code": "7",
+   "title": "Es sollte darauf hingewirkt werden, dass sich das Land Niedersachsen dem „Hilfetelefon“ der Bundesländer Bayern und Nordrhein-Westfallen anschließt.",
+   "field": "Übergreifende Handlungsempfehlungen",
+   "page": 71
+  },
+  {
+   "code": "8",
+   "title": "Konzeptionierung und Vergabe eines Gleichstellungspreises in regelmäßigen Abständen.",
+   "field": "Übergreifende Handlungsempfehlungen",
+   "page": 72
+  },
+  {
+   "code": "9",
+   "title": "Unterstützung der Kampagnen und des Engagements gegen Alltagssexismus durch Positionierung von kommunaler Verwaltung und Politik.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 72
+  },
+  {
+   "code": "10",
+   "title": "Aufnahme der Fortbildungsverpflichtung in die Leistungsvereinbarungen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 72
+  },
+  {
+   "code": "11",
+   "title": "Erarbeitung von Einzelkampagnen mit Informationen und Ansprechpersonen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 73
+  },
+  {
+   "code": "12",
+   "title": "Vernetzung der Akteur*innen dieses Bereichs erhalten und die Entwicklung der digitalen Gewalt, insbesondere auch im Wandel der digitalen Medien, beobachten.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 73
+  },
+  {
+   "code": "13",
+   "title": "Erstellen und Durchführung einer Umfrage.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 73
+  },
+  {
+   "code": "14",
+   "title": "Aufklärungskampagnen für Betroffene und deren Umfeld, auch in einfacher und Leichter Sprache.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 74
+  },
+  {
+   "code": "15",
+   "title": "Selbstbehauptungs- und Selbstverteidigungstrainings einrichten ausschließlich für Frauen* und Mädchen* mit Behinderungen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 74
+  },
+  {
+   "code": "16",
+   "title": "Erstellen von Informationsmaterialien in einfacher und Leichter Sprache.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 74
+  },
+  {
+   "code": "17",
+   "title": "Ausbau der Vernetzung mit Einrichtungen der Behindertenhilfe.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 75
+  },
+  {
+   "code": "18",
+   "title": "Barrierefreier Ausbau des Autonomen Frauenhauses.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 75
+  },
+  {
+   "code": "19",
+   "title": "Barrierefreier Ausbau der Gewaltberatungsstellen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 75
+  },
+  {
+   "code": "20",
+   "title": "Entwicklung von mehrsprachigen Angeboten unter Einbeziehung der Migrantenselbstorganisationen und Migrationsberatungsstellen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 75
+  },
+  {
+   "code": "21",
+   "title": "Öffentlichkeitsarbeit, um bestehende Hilfsangebote auf Landesebene bekannter zu machen sowie stärkere Aufklärung über die Rechte von Frauen*.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 76
+  },
+  {
+   "code": "22",
+   "title": "Schulungen von Mitarbeiter*innen der Gemeinwesenarbeit, des Ausländerbüros, der Freizeitstätten, des Allgemeinen Sozialdienstes sowie ein offenes Angebot.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 76
+  },
+  {
+   "code": "23",
+   "title": "Schutzkonzepte und Aufklärungsangebote in den Unterkünften für Geflüchtete.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 76
+  },
+  {
+   "code": "24",
+   "title": "Erstellung von Informationsmaterialien und Ausbau des Fortbildungsangebotes.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 76
+  },
+  {
+   "code": "25",
+   "title": "Aufbau einer digitalen Auskunftsplattform.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 76
+  },
+  {
+   "code": "26",
+   "title": "Schulungsangebote, um Fälle zu erkennen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 77
+  },
+  {
+   "code": "27",
+   "title": "Allgemeine Informationen und Kampagnen (beispielsweise Kinospots) zu Alltagssexismus, Diskriminierung und sexueller Gewalt.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 77
+  },
+  {
+   "code": "28",
+   "title": "Erarbeitung städtischer Regelungen zum Verbot sexistischer Werbung auf öffentlichen Flächen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 77
+  },
+  {
+   "code": "29",
+   "title": "Überprüfung der Implementierung von Schutzkonzepten in pädagogischen Einrichtungen inkl. sexualpädagogischem Konzeptes.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 78
+  },
+  {
+   "code": "30",
+   "title": "Aufbau von mobilen Beratungsangeboten.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 78
+  },
+  {
+   "code": "31",
+   "title": "Weiterfinanzierung der Honorarkraft für den Präventionsrat Oldenburg",
+   "field": "Gewalt gegen Frauen*",
+   "page": 78
+  },
+  {
+   "code": "32",
+   "title": "Schulungen für Trainer*innen in Sportvereinen, Sensibilisierung und Stärkung von Handlungskompetenzen",
+   "field": "Gewalt gegen Frauen*",
+   "page": 79
+  },
+  {
+   "code": "33",
+   "title": "Angebot „Runder Tisch“ für Stadtsportbund und Fachberatungsstellen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 79
+  },
+  {
+   "code": "34",
+   "title": "Finanzielle Absicherung der Beratungsangebote für über 27-Jährige.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 79
+  },
+  {
+   "code": "35",
+   "title": "Erstellen von Informationsmaterialien und Entwicklung von Fortbildungsangeboten.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 79
+  },
+  {
+   "code": "36",
+   "title": "Ausbau der Vernetzung.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 80
+  },
+  {
+   "code": "37",
+   "title": "Einrichten von Fallkonferenzen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 80
+  },
+  {
+   "code": "38",
+   "title": "Kampagnen im öffentlichen Raum und in den sozialen Medien.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 80
+  },
+  {
+   "code": "39",
+   "title": "Erstellung von Informationsmaterialien.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 80
+  },
+  {
+   "code": "40",
+   "title": "Entwicklung von Angeboten für Täter*innen zur Verhaltensänderung",
+   "field": "Gewalt gegen Frauen*",
+   "page": 81
+  },
+  {
+   "code": "41",
+   "title": "Erarbeitung einer aufklärenden Broschüre über sexuelle Belästigung zur allgemeinen Verfügung der Oldenburgerinnen und Oldenburger, insbesondere mit Verbreitung in Unternehmen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 81
+  },
+  {
+   "code": "42",
+   "title": "Berücksichtigung im Projekt „SToP – Stadtteile ohne Partnergewalt“.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 81
+  },
+  {
+   "code": "43",
+   "title": "Entwicklung eines Beratungsangebotes für von Stalking Betroffene.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 81
+  },
+  {
+   "code": "44",
+   "title": "Erstellen von Informationsmaterialien.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 81
+  },
+  {
+   "code": "45",
+   "title": "Entwicklung von Kampagnen zur Sensibilisierung und Bewusstseinsbildung der Bevölkerung.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 81
+  },
+  {
+   "code": "46",
+   "title": "Aufnahme einer Hinweispflicht auf die Gefahr durch K.O.- Tropfen durch die Veranstalter bei Festen und Märkten in Oldenburg.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 82
+  },
+  {
+   "code": "47",
+   "title": "Konzeptionierung und Einrichtung eines Frauennotrufes.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 82
+  },
+  {
+   "code": "48",
+   "title": "In allen städtischen Gebäuden und öffentlichen Gebäuden, sowie Kaufhäusern und bei öffentlichen Veranstaltungen werden die Flyer des Netzwerkes ProBeweis und die Plakate „Hilfetelefon für Frauen“ deutlich sichtbar ausgelegt und aufgehängt.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 82
+  },
+  {
+   "code": "49",
+   "title": "Erarbeitung und Verteilung eines Leitfadens für Fachkräfte in sozialen, pädagogischen und medizinischen Berufen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 82
+  },
+  {
+   "code": "50",
+   "title": "Regelmäßige interdisziplinäre Fortbildungen für Fachkräfte aus der Verwaltung, den Schulen der Medizin und weitere Akteur*innen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 82
+  },
+  {
+   "code": "51",
+   "title": "Verbreitung des „Schutzbriefes“ nach Hamburger Vorbild.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 83
+  },
+  {
+   "code": "52",
+   "title": "Erarbeitung eines Konzeptes zur kultur- und themensensiblen Information potenziell Betroffener über die Rechtslage und Ansprechpersonen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 83
+  },
+  {
+   "code": "53",
+   "title": "Schulung von Angehörigen bestimmter Berufsgruppen aus dem pädagogischen Bereich, um Rechtssicherheit und schnelles Handeln im Falle einer drohenden Genitalverstümmelung zu sichern.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 83
+  },
+  {
+   "code": "54",
+   "title": "Aufklärung, Information und ggf. Schulung der Fachkräfte.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 83
+  },
+  {
+   "code": "55",
+   "title": "Durchführung von Fortbildungs- und Informationsveranstaltungen durch Kargah e. V.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 83
+  },
+  {
+   "code": "56",
+   "title": "Einbindung der Informationen rund um das Thema Prostitution mit Berücksichtigung der Information über die „Loverboy-Methode“ in regelmäßig stattfindenden Informationsveranstaltungen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 84
+  },
+  {
+   "code": "57",
+   "title": "Entwicklung von Aufklärungskampagnen für Freier.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 84
+  },
+  {
+   "code": "58",
+   "title": "Einrichtung einer Ausstiegsberatung.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 84
+  },
+  {
+   "code": "59",
+   "title": "Stärkere Bekanntmachung des Netzwerks ProBeweis innerhalb der Zielgruppe.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 84
+  },
+  {
+   "code": "60",
+   "title": "Fortführung und Unterstützung der Netzwerkarbeit.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 84
+  },
+  {
+   "code": "61",
+   "title": "Schaffung von Fortbildungsmöglichkeiten für verschiedene Berufsgruppen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 85
+  },
+  {
+   "code": "62",
+   "title": "Durch Workshops und soll die Zivilgesellschaft aktiv einbezogen werden.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 85
+  },
+  {
+   "code": "63",
+   "title": "Stärkere Einbindung von Verwaltung, Institutionen und Zivilgesellschaft bei der Umsetzung von Kampagnen und Maßnahmen zur Sensibilisierung",
+   "field": "Gewalt gegen Frauen*",
+   "page": 85
+  },
+  {
+   "code": "64",
+   "title": "Zusammenführung der Grundsätze in der Stadtplanung zur Vorbeugung von Gewalt gegen Frauen* im öffentlichen Raum als Leitfaden und Anwendung in den Abwägungsprozessen.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 86
+  },
+  {
+   "code": "65",
+   "title": "Verbindliche Einführung von Sicherheits- und Gewaltpräventionskonzepten in allen Einrichtungen der Erziehung und Betreuung im Stadtgebiet Oldenburg.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 86
+  },
+  {
+   "code": "66",
+   "title": "Implementierung eines GISbasierten online-Meldesystems zur Identifizierung von „Angsträumen“.",
+   "field": "Gewalt gegen Frauen*",
+   "page": 87
+  },
+  {
+   "code": "67",
+   "title": "Einführung des nachbarschaftsorientierten Präventionsprojektes „StoP – Stadtteile ohne Partnergewalt“ unter starker Einbeziehung der Zivilgesellschaft – Start ab 2021 modellhaft am Standort der Gemeinwesenarbeit Dietrichsfeld.",
+   "field": "Häusliche Gewalt",
+   "page": 88
+  },
+  {
+   "code": "68",
+   "title": "Aufnahme des Themas Häusliche Gewalt in das Fortbildungscurriculum für neue Mitarbeiter*innen im Allgemeinen Sozialdienst.",
+   "field": "Häusliche Gewalt",
+   "page": 88
+  },
+  {
+   "code": "69",
+   "title": "Ergänzung des bestehenden Frauenhauses um ein „Oranje Huis“ nach niederländischem Vorbild.",
+   "field": "Häusliche Gewalt",
+   "page": 88
+  },
+  {
+   "code": "70",
+   "title": "Durchführung einer Risikoeinschätzung bei Aufnahme.",
+   "field": "Häusliche Gewalt",
+   "page": 89
+  },
+  {
+   "code": "71",
+   "title": "Schaffung von Schutzangeboten für gewaltbetroffene Frauen* mit besonderen Bedarfen (Obdachlosigkeit & Sucht).",
+   "field": "Häusliche Gewalt",
+   "page": 89
+  },
+  {
+   "code": "72",
+   "title": "Aufbau und Förderung einer Zufluchtsstätte für heranwachsende Mädchen* und Frauen* bis 27 Jahre.",
+   "field": "Häusliche Gewalt",
+   "page": 89
+  },
+  {
+   "code": "73",
+   "title": "Einrichtung von Übergangswohnungen mit ambulanter Unterstützung.",
+   "field": "Häusliche Gewalt",
+   "page": 89
+  },
+  {
+   "code": "74",
+   "title": "Aufbau eines ambulanten Unterstützungsangebotes.",
+   "field": "Häusliche Gewalt",
+   "page": 89
+  },
+  {
+   "code": "75",
+   "title": "Vorhaltung von Kurzzeitpflegeplätzen für pflegebedürftige Opfer Häuslicher Gewalt.",
+   "field": "Häusliche Gewalt",
+   "page": 90
+  },
+  {
+   "code": "76",
+   "title": "Aufbau eines Angebotes für gewaltbetroffene Frauen*, die pflegebedürftig sind. Konzepterarbeitung zur Unterstützung von pflegebedürftigen Frauen*, die von Gewalt im Häuslichen Umfeld betroffen sind.",
+   "field": "Häusliche Gewalt",
+   "page": 90
+  },
+  {
+   "code": "77",
+   "title": "Erwirkung einer Erhöhung der Landesmittel.",
+   "field": "Häusliche Gewalt",
+   "page": 90
+  },
+  {
+   "code": "78",
+   "title": "Fortbildung von Verwaltungsmitarbeiter*innen zum Thema „Anti-Bias“ sowie Sensibilisierung für das Themenfeld Häusliche Gewalt.",
+   "field": "Häusliche Gewalt",
+   "page": 90
+  },
+  {
+   "code": "79",
+   "title": "Erhalt und Ausbau der Finanzierung der Übersetzungsleistungen.",
+   "field": "Häusliche Gewalt",
+   "page": 91
+  },
+  {
+   "code": "80",
+   "title": "Entwicklung (unter Einbezug muttersprachlicher Trainer*) eines Angebotes für Migranten* und geflüchtete Männer* mit wenig oder keinen Deutschkenntnissen, die Gewalt gegenüber ihrer/m (Ex- )Partner*in ausüben.",
+   "field": "Häusliche Gewalt",
+   "page": 91
+  },
+  {
+   "code": "81",
+   "title": "Aufbau eines Gruppenangebotes für Frauen*, die gegenüber ihrer/m (Ex-)Partner*in oder/und der Familie gewalttätig geworden sind.",
+   "field": "Häusliche Gewalt",
+   "page": 91
+  },
+  {
+   "code": "82",
+   "title": "Öffentlichkeitsarbeit zur Enttabuisierung von Häuslicher Gewalt bei Männern*.",
+   "field": "Häusliche Gewalt",
+   "page": 91
+  },
+  {
+   "code": "83",
+   "title": "Entwicklung eines überregionalen Konzeptes zum Aufbau eines Männerschutzhauses, gemeinsam mit anderen Kommunen.",
+   "field": "Häusliche Gewalt",
+   "page": 92
+  },
+  {
+   "code": "84",
+   "title": "Schaffung einer BISS - Beratungs- und Informationsstelle für Kinder.",
+   "field": "Häusliche Gewalt",
+   "page": 92
+  },
+  {
+   "code": "85",
+   "title": "Aufbau einer elternunabhängigen Beratung für Kinder und Jugendliche.",
+   "field": "Häusliche Gewalt",
+   "page": 93
+  },
+  {
+   "code": "86",
+   "title": "Aufbau von Gruppenangeboten für Kinder und Jugendliche, die Häusliche Gewalt miterleben mussten.",
+   "field": "Häusliche Gewalt",
+   "page": 93
+  },
+  {
+   "code": "87",
+   "title": "Entwicklung eines Informationsflyers speziell für Kinder und Jugendliche, der bei Polizeieinsätzen bei Häuslicher Gewalt an die Kinder gegeben werden kann.",
+   "field": "Häusliche Gewalt",
+   "page": 93
+  },
+  {
+   "code": "88",
+   "title": "Einrichtung einer Notrufnummer für Kinder und Jugendliche.",
+   "field": "Häusliche Gewalt",
+   "page": 93
+  },
+  {
+   "code": "89",
+   "title": "Entwickelung eines Kinderbetreuungsangebotes während der Beratungssituationen.",
+   "field": "Häusliche Gewalt",
+   "page": 93
+  },
+  {
+   "code": "90",
+   "title": "Entwicklung eines Angebotes zur Psychosozialen Belastungsdiagnostik für Kinder und Jugendliche:",
+   "field": "Häusliche Gewalt",
+   "page": 94
+  },
+  {
+   "code": "91",
+   "title": "Erstellung eines Gesamtkonzeptes zur systematischen Gefährdungsanalyse in Fällen Häuslicher Gewalt.",
+   "field": "Häusliche Gewalt",
+   "page": 94
+  }
+ ]
+}

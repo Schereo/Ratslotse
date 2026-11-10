@@ -1,0 +1,396 @@
+{
+ "plan": "ernaehrungsstrategie",
+ "snapshots": [
+  {
+   "as_of": "2026-05",
+   "source": {
+    "kind": "template",
+    "label": "Bericht „Ernährungsstrategie: Umsetzungsstand“",
+    "template": "26/0431",
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=309762&type=do",
+    "fetched": null
+   },
+   "total": 68,
+   "complete": true,
+   "counts": [
+    {
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done",
+     "count": 10
+    },
+    {
+     "status_raw": "Umsetzung steht kurz bevor, erste Schritte erfolgt (Stufe 75 %)",
+     "status_norm": "in_progress",
+     "count": 6
+    },
+    {
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress",
+     "count": 11
+    },
+    {
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started",
+     "count": 16
+    },
+    {
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open",
+     "count": 25
+    }
+   ],
+   "measures": [
+    {
+     "code": "A1",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A2",
+     "status_raw": "Umsetzung steht kurz bevor, erste Schritte erfolgt (Stufe 75 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A3",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A4",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A5",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A6",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A7",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A8",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A9",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A10",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A11",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A12",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A13",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A14",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A15",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A16",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A17",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A18",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A19",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A20",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A21",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A22",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A23",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A24",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A25",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A26",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A27",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A28",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A29",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A30",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A31",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A32",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A33",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A34",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A35",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A36",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A37",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A38",
+     "status_raw": "Umsetzung steht kurz bevor, erste Schritte erfolgt (Stufe 75 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A39",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A40",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A41",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A42",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A43",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A44",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A45",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A46",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A47",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A48",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A49",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A50",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A51",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A52",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A53",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A54",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A55",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A56",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A57",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A58",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A59",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A60",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A61",
+     "status_raw": "Umsetzung steht kurz bevor, erste Schritte erfolgt (Stufe 75 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A62",
+     "status_raw": "Umsetzung aufgegriffen (Stufe 25 %)",
+     "status_norm": "started"
+    },
+    {
+     "code": "A63",
+     "status_raw": "Umsetzung steht kurz bevor, erste Schritte erfolgt (Stufe 75 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A64",
+     "status_raw": "Umsetzung steht kurz bevor, erste Schritte erfolgt (Stufe 75 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A65",
+     "status_raw": "keine Umsetzungsaktivitäten (Stufe 0 %)",
+     "status_norm": "open"
+    },
+    {
+     "code": "A66",
+     "status_raw": "wird vollständig umgesetzt (Stufe 100 %)",
+     "status_norm": "done"
+    },
+    {
+     "code": "A67",
+     "status_raw": "Umsetzung steht kurz bevor, erste Schritte erfolgt (Stufe 75 %)",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "A68",
+     "status_raw": "Grundlagen für die Umsetzung geschaffen (Stufe 50 %)",
+     "status_norm": "in_progress"
+    }
+   ]
+  }
+ ],
+ "notes": [
+  {
+   "text": "Die Stufen sind laut Bericht eine qualitative Einschätzung der Verwaltung, kein Messwert.",
+   "url": null
+  },
+  {
+   "text": "Zur Umsetzung beschlossen hat der Rat fünf der 68 Ansätze (24/0811); der Bericht ordnet trotzdem alle ein.",
+   "url": null
+  }
+ ]
+}

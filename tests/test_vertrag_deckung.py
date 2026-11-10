@@ -138,8 +138,6 @@ def _offene_schemata() -> set[str]:
 BEWUSST_OFFEN = {
     "AdminJob": "`last` ist eine job_runs-Zeile; ihr `stats` ist die "
                 "Kennzahlen-Rückgabe des jeweiligen Jobs und je Job anders.",
-    "AnalysisData": "Die Hülle steht, die verschachtelten Auswertungen "
-                    "darunter bleiben offen (so schon im Code begründet).",
     "ConversationTurn": "Gespeicherter Quellen-Block eines Gesprächs-Zugs — "
                         "gewachsener JSON-Blob, ältere Zeilen tragen weniger.",
     "DecisionDetail": "`budget_link` hat zwei Formen (Nachbewilligung bzw. "
@@ -175,7 +173,6 @@ WEB_OHNE_VERTRAG = {
     ("AdminStats", "web_users"),
     ("DecisionDetail", "bild"),
     ("DecisionDetail", "href"),
-    ("FieldRecap", "field_label"),
     ("FieldRecap", "generated_at"),
     ("FieldRecap", "n_decisions"),
     ("Member", "filter_parteien"),
@@ -183,10 +180,6 @@ WEB_OHNE_VERTRAG = {
     ("MemberDetail", "current_faction"),
     ("MemberDetail", "kpenr"),
     ("MemberDetail", "memberships"),
-    ("PartyAnalysis", "matrix"),
-    ("PartyAnalysis", "n_antraege"),
-    ("PartyAnalysis", "n_mit_beschluss"),
-    ("QaAnswer", "mode"),
     ("QaSource", "ort_name"),
     ("QuizImageCredit", "author"),
     ("QuizImageCredit", "license_url"),

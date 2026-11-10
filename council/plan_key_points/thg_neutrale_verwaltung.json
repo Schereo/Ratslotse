@@ -1,0 +1,110 @@
+{
+ "plan": "thg_neutrale_verwaltung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Das Konzept schafft die Grundlage, um Klimaschutz in der Stadtverwaltung Oldenburg umzusetzen.",
+  "quote": "Für die Stadtverwaltung stellt das Konzept für eine treibhausgasneutrale Verwaltung ein zentrales Steuerungsinstrument dar, um Klimaschutz strategisch, koordiniert und wirksam umzusetzen.",
+  "source": {
+   "kind": "attachment",
+   "template": "25/0896",
+   "document_id": 301128,
+   "label": "Konzept für eine treibhausgasneutrale Verwaltung",
+   "page": 8
+  }
+ },
+ "points": [
+  {
+   "text": "Die Stadtverwaltung soll bis 2035 treibhausgasneutral sein.",
+   "kind": "goal",
+   "quote": "Die Stadt Oldenburg verfolgt das Ziel, bis zum Jahr 2035 eine treibhausgasneutrale Verwaltung zu erreichen.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0896",
+    "document_id": 301128,
+    "label": "Konzept für eine treibhausgasneutrale Verwaltung",
+    "page": 5
+   }
+  },
+  {
+   "text": "Bis 2030 sollen die Emissionen gegenüber 2023 um 62,5 Prozent sinken.",
+   "kind": "figure",
+   "figure": {
+    "value": "62,5 %",
+    "label": "weniger Emissionen bis 2030 als 2023"
+   },
+   "due": {
+    "date": "2030",
+    "at": "end",
+    "label": "bis 2030"
+   },
+   "quote": "Als Zwischenziel ist eine Reduktion um 62,5 Prozent bis 2030 gegenüber dem Ausgangsjahr 2023 festgelegt.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0896",
+    "document_id": 301128,
+    "label": "Konzept für eine treibhausgasneutrale Verwaltung",
+    "page": 5
+   }
+  },
+  {
+   "text": "Der Plan bündelt 36 Maßnahmen in fünf Handlungsfeldern: Beschaffung, Gebäude, Mobilität, natürlicher Klimaschutz und übergreifende Maßnahmen.",
+   "kind": "figure",
+   "figure": {
+    "value": "36",
+    "label": "Maßnahmen in fünf Handlungsfeldern"
+   },
+   "quote": "Zur Reduktion der ermittelten Emissionen und damit zur Zielerreichung der Treibhausgasneutralität wurde ein Maßnahmengerüst mit 36 Maßnahmen entwickelt, die den folgenden fünf Handlungsfeldern zugeordnet sind: • Beschaffung, Vergabewesen und Veranstaltungen • Gebäude, Energie und Ressourcen • Mobilität • Natürlicher Klimaschutz • Übergreifende Maßnahmen",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0896",
+    "document_id": 301128,
+    "label": "Konzept für eine treibhausgasneutrale Verwaltung",
+    "page": 5
+   }
+  },
+  {
+   "text": "Bei allen Maßnahmen hat die Vermeidung von Emissionen Vorrang vor ihrer Reduktion.",
+   "kind": "standard",
+   "quote": "Weiterhin sollen alle Maßnahmen nach der Priorisierung der Emissionsvermeidung und dann der Emissionsreduktion abgeleitet werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0896",
+    "document_id": 301128,
+    "label": "Konzept für eine treibhausgasneutrale Verwaltung",
+    "page": 24
+   }
+  },
+  {
+   "text": "Ab Anfang 2026 sollen konkrete Maßnahmen-Steckbriefe erarbeitet und umgesetzt werden.",
+   "kind": "deadline",
+   "due": {
+    "date": "2026-01",
+    "at": "start",
+    "label": "ab Anfang 2026"
+   },
+   "quote": "In einem ersten Umsetzungsschritt werden folglich ab Anfang 2026 konkrete Maßnahmen-Steckbriefe auf Basis des festgelegten Gerüsts erarbeitet und in die Umsetzung gebracht.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0896",
+    "document_id": 301128,
+    "label": "Konzept für eine treibhausgasneutrale Verwaltung",
+    "page": 31
+   }
+  },
+  {
+   "text": "Wird ein Zwischenziel mit mehr als fünf Prozent Abweichung verfehlt, startet ein umfassender Controlling-Prozess.",
+   "kind": "standard",
+   "quote": "Wird ein Zwischenziel mit einer Abweichung von mehr als fünf Prozent verfehlt, wird ein umfassender Controlling-Prozess initiiert.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0896",
+    "document_id": 301128,
+    "label": "Konzept für eine treibhausgasneutrale Verwaltung",
+    "page": 33
+   }
+  }
+ ]
+}

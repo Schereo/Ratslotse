@@ -1,0 +1,18 @@
+{
+ "plan": "integrationskonzept_2020",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "c9e5142768ff2a7c",
+ "plain": [
+  "Der Plan soll allen Beteiligten eine nachvollziehbare und verbindliche Strategie für die Integrationsarbeit geben.",
+  "Er empfiehlt abgestimmte Bildungs- und Sprachangebote, die sich nach Zielgruppen und Bedarf richten.",
+  "Zudem zielt er auf bessere Ausbildungs- und Arbeitschancen für Migrantinnen und Migranten."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Integrationskonzept 2020 berichtet oder beschlossen?",
+  "Welche Maßnahmen umfasst der Maßnahmenkatalog Bildung und Arbeit in Oldenburg?",
+  "Welche Sprachlernangebote empfiehlt Oldenburgs Integrationskonzept 2020?"
+ ]
+}

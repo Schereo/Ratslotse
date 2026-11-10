@@ -1,0 +1,79 @@
+{
+ "plan": "baumstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Die Strategie soll den Baumbestand in Oldenburg erhalten.",
+  "quote": "Die Baumerhalt- und Entwicklungsstrategie für die Stadt Oldenburg wird als wesentliche Grundlage für den umfassenden Schutz, Erhalt und die nachhaltige Entwicklung des städtischen Baumbestandes beschlossen.",
+  "source": {
+   "kind": "decision",
+   "template": "25/0388",
+   "date": "2025-06-30",
+   "committee": "Rat"
+  }
+ },
+ "points": [
+  {
+   "text": "Die Strategie sieht eine Baumschutzsatzung vor, die grundsätzlich alle Bäume im Stadtgebiet erfassen soll.",
+   "kind": "measure",
+   "quote": "Diese soll im Rahmen der vorliegenden Strategie auf den Weg gebracht werden und nicht nur private, sondern generell alle Bäume im Stadtgebiet umfassen.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0388",
+    "document_id": 293180,
+    "label": "Baumerhalt- und Entwicklungsstrategie",
+    "page": 22
+   }
+  },
+  {
+   "text": "Für entnommene Bäume ermittelt die Stadt den Ausgleich nachvollziehbar und leistet ihn durch Nachpflanzungen; auf Privatflächen fordert sie ihn ein.",
+   "kind": "standard",
+   "quote": "Die Stadt Oldenburg wird den Kompensationsbedarf für entnommene Bäume nachvollziehbar ermitteln und den ermittelten Kompensationsbedarf in Form von Nachpflanzungen leisten. Sie wird außerdem den Kompensationsbedarf auf Privatflächen bei Entnahme von Bäumen konsequent einfordern (vgl. Instrument A1).",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0388",
+    "document_id": 293180,
+    "label": "Baumerhalt- und Entwicklungsstrategie",
+    "page": 23
+   }
+  },
+  {
+   "text": "Die Standards für Baumpflanzungen gelten verpflichtend für Kompensations- und Ersatzleistungen auf städtischen und privaten Flächen.",
+   "kind": "standard",
+   "quote": "Zudem werden diese Standards für alle Kompensations- und Ersatzleistungen, sowohl im städtischen als auch privaten Raum, verpflichtend.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0388",
+    "document_id": 293180,
+    "label": "Baumerhalt- und Entwicklungsstrategie",
+    "page": 26
+   }
+  },
+  {
+   "text": "Die Umsetzung der Instrumente soll nach etwa drei Jahren überprüft werden.",
+   "kind": "deadline",
+   "quote": "Um den Erfolg der Instrumente zu überprüfen, soll nach etwa drei Jahren eine Evaluierung stattfinden.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0388",
+    "document_id": 293180,
+    "label": "Baumerhalt- und Entwicklungsstrategie",
+    "page": 29
+   }
+  },
+  {
+   "text": "Für die Erstellung und Fortschreibung der Strategie ist das Amt für Umweltschutz und Bauordnung zuständig.",
+   "kind": "responsibility",
+   "quote": "Zuständiges Amt für die Erstellung und Fortschreibung der Baumerhalt- und Baumentwicklungsstrategie ist das Amt für Umweltschutz und Bauordnung, insbesondere der Fachdienst Naturschutz und technischer Umweltschutz.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0388",
+    "document_id": 293180,
+    "label": "Baumerhalt- und Entwicklungsstrategie",
+    "page": 29
+   }
+  }
+ ]
+}

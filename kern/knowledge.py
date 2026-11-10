@@ -376,6 +376,22 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Was passiert, wenn jemand die Wahl ablehnt?",
        ),
     ),
+    _p("/council/plan", "Plan der Stadt",
+       "Ein Plan der Stadt Oldenburg — etwa der Klimaschutzplan oder der "
+       "Mobilitätsplan: wann und wie der Rat ihn beschlossen oder nur zur "
+       "Kenntnis genommen hat, wie lange er läuft, Vorgänger und Nachfolger, "
+       "alle Berichte im Rat seitdem und die Beschlüsse dazu.",
+       "Welche Pläne es gibt, steht in einem von Hand gepflegten Register; die "
+       "Berichte findet Ratslotse über die Titel und Vorlagen der "
+       "Tagesordnungspunkte im Ratsinformationssystem.",
+       "Nichtöffentliche Sitzungen, Mitteilungen ohne Vorlage und Berichte "
+       "außerhalb des Ratsinformationssystems fehlen; „kein Bericht“ heißt "
+       "„keinen gefunden“. Ratslotse bewertet den Plan nicht.",
+       starters=(
+           "Was ist ein mündlicher Bericht?",
+           "Was heißt „zur Kenntnis genommen“?",
+       ),
+    ),
     _p("/council/ort", "Ort",
        "Was an einem bestimmten Ort in der Stadt beschlossen wurde — ein "
        "Quartier, eine Straße, ein Gebäude —, neueste Entscheidung zuerst.",

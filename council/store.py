@@ -23,6 +23,7 @@ from council.store_haushalt import HaushaltMixin
 from council.store_orte import OrteMixin
 from council.store_personen import PersonenMixin
 from council.store_presse import PresseMixin
+from council.store_plaene import PlaeneMixin
 from council.store_pruefung import PruefungMixin
 from council.store_rueckmeldungen import RueckmeldungenMixin
 from council.store_quiz import QuizMixin
@@ -158,7 +159,7 @@ def _produkt_stufe(begriffe: list[str]) -> str | None:
 # arbeitet. Der Stern ist Absicht — wer eine Facette baut, fasst diese
 # Datei nicht an.
 class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
-                   PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
+                   PlaeneMixin, PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
                    RueckmeldungenMixin, ThemenMixin, ViertelMixin, WortbeitraegeMixin,
                    *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None,
@@ -2159,13 +2160,15 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         return dict(row) if row else None
 
     def count_decisions_since(self, date_from: str) -> int:
-        """Anzahl Beschlüsse seit ``date_from`` (Fallback der Zahl der Woche)."""
-        return int(self._conn.execute(
-            """SELECT COUNT(*) FROM council_decisions d
-               JOIN council_sessions s ON s.ksinr = d.ksinr
-               WHERE s.session_date >= ?""",
-            (date_from,),
-        ).fetchone()[0])
+        """Anzahl Beschlüsse seit ``date_from`` (Fallback der Zahl der Woche).
+
+        Dieselbe Zählung wie die Beschlussliste, auf die die Karte verlinkt
+        (``count_decisions``, Reiter „Beschlüsse“): nur Abstimmungen —
+        angenommen, abgelehnt, vertagt —, ohne Berichte, Kenntnisnahmen und
+        Änderungsanträge. Bis 11/2026 zählte hier jede Zeile: „159 Beschlüsse
+        in den letzten 90 Tagen“ führte auf eine Liste mit 91 (Prod: 15
+        Änderungsanträge und 53 Berichte zu viel, Tims Befund 09.11.2026)."""
+        return self.count_decisions(date_from=date_from, category="vote")
 
     def antrag_stats(self) -> dict:
         """Erfolgsquoten der Fraktions-Anträge: Antrag-Anlage → Vorlage → deren
@@ -2219,6 +2222,9 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 s[decision["outcome"]] += 1
 
         stats = sorted(per_party.values(), key=lambda s: (-s["n"], order_key(s["party"])))
+        for s in stats:
+            # Für die ausgelieferte iOS-App (s. ``party_analysis``): die alten Namen daneben.
+            s["angenommen"], s["abgelehnt"] = s["accepted"], s["rejected"]
         return {
             "parties": stats,
             "n_antraege": len(antraege),
@@ -2799,6 +2805,11 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 "party": p, "motions": party_total[p],
                 "accepted": oc["accepted"], "rejected": oc["rejected"], "postponed": oc["postponed"],
                 "rate": round(oc["accepted"] / decided, 3) if decided else None,
+                # Die ausgelieferte iOS-App (bis einschließlich Build 22) liest die deutschen
+                # Namen, und zwar nicht optional: Ohne sie kippt dort der Decode der GANZEN
+                # Analyse („unerwartetes Format“) — so stand es von 09/2026 bis 11/2026.
+                # Die drei Felder gehen, sobald APP_MIN_BUILD über dem Build mit der Korrektur liegt.
+                "angenommen": oc["accepted"], "abgelehnt": oc["rejected"], "vertagt": oc["postponed"],
             })
         success.sort(key=lambda s: s["motions"], reverse=True)
 

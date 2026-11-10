@@ -1,0 +1,18 @@
+{
+ "plan": "inklusion_stadt_fuer_alle",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "d765cfdba0e3160b",
+ "plain": [
+  "Der Plan soll den Inklusionsprozess in Oldenburg auf Grundlage überarbeiteter Ziele voranbringen.",
+  "Betriebe und Beschäftigte sollen auf Inklusion aufmerksam gemacht werden; Netzwerke und Hilfe sollen Arbeit und Ausbildung inklusiver machen.",
+  "Er soll Versorgungslücken angehen, selten gehörte Menschen beteiligen und gleichberechtigtes Lernen mit eigenen Lernwegen ermöglichen."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Plan „Oldenburg – eine Stadt für alle“ berichtet oder beschlossen?",
+  "Welche Netzwerke und Hilfen für Ausbildung und Arbeit sieht Oldenburgs Inklusionsplan vor?",
+  "Wie stärkt Oldenburgs Inklusionsplan gleiche Bildung und selbstbestimmte Lernwege?"
+ ]
+}
