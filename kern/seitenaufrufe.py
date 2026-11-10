@@ -65,7 +65,7 @@ ROUTEN: frozenset[str] = frozenset({
     f"/kommunalwahl/thema/{PLATZHALTER}",
     "/wahlen", "/wahl", "/wahlabend", "/wahlabend/ob", "/wahlabend/stichwahl", "/stichwahl/potenzial", "/tipp", "/tipp/live",
     # Ratsinhalte (die vier geteilten Detailseiten und das Stöbern)
-    "/council", "/council/decision", "/council/sitzung", "/council/punkt", "/council/thema",
+    "/council", "/council/decision", "/council/sitzung", "/council/sitzung/mitlesen", "/council/punkt", "/council/thema",
     "/council/person", "/council/ort", "/council/ideen", "/council/ideen/bewegung", "/council/neuer-rat",
     "/council/plan",
     # angemeldete Fläche

@@ -271,6 +271,14 @@ FEATURES: dict[str, Feature] = {
                     "künftigen Wahl ohne Freischaltung starten darf — dann die "
                     "Abfragen in /tipp und /api/tipp entfernen.",
     ),
+    "mitlesen": Feature(
+        key="mitlesen",
+        description="Mitlesen während der Sitzung: Punkt für Punkt mit dem Kurs, Zurück und "
+                    "Weiter; im Rat folgt die Seite der Übertragung "
+                    "(docs/plan-sitzungsseite-kurs.md, Schritt 5).",
+        fertig_wenn="Zwei echte Sitzungen (ein Ausschuss, ein Rat mit Übertragung) auf dev "
+                    "mitgelesen ohne Befund, von Tim abgenommen und auf Prod angeschaltet.",
+    ),
     "punkt-seite": Feature(
         key="punkt-seite",
         description="Jeder Tagesordnungspunkt bekommt eine eigene Seite mit Kurzfassung, "
