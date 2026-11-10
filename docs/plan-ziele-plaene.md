@@ -515,10 +515,21 @@ kommt, entscheidet die Gestaltungsrunde.
 10. **AUS DEM PLAN**: Tabellen, die der Plan enthält — Zeile für Zeile, mit
    Seite: die Rangfolge der 30 Lärm-Schwerpunkte (Lärmaktionsplan, Tabelle 13)
    und die elf Wärmenetzeignungsgebiete (Wärmeplan, Tabelle 4, je Gebiet mit
-   der Seite seiner Beschreibung). Die Umrisse der Gebiete stehen im PDF nur
-   als Bild; sie sind nicht nachgezeichnet. Das Einzelhandelskonzept fehlt:
+   der Seite seiner Beschreibung). Das Einzelhandelskonzept fehlt:
    Seine Zentrenstruktur von 2023 steht nur in der Karte 33, im Text stehen die
    Zentrentypen von 2015. *(gebaut)*
+11. **UMRISSE AUS DEN KARTEN** (seit 10.11.2026): Die elf
+   Wärmenetzeignungsgebiete stehen im PDF nur als Rasterbild. `scripts/plan_umrisse.py`
+   legt die Übersichtskarte (Abb. 34) über die Stadtgrenze auf unsere
+   Stadtgrenze, verortet jede Detailkarte (Abb. 35–45) darüber und richtet sie
+   an den Straßen des Ortskatalogs nach (Maßstab gegen den Balken der Karte
+   gehalten), dann wird der türkise Umriss gefüllt. Ergebnis:
+   `council/plan_shapes/waermeplan.geojson`. Gegenprobe: Wo der Plan eine Fläche
+   nennt (6 Gebiete), liegt der Umriss höchstens 2,4 % daneben; bekannte Orte
+   liegen drin (Lambertikirche, Universität, Kaufpark …). Auf der Seite als
+   Fläche, im Viertel über den Flächenschnitt (ab 10 % oder 2 ha) statt über
+   die Ortsteil-Spalte, und als GeoJSON zum Herunterladen
+   (`/api/council/plan/{key}/geojson`, auch mit den Lärm-Abschnitten). *(gebaut)*
 
 **Mein Viertel:** Die Tafel eines Ortsbereichs nennt die laufenden und
 entstehenden Pläne mit mindestens einem Ort dort (`district_plans`). Eine
@@ -527,8 +538,9 @@ ihr liegt (Anteil ab 0,3); eine Straße aus einem Beschluss nur in ihrem
 Hauptbereich — sonst stünde ein Tagesaufenthalt „an der Alexanderstraße“ in
 fünf Stadtteilen. Ein Abschnitt aus dem Plan zählt wie eine Straße aus der
 Maßnahmenliste (sein Anteil ist mitgerechnet); ein Wärmenetzeignungsgebiet
-zählt in dem Ortsteil, den Tabelle 4 nennt, und dort, wo sein Name selbst ein
-Ortsbereich ist („WNG Ohmstede“ steht unter Donnerschwee). Darunter die
+zählt dort, wo mindestens ein Zehntel oder 2 ha seiner nachgezeichneten Fläche
+liegen — die Ortsteil-Spalte der Tabelle irrt bei zwei Gebieten („WNG Ohmstede“
+steht unter Donnerschwee, liegt aber ganz in Ohmstede). Darunter die
 **Stadterneuerungsgebiete** aus dem Geoportal der Stadt (sechs Flächen mit
 Laufzeit, Fördermitteln und Eigenmitteln, `scripts/stadterneuerung.py`,
 `council/stadterneuerung.json`), ab einem Zehntel ihrer Fläche im Ortsbereich.

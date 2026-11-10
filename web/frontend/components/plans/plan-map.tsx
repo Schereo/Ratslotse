@@ -53,10 +53,14 @@ export default function PlanMap({ places, focus, onPick }: {
       const bounds = L.latLngBounds([]);
       const pending: Layer[] = [];
       for (const place of places) {
-        const label = `<strong>${escape(place.name)}</strong>${place.sections[0] ? `<br>${escape(place.sections[0].code)} · ${escape(place.sections[0].stretch)}` : place.measures[0] ? `<br>${escape(place.measures[0].code)} · ${escape(place.measures[0].title)}` : place.decisions[0] ? `<br>${escape(place.decisions[0].title)}` : ""}`;
+        const label = `<strong>${escape(place.name)}</strong>${place.areas[0] ? `<br>${escape(place.areas[0].area_ha.toLocaleString("de-DE", { maximumFractionDigits: 1 }))} ha` : place.sections[0] ? `<br>${escape(place.sections[0].code)} · ${escape(place.sections[0].stretch)}` : place.measures[0] ? `<br>${escape(place.measures[0].code)} · ${escape(place.measures[0].title)}` : place.decisions[0] ? `<br>${escape(place.decisions[0].title)}` : ""}`;
         let layer: Layer;
         if (place.geometry) {
-          const shape = L.geoJSON(place.geometry as import("geojson").GeoJsonObject, { style: { color: line, weight: 5, opacity: 0.85, lineCap: "round" } });
+          // Gebiete als Fläche (dünner Rand, leichte Füllung), Straßen als kräftige Linie.
+          const style = place.areas.length
+            ? { color: line, weight: 2, opacity: 0.9, fillColor: line, fillOpacity: 0.18 }
+            : { color: line, weight: 5, opacity: 0.85, lineCap: "round" as const };
+          const shape = L.geoJSON(place.geometry as import("geojson").GeoJsonObject, { style });
           layer = shape;
           bounds.extend(shape.getBounds());
         } else {

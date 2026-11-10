@@ -4280,6 +4280,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/plan/{key}/geojson": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Geojson
+         * @description Abschnitte und Gebiete, die der Plan selbst festlegt, als GeoJSON zum Herunterladen.
+         */
+        get: operations["plan_geojson_api_council_plan__key__geojson_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/plans": {
         parameters: {
             query?: never;
@@ -15653,8 +15673,12 @@ export interface components {
              * @description Die Karte zum Plan — ab drei Orten.
              */
             places: {
+                /** Area Places */
+                area_places: number;
                 /** Decision Places */
                 decision_places: number;
+                /** Geojson */
+                geojson: boolean;
                 /** Items */
                 items: components["schemas"]["PlanPlace"][];
                 /** Measure Places */
@@ -15897,6 +15921,69 @@ export interface components {
             state: "continued" | "in_preparation" | "evaluated" | "expired_no_evaluation" | "reported" | "not_yet_due" | "no_report_found";
             /** Title */
             title: string;
+        };
+        /** PlanGeoFeature */
+        PlanGeoFeature: {
+            /** Geometry */
+            geometry: unknown;
+            properties: components["schemas"]["PlanGeoProperties"];
+            /**
+             * Type
+             * @constant
+             */
+            type: "Feature";
+        };
+        /**
+         * PlanGeoJson
+         * @description ``GET /api/council/plan/{key}/geojson`` — Abschnitte und Gebiete des Plans als GeoJSON (WGS84).
+         */
+        PlanGeoJson: {
+            /** Attribution */
+            attribution: string;
+            /** Features */
+            features: components["schemas"]["PlanGeoFeature"][];
+            /** Generated */
+            generated: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @constant
+             */
+            type: "FeatureCollection";
+        };
+        /**
+         * PlanGeoProperties
+         * @description Eigenschaften eines Abschnitts (``section``) oder Gebiets (``area``) im GeoJSON-Download.
+         */
+        PlanGeoProperties: {
+            /** Area Ha */
+            area_ha?: number;
+            /** Area Ha Plan */
+            area_ha_plan?: number | null;
+            /** Code */
+            code: string;
+            /** Figure */
+            figure?: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "section" | "area";
+            /** Length M */
+            length_m?: number;
+            /** Name */
+            name?: string | null;
+            /** Page */
+            page: number;
+            /** Quote */
+            quote?: string;
+            /** Source Url */
+            source_url: string;
+            /** Street */
+            street?: string;
+            /** Stretch */
+            stretch?: string;
         };
         /** PlanGroup */
         PlanGroup: {
@@ -16149,6 +16236,8 @@ export interface components {
          *     (beide mit Verlauf), oder ein Ort aus Beschlüssen (als Punkt).
          */
         PlanPlace: {
+            /** Areas */
+            areas: components["schemas"]["PlanPlaceArea"][];
             /** Decision Count */
             decision_count: number;
             /** Decisions */
@@ -16169,6 +16258,26 @@ export interface components {
             sections: components["schemas"]["PlanPlaceSection"][];
             /** Slug */
             slug: string;
+        };
+        /**
+         * PlanPlaceArea
+         * @description Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``).
+         */
+        PlanPlaceArea: {
+            /** Area Ha */
+            area_ha: number;
+            /** Area Ha Plan */
+            area_ha_plan: number | null;
+            /** Code */
+            code: string;
+            /** Figure */
+            figure: number;
+            /** Label */
+            label: string;
+            /** Page */
+            page: number;
+            /** Source Url */
+            source_url: string;
         };
         /** PlanPlaceDecision */
         PlanPlaceDecision: {
@@ -16214,8 +16323,12 @@ export interface components {
          * @description Die Karte zum Plan — ab drei Orten.
          */
         PlanPlaces: {
+            /** Area Places */
+            area_places: number;
             /** Decision Places */
             decision_places: number;
+            /** Geojson */
+            geojson: boolean;
             /** Items */
             items: components["schemas"]["PlanPlace"][];
             /** Measure Places */
@@ -25098,6 +25211,37 @@ export interface operations {
             };
         };
     };
+    plan_geojson_api_council_plan__key__geojson_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanGeoJson"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     plans_overview_api_council_plans_get: {
         parameters: {
             query?: never;
@@ -28997,4 +29141,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2f63ab3d933c712327b03ea27d33864dfae2a1c0ea918a0f95f2e5327027a752
+// vertrag-sha256: 9dfa2746ff79c72dec05f3f73308bd784dc80ba034c5dd12a782550b90602dcd

@@ -347,6 +347,15 @@ test("der Wärmeplan zeigt seine Wärmenetzeignungsgebiete, jedes mit Seite", as
   // Breit eine Tabelle, schmal eine Liste — je nach Breite der Spalte; geprüft wird, was sichtbar ist.
   await expect(lists.locator(":is(td, p):visible", { hasText: "Kennedyviertel" }).first()).toBeVisible();
   await expect(lists.locator("a:visible", { hasText: /S\. 94/ }).first()).toHaveAttribute("href", /id=306748&type=do#page=94$/);
+  // Die Gebiete, nachgezeichnet aus den Karten des Plans, stehen als Fläche auf der Karte — und zum Herunterladen.
+  const map = page.locator('section[aria-labelledby="plan-places"]');
+  await expect(map.getByText("Gebiet aus dem Plan")).toBeVisible();
+  await expect(map.locator(".leaflet-container path.leaflet-interactive")).toHaveCount(11);
+  const link = map.getByRole("link", { name: "Als GeoJSON herunterladen" });
+  await expect(link).toHaveAttribute("href", "/api/council/plan/waermeplan/geojson");
+  const geo = await (await page.request.get("/api/council/plan/waermeplan/geojson")).json();
+  expect(geo.type).toBe("FeatureCollection");
+  expect(geo.features).toHaveLength(11);
 });
 
 test.describe("Haushalt zum Plan", () => {
@@ -395,7 +404,7 @@ test("die Viertel-Tafel nennt das Stadterneuerungsgebiet und den Wärmeplan", as
   const card = page.locator('div:has(> h2:has-text("Pläne, die dein Viertel betreffen"))');
   await expect(card.getByText("Kreyenbrück-Nord")).toBeVisible();
   await expect(card.getByText(/2009–2033 · 89 ha · Fördermittel 22,5 Mio\. € · Eigenmittel der Stadt 7,1 Mio\. €/)).toBeVisible();
-  await expect(card.getByText(/Eignungsgebiet „WNG Kreyenbrück“/)).toBeVisible();
+  await expect(card.getByText(/Eignungsgebiet „WNG 9 Kreyenbrück“/)).toBeVisible();
 });
 
 test("ohne Schalter bleibt es bei den Zielen", async ({ page }) => {

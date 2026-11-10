@@ -89,7 +89,7 @@ function PlanInner() {
           {data.city_status && <CityStatus status={data.city_status} />}
           <Indicators indicators={data.indicators} />
           {data.measures && <Measures measures={data.measures} />}
-          {data.places && <Places places={data.places} />}
+          {data.places && <Places places={data.places} planKey={data.key} />}
           <PlanLists lists={data.lists} />
         </div>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">

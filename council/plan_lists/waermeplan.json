@@ -32,7 +32,7 @@
       "5,2 MWh/m*a"
      ],
      "page": 80,
-     "areas": [
+     "districts": [
       "innenstadt"
      ],
      "label": "Eignungsgebiet „WNG Stadtkern“"
@@ -46,7 +46,7 @@
       "6,11 MWh/m*a"
      ],
      "page": 83,
-     "areas": [
+     "districts": [
       "wechloy"
      ],
      "label": "Eignungsgebiet „WNG Wechloy“"
@@ -60,7 +60,7 @@
       "6,12 MWh/m*a"
      ],
      "page": 85,
-     "areas": [
+     "districts": [
       "donnerschwee",
       "ohmstede"
      ],
@@ -75,7 +75,7 @@
       "3,98 MWh/m*a"
      ],
      "page": 87,
-     "areas": [
+     "districts": [
       "ziegelhof"
      ],
      "label": "Eignungsgebiet „WNG Alte Fleiwa“"
@@ -89,7 +89,7 @@
       "5,04 MWh/m*a"
      ],
      "page": 90,
-     "areas": [
+     "districts": [
       "dietrichsfeld"
      ],
      "label": "Eignungsgebiet „WNG Melkbrink“"
@@ -103,7 +103,7 @@
       "4,82 MWh/m*a"
      ],
      "page": 92,
-     "areas": [
+     "districts": [
       "donnerschwee"
      ],
      "label": "Eignungsgebiet „WNG Donnerschwee“"
@@ -117,7 +117,7 @@
       "6,36 MWh/m*a"
      ],
      "page": 94,
-     "areas": [
+     "districts": [
       "bloherfelde",
       "eversten"
      ],
@@ -132,7 +132,7 @@
       "2,67 MWh/m*a"
      ],
      "page": 96,
-     "areas": [
+     "districts": [
       "eversten"
      ],
      "label": "Eignungsgebiet „WNG Wilhelm-Raabe-Str.“"
@@ -146,7 +146,7 @@
       "5,97 MWh/m*a"
      ],
      "page": 99,
-     "areas": [
+     "districts": [
       "kreyenbrueck"
      ],
      "label": "Eignungsgebiet „WNG Kreyenbrück“"
@@ -160,7 +160,7 @@
       "6,55 MWh/m*a"
      ],
      "page": 102,
-     "areas": [
+     "districts": [
       "tweelbaeke"
      ],
      "label": "Eignungsgebiet „WNG Gewerbegebiet Tweelbäke“"
@@ -174,7 +174,7 @@
       "22,29 MWh/m*a"
      ],
      "page": 104,
-     "areas": [
+     "districts": [
       "ehnernviertel",
       "ziegelhof"
      ],

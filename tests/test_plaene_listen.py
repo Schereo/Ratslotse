@@ -60,7 +60,7 @@ def test_abschnitte_stehen_auf_der_karte(store):
     assert first["slug"] == "abschnitt-18.2.1" and first["geometry"]["type"] == "MultiLineString"
     assert first["sections"][0]["source_url"].endswith("id=280381&type=do#page=64")
     # Die Ortsbereiche rechnet das Skript mit; die Seite gibt sie nicht aus.
-    assert all("areas" not in p for p in block["items"])
+    assert all("districts" not in p for p in block["items"])
 
 
 def test_tabellen_stehen_wie_im_dokument():
@@ -76,11 +76,16 @@ def test_tabellen_stehen_wie_im_dokument():
 def test_viertel_kennt_abschnitte_und_gebiete(store):
     by_key = {p["key"]: p for p in plan_pages.district_plans(store, "eversten")}
     assert by_key["laermaktionsplan"]["places"] == ["Hauptstraße", "Hundsmühler Straße"]
-    assert by_key["waermeplan"]["places"] == ["Eignungsgebiet „WNG Kennedyviertel“", "Eignungsgebiet „WNG Wilhelm-Raabe-Str.“"]
-    # „WNG Ohmstede“ steht in der Tabelle unter dem Ortsteil Donnerschwee — es zählt in beiden.
-    for place_id in ("ohmstede", "donnerschwee"):
-        names = {p["key"]: p["places"] for p in plan_pages.district_plans(store, place_id)}["waermeplan"]
-        assert "Eignungsgebiet „WNG Ohmstede“" in names
+    assert by_key["waermeplan"]["places"] == ["Eignungsgebiet „WNG 7 Kennedyviertel“",
+                                               "Eignungsgebiet „WNG 8 Wilhelm-Raabe-Str.“"]
+    # Die nachgezeichnete Fläche entscheidet, nicht die Ortsteil-Spalte der Tabelle: „WNG Ohmstede“ steht dort
+    # unter Donnerschwee, liegt aber ganz in Ohmstede.
+    def heat(place_id):
+        return {p["key"]: p["places"] for p in plan_pages.district_plans(store, place_id)}.get("waermeplan", [])
+    assert heat("ohmstede") == ["Eignungsgebiet „WNG 3 Ohmstede“"]
+    assert "Eignungsgebiet „WNG 3 Ohmstede“" not in heat("donnerschwee")
+    # Ein kleiner Teil zählt, wenn er groß genug ist: 9 % von Kreyenbrück (15 ha) liegen in Osternburg.
+    assert heat("osternburg") == ["Eignungsgebiet „WNG 9 Kreyenbrück“"]
 
 
 def test_stadterneuerung_je_ortsbereich():

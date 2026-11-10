@@ -38,6 +38,7 @@ RELATED_FILE = Path(__file__).resolve().parent / "plan_related.json"
 PLACES_DIR = Path(__file__).resolve().parent / "plan_places"
 BUDGET_FILE = Path(__file__).resolve().parent / "plan_budget.json"
 LISTS_DIR = Path(__file__).resolve().parent / "plan_lists"
+SHAPES_DIR = Path(__file__).resolve().parent / "plan_shapes"
 
 #: Fünf Stufen plus „unklar“. Reihenfolge = Reihenfolge der Anzeige.
 STATUS_NORM: tuple[str, ...] = ("open", "started", "in_progress", "done", "paused", "unclear")
@@ -389,6 +390,18 @@ def plan_lists(key: str) -> dict | None:
 
 def list_keys() -> list[str]:
     return sorted(p.stem for p in LISTS_DIR.glob("*.json"))
+
+
+@cache
+def plan_shapes(key: str) -> dict | None:
+    """Umrisse, nachgezeichnet aus den Kartenbildern des Plans (``council/plan_shapes/<key>.geojson``,
+    ``scripts/plan_umrisse.py``): GeoJSON in WGS84, je Gebiet mit Kennung, Seite und Ortsbereichen."""
+    path = SHAPES_DIR / f"{key}.geojson"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def shape_keys() -> list[str]:
+    return sorted(p.stem for p in SHAPES_DIR.glob("*.geojson"))
 
 
 @cache

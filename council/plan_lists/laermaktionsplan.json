@@ -136,7 +136,7 @@
    "lat": 53.15437,
    "lon": 8.21934,
    "length_m": 845,
-   "areas": {
+   "districts": {
     "buergeresch": 1.0
    },
    "quote": "Es wird vorgeschlagen in einem ersten Schritt zunächst eine Temporeduzierung im unteren Abschnitt der Nadorster Straße (Gertrudenfriedhof bis Hochheider Weg) vorzunehmen und die verkehrlichen Auswirkungen auf das Umfeld über einen noch zu bestimmenden Zeitraum zu prüfen."
@@ -365,7 +365,7 @@
    "lat": 53.13318,
    "lon": 8.19264,
    "length_m": 908,
-   "areas": {
+   "districts": {
     "eversten": 1.0
    },
    "quote": "Es wird vorgeschlagen, eine durchgängige Tempo-30-Regelung an der Hauptstraße zwischen dem Marktplatz Eversten und dem Übergang zur Edewechter Landstraße, beziehungsweise zur Eichenstraße einzurichten."
@@ -538,7 +538,7 @@
    "lat": 53.13104,
    "lon": 8.19174,
    "length_m": 578,
-   "areas": {
+   "districts": {
     "eversten": 1.0
    },
    "quote": "Es wird vorgeschlagen, auf der Hundsmühler Straße, zunächst im Abschnitt zwischen dem Hausbäker Weg und der Hauptstraße, eine Geschwindigkeitsreduzierung auf Tempo 30 anzuordnen."
@@ -695,7 +695,7 @@
    "lat": 53.1283,
    "lon": 8.22133,
    "length_m": 851,
-   "areas": {
+   "districts": {
     "osternburg": 1.0
    },
    "quote": "Es wird vorgeschlagen, auf der Cloppenburger Straße zunächst eine Tempo-30-Regelung zwischen der BAB-Anschlussstelle OL-Kreyenbrück bis zur Einmündung auf die Bremer Straße vorzunehmen und die Regelung mittelfristig auf den gesamten Verlauf bis zum Abzweig Sandkruger Straße auszudehnen."
@@ -954,7 +954,7 @@
    "lat": 53.12942,
    "lon": 8.22737,
    "length_m": 684,
-   "areas": {
+   "districts": {
     "osternburg": 1.0
    },
    "quote": "Es wird vorgeschlagen, die zulässige Höchstgeschwindigkeit auf der Bremer Straße auf 30 km/h zu begrenzen."
@@ -1063,7 +1063,7 @@
    "lat": 53.14237,
    "lon": 8.19569,
    "length_m": 413,
-   "areas": {
+   "districts": {
     "haarenesch": 1.0
    },
    "quote": "Vor diesem Hintergrund wird vorgeschlagen, zunächst nur für den entsprechend identifizierten Hotspotabschnitt zwischen Zeughausstraße und dem Knotenpunkt Prinzessinweg eine Reduzierung der zulässigen Höchstgeschwindigkeit auf 30 km/h vorzunehmen."
@@ -1264,7 +1264,7 @@
    "lat": 53.15235,
    "lon": 8.21148,
    "length_m": 950,
-   "areas": {
+   "districts": {
     "ziegelhof": 1.0,
     "ehnernviertel": 0.46
    },
@@ -1610,7 +1610,7 @@
    "lat": 53.14972,
    "lon": 8.23178,
    "length_m": 1655,
-   "areas": {
+   "districts": {
     "donnerschwee": 1.0,
     "buergeresch": 0.35
    },
@@ -1792,7 +1792,7 @@
    "lat": 53.13377,
    "lon": 8.21947,
    "length_m": 419,
-   "areas": {
+   "districts": {
     "gerichtsviertel": 1.0,
     "innenstadt": 0.03
    },

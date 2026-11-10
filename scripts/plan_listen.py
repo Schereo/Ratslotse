@@ -285,7 +285,7 @@ def section(entry: dict, catalog: dict, osm: list[dict]) -> dict:
     mid = flat[len(flat) // 2]
     return {"code": entry["code"], "name": row["name"], "street": entry["street"], "stretch": entry["stretch"],
             "page": entry["page"], "geometry": shape, "lat": mid[1], "lon": mid[0],
-            "length_m": round(_length(parts)), "areas": _areas(shape)}
+            "length_m": round(_length(parts)), "districts": _areas(shape)}
 
 
 # ── Schreiben und Prüfen ────────────────────────────────────────────────────
@@ -324,7 +324,7 @@ def build_heat() -> dict:
             areas.append(own)
         assert all(a in primary for a in areas), areas
         out_rows.append({"cells": [r["code"], r["district"], r["name"], r["demand"], r["density"]],
-                         "page": r["page"], "areas": areas, "label": f"Eignungsgebiet „WNG {r['name']}“"})
+                         "page": r["page"], "districts": areas, "label": f"Eignungsgebiet „WNG {r['name']}“"})
     return {"plan": "waermeplan", "document": doc, "sections": [], "lists": [{
         "key": "heat_network_areas", "title": "Wärmenetzeignungsgebiete", "caption": WNG_CAPTION, "page": WNG_PAGE,
         "columns": ["Kennung", "Ortsteil", "Gebiet", "Wärmebedarf heute", "Wärmeliniendichte"], "name_column": 2,
@@ -353,7 +353,7 @@ def check(key: str, data: dict, pages: list[str] | None = None) -> list[str]:
                    if not any(geo.ortsbereich_for(p[1], p[0]) for p in line)]
         if outside:
             problems.append(f"{where}: {len(outside)} Stücke liegen außerhalb Oldenburgs, z. B. bei {outside[0]}")
-        if not s["areas"] or not set(s["areas"]) <= primary:
+        if not s["districts"] or not set(s["districts"]) <= primary:
             problems.append(f"{where}: Ortsbereiche fehlen oder sind unbekannt")
         if not re.search(r"vorgeschlagen|Vorschlag|sollte", s["quote"]):
             problems.append(f"{where}: Das Zitat ist nicht der Vorschlag")
@@ -366,7 +366,7 @@ def check(key: str, data: dict, pages: list[str] | None = None) -> list[str]:
         if any(len(r["cells"]) != len(lst["columns"]) for r in lst["rows"]):
             problems.append(f"{where}: Zeile mit falscher Spaltenzahl")
         for r in lst["rows"]:
-            if not set(r.get("areas", [])) <= primary:
+            if not set(r.get("districts", [])) <= primary:
                 problems.append(f"{where}: unbekannter Ortsbereich in {r['cells']}")
         if lst["key"] == "hotspots":
             ranks = [int(r["cells"][0]) for r in lst["rows"]]
