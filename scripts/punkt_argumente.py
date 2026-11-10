@@ -64,7 +64,7 @@ def kandidaten(store: CouncilStore, seit: str) -> list[dict]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--db", default=str(COUNCIL_DB))
     ap.add_argument("--seit", default=(date.today() - timedelta(days=365)).isoformat(),
                     help="Sitzungen ab diesem Datum (Vorgabe: ein Jahr zurück)")

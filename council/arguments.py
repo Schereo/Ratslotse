@@ -181,14 +181,16 @@ def parse(roh: str, quellen: dict[str, dict]) -> dict[str, Any] | None:
         return out
 
     issues = []
-    for i in d.get("issues") if isinstance(d.get("issues"), list) else []:
+    roh_issues = d.get("issues")
+    for i in roh_issues if isinstance(roh_issues, list) else []:
         if not isinstance(i, dict):
             continue
         frage = " ".join(str(i.get("question") or "").split())
         pro, contra = aussagen(i.get("pro")), aussagen(i.get("contra"))
         if frage and pro and contra:
             issues.append({"question": frage[:200], "pro": pro, "contra": contra})
-    weitere = d.get("further") if isinstance(d.get("further"), dict) else {}
+    roh_weitere = d.get("further")
+    weitere: dict = roh_weitere if isinstance(roh_weitere, dict) else {}
     return {"issues": issues[:3], "further": {"pro": aussagen(weitere.get("pro")), "contra": aussagen(weitere.get("contra"))}}
 
 

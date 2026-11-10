@@ -110,9 +110,12 @@ def laufen(limit: int | None) -> Path:
             "quellen": {k: (q.get("text") or "") for k, q in quellen.items()},
             "usd": round(llm.session_cost()["usd"] - start, 5),
         })
-        print(f"{ksinr} {nr}: {len(m['speeches'])} Beiträge → "
-              f"{'nichts' if not payload else '%d Streitpunkte, %d/%d' % (len(payload['issues']), *arguments.counts(payload))}"
-              f" · {faelle[-1]['usd']:.4f} $", flush=True)
+        if payload:
+            pro, contra = arguments.counts(payload)
+            was = f"{len(payload['issues'])} Streitpunkte, {pro}/{contra}"
+        else:
+            was = "nichts"
+        print(f"{ksinr} {nr}: {len(m['speeches'])} Beiträge → {was} · {faelle[-1]['usd']:.4f} $", flush=True)
     kosten = llm.session_cost()
     lauf = datetime.now().strftime("%Y%m%d-%H%M")
     ERGEBNISSE.mkdir(parents=True, exist_ok=True)
@@ -188,7 +191,7 @@ def auswerten(lauf: str) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--limit", type=int, help="nur die ersten N Punkte (Kostenprobe)")
     ap.add_argument("--auswerten", metavar="LAUF", help="Tor aus den Urteilen rechnen")
     a = ap.parse_args()
