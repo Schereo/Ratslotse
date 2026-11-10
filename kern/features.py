@@ -279,6 +279,15 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Zwei echte Sitzungen (ein Ausschuss, ein Rat mit Übertragung) auf dev "
                     "mitgelesen ohne Befund, von Tim abgenommen und auf Prod angeschaltet.",
     ),
+    "notizen": Feature(
+        key="notizen",
+        description="„Meine Notiz“ an Tagesordnungspunkten und Beschlüssen — auf dem Gerät "
+                    "verschlüsselt, mit eigener Notiz-Passphrase und Wiederherstellungscode "
+                    "(docs/plan-notizen-verschluesselt.md).",
+        fertig_wenn="Datenschutzerklärung von Tim abgenommen, auf dev zwei Wochen ohne Befund "
+                    "(Einrichten, zweites Gerät, Passphrase wechseln, Wiederherstellung), App liest "
+                    "dieselben Testvektoren; dann mit dem Release auf Prod an.",
+    ),
     "punkt-argumente": Feature(
         key="punkt-argumente",
         description="Die Reiter „Argumente“ und „Fraktionen“ auf der Punkt-Seite: Streitpunkte mit "
