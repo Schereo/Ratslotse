@@ -17,9 +17,16 @@ test.use({ storageState: zustandsDatei("nutzerin") });
 
 async function schalter(page: Page, an: boolean) {
   await page.route("**/api/app-config", async (route) => {
-    const echt = await (await route.fetch()).json();
+    // Lädt die Seite schon neu, während dieser Abruf noch läuft, ist seine Antwort weg („Response has
+    // been disposed“) — dann gehört er zu einer Seite, die niemand mehr ansieht, und bleibt liegen.
+    let echt: { features?: string[] };
+    try {
+      echt = await (await route.fetch()).json();
+    } catch {
+      return;
+    }
     const ohne = (echt.features ?? []).filter((f: string) => f !== "plaene");
-    await route.fulfill({ json: { ...echt, features: an ? [...ohne, "plaene"] : ohne } });
+    await route.fulfill({ json: { ...echt, features: an ? [...ohne, "plaene"] : ohne } }).catch(() => {});
   });
 }
 
@@ -108,8 +115,7 @@ test("die Übersicht sagt, wo man nachfragen kann — als Tatsache, nicht als Vo
   await schalter(page, true);
   await page.goto("/council?tab=analysis&sub=ziele");
   const list = page.locator('section[aria-labelledby="plans-follow-ups"]');
-  await expect(list.getByText("Das sagt etwas über die Berichte, nicht über die Arbeit.")).toBeVisible();
-  await expect(list.getByText(/„Nicht gefunden“ heißt nicht „gibt es nicht“/)).toBeVisible();
+  await expect(list.getByText(/sieht Ratslotse nicht/)).toBeVisible();
   // Gegen die leere Ratsdatenbank der CI hat kein Plan einen Bericht — die Liste ist dort lang, hier kürzer.
   const ask = list.getByRole("link", { name: "Den Rat fragen" }).first();
   await expect(ask).toHaveAttribute("href", /^\/fragen\?q=Was(\+|%20)ist/);
@@ -119,7 +125,7 @@ test("wo ein Modell den Stand herausgesucht hat, steht das wörtliche Zitat dabe
   await schalter(page, true);
   await page.goto("/council/plan?key=mobilitaetsplan_2030");
   const measures = page.locator('section[aria-labelledby="plan-measures"]');
-  await expect(measures.getByText(/Ein Sprachmodell hat die Stellen im Bericht herausgesucht/)).toBeVisible();
+  await expect(measures.getByText(/Den Stand hat ein Sprachmodell aus dem Bericht herausgesucht/)).toBeVisible();
   await measures.getByRole("button", { name: "Alle aufklappen" }).click();
   await expect(measures.getByText("„Die Bewohnerparkzone Haarenesch wurde zum 1. Januar 2026 umgesetzt.“")).toBeVisible();
   // Die Stadt zählt hier nichts aus — also auch keine Verteilung.
@@ -220,7 +226,7 @@ test("der Stand lässt sich je Jahr wählen, die Tabelle liegt unter einem Aufkl
   await expect(block.getByText(/Stand 2022$/)).toBeVisible();
   await expect(block.getByText("Der erste Stand, den die Stadt meldet.")).toBeVisible();
   // Was die Bewegung zeigt — und was nicht (die Stadt meldet nur Summen).
-  await expect(block.getByText(/nicht, welche Maßnahme die Stufe gewechselt hat/)).toBeVisible();
+  await expect(block.getByText("Die Stadt meldet je Stand nur Summen.")).toBeVisible();
   await block.getByRole("button", { name: "Alle Stände als Tabelle" }).click();
   await expect(block.getByRole("table")).toBeVisible();
 });
@@ -312,7 +318,7 @@ test("die Karte zeigt die Straßen der Maßnahmen und führt von der Liste zum O
   const row = map.getByRole("button", { name: /Lindenallee/ });
   await row.click();
   await expect(row).toHaveAttribute("aria-pressed", "true");
-  await expect(map.getByText(/nicht, wie weit es ist/)).toBeVisible();
+  await expect(map.getByText(/Orte aus den Titeln der Maßnahmen/)).toBeVisible();
 });
 
 test.describe("Haushalt zum Plan", () => {
@@ -326,7 +332,7 @@ test.describe("Haushalt zum Plan", () => {
     const card = page.locator('section[aria-labelledby="plan-budget"]');
     // Die Haushaltszeilen liegen im Bestand; ohne sie bleibt der Block weg (kein Platzhalter).
     if (await card.count() === 0) return;
-    await expect(card.getByText(/Nur Haushaltsposten, deren eigener Text den Plan beim Namen nennt/)).toBeVisible();
+    await expect(card.getByText("Haushaltsposten, deren eigener Text den Plan beim Namen nennt.")).toBeVisible();
     await expect(card.getByText(/\d €$/).first()).toBeVisible();
     await expect(card.getByText(/Mobilitätsplan|RMV 2030/).first()).toBeVisible();
   });

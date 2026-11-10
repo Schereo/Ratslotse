@@ -158,8 +158,7 @@ export function Measures({ measures }: { measures: PlanMeasures }) {
       )}
       {measures.status_by_model && (
         <p className="mt-3 max-w-[76ch] text-hinweis text-muted-foreground">
-          Die Stadt zählt den Stand hier nicht aus. Ein Sprachmodell hat die Stellen im Bericht herausgesucht;
-          jedes Zitat steht wörtlich so im Bericht und ist dagegen geprüft. Wo nichts steht, sagt der Bericht nichts.
+          Den Stand hat ein Sprachmodell aus dem Bericht herausgesucht; jedes Zitat steht wörtlich so dort.
         </p>
       )}
       <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">

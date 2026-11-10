@@ -159,7 +159,8 @@ def test_haushalt_zeigt_nur_posten_die_den_plan_nennen(store):
     changes = [i for i in block["items"] if i["kind"] == "change"]
     assert len(changes) == 3 and all(c["context"] == "Änderungsliste der Verwaltung I, Haushalt 2024" for c in changes)
     assert changes[0]["source_url"].endswith("id=7&type=do")
-    assert "kostet" in block["note"]
+    # Kein Gesamtbetrag: Die Posten stehen einzeln da, eine Summe gäbe es so im Haushalt nicht.
+    assert set(block) == {"items", "note"}
 
 
 def test_von_zwei_stufen_einer_aenderung_zaehlt_die_spaetere(store):
