@@ -1,0 +1,549 @@
+{
+ "zusammen": {
+  "mit": "27/30",
+  "ohne": "0/30",
+  "usd": 0.1896
+ },
+ "zeilen": [
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Und was kostet das?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 17.6,
+   "antwort": "Für das soziale D-Ticket in Oldenburg ist kein Preis beschlossen; der Verkehrsausschuss nahm lediglich einen Bericht zu Umsetzungsmöglichkeiten zur Kenntnis [7719]. Darin wird das reguläre Deutschland-Ticket mit 58 Euro im Monat angegeben, nicht aber ein Preis für ein Sozialticket [7719]."
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Und was kostet das?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wer hat das beantragt?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 18.6,
+   "antwort": "Der Änderungsantrag kam von der Fraktion Bündnis 90/Die Grünen; Ratsherr Niederstein brachte ihn ein [9420]. Der Rat beschloss anschließend nur, die Einführung eines sozialen Deutschlandtickets zu prüfen – nicht, es einzuführen [9487]."
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wer hat das beantragt?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Worum geht es dabei in einfachen Worten?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 5.5,
+   "antwort": "Der Bericht prüft, wie ein soziales Deutschland-Ticket in Oldenburg umgesetzt werden könnte. Der Verkehrsausschuss hat ihn am 23. Juni 2025 zur Kenntnis genommen. Das bedeutet: Der Ausschuss hat sich mit dem Bericht befasst, aber damit noch keine Einführung beschlossen. [7719]"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Worum geht es dabei in einfachen Worten?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 10.6,
+   "antwort": "Die Unterlagen behandeln mehrere Themen. Dazu gehören Berichte über Nachhaltigkeit, den demografischen Wandel und die Anpassung an den Klimawandel. [6899] [3124] [7891]\n\nDer Rat beschloss außerdem, die Glasgow Erklärung zu Ernährung und Klima zu unterzeichnen. [5153] Für preiswerten Wohnraum auf privaten Grundstücken wurde festgelegt, dass Wohnungen länger für Menschen mit entsprechendem Bedarf reserviert bleiben müssen. [2275] [2375]\n\nWeitere Beschlüsse betreffen Vorgaben für die Planung im Gebiet Weißenmoor und Regeln für Vergnügungsstätten in der Innenstadt. [4847] [2741]"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Was sagt die Verwaltung dazu?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 34.9,
+   "antwort": "**Kurz gesagt:** Die Verwaltung hatte bislang keine feste Finanzierung für ein soziales Deutschlandticket benannt; der Rat ließ die Einführung weiter prüfen, aber das Ergebnis dieser Prüfung ist hier nicht dokumentiert.\n\nLaut Protokoll erklärte Dr. Korallus, es gebe keinen festen Finanzierungsplan für ein Deutschlandticket in den nächsten Jahren; als Alternative nannte er ein soziales Mia-Ticket, bei dem das Geld dem lokalen ÖPNV in Oldenburg zugutekäme. Der Verkehrsausschuss nahm den damaligen Verwaltungsbericht lediglich zur Kenntnis; eine konkrete Umsetzung wurde damit nicht beschlossen [7719]. Später beschloss der Rat, die Einführung eines sozialen Deutschlandtickets zu prüfen und dafür Verfahren, Umsetzungsvorschlag und Kosten auszuarbeiten [9487]. Die vorliegenden Unterlagen enthalten jedoch nicht, was die Verwaltung im Bericht zu diesem Tagesordnungspunkt als Ergebnis der Prüfung vorlegt.\n\nIn der Debatte unterstützte Niederstein ein soziales Ticket, das an den Oldenburg-Pass geknüpft ist; Meerbothe und Höpken verwiesen auf die Haushaltsberatungen. Höpken sah darin einen Schritt in die richtige Richtung, aber keinen Ersatz für ein umfassendes Konzept."
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Was sagt die Verwaltung dazu?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wurde das schon beschlossen?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 17.8,
+   "antwort": "Nein, die Einführung des sozialen Deutschlandtickets ist noch nicht beschlossen. Der Rat hat lediglich beschlossen, sie zu prüfen und dazu in der Verbandsversammlung des ZVBN abzustimmen [9487]."
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wurde das schon beschlossen?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 2.2,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wann wird darüber entschieden?",
+   "bezug": true,
+   "beim_punkt": false,
+   "sekunden": 16.3,
+   "antwort": "Ein Termin für die endgültige Entscheidung über die Einführung ist nicht genannt. Der Rat beauftragte auf Antrag der Grünen, die nötigen Schritte bis zum Verkehrsausschuss am 21. September 2026 zu prüfen; das war ein Prüf- und Berichtstermin, kein Beschluss zur Einführung [9487]."
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wann wird darüber entschieden?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Was spricht dagegen?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 26.4,
+   "antwort": "**Kurz gesagt:** Gegen ein soziales Deutschlandticket sprechen vor allem ungeklärte Finanzierung, zusätzliche Kosten und der Aufwand, ein passendes Modell mit dem Verkehrsverbund abzustimmen; zum aktuellen Berichtspunkt ist kein Beschluss dokumentiert.\n\nIm August 2018 erklärte ein VWG-Vertreter, dass ein neues Ticket mit dem Verkehrsverbund Bremen/Niedersachsen abgestimmt werden müsse und das Bremer Modell nicht einfach auf Oldenburg übertragbar sei. Dafür wären eine Marktforschungsstudie und weitere Prüfungen nötig gewesen; der städtische Ausgleich wurde auf etwa 590.000 Euro geschätzt, zusätzlich zu diesen Kosten [744]. Im Juni 2025 sagte ein Redner im Verkehrsausschuss, für das Deutschlandticket gebe es keinen festen Finanzierungsplan für die kommenden Jahre; der Ausschuss nahm den Bericht zu Umsetzungsmöglichkeiten zur Kenntnis [7719]. Laut Protokoll hielt Ratsfrau Pfeiffer im August 2026 zusätzliche Ausgaben für ein soziales Deutschlandticket angesichts der angespannten Haushaltslage für nicht tragbar. Das sind vorgetragene Bedenken, keine dokumentierte Ablehnung des jetzigen Berichtspunkts.\n\n\n\n**Zuletzt:** 28.09.2026, Rat: Ausfallbürgschaft der Stadt Oldenburg für den Geschäftsbereich Wasser der Verkehr und Wasser GmbH [9547]."
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Was spricht dagegen?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 2.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Gab es dazu früher schon Beschlüsse?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 24.1,
+   "antwort": "**Kurz gesagt:** Ja: Der Rat hat bereits beschlossen, die Einführung eines sozialen Deutschlandtickets zu prüfen; der Tagesordnungspunkt vom 21. September 2026 ist aber ein Bericht und noch keine Entscheidung über die Einführung.\n\n## Frühere Beratungen\n\n- Im August 2018 nahm der Sozialausschuss einen Bericht zum Sozialticket im ÖPNV zur Kenntnis; ein Beschluss über ein soziales Deutschlandticket war das nicht [744].\n- Im Juni 2025 nahm der Verkehrsausschuss einen Bericht zu Möglichkeiten für ein soziales Deutschlandticket zur Kenntnis [7719].\n- Im August 2026 behandelte der Verkehrsausschuss einen Grünen-Änderungsantrag zur Einführung eines sozialen Deutschlandtickets als erledigt. Das war noch keine Entscheidung des Rates [9420].\n\n## Ratsbeschluss und aktueller Stand\n\nAm 31. August 2026 beschloss der Rat, die Einführung eines sozialen Deutschlandtickets zum 1. Juli 2027 zu prüfen und in der Verbandsversammlung des ZVBN entsprechend abzustimmen [9487]. Laut Protokoll unterstützten mehrere Ratsmitglieder diesen Prüfauftrag; andere lehnten das Ticket ab oder äußerten Bedenken zu den Kosten. Der Tagesordnungspunkt „Soziales D-Ticket in Oldenburg – Bericht“ am 21. September 2026 ist der nächste Schritt: Aus den vorliegenden Unterlagen ergibt sich dazu kein weiterer Beschluss. **Ob das Ticket eingeführt wird, ist damit weiterhin offen.**"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Gab es dazu früher schon Beschlüsse?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wie geht es damit weiter?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 27.7,
+   "antwort": "**Kurz gesagt:** Der Rat hat die Einführung eines sozialen Deutschlandtickets prüfen lassen und einen möglichen Start zum 1. Juli 2027 genannt, aber das Ergebnis des dazu angesetzten Berichts ist in den vorliegenden Unterlagen nicht dokumentiert.\n\nIm Juni 2025 nahm der Verkehrsausschuss zunächst einen Verwaltungsbericht zu Möglichkeiten für ein soziales Deutschlandticket zur Kenntnis; das war noch keine Einführung des Angebots [7719]. Am 24. August 2026 erklärte der Verkehrsausschuss einen Grünen-Änderungsantrag zur Einführung eines sozialen Deutschlandtickets als behandelt – das war ebenfalls kein Beschluss zur Einführung [9420]. Am 31. August beschloss der Rat dann, die Einführung zum 1. Juli 2027 zu prüfen und entsprechend in der Verbandsversammlung des ZVBN abzustimmen [9487].\n\nLaut Protokoll gingen die Einschätzungen zu Kosten und Finanzierung auseinander: Im Verkehrsausschuss wurden mögliche jährliche Kosten von rund 242.000 Euro bis zu einer Million Euro genannt; einige wollten die Frage in den Haushaltsberatungen klären. Im Rat unterstützten mehrere Fraktionen den Prüfauftrag, während die AfD das Ticket ablehnte. Der Rat gab außerdem den Auftrag, die nötigen Schritte bis zur Sitzung des Verkehrsausschusses am 21. September vorzubereiten [9487]. **Was aus dem Berichtspunkt Ö 9 am 21. September wurde und welche weiteren Schritte daraus folgten, lässt sich aus den vorliegenden Unterlagen nicht feststellen.**"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wie geht es damit weiter?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 2.6,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wer ist dafür?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 25.5,
+   "antwort": "**Kurz gesagt:** Für die Prüfung eines sozialen Deutschlandtickets sind vor allem Grüne, SPD und BSW; eine endgültige Einführung ist noch nicht beschlossen.\n\nLaut Protokoll brachten die Grünen den Prüfauftrag ein; Prange (SPD) und Höpken (BSW) unterstützten ihn, ebenso Pfeiffer (FDP). Baak (CDU) hielt die Prüfung mit Blick auf die Haushaltskosten für richtig, während Paul (AfD) das Sozialticket ablehnte. Der Rat nahm den Prüfauftrag mehrheitlich an [9487]. Zuvor war der Grünen-Änderungsantrag im Verkehrsausschuss am 24. August als behandelt erklärt und zur Kenntnis genommen worden [9420].\n\nDas ist noch kein Beschluss, das Ticket tatsächlich einzuführen. Der Tagesordnungspunkt „Soziales D-Ticket in Oldenburg – Bericht“ war für den Verkehrsausschuss vorgesehen; in den vorliegenden Unterlagen ist dazu kein Ergebnis dokumentiert."
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Wer ist dafür?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 2.6,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Und was kostet das?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 22.5,
+   "antwort": "Laut Protokoll nannte Höpken eine Gebühr von rund 15 Euro im Jahr; im CDU-Antrag selbst ist kein Betrag genannt [8531]. Der Antrag wurde vertagt. Der separate FDP-Antrag zu gebührenfreien Ausnahmegenehmigungen wurde laut Tagesordnung später im Verkehrsausschuss ungeändert beschlossen.\n\n\n\n**Zuletzt:** Am 11.05.2026 steht „Gebührenfreie und unbürokratische Ausnahmegenehmigungen für Anwohner im Schulstraßenpilotprojekt Junkerstraße (FDP-Fraktion vom 29.03.2026)“ im Gremium Verkehrsausschuss auf der Tagesordnung; ein Ergebnis ist noch nicht protokolliert."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Und was kostet das?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wer hat das beantragt?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 9.6,
+   "antwort": "Den Antrag auf eine Anwohnergenehmigung für die Junkerstraße stellte die CDU-Fraktion [8531]. Der Antrag wurde im Verkehrsausschuss vertagt. [8531]\n\n\n\n**Zuletzt:** Am 11.05.2026 steht „Gebührenfreie und unbürokratische Ausnahmegenehmigungen für Anwohner im Schulstraßenpilotprojekt Junkerstraße (FDP-Fraktion vom 29.03.2026)“ im Gremium Verkehrsausschuss auf der Tagesordnung; ein Ergebnis ist noch nicht protokolliert."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wer hat das beantragt?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Worum geht es dabei in einfachen Worten?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 4.7,
+   "antwort": "Es geht um Genehmigungen für Anwohnerinnen und Anwohner im geplanten Schulstraßen-Pilotprojekt in der Junkerstraße. Die CDU beantragte eine Anwohnergenehmigung; die FDP wollte gebührenfreie und unkomplizierte Ausnahmegenehmigungen ermöglichen. [8531][8532]\n\nDer Verkehrsausschuss hat beide Anträge am 20. April 2026 vertagt. Damit wurde noch nicht darüber entschieden. [8531][8532]"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Worum geht es dabei in einfachen Worten?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 10.3,
+   "antwort": "Die Unterlagen behandeln mehrere verschiedene Themen. Der Rat beschloss, dass der Oberbürgermeister eine Erklärung zu Ernährung und Klima unterzeichnet [5153]. Für Weißenmoor legte er verbindliche Vorgaben für die Planung fest [4847]. Bei privaten Grundstücken soll preiswerter Wohnraum mindestens 20 Jahre lang für Menschen mit entsprechendem Bedarf vorgesehen bleiben [2275]. Einen Bericht zur Nachhaltigkeit der Stiftung Niedersachsen nahm der Kulturausschuss lediglich zur Kenntnis [6899]."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Was sagt die Verwaltung dazu?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 22.7,
+   "antwort": "**Kurz gesagt:** Die Verwaltung äußerte zunächst rechtliche Bedenken, prüfte eine gebührenfreie Lösung aber erneut, die inzwischen angekündigt wurde.\n\nIm April 2026 wurden die Anträge zur Anwohnergenehmigung und zu gebührenfreien Ausnahmegenehmigungen im Verkehrsausschuss vertagt [8531] [8532]. Laut Protokoll sagte Bernath eine genaue Prüfung der Gebühren zu; Meerbothe berichtete, die Verwaltung habe rechtliche Bedenken geäußert und mögliche Spielräume sollten erneut geprüft werden. In der Debatte ging es außerdem um mögliche Ungleichbehandlung, etwa gegenüber Pflegediensten, und um die Frage, wie vergleichbare Genehmigungen gehandhabt werden.\n\nIm Mai 2026 beschloss der Verkehrsausschuss den FDP-Antrag zu gebührenfreien Ausnahmegenehmigungen unverändert. Laut Pressemitteilung vom 12.05.2026 gibt es nun eine gebührenfreie Lösung für Anwohnende."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Was sagt die Verwaltung dazu?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wurde das schon beschlossen?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 19.0,
+   "antwort": "Nein. Der CDU-Antrag zur Anwohnergenehmigung wurde vertagt und damit nicht beschlossen [8531]. Ein anderer, thematisch ähnlicher FDP-Antrag zu gebührenfreien Ausnahmegenehmigungen wurde laut Tagesordnung am 11.05.2026 ungeändert beschlossen; das war nicht der CDU-Antrag."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wurde das schon beschlossen?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 2.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wann wird darüber entschieden?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 14.8,
+   "antwort": "Für den CDU-Antrag ist kein neuer Entscheidungstermin genannt; er wurde vertagt [8531]. Ein ähnlicher FDP-Antrag zu gebührenfreien Ausnahmegenehmigungen wurde laut Tagesordnung am 11. Mai 2026 unverändert beschlossen, das ist aber nicht der CDU-Antrag."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wann wird darüber entschieden?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Was spricht dagegen?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 18.9,
+   "antwort": "Gegen eine gebührenfreie Anwohnergenehmigung sprechen vor allem **rechtliche Bedenken** und die Sorge vor einer Ungleichbehandlung: Pflegedienste müssten womöglich weiter Gebühren zahlen, während Anwohner befreit würden. Außerdem wurde vor einer Sonderregelung gewarnt, wenn Anwohner in anderen Bereichen bei Durchfahrtsbeschränkungen ebenfalls Gebühren zahlen; die bestehende Gebühr von rund 15 Euro im Jahr wurde als moderat bezeichnet. Laut Protokoll wurde auch darauf hingewiesen, dass die Junkerstraße außerhalb der Sperrzeiten weiterhin ohne Genehmigung genutzt werden kann und eine allgemeine Freigabe die beabsichtigte Hemmschwelle für den Autoverkehr senken könnte. Der Verkehrsausschuss vertagte den Antrag im April 2026; die rechtlichen Spielräume sollten nochmals geprüft werden [8531].\n\n\n\n**Zuletzt:** Am 11.05.2026 steht „Gebührenfreie und unbürokratische Ausnahmegenehmigungen für Anwohner im Schulstraßenpilotprojekt Junkerstraße (FDP-Fraktion vom 29.03.2026)“ im Gremium Verkehrsausschuss auf der Tagesordnung; ein Ergebnis ist noch nicht protokolliert."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Was spricht dagegen?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 3.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Gab es dazu früher schon Beschlüsse?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 34.1,
+   "antwort": "**Kurz gesagt:** Frühere Vorgänge zur Junkerstraße gab es, aber keinen früheren Beschluss zur Gebührenbefreiung für Anwohner; der spätere FDP-Antrag wurde im Verkehrsausschuss beschlossen.\n\n## Frühere Vorgänge\n\nAm 17.06.2019 beschloss der Verkehrsausschuss, die Kosten für die Beleuchtung der Junkerstraße gesondert zu ermitteln [1722]; am 24.06.2019 fasste der Rat dazu jedoch keinen Beschluss [2238] – dabei ging es nicht um Anwohnergenehmigungen. Am 16.02.2026 nahm der Verkehrsausschuss die geplante Einziehung eines Teilbereichs der Junkerstraße für das Schulstraßen-Pilotprojekt zur Kenntnis [8263]; das war ebenfalls kein Beschluss über gebührenfreie Genehmigungen.\n\n## Anwohner-Ausnahmen\n\nAm 20.04.2026 vertagte der Verkehrsausschuss sowohl den CDU-Antrag zur Anwohnergenehmigung [8531] als auch den ähnlichen FDP-Antrag zu gebührenfreien Ausnahmegenehmigungen [8532]. Laut Protokoll sprachen sich mehrere Mitglieder für die Vertagung und eine erneute Prüfung aus; andere hielten die Gebühr für moderat oder warnten vor Sonderregeln. Die Verwaltung sagte am selben Tag eine genaue Prüfung der Gebührenfrage zu Protokoll zu.\n\nAm 11.05.2026 beschloss der Verkehrsausschuss laut Tagesordnung den FDP-Antrag zu gebührenfreien und unbürokratischen Ausnahmegenehmigungen unverändert. Das ist ein späterer Stand zum FDP-Antrag, aber kein protokollierter Beschluss zum CDU-Antrag; dessen Ausgang ist hier nicht dokumentiert."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Gab es dazu früher schon Beschlüsse?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wie geht es damit weiter?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 30.0,
+   "antwort": "**Kurz gesagt:** Der CDU-Antrag zur Anwohnergenehmigung wurde vertagt; später wurde ein paralleler FDP-Antrag unverändert beschlossen, aber über den CDU-Antrag selbst ist keine weitere Entscheidung verzeichnet.\n\n## Verlauf\nAm 16. Februar 2026 nahm der Verkehrsausschuss die geplante Einziehung eines Teilbereichs der Junkerstraße zur Kenntnis [8263]; laut Protokoll sollte die Schulstraße zunächst ausgeschildert und anfangs durch Polizeikontrollen begleitet werden. Am 20. April vertagte der Ausschuss den CDU-Antrag zur Anwohnergenehmigung [8531] und ebenso den parallelen FDP-Antrag für gebührenfreie Ausnahmegenehmigungen [8532]. Am 11. Mai 2026 beschloss der Verkehrsausschuss laut Tagesordnung den FDP-Antrag unverändert. Das sagt jedoch nicht, dass auch der CDU-Antrag damit entschieden wurde.\n\n## Debatte\nLaut Protokoll sprachen sich CDU und FDP für kostenfreie Genehmigungen aus; ADFC, Für Oldenburg und BSW hielten die Gebühr von rund 15 Euro im Jahr dagegen für vertretbar. Es gab Fragen zu den Regeln an anderen Orten, zur Gleichbehandlung und zu möglichen rechtlichen Spielräumen; Grüne und SPD unterstützten deshalb eine Vertagung, während Volt vor Sonderregeln warnte. Bernath sagte am 20. April zu, die Gebührenfrage genau zu prüfen, und wies darauf hin, dass die Straße außerhalb der Sperrzeiten ohne Genehmigung genutzt werden könne; zugleich gab er zu bedenken, dass eine Befreiung der Anwohner Pflegedienste benachteiligen könnte.\n\n## Aktueller Stand\nFür den CDU-Antrag bleibt die Vertagung vom 20. April der letzte dokumentierte Stand. Ein weiterer Schritt oder ein Termin für die erneute Beratung ist hier nicht verzeichnet."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wie geht es damit weiter?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wer ist dafür?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 14.5,
+   "antwort": "Laut Protokoll sprachen sich Baak (CDU) und Pfeiffer (FDP) ausdrücklich für eine Anwohnergenehmigung aus; Baak befürwortete auch eine kostenfreie Lösung. Der CDU-Antrag selbst wurde vertagt und damit nicht beschlossen [8531].\n\n\n\n**Zuletzt:** Am 11.05.2026 steht „Gebührenfreie und unbürokratische Ausnahmegenehmigungen für Anwohner im Schulstraßenpilotprojekt Junkerstraße (FDP-Fraktion vom 29.03.2026)“ im Gremium Verkehrsausschuss auf der Tagesordnung; ein Ergebnis ist noch nicht protokolliert."
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Wer ist dafür?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 2.4,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Und was kostet das?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 22.1,
+   "antwort": "Die Vorlage nennt keine Kosten der Tarifanpassung für die Stadt, sondern erwartet rund 160.000 Euro zusätzliche Einnahmen pro Jahr [9487]. Baak sagte im Rat, eine Ablehnung würde 742.000 Euro an Ausgleichszahlungen kosten; das ist seine Einschätzung, nicht der Preis der Tarifanpassung (laut Protokoll). Das ebenfalls geprüfte soziale Deutschlandticket wurde noch nicht beschlossen; die Verwaltung schätzte seine jährlichen Kosten auf 242.000 Euro bis eine Million Euro (laut Protokoll)."
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Und was kostet das?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wer hat das beantragt?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 16.2,
+   "antwort": "Der Beschluss zur VBN-Tarifanpassung 2027 nennt keinen Antragsteller [9487]. Der Änderungsantrag zum sozialen Deutschlandticket kam von der Fraktion Bündnis 90/Die Grünen [9420]; laut Protokoll brachte Maik Niederstein ihn im Verkehrsausschuss ein."
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wer hat das beantragt?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Worum geht es dabei in einfachen Worten?",
+   "bezug": true,
+   "beim_punkt": false,
+   "sekunden": 12.1,
+   "antwort": "Es geht darum, ob Oldenburg ab dem 1. Juli 2027 ein vergünstigtes Deutschlandticket für soziale Zwecke einführen soll. Der Rat hat beschlossen, dass die Stadt das prüft und ihre Vertreter in der Verbandsversammlung entsprechend abstimmen. [9487]\n\nDie Einführung ist damit noch nicht beschlossen. Der Rat stimmte mehrheitlich für diesen Prüfauftrag; sechs Ratsmitglieder waren dagegen, eines enthielt sich. [9487]"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Worum geht es dabei in einfachen Worten?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 7.0,
+   "antwort": "Die Unterlagen behandeln verschiedene Themen der Stadt. Oldenburg beschloss, eine Erklärung zu Ernährung und Klima zu unterzeichnen. Außerdem wurde ein Zwischenstand zum Klimaanpassungskonzept vorgestellt. [5153] [7891]\n\nFür preiswerte Wohnungen auf privaten Grundstücken muss die Bindung künftig mindestens 20 Jahre gelten. [2275] Für Weißenmoor beschloss der Rat verbindliche Vorgaben für die weitere Bauplanung. [4847] Weitere Themen waren die Planung für Vergnügungsstätten in der Innenstadt und eine Untersuchung zum ehemaligen Wallkino. [2741] [6128]"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Was sagt die Verwaltung dazu?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 22.4,
+   "antwort": "Laut Protokoll erklärte Verwaltungsvertreter Dr. Korallus, die Stadt orientiere sich bei der Einschätzung an Erfahrungen anderer Kommunen und rechne je nach Nachfrage mit jährlichen Kosten von 242.000 bis 1 Million Euro für ein soziales Deutschlandticket. Er bezeichnete die Tariferhöhung von 3,5 Prozent angesichts gestiegener Personalkosten als moderat und schlug vor, die Ticketfrage in den Haushaltsberatungen zu behandeln. Der Rat beauftragte die Stadt, Verfahren, Umsetzungsvorschlag und Kosten zu prüfen; der Beschluss sieht eine Entscheidung der Stadtvertretung im ZVBN vor [9487]. In der Debatte wurden die Kostenannahmen und die fehlende Gegenfinanzierung kritisiert; andere hielten das Ticket für eine wichtige Entlastung für Geringverdienende."
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Was sagt die Verwaltung dazu?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wurde das schon beschlossen?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 20.6,
+   "antwort": "Ja, der Rat hat beschlossen, die Einführung eines sozialen Deutschlandtickets zu prüfen und in der Verbandsversammlung des ZVBN entsprechend abzustimmen [9487]. Das Ticket selbst wurde damit noch nicht eingeführt."
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wurde das schon beschlossen?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 2.1,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wann wird darüber entschieden?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 20.4,
+   "antwort": "Der Rat beschloss am 31. August, die Einführung eines sozialen Deutschlandtickets zu prüfen; darüber sollte in der ZVBN-Verbandsversammlung am 10. September abgestimmt werden [9487]. Eine abschließende Entscheidung über die tatsächliche Einführung ist in den Unterlagen nicht genannt; bis zum Verkehrsausschuss am 21. September sollten zunächst die notwendigen Schritte geprüft werden [9487]."
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wann wird darüber entschieden?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Was spricht dagegen?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 28.4,
+   "antwort": "**Kurz gesagt:** Gegen die Tariferhöhung sprechen vor allem die zusätzliche Belastung für Fahrgäste und die Sorge, dass Busfahren dadurch weniger attraktiv wird; gegen ein soziales Deutschlandticket werden vor allem Kosten und fehlende Finanzierungsdetails angeführt.\n\nIm August 2026 galt der Antrag auf ein soziales Deutschlandticket im Verkehrsausschuss zunächst als behandelt – das war keine inhaltliche Zustimmung. In der Debatte kritisierten Mitglieder, der Antrag sei kurzfristig und nicht ausreichend vorbereitet; außerdem fehlten konkrete Vorschläge zur Gegenfinanzierung. Die Verwaltung bezifferte die möglichen jährlichen Kosten je nach Nachfrage auf 242.000 bis eine Million Euro. Andere hielten die Tariferhöhung für moderat und wollten die Frage in den Haushaltsberatungen klären. [9420]\n\nGegen die **Tariferhöhung** selbst wurde eingewandt, sie belaste Fahrgäste und erschwere einen bezahlbaren, attraktiven Nahverkehr. Laut Protokoll sprach sich Lucks dafür aus, auf eine Erhöhung zu verzichten oder sie höchstens an die Inflation anzupassen; Höpken forderte ein umfassendes soziales Tarifsystem statt einzelner Maßnahmen. Zugleich verwiesen Befürworter der Erhöhung auf gestiegene Kosten und mögliche Ausgleichszahlungen, falls die Stadt sie nicht mitträgt.\n\nIm August 2026 beschloss der Rat schließlich, die Einführung eines sozialen Deutschlandtickets zu prüfen und die städtischen Vertreter im Verkehrsverbund entsprechend abstimmen zu lassen. Das bedeutet noch keine beschlossene Einführung des Tickets. [9487]"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Was spricht dagegen?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 2.1,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Gab es dazu früher schon Beschlüsse?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 30.4,
+   "antwort": "**Kurz gesagt:** Ja, es gab schon frühere Beschlüsse zu VBN-Tarifanpassungen, aber keinen früheren Beschluss speziell zur Anpassung 2027.\n\n## Frühere Tarifrunden\n\nIm Juli 2021 nahm der Verkehrsausschuss einen Bericht zur Weiterentwicklung des VBN-Tarifs zur Kenntnis [3960]. Im August 2023 wurde die Anpassung für 2024 im Finanzausschuss als behandelt erklärt; der Rat lehnte sie im September 2023 mehrheitlich ab [8656] [5914]. Im August 2024 erklärte der Verkehrsausschuss die Anpassung für 2025 als behandelt, bevor der Rat ihr zustimmte [6815] [7052]. Im August 2025 wurde die Anpassung für 2026 zunächst im Verkehrsausschuss vertagt; später stimmten Ausschuss und Rat ihr zu, und der Rat beschloss außerdem, das kostenlose Busfahren an Samstagen unbefristet fortzusetzen [7701] [7788] [8047].\n\n## Anpassung 2027\n\nIm August 2026 befasste sich der Verkehrsausschuss mit einem Antrag für ein soziales Deutschlandticket; der Antrag galt dort als behandelt [9420]. Am 31. August 2026 beschloss der Rat zur Tarifanpassung 2027, die Einführung eines sozialen Deutschlandtickets ab dem 1. Juli 2027 zu prüfen und in der Verbandsversammlung des ZVBN entsprechend abzustimmen [9487]. **Das ist der aktuelle Stand**; ein früherer Beschluss speziell zur Tarifanpassung 2027 ist in dieser Vorgangshistorie nicht aufgeführt."
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Gab es dazu früher schon Beschlüsse?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wie geht es damit weiter?",
+   "bezug": true,
+   "beim_punkt": true,
+   "sekunden": 31.9,
+   "antwort": "**Kurz gesagt:** Als Nächstes prüft die Stadt ein soziales Deutschlandticket und soll dazu in der Verbandsversammlung des ZVBN entsprechend abstimmen [9487].\n\n## Bisheriger Verlauf\n\nAm 12.07.2021 nahm der Verkehrsausschuss einen Bericht zur Weiterentwicklung des VBN-Tarifs lediglich zur Kenntnis [3960]. Am 23.08.2023 galt die Tarifanpassung für 2024 im Finanzausschuss als behandelt; der Rat lehnte sie am 04.09.2023 ab [8656] [5914]. Am 07.08.2024 galt die Anpassung für 2025 im Finanzausschuss als behandelt, bevor der Rat ihr am 26.08.2024 zustimmte und kostenlose Busfahrten an Samstagen beschloss [6834] [7052]. Am 29.09.2025 stimmte der Rat der Tarifanpassung für 2026 zu und beschloss, das kostenlose Samstagsfahren unbefristet fortzusetzen [8047]. Am 24.08.2026 galt der Änderungsantrag für ein soziales Deutschlandticket im Verkehrsausschuss als behandelt [9420]; am 31.08.2026 beschloss der Rat stattdessen, die Einführung zu prüfen und entsprechend im ZVBN abzustimmen [9487].\n\n## Was die Debatte zeigt\n\nLaut Protokoll kritisierten im Rat am 31.08.2026 mehrere Rednerinnen und Redner die Preiserhöhung und forderten einen sozialen Ausgleich; andere verwiesen auf mögliche Ausgleichszahlungen, falls Oldenburg der Tarifanpassung nicht zustimmt. Die konkreten Kosten und die Ausgestaltung eines sozialen Tickets waren umstritten. Der aktuelle Beschluss legt daher zunächst eine Prüfung fest – nicht bereits die Einführung des Tickets [9487]."
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wie geht es damit weiter?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wer ist dafür?",
+   "bezug": true,
+   "beim_punkt": false,
+   "sekunden": 21.0,
+   "antwort": "Für den Prüfauftrag zum sozialen Deutschlandticket sprachen sich im Rat Niederstein (Grüne), Höpken (BSW), Prange (SPD), Pfeiffer (FDP) und Baak (CDU) aus. Beschlossen wurde zunächst nur, die Einführung zu prüfen [9487]."
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Wer ist dafür?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 2.4,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  }
+ ]
+}

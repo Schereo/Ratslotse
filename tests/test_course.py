@@ -665,3 +665,86 @@ def test_gegenstand_regel_nennt_den_punkt():
         "committee": "Verkehrsausschuss", "session_date": "2026-09-21", "decision_id": None}})
     assert "Tagesordnungspunkt „Soziales D-Ticket in Oldenburg - Bericht“ (Ö 9, Verkehrsausschuss am 2026-09-21, Vorlage 26/0719)" in regel
     assert qa.gegenstand_regel({}) == ""
+
+
+# ---- Argumente und Fraktionen (Schritt 6) ----------------------------------
+
+def _beitraege(store, ksinr, zeilen):
+    """(top, speaker, party, text, page) als Wortbeiträge einer Sitzung."""
+    with store._conn:
+        store._conn.executemany(
+            "INSERT INTO council_speeches (ksinr, position, kind, top, speaker, party, text, extracted_at, page) "
+            "VALUES (?, ?, 'speech', ?, ?, ?, ?, datetime('now'), ?)",
+            [(ksinr, i, *z) for i, z in enumerate(zeilen, start=1)])
+
+
+def test_stoff_ueber_alle_stationen_der_vorlage(store):
+    """Der Stoff eines Punkts sind die Wortbeiträge ALLER Stationen seiner
+    Vorlage — zugeordnet über die Nummer oder, wo die Extraktion nur den Titel
+    schreibt, über den Titel. Ein Unterpunkt (6.1) und ein Sammel-TOP zählen
+    nicht mit."""
+    tn = next(z[2] for z in SITZUNGEN[4652][3] if z[0] == "Ö 6")
+    _frueher(store, 1, "Ausschuss für Finanzen und Beteiligungen", "2026-06-03", [
+        ("Ö 7", "VWG: Technologieentscheidung im Rahmen der Antriebswende - Beschluss", tn),
+        ("Ö 9", "Anfragen und Anregungen", "")])
+    _beitraege(store, 1, [
+        ("7 VWG: Technologieentscheidung", "Adler", "BSW-Fraktion", "Batterie ist billiger.", 4),
+        ("Anfragen und Anregungen", "Baak", "CDU", "Wann kommt der Radweg?", 9),
+    ])
+    _beitraege(store, 4652, [
+        ("6 Verkehr und Wasser GmbH", "Klein", "SPD", "Wasserstoff ist zu teuer.", 3),
+        ("Verkehr und Wasser GmbH (VWG): Technologieentscheidung im Rahmen der Antriebswende",
+         "Niederstein", "Bündnis 90/ Die Grünen", "Ein Mix ist sicherer.", 3),
+        ("6.1 Etwas anderes", "Paul", "AfD", "Gehört nicht hierher.", 5),
+    ])
+    m = store.item_argument_material(4652, "Ö 6")
+    assert m["subject_key"] == f"tn:{tn}"
+    assert [s["speaker"] for s in m["speeches"]] == ["Adler", "Klein", "Niederstein"]
+    assert m["template"]["template_number"] == tn
+    # Rahmen der Sitzung und Nichtöffentliches haben keinen Stoff.
+    assert store.item_argument_material(4652, "Ö 3") is None
+    assert store.item_argument_material(4652, "Ö 4") is None
+    assert store.item_argument_material(4652, "N 17") is None
+
+
+def test_argumente_aus_der_ablage_mit_fraktionen(store, monkeypatch):
+    """Fraktionen rechnet die Seite ohne Modell; Argumente kommen aus der
+    Ablage und tragen eine Fundstelle mit Adresse. Kommen danach Beiträge
+    dazu, gilt die Auswertung als veraltet — gezeigt wird sie trotzdem."""
+    from council import arguments
+
+    _beitraege(store, 4652, [
+        ("6 VWG", "Klein", "SPD", "Wasserstoff ist zu teuer.", 3),
+        ("6 VWG", "Niederstein", "Bündnis 90/ Die Grünen", "Ein Mix ist sicherer.", 3),
+        ("6 VWG", "Atzler", "VWG", "Der Betrieb braucht Planbarkeit.", 4),
+        ("6 VWG", "Woltmann", "CDU", "Die Kosten sind tragbar.", 4),
+    ])
+    with store._conn:
+        store._conn.execute("INSERT INTO council_protocols (ksinr, extracted_at, status, document_url) "
+                            "VALUES (4652, datetime('now'), 'ok', 'https://example.org/p.pdf')")
+    m = store.item_argument_material(4652, "Ö 6")
+    ids = [s["id"] for s in m["speeches"]]
+    quellen = {f"W{s['id']}": {**s, "kind": "speech"} for s in m["speeches"]}
+    roh = {"issues": [{"question": "Was kostet es?",
+                       "pro": [{"source": f"W{ids[3]}", "text": "Tragbar."}, {"source": f"W{ids[1]}", "text": "Sicherer."}],
+                       "contra": [{"source": f"W{ids[0]}", "text": "Zu teuer."}, {"source": f"W{ids[2]}", "text": "Planbarkeit fehlt."}]}],
+           "further": {"pro": [], "contra": []}}
+    payload = arguments.parse(__import__("json").dumps(roh), quellen)
+    store.save_item_arguments(m["subject_key"], arguments.sources_hash(ids, m["template_number"]), "test", payload)
+
+    v = store.item_arguments_view(4652, "Ö 6")
+    assert v["show_arguments"] and (v["pro_count"], v["contra_count"]) == (2, 2)
+    assert v["stale"] is False
+    erste = v["issues"][0]["pro"][0]
+    assert (erste["speaker"], erste["party"], erste["body"]) == ("Woltmann", "CDU", "Verkehrsausschuss")
+    assert erste["source"] == {"kind": "speech", "id": ids[3], "page": 4, "url": "https://example.org/p.pdf#page=4"}
+    # Fraktionen: einheitliche Labels, der Verkehrsbetrieb ist keine Fraktion.
+    assert v["show_factions"] and sorted(f["party"] for f in v["factions"]) == ["CDU", "Grüne", "SPD"]
+
+    _beitraege(store, 4652, [("6 VWG", "Pfeiffer", "FDP", "Später entscheiden.", 5)])
+    assert store.item_arguments_view(4652, "Ö 6")["stale"] is True
+
+
+def test_ohne_genug_stoff_kein_reiter(store):
+    _beitraege(store, 4652, [("6 VWG", "Klein", "SPD", "Zu teuer.", 3)])
+    assert store.item_arguments_view(4652, "Ö 6") is None
