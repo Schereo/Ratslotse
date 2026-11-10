@@ -1,0 +1,18 @@
+{
+ "plan": "agenda_2025_alter",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "f94cb637d3276f4a",
+ "plain": [
+  "Die Agenda stellt die Sicherung der sozialen Versorgung älterer und hochaltriger Menschen in den Mittelpunkt.",
+  "Sie nennt alters- und klimagerechtes Sanieren und gemeinschaftliche Wohnangebote und will ein bezahlbares Angebot barrierefreier Wohnungen.",
+  "Sie zielt auf dichten, bezahlbaren Nahverkehr und barrierefreie Wege und setzt auf Beratung und Treffpunkte im Quartier."
+ ],
+ "questions": [
+  "Was wurde zuletzt zur Agenda 2025 in Oldenburg berichtet oder beschlossen?",
+  "Welche Schritte nennt die Agenda 2025 in Oldenburg für barrierefreie Wohnungen?",
+  "Was plant Oldenburg laut Agenda 2025 für barrierefreie Wege?"
+ ]
+}

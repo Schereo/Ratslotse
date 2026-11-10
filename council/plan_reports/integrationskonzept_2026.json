@@ -1,0 +1,21 @@
+{
+ "plan": "integrationskonzept_2026",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "26/0191",
+   "date": "2026-03-11",
+   "text": "Rund 340 Personen beteiligten sich an den unterschiedlichen Formaten.",
+   "quote": "Insgesamt haben sich, außer den Mitgliedern der Arbeitskreise und Netzwerke, um die 340 Personen an den unterschiedlichen Formaten beteiligt."
+  },
+  {
+   "template": "26/0670",
+   "date": "2026-09-08",
+   "text": "Am 15. August 2026 startete die nächste Ausbildung zur Integrationslotsin/zum Integrationslotsen.",
+   "quote": "Am 15. August 2026 startete die nächste Ausbildung zur Integrationslotsin/zum Integrationslotsen."
+  }
+ ]
+}

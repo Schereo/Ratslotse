@@ -1,0 +1,37 @@
+{
+ "plan": "isek_2035",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "25/0350",
+   "date": "2025-06-19",
+   "text": "Über 650 Rückmeldungen, Anregungen und Ideen wurden abgegeben; sie werden ausgewertet und fließen in die weitere Erarbeitung des ISEK Oldenburg 2035 ein.",
+   "quote": "Insgesamt wurden über 650 Rückmeldungen, Anregungen und Ideen abgegeben. Die Anregungen und Hinweise werden nun ausgewertet und fließen in den weiteren Erarbeitungsprozess für das ISEK Oldenburg 2035 ein."
+  },
+  {
+   "template": "26/0416",
+   "date": "2026-06-18",
+   "text": "Ein abgestimmter Verwaltungsentwurf des ISEK Oldenburg 2035 soll dem neu konstituierten Rat Anfang 2027 vorgelegt und mit der Politik erörtert werden.",
+   "quote": "Ziel ist, dem neu konstituierten Rat Anfang 2027 einen abgestimmten Verwaltungsentwurf des ISEK Oldenburg 2035 vorzulegen und diesen mit der Politik zu erörtern."
+  }
+ ],
+ "news": {
+  "from": "25/0350",
+  "from_date": "2025-06-19",
+  "to": "26/0416",
+  "to_date": "2026-06-18",
+  "items": [
+   {
+    "text": "Im März 2026 beteiligten sich 148 Bürgerinnen und Bürger an der Online-Beteiligung „mitreden.Oldenburg 2035“.",
+    "quote": "Im Rahmen der Online-Beteiligung „mitreden.Oldenburg 2035“ beteiligten sich im März 2026 148 Bürgerinnen und Bürger mit Hinweisen, Ideen und Bewertungen zur zukünftigen Stadtentwicklung."
+   },
+   {
+    "text": "Die Bürgerbeteiligung zum ISEK Oldenburg 2035 ist abgeschlossen.",
+    "quote": "Mit der zweiten Onlinebeteiligung ist die Bürgerbeteiligung zum ISEK Oldenburg 2035 zum Abschluss gekommen."
+   }
+  ]
+ }
+}

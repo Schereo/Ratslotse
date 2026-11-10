@@ -123,6 +123,52 @@ def pruefe(conn: sqlite3.Connection, heute: str | None = None) -> list[Befund]:
     befunde.extend(_pruefe_stand(conn, heute))
     befunde.extend(_pruefe_rueckblick(conn))
     befunde.extend(_pruefe_kernpunkte(conn))
+    befunde.extend(_pruefe_berichte(conn))
+    befunde.extend(_pruefe_einfach())
+    return befunde
+
+
+def _pruefe_berichte(conn: sqlite3.Connection) -> list[Befund]:
+    """„Laut Bericht“ und „Neu im jüngsten Bericht“ (``council/plan_reports/``): Steht jedes Zitat wörtlich
+    in der Vorlage des Berichts, jede Zahl des Satzes im Zitat — und das Neue nicht schon im vorigen?"""
+    befunde: list[Befund] = []
+
+    def text(number: str) -> str | None:
+        zeile = conn.execute("select raw_text from council_templates where template_number = ?", (number,)).fetchone()
+        return zeile[0] if zeile and (zeile[0] or "").strip() else None
+
+    def halten(key: str, entry: dict, number: str, was: str, davor: str | None = None) -> None:
+        quelle = text(number)
+        if quelle is None:
+            befunde.append(Befund(key, "fehler", f"{was} {number}: Vorlage fehlt im Bestand"))
+            return
+        _kept, dropped = plan_judge.checked_statements([entry], quelle, plan_judge.REPORT_TEXT_MAX, absent_from=davor)
+        befunde.extend(Befund(key, "fehler", f"{was} {number}: {grund}") for grund in dropped)
+
+    for key in plan_state.report_keys():
+        data = plan_state.reports(key) or {}
+        for report in data["reports"]:
+            halten(key, report, report["template"], "Bericht")
+        if neu := data.get("news"):
+            for item in neu["items"]:
+                halten(key, item, neu["to"], "Neu in", davor=text(neu["from"]))
+    return befunde
+
+
+def _pruefe_einfach() -> list[Befund]:
+    """Die einfache Fassung (``council/plan_plain/``) gehört zu den heutigen Kernpunkten und nennt keine
+    Zahl, die dort nicht steht. Passt sie nicht mehr, zeigt die Seite sie nicht — hier fällt es auf."""
+    befunde: list[Befund] = []
+    for key in plan_state.plain_keys():
+        data, points = plan_state.plain(key) or {}, plan_state.key_points(key)
+        if points is None:
+            befunde.append(Befund(key, "fehler", "einfache Fassung ohne Kernpunkte"))
+            continue
+        zeilen = plan_judge.key_point_lines(points)
+        befunde.extend(Befund(key, "fehler", f"einfache Fassung: {grund}")
+                       for grund in plan_judge.check_plain(data["plain"], data["questions"], plans.PLANS[key].title, zeilen))
+        if data["based_on"] != plan_judge.plain_basis(zeilen):
+            befunde.append(Befund(key, "fehler", "Kernpunkte geändert — python scripts/plan_einfach.py --nur " + key))
     return befunde
 
 

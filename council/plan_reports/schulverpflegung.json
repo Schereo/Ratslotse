@@ -1,0 +1,27 @@
+{
+ "plan": "schulverpflegung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "20/0629",
+   "date": "2020-10-28",
+   "text": "Die Verwaltung hält eine Vertretung des Schulausschusses in der Arbeitsgruppe „Schulverpflegung in Oldenburg“ für sinnvoll.",
+   "quote": "Aufgrund des Themas wäre aus Sicht der Verwaltung auch in der AG „Schulverpflegung in Oldenburg“ eine Vertretung des Schulausschusses sinnvoll."
+  },
+  {
+   "template": "23/0528",
+   "date": "2023-08-29",
+   "text": "Aus dem Budget für Ernährungsbildung wurden bisher drei Projekte umgesetzt, an den Grundschulen Heiligengeisttor, Drielake und Nadorst.",
+   "quote": "Bisher wurden aus diesem Budget drei Projekte umgesetzt worden. Diese sind:  „ÜberSatt“ - Kunst zum Thema Überfluss von Lebensmitteln (Grundschule Heiligengeist- tor)  Schulgarten mit Kräuterspirale und Hochbeeten für Gemüse (Grundschule Drielake)  Gesunde Schulverpflegung durch Kräuterhochbeet, Zubereitung von gesunden (Ge- müse)waffeln und Obst- und Gemüseshakes (Grundschule Nadorst)"
+  },
+  {
+   "template": "26/0325",
+   "date": "2026-05-12",
+   "text": "Bio, Qualitätssicherung, Ernährungsbildung und Öffentlichkeitsarbeit werden in den folgenden AG-Sitzungen behandelt.",
+   "quote": "Die vier Themen mit den meisten Punkten werden nun in den folgenden AG-Sitzungen behandelt. Diese Themen sind: Bio Qualitätssicherung Ernährungsbildung Öffentlichkeitsarbeit"
+  }
+ ]
+}

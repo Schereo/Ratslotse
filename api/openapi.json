@@ -21079,6 +21079,64 @@
               "null"
             ]
           },
+          "news": {
+            "description": "Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.",
+            "properties": {
+              "decision_id": {
+                "title": "Decision Id",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "from_date_label": {
+                "title": "From Date Label",
+                "type": "string"
+              },
+              "items": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanQuoted"
+                },
+                "title": "Items",
+                "type": "array"
+              },
+              "note": {
+                "title": "Note",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "to_date": {
+                "title": "To Date",
+                "type": "string"
+              },
+              "to_date_label": {
+                "title": "To Date Label",
+                "type": "string"
+              },
+              "to_template": {
+                "title": "To Template",
+                "type": "string"
+              }
+            },
+            "required": [
+              "to_template",
+              "to_date",
+              "to_date_label",
+              "from_date_label",
+              "title",
+              "decision_id",
+              "items",
+              "note"
+            ],
+            "title": "PlanNews",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "note": {
             "title": "Note",
             "type": [
@@ -21101,6 +21159,39 @@
             "title": "Owner",
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "plain": {
+            "description": "Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.",
+            "properties": {
+              "note": {
+                "title": "Note",
+                "type": "string"
+              },
+              "questions": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Questions",
+                "type": "array"
+              },
+              "sentences": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Sentences",
+                "type": "array"
+              }
+            },
+            "required": [
+              "sentences",
+              "questions",
+              "note"
+            ],
+            "title": "PlanPlain",
+            "type": [
+              "object",
               "null"
             ]
           },
@@ -21133,6 +21224,13 @@
               "object",
               "null"
             ]
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/PlanRelated"
+            },
+            "title": "Related",
+            "type": "array"
           },
           "remaining": {
             "properties": {
@@ -21637,6 +21735,9 @@
           "concluded",
           "predecessor",
           "content",
+          "plain",
+          "news",
+          "related",
           "measures",
           "city_status",
           "indicators",
@@ -22292,6 +22393,110 @@
         "title": "PlanNeighbour",
         "type": "object"
       },
+      "PlanNews": {
+        "description": "Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.",
+        "properties": {
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "from_date_label": {
+            "title": "From Date Label",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlanQuoted"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "to_date": {
+            "title": "To Date",
+            "type": "string"
+          },
+          "to_date_label": {
+            "title": "To Date Label",
+            "type": "string"
+          },
+          "to_template": {
+            "title": "To Template",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to_template",
+          "to_date",
+          "to_date_label",
+          "from_date_label",
+          "title",
+          "decision_id",
+          "items",
+          "note"
+        ],
+        "title": "PlanNews",
+        "type": "object"
+      },
+      "PlanPlain": {
+        "description": "Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.",
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "sentences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sentences",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sentences",
+          "questions",
+          "note"
+        ],
+        "title": "PlanPlain",
+        "type": "object"
+      },
+      "PlanQuoted": {
+        "description": "Ein Satz mit der wörtlichen Stelle, die ihn belegt.",
+        "properties": {
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "quote"
+        ],
+        "title": "PlanQuoted",
+        "type": "object"
+      },
       "PlanRecentReport": {
         "description": "Ein jüngster Bericht über alle Pläne hinweg.",
         "properties": {
@@ -22360,6 +22565,47 @@
           "decision_id"
         ],
         "title": "PlanRecentReport",
+        "type": "object"
+      },
+      "PlanRelated": {
+        "description": "Ein verwandter Plan — ohne Grad und ohne Begründung.",
+        "properties": {
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "preparing",
+              "superseded",
+              "concluded",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "field_label",
+          "status",
+          "status_label"
+        ],
+        "title": "PlanRelated",
         "type": "object"
       },
       "PlanReport": {
@@ -23225,7 +23471,6 @@
         "type": "object"
       },
       "PlanTimelineStation": {
-        "description": "Eine Station im Zeitstrahl BERICHTE: eine Vorlage mit allen Beratungen oder ein mündlicher Bericht.",
         "properties": {
           "committees": {
             "items": {
@@ -23292,6 +23537,28 @@
             "title": "Oral",
             "type": "boolean"
           },
+          "summary": {
+            "description": "Ein Satz mit der wörtlichen Stelle, die ihn belegt.",
+            "properties": {
+              "quote": {
+                "title": "Quote",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "quote"
+            ],
+            "title": "PlanQuoted",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "template_number": {
             "title": "Template Number",
             "type": [
@@ -23305,6 +23572,7 @@
           }
         },
         "required": [
+          "summary",
           "date",
           "date_end",
           "kind",

@@ -1,0 +1,33 @@
+{
+ "plan": "mobilitaetsplan_2030",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "23/0562",
+   "date": "2023-09-11",
+   "text": "Mehr als 200 konkrete Einzelmaßnahmen wurden vorgeschlagen; bis März 2024 erarbeitet die Verwaltung einen Priorisierungsvorschlag.",
+   "quote": "Bis März 2024 wird die Verwaltung einen fundierten Priorisierungsvorschlag für alle im Mobilitätsplan enthaltenen Maßnahmen erarbeiten. Mehr als 200 konkrete Einzelmaßnahmen wurden von den Gutachterbüros vorgeschlagen."
+  },
+  {
+   "template": "25/0041",
+   "date": "2025-02-17",
+   "text": "Eine Markterkundung zu Carsharing wurde durchgeführt; ab Mitte 2025 sollen die ersten neuen Carsharing-Standorte mit dem neuen Verfahren vergeben werden.",
+   "quote": "Des Weiteren wurde eine Markterkundung durchgeführt, um das Interesse möglicher Anbieter einschätzen zu können. Ab Mitte 2025 sollen die ersten neuen Carsharing-Standorte mit dem neuen Verfahren vergeben werden."
+  },
+  {
+   "template": "25/0379",
+   "date": "2025-06-23",
+   "text": "Die Mobilitätsmaßnahmen im Klimaportal werden zurzeit aktualisiert.",
+   "quote": "Die Mobilitätsmaßnahmen im Klimaportal werden zurzeit aktualisiert."
+  },
+  {
+   "template": "26/0190",
+   "date": "2026-04-20",
+   "text": "Neun Stellplatzpakete mit 18 Stellflächen wurden vergeben und werden 2026 eingerichtet.",
+   "quote": "In einer ersten Vergaberunde wurden 9 Stellplatzpakete (18 Stellflächen) vergeben, die im Jahr 2026 eingerichtet werden."
+  }
+ ]
+}

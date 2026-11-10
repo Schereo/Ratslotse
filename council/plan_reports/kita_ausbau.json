@@ -1,0 +1,65 @@
+{
+ "plan": "kita_ausbau",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "18/0526",
+   "date": "2018-08-15",
+   "text": "Für 30 Krippenplätze an der Lindenstraße 50-52 haben erste Umbauten begonnen; die Inbetriebnahme ist zum 01.10.2018 geplant.",
+   "quote": "1) Lindenstraße 50-52 (Willersstr.), Kinderschutzbund, 30 Krippenplätze Wegen ungeklärter Baulasten verzögerte sich die Erteilung der Baugenehmigung. Inzwischen wurde mit ersten Umbaumaßnahmen begonnen. Die Inbetriebnahme ist zum 01.10.2018 geplant."
+  },
+  {
+   "template": "19/0599",
+   "date": "2019-09-18",
+   "text": "Die Kita startete am 15.06.2019 mit einer Kindergartengruppe und am 01.08.2019 mit den weiteren geplanten Gruppen; inzwischen sind alle Plätze belegt.",
+   "quote": "Inzwischen wurde die Baumaßnahme abgeschlossen und die Kita konnte zum 15.06.2019 mit einer Kindergartengruppe und zum 01.08.2019 mit den weiteren geplanten Gruppen starten. Inzwischen sind alle Plätze belegt."
+  },
+  {
+   "template": "21/0654",
+   "date": "2021-09-15",
+   "text": "Eine Krippen- und eine Kindergartengruppe eröffneten zum 01.02.2021; die zweite Gruppe eröffnete zum 01.08.2021.",
+   "quote": "Eine Krippen- sowie eine Kindergartengruppe haben zum 01.02.2021 eröffnet. Da die Räumlichkeiten der weiteren Krippengruppen übergangsweise durch einen anderen Träger genutzt wurden, hat die zweite Gruppe zum 01.08.2021 eröffnet."
+  },
+  {
+   "template": "23/0836",
+   "date": "2023-11-15",
+   "text": "Leffers plant eine Großtagespflege mit acht Ganztagsplätzen für Kinder unter drei Jahren.",
+   "quote": "Die Firma Leffers plant im eigenen Gebäude in der Langen Straße 80 eine Großtagespflege mit acht Ganztagsplätzen für Kinder unter drei Jahren."
+  },
+  {
+   "template": "24/0529",
+   "date": "2024-09-18",
+   "text": "Für fünf Kinder wurde zum 01.08.2024 eine Übergangslösung eingerichtet; mit der Fertigstellung des festen Anbaus wird zum Kita-Jahr 2025/2026 gerechnet.",
+   "quote": "Aufgrund der Dringlichkeit der Umsetzung wurde zum 01.08.2024 eine Übergangslösung für fünf Kinder eingerichtet. Mit den Planungen für die feste Umsetzung der Gruppe wurde begonnen. Mit einer Fertigstellung des festen Anbaus ist zum Kita-Jahr 2025/2026 zu rechnen."
+  },
+  {
+   "template": "25/0765",
+   "date": "2025-11-19",
+   "text": "Am Deelweg wird eine Gruppe mit 25 Kindergartenplätzen zum 01.01.2026 in Betrieb genommen.",
+   "quote": "1) Deelweg – Johanniter Unfall Hilfe e. V., 25 Kindergartenplätze Der Träger Johanniter-Unfall-Hilfe e. V. wird die bestehende Johanniter Kindertagesstätte Deelweg durch Umbauarbeiten im Bestand um eine weitere Kindergartengruppe erweitern. Die Pläne sind mit dem Landesjugendamt abgestimmt worden, sodass eine Betriebserlaubnis in Aussicht gestellt wurde. Die Gruppe wird zum 01.01.2026 in Betrieb genommen."
+  }
+ ],
+ "news": {
+  "from": "24/0529",
+  "from_date": "2024-09-18",
+  "to": "25/0765",
+  "to_date": "2025-11-19",
+  "items": [
+   {
+    "text": "Eine Krippengruppe nahm am 01.10.2025 den Betrieb auf; die zweite soll voraussichtlich am 01.02.2026 eröffnen.",
+    "quote": "Eine der beiden Krippengruppen hat zum 01.10.2025 den Betrieb aufgenommen. Die zweite Krippengruppe wird voraussichtlich zum 01.02.2026 eröffnen."
+   },
+   {
+    "text": "Die Umwandlung einer bestehenden Regelgruppe in eine Integrationsgruppe wird geprüft; vom Anbau wird derzeit abgesehen.",
+    "quote": "Aufgrund der sich ändernden Bedarfe und einer großen Anzahl freier Kindergartenplätze in der Kindertagesstätte wird derzeit die Umwandlung einer bestehenden Regelgruppe in eine Integrationsgruppe geprüft. Von dem Anbau wird derzeit abgesehen."
+   },
+   {
+    "text": "Für eine sechsgruppige Kindertagesstätte sind zwei zusätzliche Gruppen geplant; ekito übernimmt die Trägerschaft.",
+    "quote": "Der Projektplaner plant ein mehrgeschossiges Gebäude mit Flächen für eine sechs-gruppige Kindertagesstätte (Umzug vier-gruppiger Kindergarten Schützenweg, Schaffung von zwei zusätzlichen Gruppen, die je nach Bedarf genutzt werden können). Die Kindertagesstätte wird vom Projektplaner gemäß dem Musterraumprogramm errichtet. Die Trägerschaft wird von ekito übernommen."
+   }
+  ]
+ }
+}

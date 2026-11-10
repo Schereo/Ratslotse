@@ -1,0 +1,45 @@
+{
+ "plan": "aktionsplan_gewalt_2020",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "21/0702",
+   "date": "2021-09-28",
+   "text": "Im Autonomen Frauenhaus in Oldenburg betrug die durchschnittliche Aufenthaltsdauer 2020 42 Tage.",
+   "quote": "Das Autonome Frauenhaus in Oldenburg hat die Verwaltung auf Nachfrage über folgende Aufenthaltszeiten informiert: 1. Wie hoch war die gesamte tatsächliche durchschnittliche Aufenthaltsdauer der Frauen? 2020: 42 Tage"
+  },
+  {
+   "template": "21/0704",
+   "date": "2021-09-28",
+   "text": "Für „Sport, ja sicher“ wurden und werden 2020 und 2021 jeweils zehn Oldenburger Sportvereine sensibilisiert; die Initiative wird voraussichtlich Anfang 2022 im Sportausschuss vorgestellt.",
+   "quote": "Für die Initiative „Sport, ja sicher“ konnte der Präventionsrat Oldenburg für die Jahre 2020 und 2021 Fördermittel des Landes einwerben. Gemeinsam mit dem Stadtsportbund wurden und werden in den beiden Jahren jeweils zehn Oldenburger Sportvereine zum Thema sexualisierte Gewalt sensibilisiert. Die Initiative wird voraussichtlich Anfang 2022 im Sportausschuss ausführlich vorgestellt."
+  },
+  {
+   "template": "22/0494",
+   "date": "2022-09-13",
+   "text": "Auf dem Julius-Mosen-Platz führten 120 Schuhpaare die Zahl der Femizide des Jahres 2021 in Deutschland vor Augen.",
+   "quote": "auf dem Julius-Mosen-Platz führten 120 Schuhpaare die Zahl der Femizide des Jahres 2021 in Deutschland vor Augen."
+  },
+  {
+   "template": "23/0356",
+   "date": "2023-05-09",
+   "text": "Plakate des Landes Niedersachsen zum Risiko von K.O.-Tropfen waren beim Kramermarkt 2022 zu sehen und werden auch beim diesjährigen Kultursommer zu finden sein.",
+   "quote": "Um für das Risiko von K.O.-Tropfen zu sensibilisieren, werden mit den unterschiedlichen Ansprechpersonen Gespräche geführt, wie Hinweisplakate des Landes Niedersachsen öffentlichkeitswirksam bei Oldenburger Festlichkeiten platziert werden können. Diese Plakate waren bereits beim Kramermarkt 2022 zu sehen und werden auch auf dem diesjährigen Kultursommer zu finden sein."
+  },
+  {
+   "template": "26/0080",
+   "date": "2026-02-24",
+   "text": "Zum Valentinstag wurden im Stadtgebiet 3.000 Sattelschoner mit Hilfetelefonnummer verteilt.",
+   "quote": "Verteilung von 3.000 Sattelschonern mit der Aufschrift: Ich liebe Dich! Du gehörst nur mit und der Hilfetelefonnummer wurden anlässlich des Valentinstages im Stadtgebiet."
+  },
+  {
+   "template": "26/0681/1",
+   "date": "2026-09-28",
+   "text": "Das Frauen- und Kinderschutzhaus „Hanna“ bietet nun weitere 14 Plätze für Frauen* und ihre Kinder.",
+   "quote": "Der Aufbau des Johanniter Frauen- und Kinderschutzhauses „Hanna“, mit dem nun weitere 14 Plätze für Frauen* und ihre Kinder zur Verfügung stehen"
+  }
+ ]
+}

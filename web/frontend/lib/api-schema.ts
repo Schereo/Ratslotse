@@ -15508,6 +15508,28 @@ export interface components {
                 /** Status Template */
                 status_template: string | null;
             } | null;
+            /**
+             * PlanNews
+             * @description Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.
+             */
+            news: {
+                /** Decision Id */
+                decision_id: number | null;
+                /** From Date Label */
+                from_date_label: string;
+                /** Items */
+                items: components["schemas"]["PlanQuoted"][];
+                /** Note */
+                note: string;
+                /** Title */
+                title: string;
+                /** To Date */
+                to_date: string;
+                /** To Date Label */
+                to_date_label: string;
+                /** To Template */
+                to_template: string;
+            } | null;
             /** Note */
             note: string | null;
             /** Office */
@@ -15516,6 +15538,18 @@ export interface components {
             oral_report_count: number;
             /** Owner */
             owner: string | null;
+            /**
+             * PlanPlain
+             * @description Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.
+             */
+            plain: {
+                /** Note */
+                note: string;
+                /** Questions */
+                questions: string[];
+                /** Sentences */
+                sentences: string[];
+            } | null;
             /** Policy Field */
             policy_field: string;
             /** PlanNeighbour */
@@ -15527,6 +15561,8 @@ export interface components {
                 /** Title */
                 title: string;
             } | null;
+            /** Related */
+            related: components["schemas"]["PlanRelated"][];
             /** PlanFact */
             remaining: {
                 /** Label */
@@ -15923,6 +15959,50 @@ export interface components {
             title: string;
         };
         /**
+         * PlanNews
+         * @description Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.
+         */
+        PlanNews: {
+            /** Decision Id */
+            decision_id: number | null;
+            /** From Date Label */
+            from_date_label: string;
+            /** Items */
+            items: components["schemas"]["PlanQuoted"][];
+            /** Note */
+            note: string;
+            /** Title */
+            title: string;
+            /** To Date */
+            to_date: string;
+            /** To Date Label */
+            to_date_label: string;
+            /** To Template */
+            to_template: string;
+        };
+        /**
+         * PlanPlain
+         * @description Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.
+         */
+        PlanPlain: {
+            /** Note */
+            note: string;
+            /** Questions */
+            questions: string[];
+            /** Sentences */
+            sentences: string[];
+        };
+        /**
+         * PlanQuoted
+         * @description Ein Satz mit der wörtlichen Stelle, die ihn belegt.
+         */
+        PlanQuoted: {
+            /** Quote */
+            quote: string;
+            /** Text */
+            text: string;
+        };
+        /**
          * PlanRecentReport
          * @description Ein jüngster Bericht über alle Pläne hinweg.
          */
@@ -15946,6 +16026,25 @@ export interface components {
             plan_title: string;
             /** Template Number */
             template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanRelated
+         * @description Ein verwandter Plan — ohne Grad und ohne Begründung.
+         */
+        PlanRelated: {
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /** Status Label */
+            status_label: string;
             /** Title */
             title: string;
         };
@@ -16278,10 +16377,7 @@ export interface components {
             /** Decision Id */
             decision_id: number | null;
         };
-        /**
-         * PlanTimelineStation
-         * @description Eine Station im Zeitstrahl BERICHTE: eine Vorlage mit allen Beratungen oder ein mündlicher Bericht.
-         */
+        /** PlanTimelineStation */
         PlanTimelineStation: {
             /** Committees */
             committees: string[];
@@ -16307,6 +16403,16 @@ export interface components {
             mode: "adopted" | "noted" | null;
             /** Oral */
             oral: boolean;
+            /**
+             * PlanQuoted
+             * @description Ein Satz mit der wörtlichen Stelle, die ihn belegt.
+             */
+            summary: {
+                /** Quote */
+                quote: string;
+                /** Text */
+                text: string;
+            } | null;
             /** Template Number */
             template_number: string | null;
             /** Title */
@@ -28611,4 +28717,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: dfcf18a857c05e4aa28d27676f3e3837264a9003891f11e4c68390f691fb7e39
+// vertrag-sha256: f4c6a430893fb57e7b84580649e68d554bfd9dbc60571597904cb14cf679cb42

@@ -50,7 +50,8 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 | 4b Wo man nachfragen kann | auf dev: Pläne ohne aktuellen Bericht. „Ratsauftrag ohne Folge“ zweimal gemessen (ohne und mit Modell), Messziel beide Male verfehlt, nicht ausgeliefert | #1825, #1829 |
 | 5 Rückblick | auf dev für die zehn abgelaufenen Pläne; Maßnahmenlisten für neun Pläne; iOS-Ansicht im Code (kommt mit dem nächsten App-Build) | #1825, #1830, #1831 |
 | Was im Plan steht (nach der Freigabe der Phasen, Tims Wunsch 10.11.2026) | PR offen: Zweck und drei bis sechs Kernpunkte für 36 von 45 Plänen, jeder mit wörtlichem Zitat, Seite und Link; 9 Pläne begründet ohne Block | § 3.2 Punkt 1a; `scripts/plan_kernpunkte.py` |
-| Ausbau der Seiten, Paket 1 und Bewegung (Tims Auftrag 10.11.2026) | PR offen: Kernpunkte nach Art mit Zahlen-Kacheln, Termine des Plans im Zeitband, Sprungleiste, Übersicht mit Aufklapp-Zeilen und drei Reihenfolgen; Bewegung nach DESIGNSPRACHE § 7 | § 3.1, § 3.2 Punkte 1a–1c |
+| Ausbau der Seiten, Paket 2 (mit Modell) | PR offen: ein Satz je Bericht mit Zitat (69 Sätze in 23 Plänen), „Neu im jüngsten Bericht“ (6 Reihen), der Plan in einfacher Sprache und drei Fragen (36 Pläne), verwandte Pläne (22 Paare, ohne Modell). Modellkosten zusammen 0,23 $ | § 3.2 Punkte 4a–4c, 1d, 7 |
+| Ausbau der Seiten, Paket 1 und Bewegung (Tims Auftrag 10.11.2026) | auf dev (#1833): Kernpunkte nach Art mit Zahlen-Kacheln, Termine des Plans im Zeitband, Sprungleiste, Übersicht mit Aufklapp-Zeilen und drei Reihenfolgen; Bewegung nach DESIGNSPRACHE § 7 | § 3.1, § 3.2 Punkte 1a–1c |
 | 5b Seite der Stadt | Verweise für 21 Pläne. Offen: Dokumente der Pläne von vor 2018 | mit Phase 6 |
 | 6 Pflege | Kennzahlen im Cron-Protokoll, Hinweise im Prüfskript | mit Phase 5b |
 | Kosten | Modell insgesamt rund 0,50 $ (Mobilitätsplan 0,004 $, Bezüge laut Vorlage 0,09 $, Ratsaufträge 0,03 $, Kernpunkte 0,37 $ samt aller Probeläufe); alles andere ohne Modell | gemessen 10.11.2026 |
@@ -425,6 +426,19 @@ kommt, entscheidet die Gestaltungsrunde.
    2050“ stauchte sonst die ganze Achse. *(gebaut)*
 1c. **Sprungleiste:** unter dem Kopf, beim Rollen oben stehend: die
    Abschnitte, die es auf diesem Plan gibt, mit Zählern (`sections`). *(gebaut)*
+1d. **Lotti erklärt's einfach, und drei Fragen:** drei kurze Sätze in
+   Alltagssprache, zugeklappt über den Kernpunkten, und unter dem Block drei
+   Fragen, die „Frag den Rat“ mit der Frage vorbelegt öffnen (einen eigenen
+   Plan-Kontext nimmt die KI-Frage nicht an). Die Quelle sind **nur die
+   belegten Kernpunkte**, nicht die Dokumente (`scripts/plan_einfach.py`,
+   `council/plan_plain/<plan>.json`): Ohne Modell geprüft wird, dass keine
+   Zahl auftaucht, die die Kernpunkte nicht nennen; eine zweite Lesung des
+   Modells streicht die Fassung, wenn ein Satz mehr sagt. Die Datei trägt einen
+   Fingerabdruck der Kernpunkte — ändert sich einer, zeigt die Seite die
+   Fassung nicht mehr, und Test wie Prüfskript melden es. Die Fragen hängen
+   je an einem Kernpunkt oder am Stand; nach Geld fragt nur, wer einen Betrag
+   vor sich hat (eine Frage, die ins Leere läuft, wäre schlimmer als keine).
+   *(gebaut)*
 2. **LAUFZEIT:** Beginn, Ende oder „ohne Enddatum“, die nächste vorgesehene
    Überprüfung (z. B. Wärmeplan spätestens 2031) sowie Vorgänger und
    Nachfolger. *(gebaut)*
@@ -435,6 +449,21 @@ kommt, entscheidet die Gestaltungsrunde.
    beschlossen“). *(Liste und Hinweis gebaut; Statuschip und Verlauf Phase 3)*
 4. **BERICHTE:** Zeitstrahl aller Berichte, mündliche als „mündlich, ohne
    Text“ markiert; die letzte Station ist „AKTUELLER STAND“. *(gebaut)*
+4a. **Ein Satz je Bericht:** Die Titel sagen nichts („Klimaschutz-Aktivitäten
+   3/2026 - Bericht“). Unter dem Titel steht deshalb, als „Laut Bericht“
+   gekennzeichnet (§ 3.4 Nr. 3), in einem Satz, was die Verwaltung meldet — mit
+   dem wörtlichen Zitat auf Tipp und als Tooltip an der Marke im Zeitband.
+   Ein Modell schlägt vor (`scripts/plan_berichte.py`), in die Datei
+   (`council/plan_reports/<plan>.json`) kommt nur, was ohne Modell belegt ist:
+   Das Zitat steht wörtlich in der Vorlage, jede Zahl des Satzes im Zitat;
+   je Plan zitiert jede Stelle nur ein Bericht, der früheste. Berichte ohne
+   Vorlagentext (mündlich, nur als Anlage) bleiben ohne Satz. *(gebaut)*
+4b. **Neu im jüngsten Bericht:** Gehören die zwei jüngsten Berichte zur
+   selben Reihe (gleicher Titel bis auf Nummer und Jahr), stehen über dem
+   Zeitstrahl bis zu drei Dinge, die im jüngsten neu sind. Geprüft ohne
+   Modell: Das Zitat steht im jüngsten Bericht und im vorigen **nicht**. Die
+   Seite zeigt den Block nur, solange der Bericht wirklich der jüngste und
+   nicht älter als zwei Jahre ist. *(gebaut)*
 5. **KENNZAHL** (nur wo der Plan eine nennt): Soll und Ist mit Bilanzjahr und
    Quelle, dazu die Einordnung **aus dem Bericht selbst** (Strommix).
    *(Phase 3)*
@@ -442,6 +471,30 @@ kommt, entscheidet die Gestaltungsrunde.
    den Plan* · *setzt Maßnahme X um* · *Antrag oder Anfrage dazu* · *erwähnt*.
    Erwähnungen bleiben hinter „Weitere“. *(gebaut ohne „setzt Maßnahme X
    um“; das kommt mit Phase 4)*
+
+7. **VERWANDTE PLÄNE:** bis zu vier, ohne Grad und ohne Begründung. Gemeinsame
+   Beschlüsse taugen dafür nicht (gemessen: nur sieben Paare teilen überhaupt
+   einen, fast alle Vorgänger und Nachfolger). Vorgeschlagen wird über die
+   Nähe der Kernpunkte im selben Themenfeld (Einbettung, offline, ohne
+   Sprachmodell: `scripts/plan_verwandt.py`); **jedes Paar ist von Hand
+   angenommen oder verworfen** (38 Vorschläge, 17 verworfen, mit Grund im
+   Skript), dazu kommt, was das Register selbst nennt (Schulverpflegung ↔
+   Ernährungsstrategie). Vorgänger und Nachfolger stehen nicht hier, sondern
+   im Kopf. *(gebaut)*
+
+**Zu 4a, 4b und 1d: gemessen am 10.11.2026.** 73 Berichte mit Vorlagentext in
+26 Plänen; 69 bekamen einen belegten Satz, 4 keinen. Von Hand gegen das Zitat
+gelesen: alle 69 — 62 unverändert, 3 schief und berichtigt („frühestens“ statt
+„voraussichtlich“; ein Anstieg weggelassen; „sollen“ statt „würden“), 2 zu vage
+und durch eine bessere Stelle ersetzt, 2 sprachlich geglättet. „Neu“: 17
+Vorschläge in 6 Reihen, 3 fielen als Wiederholung des Berichtssatzes, 2
+umformuliert, bleiben 14. Einfache Sprache: 108 Sätze gegen die Kernpunkte
+gelesen, 6 umgeschrieben (ein Präsens für etwas Künftiges, ein „obwohl“, das
+die Kernpunkte nicht hergeben, ein weggelassener Geltungsbereich, drei
+Unklarheiten). Fragen: Der erste Satz fragte je Plan pauschal nach Kosten —
+verworfen und an die Kernpunkte gebunden neu erzeugt; 10 von 108 von Hand
+geglättet. Modellkosten zusammen 0,23 $ (Luna), samt Messläufen und
+Wiederholungen; ein neuer Bericht kostet rund 0,001 $.
 
 **Zu 1a: Wie die Kernpunkte entstehen.** Ein Sprachmodell (Luna) liest je
 Plan die Beschlüsse aus dem Register mit Beschlusstext und Vorlage und das

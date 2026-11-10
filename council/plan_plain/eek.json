@@ -1,0 +1,18 @@
+{
+ "plan": "eek",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "eabe8d68d9da1926",
+ "plain": [
+  "Das Konzept ist die Grundlage dafür, wie Oldenburg den Einzelhandel steuert.",
+  "Waren, die für Zentren wichtig sind, sollen als Hauptsortiment vor allem in der Innenstadt angeboten werden; Tierbedarf zählt nicht dazu.",
+  "Das Konzept sieht vor, Fachmarktzentren, auch mit Nahversorgung, zu überplanen und am Combi-Markt einen Drogeriemarkt zu ermöglichen."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Einzelhandelskonzept in Oldenburg berichtet oder beschlossen?",
+  "Wo sollen zentrenrelevante Sortimente laut Einzelhandelskonzept in Oldenburg liegen?",
+  "Ermöglicht Oldenburgs Einzelhandelskonzept einen Drogeriemarkt am Combi-Markt?"
+ ]
+}

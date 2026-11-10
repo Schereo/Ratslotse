@@ -1,0 +1,21 @@
+{
+ "plan": "orte_fuer_alle",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "25/0581",
+   "date": "2025-09-23",
+   "text": "Der digitale soziale Stadtplan wurde 2024 neu aufgelegt; seit Sommer 2025 werden dort nach und nach alle nutzbaren Räume für „Orte für Alle“ sichtbar gemacht.",
+   "quote": "Der digitale soziale Stadtplan wurde 2024 neu aufgelegt, so dass vorhandene soziale Angebote übersichtlich und schnell von Bürgerinnen und Bürgern gefunden, kontaktiert oder aufgesucht werden können. Seit Sommer 2025 werden nach und nach alle Räume, die für „Orte für Alle“ nutzbar sind, im Sozialen Stadtplan unter dem Reiter „Raum gesucht!?“ sichtbar gemacht und verlinkt."
+  },
+  {
+   "template": "26/0522",
+   "date": "2026-09-15",
+   "text": "Der „Ort für Alle“ Bürgerhaus Ofenerdiek erhält seit 2026 eine institutionelle Förderung.",
+   "quote": "Der „Ort für Alle“ Bürgerhaus Ofenerdiek erhält seit 2026 eine institutionelle Förderung."
+  }
+ ]
+}

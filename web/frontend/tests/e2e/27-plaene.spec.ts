@@ -249,6 +249,53 @@ test("die Übersicht klappt eine Zeile auf und kennt drei Reihenfolgen", async (
   await expect(page.getByRole("heading", { name: "Laufend" })).toBeVisible();
 });
 
+test("Lotti erklärt den Plan einfach, drei Fragen führen ins Ratsarchiv, verwandte Pläne stehen daneben", async ({ page }) => {
+  // Alles drei kommt aus Dateien im Repo — auch gegen die leere Ratsdatenbank.
+  await schalter(page, true);
+  await page.goto("/council/plan?key=schulverpflegung");
+  const block = page.locator('section[aria-labelledby="plan-content"]');
+  const lotti = block.getByRole("button", { name: /Lotti erklärt/ });
+  await expect(lotti).toHaveAttribute("aria-expanded", "false");
+  await lotti.click();
+  await expect(block.getByText(/Automatisch aus den belegten Kernpunkten/)).toBeVisible();
+  await expect(block.getByText(/zu 100 Prozent bio/)).toBeVisible();
+  // Die Fragen sind Links auf die KI-Frage, mit der Frage vorbelegt.
+  const chips = block.getByRole("group", { name: "Fragen an Lotti" }).getByRole("link");
+  await expect(chips).toHaveCount(3);
+  expect(await chips.first().getAttribute("href")).toMatch(/^\/fragen\?q=.+&chip=1$/);
+  // Verwandt: was das Register selbst nennt. Vorgänger und Nachfolger stehen im Kopf, nicht hier.
+  const related = page.locator('section[aria-labelledby="plan-related"]');
+  await related.getByRole("link", { name: /Ernährungsstrategie/ }).click();
+  await expect(page).toHaveURL(/\/council\/plan\?key=ernaehrungsstrategie/);
+  await expect(page.locator('section[aria-labelledby="plan-related"]').getByRole("link", { name: /Schulverpflegung/ })).toBeVisible();
+  // Ohne Kernpunkte gibt es weder die einfache Fassung noch Fragen.
+  await page.goto("/council/plan?key=kai_2015");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Lotti erklärt/ })).toHaveCount(0);
+});
+
+test("ein Bericht sagt in einem Satz, was drinsteht — mit Zitat; Neues steht darüber", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=klimaschutzplan_2035");
+  const log = page.locator('section[aria-labelledby="plan-reports"]');
+  await expect(log.getByText("Berichte im Rat", { exact: true })).toBeVisible();
+  // Die Berichte selbst liegen im Bestand: Gegen die leere Datenbank der CI gibt es keinen Zeitstrahl —
+  // und dann weder Satz noch „Neu“. Mit Bestand trägt der jüngste Bericht seinen Satz.
+  if (await log.getByText("Aktueller Stand", { exact: true }).count() === 0) {
+    await expect(log.getByText("Laut Bericht")).toHaveCount(0);
+    await expect(log.getByText(/^Neu im jüngsten Bericht/)).toHaveCount(0);
+    return;
+  }
+  const sentence = log.getByRole("button", { name: /^Laut Bericht/ }).first();
+  await expect(sentence).toBeVisible();
+  await expect(log.locator("blockquote")).toHaveCount(0);
+  await sentence.click();
+  await expect(log.locator("blockquote").first()).toBeVisible();
+  // „Neu“ steht nur da, solange der verglichene Bericht der jüngste ist — dann als Selbstauskunft benannt.
+  const news = log.getByText(/^Neu im jüngsten Bericht/);
+  if (await news.count()) await expect(log.getByText(/Nach Angaben der Verwaltung/)).toBeVisible();
+});
+
 test("ohne Schalter bleibt es bei den Zielen", async ({ page }) => {
   await schalter(page, false);
   await page.goto("/council?tab=analysis&sub=ziele");

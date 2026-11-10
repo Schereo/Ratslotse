@@ -1,0 +1,49 @@
+{
+ "plan": "innenstadtstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "23/0173",
+   "date": "2023-03-06",
+   "text": "Auf zwei Pop-up-Wettbewerbe 2021 und 2022 folgt nun ein Wettbewerb für innovative Unternehmenskonzepte in den Schlosshöfen.",
+   "quote": "In 2021 und 2022 konnten erfolgreich zwei Pop Up-Wettbewerbe im CORE und in der Haarenstraße durchgeführt werden. Hieran schließt nun ein erneuter, auf innovative Unternehmenskonzepte ausgerichteter Wettbewerb in den Schlosshöfen an."
+  },
+  {
+   "template": "24/0505",
+   "date": "2024-09-02",
+   "text": "Tickets und Einnahmen je Stellplatz stiegen, Auslastung und Parkdauer sanken; ab 01.01.2025 sind 3,60 Euro je Stunde geplant.",
+   "quote": "Die Anzahl der verkauften Tickets und die Einnahmen pro Stellplatz sind gestiegen. Im Gegensatz dazu sind die Auslastung und die Parkdauer zurückgegangen. Die nächste Erhöhung der Parkgebühren ist zum 01.01.2025 geplant. Gemäß Ratsbeschluss werden diese dann 3,60 Euro pro Stunde betragen."
+  },
+  {
+   "template": "25/0330",
+   "date": "2025-06-02",
+   "text": "Die Leerstandsquote ist geringfügig gestiegen und liegt mit 9,59 Prozent noch unter 10 Prozent.",
+   "quote": "Die Leerstandsquote ist im Vergleich zu den Vorjahren geringfügig gestiegen, liegt jedoch mit 9,59 Prozent noch immer unter 10 Prozent."
+  },
+  {
+   "template": "26/0276",
+   "date": "2026-05-04",
+   "text": "Oldenburg soll 2026 erneut an der Umfrage teilnehmen; die Befragung findet im Herbst 2026 statt, Ergebnisse werden Anfang 2027 erwartet.",
+   "quote": "Um Vergleichswerte zu erhalten, wird Oldenburg im Jahr 2026 erneut an der Umfrage teilnehmen. Die Umfragen werden im Herbst 2026 durchgeführt, mit den Ergebnissen ist Anfang 2027 zu rechnen."
+  }
+ ],
+ "news": {
+  "from": "25/0330",
+  "from_date": "2025-06-02",
+  "to": "26/0276",
+  "to_date": "2026-05-04",
+  "items": [
+   {
+    "text": "Die Leerstandsquote liegt nun bei 8,2 % und damit 1,4 Prozentpunkte niedriger als im Vorjahr.",
+    "quote": "Die Leerstandsquote ist im Vergleich zu den Vorjahren gesunken und liegt nun mit 8,2 % um 1,4 Prozentpunkte niedriger als im Vorjahr (2025: 9,6 %)."
+   },
+   {
+    "text": "Die Verwaltung arbeitet an einer internen Lösung zur Erfassung und Auswertung der Auslastungsdaten der Parkhäuser.",
+    "quote": "Derzeit wird an einer verwaltungsinternen Lösung gearbeitet, die Auslastungsdaten der Parkhäuser zu erfassen und auszuwerten."
+   }
+  ]
+ }
+}

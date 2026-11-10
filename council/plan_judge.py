@@ -489,11 +489,11 @@ Geltungsbereich oder eine Verbindlichkeit („muss“ statt „soll“, „besch
 die das Zitat nicht hergibt. missing: in wenigen Worten, was im Zitat fehlt (sonst leer)."""
 
 
-def unsupported(statements: list[dict], model: str = MODEL) -> tuple[dict[int, str], float]:
+def unsupported(statements: list[dict], model: str = MODEL, feature: str = "plan_key_points") -> tuple[dict[int, str], float]:
     """Zweite Lesung, die nur streichen kann: Welche Sätze trägt ihr Zitat NICHT? Zurück: Index → Grund,
     dazu die Kosten. Das Zitat steht dann zwar wörtlich in der Quelle, aber der Satz sagt mehr als es."""
     pairs = "\n\n".join(f"{n}. Satz: {st['text']}\n   Zitat: „{st['quote']}“" for n, st in enumerate(statements, 1))
-    response = llm.chat_complete(model=model, _feature="plan_key_points", temperature=0,
+    response = llm.chat_complete(model=model, _feature=feature, temperature=0,
                                  response_format={"type": "json_object"}, max_tokens=1500,
                                  messages=[{"role": "user", "content": _SUPPORT_PROMPT.format(pairs=pairs)}])
     out: dict[int, str] = {}
@@ -555,3 +555,307 @@ def check_extras(point: dict) -> list[str]:
         if gone:
             problems.append(f"Termin nennt ein Jahr, das nicht im Zitat steht ({', '.join(gone)})")
     return problems
+
+
+# ── Berichte in einem Satz, Neues im jüngsten Bericht ──────────────────────
+#
+# Die Berichtstitel im Ratsinformationssystem sagen nichts („Klimaschutz-
+# Aktivitäten 3/2026 - Bericht“). Ein Modell schlägt je Bericht EINEN Satz vor,
+# was die Verwaltung darin meldet, und nennt die Stelle. In die Datei
+# (``council/plan_reports/<plan>.json``) kommt nur, was ohne Modell belegt ist:
+# das Zitat steht wörtlich in der Vorlage, jede Zahl des Satzes im Zitat.
+# Für „Neu im jüngsten Bericht“ zusätzlich: Das Zitat steht im vorigen
+# Bericht derselben Reihe NICHT.
+#
+# Der Satz ist eine Selbstauskunft der Verwaltung und wird auf der Seite so
+# gekennzeichnet (Plan § 3.4 Nr. 3). Er sagt nichts über Wirkung oder Güte.
+
+REPORT_TEXT_MAX = 190
+NEWS_MAX = 3
+#: Berichte einer Reihe heißen fast gleich („… 2/2026 - Bericht“, „… 3/2026 - Bericht“).
+SERIES_OVERLAP = 0.6
+
+_REPORT_PROMPT = """Du liest einen Bericht der Verwaltung an den Rat der Stadt Oldenburg. Er gehört zum Plan \
+„{plan}“.
+
+Titel des Berichts: {title}
+Im Rat: {date}
+
+Schreibe für Bürgerinnen und Bürger in EINEM Satz auf, was die Verwaltung in diesem Bericht zum Plan \
+meldet — das Konkreteste, was drinsteht: was erreicht ist, eine Zahl, was als Nächstes kommt.
+
+Regeln:
+1. Gib zwei Vorschläge (candidates), den besseren zuerst. Zu jedem das wörtliche Zitat aus dem Bericht, \
+das den Satz ALLEIN trägt: Wer nur das Zitat liest, findet darin alles, was der Satz sagt.
+2. Jede Zahl, jedes Datum und jeder Eigenname des Satzes steht im Zitat.
+3. Der Satz gibt wieder, was im Bericht steht — keine Wertung, kein Lob („erfolgreich“, „gut“), keine \
+Folgerung. Was der Bericht nur plant oder vorschlägt, heißt im Satz „geplant“, „soll“ oder „ist vorgesehen“.
+4. Höchstens {limit} Zeichen, ein vollständiger Satz in einfachen Wörtern. Fang mit der Sache an, nicht \
+mit „Der Bericht“, „Die Verwaltung berichtet“ oder „Laut Bericht“ — das steht auf der Seite schon dabei.
+5. Das Zitat ist wörtlich und zusammenhängend aus dem Bericht kopiert, höchstens 400 Zeichen, nichts \
+ausgelassen, nichts umgestellt.
+6. Steht im Bericht nichts Konkretes zum Plan (nur Verfahren, nur ein Verweis auf eine Anlage): \
+candidates bleibt leer.
+
+Der Bericht:
+{text}
+
+Antworte nur mit JSON: {{"candidates": [{{"text": "...", "quote": "..."}}]}}"""
+
+
+def _one_source(text: str) -> dict[str, dict]:
+    return {"V1": {"id": "V1", "kind": "template", "text": text}}
+
+
+def report_sentence(plan_title: str, title: str, date: str, text: str,
+                    model: str = MODEL) -> tuple[list[dict], list[str], float]:
+    """Ein Satz zu einem Bericht. Ein Modellaufruf; zurück kommen die Vorschläge, die die Prüfung ohne
+    Modell überstehen (der bessere zuerst), was fiel und warum, und die Kosten."""
+    prompt = _REPORT_PROMPT.format(plan=plan_title, title=title, date=date, limit=REPORT_TEXT_MAX, text=text)
+    response = llm.chat_complete(model=model, _feature="plan_reports", temperature=0,
+                                 response_format={"type": "json_object"}, max_tokens=900,
+                                 messages=[{"role": "user", "content": prompt}])
+    kept, dropped = checked_statements((_json(response).get("candidates") or [])[:3], text, REPORT_TEXT_MAX)
+    return kept, dropped, cost_usd(response, model)
+
+
+def checked_statements(raw: list, text: str, limit: int, absent_from: str | None = None) -> tuple[list[dict], list[str]]:
+    """Sätze mit Zitat gegen EINEN Text gehalten, ohne Modell: Zitat wörtlich dort, jede Zahl des Satzes
+    im Zitat, kein Zitat zweimal. ``absent_from``: Das Zitat darf in diesem Text NICHT stehen (der vorige
+    Bericht — sonst ist es nicht neu)."""
+    sources = _one_source(text)
+    before = tight(absent_from) if absent_from else ""
+    kept: list[dict] = []
+    dropped: list[str] = []
+    seen: set[str] = set()
+    for entry in raw:
+        candidate = {**entry, "source": "V1"} if isinstance(entry, dict) else entry
+        statement, why = check_statement(candidate, sources, limit)
+        if statement and tight(statement["quote"]) in seen:
+            statement, why = None, "Zitat belegt schon einen anderen Satz"
+        if statement and before and tight(statement["quote"]) in before:
+            statement, why = None, "steht wörtlich schon im vorigen Bericht"
+        if statement is None:
+            shown = entry if isinstance(entry, dict) else {}
+            dropped.append(f"{str(shown.get('text'))[:70]} — {why} · „{str(shown.get('quote'))[:90]}“")
+            continue
+        seen.add(tight(statement["quote"]))
+        kept.append({"text": statement["text"], "quote": statement["quote"]})
+    return kept, dropped
+
+
+_NEWS_PROMPT = """Du vergleichst zwei Berichte der Verwaltung an den Rat der Stadt Oldenburg zum Plan \
+„{plan}“: den vorigen (ALT, im Rat {old_date}) und den jüngsten (NEU, im Rat {new_date}).
+
+Nenne bis zu {limit} Dinge, die im jüngsten Bericht NEU sind: ein Stand, der sich geändert hat, eine neue \
+Zahl, ein Schritt, der im vorigen Bericht noch nicht stand.
+
+Regeln:
+1. Je ein Satz (höchstens {chars} Zeichen, einfache Wörter) und das wörtliche Zitat aus NEU, das den Satz \
+ALLEIN trägt.
+2. Jede Zahl, jedes Datum und jeder Eigenname des Satzes steht im Zitat. Nenne nur den neuen Stand, \
+keinen Vergleich mit früher („statt 25“), wenn die frühere Zahl nicht im selben Zitat steht.
+3. Nichts, was schon im vorigen Bericht stand — auch nicht in anderen Worten. Dieselbe Aussage mit \
+neuer Zahl zählt als neu.
+4. Keine Wertung, kein Lob, keine Folgerung. Geplantes heißt „geplant“ oder „soll“.
+5. Das Zitat ist wörtlich und zusammenhängend aus NEU kopiert, höchstens 400 Zeichen.
+6. Ist nichts wirklich neu: changes bleibt leer. Lieber ein belegter Punkt als drei dünne.
+
+ALT:
+{old}
+
+NEU:
+{new}
+
+Antworte nur mit JSON: {{"changes": [{{"text": "...", "quote": "..."}}]}}"""
+
+
+def report_news(plan_title: str, old: dict, new: dict, model: str = MODEL) -> tuple[list[dict], list[str], float]:
+    """Was im jüngsten Bericht neu ist. ``old``/``new``: ``{"date", "text"}``. Zurück: bis zu
+    ``NEWS_MAX`` Sätze, deren Zitat im neuen Bericht steht und im vorigen nicht."""
+    prompt = _NEWS_PROMPT.format(plan=plan_title, old_date=old["date"], new_date=new["date"], limit=NEWS_MAX,
+                                 chars=REPORT_TEXT_MAX, old=old["text"], new=new["text"])
+    response = llm.chat_complete(model=model, _feature="plan_reports", temperature=0,
+                                 response_format={"type": "json_object"}, max_tokens=1400,
+                                 messages=[{"role": "user", "content": prompt}])
+    kept, dropped = checked_statements((_json(response).get("changes") or [])[:NEWS_MAX + 2], new["text"],
+                                       REPORT_TEXT_MAX, absent_from=old["text"])
+    return kept, dropped, cost_usd(response, model)
+
+
+def _title_words(title: str) -> set[str]:
+    return set(re.sub(r"[\d/.\-–—()\"„“”]+", " ", title.lower()).split())
+
+
+def same_series(a: str, b: str) -> bool:
+    """Gehören zwei Berichte zur selben Reihe? Gleiche Titel bis auf Nummer und Jahr."""
+    x, y = _title_words(a), _title_words(b)
+    return bool(x | y) and len(x & y) / len(x | y) >= SERIES_OVERLAP
+
+
+# ── Der Plan in einfacher Sprache, und drei Fragen dazu ────────────────────
+#
+# Lotti erklärt den Plan in drei Sätzen — NUR aus den belegten Kernpunkten
+# (``council/plan_key_points/``), nicht aus den Dokumenten: Was dort nicht
+# steht, kann hier nicht dazukommen. Ohne Modell geprüft wird, dass keine Zahl
+# auftaucht, die die Kernpunkte nicht nennen; eine zweite Lesung des Modells
+# streicht die Fassung, wenn ein Satz mehr sagt als die Punkte.
+
+PLAIN_SENTENCES = 3
+#: Was die Prüfung durchlässt. Dem Modell sagt der Auftrag weniger (``PLAIN_ASK``, ``QUESTION_ASK``):
+#: Es zählt Zeichen schlecht, und ein Satz, der fünf Zeichen drüber liegt, ist kein Grund für einen neuen Lauf.
+PLAIN_CHARS = 190
+PLAIN_ASK = 140
+QUESTION_COUNT = 3
+QUESTION_CHARS = 120
+QUESTION_ASK = 90
+#: Fällt der erste Entwurf durch, bekommt das Modell die Gründe und einen zweiten Versuch.
+PLAIN_ATTEMPTS = 2
+
+_PLAIN_PROMPT = """Du bist Lotti, die Erklärerin von Ratslotse. Erkläre einen Plan der Stadt Oldenburg in \
+klarer Alltagssprache — für Erwachsene ohne Verwaltungswissen. Keine Leichte Sprache: nicht kindlich, nicht \
+belehrend.
+
+Plan: {title}
+{mode}
+
+Das ist alles, was du über den Plan weißt (belegte Kernpunkte):
+{points}
+
+Aufgabe 1 — plain: genau {sentences} KURZE Sätze, die zusammen sagen, worum es im Plan geht und was er \
+konkret vorsieht. Jeder Satz höchstens {chars} Zeichen: ein Hauptsatz, höchstens ein Nebensatz, keine \
+Aufzählung mit mehr als drei Gliedern. Lieber weniger sagen als einen langen Satz bauen.
+- Benutze NUR, was in den Kernpunkten steht. Keine Zahl, kein Datum, kein Ort, kein Akteur und keine \
+Folge, die dort nicht steht.
+- Vereinfache die Sprache, nie den Inhalt: „soll“ bleibt „soll“, aus einem Ziel wird keine Tatsache.
+- Übersetze Fachwörter, statt sie zu wiederholen — aber mach aus einer Sache keine andere: \
+„Photovoltaik“ bleibt Photovoltaik und wird nicht „Solaranlagen“, „Krippe“ wird nicht „Kita“.
+- Keine Wertung, keine Meinung, kein „wichtig“.
+
+Aufgabe 2 — questions: genau {questions} Fragen, die jemand dem Ratsarchiv zu diesem Plan stellen könnte.
+{question_rules}
+
+Antworte nur mit JSON: {{"plain": ["...", "...", "..."], "questions": ["...", "...", "..."]}}"""
+
+#: Die Fragen laufen ins Ratsarchiv (Beschlüsse, Vorlagen, Berichte). Eine Frage, die dort ins Leere
+#: läuft, wäre schlimmer als keine (components/frage-chips.tsx) — deshalb hängt jede an einem Kernpunkt
+#: oder am Stand, und nach Geld fragt nur, wer einen Betrag vor sich hat.
+_QUESTION_RULES = """- Die erste fragt nach dem Stand: was zuletzt zum Plan berichtet oder beschlossen wurde.
+- Die zweite und dritte fragen je nach EINEM konkreten Kernpunkt — so, dass die Antwort in den \
+Beschlüssen, Vorlagen und Berichten der Stadt stehen kann. Zwei verschiedene Kernpunkte.
+- Keine Frage nach Kosten oder Geld, außer ein Kernpunkt nennt selbst einen Betrag.
+- Jede Frage wird OHNE Zusammenhang gestellt: Sie nennt den Plan oder sein Thema beim Namen und \
+„Oldenburg“, wo es sonst unklar wäre.
+- Höchstens {qchars} Zeichen, endet mit „?“, Alltagssprache. Keine Unterstellung („Warum scheitert …“), \
+keine Zahl, die nicht in den Kernpunkten steht."""
+
+_QUESTIONS_PROMPT = """Zu einem Plan der Stadt Oldenburg sollen drei Fragen vorgeschlagen werden, die \
+Bürgerinnen und Bürger dem Ratsarchiv stellen können.
+
+Plan: {title}
+
+Belegte Kernpunkte des Plans:
+{points}
+
+Schreibe genau {questions} Fragen.
+{question_rules}
+
+Antworte nur mit JSON: {{"questions": ["...", "...", "..."]}}"""
+
+_PLAIN_MODES = {
+    "adopted": "Der Rat hat den Plan beschlossen.",
+    "noted": "Der Rat hat den Plan zur Kenntnis genommen, nicht beschlossen: Schreibe „der Plan sieht vor“, "
+             "nicht „die Stadt hat beschlossen“.",
+    "draft": "Der Plan ist ein Entwurf und noch nicht beschlossen: Schreibe „soll“ und „ist vorgesehen“.",
+}
+
+
+def key_point_lines(data: dict) -> list[str]:
+    """Die Kernpunkte eines Plans als Zeilen — die einzige Quelle der einfachen Fassung."""
+    return [data["purpose"]["text"], *(p["text"] for p in data["points"])]
+
+
+def check_plain(sentences: list, questions: list, title: str, lines: list[str]) -> list[str]:
+    """Was an der einfachen Fassung und den Fragen nicht stimmt — ohne Modell. Leer heißt: in Ordnung."""
+    problems: list[str] = []
+    allowed = numbers(" ".join([title, *lines]))
+    if len(sentences) != PLAIN_SENTENCES or not all(isinstance(s, str) and s.strip() for s in sentences):
+        return [f"einfache Fassung hat nicht genau {PLAIN_SENTENCES} Sätze"]
+    if len(questions) != QUESTION_COUNT or not all(isinstance(q, str) and q.strip() for q in questions):
+        return [f"nicht genau {QUESTION_COUNT} Fragen"]
+    for s in sentences:
+        if len(s) > PLAIN_CHARS:
+            problems.append(f"Satz länger als {PLAIN_CHARS} Zeichen: {s[:50]}…")
+        extra = sorted(n for n in numbers(s) if n not in allowed and _NUMBER_WORDS.get(n) is None)
+        if extra:
+            problems.append(f"Zahl, die kein Kernpunkt nennt ({', '.join(extra)}): {s[:50]}…")
+    if len({squash(q).lower() for q in questions}) != len(questions):
+        problems.append("zwei gleiche Fragen")
+    for q in questions:
+        if not q.rstrip().endswith("?") or len(q) > QUESTION_CHARS:
+            problems.append(f"Frage ohne Fragezeichen oder länger als {QUESTION_CHARS} Zeichen: {q[:50]}…")
+        extra = sorted(n for n in numbers(q) if n not in allowed)
+        if extra:
+            problems.append(f"Frage nennt eine Zahl, die kein Kernpunkt nennt ({', '.join(extra)}): {q[:50]}…")
+    return problems
+
+
+def plain_text(title: str, mode: str, lines: list[str], model: str = MODEL) -> tuple[dict | None, list[str], float]:
+    """Die einfache Fassung und drei Fragen. Zwei Modellaufrufe (entwerfen, gegenlesen); zurück kommt
+    ``{"plain", "questions"}`` oder ``None`` mit den Gründen, dazu die Kosten."""
+    listed = "\n".join(f"- {line}" for line in lines)
+    prompt = _PLAIN_PROMPT.format(title=title, mode=_PLAIN_MODES[mode], points=listed, sentences=PLAIN_SENTENCES,
+                                  chars=PLAIN_ASK, questions=QUESTION_COUNT,
+                                  question_rules=_QUESTION_RULES.format(qchars=QUESTION_ASK))
+    messages = [{"role": "user", "content": prompt}]
+    cost, problems = 0.0, ["kein Versuch"]
+    for _attempt in range(PLAIN_ATTEMPTS):
+        response = llm.chat_complete(model=model, _feature="plan_plain", temperature=0,
+                                     response_format={"type": "json_object"}, max_tokens=900, messages=messages)
+        answer = _json(response)
+        cost += cost_usd(response, model)
+        sentences = [squash(s) for s in answer.get("plain") or [] if isinstance(s, str)]
+        questions = [squash(q) for q in answer.get("questions") or [] if isinstance(q, str)]
+        problems = check_plain(sentences, questions, title, lines)
+        if not problems:
+            # Zweite Lesung: Trägt die Liste der Kernpunkte jeden Satz? Sie kann nur streichen — dann fällt die Fassung.
+            weak, second = unsupported([{"text": s, "quote": " · ".join(lines)} for s in sentences], model,
+                                       feature="plan_plain")
+            cost += second
+            problems = [f"Satz {i + 1} sagt mehr als die Kernpunkte ({why}): {sentences[i][:80]}"
+                        for i, why in sorted(weak.items()) if i < len(sentences)]
+        if not problems:
+            return {"plain": sentences, "questions": questions}, [], cost
+        messages = [*messages, {"role": "assistant", "content": json.dumps(answer, ensure_ascii=False)},
+                    {"role": "user", "content": "Das fiel bei der Prüfung durch:\n- " + "\n- ".join(problems)
+                     + "\nSchreib beides noch einmal und halte jede Regel ein. Antworte nur mit JSON."}]
+    return None, problems, cost
+
+
+def plan_questions(title: str, plain: list[str], lines: list[str], model: str = MODEL) -> tuple[list[str] | None, list[str], float]:
+    """Nur die drei Fragen neu (die einfache Fassung bleibt, wie sie ist). Ein Modellaufruf, bei einem
+    Fehlversuch ein zweiter mit den Gründen."""
+    prompt = _QUESTIONS_PROMPT.format(title=title, points="\n".join(f"- {line}" for line in lines),
+                                      questions=QUESTION_COUNT, question_rules=_QUESTION_RULES.format(qchars=QUESTION_ASK))
+    messages = [{"role": "user", "content": prompt}]
+    cost, problems = 0.0, ["kein Versuch"]
+    for _attempt in range(PLAIN_ATTEMPTS):
+        response = llm.chat_complete(model=model, _feature="plan_plain", temperature=0,
+                                     response_format={"type": "json_object"}, max_tokens=500, messages=messages)
+        answer = _json(response)
+        cost += cost_usd(response, model)
+        questions = [squash(q) for q in answer.get("questions") or [] if isinstance(q, str)]
+        problems = check_plain(plain, questions, title, lines)
+        if not problems:
+            return questions, [], cost
+        messages = [*messages, {"role": "assistant", "content": json.dumps(answer, ensure_ascii=False)},
+                    {"role": "user", "content": "Das fiel bei der Prüfung durch:\n- " + "\n- ".join(problems)
+                     + "\nSchreib die Fragen noch einmal. Antworte nur mit JSON."}]
+    return None, problems, cost
+
+
+def plain_basis(lines: list[str]) -> str:
+    """Fingerabdruck der Kernpunkte, aus denen die einfache Fassung entstand. Ändert sich ein Kernpunkt,
+    passt die Fassung nicht mehr dazu — die Seite zeigt sie dann nicht, der Wächter meldet es."""
+    import hashlib
+    return hashlib.sha256("\n".join(squash(line) for line in lines).encode("utf-8")).hexdigest()[:16]

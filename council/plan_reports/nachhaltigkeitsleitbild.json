@@ -1,0 +1,15 @@
+{
+ "plan": "nachhaltigkeitsleitbild",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "25/0077",
+   "date": "2025-06-30",
+   "text": "Künftig werden konkrete Zielwerte für die Leitmotive des Nachhaltigkeitsleitbilds entwickelt.",
+   "quote": "Um die Steuerungsfunktion des Nachhaltigkeitsberichts weiter zu stärken, werden künftig konkrete Zielwerte für die Leitmotive des Nachhaltigkeitsleitbilds entwickelt."
+  }
+ ]
+}

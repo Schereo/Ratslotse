@@ -120,6 +120,8 @@ const FEATURE_LABELS: Record<string, string> = {
   plan_link_judgement: "Pläne: Bezug einer Vorlage",
   plan_mandate_check: "Pläne: Folge eines Ratsauftrags",
   plan_key_points: "Pläne: Was im Plan steht",
+  plan_reports: "Pläne: Berichte in einem Satz",
+  plan_plain: "Pläne: einfache Sprache und Fragen",
   impact_rating: "Tragweite eines Beschlusses",
   impact_rating_agenda: "Tragweite eines Tagesordnungspunkts",
   interest_rating: "Gesprächswert",

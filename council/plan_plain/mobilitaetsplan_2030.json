@@ -1,0 +1,18 @@
+{
+ "plan": "mobilitaetsplan_2030",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "52cc6b70debf4df5",
+ "plain": [
+  "Der Plan führt die Strategie für Mobilität und Verkehr fort und ist Grundlage für die Umsetzung mit Blick auf Klimaneutralität 2035.",
+  "Vorrang haben Radstrecken und Fahrradstraßen, eine durchgehende Spur für den Nahverkehr am Wallring sowie Ladepunkte.",
+  "Bis 2030 beginnt die Umsetzung von sieben besonders ausgebauten Radstrecken; neun neue Fahrradstraßen sind geplant."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Mobilitätsplan Oldenburg 2030 berichtet oder beschlossen?",
+  "Welche sieben Premiumrouten des Mobilitätsplans Oldenburg 2030 sollen bis 2030 starten?",
+  "Wie wird die ÖPNV-Spur am Wallring in Oldenburg an Ampeln und Knotenpunkten konkretisiert?"
+ ]
+}

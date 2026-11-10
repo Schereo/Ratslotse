@@ -1,0 +1,18 @@
+{
+ "plan": "orte_fuer_alle",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "f7e19be759e7476a",
+ "plain": [
+  "Der Plan beschreibt, wie Interessengruppen inklusive, zugängliche Orte für alle entwickeln und Unterstützung bei Planung und Umsetzung erhalten.",
+  "Alle Stadtteile sollen gleich behandelt werden; Planung und Entscheidungen sollen gemeinsam mit den Menschen im Stadtteil erfolgen.",
+  "Vorhandene Räume, Personal und Organisation haben Vorrang; neue Orte soll die Stadt grundsätzlich nicht finanzieren."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Konzept „Orte für Alle“ berichtet oder beschlossen?",
+  "Wie soll das Konzept „Orte für Alle“ alle Stadtteile in Oldenburg gleich behandeln?",
+  "Wie sollen Menschen im Stadtteil in Oldenburg an „Orte für Alle“ mitwirken?"
+ ]
+}
