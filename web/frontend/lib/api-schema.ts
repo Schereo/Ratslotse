@@ -11181,6 +11181,8 @@ export interface components {
             press: components["schemas"]["DistrictPressItem"][];
             /** Projects */
             projects: components["schemas"]["DistrictProject"][];
+            /** Renewal Areas */
+            renewal_areas?: components["schemas"]["DistrictRenewalArea"][];
             /** Upcoming */
             upcoming: components["schemas"]["DistrictUpcomingItem"][];
             /** Updated At */
@@ -11223,6 +11225,26 @@ export interface components {
             stages: {
                 [key: string]: number;
             };
+        };
+        /**
+         * DistrictRenewalArea
+         * @description Ein Stadterneuerungsgebiet, von dessen Fläche ein nennenswerter Teil hier liegt.
+         */
+        DistrictRenewalArea: {
+            /** End Year */
+            end_year: number;
+            /** Funding Eur */
+            funding_eur: number;
+            /** Name */
+            name: string;
+            /** Own Funds Eur */
+            own_funds_eur: number;
+            /** Size Ha */
+            size_ha: number;
+            /** Source */
+            source: string;
+            /** Start Year */
+            start_year: number;
         };
         /**
          * DistrictSuggestions
@@ -15569,6 +15591,8 @@ export interface components {
                 /** Title */
                 title: string;
             } | null;
+            /** Lists */
+            lists: components["schemas"]["PlanList"][];
             /** Measure Count */
             measure_count: number | null;
             /**
@@ -15641,6 +15665,8 @@ export interface components {
                 measures_total: number | null;
                 /** Note */
                 note: string;
+                /** Section Places */
+                section_places: number;
             } | null;
             /**
              * PlanPlain
@@ -15986,6 +16012,39 @@ export interface components {
             /** X */
             x: number;
         };
+        /**
+         * PlanList
+         * @description Eine Tabelle aus dem Plan-Dokument, Zeile für Zeile, wie sie dort steht.
+         */
+        PlanList: {
+            /** Caption */
+            caption: string;
+            /** Columns */
+            columns: string[];
+            /** Key */
+            key: string;
+            /** Name Column */
+            name_column: number;
+            /** Page */
+            page: number;
+            /** Rows */
+            rows: components["schemas"]["PlanListRow"][];
+            /** Source Label */
+            source_label: string;
+            /** Source Url */
+            source_url: string;
+            /** Title */
+            title: string;
+        };
+        /** PlanListRow */
+        PlanListRow: {
+            /** Cells */
+            cells: string[];
+            /** Page */
+            page: number | null;
+            /** Source Url */
+            source_url: string | null;
+        };
         /** PlanMeasure */
         PlanMeasure: {
             /** Code */
@@ -16086,7 +16145,8 @@ export interface components {
         };
         /**
          * PlanPlace
-         * @description Ein Ort zum Plan: aus einem Maßnahmentitel (mit Verlauf) oder aus Beschlüssen (als Punkt).
+         * @description Ein Ort zum Plan: ein Abschnitt aus dem Plan selbst oder eine Straße aus einem Maßnahmentitel
+         *     (beide mit Verlauf), oder ein Ort aus Beschlüssen (als Punkt).
          */
         PlanPlace: {
             /** Decision Count */
@@ -16105,6 +16165,8 @@ export interface components {
             measures: components["schemas"]["PlanPlaceMeasure"][];
             /** Name */
             name: string;
+            /** Sections */
+            sections: components["schemas"]["PlanPlaceSection"][];
             /** Slug */
             slug: string;
         };
@@ -16132,6 +16194,22 @@ export interface components {
             title: string;
         };
         /**
+         * PlanPlaceSection
+         * @description Ein Abschnitt, den der Plan selbst festlegt (``council/plan_lists/``).
+         */
+        PlanPlaceSection: {
+            /** Code */
+            code: string;
+            /** Page */
+            page: number;
+            /** Quote */
+            quote: string;
+            /** Source Url */
+            source_url: string;
+            /** Stretch */
+            stretch: string;
+        };
+        /**
          * PlanPlaces
          * @description Die Karte zum Plan — ab drei Orten.
          */
@@ -16148,6 +16226,8 @@ export interface components {
             measures_total: number | null;
             /** Note */
             note: string;
+            /** Section Places */
+            section_places: number;
         };
         /**
          * PlanPlain
@@ -16403,7 +16483,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "content" | "review" | "reports" | "status" | "indicators" | "measures" | "places" | "decisions";
+            key: "content" | "review" | "reports" | "status" | "indicators" | "measures" | "places" | "lists" | "decisions";
             /** Label */
             label: string;
         };
@@ -28917,4 +28997,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 45194e1957ad4af1cac164d908e2b5badd7cc3e71d002c2487b407a5af3fdc73
+// vertrag-sha256: 2f63ab3d933c712327b03ea27d33864dfae2a1c0ea918a0f95f2e5327027a752

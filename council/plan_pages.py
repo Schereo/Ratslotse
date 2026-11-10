@@ -993,6 +993,7 @@ def sections(page: dict) -> list[dict]:
         ("indicators", "Kennzahl" if len(page["indicators"]) == 1 else "Kennzahlen", None, bool(page["indicators"])),
         ("measures", "Maßnahmen", measures["count"] if measures else None, bool(measures)),
         ("places", "Karte", len(page["places"]["items"]) if page["places"] else None, bool(page["places"])),
+        ("lists", "Aus dem Plan", sum(len(lst["rows"]) for lst in page["lists"]) or None, bool(page["lists"])),
         ("decisions", "Beschlüsse", decisions, decisions > 0),
     ]
     return [{"key": key, "label": label, "count": count} for key, label, count, shown in rows if shown]
@@ -1088,6 +1089,9 @@ GEOMETRY_KINDS = ("street", "route", "water")
 GEOMETRY_DIGITS = 5
 #: Stützpunkte, die näher als das (in Grad, rund 10 m) am vorigen liegen, fallen weg — Anfang und Ende bleiben.
 GEOMETRY_STEP = 0.00012
+#: Die Karte eines Plans, der seine Abschnitte selbst festlegt (``council/plan_lists/``).
+SECTIONS_NOTE = "Abschnitte, für die der Plan einen Vorschlag macht — mit seinem Satz dazu und der Seite."
+SECTIONS_NOTE_DECISIONS = SECTIONS_NOTE + " Dazu Orte aus den Beschlüssen zum Plan."
 PLACES_NOTE = ("Orte aus den Titeln der Maßnahmen und aus den Beschlüssen zum Plan, zugeordnet ohne "
                "Sprachmodell. Die Karte zeigt, wo etwas vorgesehen oder beschlossen ist — nicht, wie weit es ist.")
 
@@ -1131,11 +1135,23 @@ def plan_places(store, plan: register.Plan) -> list[dict]:
     def slot(row: dict, line: bool = False) -> dict:
         place = by_slug.setdefault(row["slug"], {
             "slug": row["slug"], "name": row["name"], "kind": row["kind"], "lat": row["lat"], "lon": row["lon"],
-            "geometry": None, "measures": [], "decisions": []})
+            "geometry": None, "measures": [], "decisions": [], "sections": []})
         if line and place["geometry"] is None:
             place["geometry"] = _geometry(row)
         return place
 
+    # Abschnitte, die der Plan selbst festlegt (Lärmaktionsplan): mit Verlauf, Vorschlag und Seite.
+    # ``areas`` rechnet ``scripts/plan_listen.py`` mit; die Seite gibt es nicht aus.
+    listed_doc = plan_state.plan_lists(plan.key)
+    if listed_doc:
+        url = RIS_FILE.format(id=listed_doc["document"]["document_id"])
+        for s in listed_doc.get("sections", []):
+            by_slug[f"abschnitt-{s['code']}"] = {
+                "slug": f"abschnitt-{s['code']}", "name": s["name"], "kind": "street", "lat": s["lat"],
+                "lon": s["lon"], "geometry": s["geometry"], "measures": [], "decisions": [],
+                "sections": [{"code": s["code"], "stretch": s["stretch"], "quote": s["quote"], "page": s["page"],
+                              "source_url": f"{url}#page={s['page']}"}],
+                "areas": s["areas"]}
     named = plan_state.measure_places(plan.key)
     if named:
         listed = register.measures(plan.key) or {"measures": []}
@@ -1170,7 +1186,8 @@ def plan_places(store, plan: register.Plan) -> list[dict]:
     for place in out:
         place["decision_count"] = len(place["decisions"])
         place["decisions"] = place["decisions"][:3]
-    out.sort(key=lambda p: (-len(p["measures"]) - p["decision_count"], p["name"]))
+    out.sort(key=lambda p: (0 if p["sections"] else 1, p["sections"][0]["code"] if p["sections"] else "",
+                            -len(p["measures"]) - p["decision_count"], p["name"]))
     return out
 
 
@@ -1180,21 +1197,43 @@ def places_block(store, plan: register.Plan) -> dict | None:
     if len(places) < PLACES_MIN:
         return None
     listed = register.measures(plan.key)
+    decision_places = sum(1 for p in places if p["decision_count"])
+    with_sections = sum(1 for p in places if p["sections"])
+    note = PLACES_NOTE
+    if with_sections:
+        note = SECTIONS_NOTE_DECISIONS if decision_places else SECTIONS_NOTE
     return {
-        "items": places,
+        "items": [{k: v for k, v in p.items() if k != "areas"} for p in places],
+        "section_places": with_sections,
         "measure_places": sum(1 for p in places if p["measures"]),
         "measures_named": len({m["code"] for p in places for m in p["measures"]}),
         "measures_total": len(listed["measures"]) if listed else None,
-        "decision_places": sum(1 for p in places if p["decision_count"]),
-        "note": PLACES_NOTE,
+        "decision_places": decision_places,
+        "note": note,
     }
+
+
+def lists_block(plan: register.Plan) -> list[dict]:
+    """Tabellen aus dem Plan-Dokument (``council/plan_lists/``) — Zeile für Zeile, wie sie dort stehen,
+    mit der Seite."""
+    data = plan_state.plan_lists(plan.key)
+    if not data:
+        return []
+    url = RIS_FILE.format(id=data["document"]["document_id"])
+    return [{
+        "key": lst["key"], "title": lst["title"], "caption": lst["caption"], "page": lst["page"],
+        "source_label": data["document"]["label"], "source_url": f"{url}#page={lst['page']}",
+        "columns": list(lst["columns"]), "name_column": lst["name_column"],
+        "rows": [{"cells": list(r["cells"]), "page": r.get("page"),
+                  "source_url": f"{url}#page={r['page']}" if r.get("page") else None} for r in lst["rows"]],
+    } for lst in data.get("lists", [])]
 
 
 def _counts_here(place: dict, share: float | None) -> bool:
     """Gehört ein Ort des Plans zu diesem Ortsbereich (``share``: sein Anteil dort, ``None``: gar nicht)?"""
     if share is None:
         return False
-    if place["measures"]:
+    if place["measures"] or place.get("sections"):
         return share >= AREA_SHARE_MEASURE
     return share >= AREA_SHARE_DECISION_STREET if place["kind"] == "street" else True
 
@@ -1212,19 +1251,24 @@ def district_plans(store, place_id: str, today: str | None = None) -> list[dict]
         if group_of(state) == "ended":
             continue
         places = plan_places(store, plan)
-        if not places:
+        # Gebiete aus einer Tabelle des Plans, die ihren Ortsteil nennt (Wärmeplan, Tabelle 4).
+        rows = [r for lst in (plan_state.plan_lists(plan.key) or {}).get("lists", [])
+                for r in lst["rows"] if place_id in r.get("areas", [])]
+        if not places and not rows:
             continue
-        areas = store.plan_place_areas([p["slug"] for p in places])
-        here = [p for p in places if _counts_here(p, areas.get(p["slug"], {}).get(place_id))]
+        areas = store.plan_place_areas([p["slug"] for p in places if "areas" not in p])
+        here = [p for p in places
+                if _counts_here(p, (p.get("areas") or areas.get(p["slug"], {})).get(place_id))]
         # „Bahnweg“ neben „Bahnweg 84“ sagt nichts Neues: Die Straße fällt, wo eine Adresse an ihr steht.
         names = [p["name"] for p in here]
         here = [p for p in here if not (p["kind"] == "street" and any(n.startswith(p["name"] + " ") for n in names))]
-        if not here:
+        if not here and not rows:
             continue
+        labels = [r["label"] for r in rows] + [p["name"] for p in here]
         found.append({"key": plan.key, "title": plan.title,
                       "field_label": FIELD_SHORT.get(plan.policy_field, plan.policy_field),
                       "status": state, "status_label": STATUS_LABELS[state],
-                      "places": [p["name"] for p in here[:4]], "place_count": len(here),
+                      "places": labels[:4], "place_count": len(labels),
                       "via_measures": any(p["measures"] for p in here)})
     found.sort(key=lambda f: (-f["place_count"], f["title"]))
     return found
@@ -1389,6 +1433,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "news": news_block(plan, tl["stations"], today),
         "related": related_block(plan, today),
         "places": places_block(store, plan),
+        "lists": lists_block(plan),
         "measures": measures_block(key, measure_links),
         "city_status": city_status_block(key),
         "indicators": indicator_blocks(key),

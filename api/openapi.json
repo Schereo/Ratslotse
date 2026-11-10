@@ -10362,6 +10362,13 @@
             "title": "Projects",
             "type": "array"
           },
+          "renewal_areas": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictRenewalArea"
+            },
+            "title": "Renewal Areas",
+            "type": "array"
+          },
           "upcoming": {
             "items": {
               "$ref": "#/components/schemas/DistrictUpcomingItem"
@@ -10485,6 +10492,50 @@
           "stages"
         ],
         "title": "DistrictProjectsOverviewEntry",
+        "type": "object"
+      },
+      "DistrictRenewalArea": {
+        "description": "Ein Stadterneuerungsgebiet, von dessen Fläche ein nennenswerter Teil hier liegt.",
+        "properties": {
+          "end_year": {
+            "title": "End Year",
+            "type": "integer"
+          },
+          "funding_eur": {
+            "title": "Funding Eur",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "own_funds_eur": {
+            "title": "Own Funds Eur",
+            "type": "integer"
+          },
+          "size_ha": {
+            "title": "Size Ha",
+            "type": "number"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "start_year": {
+            "title": "Start Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "start_year",
+          "end_year",
+          "size_ha",
+          "funding_eur",
+          "own_funds_eur",
+          "source"
+        ],
+        "title": "DistrictRenewalArea",
         "type": "object"
       },
       "DistrictSuggestions": {
@@ -21169,6 +21220,13 @@
               "null"
             ]
           },
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/PlanList"
+            },
+            "title": "Lists",
+            "type": "array"
+          },
           "measure_count": {
             "title": "Measure Count",
             "type": [
@@ -21362,10 +21420,15 @@
               "note": {
                 "title": "Note",
                 "type": "string"
+              },
+              "section_places": {
+                "title": "Section Places",
+                "type": "integer"
               }
             },
             "required": [
               "items",
+              "section_places",
               "measure_places",
               "measures_named",
               "measures_total",
@@ -21955,6 +22018,7 @@
           "news",
           "related",
           "places",
+          "lists",
           "measures",
           "city_status",
           "indicators",
@@ -22380,6 +22444,98 @@
         "title": "PlanLaneMark",
         "type": "object"
       },
+      "PlanList": {
+        "description": "Eine Tabelle aus dem Plan-Dokument, Zeile für Zeile, wie sie dort steht.",
+        "properties": {
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name_column": {
+            "title": "Name Column",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PlanListRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "caption",
+          "page",
+          "source_label",
+          "source_url",
+          "columns",
+          "name_column",
+          "rows"
+        ],
+        "title": "PlanList",
+        "type": "object"
+      },
+      "PlanListRow": {
+        "properties": {
+          "cells": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cells",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "cells",
+          "page",
+          "source_url"
+        ],
+        "title": "PlanListRow",
+        "type": "object"
+      },
       "PlanMeasure": {
         "properties": {
           "code": {
@@ -22666,7 +22822,7 @@
         "type": "object"
       },
       "PlanPlace": {
-        "description": "Ein Ort zum Plan: aus einem Maßnahmentitel (mit Verlauf) oder aus Beschlüssen (als Punkt).",
+        "description": "Ein Ort zum Plan: ein Abschnitt aus dem Plan selbst oder eine Straße aus einem Maßnahmentitel\n(beide mit Verlauf), oder ein Ort aus Beschlüssen (als Punkt).",
         "properties": {
           "decision_count": {
             "title": "Decision Count",
@@ -22705,6 +22861,13 @@
             "title": "Name",
             "type": "string"
           },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/PlanPlaceSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
           "slug": {
             "title": "Slug",
             "type": "string"
@@ -22717,6 +22880,7 @@
           "lat",
           "lon",
           "geometry",
+          "sections",
           "measures",
           "decisions",
           "decision_count"
@@ -22789,6 +22953,40 @@
         "title": "PlanPlaceMeasure",
         "type": "object"
       },
+      "PlanPlaceSection": {
+        "description": "Ein Abschnitt, den der Plan selbst festlegt (``council/plan_lists/``).",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "stretch": {
+            "title": "Stretch",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "stretch",
+          "quote",
+          "page",
+          "source_url"
+        ],
+        "title": "PlanPlaceSection",
+        "type": "object"
+      },
       "PlanPlaces": {
         "description": "Die Karte zum Plan — ab drei Orten.",
         "properties": {
@@ -22821,10 +23019,15 @@
           "note": {
             "title": "Note",
             "type": "string"
+          },
+          "section_places": {
+            "title": "Section Places",
+            "type": "integer"
           }
         },
         "required": [
           "items",
+          "section_places",
           "measure_places",
           "measures_named",
           "measures_total",
@@ -23468,6 +23671,7 @@
               "indicators",
               "measures",
               "places",
+              "lists",
               "decisions"
             ],
             "title": "Key",

@@ -1,0 +1,186 @@
+{
+ "plan": "waermeplan",
+ "method": "Von Hand gesetzt nach dem Dokument; Zitate und Tabellenzeilen aus dem PDF gelesen (scripts/plan_listen.py). Linien: Ortskatalog der Ratsdaten, © OpenStreetMap-Mitwirkende, ODbL",
+ "generated": "2026-11-10",
+ "document": {
+  "document_id": 306748,
+  "template": "26/0236",
+  "label": "Abschlussbericht Kommunale Wärmeplanung"
+ },
+ "sections": [],
+ "lists": [
+  {
+   "key": "heat_network_areas",
+   "title": "Wärmenetzeignungsgebiete",
+   "caption": "Tabelle 4: Übersicht über definierte Wärmenetzeignungsgebiete in Oldenburg",
+   "page": 79,
+   "columns": [
+    "Kennung",
+    "Ortsteil",
+    "Gebiet",
+    "Wärmebedarf heute",
+    "Wärmeliniendichte"
+   ],
+   "name_column": 2,
+   "rows": [
+    {
+     "cells": [
+      "WNG 1",
+      "Innenstadt",
+      "Stadtkern",
+      "131 GWh/a",
+      "5,2 MWh/m*a"
+     ],
+     "page": 80,
+     "areas": [
+      "innenstadt"
+     ],
+     "label": "Eignungsgebiet „WNG Stadtkern“"
+    },
+    {
+     "cells": [
+      "WNG 2",
+      "Wechloy",
+      "Wechloy",
+      "59,6 GWh/a",
+      "6,11 MWh/m*a"
+     ],
+     "page": 83,
+     "areas": [
+      "wechloy"
+     ],
+     "label": "Eignungsgebiet „WNG Wechloy“"
+    },
+    {
+     "cells": [
+      "WNG 3",
+      "Donnerschwee",
+      "Ohmstede",
+      "40,3 GWh/a",
+      "6,12 MWh/m*a"
+     ],
+     "page": 85,
+     "areas": [
+      "donnerschwee",
+      "ohmstede"
+     ],
+     "label": "Eignungsgebiet „WNG Ohmstede“"
+    },
+    {
+     "cells": [
+      "WNG 4",
+      "Ziegelhofviertel",
+      "Alte Fleiwa",
+      "9,4 GWh/a",
+      "3,98 MWh/m*a"
+     ],
+     "page": 87,
+     "areas": [
+      "ziegelhof"
+     ],
+     "label": "Eignungsgebiet „WNG Alte Fleiwa“"
+    },
+    {
+     "cells": [
+      "WNG 5",
+      "Dietrichsfeld",
+      "Melkbrink",
+      "12,9 GWh/a",
+      "5,04 MWh/m*a"
+     ],
+     "page": 90,
+     "areas": [
+      "dietrichsfeld"
+     ],
+     "label": "Eignungsgebiet „WNG Melkbrink“"
+    },
+    {
+     "cells": [
+      "WNG 6",
+      "Donnerschwee",
+      "Donnerschwee",
+      "6,2 GWh/a",
+      "4,82 MWh/m*a"
+     ],
+     "page": 92,
+     "areas": [
+      "donnerschwee"
+     ],
+     "label": "Eignungsgebiet „WNG Donnerschwee“"
+    },
+    {
+     "cells": [
+      "WNG 7",
+      "Bloherfelde / Eversten",
+      "Kennedyviertel",
+      "21,1 GWh/a",
+      "6,36 MWh/m*a"
+     ],
+     "page": 94,
+     "areas": [
+      "bloherfelde",
+      "eversten"
+     ],
+     "label": "Eignungsgebiet „WNG Kennedyviertel“"
+    },
+    {
+     "cells": [
+      "WNG 8",
+      "Eversten",
+      "Wilhelm-Raabe-Str.",
+      "2,3 GWh/a",
+      "2,67 MWh/m*a"
+     ],
+     "page": 96,
+     "areas": [
+      "eversten"
+     ],
+     "label": "Eignungsgebiet „WNG Wilhelm-Raabe-Str.“"
+    },
+    {
+     "cells": [
+      "WNG 9",
+      "Kreyenbrück",
+      "Kreyenbrück",
+      "74,7 GWh/a",
+      "5,97 MWh/m*a"
+     ],
+     "page": 99,
+     "areas": [
+      "kreyenbrueck"
+     ],
+     "label": "Eignungsgebiet „WNG Kreyenbrück“"
+    },
+    {
+     "cells": [
+      "WNG 10",
+      "Tweelbäke",
+      "Gewerbegebiet Tweelbäke",
+      "33,7 GWh/a",
+      "6,55 MWh/m*a"
+     ],
+     "page": 102,
+     "areas": [
+      "tweelbaeke"
+     ],
+     "label": "Eignungsgebiet „WNG Gewerbegebiet Tweelbäke“"
+    },
+    {
+     "cells": [
+      "WNG 11",
+      "Ehnernviertel / Ziegelhof",
+      "St. Marien",
+      "2,7 GWh/a",
+      "22,29 MWh/m*a"
+     ],
+     "page": 104,
+     "areas": [
+      "ehnernviertel",
+      "ziegelhof"
+     ],
+     "label": "Eignungsgebiet „WNG St. Marien“"
+    }
+   ]
+  }
+ ]
+}

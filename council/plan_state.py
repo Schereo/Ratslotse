@@ -37,6 +37,7 @@ PLAIN_DIR = Path(__file__).resolve().parent / "plan_plain"
 RELATED_FILE = Path(__file__).resolve().parent / "plan_related.json"
 PLACES_DIR = Path(__file__).resolve().parent / "plan_places"
 BUDGET_FILE = Path(__file__).resolve().parent / "plan_budget.json"
+LISTS_DIR = Path(__file__).resolve().parent / "plan_lists"
 
 #: Fünf Stufen plus „unklar“. Reihenfolge = Reihenfolge der Anzeige.
 STATUS_NORM: tuple[str, ...] = ("open", "started", "in_progress", "done", "paused", "unclear")
@@ -378,6 +379,16 @@ def measure_places(key: str) -> dict | None:
 
 def measure_place_keys() -> list[str]:
     return sorted(p.stem for p in PLACES_DIR.glob("*.json"))
+
+
+def plan_lists(key: str) -> dict | None:
+    """Abschnitte und Tabellen aus dem Plan-Dokument (``council/plan_lists/<key>.json``,
+    ``scripts/plan_listen.py``): von Hand gesetzt, Zitate und Zeilen aus dem PDF gelesen."""
+    return _read(LISTS_DIR, key)
+
+
+def list_keys() -> list[str]:
+    return sorted(p.stem for p in LISTS_DIR.glob("*.json"))
 
 
 @cache

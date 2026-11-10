@@ -1,17 +1,19 @@
 "use client";
 
 // KARTE: wo der Plan etwas vorsieht oder wo Beschlüsse zu ihm etwas
-// festgelegt haben (council/plan_pages.py::places_block). Zwei Quellen, beide
-// ohne Sprachmodell und ohne neues Geocoding: Straßen und Plätze, die ein
-// Maßnahmentitel beim Namen nennt (von Hand durchgesehen), und Orte, die die
-// Ortszuordnung der Ratsdaten den Umsetzungs- und Berichtsbeschlüssen schon
-// gegeben hat. Unter drei Orten gibt es keine Karte.
+// festgelegt haben (council/plan_pages.py::places_block). Drei Quellen:
+// Abschnitte, die der Plan selbst festlegt (Lärmaktionsplan, mit seinem
+// Vorschlag und der Seite), Straßen und Plätze, die ein Maßnahmentitel beim
+// Namen nennt (von Hand durchgesehen), und Orte, die die Ortszuordnung der
+// Ratsdaten den Umsetzungs- und Berichtsbeschlüssen schon gegeben hat. Unter
+// drei Orten gibt es keine Karte.
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import { Kicker, StatusChip } from "@/components/plans/parts";
+import { Quote } from "@/components/plans/quoted";
 import { decisionHref } from "@/lib/routes";
 import { formatDate, type PlanPlaces } from "@/lib/plans";
 import { cn } from "@/lib/utils";
@@ -27,8 +29,11 @@ const VISIBLE = 8;
 export function Places({ places }: { places: PlanPlaces }) {
   const [focus, setFocus] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const fromSections = places.items.filter((p) => p.sections.length > 0);
   const fromMeasures = places.items.filter((p) => p.measures.length > 0);
-  const fromDecisions = places.items.filter((p) => p.measures.length === 0);
+  const fromDecisions = places.items.filter((p) => p.measures.length === 0 && p.sections.length === 0);
+  // Zwei Spalten nur, wo zwei Listen nebeneinander stehen — sonst bliebe rechts ein Loch.
+  const groups = [fromSections, fromMeasures, fromDecisions].filter((g) => g.length > 0).length;
   const shown = showAll ? fromDecisions : fromDecisions.slice(0, VISIBLE);
   const pick = (slug: string) => {
     setFocus(slug);
@@ -44,6 +49,9 @@ export function Places({ places }: { places: PlanPlaces }) {
       <p className="mb-3 max-w-[76ch] text-hinweis text-muted-foreground">{places.note}</p>
       <PlanMap places={places.items} focus={focus} onPick={pick} />
       <ul aria-label="Legende" className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
+        {fromSections.length > 0 && (
+          <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-1 w-5 rounded-full bg-primary" /> Abschnitt aus dem Plan</li>
+        )}
         {fromMeasures.some((p) => p.geometry) && (
           <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-1 w-5 rounded-full bg-primary" /> Straße einer Maßnahme</li>
         )}
@@ -54,7 +62,40 @@ export function Places({ places }: { places: PlanPlaces }) {
           <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full border-2 border-white bg-signal shadow" /> Ort aus einem Beschluss</li>
         )}
       </ul>
-      <div className="mt-4 grid gap-5 @3xl:grid-cols-2">
+      <div className={cn("mt-4 grid gap-5", groups > 1 && "@3xl:grid-cols-2")}>
+        {fromSections.length > 0 && (
+          <div className="min-w-0">
+            <Kicker>Aus dem Plan · {fromSections.length} Abschnitte</Kicker>
+            <ul className="mt-1 divide-y divide-border/70">
+              {fromSections.map((place) => {
+                const s = place.sections[0];
+                const open = focus === place.slug;
+                return (
+                  <li key={place.slug} id={`plan-place-${place.slug}`} className={cn("rounded-md", open && "bg-primary/[0.06]")}>
+                    <button type="button" onClick={() => setFocus(open ? null : place.slug)} aria-pressed={open} aria-expanded={open} className={row}>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14px] font-medium leading-snug text-foreground">{place.name}</span>
+                        <span className="mt-0.5 block break-words text-meta text-muted-foreground">
+                          <span className="font-mono">{s.code}</span> · {s.stretch}
+                        </span>
+                      </span>
+                      <ChevronDown className={cn("mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-weg ease-in-out-strong", open && "rotate-180")} aria-hidden />
+                    </button>
+                    {open && (
+                      <div className="px-2 pb-2.5">
+                        <Quote text={s.quote} className="max-w-[76ch] text-[13.5px]" />
+                        <a href={s.source_url} target="_blank" rel="noreferrer"
+                          className="mt-1.5 inline-flex min-h-11 items-center gap-1 text-meta font-medium text-primary hover:underline sm:min-h-0">
+                          Seite {s.page} im Plan <ExternalLink className="h-3 w-3" aria-hidden />
+                        </a>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         {fromMeasures.length > 0 && (
           <div className="min-w-0">
             <Kicker>Aus der Maßnahmenliste · {places.measures_named}{places.measures_total ? ` von ${places.measures_total}` : ""} Maßnahmen</Kicker>

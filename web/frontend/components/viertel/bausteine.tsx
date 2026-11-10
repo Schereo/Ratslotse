@@ -499,18 +499,23 @@ export function InvestitionenKarte({ items, className }: { items: Tafel["investm
 }
 
 /** Pläne der Stadt, die das Viertel betreffen (Schalter `plaene`): laufende und
- *  entstehende Pläne mit mindestens einem Ort hier — aus einem Maßnahmentitel
- *  oder aus einem Beschluss zum Plan (council/plan_pages.py::district_plans).
+ *  entstehende Pläne mit mindestens einem Ort hier — aus dem Plan selbst (ein
+ *  Abschnitt, ein Gebiet seiner Tabelle), aus einem Maßnahmentitel oder aus
+ *  einem Beschluss zum Plan (council/plan_pages.py::district_plans). Darunter
+ *  die Stadterneuerungsgebiete aus dem Geoportal (council/stadterneuerung.py).
  *  Nichts geschätzt: Ein Plan, der das Viertel nur „betreffen könnte“, steht
  *  hier nicht. */
-export function PlaeneKarte({ items, className, style }: { items: NonNullable<Tafel["plans"]>; className?: string; style?: React.CSSProperties }) {
-  if (!items.length) return null;
+export function PlaeneKarte({ items, renewal = [], className, style }: {
+  items: NonNullable<Tafel["plans"]>; renewal?: NonNullable<Tafel["renewal_areas"]>;
+  className?: string; style?: React.CSSProperties;
+}) {
+  if (!items.length && !renewal.length) return null;
   return (
     <Card className={cn("p-4", className)} style={style}>
       <h2 className="flex items-center gap-2 font-display text-base font-bold text-foreground">
         <Route className="h-4 w-4 text-primary" /> Pläne, die dein Viertel betreffen
       </h2>
-      <p className="mt-1 text-xs text-muted-foreground">Pläne der Stadt mit einem Ort hier — aus ihrer Maßnahmenliste oder aus Beschlüssen dazu.</p>
+      {items.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Pläne der Stadt mit einem Ort hier — aus dem Plan selbst, seiner Maßnahmenliste oder aus Beschlüssen dazu.</p>}
       <ul className="mt-2 divide-y divide-border text-sm">
         {items.map((p) => (
           <li key={p.key}>
@@ -527,6 +532,22 @@ export function PlaeneKarte({ items, className, style }: { items: NonNullable<Ta
           </li>
         ))}
       </ul>
+      {renewal.length > 0 && (
+        <div className={cn(items.length > 0 && "mt-3 border-t border-border pt-3")}>
+          <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Stadterneuerung</h3>
+          <ul className="mt-1 divide-y divide-border text-sm">
+            {renewal.map((r) => (
+              <li key={r.name} className="py-2">
+                <span className="block break-words font-medium leading-snug text-foreground">{r.name}</span>
+                <span className="mt-0.5 block break-words text-xs text-muted-foreground">
+                  {r.start_year}–{r.end_year} · {r.size_ha.toLocaleString("de-DE")} ha · Fördermittel {formatEuro(r.funding_eur)} · Eigenmittel der Stadt {formatEuro(r.own_funds_eur)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[11px] text-muted-foreground">Quelle: {renewal[0].source}</p>
+        </div>
+      )}
     </Card>
   );
 }

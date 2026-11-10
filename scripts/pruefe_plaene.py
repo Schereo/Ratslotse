@@ -127,6 +127,7 @@ def pruefe(conn: sqlite3.Connection, heute: str | None = None) -> list[Befund]:
     befunde.extend(_pruefe_einfach())
     befunde.extend(_pruefe_orte(conn))
     befunde.extend(_pruefe_haushalt(conn))
+    befunde.extend(_pruefe_listen())
     return befunde
 
 
@@ -141,6 +142,19 @@ def _pruefe_orte(conn: sqlite3.Connection) -> list[Befund]:
                 if not zeile or zeile[0] is None:
                     befunde.append(Befund(key, "hinweis", f"Ort {place['name']} ({entry['code']}) fehlt im Ortskatalog "
                                                           "oder hat keine Koordinaten — er steht nicht auf der Karte"))
+    return befunde
+
+
+def _pruefe_listen() -> list[Befund]:
+    """Abschnitte und Tabellen aus den Plan-Dokumenten (``council/plan_lists/``) und die
+    Stadterneuerungsgebiete: Form, Längen, Ortsbereiche — ohne PDF und ohne Netz."""
+    from scripts import plan_listen
+    from scripts import stadterneuerung as erneuerung
+    befunde = [Befund(key, "fehler", problem)
+               for key in plan_state.list_keys()
+               for problem in plan_listen.check(key, plan_state.plan_lists(key) or {})]
+    from council import stadterneuerung
+    befunde += [Befund("stadterneuerung", "fehler", problem) for problem in erneuerung.check(stadterneuerung.data())]
     return befunde
 
 
