@@ -1,0 +1,871 @@
+{
+ "ksinr": 4654,
+ "committee": "Verkehrsausschuss",
+ "session_date": "2026-09-21",
+ "session_time": "17:00",
+ "location": "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2",
+ "n_items": 22,
+ "agenda_items": [
+  {
+   "item_number": "Ö 1",
+   "title": "Feststellung der Beschlussfähigkeit",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 2",
+   "title": "Genehmigung der Tagesordnung (öffentlicher Teil)",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 3",
+   "title": "Genehmigung der Protokolle (öffentlicher Teil)",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 3.1",
+   "title": "Genehmigung des Protokolls Nr. 05/26 (öffentlicher Teil) vom 08.06.2026",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 3.2",
+   "title": "Genehmigung des Protokolls Nr. 06/26 (öffentlicher Teil) vom 24.08.2026",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 4",
+   "title": "Einwohnerfragestunde",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Einwohnerfrage 1",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314240&type=do"
+    }
+   ],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 5",
+   "title": "Widmung der Straße \"Pellwormer Weg\" - Beschluss",
+   "template_number": "26/0654",
+   "kvonr": 30112,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312326&type=do"
+    },
+    {
+     "label": "Lageplan Pellwormer Weg",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312330&type=do"
+    }
+   ],
+   "summary": "Zur Abstimmung steht die Widmung der Straße „Pellwormer Weg“ als öffentliche Straße.",
+   "social_text": "Vorgelegt wird, den rund 94 Meter langen Pellwormer Weg ab 1. Oktober 2026 als Gemeindestraße zu widmen. Die Widmung ist Voraussetzung für die öffentliche Nutzung und die Aufnahme ins Reinigungsverzeichnis.",
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 6",
+   "title": "Widmung \"Fuß- und Radweg am Pophankenweg\" - Beschluss",
+   "template_number": "26/0673",
+   "kvonr": 30132,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313243&type=do"
+    },
+    {
+     "label": "Lageplan Fuß- und Radweg Pophankenweg",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313389&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über die Widmung des Fuß- und Radwegs am Pophankenweg.",
+   "social_text": "Beantragt ist, den rund 1.219 Meter langen Weg ab 1. Oktober 2026 dem öffentlichen Rad- und Fußverkehr zu widmen. Er verläuft von der Ammerländer Heerstraße bis zum Infanterieweg.",
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 7",
+   "title": "Widmung der Straße \"Am Pulverturm\" - Beschluss",
+   "template_number": "26/0689",
+   "kvonr": 30149,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313038&type=do"
+    },
+    {
+     "label": "Lageplan Am Pulverturm",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313039&type=do"
+    }
+   ],
+   "summary": "Zur Abstimmung steht die Widmung der Straße „Am Pulverturm“.",
+   "social_text": "Vorgeschlagen ist, den fertiggestellten Abschnitt ab 1. Oktober 2026 als Gemeindestraße öffentlich zu widmen. Die Widmung ist Voraussetzung für die öffentliche Nutzung und die Aufnahme ins Reinigungsverzeichnis.",
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 8",
+   "title": "Markierung von Radverkehrsanlagen in der Kreyenstraße - Bericht",
+   "template_number": "26/0562",
+   "kvonr": 30018,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311487&type=do"
+    },
+    {
+     "label": "2026 08 20 LP 1 Kreyenstraße Markierungsplan.pdf",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313899&type=do"
+    }
+   ],
+   "summary": "Vorgestellt wird der Bericht zur Markierung von Radverkehrsanlagen in der Kreyenstraße.",
+   "social_text": "Geplant sind Markierungen für Radfahr- und Schutzstreifen auf der Kreyenstraße. Je nach Parkbedarf sollen Stellplätze erhalten bleiben; die Kosten werden auf etwa 15.000 Euro geschätzt.",
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 9",
+   "title": "Soziales D-Ticket in Oldenburg - Bericht",
+   "template_number": "26/0719",
+   "kvonr": 30179,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313576&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss befasst sich mit dem sozialen D-Ticket in Oldenburg. Dazu wird ein Bericht vorgestellt.",
+   "social_text": "Die Verwaltung berichtet über Zuschüsse zu D-Tickets oder VBN-Tickets für Menschen mit Oldenburg-Pass ab 1. Juli 2027. Die jährlichen Kosten sind noch offen.",
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 10",
+   "title": "Geschwindigkeitsmessung - Gegenüberstellung der Messgeräte: Telraam vs. geeichte Geräte - Bericht",
+   "template_number": "26/0720",
+   "kvonr": 30180,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313577&type=do"
+    }
+   ],
+   "summary": "Vorgestellt wird eine Gegenüberstellung der Geschwindigkeitsmessgeräte Telraam und geeichter Geräte.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 11",
+   "title": "Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 11.1",
+   "title": "Weißenmoorstraße (beratendes Mitglied Herr Pieper vom 22.05.2026) - Beschlussantrag",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "VCD-Antrag Vorbehaltsnetz Weißenmoorstraße VerkA 08.06.2026",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314015&type=do"
+    }
+   ],
+   "summary": "Zur Beratung steht ein Beschlussantrag zur Weißenmoorstraße.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 11.2",
+   "title": "Parken auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen (beratendes Mitglied Herrn Lüdke vom 08.08.2026) - Beschlussantrag mit Bericht der Verwaltung",
+   "template_number": "26/0658",
+   "kvonr": 30116,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312412&type=do"
+    },
+    {
+     "label": "Anlage: ADFC Antrag VerkA Parken Sicherheitstrennstreifen",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312437&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über das Parken auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen. Dazu wird ein Bericht der Verwaltung vorgestellt.",
+   "social_text": "Der ADFC beantragt Kontrollen in vier Straßen: Cloppenburger, Donnerschweer, Hundsmühler und Stedinger Straße. Die Verwaltung prüft die Rechtslage und will Anfang 2027 erneut berichten.",
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 11.3",
+   "title": "Anschluss der oldenburgischen, verkehrsrechtlichen Ausnahmegenehmigung für Handwerksbetriebe an den Handwerkerparkausweis des Kommunalverbunds Niedersachsen-Bremen (FDP-Fraktion vom 07.09.2026) - Beschlussantrag mit Bericht der Verwaltung",
+   "template_number": "26/0745",
+   "kvonr": 30206,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag auf Anschluss Oldenburgs an die regionale Handwerker-Parkgenehmigung des Kommunalverbunds Niedersachsen-Bremen",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314014&type=do"
+    },
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313910&type=do"
+    }
+   ],
+   "summary": "Zur Abstimmung steht der Antrag, die oldenburgische verkehrsrechtliche Ausnahmegenehmigung für Handwerksbetriebe an den Handwerkerparkausweis des Kommunalverbunds Niedersachsen-Bremen anzuschließen. Dazu wird ein Bericht der Verwaltung vorgestellt.",
+   "social_text": "Die FDP beantragt einen Ausweis für Oldenburg und rund 30 Kommunen. Die Verwaltung verweist auf andere Parkregeln und mögliche Gebührenausfälle von etwa 50.000 Euro.",
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 12",
+   "title": "Anfragen und Anregungen",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 13",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 14",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 14.1",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 14.2",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 15",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  }
+ ],
+ "decisions": [],
+ "attendance": [],
+ "has_protocol": false,
+ "video_results": [],
+ "url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=4654",
+ "agenda_changes": [
+  {
+   "changed_at": "2026-09-18T07:15:13",
+   "satz": "Die Anlagen zu einem Punkt haben sich geändert.",
+   "zeilen": [
+    {
+     "art": "attachments",
+     "label": "Neue Anlagen · TOP Ö 8",
+     "title": "Markierung von Radverkehrsanlagen in der Kreyenstraße - Bericht",
+     "nichtoeffentlich": false,
+     "detail": "Vorlage, 2026 08 20 LP 1 Kreyenstraße Markierungsplan.pdf, 2026 08 20 LP 2 Kreyenstraße Markierungsplan.pdf und 3 weitere"
+    }
+   ]
+  },
+  {
+   "changed_at": "2026-09-17T07:15:12",
+   "satz": "3 Vorlagen wurden nachgereicht und die Anlagen zu einem Punkt haben sich geändert.",
+   "zeilen": [
+    {
+     "art": "template",
+     "label": "Vorlage nachgereicht · TOP Ö 6",
+     "title": "Widmung \"Fuß- und Radweg am Pophankenweg\" - Beschluss",
+     "nichtoeffentlich": false,
+     "detail": "Vorlage 26/0673 liegt jetzt vor"
+    },
+    {
+     "art": "template",
+     "label": "Vorlage nachgereicht · TOP Ö 8",
+     "title": "Markierung von Radverkehrsanlagen in der Kreyenstraße - Bericht",
+     "nichtoeffentlich": false,
+     "detail": "Vorlage 26/0562 liegt jetzt vor"
+    },
+    {
+     "art": "template",
+     "label": "Vorlage nachgereicht · TOP Ö 11.3",
+     "title": "Anschluss der oldenburgischen, verkehrsrechtlichen Ausnahmegenehmigung für Handwerksbetriebe an den Handwerkerparkausweis des Kommunalverbunds Niedersachsen-Bremen (FDP-Fraktion vom 07.09.2026) - Beschlussantrag mit Bericht der Verwaltung",
+     "nichtoeffentlich": false,
+     "detail": "Vorlage 26/0745 liegt jetzt vor"
+    },
+    {
+     "art": "attachments",
+     "label": "Neue Anlage · TOP Ö 4",
+     "title": "Einwohnerfragestunde",
+     "nichtoeffentlich": false,
+     "detail": "Einwohnerfrage 1"
+    }
+   ]
+  },
+  {
+   "changed_at": "2026-09-16T07:15:12",
+   "satz": "Ein Punkt wurde umformuliert.",
+   "zeilen": [
+    {
+     "art": "changed",
+     "label": "Geändert · TOP Ö 11.2",
+     "title": "Parken auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen (beratendes Mitglied Herrn Lüdke vom 08.08.2026) - Beschlussantrag mit Bericht der Verwaltung",
+     "nichtoeffentlich": false,
+     "detail": "vorher: Parken auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen (beratendes Mitglied Herrn Lüdke vom 08.08.2026)"
+    }
+   ]
+  }
+ ],
+ "course": {
+  "start": "17:00",
+  "public_count": 17,
+  "closed_count": 5,
+  "substantive_count": 9,
+  "summary": "9 Punkte zur Beratung, darunter 3 Anträge. Zwei standen schon einmal hier und wurden vertagt.",
+  "next_session": null,
+  "stages": [
+   {
+    "kind": "start",
+    "name": "Zum Start",
+    "name_medium": null,
+    "name_short": "Start",
+    "subtitle": null,
+    "range": "Ö 1 – Ö 4",
+    "count": 6,
+    "cells": [
+     {
+      "label": "Ö 1–3",
+      "title": "Formalien",
+      "items": [
+       "Ö 1",
+       "Ö 2",
+       "Ö 3",
+       "Ö 3.1",
+       "Ö 3.2"
+      ]
+     },
+     {
+      "label": "Ö 4",
+      "title": null,
+      "items": [
+       "Ö 4"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "content",
+    "name": "Beschlüsse und Berichte",
+    "name_medium": null,
+    "name_short": "Beschlüsse",
+    "subtitle": null,
+    "range": "Ö 5 – Ö 10",
+    "count": 6,
+    "cells": [
+     {
+      "label": "Ö 5",
+      "title": null,
+      "items": [
+       "Ö 5"
+      ]
+     },
+     {
+      "label": "Ö 6",
+      "title": null,
+      "items": [
+       "Ö 6"
+      ]
+     },
+     {
+      "label": "Ö 7",
+      "title": null,
+      "items": [
+       "Ö 7"
+      ]
+     },
+     {
+      "label": "Ö 8",
+      "title": null,
+      "items": [
+       "Ö 8"
+      ]
+     },
+     {
+      "label": "Ö 9",
+      "title": null,
+      "items": [
+       "Ö 9"
+      ]
+     },
+     {
+      "label": "Ö 10",
+      "title": null,
+      "items": [
+       "Ö 10"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "motions",
+    "name": "Anträge",
+    "name_medium": null,
+    "name_short": "Anträge",
+    "subtitle": "der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+    "range": "Ö 11",
+    "count": 3,
+    "cells": [
+     {
+      "label": "Ö 11.1",
+      "title": null,
+      "items": [
+       "Ö 11.1"
+      ]
+     },
+     {
+      "label": "Ö 11.2",
+      "title": null,
+      "items": [
+       "Ö 11.2"
+      ]
+     },
+     {
+      "label": "Ö 11.3",
+      "title": null,
+      "items": [
+       "Ö 11.3"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "end",
+    "name": "Zum Schluss",
+    "name_medium": null,
+    "name_short": "Schluss",
+    "subtitle": null,
+    "range": "Ö 12",
+    "count": 1,
+    "cells": [
+     {
+      "label": "Ö 12",
+      "title": null,
+      "items": [
+       "Ö 12"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "closed",
+    "name": "Nichtöffentlicher Teil",
+    "name_medium": "Nichtöffentlich",
+    "name_short": null,
+    "subtitle": null,
+    "range": "N 13 – N 15",
+    "count": 5,
+    "cells": [
+     {
+      "label": "N 13–15",
+      "title": null,
+      "items": []
+     }
+    ]
+   }
+  ],
+  "items": {
+   "Ö 1": {
+    "short_title": "Feststellung der Beschlussfähigkeit",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 2": {
+    "short_title": "Genehmigung der Tagesordnung (öffentlicher Teil)",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 3": {
+    "short_title": "Genehmigung der Protokolle (öffentlicher Teil)",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 3.1": {
+    "short_title": "Genehmigung des Protokolls Nr. 05/26 (öffentlicher Teil) vom 08.06.2026",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 3.2": {
+    "short_title": "Genehmigung des Protokolls Nr. 06/26 (öffentlicher Teil) vom 24.08.2026",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 4": {
+    "short_title": "Einwohnerfragestunde",
+    "type": "question_time",
+    "type_label": "Fragestunde",
+    "icon": "citizen_question",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 5": {
+    "short_title": "Widmung der Straße \"Pellwormer Weg\"",
+    "type": "decision",
+    "type_label": "Entscheidung",
+    "icon": "sign",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": true,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4654,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-09-21",
+      "item_number": "Ö 5",
+      "outcome": null
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 6": {
+    "short_title": "Widmung \"Fuß- und Radweg am Pophankenweg\"",
+    "type": "decision",
+    "type_label": "Entscheidung",
+    "icon": "sign",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": true,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4654,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-09-21",
+      "item_number": "Ö 6",
+      "outcome": null
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 7": {
+    "short_title": "Widmung der Straße \"Am Pulverturm\"",
+    "type": "decision",
+    "type_label": "Entscheidung",
+    "icon": "sign",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": true,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4654,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-09-21",
+      "item_number": "Ö 7",
+      "outcome": null
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 8": {
+    "short_title": "Markierung von Radverkehrsanlagen in der Kreyenstraße",
+    "type": "report",
+    "type_label": "Bericht",
+    "icon": "bike",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4654,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-09-21",
+      "item_number": "Ö 8",
+      "outcome": null
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 9": {
+    "short_title": "Soziales D-Ticket in Oldenburg",
+    "type": "report",
+    "type_label": "Bericht",
+    "icon": "ticket",
+    "applicant": null,
+    "important": true,
+    "important_reason": "Der Bericht kann zeigen, wie das soziale Deutschlandticket in Oldenburg umgesetzt wird. Das betrifft Menschen mit wenig Geld, legt aber noch nichts fest.",
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4654,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-09-21",
+      "item_number": "Ö 9",
+      "outcome": null
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 10": {
+    "short_title": "Geschwindigkeitsmessung - Gegenüberstellung der Messgeräte: Telraam vs. geeichte Geräte",
+    "type": "report",
+    "type_label": "Bericht",
+    "icon": "speed",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4654,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-09-21",
+      "item_number": "Ö 10",
+      "outcome": null
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 11.1": {
+    "short_title": "Weißenmoorstraße",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "route",
+    "applicant": "beratendes Mitglied Herr Pieper",
+    "important": false,
+    "important_reason": null,
+    "postponed": 1,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 11.2": {
+    "short_title": "Parken auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "parking",
+    "applicant": "beratendes Mitglied Herrn Lüdke",
+    "important": true,
+    "important_reason": "Es geht um die Frage, ob Autos auf Schutzstreifen neben Radwegen stehen dürfen. Das betrifft Sicherheit und Verkehr, aber noch ohne Entscheidung.",
+    "postponed": 1,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 16.9",
+      "outcome": "postponed"
+     },
+     {
+      "ksinr": 4654,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-09-21",
+      "item_number": "Ö 11.2",
+      "outcome": null
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 11.3": {
+    "short_title": "Anschluss der oldenburgischen, verkehrsrechtlichen Ausnahmegenehmigung für Handwerksbetriebe an den Handwerkerparkausweis des Kommunalverbunds Niedersachsen-Bremen",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "parking",
+    "applicant": "FDP-Fraktion",
+    "important": true,
+    "important_reason": "Die Stadt könnte ihre Ausnahmegenehmigung an einen gemeinsamen Handwerkerparkausweis anschließen. Das erleichtert Handwerksbetrieben den Einsatz, ist aber noch Beratung.",
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4654,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-09-21",
+      "item_number": "Ö 11.3",
+      "outcome": null
+     },
+     {
+      "ksinr": 4705,
+      "committee": "Rat",
+      "session_date": "2026-09-28",
+      "item_number": "Ö 13.4",
+      "outcome": "settled"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 12": {
+    "short_title": "Anfragen und Anregungen",
+    "type": "inquiries",
+    "type_label": "Anfragen",
+    "icon": "inquiries",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   }
+  }
+ }
+}

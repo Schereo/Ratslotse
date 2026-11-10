@@ -1,0 +1,2273 @@
+{
+ "ksinr": 4653,
+ "committee": "Verkehrsausschuss",
+ "session_date": "2026-08-24",
+ "session_time": "17:00",
+ "location": "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2",
+ "n_items": 35,
+ "agenda_items": [
+  {
+   "item_number": "Ö 1",
+   "title": "Feststellung der Beschlussfähigkeit",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 2",
+   "title": "Genehmigung der Tagesordnung (öffentlicher Teil) Beschluss: geändert beschlossen",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 3",
+   "title": "Genehmigung der Protokolle (öffentlicher Teil)",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 3.1",
+   "title": "Genehmigung des Protokolls Nr. 04/26 (öffentlicher Teil) vom 11.05.2026 Beschluss: ungeändert beschlossen",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 3.2",
+   "title": "Genehmigung des Protokolls Nr. 05/26 (öffentlicher Teil) vom 08.06.2026 Beschluss: zurückgestellt/abgesetzt",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 4",
+   "title": "Einwohnerfragestunde",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Einwohnerfrage 1 öffentlich",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312476&type=do"
+    },
+    {
+     "label": "Einwohnerfrage 2",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312473&type=do"
+    }
+   ],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 5",
+   "title": "VBN-Tarifanpassung 2027 - Beschluss Beschluss: gilt als behandelt",
+   "template_number": "26/0622",
+   "kvonr": 30078,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Änderungsantrag VerkA - VBN-Tarifanpassung 2027",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312907&type=do"
+    },
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312296&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über die VBN-Tarifanpassung für das Jahr 2027 und wird einen Beschluss fassen.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 6",
+   "title": "Überarbeitung des städtischen Vorbehaltsnetzes - Beschluss Beschluss: zurückgestellt/abgesetzt",
+   "template_number": "26/0623",
+   "kvonr": 30079,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312213&type=do"
+    },
+    {
+     "label": "Vorbehaltsnetz Stand Juni 2026",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312214&type=do"
+    }
+   ],
+   "summary": "Vorgestellt wird die Überarbeitung des städtischen Vorbehaltsnetzes, die ebenfalls zur Beschlussfassung ansteht.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 7",
+   "title": "Widmung der Straße \"Im Technologiepark\" - Beschluss Beschluss: ungeändert beschlossen",
+   "template_number": "26/0621",
+   "kvonr": 30077,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311928&type=do"
+    },
+    {
+     "label": "2026-07-23 - Lageplan Im Technologiepark",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311931&type=do"
+    }
+   ],
+   "summary": "Zur Abstimmung steht die Widmung der Straße \"Im Technologiepark\", die als Teil eines Beschlusses behandelt wird.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 8",
+   "title": "Widmung der Straße \"Sylter Ring\" - Beschluss Beschluss: ungeändert beschlossen",
+   "template_number": "26/0630",
+   "kvonr": 30086,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312061&type=do"
+    },
+    {
+     "label": "Lagekarte Sylter Ring",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312159&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über die Widmung der Straße \"Sylter Ring\" und wird einen entsprechenden Beschluss fassen.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 9",
+   "title": "Widmung der Straße \"Amrumstraße\" -Beschluss Beschluss: ungeändert beschlossen",
+   "template_number": "26/0639",
+   "kvonr": 30095,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312182&type=do"
+    },
+    {
+     "label": "Lageplan Amrumstraße",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312185&type=do"
+    }
+   ],
+   "summary": "Vorgestellt wird die Widmung der Straße \"Amrumstraße\", die ebenfalls zur Beschlussfassung ansteht.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 10",
+   "title": "Widmung der Straße \"Hooger Weg\" - Beschluss Beschluss: ungeändert beschlossen",
+   "template_number": "26/0640",
+   "kvonr": 30096,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312196&type=do"
+    },
+    {
+     "label": "Lageplan Hooger Weg",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312197&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über die Widmung der Straße \"Hooger Weg\" und wird hierzu einen Beschluss fassen.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 11",
+   "title": "Widmung der Straße \"Föhrstraße\" - Beschluss Beschluss: ungeändert beschlossen",
+   "template_number": "26/0641",
+   "kvonr": 30097,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312204&type=do"
+    },
+    {
+     "label": "Lageplan Föhrstraße",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312205&type=do"
+    }
+   ],
+   "summary": "Zur Abstimmung steht die Widmung der Straße \"Föhrstraße\", die als Teil des Beschlussprozesses diskutiert wird.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 12",
+   "title": "Geplante Änderung der Verordnung der Stadt Oldenburg (Oldb) über Parkgebühren, Umstellung auf das neue Umsatzsteuerrecht (§ 2b UStG) - Bericht Beschluss: zur Kenntnis genommen",
+   "template_number": "26/0619",
+   "kvonr": 30075,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311912&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss wird über die geplante Änderung der Verordnung über Parkgebühren informieren, die sich auf das neue Umsatzsteuerrecht bezieht.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 13",
+   "title": "Sachstandsbericht Park&Ride - Bericht Beschluss: zur Kenntnis genommen",
+   "template_number": "26/0624",
+   "kvonr": 30080,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312267&type=do"
+    },
+    {
+     "label": "Anlage 1 P+R in Groningen",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312266&type=do"
+    }
+   ],
+   "summary": "Ein Sachstandsbericht zum Thema Park&Ride wird vorgestellt, um den aktuellen Stand der Entwicklungen darzulegen.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 14",
+   "title": "Sachstand Hannah-Arendt-Straße (B-Plan S-745 A) - Bericht Beschluss: zur Kenntnis genommen",
+   "template_number": "26/0533",
+   "kvonr": 29989,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311692&type=do"
+    }
+   ],
+   "summary": "Vorgestellt wird der Sachstand zur Hannah-Arendt-Straße im Rahmen des Bebauungsplans S-745 A.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 15",
+   "title": "Kosten einer Bushaltestelle - Haltestelle Sieben Berge - Bericht Beschluss: zur Kenntnis genommen",
+   "template_number": "26/0603",
+   "kvonr": 30059,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311690&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über die Kosten für die Bushaltestelle an der Haltestelle Sieben Berge und wird hierzu einen Bericht erhalten.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16",
+   "title": "Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.1",
+   "title": "Weißenmoorstraße (beratendes Mitglied Herr Pieper vom 22.05.2026) - Beschlussantrag Beschluss: zurückgestellt/abgesetzt",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag Vorbehaltsnetz Weißenmoorstraße",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312463&type=do"
+    }
+   ],
+   "summary": "Ein Beschlussantrag zur Weißenmoorstraße wird von dem beratenden Mitglied Herr Pieper vorgelegt.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.2",
+   "title": "Aufgaben und Ressourcen (beratendes Mitglied Herr Pieper vom 22.05.2026) - Antrag mit Bericht der Verwaltung Beschluss: zur Kenntnis genommen",
+   "template_number": "26/0625",
+   "kvonr": 30081,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag Aufgaben und Ressourcen",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312464&type=do"
+    },
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312011&type=do"
+    }
+   ],
+   "summary": "Der Antrag mit Bericht der Verwaltung zu den Themen Aufgaben und Ressourcen wird durch das beratende Mitglied Herr Pieper vorgestellt.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.3",
+   "title": "Umsetzung Aufwertung und Bewerbung von P + R Standorten (SPD-Fraktion vom 10.06.2026) - Beschlussantrag Beschluss: ungeändert beschlossen",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag Umsetzung Bewerbung P+R",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312465&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über den Beschlussantrag zur Umsetzung der Aufwertung und Bewerbung von P + R Standorten, eingereicht von der SPD-Fraktion.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.4",
+   "title": "Verkehrsunfallstatistik 2025 und Unfallhäufungsstellen im Stadtgebiet Oldenburg (FDP-Fraktion vom 19.06.2026) - Antrag mit Bericht der Verwaltung Beschluss: zur Kenntnis genommen",
+   "template_number": "26/0602",
+   "kvonr": 30058,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Berichtsantrag zur Verkehrsunfallstatistik 2025",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312708&type=do"
+    },
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311644&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über die Verkehrsunfallstatistik 2025 sowie Unfallhäufungsstellen im Stadtgebiet Oldenburg. Vorgestellt wird ein Antrag der FDP-Fraktion mit einem entsprechenden Bericht der Verwaltung.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.5",
+   "title": "Ersatzneubau Brücke Tweelbäker See (CDU-Fraktion vom 16.07.2026) - Beschlussantrag Beschluss: zurückgestellt/abgesetzt",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag CDU Brücke Tweelbäker See",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312466&type=do"
+    }
+   ],
+   "summary": "Zur Abstimmung steht der Ersatzneubau der Brücke Tweelbäker See, präsentiert durch die CDU-Fraktion in Form eines Beschlussantrags.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.6",
+   "title": "Bericht zur Einführung einer digital unterstützenden Parkraumkontrolle in Oldenburg (Fraktion Bündnis 90/Die Grünen vom 17.07.2026) - Antrag mit Bericht der Verwaltung Beschluss: zur Kenntnis genommen",
+   "template_number": "26/0615",
+   "kvonr": 30071,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "2026-07-17 - Antrag - VerkA - Bericht zur Einführung einer digital unterstützenden Parkraumkontrolle in Oldenburg",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312709&type=do"
+    },
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311850&type=do"
+    }
+   ],
+   "summary": "Vorgestellt wird ein Bericht zur Einführung einer digital unterstützenden Parkraumkontrolle in Oldenburg, beantragt von der Fraktion Bündnis 90/Die Grünen.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.7",
+   "title": "Sicherheitsaudit Bahnübergang Am Stadtrand (beratendes Mitglied Herr Lucks) - Berichtsantrag Beschluss: zur Kenntnis genommen",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag Sicherheitsaudit BÜ Am Standtrand",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312467&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über einen Berichtsantrag zum Sicherheitsaudit am Bahnübergang Am Stadtrand, eingereicht durch das beratende Mitglied Herr Lucks.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.8",
+   "title": "Linksseitige Führung des Radverkehrs an Straßen (beratendes Mitglied Herrn Lüdke vom 08.08.2026) - Antrag mit Bericht der Verwaltung Beschluss: zur Kenntnis genommen",
+   "template_number": "26/0657",
+   "kvonr": 30115,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag Linksseitige Radwege",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312468&type=do"
+    },
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312411&type=do"
+    }
+   ],
+   "summary": "Zur Diskussion steht ein Antrag mit Bericht der Verwaltung zur linksseitigen Führung des Radverkehrs an Straßen. Dieser stammt von dem beratenden Mitglied Herrn Lüdke.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.9",
+   "title": "Parken auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen (beratendes Mitglied Herrn Lüdke vom 08.08.2026) - Beschlussantrag mit Bericht der Verwaltung Beschluss: zurückgestellt/abgesetzt",
+   "template_number": "26/0658",
+   "kvonr": 30116,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag Parken Sicherheitstrennstreifen",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312469&type=do"
+    },
+    {
+     "label": "Vorlage",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312412&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss berät über einen Beschlussantrag zur Regelung des Parkens auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen, eingebracht von Herrn Lüdke mit einem Bericht der Verwaltung.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.10",
+   "title": "Änderung der Verkehrsführung Herbartstr./Cäcilienstr./Cäcilienplatz (Fraktion Bündnis 90/Die Grünen und Ratsherr Lükermann vom 10.08.2026) - Beschlussantrag Beschluss: geändert beschlossen",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag Änderungen der Verkehrsführung Herbartstr",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312470&type=do"
+    }
+   ],
+   "summary": "Der Ausschuss wird einen Beschlussantrag zur Änderung der Verkehrsführung an Herbartstr./Cäcilienstr./Cäcilienplatz prüfen, eingereicht von der Fraktion Bündnis 90/Die Grünen und Ratsherr Lükermann.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 16.11",
+   "title": "Ausbesserung der gefährlichen Bordsteinkanten am Kreisel Pophankenweg/Bäkeplacken (BSW-Fraktion vom 10.08.2026) - Beschlussantrag Beschluss: ungeändert beschlossen",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [
+    {
+     "label": "Antrag Ausbesserung Bordsteinkanten Pophankenweg",
+     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312471&type=do"
+    }
+   ],
+   "summary": "Zur Abstimmung steht ein Beschlussantrag zur Ausbesserung der gefährlichen Bordsteinkanten am Kreisel Pophankenweg/Bäkeplacken, vorgelegt von der BSW-Fraktion.",
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "Ö 17",
+   "title": "Anfragen und Anregungen",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 1,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 18",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 19",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 19.1",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 19.2",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  },
+  {
+   "item_number": "N 20",
+   "title": "gesperrte Information",
+   "template_number": "",
+   "kvonr": null,
+   "is_public": 0,
+   "anlagen": [],
+   "summary": null,
+   "social_text": null,
+   "dringlich": false
+  }
+ ],
+ "decisions": [
+  {
+   "id": 9420,
+   "ksinr": 4653,
+   "position": 0,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "5",
+   "title": "VBN-Tarifanpassung 2027",
+   "official_text": "Der Änderungsantrag der Fraktion Bündnis 90/Die Grünen zur Einführung eines sozialen Deutschlandtickets gilt als behandelt.",
+   "outcome": "noted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0622",
+   "kvonr": 30078,
+   "raw_result": "- einstimmig - - gilt als behandelt -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "ÖPNV",
+    "Tarif",
+    "VBN"
+   ],
+   "summary": "Der Änderungsantrag der Grünen zur Einführung eines sozialen Deutschlandtickets gilt als behandelt.",
+   "amount_eur": null,
+   "importance": 20,
+   "simple_summary": null,
+   "interest": 30,
+   "interest_reason": "Tarifanpassung und soziales Ticket nur als behandelt vermerkt, wenig konkret.",
+   "impact": 12,
+   "impact_reason": "Die stärkste Rubrik ist die mögliche Betroffenheit von Oldenburg-Pass-Inhabenden, aber der Antrag gilt nur als behandelt.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9421,
+   "ksinr": 4653,
+   "position": 1,
+   "kind": "subvote",
+   "parent_item": "5",
+   "item_number": "5",
+   "title": "Änderungsantrag der Fraktion Bündnis 90/Die Grünen: Einführung eines sozialen Deutschlandtickets mit Zuschuss für Oldenburg-Pass-Inhabende",
+   "official_text": null,
+   "outcome": "noted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [
+    "Bündnis 90/Die Grünen"
+   ],
+   "template_number": null,
+   "kvonr": null,
+   "raw_result": "- einstimmig - - gilt als behandelt -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "ÖPNV",
+    "Deutschlandticket",
+    "Sozialticket"
+   ],
+   "summary": "Antrag der Grünen zur Einführung eines sozialen Deutschlandtickets mit Zuschuss für Oldenburg-Pass-Inhabende.",
+   "amount_eur": null,
+   "importance": 18,
+   "simple_summary": null,
+   "interest": null,
+   "interest_reason": null,
+   "impact": 12,
+   "impact_reason": "Die stärkste Rubrik ist die mögliche direkte Wirkung auf Oldenburg-Pass-Inhabende; eine Einführung oder Finanzierung wurde nicht beschlossen.",
+   "deviation": null,
+   "parties": [
+    "Grüne"
+   ],
+   "applicants_named": true,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9422,
+   "ksinr": 4653,
+   "position": 2,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "7",
+   "title": "Widmung der Straße \"Im Technologiepark\"",
+   "official_text": "Gemäß § 6 des Nds. Straßengesetzes wird die Straße „Im Technologiepark“ ab dem 01.09.2026 förmlich als Gemeindestraße übernommen und wie im Lageplan dargestellt, dem öffentlichen Verkehr gewidmet.",
+   "outcome": "accepted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0621",
+   "kvonr": 30077,
+   "raw_result": "- einstimmig -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Straßenwidmung",
+    "Im Technologiepark"
+   ],
+   "summary": "Die Straße 'Im Technologiepark' wird ab 01.09.2026 als Gemeindestraße dem öffentlichen Verkehr gewidmet.",
+   "amount_eur": null,
+   "importance": 19,
+   "simple_summary": null,
+   "interest": 10,
+   "interest_reason": "Straßenwidmung ist reine Formalie ohne Alltagsbezug.",
+   "impact": 15,
+   "impact_reason": "Formsache: Die Straße wird nur amtlich gewidmet oder eingezogen — für den Alltag ändert sich nichts.",
+   "deviation": "unchanged",
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9423,
+   "ksinr": 4653,
+   "position": 3,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "8",
+   "title": "Widmung der Straße \"Sylter Ring\"",
+   "official_text": "Gemäß § 6 des Niedersächsischen Straßengesetzes wird die Straße „Sylter Ring“ ab dem 01.09.2026 förmlich als Gemeindestraße übernommen und wie im Lageplan dargestellt, dem öffentlichen Verkehr gewidme",
+   "outcome": "accepted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0630",
+   "kvonr": 30086,
+   "raw_result": "- einstimmig -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Straßenwidmung",
+    "Sylter Ring"
+   ],
+   "summary": "Die Straße 'Sylter Ring' wird ab 01.09.2026 als Gemeindestraße dem öffentlichen Verkehr gewidmet.",
+   "amount_eur": null,
+   "importance": 19,
+   "simple_summary": "Der Verkehrsausschuss hat beschlossen, die Straße „Sylter Ring“ ab dem 1. September 2026 offiziell als öffentliche Straße zu widmen. Sie wird dann Teil des städtischen Straßennetzes und steht allen Ve",
+   "interest": 10,
+   "interest_reason": "Straßenwidmung ist reine Formalie ohne Alltagsbezug.",
+   "impact": 15,
+   "impact_reason": "Formsache: Die Straße wird nur amtlich gewidmet oder eingezogen — für den Alltag ändert sich nichts.",
+   "deviation": "unchanged",
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9424,
+   "ksinr": 4653,
+   "position": 4,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "9",
+   "title": "Widmung der Straße \"Amrumstraße\"",
+   "official_text": "Gemäß § 6 des Niedersächsischen Straßengesetzes wird die Straße „Amrumstraße“ ab dem 01.09.2026 förmlich als Gemeindestraße übernommen und wie im Lageplan dargestellt, dem öffentlichen Verkehr gewidme",
+   "outcome": "accepted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0639",
+   "kvonr": 30095,
+   "raw_result": "- einstimmig -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Straßenwidmung",
+    "Amrumstraße"
+   ],
+   "summary": "Die Straße 'Amrumstraße' wird ab 01.09.2026 als Gemeindestraße dem öffentlichen Verkehr gewidmet.",
+   "amount_eur": null,
+   "importance": 19,
+   "simple_summary": "Die Stadt Oldenburg übernimmt die Amrumstraße offiziell als öffentliche Straße. Ab dem 1. September 2026 darf sie von allen genutzt werden.",
+   "interest": 10,
+   "interest_reason": "Straßenwidmung ist reine Formalie ohne Alltagsbezug.",
+   "impact": 15,
+   "impact_reason": "Formsache: Die Straße wird nur amtlich gewidmet oder eingezogen — für den Alltag ändert sich nichts.",
+   "deviation": "unchanged",
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9425,
+   "ksinr": 4653,
+   "position": 5,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "10",
+   "title": "Widmung der Straße \"Hooger Weg\"",
+   "official_text": "Gemäß § 6 des Niedersächsischen Straßengesetzes wird die Straße „Hooger Weg“ ab dem 01.09.2026 förmlich als Gemeindestraße übernommen und wie im Lageplan dargestellt, dem öffentlichen Verkehr gewidmet",
+   "outcome": "accepted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0640",
+   "kvonr": 30096,
+   "raw_result": "- einstimmig -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Straßenwidmung",
+    "Hooger Weg"
+   ],
+   "summary": "Die Straße 'Hooger Weg' wird ab 01.09.2026 als Gemeindestraße dem öffentlichen Verkehr gewidmet.",
+   "amount_eur": null,
+   "importance": 19,
+   "simple_summary": "Der Hooger Weg wird ab dem 1. September 2026 eine öffentliche Straße der Stadt. Damit ist sie offiziell für den allgemeinen Verkehr freigegeben.",
+   "interest": 10,
+   "interest_reason": "Straßenwidmung ist reine Formalie ohne Alltagsbezug.",
+   "impact": 15,
+   "impact_reason": "Formsache: Die Straße wird nur amtlich gewidmet oder eingezogen — für den Alltag ändert sich nichts.",
+   "deviation": "unchanged",
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9426,
+   "ksinr": 4653,
+   "position": 6,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "11",
+   "title": "Widmung der Straße \"Föhrstraße\"",
+   "official_text": "Gemäß § 6 des Niedersächsischen Straßengesetzes wird die Straße „Föhrstraße“ ab dem 01.09.2026 förmlich als Gemeindestraße übernommen und wie im Lageplan dargestellt, dem öffentlichen Verkehr gewidmet",
+   "outcome": "accepted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0641",
+   "kvonr": 30097,
+   "raw_result": "- einstimmig -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Straßenwidmung",
+    "Föhrstraße"
+   ],
+   "summary": "Die Straße 'Föhrstraße' wird ab 01.09.2026 als Gemeindestraße dem öffentlichen Verkehr gewidmet.",
+   "amount_eur": null,
+   "importance": 19,
+   "simple_summary": "Die Stadt Oldenburg übernimmt die Föhrstraße ab dem 1. September 2026 als öffentliche Straße. Dann darf sie von allen genutzt werden, und die Stadt kümmert sich um sie.",
+   "interest": 10,
+   "interest_reason": "Straßenwidmung ist reine Formalie ohne Alltagsbezug.",
+   "impact": 15,
+   "impact_reason": "Formsache: Die Straße wird nur amtlich gewidmet oder eingezogen — für den Alltag ändert sich nichts.",
+   "deviation": "unchanged",
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9427,
+   "ksinr": 4653,
+   "position": 7,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "12",
+   "title": "Geplante Änderung der Verordnung der Stadt Oldenburg (Oldb) über Parkgebühren, Umstellung auf das neue Umsatzsteuerrecht (§ 2b UStG)",
+   "official_text": "Der Bericht wird zur Kenntnis genommen.",
+   "outcome": "noted",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0619",
+   "kvonr": 30075,
+   "raw_result": "Der Bericht wird zur Kenntnis genommen.",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Parkgebühren",
+    "Umsatzsteuerrecht"
+   ],
+   "summary": "Der Bericht zur geplanten Änderung der Parkgebührenverordnung wegen der Umstellung auf § 2b UStG wurde zur Kenntnis genommen.",
+   "amount_eur": null,
+   "importance": 55,
+   "simple_summary": null,
+   "interest": 30,
+   "interest_reason": "Parkgebühren-Änderung nur als Bericht, aber Thema betrifft Autofahrer.",
+   "impact": 20,
+   "impact_reason": "Die stärkste Rubrik ist die mögliche stadtweite Relevanz der Parkgebührenregelung, beschlossen wurde aber nur die Kenntnisnahme eines Berichts.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9428,
+   "ksinr": 4653,
+   "position": 8,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "13",
+   "title": "Sachstandsbericht Park&Ride",
+   "official_text": "Der Bericht wird zur Kenntnis genommen.",
+   "outcome": "noted",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0624",
+   "kvonr": 30080,
+   "raw_result": "Der Bericht wird zur Kenntnis genommen.",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Park&Ride",
+    "Sachstandsbericht"
+   ],
+   "summary": "Der Sachstandsbericht Park&Ride wurde zur Kenntnis genommen.",
+   "amount_eur": null,
+   "importance": 28,
+   "simple_summary": null,
+   "interest": 30,
+   "interest_reason": "Park&Ride-Sachstand ohne konkrete Maßnahmen, aber alltagsnah für Pendler.",
+   "impact": 20,
+   "impact_reason": "Die stärkste Rubrik ist die mögliche Bedeutung für P+R-Angebote, beschlossen wurde aber nur die Kenntnisnahme eines Berichts.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9429,
+   "ksinr": 4653,
+   "position": 9,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "14",
+   "title": "Sachstand Hannah-Arendt-Straße (B-Plan S-745 A)",
+   "official_text": "Der Bericht wird zur Kenntnis genommen.",
+   "outcome": "noted",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0533",
+   "kvonr": 29989,
+   "raw_result": "Der Bericht wird zur Kenntnis genommen.",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Bebauungsplan",
+    "Verkehrsentwicklung"
+   ],
+   "summary": "Der Sachstandsbericht zur Hannah-Arendt-Straße (B-Plan S-745 A) wurde zur Kenntnis genommen.",
+   "amount_eur": null,
+   "importance": 28,
+   "simple_summary": null,
+   "interest": 20,
+   "interest_reason": "Bebauungsplan-Sachstand ist abstrakt und ohne Erzählwert.",
+   "impact": 20,
+   "impact_reason": "Die stärkste Rubrik ist die mögliche Quartiersentwicklung, beschlossen wurde aber nur die Kenntnisnahme eines Sachstandsberichts.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9430,
+   "ksinr": 4653,
+   "position": 10,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "15",
+   "title": "Kosten einer Bushaltestelle - Haltestelle Sieben Berge",
+   "official_text": "Der Bericht wird zur Kenntnis genommen.",
+   "outcome": "noted",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0603",
+   "kvonr": 30059,
+   "raw_result": "Der Bericht wird zur Kenntnis genommen.",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "ÖPNV",
+    "Kosten"
+   ],
+   "summary": "Der Bericht über die Kosten der Bushaltestelle Sieben Berge wurde zur Kenntnis genommen.",
+   "amount_eur": null,
+   "importance": 28,
+   "simple_summary": null,
+   "interest": 25,
+   "interest_reason": "Kosten einer Bushaltestelle nur als Bericht, wenig konkret.",
+   "impact": 20,
+   "impact_reason": "Die stärkste Rubrik ist die lokale Bedeutung für die Haltestelle Sieben Berge, beschlossen wurde aber nur die Kenntnisnahme eines Berichts.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9431,
+   "ksinr": 4653,
+   "position": 11,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.2",
+   "title": "Aufgaben und Ressourcen (beratendes Mitglied Herr Pieper vom 22.05.2026)",
+   "official_text": "Der Bericht wird zur Kenntnis genommen.",
+   "outcome": "noted",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0625",
+   "kvonr": 30081,
+   "raw_result": "Der Bericht wird zur Kenntnis genommen.",
+   "policy_field": "verwaltung_digital",
+   "policy_tags": [
+    "Gremienarbeit",
+    "Ressourcen"
+   ],
+   "summary": "Der Bericht zu Aufgaben und Ressourcen des beratenden Ausschussmitglieds wurde zur Kenntnis genommen.",
+   "amount_eur": null,
+   "importance": 28,
+   "simple_summary": null,
+   "interest": 5,
+   "interest_reason": "Interne Aufgaben- und Ressourcenfrage, reine Kenntnisnahme.",
+   "impact": 20,
+   "impact_reason": "Die stärkste Rubrik ist die mögliche Relevanz für Aufgaben und Ressourcen, beschlossen wurde aber nur die Kenntnisnahme eines Berichts.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9432,
+   "ksinr": 4653,
+   "position": 12,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.3",
+   "title": "Umsetzung Aufwertung und Bewerbung von P + R Standorten (SPD-Fraktion vom 10.06.2026)",
+   "official_text": "Die Verwaltung wird beauftragt, die bestehenden P+R Anlagen auf dem Stadtgebiet Oldenburgs durch Wegleitungen (Schildern an Autobahnen und Autobahnabfahrten) zu bewerben. Wo P+R Anlagen unter der Auto",
+   "outcome": "accepted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [
+    "SPD"
+   ],
+   "template_number": null,
+   "kvonr": null,
+   "raw_result": "- einstimmig -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Park-and-Ride",
+    "Beschilderung",
+    "Beleuchtung"
+   ],
+   "summary": "Die Verwaltung wurde beauftragt, P+R-Anlagen durch Wegweisung und Beleuchtung zu bewerben sowie auf Gratis-Busangebote hinzuweisen.",
+   "amount_eur": null,
+   "importance": 36,
+   "simple_summary": "Der Verkehrsausschuss der Stadt Oldenburg hat beschlossen, die Park-and-Ride-Parkplätze (P+R) besser auszuschildern und zu beleuchten. Schilder an Autobahnen und Abfahrten sollen Autofahrer zu den Par",
+   "interest": 60,
+   "interest_reason": "Konkrete P+R-Aufwertung mit Schildern und Beleuchtung, alltagsnah.",
+   "impact": 48,
+   "impact_reason": "Die stärkste Rubrik ist die Bindungswirkung eines konkreten Umsetzungsauftrags für mehrere P+R-Standorte mit bereits vorgesehenen Haushaltsmitteln.",
+   "deviation": null,
+   "parties": [
+    "SPD"
+   ],
+   "applicants_named": true,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9433,
+   "ksinr": 4653,
+   "position": 13,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.4",
+   "title": "Verkehrsunfallstatistik 2025 und Unfallhäufungsstellen im Stadtgebiet Oldenburg (FDP-Fraktion vom 19.06.2026)",
+   "official_text": "Der Bericht wird zur Kenntnis genommen.",
+   "outcome": "noted",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [
+    "FDP"
+   ],
+   "template_number": "26/0602",
+   "kvonr": 30058,
+   "raw_result": "Der Bericht wird zur Kenntnis genommen.",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Verkehrssicherheit",
+    "Unfallstatistik"
+   ],
+   "summary": "Der Bericht zur Verkehrsunfallstatistik 2025 und Unfallhäufungsstellen wurde zur Kenntnis genommen.",
+   "amount_eur": null,
+   "importance": 28,
+   "simple_summary": null,
+   "interest": 35,
+   "interest_reason": "Unfallstatistik nur Kenntnisnahme, aber Sicherheitsthemen haben Alltagsbezug.",
+   "impact": 20,
+   "impact_reason": "Die stärkste Rubrik ist die mögliche stadtweite Relevanz der Verkehrssicherheit, beschlossen wurde aber nur die Kenntnisnahme eines Berichts.",
+   "deviation": null,
+   "parties": [
+    "FDP"
+   ],
+   "applicants_named": true,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9434,
+   "ksinr": 4653,
+   "position": 14,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.5",
+   "title": "Ersatzneubau Brücke Tweelbäker See (CDU-Fraktion vom 16.07.2026)",
+   "official_text": "Der Antrag der CDU-Fraktion wird zurückgezogen.",
+   "outcome": "no_decision",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [
+    "CDU"
+   ],
+   "template_number": null,
+   "kvonr": null,
+   "raw_result": "- zurückgezogen -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Brückenbau",
+    "Antrag"
+   ],
+   "summary": "Kein Beschluss zum Ersatzneubau der Brücke Tweelbäker See; der Antrag der CDU-Fraktion wurde zurückgezogen.",
+   "amount_eur": null,
+   "importance": 19,
+   "simple_summary": null,
+   "interest": 25,
+   "interest_reason": "Brückenneubau-Antrag zurückgezogen, keine Entscheidung.",
+   "impact": 3,
+   "impact_reason": "Der zurückgezogene Antrag entfaltet keine Bindungswirkung und setzt keine politischen Weichen.",
+   "deviation": null,
+   "parties": [
+    "CDU"
+   ],
+   "applicants_named": true,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9435,
+   "ksinr": 4653,
+   "position": 15,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.6",
+   "title": "Bericht zur Einführung einer digital unterstützenden Parkraumkontrolle in Oldenburg (Fraktion Bündnis 90/Die Grünen vom 17.07.2026)",
+   "official_text": "Der Bericht wird zur Kenntnis genommen.",
+   "outcome": "noted",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [
+    "Bündnis 90/Die Grünen"
+   ],
+   "template_number": "26/0615",
+   "kvonr": 30071,
+   "raw_result": "Der Bericht wird zur Kenntnis genommen.",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Parkraumkontrolle",
+    "Digitalisierung"
+   ],
+   "summary": "Der Bericht zur Einführung einer digital unterstützenden Parkraumkontrolle wurde zur Kenntnis genommen.",
+   "amount_eur": null,
+   "importance": 28,
+   "simple_summary": null,
+   "interest": 35,
+   "interest_reason": "Digitale Parkraumkontrolle nur Bericht, aber betrifft Autofahrer.",
+   "impact": 20,
+   "impact_reason": "Die stärkste Rubrik ist die mögliche stadtweite Bedeutung der Parkraumkontrolle, beschlossen wurde aber nur die Kenntnisnahme eines Berichts.",
+   "deviation": null,
+   "parties": [
+    "Grüne"
+   ],
+   "applicants_named": true,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9436,
+   "ksinr": 4653,
+   "position": 16,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.7",
+   "title": "Sicherheitsaudit Bahnübergang Am Stadtrand (beratendes Mitglied Herr Lucks)",
+   "official_text": "Die Ergebnisse des Sicherheitsaudits werden zur Kenntnis genommen.",
+   "outcome": "noted",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": null,
+   "kvonr": null,
+   "raw_result": "Das Sicherheitsaudit werde dem Protokoll beigefügt (Anlage 3).",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Bahnübergang",
+    "Sicherheitsaudit"
+   ],
+   "summary": "Die Ergebnisse des Sicherheitsaudits für den Bahnübergang Am Stadtrand wurden zur Kenntnis genommen.",
+   "amount_eur": null,
+   "importance": 28,
+   "simple_summary": null,
+   "interest": 30,
+   "interest_reason": "Sicherheitsaudit Bahnübergang nur Kenntnisnahme, aber konkreter Ort.",
+   "impact": 20,
+   "impact_reason": "Die stärkste Rubrik ist die lokale Bedeutung für die Sicherheit am Bahnübergang, beschlossen wurde aber nur die Kenntnisnahme der Audit-Ergebnisse.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9437,
+   "ksinr": 4653,
+   "position": 17,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.8",
+   "title": "Linksseitige Führung des Radverkehrs an Straßen (beratendes Mitglied Herrn Lüdke vom 08.08.2026)",
+   "official_text": "Der Bericht wird zur Kenntnis genommen.",
+   "outcome": "noted",
+   "vote": null,
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0657",
+   "kvonr": 30115,
+   "raw_result": "Der Bericht wird zur Kenntnis genommen.",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Radverkehr",
+    "Verkehrsführung"
+   ],
+   "summary": "Der Bericht zur linksseitigen Führung des Radverkehrs an Straßen wurde zur Kenntnis genommen.",
+   "amount_eur": null,
+   "importance": 28,
+   "simple_summary": null,
+   "interest": 35,
+   "interest_reason": "Radverkehrsführung nur Bericht, aber relevant für Fahrradstadt Oldenburg.",
+   "impact": 20,
+   "impact_reason": "Die stärkste Rubrik ist die mögliche Relevanz für den Radverkehr, beschlossen wurde aber nur die Kenntnisnahme eines Berichts.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9438,
+   "ksinr": 4653,
+   "position": 18,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.9",
+   "title": "Parken auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen (beratendes Mitglied Herrn Lüdke vom 08.08.2026)",
+   "official_text": "Der Antrag wird vertagt.",
+   "outcome": "postponed",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": "26/0658",
+   "kvonr": 30116,
+   "raw_result": "- einstimmig - - vertagt -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Parken",
+    "Radverkehr",
+    "Sicherheitstrennstreifen"
+   ],
+   "summary": "Der Antrag zum Parken auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen wurde einstimmig vertagt.",
+   "amount_eur": null,
+   "importance": 14,
+   "simple_summary": null,
+   "interest": 50,
+   "interest_reason": "Falschparken auf Trennstreifen ist alltagsnah, aber Antrag nur vertagt.",
+   "impact": 5,
+   "impact_reason": "Der vertagte Antrag entfaltet vorerst keine Bindungswirkung.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9439,
+   "ksinr": 4653,
+   "position": 19,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.10",
+   "title": "Änderung der Verkehrsführung Herbartstr./Cäcilienstr./Cäcilienplatz (Fraktion Bündnis 90/Die Grünen und Ratsherr Lükermann vom 10.08.2026)",
+   "official_text": "Hiermit beantragen wir die Prüfung einer umfassenden Neuregelung der Einbahnstraßen und Einfahrtsregeln für das Quartier Herbartstraße, Cäcilienstraße, Cäcilienplatz und Bismarckstraße. Zum Beispiel: ",
+   "outcome": "accepted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [
+    "Bündnis 90/Die Grünen",
+    "Volt"
+   ],
+   "template_number": null,
+   "kvonr": null,
+   "raw_result": "- einstimmig -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Verkehrsführung",
+    "Einbahnstraße",
+    "Quartier"
+   ],
+   "summary": "Die Prüfung einer umfassenden Neuregelung der Einbahnstraßen im Quartier Herbart-/Cäcilienstraße wurde als Vorschlag eingebracht.",
+   "amount_eur": null,
+   "importance": 33,
+   "simple_summary": "Der Verkehrsausschuss hat die Verwaltung beauftragt, die Verkehrsführung im Viertel um Herbart-, Cäcilien- und Bismarckstraße zu überdenken. Sie prüft zum Beispiel, ob Einbahnstraßen anders verlaufen,",
+   "interest": 60,
+   "interest_reason": "Einbahnstraßen-Änderung in bekanntem Quartier, konkret und alltagsnah.",
+   "impact": 43,
+   "impact_reason": "Die stärkste Rubrik ist der Prüfauftrag zu einer umfassenden Neuordnung der Verkehrsführung in einem Quartier.",
+   "deviation": null,
+   "parties": [
+    "Grüne",
+    "Volt"
+   ],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9440,
+   "ksinr": 4653,
+   "position": 20,
+   "kind": "subvote",
+   "parent_item": "16.10",
+   "item_number": "16.10",
+   "title": "Änderungsantrag von Ratsherrn Ebbeke Harms: Umwandlung des ursprünglichen Beschlussvorschlags in einen Prüfauftrag für eine umfassende Neuregelung der Verkehrsführung im genannten Quartier",
+   "official_text": null,
+   "outcome": "accepted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [],
+   "template_number": null,
+   "kvonr": null,
+   "raw_result": "- einstimmig -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Änderungsantrag",
+    "Prüfauftrag",
+    "Verkehrsführung"
+   ],
+   "summary": "Der Änderungsantrag zur Umwandlung des Beschlussvorschlags in einen Prüfauftrag für die Verkehrsführung wurde vorgelegt.",
+   "amount_eur": null,
+   "importance": 24,
+   "simple_summary": null,
+   "interest": null,
+   "interest_reason": null,
+   "impact": 30,
+   "impact_reason": "Die Prüfung einer umfassenden Verkehrsneuregelung kann Folgeentscheidungen im Quartier vorbereiten, bindet aber noch keine konkrete Umsetzung.",
+   "deviation": null,
+   "parties": [],
+   "applicants_named": false,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  },
+  {
+   "id": 9441,
+   "ksinr": 4653,
+   "position": 21,
+   "kind": "decision",
+   "parent_item": null,
+   "item_number": "16.11",
+   "title": "Ausbesserung der gefährlichen Bordsteinkanten am Kreisel Pophankenweg/Bäkeplacken (BSW-Fraktion vom 10.08.2026)",
+   "official_text": "Die Verwaltung wird beauftragt, umgehend die Korrektur gefährlichen Bordsteinkanten am Kreisel Pophankenweg sicherzustellen.",
+   "outcome": "accepted",
+   "vote": "unanimous",
+   "no_votes": null,
+   "abstentions": null,
+   "factions": [
+    "BSW"
+   ],
+   "template_number": null,
+   "kvonr": null,
+   "raw_result": "- einstimmig -",
+   "policy_field": "verkehr",
+   "policy_tags": [
+    "Verkehrssicherheit",
+    "Kreisel",
+    "Bordsteinkanten"
+   ],
+   "summary": "Die Verwaltung wurde beauftragt, gefährliche Bordsteinkanten am Kreisel Pophankenweg/Bäkeplacken umgehend auszubessern.",
+   "amount_eur": null,
+   "importance": 28,
+   "simple_summary": null,
+   "interest": 65,
+   "interest_reason": "Gefährliche Bordsteinkanten am Kreisel, sehr konkretes Alltagsproblem.",
+   "impact": 34,
+   "impact_reason": "Die angenommene Maßnahme betrifft unmittelbar die Sicherheit an einem einzelnen Kreisel.",
+   "deviation": null,
+   "parties": [
+    "BSW"
+   ],
+   "applicants_named": true,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+  }
+ ],
+ "attendance": [],
+ "has_protocol": true,
+ "video_results": [],
+ "url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=4653",
+ "agenda_changes": [],
+ "course": {
+  "start": "17:00",
+  "public_count": 30,
+  "closed_count": 5,
+  "substantive_count": 22,
+  "summary": "Der Ausschuss hat fünf von sieben Beschlussvorlagen einstimmig angenommen. Drei Punkte wurden vertagt.",
+  "next_session": {
+   "ksinr": 4654,
+   "session_date": "2026-09-21",
+   "session_time": "17:00",
+   "location": "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2",
+   "has_agenda": true
+  },
+  "stages": [
+   {
+    "kind": "start",
+    "name": "Zum Start",
+    "name_medium": null,
+    "name_short": "Start",
+    "subtitle": null,
+    "range": "Ö 1 – Ö 4",
+    "count": 6,
+    "cells": [
+     {
+      "label": "Ö 1–3",
+      "title": "Formalien",
+      "items": [
+       "Ö 1",
+       "Ö 2",
+       "Ö 3",
+       "Ö 3.1",
+       "Ö 3.2"
+      ]
+     },
+     {
+      "label": "Ö 4",
+      "title": null,
+      "items": [
+       "Ö 4"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "content",
+    "name": "Beschlüsse und Berichte",
+    "name_medium": null,
+    "name_short": "Beschlüsse",
+    "subtitle": null,
+    "range": "Ö 5 – Ö 15",
+    "count": 11,
+    "cells": [
+     {
+      "label": "Ö 5",
+      "title": null,
+      "items": [
+       "Ö 5"
+      ]
+     },
+     {
+      "label": "Ö 6",
+      "title": null,
+      "items": [
+       "Ö 6"
+      ]
+     },
+     {
+      "label": "Ö 7",
+      "title": null,
+      "items": [
+       "Ö 7"
+      ]
+     },
+     {
+      "label": "Ö 8",
+      "title": null,
+      "items": [
+       "Ö 8"
+      ]
+     },
+     {
+      "label": "Ö 9",
+      "title": null,
+      "items": [
+       "Ö 9"
+      ]
+     },
+     {
+      "label": "Ö 10",
+      "title": null,
+      "items": [
+       "Ö 10"
+      ]
+     },
+     {
+      "label": "Ö 11",
+      "title": null,
+      "items": [
+       "Ö 11"
+      ]
+     },
+     {
+      "label": "Ö 12",
+      "title": null,
+      "items": [
+       "Ö 12"
+      ]
+     },
+     {
+      "label": "Ö 13",
+      "title": null,
+      "items": [
+       "Ö 13"
+      ]
+     },
+     {
+      "label": "Ö 14",
+      "title": null,
+      "items": [
+       "Ö 14"
+      ]
+     },
+     {
+      "label": "Ö 15",
+      "title": null,
+      "items": [
+       "Ö 15"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "motions",
+    "name": "Anträge",
+    "name_medium": null,
+    "name_short": "Anträge",
+    "subtitle": "der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
+    "range": "Ö 16",
+    "count": 11,
+    "cells": [
+     {
+      "label": "Ö 16.1",
+      "title": null,
+      "items": [
+       "Ö 16.1"
+      ]
+     },
+     {
+      "label": "Ö 16.2",
+      "title": null,
+      "items": [
+       "Ö 16.2"
+      ]
+     },
+     {
+      "label": "Ö 16.3",
+      "title": null,
+      "items": [
+       "Ö 16.3"
+      ]
+     },
+     {
+      "label": "Ö 16.4",
+      "title": null,
+      "items": [
+       "Ö 16.4"
+      ]
+     },
+     {
+      "label": "Ö 16.5",
+      "title": null,
+      "items": [
+       "Ö 16.5"
+      ]
+     },
+     {
+      "label": "Ö 16.6",
+      "title": null,
+      "items": [
+       "Ö 16.6"
+      ]
+     },
+     {
+      "label": "Ö 16.7",
+      "title": null,
+      "items": [
+       "Ö 16.7"
+      ]
+     },
+     {
+      "label": "Ö 16.8",
+      "title": null,
+      "items": [
+       "Ö 16.8"
+      ]
+     },
+     {
+      "label": "Ö 16.9",
+      "title": null,
+      "items": [
+       "Ö 16.9"
+      ]
+     },
+     {
+      "label": "Ö 16.10",
+      "title": null,
+      "items": [
+       "Ö 16.10"
+      ]
+     },
+     {
+      "label": "Ö 16.11",
+      "title": null,
+      "items": [
+       "Ö 16.11"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "end",
+    "name": "Zum Schluss",
+    "name_medium": null,
+    "name_short": "Schluss",
+    "subtitle": null,
+    "range": "Ö 17",
+    "count": 1,
+    "cells": [
+     {
+      "label": "Ö 17",
+      "title": null,
+      "items": [
+       "Ö 17"
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "closed",
+    "name": "Nichtöffentlicher Teil",
+    "name_medium": "Nichtöffentlich",
+    "name_short": null,
+    "subtitle": null,
+    "range": "N 18 – N 20",
+    "count": 5,
+    "cells": [
+     {
+      "label": "N 18–20",
+      "title": null,
+      "items": []
+     }
+    ]
+   }
+  ],
+  "items": {
+   "Ö 1": {
+    "short_title": "Feststellung der Beschlussfähigkeit",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 2": {
+    "short_title": "Genehmigung der Tagesordnung (öffentlicher Teil)",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 3": {
+    "short_title": "Genehmigung der Protokolle (öffentlicher Teil)",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 3.1": {
+    "short_title": "Genehmigung des Protokolls Nr. 04/26 (öffentlicher Teil) vom 11.05.2026",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 3.2": {
+    "short_title": "Genehmigung des Protokolls Nr. 05/26 (öffentlicher Teil) vom 08.06.2026",
+    "type": "formality",
+    "type_label": "Formalie",
+    "icon": "formalities",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": true,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 4": {
+    "short_title": "Einwohnerfragestunde",
+    "type": "question_time",
+    "type_label": "Fragestunde",
+    "icon": "citizen_question",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 5": {
+    "short_title": "VBN-Tarifanpassung 2027",
+    "type": "preliminary",
+    "type_label": "Vorberatung",
+    "icon": "ticket",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 5",
+      "outcome": "noted"
+     },
+     {
+      "ksinr": 4702,
+      "committee": "Rat",
+      "session_date": "2026-08-31",
+      "item_number": "Ö 8.1",
+      "outcome": "accepted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 6": {
+    "short_title": "Überarbeitung des städtischen Vorbehaltsnetzes",
+    "type": "preliminary",
+    "type_label": "Vorberatung",
+    "icon": "route",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 6",
+      "outcome": "postponed"
+     },
+     {
+      "ksinr": 4702,
+      "committee": "Rat",
+      "session_date": "2026-08-31",
+      "item_number": "Ö 8.2",
+      "outcome": null
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 7": {
+    "short_title": "Widmung der Straße \"Im Technologiepark\"",
+    "type": "decision",
+    "type_label": "Entscheidung",
+    "icon": "sign",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": true,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 7",
+      "outcome": "accepted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 8": {
+    "short_title": "Widmung der Straße \"Sylter Ring\"",
+    "type": "decision",
+    "type_label": "Entscheidung",
+    "icon": "sign",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": true,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 8",
+      "outcome": "accepted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 9": {
+    "short_title": "Widmung der Straße \"Amrumstraße\"",
+    "type": "decision",
+    "type_label": "Entscheidung",
+    "icon": "sign",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": true,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 9",
+      "outcome": "accepted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 10": {
+    "short_title": "Widmung der Straße \"Hooger Weg\"",
+    "type": "decision",
+    "type_label": "Entscheidung",
+    "icon": "sign",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": true,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 10",
+      "outcome": "accepted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 11": {
+    "short_title": "Widmung der Straße \"Föhrstraße\"",
+    "type": "decision",
+    "type_label": "Entscheidung",
+    "icon": "sign",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": true,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 11",
+      "outcome": "accepted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 12": {
+    "short_title": "Geplante Änderung der Verordnung der Stadt Oldenburg (Oldb) über Parkgebühren, Umstellung auf das neue Umsatzsteuerrecht (§ 2b UStG)",
+    "type": "report",
+    "type_label": "Bericht",
+    "icon": "parking",
+    "applicant": null,
+    "important": true,
+    "important_reason": "Die stärkste Rubrik ist die mögliche stadtweite Relevanz der Parkgebührenregelung, beschlossen wurde aber nur die Kenntnisnahme eines Berichts.",
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 12",
+      "outcome": "noted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 13": {
+    "short_title": "Sachstandsbericht Park&Ride",
+    "type": "report",
+    "type_label": "Bericht",
+    "icon": "parking",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 13",
+      "outcome": "noted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 14": {
+    "short_title": "Sachstand Hannah-Arendt-Straße (B-Plan S-745 A)",
+    "type": "report",
+    "type_label": "Bericht",
+    "icon": "route",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 14",
+      "outcome": "noted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 15": {
+    "short_title": "Kosten einer Bushaltestelle - Haltestelle Sieben Berge",
+    "type": "report",
+    "type_label": "Bericht",
+    "icon": "bus",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 15",
+      "outcome": "noted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 16.1": {
+    "short_title": "Weißenmoorstraße",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "route",
+    "applicant": "beratendes Mitglied Herr Pieper",
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": {
+     "ksinr": 4654,
+     "session_date": "2026-09-21",
+     "item_number": "Ö 11.1"
+    }
+   },
+   "Ö 16.2": {
+    "short_title": "Aufgaben und Ressourcen",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "motion",
+    "applicant": "beratendes Mitglied Herr Pieper",
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 16.2",
+      "outcome": "noted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 16.3": {
+    "short_title": "Umsetzung Aufwertung und Bewerbung von P + R Standorten",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "parking",
+    "applicant": "SPD-Fraktion",
+    "important": true,
+    "important_reason": "Die stärkste Rubrik ist die Bindungswirkung eines konkreten Umsetzungsauftrags für mehrere P+R-Standorte mit bereits vorgesehenen Haushaltsmitteln.",
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 16.4": {
+    "short_title": "Verkehrsunfallstatistik 2025 und Unfallhäufungsstellen im Stadtgebiet Oldenburg",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "route",
+    "applicant": "FDP-Fraktion",
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 16.4",
+      "outcome": "noted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 16.5": {
+    "short_title": "Ersatzneubau Brücke Tweelbäker See",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "route",
+    "applicant": "CDU-Fraktion",
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 16.6": {
+    "short_title": "Bericht zur Einführung einer digital unterstützenden Parkraumkontrolle in Oldenburg",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "parking",
+    "applicant": "Fraktion Bündnis 90/Die Grünen",
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 16.6",
+      "outcome": "noted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 16.7": {
+    "short_title": "Sicherheitsaudit Bahnübergang Am Stadtrand",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "route",
+    "applicant": "beratendes Mitglied Herr Lucks",
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 16.8": {
+    "short_title": "Linksseitige Führung des Radverkehrs an Straßen",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "bike",
+    "applicant": "beratendes Mitglied Herrn Lüdke",
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 16.8",
+      "outcome": "noted"
+     }
+    ],
+    "next_on_agenda": null
+   },
+   "Ö 16.9": {
+    "short_title": "Parken auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "parking",
+    "applicant": "beratendes Mitglied Herrn Lüdke",
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [
+     {
+      "ksinr": 4653,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-08-24",
+      "item_number": "Ö 16.9",
+      "outcome": "postponed"
+     },
+     {
+      "ksinr": 4654,
+      "committee": "Verkehrsausschuss",
+      "session_date": "2026-09-21",
+      "item_number": "Ö 11.2",
+      "outcome": null
+     }
+    ],
+    "next_on_agenda": {
+     "ksinr": 4654,
+     "session_date": "2026-09-21",
+     "item_number": "Ö 11.2"
+    }
+   },
+   "Ö 16.10": {
+    "short_title": "Änderung der Verkehrsführung Herbartstr./Cäcilienstr./Cäcilienplatz",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "sign",
+    "applicant": "Fraktion Bündnis 90/Die Grünen und Ratsherr Lükermann",
+    "important": true,
+    "important_reason": "Die stärkste Rubrik ist der Prüfauftrag zu einer umfassenden Neuordnung der Verkehrsführung in einem Quartier.",
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 16.11": {
+    "short_title": "Ausbesserung der gefährlichen Bordsteinkanten am Kreisel Pophankenweg/Bäkeplacken",
+    "type": "motion",
+    "type_label": "Antrag",
+    "icon": "route",
+    "applicant": "BSW-Fraktion",
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   },
+   "Ö 17": {
+    "short_title": "Anfragen und Anregungen",
+    "type": "inquiries",
+    "type_label": "Anfragen",
+    "icon": "inquiries",
+    "applicant": null,
+    "important": false,
+    "important_reason": null,
+    "postponed": 0,
+    "formality": false,
+    "formal_act": false,
+    "group": null,
+    "journey": [],
+    "next_on_agenda": null
+   }
+  }
+ }
+}
