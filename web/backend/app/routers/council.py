@@ -2057,6 +2057,16 @@ def session_detail(
     live_state = store.get_live_state(ksinr)
     if live_state:
         session["live_state"] = live_state
+    # „Kurs der Sitzung" (Plan Sitzungsseite, Schritt 1): Etappen, Art,
+    # Piktogramm, „wichtig" und „schon vertagt" je Punkt. Ein Zusatz — fällt
+    # er aus, bleibt die Seite mit der Tagesordnung von oben stehen.
+    try:
+        course = store.session_course(ksinr)
+    except Exception:  # noqa: BLE001 — Zusatz, nie 500 der Sitzung
+        _log.exception("session_course fehlgeschlagen für %s", ksinr)
+        course = None
+    if course:
+        session["course"] = course
     return session
 
 

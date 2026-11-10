@@ -10218,6 +10218,92 @@ export interface components {
             to_date: string;
         };
         /**
+         * CourseCell
+         * @description Eine Boje im Kurs. Meist ein Punkt; die Formalien am Anfang teilen sich
+         *     eine („Ö 1–3"), der nichtöffentliche Teil ist eine Schloss-Boje ohne
+         *     Punkte (sein Bereich steht in ``label``).
+         */
+        CourseCell: {
+            /** Items */
+            items: string[];
+            /** Label */
+            label: string;
+            /** Title */
+            title: string | null;
+        };
+        /**
+         * CourseItem
+         * @description Was Kurs und Karten je Tagesordnungspunkt brauchen.
+         *
+         *     ``type_label`` ist die Art in Worten („Entscheidung", „Vorberatung",
+         *     „Antrag" …; ``None`` bei ``other``). ``icon`` ist ein Schlüssel aus
+         *     ``council/course.py::ICONS`` (Plan, Anhang A). ``postponed``: in wie vielen
+         *     früheren Sitzungen DIESES Gremiums der Punkt schon stand und vertagt wurde
+         *     — 0, wo die Zuordnung nicht sicher ist. ``formal_act``: Widmung,
+         *     Einziehung, Umstufung — gleichartige direkt hintereinander teilen sich in
+         *     der Liste eine Karte. ``group``: Nummer der Vorhaben-Überschrift
+         *     („Bauleitplanung Meerweg"), unter der der Punkt steht.
+         */
+        CourseItem: {
+            /** Applicant */
+            applicant: string | null;
+            /** Formal Act */
+            formal_act: boolean;
+            /** Formality */
+            formality: boolean;
+            /** Group */
+            group: string | null;
+            /** Icon */
+            icon: string;
+            /** Important */
+            important: boolean;
+            /** Important Reason */
+            important_reason: string | null;
+            /** Postponed */
+            postponed: number;
+            /** Short Title */
+            short_title: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "formality" | "question_time" | "inquiries" | "announcement" | "motion" | "decision" | "preliminary" | "report" | "other";
+            /** Type Label */
+            type_label: string | null;
+        };
+        /**
+         * CourseStage
+         * @description Eine Etappe der Sitzung — ein helles Band im Kurs, ein Band in der Liste.
+         *
+         *     ``name`` ist der volle Name, ``name_medium`` und ``name_short`` die
+         *     kürzeren Formen, falls die Etappe im Kurs zu schmal ist (``None``: es gibt
+         *     keine, der Client nimmt die nächstlängere). ``subtitle`` ist die
+         *     Unterzeile des Bands („der Fraktionen, Gruppen …", im Rat der amtliche
+         *     Ausschussname). ``range`` ist „Ö 5 – Ö 10", bei einer Rubrik deren Kopf
+         *     („Ö 11"); ``count`` die Zahl der Tagesordnungspunkte darin.
+         */
+        CourseStage: {
+            /** Cells */
+            cells: components["schemas"]["CourseCell"][];
+            /** Count */
+            count: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "start" | "urgent" | "content" | "section" | "motions" | "end" | "closed" | "agenda";
+            /** Name */
+            name: string;
+            /** Name Medium */
+            name_medium: string | null;
+            /** Name Short */
+            name_short: string | null;
+            /** Range */
+            range: string;
+            /** Subtitle */
+            subtitle: string | null;
+        };
+        /**
          * DataLayer
          * @description Eine Datenschicht des Haushalts und ihr Stand (``finanzquellen.datenstand``).
          *
@@ -18988,6 +19074,33 @@ export interface components {
             selection: string;
         };
         /**
+         * SessionCourse
+         * @description Der „Kurs der Sitzung" (``docs/plan-sitzungsseite-kurs.md``, Schritt 1).
+         *
+         *     ``items`` ist nach Tagesordnungsnummer geschlüsselt und trägt jeden Punkt,
+         *     der in einer Boje steht — nicht die Überschriften und nicht den
+         *     nichtöffentlichen Teil. ``public_count`` und ``closed_count`` zählen alle
+         *     Zeilen der Tagesordnung („17 öffentlich · 5 nichtöffentlich"),
+         *     ``substantive_count`` die inhaltlichen Punkte (ohne Formalien,
+         *     Fragestunde, Anfragen, Mitteilungen — „3 von 9").
+         */
+        SessionCourse: {
+            /** Closed Count */
+            closed_count: number;
+            /** Items */
+            items: {
+                [key: string]: components["schemas"]["CourseItem"];
+            };
+            /** Public Count */
+            public_count: number;
+            /** Stages */
+            stages: components["schemas"]["CourseStage"][];
+            /** Start */
+            start: string | null;
+            /** Substantive Count */
+            substantive_count: number;
+        };
+        /**
          * SessionDetail
          * @description Eine Sitzung mit allem, was die Sitzungs-Seite braucht.
          *
@@ -19005,6 +19118,7 @@ export interface components {
             attendance: components["schemas"]["Attendance"][];
             /** Committee */
             committee: string;
+            course?: components["schemas"]["SessionCourse"];
             /** Decisions */
             decisions: components["schemas"]["DecisionRow"][];
             /** Fetched At */
@@ -28917,4 +29031,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 45194e1957ad4af1cac164d908e2b5badd7cc3e71d002c2487b407a5af3fdc73
+// vertrag-sha256: 373c08dd69e220308256019b5613fdbef535c1738c1e3132e483807370eaa621
