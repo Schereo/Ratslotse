@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Baustein – Kurs der Sitzung</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div ref="{{ wurzel }}" style="display: flex; flex-direction: column; gap: 8px; width: 100%; background: hsl(205, 52%, 92%); font-family: Inter, system-ui, sans-serif; color: hsl(212, 55%, 11%)">
+<sc-if value="{{ fehler }}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 14px; line-height: 22.4px; color: hsl(207, 18%, 38.5%)">Der Kurs lässt sich gerade nicht zeichnen.</p>
+</sc-if>
+<sc-for list="{{ reihen }}" as="reihe" hint-placeholder-count="1">
+<div style="position: relative; display: flex; flex-direction: {{ reihe.richtung }}; box-sizing: border-box; width: 100%; max-width: {{ reihe.maxBreite }}; height: {{ reihe.hoehe }}px; padding: 0 18px">
+<sc-for list="{{ reihe.zellen }}" as="z" hint-placeholder-count="12">
+<div style="position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center">
+<span aria-hidden="true" style="position: absolute; top: 0; bottom: 0; left: {{ z.bandLinks }}px; right: {{ z.bandRechts }}px; border-radius: {{ z.bandRadius }}; background: {{ z.band }}"></span>
+<sc-if value="{{ z.hatEtikett }}" hint-placeholder-val="{{ false }}">
+<span style="position: absolute; z-index: 1; top: 5px; {{ z.etikettLage }}; width: calc({{ z.etikettZellen }} * 100% - {{ z.etikettAbzug }}px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: {{ z.etikettGroesse }}px; line-height: 14px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: hsl(207, 18%, 38.5%)">{{ z.etikett }}</span>
+</sc-if>
+<span style="position: relative; align-self: stretch; display: flex; flex-direction: {{ z.richtung }}; align-items: center; height: {{ z.knoten }}px; margin-top: {{ z.kopf }}px">
+<span style="flex: 1 1 0; height: 0; border-top: {{ z.vor }}"></span>
+<sc-if value="{{ z.istStart }}" hint-placeholder-val="{{ false }}">
+<span title="{{ z.titel }}" style="flex: none; display: flex; align-items: center; justify-content: center; width: {{ z.kreis }}px; height: {{ z.kreis }}px; border-radius: 9999px; background: hsl(205, 92%, 34%); color: hsl(204, 45%, 98%)"><svg aria-hidden="true" width="{{ z.symbol }}" height="{{ z.symbol }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V8M5 12H2a10 10 0 0 0 20 0h-3M9 5a3 3 0 1 0 6 0a3 3 0 1 0-6 0"></path></svg></span>
+</sc-if>
+<sc-if value="{{ z.istBoje }}" hint-placeholder-val="{{ true }}">
+<a href="{{ z.href }}" onClick="{{ z.klick }}" title="{{ z.titel }}" aria-label="{{ z.titel }}" style="position: relative; flex: none; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 0 {{ z.rand }}px; border-radius: 9999px; text-decoration: none; opacity: {{ z.deckkraft }}; color: hsl(207, 18%, 38.5%)"><span style="display: flex; align-items: center; justify-content: center; width: {{ z.kreis }}px; height: {{ z.kreis }}px; box-sizing: border-box; border: {{ z.rahmen }}; border-radius: 9999px; background: hsl(0, 0%, 100%); {{ z.marke }}"><svg aria-hidden="true" width="{{ z.symbol }}" height="{{ z.symbol }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ z.d }}"></path></svg></span></a>
+</sc-if>
+<sc-if value="{{ z.istWichtig }}" hint-placeholder-val="{{ false }}">
+<a href="{{ z.href }}" onClick="{{ z.klick }}" title="{{ z.titel }}" aria-label="{{ z.titel }}" style="position: relative; flex: none; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 0 {{ z.rand }}px; border-radius: 9999px; text-decoration: none; opacity: {{ z.deckkraft }}; color: hsl(204, 45%, 98%)"><span style="position: relative; display: flex; align-items: center; justify-content: center; width: {{ z.kreis }}px; height: {{ z.kreis }}px; border-radius: 9999px; background: {{ z.fuellung }}; box-shadow: 0 0 0 {{ z.ring }}px {{ z.schein }}; {{ z.marke }}"><svg aria-hidden="true" width="{{ z.symbol }}" height="{{ z.symbol }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ z.d }}"></path></svg><span aria-hidden="true" style="display: {{ z.vertagt }}; position: absolute; top: -2px; right: -2px; width: 11px; height: 11px; box-sizing: border-box; border: 2px solid hsl(205, 52%, 92%); border-radius: 9999px; background: #f59e0b"></span></span></a>
+</sc-if>
+<sc-if value="{{ z.istPunkt }}" hint-placeholder-val="{{ false }}">
+<span title="{{ z.titel }}" style="flex: none; width: 10px; height: 10px; box-sizing: border-box; border: 2px solid {{ z.punktFarbe }}; border-radius: 9999px; opacity: {{ z.deckkraft }}; background: hsl(0, 0%, 100%); {{ z.marke }}"></span>
+</sc-if>
+<sc-if value="{{ z.istSchloss }}" hint-placeholder-val="{{ false }}">
+<span title="{{ z.titel }}" style="flex: none; display: flex; align-items: center; justify-content: center; width: {{ z.kreis }}px; height: {{ z.kreis }}px; box-sizing: border-box; border: 1px dashed hsla(207, 18%, 38.5%, 0.55); border-radius: 9999px; background: hsl(204, 45%, 97.5%); color: hsl(207, 18%, 38.5%); {{ z.marke }}"><svg aria-hidden="true" width="{{ z.symbol }}" height="{{ z.symbol }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
+</sc-if>
+<span style="flex: 1 1 0; height: 0; border-top: {{ z.nach }}"></span>
+</span>
+<sc-if value="{{ z.hatNummer }}" hint-placeholder-val="{{ true }}">
+<span style="position: relative; margin-top: 2px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: {{ z.nrGroesse }}px; line-height: 14px; letter-spacing: 0.05em; white-space: nowrap; {{ z.nrStil }}">{{ z.nr }}</span>
+</sc-if>
+<sc-if value="{{ z.hatKurz }}" hint-placeholder-val="{{ false }}">
+<span style="position: relative; box-sizing: border-box; max-width: 100%; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 16px; text-align: center">{{ z.kurz }}</span>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ reihe.hatKehre }}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="position: absolute; top: {{ reihe.kehreOben }}px; width: 18px; height: {{ reihe.kehreHoehe }}px; box-sizing: border-box; border: {{ reihe.kehreLinie }}; {{ reihe.kehreLage }}"></span>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"sitzung":{"editor":"enum","options":["wenig","normal","viel","nach"],"default":"normal"},"aktiv":{"editor":"text","default":""},"onWaehle":{"editor":null},"ergebnisse":{"editor":null},"dichte":{"editor":"enum","options":["auto","komfortabel","kompakt"],"default":"auto"},"breite":{"editor":"int","default":0,"min":0,"max":1600,"step":10,"unit":"px"},"$preview":{"width":1240,"height":86}}'>
+class Component extends DCLogic {
+componentDidMount() {
+if (super.componentDidMount) super.componentDidMount();
+const el = this.wurzel && this.wurzel.current;
+if (!el || typeof ResizeObserver === 'undefined') return;
+this.beobachter = new ResizeObserver(() => {
+const neu = el.offsetWidth || 0;
+const alt = (this.state && this.state.breite) || 0;
+if (neu > 0 && Math.abs(neu - alt) > 1) this.setState({ breite: neu });
+});
+this.beobachter.observe(el);
+}
+componentWillUnmount() {
+if (this.beobachter) this.beobachter.disconnect();
+if (super.componentWillUnmount) super.componentWillUnmount();
+}
+renderVals() {
+if (!this.wurzel) this.wurzel = { current: null };
+try {
+return this.rechne();
+} catch (e) {
+return { wurzel: this.wurzel, reihen: [], fehler: true };
+}
+}
+symbole() {
+return {
+liste: 'M3 17l2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8',
+frage: 'M7.9 20A9 9 0 1 0 4 16.1L2 22ZM9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01',
+fragen: 'M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2zM18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1',
+schild: 'M12 3v3M18.172 6a2 2 0 0 1 1.414.586l2.06 2.06a.5.5 0 0 1 0 .708l-2.06 2.06a2 2 0 0 1-1.414.586H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zM12 13v8',
+rad: 'M15 17.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0M2 17.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0M14 5a1 1 0 1 0 2 0a1 1 0 1 0-2 0M12 17.5V14l-3-3 4-3 2 3h2',
+ticket: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+tacho: 'M12 14l4-4M3.34 19a10 10 0 1 1 17.32 0',
+route: 'M3 19a3 3 0 1 0 6 0a3 3 0 1 0-6 0M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15M15 5a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+parken: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 17V7h4a3 3 0 0 1 0 6H9',
+werkzeug: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+blatt: 'M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10ZM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12',
+tropfen: 'M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05zM12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97',
+person: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0M19 8v6M22 11h-6',
+dokument: 'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7ZM14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8',
+wind: 'M12.8 19.6A2 2 0 1 0 14 16H2M17.5 8a2.5 2.5 0 1 1 2 4H2M9.8 4.4A2 2 0 1 1 11 8H2',
+karte: 'M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0zM15 5.764v15M9 3.236v15',
+sperre: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M4.9 4.9l14.2 14.2',
+gebaeude: 'M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18ZM6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4',
+haus: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10',
+euro: 'M4 10h12M4 14h9M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2',
+labor: 'M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2M8.5 2h7M7 16h10',
+muell: 'M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6',
+flugzeug: 'M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z',
+megafon: 'M3 11l18-5v12L3 14v-3zM11.6 16.8a3 3 0 1 1-5.8-1.6',
+bus: 'M8 6v6M15 6v6M2 12h19.6M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3M5 18a2 2 0 1 0 4 0a2 2 0 1 0-4 0M9 18h5M14 18a2 2 0 1 0 4 0a2 2 0 1 0-4 0'
+};
+}
+sitzungen() {
+return {
+wenig: { start: '17:00', phasen: [
+{ name: 'Zum Start', kurz: 'Start', punkte: [
+{ nr: 'Ö 1–3', titel: 'Formalien: Beschlussfähigkeit, Tagesordnung, Protokoll', kurz: 'Formalien', icon: 'liste' },
+{ nr: 'Ö 4', titel: 'Einwohnerfragestunde', kurz: 'Einwohnerfragen', icon: 'frage' }
+] },
+{ name: 'Anträge', kurz: 'Anträge', punkte: [
+{ nr: 'Ö 5.1', titel: 'Zweifeldausbau Hundsmühler Höhe (CDU)', kurz: 'Hundsmühler Höhe', icon: 'gebaeude' },
+{ nr: 'Ö 5.2', titel: 'Sanierungsplan für Sportstätten aktualisieren (Grüne)', kurz: 'Sanierungsplan', icon: 'werkzeug', wichtig: true }
+] },
+{ name: 'Zum Schluss', kurz: 'Schluss', punkte: [
+{ nr: 'Ö 6', titel: 'Anfragen und Anregungen', kurz: 'Anfragen', icon: 'fragen' }
+] },
+{ name: 'Nichtöffentlich', kurz: '', gesperrt: true, nr: 'N 7–9', titel: 'Nichtöffentlicher Teil · 3 Punkte', kurzTitel: '3 Punkte' }
+] },
+nach: { start: '17:03', phasen: [
+{ name: 'Zum Start', kurz: 'Start', punkte: [
+{ nr: 'Ö 1–3', titel: 'Formalien: Beschlussfähigkeit, Tagesordnung, Protokoll', kurz: 'Formalien', icon: 'liste', href: '#tagesordnung' },
+{ nr: 'Ö 4', titel: 'Einwohnerfragestunde', kurz: 'Einwohnerfragen', icon: 'frage', href: '#top-4' }
+] },
+{ name: 'Beschlüsse und Berichte', kurz: 'Beschlüsse', punkte: [
+{ nr: 'Ö 5', titel: 'Untere Nadorster Straße – Baumbesichtigung', icon: 'blatt', ergebnis: 'kenntnis', href: '#top-5' },
+{ nr: 'Ö 6', titel: 'VWG: Umstellung auf Batterieantrieb', icon: 'bus', ergebnis: 'angenommen', wichtig: true, href: '#top-6' },
+{ nr: 'Ö 7', titel: 'Teileinziehung der Junkerstraße', icon: 'sperre', ergebnis: 'angenommen', wichtig: true, href: '#top-7' },
+{ nr: 'Ö 8', titel: 'Umgestaltung des Bahnhofsvorplatzes', icon: 'tropfen', ergebnis: 'angenommen', wichtig: true, href: '#top-8' },
+{ nr: 'Ö 9', titel: 'Umgestaltung des Uhlhornswegs', icon: 'blatt', ergebnis: 'angenommen', href: '#top-9' },
+{ nr: 'Ö 10', titel: 'Widmung „Hannah-Arendt-Straße“', icon: 'schild', ergebnis: 'angenommen', href: '#top-10' },
+{ nr: 'Ö 11', titel: 'Widmung „Dr.-Hans-Klüber-Straße“', icon: 'schild', ergebnis: 'angenommen', href: '#top-11' },
+{ nr: 'Ö 12', titel: 'Straßenbenennung „Hahnenkampsmoor“', icon: 'schild', ergebnis: 'angenommen', href: '#top-12' },
+{ nr: 'Ö 13', titel: 'Straßenbenennungen in der Stadt Oldenburg', icon: 'schild', ergebnis: 'kenntnis', href: '#top-13' },
+{ nr: 'Ö 14', titel: 'Fußgängerbrücke Krusenbusch', icon: 'route', ergebnis: 'kenntnis', href: '#top-14' }
+] },
+{ name: 'Anträge', kurz: 'Anträge', punkte: [
+{ nr: 'Ö 15.1', titel: 'Pflasterung am Rathausmarkt und Julius-Mosen-Platz', icon: 'werkzeug', ergebnis: 'erledigt', href: '#top-15-1' },
+{ nr: 'Ö 15.2', titel: 'Bahnübergang Am Stadtrand', icon: 'route', ergebnis: 'kenntnis', href: '#top-15-2' },
+{ nr: 'Ö 15.3', titel: 'Weißenmoorstraße', icon: 'route', ergebnis: 'vertagt', href: '#top-15-3' },
+{ nr: 'Ö 15.4', titel: 'Verkehrsunfall mit Radfahrer', icon: 'rad', ergebnis: 'kein', href: '#top-15-4' }
+] },
+{ name: 'Zum Schluss', kurz: 'Schluss', punkte: [
+{ nr: 'Ö 16', titel: 'Anfragen und Anregungen', kurz: 'Anfragen', icon: 'fragen', href: '#top-16' }
+] },
+{ name: 'Nichtöffentlich', kurz: '', gesperrt: true, nr: 'N 17–20', titel: 'Nichtöffentlicher Teil · 5 Punkte', kurzTitel: '5 Punkte' }
+] },
+normal: { start: '17:00', phasen: [
+{ name: 'Zum Start', kurz: 'Start', punkte: [
+{ nr: 'Ö 1–3', titel: 'Formalien: Beschlussfähigkeit, Tagesordnung, Protokolle', kurz: 'Formalien', icon: 'liste', href: '#tagesordnung' },
+{ nr: 'Ö 4', titel: 'Einwohnerfragestunde', kurz: 'Einwohnerfragen', icon: 'frage', href: '#top-4' }
+] },
+{ name: 'Beschlüsse und Berichte', kurz: 'Beschlüsse', punkte: [
+{ nr: 'Ö 5', titel: 'Widmung der Straße „Pellwormer Weg“', kurz: 'Pellwormer Weg', icon: 'schild', href: '#top-5' },
+{ nr: 'Ö 6', titel: 'Widmung „Fuß- und Radweg am Pophankenweg“', kurz: 'Pophankenweg', icon: 'schild', href: '#top-6' },
+{ nr: 'Ö 7', titel: 'Widmung der Straße „Am Pulverturm“', kurz: 'Am Pulverturm', icon: 'schild', href: '#top-7' },
+{ nr: 'Ö 8', titel: 'Radverkehrsanlagen in der Kreyenstraße', kurz: 'Kreyenstraße', icon: 'rad', href: '#top-8' },
+{ nr: 'Ö 9', titel: 'Soziales D-Ticket in Oldenburg', kurz: 'D-Ticket', icon: 'ticket', wichtig: true, href: '#top-9' },
+{ nr: 'Ö 10', titel: 'Geschwindigkeitsmessung: Telraam und geeichte Geräte', kurz: 'Telraam', icon: 'tacho', href: '#top-10' }
+] },
+{ name: 'Anträge', kurz: 'Anträge', punkte: [
+{ nr: 'Ö 11.1', titel: 'Weißenmoorstraße', kurz: 'Weißenmoorstraße', icon: 'route', wichtig: true, vertagt: true, href: '#top-11-1' },
+{ nr: 'Ö 11.2', titel: 'Parken auf Sicherheitstrennstreifen', kurz: 'Trennstreifen', icon: 'parken', wichtig: true, vertagt: true, href: '#top-11-2' },
+{ nr: 'Ö 11.3', titel: 'Handwerkerparkausweis', kurz: 'Handwerkerparkausweis', icon: 'werkzeug', href: '#top-11-3' }
+] },
+{ name: 'Zum Schluss', kurz: 'Schluss', punkte: [
+{ nr: 'Ö 12', titel: 'Anfragen und Anregungen', kurz: 'Anfragen', icon: 'fragen', href: '#top-12' }
+] },
+{ name: 'Nichtöffentlich', kurz: '', gesperrt: true, nr: 'N 13–15', titel: 'Nichtöffentlicher Teil · 5 Punkte', kurzTitel: '5 Punkte' }
+] },
+viel: { start: '18:00', phasen: [
+{ name: 'Zum Start', kurz: 'Start', punkte: [
+{ nr: 'Ö 1–3', titel: 'Formalien: Beschlussfähigkeit, Tagesordnung, Protokoll', kurz: 'Formalien', icon: 'liste' },
+{ nr: 'Ö 4', titel: 'Mitteilungen des Oberbürgermeisters', kurz: 'Mitteilungen', icon: 'megafon' },
+{ nr: 'Ö 5', titel: 'Einwohnerfragestunde', kurz: 'Einwohnerfragen', icon: 'frage' }
+] },
+{ name: 'Stadtgrün, Umwelt und Klima', mittel: 'Stadtgrün', kurz: 'Grün', punkte: [
+{ nr: 'Ö 6.1', titel: 'Kompensation bei städtischen Baumfällungen', icon: 'blatt' },
+{ nr: 'Ö 6.2', titel: 'Zuschüsse für Regentonnen und Flächenentsiegelung', icon: 'tropfen' }
+] },
+{ name: 'Jugendhilfe', kurz: 'Jugend', punkte: [
+{ nr: 'Ö 7.1', titel: 'Beratendes Mitglied im Jugendhilfeausschuss', icon: 'person' },
+{ nr: 'Ö 7.2', titel: 'Änderung der Satzung des Jugendamtes', icon: 'dokument' }
+] },
+{ name: 'Verkehr', kurz: 'Verkehr', punkte: [
+{ nr: 'Ö 8.1', titel: 'VBN-Tarifanpassung 2027', icon: 'ticket', wichtig: true },
+{ nr: 'Ö 8.2', titel: 'Überarbeitung des städtischen Vorbehaltsnetzes', icon: 'route' }
+] },
+{ name: 'Stadtplanung und Bauen', mittel: 'Planen und Bauen', kurz: 'Bauen', punkte: [
+{ nr: 'Ö 9.1', titel: 'Teilflächennutzungsplan Windenergie', icon: 'wind', wichtig: true },
+{ nr: 'Ö 9.2', titel: 'Änderung 84 des Flächennutzungsplans', icon: 'karte' },
+{ nr: 'Ö 9.3', titel: 'Bebauungsplan 837', icon: 'karte' },
+{ nr: 'Ö 9.4', titel: 'Veränderungssperre 96 (Vergnügungsstätten)', icon: 'sperre' },
+{ nr: 'Ö 9.5', titel: 'Veränderungssperre 95 (Vergnügungsstätten)', icon: 'sperre' },
+{ nr: 'Ö 9.6', titel: 'Veränderungssperre 94 (Vergnügungsstätten)', icon: 'sperre' },
+{ nr: 'Ö 9.7', titel: 'Studie zur mehrfachen Innenentwicklung', icon: 'gebaeude' },
+{ nr: 'Ö 9.8', titel: 'Bauvorhaben Helmsweg / Storchweg', icon: 'haus' }
+] },
+{ name: 'Anträge', kurz: 'Anträge', punkte: [
+{ nr: 'Ö 10.1', titel: 'P+R-Standorte aufwerten und bewerben (SPD)', icon: 'parken' },
+{ nr: 'Ö 10.2', titel: 'Verkehrsführung Herbartstraße / Cäcilienplatz (Grüne, Ratsherr Lükermann)', icon: 'schild' },
+{ nr: 'Ö 10.3', titel: 'Grundsteuer C (BSW)', icon: 'euro', wichtig: true },
+{ nr: 'Ö 10.4', titel: 'Abstimmungsverhalten im Ratsinfo dokumentieren (Gruppe für Oldenburg)', icon: 'liste' },
+{ nr: 'Ö 10.5', titel: 'PAK-Belastung in der Flugplatzbäke (Gruppe für Oldenburg)', icon: 'labor' },
+{ nr: 'Ö 10.6', titel: 'Abfallentsorgung Fliegerhorst (CDU)', icon: 'muell' },
+{ nr: 'Ö 10.7', titel: 'Ratsbeschlüsse zum Fliegerhorst (FDP)', icon: 'flugzeug' }
+] },
+{ name: 'Zum Schluss', kurz: 'Schluss', punkte: [
+{ nr: 'Ö 11', titel: 'Anfragen und Anregungen', icon: 'fragen' }
+] },
+{ name: 'Nichtöffentlich', kurz: '', gesperrt: true, nr: 'N 12–15', titel: 'Nichtöffentlicher Teil · 5 Punkte', kurzTitel: '5 Punkte' }
+] }
+};
+}
+rechne() {
+const p = this.props || {};
+const s = this.state || {};
+const alle = this.sitzungen();
+const sitzung = alle[p.sitzung] || alle.normal;
+const sym = this.symbole();
+const vorgabe = Number(p.breite) || 0;
+const breite = vorgabe > 0 ? vorgabe : (s.breite > 0 ? s.breite : 1176);
+const LINIE = '2px solid hsla(205, 92%, 34%, 0.3)';
+const STRICH = '2px dashed hsla(205, 92%, 34%, 0.3)';
+const KEINE = '2px solid transparent';
+const FEST = '2px solid hsl(205, 92%, 34%)';
+const GRAU = { ring: 'hsla(207, 18%, 38.5%, 0.5)', voll: 'hsl(207, 18%, 38.5%)', schein: 'hsla(207, 18%, 38.5%, 0.16)' };
+const FARBEN = {
+angenommen: { ring: '#22c55e', voll: '#15803d', schein: 'rgba(34, 197, 94, 0.22)' },
+kenntnis: { ring: '#3b82f6', voll: '#1d4ed8', schein: 'rgba(59, 130, 246, 0.22)' },
+vertagt: { ring: '#f59e0b', voll: '#b45309', schein: 'rgba(245, 158, 11, 0.25)' },
+abgelehnt: { ring: '#ef4444', voll: '#b91c1c', schein: 'rgba(239, 68, 68, 0.22)' },
+erledigt: GRAU,
+kein: GRAU
+};
+const WORT = { angenommen: 'Angenommen', kenntnis: 'Zur Kenntnis', vertagt: 'Vertagt', abgelehnt: 'Abgelehnt', erledigt: 'Erledigt', kein: 'Kein Beschluss' };
+const waehle = typeof p.onWaehle === 'function' ? p.onWaehle : null;
+const eigene = (p.ergebnisse && typeof p.ergebnisse === 'object') ? p.ergebnisse : {};
+
+const phasen = sitzung.phasen;
+const zellen = [{ art: 'start', phase: -1, nr: sitzung.start, titel: 'Beginn ' + sitzung.start + ' Uhr' }];
+phasen.forEach((ph, pi) => {
+let liste;
+if (ph.gesperrt === true) {
+liste = [{ art: 'schloss', nr: ph.nr, titel: ph.titel, kurz: ph.kurzTitel }];
+} else {
+liste = ph.punkte.map((x) => {
+const erg = x.ergebnis || eigene[x.nr] || '';
+return {
+art: x.wichtig === true ? 'wichtig' : 'boje',
+nr: x.nr,
+titel: x.nr + ' · ' + x.titel + (erg && WORT[erg] ? ' · ' + WORT[erg] : ''),
+kurz: x.kurz || x.titel,
+ergebnis: erg,
+icon: x.icon,
+vertagt: x.vertagt === true,
+href: x.href || '#'
+};
+});
+}
+const anzahl = liste.length;
+if (liste.length < 2) {
+if (pi === phasen.length - 1) liste.unshift({ art: 'leer' });
+else liste.push({ art: 'leer' });
+}
+liste.forEach((z) => {
+z.phase = pi;
+z.gesperrt = ph.gesperrt === true;
+z.phasenName = ph.name;
+z.phasenKurz = ph.kurz !== undefined ? ph.kurz : ph.name;
+z.phasenMittel = ph.mittel || '';
+z.anzahl = anzahl;
+zellen.push(z);
+});
+});
+
+const n = zellen.length;
+let letzteOeffentliche = 0;
+zellen.forEach((z, i) => {
+if (z.art === 'boje' || z.art === 'wichtig') letzteOeffentliche = i;
+});
+const aktivNr = String(p.aktiv || '');
+let aktivIndex = -1;
+if (aktivNr) {
+zellen.forEach((z, i) => {
+if (z.nr === aktivNr) aktivIndex = i;
+});
+}
+
+const nutz = Math.max(120, breite - 36);
+const passen = (min) => Math.max(3, Math.floor(nutz / min));
+let dichte = (p.dichte === 'komfortabel' || p.dichte === 'kompakt') ? p.dichte : 'auto';
+let spalten = passen(60);
+if (dichte === 'auto') dichte = Math.ceil(n / spalten) > 2 ? 'kompakt' : 'komfortabel';
+const kompakt = dichte === 'kompakt';
+if (kompakt) spalten = passen(30);
+const zeilen = Math.max(1, Math.ceil(n / spalten));
+spalten = Math.ceil(n / zeilen);
+const zellenBreite = nutz / spalten;
+const zeigKurz = !kompakt && zeilen === 1 && zellenBreite >= 104;
+const KOPF = kompakt ? 18 : 20;
+const KNOTEN = kompakt ? 30 : 44;
+const FUSS = kompakt ? 18 : (zeigKurz ? 40 : 22);
+const hoehe = KOPF + KNOTEN + FUSS;
+
+const etikettBei = {};
+phasen.forEach((ph, pi) => {
+const teile = [];
+zellen.forEach((z, i) => {
+if (z.phase !== pi) return;
+const r = Math.floor(i / spalten);
+const letztes = teile[teile.length - 1];
+if (letztes && letztes.r === r) letztes.laenge += 1;
+else teile.push({ r: r, erste: i, laenge: 1 });
+});
+if (!teile.length) return;
+let wahl = teile[0];
+for (let k = 0; k < teile.length; k++) {
+if (teile[k].laenge >= 2) { wahl = teile[k]; break; }
+}
+etikettBei[wahl.erste] = wahl.laenge;
+});
+
+const fertig = zellen.map((z, i) => {
+const r = Math.floor(i / spalten);
+const rueck = r % 2 === 1;
+const vorher = i > 0 ? zellen[i - 1] : null;
+const nachher = i < n - 1 ? zellen[i + 1] : null;
+const anfang = !vorher || vorher.phase !== z.phase;
+const ende = !nachher || nachher.phase !== z.phase;
+const inBand = z.phase >= 0;
+const spaltEin = anfang ? 3 : 0;
+const spaltAus = ende ? 3 : 0;
+const rundEin = anfang ? 12 : 0;
+const rundAus = ende ? 12 : 0;
+const radL = rueck ? rundAus : rundEin;
+const radR = rueck ? rundEin : rundAus;
+const wichtig = z.art === 'wichtig';
+const kreis = wichtig ? (kompakt ? 26 : 40) : (kompakt ? 22 : 30);
+const laenge = etikettBei[i] || 0;
+const name = z.phasenName || '';
+const voll = z.anzahl > 1 ? name + ' · ' + z.anzahl : name;
+const abzug = kompakt ? 12 : 20;
+const platz = Math.max(1, laenge) * zellenBreite - abzug;
+const passt = (text) => text.length * 7.1 <= platz;
+let etikett = z.phasenKurz || '';
+if (!kompakt) {
+if (passt(voll)) etikett = voll;
+else if (passt(name)) etikett = name;
+else if (z.phasenMittel && passt(z.phasenMittel)) etikett = z.phasenMittel;
+}
+const hervor = wichtig || z.art === 'start' || i === aktivIndex;
+const farbe = z.ergebnis ? (FARBEN[z.ergebnis] || GRAU) : null;
+const nummer = z.nr;
+return {
+richtung: rueck ? 'row-reverse' : 'row',
+kopf: KOPF,
+knoten: KNOTEN,
+vor: i === 0 ? KEINE : (aktivIndex >= 0 && i <= aktivIndex ? FEST : (i > letzteOeffentliche ? STRICH : LINIE)),
+nach: i === n - 1 ? KEINE : (aktivIndex >= 0 && i < aktivIndex ? FEST : (i >= letzteOeffentliche ? STRICH : LINIE)),
+rahmen: farbe ? '2px solid ' + farbe.ring : '1px solid hsl(206, 38%, 82%)',
+fuellung: farbe ? farbe.voll : 'hsl(205, 92%, 34%)',
+schein: farbe ? farbe.schein : 'hsla(205, 92%, 34%, 0.16)',
+punktFarbe: farbe ? farbe.ring : 'hsla(205, 92%, 34%, 0.55)',
+deckkraft: (aktivIndex >= 0 && i < aktivIndex) ? 0.55 : 1,
+marke: i === aktivIndex ? 'outline: 3px solid hsl(19, 92%, 50%); outline-offset: 2px' : 'outline: none',
+klick: (waehle && nummer) ? ((e) => { if (e && e.preventDefault) e.preventDefault(); waehle(nummer); }) : undefined,
+band: !inBand ? 'transparent' : (z.gesperrt ? 'hsla(0, 0%, 100%, 0.3)' : 'hsla(0, 0%, 100%, 0.62)'),
+bandLinks: rueck ? spaltAus : spaltEin,
+bandRechts: rueck ? spaltEin : spaltAus,
+bandRadius: radL + 'px ' + radR + 'px ' + radR + 'px ' + radL + 'px',
+hatEtikett: laenge > 0 && etikett.length > 0,
+etikett: etikett,
+etikettZellen: Math.max(1, laenge),
+etikettLage: (rueck ? 'right: ' : 'left: ') + (abzug / 2) + 'px; text-align: ' + (rueck ? 'right' : 'left'),
+etikettAbzug: abzug,
+etikettGroesse: kompakt ? 9.5 : 10.5,
+ring: kompakt ? 3 : 4,
+istStart: z.art === 'start',
+istBoje: z.art === 'boje' && (!kompakt || i === aktivIndex),
+istPunkt: z.art === 'boje' && kompakt && i !== aktivIndex,
+istWichtig: wichtig,
+istSchloss: z.art === 'schloss',
+kreis: kreis,
+symbol: wichtig ? (kompakt ? 14 : 18) : (kompakt ? 12 : 15),
+rand: -Math.round((44 - kreis) / 2),
+d: sym[z.icon] || sym.dokument,
+vertagt: z.vertagt === true ? 'block' : 'none',
+hatNummer: z.art !== 'leer' && (!kompakt || z.art !== 'boje' || anfang || i === aktivIndex),
+nr: kompakt ? String(z.nr || '').replace('Ö ', '') : (z.nr || ''),
+nrGroesse: kompakt ? 9.5 : 10.5,
+nrStil: hervor ? 'font-weight: 700; color: hsl(212, 55%, 11%)' : 'font-weight: 500; color: hsl(207, 18%, 38.5%)',
+hatKurz: zeigKurz && z.art !== 'leer' && z.art !== 'start',
+kurz: z.kurz || '',
+href: z.href || '#',
+titel: z.titel || ''
+};
+});
+
+const reihen = [];
+for (let r = 0; r < zeilen; r++) {
+const rueck = r % 2 === 1;
+const richtung = rueck ? 'row-reverse' : 'row';
+const stueck = fertig.slice(r * spalten, (r + 1) * spalten);
+const endZelle = stueck[stueck.length - 1];
+while (stueck.length < spalten) {
+stueck.push({
+richtung: richtung, kopf: KOPF, knoten: KNOTEN, vor: KEINE, nach: KEINE,
+band: 'transparent', bandLinks: 0, bandRechts: 0, bandRadius: '0px',
+hatEtikett: false, istStart: false, istBoje: false, istPunkt: false, istWichtig: false, istSchloss: false,
+hatNummer: false, hatKurz: false
+});
+}
+reihen.push({
+richtung: richtung,
+hoehe: hoehe,
+maxBreite: zeilen === 1 ? (spalten * 150 + 36) + 'px' : 'none',
+zellen: stueck,
+hatKehre: r < zeilen - 1,
+kehreLinie: endZelle ? endZelle.nach : LINIE,
+kehreLage: rueck ? 'left: 0; border-right: 0; border-radius: 14px 0 0 14px' : 'right: 0; border-left: 0; border-radius: 0 14px 14px 0',
+kehreOben: KOPF + KNOTEN / 2 - 1,
+kehreHoehe: hoehe + 10
+});
+}
+return { wurzel: this.wurzel, reihen: reihen, fehler: false };
+}
+}
+</script>
+</body>
+</html>

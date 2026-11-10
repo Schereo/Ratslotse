@@ -2745,6 +2745,84 @@ class AgendaChange(TypedDict):
     zeilen: list[AgendaChangeLine]
 
 
+CourseStageKind = Literal["start", "urgent", "content", "section", "motions", "end", "closed", "agenda"]
+CourseItemType = Literal["formality", "question_time", "inquiries", "announcement", "motion",
+                         "decision", "preliminary", "report", "other"]
+
+
+class CourseCell(TypedDict):
+    """Eine Boje im Kurs. Meist ein Punkt; die Formalien am Anfang teilen sich
+    eine („Ö 1–3"), der nichtöffentliche Teil ist eine Schloss-Boje ohne
+    Punkte (sein Bereich steht in ``label``)."""
+    label: str
+    #: „Formalien" an der gemeinsamen Formalien-Boje, sonst ``None``.
+    title: str | None
+    items: list[str]
+
+
+class CourseStage(TypedDict):
+    """Eine Etappe der Sitzung — ein helles Band im Kurs, ein Band in der Liste.
+
+    ``name`` ist der volle Name, ``name_medium`` und ``name_short`` die
+    kürzeren Formen, falls die Etappe im Kurs zu schmal ist (``None``: es gibt
+    keine, der Client nimmt die nächstlängere). ``subtitle`` ist die
+    Unterzeile des Bands („der Fraktionen, Gruppen …", im Rat der amtliche
+    Ausschussname). ``range`` ist „Ö 5 – Ö 10", bei einer Rubrik deren Kopf
+    („Ö 11"); ``count`` die Zahl der Tagesordnungspunkte darin.
+    """
+    kind: CourseStageKind
+    name: str
+    name_medium: str | None
+    name_short: str | None
+    subtitle: str | None
+    range: str
+    count: int
+    cells: list[CourseCell]
+
+
+class CourseItem(TypedDict):
+    """Was Kurs und Karten je Tagesordnungspunkt brauchen.
+
+    ``type_label`` ist die Art in Worten („Entscheidung", „Vorberatung",
+    „Antrag" …; ``None`` bei ``other``). ``icon`` ist ein Schlüssel aus
+    ``council/course.py::ICONS`` (Plan, Anhang A). ``postponed``: in wie vielen
+    früheren Sitzungen DIESES Gremiums der Punkt schon stand und vertagt wurde
+    — 0, wo die Zuordnung nicht sicher ist. ``formal_act``: Widmung,
+    Einziehung, Umstufung — gleichartige direkt hintereinander teilen sich in
+    der Liste eine Karte. ``group``: Nummer der Vorhaben-Überschrift
+    („Bauleitplanung Meerweg"), unter der der Punkt steht.
+    """
+    short_title: str
+    type: CourseItemType
+    type_label: str | None
+    icon: str
+    applicant: str | None
+    important: bool
+    important_reason: str | None
+    postponed: int
+    formality: bool
+    formal_act: bool
+    group: str | None
+
+
+class SessionCourse(TypedDict):
+    """Der „Kurs der Sitzung" (``docs/plan-sitzungsseite-kurs.md``, Schritt 1).
+
+    ``items`` ist nach Tagesordnungsnummer geschlüsselt und trägt jeden Punkt,
+    der in einer Boje steht — nicht die Überschriften und nicht den
+    nichtöffentlichen Teil. ``public_count`` und ``closed_count`` zählen alle
+    Zeilen der Tagesordnung („17 öffentlich · 5 nichtöffentlich"),
+    ``substantive_count`` die inhaltlichen Punkte (ohne Formalien,
+    Fragestunde, Anfragen, Mitteilungen — „3 von 9").
+    """
+    start: str | None
+    public_count: int
+    closed_count: int
+    substantive_count: int
+    stages: list[CourseStage]
+    items: dict[str, CourseItem]
+
+
 class SessionDetail(SessionRow):
     """Eine Sitzung mit allem, was die Sitzungs-Seite braucht.
 
@@ -2765,6 +2843,10 @@ class SessionDetail(SessionRow):
     #: Live-Stand aus der Übertragung (s. ``SessionRow.live_state``) — hier
     #: auch nach der Sitzung, solange die Zeile steht (``finished``).
     live_state: NotRequired[LiveState]
+    #: Etappen und je Punkt Art, Piktogramm, „wichtig", „schon vertagt".
+    #: Fehlt ohne Tagesordnung. ``NotRequired``, weil die App im Store das
+    #: Feld nicht kennt — zusätzlich, nie anstelle von ``agenda_items``.
+    course: NotRequired[SessionCourse]
 
 
 class ImportanceBreakdown(TypedDict):

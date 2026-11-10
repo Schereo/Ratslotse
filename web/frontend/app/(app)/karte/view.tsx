@@ -30,7 +30,7 @@ import { ShareButton } from "@/components/share-button";
 import { Mascot } from "@/components/mascot";
 import { STAFFEL, staffelStil } from "@/components/staffel";
 import {
-  BeteiligungKarte, DemnaechstKarte, Highlights, InvestitionenKarte, MeineKnoepfe, Nachbarn, OrtSuche, PlaeneKarte, PresseBlock,
+  BeteiligungKarte, DemnaechstKarte, Highlights, InvestitionenKarte, MeineKnoepfe, Nachbarn, OrtSuche, PlaeneKarte, PresseBlock, ViertelMerken,
   QUELLEN_HINWEIS, Rangliste, SperrungenKarte, StandChips, StandortKnopf, Stadtzahl, VorhabenDetail, VorhabenListe,
   datenstand, useMeineOrtsbereiche, useTafel, useTafelZustand, useUebersicht,
 } from "@/components/viertel/bausteine";
@@ -553,6 +553,9 @@ function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt, themen, wah
         <div className="mt-4 border-t border-border pt-4">
           <h2 className="font-display text-base font-bold leading-snug">Und vor deiner Haustür?</h2>
           <MeineKnoepfe meine={meine} byName={byName} ortHref={(id) => karteHref(id)} />
+          {meine.length === 0 && <p className="mt-1 text-hinweis text-muted-foreground">
+            Such deine Straße oder tippe auf ein Viertel — mit „Zu meinen Vierteln“ steht es auf deiner Startseite.
+          </p>}
           <OrtSuche className="mt-3" onWaehlen={onOrt} />
           <StandortKnopf className="mt-2" onGefunden={(name) => {
             const o = byName.get(name);
@@ -611,6 +614,7 @@ function ViertelTafel({ data, place, z, wahl, nebenan }: {
               : `${z.vorhaben.length} Vorhaben aus den Beschlüssen der letzten zwei Jahre` +
                 (datenstand(data) ? ` · ${datenstand(data)}` : "")}
           </p>
+          <ViertelMerken name={place.name} className="mt-3" />
         </div>
         {/* Die Tafel liegt hinter der Anmeldung — eine öffentliche Ansicht
             gibt es nicht. Der Hinweis reist mit dem Link, damit niemand
