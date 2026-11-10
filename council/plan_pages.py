@@ -1225,6 +1225,9 @@ def _shape_places(shapes: dict) -> list[dict]:
         name = _area_name(shapes, p)
         group = p.get("group") or shapes.get("group") or "Gebiet"
         figure = p.get("figure")
+
+        def link(page):
+            return f"{url}#page={page}" if page else None
         out.append({
             "slug": "gebiet-" + p["code"].lower().replace(" ", "-"), "name": name, "kind": "area",
             "lat": lat, "lon": lon, "geometry": p["display_geometry"],
@@ -1233,9 +1236,31 @@ def _shape_places(shapes: dict) -> list[dict]:
                        "figure": figure, "page": p["page"],
                        "source_label": f"{word} {figure}, S. {p['page']}" if figure else f"S. {p['page']}",
                        "source_url": p.get("source_url") or f"{url}#page={p['page']}",
-                       "area_ha": ha, "area_ha_plan": p.get("area_ha_plan"), "order": f"{i:03d}"}],
+                       "area_ha": ha, "area_ha_plan": p.get("area_ha_plan"), "order": f"{i:03d}",
+                       "summary": p.get("summary"), "radius_m": p.get("radius_m"),
+                       "facts": [{**f_, "source_url": link(f_.get("page"))} for f_ in p.get("facts", [])],
+                       "notes": [{**n, "source_url": link(n.get("page"))} for n in p.get("notes", [])]}],
             "districts": districts})
     return out
+
+
+#: So viele Arten unterscheidet die Karte am Rand (durchgezogen, gestrichelt, gepunktet, Strich-Punkt) —
+#: eine Farbe für alle, die Seite färbt nicht nach Art (Designsprache: Primärtönung).
+AREA_STYLES = 4
+
+
+def _area_groups(shapes: dict | None, places: list[dict]) -> list[dict]:
+    """Die Arten der Gebiete in der Reihenfolge ihres ersten Auftretens — mit dem, was der Plan darunter
+    versteht (``groups`` der Datei), und dem Randstil auf der Karte."""
+    seen: list[str] = []
+    for p in places:
+        if p["areas"] and p["areas"][0]["group"] not in seen:
+            seen.append(p["areas"][0]["group"])
+    known = (shapes or {}).get("groups", {})
+    return [{"name": name, "description": known.get(name, {}).get("description"),
+             "page": known.get(name, {}).get("page"), "source_url": known.get(name, {}).get("source_url"),
+             "sites_only": all(p["geometry"] is None for p in places if p["areas"] and p["areas"][0]["group"] == name),
+             "style": i % AREA_STYLES} for i, name in enumerate(seen)]
 
 
 def places_block(store, plan: register.Plan) -> dict | None:
@@ -1253,6 +1278,7 @@ def places_block(store, plan: register.Plan) -> dict | None:
                 else AREAS_NOTE) + (DECISIONS_TAIL if decision_places else "")
     return {
         "items": [{k: v for k, v in p.items() if k != "districts"} for p in places],
+        "groups": _area_groups(plan_state.plan_shapes(plan.key), places),
         "section_places": with_sections,
         "area_places": with_areas,
         "geojson": bool(with_sections or with_areas),
@@ -1279,7 +1305,8 @@ def geojson_export(store, plan: register.Plan) -> dict | None:
         features.append({"type": "Feature", "geometry": f["geometry"], "properties": {
             "kind": "area" if f["geometry"]["type"] != "Point" else "site", "code": a["code"], "name": place["name"],
             "group": a["group"], "figure": a["figure"], "page": a["page"], "source_url": a["source_url"],
-            "area_ha": a["area_ha"], "area_ha_plan": a["area_ha_plan"]}})
+            "area_ha": a["area_ha"], "area_ha_plan": a["area_ha_plan"], "summary": a["summary"],
+            "facts": a["facts"]}})
     if not features:
         return None
     sources = []

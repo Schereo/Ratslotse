@@ -36,6 +36,7 @@ sys.path.insert(0, str(WURZEL / "scripts"))
 from council import geo, places, plan_state  # noqa: E402
 
 import plan_umrisse as U  # noqa: E402
+from plan_angaben import SPL_PLANNED  # noqa: E402
 
 OSM_DIR = Path.home() / ".cache" / "ratslotse" / "plan-quellen" / "osm"
 DISPLAY_SIMPLIFY = 0.00004
@@ -237,6 +238,8 @@ def laermaktionsplan() -> tuple[dict, list[str]]:
                                            "figure": 53, "area_ha_plan": stated, "source": "Karte",
                                            "source_url": f"{url}#page=152"}))
     # Friedhöfe und Erholungsflächen: OSM, wo der Name steht; sonst Abb. 54, S. 154 (hellgrüne Schraffur)
+    import plan_angaben as A
+    shares = A.laerm_shares()
     osm = {tags.get("name"): g_ for tags, g_ in osm_polygons(OSM_DIR / "ruhige-gebiete.json") if tags.get("name")}
     a54 = U._image(doc, 154)
     frame54 = np.zeros(a54.shape[:2], bool)
@@ -250,6 +253,7 @@ def laermaktionsplan() -> tuple[dict, list[str]]:
     for code, (name, stated, kind, osm_name) in LAP_TABLE_28_29.items():
         # Der Umriss aus OSM stützt sich auf die Tabelle (S. 155), der nachgezeichnete auf Abb. 54 (S. 154).
         props = {"code": str(code), "name": name, "group": kind, "area_ha_plan": stated,
+                 "facts": [A.fact("Anteil der Fläche unter 60 dB(A)", shares[str(code)], 155)],
                  **({"page": 155, "figure": None, "source_url": f"{url}#page=155"} if osm_name
                     else {"page": 154, "figure": 54, "source_url": f"{url}#page=154"})}
         if osm_name:
@@ -271,6 +275,7 @@ def laermaktionsplan() -> tuple[dict, list[str]]:
         features.append(feature(geometry, {**props, "source": source}))
     data = {"type": "FeatureCollection", "name": "Ruhige Gebiete (Lärmaktionsplan)", "plan": "laermaktionsplan",
             "document": LAP_DOC, "generated": dt.date.today().isoformat(),
+            "groups": A.groups("laermaktionsplan", LAP_DOC["document_id"]),
             "method": "Abb. 53 und 54 über die rote Stadtgrenze verortet, Schraffur nach Dichte herausgelöst; "
                       "Friedhöfe und benannte Erholungsflächen aus OpenStreetMap. Jede Fläche gegen Tabelle 27–29 "
                       "gehalten; scripts/plan_karten.py",
@@ -422,6 +427,8 @@ def masterplan_stadtgruen() -> tuple[dict, list[str]]:
     O[960:, :385] = 0
     outline_dist = U._distance(O > 0, 30.0)
     doc = pymupdf.open(holen(MSG_PLAN_DOC["document_id"]))
+    import plan_angaben as A
+    details = A.masterplan()
     notes, features = [], []
     for code, page in MSG_DETAIL_PAGES.items():
         name, _label, expect = MSG_AREAS[code]
@@ -451,6 +458,7 @@ def masterplan_stadtgruen() -> tuple[dict, list[str]]:
         geometry = U._map_coords(dict(mapping(poly_px)), lambda u, v, x0=x0, y0=y0, s=s_d: tuple(
             round(c, 6) for c in U._lonlat(x0 + u * s, y0 - v * s)))
         f = feature(geometry, {"code": code, "name": name, "group": "Maßnahmenbereich", "page": page, "figure": None,
+                               **details[code],
                                "area_ha_plan": None, "source": "Karte", "metres_per_pixel": round(m_px, 2),
                                "source_url": f"https://buergerinfo.oldenburg.de/getfile.php?id="
                                              f"{MSG_PLAN_DOC['document_id']}&type=do#page={page}"})
@@ -466,6 +474,7 @@ def masterplan_stadtgruen() -> tuple[dict, list[str]]:
         features.append(f)
     data = {"type": "FeatureCollection", "name": "Maßnahmenbereiche (Masterplan Stadtgrün)",
             "plan": "masterplan_stadtgruen", "document": MSG_PLAN_DOC, "generated": dt.date.today().isoformat(),
+            "groups": A.groups("masterplan_stadtgruen", MSG_PLAN_DOC["document_id"]),
             "method": "Je Bereich die Einzelkarte des Masterplans: Maßstab aus ihrem Balken, Lage über die "
                       "Übersichtskarte (Baumerhalt- und Entwicklungsstrategie, Abb. 8, über die gestrichelte "
                       "Stadtgrenze verortet), Fläche aus der orangen Umrandung; gegen die Ortsbereiche des Namens "
@@ -485,18 +494,109 @@ SPL_MIN_HA = 3.0
 SPL_SIMPLIFY = 0.00006  # Grad, rund 4–6 m
 
 
-def spielleitplanung() -> tuple[dict, list[str]]:
-    """Karte 9 (S. 48): Die Karte ist außerhalb der Stadt durchsichtig (schwarz) — ihre Kante ist die
-    Stadtgrenze. Rot schraffiert sind die Suchräume: bebaute Gebiete ohne Spielplatz in erreichbarer Nähe."""
-    import pymupdf
-    from plan_massnahmen import holen
-    from shapely.ops import unary_union
-    doc = pymupdf.open(holen(SPL_DOC["document_id"]))
-    a = U._image(doc, 48)
+#: Strichfarbe der Einzugskreise je Spielplatztyp (Karten 7–9, Legende S. 38).
+SPL_COLORS = {"Nachbarschaftsspielplatz": (20, 64, 176), "Quartiersspielplatz": (244, 180, 0),
+              "Stadtviertelspielplatz": (176, 16, 136), "Stadtteilspielplatz": (48, 144, 128),
+              "Ballspielfläche": (96, 176, 64)}
+#: Ein Kreis zählt, wenn auf so viel seines Umfangs (90 Winkelstücke) Strich in seiner Farbe liegt. Gemessen
+#: auf Karte 7: Bei 0,45 und 0,55 dieselben Zahlen (92/36/5/6/5, laut Text 92/37/5/6/5).
+SPL_MIN_COVER = 0.45
+
+
+def _spl_map(doc, page: int):
+    """Karte 7, 8 oder 9: außerhalb der Stadt durchsichtig (schwarz) — ihre Kante ist die Stadtgrenze."""
+    a = U._image(doc, page)
     city = a.max(axis=2) > 25
     inner = city.copy()
     inner[1:] &= city[:-1]; inner[:-1] &= city[1:]; inner[:, 1:] &= city[:, :-1]; inner[:, :-1] &= city[:, 1:]
-    t = fit_boundary(city & ~inner)
+    return a, city, fit_boundary(city & ~inner)
+
+
+def _ring_cover(sx, sy, x: float, y: float, r: float, width: float = 2.0) -> float:
+    """Anteil der 90 Winkelstücke eines Kreises um (x, y), auf denen ein Strichpixel nahe dem Radius liegt."""
+    import numpy as np
+    sel = (np.abs(sx - x) <= r + 3) & (np.abs(sy - y) <= r + 3)
+    dx, dy = sx[sel] - x, sy[sel] - y
+    on = np.abs(np.hypot(dx, dy) - r) <= width
+    return len(np.unique(((np.arctan2(dy[on], dx[on]) + math.pi) / (2 * math.pi) * 90).astype(int) % 90)) / 90
+
+
+def _circles(a, t: dict) -> dict[str, list[tuple[int, int, float]]]:
+    """Die Einzugskreise der Spielplätze je Typ: Kandidaten aus einer Ring-Faltung (fester Radius je Typ),
+    bestätigt über die Abdeckung des Umfangs — die Kreise sind an Barrieren abgeschnitten und überlappen."""
+    import numpy as np
+    from plan_angaben import SPL_TYPES
+    H, W = a.shape[:2]
+    mpx = t["s"] * U.COS
+    out = {}
+    for name, col in SPL_COLORS.items():
+        stroke = np.sqrt(((a.astype(int) - np.array(col)) ** 2).sum(axis=2)) < 75
+        r = SPL_TYPES[name][0] / mpx
+        size = int(r + 4)
+        yy, xx = np.mgrid[-size:size + 1, -size:size + 1]
+        ring = (np.abs(np.hypot(xx, yy) - r) <= 2.0).astype(float)
+        shape_ = (H + 2 * size, W + 2 * size)
+        acc = np.fft.irfft2(np.fft.rfft2(stroke.astype(float), s=shape_) * np.fft.rfft2(ring, s=shape_),
+                            s=shape_)[size:size + H, size:size + W] / ring.sum()
+        sy, sx = np.nonzero(stroke)
+        found: list[tuple[int, int, float]] = []
+        for _ in range(400):
+            y, x = np.unravel_index(np.argmax(acc), acc.shape)
+            if acc[y, x] < 0.08:
+                break
+            acc[max(0, y - 3):y + 4, max(0, x - 3):x + 4] = 0
+            cover = _ring_cover(sx, sy, float(x), float(y), r)
+            if cover >= SPL_MIN_COVER and all(math.hypot(x - fx, y - fy) > r * 0.5 for fx, fy, _ in found):
+                found.append((int(x), int(y), round(cover, 2)))
+                acc[max(0, y - int(r * 0.5)):y + int(r * 0.5) + 1, max(0, x - int(r * 0.5)):x + int(r * 0.5) + 1] = 0
+        out[name] = found
+    return out
+
+
+def _planned(a8, t8: dict, existing: dict, conn) -> list[dict]:
+    """Die gestrichelten Kreise der geplanten Spielplätze auf Karte 8: Suche um den Anker aus
+    ``plan_angaben.SPL_PLANNED``, nur dort, wo Karte 7 noch keinen Kreis desselben Typs hat."""
+    import numpy as np
+    from plan_angaben import SPL_PLANNED, SPL_TYPES
+    mpx = t8["s"] * U.COS
+    out = []
+    for code, name, typ, _word, anchor, (ox, oy), win in SPL_PLANNED:
+        row = conn.execute("SELECT lat, lon FROM council_locations WHERE name = ? AND lat IS NOT NULL", (anchor,)).fetchone()
+        if not row:
+            raise SystemExit(f"Spielleitplanung {code}: Anker „{anchor}“ fehlt im Ortskatalog")
+        X, Y = U._merc(row[1], row[0])
+        cx, cy = (X - t8["tx"]) / t8["s"] + ox, (t8["ty"] - Y) / t8["s"] + oy
+        r = SPL_TYPES[typ][0] / mpx
+        stroke = np.sqrt(((a8.astype(int) - np.array(SPL_COLORS[typ])) ** 2).sum(axis=2)) < 75
+        sy, sx = np.nonzero(stroke)
+        best = (0.0, cx, cy)
+        for y in range(int(cy) - win, int(cy) + win + 1):
+            for x in range(int(cx) - win, int(cx) + win + 1):
+                if any(math.hypot(x - ex, y - ey) < 10 for ex, ey in existing.get(typ, [])):
+                    continue
+                cover = _ring_cover(sx, sy, x, y, r, 1.5)
+                if cover > best[0]:
+                    best = (cover, x, y)
+        cover, x, y = best
+        if cover < 0.3:
+            raise SystemExit(f"Spielleitplanung {code}: kein gestrichelter Kreis am Anker (Abdeckung {cover:.2f})")
+        lon, lat = U._lonlat(t8["tx"] + x * t8["s"], t8["ty"] - y * t8["s"])
+        out.append({"code": code, "name": name, "type": typ, "lon": lon, "lat": lat, "cover": round(cover, 2)})
+    return out
+
+
+def spielleitplanung() -> tuple[dict, list[str]]:
+    """Karte 9 (S. 48): rot schraffiert die Suchräume — bebaute Gebiete ohne Spielplatz in erreichbarer Nähe,
+    je Ortsbereich geschnitten. Dazu je Stadtteil die Spielplätze nach Typ (Kreise auf Karte 7) und die
+    Sätze des Plans zum Stadtteil; die geplanten Spielplätze (Karte 8) als eigene Einträge."""
+    import sqlite3
+    import pymupdf
+    import plan_angaben as A
+    from plan_massnahmen import holen
+    from shapely.geometry import shape
+    from shapely.ops import unary_union
+    doc = pymupdf.open(holen(SPL_DOC["document_id"]))
+    a, city, t = _spl_map(doc, 48)
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
     # Nur reines Rot: Die Schraffur liegt auch unter den halbdurchsichtigen Kreisen der Einzugsbereiche — dort
     # mischt sie sich mit deren Farbe, und dort ist ein Spielplatz erreichbar, also kein Suchraum.
@@ -504,11 +604,27 @@ def spielleitplanung() -> tuple[dict, list[str]]:
     regions = density_regions(hatch, 11, 0.10, city, min_px=40)
     # Stücke, die nur ein Kreis oder eine Beschriftung trennt, wieder zusammenfügen — dann je Ortsbereich ein
     # Suchraum: Die Schraffur zieht sich über halbe Stadtteile, als ein Stück sagte sie nichts.
-    from shapely.geometry import shape
     merged = unary_union([q.buffer(3) for q in regions]).buffer(-3)
     whole = shape(to_lonlat(merged, t)).buffer(0)
-    notes, features = [], []
-    url = f"https://buergerinfo.oldenburg.de/getfile.php?id={SPL_DOC['document_id']}&type=do#page=48"
+    # Spielplätze je Stadtteil (Karte 7) — gegen die Zählung im Text gehalten
+    a7, _city7, t7 = _spl_map(doc, 38)
+    circles = _circles(a7, t7)
+    for typ, (_radius, stated) in A.SPL_TYPES.items():
+        if abs(len(circles[typ]) - stated) > 1:
+            raise SystemExit(f"Spielleitplanung: {len(circles[typ])} {typ} auf Karte 7, laut Text {stated}")
+    counts: dict[str, dict[str, int]] = {}
+    for typ, found in circles.items():
+        for x, y, _c in found:
+            lon, lat = U._lonlat(t7["tx"] + x * t7["s"], t7["ty"] - y * t7["s"])
+            district = geo.ortsbereich_for(lat, lon)
+            place = places.resolve(district) if district else None
+            if place:
+                counts.setdefault(place.id, {}).setdefault(typ, 0)
+                counts[place.id][typ] += 1
+    quotes = A.spielleitplanung_quotes({pl.id: pl.name for pl in places.primary_places()})
+    notes: list[str] = []
+    features = []
+    url = f"https://buergerinfo.oldenburg.de/getfile.php?id={SPL_DOC['document_id']}&type=do"
     for pl in places.primary_places():
         area_poly = geo.ortsbereich_polygon(pl.name)
         if not area_poly:
@@ -523,21 +639,55 @@ def spielleitplanung() -> tuple[dict, list[str]]:
             continue
         if U.area_ha(geometry) < SPL_MIN_HA:
             continue
-        f = feature(geometry, {"code": pl.id, "name": pl.name, "group": "Suchraum für Spielplätze",
-                               "label": "Suchraum für Spielplätze", "page": 48, "figure": 9,
-                               "area_ha_plan": None, "source": "Karte", "source_url": url},
-                    display_simplify=SPL_SIMPLIFY * 2)
+        by_page: dict[int, list[str]] = {}
+        for q in quotes.get(pl.id, []):
+            by_page.setdefault(q["page"], []).append(q["text"])
+        f = feature(geometry, {
+            "code": pl.id, "name": pl.name, "group": "Suchraum für Spielplätze", "label": "Suchraum für Spielplätze",
+            "page": 48, "figure": 9, "area_ha_plan": None, "source": "Karte", "source_url": f"{url}#page=48",
+            "facts": [A.fact("Spielplätze im Stadtteil (Karte 7)", A.playground_counts(counts.get(pl.id, {})), 38)],
+            "notes": [A.note("Aus der Auswertung" if page == 37 else "Zu den Suchräumen", texts, page, "text")
+                      for page, texts in sorted(by_page.items())]},
+            display_simplify=SPL_SIMPLIFY * 2)
         f["properties"]["districts"] = {pl.id: 1.0}
         features.append(f)
     features.sort(key=lambda f: -f["properties"]["area_ha"])
+    # Geplante Spielplätze (Karte 8)
+    a8, _city8, t8 = _spl_map(doc, 46)
+    existing = {typ: [((U._merc(*U._lonlat(t7["tx"] + x * t7["s"], t7["ty"] - y * t7["s"]))[0] - t8["tx"]) / t8["s"],
+                       (t8["ty"] - U._merc(*U._lonlat(t7["tx"] + x * t7["s"], t7["ty"] - y * t7["s"]))[1]) / t8["s"])
+                      for x, y, _c in found] for typ, found in circles.items()}
+    conn = sqlite3.connect(f"file:{WURZEL / 'data' / 'council.sqlite'}?mode=ro", uri=True)
+    planned = _planned(a8, t8, existing, conn)
+    conn.close()
+    words = {code: word for code, _n, _t, word, *_ in A.SPL_PLANNED}
+    for p in planned:
+        district = geo.ortsbereich_for(p["lat"], p["lon"])
+        place = places.resolve(district) if district else None
+        radius = A.SPL_TYPES[p["type"]][0]
+        quote = A.spielleitplanung_planned_quote(words[p["code"]])
+        lon, lat = round(p["lon"], 6), round(p["lat"], 6)
+        features.append({"type": "Feature", "geometry": {"type": "Point", "coordinates": [lon, lat]}, "properties": {
+            "code": f"geplant-{p['code'].lower()}", "name": p["name"], "group": "Spielplatz in Planung",
+            "page": 46, "figure": 8, "area_ha": None, "area_ha_plan": None, "source": "Karte",
+            "source_url": f"{url}#page=46", "districts": {place.id: 1.0} if place else {},
+            "label_point": [round(lon, 5), round(lat, 5)], "display_geometry": None,
+            "summary": f"{p['type']} · Einzugsradius {radius:,} m".replace(",", "."), "radius_m": radius,
+            "facts": [A.fact("Typ", f"{p['type']} (Einzugsradius {radius:,} m)".replace(",", "."), 46),
+                      A.fact("Kennung auf Karte 8", p["code"], 46)],
+            "notes": [A.note("Aus dem Plan", [quote["text"]], quote["page"], "text")] if quote else [],
+            "circle_cover": p["cover"]}})
     data = {"type": "FeatureCollection", "name": "Suchräume für Spielplätze (Spielleitplanung)",
             "plan": "spielleitplanung", "document": SPL_DOC, "generated": dt.date.today().isoformat(),
-            "figure_word": "Karte",
+            "figure_word": "Karte", "groups": A.groups("spielleitplanung", SPL_DOC["document_id"]),
             "method": "Karte 9 über ihre Kante (die Stadtgrenze) verortet, die rote Schraffur nach Dichte "
                       f"herausgelöst und je Ortsbereich geschnitten, Teile unter {SPL_MIN_HA:g} ha weggelassen; "
-                      "scripts/plan_karten.py",
-            "attribution": "Stadt Oldenburg, Spielleitplanung 2026, Karte 9: Suchräume und Potentiale",
-            "fit": {"px": round(float(t["fit_px"]), 2), "m_px": round(float(t["s"]) * U.COS, 2)},
+                      "je Stadtteil die Spielplätze nach Typ aus den Einzugskreisen auf Karte 7 (gegen die Zählung "
+                      "im Text gehalten); geplante Spielplätze aus den gestrichelten Kreisen auf Karte 8; "
+                      "scripts/plan_karten.py, scripts/plan_angaben.py",
+            "attribution": "Stadt Oldenburg, Spielleitplanung 2026, Karten 7–9",
+            "fit": {"px": round(float(t["fit_px"]), 2), "m_px": round(float(t["s"]) * U.COS, 2),
+                    "karte7": {typ: len(found) for typ, found in circles.items()}},
             "omitted": notes, "features": features}
     return data, notes
 
@@ -812,19 +962,23 @@ def einzelhandel() -> tuple[dict, list[str]]:
         boundaries[key] = feature(geometry, {
             "page": page, "figure": figure, "area_ha_plan": None, "source": "Karte",
             "source_url": f"{url}#page={page}", "metres_per_pixel": round(s_d * U.COS, 3), "peak_ratio": round(peak, 1)})
+    import plan_angaben as A
+    details = A.einzelhandel({k for k, (_p, figure, _m, _s) in EEK_BOUNDARIES.items() if figure >= 34})
     out = []
     for point in features:
         key = point["properties"]["code"]
+        point["properties"].update(details[key])
         if key not in boundaries:
             out.append(point)
             continue
         f = boundaries[key]
         f["properties"] = {"code": key, "name": point["properties"]["name"], "group": point["properties"]["group"],
-                           **f["properties"]}
+                           **details[key], **f["properties"]}
         out.append(f)
     features = out
     data = {"type": "FeatureCollection", "name": "Zentren und Versorgungsbereiche (Einzelhandelskonzept)",
             "plan": "eek", "document": EEK_DOC, "generated": dt.date.today().isoformat(),
+            "groups": A.groups("eek", EEK_DOC["document_id"]),
             "figure_word": "Karte",
             "method": "Karte 33 über ihren Maßstab und die Hauptstraßen der Grundkarte verortet (Standorte als "
                       "Punkt); je zentralem Versorgungsbereich die gültige Detailkarte (neu gezogen: Karten 34–39, "
@@ -852,7 +1006,7 @@ DISPLAY_TOLERANCE = 0.03
 def _known_codes(key: str) -> set[str]:
     return {"laermaktionsplan": {str(c) for c in (*LAP_TABLE_27, *LAP_TABLE_28_29)},
             "masterplan_stadtgruen": set(MSG_AREAS),
-            "spielleitplanung": {pl.id for pl in places.primary_places()},
+            "spielleitplanung": {pl.id for pl in places.primary_places()} | {f"geplant-{c.lower()}" for c, *_ in SPL_PLANNED},
             "eek": set(EEK_CENTRES)}[key]
 
 

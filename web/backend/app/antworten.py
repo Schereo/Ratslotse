@@ -5301,6 +5301,37 @@ class PlanPlaceSection(TypedDict):
     source_url: str
 
 
+class PlanAreaFact(TypedDict):
+    """Eine Kennzahl zu einem Gebiet, wie der Plan sie nennt — „Verkaufsfläche 2021: 2.000 m² (2012: 2.150 m²)“."""
+    label: str
+    value: str
+    page: int | None
+    source_url: str | None
+
+
+class PlanAreaNote(TypedDict):
+    """Eine Liste oder Absätze des Plans zu einem Gebiet: Defizite, Handlungskonzept, Stärken, Sätze zum Stadtteil."""
+    title: str
+    #: ``list``: Stichpunkte; ``text``: Absätze des Plans (als Zitat gezeigt).
+    kind: Literal["list", "text"]
+    items: list[str]
+    page: int | None
+    source_url: str | None
+
+
+class PlanAreaGroup(TypedDict):
+    """Eine Art Gebiet auf der Karte eines Plans („Friedhof“, „Nahversorgungszentrum“) — mit dem, was der Plan
+    darunter versteht, und dem Randstil, mit dem die Karte sie unterscheidet."""
+    name: str
+    description: str | None
+    page: int | None
+    source_url: str | None
+    #: Nur Standorte (Punkte), keine Flächen.
+    sites_only: bool
+    #: 0 durchgezogen, 1 gestrichelt, 2 gepunktet, 3 Strich-Punkt.
+    style: int
+
+
 class PlanPlaceArea(TypedDict):
     """Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``) — oder ein Standort,
     wo die Karte nur einen Punkt zeigt (dann ohne Fläche und ohne ``geometry`` am Ort)."""
@@ -5318,6 +5349,12 @@ class PlanPlaceArea(TypedDict):
     #: Fläche des nachgezeichneten Umrisses (``None`` bei einem Standort); daneben, was der Plan selbst nennt.
     area_ha: float | None
     area_ha_plan: float | None
+    #: Eine Zeile unter dem Namen („21 Betriebe · 2.000 m² Verkaufsfläche“); ``None``: die Fläche.
+    summary: str | None
+    #: Nur Standorte mit Einzugsbereich (geplante Spielplätze): der Radius, den die Karte gestrichelt zeigt.
+    radius_m: int | None
+    facts: list[PlanAreaFact]
+    notes: list[PlanAreaNote]
 
 
 class PlanPlace(TypedDict):
@@ -5341,6 +5378,8 @@ class PlanPlace(TypedDict):
 class PlanPlaces(TypedDict):
     """Die Karte zum Plan — ab drei Orten."""
     items: list[PlanPlace]
+    #: Die Arten der Gebiete aus den Karten des Plans (leer ohne solche Gebiete).
+    groups: list[PlanAreaGroup]
     section_places: int
     area_places: int
     #: Gibt es Abschnitte oder Gebiete zum Herunterladen (``/api/council/plan/{key}/geojson``)?
@@ -5397,6 +5436,8 @@ class PlanGeoProperties(TypedDict):
     figure: NotRequired[int | None]
     area_ha: NotRequired[float | None]
     area_ha_plan: NotRequired[float | None]
+    summary: NotRequired[str | None]
+    facts: NotRequired[list[PlanAreaFact]]
 
 
 class PlanGeoFeature(TypedDict):

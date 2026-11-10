@@ -355,7 +355,8 @@ test("der Wärmeplan zeigt seine Wärmenetzeignungsgebiete, jedes mit Seite", as
   await expect(lists.locator("a:visible", { hasText: /S\. 94/ }).first()).toHaveAttribute("href", /id=306748&type=do#page=94$/);
   // Die Gebiete, nachgezeichnet aus den Karten des Plans, stehen als Fläche auf der Karte — und zum Herunterladen.
   const map = page.locator('section[aria-labelledby="plan-places"]');
-  await expect(map.getByText("Gebiet aus dem Plan")).toBeVisible();
+  // Die Legende nennt die Art mit dem Wort des Plans — „Gebiet aus dem Plan“ sagte nicht, was es ist.
+  await expect(map.getByRole("list", { name: "Legende" }).getByText("Eignungsgebiet")).toBeVisible();
   await expect(map.locator(".leaflet-container path.leaflet-interactive")).toHaveCount(11);
   const link = map.getByRole("link", { name: "Als GeoJSON herunterladen" });
   await expect(link).toHaveAttribute("href", "/api/council/plan/waermeplan/geojson");
@@ -369,14 +370,22 @@ test("weitere Pläne zeigen Gebiete und Standorte aus ihren Karten, nach Art und
   // Alles aus council/plan_shapes/ und council/plan_lists/ — auch gegen die leere Datenbank.
   await page.goto("/council/plan?key=eek");
   const map = page.locator('section[aria-labelledby="plan-places"]');
-  await expect(map.getByText("Gebiet aus dem Plan")).toBeVisible();
-  await expect(map.getByText("Standort aus dem Plan")).toBeVisible();
+  const legend = map.getByRole("list", { name: "Legende" });
+  await expect(legend.getByText("Nahversorgungszentrum", { exact: true })).toBeVisible();
+  await expect(legend.getByText("Nahversorgungsstandort", { exact: true })).toBeVisible();
   await expect(map.getByText("Nahversorgungszentrum · 11")).toBeVisible();
   await expect(map.getByRole("link", { name: /Karte 34, S\. 200/ })).toHaveAttribute("href", /id=285989&type=do#page=200$/);
-  // 22 Einträge: zehn offen, der Rest hinter einem Knopf.
-  await expect(map.getByRole("button", { name: /KaufPark Kreyenbrück/ })).toHaveCount(0);
+  // Je Art sechs offen, der Rest hinter einem Knopf — die kleinen Arten bleiben ganz sichtbar.
+  await expect(map.getByRole("button", { name: /KaufPark Kreyenbrück/ })).toBeVisible();
+  await expect(map.getByRole("button", { name: /^Cloppenburger Straße/ })).toHaveCount(0);
   await map.getByRole("button", { name: "Alle 22 zeigen" }).click();
-  await expect(map.getByRole("button", { name: /KaufPark Kreyenbrück/ })).toContainText("Standort");
+  // Aufgeklappt: die Kenndaten und die Stärken und Schwächen aus der Bestandsanalyse, je mit Seite.
+  const row = map.getByRole("button", { name: /^Hauptstraße Eversten/ });
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  const details = row.locator("xpath=ancestor::li[1]");
+  await expect(details.getByText("Leerstände 2021")).toBeVisible();
+  await expect(details.getByText("Stärken")).toBeVisible();
 
   await page.goto("/council/plan?key=laermaktionsplan");
   await expect(map.getByText("Ruhiges Gebiet · 6")).toBeVisible();
@@ -386,8 +395,12 @@ test("weitere Pläne zeigen Gebiete und Standorte aus ihren Karten, nach Art und
   await expect(lists.getByRole("heading", { name: "Friedhöfe als Ruhige Gebiete" })).toBeVisible();
 
   await page.goto("/council/plan?key=spielleitplanung");
-  await expect(map.getByText("Suchraum für Spielplätze", { exact: true })).toBeVisible();
+  await expect(map.getByRole("list", { name: "Legende" }).getByText("Spielplatz in Planung")).toBeVisible();
   await expect(map.locator(".leaflet-container path.leaflet-interactive").first()).toBeVisible();
+  await expect(map.getByRole("button", { name: /^Schramperweg/ })).toBeVisible();
+  const eversten = map.getByRole("button", { name: /^Eversten/ });
+  await eversten.click();
+  await expect(eversten.locator("xpath=ancestor::li[1]").getByText(/Spielplätze im Stadtteil/)).toBeVisible();
 });
 
 test.describe("Haushalt zum Plan", () => {

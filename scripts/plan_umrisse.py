@@ -330,8 +330,11 @@ def build(db: str) -> dict:
     from shapely.geometry import mapping, shape
     doc = pymupdf.open(holen(DOCUMENT["document_id"]))
     ov = georef_overview(_image(doc, OVERVIEW_PAGE))
-    names = {r["cells"][0]: r["cells"][2] for lst in (plan_state.plan_lists("waermeplan") or {}).get("lists", [])
-             for r in lst["rows"]}
+    rows = {r["cells"][0]: r["cells"] for lst in (plan_state.plan_lists("waermeplan") or {}).get("lists", [])
+            for r in lst["rows"]}
+    names = {code: cells[2] for code, cells in rows.items()}
+    import plan_angaben
+    details = plan_angaben.waermeplan(rows)
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     features = []
     for code, (page, figure) in DETAILS.items():
@@ -345,7 +348,7 @@ def build(db: str) -> dict:
         display = json.loads(json.dumps(mapping(poly.simplify(DISPLAY_SIMPLIFY, preserve_topology=True))),
                              parse_float=lambda f: round(float(f), 5))
         features.append({"type": "Feature", "geometry": mapping(poly), "properties": {
-            "code": code, "name": names.get(code), "page": page, "figure": figure,
+            "code": code, "name": names.get(code), "page": page, "figure": figure, **details.get(code, {}),
             "area_ha": round(_area_ha(poly), 2), "area_ha_plan": STATED_HA.get(code),
             "metres_per_pixel": round(s * COS, 3), "placed_by": reg["how"],
             "street_fit_m": round(reg["fit_px"] * s * COS, 1) if reg["fit_px"] is not None else None,
@@ -357,6 +360,7 @@ def build(db: str) -> dict:
             "plan": "waermeplan", "document": DOCUMENT, "generated": dt.date.today().isoformat(),
             # So liest plan_pages die Gebiete: „Eignungsgebiet „WNG 7 Kennedyviertel““.
             "group": "Eignungsgebiet", "code_in_name": True,
+            "groups": plan_angaben.groups("waermeplan", DOCUMENT["document_id"]),
             "method": "Nachgezeichnet aus den Kartenbildern des Abschlussberichts (Abbildungen 35–45), verortet über "
                       "die Übersichtskarte (Abbildung 34) und die Straßen des Ortskatalogs; scripts/plan_umrisse.py",
             "attribution": "Stadt Oldenburg, Kommunale Wärmeplanung (26/0236); Straßen © OpenStreetMap-Mitwirkende, ODbL",

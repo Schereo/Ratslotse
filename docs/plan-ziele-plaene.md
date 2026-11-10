@@ -553,8 +553,36 @@ kommt, entscheidet die Gestaltungsrunde.
      zweitbeste), Gegenprobe: eine bekannte Straße läuft hindurch. Das EEK ist
      im Register ein Nachschlagewerk und steht deshalb nicht unter den Plänen
      im Viertel.
-   Auf der Seite nach der Art laut Legende gruppiert, ab zwölf Einträgen nach
-   zehn eingeklappt. *(gebaut)*
+   Auf der Seite nach der Art laut Legende gruppiert, je Art höchstens sechs
+   offen. *(gebaut)*
+13. **WAS DIE PLÄNE ZU IHREN GEBIETEN SAGEN** (10.11.2026, Tims Wunsch: „so viel
+   sinnvolle Infos wie möglich aus den originalen Karten“). `scripts/plan_angaben.py`
+   liest es aus dem Textlayer, ohne Sprachmodell, je Gebiet mit Seite:
+   - **Legende:** je Art das Wort des Plans und ein Satz, was er darunter
+     versteht (statt „Gebiet aus dem Plan“); die Karte unterscheidet die Arten
+     am Rand (durchgezogen, gestrichelt, gepunktet, Strich-Punkt), nicht in der
+     Farbe.
+   - **Masterplan Stadtgrün:** Defizite, Handlungskonzept und die Maßnahmen-
+     Absätze des Maßnahmenblatts; die Maßnahmenarten aus den Symbolen der
+     Einzelkarte (8 Arten laut Legende, von Hand abgelesen, `MSG_SYMBOLS`).
+   - **Einzelhandelskonzept:** je Standort die Kenndaten der Erhebung 2021 mit
+     2012 (Betriebe, Verkaufsfläche, Lebensmittelbetriebe, Leerstände), dazu
+     Stärken und Schwächen — für alle 22. Wo das Konzept die Abgrenzung 2023
+     neu zieht, steht dabei, dass die Zahlen die alte meinen.
+   - **Spielleitplanung:** je Stadtteil die Spielplätze nach Typ — erkannt an
+     den Einzugskreisen auf Karte 7 (Ring-Faltung je Typ, gegen die Zählung im
+     Text gehalten: 92/36/5/6/5 gegen 92/37/5/6/5) — und die Sätze der
+     Auswertung, die den Stadtteil nennen. Die sechs geplanten Spielplätze aus
+     Karte 8 als eigene Einträge mit Einzugsradius (gestrichelt auf der
+     Karte) und ihrem Satz aus dem Text. Die Namen der bestehenden Spielplätze
+     stehen nur als 6 px hohe Rasterschrift in der Karte — zu klein für eine
+     Texterkennung, sie fehlen.
+   - **Lärmaktionsplan:** je Friedhof und Erholungsfläche der Anteil unter
+     60 dB(A) (Tabelle 28/29).
+   - **Wärmeplan:** je Eignungsgebiet Versorgung laut Plan, Gebäude,
+     Wärmebedarf heute und 2035, Treibhausgase, Heizungsanlagen. Wo der Plan
+     eine falsche Einheit schreibt (WNG 10: „MWh“ statt GWh), fällt der Wert
+     weg. *(gebaut)*
 
 **Mein Viertel:** Die Tafel eines Ortsbereichs nennt die laufenden und
 entstehenden Pläne mit mindestens einem Ort dort (`district_plans`). Eine

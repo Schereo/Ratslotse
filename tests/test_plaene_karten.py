@@ -98,10 +98,49 @@ def test_masterplan_ohne_abbildungsnummer(store):
 def test_suchraeume_je_ortsbereich(store):
     items = _block(store, "spielleitplanung")["items"]
     assert len({p["slug"] for p in items}) == len(items)
-    labels = {p["areas"][0]["label"] for p in items}
-    assert labels == {"Suchraum für Spielplätze"}
-    eversten = {p["key"]: p["places"] for p in plan_pages.district_plans(store, "eversten")}
-    assert "Suchraum für Spielplätze" in eversten["spielleitplanung"]
+    search = [p for p in items if p["areas"][0]["group"] == "Suchraum für Spielplätze"]
+    assert {p["areas"][0]["label"] for p in search} == {"Suchraum für Spielplätze"}
+    eversten = next(p for p in search if p["name"] == "Eversten")["areas"][0]
+    # Spielplätze je Typ aus den Kreisen auf Karte 7, die Sätze des Plans zum Stadtteil mit Seite.
+    assert eversten["facts"][0]["label"].startswith("Spielplätze im Stadtteil") and "Quartiers" in eversten["facts"][0]["value"]
+    assert any("Eversten" in text for n in eversten["notes"] for text in n["items"])
+    assert all(n["source_url"].endswith(f"#page={n['page']}") for n in eversten["notes"])
+    planned = [p for p in items if p["areas"][0]["group"] == "Spielplatz in Planung"]
+    assert len(planned) == 6 and all(p["geometry"] is None and p["areas"][0]["radius_m"] for p in planned)
+    places_eversten = {p["key"]: p["places"] for p in plan_pages.district_plans(store, "eversten")}
+    assert "Suchraum für Spielplätze" in places_eversten["spielleitplanung"]
+
+
+def test_angaben_aus_dem_text_der_plaene(store):
+    """Was die Pläne zu ihren Gebieten sagen — Kenndaten, Listen, Absätze —, je mit Seite."""
+    eek = {p["slug"]: p["areas"][0] for p in _block(store, "eek")["items"]}
+    eversten = eek["gebiet-hauptstrasse-eversten"]
+    assert eversten["summary"] == "21 Betriebe · 2.000 m² Verkaufsfläche"
+    assert {f["label"]: f["value"] for f in eversten["facts"]}["Leerstände 2021"] == "4 (2012: 2)"
+    assert [n["title"] for n in eversten["notes"]] == ["Stärken", "Schwächen"]
+    # Neu gezogene Abgrenzung: Die Zahlen gelten für die alte, und das steht dabei.
+    assert any(f["label"] == "Bezug der Zahlen" for f in eek["gebiet-innenstadt"]["facts"])
+    assert not any(f["label"] == "Bezug der Zahlen" for f in eversten["facts"])
+    msg = _block(store, "masterplan_stadtgruen")["items"][0]["areas"][0]
+    assert [n["title"] for n in msg["notes"]] == ["Defizite", "Handlungskonzept", "Maßnahmen"]
+    assert msg["notes"][2]["kind"] == "text" and "Pocket Parks" in " ".join(msg["notes"][2]["items"])
+    noise = {p["name"]: p["areas"][0] for p in _block(store, "laermaktionsplan")["items"] if p["areas"]}
+    assert noise["Waldfriedhof Ofenerdiek"]["facts"][0]["value"] == "1,3 %"
+    heat = {p["slug"]: p["areas"][0] for p in _block(store, "waermeplan")["items"]}
+    wechloy = {f["label"]: f["value"] for f in heat["gebiet-wng-2"]["facts"]}
+    assert wechloy["Versorgung laut Plan"] == "Luft-Großwärmepumpe und Biomasse" and wechloy["Gebäude"] == "588"
+    # WNG 10: Der Plan schreibt „MWh“, wo Tabelle 4 GWh nennt — der Wert für 2035 fällt weg statt falsch dazustehen.
+    assert "Wärmebedarf 2035" not in {f["label"] for f in heat["gebiet-wng-10"]["facts"]}
+
+
+def test_arten_mit_erklaerung_und_randstil(store):
+    groups = _block(store, "eek")["groups"]
+    assert [g["name"] for g in groups][:2] == ["Zentraler Versorgungsbereich Innenstadt", "Nahversorgungszentrum"]
+    assert all(g["description"] and g["source_url"].endswith(f"#page={g['page']}") for g in groups)
+    assert [g["style"] for g in groups] == [0, 1, 2, 3, 0]
+    assert {g["name"]: g["sites_only"] for g in groups}["Nahversorgungsstandort"] is True
+    assert _block(store, "waermeplan")["groups"][0]["name"] == "Eignungsgebiet"
+    assert plan_pages.places_block(store, plans.PLANS["kita_ausbau"]) is None
 
 
 def test_viertel_kennt_die_neuen_gebiete(store):

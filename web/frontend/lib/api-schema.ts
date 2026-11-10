@@ -15125,6 +15125,58 @@ export interface components {
             url: string;
         };
         /**
+         * PlanAreaFact
+         * @description Eine Kennzahl zu einem Gebiet, wie der Plan sie nennt — „Verkaufsfläche 2021: 2.000 m² (2012: 2.150 m²)“.
+         */
+        PlanAreaFact: {
+            /** Label */
+            label: string;
+            /** Page */
+            page: number | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Value */
+            value: string;
+        };
+        /**
+         * PlanAreaGroup
+         * @description Eine Art Gebiet auf der Karte eines Plans („Friedhof“, „Nahversorgungszentrum“) — mit dem, was der Plan
+         *     darunter versteht, und dem Randstil, mit dem die Karte sie unterscheidet.
+         */
+        PlanAreaGroup: {
+            /** Description */
+            description: string | null;
+            /** Name */
+            name: string;
+            /** Page */
+            page: number | null;
+            /** Sites Only */
+            sites_only: boolean;
+            /** Source Url */
+            source_url: string | null;
+            /** Style */
+            style: number;
+        };
+        /**
+         * PlanAreaNote
+         * @description Eine Liste oder Absätze des Plans zu einem Gebiet: Defizite, Handlungskonzept, Stärken, Sätze zum Stadtteil.
+         */
+        PlanAreaNote: {
+            /** Items */
+            items: string[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "list" | "text";
+            /** Page */
+            page: number | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
          * PlanAxis
          * @description Die gemeinsame Zeitachse der Übersicht: Beginn des Bestands bis zehn Jahre nach vorn.
          */
@@ -15842,6 +15894,8 @@ export interface components {
                 decision_places: number;
                 /** Geojson */
                 geojson: boolean;
+                /** Groups */
+                groups: components["schemas"]["PlanAreaGroup"][];
                 /** Items */
                 items: components["schemas"]["PlanPlace"][];
                 /** Measure Places */
@@ -16125,6 +16179,8 @@ export interface components {
             area_ha_plan?: number | null;
             /** Code */
             code: string;
+            /** Facts */
+            facts?: components["schemas"]["PlanAreaFact"][];
             /** Figure */
             figure?: number | null;
             /** Group */
@@ -16148,6 +16204,8 @@ export interface components {
             street?: string;
             /** Stretch */
             stretch?: string;
+            /** Summary */
+            summary?: string | null;
         };
         /** PlanGroup */
         PlanGroup: {
@@ -16435,18 +16493,26 @@ export interface components {
             area_ha_plan: number | null;
             /** Code */
             code: string;
+            /** Facts */
+            facts: components["schemas"]["PlanAreaFact"][];
             /** Figure */
             figure: number | null;
             /** Group */
             group: string;
             /** Label */
             label: string;
+            /** Notes */
+            notes: components["schemas"]["PlanAreaNote"][];
             /** Page */
             page: number;
+            /** Radius M */
+            radius_m: number | null;
             /** Source Label */
             source_label: string;
             /** Source Url */
             source_url: string;
+            /** Summary */
+            summary: string | null;
         };
         /** PlanPlaceDecision */
         PlanPlaceDecision: {
@@ -16498,6 +16564,8 @@ export interface components {
             decision_places: number;
             /** Geojson */
             geojson: boolean;
+            /** Groups */
+            groups: components["schemas"]["PlanAreaGroup"][];
             /** Items */
             items: components["schemas"]["PlanPlace"][];
             /** Measure Places */
@@ -29499,4 +29567,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e1db95a4e8dc198c2ffaed6f197fad50ca47104d5ac2889c3ca311ee1af727fd
+// vertrag-sha256: 55b725d9bf36e0e9276be74772c465db8319c5da9087786e6aed73d19b14b876

@@ -16,6 +16,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import { Kicker, StatusChip } from "@/components/plans/parts";
+import { AreaList, AreaSwatch } from "@/components/plans/plan-areas";
 import { Quote } from "@/components/plans/quoted";
 import { decisionHref } from "@/lib/routes";
 import { apiUrl } from "@/lib/api";
@@ -29,8 +30,9 @@ const PlanMap = dynamic(() => import("@/components/plans/plan-map"), {
 
 /** So viele Zeilen stehen offen; der Rest hinter „alle zeigen“. */
 const VISIBLE = 8;
-/** Gebiete: so viele offen — es sei denn, es wären nur zwei mehr (dann alle, statt zwei hinter einem Knopf). */
-const AREAS_VISIBLE = 10;
+/** Gebiete: so viele je Art offen — es sei denn, es wären nur zwei mehr (dann alle, statt zwei hinter einem
+ *  Knopf). Je Art, nicht insgesamt: Sonst verschwänden die sechs geplanten Spielplätze hinter 26 Suchräumen. */
+const GROUP_VISIBLE = 6;
 
 function hectares(v: number): string {
   return `${v.toLocaleString("de-DE", { maximumFractionDigits: 1 })} ha`;
@@ -64,16 +66,18 @@ export function Places({ places, planKey }: { places: PlanPlaces; planKey: strin
   const fromDecisions = places.items.filter((p) => p.measures.length === 0 && p.sections.length === 0 && p.areas.length === 0);
   // Zwei Spalten nur, wo zwei Listen nebeneinander stehen — sonst bliebe rechts ein Loch.
   const groups = [fromAreas, fromSections, fromMeasures, fromDecisions].filter((g) => g.length > 0).length;
-  const areasFold = fromAreas.length > AREAS_VISIBLE + 2;
-  const areaGroups = byGroup(allAreas || !areasFold ? fromAreas : fromAreas.slice(0, AREAS_VISIBLE));
-  const groupSize = new Map(byGroup(fromAreas).map(([g, items]) => [g, items.length]));
+  const areaGroups = byGroup(fromAreas);
+  const folded = areaGroups.flatMap(([, list]) => (list.length > GROUP_VISIBLE + 2 ? list.slice(0, GROUP_VISIBLE) : list));
+  const areasFold = folded.length < fromAreas.length;
+  const visibleAreas = allAreas || !areasFold ? fromAreas : folded;
+  const groupSize = new Map(areaGroups.map(([g, items]) => [g, items.length]));
   // Gebiete in zwei Spalten nur, wo sie die ganze Breite haben.
   const areaColumns = groups === 1;
   const shown = showAll ? fromDecisions : fromDecisions.slice(0, VISIBLE);
   const pick = (slug: string) => {
     setFocus(slug);
     // Ein Gebiet hinter „alle zeigen“: erst aufklappen, dann hinscrollen.
-    const hidden = !allAreas && areasFold && fromAreas.findIndex((p) => p.slug === slug) >= AREAS_VISIBLE;
+    const hidden = !allAreas && areasFold && fromAreas.some((p) => p.slug === slug) && !folded.some((p) => p.slug === slug);
     if (hidden) setAllAreas(true);
     const scroll = () => document.getElementById(`plan-place-${slug}`)?.scrollIntoView({ block: "nearest" });
     if (hidden) window.setTimeout(scroll, 50);
@@ -89,14 +93,12 @@ export function Places({ places, planKey }: { places: PlanPlaces; planKey: strin
         </p>
       </div>
       <p className="mb-3 max-w-[76ch] text-hinweis text-muted-foreground">{places.note}</p>
-      <PlanMap places={places.items} focus={focus} onPick={pick} />
+      <PlanMap places={places.items} groups={places.groups} focus={focus} onPick={pick} />
       <ul aria-label="Legende" className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
-        {fromAreas.some((p) => p.geometry) && (
-          <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-3 w-4 rounded-sm border-2 border-primary bg-primary/20" /> Gebiet aus dem Plan</li>
-        )}
-        {fromAreas.some((p) => !p.geometry) && (
-          <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full border-2 border-white bg-primary shadow" /> Standort aus dem Plan</li>
-        )}
+        {/* Je Art ein Eintrag mit dem Wort des Plans — „Gebiet aus dem Plan“ sagte nicht, was es ist. */}
+        {places.groups.map((g) => (
+          <li key={g.name} className="inline-flex items-center gap-1.5"><AreaSwatch style={g.style} site={g.sites_only} /> {g.name}</li>
+        ))}
         {fromSections.length > 0 && (
           <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-1 w-5 rounded-full bg-primary" /> Abschnitt aus dem Plan</li>
         )}
@@ -155,36 +157,7 @@ export function Places({ places, planKey }: { places: PlanPlaces; planKey: strin
         {fromAreas.length > 0 && (
           <div className="min-w-0">
             <Kicker>Aus den Karten des Plans · {areaCount(fromAreas)}</Kicker>
-            {areaGroups.map(([group, items]) => (
-              <div key={group} className="mt-1">
-                <p className="mt-2 px-2 text-meta font-medium text-muted-foreground">
-                  {group}{groupSize.size > 1 ? ` · ${groupSize.get(group)}` : ""}
-                </p>
-                <ul className={cn("grid gap-x-6 divide-y divide-border/70", areaColumns && "@3xl:grid-cols-2 @3xl:divide-y-0")}>
-                  {items.map((place) => {
-                    const a = place.areas[0];
-                    const open = focus === place.slug;
-                    return (
-                      <li key={place.slug} id={`plan-place-${place.slug}`} className={cn("rounded-md", areaColumns && "@3xl:border-b @3xl:border-border/70", open && "bg-primary/[0.06]")}>
-                        <button type="button" onClick={() => setFocus(open ? null : place.slug)} aria-pressed={open} className={row}>
-                          <span className="min-w-0 flex-1">
-                            {/* „Ziegelhofviertel/Haareneschviertel“ hat keine Trennstelle — bei 320 px schob es die Seite. */}
-                            <span className="block text-[14px] font-medium leading-snug text-foreground [overflow-wrap:anywhere]">{place.name}</span>
-                            <span className="mt-0.5 block break-words text-meta text-muted-foreground">
-                              {a.area_ha != null ? hectares(a.area_ha) : "Standort"}{a.area_ha_plan ? ` · laut Plan ${hectares(a.area_ha_plan)}` : ""}
-                            </span>
-                          </span>
-                          <a href={a.source_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-                            className="mt-0.5 inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-meta font-medium text-primary hover:underline">
-                            {a.source_label} <ExternalLink className="h-3 w-3" aria-hidden />
-                          </a>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+            <AreaList items={visibleAreas} groups={places.groups} total={groupSize} focus={focus} onFocus={setFocus} columns={areaColumns} />
             {areasFold && (
               <button type="button" onClick={() => setAllAreas((v) => !v)} aria-expanded={allAreas}
                 className="mt-1 inline-flex min-h-11 items-center gap-1 text-[13px] font-medium text-primary hover:underline">
