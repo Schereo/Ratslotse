@@ -602,6 +602,31 @@ sonst eine Zeile. Im selben PR nichts anderes.
 **Fängt:** `test_api_vertrag.py`, `test_ios_vertrag.py`,
 `test_migration_bestand.py`, `test_schema_gegen_migration.py`.
 
+**Umgesetzt (10.11.2026), mit diesen Abweichungen vom Text oben:**
+
+- **Englische Namen.** Der Block heißt `course` (`SessionCourse` in
+  `antworten.py`): `start`, `public_count`, `closed_count`,
+  `substantive_count`, `stages` (je `kind`, `name`, `name_medium`,
+  `name_short`, `subtitle`, `range`, `count`, `cells` mit `label`, `title`,
+  `items`) und `items` je Nummer (`short_title`, `type`, `type_label`, `icon`,
+  `applicant`, `important`, `important_reason`, `postponed`, `formality`,
+  `formal_act`, `group`). Die Bojen (`cells`) und die Bereiche kommen fertig
+  vom Server, damit die App die Formalien-Zelle und „Ö 5 – Ö 10" nicht
+  nachbauen muss.
+- **Nur Rubriken eröffnen eine Etappe** („Anträge …", die Ausschuss-Abschnitte
+  im Rat). Eine Überschrift, die ein Vorhaben benennt („Bauleitplanung
+  Meerweg"), bleibt in „Beschlüsse und Berichte"; ihre Punkte tragen `group`.
+  Der Bauausschuss vom 27.08.2026 (ksinr 4607) hätte sonst elf Etappen mit je
+  zwei Bojen bekommen.
+- **Piktogramm ohne Modell** (81 %, s. Anhang A).
+- **vertagt:** Zusatz „zurückgestellt/abgesetzt" im Titel eines früheren
+  Punkts oder ein vertagter Beschluss, nur im selben Gremium; zugeordnet über
+  die Vorlage, Anträge ohne Vorlage nur bei wörtlich gleichem, datiertem
+  Titel. Gemessen: 23 von 664 Punkten seit Mai 2026. Die Akte ist nicht
+  Quelle.
+- **wichtig nach der Sitzung** mit derselben Schwelle wie vorher
+  (`WICHTIG_MINDEST`).
+
 ### Schritt 2: Baustein Kurs
 
 `lib/kurs.ts` mit Tests (Fälle in 4.1), `components/sitzung/kurs.tsx`,
@@ -729,48 +754,61 @@ der Übertragung (3.8), Paraphrasen kursiv (3.11), kein einzelner Presse-Link
 3. **Mitschrieb.** Bleibt die Idee, im Mitlesen selbst festzuhalten, was
    passiert ist? Wenn ja: erst mit Schritt 7 oder vorher nur im Browser
    gespeichert und unverschlüsselt?
-4. **Wie viele „wichtig“ je Sitzung?** Vorschlag drei; die Sitzungsliste zeigt
-   heute zwei.
+4. ~~**Wie viele „wichtig“ je Sitzung?**~~ Entschieden 10.11.2026: höchstens
+   drei (`KURS_WICHTIG_MAX`); die Sitzungsliste bleibt bei zwei.
 5. **Punkt-Seite nach dem Protokoll.** Hinweis mit Link zur Beschluss-Seite
    wie in 3.9, oder sollen beide Seiten zusammenwachsen?
 
 ## Anhang A: Piktogramme
 
-Lucide, Strich 2, eine Liste für Boje, Linie und Karte. Schlüssel deutsch,
-damit sie im Prompt und im Store dieselben sind.
+Lucide, Strich 2, eine Liste für Boje, Linie und Karte. Die Schlüssel sind
+englisch (Tims Regel 30.08.2026: Bezeichner und Werte der API auf Englisch)
+und stehen genau so in `council/course.py::ICONS`; `tests/test_course.py`
+hält diese Tabelle und den Code gleich.
 
 | Schlüssel | Lucide | Wofür |
 |---|---|---|
-| `formalien` | `list-checks` | Beschlussfähigkeit, Tagesordnung, Protokoll |
-| `einwohnerfrage` | `message-circle-question` | Einwohnerfragestunde |
-| `anfragen` | `messages-square` | Anfragen und Anregungen |
-| `mitteilung` | `megaphone` | Mitteilungen |
-| `schild` | `signpost` | Widmung, Straßenname, Verkehrsführung |
-| `rad` | `bike` | Radverkehr |
+| `formalities` | `list-checks` | Beschlussfähigkeit, Tagesordnung, Protokoll |
+| `citizen_question` | `message-circle-question` | Einwohnerfragestunde |
+| `inquiries` | `messages-square` | Anfragen und Anregungen |
+| `announcement` | `megaphone` | Mitteilungen |
+| `sign` | `signpost` | Widmung, Straßenname, Verkehrsführung |
+| `bike` | `bike` | Radverkehr |
 | `bus` | `bus` | Bus, VWG |
 | `ticket` | `ticket` | Tarife, Tickets |
-| `tempo` | `gauge` | Geschwindigkeit, Messung |
+| `speed` | `gauge` | Geschwindigkeit, Messung |
 | `route` | `route` | Straßennetz, Brücken, Bahnübergänge |
-| `parken` | `square-parking` | Parken |
-| `sperre` | `ban` | Sperrung, Einziehung, Veränderungssperre |
-| `bauen` | `building-2` | Bauvorhaben, Innenentwicklung |
-| `wohnen` | `house` | Wohnen |
+| `parking` | `square-parking` | Parken |
+| `closure` | `ban` | Sperrung, Einziehung, Veränderungssperre |
+| `building` | `building-2` | Bauvorhaben, Innenentwicklung |
+| `housing` | `house` | Wohnen |
 | `plan` | `map` | Bebauungsplan, Flächennutzungsplan |
-| `gruen` | `leaf` | Bäume, Stadtgrün |
-| `wasser` | `droplets` | Regen, Hitze, Entwässerung |
-| `energie` | `wind` | Energie, Wind |
-| `muell` | `trash-2` | Abfall |
-| `geld` | `euro` | Haushalt, Steuern, Gebühren |
-| `umwelt` | `flask-conical` | Belastungen, Gutachten |
-| `sanierung` | `wrench` | Sanierung, Handwerk, Pflaster |
-| `personal` | `user-plus` | Besetzungen, Mitglieder |
-| `satzung` | `file-text` | Satzungen, Rückfall für Entscheidungen |
-| `flugplatz` | `plane` | Fliegerhorst |
+| `greenery` | `leaf` | Bäume, Stadtgrün |
+| `water` | `droplets` | Regen, Hitze, Entwässerung |
+| `energy` | `wind` | Energie, Wind |
+| `waste` | `trash-2` | Abfall |
+| `money` | `euro` | Haushalt, Steuern, Gebühren |
+| `environment` | `flask-conical` | Belastungen, Gutachten |
+| `renovation` | `wrench` | Sanierung, Handwerk, Pflaster |
+| `personnel` | `user-plus` | Besetzungen, Mitglieder |
+| `statute` | `file-text` | Satzungen, Rückfall für Entscheidungen |
+| `airfield` | `plane` | Fliegerhorst |
+| `school` | `graduation-cap` | Schulen |
+| `daycare` | `baby` | Kitas, Kindertagespflege |
+| `sport` | `trophy` | Sport, Bäder |
+| `culture` | `drama` | Kultur, Museen, Gedenken |
+| `social` | `heart-handshake` | Soziales, Jugend, Teilhabe, Integration |
+| `report` | `clipboard-list` | Rückfall für Berichte |
+| `motion` | `file-pen` | Rückfall für Anträge |
 
 Dazu fest: Anker (`anchor`) für den Beginn, Schloss (`lock`) für
-nichtöffentlich. Die Liste darf wachsen (Schule, Kita, Sport, Kultur,
-Soziales), aber nur hier und in der Tabelle im Code zugleich. Für die
-Etappen des Rats gibt es `committeeIcon`.
+nichtöffentlich. Die Liste darf wachsen, aber nur hier und in der Tabelle im
+Code zugleich. Für die Etappen des Rats gibt es `committeeIcon`.
+
+**Gemessen (Schritt 1, 10.11.2026):** Die Titel-Regeln treffen bei den letzten
+300 öffentlichen inhaltlichen Punkten 81 % (Ziel ≥ 70 %), ein Modell-Schlüssel
+war deshalb nicht nötig. Ohne Treffer greift nach der Sitzung das Politikfeld
+des Beschlusses, sonst der Rückfall nach Art (`statute`, `report`, `motion`).
 
 ## Anhang B: Farben des Entwurfs und ihre Tokens
 

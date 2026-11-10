@@ -928,6 +928,19 @@ def test_council_sessions_and_detail(client):
     assert detail["committee"] == "Bauausschuss"
     assert detail["agenda_items"][0]["title"] == "Bebauungsplan Hafen"
     assert "ksinr=42" in detail["url"]
+    # „Kurs der Sitzung" kommt mit, solange es eine Tagesordnung gibt
+    # (Einzelheiten: tests/test_course.py).
+    kurs = detail["course"]
+    assert [s["kind"] for s in kurs["stages"]] == ["content"]
+    assert kurs["items"]["Ö 1"]["icon"] == "plan"
+
+
+def test_council_session_ohne_tagesordnung_ohne_kurs(client):
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(43, "Rat", "2026-12-10", "17:00", "Rathaus", agenda_items=[]))
+    cs.close()
+    detail = client.get("/api/council/session/43").json()
+    assert detail["agenda_items"] == [] and "course" not in detail
 
 
 def test_council_session_404(client):

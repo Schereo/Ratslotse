@@ -1570,6 +1570,171 @@ class SitzungenMixin(StoreBasis):
             item["dringlich"] = ist_dringlichkeitsantrag(item["item_number"])
         return out
 
+    #: Höchstens so viele Punkte heißen auf der Sitzungsseite „wichtig" (Tims
+    #: Entscheidung 10.11.2026; die Sitzungsliste zeigt zwei).
+    KURS_WICHTIG_MAX = 3
+
+    def session_course(self, ksinr: int) -> dict | None:
+        """Der „Kurs der Sitzung": Etappen und je Punkt Art, Piktogramm,
+        „wichtig" und „schon vertagt" (``docs/plan-sitzungsseite-kurs.md``,
+        Schritt 1; die Regeln selbst stehen in ``council/course.py``).
+
+        ``None`` ohne Tagesordnung — dann gibt es keinen Kurs.
+
+        **wichtig** ist kein neues Maß: Vor dem Protokoll dieselbe Auswahl wie
+        in der Sitzungsliste (``sitzungs_highlights``), danach die wichtigsten
+        Beschlüsse nach dem gespeicherten Wichtig-Wert — mit derselben
+        Schwelle (``WICHTIG_MINDEST``), damit eine Routinesitzung keine
+        behaupteten Schwerpunkte bekommt.
+        """
+        from council import course  # noqa: PLC0415
+        from council.impact import formalakt_deckel  # noqa: PLC0415
+
+        from .dringlichkeit import ist_dringlichkeitsantrag  # noqa: PLC0415
+
+        sitzung = self._conn.execute(
+            "SELECT ksinr, committee, session_date, session_time FROM council_sessions WHERE ksinr = ?",
+            (int(ksinr),)).fetchone()
+        if not sitzung:
+            return None
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT a.ksinr, a.item_number, a.title, a.template_number, a.kvonr, a.is_public, "
+            "       v.kind AS template_kind "
+            "FROM council_agenda_items a LEFT JOIN council_templates v ON v.kvonr = a.kvonr "
+            "WHERE a.ksinr = ? ORDER BY a.id", (int(ksinr),))]
+        if not rows:
+            return None
+        datum = sitzung["session_date"]
+
+        oeffentlich = [r for r in rows if r["is_public"]]
+        _eltern, _kopf, vorhaben = self._ueberschriften(oeffentlich)
+        dringlich = {r["item_number"] for r in rows if ist_dringlichkeitsantrag(r["item_number"])}
+        stages = course.build_stages(rows, {nr for (_k, nr) in vorhaben}, dringlich)
+
+        # Behandlungsart an DIESEM Tag aus der Beratungsfolge.
+        kvonrs = [r["kvonr"] for r in oeffentlich if r["kvonr"]]
+        behandlung: dict[int, str] = {}
+        if kvonrs:
+            ph = ",".join("?" * len(kvonrs))
+            behandlung = {b["kvonr"]: b["result"] for b in self._conn.execute(
+                f"SELECT kvonr, result FROM council_deliberations WHERE kvonr IN ({ph}) AND date = ?",
+                [*kvonrs, datum]) if b["result"]}
+
+        def nummer(n: str | None) -> list[str]:
+            # „Ö 6" → „6", „Ö9" → „9", „10.2/10.3" → beide.
+            return [re.sub(r"^\D+", "", t).strip() for t in (n or "").split("/") if t.strip()]
+
+        beschluesse: dict[str, dict] = {}
+        for d in self._conn.execute(
+                "SELECT item_number, policy_field, importance, impact_reason FROM council_decisions "
+                "WHERE ksinr = ? AND kind = 'decision'", (int(ksinr),)):
+            for n in nummer(d["item_number"]):
+                beschluesse.setdefault(n, dict(d))
+
+        wichtig: dict[str, str | None] = {}
+        if self.has_protocol(ksinr) and beschluesse:
+            kandidaten = sorted(
+                ((nr, d) for nr, d in beschluesse.items()
+                 if (d["importance"] or 0) >= self.WICHTIG_MINDEST),
+                key=lambda e: -(e[1]["importance"] or 0))
+            agenda_nr = {nummer(r["item_number"])[0]: r["item_number"]
+                         for r in oeffentlich if nummer(r["item_number"])}
+            for nr, d in kandidaten:
+                if nr in agenda_nr and len(wichtig) < self.KURS_WICHTIG_MAX:
+                    wichtig[agenda_nr[nr]] = d["impact_reason"] or None
+        else:
+            for p in self.sitzungs_highlights([int(ksinr)],
+                                              max_je_sitzung=self.KURS_WICHTIG_MAX).get(int(ksinr), []):
+                wichtig[p["item_number"]] = p.get("wichtig_grund")
+
+        vertagt = course.postponed_counts(oeffentlich, *self._fruehere_vertagungen(
+            sitzung["committee"], datum, oeffentlich))
+
+        in_zellen = [nr for s in stages if s["kind"] != "closed"
+                     for z in s["cells"] for nr in z["items"]]
+        formal = {nr for s in stages for z in s["cells"] if z["title"] == "Formalien" for nr in z["items"]}
+        unter_antraegen = set()
+        for s in stages:
+            if s["kind"] == "motions":
+                unter_antraegen |= {nr for z in s["cells"] for nr in z["items"]}
+        gruppe = {r["item_number"]: nr for (_k, nr) in vorhaben
+                  for r in oeffentlich if course.parent_number(r["item_number"]) == nr}
+        nach_nr = {r["item_number"]: r for r in rows}
+
+        items: dict[str, dict] = {}
+        for nr in in_zellen:
+            r = nach_nr[nr]
+            titel = course.strip_result(r["title"])
+            antrag = nr not in formal and (nr in dringlich or course.is_motion(titel, nr in unter_antraegen))
+            typ = course.item_type(titel, r["template_kind"], behandlung.get(r["kvonr"] or 0),
+                                   formality=nr in formal, motion=antrag)
+            kurz = self._titel_zerlegen(course.strip_applicant(titel))[1] or titel
+            # „Dringlichkeitsantrag: festgestellte PAK-Belastung" — die Art
+            # steht schon in `type`, der Kurztitel nennt den Gegenstand.
+            kurz = course.DRINGLICH_PREFIX_RE.sub("", kurz) or kurz
+            feld = (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("policy_field")
+            items[nr] = {
+                "short_title": kurz,
+                "type": typ,
+                "type_label": course.TYPE_LABELS[typ],
+                "icon": course.icon(kurz, typ, feld),
+                "applicant": course.applicant(titel) if antrag else None,
+                "important": nr in wichtig,
+                "important_reason": wichtig.get(nr),
+                "postponed": 0 if typ in course.FRAME_TYPES else vertagt.get(nr, 0),
+                "formality": nr in formal,
+                "formal_act": formalakt_deckel(titel) is not None,
+                "group": gruppe.get(nr),
+            }
+
+        geschlossen = sum(1 for r in rows if not r["is_public"])
+        inhaltlich = sum(1 for it in items.values() if it["type"] not in course.FRAME_TYPES)
+        return {
+            "start": (sitzung["session_time"] or "").strip() or None,
+            "public_count": len(oeffentlich),
+            "closed_count": geschlossen,
+            "substantive_count": inhaltlich,
+            "stages": stages,
+            "items": items,
+        }
+
+    def _fruehere_vertagungen(self, committee: str, datum: str,
+                              punkte: list[dict]) -> tuple[list[dict], set[tuple]]:
+        """Frühere Zeilen desselben Gremiums, die zu ``punkte`` passen könnten
+        (gleiche Vorlage oder gleicher Titelanfang), und die vertagten
+        Beschlüsse dieser Sitzungen — das Futter für ``course.postponed_counts``."""
+        from council import course  # noqa: PLC0415
+
+        vorlagen = sorted({(r["template_number"] or "").strip() for r in punkte
+                           if (r["template_number"] or "").strip()})
+        titel = sorted({course.strip_result(r["title"]) for r in punkte
+                        if not (r["template_number"] or "").strip()
+                        and course.DATED_RE.search(r["title"] or "")})
+        bedingungen, werte = [], []
+        if vorlagen:
+            bedingungen.append(f"a.template_number IN ({','.join('?' * len(vorlagen))})")
+            werte += vorlagen
+        for t in titel:
+            bedingungen.append("substr(a.title, 1, ?) = ?")
+            werte += [len(t), t]
+        if not bedingungen:
+            return [], set()
+        frueher = [dict(r) for r in self._conn.execute(
+            "SELECT a.ksinr, a.item_number, a.title, a.template_number "
+            "FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            f"WHERE s.committee = ? AND s.session_date < ? AND ({' OR '.join(bedingungen)})",
+            [committee, datum, *werte])]
+        ksinrs = sorted({r["ksinr"] for r in frueher})
+        vertagt: set[tuple] = set()
+        if ksinrs:
+            ph = ",".join("?" * len(ksinrs))
+            for d in self._conn.execute(
+                    f"SELECT ksinr, item_number FROM council_decisions "
+                    f"WHERE ksinr IN ({ph}) AND kind = 'decision' AND outcome = 'postponed'", ksinrs):
+                for n in (d["item_number"] or "").split("/"):
+                    vertagt.add((d["ksinr"], re.sub(r"^\D+", "", n).strip()))
+        return frueher, vertagt
+
     def sitzungen_am_monatstag(self, monat_tag: str, limit: int = 8) -> list[dict]:
         """Sitzungen an einem Monatstag (``"-06-17"``) über alle Jahre, neueste
         zuerst — löst Fragen mit Datum ohne Jahr („am 17.06.") auf
