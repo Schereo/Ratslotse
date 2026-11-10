@@ -985,7 +985,7 @@ export default function View() {
             Reiter-Leiste beim Wechsel um eine Überschrift nach oben. */}
         <PageHeader
           title="Analyse"
-          description="Parteien, Personen, Finanzen, Trends und Ziele im Überblick."
+          description="Trends, Parteien, Personen und Ziele im Überblick."
         />
         <div className="mt-4">
           <AnalyseReiter aktiv="staedte" />

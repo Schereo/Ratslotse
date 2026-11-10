@@ -106,13 +106,27 @@ def test_setup_nennt_die_beiden_kandidaturen_und_das_parteien_menue(client):
     assert "Schließung der Wahllokale" in daten["deadline_hint"]
 
 
-def test_die_uebersicht_verlinkt_die_stichwahl_ohne_konto(client):
+def test_die_uebersicht_verlinkt_die_stichwahl_ohne_konto(client, monkeypatch):
     # Die Runde gibt es (wie auf Prod): Seit die Stichwahl eingefroren ist,
     # gilt sie als vorbei, und eine vorbeie Wahl ohne Runde bekäme keinen Link.
+    # Die Einladungen sind seit 09.11.2026 aus — hier geht es um die Regel,
+    # die greift, sobald sie wieder an sind.
+    from app.routers import wahlabend
+    monkeypatch.setattr(wahlabend, "TIPP_EINLADUNGEN", True)
     client.get(f"/api/tipp/setup{RUNDE}")
     zeilen = {z["slug"]: z for z in client.get("/api/wahlen").json()["elections"]}
     assert zeilen["ob-stichwahl-2026"]["tipp_path"] == "/tipp?runde=stichwahl"
     assert zeilen["ob-stichwahl-2026"]["tipp_locked"] is False
+
+
+def test_ohne_einladungen_verlinkt_die_uebersicht_kein_tippspiel(client):
+    """Tims Entscheidung 09.11.2026: Die Tippspiele sind nur noch per Link zu
+    finden. Alle Einstiege der App hängen an diesen beiden Feldern."""
+    client.get(f"/api/tipp/setup{RUNDE}")
+    for z in client.get("/api/wahlen").json()["elections"]:
+        assert z["tipp_path"] == "" and z["tipp_locked"] is False, z["slug"]
+    # Die Runde selbst bleibt unter ihrem Link erreichbar.
+    assert client.get(f"/api/tipp/setup{RUNDE}").status_code == 200
 
 
 # ------------------------------------------------------------------ Tippen
