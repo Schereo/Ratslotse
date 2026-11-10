@@ -321,6 +321,49 @@ test("die Karte zeigt die Straßen der Maßnahmen und führt von der Liste zum O
   await expect(map.getByText(/Orte aus den Titeln der Maßnahmen/)).toBeVisible();
 });
 
+test("der Lärmaktionsplan zeigt seine Abschnitte mit Vorschlag und seine Tabelle", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=laermaktionsplan");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  // Abschnitte und Tabelle stehen als Dateien im Repo (council/plan_lists/) — auch gegen die leere Datenbank.
+  const map = page.locator('section[aria-labelledby="plan-places"]');
+  await expect(map.getByText("Abschnitt aus dem Plan")).toBeVisible();
+  await expect(map.locator(".leaflet-container")).toBeVisible();
+  const row = map.getByRole("button", { name: /Ofener Straße/ });
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  await expect(map.locator("blockquote")).toContainText("zwischen Zeughausstraße und dem Knotenpunkt Prinzessinweg");
+  await expect(map.getByRole("link", { name: /Seite 90 im Plan/ })).toHaveAttribute("href", /id=280381&type=do#page=90$/);
+  const lists = page.locator('section[aria-labelledby="plan-lists"]');
+  await expect(lists.getByRole("heading", { name: "Lärm-Schwerpunkte" })).toBeVisible();
+  await expect(lists.getByRole("cell", { name: "Cloppenburger Straße" })).toBeVisible();
+  await expect(lists.getByRole("cell", { name: "Heiligengeiststraße" })).toHaveCount(0);
+  await lists.getByRole("button", { name: "Alle 30 zeigen" }).click();
+  await expect(lists.getByRole("cell", { name: "Heiligengeiststraße" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Abschnitte dieser Seite" }).getByRole("button", { name: /^Aus dem Plan/ })).toBeVisible();
+});
+
+test("der Wärmeplan zeigt seine Wärmenetzeignungsgebiete, jedes mit Seite", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=waermeplan");
+  const lists = page.locator('section[aria-labelledby="plan-lists"]');
+  await expect(lists.getByRole("heading", { name: "Wärmenetzeignungsgebiete" })).toBeVisible();
+  // Elf Zeilen stehen offen: Eine einzelne verborgene Zeile wäre ein Klick für nichts.
+  await expect(lists.getByRole("button", { name: /^Alle \d+ zeigen/ })).toHaveCount(0);
+  // Breit eine Tabelle, schmal eine Liste — je nach Breite der Spalte; geprüft wird, was sichtbar ist.
+  await expect(lists.locator(":is(td, p):visible", { hasText: "Kennedyviertel" }).first()).toBeVisible();
+  await expect(lists.locator("a:visible", { hasText: /S\. 94/ }).first()).toHaveAttribute("href", /id=306748&type=do#page=94$/);
+  // Die Gebiete, nachgezeichnet aus den Karten des Plans, stehen als Fläche auf der Karte — und zum Herunterladen.
+  const map = page.locator('section[aria-labelledby="plan-places"]');
+  await expect(map.getByText("Gebiet aus dem Plan")).toBeVisible();
+  await expect(map.locator(".leaflet-container path.leaflet-interactive")).toHaveCount(11);
+  const link = map.getByRole("link", { name: "Als GeoJSON herunterladen" });
+  await expect(link).toHaveAttribute("href", "/api/council/plan/waermeplan/geojson");
+  const geo = await (await page.request.get("/api/council/plan/waermeplan/geojson")).json();
+  expect(geo.type).toBe("FeatureCollection");
+  expect(geo.features).toHaveLength(11);
+});
+
 test.describe("Haushalt zum Plan", () => {
   test.use({ storageState: zustandsDatei("ratsfrau") });
 
@@ -356,6 +399,20 @@ test("die Viertel-Tafel nennt Pläne mit einem Ort im Viertel", async ({ page })
   await expect(page.locator(`a[href="/council/plan?key=${data.plans[0].key}"]`).first()).toBeVisible();
 });
 
+test("die Viertel-Tafel nennt das Stadterneuerungsgebiet und den Wärmeplan", async ({ page }) => {
+  await page.route("**/api/app-config", async (route) => {
+    const echt = await (await route.fetch()).json();
+    const ohne = (echt.features ?? []).filter((f: string) => f !== "plaene" && f !== "mein-viertel");
+    await route.fulfill({ json: { ...echt, features: [...ohne, "plaene", "mein-viertel"] } });
+  });
+  // Beides kommt aus Dateien im Repo (council/stadterneuerung.json, council/plan_lists/) — auch gegen leer.
+  await page.goto("/karte?ort=kreyenbrueck");
+  const card = page.locator('div:has(> h2:has-text("Pläne, die dein Viertel betreffen"))');
+  await expect(card.getByText("Kreyenbrück-Nord")).toBeVisible();
+  await expect(card.getByText(/2009–2033 · 89 ha · Fördermittel 22,5 Mio\. € · Eigenmittel der Stadt 7,1 Mio\. €/)).toBeVisible();
+  await expect(card.getByText(/Eignungsgebiet „WNG 9 Kreyenbrück“/)).toBeVisible();
+});
+
 test("ohne Schalter bleibt es bei den Zielen", async ({ page }) => {
   await schalter(page, false);
   await page.goto("/council?tab=analysis&sub=ziele");
@@ -370,7 +427,8 @@ for (const breite of [390, 320]) {
     await schalter(page, true);
     for (const pfad of ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
       "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035",
-      "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau", "/council/plan?key=mobilitaetsplan_2030"]) {
+      "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau", "/council/plan?key=mobilitaetsplan_2030",
+      "/council/plan?key=laermaktionsplan", "/council/plan?key=waermeplan"]) {
       await page.goto(pfad, { waitUntil: "networkidle" });
       expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
     }

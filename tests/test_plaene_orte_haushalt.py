@@ -120,7 +120,10 @@ def test_viertel_zaehlt_massnahmenstrassen_breit_und_beschlussstrassen_nur_im_ha
     decision(store, "kita_ausbau", 3, "2024-11-19", places=[("bahnweg-84", 0.9)])
 
     def keys(place_id):
-        return {p["key"]: p for p in plan_pages.district_plans(store, place_id, "2026-11-10")}
+        # Pläne, die ihre Orte selbst festlegen (council/plan_lists/), stehen unabhängig von diesem Bestand
+        # im Viertel — sie prüft tests/test_plaene_listen.py.
+        return {p["key"]: p for p in plan_pages.district_plans(store, place_id, "2026-11-10")
+                if p["key"] not in plan_state.list_keys()}
 
     assert set(keys("haarentor")) == {"mobilitaetsplan_2030"}, "ein nennenswerter Teil der Fahrradstraße liegt dort"
     assert set(keys("ziegelhof")) == set(), "die Alexanderstraße aus einem Bericht zählt nur in Bürgerfelde"
@@ -135,7 +138,8 @@ def test_abgelaufene_plaene_stehen_nicht_im_viertel(store):
     street = entry["places"][0]
     location(store, street["slug"], street["name"], "street", areas=(("innenstadt", 1.0),))
     assert plan_pages.status(plans.PLANS["smv2025"], "2026-11-10") != "running"
-    assert plan_pages.district_plans(store, "innenstadt", "2026-11-10") == []
+    found = [p["key"] for p in plan_pages.district_plans(store, "innenstadt", "2026-11-10")]
+    assert "smv2025" not in found and not set(found) - set(plan_state.list_keys())
 
 
 # ── Haushalt ───────────────────────────────────────────────────────────────

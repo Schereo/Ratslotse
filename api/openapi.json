@@ -10687,6 +10687,13 @@
             "title": "Projects",
             "type": "array"
           },
+          "renewal_areas": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictRenewalArea"
+            },
+            "title": "Renewal Areas",
+            "type": "array"
+          },
           "upcoming": {
             "items": {
               "$ref": "#/components/schemas/DistrictUpcomingItem"
@@ -10810,6 +10817,50 @@
           "stages"
         ],
         "title": "DistrictProjectsOverviewEntry",
+        "type": "object"
+      },
+      "DistrictRenewalArea": {
+        "description": "Ein Stadterneuerungsgebiet, von dessen Fläche ein nennenswerter Teil hier liegt.",
+        "properties": {
+          "end_year": {
+            "title": "End Year",
+            "type": "integer"
+          },
+          "funding_eur": {
+            "title": "Funding Eur",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "own_funds_eur": {
+            "title": "Own Funds Eur",
+            "type": "integer"
+          },
+          "size_ha": {
+            "title": "Size Ha",
+            "type": "number"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "start_year": {
+            "title": "Start Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "start_year",
+          "end_year",
+          "size_ha",
+          "funding_eur",
+          "own_funds_eur",
+          "source"
+        ],
+        "title": "DistrictRenewalArea",
         "type": "object"
       },
       "DistrictSuggestions": {
@@ -21494,6 +21545,13 @@
               "null"
             ]
           },
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/PlanList"
+            },
+            "title": "Lists",
+            "type": "array"
+          },
           "measure_count": {
             "title": "Measure Count",
             "type": [
@@ -21658,9 +21716,17 @@
           "places": {
             "description": "Die Karte zum Plan — ab drei Orten.",
             "properties": {
+              "area_places": {
+                "title": "Area Places",
+                "type": "integer"
+              },
               "decision_places": {
                 "title": "Decision Places",
                 "type": "integer"
+              },
+              "geojson": {
+                "title": "Geojson",
+                "type": "boolean"
               },
               "items": {
                 "items": {
@@ -21687,10 +21753,17 @@
               "note": {
                 "title": "Note",
                 "type": "string"
+              },
+              "section_places": {
+                "title": "Section Places",
+                "type": "integer"
               }
             },
             "required": [
               "items",
+              "section_places",
+              "area_places",
+              "geojson",
               "measure_places",
               "measures_named",
               "measures_total",
@@ -22272,6 +22345,7 @@
           "news",
           "related",
           "places",
+          "lists",
           "measures",
           "city_status",
           "indicators",
@@ -22389,6 +22463,140 @@
           "question"
         ],
         "title": "PlanFollowUp",
+        "type": "object"
+      },
+      "PlanGeoFeature": {
+        "properties": {
+          "geometry": {
+            "title": "Geometry"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/PlanGeoProperties"
+          },
+          "type": {
+            "const": "Feature",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ],
+        "title": "PlanGeoFeature",
+        "type": "object"
+      },
+      "PlanGeoJson": {
+        "description": "``GET /api/council/plan/{key}/geojson`` — Abschnitte und Gebiete des Plans als GeoJSON (WGS84).",
+        "properties": {
+          "attribution": {
+            "title": "Attribution",
+            "type": "string"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/PlanGeoFeature"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "generated": {
+            "title": "Generated",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "const": "FeatureCollection",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "name",
+          "attribution",
+          "generated",
+          "features"
+        ],
+        "title": "PlanGeoJson",
+        "type": "object"
+      },
+      "PlanGeoProperties": {
+        "description": "Eigenschaften eines Abschnitts (``section``) oder Gebiets (``area``) im GeoJSON-Download.",
+        "properties": {
+          "area_ha": {
+            "title": "Area Ha",
+            "type": "number"
+          },
+          "area_ha_plan": {
+            "title": "Area Ha Plan",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "figure": {
+            "title": "Figure",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "section",
+              "area"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "length_m": {
+            "title": "Length M",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "street": {
+            "title": "Street",
+            "type": "string"
+          },
+          "stretch": {
+            "title": "Stretch",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "code",
+          "page",
+          "source_url"
+        ],
+        "title": "PlanGeoProperties",
         "type": "object"
       },
       "PlanGroup": {
@@ -22697,6 +22905,98 @@
         "title": "PlanLaneMark",
         "type": "object"
       },
+      "PlanList": {
+        "description": "Eine Tabelle aus dem Plan-Dokument, Zeile für Zeile, wie sie dort steht.",
+        "properties": {
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name_column": {
+            "title": "Name Column",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PlanListRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "caption",
+          "page",
+          "source_label",
+          "source_url",
+          "columns",
+          "name_column",
+          "rows"
+        ],
+        "title": "PlanList",
+        "type": "object"
+      },
+      "PlanListRow": {
+        "properties": {
+          "cells": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cells",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "cells",
+          "page",
+          "source_url"
+        ],
+        "title": "PlanListRow",
+        "type": "object"
+      },
       "PlanMeasure": {
         "properties": {
           "code": {
@@ -22983,8 +23283,15 @@
         "type": "object"
       },
       "PlanPlace": {
-        "description": "Ein Ort zum Plan: aus einem Maßnahmentitel (mit Verlauf) oder aus Beschlüssen (als Punkt).",
+        "description": "Ein Ort zum Plan: ein Abschnitt aus dem Plan selbst oder eine Straße aus einem Maßnahmentitel\n(beide mit Verlauf), oder ein Ort aus Beschlüssen (als Punkt).",
         "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/PlanPlaceArea"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
           "decision_count": {
             "title": "Decision Count",
             "type": "integer"
@@ -23022,6 +23329,13 @@
             "title": "Name",
             "type": "string"
           },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/PlanPlaceSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
           "slug": {
             "title": "Slug",
             "type": "string"
@@ -23034,11 +23348,60 @@
           "lat",
           "lon",
           "geometry",
+          "sections",
+          "areas",
           "measures",
           "decisions",
           "decision_count"
         ],
         "title": "PlanPlace",
+        "type": "object"
+      },
+      "PlanPlaceArea": {
+        "description": "Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``).",
+        "properties": {
+          "area_ha": {
+            "title": "Area Ha",
+            "type": "number"
+          },
+          "area_ha_plan": {
+            "title": "Area Ha Plan",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "figure": {
+            "title": "Figure",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "figure",
+          "page",
+          "source_url",
+          "area_ha",
+          "area_ha_plan"
+        ],
+        "title": "PlanPlaceArea",
         "type": "object"
       },
       "PlanPlaceDecision": {
@@ -23106,12 +23469,54 @@
         "title": "PlanPlaceMeasure",
         "type": "object"
       },
+      "PlanPlaceSection": {
+        "description": "Ein Abschnitt, den der Plan selbst festlegt (``council/plan_lists/``).",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "stretch": {
+            "title": "Stretch",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "stretch",
+          "quote",
+          "page",
+          "source_url"
+        ],
+        "title": "PlanPlaceSection",
+        "type": "object"
+      },
       "PlanPlaces": {
         "description": "Die Karte zum Plan — ab drei Orten.",
         "properties": {
+          "area_places": {
+            "title": "Area Places",
+            "type": "integer"
+          },
           "decision_places": {
             "title": "Decision Places",
             "type": "integer"
+          },
+          "geojson": {
+            "title": "Geojson",
+            "type": "boolean"
           },
           "items": {
             "items": {
@@ -23138,10 +23543,17 @@
           "note": {
             "title": "Note",
             "type": "string"
+          },
+          "section_places": {
+            "title": "Section Places",
+            "type": "integer"
           }
         },
         "required": [
           "items",
+          "section_places",
+          "area_places",
+          "geojson",
           "measure_places",
           "measures_named",
           "measures_total",
@@ -23785,6 +24197,7 @@
               "indicators",
               "measures",
               "places",
+              "lists",
               "decisions"
             ],
             "title": "Key",
@@ -40470,6 +40883,49 @@
           }
         },
         "summary": "Plan Detail",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/plan/{key}/geojson": {
+      "get": {
+        "description": "Abschnitte und Gebiete, die der Plan selbst festlegt, als GeoJSON zum Herunterladen.",
+        "operationId": "plan_geojson_api_council_plan__key__geojson_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanGeoJson"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan Geojson",
         "tags": [
           "council"
         ]

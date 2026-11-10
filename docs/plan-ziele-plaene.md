@@ -497,6 +497,13 @@ kommt, entscheidet die Gestaltungsrunde.
    Spielleitplanung bleibt ohne Karte, der Masterplan Stadtgrün hat nur drei
    Orte aus einem Beschluss: Ihre Beschlüsse tragen kaum Orte, und Neues zu
    verorten hätte ein Geocoding gebraucht. *(gebaut)*
+   (c) **Abschnitte, die der Plan selbst festlegt** (seit 10.11.2026): Der
+   Lärmaktionsplan schließt jeden Maßnahmenbereich in Kapitel 18 mit
+   „Vorschlag:“ und nennt dessen Enden („zwischen Zeughausstraße und dem
+   Knotenpunkt Prinzessinweg“). Neun solche Abschnitte sind von Hand gesetzt
+   (`scripts/plan_listen.py`, `council/plan_lists/`), die Straße ist auf den
+   ersten Schritt zugeschnitten, der Satz steht wörtlich mit Seite dabei.
+   Kapitel 18.3.5 macht keinen Vorschlag und fehlt deshalb. *(gebaut)*
 9. **IM HAUSHALT** (nur mit dem Recht `budget`, eigener Endpunkt
    `GET /api/council/budget/plan/{key}`): Haushaltsposten, deren eigener Text
    den Plan beim Namen nennt — ein Produkt, das ihn als Rechtsgrundlage
@@ -505,13 +512,38 @@ kommt, entscheidet die Gestaltungsrunde.
    37 Verweise für 8 Pläne). Beträge so, wie sie in der Zeile stehen; von zwei
    Stufen einer Änderung zählt die spätere. Kein Gesamtbetrag: Was ein Plan
    kostet, steht so nirgends im Haushalt. *(gebaut)*
+10. **AUS DEM PLAN**: Tabellen, die der Plan enthält — Zeile für Zeile, mit
+   Seite: die Rangfolge der 30 Lärm-Schwerpunkte (Lärmaktionsplan, Tabelle 13)
+   und die elf Wärmenetzeignungsgebiete (Wärmeplan, Tabelle 4, je Gebiet mit
+   der Seite seiner Beschreibung). Das Einzelhandelskonzept fehlt:
+   Seine Zentrenstruktur von 2023 steht nur in der Karte 33, im Text stehen die
+   Zentrentypen von 2015. *(gebaut)*
+11. **UMRISSE AUS DEN KARTEN** (seit 10.11.2026): Die elf
+   Wärmenetzeignungsgebiete stehen im PDF nur als Rasterbild. `scripts/plan_umrisse.py`
+   legt die Übersichtskarte (Abb. 34) über die Stadtgrenze auf unsere
+   Stadtgrenze, verortet jede Detailkarte (Abb. 35–45) darüber und richtet sie
+   an den Straßen des Ortskatalogs nach (Maßstab gegen den Balken der Karte
+   gehalten), dann wird der türkise Umriss gefüllt. Ergebnis:
+   `council/plan_shapes/waermeplan.geojson`. Gegenprobe: Wo der Plan eine Fläche
+   nennt (6 Gebiete), liegt der Umriss höchstens 2,4 % daneben; bekannte Orte
+   liegen drin (Lambertikirche, Universität, Kaufpark …). Auf der Seite als
+   Fläche, im Viertel über den Flächenschnitt (ab 10 % oder 2 ha) statt über
+   die Ortsteil-Spalte, und als GeoJSON zum Herunterladen
+   (`/api/council/plan/{key}/geojson`, auch mit den Lärm-Abschnitten). *(gebaut)*
 
 **Mein Viertel:** Die Tafel eines Ortsbereichs nennt die laufenden und
 entstehenden Pläne mit mindestens einem Ort dort (`district_plans`). Eine
 Straße aus der Maßnahmenliste zählt überall, wo ein nennenswerter Teil von
 ihr liegt (Anteil ab 0,3); eine Straße aus einem Beschluss nur in ihrem
 Hauptbereich — sonst stünde ein Tagesaufenthalt „an der Alexanderstraße“ in
-fünf Stadtteilen.
+fünf Stadtteilen. Ein Abschnitt aus dem Plan zählt wie eine Straße aus der
+Maßnahmenliste (sein Anteil ist mitgerechnet); ein Wärmenetzeignungsgebiet
+zählt dort, wo mindestens ein Zehntel oder 2 ha seiner nachgezeichneten Fläche
+liegen — die Ortsteil-Spalte der Tabelle irrt bei zwei Gebieten („WNG Ohmstede“
+steht unter Donnerschwee, liegt aber ganz in Ohmstede). Darunter die
+**Stadterneuerungsgebiete** aus dem Geoportal der Stadt (sechs Flächen mit
+Laufzeit, Fördermitteln und Eigenmitteln, `scripts/stadterneuerung.py`,
+`council/stadterneuerung.json`), ab einem Zehntel ihrer Fläche im Ortsbereich.
 
 **Zu 4a, 4b und 1d: gemessen am 10.11.2026.** 73 Berichte mit Vorlagentext in
 26 Plänen; 69 bekamen einen belegten Satz, 4 keinen. Von Hand gegen das Zitat

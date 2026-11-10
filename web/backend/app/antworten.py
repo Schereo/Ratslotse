@@ -3673,6 +3673,18 @@ class DistrictPlan(TypedDict):
     via_measures: bool
 
 
+class DistrictRenewalArea(TypedDict):
+    """Ein Stadterneuerungsgebiet, von dessen Fläche ein nennenswerter Teil hier liegt."""
+    name: str
+    start_year: int
+    end_year: int
+    size_ha: float
+    #: Ungerundet in Euro, wie die Stadt es schreibt („22,5 Millionen Euro“).
+    funding_eur: int
+    own_funds_eur: int
+    source: str
+
+
 class DistrictProjects(TypedDict):
     """``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs."""
     place: Any
@@ -3684,6 +3696,8 @@ class DistrictProjects(TypedDict):
     press: list[DistrictPressItem]
     #: „Pläne, die dein Viertel betreffen“ (Schalter ``plaene`` in der Oberfläche).
     plans: NotRequired[list[DistrictPlan]]
+    #: Stadterneuerungsgebiete (Schalter ``plaene`` in der Oberfläche).
+    renewal_areas: NotRequired[list[DistrictRenewalArea]]
     neighbours: list[DistrictNeighbour]
     #: Wann das Register zuletzt gerechnet wurde — NICHT der Datenstand.
     updated_at: str | None
@@ -5276,15 +5290,42 @@ class PlanPlaceDecision(TypedDict):
     date: str
 
 
+class PlanPlaceSection(TypedDict):
+    """Ein Abschnitt, den der Plan selbst festlegt (``council/plan_lists/``)."""
+    code: str
+    #: Kurzform: „Zeughausstraße bis Prinzessinweg“.
+    stretch: str
+    #: Der Satz des Plans, der den Abschnitt vorschlägt — wörtlich.
+    quote: str
+    page: int
+    source_url: str
+
+
+class PlanPlaceArea(TypedDict):
+    """Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``)."""
+    code: str
+    #: „Eignungsgebiet „WNG 7 Kennedyviertel““ — so steht es im Viertel.
+    label: str
+    figure: int
+    page: int
+    source_url: str
+    #: Fläche des nachgezeichneten Umrisses; daneben, was der Plan selbst nennt (nicht für jedes Gebiet).
+    area_ha: float
+    area_ha_plan: float | None
+
+
 class PlanPlace(TypedDict):
-    """Ein Ort zum Plan: aus einem Maßnahmentitel (mit Verlauf) oder aus Beschlüssen (als Punkt)."""
+    """Ein Ort zum Plan: ein Abschnitt aus dem Plan selbst oder eine Straße aus einem Maßnahmentitel
+    (beide mit Verlauf), oder ein Ort aus Beschlüssen (als Punkt)."""
     slug: str
     name: str
     kind: str
     lat: float
     lon: float
-    #: MultiLineString als GeoJSON — nur für Straßen aus der Maßnahmenliste.
+    #: MultiLineString als GeoJSON — für Abschnitte aus dem Plan und Straßen aus der Maßnahmenliste.
     geometry: Any
+    sections: list[PlanPlaceSection]
+    areas: list[PlanPlaceArea]
     measures: list[PlanPlaceMeasure]
     #: Höchstens drei, die jüngsten zuerst; ``decision_count`` zählt alle.
     decisions: list[PlanPlaceDecision]
@@ -5294,6 +5335,10 @@ class PlanPlace(TypedDict):
 class PlanPlaces(TypedDict):
     """Die Karte zum Plan — ab drei Orten."""
     items: list[PlanPlace]
+    section_places: int
+    area_places: int
+    #: Gibt es Abschnitte oder Gebiete zum Herunterladen (``/api/council/plan/{key}/geojson``)?
+    geojson: bool
     measure_places: int
     #: Wie viele Maßnahmen einen Ort haben, und wie viele die Liste zählt.
     measures_named: int
@@ -5328,9 +5373,64 @@ class PlanBudget(TypedDict):
     note: str
 
 
+class PlanGeoProperties(TypedDict):
+    """Eigenschaften eines Abschnitts (``section``) oder Gebiets (``area``) im GeoJSON-Download."""
+    kind: Literal["section", "area"]
+    code: str
+    page: int
+    source_url: str
+    #: Nur Abschnitte: Straße, Abschnitt in Kurzform, der Satz des Plans, Länge.
+    street: NotRequired[str]
+    stretch: NotRequired[str]
+    quote: NotRequired[str]
+    length_m: NotRequired[int]
+    #: Nur Gebiete: Name, Abbildung, Fläche des Umrisses und laut Plan.
+    name: NotRequired[str | None]
+    figure: NotRequired[int]
+    area_ha: NotRequired[float]
+    area_ha_plan: NotRequired[float | None]
+
+
+class PlanGeoFeature(TypedDict):
+    type: Literal["Feature"]
+    geometry: Any
+    properties: PlanGeoProperties
+
+
+class PlanGeoJson(TypedDict):
+    """``GET /api/council/plan/{key}/geojson`` — Abschnitte und Gebiete des Plans als GeoJSON (WGS84)."""
+    type: Literal["FeatureCollection"]
+    name: str
+    attribution: str
+    generated: str | None
+    features: list[PlanGeoFeature]
+
+
+class PlanListRow(TypedDict):
+    cells: list[str]
+    #: Wo die Zeile im Dokument näher beschrieben ist (das Gebiet auf seiner eigenen Seite).
+    page: int | None
+    source_url: str | None
+
+
+class PlanList(TypedDict):
+    """Eine Tabelle aus dem Plan-Dokument, Zeile für Zeile, wie sie dort steht."""
+    key: str
+    title: str
+    #: Die Unterschrift der Tabelle im Dokument („Tabelle 13: …“).
+    caption: str
+    page: int
+    source_label: str
+    source_url: str
+    columns: list[str]
+    #: Welche Spalte den Namen trägt (für die schmale Ansicht als Liste).
+    name_column: int
+    rows: list[PlanListRow]
+
+
 class PlanSection(TypedDict):
     """Ein Abschnitt der Planseite, für die Sprungleiste."""
-    key: Literal["content", "review", "reports", "status", "indicators", "measures", "places", "decisions"]
+    key: Literal["content", "review", "reports", "status", "indicators", "measures", "places", "lists", "decisions"]
     label: str
     #: ``None``: Hier gibt es nichts zu zählen.
     count: int | None
@@ -5373,6 +5473,7 @@ class PlanDetail(PlanCard):
     related: list[PlanRelated]
     #: Die Karte; ``None`` unter drei Orten.
     places: PlanPlaces | None
+    lists: list[PlanList]
     measures: PlanMeasures | None
     city_status: PlanCityStatus | None
     indicators: list[PlanIndicator]

@@ -1568,7 +1568,7 @@ const TAB_META: Record<Tab, { title: string; description: string }> = {
   // aber etwas anderes: Hier stehen die Orte, Projekte und Organisationen,
   // die in Beschlüssen vorkommen (gemessen: 527 / 241 / 232).
   themen: { title: "Orte, Projekte & Organisationen", description: "Was den Rat beschäftigt — als Liste; verortet liegt es auf der Stadtkarte unter „Mein Viertel“." },
-  analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
+  analysis: { title: "Analyse", description: "Trends, Parteien, Personen und Ziele im Überblick." },
 };
 
 function CouncilInner() {
