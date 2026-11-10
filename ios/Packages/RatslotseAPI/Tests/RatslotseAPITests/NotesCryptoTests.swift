@@ -144,3 +144,25 @@ struct NotesCrossCheckTests {
         #expect(Set(json.keys) == ["iv", "ciphertext", "key_version", "version"])
     }
 }
+
+/// Die Punkt-Seite in der App: eine echte Antwort von
+/// `/api/council/session/4654/item?nr=Ö 11.1` (dieselbe Abschrift wie im
+/// Browsertest `29-punkt-seite`) und die Adresse `/council/punkt`.
+struct AgendaItemTests {
+    @Test func eineEchteAntwortLesen() throws {
+        let url = try #require(Bundle.module.url(forResource: "agenda-item-4654-11-1", withExtension: "json", subdirectory: "Fixtures"))
+        let d = try JSONDecoder().decode(AgendaItemDetail.self, from: Data(contentsOf: url))
+        #expect(d.ksinr == 4654 && d.item.itemNumber == "Ö 11.1")
+        #expect(d.courseItem.shortTitle == "Weißenmoorstraße")
+        #expect(d.history.count >= 2 && d.history.contains { $0.current })
+        #expect(!d.documents.isEmpty)
+    }
+
+    @Test func adresseHinUndZurueck() throws {
+        let router = AppRouter()
+        let route = router.route(for: try #require(URL(string: "https://ratslotse.de/council/punkt?ksinr=4654&top=%C3%96%2011.1")))
+        #expect(route == .agendaItem(ksinr: 4654, item: "Ö 11.1"))
+        let link = try #require(router.universalLink(for: .agendaItem(ksinr: 4654, item: "Ö 11.1")))
+        #expect(router.route(for: link) == .agendaItem(ksinr: 4654, item: "Ö 11.1"))
+    }
+}

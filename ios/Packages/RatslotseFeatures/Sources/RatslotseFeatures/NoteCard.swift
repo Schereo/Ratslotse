@@ -10,6 +10,8 @@ struct NoteCard: View {
     let model: AppModel
     let targetKind: String
     let targetKey: String
+    /// „Beschluss" oder „Punkt" — für die Sätze der Karte.
+    var wofuer = "Beschluss"
 
     @State private var keys: NoteKeysState?
     @State private var fehler: String?
@@ -39,7 +41,7 @@ struct NoteCard: View {
 
     @ViewBuilder private var inhalt: some View {
         if model.user == nil {
-            Text("Mit einem Konto kannst du dir zu diesem Beschluss etwas notieren — nur für dich lesbar.")
+            Text("Mit einem Konto kannst du dir zu diesem \(wofuer) etwas notieren — nur für dich lesbar.")
                 .font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary)
         } else if let fehler {
             Text(fehler).font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary)
@@ -51,7 +53,7 @@ struct NoteCard: View {
                     NoteUnlock(model: model, keys: k) { neu in self.keys = neu }
                 }
             } else {
-                NoteSetup(model: model) { neu in self.keys = neu }
+                NoteSetup(model: model, wofuer: wofuer) { neu in self.keys = neu }
             }
         } else {
             ProgressView()
@@ -84,6 +86,7 @@ private let feld = RoundedRectangle(cornerRadius: 12, style: .continuous)
 
 private struct NoteSetup: View {
     let model: AppModel
+    var wofuer = "Beschluss"
     let fertig: (NoteKeysState) -> Void
     @State private var offen = false
     @State private var p1 = ""
@@ -97,7 +100,7 @@ private struct NoteSetup: View {
     var body: some View {
         if !offen {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Notiere dir, was du zu diesem Beschluss wissen oder nachfragen willst. Nur du kannst es lesen.")
+                Text("Notiere dir, was du zu diesem \(wofuer) wissen oder nachfragen willst. Nur du kannst es lesen.")
                     .font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary)
                 Button("Notizen einrichten") { offen = true }.buttonStyle(PrimaryButtonStyle())
             }
@@ -252,7 +255,7 @@ private struct NoteEditor: View {
                 .font(RatsFont.body(14)).frame(minHeight: 110).padding(6)
                 .overlay(feld.stroke(RatsColor.border))
                 .disabled(!geladen)
-                .accessibilityLabel("Meine Notiz zu diesem Beschluss")
+                .accessibilityLabel("Meine Notiz")
             if konflikt {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Auf einem anderen Gerät wurde diese Notiz inzwischen geändert.").font(RatsFont.body(13))

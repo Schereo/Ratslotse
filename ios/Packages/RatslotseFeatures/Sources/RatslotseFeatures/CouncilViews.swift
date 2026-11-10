@@ -3556,6 +3556,15 @@ private struct SessionDetailView: View {
                     openAttachment: { previewAttachment = $0 }
                 )
                     .id(item.itemNumber)
+                // Die eigene Seite des Punkts (Schalter `punkt-seite`), wie im Web.
+                if model.feature("punkt-seite") {
+                    Button { model.navigation.append(.agendaItem(ksinr: ksinr, item: item.itemNumber)) } label: {
+                        RatsLabel("Zum Punkt", .arrowRight)
+                    }
+                    .font(RatsFont.body(13, weight: .medium))
+                    .foregroundStyle(RatsColor.primary)
+                    .frame(minHeight: 44)
+                }
 
                 if index < publicItems.count - 1 {
                     Divider()
