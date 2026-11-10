@@ -97,3 +97,13 @@ describe("Blättern und Speichern", () => {
     expect(loadStored(speicher, 1)).toEqual({ active: null, follow: true });
   });
 });
+
+describe("Lottis Satz im Kopf", () => {
+  it("je Zustand ein fester Satz", async () => {
+    const { greeting } = await import("./mitlesen");
+    expect(greeting("self")).toMatch(/^Tipp auf „Weiter“/);
+    expect(greeting("broadcast")).toMatch(/Übertragung/);
+    expect(greeting("paused")).toMatch(/Zur Übertragung/);
+    expect(greeting("over")).toMatch(/vorbei/);
+  });
+});
