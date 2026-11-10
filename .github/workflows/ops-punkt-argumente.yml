@@ -1,0 +1,81 @@
+# Manuell auslösbar: die Argumente je Tagesordnungspunkt für die Punkt-Seite
+# (Reiter „Argumente“/„Fraktionen“, Schalter `punkt-argumente`, Plan
+# docs/plan-punkt-argumente.md) — scripts/punkt_argumente.py auf dem Server.
+#
+# Ohne „schreiben“ nennt das Skript nur, wie viele Vorgänge offen sind; mit
+# wertet es aus und speichert. Ein Modellaufruf je Vorgang, ein Jahr Bestand
+# kostete in der Messung ≈ 0,24 $. Die Kostengrenze (Vorgabe 1 $) hält den
+# Lauf an, der Rest folgt beim nächsten.
+#
+# WARUM ALS WORKFLOW. Der Zugang zur Dev-VM läuft über den Deploy-Key und den
+# Sprung über den Edge; aus einer Agenten-Sitzung heraus gibt es keinen
+# anderen Weg dorthin (10.11.2026).
+#
+# Prod kennt das Skript erst mit dem nächsten Release.
+name: "Ops: Argumente je Tagesordnungspunkt"
+
+on:
+  workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de, dort erst nach dem Release)"
+        type: choice
+        options: [dev, prod]
+        default: dev
+      schreiben:
+        description: "Wirklich auswerten und speichern (aus = nur zählen)"
+        type: boolean
+        default: false
+      limit:
+        description: "Höchstens so viele Vorgänge (leer = alle offenen)"
+        type: string
+        default: ""
+      max_usd:
+        description: "Kostengrenze des Laufs in Dollar"
+        type: string
+        default: "1"
+
+concurrency:
+  group: ops-punkt-argumente-${{ inputs.umgebung }}
+  cancel-in-progress: false
+
+jobs:
+  argumente:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Argumente (${{ inputs.umgebung }})"
+        env:
+          SCHREIBEN: ${{ inputs.schreiben }}
+          LIMIT: ${{ inputs.limit }}
+          MAX_USD: ${{ inputs.max_usd }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 60m
+          # Eingaben über `envs` und geprüft, nicht als `${{ … }}` im Skripttext.
+          envs: SCHREIBEN,LIMIT,MAX_USD
+          script: |
+            set -e
+            cd ~/app
+            if [ ! -f scripts/punkt_argumente.py ]; then
+              echo "scripts/punkt_argumente.py fehlt hier — auf Prod erst nach dem Release."; exit 2
+            fi
+            case "$LIMIT" in ''|*[!0-9]*) LIMIT=0 ;; esac
+            if ! echo "$MAX_USD" | grep -qE '^[0-9]{1,2}(\.[0-9]{1,2})?$'; then
+              echo "max_usd muss eine Zahl wie 1 oder 0.5 sein: $MAX_USD"; exit 2
+            fi
+            PY=.venv/bin/python
+            # Die Login-Shell auf dem Server ist zsh: Schalter in einer Variablen
+            # würden dort nicht geteilt (s. ops-gold.yml) — deshalb ausgeschrieben.
+            if [ "$SCHREIBEN" = "true" ]; then
+              $PY scripts/punkt_argumente.py --schreiben --limit "$LIMIT" --max-usd "$MAX_USD"
+            else
+              $PY scripts/punkt_argumente.py --limit "$LIMIT"
+            fi
