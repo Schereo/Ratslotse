@@ -480,7 +480,7 @@ def test_form_ist_die_des_vertrags(store):
     """Nicht gegen eine eigene Kopie prüfen: Die Schlüssel kommen aus den
     Antwortformen, die das Backend zusagt."""
     sys.path.insert(0, str(WURZEL / "web" / "backend"))
-    from app.antworten import CourseCell, CourseItem, CourseStage, SessionCourse
+    from app.antworten import CourseCell, CourseItem, CourseStage, CourseStation, SessionCourse
 
     for ksinr in SITZUNGEN:
         k = store.session_course(ksinr)
@@ -492,6 +492,8 @@ def test_form_ist_die_des_vertrags(store):
         for it in k["items"].values():
             assert set(it) == set(get_type_hints(CourseItem))
             assert it["type_label"] == course.TYPE_LABELS[it["type"]]
+            for station in it["journey"]:
+                assert set(station) == set(get_type_hints(CourseStation))
         # Jeder Punkt in einer Boje hat Angaben, und es gibt keine ohne Boje.
         in_zellen = {nr for st in k["stages"] for z in st["cells"] for nr in z["items"]}
         assert in_zellen == set(k["items"])
@@ -535,3 +537,81 @@ def test_piktogramme_im_web():
         "lib/course-icons.ts an council/course.py::ICONS angleichen: "
         f"fehlt {sorted(set(pascal) - set(im_web))}, zu viel {sorted(set(im_web) - set(pascal))}, "
         f"anders {sorted(k for k in im_web if k in pascal and im_web[k] != pascal[k])}")
+
+
+# ---- Satz zur Sitzung, Weg der Vorlage, wie es weitergeht (Schritt 3) ----
+
+def test_satz_vor_dem_protokoll_zaehlt_was_ansteht(store):
+    _frueher(store, 1, "Verkehrsausschuss", "2026-08-24", [
+        ("Ö 16.9", "Parken auf Sicherheitstrennstreifen - Beschluss Beschluss: zurückgestellt/abgesetzt", "26/0658"),
+    ])
+    k = store.session_course(4654)
+    assert k["summary"] == ("9 Punkte zur Beratung, darunter 3 Anträge. "
+                            "Einer stand schon einmal hier und wurde vertagt.")
+    assert store.session_course(4593)["summary"] == "2 Anträge zur Beratung."
+
+
+def test_satz_nach_dem_protokoll_sagt_was_herauskam(store):
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_protocols (ksinr, extracted_at, status) VALUES (4652, datetime('now'), 'ok')")
+        # Ö 6–12 sind Beschlussvorlagen; zwei wichtige darunter, Ö 15.3 vertagt.
+        store._conn.executemany(
+            "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, outcome, vote, importance) "
+            "VALUES (4652, ?, 'decision', ?, 't', ?, ?, ?)",
+            [(i, str(i), "accepted", "unanimous", 90 if i in (6, 7) else 10) for i in range(6, 13)]
+            + [(20, "15.3", "postponed", None, 10), (21, "5", "noted", None, 10)])
+    k = store.session_course(4652)
+    assert k["summary"] == (
+        "Der Ausschuss hat alle sieben Beschlussvorlagen einstimmig angenommen, darunter "
+        "Verkehr und Wasser GmbH (VWG): Technologieentscheidung im Rahmen der Antriebswende und "
+        "Teileinziehung der Straße \"Junkerstraße\". Vertagt wurde Weißenmoorstraße.")
+
+
+def test_satz_im_rat_und_ohne_zahlwort_bei_grossen_zahlen():
+    items = {f"Ö {i}": {"type": "decision", "short_title": f"T{i}", "important": False, "postponed": 0}
+             for i in range(1, 15)}
+    outcomes = {nr: "accepted" for nr in items}
+    outcomes["Ö 14"] = "rejected"
+    assert course.summary_sentence(items, outcomes, {}, rat=True) == (
+        "Der Rat hat 13 von 14 Beschlussvorlagen angenommen. Abgelehnt wurde T14.")
+    assert course.summary_sentence({}, {}, {}, rat=False) is None
+
+
+def test_weg_der_vorlage_und_wie_es_weitergeht(store):
+    """Der Weg einer Vorlage nennt jede Station mit Ergebnis — aus dem
+    Protokoll, sonst aus dem Titel-Zusatz. Ein hier vertagter Punkt nennt die
+    nächste Tagesordnung desselben Gremiums, auf der er wieder steht."""
+    tn = next(z[2] for z in SITZUNGEN[4652][3] if z[0] == "Ö 6")
+    _frueher(store, 1, "Ausschuss für Finanzen und Beteiligungen", "2026-06-03", [
+        ("Ö 7", "VWG: Technologieentscheidung - Beschluss Beschluss: ungeändert beschlossen", tn)])
+    weissenmoor = next(z[1] for z in SITZUNGEN[4652][3] if z[0] == "Ö 15.3")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_protocols (ksinr, extracted_at, status) VALUES (4652, datetime('now'), 'ok')")
+        store._conn.executemany(
+            "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, outcome) "
+            "VALUES (4652, ?, 'decision', ?, 't', ?)", [(1, "6", "accepted"), (2, "15.3", "postponed")])
+    k = store.session_course(4652)
+    weg = k["items"]["Ö 6"]["journey"]
+    assert [(w["committee"], w["session_date"], w["outcome"]) for w in weg] == [
+        ("Ausschuss für Finanzen und Beteiligungen", "2026-06-03", "accepted"),
+        ("Verkehrsausschuss", "2026-06-08", "accepted"),
+    ]
+    assert k["items"]["Ö 15.3"]["journey"] == []          # Antrag ohne Vorlage
+    # 4654 (21.09.) ist die nächste Sitzung des Verkehrsausschusses im Fixture.
+    assert k["items"]["Ö 15.3"]["next_on_agenda"] == {
+        "ksinr": 4654, "session_date": "2026-09-21", "item_number": "Ö 11.1"}
+    assert weissenmoor in {z[1] for z in SITZUNGEN[4654][3]}
+    assert k["items"]["Ö 6"]["next_on_agenda"] is None
+    assert k["next_session"] == {"ksinr": 4654, "session_date": "2026-09-21", "session_time": "17:00",
+                                 "location": None, "has_agenda": True}
+    assert store.session_course(4654)["next_session"] is None
+
+
+def test_ergebnis_aus_dem_titel():
+    assert course.outcome_from_title("X - Beschluss Beschluss: ungeändert beschlossen") == "accepted"
+    assert course.outcome_from_title("X Beschluss: zur Kenntnis genommen") == "noted"
+    assert course.outcome_from_title("X Beschluss: zurückgestellt/abgesetzt") == "postponed"
+    assert course.outcome_from_title("X Beschluss: an Fachausschuss (zurück-)verwiesen") is None
+    assert course.outcome_from_title("X - Beschluss") is None

@@ -218,6 +218,15 @@ iOS-Schrift.
     hellsten (über 55 %, dunkler Text).
   Die Fuge zwischen Feldern einer Grafik ist `--hh-raster` (die Farbe der
   Fläche), nicht `--card`: Auf der Tafel sind das zwei verschiedene Farben.
+  **Seit 11/2026 trägt die Tafel auch den Kopf einer einzelnen Sitzung** mit
+  dem „Kurs der Sitzung“ (`components/session/course.tsx`, Schalter
+  `sitzung-kurs`). Dort steht keine Zahl, sondern der Ablauf: eine Linie vom
+  Anker bis zum Schloss, je Punkt eine Boje, je Etappe ein Band aus `--card`
+  mit Deckkraft (offen 60 %, nichtöffentlich 30 %), keine eigene Farbe. Die
+  Bojen tragen `--card` mit Rand `primary/35` — `--border` liegt auf der
+  dunklen Tafel einen Punkt neben `--card`, die Boje verschwand im Band.
+  Gedimmt (55 %) werden nur die Zeichen der schon behandelten Bojen beim
+  Mitlesen, nie die Nummern darunter.
 - **Ebenen & Abdunkler:** Fünf benannte Stufen, definiert in `app/globals.css`
   (`--ebene-huelle` 40 · `--ebene-schwebend` 60 · `--ebene-flaeche` 100 ·
   `--ebene-dialog` 110 · `--ebene-meldung` 120) — eine neue Ebene wird dort
@@ -743,19 +752,26 @@ iOS-Schrift.
 
 ### Kopf einer einzelnen Sitzung
 
-Der Sitzungskopf bildet eine gemeinsame Karte: leiser Kicker „Sitzung“ und
-Anzahl der Tagesordnungspunkte, darunter der Kurzname als einzige Hauptüberschrift.
-Der amtliche Name steht bei Abweichung separat in Inter 13, ohne Abschneiden
-und ohne die fette Titelschrift zu erben. Eine abgesetzte Informationszeile
-ordnet „Termin“ und „Ort“ mit kleinen Icons; das Datum erscheint einmal vollständig,
-die Uhrzeit darunter. Adressen bleiben vollständig lesbar. Fehlende Angaben
-werden benannt. Breite und Schriftgröße bestimmen, ob die zwei Angaben neben-
-oder untereinander stehen.
+Seit 11/2026 (Schalter `sitzung-kurs`, `components/session/session-page.tsx`;
+Plan `docs/plan-sitzungsseite-kurs.md`) steht der Kopf auf der
+**Anzeigetafel** (§ 4) und erzählt die Sitzung, statt nur Termin und Ort zu
+nennen. Von oben: Mono-Kicker mit „Heute“/„Morgen“ oder dem Wochentag, Datum,
+Uhrzeit und dem Ort ohne Straße (die volle Adresse steht in der Karte „Ort und
+Zeit“) · der Kurzname als einzige Hauptüberschrift (Bricolage 28/32), der
+amtliche Name darunter bei Abweichung in `meta` · rechts die Aktionen ·
+darunter der **gerechnete Satz zur Sitzung** in `lese` mit dem Hinweis, woher
+er kommt („Aus der Tagesordnung gezählt.“ / „Aus dem Protokoll gezählt.“) —
+ohne Lotti-Figur und ohne KI-Funken, weil kein Modell ihn schreibt (§ 1) · der
+**Kurs der Sitzung** mit Legende bzw. der Zählung der Ergebnisse als Text mit
+Punkt (keine Abstimmungsgrafik, § 8) · „Wichtig in dieser Sitzung“ mit
+höchstens drei Karten, auf dem Handy zum Wischen.
 
-Kalender, Merken und Teilen stehen gleichwertig in einer abgetrennten
-Aktionsleiste; der externe Ratsinfo-Link folgt am Ende. Alle Aktionen haben
-mindestens 44 px Bedienhöhe. Mobil passen zwei in eine Zeile, bei großer Schrift
-eine. Die Rücknavigation liegt oberhalb der Karte.
+Die Aktionen: vor der Sitzung „In den Kalender“ gefüllt, danach „Sitzung
+teilen“; Merken, Teilen, Protokoll und Ratsinfo daneben, Externes gestrichelt.
+Alle mindestens 44 px hoch, sie brechen um. Die Rücknavigation liegt oberhalb
+der Tafel. Ohne Schalter gilt die bisherige Karte: leiser Kicker „Sitzung“,
+Kurzname, eine Informationszeile mit Termin und Ort, darunter die
+Aktionsleiste.
 
 ### Allgemeine Aktionen
 

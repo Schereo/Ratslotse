@@ -160,7 +160,7 @@ describe("Etappenname", () => {
 
 describe("courseInput — vom Vertrag zur Eingabe", () => {
   const kurs: SessionCourse = {
-    start: "17:00", public_count: 6, closed_count: 2, substantive_count: 2,
+    start: "17:00", public_count: 6, closed_count: 2, substantive_count: 2, summary: null, next_session: null,
     stages: [
       { kind: "start", name: "Zum Start", name_medium: null, name_short: "Start", subtitle: null,
         range: "Ö 1 – Ö 2", count: 3, cells: [
@@ -176,7 +176,7 @@ describe("courseInput — vom Vertrag zur Eingabe", () => {
     items: Object.fromEntries(["Ö 1", "Ö 1.1", "Ö 2", "Ö 3", "Ö 4"].map((nr) => [nr, {
       short_title: `Titel ${nr}`, type: "report", type_label: "Bericht", icon: nr === "Ö 3" ? "bike" : "report",
       applicant: null, important: nr === "Ö 3", important_reason: null, postponed: nr === "Ö 4" ? 1 : 0,
-      formality: nr.startsWith("Ö 1"), formal_act: false, group: null,
+      formality: nr.startsWith("Ö 1"), formal_act: false, group: null, journey: [], next_on_agenda: null,
     }])) as SessionCourse["items"],
   };
 

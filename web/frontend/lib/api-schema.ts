@@ -10259,6 +10259,20 @@ export interface components {
             important: boolean;
             /** Important Reason */
             important_reason: string | null;
+            /** Journey */
+            journey: components["schemas"]["CourseStation"][];
+            /**
+             * CourseLaterAgenda
+             * @description Wo ein hier vertagter Punkt wieder auf der Tagesordnung steht.
+             */
+            next_on_agenda: {
+                /** Item Number */
+                item_number: string;
+                /** Ksinr */
+                ksinr: number;
+                /** Session Date */
+                session_date: string;
+            } | null;
             /** Postponed */
             postponed: number;
             /** Short Title */
@@ -10270,6 +10284,34 @@ export interface components {
             type: "formality" | "question_time" | "inquiries" | "announcement" | "motion" | "decision" | "preliminary" | "report" | "other";
             /** Type Label */
             type_label: string | null;
+        };
+        /**
+         * CourseLaterAgenda
+         * @description Wo ein hier vertagter Punkt wieder auf der Tagesordnung steht.
+         */
+        CourseLaterAgenda: {
+            /** Item Number */
+            item_number: string;
+            /** Ksinr */
+            ksinr: number;
+            /** Session Date */
+            session_date: string;
+        };
+        /**
+         * CourseNextSession
+         * @description Die nächste Sitzung desselben Gremiums — „Wie es weitergeht".
+         */
+        CourseNextSession: {
+            /** Has Agenda */
+            has_agenda: boolean;
+            /** Ksinr */
+            ksinr: number;
+            /** Location */
+            location: string | null;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time: string | null;
         };
         /**
          * CourseStage
@@ -10302,6 +10344,24 @@ export interface components {
             range: string;
             /** Subtitle */
             subtitle: string | null;
+        };
+        /**
+         * CourseStation
+         * @description Eine Station einer Vorlage auf einer Tagesordnung — „Der Weg dieser
+         *     Vorlage". ``outcome`` aus dem Protokoll, sonst aus dem Zusatz, den das
+         *     Ratsinfo an den Titel hängt; ``None``, solange keins bekannt ist.
+         */
+        CourseStation: {
+            /** Committee */
+            committee: string;
+            /** Item Number */
+            item_number: string;
+            /** Ksinr */
+            ksinr: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string;
         };
         /**
          * DataLayer
@@ -19087,6 +19147,22 @@ export interface components {
             items: {
                 [key: string]: components["schemas"]["CourseItem"];
             };
+            /**
+             * CourseNextSession
+             * @description Die nächste Sitzung desselben Gremiums — „Wie es weitergeht".
+             */
+            next_session: {
+                /** Has Agenda */
+                has_agenda: boolean;
+                /** Ksinr */
+                ksinr: number;
+                /** Location */
+                location: string | null;
+                /** Session Date */
+                session_date: string;
+                /** Session Time */
+                session_time: string | null;
+            } | null;
             /** Public Count */
             public_count: number;
             /** Stages */
@@ -19095,6 +19171,8 @@ export interface components {
             start: string | null;
             /** Substantive Count */
             substantive_count: number;
+            /** Summary */
+            summary: string | null;
         };
         /**
          * SessionDetail
@@ -29027,4 +29105,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d714383e0c8b0e0aa1f423ac1de78ae6885c19dc3c63742d4456d6f3006a9fec
+// vertrag-sha256: f21b2ba7d953ab08e2b6273c9fa238836fe1d1e256a382202bb1c44d8d1293f5
