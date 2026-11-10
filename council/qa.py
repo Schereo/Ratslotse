@@ -5464,6 +5464,18 @@ def gegenstand_regel(screen: dict | None) -> str:
         return ""
     titel = (screen.get("decision_title") or "").strip()
     decision_id = screen.get("decision_id")
+    punkt = screen.get("agenda_item") or {}
+    if not (titel and decision_id) and punkt.get("title"):
+        # Ein Tagesordnungspunkt ohne Beschluss (noch kein Protokoll): Er hat
+        # keine Kennung im Archiv, also nennt die Regel ihn mit Sitzung und
+        # Vorlage — „das" meint ihn, nicht den ähnlichsten älteren Beschluss.
+        vorlage = f", Vorlage {punkt['template_number']}" if punkt.get("template_number") else ""
+        return (f"\nDER GEGENSTAND DER SEITE: Die Person hat den Tagesordnungspunkt "
+                f"„{str(punkt['title'])[:200]}“ ({punkt.get('item_number', '')}, "
+                f"{punkt.get('committee', '')} am {punkt.get('session_date', '')}{vorlage}) vor sich. "
+                "„Das“, „dieser Punkt“ und „dabei“ meinen ihn, solange die Frage nichts anderes "
+                "nennt. Frühere Beschlüsse zu derselben Sache darfst du nennen, aber nicht an "
+                "seiner Stelle; ist er noch nicht entschieden, sag das.\n")
     if not (titel and decision_id):
         return ""
     return (f"\nDER GEGENSTAND DER SEITE: Die Person hat den Beschluss "

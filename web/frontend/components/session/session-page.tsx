@@ -39,7 +39,8 @@ import {
   formalActTitle, groupFormalActs, outcomeCounts, priorStations, sessionKicker, sessionPhase,
   splitNumber, type SessionPhase,
 } from "@/lib/session-page";
-import { decisionHref, sitzungHref, sessionHref } from "@/lib/routes";
+import { decisionHref, punktHref, sitzungHref, sessionHref } from "@/lib/routes";
+import { useFeature } from "@/lib/features";
 import { shortCommittee } from "@/lib/committees";
 import { formatDate } from "@/components/ui";
 import type { AgendaItem, DecisionOutcome, SessionDetail, VideoResult } from "@/lib/types";
@@ -80,6 +81,8 @@ interface Ctx {
    *  Kartentext, der die Sitzung noch ankündigt („Der Ausschuss berät …"). */
   decisionTextByItem: Record<string, string | null>;
   flashTop: string | null;
+  /** Schalter `punkt-seite`: Karten ohne Beschluss führen auf die Seite des Punkts. */
+  punktSeite: boolean;
 }
 
 export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
@@ -105,7 +108,8 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
     return { voteByItem: votes, decisionTextByItem: texte };
   }, [data]);
   const itemsByNr = useMemo(() => new Map((data.agenda_items ?? []).map((it) => [it.item_number, it])), [data]);
-  const ctx: Ctx = { data, ksinr, phase, itemsByNr, course, outcomeByItem, decisionByItem, videoByItem, voteByItem, decisionTextByItem, flashTop };
+  const punktSeite = useFeature("punkt-seite");
+  const ctx: Ctx = { data, ksinr, phase, itemsByNr, course, outcomeByItem, decisionByItem, videoByItem, voteByItem, decisionTextByItem, flashTop, punktSeite };
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   const mitBeschluss = Object.values(decisionByItem);
   const vorschauId = weit && mitBeschluss.length > 0 ? (gewaehlt ?? mitBeschluss[0]) : null;
@@ -127,7 +131,7 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
       )}
 
       <div className={cn(
-        "mt-6 grid items-start gap-6",
+        "mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6",
         vorschauId != null ? "breit:grid-cols-[minmax(0,1fr)_minmax(0,560px)]" : "breit:grid-cols-[minmax(0,1fr)_300px]",
       )}>
         <section aria-labelledby="tagesordnung-titel" className="min-w-0">
@@ -135,6 +139,11 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
             <h2 id="tagesordnung-titel" className="font-display text-xl font-bold text-foreground">Tagesordnung</h2>
             <p className={KICKER}>{zaehlung(course)}</p>
           </div>
+          {punktSeite && (
+            <p className="mt-2 max-w-[46rem] text-[15px] leading-relaxed text-foreground">
+              Punkte mit Vorlage oder Antrag haben eine eigene Seite: mit Vorgeschichte und Unterlagen.
+            </p>
+          )}
           <p className="mt-2 flex gap-2 text-hinweis text-foreground">
             <Sparkles className="mt-1 h-4 w-4 shrink-0 text-signal" aria-hidden />
             {phase === "protocol" ? TEXT.hinweisNachher : TEXT.hinweisVorher}
@@ -290,7 +299,7 @@ function ImportantCard({ ctx, nr }: { ctx: Ctx; nr: string }) {
       </p>
       <p className="mt-3 text-[15px] font-semibold leading-snug text-foreground">{text}</p>
       {unten && unten !== text && <p className="mt-2 text-hinweis text-muted-foreground">{unten}</p>}
-      <a href={`#${topDomId(ctx.ksinr, nr)}`}
+      <a href={ctx.punktSeite && ctx.decisionByItem[topKey(nr)] == null ? punktHref(ctx.ksinr, nr) : `#${topDomId(ctx.ksinr, nr)}`}
         className="mt-auto inline-flex min-h-11 items-center gap-1.5 pt-3 text-sm font-medium text-primary hover:underline">
         Zum Punkt {ctx.phase === "protocol" ? <ArrowDown className="h-4 w-4" aria-hidden /> : <ArrowRight className="h-4 w-4" aria-hidden />}
       </a>
@@ -495,10 +504,12 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
   const vorlageUrl = agenda.kvonr ? `https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=${agenda.kvonr}` : null;
   const partei = item.applicant ? normalizeParty(item.applicant) : null;
   const brand = partei ? partyBrand(partei) : null;
+  const zurSeite = ctx.punktSeite && decisionId == null && !frame;
 
   return (
     <article id={domId}
-      className={cn("@container rounded-xl border bg-card p-4 shadow-sm transition-shadow duration-weg",
+      className={cn("@container relative rounded-xl border bg-card p-4 shadow-sm transition-shadow duration-weg",
+        zurSeite && "hover:border-primary/45",
         item.important ? "border-primary/45 ring-1 ring-primary/20" : "border-border",
         ctx.flashTop === domId && "ring-2 ring-primary",
         gewaehlt && "ring-2 ring-primary")}>
@@ -523,7 +534,13 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
             {agenda.dringlich && <span className={cn(KICKER, "text-signal")}>Dringlichkeitsantrag</span>}
           </div>
           <h4 className="mt-1.5 text-[17px] font-semibold leading-snug text-foreground [hyphens:auto] [overflow-wrap:anywhere] [hyphenate-limit-chars:14_5_5]" lang="de">
-            {item.short_title}
+            {zurSeite ? (
+              // Die ganze Karte ist der Link (Plan § 4.2) — über eine
+              // gestreckte Fläche, damit Links darin bedienbar bleiben.
+              <a href={punktHref(ctx.ksinr, nr)} className="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
+                {item.short_title}
+              </a>
+            ) : item.short_title}
           </h4>
           {item.applicant && (
             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
@@ -550,7 +567,7 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
                 {" "}({item.next_on_agenda.item_number}).
               </p>
               <a href={sitzungHref(item.next_on_agenda.ksinr, [item.next_on_agenda.item_number])}
-                className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                className="relative z-[1] mt-1 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
                 Zur Sitzung am {formatDate(item.next_on_agenda.session_date)} <ArrowRight className="h-4 w-4" aria-hidden />
               </a>
             </div>
@@ -565,7 +582,7 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
             <ul className="mt-2 space-y-1">
               {agenda.anlagen.map((a, i) => (
                 <li key={i}><a href={a.url} target="_blank" rel="noreferrer"
-                  className="inline-flex min-h-11 items-center gap-1.5 text-sm text-primary hover:underline">
+                  className="relative z-[1] inline-flex min-h-11 items-center gap-1.5 text-sm text-primary hover:underline">
                   {a.label} <ExternalLink className="h-3.5 w-3.5" aria-hidden /></a></li>
               ))}
             </ul>
@@ -575,13 +592,13 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
               {decisionId != null && (
                 <a href={decisionHref(decisionId)}
                   onClick={onVorschau ? (e) => { if (!e.metaKey && !e.ctrlKey) { e.preventDefault(); onVorschau(decisionId); } } : undefined}
-                  className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                  className="relative z-[1] inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
                   Zum Beschluss <ArrowRight className="h-4 w-4" aria-hidden />
                 </a>
               )}
               {item.type === "motion" && vorlageUrl && (
                 <a href={vorlageUrl} target="_blank" rel="noreferrer"
-                  className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                  className="relative z-[1] inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline">
                   Antrag im Ratsinfo <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                 </a>
               )}

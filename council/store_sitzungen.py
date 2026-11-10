@@ -1721,6 +1721,135 @@ class SitzungenMixin(StoreBasis):
             "items": items,
         }
 
+    def session_item(self, ksinr: int, item_number: str) -> dict | None:
+        """Ein Tagesordnungspunkt für seine eigene Seite (Plan Sitzungsseite,
+        Schritt 4): der Punkt, seine Angaben aus dem Kurs, die Vorgeschichte,
+        die Unterlagen, der Beschluss (wenn es einen gibt) und die Nachbarn
+        für Zurück und Weiter. ``None``, wenn es Sitzung oder Punkt nicht gibt
+        oder der Punkt nichtöffentlich ist."""
+        sitzung = self.get_session(int(ksinr))
+        if not sitzung:
+            return None
+        kurs = self.session_course(int(ksinr))
+        punkte = {r["item_number"]: r for r in self.agenda_items(int(ksinr))}
+        nr = (item_number or "").strip()
+        if not kurs or nr not in kurs["items"] or nr not in punkte:
+            return None
+        punkt = punkte[nr]
+        reihe = [n for st in kurs["stages"] if st["kind"] != "closed" for z in st["cells"] for n in z["items"]]
+        i = reihe.index(nr)
+
+        def nachbar(n: str | None) -> dict | None:
+            if not n:
+                return None
+            return {"item_number": n, "short_title": kurs["items"][n]["short_title"],
+                    "type_label": kurs["items"][n]["type_label"]}
+
+        def blank(n: str | None) -> str:
+            return re.sub(r"^\D+", "", n or "").strip()
+
+        beschluss = self._conn.execute(
+            "SELECT id FROM council_decisions WHERE ksinr = ? AND kind = 'decision' "
+            "AND (item_number = ? OR item_number = ?) ORDER BY position LIMIT 1",
+            (int(ksinr), blank(nr), nr)).fetchone()
+        return {
+            "ksinr": int(ksinr),
+            "committee": sitzung["committee"],
+            "session_date": sitzung["session_date"],
+            "session_time": (sitzung.get("session_time") or "").strip() or None,
+            "has_protocol": self.has_protocol(int(ksinr)),
+            "item": {**punkt, "item_number": nr},
+            "course_item": kurs["items"][nr],
+            "decision_id": beschluss["id"] if beschluss else None,
+            "history": self._punkt_vorgeschichte(sitzung, punkt, kurs["items"][nr]),
+            "documents": self._punkt_unterlagen(punkt, kurs["items"][nr], int(ksinr)),
+            "previous": nachbar(reihe[i - 1] if i > 0 else None),
+            "next": nachbar(reihe[i + 1] if i + 1 < len(reihe) else None),
+            "position": i + 1,
+            "count": len(reihe),
+        }
+
+    def _punkt_vorgeschichte(self, sitzung: dict, punkt: dict, item: dict) -> list[dict]:
+        """Die Stationen eines Punkts, älteste zuerst, diese Sitzung zuletzt
+        markiert: mit Vorlage ihr Weg durch die Gremien, ohne Vorlage die
+        früheren Auftritte desselben datierten Antrags im selben Gremium
+        (dieselbe Zuordnung wie beim gelben Punkt). Je Station Ergebnis,
+        Beschluss-Kennung und dessen Kurzfassung, wo es sie gibt."""
+        from council import course  # noqa: PLC0415
+
+        stationen = [dict(s) for s in item.get("journey") or []]
+        if not stationen:
+            titel = course.strip_result(punkt.get("title"))
+            if course.DATED_RE.search(titel):
+                for r in self._conn.execute(
+                        "SELECT a.item_number, a.title, s.ksinr, s.committee, s.session_date "
+                        "FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+                        "WHERE s.committee = ? AND substr(a.title, 1, ?) = ? ORDER BY s.session_date, a.id",
+                        (sitzung["committee"], len(titel), titel)):
+                    if course.strip_result(r["title"]) != titel:
+                        continue
+                    stationen.append({"ksinr": r["ksinr"], "committee": r["committee"],
+                                      "session_date": r["session_date"], "item_number": r["item_number"],
+                                      "outcome": course.outcome_from_title(r["title"])})
+        if len(stationen) < 2:
+            return []
+        ksinrs = sorted({s["ksinr"] for s in stationen})
+        ph = ",".join("?" * len(ksinrs))
+        beschluesse: dict[tuple, dict] = {}
+        for d in self._conn.execute(
+                f"SELECT id, ksinr, item_number, outcome, vote, simple_summary, summary FROM council_decisions "
+                f"WHERE ksinr IN ({ph}) AND kind = 'decision'", ksinrs):
+            for t in (d["item_number"] or "").split("/"):
+                beschluesse.setdefault((d["ksinr"], re.sub(r"^\D+", "", t).strip()), dict(d))
+        out = []
+        for s in stationen:
+            d = beschluesse.get((s["ksinr"], re.sub(r"^\D+", "", s["item_number"] or "").strip())) or {}
+            out.append({**s, "outcome": d.get("outcome") or s.get("outcome"),
+                        "vote": d.get("vote"), "decision_id": d.get("id"),
+                        "text": d.get("simple_summary") or d.get("summary"),
+                        "current": s["ksinr"] == sitzung["ksinr"]})
+        return out
+
+    def _punkt_unterlagen(self, punkt: dict, item: dict, ksinr: int) -> list[dict]:
+        """Was zum Punkt vorliegt: die Vorlage im Ratsinfo, die Anlagen am
+        Punkt, die Protokolle der früheren Stationen. Alles extern."""
+        out: list[dict] = []
+        if punkt.get("kvonr"):
+            out.append({"kind": "template", "label": f"Vorlage {punkt.get('template_number') or ''}".strip(),
+                        "url": f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={punkt['kvonr']}",
+                        "date": None})
+        for a in punkt.get("anlagen") or []:
+            out.append({"kind": "attachment", "label": a["label"], "url": a["url"], "date": None})
+        frueher = [s for s in item.get("journey") or [] if s["ksinr"] != ksinr]
+        if frueher:
+            ph = ",".join("?" * len(frueher))
+            urls = {r["ksinr"]: r["document_url"] for r in self._conn.execute(
+                f"SELECT ksinr, document_url FROM council_protocols WHERE ksinr IN ({ph}) "
+                f"AND status = 'ok' AND document_url IS NOT NULL", [s["ksinr"] for s in frueher])}
+            for s in frueher:
+                if s["ksinr"] in urls:
+                    out.append({"kind": "protocol", "label": f"Protokoll {s['committee']}",
+                                "url": urls[s["ksinr"]], "date": s["session_date"]})
+        return out
+
+    def agenda_item_subject(self, ksinr: int, item_number: str) -> dict | None:
+        """Der Tagesordnungspunkt hinter ``refs.ksinr`` + ``refs.item_number``
+        — der Gegenstand einer Frage von seiner Seite (Plan 3.10). Mit
+        Protokoll-Beschluss dessen Kennung, sonst Titel, Gremium und Datum."""
+        r = self._conn.execute(
+            "SELECT a.item_number, a.title, a.template_number, a.is_public, s.committee, s.session_date "
+            "FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            "WHERE a.ksinr = ? AND a.item_number = ?", (int(ksinr), (item_number or "").strip())).fetchone()
+        if not r or not r["is_public"]:
+            return None
+        d = self._conn.execute(
+            "SELECT id FROM council_decisions WHERE ksinr = ? AND kind = 'decision' AND item_number = ?",
+            (int(ksinr), re.sub(r"^\D+", "", r["item_number"]).strip())).fetchone()
+        return {"item_number": r["item_number"], "title": r["title"],
+                "template_number": (r["template_number"] or "").strip() or None,
+                "committee": r["committee"], "session_date": r["session_date"],
+                "decision_id": d["id"] if d else None}
+
     def _vorlagen_wege(self, vorlagen: list[str | None]) -> dict[str, list[dict]]:
         """Je Vorlage alle Tagesordnungs-Stationen, älteste zuerst, mit dem
         Ergebnis der Station: aus dem Protokoll, sonst aus dem Zusatz, den das

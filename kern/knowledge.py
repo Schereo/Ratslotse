@@ -274,6 +274,22 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Bekommt jeder Punkt sofort ein Ergebnis?",
        ),
     ),
+    _p("/council/punkt", "Tagesordnungspunkt",
+       "Ein einzelner Punkt einer Sitzung: eine kurze Fassung, die früheren "
+       "Stationen derselben Vorlage oder desselben Antrags mit ihren Ergebnissen "
+       "und die Unterlagen im Ratsinformationssystem.",
+       "Titel, Stationen und Unterlagen stammen aus dem Ratsinformationssystem; "
+       "die kurze Fassung ist maschinell aus Vorlage und Antrag geschrieben.",
+       "Solange kein Protokoll vorliegt, ist der Punkt nicht entschieden — die "
+       "Seite sagt, worum es geht, nicht, wie es ausgeht.",
+       # Kein Anstupser (noch): Die Liste steht auch in der App, und die Seite
+       # liegt hinter einem Schalter.
+       nudge=False,
+       starters=(
+           "Worum geht es bei diesem Punkt?",
+           "Was wurde dazu früher beschlossen?",
+       ),
+    ),
     # Der Titel bleibt „Themenfeld“ (so heißt die Seite in Statistik und
     # Seitenaufrufen); der Text beschreibt seit 23.09.2026 aber, was sie
     # wirklich zeigt. `themaHref` führt auf `/council/entity/{slug}` — ein

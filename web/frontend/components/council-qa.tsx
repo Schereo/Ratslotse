@@ -706,6 +706,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [q, setQ] = useState("");
   /** Eine Chip-Frage, die auf die Einwilligung wartet (s. den ?q=-Effekt). */
   const chipFrageRef = useRef<string | null>(null);
+  /** Der Tagesordnungspunkt, von dessen Seite die Frage kam (`?ksinr=&top=`,
+   *  Plan Sitzungsseite 3.10). Er reist als `screen.refs` mit, bis man ihn
+   *  am Bezug-Chip entfernt — „Und was kostet das?" meint dann ihn. */
+  const [bezug, setBezug] = useState<{ ksinr: number; item_number: string } | null>(null);
   const sp = useSearchParams();
   const pathname = pfad(usePathname());
   const router = useRouter();
@@ -718,6 +722,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Seit dem Split wohnt das Ratsgespräch auf /fragen — der frühere
     // mode=fragen-Guard hängt jetzt am Pfad.
     if (!urlQ || pathname !== "/fragen") return;
+    const bezugKsinr = Number(sp.get("ksinr") || 0);
+    const bezugTop = (sp.get("top") || "").trim().slice(0, 20);
+    const neuerBezug = bezugKsinr > 0 && bezugTop ? { ksinr: bezugKsinr, item_number: bezugTop } : null;
+    if (neuerBezug) setBezug(neuerBezug);
     // `chip=1`: Die Frage kommt von einem Frage-Chip auf einer anderen Seite
     // (components/frage-chips.tsx). Dann wird sie sofort gestellt — wie ein
     // Chip im Gespräch — und als Chip-Frage gezählt. Ohne die Marke bleibt es
@@ -736,10 +744,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       // sie von selbst raus (Effekt weiter unten).
       chipFrageRef.current = urlQ;
       setQ(urlQ);
-    } else void ask(urlQ, true);
+    } else void ask(urlQ, true, neuerBezug);
     const params = new URLSearchParams(sp.toString());
     params.delete("q");
     params.delete("chip");
+    params.delete("ksinr");
+    params.delete("top");
     // Auf dem EIGENEN Pfad bleiben: Das fest verdrahtete /council stammte aus
     // der Zeit vor dem Split — es warf jeden /fragen-Besucher nach dem
     // q-Verbrauch zurück in die Suche (im Browser gemessen: Alt-Link →
@@ -847,7 +857,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
    *  Chip-Vorlagen halten und läge falsch, sobald jemand dieselbe Frage
    *  selbst tippt. Die Antwort darauf entscheidet, ob gute Vorschläge das
    *  Produkt tragen oder ob niemand ins Feld tippt. */
-  const ask = async (question: string, ausVorschlag = false) => {
+  const ask = async (question: string, ausVorschlag = false,
+    /** Beim ersten Aufruf aus der Adresse ist der State noch nicht gesetzt. */
+    bezugJetzt: { ksinr: number; item_number: string } | null = bezug) => {
     const text = question.trim();
     if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
@@ -887,7 +899,13 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: text, history: verlauf, conversation_id: gespraechId,
                                previous_answer: vorherigeAntwort,
-                               from_suggestion: ausVorschlag }),
+                               from_suggestion: ausVorschlag,
+                               // Von der Seite eines Tagesordnungspunkts: der Punkt als
+                               // Gegenstand (der Server schlägt ihn nach, s. AskBody).
+                               ...(bezugJetzt ? { screen: {
+                                 route: "/council/punkt",
+                                 refs: { ksinr: bezugJetzt.ksinr, item_number: bezugJetzt.item_number },
+                               } } : {}) }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -2243,6 +2261,18 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                sind EINE Karte — vorher schwebte die Pill beziehungslos überm
                Eingabefeld. Senden ist 40 × 40 und voll gefüllt; das Funkel-
                Icon im Feld ist raus (das Funkeln wohnt im Beispiel-Kicker). */
+            <>
+            {bezug && (
+              // Der Punkt, auf den sich die Fragen beziehen — sichtbar und
+              // abwählbar, sonst hinge ein unsichtbarer Kontext an jeder Frage.
+              <p className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/[0.06] px-2.5 py-1 text-foreground">
+                  Bezug: Tagesordnungspunkt {bezug.item_number}
+                  <button type="button" onClick={() => setBezug(null)} aria-label="Bezug entfernen"
+                    className="-mr-1 inline-flex h-6 w-6 items-center justify-center rounded-full hover:bg-primary/10">×</button>
+                </span>
+              </p>
+            )}
             <form onSubmit={(e) => { e.preventDefault(); void (rechercheModus ? askDeep(q) : ask(q)); }}
               className="rounded-2xl border border-border bg-card shadow-sm transition-colors focus-within:border-primary/40">
               <Input ref={inputRef} data-search enterKeyHint="send"
@@ -2270,6 +2300,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 )}
               </div>
             </form>
+            </>
           )}
           {/* Der KI-Datenschutz-Hinweis wohnt jetzt in den Einstellungen
               (Gespräche-Karte) — Tims TestFlight-Feedback 11.08. */}
