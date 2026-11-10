@@ -203,7 +203,6 @@ export function ReportLog({ plan, target }: {
           <CircleDashed className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <div className="min-w-0">
             <p className="text-[15px] font-medium leading-snug text-foreground">{plan.report_note}</p>
-            {plan.report_caveat && <p className="mt-1 text-hinweis text-muted-foreground">{plan.report_caveat}</p>}
           </div>
         </div>
       )}
