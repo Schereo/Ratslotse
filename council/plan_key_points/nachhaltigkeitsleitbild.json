@@ -16,6 +16,11 @@
   {
    "text": "Städtische Gebäude sollen bis 2035 klimaneutral werden.",
    "kind": "deadline",
+   "due": {
+    "date": "2035",
+    "at": "end",
+    "label": "bis 2035"
+   },
    "quote": "Klimaneutralität der städtischen Gebäude bis 2035 erreichen",
    "source": {
     "kind": "attachment",

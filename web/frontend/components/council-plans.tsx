@@ -16,19 +16,29 @@
 //
 // Was die Seite NICHT zeigt, steht in § 3.4: keine Note, keine Quote über
 // Pläne, kein Fortschrittsbalken, kein Rot.
+//
+// ZWEI WEGE DURCH DIE LISTE. Nach Status gegliedert (die Vorgabe) — oder als
+// eine Liste in einer von drei Reihenfolgen: zuletzt berichtet, endet bald,
+// lange kein Bericht. Welche Pläne in welcher Folge, rechnet das Backend
+// (`views`); beim Wechsel gleiten die Zeilen an ihren neuen Platz (lib/flip.ts).
+// Ein Tipp auf eine Zeile klappt auf, worum es im Plan geht — Zweck, zwei
+// Kernpunkte, der letzte Bericht —, der Titel führt zum Plan.
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, CircleDashed, Info, MessageCircleQuestion } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, CircleDashed, Info, MessageCircleQuestion } from "lucide-react";
+import { Aufklapp } from "@/components/aufklapp";
 import { ChartSkeleton, EmptyState, ScrollZeile } from "@/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Kicker, StatusBadge } from "@/components/plans/parts";
 import { AxisGrid, Diamond, MarkGlyph, TimeAxis, TimeBand } from "@/components/plans/time-band";
 import { STAFFEL, staffelStil } from "@/components/staffel";
 import { useFetch } from "@/lib/use-fetch";
-import { fragenHref, planHref } from "@/lib/routes";
+import { bandTransition } from "@/components/plans/band-transition";
+import { useFlip } from "@/lib/flip";
+import { decisionHref, fragenHref, planHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
-import { byField, formatDate, reportCount, type PlanAxis, type PlanCard, type PlanGroup, type PlanOverview, statusSummary } from "@/lib/plans";
+import { byField, formatDate, reportCount, type PlanAxis, type PlanCard, type PlanGroup, type PlanOverview, type PlanView, statusSummary } from "@/lib/plans";
 
 /** Text · Zeitband · Berichtslage. Schmal untereinander, ab Tablet-Breite
  *  steht das Band neben dem Text, breit bekommt die Berichtslage ihre Spalte.
@@ -36,6 +46,12 @@ import { byField, formatDate, reportCount, type PlanAxis, type PlanCard, type Pl
  *  liegen die Jahreslinien von Zeile zu Zeile übereinander. */
 const COLUMNS = "grid grid-cols-1 @2xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] @5xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)_17.5rem]";
 const LANE_CELL = "px-4 @2xl:col-start-2 @2xl:row-start-1 @2xl:px-3";
+
+/** Der Weg von der Zeile zur Planseite: Das Band der Zeile wird zum Band im Kopf des Plans
+ *  (components/plans/band-transition.ts). Wo der Browser das nicht kann, ist es ein gewöhnlicher Link. */
+function openPlan(e: React.MouseEvent, band: HTMLElement | null) {
+  bandTransition(e, band);
+}
 
 function HowCounted() {
   return (
@@ -151,6 +167,30 @@ function FieldChips({ data, field, setField }: {
   );
 }
 
+type ViewKey = "status" | PlanView["key"];
+
+/** Gliederung oder Reihenfolge: „Nach Status“ ist die Vorgabe, die anderen drei legen alle Pläne
+ *  in EINE Liste. Leere Ansichten (unter dem gewählten Themenfeld) bleiben wählbar und sagen es dann. */
+function ViewChips({ views, view, setView }: {
+  views: readonly PlanView[]; view: ViewKey; setView: (v: ViewKey) => void;
+}) {
+  const chip = "inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-xs font-medium transition-[color,background-color,transform] duration-tipp ease-out-strong active:scale-[0.96]";
+  const on = "bg-foreground text-background";
+  const off = "border border-input bg-card text-foreground hover:bg-accent";
+  const options: { key: ViewKey; label: string }[] = [{ key: "status", label: "Nach Status" }, ...views.map((v) => ({ key: v.key, label: v.label }))];
+  return (
+    <ScrollZeile role="group" aria-label="Reihenfolge der Pläne" className="-mx-1 flex items-center gap-1.5 px-1 py-1 sm:flex-wrap">
+      <span className="shrink-0 pr-0.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">Ansicht</span>
+      {options.map((o) => (
+        <button key={o.key} type="button" aria-pressed={view === o.key} onClick={() => setView(o.key)}
+          className={cn(chip, view === o.key ? on : off)}>
+          {o.label}
+        </button>
+      ))}
+    </ScrollZeile>
+  );
+}
+
 /** Die Zeichen des Zeitbands, einmal erklärt — mit denselben Formen wie im Band. */
 function Legend() {
   const item = "inline-flex items-center gap-1.5 whitespace-nowrap";
@@ -212,38 +252,114 @@ function ReportState({ plan }: { plan: PlanCard }) {
   );
 }
 
-function PlanRow({ plan, axis, showField, index }: { plan: PlanCard; axis: PlanAxis; showField: boolean; index: number }) {
+/** Was eine aufgeklappte Zeile zeigt: worum es im Plan geht und was zuletzt berichtet wurde.
+ *  Ohne Zitat — die Belege stehen auf der Planseite, einen Tipp weiter. */
+function RowBrief({ plan, onOpen }: { plan: PlanCard; onOpen: (e: React.MouseEvent) => void }) {
+  const { brief, latest_report: latest } = plan;
   return (
-    <li className={cn(STAFFEL, COLUMNS, "group relative border-t border-border/70 hover:bg-primary/[0.04]")} style={staffelStil(index)}>
-      <div className="min-w-0 px-4 pb-1.5 pt-3 @2xl:col-start-1 @2xl:row-start-1 @5xl:pb-3">
-        <h4 className="flex items-start gap-2">
-          <Link href={planHref(plan.key)} prefetch={false}
-            className="min-w-0 flex-1 break-words text-quelle font-semibold leading-snug text-foreground after:absolute after:inset-0 after:content-[''] group-hover:text-primary focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring">
-            {plan.title}
-          </Link>
-          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-fluss ease-out-strong group-hover:translate-x-0.5 @5xl:hidden" aria-hidden />
-        </h4>
-        <Kicker className="mt-1">
-          {[showField ? plan.kicker : plan.timing, plan.measure_count ? `${plan.measure_count} Maßnahmen` : null].filter(Boolean).join(" · ")}
-        </Kicker>
+    <div className="relative z-[1] px-4 pb-4 pt-0.5">
+      <div className="rounded-xl border border-primary/15 bg-primary/[0.04] p-3.5">
+        <div className="max-w-[76ch]">
+          {brief && (
+            <>
+              <Kicker>{brief.heading}</Kicker>
+              <p className="mt-1 break-words text-[15px] font-medium leading-snug text-foreground">{brief.purpose}</p>
+              <ul className="mt-2 space-y-1.5">
+                {brief.points.map((point) => (
+                  <li key={point} className="flex gap-2 text-[14px] leading-snug text-foreground">
+                    <span aria-hidden className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+                    <span className="min-w-0 break-words">{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {latest && (
+            <div className={cn(brief && "mt-3")}>
+              <Kicker>Letzter Bericht · {formatDate(latest.date)}{latest.committee ? ` · ${latest.committee}` : ""}</Kicker>
+              <p className="mt-0.5 break-words text-[14px] leading-snug text-foreground">
+                {latest.decision_id != null ? (
+                  <Link href={decisionHref(latest.decision_id)} prefetch={false} className="hover:text-primary hover:underline">{latest.title}</Link>
+                ) : latest.title}
+                {latest.oral && <span className="text-muted-foreground"> · mündlich, ohne Text</span>}
+              </p>
+            </div>
+          )}
+        </div>
+        <Link href={planHref(plan.key)} prefetch={false} onClick={onOpen}
+          className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-medium text-primary hover:underline">
+          {brief && brief.count > brief.points.length ? `Zum Plan · alle ${brief.count} Kernpunkte mit Beleg` : "Zum Plan"}
+          <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+        </Link>
       </div>
-      <div className={cn(LANE_CELL, "@2xl:row-span-2 @5xl:row-span-1")}>
-        <TimeBand lane={plan.lane} ticks={axis.ticks} today={axis.today} fade={axis.fade} className="h-7 @2xl:h-full @2xl:min-h-11" />
+    </div>
+  );
+}
+
+function PlanRow({ plan, axis, showField, index, stagger, extra }: {
+  plan: PlanCard; axis: PlanAxis; showField: boolean; index: number;
+  /** Ein Zusatz im Kicker, den nur diese Ansicht braucht („noch 4 Jahre, 1 Monat“). */
+  extra?: string | null;
+  /** Nur beim ersten Auftritt der Liste läuft die Zeile gestaffelt ein — danach gleitet sie (FLIP). */
+  stagger: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  // Aufklappen lohnt, wo es etwas zu zeigen gibt; sonst führt die ganze Zeile zum Plan, wie bisher.
+  const expandable = !!plan.brief || !!plan.latest_report;
+  const goto = (e: React.MouseEvent) => openPlan(e, e.currentTarget.closest("li")?.querySelector<HTMLElement>("[data-band-shape]") ?? null);
+  const Chevron = expandable ? ChevronDown : ChevronRight;
+  const chevron = cn("mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform ease-out-strong",
+    expandable ? cn("duration-weg", open && "rotate-180") : "duration-fluss group-hover:translate-x-0.5");
+  return (
+    <li data-flip={plan.key} className={cn(stagger && STAFFEL, "group relative border-t border-border/70", open ? "bg-primary/[0.02]" : "hover:bg-primary/[0.04]")}
+      style={stagger ? staffelStil(index) : undefined}>
+      <div className={COLUMNS}>
+        <div className="min-w-0 px-4 pb-1.5 pt-3 @2xl:col-start-1 @2xl:row-start-1 @5xl:pb-3">
+          <h4 className="flex items-start gap-2">
+            <Link href={planHref(plan.key)} prefetch={false} onClick={goto}
+              className={cn("min-w-0 flex-1 break-words text-quelle font-semibold leading-snug text-foreground hover:text-primary focus-visible:outline-none",
+                expandable ? "relative z-[1] rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                  : "after:absolute after:inset-0 after:content-[''] group-hover:text-primary focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring")}>
+              {plan.title}
+            </Link>
+            <Chevron className={cn(chevron, "@5xl:hidden")} aria-hidden />
+          </h4>
+          <Kicker className="mt-1">
+            {[showField ? plan.kicker : plan.timing, extra, plan.measure_count ? `${plan.measure_count} Maßnahmen` : null].filter(Boolean).join(" · ")}
+          </Kicker>
+        </div>
+        <div className={cn(LANE_CELL, "@2xl:row-span-2 @5xl:row-span-1")}>
+          <TimeBand lane={plan.lane} ticks={axis.ticks} today={axis.today} fade={axis.fade} className="h-7 @2xl:h-full @2xl:min-h-11" />
+        </div>
+        <div className="flex min-w-0 items-start gap-2 px-4 pb-3 pt-1.5 @2xl:col-start-1 @2xl:row-start-2 @2xl:pt-0 @5xl:col-start-3 @5xl:row-start-1 @5xl:pt-3">
+          <div className="min-w-0 flex-1"><ReportState plan={plan} /></div>
+          <Chevron className={cn(chevron, "hidden @5xl:block")} aria-hidden />
+        </div>
       </div>
-      <div className="flex min-w-0 items-start gap-2 px-4 pb-3 pt-1.5 @2xl:col-start-1 @2xl:row-start-2 @2xl:pt-0 @5xl:col-start-3 @5xl:row-start-1 @5xl:pt-3">
-        <div className="min-w-0 flex-1"><ReportState plan={plan} /></div>
-        <ChevronRight className="mt-0.5 hidden h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-fluss ease-out-strong group-hover:translate-x-0.5 @5xl:block" aria-hidden />
-      </div>
+      {expandable && (
+        <>
+          {/* Die Tippfläche der Zeile: liegt über dem Kopf der Zeile, unter Titel-Link und Aufklapp-Inhalt. */}
+          <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+            aria-label={`${plan.title}: ${open ? "Kurzfassung schließen" : "Kurzfassung zeigen"}`}
+            className="absolute inset-0 h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" />
+          <Aufklapp offen={open}><RowBrief plan={plan} onOpen={goto} /></Aufklapp>
+        </>
+      )}
     </li>
   );
 }
 
-function GroupCard({ group, axis, splitByField, showField }: {
-  group: PlanGroup; axis: PlanAxis;
+function GroupCard({ group, axis, splitByField, showField, stagger, hint, remaining = false }: {
+  group: { key: string; label: string; plans: PlanCard[] }; axis: PlanAxis;
   /** Die lange Gruppe bekommt Zwischenzeilen je Themenfeld. */
   splitByField: boolean;
   /** Steht das Themenfeld im Kicker jeder Zeile? Nicht, wenn es schon darüber steht oder gefiltert ist. */
   showField: boolean;
+  stagger: boolean;
+  /** Ein Satz unter dem Kopf: was diese Ansicht zeigt. */
+  hint?: string;
+  /** „Endet bald“: Jede Zeile sagt, wie lange der Plan noch läuft. */
+  remaining?: boolean;
 }) {
   const fields = splitByField ? byField(group.plans) : [{ key: "all", label: "", plans: group.plans }];
   let index = 0;
@@ -260,6 +376,14 @@ function GroupCard({ group, axis, splitByField, showField }: {
           <TimeAxis ticks={axis.ticks} today={axis.today} />
         </div>
       </div>
+      {hint && (
+        <div className="border-t border-border/70 px-4 py-2.5">
+          <p className="max-w-[76ch] text-hinweis text-muted-foreground">{hint}</p>
+        </div>
+      )}
+      {group.plans.length === 0 && (
+        <p className="border-t border-border/70 px-4 py-4 text-hinweis text-muted-foreground">In diesem Themenfeld steht hier kein Plan.</p>
+      )}
       {fields.map((f) => (
         <div key={f.key}>
           {f.label && (
@@ -273,7 +397,8 @@ function GroupCard({ group, axis, splitByField, showField }: {
             </div>
           )}
           <ul>
-            {f.plans.map((plan) => <PlanRow key={plan.key} plan={plan} axis={axis} showField={showField && !f.label} index={index++} />)}
+            {f.plans.map((plan) => <PlanRow key={plan.key} plan={plan} axis={axis} showField={showField && !f.label} index={index++} stagger={stagger}
+              extra={remaining && plan.ends_in ? `noch ${plan.ends_in}` : null} />)}
           </ul>
         </div>
       ))}
@@ -322,25 +447,41 @@ function FollowUps({ items, caveat }: { items: PlanOverview["follow_ups"]; cavea
 export function PlansView() {
   const { data, loading } = useFetch<PlanOverview>("/council/plans");
   const [field, setField] = useState<string | null>(null);
+  const [view, setView] = useState<ViewKey>("status");
+  // Sobald einmal sortiert oder gefiltert wurde, gleiten die Zeilen; gestaffelt einlaufen sie nur beim ersten Auftritt.
+  const [moved, setMoved] = useState(false);
+  const { root, capture } = useFlip<HTMLDivElement>(`${view}|${field ?? ""}`);
   if (loading) return <div className="py-4"><ChartSkeleton bars={6} /></div>;
   if (!data || data.count === 0) {
     return <EmptyState mascot="sleep" title="Noch keine Pläne" hint="Das Register der Pläne ist leer." />;
   }
+  const change = (apply: () => void) => { capture(); setMoved(true); apply(); };
   const groups = data.groups
     .map((g) => ({ ...g, plans: field ? g.plans.filter((p) => p.policy_field === field) : g.plans }))
     .filter((g) => g.plans.length > 0);
   const references = field ? data.references.filter((p) => p.policy_field === field) : data.references;
+  const chosen = data.views.find((v) => v.key === view) ?? null;
+  const byKey = new Map(data.groups.flatMap((g) => g.plans).map((p) => [p.key, p]));
+  const ordered = chosen
+    ? chosen.plans.map((key) => byKey.get(key)).filter((p): p is PlanCard => !!p && (!field || p.policy_field === field))
+    : [];
   return (
     <div className="space-y-5">
       <Stage data={data} />
-      <div className="space-y-2.5">
-        <FieldChips data={data} field={field} setField={setField} />
-        <Legend />
+      <div className="space-y-1.5">
+        <FieldChips data={data} field={field} setField={(f) => change(() => setField(f))} />
+        <ViewChips views={data.views} view={view} setView={(v) => change(() => setView(v))} />
+        <div className="pt-1"><Legend /></div>
       </div>
-      {groups.map((g) => (
-        // Nach Feldern gegliedert wird nur die lange Gruppe — und nur, solange kein Feld gewählt ist.
-        <GroupCard key={g.key} group={g} axis={data.axis} splitByField={!field && g.plans.length > 12} showField={!field} />
-      ))}
+      <div ref={root} className="space-y-5">
+        {chosen ? (
+          <GroupCard key={chosen.key} group={{ key: chosen.key, label: chosen.label, plans: ordered }} axis={data.axis}
+            splitByField={false} showField={!field} stagger={false} hint={chosen.hint} remaining={chosen.key === "ending"} />
+        ) : groups.map((g) => (
+          // Nach Feldern gegliedert wird nur die lange Gruppe — und nur, solange kein Feld gewählt ist.
+          <GroupCard key={g.key} group={g} axis={data.axis} splitByField={!field && g.plans.length > 12} showField={!field} stagger={!moved} />
+        ))}
+      </div>
       <FollowUps items={field ? data.follow_ups.filter((f) => f.policy_field === field) : data.follow_ups}
         caveat={data.follow_up_caveat} />
       {references.length > 0 && (

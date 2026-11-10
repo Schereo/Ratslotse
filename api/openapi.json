@@ -19443,15 +19443,103 @@
         "title": "PlanBand",
         "type": "object"
       },
+      "PlanBrief": {
+        "description": "Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "heading",
+          "purpose",
+          "points",
+          "count"
+        ],
+        "title": "PlanBrief",
+        "type": "object"
+      },
       "PlanCard": {
         "description": "Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).",
         "properties": {
+          "adopted_on": {
+            "title": "Adopted On",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "adoption_mode": {
             "enum": [
               "adopted",
               "noted"
             ],
             "title": "Adoption Mode",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "brief": {
+            "description": "Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.",
+            "properties": {
+              "count": {
+                "title": "Count",
+                "type": "integer"
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "points": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Points",
+                "type": "array"
+              },
+              "purpose": {
+                "title": "Purpose",
+                "type": "string"
+              }
+            },
+            "required": [
+              "heading",
+              "purpose",
+              "points",
+              "count"
+            ],
+            "title": "PlanBrief",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "ends_in": {
+            "title": "Ends In",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_on": {
+            "title": "Ends On",
             "type": [
               "string",
               "null"
@@ -19702,7 +19790,11 @@
           "successor",
           "measure_count",
           "report_state",
-          "status_brief"
+          "status_brief",
+          "brief",
+          "ends_in",
+          "ends_on",
+          "adopted_on"
         ],
         "title": "PlanCard",
         "type": "object"
@@ -19833,8 +19925,26 @@
         "type": "object"
       },
       "PlanContent": {
-        "description": "Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg\n(``council/plan_key_points/<key>.json``).",
+        "description": "Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg\n(``council/plan_key_points/<key>.json``), nach Art gegliedert.",
         "properties": {
+          "as_of_label": {
+            "title": "As Of Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanContentGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
           "heading": {
             "title": "Heading",
             "type": "string"
@@ -19843,24 +19953,99 @@
             "title": "Note",
             "type": "string"
           },
-          "points": {
-            "items": {
-              "$ref": "#/components/schemas/PlanContentStatement"
-            },
-            "title": "Points",
-            "type": "array"
-          },
           "purpose": {
             "$ref": "#/components/schemas/PlanContentStatement"
           }
         },
         "required": [
           "heading",
+          "as_of_label",
           "purpose",
-          "points",
+          "groups",
+          "count",
           "note"
         ],
         "title": "PlanContent",
+        "type": "object"
+      },
+      "PlanContentDue": {
+        "description": "Der Termin, den der Kernpunkt nennt.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "label"
+        ],
+        "title": "PlanContentDue",
+        "type": "object"
+      },
+      "PlanContentFigure": {
+        "description": "Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "PlanContentFigure",
+        "type": "object"
+      },
+      "PlanContentGroup": {
+        "description": "Kernpunkte einer Art: Ziele, Zahlen (als Kacheln), Regeln, Vorhaben und Termine.",
+        "properties": {
+          "key": {
+            "enum": [
+              "goals",
+              "figures",
+              "rules",
+              "steps"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "layout": {
+            "enum": [
+              "list",
+              "tiles"
+            ],
+            "title": "Layout",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PlanContentStatement"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "layout",
+          "points"
+        ],
+        "title": "PlanContentGroup",
         "type": "object"
       },
       "PlanContentSource": {
@@ -19938,12 +20123,85 @@
             "title": "Amended",
             "type": "boolean"
           },
+          "due": {
+            "description": "Der Termin, den der Kernpunkt nennt.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "label": {
+                "title": "Label",
+                "type": "string"
+              }
+            },
+            "required": [
+              "date",
+              "label"
+            ],
+            "title": "PlanContentDue",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "figure": {
+            "description": "Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.",
+            "properties": {
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "label"
+            ],
+            "title": "PlanContentFigure",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "index": {
+            "title": "Index",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "goal",
+              "standard",
+              "figure",
+              "responsibility",
+              "deadline",
+              "measure"
+            ],
+            "title": "Kind",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "quote": {
             "title": "Quote",
             "type": "string"
           },
           "source": {
             "$ref": "#/components/schemas/PlanContentSource"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "text": {
             "title": "Text",
@@ -19954,7 +20212,12 @@
           "text",
           "quote",
           "source",
-          "amended"
+          "amended",
+          "index",
+          "kind",
+          "tag",
+          "figure",
+          "due"
         ],
         "title": "PlanContentStatement",
         "type": "object"
@@ -20167,6 +20430,13 @@
       },
       "PlanDetail": {
         "properties": {
+          "adopted_on": {
+            "title": "Adopted On",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "adoption": {
             "description": "Ein Beschluss über den Plan selbst, wie ihn das Register nennt.",
             "properties": {
@@ -20270,6 +20540,41 @@
             "title": "Adoption Mode",
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "brief": {
+            "description": "Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.",
+            "properties": {
+              "count": {
+                "title": "Count",
+                "type": "integer"
+              },
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "points": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Points",
+                "type": "array"
+              },
+              "purpose": {
+                "title": "Purpose",
+                "type": "string"
+              }
+            },
+            "required": [
+              "heading",
+              "purpose",
+              "points",
+              "count"
+            ],
+            "title": "PlanBrief",
+            "type": [
+              "object",
               "null"
             ]
           },
@@ -20498,8 +20803,26 @@
             ]
           },
           "content": {
-            "description": "Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg\n(``council/plan_key_points/<key>.json``).",
+            "description": "Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg\n(``council/plan_key_points/<key>.json``), nach Art gegliedert.",
             "properties": {
+              "as_of_label": {
+                "title": "As Of Label",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "count": {
+                "title": "Count",
+                "type": "integer"
+              },
+              "groups": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanContentGroup"
+                },
+                "title": "Groups",
+                "type": "array"
+              },
               "heading": {
                 "title": "Heading",
                 "type": "string"
@@ -20508,21 +20831,16 @@
                 "title": "Note",
                 "type": "string"
               },
-              "points": {
-                "items": {
-                  "$ref": "#/components/schemas/PlanContentStatement"
-                },
-                "title": "Points",
-                "type": "array"
-              },
               "purpose": {
                 "$ref": "#/components/schemas/PlanContentStatement"
               }
             },
             "required": [
               "heading",
+              "as_of_label",
               "purpose",
-              "points",
+              "groups",
+              "count",
               "note"
             ],
             "title": "PlanContent",
@@ -20554,6 +20872,20 @@
           },
           "end_label": {
             "title": "End Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_in": {
+            "title": "Ends In",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_on": {
+            "title": "Ends On",
             "type": [
               "string",
               "null"
@@ -21022,6 +21354,13 @@
                   "null"
                 ]
               },
+              "dues": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanRunwayDue"
+                },
+                "title": "Dues",
+                "type": "array"
+              },
               "end": {
                 "title": "End",
                 "type": "string"
@@ -21091,6 +21430,7 @@
               "band",
               "marks",
               "review",
+              "dues",
               "archive_from"
             ],
             "title": "PlanRunway",
@@ -21098,6 +21438,13 @@
               "object",
               "null"
             ]
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/PlanSection"
+            },
+            "title": "Sections",
+            "type": "array"
           },
           "since": {
             "properties": {
@@ -21270,6 +21617,10 @@
           "measure_count",
           "report_state",
           "status_brief",
+          "brief",
+          "ends_in",
+          "ends_on",
+          "adopted_on",
           "note",
           "owner",
           "source",
@@ -21297,7 +21648,8 @@
           "remaining",
           "oral_report_count",
           "decision_groups",
-          "goal"
+          "goal",
+          "sections"
         ],
         "title": "PlanDetail",
         "type": "object"
@@ -22291,6 +22643,13 @@
               "null"
             ]
           },
+          "dues": {
+            "items": {
+              "$ref": "#/components/schemas/PlanRunwayDue"
+            },
+            "title": "Dues",
+            "type": "array"
+          },
           "end": {
             "title": "End",
             "type": "string"
@@ -22360,9 +22719,44 @@
           "band",
           "marks",
           "review",
+          "dues",
           "archive_from"
         ],
         "title": "PlanRunway",
+        "type": "object"
+      },
+      "PlanRunwayDue": {
+        "description": "Ein Termin, den der Plan selbst nennt — keine Frist von uns, und keine Aussage, ob er gehalten wurde.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "point": {
+            "title": "Point",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "date",
+          "label",
+          "text",
+          "point"
+        ],
+        "title": "PlanRunwayDue",
         "type": "object"
       },
       "PlanRunwayMark": {
@@ -22421,6 +22815,42 @@
           "label"
         ],
         "title": "PlanRunwayPoint",
+        "type": "object"
+      },
+      "PlanSection": {
+        "description": "Ein Abschnitt der Planseite, für die Sprungleiste.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "key": {
+            "enum": [
+              "content",
+              "review",
+              "reports",
+              "status",
+              "indicators",
+              "measures",
+              "decisions"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "count"
+        ],
+        "title": "PlanSection",
         "type": "object"
       },
       "PlanSpan": {
@@ -22631,6 +23061,46 @@
             "title": "Counts",
             "type": "array"
           },
+          "movement": {
+            "description": "Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.",
+            "properties": {
+              "counts": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanStatusMove"
+                },
+                "title": "Counts",
+                "type": "array"
+              },
+              "since": {
+                "title": "Since",
+                "type": "string"
+              },
+              "since_label": {
+                "title": "Since Label",
+                "type": "string"
+              },
+              "total_before": {
+                "title": "Total Before",
+                "type": "integer"
+              },
+              "total_delta": {
+                "title": "Total Delta",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "since",
+              "since_label",
+              "total_before",
+              "total_delta",
+              "counts"
+            ],
+            "title": "PlanStatusMovement",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "total": {
             "title": "Total",
             "type": "integer"
@@ -22640,7 +23110,8 @@
           "as_of",
           "as_of_label",
           "total",
-          "counts"
+          "counts",
+          "movement"
         ],
         "title": "PlanStatusSnapshot",
         "type": "object"
@@ -22936,6 +23407,43 @@
         "title": "PlanUpcoming",
         "type": "object"
       },
+      "PlanView": {
+        "description": "Eine Ansicht der Übersicht: eine Auswahl von Plänen in einer Reihenfolge — eine Tatsache mit\nDatum, keine Rangfolge nach gut oder schlecht.",
+        "properties": {
+          "hint": {
+            "title": "Hint",
+            "type": "string"
+          },
+          "key": {
+            "enum": [
+              "recent",
+              "ending",
+              "silent"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "plans": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Plans",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "hint",
+          "plans"
+        ],
+        "title": "PlanView",
+        "type": "object"
+      },
       "Plans": {
         "properties": {
           "as_of": {
@@ -22998,6 +23506,13 @@
             },
             "title": "Upcoming",
             "type": "array"
+          },
+          "views": {
+            "items": {
+              "$ref": "#/components/schemas/PlanView"
+            },
+            "title": "Views",
+            "type": "array"
           }
         },
         "required": [
@@ -23008,6 +23523,7 @@
           "references",
           "axis",
           "fields",
+          "views",
           "recent",
           "upcoming",
           "follow_ups",

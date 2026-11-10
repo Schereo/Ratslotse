@@ -349,6 +349,12 @@ def runway(plan: register.Plan, items: list[dict], state: str, today: str, stati
                                 _mid_date(plan.review_due) if plan.review_due else None) if d]
     start = f"{min(days + ([begin] if begin else []))[:4]}-01-01"
     last = max(int(max(highs)[:4]), int(today[:4]) + OPEN_END_YEARS if open_end else 0)
+    if alive:
+        # Ein Termin, den der Plan selbst nennt, zieht die Achse mit — höchstens so weit, wie die
+        # Übersicht nach vorn schaut. „Im Jahr 2050“ stauchte sonst alles davor auf einen Daumen.
+        horizon = int(today[:4]) + AXIS_YEARS_AHEAD
+        named = [int(d["date"][:4]) for d in due_marks(plan, start, f"{horizon}-12-31")]
+        last = max([last, *named])
     end = f"{last}-12-31"
     band = None
     if begin and until:
@@ -365,6 +371,7 @@ def runway(plan: register.Plan, items: list[dict], state: str, today: str, stati
                    "oral": s["oral"], "station": i} for i, s in enumerate(stations)],
         "review": ({"x": _pos(_mid_date(plan.review_due), start, end), "label": _month(plan.review_due)}
                    if plan.review_due else None),
+        "dues": due_marks(plan, start, end),
         #: Vor 2018 kennt das Ratsinformationssystem keine Sitzungen: Dort
         #: stehen keine Marken, weil es keine Daten gibt — nicht, weil nichts war.
         "archive_from": _pos(ARCHIVE_START, start, end) if start < ARCHIVE_START else None,
@@ -493,7 +500,11 @@ def city_status_block(key: str) -> dict | None:
         "confirmed": bool(s.get("confirmed_by")),
         "movement": {**move, "since_label": _month(move["since"])} if move else None,
         "series": [{"as_of": x["as_of"], "as_of_label": _month(x["as_of"]), "total": x["total"],
-                    "counts": _status_counts(x)} for x in stand["series"]],
+                    "counts": _status_counts(x),
+                    # Was sich bis zu diesem Stand gegenüber dem vorigen bewegt hat (der erste hat keinen).
+                    "movement": ({**(m := plan_state.movement(stand["series"][n - 1], x)),
+                                  "since_label": _month(m["since"])} if n else None)}
+                   for n, x in enumerate(stand["series"])],
         "notes": [{"text": n["text"], "url": n.get("url")} for n in stand["notes"]],
     }
 
@@ -572,6 +583,10 @@ def _card(plan: register.Plan, items: list[dict], today: str) -> dict:
         "measure_count": len(m["measures"]) if (m := register.measures(plan.key)) else None,
         "report_state": report_state_block(plan, items, today),
         "status_brief": status_brief(plan.key),
+        "brief": content_brief(plan),
+        "ends_on": _end_date(plan.end) if plan.end and state == "running" else None,
+        "adopted_on": _start_date(plan.adopted.date) if plan.adopted else None,
+        "ends_in": (rest["value"] if (rest := remaining(plan, state, today)) else None),
     }
 
 
@@ -620,6 +635,41 @@ def follow_ups(cards: list[dict]) -> list[dict]:
     return out
 
 
+#: Die Ansichten der Übersicht neben der Gliederung nach Status: je eine Auswahl in einer Reihenfolge.
+#: Gerechnet wird hier; die Oberfläche legt nur die Zeilen in dieser Folge hin.
+VIEW_SILENT_DAYS = 365
+
+
+def views(cards: list[dict], today: str) -> list[dict]:
+    """„Zuletzt berichtet“, „Endet bald“, „Lange kein Bericht“ — Schlüssel der Pläne in der Reihenfolge
+    der Ansicht. Jede ist eine Tatsache mit Datum; keine reiht nach gut oder schlecht (§ 3.4)."""
+    plans = [c for c in cards if c["kind"] != "reference"]
+
+    def last(c: dict) -> str:
+        return (c["latest_report"] or {}).get("date") or ""
+
+    recent = sorted([c for c in plans if last(c)], key=lambda c: c["title"])
+    recent.sort(key=last, reverse=True)
+    ending = sorted([c for c in plans if c["status"] == "running" and c["ends_on"]],
+                    key=lambda c: (c["ends_on"], c["title"]))
+    # Still seit einem Jahr: der letzte Bericht — oder, wo es keinen gibt, der Beschluss. Am längsten Stillen zuerst.
+    silent = []
+    for c in plans:
+        since = last(c) or c["adopted_on"]
+        if c["status"] == "running" and since and _days_between(since, today) > VIEW_SILENT_DAYS:
+            silent.append((since, c["title"], c))
+    silent.sort(key=lambda t: t[:2])
+    return [
+        {"key": "recent", "label": "Zuletzt berichtet", "plans": [c["key"] for c in recent],
+         "hint": "Alle Pläne mit einem Bericht im Rat, der jüngste zuerst."},
+        {"key": "ending", "label": "Endet bald", "plans": [c["key"] for c in ending],
+         "hint": "Laufende Pläne mit Enddatum, das nächste Ende zuerst."},
+        {"key": "silent", "label": "Lange kein Bericht", "plans": [c["key"] for _s, _t, c in silent],
+         "hint": "Laufende Pläne, zu denen Ratslotse seit über einem Jahr keinen Bericht im Rat gefunden hat. "
+                 + REPORT_CAVEAT},
+    ]
+
+
 def overview(store, today: str | None = None) -> dict:
     today = today or _date.today().isoformat()
     by_plan: dict[str, list[dict]] = {}
@@ -644,6 +694,7 @@ def overview(store, today: str | None = None) -> dict:
                      "ticks": [t for t in _ticks(start, end) if int(t["label"]) % 2 == 0],
                      "fade": round(_pos(f"{int(start[:4]) + OPEN_END_YEARS}-01-01", start, end), 4)},
             "fields": sorted(fields.values(), key=lambda f: f["label"]),
+            "views": views(cards, today),
             "recent": _recent_reports(by_plan),
             "upcoming": _upcoming(today),
             "follow_ups": follow_ups(cards),
@@ -798,9 +849,58 @@ def _content_source(store, plan: register.Plan, ref: dict, kvonr: dict[str, int]
     return source
 
 
+#: Die Kernpunkte nach Art, in dieser Reihenfolge: Ziele oben, dann die Zahlen als Kacheln, dann Regeln,
+#: dann was der Plan vorhat und bis wann. In die Kacheln kommt, was von Hand eine Zahl bekommen hat
+#: (``figure``) — gleich welcher Art; der Rest verteilt sich nach Art.
+CONTENT_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("goals", ("goal",)),
+    ("figures", ()),
+    ("rules", ("standard", "responsibility")),
+    ("steps", ("measure", "deadline", "figure")),
+)
+#: Wie eine Art heißt (Einzahl, Mehrzahl). Eine Zahl ohne Kachel steht bei den Vorhaben.
+KIND_NAMES = {"goal": ("Ziel", "Ziele"), "standard": ("Regel", "Regeln"),
+              "responsibility": ("Zuständigkeit", "Zuständigkeiten"), "measure": ("Vorhaben", "Vorhaben"),
+              "figure": ("Vorhaben", "Vorhaben"), "deadline": ("Termin", "Termine")}
+#: Das kleine Wort an der Zeile, wo eine Gruppe zwei Arten mischt.
+CONTENT_TAGS = {"responsibility": "Zuständigkeit", "deadline": "Termin"}
+
+
+def _group_label(key: str, kinds: list[str]) -> str:
+    """„Ziele“, „Zahl“, „Regeln und Zuständigkeiten“ — die Überschrift nennt, was in der Gruppe steht."""
+    if key == "figures":
+        return "Zahl" if len(kinds) == 1 else "Zahlen"
+    names: list[str] = []
+    for kind in (k for k in KIND_NAMES if k in kinds):
+        name = KIND_NAMES[kind][0 if kinds.count(kind) == 1 and len(set(kinds)) == 1 else 1]
+        if name not in names:
+            names.append(name)
+    return " und ".join(names)
+
+
+def _due_day(due: dict) -> str:
+    """Der Tag, an dem ein Termin laut Plan liegt: „bis 2030“ am Jahresende, „ab 08/2026“ am Monatsersten."""
+    return _start_date(due["date"]) if due.get("at") == "start" else _end_date(due["date"])
+
+
+def key_point_order(points: list[dict]) -> list[tuple[str, list[int]]]:
+    """Die Kernpunkte auf ihre Gruppen verteilt — je Gruppe die Stellen in der Datei, leere Gruppen fehlen."""
+    out = []
+    for key, kinds in CONTENT_GROUPS:
+        members = [i for i, p in enumerate(points)
+                   if (p.get("figure") is not None if key == "figures"
+                       else p.get("figure") is None and p["kind"] in kinds)]
+        if members:
+            out.append((key, members))
+    return out
+
+
 def content_block(store, plan: register.Plan) -> dict | None:
     """Zweck und Kernpunkte des Plans (``council/plan_key_points/``) — oder ``None``, wo es keinen
-    Plantext gibt. ``amended``: Der Punkt steht so in einem Beschluss NACH dem ursprünglichen Plan."""
+    Plantext gibt. ``amended``: Der Punkt steht so in einem Beschluss NACH dem ursprünglichen Plan.
+
+    Die Punkte kommen nach Art gegliedert (``CONTENT_GROUPS``); ``index`` ist ihre Stelle in der Datei —
+    daran hängt der Sprung von der Termin-Marke im Zeitband zum Satz."""
     data = plan_state.key_points(plan.key)
     if not data:
         return None
@@ -808,17 +908,88 @@ def content_block(store, plan: register.Plan) -> dict | None:
     kvonr = store.plan_template_kvonr(sorted({e["source"]["template"] for e in entries}))
     later = {d.template for d in plan.decisions if plan.adopted and d.template and d.date > plan.adopted.date}
 
-    def statement(entry: dict) -> dict:
+    def statement(entry: dict, index: int | None = None, tagged: bool = False) -> dict:
+        figure, due = entry.get("figure"), entry.get("due")
         return {"text": entry["text"], "quote": entry["quote"],
                 "source": _content_source(store, plan, entry["source"], kvonr),
-                "amended": entry["source"]["template"] in later}
+                "amended": entry["source"]["template"] in later,
+                "index": index, "kind": entry.get("kind"),
+                "tag": CONTENT_TAGS.get(entry.get("kind") or "") if tagged else None,
+                "figure": {"value": figure["value"], "label": figure["label"]} if figure else None,
+                "due": {"date": _due_day(due), "label": due["label"]} if due else None}
 
+    groups = []
+    for key, members in key_point_order(data["points"]):
+        kinds = [data["points"][i]["kind"] for i in members]
+        mixed = len(set(kinds)) > 1
+        groups.append({"key": key, "label": _group_label(key, kinds),
+                       "layout": "tiles" if key == "figures" else "list",
+                       "points": [statement(data["points"][i], i, tagged=mixed and key != "figures")
+                                  for i in members]})
+    purpose = statement(data["purpose"])
+    # Stammt ALLES aus demselben späteren Beschluss (eine Fortschreibung), steht dessen Datum einmal
+    # am Block — sechsmal dasselbe Abzeichen wäre Lärm.
+    everything = [purpose, *(p for g in groups for p in g["points"])]
+    dates = {s["source"]["date_label"] for s in everything}
+    shared = all(s["amended"] for s in everything) and len(dates) == 1
     return {
         "heading": CONTENT_HEADINGS[plan.adopted.mode if plan.adopted else "draft"],
-        "purpose": statement(data["purpose"]),
-        "points": [statement(p) for p in data["points"]],
+        "as_of_label": dates.pop() if shared else None,
+        "purpose": purpose,
+        "groups": groups,
+        "count": len(data["points"]),
         "note": CONTENT_NOTE,
     }
+
+
+def content_brief(plan: register.Plan) -> dict | None:
+    """Für die aufgeklappte Zeile der Übersicht: der Zweck und die ersten zwei Kernpunkte — ohne Zitat,
+    das steht auf der Planseite."""
+    data = plan_state.key_points(plan.key)
+    if not data:
+        return None
+    order = [i for _key, members in key_point_order(data["points"]) for i in members]
+    return {"heading": CONTENT_HEADINGS[plan.adopted.mode if plan.adopted else "draft"],
+            "purpose": data["purpose"]["text"],
+            "points": [data["points"][i]["text"] for i in order[:2]],
+            "count": len(data["points"])}
+
+
+def due_marks(plan: register.Plan, start: str, end: str) -> list[dict]:
+    """Termine, die der Plan selbst nennt (``due`` an einem Kernpunkt), als Marken auf der Achse.
+
+    Nicht dabei: was außerhalb der Achse liegt, und ein Termin im Jahr des Laufzeitendes — das sagt
+    schon das Ende des Bandes. Die Marke nennt einen Termin aus dem Plan, keine Frist von uns, und
+    sagt nichts darüber, ob er gehalten wurde (§ 3.4)."""
+    data = plan_state.key_points(plan.key)
+    out = []
+    for i, point in enumerate(data["points"] if data else []):
+        due = point.get("due")
+        if not due:
+            continue
+        day = _due_day(due)
+        if not start <= day <= end or (plan.end and due.get("at") != "start" and day[:4] == plan.end[:4]):
+            continue
+        out.append({"x": _pos(day, start, end), "date": day, "label": due["label"], "text": point["text"],
+                    "point": i})
+    return sorted(out, key=lambda d: d["date"])
+
+
+def sections(page: dict) -> list[dict]:
+    """Die Abschnitte der Planseite für die Sprungleiste — nur was es auf DIESEM Plan gibt, in der
+    Reihenfolge der Seite, mit Zähler, wo es etwas zu zählen gibt."""
+    content, measures, status = page["content"], page["measures"], page["city_status"]
+    decisions = sum(len(g["entries"]) for g in page["decision_groups"])
+    rows = [
+        ("content", "Inhalt", content["count"] if content else None, bool(content)),
+        ("review", "Rückblick", None, bool(page["review"])),
+        ("reports", "Berichte", page["report_count"] or None, True),
+        ("status", "Stand", None, bool(status)),
+        ("indicators", "Kennzahl" if len(page["indicators"]) == 1 else "Kennzahlen", None, bool(page["indicators"])),
+        ("measures", "Maßnahmen", measures["count"] if measures else None, bool(measures)),
+        ("decisions", "Beschlüsse", decisions, decisions > 0),
+    ]
+    return [{"key": key, "label": label, "count": count} for key, label, count, shown in rows if shown]
 
 
 def _datum_lang(iso: str | None) -> str | None:
@@ -868,7 +1039,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
                 if m["id"] not in linked and register.template_stem(m["template_number"]) not in shown]
     groups.append({"key": "mentions", "label": "Erwähnt den Plan über seine Vorlagennummer",
                    "entries": mentions})
-    return {
+    page = {
         **card,
         "note": plan.note,
         "owner": plan.owner,
@@ -899,3 +1070,5 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "decision_groups": [g for g in groups if g["entries"]],
         "goal": plan.goal,
     }
+    page["sections"] = sections(page)
+    return page

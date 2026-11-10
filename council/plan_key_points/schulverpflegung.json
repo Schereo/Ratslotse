@@ -19,6 +19,10 @@
   {
    "text": "Beim Mittagessen müssen die Lebensmittel bestimmter Warengruppen zu 100 % bio sein; langfristiges Ziel sind 100 % Bio-Lebensmittel.",
    "kind": "standard",
+   "figure": {
+    "value": "100 %",
+    "label": "Bio beim Mittagessen in den Warengruppen der Liste"
+   },
    "quote": "100 % Bio- Lebensmittel beim Mittagessen in den Warengruppen laut Anlage • langfristiges Ziel von 100 % Bio-Lebensmitteln beim Mittagessen",
    "source": {
     "kind": "template",
@@ -28,6 +32,11 @@
   {
    "text": "Die Bio-Liste umfasst inzwischen zwölf Warengruppen, von Fleisch, Teigwaren und Kartoffeln bis Käse (ab dem Schuljahr 2026/2027).",
    "kind": "standard",
+   "due": {
+    "date": "2026-08",
+    "at": "start",
+    "label": "Käse ab Schuljahr 2026/2027"
+   },
    "quote": "Warengruppenliste für den Anteil an Bio-Lebensmitteln Anlage des Rahmenkonzeptes „Schulverpflegung in Oldenburg“ Warengruppe Umsetzung ab dem Schuljahr Fleisch und Wurstwaren 2020/2021 Teigwaren Äpfel 2023/2024 Eier Kartoffeln Getreide und Getreideprodukte (auch Pseudo-Getreide) 2024/2025 Brot und Backwaren Milch und Milchprodukte ohne Käse Hülsenfrüchte 2025/2026 Nüsse und Ölsaaten Gewürze Käse 2026/2027",
    "source": {
     "kind": "template",
@@ -37,6 +46,11 @@
   {
    "text": "Ab dem Schuljahr 2025/2026 wird der Bio-Anteil bei allen Neuvergaben überwacht.",
    "kind": "deadline",
+   "due": {
+    "date": "2025-08",
+    "at": "start",
+    "label": "ab Schuljahr 2025/2026"
+   },
    "quote": "Zum Schuljahr 2025/2026 wird ein Monitoring des Anteils der Bio-Lebensmittel in der Schulverpflegung bei allen Neuvergaben umgesetzt.",
    "source": {
     "kind": "decision",

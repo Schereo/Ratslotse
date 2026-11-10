@@ -158,6 +158,10 @@ def _pruefe_kernpunkte(conn: sqlite3.Connection) -> list[Befund]:
             elif plan_judge.tight(entry["quote"]) not in plan_judge.tight(zeile[0]):
                 befunde.append(Befund(key, "fehler", f"Zitat steht nicht in {ref['kind']} {ref['template']}: "
                                                       f"{entry['quote'][:60]}…"))
+        # Die Zahl einer Kachel und der Termin fürs Zeitband sind von Hand gesetzt — beides muss im Zitat stehen.
+        for point in data["points"]:
+            befunde.extend(Befund(key, "fehler", f"{problem}: {point['text'][:60]}…")
+                           for problem in plan_judge.check_extras(point))
     return befunde
 
 

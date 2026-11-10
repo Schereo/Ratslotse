@@ -16,6 +16,10 @@
   {
    "text": "Zum 01.01.2027 wird eine zusätzliche Stelle für die Umsetzung, die Geschäftsstelle, digitale Beteiligung und Kinderversammlungen geschaffen.",
    "kind": "measure",
+   "due": {
+    "date": "2027-01-01",
+    "label": "zum 01.01.2027"
+   },
    "quote": "Zur Umsetzung des Handlungskonzeptes, für die Geschäftsstelle des Jugendparlamentes, den Aufbau digitaler Beteiligungsmöglichkeiten und die Entwicklung stadtteilbezogener Beteiligungsformate für Kinder („Kinderversammlungen“) wird zum 01.01.2027 eine zusätzliche Stelle (S11b) geschaffen.",
    "source": {
     "kind": "decision",
@@ -39,6 +43,10 @@
   {
    "text": "Das Jugendparlament hat bis zu 20 Mitglieder.",
    "kind": "figure",
+   "figure": {
+    "value": "bis zu 20",
+    "label": "Mitglieder im Jugendparlament"
+   },
    "quote": "Das Plenum des Jugendparlaments ist das höchste beschlussfassende Organ und besteht aus bis zu 20 Mitgliedern.",
    "source": {
     "kind": "attachment",
@@ -51,6 +59,10 @@
   {
    "text": "Die Amtszeit des Jugendparlaments beträgt zwei Jahre.",
    "kind": "figure",
+   "figure": {
+    "value": "2 Jahre",
+    "label": "Amtszeit des Jugendparlaments"
+   },
    "quote": "Die Amtszeit des Jugendparlaments beträgt zwei Jahre.",
    "source": {
     "kind": "attachment",

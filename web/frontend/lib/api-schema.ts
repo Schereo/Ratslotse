@@ -14915,15 +14915,49 @@ export interface components {
             x1: number;
         };
         /**
+         * PlanBrief
+         * @description Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.
+         */
+        PlanBrief: {
+            /** Count */
+            count: number;
+            /** Heading */
+            heading: string;
+            /** Points */
+            points: string[];
+            /** Purpose */
+            purpose: string;
+        };
+        /**
          * PlanCard
          * @description Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).
          */
         PlanCard: {
+            /** Adopted On */
+            adopted_on: string | null;
             /**
              * Adoption Mode
              * @enum {string|null}
              */
             adoption_mode: "adopted" | "noted" | null;
+            /**
+             * PlanBrief
+             * @description Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.
+             */
+            brief: {
+                /** Count */
+                count: number;
+                /** Heading */
+                heading: string;
+                /** Points */
+                points: string[];
+                /** Purpose */
+                purpose: string;
+            } | null;
+            /** Ends In */
+            ends_in: string | null;
+            /** Ends On */
+            ends_on: string | null;
             /** Field Label */
             field_label: string;
             /**
@@ -15062,16 +15096,60 @@ export interface components {
         /**
          * PlanContent
          * @description Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
-         *     (``council/plan_key_points/<key>.json``).
+         *     (``council/plan_key_points/<key>.json``), nach Art gegliedert.
          */
         PlanContent: {
+            /** As Of Label */
+            as_of_label: string | null;
+            /** Count */
+            count: number;
+            /** Groups */
+            groups: components["schemas"]["PlanContentGroup"][];
             /** Heading */
             heading: string;
             /** Note */
             note: string;
+            purpose: components["schemas"]["PlanContentStatement"];
+        };
+        /**
+         * PlanContentDue
+         * @description Der Termin, den der Kernpunkt nennt.
+         */
+        PlanContentDue: {
+            /** Date */
+            date: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * PlanContentFigure
+         * @description Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.
+         */
+        PlanContentFigure: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * PlanContentGroup
+         * @description Kernpunkte einer Art: Ziele, Zahlen (als Kacheln), Regeln, Vorhaben und Termine.
+         */
+        PlanContentGroup: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "goals" | "figures" | "rules" | "steps";
+            /** Label */
+            label: string;
+            /**
+             * Layout
+             * @enum {string}
+             */
+            layout: "list" | "tiles";
             /** Points */
             points: components["schemas"]["PlanContentStatement"][];
-            purpose: components["schemas"]["PlanContentStatement"];
         };
         /**
          * PlanContentSource
@@ -15102,9 +15180,38 @@ export interface components {
         PlanContentStatement: {
             /** Amended */
             amended: boolean;
+            /**
+             * PlanContentDue
+             * @description Der Termin, den der Kernpunkt nennt.
+             */
+            due: {
+                /** Date */
+                date: string;
+                /** Label */
+                label: string;
+            } | null;
+            /**
+             * PlanContentFigure
+             * @description Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.
+             */
+            figure: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /** Index */
+            index: number | null;
+            /**
+             * Kind
+             * @enum {string|null}
+             */
+            kind: "goal" | "standard" | "figure" | "responsibility" | "deadline" | "measure" | null;
             /** Quote */
             quote: string;
             source: components["schemas"]["PlanContentSource"];
+            /** Tag */
+            tag: string | null;
             /** Text */
             text: string;
         };
@@ -15178,6 +15285,8 @@ export interface components {
         };
         /** PlanDetail */
         PlanDetail: {
+            /** Adopted On */
+            adopted_on: string | null;
             /**
              * PlanDecisionRef
              * @description Ein Beschluss über den Plan selbst, wie ihn das Register nennt.
@@ -15215,6 +15324,20 @@ export interface components {
              * @enum {string|null}
              */
             adoption_mode: "adopted" | "noted" | null;
+            /**
+             * PlanBrief
+             * @description Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.
+             */
+            brief: {
+                /** Count */
+                count: number;
+                /** Heading */
+                heading: string;
+                /** Points */
+                points: string[];
+                /** Purpose */
+                purpose: string;
+            } | null;
             /**
              * PlanCityStatus
              * @description Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).
@@ -15290,15 +15413,19 @@ export interface components {
             /**
              * PlanContent
              * @description Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
-             *     (``council/plan_key_points/<key>.json``).
+             *     (``council/plan_key_points/<key>.json``), nach Art gegliedert.
              */
             content: {
+                /** As Of Label */
+                as_of_label: string | null;
+                /** Count */
+                count: number;
+                /** Groups */
+                groups: components["schemas"]["PlanContentGroup"][];
                 /** Heading */
                 heading: string;
                 /** Note */
                 note: string;
-                /** Points */
-                points: components["schemas"]["PlanContentStatement"][];
                 purpose: components["schemas"]["PlanContentStatement"];
             } | null;
             /** Decision Groups */
@@ -15309,6 +15436,10 @@ export interface components {
             end: string | null;
             /** End Label */
             end_label: string | null;
+            /** Ends In */
+            ends_in: string | null;
+            /** Ends On */
+            ends_on: string | null;
             /** Field Label */
             field_label: string;
             /** Goal */
@@ -15475,6 +15606,8 @@ export interface components {
                     /** X1 */
                     x1: number;
                 } | null;
+                /** Dues */
+                dues: components["schemas"]["PlanRunwayDue"][];
                 /** End */
                 end: string;
                 /** Marks */
@@ -15498,6 +15631,8 @@ export interface components {
                 /** Today */
                 today: number | null;
             } | null;
+            /** Sections */
+            sections: components["schemas"]["PlanSection"][];
             /** PlanFact */
             since: {
                 /** Label */
@@ -15925,6 +16060,8 @@ export interface components {
                 /** X1 */
                 x1: number;
             } | null;
+            /** Dues */
+            dues: components["schemas"]["PlanRunwayDue"][];
             /** End */
             end: string;
             /** Marks */
@@ -15948,6 +16085,22 @@ export interface components {
             /** Today */
             today: number | null;
         };
+        /**
+         * PlanRunwayDue
+         * @description Ein Termin, den der Plan selbst nennt — keine Frist von uns, und keine Aussage, ob er gehalten wurde.
+         */
+        PlanRunwayDue: {
+            /** Date */
+            date: string;
+            /** Label */
+            label: string;
+            /** Point */
+            point: number;
+            /** Text */
+            text: string;
+            /** X */
+            x: number;
+        };
         /** PlanRunwayMark */
         PlanRunwayMark: {
             /** Date */
@@ -15970,6 +16123,21 @@ export interface components {
             label: string;
             /** X */
             x: number;
+        };
+        /**
+         * PlanSection
+         * @description Ein Abschnitt der Planseite, für die Sprungleiste.
+         */
+        PlanSection: {
+            /** Count */
+            count: number | null;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "content" | "review" | "reports" | "status" | "indicators" | "measures" | "decisions";
+            /** Label */
+            label: string;
         };
         /** PlanSpan */
         PlanSpan: {
@@ -16058,6 +16226,22 @@ export interface components {
             as_of_label: string;
             /** Counts */
             counts: components["schemas"]["PlanStatusCount"][];
+            /**
+             * PlanStatusMovement
+             * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+             */
+            movement: {
+                /** Counts */
+                counts: components["schemas"]["PlanStatusMove"][];
+                /** Since */
+                since: string;
+                /** Since Label */
+                since_label: string;
+                /** Total Before */
+                total_before: number;
+                /** Total Delta */
+                total_delta: number;
+            } | null;
             /** Total */
             total: number;
         };
@@ -16170,6 +16354,24 @@ export interface components {
             /** Text */
             text: string;
         };
+        /**
+         * PlanView
+         * @description Eine Ansicht der Übersicht: eine Auswahl von Plänen in einer Reihenfolge — eine Tatsache mit
+         *     Datum, keine Rangfolge nach gut oder schlecht.
+         */
+        PlanView: {
+            /** Hint */
+            hint: string;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "recent" | "ending" | "silent";
+            /** Label */
+            label: string;
+            /** Plans */
+            plans: string[];
+        };
         /** Plans */
         Plans: {
             /** As Of */
@@ -16193,6 +16395,8 @@ export interface components {
             references: components["schemas"]["PlanCard"][];
             /** Upcoming */
             upcoming: components["schemas"]["PlanUpcoming"][];
+            /** Views */
+            views: components["schemas"]["PlanView"][];
         };
         /** PolicyField */
         PolicyField: {
@@ -28407,4 +28611,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 19ce6cae74e322375252b3c570594c0166488416a2cf0fb4c5b844257f251b81
+// vertrag-sha256: dfcf18a857c05e4aa28d27676f3e3837264a9003891f11e4c68390f691fb7e39

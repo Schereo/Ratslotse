@@ -151,20 +151,45 @@ private struct CouncilPlanContentSource: Decodable, Sendable {
     }
 }
 
+/// Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.
+private struct CouncilPlanContentFigure: Decodable, Sendable {
+    let value: String
+    let label: String
+}
+
 private struct CouncilPlanContentStatement: Decodable, Sendable {
     let text: String
     let quote: String
     let source: CouncilPlanContentSource
     /// Der Satz steht so in einem Beschluss NACH dem ursprünglichen Plan.
     let amended: Bool
+    /// „Zuständigkeit“ oder „Termin“ — nur wo die Gruppe zwei Arten mischt.
+    let tag: String?
+    let figure: CouncilPlanContentFigure?
 }
 
-/// „Was der Plan festlegt“: ein Satz zum Zweck, drei bis sechs Kernpunkte, jeder mit Beleg.
+/// Kernpunkte einer Art: Ziele, Zahlen, Regeln, Vorhaben und Termine — die Gliederung rechnet das Backend.
+private struct CouncilPlanContentGroup: Decodable, Sendable, Identifiable {
+    let key: String
+    let label: String
+    let points: [CouncilPlanContentStatement]
+
+    var id: String { key }
+}
+
+/// „Was der Plan festlegt“: ein Satz zum Zweck, drei bis sechs Kernpunkte nach Art, jeder mit Beleg.
 private struct CouncilPlanContent: Decodable, Sendable {
     let heading: String
+    /// Stammen alle Sätze aus demselben späteren Beschluss, steht dessen Datum einmal am Block.
+    let asOfLabel: String?
     let purpose: CouncilPlanContentStatement
-    let points: [CouncilPlanContentStatement]
+    let groups: [CouncilPlanContentGroup]
     let note: String
+
+    enum CodingKeys: String, CodingKey {
+        case heading, purpose, groups, note
+        case asOfLabel = "as_of_label"
+    }
 }
 
 private struct CouncilPlanDecisionRef: Decodable, Sendable {
@@ -722,7 +747,7 @@ private struct CouncilPlanSheet: View {
                     .task(id: plan?.key) {
                         guard let plan, let anchor = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_PLAN_SECTION"] else { return }
                         if anchor == "measures" { openFields = Set((plan.measures?.groups ?? []).map { $0.field ?? "Maßnahmen" }) }
-                        if anchor == "content", let point = plan.content?.points.dropFirst().first { openStatements = [point.text] }
+                        if anchor == "content", let point = plan.content?.groups.first?.points.first { openStatements = [point.text] }
                         try? await Task.sleep(for: .milliseconds(500))
                         proxy.scrollTo(anchor, anchor: .top)
                     }
@@ -868,10 +893,10 @@ private struct CouncilPlanSheet: View {
     }
 
     /// Ein Satz mit Beleg: Ein Tipp klappt das wörtliche Zitat auf, der Link führt zum Dokument.
-    private func statementRow(_ statement: CouncilPlanContentStatement, lead: Bool) -> some View {
+    private func statementRow(_ statement: CouncilPlanContentStatement, lead: Bool, shared: Bool) -> some View {
         let isOpen = openStatements.contains(statement.text)
-        // Wo ein späterer Beschluss den Punkt gesetzt hat, steht dessen Datum vorn.
-        let stand = statement.amended ? statement.source.dateLabel : nil
+        // Wo ein späterer Beschluss den Punkt gesetzt hat, steht dessen Datum vorn — außer es gilt für den ganzen Block.
+        let stand = statement.amended && !shared ? statement.source.dateLabel : nil
         return VStack(alignment: .leading, spacing: 7) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -880,12 +905,29 @@ private struct CouncilPlanSheet: View {
             } label: {
                 HStack(alignment: .top, spacing: 10) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(statement.text)
-                            .font(lead ? RatsFont.body(15, weight: .semibold) : RatsFont.body(13))
-                            .foregroundStyle(RatsColor.text)
-                            .lineSpacing(2)
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
+                        if let tag = statement.tag {
+                            MonoKicker(tag)
+                        }
+                        if let figure = statement.figure {
+                            // Die Zahl groß, darunter in wenigen Worten, was sie zählt; der ganze Satz steht beim Zitat.
+                            Text(figure.value)
+                                .font(RatsFont.title(22))
+                                .foregroundStyle(RatsColor.text)
+                                .multilineTextAlignment(.leading)
+                            Text(figure.label)
+                                .font(RatsFont.body(13))
+                                .foregroundStyle(RatsColor.text)
+                                .lineSpacing(2)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            Text(statement.text)
+                                .font(lead ? RatsFont.body(15, weight: .semibold) : RatsFont.body(13))
+                                .foregroundStyle(RatsColor.text)
+                                .lineSpacing(2)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         if let stand {
                             Text("Stand \(stand)")
                                 .font(RatsFont.body(10.5, weight: .semibold))
@@ -913,6 +955,13 @@ private struct CouncilPlanSheet: View {
             .accessibilityHint(isOpen ? "Zitat ausblenden" : "Zitat zeigen")
             if isOpen {
                 VStack(alignment: .leading, spacing: 6) {
+                    if statement.figure != nil {
+                        Text(statement.text)
+                            .font(RatsFont.body(13))
+                            .foregroundStyle(RatsColor.text)
+                            .lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     Text("„\(statement.quote)“")
                         .font(RatsFont.body(12.5))
                         .foregroundStyle(RatsColor.bodyText)
@@ -942,11 +991,23 @@ private struct CouncilPlanSheet: View {
 
     private func contentCard(_ content: CouncilPlanContent) -> some View {
         VStack(alignment: .leading, spacing: 9) {
-            MonoKicker(content.heading)
-            statementRow(content.purpose, lead: true)
-            ForEach(Array(content.points.enumerated()), id: \.offset) { _, point in
+            HStack(alignment: .firstTextBaseline) {
+                MonoKicker(content.heading)
+                Spacer(minLength: 8)
+                if let asOf = content.asOfLabel {
+                    Text("Stand \(asOf)")
+                        .font(RatsFont.body(11))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+            }
+            statementRow(content.purpose, lead: true, shared: content.asOfLabel != nil)
+            ForEach(content.groups) { group in
                 Divider().overlay(RatsColor.separator)
-                statementRow(point, lead: false)
+                MonoKicker(group.label)
+                ForEach(Array(group.points.enumerated()), id: \.offset) { index, point in
+                    if index > 0 { Divider().overlay(RatsColor.separator) }
+                    statementRow(point, lead: false, shared: content.asOfLabel != nil)
+                }
             }
             Divider().overlay(RatsColor.separator)
             Text(content.note)

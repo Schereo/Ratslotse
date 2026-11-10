@@ -67,6 +67,10 @@
   {
    "text": "Der Plan empfiehlt, die Oberschulen so zu steuern, dass jede 3 bis 4 Eingangsklassen hat.",
    "kind": "standard",
+   "figure": {
+    "value": "3 bis 4",
+    "label": "Eingangsklassen je Oberschule"
+   },
    "quote": "Durch eine Verteilerkonferenz wird im ersten Schritt Sorge getragen, dass keine Oberschule weniger als 3 Eingangsklassen hat - und im zweiten Schritt keine mehr als 4 Eingangsklassen.",
    "source": {
     "kind": "attachment",

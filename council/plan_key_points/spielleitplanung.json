@@ -27,6 +27,10 @@
   {
    "text": "Als Spielfläche sollen mindestens 2,25 m² je Einwohner im Stadtgebiet vorgehalten werden.",
    "kind": "figure",
+   "figure": {
+    "value": "2,25 m²",
+    "label": "Spielfläche je Einwohner, mindestens"
+   },
    "quote": "Für die drei Altersgruppen 0 bis 6 Jahre, 7 bis 11 Jahre und 12 bis 18 Jahre sind jeweils mindestens 0,75 m² Spielfläche je Einwohner notwendig. Daraus ergibt sich eine Fläche von mindestens 2,25 m² je Einwohner, welche als Spielplatzfläche im Stadtgebiet vorgehalten werden soll.",
    "source": {
     "kind": "attachment",

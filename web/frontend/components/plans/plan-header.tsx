@@ -13,8 +13,10 @@
 // Kein Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit. „Seit dem
 // Beschluss“ und „Laufzeit noch“ stehen als Zeitspannen da, nie als Anteil.
 
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
+import { arrivingByBand } from "@/components/plans/band-transition";
 import { voteLabel } from "@/components/decision-ui";
 import { AdoptionBadge, Kicker, StatusBadge } from "@/components/plans/parts";
 import { AxisGrid, BandShape, Diamond, MarkGlyph, TimeAxis } from "@/components/plans/time-band";
@@ -22,9 +24,25 @@ import { decisionHref, planHref } from "@/lib/routes";
 import { formatDate, percent, stationKind, type PlanDetail, type PlanRunway, type PlanStation } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
-function Runway({ runway, stations, onStation }: {
+/** Ein Termin, den der Plan selbst nennt: ein Wimpel über dem Band. Neutral wie alles hier —
+ *  ob er vor oder hinter „heute“ liegt, ändert an ihm nichts (Plan § 3.4: kein „zu spät“). */
+function DueGlyph({ className }: { className?: string }) {
+  return (
+    <span className={cn("relative block h-[19px] w-[10px]", className)}>
+      <span className="absolute bottom-0 left-0 h-full w-[1.5px] rounded-full bg-primary" />
+      <span className="absolute left-[1.5px] top-0 h-[8px] w-[8px] bg-primary/80 [clip-path:polygon(0_0,100%_50%,0_100%)]" />
+    </span>
+  );
+}
+
+function Runway({ runway, stations, onStation, onPoint }: {
   runway: PlanRunway; stations: readonly PlanStation[]; onStation: (index: number) => void;
+  onPoint: (index: number) => void;
 }) {
+  // Kam die Seite über das Band der Übersicht herein, ist das Band schon „angekommen“: Es wächst
+  // dann nicht noch einmal, und die Marken stehen sofort (components/plans/band-transition.ts).
+  const [build] = useState(() => !arrivingByBand());
+  const pop = (delay: number) => (build ? { className: "animate-pop-in", style: { animationDelay: `${delay}ms` } } : {});
   return (
     <div className="@container/axis">
       <div className="relative h-[68px]">
@@ -37,7 +55,7 @@ function Runway({ runway, stations, onStation }: {
           </span>
         )}
         <div aria-hidden className="absolute inset-0"><AxisGrid ticks={runway.ticks} today={runway.today} /></div>
-        {runway.band && <BandShape band={runway.band} look={runway.style} fade={1 - runway.band.x1} large growing />}
+        {runway.band && <BandShape band={runway.band} look={runway.style} fade={1 - runway.band.x1} large growing={build} arriving />}
         {runway.review && (
           <span title={`Überprüfung oder Fortschreibung vorgesehen: ${runway.review.label}`}
             className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: percent(runway.review.x) }}>
@@ -54,13 +72,26 @@ function Runway({ runway, stations, onStation }: {
               className="group/mark absolute top-1/2 flex h-11 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               style={{ left: percent(mark.x), zIndex: mark.kind === "preparation" ? 1 : mark.kind === "report" || mark.kind === "evaluation" ? 3 : 2 }}>
               {/* Chronologisch aufgehen, wie der Zeitstrahl darunter; ab der 16. Marke gemeinsam. */}
-              <span className="animate-pop-in" style={{ animationDelay: `${260 + Math.min(i, 15) * 35}ms` }}>
+              <span {...pop(260 + Math.min(i, 15) * 35)}>
                 <MarkGlyph kind={mark.kind} oral={mark.oral} look={runway.style} large
                   className="transition-transform duration-tipp ease-out-strong group-hover/mark:scale-125 group-focus-visible/mark:scale-125" />
               </span>
             </button>
           );
         })}
+        {runway.dues.map((due, i) => (
+          // Der Fuß des Wimpels steht auf der Mitte des Bandes, an seinem Tag; der Knopf darum ist die Tippfläche.
+          <button key={`${due.point}-${due.date}`} type="button" onClick={() => onPoint(due.point)}
+            title={`Laut Plan ${due.label}: ${due.text}`}
+            aria-label={`Termin laut Plan, ${due.label}: ${due.text} – im Inhalt zeigen`}
+            className="group/due absolute top-1/2 h-11 w-5 -translate-x-1/2 -translate-y-1/2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            style={{ left: percent(due.x), zIndex: 4 }}>
+            <span {...pop(260 + Math.min(runway.marks.length, 15) * 35 + i * 60)}
+              className={cn("absolute bottom-1/2 left-1/2 -ml-[0.75px]", build && "animate-pop-in")}>
+              <DueGlyph className="origin-bottom-left transition-transform duration-tipp ease-out-strong group-hover/due:scale-125 group-focus-visible/due:scale-125" />
+            </span>
+          </button>
+        ))}
       </div>
       <TimeAxis ticks={runway.ticks} today={runway.today} className="h-8 border-t border-border/70" below />
     </div>
@@ -82,6 +113,7 @@ function RunwayLegend({ runway }: { runway: PlanRunway }) {
         <li className={item}><MarkGlyph kind="preparation" oral={false} look={runway.style} /> vor dem Beschluss</li>
       )}
       {runway.review && <li className={item}><Diamond /> Überprüfung vorgesehen</li>}
+      {runway.dues.length > 0 && <li className={item}><DueGlyph className="scale-[0.7]" /> Termin laut Plan</li>}
       {runway.band?.open_end && <li className={item}>Band läuft aus: ohne Enddatum</li>}
       {runway.archive_from != null && <li className={item}>vor 2018: nicht im Ratsinformationssystem</li>}
     </ul>
@@ -176,7 +208,11 @@ function Title({ plan }: { plan: PlanDetail }) {
   );
 }
 
-export function PlanHeader({ plan, onStation }: { plan: PlanDetail; onStation: (index: number) => void }) {
+export function PlanHeader({ plan, onStation, onPoint }: {
+  plan: PlanDetail; onStation: (index: number) => void;
+  /** Ein Tipp auf einen Termin im Band führt zum Kernpunkt, der ihn nennt. */
+  onPoint: (index: number) => void;
+}) {
   const begin = plan.start_label ?? (plan.adoption ? formatDate(plan.adoption.date) : null);
   // „Seit … · ohne Enddatum“ gilt nur, solange der Plan läuft: Ein abgelöster
   // Plan ohne Enddatum hat eines bekommen — er beginnt nur noch („ab 2015“).
@@ -196,7 +232,7 @@ export function PlanHeader({ plan, onStation }: { plan: PlanDetail; onStation: (
       </div>
       {plan.runway && (
         <>
-          <Runway runway={plan.runway} stations={plan.timeline.stations} onStation={onStation} />
+          <Runway runway={plan.runway} stations={plan.timeline.stations} onStation={onStation} onPoint={onPoint} />
           <div className="mt-2"><RunwayLegend runway={plan.runway} /></div>
         </>
       )}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   byField, byPackage, committeeList, filterMeasures, formatAmount, formatChange, formatDate, percent, reportCount,
-  signed, stationKind,
+  signed, squareTokens, stationKind,
   statusLabels, statusLine, statusSummary, statusTone, yearSpan,
   type PlanCard, type PlanMeasureField,
 } from "./plans";
@@ -173,5 +173,43 @@ describe("statusSummary", () => {
         status_norm: "started" as const, count: [10, 6, 11, 16, 25][i] })),
     };
     expect(statusSummary(long)).toBe("68 Maßnahmen, von der Stadt in 5 Stufen eingeordnet");
+  });
+});
+
+describe("squareTokens", () => {
+  const counts = (pairs: [string, number][]) => ({ counts: pairs.map(([status_raw, count]) => ({ status_raw, count })) });
+  const perLabel = (tokens: { label: string }[]) => {
+    const out: Record<string, number> = {};
+    for (const t of tokens) out[t.label] = (out[t.label] ?? 0) + 1;
+    return out;
+  };
+
+  it("gibt je Stand genau die gemeldeten Summen wieder", () => {
+    const series = [counts([["offen", 5], ["läuft", 2], ["fertig", 1]]), counts([["offen", 1], ["läuft", 4], ["fertig", 3]])];
+    const tokens = squareTokens(series);
+    expect(perLabel(tokens[0])).toEqual({ offen: 5, läuft: 2, fertig: 1 });
+    expect(perLabel(tokens[1])).toEqual({ offen: 1, läuft: 4, fertig: 3 });
+  });
+
+  it("lässt stehen, was in seiner Stufe bleibt, und bewegt nur den Überschuss", () => {
+    const [before, after] = squareTokens([counts([["offen", 5], ["fertig", 1]]), counts([["offen", 3], ["fertig", 3]])]);
+    const stage = (tokens: { id: number; label: string }[]) => new Map(tokens.map((t) => [t.id, t.label]));
+    const moved = [...stage(before)].filter(([id, label]) => stage(after).get(id) !== label);
+    expect(moved).toHaveLength(2);
+    expect(new Set(after.map((t) => t.id))).toEqual(new Set(before.map((t) => t.id)));
+  });
+
+  it("legt neue Kästchen an, wenn die Zählbasis wächst, und lässt welche fallen, wenn sie schrumpft", () => {
+    const [a, b, c] = squareTokens([counts([["offen", 2]]), counts([["offen", 2], ["fertig", 2]]), counts([["fertig", 1]])]);
+    expect(b).toHaveLength(4);
+    expect(b.filter((t) => !a.some((x) => x.id === t.id))).toHaveLength(2);
+    expect(c).toHaveLength(1);
+    expect(b.some((t) => t.id === c[0].id)).toBe(true);
+  });
+
+  it("kommt mit einer Stufe zurecht, die die Stadt später anders nennt", () => {
+    const [, after] = squareTokens([counts([["in Arbeit", 3]]), counts([["In Umsetzung", 3]])]);
+    expect(perLabel(after)).toEqual({ "In Umsetzung": 3 });
+    expect(after.map((t) => t.id)).toEqual([0, 1, 2]);
   });
 });

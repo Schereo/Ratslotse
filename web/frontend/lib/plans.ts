@@ -26,6 +26,11 @@ export type PlanCityStatus = NonNullable<PlanDetail["city_status"]>;
 export type PlanIndicator = PlanDetail["indicators"][number];
 export type PlanContent = NonNullable<PlanDetail["content"]>;
 export type PlanContentStatement = PlanContent["purpose"];
+export type PlanContentGroup = PlanContent["groups"][number];
+export type PlanSection = PlanDetail["sections"][number];
+export type PlanView = PlanOverview["views"][number];
+export type PlanSnapshot = PlanCityStatus["series"][number];
+export type PlanDue = PlanRunway["dues"][number];
 export type PlanStatusNorm = PlanStatusBrief["counts"][number]["status_norm"];
 
 /** „19.12.2022“ aus dem ISO-Datum — ohne `new Date`, das rutscht je nach
@@ -179,4 +184,43 @@ export function formatChange(ratio: number): string {
   const sign = tenths > 0 ? "+" : tenths < 0 ? "−" : "±";
   const abs = Math.abs(tenths);
   return `${sign}${Math.floor(abs / 10)},${abs % 10} %`;
+}
+
+/** Ein Kästchen im „Stand laut Stadt“: dieselbe Kennung über alle Stände, damit es beim Wechsel des
+ *  Jahres von seiner Stufe zur nächsten wandern kann. */
+export type SquareToken = { id: number; label: string };
+
+/** Die Kästchen je Stand — so verteilt, dass von Stand zu Stand möglichst wenige die Stufe wechseln.
+ *
+ *  Die Stadt meldet je Stand nur SUMMEN je Stufe, nicht den Weg einzelner Maßnahmen. Die Kennungen
+ *  hier sind deshalb gerechnet, nicht gemeldet: Was in einer Stufe bleibt, bleibt; der Überschuss
+ *  einer Stufe füllt die Lücken der anderen, in der Reihenfolge der Stufen. Wächst die Zählbasis,
+ *  kommen Kästchen dazu, schrumpft sie, fallen welche weg. Die Bewegung zeigt so die Verschiebung
+ *  der Zahlen — die Seite sagt dazu, dass sie nicht zeigt, WELCHE Maßnahme gewechselt ist. */
+export function squareTokens(
+  series: readonly { counts: readonly { status_raw: string; count: number }[] }[],
+): SquareToken[][] {
+  const out: SquareToken[][] = [];
+  let next = 0;
+  let current: SquareToken[] = [];
+  for (const snapshot of series) {
+    const want = new Map(snapshot.counts.map((c) => [c.status_raw, c.count]));
+    const kept: SquareToken[] = [];
+    const free: SquareToken[] = [];
+    const seen = new Map<string, number>();
+    for (const token of current) {
+      const n = seen.get(token.label) ?? 0;
+      seen.set(token.label, n + 1);
+      (n < (want.get(token.label) ?? 0) ? kept : free).push(token);
+    }
+    for (const c of snapshot.counts) {
+      for (let i = Math.min(seen.get(c.status_raw) ?? 0, c.count); i < c.count; i++) {
+        const moved = free.shift();
+        kept.push({ id: moved ? moved.id : next++, label: c.status_raw });
+      }
+    }
+    current = kept.sort((a, b) => a.id - b.id);
+    out.push(current);
+  }
+  return out;
 }

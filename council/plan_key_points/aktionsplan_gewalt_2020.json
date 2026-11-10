@@ -31,6 +31,10 @@
   {
    "text": "Der Plan enthält 87 empfohlene Maßnahmen: 8 übergreifende, 56 gegen Gewalt an Frauen* und 23 gegen Häusliche Gewalt.",
    "kind": "figure",
+   "figure": {
+    "value": "87",
+    "label": "empfohlene Maßnahmen"
+   },
    "quote": "Insgesamt werden in dem Aktionsplan 87 Maßnahmen empfohlen (8 im Bereich der „Übergreifenden Handlungsempfehlungen“, 56 im Bereich „Gewalt gegen Frauen*“ sowie 23 im Bereich „Häusliche Gewalt“).",
    "source": {
     "kind": "template",

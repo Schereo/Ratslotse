@@ -64,6 +64,10 @@
   {
    "text": "Für die Umsetzung sieht der Entwurf jährlich 40.000 Euro vor.",
    "kind": "figure",
+   "figure": {
+    "value": "40.000 €",
+    "label": "jährlich für die Umsetzung"
+   },
    "quote": "Für die Umsetzung des Konzeptes stehen jährlich 40.000 Euro zur Verfügung.",
    "source": {
     "kind": "template",
