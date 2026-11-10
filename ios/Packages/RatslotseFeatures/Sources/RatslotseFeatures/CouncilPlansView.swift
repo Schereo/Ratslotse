@@ -111,6 +111,7 @@ private struct CouncilPlanDetail: Decodable, Sendable {
     let reportNote: String?
     let reportCaveat: String?
     let reportCount: Int
+    let content: CouncilPlanContent?
     let measures: CouncilPlanMeasures?
     let cityStatus: CouncilPlanCityStatus?
     let indicators: [CouncilPlanIndicator]
@@ -119,7 +120,7 @@ private struct CouncilPlanDetail: Decodable, Sendable {
     let decisionGroups: [CouncilPlanDecisionGroup]
 
     enum CodingKeys: String, CodingKey {
-        case key, title, office, kicker, adoption, website, since, remaining, measures, indicators, review, timeline
+        case key, title, office, kicker, adoption, website, since, remaining, content, measures, indicators, review, timeline
         case statusLabel = "status_label"
         case horizonNote = "horizon_note"
         case reviewLabel = "review_label"
@@ -130,6 +131,40 @@ private struct CouncilPlanDetail: Decodable, Sendable {
         case cityStatus = "city_status"
         case decisionGroups = "decision_groups"
     }
+}
+
+/// Wo ein Kernpunkt steht: Beschlusstext, Vorlage oder Anlage (mit Seite).
+private struct CouncilPlanContentSource: Decodable, Sendable {
+    let kind: String
+    let label: String
+    let templateNumber: String
+    let page: Int?
+    let dateLabel: String?
+    let decisionId: Int?
+    let url: String?
+
+    enum CodingKeys: String, CodingKey {
+        case kind, label, page, url
+        case templateNumber = "template_number"
+        case dateLabel = "date_label"
+        case decisionId = "decision_id"
+    }
+}
+
+private struct CouncilPlanContentStatement: Decodable, Sendable {
+    let text: String
+    let quote: String
+    let source: CouncilPlanContentSource
+    /// Der Satz steht so in einem Beschluss NACH dem ursprünglichen Plan.
+    let amended: Bool
+}
+
+/// „Was der Plan festlegt“: ein Satz zum Zweck, drei bis sechs Kernpunkte, jeder mit Beleg.
+private struct CouncilPlanContent: Decodable, Sendable {
+    let heading: String
+    let purpose: CouncilPlanContentStatement
+    let points: [CouncilPlanContentStatement]
+    let note: String
 }
 
 private struct CouncilPlanDecisionRef: Decodable, Sendable {
@@ -659,6 +694,7 @@ private struct CouncilPlanSheet: View {
     @State private var isLoading = true
     @State private var error: String?
     @State private var openFields: Set<String> = []
+    @State private var openStatements: Set<String> = []
 
     init(model: AppModel, key: String) {
         self.model = model
@@ -681,11 +717,12 @@ private struct CouncilPlanSheet: View {
                     }
                     .background(RatsColor.page)
 #if DEBUG
-                    // Sichtprobe: `RATSLOTSE_DEBUG_PLAN_SECTION=review|timeline|status|measures|decisions`
+                    // Sichtprobe: `RATSLOTSE_DEBUG_PLAN_SECTION=content|review|timeline|status|measures|decisions`
                     // rollt zum Abschnitt; bei `measures` stehen alle Handlungsfelder offen.
                     .task(id: plan?.key) {
                         guard let plan, let anchor = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_PLAN_SECTION"] else { return }
                         if anchor == "measures" { openFields = Set((plan.measures?.groups ?? []).map { $0.field ?? "Maßnahmen" }) }
+                        if anchor == "content", let point = plan.content?.points.dropFirst().first { openStatements = [point.text] }
                         try? await Task.sleep(for: .milliseconds(500))
                         proxy.scrollTo(anchor, anchor: .top)
                     }
@@ -725,6 +762,7 @@ private struct CouncilPlanSheet: View {
     private func sections(_ plan: CouncilPlanDetail) -> some View {
         header(plan)
         facts(plan)
+        if let content = plan.content { contentCard(content).id("content") }
         if let review = plan.review { reviewCard(review).id("review") }
         timelineCard(plan).id("timeline")
         if let status = plan.cityStatus { statusCard(status).id("status") }
@@ -818,6 +856,108 @@ private struct CouncilPlanSheet: View {
         .overlay(alignment: .leading) { Rectangle().fill(RatsColor.border).frame(width: 2) }
     }
 
+    // MARK: Was der Plan festlegt
+
+    /// „Rahmenkonzept …, S. 5“ · „Beschluss des Rates vom 16.12.2019“ · „Vorlage der Verwaltung 19/0943“.
+    private func sourceLine(_ source: CouncilPlanContentSource, dated: Bool) -> String {
+        switch source.kind {
+        case "attachment": source.page.map { "\(source.label), S. \($0)" } ?? source.label
+        case "decision": dated ? source.label : source.dateLabel.map { "\(source.label) vom \($0)" } ?? source.label
+        default: "\(source.label) \(source.templateNumber)"
+        }
+    }
+
+    /// Ein Satz mit Beleg: Ein Tipp klappt das wörtliche Zitat auf, der Link führt zum Dokument.
+    private func statementRow(_ statement: CouncilPlanContentStatement, lead: Bool) -> some View {
+        let isOpen = openStatements.contains(statement.text)
+        // Wo ein späterer Beschluss den Punkt gesetzt hat, steht dessen Datum vorn.
+        let stand = statement.amended ? statement.source.dateLabel : nil
+        return VStack(alignment: .leading, spacing: 7) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    if isOpen { openStatements.remove(statement.text) } else { openStatements.insert(statement.text) }
+                }
+            } label: {
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(statement.text)
+                            .font(lead ? RatsFont.body(15, weight: .semibold) : RatsFont.body(13))
+                            .foregroundStyle(RatsColor.text)
+                            .lineSpacing(2)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let stand {
+                            Text("Stand \(stand)")
+                                .font(RatsFont.body(10.5, weight: .semibold))
+                                .foregroundStyle(RatsColor.primary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(RatsColor.primary.opacity(0.1))
+                                .clipShape(Capsule())
+                        }
+                        Text(sourceLine(statement.source, dated: stand != nil))
+                            .font(RatsFont.body(11))
+                            .foregroundStyle(RatsColor.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer(minLength: 4)
+                    RatsIcon(.chevronDown, size: 14)
+                        .foregroundStyle(RatsColor.muted)
+                        .rotationEffect(.degrees(isOpen ? 180 : 0))
+                        .padding(.top, 3)
+                }
+                .frame(minHeight: 44, alignment: .top)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(RatsPlainButtonStyle())
+            .accessibilityHint(isOpen ? "Zitat ausblenden" : "Zitat zeigen")
+            if isOpen {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("„\(statement.quote)“")
+                        .font(RatsFont.body(12.5))
+                        .foregroundStyle(RatsColor.bodyText)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let id = statement.source.decisionId {
+                        Button { open(decision: id) } label: {
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                Text("Beschluss ansehen")
+                                RatsIcon(.arrowRight, size: 12)
+                            }
+                            .font(RatsFont.body(12, weight: .semibold))
+                            .foregroundStyle(RatsColor.primary)
+                            .frame(minHeight: 30)
+                        }
+                        .buttonStyle(RatsPlainButtonStyle())
+                    }
+                    CouncilPlanLink(title: statement.source.kind == "attachment" ? "Dokument öffnen"
+                                    : "Vorlage \(statement.source.templateNumber)", address: statement.source.url)
+                }
+                .padding(.leading, 10)
+                .overlay(alignment: .leading) { Rectangle().fill(RatsColor.border).frame(width: 2) }
+                .padding(.bottom, 4)
+            }
+        }
+    }
+
+    private func contentCard(_ content: CouncilPlanContent) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            MonoKicker(content.heading)
+            statementRow(content.purpose, lead: true)
+            ForEach(Array(content.points.enumerated()), id: \.offset) { _, point in
+                Divider().overlay(RatsColor.separator)
+                statementRow(point, lead: false)
+            }
+            Divider().overlay(RatsColor.separator)
+            Text(content.note)
+                .font(RatsFont.body(11))
+                .foregroundStyle(RatsColor.secondary)
+                .lineSpacing(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ratsCard()
+    }
+
     private func reviewCard(_ review: CouncilPlanReview) -> some View {
         let results = review.statements.filter { $0.kind == "result" }
         let limits = review.statements.filter { $0.kind == "limit" }
@@ -857,6 +997,7 @@ private struct CouncilPlanSheet: View {
                     key = next.key
                     plan = nil
                     openFields = []
+                    openStatements = []
                     Task { await load() }
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {

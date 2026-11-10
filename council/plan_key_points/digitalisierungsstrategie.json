@@ -1,0 +1,53 @@
+{
+ "plan": "digitalisierungsstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Die Strategie gibt den Rahmen für die digitale Entwicklung der Stadtverwaltung und ihrer Eigenbetriebe vor.",
+  "quote": "Die Digitalisierungsstrategie stellt das Dach der zentralen digitalen Leitlinien für die Stadt Oldenburg dar. Sie umreißt den Handlungsrahmen für die Stadtverwaltung und ihre Eigenbetriebe.",
+  "source": {
+   "kind": "template",
+   "template": "23/0708"
+  }
+ },
+ "points": [
+  {
+   "text": "Die Strategie setzt als langfristigen Visionshorizont das Jahr 2045.",
+   "kind": "deadline",
+   "quote": "Basierend auf der Strategie, die mit ihrer Vision den Zeithorizont bis 2045 umfasst, wird in einem weiteren Schritt in 2024 ein aktualisierter Maßnahmenplan 2030 erstellt.",
+   "source": {
+    "kind": "attachment",
+    "template": "23/0708",
+    "document_id": 270752,
+    "label": "Digitalisierungsstrategie",
+    "page": 7
+   }
+  },
+  {
+   "text": "Digitale Verwaltungsdienste sollen nutzerfreundlich und medienbruchfrei sein, aber bei IT-Ausfall analog verfügbar bleiben.",
+   "kind": "standard",
+   "quote": "Verwaltungsdienstleistungen sind dabei nutzerfreundlich, ohne Nachteile für die Menschen und medienbruchfrei zu digitalisieren, müssen aber bei Bedarf (zum Beispiel bei Ausfall der IT) weiterhin analog verfügbar bleiben.",
+   "source": {
+    "kind": "attachment",
+    "template": "23/0708",
+    "document_id": 270752,
+    "label": "Digitalisierungsstrategie",
+    "page": 23
+   }
+  },
+  {
+   "text": "Die Verwaltung soll standardisierte Lösungen statt spezialisierter Insellösungen verwenden.",
+   "kind": "standard",
+   "quote": "Standardisierte Lösungen anstelle von spezialisierten Insellösungen garantieren uns dabei eine größtmögliche Planungs- und Investitionssicherheit.",
+   "source": {
+    "kind": "attachment",
+    "template": "23/0708",
+    "document_id": 270752,
+    "label": "Digitalisierungsstrategie",
+    "page": 17
+   }
+  }
+ ]
+}

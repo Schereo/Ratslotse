@@ -30,6 +30,8 @@ STATUS_DIR = Path(__file__).resolve().parent / "plan_status"
 INDICATOR_DIR = Path(__file__).resolve().parent / "plan_indicators"
 REVIEW_DIR = Path(__file__).resolve().parent / "plan_reviews"
 LINKS_DIR = Path(__file__).resolve().parent / "plan_links"
+#: Zweck und Kernpunkte je Plan (``scripts/plan_kernpunkte.py``).
+KEY_POINTS_DIR = Path(__file__).resolve().parent / "plan_key_points"
 
 #: Fünf Stufen plus „unklar“. Reihenfolge = Reihenfolge der Anzeige.
 STATUS_NORM: tuple[str, ...] = ("open", "started", "in_progress", "done", "paused", "unclear")
@@ -225,6 +227,26 @@ def review_statements(key: str) -> list[dict]:
     if not path.exists():
         return []
     return json.loads(path.read_text(encoding="utf-8"))["statements"]
+
+
+# ── Was im Plan steht ──────────────────────────────────────────────────────
+
+
+@cache
+def key_points(key: str) -> dict | None:
+    """Zweck und Kernpunkte eines Plans (``council/plan_key_points/<key>.json``) oder ``None``.
+
+    Ein Sprachmodell hat sie aus Plandokument, Vorlagen und Beschlüssen herausgesucht; in der Datei
+    steht nur, was sich ohne Modell als wörtliches Zitat in der Quelle wiederfindet
+    (``council/plan_judge.py::check_statement``)."""
+    path = KEY_POINTS_DIR / f"{key}.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def key_point_keys() -> list[str]:
+    return sorted(p.stem for p in KEY_POINTS_DIR.glob("*.json")) if KEY_POINTS_DIR.exists() else []
 
 
 # ── Pflege ─────────────────────────────────────────────────────────────────

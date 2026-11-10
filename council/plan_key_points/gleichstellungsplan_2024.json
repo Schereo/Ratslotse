@@ -1,0 +1,86 @@
+{
+ "plan": "gleichstellungsplan_2024",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Der Plan empfiehlt Maßnahmen gegen Unterrepräsentanz und für eine bessere Vereinbarkeit von Beruf und Familie.",
+  "quote": "5. Ziele und Maßnahmen Formulierung von Zielen und Standards aufbauend auf den ermittelten Ergebnissen der Analyse sowie Benennung konkreter Maßnahmen zum Abbau der Unterrepräsen- tanzen beziehungsweise zur besseren Vereinbarkeit von Familie und Beruf",
+  "source": {
+   "kind": "template",
+   "template": "24/0362"
+  }
+ },
+ "points": [
+  {
+   "text": "Der Plan gilt für 2024 bis 2026 und basiert auf Daten vom 30. Juni 2023.",
+   "kind": "deadline",
+   "quote": "Der vorliegende Gleichstellungsplan gilt für den Zeitraum 2024 bis 2026 und basiert auf den Daten zum Stichtag 30. Juni 2023.",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0362",
+    "document_id": 278615,
+    "label": "Gleichstellungsplan 2024–2026",
+    "page": 5
+   }
+  },
+  {
+   "text": "Er umfasst fünf einzelne Pläne: für Kernverwaltung, Sozial- und Erziehungsdienst, Feuerwehr, Abfallwirtschaftsbetrieb sowie Gebäudewirtschaft und Hochbau.",
+   "kind": "standard",
+   "quote": "Der Gleichstellungsplan der Stadt Oldenburg beinhaltet daher fünf einzelne Gleichstellungspläne – Kernverwaltung (ohne Feuerwehr und Sozial- und Erziehungsdienst), Sozial- und Erziehungsdienst, Feuerwehr, Abfallwirtschaftsbetrieb und Eigenbetrieb Gebäudewirtschaft und Hochbau.",
+   "source": {
+    "kind": "template",
+    "template": "24/0362"
+   }
+  },
+  {
+   "text": "Unterrepräsentanz liegt laut Plan vor, wenn ein Geschlecht in einer Entgelt- oder Besoldungsgruppe weniger als 45 Prozent der Vollzeitäquivalente erreicht.",
+   "kind": "standard",
+   "quote": "Laut NGG liegt eine Unterrepräsentanz vor, sobald ein Geschlecht innerhalb einer Entgelt- oder Besoldungsgruppe, gemessen an den Vollzeitäquivalenten, mit weniger als 45 Prozent vertreten ist.",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0362",
+    "document_id": 278615,
+    "label": "Gleichstellungsplan 2024–2026",
+    "page": 6
+   }
+  },
+  {
+   "text": "Als zentrales Ziel nennt der Plan, mehr Frauen in Führungspositionen zu beschäftigen.",
+   "kind": "goal",
+   "quote": "Dennoch behalten wir unser zentrales Ziel fest im Blick: Mehr Frauen in Führungspositionen zu beschäftigen.",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0362",
+    "document_id": 278615,
+    "label": "Gleichstellungsplan 2024–2026",
+    "page": 3
+   }
+  },
+  {
+   "text": "Der Plan hält fest, dass Vereinbarkeit von Beruf, Familie und Privatleben in allen Berufs-, Besoldungs- und Entgeltgruppen unterstützt wird.",
+   "kind": "standard",
+   "quote": "Vereinbarkeit von Beruf, Familie und Privatleben wird in allen Berufs-, Besoldungs- und Entgeltgruppen der Stadt Oldenburg unterstützt und wird durch gute Personalplanung weiterentwickelt und ausgebaut.",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0362",
+    "document_id": 278615,
+    "label": "Gleichstellungsplan 2024–2026",
+    "page": 8
+   }
+  },
+  {
+   "text": "Der Plan sieht vor, Führung in Teilzeit und geteilte Führung auszubauen, um Führungspositionen flexibler zu gestalten.",
+   "kind": "measure",
+   "quote": "Wie in Kapitel 4 dargestellt, soll durch neue Führungsmodelle wie „Führen in Teilzeit“ sowie „Geteilte Führung“ die Flexibilisierung in Führungspositionen erweitert werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0362",
+    "document_id": 278615,
+    "label": "Gleichstellungsplan 2024–2026",
+    "page": 23
+   }
+  }
+ ]
+}

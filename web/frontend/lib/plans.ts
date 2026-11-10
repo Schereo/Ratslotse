@@ -24,6 +24,8 @@ export type PlanMeasure = PlanMeasureField["measures"][number];
 export type PlanStatusBrief = NonNullable<PlanCard["status_brief"]>;
 export type PlanCityStatus = NonNullable<PlanDetail["city_status"]>;
 export type PlanIndicator = PlanDetail["indicators"][number];
+export type PlanContent = NonNullable<PlanDetail["content"]>;
+export type PlanContentStatement = PlanContent["purpose"];
 export type PlanStatusNorm = PlanStatusBrief["counts"][number]["status_norm"];
 
 /** „19.12.2022“ aus dem ISO-Datum — ohne `new Date`, das rutscht je nach

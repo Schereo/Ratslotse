@@ -19832,6 +19832,133 @@
         "title": "PlanCityStatus",
         "type": "object"
       },
+      "PlanContent": {
+        "description": "Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg\n(``council/plan_key_points/<key>.json``).",
+        "properties": {
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PlanContentStatement"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/PlanContentStatement"
+          }
+        },
+        "required": [
+          "heading",
+          "purpose",
+          "points",
+          "note"
+        ],
+        "title": "PlanContent",
+        "type": "object"
+      },
+      "PlanContentSource": {
+        "description": "Wo ein Kernpunkt steht: Beschlusstext, Vorlage oder Anlage (mit Seite).",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_label": {
+            "title": "Date Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "decision",
+              "template",
+              "attachment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "label",
+          "template_number",
+          "page",
+          "date",
+          "date_label",
+          "decision_id",
+          "url"
+        ],
+        "title": "PlanContentSource",
+        "type": "object"
+      },
+      "PlanContentStatement": {
+        "properties": {
+          "amended": {
+            "title": "Amended",
+            "type": "boolean"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/PlanContentSource"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "quote",
+          "source",
+          "amended"
+        ],
+        "title": "PlanContentStatement",
+        "type": "object"
+      },
       "PlanDecisionEntry": {
         "properties": {
           "committee": {
@@ -20365,6 +20492,40 @@
               "date"
             ],
             "title": "PlanTemplateRef",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "content": {
+            "description": "Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg\n(``council/plan_key_points/<key>.json``).",
+            "properties": {
+              "heading": {
+                "title": "Heading",
+                "type": "string"
+              },
+              "note": {
+                "title": "Note",
+                "type": "string"
+              },
+              "points": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanContentStatement"
+                },
+                "title": "Points",
+                "type": "array"
+              },
+              "purpose": {
+                "$ref": "#/components/schemas/PlanContentStatement"
+              }
+            },
+            "required": [
+              "heading",
+              "purpose",
+              "points",
+              "note"
+            ],
+            "title": "PlanContent",
             "type": [
               "object",
               "null"
@@ -21124,6 +21285,7 @@
           "commissioned",
           "concluded",
           "predecessor",
+          "content",
           "measures",
           "city_status",
           "indicators",

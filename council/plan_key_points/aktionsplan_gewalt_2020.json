@@ -1,0 +1,62 @@
+{
+ "plan": "aktionsplan_gewalt_2020",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan soll Betroffene vor Gewalt schützen, akute Gewalt beenden und ihnen professionelle Hilfe sowie Unterstützung bei der Verarbeitung ermöglichen.",
+  "quote": "Grundsätzliche Ziele des Kommunalen Aktionsplans gegen Gewalt an Frauen* und Häusliche Gewalt sind der Schutz vor Gewalt, die sofortige Beendigung akuter Gewalt, die Bereitstellung professioneller Hilfen, die Wahrnehmung von Opferrechten und Möglichkeiten zu schaffen, Gewalterfahrungen zu verarbeiten.",
+  "source": {
+   "kind": "attachment",
+   "template": "20/0564",
+   "document_id": 223427,
+   "label": "Kommunaler Aktionsplan gegen Gewalt an Frauen und Häusliche Gewalt",
+   "page": 12
+  }
+ },
+ "points": [
+  {
+   "text": "Der Plan unterscheidet Prävention mit Bewusstseinsbildung, Sensibilisierung und Fortbildung sowie Intervention mit Schutz, Stabilisierung und Begleitung.",
+   "kind": "standard",
+   "quote": "Für beide Bereiche werden jeweils folgende Handlungsfelder definiert, die im weiteren Verlauf näher ausgeführt werden: • Prävention (Bewusstseinsbildung, Sensibilisierung, Fortbildung) • Intervention (Schutz, Stabilisierung, Begleitung)",
+   "source": {
+    "kind": "attachment",
+    "template": "20/0564",
+    "document_id": 223427,
+    "label": "Kommunaler Aktionsplan gegen Gewalt an Frauen und Häusliche Gewalt",
+    "page": 13
+   }
+  },
+  {
+   "text": "Der Plan enthält 87 empfohlene Maßnahmen: 8 übergreifende, 56 gegen Gewalt an Frauen* und 23 gegen Häusliche Gewalt.",
+   "kind": "figure",
+   "quote": "Insgesamt werden in dem Aktionsplan 87 Maßnahmen empfohlen (8 im Bereich der „Übergreifenden Handlungsempfehlungen“, 56 im Bereich „Gewalt gegen Frauen*“ sowie 23 im Bereich „Häusliche Gewalt“).",
+   "source": {
+    "kind": "template",
+    "template": "20/0564"
+   }
+  },
+  {
+   "text": "Als Prioritäten nennt das Gleichstellungsbüro eine Koordinierungsstelle und eine stärkere Förderung von Schutz- und Gewaltberatungsstellen.",
+   "kind": "measure",
+   "quote": "Folgende Handlungsempfehlungen sollten aus Sicht des Gleichstellungsbüros priorisiert werden: Einrichtung einer Koordinierungs- und Beratungsstelle gegen geschlechtsspezifische Gewalt Stärkere Förderung von Schutz- und Gewaltberatungsstellen",
+   "source": {
+    "kind": "template",
+    "template": "20/0564"
+   }
+  },
+  {
+   "text": "Die Wirksamkeit der Maßnahmen soll laufend überprüft und bei Bedarf angepasst werden.",
+   "kind": "standard",
+   "quote": "Die Wirksamkeit der Maßnahmen muss laufend überprüft und bei Bedarf angepasst werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "20/0564",
+    "document_id": 223427,
+    "label": "Kommunaler Aktionsplan gegen Gewalt an Frauen und Häusliche Gewalt",
+    "page": 97
+   }
+  }
+ ]
+}
