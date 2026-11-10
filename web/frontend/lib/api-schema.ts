@@ -15252,8 +15252,6 @@ export interface components {
             office: string | null;
             /** Policy Field */
             policy_field: string;
-            /** Report Caveat */
-            report_caveat: string | null;
             /** Report Count */
             report_count: number;
             /** Report Note */
@@ -15839,8 +15837,6 @@ export interface components {
                 /** Value */
                 value: string;
             } | null;
-            /** Report Caveat */
-            report_caveat: string | null;
             /** Report Count */
             report_count: number;
             /** Report Note */
@@ -29271,4 +29267,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: eaef9cb7df329b640732f6d75125aeb9c5df3d0834c3c8e905bdec00ead53866
+// vertrag-sha256: a31cd8226e31e38e51882cec51cb05030b47a8ddfaf2f884d92fd9cd0502dccf

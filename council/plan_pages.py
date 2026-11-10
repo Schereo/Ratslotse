@@ -63,9 +63,6 @@ STALE_DAYS = 730
 
 #: Der Satz neben „kein Bericht“ (§ 3.3a): Die Lücke sagt etwas über die
 #: Berichte, nichts über die Arbeit.
-REPORT_CAVEAT = ("Das ist eine Aussage über die Berichte, nicht über die Arbeit: "
-                 "Ob umgesetzt wurde, wissen wir nicht.")
-
 #: Die gemeinsame Zeitachse der Übersicht beginnt, wo der Bestand beginnt
 #: (Sitzungen ab 01/2018), und reicht zehn Jahre nach vorn.
 ARCHIVE_START = "2018-01-01"
@@ -186,13 +183,6 @@ def report_note(plan: register.Plan, latest: dict | None, state: str, today: str
     if _days_between(latest["date"], today) > STALE_DAYS:
         return f"Seit {_month(latest['date'])} kein Bericht im Rat."
     return None
-
-
-def _silence_is_news(plan: register.Plan, today: str) -> bool:
-    """Braucht der Lücken-Satz die Einordnung? Nicht bei Plänen, die jünger als ein Jahr sind."""
-    if plan.adopted is None:
-        return False
-    return _days_between(_start_date(plan.adopted.date), today) >= 365
 
 
 # ── Zeitband ──────────────────────────────────────────────────────────────
@@ -575,7 +565,6 @@ def _card(plan: register.Plan, items: list[dict], today: str) -> dict:
         "adoption_mode": plan.adopted.mode if plan.adopted else None,
         "latest_report": latest,
         "report_note": note,
-        "report_caveat": REPORT_CAVEAT if note and _silence_is_news(plan, today) else None,
         "lane": lane(plan, items, state, today),
         "report_count": len({_stem(i["template_number"]) or f"top{i['agenda_item_id']}"
                              for i in items if i["role"] in REPORT_ROLES}),
@@ -607,7 +596,7 @@ def _sorted(cards: list[dict]) -> list[dict]:
 
 #: § 3.5: der feste Satz unter jeder Liste, die sagt, wo man nachfragen kann.
 FOLLOW_UP_CAVEAT = ("Nichtöffentliche Sitzungen, Mitteilungen ohne Vorlage und Berichte außerhalb des "
-                    "Ratsinformationssystems sieht Ratslotse nicht. „Nicht gefunden“ heißt nicht „gibt es nicht“.")
+                    "Ratsinformationssystems sieht Ratslotse nicht.")
 #: Berichtsstände, bei denen sich eine Nachfrage anbietet (§ 3.5, Art 3).
 FOLLOW_UP_STATES = ("no_report_found", "expired_no_evaluation")
 
@@ -665,8 +654,7 @@ def views(cards: list[dict], today: str) -> list[dict]:
         {"key": "ending", "label": "Endet bald", "plans": [c["key"] for c in ending],
          "hint": "Laufende Pläne mit Enddatum, das nächste Ende zuerst."},
         {"key": "silent", "label": "Lange kein Bericht", "plans": [c["key"] for _s, _t, c in silent],
-         "hint": "Laufende Pläne, zu denen Ratslotse seit über einem Jahr keinen Bericht im Rat gefunden hat. "
-                 + REPORT_CAVEAT},
+         "hint": "Laufende Pläne, zu denen Ratslotse seit über einem Jahr keinen Bericht im Rat gefunden hat."},
     ]
 
 
@@ -1088,8 +1076,7 @@ GEOMETRY_KINDS = ("street", "route", "water")
 GEOMETRY_DIGITS = 5
 #: Stützpunkte, die näher als das (in Grad, rund 10 m) am vorigen liegen, fallen weg — Anfang und Ende bleiben.
 GEOMETRY_STEP = 0.00012
-PLACES_NOTE = ("Orte aus den Titeln der Maßnahmen und aus den Beschlüssen zum Plan, zugeordnet ohne "
-               "Sprachmodell. Die Karte zeigt, wo etwas vorgesehen oder beschlossen ist — nicht, wie weit es ist.")
+PLACES_NOTE = "Orte aus den Titeln der Maßnahmen und aus den Beschlüssen zum Plan."
 
 
 def _geometry(row: dict):
@@ -1239,8 +1226,7 @@ BUDGET_LISTS = {"administration_1": "Änderungsliste der Verwaltung I",
                 "fc_decided": "Beschlossene Änderungen (Finanzausschuss)"}
 #: Spätere Stufen einer Änderung ersetzen frühere: Was der Finanzausschuss beschlossen hat, zählt.
 BUDGET_LIST_ORDER = ("administration_1", "administration_2", "administration_3", "fc_decided")
-BUDGET_NOTE = ("Nur Haushaltsposten, deren eigener Text den Plan beim Namen nennt. Was der Plan insgesamt "
-               "kostet, steht so nirgends im Haushalt — und nicht jeder Posten, der ihm dient, nennt ihn.")
+BUDGET_NOTE = "Haushaltsposten, deren eigener Text den Plan beim Namen nennt."
 
 
 def _budget_quote(text: str, pattern: str) -> str:
@@ -1291,7 +1277,7 @@ def budget_block(store, plan: register.Plan) -> dict:
         elif ref["table"] == "investments":
             ordered = sorted(rows, key=lambda r: r["year"])
             items.append({"kind": "investment", "title": ordered[-1]["label"], "number": ordered[-1]["code"],
-                          "context": "Investitionsprogramm, Wert je Programmjahr, wie er dort steht",
+                          "context": "Investitionsprogramm",
                           "quote": _budget_quote(ordered[-1].get(ref["field"]) or "", pattern),
                           "amounts": [{"label": f"Programm {r['year']}", "value": r["grand_total"]} for r in ordered],
                           "since": ordered[0]["year"], "source_url": None})
