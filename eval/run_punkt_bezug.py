@@ -85,19 +85,24 @@ def kosten(db: Path, seit: str) -> float:
 def main() -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--basis", default="http://127.0.0.1:8602")
-    ap.add_argument("--email", default="nutzerin@example.org")
+    #: Je Punkt ein eigenes Saat-Konto: Das Tageskontingent der Frage zählt je
+    #: Konto, und 20 Fragen je Punkt passen in eins (erster Lauf brach nach 48 ab).
+    ap.add_argument("--konten", default="nutzerin@example.org,ratsfrau@example.org,chef@example.org")
     ap.add_argument("--passwort", default="password123")
     ap.add_argument("--limit", type=int, default=0, help="nur so viele Fragen je Punkt (Kostenprobe)")
     a = ap.parse_args()
 
     seit = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    c = httpx.Client(base_url=a.basis)
-    r = c.post("/api/auth/login", json={"email": a.email, "password": a.passwort})
-    r.raise_for_status()
-    # Das Sitzungs-Cookie trägt ``Secure`` und reist über http nicht von selbst mit.
-    c.headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in r.cookies.items())
+    konten = [k.strip() for k in a.konten.split(",") if k.strip()]
+    ERGEBNISSE.mkdir(parents=True, exist_ok=True)
+    pfad = ERGEBNISSE / f"{datetime.now():%Y%m%d-%H%M}.json"
     zeilen = []
-    for ksinr, nr, worte in PUNKTE:
+    for i, (ksinr, nr, worte) in enumerate(PUNKTE):
+        c = httpx.Client(base_url=a.basis)
+        r = c.post("/api/auth/login", json={"email": konten[i % len(konten)], "password": a.passwort})
+        r.raise_for_status()
+        # Das Sitzungs-Cookie trägt ``Secure`` und reist über http nicht von selbst mit.
+        c.headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in r.cookies.items())
         for frage in FRAGEN[: a.limit or None]:
             for mit in (True, False):
                 antwort, dauer = fragen(c, frage, {"ksinr": ksinr, "item_number": nr} if mit else None)
@@ -105,13 +110,12 @@ def main() -> int:
                 zeilen.append({"ksinr": ksinr, "item_number": nr, "frage": frage, "bezug": mit,
                                "beim_punkt": treffer, "sekunden": round(dauer, 1), "antwort": antwort})
                 print(f"{ksinr} {nr} · {'mit ' if mit else 'ohne'} · {'✓' if treffer else '✗'} · {frage}", flush=True)
+                pfad.write_text(json.dumps({"zeilen": zeilen}, ensure_ascii=False, indent=1))
     mit = [z for z in zeilen if z["bezug"]]
     ohne = [z for z in zeilen if not z["bezug"]]
     usd = kosten(WURZEL / "data" / "ratslotse.sqlite", seit)
     zusammen = {"mit": f"{sum(z['beim_punkt'] for z in mit)}/{len(mit)}",
                 "ohne": f"{sum(z['beim_punkt'] for z in ohne)}/{len(ohne)}", "usd": round(usd, 4)}
-    ERGEBNISSE.mkdir(parents=True, exist_ok=True)
-    pfad = ERGEBNISSE / f"{datetime.now():%Y%m%d-%H%M}.json"
     pfad.write_text(json.dumps({"zusammen": zusammen, "zeilen": zeilen}, ensure_ascii=False, indent=1))
     print(f"\nbeim Punkt — mit Bezug {zusammen['mit']}, ohne {zusammen['ohne']} · {usd:.4f} $ · {pfad.relative_to(WURZEL)}")
     return 0
