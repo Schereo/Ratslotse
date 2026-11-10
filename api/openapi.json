@@ -3678,6 +3678,122 @@
         "title": "AgendaItemRow",
         "type": "object"
       },
+      "AnalysisAlliance": {
+        "properties": {
+          "a": {
+            "title": "A",
+            "type": "string"
+          },
+          "b": {
+            "title": "B",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "count"
+        ],
+        "title": "AnalysisAlliance",
+        "type": "object"
+      },
+      "AnalysisApplicationParty": {
+        "properties": {
+          "abgelehnt": {
+            "title": "Abgelehnt",
+            "type": "integer"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "angenommen": {
+            "title": "Angenommen",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "party",
+          "n",
+          "accepted",
+          "rejected",
+          "angenommen",
+          "abgelehnt"
+        ],
+        "title": "AnalysisApplicationParty",
+        "type": "object"
+      },
+      "AnalysisApplicationStats": {
+        "description": "Erfolgsquoten der eingereichten Antragsdokumente (``CouncilStore.antrag_stats``).",
+        "properties": {
+          "n_antraege": {
+            "title": "N Antraege",
+            "type": "integer"
+          },
+          "n_mit_beschluss": {
+            "title": "N Mit Beschluss",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/AnalysisApplicationParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parties",
+          "n_antraege",
+          "n_mit_beschluss"
+        ],
+        "title": "AnalysisApplicationStats",
+        "type": "object"
+      },
+      "AnalysisContention": {
+        "properties": {
+          "contested": {
+            "title": "Contested",
+            "type": "integer"
+          },
+          "contested_rate": {
+            "title": "Contested Rate",
+            "type": "number"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "field",
+          "total",
+          "contested",
+          "contested_rate"
+        ],
+        "title": "AnalysisContention",
+        "type": "object"
+      },
       "AnalysisCoverage": {
         "properties": {
           "total": {
@@ -3697,16 +3813,24 @@
         "type": "object"
       },
       "AnalysisData": {
-        "description": "``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind\nverschachtelte Auswertungen und bleiben offen.",
+        "description": "``CouncilStore.party_analysis``.\n\nBis 11/2026 standen die Innereien als ``Any`` im Vertrag. Genau darum blieb\nunbemerkt, dass die iOS-App ``angenommen``/``abgelehnt``/``vertagt`` las,\nwährend der Server seit 09/2026 ``accepted``/``rejected``/``postponed``\nsendet: Die Analyse-Seite der App zeigte nur noch „unerwartetes Format“,\nund ``scripts/ios_vertrag.py`` hatte nichts, wogegen es hätte prüfen können.",
         "properties": {
           "alliances": {
-            "title": "Alliances"
+            "items": {
+              "$ref": "#/components/schemas/AnalysisAlliance"
+            },
+            "title": "Alliances",
+            "type": "array"
           },
           "antrag_stats": {
-            "title": "Antrag Stats"
+            "$ref": "#/components/schemas/AnalysisApplicationStats"
           },
           "contention": {
-            "title": "Contention"
+            "items": {
+              "$ref": "#/components/schemas/AnalysisContention"
+            },
+            "title": "Contention",
+            "type": "array"
           },
           "coverage": {
             "$ref": "#/components/schemas/AnalysisCoverage"
@@ -3719,12 +3843,14 @@
             "type": "object"
           },
           "success_rates": {
-            "title": "Success Rates"
+            "items": {
+              "$ref": "#/components/schemas/AnalysisSuccessRate"
+            },
+            "title": "Success Rates",
+            "type": "array"
           },
           "topic_matrix": {
-            "additionalProperties": true,
-            "title": "Topic Matrix",
-            "type": "object"
+            "$ref": "#/components/schemas/AnalysisTopicMatrix"
           }
         },
         "required": [
@@ -3737,6 +3863,98 @@
           "antrag_stats"
         ],
         "title": "AnalysisData",
+        "type": "object"
+      },
+      "AnalysisSuccessRate": {
+        "description": "Erfolgsquote der Anträge einer Partei.",
+        "properties": {
+          "abgelehnt": {
+            "title": "Abgelehnt",
+            "type": "integer"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "angenommen": {
+            "title": "Angenommen",
+            "type": "integer"
+          },
+          "motions": {
+            "title": "Motions",
+            "type": "integer"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "postponed": {
+            "title": "Postponed",
+            "type": "integer"
+          },
+          "rate": {
+            "title": "Rate",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "vertagt": {
+            "title": "Vertagt",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "party",
+          "motions",
+          "accepted",
+          "rejected",
+          "postponed",
+          "rate",
+          "angenommen",
+          "abgelehnt",
+          "vertagt"
+        ],
+        "title": "AnalysisSuccessRate",
+        "type": "object"
+      },
+      "AnalysisTopicMatrix": {
+        "properties": {
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "matrix": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "title": "Matrix",
+            "type": "object"
+          },
+          "parties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parties",
+          "fields",
+          "matrix"
+        ],
+        "title": "AnalysisTopicMatrix",
         "type": "object"
       },
       "AppConfigOut": {

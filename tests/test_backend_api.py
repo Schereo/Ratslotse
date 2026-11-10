@@ -1663,8 +1663,16 @@ def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
     data = client.get(f"/api/council/decision/{did}").json()
     assert [a["document_id"] for a in data["attachments"]] == [77, 78]  # Antrag zuerst
     assert data["attachments"][0]["applicants"] == ["SPD"]
-    stats = client.get("/api/council/analysis").json()["antrag_stats"]
-    assert {"party": "SPD", "n": 1, "accepted": 1, "rejected": 0} in stats["parties"]
+    analysis = client.get("/api/council/analysis").json()
+    stats = analysis["antrag_stats"]
+    # Die englischen Namen für neue Clients, die deutschen daneben für die ausgelieferte
+    # iOS-App: Sie liest `angenommen`/`abgelehnt` nicht optional, und ohne sie kippt dort
+    # der Decode der ganzen Analyse (so stand es von 09/2026 bis 11/2026).
+    assert {"party": "SPD", "n": 1, "accepted": 1, "rejected": 0,
+            "angenommen": 1, "abgelehnt": 0} in stats["parties"]
+    for rate in analysis["success_rates"]:
+        assert (rate["angenommen"], rate["abgelehnt"], rate["vertagt"]) == (
+            rate["accepted"], rate["rejected"], rate["postponed"])
 
 
 def test_field_recaps_endpoint(client):
