@@ -47,7 +47,7 @@ from kern.store import Store
 
 from .. import deepresearch, response_cache
 from ..config import get_settings
-from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
+from ..antworten import (AnalysisData, SessionItemDetail, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, GrantTemplate, BudgetSourceStats, Provenance,
                          BudgetNote, BudgetNotes, BudgetPrefaceFigures, PrefaceFigure, PrefacePlan, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
@@ -2068,6 +2068,20 @@ def session_detail(
     if course:
         session["course"] = course
     return session
+
+
+# Öffentlich wie die Sitzung (Plan Sitzungsseite, Schritt 4): Wer einen Punkt
+# weiterreicht, schickt den Link an Leute ohne Konto.
+@router.get("/session/{ksinr}/item")
+def session_item(
+    ksinr: int,
+    nr: str = Query(..., min_length=1, max_length=20),
+    store: CouncilStore = Depends(get_council_store),
+) -> SessionItemDetail:
+    punkt = store.session_item(ksinr, nr)
+    if not punkt:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+    return punkt
 
 
 def _agenda_aenderungen(store: CouncilStore, ksinr: int) -> list[dict]:
@@ -4270,6 +4284,21 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
             "description": " ".join(x for x in (f"{kopf}." if kopf else "", satz) if x)[:300],
         }
 
+    if kind == "punkt":
+        # Schlüssel „ksinr|Nummer" — ein Punkt ist nur in seiner Sitzung eindeutig.
+        ksinr_roh, _, nummer = key.partition("|")
+        punkt = (store.agenda_item_subject(int(ksinr_roh), nummer)
+                 if ksinr_roh.isdigit() and nummer else None)
+        if not punkt:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+        from council import course as _course  # noqa: PLC0415
+        titel = _kuerzen(_course.strip_result(punkt["title"]) or "Tagesordnungspunkt", 90)
+        return {
+            "title": f"{punkt['item_number']} · {titel}",
+            "description": (f"{punkt['committee']} · {_preview_datum(punkt['session_date'])}. "
+                            "Worum es geht, die Vorgeschichte und die Unterlagen im Ratslotse.")[:300],
+        }
+
     if kind == "person":
         p = store.member_detail(key)
         if not p:
@@ -4534,6 +4563,10 @@ class ExplainRefs(BaseModel):
     place_id: str | None = Field(default=None, max_length=120)
     year: int | None = Field(default=None, ge=1990, le=2100)
     area: str | None = Field(default=None, max_length=120)
+    # Der Punkt einer Sitzung (mit ``ksinr``), wenn die Frage von seiner Seite
+    # kommt — sonst wäre er unter 40 Punkten nicht eindeutig. Optional und am
+    # Ende: Die ausgelieferte App schickt das Feld nicht.
+    item_number: str | None = Field(default=None, max_length=20)
 
 
 class ExplainBody(BaseModel):
@@ -5441,6 +5474,16 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         bildschirm["heading"] = lotti.ueberschrift_ohne_konto(
             bildschirm.get("heading") or "", user.get("display_name"))
         ratslotse.record_activity(user["id"], "assistant_to_ask", client_kind(request))
+        # Von der Seite eines Tagesordnungspunkts: den Punkt nachschlagen, nie
+        # raten. Hat er einen Beschluss, ist DER der Gegenstand (wie auf der
+        # Beschluss-Seite); sonst nennt der Prompt den Punkt beim Namen.
+        refs = bildschirm.get("refs") or {}
+        if refs.get("ksinr") and refs.get("item_number") and not refs.get("decision_id"):
+            punkt = store.agenda_item_subject(int(refs["ksinr"]), str(refs["item_number"]))
+            if punkt and punkt.get("decision_id"):
+                bildschirm["refs"] = {**refs, "decision_id": punkt["decision_id"]}
+            elif punkt:
+                bildschirm["agenda_item"] = punkt
     # ZUSÄTZLICH, nicht statt: `ai_question` bleibt die Gesamtzahl, sonst
     # verlören alle bestehenden Auswertungen die Chip-Fragen.
     if body.from_suggestion:

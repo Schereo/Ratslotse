@@ -706,6 +706,21 @@ Beschluss oder klappen auf.
 5. Messen, ob der Kontext wirkt: zehn Fragen der Art „Und was kostet das?“ auf
    drei Punkt-Seiten, mit und ohne `refs.item_number`.
 
+**Umgesetzt (10.11.2026):** Endpunkt `GET /council/session/{ksinr}/item?nr=`
+(Form `SessionItemDetail`, öffentlich, nichtöffentliche Punkte 404), Seite
+`app/(app)/council/punkt/`, Schalter `punkt-seite`, Link-Vorschau `punkt`
+(Schlüssel `ksinr|Nummer`). Vorgeschichte: mit Vorlage ihr Weg durch die
+Gremien, ohne Vorlage die früheren Auftritte desselben datierten Antrags im
+selben Gremium — die Akte ist (noch) nicht Quelle. **„Frag den Rat“ ohne
+Kopie von `council-qa.tsx`:** Die Box auf der Punkt-Seite reicht die Frage
+mit `ksinr` und `top` an `/fragen` weiter; das Ratsgespräch schickt den Punkt
+als `screen.refs` (`item_number` neu an `ExplainRefs`) und zeigt ihn als
+abwählbaren Bezug-Chip über dem Eingabefeld. Der Server schlägt den Punkt
+nach: Mit Beschluss ist der Beschluss der Gegenstand, ohne nennt
+`qa.gegenstand_regel` den Punkt mit Sitzung und Vorlage. Ohne Konto führt die
+Frage wie jeder Frage-Chip zur Anmeldung und danach zurück. **Offen:** die
+Messung aus 5. — sie kostet Modellaufrufe und wartet auf Tims OK.
+
 ### Schritt 5: Mitlesen
 
 Schalter `mitlesen`. Seite `app/(app)/council/sitzung/mitlesen/`. Inhalte je

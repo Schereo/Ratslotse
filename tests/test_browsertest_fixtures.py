@@ -283,3 +283,16 @@ def test_die_sitzungs_kurs_abschrift_kennt_jedes_feld(ksinr):
         assert set(st) == set(get_type_hints(CourseStage))
     for it in kurs["items"].values():
         assert set(it) == set(get_type_hints(CourseItem))
+
+
+def test_die_punkt_abschrift_kennt_jedes_feld():
+    """``punkt-4654-11-1.json`` ist eine Antwort von ``/council/session/{ksinr}/item``
+    (Abzug von dev, 10.11.2026). Neu ziehen: lokalen Server starten und
+    ``curl '…/api/council/session/4654/item?nr=%C3%96%2011.1'``."""
+    import sys
+    from typing import get_type_hints
+    sys.path.insert(0, str(WURZEL / "web" / "backend"))
+    from app.antworten import SessionItemDetail
+
+    d = json.loads((FIXTURES / "punkt-4654-11-1.json").read_text())
+    assert set(d) == set(get_type_hints(SessionItemDetail))

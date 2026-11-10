@@ -85,6 +85,10 @@ OEFFENTLICH = {
     # Konto lesbar, weil die Arbeit des Rats öffentlich ist. Die Sitzung
     # hängt daran (die Beschluss-Seite zieht Gremium und Datum nach).
     ("get", "/api/council/session/{ksinr}"),
+    # Ein Punkt der Sitzung auf seiner eigenen Seite (Plan Sitzungsseite,
+    # Schritt 4) — öffentlich wie die Sitzung, nichtöffentliche Punkte gibt
+    # er nicht heraus (404).
+    ("get", "/api/council/session/{ksinr}/item"),
     ("get", "/api/council/entity/{slug}"),
     ("get", "/api/council/person/{slug}"),
     ("get", "/api/council/person/{slug}/speeches"),
