@@ -759,9 +759,14 @@ nennen. Von oben: Mono-Kicker mit „Heute“/„Morgen“ oder dem Wochentag, D
 Uhrzeit und dem Ort ohne Straße (die volle Adresse steht in der Karte „Ort und
 Zeit“) · der Kurzname als einzige Hauptüberschrift (Bricolage 28/32), der
 amtliche Name darunter bei Abweichung in `meta` · rechts die Aktionen ·
-darunter der **gerechnete Satz zur Sitzung** in `lese` mit dem Hinweis, woher
-er kommt („Aus der Tagesordnung gezählt.“ / „Aus dem Protokoll gezählt.“) —
-ohne Lotti-Figur und ohne KI-Funken, weil kein Modell ihn schreibt (§ 1) · der
+darunter der **gerechnete Satz zur Sitzung** in einer **Sprechblase neben
+Lotti** (`components/session/lotti-satz.tsx`: Lotti 44/48 px mit `erklaert`,
+Blase `bg-card`, Rand, Radius 16, Zipfel zur Figur, Text in `lese`) und darunter
+der Hinweis, woher er kommt („Aus der Tagesordnung gezählt.“ / „Aus dem
+Protokoll gezählt.“) — ohne KI-Funken, weil kein Modell ihn schreibt. **Tims
+Entscheidung 10.11.2026 (Plan 8.1):** Hier darf Lotti die Sitzung erzählen,
+denn der Satz ist gezählt, nicht verfasst; dieselbe Blase trägt beim Mitlesen
+den Satz zum Stand. Es ist die einzige Ausnahme von § 1 und § 8 · der
 **Kurs der Sitzung** mit Legende bzw. der Zählung der Ergebnisse als Text mit
 Punkt (keine Abstimmungsgrafik, § 8) · „Wichtig in dieser Sitzung“ mit
 höchstens drei Karten, auf dem Handy zum Wischen.
@@ -941,7 +946,8 @@ eine Wirkung der einzelnen Mail zu behaupten.
 
 ## 8. Anti-Patterns
 
-Keine Lotti-Sprechblase außerhalb der Anstupser-Grenzen (§ 5) · kein Zähler
+Keine Lotti-Sprechblase außerhalb der Anstupser-Grenzen (§ 5) und des
+Sitzungskopfs samt Mitlesen (`lotti-satz.tsx`, gerechnete Sätze, Plan 8.1) · kein Zähler
 oder Abzeichen am geschlossenen Lotti-Knopf ·
 keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
 kein Signal-Orange als Flächenfarbe (Ausnahme: Neuigkeiten-Kacheln, § 2) · keine Parteifarben-Flächen (Ausnahmen:

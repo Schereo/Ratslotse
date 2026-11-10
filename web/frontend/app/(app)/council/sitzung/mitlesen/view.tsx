@@ -27,7 +27,8 @@ import { istNichtGefunden } from "@/lib/api";
 import { useFeature } from "@/lib/features";
 import { shortCommittee } from "@/lib/committees";
 import { LIVE_REFRESH_MS, isStadtrat, type LiveState } from "@/lib/live";
-import { loadStored, mitlesenState, move, saveStored, steps, type Stored } from "@/lib/mitlesen";
+import { greeting, loadStored, mitlesenState, move, saveStored, steps, type Stored } from "@/lib/mitlesen";
+import { LottiSatz } from "@/components/session/lotti-satz";
 import { sessionKicker, splitNumber } from "@/lib/session-page";
 import { punktHref, sitzungHref } from "@/lib/routes";
 import type { SessionWithCourse } from "@/components/session/session-page";
@@ -185,6 +186,8 @@ function Mitlesen({ data, ksinr }: { data: SessionWithCourse; ksinr: number }) {
             <List className="h-4 w-4" aria-hidden /> Ganze Tagesordnung
           </Link>
         </div>
+
+        <LottiSatz className="mt-4" text={greeting(state.source)} />
 
         <div className="mt-5 border-t border-border pt-4">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

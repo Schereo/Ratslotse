@@ -98,6 +98,21 @@ export function mitlesenState(
 
 export const SELBST = "Ratslotse weiß nicht, wo die Sitzung gerade ist. Du gibst den Takt vor.";
 
+/** Was Lotti im Kopf des Mitlesens sagt (Plan 3.1, Tims Entscheidung 8.1) —
+ *  eine feste Erklärung je Zustand, kein Modell. */
+export function greeting(source: Source): string {
+  switch (source) {
+    case "broadcast":
+      return "Ich folge der Übertragung und zeige dir, welcher Punkt gerade dran ist.";
+    case "paused":
+      return "Du liest gerade woanders als die Übertragung. „Zur Übertragung“ bringt dich zurück.";
+    case "over":
+      return "Die Sitzung ist vorbei. Hier kannst du sie Punkt für Punkt nachlesen.";
+    default:
+      return "Tipp auf „Weiter“, sobald der nächste Punkt aufgerufen wird. Ich zeige dir dann, worum es gerade geht.";
+  }
+}
+
 /** „Stand vor 3 Min." — dieselbe Zusage wie `liveAgoText`, als Satzteil. */
 export function agoText(asOf: string, now: Date = new Date()): string {
   const min = Math.max(0, Math.round((now.getTime() - new Date(asOf).getTime()) / 60_000));
