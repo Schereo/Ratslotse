@@ -17,9 +17,16 @@ test.use({ storageState: zustandsDatei("nutzerin") });
 
 async function schalter(page: Page, an: boolean) {
   await page.route("**/api/app-config", async (route) => {
-    const echt = await (await route.fetch()).json();
+    // Lädt die Seite schon neu, während dieser Abruf noch läuft, ist seine Antwort weg („Response has
+    // been disposed“) — dann gehört er zu einer Seite, die niemand mehr ansieht, und bleibt liegen.
+    let echt: { features?: string[] };
+    try {
+      echt = await (await route.fetch()).json();
+    } catch {
+      return;
+    }
     const ohne = (echt.features ?? []).filter((f: string) => f !== "plaene");
-    await route.fulfill({ json: { ...echt, features: an ? [...ohne, "plaene"] : ohne } });
+    await route.fulfill({ json: { ...echt, features: an ? [...ohne, "plaene"] : ohne } }).catch(() => {});
   });
 }
 
