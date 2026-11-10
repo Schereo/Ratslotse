@@ -62,6 +62,8 @@ test("der Stand steht in den Worten der Stadt, mit Herkunft und ohne Quote", asy
   const status = page.locator('section[aria-labelledby="plan-city-status"]');
   await expect(status.getByText("Klimaportal der Stadt · Stand 2026")).toBeVisible();
   await expect(status.getByText("Zählbasis: 90 → 97 Maßnahmen")).toBeVisible();
+  // Die Reihe aller Stände liegt unter einem Aufklapper — das Bild darüber zeigt den gewählten Stand.
+  await status.getByRole("button", { name: "Alle Stände als Tabelle" }).click();
   await expect(status.getByRole("row", { name: /Realisiert 11 15 20 22 20/ })).toBeVisible();
   await expect(status).not.toContainText("%");
   // Die Kennzahl steht neben dem Plan: Soll, Ist, Quelle — und der Vorbehalt des Berichts.
@@ -166,6 +168,87 @@ test("was der Plan festlegt, steht unter dem Kopf — jeder Satz mit Zitat und D
   await expect(page.locator('section[aria-labelledby="plan-content"]')).toHaveCount(0);
 });
 
+test("die Kernpunkte stehen nach Art, die Zahl als Kachel mit Zitat", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=thg_neutrale_verwaltung");
+  const block = page.locator('section[aria-labelledby="plan-content"]');
+  // Ziele oben, dann Zahlen, dann Regeln — die Überschriften kommen aus dem Backend.
+  await expect(block.locator("h3")).toHaveText(["Ziel", "Zahlen", "Regeln", "Termin"]);
+  // Die Kachel trägt die Zahl groß; ein Tipp zeigt darunter den ganzen Satz mit dem wörtlichen Zitat.
+  const tile = block.getByRole("button", { name: /62,5 %/ });
+  await expect(tile).toHaveAttribute("aria-expanded", "false");
+  await tile.click();
+  await expect(tile).toHaveAttribute("aria-expanded", "true");
+  await expect(block.locator("blockquote")).toContainText("62,5 Prozent bis 2030");
+  await expect(block.getByText("Bis 2030 sollen die Emissionen gegenüber 2023 um 62,5 Prozent sinken.")).toBeVisible();
+});
+
+test("ein Termin aus dem Plan steht im Zeitband und führt zu seinem Kernpunkt", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=thg_neutrale_verwaltung");
+  await expect(page.getByText("Termin laut Plan", { exact: true })).toBeVisible();
+  const due = page.getByRole("button", { name: /^Termin laut Plan, bis 2030/ });
+  await expect(due).toBeVisible();
+  // Der Tipp führt zur Kachel, die den Termin nennt. Der Wimpel ist klein — geklickt wird die Tippfläche.
+  await due.click({ force: true });
+  await expect(page.locator("#plan-point-1")).toBeInViewport();
+});
+
+test("die Sprungleiste nennt die Abschnitte des Plans und springt dorthin", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=klimaschutzplan_2035");
+  const bar = page.getByRole("navigation", { name: "Abschnitte dieser Seite" });
+  // Aus Dateien im Repo, also auch gegen die leere Datenbank; „Beschlüsse“ hängt am Bestand.
+  for (const name of [/^Inhalt/, /^Berichte/, /^Stand/, /^Kennzahl/, /^Maßnahmen/]) {
+    await expect(bar.getByRole("button", { name })).toBeVisible();
+  }
+  await expect(page.locator('section[aria-labelledby="plan-measures"]')).not.toBeInViewport();
+  await bar.getByRole("button", { name: /^Maßnahmen/ }).click();
+  await expect(page.locator("#plan-measures")).toBeInViewport();
+  await expect(bar.getByRole("button", { name: /^Maßnahmen/ })).toHaveAttribute("aria-current", "true");
+  // Die Leiste bleibt beim Rollen oben stehen.
+  await expect(bar).toBeInViewport();
+});
+
+test("der Stand lässt sich je Jahr wählen, die Tabelle liegt unter einem Aufklapper", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=klimaschutzplan_2035");
+  const block = page.locator('section[aria-labelledby="plan-city-status"]');
+  await expect(block.getByText(/Stand 2026$/)).toBeVisible();
+  await expect(block.getByRole("table")).toBeHidden();
+  await block.getByRole("button", { name: "2022", exact: true }).click();
+  await expect(block.getByText(/Stand 2022$/)).toBeVisible();
+  await expect(block.getByText("Der erste Stand, den die Stadt meldet.")).toBeVisible();
+  // Was die Bewegung zeigt — und was nicht (die Stadt meldet nur Summen).
+  await expect(block.getByText(/nicht, welche Maßnahme die Stufe gewechselt hat/)).toBeVisible();
+  await block.getByRole("button", { name: "Alle Stände als Tabelle" }).click();
+  await expect(block.getByRole("table")).toBeVisible();
+});
+
+test("die Übersicht klappt eine Zeile auf und kennt drei Reihenfolgen", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council?tab=analysis&sub=ziele");
+  const row = page.locator("#plans-running li", { has: page.locator(CLIMATE_PLAN) }).first();
+  // Ein Tipp auf die Zeile zeigt, worum es geht; der Titel bleibt der Weg zum Plan.
+  await row.getByRole("button", { name: /Kurzfassung zeigen$/ }).click({ position: { x: 8, y: 8 } });
+  await expect(row.getByText("Was der Plan festlegt", { exact: true })).toBeVisible();
+  await expect(row.getByRole("link", { name: /^Zum Plan/ })).toBeVisible();
+  await expect(page).toHaveURL(/tab=analysis/);
+  // „Endet bald“: eine Liste statt der Gruppen, das nächste Ende zuerst — aus dem Register, ohne Bestand.
+  const views = page.getByRole("group", { name: "Reihenfolge der Pläne" });
+  await views.getByRole("button", { name: "Endet bald" }).click();
+  await expect(page.getByRole("heading", { name: "Endet bald" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Laufend" })).toHaveCount(0);
+  const first = page.locator("#plans-ending li").first();
+  await expect(first).toContainText(/noch \d+ (Monat|Jahr)/i);
+  // Mit dem Themenfeld zusammen: nur dessen Pläne, in derselben Reihenfolge.
+  await page.getByRole("group", { name: "Nach Themenfeld filtern" }).getByRole("button", { name: /^Verkehr/ }).click();
+  await expect(page.locator('#plans-ending a[href="/council/plan?key=mobilitaetsplan_2030"]')).toBeVisible();
+  await expect(page.locator(`#plans-ending ${CLIMATE_PLAN}`)).toHaveCount(0);
+  await views.getByRole("button", { name: "Nach Status" }).click();
+  await expect(page.getByRole("heading", { name: "Laufend" })).toBeVisible();
+});
+
 test("ohne Schalter bleibt es bei den Zielen", async ({ page }) => {
   await schalter(page, false);
   await page.goto("/council?tab=analysis&sub=ziele");
@@ -180,7 +263,7 @@ for (const breite of [390, 320]) {
     await schalter(page, true);
     for (const pfad of ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
       "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035",
-      "/council/plan?key=schulverpflegung"]) {
+      "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau"]) {
       await page.goto(pfad, { waitUntil: "networkidle" });
       expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
     }

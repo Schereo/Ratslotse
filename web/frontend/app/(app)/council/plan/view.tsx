@@ -18,6 +18,7 @@ import { CityStatus } from "@/components/plans/city-status";
 import { Content } from "@/components/plans/content";
 import { Decisions } from "@/components/plans/decisions";
 import { Indicators } from "@/components/plans/indicators";
+import { JumpBar } from "@/components/plans/jump-bar";
 import { Measures } from "@/components/plans/measures";
 import { PlanHeader } from "@/components/plans/plan-header";
 import { ReportLog } from "@/components/plans/report-log";
@@ -41,6 +42,8 @@ function PlanInner() {
     key && enabled ? `/council/plan/${encodeURIComponent(key)}` : null, { quiet: true });
   // Ein Tipp auf eine Marke im Zeitband führt zum Eintrag im Zeitstrahl.
   const [target, setTarget] = useState<{ station: number; n: number } | null>(null);
+  // Ein Tipp auf einen Termin im Band führt zum Kernpunkt, der ihn nennt.
+  const [point, setPoint] = useState<{ point: number; n: number } | null>(null);
 
   // Erst die Konfiguration, dann der Plan. `!data && !error` gilt als Laden:
   // Im Durchlauf, in dem der Schalter angeht, hat `useFetch` den neuen Pfad
@@ -64,16 +67,19 @@ function PlanInner() {
         <ShareButton path={planHref(data.key)} title={`${data.title} — Ratslotse`} />
       </div>
       <div className="mt-3">
-        <PlanHeader plan={data} onStation={(station) => setTarget((t) => ({ station, n: (t?.n ?? 0) + 1 }))} />
+        <PlanHeader plan={data} onStation={(station) => setTarget((t) => ({ station, n: (t?.n ?? 0) + 1 }))}
+          onPoint={(index) => setPoint((p) => ({ point: index, n: (p?.n ?? 0) + 1 }))} />
       </div>
+      {/* Direkt im hohen Rahmen, ohne Hülle: Sonst hätte `sticky` nichts, woran es haften könnte. */}
+      <JumpBar sections={data.sections} />
       {/* Breit zwei SPALTEN, die je für sich stapeln — ein Raster aus Zeilen
           ließe unter der kurzen Karte Leere stehen (DESIGNSPRACHE § 4). Links,
           was den Plan ausmacht (Berichte, Maßnahmen), rechts die Beschlüsse.
           Ohne Beschlüsse bleibt es bei einer Spalte. */}
-      <div className={cn("mt-4 flex flex-col gap-4 @4xl:mt-5 @4xl:gap-5",
+      <div className={cn("mt-2 flex flex-col gap-4 @4xl:gap-5",
         hasAside && "@4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-start")}>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
-          {data.content && <Content content={data.content} />}
+          {data.content && <Content content={data.content} target={point} />}
           {data.review && <Review review={data.review} />}
           <ReportLog plan={data} target={target} />
           {data.city_status && <CityStatus status={data.city_status} />}

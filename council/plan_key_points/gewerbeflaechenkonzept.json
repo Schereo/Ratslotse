@@ -40,6 +40,10 @@
   {
    "text": "Das größte Potenzial ist die ca. 20 ha große Gewerbefläche auf dem ehemaligen Fliegerhorst (Hallensichel).",
    "kind": "figure",
+   "figure": {
+    "value": "ca. 20 ha",
+    "label": "größtes Potenzial: Gewerbefläche auf dem Fliegerhorst"
+   },
    "quote": "Das größte Potenzial bietet in diesem Zusammenhang die ca. 20 ha große Gewerbefläche auf dem ehemaligen Fliegerhorst (Hallensichel).",
    "source": {
     "kind": "decision",

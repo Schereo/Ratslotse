@@ -4584,6 +4584,8 @@ class PlanStatusSnapshot(TypedDict):
     as_of_label: str
     total: int
     counts: list[PlanStatusCount]
+    #: Was sich bis zu diesem Stand gegenüber dem vorigen bewegt hat; ``None`` beim ersten.
+    movement: PlanStatusMovement | None
 
 
 class PlanStatusNote(TypedDict):
@@ -4643,6 +4645,15 @@ class PlanReviewStatement(TypedDict):
     template_number: str | None
 
 
+class PlanBrief(TypedDict):
+    """Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat."""
+    heading: str
+    purpose: str
+    points: list[str]
+    #: Wie viele Kernpunkte die Planseite insgesamt zeigt.
+    count: int
+
+
 class PlanCard(TypedDict):
     """Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4)."""
     key: str
@@ -4673,6 +4684,14 @@ class PlanCard(TypedDict):
     report_state: PlanReportState
     #: Nur wo die Stadt selbst eine Verteilung meldet.
     status_brief: PlanStatusBrief | None
+    #: Zweck und zwei Kernpunkte; ``None``, wo kein Plantext vorliegt.
+    brief: PlanBrief | None
+    #: „9 Jahre“ — wie lange ein laufender Plan mit Enddatum noch läuft.
+    ends_in: str | None
+    #: Der Tag des Laufzeitendes (nur laufende Pläne mit Enddatum).
+    ends_on: str | None
+    #: Der Tag des Beschlusses oder der Kenntnisnahme.
+    adopted_on: str | None
 
 
 class PlanGroup(TypedDict):
@@ -4739,6 +4758,17 @@ class PlanFollowUp(TypedDict):
     question: str
 
 
+class PlanView(TypedDict):
+    """Eine Ansicht der Übersicht: eine Auswahl von Plänen in einer Reihenfolge — eine Tatsache mit
+    Datum, keine Rangfolge nach gut oder schlecht."""
+    key: Literal["recent", "ending", "silent"]
+    label: str
+    #: Ein Satz, was die Ansicht zeigt (und bei „Lange kein Bericht“: was sie nicht sagt).
+    hint: str
+    #: Schlüssel der Pläne in der Reihenfolge der Ansicht.
+    plans: list[str]
+
+
 class Plans(TypedDict):
     as_of: str
     as_of_label: str
@@ -4749,6 +4779,8 @@ class Plans(TypedDict):
     axis: PlanAxis
     #: Themenfelder der Pläne mit Anzahl, für den Filter.
     fields: list[PlanFieldCount]
+    #: „Zuletzt berichtet“, „Endet bald“, „Lange kein Bericht“ — neben der Gliederung nach Status.
+    views: list[PlanView]
     recent: list[PlanRecentReport]
     upcoming: list[PlanUpcoming]
     #: Wo man nachfragen kann: Pläne ohne aktuellen Bericht, am längsten Stillen zuerst.
@@ -4838,6 +4870,18 @@ class PlanRunwayPoint(TypedDict):
     label: str
 
 
+class PlanRunwayDue(TypedDict):
+    """Ein Termin, den der Plan selbst nennt — keine Frist von uns, und keine Aussage, ob er gehalten wurde."""
+    x: float
+    date: str
+    #: In den Worten des Plans: „bis 2030“, „ab Schuljahr 2026/2027“.
+    label: str
+    #: Der Kernpunkt, zu dem der Termin gehört.
+    text: str
+    #: Stelle des Kernpunkts (``PlanContentStatement.index``).
+    point: int
+
+
 class PlanRunway(TypedDict):
     """Das Zeitband der Detailseite: eine eigene Achse je Plan."""
     start: str
@@ -4849,6 +4893,7 @@ class PlanRunway(TypedDict):
     band: PlanBand | None
     marks: list[PlanRunwayMark]
     review: PlanRunwayPoint | None
+    dues: list[PlanRunwayDue]
     #: Wo der Bestand des Ratsinformationssystems beginnt (2018), falls die Achse früher anfängt.
     archive_from: float | None
 
@@ -4941,6 +4986,18 @@ class PlanContentSource(TypedDict):
     url: str | None
 
 
+class PlanContentFigure(TypedDict):
+    """Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat."""
+    value: str
+    label: str
+
+
+class PlanContentDue(TypedDict):
+    """Der Termin, den der Kernpunkt nennt."""
+    date: str
+    label: str
+
+
 class PlanContentStatement(TypedDict):
     text: str
     #: Die wörtliche Stelle, die den Satz belegt.
@@ -4948,17 +5005,45 @@ class PlanContentStatement(TypedDict):
     source: PlanContentSource
     #: Der Satz steht so in einem Beschluss NACH dem ursprünglichen Plan.
     amended: bool
+    #: Stelle des Kernpunkts in der Datei (Sprungziel der Termin-Marke); ``None`` beim Zweck.
+    index: int | None
+    kind: Literal["goal", "standard", "figure", "responsibility", "deadline", "measure"] | None
+    #: „Zuständigkeit“ oder „Termin“ — nur wo die Gruppe zwei Arten mischt.
+    tag: str | None
+    figure: PlanContentFigure | None
+    due: PlanContentDue | None
+
+
+class PlanContentGroup(TypedDict):
+    """Kernpunkte einer Art: Ziele, Zahlen (als Kacheln), Regeln, Vorhaben und Termine."""
+    key: Literal["goals", "figures", "rules", "steps"]
+    label: str
+    layout: Literal["list", "tiles"]
+    points: list[PlanContentStatement]
 
 
 class PlanContent(TypedDict):
     """Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
-    (``council/plan_key_points/<key>.json``)."""
+    (``council/plan_key_points/<key>.json``), nach Art gegliedert."""
     #: „Was der Plan festlegt“ nur bei einem Beschluss; sonst „Was im Plan steht“ oder „… der Entwurf vorsieht“.
     heading: str
+    #: Gesetzt, wenn ALLE Sätze aus demselben späteren Beschluss stammen: Dann steht das Datum einmal am
+    #: Block statt an jedem Satz.
+    as_of_label: str | None
     purpose: PlanContentStatement
-    points: list[PlanContentStatement]
+    groups: list[PlanContentGroup]
+    #: Zahl der Kernpunkte über alle Gruppen.
+    count: int
     #: Wie die Punkte entstanden sind (Modell sucht, Zitat belegt).
     note: str
+
+
+class PlanSection(TypedDict):
+    """Ein Abschnitt der Planseite, für die Sprungleiste."""
+    key: Literal["content", "review", "reports", "status", "indicators", "measures", "decisions"]
+    label: str
+    #: ``None``: Hier gibt es nichts zu zählen.
+    count: int | None
 
 
 class PlanReview(TypedDict):
@@ -5008,6 +5093,8 @@ class PlanDetail(PlanCard):
     oral_report_count: int
     decision_groups: list[PlanDecisionGroup]
     goal: str | None
+    #: Die Abschnitte, die es auf diesem Plan gibt — in der Reihenfolge der Seite.
+    sections: list[PlanSection]
 
 
 class BudgetComparison(TypedDict):

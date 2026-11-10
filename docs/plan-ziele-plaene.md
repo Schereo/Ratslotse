@@ -50,6 +50,7 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 | 4b Wo man nachfragen kann | auf dev: Pläne ohne aktuellen Bericht. „Ratsauftrag ohne Folge“ zweimal gemessen (ohne und mit Modell), Messziel beide Male verfehlt, nicht ausgeliefert | #1825, #1829 |
 | 5 Rückblick | auf dev für die zehn abgelaufenen Pläne; Maßnahmenlisten für neun Pläne; iOS-Ansicht im Code (kommt mit dem nächsten App-Build) | #1825, #1830, #1831 |
 | Was im Plan steht (nach der Freigabe der Phasen, Tims Wunsch 10.11.2026) | PR offen: Zweck und drei bis sechs Kernpunkte für 36 von 45 Plänen, jeder mit wörtlichem Zitat, Seite und Link; 9 Pläne begründet ohne Block | § 3.2 Punkt 1a; `scripts/plan_kernpunkte.py` |
+| Ausbau der Seiten, Paket 1 und Bewegung (Tims Auftrag 10.11.2026) | PR offen: Kernpunkte nach Art mit Zahlen-Kacheln, Termine des Plans im Zeitband, Sprungleiste, Übersicht mit Aufklapp-Zeilen und drei Reihenfolgen; Bewegung nach DESIGNSPRACHE § 7 | § 3.1, § 3.2 Punkte 1a–1c |
 | 5b Seite der Stadt | Verweise für 21 Pläne. Offen: Dokumente der Pläne von vor 2018 | mit Phase 6 |
 | 6 Pflege | Kennzahlen im Cron-Protokoll, Hinweise im Prüfskript | mit Phase 5b |
 | Kosten | Modell insgesamt rund 0,50 $ (Mobilitätsplan 0,004 $, Bezüge laut Vorlage 0,09 $, Ratsaufträge 0,03 $, Kernpunkte 0,37 $ samt aller Probeläufe); alles andere ohne Modell | gemessen 10.11.2026 |
@@ -372,6 +373,18 @@ jüngsten Bericht. Eine Karte je Plan zeigt:
 Unter den Gruppen steht die Liste „Auch im Register · Steuerungskonzepte und
 Pläne Dritter“ mit den Verweisen.
 
+**Aufklappen und Reihenfolgen (11/2026).** Ein Tipp auf eine Zeile klappt
+auf, worum es im Plan geht: Zweck, die ersten zwei Kernpunkte, der letzte
+Bericht — der Titel bleibt der Weg zum Plan. (Der Zweck-Satz war aus der Karte
+geflogen, weil er die Liste rund 40 % länger machte; aufgeklappt kostet er
+keinen Platz.) Neben der Gliederung nach Status gibt es drei Reihenfolgen,
+gerechnet im Backend (`plan_pages.views`): **Zuletzt berichtet** · **Endet
+bald** (laufende Pläne mit Enddatum) · **Lange kein Bericht** (laufend, seit
+über einem Jahr kein Bericht gefunden; ohne Bericht zählt der Beschluss).
+Jede reiht nach einem Datum, keine nach gut oder schlecht; die dritte trägt
+den Satz, dass die Lücke etwas über die Berichte sagt und nichts über die
+Arbeit.
+
 Gebaut sind die drei Gruppen, die Karte ohne Statusverteilung und die
 Verweisliste. Eine **Zeitleiste** (Balken vom Beschluss bis zum Laufzeitende;
 offene Enden laufen blass aus; Vorgänger und Nachfolger sind verbunden) ist
@@ -393,6 +406,25 @@ kommt, entscheidet die Gestaltungsrunde.
    ist (Regel 7): „festlegt“ nur bei einem Beschluss, sonst „Was im Plan
    steht“ oder „Was der Entwurf vorsieht“. Ohne Plantext kein Block und kein
    Platzhalter. *(gebaut; Entstehung und Prüfung unten)*
+   Die Kernpunkte stehen **nach Art gegliedert** (`CONTENT_GROUPS` in
+   `council/plan_pages.py`): Ziele oben, dann die Zahlen als Kacheln mit großer
+   Ziffer („100 %“, „226“), dann Regeln und Zuständigkeiten, dann Vorhaben und
+   Termine. Die Zahl einer Kachel und ihr Stichwort sind **von Hand gesetzt**
+   (`figure` am Kernpunkt) und kommen nur auf die Seite, wenn jede Ziffer im
+   Zitat steht (`plan_judge.check_extras`). Eine Kachel zeigt, was der Plan
+   festlegt oder annimmt — nie, was daraus geworden ist (§ 3.4 Nr. 4).
+   *(gebaut)*
+1b. **Termine des Plans im Zeitband:** Nennt ein Kernpunkt einen Termin („bis
+   2030“, „ab Schuljahr 2026/2027“), steht er als Wimpel im Zeitband des
+   Kopfes und führt per Tipp zu seinem Satz. Auch er ist von Hand gesetzt
+   (`due`), und das Jahr muss im Zitat stehen. Der Wimpel ist eine Angabe aus
+   dem Plan, keine Frist von uns: Er sieht vor und hinter „heute“ gleich aus
+   und sagt nichts darüber, ob der Termin gehalten wurde. Ein Termin im Jahr
+   des Laufzeitendes steht nicht doppelt; einer weiter vorn als der Horizont
+   der Übersicht (zehn Jahre) bleibt ein Satz und wird keine Marke — „im Jahr
+   2050“ stauchte sonst die ganze Achse. *(gebaut)*
+1c. **Sprungleiste:** unter dem Kopf, beim Rollen oben stehend: die
+   Abschnitte, die es auf diesem Plan gibt, mit Zählern (`sections`). *(gebaut)*
 2. **LAUFZEIT:** Beginn, Ende oder „ohne Enddatum“, die nächste vorgesehene
    Überprüfung (z. B. Wärmeplan spätestens 2031) sowie Vorgänger und
    Nachfolger. *(gebaut)*

@@ -18,6 +18,15 @@
   {
    "text": "Die VWG soll die jährlichen ÖPNV-Fahrgastzahlen von derzeit 19 Mio. auf 30 Mio. bis zum Jahr 2030 steigern.",
    "kind": "goal",
+   "figure": {
+    "value": "30 Mio.",
+    "label": "Fahrgäste im Jahr bis 2030 (zuvor 19 Mio.)"
+   },
+   "due": {
+    "date": "2030",
+    "at": "end",
+    "label": "bis 2030"
+   },
    "quote": "Für die VWG wurden in diesem Zusammenhang Zielsetzungen für den Unternehmensbereich ÖPNV formuliert, die eine Steigerung der jährlichen Fahrgastzahlen von derzeit 19 Mio. auf 30 Mio. bis zum Jahr 2030 vorsehen.",
    "source": {
     "kind": "template",

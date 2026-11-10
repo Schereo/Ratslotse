@@ -16,6 +16,10 @@
   {
    "text": "Unterrepräsentanz liegt vor, wenn ein Geschlecht weniger als 45 Prozent der Vollzeitäquivalente in einer Entgelt- oder Besoldungsgruppe stellt.",
    "kind": "standard",
+   "figure": {
+    "value": "45 %",
+    "label": "darunter gilt ein Geschlecht als unterrepräsentiert"
+   },
    "quote": "Laut NGG liegt eine Unterrepräsentanz vor, sobald ein Geschlecht innerhalb einer Ent­gelt- oder Besoldungsgruppe, gemessen an den Vollzeitäquivalenten, mit weniger als 45 Prozent vertreten ist.",
    "source": {
     "kind": "attachment",
@@ -40,6 +44,10 @@
   {
    "text": "In den Entgeltgruppen EG 2 bis 6 des Abfallwirtschaftsbetriebs sind von 141 Personen nur 3 weiblich.",
    "kind": "figure",
+   "figure": {
+    "value": "3 von 141",
+    "label": "in EG 2 bis 6 des Abfallwirtschaftsbetriebs sind Frauen"
+   },
    "quote": "Die Personalstruktur des Abfallwirtschafts­ betriebes ist geprägt von vielen männlichen Mitarbeitern in den Entgeltgruppen EG 2 bis 6: Von insgesamt 141 Personen sind lediglich 3 weiblich.",
    "source": {
     "kind": "attachment",

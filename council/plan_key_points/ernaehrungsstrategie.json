@@ -19,6 +19,11 @@
   {
    "text": "Lebensmittelverschwendung soll bis 2030 halbiert werden.",
    "kind": "goal",
+   "due": {
+    "date": "2030",
+    "at": "end",
+    "label": "bis 2030"
+   },
    "quote": "die Verschwendung von Lebensmitteln wird bis 2030 halbiert,",
    "source": {
     "kind": "attachment",

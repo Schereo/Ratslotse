@@ -16,6 +16,10 @@
   {
    "text": "Der Plan beziffert den Bedarf an bezahlbarem Wohnraum bis 2030 auf 930 bis 1.440 Wohnungen.",
    "kind": "figure",
+   "figure": {
+    "value": "930–1.440",
+    "label": "bezahlbare Wohnungen: Bedarf bis 2030"
+   },
    "quote": "Der prognostizierte Bedarf an bezahlbarem Wohnraum liegt zwischen 930 und 1.440 Wohnungen bis zum Jahr 2030.",
    "source": {
     "kind": "attachment",
@@ -28,6 +32,10 @@
   {
    "text": "Für 2021 bis 2030 schätzt der Plan einen Bedarf von 1.800 bis 2.900 neuen Wohnungen, jährlich 180 bis 290.",
    "kind": "figure",
+   "figure": {
+    "value": "1.800–2.900",
+    "label": "neue Wohnungen: Bedarf 2021 bis 2030"
+   },
    "quote": "Unter Zugrundelegung dieser Indikatoren müssen von 2021 bis zum Jahr 2030 zur Bedarfsdeckung insgesamt zwischen 1.800 bis 2.900 Wohnungen gebaut werden beziehungsweise pro Jahr zwischen 180 bis 290 Wohnungen.",
    "source": {
     "kind": "attachment",
@@ -64,6 +72,10 @@
   {
    "text": "Über die Quote für bezahlbaren Wohnraum sollen rund 800 Wohnungen mit Mietpreis- und Belegungsbindungen entstehen.",
    "kind": "figure",
+   "figure": {
+    "value": "rund 800",
+    "label": "Wohnungen mit Mietpreis- und Belegungsbindung über die Quote"
+   },
    "quote": "So sind bezie-hungswiese werden über die Quotenregelung zur Schaffung bezahlbaren Wohnraumes rund 800 Wohnungen mit Mietpreis- und Belegungsbindungen entstehen.",
    "source": {
     "kind": "attachment",

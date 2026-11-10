@@ -152,6 +152,8 @@ def test_form_einer_datei(path):
             assert ref["kind"] == "template", ref
     for point in data["points"]:
         assert point["kind"] in plan_judge.POINT_KINDS
+        # Die Zahl als Kachel und der Termin fürs Zeitband sind von Hand gesetzt: beides steht im Zitat.
+        assert not plan_judge.check_extras(point), (point["text"], plan_judge.check_extras(point))
 
 
 def test_schulverpflegung_nennt_den_heutigen_bio_stand():
@@ -176,10 +178,11 @@ def test_block_auf_der_planseite(store):
     page = plan_pages.detail(store, "schulverpflegung", today="2026-11-10")
     block = page["content"]
     assert block["heading"] == "Was der Plan festlegt" and block["note"] == plan_pages.CONTENT_NOTE
-    assert plan_judge.POINTS_MIN <= len(block["points"]) <= plan_judge.POINTS_MAX
-    amended = [p for p in block["points"] if p["amended"]]
+    points = [p for g in block["groups"] for p in g["points"]]
+    assert plan_judge.POINTS_MIN <= len(points) <= plan_judge.POINTS_MAX and block["count"] == len(points)
+    amended = [p for p in points if p["amended"]]
     assert amended and all(p["source"]["date"] > "2019-12-16" for p in amended)
-    original = next(p for p in block["points"] if p["source"]["kind"] == "attachment")
+    original = next(p for p in points if p["source"]["kind"] == "attachment")
     assert original["source"]["url"].endswith(f"#page={original['source']['page']}") and not original["amended"]
     assert original["source"]["date_label"] == "16.12.2019" and original["source"]["decision_id"] is None
 

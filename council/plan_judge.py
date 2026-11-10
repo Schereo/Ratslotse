@@ -501,3 +501,57 @@ def unsupported(statements: list[dict], model: str = MODEL) -> tuple[dict[int, s
         if isinstance(r, dict) and isinstance(r.get("n"), int) and r.get("supported") is False:
             out[r["n"] - 1] = str(r.get("missing") or "")
     return out, cost_usd(response, model)
+
+
+# ── Von Hand gesetzt: die Zahl als Kachel, der Termin fürs Zeitband ────────
+#
+# Ein Kernpunkt kann zwei Zusätze tragen, die niemand errechnet, sondern jemand
+# hinschreibt: ``figure`` (die eine Zahl des Satzes, groß gesetzt, mit einem
+# kurzen Wort dazu) und ``due`` (der Termin, den der Plan selbst nennt — als
+# Marke im Zeitband). Beides wird hier ohne Modell gegen das Zitat gehalten:
+# Eine Zahl oder ein Jahr, das dort nicht steht, kommt nicht auf die Seite.
+
+FIGURE_VALUE_MAX = 16
+FIGURE_LABEL_MAX = 72
+DUE_LABEL_MAX = 32
+#: Zahlwörter, wie Pläne sie ausschreiben („mindestens drei Standorte“).
+_NUMBER_WORDS = {"2": "zwei", "3": "drei", "4": "vier", "5": "fünf", "6": "sechs", "7": "sieben",
+                 "8": "acht", "9": "neun", "10": "zehn", "11": "elf", "12": "zwölf", "20": "zwanzig"}
+_DUE_DATE = re.compile(r"\d{4}(?:-\d{2}(?:-\d{2})?)?")
+
+
+def _number_in_quote(number: str, quote: str) -> bool:
+    word = _NUMBER_WORDS.get(number)
+    return number in numbers(quote) or bool(word and re.search(rf"\b{word}", quote.lower()))
+
+
+def check_extras(point: dict) -> list[str]:
+    """Was an ``figure`` und ``due`` eines Kernpunkts nicht stimmt — leer, wenn alles belegt ist."""
+    problems: list[str] = []
+    quote = point.get("quote") or ""
+    figure = point.get("figure")
+    if figure is not None:
+        value, label = str(figure.get("value") or ""), str(figure.get("label") or "")
+        if not value or len(value) > FIGURE_VALUE_MAX:
+            problems.append(f"Kachel-Zahl fehlt oder ist länger als {FIGURE_VALUE_MAX} Zeichen: „{value}“")
+        if not label or len(label) > FIGURE_LABEL_MAX:
+            problems.append(f"Kachel-Text fehlt oder ist länger als {FIGURE_LABEL_MAX} Zeichen: „{label}“")
+        missing = sorted(n for n in numbers(f"{value} {label}") if not _number_in_quote(n, quote))
+        if missing:
+            problems.append(f"Kachel nennt eine Zahl, die nicht im Zitat steht ({', '.join(missing)})")
+    due = point.get("due")
+    if due is not None:
+        date, label, at = str(due.get("date") or ""), str(due.get("label") or ""), due.get("at")
+        if not _DUE_DATE.fullmatch(date):
+            problems.append(f"Termin ist kein Datum (JJJJ, JJJJ-MM oder JJJJ-MM-TT): „{date}“")
+        if len(date) < 10 and at not in ("start", "end"):
+            problems.append("Termin ohne Tag braucht at: start oder end")
+        if not label or len(label) > DUE_LABEL_MAX:
+            problems.append(f"Termin-Text fehlt oder ist länger als {DUE_LABEL_MAX} Zeichen: „{label}“")
+        years = set(re.findall(r"(?<!\d)(?:19|20)\d{2}(?!\d)", label))
+        if date[:4] not in years:
+            problems.append(f"Termin-Text nennt das Jahr {date[:4]} nicht")
+        gone = sorted(y for y in years if y not in quote)
+        if gone:
+            problems.append(f"Termin nennt ein Jahr, das nicht im Zitat steht ({', '.join(gone)})")
+    return problems

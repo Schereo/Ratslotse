@@ -27,6 +27,10 @@
   {
    "text": "Im Szenario sinken die Wärme-Emissionen bis 2035 um ca. 94,6 %; rund 22.724,3 tCO2e bleiben.",
    "kind": "figure",
+   "figure": {
+    "value": "ca. 94,6 %",
+    "label": "weniger Wärme-Emissionen im Szenario bis 2035"
+   },
    "quote": "Es zeigt sich, dass im angenommenen Szenario im Zieljahr 2035 eine Reduktion um ca. 94,6 % verglichen mit dem Basisjahr erzielt werden kann. Dies bedeutet, dass ein CO2- Restemissionen im Wärmesektor von ca. 22.724,3 tCO2e im Jahr 2035 anfallen.",
    "source": {
     "kind": "attachment",
@@ -48,6 +52,10 @@
   {
    "text": "Der Plan identifiziert 11 Wärmenetzeignungsgebiete, in denen ein wirtschaftlich tragfähiges Wärmenetz grundsätzlich wahrscheinlich erscheint.",
    "kind": "figure",
+   "figure": {
+    "value": "11",
+    "label": "Gebiete, in denen ein Wärmenetz wahrscheinlich tragfähig ist"
+   },
    "quote": "In den folgenden Steckbriefen werden die 11 identifizierten Wärmenetzeignungsgebiete vertieft beschrieben, bei denen eine wirtschaftlich tragfähige Umsetzung eines Wärmenetzes grundsätzlich wahrscheinlich erscheint.",
    "source": {
     "kind": "attachment",

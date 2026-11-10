@@ -42,6 +42,10 @@
   {
    "text": "Bis 2035 sollen mindestens drei Standorte für neue Formen stadtverträglicher Produktion entwickelt werden.",
    "kind": "figure",
+   "figure": {
+    "value": "mind. 3",
+    "label": "Standorte für neue stadtverträgliche Produktion bis 2035"
+   },
    "quote": "Das wollen wir bis 2035 erreichen: Die Strategie der verdichteten Entwicklung im Bestand hat sichtbare Resultate erzielt: zum Beispiel durch weniger Versiegelung oder mehr Umnutzungen im Bestand, wie etwa von Bürogebäuden zu Wohnen. Innerhalb Oldenburgs wurden mindestens drei Standorte für neue Formen der stadtverträglichen Produktion entwickelt.",
    "source": {
     "kind": "attachment",
@@ -54,6 +58,11 @@
   {
    "text": "2050 sollen alle Oldenburgerinnen und Oldenburger wichtige Alltagsorte innerhalb eines 10-minütigen Fuß- oder Fahrradwegs von ihrer Wohnungstür aus erreichen können.",
    "kind": "goal",
+   "due": {
+    "date": "2050",
+    "at": "end",
+    "label": "im Jahr 2050"
+   },
    "quote": "Durch klimafreundliche Mobilität und eine umsichtige Stadtplanung haben im Jahr 2050 alle Oldenburgerinnen und Oldenburger die Möglichkeit, wichtige Orte des Alltags wie Arbeitsplätze, Geschäfte, Bildungseinrichtungen, Sportstätten, Kulturorte oder Gesundheitsdienste innerhalb eines 10-minütigen Fuß- oder Fahrrad­wegs von ihrer Wohnungstür aus zu erreichen.",
    "source": {
     "kind": "attachment",
@@ -66,6 +75,10 @@
   {
    "text": "Bis 2035 soll die regionale Zusammenarbeit durch mindestens fünf neue Kooperationsprojekte intensiviert und verstetigt werden.",
    "kind": "figure",
+   "figure": {
+    "value": "mind. 5",
+    "label": "neue regionale Kooperationsprojekte bis 2035"
+   },
    "quote": "Das wollen wir bis 2035 erreichen: Die regionale Zusammenarbeit wurde durch mindestens fünf neue Kooperationsprojekte intensiviert und verstetigt.",
    "source": {
     "kind": "attachment",

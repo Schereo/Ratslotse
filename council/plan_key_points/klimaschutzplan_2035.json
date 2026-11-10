@@ -16,6 +16,10 @@
   {
    "text": "Der Plan enthält 90 Maßnahmen in 20 Maßnahmenpaketen.",
    "kind": "figure",
+   "figure": {
+    "value": "90",
+    "label": "Maßnahmen in 20 Paketen"
+   },
    "quote": "Der neue „Klimaschutzplan Oldenburg 2035“ enthält 90 Maßnahmen, die in 20 Maßnahmenpaketen gegliedert sind.",
    "source": {
     "kind": "template",
@@ -43,6 +47,10 @@
   {
    "text": "Das Szenario hält Klimaneutralität bis 2035 trotz ambitioniertem Vorgehen für nicht erreichbar; fast 400.000 Tonnen CO2e bleiben, vor allem in Verkehr und privaten Haushalten.",
    "kind": "figure",
+   "figure": {
+    "value": "fast 400.000 t",
+    "label": "CO₂e bleiben laut Szenario bis 2035 übrig"
+   },
    "quote": "Nach dem Szenario des Hamburg Instituts ist die Klimaneutralität bis 2035 auch mit dem ambitionierten Vorgehen nicht zu erreichen. An den verbleibenden Emissionen von fast 400.000 Tonnen CO2e haben die Sektoren Verkehr und private Haushalte die größten Anteile.",
    "source": {
     "kind": "template",

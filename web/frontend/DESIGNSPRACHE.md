@@ -833,6 +833,31 @@ unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
   der Seiten-Einstieg (`page-in`) blendet nur ein, statt anzuheben: Der
   Chat-Composer hing sonst die ersten 0,34 s jeder Navigation 164 px zu hoch
   (Tims Befund 15.08.). Wer eine neue Ein-Animation schreibt, prüft beides.
+- **Was sortiert oder gefiltert wird, gleitet an seinen Platz**
+  (`lib/flip.ts`, seit 11/2026). Eine Liste, die in neuer Reihenfolge einfach
+  dasteht, zeigt zwei Zustände und keinen Weg — man sucht die Zeile, die man
+  eben noch im Blick hatte. `useFlip` misst vor und nach der Änderung und
+  fährt jedes Element per `transform` vom alten Platz zum neuen; was neu
+  dazukommt, blendet ein. Gemessen wird gegen die Wurzel der Liste (nicht das
+  Fenster), bewegt wird nur, was vorher oder nachher im Bild liegt, und ein
+  Weg länger als das Fenster wird gekappt. Erste Anwendungen: die Zeilen der
+  Pläne-Übersicht beim Wechsel der Ansicht, die Kästchen im „Stand laut
+  Stadt“ beim Wechsel des Jahres. **Wo die Bewegung mehr behauptet, als die
+  Daten hergeben, steht das dabei:** Die Stadt meldet je Stand nur Summen —
+  welches Kästchen die Stufe wechselt, ist gerechnet, und der Satz darunter
+  sagt es.
+- **Ein Übergang zwischen zwei Seiten ist Zugabe.** Das Band einer Zeile der
+  Pläne-Übersicht wird zum Band im Kopf der Planseite
+  (`components/plans/band-transition.ts`, View Transitions API): Es ist
+  dasselbe Band, einmal auf der gemeinsamen Achse, einmal auf seiner eigenen.
+  Benannt wird NUR die Form des Bandes, nicht die ganze Zeile — zwei
+  verschieden beschriftete Achsen ineinander zu blenden ergibt ein Geisterbild.
+  Ohne die API, bei reduzierter Bewegung, mit Strg/Cmd-Klick und wenn die
+  Zielseite nicht binnen 0,9 s steht, ist es ein gewöhnlicher Link.
+- **Ein Beleg wird markiert, nicht hervorgezaubert** (`.zitat-marker`). Klappt
+  ein Zitat auf, fährt einmal ein Textmarker darüber: Unter dem Text liegt die
+  Markierung, eine Decke in Kartenfarbe fährt per `transform` zur Seite weg.
+  Kein animiertes `background-size`.
 - **Gestaffelt heißt gedeckelt.** Der Versatz endet bei der sechsten Zeile
   (`components/staffel.tsx`); ohne Deckel käme die 40. Zeile einer
   Trefferliste 1,8 s nach der ersten und die Seite wirkte lahm statt lebendig.

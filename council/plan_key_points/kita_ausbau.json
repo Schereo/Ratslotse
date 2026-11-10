@@ -19,6 +19,10 @@
   {
    "text": "Die Versorgungsquote für Krippenplätze soll 55% betragen.",
    "kind": "standard",
+   "figure": {
+    "value": "55 %",
+    "label": "Versorgungsquote für Krippenplätze"
+   },
    "quote": "Es wird davon ausgegangen, dass die Nachfrage nach Krippenplätzen weiterhin ansteigen wird, sodass die Versorgungsquote von 55% noch realistisch ist.",
    "source": {
     "kind": "attachment",
@@ -31,6 +35,10 @@
   {
    "text": "Für Kinder unter drei Jahren soll die Kindertagespflege rund 10% der Versorgung abdecken.",
    "kind": "standard",
+   "figure": {
+    "value": "ca. 10 %",
+    "label": "der unter Dreijährigen in Kindertagespflege"
+   },
    "quote": "Für die Kindertagespflege bleibt es ebenfalls bei einer Versorgung von ca. 10% der unter Dreijährigen.",
    "source": {
     "kind": "attachment",
@@ -43,6 +51,10 @@
   {
    "text": "Laut Konzept fehlen noch 226 Krippenplätze; 60 davon können über die 4. Fortschreibung entstehen.",
    "kind": "figure",
+   "figure": {
+    "value": "226",
+    "label": "Krippenplätze fehlen laut Konzept"
+   },
    "quote": "Es fehlen somit noch 226 Krippenplätze, von denen 60 noch über die 4. Fortschreibung abgedeckt werden können.",
    "source": {
     "kind": "attachment",
@@ -55,6 +67,10 @@
   {
    "text": "Laut Konzept fehlen noch 256 Kindergartenplätze; 25 davon können über die 4. Fortschreibung entstehen.",
    "kind": "figure",
+   "figure": {
+    "value": "256",
+    "label": "Kindergartenplätze fehlen laut Konzept"
+   },
    "quote": "Es fehlen somit noch 256 Kindergartenplätze, von denen 25 noch über die 4. Fortschreibung abgedeckt werden können.",
    "source": {
     "kind": "attachment",
@@ -66,7 +82,7 @@
   },
   {
    "text": "Für rund zehn unversorgte Kinder sind zunächst zwei heilpädagogische Gruppen vorgesehen; jede Gruppe hat sechs Plätze.",
-   "kind": "figure",
+   "kind": "measure",
    "quote": "Aktuell gibt es ca. zehn unversorgte Kinder, für die ein heilpädagogischer Förderbedarf festgestellt wurde, sodass zunächst von zwei weiteren heilpädagogischen Gruppen ausgegangen wird. Heilpädagogische Gruppen umfassen lediglich sechs Plätze.",
    "source": {
     "kind": "attachment",

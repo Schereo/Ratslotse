@@ -31,6 +31,15 @@
   {
    "text": "Bis 2030 sollen die Emissionen gegenüber 2023 um 62,5 Prozent sinken.",
    "kind": "figure",
+   "figure": {
+    "value": "62,5 %",
+    "label": "weniger Emissionen bis 2030 als 2023"
+   },
+   "due": {
+    "date": "2030",
+    "at": "end",
+    "label": "bis 2030"
+   },
    "quote": "Als Zwischenziel ist eine Reduktion um 62,5 Prozent bis 2030 gegenüber dem Ausgangsjahr 2023 festgelegt.",
    "source": {
     "kind": "attachment",
@@ -43,6 +52,10 @@
   {
    "text": "Der Plan bündelt 36 Maßnahmen in fünf Handlungsfeldern: Beschaffung, Gebäude, Mobilität, natürlicher Klimaschutz und übergreifende Maßnahmen.",
    "kind": "figure",
+   "figure": {
+    "value": "36",
+    "label": "Maßnahmen in fünf Handlungsfeldern"
+   },
    "quote": "Zur Reduktion der ermittelten Emissionen und damit zur Zielerreichung der Treibhausgasneutralität wurde ein Maßnahmengerüst mit 36 Maßnahmen entwickelt, die den folgenden fünf Handlungsfeldern zugeordnet sind: • Beschaffung, Vergabewesen und Veranstaltungen • Gebäude, Energie und Ressourcen • Mobilität • Natürlicher Klimaschutz • Übergreifende Maßnahmen",
    "source": {
     "kind": "attachment",
@@ -67,6 +80,11 @@
   {
    "text": "Ab Anfang 2026 sollen konkrete Maßnahmen-Steckbriefe erarbeitet und umgesetzt werden.",
    "kind": "deadline",
+   "due": {
+    "date": "2026-01",
+    "at": "start",
+    "label": "ab Anfang 2026"
+   },
    "quote": "In einem ersten Umsetzungsschritt werden folglich ab Anfang 2026 konkrete Maßnahmen-Steckbriefe auf Basis des festgelegten Gerüsts erarbeitet und in die Umsetzung gebracht.",
    "source": {
     "kind": "attachment",

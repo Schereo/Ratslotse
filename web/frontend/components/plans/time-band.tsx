@@ -51,8 +51,10 @@ function withMask(image: string | undefined): CSSProperties {
  *  Ende (heute) noch ausläuft, als Anteil der Achse. `growing`: Das Band fährt
  *  einmal von seinem Beginn her auf (Detailseite) — die Richtung der Zeit,
  *  nicht ein Füllstand. */
-export function BandShape({ band, look, fade, large = false, growing = false }: {
+export function BandShape({ band, look, fade, large = false, growing = false, arriving = false }: {
   band: PlanBand; look: BandLook; fade: number; large?: boolean; growing?: boolean;
+  /** Das Band der Planseite: Ziel des Übergangs aus der Übersicht (components/plans/band-transition.ts). */
+  arriving?: boolean;
 }) {
   const height = large ? "h-3.5" : "h-2.5";
   const openLeft = band.open_start;
@@ -61,7 +63,8 @@ export function BandShape({ band, look, fade, large = false, growing = false }: 
     <>
       {/* Außen die Lage (und die Bewegung), innen die Form: Eine Animation auf
           dem zentrierten Element überschriebe dessen eigenes `transform`. */}
-      <span className={cn("absolute inset-y-0 min-w-1.5", growing && "gb-balken-auf")}
+      <span data-band-shape {...(arriving ? { "data-plan-band": "" } : {})}
+        className={cn("absolute inset-y-0 min-w-1.5", growing && "gb-balken-auf", arriving && "[view-transition-name:plan-band]")}
         style={{ left: percent(band.x0), width: percent(band.x1 - band.x0) }}>
         <span
           className={cn("absolute inset-x-0 top-1/2 -translate-y-1/2", height, FILL[look],

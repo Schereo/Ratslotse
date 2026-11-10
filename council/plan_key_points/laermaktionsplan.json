@@ -19,6 +19,11 @@
   {
    "text": "Tempo 30 kommt zuerst auf Abschnitten mehrerer Hauptstraßen, darunter Nadorster Straße und Hauptstraße – vorbereitet zum Fahrplanwechsel 2025.",
    "kind": "measure",
+   "due": {
+    "date": "2025",
+    "at": "end",
+    "label": "zum Fahrplanwechsel 2025"
+   },
    "quote": "Die Umsetzung der vorgeschlagenen Tempo-30-Regelungen wird so vorbereitet, dass die Regelungen für die nachfolgend aufgeführten Streckenabschnitte zum Fahrplanwechsel der VWG 2025 in Kraft gesetzt werden können: • Nadorster Straße: zwischen Gertrudenfriedhof und Hochheider Weg • Hauptstraße: zwischen Marktplatz Eversten und dem Übergang Edewechter Landstraße / Eichenstraße",
    "source": {
     "kind": "decision",
@@ -30,6 +35,11 @@
   {
    "text": "Ende 2027 sollen die Tempo-30-Regelungen auf weitere Abschnitte der genannten Straßen ausgeweitet werden, wenn sich die erste Stufe bewährt hat.",
    "kind": "deadline",
+   "due": {
+    "date": "2027",
+    "at": "end",
+    "label": "Ende 2027"
+   },
    "quote": "Wenn sich die Regelungen auf den ersten Abschnitten bewährt haben, werden die Tempo-30-Anordnungen Ende 2027 auf die weiteren Streckenabschnitte ausgedehnt.",
    "source": {
     "kind": "decision",

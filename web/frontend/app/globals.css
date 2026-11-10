@@ -1654,3 +1654,81 @@ lotti-placeholder {
     box-shadow: 0 0 0 2px hsl(var(--primary) / 0.7), 0 0 16px 3px hsl(var(--primary) / 0.28);
   }
 }
+
+/* ── Zitat-Markierung (`.zitat-marker`, components/plans/content.tsx) ─────
+   Klappt ein Beleg auf, wird die Stelle einmal markiert, wie mit einem
+   Textmarker: Man sieht, DASS dies die belegende Stelle ist, statt sie im
+   Kleingedruckten zu suchen. Drei Lagen übereinander — die Markierung (der
+   Text noch einmal, unsichtbar, mit getöntem Grund je Zeile), darüber eine
+   Decke in Kartenfarbe, darüber der lesbare Text. Die Decke fährt nach rechts
+   weg: bewegt wird nur `transform`, kein `background-size`, kein `width`.
+   `both` hält den Endstand; der reduced-motion-Block oben kürzt die Dauer,
+   dann steht die Markierung sofort da. */
+.zitat-marker {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+.zitat-marker-farbe {
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  pointer-events: none;
+  user-select: none;
+}
+.zitat-marker-farbe > span {
+  background-color: hsl(var(--primary) / 0.13);
+  border-radius: 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.zitat-marker-decke {
+  position: absolute;
+  inset: 0;
+  background-color: hsl(var(--card));
+  pointer-events: none;
+  animation: zitat-wisch var(--takt-buehne) var(--ease-in-out-strong) 180ms both;
+}
+@keyframes zitat-wisch {
+  from { transform: translateX(0); }
+  to { transform: translateX(101%); }
+}
+@media print {
+  .zitat-marker-farbe, .zitat-marker-decke { display: none; }
+}
+
+/* Planseite: Die Abschnitte halten beim Sprung aus der Sprungleiste Abstand
+   zu dem, was oben stehen bleibt — mobil Kopfzeile plus Leiste, am Schreibtisch
+   nur die Leiste (components/plans/jump-bar.tsx). */
+section[aria-labelledby^="plan-"] {
+  scroll-margin-top: calc(env(safe-area-inset-top) + 7.75rem);
+}
+@media (pointer: fine) and (min-width: 1024px) {
+  section[aria-labelledby^="plan-"] {
+    scroll-margin-top: 3.75rem;
+  }
+}
+
+/* ── Übersicht → Planseite: Das Zeitband wandert mit ──────────────────────
+   (components/plans/band-transition.ts, View Transitions API). Das Band der
+   Zeile wird zum Band im Kopf des Plans — eine sichtbare Strecke, also
+   `--takt-buehne`. Der Rest der Seite blendet kurz über. Browser ohne die API
+   und `prefers-reduced-motion` navigieren ohne Übergang (im Skript geregelt). */
+::view-transition-group(plan-band) {
+  animation-duration: var(--takt-buehne);
+  animation-timing-function: var(--ease-in-out-strong);
+}
+/* Altes und neues Bild füllen beide den wandernden Rahmen. Die Vorgabe des
+   Browsers lässt jedem sein Seitenverhältnis — das schmale Band der Zeile und
+   das breite im Kopf lägen dann versetzt übereinander (gemessen: zwei Bänder
+   im Flug). */
+::view-transition-old(plan-band),
+::view-transition-new(plan-band) {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--takt-fluss);
+}

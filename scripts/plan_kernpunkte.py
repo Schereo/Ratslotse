@@ -238,7 +238,20 @@ def build(key: str, given: list[dict], model: str) -> tuple[dict | None, float, 
         "points": [{"text": p["text"], "kind": p["kind"], "quote": p["quote"],
                     "source": _ref(by_id[p["source"]], p["page"])} for p in points],
     }
+    carry_extras(data, plan_state.key_points(key))
     return data, cost, notes
+
+
+def carry_extras(data: dict, previous: dict | None) -> None:
+    """Was von Hand an einem Kernpunkt hängt (``figure``: die Zahl als Kachel, ``due``: der Termin fürs
+    Zeitband), überlebt einen neuen Lauf — aber nur an einem Punkt mit DEMSELBEN Zitat. Ändert das Modell
+    die Stelle, ist die Zahl nicht mehr gegen sie geprüft und fällt weg."""
+    kept = {plan_judge.tight(p["quote"]): p for p in (previous or {}).get("points", [])}
+    for point in data["points"]:
+        old = kept.get(plan_judge.tight(point["quote"]))
+        for extra in ("figure", "due"):
+            if old and extra in old:
+                point[extra] = old[extra]
 
 
 def check(store: CouncilStore, key: str) -> list[str]:
@@ -261,6 +274,7 @@ def check(store: CouncilStore, key: str) -> list[str]:
         missing = sorted(plan_judge.numbers(entry["text"]) - plan_judge.numbers(entry["quote"]))
         if missing:
             problems.append(f"{key}: Zahl ohne Beleg ({', '.join(missing)}): {entry['text'][:60]}…")
+        problems += [f"{key}: {problem}: {entry['text'][:60]}…" for problem in plan_judge.check_extras(entry)]
     return problems
 
 

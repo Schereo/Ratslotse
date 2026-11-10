@@ -37,6 +37,10 @@
   {
    "text": "Unterrepräsentanz liegt laut Plan vor, wenn ein Geschlecht in einer Entgelt- oder Besoldungsgruppe weniger als 45 Prozent der Vollzeitäquivalente erreicht.",
    "kind": "standard",
+   "figure": {
+    "value": "45 %",
+    "label": "darunter gilt ein Geschlecht als unterrepräsentiert"
+   },
    "quote": "Laut NGG liegt eine Unterrepräsentanz vor, sobald ein Geschlecht innerhalb einer Entgelt- oder Besoldungsgruppe, gemessen an den Vollzeitäquivalenten, mit weniger als 45 Prozent vertreten ist.",
    "source": {
     "kind": "attachment",

@@ -19,6 +19,10 @@
   {
    "text": "Der Plan rechnet damit, dass Oldenburg zunächst um circa 10.000 Menschen wächst und sich die Bevölkerungszahl danach stabilisiert.",
    "kind": "figure",
+   "figure": {
+    "value": "ca. 10.000",
+    "label": "Menschen Zuwachs erwartet, danach stabil"
+   },
    "quote": "Die Bevölkerung in Oldenburg wird in den nächsten Jahren voraussichtlich noch einmal um circa 10.000 Menschen wachsen, bevor dann eine Konsolidierung einsetzen wird.",
    "source": {
     "kind": "attachment",
@@ -43,6 +47,10 @@
   {
    "text": "Der Plan prognostiziert, dass 2031 fast zwei Drittel der Oldenburgerinnen und Oldenburger in Einpersonenhaushalten leben werden.",
    "kind": "figure",
+   "figure": {
+    "value": "fast ⅔",
+    "label": "leben laut Prognose 2031 in Einpersonenhaushalten"
+   },
    "quote": "2031 werden fast zwei Drittel aller Oldenburgerinnen und Oldenburger in Einpersonenhaus- halten leben.",
    "source": {
     "kind": "attachment",
