@@ -634,6 +634,15 @@ Piktogramm-Zuordnung als Tabelle (Anhang A) in `lib/`. Noch nirgends
 eingebunden. Bild an Tim: die vier Datensätze in beiden Themes, 320 px und
 1.240 px.
 
+**Umgesetzt (10.11.2026)** unter englischen Namen: `lib/course.ts` (Rechnung,
+`courseInput` vom Vertrag zur Eingabe) mit `lib/course.test.ts`,
+`lib/course-icons.ts` (Anhang A; `tests/test_course.py` hält ihn gegen Server
+und Plan) und `components/session/course.tsx`. Die Ergebnisfarben der Bojen
+stehen als `OUTCOME_RING_CLS`/`OUTCOME_FILL_CLS`/`OUTCOME_GLOW_CLS` neben
+`OUTCOME_DOT_CLS` in `components/decision-ui.tsx`. Eine neutrale Boje trägt
+den Rand `primary/35` statt `--border`: Auf der dunklen Tafel liegt `--border`
+einen Punkt neben `--card`, die Boje verschwand im Band.
+
 ### Schritt 3: Sitzungsseite
 
 Schalter `sitzung_kurs` (`kern/features.py`, `useFeature`). Aus: Seite wie

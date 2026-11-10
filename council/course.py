@@ -503,7 +503,7 @@ def build_stages(rows: list[dict], project_headings: set[str], urgent: set[str])
         etappen = _gliedern(oeffentlich, kopf, project_headings)
 
     if dringlich:
-        stufe = _stage("urgent", "Dringlich", None, "Dringlich")
+        stufe = _stage("urgent", "Dringlich", None, "Dringl.")
         stufe["rows"] = dringlich
         # Direkt nach „Zum Start" — in der Tagesordnung stehen die Zusatzpunkte
         # am Ende, verhandelt werden sie vorn.

@@ -521,3 +521,17 @@ def test_ausschuss_abschnitt_mit_anderem_namen():
     assert course.section_committee("Betriebsausschuss des Abfallwirtschaftsbetriebes der Stadt Oldenburg") == (
         "Abfallwirtschaft")
     assert course.section_committee("Verkehrsausschuss") == "Verkehr"
+
+
+def test_piktogramme_im_web():
+    """``lib/course-icons.ts`` ordnet jedem Schlüssel sein Lucide-Zeichen zu —
+    dieselbe Tabelle wie ``ICONS``. Ein Schlüssel, der dort fehlt, fiele im
+    Kurs still auf das Dokument zurück."""
+    ts = (WURZEL / "web" / "frontend" / "lib" / "course-icons.ts").read_text()
+    block = ts.split("COURSE_ICONS: Record<string, LucideIcon> = {", 1)[1].split("};", 1)[0]
+    im_web = dict(re.findall(r"^\s*([a-z_]+):\s*([A-Za-z0-9]+),", block, re.MULTILINE))
+    pascal = {k: "".join(t.capitalize() for t in v.split("-")) for k, v in course.ICONS.items()}
+    assert im_web == pascal, (
+        "lib/course-icons.ts an council/course.py::ICONS angleichen: "
+        f"fehlt {sorted(set(pascal) - set(im_web))}, zu viel {sorted(set(im_web) - set(pascal))}, "
+        f"anders {sorted(k for k in im_web if k in pascal and im_web[k] != pascal[k])}")
