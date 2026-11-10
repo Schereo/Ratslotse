@@ -651,7 +651,7 @@ function ViertelTafel({ data, place, z, wahl, nebenan }: {
       <BeteiligungKarte items={data.participations} className={STAFFEL} style={staffelStil(2)} />
       <div className="order-2 flex flex-col gap-4">
       <InvestitionenKarte items={data.investments} />
-      {plaene && data.plans && <PlaeneKarte items={data.plans} className={STAFFEL} style={staffelStil(3)} />}
+      {plaene && (data.plans || data.renewal_areas) && <PlaeneKarte items={data.plans ?? []} renewal={data.renewal_areas ?? []} className={STAFFEL} style={staffelStil(3)} />}
       <PresseBlock items={data.press} className={STAFFEL} style={staffelStil(3)} />
 
       {z.vorhaben.length > 0 && data.neighbours.length > 0 && (

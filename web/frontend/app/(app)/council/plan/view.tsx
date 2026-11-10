@@ -23,6 +23,7 @@ import { Measures } from "@/components/plans/measures";
 import { Budget } from "@/components/plans/budget";
 import { PlanHeader } from "@/components/plans/plan-header";
 import { Places } from "@/components/plans/places";
+import { PlanLists } from "@/components/plans/plan-lists";
 import { Related } from "@/components/plans/related";
 import { ReportLog } from "@/components/plans/report-log";
 import { Review } from "@/components/plans/review";
@@ -88,7 +89,8 @@ function PlanInner() {
           {data.city_status && <CityStatus status={data.city_status} />}
           <Indicators indicators={data.indicators} />
           {data.measures && <Measures measures={data.measures} />}
-          {data.places && <Places places={data.places} />}
+          {data.places && <Places places={data.places} planKey={data.key} />}
+          <PlanLists lists={data.lists} />
         </div>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
           {data.decision_groups.length > 0 && <Decisions plan={data} />}

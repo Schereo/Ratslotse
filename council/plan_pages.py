@@ -981,6 +981,7 @@ def sections(page: dict) -> list[dict]:
         ("indicators", "Kennzahl" if len(page["indicators"]) == 1 else "Kennzahlen", None, bool(page["indicators"])),
         ("measures", "Maßnahmen", measures["count"] if measures else None, bool(measures)),
         ("places", "Karte", len(page["places"]["items"]) if page["places"] else None, bool(page["places"])),
+        ("lists", "Aus dem Plan", sum(len(lst["rows"]) for lst in page["lists"]) or None, bool(page["lists"])),
         ("decisions", "Beschlüsse", decisions, decisions > 0),
     ]
     return [{"key": key, "label": label, "count": count} for key, label, count, shown in rows if shown]
@@ -1076,6 +1077,13 @@ GEOMETRY_KINDS = ("street", "route", "water")
 GEOMETRY_DIGITS = 5
 #: Stützpunkte, die näher als das (in Grad, rund 10 m) am vorigen liegen, fallen weg — Anfang und Ende bleiben.
 GEOMETRY_STEP = 0.00012
+#: Die Karte eines Plans mit Gebieten aus seinen eigenen Karten (``council/plan_shapes/``).
+AREAS_NOTE = "Gebiete aus den Karten im Plan, nachgezeichnet — je Gebiet mit Abbildung und Seite."
+#: Ein Gebiet zählt zu einem Ortsbereich, wenn so viel seiner Fläche dort liegt (Anteil oder Hektar).
+AREA_DISTRICT_SHARE, AREA_DISTRICT_HA = 0.1, 2.0
+#: Die Karte eines Plans, der seine Abschnitte selbst festlegt (``council/plan_lists/``).
+SECTIONS_NOTE = "Abschnitte, für die der Plan einen Vorschlag macht — mit seinem Satz dazu und der Seite."
+SECTIONS_NOTE_DECISIONS = SECTIONS_NOTE + " Dazu Orte aus den Beschlüssen zum Plan."
 PLACES_NOTE = "Orte aus den Titeln der Maßnahmen und aus den Beschlüssen zum Plan."
 
 
@@ -1118,11 +1126,27 @@ def plan_places(store, plan: register.Plan) -> list[dict]:
     def slot(row: dict, line: bool = False) -> dict:
         place = by_slug.setdefault(row["slug"], {
             "slug": row["slug"], "name": row["name"], "kind": row["kind"], "lat": row["lat"], "lon": row["lon"],
-            "geometry": None, "measures": [], "decisions": []})
+            "geometry": None, "measures": [], "decisions": [], "sections": [], "areas": []})
         if line and place["geometry"] is None:
             place["geometry"] = _geometry(row)
         return place
 
+    # Abschnitte, die der Plan selbst festlegt (Lärmaktionsplan): mit Verlauf, Vorschlag und Seite.
+    # ``districts`` rechnet ``scripts/plan_listen.py`` mit; die Seite gibt es nicht aus.
+    listed_doc = plan_state.plan_lists(plan.key)
+    if listed_doc:
+        url = RIS_FILE.format(id=listed_doc["document"]["document_id"])
+        for s in listed_doc.get("sections", []):
+            by_slug[f"abschnitt-{s['code']}"] = {
+                "slug": f"abschnitt-{s['code']}", "name": s["name"], "kind": "street", "lat": s["lat"],
+                "lon": s["lon"], "geometry": s["geometry"], "measures": [], "decisions": [], "areas": [],
+                "sections": [{"code": s["code"], "stretch": s["stretch"], "quote": s["quote"], "page": s["page"],
+                              "source_url": f"{url}#page={s['page']}"}],
+                "districts": s["districts"]}
+    # Gebiete, nachgezeichnet aus den Kartenbildern des Plans (Wärmeplan): als Fläche.
+    shapes = plan_state.plan_shapes(plan.key)
+    if shapes:
+        by_slug.update({p["slug"]: p for p in _shape_places(shapes)})
     named = plan_state.measure_places(plan.key)
     if named:
         listed = register.measures(plan.key) or {"measures": []}
@@ -1157,7 +1181,33 @@ def plan_places(store, plan: register.Plan) -> list[dict]:
     for place in out:
         place["decision_count"] = len(place["decisions"])
         place["decisions"] = place["decisions"][:3]
-    out.sort(key=lambda p: (-len(p["measures"]) - p["decision_count"], p["name"]))
+    out.sort(key=lambda p: (0 if p["sections"] or p["areas"] else 1,
+                            p["sections"][0]["code"] if p["sections"] else p["areas"][0]["order"] if p["areas"] else "",
+                            -len(p["measures"]) - p["decision_count"], p["name"]))
+    return out
+
+
+def _shape_places(shapes: dict) -> list[dict]:
+    """Je Gebiet aus ``council/plan_shapes/`` ein Ort mit Fläche — für Karte und Viertel. Den vereinfachten
+    Umriss und den Beschriftungspunkt legt ``scripts/plan_umrisse.py`` in die Datei; der Server rechnet nicht."""
+    url = RIS_FILE.format(id=shapes["document"]["document_id"])
+    out = []
+    for f in shapes["features"]:
+        p = f["properties"]
+        lon, lat = p["label_point"]
+        # Ortsbereiche: wo ein nennenswerter Teil der Fläche liegt — gerechnet, nicht aus der Ortsteil-Spalte.
+        districts = {pid: 1.0 for pid, share in p["districts"].items()
+                     if share >= AREA_DISTRICT_SHARE or share * p["area_ha"] >= AREA_DISTRICT_HA}
+        label = f"{p['code']} {p['name']}" if p.get("name") else p["code"]
+        out.append({
+            "slug": "gebiet-" + p["code"].lower().replace(" ", "-"), "name": label, "kind": "area",
+            "lat": lat, "lon": lon, "geometry": p["display_geometry"],
+            "measures": [], "decisions": [], "sections": [],
+            "areas": [{"code": p["code"], "label": f"Eignungsgebiet „{label}“", "figure": p["figure"], "page": p["page"],
+                       "source_url": f"{url}#page={p['page']}", "area_ha": p["area_ha"],
+                       "area_ha_plan": p.get("area_ha_plan"),
+                       "order": f"{int(p['code'].split()[-1]):03d}" if p["code"].split()[-1].isdigit() else p["code"]}],
+            "districts": districts})
     return out
 
 
@@ -1167,21 +1217,78 @@ def places_block(store, plan: register.Plan) -> dict | None:
     if len(places) < PLACES_MIN:
         return None
     listed = register.measures(plan.key)
+    decision_places = sum(1 for p in places if p["decision_count"])
+    with_sections = sum(1 for p in places if p["sections"])
+    with_areas = sum(1 for p in places if p["areas"])
+    note = PLACES_NOTE
+    if with_sections:
+        note = SECTIONS_NOTE_DECISIONS if decision_places else SECTIONS_NOTE
+    elif with_areas:
+        note = AREAS_NOTE
     return {
-        "items": places,
+        "items": [{k: v for k, v in p.items() if k != "districts"} for p in places],
+        "section_places": with_sections,
+        "area_places": with_areas,
+        "geojson": bool(with_sections or with_areas),
         "measure_places": sum(1 for p in places if p["measures"]),
         "measures_named": len({m["code"] for p in places for m in p["measures"]}),
         "measures_total": len(listed["measures"]) if listed else None,
-        "decision_places": sum(1 for p in places if p["decision_count"]),
-        "note": PLACES_NOTE,
+        "decision_places": decision_places,
+        "note": note,
     }
+
+
+def geojson_export(store, plan: register.Plan) -> dict | None:
+    """Alle Abschnitte und Gebiete, die der Plan selbst festlegt, als GeoJSON (WGS84) — die Gebiete in
+    voller Auflösung der Datei. ``None``: Der Plan hat keine."""
+    lists, shapes = plan_state.plan_lists(plan.key) or {}, plan_state.plan_shapes(plan.key) or {}
+    features = []
+    for s in lists.get("sections", []):
+        url = RIS_FILE.format(id=lists["document"]["document_id"])
+        features.append({"type": "Feature", "geometry": s["geometry"], "properties": {
+            "kind": "section", "code": s["code"], "street": s["name"], "stretch": s["stretch"], "quote": s["quote"],
+            "page": s["page"], "source_url": f"{url}#page={s['page']}", "length_m": s["length_m"]}})
+    for f in shapes.get("features", []):
+        p = f["properties"]
+        url = RIS_FILE.format(id=shapes["document"]["document_id"])
+        features.append({"type": "Feature", "geometry": f["geometry"], "properties": {
+            "kind": "area", "code": p["code"], "name": p.get("name"), "figure": p["figure"], "page": p["page"],
+            "source_url": f"{url}#page={p['page']}", "area_ha": p["area_ha"], "area_ha_plan": p.get("area_ha_plan")}})
+    if not features:
+        return None
+    sources = []
+    if lists and lists.get("sections"):
+        sources.append(f"{plan.title}: {lists['document']['label']}, Kapitel 18; Linien © OpenStreetMap-Mitwirkende, ODbL")
+    if shapes:
+        sources.append(f"{plan.title}: {shapes['document']['label']}, nachgezeichnet aus den Abbildungen "
+                       f"{shapes['features'][0]['properties']['figure']}–{shapes['features'][-1]['properties']['figure']}")
+    return {"type": "FeatureCollection", "name": plan.title, "attribution": "; ".join(sources),
+            "generated": (shapes or lists or {}).get("generated"), "features": features}
+
+
+def lists_block(plan: register.Plan) -> list[dict]:
+    """Tabellen aus dem Plan-Dokument (``council/plan_lists/``) — Zeile für Zeile, wie sie dort stehen,
+    mit der Seite."""
+    data = plan_state.plan_lists(plan.key)
+    if not data:
+        return []
+    url = RIS_FILE.format(id=data["document"]["document_id"])
+    return [{
+        "key": lst["key"], "title": lst["title"], "caption": lst["caption"], "page": lst["page"],
+        "source_label": data["document"]["label"], "source_url": f"{url}#page={lst['page']}",
+        "columns": list(lst["columns"]), "name_column": lst["name_column"],
+        "rows": [{"cells": list(r["cells"]), "page": r.get("page"),
+                  "source_url": f"{url}#page={r['page']}" if r.get("page") else None} for r in lst["rows"]],
+    } for lst in data.get("lists", [])]
 
 
 def _counts_here(place: dict, share: float | None) -> bool:
     """Gehört ein Ort des Plans zu diesem Ortsbereich (``share``: sein Anteil dort, ``None``: gar nicht)?"""
     if share is None:
         return False
-    if place["measures"]:
+    if place.get("areas"):
+        return True  # schon beim Laden gefiltert (AREA_DISTRICT_SHARE, AREA_DISTRICT_HA)
+    if place["measures"] or place.get("sections"):
         return share >= AREA_SHARE_MEASURE
     return share >= AREA_SHARE_DECISION_STREET if place["kind"] == "street" else True
 
@@ -1199,19 +1306,26 @@ def district_plans(store, place_id: str, today: str | None = None) -> list[dict]
         if group_of(state) == "ended":
             continue
         places = plan_places(store, plan)
-        if not places:
+        # Gebiete aus einer Tabelle des Plans, die ihren Ortsteil nennt (Wärmeplan, Tabelle 4) — nur, wo es
+        # keine nachgezeichneten Umrisse gibt: Die Fläche weiß es genauer als die Spalte.
+        rows = [] if plan_state.plan_shapes(plan.key) else [
+            r for lst in (plan_state.plan_lists(plan.key) or {}).get("lists", [])
+            for r in lst["rows"] if place_id in r.get("districts", [])]
+        if not places and not rows:
             continue
-        areas = store.plan_place_areas([p["slug"] for p in places])
-        here = [p for p in places if _counts_here(p, areas.get(p["slug"], {}).get(place_id))]
+        areas = store.plan_place_areas([p["slug"] for p in places if "districts" not in p])
+        here = [p for p in places
+                if _counts_here(p, (p.get("districts") or areas.get(p["slug"], {})).get(place_id))]
         # „Bahnweg“ neben „Bahnweg 84“ sagt nichts Neues: Die Straße fällt, wo eine Adresse an ihr steht.
         names = [p["name"] for p in here]
         here = [p for p in here if not (p["kind"] == "street" and any(n.startswith(p["name"] + " ") for n in names))]
-        if not here:
+        if not here and not rows:
             continue
+        labels = [r["label"] for r in rows] + [p["areas"][0]["label"] if p["areas"] else p["name"] for p in here]
         found.append({"key": plan.key, "title": plan.title,
                       "field_label": FIELD_SHORT.get(plan.policy_field, plan.policy_field),
                       "status": state, "status_label": STATUS_LABELS[state],
-                      "places": [p["name"] for p in here[:4]], "place_count": len(here),
+                      "places": labels[:4], "place_count": len(labels),
                       "via_measures": any(p["measures"] for p in here)})
     found.sort(key=lambda f: (-f["place_count"], f["title"]))
     return found
@@ -1375,6 +1489,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "news": news_block(plan, tl["stations"], today),
         "related": related_block(plan, today),
         "places": places_block(store, plan),
+        "lists": lists_block(plan),
         "measures": measures_block(key, measure_links),
         "city_status": city_status_block(key),
         "indicators": indicator_blocks(key),
