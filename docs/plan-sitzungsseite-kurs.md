@@ -718,8 +718,31 @@ als `screen.refs` (`item_number` neu an `ExplainRefs`) und zeigt ihn als
 abwählbaren Bezug-Chip über dem Eingabefeld. Der Server schlägt den Punkt
 nach: Mit Beschluss ist der Beschluss der Gegenstand, ohne nennt
 `qa.gegenstand_regel` den Punkt mit Sitzung und Vorlage. Ohne Konto führt die
-Frage wie jeder Frage-Chip zur Anmeldung und danach zurück. **Offen:** die
-Messung aus 5. — sie kostet Modellaufrufe und wartet auf Tims OK.
+Frage wie jeder Frage-Chip zur Anmeldung und danach zurück.
+
+**Messung aus 5. (10.11.2026, `eval/run_punkt_bezug.py`):** Zehn Fragen ohne
+Gegenstand im Wortlaut auf drei Punkt-Seiten (D-Ticket 4654 Ö 9 ohne
+Beschluss, Junkerstraße 4650 Ö 10.3 vertagt, VBN-Tarif 4702 Ö 8.1 mit
+Beschluss), je mit und ohne Bezug, über die echte `/ask`-Strecke. **Die
+Kostenprobe deckte einen Fehler auf:** Auch MIT Bezug kam „Und was kostet
+das?“ dreimal von drei als Rückfrage („kann ich nicht einordnen“,
+`results/punkt_bezug/20261110-1740.json`) — die Frage-Analyse löst Rückbezüge
+nur aus dem Gesprächsverlauf auf, und auf einer Punkt-Seite gibt es keinen.
+Behoben: Der Gegenstand der Seite geht der Analyse als erste Runde voraus
+(`qa.seiten_gegenstand`), und `qa.rueckfrage_noetig` fragt nicht zurück, wenn
+die Seite einen Gegenstand hat. Danach (`20261110-1811.json`, 0,19 $):
+
+| | beim Punkt |
+|---|---:|
+| mit Bezug (Wortprobe) | 27/30 |
+| mit Bezug (von Hand) | 28/30 |
+| ohne Bezug | 0/30 (27 Rückfragen, 3 Antworten zu fremden Themen) |
+
+Die zwei Fehlgriffe von Hand: Beim VBN-Tarif antworten „Worum geht es dabei?“
+und „Wer ist dafür?“ zum Prüfauftrag Sozialticket, der im selben Beschluss
+steht, statt zur Tariferhöhung. Die drei fremden Antworten ohne Bezug kommen
+über „in einfachen Worten“: Das gilt als Wunsch nach Vereinfachung und umgeht
+die Rückfrage — mit Bezug ist das kein Problem mehr.
 
 ### Schritt 5: Mitlesen
 

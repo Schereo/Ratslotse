@@ -288,6 +288,15 @@ FEATURES: dict[str, Feature] = {
                     "(Einrichten, zweites Gerät, Passphrase wechseln, Wiederherstellung), App liest "
                     "dieselben Testvektoren; dann mit dem Release auf Prod an.",
     ),
+    "punkt-argumente": Feature(
+        key="punkt-argumente",
+        description="Die Reiter „Argumente“ und „Fraktionen“ auf der Punkt-Seite: Streitpunkte mit "
+                    "Dafür und Dagegen aus den Wortbeiträgen und der Vorlage, jede Aussage mit "
+                    "Fundstelle; Wortmeldungen je Fraktion (docs/plan-punkt-argumente.md).",
+        fertig_wenn="Bestand auf dev erzeugt (scripts/punkt_argumente.py), zwei Wochen ohne Befund, "
+                    "von Tim abgenommen und mit dem Release auf Prod angeschaltet; die Erzeugung "
+                    "neuer Vorgänge hängt dann am Protokoll-Cron.",
+    ),
     "punkt-seite": Feature(
         key="punkt-seite",
         description="Jeder Tagesordnungspunkt bekommt eine eigene Seite mit Kurzfassung, "

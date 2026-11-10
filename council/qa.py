@@ -1759,7 +1759,7 @@ RUECKFRAGE_MINDEST_TOPS = 5
 
 def rueckfrage_noetig(analyse: dict, *, einfach: bool = False,
                       person=None, ort=None, sitzungen=None,
-                      procedure: bool = False) -> bool:
+                      procedure: bool = False, seite: bool = False) -> bool:
     """Wird auf diese Frage zurückgefragt, statt sie zu beantworten?
 
     Die Regel steht hier und nicht in den Endpunkten, weil sie ZWEI Wege
@@ -1778,9 +1778,12 @@ def rueckfrage_noetig(analyse: dict, *, einfach: bool = False,
     ``procedure``: Die Frage meint eine Regel der Geschäftsordnung
     (:func:`council.rules_of_procedure.find`) — „Wie lange darf man reden?"
     nennt kein Vorhaben, ist aber beantwortbar, und zwar ohne Archiv.
+
+    ``seite``: Die Frage kam von einer Seite mit Gegenstand (Beschluss,
+    Tagesordnungspunkt, :func:`seiten_gegenstand`) — „das“ meint ihn.
     """
     return (bool(analyse.get("unklar")) and not einfach
-            and not (person or ort or sitzungen or procedure))
+            and not (person or ort or sitzungen or procedure or seite))
 
 #: „Stadt Oldenburg (Oldb)" — der amtliche Zusatz steht in jedem zweiten Titel
 #: und trägt in einer Frage an Ratslotse null Information.
@@ -5499,6 +5502,29 @@ def screen_decision(store, screen: dict | None) -> dict | None:
         return store.get_decision(int(ref)) or None
     except Exception:  # noqa: BLE001 — ein fehlender Gegenstand ist kein Fehler
         return None
+
+
+def seiten_gegenstand(store, screen: dict | None) -> str | None:
+    """Der Gegenstand der Seite als eine Zeile für die Frage-Analyse — oder
+    ``None``.
+
+    **Wozu.** Die Analyse löst Rückbezüge nur aus dem Gesprächsverlauf auf.
+    Auf der Seite eines Punkts gibt es keinen: „Und was kostet das?" kam am
+    10.11.2026 in sechs von sechs Fällen als „unklar“ zurück und bekam die
+    Rückfrage — MIT Bezug-Chip genauso wie ohne (``eval/run_punkt_bezug.py``).
+    Die Seite IST der Verlauf: Ihr Gegenstand geht der Analyse als erste
+    Runde voraus, und „das“ wird zu ihm."""
+    if not screen:
+        return None
+    punkt = screen.get("agenda_item") or {}
+    if punkt.get("title"):
+        vorlage = f", Vorlage {punkt['template_number']}" if punkt.get("template_number") else ""
+        return (f"Tagesordnungspunkt „{str(punkt['title'])[:200]}“ "
+                f"({punkt.get('committee', '')} am {punkt.get('session_date', '')}{vorlage})")
+    d = screen_decision(store, screen)
+    if d and d.get("title"):
+        return f"Beschluss „{str(d['title'])[:200]}“ ({d.get('committee') or ''} am {d.get('session_date') or ''})"
+    return None
 
 
 #: „hier", „dort", „in diesem Viertel" — die Frage zeigt auf den Bildschirm.
