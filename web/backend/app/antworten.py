@@ -2914,6 +2914,61 @@ class SessionItemDocument(TypedDict):
     date: str | None
 
 
+class ArgumentSource(TypedDict):
+    """Fundstelle einer Aussage: ein Wortbeitrag (Protokoll, mit Seite) oder
+    die Vorlage. ``url`` springt dorthin, wo es geht (Protokoll-PDF auf die
+    Seite, Vorlage im Ratsinfo)."""
+    kind: Literal["speech", "template"]
+    id: int
+    page: int | None
+    url: str | None
+
+
+class ArgumentStatement(TypedDict):
+    """Eine Aussage: Paraphrase und Urheber. Person, Fraktion, Gremium und
+    Datum kommen aus der Quelle, nie vom Modell; ``party`` fehlt, wenn das
+    Protokoll keine nennt (Verwaltung, Gäste, oft auch Ausschussmitglieder)."""
+    text: str
+    speaker: str | None
+    party: str | None
+    body: str | None
+    date: str | None
+    source: ArgumentSource
+
+
+class ArgumentIssue(TypedDict):
+    question: str
+    pro: list[ArgumentStatement]
+    contra: list[ArgumentStatement]
+
+
+class ArgumentSides(TypedDict):
+    pro: list[ArgumentStatement]
+    contra: list[ArgumentStatement]
+
+
+class ArgumentFaction(TypedDict):
+    party: str
+    statements: list[ArgumentStatement]
+
+
+class ItemArguments(TypedDict):
+    """Die Reiter „Argumente“ und „Fraktionen“ der Punkt-Seite
+    (``docs/plan-punkt-argumente.md``). Je Reiter ein ``show_…``: darunter
+    die Mindestmenge, und der Reiter fehlt. ``stale``: seit der Auswertung
+    kamen Wortbeiträge dazu."""
+    subject_key: str
+    show_arguments: bool
+    issues: list[ArgumentIssue]
+    further: ArgumentSides
+    pro_count: int
+    contra_count: int
+    show_factions: bool
+    factions: list[ArgumentFaction]
+    created_at: str | None
+    stale: bool
+
+
 class SessionItemDetail(TypedDict):
     """Ein Tagesordnungspunkt auf seiner eigenen Seite
     (``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,
@@ -2934,6 +2989,8 @@ class SessionItemDetail(TypedDict):
     next: SessionItemNeighbor | None
     position: int
     count: int
+    #: Nur hinter dem Schalter ``punkt-argumente`` und nur, wenn es etwas zu zeigen gibt.
+    arguments: NotRequired[ItemArguments]
 
 
 class ImportanceBreakdown(TypedDict):

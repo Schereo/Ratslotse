@@ -4114,6 +4114,169 @@
         "title": "AppleLoginRequest",
         "type": "object"
       },
+      "ArgumentFaction": {
+        "properties": {
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/ArgumentStatement"
+            },
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "party",
+          "statements"
+        ],
+        "title": "ArgumentFaction",
+        "type": "object"
+      },
+      "ArgumentIssue": {
+        "properties": {
+          "contra": {
+            "items": {
+              "$ref": "#/components/schemas/ArgumentStatement"
+            },
+            "title": "Contra",
+            "type": "array"
+          },
+          "pro": {
+            "items": {
+              "$ref": "#/components/schemas/ArgumentStatement"
+            },
+            "title": "Pro",
+            "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "pro",
+          "contra"
+        ],
+        "title": "ArgumentIssue",
+        "type": "object"
+      },
+      "ArgumentSides": {
+        "properties": {
+          "contra": {
+            "items": {
+              "$ref": "#/components/schemas/ArgumentStatement"
+            },
+            "title": "Contra",
+            "type": "array"
+          },
+          "pro": {
+            "items": {
+              "$ref": "#/components/schemas/ArgumentStatement"
+            },
+            "title": "Pro",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pro",
+          "contra"
+        ],
+        "title": "ArgumentSides",
+        "type": "object"
+      },
+      "ArgumentSource": {
+        "description": "Fundstelle einer Aussage: ein Wortbeitrag (Protokoll, mit Seite) oder\ndie Vorlage. ``url`` springt dorthin, wo es geht (Protokoll-PDF auf die\nSeite, Vorlage im Ratsinfo).",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "speech",
+              "template"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "page",
+          "url"
+        ],
+        "title": "ArgumentSource",
+        "type": "object"
+      },
+      "ArgumentStatement": {
+        "description": "Eine Aussage: Paraphrase und Urheber. Person, Fraktion, Gremium und\nDatum kommen aus der Quelle, nie vom Modell; ``party`` fehlt, wenn das\nProtokoll keine nennt (Verwaltung, Gäste, oft auch Ausschussmitglieder).",
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/ArgumentSource"
+          },
+          "speaker": {
+            "title": "Speaker",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "speaker",
+          "party",
+          "body",
+          "date",
+          "source"
+        ],
+        "title": "ArgumentStatement",
+        "type": "object"
+      },
       "AskBody": {
         "properties": {
           "conversation_id": {
@@ -16185,6 +16348,73 @@
           "base_score"
         ],
         "title": "ImportanceBreakdown",
+        "type": "object"
+      },
+      "ItemArguments": {
+        "description": "Die Reiter „Argumente“ und „Fraktionen“ der Punkt-Seite\n(``docs/plan-punkt-argumente.md``). Je Reiter ein ``show_…``: darunter\ndie Mindestmenge, und der Reiter fehlt. ``stale``: seit der Auswertung\nkamen Wortbeiträge dazu.",
+        "properties": {
+          "contra_count": {
+            "title": "Contra Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "factions": {
+            "items": {
+              "$ref": "#/components/schemas/ArgumentFaction"
+            },
+            "title": "Factions",
+            "type": "array"
+          },
+          "further": {
+            "$ref": "#/components/schemas/ArgumentSides"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ArgumentIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "pro_count": {
+            "title": "Pro Count",
+            "type": "integer"
+          },
+          "show_arguments": {
+            "title": "Show Arguments",
+            "type": "boolean"
+          },
+          "show_factions": {
+            "title": "Show Factions",
+            "type": "boolean"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "subject_key": {
+            "title": "Subject Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_key",
+          "show_arguments",
+          "issues",
+          "further",
+          "pro_count",
+          "contra_count",
+          "show_factions",
+          "factions",
+          "created_at",
+          "stale"
+        ],
+        "title": "ItemArguments",
         "type": "object"
       },
       "LimitsUpdate": {
@@ -31181,6 +31411,9 @@
       "SessionItemDetail": {
         "description": "Ein Tagesordnungspunkt auf seiner eigenen Seite\n(``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,\nsobald das Protokoll einen Beschluss dazu hat — dann führt die Seite zur\nBeschluss-Seite (Plan 3.9). ``position``/``count``: der wievielte Punkt\nder Sitzung (Formalien als einer).",
         "properties": {
+          "arguments": {
+            "$ref": "#/components/schemas/ItemArguments"
+          },
           "committee": {
             "title": "Committee",
             "type": "string"

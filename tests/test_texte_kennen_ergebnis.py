@@ -173,3 +173,19 @@ def test_backfill_picks_up_emptied_topic_sentences(tmp_path):
     store.close()
     assert betroffen == {"Hebesatzung"}   # angenommener Radweg bleibt außen vor
     assert ohne_feld == set()             # „Einfach erklärt“ füllt der Wochenlauf
+
+
+def test_item_arguments_prompt_carries_outcome(monkeypatch):
+    """Argumente zum Tagesordnungspunkt (``council/arguments.py``): Bei einem
+    abgelehnten Vorgang steht das Ergebnis im Kopf der Eingabe, und der Prompt
+    verbietet, etwas als beschlossen darzustellen."""
+    from council import arguments, outcome_note
+
+    fake = _Mitschnitt({"issues": [], "further": {"pro": [], "contra": []}})
+    monkeypatch.setattr(arguments.llm, "chat_complete", fake)
+    beitrag = {"id": 1, "speaker": "A", "party": "SPD", "committee": "Rat", "date": "2023-12-11",
+               "page": 1, "ksinr": 1, "text": "Zu hoch."}
+    arguments.generate("Hebesatzung 2024", [beitrag, {**beitrag, "id": 2}], None,
+                       outcome_note.note("rejected", "- einstimmig abgelehnt -"))
+    assert "ERGEBNIS: ABGELEHNT" in fake.prompt
+    assert "nichts als beschlossen" in fake.prompt

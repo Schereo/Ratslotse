@@ -699,6 +699,11 @@ function jumpZuAnlage(turnIdx: number, nr: number, spalte: boolean) {
   ziel?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
+/** Der Tagesordnungspunkt, auf den sich die Fragen beziehen — und, vom Knopf
+ *  „Dazu fragen“ eines Streitpunkts, der Streitpunkt selbst als Baustein
+ *  (`screen.element_title`/`element_text`, Plan Punkt-Argumente § 6). */
+type Bezug = { ksinr: number; item_number: string; streit?: { title: string; text: string } };
+
 export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // Das Konto ist beim Öffnen des Tabs längst geladen (App-Hülle) — es trägt
   // die Einwilligung, an der die Erstnutzungs-Karte hängt.
@@ -709,7 +714,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   /** Der Tagesordnungspunkt, von dessen Seite die Frage kam (`?ksinr=&top=`,
    *  Plan Sitzungsseite 3.10). Er reist als `screen.refs` mit, bis man ihn
    *  am Bezug-Chip entfernt — „Und was kostet das?" meint dann ihn. */
-  const [bezug, setBezug] = useState<{ ksinr: number; item_number: string } | null>(null);
+  const [bezug, setBezug] = useState<Bezug | null>(null);
   const sp = useSearchParams();
   const pathname = pfad(usePathname());
   const router = useRouter();
@@ -724,7 +729,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     if (!urlQ || pathname !== "/fragen") return;
     const bezugKsinr = Number(sp.get("ksinr") || 0);
     const bezugTop = (sp.get("top") || "").trim().slice(0, 20);
-    const neuerBezug = bezugKsinr > 0 && bezugTop ? { ksinr: bezugKsinr, item_number: bezugTop } : null;
+    const streit = (sp.get("streit") || "").trim().slice(0, 200);
+    const neuerBezug: Bezug | null = bezugKsinr > 0 && bezugTop
+      ? { ksinr: bezugKsinr, item_number: bezugTop,
+          ...(streit ? { streit: { title: streit, text: (sp.get("streit_text") || "").slice(0, 600) } } : {}) }
+      : null;
     if (neuerBezug) setBezug(neuerBezug);
     // `chip=1`: Die Frage kommt von einem Frage-Chip auf einer anderen Seite
     // (components/frage-chips.tsx). Dann wird sie sofort gestellt — wie ein
@@ -859,7 +868,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
    *  Produkt tragen oder ob niemand ins Feld tippt. */
   const ask = async (question: string, ausVorschlag = false,
     /** Beim ersten Aufruf aus der Adresse ist der State noch nicht gesetzt. */
-    bezugJetzt: { ksinr: number; item_number: string } | null = bezug) => {
+    bezugJetzt: Bezug | null = bezug) => {
     const text = question.trim();
     if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
@@ -905,6 +914,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                                ...(bezugJetzt ? { screen: {
                                  route: "/council/punkt",
                                  refs: { ksinr: bezugJetzt.ksinr, item_number: bezugJetzt.item_number },
+                                 ...(bezugJetzt.streit ? { element_title: `Streitpunkt: ${bezugJetzt.streit.title}`,
+                                                          element_text: bezugJetzt.streit.text } : {}),
                                } } : {}) }),
         signal: ctrl.signal,
       });
@@ -2267,7 +2278,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               // abwählbar, sonst hinge ein unsichtbarer Kontext an jeder Frage.
               <p className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/[0.06] px-2.5 py-1 text-foreground">
-                  Bezug: Tagesordnungspunkt {bezug.item_number}
+                  Bezug: Tagesordnungspunkt {bezug.item_number}{bezug.streit ? " · Streitpunkt" : ""}
                   <button type="button" onClick={() => setBezug(null)} aria-label="Bezug entfernen"
                     className="-mr-1 inline-flex h-6 w-6 items-center justify-center rounded-full hover:bg-primary/10">×</button>
                 </span>
