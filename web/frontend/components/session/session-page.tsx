@@ -15,6 +15,7 @@
    Ratsinfo, Protokoll, LiveChip, Änderungen, Video-Hinweis, Dringliches,
    Anwesenheit, der Sprung zum geteilten Punkt (dieselben `topDomId`). */
 
+import { LottiSatz } from "@/components/session/lotti-satz";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ArrowDown, ArrowLeft, ArrowRight, ChevronDown, Clock, ExternalLink, MapPin, Navigation, Sparkles,
@@ -243,12 +244,8 @@ function Board({ ctx }: { ctx: Ctx }) {
       </div>
 
       {course.summary && (
-        <div className="mt-5 max-w-[46rem]">
-          <p className="text-lese text-foreground">{course.summary}</p>
-          <p className="mt-1 text-hinweis text-muted-foreground">
-            {phase === "protocol" ? "Aus dem Protokoll gezählt." : "Aus der Tagesordnung gezählt."}
-          </p>
-        </div>
+        <LottiSatz className="mt-5" text={course.summary}
+          quelle={phase === "protocol" ? "Aus dem Protokoll gezählt." : "Aus der Tagesordnung gezählt."} />
       )}
 
       <div className="mt-6 border-t border-border pt-5">
