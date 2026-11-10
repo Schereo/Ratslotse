@@ -1626,13 +1626,14 @@ class SitzungenMixin(StoreBasis):
 
         beschluesse: dict[str, dict] = {}
         for d in self._conn.execute(
-                "SELECT item_number, policy_field, importance, impact_reason FROM council_decisions "
-                "WHERE ksinr = ? AND kind = 'decision'", (int(ksinr),)):
+                "SELECT item_number, policy_field, importance, impact_reason, outcome, vote "
+                "FROM council_decisions WHERE ksinr = ? AND kind = 'decision'", (int(ksinr),)):
             for n in nummer(d["item_number"]):
                 beschluesse.setdefault(n, dict(d))
 
         wichtig: dict[str, str | None] = {}
-        if self.has_protocol(ksinr) and beschluesse:
+        protokoll = self.has_protocol(ksinr)
+        if protokoll and beschluesse:
             kandidaten = sorted(
                 ((nr, d) for nr, d in beschluesse.items()
                  if (d["importance"] or 0) >= self.WICHTIG_MINDEST),
@@ -1687,6 +1688,20 @@ class SitzungenMixin(StoreBasis):
                 "group": gruppe.get(nr),
             }
 
+        # Der Weg jeder Vorlage durch die Gremien, mit Ergebnis je Station —
+        # „Der Weg dieser Vorlage" und „Vorgeschichte N Stationen".
+        wege = self._vorlagen_wege([nach_nr[nr]["template_number"] for nr in items])
+        # Was hier vertagt wurde und schon wieder auf einer Tagesordnung steht.
+        ergebnis_hier = {nr: (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("outcome")
+                         or course.outcome_from_title(nach_nr[nr]["title"]) for nr in items}
+        vertagt_hier = [nach_nr[nr] for nr, e in ergebnis_hier.items()
+                        if e == "postponed" and items[nr]["type"] not in course.FRAME_TYPES]
+        weiter = self._spaeter_wieder(sitzung["committee"], datum, vertagt_hier)
+        for nr, it in items.items():
+            tn = (nach_nr[nr]["template_number"] or "").strip()
+            it["journey"] = wege.get(tn, []) if tn else []
+            it["next_on_agenda"] = weiter.get(nr)
+
         geschlossen = sum(1 for r in rows if not r["is_public"])
         inhaltlich = sum(1 for it in items.values() if it["type"] not in course.FRAME_TYPES)
         return {
@@ -1694,9 +1709,96 @@ class SitzungenMixin(StoreBasis):
             "public_count": len(oeffentlich),
             "closed_count": geschlossen,
             "substantive_count": inhaltlich,
+            # Der Satz zählt nur, was das Protokoll sagt — dieselbe Grundlage wie
+            # die Farben im Kurs. Der Titel-Zusatz hilft nur beim Wiederfinden.
+            "summary": course.summary_sentence(
+                items, {nr: (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("outcome")
+                        for nr in items} if protokoll else {},
+                {nr: (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("vote") for nr in items},
+                rat=(sitzung["committee"] or "").strip().startswith("Rat")),
+            "next_session": self._naechste_sitzung_des_gremiums(sitzung["committee"], datum),
             "stages": stages,
             "items": items,
         }
+
+    def _vorlagen_wege(self, vorlagen: list[str | None]) -> dict[str, list[dict]]:
+        """Je Vorlage alle Tagesordnungs-Stationen, älteste zuerst, mit dem
+        Ergebnis der Station: aus dem Protokoll, sonst aus dem Zusatz, den das
+        Ratsinfo an den Titel hängt („Beschluss: ungeändert beschlossen")."""
+        from council import course  # noqa: PLC0415
+
+        nrs = sorted({(v or "").strip() for v in vorlagen if (v or "").strip()})
+        if not nrs:
+            return {}
+        ph = ",".join("?" * len(nrs))
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT a.template_number, a.item_number, a.title, s.ksinr, s.committee, s.session_date "
+            "FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            f"WHERE a.template_number IN ({ph}) ORDER BY s.session_date, a.id", nrs)]
+        ksinrs = sorted({r["ksinr"] for r in rows})
+        ergebnis: dict[tuple, str] = {}
+        if ksinrs:
+            ph2 = ",".join("?" * len(ksinrs))
+            for d in self._conn.execute(
+                    f"SELECT ksinr, item_number, outcome FROM council_decisions "
+                    f"WHERE ksinr IN ({ph2}) AND kind = 'decision' AND outcome IS NOT NULL", ksinrs):
+                for t in (d["item_number"] or "").split("/"):
+                    ergebnis.setdefault((d["ksinr"], re.sub(r"^\D+", "", t).strip()), d["outcome"])
+        out: dict[str, list[dict]] = {}
+        gesehen: set[tuple] = set()
+        for r in rows:
+            schl = (r["template_number"], r["ksinr"])
+            if schl in gesehen:
+                continue
+            gesehen.add(schl)
+            nr = re.sub(r"^\D+", "", r["item_number"] or "").strip()
+            out.setdefault(r["template_number"], []).append({
+                "ksinr": r["ksinr"], "committee": r["committee"], "session_date": r["session_date"],
+                "item_number": r["item_number"],
+                "outcome": ergebnis.get((r["ksinr"], nr)) or course.outcome_from_title(r["title"]),
+            })
+        return out
+
+    def _spaeter_wieder(self, committee: str, datum: str, punkte: list[dict]) -> dict[str, dict]:
+        """Für vertagte Punkte: die nächste spätere Tagesordnung DESSELBEN
+        Gremiums, auf der sie wieder stehen — zugeordnet wie beim gelben Punkt
+        (Vorlage, sonst wörtlich gleicher datierter Titel)."""
+        from council import course  # noqa: PLC0415
+
+        if not punkte:
+            return {}
+        rows = [dict(r) for r in self._conn.execute(
+            "SELECT a.item_number, a.title, a.template_number, s.ksinr, s.session_date "
+            "FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            "WHERE s.committee = ? AND s.session_date > ? ORDER BY s.session_date, a.id",
+            (committee, datum))]
+        out: dict[str, dict] = {}
+        for p in punkte:
+            tn = (p["template_number"] or "").strip()
+            titel = course.strip_result(p["title"])
+            for r in rows:
+                treffer = ((r["template_number"] or "").strip() == tn) if tn else (
+                    bool(course.DATED_RE.search(titel)) and course.strip_result(r["title"]) == titel)
+                if treffer:
+                    out[p["item_number"]] = {"ksinr": r["ksinr"], "session_date": r["session_date"],
+                                             "item_number": r["item_number"]}
+                    break
+        return out
+
+    def _naechste_sitzung_des_gremiums(self, committee: str, datum: str) -> dict | None:
+        """Die nächste Sitzung desselben Gremiums nach ``datum`` — „Wie es
+        weitergeht". Ob ihre Tagesordnung schon steht, sagt ``has_agenda``."""
+        r = self._conn.execute(
+            "SELECT s.ksinr, s.session_date, s.session_time, s.location, "
+            "       (SELECT COUNT(*) FROM council_agenda_items a WHERE a.ksinr = s.ksinr) AS n "
+            "FROM council_sessions s WHERE s.committee = ? AND s.session_date > ? "
+            "ORDER BY s.session_date, COALESCE(NULLIF(s.session_time, ''), '99:99') LIMIT 1",
+            (committee, datum)).fetchone()
+        if not r:
+            return None
+        return {"ksinr": r["ksinr"], "session_date": r["session_date"],
+                "session_time": (r["session_time"] or "").strip() or None,
+                "location": (r["location"] or "").strip() or None, "has_agenda": bool(r["n"])}
 
     def _fruehere_vertagungen(self, committee: str, datum: str,
                               punkte: list[dict]) -> tuple[list[dict], set[tuple]]:

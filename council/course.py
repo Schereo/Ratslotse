@@ -713,3 +713,94 @@ def postponed_counts(current: list[dict], earlier: list[dict], postponed_decisio
             n = len(nach_titel.get(titel, ())) if DATED_RE.search(titel) else 0
         out[r["item_number"]] = n
     return out
+
+
+# ---------------------------------------------------------------------------
+# Ergebnis aus dem Titel und der Satz zur Sitzung
+
+#: Was das Ratsinfo nach der Sitzung an den Titel hängt → Ergebnis-Schlüssel
+#: der Beschlüsse. „an Fachausschuss verwiesen" ist kein Ergebnis im Sinne
+#: der Farbgrammatik und bleibt ``None``.
+_TITEL_ERGEBNIS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"zurückgestellt|abgesetzt|vertagt", re.IGNORECASE), "postponed"),
+    (re.compile(r"abgelehnt", re.IGNORECASE), "rejected"),
+    (re.compile(r"zur Kenntnis", re.IGNORECASE), "noted"),
+    (re.compile(r"gilt als behandelt|erledigt", re.IGNORECASE), "settled"),
+    (re.compile(r"beschlossen|angenommen|zugestimmt", re.IGNORECASE), "accepted"),
+]
+
+
+def outcome_from_title(title: str | None) -> str | None:
+    m = RESULT_SUFFIX_RE.search(title or "")
+    if not m:
+        return None
+    return next((k for muster, k in _TITEL_ERGEBNIS if muster.search(m.group(1))), None)
+
+
+_ZAHLWORT = ["null", "ein", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun",
+             "zehn", "elf", "zwölf"]
+
+
+def _zahl(n: int) -> str:
+    return _ZAHLWORT[n] if 0 <= n < len(_ZAHLWORT) else str(n)
+
+
+def _aufzaehlen(teile: list[str]) -> str:
+    return teile[0] if len(teile) == 1 else ", ".join(teile[:-1]) + " und " + teile[-1]
+
+
+def summary_sentence(items: dict[str, dict], outcomes: dict[str, str | None],
+                     votes: dict[str, str | None], *, rat: bool) -> str | None:
+    """Der Satz zur Sitzung — gerechnet, ohne Modell (Plan 3.1, Schritt 3.6).
+
+    ``outcomes`` leer heißt: kein Protokoll. Dann zählt der Satz, was ansteht
+    („9 Punkte zur Beratung, darunter 3 Anträge. Zwei standen schon einmal
+    hier und wurden vertagt."). Mit Protokoll sagt er, was herauskam: wie
+    viele Beschlussvorlagen angenommen wurden, welche wichtigen darunter, was
+    vertagt oder abgelehnt wurde. Eine Zählung, die null ergibt, entfällt.
+    """
+    inhalt = {nr: it for nr, it in items.items() if it["type"] not in FRAME_TYPES}
+    if not inhalt:
+        return None
+    if not outcomes:
+        n = len(inhalt)
+        antraege = sum(1 for it in inhalt.values() if it["type"] == "motion")
+        satz = f"{n} {'Punkt' if n == 1 else 'Punkte'} zur Beratung"
+        if antraege and antraege < n:
+            satz += f", darunter {antraege} {'Antrag' if antraege == 1 else 'Anträge'}"
+        elif antraege == n:
+            satz = f"{n} {'Antrag' if n == 1 else 'Anträge'} zur Beratung"
+        saetze = [satz + "."]
+        v = sum(1 for it in inhalt.values() if it["postponed"])
+        if v:
+            saetze.append(f"{'Einer stand' if v == 1 else _zahl(v).capitalize() + ' standen'} schon einmal "
+                          f"hier und {'wurde' if v == 1 else 'wurden'} vertagt.")
+        return " ".join(saetze)
+
+    wer = "Der Rat" if rat else "Der Ausschuss"
+    vorlagen = [nr for nr, it in inhalt.items() if it["type"] in ("decision", "preliminary")]
+    angenommen = [nr for nr in vorlagen if outcomes.get(nr) == "accepted"]
+    saetze: list[str] = []
+    if vorlagen and angenommen:
+        einstimmig = all(votes.get(nr) == "unanimous" for nr in angenommen)
+        # Zahlwörter nur, solange beide Zahlen eines haben — „zwölf von 13" liest sich schief.
+        wort = _zahl if len(vorlagen) < len(_ZAHLWORT) else str
+        menge = (f"alle {wort(len(vorlagen))} Beschlussvorlagen"
+                 if len(angenommen) == len(vorlagen) and len(vorlagen) > 1
+                 else f"{wort(len(angenommen))} von {wort(len(vorlagen))} Beschlussvorlagen"
+                 if len(vorlagen) > 1 else "die Beschlussvorlage")
+        satz = f"{wer} hat {menge}{' einstimmig' if einstimmig else ''} angenommen"
+        wichtig = [inhalt[nr]["short_title"] for nr in angenommen if inhalt[nr]["important"]][:2]
+        if wichtig:
+            satz += f", darunter {_aufzaehlen(wichtig)}"
+        saetze.append(satz + ".")
+    for schluessel, partizip in (("postponed", "vertagt"), ("rejected", "abgelehnt")):
+        nrs = [nr for nr in inhalt if outcomes.get(nr) == schluessel]
+        if not nrs:
+            continue
+        if len(nrs) <= 2:
+            saetze.append(f"{'Vertagt' if schluessel == 'postponed' else 'Abgelehnt'} "
+                          f"{'wurde' if len(nrs) == 1 else 'wurden'} {_aufzaehlen([inhalt[n]['short_title'] for n in nrs])}.")
+        else:
+            saetze.append(f"{_zahl(len(nrs)).capitalize()} Punkte wurden {partizip}.")
+    return " ".join(saetze) or None

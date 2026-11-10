@@ -8002,6 +8002,40 @@
               "null"
             ]
           },
+          "journey": {
+            "items": {
+              "$ref": "#/components/schemas/CourseStation"
+            },
+            "title": "Journey",
+            "type": "array"
+          },
+          "next_on_agenda": {
+            "description": "Wo ein hier vertagter Punkt wieder auf der Tagesordnung steht.",
+            "properties": {
+              "item_number": {
+                "title": "Item Number",
+                "type": "string"
+              },
+              "ksinr": {
+                "title": "Ksinr",
+                "type": "integer"
+              },
+              "session_date": {
+                "title": "Session Date",
+                "type": "string"
+              }
+            },
+            "required": [
+              "ksinr",
+              "session_date",
+              "item_number"
+            ],
+            "title": "CourseLaterAgenda",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "postponed": {
             "title": "Postponed",
             "type": "integer"
@@ -8044,9 +8078,75 @@
           "postponed",
           "formality",
           "formal_act",
-          "group"
+          "group",
+          "journey",
+          "next_on_agenda"
         ],
         "title": "CourseItem",
+        "type": "object"
+      },
+      "CourseLaterAgenda": {
+        "description": "Wo ein hier vertagter Punkt wieder auf der Tagesordnung steht.",
+        "properties": {
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ksinr",
+          "session_date",
+          "item_number"
+        ],
+        "title": "CourseLaterAgenda",
+        "type": "object"
+      },
+      "CourseNextSession": {
+        "description": "Die nächste Sitzung desselben Gremiums — „Wie es weitergeht\".",
+        "properties": {
+          "has_agenda": {
+            "title": "Has Agenda",
+            "type": "boolean"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "location": {
+            "title": "Location",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "session_time": {
+            "title": "Session Time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "ksinr",
+          "session_date",
+          "session_time",
+          "location",
+          "has_agenda"
+        ],
+        "title": "CourseNextSession",
         "type": "object"
       },
       "CourseStage": {
@@ -8118,6 +8218,43 @@
           "cells"
         ],
         "title": "CourseStage",
+        "type": "object"
+      },
+      "CourseStation": {
+        "description": "Eine Station einer Vorlage auf einer Tagesordnung — „Der Weg dieser\nVorlage\". ``outcome`` aus dem Protokoll, sonst aus dem Zusatz, den das\nRatsinfo an den Titel hängt; ``None``, solange keins bekannt ist.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": "string"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ksinr",
+          "committee",
+          "session_date",
+          "item_number",
+          "outcome"
+        ],
+        "title": "CourseStation",
         "type": "object"
       },
       "DataLayer": {
@@ -30176,6 +30313,49 @@
             "title": "Items",
             "type": "object"
           },
+          "next_session": {
+            "description": "Die nächste Sitzung desselben Gremiums — „Wie es weitergeht\".",
+            "properties": {
+              "has_agenda": {
+                "title": "Has Agenda",
+                "type": "boolean"
+              },
+              "ksinr": {
+                "title": "Ksinr",
+                "type": "integer"
+              },
+              "location": {
+                "title": "Location",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "session_date": {
+                "title": "Session Date",
+                "type": "string"
+              },
+              "session_time": {
+                "title": "Session Time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "ksinr",
+              "session_date",
+              "session_time",
+              "location",
+              "has_agenda"
+            ],
+            "title": "CourseNextSession",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "public_count": {
             "title": "Public Count",
             "type": "integer"
@@ -30197,6 +30377,13 @@
           "substantive_count": {
             "title": "Substantive Count",
             "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -30204,6 +30391,8 @@
           "public_count",
           "closed_count",
           "substantive_count",
+          "summary",
+          "next_session",
           "stages",
           "items"
         ],

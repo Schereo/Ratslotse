@@ -262,3 +262,24 @@ def test_die_app_probe_traegt_dieselbe_geschaeftsordnungs_karte():
         "Die Karte in ask-geschaeftsordnung.sse weicht von "
         "web/frontend/tests/e2e/fixtures/geschaeftsordnung-karte.json ab — "
         "den sources-Rahmen der Aufzeichnung mit der Abschrift neu schreiben.")
+
+
+@pytest.mark.parametrize("ksinr", [4653, 4654])
+def test_die_sitzungs_kurs_abschrift_kennt_jedes_feld(ksinr):
+    """``sitzung-kurs-{ksinr}.json`` ist eine Antwort von ``/council/session``
+    (Abzug von dev, 10.11.2026, Anwesenheit geleert). Fehlt dort ein Feld des
+    ``course``-Blocks, prüft der Browsertest eine Seite, die es so nicht gibt.
+    Neu ziehen: lokalen Server starten, ``curl …/api/council/session/{ksinr}``
+    und wie in der Datei abspecken."""
+    import sys
+    from typing import get_type_hints
+    sys.path.insert(0, str(WURZEL / "web" / "backend"))
+    from app.antworten import CourseItem, CourseStage, SessionCourse
+
+    d = json.loads((FIXTURES / f"sitzung-kurs-{ksinr}.json").read_text())
+    kurs = d["course"]
+    assert set(kurs) == set(get_type_hints(SessionCourse))
+    for st in kurs["stages"]:
+        assert set(st) == set(get_type_hints(CourseStage))
+    for it in kurs["items"].values():
+        assert set(it) == set(get_type_hints(CourseItem))

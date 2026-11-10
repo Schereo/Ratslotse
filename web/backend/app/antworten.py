@@ -2780,6 +2780,33 @@ class CourseStage(TypedDict):
     cells: list[CourseCell]
 
 
+class CourseStation(TypedDict):
+    """Eine Station einer Vorlage auf einer Tagesordnung — „Der Weg dieser
+    Vorlage". ``outcome`` aus dem Protokoll, sonst aus dem Zusatz, den das
+    Ratsinfo an den Titel hängt; ``None``, solange keins bekannt ist."""
+    ksinr: int
+    committee: str
+    session_date: str
+    item_number: str
+    outcome: str | None
+
+
+class CourseLaterAgenda(TypedDict):
+    """Wo ein hier vertagter Punkt wieder auf der Tagesordnung steht."""
+    ksinr: int
+    session_date: str
+    item_number: str
+
+
+class CourseNextSession(TypedDict):
+    """Die nächste Sitzung desselben Gremiums — „Wie es weitergeht"."""
+    ksinr: int
+    session_date: str
+    session_time: str | None
+    location: str | None
+    has_agenda: bool
+
+
 class CourseItem(TypedDict):
     """Was Kurs und Karten je Tagesordnungspunkt brauchen.
 
@@ -2803,6 +2830,11 @@ class CourseItem(TypedDict):
     formality: bool
     formal_act: bool
     group: str | None
+    #: Alle Stationen der Vorlage (leer ohne Vorlage), älteste zuerst — die
+    #: Zahl der früheren ist „Vorgeschichte N Stationen".
+    journey: list[CourseStation]
+    #: Nur an Punkten, die HIER vertagt wurden und schon wieder anstehen.
+    next_on_agenda: CourseLaterAgenda | None
 
 
 class SessionCourse(TypedDict):
@@ -2819,6 +2851,10 @@ class SessionCourse(TypedDict):
     public_count: int
     closed_count: int
     substantive_count: int
+    #: Der Satz zur Sitzung, gerechnet ohne Modell: vor dem Protokoll, was
+    #: ansteht; danach, was herauskam. ``None`` ohne inhaltliche Punkte.
+    summary: str | None
+    next_session: CourseNextSession | None
     stages: list[CourseStage]
     items: dict[str, CourseItem]
 
