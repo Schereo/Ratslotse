@@ -238,7 +238,10 @@ function Node({ cell, compact, onSelect }: {
   const iconSize = important ? M.importantIcon : M.icon;
   const filled = important && !b.provisional;
   const disc = cn(
+    // Unter dem Zeiger hebt sich die Boje ein wenig — nur mit Maus und nur,
+    // wo Bewegung erwünscht ist (DESIGNSPRACHE § 5/§ 7).
     "relative box-border flex items-center justify-center rounded-full",
+    cell.interactive && "motion-safe:transition-transform motion-safe:duration-tipp maus:group-hover:scale-110",
     important
       ? cn(
           compact ? "ring-[3px]" : "ring-4",
@@ -272,7 +275,7 @@ function Node({ cell, compact, onSelect }: {
   );
 
   const hit = cn(
-    "relative flex h-11 w-11 flex-none items-center justify-center rounded-full",
+    "group relative flex h-11 w-11 flex-none items-center justify-center rounded-full",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     cell.passed && "opacity-55",
   );

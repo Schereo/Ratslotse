@@ -19,6 +19,8 @@ export const OEFFENTLICHE_PFADE = [
   "/council/sitzung",
   // Ein Punkt der Sitzung (Schalter `punkt-seite`) — geteilt wie die Sitzung.
   "/council/punkt",
+  // Mitlesen (Schalter `mitlesen`) — eine laufende Sitzung zum Weiterreichen.
+  "/council/sitzung/mitlesen",
   "/council/thema",
   "/council/person",
   // Die Wahlen (seit 10/2026 in der App-Hülle, vorher eigene Vollbild-Seiten):

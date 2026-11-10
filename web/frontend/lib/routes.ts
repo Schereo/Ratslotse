@@ -60,6 +60,8 @@ export const sessionHref = (ksinr: number, tops?: string[]) => {
  */
 /** Ein Tagesordnungspunkt auf seiner eigenen Seite (Schalter `punkt-seite`,
  *  Plan Sitzungsseite § 3.15): `top` im selben Format wie beim geteilten Punkt. */
+/** Mitlesen einer Sitzung (Schalter `mitlesen`). */
+export const mitlesenHref = (ksinr: number) => `/council/sitzung/mitlesen?ksinr=${ksinr}`;
 export const punktHref = (ksinr: number, itemNumber: string) =>
   `/council/punkt?ksinr=${ksinr}&top=${encodeURIComponent(itemNumber.trim())}`;
 export const sitzungHref = (ksinr: number, tops?: string[]) => {

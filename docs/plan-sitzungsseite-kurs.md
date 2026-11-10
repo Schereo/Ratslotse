@@ -731,6 +731,16 @@ Sitzungsseite, als Primäraktion nur, solange die Sitzung läuft; am Tag der
 Sitzung davor als Sekundäraktion, sonst gar nicht. Browsertest: Weiter und
 Zurück, Boje wählen, Neuladen behält den Punkt.
 
+**Umgesetzt (10.11.2026):** Schalter `mitlesen`, Seite
+`app/(app)/council/sitzung/mitlesen/`, Rechnung in `lib/mitlesen.ts`
+(Schritte = Bojen, Zustand nach der Tabelle in 4.5, Speichern je Sitzung im
+`localStorage`; Tests für jede Zeile samt „16:29 gegen 16:30“ und gesperrtem
+Speicher). Die Abschnitte der Punkt-Seite (Vorgeschichte, Unterlagen, „Frag
+den Rat“) stehen dafür in `components/session/item-sections.tsx` und werden
+auf beiden Seiten benutzt. Browsertest `30-mitlesen`. Im Rat lädt die Seite
+den Stand alle `LIVE_REFRESH_MS` neu. „Mein Mitschrieb“ fehlt wie verabredet
+(8.3).
+
 ### Schritt 6: Argumente und Fraktionen
 
 Eigenes Vorhaben. Vor dem ersten Code ein kurzer Plan in `docs/` mit:
