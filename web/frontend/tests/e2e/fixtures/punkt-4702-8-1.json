@@ -1,0 +1,687 @@
+{
+ "ksinr": 4702,
+ "committee": "Rat",
+ "session_date": "2026-08-31",
+ "session_time": "18:00",
+ "has_protocol": true,
+ "item": {
+  "item_number": "Ö 8.1",
+  "title": "VBN-Tarifanpassung 2027 - Beschluss",
+  "template_number": "26/0622",
+  "kvonr": 30078,
+  "is_public": 1,
+  "anlagen": [
+   {
+    "label": "2026-08-21 - Antrag - VerkA - VBN-Tarifanpassung 2027",
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313315&type=do"
+   },
+   {
+    "label": "Vorlage",
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312296&type=do"
+   },
+   {
+    "label": "Anlage 1 VBN Tariferhöhung zum 1 Jan 2027",
+    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312295&type=do"
+   }
+  ],
+  "summary": "Der Ausschuss berät über die VBN-Tarifanpassung für das Jahr 2027.",
+  "social_text": null,
+  "dringlich": false
+ },
+ "course_item": {
+  "short_title": "VBN-Tarifanpassung 2027",
+  "type": "decision",
+  "type_label": "Entscheidung",
+  "icon": "ticket",
+  "applicant": null,
+  "important": false,
+  "important_reason": null,
+  "postponed": 0,
+  "formality": false,
+  "formal_act": false,
+  "group": null,
+  "journey": [
+   {
+    "ksinr": 4653,
+    "committee": "Verkehrsausschuss",
+    "session_date": "2026-08-24",
+    "item_number": "Ö 5",
+    "outcome": "noted"
+   },
+   {
+    "ksinr": 4702,
+    "committee": "Rat",
+    "session_date": "2026-08-31",
+    "item_number": "Ö 8.1",
+    "outcome": "accepted"
+   }
+  ],
+  "next_on_agenda": null
+ },
+ "decision_id": 9487,
+ "history": [
+  {
+   "ksinr": 4653,
+   "committee": "Verkehrsausschuss",
+   "session_date": "2026-08-24",
+   "item_number": "Ö 5",
+   "outcome": "noted",
+   "vote": "unanimous",
+   "decision_id": 9420,
+   "text": "Der Änderungsantrag der Grünen zur Einführung eines sozialen Deutschlandtickets gilt als behandelt.",
+   "current": false
+  },
+  {
+   "ksinr": 4702,
+   "committee": "Rat",
+   "session_date": "2026-08-31",
+   "item_number": "Ö 8.1",
+   "outcome": "accepted",
+   "vote": "majority",
+   "decision_id": 9487,
+   "text": "Der Rat hat die Stadtverwaltung beauftragt, bis September 2026 zu untersuchen, wie ein vergünstigtes Deutschlandticket für Menschen mit wenig Geld ab Juli 2027 eingeführt werden kann und was das kostet. Bei der Verbandssitzung des Verkehrsverbunds im September wird Oldenburg dann in diesem Sinne abstimmen.",
+   "current": true
+  }
+ ],
+ "documents": [
+  {
+   "kind": "template",
+   "label": "Vorlage 26/0622",
+   "url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=30078",
+   "date": null
+  },
+  {
+   "kind": "attachment",
+   "label": "2026-08-21 - Antrag - VerkA - VBN-Tarifanpassung 2027",
+   "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313315&type=do",
+   "date": null
+  },
+  {
+   "kind": "attachment",
+   "label": "Vorlage",
+   "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312296&type=do",
+   "date": null
+  },
+  {
+   "kind": "attachment",
+   "label": "Anlage 1 VBN Tariferhöhung zum 1 Jan 2027",
+   "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312295&type=do",
+   "date": null
+  },
+  {
+   "kind": "protocol",
+   "label": "Protokoll Verkehrsausschuss",
+   "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do",
+   "date": "2026-08-24"
+  }
+ ],
+ "previous": {
+  "item_number": "Ö 7.2",
+  "short_title": "Änderung der Satzung des Jugendamtes",
+  "type_label": "Entscheidung"
+ },
+ "next": {
+  "item_number": "Ö 8.2",
+  "short_title": "Überarbeitung des städtischen Vorbehaltsnetzes",
+  "type_label": "Entscheidung"
+ },
+ "position": 11,
+ "count": 28,
+ "arguments": {
+  "subject_key": "tn:26/0622",
+  "show_arguments": true,
+  "issues": [
+   {
+    "question": "Spricht die Kostenentwicklung dafür, die VBN-Tarife 2027 anzuheben?",
+    "pro": [
+     {
+      "text": "Die Verwaltung hält eine maßvolle Anhebung für nötig, um die Finanzierung des ÖPNV angesichts gestiegener Kosten und künftiger Investitionen zu sichern.",
+      "speaker": null,
+      "party": null,
+      "body": "Vorlage 26/0622",
+      "date": null,
+      "source": {
+       "kind": "template",
+       "id": 30078,
+       "page": null,
+       "url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=30078"
+      }
+     },
+     {
+      "text": "Eine Ablehnung der Erhöhung würde Ausgleichszahlungen von 742.000 Euro verursachen.",
+      "speaker": "Baak",
+      "party": "CDU",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43043,
+       "page": 12,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+      }
+     },
+     {
+      "text": "Die Erhöhung müsse mangels Alternativen mitgetragen werden, da andernfalls Ausgleichszahlungen anfielen.",
+      "speaker": "Prange",
+      "party": "SPD",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43040,
+       "page": 11,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+      }
+     }
+    ],
+    "contra": [
+     {
+      "text": "Eine Tariferhöhung sollte vermieden oder höchstens auf die Inflationsrate begrenzt werden.",
+      "speaker": "Lucks",
+      "party": null,
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42737,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Eine Zustimmung zur Tariferhöhung ohne Ausgleichsangebote für Betroffene wird kritisiert.",
+      "speaker": "Ebbeke Harms",
+      "party": "Grüne",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42739,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Die Tariferhöhung wird abgelehnt, weil sozialeres Busfahren erforderlich sei.",
+      "speaker": "Höpken",
+      "party": "BSW",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43041,
+       "page": 12,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+      }
+     }
+    ]
+   },
+   {
+    "question": "Ist ein Sozialticket für Inhaber des Oldenburg-Passes finanziell vertretbar und als sozialer Ausgleich sinnvoll?",
+    "pro": [
+     {
+      "text": "Ein Sozialticket würde Inhaber des Oldenburg-Passes angesichts der Buspreiserhöhung entlasten.",
+      "speaker": "Niederstein",
+      "party": "Grüne",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43039,
+       "page": 11,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+      }
+     },
+     {
+      "text": "Bei knapp 4.000 Anträgen und einem Zuschuss von 25 Prozent wären die Kosten überschaubar.",
+      "speaker": "Finke",
+      "party": null,
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42743,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Die jährlichen Kosten könnten bei rund 416.000 Euro liegen und Geringverdienende spürbar entlasten.",
+      "speaker": "Niederstein",
+      "party": "Grüne",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42746,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Gezielte Entlastungen seien sinnvoller als allgemeine Steuerentlastungen, von denen vor allem Besserverdienende profitierten.",
+      "speaker": "Dr. Onken",
+      "party": "BSW",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43045,
+       "page": null,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do"
+      }
+     }
+    ],
+    "contra": [
+     {
+      "text": "Zusätzliche Ausgaben für ein Sozialticket seien angesichts der angespannten Haushaltslage nicht tragbar.",
+      "speaker": "Pfeiffer",
+      "party": "FDP",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42741,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Für das Sozialticket fehle ein konkreter Vorschlag zur Gegenfinanzierung.",
+      "speaker": "Baak",
+      "party": "CDU",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42752,
+       "page": 9,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+      }
+     },
+     {
+      "text": "Das Sozialticket sei bürokratisch und kostspielig.",
+      "speaker": "Paul",
+      "party": "AfD",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43042,
+       "page": 12,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+      }
+     }
+    ]
+   }
+  ],
+  "further": {
+   "pro": [
+    {
+     "text": "Ein Sozialticket sei ein Schritt in die richtige Richtung, ersetze aber kein umfassendes Gesamtkonzept.",
+     "speaker": "Höpken",
+     "party": "BSW",
+     "body": "Verkehrsausschuss",
+     "date": "2026-08-24",
+     "source": {
+      "kind": "speech",
+      "id": 42736,
+      "page": 7,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=7"
+     }
+    },
+    {
+     "text": "Gespräche mit dem VBN sollten darauf zielen, den Automatismus der Ausgleichszahlungen zu überwinden.",
+     "speaker": "Prange",
+     "party": "SPD",
+     "body": "Rat",
+     "date": "2026-08-31",
+     "source": {
+      "kind": "speech",
+      "id": 43040,
+      "page": 11,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+     }
+    }
+   ],
+   "contra": [
+    {
+     "text": "Ein einzelnes Sozialticket sei kein Ersatz für ein umfassendes soziales Tarifsystem.",
+     "speaker": "Höpken",
+     "party": "BSW",
+     "body": "Verkehrsausschuss",
+     "date": "2026-08-24",
+     "source": {
+      "kind": "speech",
+      "id": 42747,
+      "page": 9,
+      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+     }
+    }
+   ]
+  },
+  "pro_count": 9,
+  "contra_count": 7,
+  "show_factions": true,
+  "factions": [
+   {
+    "party": "Grüne",
+    "statements": [
+     {
+      "text": "Ratsherr Niederstein bringt einen Änderungsantrag zur Einführung eines sozialen Deutschlandtickets (geknüpft an den Oldenburg-Pass) ein, um Geringverdiener bei der Tarifanpassung zu entlasten.",
+      "speaker": "Niederstein",
+      "party": "Grüne",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42734,
+       "page": 7,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=7"
+      }
+     },
+     {
+      "text": "Ratsherr Ebbeke Harms kritisiert die Zustimmung zur Tariferhöhung ohne entsprechende Ausgleichsangebote wie das Soziale Deutschlandticket.",
+      "speaker": "Ebbeke Harms",
+      "party": "Grüne",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42739,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Ratsfrau Schilling erinnert daran, dass das kostenfreie Samstagsbusfahren auch außerhalb der Haushaltsberatungen beschlossen wurde, und fordert Vorab-Beratungen über Möglichkeiten für einen günstigeren ÖPNV.",
+      "speaker": "Schilling",
+      "party": "Grüne",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42745,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Ratsherr Niederstein geht bei realistischerer Betrachtung von Kosten von rund 416.000 Euro jährlich aus und sieht eine spürbare Entlastung für Geringverdiener.",
+      "speaker": "Niederstein",
+      "party": "Grüne",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42746,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Ratsherr Ebbeke Harms regt an, den Antrag aufgrund der kurzfristigen Tariferhöhung andernfalls als behandelt gelten zu lassen.",
+      "speaker": "Ebbeke Harms",
+      "party": "Grüne",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42750,
+       "page": 9,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+      }
+     },
+     {
+      "text": "Ratsfrau Schilling beantragt, den Änderungsantrag einschließlich des Beschlusses als behandelt gelten zu lassen.",
+      "speaker": "Schilling",
+      "party": "Grüne",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42755,
+       "page": 9,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+      }
+     },
+     {
+      "text": "Kritisiert die anstehende Buspreiserhöhung des VBN, fordert ein Sozialticket (Bezuschussung des Deutschlandtickets für Inhaber des Oldenburg-Passes) als sozialen Ausgleich und bringt einen entsprechenden Prüfauftrag ein.",
+      "speaker": "Niederstein",
+      "party": "Grüne",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43039,
+       "page": 11,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+      }
+     }
+    ]
+   },
+   {
+    "party": "BSW",
+    "statements": [
+     {
+      "text": "Ratsherr Höpken unterstützt das Anliegen als Schritt in die richtige Richtung, sieht darin jedoch kein Ersatz für ein umfassendes Gesamtkonzept und plädiert ebenfalls für die Haushaltsberatungen.",
+      "speaker": "Höpken",
+      "party": "BSW",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42736,
+       "page": 7,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=7"
+      }
+     },
+     {
+      "text": "Ratsherr Höpken plädiert erneut für ein umfassendes soziales Tarifsystem statt eines Einzelschritts.",
+      "speaker": "Höpken",
+      "party": "BSW",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42747,
+       "page": 9,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+      }
+     },
+     {
+      "text": "Ratsherr Höpken begrüßt den Vorschlag, den Antrag als behandelt gelten zu lassen.",
+      "speaker": "Höpken",
+      "party": "BSW",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42751,
+       "page": 9,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+      }
+     },
+     {
+      "text": "Lehnt die Tariferhöhung ab, fordert seit Jahren ein sozialeres Busfahren und unterstützt den Prüfantrag zum Sozialticket sowie die Überarbeitung der Ausgleichszahlungen.",
+      "speaker": "Höpken",
+      "party": "BSW",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43041,
+       "page": 12,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+      }
+     },
+     {
+      "text": "Erwidert, dass generelle Steuerentlastungen nur Besserverdienende begünstigen.",
+      "speaker": "Dr. Onken",
+      "party": "BSW",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43045,
+       "page": null,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do"
+      }
+     }
+    ]
+   },
+   {
+    "party": "CDU",
+    "statements": [
+     {
+      "text": "Ratsfrau Woltmann hält die moderate Tariferhöhung zur Vermeidung von Ausgleichszahlungen für sinnvoll, lehnt den kurzfristig vorgelegten Änderungsantrag wegen der Haushaltsrelevanz aber ab.",
+      "speaker": "Woltmann",
+      "party": "CDU",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42738,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Ratsherr Baak verweist auf frühere Ausgleichszahlungen bei Tarifverzichten 2024 und Kosten von ca. 600.000 Euro jährlich für das kostenfreie Busfahren am Samstag.",
+      "speaker": "Baak",
+      "party": "CDU",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42742,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Ratsherr Baak vermisst einen konkreteren Vorschlag zur haushaltlichen Gegenfinanzierung.",
+      "speaker": "Baak",
+      "party": "CDU",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42752,
+       "page": 9,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+      }
+     },
+     {
+      "text": "Bezeichnet die Zustimmung zur VBN-Tariferhöhung mangels Alternativen (742.000 Euro Kosten bei Ablehnung) als alternativlos, hält den Prüfauftrag für das Deutschlandticket mit Blick auf Haushaltskosten für den richtigen Weg und fordert die Überprüfung der VBN-Vertragsstruktur.",
+      "speaker": "Baak",
+      "party": "CDU",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43043,
+       "page": 12,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+      }
+     }
+    ]
+   },
+   {
+    "party": "SPD",
+    "statements": [
+     {
+      "text": "Ratsherr Meerbothe verweist auf haushalterische Auswirkungen und fordert eine Behandlung im Rahmen der Haushaltsberatungen.",
+      "speaker": "Meerbothe",
+      "party": "SPD",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42735,
+       "page": 7,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=7"
+      }
+     },
+     {
+      "text": "Ratsfrau Piechotta hält den kurzfristig vorgelegten Änderungsantrag für nicht ausreichend vorbereitet.",
+      "speaker": "Piechotta",
+      "party": "SPD",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42748,
+       "page": 9,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+      }
+     },
+     {
+      "text": "Erklärt, dass die Stadt VBN-Erhöhung mangels Alternativen (sonst Ausgleichszahlungen) mittragen muss, unterstützt aber den Prüfauftrag zum Sozialticket und fordert Gespräche mit dem VBN zur Überwindung des Ausgleichs-Automatismus.",
+      "speaker": "Prange",
+      "party": "SPD",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43040,
+       "page": 11,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+      }
+     }
+    ]
+   },
+   {
+    "party": "FDP",
+    "statements": [
+     {
+      "text": "Ratsfrau Pfeiffer bezeichnet die Tarifanpassung als moderat und hält zusätzliches Geld für ein Soziales Deutschlandticket in der angespannten Haushaltslage für nicht tragbar.",
+      "speaker": "Pfeiffer",
+      "party": "FDP",
+      "body": "Verkehrsausschuss",
+      "date": "2026-08-24",
+      "source": {
+       "kind": "speech",
+       "id": 42741,
+       "page": 8,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+      }
+     },
+     {
+      "text": "Unterstützt den Beschluss zur Vermeidung von Ausgleichszahlungen, fordert von städtischen Vertreter beim VBN eine Änderung der Vertragsstruktur und befürwortet den Prüfauftrag für das Sozialticket.",
+      "speaker": "Pfeiffer",
+      "party": "FDP",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43044,
+       "page": 12,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+      }
+     }
+    ]
+   },
+   {
+    "party": "AfD",
+    "statements": [
+     {
+      "text": "Kritisiert den Ausbau des Sozialstaates und lehnt das Sozialticket als bürokratisch und kostspielig ab; fordert stattdessen Entlastung durch generelle Senkung von Gebühren und Steuern.",
+      "speaker": "Paul",
+      "party": "AfD",
+      "body": "Rat",
+      "date": "2026-08-31",
+      "source": {
+       "kind": "speech",
+       "id": 43042,
+       "page": 12,
+       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+      }
+     }
+    ]
+   }
+  ],
+  "created_at": "2026-11-10T15:53:02+00:00",
+  "stale": false
+ }
+}

@@ -2081,6 +2081,13 @@ def session_item(
     punkt = store.session_item(ksinr, nr)
     if not punkt:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+    if features.an("punkt-argumente"):
+        try:
+            args = store.item_arguments_view(ksinr, nr)
+            if args:
+                punkt["arguments"] = args
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Argumente fehlgeschlagen für %s %s", ksinr, nr)
     return punkt
 
 
@@ -5513,7 +5520,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # wählt aus Kandidaten nach Wortanfang (`qa.themen_kandidaten`).
             suche_ausbau = features.an("suche-ausbau")
             themen = qa.themen_kandidaten(store, q) if suche_ausbau else None
-            analyse = qa.analyse_query(q, verlauf=verlauf, orte=orte, themen=themen)
+            # Ohne Verlauf ist die Seite der Verlauf: Ihr Gegenstand geht als
+            # erste Runde voraus, damit „Und was kostet das?“ ihn meint
+            # (qa.seiten_gegenstand sagt, warum). Nur für die Analyse — das
+            # gespeicherte Gespräch bekommt keine erfundene Runde.
+            seite = qa.seiten_gegenstand(store, bildschirm) if bildschirm else None
+            verlauf_analyse = verlauf or ([{"question": f"Ich bin auf der Seite zu: {seite}", "answer": ""}]
+                                          if seite else [])
+            analyse = qa.analyse_query(q, verlauf=verlauf_analyse, orte=orte, themen=themen)
             expanded, typ = analyse["terms"], analyse["kind"]
             # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
             # der Befund kam aus einer echten Nutzer-Frage, der nach dem
@@ -5618,7 +5632,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # mitgebracht hat.
             if qa.rueckfrage_noetig(analyse, einfach=einfach, person=person,
                                     ort=ort, sitzungen=sitzungen,
-                                    procedure=bool(rules_sel)):
+                                    procedure=bool(rules_sel), seite=bool(seite)):
                 yield _sse({"type": "token", "text": qa.RUECKFRAGE_TEXT})
                 try:
                     vorschlaege = qa.rueckfrage_vorschlaege(store, q)
