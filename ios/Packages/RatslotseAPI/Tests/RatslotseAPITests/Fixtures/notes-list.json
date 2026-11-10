@@ -1,0 +1,24 @@
+{
+ "notes": [
+  {
+   "target_kind": "agenda_item",
+   "target_key": "4654|Ö 9",
+   "kind": "transcript",
+   "iv": "c7oHxdXnaQjs9WN/",
+   "ciphertext": "fDOUDRLrkfrqZhDDQXkNw6g6eKX5lZefiCsZdTH53KA4lXlV6l2/5A1XwstHv/P32wbTbYmM7jm5OkpM7VIqt5mgKFqFtJurrjsXyMYRbmiW9pxvHMA=",
+   "key_version": 1,
+   "version": 1,
+   "updated_at": "2026-11-10T17:28:57"
+  },
+  {
+   "target_kind": "agenda_item",
+   "target_key": "4654|Ö 11.1",
+   "kind": "note",
+   "iv": "iDlIq5S1sN2BFBgK",
+   "ciphertext": "TO0RYssq5H/2NtMCFGWpGV3zYpKNjDHQd/E6mjv1HR0k7kkWcGG1Fyhiz42506PuXy8NAZQeJnQQZM925Kbq3DQHT2vRRYL1fjc+/wbK3phbcs6/AX8jf3zaMNlEEIBojrweDSiKlI74AA==",
+   "key_version": 1,
+   "version": 1,
+   "updated_at": "2026-11-10T16:26:04"
+  }
+ ]
+}

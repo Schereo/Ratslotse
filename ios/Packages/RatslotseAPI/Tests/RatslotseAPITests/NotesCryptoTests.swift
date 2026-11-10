@@ -89,3 +89,58 @@ struct NotesCryptoTests {
         #expect(NotesCrypto.parseRecovery("UUUU-UUUU-UUUU-UUUU-UUUU-UUUU-UUUU-UUUU") == nil)
     }
 }
+
+/// Die Gegenprobe über Kreuz: echte Antworten von `/api/notes` (lokaler Server,
+/// 10.11.2026), die Notizen darin im BROWSER geschrieben — mit WebCrypto, über
+/// die Karte „Meine Notiz“ und den Mitschrieb. Die App decodiert die Antworten
+/// mit ihren Modellen und entschlüsselt sie mit `NotesCrypto`. Passphrase der
+/// Probe: „Lotti liest mit 2026“ (erfundenes Konto aus `scripts/saat_konten.py`).
+struct NotesCrossCheckTests {
+    func fixture<T: Decodable>(_ name: String, as: T.Type) throws -> T {
+        let url = try #require(Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures"))
+        return try JSONDecoder().decode(T.self, from: Data(contentsOf: url))
+    }
+
+    @Test func eineImBrowserGeschriebeneNotizInDerAppLesen() throws {
+        let state = try fixture("notes-keys", as: NoteKeysState.self)
+        let keys = try #require(state.keys)
+        #expect(state.configured && keys.kdf == "pbkdf2-sha256" && keys.iterations == 600_000)
+        let dk = try #require(NotesCrypto.unlock(passphrase: "Lotti liest mit 2026", salt: keys.salt,
+                                                 iterations: keys.iterations, wrappedPassphrase: keys.wrappedPassphrase))
+        let list = try fixture("notes-list", as: NoteList.self)
+
+        let notiz = try #require(list.notes.first { $0.kind == "note" })
+        let klar = try #require(NotesCrypto.decrypt(
+            iv: notiz.iv, ciphertext: notiz.ciphertext, dk: dk,
+            aad: NotesCrypto.aad(targetKind: notiz.targetKind, targetKey: notiz.targetKey, kind: notiz.kind)))
+        let doc = try JSONDecoder().decode(NoteDocument.self, from: klar)
+        #expect(notiz.targetKey == "4654|Ö 11.1")
+        #expect(doc.text.hasPrefix("Pieper fragt nach Tempo 30"))
+
+        // Auch der Mitschrieb (Art `transcript`) ist mit demselben Schlüssel lesbar.
+        struct Mitschrieb: Decodable { let text: String; let outcome: String? }
+        let m = try #require(list.notes.first { $0.kind == "transcript" })
+        let mk = try #require(NotesCrypto.decrypt(
+            iv: m.iv, ciphertext: m.ciphertext, dk: dk,
+            aad: NotesCrypto.aad(targetKind: m.targetKind, targetKey: m.targetKey, kind: m.kind)))
+        let md = try JSONDecoder().decode(Mitschrieb.self, from: mk)
+        #expect(md.outcome == "accepted" && md.text == "Verwaltung will im Dezember berichten.")
+
+        // Eine falsche Passphrase scheitert auch an echten Daten.
+        #expect(NotesCrypto.unlock(passphrase: "Lotti liest mit 2025", salt: keys.salt,
+                                   iterations: keys.iterations, wrappedPassphrase: keys.wrappedPassphrase) == nil)
+    }
+
+    @Test func eineInDerAppGeschriebeneNotizHaeltDieFormDesServers() throws {
+        // Was die App hochlädt, muss der Server annehmen: IV 12 Byte, Geheimtext
+        // Base64, höchstens 16 KB (`web/backend/app/routers/notes.py`).
+        let dk = NotesCrypto.random(32)
+        let klar = try JSONEncoder().encode(NoteDocument(text: String(repeating: "ä", count: 8000)))
+        let blob = try #require(NotesCrypto.encrypt(klar, dk: dk, aad: Data("decision|8525|note".utf8)))
+        #expect(Data(base64Encoded: blob.iv)?.count == 12)
+        #expect((Data(base64Encoded: blob.ciphertext)?.count ?? .max) <= 16 * 1024)
+        let upload = NoteUpload(iv: blob.iv, ciphertext: blob.ciphertext, keyVersion: 1, version: 0)
+        let json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(upload)) as? [String: Any])
+        #expect(Set(json.keys) == ["iv", "ciphertext", "key_version", "version"])
+    }
+}
