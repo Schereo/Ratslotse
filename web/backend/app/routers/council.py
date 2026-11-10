@@ -2081,6 +2081,13 @@ def session_item(
     punkt = store.session_item(ksinr, nr)
     if not punkt:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+    if features.an("punkt-argumente"):
+        try:
+            args = store.item_arguments_view(ksinr, nr)
+            if args:
+                punkt["arguments"] = args
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Argumente fehlgeschlagen für %s %s", ksinr, nr)
     return punkt
 
 

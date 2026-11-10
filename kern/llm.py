@@ -293,6 +293,8 @@ OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
     "district_projects",
     # Social-Texte über Beschlüsse
     "social_card_text", "social_critic",
+    # Argumente zu einem Tagesordnungspunkt aus Wortbeiträgen und Vorlage
+    "item_arguments",
     # Pläne der Stadt: Stand und Bezüge aus Vorlagen und Berichten heraussuchen
     "plan_measure_status", "plan_link_judgement", "plan_mandate_check", "plan_key_points", "plan_reports", "plan_plain",
     # Städtevergleich: fremde Ratsdokumente
