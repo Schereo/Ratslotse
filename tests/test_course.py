@@ -615,3 +615,53 @@ def test_ergebnis_aus_dem_titel():
     assert course.outcome_from_title("X Beschluss: zurückgestellt/abgesetzt") == "postponed"
     assert course.outcome_from_title("X Beschluss: an Fachausschuss (zurück-)verwiesen") is None
     assert course.outcome_from_title("X - Beschluss") is None
+
+
+# ---- Punkt-Seite (Schritt 4) ----------------------------------------------
+
+def test_punkt_seite_mit_vorgeschichte_und_nachbarn(store):
+    """Ein Antrag ohne Vorlage: Seine Vorgeschichte sind die früheren Auftritte
+    desselben datierten Antrags im selben Gremium — die Stationen, die im
+    Entwurf unter „Vorgeschichte“ stehen."""
+    weissenmoor = next(z[1] for z in SITZUNGEN[4654][3] if z[0] == "Ö 11.1")
+    _frueher(store, 1, "Verkehrsausschuss", "2026-08-24", [("Ö 16.1", weissenmoor + " Beschluss: zurückgestellt/abgesetzt", "")])
+    p = store.session_item(4654, "Ö 11.1")
+    assert p["committee"] == "Verkehrsausschuss" and p["decision_id"] is None
+    assert [(s["session_date"], s["outcome"], s["current"]) for s in p["history"]] == [
+        ("2026-06-08", None, False), ("2026-08-24", "postponed", False), ("2026-09-21", None, True)]
+    assert p["previous"]["item_number"] == "Ö 10" and p["next"]["item_number"] == "Ö 11.2"
+    assert (p["position"], p["count"]) == (13, 16)
+    assert p["course_item"]["type"] == "motion"
+    # Nichtöffentlich, Überschrift, Unbekanntes: keine Seite.
+    assert store.session_item(4654, "N 13") is None
+    assert store.session_item(4654, "Ö 11") is None
+    assert store.session_item(4654, "Ö 99") is None
+    assert store.session_item(99999, "Ö 1") is None
+
+
+def test_punkt_mit_beschluss_und_unterlagen(store):
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, outcome) "
+            "VALUES (4652, 1, 'decision', '6', 't', 'accepted')")
+        store._conn.execute("UPDATE council_agenda_items SET kvonr = 777 WHERE ksinr = 4652 AND item_number = 'Ö 6'")
+    p = store.session_item(4652, "Ö 6")
+    assert p["decision_id"] is not None
+    assert p["documents"][0] == {"kind": "template", "label": f"Vorlage {p['item']['template_number']}",
+                                 "url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=777", "date": None}
+    s = store.agenda_item_subject(4652, "Ö 6")
+    assert s["decision_id"] == p["decision_id"]
+    s9 = store.agenda_item_subject(4654, "Ö 9")
+    assert s9["decision_id"] is None and s9["title"].startswith("Soziales D-Ticket")
+    assert store.agenda_item_subject(4654, "N 13") is None
+
+
+def test_gegenstand_regel_nennt_den_punkt():
+    """Ohne Beschluss nennt der Prompt den Tagesordnungspunkt beim Namen (Plan
+    3.10) — sonst meint „das“ den ähnlichsten älteren Beschluss."""
+    from council import qa
+    regel = qa.gegenstand_regel({"agenda_item": {
+        "item_number": "Ö 9", "title": "Soziales D-Ticket in Oldenburg - Bericht", "template_number": "26/0719",
+        "committee": "Verkehrsausschuss", "session_date": "2026-09-21", "decision_id": None}})
+    assert "Tagesordnungspunkt „Soziales D-Ticket in Oldenburg - Bericht“ (Ö 9, Verkehrsausschuss am 2026-09-21, Vorlage 26/0719)" in regel
+    assert qa.gegenstand_regel({}) == ""

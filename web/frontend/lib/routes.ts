@@ -58,6 +58,10 @@ export const sessionHref = (ksinr: number, tops?: string[]) => {
  *  `tops` reist wie bei `sessionHref` als volle Nummer („Ö 6", nicht „6"): Die
  *  Seite rollt zu dieser Zeile und hebt sie kurz hervor.
  */
+/** Ein Tagesordnungspunkt auf seiner eigenen Seite (Schalter `punkt-seite`,
+ *  Plan Sitzungsseite § 3.15): `top` im selben Format wie beim geteilten Punkt. */
+export const punktHref = (ksinr: number, itemNumber: string) =>
+  `/council/punkt?ksinr=${ksinr}&top=${encodeURIComponent(itemNumber.trim())}`;
 export const sitzungHref = (ksinr: number, tops?: string[]) => {
   const ziel = `/council/sitzung?ksinr=${ksinr}`;
   const sauber = (tops ?? []).map((t) => t.trim()).filter(Boolean);

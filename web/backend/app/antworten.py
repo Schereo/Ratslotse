@@ -2885,6 +2885,57 @@ class SessionDetail(SessionRow):
     course: NotRequired[SessionCourse]
 
 
+class SessionItemNeighbor(TypedDict):
+    """Der Punkt davor oder danach — Zurück und Weiter."""
+    item_number: str
+    short_title: str
+    type_label: str | None
+
+
+class SessionItemStation(TypedDict):
+    """Eine Station der Vorgeschichte eines Punkts. ``current`` ist diese
+    Sitzung; ``text`` die Kurzfassung des Beschlusses, wo es einen gibt."""
+    ksinr: int
+    committee: str
+    session_date: str
+    item_number: str
+    outcome: str | None
+    vote: str | None
+    decision_id: int | None
+    text: str | None
+    current: bool
+
+
+class SessionItemDocument(TypedDict):
+    """Eine Unterlage zum Punkt — alles extern im Ratsinfo."""
+    kind: Literal["template", "attachment", "protocol"]
+    label: str
+    url: str
+    date: str | None
+
+
+class SessionItemDetail(TypedDict):
+    """Ein Tagesordnungspunkt auf seiner eigenen Seite
+    (``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,
+    sobald das Protokoll einen Beschluss dazu hat — dann führt die Seite zur
+    Beschluss-Seite (Plan 3.9). ``position``/``count``: der wievielte Punkt
+    der Sitzung (Formalien als einer)."""
+    ksinr: int
+    committee: str
+    session_date: str
+    session_time: str | None
+    has_protocol: bool
+    item: AgendaItemRow
+    course_item: CourseItem
+    decision_id: int | None
+    history: list[SessionItemStation]
+    documents: list[SessionItemDocument]
+    previous: SessionItemNeighbor | None
+    next: SessionItemNeighbor | None
+    position: int
+    count: int
+
+
 class ImportanceBreakdown(TypedDict):
     """Warum ein Beschluss als wichtig gilt (``council.importance``).
 

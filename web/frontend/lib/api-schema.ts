@@ -4519,6 +4519,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/session/{ksinr}/item": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Session Item */
+        get: operations["session_item_api_council_session__ksinr__item_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/sessions": {
         parameters: {
             query?: never;
@@ -12646,6 +12663,8 @@ export interface components {
             area?: string | null;
             /** Decision Id */
             decision_id?: number | null;
+            /** Item Number */
+            item_number?: string | null;
             /** Ksinr */
             ksinr?: number | null;
             /** Place Id */
@@ -19227,6 +19246,116 @@ export interface components {
             /** Video Results */
             video_results: components["schemas"]["VideoResult"][];
         };
+        /**
+         * SessionItemDetail
+         * @description Ein Tagesordnungspunkt auf seiner eigenen Seite
+         *     (``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,
+         *     sobald das Protokoll einen Beschluss dazu hat — dann führt die Seite zur
+         *     Beschluss-Seite (Plan 3.9). ``position``/``count``: der wievielte Punkt
+         *     der Sitzung (Formalien als einer).
+         */
+        SessionItemDetail: {
+            /** Committee */
+            committee: string;
+            /** Count */
+            count: number;
+            course_item: components["schemas"]["CourseItem"];
+            /** Decision Id */
+            decision_id: number | null;
+            /** Documents */
+            documents: components["schemas"]["SessionItemDocument"][];
+            /** Has Protocol */
+            has_protocol: boolean;
+            /** History */
+            history: components["schemas"]["SessionItemStation"][];
+            item: components["schemas"]["AgendaItemRow"];
+            /** Ksinr */
+            ksinr: number;
+            /**
+             * SessionItemNeighbor
+             * @description Der Punkt davor oder danach — Zurück und Weiter.
+             */
+            next: {
+                /** Item Number */
+                item_number: string;
+                /** Short Title */
+                short_title: string;
+                /** Type Label */
+                type_label: string | null;
+            } | null;
+            /** Position */
+            position: number;
+            /**
+             * SessionItemNeighbor
+             * @description Der Punkt davor oder danach — Zurück und Weiter.
+             */
+            previous: {
+                /** Item Number */
+                item_number: string;
+                /** Short Title */
+                short_title: string;
+                /** Type Label */
+                type_label: string | null;
+            } | null;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time: string | null;
+        };
+        /**
+         * SessionItemDocument
+         * @description Eine Unterlage zum Punkt — alles extern im Ratsinfo.
+         */
+        SessionItemDocument: {
+            /** Date */
+            date: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "template" | "attachment" | "protocol";
+            /** Label */
+            label: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * SessionItemNeighbor
+         * @description Der Punkt davor oder danach — Zurück und Weiter.
+         */
+        SessionItemNeighbor: {
+            /** Item Number */
+            item_number: string;
+            /** Short Title */
+            short_title: string;
+            /** Type Label */
+            type_label: string | null;
+        };
+        /**
+         * SessionItemStation
+         * @description Eine Station der Vorgeschichte eines Punkts. ``current`` ist diese
+         *     Sitzung; ``text`` die Kurzfassung des Beschlusses, wo es einen gibt.
+         */
+        SessionItemStation: {
+            /** Committee */
+            committee: string;
+            /** Current */
+            current: boolean;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Item Number */
+            item_number: string;
+            /** Ksinr */
+            ksinr: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string;
+            /** Text */
+            text: string | null;
+            /** Vote */
+            vote: string | null;
+        };
         /** SessionList */
         SessionList: {
             /** Count */
@@ -25485,6 +25614,39 @@ export interface operations {
             };
         };
     };
+    session_item_api_council_session__ksinr__item_get: {
+        parameters: {
+            query: {
+                nr: string;
+            };
+            header?: never;
+            path: {
+                ksinr: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionItemDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     sessions_api_council_sessions_get: {
         parameters: {
             query?: {
@@ -29109,4 +29271,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 45d6bc8fe6d594aa42160de2c5322a9f122d89c117c59d1c7df7200cd19300b9
+// vertrag-sha256: eaef9cb7df329b640732f6d75125aeb9c5df3d0834c3c8e905bdec00ead53866

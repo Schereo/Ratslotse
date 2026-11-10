@@ -17,6 +17,8 @@ import { useEffect, useState } from "react";
 export const OEFFENTLICHE_PFADE = [
   "/council/decision",
   "/council/sitzung",
+  // Ein Punkt der Sitzung (Schalter `punkt-seite`) — geteilt wie die Sitzung.
+  "/council/punkt",
   "/council/thema",
   "/council/person",
   // Die Wahlen (seit 10/2026 in der App-Hülle, vorher eigene Vollbild-Seiten):
