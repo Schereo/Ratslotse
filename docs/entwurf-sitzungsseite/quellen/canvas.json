@@ -1,0 +1,156 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-09T20:35:00Z" },
+  "title": "Ratslotse · Sitzungsseite Redesign",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1360,
+      "h": 4820,
+      "title": "Sitzung · Desktop · nach der Sitzung",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Mobil.dc.html": {
+      "x": 1440,
+      "y": 0,
+      "w": 390,
+      "h": 8630,
+      "title": "Sitzung · Mobil · nach der Sitzung"
+    },
+    "VorDerSitzung.dc.html": {
+      "x": 1910,
+      "y": 0,
+      "w": 1360,
+      "h": 3780,
+      "title": "Sitzung · Desktop · vor der Sitzung",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Mitlesen.dc.html": {
+      "x": 3350,
+      "y": 0,
+      "w": 1360,
+      "h": 2380,
+      "title": "Mitlesen · Desktop · während der Sitzung",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "MitlesenMobil.dc.html": {
+      "x": 4790,
+      "y": 0,
+      "w": 390,
+      "h": 3270,
+      "title": "Mitlesen · Mobil · während der Sitzung",
+      "is_interactive": true
+    },
+    "Punkt.dc.html": {
+      "x": 5260,
+      "y": 0,
+      "w": 1360,
+      "h": 2450,
+      "title": "Punkt-Seite · Soziales D-Ticket",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "KursVarianten.dc.html": {
+      "x": 6700,
+      "y": 0,
+      "w": 1360,
+      "h": 1000,
+      "title": "Kurs der Sitzung · wenig, viel, Handy"
+    },
+    "Kurs.dc.html": {
+      "x": 8140,
+      "y": 0,
+      "w": 1240,
+      "h": 86,
+      "title": "Baustein · Kurs der Sitzung"
+    }
+  },
+  "order": ["Main.dc.html", "Mobil.dc.html", "VorDerSitzung.dc.html", "Mitlesen.dc.html", "MitlesenMobil.dc.html", "Punkt.dc.html", "KursVarianten.dc.html", "Kurs.dc.html"],
+  "notes": {
+    "titel": {
+      "x": 0,
+      "y": -300,
+      "text": "Sitzungsseite · Redesign „Kurs der Sitzung“",
+      "kind": "title1",
+      "maxW": 6620
+    },
+    "kursTitel": {
+      "x": 6700,
+      "y": -300,
+      "text": "Kurs der Sitzung · Varianten und Baustein",
+      "kind": "title1",
+      "maxW": 2680
+    },
+    "hinweisMitlesen": {
+      "x": 3350,
+      "y": 2500,
+      "w": 300,
+      "size": "s",
+      "fill": "purple",
+      "text": "UMSETZUNG · MITLESEN\nKein Live-Signal: Das Ratsinfo meldet nicht, welcher Punkt gerade läuft. Wer mitliest, klickt selbst weiter. Der Stand (Sitzung und aktiver Punkt) liegt nur im Browser und braucht kein Konto. Der Baustein Kurs bekommt dafür aktiv (Nummer) und onWaehle (Rückruf). In der kompakten Handy-Ansicht sind die kleinen Punkte nicht antippbar; dort führen „Weiter“, „Zurück“ und „Als Nächstes“. Auf dem Handy die Leiste mit Zurück und Weiter unten festhalten (position: sticky) und beim Wechsel an den Anfang der Karte scrollen. Inhalte je Punkt: dieselben Felder wie auf der Punkt-Seite."
+    },
+    "hinweisMitschrieb": {
+      "x": 3670,
+      "y": 2500,
+      "w": 300,
+      "size": "s",
+      "fill": "pink",
+      "text": "UMSETZUNG · MITSCHRIEB\nEigenes Ergebnis je Punkt (angenommen, abgelehnt, vertagt, zur Kenntnis) plus Notiz. Gespeichert wie die Notizen: auf dem Gerät verschlüsselt, der Server sieht nur den verschlüsselten Text. Die Boje nimmt die Farbe des eigenen Mitschriebs an (Prop ergebnisse am Baustein Kurs). Immer als Mitschrieb kennzeichnen, nie als Ergebnis ausgeben. Liegt das Protokoll vor, gilt das amtliche Ergebnis; weicht der Mitschrieb ab, beides zeigen. Im Entwurf sind die beiden Vorschläge unter „Frag den Rat“ fest gesetzt und ohne Funktion."
+    },
+    "hinweisPiktogramme": {
+      "x": 8140,
+      "y": 206,
+      "w": 300,
+      "size": "s",
+      "fill": "blue",
+      "text": "UMSETZUNG · PIKTOGRAMME\nJe Punkt ein Schlüssel aus einer festen Liste (rund 30: rad, ticket, parken, tempo, route, schild, bauen, wohnen, geld, schule, kita, grün, wasser, energie, müll, sport, kultur, soziales, personal, satzung …). Vergeben wird er in der Aufbereitung, die schon titel_kurz und wichtig schreibt (council/store_sitzungen.py, _punkt_export), aus Titel und Vorlage. Das Modell wählt nur aus der Liste, nie ein freies Icon. Passt nichts: Rückfall nach Typ (Entscheidung, Bericht, Antrag). Derselbe Schlüssel gilt für Boje, Kachel und Listenzeile. Zeichensatz: Lucide."
+    },
+    "hinweisPhasen": {
+      "x": 8460,
+      "y": 206,
+      "w": 300,
+      "size": "s",
+      "fill": "teal",
+      "text": "UMSETZUNG · ETAPPEN\nKommen aus der Gliederung der Tagesordnung: Oberpunkte ohne eigene Vorlage (im Rat etwa „Ö 9 Ausschuss für Stadtplanung und Bauen“ oder „Ö 10 Anträge“) eröffnen eine Etappe, ihre Unterpunkte sind die Bojen. Formalien werden zu einer Boje. Jede Etappe ist ein helles Band mit Namen; der Name steht am ersten Stück mit mindestens zwei Zellen, sonst gilt der Kurzname. Etappen mit nur einem Punkt bekommen eine Leerzelle. Nichtöffentlich: eine Schloss-Boje, Linie davor gestrichelt, nur die Anzahl. Die Liste darunter nutzt dieselben Etappen."
+    },
+    "hinweisSchlange": {
+      "x": 8780,
+      "y": 206,
+      "w": 300,
+      "size": "s",
+      "fill": "green",
+      "text": "UMSETZUNG · SCHLANGENLINIE\nKein seitliches Scrollen. Zellen je Zeile = nutzbare Breite ÷ Mindestbreite (60 px, kompakt 30 px), danach gleichmäßig auf die Zeilen verteilen. Jede zweite Zeile läuft von rechts nach links, die Kehre sitzt im Rand neben der Zeile. Im DOM bleibt die Reihenfolge 1, 2, 3 …; gedreht wird nur optisch (row-reverse), damit Tab-Folge und Screenreader stimmen. Breite am Baustein messen (ResizeObserver, offsetWidth), nicht am Fenster. Die Rechnung steht lauffähig in Kurs.dc.html, Methode rechne()."
+    },
+    "hinweisDichte": {
+      "x": 9100,
+      "y": 206,
+      "w": 300,
+      "size": "s",
+      "fill": "orange",
+      "text": "UMSETZUNG · DICHTE\nKomfortabel: jede Boje mit Piktogramm und Nummer, alle anklickbar mit 44 px Trefferfläche. Bräuchte das mehr als zwei Zeilen, schaltet der Baustein auf kompakt: kleine Punkte ohne Link, nur wichtige Punkte als Boje mit Piktogramm, Nummern ohne „Ö“ und nur am Etappenanfang und an wichtigen Punkten. Passt alles in eine Zeile und ist eine Zelle mindestens 104 px breit, steht unter der Nummer der Kurztitel. Am Baustein lassen sich Sitzung, Dichte und Breite über die Tweaks umstellen."
+    },
+    "hinweisZustaende": {
+      "x": 9420,
+      "y": 206,
+      "w": 300,
+      "size": "s",
+      "fill": "gray",
+      "text": "UMSETZUNG · ZUSTÄNDE UND DATEN\nVor der Sitzung: weiß; wichtig = groß und blau; gelber Punkt = schon einmal vertagt. Während der Sitzung: der aktive Punkt ist orange umrandet, die Linie bis dorthin durchgezogen, frühere Bojen blasser. Nach der Sitzung: Boje in der Ergebnisfarbe, wichtig bleibt groß. Klick springt zur Zeile in der Liste; title und aria-label tragen Nummer und Titel. Je Punkt nötig: Nummer, Kurztitel, Typ, Etappe, wichtig mit Grund, Zahl früherer Vertagungen, Piktogramm-Schlüssel, öffentlich ja/nein, nach der Sitzung das Ergebnis. „Wichtig“ und der Lotti-Satz sind in diesem Entwurf von Hand gesetzt; in den Varianten für Rat und Sportausschuss ist „wichtig“ nur ein Platzhalter."
+    }
+  },
+  "designSystems": [
+    {
+      "title": "Ratslotse",
+      "namespace": "ratslotse",
+      "artifact": "https://claude.ai/artifact/GNKF2u8CDEVMSaWdwcc8YQ",
+      "version": "1790785705-e869",
+      "copiedAt": "2026-11-09T20:35:00Z"
+    }
+  ]
+}
