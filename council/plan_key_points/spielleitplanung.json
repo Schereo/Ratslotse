@@ -1,0 +1,88 @@
+{
+ "plan": "spielleitplanung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Der Plan analysiert Oldenburgs Spiellandschaft und beschreibt ihre Weiterentwicklung für die nächsten 15 bis 20 Jahre.",
+  "quote": "Sie stellt die Analyse der aktuellen Situation sowie die zukünftige Weiterentwicklung der städtischen Spiellandschaft für die nächsten 15 bis 20 Jahre dar.",
+  "source": {
+   "kind": "template",
+   "template": "26/0255"
+  }
+ },
+ "points": [
+  {
+   "text": "Die Verwaltung muss Personal und Mittel für mindestens zwei bis drei Umgestaltungen oder Neuanlagen pro Jahr einplanen; bei Engpässen soll sie berichten und Abhilfe vorschlagen.",
+   "kind": "responsibility",
+   "quote": "Die Stadtverwaltung wird beauftragt, die Maßnahmen umzusetzen und ausreichend Personal und Mittel für mindestens zwei bis drei Umgestaltungen oder Neuanlagen von Spielplätzen pro Jahr einzuplanen. Bei mangelnden Ressourcen berichtet sie proaktiv und schlägt Maßnahmen zur Abhilfe vor.",
+   "source": {
+    "kind": "decision",
+    "template": "26/0255",
+    "date": "2026-06-01",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Als Spielfläche sollen mindestens 2,25 m² je Einwohner im Stadtgebiet vorgehalten werden.",
+   "kind": "figure",
+   "quote": "Für die drei Altersgruppen 0 bis 6 Jahre, 7 bis 11 Jahre und 12 bis 18 Jahre sind jeweils mindestens 0,75 m² Spielfläche je Einwohner notwendig. Daraus ergibt sich eine Fläche von mindestens 2,25 m² je Einwohner, welche als Spielplatzfläche im Stadtgebiet vorgehalten werden soll.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0255",
+    "document_id": 306888,
+    "label": "Spielleitplanung, Gesamttext (Entwurf)",
+    "page": 25
+   }
+  },
+  {
+   "text": "Jedes Kind soll im näheren Wohnumfeld mindestens einen Spielplatz mit Grundversorgung auch allein erreichen können.",
+   "kind": "goal",
+   "quote": "Jedes Kind in Oldenburg soll in seinem näheren Wohnumfeld mindestens einen Spielplatz mit einer Grundversorgung an Spielangeboten (auch alleine) erreichen können.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0255",
+    "document_id": 306888,
+    "label": "Spielleitplanung, Gesamttext (Entwurf)",
+    "page": 42
+   }
+  },
+  {
+   "text": "Auf Spielplätzen soll Teilhabe unabhängig von Alter, Geschlecht, Sprache sowie körperlichen und psychischen Einschränkungen möglich sein.",
+   "kind": "standard",
+   "quote": "Auf den Spielplätzen soll eine Teilhabe stattfinden können unabhängig von Alter, Geschlecht, Sprache, körperlichen und psychischen Einschränkungen.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0255",
+    "document_id": 306888,
+    "label": "Spielleitplanung, Gesamttext (Entwurf)",
+    "page": 41
+   }
+  },
+  {
+   "text": "Die Spielplätze werden künftig in sieben Typen eingeteilt: Stadtteil-, Stadtviertel-, Quartiers- und Nachbarschaftsspielplätze, Ballspielflächen, Spielpunkte und Outdoorfitness.",
+   "kind": "standard",
+   "quote": "Konkret werden daher künftig die sieben „Spielplatztypen“ unterschieden: Stadtteilspielplatz, Stadtviertelspielplatz, Quartiersspielplatz, Nachbarschaftsspielplatz, Ballspielfläche, Spielpunkte, Outdoorfitness.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0255",
+    "document_id": 306888,
+    "label": "Spielleitplanung, Gesamttext (Entwurf)",
+    "page": 20
+   }
+  },
+  {
+   "text": "Alle Spielplätze im Stadtgebiet sollen erfasst und ihre Eigenschaften nach einem Bewertungsschema analysiert werden.",
+   "kind": "measure",
+   "quote": "Im Zuge der Umsetzung des Leitbildes sollen alle Spielplätze im Stadtgebiet ausführlich erfasst und die unterschiedlichen Eigenschaften nach einem Bewertungsschema analysiert werden, um ein umfassendes Bild der Spiellandschaft in Oldenburg zu erhalten und die Handlungsschwerpunkte für die zukünftige Entwicklung ablesbar zu machen.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0255",
+    "document_id": 306888,
+    "label": "Spielleitplanung, Gesamttext (Entwurf)",
+    "page": 49
+   }
+  }
+ ]
+}

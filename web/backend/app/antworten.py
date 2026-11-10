@@ -4924,6 +4924,43 @@ class PlanMeasures(TypedDict):
     groups: list[PlanMeasureGroup]
 
 
+class PlanContentSource(TypedDict):
+    """Wo ein Kernpunkt steht: Beschlusstext, Vorlage oder Anlage (mit Seite)."""
+    kind: Literal["decision", "template", "attachment"]
+    #: „Beschluss des Rates“, „Vorlage der Verwaltung“ oder der Name der Anlage.
+    label: str
+    template_number: str
+    #: Seite der Anlage; ``None`` bei Beschluss und Vorlage.
+    page: int | None
+    #: Von wann die Quelle ist (Beschlussdatum) — der Stand des Satzes.
+    date: str | None
+    date_label: str | None
+    #: Der Beschluss bei Ratslotse (nur ``kind="decision"``).
+    decision_id: int | None
+    #: Das Dokument im Ratsinformationssystem; bei Anlagen mit Sprung auf die Seite.
+    url: str | None
+
+
+class PlanContentStatement(TypedDict):
+    text: str
+    #: Die wörtliche Stelle, die den Satz belegt.
+    quote: str
+    source: PlanContentSource
+    #: Der Satz steht so in einem Beschluss NACH dem ursprünglichen Plan.
+    amended: bool
+
+
+class PlanContent(TypedDict):
+    """Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
+    (``council/plan_key_points/<key>.json``)."""
+    #: „Was der Plan festlegt“ nur bei einem Beschluss; sonst „Was im Plan steht“ oder „… der Entwurf vorsieht“.
+    heading: str
+    purpose: PlanContentStatement
+    points: list[PlanContentStatement]
+    #: Wie die Punkte entstanden sind (Modell sucht, Zitat belegt).
+    note: str
+
+
 class PlanReview(TypedDict):
     """Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung."""
     planned: list[PlanFact]
@@ -4952,6 +4989,8 @@ class PlanDetail(PlanCard):
     commissioned: PlanTemplateRef | None
     concluded: PlanTemplateRef | None
     predecessor: PlanNeighbour | None
+    #: Zweck und Kernpunkte; ``None``, wo kein Plantext vorliegt.
+    content: PlanContent | None
     measures: PlanMeasures | None
     city_status: PlanCityStatus | None
     indicators: list[PlanIndicator]

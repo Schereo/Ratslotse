@@ -478,6 +478,7 @@ PLANS: dict[str, Plan] = {p.key: p for p in (
         decisions=(
             Decision("2022-11-28", "22/0811/1", label="Anteil Bio-Lebensmittel"),
             Decision("2023-12-18", "23/0856", label="Anteil Bio-Lebensmittel 2024/2025"),
+            Decision("2024-12-16", "24/0687", label="Bio-Monitoring bei Neuvergaben"),
             Decision("2024-12-16", "24/0688", label="Anteil Bio-Lebensmittel 2025/2026"),
             Decision("2025-12-01", "25/0634", label="Anteil Bio-Lebensmittel 2026/2027"),
         ),

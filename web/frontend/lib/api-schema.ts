@@ -15059,6 +15059,55 @@ export interface components {
             /** Total */
             total: number;
         };
+        /**
+         * PlanContent
+         * @description Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
+         *     (``council/plan_key_points/<key>.json``).
+         */
+        PlanContent: {
+            /** Heading */
+            heading: string;
+            /** Note */
+            note: string;
+            /** Points */
+            points: components["schemas"]["PlanContentStatement"][];
+            purpose: components["schemas"]["PlanContentStatement"];
+        };
+        /**
+         * PlanContentSource
+         * @description Wo ein Kernpunkt steht: Beschlusstext, Vorlage oder Anlage (mit Seite).
+         */
+        PlanContentSource: {
+            /** Date */
+            date: string | null;
+            /** Date Label */
+            date_label: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "decision" | "template" | "attachment";
+            /** Label */
+            label: string;
+            /** Page */
+            page: number | null;
+            /** Template Number */
+            template_number: string;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanContentStatement */
+        PlanContentStatement: {
+            /** Amended */
+            amended: boolean;
+            /** Quote */
+            quote: string;
+            source: components["schemas"]["PlanContentSource"];
+            /** Text */
+            text: string;
+        };
         /** PlanDecisionEntry */
         PlanDecisionEntry: {
             /** Committee */
@@ -15237,6 +15286,20 @@ export interface components {
                 title: string | null;
                 /** Url */
                 url: string | null;
+            } | null;
+            /**
+             * PlanContent
+             * @description Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
+             *     (``council/plan_key_points/<key>.json``).
+             */
+            content: {
+                /** Heading */
+                heading: string;
+                /** Note */
+                note: string;
+                /** Points */
+                points: components["schemas"]["PlanContentStatement"][];
+                purpose: components["schemas"]["PlanContentStatement"];
             } | null;
             /** Decision Groups */
             decision_groups: components["schemas"]["PlanDecisionGroup"][];
@@ -28344,4 +28407,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7b8f08478997e3a9206d5a69eadf49de40aab0379e15dcd304eba69e61c04002
+// vertrag-sha256: 19ce6cae74e322375252b3c570594c0166488416a2cf0fb4c5b844257f251b81

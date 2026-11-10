@@ -1,0 +1,86 @@
+{
+ "plan": "mobilitaetsplan_2030",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Der Plan führt den Strategieplan Mobilität und Verkehr fort und ist die Grundlage für die Umsetzung – auch mit Blick auf die Klimaneutralität 2035.",
+  "quote": "Der Plan führt den Strategieplan Mobilität und Verkehr Oldenburg 2025 (smv 2025) fort und bildet eine vertiefende und umsetzungsbezogene Grundlage, vor allem auch in Hinblick auf das Ziel der lokalen Klimaneutralität 2035.",
+  "source": {
+   "kind": "template",
+   "template": "23/0211/2"
+  }
+ },
+ "points": [
+  {
+   "text": "Höchste Priorität haben Rad-Premiumrouten und Fahrradstraßen, die durchgehende ÖPNV-Spur am Wallring, Ladeinfrastruktur und Mobilitätsstationen.",
+   "kind": "measure",
+   "quote": "Höchste Priorität - Teilkonzepte • Radverkehr – Premiumrouten, Fahrradstraßen (Entfall Fahrradzonen wegen geringer Wirksamkeit) • Wallring - durchgehende ÖPNV-Spur • Ladeinfrastruktur • Mobilitätsstationen",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0216",
+    "document_id": 275932,
+    "label": "Ergebnis der Maßnahmenpriorisierung",
+    "page": 6
+   }
+  },
+  {
+   "text": "Bis 2030 beginnt die Umsetzung von sieben Premiumrouten, darunter FAST FLIN (Fliegerhorst), Hatten-Sandkrug und Wahnbek.",
+   "kind": "deadline",
+   "quote": "Beginn der Umsetzung bis 2030 (Details siehe Anlage 2 „Karte“ und Anlage 3 „Zeitplanung“): • 7 Premiumrouten (beinhalten z.T. auch Fahrradstraßen): FAST FLIN (Fliegerhorst), Hatten-Sandkrug, Wahnbek, Bad Zwischenahn, Tungeln-Wardenburg, Ofen, Petersfehn-Friedrichsfehn-Edewecht",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0216",
+    "document_id": 275932,
+    "label": "Ergebnis der Maßnahmenpriorisierung",
+    "page": 8
+   }
+  },
+  {
+   "text": "Außerhalb der Premiumrouten sind neun neue Fahrradstraßen vorgesehen, darunter Quellenweg, Lindenallee und Herbartstraße.",
+   "kind": "figure",
+   "quote": "• 9 neue Fahrradstraßen außerhalb von Premiumrouten: Quellenweg (in Umsetzung), Lindenallee, Herbartstraße, Bismarckstraße, Roggemannstraße, Am Schloßgarten, Schleusenstraße, Kanalstraße, Herrenweg",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0216",
+    "document_id": 275932,
+    "label": "Ergebnis der Maßnahmenpriorisierung",
+    "page": 8
+   }
+  },
+  {
+   "text": "Vier bestehende Fahrradstraßen sollen nach neuen Standards gestaltet werden.",
+   "kind": "standard",
+   "quote": "• 4 bestehende Fahrradstraßen nach neuen Standards gestalten: Haareneschstraße, Katharinenstraße, Haarenufer, Huntestraße",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0216",
+    "document_id": 275932,
+    "label": "Ergebnis der Maßnahmenpriorisierung",
+    "page": 8
+   }
+  },
+  {
+   "text": "Für die Wallring-Spur werden Ampelschaltungen und die Verkehrsführung an Knotenpunkten technisch konkretisiert.",
+   "kind": "measure",
+   "quote": "Vor dem Hintergrund der Umsetzung der durchgängigen ÖPNV-Spur am Wallring sind zudem die Ergebnisse der vorliegenden Machbarkeitsstudie in einer technischen Planung zu konkretisieren, einschließlich der Schaltungen der Lichtsignalanlagen und der Verkehrsführung an den Knotenpunkten.",
+   "source": {
+    "kind": "template",
+    "template": "23/0867"
+   }
+  },
+  {
+   "text": "Der öffentliche Ladeausbau ist bis 2025 auf 20 bis 25 Ladepunkte je Quartal und bis 2030 auf 28 bis 33 je Quartal angelegt.",
+   "kind": "figure",
+   "quote": "Bedarfsgerechter Aufbau öffentlicher Ladepunkte: • bis 2025 – quartalsweise 20 bis 25 Ladepunkte • bis 2030 – quartalsweise 28 bis 33 Ladepunkte",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0216",
+    "document_id": 275932,
+    "label": "Ergebnis der Maßnahmenpriorisierung",
+    "page": 14
+   }
+  }
+ ]
+}

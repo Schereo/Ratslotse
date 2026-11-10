@@ -1,0 +1,65 @@
+{
+ "plan": "gleichstellungsplan_2021",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan bündelt Ziele und Maßnahmen gegen Unterrepräsentanz und für bessere Vereinbarkeit von Beruf und Familie.",
+  "quote": "Formulierung von Zielen und Standards aufbauend auf den ermittelten Ergebnissen der Analyse sowie Benennung konkreter Maßnahmen zum Abbau der Unterrepräsentanzen beziehungsweise zur besseren Vereinbarkeit von Familie und Beruf",
+  "source": {
+   "kind": "template",
+   "template": "21/0399"
+  }
+ },
+ "points": [
+  {
+   "text": "Unterrepräsentanz liegt vor, wenn ein Geschlecht weniger als 45 Prozent der Vollzeitäquivalente in einer Entgelt- oder Besoldungsgruppe stellt.",
+   "kind": "standard",
+   "quote": "Laut NGG liegt eine Unterrepräsentanz vor, sobald ein Geschlecht innerhalb einer Ent­gelt- oder Besoldungsgruppe, gemessen an den Vollzeitäquivalenten, mit weniger als 45 Prozent vertreten ist.",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0399",
+    "document_id": 236435,
+    "label": "Gleichstellungsplan 2021–2023",
+    "page": 5
+   }
+  },
+  {
+   "text": "Frauen und Männer in Führungspositionen sind ein Hauptaugenmerk des Plans.",
+   "kind": "goal",
+   "quote": "Daher lag für die Erstellung dieses Gleichstellungsplans ein Hauptaugenmerk auf der Gleichstellung von Frauen und Männern in Führungspositionen.",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0399",
+    "document_id": 236435,
+    "label": "Gleichstellungsplan 2021–2023",
+    "page": 7
+   }
+  },
+  {
+   "text": "In den Entgeltgruppen EG 2 bis 6 des Abfallwirtschaftsbetriebs sind von 141 Personen nur 3 weiblich.",
+   "kind": "figure",
+   "quote": "Die Personalstruktur des Abfallwirtschafts­ betriebes ist geprägt von vielen männlichen Mitarbeitern in den Entgeltgruppen EG 2 bis 6: Von insgesamt 141 Personen sind lediglich 3 weiblich.",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0399",
+    "document_id": 236435,
+    "label": "Gleichstellungsplan 2021–2023",
+    "page": 22
+   }
+  },
+  {
+   "text": "Der Plan ordnet Vereinbarkeit drei Bereichen zu: flexibler Arbeitszeit und Arbeitsort, Kinderbetreuung sowie Pflege von Angehörigen.",
+   "kind": "standard",
+   "quote": "Die Stadt Oldenburg teilt die Vereinbarkeit von Beruf, Familie und Privatleben in drei große Bereiche: 1. Flexibilisierung von Arbeitszeit und -ort, 2. Kinderbetreuung und 3. Pflege von Angehörigen",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0399",
+    "document_id": 236435,
+    "label": "Gleichstellungsplan 2021–2023",
+    "page": 6
+   }
+  }
+ ]
+}

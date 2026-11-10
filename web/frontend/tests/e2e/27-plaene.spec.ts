@@ -136,6 +136,36 @@ test("die Maßnahmen lassen sich durchsuchen", async ({ page }) => {
   await expect(page.getByText(/Keine Maßnahme passt/)).toBeVisible();
 });
 
+test("was der Plan festlegt, steht unter dem Kopf — jeder Satz mit Zitat und Dokument", async ({ page }) => {
+  // Die Kernpunkte stehen als Dateien im Repo (council/plan_key_points/), also auch gegen die leere Datenbank.
+  await schalter(page, true);
+  await page.goto("/council/plan?key=schulverpflegung");
+  const block = page.locator('section[aria-labelledby="plan-content"]');
+  await expect(block.getByText("Was der Plan festlegt", { exact: true })).toBeVisible();
+  const points = block.locator("li");
+  expect(await points.count()).toBeGreaterThanOrEqual(3);
+  // Der Bio-Anteil wurde nach 2019 mehrfach geändert: Der Punkt trägt das Datum des jüngsten Beschlusses.
+  await expect(block.getByText("Stand 01.12.2025", { exact: true })).toBeVisible();
+  // Ein Tipp klappt das wörtliche Zitat auf; der Link führt ins Dokument, bei einer Anlage auf die Seite.
+  // Ein Punkt aus der Anlage („…, S. 5“): Sein Link hängt nicht am Bestand — gegen die leere Datenbank
+  // der CI kennt das Backend weder die Vorlage noch den Beschluss, die Dokument-Nummer steht in der Datei.
+  const fromPlan = points.filter({ hasText: /, S\. \d+/ }).first();
+  await expect(fromPlan.locator("blockquote")).toBeHidden();
+  await fromPlan.getByRole("button").click();
+  await expect(fromPlan.locator("blockquote")).toBeVisible();
+  await expect(fromPlan.locator('a[href^="https://buergerinfo.oldenburg.de/getfile.php"][href*="#page="]')).toBeVisible();
+  // Der Block steht VOR den Berichten.
+  const order = await page.evaluate(() => {
+    const content = document.getElementById("plan-content"), log = document.getElementById("plan-reports");
+    return content && log ? Boolean(content.compareDocumentPosition(log) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
+  });
+  expect(order).not.toBe(false);
+  // Ohne Plantext kein Block und kein Platzhalter (2015 beschlossen, vor dem Bestand).
+  await page.goto("/council/plan?key=kai_2015");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.locator('section[aria-labelledby="plan-content"]')).toHaveCount(0);
+});
+
 test("ohne Schalter bleibt es bei den Zielen", async ({ page }) => {
   await schalter(page, false);
   await page.goto("/council?tab=analysis&sub=ziele");
@@ -149,7 +179,8 @@ for (const breite of [390, 320]) {
     await page.setViewportSize({ width: breite, height: 800 });
     await schalter(page, true);
     for (const pfad of ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
-      "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035"]) {
+      "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035",
+      "/council/plan?key=schulverpflegung"]) {
       await page.goto(pfad, { waitUntil: "networkidle" });
       expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
     }

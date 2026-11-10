@@ -2,8 +2,9 @@
 
 // Die Detailseite eines Plans (Schalter `plaene`, docs/plan-ziele-plaene.md § 3.2).
 //
-// Der Aufbau folgt drei Fragen: Was ist der Plan, und wie lange gilt er?
-// (Kopfbühne mit Zeitband) Was wurde seither berichtet? (Zeitstrahl) Was hat
+// Der Aufbau folgt vier Fragen: Was ist der Plan, und wie lange gilt er?
+// (Kopfbühne mit Zeitband) Was steht drin? (Zweck und Kernpunkte, jeder mit
+// Beleg) Was wurde seither berichtet? (Zeitstrahl) Was hat
 // er sich vorgenommen, und was hat der Rat dazu beschlossen? (Maßnahmen,
 // Beschlüsse). Kein leerer Platzhalter für das, was fehlt.
 //
@@ -14,6 +15,7 @@ import { notFound, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { DetailSkeleton } from "@/components/ui";
 import { CityStatus } from "@/components/plans/city-status";
+import { Content } from "@/components/plans/content";
 import { Decisions } from "@/components/plans/decisions";
 import { Indicators } from "@/components/plans/indicators";
 import { Measures } from "@/components/plans/measures";
@@ -71,6 +73,7 @@ function PlanInner() {
       <div className={cn("mt-4 flex flex-col gap-4 @4xl:mt-5 @4xl:gap-5",
         hasAside && "@4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-start")}>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
+          {data.content && <Content content={data.content} />}
           {data.review && <Review review={data.review} />}
           <ReportLog plan={data} target={target} />
           {data.city_status && <CityStatus status={data.city_status} />}

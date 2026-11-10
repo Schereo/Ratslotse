@@ -8,6 +8,8 @@ Bestand weiß, steht hier:
   an Datum und Gremium, die das Register nennt; „beschlossen“ steht dort, wo
   der Rat nur zur Kenntnis genommen hat (und umgekehrt); eine Berichtsreihe
   trifft keinen einzigen Tagesordnungspunkt.
+- **Fehler:** Ein Zitat unter „Was im Plan steht“ (``council/plan_key_points/``) steht nicht
+  wörtlich in seinem Beschlusstext oder seiner Vorlage.
 - **Hinweise:** Ein Plan ist über sein Ende hinaus, ohne dass ein Nachfolger
   im Register steht. Das ist kein Fehler im Register — vielleicht hat die
   Stadt nicht fortgeschrieben —, aber jemand sollte nachsehen.
@@ -33,7 +35,7 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
-from council import plan_state, plans  # noqa: E402
+from council import plan_judge, plan_state, plans  # noqa: E402
 
 #: Ergebnisse, die zu „beschlossen“ passen. „noted“ gehört zu ``mode="noted"``;
 #: ein „accepted“ mit „zur Kenntnis genommen“ im Text auch (der Rat nimmt
@@ -120,6 +122,42 @@ def pruefe(conn: sqlite3.Connection, heute: str | None = None) -> list[Befund]:
                                   f"Überprüfung war bis {plan.review_due} vorgesehen"))
     befunde.extend(_pruefe_stand(conn, heute))
     befunde.extend(_pruefe_rueckblick(conn))
+    befunde.extend(_pruefe_kernpunkte(conn))
+    return befunde
+
+
+def _pruefe_kernpunkte(conn: sqlite3.Connection) -> list[Befund]:
+    """„Was im Plan steht“ (``council/plan_key_points/``): Steht jedes Zitat wörtlich in seiner Quelle?
+
+    Beschlusstexte und Vorlagen liegen in jedem Bestand. Den Text der Anlagen trägt nur der Server
+    (im lokalen Abzug ist er geleert) — dort prüft dieser Lauf sie mit, hier
+    ``python scripts/plan_kernpunkte.py --pruefen`` gegen die PDF-Dateien, samt Seitenzahl."""
+    befunde: list[Befund] = []
+    for key in plan_state.key_point_keys():
+        data = plan_state.key_points(key) or {}
+        for entry in [data["purpose"], *data["points"]]:
+            ref = entry["source"]
+            if ref["kind"] == "decision":
+                stem = plans.template_stem(ref["template"])
+                zeile = conn.execute(
+                    """select d.official_text from council_decisions d join council_sessions s on s.ksinr = d.ksinr
+                       where s.session_date = ? and s.committee = ?
+                         and (d.template_number = ? or d.template_number like ? || '/%' or d.template_number = ?)
+                       order by d.template_number = ? desc limit 1""",
+                    (ref["date"], ref["committee"], ref["template"], stem, stem, ref["template"])).fetchone()
+            elif ref["kind"] == "template":
+                zeile = conn.execute("select raw_text from council_templates where template_number = ?",
+                                     (ref["template"],)).fetchone()
+            else:
+                zeile = conn.execute("select raw_text from council_attachments where document_id = ?",
+                                     (ref["document_id"],)).fetchone()
+                if not zeile or not (zeile[0] or "").strip():
+                    continue  # lokaler Abzug ohne Anlagen-Texte
+            if not zeile or not zeile[0]:
+                befunde.append(Befund(key, "fehler", f"Quelle fehlt im Bestand: {ref['kind']} {ref['template']}"))
+            elif plan_judge.tight(entry["quote"]) not in plan_judge.tight(zeile[0]):
+                befunde.append(Befund(key, "fehler", f"Zitat steht nicht in {ref['kind']} {ref['template']}: "
+                                                      f"{entry['quote'][:60]}…"))
     return befunde
 
 

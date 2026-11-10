@@ -49,9 +49,10 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 | 4 Beschlüsse zu Maßnahmen | auf dev: Zuordnung über die Kennung der Maßnahme (ohne Modell) und Vorlagen, die laut eigenem Text der Umsetzung eines Plans dienen (Modell mit Golden-Set, 25 von Hand geprüfte Bezüge) | #1824, #1828 |
 | 4b Wo man nachfragen kann | auf dev: Pläne ohne aktuellen Bericht. „Ratsauftrag ohne Folge“ zweimal gemessen (ohne und mit Modell), Messziel beide Male verfehlt, nicht ausgeliefert | #1825, #1829 |
 | 5 Rückblick | auf dev für die zehn abgelaufenen Pläne; Maßnahmenlisten für neun Pläne; iOS-Ansicht im Code (kommt mit dem nächsten App-Build) | #1825, #1830, #1831 |
+| Was im Plan steht (nach der Freigabe der Phasen, Tims Wunsch 10.11.2026) | PR offen: Zweck und drei bis sechs Kernpunkte für 36 von 45 Plänen, jeder mit wörtlichem Zitat, Seite und Link; 9 Pläne begründet ohne Block | § 3.2 Punkt 1a; `scripts/plan_kernpunkte.py` |
 | 5b Seite der Stadt | Verweise für 21 Pläne. Offen: Dokumente der Pläne von vor 2018 | mit Phase 6 |
 | 6 Pflege | Kennzahlen im Cron-Protokoll, Hinweise im Prüfskript | mit Phase 5b |
-| Kosten | Modell insgesamt rund 0,13 $ (Mobilitätsplan 0,004 $, Bezüge laut Vorlage 0,09 $, Ratsaufträge 0,03 $); alles andere ohne Modell | gemessen 10.11.2026 |
+| Kosten | Modell insgesamt rund 0,50 $ (Mobilitätsplan 0,004 $, Bezüge laut Vorlage 0,09 $, Ratsaufträge 0,03 $, Kernpunkte 0,37 $ samt aller Probeläufe); alles andere ohne Modell | gemessen 10.11.2026 |
 
 Gemessen im Abzug nach den Phasen 0 bis 2:
 
@@ -382,6 +383,16 @@ kommt, entscheidet die Gestaltungsrunde.
 1. **Kopf:** Name, federführendes Amt, Beschluss-Badge („Beschlossen“ oder
    „Zur Kenntnis genommen“), Gremium, Datum, Link zur Vorlage und zur
    Anlage mit dem Plantext. *(gebaut)*
+1a. **WAS DER PLAN FESTLEGT** (direkt unter dem Kopf, vor den Berichten): ein
+   Satz, wozu es den Plan gibt, und drei bis sechs Kernpunkte — Ziele,
+   Vorgaben, Zahlen, Zuständigkeiten, Fristen. Jeder Satz trägt seinen Beleg:
+   ein Tipp klappt die wörtliche Stelle auf, der Link führt ins Dokument, bei
+   Anlagen auf die Seite. Wo ein späterer Beschluss den Punkt gesetzt hat,
+   steht „Stand <Datum>“ davor (Schulverpflegung: Bio-Anteil nach dem
+   Beschluss vom 01.12.2025). Die Überschrift sagt, wie verbindlich der Plan
+   ist (Regel 7): „festlegt“ nur bei einem Beschluss, sonst „Was im Plan
+   steht“ oder „Was der Entwurf vorsieht“. Ohne Plantext kein Block und kein
+   Platzhalter. *(gebaut; Entstehung und Prüfung unten)*
 2. **LAUFZEIT:** Beginn, Ende oder „ohne Enddatum“, die nächste vorgesehene
    Überprüfung (z. B. Wärmeplan spätestens 2031) sowie Vorgänger und
    Nachfolger. *(gebaut)*
@@ -399,6 +410,35 @@ kommt, entscheidet die Gestaltungsrunde.
    den Plan* · *setzt Maßnahme X um* · *Antrag oder Anfrage dazu* · *erwähnt*.
    Erwähnungen bleiben hinter „Weitere“. *(gebaut ohne „setzt Maßnahme X
    um“; das kommt mit Phase 4)*
+
+**Zu 1a: Wie die Kernpunkte entstehen.** Ein Sprachmodell (Luna) liest je
+Plan die Beschlüsse aus dem Register mit Beschlusstext und Vorlage und das
+Plandokument selbst (von Hand ausgewählt, `DOCUMENTS` in
+`scripts/plan_kernpunkte.py`) und schlägt Sätze mit Belegstellen vor. In die
+Datei (`council/plan_key_points/<plan>.json`, eingecheckt) kommt nur, was
+`council/plan_judge.py` **ohne Modell** belegen kann: Das Zitat steht wörtlich
+in der genannten Quelle (bei Anlagen auf der genannten Seite), jede Zahl des
+Satzes steht im Zitat, kein Zitat belegt zwei Sätze. Eine zweite Lesung des
+Modells kann nur streichen („trägt das Zitat den Satz?“). Gegen den Bestand
+halten das `scripts/pruefe_plaene.py` (Beschlusstexte, Vorlagen) und
+`scripts/plan_kernpunkte.py --pruefen` (dazu die PDF-Dateien, mit Seite).
+
+Gemessen am 10.11.2026: 36 Pläne mit Datei, 227 Sätze. Von Hand gegen das
+Umfeld des Zitats gelesen: 12 Pläne mit 76 Sätzen des Modells — 73 richtig,
+1 schief (verallgemeinert: „ab 3 Zügen“ statt „bei 3 und 4 Zügen“), 2
+unklar (Straßenlisten ohne den Zusammenhang „Tempo 30“); alle drei
+korrigiert. Die übrigen 24 Dateien Satz gegen Zitat gelesen; dabei fielen
+vier weitere Sätze (Zustandsbeschreibung statt Vorgabe, eine ältere
+Dienstvereinbarung statt einer Vorgabe des Plans, eine Tabellenzeile mit
+unsicherer Spaltenfolge), drei wurden umformuliert. **Neun Pläne bleiben ohne Block**, jeder mit Grund
+in `WITHOUT_BLOCK`: vier ohne Plantext im Bestand (KAI 2015,
+Sportentwicklungsplan 2009, step2025, Klimaanpassungskonzept), vier zu dünn
+belegt (Abfallwirtschaftskonzept: Scans ohne Text; Nahverkehrsplan,
+Kitaverpflegung, Innenstadtstrategie: nur eine knappe Vorlage), einer
+bewusst (Luftreinhalteplan: die Sätze wären belegt, täuschten aber einen
+geltenden Plan vor). Auf die Karte der Übersicht passt der Zweck-Satz
+nicht: Er bricht dort nach zwei Zeilen mitten im Gedanken ab und macht die
+Liste rund 40 % länger — weggelassen.
 
 ### 3.3 Rückblick bei abgelaufenen Plänen
 

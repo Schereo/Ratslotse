@@ -1,0 +1,88 @@
+{
+ "plan": "kinder_jugendbeteiligung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan behandelt die Beteiligung von Kindern und Jugendlichen an politischen Entscheidungen.",
+  "quote": "Das vorliegende Handlungskonzept benennt die Notwendigkeit der politischen Beteiligung von Kindern und Jugendlichen in Oldenburg.",
+  "source": {
+   "kind": "template",
+   "template": "26/0710/1"
+  }
+ },
+ "points": [
+  {
+   "text": "Zum 01.01.2027 wird eine zusätzliche Stelle für die Umsetzung, die Geschäftsstelle, digitale Beteiligung und Kinderversammlungen geschaffen.",
+   "kind": "measure",
+   "quote": "Zur Umsetzung des Handlungskonzeptes, für die Geschäftsstelle des Jugendparlamentes, den Aufbau digitaler Beteiligungsmöglichkeiten und die Entwicklung stadtteilbezogener Beteiligungsformate für Kinder („Kinderversammlungen“) wird zum 01.01.2027 eine zusätzliche Stelle (S11b) geschaffen.",
+   "source": {
+    "kind": "decision",
+    "template": "26/0710/1",
+    "date": "2026-09-28",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Wahlberechtigt sind 12- bis unter 18-Jährige, die seit mindestens drei Monaten in Oldenburg gemeldet sind.",
+   "kind": "standard",
+   "quote": "Wahlberechtigt sind Personen, die am Wahltag das 12. Lebensjahr, und noch nicht das 18. Lebensjahr vollendet haben und seit mindestens drei Monaten in der Stadt Oldenburg mit Hauptwohnsitz oder Nebenwohnsitz gemeldet sind.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0710/1",
+    "document_id": 314712,
+    "label": "Handlungskonzept Kinder- und Jugendbeteiligung, Anlagen",
+    "page": 12
+   }
+  },
+  {
+   "text": "Das Jugendparlament hat bis zu 20 Mitglieder.",
+   "kind": "figure",
+   "quote": "Das Plenum des Jugendparlaments ist das höchste beschlussfassende Organ und besteht aus bis zu 20 Mitgliedern.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0710/1",
+    "document_id": 314712,
+    "label": "Handlungskonzept Kinder- und Jugendbeteiligung, Anlagen",
+    "page": 12
+   }
+  },
+  {
+   "text": "Die Amtszeit des Jugendparlaments beträgt zwei Jahre.",
+   "kind": "figure",
+   "quote": "Die Amtszeit des Jugendparlaments beträgt zwei Jahre.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0710/1",
+    "document_id": 314712,
+    "label": "Handlungskonzept Kinder- und Jugendbeteiligung, Anlagen",
+    "page": 9
+   }
+  },
+  {
+   "text": "Das stadtteilbezogene Kinderformat wird in ein bis zwei Stadtteilen oder Schulamtsbezirken zwei Jahre lang erprobt.",
+   "kind": "measure",
+   "quote": "Das stadtteilbezogene Kinderbeteiligungsformat wird anschließend in ein bis zwei Stadtteilen oder Schulamtsbezirken als Pilot mit einer Laufzeit von zwei Jahren umgesetzt und unter Berücksichtigung der Evaluation auf andere Stadtteile bzw. Schulamtsbezirke übertragen.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0710/1",
+    "document_id": 314712,
+    "label": "Handlungskonzept Kinder- und Jugendbeteiligung, Anlagen",
+    "page": 4
+   }
+  },
+  {
+   "text": "Die Beteiligungsformate müssen allen Kindern und Jugendlichen in Oldenburg zugänglich sein.",
+   "kind": "standard",
+   "quote": "Die Beteiligungsformate in Oldenburg sind für alle Kinder und Jugendlichen, die in Oldenburg leben, zugänglich.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0710/1",
+    "document_id": 314712,
+    "label": "Handlungskonzept Kinder- und Jugendbeteiligung, Anlagen",
+    "page": 7
+   }
+  }
+ ]
+}

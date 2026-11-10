@@ -1,0 +1,62 @@
+{
+ "plan": "brandschutzbedarfsplan",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan legt das Planungsziel und den dafür nötigen Umfang der kommunalen Feuerwehr fest.",
+  "quote": "Der Feuerwehrbedarfsplan definiert in kommunaler Eigenverantwortung sowohl das Planungsziel als auch den zur Erreichung dieses Ziels erforderlichen Umfang der kommunalen Feuerwehr.",
+  "source": {
+   "kind": "attachment",
+   "template": "25/0833",
+   "document_id": 300074,
+   "label": "Brandschutzbedarfsplan, Managementfassung",
+   "page": 2
+  }
+ },
+ "points": [
+  {
+   "text": "Das einsatztaktische Grundkonzept bindet die sechs Ortsfeuerwehren der Freiwilligen Feuerwehr ein.",
+   "kind": "standard",
+   "quote": "Die Fortschreibung bestätigt zentrale Aussagen und Ergebnisse der Bedarfsplanung von 2007, insbesondere das einsatztaktische Grundkonzept mit der Einbindung der sechs Ortsfeuerwehren der Freiwilligen Feuerwehr.",
+   "source": {
+    "kind": "template",
+    "template": "25/0833"
+   }
+  },
+  {
+   "text": "Jede Ortsfeuerwehr soll grundsätzlich ein wasserführendes Löschfahrzeug vorhalten.",
+   "kind": "standard",
+   "quote": "In der Fahrzeugausstattung der Freiwilligen Feuerwehren ist grundsätzlich die Vorhaltung eines wasserführenden Löschfahrzeuges für jede Ortsfeuerwehr erforderlich.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0833",
+    "document_id": 300074,
+    "label": "Brandschutzbedarfsplan, Managementfassung",
+    "page": 9
+   }
+  },
+  {
+   "text": "An den Feuerwehrstandorten sind bauliche Maßnahmen nötig, unter anderem für Bevölkerungsschutz, Ausbildung, größere Fahrzeuge sowie Arbeits- und Gesundheitsschutz.",
+   "kind": "measure",
+   "quote": "An den Standorten der Feuerwehr Oldenburg sind aus gutachterlicher Sicht bauliche Maßnahmen erforderlich, insbesondere um den veränderten Rahmenbedingungen (Bevölkerungsschutz, Ausbildung, Fahrzeuggröße, Geschlechtertrennung) Rechnung zu tragen und den Arbeits- und Gesundheitsschutz zu gewährleisten.",
+   "source": {
+    "kind": "template",
+    "template": "25/0833"
+   }
+  },
+  {
+   "text": "Spätestens nach 5 Jahren soll geprüft werden, ob der Plan fortgeschrieben werden muss.",
+   "kind": "deadline",
+   "quote": "Es empfiehlt sich, einen Feuerwehrbedarfsplan aufgrund der Dynamik der zugrundeliegenden Daten regelmäßig fortzuschreiben. Spätestens nach 5 Jahren sollte eine Überprüfung erfolgen, ob und inwieweit eine Fortschreibung notwendig ist.",
+   "source": {
+    "kind": "attachment",
+    "template": "25/0833",
+    "document_id": 300074,
+    "label": "Brandschutzbedarfsplan, Managementfassung",
+    "page": 2
+   }
+  }
+ ]
+}

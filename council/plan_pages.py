@@ -766,6 +766,61 @@ def measures_block(key: str, links: list[dict] | None = None) -> dict | None:
     }
 
 
+#: Die Überschrift des Blocks sagt, wie verbindlich der Plan ist (§ 3.4 Regel 7): „festlegt“ nur,
+#: wo der Rat beschlossen hat.
+CONTENT_HEADINGS = {"adopted": "Was der Plan festlegt", "noted": "Was im Plan steht",
+                    "draft": "Was der Entwurf vorsieht"}
+CONTENT_NOTE = ("Ein Sprachmodell hat diese Punkte aus den Dokumenten herausgesucht. Gezeigt wird nur, "
+                "was als wörtliches Zitat in der Quelle steht.")
+RIS_FILE = "https://buergerinfo.oldenburg.de/getfile.php?id={id}&type=do"
+
+
+def _content_source(store, plan: register.Plan, ref: dict, kvonr: dict[str, int]) -> dict:
+    """Der Beleg eines Kernpunkts, wie die Seite ihn zeigt: wo es steht, von wann, wohin der Link führt."""
+    number = ref["template"]
+    of_plan = {d.template: d for d in ((plan.adopted,) if plan.adopted else ()) + plan.decisions if d.template}
+    decided = of_plan.get(number)
+    date = ref.get("date") or (decided.date if decided else None)
+    source = {"kind": ref["kind"], "template_number": number, "page": ref.get("page"),
+              "date": date, "date_label": _datum_lang(date), "decision_id": None,
+              "url": vorlage_url(kvonr.get(number))}
+    if ref["kind"] == "decision":
+        found = store.plan_decision_at(number, ref["date"], ref["committee"])
+        noted = bool(decided and decided.mode == "noted")
+        where = "des Rates" if ref["committee"] == register.COUNCIL else f"im {ref['committee']}"
+        source["label"] = f"{'Kenntnisnahme' if noted else 'Beschluss'} {where}"
+        source["decision_id"] = found["id"] if found else None
+    elif ref["kind"] == "template":
+        source["label"] = "Vorlage der Verwaltung"
+    else:
+        source["label"] = ref["label"]
+        source["url"] = RIS_FILE.format(id=ref["document_id"]) + (f"#page={ref['page']}" if ref.get("page") else "")
+    return source
+
+
+def content_block(store, plan: register.Plan) -> dict | None:
+    """Zweck und Kernpunkte des Plans (``council/plan_key_points/``) — oder ``None``, wo es keinen
+    Plantext gibt. ``amended``: Der Punkt steht so in einem Beschluss NACH dem ursprünglichen Plan."""
+    data = plan_state.key_points(plan.key)
+    if not data:
+        return None
+    entries = [data["purpose"], *data["points"]]
+    kvonr = store.plan_template_kvonr(sorted({e["source"]["template"] for e in entries}))
+    later = {d.template for d in plan.decisions if plan.adopted and d.template and d.date > plan.adopted.date}
+
+    def statement(entry: dict) -> dict:
+        return {"text": entry["text"], "quote": entry["quote"],
+                "source": _content_source(store, plan, entry["source"], kvonr),
+                "amended": entry["source"]["template"] in later}
+
+    return {
+        "heading": CONTENT_HEADINGS[plan.adopted.mode if plan.adopted else "draft"],
+        "purpose": statement(data["purpose"]),
+        "points": [statement(p) for p in data["points"]],
+        "note": CONTENT_NOTE,
+    }
+
+
 def _datum_lang(iso: str | None) -> str | None:
     """``"2022-11-25"`` → ``"25.11.2022"``, ``"2024-04"`` → ``"04/2024"``."""
     if not iso:
@@ -830,6 +885,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "commissioned": _template_ref(store, plan.commissioned, items),
         "concluded": _template_ref(store, plan.concluded, items),
         "predecessor": _neighbour(plan.predecessor),
+        "content": content_block(store, plan),
         "measures": measures_block(key, measure_links),
         "city_status": city_status_block(key),
         "indicators": indicator_blocks(key),

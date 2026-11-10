@@ -1,0 +1,65 @@
+{
+ "plan": "eek",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Das Konzept dient der Stadt als Grundlage, um den Einzelhandel in Oldenburg zu steuern.",
+  "quote": "Das Konzept in der vorliegenden Form ist als städtebauliche Begründung zur räumlichen Steuerung des Einzelhandels in der Stadt Oldenburg geeignet.",
+  "source": {
+   "kind": "attachment",
+   "template": "24/0717/1",
+   "document_id": 285989,
+   "label": "Einzelhandelsentwicklungskonzept, Endbericht",
+   "page": 245
+  }
+ },
+ "points": [
+  {
+   "text": "Zentrenrelevante Sortimente sollen als Hauptsortimente vor allem im zentralen Versorgungsbereich Innenstadt angesiedelt werden.",
+   "kind": "standard",
+   "quote": "Zentrenrelevante Sortimente (vergleiche Tabelle 7) sollen als Hauptsortimente von Einzelhandelsbetrieben weiterhin insbesondere im zentralen Versorgungsbereich Innenstadt zu dessen Sicherung und Stärkung - auch vor dem Hintergrund des Wettbewerbs mit dem Online-Handel - angesiedelt werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0717/1",
+    "document_id": 285989,
+    "label": "Einzelhandelsentwicklungskonzept, Endbericht",
+    "page": 191
+   }
+  },
+  {
+   "text": "Die Fachmarktzentren und Fachmarktzentren mit Nahversorgungsfunktion sind zu überplanen.",
+   "kind": "measure",
+   "quote": "2. Die Fachmarktzentren und die Fachmarktzentren mit Nahversorgungsfunktion sind zu überplanen.",
+   "source": {
+    "kind": "decision",
+    "template": "24/0717/1",
+    "date": "2024-12-16",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Zoobedarf wird als ein nicht zentrenrelevantes Sortiment geführt.",
+   "kind": "standard",
+   "quote": "4. Der EEK-Entwurf ist insoweit abzuändern, als dass die im Entwurf noch getrennten Sortimente „Zoobedarf – lebende Tiere und Tiermöbel“ (nicht zentrenrelevant) und „Zoobedarf – Tiernahrung und –zubehör“ (zentrenrelevant) in einem nicht zentrenrelevanten Sortiment zusammengefasst werden.",
+   "source": {
+    "kind": "decision",
+    "template": "24/0717/1",
+    "date": "2024-12-16",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Am Combi-Markt in der Bremer Heerstraße ist ein Drogeriemarkt zu ermöglichen.",
+   "kind": "measure",
+   "quote": "5. Unabhängig von der Beschlussfassung des EEK ist für den solitären Standort am Combi-Markt in der Bremer Heerstraße die Ansiedlung eines Drogeriemarktes zu ermöglichen.",
+   "source": {
+    "kind": "decision",
+    "template": "24/0717/1",
+    "date": "2024-12-16",
+    "committee": "Rat"
+   }
+  }
+ ]
+}
