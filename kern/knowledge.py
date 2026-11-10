@@ -274,6 +274,19 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Bekommt jeder Punkt sofort ein Ergebnis?",
        ),
     ),
+    _p("/council/sitzung/mitlesen", "Mitlesen",
+       "Eine laufende Sitzung Punkt für Punkt: oben der Ablauf als Linie, darunter "
+       "der Punkt, der gerade dran ist, mit Kurzfassung, Vorgeschichte und Unterlagen.",
+       "Im Rat folgt die Seite der Übertragung von O1; in Ausschüssen gibt man den "
+       "Takt selbst vor. Die Inhalte stammen aus dem Ratsinformationssystem.",
+       "Wo die Sitzung gerade ist, weiß die Seite nur im Rat, und auch dort mit "
+       "einigen Minuten Verzug.",
+       nudge=False,
+       starters=(
+           "Was wird gerade beraten?",
+           "Was kommt als Nächstes?",
+       ),
+    ),
     _p("/council/punkt", "Tagesordnungspunkt",
        "Ein einzelner Punkt einer Sitzung: eine kurze Fassung, die früheren "
        "Stationen derselben Vorlage oder desselben Antrags mit ihren Ergebnissen "

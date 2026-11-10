@@ -17,7 +17,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ChevronDown, Clock, ExternalLink, MapPin, Sparkles,
+  ArrowDown, ArrowLeft, ArrowRight, ChevronDown, Clock, ExternalLink, MapPin, Navigation, Sparkles,
 } from "lucide-react";
 import { Course } from "@/components/session/course";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -39,7 +39,8 @@ import {
   formalActTitle, groupFormalActs, outcomeCounts, priorStations, sessionKicker, sessionPhase,
   splitNumber, type SessionPhase,
 } from "@/lib/session-page";
-import { decisionHref, punktHref, sitzungHref, sessionHref } from "@/lib/routes";
+import { decisionHref, mitlesenHref, punktHref, sitzungHref, sessionHref } from "@/lib/routes";
+import { localTodayISO } from "@/lib/live";
 import { useFeature } from "@/lib/features";
 import { shortCommittee } from "@/lib/committees";
 import { formatDate } from "@/components/ui";
@@ -83,6 +84,8 @@ interface Ctx {
   flashTop: string | null;
   /** Schalter `punkt-seite`: Karten ohne Beschluss führen auf die Seite des Punkts. */
   punktSeite: boolean;
+  /** Schalter `mitlesen`: der Einstieg im Kopf (während der Sitzung als Primäraktion). */
+  mitlesen: boolean;
 }
 
 export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
@@ -109,7 +112,8 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
   }, [data]);
   const itemsByNr = useMemo(() => new Map((data.agenda_items ?? []).map((it) => [it.item_number, it])), [data]);
   const punktSeite = useFeature("punkt-seite");
-  const ctx: Ctx = { data, ksinr, phase, itemsByNr, course, outcomeByItem, decisionByItem, videoByItem, voteByItem, decisionTextByItem, flashTop, punktSeite };
+  const mitlesen = useFeature("mitlesen");
+  const ctx: Ctx = { data, ksinr, phase, itemsByNr, course, outcomeByItem, decisionByItem, videoByItem, voteByItem, decisionTextByItem, flashTop, punktSeite, mitlesen };
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   const mitBeschluss = Object.values(decisionByItem);
   const vorschauId = weit && mitBeschluss.length > 0 ? (gewaehlt ?? mitBeschluss[0]) : null;
@@ -214,7 +218,14 @@ function Board({ ctx }: { ctx: Ctx }) {
         <div role="group" aria-label="Aktionen zur Sitzung" className="flex flex-wrap gap-2">
           {(phase === "before" || phase === "live") && (
             <CalendarButton session={data} agenda={items.map((it) => `${it.item_number} ${it.title}`)}
-              className={phase === "before" ? AKTION_PRIMAER : AKTION_SEKUNDAER} />
+              className={phase === "before" && !(ctx.mitlesen && data.session_date === localTodayISO()) ? AKTION_PRIMAER : AKTION_SEKUNDAER} />
+          )}
+          {/* Mitlesen: während der Sitzung die Primäraktion, am Tag davor
+              daneben, sonst gar nicht (Plan, Schritt 5). */}
+          {ctx.mitlesen && (phase === "live" || (phase === "before" && data.session_date === localTodayISO())) && (
+            <a href={mitlesenHref(ksinr)} className={phase === "live" ? AKTION_PRIMAER : AKTION_SEKUNDAER}>
+              <Navigation aria-hidden /> Mitlesen
+            </a>
           )}
           <BookmarkButton target={{ kind: "session", ksinr }} className={AKTION_SEKUNDAER} />
           <ShareButton path={sitzungHref(ksinr)} label="Sitzung teilen" still
