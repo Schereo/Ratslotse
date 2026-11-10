@@ -125,6 +125,46 @@ def pruefe(conn: sqlite3.Connection, heute: str | None = None) -> list[Befund]:
     befunde.extend(_pruefe_kernpunkte(conn))
     befunde.extend(_pruefe_berichte(conn))
     befunde.extend(_pruefe_einfach())
+    befunde.extend(_pruefe_orte(conn))
+    befunde.extend(_pruefe_haushalt(conn))
+    return befunde
+
+
+def _pruefe_orte(conn: sqlite3.Connection) -> list[Befund]:
+    """Kennt der Ortskatalog jeden Ort aus ``council/plan_places/`` noch, mit Koordinaten? Fehlt einer, fällt
+    er still von der Karte — hier fällt es auf (lokal wie auf dem Server)."""
+    befunde: list[Befund] = []
+    for key in plan_state.measure_place_keys():
+        for entry in (plan_state.measure_places(key) or {}).get("measures", []):
+            for place in entry["places"]:
+                zeile = conn.execute("select lat from council_locations where slug = ?", (place["slug"],)).fetchone()
+                if not zeile or zeile[0] is None:
+                    befunde.append(Befund(key, "hinweis", f"Ort {place['name']} ({entry['code']}) fehlt im Ortskatalog "
+                                                          "oder hat keine Koordinaten — er steht nicht auf der Karte"))
+    return befunde
+
+
+def _pruefe_haushalt(conn: sqlite3.Connection) -> list[Befund]:
+    """Gibt es jede Haushaltszeile aus ``council/plan_budget.json`` noch, und nennt sie den Plan noch?
+    Ohne Haushaltsdaten im Bestand (lokaler Abzug ohne Haushalt) wird nichts geprüft."""
+    from council.store_plaene import PlaeneMixin
+
+    befunde: list[Befund] = []
+    muster = plan_state.budget_patterns()
+    for key, refs in plan_state.budget_refs().items():
+        for ref in refs:
+            name, _felder, spalten = PlaeneMixin.PLAN_BUDGET_TABLES[ref["table"]]
+            if not conn.execute(f"select 1 from {name} limit 1").fetchone():
+                continue
+            genutzt = [s for s in spalten if s in ref]
+            zeilen = conn.execute(
+                f"select year, {ref['field']} from {name} where " + " and ".join(f"{s} = ?" for s in genutzt),
+                [ref[s] for s in genutzt]).fetchall()
+            zeilen = [z for z in zeilen if "years" not in ref or z[0] in ref["years"]]
+            if not zeilen:
+                befunde.append(Befund(key, "fehler", f"Haushaltszeile fehlt im Bestand: {ref}"))
+            elif not all(re.search(muster.get(key, "^$"), str(z[1] or ""), re.I) for z in zeilen):
+                befunde.append(Befund(key, "fehler", f"Haushaltszeile nennt den Plan nicht mehr: {ref}"))
     return befunde
 
 

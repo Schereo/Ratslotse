@@ -50,7 +50,8 @@ ist. Das Programm ist auf mehrere Wochen angelegt.
 | 4b Wo man nachfragen kann | auf dev: Pläne ohne aktuellen Bericht. „Ratsauftrag ohne Folge“ zweimal gemessen (ohne und mit Modell), Messziel beide Male verfehlt, nicht ausgeliefert | #1825, #1829 |
 | 5 Rückblick | auf dev für die zehn abgelaufenen Pläne; Maßnahmenlisten für neun Pläne; iOS-Ansicht im Code (kommt mit dem nächsten App-Build) | #1825, #1830, #1831 |
 | Was im Plan steht (nach der Freigabe der Phasen, Tims Wunsch 10.11.2026) | PR offen: Zweck und drei bis sechs Kernpunkte für 36 von 45 Plänen, jeder mit wörtlichem Zitat, Seite und Link; 9 Pläne begründet ohne Block | § 3.2 Punkt 1a; `scripts/plan_kernpunkte.py` |
-| Ausbau der Seiten, Paket 2 (mit Modell) | PR offen: ein Satz je Bericht mit Zitat (69 Sätze in 23 Plänen), „Neu im jüngsten Bericht“ (6 Reihen), der Plan in einfacher Sprache und drei Fragen (36 Pläne), verwandte Pläne (22 Paare, ohne Modell). Modellkosten zusammen 0,23 $ | § 3.2 Punkte 4a–4c, 1d, 7 |
+| Ausbau der Seiten, Paket 3 (Orte, Viertel, Haushalt) | PR offen: Karte für 10 Pläne (Straßen aus Maßnahmentiteln, Orte aus Beschlüssen), „Pläne, die dein Viertel betreffen“ in 25 Ortsbereichen, Haushaltsposten für 8 Pläne (nur Recht `budget`). Ohne Modell | § 3.2 Punkte 8–9; § 3.6 |
+| Ausbau der Seiten, Paket 2 (mit Modell) | auf dev (#1834): ein Satz je Bericht mit Zitat (69 Sätze in 23 Plänen), „Neu im jüngsten Bericht“ (6 Reihen), der Plan in einfacher Sprache und drei Fragen (36 Pläne), verwandte Pläne (22 Paare, ohne Modell). Modellkosten zusammen 0,23 $ | § 3.2 Punkte 4a–4c, 1d, 7 |
 | Ausbau der Seiten, Paket 1 und Bewegung (Tims Auftrag 10.11.2026) | auf dev (#1833): Kernpunkte nach Art mit Zahlen-Kacheln, Termine des Plans im Zeitband, Sprungleiste, Übersicht mit Aufklapp-Zeilen und drei Reihenfolgen; Bewegung nach DESIGNSPRACHE § 7 | § 3.1, § 3.2 Punkte 1a–1c |
 | 5b Seite der Stadt | Verweise für 21 Pläne. Offen: Dokumente der Pläne von vor 2018 | mit Phase 6 |
 | 6 Pflege | Kennzahlen im Cron-Protokoll, Hinweise im Prüfskript | mit Phase 5b |
@@ -481,6 +482,36 @@ kommt, entscheidet die Gestaltungsrunde.
    Skript), dazu kommt, was das Register selbst nennt (Schulverpflegung ↔
    Ernährungsstrategie). Vorgänger und Nachfolger stehen nicht hier, sondern
    im Kopf. *(gebaut)*
+
+8. **KARTE** (ab drei Orten): wo der Plan etwas vorsieht oder Beschlüsse
+   zu ihm etwas festgelegt haben — beides ohne Sprachmodell und ohne neues
+   Geocoding. (a) Straßen und Plätze, die ein Maßnahmentitel beim Namen nennt
+   („Neue Fahrradstraße Lindenallee“), abgeglichen mit dem Ortskatalog der
+   Ratsdaten und von Hand durchgesehen (`scripts/plan_orte.py`,
+   `council/plan_places/`; Mobilitätsplan 11 von 33, smv2025 50 von 112,
+   Ernährungsstrategie 2), als Linie mit Verlauf. (b) Orte, die die
+   Ortszuordnung den Umsetzungs- und Berichtsbeschlüssen schon gegeben hat,
+   als Punkt — keine Stadtteile, keine Gattungswörter, nur sichere Zuordnung;
+   ein Beschluss „an der Dedestraße“ meint nicht die ganze Straße. Die Karte
+   ist neutral gefärbt: Sie sagt, wo, nicht wie weit (§ 3.4). Die
+   Spielleitplanung bleibt ohne Karte, der Masterplan Stadtgrün hat nur drei
+   Orte aus einem Beschluss: Ihre Beschlüsse tragen kaum Orte, und Neues zu
+   verorten hätte ein Geocoding gebraucht. *(gebaut)*
+9. **IM HAUSHALT** (nur mit dem Recht `budget`, eigener Endpunkt
+   `GET /api/council/budget/plan/{key}`): Haushaltsposten, deren eigener Text
+   den Plan beim Namen nennt — ein Produkt, das ihn als Rechtsgrundlage
+   führt, eine Investition, deren Bezeichnung ihn nennt, eine Änderung, die
+   sich auf ihn beruft (`scripts/plan_haushalt.py`, `council/plan_budget.json`;
+   37 Verweise für 8 Pläne). Beträge so, wie sie in der Zeile stehen; von zwei
+   Stufen einer Änderung zählt die spätere. Kein Gesamtbetrag: Was ein Plan
+   kostet, steht so nirgends im Haushalt. *(gebaut)*
+
+**Mein Viertel:** Die Tafel eines Ortsbereichs nennt die laufenden und
+entstehenden Pläne mit mindestens einem Ort dort (`district_plans`). Eine
+Straße aus der Maßnahmenliste zählt überall, wo ein nennenswerter Teil von
+ihr liegt (Anteil ab 0,3); eine Straße aus einem Beschluss nur in ihrem
+Hauptbereich — sonst stünde ein Tagesaufenthalt „an der Alexanderstraße“ in
+fünf Stadtteilen.
 
 **Zu 4a, 4b und 1d: gemessen am 10.11.2026.** 73 Berichte mit Vorlagentext in
 26 Plänen; 69 bekamen einen belegten Satz, 4 keinen. Von Hand gegen das Zitat

@@ -22,6 +22,7 @@ const HEADING: Record<PlanSection["key"], string> = {
   status: "plan-city-status",
   indicators: "plan-indicators",
   measures: "plan-measures",
+  places: "plan-places",
   decisions: "plan-decisions",
 };
 

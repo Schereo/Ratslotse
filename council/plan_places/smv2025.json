@@ -1,0 +1,517 @@
+{
+ "plan": "smv2025",
+ "method": "Ortsname im Maßnahmentitel, abgeglichen mit dem Ortskatalog; von Hand durchgesehen",
+ "generated": "2026-11-10",
+ "measures": [
+  {
+   "code": "2",
+   "places": [
+    {
+     "slug": "donnerschweer-strasse",
+     "name": "Donnerschweer Straße"
+    },
+    {
+     "slug": "pferdemarkt",
+     "name": "Pferdemarkt"
+    }
+   ]
+  },
+  {
+   "code": "3",
+   "places": [
+    {
+     "slug": "strassburger-strasse",
+     "name": "Straßburger Straße"
+    },
+    {
+     "slug": "weser-ems-halle",
+     "name": "Weser-Ems-Halle"
+    }
+   ]
+  },
+  {
+   "code": "4",
+   "places": [
+    {
+     "slug": "lappan",
+     "name": "Lappan"
+    }
+   ]
+  },
+  {
+   "code": "6",
+   "places": [
+    {
+     "slug": "osterstrasse",
+     "name": "Osterstraße"
+    }
+   ]
+  },
+  {
+   "code": "9",
+   "places": [
+    {
+     "slug": "herrenweg",
+     "name": "Herrenweg"
+    }
+   ]
+  },
+  {
+   "code": "11",
+   "places": [
+    {
+     "slug": "staugraben",
+     "name": "Staugraben"
+    },
+    {
+     "slug": "staulinie",
+     "name": "Staulinie"
+    }
+   ]
+  },
+  {
+   "code": "88",
+   "places": [
+    {
+     "slug": "waffenplatz",
+     "name": "Waffenplatz"
+    }
+   ]
+  },
+  {
+   "code": "18",
+   "places": [
+    {
+     "slug": "nadorster-strasse",
+     "name": "Nadorster Straße"
+    }
+   ]
+  },
+  {
+   "code": "19",
+   "places": [
+    {
+     "slug": "alexanderstrasse",
+     "name": "Alexanderstraße"
+    }
+   ]
+  },
+  {
+   "code": "20",
+   "places": [
+    {
+     "slug": "heiligengeiststrasse",
+     "name": "Heiligengeiststraße"
+    },
+    {
+     "slug": "lange-strasse",
+     "name": "Lange Straße"
+    }
+   ]
+  },
+  {
+   "code": "22",
+   "places": [
+    {
+     "slug": "industriestrasse",
+     "name": "Industriestraße"
+    },
+    {
+     "slug": "auguststrasse",
+     "name": "Auguststraße"
+    }
+   ]
+  },
+  {
+   "code": "23",
+   "places": [
+    {
+     "slug": "auguststrasse",
+     "name": "Auguststraße"
+    }
+   ]
+  },
+  {
+   "code": "24",
+   "places": [
+    {
+     "slug": "stedinger-strasse",
+     "name": "Stedinger Straße"
+    }
+   ]
+  },
+  {
+   "code": "25",
+   "places": [
+    {
+     "slug": "wallstrasse",
+     "name": "Wallstraße"
+    }
+   ]
+  },
+  {
+   "code": "28",
+   "places": [
+    {
+     "slug": "gartenstrasse",
+     "name": "Gartenstraße"
+    }
+   ]
+  },
+  {
+   "code": "29",
+   "places": [
+    {
+     "slug": "peterstrasse",
+     "name": "Peterstraße"
+    }
+   ]
+  },
+  {
+   "code": "30",
+   "places": [
+    {
+     "slug": "pferdemarkt",
+     "name": "Pferdemarkt"
+    }
+   ]
+  },
+  {
+   "code": "31",
+   "places": [
+    {
+     "slug": "heiligengeiststrasse",
+     "name": "Heiligengeiststraße"
+    },
+    {
+     "slug": "pferdemarkt",
+     "name": "Pferdemarkt"
+    }
+   ]
+  },
+  {
+   "code": "32",
+   "places": [
+    {
+     "slug": "nadorster-strasse",
+     "name": "Nadorster Straße"
+    }
+   ]
+  },
+  {
+   "code": "33",
+   "places": [
+    {
+     "slug": "ofener-strasse",
+     "name": "Ofener Straße"
+    }
+   ]
+  },
+  {
+   "code": "34",
+   "places": [
+    {
+     "slug": "haareneschstrasse",
+     "name": "Haareneschstraße"
+    },
+    {
+     "slug": "katharinenstrasse",
+     "name": "Katharinenstraße"
+    }
+   ]
+  },
+  {
+   "code": "35",
+   "places": [
+    {
+     "slug": "huntestrasse",
+     "name": "Huntestraße"
+    }
+   ]
+  },
+  {
+   "code": "36",
+   "places": [
+    {
+     "slug": "ziegelhofstrasse",
+     "name": "Ziegelhofstraße"
+    },
+    {
+     "slug": "auguststrasse",
+     "name": "Auguststraße"
+    }
+   ]
+  },
+  {
+   "code": "37",
+   "places": [
+    {
+     "slug": "staugraben",
+     "name": "Staugraben"
+    }
+   ]
+  },
+  {
+   "code": "38",
+   "places": [
+    {
+     "slug": "ofener-strasse",
+     "name": "Ofener Straße"
+    }
+   ]
+  },
+  {
+   "code": "39",
+   "places": [
+    {
+     "slug": "ofener-strasse",
+     "name": "Ofener Straße"
+    }
+   ]
+  },
+  {
+   "code": "40",
+   "places": [
+    {
+     "slug": "hermann-ehlers-strasse",
+     "name": "Hermann-Ehlers-Straße"
+    }
+   ]
+  },
+  {
+   "code": "41",
+   "places": [
+    {
+     "slug": "kanalstrasse",
+     "name": "Kanalstraße"
+    }
+   ]
+  },
+  {
+   "code": "43",
+   "places": [
+    {
+     "slug": "huntestrasse",
+     "name": "Huntestraße"
+    }
+   ]
+  },
+  {
+   "code": "44",
+   "places": [
+    {
+     "slug": "steinweg",
+     "name": "Steinweg"
+    }
+   ]
+  },
+  {
+   "code": "45",
+   "places": [
+    {
+     "slug": "friedensplatz",
+     "name": "Friedensplatz"
+    },
+    {
+     "slug": "steinweg",
+     "name": "Steinweg"
+    }
+   ]
+  },
+  {
+   "code": "46",
+   "places": [
+    {
+     "slug": "lappan",
+     "name": "Lappan"
+    }
+   ]
+  },
+  {
+   "code": "48",
+   "places": [
+    {
+     "slug": "heiligengeiststrasse",
+     "name": "Heiligengeiststraße"
+    }
+   ]
+  },
+  {
+   "code": "49",
+   "places": [
+    {
+     "slug": "industriestrasse",
+     "name": "Industriestraße"
+    }
+   ]
+  },
+  {
+   "code": "50",
+   "places": [
+    {
+     "slug": "theaterwall",
+     "name": "Theaterwall"
+    },
+    {
+     "slug": "roonstrasse",
+     "name": "Roonstraße"
+    }
+   ]
+  },
+  {
+   "code": "51",
+   "places": [
+    {
+     "slug": "ritterstrasse",
+     "name": "Ritterstraße"
+    }
+   ]
+  },
+  {
+   "code": "52",
+   "places": [
+    {
+     "slug": "pferdemarkt",
+     "name": "Pferdemarkt"
+    }
+   ]
+  },
+  {
+   "code": "57",
+   "places": [
+    {
+     "slug": "91er-strasse",
+     "name": "91er Straße"
+    }
+   ]
+  },
+  {
+   "code": "58",
+   "places": [
+    {
+     "slug": "haarenufer",
+     "name": "Haarenufer"
+    }
+   ]
+  },
+  {
+   "code": "62",
+   "places": [
+    {
+     "slug": "weser-ems-halle",
+     "name": "Weser-Ems-Halle"
+    },
+    {
+     "slug": "messestrasse",
+     "name": "Messestraße"
+    }
+   ]
+  },
+  {
+   "code": "63",
+   "places": [
+    {
+     "slug": "prinzessinweg",
+     "name": "Prinzessinweg"
+    }
+   ]
+  },
+  {
+   "code": "64",
+   "places": [
+    {
+     "slug": "westfalendamm",
+     "name": "Westfalendamm"
+    },
+    {
+     "slug": "olantis",
+     "name": "OLantis"
+    }
+   ]
+  },
+  {
+   "code": "65",
+   "places": [
+    {
+     "slug": "julius-mosen-platz",
+     "name": "Julius-Mosen-Platz"
+    }
+   ]
+  },
+  {
+   "code": "68",
+   "places": [
+    {
+     "slug": "niedersachsendamm",
+     "name": "Niedersachsendamm"
+    },
+    {
+     "slug": "sodenstich",
+     "name": "Sodenstich"
+    },
+    {
+     "slug": "marschweg",
+     "name": "Marschweg"
+    }
+   ]
+  },
+  {
+   "code": "69",
+   "places": [
+    {
+     "slug": "wiesenstrasse",
+     "name": "Wiesenstraße"
+    }
+   ]
+  },
+  {
+   "code": "70",
+   "places": [
+    {
+     "slug": "auguststrasse",
+     "name": "Auguststraße"
+    }
+   ]
+  },
+  {
+   "code": "77",
+   "places": [
+    {
+     "slug": "lappan",
+     "name": "Lappan"
+    }
+   ]
+  },
+  {
+   "code": "81",
+   "places": [
+    {
+     "slug": "cloppenburger-strasse",
+     "name": "Cloppenburger Straße"
+    }
+   ]
+  },
+  {
+   "code": "82",
+   "places": [
+    {
+     "slug": "bremer-strasse",
+     "name": "Bremer Straße"
+    }
+   ]
+  },
+  {
+   "code": "83",
+   "places": [
+    {
+     "slug": "ritterstrasse",
+     "name": "Ritterstraße"
+    },
+    {
+     "slug": "poststrasse",
+     "name": "Poststraße"
+    }
+   ]
+  }
+ ]
+}

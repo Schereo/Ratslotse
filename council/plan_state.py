@@ -35,6 +35,8 @@ KEY_POINTS_DIR = Path(__file__).resolve().parent / "plan_key_points"
 REPORTS_DIR = Path(__file__).resolve().parent / "plan_reports"
 PLAIN_DIR = Path(__file__).resolve().parent / "plan_plain"
 RELATED_FILE = Path(__file__).resolve().parent / "plan_related.json"
+PLACES_DIR = Path(__file__).resolve().parent / "plan_places"
+BUDGET_FILE = Path(__file__).resolve().parent / "plan_budget.json"
 
 #: Fünf Stufen plus „unklar“. Reihenfolge = Reihenfolge der Anzeige.
 STATUS_NORM: tuple[str, ...] = ("open", "started", "in_progress", "done", "paused", "unclear")
@@ -364,3 +366,33 @@ def related() -> dict[str, list[str]]:
         out.setdefault(entry["a"], []).append((rank, entry["b"]))
         out.setdefault(entry["b"], []).append((rank, entry["a"]))
     return {key: [other for _rank, other in sorted(pairs, key=lambda t: (-t[0], t[1]))] for key, pairs in out.items()}
+
+
+
+@cache
+def measure_places(key: str) -> dict | None:
+    """Orte der Maßnahmen eines Plans (``council/plan_places/<key>.json``, ``scripts/plan_orte.py``):
+    Ortsname im Maßnahmentitel, abgeglichen mit dem Ortskatalog, von Hand durchgesehen."""
+    return _read(PLACES_DIR, key)
+
+
+def measure_place_keys() -> list[str]:
+    return sorted(p.stem for p in PLACES_DIR.glob("*.json"))
+
+
+@cache
+def budget_refs() -> dict[str, list[dict]]:
+    """Haushaltsposten, deren eigener Text einen Plan nennt (``council/plan_budget.json``,
+    ``scripts/plan_haushalt.py``) — je Plan die Verweise auf die Zeilen."""
+    if not BUDGET_FILE.exists():
+        return {}
+    return json.loads(BUDGET_FILE.read_text(encoding="utf-8"))["plans"]
+
+
+@cache
+def budget_patterns() -> dict[str, str]:
+    """So heißt jeder Plan in den Haushaltstexten (Muster aus ``scripts/plan_haushalt.py``) — für das
+    Zitat an der Zeile."""
+    if not BUDGET_FILE.exists():
+        return {}
+    return json.loads(BUDGET_FILE.read_text(encoding="utf-8"))["patterns"]

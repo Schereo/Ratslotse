@@ -2916,6 +2916,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/plan/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Budget
+         * @description Haushaltsposten, deren eigener Text den Plan nennt — nur mit dem Recht ``budget``.
+         */
+        get: operations["plan_budget_api_council_budget_plan__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/preface-figures": {
         parameters: {
             query?: never;
@@ -10923,6 +10943,28 @@ export interface components {
             valid_until: string | null;
         };
         /**
+         * DistrictPlan
+         * @description Ein laufender oder entstehender Plan mit mindestens einem Ort in diesem Ortsbereich.
+         */
+        DistrictPlan: {
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /** Place Count */
+            place_count: number;
+            /** Places */
+            places: string[];
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Title */
+            title: string;
+            /** Via Measures */
+            via_measures: boolean;
+        };
+        /**
          * DistrictPlanInfo
          * @description Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und
          *     die Stationen des Verfahrens aus den offenen Geodaten der Stadt.
@@ -11133,6 +11175,8 @@ export interface components {
             participations: components["schemas"]["DistrictParticipation"][];
             /** Place */
             place: unknown;
+            /** Plans */
+            plans?: components["schemas"]["DistrictPlan"][];
             /** Press */
             press: components["schemas"]["DistrictPressItem"][];
             /** Projects */
@@ -14929,6 +14973,48 @@ export interface components {
             purpose: string;
         };
         /**
+         * PlanBudget
+         * @description ``GET /api/council/budget/plan/{key}`` — nur mit dem Recht ``budget``.
+         */
+        PlanBudget: {
+            /** Items */
+            items: components["schemas"]["PlanBudgetItem"][];
+            /** Note */
+            note: string;
+        };
+        /** PlanBudgetAmount */
+        PlanBudgetAmount: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * PlanBudgetItem
+         * @description Ein Haushaltsposten, dessen eigener Text den Plan nennt.
+         */
+        PlanBudgetItem: {
+            /** Amounts */
+            amounts: components["schemas"]["PlanBudgetAmount"][];
+            /** Context */
+            context: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "product" | "investment" | "change";
+            /** Number */
+            number: string | null;
+            /** Quote */
+            quote: string;
+            /** Since */
+            since: number | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
          * PlanCard
          * @description Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).
          */
@@ -15539,6 +15625,24 @@ export interface components {
             /** Owner */
             owner: string | null;
             /**
+             * PlanPlaces
+             * @description Die Karte zum Plan — ab drei Orten.
+             */
+            places: {
+                /** Decision Places */
+                decision_places: number;
+                /** Items */
+                items: components["schemas"]["PlanPlace"][];
+                /** Measure Places */
+                measure_places: number;
+                /** Measures Named */
+                measures_named: number;
+                /** Measures Total */
+                measures_total: number | null;
+                /** Note */
+                note: string;
+            } | null;
+            /**
              * PlanPlain
              * @description Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.
              */
@@ -15981,6 +16085,71 @@ export interface components {
             to_template: string;
         };
         /**
+         * PlanPlace
+         * @description Ein Ort zum Plan: aus einem Maßnahmentitel (mit Verlauf) oder aus Beschlüssen (als Punkt).
+         */
+        PlanPlace: {
+            /** Decision Count */
+            decision_count: number;
+            /** Decisions */
+            decisions: components["schemas"]["PlanPlaceDecision"][];
+            /** Geometry */
+            geometry: unknown;
+            /** Kind */
+            kind: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Measures */
+            measures: components["schemas"]["PlanPlaceMeasure"][];
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /** PlanPlaceDecision */
+        PlanPlaceDecision: {
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+        };
+        /** PlanPlaceMeasure */
+        PlanPlaceMeasure: {
+            /** Code */
+            code: string;
+            /**
+             * Status Norm
+             * @enum {string|null}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear" | null;
+            /** Status Raw */
+            status_raw: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanPlaces
+         * @description Die Karte zum Plan — ab drei Orten.
+         */
+        PlanPlaces: {
+            /** Decision Places */
+            decision_places: number;
+            /** Items */
+            items: components["schemas"]["PlanPlace"][];
+            /** Measure Places */
+            measure_places: number;
+            /** Measures Named */
+            measures_named: number;
+            /** Measures Total */
+            measures_total: number | null;
+            /** Note */
+            note: string;
+        };
+        /**
          * PlanPlain
          * @description Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.
          */
@@ -16234,7 +16403,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "content" | "review" | "reports" | "status" | "indicators" | "measures" | "decisions";
+            key: "content" | "review" | "reports" | "status" | "indicators" | "measures" | "places" | "decisions";
             /** Label */
             label: string;
         };
@@ -23166,6 +23335,37 @@ export interface operations {
             };
         };
     };
+    plan_budget_api_council_budget_plan__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanBudget"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     haushalt_vorbericht_zahlen_api_council_budget_preface_figures_get: {
         parameters: {
             query: {
@@ -28717,4 +28917,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f4c6a430893fb57e7b84580649e68d554bfd9dbc60571597904cb14cf679cb42
+// vertrag-sha256: 45194e1957ad4af1cac164d908e2b5badd7cc3e71d002c2487b407a5af3fdc73

@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CalendarDays, Check, ExternalLink, Flag, Hammer, LocateFixed, MapPinned, Megaphone, Newspaper, Search, TrafficCone, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ExternalLink, Flag, Hammer, LocateFixed, MapPinned, Megaphone, Newspaper, Route, Search, TrafficCone, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { ApiAntwort } from "@/lib/vertrag";
 import type { DecisionOutcome, Topic } from "@/lib/types";
-import { decisionHref, sitzungHref } from "@/lib/routes";
+import { decisionHref, planHref, sitzungHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { cn, formatDate } from "@/lib/utils";
 import { STAND, ZEITPLAN } from "@/lib/viertel-einblick";
@@ -491,6 +491,39 @@ export function InvestitionenKarte({ items, className }: { items: Tafel["investm
           <li key={i.code ?? i.label} className="flex items-baseline justify-between gap-3 py-1.5">
             <span className="text-foreground">{i.label}</span>
             <span className="shrink-0 tabular-nums text-muted-foreground">{formatEuro(i.total_eur)}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+/** Pläne der Stadt, die das Viertel betreffen (Schalter `plaene`): laufende und
+ *  entstehende Pläne mit mindestens einem Ort hier — aus einem Maßnahmentitel
+ *  oder aus einem Beschluss zum Plan (council/plan_pages.py::district_plans).
+ *  Nichts geschätzt: Ein Plan, der das Viertel nur „betreffen könnte“, steht
+ *  hier nicht. */
+export function PlaeneKarte({ items, className, style }: { items: NonNullable<Tafel["plans"]>; className?: string; style?: React.CSSProperties }) {
+  if (!items.length) return null;
+  return (
+    <Card className={cn("p-4", className)} style={style}>
+      <h2 className="flex items-center gap-2 font-display text-base font-bold text-foreground">
+        <Route className="h-4 w-4 text-primary" /> Pläne, die dein Viertel betreffen
+      </h2>
+      <p className="mt-1 text-xs text-muted-foreground">Pläne der Stadt mit einem Ort hier — aus ihrer Maßnahmenliste oder aus Beschlüssen dazu.</p>
+      <ul className="mt-2 divide-y divide-border text-sm">
+        {items.map((p) => (
+          <li key={p.key}>
+            <Link href={planHref(p.key)} prefetch={false} className="group flex min-h-11 items-start gap-2 py-2">
+              <span className="min-w-0 flex-1">
+                <span className="block break-words font-medium leading-snug text-foreground group-hover:text-primary">{p.title}</span>
+                <span className="mt-0.5 block break-words text-xs text-muted-foreground">
+                  {p.status === "running" ? p.field_label : `${p.field_label} · ${p.status_label}`}
+                  {" · "}{p.places.join(", ")}{p.place_count > p.places.length ? ` und ${p.place_count - p.places.length} weitere` : ""}
+                </span>
+              </span>
+              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-fluss ease-out-strong group-hover:translate-x-0.5" aria-hidden />
+            </Link>
           </li>
         ))}
       </ul>

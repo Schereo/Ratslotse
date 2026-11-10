@@ -296,6 +296,60 @@ test("ein Bericht sagt in einem Satz, was drinsteht — mit Zitat; Neues steht d
   if (await news.count()) await expect(log.getByText(/Nach Angaben der Verwaltung/)).toBeVisible();
 });
 
+test("die Karte zeigt die Straßen der Maßnahmen und führt von der Liste zum Ort", async ({ page }) => {
+  await schalter(page, true);
+  await page.goto("/council/plan?key=mobilitaetsplan_2030");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const map = page.locator('section[aria-labelledby="plan-places"]');
+  // Die Orte stehen im Ortskatalog des Bestands: Gegen die leere Datenbank der CI gibt es keine Karte —
+  // und dann auch keinen Punkt dafür in der Sprungleiste.
+  if (await map.count() === 0) {
+    await expect(page.getByRole("navigation", { name: "Abschnitte dieser Seite" }).getByRole("button", { name: /^Karte/ })).toHaveCount(0);
+    return;
+  }
+  await expect(map.getByText("Straße einer Maßnahme")).toBeVisible();
+  await expect(map.locator(".leaflet-container")).toBeVisible();
+  const row = map.getByRole("button", { name: /Lindenallee/ });
+  await row.click();
+  await expect(row).toHaveAttribute("aria-pressed", "true");
+  await expect(map.getByText(/nicht, wie weit es ist/)).toBeVisible();
+});
+
+test.describe("Haushalt zum Plan", () => {
+  test.use({ storageState: zustandsDatei("ratsfrau") });
+
+  test("mit dem Recht budget stehen die Posten, die den Plan nennen — mit € und Zitat", async ({ page }) => {
+    await schalter(page, true);
+    const response = page.waitForResponse((r) => r.url().includes("/api/council/budget/plan/mobilitaetsplan_2030"));
+    await page.goto("/council/plan?key=mobilitaetsplan_2030");
+    expect((await response).status()).toBe(200);
+    const card = page.locator('section[aria-labelledby="plan-budget"]');
+    // Die Haushaltszeilen liegen im Bestand; ohne sie bleibt der Block weg (kein Platzhalter).
+    if (await card.count() === 0) return;
+    await expect(card.getByText(/Nur Haushaltsposten, deren eigener Text den Plan beim Namen nennt/)).toBeVisible();
+    await expect(card.getByText(/\d €$/).first()).toBeVisible();
+    await expect(card.getByText(/Mobilitätsplan|RMV 2030/).first()).toBeVisible();
+  });
+});
+
+test("die Viertel-Tafel nennt Pläne mit einem Ort im Viertel", async ({ page }) => {
+  await page.route("**/api/app-config", async (route) => {
+    const echt = await (await route.fetch()).json();
+    const ohne = (echt.features ?? []).filter((f: string) => f !== "plaene" && f !== "mein-viertel");
+    await route.fulfill({ json: { ...echt, features: [...ohne, "plaene", "mein-viertel"] } });
+  });
+  const board = page.waitForResponse((r) => r.url().includes("/api/districts/bloherfelde/projects"));
+  await page.goto("/karte?ort=bloherfelde");
+  const data = await (await board).json();
+  const block = page.getByRole("heading", { name: "Pläne, die dein Viertel betreffen" });
+  if (!data.plans?.length) {
+    await expect(block).toHaveCount(0);
+    return;
+  }
+  await expect(block).toBeVisible();
+  await expect(page.locator(`a[href="/council/plan?key=${data.plans[0].key}"]`).first()).toBeVisible();
+});
+
 test("ohne Schalter bleibt es bei den Zielen", async ({ page }) => {
   await schalter(page, false);
   await page.goto("/council?tab=analysis&sub=ziele");
@@ -310,7 +364,7 @@ for (const breite of [390, 320]) {
     await schalter(page, true);
     for (const pfad of ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
       "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035",
-      "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau"]) {
+      "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau", "/council/plan?key=mobilitaetsplan_2030"]) {
       await page.goto(pfad, { waitUntil: "networkidle" });
       expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
     }
