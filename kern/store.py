@@ -956,6 +956,39 @@ CREATE TABLE IF NOT EXISTS prediction_log (
     at         TEXT NOT NULL,
     text       TEXT NOT NULL
 );
+-- Notizen, auf dem Gerät verschlüsselt (docs/plan-notizen-verschluesselt.md).
+-- Der Server kennt weder Schlüssel noch Klartext: `note_keys` hält den
+-- Datenschlüssel nur VERPACKT — einmal mit der Notiz-Passphrase, einmal mit
+-- dem Wiederherstellungscode (AES-KW, Base64). `user_notes` hält je Notiz
+-- IV und Geheimtext (AES-GCM); sichtbar bleibt nur, zu welchem Punkt es eine
+-- gibt, wann sie geändert wurde und wie lang sie ungefähr ist. `version`
+-- zählt hoch: Wer eine ältere schickt, bekommt 409 statt still zu
+-- überschreiben (zwei Geräte, eine Notiz).
+CREATE TABLE IF NOT EXISTS note_keys (
+    owner_id           INTEGER PRIMARY KEY,
+    key_version        INTEGER NOT NULL DEFAULT 1,
+    kdf                TEXT NOT NULL,
+    iterations         INTEGER NOT NULL,
+    salt               TEXT NOT NULL,
+    wrapped_passphrase TEXT NOT NULL,
+    wrapped_recovery   TEXT NOT NULL,
+    created_at         TEXT NOT NULL,
+    updated_at         TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS user_notes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id    INTEGER NOT NULL,
+    target_kind TEXT NOT NULL,
+    target_key  TEXT NOT NULL,
+    kind        TEXT NOT NULL,
+    iv          TEXT NOT NULL,
+    ciphertext  TEXT NOT NULL,
+    key_version INTEGER NOT NULL,
+    version     INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL,
+    UNIQUE(owner_id, target_kind, target_key, kind)
+);
 """
 
 # Alle Tabellen, die an einem Konto hängen — Grundlage von `delete_web_user`
@@ -1062,6 +1095,10 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("mcp_oauth_retired", "owner_id"),
     ("mcp_oauth_codes", "owner_id"),
     ("mcp_calls", "owner_id"),
+    # Verschlüsselte Notizen: ohne diese beiden bliebe nach der Löschung ein
+    # Rest stehen, den niemand mehr lesen kann — aber eben doch ein Rest.
+    ("note_keys", "owner_id"),
+    ("user_notes", "owner_id"),
 )
 
 
@@ -6649,6 +6686,93 @@ class Store:
         targets = {r["owner_id"]: dict(r) for r in rows}
         self._attach_push_tokens(targets)
         return targets
+
+    # ---- verschlüsselte Notizen ---------------------------------------------
+    # Der Server speichert und liefert nur Blobs (docs/plan-notizen-verschluesselt.md).
+
+    def get_note_keys(self, owner_id: int) -> dict | None:
+        row = self._conn.execute("SELECT * FROM note_keys WHERE owner_id = ?", (owner_id,)).fetchone()
+        return dict(row) if row else None
+
+    def create_note_keys(self, owner_id: int, keys: dict) -> bool:
+        """Beim Einrichten. ``False``, wenn schon Schlüssel da sind — die
+        überschreibt nur, wer vorher ausdrücklich neu anfängt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT OR IGNORE INTO note_keys (owner_id, key_version, kdf, iterations, salt, "
+                "wrapped_passphrase, wrapped_recovery, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (owner_id, keys["key_version"], keys["kdf"], keys["iterations"], keys["salt"],
+                 keys["wrapped_passphrase"], keys["wrapped_recovery"], now, now))
+        return cur.rowcount == 1
+
+    def rewrap_note_keys(self, owner_id: int, key_version: int, *, kdf: str, iterations: int, salt: str,
+                         wrapped_passphrase: str) -> bool:
+        """Neue Passphrase: Nur die Verpackung wechselt, der Datenschlüssel und
+        damit jede Notiz bleibt, wie sie ist. ``False`` bei fremder Version."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE note_keys SET kdf = ?, iterations = ?, salt = ?, wrapped_passphrase = ?, updated_at = ? "
+                "WHERE owner_id = ? AND key_version = ?",
+                (kdf, iterations, salt, wrapped_passphrase, now, owner_id, key_version))
+        return cur.rowcount == 1
+
+    def delete_all_notes(self, owner_id: int) -> int:
+        """Neu anfangen: Schlüssel UND Notizen weg (ohne Schlüssel sind sie
+        ohnehin nicht mehr zu lesen)."""
+        with self._conn:
+            n = self._conn.execute("DELETE FROM user_notes WHERE owner_id = ?", (owner_id,)).rowcount
+            self._conn.execute("DELETE FROM note_keys WHERE owner_id = ?", (owner_id,))
+        return n
+
+    def get_notes(self, owner_id: int, target_kind: str | None = None, target_key: str | None = None) -> list[dict]:
+        sql = "SELECT * FROM user_notes WHERE owner_id = ?"
+        args: list[object] = [owner_id]
+        if target_kind:
+            sql += " AND target_kind = ?"
+            args.append(target_kind)
+        if target_key:
+            sql += " AND target_key = ?"
+            args.append(target_key)
+        return [dict(r) for r in self._conn.execute(sql + " ORDER BY updated_at DESC, id DESC", args)]
+
+    def count_notes(self, owner_id: int) -> int:
+        return self._conn.execute("SELECT COUNT(*) FROM user_notes WHERE owner_id = ?", (owner_id,)).fetchone()[0]
+
+    def put_note(self, owner_id: int, target_kind: str, target_key: str, kind: str, *, iv: str,
+                 ciphertext: str, key_version: int, base_version: int) -> tuple[bool, dict | None]:
+        """Schreibt eine Notiz, wenn ``base_version`` die gespeicherte ist (0 =
+        neu). Sonst ``(False, gespeicherter Stand)`` — der Client fragt, statt
+        still zu überschreiben."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            alt = self._conn.execute(
+                "SELECT * FROM user_notes WHERE owner_id = ? AND target_kind = ? AND target_key = ? AND kind = ?",
+                (owner_id, target_kind, target_key, kind)).fetchone()
+            if alt is None:
+                if base_version != 0:
+                    return False, None
+                self._conn.execute(
+                    "INSERT INTO user_notes (owner_id, target_kind, target_key, kind, iv, ciphertext, key_version, "
+                    "version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)",
+                    (owner_id, target_kind, target_key, kind, iv, ciphertext, key_version, now, now))
+            else:
+                if alt["version"] != base_version:
+                    return False, dict(alt)
+                self._conn.execute(
+                    "UPDATE user_notes SET iv = ?, ciphertext = ?, key_version = ?, version = version + 1, "
+                    "updated_at = ? WHERE id = ?", (iv, ciphertext, key_version, now, alt["id"]))
+        neu = self._conn.execute(
+            "SELECT * FROM user_notes WHERE owner_id = ? AND target_kind = ? AND target_key = ? AND kind = ?",
+            (owner_id, target_kind, target_key, kind)).fetchone()
+        return True, dict(neu)
+
+    def delete_note(self, owner_id: int, target_kind: str, target_key: str, kind: str) -> bool:
+        with self._conn:
+            return self._conn.execute(
+                "DELETE FROM user_notes WHERE owner_id = ? AND target_kind = ? AND target_key = ? AND kind = ?",
+                (owner_id, target_kind, target_key, kind)).rowcount == 1
 
     # ---- persönliche Merkliste --------------------------------------------
 
