@@ -79,8 +79,7 @@ export function Indicators({ indicators }: { indicators: readonly PlanIndicator[
         <p className="font-mono text-meta text-muted-foreground">Nach Angaben der Verwaltung</p>
       </div>
       <p className="mb-4 max-w-[76ch] text-hinweis text-muted-foreground">
-        Was der Plan messbar erreichen will, und was die Stadt gemessen hat. Die Zahl steht neben dem Plan —
-        sie sagt nicht, was die Maßnahmen bewirkt haben.
+        Was der Plan messbar erreichen will, und was die Stadt gemessen hat.
       </p>
       <div className="space-y-6">
         {indicators.map((indicator) => <Indicator key={indicator.key} indicator={indicator} />)}
