@@ -284,6 +284,37 @@ const OUTCOME_DOT_CLS: Record<DecisionOutcome, string> = {
   settled: "bg-muted-foreground/50",
 };
 
+/** Dieselbe Farbgrammatik für die Bojen im „Kurs der Sitzung"
+ *  (`components/session/course.tsx`): Ring in der Punktfarbe, eine wichtige
+ *  Boje in der dunklen Stufe gefüllt (weißes Zeichen darauf ≥ 4,5 : 1). */
+export const OUTCOME_RING_CLS: Record<DecisionOutcome, string> = {
+  accepted: "border-[#22c55e]",
+  rejected: "border-[#ef4444]",
+  postponed: "border-[#f59e0b]",
+  noted: "border-blue-500",
+  no_decision: "border-muted-foreground/50",
+  settled: "border-muted-foreground/50",
+};
+export const OUTCOME_FILL_CLS: Record<DecisionOutcome, string> = {
+  accepted: "bg-[#15803d] text-white",
+  rejected: "bg-[#b91c1c] text-white",
+  postponed: "bg-[#b45309] text-white",
+  noted: "bg-[#1d4ed8] text-white",
+  no_decision: "bg-muted-foreground text-card",
+  settled: "bg-muted-foreground text-card",
+};
+export const OUTCOME_GLOW_CLS: Record<DecisionOutcome, string> = {
+  accepted: "ring-[#22c55e]/25",
+  rejected: "ring-[#ef4444]/25",
+  postponed: "ring-[#f59e0b]/25",
+  noted: "ring-blue-500/25",
+  no_decision: "ring-muted-foreground/15",
+  settled: "ring-muted-foreground/15",
+};
+export const OUTCOME_WORD: Record<DecisionOutcome, string> = Object.fromEntries(
+  Object.entries(OUTCOME_META).map(([k, v]) => [k, v.label])) as Record<DecisionOutcome, string>;
+export { OUTCOME_DOT_CLS };
+
 export function OutcomeDot({ outcome }: { outcome: DecisionOutcome | null }) {
   if (!outcome) return null;
   const m = OUTCOME_META[outcome] ?? OUTCOME_META.no_decision;
