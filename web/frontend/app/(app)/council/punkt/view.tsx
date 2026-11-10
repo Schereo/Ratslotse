@@ -138,7 +138,7 @@ function PunktView({ p }: { p: Punkt }) {
         </div>
       </header>
 
-      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 breit:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 [overflow-wrap:anywhere] breit:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
           {kurz && (
             <section aria-labelledby="kurz" className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -179,14 +179,14 @@ function PunktView({ p }: { p: Punkt }) {
           <nav aria-label="Weitere Punkte der Sitzung" className="mt-8 flex flex-wrap gap-3 border-t border-border pt-4">
             {p.previous && (
               <Link href={punktHref(p.ksinr, p.previous.item_number)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm hover:bg-accent">
+                className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm hover:bg-accent">
                 <ArrowLeft className="h-4 w-4" aria-hidden />
                 <span><span className="block text-xs text-muted-foreground">Zurück</span>{p.previous.item_number} · {p.previous.short_title}</span>
               </Link>
             )}
             {p.next && (
               <Link href={punktHref(p.ksinr, p.next.item_number)}
-                className="ml-auto inline-flex min-h-11 items-center gap-2 rounded-xl border border-primary bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+                className="ml-auto inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-xl border border-primary bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
                 <span><span className="block text-xs opacity-90">Weiter</span>{p.next.item_number} · {p.next.short_title}</span>
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
