@@ -31,6 +31,8 @@ export type PlanSection = PlanDetail["sections"][number];
 export type PlanView = PlanOverview["views"][number];
 export type PlanSnapshot = PlanCityStatus["series"][number];
 export type PlanDue = PlanRunway["dues"][number];
+export type PlanNews = NonNullable<PlanDetail["news"]>;
+export type PlanPlain = NonNullable<PlanDetail["plain"]>;
 export type PlanStatusNorm = PlanStatusBrief["counts"][number]["status_norm"];
 
 /** „19.12.2022“ aus dem ISO-Datum — ohne `new Date`, das rutscht je nach

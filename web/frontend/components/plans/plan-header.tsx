@@ -67,7 +67,7 @@ function Runway({ runway, stations, onStation, onPoint }: {
           const what = `${stationKind(mark)} vom ${formatDate(mark.date)}`;
           return (
             <button key={mark.station} type="button" onClick={() => onStation(mark.station)}
-              title={station ? `${what} · ${station.title}` : what}
+              title={station ? `${what} · ${station.title}${station.summary ? ` — laut Bericht: ${station.summary.text}` : ""}` : what}
               aria-label={`${what}${station ? `: ${station.title}` : ""} – im Zeitstrahl zeigen`}
               className="group/mark absolute top-1/2 flex h-11 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               style={{ left: percent(mark.x), zIndex: mark.kind === "preparation" ? 1 : mark.kind === "report" || mark.kind === "evaluation" ? 3 : 2 }}>

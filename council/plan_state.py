@@ -32,6 +32,9 @@ REVIEW_DIR = Path(__file__).resolve().parent / "plan_reviews"
 LINKS_DIR = Path(__file__).resolve().parent / "plan_links"
 #: Zweck und Kernpunkte je Plan (``scripts/plan_kernpunkte.py``).
 KEY_POINTS_DIR = Path(__file__).resolve().parent / "plan_key_points"
+REPORTS_DIR = Path(__file__).resolve().parent / "plan_reports"
+PLAIN_DIR = Path(__file__).resolve().parent / "plan_plain"
+RELATED_FILE = Path(__file__).resolve().parent / "plan_related.json"
 
 #: Fünf Stufen plus „unklar“. Reihenfolge = Reihenfolge der Anzeige.
 STATUS_NORM: tuple[str, ...] = ("open", "started", "in_progress", "done", "paused", "unclear")
@@ -316,3 +319,48 @@ def judged_links(key: str) -> list[dict]:
 
 def judged_keys() -> list[str]:
     return sorted(p.stem for p in LINKS_DIR.glob("*.json")) if LINKS_DIR.exists() else []
+
+
+# ── Berichte in einem Satz, einfache Sprache, verwandte Pläne ──────────────
+
+
+def _read(directory: Path, key: str) -> dict | None:
+    path = directory / f"{key}.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+@cache
+def reports(key: str) -> dict | None:
+    """Je Bericht ein Satz mit Zitat, dazu was im jüngsten neu ist (``council/plan_reports/<key>.json``,
+    geschrieben von ``scripts/plan_berichte.py``). ``None``: kein Bericht mit Vorlagentext."""
+    return _read(REPORTS_DIR, key)
+
+
+def report_keys() -> list[str]:
+    return sorted(p.stem for p in REPORTS_DIR.glob("*.json"))
+
+
+@cache
+def plain(key: str) -> dict | None:
+    """Der Plan in drei einfachen Sätzen und drei Fragen dazu (``council/plan_plain/<key>.json``,
+    geschrieben von ``scripts/plan_einfach.py``) — entstanden NUR aus den Kernpunkten."""
+    return _read(PLAIN_DIR, key)
+
+
+def plain_keys() -> list[str]:
+    return sorted(p.stem for p in PLAIN_DIR.glob("*.json"))
+
+
+@cache
+def related() -> dict[str, list[str]]:
+    """Verwandte Pläne (``council/plan_related.json``): ohne Sprachmodell vorgeschlagen (Nähe der
+    Kernpunkte), von Hand durchgesehen. Je Plan die Schlüssel der anderen, die ähnlichsten zuerst."""
+    if not RELATED_FILE.exists():
+        return {}
+    out: dict[str, list[tuple[float, str]]] = {}
+    for entry in json.loads(RELATED_FILE.read_text(encoding="utf-8"))["pairs"]:
+        # Was das Register selbst nennt, steht vorn; sonst die größere Nähe zuerst.
+        rank = 2.0 if entry["score"] is None else float(entry["score"])
+        out.setdefault(entry["a"], []).append((rank, entry["b"]))
+        out.setdefault(entry["b"], []).append((rank, entry["a"]))
+    return {key: [other for _rank, other in sorted(pairs, key=lambda t: (-t[0], t[1]))] for key, pairs in out.items()}

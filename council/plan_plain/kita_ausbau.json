@@ -1,0 +1,18 @@
+{
+ "plan": "kita_ausbau",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "17cb798dcd70f1b9",
+ "plain": [
+  "Der Plan reagiert in Oldenburg auf den Bedarf an mehr Plätzen für Kinder unter drei und im Kindergartenalter.",
+  "Für Kinder unter drei Jahren sollen Krippenplätze 55 Prozent und Tagespflege rund 10 Prozent der Versorgung abdecken.",
+  "Über die vierte Fortschreibung können 60 Plätze für Kinder unter drei und 25 Kindergartenplätze entstehen."
+ ],
+ "questions": [
+  "Was wurde zum Kita-Ausbaukonzept in Oldenburg zuletzt berichtet oder beschlossen?",
+  "Welche Versorgungsquote für Krippenplätze sieht das Kita-Ausbaukonzept in Oldenburg vor?",
+  "Wie viele Kindergartenplätze fehlen laut Kita-Ausbaukonzept in Oldenburg?"
+ ]
+}

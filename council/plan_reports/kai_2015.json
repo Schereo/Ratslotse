@@ -1,0 +1,15 @@
+{
+ "plan": "kai_2015",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "21/0355",
+   "date": "2021-05-18",
+   "text": "Der Kommunale Aktionsplan Inklusion umfasst 71 Haupt- und 236 Untermaßnahmen; 70 sind in Bearbeitung, 61 zurückgestellt und 70 abgeschlossen.",
+   "quote": "Es gibt insgesamt 71 Haupt- und 236 Untermaßnahmen (siehe auch oldenburg.de/inklusion/kai). Davon befinden sich derzeit 70 in Bearbeitung, 61 sind zurückgestellt und 70 Maßnahmen sind abgeschlossen (Hinweis: Die schulische Inklusion ist ausgenommen, s. AG Inklusion an Oldenburger Schulen)."
+  }
+ ]
+}

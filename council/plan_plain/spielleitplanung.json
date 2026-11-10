@@ -1,0 +1,18 @@
+{
+ "plan": "spielleitplanung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "87accf7bc2704895",
+ "plain": [
+  "Der Plan untersucht die Spielmöglichkeiten in Oldenburg und beschreibt ihre Entwicklung für die nächsten 15 bis 20 Jahre.",
+  "Die Verwaltung muss pro Jahr Personal und Geld für mindestens zwei bis drei neue oder umgestaltete Spielflächen einplanen.",
+  "Jedes Kind soll einen nahen Spielplatz mit Grundangebot allein erreichen können."
+ ],
+ "questions": [
+  "Was wurde zuletzt zur Spielleitplanung 2026 in Oldenburg berichtet oder beschlossen?",
+  "Welche Mindestfläche je Einwohner sieht die Spielleitplanung 2026 in Oldenburg vor?",
+  "Welche sieben Spielplatztypen sieht die Spielleitplanung 2026 in Oldenburg vor?"
+ ]
+}

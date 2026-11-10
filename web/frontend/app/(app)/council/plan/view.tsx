@@ -21,6 +21,7 @@ import { Indicators } from "@/components/plans/indicators";
 import { JumpBar } from "@/components/plans/jump-bar";
 import { Measures } from "@/components/plans/measures";
 import { PlanHeader } from "@/components/plans/plan-header";
+import { Related } from "@/components/plans/related";
 import { ReportLog } from "@/components/plans/report-log";
 import { Review } from "@/components/plans/review";
 import { AbrufFehler } from "@/components/abruf-fehler";
@@ -55,7 +56,7 @@ function PlanInner() {
     if (error && !istNichtGefunden(error)) return <AbrufFehler error={error} onRetry={refetch} was="Dieser Plan" />;
     notFound();
   }
-  const hasAside = data.decision_groups.length > 0;
+  const hasAside = data.decision_groups.length > 0 || data.related.length > 0;
   return (
     <div className="@container mx-auto max-w-[1180px] weit:max-w-[1480px]">
       <div className="print-hidden flex items-center justify-between gap-3">
@@ -79,7 +80,7 @@ function PlanInner() {
       <div className={cn("mt-2 flex flex-col gap-4 @4xl:gap-5",
         hasAside && "@4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-start")}>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
-          {data.content && <Content content={data.content} target={point} />}
+          {data.content && <Content content={data.content} plain={data.plain} target={point} />}
           {data.review && <Review review={data.review} />}
           <ReportLog plan={data} target={target} />
           {data.city_status && <CityStatus status={data.city_status} />}
@@ -87,7 +88,8 @@ function PlanInner() {
           {data.measures && <Measures measures={data.measures} />}
         </div>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
-          {hasAside && <Decisions plan={data} />}
+          {data.decision_groups.length > 0 && <Decisions plan={data} />}
+          <Related plans={data.related} />
           <p className="max-w-[76ch] text-hinweis text-muted-foreground">
             Gefunden über die Titel und Vorlagen der Tagesordnungspunkte im Ratsinformationssystem.
             Nichtöffentliche Sitzungen, Mitteilungen ohne Vorlage und Berichte außerhalb des

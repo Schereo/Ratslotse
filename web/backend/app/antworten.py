@@ -4818,7 +4818,16 @@ class PlanTimelineMember(TypedDict):
     decision_id: int | None
 
 
+class PlanQuoted(TypedDict):
+    """Ein Satz mit der wörtlichen Stelle, die ihn belegt."""
+    text: str
+    quote: str
+
+
 class PlanTimelineStation(TypedDict):
+    #: Was die Verwaltung im Bericht meldet, in einem Satz mit Zitat (``council/plan_reports/``);
+    #: ``None`` ohne Vorlagentext oder ohne belegten Satz.
+    summary: PlanQuoted | None
     """Eine Station im Zeitstrahl BERICHTE: eine Vorlage mit allen Beratungen oder ein mündlicher Bericht."""
     date: str
     date_end: str | None
@@ -5038,6 +5047,37 @@ class PlanContent(TypedDict):
     note: str
 
 
+class PlanNews(TypedDict):
+    """Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht."""
+    to_template: str
+    to_date: str
+    to_date_label: str
+    from_date_label: str
+    #: Titel des jüngsten Berichts.
+    title: str
+    decision_id: int | None
+    items: list[PlanQuoted]
+    #: Selbstauskunft der Verwaltung, vom Modell herausgesucht, ohne Modell geprüft.
+    note: str
+
+
+class PlanPlain(TypedDict):
+    """Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten."""
+    sentences: list[str]
+    #: Vorbereitete Fragen für „Frag den Rat“.
+    questions: list[str]
+    note: str
+
+
+class PlanRelated(TypedDict):
+    """Ein verwandter Plan — ohne Grad und ohne Begründung."""
+    key: str
+    title: str
+    field_label: str
+    status: PlanStatus
+    status_label: str
+
+
 class PlanSection(TypedDict):
     """Ein Abschnitt der Planseite, für die Sprungleiste."""
     key: Literal["content", "review", "reports", "status", "indicators", "measures", "decisions"]
@@ -5076,6 +5116,11 @@ class PlanDetail(PlanCard):
     predecessor: PlanNeighbour | None
     #: Zweck und Kernpunkte; ``None``, wo kein Plantext vorliegt.
     content: PlanContent | None
+    #: Einfache Sprache und Fragen; ``None`` ohne Kernpunkte oder wenn die Fassung nicht mehr dazu passt.
+    plain: PlanPlain | None
+    #: Nur wo die zwei jüngsten Berichte zu einer Reihe gehören und der jüngste nicht älter als zwei Jahre ist.
+    news: PlanNews | None
+    related: list[PlanRelated]
     measures: PlanMeasures | None
     city_status: PlanCityStatus | None
     indicators: list[PlanIndicator]

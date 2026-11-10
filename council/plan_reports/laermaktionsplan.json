@@ -1,0 +1,15 @@
+{
+ "plan": "laermaktionsplan",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "25/0696",
+   "date": "2025-11-17",
+   "text": "Auf den festgelegten Straßenabschnitten wird ab 14. Dezember 2025 Tempo 30 angeordnet; die VWG hat ihr Liniennetz angepasst.",
+   "quote": "Gemäß der Fortschreibung des Lärmaktionsplanes wird auf den im Ratsbeschluss festgelegten Straßenabschnitten zum 14. Dezember 2025 Tempo 30 angeordnet. Die VWG hat ihr Liniennetz entsprechend angepasst und optimiert, um die finanziellen Auswirkungen möglichst gering zu halten."
+  }
+ ]
+}

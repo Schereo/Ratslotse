@@ -1,0 +1,15 @@
+{
+ "plan": "kitaverpflegung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "26/0461",
+   "date": "2026-06-17",
+   "text": "Die städtischen Kitas setzten die Mittagsverpflegung zum 01.08.2023 neu um; der Vertrag ist bis zum 31.07.2028 gültig.",
+   "quote": "Die Kindertagesstäten der Stadt Oldenburg haben im Jahr 2023 die Mittagsverpflegung ausgeschrieben und zum 01.08.2023 neu umgesetzt. Dieser Vertrag ist bis zum 31.07.2028 gültig."
+  }
+ ]
+}

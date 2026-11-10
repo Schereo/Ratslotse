@@ -112,6 +112,7 @@ private struct CouncilPlanDetail: Decodable, Sendable {
     let reportCaveat: String?
     let reportCount: Int
     let content: CouncilPlanContent?
+    let plain: CouncilPlanPlain?
     let measures: CouncilPlanMeasures?
     let cityStatus: CouncilPlanCityStatus?
     let indicators: [CouncilPlanIndicator]
@@ -120,7 +121,7 @@ private struct CouncilPlanDetail: Decodable, Sendable {
     let decisionGroups: [CouncilPlanDecisionGroup]
 
     enum CodingKeys: String, CodingKey {
-        case key, title, office, kicker, adoption, website, since, remaining, content, measures, indicators, review, timeline
+        case key, title, office, kicker, adoption, website, since, remaining, content, plain, measures, indicators, review, timeline
         case statusLabel = "status_label"
         case horizonNote = "horizon_note"
         case reviewLabel = "review_label"
@@ -370,6 +371,18 @@ private struct CouncilPlanReview: Decodable, Sendable {
     }
 }
 
+/// Ein Satz mit der wörtlichen Stelle, die ihn belegt.
+private struct CouncilPlanQuoted: Decodable, Sendable {
+    let text: String
+    let quote: String
+}
+
+/// Der Plan in drei einfachen Sätzen — entstanden nur aus den belegten Kernpunkten.
+private struct CouncilPlanPlain: Decodable, Sendable {
+    let sentences: [String]
+    let note: String
+}
+
 private struct CouncilPlanStation: Decodable, Sendable {
     let date: String
     let dateEnd: String?
@@ -379,9 +392,11 @@ private struct CouncilPlanStation: Decodable, Sendable {
     let oral: Bool
     let committees: [String]
     let decisionId: Int?
+    /// Was die Verwaltung im Bericht meldet, in einem Satz; fehlt ohne Vorlagentext.
+    let summary: CouncilPlanQuoted?
 
     enum CodingKeys: String, CodingKey {
-        case date, kind, title, oral, committees
+        case date, kind, title, oral, committees, summary
         case dateEnd = "date_end"
         case templateNumber = "template_number"
         case decisionId = "decision_id"
@@ -787,7 +802,7 @@ private struct CouncilPlanSheet: View {
     private func sections(_ plan: CouncilPlanDetail) -> some View {
         header(plan)
         facts(plan)
-        if let content = plan.content { contentCard(content).id("content") }
+        if let content = plan.content { contentCard(content, plain: plan.plain).id("content") }
         if let review = plan.review { reviewCard(review).id("review") }
         timelineCard(plan).id("timeline")
         if let status = plan.cityStatus { statusCard(status).id("status") }
@@ -989,7 +1004,47 @@ private struct CouncilPlanSheet: View {
         }
     }
 
-    private func contentCard(_ content: CouncilPlanContent) -> some View {
+    /// „Lotti erklärt's einfach“: drei Sätze aus den Kernpunkten, zugeklappt wie im Web.
+    private func plainBox(_ plain: CouncilPlanPlain) -> some View {
+        let isOpen = openStatements.contains("plain")
+        return VStack(alignment: .leading, spacing: 7) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    if isOpen { openStatements.remove("plain") } else { openStatements.insert("plain") }
+                }
+            } label: {
+                HStack(alignment: .center, spacing: 8) {
+                    MonoKicker("Lotti erklärt’s einfach")
+                    Spacer(minLength: 4)
+                    RatsIcon(.chevronDown, size: 14)
+                        .foregroundStyle(RatsColor.muted)
+                        .rotationEffect(.degrees(isOpen ? 180 : 0))
+                }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(RatsPlainButtonStyle())
+            if isOpen {
+                ForEach(plain.sentences, id: \.self) { sentence in
+                    Text(sentence)
+                        .font(RatsFont.body(13.5))
+                        .foregroundStyle(RatsColor.text)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text(plain.note)
+                    .font(RatsFont.body(11))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(2)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.bottom, isOpen ? 10 : 0)
+        .background(RatsColor.primary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func contentCard(_ content: CouncilPlanContent, plain: CouncilPlanPlain?) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .firstTextBaseline) {
                 MonoKicker(content.heading)
@@ -1000,6 +1055,7 @@ private struct CouncilPlanSheet: View {
                         .foregroundStyle(RatsColor.secondary)
                 }
             }
+            if let plain { plainBox(plain) }
             statementRow(content.purpose, lead: true, shared: content.asOfLabel != nil)
             ForEach(content.groups) { group in
                 Divider().overlay(RatsColor.separator)
@@ -1128,6 +1184,15 @@ private struct CouncilPlanSheet: View {
                         .font(RatsFont.body(12.5, weight: .semibold))
                         .foregroundStyle(RatsColor.text)
                         .multilineTextAlignment(.leading)
+                    if let summary = station.summary {
+                        // Der Titel sagt selten, was drinsteht — der Satz schon. Selbstauskunft der Verwaltung.
+                        Text("Laut Bericht: \(summary.text)")
+                            .font(RatsFont.body(12.5))
+                            .foregroundStyle(RatsColor.bodyText)
+                            .lineSpacing(2)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     Text((station.committees + [station.templateNumber].compactMap { $0 }).joined(separator: " · "))
                         .font(RatsFont.body(11))
                         .foregroundStyle(RatsColor.secondary)

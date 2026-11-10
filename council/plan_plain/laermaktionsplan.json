@@ -1,0 +1,18 @@
+{
+ "plan": "laermaktionsplan",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "f497b8cb561a5340",
+ "plain": [
+  "Der Plan soll die Zahl der Menschen verringern, die Umgebungslärm ausgesetzt sind, und ruhige Gebiete vor mehr Lärm schützen.",
+  "Zum Fahrplanwechsel 2025 ist Tempo 30 auf ersten Abschnitten vorbereitet und soll Ende 2027 ausgeweitet werden, wenn sich die Stufe bewährt.",
+  "Ruhige Gebiete werden festgesetzt, deren Lärmschutzbelange bei späteren Planungen berücksichtigt werden müssen."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Lärmaktionsplan 2024 in Oldenburg berichtet oder beschlossen?",
+  "Wann soll Tempo 30 laut Lärmaktionsplan 2024 in Oldenburg zuerst eingeführt werden?",
+  "Was gilt laut Lärmaktionsplan 2024 in Oldenburg für den Lärmschutz ruhiger Gebiete?"
+ ]
+}

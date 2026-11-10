@@ -1,0 +1,18 @@
+{
+ "plan": "wohnungslosen_suchthilfe",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "5ed365e779320f92",
+ "plain": [
+  "Der Plan betrifft leicht erreichbare Hilfe für wohnungslose Menschen und Menschen mit Suchtproblemen in Oldenburg.",
+  "Ein zweiter Tagesaufenthalt wird in der Bloherfelder Straße 7 eingerichtet; Rose 12 zieht an den Schießstand 34.",
+  "Café Caro wird ausgebaut, erweitert und an die Alexanderstraße 17 verlegt; Tagesaufenthalt und Mädchenhaus tauschen ihre Gebäude."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Wohnungslosen- und Suchthilfekonzept in Oldenburg berichtet?",
+  "Wo soll der zweite Tagesaufenthalt für Wohnungslose in Oldenburg eingerichtet werden?",
+  "Wohin soll die Beratungsstelle Rose 12 in Oldenburg umziehen?"
+ ]
+}

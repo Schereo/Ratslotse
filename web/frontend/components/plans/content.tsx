@@ -18,11 +18,15 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ArrowRight, ChevronDown, ExternalLink, Sparkles } from "lucide-react";
 import { Aufklapp } from "@/components/aufklapp";
+import { frageLink } from "@/components/frage-chips";
+import { Mascot } from "@/components/mascot";
 import { Kicker } from "@/components/plans/parts";
+import { Quote } from "@/components/plans/quoted";
+import { chipMerken } from "@/lib/chip-frage";
 import { decisionHref } from "@/lib/routes";
-import type { PlanContent, PlanContentGroup, PlanContentStatement } from "@/lib/plans";
+import type { PlanContent, PlanContentGroup, PlanContentStatement, PlanPlain } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 /** „Rahmenkonzept …, S. 5“ · „Beschluss des Rates vom 16.12.2019“ · „Vorlage der Verwaltung 19/0943“.
@@ -31,22 +35,6 @@ export function sourceLine(source: PlanContentStatement["source"], dated = false
   if (source.kind === "attachment") return source.page ? `${source.label}, S. ${source.page}` : source.label;
   if (source.kind === "decision") return source.date_label && !dated ? `${source.label} vom ${source.date_label}` : source.label;
   return `${source.label} ${source.template_number}`;
-}
-
-/** Das Zitat — beim Aufklappen einmal markiert, wie mit einem Textmarker
- *  (`.zitat-marker` in globals.css): Unter dem Text liegt die Markierung, eine
- *  Abdeckung in Kartenfarbe fährt zur Seite weg. Nur `transform`. */
-function Quote({ text }: { text: string }) {
-  const quoted = `„${text}“`;
-  return (
-    <blockquote className="border-l-2 border-border pl-3 text-[14px] leading-relaxed text-foreground">
-      <span className="zitat-marker">
-        <span aria-hidden className="zitat-marker-farbe"><span>{quoted}</span></span>
-        <span aria-hidden className="zitat-marker-decke" />
-        <span className="relative">{quoted}</span>
-      </span>
-    </blockquote>
-  );
 }
 
 function Evidence({ statement, withText = false }: { statement: PlanContentStatement; withText?: boolean }) {
@@ -204,8 +192,64 @@ function Group({ group, marked }: { group: PlanContentGroup; marked: number | nu
   );
 }
 
-export function Content({ content, target }: {
+/** „Lotti erklärt's einfach“ — der Plan in drei Sätzen, entstanden NUR aus den belegten Kernpunkten
+ *  darunter (scripts/plan_einfach.py). Zugeklappt: Der Zweck-Satz und die Kernpunkte sagen dasselbe
+ *  schon knapp; wer es noch einfacher will, holt es sich mit einem Tipp. Dieselbe Tönung wie auf der
+ *  Beschluss-Seite, damit man Lottis Stimme wiedererkennt. */
+function Plain({ plain }: { plain: PlanPlain }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-3 rounded-xl border border-signal/30 bg-gradient-to-br from-signal/[0.07] to-transparent">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
+        className="flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left">
+        <Mascot pose="point" decorative className="h-8 w-8 shrink-0" />
+        <span className="min-w-0 flex-1 font-mono text-meta font-medium uppercase tracking-[0.08em] text-orange-800 dark:text-orange-300">
+          Lotti erklärt&rsquo;s einfach
+        </span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-weg ease-in-out-strong", open && "rotate-180")} aria-hidden />
+      </button>
+      <Aufklapp offen={open}>
+        <div className="max-w-[76ch] px-3 pb-3">
+          <ul className="space-y-1.5">
+            {plain.sentences.map((sentence) => (
+              <li key={sentence} className="break-words text-[15px] leading-snug text-foreground">{sentence}</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-hinweis text-muted-foreground">{plain.note}</p>
+        </div>
+      </Aufklapp>
+    </div>
+  );
+}
+
+/** Drei Fragen, die „Frag den Rat“ vorbelegt öffnen — derselbe Weg wie die Frage-Chips
+ *  (components/frage-chips.tsx), aber als Zeilen: Die Fragen nennen den Plan beim Namen und sind
+ *  dafür zu lang für eine Pille (auf dem Handy drei Zeilen in einer Kapsel). */
+function Questions({ questions }: { questions: readonly string[] }) {
+  return (
+    <div role="group" aria-label="Fragen an Lotti" className="mt-4 border-t border-border/70 pt-3.5">
+      <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        <Sparkles className="h-3.5 w-3.5 text-signal" aria-hidden /> Frag Lotti
+      </p>
+      <ul className="mt-1 max-w-[76ch]">
+        {questions.map((question) => (
+          <li key={question}>
+            <Link href={frageLink(question)} prefetch={false} onClick={() => chipMerken(question)}
+              className="group flex min-h-11 items-center gap-2 py-1.5 text-[14px] leading-snug text-foreground hover:text-primary">
+              <span className="min-w-0 flex-1 break-words">{question}</span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-primary transition-transform duration-fluss ease-out-strong group-hover:translate-x-0.5" aria-hidden />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function Content({ content, plain, target }: {
   content: PlanContent;
+  /** Einfache Sprache und Fragen; fehlt, wo es keine geprüfte Fassung gibt. */
+  plain?: PlanPlain | null;
   /** Der Kernpunkt, zu dem eine Termin-Marke im Zeitband springen will — `n` zählt hoch, damit derselbe Klick zweimal wirkt. */
   target?: { point: number; n: number } | null;
 }) {
@@ -225,6 +269,7 @@ export function Content({ content, target }: {
         <Kicker className="text-[11px] font-medium tracking-[0.1em]"><span id="plan-content">{content.heading}</span></Kicker>
         {content.as_of_label && <p className="font-mono text-meta text-muted-foreground">Stand {content.as_of_label}</p>}
       </div>
+      {plain && <Plain plain={plain} />}
       <SharedAsOf.Provider value={!!content.as_of_label}>
         <div className="max-w-[76ch]"><Statement statement={content.purpose} lead /></div>
         <div className="mt-3 space-y-4">
@@ -232,6 +277,8 @@ export function Content({ content, target }: {
         </div>
       </SharedAsOf.Provider>
       <p className="mt-3 max-w-[76ch] text-hinweis text-muted-foreground">{content.note}</p>
+      {/* Wer mehr wissen will, fragt das Ratsarchiv — die Fragen hängen an den Kernpunkten darüber. */}
+      {plain && plain.questions.length > 0 && <Questions questions={plain.questions} />}
     </section>
   );
 }

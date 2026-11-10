@@ -1,0 +1,65 @@
+{
+ "plan": "wohnungslosen_suchthilfe",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "20/0121",
+   "date": "2020-02-25",
+   "text": "Mit der Einrichtung des Tagesaufenthaltes wird voraussichtlich im 4. Quartal 2020 gerechnet.",
+   "quote": "Voraussichtlich kann im 4. Quartal 2020 mit der Einrichtung des Tagesaufenthaltes gerechnet werden."
+  },
+  {
+   "template": "21/0121",
+   "date": "2021-02-23",
+   "text": "Das Diakonische Werk wird den zweiten Tagesaufenthalt voraussichtlich im zweiten Quartal 2021 eröffnen.",
+   "quote": "Derzeit kann davon ausgegangen werden, dass das Diakonische Werk den zweiten Tagesaufenthalt zum frühestmöglichen Zeitpunkt im zweiten Quartal 2021 dort eröffnen wird."
+  },
+  {
+   "template": "22/0663",
+   "date": "2022-09-13",
+   "text": "Eine Tagesstätte für Suchterkrankte eröffnete im Frühjahr 2022 in der Elbestraße 8 und ist für 40 Menschen mit Abhängigkeit und/oder psychischer Erkrankung.",
+   "quote": "Eine Tagesstätte für Suchterkrankte hat im Frühjahr 2022 in der Elbestraße 8 eröffnet, Betreiber ist die STEP gGmbH. Es handelt sich dabei um eine Einrichtung für 40 Menschen mit einer Abhängigkeit und/oder einer psychischen Erkrankung."
+  },
+  {
+   "template": "23/0339",
+   "date": "2023-05-16",
+   "text": "Der Effekt der Entzerrung der Szene ist eingetreten; mit Beginn der wärmeren Jahreszeit kann geprüft werden, ob sich die Tendenz des Vorjahres hält.",
+   "quote": "Nach einem Jahr ist festzuhalten, dass der Effekt der Entzerrung der Szene eingetreten ist. Hier sind die Streetworker involviert und suchen die unterschiedlichen Standorte auf. Mit Beginn der wärmeren Jahreszeit kann nun überprüft werden, ob sich die beschriebene Tendenz des Vorjahres hält."
+  },
+  {
+   "template": "24/0219",
+   "date": "2024-04-23",
+   "text": "Der Tagesaufenthalt in der Ehnernstraße konnte bereits in die Cloppenburger Straße 35 umziehen; ein weiterer wurde in der Bloherfelder Straße 7 eröffnet.",
+   "quote": "Der Tagesaufenthalt in der Ehnernstraße konnte bereits in die Cloppenburger Straße 35 umziehen. Zudem wurde ein weiterer Tagesaufenthalt in der Bloherfelder Straße 7 eröffnet."
+  },
+  {
+   "template": "26/0484",
+   "date": "2026-06-23",
+   "text": "Seit dem Ratsbeschluss aus dem Jahr 2019 konnten fast alle Maßnahmen aus dem ersten Teil umgesetzt werden.",
+   "quote": "Seit dem Ratsbeschluss aus dem Jahr 2019 konnten nunmehr fast alle Maßnahmen aus dem ersten Teil umgesetzt werden."
+  }
+ ],
+ "news": {
+  "from": "24/0219",
+  "from_date": "2024-04-23",
+  "to": "26/0484",
+  "to_date": "2026-06-23",
+  "items": [
+   {
+    "text": "Für U25 werden Notschlafplätze außerhalb der Notunterkunft und eine Verstetigung der Wohnraumsicherung U25 der Diakonie geprüft.",
+    "quote": "Die bessere Unterstützung für junge Erwachsene (U25) in Form von Notschlafplätzen unabhängig von der Notunterkunft und Verstetigung der Wohnraumsicherung U25 der Diakonie, wie auch Wohntrainingsmaßnahmen bzw. niedrigschwellige ambulante Hilfen im eigenen Wohnraum werden geprüft."
+   },
+   {
+    "text": "Wohnungsnotfallhilfe und Suchthilfe sollen künftig getrennt, aber nicht unabhängig voneinander betrachtet werden.",
+    "quote": "Aufgrund der zunehmend hohen Komplexität der Themenfelder Wohnungsnotfallhilfe und Suchthilfe werden diese zukünftig separat, jedoch nicht unabhängig voneinander betrachtet."
+   },
+   {
+    "text": "Für die geplante Suchthilfestrategie werden Handlungsempfehlungen entwickelt; das Gesundheitsamt erstellt das Konzept.",
+    "quote": "Im Rahmen der geplanten Suchthilfestrategie werden Handlungsempfehlungen entwickelt, um den gestiegenen Anforderungen an die Suchthilfe gerecht zu werden. Dieses Konzept wird durch das Gesundheitsamt mit entsprechender Fachexpertise erstellt."
+   }
+  ]
+ }
+}

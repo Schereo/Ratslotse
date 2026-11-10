@@ -1,0 +1,18 @@
+{
+ "plan": "thg_neutrale_verwaltung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "d9c4ccb196cdf1fa",
+ "plain": [
+  "Das Konzept legt die Grundlage dafür, Klimaschutz in der Stadtverwaltung Oldenburg umzusetzen.",
+  "Bis 2030 sollen die Emissionen gegenüber 2023 um 62,5 Prozent sinken.",
+  "Ab Anfang 2026 sollen Beschreibungen konkreter Maßnahmen erstellt und die Maßnahmen umgesetzt werden."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Konzept für eine treibhausgasneutrale Verwaltung in Oldenburg berichtet?",
+  "Bis wann soll die Stadtverwaltung Oldenburg laut Konzept treibhausgasneutral sein?",
+  "Wie stark sollen Oldenburgs Verwaltungsemissionen bis 2030 gegenüber 2023 sinken?"
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "plan": "kinder_jugendbeteiligung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "5687abea9db0fbed",
+ "plain": [
+  "Der Plan regelt, wie Kinder und Jugendliche in Oldenburg an politischen Entscheidungen beteiligt werden.",
+  "Zum 01.01.2027 wird dafür eine zusätzliche Stelle geschaffen, auch für digitale Beteiligung und Kinderversammlungen.",
+  "Alle Beteiligungsformate müssen Kindern und Jugendlichen in Oldenburg offenstehen."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Handlungskonzept Kinder- und Jugendbeteiligung in Oldenburg berichtet?",
+  "Wer darf in Oldenburg das Jugendparlament wählen?",
+  "Wie lange dauert die Amtszeit des Jugendparlaments in Oldenburg?"
+ ]
+}

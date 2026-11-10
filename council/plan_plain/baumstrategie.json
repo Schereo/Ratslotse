@@ -1,0 +1,18 @@
+{
+ "plan": "baumstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "113d45babb18fd36",
+ "plain": [
+  "Die Strategie soll den Baumbestand in Oldenburg erhalten.",
+  "Sie sieht eine Regelung zum Schutz grundsätzlich aller Bäume im Stadtgebiet vor.",
+  "Für entfernte Bäume ermittelt die Stadt nachvollziehbar den Ausgleich und pflanzt dafür nach; auf Privatflächen fordert sie ihn ein."
+ ],
+ "questions": [
+  "Was wurde zuletzt in Oldenburg zur Baumerhalt- und Entwicklungsstrategie berichtet?",
+  "Welche Bäume soll Oldenburgs Baumschutzsatzung laut Baumerhaltstrategie erfassen?",
+  "Wo gelten die Pflanzstandards der Baumerhalt- und Entwicklungsstrategie in Oldenburg?"
+ ]
+}

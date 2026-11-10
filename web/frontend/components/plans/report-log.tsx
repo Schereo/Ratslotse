@@ -17,11 +17,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, CircleDashed } from "lucide-react";
 import { AdoptionBadge, Kicker } from "@/components/plans/parts";
+import { QuotedLine } from "@/components/plans/quoted";
 import { STAFFEL, staffelStil } from "@/components/staffel";
 import { decisionHref } from "@/lib/routes";
 import {
   committeeList, formatDate, reportCount, stationKind, yearSpan,
-  type PlanDetail, type PlanLogEntry, type PlanStation,
+  type PlanDetail, type PlanLogEntry, type PlanNews, type PlanStation,
 } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +75,10 @@ function Station({ station, index, current, currentLabel, last, highlighted }: {
             ) : station.title}
           </p>
           {station.label && <p className="mt-0.5 break-words text-hinweis text-foreground">{station.label}</p>}
+          {/* Der Titel sagt selten, was drinsteht — der Satz schon. Selbstauskunft der Verwaltung, als solche benannt. */}
+          {station.summary && (
+            <QuotedLine text={station.summary.text} quote={station.summary.quote} label="Laut Bericht" tinted={current || highlighted} className="mt-1" />
+          )}
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-muted-foreground">
             {station.kind === "adoption" && station.mode && <AdoptionBadge mode={station.mode} />}
             <span>
@@ -125,6 +130,24 @@ function LogSection({ entry, stations, currentIndex, currentLabel, highlighted, 
         ))}
       </ol>
     </li>
+  );
+}
+
+/** NEU IM JÜNGSTEN BERICHT: was dort steht und im vorigen Bericht derselben Reihe nicht. Gezeigt wird
+ *  es nur, solange der Bericht wirklich der jüngste und nicht älter als zwei Jahre ist (Backend). */
+function News({ news }: { news: PlanNews }) {
+  return (
+    <div className="mb-4 max-w-[76ch] rounded-xl border border-primary/15 bg-primary/[0.04] px-3.5 py-3">
+      <Kicker className="text-primary">Neu im jüngsten Bericht · {news.to_date_label}</Kicker>
+      <ul className="mt-1 divide-y divide-primary/10">
+        {news.items.map((item) => (
+          <li key={item.text}><QuotedLine text={item.text} quote={item.quote} tinted className="py-1" /></li>
+        ))}
+      </ul>
+      <p className="mt-2 text-hinweis text-muted-foreground">
+        Verglichen mit dem Bericht vom {news.from_date_label}. {news.note}
+      </p>
+    </div>
   );
 }
 
@@ -184,6 +207,7 @@ export function ReportLog({ plan, target }: {
           </div>
         </div>
       )}
+      {plan.news && <News news={plan.news} />}
       {stations.length > 0 && (
         <>
           <ol className="flex flex-col">

@@ -1,0 +1,18 @@
+{
+ "plan": "aktionsplan_energie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "44b81f18681b1fa0",
+ "plain": [
+  "Der Plan bündelt konkrete Schritte für Oldenburgs jährliche Energie- und Klimaschutzarbeit.",
+  "Der Plan sieht vor, bis 2020 mit eigenen Maßnahmen rund 100.000 Tonnen CO₂ einzusparen.",
+  "Für die Sanierung alter Gebäude sieht der Plan 2020 im Haushalt 350.000 Euro vor."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Aktionsplan Energie berichtet oder beschlossen?",
+  "Wie hoch ist der PV-Zuschuss im Aktionsplan Energie 2019/2020 in Oldenburg je kWp?",
+  "Was plant Oldenburgs Aktionsplan Energie 2019/2020 zur Stromsparberatung?"
+ ]
+}

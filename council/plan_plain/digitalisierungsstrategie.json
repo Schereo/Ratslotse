@@ -1,0 +1,18 @@
+{
+ "plan": "digitalisierungsstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "1d9c1c4054c7c26d",
+ "plain": [
+  "Die Strategie gibt den Rahmen für die digitale Entwicklung der Stadtverwaltung und ihrer Eigenbetriebe vor.",
+  "Die langfristige Vision reicht bis 2045; die Verwaltung soll Lösungen nach gemeinsamen Standards statt getrennten Speziallösungen nutzen.",
+  "Digitale Verwaltungsdienste sollen einfach nutzbar sein, ohne Wechsel zwischen digitalen und analogen Abläufen auskommen und bei IT-Ausfall analog verfügbar bleiben."
+ ],
+ "questions": [
+  "Was wurde zuletzt zur Digitalisierungsstrategie in Oldenburg berichtet oder beschlossen?",
+  "Welche Ziele setzt Oldenburgs Digitalisierungsstrategie bis 2045?",
+  "Wie bleiben digitale Verwaltungsdienste in Oldenburg bei IT-Ausfällen analog verfügbar?"
+ ]
+}

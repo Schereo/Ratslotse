@@ -1,0 +1,15 @@
+{
+ "plan": "digitalisierungsstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "25/0796",
+   "date": "2025-11-24",
+   "text": "248 digitale Leistungen stehen im Serviceportal bereit; neu etabliert sind etwa die elektronische Wohnsitzanmeldung und das digitale Begrüßungsgeld für Studierende.",
+   "quote": "Den Bürgerinnen und Bürgern stehen im Serviceportal mittlerweile 248 digitale Leistungen zur Verfügung, die zahlreiche Behördengänge entbehrlich machen. Beispiele für neu etablierte digitale Dienstleistungen sind die elektronische Wohnsitzanmeldung oder das digitale Begrüßungsgeld für Studierende"
+  }
+ ]
+}

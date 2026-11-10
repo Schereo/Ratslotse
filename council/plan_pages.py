@@ -12,7 +12,7 @@ from __future__ import annotations
 from calendar import monthrange
 from datetime import date as _date
 
-from council import plan_state
+from council import plan_judge, plan_state
 from council import plans as register
 
 #: Kurze Themenfeld-Namen für den Kicker. Die langen stehen in
@@ -740,11 +740,16 @@ def timeline(items: list[dict], plan: register.Plan | None = None) -> dict:
         for d in ((plan.adopted,) if plan.adopted else ()) + plan.decisions:
             if d.template:
                 labels[register.template_stem(d.template)] = d
+    # Was die Verwaltung im Bericht meldet — ein Satz mit Zitat, wo es einen belegten gibt.
+    said = {register.template_stem(r["template"]): r
+            for r in ((plan_state.reports(plan.key) or {}).get("reports", []) if plan is not None else [])}
     stations = []
     for g in _grouped([i for i in items if i["role"] in TIMELINE_ROLES]):
         last = g[-1]
         about = labels.get(_stem(last["template_number"]) or "") if last["role"] in ("adoption", "amendment") else None
+        sentence = said.get(_stem(last["template_number"]) or "") if last["role"] in REPORT_ROLES else None
         stations.append({
+            "summary": {"text": sentence["text"], "quote": sentence["quote"]} if sentence else None,
             "label": about.label if about else None,
             "mode": about.mode if about else None,
             "date": g[0]["date"],
@@ -992,6 +997,61 @@ def sections(page: dict) -> list[dict]:
     return [{"key": key, "label": label, "count": count} for key, label, count, shown in rows if shown]
 
 
+#: § 3.4 Nr. 3: Selbstauskunft kennzeichnen.
+NEWS_NOTE = ("Nach Angaben der Verwaltung. Ein Sprachmodell hat die Stellen herausgesucht; gezeigt wird nur, "
+             "was wörtlich im jüngsten Bericht steht und im vorigen nicht.")
+PLAIN_NOTE = "Automatisch aus den belegten Kernpunkten darunter umformuliert — dort steht zu jedem Satz das Zitat."
+
+
+def news_block(plan: register.Plan, stations: list[dict], today: str) -> dict | None:
+    """„Neu im jüngsten Bericht“: was im jüngsten Bericht einer Reihe steht und im vorigen nicht.
+
+    Nur solange der verglichene Bericht WIRKLICH der jüngste mit Vorlage ist und nicht älter als zwei
+    Jahre — „neu“ von 2022 wäre 2026 eine Irreführung. Sonst ``None``, ohne Platzhalter."""
+    data = (plan_state.reports(plan.key) or {}).get("news")
+    written = [s for s in stations if s["kind"] in REPORT_ROLES and s["template_number"]]
+    if not data or not written:
+        return None
+    latest = max(written, key=lambda s: (s["date_end"] or s["date"], s["template_number"]))
+    if _stem(latest["template_number"]) != register.template_stem(data["to"]):
+        return None
+    if _days_between(data["to_date"], today) > STALE_DAYS:
+        return None
+    return {"to_template": data["to"], "to_date": data["to_date"], "to_date_label": _datum_lang(data["to_date"]),
+            "from_date_label": _datum_lang(data["from_date"]), "title": latest["title"],
+            "decision_id": latest["decision_id"],
+            "items": [{"text": i["text"], "quote": i["quote"]} for i in data["items"]], "note": NEWS_NOTE}
+
+
+def plain_block(plan: register.Plan) -> dict | None:
+    """Der Plan in drei einfachen Sätzen, dazu drei Fragen — nur solange die Fassung zu den HEUTIGEN
+    Kernpunkten gehört (Fingerabdruck). Nach einer Änderung der Kernpunkte bleibt der Block weg, bis
+    ``scripts/plan_einfach.py`` neu gelaufen ist."""
+    data, points = plan_state.plain(plan.key), plan_state.key_points(plan.key)
+    if not data or not points or data["based_on"] != plan_judge.plain_basis(plan_judge.key_point_lines(points)):
+        return None
+    return {"sentences": list(data["plain"]), "questions": list(data["questions"]), "note": PLAIN_NOTE}
+
+
+#: So viele verwandte Pläne zeigt die Seite höchstens.
+RELATED_MAX = 4
+
+
+def related_block(plan: register.Plan, today: str) -> list[dict]:
+    """Verwandte Pläne (``council/plan_related.json``): ohne Sprachmodell vorgeschlagen, von Hand
+    durchgesehen. Die Seite nennt sie ohne Grad und ohne Begründung."""
+    out = []
+    for key in plan_state.related().get(plan.key, [])[:RELATED_MAX]:
+        other = register.PLANS.get(key)
+        if other is None:
+            continue
+        state = status(other, today)
+        out.append({"key": key, "title": other.title,
+                    "field_label": FIELD_SHORT.get(other.policy_field, other.policy_field),
+                    "status": state, "status_label": STATUS_LABELS[state]})
+    return out
+
+
 def _datum_lang(iso: str | None) -> str | None:
     """``"2022-11-25"`` → ``"25.11.2022"``, ``"2024-04"`` → ``"04/2024"``."""
     if not iso:
@@ -1057,6 +1117,9 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "concluded": _template_ref(store, plan.concluded, items),
         "predecessor": _neighbour(plan.predecessor),
         "content": content_block(store, plan),
+        "plain": plain_block(plan),
+        "news": news_block(plan, tl["stations"], today),
+        "related": related_block(plan, today),
         "measures": measures_block(key, measure_links),
         "city_status": city_status_block(key),
         "indicators": indicator_blocks(key),

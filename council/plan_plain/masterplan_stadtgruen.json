@@ -1,0 +1,18 @@
+{
+ "plan": "masterplan_stadtgruen",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "4d4478ef91ecf09b",
+ "plain": [
+  "Der Plan behandelt die künftige Entwicklung der Grünflächen im bebauten Stadtgebiet.",
+  "Der Plan soll dafür sorgen, dass alle Menschen in der Stadt genug Grün haben und artenreiche Bereiche erhalten, gefördert und verbunden werden.",
+  "Er sieht Wege im Grünen vor, die Ziele, Viertel und Grün verbinden, sowie Dachbegrünung und neue klimaaktive Flächen."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Masterplan Stadtgrün berichtet oder beschlossen?",
+  "Wie sollen Flächen mit hoher Artenvielfalt laut Masterplan Stadtgrün in Oldenburg vernetzt werden?",
+  "Welche Ziele soll das Wegenetz im Grünen in Oldenburg laut Masterplan Stadtgrün verbinden?"
+ ]
+}
