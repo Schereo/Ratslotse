@@ -5401,17 +5401,60 @@ class PlanPlaceSection(TypedDict):
     source_url: str
 
 
+class PlanAreaFact(TypedDict):
+    """Eine Kennzahl zu einem Gebiet, wie der Plan sie nennt — „Verkaufsfläche 2021: 2.000 m² (2012: 2.150 m²)“."""
+    label: str
+    value: str
+    page: int | None
+    source_url: str | None
+
+
+class PlanAreaNote(TypedDict):
+    """Eine Liste oder Absätze des Plans zu einem Gebiet: Defizite, Handlungskonzept, Stärken, Sätze zum Stadtteil."""
+    title: str
+    #: ``list``: Stichpunkte; ``text``: Absätze des Plans (als Zitat gezeigt).
+    kind: Literal["list", "text"]
+    items: list[str]
+    page: int | None
+    source_url: str | None
+
+
+class PlanAreaGroup(TypedDict):
+    """Eine Art Gebiet auf der Karte eines Plans („Friedhof“, „Nahversorgungszentrum“) — mit dem, was der Plan
+    darunter versteht, und dem Randstil, mit dem die Karte sie unterscheidet."""
+    name: str
+    description: str | None
+    page: int | None
+    source_url: str | None
+    #: Nur Standorte (Punkte), keine Flächen.
+    sites_only: bool
+    #: 0 durchgezogen, 1 gestrichelt, 2 gepunktet, 3 Strich-Punkt.
+    style: int
+
+
 class PlanPlaceArea(TypedDict):
-    """Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``)."""
+    """Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``) — oder ein Standort,
+    wo die Karte nur einen Punkt zeigt (dann ohne Fläche und ohne ``geometry`` am Ort)."""
     code: str
+    #: Was für ein Gebiet: „Ruhiges Gebiet“, „Friedhof“, „Nahversorgungszentrum“ — wie die Legende es nennt.
+    group: str
     #: „Eignungsgebiet „WNG 7 Kennedyviertel““ — so steht es im Viertel.
     label: str
-    figure: int
+    #: Nummer der Abbildung oder Karte; manche Pläne zählen ihre Karten nicht.
+    figure: int | None
     page: int
+    #: „Abb. 53, S. 152“, „Karte 34, S. 200“, „S. 77“ — die Fundstelle, wie sie am Link steht.
+    source_label: str
     source_url: str
-    #: Fläche des nachgezeichneten Umrisses; daneben, was der Plan selbst nennt (nicht für jedes Gebiet).
-    area_ha: float
+    #: Fläche des nachgezeichneten Umrisses (``None`` bei einem Standort); daneben, was der Plan selbst nennt.
+    area_ha: float | None
     area_ha_plan: float | None
+    #: Eine Zeile unter dem Namen („21 Betriebe · 2.000 m² Verkaufsfläche“); ``None``: die Fläche.
+    summary: str | None
+    #: Nur Standorte mit Einzugsbereich (geplante Spielplätze): der Radius, den die Karte gestrichelt zeigt.
+    radius_m: int | None
+    facts: list[PlanAreaFact]
+    notes: list[PlanAreaNote]
 
 
 class PlanPlace(TypedDict):
@@ -5435,6 +5478,8 @@ class PlanPlace(TypedDict):
 class PlanPlaces(TypedDict):
     """Die Karte zum Plan — ab drei Orten."""
     items: list[PlanPlace]
+    #: Die Arten der Gebiete aus den Karten des Plans (leer ohne solche Gebiete).
+    groups: list[PlanAreaGroup]
     section_places: int
     area_places: int
     #: Gibt es Abschnitte oder Gebiete zum Herunterladen (``/api/council/plan/{key}/geojson``)?
@@ -5474,8 +5519,9 @@ class PlanBudget(TypedDict):
 
 
 class PlanGeoProperties(TypedDict):
-    """Eigenschaften eines Abschnitts (``section``) oder Gebiets (``area``) im GeoJSON-Download."""
-    kind: Literal["section", "area"]
+    """Eigenschaften eines Abschnitts (``section``), Gebiets (``area``) oder Standorts (``site``) im
+    GeoJSON-Download."""
+    kind: Literal["section", "area", "site"]
     code: str
     page: int
     source_url: str
@@ -5484,11 +5530,14 @@ class PlanGeoProperties(TypedDict):
     stretch: NotRequired[str]
     quote: NotRequired[str]
     length_m: NotRequired[int]
-    #: Nur Gebiete: Name, Abbildung, Fläche des Umrisses und laut Plan.
+    #: Nur Gebiete und Standorte: Name, Art laut Legende, Abbildung, Fläche des Umrisses und laut Plan.
     name: NotRequired[str | None]
-    figure: NotRequired[int]
-    area_ha: NotRequired[float]
+    group: NotRequired[str]
+    figure: NotRequired[int | None]
+    area_ha: NotRequired[float | None]
     area_ha_plan: NotRequired[float | None]
+    summary: NotRequired[str | None]
+    facts: NotRequired[list[PlanAreaFact]]
 
 
 class PlanGeoFeature(TypedDict):

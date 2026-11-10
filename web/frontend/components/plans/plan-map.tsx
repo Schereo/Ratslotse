@@ -3,7 +3,9 @@
 // Die Karte zum Plan — schlankes Leaflet ohne react-leaflet, nur clientseitig
 // (per next/dynamic mit ssr:false laden). Straßen aus der Maßnahmenliste als
 // Linie, Orte aus Beschlüssen als Punkt; die Kachel-URL kommt aus
-// lib/basemap.ts (der Key-Parameter heißt `key`, nicht `api_key`).
+// lib/basemap.ts (der Key-Parameter heißt `key`, nicht `api_key`). Gebiete aus
+// den Karten des Plans als Fläche, Standorte daraus als Punkt in der Farbe
+// der Gebiete.
 //
 // Neutral gefärbt: Die Karte zeigt, WO etwas vorgesehen oder beschlossen ist,
 // nicht wie weit es ist (Plan § 3.4). Der Stand steht in der Liste darunter.
@@ -12,7 +14,8 @@ import { useEffect, useRef } from "react";
 import type { Layer, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { basemapUrl } from "@/lib/basemap";
-import type { PlanPlace } from "@/lib/plans";
+import { AREA_DASH } from "@/components/plans/plan-areas";
+import type { PlanPlace, PlanPlaces } from "@/lib/plans";
 
 function color(name: string, fallback: string): string {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -23,8 +26,10 @@ function escape(text: string): string {
   return text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
 }
 
-export default function PlanMap({ places, focus, onPick }: {
+export default function PlanMap({ places, groups = [], focus, onPick }: {
   places: readonly PlanPlace[];
+  /** Die Arten der Gebiete: Randstil je Art (`style`), Farbe für alle dieselbe. */
+  groups?: PlanPlaces["groups"];
   /** Der Ort, auf den die Liste zeigt — die Karte fährt hin und hebt ihn hervor. */
   focus: string | null;
   onPick: (slug: string) => void;
@@ -51,22 +56,30 @@ export default function PlanMap({ places, focus, onPick }: {
       const line = color("--primary", "#0764a6");
       const dot = color("--signal", "#e8590c");
       const bounds = L.latLngBounds([]);
+      const styleOf = new Map(groups.map((g) => [g.name, g.style]));
       const pending: Layer[] = [];
       for (const place of places) {
-        const label = `<strong>${escape(place.name)}</strong>${place.areas[0] ? `<br>${escape(place.areas[0].area_ha.toLocaleString("de-DE", { maximumFractionDigits: 1 }))} ha` : place.sections[0] ? `<br>${escape(place.sections[0].code)} · ${escape(place.sections[0].stretch)}` : place.measures[0] ? `<br>${escape(place.measures[0].code)} · ${escape(place.measures[0].title)}` : place.decisions[0] ? `<br>${escape(place.decisions[0].title)}` : ""}`;
+        const area = place.areas[0];
+        const label = `<strong>${escape(place.name)}</strong>${area ? `<br>${escape(area.group)}${area.area_ha != null ? ` · ${escape(area.area_ha.toLocaleString("de-DE", { maximumFractionDigits: 1 }))} ha` : ""}${area.summary ? `<br>${escape(area.summary)}` : ""}` : place.sections[0] ? `<br>${escape(place.sections[0].code)} · ${escape(place.sections[0].stretch)}` : place.measures[0] ? `<br>${escape(place.measures[0].code)} · ${escape(place.measures[0].title)}` : place.decisions[0] ? `<br>${escape(place.decisions[0].title)}` : ""}`;
         let layer: Layer;
         if (place.geometry) {
           // Gebiete als Fläche (dünner Rand, leichte Füllung), Straßen als kräftige Linie.
+          const dash = area ? AREA_DASH[(styleOf.get(area.group) ?? 0) % AREA_DASH.length] : undefined;
           const style = place.areas.length
-            ? { color: line, weight: 2, opacity: 0.9, fillColor: line, fillOpacity: 0.18 }
+            ? { color: line, weight: dash ? 2.5 : 2, opacity: 0.9, fillColor: line, fillOpacity: 0.18, dashArray: dash }
             : { color: line, weight: 5, opacity: 0.85, lineCap: "round" as const };
           const shape = L.geoJSON(place.geometry as import("geojson").GeoJsonObject, { style });
           layer = shape;
           bounds.extend(shape.getBounds());
         } else {
-          layer = L.circleMarker([place.lat, place.lon], {
-            radius: 6, color: "#fff", weight: 2, fillColor: place.measures.length ? line : dot, fillOpacity: 0.95,
+          const marker = L.circleMarker([place.lat, place.lon], {
+            radius: 6, color: "#fff", weight: 2, fillColor: place.measures.length || area ? line : dot, fillOpacity: 0.95,
           });
+          // Ein geplanter Spielplatz mit seinem Einzugsbereich, gestrichelt — so zeigt ihn der Plan (Karte 8).
+          layer = area?.radius_m
+            ? L.featureGroup([L.circle([place.lat, place.lon], { radius: area.radius_m, color: line, weight: 1.5, opacity: 0.8,
+                dashArray: "5 5", fillColor: line, fillOpacity: 0.06, interactive: false }), marker])
+            : marker;
           bounds.extend([place.lat, place.lon]);
         }
         layer.bindTooltip(label, { sticky: true, direction: "top" }).on("click", () => pick.current(place.slug));
@@ -94,7 +107,7 @@ export default function PlanMap({ places, focus, onPick }: {
     });
     const registry = layers.current;
     return () => { done = true; ro?.disconnect(); mapRef.current?.remove(); mapRef.current = null; registry.clear(); };
-  }, [places]);
+  }, [places, groups]);
 
   useEffect(() => {
     const map = mapRef.current;

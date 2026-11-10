@@ -155,9 +155,11 @@ def _pruefe_listen() -> list[Befund]:
                for problem in plan_listen.check(key, plan_state.plan_lists(key) or {})]
     from council import stadterneuerung
     befunde += [Befund("stadterneuerung", "fehler", problem) for problem in erneuerung.check(stadterneuerung.data())]
-    from scripts import plan_umrisse
-    befunde += [Befund(key, "fehler", problem) for key in plan_state.shape_keys()
-                for problem in plan_umrisse.check(plan_state.plan_shapes(key) or {"features": []})]
+    from scripts import plan_karten, plan_umrisse
+    for key in plan_state.shape_keys():
+        data = plan_state.plan_shapes(key) or {"features": []}
+        problems = plan_umrisse.check(data) if key == "waermeplan" else plan_karten.check(key, data)
+        befunde += [Befund(key, "fehler", problem) for problem in problems]
     return befunde
 
 

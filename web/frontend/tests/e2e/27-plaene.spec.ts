@@ -355,13 +355,52 @@ test("der Wärmeplan zeigt seine Wärmenetzeignungsgebiete, jedes mit Seite", as
   await expect(lists.locator("a:visible", { hasText: /S\. 94/ }).first()).toHaveAttribute("href", /id=306748&type=do#page=94$/);
   // Die Gebiete, nachgezeichnet aus den Karten des Plans, stehen als Fläche auf der Karte — und zum Herunterladen.
   const map = page.locator('section[aria-labelledby="plan-places"]');
-  await expect(map.getByText("Gebiet aus dem Plan")).toBeVisible();
+  // Die Legende nennt die Art mit dem Wort des Plans — „Gebiet aus dem Plan“ sagte nicht, was es ist.
+  await expect(map.getByRole("list", { name: "Legende" }).getByText("Eignungsgebiet")).toBeVisible();
   await expect(map.locator(".leaflet-container path.leaflet-interactive")).toHaveCount(11);
   const link = map.getByRole("link", { name: "Als GeoJSON herunterladen" });
   await expect(link).toHaveAttribute("href", "/api/council/plan/waermeplan/geojson");
   const geo = await (await page.request.get("/api/council/plan/waermeplan/geojson")).json();
   expect(geo.type).toBe("FeatureCollection");
   expect(geo.features).toHaveLength(11);
+});
+
+test("weitere Pläne zeigen Gebiete und Standorte aus ihren Karten, nach Art und mit Fundstelle", async ({ page }) => {
+  await schalter(page, true);
+  // Alles aus council/plan_shapes/ und council/plan_lists/ — auch gegen die leere Datenbank.
+  await page.goto("/council/plan?key=eek");
+  const map = page.locator('section[aria-labelledby="plan-places"]');
+  const legend = map.getByRole("list", { name: "Legende" });
+  await expect(legend.getByText("Nahversorgungszentrum", { exact: true })).toBeVisible();
+  await expect(legend.getByText("Nahversorgungsstandort", { exact: true })).toBeVisible();
+  await expect(map.getByText("Nahversorgungszentrum · 11")).toBeVisible();
+  await expect(map.getByRole("link", { name: /Karte 34, S\. 200/ })).toHaveAttribute("href", /id=285989&type=do#page=200$/);
+  // Je Art sechs offen, der Rest hinter einem Knopf — die kleinen Arten bleiben ganz sichtbar.
+  await expect(map.getByRole("button", { name: /KaufPark Kreyenbrück/ })).toBeVisible();
+  await expect(map.getByRole("button", { name: /^Cloppenburger Straße/ })).toHaveCount(0);
+  await map.getByRole("button", { name: "Alle 22 zeigen" }).click();
+  // Aufgeklappt: die Kenndaten und die Stärken und Schwächen aus der Bestandsanalyse, je mit Seite.
+  const row = map.getByRole("button", { name: /^Hauptstraße Eversten/ });
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  const details = row.locator("xpath=ancestor::li[1]");
+  await expect(details.getByText("Leerstände 2021")).toBeVisible();
+  await expect(details.getByText("Stärken")).toBeVisible();
+
+  await page.goto("/council/plan?key=laermaktionsplan");
+  await expect(map.getByText("Ruhiges Gebiet · 6")).toBeVisible();
+  await expect(map.getByText("Abschnitt aus dem Plan")).toBeVisible();
+  const lists = page.locator('section[aria-labelledby="plan-lists"]');
+  await expect(lists.getByRole("heading", { name: "Ruhige Gebiete", exact: true })).toBeVisible();
+  await expect(lists.getByRole("heading", { name: "Friedhöfe als Ruhige Gebiete" })).toBeVisible();
+
+  await page.goto("/council/plan?key=spielleitplanung");
+  await expect(map.getByRole("list", { name: "Legende" }).getByText("Spielplatz in Planung")).toBeVisible();
+  await expect(map.locator(".leaflet-container path.leaflet-interactive").first()).toBeVisible();
+  await expect(map.getByRole("button", { name: /^Schramperweg/ })).toBeVisible();
+  const eversten = map.getByRole("button", { name: /^Eversten/ });
+  await eversten.click();
+  await expect(eversten.locator("xpath=ancestor::li[1]").getByText(/Spielplätze im Stadtteil/)).toBeVisible();
 });
 
 test.describe("Haushalt zum Plan", () => {
@@ -421,16 +460,24 @@ test("ohne Schalter bleibt es bei den Zielen", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Klimaschutzplan Oldenburg 2035" })).toHaveCount(0);
 });
 
+// Zwei Gruppen statt einer: Jede Seite mit Karte wartet auf ihre Kacheln, und zwölf Seiten in einem Test
+// rissen in der CI die 30 Sekunden je Test (#1849) — ohne dass eine Seite zu breit war.
+const BREITE_SEITEN = {
+  "Pläne": ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
+    "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035",
+    "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau", "/council/plan?key=mobilitaetsplan_2030"],
+  "Karten aus dem Plan": ["/council/plan?key=laermaktionsplan", "/council/plan?key=waermeplan", "/council/plan?key=eek",
+    "/council/plan?key=masterplan_stadtgruen", "/council/plan?key=spielleitplanung"],
+};
 for (const breite of [390, 320]) {
-  test(`keine Seite scrollt seitwärts (${breite} px)`, async ({ page }) => {
-    await page.setViewportSize({ width: breite, height: 800 });
-    await schalter(page, true);
-    for (const pfad of ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
-      "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035",
-      "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau", "/council/plan?key=mobilitaetsplan_2030",
-      "/council/plan?key=laermaktionsplan", "/council/plan?key=waermeplan"]) {
-      await page.goto(pfad, { waitUntil: "networkidle" });
-      expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
-    }
-  });
+  for (const [gruppe, pfade] of Object.entries(BREITE_SEITEN)) {
+    test(`keine Seite scrollt seitwärts (${gruppe}, ${breite} px)`, async ({ page }) => {
+      await page.setViewportSize({ width: breite, height: 800 });
+      await schalter(page, true);
+      for (const pfad of pfade) {
+        await page.goto(pfad, { waitUntil: "networkidle" });
+        expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
+      }
+    });
+  }
 }

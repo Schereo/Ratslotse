@@ -55,12 +55,23 @@ def test_jeder_abschnitt_traegt_seinen_vorschlag_und_seine_seite():
 def test_abschnitte_stehen_auf_der_karte(store):
     block = plan_pages.places_block(store, plans.PLANS["laermaktionsplan"])
     assert block is not None and block["section_places"] == 9
-    assert block["note"] == plan_pages.SECTIONS_NOTE
+    # Dazu die Ruhigen Gebiete aus seinen Karten (scripts/plan_karten.py) — Abschnitte stehen vorn.
+    assert block["area_places"] == 24 and block["note"] == plan_pages.SECTIONS_AREAS_NOTE
     first = block["items"][0]
     assert first["slug"] == "abschnitt-18.2.1" and first["geometry"]["type"] == "MultiLineString"
     assert first["sections"][0]["source_url"].endswith("id=280381&type=do#page=64")
     # Die Ortsbereiche rechnet das Skript mit; die Seite gibt sie nicht aus.
     assert all("districts" not in p for p in block["items"])
+
+
+def test_ruhige_gebiete_stehen_alle_in_der_tabelle():
+    """Nachgezeichnet sind nur die, die auf der Karte groß genug sind; die Tabellen tragen alle."""
+    lists = {lst["key"]: lst for lst in plan_pages.lists_block(plans.PLANS["laermaktionsplan"])}
+    assert list(lists) == ["hotspots", "quiet_areas", "quiet_cemeteries", "quiet_recreation"]
+    quiet = lists["quiet_areas"]["rows"]
+    assert len(quiet) == 18 and quiet[14]["cells"] == ["15", "Hausbäkenniederung-Everstenmoor", "353,5"]
+    assert [len(lists[k]["rows"]) for k in ("quiet_cemeteries", "quiet_recreation")] == [11, 7]
+    assert lists["quiet_cemeteries"]["rows"][0]["cells"] == ["101", "Waldfriedhof Ofenerdiek", "10,0", "1,3%"]
 
 
 def test_tabellen_stehen_wie_im_dokument():
@@ -75,7 +86,7 @@ def test_tabellen_stehen_wie_im_dokument():
 
 def test_viertel_kennt_abschnitte_und_gebiete(store):
     by_key = {p["key"]: p for p in plan_pages.district_plans(store, "eversten")}
-    assert by_key["laermaktionsplan"]["places"] == ["Hauptstraße", "Hundsmühler Straße"]
+    assert by_key["laermaktionsplan"]["places"][:2] == ["Hauptstraße", "Hundsmühler Straße"]
     assert by_key["waermeplan"]["places"] == ["Eignungsgebiet „WNG 7 Kennedyviertel“",
                                                "Eignungsgebiet „WNG 8 Wilhelm-Raabe-Str.“"]
     # Die nachgezeichnete Fläche entscheidet, nicht die Ortsteil-Spalte der Tabelle: „WNG Ohmstede“ steht dort

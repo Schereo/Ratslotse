@@ -20299,6 +20299,136 @@
         "title": "PlaceSource",
         "type": "object"
       },
+      "PlanAreaFact": {
+        "description": "Eine Kennzahl zu einem Gebiet, wie der Plan sie nennt — „Verkaufsfläche 2021: 2.000 m² (2012: 2.150 m²)“.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "page",
+          "source_url"
+        ],
+        "title": "PlanAreaFact",
+        "type": "object"
+      },
+      "PlanAreaGroup": {
+        "description": "Eine Art Gebiet auf der Karte eines Plans („Friedhof“, „Nahversorgungszentrum“) — mit dem, was der Plan\ndarunter versteht, und dem Randstil, mit dem die Karte sie unterscheidet.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "sites_only": {
+            "title": "Sites Only",
+            "type": "boolean"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "style": {
+            "title": "Style",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "page",
+          "source_url",
+          "sites_only",
+          "style"
+        ],
+        "title": "PlanAreaGroup",
+        "type": "object"
+      },
+      "PlanAreaNote": {
+        "description": "Eine Liste oder Absätze des Plans zu einem Gebiet: Defizite, Handlungskonzept, Stärken, Sätze zum Stadtteil.",
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "list",
+              "text"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "kind",
+          "items",
+          "page",
+          "source_url"
+        ],
+        "title": "PlanAreaNote",
+        "type": "object"
+      },
       "PlanAxis": {
         "description": "Die gemeinsame Zeitachse der Übersicht: Beginn des Bestands bis zehn Jahre nach vorn.",
         "properties": {
@@ -22230,6 +22360,13 @@
                 "title": "Geojson",
                 "type": "boolean"
               },
+              "groups": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanAreaGroup"
+                },
+                "title": "Groups",
+                "type": "array"
+              },
               "items": {
                 "items": {
                   "$ref": "#/components/schemas/PlanPlace"
@@ -22263,6 +22400,7 @@
             },
             "required": [
               "items",
+              "groups",
               "section_places",
               "area_places",
               "geojson",
@@ -23031,11 +23169,14 @@
         "type": "object"
       },
       "PlanGeoProperties": {
-        "description": "Eigenschaften eines Abschnitts (``section``) oder Gebiets (``area``) im GeoJSON-Download.",
+        "description": "Eigenschaften eines Abschnitts (``section``), Gebiets (``area``) oder Standorts (``site``) im\nGeoJSON-Download.",
         "properties": {
           "area_ha": {
             "title": "Area Ha",
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "area_ha_plan": {
             "title": "Area Ha Plan",
@@ -23048,14 +23189,29 @@
             "title": "Code",
             "type": "string"
           },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanAreaFact"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
           "figure": {
             "title": "Figure",
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
           },
           "kind": {
             "enum": [
               "section",
-              "area"
+              "area",
+              "site"
             ],
             "title": "Kind",
             "type": "string"
@@ -23090,6 +23246,13 @@
           "stretch": {
             "title": "Stretch",
             "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -23860,11 +24023,14 @@
         "type": "object"
       },
       "PlanPlaceArea": {
-        "description": "Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``).",
+        "description": "Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``) — oder ein Standort,\nwo die Karte nur einen Punkt zeigt (dann ohne Fläche und ohne ``geometry`` am Ort).",
         "properties": {
           "area_ha": {
             "title": "Area Ha",
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "area_ha_plan": {
             "title": "Area Ha Plan",
@@ -23877,31 +24043,76 @@
             "title": "Code",
             "type": "string"
           },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanAreaFact"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
           "figure": {
             "title": "Figure",
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
           },
           "label": {
             "title": "Label",
             "type": "string"
           },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/PlanAreaNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
           "page": {
             "title": "Page",
             "type": "integer"
           },
+          "radius_m": {
+            "title": "Radius M",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
           "source_url": {
             "title": "Source Url",
             "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "code",
+          "group",
           "label",
           "figure",
           "page",
+          "source_label",
           "source_url",
           "area_ha",
-          "area_ha_plan"
+          "area_ha_plan",
+          "summary",
+          "radius_m",
+          "facts",
+          "notes"
         ],
         "title": "PlanPlaceArea",
         "type": "object"
@@ -24020,6 +24231,13 @@
             "title": "Geojson",
             "type": "boolean"
           },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlanAreaGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/PlanPlace"
@@ -24053,6 +24271,7 @@
         },
         "required": [
           "items",
+          "groups",
           "section_places",
           "area_places",
           "geojson",

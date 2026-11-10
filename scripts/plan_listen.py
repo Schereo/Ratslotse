@@ -81,6 +81,13 @@ HOTSPOT_PAGE = 55
 HOTSPOT_CAPTION = "Tabelle 13: Rangfolge höchster Lärmkennziffern"
 
 #: Tabelle 4 des Wärmeplans und die Seiten, auf denen jedes Gebiet beschrieben ist.
+#: Tabellen 27–29 (S. 153, 155): die Ruhigen Gebiete. Nachgezeichnet sind sie in ``scripts/plan_karten.py``;
+#: hier stehen alle, auch die zu kleinen, so wie das Dokument sie zählt.
+QUIET_PAGE, QUIET_CAPTION = 153, ("Tabelle 27: Ergebnis der Verschneidung — die Flächen 3 und 9 klammert der Plan "
+                                  "aus (mögliche Suchräume für Windenergie)")
+GREEN_PAGE = 155
+CEMETERY_CAPTION = "Tabelle 28: Ergebnis der Überlagerung - Friedhöfe"
+RECREATION_CAPTION = "Tabelle 29: Ergebnis der Überlagerung - Erholungsflächen"
 WNG_PAGE = 79
 WNG_CAPTION = "Tabelle 4: Übersicht über definierte Wärmenetzeignungsgebiete in Oldenburg"
 #: Ortsteil laut Tabelle → Ortsbereiche von Ratslotse. Ist der Name des Gebiets selbst ein
@@ -133,6 +140,29 @@ def hotspots(page: str) -> list[dict]:
         rows.append({"rank": int(m.group(1)), "rank_before": int(m.group(2)) if m.group(2) else None,
                      "name": m.group(3).strip()})
     return rows
+
+
+def _unbreak(name: str) -> str:
+    """„Hausbäkenniederung- Everstenmoor“: Trennung am Zeilenende zurücknehmen."""
+    return re.sub(r"- (?=[A-ZÄÖÜ])", "-", name.strip())
+
+
+def quiet_areas(page: str) -> list[list[str]]:
+    """Tabelle 27: „1 Swarte Moor 2,6 2 Alexanderheide 17,7 …“ → [Nummer, Bezeichnung, Hektar]."""
+    body = _flat(page.split("Flächengröße [ha]", 1)[1].split("Tabelle 27", 1)[0])
+    return [[m.group(1), _unbreak(m.group(2)), m.group(3)]
+            for m in re.finditer(r"(\d{1,2}) (.+?) (\d+,\d)(?= |$)", body)]
+
+
+def green_areas(page: str) -> tuple[list[list[str]], list[list[str]]]:
+    """Tabellen 28 und 29: „101 Waldfriedhof Ofenerdiek 10,0 1,3% …“ → [Nummer, Name, Hektar, Anteil leise]."""
+    head = "LDEN < 60 dB(A)"
+    first, rest = page.split(head, 1)[1].split("Tabelle 28", 1)
+    second = rest.split(head, 1)[1].split("Tabelle 29", 1)[0]
+    def rows(body: str) -> list[list[str]]:
+        return [[m.group(1), _unbreak(m.group(2)), m.group(3), m.group(4)]
+                for m in re.finditer(r"(\d{3}) (.+?) (\d+,\d) (\d+,\d%)", _flat(body))]
+    return rows(first), rows(second)
 
 
 def heat_areas(pages: list[str]) -> list[dict]:
@@ -303,10 +333,24 @@ def build_noise(store) -> dict:
         out["quote"] = _sentence(pages[entry["page"] - 1], entry["phrase"])
         sections.append(out)
     rows = hotspots(pages[HOTSPOT_PAGE - 1])
+    cemeteries, recreation = green_areas(pages[GREEN_PAGE - 1])
+    share = "Anteil unter 60 dB(A)"
     return {"plan": "laermaktionsplan", "document": doc, "sections": sections, "lists": [{
         "key": "hotspots", "title": "Lärm-Schwerpunkte", "caption": HOTSPOT_CAPTION, "page": HOTSPOT_PAGE,
         "columns": ["Rang", "Rang 2015", "Straße"], "name_column": 2,
         "rows": [{"cells": [str(r["rank"]), str(r["rank_before"]) if r["rank_before"] else "–", r["name"]]} for r in rows],
+    }, {
+        "key": "quiet_areas", "title": "Ruhige Gebiete", "caption": QUIET_CAPTION, "page": QUIET_PAGE,
+        "columns": ["Nr.", "Gebiet", "Fläche (ha)"], "name_column": 1,
+        "rows": [{"cells": r} for r in quiet_areas(pages[QUIET_PAGE - 1])],
+    }, {
+        "key": "quiet_cemeteries", "title": "Friedhöfe als Ruhige Gebiete", "caption": CEMETERY_CAPTION,
+        "page": GREEN_PAGE, "columns": ["Nr.", "Friedhof", "Fläche (ha)", share], "name_column": 1,
+        "rows": [{"cells": r} for r in cemeteries],
+    }, {
+        "key": "quiet_recreation", "title": "Erholungsflächen als Ruhige Gebiete", "caption": RECREATION_CAPTION,
+        "page": GREEN_PAGE, "columns": ["Nr.", "Erholungsfläche", "Fläche (ha)", share], "name_column": 1,
+        "rows": [{"cells": r} for r in recreation],
     }]}
 
 
@@ -373,7 +417,7 @@ def check(key: str, data: dict, pages: list[str] | None = None) -> list[str]:
             if ranks != list(range(1, len(ranks) + 1)):
                 problems.append(f"{where}: Rangfolge lückenhaft")
         if pages is not None:
-            page = _flat(pages[lst["page"] - 1])
+            page = _unbreak(_flat(pages[lst["page"] - 1]))
             for r in lst["rows"]:
                 missing = [c for c in r["cells"] if c != "–" and c.replace("*", "") not in page.replace("*", "")]
                 if missing:

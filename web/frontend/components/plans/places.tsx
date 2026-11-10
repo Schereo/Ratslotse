@@ -2,7 +2,9 @@
 
 // KARTE: wo der Plan etwas vorsieht oder wo Beschlüsse zu ihm etwas
 // festgelegt haben (council/plan_pages.py::places_block). Vier Quellen:
-// Gebiete, nachgezeichnet aus den Karten des Plans (Wärmeplan), Abschnitte,
+// Gebiete, nachgezeichnet aus den Karten des Plans (Wärmeplan, Ruhige
+// Gebiete, Masterplan Stadtgrün, Spielleitplanung; beim Einzelhandelskonzept
+// auch Standorte als Punkt), Abschnitte,
 // die der Plan selbst festlegt (Lärmaktionsplan, mit seinem Vorschlag und
 // der Seite), Straßen und Plätze, die ein Maßnahmentitel beim
 // Namen nennt (von Hand durchgesehen), und Orte, die die Ortszuordnung der
@@ -14,10 +16,11 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import { Kicker, StatusChip } from "@/components/plans/parts";
+import { AreaList, AreaSwatch } from "@/components/plans/plan-areas";
 import { Quote } from "@/components/plans/quoted";
 import { decisionHref } from "@/lib/routes";
 import { apiUrl } from "@/lib/api";
-import { formatDate, type PlanPlaces } from "@/lib/plans";
+import { formatDate, type PlanPlace, type PlanPlaces } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 const PlanMap = dynamic(() => import("@/components/plans/plan-map"), {
@@ -27,24 +30,58 @@ const PlanMap = dynamic(() => import("@/components/plans/plan-map"), {
 
 /** So viele Zeilen stehen offen; der Rest hinter „alle zeigen“. */
 const VISIBLE = 8;
+/** Gebiete: so viele je Art offen — es sei denn, es wären nur zwei mehr (dann alle, statt zwei hinter einem
+ *  Knopf). Je Art, nicht insgesamt: Sonst verschwänden die sechs geplanten Spielplätze hinter 26 Suchräumen. */
+const GROUP_VISIBLE = 6;
 
 function hectares(v: number): string {
   return `${v.toLocaleString("de-DE", { maximumFractionDigits: 1 })} ha`;
 }
 
+/** Die Gebiete nach ihrer Art laut Legende („Friedhof“, „Ruhiges Gebiet“), in der Reihenfolge des Plans. */
+function byGroup(items: readonly PlanPlace[]): [string, PlanPlace[]][] {
+  const out = new Map<string, PlanPlace[]>();
+  for (const p of items) {
+    const g = p.areas[0].group;
+    out.set(g, [...(out.get(g) ?? []), p]);
+  }
+  return [...out.entries()];
+}
+
+function areaCount(items: readonly PlanPlace[]): string {
+  const sites = items.filter((p) => !p.geometry).length;
+  const areas = items.length - sites;
+  if (!sites) return `${areas} Gebiete`;
+  if (!areas) return `${sites} Standorte`;
+  return `${areas} Gebiete, ${sites} Standorte`;
+}
+
 export function Places({ places, planKey }: { places: PlanPlaces; planKey: string }) {
   const [focus, setFocus] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [allAreas, setAllAreas] = useState(false);
   const fromAreas = places.items.filter((p) => p.areas.length > 0);
   const fromSections = places.items.filter((p) => p.sections.length > 0);
   const fromMeasures = places.items.filter((p) => p.measures.length > 0);
   const fromDecisions = places.items.filter((p) => p.measures.length === 0 && p.sections.length === 0 && p.areas.length === 0);
   // Zwei Spalten nur, wo zwei Listen nebeneinander stehen — sonst bliebe rechts ein Loch.
   const groups = [fromAreas, fromSections, fromMeasures, fromDecisions].filter((g) => g.length > 0).length;
+  const areaGroups = byGroup(fromAreas);
+  const folded = areaGroups.flatMap(([, list]) => (list.length > GROUP_VISIBLE + 2 ? list.slice(0, GROUP_VISIBLE) : list));
+  const areasFold = folded.length < fromAreas.length;
+  const visibleAreas = allAreas || !areasFold ? fromAreas : folded;
+  const groupSize = new Map(areaGroups.map(([g, items]) => [g, items.length]));
+  // Gebiete in zwei Spalten nur, wo sie die ganze Breite haben.
+  const areaColumns = groups === 1;
   const shown = showAll ? fromDecisions : fromDecisions.slice(0, VISIBLE);
   const pick = (slug: string) => {
     setFocus(slug);
-    document.getElementById(`plan-place-${slug}`)?.scrollIntoView({ block: "nearest" });
+    // Ein Gebiet hinter „alle zeigen“: erst aufklappen, dann hinscrollen.
+    const hidden = !allAreas && areasFold && fromAreas.some((p) => p.slug === slug) && !folded.some((p) => p.slug === slug);
+    if (hidden) setAllAreas(true);
+    const scroll = () => document.getElementById(`plan-place-${slug}`)?.scrollIntoView({ block: "nearest" });
+    if (hidden) window.setTimeout(scroll, 50);
+    else scroll();
   };
   const row = "flex w-full min-h-11 items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-primary/[0.04]";
   return (
@@ -52,15 +89,16 @@ export function Places({ places, planKey }: { places: PlanPlaces; planKey: strin
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <Kicker className="text-[11px] font-medium tracking-[0.1em]"><span id="plan-places">Karte</span></Kicker>
         <p className="font-mono text-meta text-muted-foreground">
-          {fromAreas.length === places.items.length ? `${places.items.length} Gebiete` : `${places.items.length} Orte`}
+          {fromAreas.length === places.items.length ? areaCount(fromAreas) : `${places.items.length} Orte`}
         </p>
       </div>
       <p className="mb-3 max-w-[76ch] text-hinweis text-muted-foreground">{places.note}</p>
-      <PlanMap places={places.items} focus={focus} onPick={pick} />
+      <PlanMap places={places.items} groups={places.groups} focus={focus} onPick={pick} />
       <ul aria-label="Legende" className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
-        {fromAreas.length > 0 && (
-          <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-3 w-4 rounded-sm border-2 border-primary bg-primary/20" /> Gebiet aus dem Plan</li>
-        )}
+        {/* Je Art ein Eintrag mit dem Wort des Plans — „Gebiet aus dem Plan“ sagte nicht, was es ist. */}
+        {places.groups.map((g) => (
+          <li key={g.name} className="inline-flex items-center gap-1.5"><AreaSwatch style={g.style} site={g.sites_only} /> {g.name}</li>
+        ))}
         {fromSections.length > 0 && (
           <li className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block h-1 w-5 rounded-full bg-primary" /> Abschnitt aus dem Plan</li>
         )}
@@ -83,33 +121,6 @@ export function Places({ places, planKey }: { places: PlanPlaces; planKey: strin
         </p>
       )}
       <div className={cn("mt-4 grid gap-5", groups > 1 && "@3xl:grid-cols-2")}>
-        {fromAreas.length > 0 && (
-          <div className="min-w-0">
-            <Kicker>Aus den Karten des Plans · {fromAreas.length} Gebiete</Kicker>
-            <ul className="mt-1 grid gap-x-6 divide-y divide-border/70 @3xl:grid-cols-2 @3xl:divide-y-0">
-              {fromAreas.map((place) => {
-                const a = place.areas[0];
-                const open = focus === place.slug;
-                return (
-                  <li key={place.slug} id={`plan-place-${place.slug}`} className={cn("rounded-md @3xl:border-b @3xl:border-border/70", open && "bg-primary/[0.06]")}>
-                    <button type="button" onClick={() => setFocus(open ? null : place.slug)} aria-pressed={open} className={row}>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[14px] font-medium leading-snug text-foreground">{place.name}</span>
-                        <span className="mt-0.5 block break-words text-meta text-muted-foreground">
-                          {hectares(a.area_ha)}{a.area_ha_plan ? ` · laut Plan ${hectares(a.area_ha_plan)}` : ""}
-                        </span>
-                      </span>
-                      <a href={a.source_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-                        className="mt-0.5 inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-meta font-medium text-primary hover:underline">
-                        Abb. {a.figure}, S. {a.page} <ExternalLink className="h-3 w-3" aria-hidden />
-                      </a>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
         {fromSections.length > 0 && (
           <div className="min-w-0">
             <Kicker>Aus dem Plan · {fromSections.length} Abschnitte</Kicker>
@@ -141,6 +152,19 @@ export function Places({ places, planKey }: { places: PlanPlaces; planKey: strin
                 );
               })}
             </ul>
+          </div>
+        )}
+        {fromAreas.length > 0 && (
+          <div className="min-w-0">
+            <Kicker>Aus den Karten des Plans · {areaCount(fromAreas)}</Kicker>
+            <AreaList items={visibleAreas} groups={places.groups} total={groupSize} focus={focus} onFocus={setFocus} columns={areaColumns} />
+            {areasFold && (
+              <button type="button" onClick={() => setAllAreas((v) => !v)} aria-expanded={allAreas}
+                className="mt-1 inline-flex min-h-11 items-center gap-1 text-[13px] font-medium text-primary hover:underline">
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-weg ease-in-out-strong", allAreas && "rotate-180")} aria-hidden />
+                {allAreas ? "Weniger zeigen" : `Alle ${fromAreas.length} zeigen`}
+              </button>
+            )}
           </div>
         )}
         {fromMeasures.length > 0 && (

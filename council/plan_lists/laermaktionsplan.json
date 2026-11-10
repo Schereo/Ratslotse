@@ -2023,6 +2023,320 @@
      ]
     }
    ]
+  },
+  {
+   "key": "quiet_areas",
+   "title": "Ruhige Gebiete",
+   "caption": "Tabelle 27: Ergebnis der Verschneidung — die Flächen 3 und 9 klammert der Plan aus (mögliche Suchräume für Windenergie)",
+   "page": 153,
+   "columns": [
+    "Nr.",
+    "Gebiet",
+    "Fläche (ha)"
+   ],
+   "name_column": 1,
+   "rows": [
+    {
+     "cells": [
+      "1",
+      "Swarte Moor",
+      "2,6"
+     ]
+    },
+    {
+     "cells": [
+      "2",
+      "Alexanderheide",
+      "17,7"
+     ]
+    },
+    {
+     "cells": [
+      "3",
+      "Bornhorst",
+      "181,4"
+     ]
+    },
+    {
+     "cells": [
+      "4",
+      "Großer Bürgerbusch",
+      "8,7"
+     ]
+    },
+    {
+     "cells": [
+      "5",
+      "Geestrand",
+      "5,4"
+     ]
+    },
+    {
+     "cells": [
+      "6",
+      "Flötenteich",
+      "18,9"
+     ]
+    },
+    {
+     "cells": [
+      "7",
+      "Donnerschweer Wiesen",
+      "73,1"
+     ]
+    },
+    {
+     "cells": [
+      "8",
+      "Huntewiesen",
+      "149,4"
+     ]
+    },
+    {
+     "cells": [
+      "9",
+      "Klostermark",
+      "75,4"
+     ]
+    },
+    {
+     "cells": [
+      "10",
+      "Bloherfelder Teich N",
+      "3,4"
+     ]
+    },
+    {
+     "cells": [
+      "11",
+      "Kennedyteich",
+      "3,9"
+     ]
+    },
+    {
+     "cells": [
+      "12",
+      "Bloherfelder Teich S",
+      "2,1"
+     ]
+    },
+    {
+     "cells": [
+      "13",
+      "Bloherfelder Wasserzug-Teich",
+      "2,5"
+     ]
+    },
+    {
+     "cells": [
+      "14",
+      "südl. Kaspersweg",
+      "5,2"
+     ]
+    },
+    {
+     "cells": [
+      "15",
+      "Hausbäkenniederung-Everstenmoor",
+      "353,5"
+     ]
+    },
+    {
+     "cells": [
+      "16",
+      "Buschhagenniederung",
+      "5,5"
+     ]
+    },
+    {
+     "cells": [
+      "17",
+      "Utkiek",
+      "10,1"
+     ]
+    },
+    {
+     "cells": [
+      "18",
+      "Bümmersteder Fleet",
+      "60,9"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "quiet_cemeteries",
+   "title": "Friedhöfe als Ruhige Gebiete",
+   "caption": "Tabelle 28: Ergebnis der Überlagerung - Friedhöfe",
+   "page": 155,
+   "columns": [
+    "Nr.",
+    "Friedhof",
+    "Fläche (ha)",
+    "Anteil unter 60 dB(A)"
+   ],
+   "name_column": 1,
+   "rows": [
+    {
+     "cells": [
+      "101",
+      "Waldfriedhof Ofenerdiek",
+      "10,0",
+      "1,3%"
+     ]
+    },
+    {
+     "cells": [
+      "117",
+      "Parkfriedhof Bümmerstede",
+      "10,9",
+      "44,7%"
+     ]
+    },
+    {
+     "cells": [
+      "111",
+      "Gertrudenfriedhof",
+      "3,6",
+      "1,0%"
+     ]
+    },
+    {
+     "cells": [
+      "107",
+      "Neuer Friedhof",
+      "9,7",
+      "0,0%"
+     ]
+    },
+    {
+     "cells": [
+      "115",
+      "Alter Friedhof Osternburg",
+      "1,1",
+      "38,2%"
+     ]
+    },
+    {
+     "cells": [
+      "109",
+      "Katholischer Friedhof",
+      "2,9",
+      "0,0%"
+     ]
+    },
+    {
+     "cells": [
+      "105",
+      "Friedhof Ohmstede",
+      "1,9",
+      "55,2%"
+     ]
+    },
+    {
+     "cells": [
+      "106",
+      "Friedhof Donnerschwee",
+      "2,4",
+      "87,6%"
+     ]
+    },
+    {
+     "cells": [
+      "112",
+      "Friedhof Eversten",
+      "3,6",
+      "43,3%"
+     ]
+    },
+    {
+     "cells": [
+      "116",
+      "Neuer Osternburger Friedhof",
+      "0,8",
+      "29,3%"
+     ]
+    },
+    {
+     "cells": [
+      "118",
+      "Jüdischer Friedhof",
+      "0,2",
+      "0,0%"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "quiet_recreation",
+   "title": "Erholungsflächen als Ruhige Gebiete",
+   "caption": "Tabelle 29: Ergebnis der Überlagerung - Erholungsflächen",
+   "page": 155,
+   "columns": [
+    "Nr.",
+    "Erholungsfläche",
+    "Fläche (ha)",
+    "Anteil unter 60 dB(A)"
+   ],
+   "name_column": 1,
+   "rows": [
+    {
+     "cells": [
+      "102",
+      "Swarte Moor",
+      "18,3",
+      "98,7%"
+     ]
+    },
+    {
+     "cells": [
+      "103",
+      "Kleiner Bürgerbusch",
+      "8,6",
+      "19,3%"
+     ]
+    },
+    {
+     "cells": [
+      "104",
+      "Großer Bürgerbusch",
+      "18,2",
+      "80,4%"
+     ]
+    },
+    {
+     "cells": [
+      "108",
+      "Haarenniederung",
+      "52,8",
+      "95,6%"
+     ]
+    },
+    {
+     "cells": [
+      "110",
+      "Botanischer Garten",
+      "3,7",
+      "4,5%"
+     ]
+    },
+    {
+     "cells": [
+      "113",
+      "Eversten Holz",
+      "22,7",
+      "77,5%"
+     ]
+    },
+    {
+     "cells": [
+      "114",
+      "Schlossgarten",
+      "18,4",
+      "63,3%"
+     ]
+    }
+   ]
   }
  ]
 }

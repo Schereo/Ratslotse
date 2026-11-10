@@ -15394,6 +15394,58 @@ export interface components {
             url: string;
         };
         /**
+         * PlanAreaFact
+         * @description Eine Kennzahl zu einem Gebiet, wie der Plan sie nennt — „Verkaufsfläche 2021: 2.000 m² (2012: 2.150 m²)“.
+         */
+        PlanAreaFact: {
+            /** Label */
+            label: string;
+            /** Page */
+            page: number | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Value */
+            value: string;
+        };
+        /**
+         * PlanAreaGroup
+         * @description Eine Art Gebiet auf der Karte eines Plans („Friedhof“, „Nahversorgungszentrum“) — mit dem, was der Plan
+         *     darunter versteht, und dem Randstil, mit dem die Karte sie unterscheidet.
+         */
+        PlanAreaGroup: {
+            /** Description */
+            description: string | null;
+            /** Name */
+            name: string;
+            /** Page */
+            page: number | null;
+            /** Sites Only */
+            sites_only: boolean;
+            /** Source Url */
+            source_url: string | null;
+            /** Style */
+            style: number;
+        };
+        /**
+         * PlanAreaNote
+         * @description Eine Liste oder Absätze des Plans zu einem Gebiet: Defizite, Handlungskonzept, Stärken, Sätze zum Stadtteil.
+         */
+        PlanAreaNote: {
+            /** Items */
+            items: string[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "list" | "text";
+            /** Page */
+            page: number | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
          * PlanAxis
          * @description Die gemeinsame Zeitachse der Übersicht: Beginn des Bestands bis zehn Jahre nach vorn.
          */
@@ -16111,6 +16163,8 @@ export interface components {
                 decision_places: number;
                 /** Geojson */
                 geojson: boolean;
+                /** Groups */
+                groups: components["schemas"]["PlanAreaGroup"][];
                 /** Items */
                 items: components["schemas"]["PlanPlace"][];
                 /** Measure Places */
@@ -16384,22 +16438,27 @@ export interface components {
         };
         /**
          * PlanGeoProperties
-         * @description Eigenschaften eines Abschnitts (``section``) oder Gebiets (``area``) im GeoJSON-Download.
+         * @description Eigenschaften eines Abschnitts (``section``), Gebiets (``area``) oder Standorts (``site``) im
+         *     GeoJSON-Download.
          */
         PlanGeoProperties: {
             /** Area Ha */
-            area_ha?: number;
+            area_ha?: number | null;
             /** Area Ha Plan */
             area_ha_plan?: number | null;
             /** Code */
             code: string;
+            /** Facts */
+            facts?: components["schemas"]["PlanAreaFact"][];
             /** Figure */
-            figure?: number;
+            figure?: number | null;
+            /** Group */
+            group?: string;
             /**
              * Kind
              * @enum {string}
              */
-            kind: "section" | "area";
+            kind: "section" | "area" | "site";
             /** Length M */
             length_m?: number;
             /** Name */
@@ -16414,6 +16473,8 @@ export interface components {
             street?: string;
             /** Stretch */
             stretch?: string;
+            /** Summary */
+            summary?: string | null;
         };
         /** PlanGroup */
         PlanGroup: {
@@ -16691,23 +16752,36 @@ export interface components {
         };
         /**
          * PlanPlaceArea
-         * @description Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``).
+         * @description Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``) — oder ein Standort,
+         *     wo die Karte nur einen Punkt zeigt (dann ohne Fläche und ohne ``geometry`` am Ort).
          */
         PlanPlaceArea: {
             /** Area Ha */
-            area_ha: number;
+            area_ha: number | null;
             /** Area Ha Plan */
             area_ha_plan: number | null;
             /** Code */
             code: string;
+            /** Facts */
+            facts: components["schemas"]["PlanAreaFact"][];
             /** Figure */
-            figure: number;
+            figure: number | null;
+            /** Group */
+            group: string;
             /** Label */
             label: string;
+            /** Notes */
+            notes: components["schemas"]["PlanAreaNote"][];
             /** Page */
             page: number;
+            /** Radius M */
+            radius_m: number | null;
+            /** Source Label */
+            source_label: string;
             /** Source Url */
             source_url: string;
+            /** Summary */
+            summary: string | null;
         };
         /** PlanPlaceDecision */
         PlanPlaceDecision: {
@@ -16759,6 +16833,8 @@ export interface components {
             decision_places: number;
             /** Geojson */
             geojson: boolean;
+            /** Groups */
+            groups: components["schemas"]["PlanAreaGroup"][];
             /** Items */
             items: components["schemas"]["PlanPlace"][];
             /** Measure Places */
@@ -29941,4 +30017,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 160ffce93039e7eeffd7b96a12a554772150f1695f61c65dcd2092982d7ee806
+// vertrag-sha256: a2430d3381376a0aa026dc8c88a2c7c4b04505133866910424d934d6adb84c4e
