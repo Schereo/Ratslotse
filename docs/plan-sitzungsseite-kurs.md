@@ -137,9 +137,9 @@ Der Entwurf entstand gegen einen alten Stand und ohne Blick in
 zusammenfassen, erklärt mit ihr den nichtöffentlichen Teil und begrüßt im
 Mitlesen. `DESIGNSPRACHE.md` § 1 sagt: Lotti ist Erklärerin, „nie Autorin einer
 Ratsauskunft“; § 8 verbietet jede Sprechblase außerhalb der Anstupser-Grenzen.
-Der Satz im Kopf ist eine Ratsauskunft. **Offen (8.1).** Bis zur Antwort: der
-Satz steht als gewöhnlicher Absatz in `text-lese` mit KI-Funke und dem Hinweis
-„Automatisch zusammengefasst“, ohne Figur. Die beiden reinen Erklärungen
+Der Satz im Kopf ist eine Ratsauskunft. **Entschieden (8.1, 10.11.2026):**
+Lotti mit Blase — der Satz ist gezählt, nicht verfasst, darunter steht, woher
+er kommt. Die beiden reinen Erklärungen
 (nichtöffentlich, Mitlesen) bekommen die Form, die der Bestand für Lottis
 Erklärungen schon hat; welche Komponente das ist, vor Schritt 3 nachsehen.
 
@@ -250,8 +250,8 @@ nicht bauen. Der Platz bleibt leer, bis die Akte Protokollnotizen als
 Stationen liefert.
 
 **3.17 Mitschrieb.** Im Mitlesen kann man je Punkt festhalten, was passiert
-ist. Tim hat das noch nicht bestätigt. **Offen (8.3).** Bis dahin gehört es
-nicht in Schritt 5.
+ist. **Entschieden (8.3, 10.11.2026):** bleibt, als Teil von Schritt 7
+(verschlüsselt, Schalter `mitschrieb`).
 
 **3.18 iOS.** Die App aus dem Store decodiert `SessionDetail`. Ein
 umbenanntes oder entferntes Feld bricht sie. **Entschieden:** nur zusätzliche,
@@ -818,18 +818,18 @@ der Übertragung (3.8), Paraphrasen kursiv (3.11), kein einzelner Presse-Link
 
 ## 8. Offene Fragen an Tim
 
-1. **Lotti im Kopf.** Soll Lotti die Sitzung in einer Sprechblase
-   zusammenfassen dürfen? Das bräuchte eine Ausnahme in § 1 und § 8. Sonst
-   bleibt der Satz ohne Figur (3.1).
-2. **Rechte Spalte gegen Vorschau** auf breiten Schirmen: Vorrang für die
-   `BeschlussVorschau` wie in 3.7 vorgeschlagen?
-3. **Mitschrieb.** Bleibt die Idee, im Mitlesen selbst festzuhalten, was
-   passiert ist? Wenn ja: erst mit Schritt 7 oder vorher nur im Browser
-   gespeichert und unverschlüsselt?
+1. ~~**Lotti im Kopf.**~~ Entschieden 10.11.2026: **Lotti mit Blase.** Der
+   gezählte Satz steht im Kopf und beim Mitlesen in einer Sprechblase neben
+   Lotti (`components/session/lotti-satz.tsx`); DESIGNSPRACHE § 1 und § 8
+   tragen die Ausnahme.
+2. ~~**Rechte Spalte gegen Vorschau**~~ Entschieden 10.11.2026: Vorrang für
+   die `BeschlussVorschau` wie in 3.7 (so gebaut).
+3. ~~**Mitschrieb.**~~ Entschieden 10.11.2026: **bleibt**, verschlüsselt mit
+   den Notizen (Schalter `mitschrieb`, geht mit `notizen` zusammen auf Prod).
 4. ~~**Wie viele „wichtig“ je Sitzung?**~~ Entschieden 10.11.2026: höchstens
    drei (`KURS_WICHTIG_MAX`); die Sitzungsliste bleibt bei zwei.
-5. **Punkt-Seite nach dem Protokoll.** Hinweis mit Link zur Beschluss-Seite
-   wie in 3.9, oder sollen beide Seiten zusammenwachsen?
+5. ~~**Punkt-Seite nach dem Protokoll.**~~ Entschieden 10.11.2026: Hinweis mit
+   Link zur Beschluss-Seite wie in 3.9 (so gebaut); kein Zusammenlegen.
 
 ## Anhang A: Piktogramme
 
