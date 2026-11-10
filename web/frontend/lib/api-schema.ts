@@ -16115,22 +16115,25 @@ export interface components {
         };
         /**
          * PlanGeoProperties
-         * @description Eigenschaften eines Abschnitts (``section``) oder Gebiets (``area``) im GeoJSON-Download.
+         * @description Eigenschaften eines Abschnitts (``section``), Gebiets (``area``) oder Standorts (``site``) im
+         *     GeoJSON-Download.
          */
         PlanGeoProperties: {
             /** Area Ha */
-            area_ha?: number;
+            area_ha?: number | null;
             /** Area Ha Plan */
             area_ha_plan?: number | null;
             /** Code */
             code: string;
             /** Figure */
-            figure?: number;
+            figure?: number | null;
+            /** Group */
+            group?: string;
             /**
              * Kind
              * @enum {string}
              */
-            kind: "section" | "area";
+            kind: "section" | "area" | "site";
             /** Length M */
             length_m?: number;
             /** Name */
@@ -16422,21 +16425,26 @@ export interface components {
         };
         /**
          * PlanPlaceArea
-         * @description Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``).
+         * @description Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``) — oder ein Standort,
+         *     wo die Karte nur einen Punkt zeigt (dann ohne Fläche und ohne ``geometry`` am Ort).
          */
         PlanPlaceArea: {
             /** Area Ha */
-            area_ha: number;
+            area_ha: number | null;
             /** Area Ha Plan */
             area_ha_plan: number | null;
             /** Code */
             code: string;
             /** Figure */
-            figure: number;
+            figure: number | null;
+            /** Group */
+            group: string;
             /** Label */
             label: string;
             /** Page */
             page: number;
+            /** Source Label */
+            source_label: string;
             /** Source Url */
             source_url: string;
         };
@@ -29491,4 +29499,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c6bc48e0e1787c2ce9345f0e7f4da6ab853b5f3b7700d6a6d70e6558995b2979
+// vertrag-sha256: e1db95a4e8dc198c2ffaed6f197fad50ca47104d5ac2889c3ca311ee1af727fd

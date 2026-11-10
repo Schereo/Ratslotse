@@ -515,7 +515,8 @@ kommt, entscheidet die Gestaltungsrunde.
 10. **AUS DEM PLAN**: Tabellen, die der Plan enthält — Zeile für Zeile, mit
    Seite: die Rangfolge der 30 Lärm-Schwerpunkte (Lärmaktionsplan, Tabelle 13)
    und die elf Wärmenetzeignungsgebiete (Wärmeplan, Tabelle 4, je Gebiet mit
-   der Seite seiner Beschreibung). Das Einzelhandelskonzept fehlt:
+   der Seite seiner Beschreibung), dazu die Ruhigen Gebiete (Lärmaktionsplan,
+   Tabellen 27–29). Das Einzelhandelskonzept fehlt als Tabelle:
    Seine Zentrenstruktur von 2023 steht nur in der Karte 33, im Text stehen die
    Zentrentypen von 2015. *(gebaut)*
 11. **UMRISSE AUS DEN KARTEN** (seit 10.11.2026): Die elf
@@ -530,6 +531,30 @@ kommt, entscheidet die Gestaltungsrunde.
    Fläche, im Viertel über den Flächenschnitt (ab 10 % oder 2 ha) statt über
    die Ortsteil-Spalte, und als GeoJSON zum Herunterladen
    (`/api/council/plan/{key}/geojson`, auch mit den Lärm-Abschnitten). *(gebaut)*
+12. **WEITERE KARTEN** (10.11.2026): Dasselbe für vier Pläne, deren Gebiete
+   nur als Kartenbild vorliegen — `scripts/plan_karten.py`, ohne Sprachmodell,
+   jede Fläche gegen das gehalten, was der Plan selbst sagt:
+   - **Lärmaktionsplan, Ruhige Gebiete** (Abb. 53/54 über die rote Stadtgrenze
+     verortet, Schraffur nach Dichte): 6 der 16 Gebiete aus Tabelle 27 (die
+     übrigen zu klein oder von ihrer Nummer verdeckt), dazu 18 Friedhöfe und
+     Erholungsflächen aus Tabelle 28/29 — wo OSM das Gebiet mit Namen kennt,
+     dessen Umriss. Jede Fläche höchstens 30 % (OSM: 20 %) neben der Tabelle;
+     alle 36 Zeilen der drei Tabellen stehen zusätzlich unter „Aus dem Plan“.
+   - **Masterplan Stadtgrün, Maßnahmenbereiche**: Einzelkarte je Bereich
+     (Maßstab aus dem Balken), verortet über die Übersicht der
+     Baumstrategie (Abb. 8), 11 von 12 — Alexandersfeld grenzt an die
+     Stadtgrenze und hat dort keine Umrandung.
+   - **Spielleitplanung, Suchräume** (Karte 9, verortet über ihre Kante):
+     rote Schraffur, je Ortsbereich geschnitten, 26 Suchräume ab 3 ha.
+   - **Einzelhandelskonzept, Zentren**: Karte 33 verortet alle 22 Standorte als
+     Punkt; für 13 zentrale Versorgungsbereiche die gültige Detailkarte,
+     verortet über die grauen Gebäude der Grundkarte gegen die OSM-Gebäude
+     (Kreuzkorrelation, beste Lage 2,9- bis 9-mal deutlicher als die
+     zweitbeste), Gegenprobe: eine bekannte Straße läuft hindurch. Das EEK ist
+     im Register ein Nachschlagewerk und steht deshalb nicht unter den Plänen
+     im Viertel.
+   Auf der Seite nach der Art laut Legende gruppiert, ab zwölf Einträgen nach
+   zehn eingeklappt. *(gebaut)*
 
 **Mein Viertel:** Die Tafel eines Ortsbereichs nennt die laufenden und
 entstehenden Pläne mit mindestens einem Ort dort (`district_plans`). Eine

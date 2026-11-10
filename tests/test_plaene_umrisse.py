@@ -25,7 +25,9 @@ def store(tmp_path):
 def test_die_datei_ist_in_form():
     data = plan_state.plan_shapes("waermeplan")
     assert data is not None and plan_umrisse.check(data) == [], "python scripts/plan_umrisse.py --pruefen"
-    assert plan_state.shape_keys() == ["waermeplan"]
+    # Die übrigen Karten zeichnet scripts/plan_karten.py nach (tests/test_plaene_karten.py).
+    assert plan_state.shape_keys() == ["eek", "laermaktionsplan", "masterplan_stadtgruen", "spielleitplanung",
+                                       "waermeplan"]
 
 
 def test_die_flaechen_passen_zum_plan():
@@ -61,6 +63,8 @@ def test_gebiete_stehen_als_flaeche_auf_der_karte(store):
     first = block["items"][0]
     assert first["slug"] == "gebiet-wng-1" and first["kind"] == "area" and first["geometry"]["type"] == "Polygon"
     assert first["areas"][0]["source_url"].endswith("id=306748&type=do#page=82")
+    assert first["name"].startswith("WNG 1 ") and first["areas"][0]["label"] == f"Eignungsgebiet „{first['name']}“"
+    assert first["areas"][0]["group"] == "Eignungsgebiet" and first["areas"][0]["source_label"] == "Abb. 35, S. 82"
     assert all("districts" not in p for p in block["items"])
 
 
@@ -69,8 +73,8 @@ def test_download_enthaelt_abschnitte_und_gebiete(store):
     assert heat["type"] == "FeatureCollection" and len(heat["features"]) == 11
     assert heat["features"][0]["geometry"] == plan_state.plan_shapes("waermeplan")["features"][0]["geometry"]
     noise = plan_pages.geojson_export(store, plans.PLANS["laermaktionsplan"])
-    assert [f["properties"]["kind"] for f in noise["features"]] == ["section"] * 9
-    assert "OpenStreetMap" in noise["attribution"]
+    assert [f["properties"]["kind"] for f in noise["features"]] == ["section"] * 9 + ["area"] * 24
+    assert "OpenStreetMap" in noise["attribution"] and "Ruhige Gebiete" in noise["attribution"]
     assert plan_pages.geojson_export(store, plans.PLANS["kita_ausbau"]) is None
 
 

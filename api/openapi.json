@@ -22529,11 +22529,14 @@
         "type": "object"
       },
       "PlanGeoProperties": {
-        "description": "Eigenschaften eines Abschnitts (``section``) oder Gebiets (``area``) im GeoJSON-Download.",
+        "description": "Eigenschaften eines Abschnitts (``section``), Gebiets (``area``) oder Standorts (``site``) im\nGeoJSON-Download.",
         "properties": {
           "area_ha": {
             "title": "Area Ha",
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "area_ha_plan": {
             "title": "Area Ha Plan",
@@ -22548,12 +22551,20 @@
           },
           "figure": {
             "title": "Figure",
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
           },
           "kind": {
             "enum": [
               "section",
-              "area"
+              "area",
+              "site"
             ],
             "title": "Kind",
             "type": "string"
@@ -23358,11 +23369,14 @@
         "type": "object"
       },
       "PlanPlaceArea": {
-        "description": "Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``).",
+        "description": "Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``) — oder ein Standort,\nwo die Karte nur einen Punkt zeigt (dann ohne Fläche und ohne ``geometry`` am Ort).",
         "properties": {
           "area_ha": {
             "title": "Area Ha",
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "area_ha_plan": {
             "title": "Area Ha Plan",
@@ -23377,7 +23391,14 @@
           },
           "figure": {
             "title": "Figure",
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
           },
           "label": {
             "title": "Label",
@@ -23387,6 +23408,10 @@
             "title": "Page",
             "type": "integer"
           },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
           "source_url": {
             "title": "Source Url",
             "type": "string"
@@ -23394,9 +23419,11 @@
         },
         "required": [
           "code",
+          "group",
           "label",
           "figure",
           "page",
+          "source_label",
           "source_url",
           "area_ha",
           "area_ha_plan"

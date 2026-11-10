@@ -3,7 +3,9 @@
 // Die Karte zum Plan — schlankes Leaflet ohne react-leaflet, nur clientseitig
 // (per next/dynamic mit ssr:false laden). Straßen aus der Maßnahmenliste als
 // Linie, Orte aus Beschlüssen als Punkt; die Kachel-URL kommt aus
-// lib/basemap.ts (der Key-Parameter heißt `key`, nicht `api_key`).
+// lib/basemap.ts (der Key-Parameter heißt `key`, nicht `api_key`). Gebiete aus
+// den Karten des Plans als Fläche, Standorte daraus als Punkt in der Farbe
+// der Gebiete.
 //
 // Neutral gefärbt: Die Karte zeigt, WO etwas vorgesehen oder beschlossen ist,
 // nicht wie weit es ist (Plan § 3.4). Der Stand steht in der Liste darunter.
@@ -53,7 +55,8 @@ export default function PlanMap({ places, focus, onPick }: {
       const bounds = L.latLngBounds([]);
       const pending: Layer[] = [];
       for (const place of places) {
-        const label = `<strong>${escape(place.name)}</strong>${place.areas[0] ? `<br>${escape(place.areas[0].area_ha.toLocaleString("de-DE", { maximumFractionDigits: 1 }))} ha` : place.sections[0] ? `<br>${escape(place.sections[0].code)} · ${escape(place.sections[0].stretch)}` : place.measures[0] ? `<br>${escape(place.measures[0].code)} · ${escape(place.measures[0].title)}` : place.decisions[0] ? `<br>${escape(place.decisions[0].title)}` : ""}`;
+        const area = place.areas[0];
+        const label = `<strong>${escape(place.name)}</strong>${area ? `<br>${escape(area.group)}${area.area_ha != null ? ` · ${escape(area.area_ha.toLocaleString("de-DE", { maximumFractionDigits: 1 }))} ha` : ""}` : place.sections[0] ? `<br>${escape(place.sections[0].code)} · ${escape(place.sections[0].stretch)}` : place.measures[0] ? `<br>${escape(place.measures[0].code)} · ${escape(place.measures[0].title)}` : place.decisions[0] ? `<br>${escape(place.decisions[0].title)}` : ""}`;
         let layer: Layer;
         if (place.geometry) {
           // Gebiete als Fläche (dünner Rand, leichte Füllung), Straßen als kräftige Linie.
@@ -65,7 +68,7 @@ export default function PlanMap({ places, focus, onPick }: {
           bounds.extend(shape.getBounds());
         } else {
           layer = L.circleMarker([place.lat, place.lon], {
-            radius: 6, color: "#fff", weight: 2, fillColor: place.measures.length ? line : dot, fillOpacity: 0.95,
+            radius: 6, color: "#fff", weight: 2, fillColor: place.measures.length || area ? line : dot, fillOpacity: 0.95,
           });
           bounds.extend([place.lat, place.lon]);
         }

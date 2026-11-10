@@ -1078,12 +1078,16 @@ GEOMETRY_DIGITS = 5
 #: Stützpunkte, die näher als das (in Grad, rund 10 m) am vorigen liegen, fallen weg — Anfang und Ende bleiben.
 GEOMETRY_STEP = 0.00012
 #: Die Karte eines Plans mit Gebieten aus seinen eigenen Karten (``council/plan_shapes/``).
-AREAS_NOTE = "Gebiete aus den Karten im Plan, nachgezeichnet — je Gebiet mit Abbildung und Seite."
+AREAS_NOTE = "Gebiete aus den Karten im Plan, nachgezeichnet — je Gebiet mit der Stelle im Plan."
+#: Beides: Abschnitte aus dem Text, Gebiete aus den Karten (Lärmaktionsplan).
+SECTIONS_AREAS_NOTE = ("Abschnitte, für die der Plan einen Vorschlag macht, und Gebiete aus seinen Karten — "
+                       "je mit der Stelle im Plan.")
 #: Ein Gebiet zählt zu einem Ortsbereich, wenn so viel seiner Fläche dort liegt (Anteil oder Hektar).
 AREA_DISTRICT_SHARE, AREA_DISTRICT_HA = 0.1, 2.0
 #: Die Karte eines Plans, der seine Abschnitte selbst festlegt (``council/plan_lists/``).
 SECTIONS_NOTE = "Abschnitte, für die der Plan einen Vorschlag macht — mit seinem Satz dazu und der Seite."
-SECTIONS_NOTE_DECISIONS = SECTIONS_NOTE + " Dazu Orte aus den Beschlüssen zum Plan."
+DECISIONS_TAIL = " Dazu Orte aus den Beschlüssen zum Plan."
+SECTIONS_NOTE_DECISIONS = SECTIONS_NOTE + DECISIONS_TAIL
 PLACES_NOTE = "Orte aus den Titeln der Maßnahmen und aus den Beschlüssen zum Plan."
 
 
@@ -1181,32 +1185,55 @@ def plan_places(store, plan: register.Plan) -> list[dict]:
     for place in out:
         place["decision_count"] = len(place["decisions"])
         place["decisions"] = place["decisions"][:3]
-    out.sort(key=lambda p: (0 if p["sections"] or p["areas"] else 1,
+    # Abschnitte, dann Gebiete (in der Reihenfolge der Datei), dann der Rest.
+    out.sort(key=lambda p: (0 if p["sections"] else 1 if p["areas"] else 2,
                             p["sections"][0]["code"] if p["sections"] else p["areas"][0]["order"] if p["areas"] else "",
                             -len(p["measures"]) - p["decision_count"], p["name"]))
     return out
 
 
+def _area_name(shapes: dict, p: dict) -> str:
+    """So heißt ein Gebiet auf der Karte: „WNG 7 Kennedyviertel“ (Wärmeplan: Kennung gehört zum Namen) oder
+    „Huntewiesen“."""
+    if not p.get("name"):
+        return p["code"]
+    return f"{p['code']} {p['name']}" if shapes.get("code_in_name") else p["name"]
+
+
+def _area_label(group: str, name: str, p: dict) -> str:
+    """So steht ein Gebiet im Viertel: „Ruhiges Gebiet „Huntewiesen““ — ohne die Gruppe zu doppeln, wo der
+    Name sie schon trägt („Waldfriedhof Ofenerdiek“). Eine Datei kann es je Gebiet selbst setzen."""
+    if p.get("label"):
+        return p["label"]
+    return name if group.lower() in name.lower() else f"{group} „{name}“"
+
+
 def _shape_places(shapes: dict) -> list[dict]:
-    """Je Gebiet aus ``council/plan_shapes/`` ein Ort mit Fläche — für Karte und Viertel. Den vereinfachten
-    Umriss und den Beschriftungspunkt legt ``scripts/plan_umrisse.py`` in die Datei; der Server rechnet nicht."""
+    """Je Gebiet aus ``council/plan_shapes/`` ein Ort — mit Fläche oder, wo der Plan nur einen Standort
+    zeigt, als Punkt. Den vereinfachten Umriss und den Beschriftungspunkt legen ``scripts/plan_umrisse.py``
+    und ``scripts/plan_karten.py`` in die Datei; der Server rechnet nicht."""
     url = RIS_FILE.format(id=shapes["document"]["document_id"])
+    word = shapes.get("figure_word", "Abb.")
     out = []
-    for f in shapes["features"]:
+    for i, f in enumerate(shapes["features"]):
         p = f["properties"]
         lon, lat = p["label_point"]
+        ha = p.get("area_ha")
         # Ortsbereiche: wo ein nennenswerter Teil der Fläche liegt — gerechnet, nicht aus der Ortsteil-Spalte.
         districts = {pid: 1.0 for pid, share in p["districts"].items()
-                     if share >= AREA_DISTRICT_SHARE or share * p["area_ha"] >= AREA_DISTRICT_HA}
-        label = f"{p['code']} {p['name']}" if p.get("name") else p["code"]
+                     if ha is None or share >= AREA_DISTRICT_SHARE or share * ha >= AREA_DISTRICT_HA}
+        name = _area_name(shapes, p)
+        group = p.get("group") or shapes.get("group") or "Gebiet"
+        figure = p.get("figure")
         out.append({
-            "slug": "gebiet-" + p["code"].lower().replace(" ", "-"), "name": label, "kind": "area",
+            "slug": "gebiet-" + p["code"].lower().replace(" ", "-"), "name": name, "kind": "area",
             "lat": lat, "lon": lon, "geometry": p["display_geometry"],
             "measures": [], "decisions": [], "sections": [],
-            "areas": [{"code": p["code"], "label": f"Eignungsgebiet „{label}“", "figure": p["figure"], "page": p["page"],
-                       "source_url": f"{url}#page={p['page']}", "area_ha": p["area_ha"],
-                       "area_ha_plan": p.get("area_ha_plan"),
-                       "order": f"{int(p['code'].split()[-1]):03d}" if p["code"].split()[-1].isdigit() else p["code"]}],
+            "areas": [{"code": p["code"], "group": group, "label": _area_label(group, name, p),
+                       "figure": figure, "page": p["page"],
+                       "source_label": f"{word} {figure}, S. {p['page']}" if figure else f"S. {p['page']}",
+                       "source_url": p.get("source_url") or f"{url}#page={p['page']}",
+                       "area_ha": ha, "area_ha_plan": p.get("area_ha_plan"), "order": f"{i:03d}"}],
             "districts": districts})
     return out
 
@@ -1221,10 +1248,9 @@ def places_block(store, plan: register.Plan) -> dict | None:
     with_sections = sum(1 for p in places if p["sections"])
     with_areas = sum(1 for p in places if p["areas"])
     note = PLACES_NOTE
-    if with_sections:
-        note = SECTIONS_NOTE_DECISIONS if decision_places else SECTIONS_NOTE
-    elif with_areas:
-        note = AREAS_NOTE
+    if with_sections or with_areas:
+        note = (SECTIONS_AREAS_NOTE if with_sections and with_areas else SECTIONS_NOTE if with_sections
+                else AREAS_NOTE) + (DECISIONS_TAIL if decision_places else "")
     return {
         "items": [{k: v for k, v in p.items() if k != "districts"} for p in places],
         "section_places": with_sections,
@@ -1248,20 +1274,19 @@ def geojson_export(store, plan: register.Plan) -> dict | None:
         features.append({"type": "Feature", "geometry": s["geometry"], "properties": {
             "kind": "section", "code": s["code"], "street": s["name"], "stretch": s["stretch"], "quote": s["quote"],
             "page": s["page"], "source_url": f"{url}#page={s['page']}", "length_m": s["length_m"]}})
-    for f in shapes.get("features", []):
-        p = f["properties"]
-        url = RIS_FILE.format(id=shapes["document"]["document_id"])
+    for place, f in zip(_shape_places(shapes) if shapes else [], shapes.get("features", [])):
+        a = place["areas"][0]
         features.append({"type": "Feature", "geometry": f["geometry"], "properties": {
-            "kind": "area", "code": p["code"], "name": p.get("name"), "figure": p["figure"], "page": p["page"],
-            "source_url": f"{url}#page={p['page']}", "area_ha": p["area_ha"], "area_ha_plan": p.get("area_ha_plan")}})
+            "kind": "area" if f["geometry"]["type"] != "Point" else "site", "code": a["code"], "name": place["name"],
+            "group": a["group"], "figure": a["figure"], "page": a["page"], "source_url": a["source_url"],
+            "area_ha": a["area_ha"], "area_ha_plan": a["area_ha_plan"]}})
     if not features:
         return None
     sources = []
     if lists and lists.get("sections"):
         sources.append(f"{plan.title}: {lists['document']['label']}, Kapitel 18; Linien © OpenStreetMap-Mitwirkende, ODbL")
     if shapes:
-        sources.append(f"{plan.title}: {shapes['document']['label']}, nachgezeichnet aus den Abbildungen "
-                       f"{shapes['features'][0]['properties']['figure']}–{shapes['features'][-1]['properties']['figure']}")
+        sources.append(f"{shapes['name']}: nachgezeichnet aus {shapes['document']['label']}; {shapes['attribution']}")
     return {"type": "FeatureCollection", "name": plan.title, "attribution": "; ".join(sources),
             "generated": (shapes or lists or {}).get("generated"), "features": features}
 

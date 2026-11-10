@@ -364,6 +364,32 @@ test("der Wärmeplan zeigt seine Wärmenetzeignungsgebiete, jedes mit Seite", as
   expect(geo.features).toHaveLength(11);
 });
 
+test("weitere Pläne zeigen Gebiete und Standorte aus ihren Karten, nach Art und mit Fundstelle", async ({ page }) => {
+  await schalter(page, true);
+  // Alles aus council/plan_shapes/ und council/plan_lists/ — auch gegen die leere Datenbank.
+  await page.goto("/council/plan?key=eek");
+  const map = page.locator('section[aria-labelledby="plan-places"]');
+  await expect(map.getByText("Gebiet aus dem Plan")).toBeVisible();
+  await expect(map.getByText("Standort aus dem Plan")).toBeVisible();
+  await expect(map.getByText("Nahversorgungszentrum · 11")).toBeVisible();
+  await expect(map.getByRole("link", { name: /Karte 34, S\. 200/ })).toHaveAttribute("href", /id=285989&type=do#page=200$/);
+  // 22 Einträge: zehn offen, der Rest hinter einem Knopf.
+  await expect(map.getByRole("button", { name: /KaufPark Kreyenbrück/ })).toHaveCount(0);
+  await map.getByRole("button", { name: "Alle 22 zeigen" }).click();
+  await expect(map.getByRole("button", { name: /KaufPark Kreyenbrück/ })).toContainText("Standort");
+
+  await page.goto("/council/plan?key=laermaktionsplan");
+  await expect(map.getByText("Ruhiges Gebiet · 6")).toBeVisible();
+  await expect(map.getByText("Abschnitt aus dem Plan")).toBeVisible();
+  const lists = page.locator('section[aria-labelledby="plan-lists"]');
+  await expect(lists.getByRole("heading", { name: "Ruhige Gebiete", exact: true })).toBeVisible();
+  await expect(lists.getByRole("heading", { name: "Friedhöfe als Ruhige Gebiete" })).toBeVisible();
+
+  await page.goto("/council/plan?key=spielleitplanung");
+  await expect(map.getByText("Suchraum für Spielplätze", { exact: true })).toBeVisible();
+  await expect(map.locator(".leaflet-container path.leaflet-interactive").first()).toBeVisible();
+});
+
 test.describe("Haushalt zum Plan", () => {
   test.use({ storageState: zustandsDatei("ratsfrau") });
 
@@ -428,7 +454,8 @@ for (const breite of [390, 320]) {
     for (const pfad of ["/council?tab=analysis&sub=ziele", "/council/plan?key=aktionsplan_gewalt_2020",
       "/council/plan?key=klimaanpassungskonzept", "/council/plan?key=klimaschutzplan_2035",
       "/council/plan?key=schulverpflegung", "/council/plan?key=kita_ausbau", "/council/plan?key=mobilitaetsplan_2030",
-      "/council/plan?key=laermaktionsplan", "/council/plan?key=waermeplan"]) {
+      "/council/plan?key=laermaktionsplan", "/council/plan?key=waermeplan", "/council/plan?key=eek",
+      "/council/plan?key=masterplan_stadtgruen", "/council/plan?key=spielleitplanung"]) {
       await page.goto(pfad, { waitUntil: "networkidle" });
       expect(await ueberbreite(page), `${pfad} bei ${breite} px`).toBeLessThanOrEqual(1);
     }

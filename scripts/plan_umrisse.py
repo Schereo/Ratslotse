@@ -355,6 +355,8 @@ def build(db: str) -> dict:
     conn.close()
     return {"type": "FeatureCollection", "name": "Wärmenetzeignungsgebiete Oldenburg",
             "plan": "waermeplan", "document": DOCUMENT, "generated": dt.date.today().isoformat(),
+            # So liest plan_pages die Gebiete: „Eignungsgebiet „WNG 7 Kennedyviertel““.
+            "group": "Eignungsgebiet", "code_in_name": True,
             "method": "Nachgezeichnet aus den Kartenbildern des Abschlussberichts (Abbildungen 35–45), verortet über "
                       "die Übersichtskarte (Abbildung 34) und die Straßen des Ortskatalogs; scripts/plan_umrisse.py",
             "attribution": "Stadt Oldenburg, Kommunale Wärmeplanung (26/0236); Straßen © OpenStreetMap-Mitwirkende, ODbL",
