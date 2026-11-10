@@ -17,6 +17,8 @@ import { BadgesCard } from "@/components/badges";
 import { GespraecheCard } from "@/components/gespraeche-settings";
 import { LottiCard } from "@/components/assistentin/einstellung";
 import { McpCard } from "@/components/mcp-zugang";
+import { NotizenVerwalten } from "@/components/notiz/notizen-verwalten";
+import { useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 /**
@@ -93,6 +95,7 @@ function TilePreview({ mode }: { mode: "light" | "dark" }) {
 }
 
 export default function AccountPage() {
+  const mitNotizen = useFeature("notizen");
   const { user, logout } = useAuth();
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
@@ -216,6 +219,8 @@ export default function AccountPage() {
             <EmailCard />
 
             <AppearanceCard />
+
+            {mitNotizen && <NotizenVerwalten />}
 
             {hasPassword ? (
               <Card className="p-6">

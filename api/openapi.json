@@ -18614,6 +18614,278 @@
         "title": "NewsState",
         "type": "object"
       },
+      "NoteEntry": {
+        "description": "Eine Notiz, wie der Server sie kennt: Ziel, IV, Geheimtext, Version.",
+        "properties": {
+          "ciphertext": {
+            "title": "Ciphertext",
+            "type": "string"
+          },
+          "iv": {
+            "title": "Iv",
+            "type": "string"
+          },
+          "key_version": {
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "note",
+              "transcript"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "target_key": {
+            "title": "Target Key",
+            "type": "string"
+          },
+          "target_kind": {
+            "enum": [
+              "agenda_item",
+              "decision"
+            ],
+            "title": "Target Kind",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "target_kind",
+          "target_key",
+          "kind",
+          "iv",
+          "ciphertext",
+          "key_version",
+          "version",
+          "updated_at"
+        ],
+        "title": "NoteEntry",
+        "type": "object"
+      },
+      "NoteIn": {
+        "properties": {
+          "ciphertext": {
+            "maxLength": 22000,
+            "title": "Ciphertext",
+            "type": "string"
+          },
+          "iv": {
+            "maxLength": 32,
+            "title": "Iv",
+            "type": "string"
+          },
+          "key_version": {
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "version": {
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "iv",
+          "ciphertext",
+          "key_version",
+          "version"
+        ],
+        "title": "NoteIn",
+        "type": "object"
+      },
+      "NoteKeys": {
+        "description": "Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der\nNotiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem\nWiederherstellungscode. Auspacken kann nur das Gerät.",
+        "properties": {
+          "iterations": {
+            "title": "Iterations",
+            "type": "integer"
+          },
+          "kdf": {
+            "title": "Kdf",
+            "type": "string"
+          },
+          "key_version": {
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "salt": {
+            "title": "Salt",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "wrapped_passphrase": {
+            "title": "Wrapped Passphrase",
+            "type": "string"
+          },
+          "wrapped_recovery": {
+            "title": "Wrapped Recovery",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key_version",
+          "kdf",
+          "iterations",
+          "salt",
+          "wrapped_passphrase",
+          "wrapped_recovery",
+          "updated_at"
+        ],
+        "title": "NoteKeys",
+        "type": "object"
+      },
+      "NoteKeysIn": {
+        "properties": {
+          "iterations": {
+            "maximum": 5000000.0,
+            "minimum": 300000.0,
+            "title": "Iterations",
+            "type": "integer"
+          },
+          "kdf": {
+            "const": "pbkdf2-sha256",
+            "title": "Kdf",
+            "type": "string"
+          },
+          "key_version": {
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "salt": {
+            "maxLength": 64,
+            "title": "Salt",
+            "type": "string"
+          },
+          "wrapped_passphrase": {
+            "maxLength": 128,
+            "title": "Wrapped Passphrase",
+            "type": "string"
+          },
+          "wrapped_recovery": {
+            "maxLength": 128,
+            "title": "Wrapped Recovery",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key_version",
+          "kdf",
+          "iterations",
+          "salt",
+          "wrapped_passphrase"
+        ],
+        "title": "NoteKeysIn",
+        "type": "object"
+      },
+      "NoteKeysState": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "keys": {
+            "description": "Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der\nNotiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem\nWiederherstellungscode. Auspacken kann nur das Gerät.",
+            "properties": {
+              "iterations": {
+                "title": "Iterations",
+                "type": "integer"
+              },
+              "kdf": {
+                "title": "Kdf",
+                "type": "string"
+              },
+              "key_version": {
+                "title": "Key Version",
+                "type": "integer"
+              },
+              "salt": {
+                "title": "Salt",
+                "type": "string"
+              },
+              "updated_at": {
+                "title": "Updated At",
+                "type": "string"
+              },
+              "wrapped_passphrase": {
+                "title": "Wrapped Passphrase",
+                "type": "string"
+              },
+              "wrapped_recovery": {
+                "title": "Wrapped Recovery",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key_version",
+              "kdf",
+              "iterations",
+              "salt",
+              "wrapped_passphrase",
+              "wrapped_recovery",
+              "updated_at"
+            ],
+            "title": "NoteKeys",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "configured",
+          "keys"
+        ],
+        "title": "NoteKeysState",
+        "type": "object"
+      },
+      "NoteList": {
+        "properties": {
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/NoteEntry"
+            },
+            "title": "Notes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "notes"
+        ],
+        "title": "NoteList",
+        "type": "object"
+      },
+      "NotesDeleted": {
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "title": "NotesDeleted",
+        "type": "object"
+      },
       "NotifyKind": {
         "description": "Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste\npflegen müssen. ``parent`` ist gesetzt, wenn der Anlass eine Unter-Option\neines anderen ist.",
         "properties": {
@@ -42296,6 +42568,289 @@
         "summary": "Mark Seen",
         "tags": [
           "news"
+        ]
+      }
+    },
+    "/api/notes": {
+      "get": {
+        "description": "Die Notizen einer Seite — ohne Filter alle (Export; entschlüsselt wird im Browser).",
+        "operationId": "list_notes_api_notes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "target_kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "agenda_item",
+                "decision"
+              ],
+              "title": "Target Kind",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_key",
+            "required": false,
+            "schema": {
+              "title": "Target Key",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Notes",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/keys": {
+      "delete": {
+        "description": "Neu anfangen: Schlüssel und alle Notizen weg.",
+        "operationId": "delete_keys_api_notes_keys_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotesDeleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete Keys",
+        "tags": [
+          "notes"
+        ]
+      },
+      "get": {
+        "operationId": "get_keys_api_notes_keys_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteKeysState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Keys",
+        "tags": [
+          "notes"
+        ]
+      },
+      "put": {
+        "description": "Einrichten (mit ``wrapped_recovery``) oder Passphrase wechseln (ohne,\ndieselbe ``key_version``). Vorhandene Schlüssel überschreibt das nie.",
+        "operationId": "put_keys_api_notes_keys_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteKeysIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteKeysState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Keys",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/{target_kind}/{target_key}/{kind}": {
+      "delete": {
+        "operationId": "delete_note_api_notes__target_kind___target_key___kind__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "agenda_item",
+                "decision"
+              ],
+              "title": "Target Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "target_key",
+            "required": true,
+            "schema": {
+              "title": "Target Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "note",
+                "transcript"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Gelöscht"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Note",
+        "tags": [
+          "notes"
+        ]
+      },
+      "put": {
+        "operationId": "put_note_api_notes__target_kind___target_key___kind__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "agenda_item",
+                "decision"
+              ],
+              "title": "Target Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "target_key",
+            "required": true,
+            "schema": {
+              "title": "Target Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "note",
+                "transcript"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Version veraltet"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Note",
+        "tags": [
+          "notes"
         ]
       }
     },

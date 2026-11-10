@@ -316,6 +316,9 @@ export interface CourseResults {
   outcomeByItem?: Record<string, DecisionOutcome | null>;
   /** Vorläufiges Ergebnis aus der Übertragung, wo das Protokoll fehlt. */
   provisionalByItem?: Record<string, DecisionOutcome | null>;
+  /** Das EIGENE Ergebnis aus dem Mitschrieb (Schalter `mitschrieb`) — nur im
+   *  eigenen Kurs, und nur wo weder Protokoll noch Übertragung etwas sagen. */
+  ownByItem?: Record<string, DecisionOutcome | null>;
 }
 
 const OUTCOME_WORD: Record<DecisionOutcome, string> = {
@@ -333,6 +336,7 @@ export function courseInput(
 ): CourseInput {
   const outcomes = results.outcomeByItem ?? {};
   const provisional = results.provisionalByItem ?? {};
+  const own = results.ownByItem ?? {};
   return {
     start: course.start ?? null,
     stages: course.stages.map((st) => {
@@ -351,18 +355,19 @@ export function courseInput(
           const key = plainNumber(first);
           const outcome = formal ? null : (outcomes[key] ?? null);
           const prov = formal || outcome ? null : (provisional[key] ?? null);
-          const shown = outcome ?? prov;
+          const eigen = formal || outcome || prov ? null : (own[key] ?? null);
+          const shown = outcome ?? prov ?? eigen;
           const name = formal ? cell.title! : (item?.short_title ?? first);
           return {
             label: cell.label,
             items: cell.items,
-            title: `${cell.label} · ${name}${shown ? ` · ${OUTCOME_WORD[shown]}${prov ? " (vorläufig)" : ""}` : ""}`,
+            title: `${cell.label} · ${name}${shown ? ` · ${OUTCOME_WORD[shown]}${prov ? " (vorläufig)" : eigen ? " (mein Mitschrieb)" : ""}` : ""}`,
             shortTitle: name,
             icon: item?.icon ?? "statute",
             important: !formal && !!item?.important,
             postponed: !formal && (item?.postponed ?? 0) > 0,
             outcome: shown,
-            provisional: !!prov,
+            provisional: !!(prov || eigen),
             href: hrefFor?.(first),
           };
         }),

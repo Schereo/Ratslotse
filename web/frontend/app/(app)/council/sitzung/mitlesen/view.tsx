@@ -17,6 +17,9 @@ import { AbrufFehler } from "@/components/abruf-fehler";
 import { Course } from "@/components/session/course";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { FragDenRat, Unterlagen, Vorgeschichte, type Punkt } from "@/components/session/item-sections";
+import { Mitschrieb } from "@/components/notiz/mitschrieb";
+import { useAuth } from "@/lib/auth";
+import { onKeyChange, rememberedKey, sessionKey, sessionTranscripts } from "@/lib/notizen";
 import { ergebnisseJeTop, kurzfassung, sessionUrl } from "@/components/tagesordnung";
 import { normalizeParty, partyBrand } from "@/components/decision-ui";
 import { useFetch } from "@/lib/use-fetch";
@@ -86,6 +89,24 @@ function Mitlesen({ data, ksinr }: { data: SessionWithCourse; ksinr: number }) {
   const schritt = alle[state.index];
   const titelRef = useRef<HTMLHeadingElement>(null);
   const ersterLauf = useRef(true);
+  // Mein Mitschrieb (Schalter `mitschrieb`): die eigenen Ergebnisse färben die
+  // Bojen im EIGENEN Kurs — geladen, sobald der Notiz-Schlüssel offen ist.
+  const mitMitschrieb = useFeature("mitschrieb");
+  const { user } = useAuth();
+  const owner = user?.id ?? null;
+  const [eigen, setEigen] = useState<Record<string, DecisionOutcome | null>>({});
+  useEffect(() => {
+    if (!mitMitschrieb || owner == null) return;
+    let weg = false;
+    const laden = async () => {
+      const dk = sessionKey(owner) ?? await rememberedKey(owner);
+      const m = dk ? await sessionTranscripts(dk, ksinr) : {};
+      if (!weg) setEigen(Object.fromEntries(Object.entries(m).map(([nr, d]) => [splitNumber(nr).rest, d.outcome])));
+    };
+    void laden().catch(() => {});
+    const ab = onKeyChange(() => { void laden().catch(() => {}); });
+    return () => { weg = true; ab(); };
+  }, [mitMitschrieb, owner, ksinr]);
   const leiste = useRef<HTMLDivElement>(null);
 
   // Die Leiste unten deckte Lottis schwebenden Knopf zu (und er sie). Wie der
@@ -133,7 +154,8 @@ function Mitlesen({ data, ksinr }: { data: SessionWithCourse; ksinr: number }) {
   const provisional = useMemo(
     () => Object.fromEntries(Object.entries(videoByItem).map(([k, v]) => [k, v.outcome as DecisionOutcome])),
     [videoByItem]);
-  const results = useMemo(() => ({ outcomeByItem, provisionalByItem: provisional }), [outcomeByItem, provisional]);
+  const results = useMemo(() => ({ outcomeByItem, provisionalByItem: provisional, ownByItem: eigen }),
+    [outcomeByItem, provisional, eigen]);
   const waehle = useCallback((nr: string) => {
     const i = alle.findIndex((s) => s.key === nr || s.items.includes(nr));
     if (i >= 0) gehe(i);
@@ -192,6 +214,10 @@ function Mitlesen({ data, ksinr }: { data: SessionWithCourse; ksinr: number }) {
           punktSeite={punktSeite}
           fuss={<Steuerung vorher={vorher} nachher={nachher} onZurueck={() => gehe(state.index - 1)} onWeiter={() => gehe(state.index + 1)} />} />
         <aside className="flex flex-col gap-4" aria-label="Neben der Sitzung">
+          {mitMitschrieb && !schritt.closed && !course.items[schritt.key]?.formality && (
+            <Mitschrieb ksinr={ksinr} itemNumber={schritt.key} label={schritt.label}
+              onOutcome={(nr, o) => setEigen((alt) => ({ ...alt, [splitNumber(nr).rest]: o }))} />
+          )}
           {!schritt.closed && <FragDenRatKurz ksinr={ksinr} nr={schritt.key} />}
           <AlsNaechstes alle={alle} ab={state.index + 1} onWaehle={gehe} />
           <a href={sessionUrl(ksinr)} target="_blank" rel="noreferrer"

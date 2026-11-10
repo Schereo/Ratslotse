@@ -279,6 +279,23 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Zwei echte Sitzungen (ein Ausschuss, ein Rat mit Übertragung) auf dev "
                     "mitgelesen ohne Befund, von Tim abgenommen und auf Prod angeschaltet.",
     ),
+    "mitschrieb": Feature(
+        key="mitschrieb",
+        description="„Mein Mitschrieb“ beim Mitlesen: je Punkt die eigene Einschätzung, was passiert "
+                    "ist, und ein Text — verschlüsselt wie die Notizen; färbt die Bojen nur im eigenen "
+                    "Kurs (docs/plan-sitzungsseite-kurs.md 3.17).",
+        fertig_wenn="Tim hat Frage 8.3 beantwortet (die Idee bleibt), eine echte Sitzung auf dev damit "
+                    "mitgeschrieben, und `notizen` ist auf Prod an; dann mit ihm zusammen an.",
+    ),
+    "notizen": Feature(
+        key="notizen",
+        description="„Meine Notiz“ an Tagesordnungspunkten und Beschlüssen — auf dem Gerät "
+                    "verschlüsselt, mit eigener Notiz-Passphrase und Wiederherstellungscode "
+                    "(docs/plan-notizen-verschluesselt.md).",
+        fertig_wenn="Datenschutzerklärung von Tim abgenommen, auf dev zwei Wochen ohne Befund "
+                    "(Einrichten, zweites Gerät, Passphrase wechseln, Wiederherstellung), App liest "
+                    "dieselben Testvektoren; dann mit dem Release auf Prod an.",
+    ),
     "punkt-argumente": Feature(
         key="punkt-argumente",
         description="Die Reiter „Argumente“ und „Fraktionen“ auf der Punkt-Seite: Streitpunkte mit "

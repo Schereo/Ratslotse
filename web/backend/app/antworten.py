@@ -675,6 +675,49 @@ class BookmarkList(TypedDict):
 
 
 # --------------------------------------------------------------------------
+# Verschlüsselte Notizen (docs/plan-notizen-verschluesselt.md)
+# --------------------------------------------------------------------------
+
+
+class NoteKeys(TypedDict):
+    """Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der
+    Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem
+    Wiederherstellungscode. Auspacken kann nur das Gerät."""
+    key_version: int
+    kdf: str
+    iterations: int
+    salt: str
+    wrapped_passphrase: str
+    wrapped_recovery: str
+    updated_at: str
+
+
+class NoteKeysState(TypedDict):
+    configured: bool
+    keys: NoteKeys | None
+
+
+class NoteEntry(TypedDict):
+    """Eine Notiz, wie der Server sie kennt: Ziel, IV, Geheimtext, Version."""
+    target_kind: Literal["agenda_item", "decision"]
+    target_key: str
+    kind: Literal["note", "transcript"]
+    iv: str
+    ciphertext: str
+    key_version: int
+    version: int
+    updated_at: str
+
+
+class NoteList(TypedDict):
+    notes: list[NoteEntry]
+
+
+class NotesDeleted(TypedDict):
+    deleted: int
+
+
+# --------------------------------------------------------------------------
 # „Frag den Rat" — gespeicherte Gespräche
 # --------------------------------------------------------------------------
 

@@ -136,3 +136,50 @@ genau die Leute, die ihn am meisten nutzen würden (Ratsmitglieder, Presse).
    Beschlüssen?
 3. „Auf diesem Gerät merken“ im Web anbieten (bequem, aber der Schlüssel liegt
    dann im Browser), oder jedes Mal die Passphrase?
+
+## 9. Umgesetzt (10.11.2026)
+
+Reihenfolge 1 und 2 (§ 7), hinter dem Schalter `notizen` — auch im Backend:
+ohne ihn antworten alle `/api/notes`-Endpunkte 404, denn die
+Datenschutzerklärung nennt die Notizen erst mit der Freigabe (der Absatz steht
+dort schon, sichtbar nur im Dev-Build). **Mitschrieb nicht gebaut** —
+Empfehlung A aus § 5, bis Tim 8.3 entscheidet. **App** bleibt eigener Plan.
+
+Entschieden, wo der Plan offen war:
+
+- **Wiederherstellungscode 160 statt 128 Bit:** Acht Gruppen zu vier
+  Crockford-Zeichen sind genau 160 Bit; 128 hätten eine halbe Gruppe gelassen.
+  `KEK_r` entsteht per HKDF-SHA-256 (Salz wie bei der Passphrase, Info
+  `ratslotse-notizen-wiederherstellung`), verpackt wird mit AES-KW.
+- **Ziel als Zusatzdaten:** AES-GCM bindet `agenda_item|4654|Ö 11.1|note` —
+  der Server kann eine Notiz nicht unbemerkt an einen anderen Punkt hängen.
+- **„Auf diesem Gerät merken“ ist ein Häkchen, aus als Vorgabe** (Frage 3):
+  der Schlüssel liegt dann nicht exportierbar in IndexedDB. Ohne Häkchen
+  hält ihn nur der Speicher des Tabs; Abmelden räumt beides.
+- **Erst Punkte und Beschlüsse** (Frage 2).
+- **Verwaltung im Konto:** Passphrase ändern (nur die eine Verpackung
+  wechselt, Notizen und Code bleiben), alle herunterladen (im Browser
+  entschlüsselt, als JSON), auf diesem Gerät sperren, neu anfangen. Der Export
+  braucht keinen eigenen Endpunkt: `GET /api/notes` ohne Filter liefert alle
+  Blobs.
+
+**Geprüft:** `web/frontend/lib/notiz-krypto.test.ts` — PBKDF2 gegen RFC 7914
+§ 11, AES-KW gegen RFC 3394 § 4.6, dazu eigene Testvektoren (DK, Salz, Code,
+IV fest), die die App bestehen muss; falsche Passphrase und falscher Code
+scheitern sauber, Passphrasen-Wechsel lässt alte Notizen lesbar, eine an ein
+anderes Ziel gehängte Notiz lässt sich nicht öffnen. `tests/test_notizen.py`
+— nur Blobs, Form, Größe, Version (409 statt Überschreiben), fremde Konten,
+Neu-Anfangen, Konto-Löschung. Browsertest `32-notizen` — Einrichten mit
+abgetipptem Code, Schreiben, Neuladen gesperrt, zweites Gerät mit falscher
+Passphrase sieht nichts, mit dem Code und neuer Passphrase wieder alles.
+
+**Nachtrag 10.11.2026 — Mitschrieb (Reihenfolge 3):** gebaut hinter einem
+eigenen Schalter `mitschrieb`, auf den Notizen aufgesetzt (Art `transcript`,
+Klartext `{ "text", "outcome" }`). Weg A aus § 5 heißt „mit den
+verschlüsselten Notizen“ — die gibt es jetzt, also kommt der Mitschrieb mit
+ihnen. **Ob die Idee bleibt (Frage 8.3 des Hauptplans), entscheidet Tim**: Der
+Schalter bleibt auf Prod aus, bis er es tut. Das eigene Ergebnis färbt nur den
+eigenen Kurs, als „(mein Mitschrieb)“ beschriftet, und nur wo weder Protokoll
+noch Übertragung etwas sagen (`lib/course.ts::courseInput`, Test in
+`course.test.ts`). Das Schloss (Einrichten, Entsperren) teilen sich Notiz und
+Mitschrieb (`components/notiz/notiz-schloss.tsx`). Browsertest `33-mitschrieb`.

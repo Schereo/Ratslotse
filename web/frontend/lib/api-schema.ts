@@ -4933,6 +4933,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notes
+         * @description Die Notizen einer Seite — ohne Filter alle (Export; entschlüsselt wird im Browser).
+         */
+        get: operations["list_notes_api_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Keys */
+        get: operations["get_keys_api_notes_keys_get"];
+        /**
+         * Put Keys
+         * @description Einrichten (mit ``wrapped_recovery``) oder Passphrase wechseln (ohne,
+         *     dieselbe ``key_version``). Vorhandene Schlüssel überschreibt das nie.
+         */
+        put: operations["put_keys_api_notes_keys_put"];
+        post?: never;
+        /**
+         * Delete Keys
+         * @description Neu anfangen: Schlüssel und alle Notizen weg.
+         */
+        delete: operations["delete_keys_api_notes_keys_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/{target_kind}/{target_key}/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Note */
+        put: operations["put_note_api_notes__target_kind___target_key___kind__put"];
+        post?: never;
+        /** Delete Note */
+        delete: operations["delete_note_api_notes__target_kind___target_key___kind__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/oauth/authorize": {
         parameters: {
             query?: never;
@@ -14577,6 +14641,122 @@ export interface components {
             releases: components["schemas"]["ReleaseNews"][];
             /** Seen Version */
             seen_version: string | null;
+        };
+        /**
+         * NoteEntry
+         * @description Eine Notiz, wie der Server sie kennt: Ziel, IV, Geheimtext, Version.
+         */
+        NoteEntry: {
+            /** Ciphertext */
+            ciphertext: string;
+            /** Iv */
+            iv: string;
+            /** Key Version */
+            key_version: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "note" | "transcript";
+            /** Target Key */
+            target_key: string;
+            /**
+             * Target Kind
+             * @enum {string}
+             */
+            target_kind: "agenda_item" | "decision";
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** NoteIn */
+        NoteIn: {
+            /** Ciphertext */
+            ciphertext: string;
+            /** Iv */
+            iv: string;
+            /** Key Version */
+            key_version: number;
+            /** Version */
+            version: number;
+        };
+        /**
+         * NoteKeys
+         * @description Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der
+         *     Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem
+         *     Wiederherstellungscode. Auspacken kann nur das Gerät.
+         */
+        NoteKeys: {
+            /** Iterations */
+            iterations: number;
+            /** Kdf */
+            kdf: string;
+            /** Key Version */
+            key_version: number;
+            /** Salt */
+            salt: string;
+            /** Updated At */
+            updated_at: string;
+            /** Wrapped Passphrase */
+            wrapped_passphrase: string;
+            /** Wrapped Recovery */
+            wrapped_recovery: string;
+        };
+        /** NoteKeysIn */
+        NoteKeysIn: {
+            /** Iterations */
+            iterations: number;
+            /**
+             * Kdf
+             * @constant
+             */
+            kdf: "pbkdf2-sha256";
+            /** Key Version */
+            key_version: number;
+            /** Salt */
+            salt: string;
+            /** Wrapped Passphrase */
+            wrapped_passphrase: string;
+            /** Wrapped Recovery */
+            wrapped_recovery?: string | null;
+        };
+        /** NoteKeysState */
+        NoteKeysState: {
+            /** Configured */
+            configured: boolean;
+            /**
+             * NoteKeys
+             * @description Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der
+             *     Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem
+             *     Wiederherstellungscode. Auspacken kann nur das Gerät.
+             */
+            keys: {
+                /** Iterations */
+                iterations: number;
+                /** Kdf */
+                kdf: string;
+                /** Key Version */
+                key_version: number;
+                /** Salt */
+                salt: string;
+                /** Updated At */
+                updated_at: string;
+                /** Wrapped Passphrase */
+                wrapped_passphrase: string;
+                /** Wrapped Recovery */
+                wrapped_recovery: string;
+            } | null;
+        };
+        /** NoteList */
+        NoteList: {
+            /** Notes */
+            notes: components["schemas"]["NoteEntry"][];
+        };
+        /** NotesDeleted */
+        NotesDeleted: {
+            /** Deleted */
+            deleted: number;
         };
         /**
          * NotifyKind
@@ -26474,6 +26654,186 @@ export interface operations {
             };
         };
     };
+    list_notes_api_notes_get: {
+        parameters: {
+            query?: {
+                target_kind?: "agenda_item" | "decision" | null;
+                target_key?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_keys_api_notes_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+        };
+    };
+    put_keys_api_notes_keys_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteKeysIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_keys_api_notes_keys_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotesDeleted"];
+                };
+            };
+        };
+    };
+    put_note_api_notes__target_kind___target_key___kind__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_kind: "agenda_item" | "decision";
+                target_key: string;
+                kind: "note" | "transcript";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteEntry"];
+                };
+            };
+            /** @description Version veraltet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_note_api_notes__target_kind___target_key___kind__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_kind: "agenda_item" | "decision";
+                target_key: string;
+                kind: "note" | "transcript";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gelöscht */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     authorize_check_api_oauth_authorize_get: {
         parameters: {
             query?: {
@@ -29581,4 +29941,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c2d70e54fcb2afd9d4286ce1886d98c38e8528a678c56ba9ecd4ba3da03a4934
+// vertrag-sha256: 160ffce93039e7eeffd7b96a12a554772150f1695f61c65dcd2092982d7ee806
