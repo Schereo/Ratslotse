@@ -1277,7 +1277,7 @@ def budget_block(store, plan: register.Plan) -> dict:
         elif ref["table"] == "investments":
             ordered = sorted(rows, key=lambda r: r["year"])
             items.append({"kind": "investment", "title": ordered[-1]["label"], "number": ordered[-1]["code"],
-                          "context": "Investitionsprogramm, Wert je Programmjahr, wie er dort steht",
+                          "context": "Investitionsprogramm",
                           "quote": _budget_quote(ordered[-1].get(ref["field"]) or "", pattern),
                           "amounts": [{"label": f"Programm {r['year']}", "value": r["grand_total"]} for r in ordered],
                           "since": ordered[0]["year"], "source_url": None})
