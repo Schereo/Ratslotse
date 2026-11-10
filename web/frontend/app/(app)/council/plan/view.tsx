@@ -20,7 +20,9 @@ import { Decisions } from "@/components/plans/decisions";
 import { Indicators } from "@/components/plans/indicators";
 import { JumpBar } from "@/components/plans/jump-bar";
 import { Measures } from "@/components/plans/measures";
+import { Budget } from "@/components/plans/budget";
 import { PlanHeader } from "@/components/plans/plan-header";
+import { Places } from "@/components/plans/places";
 import { Related } from "@/components/plans/related";
 import { ReportLog } from "@/components/plans/report-log";
 import { Review } from "@/components/plans/review";
@@ -86,10 +88,12 @@ function PlanInner() {
           {data.city_status && <CityStatus status={data.city_status} />}
           <Indicators indicators={data.indicators} />
           {data.measures && <Measures measures={data.measures} />}
+          {data.places && <Places places={data.places} />}
         </div>
         <div className="flex min-w-0 flex-col gap-4 @4xl:gap-5">
           {data.decision_groups.length > 0 && <Decisions plan={data} />}
           <Related plans={data.related} />
+          <Budget planKey={data.key} />
           <p className="max-w-[76ch] text-hinweis text-muted-foreground">
             Gefunden über die Titel und Vorlagen der Tagesordnungspunkte im Ratsinformationssystem.
             Nichtöffentliche Sitzungen, Mitteilungen ohne Vorlage und Berichte außerhalb des

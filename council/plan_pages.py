@@ -992,6 +992,7 @@ def sections(page: dict) -> list[dict]:
         ("status", "Stand", None, bool(status)),
         ("indicators", "Kennzahl" if len(page["indicators"]) == 1 else "Kennzahlen", None, bool(page["indicators"])),
         ("measures", "Maßnahmen", measures["count"] if measures else None, bool(measures)),
+        ("places", "Karte", len(page["places"]["items"]) if page["places"] else None, bool(page["places"])),
         ("decisions", "Beschlüsse", decisions, decisions > 0),
     ]
     return [{"key": key, "label": label, "count": count} for key, label, count, shown in rows if shown]
@@ -1050,6 +1051,273 @@ def related_block(plan: register.Plan, today: str) -> list[dict]:
                     "field_label": FIELD_SHORT.get(other.policy_field, other.policy_field),
                     "status": state, "status_label": STATUS_LABELS[state]})
     return out
+
+
+# ── Orte zum Plan: Karte und Mein Viertel ─────────────────────────────────
+#
+# Zwei Quellen, beide ohne Sprachmodell und ohne neues Geocoding:
+# - die Maßnahmenliste: Straßen und Plätze, die ein Maßnahmentitel beim Namen nennt
+#   (``council/plan_places/``, von Hand durchgesehen);
+# - die Beschlüsse zum Plan: Orte, die die Ortszuordnung der Ratsdaten den Umsetzungs- und
+#   Berichtsbeschlüssen schon gegeben hat (``council_decision_locations``).
+# Eine Karte ist keine Aussage über Fortschritt (§ 3.4): Sie zeigt, WO etwas vorgesehen ist oder
+# beschlossen wurde. Den Stand trägt sie nur, wo die Stadt ihn je Maßnahme selbst meldet.
+
+#: Was als Ort eines Plans zählt — Flächen und Stadtteile nicht: Ein Stadtteil als Punkt behauptet
+#: einen Ort, der keiner ist.
+PLACE_KINDS = ("street", "square", "building", "water", "facility", "structure", "route")
+#: Beschlüsse, deren Orte auf die Karte dürfen: Umsetzung und Bericht — nicht die bloße Erwähnung.
+PLACE_ROLES = ("implementation", "report", "evaluation")
+PLACE_RELATIONS = ("implements", "names_measure")
+PLACE_MIN_CONFIDENCE = 0.9
+#: Katalognamen, die ein Gattungswort sind und kein Ort (der Katalog führt „Car-Sharing“ als Straße).
+PLACE_GENERIC = {"gehweg", "parkplatz", "car-sharing", "radweg", "fußweg", "radschnellweg", "spielplatz",
+                 "bushaltestelle", "parkhaus", "fahrradstraße"}
+#: Darunter ist eine Karte Dekoration.
+PLACES_MIN = 3
+#: Wann eine Straße zu einem Ortsbereich zählt (Anteil am längsten Stück = 1). Eine Straße aus der
+#: Maßnahmenliste meint die ganze Straße — sie zählt überall, wo ein nennenswerter Teil liegt. Nennt ein
+#: Beschluss nur die Straße (eine Einrichtung „an der Alexanderstraße“), zählt nur ihr Hauptbereich:
+#: Sonst stünde ein Tagesaufenthalt in fünf Stadtteilen.
+AREA_SHARE_MEASURE = 0.3
+AREA_SHARE_DECISION_STREET = 0.999
+#: Verläufe nur bis zu dieser Größe (GeoJSON-Zeichen); darüber reicht der Punkt.
+GEOMETRY_MAX = 15000
+GEOMETRY_KINDS = ("street", "route", "water")
+#: Fünf Nachkommastellen sind gut ein Meter — genauer zeichnet keine Karte, und die Antwort wird kleiner.
+GEOMETRY_DIGITS = 5
+#: Stützpunkte, die näher als das (in Grad, rund 10 m) am vorigen liegen, fallen weg — Anfang und Ende bleiben.
+GEOMETRY_STEP = 0.00012
+PLACES_NOTE = ("Orte aus den Titeln der Maßnahmen und aus den Beschlüssen zum Plan, zugeordnet ohne "
+               "Sprachmodell. Die Karte zeigt, wo etwas vorgesehen oder beschlossen ist — nicht, wie weit es ist.")
+
+
+def _geometry(row: dict):
+    """Der Verlauf einer Straße — nur für Orte aus der Maßnahmenliste: „Neue Fahrradstraße Lindenallee“
+    meint die Straße. Ein Beschluss, der eine Kita an der Dedestraße nennt, meint dagegen nicht die ganze
+    Straße; dort reicht der Punkt."""
+    raw = row.get("geojson")
+    if not raw or row.get("kind") not in GEOMETRY_KINDS or len(raw) > GEOMETRY_MAX:
+        return None
+    import json as _json
+    try:
+        shape = _json.loads(raw)
+    except ValueError:
+        return None
+    if shape.get("type") == "LineString":
+        lines = [shape["coordinates"]]
+    elif shape.get("type") == "MultiLineString":
+        lines = shape["coordinates"]
+    else:
+        return None
+    return {"type": "MultiLineString", "coordinates": [_thin(line) for line in lines if len(line) >= 2]}
+
+
+def _thin(line: list) -> list:
+    """Ein Linienzug mit weniger Stützpunkten: Was dichter als ``GEOMETRY_STEP`` am vorigen liegt, fällt
+    weg; Anfang und Ende bleiben, damit die Straße nicht kürzer wird."""
+    kept = [line[0]]
+    for point in line[1:-1]:
+        if abs(point[0] - kept[-1][0]) + abs(point[1] - kept[-1][1]) >= GEOMETRY_STEP:
+            kept.append(point)
+    kept.append(line[-1])
+    return [[round(x, GEOMETRY_DIGITS), round(y, GEOMETRY_DIGITS)] for x, y, *_ in kept]
+
+
+def plan_places(store, plan: register.Plan) -> list[dict]:
+    """Die Orte eines Plans — je Ort einmal, mit den Maßnahmen und Beschlüssen, die ihn nennen."""
+    by_slug: dict[str, dict] = {}
+
+    def slot(row: dict, line: bool = False) -> dict:
+        place = by_slug.setdefault(row["slug"], {
+            "slug": row["slug"], "name": row["name"], "kind": row["kind"], "lat": row["lat"], "lon": row["lon"],
+            "geometry": None, "measures": [], "decisions": []})
+        if line and place["geometry"] is None:
+            place["geometry"] = _geometry(row)
+        return place
+
+    named = plan_state.measure_places(plan.key)
+    if named:
+        listed = register.measures(plan.key) or {"measures": []}
+        titles = {m["code"]: m["title"] for m in listed["measures"]}
+        stand = plan_state.city_status(plan.key)
+        states = {m["code"]: m for m in (stand["latest"].get("measures") or [])} if stand else {}
+        catalog = store.plan_catalog_places([p["slug"] for e in named["measures"] for p in e["places"]])
+        for entry in named["measures"]:
+            for place in entry["places"]:
+                row = catalog.get(place["slug"])
+                if row is None or entry["code"] not in titles:
+                    continue
+                state = states.get(entry["code"]) or {}
+                slot(row, line=True)["measures"].append({"code": entry["code"], "title": titles[entry["code"]],
+                                              "status_raw": state.get("status_raw"),
+                                              "status_norm": state.get("status_norm")})
+    rows = store.plan_decision_places(plan.key, PLACE_ROLES, PLACE_RELATIONS, PLACE_KINDS, PLACE_MIN_CONFIDENCE)
+    # Nennt ein Beschluss eine Adresse („Bahnweg 84“), steht die Straße („Bahnweg“) nicht noch einmal da.
+    addresses: dict[int, list[str]] = {}
+    for r in rows:
+        if r["kind"] == "building":
+            addresses.setdefault(r["decision_id"], []).append(r["name"].lower())
+    for r in rows:
+        if r["name"].lower() in PLACE_GENERIC:
+            continue
+        if r["kind"] == "street" and any(a.startswith(r["name"].lower() + " ") for a in addresses.get(r["decision_id"], [])):
+            continue
+        decisions = slot(r)["decisions"]
+        if all(d["id"] != r["decision_id"] for d in decisions):
+            decisions.append({"id": r["decision_id"], "title": r["title"], "date": r["session_date"]})
+    out = list(by_slug.values())
+    for place in out:
+        place["decision_count"] = len(place["decisions"])
+        place["decisions"] = place["decisions"][:3]
+    out.sort(key=lambda p: (-len(p["measures"]) - p["decision_count"], p["name"]))
+    return out
+
+
+def places_block(store, plan: register.Plan) -> dict | None:
+    """Die Karte zum Plan — ab ``PLACES_MIN`` Orten, sonst ``None`` (kein Platzhalter)."""
+    places = plan_places(store, plan)
+    if len(places) < PLACES_MIN:
+        return None
+    listed = register.measures(plan.key)
+    return {
+        "items": places,
+        "measure_places": sum(1 for p in places if p["measures"]),
+        "measures_named": len({m["code"] for p in places for m in p["measures"]}),
+        "measures_total": len(listed["measures"]) if listed else None,
+        "decision_places": sum(1 for p in places if p["decision_count"]),
+        "note": PLACES_NOTE,
+    }
+
+
+def _counts_here(place: dict, share: float | None) -> bool:
+    """Gehört ein Ort des Plans zu diesem Ortsbereich (``share``: sein Anteil dort, ``None``: gar nicht)?"""
+    if share is None:
+        return False
+    if place["measures"]:
+        return share >= AREA_SHARE_MEASURE
+    return share >= AREA_SHARE_DECISION_STREET if place["kind"] == "street" else True
+
+
+def district_plans(store, place_id: str, today: str | None = None) -> list[dict]:
+    """„Pläne, die dein Viertel betreffen“: laufende und entstehende Pläne mit mindestens einem Ort in
+    diesem Ortsbereich — mit den Orten, über die sie hierher gehören. Nichts geschätzt: nur Orte aus
+    Maßnahmentiteln und Beschlüssen (s. :func:`plan_places`)."""
+    today = today or _date.today().isoformat()
+    found = []
+    for plan in register.PLANS.values():
+        if plan.kind == "reference":
+            continue
+        state = status(plan, today)
+        if group_of(state) == "ended":
+            continue
+        places = plan_places(store, plan)
+        if not places:
+            continue
+        areas = store.plan_place_areas([p["slug"] for p in places])
+        here = [p for p in places if _counts_here(p, areas.get(p["slug"], {}).get(place_id))]
+        # „Bahnweg“ neben „Bahnweg 84“ sagt nichts Neues: Die Straße fällt, wo eine Adresse an ihr steht.
+        names = [p["name"] for p in here]
+        here = [p for p in here if not (p["kind"] == "street" and any(n.startswith(p["name"] + " ") for n in names))]
+        if not here:
+            continue
+        found.append({"key": plan.key, "title": plan.title,
+                      "field_label": FIELD_SHORT.get(plan.policy_field, plan.policy_field),
+                      "status": state, "status_label": STATUS_LABELS[state],
+                      "places": [p["name"] for p in here[:4]], "place_count": len(here),
+                      "via_measures": any(p["measures"] for p in here)})
+    found.sort(key=lambda f: (-f["place_count"], f["title"]))
+    return found
+
+
+# ── Haushalt zum Plan (nur mit dem Recht ``budget``) ───────────────────────
+
+#: So heißen die Änderungslisten (wie in web/frontend/lib/haushalt-aenderungslisten.ts).
+BUDGET_LISTS = {"administration_1": "Änderungsliste der Verwaltung I",
+                "administration_2": "Änderungsliste der Verwaltung II",
+                "administration_3": "Änderungsliste der Verwaltung III",
+                "fc_decided": "Beschlossene Änderungen (Finanzausschuss)"}
+#: Spätere Stufen einer Änderung ersetzen frühere: Was der Finanzausschuss beschlossen hat, zählt.
+BUDGET_LIST_ORDER = ("administration_1", "administration_2", "administration_3", "fc_decided")
+BUDGET_NOTE = ("Nur Haushaltsposten, deren eigener Text den Plan beim Namen nennt. Was der Plan insgesamt "
+               "kostet, steht so nirgends im Haushalt — und nicht jeder Posten, der ihm dient, nennt ihn.")
+
+
+def _budget_quote(text: str, pattern: str) -> str:
+    """Die Stelle, an der der Plan genannt ist — der Satz darum, höchstens 300 Zeichen."""
+    import re as _re
+    flat = " ".join((text or "").split())
+    m = _re.search(pattern, flat, _re.I)
+    if not m:
+        return flat[:300]
+    dot = flat.rfind(". ", 0, m.start())
+    start = max(dot + 2 if dot >= 0 else 0, m.start() - 160)
+    if start > 0 and flat[start - 1] != " ":
+        # Nicht mitten im Wort anfangen: zum nächsten Wortanfang.
+        space = flat.find(" ", start)
+        start = space + 1 if 0 <= space < m.start() else start
+    end = flat.find(". ", m.end())
+    end = len(flat) if end < 0 else end + 1
+    if end > m.end() + 160:
+        space = flat.rfind(" ", m.end(), m.end() + 160)
+        end = space if space > m.end() else m.end() + 160
+    cut_front = start > 0 and dot + 2 != start
+    return ("…" if cut_front else "") + flat[start:end].strip() + ("…" if end < len(flat) and flat[end - 1] != "." else "")
+
+
+def budget_block(store, plan: register.Plan) -> dict:
+    """Was im Haushalt den Plan nennt (``council/plan_budget.json``) — Beträge so, wie sie in der Zeile
+    stehen, ungerundet; gerundet wird einmal, in der Anzeige. Produkte mit dem jüngsten Ansatz, der den
+    Plan nennt; Investitionen je Programmjahr; Änderungen je Planjahr, die spätere Liste ersetzt die
+    frühere."""
+    refs = plan_state.budget_refs().get(plan.key, [])
+    pattern = plan_state.budget_patterns().get(plan.key, "")
+    items: list[dict] = []
+    changes: dict[tuple, dict] = {}
+    for ref in refs:
+        rows = store.plan_budget_rows(ref["table"], ref)
+        if "years" in ref:
+            rows = [r for r in rows if r["year"] in ref["years"]]
+        if not rows:
+            continue
+        if ref["table"] == "products":
+            row = max(rows, key=lambda r: r["year"])
+            items.append({"kind": "product", "title": row["product_name"], "number": row["product_no"],
+                          "context": f"Teilhaushalt {row['sub_budget_name']}" if row.get("sub_budget_name") else None,
+                          "quote": _budget_quote(row.get(ref["field"]) or "", pattern),
+                          "amounts": [{"label": f"Aufwand {row['year']} (Ansatz)", "value": row["expenses"]},
+                                      {"label": f"Ertrag {row['year']} (Ansatz)", "value": row["revenues"]}],
+                          "since": min(r["year"] for r in rows), "source_url": row.get("source_url")})
+        elif ref["table"] == "investments":
+            ordered = sorted(rows, key=lambda r: r["year"])
+            items.append({"kind": "investment", "title": ordered[-1]["label"], "number": ordered[-1]["code"],
+                          "context": "Investitionsprogramm, Wert je Programmjahr, wie er dort steht",
+                          "quote": _budget_quote(ordered[-1].get(ref["field"]) or "", pattern),
+                          "amounts": [{"label": f"Programm {r['year']}", "value": r["grand_total"]} for r in ordered],
+                          "since": ordered[0]["year"], "source_url": None})
+        else:
+            row = rows[0]
+            cash = ref["table"] == "amendments_cash"
+            value = (row.get("outflow") if row.get("outflow") is not None else row.get("inflow")) if cash else \
+                (row.get("expense") if row.get("expense") is not None else row.get("revenue"))
+            what = ("Auszahlung" if row.get("outflow") is not None else "Einzahlung") if cash else \
+                ("Aufwand" if row.get("expense") is not None else "Ertrag")
+            group = (ref["table"], row["budget_year"], row["label"], " ".join((row.get("explanation") or "").split()))
+            slot = changes.setdefault(group, {"stages": {}, "row": row, "what": what, "field": ref["field"]})
+            slot["stages"].setdefault(row["list_key"], {})[row["year"]] = value
+    for (table, budget_year, label, _text), slot in changes.items():
+        stage = max(slot["stages"], key=lambda k: BUDGET_LIST_ORDER.index(k) if k in BUDGET_LIST_ORDER else -1)
+        row = slot["row"]
+        items.append({"kind": "change", "title": label, "number": row.get("product"),
+                      "context": f"{BUDGET_LISTS.get(stage, stage)}, Haushalt {budget_year}",
+                      "quote": _budget_quote(row.get(slot["field"]) or "", pattern),
+                      "amounts": [{"label": f"{slot['what']} {year}", "value": value}
+                                  for year, value in sorted(slot["stages"][stage].items()) if value is not None],
+                      "since": budget_year,
+                      "source_url": RIS_FILE.format(id=row["document_id"]) if row.get("document_id") else None})
+    order = {"product": 0, "investment": 1, "change": 2}
+    items.sort(key=lambda i: (order[i["kind"]], -(i["since"] or 0), i["title"]))
+    return {"items": items, "note": BUDGET_NOTE}
 
 
 def _datum_lang(iso: str | None) -> str | None:
@@ -1120,6 +1388,7 @@ def detail(store, key: str, today: str | None = None) -> dict | None:
         "plain": plain_block(plan),
         "news": news_block(plan, tl["stations"], today),
         "related": related_block(plan, today),
+        "places": places_block(store, plan),
         "measures": measures_block(key, measure_links),
         "city_status": city_status_block(key),
         "indicators": indicator_blocks(key),

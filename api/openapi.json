@@ -9791,6 +9791,58 @@
         "title": "DistrictParticipation",
         "type": "object"
       },
+      "DistrictPlan": {
+        "description": "Ein laufender oder entstehender Plan mit mindestens einem Ort in diesem Ortsbereich.",
+        "properties": {
+          "field_label": {
+            "title": "Field Label",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "place_count": {
+            "title": "Place Count",
+            "type": "integer"
+          },
+          "places": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "via_measures": {
+            "title": "Via Measures",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "field_label",
+          "status",
+          "status_label",
+          "places",
+          "place_count",
+          "via_measures"
+        ],
+        "title": "DistrictPlan",
+        "type": "object"
+      },
       "DistrictPlanInfo": {
         "description": "Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und\ndie Stationen des Verfahrens aus den offenen Geodaten der Stadt.",
         "properties": {
@@ -10288,6 +10340,13 @@
           },
           "place": {
             "title": "Place"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictPlan"
+            },
+            "title": "Plans",
+            "type": "array"
           },
           "press": {
             "items": {
@@ -19475,6 +19534,115 @@
         "title": "PlanBrief",
         "type": "object"
       },
+      "PlanBudget": {
+        "description": "``GET /api/council/budget/plan/{key}`` — nur mit dem Recht ``budget``.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlanBudgetItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "note"
+        ],
+        "title": "PlanBudget",
+        "type": "object"
+      },
+      "PlanBudgetAmount": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "PlanBudgetAmount",
+        "type": "object"
+      },
+      "PlanBudgetItem": {
+        "description": "Ein Haushaltsposten, dessen eigener Text den Plan nennt.",
+        "properties": {
+          "amounts": {
+            "items": {
+              "$ref": "#/components/schemas/PlanBudgetAmount"
+            },
+            "title": "Amounts",
+            "type": "array"
+          },
+          "context": {
+            "title": "Context",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "product",
+              "investment",
+              "change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "since": {
+            "title": "Since",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "number",
+          "context",
+          "quote",
+          "amounts",
+          "since",
+          "source_url"
+        ],
+        "title": "PlanBudgetItem",
+        "type": "object"
+      },
       "PlanCard": {
         "description": "Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).",
         "properties": {
@@ -21162,6 +21330,54 @@
               "null"
             ]
           },
+          "places": {
+            "description": "Die Karte zum Plan — ab drei Orten.",
+            "properties": {
+              "decision_places": {
+                "title": "Decision Places",
+                "type": "integer"
+              },
+              "items": {
+                "items": {
+                  "$ref": "#/components/schemas/PlanPlace"
+                },
+                "title": "Items",
+                "type": "array"
+              },
+              "measure_places": {
+                "title": "Measure Places",
+                "type": "integer"
+              },
+              "measures_named": {
+                "title": "Measures Named",
+                "type": "integer"
+              },
+              "measures_total": {
+                "title": "Measures Total",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "note": {
+                "title": "Note",
+                "type": "string"
+              }
+            },
+            "required": [
+              "items",
+              "measure_places",
+              "measures_named",
+              "measures_total",
+              "decision_places",
+              "note"
+            ],
+            "title": "PlanPlaces",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "plain": {
             "description": "Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.",
             "properties": {
@@ -21738,6 +21954,7 @@
           "plain",
           "news",
           "related",
+          "places",
           "measures",
           "city_status",
           "indicators",
@@ -22448,6 +22665,175 @@
         "title": "PlanNews",
         "type": "object"
       },
+      "PlanPlace": {
+        "description": "Ein Ort zum Plan: aus einem Maßnahmentitel (mit Verlauf) oder aus Beschlüssen (als Punkt).",
+        "properties": {
+          "decision_count": {
+            "title": "Decision Count",
+            "type": "integer"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/PlanPlaceDecision"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "geometry": {
+            "title": "Geometry"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/PlanPlaceMeasure"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "lat",
+          "lon",
+          "geometry",
+          "measures",
+          "decisions",
+          "decision_count"
+        ],
+        "title": "PlanPlace",
+        "type": "object"
+      },
+      "PlanPlaceDecision": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "date"
+        ],
+        "title": "PlanPlaceDecision",
+        "type": "object"
+      },
+      "PlanPlaceMeasure": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "status_norm": {
+            "enum": [
+              "open",
+              "started",
+              "in_progress",
+              "done",
+              "paused",
+              "unclear"
+            ],
+            "title": "Status Norm",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status_raw": {
+            "title": "Status Raw",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "title",
+          "status_raw",
+          "status_norm"
+        ],
+        "title": "PlanPlaceMeasure",
+        "type": "object"
+      },
+      "PlanPlaces": {
+        "description": "Die Karte zum Plan — ab drei Orten.",
+        "properties": {
+          "decision_places": {
+            "title": "Decision Places",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlanPlace"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "measure_places": {
+            "title": "Measure Places",
+            "type": "integer"
+          },
+          "measures_named": {
+            "title": "Measures Named",
+            "type": "integer"
+          },
+          "measures_total": {
+            "title": "Measures Total",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "measure_places",
+          "measures_named",
+          "measures_total",
+          "decision_places",
+          "note"
+        ],
+        "title": "PlanPlaces",
+        "type": "object"
+      },
       "PlanPlain": {
         "description": "Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.",
         "properties": {
@@ -23081,6 +23467,7 @@
               "status",
               "indicators",
               "measures",
+              "places",
               "decisions"
             ],
             "title": "Key",
@@ -36756,6 +37143,49 @@
           }
         },
         "summary": "Haushalt Vorbericht",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/budget/plan/{key}": {
+      "get": {
+        "description": "Haushaltsposten, deren eigener Text den Plan nennt — nur mit dem Recht ``budget``.",
+        "operationId": "plan_budget_api_council_budget_plan__key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanBudget"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan Budget",
         "tags": [
           "council"
         ]

@@ -1,0 +1,25 @@
+{
+ "plan": "ernaehrungsstrategie",
+ "method": "Ortsname im Maßnahmentitel, abgeglichen mit dem Ortskatalog; von Hand durchgesehen",
+ "generated": "2026-11-10",
+ "measures": [
+  {
+   "code": "A6",
+   "places": [
+    {
+     "slug": "klinikum-oldenburg",
+     "name": "Klinikum Oldenburg"
+    }
+   ]
+  },
+  {
+   "code": "A7",
+   "places": [
+    {
+     "slug": "weser-ems-hallen",
+     "name": "Weser-Ems-Hallen"
+    }
+   ]
+  }
+ ]
+}

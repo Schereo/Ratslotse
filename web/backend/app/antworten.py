@@ -3490,6 +3490,20 @@ class DistrictPressItem(TypedDict):
     via: str | None
 
 
+class DistrictPlan(TypedDict):
+    """Ein laufender oder entstehender Plan mit mindestens einem Ort in diesem Ortsbereich."""
+    key: str
+    title: str
+    field_label: str
+    status: str
+    status_label: str
+    #: Bis zu vier Orte, über die der Plan hierher gehört.
+    places: list[str]
+    place_count: int
+    #: Mindestens ein Ort stammt aus der Maßnahmenliste (sonst aus Beschlüssen).
+    via_measures: bool
+
+
 class DistrictProjects(TypedDict):
     """``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs."""
     place: Any
@@ -3499,6 +3513,8 @@ class DistrictProjects(TypedDict):
     participations: list[DistrictParticipation]
     closures: list[DistrictClosure]
     press: list[DistrictPressItem]
+    #: „Pläne, die dein Viertel betreffen“ (Schalter ``plaene`` in der Oberfläche).
+    plans: NotRequired[list[DistrictPlan]]
     neighbours: list[DistrictNeighbour]
     #: Wann das Register zuletzt gerechnet wurde — NICHT der Datenstand.
     updated_at: str | None
@@ -5078,9 +5094,75 @@ class PlanRelated(TypedDict):
     status_label: str
 
 
+class PlanPlaceMeasure(TypedDict):
+    code: str
+    title: str
+    #: Stand im Wortlaut der Stadt, wo sie einen je Maßnahme meldet.
+    status_raw: str | None
+    status_norm: PlanStatusNorm | None
+
+
+class PlanPlaceDecision(TypedDict):
+    id: int
+    title: str
+    date: str
+
+
+class PlanPlace(TypedDict):
+    """Ein Ort zum Plan: aus einem Maßnahmentitel (mit Verlauf) oder aus Beschlüssen (als Punkt)."""
+    slug: str
+    name: str
+    kind: str
+    lat: float
+    lon: float
+    #: MultiLineString als GeoJSON — nur für Straßen aus der Maßnahmenliste.
+    geometry: Any
+    measures: list[PlanPlaceMeasure]
+    #: Höchstens drei, die jüngsten zuerst; ``decision_count`` zählt alle.
+    decisions: list[PlanPlaceDecision]
+    decision_count: int
+
+
+class PlanPlaces(TypedDict):
+    """Die Karte zum Plan — ab drei Orten."""
+    items: list[PlanPlace]
+    measure_places: int
+    #: Wie viele Maßnahmen einen Ort haben, und wie viele die Liste zählt.
+    measures_named: int
+    measures_total: int | None
+    decision_places: int
+    note: str
+
+
+class PlanBudgetAmount(TypedDict):
+    #: „Aufwand 2026 (Ansatz)“, „Programm 2024“, „Auszahlung 2025“ — wie der Wert in der Zeile heißt.
+    label: str
+    #: Ungerundet in Euro; gerundet wird einmal, in der Anzeige.
+    value: float
+
+
+class PlanBudgetItem(TypedDict):
+    """Ein Haushaltsposten, dessen eigener Text den Plan nennt."""
+    kind: Literal["product", "investment", "change"]
+    title: str
+    number: str | None
+    context: str | None
+    #: Die Stelle, an der der Plan genannt ist.
+    quote: str
+    amounts: list[PlanBudgetAmount]
+    since: int | None
+    source_url: str | None
+
+
+class PlanBudget(TypedDict):
+    """``GET /api/council/budget/plan/{key}`` — nur mit dem Recht ``budget``."""
+    items: list[PlanBudgetItem]
+    note: str
+
+
 class PlanSection(TypedDict):
     """Ein Abschnitt der Planseite, für die Sprungleiste."""
-    key: Literal["content", "review", "reports", "status", "indicators", "measures", "decisions"]
+    key: Literal["content", "review", "reports", "status", "indicators", "measures", "places", "decisions"]
     label: str
     #: ``None``: Hier gibt es nichts zu zählen.
     count: int | None
@@ -5121,6 +5203,8 @@ class PlanDetail(PlanCard):
     #: Nur wo die zwei jüngsten Berichte zu einer Reihe gehören und der jüngste nicht älter als zwei Jahre ist.
     news: PlanNews | None
     related: list[PlanRelated]
+    #: Die Karte; ``None`` unter drei Orten.
+    places: PlanPlaces | None
     measures: PlanMeasures | None
     city_status: PlanCityStatus | None
     indicators: list[PlanIndicator]

@@ -18,7 +18,7 @@ from typing import Literal, cast
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
-from council import geo
+from council import geo, plan_pages
 from council.store import CouncilStore
 
 from ..antworten import (
@@ -163,6 +163,7 @@ def _board(store: CouncilStore, place) -> dict:
         "participations": store.district_participations(place),
         "closures": store.district_road_closures(place.id),
         "press": store.district_press(place.id),
+        "plans": plan_pages.district_plans(store, place.id),
         "neighbours": neighbours,
         "updated_at": store.district_projects_updated_at(place.id),
         "decisions_until": store.district_decisions_until(),

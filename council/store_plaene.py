@@ -196,3 +196,98 @@ class PlaeneMixin(StoreBasis):
                ORDER BY d.template_number = ? DESC LIMIT 1""",
             (date, committee, template, stem, stem, template)).fetchone()
         return dict(r) if r else None
+
+    # ── Orte zum Plan (Karte, Mein Viertel) ───────────────────────────────
+
+    def plan_decision_places(self, plan_key: str, roles: tuple[str, ...], relations: tuple[str, ...],
+                             kinds: tuple[str, ...], min_confidence: float) -> list[dict]:
+        """Orte, die die Beschlüsse eines Plans nennen — nur konkrete Orte mit Koordinaten in der Stadt,
+        sicher zugeordnet und nicht redaktionell verworfen. Eine Zeile je Ort und Beschluss, jüngste zuerst."""
+        if not (roles or relations) or not kinds:
+            return []
+        r_marks, l_marks, k_marks = (",".join("?" * len(x)) or "NULL" for x in (roles, relations, kinds))
+        rows = self._conn.execute(
+            f"""WITH dec AS (
+                  SELECT decision_id FROM council_plan_items
+                   WHERE plan_key = ? AND decision_id IS NOT NULL AND role IN ({r_marks})
+                  UNION
+                  SELECT decision_id FROM council_plan_links
+                   WHERE plan_key = ? AND decision_id IS NOT NULL AND relation IN ({l_marks}))
+                SELECT l.slug, l.name, l.kind, l.lat, l.lon, l.geojson,
+                       d.id AS decision_id, d.title, s.session_date
+                  FROM dec
+                  JOIN council_decision_locations dl ON dl.decision_id = dec.decision_id
+                  JOIN council_locations l ON l.slug = dl.location_slug
+                  JOIN council_decisions d ON d.id = dec.decision_id
+                  JOIN council_sessions s ON s.ksinr = d.ksinr
+                  LEFT JOIN council_place_reviews r ON r.location_slug = l.slug
+                 WHERE l.lat IS NOT NULL AND l.lon IS NOT NULL AND l.local_area_id IS NOT NULL
+                   AND l.kind IN ({k_marks}) AND dl.confidence >= ?
+                   AND (r.status IS NULL OR r.status != 'rejected')
+                 ORDER BY s.session_date DESC, d.id DESC""",
+            (plan_key, *roles, plan_key, *relations, *kinds, min_confidence)).fetchall()
+        return [dict(r) for r in rows]
+
+    def plan_catalog_places(self, slugs: list[str]) -> dict[str, dict]:
+        """Orte aus dem Ortskatalog mit Koordinaten — je Slug (für die Orte der Maßnahmen)."""
+        slugs = sorted({s for s in slugs if s})
+        if not slugs:
+            return {}
+        rows = self._conn.execute(
+            f"""SELECT slug, name, kind, lat, lon, geojson FROM council_locations
+                 WHERE slug IN ({",".join("?" * len(slugs))}) AND lat IS NOT NULL AND lon IS NOT NULL""",
+            slugs).fetchall()
+        return {r["slug"]: dict(r) for r in rows}
+
+    def plan_catalog_names(self, kinds: tuple[str, ...]) -> list[dict]:
+        """Alle konkreten Orte des Katalogs mit Koordinaten — für den Abgleich mit Maßnahmentiteln
+        (``scripts/plan_orte.py``)."""
+        rows = self._conn.execute(
+            f"""SELECT slug, name, kind FROM council_locations
+                 WHERE lat IS NOT NULL AND lon IS NOT NULL AND local_area_id IS NOT NULL
+                   AND kind IN ({",".join("?" * len(kinds))})""", kinds).fetchall()
+        return [dict(r) for r in rows]
+
+    def plan_place_areas(self, slugs: list[str]) -> dict[str, dict[str, float]]:
+        """Zu welchen Ortsbereichen (``place_id``) ein Ort gehört, mit Anteil — eine Straße kann in mehreren
+        liegen; der Bereich mit dem größten Teil hat den Anteil 1."""
+        slugs = sorted({s for s in slugs if s})
+        if not slugs:
+            return {}
+        out: dict[str, dict[str, float]] = {}
+        for r in self._conn.execute(
+                f"""SELECT location_slug, place_id, share FROM council_location_districts
+                     WHERE place_id IS NOT NULL AND location_slug IN ({",".join("?" * len(slugs))})""", slugs):
+            out.setdefault(r["location_slug"], {})[r["place_id"]] = float(r["share"] if r["share"] is not None else 1.0)
+        return out
+
+    # ── Haushalt zum Plan (nur mit dem Recht ``budget`` gezeigt) ──────────
+
+    #: Die Haushaltstabellen, in denen ein Plan beim Namen genannt sein kann — je Tabelle die Felder,
+    #: die gesucht werden, und der Schlüssel einer Zeile. Nur diese, kein freies SQL.
+    PLAN_BUDGET_TABLES: dict[str, tuple[str, tuple[str, ...], tuple[str, ...]]] = {
+        "products": ("council_products", ("legal_basis", "short_description", "product_name"), ("product_no", "year")),
+        "investments": ("council_investment_measures", ("label", "details"), ("code", "year")),
+        "amendments": ("council_budget_amendments", ("explanation", "label"), ("budget_year", "list_key", "year", "seq")),
+        "amendments_cash": ("council_budget_amendments_cash", ("explanation", "label"), ("budget_year", "list_key", "year", "seq")),
+    }
+
+    def plan_budget_matches(self, table: str, term: str) -> list[dict]:
+        """Zeilen einer Haushaltstabelle, in deren Textfeldern ``term`` vorkommt (Groß-/Kleinschreibung
+        egal) — für den Vorschlag in ``scripts/plan_haushalt.py``, nicht für die Seite."""
+        name, fields, _key = self.PLAN_BUDGET_TABLES[table]
+        where = " OR ".join(f"lower(coalesce({f}, '')) LIKE ?" for f in fields)
+        rows = self._conn.execute(f"SELECT * FROM {name} WHERE {where}", [f"%{term.lower()}%"] * len(fields)).fetchall()
+        return [dict(r) for r in rows]
+
+    def plan_budget_rows(self, table: str, key: dict) -> list[dict]:
+        """Die Zeilen zu einem Verweis aus ``council/plan_budget.json``: bei Produkten und Investitionen
+        alle Jahre der Nummer, bei Änderungslisten die eine Zeile."""
+        name, _fields, columns = self.PLAN_BUDGET_TABLES[table]
+        used = [c for c in columns if c in key]
+        # Eine Änderung ist eine Zeile — ohne ihren vollen Schlüssel träfe der Verweis fremde Zeilen.
+        if not used or (table.startswith("amendments") and len(used) != len(columns)):
+            return []
+        where = " AND ".join(f"{c} = ?" for c in used)
+        rows = self._conn.execute(f"SELECT * FROM {name} WHERE {where}", [key[c] for c in used]).fetchall()
+        return [dict(r) for r in rows]
