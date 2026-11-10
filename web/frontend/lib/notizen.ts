@@ -95,40 +95,59 @@ export const rewrapKeys = (keyVersion: number, neu: Awaited<ReturnType<typeof k.
   api.put<NoteKeysState>("/notes/keys", { key_version: keyVersion, ...neu });
 export const resetNotes = () => api.del<{ deleted: number }>("/notes/keys");
 
-const pfad = (kind: TargetKind, key: string, art = "note") =>
+export type NoteArt = NoteEntry["kind"];
+
+const pfad = (kind: TargetKind, key: string, art: NoteArt = "note") =>
   `/notes/${kind}/${encodeURIComponent(key)}/${art}`;
 
-export interface LoadedNote { text: string; version: number; updatedAt: string; lesbar: boolean }
+export interface Loaded<T> { doc: T | null; version: number; updatedAt: string; lesbar: boolean }
 
-export async function loadNote(dk: CryptoKey, kind: TargetKind, key: string): Promise<LoadedNote | null> {
+/** Eine Notiz (`note`) oder ein Mitschrieb (`transcript`) zu einem Ziel. */
+export async function loadDoc<T>(dk: CryptoKey, kind: TargetKind, key: string, art: NoteArt): Promise<Loaded<T> | null> {
   const r = await api.get<ApiAntwort<"/notes">>(`/notes?target_kind=${kind}&target_key=${encodeURIComponent(key)}`);
-  const n = r.notes.find((x) => x.kind === "note");
+  const n = r.notes.find((x) => x.kind === art);
   if (!n) return null;
-  const doc = await k.decryptNote<NoteDoc>(dk, k.aad(kind, key, "note"), n.iv, n.ciphertext);
-  return { text: doc?.text ?? "", version: n.version, updatedAt: n.updated_at, lesbar: doc != null };
+  const doc = await k.decryptNote<T>(dk, k.aad(kind, key, art), n.iv, n.ciphertext);
+  return { doc, version: n.version, updatedAt: n.updated_at, lesbar: doc != null };
 }
 
-export type SaveResult =
+export type SaveResult<T> =
   | { ok: true; version: number; updatedAt: string }
-  | { ok: false; conflict: LoadedNote | null };
+  | { ok: false; conflict: Loaded<T> | null };
 
-export async function saveNote(dk: CryptoKey, keyVersion: number, kind: TargetKind, key: string, text: string,
-  baseVersion: number): Promise<SaveResult> {
-  const blob = await k.encryptNote(dk, k.aad(kind, key, "note"), { text } satisfies NoteDoc);
+export async function saveDoc<T>(dk: CryptoKey, keyVersion: number, kind: TargetKind, key: string, art: NoteArt,
+  doc: T, baseVersion: number): Promise<SaveResult<T>> {
+  const blob = await k.encryptNote(dk, k.aad(kind, key, art), doc);
   try {
-    const n = await api.put<NoteEntry>(pfad(kind, key), { ...blob, key_version: keyVersion, version: baseVersion });
+    const n = await api.put<NoteEntry>(pfad(kind, key, art), { ...blob, key_version: keyVersion, version: baseVersion });
     return { ok: true, version: n.version, updatedAt: n.updated_at };
   } catch (e) {
     if (!(e instanceof ApiError) || e.status !== 409) throw e;
     let current: NoteEntry | null = null;
     try { current = (JSON.parse(e.message) as { current?: NoteEntry | null }).current ?? null; } catch { /* nur Text */ }
     if (!current) return { ok: false, conflict: null };
-    const doc = await k.decryptNote<NoteDoc>(dk, k.aad(kind, key, "note"), current.iv, current.ciphertext);
-    return { ok: false, conflict: { text: doc?.text ?? "", version: current.version, updatedAt: current.updated_at, lesbar: doc != null } };
+    const alt = await k.decryptNote<T>(dk, k.aad(kind, key, art), current.iv, current.ciphertext);
+    return { ok: false, conflict: { doc: alt, version: current.version, updatedAt: current.updated_at, lesbar: alt != null } };
   }
 }
 
-export const deleteNote = (kind: TargetKind, key: string) => api.del<void>(pfad(kind, key));
+/** Alle Mitschriebe einer Sitzung: Punkt → eigenes Ergebnis. */
+export async function sessionTranscripts(dk: CryptoKey, ksinr: number): Promise<Record<string, TranscriptDoc>> {
+  const r = await api.get<ApiAntwort<"/notes">>("/notes?target_kind=agenda_item");
+  const out: Record<string, TranscriptDoc> = {};
+  for (const n of r.notes) {
+    if (n.kind !== "transcript" || !n.target_key.startsWith(`${ksinr}|`)) continue;
+    const doc = await k.decryptNote<TranscriptDoc>(dk, k.aad(n.target_kind, n.target_key, n.kind), n.iv, n.ciphertext);
+    if (doc) out[n.target_key.slice(String(ksinr).length + 1)] = doc;
+  }
+  return out;
+}
+
+/** Was man beim Mitlesen festhält. `outcome` ist die EIGENE Einschätzung,
+ *  nie das amtliche Ergebnis. */
+export interface TranscriptDoc { text: string; outcome: "accepted" | "rejected" | "postponed" | "noted" | null }
+
+export const deleteDoc = (kind: TargetKind, key: string, art: NoteArt = "note") => api.del<void>(pfad(kind, key, art));
 
 /** Mindestlänge der Passphrase: Sie schützt Notizen gegen jeden, der die
  *  Datenbank bekommt — und lässt sich, anders als ein Login, nicht bremsen. */

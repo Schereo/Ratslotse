@@ -172,3 +172,14 @@ anderes Ziel gehängte Notiz lässt sich nicht öffnen. `tests/test_notizen.py`
 Neu-Anfangen, Konto-Löschung. Browsertest `32-notizen` — Einrichten mit
 abgetipptem Code, Schreiben, Neuladen gesperrt, zweites Gerät mit falscher
 Passphrase sieht nichts, mit dem Code und neuer Passphrase wieder alles.
+
+**Nachtrag 10.11.2026 — Mitschrieb (Reihenfolge 3):** gebaut hinter einem
+eigenen Schalter `mitschrieb`, auf den Notizen aufgesetzt (Art `transcript`,
+Klartext `{ "text", "outcome" }`). Weg A aus § 5 heißt „mit den
+verschlüsselten Notizen“ — die gibt es jetzt, also kommt der Mitschrieb mit
+ihnen. **Ob die Idee bleibt (Frage 8.3 des Hauptplans), entscheidet Tim**: Der
+Schalter bleibt auf Prod aus, bis er es tut. Das eigene Ergebnis färbt nur den
+eigenen Kurs, als „(mein Mitschrieb)“ beschriftet, und nur wo weder Protokoll
+noch Übertragung etwas sagen (`lib/course.ts::courseInput`, Test in
+`course.test.ts`). Das Schloss (Einrichten, Entsperren) teilen sich Notiz und
+Mitschrieb (`components/notiz/notiz-schloss.tsx`). Browsertest `33-mitschrieb`.
