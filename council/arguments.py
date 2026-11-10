@@ -24,9 +24,10 @@ import os
 import re
 from typing import Any
 
-from kern import llm, prompts
+from kern import foreign_text, llm, prompts
 
 from .impact import vorlagen_kern
+from .parties import classify_faction, order_key, parties_in_text
 
 #: Wie die Kartentexte: GPT-6 Luna im Flex-Tarif, kein Feature mit
 #: Nutzereingabe (``llm.OHNE_NUTZEREINGABE``).
@@ -63,26 +64,52 @@ def sources_hash(speech_ids: list[int], template_number: str | None) -> str:
     return hashlib.sha256(roh.encode()).hexdigest()[:16]
 
 
+def faction_of(raw: str | None) -> tuple[str | None, bool]:
+    """(Anzeige, ist Fraktion) für die Partei-Angabe eines Wortbeitrags.
+
+    Das Protokoll schreibt dieselbe Fraktion verschieden („Bündnis 90/ Die
+    Grünen", „Bündnis 90/Die Grünen", „BSW-Fraktion") und führt beratende
+    Mitglieder mit ihrem Verband („ADFC", „VWG"). Fraktionen und Ratsgruppen
+    bekommen ihr einheitliches Label (``council/parties.py``), Verbände bleiben,
+    wie sie dastehen — sind aber keine Fraktion."""
+    roh = " ".join((raw or "").split())
+    if not roh:
+        return None, False
+    c = classify_faction(roh)
+    if c["kind"] == "group" or (c["kind"] == "party" and len(parties_in_text(roh)) == 1):
+        return c["label"], True
+    # „SPD/ CDU": zwei Fraktionen gemeinsam — keiner allein zuzuschlagen.
+    return roh, False
+
+
 def factions(speeches: list[dict]) -> list[dict]:
-    """Wortmeldungen nach Fraktion — ohne Modell, älteste zuerst je Fraktion.
-    Fraktionen mit den meisten Wortmeldungen oben; „nicht genannt" zuletzt."""
+    """Wortmeldungen nach Fraktion — ohne Modell, älteste zuerst je Fraktion,
+    Fraktionen mit den meisten Wortmeldungen oben. Nur, was das Protokoll einer
+    Fraktion oder Ratsgruppe zuordnet: Verwaltung, Verbände und Beiträge ohne
+    Angabe stehen nur unter „Argumente"."""
     gruppen: dict[str, list[dict]] = {}
     for s in speeches:
-        gruppen.setdefault((s.get("party") or "").strip(), []).append(s)
-    out = [{"party": p or None, "statements": [_aussage(s) for s in sorted(ss, key=lambda x: x["date"])]}
+        label, ist = faction_of(s.get("party"))
+        if ist and label:
+            gruppen.setdefault(label, []).append(s)
+    out = [{"party": p, "statements": [_aussage(s) for s in sorted(ss, key=lambda x: (x["date"] or "", x["id"]))]}
            for p, ss in gruppen.items()]
-    out.sort(key=lambda g: (g["party"] is None, -len(g["statements"]), g["party"] or ""))
+    out.sort(key=lambda g: (-len(g["statements"]), order_key(g["party"])))
     return out
 
 
-def _aussage(s: dict, text: str | None = None) -> dict:
+def _aussage(s: dict, text: str | None = None, ref: str | None = None) -> dict:
+    """Eine Aussage mit Urheber und Fundstelle — beides aus der Quelle. ``ref``
+    ist die Kennung aus der Eingabe (``W123``, ``V2``): Bei der Vorlage
+    unterscheidet erst sie die Abschnitte."""
     return {
         "text": text if text is not None else s["text"],
         "speaker": s.get("speaker"),
-        "party": (s.get("party") or "").strip() or None,
+        "party": faction_of(s.get("party"))[0],
         "body": s.get("committee"),
         "date": s.get("date"),
-        "source": {"kind": s["kind"], "id": s["id"], "page": s.get("page")},
+        "source": {"kind": s["kind"], "id": s["id"], "page": s.get("page"),
+                   "ref": ref or f"W{s['id']}", "ksinr": s.get("ksinr")},
     }
 
 
@@ -100,22 +127,28 @@ def build_input(title: str, speeches: list[dict], template: dict | None, outcome
     quellen: dict[str, dict] = {}
     zeilen = [f"VORGANG: {title}"]
     if outcome_note:
-        zeilen.append(f"ERGEBNIS ZULETZT: {outcome_note}")
+        zeilen.append(outcome_note)
     zeilen.append("")
     for s in speeches[-MAX_BEITRAEGE:]:
         k = f"W{s['id']}"
         quellen[k] = {**s, "kind": "speech"}
         wer = s.get("speaker") or "unbekannt"
-        partei = f" ({s['party']})" if s.get("party") else ""
-        zeilen.append(f"[{k}] {s.get('date')} · {s.get('committee')} · {wer}{partei}: {' '.join((s.get('text') or '').split())}")
+        partei = f" ({faction_of(s.get('party'))[0]})" if s.get("party") else ""
+        zeilen.append(f"[{k}] {s.get('date')} · {s.get('committee')} · {wer}{partei}: {_fremd(s.get('text'))}")
     if template:
         for i, stueck in enumerate(vorlage_stuecke(template.get("raw_text")), start=1):
             k = f"V{i}"
-            quellen[k] = {"id": template["kvonr"], "kind": "template", "speaker": "Verwaltung", "party": None,
+            quellen[k] = {"id": template["kvonr"], "kind": "template", "speaker": None, "party": None,
                           "committee": f"Vorlage {template.get('template_number') or ''}".strip(),
                           "date": template.get("date"), "page": None, "text": stueck}
-            zeilen.append(f"[{k}] Vorlage der Verwaltung: {' '.join(stueck.split())}")
+            zeilen.append(f"[{k}] Vorlage der Verwaltung: {_fremd(stueck)}")
     return "\n".join(zeilen), quellen
+
+
+def _fremd(text: str | None) -> str:
+    """Protokoll- und Vorlagentext ist Fremdtext: Sätze, die sich an ein
+    KI-System wenden, fliegen raus (``kern/foreign_text.py``)."""
+    return " ".join(foreign_text.defuse(text or "")[0].split())
 
 
 def parse(roh: str, quellen: dict[str, dict]) -> dict[str, Any] | None:
@@ -144,7 +177,7 @@ def parse(roh: str, quellen: dict[str, dict]) -> dict[str, Any] | None:
             if k not in quellen or not text or len(text) > MAX_TEXT or (k, text) in gesehen:
                 continue
             gesehen.add((k, text))
-            out.append(_aussage(quellen[k], text))
+            out.append(_aussage(quellen[k], text, k))
         return out
 
     issues = []
@@ -175,7 +208,7 @@ def zeigen(payload: dict | None) -> bool:
 
 
 def fraktionen_zeigen(gruppen: list[dict]) -> bool:
-    return sum(1 for g in gruppen if g["party"]) >= MIN_FRAKTIONEN
+    return len(gruppen) >= MIN_FRAKTIONEN
 
 
 def generate(title: str, speeches: list[dict], template: dict | None, outcome_note: str | None) -> dict | None:
@@ -190,6 +223,54 @@ def generate(title: str, speeches: list[dict], template: dict | None, outcome_no
         max_tokens=3_000, _feature="item_arguments", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
         _tarif="flex")
     return parse(resp.choices[0].message.content or "", quellen)
+
+
+RIS_VORLAGE = "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
+
+
+def view(material: dict, stored: dict | None, protocol_urls: dict[int, str]) -> dict | None:
+    """Was die Punkt-Seite zeigt (``SessionItemDetail.arguments``).
+
+    Fraktionen rechnet sie jedes Mal neu aus den Wortbeiträgen (ohne Modell),
+    Argumente kommen aus der Ablage. ``stale``: Seit der Auswertung sind
+    Wortbeiträge dazugekommen — gezeigt wird trotzdem, denn jede Aussage
+    stimmt weiter mit ihrer Quelle; der nächste Lauf rechnet nach.
+    ``None``, wenn weder der eine noch der andere Reiter etwas zu zeigen hat."""
+    gruppen = factions(material["speeches"])
+    payload = (stored or {}).get("payload") or {"issues": [], "further": {"pro": [], "contra": []}}
+    show_args = zeigen(payload)
+    show_fr = fraktionen_zeigen(gruppen)
+    if not show_args and not show_fr:
+        return None
+
+    def mit_url(a: dict) -> dict:
+        q = a["source"]
+        if q["kind"] == "template":
+            url = RIS_VORLAGE.format(kvonr=q["id"])
+        else:
+            url = protocol_urls.get(q.get("ksinr") or 0)
+            if url and q.get("page"):
+                url = f"{url}#page={q['page']}"
+        return {**a, "source": {"kind": q["kind"], "id": q["id"], "page": q.get("page"), "url": url}}
+
+    pro, contra = counts(payload)
+    aktuell = sources_hash([s["id"] for s in material["speeches"]], material["template_number"])
+    return {
+        "subject_key": material["subject_key"],
+        "show_arguments": show_args,
+        "issues": [{"question": i["question"], "pro": [mit_url(a) for a in i["pro"]],
+                    "contra": [mit_url(a) for a in i["contra"]]} for i in payload["issues"]] if show_args else [],
+        "further": {"pro": [mit_url(a) for a in payload["further"]["pro"]],
+                    "contra": [mit_url(a) for a in payload["further"]["contra"]]} if show_args
+        else {"pro": [], "contra": []},
+        "pro_count": pro if show_args else 0,
+        "contra_count": contra if show_args else 0,
+        "show_factions": show_fr,
+        "factions": [{"party": g["party"], "statements": [mit_url(a) for a in g["statements"]]} for g in gruppen]
+        if show_fr else [],
+        "created_at": (stored or {}).get("created_at"),
+        "stale": bool(stored) and stored.get("sources_hash") != aktuell,
+    }
 
 
 def re_nummer(item_number: str | None) -> str:

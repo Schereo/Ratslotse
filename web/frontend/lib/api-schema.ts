@@ -8598,6 +8598,67 @@ export interface components {
             /** Identity Token */
             identity_token: string;
         };
+        /** ArgumentFaction */
+        ArgumentFaction: {
+            /** Party */
+            party: string;
+            /** Statements */
+            statements: components["schemas"]["ArgumentStatement"][];
+        };
+        /** ArgumentIssue */
+        ArgumentIssue: {
+            /** Contra */
+            contra: components["schemas"]["ArgumentStatement"][];
+            /** Pro */
+            pro: components["schemas"]["ArgumentStatement"][];
+            /** Question */
+            question: string;
+        };
+        /** ArgumentSides */
+        ArgumentSides: {
+            /** Contra */
+            contra: components["schemas"]["ArgumentStatement"][];
+            /** Pro */
+            pro: components["schemas"]["ArgumentStatement"][];
+        };
+        /**
+         * ArgumentSource
+         * @description Fundstelle einer Aussage: ein Wortbeitrag (Protokoll, mit Seite) oder
+         *     die Vorlage. ``url`` springt dorthin, wo es geht (Protokoll-PDF auf die
+         *     Seite, Vorlage im Ratsinfo).
+         */
+        ArgumentSource: {
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "speech" | "template";
+            /** Page */
+            page: number | null;
+            /** Url */
+            url: string | null;
+        };
+        /**
+         * ArgumentStatement
+         * @description Eine Aussage: Paraphrase und Urheber. Person, Fraktion, Gremium und
+         *     Datum kommen aus der Quelle, nie vom Modell; ``party`` fehlt, wenn das
+         *     Protokoll keine nennt (Verwaltung, Gäste, oft auch Ausschussmitglieder).
+         */
+        ArgumentStatement: {
+            /** Body */
+            body: string | null;
+            /** Date */
+            date: string | null;
+            /** Party */
+            party: string | null;
+            source: components["schemas"]["ArgumentSource"];
+            /** Speaker */
+            speaker: string | null;
+            /** Text */
+            text: string;
+        };
         /** AskBody */
         AskBody: {
             /** Conversation Id */
@@ -13585,6 +13646,34 @@ export interface components {
             signals: {
                 [key: string]: number | null;
             };
+        };
+        /**
+         * ItemArguments
+         * @description Die Reiter „Argumente“ und „Fraktionen“ der Punkt-Seite
+         *     (``docs/plan-punkt-argumente.md``). Je Reiter ein ``show_…``: darunter
+         *     die Mindestmenge, und der Reiter fehlt. ``stale``: seit der Auswertung
+         *     kamen Wortbeiträge dazu.
+         */
+        ItemArguments: {
+            /** Contra Count */
+            contra_count: number;
+            /** Created At */
+            created_at: string | null;
+            /** Factions */
+            factions: components["schemas"]["ArgumentFaction"][];
+            further: components["schemas"]["ArgumentSides"];
+            /** Issues */
+            issues: components["schemas"]["ArgumentIssue"][];
+            /** Pro Count */
+            pro_count: number;
+            /** Show Arguments */
+            show_arguments: boolean;
+            /** Show Factions */
+            show_factions: boolean;
+            /** Stale */
+            stale: boolean;
+            /** Subject Key */
+            subject_key: string;
         };
         /**
          * LimitsUpdate
@@ -19444,6 +19533,7 @@ export interface components {
          *     der Sitzung (Formalien als einer).
          */
         SessionItemDetail: {
+            arguments?: components["schemas"]["ItemArguments"];
             /** Committee */
             committee: string;
             /** Count */
@@ -29491,4 +29581,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c6bc48e0e1787c2ce9345f0e7f4da6ab853b5f3b7700d6a6d70e6558995b2979
+// vertrag-sha256: c2d70e54fcb2afd9d4286ce1886d98c38e8528a678c56ba9ecd4ba3da03a4934
