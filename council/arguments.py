@@ -251,7 +251,10 @@ def view(material: dict, stored: dict | None, protocol_urls: dict[int, str]) -> 
             url = protocol_urls.get(q.get("ksinr") or 0)
             if url and q.get("page"):
                 url = f"{url}#page={q['page']}"
-        return {**a, "source": {"kind": q["kind"], "id": q["id"], "page": q.get("page"), "url": url}}
+        # Eine Vorlage trägt kein eigenes Datum im Bestand; das der ersten
+        # Beratung (ältere Auswertungen) wäre ein anderes.
+        datum = None if q["kind"] == "template" else a.get("date")
+        return {**a, "date": datum, "source": {"kind": q["kind"], "id": q["id"], "page": q.get("page"), "url": url}}
 
     pro, contra = counts(payload)
     aktuell = sources_hash([s["id"] for s in material["speeches"]], material["template_number"])

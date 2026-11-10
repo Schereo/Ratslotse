@@ -141,3 +141,49 @@ vorher gemessen (Tims Regel: ab 1 $ fragen).
    jeden Punkt, auch vor der ersten Beratung.
 3. Die 1.447 „Zusagen der Verwaltung“ (`kind = 'pledge'`) lösen Plan 3.16 auf
    — eigener kleiner Schritt danach?
+
+## 8. Umgesetzt (10.11.2026)
+
+Hinter dem Schalter `punkt-argumente`. Abweichungen vom Text oben:
+
+- **Prompt-Schlüssel `item_arguments_system`** (englisch, Regel „Code auf
+  Englisch“), Modell GPT-6 Luna im Flex-Tarif (`COUNCIL_ARGUMENTS_MODEL`) wie
+  die Kartentexte — nicht `COUNCIL_TOPIC_MODEL`.
+- **Fraktionen ohne Modell:** Die Wortbeiträge sind schon Paraphrasen aus dem
+  Protokoll; sie werden nur geordnet und mit `council/parties.py` vereinheitlicht
+  („Bündnis 90/ Die Grünen“ und „Bündnis 90/Die Grünen“ sind eine Fraktion,
+  „ADFC“ und „VWG“ keine). Je Fraktion erst drei, der Rest auf Wunsch.
+- **Rahmenpunkte bekommen keinen Stoff** (Protokoll, Fragestunde,
+  Mitteilungen — sonst zählte „Genehmigung des Protokolls … vom …“ als datierter
+  Antrag mit Debatte).
+- **Selbstauskunft gestrichen:** statt „Ratslotse ergänzt keine eigenen
+  Argumente“ steht „Von einem Sprachmodell zusammengestellt aus N
+  Wortbeiträgen und der Vorlage“ (Tims Regel vom 10.11.).
+
+**Messung** (`eval/run_punkt_argumente.py`, Urteile in
+`eval/punkt_argumente_gold.json`): Lauf 1 (20261110-1635) zeigte drei
+Fehlerarten — Fragen, Dank und Verfahrensanträge („Vertagung beantragt“) als
+Argument, das Ergebnis in der Frage („Der Vorschlag wurde abgelehnt. Sollte …“),
+uneinheitliche Fraktionsnamen samt Verbänden. Nach der Prompt-Schärfung
+Lauf 2 (20261110-1643), 190 Aussagen von Hand gelesen:
+
+| Frage | Ergebnis | Tor |
+|---|---:|---:|
+| belegt | 190/190 = 100 % | 100 % |
+| richtig zugeordnet (Person **und** Seite) | 186/190 = 98 % | 95 % |
+| treu | 187/190 = 98 % | 90 % |
+| erfundene Streitpunkte | 0 | ≤ 1 |
+
+Die sieben Abweichungen: viermal die falsche Seite (eine Forderung nach anderer
+VBN-Vertragsstruktur als „dafür“, eine Erwiderung auf die AfD als „dagegen“,
+die vorstellende Stadtbaurätin als „Bedenken“), dreimal ein hinzugefügtes
+Wort („für den Klimaschutz“, ein unterstelltes Motiv). Zwei Aussagen nennen den
+falschen Abschnitt derselben Vorlage — die Fundstelle verlinkt die Vorlage als
+Ganzes, belegt sind sie. Je Punkt fehlte zweimal ein Argument, das in den
+Quellen deutlich steht (Zeitpunkt „neuer Rat“ bei der Geschäftsordnung,
+Dittrichs Bedenken beim P+R-Parkhaus).
+
+**Kosten:** 0,0116 $ für 20 Vorgänge; lokal 60 weitere für 0,024 $. Der
+Bestand eines Jahres (296 Vorgänge mit mindestens vier Wortbeiträgen) kostet
+geschätzt 0,24 $ — erzeugt wird er auf dem Server mit
+`scripts/punkt_argumente.py --schreiben` (ohne `--schreiben` nur Bericht).

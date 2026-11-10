@@ -1884,7 +1884,9 @@ class SitzungenMixin(StoreBasis):
                 "SELECT kvonr, template_number, title, raw_text FROM council_templates "
                 "WHERE template_number = ? AND status = 'ok' ORDER BY kvonr DESC LIMIT 1", (tn,)).fetchone()
             if t:
-                template = {**dict(t), "date": stationen[0]["session_date"]}
+                # Ohne Datum: Das der Vorlage steht nicht im Bestand, und das der
+                # ersten Beratung wäre ein anderes.
+                template = {**dict(t), "date": None}
 
         note = ""
         for s in reversed(stationen):

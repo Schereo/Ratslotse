@@ -295,4 +295,32 @@ def test_die_punkt_abschrift_kennt_jedes_feld():
     from app.antworten import SessionItemDetail
 
     d = json.loads((FIXTURES / "punkt-4654-11-1.json").read_text())
+    assert set(d) == set(get_type_hints(SessionItemDetail)) - {"arguments"}   # ohne Schalter
+
+
+def test_die_argumente_abschrift_kennt_jedes_feld():
+    """``punkt-4702-8-1.json`` ist dieselbe Antwort MIT ``arguments`` (Schalter
+    ``punkt-argumente``; VBN-Tarif 2027, lokaler Abzug vom 08.11.2026,
+    Auswertung mit ``scripts/punkt_argumente.py``). Neu ziehen: lokalen Server
+    mit ``FEATURE_FLAGS='*'`` starten und
+    ``curl '…/api/council/session/4702/item?nr=%C3%96%208.1'``."""
+    import sys
+    from typing import get_type_hints
+    sys.path.insert(0, str(WURZEL / "web" / "backend"))
+    from app.antworten import (ArgumentFaction, ArgumentIssue, ArgumentSource, ArgumentStatement,
+                               ItemArguments, SessionItemDetail)
+
+    d = json.loads((FIXTURES / "punkt-4702-8-1.json").read_text())
     assert set(d) == set(get_type_hints(SessionItemDetail))
+    a = d["arguments"]
+    assert set(a) == set(get_type_hints(ItemArguments))
+    aussagen = [*a["further"]["pro"], *a["further"]["contra"]]
+    for i in a["issues"]:
+        assert set(i) == set(get_type_hints(ArgumentIssue))
+        aussagen += [*i["pro"], *i["contra"]]
+    for f in a["factions"]:
+        assert set(f) == set(get_type_hints(ArgumentFaction))
+        aussagen += f["statements"]
+    for s in aussagen:
+        assert set(s) == set(get_type_hints(ArgumentStatement))
+        assert set(s["source"]) == set(get_type_hints(ArgumentSource))

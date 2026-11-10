@@ -7,7 +7,7 @@
    Hinweis mit Link zur Beschluss-Seite — der Inhalt bleibt lesbar, niemand
    landet woanders als erwartet (Plan 3.9). */
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, type CSSProperties } from "react";
 import { notFound, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Printer, Sparkles } from "lucide-react";
@@ -17,6 +17,7 @@ import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
 import { normalizeParty, partyBrand } from "@/components/decision-ui";
 import { AufEinenBlick, FragDenRat, Unterlagen, Vorgeschichte, type Punkt } from "@/components/session/item-sections";
+import { Argumente, Fraktionen } from "@/components/session/item-arguments";
 import { kurzfassung } from "@/components/tagesordnung";
 import { NwzReadHint } from "@/components/nwz-link";
 import { useFetch } from "@/lib/use-fetch";
@@ -65,7 +66,7 @@ function PunktInner() {
   return <PunktView p={data} />;
 }
 
-type Reiter = "history" | "documents";
+type Reiter = "arguments" | "factions" | "history" | "documents";
 
 function PunktView({ p }: { p: Punkt }) {
   const it = p.item;
@@ -79,7 +80,11 @@ function PunktView({ p }: { p: Punkt }) {
     : `${formatDate(p.session_date)} im ${p.committee}`;
   const kicker = [it.item_number, ci.type_label, it.template_number ? `Vorlage ${it.template_number}` : null, wann]
     .filter(Boolean).join(" · ");
+  const mitArgumenten = useFeature("punkt-argumente");
+  const args = mitArgumenten ? p.arguments ?? null : null;
   const reiter: { key: Reiter; label: string; n: number }[] = [
+    { key: "arguments" as const, label: "Argumente", n: args?.show_arguments ? args.pro_count + args.contra_count : 0 },
+    { key: "factions" as const, label: "Fraktionen", n: args?.show_factions ? args.factions.length : 0 },
     { key: "history" as const, label: "Vorgeschichte", n: p.history.length },
     { key: "documents" as const, label: "Unterlagen", n: p.documents.length },
   ].filter((r) => r.n > 0);
@@ -153,7 +158,9 @@ function PunktView({ p }: { p: Punkt }) {
           )}
 
           {reiter.length > 1 && (
-            <div role="tablist" aria-label="Zu diesem Punkt" className="mt-6 grid gap-1 rounded-xl bg-muted p-1" style={{ gridTemplateColumns: `repeat(${reiter.length}, minmax(0,1fr))` }}>
+            <div role="tablist" aria-label="Zu diesem Punkt"
+              className={cn("mt-6 grid gap-1 rounded-xl bg-muted p-1", reiter.length > 2 ? "grid-cols-2 sm:grid-cols-[repeat(var(--n),minmax(0,1fr))]" : "grid-cols-2")}
+              style={{ "--n": reiter.length } as CSSProperties}>
               {reiter.map((r) => (
                 <button key={r.key} role="tab" type="button" aria-selected={zeige === r.key} onClick={() => setAktiv(r.key)}
                   className={cn("min-h-11 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -165,6 +172,8 @@ function PunktView({ p }: { p: Punkt }) {
           )}
 
           <div className="mt-4" role={reiter.length > 1 ? "tabpanel" : undefined}>
+            {zeige === "arguments" && args && <Argumente args={args} ksinr={p.ksinr} itemNumber={it.item_number} />}
+            {zeige === "factions" && args && <Fraktionen args={args} />}
             {zeige === "history" && <Vorgeschichte p={p} titel={reiter.length > 1 ? null : "Vorgeschichte"} />}
             {zeige === "documents" && <Unterlagen p={p} titel={reiter.length > 1 ? null : "Unterlagen"} />}
             {!zeige && (
