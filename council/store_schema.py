@@ -162,6 +162,20 @@ CREATE TABLE IF NOT EXISTS agenda_item_impact (
 --     Zum Sortieren richtig; unter einem eigenen Absender auf Instagram wird
 --     daraus eine Meinung des Absenders zur Sache.
 -- Dieser Text bekommt Vorlage UND Anlagen und darf nicht werten.
+-- Argumente zu einem Vorgang (Punkt-Seite, docs/plan-punkt-argumente.md):
+-- Streitpunkte mit Dafür/Dagegen und die Wortmeldungen je Fraktion, je
+-- Vorgang EINMAL — geschlüsselt nach Vorlage („tn:26/0719") bzw. dem datierten
+-- Titel eines Antrags ohne Vorlage („titel:…"). `sources_hash` über die
+-- Kennungen der Quellen: Erst eine neue Wortmeldung macht einen neuen Lauf nötig.
+-- Jede Aussage im JSON trägt die Kennung ihrer Quelle; ohne wird sie verworfen.
+CREATE TABLE IF NOT EXISTS agenda_item_arguments (
+    subject_key   TEXT PRIMARY KEY,
+    sources_hash  TEXT NOT NULL,
+    model         TEXT,
+    payload       TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS agenda_item_social (
     ksinr       INTEGER NOT NULL,
     item_number TEXT NOT NULL,
