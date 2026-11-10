@@ -32,8 +32,9 @@ export function Vorgeschichte({ p, titel, bare }: { p: Punkt; titel: string | nu
             <li key={`${s.ksinr}-${i}`} className="relative">
               <span aria-hidden className={cn("absolute -left-[27px] top-1 h-3 w-3 rounded-full",
                 s.current ? "bg-primary" : "border-2 border-primary/50 bg-card")} />
-              <p className={cn(KICKER, s.current && "text-primary")}>
-                {formatDate(s.session_date)} · {s.committee}{s.current ? " · diese Sitzung" : ""}
+              <p className={cn("text-sm text-muted-foreground", s.current && "text-primary")}>
+                <span className={cn("font-semibold tabular-nums", s.current ? "text-primary" : "text-foreground")}>{formatDate(s.session_date)}</span>
+                {" · "}{s.committee}{s.current ? " · diese Sitzung" : ""}
               </p>
               {o && (
                 <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
