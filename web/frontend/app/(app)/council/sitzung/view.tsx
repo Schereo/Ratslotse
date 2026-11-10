@@ -22,6 +22,8 @@ import { useHeute } from "@/lib/use-heute";
 import { useZurueck } from "@/lib/zurueck";
 import { useWeit } from "@/lib/use-ultra";
 import { BeschlussVorschau } from "@/components/beschluss-vorschau";
+import { SessionPage, type SessionWithCourse } from "@/components/session/session-page";
+import { useFeature } from "@/lib/features";
 
 const KOPF_AKTION = "min-h-11 h-auto min-w-0 justify-start gap-2 whitespace-normal rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-fluss hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0";
 
@@ -65,12 +67,22 @@ function SitzungInner() {
   // steht der geteilte Punkt aus dem Link oder der erste mit Beschluss drin.
   const weit = useWeit();
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
+  // Die neue Seite mit dem „Kurs der Sitzung" (docs/plan-sitzungsseite-kurs.md,
+  // Schritt 3). Aus: die Seite wie bisher.
+  const kursSeite = useFeature("sitzung-kurs");
 
   if (ksinr <= 0) notFound();
   if (loading) return <DetailSkeleton />;
   if (!data) {
     if (error && !istNichtGefunden(error)) return <AbrufFehler error={error} onRetry={refetch} was="Diese Sitzung" />;
     notFound();
+  }
+
+  if (kursSeite && (data as Partial<SessionWithCourse>).course && (data.agenda_items?.length ?? 0) > 0) {
+    return (
+      <SessionPage data={data as SessionWithCourse} ksinr={ksinr} flashTop={flashTop} weit={weit}
+        zurueck={zeigeZurueck ? () => zurueck(sessionHref(ksinr)) : undefined} />
+    );
   }
 
   const { outcomeByItem, decisionByItem, videoByItem } = ergebnisseJeTop(data);

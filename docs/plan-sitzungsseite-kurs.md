@@ -665,6 +665,21 @@ ohne Protokoll, Boje führt zur Karte, geteilter Punkt wird hervorgehoben, kein
 seitliches Scrollen bei 320 px (`14-layout`), Lauf gegen die leere
 Ratsdatenbank (`web/frontend/CLAUDE.md`). `17-lesbarkeit` beachten.
 
+**Umgesetzt (10.11.2026):** Schalter `sitzung-kurs` (Bindestrich wie alle
+Schalter), Seite in `components/session/session-page.tsx`, Rechnung in
+`lib/session-page.ts` (Zustand, Kicker, Zählung, Formalakt-Gruppen; Tests
+daneben), Browsertest `tests/e2e/28-sitzung-kurs.spec.ts` mit zwei echten
+Antworten als Fixture. Das Backend liefert dazu am `course`-Block: den
+gerechneten **Satz** (`summary`; `committee_summaries` taugt nicht, es ist
+Mail-HTML), die **nächste Sitzung** des Gremiums (`next_session`) und je
+Punkt den **Weg der Vorlage** mit Ergebnis je Station (`journey`) und, wo er
+hier vertagt wurde, die **nächste Tagesordnung**, auf der er wieder steht
+(`next_on_agenda`). Der Satz zählt nur, was das Protokoll sagt — dieselbe
+Grundlage wie die Farben im Kurs. Nach dem Protokoll ersetzt die Kurzfassung
+des Beschlusses den ankündigenden Kartentext („Der Ausschuss berät …").
+Der geteilte Punkt bleibt `ring-primary` wie auf der alten Seite; Orange
+gehört der aktiven Boje beim Mitlesen.
+
 **Abnahme:** ksinr 4654 (vorher) und 4652 (nachher) sehen aus wie die Bilder,
 abzüglich 3.1 bis 3.7; dazu eine Ratssitzung mit vielen Punkten (4702), eine
 Sitzung ohne Tagesordnung, eine mit Video-Ergebnissen, eine mit dringlichem

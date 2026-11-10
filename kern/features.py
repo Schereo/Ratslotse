@@ -271,6 +271,15 @@ FEATURES: dict[str, Feature] = {
                     "künftigen Wahl ohne Freischaltung starten darf — dann die "
                     "Abfragen in /tipp und /api/tipp entfernen.",
     ),
+    "sitzung-kurs": Feature(
+        key="sitzung-kurs",
+        description="Die neue Seite einer einzelnen Sitzung: Kopf auf der Anzeigetafel mit dem "
+                    "„Kurs der Sitzung“, „Wichtig in dieser Sitzung“, Tagesordnung als Linie mit "
+                    "Etappen und Karten (docs/plan-sitzungsseite-kurs.md, Schritt 3).",
+        fertig_wenn="Auf dev zwei Wochen ohne Befund an echten Sitzungen (vorher, nachher, "
+                    "Rat mit vielen Punkten), von Tim abgenommen und auf Prod angeschaltet; dann "
+                    "fliegt die alte Seite samt Schalter raus.",
+    ),
 }
 
 
