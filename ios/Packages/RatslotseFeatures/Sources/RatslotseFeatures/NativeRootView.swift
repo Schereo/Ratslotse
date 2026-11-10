@@ -540,7 +540,8 @@ private struct MainTabsView: View {
             switch ratsDebugValue("RATSLOTSE_DEBUG_MAIN") {
             case "decision-detail":
                 model.selectedTab = .council
-                model.navigation = [.decision(id: 1)]
+                // `RATSLOTSE_DEBUG_DECISION_ID`: einen Beschluss, den es auf dem Ziel gibt.
+                model.navigation = [.decision(id: Int(ratsDebugValue("RATSLOTSE_DEBUG_DECISION_ID") ?? "") ?? 1)]
             case "person-detail":
                 model.selectedTab = .council
                 model.navigation = [.person(slug: "anne-beispiel")]

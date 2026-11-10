@@ -1502,6 +1502,10 @@ struct DecisionDetailView: View {
 
                     DecisionDetailPrimaryLayout(detail: detail) { previewAttachment = $0 }
 
+                    if model.feature("notizen") || ratsDebugValue("RATSLOTSE_DEBUG_NOTES") != nil {
+                        NoteCard(model: model, targetKind: "decision", targetKey: String(decisionID))
+                    }
+
                     let stops = detail.consultations.isEmpty
                         ? detail.templateJourney.map(CouncilConsultationStop.init(journey:))
                         : detail.consultations
@@ -1566,6 +1570,13 @@ struct DecisionDetailView: View {
                     }
                 } else if let error {
                     ErrorCard(message: error) { Task { await load() } }
+                    #if DEBUG
+                    // Sichtprobe der Notiz-Karte ohne Konto und Backend (Prod liefert
+                    // den Beschluss ohne Anmeldung nicht).
+                    if ratsDebugValue("RATSLOTSE_DEBUG_NOTES") != nil {
+                        NoteCard(model: model, targetKind: "decision", targetKey: String(decisionID))
+                    }
+                    #endif
                 } else {
                     RatsLoadingState(message: "Beschluss wird geladen …")
                         .frame(maxWidth: .infinity, minHeight: 260)

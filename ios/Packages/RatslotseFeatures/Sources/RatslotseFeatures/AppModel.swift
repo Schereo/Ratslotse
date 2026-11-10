@@ -83,6 +83,27 @@ public final class AppModel {
     /// sagt, ob etwas schon so weit ist — keine Rechteprüfung (kern/features.py).
     public var features: Set<String> = []
     public func feature(_ key: String) -> Bool { features.contains(key) }
+
+    /// Der entsperrte Notiz-Schlüssel dieser Sitzung (Plan
+    /// `docs/plan-notizen-app.md`). Im Speicher immer; in der Keychain nur
+    /// mit „Auf diesem Gerät merken". Abmelden räumt beides.
+    public private(set) var notesKey: Data?
+    private let noteVault = NoteKeyVault()
+
+    public func setNotesKey(_ dk: Data, remember: Bool) {
+        notesKey = dk
+        guard let owner = user?.id else { return }
+        if remember { noteVault.save(dk, owner: owner) } else { noteVault.delete(owner: owner) }
+    }
+
+    public func restoreNotesKey(owner: Int) {
+        if notesKey == nil { notesKey = noteVault.load(owner: owner) }
+    }
+
+    public func lockNotes() {
+        notesKey = nil
+        if let owner = user?.id { noteVault.delete(owner: owner) }
+    }
     /// Ob `/api/app-config` schon geantwortet hat (oder gescheitert ist). Ein
     /// Deep-Link beim Kaltstart kommt oft VOR der Antwort — bis dahin heißt ein
     /// leeres `features` „weiß noch nicht", nicht „aus".
@@ -635,6 +656,9 @@ public final class AppModel {
         // Zuletzt angesehene Beschlüsse, Karten-Ebenen, Lottis Anstupser —
         // bis 10/2026 blieben sie für das nächste Konto liegen.
         LocalAccountData.clear(defaults)
+        // Der Notiz-Schlüssel gehört dem Konto, nicht dem Gerät.
+        notesKey = nil
+        noteVault.delete()
         session = .loggedOut
     }
 
