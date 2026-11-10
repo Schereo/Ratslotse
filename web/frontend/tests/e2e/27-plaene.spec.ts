@@ -108,8 +108,7 @@ test("die Übersicht sagt, wo man nachfragen kann — als Tatsache, nicht als Vo
   await schalter(page, true);
   await page.goto("/council?tab=analysis&sub=ziele");
   const list = page.locator('section[aria-labelledby="plans-follow-ups"]');
-  await expect(list.getByText("Das sagt etwas über die Berichte, nicht über die Arbeit.")).toBeVisible();
-  await expect(list.getByText(/„Nicht gefunden“ heißt nicht „gibt es nicht“/)).toBeVisible();
+  await expect(list.getByText(/sieht Ratslotse nicht/)).toBeVisible();
   // Gegen die leere Ratsdatenbank der CI hat kein Plan einen Bericht — die Liste ist dort lang, hier kürzer.
   const ask = list.getByRole("link", { name: "Den Rat fragen" }).first();
   await expect(ask).toHaveAttribute("href", /^\/fragen\?q=Was(\+|%20)ist/);
@@ -312,7 +311,7 @@ test("die Karte zeigt die Straßen der Maßnahmen und führt von der Liste zum O
   const row = map.getByRole("button", { name: /Lindenallee/ });
   await row.click();
   await expect(row).toHaveAttribute("aria-pressed", "true");
-  await expect(map.getByText(/nicht, wie weit es ist/)).toBeVisible();
+  await expect(map.getByText(/Orte aus den Titeln der Maßnahmen/)).toBeVisible();
 });
 
 test.describe("Haushalt zum Plan", () => {

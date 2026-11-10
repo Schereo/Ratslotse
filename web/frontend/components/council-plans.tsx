@@ -66,8 +66,7 @@ function HowCounted() {
         Ratsbeschluss, Rahmenpläne und Strategien, Pflicht- und Fachpläne. Die Berichte findet Ratslotse
         über die Titel der Tagesordnungspunkte im Ratsinformationssystem. Nichtöffentliche Sitzungen,
         Mitteilungen ohne Vorlage und Berichte außerhalb des Ratsinformationssystems sieht Ratslotse nicht —
-        „kein Bericht“ heißt deshalb „keinen gefunden“. Ratslotse vergibt keine Noten und rechnet keine
-        Quoten über Pläne hinweg.
+        „kein Bericht“ heißt deshalb „keinen gefunden“.
       </PopoverContent>
     </Popover>
   );
@@ -419,8 +418,7 @@ function FollowUps({ items, caveat }: { items: PlanOverview["follow_ups"]; cavea
         <p className="font-mono text-meta text-muted-foreground">{items.length}</p>
       </div>
       <p className="max-w-[76ch] text-hinweis text-muted-foreground">
-        Zu diesen Plänen hat Ratslotse keinen aktuellen Bericht im Rat gefunden. Das sagt etwas über die Berichte,
-        nicht über die Arbeit.
+        Zu diesen Plänen hat Ratslotse keinen aktuellen Bericht im Rat gefunden.
       </p>
       <ul className="mt-2 divide-y divide-border/70">
         {items.map((item) => (

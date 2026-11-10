@@ -19820,13 +19820,6 @@
             "title": "Policy Field",
             "type": "string"
           },
-          "report_caveat": {
-            "title": "Report Caveat",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "report_count": {
             "title": "Report Count",
             "type": "integer"
@@ -19952,7 +19945,6 @@
           "adoption_mode",
           "latest_report",
           "report_note",
-          "report_caveat",
           "lane",
           "report_count",
           "successor",
@@ -21469,13 +21461,6 @@
               "null"
             ]
           },
-          "report_caveat": {
-            "title": "Report Caveat",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "report_count": {
             "title": "Report Count",
             "type": "integer"
@@ -21924,7 +21909,6 @@
           "adoption_mode",
           "latest_report",
           "report_note",
-          "report_caveat",
           "lane",
           "report_count",
           "successor",

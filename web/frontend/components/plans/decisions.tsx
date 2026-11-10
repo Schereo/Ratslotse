@@ -76,7 +76,7 @@ export function Decisions({ plan }: { plan: PlanDetail }) {
             )}
             {g.key === "measures" && (
               <p className="mt-0.5 text-hinweis text-muted-foreground">
-                Die Vorlage nennt die Maßnahme bei ihrer Kennung. Ob der Beschluss sie umsetzt, sagt das nicht.
+                Die Vorlage nennt die Maßnahme bei ihrer Kennung.
               </p>
             )}
             <Entries group={g} />
@@ -91,7 +91,7 @@ export function Decisions({ plan }: { plan: PlanDetail }) {
             </button>
             <Aufklapp offen={showMentions}>
               <p className="text-hinweis text-muted-foreground">
-                Ihre Vorlage nennt die Nummer des Plans. Eine Erwähnung ist keine Umsetzung.
+                Ihre Vorlage nennt die Nummer des Plans.
               </p>
               <Entries group={mentions} />
             </Aufklapp>

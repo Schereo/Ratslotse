@@ -109,7 +109,6 @@ private struct CouncilPlanDetail: Decodable, Sendable {
     let remaining: CouncilPlanFact?
     let reportState: CouncilPlanReportState
     let reportNote: String?
-    let reportCaveat: String?
     let reportCount: Int
     let content: CouncilPlanContent?
     let plain: CouncilPlanPlain?
@@ -127,7 +126,6 @@ private struct CouncilPlanDetail: Decodable, Sendable {
         case reviewLabel = "review_label"
         case reportState = "report_state"
         case reportNote = "report_note"
-        case reportCaveat = "report_caveat"
         case reportCount = "report_count"
         case cityStatus = "city_status"
         case decisionGroups = "decision_groups"
@@ -590,7 +588,7 @@ struct CouncilPlansSection: View {
     private func content(_ response: CouncilPlansResponse) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text("Pläne der Stadt").font(RatsFont.title(18))
-            Text("Was der Rat beschlossen hat, was die Verwaltung darüber berichtet und wie die Stadt den Stand selbst einordnet. Ratslotse vergibt keine Note und rechnet keine Quote.")
+            Text("Was der Rat beschlossen hat, was die Verwaltung darüber berichtet und wie die Stadt den Stand selbst einordnet.")
                 .font(RatsFont.body(11.5))
                 .foregroundStyle(RatsColor.secondary)
                 .lineSpacing(2)
@@ -1170,9 +1168,6 @@ private struct CouncilPlanSheet: View {
             if let note = plan.reportNote ?? plan.reportState.hint {
                 Text(note).font(RatsFont.body(12)).foregroundStyle(RatsColor.bodyText)
             }
-            if let caveat = plan.reportCaveat {
-                Text(caveat).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary).lineSpacing(2)
-            }
             ForEach(Array(stations.enumerated()), id: \.offset) { _, station in
                 Divider().overlay(RatsColor.separator)
                 let row = VStack(alignment: .leading, spacing: 3) {
@@ -1215,8 +1210,8 @@ private struct CouncilPlanSheet: View {
         return VStack(alignment: .leading, spacing: 9) {
             MonoKicker("Stand laut Stadt", trailing: "\(status.originLabel) · Stand \(status.asOfLabel)")
             Text(status.complete
-                 ? "So ordnet die Stadt ihre \(status.total) Maßnahmen selbst ein. Ratslotse rechnet daraus keine Quote und vergibt keine Note."
-                 : "Die Stadt ordnet nur einen Teil ihrer \(status.total) Maßnahmen ein. Ratslotse rechnet daraus keine Quote und vergibt keine Note.")
+                 ? "So ordnet die Stadt ihre \(status.total) Maßnahmen selbst ein."
+                 : "Die Stadt ordnet nur einen Teil ihrer \(status.total) Maßnahmen ein.")
                 .font(RatsFont.body(11.5))
                 .foregroundStyle(RatsColor.secondary)
                 .lineSpacing(2)
@@ -1262,7 +1257,7 @@ private struct CouncilPlanSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             MonoKicker("Kennzahl", trailing: "in \(indicator.unit)")
             Text(indicator.label).font(RatsFont.body(13.5, weight: .semibold)).foregroundStyle(RatsColor.text)
-            Text("Was der Plan messbar erreichen will, und was die Stadt gemessen hat. Die Zahl steht neben dem Plan — sie sagt nicht, was die Maßnahmen bewirkt haben.")
+            Text("Was der Plan messbar erreichen will, und was die Stadt gemessen hat.")
                 .font(RatsFont.body(11.5))
                 .foregroundStyle(RatsColor.secondary)
                 .lineSpacing(2)

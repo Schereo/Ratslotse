@@ -137,7 +137,6 @@ export function CityStatus({ status }: { status: PlanCityStatus }) {
         {counted >= snapshot.total
           ? `So ${latest ? "ordnet" : "ordnete"} die Stadt ihre ${snapshot.total} Maßnahmen selbst ein.`
           : `Die Stadt ${latest ? "ordnet" : "ordnete"} ${counted} von ${snapshot.total} Maßnahmen ein; für die übrigen ${latest ? "nennt" : "nannte"} sie keinen Stand.`}
-        {" "}Ratslotse rechnet daraus keine Quote und vergibt keine Note.
       </p>
       {several && (
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -154,8 +153,7 @@ export function CityStatus({ status }: { status: PlanCityStatus }) {
             ? <Movement movement={snapshot.movement} />
             : <p className="text-hinweis text-muted-foreground">Der erste Stand, den die Stadt meldet.</p>}
           <p className="mt-3 max-w-[76ch] text-hinweis text-muted-foreground">
-            Die Stadt meldet je Stand nur Summen. Beim Wechsel des Jahres zeigen die Kästchen, wie sich die
-            Zahlen verschoben haben — nicht, welche Maßnahme die Stufe gewechselt hat.
+            Die Stadt meldet je Stand nur Summen.
           </p>
           <button type="button" onClick={() => setShowTable((v) => !v)} aria-expanded={showTable}
             className="mt-1 inline-flex min-h-11 items-center gap-1 text-left text-[13px] font-medium text-primary hover:underline">
