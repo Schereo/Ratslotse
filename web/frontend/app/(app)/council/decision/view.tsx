@@ -6,6 +6,8 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
+import { MeineNotiz } from "@/components/notiz/meine-notiz";
+import { useFeature } from "@/lib/features";
 import { OutcomeDot, OUTCOME_META, voteLabel, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref, sitzungHref } from "@/lib/routes";
 import { apiUrl, istNichtGefunden } from "@/lib/api";
@@ -610,6 +612,7 @@ function DecisionDetailInner() {
   const suche = suchRueckweg(sp.get("suche"));
   const router = useRouter();
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
+  const mitNotizen = useFeature("notizen");
   const { data, loading, error, refetch } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null,
     // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
     // daneben sagte denselben Satz ein zweites Mal.
@@ -970,6 +973,8 @@ function DecisionDetailInner() {
               </div>
             </MetaCard>
           )}
+
+          {mitNotizen && <MeineNotiz targetKind="decision" targetKey={String(d.id)} wofuer="Beschluss" />}
 
           {/* Weg und Presse stehen ab `weit` in der dritten Spalte. */}
           <div className="space-y-4 weit:hidden">{wegUndPresse}</div>

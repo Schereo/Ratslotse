@@ -1,0 +1,135 @@
+/* Notizen: Schlüssel der Sitzung, Ablage auf Wunsch, Weg zum Server
+   (`docs/plan-notizen-verschluesselt.md`). Verschlüsselt wird in
+   `lib/notiz-krypto.ts`; hier geht nichts im Klartext hinaus.
+
+   Der entsperrte Datenschlüssel ist ein NICHT exportierbarer `CryptoKey`.
+   Er liegt für die Sitzung im Speicher (gilt seitenübergreifend, solange der
+   Tab lebt) und — nur wenn man „auf diesem Gerät merken" wählt — in
+   IndexedDB, das `CryptoKey`s als solche ablegt, ohne den Schlüssel je
+   herauszugeben. Abmelden räumt beides (`lib/konto-raeumen.ts`). */
+
+import { api, ApiError } from "@/lib/api";
+import * as k from "@/lib/notiz-krypto";
+import type { ApiAntwort } from "@/lib/vertrag";
+
+export type NoteKeysState = ApiAntwort<"/notes/keys">;
+export type NoteEntry = ApiAntwort<"/notes">["notes"][number];
+export type TargetKind = NoteEntry["target_kind"];
+export interface NoteDoc { text: string }
+
+// ---- Schlüssel der Sitzung ------------------------------------------------
+
+let sitzung: { owner: number; dk: CryptoKey } | null = null;
+const hoerer = new Set<() => void>();
+
+export function sessionKey(owner: number): CryptoKey | null {
+  return sitzung?.owner === owner ? sitzung.dk : null;
+}
+
+export function onKeyChange(fn: () => void): () => void {
+  hoerer.add(fn);
+  return () => { hoerer.delete(fn); };
+}
+
+function melden() {
+  for (const fn of hoerer) fn();
+}
+
+const DB = "ratslotse-notizen";
+const STORE = "schluessel";
+
+function idb<T>(fn: (s: IDBObjectStore) => IDBRequest<T>, modus: IDBTransactionMode): Promise<T | null> {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(DB, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+      req.onerror = () => resolve(null);
+      req.onsuccess = () => {
+        try {
+          const tx = req.result.transaction(STORE, modus);
+          const r = fn(tx.objectStore(STORE));
+          r.onsuccess = () => resolve(r.result ?? null);
+          r.onerror = () => resolve(null);
+          tx.oncomplete = () => req.result.close();
+        } catch {
+          resolve(null);
+        }
+      };
+    } catch {
+      // Privates Fenster, gesperrter Speicher: dann eben jedes Mal die Passphrase.
+      resolve(null);
+    }
+  });
+}
+
+export async function setSessionKey(owner: number, dk: CryptoKey, merken: boolean): Promise<void> {
+  sitzung = { owner, dk };
+  if (merken) await idb((s) => s.put(dk, `konto:${owner}`), "readwrite");
+  melden();
+}
+
+/** Ein gemerkter Schlüssel dieses Geräts, falls es einen gibt. */
+export async function rememberedKey(owner: number): Promise<CryptoKey | null> {
+  if (sessionKey(owner)) return sessionKey(owner);
+  const dk = await idb<CryptoKey>((s) => s.get(`konto:${owner}`) as IDBRequest<CryptoKey>, "readonly");
+  if (dk) {
+    sitzung = { owner, dk };
+    melden();
+  }
+  return dk;
+}
+
+/** Sperren: Schlüssel aus Speicher und Gerät. Die Notizen bleiben beim Server. */
+export async function lock(owner?: number): Promise<void> {
+  sitzung = null;
+  if (owner != null) await idb((s) => s.delete(`konto:${owner}`), "readwrite");
+  else await idb((s) => s.clear(), "readwrite");
+  melden();
+}
+
+// ---- Server ---------------------------------------------------------------
+
+export const fetchKeys = () => api.get<NoteKeysState>("/notes/keys");
+export const createKeys = (keys: k.WrappedKeys) => api.put<NoteKeysState>("/notes/keys", keys);
+export const rewrapKeys = (keyVersion: number, neu: Awaited<ReturnType<typeof k.rewrap>>) =>
+  api.put<NoteKeysState>("/notes/keys", { key_version: keyVersion, ...neu });
+export const resetNotes = () => api.del<{ deleted: number }>("/notes/keys");
+
+const pfad = (kind: TargetKind, key: string, art = "note") =>
+  `/notes/${kind}/${encodeURIComponent(key)}/${art}`;
+
+export interface LoadedNote { text: string; version: number; updatedAt: string; lesbar: boolean }
+
+export async function loadNote(dk: CryptoKey, kind: TargetKind, key: string): Promise<LoadedNote | null> {
+  const r = await api.get<ApiAntwort<"/notes">>(`/notes?target_kind=${kind}&target_key=${encodeURIComponent(key)}`);
+  const n = r.notes.find((x) => x.kind === "note");
+  if (!n) return null;
+  const doc = await k.decryptNote<NoteDoc>(dk, k.aad(kind, key, "note"), n.iv, n.ciphertext);
+  return { text: doc?.text ?? "", version: n.version, updatedAt: n.updated_at, lesbar: doc != null };
+}
+
+export type SaveResult =
+  | { ok: true; version: number; updatedAt: string }
+  | { ok: false; conflict: LoadedNote | null };
+
+export async function saveNote(dk: CryptoKey, keyVersion: number, kind: TargetKind, key: string, text: string,
+  baseVersion: number): Promise<SaveResult> {
+  const blob = await k.encryptNote(dk, k.aad(kind, key, "note"), { text } satisfies NoteDoc);
+  try {
+    const n = await api.put<NoteEntry>(pfad(kind, key), { ...blob, key_version: keyVersion, version: baseVersion });
+    return { ok: true, version: n.version, updatedAt: n.updated_at };
+  } catch (e) {
+    if (!(e instanceof ApiError) || e.status !== 409) throw e;
+    let current: NoteEntry | null = null;
+    try { current = (JSON.parse(e.message) as { current?: NoteEntry | null }).current ?? null; } catch { /* nur Text */ }
+    if (!current) return { ok: false, conflict: null };
+    const doc = await k.decryptNote<NoteDoc>(dk, k.aad(kind, key, "note"), current.iv, current.ciphertext);
+    return { ok: false, conflict: { text: doc?.text ?? "", version: current.version, updatedAt: current.updated_at, lesbar: doc != null } };
+  }
+}
+
+export const deleteNote = (kind: TargetKind, key: string) => api.del<void>(pfad(kind, key));
+
+/** Mindestlänge der Passphrase: Sie schützt Notizen gegen jeden, der die
+ *  Datenbank bekommt — und lässt sich, anders als ein Login, nicht bremsen. */
+export const MIN_PASSPHRASE = 10;

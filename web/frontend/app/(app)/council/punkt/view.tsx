@@ -17,6 +17,7 @@ import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
 import { normalizeParty, partyBrand } from "@/components/decision-ui";
 import { AufEinenBlick, FragDenRat, Unterlagen, Vorgeschichte, type Punkt } from "@/components/session/item-sections";
+import { MeineNotiz } from "@/components/notiz/meine-notiz";
 import { kurzfassung } from "@/components/tagesordnung";
 import { NwzReadHint } from "@/components/nwz-link";
 import { useFetch } from "@/lib/use-fetch";
@@ -79,6 +80,7 @@ function PunktView({ p }: { p: Punkt }) {
     : `${formatDate(p.session_date)} im ${p.committee}`;
   const kicker = [it.item_number, ci.type_label, it.template_number ? `Vorlage ${it.template_number}` : null, wann]
     .filter(Boolean).join(" · ");
+  const mitNotizen = useFeature("notizen");
   const reiter: { key: Reiter; label: string; n: number }[] = [
     { key: "history" as const, label: "Vorgeschichte", n: p.history.length },
     { key: "documents" as const, label: "Unterlagen", n: p.documents.length },
@@ -197,6 +199,7 @@ function PunktView({ p }: { p: Punkt }) {
         <aside className="flex flex-col gap-4" aria-label="Zu diesem Punkt">
           <FragDenRat p={p} />
           <AufEinenBlick p={p} />
+          {mitNotizen && <MeineNotiz targetKind="agenda_item" targetKey={`${p.ksinr}|${it.item_number}`} />}
         </aside>
       </div>
     </div>

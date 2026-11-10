@@ -22,4 +22,8 @@ export function kontoDatenRaeumen({ mitEntwurf }: { mitEntwurf: boolean }): void
   try {
     for (const k of sitzung) sessionStorage.removeItem(k);
   } catch { /* gesperrter Speicher: dort liegt dann auch nichts */ }
+  // Beim Abmelden auch den Notiz-Schlüssel: aus dem Speicher und, falls
+  // gemerkt, vom Gerät. (Läuft die Sitzung nur ab, bleibt er — dieselbe
+  // Person meldet sich gleich wieder an.)
+  if (mitEntwurf) void import("@/lib/notizen").then((m) => m.lock()).catch(() => {});
 }

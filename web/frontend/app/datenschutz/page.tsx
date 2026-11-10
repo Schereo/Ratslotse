@@ -66,6 +66,11 @@ export default function DatenschutzPage() {
               <li><strong>Tippspiel zur Wahl:</strong> Spielst du mit, speichern wir den Namen, den du dafür wählst, optional eine Parteizugehörigkeit und deine Tipps. <strong>Name, Partei und Platzierung sind in der Rangliste öffentlich sichtbar</strong> — wähle also keinen Namen, der dich ungewollt erkennbar macht. Ohne Konto erkennt dich das Spiel an einem Cookie (siehe unten), in Konto-Runden an deinem Konto.</li>
               <li><strong>Geteilte Antworten:</strong> Wenn du ausdrücklich „Teilen" auswählst, speichern wir Frage, Antwort und die dazugehörigen Belege unter einem nicht erratbaren öffentlichen Link. Jede Person mit dem Link kann den Inhalt lesen und melden. Der Link wird mit deinem Konto gelöscht; gemeldete Links können wir vorher entfernen.</li>
               <li><strong>Rückmeldungen zu Einordnungen:</strong> Wenn du bei „Ideen aus anderen Städten" angibst, ob eine Einordnung stimmt, speichern wir deine Antwort mit deinem Konto, damit du sie wiedersiehst und wir die Einordnungen prüfen können. Sie werden mit deinem Konto gelöscht.</li>
+              {/* Hinter dem Schalter `notizen`: Auf dev sind alle Schalter an, auf Prod
+                  steht der Absatz erst mit der Freigabe (dann fällt diese Bedingung weg). */}
+              {process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev" && (
+                <li><strong>Notizen (optional):</strong> Notizen zu Tagesordnungspunkten und Beschlüssen werden auf deinem Gerät mit einer eigenen Notiz-Passphrase verschlüsselt, bevor sie an uns gehen. Wir speichern nur den verschlüsselten Text und den verpackten Schlüssel und können die Notizen nicht lesen. Sichtbar ist, zu welchem Punkt es eine Notiz gibt, wann sie geändert wurde und wie lang sie ungefähr ist. Wählst du „Auf diesem Gerät merken“, liegt der Schlüssel in deinem Browser (IndexedDB), nicht exportierbar. Notizen und Schlüssel werden mit deinem Konto gelöscht.</li>
+              )}
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
             </ul>
           </Section>
