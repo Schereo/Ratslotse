@@ -61,9 +61,9 @@ test.describe("Punkt-Seite", () => {
     await expect(page.getByRole("link", { name: "Zur Sitzung" })).toBeVisible();
   });
 
-  test("kein seitliches Scrollen bei 320 px", async ({ page }) => {
+  for (const breite of [300, 320]) test(`kein seitliches Scrollen bei ${breite} px`, async ({ page }) => {
     await stubs(page);
-    await page.setViewportSize({ width: 320, height: 844 });
+    await page.setViewportSize({ width: breite, height: 844 });
     await page.goto("/council/punkt?ksinr=4654&top=%C3%96%2011.1");
     await expect(page.getByRole("heading", { name: "Weißenmoorstraße", level: 1 })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))

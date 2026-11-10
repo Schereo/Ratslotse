@@ -131,7 +131,7 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
       )}
 
       <div className={cn(
-        "mt-6 grid items-start gap-6",
+        "mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6",
         vorschauId != null ? "breit:grid-cols-[minmax(0,1fr)_minmax(0,560px)]" : "breit:grid-cols-[minmax(0,1fr)_300px]",
       )}>
         <section aria-labelledby="tagesordnung-titel" className="min-w-0">
