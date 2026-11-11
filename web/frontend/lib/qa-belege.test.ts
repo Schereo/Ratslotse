@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  zitatNummern,
   ANL_EXACT_RE, BELEG_SPLIT_RE, CITE_EXACT_RE, CITE_RE,
   anlageNummer, anlagenBuchstabe, anlagenBuchstaben, anlagenNr, citationIds, datenEindeutschen,
 } from "./qa-belege";
@@ -154,5 +155,16 @@ describe("datenEindeutschen", () => {
 
   it("lässt Text ohne Datum in Ruhe", () => {
     expect(datenEindeutschen("kein Datum hier")).toBe("kein Datum hier");
+  });
+});
+
+describe("zitatNummern", () => {
+  it("nummeriert in Reihenfolge des Auftauchens, jede id einmal", () => {
+    const m = zitatNummern("A [12] und B [7, 12] und C [7]", [7, 12]);
+    expect([...m.entries()]).toEqual([[12, 1], [7, 2]]);
+  });
+  it("übergeht erfundene ids", () => {
+    expect(zitatNummern("Siehe [99] und [3]", [3]).get(99)).toBeUndefined();
+    expect(zitatNummern("Siehe [99] und [3]", [3]).get(3)).toBe(1);
   });
 });

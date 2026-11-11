@@ -29,6 +29,21 @@ export function citationIds(bracket: string): number[] {
   return m ? [Number(m[1])] : [];
 }
 
+/** Fußnoten-Nummern einer Antwort: Beschluss-id → 1, 2, 3 … in der
+ *  Reihenfolge, in der der Text sie zitiert. Nur ids, die unter den Quellen
+ *  stehen — eine erfundene Klammer bekommt keine Nummer. Eine Regel für das
+ *  Ratsgespräch und den Chat auf der Seite eines Punkts oder Beschlusses. */
+export function zitatNummern(answer: string, sourceIds: Iterable<number>): Map<number, number> {
+  const valid = new Set(sourceIds);
+  const map = new Map<number, number>();
+  for (const g of answer.matchAll(CITE_RE)) {
+    for (const id of citationIds(g[0])) {
+      if (valid.has(id) && !map.has(id)) map.set(id, map.size + 1);
+    }
+  }
+  return map;
+}
+
 /** Anlagen-Nummer aus „[A3]". */
 export function anlagenNr(bracket: string): number {
   return Number(bracket.slice(2, -1));
