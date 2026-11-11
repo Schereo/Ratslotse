@@ -15,6 +15,10 @@ Zwei Teile, mit Absicht verschieden gebaut:
   Person, Fraktion, Gremium, Datum und Seite werden nach dem Parsen aus dem
   Wortbeitrag übernommen. Eine Aussage ohne gültige Kennung fällt weg; ein
   Streitpunkt ohne beide Seiten auch.
+
+Die Hälfte der Wortbeiträge trägt im Protokoll keine Partei. Wo der Redner
+eindeutig in der Anwesenheitsliste derselben Sitzung steht und dort für eine
+Fraktion sitzt, kommt sie von dort (``fill_factions``) — ohne Modell.
 """
 from __future__ import annotations
 
@@ -28,6 +32,7 @@ from kern import foreign_text, llm, prompts
 
 from .impact import vorlagen_kern
 from .parties import classify_faction, order_key, parties_in_text
+from .store_personen import PersonenMixin
 
 #: Wie die Kartentexte: GPT-6 Luna im Flex-Tarif, kein Feature mit
 #: Nutzereingabe (``llm.OHNE_NUTZEREINGABE``).
@@ -82,11 +87,112 @@ def faction_of(raw: str | None) -> tuple[str | None, bool]:
     return roh, False
 
 
+#: Amtstitel der Verwaltung vor dem Namen. In Oldenburg ist ein „Stadtrat"
+#: Dezernent der Verwaltung, kein Ratsmitglied — „Stadtrat Denckmann" bekommt
+#: auch dann keine Fraktion, wenn ein Ratsmitglied gleichen Namens im Saal
+#: säße. „Bürgermeister" allein bleibt erlaubt: Das sind ehrenamtliche
+#: Stellvertreter aus dem Rat.
+ADMIN_TITLE = re.compile(
+    r"(?i)^(erste[rn]?\s+)?(oberbürgermeister|stadtr(at|ätin)\b|stadtbaur|stadtkämmer|"
+    r"dezernent|amtsleit|fachdienstleit|verwaltung)")
+
+#: Wer in der Anwesenheitsliste für eine Fraktion sitzt. Verwaltung, Gäste,
+#: Protokoll und beratende Mitglieder zählen nur als Namensvettern.
+ROSTER_ROLES = frozenset({"member", "chair"})
+
+#: Namenspartikel sind kein Vorname („van Ellen").
+_PARTICLES = frozenset({"van", "von", "de", "der", "den", "ten", "zu", "zur", "vom"})
+#: Anreden und Rollen vor dem Namen („Ausschussvorsitzender Behrens"), gefaltet.
+_ANREDEN = frozenset(PersonenMixin._falte_namen(a) for a in PersonenMixin._ANREDEN)
+
+
+def _name_parts(name: str) -> tuple[frozenset[str], str]:
+    """(Vornamen, Nachname), gefaltet wie das Personen-Lexikon
+    (``PersonenMixin``): ohne Anrede, Titel und Rolle, Bindestrich-Vornamen
+    auch in ihren Teilen („Christine-Petra" passt zu „Christine")."""
+    fold = PersonenMixin._falte_namen
+    toks = [t for t in re.split(r"[\s.()]+", name)
+            if t and t.strip("-–—").lower() not in PersonenMixin._HONORIFICS and fold(t) not in _ANREDEN]
+    if not toks:
+        return frozenset(), ""
+    given: set[str] = set()
+    for t in toks[:-1]:
+        f = fold(t)
+        if f in _PARTICLES:
+            continue
+        given.add(f)
+        given.update(p for p in f.split("-") if p)
+    return frozenset(given), fold(toks[-1])
+
+
+def faction_from_roster(speaker: str | None, roster: list[dict]) -> str | None:
+    """Die Fraktion eines Redners, den das Protokoll ohne Partei nennt — aus
+    der Anwesenheitsliste DERSELBEN Sitzung, im Wortlaut der Liste.
+
+    Die Liste ist die Fraktion zum Datum des Beitrags: Seit dem 01.11.2026
+    sitzt ein neuer Rat, und wer gewechselt hat (Linke → BSW, FDP/Volt →
+    Volt), steht dort mit dem Label von damals. ``council_persons`` kennt nur
+    den Stand von heute.
+
+    Zugeordnet wird nur, was eindeutig ist (Tims Oltmanns-Befund: lieber keine
+    Fraktion als eine geratene):
+
+    * Ein Amtstitel der Verwaltung vor dem Namen → keine.
+    * Alle Einträge der Liste mit demselben Nachnamen zählen — auch
+      Verwaltung, Gäste und Protokoll. Sitzen zwei Behrens im Saal, bekommt
+      „Behrens" keine Fraktion.
+    * Nennt das Protokoll einen Vornamen, muss er passen; sonst ist es eine
+      andere Person.
+    * Der eine Treffer sitzt als Mitglied oder Vorsitz da, und sein Label ist
+      eine Fraktion oder Ratsgruppe (``faction_of``) — ein Verband nicht."""
+    sp = " ".join((speaker or "").split())
+    if not sp or ADMIN_TITLE.match(sp):
+        return None
+    given, last = _name_parts(sp)
+    if len(last) < 2:
+        return None
+    people: dict[tuple[frozenset[str], str], list[dict]] = {}
+    for a in roster:
+        name = " ".join((a.get("name") or "").split())
+        a_given, a_last = _name_parts(name)
+        if a_last != last:
+            continue
+        people.setdefault((a_given, a_last), []).append(a)
+    if given:
+        people = {k: v for k, v in people.items() if given & k[0]}
+    if len(people) != 1:
+        return None
+    (entries,) = people.values()
+    labels = {" ".join((a.get("party") or "").split()) for a in entries}
+    if len(labels) != 1 or any(a.get("role") not in ROSTER_ROLES for a in entries):
+        return None
+    (label,) = labels
+    return label if faction_of(label)[1] else None
+
+
+def fill_factions(speeches: list[dict], rosters: dict[int, list[dict]]) -> int:
+    """Beiträge ohne Partei bekommen die Fraktion aus der Anwesenheitsliste
+    ihrer Sitzung (``faction_from_roster``); ``party_source`` sagt, woher sie
+    stammt. Was das Protokoll angibt, bleibt unangetastet — auch ein Verband.
+    Gibt die Zahl der ergänzten Beiträge zurück."""
+    n = 0
+    for s in speeches:
+        if (s.get("party") or "").strip():
+            continue
+        label = faction_from_roster(s.get("speaker"), rosters.get(s.get("ksinr") or 0, []))
+        if label:
+            s["party"] = label
+            s["party_source"] = "attendance"
+            n += 1
+    return n
+
+
 def factions(speeches: list[dict]) -> list[dict]:
     """Wortmeldungen nach Fraktion — ohne Modell, älteste zuerst je Fraktion,
     Fraktionen mit den meisten Wortmeldungen oben. Nur, was das Protokoll einer
-    Fraktion oder Ratsgruppe zuordnet: Verwaltung, Verbände und Beiträge ohne
-    Angabe stehen nur unter „Argumente"."""
+    Fraktion oder Ratsgruppe zuordnet — beim Beitrag selbst oder über die
+    Anwesenheitsliste (``fill_factions``): Verwaltung, Verbände und Beiträge
+    ohne Angabe stehen nur unter „Argumente"."""
     gruppen: dict[str, list[dict]] = {}
     for s in speeches:
         label, ist = faction_of(s.get("party"))
@@ -244,6 +350,10 @@ def view(material: dict, stored: dict | None, protocol_urls: dict[int, str]) -> 
     show_fr = fraktionen_zeigen(gruppen)
     if not show_args and not show_fr:
         return None
+    # Argumente, die vor der Ergänzung aus der Anwesenheitsliste ausgewertet
+    # wurden, tragen dort keine Partei — derselbe Beitrag stünde sonst unter
+    # „Fraktionen" mit und unter „Argumente" ohne.
+    party_by_speech = {s["id"]: faction_of(s.get("party"))[0] for s in material["speeches"] if s.get("party")}
 
     def mit_url(a: dict) -> dict:
         q = a["source"]
@@ -256,7 +366,8 @@ def view(material: dict, stored: dict | None, protocol_urls: dict[int, str]) -> 
         # Eine Vorlage trägt kein eigenes Datum im Bestand; das der ersten
         # Beratung (ältere Auswertungen) wäre ein anderes.
         datum = None if q["kind"] == "template" else a.get("date")
-        return {**a, "date": datum, "source": {"kind": q["kind"], "id": q["id"], "page": q.get("page"), "url": url}}
+        partei = a.get("party") or (party_by_speech.get(q["id"]) if q["kind"] == "speech" else None)
+        return {**a, "date": datum, "party": partei, "source": {"kind": q["kind"], "id": q["id"], "page": q.get("page"), "url": url}}
 
     pro, contra = counts(payload)
     aktuell = sources_hash([s["id"] for s in material["speeches"]], material["template_number"])

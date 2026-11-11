@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
+import pytest
+
 from council import arguments
 
 W = {"id": 11, "kind": "speech", "speaker": "Klein", "party": "SPD", "committee": "Rat",
@@ -129,3 +131,81 @@ def test_view_mit_fundstellen_und_ohne_reiter():
     assert v["show_arguments"] and v["stale"] and v["further"]["pro"][0]["source"]["url"] == "https://example.org/p.pdf#page=7"
     assert v["show_factions"] and [f["party"] for f in v["factions"]] == ["SPD", "CDU"]
     assert arguments.view({**material, "speeches": [W]}, None, {}) is None
+
+
+# ---- Fraktion aus der Anwesenheitsliste --------------------------------------
+
+LISTE = [
+    {"name": "Michael Wenzel", "party": "Bündnis 90/Die Grünen", "role": "chair"},
+    {"name": "Ruth Regina Drügemöller", "party": "Bündnis 90/ Die Grünen", "role": "member"},
+    {"name": "Christoph Baak", "party": "CDU", "role": "member"},
+    {"name": "Paul Behrens", "party": "SPD", "role": "member"},
+    {"name": "Rieke Behrens", "party": "Verwaltung", "role": "minutes"},
+    {"name": "Holger Denckmann", "party": "Verwaltung", "role": "administration"},
+    {"name": "Jürgen Pieper", "party": "VCD", "role": "advisory"},
+    {"name": "Jan Gutzeit", "party": "beratend", "role": "member"},
+    {"name": "Dennis Poelmeyer", "party": "SPD", "role": "guest"},
+    {"name": "Bernhard Ellberg", "party": "SPD", "role": "member"},
+]
+
+
+@pytest.mark.parametrize("redner, erwartet", [
+    ("Wenzel", "Bündnis 90/Die Grünen"),
+    ("Ausschussvorsitzender Wenzel", "Bündnis 90/Die Grünen"),   # Rolle ist kein Vorname
+    ("Ratsfrau Drügemöller", "Bündnis 90/ Die Grünen"),
+    ("Ruth Drügemöller", "Bündnis 90/ Die Grünen"),               # weitere Vornamen dürfen fehlen
+    ("Bürgermeister Ellberg", "SPD"),                             # ehrenamtlich, aus dem Rat
+    ("Dr. Baak", "CDU"),
+    ("Erika Baak", None),            # anderer Vorname: eine andere Person
+    ("Behrens", None),               # zwei Behrens im Saal, eine davon im Protokoll
+    ("Paul Behrens", "SPD"),         # … der Vorname trennt sie
+    ("Rieke Behrens", None),         # Protokollführung ist keine Fraktion
+    ("Denckmann", None),             # Verwaltung
+    ("Stadtrat Ellberg", None),      # „Stadtrat" ist in Oldenburg ein Dezernent
+    ("Oberbürgermeister Ellberg", None),
+    ("Pieper", None),                # beratendes Mitglied mit Verband
+    ("Gutzeit", None),               # Mitglied, aber „beratend" ist keine Fraktion
+    ("Poelmeyer", None),             # Gast, auch mit Partei-Label
+    ("Kramer", None),                # steht nicht in der Liste
+    ("", None),
+    (None, None),
+])
+def test_fraktion_aus_der_anwesenheitsliste(redner, erwartet):
+    """Nur eindeutig und nur für Mitglieder und Vorsitz mit Fraktions-Label —
+    lieber keine Fraktion als eine geratene (Tims Oltmanns-Befund)."""
+    assert arguments.faction_from_roster(redner, LISTE) == erwartet
+
+
+def test_ergaenzt_nur_was_das_protokoll_offen_laesst():
+    """Was das Protokoll angibt, bleibt — auch ein Verband. Gesucht wird nur in
+    der Liste der EIGENEN Sitzung: Sie trägt die Fraktion zum Datum des
+    Beitrags (seit 01.11.2026 sitzt ein neuer Rat; Wechsler stehen dort mit
+    dem Label von damals)."""
+    listen = {1: [{"name": "Hans-Henning Adler", "party": "DIE LINKE./Piratenpartei", "role": "member"}],
+              2: [{"name": "Hans-Henning Adler", "party": "BSW", "role": "member"}]}
+    beitraege = [{**W, "id": 1, "ksinr": 1, "speaker": "Adler", "party": None},
+                 {**W, "id": 2, "ksinr": 2, "speaker": "Adler", "party": ""},
+                 {**W, "id": 3, "ksinr": 2, "speaker": "Adler", "party": "ADFC"},
+                 {**W, "id": 4, "ksinr": 3, "speaker": "Adler", "party": None}]   # Sitzung ohne Liste
+    assert arguments.fill_factions(beitraege, listen) == 2
+    assert [(b["party"], b.get("party_source")) for b in beitraege] == [
+        ("DIE LINKE./Piratenpartei", "attendance"), ("BSW", "attendance"), ("ADFC", None), (None, None)]
+    assert [g["party"] for g in arguments.factions(beitraege)] == ["BSW", "Die Linke/Piraten"]
+
+
+def test_argumente_tragen_die_ergaenzte_fraktion():
+    """Eine Auswertung von vor der Ergänzung hat beim Beitrag keine Partei;
+    die Seite zeigt sie trotzdem — derselbe Beitrag stünde sonst unter
+    „Fraktionen" mit und unter „Argumente" ohne."""
+    ohne = {**QUELLEN["W13"], "speaker": "Wenzel"}
+    stored = {"sources_hash": "x", "payload": arguments.parse(_roh(
+        further={"pro": [{"source": "W11", "text": "A."}, {"source": "W13", "text": "B."}],
+                 "contra": [{"source": "W12", "text": "C."}, {"source": "W14", "text": "D."}]}),
+        {**QUELLEN, "W13": ohne})}
+    assert stored["payload"]["further"]["pro"][1]["party"] is None
+    ergaenzt = {**ohne, "party": "Bündnis 90/Die Grünen", "party_source": "attendance"}
+    material = {"subject_key": "tn:1", "template_number": "1",
+                "speeches": [W, QUELLEN["W12"], ergaenzt, QUELLEN["W14"]]}
+    v = arguments.view(material, stored, {})
+    assert [a["party"] for a in v["further"]["pro"]] == ["SPD", "Grüne"]
+    assert "Grüne" in [f["party"] for f in v["factions"]]
