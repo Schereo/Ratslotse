@@ -7,10 +7,11 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
+import { Search, ExternalLink, ArrowRight, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
 import { AbrufFehler } from "@/components/abruf-fehler";
 import { api, qs, ApiError } from "@/lib/api";
-import { fragenHref, decisionHref, ortHref, sitzungHref } from "@/lib/routes";
+import { fragenHref, decisionHref, ortHref, punktHref, sitzungHref } from "@/lib/routes";
+import { ownPageItems, type SessionCourse } from "@/lib/course";
 import { STAFFEL, staffelStil } from "@/components/staffel";
 import { Aufklapp } from "@/components/aufklapp";
 import { useDebounce } from "@/lib/use-debounce";
@@ -1016,6 +1017,10 @@ function YearDivider({ year }: { year: string }) {
 
 function SessionsTab({ committees }: { committees: string[] }) {
   const heute = useHeute();
+  // Wege aus der Liste auf die eigenen Seiten (Tims Befund 11.11.2026: ohne
+  // geteilten Link fand man weder die Sitzungs- noch die Punkt-Seite).
+  const sitzungKurs = useFeature("sitzung-kurs");
+  const punktSeite = useFeature("punkt-seite");
   // Lokales Datum als ISO-Tag für String-Vergleiche mit session_date —
   // `heute` selbst ist ein Date, und "2026-08-19" >= Date wäre stets false.
   const heuteTag = heute
@@ -1362,6 +1367,9 @@ function SessionsTab({ committees }: { committees: string[] }) {
               const matched = s.matched_items ?? [];
               const d = detail[s.ksinr];
               const { outcomeByItem, decisionByItem, videoByItem } = ergebnisseJeTop(d);
+              const eigeneSeite = punktSeite
+                ? ownPageItems((d as (typeof d & { course?: SessionCourse }) | undefined)?.course)
+                : new Set<string>();
               const videoCount = Object.keys(videoByItem).length;
               // RL-902: TOPs, die zu eigenen Themen passen (TOP → Themenname).
               const myByItem: Record<string, string> = {};
@@ -1389,6 +1397,80 @@ function SessionsTab({ committees }: { committees: string[] }) {
                   )}
                   style={staffelStil(i)}
                 >
+                  {sitzungKurs && s.ksinr != null ? (
+                    /* Tims Wunsch 11.11.2026: Der Weg zur Sitzung steht groß im
+                       Kopf — dort soll geklickt werden. Die linke Fläche und der
+                       Knopf führen auf die Seite der Sitzung; aufgeklappt wird
+                       über die TOPs rechts (und „Alle TOPs anzeigen" unten). */
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
+                      <Link href={sitzungHref(s.ksinr)} prefetch={false}
+                        className="group flex min-w-0 basis-full items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:basis-0 sm:flex-1">
+                      <DateTile iso={s.session_date} />
+                      <div className="min-w-0">
+                        {/* Das Zeichen des Gremiums vor dem Namen — dieselbe
+                            Tabelle wie im Onboarding und in der App, damit
+                            man die Karte erkennt, bevor man sie liest. */}
+                        <span className="flex min-w-0 items-center gap-2">
+                          <CommitteeGlyph name={s.committee} />
+                          <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
+                        </span>
+                        {/* „Morgen · 17:00 Uhr" statt nur der Uhrzeit — die
+                            Kachel links nennt den Tag, der Kopf benennt die
+                            Nähe (Tims Wunsch 12.08.). */}
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                          {/* „Heute/Morgen" schlägt den Wochentag — sonst steht
+                              er vorn (Tims Wunsch 15.08.): Die Kachel nennt nur
+                              Monat und Zahl, ob das ein Montag oder Samstag ist,
+                              musste man selbst nachrechnen. */}
+                          {(() => {
+                            const r = relativerTag(s.session_date, heute);
+                            if (r) return `${r[0].toUpperCase()}${r.slice(1)} · `;
+                            const w = wochentagKurz(s.session_date);
+                            return w ? `${w} · ` : "";
+                          })()}
+                          {s.session_time} Uhr{s.location && ` · ${s.location}`}
+                        </p>
+                      </div>
+                      </Link>
+                      {/* Telefon: eine zweite Zeile unter dem Namen, eingerückt
+                          bis zum Text (Kachel 50 px + Abstand) — neben dem Namen
+                          blieb ihm sonst kaum Platz. */}
+                      <div className="flex w-full items-center gap-2 pl-[62px] sm:w-auto sm:shrink-0 sm:pl-0">
+                      {isLiveNow(s) && <LiveChip />}
+                      {myCount > 0 && (
+                        <span className="hidden rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal sm:inline-flex">
+                          {myCount} zu deinen Themen
+                        </span>
+                      )}
+                        <Link href={sitzungHref(s.ksinr)} prefetch={false}
+                          className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+                          Zur Sitzung <ArrowRight className="h-4 w-4" aria-hidden />
+                        </Link>
+                        <button type="button" onClick={() => toggle(s)} aria-expanded={isExpanded}
+                          aria-label={isExpanded ? "Tagesordnung zuklappen" : `Tagesordnung aufklappen (${s.n_items} TOPs)`}
+                          className="ml-auto inline-flex min-h-11 items-center gap-2 rounded-full pl-1 pr-2 transition-colors hover:bg-muted/60 sm:ml-0">
+                          <Badge color="blue">{s.n_items} {s.n_items === 1 ? "TOP" : "TOPs"}</Badge>
+                      {/* Solange die Tagesordnung geholt wird, steht hier ein
+                              Spinner statt des Pfeils — und der Bereich fährt erst
+                              auf, wenn sie da ist (s. `offen` unten). Vorher klappte
+                              er sofort auf Spinner-Höhe auf und sprang beim
+                              Eintreffen der Punkte ein zweites Mal: gemessen von
+                              118 auf 1.262 px in einem Bild. Ein Fortschritt an der
+                              Stelle, die man gerade angetippt hat, ist die
+                              ehrlichere Antwort (Designsprache § 6). */}
+                          {detailLoading[s.ksinr] ? (
+                            <span
+                              aria-label="Tagesordnung wird geladen"
+                              role="status"
+                              className="h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-primary [animation-duration:600ms]"
+                            />
+                          ) : (
+                            <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-weg ease-out-strong", isExpanded && "rotate-180 text-primary")} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
                   <button type="button" onClick={() => toggle(s)} className="group flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40">
                     <div className="flex min-w-0 items-center gap-3">
                       <DateTile iso={s.session_date} />
@@ -1445,6 +1527,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       )}
                     </div>
                   </button>
+                  )}
 
                   {/* Die wichtigsten Punkte schon in der zugeklappten Karte —
                       dieselbe Bewertung wie „Diese Woche im Rat", jetzt für
@@ -1492,6 +1575,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                   bookmarkable={!hasAgendaChildren(it, d?.agenda_items ?? [])}
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
+                                  pageHref={s.ksinr != null && eigeneSeite.has(it.item_number) ? punktHref(s.ksinr, it.item_number) : undefined}
                                   videoResult={it.is_public ? videoByItem[videoKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
                                   live={liveKeys.has(videoKey(it.item_number))}
@@ -1514,7 +1598,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         )
                       ) : null}
 
-                      <div className="mt-3 flex items-center gap-4 px-2">
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-2">
                         <button type="button" onClick={() => toggle(s)} className="text-sm font-medium text-primary hover:underline">
                           {isExpanded ? "Weniger anzeigen" : `Alle ${s.n_items} TOPs anzeigen`}
                         </button>

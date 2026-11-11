@@ -1688,6 +1688,7 @@
     "formality": true,
     "formal_act": false,
     "group": null,
+    "own_page": false,
     "journey": [],
     "next_on_agenda": null
    },
@@ -1703,6 +1704,7 @@
     "formality": true,
     "formal_act": false,
     "group": null,
+    "own_page": false,
     "journey": [],
     "next_on_agenda": null
    },
@@ -1718,6 +1720,7 @@
     "formality": true,
     "formal_act": false,
     "group": null,
+    "own_page": false,
     "journey": [],
     "next_on_agenda": null
    },
@@ -1733,6 +1736,7 @@
     "formality": true,
     "formal_act": false,
     "group": null,
+    "own_page": false,
     "journey": [],
     "next_on_agenda": null
    },
@@ -1748,6 +1752,7 @@
     "formality": true,
     "formal_act": false,
     "group": null,
+    "own_page": false,
     "journey": [],
     "next_on_agenda": null
    },
@@ -1763,6 +1768,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": false,
     "journey": [],
     "next_on_agenda": null
    },
@@ -1778,6 +1784,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -1808,6 +1815,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -1838,6 +1846,7 @@
     "formality": false,
     "formal_act": true,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -1861,6 +1870,7 @@
     "formality": false,
     "formal_act": true,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -1884,6 +1894,7 @@
     "formality": false,
     "formal_act": true,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -1907,6 +1918,7 @@
     "formality": false,
     "formal_act": true,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -1930,6 +1942,7 @@
     "formality": false,
     "formal_act": true,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -1953,6 +1966,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -1976,6 +1990,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -1999,6 +2014,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -2022,6 +2038,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -2045,6 +2062,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [],
     "next_on_agenda": {
      "ksinr": 4654,
@@ -2064,6 +2082,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -2087,6 +2106,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [],
     "next_on_agenda": null
    },
@@ -2102,6 +2122,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -2125,6 +2146,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [],
     "next_on_agenda": null
    },
@@ -2140,6 +2162,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -2163,6 +2186,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [],
     "next_on_agenda": null
    },
@@ -2178,6 +2202,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -2201,6 +2226,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [
      {
       "ksinr": 4653,
@@ -2235,6 +2261,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [],
     "next_on_agenda": null
    },
@@ -2250,6 +2277,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": true,
     "journey": [],
     "next_on_agenda": null
    },
@@ -2265,6 +2293,7 @@
     "formality": false,
     "formal_act": false,
     "group": null,
+    "own_page": false,
     "journey": [],
     "next_on_agenda": null
    }

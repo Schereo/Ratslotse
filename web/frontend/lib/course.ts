@@ -377,6 +377,13 @@ export function courseInput(
 }
 
 /** „Kurs der Sitzung, 17 Punkte in 5 Etappen" — die Beschriftung des Bausteins. */
+/** Die Punkte mit eigener Seite (`/council/punkt`): Das Backend sagt es je
+ *  Punkt (`own_page`) — Formalien, Fragestunde, Anfragen und Mitteilungen
+ *  haben keine. Ohne Kurs (Schalter `sitzung-kurs` aus) eine leere Menge. */
+export function ownPageItems(course: SessionCourse | null | undefined): Set<string> {
+  return new Set(Object.entries(course?.items ?? {}).filter(([, it]) => it.own_page).map(([nr]) => nr));
+}
+
 export function courseAriaLabel(course: SessionCourse): string {
   const etappen = course.stages.length;
   const punkte = course.public_count;
