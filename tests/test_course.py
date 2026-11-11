@@ -569,10 +569,12 @@ def test_satz_vorher_nennt_die_wichtigen_beim_namen():
     assert course.summary_sentence(items, {}, {}, rat=True) == (
         "Im Mittelpunkt: „Geschäftsordnung“ und „Bildung des Verwaltungsausschusses“. "
         "Dazu 12 Entscheidungen, 5 Anträge, 1 Bericht und 1 weiterer Punkt.")
-    # Drei wichtige: zwei beim Namen, der dritte gezählt.
+    # Drei wichtige: zwei beim Namen, der dritte zählt still beim Rest mit
+    # („… und ein weiterer wichtiger Punkt“ sagte nichts, Tim 11.11.2026).
     items["Ö 11"] = p("Haushalt 2027", "decision", True)
-    assert course.summary_sentence(items, {}, {}, rat=True).startswith(
-        "Im Mittelpunkt: „Geschäftsordnung“, „Bildung des Verwaltungsausschusses“ und ein weiterer wichtiger Punkt. ")
+    assert course.summary_sentence(items, {}, {}, rat=True) == (
+        "Im Mittelpunkt: „Geschäftsordnung“ und „Bildung des Verwaltungsausschusses“. "
+        "Dazu 13 Entscheidungen, 5 Anträge, 1 Bericht und 1 weiterer Punkt.")
     # Nur Formalien: kein Satz.
     assert course.summary_sentence({"Ö 1": items["Ö 1"]}, {}, {}, rat=True) is None
 
