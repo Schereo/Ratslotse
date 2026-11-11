@@ -131,9 +131,13 @@ export function kurzfassung(it: AgendaRowItem): string | null {
   return it.social_text || it.summary || null;
 }
 
-export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult, live = false, liveSpeaker, onVorschau, gewaehlt = false }: {
+export function AgendaRow({ it, query, outcome, decisionId, pageHref, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult, live = false, liveSpeaker, onVorschau, gewaehlt = false }: {
   it: AgendaRowItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
+  /** Eigene Seite des Punkts (`punktHref`, Schalter `punkt-seite`): Ohne
+   *  Beschluss führt die Zeile dorthin, wie sie mit Beschluss zum Beschluss
+   *  führt. Ob ein Punkt eine hat, sagt das Backend (`course.items[nr].own_page`). */
+  pageHref?: string;
   ksinr?: number;
   bookmarkable?: boolean;
   /** Teilen-Knopf an der Zeile: verschickt die Sitzung MIT diesem Punkt —
@@ -167,6 +171,14 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
   const ergebnis = outcome ? <OutcomeDot outcome={outcome} />
     : videoResult ? <VideoResultChip r={videoResult} />
     : !it.is_public ? <Badge color="amber">nichtöffentlich</Badge> : null;
+  /* Wohin die Zeile führt: zum Beschluss, sonst zur eigenen Seite des Punkts.
+     Der Link liegt am Titel und ist über die ganze Zeile GEZOGEN
+     (`after:inset-0`), statt die Zeile zu umschließen: In der Zeile stehen
+     selbst Links (Anlagen, O1-Stream), und ein Link in einem Link ist kein
+     gültiges HTML — React meldete den Hydrierungsfehler, und der Browser
+     zerlegt solche Links eigenmächtig. */
+  const ziel = decisionId != null ? decisionHref(decisionId) : pageHref;
+  const titel = <Highlight text={ergebnis ? ohneRisErgebnis(it.title) : it.title} query={query} />;
   const body = (
     <>
       {/* w-10 statt w-7: „Ö 6.2" brach sonst auf zwei Zeilen um und zog die
@@ -201,14 +213,26 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
                 Zeilenanfang sieht nach Aufzählung aus. */}
             <a href={O1_STREAM_URL} target="_blank" rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-0.5 font-sans text-[11px] font-medium normal-case tracking-normal text-red-700 hover:underline dark:text-red-400">
+              className="relative z-[1] inline-flex items-center gap-0.5 font-sans text-[11px] font-medium normal-case tracking-normal text-red-700 hover:underline dark:text-red-400">
               <span className="hidden sm:inline">·&nbsp;</span>Zum O1-Stream <ExternalLink className="h-3 w-3" aria-hidden />
             </a>
           </span>
         )}
         {/* Ohne das angehängte „Beschluss: ungeändert beschlossen", wo das
             Ergebnis ohnehin als Marke daneben steht (lib/ris-titel.ts). */}
-        <p className="text-sm text-foreground"><Highlight text={ergebnis ? ohneRisErgebnis(it.title) : it.title} query={query} /></p>
+        <p className="text-sm text-foreground">
+          {ziel ? (
+            <Link href={ziel} aria-current={gewaehlt || undefined}
+              onClick={onVorschau && decisionId != null ? (e) => {
+                if (!istVorschauKlick(e)) return;
+                e.preventDefault();
+                onVorschau(decisionId);
+              } : undefined}
+              className="after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
+              {titel}
+            </Link>
+          ) : titel}
+        </p>
         {/* Ein Satz, worum es geht (Tims Wunsch 12.08.) — der Hinweis
             „Kurzfassung" sagt, dass hier eine Maschine zusammengefasst hat. */}
         {kurzfassung(it) && (
@@ -227,7 +251,7 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
             {it.anlagen!.map((a) => (
               <a key={a.url} href={a.url} target="_blank" rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline">
+                className="relative z-[1] inline-flex max-w-full items-center gap-1 text-xs text-primary hover:underline">
                 <Paperclip className="h-3 w-3 shrink-0" aria-hidden />
                 <span className="truncate">{a.label}</span>
               </a>
@@ -253,7 +277,7 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
       )}
       {/* Auf dem Telefon ohne Pfeil: Die ganze Zeile ist der Link, und die
           28 px fehlten dem Titel. */}
-      {decisionId != null && <ChevronRight className="mt-0.5 hidden h-4 w-4 shrink-0 text-muted-foreground/50 sm:block" aria-hidden />}
+      {(decisionId != null || pageHref) && <ChevronRight className="mt-0.5 hidden h-4 w-4 shrink-0 text-muted-foreground/50 sm:block" aria-hidden />}
     </>
   );
   const tone = gewaehlt ? "bg-primary/[0.07] ring-1 ring-primary/30"
@@ -288,29 +312,10 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
     : null;
 
   const aktionen = bookmark || teilen
-    ? <span className="flex shrink-0 items-start">{teilen}{bookmark}</span>
+    ? <span className="relative z-[1] flex shrink-0 items-start">{teilen}{bookmark}</span>
     : null;
 
-  if (decisionId != null) {
-    return (
-      <li id={domId} className={cn(layout, tone)}>
-        <Link
-          href={decisionHref(decisionId)}
-          aria-current={gewaehlt || undefined}
-          onClick={onVorschau ? (e) => {
-            if (!istVorschauKlick(e)) return;
-            e.preventDefault();
-            onVorschau(decisionId);
-          } : undefined}
-          className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-1 transition-colors active:scale-[0.995]"
-        >
-          {body}
-        </Link>
-        {aktionen}
-      </li>
-    );
-  }
-  return <li id={domId} className={cn(layout, tone)}>{body}{aktionen}</li>;
+  return <li id={domId} className={cn(layout, tone, ziel && "relative transition-colors hover:bg-muted/40")}>{body}{aktionen}</li>;
 }
 
 /** „Zuletzt geändert" (Tims Wunsch 18.08.): Ziel der Änderungs-Push — die

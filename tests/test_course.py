@@ -748,3 +748,34 @@ def test_argumente_aus_der_ablage_mit_fraktionen(store, monkeypatch):
 def test_ohne_genug_stoff_kein_reiter(store):
     _beitraege(store, 4652, [("6 VWG", "Klein", "SPD", "Zu teuer.", 3)])
     assert store.item_arguments_view(4652, "Ö 6") is None
+
+
+def test_fraktion_aus_der_anwesenheitsliste_der_eigenen_sitzung(store):
+    """Beiträge ohne Partei bekommen die Fraktion aus der Anwesenheitsliste
+    ihrer Sitzung — mit dem Label von damals, je Sitzung. Verwaltung bleibt
+    ohne; was das Protokoll nennt, bleibt, wie es ist."""
+    tn = next(z[2] for z in SITZUNGEN[4652][3] if z[0] == "Ö 6")
+    _frueher(store, 1, "Ausschuss für Finanzen und Beteiligungen", "2024-06-03", [
+        ("Ö 7", "VWG: Technologieentscheidung im Rahmen der Antriebswende - Beschluss", tn)])
+    with store._conn:
+        store._conn.executemany(
+            "INSERT INTO council_attendance (ksinr, name, party, role) VALUES (?, ?, ?, ?)",
+            [(1, "Hans-Henning Adler", "Gruppe DIE LINKE./Piratenpartei", "member"),
+             (4652, "Hans-Henning Adler", "BSW", "member"),
+             (4652, "Michael Wenzel", "Bündnis 90/Die Grünen", "chair"),
+             (4652, "Holger Denckmann", "Verwaltung", "administration")])
+    _beitraege(store, 1, [("7 VWG", "Adler", None, "Batterie ist billiger.", 4)])
+    _beitraege(store, 4652, [
+        ("6 VWG", "Ratsherr Adler", None, "Wasserstoff ist zu teuer.", 3),
+        ("6 VWG", "Wenzel", "", "Ein Mix ist sicherer.", 3),
+        ("6 VWG", "Stadtrat Denckmann", None, "Die Verwaltung empfiehlt Batterie.", 3),
+        ("6 VWG", "Klein", "SPD", "Gehört der SPD.", 4),
+    ])
+    m = store.item_argument_material(4652, "Ö 6")
+    assert [(s["speaker"], s["party"], s.get("party_source")) for s in m["speeches"]] == [
+        ("Adler", "Gruppe DIE LINKE./Piratenpartei", "attendance"),
+        ("Ratsherr Adler", "BSW", "attendance"),
+        ("Wenzel", "Bündnis 90/Die Grünen", "attendance"),
+        ("Stadtrat Denckmann", None, None),
+        ("Klein", "SPD", None),
+    ]

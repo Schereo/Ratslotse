@@ -2873,6 +2873,9 @@ class CourseItem(TypedDict):
     formality: bool
     formal_act: bool
     group: str | None
+    #: Hat der Punkt eine eigene Seite (`/council/punkt`, Schalter
+    #: `punkt-seite`)? Nicht bei Formalien, Fragestunde, Anfragen, Mitteilungen.
+    own_page: bool
     #: Alle Stationen der Vorlage (leer ohne Vorlage), älteste zuerst — die
     #: Zahl der früheren ist „Vorgeschichte N Stationen".
     journey: list[CourseStation]
