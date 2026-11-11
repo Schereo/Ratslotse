@@ -307,7 +307,7 @@ function ImportantCard({ ctx, nr }: { ctx: Ctx; nr: string }) {
       </p>
       <p className="mt-3 text-[15px] font-semibold leading-snug text-foreground">{text}</p>
       {unten && unten !== text && <p className="mt-2 text-hinweis text-muted-foreground">{unten}</p>}
-      <a href={ctx.punktSeite && ctx.decisionByItem[topKey(nr)] == null ? punktHref(ctx.ksinr, nr) : `#${topDomId(ctx.ksinr, nr)}`}
+      <a href={ctx.punktSeite && ctx.decisionByItem[topKey(nr)] == null && item.own_page ? punktHref(ctx.ksinr, nr) : `#${topDomId(ctx.ksinr, nr)}`}
         className="mt-auto inline-flex min-h-11 items-center gap-1.5 pt-3 text-sm font-medium text-primary hover:underline">
         Zum Punkt {ctx.phase === "protocol" ? <ArrowDown className="h-4 w-4" aria-hidden /> : <ArrowRight className="h-4 w-4" aria-hidden />}
       </a>
@@ -512,18 +512,31 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
   const vorlageUrl = agenda.kvonr ? `https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=${agenda.kvonr}` : null;
   const partei = item.applicant ? normalizeParty(item.applicant) : null;
   const brand = partei ? partyBrand(partei) : null;
-  const zurSeite = ctx.punktSeite && decisionId == null && !frame;
+  // Wohin die Karte führt — nur, wo es etwas zu sehen gibt (Tims Wunsch
+  // 11.11.2026): zum Beschluss, sonst zur Seite des Punkts, wenn das Backend
+  // eine verspricht (`own_page`: nicht Formalien, Fragestunde, Anfragen,
+  // Mitteilungen). Alles andere ist eine flache Karte ohne Ziel — und sieht
+  // auch so aus, statt beim Überfahren etwas zu versprechen.
+  const ziel = decisionId != null ? decisionHref(decisionId)
+    : ctx.punktSeite && item.own_page ? punktHref(ctx.ksinr, nr) : null;
 
   return (
     <article id={domId}
-      className={cn("@container relative rounded-xl border bg-card p-4 shadow-sm transition-shadow duration-weg",
-        zurSeite && "hover:border-primary/45",
+      className={cn("@container relative rounded-xl border p-4 transition-[border-color,box-shadow] duration-weg",
+        ziel
+          ? "group/karte bg-card shadow-sm maus:hover:border-primary/45 maus:hover:shadow-md"
+          : "border-dashed bg-card/40 shadow-none",
         item.important ? "border-primary/45 ring-1 ring-primary/20" : "border-border",
         ctx.flashTop === domId && "ring-2 ring-primary",
         gewaehlt && "ring-2 ring-primary")}>
+      {ziel && (
+        // Das Zeichen, dass die Karte irgendwohin führt — rechts oben, unter
+        // dem Zeiger rückt es ein Stück vor.
+        <ArrowRight aria-hidden className="absolute right-4 top-4 h-4 w-4 text-muted-foreground transition-[transform,color] duration-fluss ease-out-strong maus:group-hover/karte:text-primary motion-safe:maus:group-hover/karte:translate-x-0.5" />
+      )}
       <div className="flex flex-col gap-2 @md:flex-row @md:gap-4">
         <div className="whitespace-nowrap @md:min-w-[78px] @md:flex-none"><BigNumber nr={nr} strong={item.important} /></div>
-        <div className="min-w-0 flex-1">
+        <div className={cn("min-w-0 flex-1", ziel && "pr-6")}>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {outcome && (
               <span className="inline-flex items-center gap-1 text-sm">
@@ -540,11 +553,16 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
             {agenda.template_number && <span className={KICKER}>Vorlage {agenda.template_number}</span>}
             {agenda.dringlich && <span className={cn(KICKER, "text-signal")}>Dringlichkeitsantrag</span>}
           </div>
-          <h4 className="mt-1.5 text-[17px] font-semibold leading-snug text-foreground [hyphens:auto] [overflow-wrap:anywhere] [hyphenate-limit-chars:14_5_5]" lang="de">
-            {zurSeite ? (
+          <h4 className={cn("mt-1.5 leading-snug text-foreground [hyphens:auto] [overflow-wrap:anywhere] [hyphenate-limit-chars:14_5_5]",
+            ziel ? "text-[17px] font-semibold" : "text-base font-medium")} lang="de">
+            {ziel ? (
               // Die ganze Karte ist der Link (Plan § 4.2) — über eine
               // gestreckte Fläche, damit Links darin bedienbar bleiben.
-              <a href={punktHref(ctx.ksinr, nr)} className="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
+              <a href={ziel}
+                onClick={decisionId != null && onVorschau
+                  ? (e) => { if (!e.metaKey && !e.ctrlKey) { e.preventDefault(); onVorschau(decisionId); } }
+                  : undefined}
+                className="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
                 {item.short_title}
               </a>
             ) : item.short_title}
