@@ -9,7 +9,8 @@ import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { MeineNotiz } from "@/components/notiz/meine-notiz";
 import { useFeature } from "@/lib/features";
 import { OutcomeDot, OUTCOME_META, voteLabel, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
-import { decisionHref, themaHref, sitzungHref } from "@/lib/routes";
+import { decisionHref, fragenHref, themaHref, sitzungHref } from "@/lib/routes";
+import { FragDenRatChat } from "@/components/frag-den-rat-chat";
 import { apiUrl, istNichtGefunden } from "@/lib/api";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
@@ -613,6 +614,7 @@ function DecisionDetailInner() {
   const router = useRouter();
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   const mitNotizen = useFeature("notizen");
+  const mitChat = useFeature("beschluss-chat");
   const { data, loading, error, refetch } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null,
     // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
     // daneben sagte denselben Satz ein zweites Mal.
@@ -904,6 +906,8 @@ function DecisionDetailInner() {
             </Section>
           )}
 
+          {mitChat && <FragZumBeschluss d={d} hatVorlage={Boolean(data.template?.excerpt)} />}
+
           <div className="space-y-3 weit:hidden">
             <Zusammenhang decisionId={d.id} similar={data.similar} />
           </div>
@@ -1006,6 +1010,32 @@ function Zusammenhang({ decisionId, similar }: { decisionId: number; similar: De
         </Section>
       )}
     </>
+  );
+}
+
+/** „Frag den Rat" zu diesem Beschluss, direkt hier (Schalter `beschluss-chat`,
+ *  Tims Wunsch 11.11.2026). Der Beschluss reist als `refs.decision_id` mit —
+ *  der Server schlägt ihn nach (`qa.screen_decision`), „das" wird zu ihm. */
+function FragZumBeschluss({ d, hatVorlage }: { d: CouncilDecision; hatVorlage: boolean }) {
+  const vorschlaege = [
+    "Worum geht es dabei in einfachen Worten?",
+    d.amount_eur != null ? "Was kostet das?" : null,
+    d.vote || d.no_votes ? "Wer hat wie abgestimmt?" : null,
+    hatVorlage ? "Wie hat die Verwaltung das begründet?" : null,
+  ].filter((x): x is string => !!x).slice(0, 3);
+  return (
+    <section aria-labelledby="frag-zum-beschluss" className="mt-6 rounded-2xl border border-border bg-card shadow-sm">
+      <div className="border-b border-border p-4">
+        <h2 id="frag-zum-beschluss" className="font-display text-base font-semibold text-foreground">Frag den Rat</h2>
+        <p className="text-sm text-muted-foreground">zu diesem Beschluss</p>
+      </div>
+      <FragDenRatChat seite={{ route: "/council/decision", refs: { decision_id: d.id } }}
+        vorschlaege={vorschlaege} platzhalter="Deine Frage zu diesem Beschluss …"
+        fallbackHref={(q) => `${fragenHref({ q })}&chip=1`} />
+      <p className="border-t border-border px-4 py-3 text-hinweis text-muted-foreground">
+        Automatische Antwort aus dem Ratsarchiv. Kann unvollständig sein — Quellen prüfen.
+      </p>
+    </section>
   );
 }
 

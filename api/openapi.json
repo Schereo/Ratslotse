@@ -4346,6 +4346,15 @@
                 "maxLength": 600,
                 "title": "Selection",
                 "type": "string"
+              },
+              "surface": {
+                "default": "lotti",
+                "enum": [
+                  "lotti",
+                  "page"
+                ],
+                "title": "Surface",
+                "type": "string"
               }
             },
             "required": [
@@ -31631,6 +31640,15 @@
             "default": "",
             "maxLength": 600,
             "title": "Selection",
+            "type": "string"
+          },
+          "surface": {
+            "default": "lotti",
+            "enum": [
+              "lotti",
+              "page"
+            ],
+            "title": "Surface",
             "type": "string"
           }
         },

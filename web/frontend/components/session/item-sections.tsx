@@ -5,12 +5,11 @@
    (`app/(app)/council/sitzung/mitlesen/`) dieselben (Plan Sitzungsseite,
    Schritte 4 und 5). */
 
-import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { formatDate } from "@/components/ui";
 import { OUTCOME_DOT_CLS, OUTCOME_WORD, voteLabel } from "@/components/decision-ui";
-import { chipMerken } from "@/lib/chip-frage";
+import { FragDenRatChat } from "@/components/frag-den-rat-chat";
 import { shortCommittee } from "@/lib/committees";
 import { decisionHref, sitzungHref } from "@/lib/routes";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -83,12 +82,11 @@ export function Unterlagen({ p, titel, bare }: { p: Punkt; titel: string | null;
   );
 }
 
-/** „Frag den Rat · zu diesem Punkt": Die Frage geht an das Ratsgespräch, mit
- *  dem Punkt als Gegenstand (`ksinr` + `top` → `screen.refs`, Plan 3.10).
- *  Ohne Konto führt der Link wie jeder Frage-Chip zur Anmeldung und danach
- *  zurück zur Frage. */
+/** „Frag den Rat · zu diesem Punkt": Die Antwort entsteht hier, mit dem Punkt
+ *  als Gegenstand (`ksinr` + `top` → `screen.refs`, Plan 3.10) — seit
+ *  11.11.2026 direkt auf der Seite (`FragDenRatChat`). Ohne Konto führt eine
+ *  Frage wie jeder Frage-Chip zur Anmeldung und danach zur Fragen-Seite. */
 export function FragDenRat({ p }: { p: Punkt }) {
-  const [frage, setFrage] = useState("");
   const nr = p.item.item_number;
   const hat = (k: string) => p.documents.some((d) => d.kind === k);
   const vorschlaege = [
@@ -112,31 +110,8 @@ export function FragDenRat({ p }: { p: Punkt }) {
           Die Frage kennt diesen Punkt — du musst nichts erklären.
         </p>
       )}
-      <ul className="space-y-2 p-4">
-        {vorschlaege.map((q) => (
-          <li key={q}>
-            <Link href={ziel(q)} prefetch={false} onClick={() => chipMerken(q)}
-              className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/[0.04] px-3 py-2 text-sm text-foreground hover:bg-primary/[0.08]">
-              {q} <ArrowRight className="h-4 w-4 flex-none text-primary" aria-hidden />
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <form className="flex gap-2 px-4 pb-4" onSubmit={(e) => {
-        e.preventDefault();
-        const q = frage.trim();
-        if (q.length < 4) return;
-        chipMerken(q);
-        window.location.assign(ziel(q));
-      }}>
-        <label className="sr-only" htmlFor="punkt-frage">Deine Frage zu diesem Punkt</label>
-        <input id="punkt-frage" value={frage} onChange={(e) => setFrage(e.target.value)} placeholder="Deine Frage zu diesem Punkt …"
-          className="min-h-11 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 text-sm" />
-        <button type="submit" aria-label="Frage stellen"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </button>
-      </form>
+      <FragDenRatChat seite={{ route: "/council/punkt", refs: { ksinr: p.ksinr, item_number: nr } }}
+        vorschlaege={vorschlaege} fallbackHref={ziel} platzhalter="Deine Frage zu diesem Punkt …" />
       <p className="border-t border-border px-4 py-3 text-hinweis text-muted-foreground">
         Automatische Antwort aus den Unterlagen zu diesem Punkt. Kann unvollständig sein — Quellen prüfen.
       </p>

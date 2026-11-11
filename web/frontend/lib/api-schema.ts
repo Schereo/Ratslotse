@@ -8840,6 +8840,12 @@ export interface components {
                  * @default
                  */
                 selection: string;
+                /**
+                 * Surface
+                 * @default lotti
+                 * @enum {string}
+                 */
+                surface: "lotti" | "page";
             } | null;
         };
         /**
@@ -19827,6 +19833,12 @@ export interface components {
              * @default
              */
             selection: string;
+            /**
+             * Surface
+             * @default lotti
+             * @enum {string}
+             */
+            surface: "lotti" | "page";
         };
         /**
          * SessionCourse
@@ -30263,4 +30275,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b0e0b3cfea8a3fe9b3c8730697c00e351f80f1f38c92eb7a38edbba9deccd1b9
+// vertrag-sha256: 40a1ed30cc7d4f4ad7c6bbbcf60d1a782d07b47630b64680b4f2be7cf0c62564
