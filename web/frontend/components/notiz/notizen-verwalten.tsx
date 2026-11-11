@@ -116,7 +116,7 @@ export function NotizenVerwalten() {
                   setKeys(await addPasskey(k.key_version, await passkeyAnlegen(dk, owner, name)));
                   return "Passkey hinzugefügt.";
                 })}>
-                <Fingerprint className="mr-1.5 h-4 w-4" aria-hidden /> Passkey auf diesem Gerät hinzufügen
+                <Fingerprint className="mr-1.5 h-4 w-4" aria-hidden /> Passkey hinzufügen
               </button>
             )}
           </section>
