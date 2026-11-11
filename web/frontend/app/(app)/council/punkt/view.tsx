@@ -20,7 +20,6 @@ import { AufEinenBlick, FragDenRat, Unterlagen, Vorgeschichte, type Punkt } from
 import { MeineNotiz } from "@/components/notiz/meine-notiz";
 import { Argumente, Fraktionen } from "@/components/session/item-arguments";
 import { kurzfassung } from "@/components/tagesordnung";
-import { NwzReadHint } from "@/components/nwz-link";
 import { useFetch } from "@/lib/use-fetch";
 import { istNichtGefunden } from "@/lib/api";
 import { useFeature } from "@/lib/features";
@@ -185,7 +184,6 @@ function PunktView({ p }: { p: Punkt }) {
             )}
           </div>
 
-          <div className="mt-6"><NwzReadHint title={titel} /></div>
 
           <nav aria-label="Weitere Punkte der Sitzung" className="mt-8 flex flex-wrap gap-3 border-t border-border pt-4">
             {p.previous && (
