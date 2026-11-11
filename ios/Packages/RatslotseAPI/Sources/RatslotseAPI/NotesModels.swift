@@ -5,13 +5,17 @@ import Security
 // Der Server kennt nur Blobs; die Felder unten sind genau die des Vertrags
 // (`NoteKeysState`, `NoteEntry`, `NoteList` in `api/openapi.json`).
 
+/// Seit 11/2026 sind Passphrase und Notfall-Code freiwillig: Im Web lassen
+/// sich Notizen allein mit einem Passkey einrichten (WebAuthn-PRF). Dann sind
+/// beide Verpackungen `nil` — die App kann solche Notizen nur mit dem Code
+/// öffnen, bis sie selbst Passkeys kann.
 public struct NoteKeys: Codable, Sendable, Equatable {
     public let keyVersion: Int
     public let kdf: String
     public let iterations: Int
     public let salt: String
-    public let wrappedPassphrase: String
-    public let wrappedRecovery: String
+    public let wrappedPassphrase: String?
+    public let wrappedRecovery: String?
     public let updatedAt: String
 
     enum CodingKeys: String, CodingKey {
@@ -23,9 +27,24 @@ public struct NoteKeys: Codable, Sendable, Equatable {
     }
 }
 
+/// Ein Passkey als Schlüssel zu den Notizen — die App zählt sie nur, sie
+/// kann sie (noch) nicht benutzen.
+public struct NotePasskey: Codable, Sendable, Equatable {
+    public let id: Int
+    public let label: String
+    public let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, label
+        case createdAt = "created_at"
+    }
+}
+
 public struct NoteKeysState: Codable, Sendable, Equatable {
     public let configured: Bool
     public let keys: NoteKeys?
+    /// Optional, weil ältere Server das Feld nicht schicken.
+    public let passkeys: [NotePasskey]?
 }
 
 public struct NoteEntry: Codable, Sendable, Equatable {

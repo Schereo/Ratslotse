@@ -170,31 +170,54 @@ private struct NoteUnlock: View {
     @State private var arbeit = false
     @State private var fehler: String?
 
+    /// Im Web nur mit Passkey eingerichtet: Dann bleibt in der App nur der
+    /// Notfall-Code, falls es einen gibt (Passkeys in der App folgen).
+    private var nurPasskey: Bool { keys.wrappedPassphrase == nil }
+    private var mitCode: Bool { vergessen || nurPasskey }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if vergessen {
-                TextField("Wiederherstellungscode", text: $code)
-                    .textInputAutocapitalization(.characters).autocorrectionDisabled()
-                    .font(RatsFont.mono(14)).padding(10).overlay(feld.stroke(RatsColor.border))
-                SecureField("Neue Notiz-Passphrase (mindestens 10 Zeichen)", text: $neu)
-                    .textContentType(.newPassword).padding(10).overlay(feld.stroke(RatsColor.border))
+            if nurPasskey {
+                Text("Deine Notizen schützt ein Passkey — in der App kommt das mit einem der nächsten Updates.")
+                    .font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if mitCode {
+                if keys.wrappedRecovery != nil {
+                    TextField(nurPasskey ? "Notfall-Code" : "Wiederherstellungscode", text: $code)
+                        .textInputAutocapitalization(.characters).autocorrectionDisabled()
+                        .font(RatsFont.mono(14)).padding(10).overlay(feld.stroke(RatsColor.border))
+                }
+                if !nurPasskey {
+                    SecureField("Neue Notiz-Passphrase (mindestens 10 Zeichen)", text: $neu)
+                        .textContentType(.newPassword).padding(10).overlay(feld.stroke(RatsColor.border))
+                }
             } else {
                 SecureField("Notiz-Passphrase", text: $pass)
                     .textContentType(.password).padding(10).overlay(feld.stroke(RatsColor.border))
             }
-            Toggle("Auf diesem Gerät merken", isOn: $merken).font(RatsFont.body(14))
-            if let fehler { Text(fehler).font(RatsFont.body(13)).foregroundStyle(RatsColor.danger) }
-            HStack {
-                Button(arbeit ? "Rechnet …" : (vergessen ? "Neue Passphrase setzen" : "Entsperren")) {
-                    Task { await los() }
+            if !(nurPasskey && keys.wrappedRecovery == nil) {
+                Toggle("Auf diesem Gerät merken", isOn: $merken).font(RatsFont.body(14))
+                if let fehler { Text(fehler).font(RatsFont.body(13)).foregroundStyle(RatsColor.danger) }
+                HStack {
+                    Button(arbeit ? "Rechnet …" : (mitCode && !nurPasskey ? "Neue Passphrase setzen" : "Entsperren")) {
+                        Task { await los() }
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(arbeit || gesperrt)
+                    .opacity(arbeit || gesperrt ? 0.55 : 1)
+                    if !nurPasskey && keys.wrappedRecovery != nil {
+                        Button(vergessen ? "Zurück" : "Passphrase vergessen?") { vergessen.toggle(); fehler = nil }
+                            .font(RatsFont.body(14, weight: .medium)).foregroundStyle(RatsColor.primary)
+                    }
                 }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(arbeit || (vergessen ? neu.count < 10 || code.isEmpty : pass.isEmpty))
-                .opacity(arbeit || (vergessen ? neu.count < 10 || code.isEmpty : pass.isEmpty) ? 0.55 : 1)
-                Button(vergessen ? "Zurück" : "Passphrase vergessen?") { vergessen.toggle(); fehler = nil }
-                    .font(RatsFont.body(14, weight: .medium)).foregroundStyle(RatsColor.primary)
             }
         }
+    }
+
+    private var gesperrt: Bool {
+        if nurPasskey { return code.isEmpty }
+        return vergessen ? neu.count < 10 || code.isEmpty : pass.isEmpty
     }
 
     private func los() async {
@@ -202,12 +225,18 @@ private struct NoteUnlock: View {
         defer { arbeit = false }
         fehler = nil
         let k = keys
-        if vergessen {
+        if mitCode {
+            guard let wrappedRecovery = k.wrappedRecovery else { return }
             let (c, n) = (code, neu)
             let dk: Data? = await Task.detached {
-                NotesCrypto.unlock(recoveryCode: c, salt: k.salt, wrappedRecovery: k.wrappedRecovery)
+                NotesCrypto.unlock(recoveryCode: c, salt: k.salt, wrappedRecovery: wrappedRecovery)
             }.value
             guard let dk else { fehler = "Dieser Code passt nicht."; return }
+            if nurPasskey {
+                // Ohne Passphrase gibt es nichts neu zu verpacken.
+                model.setNotesKey(dk, remember: merken)
+                return
+            }
             let neuVerpackt: String? = await Task.detached {
                 NotesCrypto.rewrap(dk: dk, passphrase: n, salt: k.salt, iterations: k.iterations)
             }.value
@@ -221,9 +250,10 @@ private struct NoteUnlock: View {
                 fehler = (error as? APIError)?.message ?? "Das hat nicht geklappt."
             }
         } else {
+            guard let wrappedPassphrase = k.wrappedPassphrase else { return }
             let p = pass
             let dk: Data? = await Task.detached {
-                NotesCrypto.unlock(passphrase: p, salt: k.salt, iterations: k.iterations, wrappedPassphrase: k.wrappedPassphrase)
+                NotesCrypto.unlock(passphrase: p, salt: k.salt, iterations: k.iterations, wrappedPassphrase: wrappedPassphrase)
             }.value
             guard let dk else { fehler = "Diese Passphrase passt nicht."; return }
             pass = ""
