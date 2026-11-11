@@ -14,11 +14,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  OUTCOME_DOT_CLS, OUTCOME_FILL_CLS, OUTCOME_GLOW_CLS, OUTCOME_RING_CLS,
+  OUTCOME_DOT_CLS, OUTCOME_FILL_CLS, OUTCOME_GLOW_CLS, OUTCOME_RING_CLS, OUTCOME_WORD,
 } from "@/components/decision-ui";
 import {
   COURSE_MEASURE, courseAriaLabel, courseInput, layoutCourse,
-  type CellLayout, type CourseResults, type Density, type Line, type SessionCourse,
+  type Buoy, type CellLayout, type CourseResults, type Density, type Line, type SessionCourse,
 } from "@/lib/course";
 import { COURSE_LOCK_ICON, COURSE_START_ICON, courseIcon } from "@/lib/course-icons";
 import { cn } from "@/lib/utils";
@@ -69,6 +69,26 @@ export function Course({ course, results, hrefFor, onSelect, active, density = "
     [input, width, density, active],
   );
 
+  // Der Aufbau läuft einmal, beim ersten Zeichnen (globals.css „Der Kurs baut
+  // sich auf"). Danach — Umbruch bei anderer Breite, neues Ergebnis beim
+  // Mitlesen — steht der Kurs einfach da. Bei reduzierter Bewegung gar nicht:
+  // Der globale Block kürzt nur die DAUER, die Verzögerung bliebe, und die
+  // Bojen tauchten nacheinander aus dem Nichts auf.
+  const zellen = layout?.rows.reduce((n, r) => n + r.cells.length, 0) ?? 0;
+  const takt = zellen ? Math.min(55, Math.max(22, 1100 / zellen)) : 0;
+  const [bauen, setBauen] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!layout || bauen !== null) return;
+    const ruhig = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (ruhig) { setBauen(false); return; }
+    setBauen(true);
+    const t = window.setTimeout(() => setBauen(false), zellen * takt + 700);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout]);
+  const aufbau = bauen ? takt : null;
+  let start = 0;
+
   return (
     <div
       ref={ref}
@@ -79,7 +99,10 @@ export function Course({ course, results, hrefFor, onSelect, active, density = "
       // damit die Seite beim Eintreffen nicht springt.
       style={layout ? undefined : { minHeight: 86 }}
     >
-      {layout?.rows.map((row, r) => (
+      {layout?.rows.map((row, r) => {
+        const ab = start;
+        start += row.cells.length;
+        return (
         <div
           key={r}
           className="relative flex w-full"
@@ -91,9 +114,15 @@ export function Course({ course, results, hrefFor, onSelect, active, density = "
             paddingRight: COURSE_MEASURE.margin,
           }}
         >
-          {row.cells.map((cell, c) => (
-            <Cell key={c} cell={cell} reverse={row.reverse} layout={layout} onSelect={onSelect} />
-          ))}
+          {row.cells.map((cell, c) => {
+            // Wo die Karte unter der Boje ansetzt: am Zeilenrand bündig, sonst mittig.
+            const sicht = row.reverse ? row.cells.length - 1 - c : c;
+            const kante = sicht < 2 ? "start" : sicht > row.cells.length - 3 ? "end" : "mitte";
+            return (
+              <Cell key={c} cell={cell} reverse={row.reverse} layout={layout} onSelect={onSelect}
+                kante={kante} verzug={aufbau == null ? null : (ab + c) * aufbau} />
+            );
+          })}
           {row.turn && (
             // Die Kehre: im Rand neben dem Zeilenende, von der Linie dieser
             // Zeile zur Linie der nächsten.
@@ -107,18 +136,28 @@ export function Course({ course, results, hrefFor, onSelect, active, density = "
               style={{
                 top: layout.head + layout.node / 2 - 1,
                 height: layout.rowHeight + COURSE_MEASURE.rowGap + 2,
+                ...(aufbau == null ? {} : {
+                  animation: `kurs-band var(--takt-fluss) var(--ease-out-strong) ${(ab + row.cells.length) * aufbau}ms both`,
+                }),
               }}
             />
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function Cell({ cell, reverse, layout, onSelect }: {
+type Kante = "start" | "mitte" | "end";
+
+function Cell({ cell, reverse, layout, onSelect, kante, verzug }: {
   cell: CellLayout; reverse: boolean; layout: NonNullable<ReturnType<typeof layoutCourse>>;
   onSelect?: (itemNumber: string) => void;
+  /** Wo die Hover-Karte ansetzt (in Leserichtung des Bildschirms). */
+  kante: Kante;
+  /** Aufbau: ab wann diese Zelle dran ist (ms) — `null`: kein Aufbau. */
+  verzug: number | null;
 }) {
   const { compact } = layout;
   const inBand = cell.stage >= 0;
@@ -137,7 +176,10 @@ function Cell({ cell, reverse, layout, onSelect }: {
         <span
           aria-hidden
           className={cn("absolute inset-y-0", cell.closed ? "bg-card/30" : "bg-card/60")}
-          style={{ left, right, borderRadius: `${radL}px ${radR}px ${radR}px ${radL}px` }}
+          style={{
+            left, right, borderRadius: `${radL}px ${radR}px ${radR}px ${radL}px`,
+            ...(verzug == null ? {} : { animation: `kurs-band var(--takt-buehne) var(--ease-out-strong) ${Math.max(0, verzug - 120)}ms both` }),
+          }}
         />
       )}
       {cell.label && (
@@ -149,6 +191,7 @@ function Cell({ cell, reverse, layout, onSelect }: {
             fontSize: compact ? 9.5 : 10.5,
             textAlign: reverse ? "right" : "left",
             ...(reverse ? { right: abzug / 2 } : { left: abzug / 2 }),
+            ...(verzug == null ? {} : { animation: `kurs-band var(--takt-buehne) var(--ease-out-strong) ${Math.max(0, verzug - 120)}ms both` }),
           }}
         >
           {cell.label}
@@ -158,9 +201,17 @@ function Cell({ cell, reverse, layout, onSelect }: {
         className="relative flex items-center self-stretch"
         style={{ height: layout.node, marginTop: layout.head, flexDirection: reverse ? "row-reverse" : "row" }}
       >
-        <span aria-hidden className={cn("h-0 flex-1 basis-0 border-t-2", LINE_CLS[cell.lineBefore])} />
-        <Node cell={cell} compact={compact} onSelect={onSelect} />
-        <span aria-hidden className={cn("h-0 flex-1 basis-0 border-t-2", LINE_CLS[cell.lineAfter])} />
+        {/* Die Linie wächst in Wegrichtung: von links, in rückwärts laufenden
+            Zeilen von rechts. */}
+        <span aria-hidden className={cn("h-0 flex-1 basis-0 border-t-2", LINE_CLS[cell.lineBefore])}
+          style={linie(verzug, -0.6, reverse)} />
+        <span className="group/tipp relative flex flex-none"
+          style={verzug == null ? undefined : { animation: `kurs-boje var(--takt-buehne) var(--ease-back-out) ${verzug}ms both` }}>
+          <Node cell={cell} compact={compact} onSelect={onSelect} />
+          <Tipp cell={cell} kante={kante} />
+        </span>
+        <span aria-hidden className={cn("h-0 flex-1 basis-0 border-t-2", LINE_CLS[cell.lineAfter])}
+          style={linie(verzug, 0.25, reverse)} />
       </span>
       {cell.number && (
         <span
@@ -168,7 +219,10 @@ function Cell({ cell, reverse, layout, onSelect }: {
             "relative mt-0.5 whitespace-nowrap font-mono leading-[14px] tracking-[0.05em]",
             cell.numberStrong ? "font-bold text-foreground" : "font-medium text-muted-foreground",
           )}
-          style={{ fontSize: compact ? 9.5 : 10.5 }}
+          style={{
+            fontSize: compact ? 9.5 : 10.5,
+            ...(verzug == null ? {} : { animation: `kurs-band var(--takt-buehne) var(--ease-out-strong) ${verzug + 80}ms both` }),
+          }}
         >
           {cell.number}
         </span>
@@ -182,6 +236,69 @@ function Cell({ cell, reverse, layout, onSelect }: {
   );
 }
 
+/** Ein Linienstück im Aufbau: wächst per `scaleX` aus der Richtung, aus der
+ *  der Weg kommt. `versatz` in Takten relativ zur Boje (vorher negativ). */
+function linie(verzug: number | null, versatz: number, reverse: boolean): React.CSSProperties | undefined {
+  if (verzug == null) return undefined;
+  const takt = 45;
+  return {
+    transformOrigin: reverse ? "right center" : "left center",
+    animation: `kurs-linie var(--takt-fluss) var(--ease-out-strong) ${Math.max(0, verzug + versatz * takt)}ms both`,
+  };
+}
+
+/** Die Hover-Karte einer Boje (Tims Wunsch 11.11.2026): statt des nativen
+ *  Tooltips, der erst nach einer Sekunde und im Systemgrau erscheint. Nur
+ *  unter dem Zeiger (`maus:`) und beim Tabben — auf dem Telefon führt der Tipp
+ *  ohnehin direkt zum Punkt. Die Boje trägt ihren Namen weiter als
+ *  `aria-label`; die Karte ist Beiwerk und für Vorleser verborgen. */
+function Tipp({ cell, kante }: { cell: CellLayout; kante: Kante }) {
+  const b = cell.buoy;
+  if (cell.kind === "start") return <TippKarte kante={kante} nummer={cell.number} text="Beginn der Sitzung" />;
+  if (!b || cell.kind === "empty" || cell.kind === "pad") return null;
+  const vorne = `${b.label} · `;
+  const text = b.title.startsWith(vorne) ? b.title.slice(vorne.length) : b.title;
+  return <TippKarte kante={kante} nummer={b.label} text={text} buoy={b} />;
+}
+
+function TippKarte({ kante, nummer, text, buoy }: { kante: Kante; nummer: string | null; text: string; buoy?: Buoy }) {
+  const merkmale: React.ReactNode[] = [];
+  if (buoy?.outcome) {
+    merkmale.push(
+      <span key="e" className="inline-flex items-center gap-1.5">
+        <span aria-hidden className={cn("h-2 w-2 rounded-full", OUTCOME_DOT_CLS[buoy.outcome])} />
+        {OUTCOME_WORD[buoy.outcome]}{buoy.provisional ? " · vorläufig, aus der Übertragung" : ""}
+      </span>,
+    );
+  }
+  if (buoy?.important) merkmale.push(<span key="w">Wichtig</span>);
+  if (buoy?.postponed) {
+    merkmale.push(
+      <span key="v" className="inline-flex items-center gap-1.5">
+        <span aria-hidden className={cn("h-2 w-2 rounded-full", OUTCOME_DOT_CLS.postponed)} />
+        Stand schon einmal hier und wurde vertagt
+      </span>,
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute bottom-full z-30 mb-2 w-max max-w-[min(18rem,80vw)] rounded-xl border border-border bg-popover px-3 py-2 text-left shadow-lg",
+        "invisible opacity-0 transition-[opacity,visibility] duration-tipp ease-out-strong",
+        "maus:group-hover/tipp:visible maus:group-hover/tipp:opacity-100 group-has-[:focus-visible]/tipp:visible group-has-[:focus-visible]/tipp:opacity-100",
+        kante === "start" ? "left-0" : kante === "end" ? "right-0" : "left-1/2 -translate-x-1/2",
+      )}
+    >
+      {nummer && <span className="block font-mono text-[10.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground">{nummer}</span>}
+      <span className="mt-0.5 line-clamp-3 block text-[13px] leading-snug text-popover-foreground">{text}</span>
+      {merkmale.length > 0 && (
+        <span className="mt-1.5 flex flex-col gap-0.5 text-xs text-muted-foreground">{merkmale}</span>
+      )}
+    </span>
+  );
+}
+
 function Node({ cell, compact, onSelect }: {
   cell: CellLayout; compact: boolean; onSelect?: (itemNumber: string) => void;
 }) {
@@ -192,7 +309,8 @@ function Node({ cell, compact, onSelect }: {
   if (cell.kind === "start") {
     return (
       <span
-        title="Beginn"
+        role="img"
+        aria-label="Beginn der Sitzung"
         className="flex flex-none items-center justify-center rounded-full bg-primary text-primary-foreground"
         style={{ width: M.circle, height: M.circle }}
       >
@@ -203,7 +321,8 @@ function Node({ cell, compact, onSelect }: {
   if (cell.kind === "lock" && b) {
     return (
       <span
-        title={b.title}
+        role="img"
+        aria-label={b.title}
         className={cn(
           "flex flex-none items-center justify-center rounded-full border border-dashed border-muted-foreground/55 bg-background text-muted-foreground",
           marker,
@@ -221,7 +340,6 @@ function Node({ cell, compact, onSelect }: {
       <span
         role="img"
         aria-label={b.title}
-        title={b.title}
         className={cn(
           "box-border h-2.5 w-2.5 flex-none rounded-full border-2 bg-card",
           b.outcome ? OUTCOME_RING_CLS[b.outcome] : "border-primary/55",
@@ -285,7 +403,7 @@ function Node({ cell, compact, onSelect }: {
   const label = b.title + (b.postponed ? " · stand schon einmal hier und wurde vertagt" : "");
 
   if (!cell.interactive) {
-    return <span role="img" aria-label={label} title={b.title} className={hit} style={margin}>{inner}</span>;
+    return <span role="img" aria-label={label} className={hit} style={margin}>{inner}</span>;
   }
   if (onSelect) {
     const ziel = b.items[0] ?? b.label;
@@ -295,7 +413,6 @@ function Node({ cell, compact, onSelect }: {
         onClick={() => onSelect(ziel)}
         aria-label={label}
         aria-current={cell.active ? "step" : undefined}
-        title={b.title}
         className={hit}
         style={margin}
       >
@@ -308,7 +425,6 @@ function Node({ cell, compact, onSelect }: {
       href={b.href ?? "#"}
       aria-label={label}
       aria-current={cell.active ? "step" : undefined}
-      title={b.title}
       className={hit}
       style={margin}
     >

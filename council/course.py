@@ -745,37 +745,89 @@ def _zahl(n: int) -> str:
     return _ZAHLWORT[n] if 0 <= n < len(_ZAHLWORT) else str(n)
 
 
+def _titel(t: str) -> str:
+    """Ein Titel im Satz, in deutschen Anführungszeichen. Zitiert der Titel
+    selbst („Teileinziehung der Straße "Junkerstraße"“), wird das innere Paar
+    zu halben Zeichen — „… ‚Junkerstraße‘“, wie im Deutschen üblich."""
+    t = re.sub(r'["„“]([^"„“]+)["“”]', r"‚\1‘", t.strip())
+    return f"„{t}“"
+
+
 def _aufzaehlen(teile: list[str]) -> str:
     return teile[0] if len(teile) == 1 else ", ".join(teile[:-1]) + " und " + teile[-1]
 
 
+#: Die Arten im Plural — für „Dazu 12 Vorberatungen, 5 Anträge und 3 Berichte".
+_ARTEN: dict[str, tuple[str, str]] = {
+    "decision": ("Entscheidung", "Entscheidungen"),
+    "preliminary": ("Vorberatung", "Vorberatungen"),
+    "motion": ("Antrag", "Anträge"),
+    "report": ("Bericht", "Berichte"),
+    "other": ("weiterer Punkt", "weitere Punkte"),
+}
+
+
+def _zusammensetzung(punkte: list[dict]) -> str | None:
+    """„12 Vorberatungen, 5 Anträge und 3 Berichte" — die häufigsten Arten
+    zuerst, höchstens drei; der Rest als „N weitere Punkte"."""
+    zahl: dict[str, int] = {}
+    for it in punkte:
+        art = it["type"] if it["type"] in _ARTEN else "other"
+        zahl[art] = zahl.get(art, 0) + 1
+    if not zahl:
+        return None
+    # „weitere Punkte" immer zuletzt — es ist der Rest, keine Art.
+    reihe = sorted(zahl.items(), key=lambda kv: (kv[0] == "other", -kv[1]))
+    teile = [f"{n} {_ARTEN[a][0 if n == 1 else 1]}" for a, n in reihe[:3]]
+    rest = sum(n for _a, n in reihe[3:])
+    if rest:
+        teile.append(f"{rest} {'weiterer Punkt' if rest == 1 else 'weitere Punkte'}")
+    return _aufzaehlen(teile)
+
+
 def summary_sentence(items: dict[str, dict], outcomes: dict[str, str | None],
-                     votes: dict[str, str | None], *, rat: bool) -> str | None:
+                     votes: dict[str, str | None], *, rat: bool, vorbei: bool = False) -> str | None:
     """Der Satz zur Sitzung — gerechnet, ohne Modell (Plan 3.1, Schritt 3.6).
 
-    ``outcomes`` leer heißt: kein Protokoll. Dann zählt der Satz, was ansteht
-    („9 Punkte zur Beratung, darunter 3 Anträge. Zwei standen schon einmal
-    hier und wurden vertagt."). Mit Protokoll sagt er, was herauskam: wie
-    viele Beschlussvorlagen angenommen wurden, welche wichtigen darunter, was
-    vertagt oder abgelehnt wurde. Eine Zählung, die null ergibt, entfällt.
+    ``outcomes`` leer heißt: kein Protokoll. Dann sagt der Satz, WORUM es
+    geht: die wichtigen Punkte beim Namen, danach, was sonst ansteht, nach
+    Art gezählt („Im Mittelpunkt: Geschäftsordnung und Bildung des
+    Verwaltungsausschusses. Dazu 12 Vorberatungen und 5 Anträge."). Bis
+    11/2026 stand dort nur die Zahl („21 Punkte zur Beratung") — Tim: keine
+    sinnvolle Information. ``vorbei``: Die Sitzung ist gewesen, das Protokoll
+    fehlt noch; das sagt der Satz dann auch. Mit Protokoll sagt er, was
+    herauskam: wie viele Beschlussvorlagen angenommen wurden, welche
+    wichtigen darunter, was vertagt oder abgelehnt wurde. Eine Zählung, die
+    null ergibt, entfällt.
     """
     inhalt = {nr: it for nr, it in items.items() if it["type"] not in FRAME_TYPES}
     if not inhalt:
         return None
     if not outcomes:
-        n = len(inhalt)
-        antraege = sum(1 for it in inhalt.values() if it["type"] == "motion")
-        satz = f"{n} {'Punkt' if n == 1 else 'Punkte'} zur Beratung"
-        if antraege and antraege < n:
-            satz += f", darunter {antraege} {'Antrag' if antraege == 1 else 'Anträge'}"
-        elif antraege == n:
-            satz = f"{n} {'Antrag' if n == 1 else 'Anträge'} zur Beratung"
-        saetze = [satz + "."]
+        wichtig = [it for it in inhalt.values() if it["important"]][:3]
+        rest = [it for it in inhalt.values() if it not in wichtig]
+        saetze: list[str] = []
+        zusammen = _zusammensetzung(rest)
+        if wichtig:
+            # In Anführungszeichen: Die Titel tragen selbst Kommas und „und“
+            # („Geschäftsordnung für den Rat, den Verwaltungsausschuss und die
+            # Ratsausschüsse“) — ohne Zeichen verschwimmt die Aufzählung. Mehr
+            # als zwei beim Namen werden zur Wand; die Karten darunter nennen sie.
+            namen = [_titel(it["short_title"]) for it in wichtig[:2]]
+            if len(wichtig) > 2:
+                namen.append("ein weiterer wichtiger Punkt")
+            saetze.append(f"Im Mittelpunkt: {_aufzaehlen(namen)}.")
+            if zusammen:
+                saetze.append(f"Dazu {zusammen}.")
+        elif zusammen:
+            saetze.append(f"Auf der Tagesordnung: {zusammen}.")
         v = sum(1 for it in inhalt.values() if it["postponed"])
         if v:
             saetze.append(f"{'Einer stand' if v == 1 else _zahl(v).capitalize() + ' standen'} schon einmal "
                           f"hier und {'wurde' if v == 1 else 'wurden'} vertagt.")
-        return " ".join(saetze)
+        if vorbei:
+            saetze.append("Das Protokoll liegt noch nicht vor.")
+        return " ".join(saetze) or None
 
     wer = "Der Rat" if rat else "Der Ausschuss"
     vorlagen = [nr for nr, it in inhalt.items() if it["type"] in ("decision", "preliminary")]
@@ -790,7 +842,7 @@ def summary_sentence(items: dict[str, dict], outcomes: dict[str, str | None],
                  else f"{wort(len(angenommen))} von {wort(len(vorlagen))} Beschlussvorlagen"
                  if len(vorlagen) > 1 else "die Beschlussvorlage")
         satz = f"{wer} hat {menge}{' einstimmig' if einstimmig else ''} angenommen"
-        wichtig = [inhalt[nr]["short_title"] for nr in angenommen if inhalt[nr]["important"]][:2]
+        wichtig = [_titel(inhalt[nr]["short_title"]) for nr in angenommen if inhalt[nr]["important"]][:2]
         if wichtig:
             satz += f", darunter {_aufzaehlen(wichtig)}"
         saetze.append(satz + ".")
@@ -800,7 +852,7 @@ def summary_sentence(items: dict[str, dict], outcomes: dict[str, str | None],
             continue
         if len(nrs) <= 2:
             saetze.append(f"{'Vertagt' if schluessel == 'postponed' else 'Abgelehnt'} "
-                          f"{'wurde' if len(nrs) == 1 else 'wurden'} {_aufzaehlen([inhalt[n]['short_title'] for n in nrs])}.")
+                          f"{'wurde' if len(nrs) == 1 else 'wurden'} {_aufzaehlen([_titel(inhalt[n]['short_title']) for n in nrs])}.")
         else:
             saetze.append(f"{_zahl(len(nrs)).capitalize()} Punkte wurden {partizip}.")
     return " ".join(saetze) or None

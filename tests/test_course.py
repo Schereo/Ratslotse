@@ -541,14 +541,40 @@ def test_piktogramme_im_web():
 
 # ---- Satz zur Sitzung, Weg der Vorlage, wie es weitergeht (Schritt 3) ----
 
-def test_satz_vor_dem_protokoll_zaehlt_was_ansteht(store):
+def test_satz_vor_dem_protokoll_sagt_was_ansteht(store):
+    """Die Sitzungen der Fixtur sind gewesen, ihr Protokoll fehlt — das sagt
+    der Satz dazu. Ohne wichtige Punkte zählt er nach Art."""
     _frueher(store, 1, "Verkehrsausschuss", "2026-08-24", [
         ("Ö 16.9", "Parken auf Sicherheitstrennstreifen - Beschluss Beschluss: zurückgestellt/abgesetzt", "26/0658"),
     ])
     k = store.session_course(4654)
-    assert k["summary"] == ("9 Punkte zur Beratung, darunter 3 Anträge. "
-                            "Einer stand schon einmal hier und wurde vertagt.")
-    assert store.session_course(4593)["summary"] == "2 Anträge zur Beratung."
+    assert k["summary"] == ("Auf der Tagesordnung: 3 Entscheidungen, 3 Berichte und 3 Anträge. "
+                            "Einer stand schon einmal hier und wurde vertagt. "
+                            "Das Protokoll liegt noch nicht vor.")
+    assert store.session_course(4593)["summary"] == (
+        "Auf der Tagesordnung: 2 Anträge. Das Protokoll liegt noch nicht vor.")
+
+
+def test_satz_vorher_nennt_die_wichtigen_beim_namen():
+    """Tims Befund 11.11.2026: „21 Punkte zur Beratung“ sagt nichts. Die
+    wichtigen Punkte stehen beim Namen vorn, der Rest nach Art gezählt."""
+    def p(t, typ, wichtig=False):
+        return {"type": typ, "short_title": t, "important": wichtig, "postponed": 0}
+    items = {"Ö 1": p("Genehmigung der Tagesordnung", "formality"),
+             "Ö 5": p("Geschäftsordnung", "decision", True),
+             "Ö 6": p("Bildung des Verwaltungsausschusses", "decision", True),
+             **{f"Ö 7.{i}": p(f"Wahl {i}", "decision") for i in range(1, 13)},
+             **{f"Ö 8.{i}": p(f"Antrag {i}", "motion") for i in range(1, 6)},
+             "Ö 9": p("Bericht", "report"), "Ö 10": p("Sonstiges", "other")}
+    assert course.summary_sentence(items, {}, {}, rat=True) == (
+        "Im Mittelpunkt: „Geschäftsordnung“ und „Bildung des Verwaltungsausschusses“. "
+        "Dazu 12 Entscheidungen, 5 Anträge, 1 Bericht und 1 weiterer Punkt.")
+    # Drei wichtige: zwei beim Namen, der dritte gezählt.
+    items["Ö 11"] = p("Haushalt 2027", "decision", True)
+    assert course.summary_sentence(items, {}, {}, rat=True).startswith(
+        "Im Mittelpunkt: „Geschäftsordnung“, „Bildung des Verwaltungsausschusses“ und ein weiterer wichtiger Punkt. ")
+    # Nur Formalien: kein Satz.
+    assert course.summary_sentence({"Ö 1": items["Ö 1"]}, {}, {}, rat=True) is None
 
 
 def test_satz_nach_dem_protokoll_sagt_was_herauskam(store):
@@ -564,8 +590,8 @@ def test_satz_nach_dem_protokoll_sagt_was_herauskam(store):
     k = store.session_course(4652)
     assert k["summary"] == (
         "Der Ausschuss hat alle sieben Beschlussvorlagen einstimmig angenommen, darunter "
-        "Verkehr und Wasser GmbH (VWG): Technologieentscheidung im Rahmen der Antriebswende und "
-        "Teileinziehung der Straße \"Junkerstraße\". Vertagt wurde Weißenmoorstraße.")
+        "„Verkehr und Wasser GmbH (VWG): Technologieentscheidung im Rahmen der Antriebswende“ und "
+        "„Teileinziehung der Straße ‚Junkerstraße‘“. Vertagt wurde „Weißenmoorstraße“.")
 
 
 def test_satz_im_rat_und_ohne_zahlwort_bei_grossen_zahlen():
@@ -574,7 +600,7 @@ def test_satz_im_rat_und_ohne_zahlwort_bei_grossen_zahlen():
     outcomes = {nr: "accepted" for nr in items}
     outcomes["Ö 14"] = "rejected"
     assert course.summary_sentence(items, outcomes, {}, rat=True) == (
-        "Der Rat hat 13 von 14 Beschlussvorlagen angenommen. Abgelehnt wurde T14.")
+        "Der Rat hat 13 von 14 Beschlussvorlagen angenommen. Abgelehnt wurde „T14“.")
     assert course.summary_sentence({}, {}, {}, rat=False) is None
 
 

@@ -1732,3 +1732,24 @@ section[aria-labelledby^="plan-"] {
 ::view-transition-new(root) {
   animation-duration: var(--takt-fluss);
 }
+
+/* ── Der Kurs baut sich auf (`components/session/course.tsx`) ──────────────
+   Beim ersten Zeichnen läuft der Kurs seinen Weg ab: erst die Linie, dann die
+   Boje, Zeile für Zeile, über die Kehre in die nächste (Tims Wunsch
+   11.11.2026). Die Bewegung trägt die Reihenfolge der Sitzung — dieselbe
+   Leserichtung wie die Schlange selbst, rückwärts in jeder zweiten Zeile.
+   Läuft einmal; Messen und Umbrechen danach bewegen nichts mehr. Alle drei
+   enden auf `none` (s. fade-up), der globale reduced-motion-Block oben legt
+   sie still. */
+@keyframes kurs-boje {
+  from { transform: scale(0.35); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes kurs-linie {
+  from { transform: scaleX(0); }
+  to { transform: none; }
+}
+@keyframes kurs-band {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
