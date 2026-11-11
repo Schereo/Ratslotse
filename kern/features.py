@@ -296,6 +296,15 @@ FEATURES: dict[str, Feature] = {
                     "(Einrichten, zweites Gerät, Passphrase wechseln, Wiederherstellung), App liest "
                     "dieselben Testvektoren; dann mit dem Release auf Prod an.",
     ),
+    "beschluss-chat": Feature(
+        key="beschluss-chat",
+        description="„Frag den Rat“ direkt auf der Seite eines Beschlusses: Die Antwort entsteht "
+                    "dort, mit dem Beschluss als Gegenstand, statt auf die Fragen-Seite zu "
+                    "springen (Tims Wunsch 11.11.2026; auf der Punkt-Seite gehört er zu "
+                    "`punkt-seite`).",
+        fertig_wenn="Auf dev zwei Wochen ohne Befund, Antworten mit Beschluss-Bezug von Tim "
+                    "gegengelesen und auf Prod angeschaltet.",
+    ),
     "punkt-argumente": Feature(
         key="punkt-argumente",
         description="Die Reiter „Argumente“ und „Fraktionen“ auf der Punkt-Seite: Streitpunkte mit "

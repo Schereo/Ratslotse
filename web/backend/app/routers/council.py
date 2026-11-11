@@ -5106,6 +5106,14 @@ class ScreenContext(BaseModel):
     # nicht zur Identität. Optional mit leerem Default: Die ausgelieferte
     # iOS-App schickt das Feld nicht (ios/CLAUDE.md).
     refs: ExplainRefs = Field(default_factory=ExplainRefs)
+    # **Wer fragt: Lottis Fenster oder die Seite selbst?** Bis 11/2026 schickte
+    # nur Lottis Fenster einen Bildschirm mit, und „hat `screen`" hieß deshalb
+    # „Lotti-Gespräch". Seitdem fragen auch die Punkt-Seite (über die
+    # Fragen-Seite) und der Chat direkt auf Punkt- und Beschluss-Seite mit
+    # ihrem Gegenstand — deren Gespräche gehören auf die Fragen-Seite, nicht in
+    # Lottis Fenster. Vorgabe ``lotti``: So bleibt Lotti, die das Feld nicht
+    # kennt, wie sie war.
+    surface: Literal["lotti", "page"] = "lotti"
 
 
 class AskBody(BaseModel):
@@ -5394,7 +5402,7 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
             # darin (gemessen am 22.09.2026: Gespräch 51, kind=ask).
             conversation_id = ratslotse.qa_gespraech_start(
                 user["id"], q_suche or body.question,
-                kind="lotti" if body.screen else "ask")
+                kind="lotti" if body.screen and body.screen.surface == "lotti" else "ask")
             if conversation_id is None:
                 return None
         zitiert = set(cited)

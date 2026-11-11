@@ -7031,6 +7031,14 @@ def test_eine_frage_aus_lottis_fenster_wird_ein_lotti_gespraech(client, monkeypa
         # Ohne Bildschirm bleibt es die Fragen-Seite — und damit ein `ask`.
         von_der_seite = frage({"question": "Was ist mit dem Stadion?", "conversation_id": None})
         assert store.qa_gespraech(von_der_seite, uid)["kind"] == "ask"
+
+        # Fragt die Seite selbst mit ihrem Gegenstand (Chat auf Punkt- und
+        # Beschluss-Seite, Fragen-Seite mit Punkt-Bezug), ist es ebenfalls ein
+        # `ask` — der Bildschirm allein heißt nicht mehr „Lotti“.
+        mit_gegenstand = frage({"question": "Wer hat dagegen gestimmt?", "conversation_id": None,
+                                "screen": {"route": "/council/decision", "surface": "page",
+                                           "refs": {"decision_id": 5}}})
+        assert store.qa_gespraech(mit_gegenstand, uid)["kind"] == "ask"
     finally:
         store.close()
 

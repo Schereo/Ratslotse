@@ -75,7 +75,7 @@ import {
   RulesOfProcedureBlock, type RulesOfProcedureCard,
 } from "@/components/qa-bausteine";
 import {
-  anlageNummer, anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
+  anlageNummer, anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz, zitatNummern,
 } from "@/lib/qa-belege";
 
 /** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
@@ -652,16 +652,8 @@ const fmtEur = (n: number) =>
 
 /** Fußnoten-Nummern eines Turns: [id]-Zitate in Reihenfolge des Auftauchens. */
 function useIdToNum(turn: Turn) {
-  return useMemo(() => {
-    const valid = new Set(turn.sources.map((s) => s.id));
-    const map = new Map<number, number>();
-    for (const g of turn.answer.matchAll(CITE_RE)) {
-      for (const id of citationIds(g[0])) {
-        if (valid.has(id) && !map.has(id)) map.set(id, map.size + 1);
-      }
-    }
-    return map;
-  }, [turn.answer, turn.sources]);
+  return useMemo(() => zitatNummern(turn.answer, turn.sources.map((s) => s.id)),
+    [turn.answer, turn.sources]);
 }
 
 function zitierteVon(turn: Turn, idToNum: Map<number, number>): QaSource[] {
@@ -913,6 +905,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                                // Gegenstand (der Server schlägt ihn nach, s. AskBody).
                                ...(bezugJetzt ? { screen: {
                                  route: "/council/punkt",
+                                 // Die Seite fragt, nicht Lottis Fenster → `ask`-Gespräch.
+                                 surface: "page",
                                  refs: { ksinr: bezugJetzt.ksinr, item_number: bezugJetzt.item_number },
                                  ...(bezugJetzt.streit ? { element_title: `Streitpunkt: ${bezugJetzt.streit.title}`,
                                                           element_text: bezugJetzt.streit.text } : {}),
