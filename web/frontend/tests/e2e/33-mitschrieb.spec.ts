@@ -9,7 +9,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { zustandsDatei } from "./konten";
-import { notizenSchein, type Ablage } from "./notizen-schein";
+import { notizenSchein, passphraseWeg, type Ablage } from "./notizen-schein";
 
 test.use({ storageState: zustandsDatei("nutzerin") });
 
@@ -37,6 +37,7 @@ test.describe("Mein Mitschrieb", () => {
     const k = karte(page);
     await expect(k.getByRole("heading", { name: "Mein Mitschrieb zu Ö 9" })).toBeVisible();
     await k.getByRole("button", { name: "Notizen einrichten" }).click();
+    await passphraseWeg(k);
     await k.locator("input[type=password]").nth(0).fill(PASS);
     await k.locator("input[type=password]").nth(1).fill(PASS);
     await k.getByRole("button", { name: "Weiter" }).click();

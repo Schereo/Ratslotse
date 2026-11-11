@@ -6,7 +6,19 @@
  */
 import type { Page, Route } from "@playwright/test";
 
-export type Ablage = { keys: Record<string, unknown> | null; notes: Map<string, Record<string, unknown>> };
+export type Ablage = {
+  keys: Record<string, unknown> | null;
+  notes: Map<string, Record<string, unknown>>;
+  passkeys?: Record<string, unknown>[];
+};
+
+/** Vor dem Passphrase-Weg: Wo der Browser Passkeys kann, steht erst das
+ *  Passkey-Angebot da — dann „Lieber mit Passphrase“. */
+export async function passphraseWeg(karte: import("@playwright/test").Locator) {
+  const lieber = karte.getByRole("button", { name: "Lieber mit Passphrase" });
+  await lieber.or(karte.locator("input[type=password]").first()).first().waitFor();
+  if (await lieber.isVisible()) await lieber.click();
+}
 
 export async function notizenSchein(page: Page, ablage: Ablage) {
   await page.route("**/api/notes**", async (route: Route) => {
@@ -14,16 +26,40 @@ export async function notizenSchein(page: Page, ablage: Ablage) {
     const pfad = new globalThis.URL(req.url()).pathname.replace(/^\/api\/notes/, "");
     const body = req.postData() ? JSON.parse(req.postData()!) : null;
     const jetzt = new Date().toISOString().slice(0, 19);
+    const passkeys = () => (ablage.passkeys ??= []);
+    const zustand = () => ({
+      configured: !!ablage.keys,
+      keys: ablage.keys ? { wrapped_passphrase: null, wrapped_recovery: null, ...ablage.keys } : null,
+      passkeys: ablage.keys ? passkeys() : [],
+    });
     if (pfad === "/keys") {
-      if (req.method() === "GET") return route.fulfill({ json: { configured: !!ablage.keys, keys: ablage.keys } });
-      if (req.method() === "DELETE") { ablage.keys = null; ablage.notes.clear(); return route.fulfill({ json: { deleted: 0 } }); }
-      if (body.wrapped_recovery) {
-        if (ablage.keys) return route.fulfill({ status: 409, json: { detail: "Notizen sind schon eingerichtet." } });
-        ablage.keys = { ...body, updated_at: jetzt };
-      } else {
-        ablage.keys = { ...ablage.keys, ...body, updated_at: jetzt };
+      if (req.method() === "GET") return route.fulfill({ json: zustand() });
+      if (req.method() === "DELETE") {
+        ablage.keys = null; ablage.notes.clear(); ablage.passkeys = [];
+        return route.fulfill({ json: { deleted: 0 } });
       }
-      return route.fulfill({ json: { configured: true, keys: ablage.keys } });
+      const { passkey, ...rest } = body;
+      if (rest.wrapped_recovery || passkey || !ablage.keys) {
+        if (ablage.keys) return route.fulfill({ status: 409, json: { detail: "Notizen sind schon eingerichtet." } });
+        ablage.keys = { ...rest, updated_at: jetzt };
+        if (passkey) passkeys().push({ id: 1, ...passkey, created_at: jetzt });
+      } else {
+        ablage.keys = { ...ablage.keys, ...rest, updated_at: jetzt };
+      }
+      return route.fulfill({ json: zustand() });
+    }
+    if (pfad === "/keys/recovery") {
+      ablage.keys = { ...ablage.keys, wrapped_recovery: body.wrapped_recovery, updated_at: jetzt };
+      return route.fulfill({ json: zustand() });
+    }
+    if (pfad === "/passkeys" && req.method() === "POST") {
+      const { key_version: _v, ...pk } = body;
+      passkeys().push({ id: passkeys().length + 1, ...pk, created_at: jetzt });
+      return route.fulfill({ json: zustand() });
+    }
+    if (pfad.startsWith("/passkeys/") && req.method() === "DELETE") {
+      ablage.passkeys = passkeys().filter((p) => String(p.id) !== pfad.split("/")[2]);
+      return route.fulfill({ json: zustand() });
     }
     if (pfad === "" || pfad === "/") {
       const q = new globalThis.URL(req.url()).searchParams;

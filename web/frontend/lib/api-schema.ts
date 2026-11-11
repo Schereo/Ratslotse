@@ -4964,8 +4964,9 @@ export interface paths {
         get: operations["get_keys_api_notes_keys_get"];
         /**
          * Put Keys
-         * @description Einrichten (mit ``wrapped_recovery``) oder Passphrase wechseln (ohne,
-         *     dieselbe ``key_version``). Vorhandene Schlüssel überschreibt das nie.
+         * @description Einrichten (noch keine Schlüssel: Passphrase und/oder Passkey, Code
+         *     freiwillig) oder Passphrase setzen bzw. wechseln (Schlüssel da, dieselbe
+         *     ``key_version``). Vorhandene Schlüssel überschreibt das nie.
          */
         put: operations["put_keys_api_notes_keys_put"];
         post?: never;
@@ -4974,6 +4975,68 @@ export interface paths {
          * @description Neu anfangen: Schlüssel und alle Notizen weg.
          */
         delete: operations["delete_keys_api_notes_keys_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/keys/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Recovery
+         * @description Den Notfall-Code nachträglich anlegen oder ersetzen — nur diese eine
+         *     Verpackung wechselt.
+         */
+        put: operations["put_recovery_api_notes_keys_recovery_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/passkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Passkey
+         * @description Ein weiterer Passkey (anderes Gerät, anderes System) für denselben
+         *     Datenschlüssel. Derselbe Passkey noch einmal ersetzt seine Verpackung.
+         */
+        post: operations["add_passkey_api_notes_passkeys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/passkeys/{passkey_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Passkey
+         * @description Einen Passkey entfernen — nicht den letzten Weg zu den Notizen.
+         */
+        delete: operations["delete_passkey_api_notes_passkeys__passkey_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -14691,9 +14754,11 @@ export interface components {
         };
         /**
          * NoteKeys
-         * @description Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der
-         *     Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem
-         *     Wiederherstellungscode. Auspacken kann nur das Gerät.
+         * @description Der Datenschlüssel, verpackt (AES-KW, Base64) — mit der
+         *     Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``), mit dem
+         *     Notfall-Code und/oder mit Passkeys (``NoteKeysState.passkeys``). Seit
+         *     11/2026 sind Passphrase und Code freiwillig: ``None``, wo es keine gibt.
+         *     Auspacken kann nur das Gerät.
          */
         NoteKeys: {
             /** Iterations */
@@ -14707,9 +14772,9 @@ export interface components {
             /** Updated At */
             updated_at: string;
             /** Wrapped Passphrase */
-            wrapped_passphrase: string;
+            wrapped_passphrase: string | null;
             /** Wrapped Recovery */
-            wrapped_recovery: string;
+            wrapped_recovery: string | null;
         };
         /** NoteKeysIn */
         NoteKeysIn: {
@@ -14722,10 +14787,24 @@ export interface components {
             kdf: "pbkdf2-sha256";
             /** Key Version */
             key_version: number;
+            /** PasskeyIn */
+            passkey?: {
+                /** Credential Id */
+                credential_id: string;
+                /**
+                 * Label
+                 * @default
+                 */
+                label: string;
+                /** Prf Salt */
+                prf_salt: string;
+                /** Wrapped Key */
+                wrapped_key: string;
+            } | null;
             /** Salt */
             salt: string;
             /** Wrapped Passphrase */
-            wrapped_passphrase: string;
+            wrapped_passphrase?: string | null;
             /** Wrapped Recovery */
             wrapped_recovery?: string | null;
         };
@@ -14735,9 +14814,11 @@ export interface components {
             configured: boolean;
             /**
              * NoteKeys
-             * @description Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der
-             *     Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem
-             *     Wiederherstellungscode. Auspacken kann nur das Gerät.
+             * @description Der Datenschlüssel, verpackt (AES-KW, Base64) — mit der
+             *     Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``), mit dem
+             *     Notfall-Code und/oder mit Passkeys (``NoteKeysState.passkeys``). Seit
+             *     11/2026 sind Passphrase und Code freiwillig: ``None``, wo es keine gibt.
+             *     Auspacken kann nur das Gerät.
              */
             keys: {
                 /** Iterations */
@@ -14751,15 +14832,37 @@ export interface components {
                 /** Updated At */
                 updated_at: string;
                 /** Wrapped Passphrase */
-                wrapped_passphrase: string;
+                wrapped_passphrase: string | null;
                 /** Wrapped Recovery */
-                wrapped_recovery: string;
+                wrapped_recovery: string | null;
             } | null;
+            /** Passkeys */
+            passkeys: components["schemas"]["NotePasskey"][];
         };
         /** NoteList */
         NoteList: {
             /** Notes */
             notes: components["schemas"]["NoteEntry"][];
+        };
+        /**
+         * NotePasskey
+         * @description Ein Passkey als Schlüssel zu den Notizen: Kennung (Base64url, für
+         *     ``allowCredentials``), das Salz, zu dem er über PRF sein Geheimnis
+         *     liefert, und der damit verpackte Datenschlüssel.
+         */
+        NotePasskey: {
+            /** Created At */
+            created_at: string;
+            /** Credential Id */
+            credential_id: string;
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** Prf Salt */
+            prf_salt: string;
+            /** Wrapped Key */
+            wrapped_key: string;
         };
         /** NotesDeleted */
         NotesDeleted: {
@@ -15107,6 +15210,36 @@ export interface components {
             decision_ids?: number[];
             /** Question */
             question: string;
+        };
+        /** PasskeyAddIn */
+        PasskeyAddIn: {
+            /** Credential Id */
+            credential_id: string;
+            /** Key Version */
+            key_version: number;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Prf Salt */
+            prf_salt: string;
+            /** Wrapped Key */
+            wrapped_key: string;
+        };
+        /** PasskeyIn */
+        PasskeyIn: {
+            /** Credential Id */
+            credential_id: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Prf Salt */
+            prf_salt: string;
+            /** Wrapped Key */
+            wrapped_key: string;
         };
         /** PeopleDirectory */
         PeopleDirectory: {
@@ -18642,6 +18775,13 @@ export interface components {
             top: string | null;
             /** Vote */
             vote: string | null;
+        };
+        /** RecoveryIn */
+        RecoveryIn: {
+            /** Key Version */
+            key_version: number;
+            /** Wrapped Recovery */
+            wrapped_recovery: string;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -26849,6 +26989,110 @@ export interface operations {
             };
         };
     };
+    put_recovery_api_notes_keys_recovery_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_passkey_api_notes_passkeys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyAddIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_passkey_api_notes_passkeys__passkey_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+            /** @description Letzter Weg zu den Notizen */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     put_note_api_notes__target_kind___target_key___kind__put: {
         parameters: {
             query?: never;
@@ -30031,4 +30275,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 00aa9e266d4cc12016c012149a6c323093b7f8685d03b3ebf6d4449d2aedb500
+// vertrag-sha256: 40a1ed30cc7d4f4ad7c6bbbcf60d1a782d07b47630b64680b4f2be7cf0c62564

@@ -112,6 +112,28 @@ export interface WrappedKeys {
   wrapped_recovery: string;
 }
 
+/** Einrichten ohne Passphrase (Passkey, `lib/notiz-passkey.ts`): ein neuer,
+ *  exportierbarer Datenschlüssel und das Salz, mit dem später eine Passphrase
+ *  oder ein Notfall-Code verpackt würde. Exportierbar nur für das Verpacken;
+ *  für die Sitzung gilt danach die nicht exportierbare Fassung. */
+export async function neuerSchluessel(): Promise<{ dk: CryptoKey; basis: Pick<WrappedKeys, "key_version" | "kdf" | "iterations" | "salt"> }> {
+  const dk = await crypto.subtle.importKey("raw", bytes(32), { name: "AES-GCM" }, true, ["encrypt", "decrypt"]);
+  return { dk, basis: { key_version: KEY_VERSION, kdf: KDF, iterations: ITERATIONS, salt: toB64(bytes(16)) } };
+}
+
+/** Eine nicht exportierbare Fassung desselben Schlüssels für die Sitzung. */
+export async function nurBenutzbar(dkExtractable: CryptoKey): Promise<CryptoKey> {
+  const roh = await crypto.subtle.exportKey("raw", dkExtractable);
+  return crypto.subtle.importKey("raw", roh, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+/** Ein Notfall-Code, freiwillig und nachträglich: verpackt denselben
+ *  Datenschlüssel mit demselben Salz. */
+export async function notfallCode(dkExtractable: CryptoKey, salt: string, code: Bytes = bytes(20)):
+  Promise<{ recoveryCode: string; wrapped_recovery: string }> {
+  return { recoveryCode: encodeRecovery(code), wrapped_recovery: await wrap(dkExtractable, await recoveryKek(code, fromB64(salt))) };
+}
+
 /** Einrichten: neuer Datenschlüssel, beide Verpackungen, der Code zum Zeigen. */
 export async function setup(passphrase: string, opts: { dk?: Bytes; salt?: Bytes; code?: Bytes; iterations?: number } = {}):
   Promise<{ keys: WrappedKeys; recoveryCode: string; dk: CryptoKey }> {
@@ -130,16 +152,20 @@ export async function setup(passphrase: string, opts: { dk?: Bytes; salt?: Bytes
   return { keys, recoveryCode: encodeRecovery(code), dk };
 }
 
-export async function unlockWithPassphrase(keys: Pick<WrappedKeys, "salt" | "iterations" | "wrapped_passphrase">,
+/** Verpackungen können fehlen (seit den Passkeys: `null`). */
+type Verpackt = { salt: string; iterations: number; wrapped_passphrase: string | null; wrapped_recovery: string | null };
+
+export async function unlockWithPassphrase(keys: Pick<Verpackt, "salt" | "iterations" | "wrapped_passphrase">,
   passphrase: string, extractable = false): Promise<CryptoKey | null> {
+  if (!keys.wrapped_passphrase) return null;
   return unwrap(keys.wrapped_passphrase, await passphraseKek(passphrase, fromB64(keys.salt), keys.iterations), extractable);
 }
 
 /** Mit dem Code entsperren — exportierbar, denn danach kommt eine neue Passphrase. */
-export async function unlockWithRecovery(keys: Pick<WrappedKeys, "salt" | "wrapped_recovery">, code: string):
+export async function unlockWithRecovery(keys: Pick<Verpackt, "salt" | "wrapped_recovery">, code: string):
   Promise<CryptoKey | null> {
   const roh = parseRecovery(code);
-  if (!roh) return null;
+  if (!roh || !keys.wrapped_recovery) return null;
   return unwrap(keys.wrapped_recovery, await recoveryKek(roh, fromB64(keys.salt)), true);
 }
 

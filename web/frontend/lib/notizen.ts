@@ -10,6 +10,7 @@
 
 import { api, ApiError } from "@/lib/api";
 import * as k from "@/lib/notiz-krypto";
+import type { PasskeyVerpackung } from "@/lib/notiz-passkey";
 import type { ApiAntwort } from "@/lib/vertrag";
 
 export type NoteKeysState = ApiAntwort<"/notes/keys">;
@@ -89,8 +90,18 @@ export async function lock(owner?: number): Promise<void> {
 
 // ---- Server ---------------------------------------------------------------
 
+export type NotePasskey = NoteKeysState["passkeys"][number];
+
 export const fetchKeys = () => api.get<NoteKeysState>("/notes/keys");
 export const createKeys = (keys: k.WrappedKeys) => api.put<NoteKeysState>("/notes/keys", keys);
+/** Einrichten mit Passkey statt Passphrase (`lib/notiz-passkey.ts`). */
+export const createKeysMitPasskey = (basis: Awaited<ReturnType<typeof k.neuerSchluessel>>["basis"], passkey: PasskeyVerpackung) =>
+  api.put<NoteKeysState>("/notes/keys", { ...basis, passkey });
+export const addPasskey = (keyVersion: number, passkey: PasskeyVerpackung) =>
+  api.post<NoteKeysState>("/notes/passkeys", { ...passkey, key_version: keyVersion });
+export const deletePasskey = (id: number) => api.del<NoteKeysState>(`/notes/passkeys/${id}`);
+export const setRecovery = (keyVersion: number, wrappedRecovery: string) =>
+  api.put<NoteKeysState>("/notes/keys/recovery", { key_version: keyVersion, wrapped_recovery: wrappedRecovery });
 export const rewrapKeys = (keyVersion: number, neu: Awaited<ReturnType<typeof k.rewrap>>) =>
   api.put<NoteKeysState>("/notes/keys", { key_version: keyVersion, ...neu });
 export const resetNotes = () => api.del<{ deleted: number }>("/notes/keys");

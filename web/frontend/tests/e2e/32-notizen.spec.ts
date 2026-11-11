@@ -11,7 +11,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { zustandsDatei } from "./konten";
-import { notizenSchein, type Ablage } from "./notizen-schein";
+import { notizenSchein, passphraseWeg, type Ablage } from "./notizen-schein";
 
 test.use({ storageState: zustandsDatei("nutzerin") });
 
@@ -36,6 +36,7 @@ test.describe("Meine Notiz", () => {
     await page.goto(URL);
     const k = karte(page);
     await k.getByRole("button", { name: "Notizen einrichten" }).click();
+    await passphraseWeg(k);
     await k.locator("input[type=password]").nth(0).fill(PASS);
     await k.locator("input[type=password]").nth(1).fill(PASS);
     await k.getByRole("button", { name: "Weiter" }).click();
@@ -77,6 +78,36 @@ test.describe("Meine Notiz", () => {
     await k2.getByRole("button", { name: "Neue Passphrase setzen" }).click();
     await expect(k2.locator("textarea")).toHaveValue("Verwaltung nach Unfallzahlen fragen.");
     await ctx2.close();
+  });
+
+  test("mit Passkey einrichten, sperren und wieder entsperren — ohne Passphrase, ohne Code", async ({ page, context }) => {
+    // Ein virtueller Authenticator mit PRF — so, wie ein iPhone oder Mac ihn mitbringt.
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    await cdp.send("WebAuthn.addVirtualAuthenticator", { options: {
+      protocol: "ctap2", ctap2Version: "ctap2_1", transport: "internal", hasResidentKey: true,
+      hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
+    } });
+    const ablage: Ablage = { keys: null, notes: new Map() };
+    await schein(page, ablage);
+    await page.goto(URL);
+    const k = karte(page);
+    await k.getByRole("button", { name: "Notizen einrichten" }).click();
+    await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
+    await k.locator("textarea").fill("Kosten 2027 nachfragen.");
+    await expect(k.getByText(/Gespeichert um/)).toBeVisible({ timeout: 10_000 });
+    // Kein Code zum Abtippen, keine Passphrase — beim Server liegt nur die Verpackung des Passkeys.
+    expect(ablage.keys?.wrapped_passphrase ?? null).toBeNull();
+    expect(ablage.keys?.wrapped_recovery ?? null).toBeNull();
+    expect(ablage.passkeys).toHaveLength(1);
+    expect(String([...ablage.notes.values()][0].ciphertext)).not.toContain("Kosten");
+
+    await k.getByRole("button", { name: "Sperren" }).click();
+    await page.reload();
+    await expect(k.getByText("Gesperrt", { exact: true })).toBeVisible();
+    await expect(k.getByRole("button", { name: "Mit Passphrase" })).toHaveCount(0);
+    await k.getByRole("button", { name: "Mit Passkey entsperren" }).click();
+    await expect(k.locator("textarea")).toHaveValue("Kosten 2027 nachfragen.");
   });
 
   test("ohne Schalter keine Karte", async ({ page }) => {

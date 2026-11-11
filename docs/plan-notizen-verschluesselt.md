@@ -183,3 +183,34 @@ eigenen Kurs, als „(mein Mitschrieb)“ beschriftet, und nur wo weder Protokol
 noch Übertragung etwas sagen (`lib/course.ts::courseInput`, Test in
 `course.test.ts`). Das Schloss (Einrichten, Entsperren) teilen sich Notiz und
 Mitschrieb (`components/notiz/notiz-schloss.tsx`). Browsertest `33-mitschrieb`.
+
+## 10. Passkey statt Passphrase (Tims Entscheidung 11.11.2026)
+
+Anlass: Tims Frage, ob Notizen auch ohne eine zu merkende Passphrase gehen.
+Entschieden: **Passkey, weiter Ende-zu-Ende** — nicht „ohne Ende-zu-Ende“,
+weil Notizen zu Ratsthemen politische Meinungen tragen können (Art. 9 DSGVO).
+
+- **Wie:** Die WebAuthn-Erweiterung PRF liefert zu einem Salz (32 Byte, je
+  Passkey) ein festes Geheimnis, das nur dieser Passkey erzeugt. Daraus wird
+  per HKDF-SHA-256 (`info` „ratslotse-notizen-passkey“) der AES-KW-Schlüssel,
+  der denselben Datenschlüssel verpackt wie Passphrase und Code. Der Server
+  bekommt Kennung (Base64url), Salz und Verpackung (`note_passkeys`), nie das
+  Geheimnis, und prüft keine WebAuthn-Signatur: Der Passkey meldet nicht an,
+  er ersetzt nur die Passphrase (`web/backend/app/routers/notes.py`).
+- **Einrichten:** zuerst „Mit Passkey einrichten“, „Auf diesem Gerät offen
+  lassen“ als Vorgabe an. Kein Pflicht-Code. Safari und der iCloud-
+  Schlüsselbund liefern das Geheimnis beim Anlegen nicht mit — dann folgt
+  gleich eine Abfrage mit genau diesem Passkey (`lib/notiz-passkey.ts`).
+- **Rückfall:** „Lieber mit Passphrase“ und ein Browser ohne PRF führen in
+  den bisherigen Weg (Passphrase plus Wiederherstellungscode).
+- **Konto:** weitere Passkeys (anderes System, z. B. Windows neben iPhone),
+  ein freiwilliger Notfall-Code, eine freiwillige Passphrase. Der letzte Weg
+  zu den Notizen lässt sich nicht löschen (409).
+- **App:** liest Schlüssel ohne Passphrase, öffnet solche Notizen mit dem
+  Notfall-Code, falls es einen gibt, und sagt sonst, dass Passkeys in der App
+  folgen. Passkeys in der App selbst (iOS 18, Associated Domains
+  `webcredentials`) sind ein eigener Schritt.
+- **Geprüft:** `tests/test_notizen.py` (nur mit Passkey, letzter Weg,
+  fremde Passkeys, Konto-Löschung), `lib/notiz-passkey.test.ts` (Verpacken mit
+  dem PRF-Geheimnis, Code nachträglich), Browsertest `32-notizen` mit
+  virtuellem Authenticator (CDP, `hasPrf`): einrichten, sperren, entsperren.

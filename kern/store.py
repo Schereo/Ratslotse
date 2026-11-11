@@ -975,6 +975,23 @@ CREATE TABLE IF NOT EXISTS note_keys (
     created_at         TEXT NOT NULL,
     updated_at         TEXT NOT NULL
 );
+-- Passkeys als Schlüssel zu den Notizen (seit 11/2026, Tims Wunsch: keine
+-- Passphrase merken müssen). Der Passkey meldet sich nicht an — er liefert
+-- über die WebAuthn-Erweiterung PRF ein Geheimnis, das nur er zu `prf_salt`
+-- erzeugen kann; daraus entsteht auf dem Gerät der Schlüssel, der den
+-- Datenschlüssel verpackt (`wrapped_key`, AES-KW). Der Server kennt weder das
+-- Geheimnis noch den Datenschlüssel. In `note_keys` steht eine leere
+-- Zeichenkette, wo es keine Passphrase oder keinen Code gibt.
+CREATE TABLE IF NOT EXISTS note_passkeys (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id      INTEGER NOT NULL,
+    credential_id TEXT NOT NULL,
+    prf_salt      TEXT NOT NULL,
+    wrapped_key   TEXT NOT NULL,
+    label         TEXT NOT NULL DEFAULT '',
+    created_at    TEXT NOT NULL,
+    UNIQUE(owner_id, credential_id)
+);
 CREATE TABLE IF NOT EXISTS user_notes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
@@ -1098,6 +1115,7 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     # Verschlüsselte Notizen: ohne diese beiden bliebe nach der Löschung ein
     # Rest stehen, den niemand mehr lesen kann — aber eben doch ein Rest.
     ("note_keys", "owner_id"),
+    ("note_passkeys", "owner_id"),
     ("user_notes", "owner_id"),
 )
 
@@ -6694,16 +6712,70 @@ class Store:
         row = self._conn.execute("SELECT * FROM note_keys WHERE owner_id = ?", (owner_id,)).fetchone()
         return dict(row) if row else None
 
-    def create_note_keys(self, owner_id: int, keys: dict) -> bool:
-        """Beim Einrichten. ``False``, wenn schon Schlüssel da sind — die
-        überschreibt nur, wer vorher ausdrücklich neu anfängt."""
+    def create_note_keys(self, owner_id: int, keys: dict, passkey: dict | None = None) -> bool:
+        """Beim Einrichten — mit Passphrase, mit Passkey oder beidem; fehlende
+        Verpackungen stehen als leere Zeichenkette. ``False``, wenn schon
+        Schlüssel da sind — die überschreibt nur, wer vorher ausdrücklich neu
+        anfängt. Schlüssel und erster Passkey entstehen zusammen oder gar nicht."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
                 "INSERT OR IGNORE INTO note_keys (owner_id, key_version, kdf, iterations, salt, "
                 "wrapped_passphrase, wrapped_recovery, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (owner_id, keys["key_version"], keys["kdf"], keys["iterations"], keys["salt"],
-                 keys["wrapped_passphrase"], keys["wrapped_recovery"], now, now))
+                 keys.get("wrapped_passphrase") or "", keys.get("wrapped_recovery") or "", now, now))
+            if cur.rowcount != 1:
+                return False
+            if passkey:
+                self._passkey_einfuegen(owner_id, passkey, now)
+        return True
+
+    def _passkey_einfuegen(self, owner_id: int, pk: dict, now: str) -> None:
+        self._conn.execute(
+            "INSERT INTO note_passkeys (owner_id, credential_id, prf_salt, wrapped_key, label, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(owner_id, credential_id) DO UPDATE SET "
+            "prf_salt = excluded.prf_salt, wrapped_key = excluded.wrapped_key, label = excluded.label",
+            (owner_id, pk["credential_id"], pk["prf_salt"], pk["wrapped_key"], pk.get("label") or "", now))
+
+    def get_note_passkeys(self, owner_id: int) -> list[dict]:
+        return [dict(r) for r in self._conn.execute(
+            "SELECT id, credential_id, prf_salt, wrapped_key, label, created_at FROM note_passkeys "
+            "WHERE owner_id = ? ORDER BY id", (owner_id,))]
+
+    def add_note_passkey(self, owner_id: int, passkey: dict) -> bool:
+        """Ein weiterer Passkey für denselben Datenschlüssel. ``False`` ohne
+        eingerichtete Schlüssel. Derselbe Passkey ein zweites Mal ersetzt
+        seine alte Verpackung."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            if not self._conn.execute("SELECT 1 FROM note_keys WHERE owner_id = ?", (owner_id,)).fetchone():
+                return False
+            self._passkey_einfuegen(owner_id, passkey, now)
+        return True
+
+    def delete_note_passkey(self, owner_id: int, passkey_id: int) -> str:
+        """``ok``, ``fehlt`` oder ``letzter``: Der letzte Weg zu den Notizen
+        wird nicht gelöscht — ohne ihn wären sie für immer verschlossen."""
+        with self._conn:
+            if not self._conn.execute("SELECT 1 FROM note_passkeys WHERE owner_id = ? AND id = ?",
+                                      (owner_id, passkey_id)).fetchone():
+                return "fehlt"
+            k = self._conn.execute("SELECT wrapped_passphrase, wrapped_recovery FROM note_keys WHERE owner_id = ?",
+                                   (owner_id,)).fetchone()
+            andere = self._conn.execute("SELECT COUNT(*) FROM note_passkeys WHERE owner_id = ? AND id != ?",
+                                        (owner_id, passkey_id)).fetchone()[0]
+            if not andere and not (k and (k["wrapped_passphrase"] or k["wrapped_recovery"])):
+                return "letzter"
+            self._conn.execute("DELETE FROM note_passkeys WHERE owner_id = ? AND id = ?", (owner_id, passkey_id))
+        return "ok"
+
+    def set_note_recovery(self, owner_id: int, key_version: int, wrapped_recovery: str) -> bool:
+        """Notfall-Code nachträglich (oder neu): nur die Verpackung wechselt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE note_keys SET wrapped_recovery = ?, updated_at = ? WHERE owner_id = ? AND key_version = ?",
+                (wrapped_recovery, now, owner_id, key_version))
         return cur.rowcount == 1
 
     def rewrap_note_keys(self, owner_id: int, key_version: int, *, kdf: str, iterations: int, salt: str,
@@ -6724,6 +6796,7 @@ class Store:
         with self._conn:
             n = self._conn.execute("DELETE FROM user_notes WHERE owner_id = ?", (owner_id,)).rowcount
             self._conn.execute("DELETE FROM note_keys WHERE owner_id = ?", (owner_id,))
+            self._conn.execute("DELETE FROM note_passkeys WHERE owner_id = ?", (owner_id,))
         return n
 
     def get_notes(self, owner_id: int, target_kind: str | None = None, target_key: str | None = None) -> list[dict]:

@@ -680,21 +680,36 @@ class BookmarkList(TypedDict):
 
 
 class NoteKeys(TypedDict):
-    """Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der
-    Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem
-    Wiederherstellungscode. Auspacken kann nur das Gerät."""
+    """Der Datenschlüssel, verpackt (AES-KW, Base64) — mit der
+    Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``), mit dem
+    Notfall-Code und/oder mit Passkeys (``NoteKeysState.passkeys``). Seit
+    11/2026 sind Passphrase und Code freiwillig: ``None``, wo es keine gibt.
+    Auspacken kann nur das Gerät."""
     key_version: int
     kdf: str
     iterations: int
     salt: str
-    wrapped_passphrase: str
-    wrapped_recovery: str
+    wrapped_passphrase: str | None
+    wrapped_recovery: str | None
     updated_at: str
+
+
+class NotePasskey(TypedDict):
+    """Ein Passkey als Schlüssel zu den Notizen: Kennung (Base64url, für
+    ``allowCredentials``), das Salz, zu dem er über PRF sein Geheimnis
+    liefert, und der damit verpackte Datenschlüssel."""
+    id: int
+    credential_id: str
+    prf_salt: str
+    wrapped_key: str
+    label: str
+    created_at: str
 
 
 class NoteKeysState(TypedDict):
     configured: bool
     keys: NoteKeys | None
+    passkeys: list[NotePasskey]
 
 
 class NoteEntry(TypedDict):

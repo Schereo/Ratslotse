@@ -18719,7 +18719,7 @@
         "type": "object"
       },
       "NoteKeys": {
-        "description": "Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der\nNotiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem\nWiederherstellungscode. Auspacken kann nur das Gerät.",
+        "description": "Der Datenschlüssel, verpackt (AES-KW, Base64) — mit der\nNotiz-Passphrase (PBKDF2 aus ``salt``/``iterations``), mit dem\nNotfall-Code und/oder mit Passkeys (``NoteKeysState.passkeys``). Seit\n11/2026 sind Passphrase und Code freiwillig: ``None``, wo es keine gibt.\nAuspacken kann nur das Gerät.",
         "properties": {
           "iterations": {
             "title": "Iterations",
@@ -18743,11 +18743,17 @@
           },
           "wrapped_passphrase": {
             "title": "Wrapped Passphrase",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "wrapped_recovery": {
             "title": "Wrapped Recovery",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -18781,6 +18787,43 @@
             "title": "Key Version",
             "type": "integer"
           },
+          "passkey": {
+            "properties": {
+              "credential_id": {
+                "maxLength": 1400,
+                "minLength": 16,
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "title": "Credential Id",
+                "type": "string"
+              },
+              "label": {
+                "default": "",
+                "maxLength": 60,
+                "title": "Label",
+                "type": "string"
+              },
+              "prf_salt": {
+                "maxLength": 64,
+                "title": "Prf Salt",
+                "type": "string"
+              },
+              "wrapped_key": {
+                "maxLength": 128,
+                "title": "Wrapped Key",
+                "type": "string"
+              }
+            },
+            "required": [
+              "credential_id",
+              "prf_salt",
+              "wrapped_key"
+            ],
+            "title": "PasskeyIn",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "salt": {
             "maxLength": 64,
             "title": "Salt",
@@ -18789,7 +18832,10 @@
           "wrapped_passphrase": {
             "maxLength": 128,
             "title": "Wrapped Passphrase",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "wrapped_recovery": {
             "maxLength": 128,
@@ -18804,8 +18850,7 @@
           "key_version",
           "kdf",
           "iterations",
-          "salt",
-          "wrapped_passphrase"
+          "salt"
         ],
         "title": "NoteKeysIn",
         "type": "object"
@@ -18817,7 +18862,7 @@
             "type": "boolean"
           },
           "keys": {
-            "description": "Der Datenschlüssel, zweimal verpackt (AES-KW, Base64) — mit der\nNotiz-Passphrase (PBKDF2 aus ``salt``/``iterations``) und mit dem\nWiederherstellungscode. Auspacken kann nur das Gerät.",
+            "description": "Der Datenschlüssel, verpackt (AES-KW, Base64) — mit der\nNotiz-Passphrase (PBKDF2 aus ``salt``/``iterations``), mit dem\nNotfall-Code und/oder mit Passkeys (``NoteKeysState.passkeys``). Seit\n11/2026 sind Passphrase und Code freiwillig: ``None``, wo es keine gibt.\nAuspacken kann nur das Gerät.",
             "properties": {
               "iterations": {
                 "title": "Iterations",
@@ -18841,11 +18886,17 @@
               },
               "wrapped_passphrase": {
                 "title": "Wrapped Passphrase",
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "wrapped_recovery": {
                 "title": "Wrapped Recovery",
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -18862,11 +18913,19 @@
               "object",
               "null"
             ]
+          },
+          "passkeys": {
+            "items": {
+              "$ref": "#/components/schemas/NotePasskey"
+            },
+            "title": "Passkeys",
+            "type": "array"
           }
         },
         "required": [
           "configured",
-          "keys"
+          "keys",
+          "passkeys"
         ],
         "title": "NoteKeysState",
         "type": "object"
@@ -18885,6 +18944,45 @@
           "notes"
         ],
         "title": "NoteList",
+        "type": "object"
+      },
+      "NotePasskey": {
+        "description": "Ein Passkey als Schlüssel zu den Notizen: Kennung (Base64url, für\n``allowCredentials``), das Salz, zu dem er über PRF sein Geheimnis\nliefert, und der damit verpackte Datenschlüssel.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "credential_id": {
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "prf_salt": {
+            "title": "Prf Salt",
+            "type": "string"
+          },
+          "wrapped_key": {
+            "title": "Wrapped Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "credential_id",
+          "prf_salt",
+          "wrapped_key",
+          "label",
+          "created_at"
+        ],
+        "title": "NotePasskey",
         "type": "object"
       },
       "NotesDeleted": {
@@ -19634,6 +19732,81 @@
           "question"
         ],
         "title": "PartyOpinionsBody",
+        "type": "object"
+      },
+      "PasskeyAddIn": {
+        "properties": {
+          "credential_id": {
+            "maxLength": 1400,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "key_version": {
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "label": {
+            "default": "",
+            "maxLength": 60,
+            "title": "Label",
+            "type": "string"
+          },
+          "prf_salt": {
+            "maxLength": 64,
+            "title": "Prf Salt",
+            "type": "string"
+          },
+          "wrapped_key": {
+            "maxLength": 128,
+            "title": "Wrapped Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_id",
+          "prf_salt",
+          "wrapped_key",
+          "key_version"
+        ],
+        "title": "PasskeyAddIn",
+        "type": "object"
+      },
+      "PasskeyIn": {
+        "properties": {
+          "credential_id": {
+            "maxLength": 1400,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "label": {
+            "default": "",
+            "maxLength": 60,
+            "title": "Label",
+            "type": "string"
+          },
+          "prf_salt": {
+            "maxLength": 64,
+            "title": "Prf Salt",
+            "type": "string"
+          },
+          "wrapped_key": {
+            "maxLength": 128,
+            "title": "Wrapped Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_id",
+          "prf_salt",
+          "wrapped_key"
+        ],
+        "title": "PasskeyIn",
         "type": "object"
       },
       "PeopleDirectory": {
@@ -28847,6 +29020,27 @@
           "date"
         ],
         "title": "Ratsvorgang",
+        "type": "object"
+      },
+      "RecoveryIn": {
+        "properties": {
+          "key_version": {
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Key Version",
+            "type": "integer"
+          },
+          "wrapped_recovery": {
+            "maxLength": 128,
+            "title": "Wrapped Recovery",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key_version",
+          "wrapped_recovery"
+        ],
+        "title": "RecoveryIn",
         "type": "object"
       },
       "RegisterRequest": {
@@ -42916,7 +43110,7 @@
         ]
       },
       "put": {
-        "description": "Einrichten (mit ``wrapped_recovery``) oder Passphrase wechseln (ohne,\ndieselbe ``key_version``). Vorhandene Schlüssel überschreibt das nie.",
+        "description": "Einrichten (noch keine Schlüssel: Passphrase und/oder Passkey, Code\nfreiwillig) oder Passphrase setzen bzw. wechseln (Schlüssel da, dieselbe\n``key_version``). Vorhandene Schlüssel überschreibt das nie.",
         "operationId": "put_keys_api_notes_keys_put",
         "requestBody": {
           "content": {
@@ -42951,6 +43145,136 @@
           }
         },
         "summary": "Put Keys",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/keys/recovery": {
+      "put": {
+        "description": "Den Notfall-Code nachträglich anlegen oder ersetzen — nur diese eine\nVerpackung wechselt.",
+        "operationId": "put_recovery_api_notes_keys_recovery_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteKeysState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Recovery",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/passkeys": {
+      "post": {
+        "description": "Ein weiterer Passkey (anderes Gerät, anderes System) für denselben\nDatenschlüssel. Derselbe Passkey noch einmal ersetzt seine Verpackung.",
+        "operationId": "add_passkey_api_notes_passkeys_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyAddIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteKeysState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Passkey",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/passkeys/{passkey_id}": {
+      "delete": {
+        "description": "Einen Passkey entfernen — nicht den letzten Weg zu den Notizen.",
+        "operationId": "delete_passkey_api_notes_passkeys__passkey_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "passkey_id",
+            "required": true,
+            "schema": {
+              "title": "Passkey Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteKeysState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Letzter Weg zu den Notizen"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Passkey",
         "tags": [
           "notes"
         ]

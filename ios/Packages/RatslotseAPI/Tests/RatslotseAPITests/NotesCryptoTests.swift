@@ -105,8 +105,9 @@ struct NotesCrossCheckTests {
         let state = try fixture("notes-keys", as: NoteKeysState.self)
         let keys = try #require(state.keys)
         #expect(state.configured && keys.kdf == "pbkdf2-sha256" && keys.iterations == 600_000)
+        let verpackt = try #require(keys.wrappedPassphrase)
         let dk = try #require(NotesCrypto.unlock(passphrase: "Lotti liest mit 2026", salt: keys.salt,
-                                                 iterations: keys.iterations, wrappedPassphrase: keys.wrappedPassphrase))
+                                                 iterations: keys.iterations, wrappedPassphrase: verpackt))
         let list = try fixture("notes-list", as: NoteList.self)
 
         let notiz = try #require(list.notes.first { $0.kind == "note" })
@@ -128,7 +129,19 @@ struct NotesCrossCheckTests {
 
         // Eine falsche Passphrase scheitert auch an echten Daten.
         #expect(NotesCrypto.unlock(passphrase: "Lotti liest mit 2025", salt: keys.salt,
-                                   iterations: keys.iterations, wrappedPassphrase: keys.wrappedPassphrase) == nil)
+                                   iterations: keys.iterations, wrappedPassphrase: verpackt) == nil)
+    }
+
+    @Test func nurMitPasskeyEingerichtetBrichtNichts() throws {
+        // So antwortet der Server seit 11/2026, wenn im Web nur ein Passkey
+        // eingerichtet wurde: keine Passphrase, kein Code, eine Passkey-Liste.
+        let json = #"{"configured":true,"keys":{"key_version":1,"kdf":"pbkdf2-sha256","iterations":600000,"salt":"IiIiIiIiIiIiIiIiIiIiIg==","wrapped_passphrase":null,"wrapped_recovery":null,"updated_at":"2026-11-11T17:00:00"},"passkeys":[{"id":3,"credential_id":"Q3JlZGVudGlhbC0xxxxxxxx","prf_salt":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=","wrapped_key":"CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws=","label":"iPhone","created_at":"2026-11-11T17:00:00"}]}"#
+        let state = try JSONDecoder().decode(NoteKeysState.self, from: Data(json.utf8))
+        #expect(state.configured && state.keys?.wrappedPassphrase == nil && state.keys?.wrappedRecovery == nil)
+        #expect(state.passkeys?.map(\.label) == ["iPhone"])
+        // Ein älterer Server ohne `passkeys` geht auch.
+        let alt = #"{"configured":false,"keys":null}"#
+        #expect(try JSONDecoder().decode(NoteKeysState.self, from: Data(alt.utf8)).passkeys == nil)
     }
 
     @Test func eineInDerAppGeschriebeneNotizHaeltDieFormDesServers() throws {
