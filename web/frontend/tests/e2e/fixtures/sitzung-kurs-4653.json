@@ -1427,6 +1427,7 @@
   "closed_count": 5,
   "substantive_count": 22,
   "summary": "Der Ausschuss hat fünf von sieben Beschlussvorlagen einstimmig angenommen. Drei Punkte wurden vertagt.",
+  "summary_source": "rule",
   "next_session": {
    "ksinr": 4654,
    "session_date": "2026-09-21",

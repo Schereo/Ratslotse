@@ -807,3 +807,42 @@ def test_fraktion_aus_der_anwesenheitsliste_der_eigenen_sitzung(store):
         ("Stadtrat Denckmann", None, None),
         ("Klein", "SPD", None),
     ]
+
+
+def test_satz_vom_modell_mit_rueckfall_und_nur_bei_neuen_angaben(store, monkeypatch):
+    """Lottis Satz vom Modell (``council/session_summary.py``): geschrieben,
+    wenn sich die Angaben ändern; die Seite zeigt ihn, solange er zum Stand
+    passt — kam das Protokoll danach, gilt bis zum nächsten Lauf der
+    gerechnete (er kennt die Ergebnisse schon)."""
+    from council import session_summary
+    aufrufe: list[str] = []
+
+    def schreiben(stoff):
+        aufrufe.append(stoff)
+        return "Satz nach dem Protokoll." if "nach dem Protokoll" in stoff else "Satz vor dem Protokoll."
+    monkeypatch.setattr(session_summary, "generate", schreiben)
+
+    gerechnet = store.session_course(4652)["summary"]
+    assert store.session_course(4652)["summary_source"] == "rule"
+    assert session_summary.nachziehen(store, [4652])["geschrieben"] == 1
+    k = store.session_course(4652)
+    assert (k["summary"], k["summary_source"]) == ("Satz vor dem Protokoll.", "model")
+    # Nichts geändert: kein zweiter Aufruf.
+    assert session_summary.nachziehen(store, [4652])["aktuell"] == 1 and len(aufrufe) == 1
+
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_protocols (ksinr, extracted_at, status) VALUES (4652, datetime('now'), 'ok')")
+        store._conn.execute(
+            "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, outcome, vote) "
+            "VALUES (4652, 1, 'decision', '6', 't', 'accepted', 'unanimous')")
+    # Protokoll da, Satz noch vom Stand davor: der gerechnete gilt.
+    k = store.session_course(4652)
+    assert k["summary_source"] == "rule" and k["summary"] != gerechnet
+    assert session_summary.nachziehen(store, [4652])["geschrieben"] == 1
+    assert "Ergebnis: angenommen" in aufrufe[-1]
+    k = store.session_course(4652)
+    assert (k["summary"], k["summary_source"]) == ("Satz nach dem Protokoll.", "model")
+    # Ein Bericht schreibt nichts.
+    assert session_summary.nachziehen(store, [4652], schreiben=False) == {
+        "geschrieben": 0, "offen": 0, "aktuell": 1, "ohne_satz": 0, "fehler": 0, "usd": 0.0}

@@ -245,7 +245,10 @@ function Board({ ctx }: { ctx: Ctx }) {
 
       {course.summary && (
         <LottiSatz className="mt-5" text={course.summary}
-          quelle={phase === "protocol" ? "Nach dem Protokoll." : "Nach der Tagesordnung."} />
+          quelle={course.summary_source === "model"
+            // Vom Modell geschrieben (council/session_summary.py) — das sagt die Zeile.
+            ? (phase === "protocol" ? "Automatisch aus dem Protokoll." : "Automatisch aus der Tagesordnung.")
+            : (phase === "protocol" ? "Nach dem Protokoll." : "Nach der Tagesordnung.")} />
       )}
 
       <div className="mt-6 border-t border-border pt-5">

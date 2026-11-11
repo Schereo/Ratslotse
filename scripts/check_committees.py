@@ -651,6 +651,17 @@ def main() -> dict:
         tragweite_fehler = repr(exc)
         print(f"  ⚠️ Tragweite-Bewertung fehlgeschlagen: {exc!r} — Karte nutzt solange die Regeln")
 
+    # Lottis Satz je Sitzung (council/session_summary.py): nur, wo sich die
+    # Angaben seit dem letzten Lauf geändert haben — neue Tagesordnung, neue
+    # Kurzfassungen. Ein Fehler hält die Meldungen nicht auf.
+    try:
+        from council import session_summary
+        saetze = session_summary.nachziehen(council_store, sorted(session_ids), max_usd=0.5)
+        print(f"  Sitzungssätze: {saetze}")
+    except Exception as exc:  # noqa: BLE001 — Zusatz, nie Blocker des Laufs
+        saetze = {"geschrieben": 0}
+        print(f"  ⚠️ Sitzungssätze übersprungen: {exc!r}")
+
     council_store.close()
 
     # Der 7-Uhr-Lauf ist zugleich der Wecker der Warteschlange: Was über Nacht
@@ -667,6 +678,7 @@ def main() -> dict:
         "Benachrichtigungen": notifications_sent,
         "Tragweite bewertet": bewertet,
         "Tragweite offen": len(offen),
+        "Sitzungssätze geschrieben": saetze.get("geschrieben", 0),
         **stats,
     }
 

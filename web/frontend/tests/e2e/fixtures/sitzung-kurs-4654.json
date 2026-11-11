@@ -396,6 +396,7 @@
   "closed_count": 5,
   "substantive_count": 9,
   "summary": "9 Punkte zur Beratung, darunter 3 Anträge. Zwei standen schon einmal hier und wurden vertagt.",
+  "summary_source": "rule",
   "next_session": null,
   "stages": [
    {

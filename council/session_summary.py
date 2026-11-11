@@ -7,12 +7,15 @@ dasselbe in zwei natürlichen Sätzen — aus genau denselben Angaben: Titel, Ar
 „wichtig“ samt Grund, Kurzfassung je Punkt und, nach dem Protokoll, das
 Ergebnis je Punkt. Was dort nicht steht, darf der Satz nicht behaupten.
 
-Noch ein Versuch: ``eval/run_sitzung_satz.py`` misst ihn an vergangenen
-Sitzungen. Entstehen soll er später einmal je Sitzung beim Eintreffen der
-Tagesordnung und noch einmal mit dem Protokoll.
+Er entsteht je Sitzung beim Eintreffen der Tagesordnung (``check_committees``)
+und noch einmal mit dem Protokoll (``check_protocols``), den Bestand zieht
+``scripts/sitzungssaetze.py`` nach. Die Seite zeigt ihn, solange er zum Stand
+passt, sonst den gerechneten (``CouncilStore.session_course``). Gemessen wird
+er mit ``eval/run_sitzung_satz.py`` an vergangenen Sitzungen.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 
@@ -24,6 +27,9 @@ from .committee_summary import datum_deutsch
 #: Dasselbe Modell wie die TOP-Kurzfassungen (``committee_summary.py``):
 #: kurze Texte aus Tagesordnungsangaben, kein Nutzereingabe-Feature.
 MODEL = os.environ.get("COUNCIL_SESSION_SUMMARY_MODEL", "openai/gpt-6-luna")
+#: Hochzählen, wenn Prompt oder Material sich so ändern, dass alle Sätze neu
+#: geschrieben werden sollen (ein Lauf über ein Jahr kostet rund 0,30 $).
+VERSION = 1
 #: Bei sehr langen Tagesordnungen (Bauausschuss: 60 Punkte) reichen die
 #: wichtigen samt Kurzfassung und die übrigen nur mit Titel.
 MAX_PUNKTE = 40
@@ -75,3 +81,47 @@ def generate(stoff: str) -> str | None:
     except (json.JSONDecodeError, AttributeError, IndexError):
         return None
     return satz or None
+
+
+def stand(eingabe: dict) -> str:
+    return "protocol" if any(eingabe["outcomes"].values()) else "agenda"
+
+
+def nachziehen(store, ksinrs: list[int], *, schreiben: bool = True, max_usd: float = 1.0) -> dict:
+    """Für jede Sitzung den Satz schreiben, wenn sich seine Angaben geändert
+    haben (neue Tagesordnung, Kurzfassungen, Protokoll). Ein Fehler bei einer
+    Sitzung überspringt sie, nicht den Lauf. ``schreiben=False`` zählt nur."""
+    zahl = {"geschrieben": 0, "offen": 0, "aktuell": 0, "ohne_satz": 0, "fehler": 0}
+    start = llm.session_cost()["usd"]
+    for ksinr in ksinrs:
+        if llm.session_cost()["usd"] - start >= max_usd:
+            print(f"  Sitzungssätze: Kostengrenze {max_usd} $ erreicht — Rest beim nächsten Lauf.")
+            break
+        eingabe = store.session_sentence_input(ksinr)
+        if not eingabe:
+            continue
+        stoff = material(eingabe["committee"], eingabe["session_date"], eingabe["items"],
+                         eingabe["summaries"], eingabe["outcomes"])
+        if not any(it["type"] not in course.FRAME_TYPES for it in eingabe["items"].values()):
+            zahl["ohne_satz"] += 1
+            continue
+        h = hashlib.sha256(f"{VERSION}|{MODEL}|{stoff}".encode()).hexdigest()
+        alt = store.session_sentence(ksinr)
+        if alt and alt["material_hash"] == h:
+            zahl["aktuell"] += 1
+            continue
+        if not schreiben:
+            zahl["offen"] += 1
+            continue
+        try:
+            satz = generate(stoff)
+        except Exception as exc:  # noqa: BLE001 — eine Sitzung, nicht der Lauf
+            print(f"  Sitzungssatz {ksinr}: {type(exc).__name__}: {exc}")
+            satz = None
+        if not satz:
+            zahl["fehler"] += 1
+            continue
+        store.save_session_sentence(ksinr, stand(eingabe), satz, h, MODEL)
+        zahl["geschrieben"] += 1
+    zahl["usd"] = round(llm.session_cost()["usd"] - start, 4)
+    return zahl
