@@ -136,7 +136,7 @@ function Einrichten({ owner, karte, angebot, fuss, onFertig }: {
       <div className="space-y-3">
         <p className="text-sm text-foreground">
           Deine Notizen schließt ein <strong className="font-semibold">Passkey</strong> auf — mit Face ID, Touch ID oder
-          der Gerätesperre. Nichts zu merken, nichts abzutippen.
+          der Gerätesperre.
         </p>
         <label className="flex min-h-11 items-center gap-2 text-sm text-foreground">
           <input type="checkbox" checked={merken} onChange={(e) => setMerken(e.target.checked)} className="h-4 w-4" />
@@ -169,11 +169,6 @@ function Einrichten({ owner, karte, angebot, fuss, onFertig }: {
           </button>
           <button type="button" onClick={() => setWeg("passphrase")} className={LINK}>Lieber mit Passphrase</button>
         </div>
-        <ul className="list-disc space-y-1 pl-5 text-hinweis text-muted-foreground">
-          <li>Der Passkey liegt in deinem Schlüsselbund und kommt mit auf deine anderen Geräte desselben Anbieters.</li>
-          <li>Die Suche und „Frag den Rat“ kennen deine Notizen nicht.</li>
-          <li>Zu sehen ist nur, zu welchem Punkt es eine Notiz gibt, wann sie geändert wurde und wie lang sie ungefähr ist.</li>
-        </ul>
       </div>
       <Fuss text={fuss} />
     </Karte>
