@@ -1829,7 +1829,11 @@ class SitzungenMixin(StoreBasis):
         Nummer trägt oder der Titel im anderen steckt (die Extraktion schreibt
         bei einem Viertel der Beiträge nur den Titel). Sammel-TOPs bleiben
         außen vor. ``None`` für unbekannte oder nichtöffentliche Punkte und für
-        den Rahmen der Sitzung (Protokoll, Fragestunde, Mitteilungen)."""
+        den Rahmen der Sitzung (Protokoll, Fragestunde, Mitteilungen).
+
+        Beiträge ohne Partei bekommen die Fraktion aus der Anwesenheitsliste
+        ihrer Sitzung, wo der Name dort eindeutig ist
+        (``arguments.fill_factions``, Feld ``party_source``)."""
         from council import arguments, course, outcome_note  # noqa: PLC0415
 
         r = self._conn.execute(
@@ -1877,6 +1881,13 @@ class SitzungenMixin(StoreBasis):
                                                  and (w_titel in st_titel or st_titel in w_titel)):
                     speeches.append({**dict(w), "kind": "speech"})
                     break
+        # Die Hälfte der Beiträge nennt keine Partei; die Anwesenheitsliste
+        # derselben Sitzung kennt die Fraktion zum Datum des Beitrags.
+        rosters: dict[int, list[dict]] = {}
+        for a in self._conn.execute(
+                f"SELECT ksinr, name, party, role FROM council_attendance WHERE ksinr IN ({ph})", ksinrs):
+            rosters.setdefault(a["ksinr"], []).append(dict(a))
+        arguments.fill_factions(speeches, rosters)
 
         template = None
         if tn:
