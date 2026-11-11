@@ -10,7 +10,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
 import { AbrufFehler } from "@/components/abruf-fehler";
 import { api, qs, ApiError } from "@/lib/api";
-import { fragenHref, decisionHref, ortHref, sitzungHref } from "@/lib/routes";
+import { fragenHref, decisionHref, ortHref, punktHref, sitzungHref } from "@/lib/routes";
+import { ownPageItems, type SessionCourse } from "@/lib/course";
 import { STAFFEL, staffelStil } from "@/components/staffel";
 import { Aufklapp } from "@/components/aufklapp";
 import { useDebounce } from "@/lib/use-debounce";
@@ -1016,6 +1017,10 @@ function YearDivider({ year }: { year: string }) {
 
 function SessionsTab({ committees }: { committees: string[] }) {
   const heute = useHeute();
+  // Wege aus der Liste auf die eigenen Seiten (Tims Befund 11.11.2026: ohne
+  // geteilten Link fand man weder die Sitzungs- noch die Punkt-Seite).
+  const sitzungKurs = useFeature("sitzung-kurs");
+  const punktSeite = useFeature("punkt-seite");
   // Lokales Datum als ISO-Tag für String-Vergleiche mit session_date —
   // `heute` selbst ist ein Date, und "2026-08-19" >= Date wäre stets false.
   const heuteTag = heute
@@ -1362,6 +1367,9 @@ function SessionsTab({ committees }: { committees: string[] }) {
               const matched = s.matched_items ?? [];
               const d = detail[s.ksinr];
               const { outcomeByItem, decisionByItem, videoByItem } = ergebnisseJeTop(d);
+              const eigeneSeite = punktSeite
+                ? ownPageItems((d as (typeof d & { course?: SessionCourse }) | undefined)?.course)
+                : new Set<string>();
               const videoCount = Object.keys(videoByItem).length;
               // RL-902: TOPs, die zu eigenen Themen passen (TOP → Themenname).
               const myByItem: Record<string, string> = {};
@@ -1492,6 +1500,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                   bookmarkable={!hasAgendaChildren(it, d?.agenda_items ?? [])}
                                   outcome={it.is_public ? outcomeByItem[topKey(it.item_number)] : undefined}
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
+                                  pageHref={s.ksinr != null && eigeneSeite.has(it.item_number) ? punktHref(s.ksinr, it.item_number) : undefined}
                                   videoResult={it.is_public ? videoByItem[videoKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
                                   live={liveKeys.has(videoKey(it.item_number))}
@@ -1514,7 +1523,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         )
                       ) : null}
 
-                      <div className="mt-3 flex items-center gap-4 px-2">
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-2">
+                        {sitzungKurs && s.ksinr != null && (
+                          <Link href={sitzungHref(s.ksinr)} prefetch={false}
+                            className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary hover:underline">
+                            Zur Sitzung <ChevronRight className="h-4 w-4" aria-hidden />
+                          </Link>
+                        )}
                         <button type="button" onClick={() => toggle(s)} className="text-sm font-medium text-primary hover:underline">
                           {isExpanded ? "Weniger anzeigen" : `Alle ${s.n_items} TOPs anzeigen`}
                         </button>

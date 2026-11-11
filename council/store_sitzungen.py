@@ -1688,6 +1688,9 @@ class SitzungenMixin(StoreBasis):
                 "formality": nr in formal,
                 "formal_act": formalakt_deckel(titel) is not None,
                 "group": gruppe.get(nr),
+                # Formalien, Fragestunde, Anfragen und Mitteilungen haben keinen
+                # Vorgang — eine eigene Punkt-Seite zeigte dort nur den Titel.
+                "own_page": typ not in course.FRAME_TYPES,
             }
 
         # Der Weg jeder Vorlage durch die Gremien, mit Ergebnis je Station —

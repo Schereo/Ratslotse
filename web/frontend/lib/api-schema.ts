@@ -10435,6 +10435,8 @@ export interface components {
                 /** Session Date */
                 session_date: string;
             } | null;
+            /** Own Page */
+            own_page: boolean;
             /** Postponed */
             postponed: number;
             /** Short Title */
@@ -30017,4 +30019,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a2430d3381376a0aa026dc8c88a2c7c4b04505133866910424d934d6adb84c4e
+// vertrag-sha256: c81148c3437b763acafccee3fcde55998a9aa1d4a05d4a159bf54ee722958554

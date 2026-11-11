@@ -8199,6 +8199,10 @@
               "null"
             ]
           },
+          "own_page": {
+            "title": "Own Page",
+            "type": "boolean"
+          },
           "postponed": {
             "title": "Postponed",
             "type": "integer"
@@ -8242,6 +8246,7 @@
           "formality",
           "formal_act",
           "group",
+          "own_page",
           "journey",
           "next_on_agenda"
         ],

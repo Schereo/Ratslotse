@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { courseInput, layoutCourse, stageLabel, type Buoy, type CourseInput, type SessionCourse } from "./course";
+import { courseInput, layoutCourse, ownPageItems, stageLabel, type Buoy, type CourseInput, type SessionCourse } from "./course";
 
 // Die Testfälle stehen im Plan (§ 4.1): die vier Datensätze des Entwurfs in
 // zwei Breiten. Die Zellenzahl zählt Start und Leerzellen mit — eine Etappe
@@ -176,7 +176,7 @@ describe("courseInput — vom Vertrag zur Eingabe", () => {
     items: Object.fromEntries(["Ö 1", "Ö 1.1", "Ö 2", "Ö 3", "Ö 4"].map((nr) => [nr, {
       short_title: `Titel ${nr}`, type: "report", type_label: "Bericht", icon: nr === "Ö 3" ? "bike" : "report",
       applicant: null, important: nr === "Ö 3", important_reason: null, postponed: nr === "Ö 4" ? 1 : 0,
-      formality: nr.startsWith("Ö 1"), formal_act: false, group: null, journey: [], next_on_agenda: null,
+      formality: nr.startsWith("Ö 1"), formal_act: false, own_page: !nr.startsWith("Ö 1"), group: null, journey: [], next_on_agenda: null,
     }])) as SessionCourse["items"],
   };
 
@@ -205,5 +205,18 @@ describe("courseInput — vom Vertrag zur Eingabe", () => {
     expect(inhalt.buoys[0]).toMatchObject({ outcome: "accepted", provisional: false });   // Protokoll geht vor
     expect(inhalt.buoys[1]).toMatchObject({ outcome: "noted", provisional: true,
       title: "Ö 4 · Titel Ö 4 · Zur Kenntnis (mein Mitschrieb)" });
+  });
+});
+
+describe("ownPageItems — welche Punkte eine eigene Seite haben", () => {
+  it("nimmt nur, was das Backend verspricht", () => {
+    const items = {
+      "Ö 1": { own_page: false }, "Ö 6": { own_page: true }, "Ö 6.1": { own_page: true }, "Ö 7": { own_page: false },
+    } as unknown as SessionCourse["items"];
+    expect([...ownPageItems({ items } as SessionCourse)].sort()).toEqual(["Ö 6", "Ö 6.1"]);
+  });
+  it("ohne Kurs eine leere Menge", () => {
+    expect(ownPageItems(undefined).size).toBe(0);
+    expect(ownPageItems(null).size).toBe(0);
   });
 });

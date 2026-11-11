@@ -131,9 +131,13 @@ export function kurzfassung(it: AgendaRowItem): string | null {
   return it.social_text || it.summary || null;
 }
 
-export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult, live = false, liveSpeaker, onVorschau, gewaehlt = false }: {
+export function AgendaRow({ it, query, outcome, decisionId, pageHref, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult, live = false, liveSpeaker, onVorschau, gewaehlt = false }: {
   it: AgendaRowItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
+  /** Eigene Seite des Punkts (`punktHref`, Schalter `punkt-seite`): Ohne
+   *  Beschluss führt die Zeile dorthin, wie sie mit Beschluss zum Beschluss
+   *  führt. Ob ein Punkt eine hat, sagt das Backend (`course.items[nr].own_page`). */
+  pageHref?: string;
   ksinr?: number;
   bookmarkable?: boolean;
   /** Teilen-Knopf an der Zeile: verschickt die Sitzung MIT diesem Punkt —
@@ -253,7 +257,7 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
       )}
       {/* Auf dem Telefon ohne Pfeil: Die ganze Zeile ist der Link, und die
           28 px fehlten dem Titel. */}
-      {decisionId != null && <ChevronRight className="mt-0.5 hidden h-4 w-4 shrink-0 text-muted-foreground/50 sm:block" aria-hidden />}
+      {(decisionId != null || pageHref) && <ChevronRight className="mt-0.5 hidden h-4 w-4 shrink-0 text-muted-foreground/50 sm:block" aria-hidden />}
     </>
   );
   const tone = gewaehlt ? "bg-primary/[0.07] ring-1 ring-primary/30"
@@ -304,6 +308,17 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
           } : undefined}
           className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-1 transition-colors active:scale-[0.995]"
         >
+          {body}
+        </Link>
+        {aktionen}
+      </li>
+    );
+  }
+  if (pageHref) {
+    return (
+      <li id={domId} className={cn(layout, tone)}>
+        <Link href={pageHref}
+          className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-1 transition-colors active:scale-[0.995]">
           {body}
         </Link>
         {aktionen}
