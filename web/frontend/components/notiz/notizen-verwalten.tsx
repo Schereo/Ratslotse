@@ -18,6 +18,8 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import * as krypto from "@/lib/notiz-krypto";
 import { mitPasskeyEntsperren, passkeyAnlegen, passkeyMoeglich, PasskeyFehler } from "@/lib/notiz-passkey";
+import { notizVerpackungMitKontoPasskey } from "@/lib/passkey";
+import { useFeature } from "@/lib/features";
 import {
   addPasskey, deletePasskey, fetchKeys, lock, MIN_PASSPHRASE, resetNotes, rewrapKeys, sessionKey, setRecovery,
   type NoteDoc, type NoteKeysState,
@@ -31,6 +33,7 @@ const TITEL = "text-sm font-semibold text-foreground";
 export function NotizenVerwalten() {
   const { user } = useAuth();
   const owner = user?.id ?? null;
+  const mitAnmeldung = useFeature("passkey-anmeldung");
   const [keys, setKeys] = useState<NoteKeysState | null>(null);
   const [alt, setAlt] = useState("");
   const [neu, setNeu] = useState("");
@@ -113,7 +116,9 @@ export function NotizenVerwalten() {
                 onClick={() => schritt(async () => {
                   const dk = await exportierbar();
                   if (!dk) return;
-                  setKeys(await addPasskey(k.key_version, await passkeyAnlegen(dk, owner, name)));
+                  setKeys(await addPasskey(k.key_version, mitAnmeldung
+                    ? await notizVerpackungMitKontoPasskey(owner, dk)
+                    : await passkeyAnlegen(dk, owner, name)));
                   return "Passkey hinzugefügt.";
                 })}>
                 <Fingerprint className="mr-1.5 h-4 w-4" aria-hidden /> Passkey hinzufügen

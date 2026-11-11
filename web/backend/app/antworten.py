@@ -679,6 +679,29 @@ class BookmarkList(TypedDict):
 # --------------------------------------------------------------------------
 
 
+class PasskeyOptions(TypedDict):
+    """WebAuthn-Optionen im JSON-Format der Norm (Binärfelder als Base64url) —
+    für ``navigator.credentials.create``/``get``. Die Form gibt die Norm vor,
+    nicht wir; deshalb bewusst ``dict[str, Any]`` statt einer Nachbildung."""
+    public_key: dict[str, Any]
+
+
+class AccountPasskey(TypedDict):
+    """Ein Passkey zum Anmelden, wie das Konto ihn zeigt. ``notes``: Er
+    schließt auch die Notizen auf (gleiche Kennung in ``note_passkeys``)."""
+    id: int
+    credential_id: str
+    label: str
+    created_at: str
+    last_used_at: str | None
+    backed_up: bool
+    notes: bool
+
+
+class AccountPasskeyList(TypedDict):
+    passkeys: list[AccountPasskey]
+
+
 class NoteKeys(TypedDict):
     """Der Datenschlüssel, verpackt (AES-KW, Base64) — mit der
     Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``), mit dem

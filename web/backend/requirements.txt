@@ -17,3 +17,6 @@ pillow>=11
 # QR-Code fürs Tippspiel (GET /api/tipp/qr.png) — reines Python, kein Pillow
 # nötig, schreibt PNG direkt.
 segno>=1.6
+# Passkeys zum Anmelden (WebAuthn): prüft Registrierung und Anmeldung
+# gegen den gespeicherten öffentlichen Schlüssel (app/passkeys.py).
+webauthn>=3.0

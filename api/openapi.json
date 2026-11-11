@@ -1,6 +1,69 @@
 {
   "components": {
     "schemas": {
+      "AccountPasskey": {
+        "description": "Ein Passkey zum Anmelden, wie das Konto ihn zeigt. ``notes``: Er\nschließt auch die Notizen auf (gleiche Kennung in ``note_passkeys``).",
+        "properties": {
+          "backed_up": {
+            "title": "Backed Up",
+            "type": "boolean"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "credential_id": {
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_used_at": {
+            "title": "Last Used At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "credential_id",
+          "label",
+          "created_at",
+          "last_used_at",
+          "backed_up",
+          "notes"
+        ],
+        "title": "AccountPasskey",
+        "type": "object"
+      },
+      "AccountPasskeyList": {
+        "properties": {
+          "passkeys": {
+            "items": {
+              "$ref": "#/components/schemas/AccountPasskey"
+            },
+            "title": "Passkeys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "passkeys"
+        ],
+        "title": "AccountPasskeyList",
+        "type": "object"
+      },
       "ActivityPageIn": {
         "description": "Ein Seitenwechsel eines angemeldeten Kontos — für die Bereiche je Konto.\n\nGetrennt von ``PageViewIn``: Der Seitenaufruf bleibt anonym und schaut in\nkein Token. Hier ist das Konto der Punkt; gespeichert wird aber nur der\nBEREICH, auf den ``kern/activity_areas.py`` den Pfad abbildet.",
         "properties": {
@@ -7284,6 +7347,43 @@
             "format": "email",
             "title": "New Email",
             "type": "string"
+          },
+          "passkey": {
+            "properties": {
+              "id": {
+                "maxLength": 1400,
+                "minLength": 16,
+                "pattern": "^[A-Za-z0-9_-]*$",
+                "title": "Id",
+                "type": "string"
+              },
+              "rawId": {
+                "maxLength": 1400,
+                "minLength": 16,
+                "pattern": "^[A-Za-z0-9_-]*$",
+                "title": "Rawid",
+                "type": "string"
+              },
+              "response": {
+                "$ref": "#/components/schemas/PasskeyAssertionResponse"
+              },
+              "type": {
+                "const": "public-key",
+                "default": "public-key",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "rawId",
+              "response"
+            ],
+            "title": "PasskeyAssertion",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
@@ -9674,6 +9774,43 @@
             "maxLength": 128,
             "title": "Current Password",
             "type": "string"
+          },
+          "passkey": {
+            "properties": {
+              "id": {
+                "maxLength": 1400,
+                "minLength": 16,
+                "pattern": "^[A-Za-z0-9_-]*$",
+                "title": "Id",
+                "type": "string"
+              },
+              "rawId": {
+                "maxLength": 1400,
+                "minLength": 16,
+                "pattern": "^[A-Za-z0-9_-]*$",
+                "title": "Rawid",
+                "type": "string"
+              },
+              "response": {
+                "$ref": "#/components/schemas/PasskeyAssertionResponse"
+              },
+              "type": {
+                "const": "public-key",
+                "default": "public-key",
+                "title": "Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "rawId",
+              "response"
+            ],
+            "title": "PasskeyAssertion",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "title": "DeleteAccountRequest",
@@ -19775,6 +19912,126 @@
         "title": "PasskeyAddIn",
         "type": "object"
       },
+      "PasskeyAddRequest": {
+        "properties": {
+          "credential": {
+            "$ref": "#/components/schemas/PasskeyRegistration"
+          },
+          "label": {
+            "default": "",
+            "maxLength": 60,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential"
+        ],
+        "title": "PasskeyAddRequest",
+        "type": "object"
+      },
+      "PasskeyAssertion": {
+        "properties": {
+          "id": {
+            "maxLength": 1400,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "rawId": {
+            "maxLength": 1400,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Rawid",
+            "type": "string"
+          },
+          "response": {
+            "$ref": "#/components/schemas/PasskeyAssertionResponse"
+          },
+          "type": {
+            "const": "public-key",
+            "default": "public-key",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "rawId",
+          "response"
+        ],
+        "title": "PasskeyAssertion",
+        "type": "object"
+      },
+      "PasskeyAssertionResponse": {
+        "properties": {
+          "authenticatorData": {
+            "maxLength": 4096,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Authenticatordata",
+            "type": "string"
+          },
+          "clientDataJSON": {
+            "maxLength": 4096,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Clientdatajson",
+            "type": "string"
+          },
+          "signature": {
+            "maxLength": 2048,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Signature",
+            "type": "string"
+          },
+          "userHandle": {
+            "maxLength": 256,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Userhandle",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "clientDataJSON",
+          "authenticatorData",
+          "signature"
+        ],
+        "title": "PasskeyAssertionResponse",
+        "type": "object"
+      },
+      "PasskeyAttestationResponse": {
+        "properties": {
+          "attestationObject": {
+            "maxLength": 16384,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Attestationobject",
+            "type": "string"
+          },
+          "clientDataJSON": {
+            "maxLength": 4096,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Clientdatajson",
+            "type": "string"
+          },
+          "transports": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Transports",
+            "type": "array"
+          }
+        },
+        "required": [
+          "clientDataJSON",
+          "attestationObject"
+        ],
+        "title": "PasskeyAttestationResponse",
+        "type": "object"
+      },
       "PasskeyIn": {
         "properties": {
           "credential_id": {
@@ -19807,6 +20064,107 @@
           "wrapped_key"
         ],
         "title": "PasskeyIn",
+        "type": "object"
+      },
+      "PasskeyLoginRequest": {
+        "properties": {
+          "credential": {
+            "$ref": "#/components/schemas/PasskeyAssertion"
+          }
+        },
+        "required": [
+          "credential"
+        ],
+        "title": "PasskeyLoginRequest",
+        "type": "object"
+      },
+      "PasskeyOptions": {
+        "description": "WebAuthn-Optionen im JSON-Format der Norm (Binärfelder als Base64url) —\nfür ``navigator.credentials.create``/``get``. Die Form gibt die Norm vor,\nnicht wir; deshalb bewusst ``dict[str, Any]`` statt einer Nachbildung.",
+        "properties": {
+          "public_key": {
+            "additionalProperties": true,
+            "title": "Public Key",
+            "type": "object"
+          }
+        },
+        "required": [
+          "public_key"
+        ],
+        "title": "PasskeyOptions",
+        "type": "object"
+      },
+      "PasskeyRegistration": {
+        "properties": {
+          "id": {
+            "maxLength": 1400,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "rawId": {
+            "maxLength": 1400,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]*$",
+            "title": "Rawid",
+            "type": "string"
+          },
+          "response": {
+            "$ref": "#/components/schemas/PasskeyAttestationResponse"
+          },
+          "type": {
+            "const": "public-key",
+            "default": "public-key",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "rawId",
+          "response"
+        ],
+        "title": "PasskeyRegistration",
+        "type": "object"
+      },
+      "PasskeySignupOptionsRequest": {
+        "properties": {
+          "display_name": {
+            "maxLength": 60,
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasskeySignupOptionsRequest",
+        "type": "object"
+      },
+      "PasskeySignupRequest": {
+        "properties": {
+          "credential": {
+            "$ref": "#/components/schemas/PasskeyRegistration"
+          },
+          "label": {
+            "default": "",
+            "maxLength": 60,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential"
+        ],
+        "title": "PasskeySignupRequest",
         "type": "object"
       },
       "PeopleDirectory": {
@@ -35565,6 +35923,142 @@
         ]
       }
     },
+    "/api/account/passkeys": {
+      "get": {
+        "operationId": "list_passkeys_api_account_passkeys_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountPasskeyList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Passkeys",
+        "tags": [
+          "account"
+        ]
+      },
+      "post": {
+        "operationId": "add_passkey_api_account_passkeys_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountPasskeyList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Passkey schon vorhanden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Passkey",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/account/passkeys/options": {
+      "post": {
+        "operationId": "add_options_api_account_passkeys_options_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyOptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Höchstzahl erreicht"
+          }
+        },
+        "summary": "Add Options",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/account/passkeys/{passkey_id}": {
+      "delete": {
+        "description": "Nur die Anmeldung — schließt derselbe Passkey auch die Notizen auf,\nbleibt das (dort entfernen).",
+        "operationId": "delete_passkey_api_account_passkeys__passkey_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "passkey_id",
+            "required": true,
+            "schema": {
+              "title": "Passkey Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountPasskeyList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Unbekannt"
+          },
+          "409": {
+            "description": "Letzter Weg ins Konto"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Passkey",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/api/account/test-notification": {
       "post": {
         "description": "RL-702: Test-Benachrichtigung über die aktiven Kanäle — damit man prüfen\nkann, ob E-Mail/Push wirklich ankommen. Nutzt exakt den Cron-Versandpfad\n(deliver_message); ohne RESEND_API_KEY wird E-Mail still übersprungen.",
@@ -37721,6 +38215,161 @@
           }
         },
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/passkey/login": {
+      "post": {
+        "operationId": "login_api_auth_passkey_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Passkey unbekannt oder ungültig"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/passkey/login/options": {
+      "post": {
+        "description": "Auch für die Bestätigung beim Löschen und beim Adresswechsel.",
+        "operationId": "login_options_api_auth_passkey_login_options_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyOptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Login Options",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/passkey/signup": {
+      "post": {
+        "operationId": "signup_api_auth_passkey_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeySignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Adresse oder Passkey schon vergeben"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Signup",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/passkey/signup/options": {
+      "post": {
+        "description": "Die Prüfungen der Registrierung VOR der Abfrage am Gerät — wer eine\nvergebene Adresse tippt, soll nicht erst Face ID bemühen müssen.",
+        "operationId": "signup_options_api_auth_passkey_signup_options_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeySignupOptionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyOptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Adresse schon registriert"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Signup Options",
         "tags": [
           "auth"
         ]

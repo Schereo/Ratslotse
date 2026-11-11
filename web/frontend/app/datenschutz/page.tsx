@@ -51,6 +51,11 @@ export default function DatenschutzPage() {
           <Section title="Welche Daten wir verarbeiten">
             <ul className="list-disc space-y-1 pl-5">
               <li><strong>Konto:</strong> E-Mail-Adresse und ein Passwort-Hash (das Passwort selbst wird nicht im Klartext gespeichert).</li>
+              {/* Hinter dem Schalter `passkey-anmeldung` — wie bei den Notizen
+                  steht der Absatz auf Prod erst mit der Freigabe. */}
+              {process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev" && (
+                <li><strong>Anmeldung mit Passkey (optional):</strong> Meldest du dich mit einem Passkey an, speichern wir dessen Kennung, den öffentlichen Schlüssel, einen Zähler, eine Gerätebezeichnung wie „iPhone“ sowie Datum der Einrichtung und der letzten Anmeldung. Der private Schlüssel und dein Fingerabdruck bzw. Gesicht bleiben auf deinem Gerät oder in deinem Schlüsselbund; wir sehen sie nie. Für die Anmeldung merken wir uns fünf Minuten lang eine Zufallszahl, bei der Registrierung zusätzlich Name und E-Mail-Adresse, bis das Konto angelegt ist. Kommt ein Passkey dazu, schicken wir dir einen Hinweis an deine bestätigte Adresse. Passkeys werden mit deinem Konto gelöscht.</li>
+              )}
               <li><strong>Anmeldung mit Apple (optional):</strong> Meldest du dich mit Apple an, erhalten wir von Apple eine pseudonyme Nutzerkennung und deine E-Mail-Adresse (bei „E-Mail-Adresse verbergen" eine Apple-Weiterleitungsadresse). Beides dient ausschließlich der Anmeldung und Konto-Verknüpfung.</li>
               <li><strong>Push (optional):</strong> ein Geräte-Token, wenn du App-Push-Benachrichtigungen aktivierst.</li>
               <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen. Dazu gehören auch die Stadtteile, die „Mein Viertel" als deine Viertel zeigt — sie sind Themen deines Kontos und liegen wie diese auf dem Server.</li>

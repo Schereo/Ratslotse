@@ -19,7 +19,7 @@ from pathlib import Path
 from .antworten import Health
 from .config import get_settings
 from .schemas import AppConfigOut, AppElectionOut
-from .routers import today, account, admin, auth, auth_apple, bookmarks, notes, council, districts, feedback, kommunalwahl, news, onboarding, plans, push, quiz, social, topics, badges, calendar, mcp, mcp_oauth, tippspiel, wahlabend
+from .routers import today, account, admin, auth, auth_apple, auth_passkey, bookmarks, notes, council, districts, feedback, kommunalwahl, news, onboarding, plans, push, quiz, social, topics, badges, calendar, mcp, mcp_oauth, tippspiel, wahlabend
 from .session import KeinCacheMitSitzung, SitzungsVerlaengerung
 
 logger = logging.getLogger("ratslotse.web.main")
@@ -182,6 +182,8 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(auth_apple.router)
+app.include_router(auth_passkey.router)
+app.include_router(auth_passkey.account_router)
 app.include_router(account.router)
 app.include_router(council.router)
 app.include_router(plans.router)

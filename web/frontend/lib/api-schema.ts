@@ -307,6 +307,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/account/passkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Passkeys */
+        get: operations["list_passkeys_api_account_passkeys_get"];
+        put?: never;
+        /** Add Passkey */
+        post: operations["add_passkey_api_account_passkeys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/passkeys/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Options */
+        post: operations["add_options_api_account_passkeys_options_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/passkeys/{passkey_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Passkey
+         * @description Nur die Anmeldung — schließt derselbe Passkey auch die Notizen auf,
+         *     bleibt das (dort entfernen).
+         */
+        delete: operations["delete_passkey_api_account_passkeys__passkey_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/account/test-notification": {
         parameters: {
             query?: never;
@@ -1458,6 +1514,81 @@ export interface paths {
         get: operations["me_api_auth_me_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_auth_passkey_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/login/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login Options
+         * @description Auch für die Bestätigung beim Löschen und beim Adresswechsel.
+         */
+        post: operations["login_options_api_auth_passkey_login_options_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signup */
+        post: operations["signup_api_auth_passkey_signup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/signup/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Signup Options
+         * @description Die Prüfungen der Registrierung VOR der Abfrage am Gerät — wer eine
+         *     vergebene Adresse tippt, soll nicht erst Face ID bemühen müssen.
+         */
+        post: operations["signup_options_api_auth_passkey_signup_options_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7032,6 +7163,32 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AccountPasskey
+         * @description Ein Passkey zum Anmelden, wie das Konto ihn zeigt. ``notes``: Er
+         *     schließt auch die Notizen auf (gleiche Kennung in ``note_passkeys``).
+         */
+        AccountPasskey: {
+            /** Backed Up */
+            backed_up: boolean;
+            /** Created At */
+            created_at: string;
+            /** Credential Id */
+            credential_id: string;
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Notes */
+            notes: boolean;
+        };
+        /** AccountPasskeyList */
+        AccountPasskeyList: {
+            /** Passkeys */
+            passkeys: components["schemas"]["AccountPasskey"][];
+        };
+        /**
          * ActivityPageIn
          * @description Ein Seitenwechsel eines angemeldeten Kontos — für die Bereiche je Konto.
          *
@@ -10067,6 +10224,20 @@ export interface components {
              * Format: email
              */
             new_email: string;
+            /** PasskeyAssertion */
+            passkey?: {
+                /** Id */
+                id: string;
+                /** Rawid */
+                rawId: string;
+                response: components["schemas"]["PasskeyAssertionResponse"];
+                /**
+                 * Type
+                 * @default public-key
+                 * @constant
+                 */
+                type: "public-key";
+            } | null;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -11085,6 +11256,20 @@ export interface components {
              * @default
              */
             current_password: string;
+            /** PasskeyAssertion */
+            passkey?: {
+                /** Id */
+                id: string;
+                /** Rawid */
+                rawId: string;
+                response: components["schemas"]["PasskeyAssertionResponse"];
+                /**
+                 * Type
+                 * @default public-key
+                 * @constant
+                 */
+                type: "public-key";
+            } | null;
         };
         /**
          * DeliberationStation
@@ -15227,6 +15412,49 @@ export interface components {
             /** Wrapped Key */
             wrapped_key: string;
         };
+        /** PasskeyAddRequest */
+        PasskeyAddRequest: {
+            credential: components["schemas"]["PasskeyRegistration"];
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+        };
+        /** PasskeyAssertion */
+        PasskeyAssertion: {
+            /** Id */
+            id: string;
+            /** Rawid */
+            rawId: string;
+            response: components["schemas"]["PasskeyAssertionResponse"];
+            /**
+             * Type
+             * @default public-key
+             * @constant
+             */
+            type: "public-key";
+        };
+        /** PasskeyAssertionResponse */
+        PasskeyAssertionResponse: {
+            /** Authenticatordata */
+            authenticatorData: string;
+            /** Clientdatajson */
+            clientDataJSON: string;
+            /** Signature */
+            signature: string;
+            /** Userhandle */
+            userHandle?: string | null;
+        };
+        /** PasskeyAttestationResponse */
+        PasskeyAttestationResponse: {
+            /** Attestationobject */
+            attestationObject: string;
+            /** Clientdatajson */
+            clientDataJSON: string;
+            /** Transports */
+            transports?: string[];
+        };
         /** PasskeyIn */
         PasskeyIn: {
             /** Credential Id */
@@ -15240,6 +15468,55 @@ export interface components {
             prf_salt: string;
             /** Wrapped Key */
             wrapped_key: string;
+        };
+        /** PasskeyLoginRequest */
+        PasskeyLoginRequest: {
+            credential: components["schemas"]["PasskeyAssertion"];
+        };
+        /**
+         * PasskeyOptions
+         * @description WebAuthn-Optionen im JSON-Format der Norm (Binärfelder als Base64url) —
+         *     für ``navigator.credentials.create``/``get``. Die Form gibt die Norm vor,
+         *     nicht wir; deshalb bewusst ``dict[str, Any]`` statt einer Nachbildung.
+         */
+        PasskeyOptions: {
+            /** Public Key */
+            public_key: {
+                [key: string]: unknown;
+            };
+        };
+        /** PasskeyRegistration */
+        PasskeyRegistration: {
+            /** Id */
+            id: string;
+            /** Rawid */
+            rawId: string;
+            response: components["schemas"]["PasskeyAttestationResponse"];
+            /**
+             * Type
+             * @default public-key
+             * @constant
+             */
+            type: "public-key";
+        };
+        /** PasskeySignupOptionsRequest */
+        PasskeySignupOptionsRequest: {
+            /** Display Name */
+            display_name?: string | null;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
+        /** PasskeySignupRequest */
+        PasskeySignupRequest: {
+            credential: components["schemas"]["PasskeyRegistration"];
+            /**
+             * Label
+             * @default
+             */
+            label: string;
         };
         /** PeopleDirectory */
         PeopleDirectory: {
@@ -21668,6 +21945,138 @@ export interface operations {
             };
         };
     };
+    list_passkeys_api_account_passkeys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountPasskeyList"];
+                };
+            };
+        };
+    };
+    add_passkey_api_account_passkeys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountPasskeyList"];
+                };
+            };
+            /** @description Passkey schon vorhanden */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_options_api_account_passkeys_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptions"];
+                };
+            };
+            /** @description Höchstzahl erreicht */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_passkey_api_account_passkeys__passkey_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountPasskeyList"];
+                };
+            };
+            /** @description Unbekannt */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Letzter Weg ins Konto */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     test_notification_api_account_test_notification_post: {
         parameters: {
             query?: never;
@@ -23206,6 +23615,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+        };
+    };
+    login_api_auth_passkey_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Passkey unbekannt oder ungültig */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_options_api_auth_passkey_login_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptions"];
+                };
+            };
+        };
+    };
+    signup_api_auth_passkey_signup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeySignupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Adresse oder Passkey schon vergeben */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    signup_options_api_auth_passkey_signup_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeySignupOptionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptions"];
+                };
+            };
+            /** @description Adresse schon registriert */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -30275,4 +30824,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 40a1ed30cc7d4f4ad7c6bbbcf60d1a782d07b47630b64680b4f2be7cf0c62564
+// vertrag-sha256: c7653d310cf078c4bb6b2c5242baa85046860875dd0dccfcdef8f6e66d4e4545

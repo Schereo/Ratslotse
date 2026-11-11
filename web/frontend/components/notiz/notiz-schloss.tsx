@@ -12,10 +12,12 @@ import { Fingerprint, Lock, LockOpen } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import * as krypto from "@/lib/notiz-krypto";
 import {
-  addPasskey, createKeys, createKeysMitPasskey, fetchKeys, lock, MIN_PASSPHRASE, onKeyChange, rememberedKey, rewrapKeys,
-  sessionKey, setSessionKey, type NoteKeysState,
+  addPasskey, anmeldePasskey, createKeys, createKeysMitPasskey, fetchKeys, lock, MIN_PASSPHRASE, onKeyChange, rememberedKey,
+  rewrapKeys, sessionKey, setSessionKey, type NoteKeysState,
 } from "@/lib/notizen";
 import { mitPasskeyEntsperren, passkeyAnlegen, passkeyMoeglich, PasskeyFehler } from "@/lib/notiz-passkey";
+import { anmeldePasskeyNachtragen, notizVerpackungMitKontoPasskey } from "@/lib/passkey";
+import { useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 export const KICKER = "font-mono text-meta uppercase tracking-[0.06em] text-muted-foreground";
@@ -105,6 +107,10 @@ function Einrichten({ owner, karte, angebot, fuss, onFertig }: {
   onFertig: (k: NoteKeysState, dk: CryptoKey) => void;
 }) {
   const { user } = useAuth();
+  // Mit der Passkey-Anmeldung ist jeder neue Notiz-Passkey zugleich einer zum
+  // Anmelden — und wer sich gerade per Passkey angemeldet hat, braucht keine
+  // zweite Abfrage (`lib/passkey.ts`).
+  const mitAnmeldung = useFeature("passkey-anmeldung");
   const [offen, setOffen] = useState(false);
   const [weg, setWeg] = useState<"passkey" | "passphrase" | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
@@ -149,7 +155,9 @@ function Einrichten({ owner, karte, angebot, fuss, onFertig }: {
             setFehler(null);
             try {
               const { dk, basis } = await krypto.neuerSchluessel();
-              const pk = await passkeyAnlegen(dk, owner, user?.email ?? `Konto ${owner}`);
+              const pk = mitAnmeldung
+                ? await notizVerpackungMitKontoPasskey(owner, dk)
+                : await passkeyAnlegen(dk, owner, user?.email ?? `Konto ${owner}`);
               const k = await createKeysMitPasskey(basis, pk);
               const sitzung = await krypto.nurBenutzbar(dk);
               await setSessionKey(owner, sitzung, merken);
@@ -292,6 +300,20 @@ function Entsperren({ owner, karte, fuss, keys, onKeys, onOffen }: {
     await setSessionKey(owner, dk, merken);
     onOffen(dk);
   };
+  // Angemeldet per Passkey, der noch keiner für die Notizen ist? Dann den
+  // Schlüssel einmal exportierbar holen und ihn dazulegen — beim nächsten
+  // Mal genügt die Anmeldung (`lib/passkey.ts`, `anmeldePasskeyNachtragen`).
+  const nachtragen = anmeldePasskey(owner) != null;
+  const offenUndNachtragen = async (dk: CryptoKey) => {
+    if (nachtragen) {
+      try {
+        const neu = await anmeldePasskeyNachtragen(owner, k.key_version, dk);
+        if (neu) onKeys(neu);
+      } catch { /* entsperrt ist trotzdem */ }
+      dk = await krypto.nurBenutzbar(dk);
+    }
+    await offen(dk);
+  };
   const nebenwege = (
     <div className="flex flex-wrap items-center gap-x-4">
       {modus !== "passkey" && hatPasskey && <button type="button" onClick={() => { setModus("passkey"); setFehler(null); }} className={LINK}>Mit Passkey</button>}
@@ -373,7 +395,7 @@ function Entsperren({ owner, karte, fuss, keys, onKeys, onOffen }: {
               setArbeit(true);
               setFehler(null);
               try {
-                await offen(await mitPasskeyEntsperren(keys.passkeys));
+                await offenUndNachtragen(await mitPasskeyEntsperren(keys.passkeys, nachtragen));
               } catch (e) {
                 setFehler(e instanceof PasskeyFehler
                   ? (e.art === "abgebrochen" ? "Abgebrochen — noch einmal?" : e.message)
@@ -398,11 +420,11 @@ function Entsperren({ owner, karte, fuss, keys, onKeys, onOffen }: {
         e.preventDefault();
         setArbeit(true);
         setFehler(null);
-        const dk = await krypto.unlockWithPassphrase(k, pass);
+        const dk = await krypto.unlockWithPassphrase(k, pass, nachtragen);
         setArbeit(false);
         if (!dk) { setFehler("Diese Passphrase passt nicht."); return; }
         setPass("");
-        await offen(dk);
+        await offenUndNachtragen(dk);
       }}>
         <label className="block text-sm">
           <span className="mb-1 block text-muted-foreground">Notiz-Passphrase</span>

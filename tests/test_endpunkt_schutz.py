@@ -60,6 +60,13 @@ OEFFENTLICH = {
     ("post", "/api/auth/magic"),
     ("post", "/api/auth/logout"),
     ("post", "/api/auth/apple"),
+    # Mit Passkey registrieren und anmelden (app/passkeys.py): Der Zweck IST
+    # die Anmeldung ohne Sitzung. Die Optionen stellen nur eine einmalige
+    # Challenge aus; den Nachweis bringt die Signatur des Passkeys.
+    ("post", "/api/auth/passkey/signup/options"),
+    ("post", "/api/auth/passkey/signup"),
+    ("post", "/api/auth/passkey/login/options"),
+    ("post", "/api/auth/passkey/login"),
     ("post", "/api/auth/verify-email"),
     ("post", "/api/auth/forgot-password"),
     ("post", "/api/auth/reset-password"),

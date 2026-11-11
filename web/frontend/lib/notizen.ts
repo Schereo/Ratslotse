@@ -80,9 +80,32 @@ export async function rememberedKey(owner: number): Promise<CryptoKey | null> {
   return dk;
 }
 
+// ---- Anmelde-Passkey dieser Sitzung (lib/passkey.ts) -------------------------
+// Wer sich per Passkey anmeldet, hat dessen PRF-Geheimnis schon geliefert. War
+// der Passkey noch keiner für die Notizen (oder die Adresse noch unbestätigt),
+// bleibt hier der daraus abgeleitete, NICHT exportierbare Schlüssel liegen —
+// nur im Speicher dieses Tabs. Beim nächsten Entsperren oder Einrichten kommt
+// der Passkey dann ohne zweite Abfrage dazu. Gefährlicher als der Datenschlüssel
+// selbst, der hier ebenso liegt, ist er nicht.
+
+let anmeldung: { owner: number; credentialId: string; kek: CryptoKey } | null = null;
+
+export function merkeAnmeldePasskey(owner: number, credentialId: string, kek: CryptoKey): void {
+  anmeldung = { owner, credentialId, kek };
+}
+
+export function anmeldePasskey(owner: number): { credentialId: string; kek: CryptoKey } | null {
+  return anmeldung?.owner === owner ? { credentialId: anmeldung.credentialId, kek: anmeldung.kek } : null;
+}
+
+export function vergissAnmeldePasskey(): void {
+  anmeldung = null;
+}
+
 /** Sperren: Schlüssel aus Speicher und Gerät. Die Notizen bleiben beim Server. */
 export async function lock(owner?: number): Promise<void> {
   sitzung = null;
+  if (owner == null) anmeldung = null;
   if (owner != null) await idb((s) => s.delete(`konto:${owner}`), "readwrite");
   else await idb((s) => s.clear(), "readwrite");
   melden();

@@ -149,6 +149,8 @@ BEWUSST_OFFEN = {
     "McpMessage": "Eine JSON-RPC-Antwort des MCP-Servers. `result` und `error` "
                   "trägt die MCP-Spezifikation je Methode; den Vertrag hält sie, "
                   "nicht unsere Clients (die rufen den Endpunkt nie auf).",
+    "PasskeyOptions": "WebAuthn-Optionen für `navigator.credentials`; ihre Form "
+                      "gibt die Norm vor (und `py_webauthn` erzeugt sie), nicht wir.",
     "QaShare": "Geteilter Antwort-Schnappschuss aus `qa_shares.extras` — "
                "gespeichert in der Form von damals.",
     "ResearchSnapshot": "Gespeicherter Quellen-Block eines Deep-Research-Jobs "

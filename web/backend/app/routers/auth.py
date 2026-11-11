@@ -283,31 +283,20 @@ def _sitzungskonto(request: Request, store: Store) -> dict | None:
         return None
 
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register(
-    request: Request,
-    body: RegisterRequest,
-    response: Response,
-    background: BackgroundTasks,
-    store: Store = Depends(get_store),
-) -> UserOut:
-    # Die Bremse zählt ihren Treffer mit: Ein Skript, das hier hängenbleibt,
-    # hinterließ sonst nirgends eine Spur — „niemand hat es versucht" sah aus
-    # wie „500 haben es versucht".
-    try:
-        register_limiter.check(request)
-    except HTTPException:
-        store.record_signup_rejection("rate_limit")
-        raise
-    settings = get_settings()
-    email = str(body.email).lower().strip()
+def anmeldedaten_pruefen(request: Request, store: Store, email_roh: str,
+                         name_roh: str | None) -> tuple[str, str] | JSONResponse:
+    """Name, Wegwerf-Adresse, Dublette — für die Registrierung mit Passwort
+    und mit Passkey dieselben Prüfungen. Gibt Adresse und Namen zurück, bei
+    einer vorhandenen Adresse die fertige 409-Antwort (samt Hinweis an die
+    Besitzerin). Die Bremse ``register_limiter`` zählt der Aufrufer."""
+    email = str(email_roh).lower().strip()
     # Der Name ist Pflicht — geprüft HIER und nicht als `min_length` im Schema:
     # Eine Pydantic-Verletzung käme als englischer Text („String should have at
     # least 1 character") aus dem Vertrag, und die ausgelieferte App zeigt genau
     # diesen `msg` an. Ein eigener Abbruch liefert stattdessen einen deutschen
     # Satz, den jeder Client unverändert anzeigen kann — auch die App im Store,
     # deren Feld noch „optional" heißt.
-    display_name = (body.display_name or "").strip()
+    display_name = (name_roh or "").strip()
     if not display_name:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
     if not name_zulaessig(display_name):
@@ -335,9 +324,20 @@ def register(
             # Als Hintergrund-Aufgabe DIESER Antwort: Aufgaben aus
             # `BackgroundTasks` laufen nach einer HTTPException nicht.
             hinweis = BackgroundTask(_send_duplicate_notice, email, int(vorhanden["id"]))
-        return JSONResponse(  # pyright: ignore[reportReturnType] — wie /api/health
+        return JSONResponse(
             {"detail": "E-Mail ist bereits registriert."},
             status_code=status.HTTP_409_CONFLICT, background=hinweis)
+    return email, display_name
+
+
+def konto_anlegen(request: Request, background: BackgroundTasks, store: Store, email: str,
+                  display_name: str, password_hash: str, *, mit_passwort: bool = True) -> dict:
+    """Das Konto anlegen — für Passwort und Passkey gleich: unbestätigt, bis
+    Link oder Code aus der Mail eingelöst sind (Tim 11.11.2026: auch beim
+    Passkey, sonst ließe sich eine fremde Adresse eintragen). Das Cookie setzt
+    der Aufrufer. ``mit_passwort=False``: Im Hash steht ein Zufallswert, das
+    Konto gilt als passwortlos (wie ein Apple-Konto)."""
+    settings = get_settings()
     # Registration hands out no role at all: everything it could decide on comes
     # from this unauthenticated request body. Even the configured WEB_ADMIN_EMAIL
     # starts as a plain user and is only promoted once it has proven control of
@@ -354,11 +354,13 @@ def register(
         # unlocks it — the same switch the panel already uses to lock one.
         user_status = "disabled"
     user_id = store.create_web_user(
-        email, hash_password(body.password), role, user_status, email_verified=verified,
+        email, password_hash, role, user_status, email_verified=verified,
         display_name=display_name,
         # Womit dieses Konto entstanden ist — Browser oder App (Admin 20a).
         signup_client=client_kind(request),
     )
+    if not mit_passwort:
+        store.set_password_set(user_id, False)
     # Der Zustellweg wird NICHT vorbelegt, wenn der Assistent im Browser gleich
     # danach fragt: „Soll Lotti sich melden?" stand über einem Schalter,
     # der längst an war, und die Antwort dort änderte nichts (Tim, 03.09.2026:
@@ -373,7 +375,7 @@ def register(
     # behält sie die bisherige Vorbelegung.
     store.set_delivery_channel(user_id, "email" if is_app_client(request) else "off")
     created_user = store.get_web_user_by_id(user_id)
-    _set_auth_cookie(response, created_user, request)
+    assert created_user is not None
     if user_status == "pending":
         # Send a verification link; confirming it activates the account and
         # pings the admins (FYI) once the address is confirmed real.
@@ -394,6 +396,32 @@ def register(
             "Adminrechte von Hand vergeben: " + _GRANT_ADMIN_CMD,
             email, email,
         )
+    return created_user
+
+
+@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def register(
+    request: Request,
+    body: RegisterRequest,
+    response: Response,
+    background: BackgroundTasks,
+    store: Store = Depends(get_store),
+) -> UserOut:
+    # Die Bremse zählt ihren Treffer mit: Ein Skript, das hier hängenbleibt,
+    # hinterließ sonst nirgends eine Spur — „niemand hat es versucht" sah aus
+    # wie „500 haben es versucht".
+    try:
+        register_limiter.check(request)
+    except HTTPException:
+        store.record_signup_rejection("rate_limit")
+        raise
+    geprueft = anmeldedaten_pruefen(request, store, str(body.email), body.display_name)
+    if isinstance(geprueft, JSONResponse):
+        return geprueft  # pyright: ignore[reportReturnType] — wie /api/health
+    email, display_name = geprueft
+    created_user = konto_anlegen(request, background, store, email, display_name,
+                                 hash_password(body.password))
+    _set_auth_cookie(response, created_user, request)
     return _to_out(created_user, _app_access_token(request, created_user))
 
 
@@ -638,6 +666,10 @@ def reset_password(
     store.increment_token_version(user_id)
     if not vorher.get("email_verified"):
         store.set_email_verified(user_id, True)
+        # Ein unbestätigtes Konto mit Passkey hat womöglich ein Fremder auf
+        # diese Adresse angelegt — sein Passkey bliebe sonst ein zweiter Weg
+        # hinein, nachdem die Besitzerin es sich zurückgeholt hat.
+        store.delete_web_passkeys(user_id)
         if vorher.get("status") == "pending":
             store.set_web_user_status(user_id, "active")
             background.add_task(_notify_admins_registration, str(vorher.get("email", "")))
