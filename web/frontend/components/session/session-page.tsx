@@ -245,7 +245,7 @@ function Board({ ctx }: { ctx: Ctx }) {
 
       {course.summary && (
         <LottiSatz className="mt-5" text={course.summary}
-          quelle={phase === "protocol" ? "Aus dem Protokoll gezählt." : "Aus der Tagesordnung gezählt."} />
+          quelle={phase === "protocol" ? "Nach dem Protokoll." : "Nach der Tagesordnung."} />
       )}
 
       <div className="mt-6 border-t border-border pt-5">

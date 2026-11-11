@@ -1720,7 +1720,8 @@ class SitzungenMixin(StoreBasis):
                 items, {nr: (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("outcome")
                         for nr in items} if protokoll else {},
                 {nr: (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("vote") for nr in items},
-                rat=(sitzung["committee"] or "").strip().startswith("Rat")),
+                rat=(sitzung["committee"] or "").strip().startswith("Rat"),
+                vorbei=bool(datum) and datum < date.today().isoformat()),
             "next_session": self._naechste_sitzung_des_gremiums(sitzung["committee"], datum),
             "stages": stages,
             "items": items,
