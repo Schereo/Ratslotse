@@ -133,6 +133,12 @@ public struct NativeRootView: View {
                let user = debugActiveUser() {
                 model.session = .active(user)
                 model.onboardingStep = nil
+                // Die Schalter trotzdem vom Server holen (Sichtprobe gegen ein
+                // lokales Backend, `RATSLOTSE_API_BASE_URL`).
+                if let config: AppConfiguration = try? await model.api.get("/api/app-config") {
+                    model.features = Set(config.features)
+                }
+                model.featuresLoaded = true
             } else {
                 await model.bootstrap()
             }
@@ -223,6 +229,7 @@ private extension AppRoute {
     var scaffoldTitle: String {
         switch self {
         case .decision: "Beschluss"
+        case .agendaItem: "Tagesordnungspunkt"
         case .movement: "Idee aus anderen Städten"
         case .sessions(let ksinr, _): ksinr == nil ? "Sitzungen" : "Sitzung"
         case .person: "Person"
@@ -1080,6 +1087,7 @@ struct RouteDestinationView: View {
     var body: some View {
         switch route {
         case .decision(let id): DecisionDetailView(model: model, decisionID: id)
+        case let .agendaItem(ksinr, item): AgendaItemDetailView(model: model, ksinr: ksinr, itemNumber: item)
         case .movement(let id): MovementDetailView(model: model, clusterID: id)
         case .ideas:
             // Derselbe Schalter wie im Mehr-Menü; ohne ihn ist die Seite im
