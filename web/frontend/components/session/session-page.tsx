@@ -7,9 +7,10 @@
    1. Tafel (`.hh-tafel`): Kicker, Kurzname, Aktionen, der gerechnete Satz,
       der „Kurs der Sitzung", „Wichtig in dieser Sitzung".
    2. Tagesordnung als Linie mit Etappen-Bändern und Karten.
-   3. Rechts „Ort und Zeit", „Wie es weitergeht", „Quellen" — auf sehr
+   3. Rechts „Wie es weitergeht" und „Quellen" — auf sehr
       breiten Schirmen mit Beschlüssen hat die `BeschlussVorschau` Vorrang
-      (Plan 3.7) und die drei Karten rücken unter die Liste.
+      (Plan 3.7) und die Karten rücken unter die Liste. Ort und Zeit stehen
+      nur im Kicker der Tafel, nicht noch einmal als Karte.
 
    Alles, was die heutige Seite trägt, bleibt (Plan 3.6): Zurück, Merken,
    Ratsinfo, Protokoll, LiveChip, Änderungen, Video-Hinweis, Dringliches,
@@ -18,7 +19,7 @@
 import { LottiSatz } from "@/components/session/lotti-satz";
 import { useMemo, useState, type ReactNode } from "react";
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ChevronDown, Clock, ExternalLink, MapPin, Navigation, Sparkles,
+  ArrowDown, ArrowLeft, ArrowRight, ChevronDown, ExternalLink, Navigation, Sparkles,
 } from "lucide-react";
 import { Course } from "@/components/session/course";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -58,7 +59,6 @@ const KICKER = "font-mono text-meta uppercase tracking-[0.06em] text-muted-foreg
 
 /** Feste Texte (Plan § 4.6). */
 const TEXT = {
-  legendeVorher: "Jede Boje ist ein Punkt der Tagesordnung, jedes helle Band eine Etappe der Sitzung. Die großen Bojen sind die wichtigen. Der gelbe Punkt heißt: stand schon einmal hier und wurde vertagt.",
   hinweisVorher: "Kurzfassungen sind automatisch aus Vorlagen und Anträgen erstellt. Verbindlich sind die Unterlagen im Ratsinfo.",
   hinweisNachher: "Kurzfassungen sind automatisch erstellt. Verbindlich ist das Protokoll.",
   anfragen: "Fragen der Mitglieder an die Verwaltung. Ein Beschluss kommt dabei nicht heraus.",
@@ -229,8 +229,8 @@ function Board({ ctx }: { ctx: Ctx }) {
             </a>
           )}
           <BookmarkButton target={{ kind: "session", ksinr }} className={AKTION_SEKUNDAER} />
-          <ShareButton path={sitzungHref(ksinr)} label="Sitzung teilen" still
-            className={phase === "before" || phase === "live" ? AKTION_SEKUNDAER : AKTION_PRIMAER}
+          {/* Teilen ist nie die Hauptaktion: Sitzungen teilt man selten. */}
+          <ShareButton path={sitzungHref(ksinr)} label="Sitzung teilen" still className={AKTION_SEKUNDAER}
             title={`${data.committee} am ${formatDate(data.session_date)}`} />
           {protokollUrl && (
             <a href={protokollUrl} target="_blank" rel="noreferrer" className={AKTION_EXTERN}>
@@ -265,12 +265,10 @@ function Board({ ctx }: { ctx: Ctx }) {
               ))}
             </p>
             <p className="mt-2 max-w-[46rem] text-hinweis text-muted-foreground">
-              Die Farbe der Boje zeigt das Ergebnis; {zaehl.withResult} von {course.public_count} öffentlichen Punkten hatten eines.
+              {zaehl.withResult} von {course.public_count} öffentlichen Punkten haben ein Ergebnis.
             </p>
           </div>
-        ) : (
-          <p className="mt-3 max-w-[46rem] text-hinweis text-muted-foreground">{TEXT.legendeVorher}</p>
-        )}
+        ) : null}
       </div>
 
       {wichtig.length > 0 && (
@@ -779,30 +777,11 @@ function protokollErwartung(e: Ctx["course"]["protocol_estimate"]): string {
 
 function SideCards({ ctx }: { ctx: Ctx }) {
   const { data, phase, ksinr, course } = ctx;
-  const datum = new Date(`${data.session_date}T12:00:00`).toLocaleDateString("de-DE", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-  });
   const protokollUrl = data.decisions?.find((d) => d.protocol_url)?.protocol_url ?? null;
   const next = course.next_session;
   const karte = "rounded-xl border border-border bg-card p-4 shadow-sm";
   return (
     <>
-      <section className={karte} aria-labelledby="ort-zeit">
-        <h2 id="ort-zeit" className="font-display text-base font-semibold text-foreground">Ort und Zeit</h2>
-        <dl className="mt-3 space-y-3 text-sm">
-          <div className="flex gap-2.5">
-            <dt><Clock className="mt-0.5 h-4 w-4 text-muted-foreground" aria-label="Termin" /></dt>
-            <dd><span className="block font-medium text-foreground">{datum}</span>
-              <span className="text-muted-foreground">{data.session_time ? `Beginn ${data.session_time.slice(0, 5)} Uhr` : "Uhrzeit noch nicht angegeben"}</span></dd>
-          </div>
-          <div className="flex gap-2.5">
-            <dt><MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" aria-label="Ort" /></dt>
-            <dd className="font-medium text-foreground [overflow-wrap:anywhere]">{data.location || <span className="font-normal text-muted-foreground">Ort noch nicht angegeben</span>}</dd>
-          </div>
-        </dl>
-        {phase !== "protocol" && <p className="mt-3 text-sm text-muted-foreground">Der öffentliche Teil ist für alle offen.</p>}
-      </section>
-
       <section className={karte} aria-labelledby="wie-weiter">
         <p className={KICKER}>Wie es weitergeht</p>
         {phase === "protocol" ? (

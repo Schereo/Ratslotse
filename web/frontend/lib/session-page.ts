@@ -27,16 +27,6 @@ export function dayWord(sessionDate: string, now: Date = new Date()): string {
   return new Date(`${tag}T12:00:00`).toLocaleDateString("de-DE", { weekday: "long" });
 }
 
-/** Der Ort ohne Straße für den Kicker: „Alte Fleiwa, Industriestraße 1d,
- *  Sitzungssaal 1/2" → „Alte Fleiwa, Sitzungssaal 1/2". Die volle Adresse
- *  steht in der Karte „Ort und Zeit". */
-export function shortLocation(location: string | null | undefined): string | null {
-  const teile = (location ?? "").split(",").map((t) => t.trim()).filter(Boolean);
-  if (!teile.length) return null;
-  const ohne = teile.filter((t, i) => i === 0 || !/\D\s\d+\s?[a-z]?$/i.test(t));
-  return ohne.join(", ");
-}
-
 /** „Mo · 21.09.2026"-artig: der ganze Kicker in einer Zeile. */
 export function sessionKicker(
   s: { session_date: string; session_time?: string | null; location?: string | null },
@@ -46,7 +36,9 @@ export function sessionKicker(
   const [j, m, d] = tag.split("-");
   const teile = [dayWord(tag, now), `${d}.${m}.${j}`];
   if (s.session_time) teile.push(`${s.session_time.slice(0, 5)} Uhr`);
-  const ort = shortLocation(s.location);
+  // Der volle Ort samt Straße: Eine eigene Karte „Ort und Zeit" gibt es
+  // nicht mehr, der Kicker ist die einzige Stelle (Tim, 12.11.2026).
+  const ort = s.location?.trim();
   if (ort) teile.push(ort);
   return teile.join(" · ");
 }

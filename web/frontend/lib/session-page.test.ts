@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dayWord, formalActTitle, groupFormalActs, outcomeCounts, priorStations, sessionKicker,
-  roughlyIn, sessionPhase, shortLocation, splitNumber,
+  roughlyIn, sessionPhase, splitNumber,
 } from "./session-page";
 
 // Die Tabelle aus Plan § 4.3: vorher, läuft, vorbei ohne Protokoll, vorbei mit.
@@ -31,13 +31,10 @@ describe("Kicker", () => {
     expect(dayWord("2026-09-21", jetzt)).toBe("Morgen");
     expect(dayWord("2026-09-28", jetzt)).toMatch(/^Montag$/);   // Zusage: der Wochentag, ausgeschrieben
   });
-  it("kürzt die Straße aus dem Ort, die volle Adresse steht in „Ort und Zeit“", () => {
-    expect(shortLocation("Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2")).toBe("Alte Fleiwa, Sitzungssaal 1/2");
-    expect(shortLocation("Kulturzentrum PFL, Peterstraße 3, Veranstaltungssaal")).toBe("Kulturzentrum PFL, Veranstaltungssaal");
-    expect(shortLocation("")).toBeNull();
+  it("trägt den vollen Ort samt Straße — eine zweite Stelle dafür gibt es nicht", () => {
     expect(sessionKicker({ session_date: "2026-09-21", session_time: "17:00:00",
       location: "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2" }, new Date("2026-09-20T10:00:00")))
-      .toBe("Morgen · 21.09.2026 · 17:00 Uhr · Alte Fleiwa, Sitzungssaal 1/2");
+      .toBe("Morgen · 21.09.2026 · 17:00 Uhr · Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2");
   });
 });
 
