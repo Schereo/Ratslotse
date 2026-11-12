@@ -358,7 +358,7 @@ class DecisionRow(TypedDict):
     location_matches: NotRequired[list[Any]]
     subvote_summary: NotRequired[Any]
     #: An einer Teilabstimmung: der gelesene Antrag dazu (Schalter ``aenderungsantraege``).
-    amendment: NotRequired["ItemAmendment"]
+    amendment: NotRequired[ItemAmendment]
 
 
 #: Was aus einem Tagesordnungspunkt geworden ist.
