@@ -8,9 +8,12 @@ import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
 import { AppleSignInButton } from "@/components/apple-sign-in-button";
+import { OderTrenner, PasskeyKnopf, passkeyMeldung, usePasskeyAnmeldung } from "@/components/passkey-knopf";
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, registerWithPasskey } = useAuth();
+  const mitPasskey = usePasskeyAnmeldung();
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const router = useRouter();
   const weiter = useWeiterSuffix();
   const [displayName, setDisplayName] = useState("");
@@ -39,6 +42,29 @@ export default function RegisterPage() {
       setError(err instanceof Error ? err.message : "Registrierung fehlgeschlagen.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Name und Adresse braucht auch der Passkey-Weg — die Adresse für die
+  // Benachrichtigungen. Das Passwortfeld zählt hier nicht mit, deshalb ein
+  // eigener Knopf statt des Formular-Absendens.
+  const mitPasskeyRegistrieren = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    setError("");
+    const form = e.currentTarget.closest("form");
+    const felder = form ? [form.querySelector<HTMLInputElement>("#display-name"), form.querySelector<HTMLInputElement>("#email")] : [];
+    for (const f of felder) if (f && !f.reportValidity()) return;
+    if (!displayName.trim()) {
+      setError("Bitte trage deinen Namen ein.");
+      return;
+    }
+    setPasskeyBusy(true);
+    try {
+      await registerWithPasskey(email, displayName.trim());
+      router.replace(zielNachAnmeldung());
+    } catch (err) {
+      setError(passkeyMeldung(err) ?? "");
+    } finally {
+      setPasskeyBusy(false);
     }
   };
 
@@ -80,6 +106,15 @@ export default function RegisterPage() {
               <Input id="email" type="email" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
             </div>
           </div>
+          {mitPasskey && (
+            <>
+              {/* Der empfohlene Weg (Tim 11.11.2026): kein Passwort, Face ID
+                  oder Touch ID genügen. Darunter, abgesetzt, das Passwort. */}
+              <PasskeyKnopf label="Mit Passkey registrieren" variant="signal" busy={passkeyBusy}
+                onClick={mitPasskeyRegistrieren} />
+              <OderTrenner text="oder mit Passwort" />
+            </>
+          )}
           <div>
             {/* Die Längenregel steht neben dem Label statt darunter: dieselbe
                 Auskunft, eine Zeile weniger Karte — und sie ist dort zu lesen,
@@ -92,7 +127,7 @@ export default function RegisterPage() {
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           {/* RL-1001: Registrieren ist DIE Signal-Handlung dieses Screens. */}
-          <Button type="submit" variant="signal" disabled={busy} className="h-11 w-full">
+          <Button type="submit" variant={mitPasskey ? "secondary" : "signal"} disabled={busy} className="h-11 w-full">
             {busy ? "Erstellen…" : "Konto erstellen"}
           </Button>
           {/* RL-F01: DSGVO-Transparenz direkt an der Handlung (App-Review-relevant). */}

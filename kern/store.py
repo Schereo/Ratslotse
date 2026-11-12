@@ -992,6 +992,38 @@ CREATE TABLE IF NOT EXISTS note_passkeys (
     created_at    TEXT NOT NULL,
     UNIQUE(owner_id, credential_id)
 );
+-- Passkeys zum ANMELDEN (seit 11/2026). Anders als `note_passkeys` kennt der
+-- Server hier den öffentlichen Schlüssel (COSE, Base64url) und prüft jede
+-- Anmeldung gegen ihn — Signatur, Zähler, einmalige Challenge
+-- (`web/backend/app/passkeys.py`). Derselbe Passkey kann zugleich die Notizen
+-- aufschließen; dann steht er mit derselben `credential_id` auch in
+-- `note_passkeys`. `user_handle` ist die Kennung, die der Passkey beim
+-- Anmelden zurückgibt — je Konto dieselbe, damit ein Gerät nicht zwei
+-- Ratslotse-Passkeys für ein Konto stapelt.
+CREATE TABLE IF NOT EXISTS web_passkeys (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id      INTEGER NOT NULL,
+    credential_id TEXT NOT NULL UNIQUE,
+    public_key    TEXT NOT NULL,
+    sign_count    INTEGER NOT NULL DEFAULT 0,
+    user_handle   TEXT NOT NULL,
+    transports    TEXT NOT NULL DEFAULT '',
+    backed_up     INTEGER NOT NULL DEFAULT 0,
+    label         TEXT NOT NULL DEFAULT '',
+    created_at    TEXT NOT NULL,
+    last_used_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_web_passkeys_owner ON web_passkeys(owner_id);
+-- Offene WebAuthn-Challenges: fünf Minuten gültig, genau einmal einlösbar
+-- (`take_webauthn_challenge` löscht beim Lesen). Bei der Registrierung mit
+-- Passkey trägt `payload` Adresse und Namen, bis das Konto entsteht.
+CREATE TABLE IF NOT EXISTS webauthn_challenges (
+    challenge   TEXT PRIMARY KEY,
+    purpose     TEXT NOT NULL,
+    owner_id    INTEGER,
+    payload     TEXT NOT NULL DEFAULT '{}',
+    expires_at  TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS user_notes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id    INTEGER NOT NULL,
@@ -1047,6 +1079,7 @@ MAIL_ANLAESSE: frozenset[str] = frozenset({
     "password_reset",    # Link zum Zurücksetzen
     "email_change",      # Bestätigung an die NEUE Adresse
     "email_change_info",  # Hinweis an die alte Adresse
+    "passkey_added",     # Hinweis: neuer Passkey zum Anmelden im Konto
     "duplicate_signup",  # Registrierung auf eine vorhandene Adresse versucht
     "setup_reminder",    # scripts/remind_setup.py
     "feedback_reply",    # Antwort auf eine Rückmeldung
@@ -1116,6 +1149,10 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     # Rest stehen, den niemand mehr lesen kann — aber eben doch ein Rest.
     ("note_keys", "owner_id"),
     ("note_passkeys", "owner_id"),
+    # Passkeys zum Anmelden samt offener Challenges (die einer laufenden
+    # Registrierung tragen Adresse und Namen).
+    ("web_passkeys", "owner_id"),
+    ("webauthn_challenges", "owner_id"),
     ("user_notes", "owner_id"),
 )
 
@@ -6704,6 +6741,112 @@ class Store:
         targets = {r["owner_id"]: dict(r) for r in rows}
         self._attach_push_tokens(targets)
         return targets
+
+    # ---- Passkeys zum Anmelden (WebAuthn) ------------------------------------
+    # Geprüft wird in web/backend/app/passkeys.py; hier liegen nur Schlüssel,
+    # Zähler und die offenen Challenges.
+
+    def put_webauthn_challenge(self, challenge: str, purpose: str, expires_at: str,
+                               owner_id: int | None = None, payload: dict | None = None) -> None:
+        """Eine Challenge merken — und dabei die abgelaufenen wegräumen, damit
+        die Tabelle ohne eigenen Cron klein bleibt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM webauthn_challenges WHERE expires_at < ?", (now,))
+            self._conn.execute(
+                "INSERT INTO webauthn_challenges (challenge, purpose, owner_id, payload, expires_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (challenge, purpose, owner_id, json.dumps(payload or {}), expires_at))
+
+    def take_webauthn_challenge(self, challenge: str, purpose: str, now: str) -> dict | None:
+        """Genau einmal einlösbar: Gelesen wird beim Löschen. Abgelaufen oder
+        für einen anderen Zweck ausgestellt heißt ``None`` — und auch dann ist
+        sie weg, ein zweiter Versuch mit derselben Challenge scheitert ebenso."""
+        with self._conn:
+            row = self._conn.execute(
+                "SELECT purpose, owner_id, payload, expires_at FROM webauthn_challenges WHERE challenge = ?",
+                (challenge,)).fetchone()
+            # Nur wer die Zeile tatsächlich löscht, hat sie eingelöst — zwei
+            # gleichzeitige Versuche können sie beide lesen, aber nur einer löschen.
+            weg = self._conn.execute("DELETE FROM webauthn_challenges WHERE challenge = ?",
+                                     (challenge,)).rowcount
+        if not row or weg != 1 or row["purpose"] != purpose or row["expires_at"] < now:
+            return None
+        return {"owner_id": row["owner_id"], "payload": json.loads(row["payload"] or "{}")}
+
+    def add_web_passkey(self, owner_id: int, credential_id: str, public_key: str, sign_count: int,
+                        user_handle: str, transports: list[str] | None = None, backed_up: bool = False,
+                        label: str = "") -> int:
+        """``sqlite3.IntegrityError``, wenn es den Passkey schon gibt (bei
+        einem Konto, gleich welchem)."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT INTO web_passkeys (owner_id, credential_id, public_key, sign_count, user_handle, "
+                "transports, backed_up, label, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (owner_id, credential_id, public_key, int(sign_count), user_handle,
+                 ",".join(transports or []), 1 if backed_up else 0, (label or "")[:60], now))
+        return neue_id(cur)
+
+    def get_web_passkey(self, credential_id: str) -> dict | None:
+        row = self._conn.execute("SELECT * FROM web_passkeys WHERE credential_id = ?",
+                                 (credential_id,)).fetchone()
+        return dict(row) if row else None
+
+    def list_web_passkeys(self, owner_id: int) -> list[dict]:
+        return [dict(r) for r in self._conn.execute(
+            "SELECT * FROM web_passkeys WHERE owner_id = ? ORDER BY id", (owner_id,))]
+
+    def passkey_user_handle(self, owner_id: int) -> str:
+        """Die Kennung, unter der ein Gerät die Passkeys dieses Kontos ablegt
+        (Base64url). Hat das Konto schon einen, dieselbe wie dort; sonst die,
+        die auch die Notiz-Passkeys benutzen (``lib/notiz-passkey.ts``,
+        ``nutzerKennung``) — so ersetzt ein neuer Passkey auf einem Gerät nie
+        still einen alten, sondern das Gerät meldet ihn als schon vorhanden."""
+        import base64
+        import hashlib
+        row = self._conn.execute("SELECT user_handle FROM web_passkeys WHERE owner_id = ? ORDER BY id LIMIT 1",
+                                 (owner_id,)).fetchone()
+        if row:
+            return row["user_handle"]
+        roh = hashlib.sha256(f"ratslotse-notizen|{int(owner_id)}".encode()).digest()[:16]
+        return base64.urlsafe_b64encode(roh).rstrip(b"=").decode()
+
+    def touch_web_passkey(self, passkey_id: int, sign_count: int, backed_up: bool) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_passkeys SET sign_count = ?, backed_up = ?, last_used_at = ? WHERE id = ?",
+                (int(sign_count), 1 if backed_up else 0, now, passkey_id))
+
+    def delete_web_passkey(self, owner_id: int, passkey_id: int) -> str:
+        """``ok``, ``fehlt`` oder ``letzter``: Ohne Passwort und ohne Apple ist
+        der letzte Passkey der einzige Weg ins Konto — der bleibt."""
+        with self._conn:
+            if not self._conn.execute("SELECT 1 FROM web_passkeys WHERE owner_id = ? AND id = ?",
+                                      (owner_id, passkey_id)).fetchone():
+                return "fehlt"
+            u = self._conn.execute("SELECT password_set, apple_sub FROM web_users WHERE id = ?",
+                                   (owner_id,)).fetchone()
+            andere = self._conn.execute("SELECT COUNT(*) FROM web_passkeys WHERE owner_id = ? AND id != ?",
+                                        (owner_id, passkey_id)).fetchone()[0]
+            if not andere and u and not u["password_set"] and not u["apple_sub"]:
+                return "letzter"
+            self._conn.execute("DELETE FROM web_passkeys WHERE owner_id = ? AND id = ?", (owner_id, passkey_id))
+        return "ok"
+
+    def delete_web_passkeys(self, owner_id: int) -> int:
+        """Alle Passkeys eines Kontos — wenn die Besitzerin der Adresse ein
+        unbestätigtes Konto zurückholt, das ein Fremder angelegt hat."""
+        with self._conn:
+            return self._conn.execute("DELETE FROM web_passkeys WHERE owner_id = ?", (owner_id,)).rowcount
+
+    def set_password_set(self, user_id: int, gesetzt: bool) -> None:
+        """``password_set = 0``: Das Konto hat kein selbst gewähltes Passwort
+        (Apple oder Passkey); im Hash steht ein Zufallswert."""
+        with self._conn:
+            self._conn.execute("UPDATE web_users SET password_set = ? WHERE id = ?",
+                               (1 if gesetzt else 0, user_id))
 
     # ---- verschlüsselte Notizen ---------------------------------------------
     # Der Server speichert und liefert nur Blobs (docs/plan-notizen-verschluesselt.md).

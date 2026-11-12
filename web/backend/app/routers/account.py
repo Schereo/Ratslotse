@@ -25,7 +25,7 @@ from ..deps import (
 )
 from ..ratelimit import change_email_limiter, reauth_limiter
 from ..schemas import (NAME_FEHLT, NAME_UNZULAESSIG, ChangeEmailRequest, ChangePasswordRequest,
-                       DeleteAccountRequest, DeliveryUpdate, NotifyPrefsIn, UserOut,
+                       DeleteAccountRequest, DeliveryUpdate, NotifyPrefsIn, PasskeyAssertion, UserOut,
                        name_zulaessig)
 from ..security import hash_password, verify_password
 from .auth import (_VERIFY_TTL_HOURS, _app_access_token, _code_hash, _neuer_code,
@@ -86,7 +86,8 @@ def _frisch(store: Store, user_id: int) -> dict:
 
 
 def _reauth(request: Request, user: dict, current_password: str,
-            apple_identity_token: str) -> None:
+            apple_identity_token: str, passkey: PasskeyAssertion | None = None,
+            store: Store | None = None) -> None:
     """Frische Bestätigung der Identität — oder ``HTTPException``.
 
     Der gemeinsame Kern von „Konto löschen" und „Adresse ändern": Beides sind
@@ -99,6 +100,18 @@ def _reauth(request: Request, user: dict, current_password: str,
     Löschen richtig, und ein Adresswechsel würde damit die Anmeldung kappen.
     """
     reauth_limiter.check(request, subject=user["id"])
+    if passkey is not None and store is not None:
+        # Konten ohne Passwort (seit 11/2026 auch per Passkey) bestätigen mit
+        # einem Passkey DIESES Kontos. Ein 401 aus der Prüfung wird hier zum
+        # 400 — sonst hielte das Frontend die Sitzung für abgelaufen.
+        from ..passkeys import anmeldung_pruefen
+        try:
+            geprueft = anmeldung_pruefen(store, passkey.model_dump())
+        except HTTPException as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, exc.detail) from None
+        if int(geprueft["owner_id"]) != int(user["id"]):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Dieser Passkey gehört zu einem anderen Konto.")
+        return
     if apple_identity_token and user.get("apple_sub"):
         from .auth_apple import verify_apple_identity_token
         claims = verify_apple_identity_token(apple_identity_token)
@@ -111,7 +124,8 @@ def _reauth(request: Request, user: dict, current_password: str,
             status.HTTP_400_BAD_REQUEST,
             "Aktuelles Passwort ist falsch." if user.get("password_set", 1)
             else "Dieses Konto nutzt Apple — bitte in der App per Apple bestätigen "
-                 "oder zuerst über „Passwort vergessen“ ein Passwort setzen.")
+                 "oder zuerst über „Passwort vergessen“ ein Passwort setzen." if user.get("apple_sub")
+            else "Bitte mit deinem Passkey bestätigen.")
 
 
 class DisplayNameIn(BaseModel):
@@ -263,7 +277,7 @@ def change_email(
     if not ist_admin(user) and user.get("status") == "pending" and user.get("email_verified"):
         # Alt-Bestand vor der Trennung: bestätigt UND pending hieß abgeschaltet.
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Dein Konto ist derzeit deaktiviert.")
-    _reauth(request, user, body.current_password, body.apple_identity_token)
+    _reauth(request, user, body.current_password, body.apple_identity_token, body.passkey, store)
 
     neu = str(body.new_email).lower().strip()
     alt = str(user.get("email", ""))
@@ -380,7 +394,7 @@ def delete_account(
     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss. In
     ``cities.sqlite`` liegen die Rückmeldungen zu den Städte-Urteilen samt
     Freitext (``CITIES_USER_OWNED_TABLES``)."""
-    _reauth(request, user, body.current_password, body.apple_identity_token)
+    _reauth(request, user, body.current_password, body.apple_identity_token, body.passkey, store)
     # Nur beim Löschen: Apple die Autorisierung zurückgeben. Steht bewusst
     # außerhalb von `_reauth` — beim Adresswechsel würde derselbe Aufruf die
     # Anmeldung des Kontos kappen, das gerade weiterlaufen soll.

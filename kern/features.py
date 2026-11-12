@@ -296,6 +296,15 @@ FEATURES: dict[str, Feature] = {
                     "(Einrichten, zweites Gerät, Passphrase wechseln, Wiederherstellung), App liest "
                     "dieselben Testvektoren; dann mit dem Release auf Prod an.",
     ),
+    "passkey-anmeldung": Feature(
+        key="passkey-anmeldung",
+        description="„Mit Passkey anmelden“ und „Mit Passkey registrieren“ neben Passwort und Apple; "
+                    "Passkeys im Konto. Derselbe Passkey schließt die Notizen auf — eine Abfrage für "
+                    "beides (web/backend/app/passkeys.py).",
+        fertig_wenn="Datenschutzerklärung von Tim abgenommen, auf dev zwei Wochen ohne Befund (Registrieren, "
+                    "Anmelden, zweites Gerät, Entfernen, Löschen ohne Passwort) und zusammen mit `notizen` "
+                    "auf Prod an.",
+    ),
     "beschluss-chat": Feature(
         key="beschluss-chat",
         description="„Frag den Rat“ direkt auf der Seite eines Beschlusses: Die Antwort entsteht "

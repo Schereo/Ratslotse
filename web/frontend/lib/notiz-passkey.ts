@@ -20,7 +20,7 @@ export interface PasskeyVerpackung { credential_id: string; prf_salt: string; wr
 export interface GespeicherterPasskey { credential_id: string; prf_salt: string; wrapped_key: string }
 
 export class PasskeyFehler extends Error {
-  constructor(readonly art: "nicht-unterstuetzt" | "abgebrochen" | "passt-nicht", msg: string) {
+  constructor(readonly art: "nicht-unterstuetzt" | "abgebrochen" | "passt-nicht" | "schon-da", msg: string) {
     super(msg);
   }
 }

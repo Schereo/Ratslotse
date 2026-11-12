@@ -330,6 +330,7 @@ function VerifyNotice({ email }: { email: string }) {
   const [passwort, setPasswort] = useState("");
   // Wohin der Link zuletzt ging: die neue Adresse, sobald ein Wechsel schwebt.
   const zieladresse = user?.pending_email ?? email;
+  const ohnePasswort = user?.has_password === false && !user?.apple_linked;
 
   const resend = async () => {
     setBusy(true);
@@ -347,10 +348,10 @@ function VerifyNotice({ email }: { email: string }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const u = await api.post<{ pending_email?: string | null }>("/account/change-email", {
-        new_email: neu.trim(),
-        current_password: passwort,
-      });
+      // Ein Passkey-Konto hat kein Passwort — dort bestätigt der Passkey.
+      const u = await api.post<{ pending_email?: string | null }>("/account/change-email", ohnePasswort
+        ? { new_email: neu.trim(), passkey: await (await import("@/lib/passkey")).passkeyBestaetigung() }
+        : { new_email: neu.trim(), current_password: passwort });
       toast.success(
         u.pending_email
           ? `Bestätigungslink an ${u.pending_email} unterwegs.`
@@ -361,7 +362,8 @@ function VerifyNotice({ email }: { email: string }) {
       setPasswort("");
       await refresh();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Adresse konnte nicht geändert werden.");
+      if ((err as { art?: string })?.art === "abgebrochen") return;
+      toast.error(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Adresse konnte nicht geändert werden.");
     } finally {
       setBusy(false);
     }
@@ -403,19 +405,21 @@ function VerifyNotice({ email }: { email: string }) {
               placeholder="name@example.org"
             />
           </div>
-          <div>
-            <Label htmlFor="verify-passwort">Dein Passwort</Label>
-            <PasswordInput
-              id="verify-passwort"
-              className="mt-1"
-              value={passwort}
-              onChange={(e) => setPasswort(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
+          {!ohnePasswort && (
+            <div>
+              <Label htmlFor="verify-passwort">Dein Passwort</Label>
+              <PasswordInput
+                id="verify-passwort"
+                className="mt-1"
+                value={passwort}
+                onChange={(e) => setPasswort(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
-            <Button type="submit" variant="secondary" disabled={busy || !neu.trim() || !passwort}>
+            <Button type="submit" variant="secondary" disabled={busy || !neu.trim() || (!ohnePasswort && !passwort)}>
               {busy ? "Wird geändert…" : "Adresse ändern"}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setAendern(false)} disabled={busy}>

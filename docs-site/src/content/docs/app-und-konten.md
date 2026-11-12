@@ -134,6 +134,9 @@ Push-Token ab (`lib/auth.tsx`, `lib/push.ts`).
 | `POST /api/account/change-email` | Adresswechsel anstoßen (Passwort bzw. Apple-Re-Auth) | 5 / 15 min je Konto |
 | `DELETE /api/account/change-email` | schwebenden Wechsel verwerfen | — |
 | `POST /api/auth/apple` | Sign in with Apple | 10 / min |
+| `POST /api/auth/passkey/signup/options`, `…/signup` | Mit Passkey registrieren (Schalter `passkey-anmeldung`) | 5 / 5 min bzw. 10 / min |
+| `POST /api/auth/passkey/login/options`, `…/login` | Mit Passkey anmelden; die Optionen auch zum Bestätigen beim Löschen und Adresswechsel | 10 / min |
+| `GET/POST /api/account/passkeys`, `DELETE …/{id}` | Passkeys im Konto | 10 / 15 min je Konto |
 
 Die Registrierung braucht **keine Admin-Freigabe**: Wer die E-Mail bestätigt,
 ist aktiv; die Admins bekommen nur eine FYI-Mail. Ohne konfigurierten
@@ -253,6 +256,42 @@ fälschbar. Liefert Apple **keine** E-Mail und ist die `sub` unbekannt, kann kei
 Konto zugeordnet werden — die API antwortet mit 400 und dem Hinweis, Ratslotse
 in den Apple-ID-Einstellungen unter „Mit Apple anmelden" zu entfernen und es
 erneut zu versuchen (Apple sendet die Adresse nur bei der Erstautorisierung).
+
+### Mit Passkey anmelden
+
+Seit 11/2026, hinter dem Schalter `passkey-anmeldung`. Die Prüfung steht in
+`web/backend/app/passkeys.py` (mit `py_webauthn`), die Konten-Seite in
+`routers/auth_passkey.py`, der Browser-Teil in `web/frontend/lib/passkey.ts`.
+
+- **Challenge** serverseitig, fünf Minuten gültig, genau einmal einlösbar
+  (`webauthn_challenges`, gelöscht beim Einlösen). Geprüft werden Herkunft,
+  RP-ID, Signatur gegen den gespeicherten öffentlichen Schlüssel
+  (`web_passkeys`), Nutzerverifikation und Zähler. Attestierung: `none`.
+- **RP-ID = Host der Seite.** Erlaubt sind die Herkunft aus `APP_BASE_URL`,
+  die aus `CORS_ORIGINS` und lokal (`COOKIE_SECURE=false`) jedes `localhost`.
+- **Registrieren** läuft durch dieselben Prüfungen wie mit Passwort und legt
+  das Konto genauso unbestätigt an (Tims Entscheidung 11.11.2026). Im Hash steht
+  ein Zufallswert, `password_set = 0`; ein Passwort lässt sich über „Passwort
+  vergessen“ nachrüsten.
+- **Anmelden** ohne Adresse: kein `allowCredentials`, der Passkey nennt sein
+  Konto selbst (`userHandle`, je Konto eine Kennung).
+- **Im Konto** braucht Hinzufügen und Entfernen eine volle Anmeldung; ein neuer
+  Passkey meldet sich per Mail (`passkey_added`). Der letzte Weg ins Konto —
+  kein Passwort, kein Apple, nur dieser Passkey — bleibt (409).
+- **Ohne Passwort** bestätigen Löschen und Adresswechsel mit einem Passkey
+  (`passkey` im Rumpf statt `current_password`).
+- **Zurückholen:** Setzt die Besitzerin einer Adresse über „Passwort
+  vergessen“ ein unbestätigtes Konto neu, verschwinden dessen Passkeys — sie
+  könnten von jemand Fremdem stammen. Dasselbe beim Verknüpfen mit Apple.
+
+**Dieselbe Abfrage schließt die Notizen auf.** Bei Registrierung und Anmeldung
+fragt der Browser die Erweiterung PRF mit einem festen Salz an (SHA-256 von
+„ratslotse-passkey-notizen-v1“; bei der Anmeldung weiß niemand vorher, welcher
+Passkey kommt, und `evalByCredential` geht ohne `allowCredentials` nicht). Das
+Ergebnis bleibt auf dem Gerät: Noch keine Notiz-Schlüssel → still einrichten;
+mit diesem Passkey eingerichtet → entsperren; mit anderem Schlüssel → für die
+Sitzung merken und beim nächsten Entsperren dazulegen. Die Formen im Backend
+nehmen `clientExtensionResults` gar nicht erst an.
 
 ### Anmeldelinks in Mails
 

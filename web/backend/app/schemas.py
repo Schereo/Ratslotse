@@ -43,6 +43,63 @@ class RegisterRequest(BaseModel):
     display_name: str | None = Field(default=None, max_length=60)
 
 
+# ---- Passkeys (WebAuthn, app/passkeys.py) ----
+# Die Felder heißen wie in der Norm (``PublicKeyCredential.toJSON()``), damit
+# der Browser sein Ergebnis unverändert schicken kann. Was nicht hier steht —
+# vor allem ``clientExtensionResults`` mit dem PRF-Geheimnis der Notizen —
+# verwirft Pydantic, bevor es irgendwo ankommt.
+
+_B64URL = r"^[A-Za-z0-9_-]*$"
+
+
+class PasskeyAttestationResponse(BaseModel):
+    clientDataJSON: str = Field(max_length=4096, pattern=_B64URL)
+    attestationObject: str = Field(max_length=16384, pattern=_B64URL)
+    transports: list[str] = Field(default_factory=list, max_length=8)
+
+
+class PasskeyRegistration(BaseModel):
+    id: str = Field(min_length=16, max_length=1400, pattern=_B64URL)
+    rawId: str = Field(min_length=16, max_length=1400, pattern=_B64URL)
+    type: Literal["public-key"] = "public-key"
+    response: PasskeyAttestationResponse
+
+
+class PasskeyAssertionResponse(BaseModel):
+    clientDataJSON: str = Field(max_length=4096, pattern=_B64URL)
+    authenticatorData: str = Field(max_length=4096, pattern=_B64URL)
+    signature: str = Field(max_length=2048, pattern=_B64URL)
+    userHandle: str | None = Field(default=None, max_length=256, pattern=_B64URL)
+
+
+class PasskeyAssertion(BaseModel):
+    id: str = Field(min_length=16, max_length=1400, pattern=_B64URL)
+    rawId: str = Field(min_length=16, max_length=1400, pattern=_B64URL)
+    type: Literal["public-key"] = "public-key"
+    response: PasskeyAssertionResponse
+
+
+class PasskeySignupOptionsRequest(BaseModel):
+    email: EmailStr
+    #: Pflicht wie bei der Registrierung mit Passwort — geprüft im Router.
+    display_name: str | None = Field(default=None, max_length=60)
+
+
+class PasskeySignupRequest(BaseModel):
+    credential: PasskeyRegistration
+    label: str = Field(default="", max_length=60)
+
+
+class PasskeyLoginRequest(BaseModel):
+    credential: PasskeyAssertion
+
+
+class PasskeyAddRequest(BaseModel):
+    credential: PasskeyRegistration
+    #: Ein Name für die Liste im Konto, meist das Gerät („Mac“, „iPhone“).
+    label: str = Field(default="", max_length=60)
+
+
 class MagicLinkRequest(BaseModel):
     """Ein Anmeldelink aus einer Mail (``security.create_magic_token``)."""
     token: str = Field(min_length=20, max_length=800)
@@ -424,6 +481,7 @@ class ChangeEmailRequest(BaseModel):
     new_email: EmailStr
     current_password: str = Field(default="", max_length=128)
     apple_identity_token: str = Field(default="", max_length=4096)
+    passkey: PasskeyAssertion | None = None
 
 
 class DeleteAccountRequest(BaseModel):
@@ -434,6 +492,9 @@ class DeleteAccountRequest(BaseModel):
     current_password: str = Field(default="", max_length=128)
     apple_identity_token: str = Field(default="", max_length=4096)
     apple_authorization_code: str = Field(default="", max_length=2048)
+    #: Konten ohne Passwort bestätigen mit einem Passkey (Challenge aus
+    #: ``POST /api/auth/passkey/login/options``).
+    passkey: PasskeyAssertion | None = None
 
 
 # ---- delivery channel ----

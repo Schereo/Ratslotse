@@ -40,6 +40,7 @@ annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.14.2
 beautifulsoup4==4.14.3
+cbor2==6.2.1
 certifi==2026.10.23
 cffi==2.0.0
 charset-normalizer==3.4.7
@@ -85,6 +86,7 @@ pydantic==2.13.4
 pydantic-settings==2.14.2
 pydantic_core==2.46.4
 Pygments==2.20.0
+pyOpenSSL==26.4.0
 pymupdf==1.28.2
 pypdf==6.21.4
 python-dotenv==1.2.2
@@ -108,6 +110,7 @@ urllib3==2.8.0
 uvicorn==0.49.0
 uvloop==0.22.1
 watchfiles==1.2.0
+webauthn==3.0.1
 websockets==16.0
 yt-dlp==2026.8.19
 

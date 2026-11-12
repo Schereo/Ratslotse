@@ -235,6 +235,8 @@ def apple_login(
                 # Beendet auch die Push-Geräte, offene Reset-Links und die
                 # Kalender-Adresse des Vorbesitzers (s. Store).
                 store.increment_token_version(existing["id"])
+                # Und seine Passkeys — jeder davon wäre ein Weg zurück.
+                store.delete_web_passkeys(existing["id"])
             store.link_apple_sub(existing["id"], sub,
                                  password_set=False if war_unbestaetigt else None)
             if war_unbestaetigt:
