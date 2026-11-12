@@ -2148,7 +2148,9 @@ def page_questions(
         # „ Ö 9 " träfen sonst denselben Punkt unter zwei Schlüsseln und
         # zahlten zweimal.
         key = f"item:{ksinr}|{punkt['item']['item_number']}"
-        material = vf.item_material(punkt, store.get_vorlage_by_nr(punkt["item"].get("template_number") or ""))
+        material = vf.item_material(
+            punkt, store.get_vorlage_by_nr(punkt["item"].get("template_number") or ""),
+            store.dossier_lines(ksinr, punkt["item"]["item_number"]) if features.an("aus-den-unterlagen") else None)
     else:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "ksinr und nr oder decision_id angeben.")
     gespeichert = store.page_questions(key)

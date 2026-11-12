@@ -53,10 +53,15 @@ def _abschnitt(name: str, text: str | None, grenze: int = 1_500) -> str:
     return f"## {name}\n{t[:grenze]}\n" if t else ""
 
 
-def item_material(punkt: dict, vorlage: dict | None) -> str:
-    """Was das Modell zu einem Tagesordnungspunkt liest (aus ``session_item``)."""
+def item_material(punkt: dict, vorlage: dict | None, dossier_lines: list[str] | None = None) -> str:
+    """Was das Modell zu einem Tagesordnungspunkt liest (aus ``session_item``).
+
+    Gibt es das belegte Dossier, liest es zuerst dessen Zeilen (Stufe 4 aus
+    docs/plan-vorlagen-aufbereiten.md): Die Fragen zielen dann auf das, was die
+    Seite auch beantwortet."""
     it, ci = punkt["item"], punkt["course_item"]
     teile = [
+        _abschnitt("Aus den Unterlagen (geprüft)", "\n".join(dossier_lines or []), 3_000),
         f"Art: Tagesordnungspunkt ({ci.get('type_label') or 'Punkt'}) im Gremium {punkt['committee']}, "
         f"Sitzung am {punkt['session_date']}.",
         _abschnitt("Titel", it.get("title")),

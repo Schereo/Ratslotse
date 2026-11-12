@@ -92,6 +92,10 @@ def test_ansicht_mit_beleg_seite_und_pdf_sprung(tmp_path):
         kosten = next(s for s in v["sections"] if s["key"] == "costs")
         a = kosten["statements"][0]
         assert a["list_no"] == 1 and a["url"].endswith("#page=1") and a["doc_label"] == "Vorlage 26/0796"
+        # Wächter (Plan § 3.4): kein Beleg ohne Dokument, keiner auf die Startseite oder vo0050.
+        for sec in v["sections"]:
+            for x in sec["statements"]:
+                assert x["url"] and "getfile.php?id=" in x["url"] and "vo0050" not in x["url"]
         assert store.dossier_cost_label("26/0796") == "35 € jährlich"
         assert store.dossier_lines(4709, "Ö 13.2") == ["Was es kostet: Das Sitzungsgeld beträgt 35 Euro je Sitzung. (Vorlage 26/0796, S. 1)"]
     finally:

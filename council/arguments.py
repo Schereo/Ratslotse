@@ -242,11 +242,21 @@ def build_input(title: str, speeches: list[dict], template: dict | None, outcome
         partei = f" ({faction_of(s.get('party'))[0]})" if s.get("party") else ""
         zeilen.append(f"[{k}] {s.get('date')} · {s.get('committee')} · {wer}{partei}: {_fremd(s.get('text'))}")
     if template:
-        for i, stueck in enumerate(vorlage_stuecke(template.get("raw_text")), start=1):
+        # Seiten aus dem Druckkopf (council/unterlagen_seiten.py): Ein [V]-Beleg
+        # springt seit 11/2026 ins Vorlagen-PDF auf die Seite statt auf die
+        # vo0050-Metaseite (Plan Vorlagen aufbereiten § 3.4).
+        from council import unterlagen_seiten  # noqa: PLC0415
+
+        roh = template.get("raw_text") or ""
+        seiten = unterlagen_seiten.template_page_offsets(roh)
+        for i, stueck in enumerate(vorlage_stuecke(roh), start=1):
             k = f"V{i}"
+            pos = roh.find(stueck[:60]) if stueck else -1
             quellen[k] = {"id": template["kvonr"], "kind": "template", "speaker": None, "party": None,
                           "committee": f"Vorlage {template.get('template_number') or ''}".strip(),
-                          "date": template.get("date"), "page": None, "text": stueck}
+                          "date": template.get("date"),
+                          "page": unterlagen_seiten.page_of(seiten, pos) if pos >= 0 else None,
+                          "doc_url": template.get("document_url"), "text": stueck}
             zeilen.append(f"[{k}] Vorlage der Verwaltung: {_fremd(stueck)}")
     return "\n".join(zeilen), quellen
 
@@ -358,7 +368,10 @@ def view(material: dict, stored: dict | None, protocol_urls: dict[int, str]) -> 
     def mit_url(a: dict) -> dict:
         q = a["source"]
         if q["kind"] == "template":
-            url = RIS_VORLAGE.format(kvonr=q["id"])
+            # Ältere Auswertungen kennen das PDF noch nicht — dann das der Vorlage ohne Seite.
+            url = q.get("doc_url") or (material.get("template") or {}).get("document_url") or RIS_VORLAGE.format(kvonr=q["id"])
+            if q.get("doc_url") and q.get("page"):
+                url = f"{url}#page={q['page']}"
         else:
             url = protocol_urls.get(q.get("ksinr") or 0)
             if url and q.get("page"):

@@ -2043,7 +2043,7 @@ class SitzungenMixin(StoreBasis):
         template = None
         if tn:
             t = self._conn.execute(
-                "SELECT kvonr, template_number, title, raw_text FROM council_templates "
+                "SELECT kvonr, template_number, title, raw_text, document_url FROM council_templates "
                 "WHERE template_number = ? AND status = 'ok' ORDER BY kvonr DESC LIMIT 1", (tn,)).fetchone()
             if t:
                 # Ohne Datum: Das der Vorlage steht nicht im Bestand, und das der
