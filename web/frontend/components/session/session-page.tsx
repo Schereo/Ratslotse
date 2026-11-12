@@ -37,7 +37,7 @@ import { Aufklapp } from "@/components/aufklapp";
 import { courseIcon, COURSE_LOCK_ICON, COURSE_START_ICON } from "@/lib/course-icons";
 import type { CourseItem, CourseStage, SessionCourse } from "@/lib/course";
 import {
-  formalActTitle, groupFormalActs, outcomeCounts, priorStations, sessionKicker, sessionPhase,
+  formalActTitle, groupFormalActs, outcomeCounts, priorStations, roughlyIn, sessionKicker, sessionPhase,
   splitNumber, type SessionPhase,
 } from "@/lib/session-page";
 import { decisionHref, mitlesenHref, punktHref, sitzungHref, sessionHref } from "@/lib/routes";
@@ -763,6 +763,20 @@ function FormalActCard({ ctx, nrs, onVorschau }: { ctx: Ctx; nrs: string[]; onVo
 // ---------------------------------------------------------------------------
 // 3. Rechte Spalte
 
+/** Wann das Protokoll kommt — gerechnet im Backend
+ *  (`council/protokoll_erwartung.py`), hier nur in Worte gefasst. */
+function protokollErwartung(e: Ctx["course"]["protocol_estimate"]): string {
+  if (!e) return "Kommt meist erst einige Wochen später.";
+  const wann = roughlyIn(e.expected);
+  if (!wann || !roughlyIn(e.latest)) {
+    return `Müsste inzwischen da sein: Genehmigt wird es in der Sitzung am ${formatDate(e.approval_date)}. Manchmal erst eine Sitzung später.`;
+  }
+  const satz = wann.charAt(0).toUpperCase() + wann.slice(1);
+  return e.basis === "next_session"
+    ? `${satz}, voraussichtlich. Es wird in der nächsten Sitzung am ${formatDate(e.approval_date)} genehmigt und erscheint meist wenige Tage danach.`
+    : `${satz}, grob geschätzt. Es wird in der nächsten Sitzung genehmigt; die steht noch nicht im Kalender.`;
+}
+
 function SideCards({ ctx }: { ctx: Ctx }) {
   const { data, phase, ksinr, course } = ctx;
   const datum = new Date(`${data.session_date}T12:00:00`).toLocaleDateString("de-DE", {
@@ -814,10 +828,10 @@ function SideCards({ ctx }: { ctx: Ctx }) {
             <ol className="mt-3 space-y-3 border-l-2 border-primary/30 pl-4 text-sm">
               <li className="relative"><span aria-hidden className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-primary" />
                 <span className="block font-medium text-foreground">Sitzung am {formatDate(data.session_date)}</span>
-                <span className="text-muted-foreground">Bis dahin erklärt diese Seite, worum es geht.</span></li>
+                <span className="text-muted-foreground">{phase === "past" ? "Bis zum Protokoll erklärt diese Seite, worum es ging." : "Bis dahin erklärt diese Seite, worum es geht."}</span></li>
               <li className="relative"><span aria-hidden className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-primary/50 bg-card" />
                 <span className="block font-medium text-foreground">Protokoll</span>
-                <span className="text-muted-foreground">Kommt meist erst einige Wochen später.</span></li>
+                <span className="text-muted-foreground">{protokollErwartung(course.protocol_estimate)}</span></li>
               <li className="relative"><span aria-hidden className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-primary/50 bg-card" />
                 <span className="block font-medium text-foreground">Ergebnisse auf dieser Seite</span>
                 <span className="text-muted-foreground">Dann steht an jedem Punkt, was beschlossen wurde.</span></li>

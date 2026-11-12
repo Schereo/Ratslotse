@@ -107,3 +107,16 @@ export function splitNumber(nr: string): { prefix: string; rest: string } {
 export function priorStations<T extends { ksinr: number; session_date: string }>(journey: T[], ksinr: number, date: string): T[] {
   return journey.filter((s) => s.ksinr !== ksinr && s.session_date < date);
 }
+
+/** Wie weit ein erwartetes Datum entfernt ist, grob: „in den nächsten
+ *  Tagen", „in etwa einer Woche", „in etwa 5 Wochen" — eine Schätzung
+ *  soll nicht genauer klingen, als sie ist. `null`, wenn es schon vorbei ist. */
+export function roughlyIn(isoDate: string, now: Date = new Date()): string | null {
+  const ziel = new Date(`${isoDate.slice(0, 10)}T12:00:00`);
+  const heute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12);
+  const tage = Math.round((ziel.getTime() - heute.getTime()) / 86_400_000);
+  if (tage < 0) return null;
+  if (tage <= 4) return "in den nächsten Tagen";
+  const wochen = Math.round(tage / 7);
+  return wochen <= 1 ? "in etwa einer Woche" : `in etwa ${wochen} Wochen`;
+}
