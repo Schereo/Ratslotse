@@ -1,0 +1,30 @@
+import { describe, expect, it } from "vitest";
+import { ohneDatum, teileListe } from "./unterlagen";
+
+describe("ohneDatum", () => {
+  it("nimmt das Datumspräfix ab", () => {
+    expect(ohneDatum("2026-10-31 Reduzierung Anzahl beratende Mitglieder")).toBe("Reduzierung Anzahl beratende Mitglieder");
+    expect(ohneDatum("2026 11 01. - Antrag Änderung Geschäftsordnung §24")).toBe("Antrag Änderung Geschäftsordnung §24");
+    expect(ohneDatum("20241025 DIE GRÜNEN Verweisungsantrag")).toBe("DIE GRÜNEN Verweisungsantrag");
+    expect(ohneDatum("251107 Dringlichkeitsantrag GRÜNEN")).toBe("Dringlichkeitsantrag GRÜNEN");
+  });
+  it("lässt Labels ohne Datum und reine Daten stehen", () => {
+    expect(ohneDatum("Änderungsantrag CDU Geschäftsordnung Rat 2.11.26")).toBe("Änderungsantrag CDU Geschäftsordnung Rat 2.11.26");
+    expect(ohneDatum("2026-10-31")).toBe("2026-10-31");
+  });
+});
+
+describe("teileListe", () => {
+  it("Lesestoff vorn, Belegmaterial und Protokolle getrennt", () => {
+    const t = teileListe([
+      { kind: "template", doc_type: "template", label: "Vorlage" },
+      { kind: "attachment", doc_type: "amendment", label: "Änderungsantrag" },
+      { kind: "attachment", doc_type: "plan", label: "Lageplan" },
+      { kind: "protocol", label: "Protokoll Rat" },
+      { kind: "attachment", label: "ohne Art" },
+    ]);
+    expect(t.lesestoff.map((d) => d.label)).toEqual(["Vorlage", "Änderungsantrag"]);
+    expect(t.beleg.map((d) => d.label)).toEqual(["Lageplan", "ohne Art"]);
+    expect(t.protokolle).toHaveLength(1);
+  });
+});

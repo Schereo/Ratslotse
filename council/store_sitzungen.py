@@ -2102,15 +2102,31 @@ class SitzungenMixin(StoreBasis):
         self._conn.commit()
 
     def _punkt_unterlagen(self, punkt: dict, item: dict, ksinr: int) -> list[dict]:
-        """Was zum Punkt vorliegt: die Vorlage im Ratsinfo, die Anlagen am
-        Punkt, die Protokolle der früheren Stationen. Alles extern."""
+        """Die Gegenlese-Liste des Punkts (docs/plan-vorlagen-aufbereiten.md,
+        § 6.1, PR 7): je Dokument einmal, über alle Stationen der Vorlage, mit
+        fortlaufender Nummer, Art, Antragsteller, Seiten und Merkmalen —
+        Reihenfolge Vorlage, Anträge, Synopse und Satzung, Rest. Danach die
+        Protokolle der früheren Stationen. Alles extern."""
+        sitzungstag = self._conn.execute(
+            "SELECT session_date FROM council_sessions WHERE ksinr = ?", (ksinr,)).fetchone()
+        tag = sitzungstag["session_date"] if sitzungstag else None
         out: list[dict] = []
-        if punkt.get("kvonr"):
+        for n, d in enumerate(self.item_documents(ksinr, punkt["item_number"]), 1):
+            if not d.get("url"):
+                continue
+            out.append({
+                "kind": "template" if d["doc_type"] == "template" else "attachment",
+                "label": d["label"], "url": d["url"], "date": None,
+                "document_id": d["document_id"], "list_no": n, "doc_type": d["doc_type"],
+                "applicants": d["applicants"], "pages": d["n_pages"], "is_scan": d["is_scan"],
+                # Erst nach dieser Sitzung an einem Punkt aufgetaucht (spätere Station).
+                "after_session": bool(tag and d.get("first_seen") and d["first_seen"] > tag),
+            })
+        if not out and punkt.get("kvonr"):
+            # Ohne eingelesene Vorlage bleibt der Weg ins Ratsinfo.
             out.append({"kind": "template", "label": f"Vorlage {punkt.get('template_number') or ''}".strip(),
                         "url": f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={punkt['kvonr']}",
                         "date": None})
-        for a in punkt.get("anlagen") or []:
-            out.append({"kind": "attachment", "label": a["label"], "url": a["url"], "date": None})
         frueher = [s for s in item.get("journey") or [] if s["ksinr"] != ksinr]
         if frueher:
             ph = ",".join("?" * len(frueher))

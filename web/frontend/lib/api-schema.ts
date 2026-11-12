@@ -20347,11 +20347,23 @@ export interface components {
         };
         /**
          * SessionItemDocument
-         * @description Eine Unterlage zum Punkt — alles extern im Ratsinfo.
+         * @description Eine Unterlage zum Punkt — alles extern im Ratsinfo. Die Felder ab
+         *     ``document_id`` tragen die Gegenlese-Liste (Plan Vorlagen aufbereiten,
+         *     § 6.1); Protokolle früherer Stationen haben sie nicht.
          */
         SessionItemDocument: {
+            /** After Session */
+            after_session?: boolean;
+            /** Applicants */
+            applicants?: string[];
             /** Date */
             date: string | null;
+            /** Doc Type */
+            doc_type?: string;
+            /** Document Id */
+            document_id?: number;
+            /** Is Scan */
+            is_scan?: boolean;
             /**
              * Kind
              * @enum {string}
@@ -20359,6 +20371,10 @@ export interface components {
             kind: "template" | "attachment" | "protocol";
             /** Label */
             label: string;
+            /** List No */
+            list_no?: number;
+            /** Pages */
+            pages?: number | null;
             /** Url */
             url: string;
         };
@@ -30934,4 +30950,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: aae073d43d15e2cc4a10ce09de659c370d2ac9a68f088f654d7009afd2cd16a6
+// vertrag-sha256: c1e835d6a63552520a528bce134b69e5f192173e99fa0f054e4b0e6ef6885eb4
