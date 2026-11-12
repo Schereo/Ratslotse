@@ -42,7 +42,7 @@ jobs:
     if: github.repository == 'Schereo/Ratslotse'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Zeitstempel statt Hashes: `deploy.yml` hängt an `pull_request: closed`,
       # und `github.sha` ist dort der MERGE-Commit des PRs, nicht der
