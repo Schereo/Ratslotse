@@ -3112,6 +3112,17 @@ def decision_detail(
             bd["impact_reason"] = d["impact_reason"]
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
+        # „Aus der Vorlage" (Plan Vorlagen § 6.3): das Dossier des Punkts, wie es
+        # bis zur Sitzung stand — ausdrücklich der Vorschlag, das Ergebnis zeigt
+        # die Seite selbst. Dazu „Vorgeschlagen ↔ beschlossen" als Wortdiff.
+        if features.an("aus-den-unterlagen"):
+            try:
+                punkt_nr = store.agenda_item_for_decision(d["ksinr"], d["item_number"])
+                dossier = store.item_dossier_view(d["ksinr"], punkt_nr) if punkt_nr else None
+                if dossier:
+                    out["template_dossier"] = dossier
+            except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Beschluss-Seite
+                _log.exception("Dossier zum Beschluss fehlgeschlagen für %s", d["id"])
         # „Was beantragt wurde": der gelesene Antrag an seiner Teilabstimmung
         # (council/motions.py, Zuordnung nur wenn eindeutig).
         if out["sub_votes"] and features.an("aenderungsantraege"):
@@ -3164,6 +3175,11 @@ def decision_detail(
             }
             if not out["template_url"] and v.get("kvonr"):
                 out["template_url"] = _vorlage_url(v["kvonr"])
+            # Vorgeschlagen ↔ beschlossen: nur, wo die Abweichung messbar ist
+            # (ernte.deviation slight/strong) — Wortdiff ohne Modell.
+            if d.get("deviation") in ("slight", "strong") and v.get("proposed_decision") and d.get("official_text"):
+                from council.motions import word_diff
+                out["proposal_diff"] = word_diff(v["proposed_decision"], d["official_text"])
         out["attachments"] = store.anlagen_for_vorlage_nr(d["template_number"])
         # Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt
         # über eine echte Verknüpfung, nicht über eine Textsuche. `None` heißt

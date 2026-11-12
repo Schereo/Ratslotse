@@ -20,7 +20,7 @@ export const MUSTER_WORT: Record<string, string> = {
   replace: "ersetzt", delete: "streicht", add: "ergänzt", rewrite: "fasst neu", counter: "Gegenvorschlag",
 };
 
-function Wortdiff({ diff }: { diff: string[][] }) {
+export function Wortdiff({ diff }: { diff: string[][] }) {
   return (
     <p className="text-lese text-foreground">
       {kurzerDiff(diff).map(([op, text], i) => (
