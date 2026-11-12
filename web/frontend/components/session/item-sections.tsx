@@ -6,9 +6,9 @@
    Schritte 4 und 5). */
 
 import Link from "next/link";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ChevronDown, ExternalLink } from "lucide-react";
 import { formatDate } from "@/components/ui";
-import { OUTCOME_DOT_CLS, OUTCOME_WORD, voteLabel } from "@/components/decision-ui";
+import { OUTCOME_DOT_CLS, OUTCOME_WORD, normalizeParty, partyBrand, voteLabel } from "@/components/decision-ui";
 import { FragDenRatChat } from "@/components/frag-den-rat-chat";
 import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
 import { KiStern } from "@/components/ki-stern";
@@ -17,6 +17,7 @@ import { decisionHref, sitzungHref } from "@/lib/routes";
 import type { ApiAntwort } from "@/lib/vertrag";
 import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ART_WORT, ohneDatum, teileListe } from "@/lib/unterlagen";
 
 export type Punkt = ApiAntwort<"/council/session/{ksinr}/item">;
 
@@ -60,26 +61,69 @@ export function Vorgeschichte({ p, titel, bare }: { p: Punkt; titel: string | nu
   );
 }
 
-const ART: Record<string, string> = { template: "Vorlage", attachment: "Anlage", protocol: "Protokoll" };
+type Unterlage = Punkt["documents"][number];
 
+function UnterlageZeile({ d }: { d: Unterlage }) {
+  const art = ART_WORT[d.doc_type ?? (d.kind === "template" ? "template" : d.kind === "protocol" ? "protocol" : "other")];
+  const partei = d.applicants?.[0] ? normalizeParty(d.applicants[0]) : null;
+  const brand = partei ? partyBrand(partei) : null;
+  const merkmale = [
+    d.pages ? `${d.pages} ${d.pages === 1 ? "Seite" : "Seiten"}` : null,
+    d.is_scan ? "Scan ohne Textebene" : null,
+    d.after_session ? "kam nach dieser Sitzung dazu" : null,
+    d.date ? formatDate(d.date) : null,
+  ].filter(Boolean);
+  return (
+    <li>
+      <a href={d.url} target="_blank" rel="noreferrer"
+        className="flex h-full items-start gap-3 rounded-xl border border-dashed border-border p-3 hover:bg-accent">
+        {d.list_no != null && (
+          <span className="mt-0.5 inline-flex h-5 min-w-5 flex-none items-center justify-center rounded-md bg-muted px-1 font-mono text-[11px] font-medium text-muted-foreground">
+            {d.list_no}
+          </span>
+        )}
+        <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="rounded-md border border-border bg-card px-1.5 py-0.5 text-[11px] font-medium text-foreground">{art}</span>
+            {d.applicants && d.applicants.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-meta font-semibold text-foreground">
+                {brand && <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: brand.bg }} />}
+                {d.applicants.join(", ")}
+              </span>
+            )}
+          </span>
+          <span className="mt-1 block text-quelle font-medium text-foreground">{ohneDatum(d.label)}</span>
+          {merkmale.length > 0 && <span className="text-meta text-muted-foreground">{merkmale.join(" · ")}</span>}
+        </span>
+        <ExternalLink className="mt-1 h-4 w-4 flex-none text-muted-foreground" aria-hidden />
+      </a>
+    </li>
+  );
+}
+
+/** Die Gegenlese-Liste (Plan Vorlagen aufbereiten, § 6.1): je Dokument
+ *  einmal, mit Nummer, Art, Antragsteller und Seiten — Lesestoff offen,
+ *  Belegmaterial eingeklappt, Protokolle früherer Stationen zuletzt. */
 export function Unterlagen({ p, titel, bare }: { p: Punkt; titel: string | null; bare?: boolean }) {
+  const { lesestoff, beleg, protokolle } = teileListe(p.documents);
   return (
     <section className={bare ? undefined : "rounded-2xl border border-border bg-card p-5 shadow-sm"}>
       {titel && <h2 className="mb-3 font-display text-base font-semibold text-foreground">{titel}</h2>}
-      <ul className="grid gap-2 @container sm:grid-cols-2">
-        {p.documents.map((d, i) => (
-          <li key={i}>
-            <a href={d.url} target="_blank" rel="noreferrer"
-              className="flex h-full items-start justify-between gap-2 rounded-xl border border-dashed border-border p-3 hover:bg-accent">
-              <span className="min-w-0 [overflow-wrap:anywhere]">
-                <span className="block text-quelle font-medium text-foreground">{d.label}</span>
-                <span className="text-meta text-muted-foreground">{ART[d.kind] ?? "Unterlage"}{d.date ? ` · ${formatDate(d.date)}` : ""} · Ratsinfo</span>
-              </span>
-              <ExternalLink className="mt-1 h-4 w-4 flex-none text-muted-foreground" aria-hidden />
-            </a>
-          </li>
-        ))}
-      </ul>
+      {lesestoff.length > 0 && (
+        <ul className="grid gap-2">{lesestoff.map((d) => <UnterlageZeile key={d.url} d={d} />)}</ul>
+      )}
+      {beleg.length > 0 && (
+        <details className="group mt-3" open={lesestoff.length === 0}>
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground">
+            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+            Weitere Unterlagen <span className="text-muted-foreground">{beleg.length}</span>
+          </summary>
+          <ul className="mt-2 grid gap-2">{beleg.map((d) => <UnterlageZeile key={d.url} d={d} />)}</ul>
+        </details>
+      )}
+      {protokolle.length > 0 && (
+        <ul className="mt-3 grid gap-2">{protokolle.map((d) => <UnterlageZeile key={d.url} d={d} />)}</ul>
+      )}
     </section>
   );
 }
