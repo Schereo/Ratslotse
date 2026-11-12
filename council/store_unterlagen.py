@@ -108,11 +108,20 @@ class UnterlagenMixin(StoreBasis):
         steckbriefe = self.document_profiles(list(docs))
         from council import document_types  # noqa: PLC0415
 
-        out = []
-        for did, d in docs.items():
+        from council.parties import parties_in_text  # noqa: PLC0415
+
+        out, labels = [], set()
+        # An der Vorlage zuerst: Dasselbe Dokument liegt oft unter zwei Kennungen
+        # an Vorlage und Punkt („Anlage Geschäftsordnung"); gleiches Label heißt
+        # dann ein Eintrag.
+        for did, d in sorted(docs.items(), key=lambda kv: kv[1]["source"] != "template_attachment"):
+            schluessel = " ".join((d["label"] or "").lower().split())
+            if d["source"] != "template" and schluessel in labels:
+                continue
+            labels.add(schluessel)
             sb = steckbriefe.get(did) or {}
             art = "template" if d["source"] == "template" else (sb.get("doc_type") or document_types.classify(d["label"]))
-            out.append({**d, "doc_type": art, "applicants": sb.get("applicants") or [],
+            out.append({**d, "doc_type": art, "applicants": sb.get("applicants") or parties_in_text(d["label"]),
                         "n_pages": sb.get("n_pages"), "is_scan": bool(sb.get("is_scan"))})
         out.sort(key=lambda d: (document_types.rank(d["doc_type"]), d["first_seen"] or "", d["label"]))
         return out

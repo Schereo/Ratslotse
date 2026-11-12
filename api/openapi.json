@@ -32618,14 +32618,37 @@
         "type": "object"
       },
       "SessionItemDocument": {
-        "description": "Eine Unterlage zum Punkt — alles extern im Ratsinfo.",
+        "description": "Eine Unterlage zum Punkt — alles extern im Ratsinfo. Die Felder ab\n``document_id`` tragen die Gegenlese-Liste (Plan Vorlagen aufbereiten,\n§ 6.1); Protokolle früherer Stationen haben sie nicht.",
         "properties": {
+          "after_session": {
+            "title": "After Session",
+            "type": "boolean"
+          },
+          "applicants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applicants",
+            "type": "array"
+          },
           "date": {
             "title": "Date",
             "type": [
               "string",
               "null"
             ]
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "is_scan": {
+            "title": "Is Scan",
+            "type": "boolean"
           },
           "kind": {
             "enum": [
@@ -32639,6 +32662,17 @@
           "label": {
             "title": "Label",
             "type": "string"
+          },
+          "list_no": {
+            "title": "List No",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "url": {
             "title": "Url",

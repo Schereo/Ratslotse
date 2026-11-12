@@ -85,3 +85,7 @@ class StoreBasis:
         def anlagen_for_vorlage_nr(self, template_number: str) -> list[dict]:
             """Die Anlagen der Vorlage, Anträge zuerst (``store``)."""
             ...
+
+        def item_documents(self, ksinr: int, item_number: str) -> list[dict]:
+            """Die Dokumente eines Punkts über alle Stationen (``store_unterlagen``)."""
+            ...

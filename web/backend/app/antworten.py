@@ -3010,11 +3010,24 @@ class SessionItemStation(TypedDict):
 
 
 class SessionItemDocument(TypedDict):
-    """Eine Unterlage zum Punkt — alles extern im Ratsinfo."""
+    """Eine Unterlage zum Punkt — alles extern im Ratsinfo. Die Felder ab
+    ``document_id`` tragen die Gegenlese-Liste (Plan Vorlagen aufbereiten,
+    § 6.1); Protokolle früherer Stationen haben sie nicht."""
     kind: Literal["template", "attachment", "protocol"]
     label: str
     url: str
     date: str | None
+    document_id: NotRequired[int]
+    #: Dieselbe Nummer wie in den Fußnoten [n] der Aufbereitung.
+    list_no: NotRequired[int]
+    #: ``template`` · ``amendment`` · ``motion`` · ``report_request`` · ``synopsis`` ·
+    #: ``statute`` · ``statement`` · ``plan`` · ``report`` · ``presentation`` · ``other``
+    doc_type: NotRequired[str]
+    applicants: NotRequired[list[str]]
+    pages: NotRequired[int | None]
+    is_scan: NotRequired[bool]
+    #: Kam erst nach dieser Sitzung dazu (an einer späteren Station).
+    after_session: NotRequired[bool]
 
 
 class ArgumentSource(TypedDict):
