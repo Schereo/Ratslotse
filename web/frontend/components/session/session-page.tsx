@@ -16,9 +16,10 @@
    Anwesenheit, der Sprung zum geteilten Punkt (dieselben `topDomId`). */
 
 import { LottiSatz } from "@/components/session/lotti-satz";
+import { KiStern } from "@/components/ki-stern";
 import { useMemo, useState, type ReactNode } from "react";
 import {
-  ArrowDown, ArrowLeft, ArrowRight, ChevronDown, Clock, ExternalLink, MapPin, Navigation, Sparkles,
+  ArrowDown, ArrowLeft, ArrowRight, ChevronDown, Clock, ExternalLink, MapPin, Navigation, Star,
 } from "lucide-react";
 import { Course } from "@/components/session/course";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
@@ -59,8 +60,10 @@ const KICKER = "font-mono text-meta uppercase tracking-[0.06em] text-muted-foreg
 /** Feste Texte (Plan § 4.6). */
 const TEXT = {
   legendeVorher: "Jede Boje ist ein Punkt der Tagesordnung, jedes helle Band eine Etappe der Sitzung. Die großen Bojen sind die wichtigen. Der gelbe Punkt heißt: stand schon einmal hier und wurde vertagt.",
-  hinweisVorher: "Kurzfassungen sind automatisch aus Vorlagen und Anträgen erstellt. Verbindlich sind die Unterlagen im Ratsinfo.",
-  hinweisNachher: "Kurzfassungen sind automatisch erstellt. Verbindlich ist das Protokoll.",
+  // Am KI-Stern statt als Zeile über der Tagesordnung (Tim, 12.11.2026).
+  kiVorher: "Automatisch aus Vorlage und Antrag erstellt. Verbindlich sind die Unterlagen im Ratsinfo.",
+  kiNachher: "Automatisch erstellt. Verbindlich ist das Protokoll.",
+  kiWichtig: "Automatisch eingeschätzt: welche Punkte die meisten Menschen in Oldenburg betreffen.",
   anfragen: "Fragen der Mitglieder an die Verwaltung. Ein Beschluss kommt dabei nicht heraus.",
   einwohnerfragen: "Hier können Einwohner*innen dem Ausschuss Fragen stellen.",
   widmung: "Mit einer Widmung wird eine Straße oder ein Weg offiziell zur öffentlichen Straße.",
@@ -144,24 +147,10 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
             <h2 id="tagesordnung-titel" className="font-display text-xl font-bold text-foreground">Tagesordnung</h2>
             <p className={KICKER}>{zaehlung(course)}</p>
           </div>
-          {punktSeite && (
-            <p className="mt-2 max-w-[46rem] text-[15px] leading-relaxed text-foreground">
-              Punkte mit Vorlage oder Antrag haben eine eigene Seite: mit Vorgeschichte und Unterlagen.
-            </p>
-          )}
-          <p className="mt-2 flex gap-2 text-hinweis text-foreground">
-            <Sparkles className="mt-1 h-4 w-4 shrink-0 text-signal" aria-hidden />
-            {phase === "protocol" ? TEXT.hinweisNachher : TEXT.hinweisVorher}
-          </p>
           {videoCount > 0 && phase !== "protocol" && (
             <div className="mt-3">
               <VideoResultsNotice count={videoCount} videoId={Object.values(videoByItem)[0].video_id} />
             </div>
-          )}
-          {phase === "past" && (
-            <p className="mt-3 rounded-xl border border-dashed border-border bg-muted/40 p-3 text-hinweis text-foreground">
-              Die Sitzung war am {formatDate(data.session_date)}. Ergebnisse stehen hier, sobald das Protokoll vorliegt.
-            </p>
           )}
           <Track ctx={ctx} onVorschau={vorschauId != null ? setGewaehlt : undefined} gewaehltId={vorschauId} />
           <div className="mt-4"><AttendanceSection detail={data} /></div>
@@ -305,7 +294,10 @@ function ImportantCard({ ctx, nr }: { ctx: Ctx; nr: string }) {
         </span>
         {kopf}
       </p>
-      <p className="mt-3 text-[15px] font-semibold leading-snug text-foreground">{text}</p>
+      <p className="mt-3 text-[15px] font-semibold leading-snug text-foreground">
+        {text}
+        {text !== item.short_title && <KiStern className="ml-1" text={ctx.phase === "protocol" ? TEXT.kiNachher : TEXT.kiVorher} />}
+      </p>
       {unten && unten !== text && <p className="mt-2 text-hinweis text-muted-foreground">{unten}</p>}
       <a href={ctx.punktSeite && ctx.decisionByItem[topKey(nr)] == null && item.own_page ? punktHref(ctx.ksinr, nr) : `#${topDomId(ctx.ksinr, nr)}`}
         className="mt-auto inline-flex min-h-11 items-center gap-1.5 pt-3 text-sm font-medium text-primary hover:underline">
@@ -546,7 +538,13 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
             )}
             {video && <VideoResultChip r={video} />}
             {item.type_label && !frame && <Chip tone="outline">{item.type_label}</Chip>}
-            {item.important && <Chip tone="primary">Wichtig</Chip>}
+            {item.important && (
+              // Kräftig statt zartblau: der Hinweis ging neben „Entscheidung"
+              // unter (Tim, 12.11.2026).
+              <span className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
+                <Star className="h-3 w-3 fill-current" aria-hidden /> Wichtig
+              </span>
+            )}
             {!item.important && item.postponed > 0 && (
               <Chip tone="amber">{item.postponed === 1 ? "Schon einmal vertagt" : `${item.postponed}-mal vertagt`}</Chip>
             )}
@@ -576,11 +574,13 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
           {text && (!item.important || !nachher || offen) && (
             <p className={cn("mt-2 text-foreground", offen ? "text-lese" : "text-[15px] leading-relaxed text-foreground")}>
               {text}
+              {!frame && <KiStern className="ml-1" text={nachher ? TEXT.kiNachher : TEXT.kiVorher} />}
             </p>
           )}
           {item.important && item.important_reason && !nachher && (
-            <p className="mt-2 text-hinweis text-foreground">
-              <strong className="font-semibold">Wichtig:</strong> {item.important_reason}
+            <p className="mt-3 rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2 text-hinweis text-foreground">
+              <strong className="font-semibold text-primary">Warum wichtig:</strong> {item.important_reason}
+              <KiStern className="ml-1" text={TEXT.kiWichtig} />
             </p>
           )}
           {offen && item.journey.length > 1 && <Journey ctx={ctx} item={item} />}

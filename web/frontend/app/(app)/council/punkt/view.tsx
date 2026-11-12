@@ -20,6 +20,7 @@ import { AufEinenBlick, FragDenRat, Unterlagen, Vorgeschichte, type Punkt } from
 import { MeineNotiz } from "@/components/notiz/meine-notiz";
 import { Argumente, Fraktionen } from "@/components/session/item-arguments";
 import { kurzfassung } from "@/components/tagesordnung";
+import { KiStern } from "@/components/ki-stern";
 import { useFetch } from "@/lib/use-fetch";
 import { istNichtGefunden } from "@/lib/api";
 import { useFeature } from "@/lib/features";
@@ -150,11 +151,15 @@ function PunktView({ p }: { p: Punkt }) {
             <section aria-labelledby="kurz" className="rounded-2xl border border-border bg-card p-5 shadow-sm">
               <p className={cn(KICKER, "flex items-center gap-1.5")}><Sparkles className="h-3.5 w-3.5 text-signal" aria-hidden /> Kurzfassung</p>
               <h2 id="kurz" className="mt-1 font-display text-base font-semibold text-foreground">Das Wichtigste in Kürze</h2>
-              <p className="mt-2 text-lese text-foreground">{kurz}</p>
+              <p className="mt-2 text-lese text-foreground">
+                {kurz}
+                <KiStern className="ml-1" text="Automatische Kurzfassung. Verbindlich sind die Unterlagen im Ratsinfo." />
+              </p>
               {ci.important && ci.important_reason && (
-                <p className="mt-2 text-hinweis text-foreground"><strong className="font-semibold">Wichtig:</strong> {ci.important_reason}</p>
+                <p className="mt-3 rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2 text-hinweis text-foreground">
+                  <strong className="font-semibold text-primary">Warum wichtig:</strong> {ci.important_reason}
+                </p>
               )}
-              <p className="mt-3 text-hinweis text-muted-foreground">Automatische Kurzfassung. Verbindlich sind die Unterlagen im Ratsinfo.</p>
             </section>
           )}
 
