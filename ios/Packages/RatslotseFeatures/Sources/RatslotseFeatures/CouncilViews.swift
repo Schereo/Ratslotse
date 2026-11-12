@@ -1561,13 +1561,6 @@ struct DecisionDetailView: View {
                         .font(RatsFont.body(13, weight: .medium))
                     }
 
-                    if let pressURL = Self.pressURL(for: decision.title) {
-                        Link(destination: pressURL) {
-                            RatsLabel("Bei NWZonline nach Berichten suchen", .newspaper)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .font(RatsFont.body(13, weight: .medium))
-                    }
                 } else if let error {
                     ErrorCard(message: error) { Task { await load() } }
                     #if DEBUG
@@ -1644,12 +1637,6 @@ struct DecisionDetailView: View {
         } catch {
             elsewhere = nil
         }
-    }
-
-    private static func pressURL(for title: String) -> URL? {
-        var components = URLComponents(string: "https://www.nwzonline.de/suche/")
-        components?.queryItems = [URLQueryItem(name: "q", value: title)]
-        return components?.url
     }
 
 #if DEBUG

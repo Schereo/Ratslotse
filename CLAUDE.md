@@ -40,12 +40,10 @@ neue nicht da und die alte schon, wird der WAL eingecheckt und umbenannt. Der
 Schritt ist idempotent und darf stehen bleiben, bis alle Umgebungen einmal
 gestartet sind.
 
-Zwei Stellen tragen den alten Namen weiter:
-
-- **die systemd-Units** `nwz-web-api` / `nwz-web-frontend` — Umbenennen braucht
-  Root auf dem Server und einen Nachzug in `deploy.yml`.
-- **`web/frontend/components/nwz-link.tsx`** — der ist kein Rest: Auf
-  Beschluss-Seiten steht ein Link zur NWZonline-Suche nach dem jeweiligen Thema.
+Eine Stelle trägt den alten Namen weiter: **die systemd-Units**
+`nwz-web-api` / `nwz-web-frontend` — Umbenennen braucht Root auf dem Server und
+einen Nachzug in `deploy.yml`. (Der Link zur NWZonline-Suche auf Beschluss-
+und Punkt-Seiten ist seit 11/2026 weg; er führte meistens ins Leere.)
 
 ## Lokale Entwicklung
 

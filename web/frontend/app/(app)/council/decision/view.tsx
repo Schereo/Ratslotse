@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Tag, Euro } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
 import { MeineNotiz } from "@/components/notiz/meine-notiz";
@@ -17,7 +17,6 @@ import { ShareButton } from "@/components/share-button";
 import { PrintButton } from "@/components/print-button";
 import { FollowButton } from "@/components/follow-button";
 import { BookmarkButton } from "@/components/bookmark-button";
-import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { useZurueck } from "@/lib/zurueck";
 import { kamDirektAusSuche, suchRueckweg } from "@/lib/suchkontext";
@@ -673,10 +672,11 @@ function DecisionDetailInner() {
   const nachbarHref = (nr: number) => decisionHref(nr)
     + (suche ? `&suche=${encodeURIComponent(suche)}` : "");
 
-  // Der Weg der Vorlage und die Presse: rechts unter den Metadaten oder, ab
-  // `weit`, oben in der dritten Spalte — sonst stünde die rechte Spalte
-  // doppelt so lang wie die neue daneben.
-  const wegUndPresse = (
+  // Der Weg der Vorlage: rechts unter den Metadaten oder, ab `weit`, oben in
+  // der dritten Spalte — sonst stünde die rechte Spalte doppelt so lang wie
+  // die neue daneben. (Bis 11/2026 stand darunter „In der Presse“ mit einer
+  // NWZonline-Suche; Tim: führte meistens nirgendwohin.)
+  const wegDerVorlage = (
     <>
       {(data.deliberation_path && data.deliberation_path.length > 0) || data.template_journey.length > 1 ? (
         <MetaCard title={`Weg der Vorlage ${d.template_number ?? ""}`.trim()}>
@@ -736,18 +736,6 @@ function DecisionDetailInner() {
         </MetaCard>
       ) : null}
 
-      {d.title && (
-        <MetaCard title="In der Presse">
-          <a
-            href={nwzSearchUrl(d.title)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-          >
-            <Newspaper className="h-4 w-4 shrink-0" /> Bei NWZonline nach Berichten suchen
-          </a>
-        </MetaCard>
-      )}
     </>
   );
 
@@ -850,8 +838,8 @@ function DecisionDetailInner() {
       <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] weit:grid-cols-[minmax(0,1fr)_300px_360px] ultra:grid-cols-[minmax(0,1fr)_340px_520px]">
         {/* Linke Spalte (25a): nur noch die inhaltliche Erzählung —
             Kurzfassung → amtlicher Wortlaut → Verlauf & Begründung → Nachbarn.
-            Dokumente, Anwesenheit, Beratungsweg und Presse sind Metadaten und
-            sitzen rechts. */}
+            Dokumente, Anwesenheit und Beratungsweg sind Metadaten und sitzen
+            rechts. */}
         <div className="min-w-0 space-y-3">
           {d.simple_summary && <SimpleSummaryHero text={d.simple_summary} />}
 
@@ -915,8 +903,8 @@ function DecisionDetailInner() {
 
         {/* Rechte Spalte (25a): drei Karten statt sechs — „Auf einen Blick"
             bündelt Betrag/Abstimmung/Antrag/Wichtigkeit, „Dokumente & Anlagen"
-            führt alle Datei-Links zusammen, dazu Anwesenheit. Beratungsweg und
-            Presse sind ebenfalls Metadaten und schließen unten an. */}
+            führt alle Datei-Links zusammen, dazu Anwesenheit. Der Beratungsweg
+            ist ebenfalls Metadatum und schließt unten an. */}
         <aside className="space-y-4">
           <GlanceCard d={d} data={data} present={present} unanimous={unanimous} className="hidden lg:block" />
 
@@ -980,8 +968,8 @@ function DecisionDetailInner() {
 
           {mitNotizen && <MeineNotiz targetKind="decision" targetKey={String(d.id)} wofuer="Beschluss" />}
 
-          {/* Weg und Presse stehen ab `weit` in der dritten Spalte. */}
-          <div className="space-y-4 weit:hidden">{wegUndPresse}</div>
+          {/* Der Weg steht ab `weit` in der dritten Spalte. */}
+          <div className="space-y-4 weit:hidden">{wegDerVorlage}</div>
         </aside>
 
         {/* Die dritte Spalte ab `weit` — dieselben Blöcke wie links unten
@@ -989,7 +977,7 @@ function DecisionDetailInner() {
             react-query-Schlüssel; display:none nimmt die jeweils andere auch
             aus dem Vorlese-Baum, wie bei der GlanceCard. */}
         <div className="hidden min-w-0 space-y-4 weit:block">
-          {wegUndPresse}
+          {wegDerVorlage}
           <Zusammenhang decisionId={d.id} similar={data.similar} />
         </div>
       </div>
