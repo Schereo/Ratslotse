@@ -409,7 +409,7 @@ nicht angeschaltet").
 
 **GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_DEV_HOST`,
 `VPS_PROXY_HOST`, `VPS_PROXY_USER`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_KNOWN_HOSTS`
-(Host-Schlüssel der drei Rechner; leer = ungeprüft, Anleitung in
+(Host-Schlüssel der drei Rechner; ohne bricht jeder SSH-Schritt ab, Anleitung in
 `docs-site/…/betrieb.md`), `ANTHROPIC_API_KEY` (für `docs-review.yml`),
 `CARTO_API_KEY` (Kartenkacheln, s. u.). Der Deploy-Key geht nur an
 `.github/actions/ssh` und `.github/actions/ssh-config`.

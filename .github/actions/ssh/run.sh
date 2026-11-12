@@ -68,6 +68,13 @@ fi
 if [ -n "$source_list" ]; then
   single_token target "$target"
 fi
+# Ohne geprüfte Host-Schlüssel wird nicht verbunden: Ein frischer Runner
+# nähme sonst jeden Schlüssel an, auch den eines Rechners, der sich als
+# Server ausgibt. Bis 11/2026 war das nur eine Warnung.
+[ -n "$known_hosts" ] ||
+  fail "known_hosts ist leer. Secret VPS_KNOWN_HOSTS setzen, Anleitung: ratslotse.de/docs/betrieb/ unter „Host-Schlüssel“."
+entries=$(printf '%s\n' "$known_hosts" | tr -d '\r' | grep -Ecv '^[[:space:]]*(#|$)' || true)
+[ "$entries" -gt 0 ] || fail "known_hosts enthält keinen Eintrag."
 
 umask 077
 workdir=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/ssh-action.XXXXXX")
@@ -78,16 +85,7 @@ if [ -n "$proxy_host" ]; then
   printf '%s\n' "${proxy_key:-$key}" | tr -d '\r' >"$workdir/proxy_key"
 fi
 
-if [ -n "$known_hosts" ]; then
-  printf '%s\n' "$known_hosts" | tr -d '\r' >"$workdir/known_hosts"
-  strict=yes
-  entries=$(grep -Ecv '^[[:space:]]*(#|$)' "$workdir/known_hosts" || true)
-  [ "$entries" -gt 0 ] || fail "known_hosts enthält keinen Eintrag."
-else
-  : >"$workdir/known_hosts"
-  strict=accept-new
-  echo "::warning title=Host-Schlüssel ungeprüft::known_hosts ist leer (Secret VPS_KNOWN_HOSTS), der erste Schlüssel jedes Servers wird angenommen. Anleitung: ratslotse.de/docs/betrieb/ unter „Host-Schlüssel“."
-fi
+printf '%s\n' "$known_hosts" | tr -d '\r' >"$workdir/known_hosts"
 
 {
   echo "Host ratslotse-target"
@@ -106,7 +104,7 @@ fi
   echo "Host *"
   echo "  IdentitiesOnly yes"
   echo "  BatchMode yes"
-  echo "  StrictHostKeyChecking $strict"
+  echo "  StrictHostKeyChecking yes"
   echo "  UserKnownHostsFile \"$workdir/known_hosts\""
   echo "  GlobalKnownHostsFile /dev/null"
   echo "  ConnectTimeout 30"
@@ -128,13 +126,7 @@ run_remote() {
   case $rc in
     0) return 0 ;;
     124 | 137) echo "::error::$what nach $command_timeout abgebrochen (command_timeout)." >&2 ;;
-    255)
-      if [ "$strict" = yes ]; then
-        echo "::error::$what: SSH-Verbindung zu Ziel oder Sprungrechner gescheitert (Exit 255). Steht „Host key verification failed“ darüber, fehlt der Schlüssel in VPS_KNOWN_HOSTS oder hat sich geändert." >&2
-      else
-        echo "::error::$what: SSH-Verbindung zu Ziel oder Sprungrechner gescheitert (Exit 255)." >&2
-      fi
-      ;;
+    255) echo "::error::$what: SSH-Verbindung zu Ziel oder Sprungrechner gescheitert (Exit 255). Steht „Host key verification failed“ darüber, fehlt der Schlüssel in VPS_KNOWN_HOSTS oder hat sich geändert." >&2 ;;
     *) echo "::error::$what endete auf dem Ziel mit Exit $rc." >&2 ;;
   esac
   exit "$rc"
