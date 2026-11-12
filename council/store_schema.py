@@ -125,6 +125,19 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
 -- Kurze KI-Zusammenfassung je TOP (Tims Wunsch 12.08.) — dieselben Sätze,
 -- die auch in der Tagesordnungs-Mail stehen; hier je Punkt statt als
 -- HTML-Block, damit die App sie unter dem Titel zeigen kann.
+-- Lottis Satz zur Sitzung, vom Modell geschrieben (council/session_summary.py):
+-- je Sitzung einer, „agenda“ vor dem Protokoll, „protocol“ danach.
+-- material_hash über Version, Modell und Angaben — neu geschrieben wird nur,
+-- wenn sich daran etwas ändert.
+CREATE TABLE IF NOT EXISTS council_session_sentences (
+    ksinr         INTEGER PRIMARY KEY,
+    stage         TEXT NOT NULL,
+    sentence      TEXT NOT NULL,
+    material_hash TEXT NOT NULL,
+    model         TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS agenda_item_summaries (
     ksinr       INTEGER NOT NULL,
     item_number TEXT NOT NULL,

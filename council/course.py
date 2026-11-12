@@ -804,7 +804,9 @@ def summary_sentence(items: dict[str, dict], outcomes: dict[str, str | None],
     if not inhalt:
         return None
     if not outcomes:
-        wichtig = [it for it in inhalt.values() if it["important"]][:3]
+        # Höchstens zwei beim Namen; ein dritter wichtiger zählt beim Rest mit.
+        # „… und ein weiterer wichtiger Punkt“ sagte nichts (Tim, 11.11.2026).
+        wichtig = [it for it in inhalt.values() if it["important"]][:2]
         rest = [it for it in inhalt.values() if it not in wichtig]
         saetze: list[str] = []
         zusammen = _zusammensetzung(rest)
@@ -813,9 +815,7 @@ def summary_sentence(items: dict[str, dict], outcomes: dict[str, str | None],
             # („Geschäftsordnung für den Rat, den Verwaltungsausschuss und die
             # Ratsausschüsse“) — ohne Zeichen verschwimmt die Aufzählung. Mehr
             # als zwei beim Namen werden zur Wand; die Karten darunter nennen sie.
-            namen = [_titel(it["short_title"]) for it in wichtig[:2]]
-            if len(wichtig) > 2:
-                namen.append("ein weiterer wichtiger Punkt")
+            namen = [_titel(it["short_title"]) for it in wichtig]
             saetze.append(f"Im Mittelpunkt: {_aufzaehlen(namen)}.")
             if zusammen:
                 saetze.append(f"Dazu {zusammen}.")

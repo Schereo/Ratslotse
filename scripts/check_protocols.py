@@ -225,6 +225,13 @@ def main(fehler: list[str] | None = None) -> dict:
     zugestellt = _schritt(fehler, "Zustellung", lambda: notify.zustellen(ratslotse), 0)
     ratslotse.close()
     print(f"Ergebnis-Meldungen: {ergebnisse} eingereiht, {zugestellt} zugestellt.")
+    # Lottis Satz zur Sitzung neu, jetzt mit dem, was herauskam
+    # (council/session_summary.py) — nur für Sitzungen mit frischem Protokoll.
+    from council import session_summary
+    saetze = _schritt(fehler, "Sitzungssätze",
+                      lambda: session_summary.nachziehen(_store, stats.get("ksinrs") or [], max_usd=0.5),
+                      {"geschrieben": 0})
+    print(f"Sitzungssätze: {saetze}")
     _store.close()
     return {
         "Protokolle geparst": stats["parsed"],
@@ -259,6 +266,7 @@ def main(fehler: list[str] | None = None) -> dict:
         "Straßen ohne Vollgeometrie": geostats["strassen_ohne_vollgeometrie"],
         "Wichtig-Score neu": wichtig,
         "Ergebnis-Meldungen": ergebnisse,
+        "Sitzungssätze geschrieben": saetze.get("geschrieben", 0),
         "LLM-Kosten $": round(cstats["cost"] + gstats["cost"], 4),
         TEILFEHLER_SCHLUESSEL: len(fehler),
     }

@@ -19884,6 +19884,11 @@ export interface components {
             substantive_count: number;
             /** Summary */
             summary: string | null;
+            /**
+             * Summary Source
+             * @enum {string}
+             */
+            summary_source: "rule" | "model";
         };
         /**
          * SessionDetail
@@ -30275,4 +30280,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 40a1ed30cc7d4f4ad7c6bbbcf60d1a782d07b47630b64680b4f2be7cf0c62564
+// vertrag-sha256: 596f65112041006515a78dbd21187330399c826bf7359649f0200ae57a79e5a4
