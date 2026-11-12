@@ -1760,6 +1760,8 @@ class SitzungenMixin(StoreBasis):
                 "own_page": typ not in course.FRAME_TYPES,
                 "amendments_label": None,
                 "amendment_parties": [],
+                "cost_label": self.dossier_cost_label((nach_nr[nr].get("template_number") or "").strip() or None)
+                if typ not in course.FRAME_TYPES else None,
             }
             # Änderungsanträge am Punkt (docs/plan-vorlagen-aufbereiten.md § 6.2):
             # „2 Änderungsanträge · CDU, Volt" — die Beschriftung setzt das Backend.

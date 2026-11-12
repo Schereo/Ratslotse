@@ -107,7 +107,7 @@ function UnterlageZeile({ d }: { d: Unterlage }) {
 export function Unterlagen({ p, titel, bare }: { p: Punkt; titel: string | null; bare?: boolean }) {
   const { lesestoff, beleg, protokolle } = teileListe(p.documents);
   return (
-    <section className={bare ? undefined : "rounded-2xl border border-border bg-card p-5 shadow-sm"}>
+    <section id="unterlagen" className={cn("scroll-mt-24", !bare && "rounded-2xl border border-border bg-card p-5 shadow-sm")}>
       {titel && <h2 className="mb-3 font-display text-base font-semibold text-foreground">{titel}</h2>}
       {lesestoff.length > 0 && (
         <ul className="grid gap-2">{lesestoff.map((d) => <UnterlageZeile key={d.url} d={d} />)}</ul>

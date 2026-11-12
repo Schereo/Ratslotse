@@ -170,7 +170,7 @@ function PunktView({ p }: { p: Punkt }) {
 
           {(ausDenUnterlagen || mitAntraegen) && (
             <AusDenUnterlagen f={ausDenUnterlagen ? p.template_fields : null}
-              antraege={mitAntraegen ? p.amendments : undefined} />
+              antraege={mitAntraegen ? p.amendments : undefined} dossier={ausDenUnterlagen ? p.dossier : null} />
           )}
 
           {reiter.length > 1 && (

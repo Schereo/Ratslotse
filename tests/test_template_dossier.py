@@ -63,3 +63,36 @@ def test_pruefung_haelt_belegtes_und_markiert_status():
     assert out["next"]["open"][0]["source"] == "V1"
     assert out["documents"] == []                                  # Anlage ohne Text: still übergangen
     assert any(d["reason"] == "Zitat steht nicht wörtlich in der Quelle" for d in out["dropped"])
+
+
+def test_ansicht_mit_beleg_seite_und_pdf_sprung(tmp_path):
+    from datetime import date, timedelta
+
+    from council.scraper import AgendaItem, CouncilSession
+    from council.store import CouncilStore
+
+    store = CouncilStore(tmp_path / "council.sqlite")
+    try:
+        tag = (date.today() + timedelta(days=5)).isoformat()
+        store.save_vorlage({"kvonr": 30260, "template_number": "26/0796", "title": "Beratende Mitglieder - Beschluss",
+                            "kind": "Beschlussvorlage", "document_id": 315090,
+                            "document_url": "https://buergerinfo.oldenburg.de/getfile.php?id=315090&type=do",
+                            "raw_text": V, "n_pages": 2, "status": "ok"})
+        store.save_session(CouncilSession(ksinr=4709, committee="Rat", session_date=tag, session_time="18:00",
+                                          location="PFL", agenda_items=[AgendaItem(
+                                              item_number="Ö 13.2", title="Beratende Mitglieder", template_number="26/0796",
+                                              kvonr=30260, is_public=True, anlagen=[])]))
+        _, quellen, h = template_dossier.build_input(store.dossier_material("26/0796"))
+        payload = template_dossier.verify({"costs": {"items": [
+            {"text": "Das Sitzungsgeld beträgt 35 Euro je Sitzung.", "quote": "Sitzungsgeld in Höhe von 35,00 Euro je Sitzung",
+             "source": "V1", "page": 1, "amount_eur": 35, "recurrence": "yearly"}]}}, quellen, "F1")
+        store.save_template_dossier("tn:26/0796", h, status="ok", form="F1", payload=payload, model="m",
+                                    cost_usd=0.001, prompt_version=1)
+        v = store.item_dossier_view(4709, "Ö 13.2")
+        kosten = next(s for s in v["sections"] if s["key"] == "costs")
+        a = kosten["statements"][0]
+        assert a["list_no"] == 1 and a["url"].endswith("#page=1") and a["doc_label"] == "Vorlage 26/0796"
+        assert store.dossier_cost_label("26/0796") == "35 € jährlich"
+        assert store.dossier_lines(4709, "Ö 13.2") == ["Was es kostet: Das Sitzungsgeld beträgt 35 Euro je Sitzung. (Vorlage 26/0796, S. 1)"]
+    finally:
+        store.close()

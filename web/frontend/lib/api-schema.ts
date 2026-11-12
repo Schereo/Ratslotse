@@ -10671,6 +10671,8 @@ export interface components {
             amendments_label: string | null;
             /** Applicant */
             applicant: string | null;
+            /** Cost Label */
+            cost_label: string | null;
             /** Formal Act */
             formal_act: boolean;
             /** Formality */
@@ -11902,6 +11904,74 @@ export interface components {
             catalog: components["schemas"]["PlaceCatalogHead"];
             /** Districts */
             districts: unknown;
+        };
+        /**
+         * DossierGist
+         * @description Inhaltssatz zu einer Unterlage (belegt aus Seite 1–2).
+         */
+        DossierGist: {
+            /** Doc Label */
+            doc_label: string | null;
+            /** List No */
+            list_no: number | null;
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string;
+            /** Source */
+            source: string | null;
+            /** Text */
+            text: string;
+            /** Url */
+            url: string | null;
+        };
+        /** DossierSection */
+        DossierSection: {
+            /** Key */
+            key: string;
+            /** Stance */
+            stance: string | null;
+            /** Statements */
+            statements: components["schemas"]["DossierStatement"][];
+            /** Status */
+            status: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * DossierStatement
+         * @description Eine belegte Aussage: Satz, wörtliches Zitat, Quelle, Seite — dazu die
+         *     Nummer in der Gegenlese-Liste und der Sprung ins PDF (``#page=N``).
+         */
+        DossierStatement: {
+            /** Amount Eur */
+            amount_eur?: number | null;
+            /** Borne By */
+            borne_by?: string | null;
+            /** Date */
+            date?: string | null;
+            /** Doc Label */
+            doc_label: string | null;
+            /** Kind */
+            kind: string;
+            /** List No */
+            list_no: number | null;
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string;
+            /** Recurrence */
+            recurrence?: string | null;
+            /** Role */
+            role?: string | null;
+            /** Source */
+            source: string;
+            /** Subject */
+            subject?: string | null;
+            /** Text */
+            text: string;
+            /** Url */
+            url: string | null;
         };
         /**
          * ElectedAffiliation
@@ -14133,6 +14203,25 @@ export interface components {
             stale: boolean;
             /** Subject Key */
             subject_key: string;
+        };
+        /**
+         * ItemDossier
+         * @description „Aus den Unterlagen" (``council/template_dossier.py``): Abschnitte mit
+         *     belegten Aussagen, Stand, gelesene Dokumente, was danach dazukam.
+         */
+        ItemDossier: {
+            /** Added After */
+            added_after: string[];
+            /** Created At */
+            created_at: string | null;
+            /** Documents Read */
+            documents_read: number;
+            /** Form */
+            form: string | null;
+            /** Gists */
+            gists: components["schemas"]["DossierGist"][];
+            /** Sections */
+            sections: components["schemas"]["DossierSection"][];
         };
         /**
          * LimitsUpdate
@@ -20409,6 +20498,7 @@ export interface components {
             decision_id: number | null;
             /** Documents */
             documents: components["schemas"]["SessionItemDocument"][];
+            dossier?: components["schemas"]["ItemDossier"];
             /** Has Protocol */
             has_protocol: boolean;
             /** History */
@@ -31150,4 +31240,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 391c8997e7075b6ca97e52e58fac9a4e9d48ad684fd77e5ddedc32b65d610209
+// vertrag-sha256: d6a0aa9dff1184de6f034a9cff7504789d30244150ea148238fddca339fbb321
