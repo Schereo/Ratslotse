@@ -11,7 +11,7 @@ import { KeyRound, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import {
-  kontoPasskeyEntfernen, kontoPasskeyHinzufuegen, kontoPasskeysLaden, notizenMitPasskey, type KontoPasskey,
+  kontoPasskeyEntfernen, kontoPasskeyHinzufuegen, kontoPasskeysLaden, notizenMitPasskey, passkeyFehlerMelden, type KontoPasskey,
   type KontoPasskeys,
 } from "@/lib/passkey";
 import { Button, Card, ConfirmDialog, toast } from "@/components/ui";
@@ -29,7 +29,7 @@ export function PasskeysCard() {
   const hinzufuegen = useMutation({
     mutationFn: async () => {
       const { liste, treffer } = await kontoPasskeyHinzufuegen();
-      if (user) void notizenMitPasskey(user.id, treffer).catch(() => {});
+      if (user) void notizenMitPasskey(user.id, treffer).catch((e) => passkeyFehlerMelden(e, "Notizen nach neuem Passkey"));
       return liste;
     },
     onSuccess: (liste) => {

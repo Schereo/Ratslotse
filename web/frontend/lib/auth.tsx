@@ -106,20 +106,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithPasskey = async (opts?: { signal?: AbortSignal; mediation?: CredentialMediationRequirement }) => {
-    const { mitPasskeyAnmelden, notizenMitPasskey } = await import("./passkey");
+    const { mitPasskeyAnmelden, notizenMitPasskey, passkeyFehlerMelden } = await import("./passkey");
     const { user: u, treffer } = await mitPasskeyAnmelden(opts);
     setUser(u);
     // Die Notizen hängen an der Anmeldung, nicht umgekehrt: Scheitert das,
-    // ist man trotzdem angemeldet, und das Schloss fragt später selbst.
-    void notizenMitPasskey(u.id, treffer).catch(() => {});
+    // ist man trotzdem angemeldet, und das Schloss fragt später selbst. Was
+    // der Browser dabei ablehnt, landet still im Fehlerprotokoll.
+    void notizenMitPasskey(u.id, treffer).catch((e) => passkeyFehlerMelden(e, "Notizen nach der Anmeldung"));
     return u;
   };
 
   const registerWithPasskey = async (email: string, displayName: string) => {
-    const { mitPasskeyRegistrieren, notizenMitPasskey } = await import("./passkey");
+    const { mitPasskeyRegistrieren, notizenMitPasskey, passkeyFehlerMelden } = await import("./passkey");
     const { user: u, treffer } = await mitPasskeyRegistrieren(email, displayName.trim());
     setUser(u);
-    void notizenMitPasskey(u.id, treffer).catch(() => {});
+    void notizenMitPasskey(u.id, treffer).catch((e) => passkeyFehlerMelden(e, "Notizen nach der Registrierung"));
     return u;
   };
 

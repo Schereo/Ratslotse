@@ -9,9 +9,7 @@
 import { useEffect, useState } from "react";
 import { KeyRound } from "lucide-react";
 import { useFeature } from "@/lib/features";
-import { passkeyAnmeldungMoeglich } from "@/lib/passkey";
-import { PasskeyFehler } from "@/lib/notiz-passkey";
-import { ApiError } from "@/lib/api";
+import { passkeyAnmeldungMoeglich, passkeyFehlerMelden, passkeyFehlerText } from "@/lib/passkey";
 import { Button } from "@/components/ui";
 
 /** Ist der Passkey-Weg hier anzubieten? Erst nach dem Mount gefragt, damit
@@ -26,9 +24,8 @@ export function usePasskeyAnmeldung(): boolean {
 /** Die Meldung zu einem Fehlschlag — oder `null`, wenn niemand eine braucht
  *  (selbst abgebrochen). */
 export function passkeyMeldung(err: unknown): string | null {
-  if (err instanceof PasskeyFehler) return err.art === "abgebrochen" ? null : err.message;
-  if (err instanceof ApiError) return err.message;
-  return err instanceof Error ? err.message : "Das hat nicht geklappt.";
+  passkeyFehlerMelden(err);
+  return passkeyFehlerText(err);
 }
 
 export function PasskeyKnopf({ label, onClick, busy, variant = "primary" }: {

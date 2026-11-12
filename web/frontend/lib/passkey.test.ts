@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { fromB64, toB64 } from "./notiz-krypto";
-import { ANMELDE_SALZ_B64, bestaetigungAlsJson, registrierungAlsJson } from "./passkey";
+import { ApiError } from "./api";
+import { PasskeyFehler, TECHNISCH } from "./notiz-passkey";
+import { ANMELDE_SALZ_B64, bestaetigungAlsJson, passkeyFehlerText, registrierungAlsJson } from "./passkey";
 
 describe("Anmelde-Salz", () => {
   it("ist SHA-256 von „ratslotse-passkey-notizen-v1“ — steht so in note_passkeys", async () => {
@@ -39,5 +41,20 @@ describe("Was an den Server geht", () => {
     }));
     expect(json.response).toEqual({ clientDataJSON: "e30", authenticatorData: "AQ", signature: "-_8", userHandle: "__4" });
     expect(JSON.stringify(json)).not.toContain("prf");
+  });
+});
+
+describe("Was unter dem Knopf steht", () => {
+  it("nie die rohe Ausnahme des Browsers", () => {
+    const roh = new DOMException("Data provided to an operation does not meet requirements", "DataError");
+    expect(passkeyFehlerText(roh)).toBe(TECHNISCH);
+  });
+
+  it("abgebrochen ist kein Fehler, Serverantworten und eigene Sätze bleiben", () => {
+    expect(passkeyFehlerText(new PasskeyFehler("abgebrochen", "Abgebrochen."))).toBeNull();
+    expect(passkeyFehlerText(new ApiError(409, "Diese Adresse ist schon vergeben."))).toBe("Diese Adresse ist schon vergeben.");
+    expect(passkeyFehlerText(new PasskeyFehler("schon-da", "Auf diesem Gerät gibt es schon einen Passkey für dein Konto.")))
+      .toBe("Auf diesem Gerät gibt es schon einen Passkey für dein Konto.");
+    expect(passkeyFehlerText("kaputt")).toBe(TECHNISCH);
   });
 });

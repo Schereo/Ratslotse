@@ -15,7 +15,8 @@ import {
   addPasskey, anmeldePasskey, createKeys, createKeysMitPasskey, fetchKeys, lock, MIN_PASSPHRASE, onKeyChange, rememberedKey,
   rewrapKeys, sessionKey, setSessionKey, type NoteKeysState,
 } from "@/lib/notizen";
-import { mitPasskeyEntsperren, passkeyAnlegen, passkeyMoeglich, PasskeyFehler } from "@/lib/notiz-passkey";
+import { imSchritt, mitPasskeyEntsperren, passkeyAnlegen, passkeyMoeglich, PasskeyFehler } from "@/lib/notiz-passkey";
+import { passkeyMeldung } from "@/components/passkey-knopf";
 import { anmeldePasskeyNachtragen, notizVerpackungMitKontoPasskey } from "@/lib/passkey";
 import { useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,17 @@ export const LINK = "inline-flex min-h-11 items-center text-sm font-medium text-
 export const HINWEIS = "Wird auf deinem Gerät verschlüsselt, bevor sie gespeichert wird. Ratslotse sieht nur den verschlüsselten Text.";
 
 export interface Offen { owner: number; dk: CryptoKey; keyVersion: number }
+
+/** Der Satz unter dem Knopf — nie die rohe Ausnahme des Browsers (12.11.2026:
+ *  „Data provided to an operation does not meet requirements“ in Safari).
+ *  Was der Browser abgelehnt hat, geht mit dem Schritt ins Fehlerprotokoll
+ *  (`passkeyMeldung`). */
+export function schlossMeldung(e: unknown, rueckweg?: string): string {
+  if (e instanceof PasskeyFehler && e.art === "abgebrochen") return "Abgebrochen — noch einmal?";
+  const satz = passkeyMeldung(e) ?? "Abgebrochen — noch einmal?";
+  const ohneRueckweg = !rueckweg || (e instanceof PasskeyFehler && e.art === "passt-nicht");
+  return ohneRueckweg ? satz : `${satz} ${rueckweg}`;
+}
 
 export function Karte({ titel, id, children, rechts }: { titel: string; id: string; children: React.ReactNode; rechts?: React.ReactNode }) {
   return (
@@ -154,12 +166,12 @@ function Einrichten({ owner, karte, angebot, fuss, onFertig }: {
             setArbeit(true);
             setFehler(null);
             try {
-              const { dk, basis } = await krypto.neuerSchluessel();
+              const { dk, basis } = await imSchritt("neuer Schlüssel", () => krypto.neuerSchluessel());
               const pk = mitAnmeldung
                 ? await notizVerpackungMitKontoPasskey(owner, dk)
                 : await passkeyAnlegen(dk, owner, user?.email ?? `Konto ${owner}`);
               const k = await createKeysMitPasskey(basis, pk);
-              const sitzung = await krypto.nurBenutzbar(dk);
+              const sitzung = await imSchritt("Sitzungsschlüssel", () => krypto.nurBenutzbar(dk));
               await setSessionKey(owner, sitzung, merken);
               onFertig(k, sitzung);
             } catch (e) {
@@ -167,7 +179,7 @@ function Einrichten({ owner, karte, angebot, fuss, onFertig }: {
                 setHinweis("Dieser Browser kann keinen Passkey für Notizen anlegen. Dann mit einer Notiz-Passphrase:");
                 setWeg("passphrase");
               } else {
-                setFehler(e instanceof PasskeyFehler ? "Abgebrochen — noch einmal?" : e instanceof Error ? e.message : String(e));
+                setFehler(schlossMeldung(e, "Oder lieber mit Passphrase."));
               }
             } finally {
               setArbeit(false);
@@ -267,7 +279,7 @@ function MitPassphrase({ owner, karte, fuss, hinweis, onFertig, onPasskey }: {
             await setSessionKey(owner, entwurf.dk, merken);
             onFertig(k, entwurf.dk);
           } catch (e) {
-            setFehler(e instanceof Error ? e.message : String(e));
+            setFehler(schlossMeldung(e));
           } finally {
             setArbeit(false);
           }
@@ -310,7 +322,7 @@ function Entsperren({ owner, karte, fuss, keys, onKeys, onOffen }: {
         const neu = await anmeldePasskeyNachtragen(owner, k.key_version, dk);
         if (neu) onKeys(neu);
       } catch { /* entsperrt ist trotzdem */ }
-      dk = await krypto.nurBenutzbar(dk);
+      dk = await imSchritt("Sitzungsschlüssel", () => krypto.nurBenutzbar(dk));
     }
     await offen(dk);
   };
@@ -354,9 +366,9 @@ function Entsperren({ owner, karte, fuss, keys, onKeys, onOffen }: {
                 onKeys(await addPasskey(k.key_version, await passkeyAnlegen(exportierbar, owner, user?.email ?? `Konto ${owner}`)));
               } catch { /* abgebrochen: entsperrt ist trotzdem */ }
             }
-            await offen(await krypto.nurBenutzbar(exportierbar));
+            await offen(await imSchritt("Sitzungsschlüssel", () => krypto.nurBenutzbar(exportierbar)));
           } catch (e2) {
-            setFehler(e2 instanceof Error ? e2.message : String(e2));
+            setFehler(schlossMeldung(e2));
           } finally {
             setArbeit(false);
           }
@@ -397,9 +409,7 @@ function Entsperren({ owner, karte, fuss, keys, onKeys, onOffen }: {
               try {
                 await offenUndNachtragen(await mitPasskeyEntsperren(keys.passkeys, nachtragen));
               } catch (e) {
-                setFehler(e instanceof PasskeyFehler
-                  ? (e.art === "abgebrochen" ? "Abgebrochen — noch einmal?" : e.message)
-                  : e instanceof Error ? e.message : String(e));
+                setFehler(schlossMeldung(e, k.wrapped_passphrase || k.wrapped_recovery ? "Oder einen der anderen Wege nehmen." : undefined));
               } finally {
                 setArbeit(false);
               }

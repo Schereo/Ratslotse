@@ -19,9 +19,39 @@ const enc = new TextEncoder();
 export interface PasskeyVerpackung { credential_id: string; prf_salt: string; wrapped_key: string; label: string }
 export interface GespeicherterPasskey { credential_id: string; prf_salt: string; wrapped_key: string }
 
+/** `technisch`: Der Browser selbst hat einen Schritt abgelehnt (WebCrypto,
+ *  WebAuthn). `schritt` und `ursache` sind fürs Fehlerprotokoll, nie für die
+ *  Oberfläche. */
 export class PasskeyFehler extends Error {
-  constructor(readonly art: "nicht-unterstuetzt" | "abgebrochen" | "passt-nicht" | "schon-da", msg: string) {
+  constructor(readonly art: "nicht-unterstuetzt" | "abgebrochen" | "passt-nicht" | "schon-da" | "technisch", msg: string,
+    readonly schritt?: string, readonly ursache?: string) {
     super(msg);
+    this.name = "PasskeyFehler";
+  }
+}
+
+export const TECHNISCH = "Das hat in diesem Browser nicht geklappt. Versuch es bitte noch einmal.";
+
+/** Was der Browser selbst wirft, trägt einen englischen Satz aus seinem
+ *  Inneren — am 12.11.2026 stand so in Tims Safari nur „Data provided to an
+ *  operation does not meet requirements“ unter dem Knopf, ohne Hinweis, was
+ *  zu tun ist und an welcher Stelle es hakte. Daraus wird ein PasskeyFehler
+ *  mit deutschem Satz; Schritt und Ursache bleiben fürs Fehlerprotokoll.
+ *  Fehler mit eigenem deutschen Text (ApiError, PasskeyFehler) bleiben, wie
+ *  sie sind. */
+export function browserFehler(e: unknown, schritt: string): unknown {
+  const vomBrowser = (typeof DOMException !== "undefined" && e instanceof DOMException) || e instanceof TypeError;
+  if (!vomBrowser) return e;
+  const x = e as Error;
+  return new PasskeyFehler("technisch", TECHNISCH, schritt, `${x.name}: ${x.message}`.slice(0, 300));
+}
+
+/** Einen Schritt ausführen und rohe Browser-Ausnahmen übersetzen. */
+export async function imSchritt<T>(schritt: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    throw browserFehler(e, schritt);
   }
 }
 
@@ -77,13 +107,13 @@ async function nutzerKennung(owner: number): Promise<Uint8Array> {
 type PrfErgebnis = { enabled?: boolean; results?: { first?: ArrayBuffer } };
 const prfVon = (c: PublicKeyCredential) => (c.getClientExtensionResults() as { prf?: PrfErgebnis }).prf;
 
-function abgebrochen(e: unknown): never {
+function abgebrochen(e: unknown, schritt: string): never {
   const name = (e as { name?: string })?.name;
   if (name === "NotAllowedError" || name === "AbortError") throw new PasskeyFehler("abgebrochen", "Abgebrochen.");
   if (name === "NotSupportedError" || name === "SecurityError") {
     throw new PasskeyFehler("nicht-unterstuetzt", "Dieser Browser kann hier keinen Passkey anlegen.");
   }
-  throw e;
+  throw browserFehler(e, schritt);
 }
 
 async function abfragen(liste: { credential_id: string; prf_salt: string }[]): Promise<{ credentialId: string; prf: ArrayBuffer }> {
@@ -101,7 +131,7 @@ async function abfragen(liste: { credential_id: string; prf_salt: string }[]): P
       },
     }) as PublicKeyCredential | null;
   } catch (e) {
-    abgebrochen(e);
+    abgebrochen(e, "Passkey abfragen");
   }
   const prf = cred ? prfVon(cred)?.results?.first : undefined;
   if (!cred || !prf) throw new PasskeyFehler("nicht-unterstuetzt", "Dieser Passkey liefert keinen Schlüssel.");
@@ -129,7 +159,7 @@ export async function passkeyAnlegen(dkExtractable: CryptoKey, owner: number, na
       },
     }) as PublicKeyCredential | null;
   } catch (e) {
-    abgebrochen(e);
+    abgebrochen(e, "Passkey anlegen");
   }
   if (!cred) throw new PasskeyFehler("abgebrochen", "Abgebrochen.");
   const ext = prfVon(cred);
@@ -138,7 +168,8 @@ export async function passkeyAnlegen(dkExtractable: CryptoKey, owner: number, na
   }
   const credentialId = toB64url(new Uint8Array(cred.rawId));
   const prf = ext?.results?.first ?? (await abfragen([{ credential_id: credentialId, prf_salt: toB64(salt) }])).prf;
-  return { credential_id: credentialId, prf_salt: toB64(salt), wrapped_key: await wrap(dkExtractable, await passkeyKek(prf)), label };
+  const kek = await imSchritt("Schlüssel ableiten", () => passkeyKek(prf));
+  return { credential_id: credentialId, prf_salt: toB64(salt), wrapped_key: await imSchritt("verpacken", () => wrap(dkExtractable, kek)), label };
 }
 
 /** Mit einem der Passkeys des Kontos entsperren. `extractable` nur, wenn
@@ -147,7 +178,8 @@ export async function mitPasskeyEntsperren(liste: GespeicherterPasskey[], extrac
   if (liste.length === 0) throw new PasskeyFehler("nicht-unterstuetzt", "Kein Passkey eingerichtet.");
   const { credentialId, prf } = await abfragen(liste);
   const treffer = liste.find((p) => p.credential_id === credentialId);
-  const dk = treffer ? await unwrap(treffer.wrapped_key, await passkeyKek(prf), extractable) : null;
+  const kek = await imSchritt("Schlüssel ableiten", () => passkeyKek(prf));
+  const dk = treffer ? await unwrap(treffer.wrapped_key, kek, extractable) : null;
   if (!dk) throw new PasskeyFehler("passt-nicht", "Dieser Passkey passt nicht zu deinen Notizen.");
   return dk;
 }
