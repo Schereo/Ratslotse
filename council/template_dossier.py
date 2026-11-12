@@ -38,9 +38,23 @@ GESAMT_ZEICHEN = 110_000   # ≈ 30.000 Token
 LESESTOFF = {"statement", "report", "synopsis", "statute"}
 ABSCHNITTE = ("proposal", "costs", "changes", "affected", "figures", "administration", "next")
 STATUS = ("found", "stated_none", "absent", "unread", "unsupported")
+_KEINE_RE = __import__("re").compile(r"\bkeine?\b|\bnicht\b.*\b(?:kosten|aufwendungen|auswirkungen)\b", __import__("re").I)
 #: Obergrenzen je Liste (§ 2.1).
 GRENZEN = {("proposal", "plain"): 5, ("costs", "items"): 4, ("changes", "items"): 8,
            ("administration", "points"): 3, ("next", "dates"): 4, ("next", "open"): 4}
+
+
+#: Überschriften je Abschnitt — einige hängen an der Form (§ 2.1).
+_TITEL = {"proposal": "Was beschlossen werden soll", "costs": "Was es kostet", "changes": "Was sich ändert",
+          "affected": "Wen und wo es betrifft", "figures": "Zahlen", "administration": "Was die Verwaltung sagt",
+          "next": "Was danach passiert"}
+_TITEL_FORM = {("F5", "changes"): "Was gebaut werden darf", ("F7", "proposal"): "Was berichtet wird",
+               ("F7", "changes"): "Was sich daraus ergibt", ("F3", "changes"): "Was sich an den Regeln ändert",
+               ("F6", "administration"): "Was die Verwaltung zum Antrag sagt"}
+
+
+def titles(form: str | None) -> list[tuple[str, str]]:
+    return [(k, _TITEL_FORM.get((form or "", k), t)) for k, t in _TITEL.items()]
 
 
 # ---- Eingabe -------------------------------------------------------------------
@@ -160,7 +174,12 @@ def verify(payload: dict, quellen: dict, form: str | None) -> dict:
                 "recommends", "neutral_report", "no_alternative", "mixed", "none") else None
         gemeldet = roh.get("status") if roh.get("status") in STATUS else None
         belegt = sum(len(feld[n]) for n, _ in listen)
-        if belegt:
+        if belegt and abschnitt == "costs" and all(
+                a.get("amount_eur") in (None, 0) and _KEINE_RE.search(a["text"]) for n, _ in listen for a in feld[n]):
+            # „Es entstehen keine Kosten" ist kein Posten, sondern die Angabe „keine" —
+            # das Ersatzmodell schrieb sie als Posten (Messlauf 12.11.2026).
+            feld["status"] = "stated_none"
+        elif belegt:
             feld["status"] = "found"
         elif roh_n:
             feld["status"] = "unsupported"   # gefunden, aber nicht belegbar — nie „steht nicht drin"
@@ -187,15 +206,21 @@ def verify(payload: dict, quellen: dict, form: str | None) -> dict:
 
 # ---- Aufruf und Ablage ---------------------------------------------------------
 
-def generate(m: dict, *, batch: bool = True, model: str | None = None) -> tuple[dict, str, float]:
+def generate(m: dict, *, batch: bool = True, model: str | None = None,
+             feature: str = "template_dossier") -> tuple[dict, str, float]:
     nutzer, quellen, h = build_input(m)
     modell = model or MODEL
     extra = {"_geduld": True, "_ersatz": llm.ersatz_fuer(modell, lange_ausgabe=True), "_tarif": "flex"} if batch else {}
-    resp = llm.chat_complete(
-        model=modell, response_format={"type": "json_object"},
-        messages=[{"role": "system", "content": prompts.get("template_dossier_system")},
-                  {"role": "user", "content": nutzer}],
-        max_tokens=8_000, _feature="template_dossier", **extra)
+    nachricht = [{"role": "system", "content": prompts.get("template_dossier_system")},
+                 {"role": "user", "content": nutzer}]
+    # Zwei Aufrufe mit wörtlichem Feature-Namen (tests/test_feature_namen.py
+    # liest sie aus dem Quelltext): der Lauf und das Nachholen beim Aufruf.
+    if feature == "template_dossier_abruf":
+        resp = llm.chat_complete(model=modell, response_format={"type": "json_object"}, messages=nachricht,
+                                 max_tokens=8_000, _feature="template_dossier_abruf", **extra)
+    else:
+        resp = llm.chat_complete(model=modell, response_format={"type": "json_object"}, messages=nachricht,
+                                 max_tokens=8_000, _feature="template_dossier", **extra)
     wahl = resp.choices[0]
     if getattr(wahl, "finish_reason", None) == "length":
         raise RuntimeError("Dossier abgeschnitten (finish_reason=length)")
@@ -209,7 +234,7 @@ def generate(m: dict, *, batch: bool = True, model: str | None = None) -> tuple[
 
 
 def build_for_template(store, template_number: str, *, batch: bool = True, force: bool = False,
-                       model: str | None = None, stopp=None) -> dict | None:
+                       model: str | None = None, stopp=None, feature: str = "template_dossier") -> dict | None:
     """Das Dossier einer Vorlage — gespeichert, wenn die Quellenlage gleich
     blieb, sonst neu erzeugt. ``None`` ohne Vorlagentext."""
     m = store.dossier_material(template_number)
@@ -223,7 +248,7 @@ def build_for_template(store, template_number: str, *, batch: bool = True, force
     if not store.dossier_sperren(key, h):
         return alt   # läuft gerade woanders
     try:
-        payload, h, kosten = generate(m, batch=batch, model=model)
+        payload, h, kosten = generate(m, batch=batch, model=model, feature=feature)
     except Exception:  # noqa: BLE001 — eine Vorlage kippt nicht den Lauf
         _log.exception("Dossier %s fehlgeschlagen", template_number)
         store.save_template_dossier(key, h, status="failed", form=m["form"], payload=None,
@@ -234,3 +259,27 @@ def build_for_template(store, template_number: str, *, batch: bool = True, force
     store.save_template_dossier(key, h, status="ok", form=m["form"], payload=payload,
                                 model=model or MODEL, cost_usd=kosten, prompt_version=PROMPT_VERSION)
     return store.template_dossier(key, h)
+
+
+#: Tagesdeckel für das Nachholen beim ersten Aufruf (Web-Pfad, ohne Flex).
+ABRUF_TAGESDECKEL_USD = float(os.environ.get("DOSSIER_ABRUF_MAX_USD") or 0.20)
+
+
+def abruf_erlaubt() -> bool:
+    """Ist das Tagesbudget für Abruf-Dossiers noch nicht verbraucht?"""
+    from kern import usage  # noqa: PLC0415
+
+    heute = usage.tageskosten(__import__("datetime").date.today().isoformat())
+    return dict(heute.get("features") or []).get("template_dossier_abruf", 0.0) < ABRUF_TAGESDECKEL_USD
+
+
+def im_hintergrund(store_factory, template_number: str) -> None:
+    """Rückfall beim ersten Aufruf einer Punkt-Seite ohne Dossier (Plan § 4.3):
+    normaler Tarif, ohne Geduld, eigenes Feature, Tagesdeckel, Sperre in der DB."""
+    if not abruf_erlaubt():
+        return
+    store = store_factory()
+    try:
+        build_for_template(store, template_number, batch=False, feature="template_dossier_abruf")
+    finally:
+        store.close()

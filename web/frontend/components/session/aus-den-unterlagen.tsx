@@ -14,6 +14,8 @@ import { normalizeParty, partyBrand } from "@/components/decision-ui";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
 import { Aenderungsantraege, type Antrag } from "@/components/session/aenderungsantraege";
+import { DossierAbschnitt, dossierStand, type Dossier } from "@/components/session/dossier";
+import { KiStern } from "@/components/ki-stern";
 
 type Felder = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["template_fields"]>;
 
@@ -46,7 +48,8 @@ function Wortlaut({ text }: { text: string }) {
   );
 }
 
-export function AusDenUnterlagen({ f, antraege }: { f: Felder | null; antraege?: Antrag[] }) {
+export function AusDenUnterlagen({ f, antraege, dossier }: { f: Felder | null; antraege?: Antrag[]; dossier?: Dossier | null }) {
+  if (dossier && dossier.sections.length) return <MitDossier d={dossier} f={f} antraege={antraege} />;
   if (!f && !antraege?.length) return null;
   f = f ?? { template_number: null, document_url: null, office: null, proposed_decision: null, cost: null, climate: null, motions: [] };
   const hatInhalt = f.proposed_decision || f.motions.length || f.cost || f.climate || f.office || antraege?.length;
@@ -126,6 +129,46 @@ export function AusDenUnterlagen({ f, antraege }: { f: Felder | null; antraege?:
             <p className="text-sm text-foreground">{f.office}</p>
           </Abschnitt>
         )}
+      </div>
+    </section>
+  );
+}
+
+/** Mit Dossier: die belegten Abschnitte; der amtliche Wortlaut des
+ *  Beschlussvorschlags klappt unter seinem Abschnitt auf, die Anträge stehen
+ *  direkt darunter (Plan § 6.1). Der KI-Stern sitzt einmal an der Überschrift. */
+function MitDossier({ d, f, antraege }: { d: Dossier; f: Felder | null; antraege?: Antrag[] }) {
+  const [vorschlag, ...rest] = d.sections[0]?.key === "proposal" ? d.sections : [null, ...d.sections];
+  return (
+    <section aria-labelledby="aus-den-unterlagen" className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="aus-den-unterlagen" className="flex items-center gap-1 font-display text-base font-semibold text-foreground">
+          Aus den Unterlagen
+          <KiStern text="Automatisch aus der Vorlage und ihren Anlagen erstellt. Jede Angabe trägt ihren Beleg; verbindlich sind die Unterlagen im Ratsinfo." />
+        </h2>
+        <p className={KICKER}>{dossierStand(d)}</p>
+      </div>
+      {d.added_after.length > 0 && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Danach dazugekommen: {d.added_after.join(", ")} — <a href="#unterlagen" className="text-primary underline">in den Unterlagen</a>
+        </p>
+      )}
+      <div className="mt-4 flex flex-col gap-4">
+        {vorschlag && (
+          <div>
+            <DossierAbschnitt s={vorschlag} />
+            {f?.proposed_decision && (
+              <details className="group mt-2">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center text-sm font-medium text-primary">
+                  › Amtlicher Wortlaut
+                </summary>
+                <Wortlaut text={f.proposed_decision} />
+              </details>
+            )}
+          </div>
+        )}
+        {antraege && antraege.length > 0 && <Aenderungsantraege antraege={antraege} />}
+        {rest.map((s) => s && <DossierAbschnitt key={s.key} s={s} />)}
       </div>
     </section>
   );

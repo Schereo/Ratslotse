@@ -89,6 +89,7 @@ interface Ctx {
   /** Schalter `punkt-seite`: Karten ohne Beschluss führen auf die Seite des Punkts. */
   punktSeite: boolean;
   antraege: boolean;
+  ausDenUnterlagen: boolean;
   /** Schalter `mitlesen`: der Einstieg im Kopf (während der Sitzung als Primäraktion). */
   mitlesen: boolean;
 }
@@ -118,8 +119,9 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
   const itemsByNr = useMemo(() => new Map((data.agenda_items ?? []).map((it) => [it.item_number, it])), [data]);
   const punktSeite = useFeature("punkt-seite");
   const antraege = useFeature("aenderungsantraege");
+  const ausDenUnterlagen = useFeature("aus-den-unterlagen");
   const mitlesen = useFeature("mitlesen");
-  const ctx: Ctx = { data, ksinr, phase, itemsByNr, course, outcomeByItem, decisionByItem, videoByItem, voteByItem, decisionTextByItem, flashTop, punktSeite, antraege, mitlesen };
+  const ctx: Ctx = { data, ksinr, phase, itemsByNr, course, outcomeByItem, decisionByItem, videoByItem, voteByItem, decisionTextByItem, flashTop, punktSeite, antraege, ausDenUnterlagen, mitlesen };
   const [gewaehlt, setGewaehlt] = useState<number | null>(null);
   const mitBeschluss = Object.values(decisionByItem);
   const vorschauId = weit && mitBeschluss.length > 0 ? (gewaehlt ?? mitBeschluss[0]) : null;
@@ -555,6 +557,11 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
                 className="relative z-[1] inline-flex items-center gap-1 rounded-md border border-signal/40 bg-signal/[0.06] px-2 py-0.5 text-xs font-medium text-foreground hover:bg-signal/10">
                 {item.amendments_label}
               </a>
+            )}
+            {ctx.ausDenUnterlagen && item.cost_label && (
+              <span className="inline-flex items-center rounded-md border border-border bg-card px-2 py-0.5 text-xs font-medium text-foreground">
+                {item.cost_label}
+              </span>
             )}
             {agenda.template_number && <span className={KICKER}>Vorlage {agenda.template_number}</span>}
             {agenda.dringlich && <span className={cn(KICKER, "text-signal")}>Dringlichkeitsantrag</span>}

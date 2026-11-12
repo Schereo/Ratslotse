@@ -2936,6 +2936,8 @@ class CourseItem(TypedDict):
     #: „2 Änderungsanträge · CDU, Volt" — ``None`` ohne Änderungsantrag.
     amendments_label: str | None
     amendment_parties: list[str]
+    #: „89.000 € jährlich" — nur, wenn das Dossier einen Betrag belegt.
+    cost_label: str | None
 
 
 class SessionCourse(TypedDict):
@@ -3163,6 +3165,56 @@ class ItemAmendment(TypedDict):
     base_missing: NotRequired[bool]
 
 
+class DossierStatement(TypedDict):
+    """Eine belegte Aussage: Satz, wörtliches Zitat, Quelle, Seite — dazu die
+    Nummer in der Gegenlese-Liste und der Sprung ins PDF (``#page=N``)."""
+    text: str
+    quote: str
+    source: str
+    page: int | None
+    kind: str
+    list_no: int | None
+    doc_label: str | None
+    url: str | None
+    amount_eur: NotRequired[float | None]
+    recurrence: NotRequired[str | None]
+    borne_by: NotRequired[str | None]
+    date: NotRequired[str | None]
+    role: NotRequired[str | None]
+    subject: NotRequired[str | None]
+
+
+class DossierSection(TypedDict):
+    key: str
+    #: Überschrift je Form — kommt aus dem Backend.
+    title: str
+    status: str | None
+    stance: str | None
+    statements: list[DossierStatement]
+
+
+class DossierGist(TypedDict):
+    """Inhaltssatz zu einer Unterlage (belegt aus Seite 1–2)."""
+    text: str
+    quote: str
+    source: str | None
+    page: int | None
+    list_no: int | None
+    doc_label: str | None
+    url: str | None
+
+
+class ItemDossier(TypedDict):
+    """„Aus den Unterlagen" (``council/template_dossier.py``): Abschnitte mit
+    belegten Aussagen, Stand, gelesene Dokumente, was danach dazukam."""
+    form: str | None
+    created_at: str | None
+    sections: list[DossierSection]
+    documents_read: int
+    added_after: list[str]
+    gists: list[DossierGist]
+
+
 class SessionItemDetail(TypedDict):
     """Ein Tagesordnungspunkt auf seiner eigenen Seite
     (``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,
@@ -3189,6 +3241,8 @@ class SessionItemDetail(TypedDict):
     arguments: NotRequired[ItemArguments]
     #: Nur hinter dem Schalter ``aenderungsantraege`` und nur mit Anträgen.
     amendments: NotRequired[list[ItemAmendment]]
+    #: Nur hinter dem Schalter ``aus-den-unterlagen`` und nur, wenn es ein Dossier gibt.
+    dossier: NotRequired[ItemDossier]
 
 
 class ImportanceBreakdown(TypedDict):

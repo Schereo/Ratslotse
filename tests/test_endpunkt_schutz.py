@@ -92,10 +92,11 @@ OEFFENTLICH = {
     # Konto lesbar, weil die Arbeit des Rats öffentlich ist. Die Sitzung
     # hängt daran (die Beschluss-Seite zieht Gremium und Datum nach).
     ("get", "/api/council/session/{ksinr}"),
-    # Ein Punkt der Sitzung auf seiner eigenen Seite (Plan Sitzungsseite,
-    # Schritt 4) — öffentlich wie die Sitzung, nichtöffentliche Punkte gibt
-    # er nicht heraus (404).
-    ("get", "/api/council/session/{ksinr}/item"),
+    # Der Punkt einer Sitzung (/session/{ksinr}/item) steht seit 11/2026 NICHT
+    # mehr hier: Er ist weiter ohne Konto lesbar, hängt aber an
+    # `optional_user` — ein angemeldeter Besuch holt ein fehlendes Dossier
+    # nach (Plan Vorlagen aufbereiten § 4.3), und dieser Wächter zählt
+    # `optional_user` als Schutz.
     ("get", "/api/council/entity/{slug}"),
     ("get", "/api/council/person/{slug}"),
     ("get", "/api/council/person/{slug}/speeches"),

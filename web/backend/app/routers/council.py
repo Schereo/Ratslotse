@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from collections.abc import Callable
 from typing import Annotated, Literal, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import (AliasChoices, BaseModel, Field, field_validator)
 
@@ -2076,12 +2076,29 @@ def session_detail(
 @router.get("/session/{ksinr}/item")
 def session_item(
     ksinr: int,
+    background: BackgroundTasks,
     nr: str = Query(..., min_length=1, max_length=20),
     store: CouncilStore = Depends(get_council_store),
+    user: dict | None = Depends(optional_user),
 ) -> SessionItemDetail:
     punkt = store.session_item(ksinr, nr)
     if not punkt:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+    # „Aus den Unterlagen": das belegte Dossier (council/template_dossier.py).
+    # Fehlt es, holt ein angemeldeter Besuch es im Hintergrund nach — mit
+    # Tagesdeckel und Sperre; die Seite zeigt solange die Felder ohne Modell.
+    if features.an("aus-den-unterlagen"):
+        try:
+            dossier = store.item_dossier_view(ksinr, punkt["item"]["item_number"])
+            if dossier:
+                punkt["dossier"] = dossier
+            elif user is not None and (punkt["item"].get("template_number") or "").strip():
+                from council import template_dossier as td
+                settings = get_settings()
+                background.add_task(td.im_hintergrund, lambda: CouncilStore(settings.council_db),
+                                    punkt["item"]["template_number"].strip())
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Dossier fehlgeschlagen für %s %s", ksinr, nr)
     if features.an("aenderungsantraege"):
         try:
             antraege = store.item_amendments(ksinr, punkt["item"]["item_number"])
@@ -5568,6 +5585,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             if punkt and punkt.get("decision_id"):
                 bildschirm["refs"] = {**refs, "decision_id": punkt["decision_id"]}
             elif punkt:
+                # Das belegte Dossier als fester Kontext (Plan Vorlagen § 6.5):
+                # Erst damit stimmt „An Bord · N Unterlagen".
+                if features.an("aus-den-unterlagen"):
+                    punkt["dossier_lines"] = store.dossier_lines(int(refs["ksinr"]), str(refs["item_number"]))
                 bildschirm["agenda_item"] = punkt
     # ZUSÄTZLICH, nicht statt: `ai_question` bleibt die Gesamtzahl, sonst
     # verlören alle bestehenden Auswertungen die Chip-Fragen.

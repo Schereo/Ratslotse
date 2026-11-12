@@ -339,3 +339,79 @@ class UnterlagenMixin(StoreBasis):
             if re.sub(r"^\D+", "", r["item_number"]).strip() == ziel:
                 return r["item_number"]
         return None
+
+    def item_dossier_view(self, ksinr: int, item_number: str) -> dict | None:
+        """Das Dossier für die Punkt-Seite (Plan § 6.1): Abschnitte mit
+        Überschrift je Form, jede Aussage mit Beleg — Nummer in der
+        Gegenlese-Liste, Dokument, Seite, Sprung ins PDF. Eine vergangene
+        Station zeigt das jüngste Dossier bis zum Sitzungstag."""
+        from council import template_dossier  # noqa: PLC0415
+
+        r = self._conn.execute(
+            "SELECT a.template_number, s.session_date FROM council_agenda_items a JOIN council_sessions s "
+            "ON s.ksinr = a.ksinr WHERE a.ksinr = ? AND a.item_number = ?", (int(ksinr), item_number)).fetchone()
+        tn = (r["template_number"] or "").strip() if r else ""
+        if not tn:
+            return None
+        from datetime import date as _date  # noqa: PLC0415
+
+        key = f"tn:{tn}"
+        if r["session_date"] and r["session_date"] < _date.today().isoformat():
+            z = self._conn.execute(
+                "SELECT sources_hash FROM template_dossiers WHERE subject_key = ? AND status = 'ok' "
+                "AND substr(created_at, 1, 10) <= ? ORDER BY created_at DESC LIMIT 1", (key, r["session_date"])).fetchone()
+            d = self.template_dossier(key, z["sources_hash"]) if z else self.template_dossier(key)
+        else:
+            d = self.template_dossier(key)
+        if not d or not d.get("payload"):
+            return None
+        p = d["payload"]
+        liste = [x for x in self.item_documents(int(ksinr), item_number) if x.get("url")]
+        nummer = {x["document_id"]: (n, x) for n, x in enumerate(liste, 1)}
+
+        def beleg(a: dict) -> dict:
+            q = (p.get("sources") or {}).get(a.get("source")) or {}
+            n, doc = nummer.get(q.get("document_id"), (None, None))
+            url = (doc or {}).get("url")
+            if url and a.get("page"):
+                url = f"{url}#page={a['page']}"
+            return {**a, "list_no": n, "doc_label": (doc or {}).get("label") or q.get("label"), "url": url}
+
+        abschnitte = []
+        for key_, titel in template_dossier.titles(p.get("form")):
+            feld = p.get(key_) or {}
+            aussagen = []
+            for liste_name in ("plain", "not_included", "items", "coverage", "points", "dates", "open"):
+                for a in feld.get(liste_name) or []:
+                    aussagen.append({**beleg(a), "kind": liste_name})
+            if aussagen or feld.get("status") in ("stated_none",):
+                abschnitte.append({"key": key_, "title": titel, "status": feld.get("status"),
+                                   "stance": feld.get("stance"), "statements": aussagen})
+        stand = (d.get("created_at") or "")[:10]
+        danach = [x["label"] for x in liste if x.get("first_seen") and x["first_seen"] > stand]
+        return {"form": p.get("form"), "created_at": d.get("created_at"), "sections": abschnitte,
+                "documents_read": len(p.get("sources") or {}), "added_after": danach,
+                "gists": [{**beleg(g["gist"]), "source": g.get("source")} for g in p.get("documents") or []]}
+
+    def dossier_cost_label(self, template_number: str | None) -> str | None:
+        """„89.000 € jährlich" — nur, wenn ein Betrag belegt ist (Plan § 6.2)."""
+        if not template_number:
+            return None
+        d = self.template_dossier(f"tn:{template_number}")
+        for a in ((d or {}).get("payload") or {}).get("costs", {}).get("items") or []:
+            if a.get("amount_eur"):
+                betrag = f"{float(a['amount_eur']):,.0f}".replace(",", ".")
+                art = {"yearly": " jährlich", "once": " einmalig"}.get(a.get("recurrence") or "", "")
+                return f"{betrag} €{art}"
+        return None
+
+    def dossier_lines(self, ksinr: int, item_number: str, limit: int = 30) -> list[str]:
+        """Das Dossier als Kontextzeilen für Frag den Rat und Lotti (Plan § 6.5):
+        „Abschnitt: Satz (Dokument, S. n)" — nur, was die Seite auch zeigt."""
+        v = self.item_dossier_view(int(ksinr), item_number)
+        out: list[str] = []
+        for s in (v or {}).get("sections") or []:
+            for a in s["statements"]:
+                quelle = ", ".join(x for x in (a.get("doc_label"), f"S. {a['page']}" if a.get("page") else None) if x)
+                out.append(f"{s['title']}: {a['text']}" + (f" ({quelle})" if quelle else ""))
+        return out[:limit]

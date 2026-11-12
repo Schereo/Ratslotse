@@ -89,3 +89,7 @@ class StoreBasis:
         def amendment_summary(self, ksinr: int, item_number: str) -> tuple[int, list[str]]:
             """Zahl und Antragsteller der Änderungsanträge eines Punkts (``store_unterlagen``)."""
             ...
+
+        def dossier_cost_label(self, template_number: str | None) -> str | None:
+            """„89.000 € jährlich" aus dem Dossier (``store_unterlagen``)."""
+            ...

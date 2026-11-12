@@ -8261,6 +8261,13 @@
               "null"
             ]
           },
+          "cost_label": {
+            "title": "Cost Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "formal_act": {
             "title": "Formal Act",
             "type": "boolean"
@@ -8376,7 +8383,8 @@
           "journey",
           "next_on_agenda",
           "amendments_label",
-          "amendment_parties"
+          "amendment_parties",
+          "cost_label"
         ],
         "title": "CourseItem",
         "type": "object"
@@ -11364,6 +11372,210 @@
           "districts"
         ],
         "title": "Districts",
+        "type": "object"
+      },
+      "DossierGist": {
+        "description": "Inhaltssatz zu einer Unterlage (belegt aus Seite 1–2).",
+        "properties": {
+          "doc_label": {
+            "title": "Doc Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "list_no": {
+            "title": "List No",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "text",
+          "quote",
+          "source",
+          "page",
+          "list_no",
+          "doc_label",
+          "url"
+        ],
+        "title": "DossierGist",
+        "type": "object"
+      },
+      "DossierSection": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "stance": {
+            "title": "Stance",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/DossierStatement"
+            },
+            "title": "Statements",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "status",
+          "stance",
+          "statements"
+        ],
+        "title": "DossierSection",
+        "type": "object"
+      },
+      "DossierStatement": {
+        "description": "Eine belegte Aussage: Satz, wörtliches Zitat, Quelle, Seite — dazu die\nNummer in der Gegenlese-Liste und der Sprung ins PDF (``#page=N``).",
+        "properties": {
+          "amount_eur": {
+            "title": "Amount Eur",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "borne_by": {
+            "title": "Borne By",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "doc_label": {
+            "title": "Doc Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "list_no": {
+            "title": "List No",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "recurrence": {
+            "title": "Recurrence",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "title": "Role",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "text",
+          "quote",
+          "source",
+          "page",
+          "kind",
+          "list_no",
+          "doc_label",
+          "url"
+        ],
+        "title": "DossierStatement",
         "type": "object"
       },
       "ElectedAffiliation": {
@@ -16901,6 +17113,60 @@
           "stale"
         ],
         "title": "ItemArguments",
+        "type": "object"
+      },
+      "ItemDossier": {
+        "description": "„Aus den Unterlagen\" (``council/template_dossier.py``): Abschnitte mit\nbelegten Aussagen, Stand, gelesene Dokumente, was danach dazukam.",
+        "properties": {
+          "added_after": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Added After",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documents_read": {
+            "title": "Documents Read",
+            "type": "integer"
+          },
+          "form": {
+            "title": "Form",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gists": {
+            "items": {
+              "$ref": "#/components/schemas/DossierGist"
+            },
+            "title": "Gists",
+            "type": "array"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/DossierSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "form",
+          "created_at",
+          "sections",
+          "documents_read",
+          "added_after",
+          "gists"
+        ],
+        "title": "ItemDossier",
         "type": "object"
       },
       "LimitsUpdate": {
@@ -32695,6 +32961,9 @@
             },
             "title": "Documents",
             "type": "array"
+          },
+          "dossier": {
+            "$ref": "#/components/schemas/ItemDossier"
           },
           "has_protocol": {
             "title": "Has Protocol",
