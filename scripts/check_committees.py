@@ -670,12 +670,22 @@ def main() -> dict:
     zugestellt = notify.zustellen(ratslotse_store, stats=stats)
     ratslotse_store.close()
 
+    # Texte der Punkt-Anlagen nachladen und einordnen (Änderungsanträge hängen
+    # am Punkt, nicht an der Vorlage; council/punkt_texte.py).
+    try:
+        from council import punkt_texte
+        ptexte = punkt_texte.nachladen(council_store)
+        print(f"Punkt-Anlagen: {ptexte['geladen']} von {ptexte['offen']} geladen, {ptexte['antraege']} Anträge.")
+    except Exception as exc:  # noqa: BLE001 — Zusatz, nie Blocker des Laufs
+        ptexte = {"geladen": 0, "antraege": 0}
+        print(f"Punkt-Anlagen übersprungen: {exc!r}")
     print(f"Done — {notifications_sent} Meldung(en) eingereiht, {zugestellt} zugestellt.")
     indicators = {
         "Gremien": len(committees),
         "Sitzungen mit Tagesordnung": len(session_ids),
         "Termine im Kalender": len(scheduled),
         "Benachrichtigungen": notifications_sent,
+        "Punkt-Anlagen gelesen": ptexte["geladen"],
         "Tragweite bewertet": bewertet,
         "Tragweite offen": len(offen),
         "Sitzungssätze geschrieben": saetze.get("geschrieben", 0),

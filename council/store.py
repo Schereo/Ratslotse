@@ -43,6 +43,7 @@ from council.store_schema import (  # noqa: F401
 from council.store_sitzungen import SitzungenMixin
 from council.store_akten import AktenMixin
 from council.store_themen import ThemenMixin
+from council.store_unterlagen import UnterlagenMixin
 from council.store_viertel import ViertelMixin
 from council.store_wortbeitraege import WortbeitraegeMixin
 
@@ -160,7 +161,7 @@ def _produkt_stufe(begriffe: list[str]) -> str | None:
 # Datei nicht an.
 class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                    PlaeneMixin, PresseMixin, PruefungMixin, QuizMixin, SchemaMixin, SitzungenMixin,
-                   RueckmeldungenMixin, ThemenMixin, ViertelMixin, WortbeitraegeMixin,
+                   RueckmeldungenMixin, ThemenMixin, UnterlagenMixin, ViertelMixin, WortbeitraegeMixin,
                    *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None,
                  *, einmal: bool = False):
