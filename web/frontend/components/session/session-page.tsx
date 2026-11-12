@@ -244,11 +244,8 @@ function Board({ ctx }: { ctx: Ctx }) {
       </div>
 
       {course.summary && (
-        <LottiSatz className="mt-5" text={course.summary}
-          quelle={course.summary_source === "model"
-            // Vom Modell geschrieben (council/session_summary.py) — das sagt die Zeile.
-            ? (phase === "protocol" ? "Automatisch aus dem Protokoll." : "Automatisch aus der Tagesordnung.")
-            : (phase === "protocol" ? "Nach dem Protokoll." : "Nach der Tagesordnung.")} />
+        // Ohne Herkunftszeile darunter (Tims Wunsch 12.11.2026).
+        <LottiSatz className="mt-5" text={course.summary} />
       )}
 
       <div className="mt-6 border-t border-border pt-5">

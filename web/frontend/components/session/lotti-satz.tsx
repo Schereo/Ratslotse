@@ -5,9 +5,8 @@
    10.11.2026). Bild: `docs/entwurf-sitzungsseite/bilder/nach-der-sitzung-desktop-1.png`.
 
    Der Satz darin ist GERECHNET (`council/course.py::summary_sentence`) oder
-   eine feste Erklärung — kein Modell schreibt ihn. Lotti erklärt hier, was
-   die Seite zählt; die Herkunft steht deshalb unter der Blase
-   (DESIGNSPRACHE § 1, Ausnahme für diese Stelle). */
+   eine feste Erklärung. `quelle` ist optional; der Sitzungskopf lässt sie
+   seit 12.11.2026 weg (DESIGNSPRACHE § 1, Ausnahme für diese Stelle). */
 
 import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
