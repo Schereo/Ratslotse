@@ -761,9 +761,8 @@ Zeit“) · der Kurzname als einzige Hauptüberschrift (Bricolage 28/32), der
 amtliche Name darunter bei Abweichung in `meta` · rechts die Aktionen ·
 darunter der **gerechnete Satz zur Sitzung** in einer **Sprechblase neben
 Lotti** (`components/session/lotti-satz.tsx`: Lotti 44/48 px mit `erklaert`,
-Blase `bg-card`, Rand, Radius 16, Zipfel zur Figur, Text in `lese`) und darunter
-der Hinweis, woher er kommt („Aus der Tagesordnung gezählt.“ / „Aus dem
-Protokoll gezählt.“) — ohne KI-Funken, weil kein Modell ihn schreibt. **Tims
+Blase `bg-card`, Rand, Radius 16, Zipfel zur Figur, Text in `lese`), ohne
+Herkunftszeile darunter (Tims Wunsch 12.11.2026). **Tims
 Entscheidung 10.11.2026 (Plan 8.1):** Hier darf Lotti die Sitzung erzählen,
 denn der Satz ist gezählt, nicht verfasst; dieselbe Blase trägt beim Mitlesen
 den Satz zum Stand. Es ist die einzige Ausnahme von § 1 und § 8 · der
