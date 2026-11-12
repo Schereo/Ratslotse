@@ -118,7 +118,10 @@ CREATE TABLE IF NOT EXISTS council_documents (
     is_scan       INTEGER NOT NULL DEFAULT 0,
     page_offsets  TEXT,
     text_hash     TEXT,
-    classified_at TEXT NOT NULL
+    classified_at TEXT NOT NULL,
+    -- Spezialleser (council/synopse.py): bei Synopsen die geänderten Stellen
+    -- je Paragraf mit Seite, als JSON. NULL = nicht gelesen.
+    structure     TEXT
 );
 
 -- Terminierte Sitzungen aus dem Sitzungskalender, noch ohne veröffentlichte
@@ -2293,6 +2296,9 @@ class SchemaMixin(StoreBasis):
         if aacols:
             self._conn.execute("CREATE INDEX IF NOT EXISTS idx_agenda_att_doc "
                                "ON council_agenda_attachments(document_id)")
+        dcols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_documents)").fetchall()}
+        if dcols and "structure" not in dcols:
+            self._conn.execute("ALTER TABLE council_documents ADD COLUMN structure TEXT")
 
         acols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_attachments)").fetchall()}
         if "is_image" not in acols:

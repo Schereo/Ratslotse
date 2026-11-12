@@ -221,6 +221,17 @@
       "12.000"
      ],
      "notiz": "davon 12.000 € für zwei weitere Ratsmitglieder"
+    },
+    {
+     "section": "changes",
+     "sections": [
+      "changes",
+      "costs"
+     ],
+     "any": [
+      "400"
+     ],
+     "notiz": "335 → 400 € Aufwandsentschädigung — braucht den Spaltenleser (Plan § 7.2, Schritt 17)"
     }
    ]
   },
