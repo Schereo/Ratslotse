@@ -9367,6 +9367,7 @@ export interface components {
             decision: {
                 /** Abstentions */
                 abstentions?: number | null;
+                amendment?: components["schemas"]["ItemAmendment"];
                 /** Amount Eur */
                 amount_eur?: number | null;
                 /** Applicants Named */
@@ -10664,6 +10665,10 @@ export interface components {
          *     („Bauleitplanung Meerweg"), unter der der Punkt steht.
          */
         CourseItem: {
+            /** Amendment Parties */
+            amendment_parties: string[];
+            /** Amendments Label */
+            amendments_label: string | null;
             /** Applicant */
             applicant: string | null;
             /** Formal Act */
@@ -11148,6 +11153,7 @@ export interface components {
         DecisionRow: {
             /** Abstentions */
             abstentions?: number | null;
+            amendment?: components["schemas"]["ItemAmendment"];
             /** Amount Eur */
             amount_eur?: number | null;
             /** Applicants Named */
@@ -14007,6 +14013,98 @@ export interface components {
             signals: {
                 [key: string]: number | null;
             };
+        };
+        /**
+         * ItemAmendment
+         * @description Ein Antrag am Punkt, gelesen von ``council/motions.py``. Ohne Auszug
+         *     (``read`` false) nur Label, Antragsteller und Link. ``outcome`` und
+         *     ``decision_id`` stehen, wenn die Teilabstimmung im Protokoll eindeutig
+         *     zugeordnet ist.
+         */
+        ItemAmendment: {
+            /** ItemAmendmentStatement */
+            after?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Applicants */
+            applicants: string[];
+            /** Base Missing */
+            base_missing?: boolean;
+            /** Base Template */
+            base_template?: string | null;
+            /** ItemAmendmentStatement */
+            before?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Diff */
+            diff?: string[][] | null;
+            /** Doc Type */
+            doc_type: string;
+            /** Document Id */
+            document_id: number;
+            /** Label */
+            label: string;
+            /** List No */
+            list_no: number;
+            /** ItemAmendmentStatement */
+            meaning?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Pattern */
+            pattern?: string | null;
+            /** Read */
+            read: boolean;
+            /** ItemAmendmentStatement */
+            reason?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Target */
+            target?: string | null;
+            /** Url */
+            url: string;
+        };
+        /** ItemAmendmentStatement */
+        ItemAmendmentStatement: {
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string;
+            /** Source */
+            source: string;
+            /** Text */
+            text: string;
         };
         /**
          * ItemArguments
@@ -20299,6 +20397,8 @@ export interface components {
          *     der Sitzung (Formalien als einer).
          */
         SessionItemDetail: {
+            /** Amendments */
+            amendments?: components["schemas"]["ItemAmendment"][];
             arguments?: components["schemas"]["ItemArguments"];
             /** Committee */
             committee: string;
@@ -31050,4 +31150,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6ee774e2d98ab76b7c0ff0822a4b6968b590e144016a4a195b371b3cab5d9fae
+// vertrag-sha256: 391c8997e7075b6ca97e52e58fac9a4e9d48ad684fd77e5ddedc32b65d610209

@@ -329,6 +329,13 @@ FEATURES: dict[str, Feature] = {
                     "Dossier mit belegten Abschnitten (docs/plan-vorlagen-aufbereiten.md).",
         fertig_wenn="Dossier-Tore aus Plan § 7.2 erreicht, von Tim abgenommen und auf Prod angeschaltet.",
     ),
+    "aenderungsantraege": Feature(
+        key="aenderungsantraege",
+        description="Änderungsanträge auf Punkt-, Sitzungs- und Beschluss-Seite: wer was an welcher Stelle will, "
+                    "alt gegen neu mit Belegen, nach dem Protokoll mit Ergebnis (council/motions.py, "
+                    "docs/plan-vorlagen-aufbereiten.md § 5).",
+        fertig_wenn="Tore aus Plan § 7.3 auf Prod-Daten bestätigt, von Tim abgenommen und auf Prod angeschaltet.",
+    ),
     "punkt-argumente": Feature(
         key="punkt-argumente",
         description="Die Reiter „Argumente“ und „Fraktionen“ auf der Punkt-Seite: Streitpunkte mit "

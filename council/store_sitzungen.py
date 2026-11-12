@@ -1758,7 +1758,18 @@ class SitzungenMixin(StoreBasis):
                 # Formalien, Fragestunde, Anfragen und Mitteilungen haben keinen
                 # Vorgang — eine eigene Punkt-Seite zeigte dort nur den Titel.
                 "own_page": typ not in course.FRAME_TYPES,
+                "amendments_label": None,
+                "amendment_parties": [],
             }
+            # Änderungsanträge am Punkt (docs/plan-vorlagen-aufbereiten.md § 6.2):
+            # „2 Änderungsanträge · CDU, Volt" — die Beschriftung setzt das Backend.
+            if typ not in course.FRAME_TYPES:
+                zahl, parteien = self.amendment_summary(int(ksinr), nr)
+                if zahl:
+                    items[nr]["amendments_label"] = (
+                        f"{zahl} Änderungsantr{'ag' if zahl == 1 else 'äge'}"
+                        + (f" · {', '.join(parteien)}" if parteien else ""))
+                    items[nr]["amendment_parties"] = parteien
 
         # Der Weg jeder Vorlage durch die Gremien, mit Ergebnis je Station —
         # „Der Weg dieser Vorlage" und „Vorgeschichte N Stationen".

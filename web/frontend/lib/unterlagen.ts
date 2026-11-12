@@ -40,3 +40,16 @@ export function teileListe<T extends ListenDoc>(docs: T[]): { lesestoff: T[]; be
   }
   return { lesestoff, beleg, protokolle };
 }
+
+/** Unveränderte Stücke eines Wortdiffs auf den Kontext um die Änderung
+ *  kürzen: vorn die letzten, hinten die ersten Wörter, dazwischen beide Enden. */
+export function kurzerDiff(diff: string[][], rand = 8): string[][] {
+  return diff.map(([op, text], i) => {
+    if (op !== "=") return [op, text];
+    const w = text.split(" ");
+    if (w.length <= rand * 2) return [op, text];
+    if (i === 0) return [op, "… " + w.slice(-rand).join(" ")];
+    if (i === diff.length - 1) return [op, w.slice(0, rand).join(" ") + " …"];
+    return [op, `${w.slice(0, rand).join(" ")} … ${w.slice(-rand).join(" ")}`];
+  });
+}

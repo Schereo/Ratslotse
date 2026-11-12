@@ -86,6 +86,10 @@ class StoreBasis:
             """Die Anlagen der Vorlage, Anträge zuerst (``store``)."""
             ...
 
+        def amendment_summary(self, ksinr: int, item_number: str) -> tuple[int, list[str]]:
+            """Zahl und Antragsteller der Änderungsanträge eines Punkts (``store_unterlagen``)."""
+            ...
+
         def item_documents(self, ksinr: int, item_number: str) -> list[dict]:
             """Die Dokumente eines Punkts über alle Stationen (``store_unterlagen``)."""
             ...
