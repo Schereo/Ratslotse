@@ -176,6 +176,7 @@ describe("courseInput — vom Vertrag zur Eingabe", () => {
     items: Object.fromEntries(["Ö 1", "Ö 1.1", "Ö 2", "Ö 3", "Ö 4"].map((nr) => [nr, {
       short_title: `Titel ${nr}`, type: "report", type_label: "Bericht", icon: nr === "Ö 3" ? "bike" : "report",
       applicant: null, important: nr === "Ö 3", important_reason: null, postponed: nr === "Ö 4" ? 1 : 0,
+      amendments_label: null, amendment_parties: [],
       formality: nr.startsWith("Ö 1"), formal_act: false, own_page: !nr.startsWith("Ö 1"), group: null, journey: [], next_on_agenda: null,
     }])) as SessionCourse["items"],
   };

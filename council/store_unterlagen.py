@@ -108,11 +108,20 @@ class UnterlagenMixin(StoreBasis):
         steckbriefe = self.document_profiles(list(docs))
         from council import document_types  # noqa: PLC0415
 
-        out = []
-        for did, d in docs.items():
+        from council.parties import parties_in_text  # noqa: PLC0415
+
+        out, labels = [], set()
+        # An der Vorlage zuerst: Dasselbe Dokument liegt oft unter zwei Kennungen
+        # an Vorlage und Punkt („Anlage Geschäftsordnung"); gleiches Label heißt
+        # dann ein Eintrag.
+        for did, d in sorted(docs.items(), key=lambda kv: kv[1]["source"] != "template_attachment"):
+            schluessel = " ".join((d["label"] or "").lower().split())
+            if d["source"] != "template" and schluessel in labels:
+                continue
+            labels.add(schluessel)
             sb = steckbriefe.get(did) or {}
             art = "template" if d["source"] == "template" else (sb.get("doc_type") or document_types.classify(d["label"]))
-            out.append({**d, "doc_type": art, "applicants": sb.get("applicants") or [],
+            out.append({**d, "doc_type": art, "applicants": sb.get("applicants") or parties_in_text(d["label"]),
                         "n_pages": sb.get("n_pages"), "is_scan": bool(sb.get("is_scan"))})
         out.sort(key=lambda d: (document_types.rank(d["doc_type"]), d["first_seen"] or "", d["label"]))
         return out
@@ -269,3 +278,64 @@ class UnterlagenMixin(StoreBasis):
             "SELECT DISTINCT a.template_number FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
             "WHERE s.session_date BETWEEN ? AND ? AND a.is_public = 1 AND COALESCE(a.template_number, '') != '' "
             "ORDER BY s.session_date", (seit, bis))]
+
+    def item_amendments(self, ksinr: int, item_number: str) -> list[dict]:
+        """Die gelesenen Anträge eines Punkts für die Anzeige (Plan § 6.1,
+        Punkt 3): je Antrag Antragsteller, Ziel, Muster, alt/neu, Wortdiff,
+        Bedeutung, Begründung, die Nummer in der Gegenlese-Liste — und nach dem
+        Protokoll das Ergebnis der Teilabstimmung, wenn sie sich eindeutig
+        zuordnen lässt."""
+        import re  # noqa: PLC0415
+
+        from council import motions  # noqa: PLC0415
+
+        docs = [d for d in self.item_documents(int(ksinr), item_number) if d.get("url")]
+        nummer = {d["document_id"]: n for n, d in enumerate(docs, 1)}
+        subs = None
+        out = []
+        for d in docs:
+            if d["doc_type"] not in ("amendment", "motion"):
+                continue
+            ex = self.motion_extract(d["document_id"])
+            p = (ex or {}).get("payload") if ex and ex.get("status") == "ok" else None
+            eintrag = {"document_id": d["document_id"], "list_no": nummer[d["document_id"]], "label": d["label"],
+                       "url": d["url"], "doc_type": d["doc_type"],
+                       "applicants": (p or {}).get("applicants") or d["applicants"],
+                       "read": p is not None, "outcome": None, "decision_id": None}
+            if p:
+                for k in ("target", "pattern", "before", "after", "diff", "meaning", "reason", "base_template", "base_missing"):
+                    eintrag[k] = p.get(k)
+                if subs is None:
+                    nr = re.sub(r"^\D+", "", item_number).strip()
+                    subs = [dict(r) | {"factions": json.loads(r["factions"] or "[]")} for r in self._conn.execute(
+                        "SELECT id, title, factions, outcome FROM council_decisions WHERE ksinr = ? "
+                        "AND kind = 'subvote' AND parent_item = ?", (int(ksinr), nr))]
+                treffer = motions.match_subvote({"applicants": eintrag["applicants"], "label": d["label"],
+                                                 "target": p.get("target"),
+                                                 "meaning": (p.get("meaning") or {}).get("text")}, subs)
+                if treffer:
+                    sv = next(s for s in subs if s["id"] == treffer)
+                    eintrag["outcome"], eintrag["decision_id"] = sv["outcome"], sv["id"]
+            out.append(eintrag)
+        return out
+
+    def amendment_summary(self, ksinr: int, item_number: str) -> tuple[int, list[str]]:
+        """(Zahl der Änderungsanträge, Antragsteller) — für die Karte der Sitzungsseite."""
+        n, parteien = 0, []
+        for d in self.item_documents(int(ksinr), item_number):
+            if d["doc_type"] == "amendment":
+                n += 1
+                for p in d["applicants"]:
+                    if p not in parteien:
+                        parteien.append(p)
+        return n, parteien
+
+    def agenda_item_for_decision(self, ksinr: int, item_number: str | None) -> str | None:
+        """„Ö 5" zur Beschluss-Nummer „5" derselben Sitzung."""
+        import re  # noqa: PLC0415
+
+        ziel = (item_number or "").strip()
+        for r in self._conn.execute("SELECT item_number FROM council_agenda_items WHERE ksinr = ?", (int(ksinr),)):
+            if re.sub(r"^\D+", "", r["item_number"]).strip() == ziel:
+                return r["item_number"]
+        return None

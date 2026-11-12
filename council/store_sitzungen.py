@@ -13,10 +13,15 @@ import json
 import logging
 import re
 from datetime import date, datetime, UTC
+from typing import TYPE_CHECKING
 
 from council.scraper import CouncilSession
 from council.store_basis import StoreBasis
 from council.store_wortbeitraege import WortbeitraegeMixin
+
+if TYPE_CHECKING:
+    from council.vorlage_felder import TemplateFields
+
 
 _DOKUMENT_ID_RE = re.compile(r"getfile\.php\?id=(\d+)")
 
@@ -1753,7 +1758,18 @@ class SitzungenMixin(StoreBasis):
                 # Formalien, Fragestunde, Anfragen und Mitteilungen haben keinen
                 # Vorgang — eine eigene Punkt-Seite zeigte dort nur den Titel.
                 "own_page": typ not in course.FRAME_TYPES,
+                "amendments_label": None,
+                "amendment_parties": [],
             }
+            # Änderungsanträge am Punkt (docs/plan-vorlagen-aufbereiten.md § 6.2):
+            # „2 Änderungsanträge · CDU, Volt" — die Beschriftung setzt das Backend.
+            if typ not in course.FRAME_TYPES:
+                zahl, parteien = self.amendment_summary(int(ksinr), nr)
+                if zahl:
+                    items[nr]["amendments_label"] = (
+                        f"{zahl} Änderungsantr{'ag' if zahl == 1 else 'äge'}"
+                        + (f" · {', '.join(parteien)}" if parteien else ""))
+                    items[nr]["amendment_parties"] = parteien
 
         # Der Weg jeder Vorlage durch die Gremien, mit Ergebnis je Station —
         # „Der Weg dieser Vorlage" und „Vorgeschichte N Stationen".
@@ -1897,6 +1913,7 @@ class SitzungenMixin(StoreBasis):
             "decision_id": beschluss["id"] if beschluss else None,
             "history": self._punkt_vorgeschichte(sitzung, punkt, kurs["items"][nr]),
             "documents": self._punkt_unterlagen(punkt, kurs["items"][nr], int(ksinr)),
+            "template_fields": self._punkt_vorlage_felder(punkt, int(ksinr), nr),
             "previous": nachbar(reihe[i - 1] if i > 0 else None),
             "next": nachbar(reihe[i + 1] if i + 1 < len(reihe) else None),
             "position": i + 1,
@@ -2101,16 +2118,47 @@ class SitzungenMixin(StoreBasis):
              datetime.now(UTC).isoformat(timespec="seconds")))
         self._conn.commit()
 
+    def _punkt_vorlage_felder(self, punkt: dict, ksinr: int, nr: str) -> TemplateFields | None:
+        """Was die Vorlage schon trägt (``council/vorlage_felder.py``):
+        Beschlussvorschlag, Kosten, Klima, Amt, Anträge — ohne Modell."""
+        from council import vorlage_felder  # noqa: PLC0415
+
+        tn = (punkt.get("template_number") or "").strip()
+        vorlage = self.get_vorlage_by_nr(tn) if tn else None
+        anlagen = self.anlagen_for_vorlage_nr(tn) if vorlage else []
+        am_punkt = [dict(r) for r in self._conn.execute(
+            "SELECT label, url, substr(COALESCE(raw_text, ''), 1, 4000) AS raw_text "
+            "FROM council_agenda_attachments WHERE ksinr = ? AND item_number = ? AND label != 'Vorlage'",
+            (ksinr, nr))]
+        return vorlage_felder.build(vorlage if vorlage and vorlage.get("status") == "ok" else None,
+                                    anlagen, am_punkt)
+
     def _punkt_unterlagen(self, punkt: dict, item: dict, ksinr: int) -> list[dict]:
-        """Was zum Punkt vorliegt: die Vorlage im Ratsinfo, die Anlagen am
-        Punkt, die Protokolle der früheren Stationen. Alles extern."""
+        """Die Gegenlese-Liste des Punkts (docs/plan-vorlagen-aufbereiten.md,
+        § 6.1, PR 7): je Dokument einmal, über alle Stationen der Vorlage, mit
+        fortlaufender Nummer, Art, Antragsteller, Seiten und Merkmalen —
+        Reihenfolge Vorlage, Anträge, Synopse und Satzung, Rest. Danach die
+        Protokolle der früheren Stationen. Alles extern."""
+        sitzungstag = self._conn.execute(
+            "SELECT session_date FROM council_sessions WHERE ksinr = ?", (ksinr,)).fetchone()
+        tag = sitzungstag["session_date"] if sitzungstag else None
         out: list[dict] = []
-        if punkt.get("kvonr"):
+        for n, d in enumerate(self.item_documents(ksinr, punkt["item_number"]), 1):
+            if not d.get("url"):
+                continue
+            out.append({
+                "kind": "template" if d["doc_type"] == "template" else "attachment",
+                "label": d["label"], "url": d["url"], "date": None,
+                "document_id": d["document_id"], "list_no": n, "doc_type": d["doc_type"],
+                "applicants": d["applicants"], "pages": d["n_pages"], "is_scan": d["is_scan"],
+                # Erst nach dieser Sitzung an einem Punkt aufgetaucht (spätere Station).
+                "after_session": bool(tag and d.get("first_seen") and d["first_seen"] > tag),
+            })
+        if not out and punkt.get("kvonr"):
+            # Ohne eingelesene Vorlage bleibt der Weg ins Ratsinfo.
             out.append({"kind": "template", "label": f"Vorlage {punkt.get('template_number') or ''}".strip(),
                         "url": f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={punkt['kvonr']}",
                         "date": None})
-        for a in punkt.get("anlagen") or []:
-            out.append({"kind": "attachment", "label": a["label"], "url": a["url"], "date": None})
         frueher = [s for s in item.get("journey") or [] if s["ksinr"] != ksinr]
         if frueher:
             ph = ",".join("?" * len(frueher))

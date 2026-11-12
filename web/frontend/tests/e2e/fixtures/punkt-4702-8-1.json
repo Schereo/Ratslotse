@@ -41,6 +41,8 @@
   "formal_act": false,
   "group": null,
   "own_page": true,
+  "amendments_label": null,
+  "amendment_parties": [],
   "journey": [
    {
     "ksinr": 4653,
@@ -116,7 +118,7 @@
    "date": "2026-08-24"
   }
  ],
- "previous": {
+ "template_fields": null, "previous": {
   "item_number": "Ö 7.2",
   "short_title": "Änderung der Satzung des Jugendamtes",
   "type_label": "Entscheidung"

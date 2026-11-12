@@ -5186,6 +5186,9 @@
                   "null"
                 ]
               },
+              "amendment": {
+                "$ref": "#/components/schemas/ItemAmendment"
+              },
               "amount_eur": {
                 "title": "Amount Eur",
                 "type": [
@@ -8237,6 +8240,20 @@
       "CourseItem": {
         "description": "Was Kurs und Karten je Tagesordnungspunkt brauchen.\n\n``type_label`` ist die Art in Worten („Entscheidung\", „Vorberatung\",\n„Antrag\" …; ``None`` bei ``other``). ``icon`` ist ein Schlüssel aus\n``council/course.py::ICONS`` (Plan, Anhang A). ``postponed``: in wie vielen\nfrüheren Sitzungen DIESES Gremiums der Punkt schon stand und vertagt wurde\n— 0, wo die Zuordnung nicht sicher ist. ``formal_act``: Widmung,\nEinziehung, Umstufung — gleichartige direkt hintereinander teilen sich in\nder Liste eine Karte. ``group``: Nummer der Vorhaben-Überschrift\n(„Bauleitplanung Meerweg\"), unter der der Punkt steht.",
         "properties": {
+          "amendment_parties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Amendment Parties",
+            "type": "array"
+          },
+          "amendments_label": {
+            "title": "Amendments Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "applicant": {
             "title": "Applicant",
             "type": [
@@ -8357,7 +8374,9 @@
           "group",
           "own_page",
           "journey",
-          "next_on_agenda"
+          "next_on_agenda",
+          "amendments_label",
+          "amendment_parties"
         ],
         "title": "CourseItem",
         "type": "object"
@@ -9411,6 +9430,9 @@
               "null"
             ]
           },
+          "amendment": {
+            "$ref": "#/components/schemas/ItemAmendment"
+          },
           "amount_eur": {
             "title": "Amount Eur",
             "type": [
@@ -9702,6 +9724,13 @@
           },
           "office": {
             "title": "Office",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proposed_decision": {
+            "title": "Proposed Decision",
             "type": [
               "string",
               "null"
@@ -16537,6 +16566,274 @@
           "base_score"
         ],
         "title": "ImportanceBreakdown",
+        "type": "object"
+      },
+      "ItemAmendment": {
+        "description": "Ein Antrag am Punkt, gelesen von ``council/motions.py``. Ohne Auszug\n(``read`` false) nur Label, Antragsteller und Link. ``outcome`` und\n``decision_id`` stehen, wenn die Teilabstimmung im Protokoll eindeutig\nzugeordnet ist.",
+        "properties": {
+          "after": {
+            "properties": {
+              "page": {
+                "title": "Page",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "quote": {
+                "title": "Quote",
+                "type": "string"
+              },
+              "source": {
+                "title": "Source",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "quote",
+              "source",
+              "page"
+            ],
+            "title": "ItemAmendmentStatement",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "applicants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applicants",
+            "type": "array"
+          },
+          "base_missing": {
+            "title": "Base Missing",
+            "type": "boolean"
+          },
+          "base_template": {
+            "title": "Base Template",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "before": {
+            "properties": {
+              "page": {
+                "title": "Page",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "quote": {
+                "title": "Quote",
+                "type": "string"
+              },
+              "source": {
+                "title": "Source",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "quote",
+              "source",
+              "page"
+            ],
+            "title": "ItemAmendmentStatement",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "diff": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Diff",
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "list_no": {
+            "title": "List No",
+            "type": "integer"
+          },
+          "meaning": {
+            "properties": {
+              "page": {
+                "title": "Page",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "quote": {
+                "title": "Quote",
+                "type": "string"
+              },
+              "source": {
+                "title": "Source",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "quote",
+              "source",
+              "page"
+            ],
+            "title": "ItemAmendmentStatement",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pattern": {
+            "title": "Pattern",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "read": {
+            "title": "Read",
+            "type": "boolean"
+          },
+          "reason": {
+            "properties": {
+              "page": {
+                "title": "Page",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "quote": {
+                "title": "Quote",
+                "type": "string"
+              },
+              "source": {
+                "title": "Source",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "quote",
+              "source",
+              "page"
+            ],
+            "title": "ItemAmendmentStatement",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "target": {
+            "title": "Target",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "list_no",
+          "label",
+          "url",
+          "doc_type",
+          "applicants",
+          "read",
+          "outcome",
+          "decision_id"
+        ],
+        "title": "ItemAmendment",
+        "type": "object"
+      },
+      "ItemAmendmentStatement": {
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "quote",
+          "source",
+          "page"
+        ],
+        "title": "ItemAmendmentStatement",
         "type": "object"
       },
       "ItemArguments": {
@@ -32364,6 +32661,13 @@
       "SessionItemDetail": {
         "description": "Ein Tagesordnungspunkt auf seiner eigenen Seite\n(``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,\nsobald das Protokoll einen Beschluss dazu hat — dann führt die Seite zur\nBeschluss-Seite (Plan 3.9). ``position``/``count``: der wievielte Punkt\nder Sitzung (Formalien als einer).",
         "properties": {
+          "amendments": {
+            "items": {
+              "$ref": "#/components/schemas/ItemAmendment"
+            },
+            "title": "Amendments",
+            "type": "array"
+          },
           "arguments": {
             "$ref": "#/components/schemas/ItemArguments"
           },
@@ -32484,6 +32788,110 @@
               "string",
               "null"
             ]
+          },
+          "template_fields": {
+            "description": "Was die Vorlage eines Punkts schon trägt, ohne Modell\n(``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).\n``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher\nWortlaut — die Seite zeigt sie als Zitat.",
+            "properties": {
+              "climate": {
+                "properties": {
+                  "relevant": {
+                    "title": "Relevant",
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "text": {
+                    "title": "Text",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text",
+                  "relevant"
+                ],
+                "title": "TemplateFieldsClimate",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "cost": {
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "amount",
+                      "none",
+                      "text"
+                    ],
+                    "title": "Status",
+                    "type": "string"
+                  },
+                  "text": {
+                    "title": "Text",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text",
+                  "status"
+                ],
+                "title": "TemplateFieldsCost",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "document_url": {
+                "title": "Document Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "motions": {
+                "items": {
+                  "$ref": "#/components/schemas/TemplateFieldsMotion"
+                },
+                "title": "Motions",
+                "type": "array"
+              },
+              "office": {
+                "title": "Office",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "proposed_decision": {
+                "title": "Proposed Decision",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "template_number",
+              "document_url",
+              "office",
+              "proposed_decision",
+              "cost",
+              "climate",
+              "motions"
+            ],
+            "title": "TemplateFields",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
@@ -32497,6 +32905,7 @@
           "decision_id",
           "history",
           "documents",
+          "template_fields",
           "previous",
           "next",
           "position",
@@ -32506,14 +32915,37 @@
         "type": "object"
       },
       "SessionItemDocument": {
-        "description": "Eine Unterlage zum Punkt — alles extern im Ratsinfo.",
+        "description": "Eine Unterlage zum Punkt — alles extern im Ratsinfo. Die Felder ab\n``document_id`` tragen die Gegenlese-Liste (Plan Vorlagen aufbereiten,\n§ 6.1); Protokolle früherer Stationen haben sie nicht.",
         "properties": {
+          "after_session": {
+            "title": "After Session",
+            "type": "boolean"
+          },
+          "applicants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applicants",
+            "type": "array"
+          },
           "date": {
             "title": "Date",
             "type": [
               "string",
               "null"
             ]
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "is_scan": {
+            "title": "Is Scan",
+            "type": "boolean"
           },
           "kind": {
             "enum": [
@@ -32527,6 +32959,17 @@
           "label": {
             "title": "Label",
             "type": "string"
+          },
+          "list_no": {
+            "title": "List No",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "url": {
             "title": "Url",
@@ -33385,6 +33828,180 @@
           "is_image"
         ],
         "title": "TemplateAttachment",
+        "type": "object"
+      },
+      "TemplateFields": {
+        "description": "Was die Vorlage eines Punkts schon trägt, ohne Modell\n(``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).\n``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher\nWortlaut — die Seite zeigt sie als Zitat.",
+        "properties": {
+          "climate": {
+            "properties": {
+              "relevant": {
+                "title": "Relevant",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "relevant"
+            ],
+            "title": "TemplateFieldsClimate",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "cost": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "amount",
+                  "none",
+                  "text"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "status"
+            ],
+            "title": "TemplateFieldsCost",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "document_url": {
+            "title": "Document Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "motions": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateFieldsMotion"
+            },
+            "title": "Motions",
+            "type": "array"
+          },
+          "office": {
+            "title": "Office",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proposed_decision": {
+            "title": "Proposed Decision",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "template_number",
+          "document_url",
+          "office",
+          "proposed_decision",
+          "cost",
+          "climate",
+          "motions"
+        ],
+        "title": "TemplateFields",
+        "type": "object"
+      },
+      "TemplateFieldsClimate": {
+        "properties": {
+          "relevant": {
+            "title": "Relevant",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "relevant"
+        ],
+        "title": "TemplateFieldsClimate",
+        "type": "object"
+      },
+      "TemplateFieldsCost": {
+        "properties": {
+          "status": {
+            "enum": [
+              "amount",
+              "none",
+              "text"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "status"
+        ],
+        "title": "TemplateFieldsCost",
+        "type": "object"
+      },
+      "TemplateFieldsMotion": {
+        "properties": {
+          "applicants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applicants",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "applicants",
+          "url"
+        ],
+        "title": "TemplateFieldsMotion",
         "type": "object"
       },
       "TemplateFollow": {

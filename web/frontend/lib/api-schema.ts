@@ -9367,6 +9367,7 @@ export interface components {
             decision: {
                 /** Abstentions */
                 abstentions?: number | null;
+                amendment?: components["schemas"]["ItemAmendment"];
                 /** Amount Eur */
                 amount_eur?: number | null;
                 /** Applicants Named */
@@ -10664,6 +10665,10 @@ export interface components {
          *     („Bauleitplanung Meerweg"), unter der der Punkt steht.
          */
         CourseItem: {
+            /** Amendment Parties */
+            amendment_parties: string[];
+            /** Amendments Label */
+            amendments_label: string | null;
             /** Applicant */
             applicant: string | null;
             /** Formal Act */
@@ -11148,6 +11153,7 @@ export interface components {
         DecisionRow: {
             /** Abstentions */
             abstentions?: number | null;
+            amendment?: components["schemas"]["ItemAmendment"];
             /** Amount Eur */
             amount_eur?: number | null;
             /** Applicants Named */
@@ -11242,6 +11248,8 @@ export interface components {
             n_pages: number | null;
             /** Office */
             office: string | null;
+            /** Proposed Decision */
+            proposed_decision?: string | null;
             /** Template Number */
             template_number: string | null;
             /** Title */
@@ -14005,6 +14013,98 @@ export interface components {
             signals: {
                 [key: string]: number | null;
             };
+        };
+        /**
+         * ItemAmendment
+         * @description Ein Antrag am Punkt, gelesen von ``council/motions.py``. Ohne Auszug
+         *     (``read`` false) nur Label, Antragsteller und Link. ``outcome`` und
+         *     ``decision_id`` stehen, wenn die Teilabstimmung im Protokoll eindeutig
+         *     zugeordnet ist.
+         */
+        ItemAmendment: {
+            /** ItemAmendmentStatement */
+            after?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Applicants */
+            applicants: string[];
+            /** Base Missing */
+            base_missing?: boolean;
+            /** Base Template */
+            base_template?: string | null;
+            /** ItemAmendmentStatement */
+            before?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Diff */
+            diff?: string[][] | null;
+            /** Doc Type */
+            doc_type: string;
+            /** Document Id */
+            document_id: number;
+            /** Label */
+            label: string;
+            /** List No */
+            list_no: number;
+            /** ItemAmendmentStatement */
+            meaning?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Pattern */
+            pattern?: string | null;
+            /** Read */
+            read: boolean;
+            /** ItemAmendmentStatement */
+            reason?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Target */
+            target?: string | null;
+            /** Url */
+            url: string;
+        };
+        /** ItemAmendmentStatement */
+        ItemAmendmentStatement: {
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string;
+            /** Source */
+            source: string;
+            /** Text */
+            text: string;
         };
         /**
          * ItemArguments
@@ -20297,6 +20397,8 @@ export interface components {
          *     der Sitzung (Formalien als einer).
          */
         SessionItemDetail: {
+            /** Amendments */
+            amendments?: components["schemas"]["ItemAmendment"][];
             arguments?: components["schemas"]["ItemArguments"];
             /** Committee */
             committee: string;
@@ -20344,14 +20446,62 @@ export interface components {
             session_date: string;
             /** Session Time */
             session_time: string | null;
+            /**
+             * TemplateFields
+             * @description Was die Vorlage eines Punkts schon trägt, ohne Modell
+             *     (``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).
+             *     ``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher
+             *     Wortlaut — die Seite zeigt sie als Zitat.
+             */
+            template_fields: {
+                /** TemplateFieldsClimate */
+                climate: {
+                    /** Relevant */
+                    relevant: boolean | null;
+                    /** Text */
+                    text: string;
+                } | null;
+                /** TemplateFieldsCost */
+                cost: {
+                    /**
+                     * Status
+                     * @enum {string}
+                     */
+                    status: "amount" | "none" | "text";
+                    /** Text */
+                    text: string;
+                } | null;
+                /** Document Url */
+                document_url: string | null;
+                /** Motions */
+                motions: components["schemas"]["TemplateFieldsMotion"][];
+                /** Office */
+                office: string | null;
+                /** Proposed Decision */
+                proposed_decision: string | null;
+                /** Template Number */
+                template_number: string | null;
+            } | null;
         };
         /**
          * SessionItemDocument
-         * @description Eine Unterlage zum Punkt — alles extern im Ratsinfo.
+         * @description Eine Unterlage zum Punkt — alles extern im Ratsinfo. Die Felder ab
+         *     ``document_id`` tragen die Gegenlese-Liste (Plan Vorlagen aufbereiten,
+         *     § 6.1); Protokolle früherer Stationen haben sie nicht.
          */
         SessionItemDocument: {
+            /** After Session */
+            after_session?: boolean;
+            /** Applicants */
+            applicants?: string[];
             /** Date */
             date: string | null;
+            /** Doc Type */
+            doc_type?: string;
+            /** Document Id */
+            document_id?: number;
+            /** Is Scan */
+            is_scan?: boolean;
             /**
              * Kind
              * @enum {string}
@@ -20359,6 +20509,10 @@ export interface components {
             kind: "template" | "attachment" | "protocol";
             /** Label */
             label: string;
+            /** List No */
+            list_no?: number;
+            /** Pages */
+            pages?: number | null;
             /** Url */
             url: string;
         };
@@ -20712,6 +20866,68 @@ export interface components {
             label: string | null;
             /** Status */
             status: string;
+            /** Url */
+            url: string | null;
+        };
+        /**
+         * TemplateFields
+         * @description Was die Vorlage eines Punkts schon trägt, ohne Modell
+         *     (``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).
+         *     ``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher
+         *     Wortlaut — die Seite zeigt sie als Zitat.
+         */
+        TemplateFields: {
+            /** TemplateFieldsClimate */
+            climate: {
+                /** Relevant */
+                relevant: boolean | null;
+                /** Text */
+                text: string;
+            } | null;
+            /** TemplateFieldsCost */
+            cost: {
+                /**
+                 * Status
+                 * @enum {string}
+                 */
+                status: "amount" | "none" | "text";
+                /** Text */
+                text: string;
+            } | null;
+            /** Document Url */
+            document_url: string | null;
+            /** Motions */
+            motions: components["schemas"]["TemplateFieldsMotion"][];
+            /** Office */
+            office: string | null;
+            /** Proposed Decision */
+            proposed_decision: string | null;
+            /** Template Number */
+            template_number: string | null;
+        };
+        /** TemplateFieldsClimate */
+        TemplateFieldsClimate: {
+            /** Relevant */
+            relevant: boolean | null;
+            /** Text */
+            text: string;
+        };
+        /** TemplateFieldsCost */
+        TemplateFieldsCost: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "amount" | "none" | "text";
+            /** Text */
+            text: string;
+        };
+        /** TemplateFieldsMotion */
+        TemplateFieldsMotion: {
+            /** Applicants */
+            applicants: string[];
+            /** Label */
+            label: string;
             /** Url */
             url: string | null;
         };
@@ -30934,4 +31150,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: aae073d43d15e2cc4a10ce09de659c370d2ac9a68f088f654d7009afd2cd16a6
+// vertrag-sha256: 391c8997e7075b6ca97e52e58fac9a4e9d48ad684fd77e5ddedc32b65d610209

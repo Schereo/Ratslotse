@@ -52,6 +52,8 @@ export interface DecisionLocationMatch {
 }
 
 export interface CouncilDecision {
+  /** An einer Teilabstimmung: der gelesene Antrag (Schalter `aenderungsantraege`). */
+  amendment?: import("@/components/session/aenderungsantraege").Antrag;
   id: number;
   ksinr: number;
   kind: "decision" | "subvote";
