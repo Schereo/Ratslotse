@@ -26,8 +26,9 @@ export function KiStern({ text = "Automatisch aus den Unterlagen erstellt. Verbi
         className={cn(
           "pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 w-max max-w-[min(16rem,70vw)] -translate-x-1/2 rounded-lg border border-border bg-popover px-2.5 py-1.5",
           "text-left text-xs font-normal leading-snug text-popover-foreground shadow-lg",
-          "invisible opacity-0 transition-[opacity,visibility] duration-tipp ease-out-strong",
-          "maus:group-hover/ki:visible maus:group-hover/ki:opacity-100 group-focus-within/ki:visible group-focus-within/ki:opacity-100",
+          // `hidden`, nicht `invisible`: Eine unsichtbare Karte nimmt weiter
+          // Platz ein und schob am rechten Rand die ganze Seite seitwärts.
+          "hidden maus:group-hover/ki:block group-focus-within/ki:block",
         )}>
         {text}
       </span>
