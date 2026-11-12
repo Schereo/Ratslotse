@@ -89,6 +89,7 @@ from ..ratelimit import (
     partei_meinungen_limiter,
     debatten_limiter,
     qa_feedback_limiter,
+    page_questions_limiter,
     qa_limiter,
     qa_share_limiter,
     qa_share_report_limiter,
@@ -2097,6 +2098,7 @@ def session_item(
 # was schon gespeichert ist.
 @router.get("/page-questions")
 def page_questions(
+    request: Request,
     ksinr: int | None = Query(None),
     nr: str | None = Query(None, min_length=1, max_length=20),
     decision_id: int | None = Query(None),
@@ -2118,15 +2120,23 @@ def page_questions(
         punkt = store.session_item(ksinr, nr)
         if not punkt:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
-        key = f"item:{ksinr}|{nr}"
+        # Der Schlüssel aus den Daten, nicht aus der Anfrage: „Ö 9" und
+        # „ Ö 9 " träfen sonst denselben Punkt unter zwei Schlüsseln und
+        # zahlten zweimal.
+        key = f"item:{ksinr}|{punkt['item']['item_number']}"
         material = vf.item_material(punkt, store.get_vorlage_by_nr(punkt["item"].get("template_number") or ""))
     else:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "ksinr und nr oder decision_id angeben.")
+    gespeichert = store.page_questions(key)
+    if gespeichert and gespeichert["sources_hash"] == vf.sources_hash(material):
+        return {"questions": gespeichert["questions"]}
     if user is None:
-        gespeichert = store.page_questions(key)
-        if gespeichert and gespeichert["sources_hash"] == vf.sources_hash(material):
-            return {"questions": gespeichert["questions"]}
         return leer
+    if not user.get("limits_unlocked"):
+        try:
+            page_questions_limiter.check(request, subject=user["id"])
+        except HTTPException:
+            return leer  # die festen Fragen statt eines Fehlers
     return {"questions": vf.questions_for(store, key, material) or []}
 
 
