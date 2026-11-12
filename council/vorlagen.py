@@ -157,7 +157,30 @@ def _pdf_text(url: str, extraktor: str = anlagentext.PYMUPDF) -> tuple[str, int]
 # Anlagen whose label smells like a fraction motion get their text ingested.
 # Broad on purpose ("Antrag auf Aufhebung …" from an investor also matches) —
 # the Antragsteller party filter keeps the statistics clean.
-_ANTRAG_LABEL_RE = re.compile(r"\b(antr[aä]g|anfrage)", re.IGNORECASE)
+#
+# Seit 11/2026 mit einer Präfixliste (docs/plan-vorlagen-aufbereiten.md, § 5):
+# „\bantrag" verfehlte jedes Kompositum — alle 38 Änderungsanträge an Vorlagen
+# standen auf is_motion = 0. Die Wortgrenze einfach zu streichen wäre falsch:
+# dann kämen 22 Zuschuss-, 3 Förder- und 2 Genehmigungsanträge Dritter dazu
+# und stünden in ``anlagen_fuer`` an erster Stelle.
+_ANTRAG_LABEL_RE = re.compile(
+    r"\b(?:(?:ä|ae|a)nderungs|ergänzungs|zusatz|dringlichkeits|berichts|fraktions|"
+    r"beschluss|verweisungs|gegen)?antr[aä]g|\banfrage", re.IGNORECASE)
+# Der Kopf eines Dokuments, das sich erst im Text als Antrag zu erkennen gibt
+# („2026-10-31 Reduzierung Anzahl beratende Mitglieder" ist ein Änderungsantrag
+# der Grünen zu TOP 13.2 — das sagt nur die erste Seite).
+_ANTRAG_KOPF_RE = re.compile(
+    r"(?:Änderungs|Aenderungs|Ergänzungs|Zusatz|Dringlichkeits)antrag|"
+    r"beantrag\w*\b[^.]{0,120}\bfolgende\w*\s+Änderung", re.IGNORECASE)
+KOPF_ZEICHEN = 1_500
+
+
+def ist_antrag(label: str | None, text: str | None = None) -> bool:
+    """Ist die Anlage ein Antrag? Aus dem Label — und, wo der Text schon da
+    ist, aus seinem Kopf."""
+    if _ANTRAG_LABEL_RE.search(label or ""):
+        return True
+    return bool(text) and bool(_ANTRAG_KOPF_RE.search((text or "")[:KOPF_ZEICHEN]))
 
 
 def _build_anlage_rows(anlagen: list[dict], skip_document_ids: frozenset = frozenset()) -> list[dict]:
@@ -169,7 +192,7 @@ def _build_anlage_rows(anlagen: list[dict], skip_document_ids: frozenset = froze
     for a in anlagen:
         row = {**a, "is_motion": 0, "applicants": [], "raw_text": "", "n_pages": 0,
                "status": "listed"}
-        if _ANTRAG_LABEL_RE.search(a["label"] or "") and a["document_id"] not in skip_document_ids:
+        if ist_antrag(a["label"]) and a["document_id"] not in skip_document_ids:
             row["is_motion"] = 1
             try:
                 text, n_pages = _pdf_text(a["url"], anlagentext.extraktor_fuer(a["label"]))
