@@ -59,7 +59,6 @@ const KICKER = "font-mono text-meta uppercase tracking-[0.06em] text-muted-foreg
 
 /** Feste Texte (Plan § 4.6). */
 const TEXT = {
-  legendeVorher: "Jede Boje ist ein Punkt der Tagesordnung, jedes helle Band eine Etappe der Sitzung. Die großen Bojen sind die wichtigen. Der gelbe Punkt heißt: stand schon einmal hier und wurde vertagt.",
   hinweisVorher: "Kurzfassungen sind automatisch aus Vorlagen und Anträgen erstellt. Verbindlich sind die Unterlagen im Ratsinfo.",
   hinweisNachher: "Kurzfassungen sind automatisch erstellt. Verbindlich ist das Protokoll.",
   anfragen: "Fragen der Mitglieder an die Verwaltung. Ein Beschluss kommt dabei nicht heraus.",
@@ -266,12 +265,10 @@ function Board({ ctx }: { ctx: Ctx }) {
               ))}
             </p>
             <p className="mt-2 max-w-[46rem] text-hinweis text-muted-foreground">
-              Die Farbe der Boje zeigt das Ergebnis; {zaehl.withResult} von {course.public_count} öffentlichen Punkten hatten eines.
+              {zaehl.withResult} von {course.public_count} öffentlichen Punkten haben ein Ergebnis.
             </p>
           </div>
-        ) : (
-          <p className="mt-3 max-w-[46rem] text-hinweis text-muted-foreground">{TEXT.legendeVorher}</p>
-        )}
+        ) : null}
       </div>
 
       {wichtig.length > 0 && (
