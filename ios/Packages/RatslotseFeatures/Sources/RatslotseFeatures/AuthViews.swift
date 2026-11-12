@@ -160,6 +160,11 @@ private struct CredentialsView: View {
     @State private var showsPassword = false
     @State private var error: String?
     @State private var isWorking = false
+    @State private var passkeyWorking = false
+
+    /// Passkey vor E-Mail und Passwort (Tim 11.11.2026: zu Passkey oder Apple
+    /// lenken). Apple bleibt davor — wie im Web, wo es ihn gibt.
+    private var mitPasskey: Bool { model.passkeysEnabled }
 
     var body: some View {
         AuthScaffold(
@@ -178,6 +183,13 @@ private struct CredentialsView: View {
                 .signInWithAppleButtonStyle(.black)
                 .frame(height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button))
+
+                if mode == .login && mitPasskey {
+                    PasskeyButton(title: "Mit Passkey anmelden", working: passkeyWorking, action: loginWithPasskey)
+                        .buttonStyle(PrimaryButtonStyle())
+                        .frame(maxWidth: .infinity)
+                        .disabled(passkeyWorking || isWorking)
+                }
 
                 AuthDivider()
 
@@ -204,6 +216,18 @@ private struct CredentialsView: View {
                         .keyboardType(.emailAddress)
                         .textFieldStyle(.plain)
                         .accessibilityLabel("E-Mail")
+                }
+
+                if mode == .register && mitPasskey {
+                    // Der empfohlene Weg: kein Passwort, Face ID oder Touch ID
+                    // genügen. Name und Adresse braucht er trotzdem — die
+                    // Adresse für die Benachrichtigungen.
+                    PasskeyButton(title: "Mit Passkey registrieren", working: passkeyWorking, action: registerWithPasskey)
+                        .buttonStyle(SignalButtonStyle())
+                        .frame(maxWidth: .infinity)
+                        .disabled(passkeyWorking || isWorking || passkeyUnvollstaendig)
+                        .opacity(passkeyUnvollstaendig ? 0.5 : 1)
+                    AuthDivider(text: "oder mit Passwort")
                 }
 
                 AuthLabeledField(label: "Passwort", hint: mode == .register ? "mindestens 8 Zeichen" : nil) {
@@ -233,7 +257,15 @@ private struct CredentialsView: View {
                 }
 
                 Group {
-                    if mode == .login {
+                    // Mit Passkey wird der Passwort-Knopf zum Rahmen-Knopf:
+                    // Der Passkey ist die Handlung, auf die der Schirm lenkt.
+                    if mitPasskey {
+                        Button(action: submit) {
+                            Text(isWorking ? "Einen Moment …" : (mode == .login ? "Anmelden" : "Konto erstellen"))
+                                .frame(maxWidth: .infinity)
+                        }
+                            .buttonStyle(SecondaryButtonStyle())
+                    } else if mode == .login {
                         Button(action: submit) {
                             Text(isWorking ? "Einen Moment …" : "Anmelden").frame(maxWidth: .infinity)
                         }
@@ -285,6 +317,35 @@ private struct CredentialsView: View {
     private var unvollstaendig: Bool {
         if email.isEmpty || password.count < 8 { return true }
         return mode == .register && name.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Für den Passkey zählt das Passwortfeld nicht mit.
+    private var passkeyUnvollstaendig: Bool {
+        let adresse = email.trimmingCharacters(in: .whitespaces)
+        return !adresse.contains("@") || name.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private func loginWithPasskey() {
+        passkeyWorking = true
+        error = nil
+        Task {
+            do { try await model.loginWithPasskey() }
+            catch { self.error = PasskeyError.message(for: error) }
+            passkeyWorking = false
+        }
+    }
+
+    private func registerWithPasskey() {
+        passkeyWorking = true
+        error = nil
+        Task {
+            do {
+                try await model.registerWithPasskey(
+                    email: email.trimmingCharacters(in: .whitespaces),
+                    displayName: name.trimmingCharacters(in: .whitespaces))
+            } catch { self.error = PasskeyError.message(for: error) }
+            passkeyWorking = false
+        }
     }
 
     private func submit() {
@@ -501,6 +562,7 @@ struct VerificationPendingView: View {
     @State private var aendern = false
     @State private var neu = ""
     @State private var passwort = ""
+    @State private var passkey: PasskeyAssertionCredential?
     @State private var busy = false
     @State private var code = ""
 
@@ -562,29 +624,39 @@ struct VerificationPendingView: View {
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                        SecureField("Dein Passwort", text: $passwort)
-                            .textContentType(.password)
+                        // Ein Konto, das mit Passkey entstand, hat kein Passwort —
+                        // und ist genau das, das hier unbestätigt steht.
+                        if user.hasPassword || user.appleLinked {
+                            SecureField("Dein Passwort", text: $passwort)
+                                .textContentType(.password)
+                        } else {
+                            PasskeyConfirmButton(model: model, credential: $passkey)
+                        }
                         Button {
                             busy = true
                             Task {
                                 do {
                                     try await model.changeEmail(
                                         newEmail: neu.trimmingCharacters(in: .whitespacesAndNewlines),
-                                        password: passwort)
+                                        password: passwort, passkey: passkey)
                                     feedback = model.user?.pendingEmail.map {
                                         "Bestätigungslink an \($0) unterwegs."
                                     } ?? "Deine E-Mail-Adresse wurde geändert."
                                     aendern = false
                                     neu = ""
                                     passwort = ""
-                                } catch { feedback = error.localizedDescription }
+                                    passkey = nil
+                                } catch {
+                                    feedback = error.localizedDescription
+                                    passkey = nil
+                                }
                                 busy = false
                             }
                         } label: {
                             Text(busy ? "Wird geändert …" : "Adresse ändern").frame(maxWidth: .infinity)
                         }
                         .buttonStyle(SecondaryButtonStyle())
-                        .disabled(busy || !neu.contains("@") || passwort.isEmpty)
+                        .disabled(busy || !neu.contains("@") || (passwort.isEmpty && passkey == nil))
                     }
                     .frame(maxWidth: .infinity)
                 } else {
@@ -725,11 +797,29 @@ private struct AuthLabeledField<Content: View>: View {
     }
 }
 
+/// „Mit Passkey …" — derselbe Knopf für Anmelden und Registrieren; den Stil
+/// setzt der Aufrufer (Anmelden: primär, Registrieren: Signal).
+private struct PasskeyButton: View {
+    let title: String
+    let working: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            RatsLabel(working ? "Wartet auf den Passkey …" : title, .key)
+                .frame(maxWidth: .infinity)
+        }
+        .accessibilityHint("Mit Face ID, Touch ID oder dem Gerätecode, ohne Passwort")
+    }
+}
+
 private struct AuthDivider: View {
+    var text = "oder mit E-Mail"
+
     var body: some View {
         HStack(spacing: 10) {
             Rectangle().fill(RatsColor.border).frame(height: 1)
-            Text("oder mit E-Mail")
+            Text(text)
                 .font(RatsFont.body(11))
                 .foregroundStyle(RatsColor.muted)
             Rectangle().fill(RatsColor.border).frame(height: 1)

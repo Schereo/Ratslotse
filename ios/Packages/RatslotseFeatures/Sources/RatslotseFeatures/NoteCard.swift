@@ -50,7 +50,7 @@ struct NoteCard: View {
                 if let dk = model.notesKey {
                     NoteEditor(model: model, dk: dk, keyVersion: k.keyVersion, targetKind: targetKind, targetKey: targetKey)
                 } else {
-                    NoteUnlock(model: model, keys: k) { neu in self.keys = neu }
+                    NoteUnlock(model: model, keys: k, passkeys: keys.passkeys ?? []) { neu in self.keys = neu }
                 }
             } else {
                 NoteSetup(model: model, wofuer: wofuer) { neu in self.keys = neu }
@@ -97,12 +97,28 @@ private struct NoteSetup: View {
     @State private var arbeit = false
     @State private var fehler: String?
 
+    /// Mit Passkey statt Passphrase (Schalter `passkey-anmeldung`, ab iOS 18):
+    /// nichts zu merken. Der Passkey der Anmeldung genügt, sonst einer aus
+    /// dem Konto, sonst ein neuer — wie das Notiz-Schloss im Web.
+    private var mitPasskey: Bool { model.passkeysEnabled && PasskeyAuthenticator.supportsPRF }
+
     var body: some View {
         if !offen {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Notiere dir, was du zu diesem \(wofuer) wissen oder nachfragen willst. Nur du kannst es lesen.")
                     .font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary)
-                Button("Notizen einrichten") { offen = true }.buttonStyle(PrimaryButtonStyle())
+                if mitPasskey {
+                    Button { Task { await mitPasskeyEinrichten() } } label: {
+                        RatsLabel(arbeit ? "Wartet auf den Passkey …" : "Mit Passkey einrichten", .key)
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(arbeit)
+                    if let fehler { Text(fehler).font(RatsFont.body(13)).foregroundStyle(RatsColor.danger) }
+                    Button("Lieber mit Notiz-Passphrase") { offen = true }
+                        .font(RatsFont.body(13, weight: .medium)).foregroundStyle(RatsColor.primary)
+                } else {
+                    Button("Notizen einrichten") { offen = true }.buttonStyle(PrimaryButtonStyle())
+                }
             }
         } else if let entwurf {
             VStack(alignment: .leading, spacing: 10) {
@@ -145,13 +161,26 @@ private struct NoteSetup: View {
         }
     }
 
+    private func mitPasskeyEinrichten() async {
+        guard let owner = model.user?.id else { return }
+        arbeit = true
+        defer { arbeit = false }
+        fehler = nil
+        do {
+            let passkey = try await model.obtainNotesPasskey(owner: owner)
+            fertig(try await model.setupNotesWithPasskey(credentialId: passkey.credentialId, kek: passkey.kek))
+        } catch {
+            fehler = PasskeyError.message(for: error)
+        }
+    }
+
     private func einrichten(_ e: (keys: NotesCrypto.WrappedKeys, recoveryCode: String, dk: Data)) async {
         arbeit = true
         defer { arbeit = false }
         do {
             let state: NoteKeysState = try await model.api.send("/api/notes/keys", method: .put, body: e.keys)
             model.setNotesKey(e.dk, remember: merken)
-            fertig(state)
+            fertig(await model.attachPendingNotesPasskey(dk: e.dk, keyVersion: e.keys.key_version) ?? state)
         } catch {
             fehler = (error as? APIError)?.message ?? "Einrichten hat nicht geklappt."
         }
@@ -161,6 +190,7 @@ private struct NoteSetup: View {
 private struct NoteUnlock: View {
     let model: AppModel
     let keys: NoteKeys
+    var passkeys: [NotePasskey] = []
     let neueKeys: (NoteKeysState) -> Void
     @State private var pass = ""
     @State private var merken = true
@@ -170,15 +200,40 @@ private struct NoteUnlock: View {
     @State private var arbeit = false
     @State private var fehler: String?
 
-    /// Im Web nur mit Passkey eingerichtet: Dann bleibt in der App nur der
-    /// Notfall-Code, falls es einen gibt (Passkeys in der App folgen).
+    /// Nur mit Passkey eingerichtet: Ohne Passkey-Weg bleibt dann nur der
+    /// Notfall-Code, falls es einen gibt.
     private var nurPasskey: Bool { keys.wrappedPassphrase == nil }
     private var mitCode: Bool { vergessen || nurPasskey }
+    /// Mit einem der Notiz-Passkeys entsperren (Schalter `passkey-anmeldung`,
+    /// ab iOS 18 — davor liefert das Gerät kein PRF).
+    private var passkeyWeg: Bool {
+        model.passkeysEnabled && PasskeyAuthenticator.supportsPRF && !passkeys.isEmpty
+    }
+
+    /// Warum es hier keinen Passkey-Knopf gibt — und was stattdessen bleibt.
+    private var ohnePasskeyWeg: String {
+        let rest = keys.wrappedRecovery == nil
+            ? "Öffne sie im Browser."
+            : "Bis dahin öffnet sie hier der Notfall-Code."
+        return PasskeyAuthenticator.supportsPRF
+            ? "Deine Notizen schützt ein Passkey. In der App kommt das bald. \(rest)"
+            : "Deine Notizen schützt ein Passkey. In der App geht das ab iOS 18. \(rest)"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if nurPasskey {
-                Text("Deine Notizen schützt ein Passkey — in der App kommt das mit einem der nächsten Updates.")
+            if passkeyWeg {
+                Button { Task { await mitPasskey() } } label: {
+                    RatsLabel(arbeit ? "Wartet auf den Passkey …" : "Mit Passkey entsperren", .key)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(arbeit)
+                // Ohne Code fehlt unten die Zeile für Fehler.
+                if nurPasskey && keys.wrappedRecovery == nil, let fehler {
+                    Text(fehler).font(RatsFont.body(13)).foregroundStyle(RatsColor.danger)
+                }
+            } else if nurPasskey {
+                Text(ohnePasskeyWeg)
                     .font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -220,6 +275,26 @@ private struct NoteUnlock: View {
         return vergessen ? neu.count < 10 || code.isEmpty : pass.isEmpty
     }
 
+    private func mitPasskey() async {
+        arbeit = true
+        defer { arbeit = false }
+        fehler = nil
+        do {
+            let dk = try await model.unlockNotesWithPasskey(passkeys)
+            model.setNotesKey(dk, remember: merken)
+            if let state = await model.attachPendingNotesPasskey(dk: dk, keyVersion: keys.keyVersion) { neueKeys(state) }
+        } catch {
+            fehler = PasskeyError.message(for: error)
+        }
+    }
+
+    /// Offen — und liegt ein Anmelde-Passkey aus dieser Sitzung bereit, kommt
+    /// er dazu: Die nächste Anmeldung öffnet die Notizen dann von selbst.
+    private func offen(_ dk: Data) async {
+        model.setNotesKey(dk, remember: merken)
+        if let state = await model.attachPendingNotesPasskey(dk: dk, keyVersion: keys.keyVersion) { neueKeys(state) }
+    }
+
     private func los() async {
         arbeit = true
         defer { arbeit = false }
@@ -234,7 +309,7 @@ private struct NoteUnlock: View {
             guard let dk else { fehler = "Dieser Code passt nicht."; return }
             if nurPasskey {
                 // Ohne Passphrase gibt es nichts neu zu verpacken.
-                model.setNotesKey(dk, remember: merken)
+                await offen(dk)
                 return
             }
             let neuVerpackt: String? = await Task.detached {
@@ -245,7 +320,7 @@ private struct NoteUnlock: View {
                 let body = NoteKeysRewrap(keyVersion: k.keyVersion, iterations: k.iterations, salt: k.salt, wrappedPassphrase: w)
                 let state: NoteKeysState = try await model.api.send("/api/notes/keys", method: .put, body: body)
                 neueKeys(state)
-                model.setNotesKey(dk, remember: merken)
+                await offen(dk)
             } catch {
                 fehler = (error as? APIError)?.message ?? "Das hat nicht geklappt."
             }
@@ -257,7 +332,7 @@ private struct NoteUnlock: View {
             }.value
             guard let dk else { fehler = "Diese Passphrase passt nicht."; return }
             pass = ""
-            model.setNotesKey(dk, remember: merken)
+            await offen(dk)
         }
     }
 }

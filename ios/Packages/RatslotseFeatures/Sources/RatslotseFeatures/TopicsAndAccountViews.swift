@@ -490,6 +490,7 @@ struct AccountView: View {
     @State private var isChangingPassword = false
     @State private var isChangingEmail = false
     @State private var isDeletingAccount = false
+    @State private var isManagingPasskeys = false
     @State private var error: String?
 
     var body: some View {
@@ -673,8 +674,21 @@ struct AccountView: View {
                                 RatsIcon(.circleCheckBig, size: 16).foregroundStyle(RatsColor.success)
                             }
                         }
+                        if model.passkeysEnabled {
+                            if user.hasPassword || user.appleLinked { Divider().overlay(RatsColor.separator) }
+                            Button { isManagingPasskeys = true } label: {
+                                RatsSettingsRow(
+                                    "Passkeys",
+                                    detail: "Anmelden mit Face ID oder Touch ID, ohne Passwort",
+                                    symbol: .key
+                                ) {
+                                    RatsIcon(.chevronRight, size: 16).foregroundStyle(RatsColor.muted)
+                                }
+                            }
+                            .buttonStyle(RatsPlainButtonStyle())
+                        }
                         if !user.hasPassword {
-                            if user.appleLinked { Divider().overlay(RatsColor.separator) }
+                            if user.appleLinked || model.passkeysEnabled { Divider().overlay(RatsColor.separator) }
                             Button {
                                 Task {
                                     do {
@@ -687,7 +701,9 @@ struct AccountView: View {
                             } label: {
                                 RatsSettingsRow(
                                     "Passwort per E-Mail einrichten",
-                                    detail: "Ergänzt die Apple-Anmeldung um ein eigenes Passwort",
+                                    detail: user.appleLinked
+                                        ? "Ergänzt die Apple-Anmeldung um ein eigenes Passwort"
+                                        : "Ergänzt den Passkey um ein eigenes Passwort",
                                     symbol: .mailWarning
                                 ) {
                                     RatsIcon(.chevronRight, size: 16).foregroundStyle(RatsColor.muted)
@@ -755,6 +771,7 @@ struct AccountView: View {
                 case "password": isChangingPassword = true
                 case "delete": isDeletingAccount = true
                 case "email": isChangingEmail = true
+                case "passkeys": isManagingPasskeys = true
                 default: break
                 }
 #endif
@@ -769,6 +786,10 @@ struct AccountView: View {
             }
             .sheet(isPresented: $isDeletingAccount) {
                 DeleteAccountView(model: model)
+                    .ratsLargeSheet()
+            }
+            .sheet(isPresented: $isManagingPasskeys) {
+                AccountPasskeysView(model: model)
                     .ratsLargeSheet()
             }
             .sensoryFeedback(.success, trigger: displayNameSuccessPulse)
@@ -918,12 +939,15 @@ private struct ChangeEmailView: View {
     @State private var neu = ""
     @State private var passwort = ""
     @State private var appleToken = ""
+    @State private var passkey: PasskeyAssertionCredential?
     @State private var busy = false
     @State private var error: String?
 
     /// Apple-Konto ohne selbst gesetztes Passwort: Hier weist man sich per
     /// Apple aus, nicht mit einem Passwort, das es nicht gibt.
-    private var brauchtApple: Bool { model.user?.hasPassword == false }
+    private var brauchtApple: Bool { model.user?.hasPassword == false && model.user?.appleLinked == true }
+    /// Weder Passwort noch Apple: ein Konto, das mit Passkey entstand.
+    private var brauchtPasskey: Bool { model.user?.hasPassword == false && model.user?.appleLinked != true }
     private var schwebend: String? { model.user?.pendingEmail }
 
     var body: some View {
@@ -989,6 +1013,8 @@ private struct ChangeEmailView: View {
                                     }
                                     .frame(height: 46)
                                     .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button))
+                                } else if brauchtPasskey {
+                                    PasskeyConfirmButton(model: model, credential: $passkey)
                                 } else {
                                     RatsLabeledField(label: "Aktuelles Passwort") {
                                         SecureField("Passwort", text: $passwort)
@@ -1018,7 +1044,8 @@ private struct ChangeEmailView: View {
 
     private var bereit: Bool {
         guard neu.contains("@"), !neu.hasPrefix("@"), !neu.hasSuffix("@") else { return false }
-        return brauchtApple ? !appleToken.isEmpty : !passwort.isEmpty
+        if brauchtApple { return !appleToken.isEmpty }
+        return brauchtPasskey ? passkey != nil : !passwort.isEmpty
     }
 
     private func aendern() {
@@ -1028,7 +1055,7 @@ private struct ChangeEmailView: View {
             do {
                 try await model.changeEmail(
                     newEmail: neu.trimmingCharacters(in: .whitespacesAndNewlines),
-                    password: passwort, appleIdentityToken: appleToken)
+                    password: passwort, appleIdentityToken: appleToken, passkey: passkey)
                 // Ohne Mail-Versand ist die Adresse schon umgeschrieben, sonst
                 // ist erst ein Link unterwegs — beides sagt `pendingEmail`.
                 model.alertMessage = model.user?.pendingEmail.map {
@@ -1037,8 +1064,11 @@ private struct ChangeEmailView: View {
                 if model.user?.pendingEmail == nil { dismiss() }
                 passwort = ""
                 appleToken = ""
+                passkey = nil
             } catch {
                 self.error = error.localizedDescription
+                // Eine Bestätigung gilt genau einmal.
+                passkey = nil
             }
             busy = false
         }
@@ -1148,8 +1178,13 @@ private struct DeleteAccountView: View {
     @State private var password = ""
     @State private var appleToken = ""
     @State private var appleAuthorizationCode = ""
+    @State private var passkey: PasskeyAssertionCredential?
     @State private var confirmation = ""
     @State private var error: String?
+
+    /// Weder Passwort noch Apple: ein Konto, das mit Passkey entstand. Ohne
+    /// diesen Weg ließe es sich in der App nicht löschen (App Store 5.1.1).
+    private var brauchtPasskey: Bool { model.user?.hasPassword == false && model.user?.appleLinked != true }
 
     var body: some View {
         NavigationStack {
@@ -1164,7 +1199,9 @@ private struct DeleteAccountView: View {
                         symbol: .triangleAlert
                     )
                     RatsSectionPanel("Identität bestätigen", symbol: .userCog) {
-                        if model.user?.appleLinked != true {
+                        if brauchtPasskey {
+                            PasskeyConfirmButton(model: model, credential: $passkey)
+                        } else if model.user?.appleLinked != true {
                             RatsLabeledField(label: "Aktuelles Passwort") {
                                 SecureField("Passwort", text: $password)
                                     .textContentType(.password)
@@ -1218,6 +1255,7 @@ private struct DeleteAccountView: View {
 
     private var canDelete: Bool {
         guard confirmation == "LÖSCHEN" else { return false }
+        if brauchtPasskey { return passkey != nil }
         if model.user?.appleLinked == true {
             return !appleToken.isEmpty && !appleAuthorizationCode.isEmpty
         }
@@ -1229,6 +1267,7 @@ private struct DeleteAccountView: View {
             let current_password: String
             let apple_identity_token: String
             let apple_authorization_code: String
+            let passkey: PasskeyAssertionCredential?
         }
         Task {
             do {
@@ -1237,12 +1276,17 @@ private struct DeleteAccountView: View {
                     body: Body(
                         current_password: password,
                         apple_identity_token: appleToken,
-                        apple_authorization_code: appleAuthorizationCode
+                        apple_authorization_code: appleAuthorizationCode,
+                        passkey: passkey
                     )
                 )
                 await model.logout()
                 dismiss()
-            } catch { self.error = error.localizedDescription }
+            } catch {
+                self.error = error.localizedDescription
+                // Eine Bestätigung gilt genau einmal.
+                passkey = nil
+            }
         }
     }
 }

@@ -11,6 +11,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:ratslotse.de</string>
+		<string>webcredentials:ratslotse.de</string>
 	</array>
 </dict>
 </plist>
