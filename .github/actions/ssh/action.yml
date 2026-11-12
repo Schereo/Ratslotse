@@ -41,11 +41,11 @@ inputs:
     default: ""
   known_hosts:
     description: >-
-      Zeilen im known_hosts-Format für Ziel und Sprungrechner. Gesetzt, wird
-      jeder andere Host-Schlüssel abgewiesen; leer, wird der erste angenommen
-      (so verhielt sich appleboy/ssh-action ohne `fingerprint`) und der Lauf
-      trägt eine Warnung. Die Workflows geben `secrets.VPS_KNOWN_HOSTS`.
-    default: ""
+      Zeilen im known_hosts-Format für Ziel und Sprungrechner; jeder andere
+      Host-Schlüssel wird abgewiesen. Leer bricht der Schritt ab (appleboy
+      nahm ohne `fingerprint` jeden an). Die Workflows geben
+      `secrets.VPS_KNOWN_HOSTS`.
+    required: true
   script:
     description: Skript für bash auf dem Ziel.
     default: ""

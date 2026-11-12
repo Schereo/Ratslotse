@@ -77,6 +77,7 @@ except subprocess.TimeoutExpired:
 """
 
 KEY = "-----BEGIN OPENSSH PRIVATE KEY-----\nAAAAzielschluessel\n-----END OPENSSH PRIVATE KEY-----"
+KNOWN = "[ziel.example.org]:2222 ssh-ed25519 AAAA"
 PROXY_KEY = "-----BEGIN OPENSSH PRIVATE KEY-----\nAAAAsprungschluessel\n-----END OPENSSH PRIVATE KEY-----"
 
 
@@ -107,6 +108,7 @@ def remote(tmp_path):
             "INPUT_PROXY_PORT": "2223",
             "INPUT_PROXY_USERNAME": "springer",
             "INPUT_PROXY_KEY": PROXY_KEY,
+            "INPUT_KNOWN_HOSTS": KNOWN,
             **{f"INPUT_{k.upper()}": v for k, v in inputs.items()},
             **(extra_env or {}),
         }
@@ -170,7 +172,7 @@ def test_config_goes_through_the_jump_host_with_both_keys(remote):
     config = (r.log / "config").read_text()
     for line in ("HostName ziel.example.org", "Port 2222", "User deploy", "ProxyJump ratslotse-jump",
                  "HostName sprung.example.org", "Port 2223", "User springer",
-                 "IdentitiesOnly yes", "BatchMode yes", "StrictHostKeyChecking accept-new"):
+                 "IdentitiesOnly yes", "BatchMode yes", "StrictHostKeyChecking yes"):
         assert line in config, line
     assert (r.log / "key").read_text() == KEY + "\n"
     assert (r.log / "proxy_key").read_text() == PROXY_KEY + "\n"
@@ -192,18 +194,20 @@ def test_proxy_key_defaults_to_the_target_key_and_proxy_is_optional(remote):
     assert "ProxyJump" not in (r.log / "config").read_text()
 
 
-def test_known_hosts_switches_on_strict_checking(remote):
-    r = remote(script="true", known_hosts="[ziel.example.org]:2222 ssh-ed25519 AAAA")
-    assert r.returncode == 0, r.stderr
-    assert "StrictHostKeyChecking yes" in (r.log / "config").read_text()
-    assert "::warning" not in r.stdout
+def test_without_known_hosts_nothing_connects(remote):
+    """Bis 11/2026 nahm ein leeres Secret jeden Schlüssel an, mit Warnung."""
+    r = remote(script="echo nie", known_hosts="")
+    assert r.returncode == 2
+    assert "VPS_KNOWN_HOSTS" in r.stderr and "nie" not in r.stdout
+    assert not (r.log / "argv").exists()
 
 
-def test_without_known_hosts_every_run_carries_a_warning(remote):
-    r = remote(script="true")
-    assert r.returncode == 0, r.stderr
-    assert "::warning title=Host-Schlüssel ungeprüft::" in r.stdout
-    assert "VPS_KNOWN_HOSTS" in r.stdout
+def test_no_fallback_accepts_unknown_host_keys():
+    """Ein `accept-new` oder `no` in den Actions wäre der alte Zustand durch die Hintertür."""
+    for run in (RUN, CONFIG_RUN):
+        text = run.read_text(encoding="utf-8")
+        assert "accept-new" not in text, run
+        assert "StrictHostKeyChecking yes" in text and "StrictHostKeyChecking $" not in text, run
 
 
 def test_known_hosts_without_an_entry_is_refused(remote):
@@ -215,7 +219,7 @@ def test_known_hosts_without_an_entry_is_refused(remote):
 
 def test_a_failed_connection_points_to_the_secret_when_checking(remote):
     """Exit 255 heißt bei strenger Prüfung meist: Schlüssel fehlt oder ist neu."""
-    r = remote(script="exit 255", known_hosts="[ziel.example.org]:2222 ssh-ed25519 AAAA")
+    r = remote(script="exit 255")
     assert r.returncode == 255
     assert "VPS_KNOWN_HOSTS" in r.stderr
 
@@ -235,6 +239,7 @@ def test_upload_copies_into_the_target_folder(remote, tmp_path):
     ({"key": "", "script": "true"}, "key"),
     ({"command_timeout": "1h30m", "script": "true"}, "command_timeout"),
     ({"envs": "kein-name", "script": "true"}, "envs"),
+    ({"known_hosts": "", "script": "true"}, "VPS_KNOWN_HOSTS"),
     ({"source": "gibt-es-nicht.txt", "target": "app/"}, "gibt-es-nicht"),
     ({}, "Weder script noch source"),
 ])
@@ -247,7 +252,7 @@ def test_bad_inputs_stop_before_connecting(remote, inputs, message):
 
 @pytest.mark.skipif(REAL_SSH is None, reason="kein ssh installiert")
 def test_real_ssh_reads_the_config_as_meant(remote):
-    r = remote(script="true", known_hosts="[ziel.example.org]:2222 ssh-ed25519 AAAA")
+    r = remote(script="true")
     assert r.returncode == 0, r.stderr
     target = _ssh_g(r.log / "config", "ratslotse-target")
     assert target["hostname"] == "ziel.example.org" and target["port"] == "2222"
@@ -290,6 +295,7 @@ def configure(tmp_path):
             "INPUT_PROXY_HOST": "sprung.example.org",
             "INPUT_PROXY_PORT": "2223",
             "INPUT_PROXY_USERNAME": "springer",
+            "INPUT_KNOWN_HOSTS": "[prod.example.org]:2222 ssh-ed25519 AAAA",
             **{f"INPUT_{k.upper()}": v for k, v in inputs.items()},
         }
         result = subprocess.run(["bash", str(CONFIG_RUN)], env=env, cwd=tmp_path,
@@ -331,13 +337,6 @@ def test_real_ssh_reads_the_generated_config_as_meant(configure):
     assert edge["user"] == "springer" and edge["stricthostkeychecking"] == "true"
 
 
-def test_config_without_known_hosts_accepts_the_first_key_and_warns(configure):
-    r = configure()
-    assert r.returncode == 0, r.stderr
-    assert "StrictHostKeyChecking accept-new" in (r.ssh_dir / "config").read_text()
-    assert "::warning title=Host-Schlüssel ungeprüft::" in r.stdout
-
-
 @pytest.mark.parametrize("inputs, message", [
     ({"targets": "target "}, "fehlt ein Secret"),
     ({"targets": "target ein host"}, "fehlt ein Secret"),
@@ -348,6 +347,7 @@ def test_config_without_known_hosts_accepts_the_first_key_and_warns(configure):
     ({"port": "zweiundzwanzig"}, "port"),
     ({"key": ""}, "key"),
     ({"known_hosts": "# leer"}, "keinen Eintrag"),
+    ({"known_hosts": ""}, "VPS_KNOWN_HOSTS"),
 ])
 def test_bad_config_inputs_write_nothing(configure, inputs, message):
     r = configure(**inputs)

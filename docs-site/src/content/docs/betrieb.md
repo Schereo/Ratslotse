@@ -404,45 +404,6 @@ Schritte, die selbst `ssh`, `scp` oder `rsync` aufrufen (`deploy.yml`,
 Workflows, jedes Mal mit `StrictHostKeyChecking no`. Der Deploy-Key geht an
 nichts anderes als an diese beiden Actions, auch an kein eigenes `run:`-Skript.
 
-### Host-Schlüssel (`VPS_KNOWN_HOSTS`)
-
-Beide Actions prüfen die Host-Schlüssel von Sprungrechner, Prod und Dev gegen
-das Secret `VPS_KNOWN_HOSTS`. Ist es leer, nehmen sie den ersten Schlüssel an,
-und weil jeder Lauf auf einem frischen Runner beginnt, heißt das: jeden. Der
-Lauf trägt dann die Warnung „Host-Schlüssel ungeprüft“.
-
-Angelegt wird es mit den Schlüsseln, so wie die CI die Rechner erreicht: den
-Sprungrechner von außen, Prod und Dev **vom Sprungrechner aus** (die CI geht
-über `ProxyJump`, aufgelöst wird der Name also dort). Die Werte in spitzen
-Klammern sind die der gleichnamigen Secrets:
-
-```bash
-P=<VPS_SSH_PORT>
-ssh-keyscan -t ed25519 -p $P <VPS_PROXY_HOST> > known_hosts_ci
-ssh -p $P <dein-login>@<VPS_PROXY_HOST> \
-  "ssh-keyscan -t ed25519 -p $P <VPS_HOST> <VPS_DEV_HOST>" >> known_hosts_ci
-ssh-keygen -lf known_hosts_ci        # drei Zeilen, je ein Fingerabdruck
-gh secret set VPS_KNOWN_HOSTS < known_hosts_ci
-```
-
-Der erste Befehl ist für sich ungeprüft. Den Fingerabdruck des Sprungrechners
-deshalb gegen das eigene `known_hosts` halten
-(`ssh-keygen -lF '[<VPS_PROXY_HOST>]:<VPS_SSH_PORT>'`; bei Port 22 ohne
-Klammern und Port) oder auf dem Rechner selbst gegen
-`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`. Gehashte Zeilen
-(`ssh-keygen -H`) gehen auch.
-
-Danach einmal ohne Folgen ausprobieren, bevor der nächste Deploy es tut:
-
-```bash
-gh workflow run ops-modelle.yml --ref dev -f umgebung=dev          # Sprungrechner + Dev
-gh workflow run ops-wartungsbarriere.yml --ref dev -f aktion=status  # Sprungrechner + Prod, liest nur
-```
-
-**Bekommt ein Server einen neuen Schlüssel** (Neuinstallation, Umzug), scheitert
-jeder Lauf dorthin mit „Host key verification failed“, bis das Secret
-nachgezogen ist. Das ist gewollt: Genau so sähe auch ein Angriff aus.
-
 | Workflow | Wofür | Idempotent? |
 |---|---|---|
 | `ops-vorlagen-backfill.yml` | Holt alle fehlenden Vorlagen-Volltexte und Anlagen (inkl. Antragsteller-Erkennung) nach und baut anschließend den FTS-Index neu. Timeout 120 min. | Ja — nur Fehlendes; der Rebuild ist reproduzierbar. |
@@ -459,6 +420,57 @@ durch, endet es mit Exit 1 und der Workflow bricht ab — der Voll-Backfill
 startet dann gar nicht erst, stattdessen ist der Prompt nachzuschärfen. Erst
 nach bestandenem Gate startet Schritt 2 den Voll-Lauf; der läuft serverseitig
 per `nohup` weiter, während der Workflow selbst schon fertig ist.
+
+### Host-Schlüssel (`VPS_KNOWN_HOSTS`)
+
+Beide Actions prüfen die Host-Schlüssel von Sprungrechner, Prod und Dev gegen
+das Secret `VPS_KNOWN_HOSTS`. Es steht seit dem 12.11.2026, mit je einer
+ed25519-Zeile für die drei Rechner. **Fehlt es oder ist es leer, bricht jeder
+SSH-Schritt ab, bevor er verbindet.** Bis 11/2026 nahmen die Actions in dem
+Fall den ersten Schlüssel an, mit einer Warnung im Lauf. Weil jeder Lauf auf
+einem frischen Runner beginnt, hieß das: jeden Schlüssel, auch den eines
+Rechners, der sich als Server ausgibt. Ein gelöschtes Secret hätte die Prüfung
+so still abgeschaltet.
+
+**Bekommt ein Server einen neuen Schlüssel** (Neuinstallation, Umzug), scheitert
+jeder Lauf dorthin mit „Host key verification failed“, bis das Secret
+nachgezogen ist. Das ist gewollt: Genau so sähe auch ein Angriff aus.
+
+**Nachziehen.** Jede Zeile muss den Rechner so nennen, wie das Secret ihn
+schreibt: `[host]:port`, bei Port 22 nur `host`. Steht im Secret eine IP,
+braucht die Zeile die IP, nicht den Namen. Der Sprungrechner lässt keine
+Befehle zu, er reicht nur durch (`This account is currently not available`).
+Die Schlüssel von Prod und Dev liest man deshalb über ihn auf dem Ziel selbst:
+
+```bash
+PORT=…; SPRUNG=…; PROD=…; DEV=…   # Werte der gleichnamigen Secrets
+LOGIN=…                            # dein Login auf Sprungrechner und Zielen
+name() { if [ "$PORT" = 22 ]; then echo "$1"; else echo "[$1]:$PORT"; fi; }
+ssh-keyscan -t ed25519 -p "$PORT" "$SPRUNG" > known_hosts_ci
+for h in "$PROD" "$DEV"; do
+  echo "$(name "$h") $(ssh -J "$LOGIN@$SPRUNG:$PORT" -p "$PORT" "$LOGIN@$h" \
+    cat /etc/ssh/ssh_host_ed25519_key.pub | cut -d' ' -f1,2)" >> known_hosts_ci
+done
+ssh-keygen -lf known_hosts_ci        # drei Zeilen, je ein Fingerabdruck
+gh secret set VPS_KNOWN_HOSTS < known_hosts_ci
+```
+
+Nur der `ssh-keyscan` ist für sich ungeprüft; die beiden anderen Schlüssel
+kommen über Verbindungen, die das eigene `known_hosts` schon prüft. Den
+Fingerabdruck des Sprungrechners deshalb dagegen halten:
+`ssh-keygen -lF "[$SPRUNG]:$PORT"` (bei Port 22 nur `"$SPRUNG"`).
+
+Am 12.11.2026 lief es ohne die Werte von Hand: Ein Wegwerf-Workflow las die
+Schlüssel mit genau den Werten aus den Secrets ein und gab sie nur
+verschlüsselt ins öffentliche Log. Lokal entschlüsselt, stimmten alle drei
+Fingerabdrücke mit dem `known_hosts` eines Admin-Rechners überein.
+
+Danach einmal ohne Folgen ausprobieren, bevor der nächste Deploy es tut:
+
+```bash
+gh workflow run ops-modelle.yml --ref dev -f umgebung=dev            # Sprungrechner + Dev
+gh workflow run ops-wartungsbarriere.yml --ref dev -f aktion=status  # Sprungrechner + Prod, liest nur
+```
 
 ---
 
