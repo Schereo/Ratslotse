@@ -32101,6 +32101,14 @@
               "string",
               "null"
             ]
+          },
+          "summary_source": {
+            "enum": [
+              "rule",
+              "model"
+            ],
+            "title": "Summary Source",
+            "type": "string"
           }
         },
         "required": [
@@ -32109,6 +32117,7 @@
           "closed_count",
           "substantive_count",
           "summary",
+          "summary_source",
           "next_session",
           "stages",
           "items"

@@ -7,7 +7,7 @@ import type { LiveState } from "./live";
 // Jede Zeile der Tabelle aus Plan § 4.5 hat hier einen Fall.
 
 const KURS = {
-  start: "18:00", public_count: 8, closed_count: 2, substantive_count: 4, summary: null, next_session: null,
+  start: "18:00", public_count: 8, closed_count: 2, substantive_count: 4, summary: null, summary_source: "rule", next_session: null,
   stages: [
     { kind: "start", name: "Zum Start", name_medium: null, name_short: "Start", subtitle: null, range: "Ö 1 – Ö 4", count: 4,
       cells: [{ label: "Ö 1–3", title: "Formalien", items: ["Ö 1", "Ö 2", "Ö 3"] }, { label: "Ö 4", title: null, items: ["Ö 4"] }] },

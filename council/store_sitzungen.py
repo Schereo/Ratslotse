@@ -18,6 +18,11 @@ from council.scraper import CouncilSession
 from council.store_basis import StoreBasis
 from council.store_wortbeitraege import WortbeitraegeMixin
 
+def _punkt_nummer(n: str | None) -> list[str]:
+    """„Ö 6" → „6", „Ö9" → „9", „10.2/10.3" → beide."""
+    return [re.sub(r"^\D+", "", t).strip() for t in (n or "").split("/") if t.strip()]
+
+
 class SitzungenMixin(StoreBasis):
     """Die Sitzungs-Abfragen — nur zum Mitvererben."""
 
@@ -1622,10 +1627,7 @@ class SitzungenMixin(StoreBasis):
                 f"SELECT kvonr, result FROM council_deliberations WHERE kvonr IN ({ph}) AND date = ?",
                 [*kvonrs, datum]) if b["result"]}
 
-        def nummer(n: str | None) -> list[str]:
-            # „Ö 6" → „6", „Ö9" → „9", „10.2/10.3" → beide.
-            return [re.sub(r"^\D+", "", t).strip() for t in (n or "").split("/") if t.strip()]
-
+        nummer = _punkt_nummer
         beschluesse: dict[str, dict] = {}
         for d in self._conn.execute(
                 "SELECT item_number, policy_field, importance, impact_reason, outcome, vote "
@@ -1709,23 +1711,77 @@ class SitzungenMixin(StoreBasis):
 
         geschlossen = sum(1 for r in rows if not r["is_public"])
         inhaltlich = sum(1 for it in items.values() if it["type"] not in course.FRAME_TYPES)
+        # Der Satz zählt nur, was das Protokoll sagt — dieselbe Grundlage wie
+        # die Farben im Kurs. Der Titel-Zusatz hilft nur beim Wiederfinden.
+        ergebnisse = {nr: (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("outcome")
+                      for nr in items} if protokoll else {}
+        satz = course.summary_sentence(
+            items, ergebnisse,
+            {nr: (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("vote") for nr in items},
+            rat=(sitzung["committee"] or "").strip().startswith("Rat"),
+            vorbei=bool(datum) and datum < date.today().isoformat())
+        satz_quelle = "rule"
+        # Hat das Modell den Satz zum selben Stand geschrieben, steht er statt
+        # des gerechneten da; kam das Protokoll erst danach, gilt bis zum
+        # nächsten Lauf der gerechnete (er kennt die Ergebnisse schon).
+        gespeichert = self.session_sentence(int(ksinr))
+        if gespeichert and gespeichert["stage"] == ("protocol" if any(ergebnisse.values()) else "agenda"):
+            satz, satz_quelle = gespeichert["sentence"], "model"
         return {
             "start": (sitzung["session_time"] or "").strip() or None,
             "public_count": len(oeffentlich),
             "closed_count": geschlossen,
             "substantive_count": inhaltlich,
-            # Der Satz zählt nur, was das Protokoll sagt — dieselbe Grundlage wie
-            # die Farben im Kurs. Der Titel-Zusatz hilft nur beim Wiederfinden.
-            "summary": course.summary_sentence(
-                items, {nr: (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("outcome")
-                        for nr in items} if protokoll else {},
-                {nr: (beschluesse.get((nummer(nr) or [""])[0]) or {}).get("vote") for nr in items},
-                rat=(sitzung["committee"] or "").strip().startswith("Rat"),
-                vorbei=bool(datum) and datum < date.today().isoformat()),
+            "summary": satz,
+            "summary_source": satz_quelle,
             "next_session": self._naechste_sitzung_des_gremiums(sitzung["committee"], datum),
             "stages": stages,
             "items": items,
         }
+
+    # ---- Lottis Satz zur Sitzung, vom Modell (council/session_summary.py) ----
+
+    def session_sentence(self, ksinr: int) -> dict | None:
+        r = self._conn.execute(
+            "SELECT stage, sentence, material_hash, model, created_at FROM council_session_sentences "
+            "WHERE ksinr = ?", (int(ksinr),)).fetchone()
+        return dict(r) if r else None
+
+    def save_session_sentence(self, ksinr: int, stage: str, sentence: str, material_hash: str, model: str) -> None:
+        self._conn.execute(
+            "INSERT OR REPLACE INTO council_session_sentences "
+            "(ksinr, stage, sentence, material_hash, model, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (int(ksinr), stage, sentence, material_hash, model, datetime.now(UTC).isoformat(timespec="seconds")))
+        self._conn.commit()
+
+    def session_sentence_input(self, ksinr: int) -> dict | None:
+        """Was der Satz braucht: Gremium, Datum, die Punkte aus dem Kurs, ihre
+        Kurzfassungen und — mit Protokoll — das Ergebnis je Punkt. ``None``
+        ohne Tagesordnung."""
+        sitzung = self.get_session(int(ksinr))
+        kurs = self.session_course(int(ksinr))
+        if not sitzung or not kurs:
+            return None
+        ergebnisse: dict[str, str] = {}
+        if self.has_protocol(int(ksinr)):
+            je_nummer: dict[str, str] = {}
+            for d in self._conn.execute(
+                    "SELECT item_number, outcome FROM council_decisions WHERE ksinr = ? AND kind = 'decision' "
+                    "AND outcome IS NOT NULL", (int(ksinr),)):
+                for n in _punkt_nummer(d["item_number"]):
+                    je_nummer.setdefault(n, d["outcome"])
+            ergebnisse = {nr: je_nummer[n[0]] for nr in kurs["items"]
+                          if (n := _punkt_nummer(nr)) and n[0] in je_nummer}
+        return {"committee": sitzung["committee"], "session_date": sitzung["session_date"],
+                "items": kurs["items"], "summaries": self.agenda_summaries_for(int(ksinr)),
+                "outcomes": ergebnisse}
+
+    def sessions_for_sentences(self, since: str) -> list[int]:
+        """Sitzungen ab ``since`` mit öffentlicher Tagesordnung, jüngste zuerst."""
+        return [r["ksinr"] for r in self._conn.execute(
+            "SELECT s.ksinr FROM council_sessions s WHERE s.session_date >= ? AND EXISTS "
+            "(SELECT 1 FROM council_agenda_items a WHERE a.ksinr = s.ksinr AND a.is_public) "
+            "ORDER BY s.session_date DESC", (since,))]
 
     def session_item(self, ksinr: int, item_number: str) -> dict | None:
         """Ein Tagesordnungspunkt für seine eigene Seite (Plan Sitzungsseite,

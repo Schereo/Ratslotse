@@ -2935,9 +2935,14 @@ class SessionCourse(TypedDict):
     public_count: int
     closed_count: int
     substantive_count: int
-    #: Der Satz zur Sitzung, gerechnet ohne Modell: vor dem Protokoll, was
-    #: ansteht; danach, was herauskam. ``None`` ohne inhaltliche Punkte.
+    #: Der Satz zur Sitzung: vor dem Protokoll, was ansteht; danach, was
+    #: herauskam. ``None`` ohne inhaltliche Punkte.
     summary: str | None
+    #: Wer ihn geschrieben hat: ``model`` (``council/session_summary.py``, je
+    #: Sitzung beim Eintreffen von Tagesordnung und Protokoll) oder ``rule``
+    #: (gerechnet, ``council/course.py`` — der Rückfall, solange das Modell den
+    #: aktuellen Stand noch nicht kennt).
+    summary_source: Literal["rule", "model"]
     next_session: CourseNextSession | None
     stages: list[CourseStage]
     items: dict[str, CourseItem]
