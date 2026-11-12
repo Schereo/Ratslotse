@@ -1070,3 +1070,13 @@ und schob alles darunter weg; die Zahl wuchs von einem 40-px-Balken auf das
 Vierfache (Tims Befund 01.10.2026: „ploppt auf“). Ein Widget, das ohne Daten
 ganz entfällt (Woche ohne Sitzungen, Fundstück), zeigt das Skelett nur,
 solange die Antwort aussteht.
+
+### KI-Stern statt Hinweiszeile (seit 11/2026)
+
+Ein automatisch erstellter Text trägt **am Text selbst** einen kleinen
+Funken in Signal-Orange (`components/ki-stern.tsx`). Beim Überfahren, auf dem
+Telefon beim Antippen, sagt er, woher der Text kommt und was verbindlich ist.
+**Keine Hinweiszeile darüber oder darunter** („Kurzfassungen sind
+automatisch …“): Sie wiederholt sich auf jeder Seite und wird überlesen (Tims
+Entscheidung 12.11.2026). Die Hover-Karte bleibt kurz, ein bis zwei Sätze.
+

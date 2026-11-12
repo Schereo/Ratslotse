@@ -10,7 +10,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ExternalLink, MessageSquareQuote, Sparkles } from "lucide-react";
+import { ExternalLink, MessageSquareQuote } from "lucide-react";
+import { KiStern } from "@/components/ki-stern";
 import { partyBrand } from "@/components/decision-ui";
 import { chipMerken } from "@/lib/chip-frage";
 import {
@@ -62,15 +63,12 @@ export function Argumente({ args, ksinr, itemNumber }: { args: ItemArguments; ks
   return (
     <section aria-labelledby="argumente-titel">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="argumente-titel" className="font-display text-base font-semibold text-foreground">Worüber gestritten wird</h2>
+        <h2 id="argumente-titel" className="font-display text-base font-semibold text-foreground">
+          Worüber gestritten wird
+          {basis && <KiStern className="ml-1" text={`Von einem Sprachmodell zusammengestellt ${basis}.`} />}
+        </h2>
         <p className={KICKER}>{countLine(args)}</p>
       </div>
-      {basis && (
-        <p className="mt-1 flex items-start gap-1.5 text-hinweis text-muted-foreground">
-          <Sparkles className="mt-0.5 h-3.5 w-3.5 flex-none text-signal" aria-hidden />
-          Von einem Sprachmodell zusammengestellt {basis}.
-        </p>
-      )}
 
       {args.issues.map((iss, i) => (
         <article key={iss.question} className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
