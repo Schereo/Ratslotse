@@ -30,7 +30,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
         # Beratender Bot, kein Qualitäts-Gate: Scheitert der Review (z. B.
         # leeres API-Guthaben, 21.07.2026), soll der PR nicht rot werden —
         # es fehlt dann schlicht der Review-Kommentar. Echte Workflow-Defekte

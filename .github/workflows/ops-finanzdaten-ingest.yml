@@ -65,7 +65,7 @@ jobs:
       - name: "Ingests auf der VM (${{ inputs.umgebung }})"
         env:
           AUCH_SCHRUMPFEN: ${{ inputs.auch_schrumpfen }}
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
         with:
           host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}
