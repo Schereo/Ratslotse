@@ -93,3 +93,7 @@ class StoreBasis:
         def dossier_cost_label(self, template_number: str | None) -> str | None:
             """„89.000 € jährlich" aus dem Dossier (``store_unterlagen``)."""
             ...
+
+        def item_documents(self, ksinr: int, item_number: str) -> list[dict]:
+            """Die Dokumente eines Punkts über alle Stationen (``store_unterlagen``)."""
+            ...
