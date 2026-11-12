@@ -293,6 +293,19 @@ mit diesem Passkey eingerichtet → entsperren; mit anderem Schlüssel → für 
 Sitzung merken und beim nächsten Entsperren dazulegen. Die Formen im Backend
 nehmen `clientExtensionResults` gar nicht erst an.
 
+**In der iOS-App** fragt `ASAuthorizationPlatformPublicKeyCredentialProvider`
+(`ios/…/PasskeyAuthenticator.swift`) mit demselben Salz; PRF gibt es ab
+iOS 18, davor geht nur die Anmeldung. Was ohne AuthenticationServices geht —
+Optionen lesen, das Ergebnis für den Server ohne PRF schreiben, Schlüssel per
+HKDF ableiten, die drei Lagen der Notizen — steht testbar in
+`RatslotseAPI/Passkeys.swift`, mit denselben Testvektoren wie im Web. Die App
+schickt keine `Origin`; die RP-ID kommt dann aus `APP_BASE_URL`, auf Prod also
+`ratslotse.de`. Damit das Gerät der App einen Passkey dieser Domain gibt,
+braucht es beides: `webcredentials:ratslotse.de` im Entitlement und
+`webcredentials` in `public/.well-known/apple-app-site-association.json`
+(`tests/test_universal_links.py` hält beides fest). Weil diese Datei erst mit
+dem Release auf Prod liegt, steht auch die App hinter dem Schalter.
+
 ### Anmeldelinks in Mails
 
 Hinter dem Schalter `zugangslinks` tragen die Links der Release-Ankündigung

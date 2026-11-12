@@ -32,6 +32,15 @@ describe("Verpacken mit dem PRF-Geheimnis", () => {
     expect(await unwrap(verpackt, await passkeyKek(new Uint8Array(32).fill(0x5b)))).toBeNull();
   });
 
+  it("ergibt dieselben Bytes wie die App (Testvektor aus `PasskeysTests.swift`)", async () => {
+    // PRF = 32 × 0x5a, DK = 32 × 0x11. Ändert sich hier etwas, schließt derselbe
+    // Passkey im Browser auf und in der App nicht mehr.
+    const dk = await crypto.subtle.importKey("raw", new Uint8Array(32).fill(0x11), { name: "AES-GCM" }, true,
+      ["encrypt", "decrypt"]);
+    expect(await wrap(dk, await passkeyKek(new Uint8Array(32).fill(0x5a))))
+      .toBe("waaUYZJ0tt9nEz/QzsW1KcByiM15SL79fCqUXiHHzi+Kn7T2/i5PwA==");
+  });
+
   it("eine mit dem Passkey-Schlüssel geschriebene Notiz liest der Notfall-Code genauso", async () => {
     const { dk, basis } = await neuerSchluessel();
     const sitzung = await nurBenutzbar(dk);
