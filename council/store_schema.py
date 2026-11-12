@@ -89,6 +89,23 @@ CREATE TABLE IF NOT EXISTS motion_extracts (
     created_at       TEXT NOT NULL
 );
 
+-- Dossier je Vorlage (council/template_dossier.py): je Quellenlage eine Zeile
+-- — eine vergangene Station zeigt, was bis zum Sitzungstag galt. status:
+-- ok | running (Sperre gegen Doppelaufrufe, 5 min gültig) | failed.
+CREATE TABLE IF NOT EXISTS template_dossiers (
+    subject_key    TEXT NOT NULL,
+    sources_hash   TEXT NOT NULL,
+    prompt_version INTEGER NOT NULL,
+    model          TEXT,
+    form           TEXT,
+    status         TEXT NOT NULL,
+    started_at     TEXT,
+    payload        TEXT,
+    cost_usd       REAL,
+    created_at     TEXT NOT NULL,
+    PRIMARY KEY (subject_key, sources_hash)
+);
+
 -- Steckbrief je Dokument (Vorlagen-PDF, Vorlagen-Anlage, Punkt-Anlage — alle
 -- hängen an derselben getfile-Kennung): Art, Antragsteller, Seiten, Scan,
 -- Seitenanfänge im gespeicherten Text samt dessen Prüfsumme. Ein Dokument an

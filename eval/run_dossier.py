@@ -65,7 +65,7 @@ def main() -> int:
                 print(f"  [{s}] {x['text'][:170]}  ({x.get('source')} S.{x.get('page')})")
         for f in g["fakten"]:
             fakten_n += 1
-            texte = " ".join(x["text"] for x in _aussagen(p, f["section"]))
+            texte = " ".join(x["text"] for sec in f.get("sections", [f["section"]]) for x in _aussagen(p, sec))
             hit = any(w in texte for w in f["any"])
             fakten_ok += hit
             print(f"  {'✓' if hit else '✗'} {f['section']}: {f['notiz']}")
