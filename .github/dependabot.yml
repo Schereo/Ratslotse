@@ -1,0 +1,29 @@
+# Dependabot zieht die festgepinnten Actions nach.
+#
+# Drittanbieter-Actions hängen an einem vollen Commit-SHA statt an einem Tag
+# (`uses: owner/repo@<40 Zeichen> # vX.Y.Z`), weil ein Tag im fremden Repo
+# umgehängt werden kann — und `appleboy/ssh-action` bekommt den Deploy-
+# Schlüssel. Ein SHA wird nie von selbst neuer; das übernimmt Dependabot und
+# hält dabei den Versionskommentar mit. `tests/test_actions_pinned.py` meldet
+# jede Drittanbieter-Zeile ohne SHA.
+#
+# Ziel ist `dev`, nicht `main`: Ein gemergter PR nach `main` startet den
+# Prod-Deploy. Die Aktualisierung fährt mit dem nächsten Release mit und läuft
+# vorher durch den Dev-Deploy. Sicherheitsmeldungen von Dependabot gehen
+# unabhängig davon immer gegen den Standardzweig.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    # Ein PR je Woche statt einem je Action.
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: CI
