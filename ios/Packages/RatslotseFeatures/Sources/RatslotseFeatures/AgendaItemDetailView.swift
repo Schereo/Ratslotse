@@ -67,15 +67,34 @@ struct AgendaItemDetailView: View {
             .buttonStyle(RatsPlainButtonStyle())
         }
 
-        if let summary = d.item.summary, !summary.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                MonoKicker("Kurzfassung")
-                Text(summary).font(RatsFont.body(16)).foregroundStyle(RatsColor.bodyText)
+        // Der Kartentext kennt Vorlage und Anlagen, `summary` nur den Titel —
+        // dieselbe Wahl wie im Web (Plan Vorlagen aufbereiten, Schritt 5).
+        if let kurz = (d.item.socialText ?? d.item.summary), !kurz.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Text("Das Wichtigste in Kürze").font(RatsFont.body(16, weight: .semibold)).foregroundStyle(RatsColor.text)
+                    RatsIcon(.sparkles, size: 13).foregroundStyle(RatsColor.signal)
+                        .accessibilityLabel("Automatisch erstellt")
+                }
+                Text(kurz).font(RatsFont.body(16)).foregroundStyle(RatsColor.bodyText)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Automatische Kurzfassung. Verbindlich sind die Unterlagen im Ratsinfo.")
+                if d.courseItem.important == true, let grund = d.courseItem.importantReason {
+                    (Text("Warum wichtig: ").bold().foregroundColor(RatsColor.primary) + Text(grund))
+                        .font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RatsColor.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay(alignment: .leading) { Rectangle().fill(RatsColor.primary).frame(width: 3) }
+                }
+                Text("Automatisch erstellt. Verbindlich sind die Unterlagen im Ratsinfo.")
                     .font(RatsFont.body(12)).foregroundStyle(RatsColor.muted)
             }
             .ratsCard()
+        }
+
+        if model.feature("aus-den-unterlagen"), let f = d.templateFields {
+            AusDenUnterlagenCard(f: f)
         }
 
         if d.history.count > 1 {
@@ -134,5 +153,107 @@ struct AgendaItemDetailView: View {
         } catch {
             self.error = (error as? APIError)?.message ?? "Dieser Tagesordnungspunkt lässt sich gerade nicht laden."
         }
+    }
+}
+
+
+/// „Aus den Unterlagen" — wie im Web (`components/session/aus-den-unterlagen.tsx`):
+/// amtlicher Wortlaut aus der Vorlage, als Zitat gesetzt und ohne KI-Zeichen.
+private struct AusDenUnterlagenCard: View {
+    let f: AgendaItemDetail.TemplateFields
+    @State private var vorschlagOffen = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Aus den Unterlagen").font(RatsFont.body(16, weight: .semibold)).foregroundStyle(RatsColor.text)
+                Spacer()
+                if let nr = f.templateNumber, let s = f.documentUrl, let url = URL(string: s) {
+                    Link(destination: url) {
+                        HStack(spacing: 4) {
+                            Text("Vorlage \(nr)").font(RatsFont.body(13))
+                            RatsIcon(.externalLink, size: 12)
+                        }
+                        .foregroundStyle(RatsColor.secondary)
+                    }
+                }
+            }
+            if let v = f.proposedDecision {
+                abschnitt("Was beschlossen werden soll") {
+                    zitat(v, lineLimit: vorschlagOffen ? nil : 6)
+                    if v.count > 420 {
+                        Button(vorschlagOffen ? "Weniger zeigen" : "Ganzen Wortlaut zeigen") { vorschlagOffen.toggle() }
+                            .font(RatsFont.body(13, weight: .medium)).foregroundStyle(RatsColor.primary)
+                    }
+                }
+            }
+            if !f.motions.isEmpty {
+                abschnitt(f.motions.count == 1 ? "Antrag dazu" : "\(f.motions.count) Anträge dazu") {
+                    ForEach(f.motions) { m in
+                        if let s = m.url, let url = URL(string: s) {
+                            Link(destination: url) { antrag(m) }
+                        } else {
+                            antrag(m)
+                        }
+                    }
+                }
+            }
+            if let c = f.cost {
+                abschnitt("Was es kostet") {
+                    if c.status == "none" {
+                        Text("Laut Vorlage keine Kosten.").font(RatsFont.body(15)).foregroundStyle(RatsColor.bodyText)
+                    } else {
+                        zitat(c.text, lineLimit: nil)
+                    }
+                }
+            }
+            if let k = f.climate {
+                abschnitt("Klima-Check") {
+                    if let r = k.relevant {
+                        Text(r ? "Klimarelevant" : "Laut Vorlage nicht klimarelevant")
+                            .font(RatsFont.body(14, weight: .medium)).foregroundStyle(RatsColor.text)
+                    }
+                    zitat(k.text, lineLimit: 4)
+                }
+            }
+            if let amt = f.office {
+                abschnitt("Federführung") {
+                    Text(amt).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText)
+                }
+            }
+        }
+        .ratsCard()
+    }
+
+    private func abschnitt<C: View>(_ titel: String, @ViewBuilder _ inhalt: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            MonoKicker(titel)
+            inhalt()
+        }
+    }
+
+    private func zitat(_ text: String, lineLimit: Int?) -> some View {
+        Text("„\(text.trimmingCharacters(in: .whitespacesAndNewlines))“")
+            .font(RatsFont.body(15)).foregroundStyle(RatsColor.bodyText)
+            .lineLimit(lineLimit)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.leading, 10)
+            .overlay(alignment: .leading) { Rectangle().fill(RatsColor.border).frame(width: 2) }
+    }
+
+    private func antrag(_ m: AgendaItemDetail.TemplateFields.Motion) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Circle().fill(RatsColor.primary).frame(width: 7, height: 7).padding(.top, 6)
+            VStack(alignment: .leading, spacing: 2) {
+                if !m.applicants.isEmpty {
+                    Text(m.applicants.joined(separator: ", ")).font(RatsFont.body(14, weight: .semibold)).foregroundStyle(RatsColor.text)
+                }
+                Text(m.label).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText).multilineTextAlignment(.leading)
+            }
+            Spacer(minLength: 0)
+            if m.url != nil { RatsIcon(.externalLink, size: 12).foregroundStyle(RatsColor.muted) }
+        }
+        .padding(10)
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(RatsColor.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
     }
 }
