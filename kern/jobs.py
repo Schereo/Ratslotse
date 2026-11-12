@@ -69,6 +69,13 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "antraege_nachzuegler",
+        "label": "Änderungsanträge (Nachzügler)",
+        "description": "An Sitzungstagen und am Tag davor: Tagesordnung neu lesen, neue Anträge laden und lesen.",
+        "schedule": "täglich 11, 13, 16, 18 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "check_presse",
         "label": "Stadt-Quellen (Presse + Beteiligung)",
         "description": "RSS-Abgleich der städtischen Pressemitteilungen und der laufenden Bauleitplan-Beteiligungen.",

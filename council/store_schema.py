@@ -73,6 +73,22 @@ CREATE TABLE IF NOT EXISTS council_agenda_attachments (
     UNIQUE(ksinr, item_number, url)
 );
 
+-- Antrags-Auszug je Dokument (council/motions.py): Ziel, Muster, alt/neu,
+-- Bedeutung — geprüft gegen den Wortlaut. text_hash hält fest, zu welchem
+-- Antragstext er gehört; base_hash, zu welcher Basis (Beschlussvorschlag).
+CREATE TABLE IF NOT EXISTS motion_extracts (
+    document_id      INTEGER PRIMARY KEY,
+    base_subject_key TEXT,
+    base_hash        TEXT,
+    text_hash        TEXT NOT NULL,
+    status           TEXT NOT NULL,
+    payload          TEXT,
+    prompt_version   INTEGER NOT NULL,
+    model            TEXT,
+    cost_usd         REAL,
+    created_at       TEXT NOT NULL
+);
+
 -- Steckbrief je Dokument (Vorlagen-PDF, Vorlagen-Anlage, Punkt-Anlage — alle
 -- hängen an derselben getfile-Kennung): Art, Antragsteller, Seiten, Scan,
 -- Seitenanfänge im gespeicherten Text samt dessen Prüfsumme. Ein Dokument an

@@ -110,7 +110,9 @@ def satz_sauber(text: str) -> str | None:
     return None
 
 
-def check_statement(entry: dict, sources: dict[str, dict], *, limit: int = SATZ_MAX) -> tuple[dict | None, str | None]:
+def check_statement(entry: dict, sources: dict[str, dict], *, limit: int = SATZ_MAX,
+                    zusatz_zitate: list[str] | None = None,
+                    quote_max: int = QUOTE_MAX) -> tuple[dict | None, str | None]:
     """Eine Aussage ``{text, quote, source, page}`` gegen ihre Quellen — die
     geprüfte Aussage oder der Grund, warum sie fällt.
 
@@ -124,14 +126,17 @@ def check_statement(entry: dict, sources: dict[str, dict], *, limit: int = SATZ_
         return None, f"Satz fehlt oder ist länger als {limit} Zeichen"
     if quelle is None or benannt is None:
         return None, "unbekannte Quelle"
-    if not quote or len(quote) > QUOTE_MAX:
+    if not quote or len(quote) > quote_max:
         return None, "Zitat fehlt oder ist zu lang"
     seite = entry.get("page") if isinstance(entry.get("page"), int) else None
     gefunden, seite = locate(quote, quelle, seite)
     if not gefunden:
         return None, "Zitat steht nicht wörtlich in der Quelle"
     zitat_flach = quote.lower()
-    fehlend = sorted(z for z in _zahlen(text) if not any(v.lower() in zitat_flach for v in _varianten(z)))
+    # Ein Satz über alt UND neu („von zwei Tagen auf eine Woche") darf seine
+    # Zahlen aus beiden geprüften Zitaten nehmen.
+    zahlen_flach = " ".join([zitat_flach, *(z.lower() for z in (zusatz_zitate or []))])
+    fehlend = sorted(z for z in _zahlen(text) if not any(v.lower() in zahlen_flach for v in _varianten(z)))
     if fehlend:
         return None, f"Zahl ohne Beleg im Zitat: {', '.join(fehlend)}"
     for muster, art in ((_WERTUNG_RE, "Wertung"), (_ERGEBNIS_RE, "Ergebnis")):
