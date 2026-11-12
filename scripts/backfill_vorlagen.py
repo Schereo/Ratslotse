@@ -79,6 +79,39 @@ def process_missing(council_db: Path, limit: int | None = None, workers: int = 6
     return {"total": len(kvonrs), "fetched": fetched, "no_pdf": no_pdf, "failed": failed}
 
 
+def aus_punkt_nachziehen(council_db: Path, tage: int = 120, limit: int = 30) -> dict:
+    """Vorlagen ohne PDF oder mit ausgetauschtem PDF über die Punkt-Anlage
+    „Vorlage" nachlesen (docs/plan-vorlagen-aufbereiten.md, PR 2).
+
+    Die Punkt-Anlage trägt die ``document_id`` des aktuellen PDFs, und
+    ``check_council`` liest sie zweimal täglich neu — ein Austausch fällt also
+    ohne zusätzlichen Abruf auf. ``backfill_vorlagen.process_missing`` sieht
+    ihn nicht: Es überspringt jede eingelesene ``kvonr``. Höchstens ``limit``
+    PDFs je Lauf, eins je Sekunde."""
+    import time
+    from datetime import date, timedelta
+
+    store = CouncilStore(council_db)
+    seit = (date.today() - timedelta(days=tage)).isoformat()
+    kandidaten = store.vorlagen_aus_punkt(seit)[:limit]
+    gelesen = fehler = 0
+    for k in kandidaten:
+        try:
+            text, n_pages = vorlagen._pdf_text(k["url"])  # noqa: SLF001 — derselbe Leser wie für die Vorlage
+        except Exception as exc:  # noqa: BLE001 — ein PDF kippt nicht den Lauf
+            fehler += 1
+            print(f"  {k['template_number']}: {exc!r}", flush=True)
+            continue
+        store.vorlagentext_ersetzen(k["kvonr"], text, n_pages,
+                                    document_id=k["document_id"], document_url=k["url"])
+        gelesen += 1
+        print(f"  {k['template_number']}: {'neu (war ' + k['status'] + ')' if k['status'] == 'no_pdf' else 'ausgetauscht'}"
+              f", {len(text)} Zeichen", flush=True)
+        time.sleep(1)
+    store.close()
+    return {"kandidaten": len(kandidaten), "gelesen": gelesen, "fehler": fehler}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--db", type=Path, default=COUNCIL_DB)

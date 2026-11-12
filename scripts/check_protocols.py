@@ -24,6 +24,7 @@ from scripts.backfill_anlagen import process_missing as fetch_anlagen_missing  #
 from scripts.backfill_anlagen import rescan_recent as rescan_recent_anlagen  # noqa: E402
 from scripts.backfill_beratungen import process_missing as fetch_beratungen_missing  # noqa: E402
 from scripts.backfill_beratungen import rescan_recent as rescan_beratungen  # noqa: E402
+from scripts.backfill_vorlagen import aus_punkt_nachziehen  # noqa: E402
 from scripts.backfill_vorlagen import process_missing as fetch_vorlagen  # noqa: E402
 from scripts.classify_decisions import process as classify_decisions  # noqa: E402
 from scripts.extract_amounts import process as extract_amounts  # noqa: E402
@@ -153,6 +154,9 @@ def main(fehler: list[str] | None = None) -> dict:
     vstats = _schritt(fehler, "Vorlagen", lambda: fetch_vorlagen(COUNCIL_DB, limit=300))
     print(f"Vorlagen: {vstats['fetched']} ingested, {vstats['no_pdf']} without PDF/text, "
           f"{vstats['failed']} failed.")
+    # Ohne PDF oder ausgetauscht: über die Punkt-Anlage „Vorlage" nachlesen.
+    pstats = _schritt(fehler, "Vorlagen (aus dem Punkt)", lambda: aus_punkt_nachziehen(COUNCIL_DB))
+    print(f"Vorlagen aus dem Punkt: {pstats['gelesen']} von {pstats['kandidaten']} gelesen.")
     # Anlagen: catch-up for never-scanned Vorlagen + re-scan of recent agendas —
     # Änderungsanträge landen oft erst Tage nach der Vorlage auf der Seite.
     astats2 = _schritt(fehler, "Anlagen", lambda: fetch_anlagen_missing(COUNCIL_DB, limit=300))
@@ -246,6 +250,7 @@ def main(fehler: list[str] | None = None) -> dict:
         "Pläne: Stand veraltet": plaene.get("plan_status_stale", 0),
         "Pläne: Frist fällig": plaene.get("plans_due", 0),
         "Vorlagen geladen": vstats["fetched"],
+        "Vorlagen aus dem Punkt": pstats["gelesen"],
         "Beschlüsse mit Ortszuordnung": lstats["assigned"],
         "Orte geokodiert": geostats["located"],
         # Die Straßen-Kennzahlen gehören hier hinein, sonst gibt es sie nicht.
