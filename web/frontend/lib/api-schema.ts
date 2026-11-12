@@ -11023,6 +11023,8 @@ export interface components {
             plan_image?: number | null;
             /** Present Parties */
             present_parties: string[];
+            /** Proposal Diff */
+            proposal_diff?: string[][];
             /** Ratsinfo Url */
             ratsinfo_url: string | null;
             /** Similar */
@@ -11030,6 +11032,7 @@ export interface components {
             /** Sub Votes */
             sub_votes: components["schemas"]["DecisionRow"][];
             template?: components["schemas"]["DecisionTemplate"];
+            template_dossier?: components["schemas"]["ItemDossier"];
             /** Template Journey */
             template_journey: unknown[];
             /** Template Url */
@@ -31240,4 +31243,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d6a0aa9dff1184de6f034a9cff7504789d30244150ea148238fddca339fbb321
+// vertrag-sha256: 434184b388dee504c6eeff5dc00de0f06a08f684c29d606e2c3d1c6564dd81cb

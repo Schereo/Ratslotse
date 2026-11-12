@@ -3399,6 +3399,10 @@ class DecisionDetail(TypedDict):
     template: NotRequired[DecisionTemplate]
     template_url: NotRequired[str | None]
     attachments: NotRequired[list[TemplateAttachment]]
+    #: „Aus der Vorlage" — Schalter ``aus-den-unterlagen``, nur mit Dossier.
+    template_dossier: NotRequired[ItemDossier]
+    #: Wortdiff Beschlussvorschlag ↔ Beschlusstext, nur bei Abweichung.
+    proposal_diff: NotRequired[list[list[str]]]
     # Zwei Formen (Nachbewilligung bzw. Bürgschaft) mit verschiedenen
     # Schlüsseln — deshalb offen statt geraten.
     budget_link: NotRequired[dict[str, Any] | None]

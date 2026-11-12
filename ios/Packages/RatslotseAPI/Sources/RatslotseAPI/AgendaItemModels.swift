@@ -15,9 +15,13 @@ public struct AgendaItemDetail: Decodable, Sendable {
     /// Was die Vorlage trägt, ohne Modell (Plan Vorlagen aufbereiten, Stufe 0).
     /// Optional: Ältere Server liefern das Feld nicht.
     public let templateFields: TemplateFields?
+    /// „Aus den Unterlagen" mit Belegen (Schalter `aus-den-unterlagen`).
+    public let dossier: Dossier?
+    /// Gelesene Anträge (Schalter `aenderungsantraege`).
+    public let amendments: [Amendment]?
 
     enum CodingKeys: String, CodingKey {
-        case ksinr, committee, item, history, documents
+        case ksinr, committee, item, history, documents, dossier, amendments
         case sessionDate = "session_date"
         case courseItem = "course_item"
         case decisionId = "decision_id"
@@ -79,7 +83,92 @@ public struct AgendaItemDetail: Decodable, Sendable {
         public let label: String
         public let url: String
         public let date: String?
+        /// Gegenlese-Liste: Nummer wie in den Belegen, Art, Antragsteller, Seiten.
+        public let listNo: Int?
+        public let docType: String?
+        public let applicants: [String]?
+        public let pages: Int?
+        public let isScan: Bool?
+        public let afterSession: Bool?
         public var id: String { url }
+
+        enum CodingKeys: String, CodingKey {
+            case kind, label, url, date, applicants, pages
+            case listNo = "list_no"
+            case docType = "doc_type"
+            case isScan = "is_scan"
+            case afterSession = "after_session"
+        }
+    }
+
+    /// Eine belegte Aussage: Satz, wörtliches Zitat, Dokument, Seite, PDF-Sprung.
+    public struct Statement: Decodable, Sendable, Identifiable, Hashable {
+        public let text: String
+        public let quote: String
+        public let page: Int?
+        public let kind: String?
+        public let listNo: Int?
+        public let docLabel: String?
+        public let url: String?
+        public var id: String { "\(text)|\(quote.prefix(40))" }
+
+        enum CodingKeys: String, CodingKey {
+            case text, quote, page, kind, url
+            case listNo = "list_no"
+            case docLabel = "doc_label"
+        }
+    }
+
+    public struct Dossier: Decodable, Sendable {
+        public let form: String?
+        public let createdAt: String?
+        public let sections: [Section]
+        public let documentsRead: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case form, sections
+            case createdAt = "created_at"
+            case documentsRead = "documents_read"
+        }
+
+        public struct Section: Decodable, Sendable, Identifiable {
+            public let key: String
+            public let title: String
+            public let status: String?
+            public let statements: [Statement]
+            public var id: String { key }
+        }
+    }
+
+    public struct Amendment: Decodable, Sendable, Identifiable {
+        public let documentId: Int
+        public let listNo: Int
+        public let label: String
+        public let url: String
+        public let applicants: [String]
+        public let read: Bool
+        public let outcome: String?
+        public let target: String?
+        public let pattern: String?
+        public let before: Quote?
+        public let after: Quote?
+        public let diff: [[String]]?
+        public let meaning: Quote?
+        public let reason: Quote?
+        public var id: Int { documentId }
+
+        /// Aussage am Antrag: Satz, Zitat, Seite — die Nummer trägt der Antrag selbst.
+        public struct Quote: Decodable, Sendable {
+            public let text: String
+            public let quote: String
+            public let page: Int?
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case label, url, applicants, read, outcome, target, pattern, before, after, diff, meaning, reason
+            case documentId = "document_id"
+            case listNo = "list_no"
+        }
     }
 
     public struct TemplateFields: Decodable, Sendable {

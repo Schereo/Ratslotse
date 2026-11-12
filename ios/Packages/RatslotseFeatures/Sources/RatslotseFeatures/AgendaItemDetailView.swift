@@ -93,8 +93,15 @@ struct AgendaItemDetailView: View {
             .ratsCard()
         }
 
-        if model.feature("aus-den-unterlagen"), let f = d.templateFields {
+        if model.feature("aus-den-unterlagen"), let dossier = d.dossier, !dossier.sections.isEmpty {
+            DossierCard(dossier: dossier, amendments: model.feature("aenderungsantraege") ? (d.amendments ?? []) : [])
+        } else if model.feature("aus-den-unterlagen"), let f = d.templateFields {
             AusDenUnterlagenCard(f: f)
+            if model.feature("aenderungsantraege"), let a = d.amendments, !a.isEmpty {
+                AmendmentsSection(amendments: a).ratsCard()
+            }
+        } else if model.feature("aenderungsantraege"), let a = d.amendments, !a.isEmpty {
+            AmendmentsSection(amendments: a).ratsCard()
         }
 
         if d.history.count > 1 {
@@ -125,8 +132,20 @@ struct AgendaItemDetailView: View {
                 ForEach(d.documents) { doc in
                     if let url = URL(string: doc.url) {
                         Link(destination: url) {
-                            HStack {
-                                Text(doc.label).font(RatsFont.body(14, weight: .medium)).multilineTextAlignment(.leading)
+                            HStack(alignment: .top, spacing: 8) {
+                                if let n = doc.listNo {
+                                    Text("\(n)").font(RatsFont.mono(11)).foregroundStyle(RatsColor.muted)
+                                        .frame(minWidth: 18).padding(.vertical, 1)
+                                        .background(RatsColor.border.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    if let t = doc.docType, let wort = DokumentArt.wort[t] {
+                                        Text(wort + ((doc.applicants ?? []).isEmpty ? "" : " · " + (doc.applicants ?? []).joined(separator: ", ")))
+                                            .font(RatsFont.body(11, weight: .medium)).foregroundStyle(RatsColor.muted)
+                                    }
+                                    Text(doc.label).font(RatsFont.body(14, weight: .medium)).multilineTextAlignment(.leading)
+                                    if let p = doc.pages { Text("\(p) \(p == 1 ? "Seite" : "Seiten")").font(RatsFont.body(12)).foregroundStyle(RatsColor.muted) }
+                                }
                                 Spacer()
                                 RatsIcon(.externalLink, size: 13)
                             }
@@ -256,4 +275,13 @@ private struct AusDenUnterlagenCard: View {
         .padding(10)
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(RatsColor.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
     }
+}
+
+
+enum DokumentArt {
+    static let wort: [String: String] = [
+        "template": "Vorlage", "amendment": "Änderungsantrag", "motion": "Antrag", "report_request": "Berichtsantrag",
+        "synopsis": "Synopse", "statute": "Satzung/Regelwerk", "statement": "Stellungnahme", "plan": "Plan",
+        "report": "Bericht/Anlage", "presentation": "Präsentation", "other": "Anlage",
+    ]
 }
