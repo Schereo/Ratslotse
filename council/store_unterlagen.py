@@ -32,6 +32,12 @@ class UnterlagenMixin(StoreBasis):
                  int(bool(is_scan)), json.dumps(page_offsets) if page_offsets else None, text_hash,
                  datetime.now(UTC).isoformat(timespec="seconds")))
 
+    def save_document_structure(self, document_id: int, structure: object) -> None:
+        """Ergebnis eines Speziallesers (Synopse) am Dokument ablegen."""
+        with self._conn:
+            self._conn.execute("UPDATE council_documents SET structure = ? WHERE document_id = ?",
+                               (json.dumps(structure, ensure_ascii=False), int(document_id)))
+
     def document_profiles(self, ids: list[int]) -> dict[int, dict]:
         ids = sorted({int(i) for i in ids if i})
         if not ids:
@@ -42,6 +48,7 @@ class UnterlagenMixin(StoreBasis):
             d = dict(r)
             d["applicants"] = json.loads(d["applicants"] or "[]")
             d["page_offsets"] = json.loads(d["page_offsets"]) if d["page_offsets"] else None
+            d["structure"] = json.loads(d["structure"]) if d.get("structure") else None
             out[d["document_id"]] = d
         return out
 
@@ -284,7 +291,8 @@ class UnterlagenMixin(StoreBasis):
                 continue
             text, _, _ = self._dokument_text(d["document_id"])
             sb = self.document_profiles([d["document_id"]]).get(d["document_id"]) or {}
-            docs.append({**d, "text": text or "", "page_offsets": sb.get("page_offsets")})
+            docs.append({**d, "text": text or "", "page_offsets": sb.get("page_offsets"),
+                         "structure": sb.get("structure")})
         docs.sort(key=lambda d: (d["doc_type"], d["document_id"]))   # deterministisch: Prompt-Cache
         return {"template": {**v, "template_number": template_number}, "documents": docs,
                 "form": dossier_harvest.form(v.get("title"), v.get("kind"), [d["doc_type"] for d in docs])}

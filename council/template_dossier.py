@@ -90,6 +90,14 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
     belege = []
     for i, d in enumerate(m["documents"], 1):
         key = f"A{i}"
+        # Spezialleser (council/synopse.py): Die geänderten Stellen einer
+        # Synopse kommen spaltengenau als feste Fakten — der Fließtext
+        # verschachtelt alt und neu.
+        if d.get("structure"):
+            # Same defusing as the running text: the columns are foreign text too.
+            fakten[f"aenderungen_aus_synopse_{key}"] = [
+                {k: (foreign_text.defuse(v)[0] if isinstance(v, str) else v) for k, v in c.items()}
+                for c in d["structure"][:30] if isinstance(c, dict)]
         text = foreign_text.defuse(d.get("text") or "")[0]
         if d["doc_type"] in LESESTOFF and text.strip() and rest > 2_000:
             block = _mit_seitenmarken(key, text, d.get("page_offsets"), min(ANLAGE_ZEICHEN, rest))

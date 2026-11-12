@@ -30,7 +30,7 @@ from council.parties import parties_in_text  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 
-def main(db: str | None = None, schreiben: bool = False, seiten: int = 0) -> dict:
+def main(db: str | None = None, schreiben: bool = False, seiten: int = 0, synopsen: int = 0) -> dict:
     store = CouncilStore(db or str(ROOT / "data" / "council.sqlite"))
     conn = store._conn  # noqa: SLF001 — Ops-Skript, liest den Bestand in einem Zug
     arten: collections.Counter = collections.Counter()
@@ -93,6 +93,29 @@ def main(db: str | None = None, schreiben: bool = False, seiten: int = 0) -> dic
             anker += bool(off)
             time.sleep(1)
 
+    gelesen_syn = 0
+    if schreiben and synopsen:
+        # Spezialleser: Synopsen der letzten 12 Monate spaltengenau lesen (council/synopse.py).
+        from council import synopse
+        kandidaten = conn.execute(
+            "SELECT DISTINCT at.document_id, at.url FROM council_attachments at "
+            "JOIN council_documents d ON d.document_id = at.document_id "
+            "JOIN council_templates t ON t.kvonr = at.kvonr "
+            "JOIN council_agenda_items a ON a.template_number = t.template_number "
+            "JOIN council_sessions s ON s.ksinr = a.ksinr "
+            "WHERE d.doc_type = 'synopsis' AND d.structure IS NULL AND s.session_date >= date('now', '-12 months') "
+            "ORDER BY s.session_date DESC LIMIT ?", (synopsen,)).fetchall()
+        for k in kandidaten:
+            try:
+                r = vorlagen._session.get(k["url"], timeout=45)  # noqa: SLF001
+                r.raise_for_status()
+                store.save_document_structure(k["document_id"], synopse.changes(synopse.read(r.content)))
+                gelesen_syn += 1
+            except Exception as exc:  # noqa: BLE001
+                print(f"  Synopse {k['document_id']}: {exc!r}")
+            time.sleep(1)
+        print(f"Synopsen spaltengenau gelesen: {gelesen_syn}")
+
     quote = vorlagen_mit_seiten / vorlagen_gesamt if vorlagen_gesamt else 0
     print(f"Vorlagen mit Seiten aus dem Druckkopf: {vorlagen_mit_seiten} von {vorlagen_gesamt} ({quote:.1%})")
     print("Arten:", ", ".join(f"{k} {v}" for k, v in arten.most_common()))
@@ -107,5 +130,6 @@ if __name__ == "__main__":
     ap.add_argument("--db")
     ap.add_argument("--schreiben", action="store_true")
     ap.add_argument("--seiten", type=int, default=0)
+    ap.add_argument("--synopsen", type=int, default=0)
     a = ap.parse_args()
-    main(a.db, a.schreiben, a.seiten)
+    main(a.db, a.schreiben, a.seiten, a.synopsen)
