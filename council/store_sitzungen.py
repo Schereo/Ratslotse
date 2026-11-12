@@ -9,6 +9,7 @@ Sitzungen gehen: Sie gehören dem, wonach sie fragen.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from datetime import date, datetime, UTC
@@ -262,6 +263,56 @@ class SitzungenMixin(StoreBasis):
                     if a.get("url")
                 ],
             )
+
+    # ---- Anträge und Vorlagen-PDFs nachziehen (docs/plan-vorlagen-aufbereiten.md, PR 2) ----
+
+    def anlagen_zur_neueinstufung(self) -> list[dict]:
+        """Anlagen an Vorlagen, die (noch) nicht als Antrag gelten — für
+        ``scripts/antraege_nachziehen.py``, das sie gegen die neue Erkennung hält."""
+        return [dict(r) for r in self._conn.execute(
+            "SELECT document_id, kvonr, label, url, status, substr(COALESCE(raw_text, ''), 1, 4000) AS kopf "
+            "FROM council_attachments WHERE is_motion = 0 ORDER BY kvonr DESC")]
+
+    def anlage_als_antrag(self, document_id: int, applicants: list[str], *, raw_text: str | None = None,
+                          n_pages: int | None = None, status: str | None = None) -> None:
+        """Eine Anlage zum Antrag hochstufen; ein frisch geholter Text kommt mit."""
+        with self._conn:
+            if raw_text is None:
+                self._conn.execute(
+                    "UPDATE council_attachments SET is_motion = 1, applicants = ? WHERE document_id = ?",
+                    (json.dumps(applicants, ensure_ascii=False), document_id))
+            else:
+                self._conn.execute(
+                    "UPDATE council_attachments SET is_motion = 1, applicants = ?, raw_text = ?, "
+                    "n_pages = ?, status = ? WHERE document_id = ?",
+                    (json.dumps(applicants, ensure_ascii=False), raw_text, n_pages, status, document_id))
+
+    def vorlagen_aus_punkt(self, seit: str) -> list[dict]:
+        """Vorlagen, deren Text am Punkt besser zu haben ist als an der Vorlage:
+        ``no_pdf`` (der Ratsinfo-Link der Vorlage trug kein PDF, die Punkt-Anlage
+        „Vorlage" schon) oder ausgetauscht (die Punkt-Anlage zeigt auf ein
+        anderes Dokument als ``council_templates.document_id``). Nur Punkte von
+        Sitzungen ab ``seit`` — ältere Austausche sind Geschichte."""
+        rows = self._conn.execute(
+            "SELECT DISTINCT t.kvonr, t.template_number, t.status, t.document_id, aa.url "
+            "FROM council_agenda_attachments aa "
+            "JOIN council_agenda_items a ON a.ksinr = aa.ksinr AND a.item_number = aa.item_number "
+            "JOIN council_sessions s ON s.ksinr = a.ksinr "
+            "JOIN council_templates t ON t.template_number = a.template_number "
+            "WHERE aa.label = 'Vorlage' AND s.session_date >= ? AND aa.url LIKE '%getfile.php?id=%' "
+            "ORDER BY s.session_date DESC", (seit,)).fetchall()
+        out, gesehen = [], set()
+        for r in rows:
+            m = re.search(r"[?&]id=(\d+)", r["url"] or "")
+            if not m or r["kvonr"] in gesehen:
+                continue
+            doc = int(m.group(1))
+            if r["status"] == "no_pdf" or (r["document_id"] is not None and int(r["document_id"]) != doc):
+                gesehen.add(r["kvonr"])
+                out.append({"kvonr": r["kvonr"], "template_number": r["template_number"],
+                            "status": r["status"], "alt_document_id": r["document_id"],
+                            "document_id": doc, "url": r["url"]})
+        return out
 
     def replace_scheduled_sessions(self, rows: list) -> None:
         """Terminplan komplett ersetzen (rows: ScheduledSession-Objekte).

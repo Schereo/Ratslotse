@@ -1029,7 +1029,8 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         if row.get("template_number"):
             self.refresh_abweichung(template_number=row["template_number"])
 
-    def vorlagentext_ersetzen(self, kvonr: int, raw_text: str, n_pages: int) -> None:
+    def vorlagentext_ersetzen(self, kvonr: int, raw_text: str, n_pages: int, *,
+                              document_id: int | None = None, document_url: str | None = None) -> None:
         """Den Volltext einer Vorlage neu setzen — samt allem, was die Ernte
         daraus liest (Amt, Klima, Finanzen, Beschlussvorschlag).
 
@@ -1046,6 +1047,12 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                 "WHERE kvonr = ?",
                 (raw_text, n_pages, ernte.federfuehrendes_amt(raw_text), aus["klima"],
                  aus["finanzen"], ernte.proposed_decision(raw_text), kvonr))
+            # Neues Dokument (Austausch oder bisher ``no_pdf``, gefunden über die
+            # Punkt-Anlage „Vorlage", scripts/backfill_vorlagen.py).
+            if document_id is not None:
+                self._conn.execute(
+                    "UPDATE council_templates SET document_id = ?, document_url = ?, status = ? WHERE kvonr = ?",
+                    (document_id, document_url, "ok" if len(raw_text.strip()) >= 50 else "empty", kvonr))
             row = self._conn.execute(
                 "SELECT template_number FROM council_templates WHERE kvonr = ?",
                 (kvonr,)).fetchone()
