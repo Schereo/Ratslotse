@@ -86,6 +86,11 @@ test.describe("Punkt-Seite", () => {
     await page.goto("/council/sitzung?ksinr=4654");
     await expect(page.getByRole("link", { name: "Weißenmoorstraße", exact: true }))
       .toHaveAttribute("href", "/council/punkt?ksinr=4654&top=%C3%96%2011.1");
+    // Nur, wo es etwas zu sehen gibt (Tims Wunsch 11.11.2026): Anfragen und
+    // Einwohnerfragestunde haben keine eigene Seite — ihre Karte ist kein Link.
+    await expect(page.getByRole("heading", { name: "Anfragen und Anregungen" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Anfragen und Anregungen", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Einwohnerfragestunde", exact: true })).toHaveCount(0);
   });
 
   test("ohne Schalter führt die Seite zur Sitzung", async ({ page }) => {

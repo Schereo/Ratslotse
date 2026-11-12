@@ -771,6 +771,15 @@ den Satz zum Stand. Es ist die einzige Ausnahme von § 1 und § 8 · der
 Punkt (keine Abstimmungsgrafik, § 8) · „Wichtig in dieser Sitzung“ mit
 höchstens drei Karten, auf dem Handy zum Wischen.
 
+**Nur eine Karte mit Ziel ist eine Karte zum Antippen** (Tims Wunsch
+11.11.2026). Die Karten der Tagesordnung führen zum Beschluss oder, wo das
+Backend eine verspricht (`own_page`), zur Seite des Punkts — dann sind sie
+weiß mit Schatten, tragen rechts oben einen Pfeil, und unter dem Zeiger wird
+der Rahmen primary und der Pfeil rückt vor. Formalien, Fragestunde, Anfragen
+und Mitteilungen haben kein Ziel: flach (Rahmen gestrichelt, Fläche halb
+durchsichtig, kein Schatten), Titel in 500 statt 600 — sie dürfen nicht nach
+einem Link aussehen, der nirgendwohin führt.
+
 Die Aktionen: vor der Sitzung „In den Kalender“ gefüllt, danach „Sitzung
 teilen“; Merken, Teilen, Protokoll und Ratsinfo daneben, Externes gestrichelt.
 Alle mindestens 44 px hoch, sie brechen um. Die Rücknavigation liegt oberhalb
