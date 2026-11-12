@@ -13,10 +13,15 @@ import json
 import logging
 import re
 from datetime import date, datetime, UTC
+from typing import TYPE_CHECKING
 
 from council.scraper import CouncilSession
 from council.store_basis import StoreBasis
 from council.store_wortbeitraege import WortbeitraegeMixin
+
+if TYPE_CHECKING:
+    from council.vorlage_felder import TemplateFields
+
 
 _DOKUMENT_ID_RE = re.compile(r"getfile\.php\?id=(\d+)")
 
@@ -1897,6 +1902,7 @@ class SitzungenMixin(StoreBasis):
             "decision_id": beschluss["id"] if beschluss else None,
             "history": self._punkt_vorgeschichte(sitzung, punkt, kurs["items"][nr]),
             "documents": self._punkt_unterlagen(punkt, kurs["items"][nr], int(ksinr)),
+            "template_fields": self._punkt_vorlage_felder(punkt, int(ksinr), nr),
             "previous": nachbar(reihe[i - 1] if i > 0 else None),
             "next": nachbar(reihe[i + 1] if i + 1 < len(reihe) else None),
             "position": i + 1,
@@ -2100,6 +2106,21 @@ class SitzungenMixin(StoreBasis):
             (subject_key, sources_hash, model, json.dumps(payload, ensure_ascii=False),
              datetime.now(UTC).isoformat(timespec="seconds")))
         self._conn.commit()
+
+    def _punkt_vorlage_felder(self, punkt: dict, ksinr: int, nr: str) -> TemplateFields | None:
+        """Was die Vorlage schon trägt (``council/vorlage_felder.py``):
+        Beschlussvorschlag, Kosten, Klima, Amt, Anträge — ohne Modell."""
+        from council import vorlage_felder  # noqa: PLC0415
+
+        tn = (punkt.get("template_number") or "").strip()
+        vorlage = self.get_vorlage_by_nr(tn) if tn else None
+        anlagen = self.anlagen_for_vorlage_nr(tn) if vorlage else []
+        am_punkt = [dict(r) for r in self._conn.execute(
+            "SELECT label, url, substr(COALESCE(raw_text, ''), 1, 4000) AS raw_text "
+            "FROM council_agenda_attachments WHERE ksinr = ? AND item_number = ? AND label != 'Vorlage'",
+            (ksinr, nr))]
+        return vorlage_felder.build(vorlage if vorlage and vorlage.get("status") == "ok" else None,
+                                    anlagen, am_punkt)
 
     def _punkt_unterlagen(self, punkt: dict, item: dict, ksinr: int) -> list[dict]:
         """Die Gegenlese-Liste des Punkts (docs/plan-vorlagen-aufbereiten.md,

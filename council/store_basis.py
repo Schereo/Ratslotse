@@ -77,3 +77,11 @@ class StoreBasis:
         def list_beteiligungen(self, nur_laufende: bool = True) -> list[dict]:
             """Bauleitplan-Beteiligungen der Stadt (``store_presse``)."""
             ...
+
+        def get_vorlage_by_nr(self, template_number: str) -> dict | None:
+            """Die Vorlage zu einer Vorlagennummer (``store``)."""
+            ...
+
+        def anlagen_for_vorlage_nr(self, template_number: str) -> list[dict]:
+            """Die Anlagen der Vorlage, Anträge zuerst (``store``)."""
+            ...

@@ -11242,6 +11242,8 @@ export interface components {
             n_pages: number | null;
             /** Office */
             office: string | null;
+            /** Proposed Decision */
+            proposed_decision?: string | null;
             /** Template Number */
             template_number: string | null;
             /** Title */
@@ -20344,6 +20346,42 @@ export interface components {
             session_date: string;
             /** Session Time */
             session_time: string | null;
+            /**
+             * TemplateFields
+             * @description Was die Vorlage eines Punkts schon trägt, ohne Modell
+             *     (``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).
+             *     ``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher
+             *     Wortlaut — die Seite zeigt sie als Zitat.
+             */
+            template_fields: {
+                /** TemplateFieldsClimate */
+                climate: {
+                    /** Relevant */
+                    relevant: boolean | null;
+                    /** Text */
+                    text: string;
+                } | null;
+                /** TemplateFieldsCost */
+                cost: {
+                    /**
+                     * Status
+                     * @enum {string}
+                     */
+                    status: "amount" | "none" | "text";
+                    /** Text */
+                    text: string;
+                } | null;
+                /** Document Url */
+                document_url: string | null;
+                /** Motions */
+                motions: components["schemas"]["TemplateFieldsMotion"][];
+                /** Office */
+                office: string | null;
+                /** Proposed Decision */
+                proposed_decision: string | null;
+                /** Template Number */
+                template_number: string | null;
+            } | null;
         };
         /**
          * SessionItemDocument
@@ -20728,6 +20766,68 @@ export interface components {
             label: string | null;
             /** Status */
             status: string;
+            /** Url */
+            url: string | null;
+        };
+        /**
+         * TemplateFields
+         * @description Was die Vorlage eines Punkts schon trägt, ohne Modell
+         *     (``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).
+         *     ``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher
+         *     Wortlaut — die Seite zeigt sie als Zitat.
+         */
+        TemplateFields: {
+            /** TemplateFieldsClimate */
+            climate: {
+                /** Relevant */
+                relevant: boolean | null;
+                /** Text */
+                text: string;
+            } | null;
+            /** TemplateFieldsCost */
+            cost: {
+                /**
+                 * Status
+                 * @enum {string}
+                 */
+                status: "amount" | "none" | "text";
+                /** Text */
+                text: string;
+            } | null;
+            /** Document Url */
+            document_url: string | null;
+            /** Motions */
+            motions: components["schemas"]["TemplateFieldsMotion"][];
+            /** Office */
+            office: string | null;
+            /** Proposed Decision */
+            proposed_decision: string | null;
+            /** Template Number */
+            template_number: string | null;
+        };
+        /** TemplateFieldsClimate */
+        TemplateFieldsClimate: {
+            /** Relevant */
+            relevant: boolean | null;
+            /** Text */
+            text: string;
+        };
+        /** TemplateFieldsCost */
+        TemplateFieldsCost: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "amount" | "none" | "text";
+            /** Text */
+            text: string;
+        };
+        /** TemplateFieldsMotion */
+        TemplateFieldsMotion: {
+            /** Applicants */
+            applicants: string[];
+            /** Label */
+            label: string;
             /** Url */
             url: string | null;
         };
@@ -30950,4 +31050,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c1e835d6a63552520a528bce134b69e5f192173e99fa0f054e4b0e6ef6885eb4
+// vertrag-sha256: 6ee774e2d98ab76b7c0ff0822a4b6968b590e144016a4a195b371b3cab5d9fae

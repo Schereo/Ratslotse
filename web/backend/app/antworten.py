@@ -3093,6 +3093,37 @@ class PageQuestions(TypedDict):
     questions: list[str]
 
 
+class TemplateFieldsCost(TypedDict):
+    text: str
+    #: ``amount`` Betrag genannt · ``none`` laut Vorlage keine Kosten · ``text`` Angabe ohne Betrag.
+    status: Literal["amount", "none", "text"]
+
+
+class TemplateFieldsClimate(TypedDict):
+    text: str
+    relevant: bool | None
+
+
+class TemplateFieldsMotion(TypedDict):
+    label: str
+    applicants: list[str]
+    url: str | None
+
+
+class TemplateFields(TypedDict):
+    """Was die Vorlage eines Punkts schon trägt, ohne Modell
+    (``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).
+    ``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher
+    Wortlaut — die Seite zeigt sie als Zitat."""
+    template_number: str | None
+    document_url: str | None
+    office: str | None
+    proposed_decision: str | None
+    cost: TemplateFieldsCost | None
+    climate: TemplateFieldsClimate | None
+    motions: list[TemplateFieldsMotion]
+
+
 class SessionItemDetail(TypedDict):
     """Ein Tagesordnungspunkt auf seiner eigenen Seite
     (``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,
@@ -3109,6 +3140,8 @@ class SessionItemDetail(TypedDict):
     decision_id: int | None
     history: list[SessionItemStation]
     documents: list[SessionItemDocument]
+    #: ``None`` ohne Vorlage und ohne Antrag.
+    template_fields: TemplateFields | None
     previous: SessionItemNeighbor | None
     next: SessionItemNeighbor | None
     position: int
@@ -3158,6 +3191,8 @@ class DecisionTemplate(TypedDict):
     climate_impact: str | None
     klima_relevant: Any
     financial_impact: str | None
+    #: Amtlicher Beschlussvorschlag der Vorlage (Ernte, ``council/ernte.py``).
+    proposed_decision: NotRequired[str | None]
 
 
 class DecisionFollow(TypedDict):
