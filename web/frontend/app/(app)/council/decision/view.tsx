@@ -936,13 +936,13 @@ function DecisionDetailInner() {
             </div>
             {/* 25a: Die Anlagen standen als eigener Abschnitt links. Datei-Links
                 gehören sachlich zusammen — hier per Trennlinie abgesetzt. */}
-            {(data.anlagen?.length ?? 0) > 0 && (
+            {(data.attachments?.length ?? 0) > 0 && (
               <div className="mt-3 border-t border-border pt-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Anlagen zum Beschluss
                 </p>
                 <div className="mt-1.5 flex flex-col gap-1.5">
-                  {data.anlagen!.map((an) => (
+                  {data.attachments!.map((an) => (
                     <a key={an.document_id} href={an.url ?? undefined} target="_blank" rel="noreferrer"
                       className="group flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-2.5 py-2 text-quelle transition-colors hover:bg-muted">
                       <span className="flex min-w-0 flex-1 items-start gap-2">
