@@ -425,9 +425,12 @@ per `nohup` weiter, während der Workflow selbst schon fertig ist.
 
 Beide Actions prüfen die Host-Schlüssel von Sprungrechner, Prod und Dev gegen
 das Secret `VPS_KNOWN_HOSTS`. Es steht seit dem 12.11.2026, mit je einer
-ed25519-Zeile für die drei Rechner. Ist es leer, nehmen die Actions den
-ersten Schlüssel an, und weil jeder Lauf auf einem frischen Runner beginnt,
-heißt das: jeden. Der Lauf trägt dann die Warnung „Host-Schlüssel ungeprüft“.
+ed25519-Zeile für die drei Rechner. **Fehlt es oder ist es leer, bricht jeder
+SSH-Schritt ab, bevor er verbindet.** Bis 11/2026 nahmen die Actions in dem
+Fall den ersten Schlüssel an, mit einer Warnung im Lauf. Weil jeder Lauf auf
+einem frischen Runner beginnt, hieß das: jeden Schlüssel, auch den eines
+Rechners, der sich als Server ausgibt. Ein gelöschtes Secret hätte die Prüfung
+so still abgeschaltet.
 
 **Bekommt ein Server einen neuen Schlüssel** (Neuinstallation, Umzug), scheitert
 jeder Lauf dorthin mit „Host key verification failed“, bis das Secret
