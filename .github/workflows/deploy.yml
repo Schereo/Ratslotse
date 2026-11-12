@@ -226,6 +226,11 @@ jobs:
             # abgebrochenen Umschaltens (s. „Restart services and rebuild web").
             --exclude 'web/frontend/.next-build/'
             --exclude 'web/frontend/.next-alt/'
+            # Dasselbe für die Module (scripts/install_frontend_modules.py):
+            # der neue Baum vor dem Tausch und der alte danach. Beide räumt
+            # das Skript selbst; rsync soll an ihnen nicht scheitern.
+            --exclude 'web/frontend-modules-staging/'
+            --exclude 'web/frontend/node_modules-old-*/'
             --exclude 'web/frontend/public/docs/'
             # Die Instagram-Karten legt der Bot per POST /api/social/media
             # hier ab; sie entstehen NUR auf dem Server. Ohne diese Regel
@@ -245,6 +250,8 @@ jobs:
             --filter 'P /web/frontend/.next-dev/'
             --filter 'P /web/frontend/.next-build/'
             --filter 'P /web/frontend/.next-alt/'
+            --filter 'P /web/frontend-modules-staging/'
+            --filter 'P /web/frontend/node_modules-old-*/'
             --filter 'P /web/frontend/public/docs/'
             --filter 'P /web/frontend/public/social/'
             --filter 'P /docs-site/node_modules/'
@@ -287,7 +294,16 @@ jobs:
             # Backend deps (idempotent) + frontend build, then restart web services.
             .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
               -c constraints.txt
-            cd web/frontend && npm ci --no-audit --no-fund
+            # MODULE NEBEN DEM LAUFENDEN SERVER: Bis 11/2026 stand hier
+            # `npm ci` direkt in web/frontend — das leert node_modules als
+            # Erstes, während `next start` noch ausliefert und Module erst bei
+            # Bedarf nachlädt (12.11.2026 auf dev: 500er, „Cannot find
+            # module“). Das Skript lässt den Baum stehen, wenn sich die
+            # Lockfile nicht geändert hat, und baut ihn sonst daneben und
+            # tauscht ihn per Umbenennung ein. Scheitert `npm ci`, bleibt der
+            # alte Baum stehen — hier noch vor dem API-Stopp.
+            .venv/bin/python scripts/install_frontend_modules.py web/frontend
+            cd web/frontend
             # NEBEN DEM LAUFENDEN SERVER BAUEN. Bis 11/2026 schrieb der Build
             # direkt in `.next`: `next build` leert das Verzeichnis als
             # Erstes, und der alte `next start` lieferte weiter HTML aus, das

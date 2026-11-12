@@ -105,8 +105,15 @@ jobs:
             git reset --hard ${{ github.sha }}
             .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
               -c constraints.txt
+            # MODULE NEBEN DEM LAUFENDEN SERVER: Bis 11/2026 stand hier
+            # `npm ci` direkt in web/frontend. Das leert node_modules als
+            # Erstes, der alte `next start` lädt aber erst bei Bedarf nach —
+            # am 12.11.2026 kam so 15 s nach Deploy-Beginn ein 500er („Cannot
+            # find module 'next/dist/compiled/cookie'“). Das Skript lässt den
+            # Baum stehen, wenn sich die Lockfile nicht geändert hat, und baut
+            # ihn sonst daneben und tauscht ihn per Umbenennung ein.
+            .venv/bin/python scripts/install_frontend_modules.py web/frontend
             cd web/frontend
-            npm ci --no-audit --no-fund
             # NEBEN DEM LAUFENDEN SERVER BAUEN. Bis 11/2026 schrieb der Build
             # direkt in `.next`, aus dem der alte `next start` weiter
             # auslieferte: `next build` leert das Verzeichnis als Erstes, das
