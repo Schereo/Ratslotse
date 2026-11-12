@@ -6,8 +6,8 @@ description: >-
 
 # Vorher stand derselbe Block fünfmal von Hand in den Workflows, jedes Mal mit
 # `StrictHostKeyChecking no`. Hier steht er einmal, mit derselben
-# Host-Schlüssel-Regel wie in .github/actions/ssh: Ist `known_hosts` gesetzt,
-# wird jeder andere Schlüssel abgewiesen.
+# Host-Schlüssel-Regel wie in .github/actions/ssh: Nur die Schlüssel aus
+# `known_hosts` werden angenommen; ohne sie bricht der Schritt ab.
 #
 # Die Logik liegt in run.sh, damit tests/test_ssh_action.py sie ohne GitHub
 # prüfen kann.
@@ -38,10 +38,9 @@ inputs:
     required: true
   known_hosts:
     description: >-
-      Zeilen im known_hosts-Format für Ziele und Sprungrechner. Gesetzt, wird
-      jeder andere Host-Schlüssel abgewiesen; leer, wird der erste angenommen
-      und der Lauf trägt eine Warnung.
-    default: ""
+      Zeilen im known_hosts-Format für Ziele und Sprungrechner; jeder andere
+      Host-Schlüssel wird abgewiesen. Leer bricht der Schritt ab.
+    required: true
 
 runs:
   using: composite
