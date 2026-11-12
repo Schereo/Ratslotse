@@ -125,7 +125,7 @@ def _server_scripts(workflow: dict) -> list[str]:
     scripts = []
     for job in workflow.get("jobs", {}).values():
         for step in job.get("steps", []):
-            if str(step.get("uses", "")).startswith("appleboy/ssh-action"):
+            if step.get("uses") == "./.github/actions/ssh":
                 scripts.append(step.get("with", {}).get("script", ""))
             elif "ssh target" in step.get("run", ""):
                 scripts.append(step["run"])

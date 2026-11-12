@@ -383,6 +383,18 @@ Sie nutzen denselben Deploy-Key und ProxyJump wie `deploy.yml` und führen die
 Skripte direkt auf der App-VM aus — praktisch, wenn kein SSH-Zugang zur Hand
 ist. Nur Collaborator können sie starten.
 
+**Verbunden wird über die eigene Action `.github/actions/ssh`** (seit
+11/2026), nicht mehr über `appleboy/ssh-action`. Die bekam den Deploy-Key und
+lud das Programm, das ihn benutzt, zur Laufzeit ohne Prüfsumme nach; die
+eigene Action nutzt nur das OpenSSH des Runners. Die Eingaben heißen wie
+früher (`host`, `key`, `proxy_*`, `script`, `envs`, `command_timeout`, für
+Dateien `source`/`target`). Ein neuer Ops-Workflow braucht davor einen
+Checkout (`sparse-checkout: .github/actions` genügt). Das Skript geht über
+stdin hinüber, die `envs` stehen also nicht in der Prozessliste der VM.
+`tests/test_ssh_action.py` prüft die Action und meldet einen Schritt ohne
+Checkout, eine unbekannte Eingabe, eine nicht gesetzte `envs`-Variable und
+jeden Workflow, der den Deploy-Key an eine fremde Action reicht.
+
 | Workflow | Wofür | Idempotent? |
 |---|---|---|
 | `ops-vorlagen-backfill.yml` | Holt alle fehlenden Vorlagen-Volltexte und Anlagen (inkl. Antragsteller-Erkennung) nach und baut anschließend den FTS-Index neu. Timeout 120 min. | Ja — nur Fehlendes; der Rebuild ist reproduzierbar. |

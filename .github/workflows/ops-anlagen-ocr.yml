@@ -59,11 +59,17 @@ jobs:
   ocr:
     runs-on: ubuntu-latest
     steps:
+      # Für die SSH-Action aus .github/actions/ssh.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
       - name: OCR auf der Dev-VM
         env:
           OCR_LIMIT: ${{ inputs.limit }}
           OCR_MAX_SEITEN: ${{ inputs.max_seiten }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        uses: ./.github/actions/ssh
         with:
           host: ${{ secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}

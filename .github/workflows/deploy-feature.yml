@@ -42,8 +42,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # Für die SSH-Action aus .github/actions/ssh.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
       - name: Deploy auf die Feature-Instanz
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        uses: ./.github/actions/ssh
         env:
           # Reicht für einen Abruf des eigenen Repos und hebt die Drosselung
           # von „je Adresse" auf „je Token" (s. u.).

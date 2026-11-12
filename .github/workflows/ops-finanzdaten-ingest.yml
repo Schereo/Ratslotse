@@ -62,10 +62,16 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     steps:
+      # Für die SSH-Action aus .github/actions/ssh.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
       - name: "Ingests auf der VM (${{ inputs.umgebung }})"
         env:
           AUCH_SCHRUMPFEN: ${{ inputs.auch_schrumpfen }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        uses: ./.github/actions/ssh
         with:
           host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}
