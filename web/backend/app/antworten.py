@@ -357,6 +357,8 @@ class DecisionRow(TypedDict):
     n_beratungen: NotRequired[int | None]
     location_matches: NotRequired[list[Any]]
     subvote_summary: NotRequired[Any]
+    #: An einer Teilabstimmung: der gelesene Antrag dazu (Schalter ``aenderungsantraege``).
+    amendment: NotRequired["ItemAmendment"]
 
 
 #: Was aus einem Tagesordnungspunkt geworden ist.
@@ -2931,6 +2933,9 @@ class CourseItem(TypedDict):
     journey: list[CourseStation]
     #: Nur an Punkten, die HIER vertagt wurden und schon wieder anstehen.
     next_on_agenda: CourseLaterAgenda | None
+    #: „2 Änderungsanträge · CDU, Volt" — ``None`` ohne Änderungsantrag.
+    amendments_label: str | None
+    amendment_parties: list[str]
 
 
 class SessionCourse(TypedDict):
@@ -3124,6 +3129,40 @@ class TemplateFields(TypedDict):
     motions: list[TemplateFieldsMotion]
 
 
+class ItemAmendmentStatement(TypedDict):
+    text: str
+    quote: str
+    source: str
+    page: int | None
+
+
+class ItemAmendment(TypedDict):
+    """Ein Antrag am Punkt, gelesen von ``council/motions.py``. Ohne Auszug
+    (``read`` false) nur Label, Antragsteller und Link. ``outcome`` und
+    ``decision_id`` stehen, wenn die Teilabstimmung im Protokoll eindeutig
+    zugeordnet ist."""
+    document_id: int
+    list_no: int
+    label: str
+    url: str
+    doc_type: str
+    applicants: list[str]
+    read: bool
+    outcome: str | None
+    decision_id: int | None
+    target: NotRequired[str | None]
+    #: ``replace`` · ``delete`` · ``add`` · ``rewrite`` · ``counter``
+    pattern: NotRequired[str | None]
+    before: NotRequired[ItemAmendmentStatement | None]
+    after: NotRequired[ItemAmendmentStatement | None]
+    #: Wortdiff ohne Modell: ``[["=", "…"], ["-", "zwei Tage."], ["+", "eine Woche."]]``
+    diff: NotRequired[list[list[str]] | None]
+    meaning: NotRequired[ItemAmendmentStatement | None]
+    reason: NotRequired[ItemAmendmentStatement | None]
+    base_template: NotRequired[str | None]
+    base_missing: NotRequired[bool]
+
+
 class SessionItemDetail(TypedDict):
     """Ein Tagesordnungspunkt auf seiner eigenen Seite
     (``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,
@@ -3148,6 +3187,8 @@ class SessionItemDetail(TypedDict):
     count: int
     #: Nur hinter dem Schalter ``punkt-argumente`` und nur, wenn es etwas zu zeigen gibt.
     arguments: NotRequired[ItemArguments]
+    #: Nur hinter dem Schalter ``aenderungsantraege`` und nur mit Anträgen.
+    amendments: NotRequired[list[ItemAmendment]]
 
 
 class ImportanceBreakdown(TypedDict):

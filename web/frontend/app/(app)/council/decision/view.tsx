@@ -1,5 +1,6 @@
 "use client";
 
+import { AntragKarte } from "@/components/session/aenderungsantraege";
 import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
 import { KiStern } from "@/components/ki-stern";
 import { Suspense, useEffect, useState } from "react";
@@ -449,7 +450,17 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
               <OutcomeDot outcome={s.outcome} />
               {voteSummary(s) && <span>· {voteSummary(s)}</span>}
             </p>
-            {body && (
+            {s.amendment?.read ? (
+              // Der gelesene Antrag (council/motions.py): Bedeutung, alt/neu im
+              // Wortlaut, das PDF — statt nur des Protokolltitels.
+              <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3">
+                <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Was beantragt wurde
+                  <KiStern text="Automatisch aus dem Antrag gelesen; verbindlich ist der Antrag im Ratsinfo." />
+                </p>
+                <ul className="mt-1"><AntragKarte a={s.amendment} /></ul>
+              </div>
+            ) : body && (
               <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Was beantragt wurde</p>
                 <p className="mt-1 text-sm leading-relaxed text-foreground">{body}</p>

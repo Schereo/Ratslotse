@@ -2082,6 +2082,13 @@ def session_item(
     punkt = store.session_item(ksinr, nr)
     if not punkt:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+    if features.an("aenderungsantraege"):
+        try:
+            antraege = store.item_amendments(ksinr, punkt["item"]["item_number"])
+            if antraege:
+                punkt["amendments"] = antraege
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Anträge fehlgeschlagen für %s %s", ksinr, nr)
     if features.an("punkt-argumente"):
         try:
             args = store.item_arguments_view(ksinr, nr)
@@ -3088,6 +3095,19 @@ def decision_detail(
             bd["impact_reason"] = d["impact_reason"]
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
+        # „Was beantragt wurde": der gelesene Antrag an seiner Teilabstimmung
+        # (council/motions.py, Zuordnung nur wenn eindeutig).
+        if out["sub_votes"] and features.an("aenderungsantraege"):
+            try:
+                punkt_nr = store.agenda_item_for_decision(d["ksinr"], d["item_number"])
+                if punkt_nr:
+                    je_abstimmung = {a["decision_id"]: a for a in store.item_amendments(d["ksinr"], punkt_nr)
+                                     if a.get("decision_id")}
+                    for sv in out["sub_votes"]:
+                        if sv["id"] in je_abstimmung:
+                            sv["amendment"] = je_abstimmung[sv["id"]]
+            except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Beschluss-Seite
+                _log.exception("Anträge zur Teilabstimmung fehlgeschlagen für %s", d["id"])
     if d.get("template_number"):
         out["template_journey"] = store.vorlage_journey(d["template_number"])
         out["template_url"] = _vorlage_url(d["kvonr"]) if d.get("kvonr") else None

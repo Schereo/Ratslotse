@@ -53,10 +53,14 @@ _KOPF_BERICHT = re.compile(r"Berichtsantrag|bitten\s+(?:die\s+)?Verwaltung[^.]{0
 def classify(label: str | None, text: str | None = None) -> DocType:
     """Art des Dokuments aus dem Label, sonst aus dem Kopf des Textes."""
     lab = (label or "").strip()
+    kopf = (text or "")[:KOPF_ZEICHEN]
     for art, muster in _LABEL:
         if muster.search(lab):
+            # „2026 11 01. - Antrag Änderung Geschäftsordnung §24" ist laut
+            # Kopf ein Änderungsantrag (Volt) — der Text präzisiert das Label.
+            if art == "motion" and kopf and _KOPF_AENDERUNG.search(kopf):
+                return "amendment"
             return art
-    kopf = (text or "")[:KOPF_ZEICHEN]
     if kopf:
         if _KOPF_AENDERUNG.search(kopf):
             return "amendment"

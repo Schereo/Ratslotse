@@ -85,6 +85,7 @@ function PunktView({ p }: { p: Punkt }) {
   const mitNotizen = useFeature("notizen");
   const mitArgumenten = useFeature("punkt-argumente");
   const ausDenUnterlagen = useFeature("aus-den-unterlagen");
+  const mitAntraegen = useFeature("aenderungsantraege");
   const args = mitArgumenten ? p.arguments ?? null : null;
   const reiter: { key: Reiter; label: string; n: number }[] = [
     { key: "arguments" as const, label: "Argumente", n: args?.show_arguments ? args.pro_count + args.contra_count : 0 },
@@ -167,7 +168,10 @@ function PunktView({ p }: { p: Punkt }) {
             </section>
           )}
 
-          {ausDenUnterlagen && p.template_fields && <AusDenUnterlagen f={p.template_fields} />}
+          {(ausDenUnterlagen || mitAntraegen) && (
+            <AusDenUnterlagen f={ausDenUnterlagen ? p.template_fields : null}
+              antraege={mitAntraegen ? p.amendments : undefined} />
+          )}
 
           {reiter.length > 1 && (
             <div role="tablist" aria-label="Zu diesem Punkt"

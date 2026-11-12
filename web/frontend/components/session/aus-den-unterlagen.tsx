@@ -13,6 +13,7 @@ import { ExternalLink } from "lucide-react";
 import { normalizeParty, partyBrand } from "@/components/decision-ui";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
+import { Aenderungsantraege, type Antrag } from "@/components/session/aenderungsantraege";
 
 type Felder = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["template_fields"]>;
 
@@ -45,8 +46,10 @@ function Wortlaut({ text }: { text: string }) {
   );
 }
 
-export function AusDenUnterlagen({ f }: { f: Felder }) {
-  const hatInhalt = f.proposed_decision || f.motions.length || f.cost || f.climate || f.office;
+export function AusDenUnterlagen({ f, antraege }: { f: Felder | null; antraege?: Antrag[] }) {
+  if (!f && !antraege?.length) return null;
+  f = f ?? { template_number: null, document_url: null, office: null, proposed_decision: null, cost: null, climate: null, motions: [] };
+  const hatInhalt = f.proposed_decision || f.motions.length || f.cost || f.climate || f.office || antraege?.length;
   if (!hatInhalt) return null;
   const vorlage = f.template_number ? `Vorlage ${f.template_number}` : null;
   return (
@@ -68,7 +71,9 @@ export function AusDenUnterlagen({ f }: { f: Felder }) {
           </Abschnitt>
         )}
 
-        {f.motions.length > 0 && (
+        {antraege && antraege.length > 0 && <Aenderungsantraege antraege={antraege} />}
+
+        {!antraege?.length && f.motions.length > 0 && (
           <Abschnitt titel={f.motions.length === 1 ? "Antrag dazu" : `${f.motions.length} Anträge dazu`}>
             <ul className="flex flex-col gap-2">
               {f.motions.map((m) => {
