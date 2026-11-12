@@ -9707,6 +9707,13 @@
               "null"
             ]
           },
+          "proposed_decision": {
+            "title": "Proposed Decision",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "template_number": {
             "title": "Template Number",
             "type": [
@@ -32484,6 +32491,110 @@
               "string",
               "null"
             ]
+          },
+          "template_fields": {
+            "description": "Was die Vorlage eines Punkts schon trägt, ohne Modell\n(``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).\n``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher\nWortlaut — die Seite zeigt sie als Zitat.",
+            "properties": {
+              "climate": {
+                "properties": {
+                  "relevant": {
+                    "title": "Relevant",
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "text": {
+                    "title": "Text",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text",
+                  "relevant"
+                ],
+                "title": "TemplateFieldsClimate",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "cost": {
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "amount",
+                      "none",
+                      "text"
+                    ],
+                    "title": "Status",
+                    "type": "string"
+                  },
+                  "text": {
+                    "title": "Text",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "text",
+                  "status"
+                ],
+                "title": "TemplateFieldsCost",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "document_url": {
+                "title": "Document Url",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "motions": {
+                "items": {
+                  "$ref": "#/components/schemas/TemplateFieldsMotion"
+                },
+                "title": "Motions",
+                "type": "array"
+              },
+              "office": {
+                "title": "Office",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "proposed_decision": {
+                "title": "Proposed Decision",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "template_number": {
+                "title": "Template Number",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "template_number",
+              "document_url",
+              "office",
+              "proposed_decision",
+              "cost",
+              "climate",
+              "motions"
+            ],
+            "title": "TemplateFields",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
@@ -32497,6 +32608,7 @@
           "decision_id",
           "history",
           "documents",
+          "template_fields",
           "previous",
           "next",
           "position",
@@ -33385,6 +33497,180 @@
           "is_image"
         ],
         "title": "TemplateAttachment",
+        "type": "object"
+      },
+      "TemplateFields": {
+        "description": "Was die Vorlage eines Punkts schon trägt, ohne Modell\n(``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).\n``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher\nWortlaut — die Seite zeigt sie als Zitat.",
+        "properties": {
+          "climate": {
+            "properties": {
+              "relevant": {
+                "title": "Relevant",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "relevant"
+            ],
+            "title": "TemplateFieldsClimate",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "cost": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "amount",
+                  "none",
+                  "text"
+                ],
+                "title": "Status",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "status"
+            ],
+            "title": "TemplateFieldsCost",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "document_url": {
+            "title": "Document Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "motions": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateFieldsMotion"
+            },
+            "title": "Motions",
+            "type": "array"
+          },
+          "office": {
+            "title": "Office",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proposed_decision": {
+            "title": "Proposed Decision",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "template_number": {
+            "title": "Template Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "template_number",
+          "document_url",
+          "office",
+          "proposed_decision",
+          "cost",
+          "climate",
+          "motions"
+        ],
+        "title": "TemplateFields",
+        "type": "object"
+      },
+      "TemplateFieldsClimate": {
+        "properties": {
+          "relevant": {
+            "title": "Relevant",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "relevant"
+        ],
+        "title": "TemplateFieldsClimate",
+        "type": "object"
+      },
+      "TemplateFieldsCost": {
+        "properties": {
+          "status": {
+            "enum": [
+              "amount",
+              "none",
+              "text"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "status"
+        ],
+        "title": "TemplateFieldsCost",
+        "type": "object"
+      },
+      "TemplateFieldsMotion": {
+        "properties": {
+          "applicants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applicants",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "applicants",
+          "url"
+        ],
+        "title": "TemplateFieldsMotion",
         "type": "object"
       },
       "TemplateFollow": {

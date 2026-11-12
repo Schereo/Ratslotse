@@ -3123,6 +3123,7 @@ def decision_detail(
                 # „Was kostet das?" (Design H-21). Amtlicher Wortlaut, deshalb
                 # unverändert und als Zitat gekennzeichnet.
                 "financial_impact": v.get("financial_impact"),
+                "proposed_decision": v.get("proposed_decision"),
             }
             if not out["template_url"] and v.get("kvonr"):
                 out["template_url"] = _vorlage_url(v["kvonr"])

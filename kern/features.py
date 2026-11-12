@@ -322,6 +322,13 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Auf dev zwei Wochen ohne unpassende Frage, Kosten im Admin-Panel unter "
                     "page_questions gesichtet, von Tim abgenommen und auf Prod angeschaltet.",
     ),
+    "aus-den-unterlagen": Feature(
+        key="aus-den-unterlagen",
+        description="Karte „Aus den Unterlagen“ auf der Punkt-Seite: was Vorlage und Anträge tragen — "
+                    "Beschlussvorschlag, Anträge mit Antragsteller, Kosten, Klima, Federführung; ab dem "
+                    "Dossier mit belegten Abschnitten (docs/plan-vorlagen-aufbereiten.md).",
+        fertig_wenn="Dossier-Tore aus Plan § 7.2 erreicht, von Tim abgenommen und auf Prod angeschaltet.",
+    ),
     "punkt-argumente": Feature(
         key="punkt-argumente",
         description="Die Reiter „Argumente“ und „Fraktionen“ auf der Punkt-Seite: Streitpunkte mit "
