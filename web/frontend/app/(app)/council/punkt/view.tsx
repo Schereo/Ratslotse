@@ -21,6 +21,7 @@ import { MeineNotiz } from "@/components/notiz/meine-notiz";
 import { Argumente, Fraktionen } from "@/components/session/item-arguments";
 import { kurzfassung } from "@/components/tagesordnung";
 import { KiStern } from "@/components/ki-stern";
+import { AusDenUnterlagen } from "@/components/session/aus-den-unterlagen";
 import { useFetch } from "@/lib/use-fetch";
 import { istNichtGefunden } from "@/lib/api";
 import { useFeature } from "@/lib/features";
@@ -83,6 +84,7 @@ function PunktView({ p }: { p: Punkt }) {
     .filter(Boolean).join(" · ");
   const mitNotizen = useFeature("notizen");
   const mitArgumenten = useFeature("punkt-argumente");
+  const ausDenUnterlagen = useFeature("aus-den-unterlagen");
   const args = mitArgumenten ? p.arguments ?? null : null;
   const reiter: { key: Reiter; label: string; n: number }[] = [
     { key: "arguments" as const, label: "Argumente", n: args?.show_arguments ? args.pro_count + args.contra_count : 0 },
@@ -164,6 +166,8 @@ function PunktView({ p }: { p: Punkt }) {
               )}
             </section>
           )}
+
+          {ausDenUnterlagen && p.template_fields && <AusDenUnterlagen f={p.template_fields} />}
 
           {reiter.length > 1 && (
             <div role="tablist" aria-label="Zu diesem Punkt"
