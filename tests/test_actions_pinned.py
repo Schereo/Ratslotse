@@ -4,7 +4,9 @@ Ein Tag ist ein beweglicher Zeiger im fremden Repo. Wer ihn umhängt, lässt
 seinen Code in unseren Workflows laufen — und `appleboy/ssh-action` bekommt
 dort den Deploy-Schlüssel (`secrets.SSH_PRIVATE_KEY`, auch als `proxy_key`).
 Gemeldet hat das die Sicherheitsprüfung im 11/2026; die Zeile stand damals in
-24 Workflows.
+24 Workflows. Inzwischen geht der Schlüssel an die eigene Action
+``.github/actions/ssh`` (``tests/test_ssh_action.py``); der Pin bleibt für
+alle übrigen Drittanbieter-Actions.
 
 Erlaubt sind:
 
@@ -86,11 +88,11 @@ def _violations() -> dict[tuple[str, str], str]:
     return out
 
 
-def test_the_scanner_sees_the_deploy_action():
+def test_the_scanner_sees_the_workflows():
     """Ohne Treffer prüfte der Wächter nichts — etwa nach einem Umzug der Dateien."""
     refs = {ref.split("@")[0] for _, _, ref, _ in _uses_lines()}
-    assert "appleboy/ssh-action" in refs
     assert "actions/checkout" in refs
+    assert "./.github/actions/ssh" in refs
 
 
 def test_third_party_actions_are_pinned_to_a_commit_sha():

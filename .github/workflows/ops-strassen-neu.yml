@@ -60,7 +60,7 @@ jobs:
         run: python scripts/strassen_snapshot.py holen --datei strassen-snapshot.json
 
       - name: Schnappschuss auf den Server legen
-        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        uses: ./.github/actions/ssh
         with:
           host: ${{ inputs.ziel == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -74,7 +74,7 @@ jobs:
           target: app/data/
 
       - name: Abgleich auf dem Server
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        uses: ./.github/actions/ssh
         with:
           host: ${{ inputs.ziel == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}

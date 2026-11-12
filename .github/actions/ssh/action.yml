@@ -1,0 +1,83 @@
+name: SSH über den Sprungrechner
+description: >-
+  Führt ein Skript auf einem Server aus oder legt Dateien dort ab, über einen
+  Sprungrechner, nur mit dem OpenSSH des Runners. Ersetzt appleboy/ssh-action
+  und appleboy/scp-action; die Eingaben heißen deshalb wie dort.
+
+# Warum eine eigene Action: appleboy/ssh-action bekam den Deploy-Schlüssel und
+# lud das Programm, das ihn benutzt (drone-ssh), zur Laufzeit nach — als
+# Release-Datei ohne Prüfsumme, vorher als Docker-Tag. Den Code der Action
+# konnte man auf einen Commit festnageln, das nachgeladene Programm nicht.
+# Hier steht zwischen Schlüssel und Server nur noch das ssh des Runner-Abbilds.
+#
+# Die Logik liegt in run.sh, damit tests/test_ssh_action.py sie ohne GitHub
+# prüfen kann. Eingaben kommen als Umgebungsvariablen an, nie als
+# `${{ }}`-Einsetzung in den Skripttext.
+
+inputs:
+  host:
+    description: Zielrechner.
+    required: true
+  port:
+    description: SSH-Port des Ziels.
+    default: "22"
+  username:
+    description: Benutzer auf dem Ziel.
+    required: true
+  key:
+    description: Privater Schlüssel für das Ziel.
+    required: true
+  proxy_host:
+    description: Sprungrechner; leer heißt direkt verbinden.
+    default: ""
+  proxy_port:
+    description: SSH-Port des Sprungrechners.
+    default: "22"
+  proxy_username:
+    description: Benutzer auf dem Sprungrechner.
+    default: ""
+  proxy_key:
+    description: Privater Schlüssel für den Sprungrechner; leer heißt derselbe wie `key`.
+    default: ""
+  known_hosts:
+    description: >-
+      Zeilen im known_hosts-Format für Ziel und Sprungrechner. Gesetzt, wird
+      jeder andere Host-Schlüssel abgewiesen; leer, wird der erste angenommen
+      (so verhielt sich appleboy/ssh-action ohne `fingerprint`).
+    default: ""
+  script:
+    description: Skript für bash auf dem Ziel.
+    default: ""
+  envs:
+    description: Kommagetrennte Namen von Umgebungsvariablen dieses Schritts, die auf dem Ziel exportiert werden.
+    default: ""
+  command_timeout:
+    description: Höchstdauer des Skripts, z. B. `30m` oder `2h`.
+    default: 10m
+  source:
+    description: Kommagetrennte Dateien oder Ordner, die vor dem Skript auf das Ziel kopiert werden (Pfade bleiben erhalten).
+    default: ""
+  target:
+    description: Ordner auf dem Ziel für `source`, relativ zum Home-Verzeichnis.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: bash "$GITHUB_ACTION_PATH/run.sh"
+      env:
+        INPUT_HOST: ${{ inputs.host }}
+        INPUT_PORT: ${{ inputs.port }}
+        INPUT_USERNAME: ${{ inputs.username }}
+        INPUT_KEY: ${{ inputs.key }}
+        INPUT_PROXY_HOST: ${{ inputs.proxy_host }}
+        INPUT_PROXY_PORT: ${{ inputs.proxy_port }}
+        INPUT_PROXY_USERNAME: ${{ inputs.proxy_username }}
+        INPUT_PROXY_KEY: ${{ inputs.proxy_key }}
+        INPUT_KNOWN_HOSTS: ${{ inputs.known_hosts }}
+        INPUT_SCRIPT: ${{ inputs.script }}
+        INPUT_ENVS: ${{ inputs.envs }}
+        INPUT_COMMAND_TIMEOUT: ${{ inputs.command_timeout }}
+        INPUT_SOURCE: ${{ inputs.source }}
+        INPUT_TARGET: ${{ inputs.target }}
