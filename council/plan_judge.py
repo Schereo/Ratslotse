@@ -22,6 +22,8 @@ import os
 import re
 
 from council import plans as register
+# Eine Regel statt zwei (council/evidence.py): Zitatvergleich und Seitensuche stehen dort.
+from council.evidence import _PRINT_FOOTER, QUOTE_MAX, QUOTE_MIN_TIGHT, locate, tight  # noqa: F401
 from kern import llm, usage
 
 #: Luna: günstig, und für Dokumente ohne Nutzereingabe zulässig (``llm.OHNE_NUTZEREINGABE``).
@@ -283,26 +285,7 @@ POINT_KINDS = ("goal", "standard", "figure", "responsibility", "deadline", "meas
 POINTS_MIN, POINTS_MAX = 3, 6
 #: So viele Vorschläge darf das Modell machen; es bleiben die ersten ``POINTS_MAX``, die sich belegen lassen.
 POINT_CANDIDATES = 8
-QUOTE_MAX = 420
-#: Ein Zitat aus drei Wörtern belegt nichts.
-QUOTE_MIN_TIGHT = 30
-
-_TIGHT_DROP = re.compile("[\\s\\-­‐‑‒–—\"'„“”‚‘’»«›‹-]+")
-_LIGATURES = {"ﬂ": "fl", "ﬀ": "ff", "ﬁ": "fi", "ﬃ": "ffi", "ﬄ": "ffl"}
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
-#: Die Fußzeile jeder Seite eines Vorlagen-Ausdrucks — steht mitten im Satz, wo die Seite wechselt.
-_PRINT_FOOTER = re.compile(r"Ausdruck vom:\s*\d{2}\.\d{2}\.\d{4}\s+Seite:\s*\d+/\d+")
-
-
-def tight(text: str) -> str:
-    """Für den Vergleich Zitat gegen Quelltext: ohne Leerraum, Trenn- und Gedankenstriche und
-    Anführungszeichen, Ligaturen aufgelöst. Der PDF-Text bricht Zeilen mitten im Wort („Ver- pflegung“)
-    und setzt typografische Zeichen, die ein Modell beim Abschreiben glättet — die Wörter und Zahlen
-    müssen trotzdem Zeichen für Zeichen dieselben sein."""
-    text = _PRINT_FOOTER.sub(" ", text or "")
-    for old, new in _LIGATURES.items():
-        text = text.replace(old, new)
-    return _TIGHT_DROP.sub("", text)
 
 
 def _plain_number(token: str) -> str:
@@ -395,27 +378,6 @@ def key_points(title: str, mode: str, sources: list[dict], model: str = MODEL) -
                                  response_format={"type": "json_object"}, max_tokens=4000,
                                  messages=[{"role": "user", "content": prompt}])
     return verified_key_points(_json(response), sources), cost_usd(response, model)
-
-
-def locate(quote: str, source: dict, page: int | None) -> tuple[bool, int | None]:
-    """Steht das Zitat wörtlich in der Quelle? Bei Anlagen: auf welcher Seite — die Seitenangabe des
-    Modells wird berichtigt, wenn das Zitat auf einer anderen steht; ein Zitat über einen Seitenwechsel
-    zählt zur ersten der beiden Seiten."""
-    needle = tight(quote)
-    if len(needle) < QUOTE_MIN_TIGHT:
-        return False, None
-    pages = source.get("pages")
-    if pages is None:
-        return needle in tight(source["text"]), None
-    packed = [tight(p) for p in pages]
-    order = ([page - 1] if page and 0 < page <= len(packed) else []) + list(range(len(packed)))
-    for i in order:
-        if needle in packed[i]:
-            return True, i + 1
-    for i in order:
-        if i + 1 < len(packed) and needle in packed[i] + packed[i + 1]:
-            return True, i + 1
-    return False, None
 
 
 def check_statement(entry: dict, sources: dict[str, dict], limit: int) -> tuple[dict | None, str | None]:
