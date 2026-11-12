@@ -11,6 +11,7 @@ import { formatDate } from "@/components/ui";
 import { OUTCOME_DOT_CLS, OUTCOME_WORD, voteLabel } from "@/components/decision-ui";
 import { FragDenRatChat } from "@/components/frag-den-rat-chat";
 import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
+import { KiStern } from "@/components/ki-stern";
 import { shortCommittee } from "@/lib/committees";
 import { decisionHref, sitzungHref } from "@/lib/routes";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -106,7 +107,10 @@ export function FragDenRat({ p }: { p: Punkt }) {
   return (
     <section aria-labelledby="frag-den-rat" className="rounded-2xl border border-border bg-card shadow-sm">
       <div className="border-b border-border p-4">
-        <h2 id="frag-den-rat" className="font-display text-base font-semibold text-foreground">Frag den Rat</h2>
+        <h2 id="frag-den-rat" className="font-display text-base font-semibold text-foreground">
+          Frag den Rat
+          <KiStern className="ml-1" text="Automatische Antwort aus den Unterlagen zu diesem Punkt. Kann unvollständig sein — Quellen prüfen." />
+        </h2>
         <p className="text-sm text-muted-foreground">zu diesem Punkt · {nr}</p>
       </div>
       {an > 0 && (
@@ -117,9 +121,6 @@ export function FragDenRat({ p }: { p: Punkt }) {
       )}
       <FragDenRatChat seite={{ route: "/council/punkt", refs: { ksinr: p.ksinr, item_number: nr } }}
         vorschlaege={vorschlaege} fallbackHref={ziel} platzhalter="Deine Frage zu diesem Punkt …" />
-      <p className="border-t border-border px-4 py-3 text-hinweis text-muted-foreground">
-        Automatische Antwort aus den Unterlagen zu diesem Punkt. Kann unvollständig sein — Quellen prüfen.
-      </p>
     </section>
   );
 }

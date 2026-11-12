@@ -10735,6 +10735,28 @@ export interface components {
             session_time: string | null;
         };
         /**
+         * CourseProtocolEstimate
+         * @description Wann das Protokoll voraussichtlich erscheint (``council/protokoll_erwartung.py``):
+         *     wenige Tage nach der Sitzung, in der es genehmigt wird — der nächsten des
+         *     Gremiums. ``basis`` sagt, ob deren Datum im Kalender steht oder aus
+         *     derselben Jahreszeit früherer Jahre geschätzt ist (dann ungenauer).
+         */
+        CourseProtocolEstimate: {
+            /** Approval Date */
+            approval_date: string;
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "next_session" | "history";
+            /** Earliest */
+            earliest: string;
+            /** Expected */
+            expected: string;
+            /** Latest */
+            latest: string;
+        };
+        /**
          * CourseStage
          * @description Eine Etappe der Sitzung — ein helles Band im Kurs, ein Band in der Liste.
          *
@@ -20178,6 +20200,28 @@ export interface components {
                 session_date: string;
                 /** Session Time */
                 session_time: string | null;
+            } | null;
+            /**
+             * CourseProtocolEstimate
+             * @description Wann das Protokoll voraussichtlich erscheint (``council/protokoll_erwartung.py``):
+             *     wenige Tage nach der Sitzung, in der es genehmigt wird — der nächsten des
+             *     Gremiums. ``basis`` sagt, ob deren Datum im Kalender steht oder aus
+             *     derselben Jahreszeit früherer Jahre geschätzt ist (dann ungenauer).
+             */
+            protocol_estimate: {
+                /** Approval Date */
+                approval_date: string;
+                /**
+                 * Basis
+                 * @enum {string}
+                 */
+                basis: "next_session" | "history";
+                /** Earliest */
+                earliest: string;
+                /** Expected */
+                expected: string;
+                /** Latest */
+                latest: string;
             } | null;
             /** Public Count */
             public_count: number;
@@ -30890,4 +30934,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0634f1d6f3266fffc76f39dad318c2633a15834a669dc126ec7cd74506827559
+// vertrag-sha256: aae073d43d15e2cc4a10ce09de659c370d2ac9a68f088f654d7009afd2cd16a6

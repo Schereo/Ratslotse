@@ -160,7 +160,7 @@ describe("Etappenname", () => {
 
 describe("courseInput — vom Vertrag zur Eingabe", () => {
   const kurs: SessionCourse = {
-    start: "17:00", public_count: 6, closed_count: 2, substantive_count: 2, summary: null, summary_source: "rule", next_session: null,
+    start: "17:00", public_count: 6, closed_count: 2, substantive_count: 2, summary: null, summary_source: "rule", next_session: null, protocol_estimate: null,
     stages: [
       { kind: "start", name: "Zum Start", name_medium: null, name_short: "Start", subtitle: null,
         range: "Ö 1 – Ö 2", count: 3, cells: [

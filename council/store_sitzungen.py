@@ -1727,6 +1727,17 @@ class SitzungenMixin(StoreBasis):
         gespeichert = self.session_sentence(int(ksinr))
         if gespeichert and gespeichert["stage"] == ("protocol" if any(ergebnisse.values()) else "agenda"):
             satz, satz_quelle = gespeichert["sentence"], "model"
+        naechste = self._naechste_sitzung_des_gremiums(sitzung["committee"], datum)
+        # Wann das Protokoll kommt — nur, solange es fehlt (council/protokoll_erwartung.py).
+        erwartung = None
+        if not protokoll and datum:
+            from council.protokoll_erwartung import protocol_estimate  # noqa: PLC0415
+            tage = [date.fromisoformat(r[0][:10]) for r in self._conn.execute(
+                "SELECT DISTINCT session_date FROM council_sessions WHERE committee = ? AND session_date <= ?",
+                (sitzung["committee"], datum))]
+            erwartung = protocol_estimate(
+                date.fromisoformat(datum[:10]),
+                date.fromisoformat(naechste["session_date"][:10]) if naechste else None, tage)
         return {
             "start": (sitzung["session_time"] or "").strip() or None,
             "public_count": len(oeffentlich),
@@ -1734,7 +1745,8 @@ class SitzungenMixin(StoreBasis):
             "substantive_count": inhaltlich,
             "summary": satz,
             "summary_source": satz_quelle,
-            "next_session": self._naechste_sitzung_des_gremiums(sitzung["committee"], datum),
+            "next_session": naechste,
+            "protocol_estimate": erwartung,
             "stages": stages,
             "items": items,
         }

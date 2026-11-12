@@ -1,6 +1,7 @@
 "use client";
 
 import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
+import { KiStern } from "@/components/ki-stern";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
@@ -1016,15 +1017,15 @@ function FragZumBeschluss({ d, hatVorlage }: { d: CouncilDecision; hatVorlage: b
   return (
     <section aria-labelledby="frag-zum-beschluss" className="mt-6 rounded-2xl border border-border bg-card shadow-sm">
       <div className="border-b border-border p-4">
-        <h2 id="frag-zum-beschluss" className="font-display text-base font-semibold text-foreground">Frag den Rat</h2>
+        <h2 id="frag-zum-beschluss" className="font-display text-base font-semibold text-foreground">
+          Frag den Rat
+          <KiStern className="ml-1" text="Automatische Antwort aus dem Ratsarchiv. Kann unvollständig sein — Quellen prüfen." />
+        </h2>
         <p className="text-sm text-muted-foreground">zu diesem Beschluss</p>
       </div>
       <FragDenRatChat seite={{ route: "/council/decision", refs: { decision_id: d.id } }}
         vorschlaege={vorschlaege} platzhalter="Deine Frage zu diesem Beschluss …"
         fallbackHref={(q) => `${fragenHref({ q })}&chip=1`} />
-      <p className="border-t border-border px-4 py-3 text-hinweis text-muted-foreground">
-        Automatische Antwort aus dem Ratsarchiv. Kann unvollständig sein — Quellen prüfen.
-      </p>
     </section>
   );
 }

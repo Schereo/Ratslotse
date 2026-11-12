@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dayWord, formalActTitle, groupFormalActs, outcomeCounts, priorStations, sessionKicker,
-  sessionPhase, splitNumber,
+  roughlyIn, sessionPhase, splitNumber,
 } from "./session-page";
 
 // Die Tabelle aus Plan § 4.3: vorher, läuft, vorbei ohne Protokoll, vorbei mit.
@@ -57,5 +57,17 @@ describe("Zählung und Gruppen", () => {
     const weg = [{ ksinr: 1, session_date: "2026-06-03" }, { ksinr: 2, session_date: "2026-06-08" },
       { ksinr: 3, session_date: "2026-06-29" }];
     expect(priorStations(weg, 2, "2026-06-08")).toEqual([weg[0]]);
+  });
+});
+
+describe("roughlyIn", () => {
+  const jetzt = new Date("2026-11-12T09:00:00");
+  it("rundet auf Wochen, nah dran auf Tage", () => {
+    expect(roughlyIn("2026-11-14", jetzt)).toBe("in den nächsten Tagen");
+    expect(roughlyIn("2026-11-20", jetzt)).toBe("in etwa einer Woche");
+    expect(roughlyIn("2026-12-10", jetzt)).toBe("in etwa 4 Wochen");
+  });
+  it("sagt nichts, wenn das Datum vorbei ist", () => {
+    expect(roughlyIn("2026-11-01", jetzt)).toBeNull();
   });
 });
