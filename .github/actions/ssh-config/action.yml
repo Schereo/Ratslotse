@@ -1,0 +1,59 @@
+name: SSH-Konfiguration für den Sprungrechner
+description: >-
+  Schreibt ~/.ssh/config mit dem Sprungrechner `edge` und einem oder mehreren
+  Zielen dahinter, für Schritte, die selbst `ssh`, `scp` oder `rsync` aufrufen.
+  Wer nur ein Skript auf dem Server ausführt, nimmt .github/actions/ssh.
+
+# Vorher stand derselbe Block fünfmal von Hand in den Workflows, jedes Mal mit
+# `StrictHostKeyChecking no`. Hier steht er einmal, mit derselben
+# Host-Schlüssel-Regel wie in .github/actions/ssh: Ist `known_hosts` gesetzt,
+# wird jeder andere Schlüssel abgewiesen.
+#
+# Die Logik liegt in run.sh, damit tests/test_ssh_action.py sie ohne GitHub
+# prüfen kann.
+
+inputs:
+  targets:
+    description: >-
+      Eine Zeile je Ziel: `<name> <host>`, z. B. `target <host>`. Danach
+      erreicht `ssh <name>` das Ziel über den Sprungrechner.
+    required: true
+  port:
+    description: SSH-Port der Ziele.
+    default: "22"
+  username:
+    description: Benutzer auf den Zielen.
+    required: true
+  key:
+    description: Privater Schlüssel für Ziele und Sprungrechner.
+    required: true
+  proxy_host:
+    description: Sprungrechner; erreichbar als `edge`.
+    required: true
+  proxy_port:
+    description: SSH-Port des Sprungrechners.
+    default: "22"
+  proxy_username:
+    description: Benutzer auf dem Sprungrechner.
+    required: true
+  known_hosts:
+    description: >-
+      Zeilen im known_hosts-Format für Ziele und Sprungrechner. Gesetzt, wird
+      jeder andere Host-Schlüssel abgewiesen; leer, wird der erste angenommen
+      und der Lauf trägt eine Warnung.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: bash "$GITHUB_ACTION_PATH/run.sh"
+      env:
+        INPUT_TARGETS: ${{ inputs.targets }}
+        INPUT_PORT: ${{ inputs.port }}
+        INPUT_USERNAME: ${{ inputs.username }}
+        INPUT_KEY: ${{ inputs.key }}
+        INPUT_PROXY_HOST: ${{ inputs.proxy_host }}
+        INPUT_PROXY_PORT: ${{ inputs.proxy_port }}
+        INPUT_PROXY_USERNAME: ${{ inputs.proxy_username }}
+        INPUT_KNOWN_HOSTS: ${{ inputs.known_hosts }}

@@ -163,7 +163,8 @@ Merge-Commit gar kein Workflow-Lauf existiert
 (`gh api repos/<owner>/<repo>/actions/runs?head_sha=<sha>` bleibt leer).
 
 **Verwendete GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`,
-`VPS_DEV_HOST`, `VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT` sowie
+`VPS_DEV_HOST`, `VPS_PROXY_HOST`, `VPS_PROXY_USER`, `VPS_USER`, `VPS_SSH_PORT`,
+`VPS_KNOWN_HOSTS` (Host-Schlüssel, s. Ops-Workflows) sowie
 `ANTHROPIC_API_KEY` für `docs-review.yml`. Werte stehen ausschließlich in den
 Repository-Secrets.
 
@@ -394,6 +395,53 @@ stdin hinüber, die `envs` stehen also nicht in der Prozessliste der VM.
 `tests/test_ssh_action.py` prüft die Action und meldet einen Schritt ohne
 Checkout, eine unbekannte Eingabe, eine nicht gesetzte `envs`-Variable und
 jeden Workflow, der den Deploy-Key an eine fremde Action reicht.
+
+Schritte, die selbst `ssh`, `scp` oder `rsync` aufrufen (`deploy.yml`,
+`ops-erreichbarkeit`, `ops-deploy-rueckstand`, `ops-haushalt-vergleich`,
+`ops-wartungsbarriere`), holen sich ihre `~/.ssh/config` von
+**`.github/actions/ssh-config`**: Sprungrechner als `edge`, je Ziel eine Zeile
+`<name> <host>`. Bis 11/2026 stand dieser Block fünfmal von Hand in den
+Workflows, jedes Mal mit `StrictHostKeyChecking no`. Der Deploy-Key geht an
+nichts anderes als an diese beiden Actions, auch an kein eigenes `run:`-Skript.
+
+### Host-Schlüssel (`VPS_KNOWN_HOSTS`)
+
+Beide Actions prüfen die Host-Schlüssel von Sprungrechner, Prod und Dev gegen
+das Secret `VPS_KNOWN_HOSTS`. Ist es leer, nehmen sie den ersten Schlüssel an,
+und weil jeder Lauf auf einem frischen Runner beginnt, heißt das: jeden. Der
+Lauf trägt dann die Warnung „Host-Schlüssel ungeprüft“.
+
+Angelegt wird es mit den Schlüsseln, so wie die CI die Rechner erreicht: den
+Sprungrechner von außen, Prod und Dev **vom Sprungrechner aus** (die CI geht
+über `ProxyJump`, aufgelöst wird der Name also dort). Die Werte in spitzen
+Klammern sind die der gleichnamigen Secrets:
+
+```bash
+P=<VPS_SSH_PORT>
+ssh-keyscan -t ed25519 -p $P <VPS_PROXY_HOST> > known_hosts_ci
+ssh -p $P <dein-login>@<VPS_PROXY_HOST> \
+  "ssh-keyscan -t ed25519 -p $P <VPS_HOST> <VPS_DEV_HOST>" >> known_hosts_ci
+ssh-keygen -lf known_hosts_ci        # drei Zeilen, je ein Fingerabdruck
+gh secret set VPS_KNOWN_HOSTS < known_hosts_ci
+```
+
+Der erste Befehl ist für sich ungeprüft. Den Fingerabdruck des Sprungrechners
+deshalb gegen das eigene `known_hosts` halten
+(`ssh-keygen -lF '[<VPS_PROXY_HOST>]:<VPS_SSH_PORT>'`; bei Port 22 ohne
+Klammern und Port) oder auf dem Rechner selbst gegen
+`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`. Gehashte Zeilen
+(`ssh-keygen -H`) gehen auch.
+
+Danach einmal ohne Folgen ausprobieren, bevor der nächste Deploy es tut:
+
+```bash
+gh workflow run ops-modelle.yml --ref dev -f umgebung=dev          # Sprungrechner + Dev
+gh workflow run ops-wartungsbarriere.yml --ref dev -f aktion=status  # Sprungrechner + Prod, liest nur
+```
+
+**Bekommt ein Server einen neuen Schlüssel** (Neuinstallation, Umzug), scheitert
+jeder Lauf dorthin mit „Host key verification failed“, bis das Secret
+nachgezogen ist. Das ist gewollt: Genau so sähe auch ein Angriff aus.
 
 | Workflow | Wofür | Idempotent? |
 |---|---|---|

@@ -81,9 +81,12 @@ fi
 if [ -n "$known_hosts" ]; then
   printf '%s\n' "$known_hosts" | tr -d '\r' >"$workdir/known_hosts"
   strict=yes
+  entries=$(grep -Ecv '^[[:space:]]*(#|$)' "$workdir/known_hosts" || true)
+  [ "$entries" -gt 0 ] || fail "known_hosts enthält keinen Eintrag."
 else
   : >"$workdir/known_hosts"
   strict=accept-new
+  echo "::warning title=Host-Schlüssel ungeprüft::known_hosts ist leer (Secret VPS_KNOWN_HOSTS), der erste Schlüssel jedes Servers wird angenommen. Anleitung: ratslotse.de/docs/betrieb/ unter „Host-Schlüssel“."
 fi
 
 {
@@ -125,7 +128,13 @@ run_remote() {
   case $rc in
     0) return 0 ;;
     124 | 137) echo "::error::$what nach $command_timeout abgebrochen (command_timeout)." >&2 ;;
-    255) echo "::error::$what: SSH-Verbindung zu Ziel oder Sprungrechner gescheitert (Exit 255)." >&2 ;;
+    255)
+      if [ "$strict" = yes ]; then
+        echo "::error::$what: SSH-Verbindung zu Ziel oder Sprungrechner gescheitert (Exit 255). Steht „Host key verification failed“ darüber, fehlt der Schlüssel in VPS_KNOWN_HOSTS oder hat sich geändert." >&2
+      else
+        echo "::error::$what: SSH-Verbindung zu Ziel oder Sprungrechner gescheitert (Exit 255)." >&2
+      fi
+      ;;
     *) echo "::error::$what endete auf dem Ziel mit Exit $rc." >&2 ;;
   esac
   exit "$rc"

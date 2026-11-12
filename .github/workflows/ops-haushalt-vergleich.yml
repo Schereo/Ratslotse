@@ -36,37 +36,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Derselbe ProxyJump-Aufbau wie in deploy.yml, nur mit zwei Zielen.
+      # Dieselbe Konfiguration wie in deploy.yml, nur mit zwei Zielen.
       - name: SSH einrichten
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' \
-            'Host edge' \
-            "  HostName ${{ secrets.VPS_PROXY_HOST }}" \
-            "  User ${{ secrets.VPS_PROXY_USER }}" \
-            "  Port ${{ secrets.VPS_SSH_PORT }}" \
-            '  IdentityFile ~/.ssh/id_ed25519' \
-            '  StrictHostKeyChecking no' \
-            'Host prod' \
-            "  HostName ${{ secrets.VPS_HOST }}" \
-            "  User ${{ secrets.VPS_USER }}" \
-            "  Port ${{ secrets.VPS_SSH_PORT }}" \
-            '  IdentityFile ~/.ssh/id_ed25519' \
-            '  ProxyJump edge' \
-            '  StrictHostKeyChecking no' \
-            'Host dev' \
-            "  HostName ${{ secrets.VPS_DEV_HOST }}" \
-            "  User ${{ secrets.VPS_USER }}" \
-            "  Port ${{ secrets.VPS_SSH_PORT }}" \
-            '  IdentityFile ~/.ssh/id_ed25519' \
-            '  ProxyJump edge' \
-            '  StrictHostKeyChecking no' \
-            > ~/.ssh/config
-          chmod 600 ~/.ssh/config
+        uses: ./.github/actions/ssh-config
+        with:
+          targets: |
+            prod ${{ secrets.VPS_HOST }}
+            dev ${{ secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
 
       # Das Skript wird MITGESCHICKT und nicht auf der VM gesucht: Dort liegt
       # der gedeployte Stand, und auf der Dev-VM ist das `dev`, auf Prod `main`.
