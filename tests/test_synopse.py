@@ -1,9 +1,12 @@
 """Spaltenleser für Synopsen (council/synopse.py) — gegen ein selbst gebautes PDF."""
 from __future__ import annotations
 
-import pymupdf
+import pytest
 
 from council import synopse
+
+# pymupdf ist bewusst keine Abhängigkeit (s. constraints.txt); ohne es kein Test.
+pymupdf = pytest.importorskip("pymupdf")
 
 
 def _synopse_pdf() -> bytes:
