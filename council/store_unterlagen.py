@@ -195,3 +195,77 @@ class UnterlagenMixin(StoreBasis):
                     gesehen.add(d["document_id"])
                     out.append({"ksinr": p["ksinr"], "item_number": p["item_number"], "document_id": d["document_id"]})
         return out
+
+    # ---- Dossier je Vorlage (council/template_dossier.py, PR 12) -----------
+
+    def dossier_material(self, template_number: str) -> dict | None:
+        """Vorlage, Form und die Unterlagen aller Stationen — ohne Anträge
+        (die haben ihren eigenen Auszug). ``None`` ohne Vorlagentext."""
+        from council import dossier_harvest  # noqa: PLC0415
+
+        v = self.get_vorlage_by_nr(template_number)
+        if not v or v.get("status") != "ok" or not (v.get("raw_text") or "").strip():
+            return None
+        punkt = self._conn.execute(
+            "SELECT a.ksinr, a.item_number FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            "WHERE a.template_number = ? ORDER BY s.session_date DESC LIMIT 1", (template_number,)).fetchone()
+        docs = []
+        for d in (self.item_documents(punkt["ksinr"], punkt["item_number"]) if punkt else []):
+            if d["doc_type"] in ("template", "amendment", "motion"):
+                continue
+            text, _, _ = self._dokument_text(d["document_id"])
+            sb = self.document_profiles([d["document_id"]]).get(d["document_id"]) or {}
+            docs.append({**d, "text": text or "", "page_offsets": sb.get("page_offsets")})
+        docs.sort(key=lambda d: (d["doc_type"], d["document_id"]))   # deterministisch: Prompt-Cache
+        return {"template": {**v, "template_number": template_number}, "documents": docs,
+                "form": dossier_harvest.form(v.get("title"), v.get("kind"), [d["doc_type"] for d in docs])}
+
+    def template_dossier(self, subject_key: str, sources_hash: str | None = None) -> dict | None:
+        """Ein Dossier — zur Quellenlage ``sources_hash`` oder das jüngste fertige."""
+        if sources_hash:
+            r = self._conn.execute("SELECT * FROM template_dossiers WHERE subject_key = ? AND sources_hash = ?",
+                                   (subject_key, sources_hash)).fetchone()
+        else:
+            r = self._conn.execute("SELECT * FROM template_dossiers WHERE subject_key = ? AND status = 'ok' "
+                                   "ORDER BY created_at DESC LIMIT 1", (subject_key,)).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        d["payload"] = json.loads(d["payload"]) if d["payload"] else None
+        return d
+
+    def dossier_sperren(self, subject_key: str, sources_hash: str) -> bool:
+        """Sperre in der Datenbank statt im Prozess (gilt über uvicorn-Worker
+        hinweg): ``True``, wenn dieser Aufrufer erzeugen darf."""
+        jetzt = datetime.now(UTC).isoformat(timespec="seconds")
+        with self._conn:
+            r = self._conn.execute("SELECT status, started_at FROM template_dossiers WHERE subject_key = ? "
+                                   "AND sources_hash = ?", (subject_key, sources_hash)).fetchone()
+            if r and r["status"] == "running" and r["started_at"] and r["started_at"] > \
+                    datetime.fromtimestamp(datetime.now(UTC).timestamp() - 300, UTC).isoformat(timespec="seconds"):
+                return False
+            self._conn.execute(
+                "INSERT INTO template_dossiers (subject_key, sources_hash, prompt_version, status, started_at, created_at) "
+                "VALUES (?, ?, 0, 'running', ?, ?) ON CONFLICT(subject_key, sources_hash) DO UPDATE SET "
+                "status = 'running', started_at = excluded.started_at", (subject_key, sources_hash, jetzt, jetzt))
+        return True
+
+    def save_template_dossier(self, subject_key: str, sources_hash: str, *, status: str, form: str | None,
+                              payload: dict | None, model: str | None, cost_usd: float | None,
+                              prompt_version: int) -> None:
+        jetzt = datetime.now(UTC).isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO template_dossiers (subject_key, sources_hash, prompt_version, model, form, status, "
+                "payload, cost_usd, created_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(subject_key, sources_hash) "
+                "DO UPDATE SET prompt_version = excluded.prompt_version, model = excluded.model, form = excluded.form, "
+                "status = excluded.status, payload = excluded.payload, cost_usd = excluded.cost_usd, "
+                "created_at = excluded.created_at",
+                (subject_key, sources_hash, prompt_version, model, form, status,
+                 json.dumps(payload, ensure_ascii=False) if payload is not None else None, cost_usd, jetzt))
+
+    def vorlagen_kommender_sitzungen(self, seit: str, bis: str) -> list[str]:
+        return [r[0] for r in self._conn.execute(
+            "SELECT DISTINCT a.template_number FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            "WHERE s.session_date BETWEEN ? AND ? AND a.is_public = 1 AND COALESCE(a.template_number, '') != '' "
+            "ORDER BY s.session_date", (seit, bis))]

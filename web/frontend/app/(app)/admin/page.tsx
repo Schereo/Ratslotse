@@ -144,6 +144,7 @@ const FEATURE_LABELS: Record<string, string> = {
   item_arguments: "Argumente zum Tagesordnungspunkt",
   page_questions: "Vorschlagsfragen auf Detailseiten",
   motion_extract: "Änderungsanträge lesen",
+  template_dossier: "Dossier je Vorlage",
   simple_summary: "Lotti erklärt's einfach",
   social_card_text: "Social-Kartentext",
   social_critic: "Social-Kritiker",
