@@ -114,7 +114,7 @@ export function passkeyFehlerText(err: unknown): string | null {
  *  und ohne Inhalt (`lib/fehler-melden.ts`); die Meldung des Browsers ist ein
  *  fester Satz aus seinem Inneren. Abbrüche, Serverantworten und die übrigen
  *  PasskeyFehler sind gewollte Ausgänge und bleiben draußen. */
-export function passkeyFehlerMelden(err: unknown, schritt = "unbekannt"): void {
+export function passkeyFehlerMelden(err: unknown, schritt = "ohne Angabe"): void {
   const x = err instanceof PasskeyFehler ? err : browserFehler(err, schritt);
   if (!(x instanceof PasskeyFehler) || x.art !== "technisch") return;
   meldeFehler(Object.assign(new Error(`Passkey/Notizen, ${x.schritt ?? schritt}: ${x.ursache ?? ""}`), { name: "PasskeyFehler" }));
