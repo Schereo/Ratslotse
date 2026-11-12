@@ -1,5 +1,6 @@
 "use client";
 
+import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
 import { KiStern } from "@/components/ki-stern";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter, notFound } from "next/navigation";
@@ -1006,12 +1007,13 @@ function Zusammenhang({ decisionId, similar }: { decisionId: number; similar: De
  *  Tims Wunsch 11.11.2026). Der Beschluss reist als `refs.decision_id` mit —
  *  der Server schlägt ihn nach (`qa.screen_decision`), „das" wird zu ihm. */
 function FragZumBeschluss({ d, hatVorlage }: { d: CouncilDecision; hatVorlage: boolean }) {
-  const vorschlaege = [
+  const rueckfall = [
     "Worum geht es dabei in einfachen Worten?",
     d.amount_eur != null ? "Was kostet das?" : null,
     d.vote || d.no_votes ? "Wer hat wie abgestimmt?" : null,
     hatVorlage ? "Wie hat die Verwaltung das begründet?" : null,
-  ].filter((x): x is string => !!x).slice(0, 3);
+  ].filter((x): x is string => !!x);
+  const vorschlaege = useVorschlagsfragen(`/council/page-questions?decision_id=${d.id}`, rueckfall, 3);
   return (
     <section aria-labelledby="frag-zum-beschluss" className="mt-6 rounded-2xl border border-border bg-card shadow-sm">
       <div className="border-b border-border p-4">

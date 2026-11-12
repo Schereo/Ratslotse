@@ -2007,6 +2007,21 @@ class SitzungenMixin(StoreBasis):
                 f"AND status = 'ok' AND document_url IS NOT NULL", ksinrs)}
         return arguments.view(m, self.item_arguments(m["subject_key"]), urls)
 
+    def page_questions(self, page_key: str) -> dict | None:
+        """Gespeicherte Vorschlagsfragen einer Detailseite (``council/vorschlagsfragen.py``)."""
+        r = self._conn.execute(
+            "SELECT sources_hash, questions FROM page_questions WHERE page_key = ?", (page_key,)).fetchone()
+        return {"sources_hash": r["sources_hash"], "questions": json.loads(r["questions"])} if r else None
+
+    def save_page_questions(self, page_key: str, sources_hash: str, model: str, questions: list[str]) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO page_questions(page_key, sources_hash, model, questions, created_at) "
+                "VALUES (?, ?, ?, ?, datetime('now')) ON CONFLICT(page_key) DO UPDATE SET "
+                "sources_hash = excluded.sources_hash, model = excluded.model, "
+                "questions = excluded.questions, created_at = excluded.created_at",
+                (page_key, sources_hash, model, json.dumps(questions, ensure_ascii=False)))
+
     def item_arguments(self, subject_key: str) -> dict | None:
         """Die gespeicherte Auswertung eines Vorgangs samt Quellen-Prüfsumme."""
         r = self._conn.execute(

@@ -3072,6 +3072,14 @@ class ItemArguments(TypedDict):
     stale: bool
 
 
+class PageQuestions(TypedDict):
+    """Vorschlagsfragen unter „Frag den Rat“ (``council/vorschlagsfragen.py``):
+    bis zu drei, zu genau dieser Seite. Leer, wenn der Schalter aus ist, das
+    Modell nichts lieferte oder (ohne Konto) noch nichts gespeichert ist —
+    dann bleiben die festen Fragen der Seite."""
+    questions: list[str]
+
+
 class SessionItemDetail(TypedDict):
     """Ein Tagesordnungspunkt auf seiner eigenen Seite
     (``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,

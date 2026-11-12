@@ -314,6 +314,14 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Auf dev zwei Wochen ohne Befund, Antworten mit Beschluss-Bezug von Tim "
                     "gegengelesen und auf Prod angeschaltet.",
     ),
+    "vorschlagsfragen": Feature(
+        key="vorschlagsfragen",
+        description="Vorschlagsfragen unter „Frag den Rat“ auf Punkt- und Beschluss-Seite vom "
+                    "Sprachmodell, passend zu genau diesem Gegenstand (council/vorschlagsfragen.py); "
+                    "sonst feste Fragen.",
+        fertig_wenn="Auf dev zwei Wochen ohne unpassende Frage, Kosten im Admin-Panel unter "
+                    "page_questions gesichtet, von Tim abgenommen und auf Prod angeschaltet.",
+    ),
     "punkt-argumente": Feature(
         key="punkt-argumente",
         description="Die Reiter „Argumente“ und „Fraktionen“ auf der Punkt-Seite: Streitpunkte mit "

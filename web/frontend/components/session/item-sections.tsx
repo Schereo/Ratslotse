@@ -10,6 +10,7 @@ import { ArrowRight, ExternalLink } from "lucide-react";
 import { formatDate } from "@/components/ui";
 import { OUTCOME_DOT_CLS, OUTCOME_WORD, voteLabel } from "@/components/decision-ui";
 import { FragDenRatChat } from "@/components/frag-den-rat-chat";
+import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
 import { KiStern } from "@/components/ki-stern";
 import { shortCommittee } from "@/lib/committees";
 import { decisionHref, sitzungHref } from "@/lib/routes";
@@ -90,12 +91,16 @@ export function Unterlagen({ p, titel, bare }: { p: Punkt; titel: string | null;
 export function FragDenRat({ p }: { p: Punkt }) {
   const nr = p.item.item_number;
   const hat = (k: string) => p.documents.some((d) => d.kind === k);
-  const vorschlaege = [
+  // Die festen Fragen sind nur noch der Rückfall: Passende zu genau diesem
+  // Punkt kommen vom Modell (lib/vorschlagsfragen.ts).
+  const rueckfall = [
     "Worum geht es dabei in einfachen Worten?",
     p.history.length > 1 ? "Was wurde dazu früher beschlossen?" : null,
     p.course_item.type === "motion" ? "Was sagt die Verwaltung zu diesem Antrag?" : null,
     hat("template") ? "Was kostet das?" : null,
-  ].filter((x): x is string => !!x).slice(0, 4);
+  ].filter((x): x is string => !!x);
+  const vorschlaege = useVorschlagsfragen(
+    `/council/page-questions?ksinr=${p.ksinr}&nr=${encodeURIComponent(nr)}`, rueckfall);
   const ziel = (q: string) =>
     `/fragen?q=${encodeURIComponent(q)}&chip=1&ksinr=${p.ksinr}&top=${encodeURIComponent(nr)}`;
   const an = p.documents.length;

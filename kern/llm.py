@@ -295,6 +295,8 @@ OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
     "social_card_text", "social_critic",
     # Argumente zu einem Tagesordnungspunkt aus Wortbeiträgen und Vorlage
     "item_arguments",
+    # Vorschlagsfragen zu Punkt- und Beschluss-Seite aus Titel und Unterlagen
+    "page_questions",
     # Pläne der Stadt: Stand und Bezüge aus Vorlagen und Berichten heraussuchen
     "plan_measure_status", "plan_link_judgement", "plan_mandate_check", "plan_key_points", "plan_reports", "plan_plain",
     # Städtevergleich: fremde Ratsdokumente

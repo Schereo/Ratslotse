@@ -19813,6 +19813,23 @@
         "title": "OnboardingUpdate",
         "type": "object"
       },
+      "PageQuestions": {
+        "description": "Vorschlagsfragen unter „Frag den Rat“ (``council/vorschlagsfragen.py``):\nbis zu drei, zu genau dieser Seite. Leer, wenn der Schalter aus ist, das\nModell nichts lieferte oder (ohne Konto) noch nichts gespeichert ist —\ndann bleiben die festen Fragen der Seite.",
+        "properties": {
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "questions"
+        ],
+        "title": "PageQuestions",
+        "type": "object"
+      },
       "PageViewIn": {
         "description": "Ein Seitenaufruf, gemeldet vom Browser.\n\nAbsichtlich winzig. Was NICHT drinsteht — Query, Referrer, User-Agent,\nKennung — ist der Punkt der ganzen Übung; die Begründung je Feld steht in\n``kern/seitenaufrufe.py``. Der Server prüft ``route`` zusätzlich gegen eine\nPositivliste: Alles Unbekannte wird zu ``/andere``, nicht gespeichert wie\ngeschickt.",
         "properties": {
@@ -42159,6 +42176,77 @@
           }
         },
         "summary": "Members",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/page-questions": {
+      "get": {
+        "operationId": "page_questions_api_council_page_questions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ksinr",
+            "required": false,
+            "schema": {
+              "title": "Ksinr",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "nr",
+            "required": false,
+            "schema": {
+              "maxLength": 20,
+              "minLength": 1,
+              "title": "Nr",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "decision_id",
+            "required": false,
+            "schema": {
+              "title": "Decision Id",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageQuestions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Page Questions",
         "tags": [
           "council"
         ]
