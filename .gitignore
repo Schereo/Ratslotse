@@ -19,6 +19,9 @@ web/frontend/.next-dev/
 # schiebt den alten Build beim Umschalten kurz nach `.next-alt`.
 web/frontend/.next-build/
 web/frontend/.next-alt/
+# Dasselbe für die Module (scripts/install_frontend_modules.py).
+web/frontend-modules-staging/
+web/frontend/node_modules-old-*/
 # Ohne Schrägstrich: Die Regel mit Schrägstrich trifft nur das Verzeichnis,
 # nicht einen Symlink gleichen Namens — genau so kam am 06.09.2026 ein
 # Symlink in main.

@@ -95,8 +95,10 @@ jobs:
             git reset --hard ${{ github.sha }}
             .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
               -c constraints.txt
+            # Module neben dem laufenden Server erneuern statt `npm ci` unter
+            # ihm — warum, steht in deploy-dev.yml und im Skript selbst.
+            .venv/bin/python scripts/install_frontend_modules.py web/frontend
             cd web/frontend
-            npm ci --no-audit --no-fund
             # Neben dem laufenden Server bauen, ohne Webpack-Cache, und erst
             # unmittelbar vor dem Neustart umschalten — warum, steht
             # ausführlich in deploy-dev.yml (Kurzform: ein Build in `.next`
