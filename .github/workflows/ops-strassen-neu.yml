@@ -47,9 +47,9 @@ jobs:
   strassen:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -60,7 +60,7 @@ jobs:
         run: python scripts/strassen_snapshot.py holen --datei strassen-snapshot.json
 
       - name: Schnappschuss auf den Server legen
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ inputs.ziel == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -74,7 +74,7 @@ jobs:
           target: app/data/
 
       - name: Abgleich auf dem Server
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ inputs.ziel == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}

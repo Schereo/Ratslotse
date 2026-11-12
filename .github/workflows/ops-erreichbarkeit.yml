@@ -50,7 +50,7 @@ jobs:
     if: github.repository == 'Schereo/Ratslotse'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Dieser Schritt SCHEITERT nicht mehr, er berichtet nur. Rot oder grün
       # entscheidet der letzte Schritt, denn zwischen beidem liegt erst noch
