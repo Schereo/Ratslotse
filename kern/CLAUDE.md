@@ -39,6 +39,11 @@ Zustell-Ausfall lautlos für immer.
   danach übernimmt das gemessene Ersatzmodell (`ERSATZ` in `llm.py`, Golden-
   Set-Messung im Kommentar). **Nie in einer Web-Anfrage** — die darf nicht
   minutenlang hängen.
+- **Lange Extraktionen nehmen `llm.ersatz_fuer(MODEL, lange_ausgabe=True)`.**
+  Das lässt Ersatzmodelle mit hohem Token-Boden weg (DeepSeek, 24k): Bei
+  langen Ausgaben bezahlt der Boden das Denken voll, ein Ersatzlauf kostete
+  am 09.11.2026 0,78 $ ohne Ergebnis. Dokumentierte Ausnahme für das Dossier
+  und die Antrags-Auszüge (`docs/plan-vorlagen-aufbereiten.md`, Frage 10).
 - **`_tarif="flex"` halbiert den Preis bei gleicher Qualität**, gemessen am
   Tragweite-Golden-Set in `docs/modell-batch-flex.md`. Der Tarif gilt nur
   für Features ohne `zdr_pflicht`, denn Flex-Endpunkte haben kein ZDR. Sonst
