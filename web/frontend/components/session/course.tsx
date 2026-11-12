@@ -171,7 +171,10 @@ function Cell({ cell, reverse, layout, onSelect, kante, verzug }: {
   const abzug = compact ? 12 : 20;
 
   return (
-    <div className="relative flex min-w-0 flex-1 basis-0 flex-col items-center">
+    // Beim Zeigen hebt sich die ganze Zelle: Die Abschnitts-Beschriftungen
+    // (z-[1]) laufen sonst über die Hover-Karte, denn der Aufbau macht die Boje
+    // zu einem eigenen Stapel, aus dem ihr z-30 nicht herausreicht.
+    <div className="relative flex min-w-0 flex-1 basis-0 flex-col items-center hover:z-20 has-[:focus-visible]:z-20">
       {inBand && (
         <span
           aria-hidden
