@@ -55,7 +55,7 @@ test.describe("Sitzungsseite mit Kurs", () => {
     await stubs(page, NACHHER, 4653);
     await page.goto("/council/sitzung?ksinr=4653");
     const tafel = page.locator('header[aria-labelledby="sitzung-titel"]');
-    await expect(tafel.getByText(/von 30 öffentlichen Punkten hatten eines/)).toBeVisible();
+    await expect(tafel.getByText(/von 30 öffentlichen Punkten haben ein Ergebnis/)).toBeVisible();
     await expect(tafel.getByRole("link", { name: "Protokoll" })).toHaveAttribute("target", "_blank");
     await expect(page.getByText("Wie es weitergeht").first()).toBeVisible();
     await expect(page.getByRole("link", { name: /Zur Sitzung am 21\.09\.2026/ }).first()).toBeVisible();
