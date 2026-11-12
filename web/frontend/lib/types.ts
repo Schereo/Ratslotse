@@ -363,6 +363,10 @@ export type Beratung = S["DeliberationStation"];
 export type ImportanceBreakdown = S["ImportanceBreakdown"];
 
 export interface DecisionDetail {
+  /** „Aus der Vorlage" (Schalter `aus-den-unterlagen`). */
+  template_dossier?: import("@/components/session/dossier").Dossier;
+  /** Wortdiff Beschlussvorschlag ↔ Beschlusstext, nur bei Abweichung. */
+  proposal_diff?: string[][];
   decision: CouncilDecision;
   /** Aufschlüsselung, warum der Beschluss als wichtig gilt. */
   importance_breakdown?: ImportanceBreakdown | null;

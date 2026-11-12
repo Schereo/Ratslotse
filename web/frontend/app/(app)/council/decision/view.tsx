@@ -1,5 +1,7 @@
 "use client";
 
+import { DossierAbschnitt, dossierStand } from "@/components/session/dossier";
+import { Wortdiff } from "@/components/session/aenderungsantraege";
 import { AntragKarte } from "@/components/session/aenderungsantraege";
 import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
 import { KiStern } from "@/components/ki-stern";
@@ -886,6 +888,37 @@ function DecisionDetailInner() {
           {/* 25a ③: Teilabstimmungen, Endergebnis und das Warum standen als drei
               getrennte Blöcke untereinander — zusammen erzählen sie den Hergang
               des Vorgangs und stehen deshalb unter einer Überschrift. */}
+          {/* „Aus der Vorlage" (Plan Vorlagen § 6.3): wie die Vorlage den
+              Vorschlag aufbereitet hat — ausdrücklich der Vorschlag; das
+              Ergebnis steht oben. Dazu der Wortdiff Vorschlag ↔ Beschluss. */}
+          {(data.proposal_diff || data.template_dossier) && (
+            <Section title="Aus der Vorlage">
+              <div className="space-y-4">
+                {data.proposal_diff && data.proposal_diff.some(([op]) => op !== "=") && (
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Vorgeschlagen ↔ beschlossen</p>
+                    <p className="mb-2 text-meta text-muted-foreground">
+                      Durchgestrichen stand im Beschlussvorschlag der Verwaltung, hervorgehoben im Beschluss.
+                    </p>
+                    <Wortdiff diff={data.proposal_diff} />
+                  </div>
+                )}
+                {data.template_dossier && (
+                  <div>
+                    <p className="flex items-center gap-1 text-sm font-semibold text-foreground">
+                      So stand es in der Vorlage
+                      <KiStern text="Automatisch aus der Vorlage und ihren Anlagen erstellt, Stand vor der Sitzung. Beschlossen wurde, was oben steht." />
+                    </p>
+                    <p className="mb-3 text-meta text-muted-foreground">{dossierStand(data.template_dossier)}</p>
+                    <div className="flex flex-col gap-4">
+                      {data.template_dossier.sections.map((sec) => <DossierAbschnitt key={sec.key} s={sec} />)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Section>
+          )}
+
           {(data.sub_votes.length > 0 || data.template?.excerpt) && (
             <Section title="Verlauf & Begründung">
               <div className="space-y-4">
