@@ -95,6 +95,7 @@ def test_registry_deckt_die_cron_eintraege_ab():
         "abendmeldungen",   # Design 30a: N5 täglich 18 Uhr, N6 sonntags
         "check_presse",     # Stufe 3a: Stadt-Pressemitteilungen, täglich 5:15
         "antraege_nachzuegler",  # Änderungsanträge vom Vortag/Sitzungstag, 11/13/16/18 Uhr
+        "vorlagen_dossiers",     # Dossiers der Vorlagen, 10 und 15 Uhr
         "social_kartentexte",  # ein Satz je Tagesordnungspunkt (LLM), täglich 7:45
         "render_plaene",    # P1: Planzeichnungen als Bilder, sonntags 4:30
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen

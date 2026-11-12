@@ -69,6 +69,13 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "vorlagen_dossiers",
+        "label": "Dossiers der Vorlagen",
+        "description": "Aus den Unterlagen: Dossiers für die Vorlagen der nächsten 21 Tage (belegt, Kostengrenze je Lauf).",
+        "schedule": "täglich 10 und 15 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "antraege_nachzuegler",
         "label": "Änderungsanträge (Nachzügler)",
         "description": "An Sitzungstagen und am Tag davor: Tagesordnung neu lesen, neue Anträge laden und lesen.",

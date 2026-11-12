@@ -1,0 +1,327 @@
+{
+ "_beschreibung": "Gold für das Dossier je Vorlage (docs/plan-vorlagen-aufbereiten.md § 7.2). Festgelegt am 12.11.2026 VOR dem ersten Prompt aus den Vorlagentexten des lokalen Abzugs. Je Fall Pflichtfakten mit Abschnitt ('section' = Feld im Payload) und Zeichenfolgen, von denen eine belegte Aussage des Abschnitts mindestens eine enthalten muss ('any'); 'status' nennt den richtigen Status leerer Felder. Handurteile (gestützt/treu/Leitfragen) stehen nach dem Lauf unter 'urteil'.",
+ "faelle": [
+  {
+   "template": "26/0796",
+   "form": "F1",
+   "fakten": [
+    {
+     "section": "proposal",
+     "any": [
+      "fünf",
+      "5 "
+     ],
+     "notiz": "fünf beratende Mitglieder"
+    },
+    {
+     "section": "costs",
+     "any": [
+      "35"
+     ],
+     "notiz": "35 € Sitzungsgeld"
+    },
+    {
+     "section": "administration",
+     "any": [
+      "sechs",
+      "§ 71"
+     ],
+     "notiz": "höchstens sechs nach § 71 Abs. 7 NKomVG"
+    },
+    {
+     "section": "next",
+     "any": [
+      "Jugendparlament"
+     ],
+     "notiz": "sechster Platz Jugendparlament (S. 3)"
+    }
+   ]
+  },
+  {
+   "template": "26/0654",
+   "form": "F1",
+   "fakten": [
+    {
+     "section": "proposal",
+     "any": [
+      "Pellwormer"
+     ],
+     "notiz": "Widmung Pellwormer Weg"
+    },
+    {
+     "section": "next",
+     "any": [
+      "01.10.2026",
+      "1. Oktober 2026"
+     ],
+     "notiz": "ab 01.10.2026"
+    },
+    {
+     "section": "proposal",
+     "any": [
+      "§ 6"
+     ],
+     "notiz": "§ 6 NStrG"
+    }
+   ],
+   "status": {
+    "costs": [
+     "stated_none",
+     "absent"
+    ]
+   }
+  },
+  {
+   "template": "26/0806",
+   "form": "F1",
+   "fakten": [
+    {
+     "section": "proposal",
+     "any": [
+      "Jugendhilfeausschuss"
+     ],
+     "notiz": "Besetzung des JHA"
+    }
+   ]
+  },
+  {
+   "template": "26/0592",
+   "form": "F5",
+   "fakten": [
+    {
+     "section": "figures",
+     "any": [
+      "8,6"
+     ],
+     "notiz": "8,6 Hektar"
+    },
+    {
+     "section": "figures",
+     "any": [
+      "110"
+     ],
+     "notiz": "110 Wohneinheiten"
+    },
+    {
+     "section": "costs",
+     "any": [
+      "Investorin",
+      "städtebaulichen Vertrag"
+     ],
+     "notiz": "Kosten trägt die Investorin"
+    },
+    {
+     "section": "proposal",
+     "any": [
+      "Satzung",
+      "837"
+     ],
+     "notiz": "Satzungsbeschluss B-Plan 837"
+    }
+   ]
+  },
+  {
+   "template": "26/0674",
+   "form": "F4",
+   "fakten": [
+    {
+     "section": "costs",
+     "any": [
+      "24.822.337",
+      "24,8"
+     ],
+     "notiz": "Jahresfehlbetrag −24.822.337,17 € — steht wörtlich im Beschlussvorschlag, dort ist es auch richtig (nach Lauf 1 begründet ergänzt)",
+     "sections": [
+      "costs",
+      "proposal"
+     ]
+    },
+    {
+     "section": "proposal",
+     "any": [
+      "Jahresabschluss"
+     ],
+     "notiz": "Jahresabschluss 2025 beschließen"
+    },
+    {
+     "section": "proposal",
+     "any": [
+      "Entlastung"
+     ],
+     "notiz": "Entlastung des Oberbürgermeisters"
+    }
+   ]
+  },
+  {
+   "template": "26/0656",
+   "form": "F4",
+   "fakten": [
+    {
+     "section": "costs",
+     "any": [
+      "9.512.500",
+      "9,5"
+     ],
+     "notiz": "9.512.500 € überplanmäßig — steht wörtlich im Beschlussvorschlag, dort ist es auch richtig (nach Lauf 1 begründet ergänzt)",
+     "sections": [
+      "costs",
+      "proposal"
+     ]
+    },
+    {
+     "section": "costs",
+     "any": [
+      "5.646.400",
+      "5,6"
+     ],
+     "notiz": "Deckung 5.646.400 € im Teilhaushalt 10 — steht wörtlich im Beschlussvorschlag, dort ist es auch richtig (nach Lauf 1 begründet ergänzt)",
+     "sections": [
+      "costs",
+      "proposal"
+     ]
+    }
+   ]
+  },
+  {
+   "template": "26/0666",
+   "form": "F7",
+   "fakten": [
+    {
+     "section": "proposal",
+     "any": [
+      "Grundsteuer C",
+      "baureif"
+     ],
+     "notiz": "Grundsteuer C für baureife Grundstücke"
+    },
+    {
+     "section": "administration",
+     "any": [
+      "§ 25",
+      "Hebesatz"
+     ],
+     "notiz": "§ 25 Abs. 5 GrStG, gesonderter Hebesatz"
+    }
+   ]
+  },
+  {
+   "template": "26/0743",
+   "form": "F3",
+   "fakten": [
+    {
+     "section": "costs",
+     "any": [
+      "89.000"
+     ],
+     "notiz": "89.000 € pro Jahr"
+    },
+    {
+     "section": "costs",
+     "any": [
+      "12.000"
+     ],
+     "notiz": "davon 12.000 € für zwei weitere Ratsmitglieder"
+    }
+   ]
+  },
+  {
+   "template": "26/0699",
+   "form": "F7",
+   "fakten": [
+    {
+     "section": "proposal",
+     "any": [
+      "Toilettenkonzept"
+     ],
+     "notiz": "Toilettenkonzept, Sachstand"
+    },
+    {
+     "section": "costs",
+     "any": [
+      "20.000"
+     ],
+     "notiz": "20.000 € für 2026 eingestellt"
+    },
+    {
+     "section": "next",
+     "any": [
+      "externes Büro",
+      "Büro"
+     ],
+     "notiz": "Konzept durch ein externes Büro — Vorgehen, kann unter proposal/changes stehen",
+     "sections": [
+      "next",
+      "proposal",
+      "changes"
+     ]
+    }
+   ]
+  },
+  {
+   "template": "26/0780",
+   "form": "F7",
+   "fakten": [
+    {
+     "section": "proposal",
+     "any": [
+      "Warntag",
+      "KatWarn",
+      "Warn"
+     ],
+     "notiz": "Bericht zum Warntag, Fragen/Antworten"
+    },
+    {
+     "section": "administration",
+     "any": [
+      "KatWarn"
+     ],
+     "notiz": "Angaben liegen nur für KatWarn vor — Antwort der Verwaltung im Bericht",
+     "sections": [
+      "administration",
+      "proposal"
+     ]
+    }
+   ],
+   "status": {
+    "costs": [
+     "stated_none",
+     "absent"
+    ]
+   }
+  },
+  {
+   "template": "26/0795",
+   "form": "F1",
+   "fakten": [
+    {
+     "section": "proposal",
+     "any": [
+      "14",
+      "Ausschüsse"
+     ],
+     "notiz": "Fachausschüsse und ihre Größe"
+    },
+    {
+     "section": "costs",
+     "any": [
+      "35"
+     ],
+     "notiz": "35 € Sitzungsgeld"
+    }
+   ]
+  },
+  {
+   "template": "26/0792",
+   "form": "F3",
+   "fakten": [
+    {
+     "section": "proposal",
+     "any": [
+      "Geschäftsordnung"
+     ],
+     "notiz": "Geschäftsordnung beschließen (Vorlage über den Punkt nachgelesen)"
+    }
+   ]
+  }
+ ]
+}
