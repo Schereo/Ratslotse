@@ -427,8 +427,10 @@ export interface DecisionDetail {
   /** P1: document_id der gerenderten Planzeichnung — B-Plan-Beschlüsse
    *  zeigen sie als Bild statt nur als Anlagen-Download. */
   plan_image?: number | null;
-  /** Anlagen der Vorlage (Anträge zuerst, mit erkannten Antragstellern). */
-  anlagen?: {
+  /** Anlagen der Vorlage (Anträge zuerst, mit erkannten Antragstellern).
+   *  Hieß hier bis 11/2026 `anlagen` — der Server liefert seit dem Umbau auf
+   *  englische Feldnamen `attachments`, die Liste blieb deshalb leer. */
+  attachments?: {
     document_id: number;
     label: string | null;
     url: string | null;
