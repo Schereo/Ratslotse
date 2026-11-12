@@ -9130,6 +9130,16 @@
             "title": "Present Parties",
             "type": "array"
           },
+          "proposal_diff": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Proposal Diff",
+            "type": "array"
+          },
           "ratsinfo_url": {
             "title": "Ratsinfo Url",
             "type": [
@@ -9153,6 +9163,9 @@
           },
           "template": {
             "$ref": "#/components/schemas/DecisionTemplate"
+          },
+          "template_dossier": {
+            "$ref": "#/components/schemas/ItemDossier"
           },
           "template_journey": {
             "items": {},
