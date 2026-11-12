@@ -4209,6 +4209,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/page-questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Page Questions */
+        get: operations["page_questions_api_council_page_questions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/parties": {
         parameters: {
             query?: never;
@@ -15342,6 +15359,17 @@ export interface components {
             steps?: string[];
         };
         /**
+         * PageQuestions
+         * @description Vorschlagsfragen unter „Frag den Rat“ (``council/vorschlagsfragen.py``):
+         *     bis zu drei, zu genau dieser Seite. Leer, wenn der Schalter aus ist, das
+         *     Modell nichts lieferte oder (ohne Konto) noch nichts gespeichert ist —
+         *     dann bleiben die festen Fragen der Seite.
+         */
+        PageQuestions: {
+            /** Questions */
+            questions: string[];
+        };
+        /**
          * PageViewIn
          * @description Ein Seitenaufruf, gemeldet vom Browser.
          *
@@ -26309,6 +26337,39 @@ export interface operations {
             };
         };
     };
+    page_questions_api_council_page_questions_get: {
+        parameters: {
+            query?: {
+                ksinr?: number | null;
+                nr?: string | null;
+                decision_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageQuestions"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     parties_api_council_parties_get: {
         parameters: {
             query?: never;
@@ -30829,4 +30890,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d6fe352b3e3834680bb4ad66cb171130e04c77b77440e234b7d38c1cebd4a067
+// vertrag-sha256: 0634f1d6f3266fffc76f39dad318c2633a15834a669dc126ec7cd74506827559

@@ -189,6 +189,17 @@ CREATE TABLE IF NOT EXISTS agenda_item_arguments (
     created_at    TEXT NOT NULL
 );
 
+-- Vorschlagsfragen unter „Frag den Rat“ je Detailseite (council/vorschlagsfragen.py):
+-- page_key „item:<ksinr>|<nr>“ oder „decision:<id>“; neu erzeugt, wenn sich
+-- die Unterlagen ändern (sources_hash).
+CREATE TABLE IF NOT EXISTS page_questions (
+    page_key      TEXT PRIMARY KEY,
+    sources_hash  TEXT NOT NULL,
+    model         TEXT,
+    questions     TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS agenda_item_social (
     ksinr       INTEGER NOT NULL,
     item_number TEXT NOT NULL,

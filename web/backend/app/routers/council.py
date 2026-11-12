@@ -47,7 +47,7 @@ from kern.store import Store
 
 from .. import deepresearch, response_cache
 from ..config import get_settings
-from ..antworten import (AnalysisData, SessionItemDetail, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
+from ..antworten import (AnalysisData, PageQuestions, SessionItemDetail, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, GrantTemplate, BudgetSourceStats, Provenance,
                          BudgetNote, BudgetNotes, BudgetPrefaceFigures, PrefaceFigure, PrefacePlan, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
@@ -2089,6 +2089,45 @@ def session_item(
         except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
             _log.exception("Argumente fehlgeschlagen für %s %s", ksinr, nr)
     return punkt
+
+
+# Vorschlagsfragen unter „Frag den Rat“ (Schalter `vorschlagsfragen`,
+# council/vorschlagsfragen.py). Erzeugt nur für angemeldete Konten — sonst
+# könnte ein Crawler jede Seite einmal bezahlen lassen; ohne Konto gibt es,
+# was schon gespeichert ist.
+@router.get("/page-questions")
+def page_questions(
+    ksinr: int | None = Query(None),
+    nr: str | None = Query(None, min_length=1, max_length=20),
+    decision_id: int | None = Query(None),
+    store: CouncilStore = Depends(get_council_store),
+    user: dict | None = Depends(optional_user),
+) -> PageQuestions:
+    from council import vorschlagsfragen as vf  # noqa: PLC0415
+
+    leer: PageQuestions = {"questions": []}
+    if not features.an("vorschlagsfragen"):
+        return leer
+    if decision_id is not None:
+        d = store.get_decision(decision_id)
+        if not d:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
+        key = f"decision:{decision_id}"
+        material = vf.decision_material(d, store.get_vorlage_by_nr(d.get("template_number") or ""))
+    elif ksinr is not None and nr:
+        punkt = store.session_item(ksinr, nr)
+        if not punkt:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+        key = f"item:{ksinr}|{nr}"
+        material = vf.item_material(punkt, store.get_vorlage_by_nr(punkt["item"].get("template_number") or ""))
+    else:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "ksinr und nr oder decision_id angeben.")
+    if user is None:
+        gespeichert = store.page_questions(key)
+        if gespeichert and gespeichert["sources_hash"] == vf.sources_hash(material):
+            return {"questions": gespeichert["questions"]}
+        return leer
+    return {"questions": vf.questions_for(store, key, material) or []}
 
 
 def _agenda_aenderungen(store: CouncilStore, ksinr: int) -> list[dict]:

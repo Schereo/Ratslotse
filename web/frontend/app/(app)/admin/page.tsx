@@ -142,6 +142,7 @@ const FEATURE_LABELS: Record<string, string> = {
   quiz_appeal: "Quiz-Fragen benoten",
   quiz_motion_context: "Quiz: Anträge beschreiben",
   item_arguments: "Argumente zum Tagesordnungspunkt",
+  page_questions: "Vorschlagsfragen auf Detailseiten",
   simple_summary: "Lotti erklärt's einfach",
   social_card_text: "Social-Kartentext",
   social_critic: "Social-Kritiker",
