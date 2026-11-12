@@ -408,8 +408,11 @@ Registry fehlt (ein Tippfehler dort ist dauerhaft AUS und sieht aus wie „noch
 nicht angeschaltet").
 
 **GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_DEV_HOST`,
-`VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`),
-`CARTO_API_KEY` (Kartenkacheln, s. u.).
+`VPS_PROXY_HOST`, `VPS_PROXY_USER`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_KNOWN_HOSTS`
+(Host-Schlüssel der drei Rechner; leer = ungeprüft, Anleitung in
+`docs-site/…/betrieb.md`), `ANTHROPIC_API_KEY` (für `docs-review.yml`),
+`CARTO_API_KEY` (Kartenkacheln, s. u.). Der Deploy-Key geht nur an
+`.github/actions/ssh` und `.github/actions/ssh-config`.
 
 **Kartenkacheln brauchen einen Key.** Seit 08/2026 brennt CARTO ein
 „API KEY REQUIRED"-Wasserzeichen in jede Kachel, die ohne Key abgerufen wird —
