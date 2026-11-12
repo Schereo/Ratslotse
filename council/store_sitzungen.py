@@ -22,6 +22,16 @@ from council.store_wortbeitraege import WortbeitraegeMixin
 if TYPE_CHECKING:
     from council.vorlage_felder import TemplateFields
 
+
+_DOKUMENT_ID_RE = re.compile(r"getfile\.php\?id=(\d+)")
+
+
+def dokument_id(url: str | None) -> int | None:
+    """Die getfile-Kennung aus einer Ratsinfo-URL."""
+    m = _DOKUMENT_ID_RE.search(url or "")
+    return int(m.group(1)) if m else None
+
+
 def _punkt_nummer(n: str | None) -> list[str]:
     """„Ö 6" → „6", „Ö9" → „9", „10.2/10.3" → beide."""
     return [re.sub(r"^\D+", "", t).strip() for t in (n or "").split("/") if t.strip()]
@@ -263,11 +273,12 @@ class SitzungenMixin(StoreBasis):
             )
             self._conn.executemany(
                 """INSERT OR IGNORE INTO council_agenda_attachments
-                   (ksinr, item_number, label, url, raw_text) VALUES (?, ?, ?, ?, ?)""",
+                   (ksinr, item_number, label, url, raw_text, document_id) VALUES (?, ?, ?, ?, ?, ?)""",
                 [
                     (session.ksinr, i.item_number, a.get("label") or "Anlage",
                      a.get("url") or "",
-                     a.get("raw_text") or gelesen.get(a.get("url") or ""))
+                     a.get("raw_text") or gelesen.get(a.get("url") or ""),
+                     dokument_id(a.get("url")))
                     for i in session.agenda_items
                     for a in (getattr(i, "anlagen", None) or [])
                     if a.get("url")

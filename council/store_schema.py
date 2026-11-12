@@ -65,7 +65,27 @@ CREATE TABLE IF NOT EXISTS council_agenda_attachments (
     -- seine Vorlage hat, und ein Download je Anlage bei jedem Scrape wäre
     -- teuer für nichts.
     raw_text     TEXT,
+    -- Die Kennung des Dokuments aus der URL (getfile.php?id=…). Die Tabelle
+    -- wird bei jedem Abgleich neu geschrieben; was am Dokument hängt
+    -- (Steckbrief, Seiten, Antrags-Auszug), steht deshalb in eigenen
+    -- Tabellen unter dieser Kennung (docs/plan-vorlagen-aufbereiten.md, § 3.1).
+    document_id  INTEGER,
     UNIQUE(ksinr, item_number, url)
+);
+
+-- Steckbrief je Dokument (Vorlagen-PDF, Vorlagen-Anlage, Punkt-Anlage — alle
+-- hängen an derselben getfile-Kennung): Art, Antragsteller, Seiten, Scan,
+-- Seitenanfänge im gespeicherten Text samt dessen Prüfsumme. Ein Dokument an
+-- zwei Punkten steht einmal da.
+CREATE TABLE IF NOT EXISTS council_documents (
+    document_id   INTEGER PRIMARY KEY,
+    doc_type      TEXT NOT NULL,
+    applicants    TEXT NOT NULL DEFAULT '[]',
+    n_pages       INTEGER,
+    is_scan       INTEGER NOT NULL DEFAULT 0,
+    page_offsets  TEXT,
+    text_hash     TEXT,
+    classified_at TEXT NOT NULL
 );
 
 -- Terminierte Sitzungen aus dem Sitzungskalender, noch ohne veröffentlichte
@@ -2231,6 +2251,15 @@ class SchemaMixin(StoreBasis):
             "PRAGMA table_info(council_agenda_attachments)").fetchall()}
         if aacols and "raw_text" not in aacols:
             self._conn.execute("ALTER TABLE council_agenda_attachments ADD COLUMN raw_text TEXT")
+        if aacols and "document_id" not in aacols:
+            self._conn.execute("ALTER TABLE council_agenda_attachments ADD COLUMN document_id INTEGER")
+            self._conn.execute(
+                "UPDATE council_agenda_attachments SET document_id = "
+                "CAST(substr(url, instr(url, 'getfile.php?id=') + 15) AS INTEGER) "
+                "WHERE instr(url, 'getfile.php?id=') > 0")
+        if aacols:
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_agenda_att_doc "
+                               "ON council_agenda_attachments(document_id)")
 
         acols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_attachments)").fetchall()}
         if "is_image" not in acols:
