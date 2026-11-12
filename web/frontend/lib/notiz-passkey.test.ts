@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encryptNote, decryptNote, aad, neuerSchluessel, nurBenutzbar, notfallCode, unlockWithRecovery, unwrap, wrap } from "./notiz-krypto";
-import { fromB64url, geraeteName, passkeyKek, toB64url } from "./notiz-passkey";
+import { browserFehler, fromB64url, geraeteName, imSchritt, passkeyKek, PasskeyFehler, TECHNISCH, toB64url } from "./notiz-passkey";
 
 describe("Base64url für Passkey-Kennungen", () => {
   it("hin und zurück, ohne Füllzeichen und ohne + /", () => {
@@ -55,5 +55,45 @@ describe("Verpacken mit dem PRF-Geheimnis", () => {
 
   it("ohne Passphrase oder Code gibt es nichts zu entsperren", async () => {
     expect(await unlockWithRecovery({ salt: "IiIiIiIiIiIiIiIiIiIiIg==", wrapped_recovery: null }, "6CSK-6CSK-6CSK-6CSK-6CSK-6CSK-6CSK-6CSK")).toBeNull();
+  });
+});
+
+describe("Rohe Ausnahmen des Browsers", () => {
+  // 12.11.2026, Tims Safari: nur dieser Satz stand unter „Mit Passkey einrichten“.
+  const safari = () => new DOMException("Data provided to an operation does not meet requirements", "DataError");
+
+  it("werden zu einem deutschen Satz, Schritt und Ursache bleiben fürs Protokoll", () => {
+    const x = browserFehler(safari(), "verpacken");
+    expect(x).toBeInstanceOf(PasskeyFehler);
+    const f = x as PasskeyFehler;
+    expect(f.art).toBe("technisch");
+    expect(f.message).toBe(TECHNISCH);
+    expect(f.message).not.toMatch(/Data provided/);
+    expect(f.schritt).toBe("verpacken");
+    expect(f.ursache).toBe("DataError: Data provided to an operation does not meet requirements");
+  });
+
+  it("ein TypeError aus WebCrypto ebenso", () => {
+    expect((browserFehler(new TypeError("Type error"), "Schlüssel ableiten") as PasskeyFehler).art).toBe("technisch");
+  });
+
+  it("eigene Fehler mit deutschem Satz bleiben, wie sie sind", () => {
+    const eigen = new PasskeyFehler("passt-nicht", "Dieser Passkey passt nicht zu deinen Notizen.");
+    expect(browserFehler(eigen, "x")).toBe(eigen);
+    const server = new Error("Die Adresse ist noch nicht bestätigt.");
+    expect(browserFehler(server, "x")).toBe(server);
+  });
+
+  it("imSchritt übersetzt eine Ablehnung und reicht ein Ergebnis durch", async () => {
+    await expect(imSchritt("neuer Schlüssel", async () => 7)).resolves.toBe(7);
+    await expect(imSchritt("verpacken", async () => { throw safari(); }))
+      .rejects.toMatchObject({ art: "technisch", schritt: "verpacken", message: TECHNISCH });
+  });
+
+  it("eine echte WebCrypto-Ablehnung kommt als PasskeyFehler an", async () => {
+    // AES verlangt 16, 24 oder 32 Byte — genau diese Ablehnung heißt in Safari „DataError“.
+    const zuKurz = imSchritt("Sitzungsschlüssel", () =>
+      crypto.subtle.importKey("raw", new Uint8Array(31), { name: "AES-GCM" }, false, ["encrypt"]));
+    await expect(zuKurz).rejects.toMatchObject({ art: "technisch", schritt: "Sitzungsschlüssel" });
   });
 });

@@ -17,7 +17,8 @@ import { Card, formatDate } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import * as krypto from "@/lib/notiz-krypto";
-import { mitPasskeyEntsperren, passkeyAnlegen, passkeyMoeglich, PasskeyFehler } from "@/lib/notiz-passkey";
+import { mitPasskeyEntsperren, passkeyAnlegen, passkeyMoeglich } from "@/lib/notiz-passkey";
+import { schlossMeldung } from "@/components/notiz/notiz-schloss";
 import { notizVerpackungMitKontoPasskey } from "@/lib/passkey";
 import { useFeature } from "@/lib/features";
 import {
@@ -70,9 +71,7 @@ export function NotizenVerwalten() {
       const m = await fn();
       if (m) setMeldung(m);
     } catch (e) {
-      setMeldung(e instanceof PasskeyFehler
-        ? (e.art === "abgebrochen" ? "Abgebrochen." : e.message)
-        : e instanceof Error ? e.message : String(e));
+      setMeldung(schlossMeldung(e));
     } finally {
       setArbeit(false);
     }

@@ -16,7 +16,8 @@
 
 import { api, ApiError } from "@/lib/api";
 import * as krypto from "@/lib/notiz-krypto";
-import { fromB64url, geraeteName, passkeyKek, PasskeyFehler, toB64url } from "@/lib/notiz-passkey";
+import { meldeFehler } from "@/lib/fehler-melden";
+import { browserFehler, fromB64url, geraeteName, imSchritt, passkeyKek, PasskeyFehler, TECHNISCH, toB64url } from "@/lib/notiz-passkey";
 import type { User } from "@/lib/types";
 import type { ApiAntwort } from "@/lib/vertrag";
 
@@ -87,14 +88,36 @@ function prfVon(c: PublicKeyCredential): ArrayBuffer | null {
   return ext.prf?.results?.first ?? null;
 }
 
-function fehlerUebersetzen(e: unknown): never {
+function fehlerUebersetzen(e: unknown, schritt: string): never {
   const name = (e as { name?: string })?.name;
   if (name === "NotAllowedError" || name === "AbortError") throw new PasskeyFehler("abgebrochen", "Abgebrochen.");
   if (name === "InvalidStateError") throw new PasskeyFehler("schon-da", "Auf diesem Gerät gibt es schon einen Passkey für dein Konto.");
   if (name === "NotSupportedError" || name === "SecurityError") {
     throw new PasskeyFehler("nicht-unterstuetzt", "Dieser Browser kann hier keinen Passkey benutzen.");
   }
-  throw e;
+  throw browserFehler(e, schritt);
+}
+
+/** Der Satz für die Oberfläche — nie die rohe Ausnahme des Browsers.
+ *  `null` heißt: nichts zeigen (abgebrochen ist kein Fehler). */
+export function passkeyFehlerText(err: unknown): string | null {
+  if (err instanceof PasskeyFehler) return err.art === "abgebrochen" ? null : err.message;
+  if (err instanceof ApiError) return err.message;
+  const x = browserFehler(err, "");
+  if (x instanceof PasskeyFehler) return x.message;
+  // Eigene Fehler dieses Codes tragen schon einen deutschen Satz.
+  return err instanceof Error && err.message ? err.message : TECHNISCH;
+}
+
+/** Was der Browser abgelehnt hat, ins Fehlerprotokoll (Admin → Fehler) — mit
+ *  dem Schritt, an dem es hakte. Geht nur an den eigenen Server, ohne Konto
+ *  und ohne Inhalt (`lib/fehler-melden.ts`); die Meldung des Browsers ist ein
+ *  fester Satz aus seinem Inneren. Abbrüche, Serverantworten und die übrigen
+ *  PasskeyFehler sind gewollte Ausgänge und bleiben draußen. */
+export function passkeyFehlerMelden(err: unknown, schritt = "ohne Angabe"): void {
+  const x = err instanceof PasskeyFehler ? err : browserFehler(err, schritt);
+  if (!(x instanceof PasskeyFehler) || x.art !== "technisch") return;
+  meldeFehler(Object.assign(new Error(`Passkey/Notizen, ${x.schritt ?? schritt}: ${x.ursache ?? ""}`), { name: "PasskeyFehler" }));
 }
 
 async function anlegen(optionen: Json): Promise<PublicKeyCredential> {
@@ -104,7 +127,7 @@ async function anlegen(optionen: Json): Promise<PublicKeyCredential> {
     return c;
   } catch (e) {
     if (e instanceof PasskeyFehler) throw e;
-    fehlerUebersetzen(e);
+    fehlerUebersetzen(e, "Passkey anlegen");
   }
 }
 
@@ -116,7 +139,7 @@ async function abfragen(optionen: Json, mitPrf: boolean, signal?: AbortSignal,
     return c;
   } catch (e) {
     if (e instanceof PasskeyFehler) throw e;
-    fehlerUebersetzen(e);
+    fehlerUebersetzen(e, "Passkey abfragen");
   }
 }
 
@@ -175,7 +198,8 @@ export const kontoPasskeyEntfernen = (id: number) => api.del<KontoPasskeys>(`/ac
 export async function notizenMitPasskey(owner: number, treffer: PrfTreffer): Promise<"offen" | "eingerichtet" | "gemerkt" | "nichts"> {
   if (!treffer.prf) return "nichts";
   const notizen = await import("@/lib/notizen");
-  const kek = await passkeyKek(treffer.prf);
+  const prf = treffer.prf;
+  const kek = await imSchritt("Schlüssel ableiten", () => passkeyKek(prf));
   let keys;
   try {
     keys = await notizen.fetchKeys();
@@ -205,11 +229,10 @@ export async function notizenMitPasskey(owner: number, treffer: PrfTreffer): Pro
 /** Neue Notiz-Schlüssel, verpackt mit dem Schlüssel aus einem Anmelde-Passkey. */
 export async function notizenEinrichtenMitKek(owner: number, credentialId: string, kek: CryptoKey) {
   const notizen = await import("@/lib/notizen");
-  const { dk, basis } = await krypto.neuerSchluessel();
-  const k = await notizen.createKeysMitPasskey(basis, {
-    credential_id: credentialId, prf_salt: ANMELDE_SALZ_B64, wrapped_key: await krypto.wrap(dk, kek), label: geraet(),
-  });
-  const sitzung = await krypto.nurBenutzbar(dk);
+  const { dk, basis } = await imSchritt("neuer Schlüssel", () => krypto.neuerSchluessel());
+  const wrapped_key = await imSchritt("verpacken", () => krypto.wrap(dk, kek));
+  const k = await notizen.createKeysMitPasskey(basis, { credential_id: credentialId, prf_salt: ANMELDE_SALZ_B64, wrapped_key, label: geraet() });
+  const sitzung = await imSchritt("Sitzungsschlüssel", () => krypto.nurBenutzbar(dk));
   await notizen.setSessionKey(owner, sitzung, true);
   notizen.vergissAnmeldePasskey();
   return { keys: k, dk: sitzung };
@@ -237,11 +260,11 @@ export async function notizPasskeyBesorgen(owner: number): Promise<{ credentialI
         },
       }) as PublicKeyCredential | null;
     } catch (e) {
-      fehlerUebersetzen(e);
+      fehlerUebersetzen(e, "Passkey abfragen");
     }
     const prf = c ? prfVon(c) : null;
     if (!c || !prf) throw new PasskeyFehler("nicht-unterstuetzt", "Dieser Passkey liefert keinen Schlüssel.");
-    return { credentialId: b64(c.rawId), kek: await passkeyKek(prf) };
+    return { credentialId: b64(c.rawId), kek: await imSchritt("Schlüssel ableiten", () => passkeyKek(prf)) };
   }
   const { treffer } = await kontoPasskeyHinzufuegen();
   let prf = treffer.prf;
@@ -252,7 +275,8 @@ export async function notizPasskeyBesorgen(owner: number): Promise<{ credentialI
     prf = prfVon(c);
   }
   if (!prf) throw new PasskeyFehler("nicht-unterstuetzt", "Dieser Passkey liefert keinen Schlüssel.");
-  return { credentialId: treffer.credentialId, kek: await passkeyKek(prf) };
+  const geheimnis = prf;
+  return { credentialId: treffer.credentialId, kek: await imSchritt("Schlüssel ableiten", () => passkeyKek(geheimnis)) };
 }
 
 /** Nach einer Anmeldung per Passkey: Ist er noch keiner für die Notizen, kommt
@@ -263,7 +287,7 @@ export async function anmeldePasskeyNachtragen(owner: number, keyVersion: number
   if (!gemerkt) return null;
   const k = await notizen.addPasskey(keyVersion, {
     credential_id: gemerkt.credentialId, prf_salt: ANMELDE_SALZ_B64,
-    wrapped_key: await krypto.wrap(dkExportierbar, gemerkt.kek), label: geraet(),
+    wrapped_key: await imSchritt("verpacken", () => krypto.wrap(dkExportierbar, gemerkt.kek)), label: geraet(),
   });
   notizen.vergissAnmeldePasskey();
   return k;
@@ -275,5 +299,6 @@ export async function anmeldePasskeyNachtragen(owner: number, keyVersion: number
 export async function notizVerpackungMitKontoPasskey(owner: number, dkExportierbar: CryptoKey) {
   const { credentialId, kek } = await notizPasskeyBesorgen(owner);
   (await import("@/lib/notizen")).vergissAnmeldePasskey();
-  return { credential_id: credentialId, prf_salt: ANMELDE_SALZ_B64, wrapped_key: await krypto.wrap(dkExportierbar, kek), label: geraet() };
+  const wrapped_key = await imSchritt("verpacken", () => krypto.wrap(dkExportierbar, kek));
+  return { credential_id: credentialId, prf_salt: ANMELDE_SALZ_B64, wrapped_key, label: geraet() };
 }
