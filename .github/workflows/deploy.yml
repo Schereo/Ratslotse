@@ -86,28 +86,17 @@ jobs:
           npm run build
 
       - name: Configure deployment SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' \
-            'Host edge' \
-            "  HostName ${{ secrets.VPS_PROXY_HOST }}" \
-            "  User ${{ secrets.VPS_PROXY_USER }}" \
-            "  Port ${{ secrets.VPS_SSH_PORT }}" \
-            '  IdentityFile ~/.ssh/id_ed25519' \
-            '  StrictHostKeyChecking no' \
-            'Host target' \
-            "  HostName ${{ secrets.VPS_HOST }}" \
-            "  User ${{ secrets.VPS_USER }}" \
-            "  Port ${{ secrets.VPS_SSH_PORT }}" \
-            '  IdentityFile ~/.ssh/id_ed25519' \
-            '  ProxyJump edge' \
-            '  StrictHostKeyChecking no' \
-            > ~/.ssh/config
-          chmod 600 ~/.ssh/config
+        uses: ./.github/actions/ssh-config
+        with:
+          targets: |
+            target ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
 
       # UM PLATZ BITTEN, bevor irgendetwas angefasst wird. Lange Cron-Läufe
       # sehen an ihrer nächsten Stapelgrenze nach diesem Marker, behalten das
@@ -287,6 +276,7 @@ jobs:
           proxy_host: ${{ secrets.VPS_PROXY_HOST }}
           proxy_username: ${{ secrets.VPS_PROXY_USER }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
