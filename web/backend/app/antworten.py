@@ -2879,6 +2879,18 @@ class CourseLaterAgenda(TypedDict):
     item_number: str
 
 
+class CourseProtocolEstimate(TypedDict):
+    """Wann das Protokoll voraussichtlich erscheint (``council/protokoll_erwartung.py``):
+    wenige Tage nach der Sitzung, in der es genehmigt wird — der nächsten des
+    Gremiums. ``basis`` sagt, ob deren Datum im Kalender steht oder aus
+    derselben Jahreszeit früherer Jahre geschätzt ist (dann ungenauer)."""
+    earliest: str
+    expected: str
+    latest: str
+    basis: Literal["next_session", "history"]
+    approval_date: str
+
+
 class CourseNextSession(TypedDict):
     """Die nächste Sitzung desselben Gremiums — „Wie es weitergeht"."""
     ksinr: int
@@ -2944,6 +2956,8 @@ class SessionCourse(TypedDict):
     #: aktuellen Stand noch nicht kennt).
     summary_source: Literal["rule", "model"]
     next_session: CourseNextSession | None
+    #: Nur solange das Protokoll fehlt, sonst ``None``.
+    protocol_estimate: CourseProtocolEstimate | None
     stages: list[CourseStage]
     items: dict[str, CourseItem]
 

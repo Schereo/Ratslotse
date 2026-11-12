@@ -8426,6 +8426,44 @@
         "title": "CourseNextSession",
         "type": "object"
       },
+      "CourseProtocolEstimate": {
+        "description": "Wann das Protokoll voraussichtlich erscheint (``council/protokoll_erwartung.py``):\nwenige Tage nach der Sitzung, in der es genehmigt wird — der nächsten des\nGremiums. ``basis`` sagt, ob deren Datum im Kalender steht oder aus\nderselben Jahreszeit früherer Jahre geschätzt ist (dann ungenauer).",
+        "properties": {
+          "approval_date": {
+            "title": "Approval Date",
+            "type": "string"
+          },
+          "basis": {
+            "enum": [
+              "next_session",
+              "history"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "earliest": {
+            "title": "Earliest",
+            "type": "string"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "string"
+          },
+          "latest": {
+            "title": "Latest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "earliest",
+          "expected",
+          "latest",
+          "basis",
+          "approval_date"
+        ],
+        "title": "CourseProtocolEstimate",
+        "type": "object"
+      },
       "CourseStage": {
         "description": "Eine Etappe der Sitzung — ein helles Band im Kurs, ein Band in der Liste.\n\n``name`` ist der volle Name, ``name_medium`` und ``name_short`` die\nkürzeren Formen, falls die Etappe im Kurs zu schmal ist (``None``: es gibt\nkeine, der Client nimmt die nächstlängere). ``subtitle`` ist die\nUnterzeile des Bands („der Fraktionen, Gruppen …\", im Rat der amtliche\nAusschussname). ``range`` ist „Ö 5 – Ö 10\", bei einer Rubrik deren Kopf\n(„Ö 11\"); ``count`` die Zahl der Tagesordnungspunkte darin.",
         "properties": {
@@ -32073,6 +32111,47 @@
               "null"
             ]
           },
+          "protocol_estimate": {
+            "description": "Wann das Protokoll voraussichtlich erscheint (``council/protokoll_erwartung.py``):\nwenige Tage nach der Sitzung, in der es genehmigt wird — der nächsten des\nGremiums. ``basis`` sagt, ob deren Datum im Kalender steht oder aus\nderselben Jahreszeit früherer Jahre geschätzt ist (dann ungenauer).",
+            "properties": {
+              "approval_date": {
+                "title": "Approval Date",
+                "type": "string"
+              },
+              "basis": {
+                "enum": [
+                  "next_session",
+                  "history"
+                ],
+                "title": "Basis",
+                "type": "string"
+              },
+              "earliest": {
+                "title": "Earliest",
+                "type": "string"
+              },
+              "expected": {
+                "title": "Expected",
+                "type": "string"
+              },
+              "latest": {
+                "title": "Latest",
+                "type": "string"
+              }
+            },
+            "required": [
+              "earliest",
+              "expected",
+              "latest",
+              "basis",
+              "approval_date"
+            ],
+            "title": "CourseProtocolEstimate",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "public_count": {
             "title": "Public Count",
             "type": "integer"
@@ -32119,6 +32198,7 @@
           "summary",
           "summary_source",
           "next_session",
+          "protocol_estimate",
           "stages",
           "items"
         ],
