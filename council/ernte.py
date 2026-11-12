@@ -25,10 +25,36 @@ _SCHLUSS = (r"(?:In[^\S\n]+Vertretung|Im[^\S\n]+Auftrag|"
 # Header steht allein auf seiner Zeile („Sachverhalt:", „Anlagen") — ohne den
 # Lookahead schnitt schon „…Photovoltaik-\nAnlagen spart CO2…" den Block ab
 # (Review-Befund E3: PDF-Umbruch vor großgeschriebenem Substantiv).
-_ENDE = (r"(?:[a-c]\)\s|Seite:\s*\d|" + _SCHLUSS + r"(?=[^\S\n]*\n|[^\S\n]*$)|"
+#
+# Seit 11/2026 (docs/plan-vorlagen-aufbereiten.md, PR 1):
+# - „a)"/„b)"/„c)" beenden einen Block nur noch als Punkte des Auswirkungen-
+#   Blocks (Finanzen, Klima, Weitere). Die alte Form „[a-c]\)\s" schnitt jeden
+#   Beschlussvorschlag mit eigener Aufzählung nach Ziffer a) ab — beim
+#   Jahresabschluss 26/0674 fehlte so der Fehlbetrag (122 Vorlagen).
+# - Die Überschriften der neueren Vorlagen (Anlass, Bericht, Einordnung,
+#   Ausgangslage, Abwägung) beenden den Block. Ohne sie lief der Vorschlag in
+#   781 von 2.368 Vorlagen in den „Anlass" hinein.
+# - Der Druckkopf („Ausdruck vom: …", „Seite: 2/5") wird vor der Ernte
+#   entfernt (``_ohne_druckkopf``) statt als Blockende zu gelten: Er steht
+#   mitten im Vorschlag, wo die Seite umbricht (26/0737, rund 76 Vorlagen).
+_ENDE = (r"(?:a\)[^\S\n]*Finanzen|b\)[^\S\n]*Klima|c\)[^\S\n]*Weitere|"
+         + _SCHLUSS + r"(?=[^\S\n]*\n|[^\S\n]*$)|"
          r"(?:Beschlussvorschlag|Sachverhalt|Begründung|Beratungsfolge|"
          r"Finanzielle[^\S\n]+Auswirkungen|Klimarelevante[^\S\n]+Auswirkungen|"
-         r"Auswirkungen|Anlagen?)(?=\s*:|[^\S\n]*\n|[^\S\n]*$))")
+         r"Auswirkungen|Anlagen?|Anlass|Bericht|Einordnung|Ausgangslage|Abwägung)"
+         r"(?=\s*:|[^\S\n]*\n|[^\S\n]*$)|"
+         # Mit Zusatz („Abwägung und Bewertung der Verwaltung:", 768-mal;
+         # „Anlass und Erläuterung:") — dann nur mit Doppelpunkt am Zeilenende.
+         r"(?:Anlass|Bericht|Begründung|Sachverhalt|Erläuterung|Einordnung|Ausgangslage|Abwägung)"
+         r"[^\S\n]+(?:und|der|des|für|in|zum|zur)\b[^\n:]{0,45}:[^\S\n]*(?=\n|$))")
+
+# Der Druckkopf jeder Seite der Vorlage. Er steht als eigene Zeile da.
+_DRUCKKOPF_RE = re.compile(r"^[^\S\n]*(?:Ausdruck[^\S\n]+vom:.*|Seite:[^\S\n]*\d+[^\S\n]*/[^\S\n]*\d+[^\S\n]*)\n?",
+                           re.MULTILINE)
+
+
+def _ohne_druckkopf(text: str) -> str:
+    return _DRUCKKOPF_RE.sub("", text or "")
 
 _FLOSKELN = {"keine", "keine.", "-", "–", "./.", "entfällt", "entfällt.", "nein",
              "keine unmittelbaren"}
@@ -81,7 +107,7 @@ def auswirkungen(vorlagen_text: str) -> dict:
 
     „klima" enthält den Prüfvermerk mitsamt Begründung (z. B. „Prüfungsrelevant:
     Nein, … Sachstandsbericht"), „finanzen" die Kostenangabe der Verwaltung."""
-    text = vorlagen_text or ""
+    text = _ohne_druckkopf(vorlagen_text)
     fin = _FINANZ_RE.search(text)
     kli = _KLIMA_RE.search(text)
     return {"finanzen": _saeubern(fin.group("t")) if fin else None,
@@ -154,17 +180,22 @@ def sitzungsort(protokoll_text: str) -> str | None:
 
 # Dieselbe Blockende-Logik wie bei den Auswirkungen — die alte eigene Liste
 # schnitt „…gemäß\nAnlage 1…" mitten im Satz ab (Review-Befund E3).
+# Die Überschrift steht am Zeilenanfang. Ohne den Anker galt auch „… der
+# eingereichte Beschlussvorschlag beinhaltet die\nfolgenden Punkte:" mitten
+# im Bericht als Vorschlag (26/0631, ein Bericht ohne eigenen Vorschlag).
 _VORSCHLAG_RE = re.compile(
-    r"Beschluss(?:vorschlag|entwurf)[^\n]{0,60}?:?\s*\n(?P<v>.*?)"
+    r"(?:^|\n)[^\S\n]*Beschluss(?:vorschlag|entwurf)[^\n]{0,60}?:?\s*\n(?P<v>.*?)"
     r"(?=\n\s*" + _ENDE + r"|\Z)",
     re.DOTALL)
 
 
 def proposed_decision(vorlagen_text: str) -> str | None:
-    m = _VORSCHLAG_RE.search(vorlagen_text or "")
+    m = _VORSCHLAG_RE.search(_ohne_druckkopf(vorlagen_text))
     if not m:
         return None
-    return _saeubern(m.group("v"), max_len=1500)
+    # 8.000 statt 1.500 Zeichen: Jahresabschlüsse und Satzungen tragen lange
+    # Vorschläge, und gekappt fehlte genau der Teil mit den Beträgen (210 Fälle).
+    return _saeubern(m.group("v"), max_len=8000)
 
 
 def _norm(s: str) -> str:

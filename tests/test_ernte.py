@@ -338,3 +338,44 @@ def test_backfill_ist_ein_schritt_von_weekly_enrich():
     # Vor den LLM-Schritten: billig, ohne Netz, und alles Spätere sieht frische
     # Felder (``supplementary_approvals`` liest ``proposed_decision``).
     assert schritte.index("ernte_backfill.py") == 0
+
+
+# --- Beschlussvorschlag, Schnitt 11/2026 (docs/plan-vorlagen-aufbereiten.md, PR 1) ---
+
+def test_vorschlag_endet_am_anlass():
+    t = ("Beschlussvorschlag:\n \nDen Ausschüssen gehören je fünf beratende Mitglieder an.\n \n"
+         "Anlass:\n \nDer Rat kann nach § 71 Abs. 7 NKomVG beschließen …\n")
+    assert ernte.proposed_decision(t) == "Den Ausschüssen gehören je fünf beratende Mitglieder an."
+
+
+def test_vorschlag_behaelt_eigene_aufzaehlung():
+    # 26/0674: Nach „a)" stand der Schnitt — der Fehlbetrag unter b) fehlte.
+    t = ("Beschlussvorschlag:\n \na) Der Jahresabschluss 2025 wird beschlossen.\n \n"
+         "b) Es wird ein Jahresfehlbetrag von -24.822.337,17 Euro festgestellt.\n \n"
+         "c) Dem Oberbürgermeister wird Entlastung erteilt.\n \nAnlass:\nText\n")
+    v = ernte.proposed_decision(t)
+    assert "-24.822.337,17" in v and "Entlastung erteilt" in v
+
+
+def test_vorschlag_laeuft_ueber_den_druckkopf():
+    # 26/0737: Der Seitenumbruch stand mitten im Vorschlag.
+    t = ("Beschlussvorschlag:\n \nDer Jahresabschluss wird festgestellt.\n \n"
+         "Ausdruck vom: 23.09.2026\nSeite: 2/5\nDie Kapitalrücklage wird verrechnet.\n \n"
+         "Anlass:\nText\n")
+    v = ernte.proposed_decision(t)
+    assert v == "Der Jahresabschluss wird festgestellt. Die Kapitalrücklage wird verrechnet."
+
+
+def test_vorschlag_nur_als_ueberschrift():
+    # 26/0631: Ein Bericht erwähnt „den eingereichten Beschlussvorschlag" im Satz.
+    t = ("Bericht:\n \nDer von der CDU eingereichte Beschlussvorschlag beinhaltet die\n"
+         "folgenden Punkte:\n \n1. Die Satzung wird geändert.\n")
+    assert ernte.proposed_decision(t) is None
+
+
+def test_auswirkungen_enden_an_weitere_und_abwaegung():
+    t = ("Auswirkungen:\na) Finanzen\nKosten von 20.000 Euro.\nb) Klima\nPrüfungsrelevant: Nein\n"
+         "c) Weitere\nKeine.\n \nAbwägung und Bewertung der Verwaltung:\nDie Verwaltung empfiehlt …\n")
+    aus = ernte.auswirkungen(t)
+    assert aus["finanzen"] == "Kosten von 20.000 Euro."
+    assert aus["klima"] == "Prüfungsrelevant: Nein"
