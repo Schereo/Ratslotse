@@ -9629,6 +9629,80 @@ export interface components {
             /** Years */
             years: unknown;
         };
+        /**
+         * BudgetContextBlock
+         * @description Eine Zahlenreihe aus dem Haushalt neben einem Punkt
+         *     (``council/punkt_haushalt.py``). ``basis`` hält Plan, Ist und Sätze
+         *     auseinander; ``page`` nennt die Haushalts-Seite, auf der die Reihe steht.
+         */
+        BudgetContextBlock: {
+            /** Basis */
+            basis: string;
+            /** Columns */
+            columns: string[];
+            /** Description */
+            description: string | null;
+            /** Key */
+            key: string;
+            /** Note */
+            note: string;
+            /** Page */
+            page: string | null;
+            /** Rows */
+            rows: components["schemas"]["BudgetContextRow"][];
+            /**
+             * BudgetContextShare
+             * @description Eine Nachbewilligung im Verhältnis zum Jahresansatz. ``percent`` ist
+             *     exakt; die Seite rundet genau einmal.
+             */
+            share: {
+                /** Amount */
+                amount: number;
+                /** Of */
+                of: number;
+                /** Percent */
+                percent: number;
+                /** Year */
+                year: number;
+            } | null;
+            /** Sources */
+            sources: components["schemas"]["BudgetContextSource"][];
+            /** Title */
+            title: string;
+            /** Unit */
+            unit: string;
+        };
+        /** BudgetContextRow */
+        BudgetContextRow: {
+            /** Values */
+            values: (number | null)[];
+            /** Year */
+            year: number;
+        };
+        /**
+         * BudgetContextShare
+         * @description Eine Nachbewilligung im Verhältnis zum Jahresansatz. ``percent`` ist
+         *     exakt; die Seite rundet genau einmal.
+         */
+        BudgetContextShare: {
+            /** Amount */
+            amount: number;
+            /** Of */
+            of: number;
+            /** Percent */
+            percent: number;
+            /** Year */
+            year: number;
+        };
+        /** BudgetContextSource */
+        BudgetContextSource: {
+            /** Label */
+            label: string;
+            /** Url */
+            url: string;
+            /** Year */
+            year: number | null;
+        };
         /** BudgetDataState */
         BudgetDataState: {
             /** Layers */
@@ -14206,6 +14280,11 @@ export interface components {
             stale: boolean;
             /** Subject Key */
             subject_key: string;
+        };
+        /** ItemBudgetContext */
+        ItemBudgetContext: {
+            /** Blocks */
+            blocks: components["schemas"]["BudgetContextBlock"][];
         };
         /**
          * ItemDossier
@@ -20512,6 +20591,7 @@ export interface components {
             /** Amendments */
             amendments?: components["schemas"]["ItemAmendment"][];
             arguments?: components["schemas"]["ItemArguments"];
+            budget_context?: components["schemas"]["ItemBudgetContext"];
             /** Committee */
             committee: string;
             /** Count */
@@ -31265,4 +31345,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2d030cbcbfdfc5dd5d0c0c1df68831a62ada14a8e254f62a2b1c18561c938f9e
+// vertrag-sha256: 33f4034c88ef6f2d77e6e898d4cbb2fbfa998f0f031d820e22343be414518029

@@ -1241,6 +1241,67 @@ class HaushaltMixin(StoreBasis):
             r["probes"] = [p for p in (r.get("probes") or "").split(",") if p]
         return rows
 
+    # --- Haushaltszahlen an einem Tagesordnungspunkt (council/punkt_haushalt.py) ---
+
+    def teilhaushalt_plan(self, nr: int, bis_jahr: int, n: int = 3) -> list[dict]:
+        """Plan-Aufwendungen und -Erträge eines Teilhaushalts, die letzten ``n``
+        Jahre bis ``bis_jahr``. Der Name kommt je Jahr aus den Produkten
+        (``sub_budget_no`` → ``sub_budget_name``) — die Nummer bleibt, der Name
+        wechselt mit dem Zuschnitt der Dezernate."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                """SELECT b.year, b.area AS name, b.expenses, b.revenues, b.herkunft_id
+                   FROM council_budget b
+                   WHERE b.is_total = 0 AND b.year <= ? AND b.area = (
+                       SELECT p.sub_budget_name FROM council_products p
+                       WHERE p.year = b.year AND p.sub_budget_no = ? LIMIT 1)
+                   ORDER BY b.year DESC LIMIT ?""", (int(bis_jahr), int(nr), int(n)))][::-1]
+        except sqlite3.OperationalError:
+            return []
+
+    def produkt_plan(self, product_no: str, bis_jahr: int, n: int = 3) -> list[dict]:
+        """Plan-Zahlen eines Produkts über seine Nummer („P10.311600")."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                """SELECT year, product_no, product_name AS name, expenses, revenues, short_description,
+                          sub_budget_no, herkunft_id
+                   FROM council_products WHERE product_no = ? AND year <= ?
+                   ORDER BY year DESC LIMIT ?""", (product_no, int(bis_jahr), int(n)))][::-1]
+        except sqlite3.OperationalError:
+            return []
+
+    def teilhaushalt_namen(self, bis_jahr: int) -> dict[int, str]:
+        """Nummer → Name der Teilhaushalte im jüngsten Planjahr bis ``bis_jahr``."""
+        try:
+            return {int(r[0]): r[1] for r in self._conn.execute(
+                """SELECT DISTINCT sub_budget_no, sub_budget_name FROM council_products
+                   WHERE sub_budget_no IS NOT NULL AND year = (
+                       SELECT MAX(year) FROM council_products WHERE year <= ?)""", (int(bis_jahr),))}
+        except sqlite3.OperationalError:
+            return {}
+
+    def betrieb_plan(self, kennung: str, bis_jahr: int, n: int = 3) -> list[dict]:
+        """Wirtschaftsplan-Zahlen GENAU eines Betriebs. Über den Namen gesucht
+        (``lotti_werkzeuge.betrieb_daten``) träfe „Stadion" auch die
+        Stadionplanungsgesellschaft — am Punkt stünden dann deren Zahlen."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                """SELECT year, enterprise_name AS name, revenues, expenses, result, herkunft_id
+                   FROM council_business_plans WHERE enterprise = ? AND year <= ?
+                   ORDER BY year DESC LIMIT ?""", (kennung, int(bis_jahr), int(n)))][::-1]
+        except sqlite3.OperationalError:
+            return []
+
+    def haushalt_gesamt_plan(self, bis_jahr: int, n: int = 3) -> list[dict]:
+        """Plan-Summen des Stadthaushalts (alle Teilhaushalte)."""
+        try:
+            return [dict(r) for r in self._conn.execute(
+                """SELECT year, expenses, revenues, herkunft_id FROM council_budget
+                   WHERE is_total = 1 AND year <= ? ORDER BY year DESC LIMIT ?""",
+                (int(bis_jahr), int(n)))][::-1]
+        except sqlite3.OperationalError:
+            return []
+
     def get_nachbewilligungen(self) -> list[dict]:
         """Die RIS-Serie, chronologisch. ``committees`` kommt als Liste heraus."""
         try:
