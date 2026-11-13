@@ -13,12 +13,13 @@ import {
   AenderungenSection, AgendaRow, AttendanceSection, CalendarButton, DringlichkeitsBlock, LiveChip,
   ergebnisseJeTop, hasAgendaChildren, sessionUrl, topDomId, topKey, useTopSprung, useTopsAusLink, videoKey,
 } from "@/components/tagesordnung";
-import { sitzungHref, sessionHref } from "@/lib/routes";
+import { sitzungHref, sitzungslisteHref } from "@/lib/routes";
 import { isLiveNow } from "@/lib/live";
 import { useFetch } from "@/lib/use-fetch";
 import { istNichtGefunden } from "@/lib/api";
 import { AbrufFehler } from "@/components/abruf-fehler";
 import { useHeute } from "@/lib/use-heute";
+import Link from "next/link";
 import { useZurueck } from "@/lib/zurueck";
 import { useWeit } from "@/lib/use-ultra";
 import { BeschlussVorschau } from "@/components/beschluss-vorschau";
@@ -52,7 +53,7 @@ function SitzungInner() {
   const sp = useSearchParams();
   const ksinr = Number(sp.get("ksinr") || 0);
   const tops = useTopsAusLink(sp.get("top"));
-  const { zeigen: zeigeZurueck, zurueck } = useZurueck();
+  const { zeigen: zeigeZurueck } = useZurueck();
   const heute = useHeute();
   const { data, loading, error, refetch } = useFetch<SessionDetail>(ksinr > 0 ? `/council/session/${ksinr}` : null,
     // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
@@ -81,7 +82,7 @@ function SitzungInner() {
   if (kursSeite && (data as Partial<SessionWithCourse>).course && (data.agenda_items?.length ?? 0) > 0) {
     return (
       <SessionPage data={data as SessionWithCourse} ksinr={ksinr} flashTop={flashTop} weit={weit}
-        zurueck={zeigeZurueck ? () => zurueck(sessionHref(ksinr)) : undefined} />
+        zurueckHref={zeigeZurueck ? sitzungslisteHref(ksinr) : undefined} />
     );
   }
 
@@ -107,12 +108,14 @@ function SitzungInner() {
   return (
     <div className={vorschauId != null ? "mx-auto max-w-[1480px]" : "mx-auto max-w-4xl"}>
       {/* „Zurück" nur für Angemeldete: Für Gäste führt jedes Ziel entweder aus
-          der Seite heraus oder an die Anmeldewand (s. lib/zurueck.ts). */}
+          der Seite heraus oder an die Anmeldewand (s. lib/zurueck.ts). Das Ziel
+          steht im Text, also fest die Liste statt der History: Wer von einem
+          Punkt kam, landete sonst wieder auf dem Punkt (Tim, 13.11.2026). */}
       {zeigeZurueck && (
-        <button onClick={() => zurueck(sessionHref(ksinr))}
+        <Link href={sitzungslisteHref(ksinr)}
           className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
           <ArrowLeft className="h-4 w-4 shrink-0" /> Zurück zu den Sitzungen
-        </button>
+        </Link>
       )}
 
       <header aria-labelledby="sitzung-titel" className="mt-3 overflow-hidden rounded-xl border border-border bg-card shadow-sm [overflow-wrap:anywhere]">

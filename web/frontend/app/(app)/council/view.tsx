@@ -1035,6 +1035,9 @@ function SessionsTab({ committees }: { committees: string[] }) {
   const deepSp = useSearchParams();
   const sitzungsRouter = useRouter();
   const targetKsinr = Number(deepSp.get("ksinr") || 0);
+  // Von „Zurück zu den Sitzungen“ (`sitzungslisteHref`): in der Liste bleiben,
+  // auch wenn die Sitzung nicht im gezeigten Zeitraum steht.
+  const bleiben = deepSp.get("bleiben") === "1";
   const deepLinkDone = useRef(false);
   const [flashKsinr, setFlashKsinr] = useState<number | null>(null);
   const [scope, setScope] = useMerker<Scope>("sitzungen:zeitraum", "upcoming");
@@ -1126,7 +1129,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
       // „Zurück" eines Beschlusses und aus Ergebnis-Mails). Dann auf die
       // eigene Seite der Sitzung, die es für jede gibt.
       deepLinkDone.current = true;
-      sitzungsRouter.replace(sitzungHref(targetKsinr, topsAusLink));
+      if (!bleiben) sitzungsRouter.replace(sitzungHref(targetKsinr, topsAusLink));
       return;
     }
     deepLinkDone.current = true;

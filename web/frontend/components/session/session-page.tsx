@@ -18,6 +18,7 @@
 
 import { LottiSatz } from "@/components/session/lotti-satz";
 import { KiStern } from "@/components/ki-stern";
+import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ArrowDown, ArrowLeft, ArrowRight, ChevronDown, ExternalLink, Navigation, Star,
@@ -94,13 +95,15 @@ interface Ctx {
   mitlesen: boolean;
 }
 
-export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
+export function SessionPage({ data, ksinr, flashTop, weit, zurueckHref }: {
   data: SessionWithCourse;
   ksinr: number;
   flashTop: string | null;
   /** Ab `weit` (1680 px) — dann hat die Beschluss-Vorschau rechts Vorrang. */
   weit: boolean;
-  zurueck?: () => void;
+  /** Ziel von „Zurück zu den Sitzungen“ — fest die Liste, nicht die History:
+   *  Wer von einem Punkt kam, landete sonst wieder auf dem Punkt (Tim, 13.11.2026). */
+  zurueckHref?: string;
 }) {
   const course = data.course;
   const phase = sessionPhase(data);
@@ -129,11 +132,11 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueck }: {
 
   return (
     <div className={vorschauId != null ? "mx-auto max-w-[1600px]" : "mx-auto max-w-[1240px]"}>
-      {zurueck && (
-        <button onClick={zurueck}
+      {zurueckHref && (
+        <Link href={zurueckHref}
           className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
           <ArrowLeft className="h-4 w-4 shrink-0" /> Zurück zu den Sitzungen
-        </button>
+        </Link>
       )}
 
       <Board ctx={ctx} />
