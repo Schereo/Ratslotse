@@ -45,6 +45,12 @@ export const sessionHref = (ksinr: number, tops?: string[]) => {
   return sauber.length ? `${ziel}&top=${encodeURIComponent(sauber.join(","))}` : ziel;
 };
 
+/** „Zurück zu den Sitzungen“ von der Sitzungs-Seite: die Liste, aufgeklappt
+ *  bei dieser Sitzung, wenn sie im gezeigten Zeitraum steht — sonst einfach die
+ *  Liste. `sessionHref` springt im zweiten Fall auf die Sitzungs-Seite, und
+ *  genau von dort kam man: Der Knopf führte im Kreis (Tim, 13.11.2026). */
+export const sitzungslisteHref = (ksinr: number) => `${sessionHref(ksinr)}&bleiben=1`;
+
 /** Die eigenständige Sitzungs-Seite — Ziel der Teilen-Knöpfe.
  *
  *  Bewusst ein anderer Pfad als `sessionHref`: Der führt in die Sitzungs*liste*
