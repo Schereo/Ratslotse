@@ -9,11 +9,10 @@ import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
+import { ABSCHNITT, INHALT } from "@/components/session/unterlagen-typo";
 
 export type Dossier = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["dossier"]>;
 type Aussage = Dossier["sections"][number]["statements"][number];
-
-const KICKER = "font-mono text-meta uppercase tracking-[0.06em] text-muted-foreground";
 
 export function Beleg({ a }: { a: Aussage }) {
   const [offen, setOffen] = useState(false);
@@ -46,13 +45,13 @@ export function Beleg({ a }: { a: Aussage }) {
 export function DossierAbschnitt({ s }: { s: Dossier["sections"][number] }) {
   return (
     <div className="border-t border-border pt-4 first:border-t-0 first:pt-0">
-      <h3 className={KICKER}>{s.title}</h3>
+      <h3 className={ABSCHNITT}>{s.title}</h3>
       {s.statements.length === 0 && s.status === "stated_none" ? (
-        <p className="mt-2 text-lese text-foreground">Laut Vorlage keine.</p>
+        <p className={cn(INHALT, "mt-2")}>Laut Vorlage keine.</p>
       ) : (
         <ul className="mt-2 flex flex-col gap-1.5">
           {s.statements.map((a, i) => (
-            <li key={i} className={cn("text-[15px] leading-relaxed text-foreground",
+            <li key={i} className={cn(INHALT,
               a.kind === "not_included" && "text-muted-foreground")}>
               {a.kind === "not_included" && <span className="font-medium">Nicht Teil des Beschlusses: </span>}
               {a.date && a.kind === "dates" && <span className="font-medium">{new Date(`${a.date}T12:00:00`).toLocaleDateString("de-DE")}: </span>}
