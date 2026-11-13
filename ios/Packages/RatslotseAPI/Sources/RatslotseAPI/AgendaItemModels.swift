@@ -102,7 +102,7 @@ public struct AgendaItemDetail: Decodable, Sendable {
     }
 
     /// Eine belegte Aussage: Satz, wörtliches Zitat, Dokument, Seite, PDF-Sprung.
-    public struct Statement: Decodable, Sendable, Identifiable, Hashable {
+    public struct Statement: Codable, Sendable, Identifiable, Hashable {
         public let text: String
         public let quote: String
         public let page: Int?
@@ -119,7 +119,7 @@ public struct AgendaItemDetail: Decodable, Sendable {
         }
     }
 
-    public struct Dossier: Decodable, Sendable {
+    public struct Dossier: Codable, Sendable {
         public let form: String?
         public let createdAt: String?
         public let sections: [Section]
@@ -131,7 +131,7 @@ public struct AgendaItemDetail: Decodable, Sendable {
             case documentsRead = "documents_read"
         }
 
-        public struct Section: Decodable, Sendable, Identifiable {
+        public struct Section: Codable, Sendable, Identifiable {
             public let key: String
             public let title: String
             public let status: String?
@@ -140,7 +140,7 @@ public struct AgendaItemDetail: Decodable, Sendable {
         }
     }
 
-    public struct Amendment: Decodable, Sendable, Identifiable {
+    public struct Amendment: Codable, Sendable, Identifiable {
         public let documentId: Int
         public let listNo: Int
         public let label: String
@@ -158,7 +158,7 @@ public struct AgendaItemDetail: Decodable, Sendable {
         public var id: Int { documentId }
 
         /// Aussage am Antrag: Satz, Zitat, Seite — die Nummer trägt der Antrag selbst.
-        public struct Quote: Decodable, Sendable {
+        public struct Quote: Codable, Sendable {
             public let text: String
             public let quote: String
             public let page: Int?

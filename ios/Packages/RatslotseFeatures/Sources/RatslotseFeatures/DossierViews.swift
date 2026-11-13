@@ -10,13 +10,21 @@ import SwiftUI
 struct DossierCard: View {
     let dossier: AgendaItemDetail.Dossier
     let amendments: [AgendaItemDetail.Amendment]
+    var title: String? = "Aus den Unterlagen"
+    var note: String?
+    var inCard = true
     @State private var beleg: AgendaItemDetail.Statement?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 6) {
-                Text("Aus den Unterlagen").font(RatsFont.body(16, weight: .semibold)).foregroundStyle(RatsColor.text)
-                RatsIcon(.sparkles, size: 13).foregroundStyle(RatsColor.signal).accessibilityLabel("Automatisch erstellt, jede Angabe belegt")
+        let inhalt = VStack(alignment: .leading, spacing: 14) {
+            if let title {
+                HStack(spacing: 6) {
+                    Text(title).font(RatsFont.body(16, weight: .semibold)).foregroundStyle(RatsColor.text)
+                    RatsIcon(.sparkles, size: 13).foregroundStyle(RatsColor.signal).accessibilityLabel("Automatisch erstellt, jede Angabe belegt")
+                }
+            }
+            if let note {
+                Text(note).font(RatsFont.body(12.5)).foregroundStyle(RatsColor.muted)
             }
             ForEach(Array(dossier.sections.enumerated()), id: \.element.id) { i, s in
                 VStack(alignment: .leading, spacing: 6) {
@@ -44,9 +52,67 @@ struct DossierCard: View {
                 }
             }
         }
-        .ratsCard()
+        Group {
+            if inCard { inhalt.ratsCard() } else { inhalt }
+        }
         .sheet(item: $beleg) { a in BelegSheet(a: a) }
     }
+}
+
+/// Beschluss-Seite (Plan § 6.3/6.4): „Aus der Vorlage" — der Wortdiff
+/// Vorschlag ↔ Beschluss und das auf den Sitzungstag eingefrorene Dossier.
+/// Ausdrücklich der Vorschlag; das Ergebnis zeigt die Seite selbst.
+struct DecisionFromTemplateCard: View {
+    let dossier: AgendaItemDetail.Dossier?
+    let proposalDiff: [[String]]?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 6) {
+                RatsLabel("Aus der Vorlage", .fileText)
+                    .font(RatsFont.body(15, weight: .bold))
+                    .foregroundStyle(RatsColor.text)
+                if dossier != nil {
+                    RatsIcon(.sparkles, size: 13).foregroundStyle(RatsColor.signal)
+                        .accessibilityLabel("Automatisch aus der Vorlage erstellt, jede Angabe belegt")
+                }
+            }
+            if let diff = proposalDiff, diff.contains(where: { $0.first != "=" }) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Vorgeschlagen ↔ beschlossen").font(RatsFont.body(14, weight: .semibold)).foregroundStyle(RatsColor.text)
+                    Text("Durchgestrichen stand im Beschlussvorschlag der Verwaltung, hervorgehoben im Beschluss.")
+                        .font(RatsFont.body(12.5)).foregroundStyle(RatsColor.muted)
+                    Text(wortdiffText(diff)).font(RatsFont.body(15)).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if let dossier, !dossier.sections.isEmpty {
+                DossierCard(dossier: dossier, amendments: [], title: nil,
+                            note: "Stand vor der Sitzung. Beschlossen wurde, was oben steht.", inCard: false)
+            }
+        }
+        .ratsCard()
+    }
+}
+
+/// Wortdiff wie im Web: alt durchgestrichen, neu hervorgehoben, langer Kontext gekürzt.
+func wortdiffText(_ diff: [[String]]) -> AttributedString {
+    var out = AttributedString()
+    for (i, teil) in diff.enumerated() where teil.count == 2 {
+        var text = teil[1]
+        if teil[0] == "=" {
+            let w = text.split(separator: " ")
+            if w.count > 16 {
+                text = i == 0 ? "… " + w.suffix(8).joined(separator: " ")
+                    : i == diff.count - 1 ? w.prefix(8).joined(separator: " ") + " …"
+                    : w.prefix(8).joined(separator: " ") + " … " + w.suffix(8).joined(separator: " ")
+            }
+        }
+        var s = AttributedString((i > 0 ? " " : "") + text)
+        if teil[0] == "-" { s.strikethroughStyle = .single; s.foregroundColor = RatsColor.muted }
+        if teil[0] == "+" { s.backgroundColor = RatsColor.signal.opacity(0.12); s.font = RatsFont.body(15, weight: .medium) }
+        out += s
+    }
+    return out
 }
 
 struct AmendmentsSection: View {
@@ -100,26 +166,7 @@ struct AmendmentsSection: View {
         }
     }
 
-    /// Wortdiff wie im Web: alt durchgestrichen, neu hervorgehoben, Kontext gekürzt.
-    private func diffText(_ diff: [[String]]) -> AttributedString {
-        var out = AttributedString()
-        for (i, teil) in diff.enumerated() where teil.count == 2 {
-            var text = teil[1]
-            if teil[0] == "=" {
-                let w = text.split(separator: " ")
-                if w.count > 16 {
-                    text = i == 0 ? "… " + w.suffix(8).joined(separator: " ")
-                        : i == diff.count - 1 ? w.prefix(8).joined(separator: " ") + " …"
-                        : w.prefix(8).joined(separator: " ") + " … " + w.suffix(8).joined(separator: " ")
-                }
-            }
-            var s = AttributedString((i > 0 ? " " : "") + text)
-            if teil[0] == "-" { s.strikethroughStyle = .single; s.foregroundColor = RatsColor.muted }
-            if teil[0] == "+" { s.backgroundColor = RatsColor.signal.opacity(0.12); s.font = RatsFont.body(15, weight: .medium) }
-            out += s
-        }
-        return out
-    }
+    private func diffText(_ diff: [[String]]) -> AttributedString { wortdiffText(diff) }
 }
 
 /// Der Beleg zu einer Aussage: Zitat, Dokument, Seite — und der Sprung ins PDF.
