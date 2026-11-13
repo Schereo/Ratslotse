@@ -10,6 +10,8 @@ export const ART_WORT: Record<string, string> = {
   synopsis: "Synopse",
   statute: "Satzung/Regelwerk",
   statement: "Stellungnahme",
+  objection_table: "Abwägung",
+  audit_report: "Prüfbericht",
   plan: "Plan",
   report: "Bericht/Anlage",
   presentation: "Präsentation",

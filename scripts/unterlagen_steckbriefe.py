@@ -11,7 +11,7 @@
 Ohne ``--schreiben`` nur der Bericht.
 
     .venv/bin/python scripts/unterlagen_steckbriefe.py
-    .venv/bin/python scripts/unterlagen_steckbriefe.py --schreiben --seiten 400
+    .venv/bin/python scripts/unterlagen_steckbriefe.py --schreiben --seiten 400 --synopsen 100 --spezial 100
 """
 from __future__ import annotations
 
@@ -30,7 +30,8 @@ from council.parties import parties_in_text  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 
-def main(db: str | None = None, schreiben: bool = False, seiten: int = 0, synopsen: int = 0) -> dict:
+def main(db: str | None = None, schreiben: bool = False, seiten: int = 0, synopsen: int = 0,
+         spezial: int = 0) -> dict:
     store = CouncilStore(db or str(ROOT / "data" / "council.sqlite"))
     conn = store._conn  # noqa: SLF001 — Ops-Skript, liest den Bestand in einem Zug
     arten: collections.Counter = collections.Counter()
@@ -116,6 +117,37 @@ def main(db: str | None = None, schreiben: bool = False, seiten: int = 0, synops
             time.sleep(1)
         print(f"Synopsen spaltengenau gelesen: {gelesen_syn}")
 
+    gelesen_spezial = 0
+    if schreiben and spezial:
+        # Spezialleser: Abwägungstabellen (nur Zahl und Ergebnis) und Prüfvermerke
+        # des Rechnungsprüfungsamts (council/spezialleser.py), letzte 12 Monate.
+        from council import spezialleser
+        kandidaten = conn.execute(
+            "SELECT DISTINCT d.document_id, d.doc_type, at.url FROM council_documents d "
+            "JOIN council_attachments at ON at.document_id = d.document_id "
+            "JOIN council_templates t ON t.kvonr = at.kvonr "
+            "JOIN council_agenda_items a ON a.template_number = t.template_number "
+            "JOIN council_sessions s ON s.ksinr = a.ksinr "
+            "WHERE d.doc_type IN ('objection_table', 'audit_report') AND d.structure IS NULL "
+            "AND s.session_date >= date('now', '-12 months') ORDER BY s.session_date DESC LIMIT ?",
+            (spezial,)).fetchall()
+        for k in kandidaten:
+            try:
+                r = vorlagen._session.get(k["url"], timeout=60)  # noqa: SLF001
+                r.raise_for_status()
+                if k["doc_type"] == "audit_report":
+                    notes = spezialleser.pruefvermerke(r.content)
+                    ergebnis = {"summary": spezialleser.pruefvermerke_zusammenfassung(notes), "notes": notes}
+                else:
+                    ergebnis = spezialleser.abwaegung(r.content)
+                if ergebnis:
+                    store.save_document_structure(k["document_id"], ergebnis)
+                    gelesen_spezial += 1
+            except Exception as exc:  # noqa: BLE001
+                print(f"  Spezialleser {k['document_id']}: {exc!r}")
+            time.sleep(1)
+        print(f"Abwägungen und Prüfberichte gelesen: {gelesen_spezial}")
+
     quote = vorlagen_mit_seiten / vorlagen_gesamt if vorlagen_gesamt else 0
     print(f"Vorlagen mit Seiten aus dem Druckkopf: {vorlagen_mit_seiten} von {vorlagen_gesamt} ({quote:.1%})")
     print("Arten:", ", ".join(f"{k} {v}" for k, v in arten.most_common()))
@@ -131,5 +163,6 @@ if __name__ == "__main__":
     ap.add_argument("--schreiben", action="store_true")
     ap.add_argument("--seiten", type=int, default=0)
     ap.add_argument("--synopsen", type=int, default=0)
+    ap.add_argument("--spezial", type=int, default=0, help="Abwägungen und Prüfberichte lesen (je 1 PDF/s)")
     a = ap.parse_args()
-    main(a.db, a.schreiben, a.seiten, a.synopsen)
+    main(a.db, a.schreiben, a.seiten, a.synopsen, a.spezial)
