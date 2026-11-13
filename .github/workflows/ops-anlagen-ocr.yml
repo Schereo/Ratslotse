@@ -50,6 +50,10 @@ on:
         description: "Höchstens so viele Seiten je Anlage"
         required: false
         default: "120"
+      nur_lesestoff:
+        description: "Nur Lesestoff-Scans der letzten 12 Monate (Satzung, Stellungnahme, Synopse, Abwägung) für die Dossiers"
+        type: boolean
+        default: false
 
 concurrency:
   group: ops-anlagen-ocr
@@ -69,6 +73,7 @@ jobs:
         env:
           OCR_LIMIT: ${{ inputs.limit }}
           OCR_MAX_SEITEN: ${{ inputs.max_seiten }}
+          OCR_NUR_LESESTOFF: ${{ inputs.nur_lesestoff }}
         uses: ./.github/actions/ssh
         with:
           host: ${{ secrets.VPS_DEV_HOST }}
@@ -90,7 +95,7 @@ jobs:
           # interpoliert wird, ist eine Kommandozeile — und dieses Repo ist
           # öffentlich. Beide Werte werden unten zusätzlich auf Ziffern
           # geprüft, bevor sie ein Argument werden.
-          envs: OCR_LIMIT,OCR_MAX_SEITEN
+          envs: OCR_LIMIT,OCR_MAX_SEITEN,OCR_NUR_LESESTOFF
           script: |
             set -e
             cd ~/app
@@ -114,10 +119,18 @@ jobs:
 
             # Erst zeigen, was drankäme — kostet nichts und steht im Log,
             # falls der eigentliche Lauf später abbricht.
-            .venv/bin/python scripts/backfill_anlagen_ocr.py --trocken $LIMIT
+            if [ "$OCR_NUR_LESESTOFF" = "true" ]; then
+              # Plan „Vorlagen aufbereiten“, Frage 8: nur was ein Dossier lesen
+              # würde. Ausgeschrieben, weil die Login-Shell zsh einen Schalter
+              # in einer Variablen nicht teilt (s. ops-gold.yml).
+              .venv/bin/python scripts/backfill_anlagen_ocr.py --nur-lesestoff --trocken
+              .venv/bin/python scripts/backfill_anlagen_ocr.py --nur-lesestoff --max-seiten "$OCR_MAX_SEITEN"
+            else
+              .venv/bin/python scripts/backfill_anlagen_ocr.py --trocken $LIMIT
 
-            .venv/bin/python scripts/backfill_anlagen_ocr.py \
-              $LIMIT --max-seiten "$OCR_MAX_SEITEN"
+              .venv/bin/python scripts/backfill_anlagen_ocr.py \
+                $LIMIT --max-seiten "$OCR_MAX_SEITEN"
+            fi
 
             # Kontonummern und Anschriften aus dem Bestand nehmen. Die
             # Backfills tun das seit dem 20.08. beim Speichern; dieser Aufruf
