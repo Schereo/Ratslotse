@@ -31,8 +31,16 @@ from council.store import CouncilStore  # noqa: E402
 
 # Was die neue Erkennung NIE erfassen darf: Anträge Dritter auf Geld oder eine
 # Genehmigung, die die Präfixliste bewusst auslässt. Steht so ein Label im
-# Bericht, ist die Präfixliste zu weit geraten.
-_DRITTE_RE = re.compile(r"(?:zuschuss|förder|genehmigungs)antr[aä]g|anlage\s*\d*antr[aä]g", re.IGNORECASE)
+# Bericht und nennt der Kopf keine Fraktion, ist die Erkennung zu weit geraten.
+# Die Fraktion entlastet: „Anlage2Antrag" an 20/0536 ist ein Ergänzungsantrag
+# von Grünen und SPD — der Lauf auf dev am 13.11.2026 meldete ihn als Dritten.
+_DRITTE_RE = re.compile(r"(?:zuschuss|förder|genehmigungs)antr[aä]g|anlage\s*\d*\s*antr[aä]g", re.IGNORECASE)
+
+
+def _ist_dritter(k: dict) -> bool:
+    if not _DRITTE_RE.search(k["label"] or ""):
+        return False
+    return not (parties_in_text(k["label"] or "") or parties_in_text((k["kopf"] or "")[:4000]))
 
 
 def main(db: str | None = None, schreiben: bool = False, limit: int = 200) -> dict:
@@ -42,7 +50,7 @@ def main(db: str | None = None, schreiben: bool = False, limit: int = 200) -> di
         if vorlagen.ist_antrag(a["label"], a["kopf"]):
             ueber = "Label" if vorlagen.ist_antrag(a["label"]) else "Textkopf"
             kandidaten.append({**a, "ueber": ueber})
-    dritte = [k for k in kandidaten if _DRITTE_RE.search(k["label"] or "")]
+    dritte = [k for k in kandidaten if _ist_dritter(k)]
     print(f"{len(kandidaten)} Anlagen werden zum Antrag "
           f"({sum(k['ueber'] == 'Label' for k in kandidaten)} über das Label, "
           f"{sum(k['ueber'] == 'Textkopf' for k in kandidaten)} über den Textkopf).")
