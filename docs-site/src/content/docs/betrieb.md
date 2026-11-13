@@ -101,7 +101,7 @@ sind, prüfen `tests/test_changelog_fragmente.py` und
 
 ## Deploy-Wege
 
-Sechs Workflows in `.github/workflows/`:
+Die wichtigsten Workflows in `.github/workflows/`:
 
 | Workflow | Trigger | Was passiert |
 |---|---|---|
@@ -111,6 +111,7 @@ Sechs Workflows in `.github/workflows/`:
 | `deploy-feature.yml` | jeder Push auf `feature`, zusätzlich `workflow_dispatch` | Deployt auf die **zweite Instanz auf derselben Dev-VM** (eigenes Verzeichnis, eigene Ports, eigene Datenbanken) — ebenfalls ohne Test-Gate. |
 | `docs.yml` | PR und Push auf `main`, nur bei Änderungen unter `docs-site/**` | Baut die Starlight-Doku und schlägt fehl, wenn sie nicht mehr baut (kaputte Links, Frontmatter, MDX). |
 | `docs-review.yml` | PR `opened` / `reopened` / `ready_for_review`, keine Forks | KI-Review, das den Diff auf Doku-Drift prüft und **genau einen** PR-Kommentar postet. Nur `contents: read` — die Action kann nichts committen. `continue-on-error: true`, der Review ist also kein Qualitäts-Gate. |
+| `claude.yml` | `@claude` in einem PR-Kommentar, Review oder Zeilenkommentar — nur von Konten mit Schreibrecht | Code-Review auf Zuruf: Claude liest den Diff und antwortet mit Inline-Kommentaren und einer Zusammenfassung. Bezahlt aus dem Claude-Abo (`CLAUDE_CODE_OAUTH_TOKEN`), nicht über die API. Nur `contents: read` — Claude kann nicht pushen. |
 
 **Der Prod-Deploy im Detail** (`deploy.yml`, in dieser Reihenfolge):
 
@@ -164,7 +165,8 @@ Merge-Commit gar kein Workflow-Lauf existiert
 
 **Verwendete GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`,
 `VPS_DEV_HOST`, `VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT` sowie
-`ANTHROPIC_API_KEY` für `docs-review.yml`. Werte stehen ausschließlich in den
+`ANTHROPIC_API_KEY` für `docs-review.yml` und `CLAUDE_CODE_OAUTH_TOKEN`
+(aus `claude setup-token`, ein Jahr gültig) für `claude.yml`. Werte stehen ausschließlich in den
 Repository-Secrets.
 
 ---
