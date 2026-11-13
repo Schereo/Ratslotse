@@ -411,7 +411,14 @@ nicht angeschaltet").
 
 **GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_DEV_HOST`,
 `VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`),
-`CARTO_API_KEY` (Kartenkacheln, s. u.).
+`CLAUDE_CODE_OAUTH_TOKEN` (für `claude.yml`, s. u.), `CARTO_API_KEY` (Kartenkacheln, s. u.).
+
+**Code-Review auf Zuruf:** `@claude` in einem PR-Kommentar, einem Review oder
+an einer Zeile startet [`claude.yml`](.github/workflows/claude.yml) — ohne
+Erwähnung läuft nichts. Bezahlt wird aus Tims Claude-Abo statt über die API;
+das Token erzeugt `claude setup-token` und hält ein Jahr. Claude darf nur
+lesen und kommentieren, und auslösen dürfen nur Konten mit Schreibrecht: Das
+Repo ist öffentlich, sonst könnte jede*r das Abo aufbrauchen.
 
 **Kartenkacheln brauchen einen Key.** Seit 08/2026 brennt CARTO ein
 „API KEY REQUIRED"-Wasserzeichen in jede Kachel, die ohne Key abgerufen wird —
