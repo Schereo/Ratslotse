@@ -6,9 +6,17 @@
 #   1. scripts/antraege_nachziehen.py         Anträge an Punkten lesen (≈ 0,03 $)
 #   2. scripts/unterlagen_steckbriefe.py      Art, Seiten, Synopsen, Abwägungen und
 #                                             Prüfberichte (1 PDF/s, ohne Modell)
-#   3. scripts/vorlagen_dossiers.py --bestand Dossiers der letzten 12 Monate (≈ 0,7 $,
+#   3. scripts/vorlagen_dossiers.py --bestand Dossiers der letzten 12 Monate (≈ 1,5 $,
 #                                             die Kostengrenze hält den Lauf an)
 # Ohne „schreiben“ zählen alle drei nur, was anstünde.
+#
+# Schritt 3 läuft mit „schreiben“ IM HINTERGRUND auf dem Server weiter
+# (nohup, Log data/dossier-bestand.log, PID in data/dossier-bestand.pid);
+# `stand` zeigt, wie weit er ist. Am 13.11.2026 schaffte er auf dev rund ein
+# Dossier je 1,6 min (Luna drosselt) — 667 Vorlagen sind also ein halber Tag,
+# und die SSH-Verbindung hielt weder die 120 min noch beim zweiten Versuch die
+# ersten 30. Ein wartender Deploy beendet ihn an der nächsten Vorlage
+# (kern/stopp.py); was geschrieben ist, bleibt, der nächste Lauf macht weiter.
 #
 # crontab: ergänzt `antraege_nachzuegler` (11, 13, 16, 18 Uhr) und
 # `vorlagen_dossiers` (10 und 15 Uhr) nach dem Muster der vorhandenen
@@ -28,9 +36,9 @@ on:
         options: [dev, prod]
         default: dev
       schritt:
-        description: "nachlaeufe = die drei einmaligen Läufe, crontab = die zwei Cron-Zeilen (nur prod)"
+        description: "nachlaeufe = die drei einmaligen Läufe, stand = wie weit die Dossiers sind, crontab = die zwei Cron-Zeilen (nur prod)"
         type: choice
-        options: [nachlaeufe, crontab]
+        options: [nachlaeufe, stand, crontab]
         default: nachlaeufe
       schreiben:
         description: "Wirklich schreiben (aus = nur zählen bzw. Vorschau)"
@@ -86,7 +94,15 @@ jobs:
             fi
             PY=.venv/bin/python
             SEIT=$(date -d '-12 months' +%F)
-            if [ "$SCHRITT" = "nachlaeufe" ]; then
+            LOG=data/dossier-bestand.log
+            PID=data/dossier-bestand.pid
+            # Eine PID-Datei statt pgrep -f: Das Muster stünde auch in der
+            # Kommandozeile dieses Skripts, pgrep fände sich selbst.
+            laeuft() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
+            if [ "$SCHRITT" = "stand" ]; then
+              if laeuft; then echo "Dossier-Bestand läuft (PID $(cat "$PID"))."; else echo "Dossier-Bestand läuft nicht."; fi
+              if [ -f "$LOG" ]; then tail -n 8 "$LOG"; else echo "Noch kein Log."; fi
+            elif [ "$SCHRITT" = "nachlaeufe" ]; then
               # Die Login-Shell auf dem Server ist zsh: Schalter in einer Variablen
               # würden dort nicht geteilt (s. ops-gold.yml) — deshalb ausgeschrieben.
               if [ "$SCHREIBEN" = "true" ]; then
@@ -96,7 +112,16 @@ jobs:
                 else
                   $PY scripts/unterlagen_steckbriefe.py --schreiben --seiten 400 --synopsen 100
                 fi
-                $PY scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD" --max-minuten 75 --schreiben
+                if laeuft; then
+                  echo "Dossier-Bestand läuft schon (PID $(cat "$PID")) — kein zweiter."
+                else
+                  nohup $PY -u scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD" --schreiben \
+                    > "$LOG" 2>&1 < /dev/null &
+                  echo $! > "$PID"
+                  sleep 5
+                  if laeuft; then echo "Dossier-Bestand läuft im Hintergrund (PID $(cat "$PID")); Stand mit schritt=stand."
+                  else echo "Dossier-Bestand ist sofort beendet:"; cat "$LOG"; fi
+                fi
               else
                 $PY scripts/antraege_nachziehen.py
                 $PY scripts/unterlagen_steckbriefe.py
