@@ -22,6 +22,7 @@ import { Argumente, Fraktionen } from "@/components/session/item-arguments";
 import { kurzfassung } from "@/components/tagesordnung";
 import { KiStern } from "@/components/ki-stern";
 import { AusDenUnterlagen } from "@/components/session/aus-den-unterlagen";
+import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
 import { useFetch } from "@/lib/use-fetch";
 import { istNichtGefunden } from "@/lib/api";
 import { useFeature } from "@/lib/features";
@@ -100,6 +101,7 @@ function PunktView({ p }: { p: Punkt }) {
   const brand = partei ? partyBrand(partei) : null;
 
   return (
+    <SeitenBegriffe begriffe={p.terms}>
     <div className="mx-auto max-w-[1240px]">
       <Link href={sitzungHref(p.ksinr, [it.item_number])}
         className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -156,14 +158,18 @@ function PunktView({ p }: { p: Punkt }) {
                   in Kürze" — beides sagte dasselbe (Tim, 12.11.2026). Dass der
                   Text automatisch entstand, sagt der Stern an seinem Ende. */}
               <h2 id="kurz" className="font-display text-base font-semibold text-foreground">Das Wichtigste in Kürze</h2>
-              <p className="mt-2 text-lese text-foreground">
-                {kurz}
-                <KiStern className="ml-1" text="Automatische Kurzfassung. Verbindlich sind die Unterlagen im Ratsinfo." />
-              </p>
-              {ci.important && ci.important_reason && (
-                <p className="mt-3 rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2 text-hinweis text-foreground">
-                  <strong className="font-semibold text-primary">Warum wichtig:</strong> {ci.important_reason}
+              <ErklaerBereich className="mt-2">
+                <p className="text-lese text-foreground">
+                  <Erklaert text={kurz} />
+                  <KiStern className="ml-1" text="Automatische Kurzfassung. Verbindlich sind die Unterlagen im Ratsinfo." />
                 </p>
+              </ErklaerBereich>
+              {ci.important && ci.important_reason && (
+                <ErklaerBereich className="mt-3">
+                  <p className="rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2 text-hinweis text-foreground">
+                    <strong className="font-semibold text-primary">Warum wichtig:</strong> <Erklaert text={ci.important_reason} />
+                  </p>
+                </ErklaerBereich>
               )}
             </section>
           )}
@@ -225,6 +231,7 @@ function PunktView({ p }: { p: Punkt }) {
         </aside>
       </div>
     </div>
+    </SeitenBegriffe>
   );
 }
 

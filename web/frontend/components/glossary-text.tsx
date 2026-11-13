@@ -49,7 +49,12 @@ const AufklappKontext = createContext<{
  * ganzen Verlauf.
  */
 export function GlossarAufklappBereich(
-  { children, className }: { children: ReactNode; className?: string },
+  { children, className, lesegroesse = false }: {
+    children: ReactNode; className?: string;
+    /** Auf Leseseiten (Punkt, Beschluss) steht die Erklärung neben 17-px-Text;
+     *  die 12 px aus Lottis schmalem Fenster wären dort eine Fußnote. */
+    lesegroesse?: boolean;
+  },
 ) {
   const [auswahl, setAuswahl] = useState<Aufgeklappt>(null);
   const waehlen = useCallback((a: Aufgeklappt) => setAuswahl(a), []);
@@ -78,7 +83,7 @@ export function GlossarAufklappBereich(
           <div
             data-glossar-aufklapp
             role="note"
-            className="mt-2 rounded-lg border border-border bg-muted/40 p-2.5 text-left text-xs font-normal normal-case leading-relaxed text-muted-foreground"
+            className={`mt-2 rounded-lg border border-border bg-muted/40 p-2.5 text-left font-normal normal-case not-italic leading-relaxed text-muted-foreground ${lesegroesse ? "text-sm" : "text-xs"}`}
           >
             <span className="mb-0.5 block font-semibold text-foreground">{auswahl.label}</span>
             {auswahl.def}
@@ -95,6 +100,13 @@ function Term({ label, def }: { label: string; def: string }) {
   const aufklapp = useContext(AufklappKontext);
   if (aufklapp) return <TermAufklapp label={label} def={def} ctx={aufklapp} />;
   return <TermPopover label={label} def={def} />;
+}
+
+/** Ein Fachwort, dessen Erklärung der Aufrufer mitbringt — die Punkt-Seite
+ *  bekommt Fundstelle und Erklärung vom Server (`components/session/begriffe.tsx`)
+ *  und erkennt selbst nichts. */
+export function Fachwort({ label, def }: { label: string; def: string }) {
+  return <Term label={label} def={def} />;
 }
 
 /** Die Fassung für schmale Flächen: der Block steht unter dem Absatz. */

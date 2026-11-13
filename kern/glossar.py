@@ -100,7 +100,7 @@ BEGRIFFE: dict[str, str] = {
     "Gewerbesteuer":
         "Steuer, die Unternehmen an ihre Stadt zahlen — eine der wichtigsten eigenen Einnahmequellen der Kommunen; den Hebesatz legt der Rat fest.",
     "Rücklage":
-        "Erspartes der Stadt aus Überschüssen früherer Jahre — daraus können geplante Defizite ausgeglichen werden.",
+        "Erspartes aus Überschüssen früherer Jahre — bei der Stadt, einem ihrer Betriebe oder einer Stiftung. Daraus lassen sich spätere Fehlbeträge ausgleichen.",
     # Ergänzt 16.08.2026 für den Haushalts-Bereich: die Wörter, über die man
     # beim Lesen einer Haushaltsseite zuerst stolpert.
     "Ertrag":
@@ -135,6 +135,10 @@ BEGRIFFE: dict[str, str] = {
         "Ein Anteil der Gewerbesteuer, den die Stadt an Bund und Land weiterreichen muss — von jedem eingenommenen Euro bleibt ihr also nicht alles.",
     "Grundsteuer":
         "Steuer auf Grundstücke und Gebäude, gezahlt von Eigentümer*innen — über die Nebenkosten meist auch von Mieter*innen. Den Hebesatz beschließt der Rat.",
+    # 26/0666 (Rat 2026): Der Titel eines Punkts war das Fachwort, und die
+    # Erklärung zur „Grundsteuer" traf es nicht (Tim, 13.11.2026).
+    "Grundsteuer C":
+        "Eine eigene, höhere Grundsteuer auf Grundstücke, die bebaut werden dürften, aber leer bleiben. Städte dürfen sie seit 2025 erheben: Bauen soll sich mehr lohnen, als Bauland liegen zu lassen.",
     "Haushaltssatzung":
         "Der förmliche Beschluss, mit dem der Rat den Haushalt in Kraft setzt — darin stehen auch die Hebesätze für das Jahr.",
     "Doppik":
@@ -171,7 +175,7 @@ BEGRIFFE: dict[str, str] = {
     "Aufwandsart":
         "Die Gliederung der Ausgaben nach ihrer Art — Personal, Sachaufwand, Transferleistungen, Abschreibungen. Das Gegenstück zur Ertragsart.",
     "Jahresabschluss":
-        "Die Abrechnung eines Haushaltsjahres: Was tatsächlich eingenommen und ausgegeben wurde, jeweils neben dem, was geplant war. Er erscheint erst ein bis zwei Jahre nach dem Jahr, das er abrechnet.",
+        "Die Abrechnung eines Jahres: was tatsächlich eingenommen und ausgegeben wurde — bei der Stadt neben dem, was geplant war. Es gibt ihn für die Stadt selbst und für jeden ihrer Betriebe und Gesellschaften; der städtische erscheint erst ein bis zwei Jahre nach dem Jahr, das er abrechnet.",
     "Ergebnisrechnung":
         "Der Teil des Jahresabschlusses, der Erträge und Aufwendungen gegenüberstellt — das tatsächliche Gegenstück zum geplanten Ergebnishaushalt.",
     "ordentliches Ergebnis":
@@ -220,7 +224,7 @@ BEGRIFFE: dict[str, str] = {
     # wörtlich auf mindestens einer Seite des Haushalts-Bereichs; erfundene
     # Fachwörter gehören hier nicht hin.
     "Bilanzsumme":
-        "Alles zusammen, was der Stadt am 31. Dezember gehört — und, von der anderen Seite gelesen, woher es finanziert ist. Für Oldenburg waren das Ende 2024 rund 1,48 Milliarden Euro. Viele Kennzahlen sind ein Anteil davon.",
+        "Alles zusammen, was der Stadt oder einem ihrer Betriebe am 31. Dezember gehört — und, von der anderen Seite gelesen, woher es finanziert ist. Für die Stadt Oldenburg waren das Ende 2024 rund 1,48 Milliarden Euro. Viele Kennzahlen sind ein Anteil davon.",
     "Bilanz":
         "Die Aufstellung, was der Stadt an einem Stichtag gehört und wem es zusteht. Anders als der Haushalt zählt sie kein Jahr, sondern einen Tag — ihre Beträge lassen sich deshalb nicht mit Einnahmen und Ausgaben verrechnen.",
     "Nettoposition":
@@ -288,7 +292,7 @@ BEGRIFFE: dict[str, str] = {
     "Eilentscheidung":  # 8
         "Eine Entscheidung, die getroffen wird, ohne dass das zuständige Gremium vorher tagen konnte, weil die Sache keinen Aufschub duldet. Sie wird ihm nachträglich vorgelegt.",
     "Entlastung":  # 222
-        "Der förmliche Beschluss, dass der Rat mit der Kassenführung eines Jahres einverstanden ist — eine Quittung, kein Lob.",
+        "Der förmliche Beschluss, mit dem der Rat oder die Gesellschafter die Arbeit der Verantwortlichen für ein Jahr billigen — des Oberbürgermeisters, einer Betriebsleitung oder Geschäftsführung. Eine Quittung, kein Lob.",
     # Kein Fachwort, sondern eine Homonym-Sperre: Ohne eigenen Eintrag hätte
     # „Entlastungsstraße" (53 Beschlüsse, meist am Fliegerhorst) die Erklärung
     # der Kassen-Entlastung darüber bekommen — der längere Begriff gewinnt und
@@ -325,7 +329,7 @@ BEGRIFFE: dict[str, str] = {
     "Jahresfehlbetrag":  # 71
         "Das Gegenteil des Jahresüberschusses: Ein Betrieb hat mehr ausgegeben als eingenommen. Wer den Fehlbetrag trägt, steht im Beschluss dazu.",
     "Zuwendung":  # 247
-        "Geld, das die Stadt an Vereine, Verbände oder Einrichtungen gibt, ohne dafür eine Leistung zu kaufen — ein Zuschuss für einen festgelegten Zweck, über den hinterher abgerechnet wird.",
+        "Geld ohne Gegenleistung für einen festgelegten Zweck. Meist gibt die Stadt es an Vereine, Verbände oder Einrichtungen und lässt hinterher abrechnen. „Annahme von Zuwendungen“ meint die andere Richtung: Spenden und Schenkungen an die Stadt, die sie nur mit einem Beschluss annehmen darf.",
     "Gebührenbedarfsberechnung":  # 7 (+ Haushalts-Bereich)
         "Die Rechnung hinter einer Gebühr: Was kostet die Leistung, wie viele nehmen sie in Anspruch, wie viel muss jede*r zahlen, damit die Kosten gedeckt sind. Sie ist die Begründung jeder Gebührenänderung.",
     "AöR":  # 47
@@ -358,7 +362,7 @@ BEGRIFFE: dict[str, str] = {
     "Grundzüge der Planung":  # 93
         "Der Kern eines Bebauungsplans, der sein Gesicht ausmacht. Werden sie nicht berührt, darf die Stadt ihn in einem vereinfachten Verfahren ändern — mit weniger Beteiligungsschritten.",
     "Satzungsbeschluss":  # 122
-        "Der letzte Schritt eines Bebauungsplans: Der Rat beschließt ihn als Satzung, damit wird er verbindliches Recht.",
+        "Der Beschluss, mit dem der Rat einen Plan oder eine Regel als Satzung erlässt — beim Bebauungsplan der letzte Schritt. Damit wird sie verbindliches Recht.",
     "Geltungsbereich":  # 55
         "Das Gebiet, für das ein Plan oder eine Satzung gilt — auf der Planzeichnung als Linie eingetragen.",
     "Veränderungssperre":  # 59
@@ -398,6 +402,75 @@ _TREFFER = re.compile(
     rf"(?<!{_BUCHSTABE})({'|'.join(re.escape(b) for b in _SORTIERT)}){_BUCHSTABE}*",
     re.IGNORECASE)
 _KANON = {b.lower(): b for b in BEGRIFFE}
+
+
+#: Wörter, die auf einer Leseseite (Punkt, Beschluss) NICHT erklärt werden,
+#: obwohl sie im Glossar stehen: Sie kommen auf fast jeder Seite vor und sind
+#: nach der ersten Sitzung bekannt. Gemessen am 13.11.2026 an 400
+#: Kurzfassungen, 75 Dossiers und 1.500 Beschlussvorschlägen: „Ausschuss" und
+#: „Vorlage" stünden auf drei von vier Dossier-Seiten unterstrichen — das
+#: liest sich wie ein Fehler, nicht wie ein Angebot. Für die KI-Frage
+#: (:func:`finde`) bleiben sie, dort fragt jemand ausdrücklich danach.
+ALLTAG: frozenset[str] = frozenset({
+    "Vorlage", "Beschlussvorlage", "Tagesordnung", "Tagesordnungspunkt", "Niederschrift",
+    "Fraktion", "Ausschuss", "Haushalt", "Anfrage", "Bilanz", "Vertagung",
+})
+
+#: Wörter, die außerhalb ihres Fachgebiets etwas anderes heißen — auf einer
+#: Leseseite stünde die Erklärung dann am falschen Wort („Entgelte für
+#: Produkte und Dienstleistungen", „Ansatz A30" eines Konzepts, der
+#: „Ausschuss für Finanzen und Beteiligungen", „in Abwägung dieser Bedenken").
+#: Im Haushalts-Bereich, wo der Zusammenhang feststeht, bleiben sie erklärt.
+#:
+#: Beide Listen sind gemessen, nicht geschätzt (13.11.2026): Je Begriff bis zu
+#: sechs echte Sätze aus Kurzfassungen, Dossiers und Beschlussvorschlägen, 403
+#: Fälle, ein Modell urteilte „passt die Erklärung zu diesem Satz?" und „hilft
+#: sie jemandem ohne Verwaltungswissen?". Ergebnis: hilft 96 %, passt 76 %
+#: (weitere 21 % „ungefähr", meist Feinheiten wie Aufwand gegen Ausgabe).
+#: Sechs Einträge passten im häufigsten Gebrauch nicht und sind seitdem
+#: weiter gefasst — „Zuwendung" erklärte Geld, das die Stadt GIBT, stand aber
+#: 172-mal bei Spenden, die sie ANNIMMT.
+MEHRDEUTIG: frozenset[str] = frozenset({
+    "Produkt", "Ansatz", "Beteiligung", "Abwägung",
+})
+
+#: Wie :data:`_TREFFER`, aber nur gebeugte Formen (-s, -es, -en …) und kein
+#: Kompositum: „Haushaltsmittel" ist kein „Haushalt", „Satzungstext" keine
+#: „Satzung" — auf einer Leseseite stünde die Erklärung sonst an einem Wort,
+#: das sie nicht erklärt.
+_GEBEUGT = re.compile(
+    rf"(?<!{_BUCHSTABE})({'|'.join(re.escape(b) for b in _SORTIERT)})"
+    rf"(?:e|s|es|n|en|er|ern|em)?(?!{_BUCHSTABE})",
+    re.IGNORECASE)
+
+#: Zeichen Umgebung, an denen die Seite die Fundstelle wiedererkennt.
+_UMGEBUNG = 24
+
+
+def fuer_seite(texte: list[str], max_n: int = 8) -> list[dict]:
+    """Die Fachwörter einer Leseseite, die eine Erklärung am Wort bekommen.
+
+    ``texte`` in der Reihenfolge, in der die Seite sie zeigt. Je Begriff nur
+    die ERSTE Fundstelle: ``snippet`` ist ein wörtliches Stück des Textes um
+    sie herum, ``offset`` die Stelle des Worts darin — die Seite sucht das
+    Stück und unterstreicht dort, ohne selbst etwas zu erkennen. Ohne
+    :data:`ALLTAG` und :data:`MEHRDEUTIG`, ohne Komposita.
+    """
+    gefunden: list[dict] = []
+    gesehen: set[str] = set()
+    for text in texte:
+        for m in _GEBEUGT.finditer(text or ""):
+            begriff = _KANON.get(m.group(1).lower())
+            if not begriff or begriff in gesehen or begriff in ALLTAG or begriff in MEHRDEUTIG:
+                continue
+            gesehen.add(begriff)
+            von = max(0, m.start() - _UMGEBUNG)
+            gefunden.append({"term": begriff, "form": m.group(0),
+                             "snippet": text[von:m.end() + _UMGEBUNG], "offset": m.start() - von,
+                             "explanation": BEGRIFFE[begriff], "kind": "glossary"})
+            if len(gefunden) >= max_n:
+                return gefunden
+    return gefunden
 
 
 def finde(text: str, max_n: int = 3) -> list[dict]:

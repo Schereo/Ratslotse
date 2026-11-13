@@ -10,6 +10,7 @@ import { ExternalLink } from "lucide-react";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { cn } from "@/lib/utils";
 import { ABSCHNITT, INHALT } from "@/components/session/unterlagen-typo";
+import { ErklaerBereich, Erklaert } from "@/components/session/begriffe";
 
 export type Dossier = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["dossier"]>;
 type Aussage = Dossier["sections"][number]["statements"][number];
@@ -53,10 +54,12 @@ export function DossierAbschnitt({ s }: { s: Dossier["sections"][number] }) {
           {s.statements.map((a, i) => (
             <li key={i} className={cn(INHALT,
               a.kind === "not_included" && "text-muted-foreground")}>
-              {a.kind === "not_included" && <span className="font-medium">Nicht Teil des Beschlusses: </span>}
-              {a.date && a.kind === "dates" && <span className="font-medium">{new Date(`${a.date}T12:00:00`).toLocaleDateString("de-DE")}: </span>}
-              {a.text}
-              <Beleg a={a} />
+              <ErklaerBereich>
+                {a.kind === "not_included" && <span className="font-medium">Nicht Teil des Beschlusses: </span>}
+                {a.date && a.kind === "dates" && <span className="font-medium">{new Date(`${a.date}T12:00:00`).toLocaleDateString("de-DE")}: </span>}
+                <Erklaert text={a.text} />
+                <Beleg a={a} />
+              </ErklaerBereich>
             </li>
           ))}
         </ul>

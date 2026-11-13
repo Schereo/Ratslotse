@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { Aenderungsantraege, type Antrag } from "@/components/session/aenderungsantraege";
 import { DossierAbschnitt, dossierStand, type Dossier } from "@/components/session/dossier";
 import { KiStern } from "@/components/ki-stern";
+import { ErklaerBereich, Erklaert } from "@/components/session/begriffe";
 import { ABSCHNITT, INHALT, KARTENTITEL, META, ZITAT } from "@/components/session/unterlagen-typo";
 
 type Felder = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["template_fields"]>;
@@ -44,7 +45,9 @@ function Wortlaut({ text }: { text: string }) {
   const lang = text.length > 420;
   return (
     <>
-      <blockquote className={cn(ZITAT, lang && !offen && "line-clamp-5")}>„{text.trim()}“</blockquote>
+      <ErklaerBereich>
+        <blockquote className={cn(ZITAT, lang && !offen && "line-clamp-5")}>„<Erklaert text={text.trim()} />“</blockquote>
+      </ErklaerBereich>
       {lang && (
         <button type="button" onClick={() => setOffen((o) => !o)} aria-expanded={offen}
           className="mt-1 inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">
