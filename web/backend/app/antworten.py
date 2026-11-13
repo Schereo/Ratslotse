@@ -3028,7 +3028,8 @@ class SessionItemDocument(TypedDict):
     #: Dieselbe Nummer wie in den Fußnoten [n] der Aufbereitung.
     list_no: NotRequired[int]
     #: ``template`` · ``amendment`` · ``motion`` · ``report_request`` · ``synopsis`` ·
-    #: ``statute`` · ``statement`` · ``plan`` · ``report`` · ``presentation`` · ``other``
+    #: ``statute`` · ``statement`` · ``objection_table`` · ``audit_report`` · ``plan`` · ``report`` ·
+    #: ``presentation`` · ``other``
     doc_type: NotRequired[str]
     applicants: NotRequired[list[str]]
     pages: NotRequired[int | None]

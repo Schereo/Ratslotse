@@ -281,7 +281,7 @@ private struct AusDenUnterlagenCard: View {
 enum DokumentArt {
     static let wort: [String: String] = [
         "template": "Vorlage", "amendment": "Änderungsantrag", "motion": "Antrag", "report_request": "Berichtsantrag",
-        "synopsis": "Synopse", "statute": "Satzung/Regelwerk", "statement": "Stellungnahme", "plan": "Plan",
+        "synopsis": "Synopse", "statute": "Satzung/Regelwerk", "statement": "Stellungnahme", "objection_table": "Abwägung", "audit_report": "Prüfbericht", "plan": "Plan",
         "report": "Bericht/Anlage", "presentation": "Präsentation", "other": "Anlage",
     ]
 }

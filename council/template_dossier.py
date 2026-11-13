@@ -93,12 +93,31 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
         # Spezialleser (council/synopse.py): Die geänderten Stellen einer
         # Synopse kommen spaltengenau als feste Fakten — der Fließtext
         # verschachtelt alt und neu.
-        if d.get("structure"):
+        if isinstance(d.get("structure"), list):
             # Same defusing as the running text: the columns are foreign text too.
             fakten[f"aenderungen_aus_synopse_{key}"] = [
                 {k: (foreign_text.defuse(v)[0] if isinstance(v, str) else v) for k, v in c.items()}
                 for c in d["structure"][:30] if isinstance(c, dict)]
         text = foreign_text.defuse(d.get("text") or "")[0]
+        if d["doc_type"] == "objection_table" and isinstance(d.get("structure"), dict):
+            # Abwägung: nur Zahl und Ergebnis, nie Absender (Plan § 2.4).
+            fakten[f"abwaegung_{key}"] = d["structure"]
+        if d["doc_type"] == "audit_report" and isinstance(d.get("structure"), dict) and d["structure"].get("notes"):
+            # Prüfvermerke am Rand (council/spezialleser.py): als eigener Block mit
+            # Seitenmarken, damit die Aussagen dazu belegt werden können.
+            notes = d["structure"]["notes"]
+            fakten[f"pruefvermerke_{key}"] = d["structure"].get("summary")
+            seiten = [""] * max(n["page"] for n in notes)
+            for n in notes:
+                seiten[n["page"] - 1] += f"{n['code']} ({n['label']}) {n.get('tz') or ''} {n.get('heading') or ''}: " \
+                    + foreign_text.defuse(n["text"])[0] + "\n"
+            block = "\n".join(f"— [{key}] Seite {i} —\n{s}" for i, s in enumerate(seiten, 1) if s)[:min(ANLAGE_ZEICHEN, rest)]
+            if rest > 2_000:
+                rest -= len(block)
+                quellen[key] = {"text": "\n".join(seiten), "pages": seiten, "document_id": d["document_id"],
+                                "label": d["label"]}
+                bloecke.append(f"[{key}] {d['label']} (Prüfvermerke des Rechnungsprüfungsamts, Auszug):\n{block}")
+                continue
         if d["doc_type"] in LESESTOFF and text.strip() and rest > 2_000:
             block = _mit_seitenmarken(key, text, d.get("page_offsets"), min(ANLAGE_ZEICHEN, rest))
             rest -= len(block)
@@ -116,8 +135,12 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
     if belege:
         teile.append("BELEGMATERIAL (nur Kopf):\n" + "\n".join(belege))
     teile.append("Schreibe das Dossier als JSON nach dem Schema.")
-    h = hashlib.sha256(json.dumps([v_text, [d.get("text") or "" for d in m["documents"]], m["form"], PROMPT_VERSION],
-                                  ensure_ascii=False).encode()).hexdigest()[:16]
+    grundlage: list = [v_text, [d.get("text") or "" for d in m["documents"]], m["form"], PROMPT_VERSION]
+    # Ein neues Ergebnis eines Speziallesers ist eine neue Quellenlage; ohne eins
+    # bleibt die Prüfsumme wie vorher (kein Neulauf für den Bestand).
+    if strukturen := [d["structure"] for d in m["documents"] if d.get("structure")]:
+        grundlage.append(strukturen)
+    h = hashlib.sha256(json.dumps(grundlage, ensure_ascii=False).encode()).hexdigest()[:16]
     return "\n\n".join(teile), quellen, h
 
 

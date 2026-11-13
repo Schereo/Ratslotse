@@ -1,0 +1,10 @@
+{
+ "_beschreibung": "Gold für council/spezialleser.py (Plan Vorlagen aufbereiten, Schritt 17). Von Hand an den PDFs gezählt am 13.11.2026: Prüfvermerke am linken Rand (die Legende auf S. 6 zählt nicht), Stellungnahmen an den Tabellenköpfen. Absender nur als Art (Öffentlichkeit gegen Behörden/Verbände), nie mit Namen.",
+ "pruefvermerke": [
+  {"document_id": 313880, "vorlage": "26/0674", "label": "Schlussbericht RPA Jahresabschluss 2025", "B": 6, "WB": 3, "H": 10, "K": 0},
+  {"document_id": 310210, "vorlage": "VOSS", "label": "Schlussbericht RPA VOSS 2025 (ohne Randvermerke)", "B": 0, "WB": 0, "H": 0, "K": 0}
+ ],
+ "abwaegung": [
+  {"document_id": 311889, "vorlage": "26/0592", "label": "Abwägung B-Plan 837", "statements": 17, "public": 2}
+ ]
+}

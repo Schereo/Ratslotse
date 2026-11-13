@@ -14,11 +14,12 @@ import re
 from typing import Literal
 
 DocType = Literal["template", "amendment", "motion", "report_request", "synopsis", "statute",
-                  "plan", "statement", "report", "presentation", "other"]
+                  "plan", "statement", "objection_table", "audit_report", "report", "presentation", "other"]
 
 #: Reihenfolge in der Gegenlese-Liste (§ 6.1, Punkt 4).
 ORDER: tuple[DocType, ...] = ("template", "amendment", "motion", "report_request", "synopsis",
-                              "statute", "statement", "plan", "report", "presentation", "other")
+                              "statute", "statement", "objection_table", "audit_report", "plan", "report",
+                              "presentation", "other")
 
 KOPF_ZEICHEN = 1_500
 
@@ -28,10 +29,15 @@ _LABEL: list[tuple[DocType, re.Pattern]] = [
                              r"gegenantr[aä]g", re.I)),
     ("report_request", re.compile(r"berichtsantr[aä]g|\banfrage", re.I)),
     ("motion", re.compile(r"\b(?:dringlichkeits|fraktions|beschluss|verweisungs)?antr[aä]g", re.I)),
+    # Vor Synopse und Stellungnahme: „Abwägungssynopse" ist eine Abwägung, und
+    # die Abwägung der Stellungnahmen liest ein eigener Leser (council/spezialleser.py).
+    ("objection_table", re.compile(r"abwägung|prüfung\s+der\s+stellungnahmen", re.I)),
+    # Vor „bericht": der Schlussbericht des Rechnungsprüfungsamts mit Prüfvermerken.
+    ("audit_report", re.compile(r"rechnungsprüfungsamt|schlussbericht\s+(?:des|über|zum)", re.I)),
     ("synopsis", re.compile(r"synopse|gegenüberstellung|alt\s*(?:/|und|–|-)\s*neu|lesefassung|änderungsliste", re.I)),
     ("statute", re.compile(r"satzung|geschäftsordnung|richtlinie|verordnung|entgeltordnung|gebührenordnung|"
                            r"\bordnung\b|vertrag\b|vereinbarung", re.I)),
-    ("statement", re.compile(r"stellungnahme|erläuterung|abwägung|einwendung|anregungen", re.I)),
+    ("statement", re.compile(r"stellungnahme|erläuterung|einwendung|anregungen", re.I)),
     ("plan", re.compile(r"bebauungsplan|planzeichnung|lageplan|übersichtsplan|\bkarte\b|\bplan\s*\d|"
                         r"geltungsbereich|flächennutzungsplan|leitplan|gestaltungsplan|lupenpl|planversand|"
                         r"vorbehaltsnetz|\bfotos?\b", re.I)),
