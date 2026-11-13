@@ -17,7 +17,7 @@ import {
 } from "@/lib/notizen";
 import { imSchritt, mitPasskeyEntsperren, passkeyAnlegen, passkeyMoeglich, PasskeyFehler } from "@/lib/notiz-passkey";
 import { passkeyMeldung } from "@/components/passkey-knopf";
-import { anmeldePasskeyNachtragen, notizVerpackungMitKontoPasskey } from "@/lib/passkey";
+import { anmeldePasskeyNachtragen, notizVerpackungMitKontoPasskey, passkeyFehlerMelden } from "@/lib/passkey";
 import { useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
@@ -176,6 +176,7 @@ function Einrichten({ owner, karte, angebot, fuss, onFertig }: {
               onFertig(k, sitzung);
             } catch (e) {
               if (e instanceof PasskeyFehler && e.art === "nicht-unterstuetzt") {
+                passkeyFehlerMelden(e, "Einrichten");
                 setHinweis("Dieser Browser kann keinen Passkey für Notizen anlegen. Dann mit einer Notiz-Passphrase:");
                 setWeg("passphrase");
               } else {
