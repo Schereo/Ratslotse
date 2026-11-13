@@ -16,11 +16,9 @@ import { cn } from "@/lib/utils";
 import { Aenderungsantraege, type Antrag } from "@/components/session/aenderungsantraege";
 import { DossierAbschnitt, dossierStand, type Dossier } from "@/components/session/dossier";
 import { KiStern } from "@/components/ki-stern";
+import { ABSCHNITT, INHALT, KARTENTITEL, META, ZITAT } from "@/components/session/unterlagen-typo";
 
 type Felder = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["template_fields"]>;
-
-const KICKER = "font-mono text-meta uppercase tracking-[0.06em] text-muted-foreground";
-const ZITAT = "border-l-2 border-border pl-3 text-lese text-foreground/90";
 
 /** Wer die Vorlage geschrieben hat, steht als Absender am Kopf: Eine Vorlage
  *  kommt immer aus einem Amt (Anträge der Fraktionen sind keine Vorlagen und
@@ -28,13 +26,13 @@ const ZITAT = "border-l-2 border-border pl-3 text-lese text-foreground/90";
  *  Zeile auf jeder Seite dasselbe Etikett (Tim, 13.11.2026). */
 function Absender({ f }: { f: Felder | null }) {
   if (!f?.office) return null;
-  return <p className="mt-1 text-sm text-muted-foreground">Von: {f.office}</p>;
+  return <p className={cn(META, "mt-0.5")}>Von: {f.office}</p>;
 }
 
 function Abschnitt({ titel, children, className }: { titel: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={cn("border-t border-border pt-4 first:border-t-0 first:pt-0", className)}>
-      <h3 className={KICKER}>{titel}</h3>
+      <h3 className={ABSCHNITT}>{titel}</h3>
       <div className="mt-2">{children}</div>
     </div>
   );
@@ -67,10 +65,10 @@ export function AusDenUnterlagen({ f, antraege, dossier }: { f: Felder | null; a
   return (
     <section aria-labelledby="aus-den-unterlagen" className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="aus-den-unterlagen" className="font-display text-base font-semibold text-foreground">Aus den Unterlagen</h2>
+        <h2 id="aus-den-unterlagen" className={KARTENTITEL}>Aus den Unterlagen</h2>
         {vorlage && f.document_url && (
           <a href={f.document_url} target="_blank" rel="noreferrer"
-            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            className={cn(META, "inline-flex min-h-11 items-center gap-1.5 hover:text-foreground")}>
             {vorlage} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           </a>
         )}
@@ -116,7 +114,7 @@ export function AusDenUnterlagen({ f, antraege, dossier }: { f: Felder | null; a
         {f.cost && (
           <Abschnitt titel="Was es kostet">
             {f.cost.status === "none" ? (
-              <p className="text-lese text-foreground">Laut Vorlage keine Kosten.</p>
+              <p className={INHALT}>Laut Vorlage keine Kosten.</p>
             ) : (
               <Wortlaut text={f.cost.text} />
             )}
@@ -126,7 +124,7 @@ export function AusDenUnterlagen({ f, antraege, dossier }: { f: Felder | null; a
         {f.climate && (
           <Abschnitt titel="Klima-Check">
             {f.climate.relevant != null && (
-              <p className="mb-1.5 text-sm font-medium text-foreground">
+              <p className={cn(INHALT, "mb-1.5 font-medium")}>
                 {f.climate.relevant ? "Klimarelevant" : "Laut Vorlage nicht klimarelevant"}
               </p>
             )}
@@ -147,15 +145,15 @@ function MitDossier({ d, f, antraege }: { d: Dossier; f: Felder | null; antraege
   return (
     <section aria-labelledby="aus-den-unterlagen" className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="aus-den-unterlagen" className="flex items-center gap-1 font-display text-base font-semibold text-foreground">
+        <h2 id="aus-den-unterlagen" className={cn(KARTENTITEL, "flex items-center gap-1")}>
           Aus den Unterlagen
           <KiStern text="Automatisch aus der Vorlage und ihren Anlagen erstellt. Jede Angabe trägt ihren Beleg; verbindlich sind die Unterlagen im Ratsinfo." />
         </h2>
-        <p className={KICKER}>{dossierStand(d)}</p>
+        <p className={META}>{dossierStand(d)}</p>
       </div>
       <Absender f={f} />
       {d.added_after.length > 0 && (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className={cn(META, "mt-2")}>
           Danach dazugekommen: {d.added_after.join(", ")} — <a href="#unterlagen" className="text-primary underline">in den Unterlagen</a>
         </p>
       )}

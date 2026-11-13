@@ -143,3 +143,12 @@ describe("cn", () => {
     expect(cn("a", { b: true, c: false })).toBe("a b");
   });
 });
+
+describe("cn", () => {
+  it("hält die Leserollen als Schriftgröße, nicht als Farbe", () => {
+    expect(cn("font-mono text-meta uppercase text-muted-foreground", "mt-2")).toContain("text-meta");
+    expect(cn("text-lese text-foreground/90")).toBe("text-lese text-foreground/90");
+    expect(cn("text-hinweis", "text-quelle")).toBe("text-quelle");
+    expect(cn("text-sm", "text-lese")).toBe("text-lese");
+  });
+});
