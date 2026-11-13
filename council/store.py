@@ -891,7 +891,8 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         """Beschlüsse ohne Tragweite-Score (RL-U16), neueste zuerst — mit den
         Struktur-Signalen, die der Prompt neben dem Text sehen soll."""
         sql = """SELECT d.id, d.title, d.official_text, d.summary, d.outcome, d.kind,
-                        d.amount_eur, d.vote, d.no_votes, cs.committee, cs.session_date
+                        d.amount_eur, d.vote, d.no_votes, cs.committee, cs.session_date,
+                        d.ksinr, d.item_number
                  FROM council_decisions d
                  JOIN council_sessions cs ON cs.ksinr = d.ksinr
                  WHERE d.kind IN ('decision', 'subvote') AND d.impact IS NULL

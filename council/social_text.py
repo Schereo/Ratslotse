@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import os
 
-from kern import llm, prompts
+from kern import features, llm, prompts
 
 from . import kritiker
 
@@ -159,6 +159,27 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
     return "\n\n".join(teile), source
 
 
+def kontext_aus_dossier(punkt: dict, zeilen: list[str]) -> tuple[str, str]:
+    """Wie :func:`kontext`, aber statt Vorlagentext und Anlagen die belegten
+    Dossier-Zeilen (``store.dossier_lines``) — Stufe 4 des Plans Vorlagen
+    aufbereiten (§ 4, § 7.4): eine Quelle der Wahrheit für Karte und Seite,
+    rund 1.500 statt bis zu 80.000 Zeichen. Ohne Zeilen der alte Kontext."""
+    if not zeilen:
+        return kontext(punkt, [])
+    teile = [f"Gremium: {punkt['committee']} am {punkt['session_date']}",
+             f"Tagesordnungspunkt: {punkt['title']}"]
+    if punkt.get("art"):
+        teile.append(f"Art der Vorlage: {punkt['art']}")
+    if punkt.get("office"):
+        teile.append(f"Federführung: {punkt['office']}")
+    if punkt.get("proposed_decision"):
+        teile.append("Beschlussvorschlag (ein VORSCHLAG, noch kein Beschluss): "
+                     + _eine_zeile(punkt["proposed_decision"])[:4000])
+    teile.append("Aus den Unterlagen (jede Zeile ist in Vorlage oder Anlage wörtlich belegt):\n"
+                 + "\n".join(f"- {z}" for z in zeilen))
+    return "\n\n".join(teile), "dossier"
+
+
 def _eine_zeile(roh: str | None) -> str:
     return " ".join((roh or "").split())
 
@@ -224,7 +245,11 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str, str | None] |
     beim amtlichen Titel, und der Nachtlauf versucht es beim nächsten Mal
     erneut (``agenda_items_needing_social_text`` sieht die Lücke).
     """
-    ktx, source = kontext(punkt, anlagen)
+    # Stufe 4 (Plan Vorlagen § 7.4, A/B 13.11.2026: 18/20 sauber ohne harten
+    # Befund gegen 17/20 mit zwei erfundenen Zahlen): mit Dossier liest die
+    # Karte dieselben belegten Zeilen wie die Seite.
+    ktx, source = (kontext_aus_dossier(punkt, punkt["dossier_lines"]) if punkt.get("dossier_lines")
+                   else kontext(punkt, anlagen))
     system = prompts.get("social_card_text_system")
     user = prompts.render("social_card_text_user", kontext=ktx)
 
@@ -381,6 +406,9 @@ def _mit_anlagen(store, punkte: list[dict]) -> list[tuple[dict, list[dict]]]:
     SQLite-Verbindungen gehören einem Thread; die Aufrufe danach laufen
     parallel, die Datenbank nicht.
     """
+    if features.an("folgetexte-aus-dossier"):
+        for p in punkte:
+            p["dossier_lines"] = store.dossier_lines(p["ksinr"], p["item_number"])
     return [(p, store.anlagen_fuer(p["kvonr"]) if p.get("kvonr") else []) for p in punkte]
 
 

@@ -329,6 +329,13 @@ FEATURES: dict[str, Feature] = {
                     "Dossier mit belegten Abschnitten (docs/plan-vorlagen-aufbereiten.md).",
         fertig_wenn="Dossier-Tore aus Plan § 7.2 erreicht, von Tim abgenommen und auf Prod angeschaltet.",
     ),
+    "folgetexte-aus-dossier": Feature(
+        key="folgetexte-aus-dossier",
+        description="Kartentext und Tragweite lesen die belegten Dossier-Zeilen statt Vorlagen-Rohtext "
+                    "(Stufe 4, docs/plan-vorlagen-aufbereiten.md § 7.4; A/B am 13.11.2026 bestanden).",
+        fertig_wenn="Zwei Wochen auf dev ohne Befund in den Kartentexten, dann auf Prod an und der "
+                    "Schalter samt Rückweg auf den Rohtext entfernt.",
+    ),
     "aenderungsantraege": Feature(
         key="aenderungsantraege",
         description="Änderungsanträge auf Punkt-, Sitzungs- und Beschluss-Seite: wer was an welcher Stelle will, "
