@@ -72,3 +72,16 @@ def test_zuordnung_nur_eindeutig():
     zwei = [{"id": 3, "title": "Änderungsantrag der SPD-Fraktion: Zuschuss Ratsvorsitz", "factions": ["SPD"]},
             {"id": 4, "title": "Änderungsantrag der SPD-Fraktion: Sitzungsgeld", "factions": ["SPD"]}]
     assert motions.match_subvote({"applicants": ["SPD"], "label": "Antrag SPD"}, zwei) is None
+
+
+def test_zuordnung_ohne_verfahrensantraege_und_einzelpersonen():
+    """Fehlzuordnungen vom 13.11.2026 (eval/run_zuordnung.py): Vertagungsanträge
+    hingen an Hauptanträgen, und bei „Änderungsantrag von Ratsherr …" galten die
+    Fraktionen, die abgestimmt hatten, als Antragsteller."""
+    vertagung = {"id": 1, "title": "Antrag auf Vertagung, gestellt von Ratsfrau Unruh", "factions": ["CDU"]}
+    assert motions.match_subvote({"applicants": ["CDU"], "label": "Antrag CDU"}, [vertagung]) is None
+    einzeln = {"id": 2, "title": "Änderungsantrag von Ratsherr Baak (Anlage 1)", "factions": ["CDU", "SPD"]}
+    assert motions.match_subvote({"applicants": ["CDU"], "label": "Antrag CDU Controlling"}, [einzeln]) is None
+    fraktion = {"id": 3, "title": "Änderungsantrag der SPD-Fraktion", "factions": ["SPD"]}
+    assert motions.match_subvote({"applicants": ["SPD"], "label": "zu TOP 5 Änderungsantrag SPD-Fraktion"},
+                                 [vertagung, fraktion]) == 3

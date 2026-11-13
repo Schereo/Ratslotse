@@ -238,6 +238,11 @@ class UnterlagenMixin(StoreBasis):
             if p:
                 for k in ("target", "pattern", "before", "after", "diff", "meaning", "reason", "base_template", "base_missing"):
                     eintrag[k] = p.get(k)
+            # Nur ÄNDERUNGSanträge haben eine eigene Teilabstimmung: Über einen
+            # Hauptantrag stimmt die Hauptabstimmung ab, die Teilabstimmungen an
+            # seinem Punkt sind die Änderungen der anderen (13.11.2026: drei
+            # Fehlzuordnungen von 30, eval/run_zuordnung.py).
+            if p and d["doc_type"] == "amendment":
                 if subs is None:
                     nr = re.sub(r"^\D+", "", item_number).strip()
                     subs = [dict(r) | {"factions": json.loads(r["factions"] or "[]")} for r in self._conn.execute(
