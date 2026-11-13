@@ -17,6 +17,7 @@ import { AbrufFehler } from "@/components/abruf-fehler";
 import { Course } from "@/components/session/course";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { FragDenRat, Unterlagen, Vorgeschichte, type Punkt } from "@/components/session/item-sections";
+import { JetztZurAbstimmung } from "@/components/session/aus-den-unterlagen";
 import { Mitschrieb } from "@/components/notiz/mitschrieb";
 import { useAuth } from "@/lib/auth";
 import { onKeyChange, rememberedKey, sessionKey, sessionTranscripts } from "@/lib/notizen";
@@ -277,6 +278,12 @@ function JetztDran({ ksinr, schritt, course, titelRef, fuss, punktSeite }: {
   const { prefix, rest } = splitNumber(schritt.label);
   const partei = item?.applicant ? normalizeParty(item.applicant) : null;
   const brand = partei ? partyBrand(partei) : null;
+  const mitAntraegen = useFeature("aenderungsantraege");
+  const ausDenUnterlagen = useFeature("aus-den-unterlagen");
+  const zurAbstimmung = p && (mitAntraegen || ausDenUnterlagen) ? (
+    <JetztZurAbstimmung f={ausDenUnterlagen ? p.template_fields ?? null : null}
+      antraege={mitAntraegen ? p.amendments : undefined} dossier={ausDenUnterlagen ? p.dossier : null} />
+  ) : null;
   return (
     <article className="min-w-0 scroll-mt-24 rounded-2xl border border-primary/40 bg-card shadow-sm">
       <div className="p-5 sm:p-6">
@@ -323,6 +330,7 @@ function JetztDran({ ksinr, schritt, course, titelRef, fuss, punktSeite }: {
           </>
         )}
       </div>
+      {zurAbstimmung && <div className="border-t border-border p-5 empty:hidden sm:p-6">{zurAbstimmung}</div>}
       {p && p.history.length > 0 && <div className="border-t border-border p-5 sm:p-6"><Vorgeschichte p={p} titel="Vorgeschichte" bare /></div>}
       {p && p.documents.length > 0 && <div className="border-t border-border p-5 sm:p-6"><Unterlagen p={p} titel="Unterlagen" bare /></div>}
       {nr && punktSeite && (

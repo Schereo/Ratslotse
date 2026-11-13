@@ -173,3 +173,23 @@ function MitDossier({ d, f, antraege }: { d: Dossier; f: Felder | null; antraege
     </section>
   );
 }
+
+/** Mitlesen (Plan § 6.2): Beim laufenden Punkt stehen die Änderungsanträge
+ *  zuoberst — über sie wird gerade abgestimmt —, darunter, was beschlossen
+ *  werden soll: aus dem Dossier mit Belegen, sonst der amtliche Wortlaut. */
+export function JetztZurAbstimmung({ f, antraege, dossier }: { f: Felder | null; antraege?: Antrag[]; dossier?: Dossier | null }) {
+  const vorschlag = dossier?.sections.find((s) => s.key === "proposal" && s.statements.length > 0) ?? null;
+  const wortlaut = !vorschlag ? f?.proposed_decision ?? null : null;
+  if (!antraege?.length && !vorschlag && !wortlaut) return null;
+  return (
+    <div className="flex flex-col gap-4">
+      {antraege && antraege.length > 0 && <Aenderungsantraege antraege={antraege} />}
+      {vorschlag && <DossierAbschnitt s={vorschlag} />}
+      {wortlaut && (
+        <Abschnitt titel="Was beschlossen werden soll">
+          <Wortlaut text={wortlaut} />
+        </Abschnitt>
+      )}
+    </div>
+  );
+}
