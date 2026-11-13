@@ -155,7 +155,7 @@ jobs:
             from council.store import CouncilStore
             s = CouncilStore("data/council.sqlite")
             zahlen = dict(s._conn.execute(
-                "SELECT status, COUNT(*) FROM council_anlagen GROUP BY status").fetchall())
+                "SELECT status, COUNT(*) FROM council_attachments GROUP BY status").fetchall())
             print(f"\nAnlagen nach Status: {zahlen}")
 
             # Die Zusage, nachgerechnet statt behauptet: In den
