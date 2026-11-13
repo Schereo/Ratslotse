@@ -47,7 +47,9 @@ export function BeteiligungsHinweis({ b }: { b: Umfeld["participation"] }) {
   );
 }
 
-/** Sprung in die Aufzeichnung — nur Ratssitzungen werden übertragen. */
+/** Sprung in die Aufzeichnung — nur Ratssitzungen werden übertragen. Die
+ *  Zeitmarke ist die Stelle, an der das Ergebnis festgestellt wird
+ *  (`council_video_results`), nicht der Aufruf des Punkts: deshalb „Abstimmung“. */
 export function VideoSprung({ video }: { video: Umfeld["video"] }) {
   if (!video) return null;
   const t = video.seconds != null ? `&t=${Math.max(0, video.seconds - 5)}s` : "";
@@ -55,8 +57,8 @@ export function VideoSprung({ video }: { video: Umfeld["video"] }) {
     <a href={`https://www.youtube.com/watch?v=${video.video_id}${t}`} target="_blank" rel="noreferrer"
       className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground hover:bg-accent">
       <Play className="h-4 w-4 text-primary" aria-hidden />
-      In der Aufzeichnung ansehen
-      {video.seconds != null && <span className="font-normal tabular-nums text-muted-foreground">ab {formatTimestamp(video.seconds)}</span>}
+      Abstimmung in der Aufzeichnung ansehen
+      {video.seconds != null && <span className="font-normal tabular-nums text-muted-foreground">bei {formatTimestamp(video.seconds)}</span>}
     </a>
   );
 }

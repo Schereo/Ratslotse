@@ -97,3 +97,7 @@ class StoreBasis:
         def item_documents(self, ksinr: int, item_number: str) -> list[dict]:
             """Die Dokumente eines Punkts über alle Stationen (``store_unterlagen``)."""
             ...
+
+        def session_item(self, ksinr: int, item_number: str) -> dict | None:
+            """Ein Tagesordnungspunkt, wie seine Seite ihn zeigt (``store_sitzungen``)."""
+            ...
