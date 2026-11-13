@@ -3216,6 +3216,51 @@ class ItemDossier(TypedDict):
     gists: list[DossierGist]
 
 
+class BudgetContextSource(TypedDict):
+    label: str
+    year: int | None
+    url: str
+
+
+class BudgetContextRow(TypedDict):
+    year: int
+    #: Je Spalte ein Wert, exakt — gerundet wird erst in der Anzeige.
+    values: list[float | None]
+
+
+class BudgetContextShare(TypedDict):
+    """Eine Nachbewilligung im Verhältnis zum Jahresansatz. ``percent`` ist
+    exakt; die Seite rundet genau einmal."""
+    amount: float
+    of: float
+    year: int
+    percent: float
+
+
+class BudgetContextBlock(TypedDict):
+    """Eine Zahlenreihe aus dem Haushalt neben einem Punkt
+    (``council/punkt_haushalt.py``). ``basis`` hält Plan, Ist und Sätze
+    auseinander; ``page`` nennt die Haushalts-Seite, auf der die Reihe steht."""
+    key: str
+    title: str
+    #: ``plan`` · ``actual`` · ``rate``
+    basis: str
+    note: str
+    #: ``EUR`` · ``percent`` · ``count``
+    unit: str
+    columns: list[str]
+    rows: list[BudgetContextRow]
+    sources: list[BudgetContextSource]
+    #: ``sub_budgets`` · ``products`` · ``enterprises`` · ``taxes`` · ``debt`` · ``plan_actual``
+    page: str | None
+    description: str | None
+    share: BudgetContextShare | None
+
+
+class ItemBudgetContext(TypedDict):
+    blocks: list[BudgetContextBlock]
+
+
 class PageTerm(TypedDict):
     """Ein Fachwort, das die Seite am Wort erklärt (``council/seitenbegriffe.py``).
     Die Seite sucht ``snippet`` (ein wörtliches Stück eines ihrer Texte) und
@@ -3259,6 +3304,9 @@ class SessionItemDetail(TypedDict):
     dossier: NotRequired[ItemDossier]
     #: Fachwörter in den Texten dieser Seite, je Begriff die erste Fundstelle.
     terms: NotRequired[list[PageTerm]]
+    #: Nur hinter dem Schalter ``haushalt-am-punkt`` und nur, wenn die Vorlage etwas
+    #: nennt, wozu der Haushalt eine Reihe hat (rund jeder zehnte Punkt mit Vorlage).
+    budget_context: NotRequired[ItemBudgetContext]
 
 
 class ImportanceBreakdown(TypedDict):

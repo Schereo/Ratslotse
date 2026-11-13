@@ -352,6 +352,14 @@ FEATURES: dict[str, Feature] = {
                     "von Tim abgenommen und mit dem Release auf Prod angeschaltet; die Erzeugung "
                     "neuer Vorgänge hängt dann am Protokoll-Cron.",
     ),
+    "haushalt-am-punkt": Feature(
+        key="haushalt-am-punkt",
+        description="Der Kasten „Im Haushalt“ auf der Punkt-Seite: Zahlenreihen aus dem Haushalt zu dem, was "
+                    "die Vorlage nennt — Teilhaushalt, Produkt, Betrieb, Steuer, Schulden — mit Beleg, für "
+                    "alle sichtbar (council/punkt_haushalt.py; Tims Entscheidung 13.11.2026).",
+        fertig_wenn="Auf dev zwei Wochen ohne Befund an echten Finanz-Punkten, von Tim abgenommen und auf "
+                    "Prod angeschaltet — unabhängig davon, ob der Haushalts-Bereich selbst dort schon frei ist.",
+    ),
     "punkt-seite": Feature(
         key="punkt-seite",
         description="Jeder Tagesordnungspunkt bekommt eine eigene Seite mit Kurzfassung, "

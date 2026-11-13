@@ -22,6 +22,7 @@ import { Argumente, Fraktionen } from "@/components/session/item-arguments";
 import { kurzfassung } from "@/components/tagesordnung";
 import { KiStern } from "@/components/ki-stern";
 import { AusDenUnterlagen } from "@/components/session/aus-den-unterlagen";
+import { ImHaushalt } from "@/components/session/im-haushalt";
 import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
 import { useFetch } from "@/lib/use-fetch";
 import { istNichtGefunden } from "@/lib/api";
@@ -178,6 +179,8 @@ function PunktView({ p }: { p: Punkt }) {
             <AusDenUnterlagen f={ausDenUnterlagen ? p.template_fields : null}
               antraege={mitAntraegen ? p.amendments : undefined} dossier={ausDenUnterlagen ? p.dossier : null} />
           )}
+
+          <ImHaushalt kontext={p.budget_context} />
 
           {reiter.length > 1 && (
             <div role="tablist" aria-label="Zu diesem Punkt"

@@ -2113,6 +2113,15 @@ def session_item(
                 punkt["arguments"] = args
         except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
             _log.exception("Argumente fehlgeschlagen für %s %s", ksinr, nr)
+    if features.an("haushalt-am-punkt"):
+        try:
+            from council import punkt_haushalt  # noqa: PLC0415
+            haushalt = punkt_haushalt.item_budget_context(
+                store, punkt, store.get_vorlage_by_nr(punkt["item"].get("template_number") or ""))
+            if haushalt:
+                punkt["budget_context"] = haushalt
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Haushalt am Punkt fehlgeschlagen für %s %s", ksinr, nr)
     try:
         from council import seitenbegriffe  # noqa: PLC0415
         begriffe = seitenbegriffe.item_terms(punkt)

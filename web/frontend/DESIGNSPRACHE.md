@@ -671,6 +671,14 @@ iOS-Schrift.
   Nennung der Seite**, keine Alltagswörter („Ausschuss" stünde auf drei von
   vier Seiten), keine mehrdeutigen, kein Kompositum. Die Seite erkennt selbst
   nichts.
+  **„Im Haushalt“ auf der Punkt-Seite** (`components/session/im-haushalt.tsx`):
+  eine Karte in den Stufen von „Aus den Unterlagen“ — Kartentitel, je Reihe
+  ein Mono-Kicker, darunter in Meta, WAS die Reihe ist (Plan des jeweiligen
+  Jahres · tatsächlich eingenommen · gilt ab dem genannten Jahr). Plan, Ist
+  und Sätze stehen nie in einer Tabelle. Die Zahlen in der `ZahlenTabelle`
+  des Ressorts mit `schlicht` (ein Stand trägt keine Vorzeichen-Farbe),
+  höchstens drei Jahre und drei Reihen. Ein Weg in den Haushalts-Bereich je
+  Karte, und nur für Konten mit dem Recht dazu.
   **Anschlussfragen**: In derselben Chip-Reihe stehen unter der LETZTEN
   Antwort höchstens **zwei** weiterführende Angebote — „Erklär mir: <der
   nächste Baustein der Seite, der noch nicht erklärt wurde>" und „Was heißt

@@ -5917,6 +5917,192 @@
         "title": "BudgetComparison",
         "type": "object"
       },
+      "BudgetContextBlock": {
+        "description": "Eine Zahlenreihe aus dem Haushalt neben einem Punkt\n(``council/punkt_haushalt.py``). ``basis`` hält Plan, Ist und Sätze\nauseinander; ``page`` nennt die Haushalts-Seite, auf der die Reihe steht.",
+        "properties": {
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetContextRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "share": {
+            "description": "Eine Nachbewilligung im Verhältnis zum Jahresansatz. ``percent`` ist\nexakt; die Seite rundet genau einmal.",
+            "properties": {
+              "amount": {
+                "title": "Amount",
+                "type": "number"
+              },
+              "of": {
+                "title": "Of",
+                "type": "number"
+              },
+              "percent": {
+                "title": "Percent",
+                "type": "number"
+              },
+              "year": {
+                "title": "Year",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "amount",
+              "of",
+              "year",
+              "percent"
+            ],
+            "title": "BudgetContextShare",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetContextSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "basis",
+          "note",
+          "unit",
+          "columns",
+          "rows",
+          "sources",
+          "page",
+          "description",
+          "share"
+        ],
+        "title": "BudgetContextBlock",
+        "type": "object"
+      },
+      "BudgetContextRow": {
+        "properties": {
+          "values": {
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "title": "Values",
+            "type": "array"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "values"
+        ],
+        "title": "BudgetContextRow",
+        "type": "object"
+      },
+      "BudgetContextShare": {
+        "description": "Eine Nachbewilligung im Verhältnis zum Jahresansatz. ``percent`` ist\nexakt; die Seite rundet genau einmal.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "of": {
+            "title": "Of",
+            "type": "number"
+          },
+          "percent": {
+            "title": "Percent",
+            "type": "number"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amount",
+          "of",
+          "year",
+          "percent"
+        ],
+        "title": "BudgetContextShare",
+        "type": "object"
+      },
+      "BudgetContextSource": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "year",
+          "url"
+        ],
+        "title": "BudgetContextSource",
+        "type": "object"
+      },
       "BudgetDataState": {
         "properties": {
           "layers": {
@@ -17126,6 +17312,22 @@
           "stale"
         ],
         "title": "ItemArguments",
+        "type": "object"
+      },
+      "ItemBudgetContext": {
+        "properties": {
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetContextBlock"
+            },
+            "title": "Blocks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "blocks"
+        ],
+        "title": "ItemBudgetContext",
         "type": "object"
       },
       "ItemDossier": {
@@ -32988,6 +33190,9 @@
           },
           "arguments": {
             "$ref": "#/components/schemas/ItemArguments"
+          },
+          "budget_context": {
+            "$ref": "#/components/schemas/ItemBudgetContext"
           },
           "committee": {
             "title": "Committee",
