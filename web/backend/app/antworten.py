@@ -3216,6 +3216,19 @@ class ItemDossier(TypedDict):
     gists: list[DossierGist]
 
 
+class PageTerm(TypedDict):
+    """Ein Fachwort, das die Seite am Wort erklärt (``council/seitenbegriffe.py``).
+    Die Seite sucht ``snippet`` (ein wörtliches Stück eines ihrer Texte) und
+    unterstreicht darin ``form`` ab ``offset`` — sie erkennt selbst nichts."""
+    term: str
+    form: str
+    snippet: str
+    offset: int
+    explanation: str
+    #: ``glossary``: geprüfte Erklärung aus ``kern/glossar.py``.
+    kind: str
+
+
 class SessionItemDetail(TypedDict):
     """Ein Tagesordnungspunkt auf seiner eigenen Seite
     (``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,
@@ -3244,6 +3257,8 @@ class SessionItemDetail(TypedDict):
     amendments: NotRequired[list[ItemAmendment]]
     #: Nur hinter dem Schalter ``aus-den-unterlagen`` und nur, wenn es ein Dossier gibt.
     dossier: NotRequired[ItemDossier]
+    #: Fachwörter in den Texten dieser Seite, je Begriff die erste Fundstelle.
+    terms: NotRequired[list[PageTerm]]
 
 
 class ImportanceBreakdown(TypedDict):

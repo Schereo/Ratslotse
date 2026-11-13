@@ -20406,6 +20406,45 @@
         "title": "PageQuestions",
         "type": "object"
       },
+      "PageTerm": {
+        "description": "Ein Fachwort, das die Seite am Wort erklärt (``council/seitenbegriffe.py``).\nDie Seite sucht ``snippet`` (ein wörtliches Stück eines ihrer Texte) und\nunterstreicht darin ``form`` ab ``offset`` — sie erkennt selbst nichts.",
+        "properties": {
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "form": {
+            "title": "Form",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "term": {
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "required": [
+          "term",
+          "form",
+          "snippet",
+          "offset",
+          "explanation",
+          "kind"
+        ],
+        "title": "PageTerm",
+        "type": "object"
+      },
       "PageViewIn": {
         "description": "Ein Seitenaufruf, gemeldet vom Browser.\n\nAbsichtlich winzig. Was NICHT drinsteht — Query, Referrer, User-Agent,\nKennung — ist der Punkt der ganzen Übung; die Begründung je Feld steht in\n``kern/seitenaufrufe.py``. Der Server prüft ``route`` zusätzlich gegen eine\nPositivliste: Alles Unbekannte wird zu ``/andere``, nicht gespeichert wie\ngeschickt.",
         "properties": {
@@ -33174,6 +33213,13 @@
               "object",
               "null"
             ]
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/PageTerm"
+            },
+            "title": "Terms",
+            "type": "array"
           }
         },
         "required": [

@@ -109,3 +109,51 @@ def test_recherche_bericht_bekommt_die_erklaerung_auch():
         llm.chat_stream = alt
     prompt = gestellt["messages"][0]["content"]
     assert "WAS DIE FACHWÖRTER BEDEUTEN" in prompt
+
+
+# ---- Leseseiten: Erklärung am Wort (fuer_seite) --------------------------------
+
+def test_seite_erklaert_nur_die_erste_nennung_und_meldet_die_fundstelle():
+    texte = ["Der Antrag befasst sich mit der Einführung einer Grundsteuer C zur Bekämpfung von Bodenspekulation.",
+             "Die Grundsteuer C und der Hebesatz werden später beraten."]
+    treffer = glossar.fuer_seite(texte)
+    assert [t["term"] for t in treffer] == ["Grundsteuer C", "Hebesatz"]
+    for t in treffer:
+        # Die Seite findet das Stück wörtlich wieder und darin die Form.
+        text = next(x for x in texte if t["snippet"] in x)
+        assert t["snippet"][t["offset"]:t["offset"] + len(t["form"])] == t["form"]
+        assert text.index(t["snippet"]) >= 0
+    assert treffer[0]["snippet"] in texte[0] and treffer[0]["snippet"] not in texte[1]
+
+
+def test_seite_nimmt_den_laengsten_begriff():
+    """„Grundsteuer C" ist nicht die „Grundsteuer" — Tims Beispiel vom 13.11.2026."""
+    assert [t["term"] for t in glossar.fuer_seite(["Die Grundsteuer C kommt."])] == ["Grundsteuer C"]
+    assert [t["term"] for t in glossar.fuer_seite(["Die Grundsteuer B bleibt."])] == ["Grundsteuer"]
+
+
+def test_seite_laesst_alltagswoerter_und_mehrdeutige_weg():
+    text = ("Der Ausschuss berät die Vorlage der Fraktion zum Haushalt; Entgelte für Produkte "
+            "und der Ausschuss für Finanzen und Beteiligungen.")
+    assert glossar.fuer_seite([text]) == []
+    # Für die KI-Frage bleiben sie auffindbar.
+    assert glossar.finde("Was ist ein Ausschuss?")[0]["begriff"] == "Ausschuss"
+
+
+def test_seite_erklaert_kein_kompositum():
+    """„Haushaltsmittel" ist kein „Haushalt", „Satzungstext" keine „Satzung"."""
+    assert glossar.fuer_seite(["Satzungstext und Rücklagenkonto, Zuwendungsvertrag."]) == []
+    assert [t["form"] for t in glossar.fuer_seite(["Die Satzungen, überplanmäßige Zuwendungen und des Bebauungsplanes."])] \
+        == ["Satzungen", "überplanmäßige", "Zuwendungen", "Bebauungsplanes"]
+
+
+def test_seite_ausschlusslisten_kennen_nur_glossarwoerter():
+    """Ein Tippfehler in ALLTAG/MEHRDEUTIG wäre wirkungslos und fiele nie auf."""
+    assert glossar.ALLTAG <= set(glossar.BEGRIFFE), glossar.ALLTAG - set(glossar.BEGRIFFE)
+    assert glossar.MEHRDEUTIG <= set(glossar.BEGRIFFE), glossar.MEHRDEUTIG - set(glossar.BEGRIFFE)
+    assert not glossar.ALLTAG & glossar.MEHRDEUTIG
+
+
+def test_seite_deckelt_die_zahl():
+    viele = "Bebauungsplan, Flächennutzungsplan, Satzung, Hebesatz, Rücklage, Widmung, Eigenbetrieb, Wirtschaftsplan, Bürgschaft, Doppik."
+    assert len(glossar.fuer_seite([viele])) == 8

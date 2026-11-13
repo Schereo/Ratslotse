@@ -12,6 +12,7 @@ import type { ApiAntwort } from "@/lib/vertrag";
 import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { kurzerDiff } from "@/lib/unterlagen";
+import { ErklaerBereich, Erklaert } from "@/components/session/begriffe";
 import { ABSCHNITT, HINWEIS, INHALT, META, ZITAT } from "@/components/session/unterlagen-typo";
 
 export type Antrag = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["amendments"]>[number];
@@ -85,7 +86,7 @@ export function AntragKarte({ a }: { a: Antrag }) {
       {a.target && <p className={cn(META, "mt-1")}>{a.target}</p>}
       {a.read ? (
         <div className="mt-2 flex flex-col gap-2.5">
-          {a.meaning && <p className={cn(INHALT, "font-medium")}>{a.meaning.text}</p>}
+          {a.meaning && <ErklaerBereich><p className={cn(INHALT, "font-medium")}><Erklaert text={a.meaning.text} /></p></ErklaerBereich>}
           {a.diff && a.diff.some(([op]) => op !== "=") ? (
             <Wortdiff diff={a.diff} />
           ) : (
@@ -96,7 +97,7 @@ export function AntragKarte({ a }: { a: Antrag }) {
           )}
           {a.base_missing && <p className={META}>Die geltende Fassung liegt den Unterlagen nicht bei.</p>}
           {a.base_template && <p className={META}>Bezieht sich auf die Fassung {a.base_template}.</p>}
-          {a.reason && <p className={HINWEIS}>{a.reason.text}</p>}
+          {a.reason && <ErklaerBereich><p className={HINWEIS}><Erklaert text={a.reason.text} /></p></ErklaerBereich>}
         </div>
       ) : (
         <p className={cn(INHALT, "mt-1")}>{a.label}</p>

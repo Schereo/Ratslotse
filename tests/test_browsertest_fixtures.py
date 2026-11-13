@@ -295,7 +295,8 @@ def test_die_punkt_abschrift_kennt_jedes_feld():
     from app.antworten import SessionItemDetail
 
     d = json.loads((FIXTURES / "punkt-4654-11-1.json").read_text())
-    assert set(d) == set(get_type_hints(SessionItemDetail)) - {"arguments", "amendments", "dossier"}   # ohne Schalter
+    # ohne Schalter; ``terms`` steht nur, wenn die Texte ein Fachwort tragen (Abzug davor)
+    assert set(d) == set(get_type_hints(SessionItemDetail)) - {"arguments", "amendments", "dossier", "terms"}
 
 
 def test_die_argumente_abschrift_kennt_jedes_feld():
@@ -311,7 +312,8 @@ def test_die_argumente_abschrift_kennt_jedes_feld():
                                ItemArguments, SessionItemDetail)
 
     d = json.loads((FIXTURES / "punkt-4702-8-1.json").read_text())
-    assert set(d) == set(get_type_hints(SessionItemDetail)) - {"amendments", "dossier"}   # ohne Anträge und Dossier
+    # ohne Anträge und Dossier; ``terms`` kam nach dem Abzug dazu
+    assert set(d) == set(get_type_hints(SessionItemDetail)) - {"amendments", "dossier", "terms"}
     a = d["arguments"]
     assert set(a) == set(get_type_hints(ItemArguments))
     aussagen = [*a["further"]["pro"], *a["further"]["contra"]]

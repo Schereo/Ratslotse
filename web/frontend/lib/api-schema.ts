@@ -15584,6 +15584,26 @@ export interface components {
             questions: string[];
         };
         /**
+         * PageTerm
+         * @description Ein Fachwort, das die Seite am Wort erklärt (``council/seitenbegriffe.py``).
+         *     Die Seite sucht ``snippet`` (ein wörtliches Stück eines ihrer Texte) und
+         *     unterstreicht darin ``form`` ab ``offset`` — sie erkennt selbst nichts.
+         */
+        PageTerm: {
+            /** Explanation */
+            explanation: string;
+            /** Form */
+            form: string;
+            /** Kind */
+            kind: string;
+            /** Offset */
+            offset: number;
+            /** Snippet */
+            snippet: string;
+            /** Term */
+            term: string;
+        };
+        /**
          * PageViewIn
          * @description Ein Seitenaufruf, gemeldet vom Browser.
          *
@@ -20575,6 +20595,8 @@ export interface components {
                 /** Template Number */
                 template_number: string | null;
             } | null;
+            /** Terms */
+            terms?: components["schemas"]["PageTerm"][];
         };
         /**
          * SessionItemDocument
@@ -31243,4 +31265,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 434184b388dee504c6eeff5dc00de0f06a08f684c29d606e2c3d1c6564dd81cb
+// vertrag-sha256: 2d030cbcbfdfc5dd5d0c0c1df68831a62ada14a8e254f62a2b1c18561c938f9e
