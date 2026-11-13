@@ -1595,6 +1595,15 @@ struct DecisionDetailView: View {
 
     private func load() async {
 #if DEBUG
+        // `RATSLOTSE_DEBUG_DECISION_FILE`: eine echte Antwort als JSON-Datei vom Mac
+        // (der Simulator liest Host-Pfade) — für Bilder ohne Anmeldung.
+        if let pfad = ratsDebugValue("RATSLOTSE_DEBUG_DECISION_FILE"),
+           let daten = FileManager.default.contents(atPath: pfad),
+           let echt = try? JSONDecoder().decode(DecisionDetail.self, from: daten) {
+            detail = echt
+            error = nil
+            return
+        }
         if ratsDebugValue("RATSLOTSE_DEBUG_DECISION_DETAIL") == "1",
            let fixture = Self.debugDetail() {
             detail = fixture
@@ -1953,8 +1962,11 @@ private struct DecisionNarrativeColumn: View {
             if let imageID = detail.planImageID {
                 DecisionPlanImage(documentID: imageID)
             }
+            if detail.templateDossier != nil || detail.proposalDiff?.contains(where: { $0.first != "=" }) == true {
+                DecisionFromTemplateCard(dossier: detail.templateDossier, proposalDiff: detail.proposalDiff)
+            }
             if !detail.subVotes.isEmpty {
-                DecisionSubvotesCard(subVotes: detail.subVotes)
+                DecisionSubvotesCard(subVotes: detail.subVotes, amendments: detail.subvoteAmendments)
             }
             if let template = detail.template {
                 DecisionTemplateStory(template: template, decisionTitle: detail.decision.title)
@@ -1977,6 +1989,7 @@ private struct DecisionFactsColumn: View {
 
 private struct DecisionSubvotesCard: View {
     let subVotes: [DecisionSummary]
+    var amendments: [Int: AgendaItemDetail.Amendment] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
@@ -1988,6 +2001,21 @@ private struct DecisionSubvotesCard: View {
                     if !subVote.factions.isEmpty {
                         Text(subVote.factions.joined(separator: " · "))
                             .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
+                    }
+                    // Was beantragt wurde — aus dem gelesenen Antrag (Plan § 6.3).
+                    if let a = amendments[subVote.id] {
+                        if let m = a.meaning {
+                            Text(m.text).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let diff = a.diff, diff.contains(where: { $0.first != "=" }) {
+                            Text(wortdiffText(diff)).font(RatsFont.body(14)).fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let url = URL(string: a.url) {
+                            Link(destination: url) {
+                                Text("Antrag im Ratsinfo").font(RatsFont.body(12.5, weight: .medium)).foregroundStyle(RatsColor.primary)
+                            }
+                        }
                     }
                 }
                 if subVote.id != subVotes.last?.id { Divider() }
