@@ -2113,6 +2113,14 @@ def session_item(
                 punkt["arguments"] = args
         except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
             _log.exception("Argumente fehlgeschlagen für %s %s", ksinr, nr)
+    if features.an("punkt-umfeld"):
+        try:
+            from council import punkt_umfeld  # noqa: PLC0415
+            umfeld = punkt_umfeld.item_surroundings(store, punkt)
+            if umfeld:
+                punkt["surroundings"] = umfeld
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Umfeld fehlgeschlagen für %s %s", ksinr, nr)
     if features.an("haushalt-am-punkt"):
         try:
             from council import punkt_haushalt  # noqa: PLC0415

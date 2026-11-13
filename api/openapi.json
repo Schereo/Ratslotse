@@ -17384,6 +17384,286 @@
         "title": "ItemDossier",
         "type": "object"
       },
+      "ItemParticipation": {
+        "properties": {
+          "ended_at": {
+            "title": "Ended At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "valid_from": {
+            "title": "Valid From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valid_until": {
+            "title": "Valid Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "step",
+          "valid_from",
+          "valid_until",
+          "url",
+          "status",
+          "ended_at"
+        ],
+        "title": "ItemParticipation",
+        "type": "object"
+      },
+      "ItemPlace": {
+        "properties": {
+          "district": {
+            "title": "District",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "lat",
+          "lon",
+          "district",
+          "source"
+        ],
+        "title": "ItemPlace",
+        "type": "object"
+      },
+      "ItemSimilarDecision": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "outcome",
+          "session_date",
+          "committee",
+          "summary"
+        ],
+        "title": "ItemSimilarDecision",
+        "type": "object"
+      },
+      "ItemSurroundings": {
+        "description": "Das Umfeld eines Punkts (``council/punkt_umfeld.py``), alles ohne Modell.",
+        "properties": {
+          "participation": {
+            "properties": {
+              "ended_at": {
+                "title": "Ended At",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              },
+              "step": {
+                "title": "Step",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "url": {
+                "title": "Url",
+                "type": "string"
+              },
+              "valid_from": {
+                "title": "Valid From",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "valid_until": {
+                "title": "Valid Until",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "title",
+              "step",
+              "valid_from",
+              "valid_until",
+              "url",
+              "status",
+              "ended_at"
+            ],
+            "title": "ItemParticipation",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/ItemPlace"
+            },
+            "title": "Places",
+            "type": "array"
+          },
+          "similar": {
+            "items": {
+              "$ref": "#/components/schemas/ItemSimilarDecision"
+            },
+            "title": "Similar",
+            "type": "array"
+          },
+          "video": {
+            "description": "Fundstelle in der Aufzeichnung — nur Ratssitzungen werden übertragen.",
+            "properties": {
+              "seconds": {
+                "title": "Seconds",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "video_id": {
+                "title": "Video Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "video_id",
+              "seconds"
+            ],
+            "title": "ItemVideo",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "places",
+          "similar",
+          "video",
+          "participation"
+        ],
+        "title": "ItemSurroundings",
+        "type": "object"
+      },
+      "ItemVideo": {
+        "description": "Fundstelle in der Aufzeichnung — nur Ratssitzungen werden übertragen.",
+        "properties": {
+          "seconds": {
+            "title": "Seconds",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "video_id": {
+            "title": "Video Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_id",
+          "seconds"
+        ],
+        "title": "ItemVideo",
+        "type": "object"
+      },
       "LimitsUpdate": {
         "description": "Admin-steuerbare Frage-Limits je Konto: Recherchen/Tag (None = Standard,\n0 = unbegrenzt, sonst eigenes Tageslimit) + Rate-Limit-Befreiung.",
         "properties": {
@@ -33314,6 +33594,9 @@
               "string",
               "null"
             ]
+          },
+          "surroundings": {
+            "$ref": "#/components/schemas/ItemSurroundings"
           },
           "template_fields": {
             "description": "Was die Vorlage eines Punkts schon trägt, ohne Modell\n(``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).\n``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher\nWortlaut — die Seite zeigt sie als Zitat.",

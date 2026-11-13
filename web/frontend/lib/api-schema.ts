@@ -14305,6 +14305,102 @@ export interface components {
             /** Sections */
             sections: components["schemas"]["DossierSection"][];
         };
+        /** ItemParticipation */
+        ItemParticipation: {
+            /** Ended At */
+            ended_at: string | null;
+            /** Status */
+            status: string;
+            /** Step */
+            step: string | null;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid Until */
+            valid_until: string | null;
+        };
+        /** ItemPlace */
+        ItemPlace: {
+            /** District */
+            district: string | null;
+            /** Kind */
+            kind: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Source */
+            source: string;
+        };
+        /** ItemSimilarDecision */
+        ItemSimilarDecision: {
+            /** Committee */
+            committee: string;
+            /** Id */
+            id: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * ItemSurroundings
+         * @description Das Umfeld eines Punkts (``council/punkt_umfeld.py``), alles ohne Modell.
+         */
+        ItemSurroundings: {
+            /** ItemParticipation */
+            participation: {
+                /** Ended At */
+                ended_at: string | null;
+                /** Status */
+                status: string;
+                /** Step */
+                step: string | null;
+                /** Title */
+                title: string;
+                /** Url */
+                url: string;
+                /** Valid From */
+                valid_from: string | null;
+                /** Valid Until */
+                valid_until: string | null;
+            } | null;
+            /** Places */
+            places: components["schemas"]["ItemPlace"][];
+            /** Similar */
+            similar: components["schemas"]["ItemSimilarDecision"][];
+            /**
+             * ItemVideo
+             * @description Fundstelle in der Aufzeichnung — nur Ratssitzungen werden übertragen.
+             */
+            video: {
+                /** Seconds */
+                seconds: number | null;
+                /** Video Id */
+                video_id: string;
+            } | null;
+        };
+        /**
+         * ItemVideo
+         * @description Fundstelle in der Aufzeichnung — nur Ratssitzungen werden übertragen.
+         */
+        ItemVideo: {
+            /** Seconds */
+            seconds: number | null;
+            /** Video Id */
+            video_id: string;
+        };
         /**
          * LimitsUpdate
          * @description Admin-steuerbare Frage-Limits je Konto: Recherchen/Tag (None = Standard,
@@ -20639,6 +20735,7 @@ export interface components {
             session_date: string;
             /** Session Time */
             session_time: string | null;
+            surroundings?: components["schemas"]["ItemSurroundings"];
             /**
              * TemplateFields
              * @description Was die Vorlage eines Punkts schon trägt, ohne Modell
@@ -31345,4 +31442,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 33f4034c88ef6f2d77e6e898d4cbb2fbfa998f0f031d820e22343be414518029
+// vertrag-sha256: 00b7d28049538e19417e62ed67eebb49b7c5f5d7fcba5f01003b0474b5dae874

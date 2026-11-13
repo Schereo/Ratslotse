@@ -3261,6 +3261,51 @@ class ItemBudgetContext(TypedDict):
     blocks: list[BudgetContextBlock]
 
 
+class ItemPlace(TypedDict):
+    slug: str
+    name: str
+    kind: str
+    lat: float
+    lon: float
+    district: str | None
+    #: ``decision``: belegt an einem Beschluss zu dieser Vorlage · ``title``: Straßenname im Titel.
+    source: str
+
+
+class ItemSimilarDecision(TypedDict):
+    id: int
+    title: str
+    outcome: str | None
+    session_date: str | None
+    committee: str
+    summary: str | None
+
+
+class ItemVideo(TypedDict):
+    """Fundstelle in der Aufzeichnung — nur Ratssitzungen werden übertragen."""
+    video_id: str
+    seconds: int | None
+
+
+class ItemParticipation(TypedDict):
+    title: str
+    step: str | None
+    valid_from: str | None
+    valid_until: str | None
+    url: str
+    #: ``laufend`` · ``beendet``
+    status: str
+    ended_at: str | None
+
+
+class ItemSurroundings(TypedDict):
+    """Das Umfeld eines Punkts (``council/punkt_umfeld.py``), alles ohne Modell."""
+    places: list[ItemPlace]
+    similar: list[ItemSimilarDecision]
+    video: ItemVideo | None
+    participation: ItemParticipation | None
+
+
 class PageTerm(TypedDict):
     """Ein Fachwort, das die Seite am Wort erklärt (``council/seitenbegriffe.py``).
     Die Seite sucht ``snippet`` (ein wörtliches Stück eines ihrer Texte) und
@@ -3309,6 +3354,8 @@ class SessionItemDetail(TypedDict):
     #: Nur hinter dem Schalter ``haushalt-am-punkt`` und nur, wenn die Vorlage etwas
     #: nennt, wozu der Haushalt eine Reihe hat (rund jeder zehnte Punkt mit Vorlage).
     budget_context: NotRequired[ItemBudgetContext]
+    #: Nur hinter dem Schalter ``punkt-umfeld`` und nur, wenn es etwas zu zeigen gibt.
+    surroundings: NotRequired[ItemSurroundings]
 
 
 class ImportanceBreakdown(TypedDict):
