@@ -34,15 +34,21 @@ from kern.stopp import Stopp  # noqa: E402
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
-def lauf(vorlagen: list[str], *, max_usd: float, schreiben: bool = True) -> dict:
+def lauf(vorlagen: list[str], *, max_usd: float, schreiben: bool = True,
+         max_minuten: float = 0) -> dict:
     store = CouncilStore(COUNCIL_DB)
     # Der Deploy-Marker liegt in data/: ein wartender Deploy beendet den Lauf (kern/stopp.py).
-    stopp = Stopp(daten_dir=ROOT / "data", max_kosten=max_usd)
+    # Die Frist liegt im Ops-Workflow UNTER dem SSH-Zeitlimit: Am 13.11.2026 lief
+    # der Bestand auf dev in eine Rate-Limit-Welle (Geduld: 30/90/180 s je Aufruf)
+    # und wurde nach 120 min von außen abgeschnitten — ohne Bilanz.
+    stopp = Stopp(daten_dir=ROOT / "data", max_kosten=max_usd, frist_sekunden=max_minuten * 60)
     neu = vorhanden = ohne_text = 0
-    for tn in vorlagen:
-        if stopp.grund() is not None:
-            print(stopp.grund())
+    for i, tn in enumerate(vorlagen, 1):
+        if (grund := stopp.grund()) is not None:
+            print(grund.text, flush=True)
             break
+        if i % 25 == 0:
+            print(f"  … {i}/{len(vorlagen)}: {neu} neu, {vorhanden} aktuell, {stopp.kosten:.3f} $", flush=True)
         m = store.dossier_material(tn)
         if not m:
             ohne_text += 1
@@ -59,7 +65,7 @@ def lauf(vorlagen: list[str], *, max_usd: float, schreiben: bool = True) -> dict
             neu += 1
     kosten = stopp.kosten
     print(f"{len(vorlagen)} Vorlagen: {neu} {'neu' if schreiben else 'würden neu entstehen'}, "
-          f"{vorhanden} aktuell, {ohne_text} ohne Text, {kosten:.3f} $")
+          f"{vorhanden} aktuell, {ohne_text} ohne Text, {kosten:.3f} $", flush=True)
     return {"vorlagen": len(vorlagen), "neu": neu, "aktuell": vorhanden, "ohne_text": ohne_text,
             "kosten_usd": round(kosten, 4)}
 
@@ -77,9 +83,11 @@ if __name__ == "__main__":
     ap.add_argument("--seit", default=(date.today() - timedelta(days=365)).isoformat())
     ap.add_argument("--max-usd", type=float, default=1.0)
     ap.add_argument("--schreiben", action="store_true")
+    ap.add_argument("--max-minuten", type=float, default=0, help="Frist für den Lauf; 0 = keine")
     a = ap.parse_args()
     if a.bestand:
         s = CouncilStore(COUNCIL_DB)
-        lauf(s.vorlagen_kommender_sitzungen(a.seit, date.today().isoformat()), max_usd=a.max_usd, schreiben=a.schreiben)
+        lauf(s.vorlagen_kommender_sitzungen(a.seit, date.today().isoformat()), max_usd=a.max_usd, schreiben=a.schreiben,
+             max_minuten=a.max_minuten)
     else:
         raise SystemExit(run_guarded("vorlagen_dossiers", main))

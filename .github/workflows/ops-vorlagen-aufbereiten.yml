@@ -96,7 +96,7 @@ jobs:
                 else
                   $PY scripts/unterlagen_steckbriefe.py --schreiben --seiten 400 --synopsen 100
                 fi
-                $PY scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD" --schreiben
+                $PY scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD" --max-minuten 75 --schreiben
               else
                 $PY scripts/antraege_nachziehen.py
                 $PY scripts/unterlagen_steckbriefe.py
