@@ -94,10 +94,22 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/pr.diff"
+          # Über 20.000 Zeilen bricht `gh pr diff` mit 406 ab. Dann liest
+          # Claude die geänderten Dateien direkt (die Liste kennt es aus dem
+          # PR-Kontext der Action), statt dass der Lauf rot wird.
+          if ! gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/pr.diff"; then
+            echo "::warning::Diff von PR #$PR nicht abrufbar (zu groß?) — Claude liest die Dateien direkt."
+            echo "(Der Diff war nicht abrufbar, vermutlich zu groß. Lies die geänderten Dateien direkt.)" > "$RUNNER_TEMP/pr.diff"
+          fi
 
       - uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
         if: steps.pr.outputs.skip != 'true'
+        # Beratender Bot, kein Gate — wie docs-review.yml. Nach einem `@claude`
+        # im Review hängt der Lauf als Prüfung am Kopf-Commit des PR, und
+        # `merge_wenn_gruen.py` merged nur bei Grün. Scheitert Claude (Abo-
+        # Grenze erreicht, Token abgelaufen), fehlt dann nur die Antwort; der
+        # PR wird nicht rot.
+        continue-on-error: true
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Wie docs-review.yml: das Workflow-Token statt der Claude-GitHub-App.
