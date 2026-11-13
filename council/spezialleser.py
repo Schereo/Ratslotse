@@ -64,7 +64,7 @@ def pruefvermerke(pdf_bytes: bytes) -> list[Pruefvermerk]:
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     out: list[Pruefvermerk] = []
     tz = kopf = None
-    for n, seite in enumerate(doc, 1):
+    for n, seite in enumerate(doc.pages(), 1):
         zeilen = _zeilen(seite)
         for i, (x0, y0, y1, fett, t) in enumerate(zeilen):
             if fett and _TZ.match(t):
