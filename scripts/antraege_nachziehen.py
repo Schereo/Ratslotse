@@ -32,6 +32,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from dotenv import load_dotenv  # noqa: E402
+
+# Ohne .env kein OPENROUTER_API_KEY: Der erste Lauf mit --lesen-tage auf dev
+# (13.11.2026) scheiterte so an allen 184 Anträgen.
+load_dotenv(ROOT / ".env")
+
 from council import anlagentext, motions, vorlagen  # noqa: E402
 from council.parties import parties_in_text  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
