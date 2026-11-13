@@ -106,6 +106,21 @@ CREATE TABLE IF NOT EXISTS template_dossiers (
     PRIMARY KEY (subject_key, sources_hash)
 );
 
+-- Fachwörter aus der Vorlage (council/vorlage_begriffe.py): je Vorlage die
+-- geprüften Begriffe mit Erklärung. sources_hash hält Lesetexte und Vorlage
+-- fest — neu erzeugt wird nur, wenn sich daran etwas ändert. status: ok | failed.
+CREATE TABLE IF NOT EXISTS template_terms (
+    template_number TEXT PRIMARY KEY,
+    sources_hash    TEXT NOT NULL,
+    prompt_version  INTEGER NOT NULL,
+    model           TEXT,
+    verify_model    TEXT,
+    status          TEXT NOT NULL,
+    payload         TEXT,
+    cost_usd        REAL,
+    created_at      TEXT NOT NULL
+);
+
 -- Steckbrief je Dokument (Vorlagen-PDF, Vorlagen-Anlage, Punkt-Anlage — alle
 -- hängen an derselben getfile-Kennung): Art, Antragsteller, Seiten, Scan,
 -- Seitenanfänge im gespeicherten Text samt dessen Prüfsumme. Ein Dokument an

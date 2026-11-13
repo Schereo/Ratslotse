@@ -146,6 +146,8 @@ const FEATURE_LABELS: Record<string, string> = {
   motion_extract: "Änderungsanträge lesen",
   template_dossier: "Dossier je Vorlage",
   template_dossier_abruf: "Dossier je Vorlage (beim ersten Aufruf)",
+  template_terms: "Fachwörter aus der Vorlage vorschlagen",
+  template_terms_verify: "Fachwörter aus der Vorlage prüfen",
   simple_summary: "Lotti erklärt's einfach",
   social_card_text: "Social-Kartentext",
   social_critic: "Social-Kritiker",

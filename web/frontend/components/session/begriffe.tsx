@@ -26,7 +26,7 @@ export function Erklaert({ text }: { text: string }) {
     <>
       {zerlege(text, begriffe).map((s, i) => (typeof s === "string"
         ? <Fragment key={i}>{s}</Fragment>
-        : <Fachwort key={i} label={s.text} def={s.begriff.explanation} />))}
+        : <Fachwort key={i} label={s.text} def={s.begriff.explanation} ki={s.begriff.kind === "document"} />))}
     </>
   );
 }

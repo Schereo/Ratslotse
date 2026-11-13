@@ -312,6 +312,52 @@ export const GLOSSARY: Record<string, string> = {
     "Die Behörde, die prüft, ob die Stadt sich an Recht und Gesetz hält — für Oldenburg das Land Niedersachsen. Manche Beschlüsse, etwa zum Haushalt, brauchen ihre Genehmigung.",
   "Zweckverband":
     "Ein Zusammenschluss mehrerer Kommunen für eine gemeinsame Aufgabe, mit eigener Verwaltung und eigenem Haushalt.",
+  "Gewinn- und Verlustrechnung":
+    "Die Jahresrechnung eines Unternehmens: was es in einem Jahr erwirtschaftet hat, gegen das, was es dafür aufwenden musste. Unter dem Strich steht der Gewinn oder der Verlust.",
+  "Lagebericht":
+    "Der Textteil zum Jahresabschluss eines Unternehmens: Die Geschäftsführung beschreibt darin, wie das Jahr lief, wie es dem Unternehmen geht und welche Risiken sie sieht.",
+  "örtlichen Bauvorschriften":
+    "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
+  "örtliche Bauvorschriften":
+    "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
+  "Betriebsausschuss":
+    "Der Ausschuss des Rats, der einen städtischen Betrieb begleitet und kontrolliert — etwa die Abfallwirtschaft oder die Gebäudewirtschaft.",
+  "Gesellschafterversammlung":
+    "Das Treffen der Eigentümer einer Gesellschaft — ihr oberstes Gremium. Bei städtischen Gesellschaften sitzt dort die Stadt; wie ihre Vertreter*innen abstimmen sollen, legt oft vorher der Rat fest.",
+  "Kapitalrücklage":
+    "Eigenes Geld einer Gesellschaft, das ihre Eigentümer zusätzlich zum Grundkapital eingezahlt haben. Ein Verlust kann damit verrechnet werden.",
+  "Deckungsreserve":
+    "Geld, das der Haushalt für Unvorhergesehenes zurückhält. Reicht es an einer Stelle im Lauf des Jahres nicht, kann daraus nachgelegt werden.",
+  "Feststellungsbeschluss":
+    "Der Beschluss, mit dem der Rat eine Änderung des Flächennutzungsplans abschließt. Wirksam wird sie erst, wenn die Aufsichtsbehörde sie genehmigt und die Stadt das bekannt gemacht hat.",
+  "Komplementärin":
+    "Bei einer Kommanditgesellschaft die Gesellschafterin, die die Geschäfte führt und unbeschränkt haftet. Bei einer GmbH & Co. KG ist das eine GmbH — so haftet am Ende niemand persönlich.",
+  "Kommanditistin":
+    "Wer an einer Kommanditgesellschaft beteiligt ist, aber nur mit der eigenen Einlage haftet und die Geschäfte nicht führt. Bei den städtischen GmbH & Co. KGs ist das die Stadt.",
+  "Entschädigungssatzung":
+    "Die Satzung, die regelt, was Ratsmitglieder und andere Ehrenamtliche für ihre Arbeit bekommen — Sitzungsgeld, eine monatliche Pauschale, Fahrtkosten.",
+  "Betrauungsakt":
+    "Der förmliche Auftrag der Stadt an ein Unternehmen, eine Aufgabe für die Allgemeinheit zu erfüllen — etwa Bäder zu betreiben. Erst damit darf die Stadt dessen Verluste ausgleichen, ohne gegen EU-Recht zu verstoßen.",
+  "Beschlussantrag":
+    "Ein Antrag, mit dem eine Fraktion den Rat oder einen Ausschuss etwas beschließen lassen will — anders als beim Berichtsantrag wird darüber abgestimmt.",
+  "NKomVG":
+    "Das Niedersächsische Kommunalverfassungsgesetz — das Landesgesetz, das regelt, wie Städte und Gemeinden aufgebaut sind und was Rat, Ausschüsse und Verwaltung jeweils dürfen.",
+  "Mehrauszahlung":
+    "Eine Zahlung für eine Anschaffung oder ein Bauvorhaben, die über den dafür geplanten Betrag hinausgeht. Der Rat muss sie nachträglich bewilligen.",
+  "Berichtsantrag":
+    "Ein Antrag, mit dem eine Fraktion die Verwaltung bittet, zu einem Thema zu berichten. Beschlossen wird dabei nichts.",
+  "Mehraufwendung":
+    "Laufende Ausgaben, die über den Betrag hinausgehen, der im Haushalt dafür vorgesehen war. Der Rat muss sie nachträglich bewilligen.",
+  "Mehrertrag":
+    "Einnahmen, die höher ausfallen als im Haushalt geplant — oft die Quelle, aus der zusätzliche Ausgaben an anderer Stelle bezahlt werden.",
+  "Mehrerträge":
+    "Einnahmen, die höher ausfallen als im Haushalt geplant — oft die Quelle, aus der zusätzliche Ausgaben an anderer Stelle bezahlt werden.",
+  "Liegenschaft":
+    "Ein Grundstück samt den Gebäuden darauf. „Städtische Liegenschaften“ sind also die Grundstücke und Häuser, die der Stadt gehören.",
+  "Gemeinnützigkeit":
+    "Der steuerliche Status einer Einrichtung, die der Allgemeinheit dient und keinen Gewinn an Private ausschüttet. Sie zahlt dann weniger Steuern.",
+  "Minderaufwendung":
+    "Laufende Ausgaben, die niedriger ausfallen als im Haushalt geplant. Das gesparte Geld kann zusätzliche Ausgaben an anderer Stelle decken.",
 };
 
-// glossar-sha256: 6808cf7fc34909e5985567977a3562ff9f504e92f2f07c4c7c8433d4169e8b36
+// glossar-sha256: 87fb990e1bb59187cdcd416114583dae5c45afddddf48640783ae6f13ee747bc

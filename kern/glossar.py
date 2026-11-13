@@ -383,6 +383,57 @@ BEGRIFFE: dict[str, str] = {
         "Die Behörde, die prüft, ob die Stadt sich an Recht und Gesetz hält — für Oldenburg das Land Niedersachsen. Manche Beschlüsse, etwa zum Haushalt, brauchen ihre Genehmigung.",
     "Zweckverband":  # 8
         "Ein Zusammenschluss mehrerer Kommunen für eine gemeinsame Aufgabe, mit eigener Verwaltung und eigenem Haushalt.",
+    # Ergänzt 13.11.2026 aus der Messung „welche Wörter erklärt ein Modell, die
+    # hier fehlen?" (20 Vorlagen, council/vorlage_begriffe.py) — aufgenommen ist,
+    # was im Bestand oft vorkommt (Zahl dahinter: Treffer in 2.805 Lesetexten).
+    "Gewinn- und Verlustrechnung":  # 78
+        "Die Jahresrechnung eines Unternehmens: was es in einem Jahr erwirtschaftet hat, gegen das, was es dafür aufwenden musste. Unter dem Strich steht der Gewinn oder der Verlust.",
+    "Lagebericht":  # 59
+        "Der Textteil zum Jahresabschluss eines Unternehmens: Die Geschäftsführung beschreibt darin, wie das Jahr lief, wie es dem Unternehmen geht und welche Risiken sie sieht.",
+    "örtlichen Bauvorschriften":  # 36
+        "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
+    "örtliche Bauvorschriften":
+        "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
+    "Betriebsausschuss":  # 29
+        "Der Ausschuss des Rats, der einen städtischen Betrieb begleitet und kontrolliert — etwa die Abfallwirtschaft oder die Gebäudewirtschaft.",
+    "Gesellschafterversammlung":  # 27
+        "Das Treffen der Eigentümer einer Gesellschaft — ihr oberstes Gremium. Bei städtischen Gesellschaften sitzt dort die Stadt; wie ihre Vertreter*innen abstimmen sollen, legt oft vorher der Rat fest.",
+    "Kapitalrücklage":  # 25
+        "Eigenes Geld einer Gesellschaft, das ihre Eigentümer zusätzlich zum Grundkapital eingezahlt haben. Ein Verlust kann damit verrechnet werden.",
+    "Deckungsreserve":  # 21
+        "Geld, das der Haushalt für Unvorhergesehenes zurückhält. Reicht es an einer Stelle im Lauf des Jahres nicht, kann daraus nachgelegt werden.",
+    "Feststellungsbeschluss":  # 13
+        "Der Beschluss, mit dem der Rat eine Änderung des Flächennutzungsplans abschließt. Wirksam wird sie erst, wenn die Aufsichtsbehörde sie genehmigt und die Stadt das bekannt gemacht hat.",
+    "Komplementärin":  # 12
+        "Bei einer Kommanditgesellschaft die Gesellschafterin, die die Geschäfte führt und unbeschränkt haftet. Bei einer GmbH & Co. KG ist das eine GmbH — so haftet am Ende niemand persönlich.",
+    "Kommanditistin":  # 10
+        "Wer an einer Kommanditgesellschaft beteiligt ist, aber nur mit der eigenen Einlage haftet und die Geschäfte nicht führt. Bei den städtischen GmbH & Co. KGs ist das die Stadt.",
+    "Entschädigungssatzung":  # 10
+        "Die Satzung, die regelt, was Ratsmitglieder und andere Ehrenamtliche für ihre Arbeit bekommen — Sitzungsgeld, eine monatliche Pauschale, Fahrtkosten.",
+    "Betrauungsakt":  # 6
+        "Der förmliche Auftrag der Stadt an ein Unternehmen, eine Aufgabe für die Allgemeinheit zu erfüllen — etwa Bäder zu betreiben. Erst damit darf die Stadt dessen Verluste ausgleichen, ohne gegen EU-Recht zu verstoßen.",
+    # Aus dem Probelauf über 23 Vorlagen: Was das Modell mehrfach erklären musste,
+    # gehört hierher (Treffer in Kurzfassungen, Beschlussvorschlägen und Titeln).
+    "Beschlussantrag":  # 490
+        "Ein Antrag, mit dem eine Fraktion den Rat oder einen Ausschuss etwas beschließen lassen will — anders als beim Berichtsantrag wird darüber abgestimmt.",
+    "NKomVG":  # 172
+        "Das Niedersächsische Kommunalverfassungsgesetz — das Landesgesetz, das regelt, wie Städte und Gemeinden aufgebaut sind und was Rat, Ausschüsse und Verwaltung jeweils dürfen.",
+    "Mehrauszahlung":  # 128
+        "Eine Zahlung für eine Anschaffung oder ein Bauvorhaben, die über den dafür geplanten Betrag hinausgeht. Der Rat muss sie nachträglich bewilligen.",
+    "Berichtsantrag":  # 111
+        "Ein Antrag, mit dem eine Fraktion die Verwaltung bittet, zu einem Thema zu berichten. Beschlossen wird dabei nichts.",
+    "Mehraufwendung":  # 102
+        "Laufende Ausgaben, die über den Betrag hinausgehen, der im Haushalt dafür vorgesehen war. Der Rat muss sie nachträglich bewilligen.",
+    "Mehrertrag":  # 51
+        "Einnahmen, die höher ausfallen als im Haushalt geplant — oft die Quelle, aus der zusätzliche Ausgaben an anderer Stelle bezahlt werden.",
+    "Mehrerträge":
+        "Einnahmen, die höher ausfallen als im Haushalt geplant — oft die Quelle, aus der zusätzliche Ausgaben an anderer Stelle bezahlt werden.",
+    "Liegenschaft":  # 33
+        "Ein Grundstück samt den Gebäuden darauf. „Städtische Liegenschaften“ sind also die Grundstücke und Häuser, die der Stadt gehören.",
+    "Gemeinnützigkeit":  # 28
+        "Der steuerliche Status einer Einrichtung, die der Allgemeinheit dient und keinen Gewinn an Private ausschüttet. Sie zahlt dann weniger Steuern.",
+    "Minderaufwendung":  # 10
+        "Laufende Ausgaben, die niedriger ausfallen als im Haushalt geplant. Das gesparte Geld kann zusätzliche Ausgaben an anderer Stelle decken.",
 }
 
 

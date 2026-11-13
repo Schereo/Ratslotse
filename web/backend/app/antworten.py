@@ -3270,7 +3270,9 @@ class PageTerm(TypedDict):
     snippet: str
     offset: int
     explanation: str
-    #: ``glossary``: geprüfte Erklärung aus ``kern/glossar.py``.
+    #: ``glossary``: geprüfte Erklärung aus ``kern/glossar.py`` · ``document``: von
+    #: einem Modell aus der Vorlage erklärt und von einem zweiten geprüft
+    #: (``council/vorlage_begriffe.py``) — die Seite zeigt dazu den KI-Stern.
     kind: str
 
 
