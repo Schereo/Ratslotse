@@ -106,11 +106,32 @@ export function prfBytes(x: unknown): Uint8Array | null {
   try {
     if (ArrayBuffer.isView(x)) u8 = new Uint8Array(x.buffer, x.byteOffset, x.byteLength).slice();
     else if (Object.prototype.toString.call(x) === "[object ArrayBuffer]") u8 = new Uint8Array(x as ArrayBuffer).slice();
-    else return null;
+    else {
+      const zahlen = zahlenliste(x);
+      if (!zahlen) return null;
+      u8 = Uint8Array.from(zahlen);
+    }
   } catch {
     return null;
   }
   return u8.byteLength >= 16 ? u8 : null;
+}
+
+/** Die Bytes als gewöhnliche Zahlenliste — so reicht 1Password das
+ *  PRF-Ergebnis in Zen (Firefox) durch, vermutlich beim Weg aus der
+ *  Erweiterung in die Seite umgewandelt: Das Protokoll meldete am 13.11.2026
+ *  „PRF unbrauchbar: Array“, davor scheiterte dieselbe Liste in WebCrypto als
+ *  „DataError“. Auch die JSON-Form eines Uint8Array (`{"0": 12, "1": 34, …}`)
+ *  zählt. Nur ganze Zahlen 0–255, sonst `null`. */
+function zahlenliste(x: object): number[] | null {
+  let werte: unknown[];
+  if (Array.isArray(x)) werte = x;
+  else {
+    const schluessel = Object.keys(x);
+    if (!schluessel.length || !schluessel.every((k, i) => k === String(i))) return null;
+    werte = Object.values(x);
+  }
+  return werte.every((n) => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 255) ? (werte as number[]) : null;
 }
 
 /** Was statt eines brauchbaren PRF-Ergebnisses kam — nur Art und Länge, nie
@@ -120,7 +141,8 @@ export function prfBeschreibung(x: unknown): string {
   if (x === null) return "null";
   const art = typeof x === "object" ? Object.prototype.toString.call(x).slice(8, -1) : typeof x;
   const n = (x as { byteLength?: unknown }).byteLength;
-  return typeof n === "number" ? `${art}, ${n} B` : art;
+  if (typeof n === "number") return `${art}, ${n} B`;
+  return Array.isArray(x) ? `${art}, ${x.length} Werte` : art;
 }
 
 /** Kein brauchbares Geheimnis: wie „kann der Browser nicht“ (weiter mit

@@ -136,7 +136,27 @@ describe("PRF-Ergebnis prüfen (13.11.2026: „Schlüssel ableiten: DataError“
       art: "nicht-unterstuetzt", schritt: "Schlüssel ableiten", ursache: "PRF unbrauchbar: ArrayBuffer, 0 B" });
   });
 
+  it("eine Zahlenliste (1Password in Zen/Firefox) gilt als dieselben Bytes", async () => {
+    const liste = new Array(32).fill(0x5a);
+    expect([...prfBytes(liste)!]).toEqual(liste);
+    expect([...prfBytes(Object.fromEntries(liste.map((n, i) => [String(i), n])))!]).toEqual(liste);
+    // derselbe Schlüssel wie aus echten Bytes — Browser und App schließen weiter gleich auf
+    const dk = await crypto.subtle.importKey("raw", new Uint8Array(32).fill(0x11), { name: "AES-GCM" }, true,
+      ["encrypt", "decrypt"]);
+    expect(await wrap(dk, await passkeyKek(liste as unknown as BufferSource)))
+      .toBe("waaUYZJ0tt9nEz/QzsW1KcByiM15SL79fCqUXiHHzi+Kn7T2/i5PwA==");
+  });
+
+  it("eine Liste, die keine Bytes sind, taugt nicht", () => {
+    expect(prfBytes(new Array(32).fill(256))).toBeNull();
+    expect(prfBytes(new Array(32).fill(1.5))).toBeNull();
+    expect(prfBytes(new Array(32).fill("1"))).toBeNull();
+    expect(prfBytes([1, 2, 3])).toBeNull();
+    expect(prfBytes({ a: 1 })).toBeNull();
+  });
+
   it("die Beschreibung verrät nie die Bytes", () => {
+    expect(prfBeschreibung([1, 2, 3])).toBe("Array, 3 Werte");
     expect(prfBeschreibung(new Uint8Array([1, 2, 3]))).toBe("Uint8Array, 3 B");
     expect(prfBeschreibung(undefined)).toBe("fehlt");
     expect(prfBeschreibung("geheim")).toBe("string");
