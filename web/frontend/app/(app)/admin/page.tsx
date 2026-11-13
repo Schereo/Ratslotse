@@ -148,6 +148,8 @@ const FEATURE_LABELS: Record<string, string> = {
   template_dossier_abruf: "Dossier je Vorlage (beim ersten Aufruf)",
   template_terms: "Fachwörter aus der Vorlage vorschlagen",
   template_terms_verify: "Fachwörter aus der Vorlage prüfen",
+  program_stance: "Wahlprogramme zum Punkt einordnen",
+  program_stance_verify: "Wahlprogramme zum Punkt prüfen",
   simple_summary: "Lotti erklärt's einfach",
   social_card_text: "Social-Kartentext",
   social_critic: "Social-Kritiker",

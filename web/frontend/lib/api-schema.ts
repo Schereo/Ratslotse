@@ -14339,6 +14339,15 @@ export interface components {
             /** Source */
             source: string;
         };
+        /** ItemProgramStances */
+        ItemProgramStances: {
+            /** Concern */
+            concern: string | null;
+            /** Parties */
+            parties: components["schemas"]["ProgramStance"][];
+            /** Silent */
+            silent: string[];
+        };
         /** ItemSimilarDecision */
         ItemSimilarDecision: {
             /** Committee */
@@ -18786,6 +18795,34 @@ export interface components {
             /** Plan Budget Year */
             plan_budget_year: number;
         };
+        /**
+         * ProgramStance
+         * @description Was das Wahlprogramm einer Liste im Rat zu diesem Punkt sagt
+         *     (``council/programm_bezug.py``): wörtliches Zitat, im Code gegen das
+         *     Programm geprüft und von einem zweiten Modell bestätigt.
+         */
+        ProgramStance: {
+            /** Basis */
+            basis: string;
+            /** Label */
+            label: string;
+            /** Page */
+            page: number | null;
+            /** Program Title */
+            program_title: string;
+            /** Program Url */
+            program_url: string | null;
+            /** Quote */
+            quote: string;
+            /** Reason */
+            reason: string;
+            /** Seats */
+            seats: number;
+            /** Slug */
+            slug: string;
+            /** Stance */
+            stance: string;
+        };
         /** ProjectReportIn */
         ProjectReportIn: {
             /** Reason */
@@ -20731,6 +20768,7 @@ export interface components {
                 /** Type Label */
                 type_label: string | null;
             } | null;
+            program_stances?: components["schemas"]["ItemProgramStances"];
             /** Session Date */
             session_date: string;
             /** Session Time */
@@ -31442,4 +31480,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 00b7d28049538e19417e62ed67eebb49b7c5f5d7fcba5f01003b0474b5dae874
+// vertrag-sha256: c7f5617e43ca84a1ca7dcf75de8db3184c155db80eb659e189bed4070994ecf0

@@ -15,6 +15,10 @@ Fachwörter aus der Vorlage (``council/vorlage_begriffe.py``, Grenze
 
     .venv/bin/python scripts/vorlagen_dossiers.py --bestand --begriffe --seit 2025-11-01 --max-usd 5 [--schreiben]
 
+Mit dem Schalter ``wahlprogramm-am-punkt`` folgt als dritte Stufe, was die
+Wahlprogramme dazu sagen (``council/programm_bezug.py``, Grenze
+``PROGRAM_MAX_USD``, Vorgabe 0,25 $). Für den Bestand ``--bestand --programme``.
+
 crontab: ``0 10,15 * * *``
 """
 from __future__ import annotations
@@ -32,7 +36,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT / ".env")
 
-from council import template_dossier, vorlage_begriffe  # noqa: E402
+from council import programm_bezug, template_dossier, vorlage_begriffe  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from kern import features  # noqa: E402
 from kern.alerts import run_guarded  # noqa: E402
@@ -111,6 +115,45 @@ def lauf_begriffe(vorlagen: list[str], *, max_usd: float, schreiben: bool = True
     return {"begriffe_vorlagen_neu": neu, "begriffe": begriffe, "begriffe_kosten_usd": round(stopp.kosten, 4)}
 
 
+def lauf_programme(vorlagen: list[str], *, max_usd: float, schreiben: bool = True, max_minuten: float = 0) -> dict:
+    """Was die Wahlprogramme zu einer Vorlage sagen (``council/programm_bezug.py``):
+    suchen, einordnen, Zitat prüfen, vom größeren Modell bestätigen lassen —
+    rund 0,005 $ je Vorlage. Braucht die Lesetexte der Punkt-Seite (nach den
+    Dossiers) und fastembed für die Suche in den Programmen."""
+    store = CouncilStore(COUNCIL_DB)
+    stopp = Stopp(daten_dir=ROOT / "data", max_kosten=max_usd, frist_sekunden=max_minuten * 60)
+    neu = vorhanden = ohne_text = mit_aussage = aussagen = 0
+    for i, tn in enumerate(vorlagen, 1):
+        if (grund := stopp.grund()) is not None:
+            print(grund.text, flush=True)
+            break
+        if i % 25 == 0:
+            print(f"  … {i}/{len(vorlagen)}: {neu} neu, {vorhanden} aktuell, {aussagen} Einordnungen, {stopp.kosten:.3f} $", flush=True)
+        m = store.terms_material(tn)
+        if not m:
+            ohne_text += 1
+            continue
+        alt = store.program_stances(tn)
+        if alt and alt["status"] == "ok" and alt["prompt_version"] == programm_bezug.PROMPT_VERSION \
+                and alt["sources_hash"] == programm_bezug.sources_hash(m["title"], m["texts"]):
+            vorhanden += 1
+            continue
+        if not schreiben:
+            neu += 1
+            continue
+        d = programm_bezug.build_for_template(store, tn, stopp=stopp)
+        if d:
+            neu += 1
+            n = len((d["payload"] or {}).get("stances") or [])
+            aussagen += n
+            mit_aussage += n > 0
+    print(f"Wahlprogramme: {len(vorlagen)} Vorlagen, {neu} {'neu' if schreiben else 'würden neu entstehen'}, "
+          f"{vorhanden} aktuell, {ohne_text} ohne Text, {mit_aussage} mit Einordnung, {aussagen} Einordnungen, "
+          f"{stopp.kosten:.3f} $", flush=True)
+    return {"programme_vorlagen_neu": neu, "programme_einordnungen": aussagen,
+            "programme_kosten_usd": round(stopp.kosten, 4)}
+
+
 def main() -> dict:
     store = CouncilStore(COUNCIL_DB)
     heute = date.today()
@@ -119,6 +162,8 @@ def main() -> dict:
     # Die Begriffe hängen am Schalter: Solange die Seite sie nicht zeigt, kostet ihr Erzeugen nur.
     if features.an("begriffe-aus-vorlage"):
         kennzahlen.update(lauf_begriffe(vorlagen, max_usd=float(os.environ.get("TERMS_MAX_USD") or 0.25)))
+    if features.an("wahlprogramm-am-punkt"):
+        kennzahlen.update(lauf_programme(vorlagen, max_usd=float(os.environ.get("PROGRAM_MAX_USD") or 0.25)))
     return kennzahlen
 
 
@@ -131,13 +176,15 @@ if __name__ == "__main__":
     ap.add_argument("--max-minuten", type=float, default=0, help="Frist für den Lauf; 0 = keine")
     ap.add_argument("--begriffe", action="store_true",
                     help="mit --bestand: statt der Dossiers die Fachwörter aus der Vorlage (council/vorlage_begriffe.py)")
+    ap.add_argument("--programme", action="store_true",
+                    help="mit --bestand: statt der Dossiers die Wahlprogramme zum Punkt (council/programm_bezug.py)")
     a = ap.parse_args()
     if a.bestand:
         s = CouncilStore(COUNCIL_DB)
         # Bis drei Wochen voraus: Die kommenden Sitzungen gehören zum Bestand dazu.
         bis = (date.today() + timedelta(days=21)).isoformat()
-        (lauf_begriffe if a.begriffe else lauf)(
-            s.vorlagen_kommender_sitzungen(a.seit, bis if a.begriffe else date.today().isoformat()),
-            max_usd=a.max_usd, schreiben=a.schreiben, max_minuten=a.max_minuten)
+        stufe = lauf_programme if a.programme else lauf_begriffe if a.begriffe else lauf
+        stufe(s.vorlagen_kommender_sitzungen(a.seit, date.today().isoformat() if stufe is lauf else bis),
+              max_usd=a.max_usd, schreiben=a.schreiben, max_minuten=a.max_minuten)
     else:
         raise SystemExit(run_guarded("vorlagen_dossiers", main))
