@@ -1,0 +1,126 @@
+# Manuell auslösbar: die einmaligen Nachläufe und die crontab-Zeilen des Plans
+# „Vorlagen aufbereiten“ (docs/plan-vorlagen-aufbereiten.md, Schritte 2, 6, 12,
+# 17) — auf dev sofort, auf Prod erst nach dem Release, das die Skripte bringt.
+#
+# nachlaeufe, nacheinander:
+#   1. scripts/antraege_nachziehen.py         Anträge an Punkten lesen (≈ 0,03 $)
+#   2. scripts/unterlagen_steckbriefe.py      Art, Seiten, Synopsen, Abwägungen und
+#                                             Prüfberichte (1 PDF/s, ohne Modell)
+#   3. scripts/vorlagen_dossiers.py --bestand Dossiers der letzten 12 Monate (≈ 0,7 $,
+#                                             die Kostengrenze hält den Lauf an)
+# Ohne „schreiben“ zählen alle drei nur, was anstünde.
+#
+# crontab: ergänzt `antraege_nachzuegler` (11, 13, 16, 18 Uhr) und
+# `vorlagen_dossiers` (10 und 15 Uhr) nach dem Muster der vorhandenen
+# check_council-Zeile — nur, was fehlt; ohne „schreiben“ nur die Vorschau. Auf
+# dev laufen bewusst keine Crons, dort verweigert der Schritt.
+#
+# WARUM ALS WORKFLOW. Der Zugang zu den VMs läuft über den Deploy-Key und den
+# Sprung über den Edge; aus einer Agenten-Sitzung gibt es keinen anderen Weg.
+name: "Ops: Vorlagen aufbereiten"
+
+on:
+  workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de, dort erst nach dem Release)"
+        type: choice
+        options: [dev, prod]
+        default: dev
+      schritt:
+        description: "nachlaeufe = die drei einmaligen Läufe, crontab = die zwei Cron-Zeilen (nur prod)"
+        type: choice
+        options: [nachlaeufe, crontab]
+        default: nachlaeufe
+      schreiben:
+        description: "Wirklich schreiben (aus = nur zählen bzw. Vorschau)"
+        type: boolean
+        default: false
+      max_usd:
+        description: "Kostengrenze der Dossier-Läufe in Dollar"
+        type: string
+        default: "1"
+
+concurrency:
+  group: ops-vorlagen-aufbereiten-${{ inputs.umgebung }}
+  cancel-in-progress: false
+
+jobs:
+  vorlagen:
+    runs-on: ubuntu-latest
+    steps:
+      # Für die SSH-Action aus .github/actions/ssh.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
+      - name: "Vorlagen aufbereiten (${{ inputs.umgebung }}, ${{ inputs.schritt }})"
+        env:
+          UMGEBUNG: ${{ inputs.umgebung }}
+          SCHRITT: ${{ inputs.schritt }}
+          SCHREIBEN: ${{ inputs.schreiben }}
+          MAX_USD: ${{ inputs.max_usd }}
+        uses: ./.github/actions/ssh
+        with:
+          host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          command_timeout: 120m
+          # Eingaben über `envs` und geprüft, nicht als `${{ … }}` im Skripttext.
+          envs: UMGEBUNG,SCHRITT,SCHREIBEN,MAX_USD
+          script: |
+            set -e
+            cd ~/app
+            for f in scripts/antraege_nachziehen.py scripts/unterlagen_steckbriefe.py scripts/vorlagen_dossiers.py scripts/antraege_nachzuegler.py; do
+              if [ ! -f "$f" ]; then echo "$f fehlt hier — auf Prod erst nach dem Release."; exit 2; fi
+            done
+            if ! echo "$MAX_USD" | grep -qE '^[0-9]{1,2}(\.[0-9]{1,2})?$'; then
+              echo "max_usd muss eine Zahl wie 1 oder 0.5 sein: $MAX_USD"; exit 2
+            fi
+            PY=.venv/bin/python
+            SEIT=$(date -d '-12 months' +%F)
+            if [ "$SCHRITT" = "nachlaeufe" ]; then
+              # Die Login-Shell auf dem Server ist zsh: Schalter in einer Variablen
+              # würden dort nicht geteilt (s. ops-gold.yml) — deshalb ausgeschrieben.
+              if [ "$SCHREIBEN" = "true" ]; then
+                $PY scripts/antraege_nachziehen.py --schreiben
+                if $PY scripts/unterlagen_steckbriefe.py --help | grep -q -- --spezial; then
+                  $PY scripts/unterlagen_steckbriefe.py --schreiben --seiten 400 --synopsen 100 --spezial 100
+                else
+                  $PY scripts/unterlagen_steckbriefe.py --schreiben --seiten 400 --synopsen 100
+                fi
+                $PY scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD" --schreiben
+              else
+                $PY scripts/antraege_nachziehen.py
+                $PY scripts/unterlagen_steckbriefe.py
+                $PY scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD"
+              fi
+            elif [ "$SCHRITT" = "crontab" ]; then
+              if [ "$UMGEBUNG" != "prod" ]; then echo "Auf dev laufen bewusst keine Crons."; exit 2; fi
+              VORLAGE=$(crontab -l | grep -m1 'scripts/check_council.py' || true)
+              if [ -z "$VORLAGE" ]; then echo "Keine check_council-Zeile als Muster gefunden — bitte von Hand."; exit 2; fi
+              # Alles nach den fünf Zeitfeldern, egal wie viele Leerzeichen dazwischen.
+              REST=$(echo "$VORLAGE" | sed -E 's/^[[:space:]]*([^[:space:]]+[[:space:]]+){5}//')
+              NEU=""
+              crontab -l | grep -q 'scripts/antraege_nachzuegler.py' || \
+                NEU="${NEU}0 11,13,16,18 * * * $(echo "$REST" | sed 's#check_council#antraege_nachzuegler#g')
+            "
+              crontab -l | grep -q 'scripts/vorlagen_dossiers.py' || \
+                NEU="${NEU}0 10,15 * * * $(echo "$REST" | sed 's#check_council#vorlagen_dossiers#g')
+            "
+              if [ -z "$NEU" ]; then echo "Beide Zeilen stehen schon in der crontab."; exit 0; fi
+              echo "Neue Zeilen:"; printf '%s' "$NEU"
+              if [ "$SCHREIBEN" = "true" ]; then
+                (crontab -l; printf '%s' "$NEU") | crontab -
+                echo "crontab ergänzt."
+              else
+                echo "(Vorschau — mit „schreiben“ werden sie eingetragen.)"
+              fi
+            fi
