@@ -316,6 +316,11 @@ def _woerter(text: str | None) -> set[str]:
     return {w for w in _WORT_RE.findall((text or "").lower()) if w not in _FUELL}
 
 
+_VERFAHREN_RE = re.compile(r"geschäftsordnung|vertag|verweis|zurückstell|zurückverwei|absetz|nichtbefassung|"
+                           r"schluss\s+der\s+(?:debatte|aussprache|rednerliste)|unterbrech|als\s+behandelt", re.I)
+_EINZELPERSON_RE = re.compile(r"\b(?:Rats(?:herr|frau|mitglied(?:s|es)?)|Bürgermeister(?:in)?|Oberbürgermeister(?:in)?)\b")
+
+
 def match_subvote(motion: dict, subvotes: list[dict]) -> int | None:
     """Die Teilabstimmung im Protokoll, über die über diesen Antrag abgestimmt
     wurde — nur wenn eindeutig, lieber keine Zuordnung als eine falsche.
@@ -328,10 +333,20 @@ def match_subvote(motion: dict, subvotes: list[dict]) -> int | None:
     kandidaten = []
     for sv in subvotes:
         titel = sv.get("title") or ""
-        # Geschäftsordnungsanträge (Vertagung, „als behandelt") sind keine Anträge zur Sache.
-        if not re.search(r"antrag", titel, re.I) or re.search(r"geschäftsordnung", titel, re.I):
+        # Verfahrensanträge (Vertagung, Verweisung, „als behandelt") sind keine
+        # Anträge zur Sache — am 13.11.2026 hingen so zwei Vertagungsanträge an
+        # Hauptanträgen (eval/run_zuordnung.py).
+        if not re.search(r"antrag", titel, re.I) or _VERFAHREN_RE.search(titel):
             continue
-        parteien = {normalize(p) for p in (sv.get("factions") or [])} | {normalize(p) for p in parties_in_text(titel)}
+        titel_parteien = {normalize(p) for p in parties_in_text(titel)}
+        if _EINZELPERSON_RE.search(titel):
+            # „Änderungsantrag von Ratsherr …": `factions` sind dann die Fraktionen,
+            # die abgestimmt haben, nicht die Antragsteller — nur der Titel zählt.
+            parteien = titel_parteien
+            if eigene and not (eigene & parteien):
+                continue
+        else:
+            parteien = {normalize(p) for p in (sv.get("factions") or [])} | titel_parteien
         if eigene and parteien and not (eigene & parteien):
             continue
         kandidaten.append((sv, parteien))

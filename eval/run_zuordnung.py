@@ -24,7 +24,25 @@ def main(n: int = 30) -> None:
         "WHERE EXISTS (SELECT 1 FROM council_decisions d WHERE d.ksinr = aa.ksinr AND d.kind = 'subvote' "
         "AND d.parent_item = trim(replace(replace(aa.item_number, 'Ö', ''), 'DZT', ''))) "
         "ORDER BY aa.document_id DESC").fetchall()
-    faelle = [r for r in rows if document_types.classify(r["label"]) in ("amendment", "motion")][:n]
+    # Dazu Anträge an der VORLAGE (über alle Stationen, wie `item_documents`
+    # sie auch dem Punkt zeigt) — lokal fanden sich an Punkt-Anlagen nur 9.
+    rows += s._conn.execute(  # noqa: SLF001
+        "SELECT DISTINCT at.document_id, at.label, a.ksinr, a.item_number FROM council_attachments at "
+        "JOIN council_templates t ON t.kvonr = at.kvonr "
+        "JOIN council_agenda_items a ON a.template_number = t.template_number "
+        "WHERE EXISTS (SELECT 1 FROM council_decisions d WHERE d.ksinr = a.ksinr AND d.kind = 'subvote' "
+        "AND d.parent_item = trim(replace(replace(a.item_number, 'Ö', ''), 'DZT', ''))) "
+        "ORDER BY at.document_id DESC").fetchall()
+    gesehen: set = set()
+    faelle = []
+    for r in rows:
+        # Nur Änderungsanträge bekommen eine Teilabstimmung (store_unterlagen.item_amendments).
+        art = (s.document_profiles([r["document_id"]]).get(r["document_id"]) or {}).get("doc_type") \
+            or document_types.classify(r["label"])
+        if art == "amendment" and (r["document_id"], r["ksinr"]) not in gesehen:
+            gesehen.add((r["document_id"], r["ksinr"]))
+            faelle.append(r)
+    faelle = faelle[:n]
     getroffen = 0
     for r in faelle:
         nr = re.sub(r"^\D+", "", r["item_number"]).strip()
