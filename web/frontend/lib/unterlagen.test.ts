@@ -33,15 +33,26 @@ import { kurzerDiff } from "./unterlagen";
 
 describe("kurzerDiff", () => {
   const lang = Array.from({ length: 30 }, (_, i) => `w${i}`).join(" ");
-  it("kürzt nur unveränderte Stücke und lässt die Änderung ganz", () => {
+  it("ohne Satzgrenze: nur unveränderte Stücke kürzen, die Änderung bleibt ganz", () => {
     const d = kurzerDiff([["=", "Die Ladungsfrist beträgt"], ["-", "zwei Tage."], ["+", "eine Woche."], ["=", lang]]);
     expect(d[0]).toEqual(["=", "Die Ladungsfrist beträgt"]);
     expect(d[1]).toEqual(["-", "zwei Tage."]);
     expect(d[3][1]).toBe("w0 w1 w2 w3 w4 w5 w6 w7 …");
   });
-  it("vorn die letzten Wörter, in der Mitte beide Enden", () => {
+  it("ohne Satzgrenze: vorn die letzten Wörter, in der Mitte beide Enden", () => {
     const d = kurzerDiff([["=", lang], ["+", "x"], ["=", lang], ["-", "y"]]);
     expect(d[0][1]).toBe("… w22 w23 w24 w25 w26 w27 w28 w29");
     expect(d[2][1]).toBe("w0 w1 w2 w3 w4 w5 w6 w7 … w22 w23 w24 w25 w26 w27 w28 w29");
+  });
+  it("hinten bis zum Satzende — der Satz nach der Änderung bricht nicht mitten ab", () => {
+    // Volt, GO-Änderung Rat 02.11.2026: früher endete es bei „sechs Stunden …"
+    const d = kurzerDiff([["=", "Die Ladungsfrist beträgt"], ["-", "zwei Tage."], ["+", "eine Woche."],
+      ["=", "In dringenden Fällen kann sie auf sechs Stunden verkürzt werden. Die Ladung erfolgt schriftlich oder elektronisch."]]);
+    expect(d[3][1]).toBe("In dringenden Fällen kann sie auf sechs Stunden verkürzt werden. …");
+  });
+  it("vorn ab dem letzten Satzende", () => {
+    const d = kurzerDiff([["=", "Der erste Satz steht hier. Die Frist beträgt"], ["-", "zwei"], ["+", "sieben"], ["=", "Tage."]]);
+    expect(d[0][1]).toBe("… Die Frist beträgt");
+    expect(d[3][1]).toBe("Tage.");
   });
 });

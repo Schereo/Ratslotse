@@ -44,14 +44,35 @@ export function teileListe<T extends ListenDoc>(docs: T[]): { lesestoff: T[]; be
 }
 
 /** Unveränderte Stücke eines Wortdiffs auf den Kontext um die Änderung
- *  kürzen: vorn die letzten, hinten die ersten Wörter, dazwischen beide Enden. */
-export function kurzerDiff(diff: string[][], rand = 8): string[][] {
+ *  kürzen — an der Satzgrenze, wenn sie in Reichweite liegt: hinten bis zum
+ *  ersten Satzende, vorn ab dem letzten. Erst ohne Satzgrenze in ``weit``
+ *  Wörtern bleiben ``rand`` Wörter stehen. Mit fester Wortzahl fiel bei der
+ *  GO-Änderung von Volt (Rat 02.11.2026) gerade „verkürzt werden" weg: „In
+ *  dringenden Fällen kann sie auf sechs Stunden …" (Tim, 13.11.2026). */
+export function kurzerDiff(diff: string[][], rand = 8, weit = 24): string[][] {
+  const satzende = (wort: string) => /[.;:!?]["“”»)]?$/.test(wort);
+  const hinten = (w: string[]): number => {
+    const i = w.findIndex(satzende);
+    return i >= 0 && i < weit ? i + 1 : rand;
+  };
+  const vorn = (w: string[]): number => {
+    for (let i = w.length - 2; i >= 0 && w.length - 1 - i <= weit; i--) if (satzende(w[i])) return i + 1;
+    return w.length - rand;
+  };
   return diff.map(([op, text], i) => {
     if (op !== "=") return [op, text];
     const w = text.split(" ");
-    if (w.length <= rand * 2) return [op, text];
-    if (i === 0) return [op, "… " + w.slice(-rand).join(" ")];
-    if (i === diff.length - 1) return [op, w.slice(0, rand).join(" ") + " …"];
-    return [op, `${w.slice(0, rand).join(" ")} … ${w.slice(-rand).join(" ")}`];
+    const erstes = i === 0, letztes = i === diff.length - 1;
+    if (erstes && letztes) return [op, text];
+    if (erstes) {
+      const ab = vorn(w);
+      return ab <= 0 ? [op, text] : [op, "… " + w.slice(ab).join(" ")];
+    }
+    if (letztes) {
+      const bis = hinten(w);
+      return bis >= w.length ? [op, text] : [op, w.slice(0, bis).join(" ") + " …"];
+    }
+    const bis = hinten(w), ab = vorn(w);
+    return bis >= ab ? [op, text] : [op, `${w.slice(0, bis).join(" ")} … ${w.slice(ab).join(" ")}`];
   });
 }

@@ -5,7 +5,7 @@
    und Begründung — gelesen von council/motions.py, jede Angabe belegt. Der
    KI-Stern sitzt einmal an der Überschrift; der Wortlaut alt/neu ist Zitat. */
 
-import { ExternalLink } from "lucide-react";
+import { ArrowLeftRight, ExternalLink, PenLine, Plus, Split, Strikethrough, type LucideIcon } from "lucide-react";
 import { KiStern } from "@/components/ki-stern";
 import { OUTCOME_DOT_CLS, OUTCOME_WORD, normalizeParty, partyBrand } from "@/components/decision-ui";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -19,6 +19,24 @@ const KICKER = "font-mono text-meta uppercase tracking-[0.06em] text-muted-foreg
 export const MUSTER_WORT: Record<string, string> = {
   replace: "ersetzt", delete: "streicht", add: "ergänzt", rewrite: "fasst neu", counter: "Gegenvorschlag",
 };
+
+/** Was der Antrag mit dem Text macht, als Zeichen vor dem Wort — so sieht man
+ *  die Art beim Überfliegen, ohne den Chip zu lesen (Tim, 13.11.2026). Bewusst
+ *  neutral gefärbt: Grün und Rot stehen auf derselben Karte schon für
+ *  angenommen und abgelehnt. */
+const MUSTER_ZEICHEN: Record<string, LucideIcon> = {
+  replace: ArrowLeftRight, delete: Strikethrough, add: Plus, rewrite: PenLine, counter: Split,
+};
+
+function MusterChip({ muster }: { muster: string }) {
+  const Zeichen = MUSTER_ZEICHEN[muster];
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 py-0.5 pl-1.5 pr-2 text-[11px] font-medium text-foreground">
+      {Zeichen && <Zeichen className="h-3 w-3 text-primary" strokeWidth={2.25} aria-hidden />}
+      {MUSTER_WORT[muster]}
+    </span>
+  );
+}
 
 export function Wortdiff({ diff }: { diff: string[][] }) {
   return (
@@ -54,9 +72,7 @@ export function AntragKarte({ a }: { a: Antrag }) {
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: brand?.bg ?? "hsl(var(--muted-foreground))" }} />
         <span className="text-sm font-semibold text-foreground">{a.applicants.join(", ") || "Antrag"}</span>
-        {a.pattern && MUSTER_WORT[a.pattern] && (
-          <span className="rounded-md border border-border px-1.5 py-0.5 text-[11px] font-medium text-foreground">{MUSTER_WORT[a.pattern]}</span>
-        )}
+        {a.pattern && MUSTER_WORT[a.pattern] && <MusterChip muster={a.pattern} />}
         {ergebnis && (
           <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
             <span aria-hidden className={cn("h-2 w-2 rounded-full", OUTCOME_DOT_CLS[ergebnis])} /> {OUTCOME_WORD[ergebnis]}
