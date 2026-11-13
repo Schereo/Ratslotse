@@ -218,7 +218,11 @@ def generate(m: dict, *, batch: bool = True, model: str | None = None,
              feature: str = "template_dossier") -> tuple[dict, str, float]:
     nutzer, quellen, h = build_input(m)
     modell = model or MODEL
-    extra = {"_geduld": True, "_ersatz": llm.ersatz_fuer(modell, lange_ausgabe=True), "_tarif": "flex"} if batch else {}
+    # KEIN Ersatzmodell: GPT-5.6 Luna traf am Gold-Set 83 % und 77 % der
+    # Pflichtfakten (Tor 85 %, Plan § 7.2, Messläufe 12./13.11.2026), das
+    # Hauptmodell 87–90 %. Fällt Luna aus, bleibt die Vorlage auf `failed` und
+    # der nächste Lauf (10 und 15 Uhr) holt sie nach — lieber später als schlechter.
+    extra = {"_geduld": True, "_ersatz": [], "_tarif": "flex"} if batch else {}
     nachricht = [{"role": "system", "content": prompts.get("template_dossier_system")},
                  {"role": "user", "content": nutzer}]
     # Zwei Aufrufe mit wörtlichem Feature-Namen (tests/test_feature_namen.py

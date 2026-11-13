@@ -42,8 +42,11 @@ Zustell-Ausfall lautlos für immer.
 - **Lange Extraktionen nehmen `llm.ersatz_fuer(MODEL, lange_ausgabe=True)`.**
   Das lässt Ersatzmodelle mit hohem Token-Boden weg (DeepSeek, 24k): Bei
   langen Ausgaben bezahlt der Boden das Denken voll, ein Ersatzlauf kostete
-  am 09.11.2026 0,78 $ ohne Ergebnis. Dokumentierte Ausnahme für das Dossier
-  und die Antrags-Auszüge (`docs/plan-vorlagen-aufbereiten.md`, Frage 10).
+  am 09.11.2026 0,78 $ ohne Ergebnis. Dokumentierte Ausnahme für die
+  Antrags-Auszüge (`docs/plan-vorlagen-aufbereiten.md`, Frage 10). **Das
+  Dossier läuft ganz ohne Ersatz:** Das Ersatzmodell verfehlte dort das
+  Qualitätstor (83 % gegen 85 % Pflichtfakten), also wartet es auf den
+  nächsten Lauf. Ein Ersatz, der das Tor nicht hält, ist schlechter als keiner.
 - **`_tarif="flex"` halbiert den Preis bei gleicher Qualität**, gemessen am
   Tragweite-Golden-Set in `docs/modell-batch-flex.md`. Der Tarif gilt nur
   für Features ohne `zdr_pflicht`, denn Flex-Endpunkte haben kein ZDR. Sonst

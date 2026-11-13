@@ -100,3 +100,27 @@ def test_ansicht_mit_beleg_seite_und_pdf_sprung(tmp_path):
         assert store.dossier_lines(4709, "Ö 13.2") == ["Was es kostet: Das Sitzungsgeld beträgt 35 Euro je Sitzung. (Vorlage 26/0796, S. 1)"]
     finally:
         store.close()
+
+
+def test_kein_ersatzmodell_im_lauf(monkeypatch):
+    """Das Ersatzmodell hielt das Gold-Tor nicht (83 % < 85 %) — der Lauf wartet
+    lieber auf den nächsten Takt, als schlechter zu schreiben."""
+    from types import SimpleNamespace
+
+    from kern import llm
+
+    gesehen = {}
+
+    def fake(**kw):
+        gesehen.update(kw)
+        return SimpleNamespace(choices=[SimpleNamespace(finish_reason="stop", message=SimpleNamespace(content="{}"))],
+                               usage=None)
+
+    monkeypatch.setattr(llm, "chat_complete", fake)
+    m = {"template": {"template_number": "26/0001", "title": "T", "raw_text": V, "document_id": 1,
+                      "office": None, "proposed_decision": None}, "form": "F1", "documents": []}
+    try:
+        template_dossier.generate(m, batch=True)
+    except Exception:  # noqa: BLE001 — nur der Aufruf interessiert hier
+        pass
+    assert gesehen["_ersatz"] == [] and gesehen["_geduld"] is True
