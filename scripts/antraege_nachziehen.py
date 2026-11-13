@@ -11,8 +11,15 @@ PR 2).
 Standard ist der Bericht. ``--schreiben`` stuft hoch und holt fehlende Texte
 nach (höchstens ``--limit`` PDFs, eines je Sekunde).
 
+``--lesen-tage N`` liest danach die Anträge an Punkten der letzten N Tage
+(``council/motions.py``). Der Cron liest nur kommende und gerade vergangene
+Sitzungen (zwei Tage zurück) — ohne diesen Schritt zeigte etwa die Ratssitzung
+vom 02.11.2026 bei beiden GO-Anträgen nur den Dateinamen (13.11.2026). Schon
+gelesene Anträge mit unverändertem Text kosten nichts.
+
     .venv/bin/python scripts/antraege_nachziehen.py [--db data/council.sqlite]
     .venv/bin/python scripts/antraege_nachziehen.py --schreiben --limit 200
+    .venv/bin/python scripts/antraege_nachziehen.py --schreiben --lesen-tage 365 --max-usd 1
 """
 from __future__ import annotations
 
@@ -25,9 +32,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from council import anlagentext, vorlagen  # noqa: E402
+from council import anlagentext, motions, vorlagen  # noqa: E402
 from council.parties import parties_in_text  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
+from kern.stopp import Stopp  # noqa: E402
 
 # Was die neue Erkennung NIE erfassen darf: Anträge Dritter auf Geld oder eine
 # Genehmigung, die die Präfixliste bewusst auslässt. Steht so ein Label im
@@ -43,7 +51,29 @@ def _ist_dritter(k: dict) -> bool:
     return not (parties_in_text(k["label"] or "") or parties_in_text((k["kopf"] or "")[:4000]))
 
 
-def main(db: str | None = None, schreiben: bool = False, limit: int = 200) -> dict:
+def antraege_lesen(store, tage: int, *, schreiben: bool, max_usd: float, max_minuten: float) -> dict:
+    """Die Anträge an Punkten der letzten ``tage`` Tage lesen; ohne
+    ``schreiben`` nur zählen, wie viele noch keinen gültigen Auszug haben."""
+    from datetime import date, timedelta  # noqa: PLC0415
+
+    heute = date.today()
+    kandidaten = store.antraege_kommender_punkte((heute - timedelta(days=tage)).isoformat(),
+                                                 (heute + timedelta(days=21)).isoformat())
+    offen = [k for k in kandidaten
+             if (store.motion_extract(k["document_id"]) or {}).get("status") != "ok"]
+    print(f"Anträge an Punkten der letzten {tage} Tage: {len(kandidaten)}, davon ohne Auszug: {len(offen)}", flush=True)
+    if not schreiben:
+        return {"antraege": len(kandidaten), "offen": len(offen), "gelesen": 0}
+    stopp = Stopp(daten_dir=ROOT / "data", max_kosten=max_usd, frist_sekunden=max_minuten * 60)
+    r = motions.nachziehen(store, tage_zurueck=tage, tage_voraus=21, limit=len(kandidaten), stopp=stopp)
+    if (grund := stopp.grund()) is not None:
+        print(grund.text, flush=True)
+    print(f"Anträge gelesen: {r['gelesen']}", flush=True)
+    return {"antraege": len(kandidaten), "offen": len(offen), "gelesen": r["gelesen"]}
+
+
+def main(db: str | None = None, schreiben: bool = False, limit: int = 200, lesen_tage: int = 0,
+         max_usd: float = 1.0, max_minuten: float = 60) -> dict:
     store = CouncilStore(db or str(ROOT / "data" / "council.sqlite"))
     kandidaten = []
     for a in store.anlagen_zur_neueinstufung():
@@ -83,9 +113,11 @@ def main(db: str | None = None, schreiben: bool = False, limit: int = 200) -> di
                 store.anlage_als_antrag(k["document_id"], antragsteller)
             hochgestuft += 1
         print(f"Hochgestuft: {hochgestuft}, Texte geholt: {gelesen}, Fehler: {fehler}")
+    lesen = antraege_lesen(store, lesen_tage, schreiben=schreiben, max_usd=max_usd,
+                           max_minuten=max_minuten) if lesen_tage > 0 else None
     store.close()
     return {"kandidaten": len(kandidaten), "dritte": len(dritte), "hochgestuft": hochgestuft,
-            "gelesen": gelesen, "fehler": fehler}
+            "gelesen": gelesen, "fehler": fehler, "antraege_gelesen": (lesen or {}).get("gelesen", 0)}
 
 
 if __name__ == "__main__":
@@ -93,5 +125,8 @@ if __name__ == "__main__":
     ap.add_argument("--db")
     ap.add_argument("--schreiben", action="store_true")
     ap.add_argument("--limit", type=int, default=200)
+    ap.add_argument("--lesen-tage", type=int, default=0, help="Anträge der letzten N Tage lesen (0 = nicht)")
+    ap.add_argument("--max-usd", type=float, default=1.0, help="Kostengrenze für das Lesen der Anträge")
+    ap.add_argument("--max-minuten", type=float, default=60, help="Frist für das Lesen der Anträge")
     a = ap.parse_args()
-    main(a.db, a.schreiben, a.limit)
+    main(a.db, a.schreiben, a.limit, a.lesen_tage, a.max_usd, a.max_minuten)

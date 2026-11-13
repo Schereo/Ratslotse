@@ -2,7 +2,7 @@
 
 /* „Aus den Unterlagen" auf der Punkt-Seite (docs/plan-vorlagen-aufbereiten.md,
    § 6.1, Stufe 0): was die Vorlage schon trägt — Beschlussvorschlag, Anträge,
-   Kosten, Klima, Federführung. Alles amtlicher Wortlaut aus der Ernte, deshalb
+   Kosten, Klima. Alles amtlicher Wortlaut aus der Ernte, deshalb
    als Zitat mit Zitatkante und ohne KI-Stern. Ab Stufe 2 (Dossier) treten die
    erzeugten Abschnitte mit Belegen dazu; die Karte bleibt dieselbe.
 
@@ -21,6 +21,15 @@ type Felder = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["template_
 
 const KICKER = "font-mono text-meta uppercase tracking-[0.06em] text-muted-foreground";
 const ZITAT = "border-l-2 border-border pl-3 text-lese text-foreground/90";
+
+/** Wer die Vorlage geschrieben hat, steht als Absender am Kopf: Eine Vorlage
+ *  kommt immer aus einem Amt (Anträge der Fraktionen sind keine Vorlagen und
+ *  tragen ihre Partei selbst). Als eigener Abschnitt unten wiederholte die
+ *  Zeile auf jeder Seite dasselbe Etikett (Tim, 13.11.2026). */
+function Absender({ f }: { f: Felder | null }) {
+  if (!f?.office) return null;
+  return <p className="mt-1 text-sm text-muted-foreground">Von: {f.office}</p>;
+}
 
 function Abschnitt({ titel, children, className }: { titel: string; children: React.ReactNode; className?: string }) {
   return (
@@ -52,7 +61,7 @@ export function AusDenUnterlagen({ f, antraege, dossier }: { f: Felder | null; a
   if (dossier && dossier.sections.length) return <MitDossier d={dossier} f={f} antraege={antraege} />;
   if (!f && !antraege?.length) return null;
   f = f ?? { template_number: null, document_url: null, office: null, proposed_decision: null, cost: null, climate: null, motions: [] };
-  const hatInhalt = f.proposed_decision || f.motions.length || f.cost || f.climate || f.office || antraege?.length;
+  const hatInhalt = f.proposed_decision || f.motions.length || f.cost || f.climate || antraege?.length;
   if (!hatInhalt) return null;
   const vorlage = f.template_number ? `Vorlage ${f.template_number}` : null;
   return (
@@ -66,6 +75,7 @@ export function AusDenUnterlagen({ f, antraege, dossier }: { f: Felder | null; a
           </a>
         )}
       </div>
+      <Absender f={f} />
 
       <div className="mt-4 flex flex-col gap-4">
         {f.proposed_decision && (
@@ -124,11 +134,6 @@ export function AusDenUnterlagen({ f, antraege, dossier }: { f: Felder | null; a
           </Abschnitt>
         )}
 
-        {f.office && (
-          <Abschnitt titel="Federführung">
-            <p className="text-sm text-foreground">{f.office}</p>
-          </Abschnitt>
-        )}
       </div>
     </section>
   );
@@ -148,6 +153,7 @@ function MitDossier({ d, f, antraege }: { d: Dossier; f: Felder | null; antraege
         </h2>
         <p className={KICKER}>{dossierStand(d)}</p>
       </div>
+      <Absender f={f} />
       {d.added_after.length > 0 && (
         <p className="mt-2 text-sm text-muted-foreground">
           Danach dazugekommen: {d.added_after.join(", ")} — <a href="#unterlagen" className="text-primary underline">in den Unterlagen</a>

@@ -301,7 +301,10 @@ def nachziehen(store, *, tage_zurueck: int = 2, tage_voraus: int = 21, limit: in
         vorher = (alt or {}).get("created_at")
         extract_one(store, k["document_id"], k["ksinr"], k["item_number"])
         neu = store.motion_extract(k["document_id"])
-        gelesen += bool(neu and neu.get("created_at") != vorher)
+        frisch = bool(neu and neu.get("created_at") != vorher)
+        gelesen += frisch
+        if frisch and stopp is not None and neu and neu.get("cost_usd"):
+            stopp.ausgeben(float(neu["cost_usd"]))  # sonst deckelt die Kostengrenze den Lauf nicht
     return {"antraege": len(kandidaten), "gelesen": gelesen}
 
 
