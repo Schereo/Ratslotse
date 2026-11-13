@@ -18,6 +18,14 @@
 # ersten 30. Ein wartender Deploy beendet ihn an der nächsten Vorlage
 # (kern/stopp.py); was geschrieben ist, bleibt, der nächste Lauf macht weiter.
 #
+# begriffe: Fachwörter aus der Vorlage für die letzten 12 Monate
+# (council/vorlage_begriffe.py — ein Modell schlägt vor, ein zweites prüft;
+# rund 0,005 $ und eine halbe Minute je Vorlage, bei 1.000 Vorlagen also etwa
+# 5 $ und acht Stunden). Mit „schreiben“ im Hintergrund wie die Dossiers (Log
+# data/begriffe-bestand.log); er liest die Lesetexte der Punkt-Seite und gehört
+# deshalb NACH den Dossier-Bestand. Neue Vorlagen übernimmt danach der Cron
+# `vorlagen_dossiers`, sobald der Schalter `begriffe-aus-vorlage` an ist.
+#
 # crontab: ergänzt `antraege_nachzuegler` (11, 13, 16, 18 Uhr) und
 # `vorlagen_dossiers` (10 und 15 Uhr) nach dem Muster der vorhandenen
 # check_council-Zeile — nur, was fehlt; ohne „schreiben“ nur die Vorschau. Auf
@@ -36,9 +44,9 @@ on:
         options: [dev, prod]
         default: dev
       schritt:
-        description: "nachlaeufe = die drei einmaligen Läufe, stand = wie weit die Dossiers sind, crontab = die zwei Cron-Zeilen (nur prod)"
+        description: "nachlaeufe = die drei einmaligen Läufe, begriffe = Fachwörter aus der Vorlage (12 Monate), stand = wie weit Dossiers und Begriffe sind, crontab = die zwei Cron-Zeilen (nur prod)"
         type: choice
-        options: [nachlaeufe, stand, crontab]
+        options: [nachlaeufe, begriffe, stand, crontab]
         default: nachlaeufe
       schreiben:
         description: "Wirklich schreiben (aus = nur zählen bzw. Vorschau)"
@@ -99,9 +107,32 @@ jobs:
             # Eine PID-Datei statt pgrep -f: Das Muster stünde auch in der
             # Kommandozeile dieses Skripts, pgrep fände sich selbst.
             laeuft() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
+            BLOG=data/begriffe-bestand.log
+            BPID=data/begriffe-bestand.pid
+            blaeuft() { [ -f "$BPID" ] && kill -0 "$(cat "$BPID")" 2>/dev/null; }
             if [ "$SCHRITT" = "stand" ]; then
               if laeuft; then echo "Dossier-Bestand läuft (PID $(cat "$PID"))."; else echo "Dossier-Bestand läuft nicht."; fi
               if [ -f "$LOG" ]; then tail -n 8 "$LOG"; else echo "Noch kein Log."; fi
+              if blaeuft; then echo "Begriffe-Bestand läuft (PID $(cat "$BPID"))."; else echo "Begriffe-Bestand läuft nicht."; fi
+              if [ -f "$BLOG" ]; then tail -n 6 "$BLOG"; else echo "Noch kein Begriffe-Log."; fi
+            elif [ "$SCHRITT" = "begriffe" ]; then
+              if ! $PY scripts/vorlagen_dossiers.py --help | grep -q -- --begriffe; then
+                echo "scripts/vorlagen_dossiers.py kennt --begriffe hier noch nicht — auf Prod erst nach dem Release."; exit 2
+              fi
+              if [ "$SCHREIBEN" = "true" ]; then
+                if blaeuft; then
+                  echo "Begriffe-Bestand läuft schon (PID $(cat "$BPID")) — kein zweiter."
+                else
+                  nohup $PY -u scripts/vorlagen_dossiers.py --bestand --begriffe --seit "$SEIT" --max-usd "$MAX_USD" --schreiben \
+                    > "$BLOG" 2>&1 < /dev/null &
+                  echo $! > "$BPID"
+                  sleep 5
+                  if blaeuft; then echo "Begriffe-Bestand läuft im Hintergrund (PID $(cat "$BPID")); Stand mit schritt=stand."
+                  else echo "Begriffe-Bestand ist sofort beendet:"; cat "$BLOG"; fi
+                fi
+              else
+                $PY scripts/vorlagen_dossiers.py --bestand --begriffe --seit "$SEIT" --max-usd "$MAX_USD"
+              fi
             elif [ "$SCHRITT" = "nachlaeufe" ]; then
               # Die Login-Shell auf dem Server ist zsh: Schalter in einer Variablen
               # würden dort nicht geteilt (s. ops-gold.yml) — deshalb ausgeschrieben.

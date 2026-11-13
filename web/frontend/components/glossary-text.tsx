@@ -5,6 +5,7 @@ import {
   useState, type ReactNode,
 } from "react";
 import { GLOSSARY } from "@/lib/glossary";
+import { KiStern } from "@/components/ki-stern";
 // Die Erkennung steht in `lib/glossar-treffer.ts` — dieselbe, die Lottis
 // Anschluss-Chip „Was heißt …?" benutzt. Zwei Fassungen hätten unterstrichen,
 // was kein Chip anbietet, und umgekehrt.
@@ -28,7 +29,11 @@ import { BEGRIFF_KANON as CANON, BEGRIFF_RE as RE } from "@/lib/glossar-treffer"
  * Wer diese Form will, legt `GlossarAufklappBereich` um den Text. Alles
  * darin schaltet um; alles ohne den Bereich bleibt beim Popover.
  */
-type Aufgeklappt = { label: string; def: string } | null;
+const KI_HINWEIS = "Automatisch aus der Vorlage erklärt und geprüft. Verbindlich sind die Unterlagen im Ratsinfo.";
+
+/** `ki`: Die Erklärung hat ein Modell geschrieben (Begriffe aus der Vorlage,
+ *  `council/vorlage_begriffe.py`) — dann steht der KI-Stern am Begriff. */
+type Aufgeklappt = { label: string; def: string; ki?: boolean } | null;
 
 const AufklappKontext = createContext<{
   auswahl: Aufgeklappt;
@@ -85,7 +90,10 @@ export function GlossarAufklappBereich(
             role="note"
             className={`mt-2 rounded-lg border border-border bg-muted/40 p-2.5 text-left font-normal normal-case not-italic leading-relaxed text-muted-foreground ${lesegroesse ? "text-sm" : "text-xs"}`}
           >
-            <span className="mb-0.5 block font-semibold text-foreground">{auswahl.label}</span>
+            <span className="mb-0.5 block font-semibold text-foreground">
+              {auswahl.label}
+              {auswahl.ki && <KiStern className="ml-0.5" text={KI_HINWEIS} />}
+            </span>
             {auswahl.def}
           </div>
         )}
@@ -96,27 +104,27 @@ export function GlossarAufklappBereich(
 
 /** Ein erklärter Fachbegriff: gepunktet unterstrichen, zeigt beim Überfahren
  *  (Desktop) bzw. Antippen (mobil) eine kurze Erklärung. */
-function Term({ label, def }: { label: string; def: string }) {
+function Term({ label, def, ki }: { label: string; def: string; ki?: boolean }) {
   const aufklapp = useContext(AufklappKontext);
-  if (aufklapp) return <TermAufklapp label={label} def={def} ctx={aufklapp} />;
+  if (aufklapp) return <TermAufklapp label={label} def={def} ki={ki} ctx={aufklapp} />;
   return <TermPopover label={label} def={def} />;
 }
 
 /** Ein Fachwort, dessen Erklärung der Aufrufer mitbringt — die Punkt-Seite
  *  bekommt Fundstelle und Erklärung vom Server (`components/session/begriffe.tsx`)
  *  und erkennt selbst nichts. */
-export function Fachwort({ label, def }: { label: string; def: string }) {
-  return <Term label={label} def={def} />;
+export function Fachwort({ label, def, ki }: { label: string; def: string; ki?: boolean }) {
+  return <Term label={label} def={def} ki={ki} />;
 }
 
 /** Die Fassung für schmale Flächen: der Block steht unter dem Absatz. */
-function TermAufklapp({ label, def, ctx }: {
-  label: string; def: string;
+function TermAufklapp({ label, def, ki, ctx }: {
+  label: string; def: string; ki?: boolean;
   ctx: { auswahl: Aufgeklappt; waehlen: (a: Aufgeklappt) => void };
 }) {
   const offen = ctx.auswahl?.label === label;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const umschalten = () => ctx.waehlen(offen ? null : { label, def });
+  const umschalten = () => ctx.waehlen(offen ? null : { label, def, ki });
   // Am Zeigergerät reicht Überfahren — mit kurzer Ruhepause, damit ein
   // Mauszeiger, der nur über den Satz fährt, nicht drei Erklärungen
   // nacheinander aufklappt. `maus:` gibt es nur als Tailwind-Variante, im
@@ -130,7 +138,7 @@ function TermAufklapp({ label, def, ctx }: {
       onClick={(e) => { e.stopPropagation(); umschalten(); }}
       onMouseEnter={() => {
         if (!zeigergeraet()) return;
-        timer.current = setTimeout(() => ctx.waehlen({ label, def }), 220);
+        timer.current = setTimeout(() => ctx.waehlen({ label, def, ki }), 220);
       }}
       onMouseLeave={() => { if (timer.current) clearTimeout(timer.current); }}
       // Kein Schließen beim Verlassen: Der Block steht unter dem Absatz, nicht

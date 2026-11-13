@@ -360,6 +360,14 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Auf dev zwei Wochen ohne Befund an echten Finanz-Punkten, von Tim abgenommen und auf "
                     "Prod angeschaltet — unabhängig davon, ob der Haushalts-Bereich selbst dort schon frei ist.",
     ),
+    "begriffe-aus-vorlage": Feature(
+        key="begriffe-aus-vorlage",
+        description="Fachwörter auf der Punkt-Seite, die das geprüfte Glossar nicht kennt: Ein Modell schlägt "
+                    "sie je Vorlage vor, ein zweites prüft jede Erklärung, die Seite zeigt sie mit KI-Stern "
+                    "(council/vorlage_begriffe.py). Das Glossar am Wort braucht den Schalter nicht.",
+        fertig_wenn="Bestand der letzten zwölf Monate auf dev erzeugt, Stichprobe von 50 Erklärungen ohne "
+                    "Fehler gesichtet, von Tim abgenommen und auf Prod angeschaltet.",
+    ),
     "punkt-seite": Feature(
         key="punkt-seite",
         description="Jeder Tagesordnungspunkt bekommt eine eigene Seite mit Kurzfassung, "

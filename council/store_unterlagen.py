@@ -346,6 +346,55 @@ class UnterlagenMixin(StoreBasis):
                 (subject_key, sources_hash, prompt_version, model, form, status,
                  json.dumps(payload, ensure_ascii=False) if payload is not None else None, cost_usd, jetzt))
 
+    # --- Fachwörter aus der Vorlage (council/vorlage_begriffe.py) --------------------
+
+    def terms_material(self, template_number: str) -> dict | None:
+        """Was die Begriffssuche liest: die Lesetexte der Punkt-Seite (jüngste
+        Station der Vorlage, wie die Seite sie zeigt) und der Vorlagentext als
+        Hintergrund. ``None`` ohne Vorlagentext oder ohne Punkt."""
+        from council import seitenbegriffe  # noqa: PLC0415
+
+        v = self.get_vorlage_by_nr(template_number)
+        if not v or v.get("status") != "ok" or not (v.get("raw_text") or "").strip():
+            return None
+        r = self._conn.execute(
+            "SELECT a.ksinr, a.item_number FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "
+            "WHERE a.template_number = ? AND a.is_public = 1 ORDER BY s.session_date DESC LIMIT 1",
+            (template_number,)).fetchone()
+        punkt = self.session_item(r["ksinr"], r["item_number"]) if r else None
+        if not punkt:
+            return None
+        dossier = self.item_dossier_view(r["ksinr"], r["item_number"])
+        if dossier:
+            punkt["dossier"] = dossier
+        antraege = self.item_amendments(r["ksinr"], r["item_number"])
+        if antraege:
+            punkt["amendments"] = antraege
+        texte = seitenbegriffe.item_texts(punkt)
+        if not texte:
+            return None
+        return {"title": punkt["item"].get("title") or v.get("title") or "", "texts": texte,
+                "template_text": v["raw_text"]}
+
+    def template_terms(self, template_number: str) -> dict | None:
+        r = self._conn.execute("SELECT * FROM template_terms WHERE template_number = ?", (template_number,)).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        d["payload"] = json.loads(d["payload"]) if d["payload"] else None
+        return d
+
+    def save_template_terms(self, template_number: str, sources_hash: str, *, status: str, payload: dict | None,
+                            model: str | None, verify_model: str | None, cost_usd: float | None,
+                            prompt_version: int) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO template_terms (template_number, sources_hash, prompt_version, model, "
+                "verify_model, status, payload, cost_usd, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                (template_number, sources_hash, prompt_version, model, verify_model, status,
+                 json.dumps(payload, ensure_ascii=False) if payload is not None else None, cost_usd,
+                 datetime.now(UTC).isoformat(timespec="seconds")))
+
     def vorlagen_kommender_sitzungen(self, seit: str, bis: str) -> list[str]:
         return [r[0] for r in self._conn.execute(
             "SELECT DISTINCT a.template_number FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "

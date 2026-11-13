@@ -2124,7 +2124,12 @@ def session_item(
             _log.exception("Haushalt am Punkt fehlgeschlagen für %s %s", ksinr, nr)
     try:
         from council import seitenbegriffe  # noqa: PLC0415
-        begriffe = seitenbegriffe.item_terms(punkt)
+        aus_vorlage = None
+        if features.an("begriffe-aus-vorlage") and (tn := (punkt["item"].get("template_number") or "").strip()):
+            gespeichert = store.template_terms(tn)
+            if gespeichert and gespeichert["status"] == "ok":
+                aus_vorlage = (gespeichert["payload"] or {}).get("terms")
+        begriffe = seitenbegriffe.item_terms(punkt, aus_vorlage)
         if begriffe:
             punkt["terms"] = begriffe
     except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite

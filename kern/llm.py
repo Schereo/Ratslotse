@@ -310,6 +310,8 @@ OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
     "motion_extract",
     # Dossier je Vorlage (council/template_dossier.py)
     "template_dossier", "template_dossier_abruf",
+    # Fachwörter aus der Vorlage vorschlagen und prüfen (council/vorlage_begriffe.py)
+    "template_terms", "template_terms_verify",
     # Pläne der Stadt: Stand und Bezüge aus Vorlagen und Berichten heraussuchen
     "plan_measure_status", "plan_link_judgement", "plan_mandate_check", "plan_key_points", "plan_reports", "plan_plain",
     # Städtevergleich: fremde Ratsdokumente

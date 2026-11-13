@@ -521,6 +521,9 @@ COUNCIL_QA_EXPAND_MODEL=openai/gpt-5.6-luna  # Frage-Analyse der KI-Frage (Azure
 COUNCIL_DEEP_MODEL=                  # Bericht der ausführlichen Recherche; leer = COUNCIL_QA_MODEL
 COUNCIL_DEEP_PLUS_MODEL=openai/gpt-6-sol  # derselbe Bericht für Konten mit Recht premium_models (Rolle „Recherche Plus“); leer = wie COUNCIL_DEEP_MODEL
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
+COUNCIL_TERMS_MODEL=openai/gpt-6-luna        # Fachwörter aus der Vorlage vorschlagen (council/vorlage_begriffe.py; Default passt)
+COUNCIL_TERMS_VERIFY_MODEL=openai/gpt-6-sol  # … und jede Erklärung prüfen — nur was besteht, erscheint (Default passt)
+TERMS_MAX_USD=0.25                   # Kostengrenze der Fachwörter je Cron-Lauf (vorlagen_dossiers, nur mit Schalter begriffe-aus-vorlage)
 # Städtevergleich (check_cities.py) — der teuerste und längste Cron
 CITIES_MAX_SECONDS=14400             # Frist je Lauf; 0 hebt sie auf (Nachlauf von Hand)
 CITIES_MAX_USD=2                     # Kostengrenze je Lauf über ALLE Stufen; 0 hebt sie auf

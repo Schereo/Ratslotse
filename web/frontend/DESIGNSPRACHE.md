@@ -671,6 +671,10 @@ iOS-Schrift.
   Nennung der Seite**, keine Alltagswörter („Ausschuss" stünde auf drei von
   vier Seiten), keine mehrdeutigen, kein Kompositum. Die Seite erkennt selbst
   nichts.
+  Stammt die Erklärung nicht aus dem geprüften Glossar, sondern aus der
+  Vorlage (ein Modell schlägt vor, ein zweites prüft), trägt der Begriff im
+  aufgeklappten Block den **KI-Stern** — am Wort im Text nicht: Dort sieht
+  jedes erklärte Wort gleich aus.
   **„Im Haushalt“ auf der Punkt-Seite** (`components/session/im-haushalt.tsx`):
   eine Karte in den Stufen von „Aus den Unterlagen“ — Kartentitel, je Reihe
   ein Mono-Kicker, darunter in Meta, WAS die Reihe ist (Plan des jeweiligen
