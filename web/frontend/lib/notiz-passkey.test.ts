@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encryptNote, decryptNote, aad, neuerSchluessel, nurBenutzbar, notfallCode, unlockWithRecovery, unwrap, wrap } from "./notiz-krypto";
-import { browserFehler, fromB64url, geraeteName, imSchritt, passkeyKek, PasskeyFehler, TECHNISCH, toB64url } from "./notiz-passkey";
+import { browserFehler, fromB64url, geraeteName, imSchritt, passkeyKek, PasskeyFehler, prfBeschreibung, prfBytes, TECHNISCH, toB64url } from "./notiz-passkey";
 
 describe("Base64url für Passkey-Kennungen", () => {
   it("hin und zurück, ohne Füllzeichen und ohne + /", () => {
@@ -95,5 +95,50 @@ describe("Rohe Ausnahmen des Browsers", () => {
     const zuKurz = imSchritt("Sitzungsschlüssel", () =>
       crypto.subtle.importKey("raw", new Uint8Array(31), { name: "AES-GCM" }, false, ["encrypt"]));
     await expect(zuKurz).rejects.toMatchObject({ art: "technisch", schritt: "Sitzungsschlüssel" });
+  });
+});
+
+describe("PRF-Ergebnis prüfen (13.11.2026: „Schlüssel ableiten: DataError“ in Safari)", () => {
+  it("leer, fehlend oder kein Puffer taugt nicht", () => {
+    expect(prfBytes(undefined)).toBeNull();
+    expect(prfBytes(new ArrayBuffer(0))).toBeNull();
+    expect(prfBytes("c2NobMO8c3NlbA")).toBeNull();
+    expect(prfBytes({ byteLength: 32 })).toBeNull();
+  });
+
+  it("ein abgetrennter (detached) Puffer taugt nicht", () => {
+    const b = new ArrayBuffer(32);
+    structuredClone(b, { transfer: [b] });
+    expect(b.byteLength).toBe(0);
+    expect(prfBytes(b)).toBeNull();
+  });
+
+  it("eine Sicht in einen größeren Puffer wird zu genau ihren Bytes kopiert", () => {
+    const gross = new Uint8Array(64).fill(1);
+    gross.fill(0x5a, 16, 48);
+    const roh = prfBytes(gross.subarray(16, 48))!;
+    expect(roh.byteLength).toBe(32);
+    expect(roh.buffer.byteLength).toBe(32);
+    expect([...roh]).toEqual(new Array(32).fill(0x5a));
+  });
+
+  it("dieselben Bytes über eine Sicht ergeben denselben Schlüssel wie der Testvektor", async () => {
+    const dk = await crypto.subtle.importKey("raw", new Uint8Array(32).fill(0x11), { name: "AES-GCM" }, true,
+      ["encrypt", "decrypt"]);
+    const gross = new Uint8Array(48);
+    gross.fill(0x5a, 8, 40);
+    expect(await wrap(dk, await passkeyKek(gross.subarray(8, 40))))
+      .toBe("waaUYZJ0tt9nEz/QzsW1KcByiM15SL79fCqUXiHHzi+Kn7T2/i5PwA==");
+  });
+
+  it("ein leeres Geheimnis führt zur Passphrase und nennt fürs Protokoll Art und Länge", async () => {
+    await expect(passkeyKek(new ArrayBuffer(0))).rejects.toMatchObject({
+      art: "nicht-unterstuetzt", schritt: "Schlüssel ableiten", ursache: "PRF unbrauchbar: ArrayBuffer, 0 B" });
+  });
+
+  it("die Beschreibung verrät nie die Bytes", () => {
+    expect(prfBeschreibung(new Uint8Array([1, 2, 3]))).toBe("Uint8Array, 3 B");
+    expect(prfBeschreibung(undefined)).toBe("fehlt");
+    expect(prfBeschreibung("geheim")).toBe("string");
   });
 });

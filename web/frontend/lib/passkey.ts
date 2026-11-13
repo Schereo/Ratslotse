@@ -17,7 +17,7 @@
 import { api, ApiError } from "@/lib/api";
 import * as krypto from "@/lib/notiz-krypto";
 import { meldeFehler } from "@/lib/fehler-melden";
-import { browserFehler, fromB64url, geraeteName, imSchritt, passkeyKek, PasskeyFehler, TECHNISCH, toB64url } from "@/lib/notiz-passkey";
+import { browserFehler, fromB64url, geraeteName, imSchritt, keinPrf, passkeyKek, PasskeyFehler, prfBytes, TECHNISCH, toB64url } from "@/lib/notiz-passkey";
 import type { User } from "@/lib/types";
 import type { ApiAntwort } from "@/lib/vertrag";
 
@@ -31,7 +31,7 @@ type Json = Record<string, unknown>;
 
 /** Was nach einer Abfrage übrig bleibt: welcher Passkey, und sein PRF-Geheimnis
  *  (falls der Browser es geliefert hat — Safari tut das beim Anlegen nicht). */
-export interface PrfTreffer { credentialId: string; prf: ArrayBuffer | null }
+export interface PrfTreffer { credentialId: string; prf: Uint8Array | null }
 
 export function passkeyAnmeldungMoeglich(): boolean {
   return typeof window !== "undefined" && !!window.PublicKeyCredential && !!navigator.credentials;
@@ -83,9 +83,15 @@ export function bestaetigungAlsJson(c: PublicKeyCredential): Json {
   };
 }
 
-function prfVon(c: PublicKeyCredential): ArrayBuffer | null {
-  const ext = c.getClientExtensionResults() as { prf?: { results?: { first?: ArrayBuffer } } };
-  return ext.prf?.results?.first ?? null;
+function prfRoh(c: PublicKeyCredential): unknown {
+  const ext = c.getClientExtensionResults() as { prf?: { results?: { first?: unknown } } };
+  return ext.prf?.results?.first;
+}
+
+/** Das PRF-Ergebnis als frische Bytes, `null` wenn es fehlt oder nichts taugt
+ *  (`prfBytes` in `lib/notiz-passkey.ts`). */
+function prfVon(c: PublicKeyCredential): Uint8Array | null {
+  return prfBytes(prfRoh(c));
 }
 
 function fehlerUebersetzen(e: unknown, schritt: string): never {
@@ -116,7 +122,9 @@ export function passkeyFehlerText(err: unknown): string | null {
  *  PasskeyFehler sind gewollte Ausgänge und bleiben draußen. */
 export function passkeyFehlerMelden(err: unknown, schritt = "ohne Angabe"): void {
   const x = err instanceof PasskeyFehler ? err : browserFehler(err, schritt);
-  if (!(x instanceof PasskeyFehler) || x.art !== "technisch") return;
+  // Ein unbrauchbares PRF-Ergebnis ist für die Oberfläche „kann der Browser
+  // nicht“, fürs Protokoll aber ein Befund (es trägt dann eine Ursache).
+  if (!(x instanceof PasskeyFehler) || !(x.art === "technisch" || (x.art === "nicht-unterstuetzt" && x.ursache))) return;
   meldeFehler(Object.assign(new Error(`Passkey/Notizen, ${x.schritt ?? schritt}: ${x.ursache ?? ""}`), { name: "PasskeyFehler" }));
 }
 
@@ -263,18 +271,18 @@ export async function notizPasskeyBesorgen(owner: number): Promise<{ credentialI
       fehlerUebersetzen(e, "Passkey abfragen");
     }
     const prf = c ? prfVon(c) : null;
-    if (!c || !prf) throw new PasskeyFehler("nicht-unterstuetzt", "Dieser Passkey liefert keinen Schlüssel.");
+    if (!c || !prf) throw keinPrf(c ? prfRoh(c) : undefined, "Passkey abfragen");
     return { credentialId: b64(c.rawId), kek: await imSchritt("Schlüssel ableiten", () => passkeyKek(prf)) };
   }
   const { treffer } = await kontoPasskeyHinzufuegen();
   let prf = treffer.prf;
   if (!prf) {
-    // Safari liefert PRF beim Anlegen nicht — einmal nachfragen.
+    // Safari liefert PRF beim Anlegen nicht (oder leer) — einmal nachfragen.
     const c = await abfragen({ challenge: toB64url(crypto.getRandomValues(new Uint8Array(32))),
       allowCredentials: [{ id: treffer.credentialId, type: "public-key" }], userVerification: "required", timeout: 120_000 }, true);
     prf = prfVon(c);
+    if (!prf) throw keinPrf(prfRoh(c), "Passkey abfragen");
   }
-  if (!prf) throw new PasskeyFehler("nicht-unterstuetzt", "Dieser Passkey liefert keinen Schlüssel.");
   const geheimnis = prf;
   return { credentialId: treffer.credentialId, kek: await imSchritt("Schlüssel ableiten", () => passkeyKek(geheimnis)) };
 }

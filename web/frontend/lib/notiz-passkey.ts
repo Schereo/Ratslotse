@@ -90,11 +90,61 @@ export async function passkeyMoeglich(): Promise<boolean> {
   return true;
 }
 
+export const KEIN_SCHLUESSEL = "Dieser Passkey liefert keinen Schlüssel.";
+
+/** Das PRF-Ergebnis als eigene, frische Bytes — oder `null`, wenn es nichts
+ *  taugt. Am 13.11.2026 scheiterte Tims Einrichten erneut, jetzt mit Schritt:
+ *  „Schlüssel ableiten: DataError“ — der Passkey hatte geantwortet, aber
+ *  WebCrypto nahm sein Geheimnis nicht an. Ein echtes PRF-Ergebnis sind 32
+ *  Byte (HMAC-SHA-256); leer, abgetrennt (detached) oder als Objekt aus einer
+ *  anderen Welt (eine Passwort-Erweiterung, die die Abfrage übernimmt) kann es
+ *  trotzdem ankommen. Die Kopie löst die letzten beiden, die Länge fängt den
+ *  ersten: Dann fragt das Anlegen einmal nach, statt abzubrechen. */
+export function prfBytes(x: unknown): Uint8Array | null {
+  if (x == null || typeof x !== "object") return null;
+  let u8: Uint8Array;
+  try {
+    if (ArrayBuffer.isView(x)) u8 = new Uint8Array(x.buffer, x.byteOffset, x.byteLength).slice();
+    else if (Object.prototype.toString.call(x) === "[object ArrayBuffer]") u8 = new Uint8Array(x as ArrayBuffer).slice();
+    else return null;
+  } catch {
+    return null;
+  }
+  return u8.byteLength >= 16 ? u8 : null;
+}
+
+/** Was statt eines brauchbaren PRF-Ergebnisses kam — nur Art und Länge, nie
+ *  die Bytes: fürs Fehlerprotokoll. */
+export function prfBeschreibung(x: unknown): string {
+  if (x === undefined) return "fehlt";
+  if (x === null) return "null";
+  const art = typeof x === "object" ? Object.prototype.toString.call(x).slice(8, -1) : typeof x;
+  const n = (x as { byteLength?: unknown }).byteLength;
+  return typeof n === "number" ? `${art}, ${n} B` : art;
+}
+
+/** Kein brauchbares Geheimnis: wie „kann der Browser nicht“ (weiter mit
+ *  Passphrase), aber mit Befund fürs Fehlerprotokoll, wenn überhaupt etwas kam. */
+export function keinPrf(roh: unknown, schritt: string): PasskeyFehler {
+  return new PasskeyFehler("nicht-unterstuetzt", KEIN_SCHLUESSEL, schritt,
+    roh === undefined ? undefined : `PRF unbrauchbar: ${prfBeschreibung(roh)}`);
+}
+
 /** Aus dem PRF-Geheimnis der Schlüssel, der den Datenschlüssel verpackt. */
 export async function passkeyKek(prf: BufferSource): Promise<CryptoKey> {
-  const basis = await crypto.subtle.importKey("raw", prf, "HKDF", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: enc.encode(PASSKEY_INFO) },
-    basis, { name: "AES-KW", length: 256 }, false, ["wrapKey", "unwrapKey"]);
+  const roh = prfBytes(prf);
+  if (!roh) throw keinPrf(prf, "Schlüssel ableiten");
+  try {
+    const basis = await crypto.subtle.importKey("raw", roh, "HKDF", false, ["deriveKey"]);
+    return await crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: enc.encode(PASSKEY_INFO) },
+      basis, { name: "AES-KW", length: 256 }, false, ["wrapKey", "unwrapKey"]);
+  } catch (e) {
+    const f = browserFehler(e, "Schlüssel ableiten");
+    if (f instanceof PasskeyFehler && f.art === "technisch") {
+      throw new PasskeyFehler("technisch", TECHNISCH, "Schlüssel ableiten", `${f.ursache} [PRF ${prfBeschreibung(prf)}]`);
+    }
+    throw f;
+  }
 }
 
 /** Stabil je Konto: Ein zweites Anlegen auf demselben Gerät ersetzt den alten
@@ -104,7 +154,7 @@ async function nutzerKennung(owner: number): Promise<Uint8Array> {
   return new Uint8Array(h).slice(0, 16);
 }
 
-type PrfErgebnis = { enabled?: boolean; results?: { first?: ArrayBuffer } };
+type PrfErgebnis = { enabled?: boolean; results?: { first?: unknown } };
 const prfVon = (c: PublicKeyCredential) => (c.getClientExtensionResults() as { prf?: PrfErgebnis }).prf;
 
 function abgebrochen(e: unknown, schritt: string): never {
@@ -116,7 +166,7 @@ function abgebrochen(e: unknown, schritt: string): never {
   throw browserFehler(e, schritt);
 }
 
-async function abfragen(liste: { credential_id: string; prf_salt: string }[]): Promise<{ credentialId: string; prf: ArrayBuffer }> {
+async function abfragen(liste: { credential_id: string; prf_salt: string }[]): Promise<{ credentialId: string; prf: Uint8Array }> {
   const evalByCredential: Record<string, { first: Uint8Array }> = {};
   for (const p of liste) evalByCredential[p.credential_id] = { first: fromB64(p.prf_salt) };
   let cred: PublicKeyCredential | null;
@@ -133,8 +183,10 @@ async function abfragen(liste: { credential_id: string; prf_salt: string }[]): P
   } catch (e) {
     abgebrochen(e, "Passkey abfragen");
   }
-  const prf = cred ? prfVon(cred)?.results?.first : undefined;
-  if (!cred || !prf) throw new PasskeyFehler("nicht-unterstuetzt", "Dieser Passkey liefert keinen Schlüssel.");
+  if (!cred) throw new PasskeyFehler("nicht-unterstuetzt", KEIN_SCHLUESSEL);
+  const roh = prfVon(cred)?.results?.first;
+  const prf = prfBytes(roh);
+  if (!prf) throw keinPrf(roh, "Passkey abfragen");
   return { credentialId: toB64url(new Uint8Array(cred.rawId)), prf };
 }
 
@@ -167,7 +219,8 @@ export async function passkeyAnlegen(dkExtractable: CryptoKey, owner: number, na
     throw new PasskeyFehler("nicht-unterstuetzt", "Dieser Passkey kann keine Notizen verschlüsseln.");
   }
   const credentialId = toB64url(new Uint8Array(cred.rawId));
-  const prf = ext?.results?.first ?? (await abfragen([{ credential_id: credentialId, prf_salt: toB64(salt) }])).prf;
+  // Leer oder unbrauchbar zählt wie „nicht mitgeliefert“: einmal nachfragen.
+  const prf = prfBytes(ext?.results?.first) ?? (await abfragen([{ credential_id: credentialId, prf_salt: toB64(salt) }])).prf;
   const kek = await imSchritt("Schlüssel ableiten", () => passkeyKek(prf));
   return { credential_id: credentialId, prf_salt: toB64(salt), wrapped_key: await imSchritt("verpacken", () => wrap(dkExtractable, kek)), label };
 }
