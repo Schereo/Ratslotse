@@ -102,16 +102,40 @@ def base_reference(motion_text: str, item_template: str | None) -> str | None:
     return None
 
 
-def word_diff(before: str, after: str) -> list[list[str]]:
-    """Wortdiff ohne Modell: [["=", "Die Ladungsfrist beträgt"], ["-", "zwei Tage."], ["+", "eine Woche."], …]."""
+def word_diff(before: str, after: str, *, min_equal: int = 0) -> list[list[str]]:
+    """Wortdiff ohne Modell: [["=", "Die Ladungsfrist beträgt"], ["-", "zwei Tage."], ["+", "eine Woche."], …].
+
+    ``min_equal``: Unveränderte Inseln mit weniger Wörtern, die ZWISCHEN zwei
+    Änderungen liegen, gehen in den Änderungen auf. Ein umformulierter Satz
+    zerfiel sonst in Konfetti — „~~Dem~~ Der Wirtschaftsplan ~~2026~~ des
+    Eigenbetriebes ~~„Bäderbetrieb~~ Bäder der Stadt Oldenburg …" —, weil
+    Allerweltswörter zufällig an derselben Stelle stehen. Geglättet steht dort
+    der alte Satz durchgestrichen und der neue daneben. Für den Vergleich
+    Beschlussvorschlag ↔ Beschluss (ganze Absätze); die Änderungsanträge
+    (einzelne Wörter einer Satzung) bleiben ungeglättet."""
     a, b = before.split(), after.split()
+    ops: list[tuple[str, int, int, int, int]] = list(
+        difflib.SequenceMatcher(a=a, b=b, autojunk=False).get_opcodes())
+    if min_equal > 0:
+        letzter = len(ops) - 1
+        ops = [("replace", i1, i2, j1, j2) if op == "equal" and 0 < n < letzter and i2 - i1 < min_equal
+               else (op, i1, i2, j1, j2) for n, (op, i1, i2, j1, j2) in enumerate(ops)]
+        # Benachbarte Änderungen zu einer zusammenziehen.
+        zusammen: list[tuple[str, int, int, int, int]] = []
+        for o in ops:
+            if zusammen and o[0] != "equal" and zusammen[-1][0] != "equal":
+                v = zusammen[-1]
+                zusammen[-1] = ("replace", v[1], o[2], v[3], o[4])
+            else:
+                zusammen.append(o)
+        ops = zusammen
     out: list[list[str]] = []
-    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(a=a, b=b, autojunk=False).get_opcodes():
+    for op, i1, i2, j1, j2 in ops:
         if op == "equal":
             out.append(["=", " ".join(a[i1:i2])])
-        if op in ("replace", "delete"):
+        if op in ("replace", "delete") and i2 > i1:
             out.append(["-", " ".join(a[i1:i2])])
-        if op in ("replace", "insert"):
+        if op in ("replace", "insert") and j2 > j1:
             out.append(["+", " ".join(b[j1:j2])])
     return out
 

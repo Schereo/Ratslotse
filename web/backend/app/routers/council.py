@@ -3231,7 +3231,8 @@ def decision_detail(
             # (ernte.deviation slight/strong) — Wortdiff ohne Modell.
             if d.get("deviation") in ("slight", "strong") and v.get("proposed_decision") and d.get("official_text"):
                 from council.motions import word_diff
-                out["proposal_diff"] = word_diff(v["proposed_decision"], d["official_text"])
+                # Geglättet: ganze Absätze, kein Konfetti aus Allerweltswörtern.
+                out["proposal_diff"] = word_diff(v["proposed_decision"], d["official_text"], min_equal=4)
         out["attachments"] = store.anlagen_for_vorlage_nr(d["template_number"])
         # Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt
         # über eine echte Verknüpfung, nicht über eine Textsuche. `None` heißt

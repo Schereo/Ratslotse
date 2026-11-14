@@ -26,6 +26,36 @@ def test_wortdiff_zeigt_nur_die_aenderung():
     assert [d for d in motions.word_diff(alt, neu) if d[0] != "="] == [["-", "zwei Tage."], ["+", "eine Woche."]]
 
 
+def _zurueck(diff: list[list[str]]) -> tuple[str, str]:
+    """Aus einem Diff beide Texte zurückbauen — er darf kein Wort verlieren."""
+    return (" ".join(t for op, t in diff if op in "=-"), " ".join(t for op, t in diff if op in "=+"))
+
+
+def test_wortdiff_geglaettet_macht_aus_konfetti_ganze_saetze():
+    # Beschluss 8277: Der Rat hat den Satz neu gefasst. Allerweltswörter an
+    # derselben Stelle („Wirtschaftsplan", „des Eigenbetriebes", „wird") ließen
+    # den Diff in 15 Stücke zerfallen.
+    vor = "Dem Wirtschaftsplan 2026 des Eigenbetriebes „Bäderbetrieb der Stadt Oldenburg (Oldb)“ (BBO) wird in der als Anlage beigefügten Fassung zugestimmt."
+    nach = "Der Wirtschaftsplan des Eigenbetriebes Bäder der Stadt Oldenburg für das Haushaltsjahr 2026 wird im Erfolgsplan mit Erträgen von 16.741.410 Euro beschlossen."
+    roh = motions.word_diff(vor, nach)
+    glatt = motions.word_diff(vor, nach, min_equal=4)
+    assert len(roh) > 8
+    assert glatt == [["-", vor], ["+", nach]]
+    assert _zurueck(roh) == _zurueck(glatt) == (vor, nach)
+
+
+def test_wortdiff_geglaettet_laesst_lange_gleiche_strecken_und_die_raender_stehen():
+    vor = "Der Rat stimmt dem Neubau des Stadions zum Pauschalpreis zu."
+    nach = vor + " Der Vertrag wird auflösend bedingt geschlossen."
+    # Eine reine Ergänzung bleibt eine Ergänzung …
+    assert motions.word_diff(vor, nach, min_equal=4) == [["=", vor], ["+", "Der Vertrag wird auflösend bedingt geschlossen."]]
+    # … und eine kurze gleiche Strecke am ANFANG oder ENDE ist keine Insel.
+    kurz = motions.word_diff("Die Frist beträgt zwei Tage.", "Die Frist beträgt eine Woche.", min_equal=4)
+    assert kurz == [["=", "Die Frist beträgt"], ["-", "zwei Tage."], ["+", "eine Woche."]]
+    # Ohne Glätten (Änderungsanträge) bleibt alles, wie es war.
+    assert motions.word_diff("a b c", "a x c") == [["=", "a"], ["-", "b"], ["+", "x"], ["=", "c"]]
+
+
 def test_fassungsbezug():
     assert motions.base_reference("Änderungsantrag für die Beschlussvorlage 26/0351/1 zur Studie", "26/0714") == "26/0351/1"
     assert motions.base_reference("Antrag zu TOP 9 der Vorlage 26/0792", "26/0792") is None

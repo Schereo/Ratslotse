@@ -1,8 +1,7 @@
 "use client";
 
-import { DossierAbschnitt, dossierStand } from "@/components/session/dossier";
+import { AusDerVorlage } from "@/components/session/aus-der-vorlage";
 import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
-import { Wortdiff } from "@/components/session/aenderungsantraege";
 import { AntragKarte } from "@/components/session/aenderungsantraege";
 import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
 import { KiStern } from "@/components/ki-stern";
@@ -236,7 +235,7 @@ function GlanceCard({
           label="Vom Vorschlag abgewichen"
         >
           Der Rat hat hier nicht den Beschlussvorschlag der Verwaltung übernommen,
-          sondern deutlich anders entschieden — das kommt nur bei rund 8 % der
+          sondern deutlich anders entschieden — das kommt nur bei rund 6 % der
           angenommenen Beschlüsse vor.
         </GlanceDisclosure>
       )}
@@ -923,29 +922,9 @@ function DecisionDetailInner() {
               Ergebnis steht oben. Dazu der Wortdiff Vorschlag ↔ Beschluss. */}
           {(data.proposal_diff || data.template_dossier) && (
             <Section title="Aus der Vorlage">
-              <div className="space-y-4">
-                {data.proposal_diff && data.proposal_diff.some(([op]) => op !== "=") && (
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Vorgeschlagen ↔ beschlossen</p>
-                    <p className="mb-2 text-meta text-muted-foreground">
-                      Durchgestrichen stand im Beschlussvorschlag der Verwaltung, hervorgehoben im Beschluss.
-                    </p>
-                    <Wortdiff diff={data.proposal_diff} />
-                  </div>
-                )}
-                {data.template_dossier && (
-                  <div>
-                    <p className="flex items-center gap-1 text-sm font-semibold text-foreground">
-                      So stand es in der Vorlage
-                      <KiStern text="Automatisch aus der Vorlage und ihren Anlagen erstellt, Stand vor der Sitzung. Beschlossen wurde, was oben steht." />
-                    </p>
-                    <p className="mb-3 text-meta text-muted-foreground">{dossierStand(data.template_dossier)}</p>
-                    <div className="flex flex-col gap-4">
-                      {data.template_dossier.sections.map((sec) => <DossierAbschnitt key={sec.key} s={sec} />)}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <AusDerVorlage diff={data.proposal_diff} vorschlag={data.template?.proposed_decision}
+                beschluss={d.official_text} vorlageArt={vorlageArt(data.template?.kind)}
+                dossier={data.template_dossier} />
             </Section>
           )}
 

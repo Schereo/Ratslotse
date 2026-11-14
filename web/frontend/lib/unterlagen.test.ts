@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ohneDatum, teileListe } from "./unterlagen";
+import { ohneDatum, teileListe, angabenWort, aussagenGruppen } from "./unterlagen";
 
 describe("ohneDatum", () => {
   it("nimmt das Datumspräfix ab", () => {
@@ -50,9 +50,46 @@ describe("kurzerDiff", () => {
       ["=", "In dringenden Fällen kann sie auf sechs Stunden verkürzt werden. Die Ladung erfolgt schriftlich oder elektronisch."]]);
     expect(d[3][1]).toBe("In dringenden Fällen kann sie auf sechs Stunden verkürzt werden. …");
   });
+  it("ein Datum ist kein Satzende", () => {
+    // VBN-Tarif, Beschluss 9487: Der Rest endete bei „… des ZVBN am 10. …".
+    const d = kurzerDiff([["-", "alt."], ["+", "neu."],
+      ["=", "In der Verbandsversammlung des ZVBN am 10. September 2026 wird entsprechend abgestimmt. Danach folgt ein weiterer Satz."]]);
+    expect(d[2][1]).toBe("In der Verbandsversammlung des ZVBN am 10. September 2026 wird entsprechend abgestimmt. …");
+  });
   it("vorn ab dem letzten Satzende", () => {
     const d = kurzerDiff([["=", "Der erste Satz steht hier. Die Frist beträgt"], ["-", "zwei"], ["+", "sieben"], ["=", "Tage."]]);
     expect(d[0][1]).toBe("… Die Frist beträgt");
     expect(d[3][1]).toBe("Tage.");
+  });
+});
+
+describe("aussagenGruppen", () => {
+  const a = (kind: string, text = kind) => ({ kind, text });
+
+  it("fasst gleiche Arten zusammen und nennt die Zwischenzeile einmal", () => {
+    const g = aussagenGruppen([a("plain"), a("not_included", "x"), a("not_included", "y")]);
+    expect(g.map((x) => [x.kind, x.label, x.aussagen.length])).toEqual([
+      ["plain", null, 1], ["not_included", "Nicht Teil des Beschlusses", 2]]);
+  });
+
+  it("Kosten ohne Zwischenzeile, die Deckung darunter mit", () => {
+    expect(aussagenGruppen([a("items"), a("items"), a("coverage")]).map((x) => x.label)).toEqual([null, "Deckung"]);
+  });
+
+  it("Termine tragen ihre Zeile nur neben offenen Punkten", () => {
+    expect(aussagenGruppen([a("dates"), a("dates")]).map((x) => x.label)).toEqual([null]);
+    expect(aussagenGruppen([a("dates"), a("open")]).map((x) => x.label)).toEqual(["Termine", "Noch offen"]);
+    expect(aussagenGruppen([a("open")]).map((x) => x.label)).toEqual(["Noch offen"]);
+  });
+
+  it("leer bleibt leer", () => {
+    expect(aussagenGruppen([])).toEqual([]);
+  });
+});
+
+describe("angabenWort", () => {
+  it("zählt in Einzahl und Mehrzahl", () => {
+    expect(angabenWort(1)).toBe("1 Angabe");
+    expect(angabenWort(5)).toBe("5 Angaben");
   });
 });
