@@ -14,6 +14,7 @@
    übersichtlich formatierter Text … besser sortieren, hierarchisch“). */
 
 import { useState } from "react";
+import { FileText, Gavel, GitCompareArrows, type LucideIcon } from "lucide-react";
 import { KiStern } from "@/components/ki-stern";
 import { Segmented } from "@/components/ui/segmented";
 import { Wortdiff } from "@/components/session/aenderungsantraege";
@@ -23,10 +24,13 @@ import { cn } from "@/lib/utils";
 
 type Sicht = "changes" | "proposal" | "decision";
 
-const SICHTEN: { value: Sicht; label: string }[] = [
-  { value: "changes", label: "Änderungen" },
-  { value: "proposal", label: "Vorschlag" },
-  { value: "decision", label: "Beschluss" },
+// Dieselben Zeichen wie anderswo auf der Seite: der Vergleichspfeil steht
+// schon an „Vom Vorschlag abgewichen“, das Dokument für die Vorlage, der
+// Hammer für Beschlüsse (Befehlspalette, Verwaltungsausschuss).
+const SICHTEN: { value: Sicht; label: string; icon: LucideIcon }[] = [
+  { value: "changes", label: "Änderungen", icon: GitCompareArrows },
+  { value: "proposal", label: "Vorschlag", icon: FileText },
+  { value: "decision", label: "Beschluss", icon: Gavel },
 ];
 
 const KARTE = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5";
@@ -44,7 +48,9 @@ function VorschlagUndBeschluss({ diff, vorschlag, beschluss, vorlageArt }: {
         {mitUmschalter && (
           // Am Handy über die ganze Breite und mit schmalen Rändern: Bei 320 px
           // bleiben in der Karte 256 px, die drei Wörter brauchen sonst 310.
-          <Segmented className="w-full print:hidden sm:w-auto [&_button]:px-1 sm:[&_button]:px-3"
+          // Die Zeichen erst ab 480 px — mit ihnen bräuchte der Umschalter
+          // 331 px, bei 390 px Fensterbreite hat die Karte innen 326.
+          <Segmented className="w-full print:hidden sm:w-auto [&_button]:px-1 sm:[&_button]:px-3 [&_svg]:hidden ab-lesezeile:[&_svg]:block"
             value={sicht} onChange={setSicht} options={SICHTEN} />
         )}
       </div>
