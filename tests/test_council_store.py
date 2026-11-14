@@ -154,6 +154,21 @@ def test_similar_neighbours(tmp_path):
     assert any(e["id"] == 10 and "T10" in e["text"] for e in store.decisions_for_embedding())
 
 
+def test_similar_skips_neighbours_without_title(tmp_path):
+    """Ein Nachbar ohne Titel machte aus jeder Beschluss-Seite, die ihn
+    auflistet, einen 500er: ``SimilarDecision.title`` ist im Vertrag ein
+    schlichter String (auf Prod am 14.11.2026 vier Seiten)."""
+    store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
+    for i, titel in ((10, "'T10'"), (11, "NULL"), (12, "'  '"), (13, "'T13'")):
+        store._conn.execute(
+            f"INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome) "
+            f"VALUES ({i},1,0,'decision','1',{titel},'b','accepted')"
+        )
+    store._conn.commit()
+    store.set_similar([(10, 11, 0, 0.9), (10, 12, 1, 0.8), (10, 13, 2, 0.7)])
+    assert [s["id"] for s in store.get_similar(10)] == [13]
+
+
 def test_dedup_keys():
     from council.store import _dedup_keys
 
