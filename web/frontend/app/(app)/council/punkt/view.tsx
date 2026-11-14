@@ -23,6 +23,7 @@ import { kurzfassung } from "@/components/tagesordnung";
 import { KiStern } from "@/components/ki-stern";
 import { AusDenUnterlagen } from "@/components/session/aus-den-unterlagen";
 import { ImHaushalt } from "@/components/session/im-haushalt";
+import { AehnlicheBeschluesse, BeteiligungsHinweis, VideoSprung, WoDasIst } from "@/components/session/punkt-umfeld";
 import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
 import { useFetch } from "@/lib/use-fetch";
 import { istNichtGefunden } from "@/lib/api";
@@ -140,6 +141,7 @@ function PunktView({ p }: { p: Punkt }) {
               Antrag von <span className="font-semibold text-foreground">{ci.applicant}</span>
             </p>
           )}
+          {p.surroundings?.video && <p className="mt-3"><VideoSprung video={p.surroundings.video} /></p>}
         </div>
         <div role="group" aria-label="Aktionen zum Punkt" className="flex items-center gap-1">
           <BookmarkButton target={{ kind: "agenda_item", ksinr: p.ksinr, item_number: it.item_number }} compact className="h-11 w-11" />
@@ -153,6 +155,7 @@ function PunktView({ p }: { p: Punkt }) {
 
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-start gap-6 [overflow-wrap:anywhere] breit:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
+          <BeteiligungsHinweis b={p.surroundings?.participation ?? null} />
           {kurz && (
             <section aria-labelledby="kurz" className="rounded-2xl border border-border bg-card p-5 shadow-sm">
               {/* Eine Überschrift statt Kicker „Kurzfassung" plus „Das Wichtigste
@@ -209,6 +212,8 @@ function PunktView({ p }: { p: Punkt }) {
           </div>
 
 
+          <AehnlicheBeschluesse liste={p.surroundings?.similar ?? []} />
+
           <nav aria-label="Weitere Punkte der Sitzung" className="mt-8 flex flex-wrap gap-3 border-t border-border pt-4">
             {p.previous && (
               <Link href={punktHref(p.ksinr, p.previous.item_number)}
@@ -230,6 +235,7 @@ function PunktView({ p }: { p: Punkt }) {
         <aside className="flex flex-col gap-4" aria-label="Zu diesem Punkt">
           <FragDenRat p={p} />
           <AufEinenBlick p={p} />
+          <WoDasIst orte={p.surroundings?.places ?? []} />
           {mitNotizen && <MeineNotiz targetKind="agenda_item" targetKey={`${p.ksinr}|${it.item_number}`} />}
         </aside>
       </div>

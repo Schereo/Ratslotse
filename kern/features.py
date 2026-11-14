@@ -368,6 +368,14 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Bestand der letzten zwölf Monate auf dev erzeugt, Stichprobe von 50 Erklärungen ohne "
                     "Fehler gesichtet, von Tim abgenommen und auf Prod angeschaltet.",
     ),
+    "punkt-umfeld": Feature(
+        key="punkt-umfeld",
+        description="Das Umfeld auf der Punkt-Seite: Ort mit Karte, ähnliche frühere Beschlüsse, Sprung in die "
+                    "Aufzeichnung (nur Rat) und laufende Bürgerbeteiligung — aus vorhandenen Daten, ohne Modell "
+                    "(council/punkt_umfeld.py; Tims Auswahl 13.11.2026).",
+        fertig_wenn="Auf dev zwei Wochen ohne Befund, auf Prod mit echten Beteiligungen und Videos gesichtet, "
+                    "von Tim abgenommen und angeschaltet.",
+    ),
     "punkt-seite": Feature(
         key="punkt-seite",
         description="Jeder Tagesordnungspunkt bekommt eine eigene Seite mit Kurzfassung, "

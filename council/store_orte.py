@@ -350,6 +350,18 @@ class OrteMixin(StoreBasis):
                 )})
         return out
 
+    def street_locations(self) -> list[dict]:
+        """Alle verorteten Straßen (Name, Koordinate, Stadtteil) — für die
+        Zuordnung über den Titel eines Punkts (``council/punkt_umfeld.py``).
+        Je Prozess einmal gelesen: Die Liste ändert sich mit dem Wochenlauf."""
+        cache = getattr(self, "_street_locations_cache", None)
+        if cache is None:
+            cache = [dict(r) for r in self._conn.execute(
+                "SELECT slug, name, kind, lat, lon, district FROM council_locations "
+                "WHERE kind IN ('street', 'square') AND lat IS NOT NULL AND lon IS NOT NULL")]
+            self._street_locations_cache = cache
+        return cache
+
     def locations_to_geocode(self, limit: int | None = None,
                              retry_failed: bool = False) -> list[dict]:
         """Orte, die noch geokodiert werden müssen.
