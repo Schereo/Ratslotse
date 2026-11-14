@@ -474,8 +474,15 @@ Stufe 4  abgeleitete Texte, nach A/B            → Kartentext, Vorschlagsfragen
 - **Dokumentblock mit Seitenmarken** („— [V1] Seite 2 —“):
   - die Vorlage ganz,
   - die Lesestoff-Anlagen nach Typ (Stellungnahme, Synopse und Satzung,
-    Begründung), höchstens 12.000 Zeichen je Anlage und rund 30.000 Token
-    zusammen,
+    Begründung), rund 30.000 Token zusammen. **Seit 14.11.2026** teilen sie
+    sich das Budget reihum (die kürzeste zuerst, je Anlage höchstens 90.000
+    Zeichen); vorher bekam jede ihre ersten 12.000 Zeichen — beim
+    Aktionsplan gegen Gewalt an Frauen 4 % der Anlage, nur Deckblatt,
+    Inhaltsverzeichnis und Grußworte. Eine Anlage, die nicht in ihren Anteil
+    passt, kommt ohne Vorspann und mit den gewichtigsten Seiten (Maßnahmen,
+    Ergebnisse, Beträge, Termine, Wörter der Vorlage); Lücken sind markiert.
+    Kandidaten für Beträge und Daten gibt es je Anlage, aus ihren gelesenen
+    Seiten,
   - von Belegmaterial nur die Kopfzeile.
 - **Reihenfolge für den Prompt-Cache:** Vorspann, dann der deterministisch
   sortierte Dokumentblock, die Aufgabe zuletzt.

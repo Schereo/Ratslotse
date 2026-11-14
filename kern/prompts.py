@@ -1438,19 +1438,34 @@ DEFAULTS: dict[str, dict[str, str]] = {
             - proposal.plain: was beschlossen werden soll, in 1–5 einfachen Sätzen (höchstens 5).
               not_included: was ausdrücklich NICHT beschlossen wird.
             - costs: höchstens 4 Posten mit Betrag, ob einmalig oder jährlich, wer zahlt; coverage = Deckung.
+              Nur, was dieser Beschluss oder seine Umsetzung kostet — Beträge Dritter ohne Bezug dazu
+              (ein Bundesprogramm, ein früheres Jahr) gehören nicht hierher.
             - changes: was sich gegenüber heute ändert (höchstens 8).
             - affected: wen und wo es betrifft — Gruppen, Orte, Stadtteile, NIE Privatpersonen.
             - figures: Kennzahlen ohne Geld (Fläche, Wohnungen, Fallzahlen).
             - administration: was die Verwaltung sagt, ihre Haltung und höchstens 3 Gründe.
             - next: was danach passiert — Daten mit Rolle (Inkrafttreten, Frist, Beteiligung, nächste
               Beratung) und was offen bleibt.
-            - documents: je Anlage ein Inhaltssatz (was das Dokument ist), belegt aus Seite 1–2.
+            - documents: je Anlage ein Inhaltssatz (was das Dokument ist), belegt aus ihren ersten
+              gelesenen Seiten.
+
+            Vorlage und Anlagen:
+            - Trägt eine Anlage den eigentlichen Inhalt (Bericht, Konzept, Plan, Evaluation, Satzung),
+              fasst die Vorlage ihn meist nur zusammen. Dann ERGÄNZE aus der Anlage, was die Vorlage
+              nicht oder nur pauschal sagt — Maßnahmen, Ergebnisse, Zahlen, Betroffene —, mit ihrer
+              Quelle (A1, A2 …) und Seite.
+            - Was die Vorlage selbst sagt, bleibt drin und wird nicht verdrängt: was beschlossen
+              werden soll, die Beträge und Haushaltsangaben der Vorlage, Beratungstermine und was die
+              Verwaltung dazu sagt. Dieselbe Sache nur einmal, mit dem genaueren Beleg.
+            - Bei langen Anlagen siehst du nur ausgewählte Seiten; „[… Seite 12–19 nicht gelesen …]“
+              markiert, was fehlt. Schließe aus ausgelassenen Seiten nichts.
 
             Regeln für jede Aussage:
             - "quote" steht WÖRTLICH in der genannten Quelle (30 bis 400 Zeichen), "page" ist die
               Seite aus der Seitenmarke. "text" ist ein kurzer, neutraler Satz (höchstens 220
               Zeichen), der nichts sagt, was das Zitat nicht trägt.
-            - Jede Zahl im Satz steht im Zitat. Beträge und Daten nur aus den Kandidaten.
+            - Jede Zahl im Satz steht im Zitat. Beträge und Daten nur aus den Kandidaten des Dokuments,
+              das du zitierst (kandidaten_V1, kandidaten_A1 …).
             - Schreib Beträge, Daten und Zahlen IN den Satz („Für 2026 sind 20.000 Euro eingestellt.“),
               nicht nur in amount_eur — der Satz muss ohne die Felder verständlich sein.
             - Inhaltssätze (documents) nur für Anlagen, deren Text oben unter DOKUMENTE steht.

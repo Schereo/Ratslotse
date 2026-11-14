@@ -30,6 +30,11 @@
 # (council/programm_bezug.py; rund 0,005 $ je Vorlage, im Hintergrund wie die
 # Begriffe, Log data/programme-bestand.log). Braucht fastembed auf dem Server.
 #
+# dossiers: nur der Dossier-Bestand der letzten 12 Monate (Schritt 3 der
+# Nachläufe, ohne die beiden davor) — für eine geänderte Eingabe, die eine
+# neue Prüfsumme trägt (14.11.2026: lange Anlagen weiter lesen). Mit
+# „schreiben" im Hintergrund wie dort.
+#
 # ernte: die Regex-Ernte über den Bestand (scripts/ernte_backfill.py — Amt,
 # Kosten, Klima, Beschlussvorschlag je Vorlage und die Abweichung Beschluss ↔
 # Vorschlag; ohne Netz und Modell, Sekunden). Auf Prod macht das der Wochenlauf
@@ -55,9 +60,9 @@ on:
         options: [dev, prod]
         default: dev
       schritt:
-        description: "nachlaeufe = die drei einmaligen Läufe, begriffe = Fachwörter aus der Vorlage (12 Monate), programme = Wahlprogramme zum Punkt (12 Monate), ernte = Regex-Ernte über den Bestand (ohne Modell), stand = wie weit Dossiers und Begriffe sind, crontab = die zwei Cron-Zeilen (nur prod)"
+        description: "nachlaeufe = die drei einmaligen Läufe, dossiers = nur der Dossier-Bestand, begriffe = Fachwörter aus der Vorlage (12 Monate), programme = Wahlprogramme zum Punkt (12 Monate), ernte = Regex-Ernte über den Bestand (ohne Modell), stand = wie weit Dossiers und Begriffe sind, crontab = die zwei Cron-Zeilen (nur prod)"
         type: choice
-        options: [nachlaeufe, begriffe, programme, ernte, stand, crontab]
+        options: [nachlaeufe, dossiers, begriffe, programme, ernte, stand, crontab]
         default: nachlaeufe
       schreiben:
         description: "Wirklich schreiben (aus = nur zählen bzw. Vorschau)"
@@ -131,6 +136,21 @@ jobs:
               if [ -f "$BLOG" ]; then tail -n 6 "$BLOG"; else echo "Noch kein Begriffe-Log."; fi
               if plaeuft; then echo "Programme-Bestand läuft (PID $(cat "$PPID_DATEI"))."; else echo "Programme-Bestand läuft nicht."; fi
               if [ -f "$PLOG" ]; then tail -n 6 "$PLOG"; else echo "Noch kein Programme-Log."; fi
+            elif [ "$SCHRITT" = "dossiers" ]; then
+              if [ "$SCHREIBEN" = "true" ]; then
+                if laeuft; then
+                  echo "Dossier-Bestand läuft schon (PID $(cat "$PID")) — kein zweiter."
+                else
+                  nohup $PY -u scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD" --schreiben \
+                    > "$LOG" 2>&1 < /dev/null &
+                  echo $! > "$PID"
+                  sleep 5
+                  if laeuft; then echo "Dossier-Bestand läuft im Hintergrund (PID $(cat "$PID")); Stand mit schritt=stand."
+                  else echo "Dossier-Bestand ist sofort beendet:"; cat "$LOG"; fi
+                fi
+              else
+                $PY scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD"
+              fi
             elif [ "$SCHRITT" = "ernte" ]; then
               if [ "$SCHREIBEN" = "true" ]; then $PY scripts/ernte_backfill.py
               else $PY scripts/ernte_backfill.py --trocken; fi

@@ -124,3 +124,91 @@ def test_kein_ersatzmodell_im_lauf(monkeypatch):
     except Exception:  # noqa: BLE001 — nur der Aufruf interessiert hier
         pass
     assert gesehen["_ersatz"] == [] and gesehen["_geduld"] is True
+
+
+# --- Lange Anlagen (Tim, 14.11.2026: Aktionsplan, 4 % gelesen) -------------------
+
+def _bericht(seiten: list[str]) -> dict:
+    text, offsets = "", []
+    for s in seiten:
+        offsets.append(len(text))
+        text += s + "\n"
+    return {"document_id": 1, "label": "Aktionsplan", "doc_type": "report", "text": text, "page_offsets": offsets}
+
+
+_FUELL = " ".join(["Die Fachberatungsstellen arbeiten seit Jahren eng zusammen."] * 8)
+
+
+def _langer_bericht() -> dict:
+    seiten = ["Aktionsplan gegen Gewalt", "Impressum Herausgegeben von der Stadt " + _FUELL,
+              "Inhalt Grußwort ........................ 1\n1 Einleitung ........ 3\n2 Ergebnisse ......... 9\n"
+              "3 Maßnahmen ........ 20\n4 Anhang ........ 40\n" + _FUELL,
+              "1 Vorwort des Oberbürgermeisters Liebe Lesende, " + _FUELL]
+    seiten += [f"Seite {i}: " + _FUELL for i in range(5, 40)]
+    seiten[24] = "Maßnahme 12: Das Schutzhaus Hanna erhält 14 weitere Plätze, Kosten 250.000 Euro bis Ende 2027. " + _FUELL
+    return _bericht(seiten)
+
+
+def test_anteile_reihum_kuerzeste_zuerst():
+    a = template_dossier._anteile({"A1": 3_000, "A2": 200_000, "A3": 50_000}, 100_000)
+    assert a["A1"] == 3_000                                   # die kurze ganz
+    assert a["A3"] == 48_500 and a["A2"] == 48_500            # den Rest teilen sich die übrigen
+    groß = template_dossier._anteile({"A1": 500_000}, 100_000)
+    assert groß["A1"] == template_dossier.ANLAGE_MAX          # nie mehr als der Deckel
+    assert template_dossier._anteile({}, 100_000) == {}
+
+
+def test_vorspann_nur_vorn():
+    assert template_dossier._ist_vorspann("Aktionsplan", 1, 40)
+    assert template_dossier._ist_vorspann("Inhalt 1 Einleitung ....... 3\n2 Ergebnisse ....... 9\n3 A ....... 5\n4 B ....... 7\n" + _FUELL, 3, 40)
+    assert template_dossier._ist_vorspann("2 Jürgen Krogmann Oberbürgermeister Vorwort der Gleichstellungsbeauftragten " + _FUELL, 4, 40)
+    assert not template_dossier._ist_vorspann("Vorwort " + _FUELL, 30, 40)    # mitten im Dokument kein Vorspann
+    assert not template_dossier._ist_vorspann(_FUELL, 4, 40)
+
+
+def test_lange_anlage_ohne_vorspann_mit_gewichtigen_seiten_und_luecken():
+    d = _langer_bericht()
+    block = template_dossier._seitenauswahl("A1", d["text"], d["page_offsets"], 6_000, frozenset({"schutzhaus"}))
+    assert "Seite 25 —" in block and "Schutzhaus Hanna" in block           # Maßnahme mit Betrag und Termin
+    assert "Impressum" not in block and "Vorwort" not in block and "......" not in block
+    assert "nicht gelesen …]" in block                                     # Lücken stehen da
+    nummern = [int(n) for n in __import__("re").findall(r"Seite (\d+) —", block)]
+    assert nummern == sorted(nummern) and len(block) <= 6_000 + 400
+
+
+def _alte_pruefsumme(m: dict) -> str:
+    import hashlib, json
+    from kern import foreign_text
+    grundlage = [foreign_text.defuse(V)[0], [d["text"] for d in m["documents"]], "F1", template_dossier.PROMPT_VERSION]
+    return hashlib.sha256(json.dumps(grundlage, ensure_ascii=False).encode()).hexdigest()[:16]
+
+
+def test_ohne_lese_anlage_bleibt_die_pruefsumme():
+    # Vorlagen ohne Lese-Anlage: kein Neulauf für den Bestand.
+    m = _material()
+    assert template_dossier.build_input(m)[2] == _alte_pruefsumme(m)
+    m["documents"] = [{**_bericht(["Fotos " + _FUELL]), "doc_type": "presentation"}]
+    assert template_dossier.build_input(m)[2] == _alte_pruefsumme(m)
+
+
+def test_kurze_anlage_steht_ganz_da_mit_eigenen_kandidaten():
+    m = _material()
+    m["documents"] = [_bericht(["Seite eins " + _FUELL, "Am 01.03.2027 kostet es 4.500 Euro. " + _FUELL])]
+    nutzer, quellen, h = template_dossier.build_input(m)
+    assert "— [A1] Seite 1 —" in nutzer and "— [A1] Seite 2 —" in nutzer and "nicht gelesen" not in nutzer
+    assert '"kandidaten_A1"' in nutzer and '"value": "4.500 Euro"' in nutzer
+    assert h != _alte_pruefsumme(m)            # neue Eingabe → einmal neu erzeugt
+
+
+def test_lange_anlage_wird_weiter_gelesen_und_neu_erzeugt():
+    m = _material()
+    m["documents"] = [_langer_bericht()]
+    nutzer, quellen, h = template_dossier.build_input(m)
+    assert "Schutzhaus Hanna" in nutzer                       # Seite 25 — früher nach 12.000 Zeichen abgeschnitten
+    assert len(nutzer) > template_dossier.ANLAGE_ZEICHEN
+    assert quellen["A1"]["text"] == m["documents"][0]["text"]  # belegt wird gegen die GANZE Anlage
+    # Kandidaten nur von gelesenen Seiten, mit ihrer Seite.
+    assert {"value": "250.000 Euro", "page": 25} in __import__("json").loads(
+        nutzer.split("FESTE FAKTEN (aus der Vorlage, ohne Modell):\n")[1].split("\n\nDOKUMENTE")[0])["kandidaten_A1"]["amounts"]
+    alt = template_dossier.build_input({**m, "documents": [{**m["documents"][0], "text": m["documents"][0]["text"][:5_000]}]})[2]
+    assert h != alt

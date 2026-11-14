@@ -24,6 +24,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 
 from council import dossier_harvest, evidence, unterlagen_seiten
 from kern import foreign_text, llm, prompts
@@ -32,8 +33,16 @@ _log = logging.getLogger(__name__)
 
 MODEL = os.environ.get("COUNCIL_DOSSIER_MODEL", "openai/gpt-6-luna")
 PROMPT_VERSION = 1
+#: Bis 11/2026 der feste Deckel je Anlage — heute die Länge, bis zu der eine
+#: Anlage wie früher ab Seite 1 gelesen wird (s. ``_anlagen_bloecke``).
 ANLAGE_ZEICHEN = 12_000
+#: Höchstens so viel je Anlage, auch wenn das Budget mehr hergäbe.
+ANLAGE_MAX = 90_000
+#: Weniger bekommt eine Anlage nur, wenn das Budget vorher aufgebraucht ist.
+ANLAGE_MIN = 6_000
 GESAMT_ZEICHEN = 110_000   # ≈ 30.000 Token
+#: Platz für die Kopfzeilen des Belegmaterials — wird vom Lesebudget abgezogen.
+BELEG_RESERVE = 6_000
 #: Lesestoff (ganz gelesen) gegen Belegmaterial (nur Kopfzeile), § 2.4.
 LESESTOFF = {"statement", "report", "synopsis", "statute"}
 ABSCHNITTE = ("proposal", "costs", "changes", "affected", "figures", "administration", "next")
@@ -73,6 +82,135 @@ def _mit_seitenmarken(key: str, text: str, offsets: list[int] | None, grenze: in
     return "\n".join(teile)
 
 
+# Tim, 14.11.2026, zum Aktionsplan gegen Gewalt an Frauen (Vorlage 26/0681/1):
+# „Die Teile unter ‚So stand es in der Vorlage‘ erfassen die Anlage nicht
+# vollumfassend“. Gelesen waren 12.000 von 304.000 Zeichen — Deckblatt,
+# Impressum, Inhaltsverzeichnis, zwei Grußworte; alle 20 Aussagen belegten die
+# drei Seiten der Vorlage. Gemessen auf dev: Bei der Hälfte der 162 Dossiers
+# mit Lese-Anlage war sie deutlich länger als der Deckel, 43 belegten nur die
+# Vorlage. Das Gesamtbudget (110.000 Zeichen) blieb dabei meist ungenutzt.
+#
+# Deshalb: Das Budget nach der Vorlage geht reihum an die Anlagen (die kürzeste
+# zuerst, was sie nicht braucht, bekommen die übrigen). Passt eine Anlage in
+# ihren Anteil, steht sie ganz da, wie bisher. Sonst entfällt zuerst der
+# Vorspann, dann wählen die Seiten nach Gewicht: Maßnahmen, Ergebnisse,
+# Beträge, Termine — und Wörter, die auch die Vorlage benutzt, denn die Vorlage
+# sagt, worum es dem Rat geht. Ausgelassenes ist markiert, damit das Modell
+# nicht „steht nicht drin" schreibt, wo es nur nicht gelesen hat.
+
+#: Vorspann eines Berichts: Deckblatt, Impressum, Grußworte, Inhaltsverzeichnis.
+_VORSPANN_RE = re.compile(r"^\W*(?:\d+\s+)?(?:Impressum|Vorwort|Grußwort|Geleitwort|Inhaltsverzeichnis|Inhalt)\b", re.I)
+_VORWORT_RE = re.compile(r"\b(?:Impressum|Vorwort|Grußwort|Geleitwort|Inhaltsverzeichnis)\b")
+#: Eine Zeile eines Inhaltsverzeichnisses („3.1 Einleitung ........ 37").
+_PUNKTLINIE_RE = re.compile(r"(?:\.\s?){5,}|…{2,}")
+_GEWICHTE = (
+    (re.compile(r"Handlungsempfehlung|Maßnahme|Empfehlung", re.I), 3),
+    (re.compile(r"Zusammenfassung|Fazit|Ergebnis|Bilanz", re.I), 3),
+    (re.compile(r"\d[\d.]*(?:,\d+)?\s*(?:Euro|€|EUR)\b|Mio\.\s*(?:Euro|€)"), 4),
+    (re.compile(r"Kosten|Finanzierung|Haushalt|Förder|Stellen?\b|Personal", re.I), 2),
+    (re.compile(r"Umsetzung|Zeitplan|geplant|künftig|bis (?:Ende |Mitte )?20\d\d", re.I), 1),
+)
+#: Wörter, die in jeder Vorlage stehen und über den Gegenstand nichts sagen.
+_ALLERWELT = frozenset("""oldenburg verwaltung werden worden sollen sollte können wurde wurden stadtrat
+beschluss beschlussvorschlag vorlage anlage anlagen bericht folgende weitere bereits insbesondere
+zwischen außerdem dadurch darüber hinaus jeweils sowohl""".split())
+_WORT_RE = re.compile(r"[A-Za-zÄÖÜäöüß]{7,}")
+
+
+def _vorlagen_woerter(text: str) -> frozenset[str]:
+    return frozenset(w.lower() for w in _WORT_RE.findall(text or "")) - _ALLERWELT
+
+
+def _ist_vorspann(seite: str, nr: int, anzahl: int) -> bool:
+    """Deckblatt, Impressum, Grußwort, Inhaltsverzeichnis — nur vorn im Dokument.
+    Ein Grußwort, das auf der nächsten Seite weitergeht, beginnt mit Seitenzahl
+    und Unterschrift („2 Jürgen Krogmann Oberbürgermeister … Vorwort der …")."""
+    if nr > max(3, min(10, anzahl // 6)):
+        return False
+    flach = " ".join(seite.split())
+    if len(flach) < 300:
+        return True
+    return (bool(_VORSPANN_RE.match(flach)) or bool(_VORWORT_RE.search(flach[:200]))
+            or len(_PUNKTLINIE_RE.findall(seite)) >= 4)
+
+
+def _seiten_gewicht(seite: str, woerter: frozenset[str]) -> float:
+    if len(seite.strip()) < 300:
+        return 0.0
+    g = sum(min(len(r.findall(seite)), 4) * w for r, w in _GEWICHTE)
+    g += 2 * min(len({w.lower() for w in _WORT_RE.findall(seite)} & woerter), 10)
+    return g
+
+
+def _seitenauswahl(key: str, text: str, offsets: list[int] | None, grenze: int,
+                   woerter: frozenset[str]) -> str:
+    """Eine Anlage, die nicht in ihren Anteil passt: ohne Vorspann, die
+    gewichtigsten Seiten in Lesereihenfolge, Lücken markiert."""
+    seiten = evidence.pages_from_offsets(text, offsets)
+    if not seiten:
+        return _mit_seitenmarken(key, text, offsets, grenze)
+    n = len(seiten)
+    kandidaten = [(i, s.strip()) for i, s in enumerate(seiten, 1) if s.strip() and not _ist_vorspann(s, i, n)]
+    rang = sorted(kandidaten, key=lambda x: (-_seiten_gewicht(x[1], woerter), x[0]))
+    gewaehlt: list[tuple[int, str]] = []
+    laenge = 0
+    for i, t in rang:
+        stueck = len(t) + 24
+        if laenge + stueck > grenze:
+            continue
+        gewaehlt.append((i, t))
+        laenge += stueck
+    gewaehlt.sort()
+    teile, vorige = [], 0
+    for i, t in gewaehlt:
+        if i > vorige + 1:
+            teile.append(f"[… Seite {vorige + 1}–{i - 1} nicht gelesen …]" if i - 1 > vorige + 1
+                         else f"[… Seite {vorige + 1} nicht gelesen …]")
+        teile.append(f"— [{key}] Seite {i} —\n{t}")
+        vorige = i
+    if vorige < n:
+        teile.append(f"[… Seite {vorige + 1}–{n} nicht gelesen …]" if n > vorige + 1 else f"[… Seite {n} nicht gelesen …]")
+    return "\n".join(teile)
+
+
+_SEITE_IM_BLOCK_RE = re.compile(r"— \[A\d+\] Seite (\d+) —")
+
+
+def _kandidaten_der_anlage(text: str, offsets: list[int] | None, block: str) -> dict[str, list[dict]]:
+    """Beträge, Daten und Paragrafen aus den Seiten, die das Modell von der
+    Anlage zu sehen bekommt — mit Seite. Bis 11/2026 gab es Kandidaten nur aus
+    der Vorlage, und „Beträge und Daten nur aus den Kandidaten" hieß damit:
+    keine Kosten und keine Termine aus der Anlage."""
+    seiten = evidence.pages_from_offsets(text, offsets)
+    if not seiten:
+        return dossier_harvest.candidates(text[:len(block)], None)
+    gelesen = sorted({int(n) for n in _SEITE_IM_BLOCK_RE.findall(block)})
+    aus: dict[str, list[dict]] = {"amounts": [], "dates": [], "paragraphs": []}
+    gesehen: set[tuple[str, str]] = set()
+    for nr in gelesen:
+        for art, werte in dossier_harvest.candidates(seiten[nr - 1], None).items():
+            for w in werte:
+                if (art, w["value"]) in gesehen or len(aus[art]) >= 25:
+                    continue
+                gesehen.add((art, w["value"]))
+                aus[art].append({"value": w["value"], "page": nr})
+    return aus
+
+
+def _anteile(laengen: dict[str, int], verfuegbar: int) -> dict[str, int]:
+    """Das Lesebudget reihum: die kürzeste Anlage zuerst; was sie nicht
+    braucht, teilen sich die übrigen. Je Anlage höchstens ``ANLAGE_MAX``."""
+    aus: dict[str, int] = {}
+    offen = sorted(laengen, key=lambda k: (laengen[k], k))
+    rest = verfuegbar
+    while offen:
+        anteil = min(ANLAGE_MAX, max(ANLAGE_MIN, rest // len(offen)))
+        k = offen.pop(0)
+        aus[k] = max(0, min(laengen[k], anteil, rest))
+        rest -= aus[k]
+    return aus
+
+
 def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
     """Nutzertext, Quellen für die Prüfung, Prüfsumme der Quellenlage."""
     v = m["template"]
@@ -88,6 +226,15 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
     bloecke = [f"[V1] Vorlage {v['template_number']}: {v.get('title') or ''}\n" + _mit_seitenmarken("V1", v_text, v_off, 40_000)]
     rest = GESAMT_ZEICHEN - len(bloecke[0])
     belege = []
+    # Die Anteile der Lese-Anlagen, bevor die erste gesetzt wird (Prüfberichte
+    # behalten ihren festen Auszug und gehen vom Budget ab).
+    lese = {f"A{i}": len(foreign_text.defuse(d.get("text") or "")[0])
+            for i, d in enumerate(m["documents"], 1)
+            if d["doc_type"] in LESESTOFF and (d.get("text") or "").strip()
+            and not (d["doc_type"] == "audit_report")}
+    pruef = sum(ANLAGE_ZEICHEN for d in m["documents"] if d["doc_type"] == "audit_report")
+    anteil = _anteile(lese, max(0, rest - pruef - BELEG_RESERVE))
+    woerter = _vorlagen_woerter(v_text)
     for i, d in enumerate(m["documents"], 1):
         key = f"A{i}"
         # Spezialleser (council/synopse.py): Die geänderten Stellen einer
@@ -118,8 +265,15 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
                                 "label": d["label"]}
                 bloecke.append(f"[{key}] {d['label']} (Prüfvermerke des Rechnungsprüfungsamts, Auszug):\n{block}")
                 continue
-        if d["doc_type"] in LESESTOFF and text.strip() and rest > 2_000:
-            block = _mit_seitenmarken(key, text, d.get("page_offsets"), min(ANLAGE_ZEICHEN, rest))
+        grenze = anteil.get(key, 0)
+        # Gelesen wird, was ganz in seinen Anteil passt oder wofür mehr als ein
+        # Rest bleibt — eine kurze Anlage ist kein Rest.
+        if d["doc_type"] in LESESTOFF and text.strip() and grenze and (grenze >= len(text) or grenze > 2_000):
+            if len(text) <= grenze:
+                block = _mit_seitenmarken(key, text, d.get("page_offsets"), grenze)
+            else:
+                block = _seitenauswahl(key, text, d.get("page_offsets"), grenze, woerter)
+            fakten[f"kandidaten_{key}"] = _kandidaten_der_anlage(text, d.get("page_offsets"), block)
             rest -= len(block)
             quellen[key] = {"text": text, "pages": evidence.pages_from_offsets(text, d.get("page_offsets")),
                             "document_id": d["document_id"], "label": d["label"]}
@@ -140,6 +294,12 @@ def build_input(m: dict) -> tuple[str, dict[str, dict], str]:
     # bleibt die Prüfsumme wie vorher (kein Neulauf für den Bestand).
     if strukturen := [d["structure"] for d in m["documents"] if d.get("structure")]:
         grundlage.append(strukturen)
+    # Mit einer Lese-Anlage ist die Eingabe seit 11/2026 eine andere (Anteil
+    # statt fester 12.000 Zeichen, Kandidaten auch aus der Anlage, die Regel,
+    # den Inhalt aus ihr zu belegen) — diese Dossiers entstehen einmal neu.
+    # Vorlagen ohne Lese-Anlage behalten ihre Prüfsumme: kein Neulauf.
+    if lese:
+        grundlage.append(["lesung", 2])
     h = hashlib.sha256(json.dumps(grundlage, ensure_ascii=False).encode()).hexdigest()[:16]
     return "\n\n".join(teile), quellen, h
 
