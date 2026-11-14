@@ -25,7 +25,10 @@ from __future__ import annotations
 
 import argparse
 import os
+import sqlite3
 import sys
+import time
+from collections.abc import Callable
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -44,6 +47,48 @@ from kern.stopp import Stopp  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
+#: So oft HINTEREINANDER darf das Schreiben an einer gesperrten Datenbank
+#: scheitern, bevor der Lauf aufgibt — dann ist es kein kurzer Stau mehr.
+SPERRE_MAX = 5
+SPERRE_PAUSE_SEKUNDEN = 20
+
+
+class Sperre:
+    """Eine gesperrte Datenbank kostet EINE Vorlage, nicht den Lauf.
+
+    Am 14.11.2026 brach der Wahlprogramm-Bestand auf dev nach 461 von 662
+    Vorlagen ab: ``database is locked`` beim Speichern — ein anderer Schreiber
+    hielt die Datei länger als ``busy_timeout`` (5 s). Die bezahlte Antwort des
+    Modells für diese eine Vorlage war ohnehin verloren; verloren ging aber
+    auch der Rest des Laufs, und im Cron wäre daraus eine Alarm-Mail geworden.
+
+    Deshalb: Vorlage überspringen (der nächste Lauf holt sie nach, sie hat ja
+    keinen aktuellen Eintrag), kurz warten, weitermachen. Erst
+    :data:`SPERRE_MAX` Fehlschläge in Folge beenden den Lauf — mit dem Fehler,
+    damit ``run_guarded`` ihn meldet.
+    """
+
+    def __init__(self) -> None:
+        self.in_folge = 0
+        self.uebersprungen = 0
+
+    def bauen(self, template_number: str, bau: Callable[[], dict | None]) -> dict | None:
+        try:
+            ergebnis = bau()
+        except sqlite3.OperationalError as e:
+            if "locked" not in str(e) and "busy" not in str(e):
+                raise
+            self.in_folge += 1
+            self.uebersprungen += 1
+            print(f"  Datenbank gesperrt bei {template_number} ({self.in_folge}. Mal in Folge) — übersprungen.",
+                  flush=True)
+            if self.in_folge >= SPERRE_MAX:
+                raise
+            time.sleep(SPERRE_PAUSE_SEKUNDEN)
+            return None
+        self.in_folge = 0
+        return ergebnis
+
 
 def lauf(vorlagen: list[str], *, max_usd: float, schreiben: bool = True,
          max_minuten: float = 0) -> dict:
@@ -53,6 +98,7 @@ def lauf(vorlagen: list[str], *, max_usd: float, schreiben: bool = True,
     # der Bestand auf dev in eine Rate-Limit-Welle (Geduld: 30/90/180 s je Aufruf)
     # und wurde nach 120 min von außen abgeschnitten — ohne Bilanz.
     stopp = Stopp(daten_dir=ROOT / "data", max_kosten=max_usd, frist_sekunden=max_minuten * 60)
+    sperre = Sperre()
     neu = vorhanden = ohne_text = 0
     for i, tn in enumerate(vorlagen, 1):
         if (grund := stopp.grund()) is not None:
@@ -72,7 +118,7 @@ def lauf(vorlagen: list[str], *, max_usd: float, schreiben: bool = True,
         if not schreiben:
             neu += 1
             continue
-        if template_dossier.build_for_template(store, tn, stopp=stopp):
+        if sperre.bauen(tn, lambda tn=tn: template_dossier.build_for_template(store, tn, stopp=stopp)):
             neu += 1
     kosten = stopp.kosten
     print(f"{len(vorlagen)} Vorlagen: {neu} {'neu' if schreiben else 'würden neu entstehen'}, "
@@ -87,6 +133,7 @@ def lauf_begriffe(vorlagen: list[str], *, max_usd: float, schreiben: bool = True
     Punkt-Seite — läuft deshalb NACH den Dossiers."""
     store = CouncilStore(COUNCIL_DB)
     stopp = Stopp(daten_dir=ROOT / "data", max_kosten=max_usd, frist_sekunden=max_minuten * 60)
+    sperre = Sperre()
     neu = vorhanden = ohne_text = begriffe = 0
     for i, tn in enumerate(vorlagen, 1):
         if (grund := stopp.grund()) is not None:
@@ -106,7 +153,7 @@ def lauf_begriffe(vorlagen: list[str], *, max_usd: float, schreiben: bool = True
         if not schreiben:
             neu += 1
             continue
-        d = vorlage_begriffe.build_for_template(store, tn, stopp=stopp)
+        d = sperre.bauen(tn, lambda tn=tn: vorlage_begriffe.build_for_template(store, tn, stopp=stopp))
         if d:
             neu += 1
             begriffe += len((d["payload"] or {}).get("terms") or [])
@@ -122,6 +169,7 @@ def lauf_programme(vorlagen: list[str], *, max_usd: float, schreiben: bool = Tru
     Dossiers) und fastembed für die Suche in den Programmen."""
     store = CouncilStore(COUNCIL_DB)
     stopp = Stopp(daten_dir=ROOT / "data", max_kosten=max_usd, frist_sekunden=max_minuten * 60)
+    sperre = Sperre()
     neu = vorhanden = ohne_text = mit_aussage = aussagen = 0
     for i, tn in enumerate(vorlagen, 1):
         if (grund := stopp.grund()) is not None:
@@ -141,7 +189,7 @@ def lauf_programme(vorlagen: list[str], *, max_usd: float, schreiben: bool = Tru
         if not schreiben:
             neu += 1
             continue
-        d = programm_bezug.build_for_template(store, tn, stopp=stopp)
+        d = sperre.bauen(tn, lambda tn=tn: programm_bezug.build_for_template(store, tn, stopp=stopp))
         if d:
             neu += 1
             n = len((d["payload"] or {}).get("stances") or [])
