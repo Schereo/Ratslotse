@@ -4387,7 +4387,12 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
         """The most similar decisions to ``decision_id`` (precomputed), best first.
         Near-duplicate twins (the same matter in another committee, or a recurring
         series) are collapsed via the normalised title, so the neighbours shown are
-        genuinely distinct rather than the Ausschuss/Rat copy of this very decision."""
+        genuinely distinct rather than the Ausschuss/Rat copy of this very decision.
+
+        Neighbours without a title are skipped: the list shows nothing but the
+        title, and ``SimilarDecision.title`` is a plain string in the contract —
+        one such row turned every decision page listing it into a 500
+        (found 14.11.2026: one title-less decision on Prod, four pages down)."""
         base = self._conn.execute(
             "SELECT title, template_number FROM council_decisions WHERE id = ?", (decision_id,)
         ).fetchone()
@@ -4397,7 +4402,8 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
                FROM council_similar sl
                JOIN council_decisions d ON d.id = sl.neighbor_id
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
-               WHERE sl.decision_id = ? ORDER BY sl.rank LIMIT ?""",
+               WHERE sl.decision_id = ? AND TRIM(COALESCE(d.title, '')) <> ''
+               ORDER BY sl.rank LIMIT ?""",
             (decision_id, limit * 5),
         ).fetchall()
         seen = set(_dedup_keys(base["title"], base["template_number"], decision_id)) if base else set()
