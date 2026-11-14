@@ -102,9 +102,6 @@ def item_terms(punkt: dict, vorschlaege: list[dict] | None = None) -> list[dict]
     return begriffe[:MAX_BEGRIFFE]
 
 
-_ABSATZ = re.compile(r"\n\s*\n")
-
-
 def decision_texts(detail: dict) -> list[str]:
     """Die Lesetexte einer Beschluss-Seite in der Reihenfolge, in der sie dort
     stehen: Lottis Kurzfassung, der amtliche Wortlaut, „So stand es in der
@@ -113,10 +110,11 @@ def decision_texts(detail: dict) -> list[str]:
     texte: list[str | None] = [d.get("simple_summary"), d.get("official_text")]
     for abschnitt in (detail.get("template_dossier") or {}).get("sections") or []:
         texte.extend(a.get("text") for a in abschnitt.get("statements") or [])
-    # Absatzweise: Die Seite zeigt den Auszug in Absätzen und klappt die
-    # Erklärung unter dem auf, in dem das Wort steht — eine Fundstelle darf
-    # deshalb nicht über eine Leerzeile reichen.
-    texte.extend(_ABSATZ.split((detail.get("template") or {}).get("excerpt") or ""))
+    # Zeilenweise: Im Auszug ist eine Zeile ein Absatz (gemessen an 148
+    # Auszügen: harte Umbrüche mitten im Satz im Median keine). Die Seite klappt
+    # die Erklärung unter der Zeile auf, in der das Wort steht — eine
+    # Fundstelle darf deshalb nicht über einen Zeilenwechsel reichen.
+    texte.extend(((detail.get("template") or {}).get("excerpt") or "").split("\n"))
     return [t.strip() for t in texte if t and t.strip()]
 
 
@@ -185,8 +183,9 @@ def session_terms(session: dict, vorschlaege: dict[str, list[dict]] | None = Non
     for nr, vorlage, texte in session_cards(session):
         karte = [b for b in glossar.fuer_seite(texte, max_n=MAX_SITZUNG) if b["term"].lower() not in namen]
         karte = karte[:MAX_JE_KARTE]
-        if len(karte) < MAX_JE_KARTE and vorlage and (vorschlaege or {}).get(vorlage):
-            neu = [v for v in vorschlaege[vorlage] if (v.get("term") or "").lower() not in namen]
+        aus_vorlage = (vorschlaege or {}).get(vorlage) if vorlage else None
+        if len(karte) < MAX_JE_KARTE and aus_vorlage:
+            neu = [v for v in aus_vorlage if (v.get("term") or "").lower() not in namen]
             karte += document_terms(texte, neu, karte)[:MAX_JE_KARTE - len(karte)]
         for b in karte:
             namen.add(b["term"].lower())

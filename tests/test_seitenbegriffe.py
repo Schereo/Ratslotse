@@ -50,16 +50,16 @@ def _beschluss(**mehr) -> dict:
             **mehr}
 
 
-def test_beschluss_reihenfolge_und_auszug_absatzweise():
+def test_beschluss_reihenfolge_und_auszug_zeilenweise():
     d = _beschluss(template_dossier={"sections": [{"statements": [{"text": "Der Hebesatz steigt."}]}]},
                    template={"excerpt": "Anlass:\nDer Bebauungsplan 858 ist in Arbeit.\n\n \nDie Bürgschaft bleibt."})
     assert seitenbegriffe.decision_texts(d) == [
         "Die Stadt verlängert die Veränderungssperre.", "Die Satzung wird beschlossen.", "Der Hebesatz steigt.",
-        "Anlass:\nDer Bebauungsplan 858 ist in Arbeit.", "Die Bürgschaft bleibt."]
+        "Anlass:", "Der Bebauungsplan 858 ist in Arbeit.", "Die Bürgschaft bleibt."]
     begriffe = seitenbegriffe.decision_terms(d)
     assert [b["term"] for b in begriffe] == ["Veränderungssperre", "Satzung", "Hebesatz", "Bebauungsplan", "Bürgschaft"]
-    # Keine Fundstelle reicht über eine Leerzeile — die Seite zeigt Absätze.
-    assert all("\n\n" not in b["snippet"] for b in begriffe)
+    # Keine Fundstelle reicht über einen Zeilenwechsel — die Seite zeigt den Auszug zeilenweise.
+    assert all("\n" not in b["snippet"] for b in begriffe)
 
 
 def test_beschluss_begriffe_aus_der_vorlage_nur_wo_sie_stehen():

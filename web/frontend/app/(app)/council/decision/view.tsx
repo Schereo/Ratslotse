@@ -571,17 +571,27 @@ function GlanceDisclosure({ icon, label, badge, children }: {
 function VorlageExcerpt({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const long = text.length > 420;
-  // Absatzweise, damit die Erklärung eines Fachworts unter SEINEM Absatz
-  // aufklappt — nicht am Ende des ganzen Auszugs. Der Abstand entspricht der
-  // Leerzeile, die `whitespace-pre-line` vorher gezeigt hat (Zeilenhöhe 1,6).
-  const absaetze = useMemo(() => text.split(/\n\s*\n/).filter((a) => a.trim()), [text]);
+  // Zeilenweise, damit die Erklärung eines Fachworts unter SEINER Zeile
+  // aufklappt — im Auszug ist eine Zeile ein Absatz —, nicht am Ende des
+  // ganzen Auszugs. Eine Leerzeile bleibt der Abstand, den
+  // `whitespace-pre-line` vorher gezeigt hat (Zeilenhöhe 1,6).
+  const zeilen = useMemo(() => {
+    const aus: { text: string; abstand: boolean }[] = [];
+    let leer = false;
+    for (const z of text.split("\n")) {
+      if (!z.trim()) { leer = aus.length > 0; continue; }
+      aus.push({ text: z, abstand: leer });
+      leer = false;
+    }
+    return aus;
+  }, [text]);
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       {open || !long ? (
-        <div className="flex flex-col gap-[1.6em] text-lese">
-          {absaetze.map((a, i) => (
-            <ErklaerBereich key={i}>
-              <p className="whitespace-pre-line text-lese text-foreground"><Erklaert text={a} /></p>
+        <div className="text-lese">
+          {zeilen.map((z, i) => (
+            <ErklaerBereich key={i} className={z.abstand ? "mt-[1.6em]" : undefined}>
+              <p className="text-lese text-foreground"><Erklaert text={z.text} /></p>
             </ErklaerBereich>
           ))}
         </div>
