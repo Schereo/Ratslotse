@@ -9364,6 +9364,13 @@
               "string",
               "null"
             ]
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/PageTerm"
+            },
+            "title": "Terms",
+            "type": "array"
           }
         },
         "required": [
@@ -20929,6 +20936,10 @@
           },
           "form": {
             "title": "Form",
+            "type": "string"
+          },
+          "item": {
+            "title": "Item",
             "type": "string"
           },
           "kind": {
@@ -33524,6 +33535,13 @@
               "string",
               "null"
             ]
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/PageTerm"
+            },
+            "title": "Terms",
+            "type": "array"
           },
           "url": {
             "title": "Url",

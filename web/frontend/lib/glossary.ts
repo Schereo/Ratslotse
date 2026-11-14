@@ -360,4 +360,4 @@ export const GLOSSARY: Record<string, string> = {
     "Laufende Ausgaben, die niedriger ausfallen als im Haushalt geplant. Das gesparte Geld kann zusätzliche Ausgaben an anderer Stelle decken.",
 };
 
-// glossar-sha256: 87fb990e1bb59187cdcd416114583dae5c45afddddf48640783ae6f13ee747bc
+// glossar-sha256: e5da168cc4808bb066e122fdd79a399bab6ecefb1372ed3387278889a6e8a199

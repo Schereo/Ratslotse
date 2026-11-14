@@ -50,6 +50,7 @@ import { shortCommittee } from "@/lib/committees";
 import { formatDate } from "@/components/ui";
 import type { AgendaItem, DecisionOutcome, SessionDetail, VideoResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
 
 export type SessionWithCourse = SessionDetail & { course: SessionCourse; live_until?: string | null };
 
@@ -131,6 +132,7 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueckHref }: {
   const videoCount = Object.keys(videoByItem).length;
 
   return (
+    <SeitenBegriffe begriffe={data.terms}>
     <div className={vorschauId != null ? "mx-auto max-w-[1600px]" : "mx-auto max-w-[1240px]"}>
       {zurueckHref && (
         <Link href={zurueckHref}
@@ -170,6 +172,7 @@ export function SessionPage({ data, ksinr, flashTop, weit, zurueckHref }: {
         )}
       </div>
     </div>
+    </SeitenBegriffe>
   );
 }
 
@@ -590,16 +593,20 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
             </p>
           )}
           {text && (!item.important || !nachher || offen) && (
-            <p className={cn("mt-2 text-foreground", offen ? "text-lese" : "text-[15px] leading-relaxed text-foreground")}>
-              {text}
-              {!frame && <KiStern className="ml-1" text={nachher ? TEXT.kiNachher : TEXT.kiVorher} />}
-            </p>
+            <ErklaerBereich nurKlick className="mt-2">
+              <p className={cn("text-foreground", offen ? "text-lese" : "text-[15px] leading-relaxed text-foreground")}>
+                {frame ? text : <Erklaert text={text} punkt={nr} />}
+                {!frame && <KiStern className="ml-1" text={nachher ? TEXT.kiNachher : TEXT.kiVorher} />}
+              </p>
+            </ErklaerBereich>
           )}
           {item.important && item.important_reason && !nachher && (
-            <p className="mt-3 rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2 text-hinweis text-foreground">
-              <strong className="font-semibold text-primary">Warum wichtig:</strong> {item.important_reason}
-              <KiStern className="ml-1" text={TEXT.kiWichtig} />
-            </p>
+            <ErklaerBereich nurKlick className="mt-3">
+              <p className="rounded-lg border-l-[3px] border-primary bg-primary/[0.07] px-3 py-2 text-hinweis text-foreground">
+                <strong className="font-semibold text-primary">Warum wichtig:</strong> <Erklaert text={item.important_reason} punkt={nr} />
+                <KiStern className="ml-1" text={TEXT.kiWichtig} />
+              </p>
+            </ErklaerBereich>
           )}
           {offen && item.journey.length > 1 && <Journey ctx={ctx} item={item} />}
           {item.next_on_agenda && (

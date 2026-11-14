@@ -384,6 +384,21 @@ class UnterlagenMixin(StoreBasis):
         d["payload"] = json.loads(d["payload"]) if d["payload"] else None
         return d
 
+    def template_terms_for(self, template_numbers: list[str]) -> dict[str, list[dict]]:
+        """Die geprüften Begriffe mehrerer Vorlagen auf einmal (Sitzungsseite):
+        Vorlagennummer → Begriffe; nur Vorlagen, die welche haben."""
+        nummern = sorted({n for n in template_numbers if n})
+        aus: dict[str, list[dict]] = {}
+        for i in range(0, len(nummern), 400):
+            teil = nummern[i:i + 400]
+            for r in self._conn.execute(
+                    f"SELECT template_number, payload FROM template_terms WHERE status = 'ok' "  # noqa: S608 — nur Platzhalter
+                    f"AND template_number IN ({','.join('?' * len(teil))})", teil):
+                begriffe = (json.loads(r["payload"]) if r["payload"] else {}).get("terms") or []
+                if begriffe:
+                    aus[r["template_number"]] = begriffe
+        return aus
+
     def save_template_terms(self, template_number: str, sources_hash: str, *, status: str, payload: dict | None,
                             model: str | None, verify_model: str | None, cost_usd: float | None,
                             prompt_version: int) -> None:

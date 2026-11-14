@@ -185,6 +185,8 @@ export type Attendee = S["Attendance"];
 export type VideoResult = S["VideoResult"];
 
 export interface SessionDetail extends CouncilSession {
+  /** Fachwörter, die die Seite am Wort erklärt (`council/seitenbegriffe.py`). */
+  terms?: import("@/lib/seitenbegriffe").SeitenBegriff[];
   agenda_items: AgendaItem[];
   decisions?: CouncilDecision[];
   attendance?: Attendee[];
@@ -363,6 +365,8 @@ export type Beratung = S["DeliberationStation"];
 export type ImportanceBreakdown = S["ImportanceBreakdown"];
 
 export interface DecisionDetail {
+  /** Fachwörter, die die Seite am Wort erklärt (`council/seitenbegriffe.py`). */
+  terms?: import("@/lib/seitenbegriffe").SeitenBegriff[];
   /** „Aus der Vorlage" (Schalter `aus-den-unterlagen`). */
   template_dossier?: import("@/components/session/dossier").Dossier;
   /** Wortdiff Beschlussvorschlag ↔ Beschlusstext, nur bei Abweichung. */

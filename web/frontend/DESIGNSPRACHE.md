@@ -664,13 +664,19 @@ iOS-Schrift.
   ein zweites Wort ersetzt das erste. Esc schließt ihn (und nur ihn, nicht
   gleich das Fenster), `aria-expanded` sagt, woran man ist. Faustregel: unter
   ~28 rem Textbreite klappt es auf, darüber überlagert es.
-  **Auf Leseseiten (Punkt-Seite) steht dieselbe Aufklapp-Form** — je Absatz
+  **Auf Leseseiten (Punkt-, Beschluss- und Sitzungsseite) steht dieselbe Aufklapp-Form** — je Absatz
   ein Bereich, damit die Erklärung direkt unter dem Satz erscheint, in 14 px
   statt 12 (neben 17-px-Lesetext wäre 12 eine Fußnote). Welche Wörter, sagt
   der Server (`council/seitenbegriffe.py`): je Begriff nur die **erste
   Nennung der Seite**, keine Alltagswörter („Ausschuss" stünde auf drei von
   vier Seiten), keine mehrdeutigen, kein Kompositum. Die Seite erkennt selbst
   nichts.
+  **In einer Liste von Karten (Sitzungsseite) klappt nur der Klick auf**
+  (`nurKlick`), nicht das Überfahren: Die Karte wüchse unter dem Zeiger und
+  schöbe alle folgenden weiter, während man die Liste nur überfliegt. Dort
+  höchstens zwei Wörter je Karte und zwölf je Seite. Wort und Erklärung liegen
+  über der gestreckten Link-Fläche der Karte (`relative z-[1]`) — ein Tipp auf
+  die Erklärung navigiert nicht weg.
   Stammt die Erklärung nicht aus dem geprüften Glossar, sondern aus der
   Vorlage (ein Modell schlägt vor, ein zweites prüft), trägt der Begriff im
   aufgeklappten Block den **KI-Stern** — am Wort im Text nicht: Dort sieht

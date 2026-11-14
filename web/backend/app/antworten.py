@@ -2993,6 +2993,8 @@ class SessionDetail(SessionRow):
     #: Fehlt ohne Tagesordnung. ``NotRequired``, weil die App im Store das
     #: Feld nicht kennt — zusätzlich, nie anstelle von ``agenda_items``.
     course: NotRequired[SessionCourse]
+    #: Fachwörter, die die Seite am Wort erklärt — nur, wenn eine Karte eins trägt.
+    terms: NotRequired[list[PageTerm]]
 
 
 class SessionItemNeighbor(TypedDict):
@@ -3347,6 +3349,9 @@ class PageTerm(TypedDict):
     #: einem Modell aus der Vorlage erklärt und von einem zweiten geprüft
     #: (``council/vorlage_begriffe.py``) — die Seite zeigt dazu den KI-Stern.
     kind: str
+    #: Nur auf der Sitzungsseite: die Nummer des Punkts, an dessen Karte die
+    #: Fundstelle steht — gleichlautende Karten trügen sie sonst alle.
+    item: NotRequired[str]
 
 
 class SessionItemDetail(TypedDict):
@@ -3555,6 +3560,8 @@ class DecisionDetail(TypedDict):
     # Optional, weil die ausgelieferte App das Feld nicht kennt und ältere
     # Antworten (Fixturen, Schnappschüsse) es nicht tragen.
     neighbors: NotRequired[DecisionNeighbors | None]
+    #: Fachwörter, die die Seite am Wort erklärt — nur, wenn ein Text eins trägt.
+    terms: NotRequired[list[PageTerm]]
 
 
 class QaShare(TypedDict):

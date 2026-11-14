@@ -11111,6 +11111,8 @@ export interface components {
             template_journey: unknown[];
             /** Template Url */
             template_url?: string | null;
+            /** Terms */
+            terms?: components["schemas"]["PageTerm"][];
         };
         /**
          * DecisionEntity
@@ -15778,6 +15780,8 @@ export interface components {
             explanation: string;
             /** Form */
             form: string;
+            /** Item */
+            item?: string;
             /** Kind */
             kind: string;
             /** Offset */
@@ -20707,6 +20711,8 @@ export interface components {
             session_date: string;
             /** Session Time */
             session_time?: string | null;
+            /** Terms */
+            terms?: components["schemas"]["PageTerm"][];
             /** Url */
             url: string | null;
             /** Video Results */
@@ -31480,4 +31486,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c7f5617e43ca84a1ca7dcf75de8db3184c155db80eb659e189bed4070994ecf0
+// vertrag-sha256: 47356425771b79a81b198939e8a03f433893e6c9eb805108d32c0e0aac80f792

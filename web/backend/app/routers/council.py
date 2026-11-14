@@ -2068,6 +2068,18 @@ def session_detail(
         course = None
     if course:
         session["course"] = course
+    # Fachwörter am Wort (council/seitenbegriffe.py): je Begriff die erste
+    # Karte, die ihn nennt. Ein Zusatz wie der Kurs.
+    try:
+        from council import seitenbegriffe  # noqa: PLC0415
+        aus_vorlagen = (store.template_terms_for([(p.get("template_number") or "").strip()
+                                                  for p in session["agenda_items"]])
+                        if features.an("begriffe-aus-vorlage") else None)
+        begriffe = seitenbegriffe.session_terms(session, aus_vorlagen)
+        if begriffe:
+            session["terms"] = begriffe
+    except Exception:  # noqa: BLE001 — Zusatz, nie 500 der Sitzung
+        _log.exception("Begriffe fehlgeschlagen für Sitzung %s", ksinr)
     return session
 
 
@@ -3254,6 +3266,17 @@ def decision_detail(
             # Verfolgen-Knopf über `data.follow &&` aus, ohne etwas zu wissen.
             if user:
                 out["follow"] = {"kvonr": kv, "following": ratslotse.is_following_vorlage(user["id"], kv)}
+    # Fachwörter am Wort — wie auf der Punkt-Seite (council/seitenbegriffe.py).
+    try:
+        from council import seitenbegriffe  # noqa: PLC0415
+        tn = (d.get("template_number") or "").strip()
+        aus_vorlage = (store.template_terms_for([tn]).get(tn)
+                       if tn and features.an("begriffe-aus-vorlage") else None)
+        begriffe = seitenbegriffe.decision_terms(out, aus_vorlage)
+        if begriffe:
+            out["terms"] = begriffe
+    except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Beschluss-Seite
+        _log.exception("Begriffe fehlgeschlagen für Beschluss %s", decision_id)
     return out
 
 
