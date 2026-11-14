@@ -681,6 +681,25 @@ iOS-Schrift.
   Vorlage (ein Modell schlägt vor, ein zweites prüft), trägt der Begriff im
   aufgeklappten Block den **KI-Stern** — am Wort im Text nicht: Dort sieht
   jedes erklärte Wort gleich aus.
+  **„Aus der Vorlage“ auf der Beschluss-Seite**
+  (`components/session/aus-der-vorlage.tsx`): zwei Karten in den Stufen von
+  „Aus den Unterlagen“ — Kartentitel, Mono-Kicker je Abschnitt, Inhalt in der
+  Leserolle. Vorher standen beide als Fließtext unter 14-px-Zeilen; der Inhalt
+  war größer gesetzt als seine Überschriften (Tim, 14.11.2026).
+  *Vorschlag und Beschluss* nur, wo der Rat abgewichen ist: ein Umschalter
+  (`Segmented`) zwischen **Änderungen** (Wortdiff, Vorgabe), **Vorschlag** und
+  **Beschluss**; die Legende zeigt die beiden Auszeichnungen an sich selbst,
+  statt sie zu beschreiben. Der Diff kommt geglättet vom Server: Ein
+  umformulierter Satz steht durchgestrichen neben dem neuen, nicht als
+  Wort-Konfetti.
+  *So stand es in der Vorlage* ist eine **aufklappbare Gliederung**: die ersten
+  zwei Abschnitte offen, die übrigen als Zeile mit ihrer Zahl („5 Angaben“).
+  Zugeklapptes bleibt im Druck (`hidden print:block`).
+  **Zweite Stufe im Dossier** (auch auf der Punkt-Seite): Die Art einer Aussage
+  steht EINMAL als Zwischenzeile in Meta, halbfett — „Nicht Teil des
+  Beschlusses“, „Deckung“, „Termine“, „Noch offen“ —, nicht vor jedem Satz.
+  Termine sind eine zweispaltige Reihe (Datum in Tabellenziffern · was), alles
+  andere eine Liste mit stillen Punkten.
   **„Im Haushalt“ auf der Punkt-Seite** (`components/session/im-haushalt.tsx`):
   eine Karte in den Stufen von „Aus den Unterlagen“ — Kartentitel, je Reihe
   ein Mono-Kicker, darunter in Meta, WAS die Reihe ist (Plan des jeweiligen

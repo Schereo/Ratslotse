@@ -187,6 +187,20 @@ def test_abweichung_containment_statt_ratio():
     assert ernte.deviation(None, lang) is None
 
 
+def test_abweichung_eine_ergaenzung_ist_eine_aenderung():
+    vorschlag = ("Der Rat stimmt dem Neubau des Stadions an der Maastrichter Straße zum Pauschalpreis "
+                 "von 57.339.000 Euro netto zuzüglich Baunebenkosten zu.")
+    # Der Rat hat einen Satz angefügt: Der Vorschlag steht vollständig im
+    # Beschluss — das Containment allein nannte das „unchanged" (Beschluss 8677).
+    ergaenzt = vorschlag + (" Der Totalunternehmervertrag wird auflösend bedingt für den Fall eines "
+                            "negativen Ausgangs des Notifizierungsverfahrens geschlossen.")
+    assert ernte.deviation(vorschlag, ergaenzt) == "slight"
+    # Ein paar Wörter Protokoll-Rahmen sind keine Ergänzung …
+    assert ernte.deviation(vorschlag, "Der Rat beschließt einstimmig: " + vorschlag) == "unchanged"
+    # … und eine Kürzung bleibt, was sie war.
+    assert ernte.deviation(ergaenzt, vorschlag) == "unchanged"
+
+
 def _session(store, ksinr=1):
     with store._conn:
         store._conn.execute(

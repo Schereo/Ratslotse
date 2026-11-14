@@ -210,7 +210,14 @@ def deviation(vorschlag: str | None, official_text: str | None) -> str | None:
     dem Protokoll extrahierte Beschluss ist oft eine Kurzfassung des Vorschlags
     — Kürzung allein ist keine inhaltliche Änderung. Gezählt wird, welcher
     Anteil des kürzeren Texts als gemeinsame Blöcke (ab 12 Zeichen, gegen
-    Zufallstreffer) im längeren wiederkehrt."""
+    Zufallstreffer) im längeren wiederkehrt.
+
+    **Eine Ergänzung ist eine Änderung.** Steht der Vorschlag vollständig im
+    Beschluss, der Beschluss ist aber deutlich länger, hat der Rat etwas
+    angefügt („… unter Berücksichtigung des Änderungsantrages der SPD",
+    ein zusätzlicher Satz zur auflösenden Bedingung beim Stadionneubau) —
+    das Containment allein nannte das „unchanged". Gemessen am 14.11.2026:
+    24 Beschlüsse im Bestand, zwölf gelesen, alle zwölf echte Ergänzungen."""
     v, b = _norm(vorschlag or "")[:2000], _norm(official_text or "")[:2000]
     if len(v) < 25 or len(b) < 25:
         return None
@@ -219,6 +226,8 @@ def deviation(vorschlag: str | None, official_text: str | None) -> str | None:
     getroffen = sum(bl.size for bl in sm.get_matching_blocks() if bl.size >= 12)
     anteil = getroffen / len(kurz)
     if anteil >= 0.9:
+        if len(b) - len(v) >= max(60, 0.2 * len(v)):
+            return "slight"
         return "unchanged"
     if anteil >= 0.55:
         return "slight"

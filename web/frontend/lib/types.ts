@@ -412,6 +412,8 @@ export interface DecisionDetail {
     klima_relevant?: boolean | null;
     /** „Finanzielle Auswirkungen" aus der Vorlage (amtlicher Wortlaut). */
     financial_impact?: string | null;
+    /** Der Beschlussvorschlag der Verwaltung im Wortlaut (Regex-Ernte). */
+    proposed_decision?: string | null;
   } | null;
   /** Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt über
    *  eine echte Verknüpfung, nicht über eine Textsuche.
