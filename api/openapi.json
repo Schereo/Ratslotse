@@ -17485,6 +17485,38 @@
         "title": "ItemPlace",
         "type": "object"
       },
+      "ItemProgramStances": {
+        "properties": {
+          "concern": {
+            "title": "Concern",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramStance"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "silent": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Silent",
+            "type": "array"
+          }
+        },
+        "required": [
+          "concern",
+          "parties",
+          "silent"
+        ],
+        "title": "ItemProgramStances",
+        "type": "object"
+      },
       "ItemSimilarDecision": {
         "properties": {
           "committee": {
@@ -28823,6 +28855,71 @@
         "title": "PrefacePlan",
         "type": "object"
       },
+      "ProgramStance": {
+        "description": "Was das Wahlprogramm einer Liste im Rat zu diesem Punkt sagt\n(``council/programm_bezug.py``): wörtliches Zitat, im Code gegen das\nProgramm geprüft und von einem zweiten Modell bestätigt.",
+        "properties": {
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "program_title": {
+            "title": "Program Title",
+            "type": "string"
+          },
+          "program_url": {
+            "title": "Program Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "stance": {
+            "title": "Stance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "label",
+          "seats",
+          "stance",
+          "basis",
+          "quote",
+          "page",
+          "reason",
+          "program_title",
+          "program_url"
+        ],
+        "title": "ProgramStance",
+        "type": "object"
+      },
       "ProjectReportIn": {
         "properties": {
           "reason": {
@@ -33583,6 +33680,9 @@
               "object",
               "null"
             ]
+          },
+          "program_stances": {
+            "$ref": "#/components/schemas/ItemProgramStances"
           },
           "session_date": {
             "title": "Session Date",

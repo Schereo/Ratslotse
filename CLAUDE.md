@@ -532,6 +532,9 @@ COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor
 COUNCIL_TERMS_MODEL=openai/gpt-6-luna        # Fachwörter aus der Vorlage vorschlagen (council/vorlage_begriffe.py; Default passt)
 COUNCIL_TERMS_VERIFY_MODEL=openai/gpt-6-sol  # … und jede Erklärung prüfen — nur was besteht, erscheint (Default passt)
 TERMS_MAX_USD=0.25                   # Kostengrenze der Fachwörter je Cron-Lauf (vorlagen_dossiers, nur mit Schalter begriffe-aus-vorlage)
+COUNCIL_PROGRAM_MODEL=openai/gpt-6-luna         # Wahlprogramme zum Punkt einordnen (council/programm_bezug.py; Default passt)
+COUNCIL_PROGRAM_VERIFY_MODEL=openai/gpt-6-sol   # … und jede Einordnung bestätigen — sonst erscheint sie nicht (Default passt)
+PROGRAM_MAX_USD=0.25                 # Kostengrenze der Wahlprogramm-Einordnungen je Cron-Lauf (nur mit Schalter wahlprogramm-am-punkt)
 # Städtevergleich (check_cities.py) — der teuerste und längste Cron
 CITIES_MAX_SECONDS=14400             # Frist je Lauf; 0 hebt sie auf (Nachlauf von Hand)
 CITIES_MAX_USD=2                     # Kostengrenze je Lauf über ALLE Stufen; 0 hebt sie auf

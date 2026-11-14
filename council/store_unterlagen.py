@@ -395,6 +395,42 @@ class UnterlagenMixin(StoreBasis):
                  json.dumps(payload, ensure_ascii=False) if payload is not None else None, cost_usd,
                  datetime.now(UTC).isoformat(timespec="seconds")))
 
+    # --- Wahlprogramme zum Tagesordnungspunkt (council/programm_bezug.py) ----------
+
+    def program_vectors(self, slug: str, text_hash: str):
+        """Die Einbettungen der Abschnitte eines Programms (N × dim, float32)
+        — ``None``, wenn es sie zu diesem Stand der Programmdatei nicht gibt."""
+        import numpy as np  # noqa: PLC0415 — nur im Stapellauf
+
+        r = self._conn.execute("SELECT n, vectors FROM program_vectors WHERE slug = ? AND text_hash = ?",
+                               (slug, text_hash)).fetchone()
+        return np.frombuffer(r["vectors"], dtype="float32").reshape(r["n"], -1) if r and r["n"] else None
+
+    def save_program_vectors(self, slug: str, text_hash: str, vectors) -> None:
+        with self._conn:
+            self._conn.execute("INSERT OR REPLACE INTO program_vectors (slug, text_hash, n, vectors) VALUES (?,?,?,?)",
+                               (slug, text_hash, int(len(vectors)), vectors.astype("float32").tobytes()))
+
+    def program_stances(self, template_number: str) -> dict | None:
+        r = self._conn.execute("SELECT * FROM template_program_stances WHERE template_number = ?",
+                               (template_number,)).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        d["payload"] = json.loads(d["payload"]) if d["payload"] else None
+        return d
+
+    def save_program_stances(self, template_number: str, sources_hash: str, *, status: str, payload: dict | None,
+                             model: str | None, verify_model: str | None, cost_usd: float | None,
+                             prompt_version: int) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO template_program_stances (template_number, sources_hash, prompt_version, "
+                "model, verify_model, status, payload, cost_usd, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                (template_number, sources_hash, prompt_version, model, verify_model, status,
+                 json.dumps(payload, ensure_ascii=False) if payload is not None else None, cost_usd,
+                 datetime.now(UTC).isoformat(timespec="seconds")))
+
     def vorlagen_kommender_sitzungen(self, seit: str, bis: str) -> list[str]:
         return [r[0] for r in self._conn.execute(
             "SELECT DISTINCT a.template_number FROM council_agenda_items a JOIN council_sessions s ON s.ksinr = a.ksinr "

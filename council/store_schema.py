@@ -121,6 +121,28 @@ CREATE TABLE IF NOT EXISTS template_terms (
     created_at      TEXT NOT NULL
 );
 
+-- Wahlprogramme zum Tagesordnungspunkt (council/programm_bezug.py): die
+-- Einbettungen der Programm-Abschnitte je Liste (text_hash = Stand der
+-- Programmdatei; ändert sie sich, wird neu gerechnet) und je Vorlage die
+-- geprüften Einordnungen. status: ok | failed.
+CREATE TABLE IF NOT EXISTS program_vectors (
+    slug      TEXT PRIMARY KEY,
+    text_hash TEXT NOT NULL,
+    n         INTEGER NOT NULL,
+    vectors   BLOB NOT NULL
+);
+CREATE TABLE IF NOT EXISTS template_program_stances (
+    template_number TEXT PRIMARY KEY,
+    sources_hash    TEXT NOT NULL,
+    prompt_version  INTEGER NOT NULL,
+    model           TEXT,
+    verify_model    TEXT,
+    status          TEXT NOT NULL,
+    payload         TEXT,
+    cost_usd        REAL,
+    created_at      TEXT NOT NULL
+);
+
 -- Steckbrief je Dokument (Vorlagen-PDF, Vorlagen-Anlage, Punkt-Anlage — alle
 -- hängen an derselben getfile-Kennung): Art, Antragsteller, Seiten, Scan,
 -- Seitenanfänge im gespeicherten Text samt dessen Prüfsumme. Ein Dokument an

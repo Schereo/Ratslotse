@@ -2113,6 +2113,15 @@ def session_item(
                 punkt["arguments"] = args
         except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
             _log.exception("Argumente fehlgeschlagen für %s %s", ksinr, nr)
+    if features.an("wahlprogramm-am-punkt") and (tn := (punkt["item"].get("template_number") or "").strip()):
+        try:
+            from council import programm_bezug  # noqa: PLC0415
+            gespeichert = store.program_stances(tn)
+            sicht = programm_bezug.item_view(gespeichert["payload"]) if gespeichert and gespeichert["status"] == "ok" else None
+            if sicht:
+                punkt["program_stances"] = sicht
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Wahlprogramme fehlgeschlagen für %s %s", ksinr, nr)
     if features.an("punkt-umfeld"):
         try:
             from council import punkt_umfeld  # noqa: PLC0415

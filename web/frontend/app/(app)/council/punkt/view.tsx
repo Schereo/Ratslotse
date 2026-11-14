@@ -23,6 +23,7 @@ import { kurzfassung } from "@/components/tagesordnung";
 import { KiStern } from "@/components/ki-stern";
 import { AusDenUnterlagen } from "@/components/session/aus-den-unterlagen";
 import { ImHaushalt } from "@/components/session/im-haushalt";
+import { Wahlprogramme } from "@/components/session/wahlprogramme";
 import { AehnlicheBeschluesse, BeteiligungsHinweis, VideoSprung, WoDasIst } from "@/components/session/punkt-umfeld";
 import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
 import { useFetch } from "@/lib/use-fetch";
@@ -184,6 +185,7 @@ function PunktView({ p }: { p: Punkt }) {
           )}
 
           <ImHaushalt kontext={p.budget_context} />
+          <Wahlprogramme bezug={p.program_stances} />
 
           {reiter.length > 1 && (
             <div role="tablist" aria-label="Zu diesem Punkt"

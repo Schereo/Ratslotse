@@ -3261,6 +3261,34 @@ class ItemBudgetContext(TypedDict):
     blocks: list[BudgetContextBlock]
 
 
+class ProgramStance(TypedDict):
+    """Was das Wahlprogramm einer Liste im Rat zu diesem Punkt sagt
+    (``council/programm_bezug.py``): wörtliches Zitat, im Code gegen das
+    Programm geprüft und von einem zweiten Modell bestätigt."""
+    slug: str
+    label: str
+    seats: int
+    #: ``for``: spricht für das Anliegen des Punkts · ``against``: dagegen.
+    stance: str
+    #: ``measure``: das Programm nennt die Maßnahme selbst · ``principle``: ein
+    #: ausdrücklicher Grundsatz, unter den der Punkt unmittelbar fällt.
+    basis: str
+    quote: str
+    #: ``None`` bei einem Programm, das nur als Webseite vorliegt.
+    page: int | None
+    reason: str
+    program_title: str
+    program_url: str | None
+
+
+class ItemProgramStances(TypedDict):
+    #: Das Anliegen des Punkts, auf das sich „dafür“ und „dagegen“ beziehen.
+    concern: str | None
+    parties: list[ProgramStance]
+    #: Listen im Rat, deren Programm dazu nichts Greifbares sagt.
+    silent: list[str]
+
+
 class ItemPlace(TypedDict):
     slug: str
     name: str
@@ -3356,6 +3384,8 @@ class SessionItemDetail(TypedDict):
     budget_context: NotRequired[ItemBudgetContext]
     #: Nur hinter dem Schalter ``punkt-umfeld`` und nur, wenn es etwas zu zeigen gibt.
     surroundings: NotRequired[ItemSurroundings]
+    #: Nur hinter dem Schalter ``wahlprogramm-am-punkt`` und nur, wenn ein Programm etwas sagt.
+    program_stances: NotRequired[ItemProgramStances]
 
 
 class ImportanceBreakdown(TypedDict):

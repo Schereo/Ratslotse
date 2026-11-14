@@ -376,6 +376,15 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Auf dev zwei Wochen ohne Befund, auf Prod mit echten Beteiligungen und Videos gesichtet, "
                     "von Tim abgenommen und angeschaltet.",
     ),
+    "wahlprogramm-am-punkt": Feature(
+        key="wahlprogramm-am-punkt",
+        description="„Was die Wahlprogramme dazu sagen“ auf der Punkt-Seite: je Liste im Rat, ob ihr Programm "
+                    "zur Ratswahl 2026 für oder gegen das Anliegen spricht — mit wörtlichem Zitat und Seite, "
+                    "im Code geprüft und von einem zweiten Modell bestätigt (council/programm_bezug.py, "
+                    "docs/plan-wahlprogramm-am-punkt.md).",
+        fertig_wenn="Bestand auf dev erzeugt, 50 Einordnungen von Hand ohne falsche Zuschreibung gesichtet, "
+                    "von Tim abgenommen und auf Prod angeschaltet.",
+    ),
     "punkt-seite": Feature(
         key="punkt-seite",
         description="Jeder Tagesordnungspunkt bekommt eine eigene Seite mit Kurzfassung, "
