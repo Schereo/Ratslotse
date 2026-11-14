@@ -6766,19 +6766,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 keep = set(akte_prompt["speech_ids"]) if akte_prompt else set()
                 debatten_prompt = qa.debatten_diaet(debatten_rows, ctx, keep | newest_speech_ids)
                 zeiten["kontext_debatten_ids"] = [d["id"] for d in debatten_prompt]
-            # Belegnotizen (Schalter `belegnotizen`): vor der Antwort je Dokument
-            # eine Notiz, was es zur Frage beiträgt — oben im Kontext, wo das
-            # Antwort-Modell liest (`qa.belegnotizen`). Nicht bei Sitzungsfragen
-            # (dort zählt die ganze Tagesordnung), beim Vereinfachen und beim
-            # deterministischen „zuletzt an Ort X“.
-            notiz_block = ""
-            if (features.an("belegnotizen") and typ != "session" and not einfach
-                    and not latest_place and ctx):
-                t_notiz = time.perf_counter()
-                notizen = qa.belegnotizen(q_suche, ctx, debatten_prompt)
-                notiz_block = qa.belegnotizen_block(notizen)
-                zeiten["belegnotizen"] = len(notizen)
-                zeiten["belegnotizen_ms"] = round((time.perf_counter() - t_notiz) * 1000)
             if latest_place and not einfach:
                 # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
                 # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
@@ -6801,7 +6788,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           screen=bildschirm, akte=akte_prompt,
                                           rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block, notiz_block=notiz_block))
+                                          extra_block=extra_block))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -6842,7 +6829,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  akte=akte_prompt,
                                                  rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block, notiz_block=notiz_block))
+                                          extra_block=extra_block))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
