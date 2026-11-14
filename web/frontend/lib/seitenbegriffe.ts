@@ -1,4 +1,4 @@
-/* Fachwörter am Wort auf Leseseiten (Punkt-Seite). Welche Wörter erklärt
+/* Fachwörter am Wort auf Leseseiten (Punkt, Beschluss, Sitzung). Welche Wörter erklärt
    werden und wo die erste Fundstelle liegt, entscheidet der Server
    (`council/seitenbegriffe.py`) — hier wird nur noch an der gemeldeten Stelle
    geschnitten. */
@@ -7,6 +7,14 @@ import type { ApiAntwort } from "@/lib/vertrag";
 
 export type SeitenBegriff = NonNullable<ApiAntwort<"/council/session/{ksinr}/item">["terms"]>[number];
 export type Stueck = string | { text: string; begriff: SeitenBegriff };
+
+/** Die Begriffe, die an der Karte EINES Punkts gelten (Sitzungsseite): Der
+ *  Server ordnet dort jede Fundstelle einer Karte zu (`item`) — gleichlautende
+ *  Kurzfassungen trügen sonst alle dieselbe Unterstreichung. Ohne `punkt`
+ *  (Punkt- und Beschluss-Seite) gelten alle. */
+export function fuerKarte(begriffe: readonly SeitenBegriff[], punkt?: string): readonly SeitenBegriff[] {
+  return punkt == null ? begriffe : begriffe.filter((b) => b.item == null || b.item === punkt);
+}
 
 /** Einen Text an den Fundstellen zerlegen, die zu GENAU diesem Text gehören:
  *  `snippet` ist ein wörtliches Stück davon, `offset` die Stelle des Worts

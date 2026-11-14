@@ -489,10 +489,47 @@ MEHRDEUTIG: frozenset[str] = frozenset({
 #: Kompositum: „Haushaltsmittel" ist kein „Haushalt", „Satzungstext" keine
 #: „Satzung" — auf einer Leseseite stünde die Erklärung sonst an einem Wort,
 #: das sie nicht erklärt.
+#: Auch mit Bindestrich ist es ein Kompositum: der „Sonderposten-Markt" ist
+#: kein Bilanzposten, „Dringlichkeits- und Änderungsanträge" keine Dringlichkeit.
 _GEBEUGT = re.compile(
-    rf"(?<!{_BUCHSTABE})({'|'.join(re.escape(b) for b in _SORTIERT)})"
-    rf"(?:e|s|es|n|en|er|ern|em)?(?!{_BUCHSTABE})",
+    rf"(?<!{_BUCHSTABE})(?<!{_BUCHSTABE}-)({'|'.join(re.escape(b) for b in _SORTIERT)})"
+    rf"(?:e|s|es|n|en|er|ern|em)?(?!{_BUCHSTABE})(?!-\s|-{_BUCHSTABE})",
     re.IGNORECASE)
+
+#: Wörter, die im Fließtext einer Vorlage oft im ALLTAGSSINN stehen („zur
+#: Entlastung des Teams", „Einziehung der Baumkronen", „Erschließung von
+#: Fördermitteln") und nur mit ihrem Fachumfeld erklärt werden: Eines der
+#: Stichwörter muss in der Nähe stehen (:data:`_UMFELD_ZEICHEN` davor und
+#: danach, Kleinschreibung, als Wortteil).
+#:
+#: Gemessen am 14.11.2026 an 260 Fundstellen aus amtlichem Wortlaut,
+#: Vorlagen-Auszug und Sitzungskarten (ein Modell urteilte „passt die
+#: Erklärung zum Wort in diesem Satz?"): Im Auszug lag die Erklärung bei 9 von
+#: 100 am falschen Sinn, in den übrigen Texten bei 1 von 160 — und fast alle
+#: Fehlgriffe waren diese Wörter. Anders als :data:`MEHRDEUTIG` bleiben sie
+#: erklärt, wo sie gemeint sind („Entlastung der Geschäftsführung").
+BRAUCHT_UMFELD: dict[str, tuple[str, ...]] = {
+    "Entlastung": ("geschäftsführ", "aufsichtsrat", "betriebsleitung", "vorstand", "jahresabschluss", "erteilt",
+                   "komplementär", "gesellschafter", "oberbürgermeister", "werkleitung"),
+    "Einziehung": ("straße", "gehweg", "radweg", "fußweg", "weges", "wegefläche", "widmung", "verkehrsfläche",
+                   "teilstück", "teilfläche", "straßengesetz", "nstrg", "flurstück"),
+    "Dringlichkeit": ("tagesordnung", "anerkannt", "anerkennung", "geschäftsordnung", "bejaht", "des antrag",
+                      "der anträge", "festgestellt"),
+    "Erschließung": ("baugebiet", "grundstück", "straße", "kanal", "bebauungsplan", "verkehrlich", "gesichert",
+                     "erschließungs", "erschlossen", "wohngebiet", "gewerbegebiet", "baugb", "plangebiet",
+                     "anlieger", "zufahrt"),
+    "Sonderposten": ("bilanz", "auflösung", "zuschüsse", "zuwendung", "passiv", "investition", "abschreibung"),
+    "vorhabenbezogen": ("bebauungsplan", "b-plan", "vorhaben- und erschließungsplan"),
+}
+_UMFELD_ZEICHEN = 140
+
+
+def _im_fachsinn(begriff: str, text: str, von: int, bis: int) -> bool:
+    stichwoerter = BRAUCHT_UMFELD.get(begriff)
+    if not stichwoerter:
+        return True
+    umfeld = (text[max(0, von - _UMFELD_ZEICHEN):von] + " " + text[bis:bis + _UMFELD_ZEICHEN]).lower()
+    return any(w in umfeld for w in stichwoerter)
 
 #: Zeichen Umgebung, an denen die Seite die Fundstelle wiedererkennt.
 _UMGEBUNG = 24
@@ -505,7 +542,8 @@ def fuer_seite(texte: list[str], max_n: int = 8) -> list[dict]:
     die ERSTE Fundstelle: ``snippet`` ist ein wörtliches Stück des Textes um
     sie herum, ``offset`` die Stelle des Worts darin — die Seite sucht das
     Stück und unterstreicht dort, ohne selbst etwas zu erkennen. Ohne
-    :data:`ALLTAG` und :data:`MEHRDEUTIG`, ohne Komposita.
+    :data:`ALLTAG` und :data:`MEHRDEUTIG`, ohne Komposita; Wörter aus
+    :data:`BRAUCHT_UMFELD` nur in ihrem Fachumfeld.
     """
     gefunden: list[dict] = []
     gesehen: set[str] = set()
@@ -513,6 +551,9 @@ def fuer_seite(texte: list[str], max_n: int = 8) -> list[dict]:
         for m in _GEBEUGT.finditer(text or ""):
             begriff = _KANON.get(m.group(1).lower())
             if not begriff or begriff in gesehen or begriff in ALLTAG or begriff in MEHRDEUTIG:
+                continue
+            # Nicht als „gesehen" merken: Eine spätere Nennung im Fachsinn zählt.
+            if not _im_fachsinn(begriff, text, m.start(), m.end()):
                 continue
             gesehen.add(begriff)
             von = max(0, m.start() - _UMGEBUNG)

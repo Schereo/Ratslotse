@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { zerlege, type SeitenBegriff } from "./seitenbegriffe";
+import { fuerKarte, zerlege, type SeitenBegriff } from "./seitenbegriffe";
 
 const b = (form: string, snippet: string, offset: number): SeitenBegriff =>
   ({ term: form, form, snippet, offset, explanation: "…", kind: "glossary" });
@@ -36,5 +36,21 @@ describe("zerlege", () => {
 
   it("eine Stelle, die nicht zur Form passt, wird nicht unterstrichen", () => {
     expect(zerlege("abc def", [b("xyz", "abc def", 4)])).toEqual(["abc def"]);
+  });
+});
+
+describe("fuerKarte", () => {
+  const an = (item?: string): SeitenBegriff => ({ ...b("Satzung", "Die Satzung gilt.", 4), ...(item ? { item } : {}) });
+
+  it("auf der Sitzungsseite gilt eine Fundstelle nur an ihrer Karte", () => {
+    // Sechs Bebauungspläne hintereinander tragen dieselbe Kurzfassung — nur die erste Karte unterstreicht.
+    const begriffe = [an("Ö 7.1")];
+    expect(fuerKarte(begriffe, "Ö 7.1")).toHaveLength(1);
+    expect(fuerKarte(begriffe, "Ö 7.2")).toHaveLength(0);
+  });
+
+  it("ohne Punkt (Punkt- und Beschluss-Seite) gelten alle, und Begriffe ohne Karte überall", () => {
+    expect(fuerKarte([an("Ö 1"), an()])).toHaveLength(2);
+    expect(fuerKarte([an()], "Ö 3")).toHaveLength(1);
   });
 });

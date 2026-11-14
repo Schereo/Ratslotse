@@ -1,4 +1,4 @@
-"""Welche Fachwörter eine Punkt-Seite am Wort erklärt.
+"""Welche Fachwörter eine Leseseite (Punkt, Beschluss, Sitzung) am Wort erklärt.
 
 Tim, 13.11.2026: „können wir Fachbegriffe erkennen, die man nicht kennen
 könnte und dann einfache Erklärungen vorschlagen wie hier zur Grundsteuer C?"
@@ -100,3 +100,97 @@ def item_terms(punkt: dict, vorschlaege: list[dict] | None = None) -> list[dict]
     if vorschlaege:
         begriffe += document_terms(texte, vorschlaege, begriffe)
     return begriffe[:MAX_BEGRIFFE]
+
+
+def decision_texts(detail: dict) -> list[str]:
+    """Die Lesetexte einer Beschluss-Seite in der Reihenfolge, in der sie dort
+    stehen: Lottis Kurzfassung, der amtliche Wortlaut, „So stand es in der
+    Vorlage" (Dossier), zuletzt „Warum es dazu kam" (Auszug der Vorlage)."""
+    d = detail.get("decision") or {}
+    texte: list[str | None] = [d.get("simple_summary"), d.get("official_text")]
+    for abschnitt in (detail.get("template_dossier") or {}).get("sections") or []:
+        texte.extend(a.get("text") for a in abschnitt.get("statements") or [])
+    # Zeilenweise: Im Auszug ist eine Zeile ein Absatz (gemessen an 148
+    # Auszügen: harte Umbrüche mitten im Satz im Median keine). Die Seite klappt
+    # die Erklärung unter der Zeile auf, in der das Wort steht — eine
+    # Fundstelle darf deshalb nicht über einen Zeilenwechsel reichen.
+    texte.extend(((detail.get("template") or {}).get("excerpt") or "").split("\n"))
+    return [t.strip() for t in texte if t and t.strip()]
+
+
+def decision_terms(detail: dict, vorschlaege: list[dict] | None = None) -> list[dict]:
+    """Wie :func:`item_terms`, für die Beschluss-Seite."""
+    texte = decision_texts(detail)
+    begriffe = glossar.fuer_seite(texte, max_n=MAX_BEGRIFFE)
+    if vorschlaege:
+        begriffe += document_terms(texte, vorschlaege, begriffe)
+    return begriffe[:MAX_BEGRIFFE]
+
+
+#: Die Sitzungsseite ist eine Liste von Karten, kein Lesetext: je Karte
+#: höchstens so viele Unterstreichungen …
+MAX_JE_KARTE = 2
+#: … und auf der ganzen Seite höchstens so viele.
+MAX_SITZUNG = 12
+_OHNE_BUCHSTABEN_VORN = re.compile(r"^[^\W\d_]+\s+")
+
+
+def _top_key(nummer: str | None) -> str:
+    """„Ö 7.1" → „7.1" — derselbe Schlüssel wie ``topKey`` in der Seite."""
+    return _OHNE_BUCHSTABEN_VORN.sub("", nummer or "").strip()
+
+
+def session_cards(session: dict) -> list[tuple[str, str | None, list[str]]]:
+    """Je Karte der Sitzungsseite Punktnummer, Vorlagennummer und die Texte,
+    die die Karte zeigt: die Kurzfassung (nach dem Protokoll die des
+    Beschlusses) und — nur vor dem Protokoll — „Warum wichtig".
+
+    Nur Punkte mit eigener Karte: Der Kurs kennt sie (Projekt-Überschriften
+    und Nichtöffentliches nicht), Formalien und Formalakte stehen gebündelt
+    in schlanken Zeilen, Fragestunde und Anfragen tragen feste Sätze der Seite.
+    Im Zweifel fehlt hier eine Karte — dann bleibt ein Wort ununterstrichen,
+    statt dass eine Fundstelle auf einen Text zeigt, den niemand sieht."""
+    beschluss: dict[str, str | None] = {}
+    for d in session.get("decisions") or []:
+        if d.get("kind") != "decision" or not d.get("item_number"):
+            continue
+        beschluss.setdefault(_top_key(d["item_number"]), d.get("simple_summary") or d.get("summary") or None)
+    kurs = (session.get("course") or {}).get("items") or {}
+    vorher = not session.get("has_protocol")
+    karten: list[tuple[str, str | None, list[str]]] = []
+    for punkt in session.get("agenda_items") or []:
+        nr = punkt.get("item_number") or ""
+        ci = kurs.get(nr)
+        if not ci or ci.get("formality") or ci.get("formal_act") or ci.get("type") in ("question_time", "inquiries"):
+            continue
+        texte = [beschluss.get(_top_key(nr)) or punkt.get("social_text") or punkt.get("summary"),
+                 ci.get("important_reason") if vorher and ci.get("important") else None]
+        texte = [t.strip() for t in texte if t and t.strip()]
+        if texte:
+            karten.append((nr, (punkt.get("template_number") or "").strip() or None, texte))
+    return karten
+
+
+def session_terms(session: dict, vorschlaege: dict[str, list[dict]] | None = None) -> list[dict]:
+    """Die Fachwörter der Sitzungsseite: je Begriff die erste Karte, die ihn
+    nennt, je Karte höchstens :data:`MAX_JE_KARTE`. ``item`` nennt die Karte —
+    gleichlautende Kurzfassungen (sechs Bebauungspläne hintereinander) trügen
+    sonst alle dieselbe Unterstreichung. Begriffe aus einer Vorlage
+    (``vorschlaege``: Vorlagennummer → geprüfte Begriffe) gelten nur an der
+    Karte dieser Vorlage — ihre Erklärung ist für sie geschrieben."""
+    aus: list[dict] = []
+    namen: set[str] = set()
+    for nr, vorlage, texte in session_cards(session):
+        karte = [b for b in glossar.fuer_seite(texte, max_n=MAX_SITZUNG) if b["term"].lower() not in namen]
+        karte = karte[:MAX_JE_KARTE]
+        aus_vorlage = (vorschlaege or {}).get(vorlage) if vorlage else None
+        if len(karte) < MAX_JE_KARTE and aus_vorlage:
+            neu = [v for v in aus_vorlage if (v.get("term") or "").lower() not in namen]
+            karte += document_terms(texte, neu, karte)[:MAX_JE_KARTE - len(karte)]
+        for b in karte:
+            namen.add(b["term"].lower())
+            b["item"] = nr
+        aus += karte
+        if len(aus) >= MAX_SITZUNG:
+            break
+    return aus[:MAX_SITZUNG]

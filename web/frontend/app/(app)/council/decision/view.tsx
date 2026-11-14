@@ -1,11 +1,12 @@
 "use client";
 
 import { DossierAbschnitt, dossierStand } from "@/components/session/dossier";
+import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
 import { Wortdiff } from "@/components/session/aenderungsantraege";
 import { AntragKarte } from "@/components/session/aenderungsantraege";
 import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
 import { KiStern } from "@/components/ki-stern";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Tag, Euro } from "lucide-react";
@@ -91,7 +92,9 @@ function SimpleSummaryHero({ text }: { text: string }) {
           <p className="font-display text-base font-bold leading-tight text-foreground">Das Wichtigste in Kürze</p>
         </div>
       </div>
-      <p className="mt-3 text-lese text-foreground">{text}</p>
+      <ErklaerBereich className="mt-3">
+        <p className="text-lese text-foreground"><Erklaert text={text} /></p>
+      </ErklaerBereich>
       <p className="mt-2.5 text-hinweis text-muted-foreground">
         Automatische Kurzfassung — verbindlich ist der amtliche Wortlaut.
       </p>
@@ -130,7 +133,9 @@ function OfficialTextCard({ text }: { text: string }) {
       </button>
       {open && (
         <div className="border-t border-border px-4 pb-4">
-          <p className="mt-3 text-lese text-foreground">{text}</p>
+          <ErklaerBereich className="mt-3">
+            <p className="text-lese text-foreground"><Erklaert text={text} /></p>
+          </ErklaerBereich>
         </div>
       )}
     </div>
@@ -566,11 +571,35 @@ function GlanceDisclosure({ icon, label, badge, children }: {
 function VorlageExcerpt({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const long = text.length > 420;
+  // Zeilenweise, damit die Erklärung eines Fachworts unter SEINER Zeile
+  // aufklappt — im Auszug ist eine Zeile ein Absatz —, nicht am Ende des
+  // ganzen Auszugs. Eine Leerzeile bleibt der Abstand, den
+  // `whitespace-pre-line` vorher gezeigt hat (Zeilenhöhe 1,6).
+  const zeilen = useMemo(() => {
+    const aus: { text: string; abstand: boolean }[] = [];
+    let leer = false;
+    for (const z of text.split("\n")) {
+      if (!z.trim()) { leer = aus.length > 0; continue; }
+      aus.push({ text: z, abstand: leer });
+      leer = false;
+    }
+    return aus;
+  }, [text]);
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <p className={cn("whitespace-pre-line text-lese text-foreground", !open && long && "line-clamp-5")}>
-        {text}
-      </p>
+      {open || !long ? (
+        <div className="text-lese">
+          {zeilen.map((z, i) => (
+            <ErklaerBereich key={i} className={z.abstand ? "mt-[1.6em]" : undefined}>
+              <p className="text-lese text-foreground"><Erklaert text={z.text} /></p>
+            </ErklaerBereich>
+          ))}
+        </div>
+      ) : (
+        <ErklaerBereich>
+          <p className="line-clamp-5 whitespace-pre-line text-lese text-foreground"><Erklaert text={text} /></p>
+        </ErklaerBereich>
+      )}
       {long && (
         <button onClick={() => setOpen((o) => !o)} className="mt-2 text-xs font-medium text-primary hover:underline">
           {open ? "Weniger anzeigen" : "Mehr anzeigen"}
@@ -760,6 +789,7 @@ function DecisionDetailInner() {
     // ziehen von unten daneben — auf 1440p standen links und rechts je 648 px
     // leer, während man für die Nachbarn scrollen musste. Ab `ultra` wachsen
     // nur die beiden Seitenspalten; die Lesespalte bleibt um 900 px.
+    <SeitenBegriffe begriffe={data.terms}>
     <div className="mx-auto max-w-5xl weit:max-w-[1480px] ultra:max-w-[1800px]">
       <div className="print-hidden flex flex-wrap items-center justify-between gap-3">
         {zeigeZurueck ? (
@@ -1028,6 +1058,7 @@ function DecisionDetailInner() {
         </div>
       </div>
     </div>
+    </SeitenBegriffe>
   );
 }
 

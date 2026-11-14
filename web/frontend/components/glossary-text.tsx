@@ -38,6 +38,7 @@ type Aufgeklappt = { label: string; def: string; ki?: boolean } | null;
 const AufklappKontext = createContext<{
   auswahl: Aufgeklappt;
   waehlen: (a: Aufgeklappt) => void;
+  nurKlick: boolean;
 } | null>(null);
 
 /**
@@ -54,16 +55,20 @@ const AufklappKontext = createContext<{
  * ganzen Verlauf.
  */
 export function GlossarAufklappBereich(
-  { children, className, lesegroesse = false }: {
+  { children, className, lesegroesse = false, nurKlick = false }: {
     children: ReactNode; className?: string;
     /** Auf Leseseiten (Punkt, Beschluss) steht die Erklärung neben 17-px-Text;
      *  die 12 px aus Lottis schmalem Fenster wären dort eine Fußnote. */
     lesegroesse?: boolean;
+    /** In einer Liste von Karten (Sitzungsseite) klappt nur der Klick auf:
+     *  Beim Überfahren wüchse die Karte unter dem Zeiger und schöbe alle
+     *  folgenden weiter, während man die Liste nur überfliegt. */
+    nurKlick?: boolean;
   },
 ) {
   const [auswahl, setAuswahl] = useState<Aufgeklappt>(null);
   const waehlen = useCallback((a: Aufgeklappt) => setAuswahl(a), []);
-  const wert = useMemo(() => ({ auswahl, waehlen }), [auswahl, waehlen]);
+  const wert = useMemo(() => ({ auswahl, waehlen, nurKlick }), [auswahl, waehlen, nurKlick]);
   // Esc schließt — auch wenn der Fokus inzwischen woanders steht (man klappt
   // auf, liest, scrollt weiter). Nur registriert, solange etwas offen ist.
   useEffect(() => {
@@ -88,7 +93,10 @@ export function GlossarAufklappBereich(
           <div
             data-glossar-aufklapp
             role="note"
-            className={`mt-2 rounded-lg border border-border bg-muted/40 p-2.5 text-left font-normal normal-case not-italic leading-relaxed text-muted-foreground ${lesegroesse ? "text-sm" : "text-xs"}`}
+            // `relative z-[1]`: In einer Karte, die als Ganzes ein Link ist
+            // (gestreckte Fläche), bleibt die Erklärung lesbar und markierbar,
+            // statt beim Antippen wegzunavigieren.
+            className={`relative z-[1] mt-2 rounded-lg border border-border bg-muted/40 p-2.5 text-left font-normal normal-case not-italic leading-relaxed text-muted-foreground ${lesegroesse ? "text-sm" : "text-xs"}`}
           >
             <span className="mb-0.5 block font-semibold text-foreground">
               {auswahl.label}
@@ -120,7 +128,7 @@ export function Fachwort({ label, def, ki }: { label: string; def: string; ki?: 
 /** Die Fassung für schmale Flächen: der Block steht unter dem Absatz. */
 function TermAufklapp({ label, def, ki, ctx }: {
   label: string; def: string; ki?: boolean;
-  ctx: { auswahl: Aufgeklappt; waehlen: (a: Aufgeklappt) => void };
+  ctx: { auswahl: Aufgeklappt; waehlen: (a: Aufgeklappt) => void; nurKlick: boolean };
 }) {
   const offen = ctx.auswahl?.label === label;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,7 +145,7 @@ function TermAufklapp({ label, def, ki, ctx }: {
       type="button"
       onClick={(e) => { e.stopPropagation(); umschalten(); }}
       onMouseEnter={() => {
-        if (!zeigergeraet()) return;
+        if (ctx.nurKlick || !zeigergeraet()) return;
         timer.current = setTimeout(() => ctx.waehlen({ label, def, ki }), 220);
       }}
       onMouseLeave={() => { if (timer.current) clearTimeout(timer.current); }}
@@ -146,7 +154,8 @@ function TermAufklapp({ label, def, ki, ctx }: {
       // wäre weg, bevor man sie gelesen hat.
       aria-expanded={offen}
       aria-label={`Was bedeutet ${label}?`}
-      className="max-w-full cursor-help whitespace-normal break-words border-b border-dotted border-primary/70 text-left font-medium text-inherit"
+      // `relative z-[1]`: über der gestreckten Link-Fläche einer Karte.
+      className="relative z-[1] max-w-full cursor-help whitespace-normal break-words border-b border-dotted border-primary/70 text-left font-medium text-inherit"
     >
       {label}
     </button>

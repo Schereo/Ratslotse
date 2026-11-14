@@ -157,3 +157,44 @@ def test_seite_ausschlusslisten_kennen_nur_glossarwoerter():
 def test_seite_deckelt_die_zahl():
     viele = "Bebauungsplan, Flächennutzungsplan, Satzung, Hebesatz, Rücklage, Widmung, Eigenbetrieb, Wirtschaftsplan, Bürgschaft, Doppik."
     assert len(glossar.fuer_seite([viele])) == 8
+
+
+# --- Fachsinn statt Alltagssinn (Messung 14.11.2026, Beschluss- und Sitzungsseite) ---
+
+def _seite(text: str) -> list[str]:
+    return [b["term"] for b in glossar.fuer_seite([text])]
+
+
+def test_alltagssinn_bleibt_ohne_erklaerung():
+    # Alle vier standen so im Auszug einer Vorlage — mit der Erklärung des Fachworts daneben.
+    assert _seite("Diese dritte Stelle dient nicht nur der Entlastung des Teams.") == []
+    assert _seite("Eine weitgehende Einziehung der Kronen hätte negative Auswirkungen.") == []
+    assert _seite("Aufgrund der Dringlichkeit der Umsetzung wurde eine Übergangslösung eingerichtet.") == []
+    assert _seite("Der Kriterienkatalog wird vorhabenbezogen angewendet.") == []
+
+
+def test_im_fachumfeld_bleibt_das_wort_erklaert():
+    assert _seite("Der Geschäftsführung wird für 2025 Entlastung erteilt.") == ["Entlastung"]
+    assert _seite("Die Einziehung der Teilfläche der Straße Am Markt wird beschlossen.") == ["Einziehung"]
+    assert _seite("Die Dringlichkeit des Antrags wurde vom Rat anerkannt.") == ["Dringlichkeit"]
+    assert _seite("Der vorhabenbezogene Bebauungsplan 60 wird beschlossen.") == ["vorhabenbezogen", "Bebauungsplan"]
+
+
+def test_spaetere_nennung_im_fachsinn_zaehlt_noch():
+    texte = ["Das dient der Entlastung des Teams.", "Dem Aufsichtsrat wird Entlastung erteilt."]
+    begriffe = glossar.fuer_seite(texte)
+    assert [b["term"] for b in begriffe] == ["Entlastung"]
+    assert begriffe[0]["snippet"] in texte[1]
+
+
+def test_bindestrich_ist_auch_ein_kompositum():
+    assert _seite("Die Nutzungsänderung zu einem Sonderposten-Markt.") == ["Nutzungsänderung"]
+    assert _seite("Dies umfasst Haupt-, Dringlichkeits- und Änderungsanträge.") == []
+    assert _seite("Die Stadt-Satzung gilt.") == []
+    # … ein Gedankenstrich mit Abstand dagegen nicht
+    assert _seite("Änderung der Satzung - Beschluss") == ["Satzung"]
+
+
+def test_jedes_wort_mit_umfeld_steht_im_glossar():
+    assert set(glossar.BRAUCHT_UMFELD) <= set(glossar.BEGRIFFE)
+    assert not set(glossar.BRAUCHT_UMFELD) & (glossar.ALLTAG | glossar.MEHRDEUTIG)
