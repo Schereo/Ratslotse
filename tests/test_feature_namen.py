@@ -23,7 +23,8 @@ ADMIN = WURZEL / "web" / "frontend" / "app" / "(app)" / "admin" / "page.tsx"
 #: Werte, die es nur noch im BESTAND gibt — sie tauchen in der Kostentabelle
 #: auf, im Code aber nicht mehr. Ohne diese Ausnahme müsste man die
 #: Beschriftung löschen und die Historie damit unlesbar machen.
-NUR_BESTAND = {"exp_session_classification"}
+#: `qa_belegnotizen`: die Belegnotizen der KI-Frage, ausgebaut 14.11.2026.
+NUR_BESTAND = {"exp_session_classification", "qa_belegnotizen"}
 
 
 def _aus_dem_code() -> set[str]:

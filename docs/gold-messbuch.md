@@ -135,6 +135,11 @@ in dieser Reihenfolge:
 gehen: mit niedriger Denkstufe oder einem schnellen EU-Modell messen, zwei
 Läufe je Seite, und die Zeit bis zum ersten Wort mit.
 
+**Entscheidung 14.11.2026 (Tim): ganz ausgebaut.** Auf dev liefen sie wegen
+`FEATURE_FLAGS=*` weiter mit und kosteten dort rund 7 s je Frage. Der Code
+steht in der Historie (bis #1930); wer den Lese-Schritt wieder versucht,
+misst ihn nach der Regel oben.
+
 ### Lehre für künftige Schalter
 
 Ein Schalter, der zwei Dinge auf einmal ändert, lässt sich nicht bewerten.
