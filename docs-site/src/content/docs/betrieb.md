@@ -108,7 +108,6 @@ Die wichtigsten Workflows in `.github/workflows/`:
 | `test.yml` | Push auf `main`, jeder Pull Request | Python 3.12, `requirements.txt` + `requirements-dev.txt`, dann `pytest tests/ -q`. |
 | `deploy.yml` | `pull_request: types:[closed]` auf `main` mit `merged == true`, zusätzlich `workflow_dispatch` | Test-Gate (derselbe Lauf wie `test.yml`, als harte `needs`-Abhängigkeit), dann Doku-Build, rsync des Codes auf die App-VM (SSH mit ProxyJump über die Edge-VM) und Neustart der beiden systemd-Services. |
 | `deploy-dev.yml` | jeder Push auf `dev`, zusätzlich `workflow_dispatch` | Deployt auf die Dev-VM — ohne Test-Gate (siehe unten). |
-| `deploy-feature.yml` | jeder Push auf `feature`, zusätzlich `workflow_dispatch` | Deployt auf die **zweite Instanz auf derselben Dev-VM** (eigenes Verzeichnis, eigene Ports, eigene Datenbanken) — ebenfalls ohne Test-Gate. |
 | `docs.yml` | PR und Push auf `main`, nur bei Änderungen unter `docs-site/**` | Baut die Starlight-Doku und schlägt fehl, wenn sie nicht mehr baut (kaputte Links, Frontmatter, MDX). |
 | `docs-review.yml` | PR `opened` / `reopened` / `ready_for_review`, keine Forks | KI-Review, das den Diff auf Doku-Drift prüft und **genau einen** PR-Kommentar postet. Nur `contents: read` — die Action kann nichts committen. `continue-on-error: true`, der Review ist also kein Qualitäts-Gate. |
 | `claude.yml` | `@claude` in einem PR-Kommentar, Review oder Zeilenkommentar — nur von Konten mit Schreibrecht | Code-Review auf Zuruf: Claude liest den Diff und antwortet mit Inline-Kommentaren und einer Zusammenfassung. Bezahlt aus dem Claude-Abo (`CLAUDE_CODE_OAUTH_TOKEN`), nicht über die API. Nur `contents: read` — Claude kann nicht pushen. |
@@ -130,7 +129,7 @@ Die wichtigsten Workflows in `.github/workflows/`:
    Backend-API und Frontend.
 
 **Das Frontend wird neben dem laufenden Server gebaut** (seit 11/2026, in
-allen drei Deploys gleich). `next build` leert sein Ausgabeverzeichnis als
+beiden Deploys gleich). `next build` leert sein Ausgabeverzeichnis als
 Erstes; schrieb es direkt nach `.next`, zog es dem alten `next start` CSS und
 Skripte weg, und bis zum Neustart — gemessen rund eine Minute — kam jede Seite
 ungestaltet. Deshalb:
@@ -203,41 +202,15 @@ Kommando-Timeout von 30 Minuten für `npm ci` + `next build` und am Ende zwei
 Smoke-Checks gegen Frontend und `/api/health` plus die Rauchprobe. Prod bleibt
 davon vollständig unberührt.
 
-Der `concurrency`-Block teilt sich die Gruppe mit dem Feature-Deploy (siehe
-[Feature-Umgebung](#feature-umgebung)) und steht auf `cancel-in-progress:
-false`. Beide Instanzen liegen auf derselben VM; zwei gleichzeitige
-`next build` passen dort nicht nebeneinander, und der OOM-Killer trifft dann
-den *laufenden* Dienst der anderen Instanz. Sie bauen deshalb nacheinander,
-und keiner der beiden Läufe wird abgebrochen — ein abgebrochener Deploy
-hinterließe eine Umgebung auf altem Stand, ohne dass es jemandem auffällt.
+Der `concurrency`-Block steht auf `cancel-in-progress: false`: Deploys laufen
+nacheinander, keiner wird abgebrochen — ein Lauf, der zwischen Build und
+Neustart abgewürgt wird, hinterließe eine halb umgestellte Umgebung, ohne dass
+es jemandem auffällt.
 
----
-
-## Feature-Umgebung
-
-Auf **derselben VM** wie die Dev-Umgebung läuft eine zweite, vollständig
-getrennte Instanz für den Branch `feature`. Sie hat ein eigenes
-Arbeitsverzeichnis, eigene systemd-Units, eigene Ports, eine eigene `.env`
-und **eigene Datenbanken** — dev und feature teilen sich nur die Maschine.
-
-Wozu: `dev` trägt den Stand, der als nächstes nach `main` fährt. Wer etwas
-Größeres oder Wackeliges vorzeigen will, ohne diesen Stand anzufassen, mergt
-es nach `feature` und zeigt es unter der eigenen Subdomain.
-
-- **Eigene Datenbanken sind der Kern der Trennung.** Ein Feature-Branch
-  bringt typischerweise Migrationen mit. Teilte er die Dateien mit dev, zöge
-  die erste Migration die Dev-Umgebung mit um — und zurück käme man nur über
-  ein Backup. Der Bestand wurde einmalig als konsistenter
-  `sqlite3`-Backup-Schnappschuss aus der Dev-Datenbank kopiert.
-- **Gleiches Umgebungs-Gate wie dev** (`NEXT_PUBLIC_RATSLOTSE_ENV=dev`) —
-  sonst wäre die Instanz für genau die Features blind, für die man sie baut.
-- **Basic-Auth vor dem vhost**, kein Mailversand, keine Crons.
-- **Kein Force-Push nötig, aber erlaubt:** `feature` ist ein Wegwerf-Zweig.
-  Der Deploy holt den Stand per `git fetch` + `git reset --hard <sha>` und
-  kommt mit jedem Umbau der Historie zurecht.
-
-Frisch halten heißt: `dev` nach `feature` mergen (nicht umgekehrt). Fertige
-Arbeit geht wie immer per Pull Request nach `dev`.
+Bis 11/2026 lief auf derselben VM eine zweite Instanz für den Branch
+`feature` (feature.ratslotse.de) und ein Datenbank-Betrachter
+(db.dev.ratslotse.de). Beide sind abgebaut; was auf Prod noch nicht sichtbar
+sein soll, liegt hinter einem Feature-Schalter.
 
 ---
 

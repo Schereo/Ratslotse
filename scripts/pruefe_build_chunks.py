@@ -20,7 +20,7 @@ erste Prüfung war also zufrieden — und jede Seite stand in Times. Deshalb die
 zweite: Jede ``__variable_*``-Klasse am ``<html>`` muss in einem der
 Stylesheets definiert sein, die dieselbe Seite verlinkt.
 
-Dieser Wächter läuft in allen drei Deploys **nach dem Build und VOR dem
+Dieser Wächter läuft in beiden Deploys **nach dem Build und VOR dem
 Umschalten**: Er liest jede ``.html`` unter ``<build>/server/app``, sammelt
 alle ``/_next/static/…``-Verweise und prüft, ob die Datei unter
 ``<build>/static`` liegt, und dann die Schriftklassen. Schlägt er an, bricht

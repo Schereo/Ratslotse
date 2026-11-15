@@ -1,5 +1,5 @@
 """Der Wächter gegen einen in sich unstimmigen Next-Build (``scripts/pruefe_build_chunks.py``)
-und der Bau neben dem laufenden Server in den drei Deploys.
+und der Bau neben dem laufenden Server in beiden Deploys.
 
 Hintergrund 15.09.2026: Prod lieferte ``/wahlabend`` als weiße Seite, weil
 die vorgerenderte HTML ein Skript verlangte, das der Build nicht geschrieben
@@ -158,7 +158,6 @@ def test_das_skript_meldet_den_fall_mit_exit_1(tmp_path):
 DEPLOYS = {
     "deploy.yml": "sudo /bin/systemctl restart nwz-web-frontend",
     "deploy-dev.yml": "sudo systemctl restart nwz-web-api nwz-web-frontend",
-    "deploy-feature.yml": "sudo systemctl restart nwz-feature-api nwz-feature-frontend",
 }
 UMSCHALTEN = "mv web/frontend/.next-build web/frontend/.next"
 
