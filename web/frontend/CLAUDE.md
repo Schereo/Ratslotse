@@ -87,8 +87,8 @@ Der Export ist weg, diese Regeln bleiben:
   `next start` auf den Servern: jede Seite ungestaltet, bis zum Neustart.
   Die Deploys bauen deshalb mit `NEXT_DIST_DIR=.next-build` (wirkt nur in der
   Build-Phase) und schalten erst unmittelbar vor `systemctl restart` um;
-  `tests/test_pruefe_build_chunks.py` hält die Reihenfolge in allen drei
-  Workflows fest.
+  `tests/test_pruefe_build_chunks.py` hält die Reihenfolge in beiden
+  Deploy-Workflows fest.
 - **Tailwinds `min-[…]`-Kurzform ist in diesem Projekt aus.** Die Klasse steht
   im DOM, CSS gibt es keins. Benannte Breakpoints benutzen.
 - **Breiten mit `getBoundingClientRect()` messen**, nicht `clientWidth` — das

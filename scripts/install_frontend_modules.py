@@ -1,7 +1,7 @@
 """node_modules des Frontends NEBEN dem laufenden Server erneuern, nicht unter ihm.
 
-Bis 11/2026 lief in jedem Deploy (``deploy.yml``, ``deploy-dev.yml``,
-``deploy-feature.yml``) ``npm ci`` direkt in ``web/frontend``. ``npm ci``
+Bis 11/2026 lief in jedem Deploy (``deploy.yml``, ``deploy-dev.yml``)
+``npm ci`` direkt in ``web/frontend``. ``npm ci``
 leert ``node_modules`` als Erstes — der laufende ``next start`` lädt Module
 aber erst beim ersten Bedarf nach. Am 12.11.2026 auf dev: 15 Sekunden nach
 Beginn eines Deploys scheiterte die erste Seite nach einer

@@ -375,7 +375,7 @@ def _ssh_steps(actions=(LOCAL_SSH,)):
 
 def test_the_actions_are_actually_used():
     files = {f for f, *_ in _ssh_steps()}
-    assert {"deploy.yml", "deploy-dev.yml", "deploy-feature.yml"} <= files
+    assert {"deploy.yml", "deploy-dev.yml"} <= files
     files = {f for f, *_ in _ssh_steps((LOCAL_SSH_CONFIG,))}
     assert {"deploy.yml", "ops-erreichbarkeit.yml", "ops-haushalt-vergleich.yml"} <= files
 

@@ -3,7 +3,7 @@
 **Wozu.** Ein Feature fährt heute in dem Moment nach Prod, in dem sein PR
 gemergt wird. Wer etwas Größeres baut, hat drei Möglichkeiten, und alle drei
 sind unangenehm: den Zweig wochenlang offen halten (und mit jedem Tag
-schwerer mergen), auf `feature.ratslotse.de` ausweichen (wo niemand
+schwerer mergen), auf eine eigene Vorschau-Instanz ausweichen (wo niemand
 mitliest), oder es einfach live schalten und hoffen.
 
 Ein Schalter trennt **Ausliefern** von **Freischalten**. Der Code fährt

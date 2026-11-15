@@ -51,11 +51,10 @@ KI-Antworten, E-Mail und Push benötigen die jeweiligen Dienstzugänge.
 | Release | `dev` → `main` | Merge-Commit |
 
 Verwende für jeden Auftrag einen eigenen Branch. Nimm keine fremden Änderungen
-in deinen Commit auf. `feature` ist eine zusätzliche Vorschauumgebung; fertige
-Funktionen gehen regulär per PR nach `dev`.
+in deinen Commit auf.
 
 Ein gemergter PR nach `main` löst den produktiven Deploy aus. Pushes auf `dev`
-und `feature` aktualisieren die jeweilige Vorschau. Details stehen in den
+aktualisieren die Vorschau auf dev.ratslotse.de. Details stehen in den
 [Projektregeln](CLAUDE.md#deployment--branch-modell).
 
 ## Änderungen prüfen
