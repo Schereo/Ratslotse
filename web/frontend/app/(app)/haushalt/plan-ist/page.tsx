@@ -344,14 +344,14 @@ function PlanIstInner() {
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
         <ChevronRight className="h-3 w-3" />
-        <span className="font-semibold text-foreground">Geplant und geworden</span>
+        <span className="font-semibold text-foreground">Plan und tatsächliches Ergebnis</span>
       </div>
 
       <div className="flex items-start justify-between gap-5">
         <div className="min-w-0">
           <SchrittKicker href="/haushalt/plan-ist" />
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">
-            Geplant und geworden
+            Plan und tatsächliches Ergebnis
           </h1>
         </div>
         <SchrittPfad href="/haushalt/plan-ist" />

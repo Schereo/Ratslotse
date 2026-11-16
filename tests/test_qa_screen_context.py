@@ -35,7 +35,7 @@ FREMDE_ADRESSE = "person@example.org"
 
 SCREEN = {
     "route": "/haushalt/schulden",
-    "heading": "Wie viel Schulden hat Oldenburg?",
+    "heading": "Schulden der Stadt",
     "element_title": "Rate-Treppe",
     "element_text": "Tilgung je Jahr. 2024: 31,2 Mio. €.",
     "selection": "Tilgung",

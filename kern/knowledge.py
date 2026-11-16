@@ -476,7 +476,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Wofür gibt die Stadt am meisten aus?",
        ),
     ),
-    _p("/haushalt/einnahmen", "Woher kommt das Geld?",
+    _p("/haushalt/einnahmen", "Einnahmen der Stadt",
        "Die Einnahmequellen der Stadt — Steuern, Zuweisungen des Landes, "
        "Gebühren — und wie viel Einfluss der Rat auf ihre Höhe überhaupt hat.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
@@ -485,7 +485,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Wie viel Gebühren nimmt die Stadt ein?",
        ),
     ),
-    _p("/haushalt/pflicht", "Muss oder kann?",
+    _p("/haushalt/pflicht", "Pflichtausgaben und Spielraum",
        "Welche Ausgaben die Stadt gesetzlich leisten muss und wo dem Rat "
        "tatsächlich eine Entscheidung bleibt.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
@@ -494,7 +494,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Wo hat der Rat echten Entscheidungsspielraum?",
        ),
     ),
-    _p("/haushalt/produkte", "Was kostet eigentlich …?",
+    _p("/haushalt/produkte", "Kosten einzelner Aufgaben",
        "Was einzelne Aufgaben kosten — Archiv, Feuerwehr, Schwimmbad — und "
        "welcher Auftrag dahintersteht. Oben stehen die zehn Teilhaushalte im "
        "Klartext, darunter die einzelnen Aufgaben.",
@@ -504,7 +504,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Was kostet der Klimaschutz im Jahr?",
        ),
     ),
-    _p("/haushalt/personal", "Wer macht die Arbeit?",
+    _p("/haushalt/personal", "Personal und Stellenplan",
        "Wie viele Stellen die Stadt plant, wie viele besetzt sind und wo "
        "Personal fehlt.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
@@ -513,7 +513,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Wie viele Stellen plant die Stadt insgesamt?",
        ),
     ),
-    _p("/haushalt/investitionen", "Was gebaut wird",
+    _p("/haushalt/investitionen", "Investitionen: geplant und gebaut",
        "Welche Neubauten, Fahrzeuge und Grundstücke geplant sind — und wie viel "
        "davon tatsächlich umgesetzt wurde.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
@@ -522,7 +522,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Wie viel wurde 2025 tatsächlich investiert?",
        ),
     ),
-    _p("/haushalt/plan-ist", "Geplant und geworden",
+    _p("/haushalt/plan-ist", "Plan und tatsächliches Ergebnis",
        "Was die Verwaltung im laufenden Jahr erwartet, und wie weit Plan und "
        "Ergebnis in den Jahresabschlüssen auseinanderliegen.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
@@ -531,7 +531,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Wie viel hat die Stadt 2024 tatsächlich ausgegeben?",
        ),
     ),
-    _p("/haushalt/pruefung", "Geprüft und zusammengefasst",
+    _p("/haushalt/pruefung", "Rechnungsprüfung und Kennzahlen",
        "Was das Rechnungsprüfungsamt beanstandet hat und mit welchen dreizehn "
        "Kennzahlen die Stadt ihren Jahresabschluss zusammenfasst.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
@@ -540,7 +540,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Was sagen die dreizehn Kennzahlen?",
        ),
     ),
-    _p("/haushalt/konzern", "Ist das die ganze Stadt?",
+    _p("/haushalt/konzern", "Städtische Unternehmen",
        "Welche städtischen Betriebe und Gesellschaften neben dem Kernhaushalt "
        "stehen — und warum ihre Schulden nicht in derselben Zahl auftauchen.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
@@ -549,7 +549,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Wie hoch sind die Aufwendungen des Klinikums?",
        ),
     ),
-    _p("/haushalt/vergleich", "Steht Oldenburg besser da?",
+    _p("/haushalt/vergleich", "Oldenburg im Städtevergleich",
        "Wie Oldenburg bei Steuerkraft und Hebesätzen im Vergleich zu ähnlichen "
        "Städten dasteht — und warum ein Vergleich der Ausgaben Grenzen hat.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
@@ -558,7 +558,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Warum hat ein Ausgabenvergleich Grenzen?",
        ),
     ),
-    _p("/haushalt/schulden", "Wie viel Schulden hat Oldenburg?",
+    _p("/haushalt/schulden", "Schulden der Stadt",
        "Wie sich der Schuldenstand seit 1995 entwickelt hat, welche "
        "Verbindlichkeiten darin stecken und was jährlich an Zinsen und Tilgung "
        "fällig wird.",
@@ -568,7 +568,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Wie hoch ist der Schuldenstand des Kernhaushalts allein?",
        ),
     ),
-    _p("/haushalt/mitreden", "Mitreden",
+    _p("/haushalt/mitreden", "Termine und Fraktionspositionen",
        "Wann der Haushalt beraten und beschlossen wird, welche Anträge die "
        "Fraktionen dazu gestellt haben und wie sie ausgingen.",
        _HH_QUELLE, _HH_GRENZE, requires="budget", nudge=True,
@@ -577,7 +577,7 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Wie gingen die Haushaltsanträge aus?",
        ),
     ),
-    _p("/haushalt/labor", "Haushalts-Labor",
+    _p("/haushalt/labor", "Haushalt selbst durchrechnen",
        "Ein Werkzeug zum Ausprobieren: Man verschiebt Einnahmen und Ausgaben "
        "und sieht sofort, wie sich das Ergebnis der Stadt ändert.",
        "Gerechnet wird auf den echten Zahlen des gewählten Jahres.",

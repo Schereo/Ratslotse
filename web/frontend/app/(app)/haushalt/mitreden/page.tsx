@@ -79,14 +79,14 @@ function MitredenInner() {
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="font-semibold text-foreground">Mitreden</span>
+          <span className="font-semibold text-foreground">Termine und Fraktionspositionen</span>
         </div>
 
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
             <SchrittKicker href="/haushalt/mitreden" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-              Mitreden
+              Termine und Fraktionspositionen
             </h1>
           </div>
           <SchrittPfad href="/haushalt/mitreden" />
@@ -189,9 +189,9 @@ function MitredenInner() {
           Über den Haushalt wird politisch entschieden: Die Verwaltung legt einen
           Entwurf vor, Ausschüsse beraten darüber und der Rat beschließt den endgültigen
           Plan. Hier siehst du die Termine und die Streitpunkte der Fraktionen. Eigene
-          Annahmen kannst du anschließend im{" "}
+          Annahmen kannst du anschließend{" "}
           <Link href="/haushalt/labor" className="font-semibold text-primary">
-            Haushalts-Labor
+            selbst durchrechnen
           </Link>.
         </p>
 
@@ -221,7 +221,7 @@ function MitredenInner() {
               Selbst ausprobieren
             </span>
             <span className="mt-1 block text-[13.5px] font-semibold">
-              Haushalts-Labor: an den Stellschrauben drehen und sehen, was das ausmacht
+              Haushalt selbst durchrechnen: an den Stellschrauben drehen und sehen, was das ausmacht
             </span>
           </span>
           <ArrowRight size={16} strokeWidth={2}

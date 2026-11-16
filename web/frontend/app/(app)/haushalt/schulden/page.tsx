@@ -628,7 +628,7 @@ export default function SchuldenPage() {
           <div className="min-w-0">
             <SchrittKicker href="/haushalt/schulden" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-              Wie viel Schulden hat Oldenburg?
+              Schulden der Stadt
             </h1>
           </div>
           <div className="flex flex-none flex-col items-end gap-2.5">
@@ -1029,7 +1029,7 @@ export default function SchuldenPage() {
               städtischen Gesellschaften schulden auf eigene Rechnung und stehen hier
               nicht. Was neben dem Haushalt noch läuft, zeigt{" "}
               <Link href="/haushalt/konzern" className="font-semibold text-primary">
-                „Und ist das die ganze Stadt?"
+                „Städtische Unternehmen"
               </Link>{" "}
               — eine Schuldenzahl für diese Ebene führen wir nicht, weil die
               Pflichtanlage des Gesamtabschlusses im PDF keinen auslesbaren Text trägt.

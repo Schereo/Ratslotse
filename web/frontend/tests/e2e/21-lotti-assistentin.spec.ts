@@ -91,7 +91,7 @@ const STROM_SEITE = [
   `data: ${JSON.stringify({ type: "token", text: ANTWORT_SEITE })}\n\n`,
   `data: ${JSON.stringify({
     type: "done", mode: "explain", kind: "model", next: null,
-    next_page: { route: "/haushalt/schulden", title: "Wie viel Schulden hat Oldenburg?" },
+    next_page: { route: "/haushalt/schulden", title: "Schulden der Stadt" },
     glossary: [], timings: { total_ms: 900 },
   })}\n\n`,
 ].join("");
@@ -167,7 +167,7 @@ const fenster = (page: Page) => page.locator("[data-lotti-fenster]");
  *  offen, und der Test lief je nach Lage in den 30-s-Timeout. */
 async function schuldenGeladen(page: Page) {
   await expect(
-    page.getByRole("heading", { name: "Wie viel Schulden hat Oldenburg?" })
+    page.getByRole("heading", { name: "Schulden der Stadt" })
       .or(page.getByText(/Schuldenzeitreihe noch nicht eingelesen/)),
   ).toBeVisible({ timeout: 20_000 });
 }
@@ -638,7 +638,7 @@ test.describe("Lotti-Knopf und -Fenster", () => {
         `data: ${JSON.stringify({ type: "token", text: ANTWORT_FACHWORT })}\n\n`,
         `data: ${JSON.stringify({
           type: "done", mode: "explain", kind: "model", next: null,
-          next_page: { route: "/haushalt/schulden", title: "Wie viel Schulden hat Oldenburg?" },
+          next_page: { route: "/haushalt/schulden", title: "Schulden der Stadt" },
           glossary: ["Umschuldung"], timings: { total_ms: 900 },
         })}\n\n`,
       ].join("") }).catch(() => { /* Test ist schon zu Ende */ }),

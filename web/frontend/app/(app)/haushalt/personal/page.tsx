@@ -166,7 +166,7 @@ export default function PersonalPage() {
           <div className="min-w-0">
             <SchrittKicker href="/haushalt/personal" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-              Wer macht die Arbeit?
+              Personal und Stellenplan
             </h1>
           </div>
           <div className="flex flex-none flex-col items-end gap-2.5">

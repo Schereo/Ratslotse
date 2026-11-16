@@ -193,3 +193,43 @@ def test_die_doku_tabelle_nennt_dieselbe_reihenfolge():
     assert not abweichungen, (
         "Die Routen-Tabelle in docs-site/src/content/docs/haushalt.md weicht "
         "vom Wegweiser ab:\n  " + "\n  ".join(abweichungen))
+
+
+def _wegweiser_titel() -> dict[str, str]:
+    """Route → Titel, wie der Wegweiser den Schritt führt."""
+    source = WEGWEISER.read_text(encoding="utf-8")
+    block = source[source.index("const STUFEN:"):source.index("STUFEN_NUMMERIERT")]
+    return dict(re.findall(r'href: "/haushalt/([a-z-]+)",\s*title: "([^"]+)"', block))
+
+
+def test_jeder_schritt_heisst_ueberall_gleich():
+    """Der Titel eines Schritts steht an vier Stellen: im Wegweiser, als
+    Überschrift der Seite, als Seitentitel im Browser-Tab und in Lottis
+    Seitenwissen (``kern/knowledge.py``) — dort nennt sie ihn, wenn sie auf
+    die Seite verweist.
+
+    Am 16.11.2026 bekamen alle zwölf Schritte neue, sprechende Titel („Muss
+    oder kann?" wurde „Pflichtausgaben und Spielraum"). Klickt man im
+    Wegweiser auf einen Titel und landet unter einem anderen, oder empfiehlt
+    Lotti eine Seite unter dem alten Namen, findet man sie nicht wieder.
+    """
+    from kern import knowledge
+
+    titel = _wegweiser_titel()
+    assert len(titel) >= 10, f"nur {len(titel)} Titel im Wegweiser gefunden — Aufbau geändert?"
+
+    abweichungen = []
+    for route, t in titel.items():
+        ordner = BEREICH / route
+        page = (ordner / "page.tsx").read_text(encoding="utf-8")
+        h1 = re.search(r"<h1[^>]*>\s*([^<{]+?)\s*</h1>", page)
+        if not h1 or h1.group(1) != t:
+            abweichungen.append(f"{route}: Überschrift „{h1.group(1) if h1 else '—'}“, Wegweiser „{t}“")
+        layout = (ordner / "layout.tsx").read_text(encoding="utf-8")
+        if f'title: "{t}"' not in layout:
+            abweichungen.append(f"{route}: layout.tsx trägt nicht title: „{t}“")
+        w = knowledge.fuer_route(f"/haushalt/{route}")
+        if w is None or w.title != t:
+            abweichungen.append(f"{route}: knowledge.py „{w.title if w else '—'}“, Wegweiser „{t}“")
+
+    assert not abweichungen, "Schritt-Titel weichen voneinander ab:\n  " + "\n  ".join(abweichungen)

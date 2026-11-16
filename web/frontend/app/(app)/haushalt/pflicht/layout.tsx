@@ -7,7 +7,7 @@ import type { Metadata } from "next";
  *  dass jede Seite einen eigenen Titel hat.
  *  Der Titel ist derselbe wie in `kern/knowledge.py` (Lottis Seitenwissen). */
 export const metadata: Metadata = {
-  title: "Muss oder kann?",
+  title: "Pflichtausgaben und Spielraum",
   description: "Welche Ausgaben der Stadt gesetzlich vorgeschrieben sind und wo der Rat frei entscheidet.",
 };
 

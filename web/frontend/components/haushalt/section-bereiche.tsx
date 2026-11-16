@@ -124,7 +124,7 @@ function Finanzkachel({ z, daten, year }: {
             Was hier zentral eingeht
           </p>
           {/* Eine Zeile statt sieben Kacheln: Die Steckbriefe mit denselben
-              Zahlen stehen auf „Woher kommt das Geld" — hier reicht der Weg
+              Zahlen stehen auf „Einnahmen der Stadt" — hier reicht der Weg
               dorthin (Durchsicht 02.09.2026, Doppelung B3). */}
           <p className="mt-1.5 max-w-[80ch] text-[12.5px] leading-relaxed text-foreground/90">
             {posten.map((p, i) => (
@@ -249,7 +249,7 @@ export function BereicheAbschnitt() {
             </p>
             <Link href="/haushalt/produkte"
               className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
-              Was kostet eigentlich …?
+              Kosten einzelner Aufgaben
               <ArrowRight aria-hidden className="h-3.5 w-3.5" />
             </Link>
           </div>
