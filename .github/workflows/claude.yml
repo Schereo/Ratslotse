@@ -72,7 +72,7 @@ jobs:
       group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
           # Kein Token in .git/config, das Claude mit Read finden könnte.
@@ -102,7 +102,7 @@ jobs:
             echo "(Der Diff war nicht abrufbar, vermutlich zu groß. Lies die geänderten Dateien direkt.)" > "$RUNNER_TEMP/pr.diff"
           fi
 
-      - uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
+      - uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1.0.275
         if: steps.pr.outputs.skip != 'true'
         # Beratender Bot, kein Gate — wie docs-review.yml. Nach einem `@claude`
         # im Review hängt der Lauf als Prüfung am Kopf-Commit des PR, und
