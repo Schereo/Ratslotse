@@ -288,7 +288,7 @@ export function KonzernAbschnitt({ onBestand }: {
               Für die Stadt als Rechtsträger — Verwaltung und Eigenbetriebe, ohne die
               Gesellschaften auf dieser Seite — gibt es dagegen Zahlen seit 1995:{" "}
               <Link href="/haushalt/schulden" className="font-semibold text-primary">
-                Wie viel Schulden hat Oldenburg?
+                Schulden der Stadt
               </Link>
             </li>
           </ul>

@@ -170,7 +170,7 @@ export default function EinnahmenPage() {
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
         <ChevronRight className="h-3 w-3" />
-        <span className="font-semibold text-foreground">Woher das Geld kommt</span>
+        <span className="font-semibold text-foreground">Einnahmen der Stadt</span>
       </div>
 
       <div className="@container/kopf flex items-start justify-between gap-5">
@@ -181,7 +181,7 @@ export default function EinnahmenPage() {
               groß auf der Bühne darunter; die Überschrift trägt die Frage,
               unter der der Wegweiser den Schritt führt. */}
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">
-            Woher kommt das Geld?
+            Einnahmen der Stadt
           </h1>
         </div>
         <SchrittPfad href="/haushalt/einnahmen" />

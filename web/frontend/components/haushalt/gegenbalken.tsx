@@ -184,7 +184,7 @@ export function Gegenbalken({ zeilen, year }: { zeilen: HaushaltZeile[]; year: n
           Steuern und Zuweisungen zentral in der Kämmerei auflaufen, liegen
           dort rund zwei Drittel. Wer die Überschrift wörtlich nahm, las
           heraus, das meiste Geld komme aus der Verwaltung selbst. Woher es
-          wirklich stammt, beantwortet die Seite „Woher kommt das Geld?"
+          wirklich stammt, beantwortet die Seite „Einnahmen der Stadt"
           und das Flussbild darunter. */}
       <p className="mb-1.5 text-[12.5px] font-semibold">
         Wo Einnahmen verbucht werden <span className="font-normal text-muted-foreground">— {deMio(einSumme)}&#8239;Mio.&nbsp;€</span>

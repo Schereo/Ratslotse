@@ -97,13 +97,13 @@ export default function LaborPage() {
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
         <ChevronRight className="h-3 w-3" />
-        <span className="font-semibold text-foreground">Haushalts-Labor</span>
+        <span className="font-semibold text-foreground">Haushalt selbst durchrechnen</span>
       </div>
 
       <div className="flex items-start justify-between gap-5">
         <div className="min-w-0">
           <SchrittKicker href="/haushalt/labor" />
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">Haushalts-Labor</h1>
+          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">Haushalt selbst durchrechnen</h1>
           <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-foreground/90">
             Was würde sich ändern, wenn der Rat Einnahmen, freiwillige Ausgaben oder
             Investitionen anpasst? Drei Werkbänke rechnen mögliche Auswirkungen vor.
