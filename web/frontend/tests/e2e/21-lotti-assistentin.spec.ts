@@ -665,7 +665,7 @@ test.describe("Lotti-Knopf und -Fenster", () => {
     await knopf(page).click();
     await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
     await expect(fenster(page).getByText(ANTWORT_SEITE)).toBeVisible();
-    await expect(fenster(page).getByRole("button", { name: /^Weiter zu: Wie viel Schulden/ }))
+    await expect(fenster(page).getByRole("button", { name: /^Weiter zu: Schulden der Stadt/ }))
       .toHaveCount(0);
   });
 
@@ -931,7 +931,7 @@ test.describe("Lotti-Knopf und -Fenster", () => {
       await knopf(page).click();
       await fenster(page).getByRole("button", { name: "Was sehe ich hier?" }).click();
 
-      const chip = fenster(page).getByRole("button", { name: /^Weiter zu: Wie viel Schulden/ });
+      const chip = fenster(page).getByRole("button", { name: /^Weiter zu: Schulden der Stadt/ });
       await expect(chip).toBeVisible();
       await chip.click();
 
