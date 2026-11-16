@@ -509,7 +509,7 @@ export function GebautAbschnitt({ onBestand }: {
               steht hier nicht, und die städtischen Gesellschaften ebenso wenig. Was
               neben dem Haushalt noch läuft, zeigt{" "}
               <Link href="/haushalt/konzern" className="font-semibold text-primary">
-                „Und ist das die ganze Stadt?“
+                „Städtische Unternehmen“
               </Link>
             </li>
             <li>

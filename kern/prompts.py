@@ -604,7 +604,7 @@ WEGWEISER_REGEL = (
     "  einer ANDEREN Haushalts-Seite, nenne sie danach in EINEM Satz, mit ihrem\n"
     "  TITEL — nie mit der Adresse, nie mehr als eine, und nie STATT einer\n"
     "  Antwort. Was dort im Einzelnen steht, weißt du nicht: „Ausführlich steht\n"
-    "  das unter ‚Woher kommt das Geld?‘“ ist richtig, „dort stehen die Hebesätze\n"
+    "  das unter ‚Einnahmen der Stadt‘“ ist richtig, „dort stehen die Hebesätze\n"
     "  seit 2015“ wäre eine Behauptung. Eine ADRESSE („/haushalt/personal“)\n"
     "  gehört NIE in den Antworttext — nur der Titel in Anführungszeichen; die\n"
     "  Adresse steht ausschließlich in der Zeile darunter. Hänge diese Zeile\n"

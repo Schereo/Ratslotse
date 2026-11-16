@@ -7,7 +7,7 @@ import type { Metadata } from "next";
  *  dass jede Seite einen eigenen Titel hat.
  *  Der Titel ist derselbe wie in `kern/knowledge.py` (Lottis Seitenwissen). */
 export const metadata: Metadata = {
-  title: "Geprüft und zusammengefasst",
+  title: "Rechnungsprüfung und Kennzahlen",
   description: "Die Feststellungen des Rechnungsprüfungsamts zu den Jahresabschlüssen.",
 };
 

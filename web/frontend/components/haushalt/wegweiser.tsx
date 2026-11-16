@@ -108,12 +108,12 @@ type Ziel = {
 
 const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
   {
-    kicker: "Die Zahlen",
+    kicker: "Einnahmen und Ausgaben",
     question: "Woher das Geld kommt, wofür es eingeplant ist und welcher Teil politisch gestaltbar bleibt.",
     ziele: [
       {
         href: "/haushalt/einnahmen",
-        title: "Woher kommt das Geld?",
+        title: "Einnahmen der Stadt",
         text: "Die Einnahmequellen der Stadt und der Einfluss des Rates auf ihre Höhe.",
         zeichen: Coins,
       },
@@ -123,7 +123,7 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // ergibt, wenn man weiß, dass der größte Teil des Geldes gar nicht
         // zur Disposition steht.
         href: "/haushalt/pflicht",
-        title: "Muss oder kann?",
+        title: "Pflichtausgaben und Spielraum",
         text: "Welche Ausgaben gesetzlich gebunden sind und wo politische Entscheidungen möglich bleiben.",
         zeichen: Scale,
       },
@@ -134,7 +134,7 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // ersten liest, sucht Aufgaben in Bereichen, deren Namen ihm nichts
         // sagen.
         href: "/haushalt/produkte",
-        title: "Was kostet eigentlich …?",
+        title: "Kosten einzelner Aufgaben",
         text: "Was einzelne Aufgaben wie Archiv, Feuerwehr oder Schwimmbad kosten und welcher Auftrag dahintersteht.",
         zeichen: ListTree,
       },
@@ -146,7 +146,7 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // sie lesbar macht: Unbesetzte Stellen erklären, warum
         // Personalausgaben unter dem Plan bleiben können.
         href: "/haushalt/personal",
-        title: "Wer macht die Arbeit?",
+        title: "Personal und Stellenplan",
         text: "Wie viele Stellen die Stadt plant, wie viele besetzt sind und wo Personal fehlt.",
         zeichen: Users,
       },
@@ -159,19 +159,19 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // Ist derselben Sache — wer wissen will, was aus einem Vorhaben wurde,
         // sollte dafür nicht die Etappe wechseln müssen.
         href: "/haushalt/investitionen",
-        title: "Was gebaut wird und was daraus wurde",
+        title: "Investitionen: geplant und gebaut",
         text: "Welche Neubauten, Fahrzeuge und Grundstücke geplant sind und wie viel davon tatsächlich umgesetzt wurde.",
         zeichen: Hammer,
       },
     ],
   },
   {
-    kicker: "Die Gegenprobe",
+    kicker: "Ergebnis und Prüfung",
     question: "Der Haushalt ist ein Plan. Der Jahresabschluss zeigt, was tatsächlich daraus geworden ist.",
     ziele: [
       {
         href: "/haushalt/plan-ist",
-        title: "Geplant und geworden",
+        title: "Plan und tatsächliches Ergebnis",
         text: "Was die Verwaltung im laufenden Jahr erwartet — und wie sich Plan und Ergebnis in den Jahresabschlüssen unterscheiden.",
         zeichen: ClipboardCheck,
       },
@@ -183,14 +183,14 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // Liste von Quoten ohne die Zahlen, die sie zusammenfassen, nichts
         // sagt. Sie ist jetzt nur die Reihenfolge der Abschnitte.
         href: "/haushalt/pruefung",
-        title: "Geprüft und zusammengefasst",
+        title: "Rechnungsprüfung und Kennzahlen",
         text: "Was das Rechnungsprüfungsamt beanstandet und mit welchen Kennzahlen die Stadt ihren Abschluss zusammenfasst.",
         zeichen: Stamp,
       },
     ],
   },
   {
-    kicker: "Der Rahmen",
+    kicker: "Unternehmen, Vergleich, Schulden",
     question: "Zum Gesamtbild gehören auch städtische Unternehmen, der Vergleich mit anderen Städten und die Schulden über mehrere Jahre.",
     ziele: [
       {
@@ -199,7 +199,7 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // Kette: Wer bei den Gebühren anfängt, liest eine Zahl ohne Herkunft;
         // wer bei der Summe aufhört, weiß nicht, wer dahintersteckt.
         href: "/haushalt/konzern",
-        title: "Und ist das die ganze Stadt?",
+        title: "Städtische Unternehmen",
         text: "Welche städtischen Unternehmen und Beteiligungen neben dem Kernhaushalt stehen.",
         zeichen: Network,
       },
@@ -208,7 +208,7 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // wenn man die eigenen Zahlen kennt — und die Seite besteht zur
         // Hälfte aus der Begründung, warum der Ausgaben-Vergleich nicht trägt.
         href: "/haushalt/vergleich",
-        title: "Steht Oldenburg besser da?",
+        title: "Oldenburg im Städtevergleich",
         text: "Wie Oldenburg bei Steuerkraft und Hebesätzen dasteht und warum Ausgabenvergleiche Grenzen haben.",
         zeichen: BarChart3,
       },
@@ -220,14 +220,14 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // gilt. (Und: Hier eingefügt statt weiter vorn verschiebt es keine
         // Kicker-Nummern der Seiten davor.)
         href: "/haushalt/schulden",
-        title: "Wie viel Schulden hat Oldenburg?",
+        title: "Schulden der Stadt",
         text: "Wie sich der Schuldenstand seit 1995 entwickelt hat und welche Verbindlichkeiten darin enthalten sind.",
         zeichen: LineChart,
       },
     ],
   },
   {
-    kicker: "Mitreden",
+    kicker: "Entscheidung und Mitreden",
     question: "Wann der Rat entscheidet, worüber politisch gestritten wird und welche Stellschrauben es gibt.",
     ziele: [
       {
@@ -237,7 +237,7 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // erreichbar. Sie stehen jetzt als Abschnitte auf einer Seite; die
         // Anker führen weiterhin gezielt hin.
         href: "/haushalt/mitreden",
-        title: "Mitreden",
+        title: "Termine und Fraktionspositionen",
         text: "Wann der Haushalt beschlossen wird und welche Positionen die Fraktionen vertreten.",
         zeichen: MessagesSquare,
       },
@@ -251,7 +251,7 @@ const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
         // vorher fehlt der Bezug, an dem sich ablesen ließe, ob eine Bewegung
         // viel ist.
         href: "/haushalt/labor",
-        title: "Haushalts-Labor",
+        title: "Haushalt selbst durchrechnen",
         text: "Ausprobieren, wie sich veränderte Einnahmen und Ausgaben auf das Ergebnis auswirken.",
         zeichen: FlaskConical,
       },

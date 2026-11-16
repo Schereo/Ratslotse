@@ -778,7 +778,7 @@ export function ProdukteAbschnitt({ onBestand }: {
       <div className="flex flex-col gap-4">
         <div className="@container/kopf">
           <h2 className="font-display text-xl font-bold tracking-tight sm:text-[22px]">
-            Was kostet eigentlich …?
+            Was einzelne Aufgaben kosten
           </h2>
           {/* Zwei Absätze, zwei Spalten — dieselbe Stelle wie im Kopf von
               „Woher das Geld kommt": Aufhänger und Jahres-Hinweis standen

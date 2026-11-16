@@ -536,7 +536,7 @@ describe("anschlussfragen", () => {
     ]);
   });
 
-  const SCHULDEN = { route: "/haushalt/schulden", title: "Wie viel Schulden hat Oldenburg?" };
+  const SCHULDEN = { route: "/haushalt/schulden", title: "Schulden der Stadt" };
 
   it("führt zur richtigen Haushalts-Seite — vor dem nächsten Baustein", () => {
     // Lotti hat gerade gesagt, dass es dort ausführlich steht; der Weg
