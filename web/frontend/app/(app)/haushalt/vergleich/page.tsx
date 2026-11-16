@@ -161,7 +161,7 @@ export default function VergleichSeite() {
           <div className="min-w-0">
             <SchrittKicker href="/haushalt/vergleich" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-              Steht Oldenburg besser da als Osnabrück?
+              Oldenburg im Städtevergleich
             </h1>
           </div>
           <SchrittPfad href="/haushalt/vergleich" />

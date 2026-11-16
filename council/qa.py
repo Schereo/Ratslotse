@@ -4152,7 +4152,7 @@ def geld_grafik(store, geld: dict) -> dict | None:
                 # Ziel, das Frontend entscheidet am Gate, ob es den Link
                 # zeigt (auf Prod ist /haushalt ein 404).
                 "mehr": {"href": "/haushalt/schulden",
-                         "label": "Wie viel Schulden hat Oldenburg?"},
+                         "label": "Schulden der Stadt"},
             }
 
     konten = (geld.get("accounts") or {}).get("accounts") or []

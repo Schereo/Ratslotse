@@ -217,13 +217,13 @@ export default function PflichtPage() {
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
         <ChevronRight className="h-3 w-3" />
-        <span className="font-semibold text-foreground">Muss oder kann?</span>
+        <span className="font-semibold text-foreground">Pflichtausgaben und Spielraum</span>
       </div>
 
       <div className="flex items-start justify-between gap-5">
         <div className="min-w-0">
           <SchrittKicker href="/haushalt/pflicht" />
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">Muss oder kann?</h1>
+          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[25px]">Pflichtausgaben und Spielraum</h1>
         </div>
         <SchrittPfad href="/haushalt/pflicht" />
       </div>

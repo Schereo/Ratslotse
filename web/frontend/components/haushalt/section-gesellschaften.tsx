@@ -486,7 +486,7 @@ export function GesellschaftenAbschnitt({ onBestand }: {
             className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
             <span className="min-w-0">
               <span className="block font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Schritt {schrittNummer("/haushalt/konzern")} · Und ist das die ganze Stadt?
+                Schritt {schrittNummer("/haushalt/konzern")} · Städtische Unternehmen
               </span>
               <span className="mt-0.5 block text-[13.5px] font-semibold leading-snug">
                 Wie groß der Konzern Stadt insgesamt ist — Kernverwaltung und alle

@@ -66,14 +66,14 @@ function ProdukteSeiteInner() {
         <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="font-semibold text-foreground">Was kostet eigentlich …?</span>
+          <span className="font-semibold text-foreground">Kosten einzelner Aufgaben</span>
         </div>
 
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
             <SchrittKicker href="/haushalt/produkte" />
             <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
-              Was kostet eigentlich …?
+              Kosten einzelner Aufgaben
             </h1>
           </div>
           <SchrittPfad href="/haushalt/produkte" />

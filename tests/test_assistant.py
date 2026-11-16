@@ -459,7 +459,7 @@ def test_seiten_ziel_nimmt_eine_gueltige_route():
         "Die Zahl steht oben.\nWEITER: seite /haushalt/schulden", BUDGET)
     assert text == "Die Zahl steht oben."
     assert ziel == "seite"
-    assert seite is not None and seite.title == "Wie viel Schulden hat Oldenburg?"
+    assert seite is not None and seite.title == "Schulden der Stadt"
 
 
 @pytest.mark.parametrize("route", [
@@ -869,7 +869,7 @@ def test_ohne_einwilligung_wird_nichts_gespeichert(client):
 @pytest.mark.einwilligung(1)
 def test_mit_einwilligung_entsteht_ein_lotti_gespraech(client):
     r = client.post("/api/council/explain", json={
-        "route": "/haushalt/schulden", "heading": "Wie viel Schulden hat Oldenburg?",
+        "route": "/haushalt/schulden", "heading": "Schulden der Stadt",
         "question": "Was sehe ich hier?", "conversation_id": None})
     assert r.status_code == 200
     (gid, g), = client.ratslotse.gespraeche.items()
@@ -878,7 +878,7 @@ def test_mit_einwilligung_entsteht_ein_lotti_gespraech(client):
     assert g["kind"] == "lotti"
     # Der Titel ist die SEITE, nicht die Frage: „Was sehe ich hier?" wäre als
     # Name jedes zweiten Gesprächs unbrauchbar.
-    assert g["title"] == "Wie viel Schulden hat Oldenburg?"
+    assert g["title"] == "Schulden der Stadt"
     assert _rahmen(r)[-1]["conversation_id"] == gid
 
 
@@ -1149,7 +1149,7 @@ def test_der_wegweiser_steht_im_prompt_mit_titel_und_satz():
     screen = lotti.Screen(route="/haushalt/schulden")
     prompt = _prompt(screen, permissions=frozenset({"budget"}))
     assert "WELCHE SEITE WAS BEANTWORTET" in prompt
-    assert "„Woher kommt das Geld?“ (/haushalt/einnahmen)" in prompt
+    assert "„Einnahmen der Stadt“ (/haushalt/einnahmen)" in prompt
     # Der erste Satz des `what` — nicht der ganze Absatz.
     assert "Die Einnahmequellen der Stadt" in prompt
 
