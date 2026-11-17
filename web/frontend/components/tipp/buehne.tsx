@@ -86,7 +86,7 @@ export function BeamerKopf({ untertitel, rechts }: { untertitel: string; rechts:
 /** Der pulsierende Punkt mit „Live" bzw. „Endstand". */
 export function LivePunkt({ endstand }: { endstand: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2.5 font-semibold text-signal">
+    <span className="inline-flex items-center gap-2.5 font-semibold text-signal-ink">
       <span className="relative flex h-3.5 w-3.5">
         {!endstand && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75 motion-reduce:hidden" />}
         <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-signal" />

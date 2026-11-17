@@ -38,7 +38,7 @@ function ResetForm() {
     return (
       <p className="mt-4 text-sm text-muted-foreground">
         Der Link ist unvollständig oder fehlt. Fordere unter{" "}
-        <Link href="/forgot-password" className="text-primary hover:underline">Passwort vergessen</Link> einen neuen an.
+        <Link href="/forgot-password" className="textlink">Passwort vergessen</Link> einen neuen an.
       </p>
     );
   }

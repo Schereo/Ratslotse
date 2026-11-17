@@ -249,7 +249,7 @@ function Leiste({ row, basis, nachkomma, restLabel, mark }: {
           );
         })}
         {rest != null && restLabel && (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-signal">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-signal-ink">
             <span aria-hidden="true" className="hh-schraffur h-2 w-2 rounded-[2px] border border-dashed border-signal" />
             {restLabel} <span className="tabular-nums">{deZahl(rest, nachkomma)}</span>
           </span>
@@ -299,7 +299,7 @@ export function Gegenbalken({
         ))}
       </div>
       {mark && mark.value > 0 && (
-        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-snug text-signal">
+        <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-snug text-signal-ink">
           <span aria-hidden="true" className="mt-[3px] h-3 w-0.5 flex-none bg-signal" />
           <span>{mark.label}</span>
         </p>

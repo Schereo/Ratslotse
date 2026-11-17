@@ -192,7 +192,7 @@ export default function ChangelogPage() {
                 </div>
                 {v.sections.map((s) => (
                   <div key={s.title} className="mt-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{s.title}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{s.title}</p>
                     <ul className="mt-1.5 space-y-1.5">
                       {s.items.map((it, idx) => (
                         <li key={idx} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">

@@ -57,6 +57,30 @@ löschen" bei 4,03 : 1 auf der Karte und Weiß darauf bei 4,29 : 1 — jetzt
 heller mit dunkler Schrift (4,83 / 4,98 : 1). Wer ein Token ändert, misst das
 Paar, nicht nur die Fläche.
 
+**Schrift ohne Transparenz (seit 11/2026).** Ein axe-Lauf über 30 Seiten fand
+80 Kontrastfehler, fast alle aus einer Ursache: `text-muted-foreground/70`,
+`text-primary/60`, `opacity-80` auf Text. Das Grau trägt 5,5 : 1, mit 70 %
+Deckkraft nur noch 3,2. Abstufung entsteht über Größe, Gewicht oder die Fläche
+— nie über die Deckkraft der Schrift. Für Icons und Trennzeichen bleibt sie
+erlaubt (`/40`, `/50`).
+
+**Signalfarbe als Schrift: `text-signal-ink`.** Das Orange der Flächen
+(`bg-signal`) hält Weiß darauf 4,65 : 1, als Schrift auf getönten Gründen
+(Haushaltstafel, `bg-signal/10`) aber nur 3,6. `--signal-ink` ist dieselbe
+Farbe dunkler (35 % statt 42 %), im Dunkeln gleich dem Signal. `text-signal`
+ist damit aus dem Bestand verschwunden; Flächen und Ringe bleiben `signal`.
+
+**Link im Satz: `textlink`.** Hafenblau neben grauem Fließtext unterscheidet
+sich nur im Farbton, nicht in der Helligkeit (1,0 : 1) — wer Farben schlecht
+sieht, sieht den Link nicht (WCAG 1.4.1). Ein Link mitten im Satz trägt deshalb
+`className="textlink"` (dezent unterstrichen, beim Zeigen voll). Ein Link, der
+allein steht („Alle anzeigen →", Kartenfuß), bleibt `text-primary hover:underline`.
+
+**Tippflächen ≥ 24 px (WCAG 2.5.8).** Kleine Chips und Anlagen-Links tragen
+`min-h-6`. Ausnahme sind Grafiken, deren Breite den Wert abbildet (Haushalts-
+Leisten, Schritt-Punkte) — sie stehen als bekannte Einschränkung in der
+Erklärung zur Barrierefreiheit.
+
 ### Semantik (Tints, nie Vollfarben-Flächen)
 - Erfolg/Angenommen: #dcfce7 / #15803d
 - Fehler/Abgelehnt: #fef2f2 + Rahmen #fecaca / #b91c1c

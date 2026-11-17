@@ -695,7 +695,7 @@ function SteuerInner() {
 
           {proPunkt != null && (
             <div className="rounded-2xl border border-signal/40 bg-card p-4 shadow-sm">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
+              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal-ink">
                 Was brächte ein Punkt mehr?
               </p>
               <p className="mt-2 font-display text-2xl font-bold tracking-tight tabular-nums">

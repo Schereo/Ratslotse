@@ -74,7 +74,7 @@ export function GespraecheEinwilligung({ onEntschieden, kompakt = false, classNa
               <span>Die KI läuft ausschließlich in Rechenzentren in der EU.</span>
             </li>
             <li className="flex gap-2">
-              <ShieldAlert className="mt-[0.2rem] h-4 w-4 shrink-0 text-signal" aria-hidden />
+              <ShieldAlert className="mt-[0.2rem] h-4 w-4 shrink-0 text-signal-ink" aria-hidden />
               <span>Bitte keine persönlichen oder sensiblen Daten eingeben.</span>
             </li>
           </ul>
@@ -119,9 +119,9 @@ export function GespraecheEinwilligung({ onEntschieden, kompakt = false, classNa
               </p>
               <p>
                 Deine Wahl kannst du jederzeit unter{" "}
-                <Link href="/account" className="text-primary hover:underline">Konto</Link> ändern.
+                <Link href="/account" className="textlink">Konto</Link> ändern.
                 Mehr in der{" "}
-                <Link href="/datenschutz" className="text-primary hover:underline">Datenschutzerklärung</Link>.
+                <Link href="/datenschutz" className="textlink">Datenschutzerklärung</Link>.
               </p>
             </div>
           </Aufklapp>

@@ -140,7 +140,7 @@ function SuccessRates({ a }: { a: PartyAnalysis }) {
         <Dot cls="bg-green-500/80" label="angenommen" />
         <Dot cls="bg-red-500/80" label="abgelehnt" />
         <Dot cls="bg-amber-500/80" label="vertagt" />
-        <span className="text-muted-foreground/70">· Quote = angenommen / entschieden · Zahl = Anträge</span>
+        <span className="text-muted-foreground">· Quote = angenommen / entschieden · Zahl = Anträge</span>
       </div>
     </div>
   );
@@ -168,7 +168,7 @@ function AntragSuccessRates({ a }: { a: PartyAnalysis }) {
       <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
         <Dot cls="bg-green-500/80" label="angenommen" />
         <Dot cls="bg-red-500/80" label="abgelehnt" />
-        <span className="text-muted-foreground/70">
+        <span className="text-muted-foreground">
           · Zahl = entschiedene Anträge · nur Antragsteller mit mindestens 5 · aus {stats.n_mit_beschluss} von {stats.n_antraege} Antrags-Dokumenten
         </span>
       </div>
@@ -190,7 +190,7 @@ function Contention({ a }: { a: PartyAnalysis }) {
           </div>
         </div>
       ))}
-      <p className="pt-1 text-xs text-muted-foreground/70">Anteil der Abstimmungen mit Gegenstimmen oder Enthaltungen (nicht einstimmig).</p>
+      <p className="pt-1 text-xs text-muted-foreground">Anteil der Abstimmungen mit Gegenstimmen oder Enthaltungen (nicht einstimmig).</p>
     </div>
   );
 }

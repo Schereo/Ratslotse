@@ -94,7 +94,7 @@ export function LiveBanner() {
               {myCount > 0 && (
                 <>
                   {" "}— darunter{" "}
-                  <span className="inline-flex rounded-full bg-signal/10 px-2 py-px text-[11px] font-bold text-signal">
+                  <span className="inline-flex rounded-full bg-signal/10 px-2 py-px text-[11px] font-bold text-signal-ink">
                     {myCount} zu deinen Themen
                   </span>
                 </>

@@ -574,7 +574,7 @@ function Tabelle({ bild }: { bild: FlussDaten }) {
         </tbody>
       </table>
       <p className={cn("mt-2 text-[11px] leading-relaxed",
-        bild.stimmt ? "text-muted-foreground" : "text-signal")}>
+        bild.stimmt ? "text-muted-foreground" : "text-signal-ink")}>
         {bild.stimmt
           ? `Prüfung der Summen: Beide Seiten ergeben ${deMio(mio(bild.summeLinks))} Mio. € und verwenden dieselbe Skala.`
           : `Prüfung der Summen: links ${deMio(mio(bild.summeLinks))}, rechts ${deMio(mio(bild.summeRechts))} Mio. €. Die Einzelwerte ergeben keine gemeinsame Gesamtsumme.`}

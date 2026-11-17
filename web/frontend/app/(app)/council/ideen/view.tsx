@@ -168,7 +168,7 @@ function Rueckmeldung({ idee }: { idee: Idee }) {
 
   return (
     <div className="mt-2 flex items-center gap-3 text-[11px]">
-      <span className="text-muted-foreground/70">Stimmt das?</span>
+      <span className="text-muted-foreground">Stimmt das?</span>
       {(["right", "wrong"] as const).map((wert) => (
         <button
           key={wert}
@@ -178,13 +178,13 @@ function Rueckmeldung({ idee }: { idee: Idee }) {
           className={
             gesagt === wert
               ? "font-medium text-primary"
-              : "text-muted-foreground/70 hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground"
           }
         >
           {wert === "right" ? "Ja" : "Nein"}
         </button>
       ))}
-      {fehler && <span className="text-muted-foreground/70">{fehler}</span>}
+      {fehler && <span className="text-muted-foreground">{fehler}</span>}
     </div>
   );
 }
@@ -245,7 +245,7 @@ function Herkunft({ idee }: { idee: Idee }) {
   ].filter(Boolean);
   if (teile.length === 0) return null;
   return (
-    <p className="mt-0.5 text-[11px] text-muted-foreground/80">{teile.join(" · ")}</p>
+    <p className="mt-0.5 text-[11px] text-muted-foreground">{teile.join(" · ")}</p>
   );
 }
 
@@ -261,7 +261,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
         </span>
         {kopf && <span className="text-xs text-muted-foreground">{kopf}</span>}
         {idee.originator && (
-          <span className="text-xs text-muted-foreground/80">{idee.originator}</span>
+          <span className="text-xs text-muted-foreground">{idee.originator}</span>
         )}
         {/* Aufwand und Verbreitung: zwei Wörter, die den Rest der Karte
             einordnen. Sie stehen als leises Etikett neben der Herkunft, nicht
@@ -277,7 +277,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
           </span>
         )}
         {(idee.siblings ?? []).length > 0 && (
-          <span className="text-[11px] text-muted-foreground/80">
+          <span className="text-[11px] text-muted-foreground">
             {(idee.siblings ?? []).length === 1
               ? "1 weitere Vorlage dazu"
               : `${(idee.siblings ?? []).length} weitere Vorlagen dazu`}
@@ -305,7 +305,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
         {idee.instrument || idee.name}
       </h3>
       {idee.instrument && idee.name && (
-        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground/70">
+        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
           {idee.name}
         </p>
       )}
@@ -341,17 +341,17 @@ function IdeenKarte({ idee }: { idee: Idee }) {
               ist die MEHRHEIT, nicht das der einen gezeigten Vorlage — gemessen
               widersprach bei 14 Gruppen die jüngste ihrer Mehrheit. */}
           {stimmen(idee.votes) && (
-            <span className="text-xs text-muted-foreground/70">{stimmen(idee.votes)}</span>
+            <span className="text-xs text-muted-foreground">{stimmen(idee.votes)}</span>
           )}
           {idee.confidence === "low" && (
-            <span className="text-xs text-muted-foreground/70">unsicher</span>
+            <span className="text-xs text-muted-foreground">unsicher</span>
           )}
         </div>
         {idee.reason && (
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{idee.reason}</p>
         )}
         {idee.addressee && (
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground/80">
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Entscheidet nicht die Stadt allein: {idee.addressee}
           </p>
         )}
@@ -383,11 +383,11 @@ function IdeenKarte({ idee }: { idee: Idee }) {
               {idee.protocol.why}
             </p>
             {idee.protocol.discussed && (
-              <p className="text-xs leading-relaxed text-muted-foreground/80">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 {idee.protocol.discussed}
               </p>
             )}
-            <p className="text-[11px] text-muted-foreground/70">
+            <p className="text-[11px] text-muted-foreground">
               aus der Niederschrift
               {idee.protocol.organization ? ` des ${idee.protocol.organization}` : ""}
               {idee.protocol.date ? ` vom ${datum(idee.protocol.date)}` : ""}
@@ -403,7 +403,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
           </summary>
           <ul className="mt-1.5 space-y-1">
             {(idee.siblings ?? []).map((g) => (
-              <li key={g.paper_id} className="text-xs text-muted-foreground/80">
+              <li key={g.paper_id} className="text-xs text-muted-foreground">
                 {datum(g.date)} · {g.name}
               </li>
             ))}

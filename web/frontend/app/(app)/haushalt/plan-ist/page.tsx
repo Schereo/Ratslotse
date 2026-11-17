@@ -726,7 +726,7 @@ function PlanIstInner() {
               <div key={g.nr} className="flex flex-col gap-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <span className="text-[12.5px] font-semibold">{g.label}</span>
-                  <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-signal">
+                  <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-signal-ink">
                     {(g.delta_meur ?? 0) > 0 ? "+" : ""}{deMio(g.delta_meur)}&#8239;Mio.&nbsp;€
                     {g.percent != null && (
                       <span className="text-muted-foreground">
@@ -801,7 +801,7 @@ function PlanIstInner() {
                       <td className="py-1 pr-2">{b.name}</td>
                       <td className="py-1 pr-2 text-right">{deMio(b.aufwPlan)}</td>
                       <td className="py-1 pr-2 text-right font-semibold">{deMio(b.aufwIst)}</td>
-                      <td className={cn("py-1 text-right", Math.abs(percent) >= 1 && "text-signal")}>
+                      <td className={cn("py-1 text-right", Math.abs(percent) >= 1 && "text-signal-ink")}>
                         {d > 0 ? "+" : ""}{deMio(d)} ({percent > 0 ? "+" : ""}
                         {percent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
                       </td>

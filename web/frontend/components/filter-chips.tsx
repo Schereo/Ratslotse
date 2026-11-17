@@ -93,7 +93,7 @@ export function ChipPopover({
           >
             <span className="min-w-0">
               <span className="flex items-center gap-1.5 truncate">
-                {o.icon && <o.icon className="h-3.5 w-3.5 shrink-0 text-signal" />}
+                {o.icon && <o.icon className="h-3.5 w-3.5 shrink-0 text-signal-ink" />}
                 {o.label}
               </span>
               {/* RL-U15 (13a-C): Untertitel labelt z. B. „Spannendste zuerst"

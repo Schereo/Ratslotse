@@ -636,7 +636,7 @@ function RestInhalt({ name, summe, breite: w, hoehe: h, hinweis, aufklappbar }: 
     )}>
       {aufklappbar && (
         <Maximize2 aria-hidden="true"
-          className="absolute right-2 top-2 h-3 w-3 text-muted-foreground/80" />
+          className="absolute right-2 top-2 h-3 w-3 text-muted-foreground" />
       )}
       {/* Dieselbe Trennregel wie auf den bunten Kacheln — ohne sie schnitt
           „Ertragsarten" quer ab (lang="de" trennt). */}

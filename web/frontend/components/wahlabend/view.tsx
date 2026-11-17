@@ -384,7 +384,7 @@ function ListenZeile({
           </span>
           <span className="w-[4.2rem] text-right text-[13px] tabular-nums">{prozent(anteil)}</span>
         </span>
-        <span className="hidden w-12 text-right font-mono text-[10.5px] text-signal sm:inline tabular-nums">
+        <span className="hidden w-12 text-right font-mono text-[10.5px] text-signal-ink sm:inline tabular-nums">
           {delta(p.share_pct, p.share_previous_pct) ?? ""}
         </span>
         <span className="text-right text-[12.5px] tabular-nums text-muted-foreground">
@@ -476,7 +476,7 @@ function GewinneVerluste({ daten }: { daten: Wahlabend }) {
                 }
               />
             </span>
-            <span className="text-right font-mono text-[11px] tabular-nums text-signal">{delta(p.share_pct, p.share_previous_pct)}</span>
+            <span className="text-right font-mono text-[11px] tabular-nums text-signal-ink">{delta(p.share_pct, p.share_previous_pct)}</span>
           </li>
         ))}
       </ol>
@@ -676,7 +676,7 @@ function BereichKarte({
                 {daten.phase === "before" ? "–" : (eintrag.seats ?? "–")}
                 {daten.phase === "counting" ? <span className="text-muted-foreground"> → {eintrag.projected_seats ?? "–"}</span> : null}
               </dd>
-              {zugriff ? <dd className="mt-1 whitespace-nowrap font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-signal">{zugriff}</dd> : null}
+              {zugriff ? <dd className="mt-1 whitespace-nowrap font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-signal-ink">{zugriff}</dd> : null}
             </div>
           </dl>
           {/* Höchstens drei Kandidaturen je Karte (Tims Befund 14.09.2026):

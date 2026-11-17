@@ -90,7 +90,7 @@ export function ThemenKarte({
                   aria-label={neu === 1
                     ? `1 neuen Treffer bei ${topic.name} als gelesen markieren`
                     : `${neu} neue Treffer bei ${topic.name} als gelesen markieren`}
-                  className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-signal/[0.12] px-2 py-0.5 text-[11px] font-semibold text-signal transition-colors hover:bg-signal/20"
+                  className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-signal/[0.12] px-2 py-0.5 text-[11px] font-semibold text-signal-ink transition-colors hover:bg-signal/20"
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-signal group-hover:hidden" aria-hidden />
                   <Check className="hidden h-3 w-3 group-hover:block" aria-hidden />

@@ -65,9 +65,9 @@ export function NachWahlStreifen() {
   useEffect(() => setVorbei(tageBis() <= 0), []);
   if (!vorbei) return null;
   return (
-    <div className="border-b border-border bg-secondary px-4 py-2.5 text-center text-[13px] text-secondary-foreground">
+    <aside aria-label="Hinweis zum Stand" className="border-b border-border bg-secondary px-4 py-2.5 text-center text-[13px] text-secondary-foreground">
       Die Wahl ist vorbei. Diese Seite dokumentiert den Stand der Programme vor dem 13.09.2026.
-    </div>
+    </aside>
   );
 }
 
