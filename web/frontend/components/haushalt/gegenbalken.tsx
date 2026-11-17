@@ -49,6 +49,8 @@ function Leiste({
           <button
             key={z.area}
             type="button"
+            // Breite = Betrag: ein kleiner Bereich IST schmal (a11y-ausnahmen.json).
+            data-a11y-ausnahme="target-size"
             aria-label={`${kanon.name}: ${deMio(value)} Mio. Euro`}
             onClick={() => onPin(z.area)}
             onMouseEnter={() => onHover(z.area)}

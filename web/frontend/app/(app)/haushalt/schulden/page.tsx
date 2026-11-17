@@ -597,6 +597,7 @@ export default function SchuldenPage() {
   if (!data || series.length < 2) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
+        <h1 className="sr-only">Schulden der Stadt</h1>
         Für diese Seite ist die Schuldenzeitreihe noch nicht eingelesen.{" "}
         <Link href="/haushalt" className="font-semibold text-primary">Zurück zum Haushalt</Link>
       </div>
