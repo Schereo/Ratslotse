@@ -121,7 +121,7 @@ export function Anteilsbalken({
         )}
       </div>
       {mark && gesamt > 0 && (
-        <p className="mt-1.5 flex items-start gap-1.5 text-[11.5px] leading-snug text-signal">
+        <p className="mt-1.5 flex items-start gap-1.5 text-[11.5px] leading-snug text-signal-ink">
           <span aria-hidden="true" className="mt-[3px] h-3 w-0.5 flex-none bg-signal" />
           <span>{mark.label}</span>
         </p>

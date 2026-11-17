@@ -18,8 +18,9 @@ from pathlib import Path
 
 FRONTEND = Path(__file__).resolve().parent.parent / "web" / "frontend"
 
-#: Stand nach dem Review vom 06.10.2026. Sinkt die Zahl, hier nachziehen.
-SCHULD = 88
+#: Stand nach dem Barrierefreiheits-Lauf vom 17.11.2026 (88 → 18: Text trägt
+#: das Token ohne Bruch; übrig sind Chevrons, Trenner, deaktivierte Knöpfe).
+SCHULD = 18
 
 _MUSTER = re.compile(r"text-muted-foreground/\d+")
 

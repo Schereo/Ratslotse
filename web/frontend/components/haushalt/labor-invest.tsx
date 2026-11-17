@@ -167,7 +167,7 @@ export function InvestWerkbank({
                     )}
                   </span>
                   <span className={cn("shrink-0 font-mono text-[12px] tabular-nums",
-                    aus ? "font-medium text-signal" : "text-foreground")}>
+                    aus ? "font-medium text-signal-ink" : "text-foreground")}>
                     {aus ? "−" : ""}{deMio(z.grand_total / 1e6)}&#8239;Mio.&nbsp;€
                   </span>
                 </div>

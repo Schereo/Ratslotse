@@ -131,7 +131,7 @@ export function SupportForm() {
       <p className="text-xs leading-relaxed text-muted-foreground">
         Deine Adresse und deine Nachricht landen per E-Mail bei mir und werden nur zur Beantwortung
         genutzt — nicht für Newsletter, nicht für Werbung. Mehr dazu in der{" "}
-        <a href="/datenschutz" className="text-primary hover:underline">Datenschutzerklärung</a>.
+        <a href="/datenschutz" className="textlink">Datenschutzerklärung</a>.
       </p>
     </form>
   );

@@ -141,7 +141,7 @@ export function EinnahmenWerkbank({
             anzeige={
               punkte === 0
                 ? <span className="text-muted-foreground">{gewst.satz}&nbsp;%<Beleg q="tax_rates" /></span>
-                : <strong className="text-signal">
+                : <strong className="text-signal-ink">
                     {gewst.satz + punkte}&nbsp;% ({punkte > 0 ? "+" : ""}{punkte})
                   </strong>
             }
@@ -206,7 +206,7 @@ export function EinnahmenWerkbank({
               anzeige={
                 grundstPunkte === 0
                   ? <span className="text-muted-foreground">{grundst.satz}&nbsp;%<Beleg q="tax_rates" /></span>
-                  : <strong className="text-signal">
+                  : <strong className="text-signal-ink">
                       {grundst.satz + grundstPunkte}&nbsp;% ({grundstPunkte > 0 ? "+" : ""}{grundstPunkte})
                     </strong>
               }
@@ -260,7 +260,7 @@ export function EinnahmenWerkbank({
                 ? <span className="text-muted-foreground">
                     {amount(hunde.amount).value}&nbsp;{amount(hunde.amount).unit}<Beleg q="taxes" />
                   </span>
-                : <strong className="text-signal">
+                : <strong className="text-signal-ink">
                     {hundePct === -100
                       ? <>0&nbsp;€ (abgeschafft)</>
                       : <>{amount(hunde.amount * (1 + hundePct / 100)).value}&nbsp;

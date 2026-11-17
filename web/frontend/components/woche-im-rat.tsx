@@ -340,7 +340,7 @@ function RailTag({ date, heute, letzter, dichte, children }: {
     <>
       <div className="flex flex-col items-center pt-px">
         {heute ? (
-          <span className="inline-flex items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.04em] text-signal">
+          <span className="inline-flex items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.04em] text-signal-ink">
             Heute
           </span>
         ) : (
@@ -530,7 +530,7 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
            „aufklappen" — die Zeile führt aber auf den Tagesordnungspunkt.
            Deshalb nach rechts: gleiche Zurückhaltung, ehrliche Richtung. */
         <ChevronRight
-          className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", top ? "text-primary" : "text-muted-foreground/60")}
+          className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", top ? "text-primary" : "text-muted-foreground")}
           aria-hidden
         />
       )}
@@ -603,7 +603,7 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
         {heute ? (
           /* Matrix 14d: Uhrzeit mobil nur bei „heute" — dort ist sie die
              eigentliche Information. */
-          <span className="inline-flex shrink-0 items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-meta font-semibold uppercase tracking-[0.06em] text-signal">
+          <span className="inline-flex shrink-0 items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-meta font-semibold uppercase tracking-[0.06em] text-signal-ink">
             Heute {zeit}
           </span>
         ) : (
@@ -672,7 +672,7 @@ function MobilRuhig({ sitzung, heute, mitTrennlinie }: {
   const inhalt = (
     <>
       {heute ? (
-        <span className="inline-flex shrink-0 items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-meta font-semibold uppercase tracking-[0.06em] text-signal">
+        <span className="inline-flex shrink-0 items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-meta font-semibold uppercase tracking-[0.06em] text-signal-ink">
           Heute {zeit}
         </span>
       ) : (

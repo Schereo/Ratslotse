@@ -183,7 +183,7 @@ export function Measures({ measures }: { measures: PlanMeasures }) {
         )}
         <span>
           Quelle:{" "}
-          <a href={measures.source.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+          <a href={measures.source.url} target="_blank" rel="noopener noreferrer" className="textlink">
             {measures.source.label}
             <ExternalLink className="ml-1 inline h-3 w-3 -translate-y-px" aria-hidden />
           </a>

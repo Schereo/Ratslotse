@@ -263,7 +263,7 @@ export function Vorhaben({
           Hier stehen für Schulen nur Ausstattungs-Kategorien und die
           berufsbildenden Schulen. Was der Rat zu einer bestimmten Schule
           beschlossen hat, findest du über die{" "}
-          <Link href="/council?tab=decisions" className="font-semibold text-primary hover:underline">
+          <Link href="/council?tab=decisions" className="font-semibold textlink">
             Suche
           </Link>{" "}
           in den Beschlüssen.
@@ -388,7 +388,7 @@ export function Vorhaben({
           Die Zahlen stammen aus dem Verwaltungsentwurf zum Zeitpunkt der Einbringung
           in den Rat. Spätere Änderungen aus den politischen Beratungen sind darin
           nicht enthalten; diese findest du unter{" "}
-          <Link href="/haushalt/mitreden#streit" className="font-semibold text-primary hover:underline">
+          <Link href="/haushalt/mitreden#streit" className="font-semibold textlink">
             Der Streit ums Geld
           </Link>{" "}
           . Die Summen stimmen nicht mit dem Finanzhaushalt weiter oben überein,

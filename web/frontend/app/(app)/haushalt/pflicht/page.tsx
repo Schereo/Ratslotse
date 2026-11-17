@@ -567,7 +567,7 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
               {kanon.name}
             </Link>
             {r.urteil === "weicht" && (
-              <span className="flex-none rounded-full bg-signal/10 px-2 py-0.5 text-[10.5px] font-semibold text-signal">
+              <span className="flex-none rounded-full bg-signal/10 px-2 py-0.5 text-[10.5px] font-semibold text-signal-ink">
                 weicht ab
               </span>
             )}

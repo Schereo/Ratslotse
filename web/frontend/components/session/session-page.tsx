@@ -570,7 +570,7 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
               </span>
             )}
             {agenda.template_number && <span className={KICKER}>Vorlage {agenda.template_number}</span>}
-            {agenda.dringlich && <span className={cn(KICKER, "text-signal")}>Dringlichkeitsantrag</span>}
+            {agenda.dringlich && <span className={cn(KICKER, "text-signal-ink")}>Dringlichkeitsantrag</span>}
           </div>
           <h4 className={cn("mt-1.5 leading-snug text-foreground [hyphens:auto] [overflow-wrap:anywhere] [hyphenate-limit-chars:14_5_5]",
             ziel ? "text-[17px] font-semibold" : "text-base font-medium")} lang="de">

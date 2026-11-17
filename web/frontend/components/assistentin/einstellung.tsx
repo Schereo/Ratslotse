@@ -53,7 +53,7 @@ export function LottiCard() {
           />
         )}
       </div>
-      <p className="mt-2 text-xs text-muted-foreground/80">
+      <p className="mt-2 text-xs text-muted-foreground">
         Gilt nur auf diesem Gerät. Fragen kannst du sie trotzdem: ⌘K öffnen und
         „Lotti fragen" wählen.
       </p>

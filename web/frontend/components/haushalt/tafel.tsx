@@ -48,13 +48,13 @@ export function Summe({ label, value, ton, beleg }: {
     <div className="min-w-0">
       <p className={cn(
         "text-[11.5px] leading-none",
-        ton === "signal" ? "text-signal" : "text-muted-foreground",
+        ton === "signal" ? "text-signal-ink" : "text-muted-foreground",
       )}>
         {label}{beleg}
       </p>
       <p className={cn(
         "mt-1.5 font-display text-[21px] font-bold leading-none tracking-tight tabular-nums sm:text-[27px]",
-        ton === "signal" ? "text-signal"
+        ton === "signal" ? "text-signal-ink"
           : ton === "ein" ? "text-[color:var(--hh-ein-0)]"
           : "text-foreground",
       )}>
@@ -64,7 +64,7 @@ export function Summe({ label, value, ton, beleg }: {
             gesetzt kippte die Zeile aus der Karte. */}
         <span className={cn(
           "mt-1 block text-[11px] font-semibold leading-none sm:mt-0 sm:ml-1 sm:inline",
-          ton === "signal" ? "text-signal/80" : "text-muted-foreground",
+          ton === "signal" ? "text-signal-ink" : "text-muted-foreground",
         )}>
           Mio.&nbsp;€
         </span>
@@ -150,7 +150,7 @@ export function Tafel({ zeilen, year, aktuell, aktion, children }: {
         <Beleg q="plan" />: die laufenden Erträge und Aufwendungen eines Jahres,
         einschließlich Abschreibungen. Investitionen wie Neubauten, Fahrzeuge oder
         Grundstücke stehen im Finanzhaushalt und damit{" "}
-        <Link href="/haushalt/investitionen" className="text-primary hover:underline">
+        <Link href="/haushalt/investitionen" className="textlink">
           auf einer eigenen Seite
         </Link>
         . Die Zahl oben bildet deshalb nicht den gesamten Haushalt ab.

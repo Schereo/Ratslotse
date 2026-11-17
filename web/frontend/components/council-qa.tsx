@@ -178,7 +178,7 @@ const MODE_LABEL: Record<string, string> = {
 
 const OUTCOME_BADGE: Record<string, string> = {
   accepted: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-  rejected: "bg-signal/10 text-signal",
+  rejected: "bg-signal/10 text-signal-ink",
   postponed: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
   noted: "bg-muted text-muted-foreground",
 };
@@ -1994,7 +1994,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             {hatVerlauf && (
               <div className="mt-4 w-full max-w-md text-left">
                 <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     Zuletzt gefragt
                   </p>
                   <button type="button"
@@ -2030,7 +2030,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
             <div className="mt-4 w-full max-w-md text-left">
             {/* Design 15a: EIN Funkel im Kicker statt eines je Zeile. */}
             <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              <Sparkles className="h-3 w-3 text-signal" aria-hidden />
+              <Sparkles className="h-3 w-3 text-signal-ink" aria-hidden />
               Zum Beispiel
             </p>
             {/* Jede Zeile ist genau zwei Textzeilen hoch (min-h-[3em] bei
@@ -2070,7 +2070,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                       {/* „Neu" nur an den frischen Vorschlägen aus der letzten
                           Sitzung — nicht an Klassikern (Design 15, WEG). */}
                       {i < frische.length && (
-                        <span className="shrink-0 rounded-full bg-signal/10 px-1.5 py-0.5 text-[10px] font-medium text-signal">Neu</span>
+                        <span className="shrink-0 rounded-full bg-signal px-1.5 py-0.5 text-[10px] font-semibold text-signal-foreground">Neu</span>
                       )}
                     </button>
                   ))}
@@ -2288,7 +2288,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               <div className="flex items-center gap-2 px-2 pb-2">
                 <RechercheToggle aktiv={rechercheModus} frei={deepFrei} onToggle={toggleRecherche} />
                 {rechercheModus && !deepHinweis && (
-                  <span className="text-[10.5px] text-muted-foreground/70">
+                  <span className="text-[10.5px] text-muted-foreground">
                     ~1 Min{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
                   </span>
                 )}
@@ -2477,7 +2477,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
         </div>
         {/* RG-10: Modus-Zeile unter der Bubble — nach Abschluss mit Umfang. */}
         {turn.research && (
-          <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-foreground/80">
+          <span className="inline-flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
             <FlaskConical className="h-3 w-3" aria-hidden />
             Gründliche Recherche{deepFertig && turn.documents_read ? ` · ${turn.documents_read} Dokumente gelesen` : ""}
             {/* Recherche Plus: dezent, nur wenn der Bericht wirklich mit dem
@@ -2554,7 +2554,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
               {step ? STEP_LABELS[step] : "Wird vorbereitet"}…
             </span>
-            <span className="hidden text-xs text-muted-foreground/70 sm:inline">{word} …</span>
+            <span className="hidden text-xs text-muted-foreground sm:inline">{word} …</span>
             {dauertLaenger && (
               <span className="mt-0.5 block text-xs text-muted-foreground">
                 Das dauert länger als üblich. Du kannst warten oder mit „Stopp" abbrechen.
@@ -2947,7 +2947,7 @@ function SheetZeile({ g, aktiv, offen, inAelter, aufklappen, onLaden, onLoeschen
             </button>
             <button type="button" onClick={() => { setMenue(false); onLoeschen(); }}
               aria-label={`„${g.title}" löschen`} title="Löschen"
-              className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-signal/10 text-signal">
+              className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-signal/10 text-signal-ink">
               <Trash2 className="h-4 w-4" aria-hidden />
             </button>
             <button type="button" onClick={() => setMenue(false)}
@@ -3083,7 +3083,7 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
             </button>
           )}
         </div>
-        <p className="shrink-0 border-t border-border/60 pt-2.5 text-[10.5px] leading-relaxed text-muted-foreground/70">
+        <p className="shrink-0 border-t border-border/60 pt-2.5 text-[10.5px] leading-relaxed text-muted-foreground">
           Gespeichert in deinem Konto — änderbar in den Einstellungen.
           <span className="desk:hidden"> Wisch nach links bleibt als Abkürzung für Umbenennen/Löschen.</span>
         </p>
@@ -3509,7 +3509,7 @@ function AlterStand({ stand }: { stand: NonNullable<Turn["records_state"]> }) {
     : `${stand.months} Monaten`;
   return (
     <p className="flex items-start gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-[12.5px] leading-relaxed text-muted-foreground">
-      <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden />
+      <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal-ink" aria-hidden />
       <span>
         Ältere Aktenlage: Die jüngste Quelle dieser Antwort ist vom{" "}
         <strong className="font-medium text-foreground">{fmtDatum(stand.latest)}</strong>{" "}
@@ -3532,7 +3532,7 @@ function DuenneBeleglage({ onGruendlich, mitSteckbrief }: {
   return (
     <div className="rounded-xl border border-border bg-card px-3.5 py-3">
       <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-muted-foreground">
-        <SearchX className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden />
+        <SearchX className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal-ink" aria-hidden />
         <span>
           {mitSteckbrief
             /* Mit Steckbrief ist die EINORDNUNG belegt, nur die Beschlusslage
@@ -3708,7 +3708,7 @@ function Baustein({ turn, idToNum, onJump }: {
         )}
         {zeitreihe.length >= 2 && termineGeld.size >= 2 ? (
           <div className="mt-2.5 flex flex-col gap-1.5">
-            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">Beträge im Zeitverlauf</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Beträge im Zeitverlauf</p>
             {zeitreihe.slice(-5).map((s) => (
               <div key={s.id} className="flex items-center gap-2">
                 <span className="w-[64px] shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(s.session_date)}</span>

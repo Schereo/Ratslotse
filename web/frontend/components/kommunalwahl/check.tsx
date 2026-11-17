@@ -326,7 +326,7 @@ function FrageScreen({
           aria-pressed={wichtig}
           className={`mt-4 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
             wichtig
-              ? "border-signal bg-signal/10 text-signal"
+              ? "border-signal bg-signal/10 text-signal-ink"
               : "border-border bg-card text-muted-foreground"
           }`}
         >
@@ -593,14 +593,14 @@ function WarumBlock({
     return (
       <div key={g.tid}>
         <p className="text-[13px] font-semibold leading-snug">
-          {g.wichtig && <span className="text-signal">★ </span>}
+          {g.wichtig && <span className="text-signal-ink">★ </span>}
           {t.these}
         </p>
         <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted-foreground">
           <Glyph pos={g.du} size={15} /> Du: {WORT[String(g.du)]}
           <Glyph pos={g.liste} size={15} className="ml-1.5" /> {z.marke.kurz}: {WORT[String(g.liste)]}
           {beleg?.href && (
-            <a href={beleg.href} target="_blank" rel="noopener noreferrer" className="text-primary">
+            <a href={beleg.href} target="_blank" rel="noopener noreferrer" className="textlink">
               {beleg.seitenLabel} ↗
             </a>
           )}

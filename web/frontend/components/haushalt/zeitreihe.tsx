@@ -373,7 +373,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement"
               const rand = "border-t border-border/60 py-1";
               return (
                 <div key={year} className="contents">
-                  <span className={`${rand} ${p ? "" : "text-signal"}`}>
+                  <span className={`${rand} ${p ? "" : "text-signal-ink"}`}>
                     {year}{bezugsJahre.has(year) ? "*" : ""}
                   </span>
                   <span className={`${rand} text-right`} title={p ? undefined : "nicht auslesbar"}>{p ? deMio(p.ein) : "—"}</span>
@@ -381,7 +381,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement"
                   {/* Minus in Signal-Orange (= „hier ist die Differenz"), Plus
                       neutral. Grün stünde für „gut" — eine Bewertung, die im
                       Haushalts-Bereich nirgends vorkommt. */}
-                  <span className={`${rand} text-right ${(p?.balance ?? 0) < 0 ? "text-signal" : ""}`}>
+                  <span className={`${rand} text-right ${(p?.balance ?? 0) < 0 ? "text-signal-ink" : ""}`}>
                     {p ? vorzeichen(p.balance) : "—"}
                   </span>
                   {istPunkte.length > 0 && (

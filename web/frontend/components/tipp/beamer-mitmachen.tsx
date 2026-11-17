@@ -31,7 +31,7 @@ export function BeamerMitmachen({ game, tipCount, runde }: { game: PredictionGam
           <span className="font-display text-[36px] font-bold tracking-[-0.02em]">Ratslotse</span>
           <span className="border-l-2 border-border pl-[18px] text-[28px] text-muted-foreground">Wahlabend {kurzesDatum(game.election_date)}</span>
         </div>
-        <p className="mt-14 font-mono text-[26px] uppercase tracking-[0.11em] text-signal">{game.listed ? "Tippspiel" : game.title}</p>
+        <p className="mt-14 font-mono text-[26px] uppercase tracking-[0.11em] text-signal-ink">{game.listed ? "Tippspiel" : game.title}</p>
         <h1 className="mt-3.5 text-balance font-display text-[104px] font-bold leading-none tracking-[-0.03em]">
           Wie geht die {game.election_title} aus?
         </h1>

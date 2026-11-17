@@ -214,9 +214,9 @@ function DecisionCard({ d, query, rang = 0, suchadresse, onVorschau, gewaehlt = 
           </p>
 
           {/* Zone 2 — Titel + Auszug */}
-          <h3 className="mt-2 hyphens-auto font-medium text-foreground">
+          <h2 className="mt-2 hyphens-auto font-medium text-foreground">
             <Highlight text={d.title ?? ""} query={query} />
-          </h3>
+          </h2>
           {d.official_text && (
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
               <Highlight text={d.official_text} query={query} />
@@ -392,7 +392,7 @@ function SearchBox({
         >
           {history.length > 0 && (
             <>
-              <p className="flex items-center justify-between gap-2 px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+              <p className="flex items-center justify-between gap-2 px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 Zuletzt gesucht
                 <button
                   type="button"
@@ -407,7 +407,7 @@ function SearchBox({
                   key={h} type="button" onClick={() => pick(h)}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
                 >
-                  <History className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+                  <History className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <span className="truncate">{h}</span>
                 </button>
               ))}
@@ -415,7 +415,7 @@ function SearchBox({
           )}
           {vorschlaege.length > 0 && (
             <>
-              <p className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+              <p className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 Gerade im Rat
               </p>
               {vorschlaege.map((s) => (
@@ -423,7 +423,7 @@ function SearchBox({
                   key={s} type="button" onClick={() => pick(s)}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
                 >
-                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-signal" />
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-signal-ink" />
                   <span className="truncate">{s}</span>
                 </button>
               ))}
@@ -976,7 +976,7 @@ function SessionHighlights({ punkte, ksinr }: { punkte: NonNullable<CouncilSessi
               {(p.topic_name || p.top) && (
                 <span className={cn(
                   "mb-0.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]",
-                  p.topic_name ? "text-signal" : "text-primary/80",
+                  p.topic_name ? "text-signal-ink" : "text-primary/80",
                 )}>
                   {p.topic_name ? `Dein Thema · ${p.topic_name}` : p.dringlich ? "Dringlichkeitsantrag" : "Wichtiger Punkt"}
                 </span>
@@ -1441,7 +1441,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                       <div className="flex w-full items-center gap-2 pl-[62px] sm:w-auto sm:shrink-0 sm:pl-0">
                       {isLiveNow(s) && <LiveChip />}
                       {myCount > 0 && (
-                        <span className="hidden rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal sm:inline-flex">
+                        <span className="hidden rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal-ink sm:inline-flex">
                           {myCount} zu deinen Themen
                         </span>
                       )}
@@ -1506,7 +1506,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                     <div className="flex shrink-0 items-center gap-2">
                       {isLiveNow(s) && <LiveChip />}
                       {myCount > 0 && (
-                        <span className="hidden rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal sm:inline-flex">
+                        <span className="hidden rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-semibold text-signal-ink sm:inline-flex">
                           {myCount} zu deinen Themen
                         </span>
                       )}

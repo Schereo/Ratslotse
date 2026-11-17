@@ -454,12 +454,12 @@ function KontoHinweis({ verify, email }: { verify: boolean; email: string }) {
           <>
             Bestätige noch deine E-Mail-Adresse (<span className="font-medium">{email}</span>) —
             dann kannst du Themen anlegen und dich benachrichtigen lassen.{" "}
-            <Link href="/dashboard" className="font-medium text-primary hover:underline">Zur Bestätigung</Link>
+            <Link href="/dashboard" className="font-medium textlink">Zur Bestätigung</Link>
           </>
         ) : (
           <>
             Dein Konto ist derzeit deaktiviert. Diese Seite kannst du trotzdem lesen.{" "}
-            <a href={KONTAKT_MAILTO} className="font-medium text-primary hover:underline">{KONTAKT_EMAIL}</a>
+            <a href={KONTAKT_MAILTO} className="font-medium textlink">{KONTAKT_EMAIL}</a>
           </>
         )}
       </p>

@@ -33,7 +33,7 @@ function VorlageVerweis({ p, daten }: { p: KreditPosten; daten: KrediteDaten }) 
   if (!h?.url) return <span data-kredit-vorlage>{text}</span>;
   return (
     <a data-kredit-vorlage href={h.url} target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-0.5 whitespace-nowrap text-primary hover:underline">
+      className="textlink inline-flex items-center gap-0.5 whitespace-nowrap">
       {text}
       <ExternalLink className="h-3 w-3" aria-hidden />
     </a>

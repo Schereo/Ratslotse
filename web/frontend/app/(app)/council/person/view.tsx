@@ -75,7 +75,7 @@ function OfficesGantt({ current }: { current: Membership[] }) {
               className="flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:grid sm:grid-cols-[14rem_1fr] sm:gap-3">
               <span className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto">
                 {chair
-                  ? <Gavel className="h-3.5 w-3.5 shrink-0 text-signal" />
+                  ? <Gavel className="h-3.5 w-3.5 shrink-0 text-signal-ink" />
                   : <span className="w-3.5 shrink-0" aria-hidden />}
                 <span className={cnEllipsis(chair)} title={m.committee}>
                   {shortCommittee(m.committee)}
@@ -87,7 +87,7 @@ function OfficesGantt({ current }: { current: Membership[] }) {
                 {/* Das Jahr steht schmal IMMER in der Namenszeile — im Balken
                     wäre es bei kurzer Amtszeit unlesbar oder ganz weg. */}
                 {m.valid_from && (
-                  <span className={`ml-auto shrink-0 text-[11px] font-semibold tabular-nums sm:hidden ${chair ? "text-signal" : "text-primary"}`}>
+                  <span className={`ml-auto shrink-0 text-[11px] font-semibold tabular-nums sm:hidden ${chair ? "text-signal-ink" : "text-primary"}`}>
                     seit {vy}
                   </span>
                 )}
@@ -256,7 +256,7 @@ function RatsmitgliedProfil({ data, gewaehlt }: { data: MemberDetail; gewaehlt?:
             {nChairs > 0 && (
               <>
                 <span className="text-border" aria-hidden>·</span>
-                <span className="inline-flex items-center gap-1 font-semibold text-signal">
+                <span className="inline-flex items-center gap-1 font-semibold text-signal-ink">
                   <Gavel className="h-3 w-3" /> {nChairs} {nChairs === 1 ? "Vorsitz" : "Vorsitze"}
                 </span>
               </>
@@ -305,7 +305,7 @@ function RatsmitgliedProfil({ data, gewaehlt }: { data: MemberDetail; gewaehlt?:
                   <div key={`${m.committee}-${i}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                     <span className="min-w-0 text-[13px] text-foreground" title={m.committee}>
                       {shortCommittee(m.committee)}
-                      {isChair(m.role) && <span className="ml-1.5 text-[11px] font-medium text-signal">{isDeputy(m.role) ? "stellv. Vorsitz" : "Vorsitz"}</span>}
+                      {isChair(m.role) && <span className="ml-1.5 text-[11px] font-medium text-signal-ink">{isDeputy(m.role) ? "stellv. Vorsitz" : "Vorsitz"}</span>}
                     </span>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                       {m.valid_from ? yearOf(m.valid_from) : "?"} – {m.valid_until ? yearOf(m.valid_until) : "heute"}
@@ -350,7 +350,7 @@ function RatsmitgliedProfil({ data, gewaehlt }: { data: MemberDetail; gewaehlt?:
                 <span className="flex w-full min-w-0 items-center gap-1.5 sm:w-auto">
                   <span className="min-w-0 text-[13px] text-foreground sm:truncate" title={c.committee}>{shortCommittee(c.committee)}</span>
                   {c.chair && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-signal/10 px-1.5 py-0.5 text-[10px] font-semibold text-signal">
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-signal/10 px-1.5 py-0.5 text-[10px] font-semibold text-signal-ink">
                       <Gavel className="h-2.5 w-2.5" /> Vorsitz
                     </span>
                   )}
@@ -573,7 +573,7 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
         </button>
       )}
       {fehler && (
-        <p className="mt-2 text-[12px] text-signal">
+        <p className="mt-2 text-[12px] text-signal-ink">
           Konnte nicht geladen werden.{" "}
           <button type="button" onClick={() => void laden(committee, items.length)}
             className="font-medium underline">Nochmal versuchen</button>
@@ -583,7 +583,7 @@ function Wortbeitraege({ slug, erste, gesamt, committees }: {
           Verlaufsprotokolle — die Protokollführung fasst zusammen, nicht
           jede Wortmeldung wird erfasst. Ohne den Hinweis läse sich eine
           kurze Liste wie „mehr hat die Person nie gesagt". */}
-      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/60">
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
         Die Protokolle fassen Wortbeiträge sinngemäß zusammen — nicht jede
         Wortmeldung wird erfasst. Diese Liste ist deshalb ein Ausschnitt,
         kein vollständiges Redeprotokoll.
