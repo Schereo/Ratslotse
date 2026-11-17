@@ -92,7 +92,9 @@ export function Tafel({ zeilen, year, aktuell, aktion, children }: {
   const balance = gesamt?.revenues != null && gesamt?.expenses != null
     ? mio(gesamt.revenues - gesamt.expenses)
     : null;
-  if (ausMio == null) return null;
+  // Ohne Zahl keine Tafel — aber die Seite behält ihre Hauptüberschrift,
+  // sonst fehlt ihr das h1 (axe-Wächter gegen die leere Datenbank, 11/2026).
+  if (ausMio == null) return <h1 className="sr-only">Haushalt der Stadt Oldenburg</h1>;
 
   const fehlt = balance != null && balance < 0 ? -balance : null;
   const ueber = balance != null && balance > 0 ? balance : null;

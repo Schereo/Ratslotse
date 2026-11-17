@@ -77,7 +77,7 @@ export function ThemenKarte({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2.5">
             <div className="flex min-w-0 items-center gap-2">
-              <h3 className="truncate font-display text-base font-semibold text-foreground">{topic.name}</h3>
+              <h2 className="truncate font-display text-base font-semibold text-foreground">{topic.name}</h2>
               {/* Das Abzeichen IST der Knopf, der es wegräumt. Vorher ging es nur
                   weg, wenn man „alle ansehen" antippte — wer die Treffer direkt auf
                   der Karte gelesen hatte, trug es weiter vor sich her (Tims Frage
@@ -156,7 +156,7 @@ export function ThemenKarte({
             >
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  {h.is_new && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-signal" aria-label="neu" />}
+                  {h.is_new && <span role="img" className="h-1.5 w-1.5 shrink-0 rounded-full bg-signal" aria-label="neu" />}
                   {/* Wer einen Beschluss öffnet, hat genau den gelesen — aus
                       „2 neue" wird „1 neuer" (Tims Wunsch 28.08.2026). Vorher
                       räumte nur ein Klick auf das Abzeichen oder auf „alle
@@ -166,7 +166,9 @@ export function ThemenKarte({
                     onClick={() => h.is_new && onTrefferGelesen(h.id)}
                     className={`truncate text-[13.5px] text-foreground hover:underline ${h.is_new ? "font-semibold" : "font-medium"}`}
                   >
-                    {h.title}
+                    {/* Ohne Titel war der Link leer — für einen Screenreader
+                        ein namenloser Link (axe 11/2026). */}
+                    {h.title?.trim() || "Beschluss ohne Titel"}
                   </Link>
                 </div>
                 {/* `truncate`: Auf dem Telefon brach „27.08.2026 · VERKEHR &

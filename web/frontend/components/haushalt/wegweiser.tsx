@@ -464,7 +464,8 @@ export function Wegweiser() {
                       : "motion-safe:group-data-[reveal=aus]:-translate-x-5",
                   )}>
                     <div className="flex items-start gap-3.5">
-                      <span aria-hidden="true"
+                      {/* Reine Dekoration, blass gewollt (a11y-ausnahmen.json). */}
+                      <span aria-hidden="true" data-a11y-ausnahme="color-contrast"
                         className="flex-none font-display text-[34px] font-bold leading-none tabular-nums text-primary/25">
                         {String(e.index + 1).padStart(2, "0")}
                       </span>
