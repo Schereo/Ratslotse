@@ -216,3 +216,16 @@ def test_die_dauern_werden_aus_den_zeilen_des_reporters_gelesen():
         "browser\tBrowsertests\t2026-11-22T15:06:40Z   ✘   4 [chromium] › tests/e2e/04-council.spec.ts:126:7 › Ratsinformationssystem › lädt neu (1.2m)",
     ])
     assert parse_log(log) == pytest.approx({"27-plaene.spec.ts": 7.85, "04-council.spec.ts": 72.0})
+
+
+def test_die_dauer_einer_datei_ist_der_median_ihrer_laeufe():
+    """Derselbe Läufer schwankt um bis zu 40 % (s. ``e2e_durations.py``) — ein
+    Ausreißer darf das Gewicht nicht bestimmen. Und eine Datei, die nur ein
+    Lauf kennt, zählt mit diesem einen."""
+    from scripts.e2e_durations import median_durations
+
+    assert median_durations([
+        {"a.spec.ts": 195.0, "b.spec.ts": 10.0},
+        {"a.spec.ts": 127.0, "b.spec.ts": 12.0, "neu.spec.ts": 40.0},
+        {"a.spec.ts": 301.0, "b.spec.ts": 11.0},
+    ]) == {"a.spec.ts": 195.0, "b.spec.ts": 11.0, "neu.spec.ts": 40.0}
