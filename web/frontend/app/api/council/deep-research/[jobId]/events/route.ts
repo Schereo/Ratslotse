@@ -31,10 +31,11 @@ export const fetchCache = "force-no-store";
 
 const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
 
-export async function GET(req: NextRequest, { params }: { params: { jobId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+  const { jobId } = await params;
   // Job-IDs sind token_urlsafe(12) — alles andere gar nicht erst ans Backend
   // weiterreichen, damit hier kein Pfad zusammengebaut werden kann.
-  if (!/^[A-Za-z0-9_-]{1,64}$/.test(params.jobId)) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(jobId)) {
     return new Response(JSON.stringify({ detail: "Unbekannter Job." }), {
       status: 404, headers: { "Content-Type": "application/json" },
     });
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest, { params }: { params: { jobId: strin
   const client = req.headers.get("x-client");
 
   const upstream = await fetch(
-    `${BACKEND}/api/council/deep-research/${params.jobId}/events${abParam}`,
+    `${BACKEND}/api/council/deep-research/${jobId}/events${abParam}`,
     {
       headers: {
         cookie: req.headers.get("cookie") ?? "",

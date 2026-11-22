@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { vorschauMetadata } from "@/lib/share-metadata";
 import View from "./view";
 
-type Props = { searchParams: { ksinr?: string; q?: string; tab?: string } };
+type Props = { searchParams: Promise<{ ksinr?: string; q?: string; tab?: string }> };
 
 /** Design 29a, P1 — die Sitzungs-Ansicht lebt als `?ksinr=` auf dieser Seite
  *  (lib/routes.ts sessionHref). Mit Sitzung im Link zeigt die Vorschau Gremium
  *  und Datum, sonst bleibt es beim sprechenden Seitentitel. */
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const ksinr = searchParams?.ksinr;
+  const { ksinr, tab, q: rawQuery } = await searchParams;
   if (ksinr) {
     return vorschauMetadata("sitzung", ksinr, `/council?tab=sessions&ksinr=${ksinr}`);
   }
@@ -16,9 +16,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   // der Geschwister-Tabs, die weiter hier wohnen.
   const TAB_TITEL: Record<string, string> = {
     sessions: "Sitzungen", topics: "Stadtkarte", analysis: "Analyse" };
-  const tabTitel = TAB_TITEL[searchParams?.tab ?? ""];
+  const tabTitel = TAB_TITEL[tab ?? ""];
   if (tabTitel) return { title: tabTitel };
-  const q = searchParams?.q?.trim();
+  const q = rawQuery?.trim();
   const title = q ? `„${q}“ — Suche` : "Suche";
   const text =
     "Beschlüsse des Oldenburger Stadtrats durchsuchen — "
