@@ -1,8 +1,9 @@
 # Regeln für `web/frontend/`
 
-Next.js 16 (App Router, Turbopack) mit React 19, nur die Webanwendung. Bis 11/2026 wurde derselbe Code zusätzlich als
-statischer Export in eine Capacitor-Hülle gebaut (Android, nie
-veröffentlicht); einige Konventionen unten stammen daher und gelten weiter.
+Next.js 16 (App Router, Turbopack) mit React 19, nur die Webanwendung. Bis
+11/2026 wurde derselbe Code zusätzlich als statischer Export in eine
+Capacitor-Hülle gebaut (Android, nie veröffentlicht); einige Konventionen
+unten stammen daher und gelten weiter.
 
 **Pflichtlektüre vor UI-Arbeit:** [`DESIGNSPRACHE.md`](DESIGNSPRACHE.md).
 Grafiken zusätzlich: [`components/grafik/README.md`](components/grafik/README.md).
@@ -96,8 +97,8 @@ Der Export ist weg, diese Regeln bleiben:
 - **Turbopack schreibt keinen Cache auf die Platte**, weder beim Bauen noch im
   Dev-Server (beide Schalter in `next.config.mjs`). Der Dev-Cache wog nach
   einem Nachmittag 1,4 GB je Worktree und hielt einen Fehler fest, der keiner
-  mehr war — über einen Neustart hinweg. Wer ihn einschaltet, liest vorher die
-  Begründung dort.
+  war — auch ein neu gestarteter Dev-Server meldete ihn. Wer den Cache
+  einschaltet, liest vorher die Begründung dort.
 - **Der Deploy baut ebenfalls daneben.** Dasselbe Bild traf den alten
   `next start` auf den Servern: jede Seite ungestaltet, bis zum Neustart.
   Die Deploys bauen deshalb mit `NEXT_DIST_DIR=.next-build` (wirkt nur in der

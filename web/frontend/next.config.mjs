@@ -303,10 +303,11 @@ const nextConfig = {
     // gegen rund 100 MB beim Webpack-Cache von Next 14 — und er wächst, weil
     // nichts ihn aufräumt (`turbopackGc` ist aus). Bei zehn Worktrees ist das
     // die Platte. Dazu hielt er am selben Tag einen Fehler fest, der keiner
-    // mehr war: Während `npm install` lief, fehlte eine Datei aus
-    // node_modules einen Augenblick lang, der Dev-Server meldete „ENOENT …
-    // postcss/lib/container.js" — und meldete es nach einem NEUSTART weiter,
-    // obwohl die Datei längst da war. Geheilt hat es nur `rm -rf .next-dev`.
+    // war: Nachdem node_modules unter einem laufenden Dev-Server erneuert
+    // worden war (`npm install`, später der Tausch per Umbenennung aus
+    // scripts/install_frontend_modules.py), meldete ein NEU GESTARTETER
+    // Dev-Server „ENOENT … node_modules/postcss/lib/container.js" für jede
+    // Seite mit Karte — die Datei lag da. Geheilt hat es `rm -rf .next-dev`.
     // Der Preis fürs Abschalten: Nach einem Neustart übersetzt Turbopack jede
     // Seite beim ersten Aufruf neu, gemessen 0,3 bis 0,7 s.
     turbopackFileSystemCacheForDev: false,
