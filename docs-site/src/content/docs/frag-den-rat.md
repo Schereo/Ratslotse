@@ -1,6 +1,6 @@
 ---
 title: Frag den Rat
-description: Wie aus einer Frage eine belegte Antwort wird — Analyse, hybride Suche, Akte, Antwort mit Quellen, ausführliche Recherche und die Stufen hinter Schaltern.
+description: Frageanalyse, hybride Suche, Akten, Antworten mit Quellen und ausführliche Recherche in „Frag den Rat“.
 ---
 
 „Frag den Rat“ beantwortet Fragen aus dem Bestand: Beschlüsse, Vorlagen,
@@ -31,14 +31,15 @@ Frage ─► Analyse ─► Suche ─► Zusatzquellen ─► Kontext ─► Ant
 
 **1. Analyse.** Ein kleines Modell (`COUNCIL_QA_EXPAND_MODEL`) macht aus der
 Frage, bei Anschlussfragen samt Gesprächsverlauf, eine eigenständige Fassung
-und liefert Suchbegriffe, die Art der Frage, eine genannte Partei und das
-Urteil, ob die Frage überhaupt einen Gegenstand nennt
-(`council/qa.py::analyse_query`). Parallel erkennt Code ohne Modell, was sich
-ohne Modell erkennen lässt: eine Ratsperson (`finde_person`), einen Ort aus
-dem [Ortskatalog](/docs/adr/0009-zentraler-ortskatalog/) (`finde_ort`), eine
+und liefert Suchbegriffe, den Fragetyp, eine gegebenenfalls genannte Partei
+und die Einschätzung, ob die Frage einen Gegenstand nennt
+(`council/qa.py::analyse_query`). Parallel erkennt die Anwendung ohne
+Modell eine Ratsperson (`finde_person`), einen Ort aus dem
+[Ortskatalog](/docs/adr/0009-zentraler-ortskatalog/) (`finde_ort`), eine
 bestimmte Sitzung (`finde_sitzungen`) und bekannte Themen
-(`finde_entitaeten`). Diese Erkennung überstimmt das Modell: Wer einen
-Katalogort nennt, bekommt Treffer zu diesem Ort und zu keinem anderen.
+(`finde_entitaeten`). Diese Erkennung hat Vorrang vor dem Modell.
+Nennt die Frage einen Ort aus dem Katalog, beschränkt die Suche die
+Treffer auf diesen Ort.
 
 **2. Suche.** `council/embeddings.py::hybrid_search` vereinigt drei
 Kandidatenmengen:
@@ -52,16 +53,17 @@ Kandidatenmengen:
 Ein Cross-Encoder (`COUNCIL_RERANK_MODEL`) ordnet sie gegen die
 **ursprüngliche** Frage. Die Paare, die er bewertet, enthalten neben Titel und
 Kurzfassung auch Beschlusstext und Vorlagen-Auszug. Vorher bewertete er
-Volltext-Treffer blind, deren Übereinstimmung allein im Vorlagentext lag. Zwei
-Korrekturen folgen: ein Frische-Bonus bei Fragen nach dem heutigen Stand
-(`recency_boost`) und ein Deckel für Serien wortgleicher Beschlüsse desselben
-Gremiums (`serien_deckel`).
+Volltexttreffer ohne den zugehörigen Vorlagentext, auch wenn nur dieser mit
+der Frage übereinstimmte. Anschließend gewichtet die Anwendung bei Fragen
+zum aktuellen Stand jüngere Treffer stärker (`recency_boost`) und begrenzt
+Serien wortgleicher Beschlüsse desselben Gremiums (`serien_deckel`).
 
 Embeddings und Reranker laufen lokal (fastembed, ONNX; siehe
-[ADR 0003](/docs/adr/0003-fastembed-statt-torch/)). Fehlt der Reranker, gilt
-die Vektor-Reihenfolge; fehlt fastembed ganz, fällt die Suche auf Stichwörter
-zurück. `COUNCIL_RETRIEVAL_KLASSISCH=1` stellt als Notausschalter den Stand
-ohne Vorlagen-Stücke her und wirkt ohne Neustart.
+[ADR 0003](/docs/adr/0003-fastembed-statt-torch/)). Fehlt der Reranker,
+verwendet die Suche die Reihenfolge der Vektortreffer. Ist fastembed nicht
+verfügbar, dient die Stichwortsuche als Fallback.
+`COUNCIL_RETRIEVAL_KLASSISCH=1` stellt die Suche ohne Vorlagenabschnitte
+wieder her. Die Einstellung wirkt ohne Neustart.
 
 **3. Zusatzquellen.** Je nach Frage kommen dazu: Wortbeiträge aus den
 Protokollen, Zusagen der Verwaltung, Pressemitteilungen der Stadt, Anlagen
@@ -81,11 +83,11 @@ eine echte Frage zu einem Baugebiet: Die Antwort erzählte einen Stand von
 Oktober 2018 als Gegenwart, weil der Prompt zwar das heutige Datum kannte,
 aber nicht das Alter seiner Belege.
 
-**5. Antwort.** Das Antwort-Modell (`COUNCIL_QA_MODEL`) schreibt den Text als
-Strom und zitiert Beschlüsse mit ihrer Kennung. `resolve_citations` löst die
+**5. Antwort.** Das Antwortmodell (`COUNCIL_QA_MODEL`) streamt den Text
+und zitiert Beschlüsse mit ihrer Kennung. `resolve_citations` löst die
 Kennungen auf und verwirft jede, die nicht im Kontext stand. Grafiken zu
 Zahlen entstehen aus Rohreihen des Stores (`geld_grafik`), nie aus dem Modell.
-Bricht der Strom ab, schreibt ein Ersatzweg die Antwort in einem Stück.
+Bricht der Stream ab, erzeugt der Fallback die Antwort in einem Stück.
 
 Manche Fragen brauchen kein Modell: „Was wurde zuletzt beschlossen?“ zu einem
 Ort (`latest_place_answer`) oder eine Sitzung, zu der es noch kein Protokoll
@@ -93,10 +95,11 @@ gibt (`sitzungs_leer_text`), beantwortet der Code.
 
 ## Stufen hinter Schaltern
 
-Verbesserungen an der Suche fahren hinter einem
-[Feature-Schalter](/docs/referenz/feature-schalter/) nach Prod und werden
-dort gegen das Gold-Set gemessen, bevor sie der Normalweg werden. Die
-Bedingung dafür steht je Schalter im Register.
+Änderungen an der Suche gelangen mit einem
+[Feature-Schalter](/docs/referenz/feature-schalter/) in die
+Produktionsumgebung. Dort prüft Ratslotse sie anhand des Gold-Sets, bevor
+sie als Standard aktiviert werden. Die Bedingung steht pro Schalter im
+Register.
 
 ### Themen als Suchhinweis
 
@@ -174,9 +177,9 @@ Lässt die Antwort den Stand aus, hängt der Server ihn an. Unter der Antwort
 stehen der Verlauf und die Eckdaten: Abstimmung, Betrag, Stand, nächster
 Termin.
 
-Dass der Bestand der Akten stimmig bleibt, zählt
-`council/datenpruefung.py` einmal am Tag nach; Verstöße meldet der
-[Herzschlag](/docs/betrieb/#der-herzschlag).
+`council/datenpruefung.py` prüft die Akten täglich auf Konsistenz.
+Verstöße meldet der tägliche Überwachungsjob
+([Herzschlag](/docs/betrieb/#der-herzschlag)).
 
 ## Ausführliche Recherche
 
@@ -184,23 +187,25 @@ Für Fragen, die mehrere Seiten brauchen, gibt es den Bericht
 (`web/backend/app/deepresearch.py`, Endpunkte unter
 `/api/council/deep-research`). Der Unterschied zur normalen Frage: Die
 Recherche läuft in einem Hintergrund-Thread **weiter**, wenn die Verbindung
-abreißt, etwa beim Wechsel des Tabs oder beim Zuklappen des Laptops. Der
-Client klemmt sich wieder an den Strom und bekommt alle bisherigen Ereignisse
-noch einmal. Der fertige Bericht steht in `deep_research_jobs` und übersteht
-auch einen Neustart des Servers.
+abbricht, etwa beim Tabwechsel oder beim Zuklappen des Laptops. Beim erneuten
+Verbinden erhält der Client alle bisherigen Stream-Ereignisse erneut.
+`deep_research_jobs` speichert den fertigen Bericht über einen Neustart des
+Servers hinweg.
 
-Ein Job zerlegt die Frage in drei bis fünf Facetten (`qa.deep_zerlege`),
-sucht je Facette, liest Dokumente (erst Zusatzquellen je Kanal, dann volle
-Auszüge der Vorlagen) und schreibt den Bericht als Strom. Jedes Ereignis
-trägt die Laufzeit, die Fortschritts-Ereignisse eine geschätzte Restzeit.
-„Abbrechen“ wirkt vor dem nächsten Such- oder Modellschritt; fertige Facetten
-bleiben als Material für einen Teilbericht.
+Ein Job zerlegt die Frage in drei bis fünf Teilfragen (`qa.deep_zerlege`).
+Für jede Teilfrage sucht und liest er zuerst die Zusatzquellen je Kanal und
+dann die vollständigen Vorlagenauszüge. Er streamt den Bericht. Jedes Ereignis
+enthält die Laufzeit, Fortschrittsereignisse zusätzlich eine geschätzte
+Restzeit. „Abbrechen“ wirkt vor dem nächsten Such- oder Modellschritt.
+Ergebnisse fertiger Teilfragen bleiben für einen Teilbericht verfügbar.
 
-Je Konto sind fünf Recherchen am Tag möglich. Gezählt wird erst, wenn der
-erste Berichtstext rausgeht; ein gescheiterter Versuch kostet nichts. Den
-Bericht schreibt `COUNCIL_DEEP_MODEL` (leer heißt: wie die normale Antwort).
-Konten mit dem Recht `premium_models` bekommen `COUNCIL_DEEP_PLUS_MODEL`; das
-Recht ändert das Modell, nicht die Menge
+Das Tageslimit beträgt fünf Recherchen pro Konto. Ratslotse rechnet eine
+Recherche an, sobald es den ersten Berichtstext sendet. Ein davor
+gescheiterter Versuch zählt nicht. Für den Bericht gilt
+`COUNCIL_DEEP_MODEL`. Bleibt die Einstellung leer, verwendet Ratslotse
+das Modell für die normale Antwort. Für Konten mit dem Recht
+`premium_models` nutzt Ratslotse `COUNCIL_DEEP_PLUS_MODEL`. Das Tageslimit
+gilt für beide Modelle
 (siehe [Rollen und Rechte](/docs/referenz/rollen-rechte/)). Ohne Einwilligung
 ins Speichern löscht `scripts/speicherfristen.py` eine Recherche sieben Tage
 nach ihrem letzten Stand.
