@@ -22,6 +22,7 @@ from council import ris
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
+from council.example_questions import TOP_QUESTIONS
 from council import gesellschaft_abschluss
 from council.parties import faction_label, order_key
 from council import expense_series as ausgabenreihe_mod
@@ -4163,10 +4164,15 @@ def deep_research_gesehen(job_id: str, user: dict = Depends(require_active),
 
 @router.get("/qa-beispiele")
 def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples:
-    """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
-    die jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus
+    """Beispielfragen für den Empty State der KI-Frage.
+
+    ``questions`` ist die kuratierte Top 20 (``council/example_questions.py``);
+    die Clients zeigen zwei oder drei davon und rücken bei jedem Besuch weiter.
+
+    ``sessions`` gehört nur noch der ausgelieferten App: Sie formuliert daraus
     „Was hat der <Ausschuss> am <Datum> beschlossen?" und „Was wurde zu
-    ‚<top_titel>' entschieden?".
+    ‚<top_titel>' entschieden?" (5a/I-07). Das Web tut das seit 22.11.2026
+    nicht mehr, die Fragen waren zu oft schlecht (s. ``example_questions``).
 
     Zwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares
     herauskommt — beide gehören hierher und nicht in zwei Clients:
@@ -4186,7 +4192,7 @@ def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples
          "top_titel": qa.erster_gegenstand(z.get("top_titel_kandidaten") or z.get("top_titel")) or None}
         for z in store.juengste_sitzungen_mit_beschluessen(
             limit=2, mindest_tops=qa.RUECKFRAGE_MINDEST_TOPS)]
-    return {"sessions": zeilen}
+    return {"sessions": zeilen, "questions": list(TOP_QUESTIONS)}
 
 
 @router.get("/plan-bild/{document_id}", response_class=JpegResponse,

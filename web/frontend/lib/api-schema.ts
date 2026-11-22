@@ -4553,10 +4553,15 @@ export interface paths {
         };
         /**
          * Qa Beispiele
-         * @description Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
-         *     die jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus
+         * @description Beispielfragen für den Empty State der KI-Frage.
+         *
+         *     ``questions`` ist die kuratierte Top 20 (``council/example_questions.py``);
+         *     die Clients zeigen zwei oder drei davon und rücken bei jedem Besuch weiter.
+         *
+         *     ``sessions`` gehört nur noch der ausgelieferten App: Sie formuliert daraus
          *     „Was hat der <Ausschuss> am <Datum> beschlossen?" und „Was wurde zu
-         *     ‚<top_titel>' entschieden?".
+         *     ‚<top_titel>' entschieden?" (5a/I-07). Das Web tut das seit 22.11.2026
+         *     nicht mehr, die Fragen waren zu oft schlecht (s. ``example_questions``).
          *
          *     Zwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares
          *     herauskommt — beide gehören hierher und nicht in zwei Clients:
@@ -19157,6 +19162,8 @@ export interface components {
         };
         /** QaExamples */
         QaExamples: {
+            /** Questions */
+            questions: string[];
             /** Sessions */
             sessions: components["schemas"]["QaExampleSession"][];
         };
@@ -31835,4 +31842,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 37b1796e82d2aba5097fb524b164e31fc32c26d9ebde2ec5f33c51729cf1b747
+// vertrag-sha256: df137331a579699207073aa1a4a9c64556e0f91377d36a5e6a183b988ca4ce8c

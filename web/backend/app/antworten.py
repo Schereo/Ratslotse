@@ -4902,7 +4902,14 @@ class QaExamples(TypedDict):
     #: eingebauten Beispiele. `scripts/ios_vertrag.py` rechnet die Bindung aus
     #: der Aufrufstelle aus — aber nur, wenn der Vertrag etwas über den Inhalt
     #: behauptet. Gegen ``Any`` kann es nichts prüfen.
+    #:
+    #: Seit 22.11.2026 liest nur noch die ausgelieferte App diese Liste; Web
+    #: und neue App-Builds nehmen ``questions``. Weg kann sie, sobald
+    #: ``APP_MIN_BUILD`` über dem Build steht, der ``questions`` liest.
     sessions: list[QaExampleSession]
+    #: Die kuratierte Top 20 aus ``council/example_questions.py``, in der
+    #: Reihenfolge, in der die Clients sie durchrotieren.
+    questions: list[str]
 
 
 class TemplateFollow(TypedDict):
