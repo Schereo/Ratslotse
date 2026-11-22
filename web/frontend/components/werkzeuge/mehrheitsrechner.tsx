@@ -21,7 +21,8 @@
 import { useId, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Check, ExternalLink, RotateCcw, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Check, ExternalLink, RotateCcw, X } from "lucide-react";
 
 import { api } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -85,10 +86,19 @@ export function Mehrheitsrechner() {
 
   const query = auswahlQuery(auswahl);
   const kopf = (
-    <PageHeader
-      title="Mehrheitsrechner"
-      description="Welche Fraktionen und Gruppen zusammen eine Mehrheit haben — im Rat und in jedem Ausschuss."
-    />
+    <div>
+      <Link
+        href="/werkzeuge"
+        className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden />
+        Werkzeuge
+      </Link>
+      <PageHeader
+        title="Mehrheitsrechner"
+        description="Welche Fraktionen und Gruppen zusammen eine Mehrheit haben — im Rat und in jedem Ausschuss."
+      />
+    </div>
   );
   const body = data.body;
   if (!body) {
