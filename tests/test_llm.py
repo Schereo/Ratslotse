@@ -693,7 +693,7 @@ def test_web_denkaufwand_nur_fuer_die_gemessenen_modelle(monkeypatch):
     monkeypatch.delenv(llm.WEB_DENKAUFWAND_ENV, raising=False)
     for (modell, feature), stufe in llm.WEB_DENKAUFWAND.items():
         assert llm.web_denk_extra(modell, feature) == {"extra_body": {"reasoning": {"effort": stufe}}}
-    assert llm.web_denk_extra("openai/gpt-6-luna", "qa_answer") == {}
+    assert llm.web_denk_extra("openai/gpt-6-luna", "assistant_explain") == {}
     assert llm.web_denk_extra("deepseek/deepseek-v4-flash", "qa_answer") == {
         "extra_body": {"reasoning": {"enabled": False}}}
     assert llm.web_denk_extra("google/gemini-3.1-flash-lite", "qa_answer") == {}
@@ -709,17 +709,27 @@ def test_messschalter_ueberschreibt_den_denkaufwand(monkeypatch):
         "extra_body": {"reasoning": {"effort": "high"}}}
 
 
-def test_lotti_und_antwort_fragen_luna_mit_dem_vorgabe_aufwand(monkeypatch):
+def test_lotti_fragt_luna_mit_dem_vorgabe_aufwand(monkeypatch):
     """Entschieden an der Fakten-Eval (P4a): ``low`` ließ bei Lotti 13 statt 10
-    und bei Frag den Rat 31 statt 27 Pflichtangaben aus oder verfälschte sie —
-    „Akkuratheit schlägt Geschwindigkeit“. Kein ``reasoning`` im Aufruf."""
+    Pflichtangaben aus oder verfälschte sie — „Akkuratheit schlägt
+    Geschwindigkeit“. Kein ``reasoning`` im Aufruf."""
     monkeypatch.delenv(llm.WEB_DENKAUFWAND_ENV, raising=False)
-    from council import assistant, qa
+    from council import assistant
     _, extra = assistant.explain_messages(assistant.Screen(route="/haushalt"), "Was?", {},
                                           model="openai/gpt-6-luna")
     assert "reasoning" not in (extra.get("extra_body") or {})
+
+
+def test_frag_den_rat_antwortet_mit_niedrigem_denkaufwand(monkeypatch):
+    """Tims Entscheidung 22.11.2026: Bei Frag den Rat zählt die schnelle
+    Antwort, gründlich ist die Recherche. Mit der Vorgabe standen die Quellen
+    18–48 s ohne Text da, mit ``low`` 6–12 s (Messung im Kommentar zu
+    ``llm.WEB_DENKAUFWAND``). Das Vereinfachen bleibt bei der Vorgabe."""
+    monkeypatch.delenv(llm.WEB_DENKAUFWAND_ENV, raising=False)
+    from council import qa
     _, extra = qa._answer_messages("Was?", [], "topic", "openai/gpt-6-luna")
-    assert "reasoning" not in (extra.get("extra_body") or {})
+    assert extra["extra_body"]["reasoning"] == {"effort": "low"}
+    assert llm.web_denk_extra("openai/gpt-6-luna", "qa_simple") == {}
 
 
 def test_recherche_bericht_nimmt_den_denkaufwand_je_feature(monkeypatch):

@@ -874,7 +874,7 @@ Alle Variablen sind optional. Ohne Angabe gilt der Standardwert aus dem Code.
 | `COUNCIL_IMPACT_MODEL` | Tragweite-Score | `openai/gpt-6-luna` (Flex-Tarif) |
 | `COUNCIL_FUNDSTUECK_MODEL` | Story zum „Fundstück des Tages" | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_RECAP_MODEL` | Themenfeld-Rückblicke | `deepseek/deepseek-v4-pro` |
-| `COUNCIL_QA_MODEL` | „Frag den Rat": Antwort, vereinfachte Antwort, Deep-Research-Bericht, Partei-Meinungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
+| `COUNCIL_QA_MODEL` | „Frag den Rat": Antwort, vereinfachte Antwort, Deep-Research-Bericht, Partei-Meinungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: `low` für die Antwort, sonst Vorgabe des Anbieters; `llm.WEB_DENKAUFWAND`) |
 | `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (Azure EU, mit ZDR); auch die Städte-Suchbegriffe | `openai/gpt-5.6-luna` |
 | `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
 | `COUNCIL_ASSISTANT_PRUEFER_MODEL` | Lottis Selbstprüfung: Prüfer-Modell einer anderen Familie, in der EU (`council/self_check.py`, Schalter `lotti-selbstpruefung`) | `anthropic/claude-haiku-5.5` |
