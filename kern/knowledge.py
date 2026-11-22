@@ -212,8 +212,9 @@ PAGES: dict[str, PageKnowledge] = dict([
        "noch zur Mehrheit verhelfen kann, und eine Übersicht, in welchen "
        "Gremien die Auswahl eine Mehrheit hat. Mehrheit heißt hier mehr als die "
        "Hälfte aller Stimmberechtigten.",
-       "Die Besetzung stammt von den Mitgliederseiten des Ratsinformationssystems "
-       "und wird einmal in der Woche abgerufen.",
+       "Wer für welche Fraktion sitzt, stammt von den Mitgliederseiten des "
+       "Ratsinformationssystems (einmal in der Woche abgerufen); wie viele "
+       "Stimmen ein Gremium hat, aus den Ratsbeschlüssen vom 2. November 2026.",
        "Der Rechner zählt Stimmen; wie Fraktionen tatsächlich abstimmen, sagt er "
        "nicht. Fehlt jemand in einer Sitzung, reichen dort auch weniger Stimmen.",
        requires="council_tools",
