@@ -122,7 +122,7 @@ def _generierte_typen() -> tuple[bool, str]:
 
 def _node_fehlt() -> str | None:
     if not shutil.which("npx"):
-        return "npx nicht gefunden (Node ≥ 22 installieren)"
+        return "npx nicht gefunden (Node ≥ 22.12 installieren)"
     if not (FRONTEND / "node_modules").is_dir():
         return "web/frontend/node_modules fehlt (`cd web/frontend && npm ci`)"
     return None
