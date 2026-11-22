@@ -25,8 +25,11 @@ export function generateStaticParams() {
 
 export const dynamicParams = false;
 
-export function generateMetadata({ params }: { params: { liste: string } }): Metadata {
-  const p = listeProfil(params.liste);
+type Props = { params: Promise<{ liste: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { liste } = await params;
+  const p = listeProfil(liste);
   if (!p) return {};
   return {
     title: `${p.kurz} im Programm-Check`,
@@ -34,11 +37,12 @@ export function generateMetadata({ params }: { params: { liste: string } }): Met
   };
 }
 
-export default function ListeSeite({ params }: { params: { liste: string } }) {
-  const p = listeProfil(params.liste);
+export default async function ListeSeite({ params }: Props) {
+  const { liste } = await params;
+  const p = listeProfil(liste);
   if (!p) notFound();
-  const abdruck = fingerabdruck(params.liste);
-  const sprache = sprachProfil(params.liste);
+  const abdruck = fingerabdruck(liste);
+  const sprache = sprachProfil(liste);
 
   return (
     <>

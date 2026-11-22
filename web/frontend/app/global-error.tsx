@@ -40,6 +40,9 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
               style={{ background: "#0764a6", color: "#fff", border: 0, borderRadius: 10, padding: "10px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
               Seite neu laden
             </button>
+            {/* Bewusst ein voller Seitenaufruf: Hier ist das Wurzel-Layout
+                abgestürzt, `<Link>` bliebe im kaputten Router hängen. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" style={{ color: "#0764a6", padding: "10px 16px", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
               Zur Startseite
             </a>

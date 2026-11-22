@@ -7,9 +7,11 @@ const sessionValid = backendSessionCheck(process.env.BACKEND_URL || "http://loca
 
 /** Angemeldete auf „/" gleich aufs Dashboard — Begründung und Grenzen in
  *  `lib/landing-redirect.ts`. */
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   return redirectSignedIn(req, sessionValid);
 }
 
-// NUR die Startseite. Alles andere läuft an der Middleware vorbei.
+// NUR die Startseite. Alles andere läuft am Proxy vorbei. (Bis Next 15 hieß
+// die Datei `middleware.ts`; seit Next 16 läuft sie immer in der
+// Node-Laufzeit.)
 export const config = { matcher: "/" };

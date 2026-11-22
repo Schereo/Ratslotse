@@ -113,6 +113,11 @@ test("die Übersicht: Tafel, Filter als Anfrage, Weg zur Ideen-Seite und zurück
   await expect(page).toHaveURL(/\/council\/ideen$/, { timeout: 10_000 });
 
   await liste.getByRole("button", { name: /Klima/ }).click();
+  // Der Filter steht in der Adresse, und von dort nehmen ihn die Links der
+  // Liste mit (`von=…`). Erst wenn er dort angekommen ist, geht es weiter —
+  // wie oben bei `stand=vorhanden`. Ein Klick davor trifft noch den Link ohne
+  // Filter, und „Alle Ideen" kann ihn dann nicht wiederfinden.
+  await expect(page).toHaveURL(/feld=klima_umwelt/, { timeout: 10_000 });
   await liste.getByRole("link", { name: /Verpackungssteuer einführen/ }).click();
   // Großzügig: Die Zielseite übersetzt der Dev-Server beim ersten Aufruf,
   // und neben anderen Specs dauert das länger als die üblichen fünf Sekunden.

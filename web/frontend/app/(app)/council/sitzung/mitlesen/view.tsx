@@ -269,7 +269,7 @@ function Steuerung({ vorher, nachher, onZurueck, onWeiter }: {
 
 function JetztDran({ ksinr, schritt, course, titelRef, fuss, punktSeite }: {
   ksinr: number; schritt: ReturnType<typeof steps>[number]; course: SessionWithCourse["course"];
-  titelRef: React.RefObject<HTMLHeadingElement>; fuss: React.ReactNode; punktSeite: boolean;
+  titelRef: React.RefObject<HTMLHeadingElement | null>; fuss: React.ReactNode; punktSeite: boolean;
 }) {
   const nr = schritt.closed || schritt.items.length > 1 ? null : schritt.key;
   const { data: p } = useFetch<Punkt>(nr ? `/council/session/${ksinr}/item?nr=${encodeURIComponent(nr)}` : null, { quiet: true });

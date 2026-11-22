@@ -1,12 +1,21 @@
 # Regeln für `web/frontend/`
 
-Next.js, nur die Webanwendung. Bis 11/2026 wurde derselbe Code zusätzlich als
-statischer Export in eine Capacitor-Hülle gebaut (Android, nie
-veröffentlicht); einige Konventionen unten stammen daher und gelten weiter.
+Next.js 16 (App Router, Turbopack) mit React 19, nur die Webanwendung. Bis
+11/2026 wurde derselbe Code zusätzlich als statischer Export in eine
+Capacitor-Hülle gebaut (Android, nie veröffentlicht); einige Konventionen
+unten stammen daher und gelten weiter.
 
 **Pflichtlektüre vor UI-Arbeit:** [`DESIGNSPRACHE.md`](DESIGNSPRACHE.md).
 Grafiken zusätzlich: [`components/grafik/README.md`](components/grafik/README.md).
 Allgemeines: [`../../CLAUDE.md`](../../CLAUDE.md).
+
+**Die Doku zur installierten Next-Fassung liegt im Paket:**
+`node_modules/next/dist/docs/` (nach `npm ci`). Next 16 weicht an vielen
+Stellen von dem ab, was man aus 14 kennt (`params` und `searchParams` sind
+Promises, `middleware.ts` heißt `proxy.ts`, `next lint` gibt es nicht mehr) —
+dort nachlesen, bevor eine Next-API aus dem Gedächtnis benutzt wird. `next dev`
+würde denselben Hinweis von sich aus in eine `AGENTS.md` schreiben; das ist in
+`next.config.mjs` abgeschaltet (`agentRules: false`), die Regeln stehen hier.
 
 ## Vorher: echte Daten holen
 
@@ -43,7 +52,7 @@ Pfad in der Capacitor-Hülle ins Nichts zeigte; sie bleibt, weil eine Stelle
 für die Adresse besser ist als achtzig.
 
 Seit 09/2026 ist das keine Bitte mehr, sondern eine ESLint-Regel
-(`no-restricted-syntax` in `.eslintrc.json`) und damit Teil von `npm run lint`
+(`no-restricted-syntax` in `eslint.config.mjs`) und damit Teil von `npm run lint`
 und `pruefe.py`. Sie trifft genau den Fehler — ein Zeichenketten- oder
 Template-Literal, das mit `/api/` beginnt — und lässt `apiUrl(…)` und absolute
 URLs in Ruhe. Eingeführt wurde sie mit **null** Verstößen im Bestand; sie
@@ -82,7 +91,14 @@ Der Export ist weg, diese Regeln bleiben:
   einem laufenden Dev-Server überschreibt dessen Chunks; die Seite liefert
   danach für jede Chunk-URL eine 404-Seite. Das sieht aus wie ein Fehler im
   Code und ist keiner. Die Konfiguration ist deshalb eine Funktion über die
-  Phase — nicht zu einem Objekt zurückbauen.
+  Phase — nicht zu einem Objekt zurückbauen. (Next 16 trennt Dev und Build
+  inzwischen selbst, der Dev-Server schreibt nach `<distDir>/dev`, hier also
+  `.next-dev/dev`. Die eigene Trennung bleibt, weil die Deploys daran hängen.)
+- **Turbopack schreibt keinen Cache auf die Platte**, weder beim Bauen noch im
+  Dev-Server (beide Schalter in `next.config.mjs`). Der Dev-Cache wog nach
+  einem Nachmittag 1,4 GB je Worktree und hielt einen Fehler fest, der keiner
+  war — auch ein neu gestarteter Dev-Server meldete ihn. Wer den Cache
+  einschaltet, liest vorher die Begründung dort.
 - **Der Deploy baut ebenfalls daneben.** Dasselbe Bild traf den alten
   `next start` auf den Servern: jede Seite ungestaltet, bis zum Neustart.
   Die Deploys bauen deshalb mit `NEXT_DIST_DIR=.next-build` (wirkt nur in der
@@ -190,15 +206,20 @@ sichtbar auseinander: `python scripts/e2e_durations.py --write` zieht die
 Dauern aus dem jüngsten grünen Lauf.
 
 **Was lokal NICHT geht: mehrere Teile gleichzeitig starten.** Verschiedene
-Ports reichen dafür nicht — alle `next dev` eines Worktrees schreiben in
-**dasselbe `.next-dev/`** und zerlegen sich gegenseitig den Webpack-Cache:
+Ports reichen dafür nicht — alle `next dev` eines Worktrees teilen sich
+**dasselbe `.next-dev/`**. Seit Next 16 startet der zweite gar nicht erst:
 
 ```
-[webpack.cache.PackFileCacheStrategy] Caching failed for pack:
-  ENOENT: no such file or directory, rename '….next-dev/cache/webpack/0.pack.gz_'
+⨯ Another next dev server is already running.
+- Local:        http://localhost:3410
+- PID:          39577
 ```
 
-Das Ergebnis sieht aus wie ein echter Befund und ist keiner: 21 Fehlschläge
+Das gilt auch für einen Dev-Server, der noch von der Arbeit an einer Seite
+läuft: Playwright startet seinen eigenen (`npm run dev -- --port …`) und
+scheitert daran. Vorher den EIGENEN anhalten (die PID steht in der Meldung).
+Bis Next 15 starteten beide und zerlegten sich gegenseitig den Webpack-Cache.
+Das Ergebnis sah aus wie ein echter Befund und war keiner: 21 Fehlschläge
 über vier gleichzeitige Teile, dieselbe Suite seriell 140/140 grün, jeder Teil
 einzeln grün (gemessen 07.09.2026). Wer die Teile wirklich parallel messen will,
 braucht je einen eigenen Worktree — oder lässt es und misst sie nacheinander.

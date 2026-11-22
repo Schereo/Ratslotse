@@ -217,6 +217,11 @@ test.describe("Generalprobe", () => {
     });
 
     await page.goto("/tipp/live");
+    // Erst auf den Abruf warten. `goto` kehrt beim load-Ereignis zurück, die
+    // Tafel fragt aber erst nach dem Hydrieren — unter Next 16 liegt das
+    // dahinter, und die beiden Zeilen unten prüften dann eine Seite, die noch
+    // gar nichts gefragt hatte (`gesehen[0]` war `undefined`).
+    await expect.poll(() => gesehen.length).toBeGreaterThan(0);
     await expect(page.getByText("Generalprobe · Zahlen der Vorwahl")).toBeHidden();
     expect(gesehen[0]).toBe("");
   });

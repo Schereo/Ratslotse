@@ -155,7 +155,7 @@ export function useGleitMarker(schluessel: string, merkname?: string) {
  *  nirgends geschrieben. `className` bleibt für alles, was die Grundregel gar
  *  nicht anfasst (Schatten). */
 export function GleitMarker({ markerRef, radius, farbe, kurve, className }: {
-  markerRef: React.RefObject<HTMLSpanElement>;
+  markerRef: React.RefObject<HTMLSpanElement | null>;
   radius: string;
   farbe?: string;
   /** Abweichende Kurve — z. B. `var(--ease-back-out)`, damit die Fläche am

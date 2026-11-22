@@ -3,10 +3,11 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { LANDING_PARAM, LANDING_WANTED_KEY } from "@/lib/landing-wanted";
 
-/** Der Parameter, der die Landing trotz Anmeldung stehen lässt. */
-export const LANDING_HREF = "/?start=1";
-const MERKER = "ratslotse:landing-gewollt";
+/** Die Adresse, die die Landing trotz Anmeldung stehen lässt. */
+export const LANDING_HREF = `/?${LANDING_PARAM}=1`;
+const MERKER = LANDING_WANTED_KEY;
 
 /** Wer die Startseite gar nicht braucht, soll sie nicht sehen: ANGEMELDETE
  *  springen aufs Dashboard — wer eingeloggt „ratslotse.de" tippt, will fast
@@ -21,16 +22,20 @@ const MERKER = "ratslotse:landing-gewollt";
  *  in die Weiterleitung.
  *
  *  Seit 11/2026 leitet bei einem ganzen Seitenaufruf schon der Server um
- *  (`middleware.ts`, `lib/landing-redirect.ts`), bevor die Landing samt
+ *  (`proxy.ts`, `lib/landing-redirect.ts`), bevor die Landing samt
  *  3D-Lotti lädt. Diese Komponente bleibt der Rückfall für alles, was dort
  *  durchgeht: Client-Navigation, ein langsames Backend. Die Fluchttür merkt
  *  sich der Server zusätzlich als Cookie — `sessionStorage` sieht er nicht.
+ *
+ *  Den Merker setzt bei einem ganzen Seitenaufruf schon ein Skript im <head>
+ *  (`lib/landing-wanted.ts`), nicht erst der Effekt hier: Der läuft nach dem
+ *  Hydrieren, und wer vorher weiterging, sprang doch aufs Dashboard.
  */
 export function LandingRedirect() {
   const router = useRouter();
   const sp = useSearchParams();
   const { user, loading } = useAuth();
-  const gewollt = sp.get("start") != null;
+  const gewollt = sp.get(LANDING_PARAM) != null;
 
   useEffect(() => {
     if (gewollt) {

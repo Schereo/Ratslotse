@@ -42,7 +42,7 @@ schnellen Prüfungen, und `tests` steckt bewusst nicht darin.
 5. Soll die Seite noch nicht für alle sichtbar sein: Recht (`web/frontend/lib/rechte.ts`) für
    „wer darf", Feature-Schalter (`web/frontend/lib/features.ts`) für „schon so weit?".
 
-**Was dich fängt:** `npx tsc --noEmit`, `npx next lint`, `14-layout.spec.ts`
+**Was dich fängt:** `npx tsc --noEmit`, `npm run lint`, `14-layout.spec.ts`
 (die Seite darf nicht seitwärts scrollen), `npx vitest run`.
 
 **Und:** Vor dem Merge ein Bild an Tim (`SendUserFile`) und sein Gegenlesen
