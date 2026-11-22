@@ -1,7 +1,8 @@
 name: Ops – Wartungsbarriere & Generalprobe (Prod)
 
-# Notausgang für einen abgebrochenen Deploy. `deploy.yml` setzt VOR dem rsync
-# die Wartungsbarriere `data/.release-maintenance`; bricht der Lauf danach ab
+# Manuelle Wiederherstellung nach einem abgebrochenen Deploy.
+# `deploy.yml` setzt VOR dem rsync die Wartungsbarriere
+# `data/.release-maintenance`; bricht der Lauf danach ab
 # (06.09.2026: rsync Exit 23 beim Löschen unter node_modules), bleibt sie
 # stehen — und damit sperrt jeder Store-Aufruf: `/api/health` 503, Daten-
 # endpunkte 500, Crons blockiert. Ein neuer Deploy verweigert den Start,
