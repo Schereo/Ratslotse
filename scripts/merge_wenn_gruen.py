@@ -17,6 +17,13 @@ Es ging gut aus; darauf kommt es nicht an.
    genau das ist der gefährlichste Zustand, weil er wie Erfolg aussieht.
 3. *Der falsche Stand.* Wer lokal noch etwas committet und nicht pusht, merged
    einen anderen Baum, als er vor sich hat.
+4. *Der Kopf bewegt sich.* Geprüft wird EIN Commit, gemergt wird, was dann
+   Kopf des Pull Requests ist — und das muss nicht derselbe sein. Am
+   22.11.2026 lief dieses Skript unmittelbar nach einem Push: GitHub nannte
+   noch den alten Kopf, dessen Prüfungen alle grün waren, und mergte Sekunden
+   später den neuen, für den noch keine einzige gestartet war (#1949). Deshalb
+   bindet der Merge sich an die geprüfte SHA (``--match-head-commit``): Hat
+   der Kopf sich bewegt, lehnt GitHub ab.
 
 Aufruf im Zweig des Pull Requests::
 
@@ -58,6 +65,11 @@ def gh(*args: str, versuche: int = 1) -> str:
         if versuch + 1 < versuche:
             time.sleep(15)
     raise SystemExit(f"gh {' '.join(args)} scheiterte:\n{letzter}")
+
+
+def merge_befehl(nummer: int, sha: str) -> list[str]:
+    """Der Merge — nur für genau den Commit, dessen Prüfungen grün waren."""
+    return ["pr", "merge", str(nummer), "--squash", "--match-head-commit", sha]
 
 
 def kopf_lokal() -> str:
@@ -159,7 +171,10 @@ def main(argv: list[str] | None = None) -> int:
         print("  Alles grün — nicht gemergt (--trocken).")
         return 0
 
-    gh("pr", "merge", str(nummer), "--squash")
+    # An die GEPRÜFTE SHA gebunden (Falle 4 im Kopf dieser Datei): Ist der Kopf
+    # des Pull Requests inzwischen ein anderer, lehnt GitHub den Merge ab,
+    # statt einen Commit mitzunehmen, den hier niemand geprüft hat.
+    gh(*merge_befehl(nummer, sha))
     # Getrennt vom Merge: `gh pr merge --delete-branch` bricht ab, wenn ein
     # anderer Worktree auf dem Zweig steht — und der Merge ist dann schon
     # durch, die Meldung sieht trotzdem nach Fehlschlag aus.
