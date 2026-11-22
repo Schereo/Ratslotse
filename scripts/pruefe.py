@@ -177,6 +177,11 @@ PRUEFUNGEN: list[Pruefung] = [
     # scheitert dabei.
     Pruefung("glossar", "lib/glossary.ts passt zu kern/glossar.py", schnell=True,
              befehl=[PY, "scripts/glossar_ts.py", "--pruefen"]),
+    # Cron-Jobs, Feature-Schalter, Rollen, Eval-Läufe und Workflows stehen in
+    # der Technik-Doku als erzeugte Seiten. Wer ein Register ändert, ohne sie
+    # neu zu erzeugen, bekommt das hier gesagt statt erst von der Testsuite.
+    Pruefung("doku", "Referenzseiten der Doku passen zu den Registern", schnell=True,
+             befehl=[PY, "scripts/docs_reference.py", "--check"]),
     # Die App ist die einzige Schicht ohne erzeugte Typen: Ihre `struct`s stehen
     # von Hand da, und eine Umbenennung im Backend erreicht sie auf keinem Weg.
     Pruefung("ios", "Swift-Modelle gegen ihr Schema halten", schnell=True,

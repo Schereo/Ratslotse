@@ -23,19 +23,39 @@ direkt auf [ratslotse.de](https://ratslotse.de).
 
 <CardGrid stagger>
 	<Card title="Architektur" icon="puzzle">
-		Ein Scraper (SessionNet/Ratsinfo) speist eine SQLite-DB.
-		Das Web-Frontend sitzt darauf.
+		Quellen, Pakete und ihre Schichten, drei SQLite-Datenbanken, Web, iOS-App
+		und MCP-Server.
 		[→ Architektur](/docs/architektur/)
 	</Card>
 	<Card title="KI-Pipeline" icon="open-book">
-		Wie Tagesordnungen und Beschlüsse per LLM (über OpenRouter) gegen Nutzerthemen
-		gematcht werden — inkl. Eval-Harness.
+		Welche Schritte ein Sprachmodell nutzen, welche bewusst nicht, und wie
+		Modellaussagen im Code gegen die Quelle geprüft werden.
 		[→ KI-Pipeline](/docs/ki-pipeline/)
 	</Card>
-	<Card title="Produkt" icon="comment">
-		Das Beschlüsse-Feature aus den Sitzungsprotokollen: Extraktion und
-		Themenfeld-Klassifikation.
+	<Card title="Frag den Rat" icon="magnifier">
+		Von der Frage zur belegten Antwort: Analyse, hybride Suche, die Akte,
+		ausführliche Recherche.
+		[→ Frag den Rat](/docs/frag-den-rat/)
+	</Card>
+	<Card title="Beschlüsse" icon="comment">
+		Was aus Protokollen, Vorlagen und Anlagen entsteht: Extraktion,
+		Themenfelder, Kurzfassungen.
 		[→ Beschlüsse](/docs/beschluesse/)
+	</Card>
+	<Card title="Sitzung & Punkt" icon="document">
+		Die Sitzung als Kurs, die Seite je Tagesordnungspunkt mit Dossier und
+		Anträgen, die Live-Verfolgung der Ratssitzung.
+		[→ Sitzung & Tagesordnungspunkt](/docs/sitzungen/)
+	</Card>
+	<Card title="Stadt im Blick" icon="information">
+		Vorhaben je Ortsbereich, die Pläne der Stadt und der Vergleich mit
+		anderen Städten.
+		[→ Mein Viertel](/docs/mein-viertel/) · [Pläne](/docs/plaene/) ·
+		[Andere Städte](/docs/andere-staedte/)
+	</Card>
+	<Card title="Stadtfinanzen" icon="list-format">
+		Der Haushalt in seinen Datenschichten, jede Zahl mit Beleg.
+		[→ Stadtfinanzen](/docs/haushalt/)
 	</Card>
 	<Card title="Bewertungs-Scores" icon="star">
 		Wie Beschlüsse gewichtet werden: nachrechenbare Heuristik, KI-Tragweite,
@@ -43,14 +63,21 @@ direkt auf [ratslotse.de](https://ratslotse.de).
 		[→ Bewertungs-Scores](/docs/bewertungen/)
 	</Card>
 	<Card title="App & Konten" icon="laptop">
-		Die native iOS-App, Anmeldung (inkl. Sign in with Apple) und was alles am
-		Konto hängt.
+		Die native iOS-App, Anmeldung mit Passwort, Apple oder Passkey,
+		Benachrichtigungen und verschlüsselte Notizen.
 		[→ App & Konten](/docs/app-und-konten/)
 	</Card>
 	<Card title="Betrieb" icon="setting">
-		Deploy-Wege, Dev-Umgebung, Cronjobs, Backups, Kosten und die komplette
-		Env-Referenz.
+		Deploy-Wege, Dev-Umgebung, Cron-Jobs, Sicherungen, Kosten und alle
+		Umgebungsvariablen.
 		[→ Betrieb](/docs/betrieb/)
+	</Card>
+	<Card title="Referenz" icon="rocket">
+		Aus dem Code erzeugt und deshalb immer aktuell: Cron-Jobs,
+		Feature-Schalter, Rollen und Rechte.
+		[→ Cron-Jobs](/docs/referenz/cron-jobs/) ·
+		[Schalter](/docs/referenz/feature-schalter/) ·
+		[Rollen](/docs/referenz/rollen-rechte/)
 	</Card>
 	<Card title="Entscheidungen" icon="approve-check">
 		Architecture Decision Records: die wichtigen Technik-Weichen und warum sie
@@ -62,6 +89,7 @@ direkt auf [ratslotse.de](https://ratslotse.de).
 :::note[Für Entwickler*innen]
 Das Repo ist Open Source
 ([AGPL-3.0](https://github.com/Schereo/Ratslotse)) — Beiträge willkommen.
-Der Einstieg für Contributor*innen steht in der `CLAUDE.md` im Repo-Root;
-konkrete Hosts und Secrets liegen ausschließlich auf dem Server, nie im Git.
+Der Einstieg für Mitwirkende steht in `CONTRIBUTING.md`, die technischen
+Projektregeln in `CLAUDE.md`, beide im Repo-Root. Konkrete Hosts und Secrets
+liegen ausschließlich auf dem Server, nie im Git.
 :::

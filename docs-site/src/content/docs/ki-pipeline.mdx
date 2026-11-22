@@ -537,6 +537,44 @@ schrieb, ersetzte 4 Antworten, eine davon besser — ok blieb bei 163, dafür
 +1,7 s im Median und das 2,5-Fache der Kosten. Zahlen und Befehle:
 `docs/lotti-selbstpruefung.md`.
 
+### Werkzeuge: nachschlagen statt raten
+
+Lotti bekommt einen vorbereiteten Kontext und antwortet daraus in einem Zug.
+Für die meisten Fragen reicht das. Bei mehrstufigen Fragen nicht: Von 30
+solchen Fällen der Fakten-Eval (`eval/cases_fakten_haushalt.json`, Kategorie
+`haushalt/mehrstufig`) bestanden am 25.09.2026 nur 17, zwölf davon scheiterten
+am Kontext. Es fehlte die Entwicklung seit 2010 (der Baustein zeigt jüngstes
+Jahr, Vorjahr und Höchstwert), die Antwort stand auf einer anderen Seite, oder
+gefragt war ein Anteil, den kein Dokument ausrechnet.
+
+Mit dem Schalter `lotti-werkzeuge` darf Lotti deshalb nachschlagen
+(`council/lotti_werkzeuge.py`): Zeitreihen, Haushaltszahlen anderer Seiten,
+Ratsbeschlüsse. Höchstens drei Runden je Antwort. Die Grenzen:
+
+- Die Werkzeuge **lesen nur**. Nichts wird geschrieben, nichts verschickt.
+- Die Haushalts-Werkzeuge gibt es nur mit dem Recht `budget`, dieselbe Grenze
+  wie für den Haushalts-Kontext selbst.
+- Jede Zahl kommt mit Jahr und Beleg zurück, in derselben Form wie der
+  vorbereitete Kontext. Die Belege landen unter „Grundlage“.
+- **Rechnen nur mit belegten Zahlen.** Lotti rechnet nicht selbst, sonst
+  entstehen Zahlen, die in keinem Dokument stehen. Das Rechenwerkzeug nimmt
+  nur Werte an, die schon im Gespräch standen (im Kontext oder in einem
+  Werkzeug-Ergebnis), und gibt die Herleitung mit. Eine erfundene Zahl lässt
+  sich so nicht „durchrechnen“.
+- Text aus dem Ratsarchiv ist Fremdtext: Er läuft durch den Anweisungsfilter
+  (`kern/foreign_text.py`) und steht zwischen Markern.
+
+Messung und Befehle: `docs/lotti-werkzeuge.md`.
+
+### Der Anstupser
+
+Mit dem Schalter `lotti-anstupser` klopft Lotti selten von selbst an („Hast
+du eine Frage zu dem, was du siehst?“): nur auf Leseseiten, nach 45 Sekunden
+Lesezeit, höchstens einmal am Tag und dreimal in 30 Tagen. Ob er bleibt,
+entscheidet eine Messung: Das Admin-Panel zählt im Reiter „Lotti“, wie oft er
+angenommen wird. Liegt die Quote nach vier Wochen unter 5 %, wird er seltener
+oder abgeschafft.
+
 ## Frag den Rat: welche Quelle eine Geldfrage zieht
 
 Die KI-Frage antwortet nicht nur aus Beschlüssen. Zu Geldfragen liegen
