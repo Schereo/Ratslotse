@@ -137,11 +137,12 @@ python scripts/pruefe.py --schnell  # kurze Auswahl für die Prüfung vor dem Pu
 ```
 
 Nicht dabei sind die **Browsertests** — sie brauchen zwei laufende Server und
-einen Browser und dauern fünf Minuten. Sie laufen in der CI
-(`.github/workflows/e2e.yml`) und lokal auf Zuruf:
+einen Browser. Die ganze Suite fährt die CI (`.github/workflows/e2e.yml`, acht
+Läufer, rund fünf Minuten); lokal braucht sie seriell 15–20 Minuten. **Lokal
+deshalb nur die Dateien zur eigenen Änderung:**
 
 ```bash
-cd web/frontend && npx playwright test
+cd web/frontend && npx playwright test tests/e2e/12-navigation
 ```
 
 Läuft in einem anderen Worktree schon ein `next dev` auf 3000, bricht das mit

@@ -1,5 +1,25 @@
 # Die Prüfungen je Pull Request: Linter, Typprüfung, API-Vertrag und die
 # Testsuite — dasselbe, was `scripts/pruefe.py` lokal vor dem Push fährt.
+#
+# DREI AUFTRÄGE STATT EINEM (11/2026). Bis dahin lief alles hintereinander auf
+# EINEM Läufer: Abhängigkeiten, vier Lint-Schritte, dann die Suite. Gemessen
+# am 22.11.2026 an einem gewöhnlichen Pull Request: 6:21 min, davon 5:10 die
+# Tests und gut eine Minute davor die Lints.
+#
+# Die Suite ist rechengebunden — rund 9.700 Tests, kein einzelner ist der
+# Engpass, und ein Läufer hat vier Kerne. Schneller wird sie nur mit mehr
+# Rechnern. Deshalb:
+#
+#   lint     Adressen, ruff, pyright, Typ-Schuldenstand — parallel zu den Tests
+#            statt davor.
+#   pytest   die Suite in ZWEI Teilen, je die Hälfte der Testdateien
+#            (`--shard i/n`, s. `tests/ci_shards.py`). Mit vier Arbeitern und
+#            ohne Datenabzug gemessen: 58,6 s und 57,8 s — die Teile sind
+#            gleich lang, obwohl nur eine Prüfsumme des Dateinamens schneidet.
+#   test     sagt am Ende, ob beides grün war. An DIESEM Namen hängt der Merge.
+#
+# Dieses Repo ist öffentlich, GitHub rechnet die Minuten nicht ab — gekauft
+# wird Wartezeit, nicht Rechenzeit (dieselbe Abwägung wie in `e2e.yml`).
 name: Tests
 
 on:
@@ -8,8 +28,65 @@ on:
   pull_request:
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # -c constraints.txt: dieselben Fassungen wie auf Prod (s. u.).
+          # pyright löst Typen über die INSTALLIERTEN Pakete auf — deshalb
+          # braucht auch dieser Auftrag die ganze Umgebung.
+          pip install -r requirements.txt -r requirements-dev.txt -c constraints.txt
+
+      # Eigener Schritt statt nur ein Test: Der Befund soll oben im Log stehen
+      # und nicht zwischen tausenden Testergebnissen. Läuft trotzdem zusätzlich
+      # als Test (tests/test_lint_adressen.py), damit er lokal beim normalen
+      # pytest mitgeht.
+      - name: Fremde E-Mail-Adressen?
+        run: python scripts/lint_adressen.py
+
+      # Aus demselben Grund ein eigener Schritt: Ein ungenutzter Import oder
+      # ein undefinierter Name soll oben im Log stehen. Es läuft NUR die
+      # Fehlerklasse „F" — warum, steht in `ruff.toml`. Kein Stil, keine
+      # Zeilenlänge; ein roter Lauf hier heißt, dass im Code etwas steht, das
+      # niemand benutzt oder das es nicht gibt.
+      - name: Python-Linter (ruff, nur Fehler)
+        run: ruff check .
+
+      # Was er prüft und warum der Geltungsbereich klein ist, steht in
+      # `pyrightconfig.json`.
+      - name: Python-Typen (pyright)
+        run: pyright --pythonpath "$(which python)"
+
+      # Der Rest des Bestands: nicht im harten Gate, aber auch nicht
+      # ungeprüft. Die Zahl der Befunde je Bereich darf nur SINKEN. Steht hier
+      # direkt hinter dem Schritt darüber, weil die Node-Laufzeit dann schon
+      # warm ist — als pytest-Test hat dieselbe Arbeit den Testlauf von drei
+      # auf elf Minuten verlängert.
+      - name: Typ-Schuldenstand
+        run: python scripts/pruefe_typschulden.py
+
+  pytest:
+    runs-on: ubuntu-latest
+
+    # Die Liste zählt lückenlos ab 1 — NUR sie legt fest, wie viele Teile es
+    # gibt: Der Aufruf unten nimmt die Gesamtzahl aus `strategy.job-total`.
+    # Eine Lücke oder ein doppelter Eintrag ließe einen Teil der Suite still
+    # aus; `tests/test_ci_shards.py` hält die Liste deshalb fest.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+
+    name: pytest (${{ matrix.shard }}/${{ strategy.job-total }})
     steps:
       - uses: actions/checkout@v7
 
@@ -27,39 +104,11 @@ jobs:
           # auf Prod, 0.139 auf dev, in der CI wieder etwas Drittes).
           pip install -r requirements.txt -r requirements-dev.txt -c constraints.txt
 
-      # Eigener Schritt vor den Tests: Der Befund soll oben im Log stehen und
-      # nicht zwischen 600 Testergebnissen. Läuft trotzdem zusätzlich als Test
-      # (tests/test_lint_adressen.py), damit er lokal beim normalen pytest
-      # mitgeht.
-      - name: Fremde E-Mail-Adressen?
-        run: python scripts/lint_adressen.py
-
-      # Aus demselben Grund ein eigener Schritt: Ein ungenutzter Import oder
-      # ein undefinierter Name soll oben im Log stehen, nicht hinter 1.500
-      # Testergebnissen. Es läuft NUR die Fehlerklasse „F" — warum, steht in
-      # `ruff.toml`. Kein Stil, keine Zeilenlänge; ein roter Lauf hier heißt,
-      # dass im Code etwas steht, das niemand benutzt oder das es nicht gibt.
-      - name: Python-Linter (ruff, nur Fehler)
-        run: ruff check .
-
-      # Ebenfalls ein eigener Schritt, ebenfalls damit der Befund oben im Log
-      # steht. Was er prüft und warum der Geltungsbereich klein ist, steht in
-      # `pyrightconfig.json`. Er kostet unter zwei Sekunden.
-      - name: Python-Typen (pyright)
-        run: pyright --pythonpath "$(which python)"
-
-      # Der Rest des Bestands: nicht im harten Gate, aber auch nicht
-      # ungeprüft. Die Zahl der Befunde je Bereich darf nur SINKEN. Steht hier
-      # direkt hinter dem Schritt darüber, weil die Node-Laufzeit dann schon
-      # warm ist — als pytest-Test hat dieselbe Arbeit den Testlauf von drei
-      # auf elf Minuten verlängert.
-      - name: Typ-Schuldenstand
-        run: python scripts/pruefe_typschulden.py
-
       # `-n auto` verteilt den Lauf über pytest-xdist auf alle Kerne des
       # Runners. Gemessen an diesem Schritt: 4:39 seriell, 2:15 parallel —
       # der Runner hat vier Kerne, mehr als die Hälfte ist damit nicht drin
-      # (auf einem Zehnkerner sind es lokal 1:42 -> 0:35).
+      # (auf einem Zehnkerner sind es lokal 1:42 -> 0:35). Seit 11/2026 kommt
+      # deshalb `--shard` dazu: zwei Läufer mit je vier Kernen.
       #
       # Bis #1156 stand hier das Gegenteil, und der Grund lag nicht in xdist,
       # sondern in der Suite: Sechzehn Testmodule verabredeten ihre
@@ -75,4 +124,30 @@ jobs:
       # `tests/test_testpfade.py` hält das fest: Wer die Variablen wieder in
       # einem Testmodul setzt, macht diesen Lauf sporadisch rot.
       - name: Run tests
-        run: python -m pytest tests/ -q -n auto
+        run: python -m pytest tests/ -q -n auto --shard ${{ matrix.shard }}/${{ strategy.job-total }}
+
+  # DIE EINE PRÜFUNG, AN DER DER MERGE HÄNGT. Der Name `test` ist an zwei
+  # Stellen fest verdrahtet: in der Regel für `main` („nur über grünen Pull
+  # Request" verlangt genau diese Prüfung) und in `scripts/merge_wenn_gruen.py`
+  # (`PFLICHTPRUEFUNG`). Hieße nach der Aufteilung keine Prüfung mehr so,
+  # wartete jeder Pull Request nach `main` für immer auf eine, die nie kommt.
+  #
+  # `if: always()` ist der Kern: Ohne das würde dieser Auftrag ÜBERSPRUNGEN,
+  # sobald ein Teil rot ist — und „übersprungen" gilt als bestanden. Er muss
+  # also immer laufen und dann selbst rot werden.
+  test:
+    needs: [lint, pytest]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lint und alle Teile der Suite grün?
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "lint, pytest: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              echo "Mindestens ein Auftrag ist nicht grün — siehe lint bzw. pytest (i/n) an diesem Lauf."
+              exit 1
+            fi
+          done
