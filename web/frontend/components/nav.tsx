@@ -341,7 +341,10 @@ function NavSection({ item, active, sub, activeKey, onNavigate }: {
                       // 1,5 px nach unten: mittig auf der ersten Textzeile
                       // (12,5 px Schrift, Zeilenhöhe ~17 px, Zeichen 14 px).
                       "mt-[1.5px] h-3.5 w-3.5 shrink-0 transition-[color,transform] duration-fluss ease-out-strong",
-                      current ? "text-primary" : "text-muted-foreground/70 group-hover/sub:translate-x-0.5 group-hover/sub:text-foreground",
+                      // Das Token ohne Bruch: `text-muted-foreground/NN` nimmt dem
+                      // Ton den Kontrast wieder weg (DESIGNSPRACHE § 3,
+                      // `tests/test_gedaempfter_text.py` zählt die Stellen).
+                      current ? "text-primary" : "text-muted-foreground group-hover/sub:translate-x-0.5 group-hover/sub:text-foreground",
                     )}
                   />
                 )}
