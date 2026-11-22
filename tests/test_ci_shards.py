@@ -181,9 +181,17 @@ def test_die_teile_der_browsertests_sind_ausgewogen():
     total = len(_matrix_shards("e2e.yml"))
     weights = [sum(seconds.get(f, fallback) for f in part) for part in _plan(total)]
     mean = sum(weights) / len(weights)
+    # Eine Datei ist die kleinste Einheit: Wiegt EINE mehr als der Schnitt
+    # eines Teils, hilft kein Umverteilen mehr — dann muss die Datei geteilt
+    # werden (so geschehen mit `21-lotti-assistentin`, 11/2026: 59 Tests,
+    # rund vier Minuten, allein in einem Teil).
+    heaviest = max(_spec_files(), key=lambda f: seconds.get(f, fallback))
+    hint = (f" `{heaviest}` wiegt allein {seconds.get(heaviest, fallback) / 60:.1f} min — die Datei teilen."
+            if seconds.get(heaviest, fallback) > mean else
+            " Dauern neu ziehen: python scripts/e2e_durations.py --write")
     assert max(weights) <= 1.25 * mean, (
         f"Der längste Teil trägt {max(weights) / 60:.1f} min bei einem Schnitt von "
-        f"{mean / 60:.1f} min. Dauern neu ziehen: python scripts/e2e_durations.py --write")
+        f"{mean / 60:.1f} min.{hint}")
 
 
 @needs_node

@@ -1360,5 +1360,5 @@ Zum Vergleich dieselbe Abfrage für `qa_answer` auf Prod über die letzten
 **Anker zählen (PR 3, gegen den Abzug, angemeldet als `ratsfrau@example.org`):**
 
 ```bash
-RATSLOTSE_MESS_DB=data/council.sqlite npx playwright test tests/e2e/21-lotti-assistentin.spec.ts -g "Anker"
+RATSLOTSE_MESS_DB=data/council.sqlite npx playwright test tests/e2e/21-lotti-assistentin-2.spec.ts -g "Anker"
 ```
