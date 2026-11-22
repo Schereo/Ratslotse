@@ -80,6 +80,8 @@ ROUTEN: frozenset[str] = frozenset({
     "/haushalt/mitreden", "/haushalt/personal", "/haushalt/pflicht",
     "/haushalt/plan-ist", "/haushalt/produkte", "/haushalt/pruefung",
     "/haushalt/schulden", "/haushalt/steuer", "/haushalt/vergleich",
+    # Werkzeuge (Recht council_tools)
+    "/werkzeuge", "/werkzeuge/mehrheiten",
     ANDERE,
 } | {f"/council?tab={t}" for t in ("decisions", "sessions", "themen", "analysis")})
 

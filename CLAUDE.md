@@ -577,11 +577,14 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   **Recht**, nie gegen einen Rollennamen: im Backend über
   `Depends(require_permission("…"))`, im Web über `lib/rechte.ts`, in der App
   über `User.can(_:)`. Eine neue Rolle ist damit ein Eintrag in der Registry —
-  ohne Frontend-Release und ohne App-Update im Store. Heute gibt es vier
+  ohne Frontend-Release und ohne App-Update im Store. Heute gibt es sechs
   Rechte: `budget` (der Haushalts-Bereich), `mandate` (Benachrichtigungen ab
   Werk vollständig), `premium_models` (die ausführliche Recherche schreibt
   ihren Bericht mit dem größeren Modell aus `COUNCIL_DEEP_PLUS_MODEL`,
-  Vorgabe GPT-6 Sol) und `admin`. Dass die ersten beiden getrennt sind, ist der
+  Vorgabe GPT-6 Sol), `mcp` (Schlüssel für den MCP-Server), `council_tools`
+  (der Bereich *Werkzeuge* unter `/werkzeuge`, seit 11/2026 — trägt das
+  Ratsmitglied; die Besetzung für den Mehrheitsrechner holt
+  `council/committee_seats.py` im Wochenlauf) und `admin`. Dass die ersten beiden getrennt sind, ist der
   Grund, warum *Fachpublikum* (nur `budget`) und *Ratsmitglied* (beide) sich
   ohne eine einzige weitere Codezeile unterscheiden lassen. *Recherche Plus*
   (seit 09/2026) trägt nur `premium_models` und wird **zusätzlich** zu einer

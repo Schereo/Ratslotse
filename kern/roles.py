@@ -48,10 +48,18 @@ from dataclasses import dataclass, field
 #:   ausdrücklich dürfen. Lesend, ohne Haushalt und ohne Sprachmodell auf
 #:   unserer Seite.
 #:
+#: - ``council_tools``: die „Werkzeuge“ für die Ratsarbeit (``/werkzeuge``),
+#:   als erstes der Mehrheitsrechner über Rat und Ausschüsse. Tims Wunsch
+#:   22.11.2026: „eine Kategorie, die nur Menschen sehen, die Ratsmitglieder
+#:   sind“. Ein eigenes Recht und nicht ``mandate``: Das regelt
+#:   Benachrichtigungen, und wer die Werkzeuge bekommt (etwa
+#:   Fraktionsmitarbeit), soll sich davon unabhängig vergeben lassen.
+#:
 #: Dass ``budget`` und ``mandate`` **zwei** Rechte sind und nicht eines, ist
 #: der Grund, warum es die Rolle *Fachpublikum* ohne einen einzigen weiteren
 #: Handgriff geben kann: Sie nimmt das eine und lässt das andere liegen.
-PERMISSIONS: tuple[str, ...] = ("budget", "mandate", "premium_models", "mcp", "admin")
+PERMISSIONS: tuple[str, ...] = ("budget", "mandate", "premium_models", "mcp", "council_tools",
+                                 "admin")
 
 
 @dataclass(frozen=True)
@@ -120,9 +128,10 @@ ROLES: dict[str, Role] = {
     "council_member": Role(
         key="council_member",
         label="Ratsmitglied",
-        description="Zusätzlich der Haushalts-Bereich mit allen Zahlen, Belegen und Auswertungen; "
+        description="Zusätzlich der Haushalts-Bereich mit allen Zahlen, Belegen und Auswertungen, "
+                    "die Werkzeuge für die Ratsarbeit (etwa der Mehrheitsrechner); "
                     "Benachrichtigungen ab Werk vollständig.",
-        permissions=frozenset({"budget", "mandate"}),
+        permissions=frozenset({"budget", "mandate", "council_tools"}),
     ),
     "admin": Role(
         key="admin",

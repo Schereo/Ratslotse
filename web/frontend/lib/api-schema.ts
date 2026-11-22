@@ -6421,6 +6421,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tools/majorities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Majority Calculator
+         * @description Sitze je Fraktion, Mehrheitsschwelle und jede Kombination, die mit der
+         *     Auswahl eine Mehrheit ergibt.
+         */
+        get: operations["majority_calculator_api_tools_majorities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/topics": {
         parameters: {
             query?: never;
@@ -14702,6 +14723,222 @@ export interface components {
             /** Token */
             token: string;
         };
+        /**
+         * MajorityAdvisory
+         * @description Ein Mitglied mit beratender Stimme (Grundmandat u. Ä.) — zählt nicht mit.
+         */
+        MajorityAdvisory: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Key */
+            key: string | null;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
+            /** Short */
+            short: string | null;
+        };
+        /**
+         * MajorityBlock
+         * @description Die Stimmen einer Fraktion oder Gruppe in diesem Gremium.
+         */
+        MajorityBlock: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Functions */
+            functions: components["schemas"]["MajorityFunction"][];
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "faction" | "group" | "single" | "mayor" | "external";
+            /** Label */
+            label: string;
+            /** Members */
+            members: string[];
+            /** Parties */
+            parties: string[];
+            /** Seats */
+            seats: number;
+            /** Selectable */
+            selectable: boolean;
+            /** Short */
+            short: string;
+        };
+        /** MajorityBody */
+        MajorityBody: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "council" | "administrative" | "committee";
+            /** Majority */
+            majority: number;
+            /** Name */
+            name: string;
+            /** Notes */
+            notes: string[];
+            /** Short */
+            short: string;
+            /** Source Url */
+            source_url: string;
+            /** Votes */
+            votes: number;
+        };
+        /**
+         * MajorityBodyOption
+         * @description Ein Gremium in der Auswahl — Rat, Verwaltungsausschuss, Ausschüsse.
+         */
+        MajorityBodyOption: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "council" | "administrative" | "committee";
+            /** Name */
+            name: string;
+            /** Short */
+            short: string;
+            /** Votes */
+            votes: number;
+        };
+        /** MajorityCalculator */
+        MajorityCalculator: {
+            /** Advisory */
+            advisory: components["schemas"]["MajorityAdvisory"][];
+            /** As Of */
+            as_of: string | null;
+            /** Blocks */
+            blocks: components["schemas"]["MajorityBlock"][];
+            /** Bodies */
+            bodies: components["schemas"]["MajorityBodyOption"][];
+            /** MajorityBody */
+            body: {
+                /** Key */
+                key: string;
+                /**
+                 * Kind
+                 * @enum {string}
+                 */
+                kind: "council" | "administrative" | "committee";
+                /** Majority */
+                majority: number;
+                /** Name */
+                name: string;
+                /** Notes */
+                notes: string[];
+                /** Short */
+                short: string;
+                /** Source Url */
+                source_url: string;
+                /** Votes */
+                votes: number;
+            } | null;
+            /** Coalitions */
+            coalitions: components["schemas"]["MajorityCoalition"][];
+            /** Overview */
+            overview: components["schemas"]["MajorityOverview"][];
+            /** Partners */
+            partners: components["schemas"]["MajorityPartner"][];
+            selection: components["schemas"]["MajoritySelection"];
+        };
+        /**
+         * MajorityCoalition
+         * @description Eine Kombination mit Mehrheit, aus der kein frei gewählter Partner
+         *     wegfallen kann.
+         */
+        MajorityCoalition: {
+            /** Added */
+            added: string[];
+            /** Blocks */
+            blocks: string[];
+            /** Seats */
+            seats: number;
+            /** Surplus */
+            surplus: number;
+        };
+        /**
+         * MajorityFunction
+         * @description Stimmberechtigte ohne Ratsmandat, zusammengefasst nach Funktion.
+         */
+        MajorityFunction: {
+            /** Label */
+            label: string;
+            /** Seats */
+            seats: number;
+        };
+        /**
+         * MajorityOverview
+         * @description Die Auswahl in einem Gremium — eine Zeile der Übersicht über alle.
+         */
+        MajorityOverview: {
+            /** Has Majority */
+            has_majority: boolean;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "council" | "administrative" | "committee";
+            /** Majority */
+            majority: number;
+            /** Missing */
+            missing: number;
+            /** Possible */
+            possible: boolean;
+            /** Seats */
+            seats: number;
+            /** Short */
+            short: string;
+            /** Votes */
+            votes: number;
+        };
+        /**
+         * MajorityPartner
+         * @description Ein Block, der für die Mehrheit in Frage kommt: Er kommt in mindestens
+         *     einer möglichen Mehrheit zur Auswahl hinzu.
+         */
+        MajorityPartner: {
+            /** Coalitions */
+            coalitions: number;
+            /** Completes */
+            completes: boolean;
+            /** Key */
+            key: string;
+            /** Seats */
+            seats: number;
+            /** Total */
+            total: number;
+        };
+        /** MajoritySelection */
+        MajoritySelection: {
+            /** Exclude */
+            exclude: string[];
+            /** Has Majority */
+            has_majority: boolean;
+            /** Include */
+            include: string[];
+            /** Max Seats */
+            max_seats: number;
+            /** Missing */
+            missing: number;
+            /** Possible */
+            possible: boolean;
+            /** Seats */
+            seats: number;
+        };
         /** MarkedHits */
         MarkedHits: {
             /** Marked */
@@ -19822,7 +20059,7 @@ export interface components {
             /** Label */
             label: string;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "premium_models" | "mcp" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "mcp" | "council_tools" | "admin")[];
         };
         /**
          * RoleUpdate
@@ -21813,7 +22050,7 @@ export interface components {
             /** Pending Email */
             pending_email?: string | null;
             /** Permissions */
-            permissions: ("budget" | "mandate" | "premium_models" | "mcp" | "admin")[];
+            permissions: ("budget" | "mandate" | "premium_models" | "mcp" | "council_tools" | "admin")[];
             /**
              * Role
              * @enum {string}
@@ -30403,6 +30640,42 @@ export interface operations {
             };
         };
     };
+    majority_calculator_api_tools_majorities_get: {
+        parameters: {
+            query?: {
+                /** @description Gremium (Schlüssel aus `bodies`); ohne Angabe der Rat. */
+                body?: string | null;
+                /** @description Kommagetrennte Blöcke, die dabei sein sollen. */
+                include?: string | null;
+                /** @description Kommagetrennte Blöcke, die nicht dabei sein sollen. */
+                exclude?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MajorityCalculator"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_topics_api_topics_get: {
         parameters: {
             query?: never;
@@ -31486,4 +31759,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 47356425771b79a81b198939e8a03f433893e6c9eb805108d32c0e0aac80f792
+// vertrag-sha256: 765928d33065ef356b5a1bbf8ff1a9692351419458d2248819363d66be418165
