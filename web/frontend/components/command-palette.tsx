@@ -6,11 +6,11 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   BarChart3, Bookmark, CalendarDays, CornerDownLeft, Gavel, History, Home, Landmark,
   Play, Scale, Search, Settings, Sparkles, SunMoon, Tag, Tags, UserCircle, type LucideIcon,
-  Lightbulb, MapPinned, MessageCircleQuestion, Euro, Bell, Trophy, Vote, LifeBuoy, MessageCircle,
+  Lightbulb, MapPinned, MessageCircleQuestion, Euro, Bell, Trophy, Vote, LifeBuoy, MessageCircle, Wrench,
 } from "lucide-react";
 import { api, qs } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { darfAdmin, darfHaushalt } from "@/lib/rechte";
+import { darfAdmin, darfHaushalt, darfWerkzeuge } from "@/lib/rechte";
 import { openFeedback } from "@/components/feedback";
 import { useFeature } from "@/lib/features";
 import { openLotti } from "@/components/assistentin";
@@ -146,6 +146,9 @@ export function CommandPalette() {
         : []),
       ...(darfHaushalt(user)
         ? [{ key: "nav-haushalt", section: "Navigation", label: "Haushalt", icon: Euro, run: () => go("/haushalt") } as Item]
+        : []),
+      ...(darfWerkzeuge(user)
+        ? [{ key: "nav-werkzeuge", section: "Navigation", label: "Werkzeuge · Mehrheitsrechner", icon: Wrench, run: () => go("/werkzeuge/mehrheiten") } as Item]
         : []),
       { key: "nav-meine", section: "Navigation", label: "Meine Themen", icon: Tags, run: () => go("/topics") },
       { key: "nav-abos", section: "Navigation", label: "Ausschuss-Abos", icon: Bell, run: () => go("/abos") },

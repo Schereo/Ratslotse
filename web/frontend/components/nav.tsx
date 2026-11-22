@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
   CalendarDays, BarChart3, Trophy, Sparkles, Command,
-  MoreHorizontal, MessageCircle, Bookmark, Euro, Bell, MapPinned, LifeBuoy,
+  MoreHorizontal, MessageCircle, Bookmark, Euro, Bell, MapPinned, LifeBuoy, Wrench,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -14,7 +14,7 @@ import { vertrag } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { useFeature } from "@/lib/features";
 import { LANDING_HREF } from "@/components/landing-redirect";
-import { darfAdmin, darfHaushalt } from "@/lib/rechte";
+import { darfAdmin, darfHaushalt, darfWerkzeuge } from "@/lib/rechte";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton, openFeedback } from "@/components/feedback";
 import { LottiThemeSwitch } from "@/components/theme-switch";
@@ -148,6 +148,9 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
 // Ein Anker auf eine Seite, die für diese Person ein 404 ist, wäre schlechter
 // als kein Anker — genau diese Falle steht in web/frontend/CLAUDE.md.
 const HAUSHALT: Item = { href: "/haushalt", label: "Haushalt", icon: Euro };
+// Werkzeuge für die Ratsarbeit (Recht `council_tools`, Tims Wunsch
+// 22.11.2026): wie der Haushalt neben der Liste, weil es am Konto hängt.
+const WERKZEUGE: Item = { href: "/werkzeuge", label: "Werkzeuge", icon: Wrench };
 // „Mein Viertel" (Feature-Schalter `mein-viertel`): die vereinte Stadtkarte
 // unter /karte — Stadt, Viertel, Vorhaben. Steht neben der Liste, weil der
 // Schalter zur Laufzeit kommt — eine Modul-Konstante kennt ihn nicht. Das
@@ -185,7 +188,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   // (Beschluss, Person, Thema), die ihr Inneres sind.
   (pathname === "/council" && tab !== "sessions")
   || (pathname.startsWith("/council/") && !pathname.startsWith("/council/sitzung"))
-  || ["/wahlen", "/wahlabend", "/karte", "/viertel", "/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
+  || ["/wahlen", "/wahlabend", "/karte", "/viertel", "/abos", "/bookmarks", "/quiz", "/account", "/admin", "/werkzeuge"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 // RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (LottiThemeSwitch)
 // nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
@@ -271,6 +274,9 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
         )}
         {darfHaushalt(user) && (
           <NavItem item={HAUSHALT} active={isActive("/haushalt")} onNavigate={onNavigate} />
+        )}
+        {darfWerkzeuge(user) && (
+          <NavItem item={WERKZEUGE} active={isActive("/werkzeuge")} onNavigate={onNavigate} />
         )}
 
         <SectionHeader>Persönlich</SectionHeader>
@@ -737,6 +743,7 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
               (Tim: „ungern noch einen weiteren Punkt in die Navigation"). */}
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
           {darfHaushalt(user) && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
+          {darfWerkzeuge(user) && <MehrZeile href="/werkzeuge" icon={Wrench} label="Werkzeuge" onClose={onClose} />}
           <MehrKicker>Für dich</MehrKicker>
           {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind
               die zweite Art, dem Rat zu folgen, und hatten seit dem Split vom

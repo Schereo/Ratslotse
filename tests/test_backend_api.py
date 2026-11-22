@@ -7602,7 +7602,7 @@ def test_konto_schickt_seine_rechte_mit(client):
         store.close()
     me = client.get("/api/auth/me").json()
     assert me["roles"] == ["council_member"]
-    assert me["permissions"] == ["budget", "mandate"]
+    assert me["permissions"] == ["budget", "council_tools", "mandate"]
     assert me["role"] == "council_member"
 
 
@@ -7626,7 +7626,7 @@ def test_admin_verwaltet_rollen_und_sperrt_sich_nicht_selbst_aus(client):
     assert {r["key"] for r in katalog} == set(_roles.ROLES)
     assert [r["key"] for r in katalog] == list(_roles.ROLE_ORDER)
     nach_key = {r["key"]: r for r in katalog}
-    assert nach_key["council_member"]["permissions"] == ["budget", "mandate"]
+    assert nach_key["council_member"]["permissions"] == ["budget", "council_tools", "mandate"]
     # Fachpublikum: derselbe Haushalt, aber kein Mandat. Der Unterschied muss
     # bis in den Katalog durchkommen, denn daraus baut das Panel seine Kästchen.
     assert nach_key["expert"]["permissions"] == ["budget"]
