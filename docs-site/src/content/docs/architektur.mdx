@@ -1,14 +1,13 @@
 ---
 title: Architektur
-description: Überblick über Quellen, Pakete, Datenbanken, KI-Verarbeitung, Oberflächen, Benachrichtigungen und Betrieb.
+description: Datenquellen, Paketabhängigkeiten, Datenbanken, KI-Verarbeitung, Oberflächen, Benachrichtigungen und Betrieb von Ratslotse.
 ---
 
 import Mermaid from '../../components/Mermaid.astro';
 
-Ratslotse liest öffentliche Ratsinformationen der Stadt Oldenburg ein, bereitet
-sie auf und macht sie durchsuchbar: als Webanwendung, als native iOS-App und
-über eine Schnittstelle für eigene Agenten. Diese Seite zeigt, wie die Teile
-zusammenhängen. Die Einzelheiten stehen auf den verlinkten Seiten.
+Ratslotse liest öffentliche Ratsinformationen der Stadt Oldenburg ein und
+bereitet sie für die Suche auf. Der Zugriff erfolgt über die Webanwendung, die
+native iOS-App oder eine Schnittstelle für eigene Agenten.
 
 <Mermaid code={`
 flowchart TD
@@ -64,7 +63,7 @@ die Übersichtsgrafik unter [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
 | `kommunalwahl/` | Wahlprogramme, Kandidatenregister und Referenzdaten für den [Wahlabend](/docs/wahlabend/) |
 | `docs-site/` | Diese Dokumentation |
 
-**Die Schichten zeigen nur nach unten.**
+**Die Paketabhängigkeiten verlaufen nur in der gezeigten Richtung.**
 
 ```
 kern  ←  council  ←  web/backend/app  ←  scripts
@@ -72,11 +71,11 @@ kern  ←  council  ←  web/backend/app  ←  scripts
 ```
 
 `kern/` importiert aus keinem der anderen Pakete, `council/` nur aus `kern`,
-das Backend nicht aus `scripts`. Ein Pfeil nach oben wäre ein Ring, und der
-Fehler daraus erscheint als `ImportError` beim Start eines Dienstes, nicht in
-der Testsuite, die ohnehin alles auf einmal lädt. `tests/test_schichten.py`
-hält die Regel fest, in beide Richtungen: Eine Erlaubnis, die niemand
-braucht, fliegt raus.
+das Backend nicht aus `scripts`. Ein Import entgegen der vorgesehenen
+Richtung kann zu einem zyklischen Import führen. Beim Start eines Dienstes
+zeigt sich das als `ImportError`. Die Testsuite lädt alle Pakete gemeinsam,
+sodass der Fehler dort ausbleiben kann. `tests/test_schichten.py` prüft auch,
+ob die erlaubten Ausnahmen noch verwendet werden.
 
 ## Woher die Daten kommen
 
@@ -93,11 +92,11 @@ Das Einlesen selbst nutzt kein Sprachmodell.
 | Open Data des Wahlamts | Auszählungsstand am Wahlabend | `web/backend/app/election/` |
 | Ratsinformationssysteme anderer Städte | Vorlagen und Beschlüsse zum Vergleich | `council/cities/` |
 
-Das Ratsinformationssystem hat keine öffentliche Schnittstelle; die Seiten
-werden mit BeautifulSoup gelesen, PDFs mit PyMuPDF. Gescannte Anlagen liest ein
-Sehmodell, mit einem Zweitleser als Gegenprobe (`council/ocr.py`). Gesicherte
-Quelldateien liegen im Archiv (`council/archiv.py`), damit eine bessere
-Auswertung später keinen erneuten Abruf braucht.
+Das Ratsinformationssystem hat keine öffentliche Schnittstelle. Die Seiten
+liest der Scraper mit BeautifulSoup, PDFs mit PyMuPDF. Ein Bildmodell liest
+gescannte Anlagen und ein zweites Modell prüft das Ergebnis
+(`council/ocr.py`). Ratslotse archiviert die Quelldateien
+(`council/archiv.py`), damit spätere Auswertungen sie wiederverwenden können.
 
 ## Was aus den Daten entsteht
 
@@ -127,17 +126,18 @@ Drei Regeln gelten über alle Aufgaben:
 - **Nutzereingaben bleiben in der EU**, bei Anbietern ohne Training und mit
   Zero Data Retention; Anbieter aus China sind ausgeschlossen
   ([ADR 0002](/docs/adr/0002-dsgvo-provider-routing/)).
-- **Was ein Modell behauptet, prüft Code gegen die Quelle**, wo immer es
-  geht: Zitate müssen wörtlich dastehen, Zahlen im Beleg vorkommen
+- **Ratslotse prüft Modellaussagen soweit möglich anhand der Quelle.**
+  Der Beleg muss das Zitat im Wortlaut und die genannten Zahlen enthalten
   (`council/evidence.py`, `council/kritiker.py`).
-- **Fremdtext ist Daten, nie Anweisung.** Vorlagen und Anträge haben Dritte
-  geschrieben; `kern/foreign_text.py` entfernt Anweisungen an ein KI-System,
-  bevor ein Modell den Text sieht.
+- **Ratslotse behandelt Dokumente von Dritten als Eingabedaten.**
+  `kern/foreign_text.py` entfernt Anweisungen an ein KI-System aus Vorlagen
+  und Anträgen, bevor das Modell die Texte verarbeitet.
 
 Embeddings und der Reranker der Suche laufen lokal mit fastembed
-([ADR 0003](/docs/adr/0003-fastembed-statt-torch/)). Kosten je Feature hält
-`kern/usage.py` fest; das Admin-Panel zeigt sie, und der Herzschlag meldet
-einen teuren Tag.
+([ADR 0003](/docs/adr/0003-fastembed-statt-torch/)). `kern/usage.py`
+erfasst die Nutzung je Feature. Das Admin-Panel zeigt die daraus
+berechneten Kosten. Der tägliche Überwachungsjob meldet, wenn die Kosten
+des Vortags den Schwellenwert überschreiten.
 
 ## Datenbanken
 
@@ -152,10 +152,10 @@ Drei SQLite-Dateien unter `data/` ([ADR 0005](/docs/adr/0005-sqlite-fts5/)):
 Die Trennlinie zwischen den ersten beiden ist: **alles Nutzerbezogene** liegt
 in `ratslotse.sqlite`, **alle Ratsdaten** in `council.sqlite`. Deshalb liegen
 Themen-Treffer und Quiz-Antworten in der Konten-Datenbank, obwohl sie auf
-Beschlüsse oder Fragen zeigen. Ein Join über beide Dateien ist nicht möglich;
-solche Zeilen tragen die nötigen Felder selbst.
+Beschlüsse oder Fragen zeigen. Da kein Join über beide Dateien möglich ist,
+enthalten die betreffenden Zeilen die benötigten Felder bereits.
 
-Eine Auswahl, um sich zurechtzufinden:
+Die wichtigsten Tabellen sind hier aufgeführt.
 
 **Konten und Nutzerdaten** (`ratslotse.sqlite`)
 
@@ -187,7 +187,7 @@ Eine Auswahl, um sich zurechtzufinden:
 - `council_persons`, `council_memberships` — Mandatsträger*innen und Gremien
 - `council_entities` — erkannte Themen, Orte und Projekte
 - `council_embeddings`, `council_similar`, `council_decisions_fts` — Vektoren,
-  vorberechnete Nachbarn, Volltextindex
+  vorab ermittelte ähnliche Beschlüsse, Volltextindex
 - `council_matters` — Grundakten, je Vorgang eine
 - `council_press`, `council_bplan_outlines`, `council_district_projects` —
   Pressemitteilungen, Bebauungsplan-Flächen, Vorhaben je Ortsbereich
@@ -196,11 +196,11 @@ Eine Auswahl, um sich zurechtzufinden:
 - `council_plan_items`, `council_plan_links` — Zuordnungen zu den Plänen der
   Stadt
 
-**Schema und Migration sind zwei Stellen.** Eine frische Datenbank entsteht
-aus dem Schema, eine gewachsene aus den Migrationen. Wer nur eine anfasst,
-baut einen Fehler, den kein Test auf einer leeren Datenbank sieht.
-`tests/test_migration_bestand.py` migriert deshalb eingecheckte Auszüge der
-echten Schemata und vergleicht Spalte für Spalte.
+**Schema und Migration müssen denselben Stand herstellen.** Neue Datenbanken
+entstehen aus dem Schema, bestehende aktualisiert Ratslotse per Migration.
+Tests, die nur neue Datenbanken verwenden, können eine fehlende Migration
+übersehen. `tests/test_migration_bestand.py` migriert daher eingecheckte
+Auszüge der echten Schemata und vergleicht die Spalten.
 
 ## Oberflächen
 
@@ -214,30 +214,29 @@ echten Schemata und vergleicht Spalte für Spalte.
   mit persönlichem Schlüssel oder OAuth ([MCP-Server](/docs/mcp/)).
 
 **Logik gehört ins Backend.** Sortierung, Gruppen, Sätze und Zustände
-entstehen im Backend und kommen fertig bei beiden Oberflächen an. Die App hat
-keine erzeugten Typen; `tests/test_ios_vertrag.py` hält ihre Modelle gegen
-den Vertrag, und vor jedem Release zeigt `scripts/ios_vertrag.py`, was eine
-Änderung in der ausgelieferten App bräche.
+bereitet das Backend für beide Oberflächen auf. Die App verwendet
+handgeschriebene Typen. `tests/test_ios_vertrag.py` gleicht ihre Modelle mit
+dem API-Vertrag ab. Vor jedem Release zeigt `scripts/ios_vertrag.py`,
+welche Änderungen mit der veröffentlichten App nicht kompatibel sind.
 
-Zwei Mechanismen steuern, wer was sieht:
-[Feature-Schalter](/docs/referenz/feature-schalter/) regeln, ob etwas schon
-freigeschaltet ist, [Rechte](/docs/referenz/rollen-rechte/), wer es darf. Ein
-Schalter ist keine Rechteprüfung.
+[Feature-Schalter](/docs/referenz/feature-schalter/) aktivieren einzelne
+Funktionen. Die [Rechte](/docs/referenz/rollen-rechte/) des Kontos bestimmen
+den Zugriff.
 
 ## Benachrichtigungen
 
-Pro Konto lässt sich ein Zustellkanal wählen (`email`, `push`, `both` oder
-`off`) und zusätzlich, **wofür** es Post gibt: sechs Anlässe aus dem Rat,
-einzeln abschaltbar. Zustellung: E-Mail über Resend, Push an die App über
-APNs. Fehlt das Geheimnis eines Kanals, wird er still übersprungen.
+Jedes Konto kann einen Zustellkanal auswählen (`email`, `push`, `both` oder
+`off`) und sechs Benachrichtigungsanlässe einzeln deaktivieren. E-Mails
+verschickt Ratslotse über Resend, Push-Nachrichten über APNs. Fehlen die
+Zugangsdaten für einen Kanal, überspringt Ratslotse ihn ohne Fehlermeldung.
 
-Kein Anlass sendet selbst: Alle reihen in `notification_queue` ein
-(`kern.notify.einreihen`), und `kern.notify.zustellen()` liefert zentral aus,
-unter zwei harten Grenzen: höchstens zwei Zustellungen pro Person und Tag,
-nichts zwischen 21 und 7 Uhr. Termingebundene Anlässe wie die
-Vorabend-Erinnerung zählen in einem eigenen Topf, sonst kämen sie am
-Sitzungstag statt am Vortag. Wer einen neuen Anlass an der Warteschlange
-vorbei schickt, umgeht Aus-Schalter, Nachtruhe und Tagesgrenze zugleich.
+Alle Benachrichtigungen gelangen über `notification_queue`
+(`kern.notify.einreihen`) zu `kern.notify.zustellen()`. Die zentrale
+Zustellung erlaubt höchstens zwei Benachrichtigungen pro Person und Tag und
+pausiert zwischen 21 und 7 Uhr. Für termingebundene Anlässe wie die
+Vorabend-Erinnerung gilt ein separates Kontingent, damit sie früh genug
+ankommen. Die Warteschlange berücksichtigt die Kanaleinstellung, die
+Nachtruhe und das Tageslimit auch für neue Anlässe.
 
 Einzelheiten unter
 [App & Konten](/docs/app-und-konten/#benachrichtigungen-sechs-anlässe-vier-grenzen).
@@ -245,10 +244,10 @@ Einzelheiten unter
 ## Geplante Jobs
 
 Alle Auswertungen laufen als Cron-Jobs auf dem Server. Jeder Lauf ist
-wiederholbar, läuft in `run_guarded` (`kern/alerts.py`) und hinterlässt damit
-eine Zeile in `job_runs`; ein Absturz geht per Mail an die Betreiber-Adresse.
-Ein Job, der gar nicht startet, stürzt auch nicht ab: Dafür prüft der
-tägliche Herzschlag alle Jobs gegen ihren erwarteten Takt.
+wiederholbar. `run_guarded` (`kern/alerts.py`) protokolliert den Lauf in
+`job_runs` und meldet Abstürze per E-Mail an die Betreiberadresse. Der
+tägliche Überwachungsjob gleicht die erwarteten Intervalle mit den
+protokollierten Läufen ab und erkennt so auch ausgebliebene Starts.
 
 Die vollständige Liste mit Takt steht in der
 [Referenz: Cron-Jobs](/docs/referenz/cron-jobs/), erzeugt aus `kern/jobs.py`.
@@ -258,13 +257,14 @@ In groben Zügen:
 |---|---|
 | mehrmals täglich | Sitzungen und Tagesordnungen lesen, Themen-Treffer melden, neue Anträge nachladen, Dossiers für die nächsten 21 Tage bauen |
 | täglich | neue Protokolle lesen und in einem Zug aufbereiten: Beschlüsse, Themenfelder, Kurzfassungen, Bewertungen |
-| täglich | Pressemitteilungen, Sperrungen, verfolgte Vorlagen, Sicherung, Herzschlag |
+| täglich | Pressemitteilungen, Sperrungen, verfolgte Vorlagen, Backups und Überwachung |
 | an Sitzungstagen | Mitschnitt und Live-Verfolgung der Ratssitzung |
-| wöchentlich | Nachläufe als Auffangnetz: Entitäten, Geocoding, Embeddings, Rückblicke, Quizfragen, Fundstücke, das Register von „Mein Viertel“, der Städtevergleich |
+| wöchentlich | Fallback für noch ausstehende Verarbeitung (Entitäten, Geocoding, Embeddings, Rückblicke, Quizfragen, Fundstücke, das Register von „Mein Viertel“, der Städtevergleich) |
 
-Lange Läufe treten einem wartenden Deploy zur Seite (`kern/stopp.py`): Sie
-sehen an ihrer nächsten Stapelgrenze nach, behalten das Geschriebene und
-hören auf. Dieselbe Stelle trägt die Kostengrenze eines Laufs.
+Lange Jobs prüfen nach jedem Batch, ob ein Deploy ansteht
+(`kern/stopp.py`). Wenn ja, beenden sie den Lauf an dieser Stelle. Bereits
+gespeicherte Ergebnisse bleiben erhalten. Dieselbe Logik setzt die
+Kostengrenze pro Lauf durch.
 
 ## Deployment
 
@@ -277,18 +277,18 @@ hören auf. Dieselbe Stelle trägt die Kostengrenze eines Laufs.
   Integrationszweig mit eigener Umgebung, auf der alle Feature-Schalter an
   sind. Nur ein gemergter Pull Request nach `main` löst den Prod-Deploy aus
   ([ADR 0008](/docs/adr/0008-deploy-nur-bei-merge/)).
-- **Nach dem Neustart läuft eine Rauchprobe** (`scripts/rauchprobe.py`): Sie
-  ruft die Endpunkte auf dem frisch gestarteten Dienst auf und hält jede
-  Antwort gegen den API-Vertrag.
-- **Fehler sammeln sich selbst** (`kern/fehler.py`): Jede unbehandelte
-  Ausnahme wird gruppiert festgehalten, ohne Anfragekörper, Kopfzeilen oder
-  Variablenwerte; die erste Begegnung meldet sich per Mail.
+- **Nach dem Neustart läuft ein Smoke-Test** (`scripts/rauchprobe.py`).
+  Er ruft die Endpunkte auf und prüft ihre Antworten anhand des API-Vertrags.
+- **Fehlerprotokoll** (`kern/fehler.py`). Das Backend gruppiert unbehandelte
+  Ausnahmen. Das Protokoll enthält keine Anfragekörper, Kopfzeilen oder
+  Variablenwerte. Beim ersten Auftreten eines Fehlers versendet es eine
+  E-Mail.
 - **Geheimnisse:** Die `.env` liegt nur auf dem Server, nie im Repo.
 
 Branch-Modell, Deploy-Wege, Sicherungen und alle Umgebungsvariablen:
 [Betrieb](/docs/betrieb/).
 
 :::tip
-Diese Seite ist die Übersicht für Mitlesende. Konkrete Hosts und
-Server-Details stehen bewusst nicht in dieser öffentlichen Doku.
+Diese öffentliche Übersicht enthält keine konkreten Hosts oder Angaben zu
+einzelnen Servern.
 :::
