@@ -12,26 +12,17 @@
  */
 import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Users, TrendingUp, Target, User, Lightbulb, Vote } from "lucide-react";
 import { useFeature } from "@/lib/features";
 import { analysisSections, analysisSub, type AnalysisSection, type AnalysisSub } from "@/lib/analysis-nav";
 import { Segmented } from "@/components/ui";
 import { ScrollZeile } from "@/components/ui/scroll-zeile";
 import { cn } from "@/lib/utils";
+import { ANALYSIS_ICONS } from "@/components/analyse-icons";
 
-// Welche Reiter es gibt und wohin sie führen, steht in `lib/analysis-nav.ts` —
-// dieselbe Liste speist das Untermenü der Seitenleiste. Hier kommen nur die
-// Symbole dazu, die es dort nicht gibt.
+// Welche Reiter es gibt und wohin sie führen, steht in `lib/analysis-nav.ts`,
+// ihre Zeichen in `analyse-icons.ts` — beides speist auch das Untermenü der
+// Seitenleiste.
 export { analysisSub, type AnalysisSub };
-
-const ICONS: Record<AnalysisSection, typeof Users> = {
-  trends: TrendingUp,
-  parties: Users,
-  personen: User,
-  ziele: Target,
-  staedte: Lightbulb,
-  wahlen: Vote,
-};
 
 /** Fragen, die zum jeweiligen Unterreiter passen — und die die Beschlüsse
  *  hergeben. Wer hier eine Sackgasse einbaut, zeigt sie Neuen als Erstes.
@@ -85,7 +76,7 @@ export function AnalyseReiter({ aktiv, className }: { aktiv: AnalysisSection; cl
   const plaene = useFeature("plaene");
   const wahlen = useFeature("wahlabend");
   const optionen = analysisSections({ plans: plaene, ideas: staedte, elections: wahlen })
-    .map((z) => ({ value: z.key, label: z.label, icon: ICONS[z.key] }));
+    .map((z) => ({ value: z.key, label: z.label, icon: ANALYSIS_ICONS[z.key] }));
   const wechsel = (s: AnalysisSection) => {
     if (s === aktiv) return;
     if (s === "staedte") { router.push("/council/ideen"); return; }

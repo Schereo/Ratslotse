@@ -864,9 +864,17 @@ seinem Punkt — die Analyse ihre Auswertungen, der Haushalt seine vier Etappen
   läsen sich als zwei Standorte). Gehört die Seite zu keiner Unterzeile
   (Haushalts-Übersicht, ein Steckbrief), trägt der Hauptpunkt die Fläche.
   Es gibt **immer genau einen** Standort.
-- **Unterzeile:** 13 px, eingerückt bis unter die Schrift des Hauptpunkts
-  (40 px), ohne eigenes Zeichen; lange Namen brechen in zwei Zeilen um, statt
-  abgeschnitten zu werden.
+- **Unterzeile:** 12,5 px, kleines Zeichen (14 px) davor, an einer neutralen
+  Führungslinie unter der Mitte des Hauptzeichens. Die Fläche ist mit der
+  Zeile eingerückt und beginnt kurz vor dem Zeichen — nie über die volle
+  Breite der Leiste (das ließ links leeres Blau vor der Schrift stehen).
+  Aktiv wechselt nur die Farbe, nicht das Schriftgewicht: Fettere Schrift ist
+  breiter, und ein Name, der gerade so passt, bräche beim Anklicken um. Die
+  Maße sind auf die längsten Namen gerechnet; was trotzdem nicht passt, bricht
+  in zwei Zeilen um, statt abgeschnitten zu werden.
+- **Die Zeichen kommen aus dem Bestand:** die der Analyse aus derselben
+  Zuordnung wie die Reiterleiste (`components/analyse-icons.ts`), die der
+  Haushalts-Etappen vom ersten Schritt der Etappe — dem Ziel der Zeile.
 - **Kein Auffahren.** Die Zeilen stehen sofort da, die gleitende Markierung
   fährt den Weg. Ein animiertes Aufklappen ließ sie springen und hängen
   (gemessen 22.11.2026, Begründung an `NavSection`).

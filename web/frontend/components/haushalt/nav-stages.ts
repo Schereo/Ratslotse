@@ -15,6 +15,7 @@
  * siebzehn Symbole — in die Hülle jeder Seite, für einen Bereich, den nur
  * Konten mit dem Recht `budget` überhaupt sehen.
  */
+import type { LucideIcon } from "lucide-react";
 import { ETAPPEN, SCHRITTE } from "@/components/haushalt/wegweiser";
 
 export type BudgetStage = {
@@ -22,11 +23,16 @@ export type BudgetStage = {
   label: string;
   /** Der erste Schritt der Etappe — dorthin führt die Zeile. */
   href: string;
+  /** Das Zeichen dieses ersten Schritts: Die Zeile trägt das Zeichen der
+   *  Seite, auf der man landet — keine zweite Zuordnung, die neben den
+   *  Schritten gepflegt werden müsste. */
+  icon: LucideIcon;
   /** Alle Schritt-Seiten der Etappe: Auf jeder davon ist sie der Standort. */
   steps: string[];
 };
 
 export const BUDGET_STAGES: BudgetStage[] = ETAPPEN.map((stage) => {
-  const steps = SCHRITTE.filter((s) => s.nr >= stage.von && s.nr <= stage.bis).map((s) => s.href);
-  return { key: steps[0], label: stage.kicker, href: steps[0], steps };
+  const steps = SCHRITTE.filter((s) => s.nr >= stage.von && s.nr <= stage.bis);
+  const first = steps[0];
+  return { key: first.href, label: stage.kicker, href: first.href, icon: first.zeichen, steps: steps.map((s) => s.href) };
 });

@@ -26,6 +26,7 @@ import { abmeldenMerken } from "@/lib/abmelden";
 import type { Topic } from "@/lib/types";
 import { TABLEISTE_HOEHE } from "@/lib/tableiste";
 import { activeAnalysisSection, analysisSections } from "@/lib/analysis-nav";
+import { ANALYSIS_ICONS } from "@/components/analyse-icons";
 import { COUNCIL_TOOLS, type CouncilTool } from "@/lib/werkzeuge";
 import type { BudgetStage } from "@/components/haushalt/nav-stages";
 
@@ -246,7 +247,7 @@ function NavItem({ item, active, marked = active, badge = 0, badgeLabel, onNavig
 
 /* ------------------- Untermenüs der Seitenleiste (11/2026) ------------------- */
 
-type SubItem = { key: string; label: string; href: string };
+type SubItem = { key: string; label: string; href: string; icon?: typeof Home };
 
 /** Ein Navigationspunkt samt seinem Untermenü.
  *
@@ -257,8 +258,9 @@ type SubItem = { key: string; label: string; href: string };
  *    Auf- und Zuklappen, kein gemerkter Zustand: Im Ruhezustand ist die
  *    Leiste so kurz wie vorher („wir dürfen das Nav nicht bloaten"), und es
  *    gibt nichts, was man aus Versehen offen stehen lassen könnte.
- *  * **Die Fläche markiert die Unterzeile.** Sie ist der Ort, an dem man
- *    steht; der Hauptpunkt darüber behält nur die Farbe. Ohne passende
+ *  * **Die Fläche markiert die Unterzeile** — eingerückt, mit einem kleinen
+ *    Zeichen davor. Sie ist der Ort, an dem man steht; der Hauptpunkt darüber
+ *    behält nur die Farbe. Ohne passende
  *    Unterzeile (die Übersicht des Haushalts, ein Bereichs-Steckbrief) trägt
  *    der Hauptpunkt die Fläche wie jeder andere.
  *  * **Es steht sofort da, ohne Auffahren.** Die naheliegende Bewegung —
@@ -291,9 +293,15 @@ function NavSection({ item, active, sub, activeKey, onNavigate }: {
     <div>
       <NavItem item={item} active={active} marked={active && !(open && activeKey)} onNavigate={onNavigate} />
       {open && (
-        <div role="group" aria-label={item.label} className="space-y-0.5 pb-1 pt-1">
+        // Die Führungslinie steht unter der Mitte des Zeichens am Hauptpunkt
+        // (12 px Rand + 8 px) und bindet die Unterzeilen sichtbar an ihn —
+        // ohne sie hingen sie als lose eingerückte Liste darunter. Sie ist
+        // neutral (Rahmenfarbe) und markiert nichts: Den Standort zeigt
+        // allein die Fläche (Designsprache: kein Akzent-Balken).
+        <div role="group" aria-label={item.label} className="mb-1 ml-2 mt-1 space-y-0.5 border-l border-border pl-[7px]">
           {sub.map((z) => {
             const current = z.key === activeKey;
+            const Icon = z.icon;
             return (
               <Link
                 key={z.key}
@@ -302,13 +310,41 @@ function NavSection({ item, active, sub, activeKey, onNavigate }: {
                 data-aktiv={current ? "true" : undefined}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  // Eingerückt bis unter die Schrift des Hauptpunkts (12 px
-                  // Rand + 16 px Zeichen + 12 px Fuge), eine Stufe kleiner und
-                  // ohne eigenes Zeichen: Die Einrückung IST die Hierarchie.
-                  "block rounded-lg py-1.5 pl-10 pr-3 text-[13px] leading-snug transition-colors duration-fluss",
-                  current ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  // Die ZEILE ist eingerückt, nicht nur ihr Text: Die Fläche
+                  // beginnt kurz vor dem Zeichen statt am Rand der Leiste. In
+                  // der ersten Fassung lief sie über die volle Breite, und
+                  // links standen 28 px leeres Blau vor der Schrift (Tim,
+                  // 22.11.2026: „relativ viel freier Platz, der trotzdem einen
+                  // blauen Hintergrund hat").
+                  //
+                  // Die Maße sind auf die Namen gerechnet, nicht geschätzt:
+                  // Die Liste hat 215 px, „Entscheidung und Mitreden" misst
+                  // bei 13 px 169 px. Mit 12,5 px Schrift, 16 px Einzug (die
+                  // Führungslinie und ihr Abstand) und schmalem Innenrand
+                  // passen alle Namen bis auf einen in EINE Zeile; mit 13 px
+                  // und tieferem Einzug brachen drei der vier Etappen um.
+                  //
+                  // Aktiv wechselt nur die Farbe, nicht das Gewicht: Fettere
+                  // Schrift ist breiter, und ein Name, der gerade so passt,
+                  // bräche beim Anklicken um — die Liste darunter spränge.
+                  //
+                  // `items-start`, weil der längste Name weiter umbricht — das
+                  // Zeichen gehört dann an die erste Zeile.
+                  "group/sub flex items-start gap-1.5 rounded-lg py-1.5 pl-2 pr-1.5 text-[12.5px] leading-snug transition-colors duration-fluss",
+                  current ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >
+                {Icon && (
+                  <Icon
+                    aria-hidden
+                    className={cn(
+                      // 1,5 px nach unten: mittig auf der ersten Textzeile
+                      // (12,5 px Schrift, Zeilenhöhe ~17 px, Zeichen 14 px).
+                      "mt-[1.5px] h-3.5 w-3.5 shrink-0 transition-[color,transform] duration-fluss ease-out-strong",
+                      current ? "text-primary" : "text-muted-foreground/70 group-hover/sub:translate-x-0.5 group-hover/sub:text-foreground",
+                    )}
+                  />
+                )}
                 {z.label}
               </Link>
             );
@@ -377,7 +413,8 @@ function NavLinksInner({ activeTab, tab, sub, onNavigate }: {
   const plans = useFeature("plaene");
   const ideas = useFeature("ideen-anderswo");
   const elections = useFeature("wahlabend");
-  const analysisItems = analysisSections({ plans, ideas, elections });
+  const analysisItems: SubItem[] = analysisSections({ plans, ideas, elections })
+    .map((z) => ({ ...z, icon: ANALYSIS_ICONS[z.key] }));
   const analysisSection = activeAnalysisSection(pathname, tab, sub);
   // Ein Ziel hinter einem abgeschalteten Schalter hat keine Zeile — dann
   // trägt der Hauptpunkt die Fläche.
