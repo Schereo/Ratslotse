@@ -18485,6 +18485,550 @@
         "title": "MagicLinkRequest",
         "type": "object"
       },
+      "MajorityAdvisory": {
+        "description": "Ein Mitglied mit beratender Stimme (Grundmandat u. Ä.) — zählt nicht mit.",
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "short": {
+            "title": "Short",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "role",
+          "key",
+          "short",
+          "color",
+          "color_dark"
+        ],
+        "title": "MajorityAdvisory",
+        "type": "object"
+      },
+      "MajorityBlock": {
+        "description": "Die Stimmen einer Fraktion oder Gruppe in diesem Gremium.",
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "functions": {
+            "items": {
+              "$ref": "#/components/schemas/MajorityFunction"
+            },
+            "title": "Functions",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "faction",
+              "group",
+              "single",
+              "mayor",
+              "external"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "parties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          },
+          "selectable": {
+            "title": "Selectable",
+            "type": "boolean"
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "short",
+          "label",
+          "kind",
+          "color",
+          "color_dark",
+          "seats",
+          "selectable",
+          "members",
+          "parties",
+          "functions"
+        ],
+        "title": "MajorityBlock",
+        "type": "object"
+      },
+      "MajorityBody": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "council",
+              "administrative",
+              "committee"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "majority": {
+            "title": "Majority",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "short",
+          "kind",
+          "votes",
+          "majority",
+          "notes",
+          "source_url"
+        ],
+        "title": "MajorityBody",
+        "type": "object"
+      },
+      "MajorityBodyOption": {
+        "description": "Ein Gremium in der Auswahl — Rat, Verwaltungsausschuss, Ausschüsse.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "council",
+              "administrative",
+              "committee"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "short",
+          "kind",
+          "votes"
+        ],
+        "title": "MajorityBodyOption",
+        "type": "object"
+      },
+      "MajorityCalculator": {
+        "properties": {
+          "advisory": {
+            "items": {
+              "$ref": "#/components/schemas/MajorityAdvisory"
+            },
+            "title": "Advisory",
+            "type": "array"
+          },
+          "as_of": {
+            "title": "As Of",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/MajorityBlock"
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "bodies": {
+            "items": {
+              "$ref": "#/components/schemas/MajorityBodyOption"
+            },
+            "title": "Bodies",
+            "type": "array"
+          },
+          "body": {
+            "properties": {
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "council",
+                  "administrative",
+                  "committee"
+                ],
+                "title": "Kind",
+                "type": "string"
+              },
+              "majority": {
+                "title": "Majority",
+                "type": "integer"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "notes": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Notes",
+                "type": "array"
+              },
+              "short": {
+                "title": "Short",
+                "type": "string"
+              },
+              "source_url": {
+                "title": "Source Url",
+                "type": "string"
+              },
+              "votes": {
+                "title": "Votes",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "key",
+              "name",
+              "short",
+              "kind",
+              "votes",
+              "majority",
+              "notes",
+              "source_url"
+            ],
+            "title": "MajorityBody",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "coalitions": {
+            "items": {
+              "$ref": "#/components/schemas/MajorityCoalition"
+            },
+            "title": "Coalitions",
+            "type": "array"
+          },
+          "overview": {
+            "items": {
+              "$ref": "#/components/schemas/MajorityOverview"
+            },
+            "title": "Overview",
+            "type": "array"
+          },
+          "partners": {
+            "items": {
+              "$ref": "#/components/schemas/MajorityPartner"
+            },
+            "title": "Partners",
+            "type": "array"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/MajoritySelection"
+          }
+        },
+        "required": [
+          "bodies",
+          "body",
+          "blocks",
+          "advisory",
+          "selection",
+          "coalitions",
+          "partners",
+          "overview",
+          "as_of"
+        ],
+        "title": "MajorityCalculator",
+        "type": "object"
+      },
+      "MajorityCoalition": {
+        "description": "Eine Kombination mit Mehrheit, aus der kein frei gewählter Partner\nwegfallen kann.",
+        "properties": {
+          "added": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Added",
+            "type": "array"
+          },
+          "blocks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          },
+          "surplus": {
+            "title": "Surplus",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "blocks",
+          "seats",
+          "surplus",
+          "added"
+        ],
+        "title": "MajorityCoalition",
+        "type": "object"
+      },
+      "MajorityFunction": {
+        "description": "Stimmberechtigte ohne Ratsmandat, zusammengefasst nach Funktion.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "label",
+          "seats"
+        ],
+        "title": "MajorityFunction",
+        "type": "object"
+      },
+      "MajorityOverview": {
+        "description": "Die Auswahl in einem Gremium — eine Zeile der Übersicht über alle.",
+        "properties": {
+          "has_majority": {
+            "title": "Has Majority",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "council",
+              "administrative",
+              "committee"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "majority": {
+            "title": "Majority",
+            "type": "integer"
+          },
+          "missing": {
+            "title": "Missing",
+            "type": "integer"
+          },
+          "possible": {
+            "title": "Possible",
+            "type": "boolean"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "short",
+          "kind",
+          "votes",
+          "majority",
+          "seats",
+          "has_majority",
+          "missing",
+          "possible"
+        ],
+        "title": "MajorityOverview",
+        "type": "object"
+      },
+      "MajorityPartner": {
+        "description": "Ein Block, der für die Mehrheit in Frage kommt: Er kommt in mindestens\neiner möglichen Mehrheit zur Auswahl hinzu.",
+        "properties": {
+          "coalitions": {
+            "title": "Coalitions",
+            "type": "integer"
+          },
+          "completes": {
+            "title": "Completes",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "seats",
+          "total",
+          "completes",
+          "coalitions"
+        ],
+        "title": "MajorityPartner",
+        "type": "object"
+      },
+      "MajoritySelection": {
+        "properties": {
+          "exclude": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exclude",
+            "type": "array"
+          },
+          "has_majority": {
+            "title": "Has Majority",
+            "type": "boolean"
+          },
+          "include": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Include",
+            "type": "array"
+          },
+          "max_seats": {
+            "title": "Max Seats",
+            "type": "integer"
+          },
+          "missing": {
+            "title": "Missing",
+            "type": "integer"
+          },
+          "possible": {
+            "title": "Possible",
+            "type": "boolean"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "include",
+          "exclude",
+          "seats",
+          "missing",
+          "has_majority",
+          "max_seats",
+          "possible"
+        ],
+        "title": "MajoritySelection",
+        "type": "object"
+      },
       "MarkedHits": {
         "properties": {
           "marked": {
@@ -31245,6 +31789,7 @@
                 "mandate",
                 "premium_models",
                 "mcp",
+                "council_tools",
                 "admin"
               ],
               "type": "string"
@@ -36220,6 +36765,7 @@
                 "mandate",
                 "premium_models",
                 "mcp",
+                "council_tools",
                 "admin"
               ],
               "type": "string"
@@ -48794,6 +49340,85 @@
         "summary": "Visit With Updates",
         "tags": [
           "today"
+        ]
+      }
+    },
+    "/api/tools/majorities": {
+      "get": {
+        "description": "Sitze je Fraktion, Mehrheitsschwelle und jede Kombination, die mit der\nAuswahl eine Mehrheit ergibt.",
+        "operationId": "majority_calculator_api_tools_majorities_get",
+        "parameters": [
+          {
+            "description": "Gremium (Schlüssel aus `bodies`); ohne Angabe der Rat.",
+            "in": "query",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "description": "Gremium (Schlüssel aus `bodies`); ohne Angabe der Rat.",
+              "maxLength": 120,
+              "title": "Body",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Kommagetrennte Blöcke, die dabei sein sollen.",
+            "in": "query",
+            "name": "include",
+            "required": false,
+            "schema": {
+              "description": "Kommagetrennte Blöcke, die dabei sein sollen.",
+              "maxLength": 400,
+              "title": "Include",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Kommagetrennte Blöcke, die nicht dabei sein sollen.",
+            "in": "query",
+            "name": "exclude",
+            "required": false,
+            "schema": {
+              "description": "Kommagetrennte Blöcke, die nicht dabei sein sollen.",
+              "maxLength": 400,
+              "title": "Exclude",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MajorityCalculator"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Majority Calculator",
+        "tags": [
+          "tools"
         ]
       }
     },

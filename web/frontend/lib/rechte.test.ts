@@ -63,3 +63,12 @@ describe("darfHaushalt / darfAdmin", () => {
     expect(darfAdmin(nutzer)).toBe(false);
   });
 });
+
+describe("darfWerkzeuge", () => {
+  it("hängt am Recht council_tools und an keinem anderen", async () => {
+    const { darfWerkzeuge } = await import("./rechte");
+    expect(darfWerkzeuge({ permissions: ["council_tools"] })).toBe(true);
+    expect(darfWerkzeuge({ permissions: ["budget", "mandate"] })).toBe(false);
+    expect(darfWerkzeuge(null)).toBe(false);
+  });
+});

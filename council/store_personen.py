@@ -167,6 +167,37 @@ class PersonenMixin(StoreBasis):
                 )
         return len(rows)
 
+    def replace_committee_seats(self, rows: list[dict]) -> int:
+        """Die Besetzung aller Gremien auf einmal ersetzen (council.committee_seats).
+
+        In EINER Transaktion: Ein Abbruch mittendrin ließe sonst einen Rat
+        ohne Ausschüsse stehen, und der Mehrheitsrechner rechnete auf einem
+        halben Stand weiter, ohne dass es jemand merkt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("DELETE FROM council_committee_seats")
+            for r in rows:
+                self._conn.execute(
+                    "INSERT INTO council_committee_seats (committee, kgrnr, position, kpenr, "
+                    "name, faction, role, voting, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                    (r["committee"], r.get("kgrnr"), int(r["position"]), r.get("kpenr"),
+                     r["name"], r.get("faction"), r.get("role"), 1 if r.get("voting") else 0, now),
+                )
+        return len(rows)
+
+    def committee_seats(self) -> list[dict]:
+        """Die gespeicherte Besetzung aller Gremien, je Gremium in der
+        Reihenfolge des Ratsinfos. Leer, solange noch nie abgerufen wurde."""
+        try:
+            rows = self._conn.execute(
+                "SELECT committee, kgrnr, position, kpenr, name, faction, role, voting, fetched_at "
+                "FROM council_committee_seats ORDER BY committee, position").fetchall()
+        except sqlite3.OperationalError as exc:
+            if tabelle_fehlt(exc):
+                return []
+            raise
+        return [dict(r) for r in rows]
+
     def person_stammdaten_for_names(self, names: list[str]) -> dict | None:
         """RIS-Stammdaten für eine Person, gematcht über die Namens-Slugs der
         Anwesenheitsdaten: aktuelle Fraktion (RIS-Stand) + offizielle
