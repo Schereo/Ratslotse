@@ -179,17 +179,18 @@ landet dort genauso wie jemand, der Adressen durchprobiert.
 
 ### Was ohne Konto sichtbar ist
 
-Vier Endpunkte antworten **ohne Anmeldung**, damit geteilte Inhalte
-direkt aufrufbar sind. Früher mussten sich Empfänger*innen eines
-Beschlusslinks registrieren, bevor sie den Beschluss lesen konnten.
+Vier Detail-Endpunkte und ein Endpunkt für die Link-Vorschau antworten
+**ohne Anmeldung**, damit geteilte Inhalte direkt aufrufbar sind. Früher
+mussten sich Empfänger*innen eines Beschlusslinks registrieren, bevor sie
+den Beschluss lesen konnten.
 
 | Endpunkt | Seite |
 |---|---|
-| `GET /api/council/decision/{id}` | Beschluss |
+| `GET /api/council/decision/{decision_id}` | Beschluss |
 | `GET /api/council/entity/{slug}` | Thema |
 | `GET /api/council/person/{slug}` | Person |
 | `GET /api/council/session/{ksinr}` | Sitzung (die Beschluss-Seite zieht Gremium + Datum daraus) |
-| `GET /api/council/preview/{art}/{key}` | nur Titel + Kurzfassung für die Link-Vorschau |
+| `GET /api/council/preview/{kind}/{key}` | nur Titel + Kurzfassung für die Link-Vorschau |
 
 Der öffentliche Zugriff betrifft die teilbaren Seiten und die
 Link-Vorschau. Ratslotse bereitet dafür Daten auf, die im amtlichen

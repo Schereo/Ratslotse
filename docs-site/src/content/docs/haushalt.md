@@ -1978,7 +1978,7 @@ mit doppelter Fehlerquelle.
 Der Beteiligungsbericht liegt auf oldenburg.de außerhalb des
 Ratsinformationssystems. Damit der bestehende Job weiterhin nur
 vorhandene Anlagen verarbeitet, lädt ihn `scripts/check_beteiligungsbericht.py`
-in einem **eigenen Job** alle vier Wochen. Die Quelle erscheint einmal im Jahr.
+in einem **eigenen Job** sonntags um 6:30 Uhr. Die Quelle erscheint einmal im Jahr.
 Für den Download verwendet der Job `council/stadtdownload.py` mit den
 folgenden Prüfungen.
 

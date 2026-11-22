@@ -174,7 +174,12 @@ Repository-Secrets.
 Neben der Produktion läuft eine **eigene Dev-VM** mit eigenen Datenbanken und
 eigenen Secrets. Sie unterscheidet sich bewusst von Prod:
 
-- **Basic-Auth vor dem vhost** schränkt den öffentlichen Zugriff ein.
+- **Öffentlich erreichbar seit 10/2026.** Die Dev-Umgebung verlangt keine
+  Basic-Auth. Für die reguläre Registrierung setzt Dev
+  `SIGNUP_REQUIRES_APPROVAL=1`. Neue Konten aus diesem Registrierungsweg
+  bleiben bis zur Freischaltung im Admin-Panel gesperrt. Der Dev-Build
+  sperrt Crawling über `robots.ts`. Caddy setzt zusätzlich
+  `X-Robots-Tag: noindex`.
 - **Kein Mailversand.** Ohne Resend-Key überspringt Ratslotse die Zustellung
   ohne Fehlermeldung.
 - **Keine Cron-Jobs.** Die Dev-Umgebung dient der Vorschau und erfasst keine
