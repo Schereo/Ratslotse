@@ -179,8 +179,8 @@ ERSATZ: dict[str, tuple[str, ...]] = {
 #: Rat“) — NICHT in ``MODEL_PARAMS``, weil derselbe Modellname dort auch für
 #: die Crons gilt. Leer heißt: der Aufwand, den der Anbieter ohne Angabe wählt.
 #:
-#: **GPT-6 Luna läuft mit der Vorgabe, nicht mit ``low``** — entschieden an
-#: der Fakten-Eval (``eval/run_fakten.py``, 233 Fälle, 23.09.2026, Stand nach
+#: **Lotti läuft auf GPT-6 Luna mit der Vorgabe, nicht mit ``low``** —
+#: entschieden an der Fakten-Eval (``eval/run_fakten.py``, 233 Fälle, 23.09.2026, Stand nach
 #: #1503/#1504, je ein Lauf; Regel: weniger ``modell_*``-Fehler gewinnt,
 #: Auslassungen zählen, nur bei höchstens zwei Fällen Abstand gewinnt ``low``
 #: wegen der Latenz):
@@ -193,6 +193,20 @@ ERSATZ: dict[str, tuple[str, ...]] = {
 #: (``run_assistant``) sah bei ``low`` keinen Verlust — sie prüft Zusagen,
 #: nicht Vollständigkeit; die Fakten-Eval zählt jede ausgelassene Pflicht-
 #: Angabe. Tims Regel: „Akkuratheit schlägt Geschwindigkeit“.
+#:
+#: **Frag den Rat seit 22.11.2026 mit ``low``** (Tims Entscheidung: „hier ist
+#: eine schnellere Antwort besser, auch mit weniger Denkvorgang — für mehr
+#: Denkaufwand haben wir die gründliche Recherche“). Der Prompt ist seit der
+#: Messung oben von rund 4.500 auf 11.000–15.000 Tokens gewachsen, und mit
+#: ihm das Denken: Zwischen den Quellen und dem ersten Wort lagen auf Prod
+#: rund 30 s, in denen die Quellen ohne Text dastanden. Gemessen auf dev, vier
+#: Fragen über ``/api/council/ask``, je frisch gestarteter Dienst:
+#:
+#:   Vorgabe   Quellen → erstes Wort 18–48 s, Ausgabe-Tokens 1.839–3.167, Ende 39–59 s
+#:   low       Quellen → erstes Wort  6–12 s, Ausgabe-Tokens   817–1.166, Ende 16–32 s
+#:
+#: Die Antworten waren ähnlich lang (1.047–2.495 gegen 1.150–2.659 Zeichen);
+#: der Preis steht oben (Fakten-Eval: 31 statt 27 Modellfehler).
 WEB_DENKAUFWAND: dict[tuple[str, str], str] = {
     # Die Frage-Analyse und die Zerlegung der gründlichen Recherche liefern nur
     # Suchbegriffe, Fragetyp und Facetten als JSON — dafür braucht es kein
@@ -204,6 +218,10 @@ WEB_DENKAUFWAND: dict[tuple[str, str], str] = {
     ("openai/gpt-5.6-luna", "qa_analysis"): "low",
     ("openai/gpt-5.6-luna", "qa_query_expansion"): "low",
     ("openai/gpt-5.6-luna", "deep_decomposition"): "low",
+    # Die Antwort von „Frag den Rat“ (Begründung im Kopf dieser Tabelle).
+    # Nur ``qa_answer``: das Vereinfachen (``qa_simple``) schreibt eine
+    # vorhandene Antwort um und denkt ohnehin kurz.
+    ("openai/gpt-6-luna", "qa_answer"): "low",
 }
 
 #: **Ein reiner Messschalter** wie ``TARIF_ENV``: überschreibt den Denkaufwand
