@@ -376,6 +376,7 @@ PATHS_NOT_IN_REPO: dict[str, str] = {
     "web/frontend/.next/": "Build-Ausgabe von Next",
     "web/frontend/.next-build": "Build-Ausgabe von Next während des Deploys",
     "web/frontend/public/docs/": "Ziel der gebauten Doku auf dem Server",
+    "web/frontend/public/social": "Laufzeitverzeichnis, das der Social-Media-Upload anlegt",
     "docs-site/node_modules/": "entsteht beim Installieren, nicht eingecheckt",
     "docs-site/dist/": "Build-Ausgabe der Doku",
     "deploy/nginx-nwz-web.conf": "ADR 0004 nennt die Datei als entfernt",

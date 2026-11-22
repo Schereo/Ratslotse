@@ -983,7 +983,7 @@ gesetzt; wer sie ändert, misst gegen das Gold-Set
 | `FEATURE_FLAGS` | Kommaliste der eingeschalteten [Feature-Schalter](/docs/referenz/feature-schalter/); `*` schaltet alle an (so steht es auf dev) | nein | leer |
 | `STATS_EXCLUDE_DOMAINS` | Kommaliste von Mail-Domains, deren Konten aus der Nutzungsstatistik fallen (eigene Testkonten) | nein | leer |
 | `SOCIAL_API_TOKEN` | Token für die Schnittstelle des Social-Media-Bots (`routers/social.py`); ohne Token sind die Endpunkte aus | nein | leer |
-| `SOCIAL_MEDIA_DIR` / `SOCIAL_MEDIA_BASE_URL` | Ablage der Bilder für Social Media und die öffentliche Adresse dazu | nein | `web/frontend/public/social`, `https://ratslotse.de/social` |
+| `SOCIAL_MEDIA_DIR` / `SOCIAL_MEDIA_BASE_URL` | Verzeichnis für Social-Media-Bilder und öffentliche Basis-URL. Der Upload legt das Verzeichnis bei Bedarf an. | nein | `web/frontend/public/social`, `https://ratslotse.de/social` |
 | `BACKEND_URL` | Adresse des Backends für die Server-Routen des Frontends (`app/api/council/ask/route.ts`) | nein | `http://localhost:8000` |
 | `NEXT_PUBLIC_CARTO_API_KEY` | Schlüssel der Kartenkacheln, zur **Bauzeit** des Frontends einkompiliert (`lib/basemap.ts`); ohne ihn tragen die Kacheln ein Wasserzeichen | nein | nicht gesetzt |
 | `GEO_BUNDLE_VERSION` / `LOTTI_BUNDLE_VERSION` | Versionsmarken, die der Frontend-Build an die Adressen der Geodaten und der Lotti-Grafiken hängt, damit der Browser sie lange halten darf (`lib/asset-paths.ts`) | nein | nicht gesetzt |
