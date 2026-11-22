@@ -105,6 +105,17 @@ Der Export ist weg, diese Regeln bleiben:
   Build-Phase) und schalten erst unmittelbar vor `systemctl restart` um;
   `tests/test_pruefe_build_chunks.py` hält die Reihenfolge in beiden
   Deploy-Workflows fest.
+- **Die Typprüfung des Builds liest auch `.next/types` — die Typen des
+  Builds, der gerade ausliefert.** Die `tsconfig.json` schließt alle drei
+  Bauverzeichnisse ein (sonst schreibt Next sie bei jedem Lauf um), und Next
+  legt dort je Route eine Prüfzeile ab. Passt die nicht zum neuen Stand — eine
+  Route gelöscht oder umgezogen, ein anderes Next —, scheitert der Build an
+  Dateien, die nicht seine sind (22.11.2026 auf dev: „Cannot find module
+  'next/types.js'"). Die Deploys räumen `.next/types` deshalb vor dem Build
+  weg; `next start` braucht es nicht. **Kein `exclude` in der tsconfig
+  dafür:** Der gewöhnliche Build nach `.next` prüft dann die Seiten-Exporte
+  gar nicht mehr und meldet trotzdem Erfolg. Lokal dasselbe Bild nach einem
+  Zweigwechsel: `rm -rf .next/types`.
 - **Tailwinds `min-[…]`-Kurzform ist in diesem Projekt aus.** Die Klasse steht
   im DOM, CSS gibt es keins. Benannte Breakpoints benutzen.
 - **Breiten mit `getBoundingClientRect()` messen**, nicht `clientWidth` — das

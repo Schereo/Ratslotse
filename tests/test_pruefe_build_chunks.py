@@ -268,6 +268,40 @@ def test_der_build_entsteht_neben_dem_laufenden_server(name):
     assert build < _zeile(b, "rm -rf .next-build/cache/webpack", genau=True)
 
 
+#: Räumt die erzeugten Typen des laufenden Builds weg (im Ordner web/frontend).
+ALTE_TYPEN = "rm -rf .next/types .next/dev/types"
+
+
+def _tsconfig_prueft_den_laufenden_build() -> bool:
+    tsconfig = json.loads((WURZEL / "web" / "frontend" / "tsconfig.json").read_text(encoding="utf-8"))
+    return ".next/types/**/*.ts" in tsconfig["include"]
+
+
+@pytest.mark.parametrize("name", DEPLOYS)
+def test_die_typen_des_laufenden_builds_sind_vor_dem_build_weg(name):
+    """Die tsconfig schließt ``.next/types`` ein. Der Build nach
+    ``.next-build`` prüft damit auch die Routen-Typen des Builds, der gerade
+    ausliefert — und scheitert an ihnen, sobald sie nicht zum neuen Stand
+    passen: eine gelöschte Route, ein anderes Next (22.11.2026 auf dev,
+    „Cannot find module 'next/types.js'")."""
+    b = _befehle(name)
+    build, befehl = _frontend_build(b)
+    weg = [i for i, z in enumerate(b) if z == ALTE_TYPEN]
+    assert weg and weg[0] < build - len(befehl) + 1, (
+        f"{name}: vor dem Frontend-Build fehlt die Zeile `{ALTE_TYPEN}` — ohne sie "
+        "bricht der Deploy ab, sobald eine Route wegfällt oder umzieht."
+    )
+
+
+def test_das_wegraeumen_der_alten_typen_hat_noch_einen_grund():
+    """Die Gegenrichtung: Prüft die tsconfig ``.next/types`` nicht mehr mit,
+    kann die Zeile aus beiden Workflows und dieser Test dazu weg."""
+    assert _tsconfig_prueft_den_laufenden_build(), (
+        f"web/frontend/tsconfig.json schließt .next/types nicht mehr ein: `{ALTE_TYPEN}` "
+        "in deploy.yml und deploy-dev.yml ist überflüssig geworden."
+    )
+
+
 @pytest.mark.parametrize("name", DEPLOYS)
 def test_der_waechter_prueft_den_neuen_build_vor_dem_umschalten(name):
     b = _befehle(name)

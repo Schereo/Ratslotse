@@ -132,6 +132,16 @@ jobs:
             # 10 bis 25 Sekunden. Seit der Build neben dem laufenden Dienst
             # stattfindet, wartet auf diese Sekunden niemand mehr.
             rm -rf .next-build
+            # OHNE DIE TYPEN DES LAUFENDEN BUILDS. `next build` schreibt nach
+            # `<distDir>/types` eine Prüfdatei je Route, und die tsconfig
+            # schließt `.next/types` ein — der Build nach `.next-build` prüft
+            # also auch die Typen des Builds, der gerade ausliefert. Passen
+            # die nicht zum neuen Stand, scheitert er an Dateien, die nicht
+            # seine sind: am 22.11.2026 hier mit „Cannot find module
+            # 'next/types.js'" (Next-14-Stand neben einem Next-16-Build),
+            # nachgestellt auch mit einer bloß gelöschten Route. `next start`
+            # braucht das Verzeichnis nicht.
+            rm -rf .next/types .next/dev/types
             # Umgebungs-Gate: Features, die nur auf dev.ratslotse.de sichtbar
             # sein sollen, prüfen NEXT_PUBLIC_RATSLOTSE_ENV === "dev". Der
             # Prod-Build (deploy.yml) setzt die Variable nicht — dort werden
