@@ -1,6 +1,6 @@
 ---
 title: Andere Städte
-description: Der Städte-Speicher — Ratsdokumente anderer Kommunen, in fünf Schichten gehalten, mit belegten Urteilen gegen Oldenburg verglichen.
+description: Fünfstufige Verarbeitung kommunaler Ratsdokumente und quellenbasierter Vergleich mit Oldenburg.
 ---
 
 Was ein Rat beschließt, hat oft schon ein anderer beschlossen. Der
@@ -33,12 +33,12 @@ Urteil darüber, ob Oldenburg dasselbe hat.
 löscht, verliert Rechenzeit und ein paar Dollar, keine Daten. Deshalb braucht
 eine bessere Auswertung später keinen erneuten Abruf bei den Städten.
 
-**Schicht 0 wird nur angehängt.** Ein Papier ändert sich: Das Ergebnis wird
-Wochen nach der Sitzung nachgetragen, ein Titel berichtigt, eine Anlage
-ergänzt. Wer die Zeile überschreibt, verliert die Frage „Wann kam das
-Ergebnis?“, bevor sie jemand stellt. Ein unveränderter Abruf erzeugt keine
-neue Zeile (`UNIQUE(oparl_id, content_hash)`); der Wochenlauf kostet also
-nichts, solange sich nichts tut.
+**Schicht 0 speichert Versionen.** Ein Ergebnis kann Wochen nach einer
+Sitzung hinzukommen, ein Titel korrigiert oder eine Anlage ergänzt werden.
+Jede geänderte Fassung erhält eine neue Zeile. So lässt sich etwa
+nachvollziehen, wann ein Ergebnis erstmals vorlag. Unveränderte Abrufe
+erzeugen keine neue Zeile (`UNIQUE(oparl_id, content_hash)`) und bleiben
+daher ohne zusätzliche Verarbeitungskosten.
 
 Die Stufen folgen den Schichten (`council/cities/pipeline.py`):
 `fetch → normalize → extract → annotate → index`. Jede liest die Tabellen der
@@ -59,13 +59,13 @@ Magdeburg (SessionNet) und Oldenburg selbst, dessen Adapter die eigene
 `council.sqlite` liest. Welche Städte im Speicher liegen, steht als Code in
 `council/cities/registry.py`, damit ein Eintrag im Pull Request sichtbar ist.
 
-**Höflich abrufen.** Die Systeme gehören Städten. `council/cities/oparl.py`
-stellt höchstens eine Anfrage je Sekunde und Host, mit Kennung und
-Rückadresse im User-Agent. Ein Lauf, der nachts eine Stunde braucht, ist
-billiger als ein gesperrter Zugang. `CITIES_RATE_SECONDS` kann den Abstand nur
-vergrößern. Parallel läuft nur die Ernte über Städte hinweg: je Stadt ein
-Prozess und eine eigene Rohdatei (`data/cities-raw/<slug>.sqlite`), denn die
-Hauptdatenbank hat genau einen Schreiber.
+**Anfragelimit pro Host.** `council/cities/oparl.py` stellt höchstens
+eine Anfrage pro Sekunde und Host. Der User-Agent enthält Kennung und
+Kontaktadresse. Das Limit hält die Last auf den städtischen Systemen gering
+und senkt das Risiko einer Sperre. `CITIES_RATE_SECONDS` kann den
+Abstand vergrößern. Der Abruf kann pro Stadt in einem eigenen Prozess mit
+eigener Rohdatei laufen (`data/cities-raw/<slug>.sqlite`). In die
+Hauptdatenbank schreibt nur ein Prozess.
 
 ## Annotatoren: eine Frage an die Dokumente ist ein Eintrag
 
@@ -75,11 +75,10 @@ Prompt in `kern/prompts.py`, ohne Schemaänderung. Zwei Fassungen desselben
 Annotators liegen nebeneinander in `annotations` und lassen sich
 gegeneinander messen.
 
-Der Probelauf hat gezeigt, wo der Hebel liegt: Dasselbe Modell traf mit der
-ersten Prompt-Fassung 73 % der Übertragbarkeits-Entscheidungen, mit der
-zweiten rund 87 %. Ein elfmal teureres Modell lag bei 71 %. Deshalb trägt
-jeder Annotator seine Fassung im Schlüssel und wird gegen ein Golden Set
-gemessen (`eval/run_cities_transfer.py`).
+Im Probelauf erreichte dasselbe Modell mit der ersten Prompt-Fassung 73 %
+richtige Entscheidungen zur Übertragbarkeit, mit der zweiten rund 87 %.
+Ein elfmal teureres Modell erreichte 71 %. Die Versionsnummer jedes
+Annotators steht deshalb im Schlüssel. Die Evaluation nutzt ein Golden Set (`eval/run_cities_transfer.py`).
 
 ### Das Urteil: Hat Oldenburg das schon?
 
@@ -88,11 +87,11 @@ zwei Fragen: Hat Oldenburg das schon, und lohnt es sich? Jede Vorlage bekommt
 dafür ihre eigenen Belege aus dem Oldenburger Bestand und geht allein ins
 Modell.
 
-**Ohne Beleg keine Frage, ohne Beleg-Kennung kein Urteil.** Findet die
-Belegsuche (`council/cities/evidence.py`) nichts aus Oldenburg, wird das
-Modell gar nicht erst gefragt; die Antwort wäre eine Behauptung ins Leere.
-Nennt es eine Kennung, die ihm nicht vorlag, fliegt der ganze Eintrag raus.
-Beides wird gezählt, damit ein Rückgang auffällt.
+**Die Bewertung setzt Belege aus Oldenburg voraus.** Findet die Suche in
+`council/cities/evidence.py` keine solchen Belege, entfällt der
+Modellaufruf. Nennt das Modell eine Kennung, die nicht im Kontext stand,
+verwirft Ratslotse den gesamten Eintrag. Beide Fälle gehen in die Statistik
+ein, damit ein Rückgang der gültigen Bewertungen sichtbar wird.
 
 Welche Vorlagen überhaupt teilnehmen, regelt `council/cities/auswahl.py` an
 einer Stelle für alle Stufen: ein Zeitfenster je Stadt und die Vorlagenarten,
@@ -114,18 +113,18 @@ Frage „Ist das dieselbe Idee?“ alles Rauschen.
 
 ## Der Wächter für stumme Fehler
 
-Am 08.09.2026 lagen vier Fehler gleichzeitig im Bestand, und keiner hatte
-sich gemeldet: kein Absturz, kein roter Test, keine verdächtige Kennzahl. Die
-Daten waren nur falsch. Bei einer Stadt hatten 0 von 700 Vorlagen ein
-Ergebnis, obwohl fast 6.000 Tagesordnungspunkte eines trugen.
+Am 08.09.2026 enthielt der Bestand vier Datenfehler, die weder zu
+Abstürzen oder Testfehlern noch zu auffälligen Kennzahlen führten. Bei
+einer Stadt hatten 0 von 700 Vorlagen ein Ergebnis, obwohl fast 6.000
+Tagesordnungspunkte eines enthielten.
 
 `council/cities/pruefung.py` prüft deshalb nach jeder Ernte, ob der Bestand
 einer Stadt plausibel ist: der Anteil der Vorlagen mit Ergebnis, das
 Verhältnis von Sitzungen zu Vorlagen, doppelte Kennungen und
-Tagesordnungspunkte. Die Bänder sind gemessen, nicht gesetzt: Jede Regel
-nennt den Bereich, in dem die Städte des Bestands liegen, und ist so weit
-gefasst, dass eine gesunde weitere hineinpasst. Ein Befund heißt nicht
-„kaputt“, sondern „sieh nach, bevor du diese Stadt benutzt“.
+Tagesordnungspunkte. Die Grenzwerte beruhen auf Messungen des vorhandenen
+Bestands und lassen Spielraum für neue Städte mit plausiblen Daten.
+Ein Befund erfordert eine Prüfung, bevor die Daten der Stadt verwendet
+werden.
 
 Der Adapter je System sorgt dafür, dass eine Reparatur allen Städten
 desselben Herstellers zugutekommt. Den nächsten, noch unbekannten Fehler
@@ -138,8 +137,9 @@ keiner der ersten vier Regeln an.
 `scripts/check_cities.py` war der teuerste Cron und läuft seit 3.0.0 schlank:
 werktags nur Oldenburg (ohne Netz und Modell; daraus entsteht „Anderswo“
 unter neuen Beschlüssen), sonntags alles, Urteile nur über Neues, mit **einer**
-Kostengrenze für den ganzen Lauf (`CITIES_MAX_USD`). Lange Läufe treten einem
-wartenden Deploy zur Seite und behalten, was sie geschrieben haben.
+Kostengrenze für den ganzen Lauf (`CITIES_MAX_USD`). Steht ein Deploy an,
+beendet der Job einen laufenden Batch und stoppt. Bereits gespeicherte
+Ergebnisse bleiben erhalten.
 
 Der Bestand entsteht nicht aus dem Cron, sondern aus einem einmaligen Lauf je
 Stadt. Der Weg, die Kosten und das Runbook stehen unter

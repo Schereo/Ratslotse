@@ -1,12 +1,12 @@
 ---
 title: Sitzung & Tagesordnungspunkt
-description: Die Seite einer Sitzung als Kurs, die Seite je Tagesordnungspunkt mit Dossier, Anträgen und Argumenten, Mitlesen und die Live-Verfolgung der Ratssitzung.
+description: Sitzungsübersicht, Dossiers, Anträge und Argumente je Tagesordnungspunkt sowie Mitlesen und Live-Verfolgung der Ratssitzung.
 ---
 
-Eine Sitzung hat drei Zustände: Sie steht bevor, sie läuft, sie ist vorbei.
-Die Seiten dazu zeigen jeweils dieselbe Tagesordnung, aber mit dem, was in
-diesem Moment bekannt ist: vorher die Unterlagen, währenddessen der laufende
-Punkt, nachher die Ergebnisse. Diese Seite beschreibt, woraus das entsteht.
+Die Sitzungsseite zeigt dieselbe Tagesordnung in drei Phasen. Vor der
+Sitzung stehen die Unterlagen bereit, währenddessen hebt die Seite den
+laufenden Tagesordnungspunkt hervor und nach der Sitzung zeigt sie
+die Ergebnisse.
 
 Alles hier liegt hinter [Feature-Schaltern](/docs/referenz/feature-schalter/).
 Der Abschnitt nennt jeweils den Schalter; ohne ihn zeigt die Oberfläche die
@@ -28,11 +28,11 @@ Der Abschnitt nennt jeweils den Schalter; ohne ihn zeigt die Oberfläche die
 ## Kurs der Sitzung
 
 Die Sitzungsseite (`/council/sitzung`) zeigt eine Sitzung als Linie mit Bojen:
-jede Boje ein Tagesordnungspunkt, jedes Band eine Etappe. Was davon gilt,
-entscheidet der Server. `council/course.py` ist rein: Eingabe sind die Zeilen
-der Tagesordnung und ein paar vorberechnete Angaben aus dem Store, Ausgabe ein
-Wörterbuch in der Form von `SessionCourse` (`web/backend/app/antworten.py`).
-Web und App zeichnen nur.
+Jede Boje steht für einen Tagesordnungspunkt, jedes Band für eine Etappe.
+Der Server berechnet die Zuordnung. `council/course.py` bildet die Zeilen
+der Tagesordnung und vorberechnete Angaben aus dem Store ohne Seiteneffekte
+auf ein Dictionary gemäß `SessionCourse` (`web/backend/app/antworten.py`) ab.
+Web und App übernehmen die Darstellung.
 
 **Nur Rubriken eröffnen eine Etappe.** Der erste Entwurf machte aus jedem
 Oberpunkt ohne Vorlage eine Etappe. Der Bauausschuss vom 27.08.2026 trägt
@@ -140,10 +140,9 @@ Zwei Reiter, mit Absicht verschieden gebaut (`council/arguments.py`):
   im Protokoll nicht genannt“.
 - **Argumente ordnet ein Modell** zu Streitpunkten mit Dafür und Dagegen. Es
   bekommt nummerierte Quellen und muss zu jeder Aussage die Kennung nennen.
-  Wer etwas gesagt hat, entscheidet nicht das Modell, sondern die Quelle:
-  Person, Fraktion, Gremium, Datum und Seite werden nach dem Parsen aus dem
-  Wortbeitrag übernommen. Eine Aussage ohne gültige Kennung fällt weg, ein
-  Streitpunkt ohne beide Seiten auch.
+  Nach dem Parsen übernimmt Ratslotse Person, Fraktion, Gremium, Datum und
+  Seite direkt aus dem Wortbeitrag. Aussagen ohne gültige Kennung und
+  Streitpunkte ohne beide Seiten entfallen.
 
 Rund die Hälfte der Wortbeiträge trägt im Protokoll keine Partei. Steht die
 Person eindeutig in der Anwesenheitsliste derselben Sitzung und sitzt dort für
@@ -273,16 +272,15 @@ und vom Server frei abrufbar. Es gibt zwei Wege zum Text:
   Audio-Eingang transkribiert (`COUNCIL_STT_MODEL`). Der Verzug ist dann
   mindestens die Stücklänge.
 
-Zwei Fallen der Audio-Transkription sind als Code festgehalten. Mit
-`temperature=0` gerät das Modell bei Audio in Wiederholungsschleifen, deshalb
-0,3 und ein Schleifen-Wächter. Und enthält ein Stück keine Rede zur Sache
-(Warteschleife, Musik), erfindet das Modell eine komplette Sitzung bis ans
-Token-Limit. Dagegen stehen zwei mechanische Wächter: Mehr als rund 25 Zeichen
-je Audio-Sekunde ist keine Transkription, und Zeitmarken hinter dem Ende des
-Stücks sind Fortschreibung, dort wird gekappt.
+Bei `temperature=0` gerät das Modell bei Audio in Wiederholungsschleifen.
+Die Transkription verwendet daher 0,3 und prüft zusätzlich auf Schleifen.
+Bei Audio ohne Sitzungsbeiträge, etwa Musik in einer Warteschleife, kann das
+Modell eine Sitzung bis zum Token-Limit erfinden. Die Pipeline prüft deshalb
+die Länge des Texts (höchstens rund 25 Zeichen je Audiosekunde) und
+schneidet Text mit Zeitmarken hinter dem Ende des Audioabschnitts ab.
 
-Die Aufnahme endet mit der Schlussformel der Sitzungsleitung, spätestens an
-der Kappe (`COUNCIL_RECORD_MAX_HOURS`).
+Die Aufnahme endet mit der Schlussformel der Sitzungsleitung, spätestens
+nach der konfigurierten Höchstdauer (`COUNCIL_RECORD_MAX_HOURS`).
 
 **Verfolgung.** `council/livetracker.py` bekommt das Transkript in Fenstern
 (`COUNCIL_LIVE_WINDOW_SECONDS`, dazu sofort, wenn ein Punkt aufgerufen oder

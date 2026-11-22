@@ -1,59 +1,59 @@
 ---
 title: Mein Viertel
-description: Was sich in einem Ortsbereich in den nächsten Jahren ändert — das Register der Vorhaben, seine zwei Prüfstufen und die Quellen der Karte.
+description: Register der Vorhaben je Ortsbereich, Modellprüfung und Datenquellen der Karte.
 ---
 
-„Mein Viertel“ beantwortet eine Frage, die keine Tagesordnung beantwortet:
-Was ändert sich vor meiner Tür? Die Seite `/viertel` zeigt je Ortsbereich eine
-Tafel mit Vorhaben, ihrem Stand und einer Karte. Sie liegt hinter dem Schalter
-`mein-viertel` und verlangt ein Konto; eine öffentliche Ansicht gibt es nicht,
-ein geteilter Link führt über die Anmeldung zurück auf die Tafel.
+„Mein Viertel“ zeigt auf `/viertel` die Vorhaben und ihren Stand je
+Ortsbereich sowie eine Karte. Der Zugriff setzt den Feature-Schalter
+`mein-viertel` und ein Konto voraus. Geteilte Links öffnen die jeweilige
+Ansicht nach der Anmeldung.
 
 Die 31 Ortsbereiche und ihre Grenzen stammen aus dem
 [zentralen Ortskatalog](/docs/adr/0009-zentraler-ortskatalog/).
 
 ## Das Register der Vorhaben
 
-Die Tafel liest ein Register, das `scripts/build_district_projects.py`
-wöchentlich im Wochenlauf rechnet (`council/viertel.py`). Drei Stufen:
+Die Seite nutzt das Register, das `scripts/build_district_projects.py`
+im Wochenlauf aktualisiert (`council/viertel.py`). Der Lauf besteht aus
+drei Schritten.
 
 1. **Kandidaten** aus der Orts-Erkennung: alle Beschlüsse der letzten
    24 Monate, deren erkannte Orte zu mindestens der Hälfte im Ortsbereich
    liegen.
-2. **Richter** (Modell, fünf Beschlüsse je Aufruf): Liegt der Gegenstand
-   wirklich hier, ändert sich etwas Spürbares, was, wann, welcher Stand? Das
-   Urteil ist über einen Hash der Eingabe gespeichert, ein Wochenlauf schickt
-   also nur Neues.
-3. **Bündelung** (Modell, ein Aufruf je Ortsbereich): Alle Treffer werden zu
-   Vorhaben mit Stand. Ausschuss und Rat, Aufstellungs- und Satzungsbeschluss,
-   Bericht und Antrag zum selben Gegenstand sind **eine** Karte.
+2. **Modellprüfung** (fünf Beschlüsse je Aufruf). Das Modell prüft den
+   Ortsbezug und beschreibt konkrete Änderungen, ihren Zeitraum und Stand.
+   Ein Cache speichert die Bewertung unter einem Hash der Eingabe, sodass
+   der Wochenlauf nur neue Eingaben an das Modell sendet.
+3. **Bündelung** (ein Modellaufruf je Ortsbereich). Das Modell fasst
+   zusammengehörige Treffer zu Vorhaben mit Status zusammen. Ausschuss- und
+   Ratsberatungen, Aufstellungs- und Satzungsbeschlüsse sowie Berichte und
+   Anträge zum selben Gegenstand erscheinen auf einer gemeinsamen Karte.
 
-**Warum zwei Modell-Stufen und nicht die Orts-Erkennung allein.** Gemessen am
+**Qualitätsmessung der beiden Modellschritte.** Gemessen am
 05.09.2026 an drei Ortsbereichen mit 163 Kandidaten: Die Hälfte gehörte nicht
 ins Viertel. Es waren stadtweite Berichte mit einem Beispielort, das Klinikum,
-Gedenktitel mit Straßennamen, lange Straßen. Nach Richter und Bündelung
-blieben 31 Vorhaben, 30 davon im richtigen Viertel. Der eine Fehler war eine
-Namensgleichheit (ein Schießstand in Eversten, einer am Fliegerhorst). Die
-Namensvettern anderer Viertel gehen deshalb mit in den Prompt, und ein
-Vorhaben mit Namensvetter ohne Beleg aus der Vorlage fällt unter die Schwelle.
+Gedenktitel mit Straßennamen, lange Straßen. Nach Modellprüfung und Bündelung blieben 31 Vorhaben, davon 30 im richtigen
+Ortsbereich. Der einzige Fehler betraf zwei gleichnamige Schießstände in
+Eversten und am Fliegerhorst. Der Prompt enthält deshalb gleichnamige Orte
+in anderen Ortsbereichen. Bei Namensgleichheit bleibt ein Vorhaben ohne
+Beleg aus der Vorlage unter dem Schwellenwert.
 
-Das Register meldet nichts, es ist Lesestoff. Wer daraus einmal
-Benachrichtigungen baut, geht über `notify.einreihen`
+Das Register dient der Anzeige. Falls Benachrichtigungen hinzukommen,
+müssen sie über `notify.einreihen` laufen
 (siehe [App & Konten](/docs/app-und-konten/#benachrichtigungen-sechs-anlässe-vier-grenzen)).
 
 ### Ist der Zeitraum schon vorbei?
 
-Das Register hält den Stand so fest, wie ihn der jüngste Beschluss nennt:
-„Im Bau, bis Januar 2026“. Ein Jahr später steht dort dasselbe. Am 03.10.2026
-zeigten vier von sechs hervorgehobenen Vorhaben eine Bauzeit, die längst
-vorbei war. Ob die Sache fertig ist, weiß der Rat nicht, er beschließt keinen
-Bauabschluss.
+Das Register speichert den Stand aus dem jüngsten Beschluss, etwa „Im
+Bau, bis Januar 2026“. Diese Angabe ändert sich durch Zeitablauf allein
+nicht. Am 03.10.2026 lag die angegebene Bauzeit bei vier von sechs
+hervorgehobenen Vorhaben in der Vergangenheit. Aus Ratsbeschlüssen geht
+der tatsächliche Abschluss nicht hervor, da der Rat ihn nicht beschließt.
 
-`council/viertel_zeitplan.py` rechnet daraus einen abgeleiteten Zustand,
-ohne Modell: Den Zeitraum liest ein kleiner Parser, das Datum ist das
-heutige. Die Tafel sagt dann, dass der genannte Zeitraum vorbei ist oder seit
-über einem Jahr kein Beschluss dazukam, statt einen alten Stand als Gegenwart
-zu zeigen.
+`council/viertel_zeitplan.py` leitet den Zustand ohne Modell ab. Ein
+Parser liest den Zeitraum und gleicht ihn mit dem aktuellen Datum ab.
+Die Ansicht weist darauf hin, wenn der genannte Zeitraum abgelaufen
+ist oder seit mehr als einem Jahr kein Beschluss hinzugekommen ist.
 
 ### Gehört nicht hierher
 
@@ -61,12 +61,12 @@ Jede Karte hat eine Meldung „Gehört nicht hierher“
 (`POST /api/districts/projects/{project_id}/report`, zurücknehmbar). Sie ist
 das Korrektiv für das, was beide Modell-Stufen durchlassen.
 
-**Eine Meldung blendet nichts aus.** Bis 10/2026 verschwand ein Vorhaben ab
-zwei Meldungen dauerhaft. Zwei Konten konnten so jede Tafel leeren, und
-niemand sah die Meldungen. Jetzt landet jede in einer Liste im Admin-Panel,
-die erste je Vorhaben zusätzlich als Mail, und ausgeblendet wird erst, wenn
-die Redaktion bestätigt. Die Meldung hängt am Konto und geht mit dessen
-Löschung.
+**Die Redaktion entscheidet, ob ein Vorhaben ausgeblendet wird.** Bis
+10/2026 genügten zwei Meldungen, um es dauerhaft auszublenden. Zwei Konten
+konnten dadurch eine ganze Ansicht leeren, ohne dass die Meldungen sichtbar
+waren. Das Admin-Panel listet jetzt jede Meldung auf. Bei der ersten Meldung
+pro Vorhaben verschickt Ratslotse zusätzlich eine E-Mail. Beim Löschen des
+Kontos entfernt Ratslotse auch die zugehörigen Meldungen.
 
 ## Was neben den Beschlüssen auf der Tafel steht
 

@@ -1,6 +1,6 @@
 ---
 title: Pläne der Stadt
-description: Das Register der Pläne — Klimaschutzplan, Mobilitätsplan und andere — mit Beschluss, Laufzeit, Berichten im Rat und dem Stand im Wortlaut der Stadt.
+description: Register der städtischen Pläne mit Ratsbeschlüssen, Laufzeiten, Berichten und Statusangaben der Stadt.
 ---
 
 Die Stadt hat Dutzende Pläne: Klimaschutzplan, Mobilitätsplan,
@@ -18,17 +18,18 @@ Fortschritt in der Stadt.
 
 ## Was die Seite nicht tut
 
-Keine Note, keine Quote über Pläne, kein „zu langsam“. Angezeigt wird immer
-das Wort der Stadt (`status_raw`); die vereinheitlichte Fassung dient nur zum
-Gruppieren und für den Farbton. Wo der Bestand schweigt, sagt die Seite das,
-mit Datum. Die Regeln dahinter stehen in `docs/plan-ziele-plaene.md`.
+Die Seite zeigt den Wortlaut der Stadt (`status_raw`). Ein normalisierter
+Status steuert nur Gruppierung und Farbe. Die Seite vergibt keine Noten,
+berechnet keine planübergreifenden Quoten und bewertet das Tempo nicht.
+Fehlen Berichte im Bestand, weist sie mit Datum darauf hin. Die Regeln dahinter stehen in `docs/plan-ziele-plaene.md`.
 
 ## Das Register
 
 `council/plans.py` führt die Pläne als Code: Quelle, Beschlussart, Laufzeit,
-Vorgänger und Nachfolger, Berichtsreihe. Das Register ist Handarbeit, und
-jede Zeile ist eine Behauptung über die Stadt. Eine Änderung soll deshalb im
-Pull Request stehen, mit Diff und Historie, wie bei den Prompts.
+Vorgänger und Nachfolger, Berichtsreihe. Das Register wird manuell gepflegt.
+Da jeder Eintrag eine Aussage über die Stadt enthält, sollen Änderungen wie
+bei den Prompts im Pull Request nachvollziehbar sein und in der
+Versionshistorie stehen.
 
 Vier Klassen (Stand 11/2026: 45 Pläne):
 
@@ -47,9 +48,8 @@ Beschlusstext einen Auftrag an die Verwaltung enthält.
 Daten stehen in der Genauigkeit, die der Beleg hergibt: `"2035"`,
 `"2026-06"` oder `"2026-06-01"`.
 
-Zwei Wächter halten das Register: `tests/test_plaene_register.py` prüft die
-Form ohne Datenbank, `scripts/pruefe_plaene.py` das Register gegen den
-Bestand.
+`tests/test_plaene_register.py` prüft die Struktur ohne Datenbank.
+`scripts/pruefe_plaene.py` vergleicht die Einträge mit dem Datenbestand.
 
 ## Was zu einem Plan gehört
 
@@ -82,14 +82,12 @@ Drei Aufgaben kann nur ein Sprachmodell (`council/plan_judge.py`), alle über
   oder nur erwähnt,
 - die Gegenprobe für „Ratsauftrag ohne Folge“.
 
-Das Modell **sucht heraus, es urteilt nicht frei**. Jede Angabe trägt ein
-wörtliches Zitat, und der Code wirft alles weg, dessen Zitat nicht genau so
-im Text steht (dieselbe Regel wie bei den
-[Dossiers](/docs/sitzungen/#aus-den-unterlagen-das-dossier)). Was übrig
-bleibt, wird als geprüfte Datei eingecheckt (`scripts/plan_modell.py`,
-`scripts/plan_status.py`, Ablage `council/plan_status/`). So bleibt das
-Ergebnis im Pull Request sichtbar und ohne Modell nachprüfbar, und es
-braucht keinen Cron.
+Das Modell muss jede Angabe wörtlich belegen. Ratslotse verwirft Angaben,
+deren Zitat nicht exakt im Quelltext steht. Dieselbe Regel gilt für die
+[Dossiers](/docs/sitzungen/#aus-den-unterlagen-das-dossier). Die geprüften
+Ergebnisse werden als Dateien eingecheckt (`scripts/plan_modell.py`,
+`scripts/plan_status.py`, Ablage `council/plan_status/`). Dadurch lassen
+sie sich im Pull Request ohne Modell prüfen. Ein Cron-Job ist nicht nötig.
 
 ## Der Stand eines Plans
 
@@ -101,9 +99,10 @@ Die Einordnung je Plan besteht aus drei Bausteinen, und keiner davon bewertet
    Beleg, und was sich seit dem vorigen Bericht bewegt hat.
 3. **Eigene Termine:** Laufzeit und Überprüfungsfrist als Tatsachen.
 
-Gruppe (laufend, in Arbeit, abgelaufen, abgelöst), Sortierung, „letzter
-Bericht“ und die Sätze zu Lücken baut `council/plan_pages.py` fertig für Web
-und App. Die App bekommt dieselben Felder und baut nichts nach.
+`council/plan_pages.py` berechnet die Gruppe (laufend, in Arbeit,
+abgelaufen, abgelöst), die Sortierung, den „letzten Bericht“ und
+die Hinweise auf fehlende Berichte. Web und App verwenden dieselben
+Felder aus dem Backend.
 
 ## Ratsaufträge ohne Folge
 

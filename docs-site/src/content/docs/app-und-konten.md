@@ -1,12 +1,13 @@
 ---
 title: App & Konten
-description: Die native SwiftUI-App, die Anmeldung (klassisch und mit Apple) und was alles am Nutzerkonto hängt.
+description: Native SwiftUI-App, Anmeldung und Kontofunktionen wie Benachrichtigungen und persönliche Daten.
 ---
 
 Seit Version 2.0 hat Ratslotse eine eigene **SwiftUI-App** für iPhone und iPad.
-Sie spricht direkt mit demselben FastAPI-Backend wie die Website; die Sitzung
-läuft im Web über ein Cookie und in der App über ein Bearer-Token im Keychain.
-Eine WebView gehört nicht mehr zum nativen Produkt.
+Sie nutzt direkt dasselbe FastAPI-Backend wie die Website. Im Web
+authentifiziert ein Cookie die Sitzung, in der App ein Bearer-Token aus
+dem Keychain. Seit der Umstellung auf die native App nutzt sie keine
+WebView mehr.
 
 ## Native App (SwiftUI)
 
@@ -21,16 +22,17 @@ Das Projekt liegt unter `ios/`, sein technischer Einstiegspunkt ist
 
 Die App läuft ab iOS 17 auf iPhone und iPad. Sie nutzt native Systembausteine:
 Sign in with Apple, APNs, Universal Links, `NWPathMonitor`, MapKit, EventKit und
-das Share-Sheet. Der Ratsdialog spricht als POST-SSE direkt mit FastAPI;
-gründliche Recherchen werden nach einem Verbindungsabriss ab dem letzten Event
-fortgesetzt.
+das Share-Sheet. Der Ratsdialog verbindet sich per POST und SSE direkt mit
+FastAPI. Ausführliche Recherchen setzt die App nach einem Verbindungsabbruch
+ab dem letzten Ereignis fort.
 
 Auch der Erststart ist nativ: Lotti begrüßt vor der Anmeldung und führt danach
 durch Gremien-Abos, automatisch beschriebene Themen und Push. Alle drei Schritte
-sind überspringbar. `UserDefaults` merkt den lokalen Schritt;
-`GET/POST /api/onboarding/setup` hält ihn zusätzlich am Konto, sodass die
-Einrichtung nach Gerätewechsel oder Neuinstallation fortgesetzt wird. Im Konto
-kann der Ablauf absichtlich erneut geöffnet werden.
+lassen sich überspringen. `UserDefaults` speichert den lokalen Fortschritt.
+`GET/POST /api/onboarding/setup` speichert ihn zusätzlich beim Konto. So
+lässt sich die Einrichtung nach einem Gerätewechsel oder einer
+Neuinstallation fortsetzen. In den Kontoeinstellungen kann sie erneut
+geöffnet werden.
 
 Der Release-Build behält `de.ratslotse.app`. Debug verwendet
 `de.ratslotse.dev`, damit Entwicklungs- und Release-Build getrennt installiert
@@ -83,9 +85,8 @@ Token nie.
 Plattform — `ios` aus der nativen App; Browser schicken den Header gar nicht.
 `android` (aus der entfernten Capacitor-Hülle) und `app` bleiben als Altwerte
 gültig, weil im Feld Stände laufen, die `app` noch senden. Die Zuordnung macht
-`web/backend/app/clients.py`; Fremdwerte werden dort **nicht** durchgereicht,
-sondern zu `web`, damit über den Header nichts Beliebiges in die
-Statistiktabelle wandert. Erkennt das Backend einen der nativen Werte,
+`web/backend/app/clients.py`. Unbekannte Werte ordnet das Backend
+`web` zu, damit die Statistiktabelle nur bekannte Client-Werte enthält. Erkennt das Backend einen der nativen Werte,
 liefert es zusätzlich ein **langlebiges Token im Antwort-Body**
 (`app_access_token_expire_minutes`, Default 90 Tage), das die SwiftUI-App im
 Keychain ablegt und als `Authorization: Bearer …` mitschickt.
@@ -178,10 +179,9 @@ landet dort genauso wie jemand, der Adressen durchprobiert.
 
 ### Was ohne Konto sichtbar ist
 
-Vier Endpunkte antworten **ohne Anmeldung**. Nicht aus Versehen, sondern weil
-Teilen die Kernhandlung der App ist: Wer einen Beschluss weiterreichte,
-schickte die Empfänger*innen vorher ins Registrierungsformular — bevor sie
-überhaupt gesehen hatten, worum es geht.
+Vier Endpunkte antworten **ohne Anmeldung**, damit geteilte Inhalte
+direkt aufrufbar sind. Früher mussten sich Empfänger*innen eines
+Beschlusslinks registrieren, bevor sie den Beschluss lesen konnten.
 
 | Endpunkt | Seite |
 |---|---|
@@ -191,9 +191,9 @@ schickte die Empfänger*innen vorher ins Registrierungsformular — bevor sie
 | `GET /api/council/session/{ksinr}` | Sitzung (die Beschluss-Seite zieht Gremium + Datum daraus) |
 | `GET /api/council/preview/{art}/{key}` | nur Titel + Kurzfassung für die Link-Vorschau |
 
-Genau die Seiten mit Teilen-Knopf und Link-Vorschau. Alles davon bereitet das
-amtliche Ratsinformationssystem auf und ist dort ohnehin für alle einsehbar —
-es entsteht keine neue Öffentlichkeit, nur eine lesbare.
+Der öffentliche Zugriff betrifft die teilbaren Seiten und die
+Link-Vorschau. Ratslotse bereitet dafür Daten auf, die im amtlichen
+Ratsinformationssystem bereits öffentlich einsehbar sind.
 
 :::caution[Die Grenze steht im Backend, nicht im Frontend]
 `optional_user` (`web/backend/app/deps.py`) liefert `None` statt eines 401 und
@@ -218,10 +218,11 @@ Ziele verlangen ausnahmslos ein Konto. Die Einladung zum Registrieren steht am
 `?weiter=<pfad>` bringt nach Anmeldung, Registrierung oder Apple-Login zurück
 zum Ausgangspunkt (nur seiteneigene Pfade, siehe `sicheresZiel`).
 
-Der „Zurück"-Knopf fehlt Gästen bewusst: Bei einem frisch aus einem Messenger
-geöffneten Tab führt `router.back()` aus der Seite heraus, und der Rückfall auf
-die Sitzungs-Übersicht landet an der Anmeldewand. `history.length > 1`
-unterscheidet die Fälle nicht — es zählt auch fremde Einträge.
+Die Gastansicht enthält keinen „Zurück"-Knopf. Bei einem aus einem Messenger
+geöffneten Tab kann `router.back()` von Ratslotse wegführen. Die
+Sitzungsübersicht als Fallback würde eine Anmeldung verlangen.
+`history.length > 1` unterscheidet diese Fälle nicht, weil es auch
+Einträge anderer Websites zählt.
 
 ### Sign in with Apple
 
@@ -579,7 +580,7 @@ blieb.
 | Grenze | Regel |
 |---|---|
 | **Zwei am Tag** | pro Person, nicht pro Anlass. Was darüber hinausgeht, nimmt die letzte freie Zustellung als **ein Bündel** mit; ein Bündel zählt als eine Zustellung. Nichts geht verloren — der Rest kommt morgen. |
-| **… außer termingebunden** | `kern.notify.TERMINGEBUNDEN` (derzeit nur `n5_vorabend`) hat einen **eigenen** Vorrat von zwei am Tag. Eine Vorabend-Erinnerung, die einen Tag später kommt, ist nicht verspätet, sondern wertlos — und weil der 18-Uhr-Lauf der letzte des Tages ist, verlor sie den Wettlauf um den gemeinsamen Topf regelmäßig (Prod, 16.08.2026: ab 18 Uhr fertig, zugestellt am Sitzungstag selbst). Innerhalb ihres Topfes gelten dieselben Regeln, also auch das Bündeln ab der dritten. Weil `notifications_sent_on()` je Topf nach `kind` zählt, bündelt `_zustellen_fuer()` nie über die Topfgrenze hinweg — ein gemischtes Bündel wäre in beiden Töpfen eine Zustellung. |
+| **… außer termingebunden** | `kern.notify.TERMINGEBUNDEN` (derzeit nur `n5_vorabend`) hat einen **eigenen** Vorrat von zwei am Tag. Die Vorabend-Erinnerung muss vor dem Sitzungstag ankommen. Im früheren gemeinsamen Kontingent war das Tageslimit beim letzten Lauf um 18 Uhr oft schon erreicht. Am 16.08.2026 stand die Erinnerung in der Produktionsumgebung ab 18 Uhr bereit, wurde aber erst am Sitzungstag zugestellt. Dieselben Regeln gelten jetzt getrennt je Kontingent, einschließlich der Bündelung ab der dritten Nachricht. `notifications_sent_on()` zählt je Kontingent nach `kind`. `_zustellen_fuer()` bündelt nur innerhalb desselben Kontingents, da ein gemischtes Bündel in beiden zählen würde. |
 | **Nachtruhe 21–7 Uhr** | Ortszeit (`zoneinfo`, Europe/Berlin). Was abends anfällt, bekommt `deliver_after` auf 7 Uhr. |
 | **Nie ohne Ereignis** | Es gibt keine Funktion, die ohne Ratsvorgang einreiht. Abzeichen und Quiz-Serien bleiben in der App. |
 | **Immer ein Ziel** | `url` ist Pflichtfeld; `einreihen()` wirft ohne. Antippen öffnet den Beschluss oder die Tagesordnung, nie die Startseite. |
@@ -837,7 +838,7 @@ selbst entstehen:
 Verarbeiter sind **Resend** (E-Mail-Versand), **Apple/APNs** bzw.
 **Google/FCM** (Push-Zustellung) und **Apple** beim „Sign in with Apple" — jeweils
 nur, wenn der entsprechende Kanal aktiv ist. Auf dem Gerät liegen Design-Wahl,
-in der App das Anmelde-Token und der oben beschriebene Inhalts-Zwischenspeicher.
+in der App das Anmelde-Token und der oben beschriebene Cache für Inhalte.
 
 **Nicht** übernommen werden die **Kontaktdaten der Mandatsträger*innen** aus dem
 Ratsinformationssystem (Adresse, Telefon, Beruf auf den Personenseiten) — das

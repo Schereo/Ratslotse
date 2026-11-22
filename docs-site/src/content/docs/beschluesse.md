@@ -1,6 +1,6 @@
 ---
 title: "Feature: Ratsdokumente & Beschlüsse"
-description: Welche Dokumente ausgewertet werden — Protokolle, Vorlagen, Anlagen — und das Datenmodell dahinter.
+description: Auswertung von Sitzungsprotokollen, Vorlagen und Anlagen sowie Datenmodell für Ratsbeschlüsse.
 ---
 
 Auswertung der öffentlichen Dokumente des Oldenburger Ratsinformationssystems:
@@ -31,8 +31,8 @@ der Nutzer*innen.
 
 ## Datenmodell (`council.sqlite`)
 
-Die Protokoll-Auswertung lebt in drei Tabellen. Sie sind bewusst so geschnitten,
-dass spätere Features andocken können (siehe „Forward-looking").
+Die Protokollauswertung speichert ihre Ergebnisse in drei Tabellen. Weitere
+Features können diese Tabellen als Grundlage nutzen (siehe „Forward-looking").
 
 ```
 council_protocols          -- eine Zeile je verarbeitetem Protokoll
@@ -168,12 +168,13 @@ Das Modul **`council/protocols.py`** erledigt drei Schritte:
 ### Welcher Extraktor
 
 Seit 10/2026 liest **PyMuPDF** den Text von Protokollen, Vorlagen und Anlagen
-(`council/anlagentext.py::pdf_seiten`), vorher war es pypdf. pypdf setzte
-Leerzeichen mitten ins Wort („de r“, „Arbei tsverträge“, „R atsherr“): Viele
-Erzeuger — Ghostscript/PDF24, mit dem die Fraktionsanträge kommen — teilen
-jede Zeile in zwei Textblöcke und springen dazwischen an die exakte Position,
-oft mitten im Wort. pypdf hält den Sprung für einen Wortabstand, weil seine
-Breitenschätzung die Blocksatz-Abstände nicht mitzählt.
+(`council/anlagentext.py::pdf_seiten`). Zuvor fügte pypdf beim Auslesen
+Leerzeichen in Wörter ein („de r“, „Arbei tsverträge“, „R atsherr“).
+Viele PDF-Werkzeuge teilen Zeilen in zwei Textblöcke und positionieren den
+zweiten Block neu, häufig mitten im Wort. Dazu gehört Ghostscript/PDF24,
+mit dem die Fraktionsanträge erzeugt werden. pypdf deutet die neue Position
+als Wortabstand, weil seine Breitenschätzung die Abstände im Blocksatz
+nicht berücksichtigt.
 
 Gemessen an 120 Dokumenten der Prod-Daten, je pypdf → PyMuPDF:
 
@@ -203,9 +204,10 @@ Protokolle mit geänderter Seitenzahl oder schwächerem TOP-Schnitt, Dokumente,
 die leer würden, solche mit denselben Wörtern in anderem Umbruch, OCR-Anlagen
 und Haushalts-Anlagen.
 
-Ein idempotenter Backfill über Datumsbereiche hat den Bestand seit 2018
-eingelesen; der tägliche Lauf zieht **neu veröffentlichte** Protokolle nach und
-lädt Vorlagen-/Anlagen-Volltexte (inkl. Rescan der letzten Wochen, s. o.).
+Ein idempotenter Backfill hat den Bestand seit 2018 abschnittsweise
+eingelesen. Der tägliche Lauf erfasst **neu veröffentlichte** Protokolle
+und lädt die Volltexte der Vorlagen und Anlagen. Er prüft dabei auch die
+letzten Wochen erneut.
 
 ## Im Web
 
@@ -225,9 +227,9 @@ Der angezeigte **Wichtigkeits-Wert** (0–100) entsteht aus **zwei Hälften**: e
 regelbasierten Heuristik (`council/importance.py` — Geldbetrag, Umstrittenheit,
 Verbindlichkeit & Gremien-Ebene, Länge des Beratungswegs) und der per LLM
 bewerteten **Tragweite** (`council/impact.py`). Beide werden 50/50 gemischt,
-sobald die Tragweite vorliegt. Fehlt ein Heuristik-Signal (kein €-Betrag, keine
-Abstimmung), fällt es aus der Gewichtung, statt als 0 zu zählen — die übrigen
-Signale tragen dann entsprechend mehr. Die Beschluss-Seite schlüsselt beides
+sobald die Tragweite vorliegt. Fehlt eines der Heuristik-Signale, etwa ein
+Eurobetrag oder eine Abstimmung, verteilt die Heuristik dessen Gewicht auf
+die übrigen Signale. Das fehlende Signal geht nicht mit 0 ein. Die Beschluss-Seite schlüsselt beides
 auf: den Punkte-Beitrag je Signal, die Tragweite mit ihrer Ein-Satz-Begründung
 („Warum wichtig: …") und den Mittelwert daraus.
 
