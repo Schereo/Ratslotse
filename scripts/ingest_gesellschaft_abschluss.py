@@ -37,6 +37,7 @@ load_dotenv(ROOT / ".env")
 
 from council import eigenbetriebe_abschluss as ea, finanzquellen, gesellschaft_abschluss as ga  # noqa: E402
 from council import herkunft as h  # noqa: E402
+from council import ris  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -134,7 +135,7 @@ def main() -> int:
             else:
                 z["probes"] = [pr for pr in z["probes"] if pr != ea.PROBE_UEBERLAPPUNG]
             z["herkunft"] = _herkunft(z, url, label)
-        lauf = h.Herkunft(kind="ris", url="https://buergerinfo.oldenburg.de/vo040.asp",
+        lauf = h.Herkunft(kind="ris", url=ris.SEARCH_URL,
                           label=LABEL, citation=ga.FUNDSTELLE_BILANZ,
                           probe=[ga.PROBE_BILANZ, ga.PROBE_GUV],
                           probe_result=f"{len(zeilen)} Kennzahlen, {len(strittig)} strittig")

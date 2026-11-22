@@ -676,7 +676,7 @@ def test_punkt_mit_beschluss_und_unterlagen(store):
     p = store.session_item(4652, "Ö 6")
     assert p["decision_id"] is not None
     assert p["documents"][0] == {"kind": "template", "label": f"Vorlage {p['item']['template_number']}",
-                                 "url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=777", "date": None}
+                                 "url": "https://ratsinfo.oldenburg.de/bi/vo0050.asp?__kvonr=777", "date": None}
     s = store.agenda_item_subject(4652, "Ö 6")
     assert s["decision_id"] == p["decision_id"]
     s9 = store.agenda_item_subject(4654, "Ö 9")

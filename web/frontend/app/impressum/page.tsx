@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { BackLink } from "@/components/back-link";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
+import { RIS_BASE, RIS_HOST } from "@/lib/ris";
 import { KopfKontoLink } from "@/components/kopf-konto-link";
 
 export const metadata: Metadata = {
@@ -46,12 +47,12 @@ export default function ImpressumPage() {
           Angebot. Ratslotse bereitet ausschließlich die öffentlich zugänglichen Dokumente des
           Ratsinformationssystems auf — verbindlich sind allein die amtlichen Originale unter{" "}
           <a
-            href="https://buergerinfo.oldenburg.de"
+            href={RIS_BASE}
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:underline"
           >
-            buergerinfo.oldenburg.de
+            {RIS_HOST}
           </a>
           .
         </p>

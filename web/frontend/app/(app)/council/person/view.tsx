@@ -14,9 +14,10 @@ import { AbrufFehler } from "@/components/abruf-fehler";
 import { cn } from "@/lib/utils";
 import { shortCommittee } from "@/lib/committees";
 import { useZurueck } from "@/lib/zurueck";
+import { risSitzung } from "@/lib/ris";
 import { GewaehltProfil, NeuerRatHinweis, useGewaehlt, type Gewaehlt } from "@/components/neuer-rat";
 
-const sessionUrl = (ksinr: number) => `https://buergerinfo.oldenburg.de/si0057.php?__ksinr=${ksinr}`;
+const sessionUrl = risSitzung;
 
 type Membership = NonNullable<MemberDetail["ris"]>["memberships"][number];
 

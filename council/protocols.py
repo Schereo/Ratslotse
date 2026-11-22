@@ -16,10 +16,10 @@ from types import SimpleNamespace
 import requests
 from bs4 import BeautifulSoup
 
-from council import anlagentext
+from council import anlagentext, ris
 from kern import llm
 
-BASE = "https://buergerinfo.oldenburg.de"
+BASE = ris.BASE  # die Adresse steht in council/ris.py
 MODEL = os.environ.get("COUNCIL_PROTOCOL_MODEL", "deepseek/deepseek-v4-pro")
 # Protocols run long; cap the input we feed the model (chars ≈ 0.3 tokens).
 MAX_INPUT_CHARS = int(os.environ.get("COUNCIL_PROTOCOL_MAX_CHARS", "60000"))
@@ -82,12 +82,11 @@ def find_protocol(ksinr: int) -> dict | None:
     „öffentlich" beschriftete — sonst das erste, das ``is_public_protocol_label``
     durchlässt.
     """
-    r = _session.get(f"{BASE}/si0057.php", params={"__ksinr": ksinr}, timeout=20)
-    r.raise_for_status()
+    r = ris.get(_session, "si0057", __ksinr=ksinr)
     soup = BeautifulSoup(r.text, "html.parser")
     treffer: list[dict] = []
     for a in soup.find_all("a", href=True):
-        if "getfile.php" not in a["href"]:
+        if not ris.GETFILE_ID.search(str(a["href"])):
             continue
         # Nur Dateien der SITZUNG, nicht die Anlagen ihrer Tagesordnungspunkte.
         # SessionNet stellt die Sitzungsdateien (Aushang, Protokoll) über die
@@ -130,8 +129,7 @@ def page_offsets(seiten: list[str]) -> list[int]:
 
 def extract_pdf_text(url: str) -> tuple[str, int, list[int]]:
     """Download a PDF and return (text, n_pages, page_offsets)."""
-    r = _session.get(url, timeout=45)
-    r.raise_for_status()
+    r = ris.fetch(_session, url, timeout=45)
     # PyMuPDF: pypdf riss hier Wörter auf („R atsherr“, „S eite“, 519 Fälle in
     # 25 Protokollen), der TOP-Schnitt trifft mit beiden gleich oft
     # (``council/anlagentext.py``).

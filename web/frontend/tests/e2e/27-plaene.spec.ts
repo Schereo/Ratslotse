@@ -164,7 +164,7 @@ test("was der Plan festlegt, steht unter dem Kopf — jeder Satz mit Zitat und D
   await expect(fromPlan.locator("blockquote")).toBeHidden();
   await fromPlan.getByRole("button").click();
   await expect(fromPlan.locator("blockquote")).toBeVisible();
-  await expect(fromPlan.locator('a[href^="https://buergerinfo.oldenburg.de/getfile.php"][href*="#page="]')).toBeVisible();
+  await expect(fromPlan.locator('a[href^="https://ratsinfo.oldenburg.de/bi/getfile.asp"][href*="#page="]')).toBeVisible();
   // Der Block steht VOR den Berichten.
   const order = await page.evaluate(() => {
     const content = document.getElementById("plan-content"), log = document.getElementById("plan-reports");

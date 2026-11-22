@@ -6,11 +6,12 @@ import re
 from pathlib import Path
 
 from kern import digest_email, llm, notify, prompts
+from . import ris
 from .ergebnisse import sitzung_href
 from .scraper import CouncilScraper, CouncilSession
 from .store import CouncilStore
 
-BASE_URL = "https://buergerinfo.oldenburg.de"
+BASE_URL = ris.BASE  # die Adresse steht in council/ris.py
 # Themen-Zuordnung ist Klassifikation mit kleinem JSON — hier zählt Präzision
 # bei Alltagssprache. Per Env tauschbar, seit 28.08.26 Standard: gpt-5.6-luna
 # (Nachfolger des zwei Jahre alten 4o-mini; Vergleich siehe council/impact.py).

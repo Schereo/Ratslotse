@@ -50,6 +50,7 @@ import { shortCommittee } from "@/lib/committees";
 import { formatDate } from "@/components/ui";
 import type { AgendaItem, DecisionOutcome, SessionDetail, VideoResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { risVorlage } from "@/lib/ris";
 import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
 
 export type SessionWithCourse = SessionDetail & { course: SessionCourse; live_until?: string | null };
@@ -509,7 +510,7 @@ function ItemCard({ ctx, nr, onVorschau, gewaehlt }: {
     : (ctx.decisionTextByItem[key] ?? kurzfassung(agenda));
   const frueher = priorStations(item.journey, ctx.ksinr, ctx.data.session_date);
   const anlagen = agenda.anlagen?.length ?? 0;
-  const vorlageUrl = agenda.kvonr ? `https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=${agenda.kvonr}` : null;
+  const vorlageUrl = agenda.kvonr ? risVorlage(agenda.kvonr) : null;
   const partei = item.applicant ? normalizeParty(item.applicant) : null;
   const brand = partei ? partyBrand(partei) : null;
   // Wohin die Karte führt — nur, wo es etwas zu sehen gibt (Tims Wunsch

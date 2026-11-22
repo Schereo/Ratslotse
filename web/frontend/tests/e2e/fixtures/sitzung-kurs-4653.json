@@ -70,11 +70,11 @@
    "anlagen": [
     {
      "label": "Einwohnerfrage 1 öffentlich",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312476&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312476&type=do"
     },
     {
      "label": "Einwohnerfrage 2",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312473&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312473&type=do"
     }
    ],
    "summary": null,
@@ -90,11 +90,11 @@
    "anlagen": [
     {
      "label": "Änderungsantrag VerkA - VBN-Tarifanpassung 2027",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312907&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312907&type=do"
     },
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312296&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312296&type=do"
     }
    ],
    "summary": "Der Ausschuss berät über die VBN-Tarifanpassung für das Jahr 2027 und wird einen Beschluss fassen.",
@@ -110,11 +110,11 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312213&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312213&type=do"
     },
     {
      "label": "Vorbehaltsnetz Stand Juni 2026",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312214&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312214&type=do"
     }
    ],
    "summary": "Vorgestellt wird die Überarbeitung des städtischen Vorbehaltsnetzes, die ebenfalls zur Beschlussfassung ansteht.",
@@ -130,11 +130,11 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311928&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=311928&type=do"
     },
     {
      "label": "2026-07-23 - Lageplan Im Technologiepark",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311931&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=311931&type=do"
     }
    ],
    "summary": "Zur Abstimmung steht die Widmung der Straße \"Im Technologiepark\", die als Teil eines Beschlusses behandelt wird.",
@@ -150,11 +150,11 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312061&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312061&type=do"
     },
     {
      "label": "Lagekarte Sylter Ring",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312159&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312159&type=do"
     }
    ],
    "summary": "Der Ausschuss berät über die Widmung der Straße \"Sylter Ring\" und wird einen entsprechenden Beschluss fassen.",
@@ -170,11 +170,11 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312182&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312182&type=do"
     },
     {
      "label": "Lageplan Amrumstraße",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312185&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312185&type=do"
     }
    ],
    "summary": "Vorgestellt wird die Widmung der Straße \"Amrumstraße\", die ebenfalls zur Beschlussfassung ansteht.",
@@ -190,11 +190,11 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312196&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312196&type=do"
     },
     {
      "label": "Lageplan Hooger Weg",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312197&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312197&type=do"
     }
    ],
    "summary": "Der Ausschuss berät über die Widmung der Straße \"Hooger Weg\" und wird hierzu einen Beschluss fassen.",
@@ -210,11 +210,11 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312204&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312204&type=do"
     },
     {
      "label": "Lageplan Föhrstraße",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312205&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312205&type=do"
     }
    ],
    "summary": "Zur Abstimmung steht die Widmung der Straße \"Föhrstraße\", die als Teil des Beschlussprozesses diskutiert wird.",
@@ -230,7 +230,7 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311912&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=311912&type=do"
     }
    ],
    "summary": "Der Ausschuss wird über die geplante Änderung der Verordnung über Parkgebühren informieren, die sich auf das neue Umsatzsteuerrecht bezieht.",
@@ -246,11 +246,11 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312267&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312267&type=do"
     },
     {
      "label": "Anlage 1 P+R in Groningen",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312266&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312266&type=do"
     }
    ],
    "summary": "Ein Sachstandsbericht zum Thema Park&Ride wird vorgestellt, um den aktuellen Stand der Entwicklungen darzulegen.",
@@ -266,7 +266,7 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311692&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=311692&type=do"
     }
    ],
    "summary": "Vorgestellt wird der Sachstand zur Hannah-Arendt-Straße im Rahmen des Bebauungsplans S-745 A.",
@@ -282,7 +282,7 @@
    "anlagen": [
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311690&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=311690&type=do"
     }
    ],
    "summary": "Der Ausschuss berät über die Kosten für die Bushaltestelle an der Haltestelle Sieben Berge und wird hierzu einen Bericht erhalten.",
@@ -309,7 +309,7 @@
    "anlagen": [
     {
      "label": "Antrag Vorbehaltsnetz Weißenmoorstraße",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312463&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312463&type=do"
     }
    ],
    "summary": "Ein Beschlussantrag zur Weißenmoorstraße wird von dem beratenden Mitglied Herr Pieper vorgelegt.",
@@ -325,11 +325,11 @@
    "anlagen": [
     {
      "label": "Antrag Aufgaben und Ressourcen",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312464&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312464&type=do"
     },
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312011&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312011&type=do"
     }
    ],
    "summary": "Der Antrag mit Bericht der Verwaltung zu den Themen Aufgaben und Ressourcen wird durch das beratende Mitglied Herr Pieper vorgestellt.",
@@ -345,7 +345,7 @@
    "anlagen": [
     {
      "label": "Antrag Umsetzung Bewerbung P+R",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312465&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312465&type=do"
     }
    ],
    "summary": "Der Ausschuss berät über den Beschlussantrag zur Umsetzung der Aufwertung und Bewerbung von P + R Standorten, eingereicht von der SPD-Fraktion.",
@@ -361,11 +361,11 @@
    "anlagen": [
     {
      "label": "Berichtsantrag zur Verkehrsunfallstatistik 2025",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312708&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312708&type=do"
     },
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311644&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=311644&type=do"
     }
    ],
    "summary": "Der Ausschuss berät über die Verkehrsunfallstatistik 2025 sowie Unfallhäufungsstellen im Stadtgebiet Oldenburg. Vorgestellt wird ein Antrag der FDP-Fraktion mit einem entsprechenden Bericht der Verwaltung.",
@@ -381,7 +381,7 @@
    "anlagen": [
     {
      "label": "Antrag CDU Brücke Tweelbäker See",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312466&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312466&type=do"
     }
    ],
    "summary": "Zur Abstimmung steht der Ersatzneubau der Brücke Tweelbäker See, präsentiert durch die CDU-Fraktion in Form eines Beschlussantrags.",
@@ -397,11 +397,11 @@
    "anlagen": [
     {
      "label": "2026-07-17 - Antrag - VerkA - Bericht zur Einführung einer digital unterstützenden Parkraumkontrolle in Oldenburg",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312709&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312709&type=do"
     },
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=311850&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=311850&type=do"
     }
    ],
    "summary": "Vorgestellt wird ein Bericht zur Einführung einer digital unterstützenden Parkraumkontrolle in Oldenburg, beantragt von der Fraktion Bündnis 90/Die Grünen.",
@@ -417,7 +417,7 @@
    "anlagen": [
     {
      "label": "Antrag Sicherheitsaudit BÜ Am Standtrand",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312467&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312467&type=do"
     }
    ],
    "summary": "Der Ausschuss berät über einen Berichtsantrag zum Sicherheitsaudit am Bahnübergang Am Stadtrand, eingereicht durch das beratende Mitglied Herr Lucks.",
@@ -433,11 +433,11 @@
    "anlagen": [
     {
      "label": "Antrag Linksseitige Radwege",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312468&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312468&type=do"
     },
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312411&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312411&type=do"
     }
    ],
    "summary": "Zur Diskussion steht ein Antrag mit Bericht der Verwaltung zur linksseitigen Führung des Radverkehrs an Straßen. Dieser stammt von dem beratenden Mitglied Herrn Lüdke.",
@@ -453,11 +453,11 @@
    "anlagen": [
     {
      "label": "Antrag Parken Sicherheitstrennstreifen",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312469&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312469&type=do"
     },
     {
      "label": "Vorlage",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312412&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312412&type=do"
     }
    ],
    "summary": "Der Ausschuss berät über einen Beschlussantrag zur Regelung des Parkens auf Sicherheitstrennstreifen zwischen Parkständen und Radwegen, eingebracht von Herrn Lüdke mit einem Bericht der Verwaltung.",
@@ -473,7 +473,7 @@
    "anlagen": [
     {
      "label": "Antrag Änderungen der Verkehrsführung Herbartstr",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312470&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312470&type=do"
     }
    ],
    "summary": "Der Ausschuss wird einen Beschlussantrag zur Änderung der Verkehrsführung an Herbartstr./Cäcilienstr./Cäcilienplatz prüfen, eingereicht von der Fraktion Bündnis 90/Die Grünen und Ratsherr Lükermann.",
@@ -489,7 +489,7 @@
    "anlagen": [
     {
      "label": "Antrag Ausbesserung Bordsteinkanten Pophankenweg",
-     "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312471&type=do"
+     "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312471&type=do"
     }
    ],
    "summary": "Zur Abstimmung steht ein Beschlussantrag zur Ausbesserung der gefährlichen Bordsteinkanten am Kreisel Pophankenweg/Bäkeplacken, vorgelegt von der BSW-Fraktion.",
@@ -600,7 +600,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9421,
@@ -642,7 +642,7 @@
    "applicants_named": true,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9422,
@@ -679,7 +679,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9423,
@@ -716,7 +716,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9424,
@@ -753,7 +753,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9425,
@@ -790,7 +790,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9426,
@@ -827,7 +827,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9427,
@@ -864,7 +864,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9428,
@@ -901,7 +901,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9429,
@@ -938,7 +938,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9430,
@@ -975,7 +975,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9431,
@@ -1012,7 +1012,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9432,
@@ -1054,7 +1054,7 @@
    "applicants_named": true,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9433,
@@ -1095,7 +1095,7 @@
    "applicants_named": true,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9434,
@@ -1136,7 +1136,7 @@
    "applicants_named": true,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9435,
@@ -1177,7 +1177,7 @@
    "applicants_named": true,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9436,
@@ -1214,7 +1214,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9437,
@@ -1251,7 +1251,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9438,
@@ -1289,7 +1289,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9439,
@@ -1333,7 +1333,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9440,
@@ -1371,7 +1371,7 @@
    "applicants_named": false,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   },
   {
    "id": 9441,
@@ -1413,13 +1413,13 @@
    "applicants_named": true,
    "committee": "Verkehrsausschuss",
    "session_date": "2026-08-24",
-   "protocol_url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do"
+   "protocol_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do"
   }
  ],
  "attendance": [],
  "has_protocol": true,
  "video_results": [],
- "url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=4653",
+ "url": "https://ratsinfo.oldenburg.de/bi/si0057.asp?__ksinr=4653",
  "agenda_changes": [],
  "course": {
   "start": "17:00",

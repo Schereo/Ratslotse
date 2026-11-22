@@ -19,11 +19,8 @@ Stimme, die auf keiner Mitgliederseite des Rats steht: die der
 Oberbürgermeisterin oder des Oberbürgermeisters. Sie ist kraft Amtes Mitglied
 des Rats und stimmt dort mit (§ 45 Abs. 1 NKomVG).
 
-**Host:** Seit 11/2026 liegt das Ratsinfo unter ``ratsinfo.oldenburg.de/bi``
-(ASP statt PHP). Der alte Host ``buergerinfo.oldenburg.de`` leitet per 301 auf
-die Startseite um und verliert dabei den Pfad — eine Anfrage dorthin bekommt
-eine Seite ohne einen einzigen Treffer, keinen Fehler. Deshalb steht der Host
-hier ausdrücklich und nicht über ``council.scraper.BASE``.
+**Host:** Die Adresse steht in ``council/ris.py`` — samt der Geschichte des
+Umzugs vom 11/2026 und der Prüfung, die einen weiteren Umzug laut macht.
 
 Bewusst NICHT gespeichert: Namen von Mitgliedern ohne Ratsmandat (sie stehen
 unter ihrer Funktion, etwa „Elternvertreter“) und Stellvertretungen — die
@@ -39,7 +36,9 @@ from collections.abc import Callable, Iterable
 import requests
 from bs4 import BeautifulSoup, Tag
 
-RIS_BASE = "https://ratsinfo.oldenburg.de/bi"
+from . import ris
+
+RIS_BASE = ris.BASE  # die Adresse steht in council/ris.py
 
 #: Das Gremium, dessen Mitgliederseite der Rat selbst ist.
 RAT = "Rat"
@@ -214,6 +213,8 @@ class RisClient:
 
     def get(self, path: str, **params) -> str:
         r = self._s.get(f"{self._base}/{path}", params=params, timeout=30)
+        if self._base == ris.BASE:
+            ris.check(r, html=True)
         r.raise_for_status()
         time.sleep(self._delay)
         return r.text

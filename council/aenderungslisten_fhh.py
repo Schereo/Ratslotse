@@ -66,6 +66,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from council import ris
 from council.aenderungslisten import (
     Linien,
     ListenFehler,
@@ -1041,6 +1042,6 @@ def herkunft_fuer(label: str, url: str | None, document_id: int) -> Herkunft:
         probe=("amendment_list_cash_budget_rows", "amendment_list_totals",
                "amendment_list_items"),
         label=label,
-        url=url or f"https://buergerinfo.oldenburg.de/getfile.php?id={document_id}&type=do",
+        url=url or ris.file_url(document_id),
         document_id=document_id,
     )

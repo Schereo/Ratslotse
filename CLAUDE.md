@@ -13,7 +13,7 @@ Quellenverweisen und Benachrichtigungen per E-Mail oder App-Push.
 
 | Pfad | Inhalt |
 |------|--------|
-| `council/` | Stadtrat-Scraper (SessionNet/Bürgerinfo), Protokoll-Parsing, LLM-Klassifikation, Watcher |
+| `council/` | Stadtrat-Scraper (SessionNet, Adresse in `council/ris.py`), Protokoll-Parsing, LLM-Klassifikation, Watcher |
 | `kern/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts |
 | `scripts/` | Cron-Jobs & Ops-Tools (`check_*.py`, `weekly_enrich.py`, `backup_db.py`, …) |
 | `web/backend/` | FastAPI-Backend (uvicorn) |
@@ -541,6 +541,7 @@ WEEKLY_STEP_MAX_SECONDS=10800        # Höchstdauer je Schritt; 0 hebt sie auf
 WEEKLY_ENRICH_MAX_SECONDS=           # Frist für den ganzen Lauf (leer = keine); ein wartender Deploy beendet ihn ohnehin
 # Kostenalarm im Herzschlag (check_herzschlag.py)
 LLM_TAGESKOSTEN_ALARM_USD=5          # Mail, wenn die Modellkosten des Vortags darüber liegen; 0 = aus
+RATSLOTSE_RIS_PROBE=                 # "0" schaltet die tägliche Ratsinfo-Probe im Herzschlag ab (s. council/ris.py::probe)
 # OpenRouter Provider-Routing (DSGVO) — schließt China-Anbieter aus, verlangt ZDR
 NWZ_OPENROUTER_ROUTING=on            # "off" = Notausschalter
 NWZ_OPENROUTER_IGNORE=deepseek,baidu,streamlake,siliconflow,alibaba
@@ -820,5 +821,26 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   Er merkt, dass EIN Job schweigt, nicht dass alle schweigen. Dafür bräuchte es
   eine Prüfung von außerhalb der Maschine; die gehört nicht ins Repo, sondern
   auf einen zweiten Rechner.
+- **Die Adresse des Ratsinformationssystems steht an EINER Stelle** (seit
+  11/2026): [`council/ris.py`](council/ris.py), fürs Frontend
+  `web/frontend/lib/ris.ts`. Die Stadt zog damals von
+  `buergerinfo.oldenburg.de` nach `ratsinfo.oldenburg.de/bi` um (`.php` →
+  `.asp`); der alte Host leitete jede Adresse auf die Startseite um, die
+  Parser fanden dort nichts, und „nichts gefunden" war kein Fehler —
+  `Termine im Kalender: 0`, Lauf für Lauf, ohne Alarm. Seitdem gilt dreierlei:
+  Wer eine Ratsinfo-Adresse braucht, baut sie über `ris.page_url` /
+  `session_url` / `template_url` / `file_url` und holt sie über `ris.get` /
+  `ris.fetch` (`tests/test_ris_adresse.py` meldet jede zweite Stelle). Ein
+  dauerhafter Umzug (301/308), ein fremder Host, eine Seite ohne
+  SessionNet-Kennung oder ein über vier Monate leerer Kalender wirft
+  `ris.RisError` — der Cron stürzt ab, und `run_guarded` mailt beim ersten
+  Lauf. Und `check_herzschlag.py` fragt täglich von außen nach
+  (`ris.probe`): Antwortet das Ratsinfo wie erwartet, und sind die dort
+  verlinkten Sitzungen des Monats im Bestand? **Beim nächsten Umzug:** `HOST`
+  / `BASE` / `EXT` in `ris.py` und `lib/ris.ts` nachziehen, den alten Host in
+  `FORMER_HOSTS` aufnehmen und den Bestand mit einer neuen Marke in
+  `_ratsinfo_adressen_umziehen` umschreiben — und `ris.GETFILE_ID` muss alte
+  wie neue Datei-Adressen treffen, sonst sieht jede Anlage „neu" aus und jedes
+  Abo bekommt eine Änderungsmeldung.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

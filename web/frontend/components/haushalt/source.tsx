@@ -18,7 +18,7 @@
 //
 // 1. **Das Dokument.** Die Konstante beschreibt eine Quelle über alle
 //    Jahrgänge hinweg und trug deshalb eine Adresse, die für alle stimmt —
-//    bei sechs Quellen war das `https://buergerinfo.oldenburg.de`, die
+//    bei sechs Quellen war das die Startseite des Ratsinformationssystems, die
 //    Startseite. Welches PDF zum gezeigten Jahr gehört, kommt aus
 //    `lib/haushalt-dokumente.ts`; die statische Adresse ist der Rückfall.
 // 2. **Den Linktext.** Er hängt an der Adresse, nicht an der Quellenart: Wo

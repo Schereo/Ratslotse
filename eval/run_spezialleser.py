@@ -14,13 +14,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from council import spezialleser, vorlagen  # noqa: E402
+from council import ris, spezialleser, vorlagen  # noqa: E402
 
 
 def _pdf(document_id: int) -> bytes:
-    r = vorlagen._session.get(f"https://buergerinfo.oldenburg.de/getfile.php?id={document_id}&type=do",  # noqa: SLF001
-                              timeout=60)
-    r.raise_for_status()
+    r = ris.fetch(vorlagen._session, ris.file_url(document_id), timeout=60)  # noqa: SLF001
     time.sleep(1)
     return r.content
 

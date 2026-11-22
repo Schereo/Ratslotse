@@ -76,6 +76,8 @@ os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["WEB_ADMIN_EMAIL"] = "admin@test.de"
 os.environ["COOKIE_SECURE"] = "false"   # TestClient spricht http://testserver
 os.environ["DISABLE_RATE_LIMIT"] = "1"  # sonst blutet der Zähler über Tests
+# Der Herzschlag fragt das Ratsinformationssystem der Stadt — in der Suite nie.
+os.environ["RATSLOTSE_RIS_PROBE"] = "0"
 
 # Und dann liest die .env doch jemand ein. Fast jedes Skript ruft beim Import
 # `load_dotenv(ROOT / ".env")`; das überschreibt zwar nichts, was oben schon

@@ -33,7 +33,7 @@ WURZEL = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WURZEL))
 sys.path.insert(0, str(WURZEL / "scripts"))
 
-from council import geo, places, plan_state  # noqa: E402
+from council import geo, places, plan_state, ris  # noqa: E402
 
 import plan_umrisse as U  # noqa: E402
 from plan_angaben import SPL_PLANNED  # noqa: E402
@@ -208,7 +208,7 @@ def laermaktionsplan() -> tuple[dict, list[str]]:
     from plan_massnahmen import holen
     doc = pymupdf.open(holen(LAP_DOC["document_id"]))
     notes, features = [], []
-    url = f"https://buergerinfo.oldenburg.de/getfile.php?id={LAP_DOC['document_id']}&type=do"
+    url = ris.file_url(LAP_DOC["document_id"])
 
     def red_line(a, frame):
         r, g, b = a[..., 0], a[..., 1], a[..., 2]
@@ -460,8 +460,7 @@ def masterplan_stadtgruen() -> tuple[dict, list[str]]:
         f = feature(geometry, {"code": code, "name": name, "group": "Maßnahmenbereich", "page": page, "figure": None,
                                **details[code],
                                "area_ha_plan": None, "source": "Karte", "metres_per_pixel": round(m_px, 2),
-                               "source_url": f"https://buergerinfo.oldenburg.de/getfile.php?id="
-                                             f"{MSG_PLAN_DOC['document_id']}&type=do#page={page}"})
+                               "source_url": f"{ris.file_url(MSG_PLAN_DOC['document_id'])}#page={page}"})
         share = sum(v for kk, v in f["properties"]["districts"].items() if kk in expect)
         cover = _outline_cover(geometry, t, outline_dist)
         if expect and share < 0.5:
@@ -624,7 +623,7 @@ def spielleitplanung() -> tuple[dict, list[str]]:
     quotes = A.spielleitplanung_quotes({pl.id: pl.name for pl in places.primary_places()})
     notes: list[str] = []
     features = []
-    url = f"https://buergerinfo.oldenburg.de/getfile.php?id={SPL_DOC['document_id']}&type=do"
+    url = ris.file_url(SPL_DOC["document_id"])
     for pl in places.primary_places():
         area_poly = geo.ortsbereich_polygon(pl.name)
         if not area_poly:
@@ -786,7 +785,7 @@ def _k33(doc, conn) -> tuple[dict, list[dict], float, float]:
     """Karte 33: Maßstab aus dem Balken, Lage über die Hauptstraßen der Grundkarte gegen die Katalogstraßen.
     → (Mercator je Standort, Punkt-Features, Restabstand in px, Meter je px)."""
     import numpy as np
-    url = f"https://buergerinfo.oldenburg.de/getfile.php?id={EEK_DOC['document_id']}&type=do"
+    url = ris.file_url(EEK_DOC["document_id"])
     a = _render_strips(doc, EEK_K33_PAGE)
     h, w, _ = a.shape
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
@@ -926,7 +925,7 @@ def einzelhandel() -> tuple[dict, list[str]]:
     from shapely.geometry import LineString, mapping, shape
     doc = pymupdf.open(holen(EEK_DOC["document_id"]))
     conn = sqlite3.connect(f"file:{WURZEL / 'data' / 'council.sqlite'}?mode=ro", uri=True)
-    url = f"https://buergerinfo.oldenburg.de/getfile.php?id={EEK_DOC['document_id']}&type=do"
+    url = ris.file_url(EEK_DOC["document_id"])
     notes: list[str] = []
     centre_merc, features, c33, m33 = _k33(doc, conn)
     buildings = _osm_buildings()
@@ -1027,7 +1026,7 @@ def check(key: str, data: dict) -> list[str]:
         props, geometry = f["properties"], f["geometry"]
         where = f"{props['code']} {props.get('name') or ''}".strip()
         if not props.get("group") or not props.get("page") or \
-                not str(props.get("source_url", "")).startswith("https://buergerinfo.oldenburg.de/"):
+                not str(props.get("source_url", "")).startswith(ris.BASE + "/"):
             problems.append(f"{where}: Art, Seite oder Quelle fehlt")
         lon, lat = props["label_point"]
         if not geo.ortsbereich_for(lat, lon):

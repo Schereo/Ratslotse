@@ -30,6 +30,7 @@ from typing import Any
 
 from kern import foreign_text, llm, prompts
 
+from . import ris
 from .impact import vorlagen_kern
 from .parties import classify_faction, order_key, parties_in_text
 from .store_personen import PersonenMixin
@@ -343,9 +344,6 @@ def generate(title: str, speeches: list[dict], template: dict | None, outcome_no
     return parse(resp.choices[0].message.content or "", quellen)
 
 
-RIS_VORLAGE = "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
-
-
 def view(material: dict, stored: dict | None, protocol_urls: dict[int, str]) -> dict | None:
     """Was die Punkt-Seite zeigt (``SessionItemDetail.arguments``).
 
@@ -369,7 +367,7 @@ def view(material: dict, stored: dict | None, protocol_urls: dict[int, str]) -> 
         q = a["source"]
         if q["kind"] == "template":
             # Ältere Auswertungen kennen das PDF noch nicht — dann das der Vorlage ohne Seite.
-            url = q.get("doc_url") or (material.get("template") or {}).get("document_url") or RIS_VORLAGE.format(kvonr=q["id"])
+            url = q.get("doc_url") or (material.get("template") or {}).get("document_url") or ris.template_url(q["id"])
             if q.get("doc_url") and q.get("page"):
                 url = f"{url}#page={q['page']}"
         else:

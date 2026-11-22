@@ -15,6 +15,7 @@ import re
 from datetime import date, datetime, UTC
 from typing import TYPE_CHECKING
 
+from council import ris
 from council.scraper import CouncilSession
 from council.store_basis import StoreBasis
 from council.store_wortbeitraege import WortbeitraegeMixin
@@ -23,12 +24,9 @@ if TYPE_CHECKING:
     from council.vorlage_felder import TemplateFields
 
 
-_DOKUMENT_ID_RE = re.compile(r"getfile\.php\?id=(\d+)")
-
-
 def dokument_id(url: str | None) -> int | None:
     """Die getfile-Kennung aus einer Ratsinfo-URL."""
-    m = _DOKUMENT_ID_RE.search(url or "")
+    m = ris.GETFILE_ID.search(url or "")
     return int(m.group(1)) if m else None
 
 
@@ -320,7 +318,7 @@ class SitzungenMixin(StoreBasis):
             "JOIN council_agenda_items a ON a.ksinr = aa.ksinr AND a.item_number = aa.item_number "
             "JOIN council_sessions s ON s.ksinr = a.ksinr "
             "JOIN council_templates t ON t.template_number = a.template_number "
-            "WHERE aa.label = 'Vorlage' AND s.session_date >= ? AND aa.url LIKE '%getfile.php?id=%' "
+            "WHERE aa.label = 'Vorlage' AND s.session_date >= ? AND aa.url LIKE '%getfile.%?id=%' "
             "ORDER BY s.session_date DESC", (seit,)).fetchall()
         out, gesehen = [], set()
         for r in rows:
@@ -2159,7 +2157,7 @@ class SitzungenMixin(StoreBasis):
         if not out and punkt.get("kvonr"):
             # Ohne eingelesene Vorlage bleibt der Weg ins Ratsinfo.
             out.append({"kind": "template", "label": f"Vorlage {punkt.get('template_number') or ''}".strip(),
-                        "url": f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={punkt['kvonr']}",
+                        "url": ris.template_url(punkt["kvonr"]),
                         "date": None})
         frueher = [s for s in item.get("journey") or [] if s["ksinr"] != ksinr]
         if frueher:
@@ -2491,7 +2489,7 @@ class SitzungenMixin(StoreBasis):
 
     def top_anlage_zu_dokument(self, document_id: int) -> dict | None:
         """Eine TOP-Anlage über die Dokumentnummer des Ratsinformationssystems
-        (``getfile.php?id=…``) — dieselbe Nummer wie ``council_attachments
+        (``getfile?id=…``) — dieselbe Nummer wie ``council_attachments
         .document_id``, sodass ein Agent beide über EINE Kennung anspricht."""
         muster = re.compile(rf"[?&]id={int(document_id)}(?:&|$)")
         for r in self._conn.execute(

@@ -207,7 +207,7 @@ enum CouncilPlanFixture {
   "label": null,
   "template_number": "26/0236",
   "kvonr": 29685,
-  "url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=29685",
+  "url": "https://ratsinfo.oldenburg.de/bi/vo0050.asp?__kvonr=29685",
   "decision_id": 8683,
   "outcome": "accepted",
   "vote": "majority"
@@ -237,7 +237,7 @@ enum CouncilPlanFixture {
    "label": "Abschlussbericht Kommunale Wärmeplanung, Tabelle 7",
    "template_number": "26/0236",
    "document_id": 306748,
-   "url": "https://buergerinfo.oldenburg.de/getfile.php?id=306748&type=do",
+   "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=306748&type=do",
    "as_of": "2026-03-23",
    "as_of_label": "23.03.2026"
   },

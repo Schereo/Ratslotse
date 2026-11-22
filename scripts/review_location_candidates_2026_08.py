@@ -146,7 +146,7 @@ APPROVED: dict[str, dict] = {
         place_id="ludwig-quidde-hof", name="Ludwig-Quidde-Hof",
         kind="wohngebiet", parent_id="ohmstede", aliases=[],
         description="Wohnprojekt und Geltungsbereich des vorhabenbezogenen Bebauungsplans 56.",
-        source_url="https://buergerinfo.oldenburg.de/getfile.php?id=235687&type=do"),
+        source_url="https://ratsinfo.oldenburg.de/bi/getfile.asp?id=235687&type=do"),
     "haarenniederung": dict(
         place_id="haarenniederung", name="Haarenniederung", kind="schutzgebiet",
         parent_id="bloherfelde", aliases=["LSG Haarenniederung"],
@@ -209,7 +209,7 @@ APPROVED: dict[str, dict] = {
         place_id="meerkamp-mittagsweg", name="Meerkamp/Mittagsweg",
         kind="entwicklungsgebiet", parent_id="kreyenbrueck", aliases=[],
         description="Nach den angrenzenden Straßen benannter städtebaulicher Planungsbereich.",
-        source_url="https://buergerinfo.oldenburg.de/getfile.php?id=246577&type=do"),
+        source_url="https://ratsinfo.oldenburg.de/bi/getfile.asp?id=246577&type=do"),
     "wunderburgpark": dict(
         place_id="wunderburgpark", name="Wunderburgpark", kind="park",
         parent_id="osternburg", aliases=["Landschaftsschutzgebiet Wunderburgpark"],
@@ -218,7 +218,7 @@ APPROVED: dict[str, dict] = {
         place_id="gewerbegebiet-brokhausen", name="Gewerbegebiet Brokhausen",
         kind="entwicklungsgebiet", parent_id="fliegerhorst", aliases=["Bebauungsplan 869"],
         description="Planungsbereich für das Gewerbegebiet Brokhausen.",
-        source_url="https://buergerinfo.oldenburg.de/getfile.php?id=308544&type=do"),
+        source_url="https://ratsinfo.oldenburg.de/bi/getfile.asp?id=308544&type=do"),
     "sportpark-dornstede": dict(
         place_id="sportpark-dornstede", name="Sportpark Dornstede", kind="sportgebiet",
         parent_id="ohmstede", aliases=[], description="Städtische Sportanlage in Dornstede.",

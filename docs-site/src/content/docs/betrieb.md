@@ -242,7 +242,7 @@ prüft, ob jeder Job in der Tabelle steht.
 | `render_plaene.py` | sonntags `30 4 * * 0` | Neue Bauleitplan-Anlagen (Planzeichnung, Lageplan) als Bilder für die Beschluss-Seite. |
 | `speicherfristen.py` | täglich `40 4 * * *` | Löscht Recherchen von Konten ohne Einwilligung ins Speichern sieben Tage nach ihrem letzten Stand (dieselbe Frist greift zusätzlich bei jedem Start des Backends). |
 | `check_wahltermine.py` | täglich `15 6 * * *` | Vergleicht den Terminkalender des Votemanagers mit `kommunalwahl/wahlen/` — meldet eine unbekannte Wahl und eine Wahl-Id, die endlich da ist oder kurz vor dem Wahltag noch fehlt. Legt nichts an. |
-| `check_herzschlag.py` | täglich `30 6 * * *` | Meldet Jobs, die gegen ihren Takt aus `kern/jobs.py` schweigen, einen vollen Datenträger, auffällige Registrierungen und Verstöße gegen die Datenregeln. |
+| `check_herzschlag.py` | täglich `30 6 * * *` | Meldet Jobs, die gegen ihren Takt aus `kern/jobs.py` schweigen, einen vollen Datenträger, auffällige Registrierungen, Verstöße gegen die Datenregeln und ein Ratsinformationssystem, das nicht wie erwartet antwortet. |
 | `check_cities.py` | werktags `15 10 * * 1-6` mit `--nur-oldenburg`, sonntags `0 5 * * 0` | Städte-Speicher: werktags nur Oldenburg übernehmen und einbetten (ohne Netz und Modell — daraus entsteht „Anderswo" unter neuen Beschlüssen), sonntags zusätzlich die Vergleichsstädte, Einordnung, Ideen-Gruppen und Urteile. Kostengrenze je Lauf `CITIES_MAX_USD` (Vorgabe 2 $), Frist `CITIES_MAX_SECONDS`. |
 
 ¹ **Nur auf Prod** — und das ist seit 09/2026 die richtige Seite. Der
@@ -342,6 +342,19 @@ Alarmpfad selbst wirft nie.
 nicht starten. Es gleicht die Läufe mit den Intervallen aus `kern/jobs.py`
 ab, prüft den freien Speicherplatz und zählt die Registrierungen des
 letzten Tages. Das Skript versendet höchstens eine E-Mail am Tag.
+
+Seit 11/2026 fragt derselbe Lauf das **Ratsinformationssystem** von außen ab
+(`council/ris.py::probe`): Kalender des laufenden Monats und RSS-Feed, dazu
+ein Abgleich der dort verlinkten Sitzungen gegen den Bestand. Anlass war der
+Umzug der Stadt von `buergerinfo.oldenburg.de` nach
+`ratsinfo.oldenburg.de/bi`: Der alte Host leitete jede Adresse auf die
+Startseite um, die Parser fanden nichts, und „nichts gefunden“ war kein
+Fehler. Ein solcher Befund steht in der Mail an erster Stelle und gibt ihr
+den Betreff *Ratsinfo liefert nicht*. Unabhängig davon werfen die Abrufe
+selbst einen `RisError` (dauerhafte Weiterleitung, fremder Host, keine
+SessionNet-Seite, vier Monate leerer Kalender) — der betroffene Cron stürzt
+ab und meldet sich über `run_guarded` schon beim ersten Lauf.
+`RATSLOTSE_RIS_PROBE=0` schaltet die Tagesprobe ab.
 
 Seit 10/2026 prüft derselbe Lauf auch den **Rats-Bestand**
 (`council/datenpruefung.py`). Datenfehler können auch bei erfolgreichen

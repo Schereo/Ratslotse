@@ -265,7 +265,7 @@ class CouncilStore(AktenMixin, BplanMixin, FundstueckeMixin, HaushaltMixin, Orte
             return "opendata"
         if "oldenburg.de" in url:
             return "city"
-        if "buergerinfo" in url or "/getfile" in url:
+        if "ratsinfo" in url or "buergerinfo" in url or "/getfile" in url:
             return "ris"
         return None
 

@@ -28,6 +28,12 @@ wochenlang im Feld eines Ratsbeitrags, bevor eine Antwort es zeigte. Die
 Regeln stehen in ``council/datenpruefung.py``; was über NEUE Zeilen urteilt,
 schaut nur auf die Zeit seit dem letzten Herzschlag.
 
+**Und das Ratsinformationssystem** (seit 11/2026). Ein Abruf, der läuft und
+nichts findet, schweigt nicht — er meldet „0 Termine“, und das sieht keine der
+Prüfungen oben. So blieb der Umzug des Ratsinfos unbemerkt. ``ratsinfo()``
+fragt deshalb täglich von außen: Antwortet es wie gewohnt, und steht jede
+Sitzung, die es verlinkt, auch im Bestand?
+
 **Was er NICHT auffängt**, und das gehört dazu: Stirbt der Cron-Dienst als
 GANZES, stirbt dieser Lauf mit. Er merkt, dass EIN Job schweigt, nicht dass
 alle schweigen. Dafür bräuchte es eine Prüfung von außerhalb der Maschine —
@@ -233,6 +239,81 @@ def daten(seit: str) -> dict:
                 "befunde": [f"Die Datenprüfung lief nicht: {type(exc).__name__}: {exc}"]}
 
 
+#: Eine Sitzung, die im Ratsinfo verlinkt ist und spätestens in so vielen
+#: Tagen stattfindet, MUSS im Bestand sein: `check_council` läuft zweimal am
+#: Tag, und Tagesordnungen erscheinen Tage vorher. Was weiter weg liegt, darf
+#: der nächste Lauf noch holen.
+RIS_BESTAND_TAGE = 1
+
+
+def ratsinfo() -> dict:
+    """Der Blick von außen aufs Ratsinformationssystem — und auf den Bestand.
+
+    **Wogegen das steht.** Im 11/2026 zog die Stadt das Ratsinfo um; der alte
+    Host leitete jede Adresse auf die Startseite um. Der Abruf lief weiter,
+    fand nichts und meldete „0 Termine“ — kein Absturz, keine stumme Ampel,
+    nichts, was eine der anderen Prüfungen hier gesehen hätte. Aufgefallen ist
+    es zufällig (Geschichte in ``council/ris.py``).
+
+    Zwei Fragen, täglich:
+
+    1. **Antwortet das Ratsinfo so, wie wir es kennen?** (``ris.probe``:
+       Kalender und RSS-Feed, ohne Umzug, mit SessionNet-Kennung und Gerüst.)
+    2. **Kommt, was dort steht, bei uns an?** Jede Sitzung, die der Kalender
+       des laufenden Monats verlinkt und die schon war oder morgen ist, muss
+       im Bestand stehen. Das prüft den ganzen Weg — auch den Fall, dass der
+       Abruf läuft, die Seite stimmt und trotzdem nichts gespeichert wird.
+
+    ``RATSLOTSE_RIS_PROBE=0`` schaltet beides ab (Tests, Rechner ohne Netz).
+    Wirft nie: Scheitert die Prüfung selbst, ist das ein Befund.
+    """
+    import logging
+    import os
+    from datetime import date, timedelta
+
+    if os.environ.get("RATSLOTSE_RIS_PROBE", "1") == "0":
+        return {"kennzahlen": {}, "befunde": []}
+    try:
+        from council import ris
+        from council.scraper import CouncilScraper
+        from council.store import CouncilStore
+
+        aus = ris.probe()
+        k, befunde = dict(aus["kennzahlen"]), list(aus["befunde"])
+        pfad = Path(os.environ.get("COUNCIL_DB", WURZEL / "data" / "council.sqlite"))
+        if befunde or not pfad.exists():
+            return {"kennzahlen": k, "befunde": befunde}
+
+        scraper = CouncilScraper(delay=1.0)
+        heute = date.today()
+        verlinkt = scraper.session_ids_for_month(heute.year, heute.month)
+        store = CouncilStore(pfad)
+        try:
+            unbekannt = sorted(set(verlinkt) - store.known_session_ids(verlinkt))
+        finally:
+            store.close()
+        grenze = (heute + timedelta(days=RIS_BESTAND_TAGE)).isoformat()
+        fehlend: list[str] = []
+        for ksinr in unbekannt[:10]:          # höflich: nie mehr als zehn Nachfragen
+            sitzung = scraper.fetch_session(ksinr)
+            if sitzung and sitzung.agenda_items and sitzung.session_date <= grenze:
+                fehlend.append(f"{sitzung.committee} am {sitzung.session_date} (ksinr {ksinr})")
+        k["ris_sitzungen_verlinkt"] = len(verlinkt)
+        k["ris_sitzungen_fehlen"] = len(fehlend)
+        if fehlend:
+            befunde.append(
+                f"<b>{len(fehlend)} Sitzung(en) stehen im Ratsinformationssystem, aber nicht "
+                f"im Bestand</b>: {'; '.join(fehlend)}. Der Abruf läuft, speichert sie aber "
+                "nicht — <code>check_council</code> im Admin-Panel unter "
+                "<i>Statistik → Cron-Jobs</i> ansehen.")
+        return {"kennzahlen": k, "befunde": befunde}
+    except Exception as exc:  # noqa: BLE001 — eine Meldung, kein Absturz
+        logging.getLogger(__name__).exception("Ratsinfo-Prüfung gescheitert")
+        return {"kennzahlen": {"ris_fehler": type(exc).__name__},
+                "befunde": [f"Die Prüfung des Ratsinformationssystems lief nicht: "
+                            f"{type(exc).__name__}: {exc}"]}
+
+
 def main() -> dict:
     from kern.alerts import notify_admin
     from kern.store import Store
@@ -247,12 +328,15 @@ def main() -> dict:
     finally:
         store.close()
     pruefung = daten(seit)
+    ris_stand = ratsinfo()
     kosten = kosten_gestern()
     schwelle = kostenschwelle()
 
     p = platz(db.parent if db.parent.exists() else WURZEL)
 
     meldungen: list[str] = []
+    # Zuerst: Ohne das Ratsinfo kommt nichts Neues herein, egal was sonst läuft.
+    meldungen.extend(ris_stand["befunde"])
     if stumm:
         zeilen = []
         for job, st, alter in stumm:
@@ -313,7 +397,9 @@ def main() -> dict:
                          + "\n".join(f"• {b}" for b in pruefung["befunde"]))
 
     if meldungen:
-        if stumm:
+        if ris_stand["befunde"]:
+            betreff = "Ratslotse – Ratsinfo liefert nicht"
+        elif stumm:
             betreff = "Ratslotse – ein Job schweigt"
         elif auffaellig:
             betreff = "Ratslotse – auffällige Registrierungen"
@@ -343,6 +429,7 @@ def main() -> dict:
         "pruefer_urteile_gestern": pruefer["model"],
         "pruefer_unknown_gestern": pruefer["unknown"],
         **{f"daten_{k}": v for k, v in pruefung["kennzahlen"].items()},
+        **ris_stand["kennzahlen"],
         "gemeldet": len(meldungen),
     }
 
