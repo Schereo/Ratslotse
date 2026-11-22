@@ -161,6 +161,14 @@ export function Mehrheitsrechner() {
                 titel={body.name}
               />
               <Stand sel={sel} namen={namen} votes={body.votes} majority={body.majority} />
+              {data.partners.length > 0 && (
+                <Vorschlaege
+                  partners={data.partners}
+                  blocks={data.blocks}
+                  onVorschau={(key) => setVorschau(key ? [...sel.include, key] : null)}
+                  onDazu={(key) => setzen(umschalten(auswahl, key, "dabei"))}
+                />
+              )}
               {(body.notes.length > 0 || data.advisory.length > 0) && (
                 <div className="mt-3 space-y-1.5 border-t border-border/70 pt-3">
                   {body.notes.map((n) => (
@@ -211,6 +219,7 @@ export function Mehrheitsrechner() {
                     b={b}
                     rat={body.kind === "council"}
                     wahl={wahlVon(auswahl, b.key)}
+                    reicht={data.partners.some((x) => x.key === b.key && x.completes)}
                     onWahl={(w) => setzen(umschalten(auswahl, b.key, w))}
                   />
                 ))}
@@ -396,6 +405,60 @@ function Stand({
   );
 }
 
+/**
+ * Wer für die Mehrheit in Frage kommt (Tims Wunsch 22.11.2026): sobald etwas
+ * auf „dabei“ steht und noch Stimmen fehlen. Zwei Gruppen — wer die Lücke
+ * allein schließt, und wer es nur zusammen mit anderen tut. Welche das sind,
+ * rechnet der Server (`partners`); ein Klick setzt den Block auf „dabei“.
+ */
+function Vorschlaege({
+  partners, blocks, onVorschau, onDazu,
+}: {
+  partners: Rechner["partners"];
+  blocks: readonly Block[];
+  onVorschau: (key: string | null) => void;
+  onDazu: (key: string) => void;
+}) {
+  const block = new Map(blocks.map((b) => [b.key, b]));
+  const allein = partners.filter((x) => x.completes);
+  const zusammen = partners.filter((x) => !x.completes);
+  const reihe = (titel: string, liste: typeof partners) => liste.length > 0 && (
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
+      <span className="mr-0.5 text-[12.5px] text-muted-foreground">{titel}</span>
+      {liste.map((x) => {
+        const b = block.get(x.key);
+        if (!b) return null;
+        return (
+          <button
+            key={x.key}
+            type="button"
+            onMouseEnter={() => onVorschau(x.key)}
+            onFocus={() => onVorschau(x.key)}
+            onMouseLeave={() => onVorschau(null)}
+            onBlur={() => onVorschau(null)}
+            onClick={() => onDazu(x.key)}
+            title={`${b.label} dazunehmen — zusammen ${x.total} Stimmen`}
+            className={cn(
+              "inline-flex h-8 items-center gap-1.5 rounded-full border bg-card px-2.5 text-[12.5px] font-medium text-foreground transition-colors duration-tipp hover:border-primary/40 hover:bg-primary/5",
+              x.completes ? "border-border" : "border-dashed border-input",
+            )}
+          >
+            <Punkt color={b.color} dark={b.color_dark} />
+            {b.short}
+            <span className="tabular-nums text-muted-foreground">+{x.seats}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+  return (
+    <div className="mt-3 space-y-2 border-t border-border/70 pt-3" aria-label="Wer für die Mehrheit in Frage kommt">
+      {reihe(allein.length === 1 ? "Für die Mehrheit reicht:" : "Für die Mehrheit reicht jeweils:", allein)}
+      {reihe(allein.length ? "Nur zusammen mit anderen:" : "In Frage kommen, nur zu mehreren:", zusammen)}
+    </div>
+  );
+}
+
 function art(b: Block): string {
   switch (b.kind) {
     case "group":
@@ -412,11 +475,13 @@ function art(b: Block): string {
 }
 
 function BlockZeile({
-  b, rat, wahl, onWahl,
+  b, rat, wahl, reicht, onWahl,
 }: {
   b: Block;
   rat: boolean;
   wahl: Wahl | null;
+  /** Mit diesem Block hätte die Auswahl die Mehrheit. */
+  reicht: boolean;
   onWahl: (w: Wahl) => void;
 }) {
   return (
@@ -427,7 +492,10 @@ function BlockZeile({
           {b.kind === "external" ? b.label : b.short}{" "}
           <span className="font-normal tabular-nums text-muted-foreground no-underline">· {stimmen(b.seats)}</span>
         </p>
-        <p className="text-xs leading-snug text-muted-foreground">{art(b)}</p>
+        <p className="text-xs leading-snug text-muted-foreground">
+          {art(b)}
+          {reicht && <span className="font-medium text-primary"> · damit reicht es</span>}
+        </p>
         {/* Im Ausschuss sind die Namen die Auskunft; im Rat wären es dreizehn. */}
         {!rat && b.kind !== "mayor" && b.members.length > 0 && (
           <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{b.members.join(", ")}</p>

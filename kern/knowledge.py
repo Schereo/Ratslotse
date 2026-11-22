@@ -208,7 +208,8 @@ PAGES: dict[str, PageKnowledge] = dict([
        "Die Sitze im Rat, im Verwaltungsausschuss und in jedem Fachausschuss als "
        "Halbkreis. Jede Fraktion und Gruppe lässt sich auf „dabei“ oder „ohne“ "
        "setzen; daneben stehen alle Kombinationen, aus denen niemand wegfallen "
-       "kann, ohne die Mehrheit zu verlieren, und eine Übersicht, in welchen "
+       "kann, ohne die Mehrheit zu verlieren, Vorschläge, wer einer Auswahl "
+       "noch zur Mehrheit verhelfen kann, und eine Übersicht, in welchen "
        "Gremien die Auswahl eine Mehrheit hat. Mehrheit heißt hier mehr als die "
        "Hälfte aller Stimmberechtigten.",
        "Die Besetzung stammt von den Mitgliederseiten des Ratsinformationssystems "
