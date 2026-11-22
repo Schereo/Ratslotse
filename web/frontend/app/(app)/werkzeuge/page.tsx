@@ -5,7 +5,7 @@ import { Button, Card, PageHeader } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { MehrheitenVorschau } from "@/components/werkzeuge/vorschau";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
-import { vorschlagMailto } from "@/lib/werkzeuge";
+import { COUNCIL_TOOLS, vorschlagMailto } from "@/lib/werkzeuge";
 
 export const metadata: Metadata = {
   title: "Werkzeuge",
@@ -17,13 +17,16 @@ export const metadata: Metadata = {
  * Karte mit einem kleinen Bild, was es tut, und dem Weg hinein — dahinter ein
  * Platz für das nächste, mit der Einladung, eines vorzuschlagen.
  *
- * Kommt ein Werkzeug dazu, steht es hier: Bild, Name, ein Satz, drei Punkte.
+ * Welche Werkzeuge es gibt, steht in `COUNCIL_TOOLS` (`lib/werkzeuge.ts`) —
+ * dieselbe Liste speist das Untermenü der Seitenleiste. Hier kommt je Adresse
+ * die Karte dazu: Bild, ein Satz, drei Punkte. Fehlt sie für ein neues
+ * Werkzeug, übersetzt die Seite nicht.
  */
-const WERKZEUGE = [
-  {
-    href: "/werkzeuge/mehrheiten",
+const KARTEN: Record<(typeof COUNCIL_TOOLS)[number]["href"], {
+  bild: typeof MehrheitenVorschau; text: string; punkte: string[];
+}> = {
+  "/werkzeuge/mehrheiten": {
     bild: MehrheitenVorschau,
-    title: "Mehrheitsrechner",
     text: "Mit welchen Fraktionen und Gruppen es für eine Mehrheit reicht.",
     punkte: [
       "Rat, Verwaltungsausschuss und jeder Fachausschuss",
@@ -31,7 +34,9 @@ const WERKZEUGE = [
       "Zeigt, wer einer Auswahl noch zur Mehrheit fehlt",
     ],
   },
-];
+};
+
+const WERKZEUGE = COUNCIL_TOOLS.map((w) => ({ ...w, ...KARTEN[w.href] }));
 
 export default function WerkzeugePage() {
   return (

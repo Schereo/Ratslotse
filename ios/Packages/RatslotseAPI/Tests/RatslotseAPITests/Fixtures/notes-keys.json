@@ -1,0 +1,12 @@
+{
+ "configured": true,
+ "keys": {
+  "key_version": 1,
+  "kdf": "pbkdf2-sha256",
+  "iterations": 600000,
+  "salt": "1lmR0LwBnWxCyWA2Lh9+bg==",
+  "wrapped_passphrase": "RsylqZ741APmB28+O+9nc/S/OHgONVcPX7e7E+WNqtoXc2lxouiM+g==",
+  "wrapped_recovery": "hNJ1UG4+FMdzxbyLttRf4MDEMVgEQt0ZXZj5y+JevLNmmr/ti57zgQ==",
+  "updated_at": "2026-11-10T16:26:01"
+ }
+}

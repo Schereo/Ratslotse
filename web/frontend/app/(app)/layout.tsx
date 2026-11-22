@@ -29,12 +29,16 @@ import { CodeEingabe } from "@/components/code-eingabe";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
+import { useZugangAusAdresseRaeumen, zugangAus } from "@/lib/zugangslink";
 import { abmeldenAbholen, abmeldenMerken } from "@/lib/abmelden";
 import { breiteFuer, huellenKlasse } from "@/lib/vollbreit";
 import type { User } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, authFehler, refresh, logout } = useAuth();
+  const { user, loading, authFehler, refresh, logout, loginPerLink } = useAuth();
+  // Angemeldet und aus einer Mail mit Anmeldelink gekommen: Das Token hat hier
+  // nichts mehr zu suchen (lib/zugangslink.ts).
+  useZugangAusAdresseRaeumen(!!user);
   const router = useRouter();
   const abmelden = async () => {
     abmeldenMerken();
@@ -76,10 +80,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     enabled: gated,
   });
 
+  // Anmeldelink aus einer Mail (lib/zugangslink.ts): einmal einlösen, BEVOR
+  // zur Anmeldung umgeleitet wird — wer aus der Mail kommt, steht direkt auf
+  // der Seite (Tims Vorgabe 09.11.2026). `null` = noch nicht nachgesehen.
+  // Gilt der Link nicht mehr, fliegt nur das Token aus der Adresse, und es
+  // geht still weiter wie ohne Link: Anmeldung mit Rücksprung, keine
+  // Fehlermeldung (gezählt wird serverseitig, s. `/api/auth/magic`).
+  const [zugangOffen, setZugangOffen] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (loading) return;
+    const zugang = user ? null : zugangAus(
+      window.location.pathname + window.location.search + window.location.hash);
+    if (!zugang) { setZugangOffen(false); return; }
+    setZugangOffen(true);
+    const ohneToken = () => window.history.replaceState(window.history.state, "", zugang.ziel);
+    loginPerLink(zugang.token).then(ohneToken, ohneToken).finally(() => setZugangOffen(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- genau einmal nach dem ersten Auth-Stand
+  }, [loading]);
+
   useEffect(() => {
     // `authFehler`: Der Server kam nicht an — das ist kein Abmelden. Der
     // Rauswurf hier traf bei jedem Deploy alle, die gerade eine Seite luden.
-    if (loading || user || oeffentlich || authFehler) return;
+    if (loading || user || oeffentlich || authFehler || zugangOffen !== false) return;
     // Das Ziel mitnehmen, statt es zu verlieren: Wer aus einem Lesezeichen oder
     // einer angetippten Mitteilung auf „Meine Themen" kommt und sich anmelden
     // muss, landete danach stumpf auf dem Dashboard.
@@ -87,7 +109,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Bewusst abgemeldet (lib/abmelden.ts): ohne Rücksprung.
     if (abmeldenAbholen()) { router.replace("/login"); return; }
     router.replace(ziel === "/dashboard" ? "/login" : mitRuecksprung("/login", ziel));
-  }, [user, loading, router, oeffentlich, authFehler]);
+  }, [user, loading, router, oeffentlich, authFehler, zugangOffen]);
 
   // Ganzseitig laden: mittig statt oben. Ohne das klebte der Spinner am
   // oberen Rand — in der App halb hinter der Dynamic Island.
@@ -308,6 +330,7 @@ function VerifyNotice({ email }: { email: string }) {
   const [passwort, setPasswort] = useState("");
   // Wohin der Link zuletzt ging: die neue Adresse, sobald ein Wechsel schwebt.
   const zieladresse = user?.pending_email ?? email;
+  const ohnePasswort = user?.has_password === false && !user?.apple_linked;
 
   const resend = async () => {
     setBusy(true);
@@ -325,10 +348,10 @@ function VerifyNotice({ email }: { email: string }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const u = await api.post<{ pending_email?: string | null }>("/account/change-email", {
-        new_email: neu.trim(),
-        current_password: passwort,
-      });
+      // Ein Passkey-Konto hat kein Passwort — dort bestätigt der Passkey.
+      const u = await api.post<{ pending_email?: string | null }>("/account/change-email", ohnePasswort
+        ? { new_email: neu.trim(), passkey: await (await import("@/lib/passkey")).passkeyBestaetigung() }
+        : { new_email: neu.trim(), current_password: passwort });
       toast.success(
         u.pending_email
           ? `Bestätigungslink an ${u.pending_email} unterwegs.`
@@ -339,7 +362,8 @@ function VerifyNotice({ email }: { email: string }) {
       setPasswort("");
       await refresh();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Adresse konnte nicht geändert werden.");
+      if ((err as { art?: string })?.art === "abgebrochen") return;
+      toast.error(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Adresse konnte nicht geändert werden.");
     } finally {
       setBusy(false);
     }
@@ -381,19 +405,21 @@ function VerifyNotice({ email }: { email: string }) {
               placeholder="name@example.org"
             />
           </div>
-          <div>
-            <Label htmlFor="verify-passwort">Dein Passwort</Label>
-            <PasswordInput
-              id="verify-passwort"
-              className="mt-1"
-              value={passwort}
-              onChange={(e) => setPasswort(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
+          {!ohnePasswort && (
+            <div>
+              <Label htmlFor="verify-passwort">Dein Passwort</Label>
+              <PasswordInput
+                id="verify-passwort"
+                className="mt-1"
+                value={passwort}
+                onChange={(e) => setPasswort(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
-            <Button type="submit" variant="secondary" disabled={busy || !neu.trim() || !passwort}>
+            <Button type="submit" variant="secondary" disabled={busy || !neu.trim() || (!ohnePasswort && !passwort)}>
               {busy ? "Wird geändert…" : "Adresse ändern"}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setAendern(false)} disabled={busy}>

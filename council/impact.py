@@ -113,11 +113,14 @@ def _batch_text(decisions: list[dict]) -> str:
             f"Betrag {f'{amount:,.0f} €'.replace(',', '.') if amount else 'keiner genannt'} · "
             f"Beschlusstext {len(d.get('official_text') or '')} Zeichen"
         )
-        lines.append(
-            f"id {d['id']}: {(d.get('title') or '').strip()}\n"
-            f"  Signale: {signals}\n"
-            f"  Auszug: {text[:MAX_EXCERPT_CHARS]}"
-        )
+        zeile = (f"id {d['id']}: {(d.get('title') or '').strip()}\n"
+                 f"  Signale: {signals}\n"
+                 f"  Auszug: {text[:MAX_EXCERPT_CHARS]}")
+        if d.get("dossier_lines"):
+            # Stufe 4 (Plan Vorlagen § 7.4): die belegten Zeilen aus der Vorlage —
+            # Kosten, Betroffene, Kennzahlen —, die der Beschlusstext nicht nennt.
+            zeile += "\n  Aus der Vorlage: " + " · ".join(d["dossier_lines"][:12])[:1500]
+        lines.append(zeile)
     return "\n\n".join(lines)
 
 

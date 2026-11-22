@@ -208,24 +208,13 @@ class WortbeitraegeMixin(StoreBasis):
             [f"%{v}%" for v in varianten] + [limit]).fetchall()
         return [dict(r) for r in rows]
 
-    def wortbeitraege_person(self, name: str, committee: str | None = None,
-                             offset: int = 0, limit: int = 20) -> dict:
-        """Wortbeiträge einer Person — seitenweise und nach Gremium filterbar.
+    def speeches_of_person(self, name: str) -> list[dict]:
+        """ALLE Wortbeiträge genau dieser Person, neueste zuerst.
 
-        Gefiltert wird in Python statt in SQL: Die Zuordnung Sprecher→Person
-        kennt Schreibvarianten (s. ``_spricht_diese_person``), die keine
-        LIKE-Bedingung abbildet. Der Rohbestand je Person ist klein genug
-        (Vielredner kommen auf ~800 Beiträge), um ihn einmal zu holen.
-
-        Rückgabe: ``items`` (die angeforderte Seite), ``total`` (nach
-        Gremien-Filter), ``overall`` (ohne Filter) und ``committees`` als Facetten
-        mit Anzahl — damit die Oberfläche gleich sagen kann, wo etwas zu holen
-        ist.
-
-        Gesucht wird über **alle** Namensformen der Person (s.
-        :data:`council.namensformen.GRUPPEN`): Die Protokolle schreiben denselben
-        Menschen in einer Sitzung „Tim Harms" und in der nächsten „Ratsherr
-        Ebbeke Harms" — beides gehört auf dieselbe Seite.
+        Über alle Namensformen (s. :data:`council.namensformen.GRUPPEN`) und
+        ohne Namensvettern mit anderem Vornamen (``_spricht_diese_person``).
+        Die Personen-Seite blättert darin; die KI-Frage wählt daraus die zur
+        Frage passenden (``embeddings.search_wortbeitraege_von_person``).
         """
         def zerlegen(n: str) -> tuple[str, str] | None:
             teile = [t for t in n.replace(".", " ").replace(",", " ").split()
@@ -235,7 +224,7 @@ class WortbeitraegeMixin(StoreBasis):
 
         eigen = zerlegen(name)
         if not eigen:
-            return {"items": [], "total": 0, "overall": 0, "committees": []}
+            return []
         formen: list[tuple[str, str]] = [eigen]
         bekannte_teile: set[str] = set()
         for weitere in self.personen_namensformen(self._person_slug(name)):
@@ -255,6 +244,28 @@ class WortbeitraegeMixin(StoreBasis):
                  if any(self._spricht_diese_person(w.get("speaker") or "", v, n, bekannt)
                         for n, v in formen)]
         meine.sort(key=lambda w: (w.get("session_date") or "", w["id"]), reverse=True)
+        return meine
+
+    def wortbeitraege_person(self, name: str, committee: str | None = None,
+                             offset: int = 0, limit: int = 20) -> dict:
+        """Wortbeiträge einer Person — seitenweise und nach Gremium filterbar.
+
+        Gefiltert wird in Python statt in SQL: Die Zuordnung Sprecher→Person
+        kennt Schreibvarianten (s. ``_spricht_diese_person``), die keine
+        LIKE-Bedingung abbildet. Der Rohbestand je Person ist klein genug
+        (Vielredner kommen auf ~800 Beiträge), um ihn einmal zu holen.
+
+        Rückgabe: ``items`` (die angeforderte Seite), ``total`` (nach
+        Gremien-Filter), ``overall`` (ohne Filter) und ``committees`` als Facetten
+        mit Anzahl — damit die Oberfläche gleich sagen kann, wo etwas zu holen
+        ist.
+
+        Gesucht wird über **alle** Namensformen der Person (s.
+        :data:`council.namensformen.GRUPPEN`): Die Protokolle schreiben denselben
+        Menschen in einer Sitzung „Tim Harms" und in der nächsten „Ratsherr
+        Ebbeke Harms" — beides gehört auf dieselbe Seite.
+        """
+        meine = self.speeches_of_person(name)
 
         from collections import Counter
         zaehler = Counter(w["committee"] for w in meine if w.get("committee"))

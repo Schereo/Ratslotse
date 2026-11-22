@@ -62,8 +62,9 @@ import { useLaengerAls } from "@/lib/use-laenger";
 import {
   berichtAbschnitte, RechercheFehlerKarte, RechercheFortschritt, RechercheGestoppt,
   RechercheHinweisKarte, RechercheLimitKarte, RechercheToggle, Sprungmarken, WieEsWeitergeht,
-  type DeepFacette, type DeepPhase, type Planung,
+  type DeepChannel, type DeepFacette, type DeepPhase, type Planung,
 } from "@/components/deep-recherche";
+import { nextTiming, type DeepTiming } from "@/lib/recherche-zeit";
 // Antworttext und Belege-Bausteine teilen sich Gespräch und Teilen-Seite
 // (app/g) — sonst driften die beiden Ansichten auseinander.
 import {
@@ -74,7 +75,7 @@ import {
   RulesOfProcedureBlock, type RulesOfProcedureCard,
 } from "@/components/qa-bausteine";
 import {
-  anlageNummer, anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz,
+  anlageNummer, anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz, zitatNummern,
 } from "@/lib/qa-belege";
 
 /** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
@@ -239,6 +240,10 @@ type Turn = {
   deepDokumente?: number | null;
   deepFacetten?: DeepFacette[];
   deepFacettenFertig?: number;
+  /** Zusatzquellen des Schritts „lesen" (Presse, Debatten, Anlagen). */
+  deepChannels?: DeepChannel[];
+  /** Laufzeit und Restzeit-Schätzung des Servers für die Fortschrittskarte. */
+  deepTiming?: DeepTiming;
   deepTeilberichtMoeglich?: boolean;
   /** Recherche Plus: Der Bericht entstand mit dem größeren Modell (Recht
    *  `premium_models`, beim Einreichen serverseitig festgehalten). */
@@ -647,16 +652,8 @@ const fmtEur = (n: number) =>
 
 /** Fußnoten-Nummern eines Turns: [id]-Zitate in Reihenfolge des Auftauchens. */
 function useIdToNum(turn: Turn) {
-  return useMemo(() => {
-    const valid = new Set(turn.sources.map((s) => s.id));
-    const map = new Map<number, number>();
-    for (const g of turn.answer.matchAll(CITE_RE)) {
-      for (const id of citationIds(g[0])) {
-        if (valid.has(id) && !map.has(id)) map.set(id, map.size + 1);
-      }
-    }
-    return map;
-  }, [turn.answer, turn.sources]);
+  return useMemo(() => zitatNummern(turn.answer, turn.sources.map((s) => s.id)),
+    [turn.answer, turn.sources]);
 }
 
 function zitierteVon(turn: Turn, idToNum: Map<number, number>): QaSource[] {
@@ -694,6 +691,11 @@ function jumpZuAnlage(turnIdx: number, nr: number, spalte: boolean) {
   ziel?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
+/** Der Tagesordnungspunkt, auf den sich die Fragen beziehen — und, vom Knopf
+ *  „Dazu fragen“ eines Streitpunkts, der Streitpunkt selbst als Baustein
+ *  (`screen.element_title`/`element_text`, Plan Punkt-Argumente § 6). */
+type Bezug = { ksinr: number; item_number: string; streit?: { title: string; text: string } };
+
 export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   // Das Konto ist beim Öffnen des Tabs längst geladen (App-Hülle) — es trägt
   // die Einwilligung, an der die Erstnutzungs-Karte hängt.
@@ -701,6 +703,10 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
   const [q, setQ] = useState("");
   /** Eine Chip-Frage, die auf die Einwilligung wartet (s. den ?q=-Effekt). */
   const chipFrageRef = useRef<string | null>(null);
+  /** Der Tagesordnungspunkt, von dessen Seite die Frage kam (`?ksinr=&top=`,
+   *  Plan Sitzungsseite 3.10). Er reist als `screen.refs` mit, bis man ihn
+   *  am Bezug-Chip entfernt — „Und was kostet das?" meint dann ihn. */
+  const [bezug, setBezug] = useState<Bezug | null>(null);
   const sp = useSearchParams();
   const pathname = pfad(usePathname());
   const router = useRouter();
@@ -713,6 +719,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // Seit dem Split wohnt das Ratsgespräch auf /fragen — der frühere
     // mode=fragen-Guard hängt jetzt am Pfad.
     if (!urlQ || pathname !== "/fragen") return;
+    const bezugKsinr = Number(sp.get("ksinr") || 0);
+    const bezugTop = (sp.get("top") || "").trim().slice(0, 20);
+    const streit = (sp.get("streit") || "").trim().slice(0, 200);
+    const neuerBezug: Bezug | null = bezugKsinr > 0 && bezugTop
+      ? { ksinr: bezugKsinr, item_number: bezugTop,
+          ...(streit ? { streit: { title: streit, text: (sp.get("streit_text") || "").slice(0, 600) } } : {}) }
+      : null;
+    if (neuerBezug) setBezug(neuerBezug);
     // `chip=1`: Die Frage kommt von einem Frage-Chip auf einer anderen Seite
     // (components/frage-chips.tsx). Dann wird sie sofort gestellt — wie ein
     // Chip im Gespräch — und als Chip-Frage gezählt. Ohne die Marke bleibt es
@@ -731,10 +745,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       // sie von selbst raus (Effekt weiter unten).
       chipFrageRef.current = urlQ;
       setQ(urlQ);
-    } else void ask(urlQ, true);
+    } else void ask(urlQ, true, neuerBezug);
     const params = new URLSearchParams(sp.toString());
     params.delete("q");
     params.delete("chip");
+    params.delete("ksinr");
+    params.delete("top");
     // Auf dem EIGENEN Pfad bleiben: Das fest verdrahtete /council stammte aus
     // der Zeit vor dem Split — es warf jeden /fragen-Besucher nach dem
     // q-Verbrauch zurück in die Suche (im Browser gemessen: Alt-Link →
@@ -842,7 +858,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
    *  Chip-Vorlagen halten und läge falsch, sobald jemand dieselbe Frage
    *  selbst tippt. Die Antwort darauf entscheidet, ob gute Vorschläge das
    *  Produkt tragen oder ob niemand ins Feld tippt. */
-  const ask = async (question: string, ausVorschlag = false) => {
+  const ask = async (question: string, ausVorschlag = false,
+    /** Beim ersten Aufruf aus der Adresse ist der State noch nicht gesetzt. */
+    bezugJetzt: Bezug | null = bezug) => {
     const text = question.trim();
     if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
@@ -882,7 +900,17 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: text, history: verlauf, conversation_id: gespraechId,
                                previous_answer: vorherigeAntwort,
-                               from_suggestion: ausVorschlag }),
+                               from_suggestion: ausVorschlag,
+                               // Von der Seite eines Tagesordnungspunkts: der Punkt als
+                               // Gegenstand (der Server schlägt ihn nach, s. AskBody).
+                               ...(bezugJetzt ? { screen: {
+                                 route: "/council/punkt",
+                                 // Die Seite fragt, nicht Lottis Fenster → `ask`-Gespräch.
+                                 surface: "page",
+                                 refs: { ksinr: bezugJetzt.ksinr, item_number: bezugJetzt.item_number },
+                                 ...(bezugJetzt.streit ? { element_title: `Streitpunkt: ${bezugJetzt.streit.title}`,
+                                                          element_text: bezugJetzt.streit.text } : {}),
+                               } } : {}) }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -1108,9 +1136,24 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     }
 
     const verarbeite = (msg: { type: string; [k: string]: unknown }): boolean => {
+      if (typeof msg.elapsed === "number") {
+        const elapsed = msg.elapsed;
+        const remaining = typeof msg.remaining === "number" ? msg.remaining : null;
+        patchTurn(turnKey, (t) => ({ deepTiming: nextTiming(t.deepTiming, elapsed, remaining) }));
+      }
       if (msg.type === "phase") {
         patchTurn(turnKey, { deepPhase: msg.phase as DeepPhase,
-          deepDokumente: (msg.dokumente as number) ?? null });
+          // Zahl und Kanäle nur übernehmen, wo der Rahmen sie trägt: Bis
+          // 11/2026 setzte „schreiben" die Dokumentzahl wieder auf null, und
+          // der erledigte Schritt hieß nur noch „Dokumente gelesen".
+          ...(typeof msg.dokumente === "number" ? { deepDokumente: msg.dokumente } : {}),
+          ...(Array.isArray(msg.channels)
+            ? { deepChannels: (msg.channels as string[]).map((name) => ({ name })) } : {}) });
+      } else if (msg.type === "channel") {
+        patchTurn(turnKey, (t) => ({
+          deepChannels: (t.deepChannels ?? []).map((c) =>
+            c.name === msg.name ? { ...c, hits: (msg.hits as number) ?? 0 } : c),
+        }));
       } else if (msg.type === "facets") {
         patchTurn(turnKey, {
           deepFacetten: ((msg.facets as string[]) ?? []).map((name) => ({ name })),
@@ -2223,6 +2266,18 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                sind EINE Karte — vorher schwebte die Pill beziehungslos überm
                Eingabefeld. Senden ist 40 × 40 und voll gefüllt; das Funkel-
                Icon im Feld ist raus (das Funkeln wohnt im Beispiel-Kicker). */
+            <>
+            {bezug && (
+              // Der Punkt, auf den sich die Fragen beziehen — sichtbar und
+              // abwählbar, sonst hinge ein unsichtbarer Kontext an jeder Frage.
+              <p className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/[0.06] px-2.5 py-1 text-foreground">
+                  Bezug: Tagesordnungspunkt {bezug.item_number}{bezug.streit ? " · Streitpunkt" : ""}
+                  <button type="button" onClick={() => setBezug(null)} aria-label="Bezug entfernen"
+                    className="-mr-1 inline-flex h-6 w-6 items-center justify-center rounded-full hover:bg-primary/10">×</button>
+                </span>
+              </p>
+            )}
             <form onSubmit={(e) => { e.preventDefault(); void (rechercheModus ? askDeep(q) : ask(q)); }}
               className="rounded-2xl border border-border bg-card shadow-sm transition-colors focus-within:border-primary/40">
               <Input ref={inputRef} data-search enterKeyHint="send"
@@ -2234,7 +2289,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 <RechercheToggle aktiv={rechercheModus} frei={deepFrei} onToggle={toggleRecherche} />
                 {rechercheModus && !deepHinweis && (
                   <span className="text-[10.5px] text-muted-foreground/70">
-                    ~30 Sek{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
+                    ~1 Min{deepFrei !== null ? ` · noch ${deepFrei} heute` : ""}
                   </span>
                 )}
                 <span className="flex-1" />
@@ -2250,6 +2305,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 )}
               </div>
             </form>
+            </>
           )}
           {/* Der KI-Datenschutz-Hinweis wohnt jetzt in den Einstellungen
               (Gespräche-Karte) — Tims TestFlight-Feedback 11.08. */}
@@ -2438,6 +2494,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
           facets={turn.deepFacetten ?? []}
           facettenFertig={turn.deepFacettenFertig ?? 0}
           dokumente={turn.deepDokumente ?? null}
+          channels={turn.deepChannels ?? []}
+          timing={turn.deepTiming ?? null}
           onStop={() => onDeepStop?.()}
         />
       )}

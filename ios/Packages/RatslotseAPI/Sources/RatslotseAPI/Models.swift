@@ -1407,9 +1407,17 @@ public struct DecisionDetail: Codable, Sendable {
     public let importance: ImportanceBreakdown?
     public let follow: FollowStatus?
     public let planImageID: Int?
+    /// „Aus der Vorlage": das auf den Sitzungstag eingefrorene Dossier (Schalter `aus-den-unterlagen`).
+    public let templateDossier: AgendaItemDetail.Dossier?
+    /// Wortdiff Beschlussvorschlag ↔ Beschlusstext, nur bei Abweichung.
+    public let proposalDiff: [[String]]?
+    /// Der gelesene Antrag je Teilabstimmung (Beschluss-ID → Antrag), Schalter `aenderungsantraege`.
+    public let subvoteAmendments: [Int: AgendaItemDetail.Amendment]
 
     enum CodingKeys: String, CodingKey {
         case decision, attendance, entities, similar, participation, follow, template
+        case templateDossier = "template_dossier"
+        case proposalDiff = "proposal_diff"
         case subVotes = "sub_votes"
         case templateJourney = "template_journey"
         case consultations = "deliberation_path"
@@ -1437,8 +1445,14 @@ public struct DecisionDetail: Codable, Sendable {
         participation: CouncilParticipation?,
         importance: ImportanceBreakdown?,
         follow: FollowStatus?,
-        planImageID: Int? = nil
+        planImageID: Int? = nil,
+        templateDossier: AgendaItemDetail.Dossier? = nil,
+        proposalDiff: [[String]]? = nil,
+        subvoteAmendments: [Int: AgendaItemDetail.Amendment] = [:]
     ) {
+        self.templateDossier = templateDossier
+        self.proposalDiff = proposalDiff
+        self.subvoteAmendments = subvoteAmendments
         self.decision = decision
         self.attendance = attendance
         self.entities = entities
@@ -1475,6 +1489,25 @@ public struct DecisionDetail: Codable, Sendable {
         importance = try values.decodeIfPresent(ImportanceBreakdown.self, forKey: .importance)
         follow = try values.decodeIfPresent(FollowStatus.self, forKey: .follow)
         planImageID = try values.decodeIfPresent(Int.self, forKey: .planImageID)
+        templateDossier = try? values.decodeIfPresent(AgendaItemDetail.Dossier.self, forKey: .templateDossier)
+        proposalDiff = try? values.decodeIfPresent([[String]].self, forKey: .proposalDiff)
+        // Der Antrag hängt an der Teilabstimmung; DecisionSummary bleibt unverändert.
+        let mitAntrag = (try? values.decodeIfPresent([SubvoteAmendment].self, forKey: .subVotes)) ?? nil
+        subvoteAmendments = Dictionary((mitAntrag ?? []).compactMap { e in e.amendment.map { (e.id, $0) } },
+                                       uniquingKeysWith: { a, _ in a })
+    }
+
+    private struct SubvoteAmendment: Decodable {
+        let id: Int
+        let amendment: AgendaItemDetail.Amendment?
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: Keys.self)
+            id = try c.decode(Int.self, forKey: .id)
+            amendment = try? c.decodeIfPresent(AgendaItemDetail.Amendment.self, forKey: .amendment)
+        }
+
+        enum Keys: String, CodingKey { case id, amendment }
     }
 }
 

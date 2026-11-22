@@ -309,6 +309,24 @@ def get_decision(store, args: dict, base: str) -> str:
     return _json(aus)
 
 
+def _dossier_kurz(store, template_number: str | None) -> list[dict] | None:
+    d = store.template_dossier(f"tn:{template_number}") if template_number else None
+    p = (d or {}).get("payload") or {}
+    if not p:
+        return None
+    from council import template_dossier  # noqa: PLC0415
+
+    quellen = p.get("sources") or {}
+    out = []
+    for key, titel in template_dossier.titles(p.get("form")):
+        for liste in (p.get(key) or {}).values():
+            for a in liste if isinstance(liste, list) else []:
+                q = quellen.get(a.get("source")) or {}
+                out.append({"section": titel, "text": a.get("text"), "quote": a.get("quote"),
+                            "document": q.get("label"), "page": a.get("page")})
+    return out or None
+
+
 def get_template(store, args: dict, base: str) -> str:
     nr = str(args.get("template_number") or "").strip()[:30]
     if not nr:
@@ -328,6 +346,9 @@ def get_template(store, args: dict, base: str) -> str:
         "proposed_decision": _sauber(v.get("proposed_decision")) or None,
         "financial_impact": _sauber(v.get("financial_impact")) or None,
         "climate_impact": _sauber(v.get("climate_impact")) or None,
+        # Die belegte Aufbereitung (council/template_dossier.py): je Abschnitt
+        # Satz, wörtliches Zitat, Quelle und Seite — zum Gegenlesen.
+        "dossier": _dossier_kurz(store, v.get("template_number")),
         "full_text": stueck or None,
         "full_text_length": len(volltext),
         "next_offset": weiter if weiter < len(volltext) else None,

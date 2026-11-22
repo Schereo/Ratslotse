@@ -1,0 +1,53 @@
+{
+ "plan": "rad_fussverkehrsprogramm",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Das Programm für den Rad- und Fußverkehr wird jedes Jahr neu aufgestellt – abgestimmt mit Polizei, Behindertenbeirat und ADFC.",
+  "quote": "Wie in jedem Jahr erfolgt die Aufstellung des diesjährigen Rad- und Fußverkehrspro- gramms im Fachdienst Verkehrsplanung in Abstimmung mit anderen Fachdiensten, der Po- lizei, dem Behindertenbeirat sowie dem ADFC.",
+  "source": {
+   "kind": "template",
+   "template": "18/0056"
+  }
+ },
+ "points": [
+  {
+   "text": "2018 sollen an der Südroute zwei Fahrradstraßen entstehen; außerdem wird der Rad- und Gehwegbereich an der Ofener Straße stadtauswärts weiter umgebaut.",
+   "kind": "measure",
+   "quote": "Nach Beendigung von Sanierungs- und Ausbauarbeiten werden 2018 zwei neue Fahrradstraßen im Verlauf der Radroute Süd eingerichtet (Hermann-Ehlers-Straße und ein Abschnitt der Huntestraße) sowie die Umbaumaßnahmen im Rad- und Gehwegbereich an der Ofener Straße stadtauswärts fortgeführt.",
+   "source": {
+    "kind": "template",
+    "template": "18/0056"
+   }
+  },
+  {
+   "text": "Das neue TeamRad plant und setzt die Maßnahmen des Programms um.",
+   "kind": "responsibility",
+   "quote": "Erstmalig in diesem Jahr werden die Maßnahmen des RFP nun durch das neue „TeamRad“ geplant und auch umgesetzt.",
+   "source": {
+    "kind": "template",
+    "template": "18/0056"
+   }
+  },
+  {
+   "text": "Das Programm umfasst Maßnahmen, um den öffentlichen Raum barrierefrei zu machen.",
+   "kind": "goal",
+   "quote": "Weiterhin werden Maßnahmen für die Herstellung der Barrierefreiheit im öffentlichen Raum aufgestellt.",
+   "source": {
+    "kind": "template",
+    "template": "18/0056"
+   }
+  },
+  {
+   "text": "Mit „Radliebe“ und „Stadtradeln“ soll die Kommunikation und Öffentlichkeitsarbeit verstärkt werden.",
+   "kind": "measure",
+   "quote": "Mit den Aktionen „Radliebe“ und „Stadtradeln“ wird die Kommunikations- und Öffentlichkeitsarbeit intensiviert.",
+   "source": {
+    "kind": "template",
+    "template": "18/0056"
+   }
+  }
+ ]
+}

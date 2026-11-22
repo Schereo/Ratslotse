@@ -62,10 +62,16 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     steps:
+      # Für die SSH-Action aus .github/actions/ssh.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
       - name: "Ingests auf der VM (${{ inputs.umgebung }})"
         env:
           AUCH_SCHRUMPFEN: ${{ inputs.auch_schrumpfen }}
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        uses: ./.github/actions/ssh
         with:
           host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -74,6 +80,7 @@ jobs:
           proxy_host: ${{ secrets.VPS_PROXY_HOST }}
           proxy_username: ${{ secrets.VPS_PROXY_USER }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           # Die Jahresabschlüsse und Teilhaushalts-Pläne sind mehrere hundert
           # Seiten je Jahrgang; der Erstlauf über alle liegt deutlich über der

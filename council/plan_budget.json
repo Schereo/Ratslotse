@@ -1,0 +1,352 @@
+{
+ "method": "Haushaltszeilen, deren eigener Text den Plan beim Namen nennt (Muster je Plan in scripts/plan_haushalt.py), von Hand durchgesehen",
+ "generated": "2026-11-10",
+ "patterns": {
+  "klimaschutzplan_2035": "Klimaschutzplan",
+  "mobilitaetsplan_2030": "Mobilitätsplan|RMV 2030",
+  "laermaktionsplan": "Lärmaktionsplan",
+  "ernaehrungsstrategie": "Ernährungsstrategie",
+  "kita_ausbau": "Kita-Ausbau, \\d\\. Fortschreibung",
+  "orte_fuer_alle": "Orte für Alle",
+  "aktionsplan_gewalt_2020": "Aktionsplan gegen Gewalt an Frauen",
+  "kai_2015": "Kommunaler Aktionsplan Inklusion"
+ },
+ "plans": {
+  "klimaschutzplan_2035": [
+   {
+    "table": "amendments_cash",
+    "budget_year": 2024,
+    "list_key": "administration_1",
+    "year": 2024,
+    "seq": 8,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments_cash",
+    "budget_year": 2024,
+    "list_key": "administration_1",
+    "year": 2025,
+    "seq": 3,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments_cash",
+    "budget_year": 2024,
+    "list_key": "administration_1",
+    "year": 2026,
+    "seq": 4,
+    "field": "explanation"
+   },
+   {
+    "table": "products",
+    "product_no": "P10.561100",
+    "field": "legal_basis",
+    "years": [
+     2024,
+     2025,
+     2026
+    ]
+   }
+  ],
+  "mobilitaetsplan_2030": [
+   {
+    "table": "amendments_cash",
+    "budget_year": 2026,
+    "list_key": "administration_1",
+    "year": 2026,
+    "seq": 12,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments_cash",
+    "budget_year": 2026,
+    "list_key": "fc_decided",
+    "year": 2026,
+    "seq": 16,
+    "field": "explanation"
+   },
+   {
+    "table": "investments",
+    "code": "I10.700927",
+    "field": "label",
+    "years": [
+     2026
+    ]
+   },
+   {
+    "table": "products",
+    "product_no": "P10.541100",
+    "field": "legal_basis",
+    "years": [
+     2024,
+     2025,
+     2026
+    ]
+   }
+  ],
+  "laermaktionsplan": [
+   {
+    "table": "amendments",
+    "budget_year": 2025,
+    "list_key": "administration_1",
+    "year": 2025,
+    "seq": 29,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2025,
+    "list_key": "administration_1",
+    "year": 2025,
+    "seq": 30,
+    "field": "explanation"
+   }
+  ],
+  "ernaehrungsstrategie": [
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2021,
+    "seq": 49,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2022,
+    "seq": 35,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2023,
+    "seq": 33,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2024,
+    "seq": 33,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2026,
+    "list_key": "fc_decided",
+    "year": 2026,
+    "seq": 48,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2026,
+    "list_key": "fc_decided",
+    "year": 2027,
+    "seq": 39,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2026,
+    "list_key": "fc_decided",
+    "year": 2028,
+    "seq": 36,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2026,
+    "list_key": "fc_decided",
+    "year": 2029,
+    "seq": 36,
+    "field": "explanation"
+   }
+  ],
+  "kita_ausbau": [
+   {
+    "table": "investments",
+    "code": "I10.170070",
+    "field": "label",
+    "years": [
+     2019,
+     2020
+    ]
+   },
+   {
+    "table": "investments",
+    "code": "I10.170071",
+    "field": "label",
+    "years": [
+     2019,
+     2020,
+     2021
+    ]
+   },
+   {
+    "table": "investments",
+    "code": "I10.170072",
+    "field": "label",
+    "years": [
+     2019,
+     2020,
+     2021,
+     2022,
+     2023,
+     2024
+    ]
+   },
+   {
+    "table": "investments",
+    "code": "I10.170073",
+    "field": "label",
+    "years": [
+     2020,
+     2021,
+     2022,
+     2023,
+     2024
+    ]
+   },
+   {
+    "table": "investments",
+    "code": "I10.170074",
+    "field": "label",
+    "years": [
+     2024,
+     2025,
+     2026
+    ]
+   }
+  ],
+  "orte_fuer_alle": [
+   {
+    "table": "products",
+    "product_no": "P10.315300",
+    "field": "short_description",
+    "years": [
+     2022,
+     2023,
+     2024,
+     2025,
+     2026
+    ]
+   }
+  ],
+  "aktionsplan_gewalt_2020": [
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2021,
+    "seq": 1,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2021,
+    "seq": 59,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2021,
+    "seq": 62,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2022,
+    "seq": 1,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2022,
+    "seq": 40,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2022,
+    "seq": 43,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2023,
+    "seq": 1,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2023,
+    "seq": 38,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2023,
+    "seq": 41,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2024,
+    "seq": 1,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2024,
+    "seq": 38,
+    "field": "explanation"
+   },
+   {
+    "table": "amendments",
+    "budget_year": 2021,
+    "list_key": "fc_decided",
+    "year": 2024,
+    "seq": 41,
+    "field": "explanation"
+   }
+  ],
+  "kai_2015": [
+   {
+    "table": "products",
+    "product_no": "P10.315300",
+    "field": "short_description",
+    "years": [
+     2019,
+     2020,
+     2021
+    ]
+   }
+  ]
+ }
+}

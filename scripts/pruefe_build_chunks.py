@@ -20,7 +20,7 @@ erste Prüfung war also zufrieden — und jede Seite stand in Times. Deshalb die
 zweite: Jede ``__variable_*``-Klasse am ``<html>`` muss in einem der
 Stylesheets definiert sein, die dieselbe Seite verlinkt.
 
-Dieser Wächter läuft in allen drei Deploys **nach dem Build und VOR dem
+Dieser Wächter läuft in beiden Deploys **nach dem Build und VOR dem
 Umschalten**: Er liest jede ``.html`` unter ``<build>/server/app``, sammelt
 alle ``/_next/static/…``-Verweise und prüft, ob die Datei unter
 ``<build>/static`` liegt, und dann die Schriftklassen. Schlägt er an, bricht
@@ -30,6 +30,15 @@ Seite läuft dann mit dem alten Stand weiter, statt mit einer leeren.
 Seit 11/2026 bauen die Deploys ohne Webpack-Cache (jeder Build beginnt in
 einem leeren ``.next-build``), der Anlass beider Fälle ist damit weg. Der
 Wächter bleibt das Netz für alles, was einen Build sonst in sich verdreht.
+
+Seit Next 16 baut Turbopack statt Webpack, und der Build sieht anders aus:
+Stylesheets liegen neben den Skripten unter ``static/chunks/`` (vorher
+``static/css/``), und next/font nennt seine Klassen ``<hash>_variable``
+(vorher ``__variable_<hash>``). Der Wächter kennt beide Formen. Ohne das
+Nachziehen hätte er nach dem Sprung weiter „stimmig“ gemeldet und dabei kein
+Stylesheet und keine Schriftklasse mehr geprüft. Deshalb meldet er jetzt auch,
+wenn er in einem ganzen Build keins von beiden findet: Ein Wächter, der nichts
+mehr erkennt, soll nicht grün sein.
 
     python scripts/pruefe_build_chunks.py web/frontend/.next-build
 """
@@ -42,15 +51,19 @@ from pathlib import Path
 from urllib.parse import unquote
 
 #: Alles, was eine Seite unter /_next/static/ verlangt — Skripte und Stylesheets.
-ASSET_REF = re.compile(r"/_next/static/(?:chunks/[^\"' >]+?\.js|css/[^\"' >]+?\.css)")
+#: Webpack (bis Next 15) legte Stylesheets unter ``css/`` ab, Turbopack (seit
+#: Next 16) legt sie neben die Skripte unter ``chunks/``.
+ASSET_REF = re.compile(r"/_next/static/(?:chunks|css)/[^\"' >]+?\.(?:js|css)(?![\w])")
 #: Ein Stylesheet-Verweis aus derselben Menge.
-CSS_REF = re.compile(r"/_next/static/css/[^\"' >]+?\.css")
+CSS_REF = re.compile(r"/_next/static/(?:chunks|css)/[^\"' >]+?\.css(?![\w])")
 #: Das öffnende ``<html …>``-Tag und sein class-Attribut.
 HTML_TAG = re.compile(r"<html\b[^>]*>", re.IGNORECASE)
 CLASS_ATTR = re.compile(r"""\bclass\s*=\s*(?:"([^"]*)"|'([^']*)')""", re.IGNORECASE)
-#: next/font setzt je Schrift eine Klasse ``__variable_<hash>``, die im CSS die
-#: Schrift-Variable definiert (``.__variable_d8ebd1{--font-inter:…}``).
-FONT_CLASS = re.compile(r"__variable_[0-9a-zA-Z]+")
+#: next/font setzt je Schrift eine Klasse, die im CSS die Schrift-Variable
+#: definiert: unter Webpack ``__variable_<hash>``
+#: (``.__variable_d8ebd1{--font-inter:…}``), unter Turbopack ``<hash>_variable``
+#: (``.ec5Qua_variable{--font-inter:…}``, der Hash darf ``-`` und ``_`` tragen).
+FONT_CLASS = re.compile(r"__variable_[0-9a-zA-Z]+|[0-9A-Za-z_-]+_variable")
 
 
 def _pages(next_dir: Path) -> list[tuple[Path, str]]:
@@ -131,6 +144,26 @@ def undefined_font_classes(next_dir: Path) -> list[tuple[Path, str]]:
     return out
 
 
+def blind_spots(next_dir: Path) -> list[str]:
+    """Was der Wächter in diesem Build gar nicht zu sehen bekommt.
+
+    Jede Seite dieser Anwendung lädt ein Stylesheet und trägt die Klassen der
+    beiden Schriften am ``<html>`` (``app/layout.tsx``). Findet der Wächter in
+    einem ganzen Build keins davon, hat sich nicht der Build verbessert,
+    sondern seine Form geändert — so wie beim Wechsel auf Turbopack, nach dem
+    die alten Muster auf nichts mehr passten und jede Prüfung leer bestand.
+    """
+    pages = _pages(next_dir)
+    if not pages:
+        return []
+    out: list[str] = []
+    if not any(CSS_REF.search(text) for _, text in pages):
+        out.append("kein einziger Stylesheet-Verweis in den vorgerenderten Seiten")
+    if not any(html_font_classes(text) for _, text in pages):
+        out.append("keine einzige Schriftklasse an einem <html>")
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     ap.add_argument("next_dir", nargs="?", default="web/frontend/.next", type=Path)
@@ -142,6 +175,11 @@ def main() -> int:
     pages = list((next_dir / "server" / "app").rglob("*.html"))
     missing = missing_files(next_dir)
     fonts = undefined_font_classes(next_dir)
+    blind = blind_spots(next_dir)
+    if blind:
+        print(f"WÄCHTER BLIND: In {len(pages)} vorgerenderten Seiten fand sich " + " und ".join(blind) + ".")
+        print("Vermutlich benennt Next seine Dateien oder Schriftklassen anders als bisher "
+              "(ASSET_REF, CSS_REF, FONT_CLASS in diesem Skript nachziehen).")
     if missing:
         print(f"BUILD UNSTIMMIG: {len(missing)} Verweis(e) ohne Datei in {len(pages)} vorgerenderten Seiten:")
         for page, ref in missing:
@@ -159,7 +197,8 @@ def main() -> int:
             print(f"  .{cls}  ←  {len(cls_pages)} Seite(n): {shown}{more}")
         print("Diese Seiten fielen auf die Ersatzschrift des Browsers zurück (Times).")
     if missing or fonts:
-        print("\nUrsache erfahrungsgemäß ein alter Webpack-Cache: <build>/cache/webpack löschen, dann neu bauen.")
+        print("\nUrsache war bisher jedes Mal ein alter Bundler-Cache: <build>/cache löschen, dann neu bauen.")
+    if missing or fonts or blind:
         return 1
     print(f"Build stimmig: {len(pages)} vorgerenderte Seite(n), jeder Verweis liegt unter "
           f"{next_dir}/static, jede Schriftklasse steht im verlinkten CSS.")

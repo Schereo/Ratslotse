@@ -1,0 +1,33 @@
+{
+ "plan": "klimaschutzplan_2035",
+ "indicators": [
+  {
+   "key": "ghg_emissions",
+   "label": "Treibhausgas-Emissionen der Stadt",
+   "unit": "t CO₂e",
+   "baseline": {
+    "year": 2020,
+    "value": 1140000,
+    "label": "Referenzwert laut Ratsbeschluss (geschätzt)",
+    "template": "21/0249/2"
+   },
+   "points": [
+    {"year": 2021, "kind": "target", "value": 1083000, "label": "−5 % gegenüber 2020", "template": "21/0249/2"},
+    {"year": 2021, "kind": "actual", "value": 1033031, "label": "Bilanz 2021", "template": "23/0653"},
+    {"year": 2022, "kind": "actual", "value": 1004796, "label": "Bilanz 2022", "template": "25/0131"},
+    {"year": 2023, "kind": "target", "value": 969000, "label": "−15 % gegenüber 2020", "template": "25/0866"},
+    {"year": 2023, "kind": "actual", "value": 935792, "label": "Bilanz 2023", "template": "25/0866"}
+   ],
+   "notes": [
+    {
+     "text": "Die Bilanz misst die Emissionen der ganzen Stadt, nicht die Wirkung des Plans. Als Ursache des Rückgangs 2023 nennt der Bericht zuerst den bundesweiten Strommix (453 statt 505 g CO₂e je Kilowattstunde).",
+     "template": "25/0866"
+    },
+    {
+     "text": "Der Ratsbeschluss nennt als Einheit CO₂; die Bilanzen rechnen in CO₂-Äquivalenten.",
+     "template": "25/0131"
+    }
+   ]
+  }
+ ]
+}

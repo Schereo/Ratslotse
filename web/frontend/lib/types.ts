@@ -52,6 +52,8 @@ export interface DecisionLocationMatch {
 }
 
 export interface CouncilDecision {
+  /** An einer Teilabstimmung: der gelesene Antrag (Schalter `aenderungsantraege`). */
+  amendment?: import("@/components/session/aenderungsantraege").Antrag;
   id: number;
   ksinr: number;
   kind: "decision" | "subvote";
@@ -183,6 +185,8 @@ export type Attendee = S["Attendance"];
 export type VideoResult = S["VideoResult"];
 
 export interface SessionDetail extends CouncilSession {
+  /** Fachwörter, die die Seite am Wort erklärt (`council/seitenbegriffe.py`). */
+  terms?: import("@/lib/seitenbegriffe").SeitenBegriff[];
   agenda_items: AgendaItem[];
   decisions?: CouncilDecision[];
   attendance?: Attendee[];
@@ -361,6 +365,12 @@ export type Beratung = S["DeliberationStation"];
 export type ImportanceBreakdown = S["ImportanceBreakdown"];
 
 export interface DecisionDetail {
+  /** Fachwörter, die die Seite am Wort erklärt (`council/seitenbegriffe.py`). */
+  terms?: import("@/lib/seitenbegriffe").SeitenBegriff[];
+  /** „Aus der Vorlage" (Schalter `aus-den-unterlagen`). */
+  template_dossier?: import("@/components/session/dossier").Dossier;
+  /** Wortdiff Beschlussvorschlag ↔ Beschlusstext, nur bei Abweichung. */
+  proposal_diff?: string[][];
   decision: CouncilDecision;
   /** Aufschlüsselung, warum der Beschluss als wichtig gilt. */
   importance_breakdown?: ImportanceBreakdown | null;
@@ -402,6 +412,8 @@ export interface DecisionDetail {
     klima_relevant?: boolean | null;
     /** „Finanzielle Auswirkungen" aus der Vorlage (amtlicher Wortlaut). */
     financial_impact?: string | null;
+    /** Der Beschlussvorschlag der Verwaltung im Wortlaut (Regex-Ernte). */
+    proposed_decision?: string | null;
   } | null;
   /** Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt über
    *  eine echte Verknüpfung, nicht über eine Textsuche.

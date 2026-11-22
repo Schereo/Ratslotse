@@ -2,21 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CalendarDays, Check, ExternalLink, Flag, Hammer, LocateFixed, MapPinned, Megaphone, Newspaper, Search, TrafficCone, X } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, CalendarDays, Check, ExternalLink, Flag, Hammer, Loader2, LocateFixed, MapPinned, Megaphone, Newspaper, Plus, Route, Search, TrafficCone, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { ApiAntwort } from "@/lib/vertrag";
 import type { DecisionOutcome, Topic } from "@/lib/types";
-import { decisionHref, sitzungHref } from "@/lib/routes";
+import { decisionHref, planHref, sitzungHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { cn, formatDate } from "@/lib/utils";
 import { STAND, ZEITPLAN } from "@/lib/viertel-einblick";
-import { Badge, Button, Card, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Label, Spinner, Textarea, toast } from "@/components/ui";
+import { Badge, Button, Card, ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Label, Spinner, Textarea, toast } from "@/components/ui";
 import { STAND_FARBE } from "@/components/viertel-zeichner";
 import { loadOrtsbereiche, ortsbereichFor } from "@/lib/districts";
 import { formatEuro, OUTCOME_META } from "@/components/decision-ui";
 import { STAFFEL, staffelStil } from "@/components/staffel";
+import { ortsBeschreibung, useOrtsbereiche } from "@/components/onboarding-flow";
 
 /** Die Bausteine von „Mein Viertel" — Tafel-Kopf, Karten, Liste, Detail,
  *  Suche, Standort — als eigene Komponenten.
@@ -141,6 +142,67 @@ export function Stadtzahl({ data, orte, kompakt }: { data: Uebersicht; orte: Ueb
         </p>
       )}
     </div>
+  );
+}
+
+/** „Zu meinen Vierteln“ auf der Tafel eines Viertels.
+ *
+ *  Ein gewähltes Viertel IST ein Thema mit seinem Namen — dieselbe Ableitung
+ *  wie im Einrichtungs-Assistenten (`gewaehlteOrtsbereiche`) und auf der
+ *  Startseite. Bis 11/2026 ließ es sich nur dort wählen: Das Widget „Mein
+ *  Viertel“ schickte mit „Viertel auswählen“ auf die Karte, und dort gab es
+ *  keinen Knopf dafür (Tims Befund 09.11.2026).
+ *
+ *  Entfernen fragt nach, denn es löscht das Thema samt seinen Treffern. */
+export function ViertelMerken({ name, className }: { name: string; className?: string }) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const topics = useQuery({ queryKey: ["topics"], queryFn: () => api.get<Topic[]>("/topics"), enabled: !!user });
+  // Für die Beschreibung des Themas, an der der Wächter misst — dieselbe wie
+  // im Assistenten (gemeinsamer Query-Key).
+  const orte = useOrtsbereiche(!!user);
+  const [unterwegs, setUnterwegs] = useState<boolean | null>(null);
+  const [frage, setFrage] = useState(false);
+  if (!user) return null;
+  const thema = topics.data?.find((t) => t.name.toLowerCase() === name.toLowerCase());
+  const gemerkt = unterwegs ?? !!thema;
+
+  const setzen = async (an: boolean) => {
+    setUnterwegs(an);
+    try {
+      if (an && !thema) {
+        const ort = orte.data?.find((o) => o.name.toLowerCase() === name.toLowerCase()) ?? { name };
+        await api.post("/topics", { name, description: ortsBeschreibung(ort) });
+      } else if (!an && thema) {
+        await api.del(`/topics/${thema.id}`);
+      }
+      // Erst den Serverstand holen, DANN die Absicht fallen lassen — sonst
+      // springt der Knopf kurz zurück (wie im Assistenten).
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+      toast.success(an
+        ? `${name} steht jetzt auf deiner Startseite unter „Mein Viertel“. Neue Beschlüsse meldet Ratslotse wie bei jedem Thema.`
+        : `${name} ist nicht mehr unter deinen Vierteln.`);
+    } catch {
+      toast.error(`${name} ließ sich gerade nicht ${an ? "hinzufügen" : "entfernen"}. Versuch es gleich noch einmal.`);
+    } finally {
+      setUnterwegs(null);
+    }
+  };
+
+  return (
+    <>
+      <Button size="sm" variant={gemerkt ? "secondary" : "primary"} aria-pressed={gemerkt}
+        disabled={topics.isPending || unterwegs !== null}
+        onClick={() => (gemerkt ? setFrage(true) : void setzen(true))}
+        className={cn("min-h-11", className)}>
+        {unterwegs !== null ? <Loader2 className="animate-spin" /> : gemerkt ? <Check /> : <Plus />}
+        {gemerkt ? "Mein Viertel" : "Zu meinen Vierteln"}
+      </Button>
+      <ConfirmDialog open={frage} onOpenChange={setFrage}
+        title={`${name} aus deinen Vierteln nehmen?`}
+        description={`Das Thema „${thema?.name ?? name}“ wird gelöscht, samt seinen bisherigen Treffern. Neue Beschlüsse zu ${name} meldet Ratslotse dir dann nicht mehr.`}
+        confirmLabel="Entfernen" onConfirm={() => void setzen(false)} />
+    </>
   );
 }
 
@@ -494,6 +556,60 @@ export function InvestitionenKarte({ items, className }: { items: Tafel["investm
           </li>
         ))}
       </ul>
+    </Card>
+  );
+}
+
+/** Pläne der Stadt, die das Viertel betreffen (Schalter `plaene`): laufende und
+ *  entstehende Pläne mit mindestens einem Ort hier — aus dem Plan selbst (ein
+ *  Abschnitt, ein Gebiet seiner Tabelle), aus einem Maßnahmentitel oder aus
+ *  einem Beschluss zum Plan (council/plan_pages.py::district_plans). Darunter
+ *  die Stadterneuerungsgebiete aus dem Geoportal (council/stadterneuerung.py).
+ *  Nichts geschätzt: Ein Plan, der das Viertel nur „betreffen könnte“, steht
+ *  hier nicht. */
+export function PlaeneKarte({ items, renewal = [], className, style }: {
+  items: NonNullable<Tafel["plans"]>; renewal?: NonNullable<Tafel["renewal_areas"]>;
+  className?: string; style?: React.CSSProperties;
+}) {
+  if (!items.length && !renewal.length) return null;
+  return (
+    <Card className={cn("p-4", className)} style={style}>
+      <h2 className="flex items-center gap-2 font-display text-base font-bold text-foreground">
+        <Route className="h-4 w-4 text-primary" /> Pläne, die dein Viertel betreffen
+      </h2>
+      {items.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Pläne der Stadt mit einem Ort hier — aus dem Plan selbst, seiner Maßnahmenliste oder aus Beschlüssen dazu.</p>}
+      <ul className="mt-2 divide-y divide-border text-sm">
+        {items.map((p) => (
+          <li key={p.key}>
+            <Link href={planHref(p.key)} prefetch={false} className="group flex min-h-11 items-start gap-2 py-2">
+              <span className="min-w-0 flex-1">
+                <span className="block break-words font-medium leading-snug text-foreground group-hover:text-primary">{p.title}</span>
+                <span className="mt-0.5 block break-words text-xs text-muted-foreground">
+                  {p.status === "running" ? p.field_label : `${p.field_label} · ${p.status_label}`}
+                  {" · "}{p.places.join(", ")}{p.place_count > p.places.length ? ` und ${p.place_count - p.places.length} weitere` : ""}
+                </span>
+              </span>
+              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-fluss ease-out-strong group-hover:translate-x-0.5" aria-hidden />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {renewal.length > 0 && (
+        <div className={cn(items.length > 0 && "mt-3 border-t border-border pt-3")}>
+          <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Stadterneuerung</h3>
+          <ul className="mt-1 divide-y divide-border text-sm">
+            {renewal.map((r) => (
+              <li key={r.name} className="py-2">
+                <span className="block break-words font-medium leading-snug text-foreground">{r.name}</span>
+                <span className="mt-0.5 block break-words text-xs text-muted-foreground">
+                  {r.start_year}–{r.end_year} · {r.size_ha.toLocaleString("de-DE")} ha · Fördermittel {formatEuro(r.funding_eur)} · Eigenmittel der Stadt {formatEuro(r.own_funds_eur)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[11px] text-muted-foreground">Quelle: {renewal[0].source}</p>
+        </div>
+      )}
     </Card>
   );
 }

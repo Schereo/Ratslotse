@@ -1,0 +1,18 @@
+{
+ "plan": "nachhaltigkeitsleitbild",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "298fd85bdf6fdb8f",
+ "plain": [
+  "Das Leitbild soll die Verwaltung in allen Bereichen nachhaltig ausrichten und Bildungsangebote zur nachhaltigen Entwicklung ausbauen.",
+  "Städtische Gebäude sollen bis 2035 klimaneutral werden; Oldenburg will Fuß-, Radverkehr und klimaneutralen ÖPNV fördern.",
+  "Oldenburg will Stadtnatur und Artenvielfalt erhalten sowie barrierefreie Quartiere mit günstigem Wohnraum und gesundem Umfeld fördern."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Nachhaltigkeitsleitbild berichtet oder beschlossen?",
+  "Was plant Oldenburgs Nachhaltigkeitsleitbild für klimaneutrale Gebäude bis 2035?",
+  "Was sieht Oldenburgs Nachhaltigkeitsleitbild für Stadtnatur und Artenvielfalt vor?"
+ ]
+}

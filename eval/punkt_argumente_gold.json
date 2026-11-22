@@ -1,0 +1,1077 @@
+{
+ "_hinweis": "Urteile von Hand je Lauf (eval/run_punkt_argumente.py). Schlüssel: 'Platz|Kennung'.",
+ "20261110-1643": {
+  "4417 Ö 8.7": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W6511": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|V1": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W6515": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W6509": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W6509": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4708 Ö 9.1": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W43081": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true,
+     "notiz": "erster Satz steht am Ende von V2 (Abschnittsgrenze), dieselbe Vorlage"
+    },
+    "W-contra|W43082": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4705 Ö 13.3": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [
+    "Zeitpunkt: Ellberg (SPD) und Woltmann (CDU) wollen die Beratung dem neuen Rat überlassen — in Lauf 1 da, in Lauf 2 fehlt es"
+   ],
+   "aussagen": {
+    "S1-pro|W43217": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W43220": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W43219": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W43226": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|V4": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W43220": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W43225": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W43221": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4695 Ö 14.4": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "W-contra|W42378": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W42379": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W42380": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W42382": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|V4": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4625 Ö 8.1": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [
+    "Dittrich (FDP): Bedenken, weil das Parkhaus den ÖPNV attraktiver machen soll (W1134)"
+   ],
+   "aussagen": {
+    "S1-pro|W1133": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W1128": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W1132": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W1127": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W1129": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4702 Ö 8.1": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|V4": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W42738": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W42740": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W42737": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W43041": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W42746": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W43039": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W43040": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": false,
+     "notiz": "Motiv „um die Folgen abzufedern“ steht nicht in der Quelle"
+    },
+    "S2-contra|W42741": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W43042": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W42743": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W42744": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W42746": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W42740": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W42752": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W43043": {
+     "belegt": true,
+     "zugeordnet": false,
+     "treu": true,
+     "notiz": "Forderung nach anderer VBN-Vertragsstruktur ist kein Grund für oder gegen die Tarifanpassung"
+    },
+    "W-pro|W43044": {
+     "belegt": true,
+     "zugeordnet": false,
+     "treu": true,
+     "notiz": "dito"
+    },
+    "W-contra|W42747": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W43045": {
+     "belegt": true,
+     "zugeordnet": false,
+     "treu": true,
+     "notiz": "Erwiderung auf die AfD — spricht eher FÜR das Sozialticket, steht unter dagegen"
+    }
+   }
+  },
+  "4648 Ö 14.1": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W1217": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W1225": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W1226": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|V1": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true,
+     "notiz": "steht in V2 derselben Vorlage, nicht in V1 (Fundstelle verlinkt die Vorlage als Ganzes)"
+    },
+    "S1-contra|W1218": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W1227": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W1228": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W1229": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W1230": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|V1": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W1220": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4650 Ö 10.3": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W871": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W870": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W869": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W872": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W876": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W874": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W875": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W885": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W883": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W884": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W879": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W873": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W880": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W881": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4650 Ö 10.2": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W847": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W849": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W850": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W853": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W847": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W849": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W852": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W848": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W851": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W855": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W866": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W868": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4479 Ö 8": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W3161": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W3162": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W3160": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W3165": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|V4": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W3164": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W3158": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W3156": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W3153": {
+     "belegt": true,
+     "zugeordnet": false,
+     "treu": true,
+     "notiz": "Stadtbaurätin stellt den Vorschlag vor; Herausforderungen sind keine Bedenken dagegen"
+    }
+   }
+  },
+  "4607 Ö 6": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W42887": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W42890": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|V4": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W42895": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W42892": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W42891": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W42893": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W42888": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W42890": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W42891": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4603 Ö 5": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W1981": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": false,
+     "notiz": "„für den Klimaschutz“ hinzugefügt"
+    },
+    "S1-pro|W1975": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W1979": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|V1": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W1987": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W1981": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": false,
+     "notiz": "„andernorts“ verschiebt den Sinn (sonst würden Flächen vorgegeben)"
+    },
+    "S2-contra|W1986": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W1995": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W1994": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W1998": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4632 Ö 6": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "W-pro|V1": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W276": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W42545": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W42551": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4630 Ö 5": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W950": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W951": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W941": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W288": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W290": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W287": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W289": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W1342": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W1347": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W1348": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W947": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W1360": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4640 Ö 17.3": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W43161": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W43162": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W43164": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4637 Ö 12.2": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "W-contra|W1039": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W1040": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W1042": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4589 Ö 6.2": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W43261": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W43259": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W43260": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W43258": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W43261": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|V1": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W43259": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W43263": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W43260": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W43265": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W43273": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W43264": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4589 Ö 6.3": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W43277": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W43279": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W43280": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W43281": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W43284": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W43282": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W43285": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W43278": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-contra|W43283": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  },
+  "4600 Ö 6": {
+   "streitpunkt_erfunden": 0,
+   "fehlt": [],
+   "aussagen": {
+    "S1-pro|W42662": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W42663": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-pro|W42669": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W42671": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W42672": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S1-contra|W42673": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-pro|W42675": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S2-contra|W42676": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-pro|W42668": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "S3-contra|W42673": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W42664": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W42665": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W42672": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|W42678": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|V1": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|V2": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    },
+    "W-pro|V3": {
+     "belegt": true,
+     "zugeordnet": true,
+     "treu": true
+    }
+   }
+  }
+ }
+}

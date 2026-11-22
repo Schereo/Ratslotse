@@ -24,6 +24,9 @@ public enum AppRoute: Sendable, Hashable {
     case question(prefill: String?, share: String?)
     case sharedAnswer(token: String?)
     case decision(id: Int)
+    /// Ein Tagesordnungspunkt auf seiner eigenen Seite (`/council/punkt`,
+    /// Schalter `punkt-seite`).
+    case agendaItem(ksinr: Int, item: String)
     /// Eine Bewegung — dieselbe Idee in mehreren anderen Räten
     /// (`/council/ideen/bewegung?id=`).
     case movement(id: Int)
@@ -100,6 +103,10 @@ public struct AppRouter: Sendable {
         case "/council/decision":
             guard let raw = value("id"), let id = Int(raw), id > 0 else { return .tab(.council) }
             return .decision(id: id)
+        case "/council/punkt":
+            guard let raw = value("ksinr"), let ksinr = Int(raw), ksinr > 0,
+                  let top = value("top"), !top.isEmpty else { return .tab(.council) }
+            return .agendaItem(ksinr: ksinr, item: top)
         case "/council/ideen": return .ideas
         case "/council/neuer-rat":
             // Ausdrücklich ins Web: Die Seite gibt es nur dort. Die
@@ -176,6 +183,9 @@ public struct AppRouter: Sendable {
             components.path = "/g"; components.queryItems = [.init(name: "t", value: token)]
         case .decision(let id):
             components.path = "/council/decision"; components.queryItems = [.init(name: "id", value: String(id))]
+        case let .agendaItem(ksinr, item):
+            components.path = "/council/punkt"
+            components.queryItems = [.init(name: "ksinr", value: String(ksinr)), .init(name: "top", value: item)]
         case .movement(let id):
             components.path = "/council/ideen/bewegung"; components.queryItems = [.init(name: "id", value: String(id))]
         case .ideas: components.path = "/council/ideen"

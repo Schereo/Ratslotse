@@ -1,6 +1,6 @@
 ---
 title: "Feature: MCP-Server"
-description: Ratsdaten für den eigenen Agenten — persönliche Schlüssel, die Werkzeuge, ihre Grenzen und wie man Claude, ChatGPT oder Cursor anschließt.
+description: Zugriff auf Ratsdaten über MCP, verfügbare Werkzeuge und Einrichtung für Claude, ChatGPT und Cursor.
 ---
 
 Über das [Model Context Protocol](https://modelcontextprotocol.io) lässt sich
@@ -11,9 +11,10 @@ verfolgt eine Vorlage durch die Gremien.
 
 ## Zugang
 
-Der Zugang hängt am Recht `mcp`, das die Rolle **„MCP-Zugang“** trägt. Admins
-vergeben sie im Admin-Panel unter *Web-Nutzer\*innen*; sie kommt zusätzlich
-zu jeder anderen Rolle. Admins haben das Recht ohnehin.
+Der Zugriff erfordert das Recht `mcp`. Admins vergeben es über die Rolle
+**„MCP-Zugang“** im Admin-Panel unter *Web-Nutzer\*innen*. Die Rolle
+ergänzt die vorhandenen Rollen des Kontos. Admins haben dieses Recht
+bereits.
 
 Wer die Rolle hat, findet in den Einstellungen die Karte **„Eigener Agent
 (MCP)“** und stellt sich dort Schlüssel aus: bis zu fünf je Konto, einen je
@@ -22,9 +23,10 @@ Agent, damit man jeden einzeln zurückziehen kann. Der Schlüssel beginnt mit
 die Liste zeigt die ersten Zeichen, das Datum der letzten Nutzung und die
 Zahl der Aufrufe.
 
-Wird einem Konto die Rolle entzogen, bleibt der Schlüssel stehen, wirkt aber
-nicht mehr (Antwort 403). Gibt man sie zurück, gilt er wieder. Wird das Konto
-gelöscht, gehen die Schlüssel mit (`USER_OWNED_TABLES`).
+Entzieht ein Admin dem Konto die Rolle, bleibt der Schlüssel gespeichert.
+Der Server antwortet dann mit 403. Nach erneuter Vergabe der Rolle
+funktioniert der Schlüssel wieder. Beim Löschen des Kontos entfernt
+Ratslotse auch die zugehörigen Schlüssel (`USER_OWNED_TABLES`).
 
 Solange der Schalter `mcp-server` aus ist, antworten der Server und die
 Schlüssel-Endpunkte mit 404.
@@ -154,9 +156,10 @@ mit dem Konto geht alles (`USER_OWNED_TABLES`). Die Freigabe-Seite, die
 Einstellungskarte und die Datenschutzerklärung sagen das, bevor jemand
 verbindet.
 
-Geschrieben wird gesammelt, nie während der Antwort: höchstens alle
-15 Sekunden bzw. alle 50 Aufrufe, ohne auf eine Schreibsperre zu warten.
-Gelingt es nicht, bleibt der Stapel liegen und geht mit dem nächsten.
+Ratslotse schreibt die Statistik außerhalb der Antwort in Batches,
+höchstens alle 15 Sekunden bzw. alle 50 Aufrufe. Es wartet dabei nicht auf
+eine Schreibsperre. Schlägt das Schreiben fehl, versucht Ratslotse es
+mit dem nächsten Batch erneut.
 
 ## Werkzeuge
 
@@ -187,8 +190,9 @@ Abfragen wie Lottis Haushaltswerkzeuge (`council/lotti_werkzeuge.py`,
 | `cash_position` | Kassenstand je Monatsende |
 | `budget_document` | Ein ganzer Bestand Zeile für Zeile: Finanzhaushalt (Investitionen), Vorbericht (Eckdaten, Erläuterungen), Schuldenübersicht, Verpflichtungsermächtigungen, Abschlüsse der Gesellschaften, Bilanz-Erläuterungen. Diese sieben standen bis 10/2026 nur auf den Haushaltsseiten. Je Abruf höchstens 100 Zeilen und 20.000 Zeichen |
 
-`rechnen` und `seite_lesen` aus Lottis Satz fehlen bewusst: Rechnen kann der
-Agent selbst, und die Haushaltsseiten sind Oberfläche, keine Daten.
+Die Lotti-Werkzeuge `rechnen` und `seite_lesen` gibt es über MCP nicht.
+Agenten können selbst rechnen und rufen Haushaltsdaten direkt über die
+Datenwerkzeuge ab.
 
 Alle Werkzeuge antworten mit **JSON**, auch die vier, deren Abfragen Lotti
 teilt (`council/lotti_werkzeuge.py`, die `…_daten`-Funktionen): Lotti formt
@@ -228,8 +232,8 @@ anbietet, braucht es vier Methoden (`initialize`, `ping`, `tools/list`,
 `tools/call`) und die Regel „Benachrichtigung → 202“. Das Paket brächte
 dafür ein Dutzend Abhängigkeiten, einen eigenen ASGI-Unterbau und einen
 Sitzungsspeicher auf den Server. Antworten kommen immer als
-`application/json`, ein `GET` bekommt 405, denn einen vom Server gesendeten
-Strom gibt es nicht. Verhandelt werden die Fassungen `2025-11-25`,
+`application/json`. Ein `GET` liefert 405, da der Server keinen Stream
+anbietet. Verhandelt werden die Fassungen `2025-11-25`,
 `2025-06-18` und `2025-03-26`.
 
 ## Protokolle und Anlagen
@@ -262,8 +266,8 @@ solcher Unterlagen im Bestand. `get_agenda` listet sie je Punkt, aber nur die,
 die es nicht schon über `get_template` gibt (das System wiederholt am Punkt
 die Vorlage und ihre Anlagen). Beide Arten spricht `get_attachment` über
 **dieselbe Kennung** an: die Dokumentnummer aus `getfile.php?id=…`. Ein
-nachgeladener Text überlebt das tägliche Neu-Einlesen der Sitzung
-(`save_session` übernimmt ihn über die URL).
+nachgeladener Text bleibt beim täglichen Einlesen der Sitzung erhalten,
+weil `save_session` ihn anhand der URL übernimmt.
 
 **Was nicht hinausgeht:** Telefonnummern und E-Mail-Adressen werden in
 Anlagen- und Protokolltext maskiert, wie beim Suchindex

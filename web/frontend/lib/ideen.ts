@@ -24,9 +24,19 @@ export function aufzaehlung(namen: string[]): string {
  * Kein Versprechen über den nächsten Abgleich: Wann er läuft, weiß diese
  * Seite nicht — sie sagt nur, wie alt das ist, was sie zeigt. Ohne Abgleich
  * gibt es auch keinen Stand (kein erfundenes Datum).
+ *
+ * `sperre` nennt die Städte, deren Server die letzte Ernte (teils) abwiesen
+ * (09.11.2026: Wolfsburg gar nichts mehr, Braunschweig, Osnabrück und Potsdam
+ * keine Dokumente). Ihr Bestand bleibt auf der Seite; der Satz sagt nur,
+ * warum nichts Neues dazukommt — ohne ihn sähe eine Stadt, aus der nichts
+ * mehr kommt, aus wie eine, in der nichts passiert.
  */
-export function standZeilen(stand: Datenstand | undefined | null): { stand: string | null; luecke: string | null } {
-  if (!stand?.as_of) return { stand: null, luecke: null };
+export function standZeilen(stand: Datenstand | undefined | null): {
+  stand: string | null;
+  luecke: string | null;
+  sperre: string | null;
+} {
+  if (!stand?.as_of) return { stand: null, luecke: null, sperre: null };
   const hinten = stand.lagging ?? [];
   let luecke: string | null = null;
   if (hinten.length === 1) {
@@ -36,7 +46,35 @@ export function standZeilen(stand: Datenstand | undefined | null): { stand: stri
     luecke = `Aus ${aufzaehlung(hinten.map((h) => `${h.city} (bis ${datum(h.latest_paper)})`))} `
       + "liegen nur ältere Vorlagen vor.";
   }
-  return { stand: `Stand: ${datum(stand.as_of)}`, luecke };
+  return { stand: `Stand: ${datum(stand.as_of)}`, luecke, sperre: sperrSatz(stand.blocked ?? []) };
+}
+
+function sperrSatz(gesperrt: Datenstand["blocked"]): string | null {
+  const gar = gesperrt.filter((g) => g.status === "blocked");
+  const ohne = gesperrt.filter((g) => g.status === "documents_blocked");
+  const saetze: string[] = [];
+  if (gar.length === 1) {
+    const g = gar[0];
+    saetze.push(`Aus ${g.city} kommen derzeit keine neuen Vorlagen, der Server der Stadt weist den Abruf ab`
+      + (g.latest_paper ? ` (jüngste Vorlage: ${datum(g.latest_paper)}).` : "."));
+  } else if (gar.length > 1) {
+    saetze.push(`Aus ${aufzaehlung(gar.map((g) => g.city))} kommen derzeit keine neuen Vorlagen, `
+      + "die Server der Städte weisen den Abruf ab.");
+  }
+  if (ohne.length === 1) {
+    saetze.push(`Aus ${ohne[0].city} kommen neue Vorlagen derzeit ohne Dokumente, `
+      + "die Stadt lässt sie nicht automatisch abrufen.");
+  } else if (ohne.length > 1) {
+    saetze.push(`Aus ${aufzaehlung(ohne.map((g) => g.city))} kommen neue Vorlagen derzeit ohne Dokumente, `
+      + "die Städte lassen sie nicht automatisch abrufen.");
+  }
+  const ruht = gesperrt.filter((g) => g.status === "paused");
+  if (ruht.length) {
+    saetze.push(`${aufzaehlung(ruht.map((g) => g.city))} ${ruht.length === 1 ? "wird" : "werden"} `
+      + "derzeit nicht abgeglichen.");
+  }
+  if (!saetze.length) return null;
+  return `${saetze.join(" ")} Was schon vorliegt, bleibt hier sichtbar.`;
 }
 
 /**

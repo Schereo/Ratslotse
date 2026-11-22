@@ -1,0 +1,18 @@
+{
+ "plan": "gleichstellungsplan_2021",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "c6d8539ac2837e71",
+ "plain": [
+  "Der Plan bündelt Ziele und Maßnahmen gegen eine zu geringe Vertretung eines Geschlechts und für bessere Vereinbarkeit von Beruf und Familie.",
+  "Frauen und Männer in Führungspositionen stehen besonders im Blick.",
+  "Der Plan sieht für die Vereinbarkeit flexible Arbeitszeiten und Arbeitsorte, Kinderbetreuung und Pflege von Angehörigen vor."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Gleichstellungsplan 2021–2023 in Oldenburg berichtet oder beschlossen?",
+  "Was sieht Oldenburgs Gleichstellungsplan für mehr Frauen in Führung vor?",
+  "Welche Maßnahmen zur Angehörigenpflege nennt Oldenburgs Gleichstellungsplan?"
+ ]
+}

@@ -1,16 +1,15 @@
 ---
 title: "Feature: Wahlabend"
-description: Die Ratswahl am 13.09.2026 live — Open-Data-CSVs des Votemanagers, Sitzzuteilung nach NKWG, Hochrechnung, Generalprobe und Betrieb am Wahlsonntag.
+description: Open-Data-CSVs, Sitzzuteilung nach NKWG, Hochrechnung und Betrieb am Wahlabend der Ratswahl vom 13.09.2026.
 ---
 
 Am 13. September 2026 wird der Rat der Stadt Oldenburg gewählt. Die Seite
 `/wahlabend` zeigt an diesem Abend den Auszählungsstand, die Sitze je Liste und
 Wahlbereich und — sobald die Personenstimmen vorliegen — wer nach dem
-Niedersächsischen Kommunalwahlgesetz gerade im Rat wäre. Die Zahlen sind die
-amtlichen Open-Data-Dateien der Stadt; gerechnet wird bei uns.
+Niedersächsischen Kommunalwahlgesetz gerade im Rat wäre. Ratslotse berechnet den Stand aus den amtlichen Open-Data-Dateien der Stadt.
 
-Der Bereich ist der ungewöhnlichste im ganzen Projekt: **keine Datenbank, kein
-Cron, kein LLM.** Er liest drei CSV-Dateien, rechnet und antwortet.
+Der Endpunkt liest drei CSV-Dateien und berechnet die Antwort ohne
+Datenbank, Cron-Job oder LLM.
 
 :::note[Hinter dem Feature-Schalter `wahlabend`]
 Der Endpunkt und die Seite hängen am Schalter `wahlabend` aus
@@ -20,11 +19,11 @@ Hinweis statt Zahlen. Nicht am Umgebungs-Gate — die Seite soll am Wahlabend
 auf Prod laufen und danach ohne Deploy wieder dunkel werden können.
 :::
 
-:::note[Wie laut eine Wahl ist, regelt der Kalender (seit 10/2026)]
-Der Schalter ist nur noch der Notaus für den ganzen Bereich. Ob eine Wahl als
-Hinweis oben auf **Heute** und als Streifen auf der **Startseite** erscheint,
-sagt `/api/app-config` in `election.prominent` — wahr von sieben Tagen vor bis
-drei Tage nach dem Wahlschluss der Wahl im Fokus
+:::note[Hervorhebung einer Wahl (seit 10/2026)]
+Der Schalter kann den ganzen Wahlbereich deaktivieren. Ob **Heute** und die
+**Startseite** auf eine Wahl hinweisen, steht in `/api/app-config` unter
+`election.prominent`. Das Feld ist von sieben Tagen vor bis drei Tage nach
+dem Wahlschluss der Wahl im Fokus gesetzt
 (`elections.prominent`, `PROMINENT_VORHER`/`PROMINENT_NACHHER`). Außerhalb
 dieses Fensters führt nur der dauerhafte Ort hin: `/wahlen`, erreichbar über
 den Reiter „Wahlen" in der Analyse, die Zeile „Wahlen in Oldenburg" im
@@ -103,18 +102,20 @@ aber wohlgeformt — Phase `before`, sechs Wahlbereiche, keine Sitze.
 
 ### Was der Abruf abfängt
 
-Seit der Belastungsprobe vom 07.09.2026 hat jede der drei Dateien ihr eigenes
-Gedächtnis: Scheitert eine (Netzfehler, 500, HTML-Fehlerseite mit Status 200,
-leerer Body, Kopfzeile ohne `gebiet-name` oder ohne eine einzige `D<n>_`-Spalte),
-bleibt für sie die letzte gute Fassung stehen, die anderen werden frisch
-übernommen; `source.ok` wird `false`, `source.error` nennt Datei und Grund.
+Seit der Belastungsprobe vom 07.09.2026 speichert der Abruf für jede der drei
+Dateien separat die letzte gültige Fassung. Bei einem Netzfehler, Status 500,
+einer HTML-Fehlerseite mit Status 200, einem leeren Body oder einer Kopfzeile
+ohne `gebiet-name` oder `D<n>_`-Spalte nutzt er diese Fassung als Fallback.
+Erfolgreich abgerufene Dateien aktualisiert er weiterhin. `source.ok` wird
+`false`, und `source.error` nennt Datei und Fehlergrund.
 Zeitlimits: 5 s Verbindung, 10 s Lesen je Datei. Als vierte, optionale Datei
 liest `crosscheck.py` die Ergebnistabelle der Stadt-Ebene (JSON) und prüft die
 **Reihenfolge der Listen** gegen das Register — eine Abweichung steht als
 Warnung in `notes` („Spalte D7 heißt beim Votemanager ‚PIRATEN‘, im Register
 ‚Volt‘“). Dazu netzfrei die Kopfzeile: Kandidatenspalten je Liste gegen die
-Listenlängen des Registers. Notausgang ohne Deploy: `WAHLABEND_COLUMNS`
-(Slugs in Spaltenreihenfolge, `.env`, Neustart).
+Listenlängen des Registers. `WAHLABEND_COLUMNS` überschreibt die
+Spaltenreihenfolge ohne Deploy (Slugs in Spaltenreihenfolge in der `.env`,
+danach Neustart).
 
 ### Der Ersatzpfad: die Ergebnisdarstellung
 
@@ -266,11 +267,10 @@ Sekunden dauert — und damit der Grund für den Cache im nächsten Abschnitt.
 
 ## Die Hochrechnung
 
-Kein Modell mit Anspruch, sondern das, was man am Wahlabend im Kopf tut: Für
-jeden **noch offenen** Wahlbezirk sein Ergebnis von 2021 nehmen und mit dem
-Trend skalieren, den die schon ausgezählten Bezirke **desselben Wahlbereichs**
-für diese Liste zeigen (`Stimmen 2026 / Stimmen 2021` über die ausgezählten
-Bezirke).
+Die Hochrechnung skaliert für jeden **noch offenen** Wahlbezirk das
+Ergebnis von 2021 mit dem Trend der jeweiligen Liste. Der Trend ergibt
+sich aus den bereits ausgezählten Bezirken **desselben Wahlbereichs**
+(`Stimmen 2026 / Stimmen 2021` über die ausgezählten Bezirke).
 
 Das geht nur, weil die Wahlbezirke 2026 genauso geschnitten und nummeriert sind
 wie 2021 — gleiche Zahl, gleiche Wahllokale. Die Referenz liegt als drei CSVs
@@ -532,9 +532,9 @@ Reihenfolge, die am Wahlabend trägt — jede Zeile ist ohne Deploy machbar:
    Tagen vor dem Wahlschluss).
 3. **Ab der ersten Meldung:** `notes` lesen. Steht dort eine Warnung zur
    Spaltenreihenfolge (die Prüfung gegen das JSON des Votemanagers, s. o.),
-   greift der Notausgang `WAHLABEND_COLUMNS` (Slugs in Spaltenreihenfolge in
-   der `.env`, Neustart) — die Kandidatenlisten hängen am Slug und bleiben
-   richtig. Steht dort „Personenstimmen liegen noch nicht vor“, ist das kein
+   lässt sich die Reihenfolge über `WAHLABEND_COLUMNS` korrigieren (Slugs in
+   Spaltenreihenfolge in der `.env`, dann Neustart). Die Zuordnung der
+   Kandidatenlisten bleibt über den Slug erhalten. Steht dort „Personenstimmen liegen noch nicht vor“, ist das kein
    Fehler: Sitze ja, Namen erst mit den Personenstimmen.
 4. **Wenn der Votemanager wegbleibt:** Die Seite zeigt den letzten Stand mit
    Vermerk; `source.error` nennt die Datei. Ändert die Stadt Pfade, hilft
@@ -559,7 +559,7 @@ Reihenfolge, die am Wahlabend trägt — jede Zeile ist ohne Deploy machbar:
 | `web/backend/app/election/service.py` | Zusammensetzen der Antwort, Generalprobe, Stale-while-revalidate |
 | `web/backend/app/routers/wahlabend.py` | `GET /api/wahlabend` hinter dem Feature-Schalter |
 | `web/backend/app/antworten.py` | Antwortform `ElectionNight` (Teil des API-Vertrags) |
-| `web/frontend/app/wahlabend/` | Die Seite, außerhalb des Konto-Gates |
+| `web/frontend/app/(app)/wahlabend/` | Die Seite, außerhalb des Konto-Gates |
 | `web/frontend/components/wahlabend/view.tsx` | Anzeigetafel, Listen-Tafel, Sitzband, Wahlbereiche, Mandate |
 | `web/frontend/lib/wahlabend.ts` | Formate, Sortierung, Status einer Kandidatur in Worten |
 | `kommunalwahl/kandidaten.py` | Erzeugt `kandidaten.json` aus der amtlichen Bekanntmachung (pypdf, Koordinaten) |
@@ -587,3 +587,27 @@ sind deshalb die Dokumentation der Rechnung:
 - **Die Hochrechnung** trifft das Endergebnis, wenn die Referenz die Wahrheit
   ist — und liefert nichts, wenn noch nichts ausgezählt ist.
 - **Der Endpunkt** ist ohne Schalter ein 404 und übersteht einen Netzfehler.
+
+## Der neue Rat vor seiner ersten Sitzung
+
+Zwischen Wahl und konstituierender Sitzung gibt es die Gewählten nur im
+Wahlergebnis, in keinem Protokoll. Die Personen-Seiten der App entstehen aber
+aus Protokollen und Anwesenheitslisten. Der Schalter `neuer-rat` schließt
+diese Lücke: `/council/neuer-rat` zeigt die Liste der 52 Gewählten, wer ab dem
+1. November einen Sitz hat, mit Liste, Wahlbereich und Personenstimmen. Dazu
+bekommt jede Person eine Seite, auch wenn es aus den Protokollen noch kein
+Profil gibt.
+
+| Route | Zweck |
+|---|---|
+| `GET /api/council/elected` | der gewählte Rat nach der letzten Ratswahl |
+| `GET /api/council/elected/{slug}` | eine Person daraus |
+
+Beide sind ohne Anmeldung lesbar. Es ist das bekannt gemachte Wahlergebnis,
+und die Angaben zur Person (Name, Beruf, Jahrgang) stammen aus der amtlichen
+Bekanntmachung der Wahlvorschläge. Das Kandidatenregister dazu liegt unter
+`kommunalwahl/`.
+
+Der Schalter trägt seine Abbaubedingung selbst: Nach der konstituierenden
+Sitzung stehen die Gewählten in den Protokollen, und die Vorab-Liste wird
+überflüssig.

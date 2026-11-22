@@ -324,6 +324,31 @@ class CitiesStore:
                 (body.id, body.name, body.state, body.ris_vendor, body.oparl_url,
                  body.license, body.population, now(), now()))
 
+    def set_access(self, body_id: str, status: str, reason: str | None = None) -> None:
+        """Den Zugangsstand einer Stadt nach einer Ernte festhalten.
+
+        ``since`` bleibt stehen, solange sich der Status nicht ändert — es sagt,
+        seit wann er ununterbrochen gilt, nicht, wann zuletzt nachgesehen wurde
+        (das ist ``checked_at``). In einem ``UPDATE … SET`` liest jeder
+        Ausdruck die ALTE Zeile; die Reihenfolge der Zuweisungen ist egal.
+        """
+        stempel = now()
+        with self._write() as conn:
+            conn.execute(
+                "INSERT INTO body_access (body_id, status, reason, since, checked_at) "
+                "VALUES (?,?,?,?,?) "
+                "ON CONFLICT(body_id) DO UPDATE SET "
+                "  since=CASE WHEN body_access.status = excluded.status "
+                "             THEN body_access.since ELSE excluded.since END, "
+                "  status=excluded.status, reason=excluded.reason, "
+                "  checked_at=excluded.checked_at",
+                (body_id, status, reason, stempel, stempel))
+
+    def access(self, body_id: str) -> dict | None:
+        row = self._conn.execute("SELECT * FROM body_access WHERE body_id=?",
+                                 (body_id,)).fetchone()
+        return dict(row) if row else None
+
     def bodies(self) -> list[dict]:
         return [dict(r) for r in self._conn.execute("SELECT * FROM bodies ORDER BY name")]
 
@@ -420,7 +445,8 @@ class CitiesStore:
         return [dict(r) for r in self._conn.execute(sql, args)]
 
     def coverage(self, body_ids: Sequence[str]) -> list[dict]:
-        """Je Stadt: letzter Abgleich und jüngste Vorlage bis zu diesem Tag.
+        """Je Stadt: letzter Abgleich, jüngste Vorlage bis zu diesem Tag und
+        der Zugangsstand der letzten Ernte (``access``, ``None`` = nie gemessen).
 
         Vorlagen mit einem Datum NACH dem Abgleich (Hannover datiert
         Drucksachen auf die Sitzung) zählen nicht — sonst sähe ein Bestand
@@ -432,8 +458,10 @@ class CitiesStore:
         return [dict(r) for r in self._conn.execute(
             "SELECT b.id AS body_id, b.last_fetched, "
             "  (SELECT MAX(p.date) FROM papers p WHERE p.body_id = b.id "
-            "     AND p.date <= substr(b.last_fetched, 1, 10)) AS latest_paper "
-            f"FROM bodies b WHERE b.id IN ({platz}) ORDER BY b.id", tuple(body_ids))]
+            "     AND p.date <= substr(b.last_fetched, 1, 10)) AS latest_paper, "
+            "  a.status AS access, a.since AS access_since "
+            "FROM bodies b LEFT JOIN body_access a ON a.body_id = b.id "
+            f"WHERE b.id IN ({platz}) ORDER BY b.id", tuple(body_ids))]
 
     def idea_body_ids(self) -> list[str]:
         """Die Städte, aus denen beurteilte Ideen vorliegen.

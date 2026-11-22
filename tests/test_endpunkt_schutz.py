@@ -55,8 +55,18 @@ OEFFENTLICH = {
     # schlecht.
     ("post", "/api/auth/register"),
     ("post", "/api/auth/login"),
+    # Anmeldelink aus einer Mail (kern/zugangslink.py): Der Zweck IST die
+    # Anmeldung ohne Sitzung; das signierte Token ersetzt das Passwort.
+    ("post", "/api/auth/magic"),
     ("post", "/api/auth/logout"),
     ("post", "/api/auth/apple"),
+    # Mit Passkey registrieren und anmelden (app/passkeys.py): Der Zweck IST
+    # die Anmeldung ohne Sitzung. Die Optionen stellen nur eine einmalige
+    # Challenge aus; den Nachweis bringt die Signatur des Passkeys.
+    ("post", "/api/auth/passkey/signup/options"),
+    ("post", "/api/auth/passkey/signup"),
+    ("post", "/api/auth/passkey/login/options"),
+    ("post", "/api/auth/passkey/login"),
     ("post", "/api/auth/verify-email"),
     ("post", "/api/auth/forgot-password"),
     ("post", "/api/auth/reset-password"),
@@ -82,6 +92,11 @@ OEFFENTLICH = {
     # Konto lesbar, weil die Arbeit des Rats öffentlich ist. Die Sitzung
     # hängt daran (die Beschluss-Seite zieht Gremium und Datum nach).
     ("get", "/api/council/session/{ksinr}"),
+    # Der Punkt einer Sitzung (/session/{ksinr}/item) steht seit 11/2026 NICHT
+    # mehr hier: Er ist weiter ohne Konto lesbar, hängt aber an
+    # `optional_user` — ein angemeldeter Besuch holt ein fehlendes Dossier
+    # nach (Plan Vorlagen aufbereiten § 4.3), und dieser Wächter zählt
+    # `optional_user` als Schutz.
     ("get", "/api/council/entity/{slug}"),
     ("get", "/api/council/person/{slug}"),
     ("get", "/api/council/person/{slug}/speeches"),

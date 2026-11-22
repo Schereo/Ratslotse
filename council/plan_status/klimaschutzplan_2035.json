@@ -1,0 +1,270 @@
+{
+ "plan": "klimaschutzplan_2035",
+ "snapshots": [
+  {
+   "as_of": "2022",
+   "source": {
+    "kind": "klimaportal",
+    "label": "Klimaportal der Stadt, „Umsetzungsstatus der Klimaschutzmaßnahmen“",
+    "url": "https://klimaportal.oldenburg.de/monitoring",
+    "fetched": "2026-11-09",
+    "attribution": "Stadt Oldenburg (September 2026)"
+   },
+   "total": 90,
+   "complete": true,
+   "counts": [
+    {
+     "status_raw": "Neu/Noch nicht begonnen",
+     "status_norm": "open",
+     "count": 22
+    },
+    {
+     "status_raw": "Zuordnung Amt",
+     "status_norm": "started",
+     "count": 18
+    },
+    {
+     "status_raw": "Planung",
+     "status_norm": "started",
+     "count": 27
+    },
+    {
+     "status_raw": "Umsetzungsreif",
+     "status_norm": "started",
+     "count": 5
+    },
+    {
+     "status_raw": "In Umsetzung",
+     "status_norm": "in_progress",
+     "count": 7
+    },
+    {
+     "status_raw": "Realisiert",
+     "status_norm": "done",
+     "count": 11
+    },
+    {
+     "status_raw": "Ein-/Zurückgestellt",
+     "status_norm": "paused",
+     "count": 0
+    }
+   ]
+  },
+  {
+   "as_of": "2023",
+   "source": {
+    "kind": "klimaportal",
+    "label": "Klimaportal der Stadt, „Umsetzungsstatus der Klimaschutzmaßnahmen“",
+    "url": "https://klimaportal.oldenburg.de/monitoring",
+    "fetched": "2026-11-09",
+    "attribution": "Stadt Oldenburg (September 2026)"
+   },
+   "total": 90,
+   "complete": true,
+   "counts": [
+    {
+     "status_raw": "Neu/Noch nicht begonnen",
+     "status_norm": "open",
+     "count": 4
+    },
+    {
+     "status_raw": "Zuordnung Amt",
+     "status_norm": "started",
+     "count": 31
+    },
+    {
+     "status_raw": "Planung",
+     "status_norm": "started",
+     "count": 27
+    },
+    {
+     "status_raw": "Umsetzungsreif",
+     "status_norm": "started",
+     "count": 4
+    },
+    {
+     "status_raw": "In Umsetzung",
+     "status_norm": "in_progress",
+     "count": 9
+    },
+    {
+     "status_raw": "Realisiert",
+     "status_norm": "done",
+     "count": 15
+    },
+    {
+     "status_raw": "Ein-/Zurückgestellt",
+     "status_norm": "paused",
+     "count": 0
+    }
+   ]
+  },
+  {
+   "as_of": "2024",
+   "source": {
+    "kind": "klimaportal",
+    "label": "Klimaportal der Stadt, „Umsetzungsstatus der Klimaschutzmaßnahmen“",
+    "url": "https://klimaportal.oldenburg.de/monitoring",
+    "fetched": "2026-11-09",
+    "attribution": "Stadt Oldenburg (September 2026)"
+   },
+   "total": 90,
+   "complete": true,
+   "counts": [
+    {
+     "status_raw": "Neu/Noch nicht begonnen",
+     "status_norm": "open",
+     "count": 1
+    },
+    {
+     "status_raw": "Zuordnung Amt",
+     "status_norm": "started",
+     "count": 12
+    },
+    {
+     "status_raw": "Planung",
+     "status_norm": "started",
+     "count": 24
+    },
+    {
+     "status_raw": "Umsetzungsreif",
+     "status_norm": "started",
+     "count": 9
+    },
+    {
+     "status_raw": "In Umsetzung",
+     "status_norm": "in_progress",
+     "count": 19
+    },
+    {
+     "status_raw": "Realisiert",
+     "status_norm": "done",
+     "count": 20
+    },
+    {
+     "status_raw": "Ein-/Zurückgestellt",
+     "status_norm": "paused",
+     "count": 5
+    }
+   ]
+  },
+  {
+   "as_of": "2025",
+   "source": {
+    "kind": "klimaportal",
+    "label": "Klimaportal der Stadt, „Umsetzungsstatus der Klimaschutzmaßnahmen“",
+    "url": "https://klimaportal.oldenburg.de/monitoring",
+    "fetched": "2026-11-09",
+    "attribution": "Stadt Oldenburg (September 2026)"
+   },
+   "total": 90,
+   "complete": true,
+   "counts": [
+    {
+     "status_raw": "Neu/Noch nicht begonnen",
+     "status_norm": "open",
+     "count": 1
+    },
+    {
+     "status_raw": "Zuordnung Amt",
+     "status_norm": "started",
+     "count": 6
+    },
+    {
+     "status_raw": "Planung",
+     "status_norm": "started",
+     "count": 20
+    },
+    {
+     "status_raw": "Umsetzungsreif",
+     "status_norm": "started",
+     "count": 9
+    },
+    {
+     "status_raw": "In Umsetzung",
+     "status_norm": "in_progress",
+     "count": 25
+    },
+    {
+     "status_raw": "Realisiert",
+     "status_norm": "done",
+     "count": 22
+    },
+    {
+     "status_raw": "Ein-/Zurückgestellt",
+     "status_norm": "paused",
+     "count": 7
+    }
+   ],
+   "confirmed_by": {
+    "template": "26/0074"
+   }
+  },
+  {
+   "as_of": "2026",
+   "source": {
+    "kind": "klimaportal",
+    "label": "Klimaportal der Stadt, „Umsetzungsstatus der Klimaschutzmaßnahmen“",
+    "url": "https://klimaportal.oldenburg.de/monitoring",
+    "fetched": "2026-11-09",
+    "attribution": "Stadt Oldenburg (September 2026)"
+   },
+   "total": 97,
+   "complete": true,
+   "counts": [
+    {
+     "status_raw": "Neu/Noch nicht begonnen",
+     "status_norm": "open",
+     "count": 0
+    },
+    {
+     "status_raw": "Zuordnung Amt",
+     "status_norm": "started",
+     "count": 10
+    },
+    {
+     "status_raw": "Planung",
+     "status_norm": "started",
+     "count": 15
+    },
+    {
+     "status_raw": "Umsetzungsreif",
+     "status_norm": "started",
+     "count": 9
+    },
+    {
+     "status_raw": "In Umsetzung",
+     "status_norm": "in_progress",
+     "count": 34
+    },
+    {
+     "status_raw": "Realisiert",
+     "status_norm": "done",
+     "count": 20
+    },
+    {
+     "status_raw": "Ein-/Zurückgestellt",
+     "status_norm": "paused",
+     "count": 9
+    }
+   ],
+   "confirmed_by": {
+    "template": "26/0750"
+   }
+  }
+ ],
+ "notes": [
+  {
+   "text": "Das Statussystem des Portals soll nach eigener Aussage nur einen zusammenfassenden Überblick geben; über die tatsächliche Umsetzung der einzelnen Maßnahme sagt es nichts.",
+   "url": "https://klimaportal.oldenburg.de/monitoring"
+  },
+  {
+   "text": "Laut Portal laufen viele realisierte Maßnahmen als Daueraufgaben weiter.",
+   "url": "https://klimaportal.oldenburg.de/monitoring"
+  },
+  {
+   "text": "Bis 2025 zählt die Stadt 90 Maßnahmen, 2026 sind es 97.",
+   "url": null
+  }
+ ]
+}

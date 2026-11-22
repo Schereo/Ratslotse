@@ -1,0 +1,106 @@
+{
+ "plan": "mobilitaetsplan_2030",
+ "method": "Ortsname im Maßnahmentitel, abgeglichen mit dem Ortskatalog; von Hand durchgesehen",
+ "generated": "2026-11-10",
+ "measures": [
+  {
+   "code": "M08",
+   "places": [
+    {
+     "slug": "haareneschstrasse",
+     "name": "Haareneschstraße"
+    }
+   ]
+  },
+  {
+   "code": "M09",
+   "places": [
+    {
+     "slug": "katharinenstrasse",
+     "name": "Katharinenstraße"
+    }
+   ]
+  },
+  {
+   "code": "M10",
+   "places": [
+    {
+     "slug": "haarenufer",
+     "name": "Haarenufer"
+    }
+   ]
+  },
+  {
+   "code": "M11",
+   "places": [
+    {
+     "slug": "huntestrasse",
+     "name": "Huntestraße"
+    }
+   ]
+  },
+  {
+   "code": "M12",
+   "places": [
+    {
+     "slug": "quellenweg",
+     "name": "Quellenweg"
+    }
+   ]
+  },
+  {
+   "code": "M13",
+   "places": [
+    {
+     "slug": "lindenallee",
+     "name": "Lindenallee"
+    }
+   ]
+  },
+  {
+   "code": "M14",
+   "places": [
+    {
+     "slug": "herbartstrasse",
+     "name": "Herbartstraße"
+    }
+   ]
+  },
+  {
+   "code": "M15",
+   "places": [
+    {
+     "slug": "bismarckstrasse",
+     "name": "Bismarckstraße"
+    }
+   ]
+  },
+  {
+   "code": "M18",
+   "places": [
+    {
+     "slug": "schleusenstrasse",
+     "name": "Schleusenstraße"
+    }
+   ]
+  },
+  {
+   "code": "M19",
+   "places": [
+    {
+     "slug": "kanalstrasse",
+     "name": "Kanalstraße"
+    }
+   ]
+  },
+  {
+   "code": "M20",
+   "places": [
+    {
+     "slug": "herrenweg",
+     "name": "Herrenweg"
+    }
+   ]
+  }
+ ]
+}

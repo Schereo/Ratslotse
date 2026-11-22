@@ -40,12 +40,10 @@ neue nicht da und die alte schon, wird der WAL eingecheckt und umbenannt. Der
 Schritt ist idempotent und darf stehen bleiben, bis alle Umgebungen einmal
 gestartet sind.
 
-Zwei Stellen tragen den alten Namen weiter:
-
-- **die systemd-Units** `nwz-web-api` / `nwz-web-frontend` — Umbenennen braucht
-  Root auf dem Server und einen Nachzug in `deploy.yml`.
-- **`web/frontend/components/nwz-link.tsx`** — der ist kein Rest: Auf
-  Beschluss-Seiten steht ein Link zur NWZonline-Suche nach dem jeweiligen Thema.
+Eine Stelle trägt den alten Namen weiter: **die systemd-Units**
+`nwz-web-api` / `nwz-web-frontend` — Umbenennen braucht Root auf dem Server und
+einen Nachzug in `deploy.yml`. (Der Link zur NWZonline-Suche auf Beschluss-
+und Punkt-Seiten ist seit 11/2026 weg; er führte meistens ins Leere.)
 
 ## Lokale Entwicklung
 
@@ -68,7 +66,7 @@ cd web/frontend && npm ci
 # Beispiel für Backend-Port 8600; den Port aus scripts/dev.py start verwenden:
 BACKEND_URL=http://127.0.0.1:8600 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8600 npm run dev
 
-# Technik-Doku (separates Terminal im Repo-Root, Node ≥ 22)
+# Technik-Doku (separates Terminal im Repo-Root, Node ≥ 22.23.4)
 npm --prefix docs-site ci && npm --prefix docs-site run dev
 
 # Tests (Repo-Root)
@@ -139,11 +137,12 @@ python scripts/pruefe.py --schnell  # kurze Auswahl für die Prüfung vor dem Pu
 ```
 
 Nicht dabei sind die **Browsertests** — sie brauchen zwei laufende Server und
-einen Browser und dauern fünf Minuten. Sie laufen in der CI
-(`.github/workflows/e2e.yml`) und lokal auf Zuruf:
+einen Browser. Die ganze Suite fährt die CI (`.github/workflows/e2e.yml`, acht
+Läufer, rund fünf Minuten); lokal braucht sie seriell 15–20 Minuten. **Lokal
+deshalb nur die Dateien zur eigenen Änderung:**
 
 ```bash
-cd web/frontend && npx playwright test
+cd web/frontend && npx playwright test tests/e2e/12-navigation
 ```
 
 Läuft in einem anderen Worktree schon ein `next dev` auf 3000, bricht das mit
@@ -160,9 +159,21 @@ Ratsdatenbank dazugehört, steht in
 
 Er bündelt, was vorher über `CONTRIBUTING.md` und drei Workflow-Dateien
 verstreut stand: Adressen-Lint, ruff, die Python-Typprüfung, den API-Vertrag,
-die generierten Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
-TypeScript-Übersetzer und die beiden Grafik-Proben. `--liste` zeigt sie
-einzeln, `--nur ruff,vertrag` wählt aus.
+die generierten Frontend-Typen, die Changelog-Fragmente, die erzeugten
+Referenzseiten der Doku, die Testsuite, den TypeScript-Übersetzer und die
+beiden Grafik-Proben. `--liste` zeigt sie einzeln, `--nur ruff,vertrag` wählt
+aus.
+
+**Die Technik-Doku wird mitgeprüft** (seit 11/2026). Gemessen am 22.11.2026
+kannte sie 24 von 34 Feature-Schaltern und 83 von 153 Umgebungsvariablen
+nicht, nannte 14 Dateien, die umgezogen waren, und der Wochenlauf hatte 23
+Schritte, wo sie 14 beschrieb. Seitdem gilt: Die Listen, die im Code eine
+Quelle haben (Cron-Jobs, Schalter, Rollen, Eval-Läufe, Workflows), entstehen
+als Seiten daraus (`python scripts/docs_reference.py`), und
+`tests/test_docs_current.py` hält die geschriebenen Seiten gegen den Code.
+Jeder Feature-Schalter nennt im Feld `docs`, wo er erklärt wird. Was das für
+die tägliche Arbeit heißt, steht in [`REZEPTE.md`](REZEPTE.md) unter „Die
+Technik-Doku nachziehen".
 
 **Die Python-Typprüfung (pyright) deckt noch nicht alles ab.** Sie läuft über
 `kern/` und den Backend-Kern; `council/`, `scripts/` und die Router stehen
@@ -314,7 +325,6 @@ Prod-Stand, `dev` der Integrations-Branch.**
 | Was | Wohin | Wie |
 |-----|-------|-----|
 | **Neues Feature** | PR mit `--base dev` | Squash-Merge; jeder Push auf `dev` deployt auf dev.ratslotse.de |
-| **Vorschau ohne dev anzufassen** | Merge nach `feature` | Jeder Push auf `feature` deployt auf feature.ratslotse.de (zweite Instanz auf derselben Dev-VM, eigene Datenbanken) |
 | **Fix/Hotfix** | PR mit `--base main` | Squash-Merge; deployt sofort auf Prod. Danach `main` nach `dev` zurückmergen (s. u.) |
 | **Release** | PR `dev` → `main` | **Merge-Commit, NICHT squashen** — sonst divergieren die Branches dauerhaft. Versionsschnitt (Changelog + Tag) gehört in diesen PR |
 
@@ -410,8 +420,12 @@ Registry fehlt (ein Tippfehler dort ist dauerhaft AUS und sieht aus wie „noch
 nicht angeschaltet").
 
 **GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_DEV_HOST`,
-`VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`),
-`CLAUDE_CODE_OAUTH_TOKEN` (für `claude.yml`, s. u.), `CARTO_API_KEY` (Kartenkacheln, s. u.).
+`VPS_PROXY_HOST`, `VPS_PROXY_USER`, `VPS_USER`, `VPS_SSH_PORT`, `VPS_KNOWN_HOSTS`
+(Host-Schlüssel der drei Rechner; ohne bricht jeder SSH-Schritt ab, Anleitung in
+`docs-site/…/betrieb.md`), `ANTHROPIC_API_KEY` (für `docs-review.yml`),
+`CLAUDE_CODE_OAUTH_TOKEN` (für `claude.yml`, s. u.), `CARTO_API_KEY`
+(Kartenkacheln, s. u.). Der Deploy-Key geht nur an
+`.github/actions/ssh` und `.github/actions/ssh-config`.
 
 **Code-Review auf Zuruf:** `@claude` in einem PR-Kommentar, einem Review oder
 an einer Zeile startet [`claude.yml`](.github/workflows/claude.yml) — ohne
@@ -444,35 +458,19 @@ und angemeldet wird ohnehin per Konto. Zwei Dinge halten dev seitdem zu:
 `disabled` und werden im Admin-Panel unter *Web-Nutzer*innen* freigeschaltet —
 ohne Mailversand wären sie sonst sofort aktiv, auf dem Dev-LLM-Schlüssel) und
 **keine Indexierung**: `robots.ts` sperrt im Dev-Build alles, Caddy schickt
-zusätzlich `X-Robots-Tag: noindex`. feature.ratslotse.de behält seine
-Basic-Auth. **Jeder Push auf den Branch `dev`** deployt
+zusätzlich `X-Robots-Tag: noindex`. **Jeder Push auf den Branch `dev`** deployt
 dorthin (`.github/workflows/deploy-dev.yml`, ohne Test-Gate — die Tests laufen
 auf jedem PR). Die Dev-VM zieht per `git fetch` + `reset --hard`, baut
 Frontend + Backend-Deps und startet ihre Services neu. Prod bleibt davon
 komplett unberührt. **Kein Force-Push auf `dev`** — der Branch trägt seit dem
-Umbau gemeinsame Historie; wer einen Wegwerf-Stand testen will, nimmt dafür
-den Branch `feature` (s. u.).
+Umbau gemeinsame Historie.
 
-### Feature-Umgebung (feature.ratslotse.de)
-
-**Zweite Instanz auf derselben Dev-VM** — eigenes Verzeichnis `~/app-feature`,
-eigene Ports (Next 3001, uvicorn 8001), eigene Units `nwz-feature-api` /
-`nwz-feature-frontend`, eigene `.env` und **eigene Datenbanken**. Geteilt wird
-nur die Maschine. **Jeder Push auf den Branch `feature`** deployt dorthin
-(`.github/workflows/deploy-feature.yml`), Basic-Auth wie dev, Build ebenfalls
-mit `NEXT_PUBLIC_RATSLOTSE_ENV=dev`.
-
-Wozu: `dev` trägt den Stand, der als nächstes nach `main` fährt. Wer etwas
-Größeres vorzeigen will, ohne diesen Stand anzufassen, mergt es nach `feature`.
-`feature` ist ein Wegwerf-Zweig — Force-Push erlaubt, der Deploy zieht per
-`reset --hard`. Frisch halten heißt `dev` → `feature` mergen, nie umgekehrt;
-fertige Arbeit geht wie immer per PR nach `dev`.
-
-**Beide Deploys teilen sich eine `concurrency`-Gruppe** (`deploy-dev-vm`,
-`cancel-in-progress: false`). Zwei gleichzeitige `next build` passen nicht auf
-2 Kerne/8 GB — der OOM-Killer träfe sonst den *laufenden* Dienst der anderen
-Instanz, und der Ausfall sähe aus wie ein Fehler im gebauten Code. Preis: ein
-Dev-Deploy wartet ggf. auf einen Feature-Build.
+**Eine zweite Instanz gibt es nicht mehr.** Von 09 bis 11/2026 lief auf
+derselben VM feature.ratslotse.de (Branch `feature`, eigene Datenbanken) und
+daneben ein Datenbank-Betrachter unter db.dev.ratslotse.de. Beide wurden seit
+Wochen nicht mehr benutzt und am 15.11.2026 abgebaut. Was auf Prod noch nicht
+zu sehen sein soll, liegt hinter einem Feature-Schalter (s. u.); auf dev ist
+ohnehin alles an.
 
 ## Konfiguration über `.env`
 
@@ -527,6 +525,12 @@ COUNCIL_QA_EXPAND_MODEL=openai/gpt-5.6-luna  # Frage-Analyse der KI-Frage (Azure
 COUNCIL_DEEP_MODEL=                  # Bericht der ausführlichen Recherche; leer = COUNCIL_QA_MODEL
 COUNCIL_DEEP_PLUS_MODEL=openai/gpt-6-sol  # derselbe Bericht für Konten mit Recht premium_models (Rolle „Recherche Plus“); leer = wie COUNCIL_DEEP_MODEL
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
+COUNCIL_TERMS_MODEL=openai/gpt-6-luna        # Fachwörter aus der Vorlage vorschlagen (council/vorlage_begriffe.py; Default passt)
+COUNCIL_TERMS_VERIFY_MODEL=openai/gpt-6-sol  # … und jede Erklärung prüfen — nur was besteht, erscheint (Default passt)
+TERMS_MAX_USD=0.25                   # Kostengrenze der Fachwörter je Cron-Lauf (vorlagen_dossiers, nur mit Schalter begriffe-aus-vorlage)
+COUNCIL_PROGRAM_MODEL=openai/gpt-6-luna         # Wahlprogramme zum Punkt einordnen (council/programm_bezug.py; Default passt)
+COUNCIL_PROGRAM_VERIFY_MODEL=openai/gpt-6-sol   # … und jede Einordnung bestätigen — sonst erscheint sie nicht (Default passt)
+PROGRAM_MAX_USD=0.25                 # Kostengrenze der Wahlprogramm-Einordnungen je Cron-Lauf (nur mit Schalter wahlprogramm-am-punkt)
 # Städtevergleich (check_cities.py) — der teuerste und längste Cron
 CITIES_MAX_SECONDS=14400             # Frist je Lauf; 0 hebt sie auf (Nachlauf von Hand)
 CITIES_MAX_USD=2                     # Kostengrenze je Lauf über ALLE Stufen; 0 hebt sie auf

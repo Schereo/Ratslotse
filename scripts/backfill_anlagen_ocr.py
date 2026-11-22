@@ -11,6 +11,9 @@ die und schickt jede Seite als Bild an ein Sehmodell (``council/ocr.py``).
     # Die Finanzdokumente lesen (Wirtschaftspläne, Jahresabschlüsse, …)
     python scripts/backfill_anlagen_ocr.py --nur-finanz
 
+    # Lesestoff-Scans fürs Dossier (Plan Vorlagen aufbereiten, Frage 8)
+    python scripts/backfill_anlagen_ocr.py --nur-lesestoff --trocken
+
     # Ein einzelnes Dokument, zwei Seiten, zum Hinschauen
     python scripts/backfill_anlagen_ocr.py --document-id 193959 --max-seiten 2
 
@@ -75,7 +78,7 @@ MAX_SEITEN = 120
 
 
 def kandidaten(store: CouncilStore, nur_finanz: bool, document_id: int | None,
-               limit: int | None) -> list[dict]:
+               limit: int | None, nur_lesestoff: bool = False) -> list[dict]:
     """Die Arbeitsliste: Anlagen ohne Textebene, die noch niemand gelesen hat.
 
     ``status='empty'`` ist die Menge, die ``backfill_anlagen_texte.py``
@@ -112,6 +115,15 @@ def kandidaten(store: CouncilStore, nur_finanz: bool, document_id: int | None,
             filter_sql, filter_werte = fq.finanz_anlagen_where()
             wo += " AND " + filter_sql
             werte += filter_werte
+        if nur_lesestoff:
+            # Plan Vorlagen aufbereiten, Frage 8: Lesestoff-Scans (Satzungstext,
+            # Stellungnahmen, Abwägungen) der letzten 12 Monate, damit das Dossier
+            # sie lesen kann, statt den Abschnitt auf `unread` zu setzen.
+            wo += (" AND document_id IN (SELECT d.document_id FROM council_documents d "
+                   "WHERE d.doc_type IN ('statute', 'statement', 'synopsis', 'objection_table')) "
+                   "AND kvonr IN (SELECT t.kvonr FROM council_templates t "
+                   "JOIN council_agenda_items a ON a.template_number = t.template_number "
+                   "JOIN council_sessions s ON s.ksinr = a.ksinr WHERE s.session_date >= date('now', '-12 months'))")
     sql = (f"SELECT document_id, label, url, n_pages FROM council_attachments "
            f"WHERE {wo} ORDER BY document_id DESC")
     if limit:
@@ -150,10 +162,10 @@ def _hole(url: str) -> bytes:
 
 def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
             limit: int | None, workers: int, max_seiten: int, model: str,
-            trocken: bool, zweitleser: str | None = None) -> dict:
+            trocken: bool, zweitleser: str | None = None, nur_lesestoff: bool = False) -> dict:
     store = CouncilStore(db_path)
     try:
-        rows = kandidaten(store, nur_finanz, document_id, limit)
+        rows = kandidaten(store, nur_finanz, document_id, limit, nur_lesestoff)
         # `n_pages` ist NULL, solange eine Anlage nur gelistet und nie geladen
         # wurde. Die als „0 Seiten" auszuweisen wäre eine Behauptung — die
         # Schätzung sagt lieber, für wie viele sie gar nicht gilt.
@@ -261,6 +273,8 @@ def main() -> dict:
         description="Gescannte Anlagen per Sehmodell lesen")
     ap.add_argument("--nur-finanz", action="store_true",
                     help="nur Anlagen, aus denen der Haushalts-Bereich liest")
+    ap.add_argument("--nur-lesestoff", action="store_true",
+                    help="nur Lesestoff-Scans der letzten 12 Monate fürs Dossier (Satzung, Stellungnahme, Abwägung)")
     ap.add_argument("--document-id", type=int, default=None,
                     help="genau ein Dokument, unabhängig von seinem Status")
     ap.add_argument("--limit", type=int, default=None)
@@ -283,7 +297,8 @@ def main() -> dict:
     stats = process(Path(args.db), nur_finanz=args.nur_finanz,
                     document_id=args.document_id, limit=args.limit,
                     workers=args.workers, max_seiten=args.max_seiten,
-                    model=args.model, trocken=args.trocken, zweitleser=zweitleser)
+                    model=args.model, trocken=args.trocken, zweitleser=zweitleser,
+                    nur_lesestoff=args.nur_lesestoff)
     if not args.trocken:
         print(f"OCR: {stats['gelesen']} gelesen, {stats['ohne_text']} ohne Text, "
               f"{stats['fehler']} Fehler von {stats['gesamt']} "

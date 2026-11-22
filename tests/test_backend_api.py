@@ -86,6 +86,23 @@ def test_besuchstage_zeigen_minuten_bereiche_und_funktionen(client):
     assert not any("8525" in f or "/" in f for f in features)
 
 
+def test_die_befehlspalette_wird_je_konto_gezaehlt(client):
+    """Tims Frage vom 22.11.2026: Benutzt die Befehlspalette überhaupt jemand?
+    Das Öffnen ruft keinen Endpunkt auf — ohne Zähler bliebe es eine Vermutung.
+    Beide Eingänge zählen getrennt, und die Auswertung nennt Aufrufe UND Konten."""
+    assert client.post("/api/activity/event", json={"kind": "palette_desktop"}).status_code == 401
+    _register(client)
+    client.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"})
+    for kind in ("palette_desktop", "palette_desktop", "palette_mobile"):
+        assert client.post("/api/activity/event", json={"kind": kind}).json() == {"ok": True}
+    # Ein erfundener Name wird abgewiesen, nicht als eigene Zeile gezählt.
+    assert client.post("/api/activity/event", json={"kind": "heimlich"}).status_code == 422
+
+    zeilen = {e["key"]: e for e in client.get("/api/admin/stats/events?days=30").json()["events"]}
+    assert (zeilen["command_palette_desktop"]["n"], zeilen["command_palette_desktop"]["users"]) == (2, 1)
+    assert (zeilen["command_palette_mobile"]["n"], zeilen["command_palette_mobile"]["users"]) == (1, 1)
+
+
 def test_native_app_config_contract(client):
     """Die Antwort, die JEDE Oberfläche vor allem anderen abfragt.
 
@@ -588,6 +605,8 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "check_vorlage_follows", "remind_setup", "backup_db", "abendmeldungen",
         "speicherfristen",  # Recherchen ohne Einwilligung nach 7 Tagen löschen
         "check_presse",  # Stufe 3a: Stadt-Pressemitteilungen, täglich
+        "antraege_nachzuegler",  # Änderungsanträge an Sitzungstagen
+        "vorlagen_dossiers",  # Dossiers der Vorlagen
         "social_kartentexte",  # ein Satz je Tagesordnungspunkt (LLM), täglich 7:45
         "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
@@ -928,6 +947,19 @@ def test_council_sessions_and_detail(client):
     assert detail["committee"] == "Bauausschuss"
     assert detail["agenda_items"][0]["title"] == "Bebauungsplan Hafen"
     assert "ksinr=42" in detail["url"]
+    # „Kurs der Sitzung" kommt mit, solange es eine Tagesordnung gibt
+    # (Einzelheiten: tests/test_course.py).
+    kurs = detail["course"]
+    assert [s["kind"] for s in kurs["stages"]] == ["content"]
+    assert kurs["items"]["Ö 1"]["icon"] == "plan"
+
+
+def test_council_session_ohne_tagesordnung_ohne_kurs(client):
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(43, "Rat", "2026-12-10", "17:00", "Rathaus", agenda_items=[]))
+    cs.close()
+    detail = client.get("/api/council/session/43").json()
+    assert detail["agenda_items"] == [] and "course" not in detail
 
 
 def test_council_session_404(client):
@@ -1663,8 +1695,16 @@ def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
     data = client.get(f"/api/council/decision/{did}").json()
     assert [a["document_id"] for a in data["attachments"]] == [77, 78]  # Antrag zuerst
     assert data["attachments"][0]["applicants"] == ["SPD"]
-    stats = client.get("/api/council/analysis").json()["antrag_stats"]
-    assert {"party": "SPD", "n": 1, "accepted": 1, "rejected": 0} in stats["parties"]
+    analysis = client.get("/api/council/analysis").json()
+    stats = analysis["antrag_stats"]
+    # Die englischen Namen für neue Clients, die deutschen daneben für die ausgelieferte
+    # iOS-App: Sie liest `angenommen`/`abgelehnt` nicht optional, und ohne sie kippt dort
+    # der Decode der ganzen Analyse (so stand es von 09/2026 bis 11/2026).
+    assert {"party": "SPD", "n": 1, "accepted": 1, "rejected": 0,
+            "angenommen": 1, "abgelehnt": 0} in stats["parties"]
+    for rate in analysis["success_rates"]:
+        assert (rate["angenommen"], rate["abgelehnt"], rate["vertagt"]) == (
+            rate["accepted"], rate["rejected"], rate["postponed"])
 
 
 def test_field_recaps_endpoint(client):
@@ -6433,6 +6473,57 @@ def _deep_events(client, job_id, ab=0):
                 if line.startswith("data: ")]
 
 
+def test_recherche_zeigt_zusatzquellen_und_restzeit(client, monkeypatch):
+    """Fortschritt der Recherche (09.11.2026): Bis dahin stand die Karte nach
+    der letzten Teilfrage eine halbe Minute (dev) still auf „Teilfragen
+    durchsuchen" — Debatten, Presse und Anlagen liefen ohne ein Zeichen, und
+    die Karte versprach „~ noch 30 Sek" bei gemessenen 36 bis 106 s.
+
+    Jetzt beginnt „lesen" direkt nach den Teilfragen und nennt die Kanäle,
+    jeder Kanal meldet sich fertig, jeder Rahmen trägt die Laufzeit und jeder
+    Fortschrittsrahmen eine Restzeit."""
+    from web.backend.app import deepresearch
+
+    _deep_mocks(monkeypatch)
+    _register(client, "zeit@example.org")
+    client.post("/api/auth/login", json={"email": "zeit@example.org", "password": "password123"})
+    job = client.post("/api/council/deep-research",
+                      json={"question": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
+    events = _deep_events(client, job)
+    typen = [e["type"] for e in events]
+
+    assert all(isinstance(e.get("elapsed"), (int, float)) for e in events if e["type"] != "token")
+    lesen = typen.index("phase", typen.index("facets"))
+    assert events[lesen]["phase"] == "lesen"
+    assert events[lesen]["channels"] == ["press", "speeches", "attachments"]
+    assert lesen < typen.index("sources")
+    kanaele = [e for e in events if e["type"] == "channel"]
+    assert [(k["name"], k["hits"]) for k in kanaele] == [
+        ("press", 0), ("speeches", 0), ("attachments", 1)]
+
+    fortschritt = [e for e in events if e["type"] in ("phase", "facets", "facette", "channel")]
+    assert all(isinstance(e.get("remaining"), int) for e in fortschritt)
+    schreiben = next(e for e in events if e.get("phase") == "schreiben")
+    assert schreiben["remaining"] == round(deepresearch.FIRST_TEXT_SECONDS)
+
+
+def test_restzeit_rechnet_mit_dem_gemessenen_tempo():
+    """Die Schätzung skaliert mit der Dauer je Teilfrage: Am 09.11.2026 lief
+    dieselbe Recherche auf Prod in rund 50 s und auf dev in 100 s."""
+    from web.backend.app import deepresearch as dr
+
+    job = dr.DeepJob(id="x", user_id=1, question="?")
+    vorher = dr.remaining_seconds(job, "zerlegen")
+    job.facetten_gesamt, job.facetten_fertig, job.per_facet = 4, 1, 10.0
+    # drei offene Teilfragen à 10 s, Zusatzquellen wie drei Teilfragen, erster Satz
+    assert dr.remaining_seconds(job, "suchen") == round(3 * 10 + dr.EXTRAS_IN_FACETS * 10
+                                                       + dr.FIRST_TEXT_SECONDS)
+    assert dr.remaining_seconds(job, "lesen", dr.EXTRAS_LEFT_AFTER["speeches"]) < \
+        dr.remaining_seconds(job, "lesen", dr.EXTRAS_LEFT_AFTER["press"])
+    assert dr.remaining_seconds(job, "lesen", 0.0) == round(dr.FIRST_TEXT_SECONDS)
+    assert 40 <= vorher <= 70
+
+
 def test_recherche_plus_waehlt_das_groessere_modell(client, monkeypatch):
     """Recherche Plus (23.09.2026): Das Recht `premium_models` entscheidet
     beim EINREICHEN, welches Modell den Bericht schreibt — am Konto geprüft
@@ -6959,6 +7050,14 @@ def test_eine_frage_aus_lottis_fenster_wird_ein_lotti_gespraech(client, monkeypa
         # Ohne Bildschirm bleibt es die Fragen-Seite — und damit ein `ask`.
         von_der_seite = frage({"question": "Was ist mit dem Stadion?", "conversation_id": None})
         assert store.qa_gespraech(von_der_seite, uid)["kind"] == "ask"
+
+        # Fragt die Seite selbst mit ihrem Gegenstand (Chat auf Punkt- und
+        # Beschluss-Seite, Fragen-Seite mit Punkt-Bezug), ist es ebenfalls ein
+        # `ask` — der Bildschirm allein heißt nicht mehr „Lotti“.
+        mit_gegenstand = frage({"question": "Wer hat dagegen gestimmt?", "conversation_id": None,
+                                "screen": {"route": "/council/decision", "surface": "page",
+                                           "refs": {"decision_id": 5}}})
+        assert store.qa_gespraech(mit_gegenstand, uid)["kind"] == "ask"
     finally:
         store.close()
 
@@ -7931,3 +8030,145 @@ def test_quiz_duel_expires(client):
         store._conn.execute("UPDATE quiz_duels SET created_at = '2020-01-01T00:00:00'")
     store.close()
     assert client.get(f"/api/quiz/duel/{code}").status_code == 404
+
+
+def test_ask_aussprache_der_juengsten_station_aus_der_akte(client, monkeypatch):
+    """Den jüngsten Stand bringt oft erst die Akte — und mit ihm muss seine
+    Aussprache kommen. Am 09.11.2026 stand dieser Schritt VOR der Akte und griff
+    nie: Der Trinkwasser-Bericht vom 16.04.2026 wurde zitiert, seine
+    Protokollnotiz („2027 mit Abschluss des KLAK“) fehlte im Prompt."""
+    from app.routers import council as council_router
+    from council import akte_suche
+    from council import qa as qa_mod
+
+    monkeypatch.setenv("FEATURE_FLAGS", "akten-suche,kontext-diaet")
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(93, "Ausschuss für Stadtgrün, Umwelt und Klima",
+                                   "2026-04-16", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (6001,93,1,'11.1','Prüfung öffentlicher Trinkwasserspender - Bericht',"
+            "'Bericht','noted','decision')")
+    cs.save_wortbeitraege(93, [
+        {"art": "rede", "top": "11.1 Prüfung öffentlicher Trinkwasserspender",
+         "speaker": "Thomas Klein", "party": "SPD", "text": "Wie lange dauert die Prüfung?",
+         "answer": None},
+        {"art": "pledge", "top": "11.1 Prüfung öffentlicher Trinkwasserspender",
+         "speaker": "Robert Sprenger", "party": None,
+         "text": "Die Klärung wird 2027 mit Abschluss des KLAK angestrebt.", "answer": None},
+    ])
+    neu = cs.get_decisions_by_ids([6001])
+    cs.close()
+    alt = [{"id": 7000 + i, "title": f"Trinkwasserbrunnen Innenstadt {i}", "summary": "alt",
+            "session_date": "2020-02-13", "committee": "Rat", "outcome": "rejected",
+            "ksinr": 9000 + i, "score": 1.0 - i / 100} for i in range(9)]
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (list(alt), "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(akte_suche, "material", lambda store, q, cands: {
+        "decisions": neu, "speeches": [], "press": [], "akte": "trinkwasser"})
+    # Wie im Betrieb: Keine Ähnlichkeitssuche findet die Notiz (Rerank −2,08,
+    # Gold-Test 01.10.2026) — nur die Kopplung an den Beschluss trägt sie.
+    from council import embeddings as emb
+    monkeypatch.setattr(emb, "search_wortbeitraege", lambda *a, **k: [])
+    monkeypatch.setattr(emb, "search_zusagen", lambda *a, **k: [])
+    gesehen: dict = {}
+
+    def fake_stream(*args, **kwargs):
+        gesehen["debatten"] = kwargs.get("debatten") or []
+        yield "Ein Termin steht nicht fest [6001]."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    with client.stream("POST", "/api/council/ask",
+                       json={"question": "Wann kommen öffentliche Trinkwasserspender?"}) as r:
+        assert r.status_code == 200
+        "".join(r.iter_text())
+
+    texte = [d.get("text") or "" for d in gesehen["debatten"]]
+    assert any("KLAK" in t for t in texte), texte
+
+
+def test_zahl_der_woche_zaehlt_wie_die_liste(client):
+    """„159 Beschlüsse in den letzten 90 Tagen“ führte auf eine Liste mit 91
+    (Tims Befund 09.11.2026): Die Karte zählte auch Änderungsanträge und
+    Berichte, die Liste zeigt unter „Beschlüsse“ nur Abstimmungen. Zahl und
+    Liste hinter dem Link müssen gleich sein."""
+    _register(client)
+    tag = (date.today() - timedelta(days=2)).isoformat()
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(97, "Rat", tag, "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.executemany(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,outcome,kind) "
+            "VALUES (?,97,?,'5',?,'accepted',?)",
+            [(9701, 1, "Hauptbeschluss", "decision"), (9702, 2, "Änderungsantrag", "subvote"),
+             (9703, 3, "Zweiter Beschluss", "decision")])
+        # Ein Bericht: Die Liste zeigt ihn unter „Beschlüsse“ nicht.
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,outcome,kind) "
+            "VALUES (9704,97,4,'6','Sachstandsbericht','noted','decision')")
+    cs.close()
+
+    zahl = client.get("/api/council/zahl-der-woche").json()
+    if zahl["kind"] != "count":
+        pytest.skip("ein Betrag im Fenster — die Karte zeigt dann keine Anzahl")
+    # So fragt die Seite hinter dem Link: Reiter „Beschlüsse“ = category=vote
+    # (web/frontend/app/(app)/council/view.tsx, `mode`).
+    liste = client.get("/api/council/decisions",
+                       params={"date_from": zahl["date_from"], "category": "vote", "limit": 1}).json()
+    assert zahl["count"] == liste["total"] == 2
+
+
+def test_ask_zusagen_auch_wenn_der_plan_keine_debatten_will(client, monkeypatch):
+    """„Wann kommen öffentliche Trinkwasserspender?“ ist eine Terminfrage, und der
+    Rechercheplan schaltet für sie die Debatten ab. Die Antwort steht aber in
+    einer Zusage der Verwaltung („2027 mit Abschluss des KLAK“) zum Bericht auf
+    Rang 7 — die gehört trotzdem in den Prompt, die Reden nicht (Gold dev
+    09.11.2026)."""
+    from app.routers import council as council_router
+    from council import embeddings as emb
+    from council import qa as qa_mod
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(94, "Ausschuss für Stadtgrün, Umwelt und Klima",
+                                   "2026-04-16", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions "
+            "(id,ksinr,position,item_number,title,summary,outcome,kind) "
+            "VALUES (6101,94,1,'11.1','Prüfung öffentlicher Trinkwasserspender - Bericht',"
+            "'Bericht','noted','decision')")
+    cs.save_wortbeitraege(94, [
+        {"kind": "speech", "top": "11.1 Prüfung öffentlicher Trinkwasserspender",
+         "speaker": "Thomas Klein", "party": "SPD", "text": "Wie lange dauert die Prüfung?",
+         "answer": None},
+        {"kind": "pledge", "top": "11.1 Prüfung öffentlicher Trinkwasserspender",
+         "speaker": "Robert Sprenger", "party": None,
+         "text": "Die Klärung wird 2027 mit Abschluss des KLAK angestrebt.", "answer": None},
+    ])
+    bericht = cs.get_decisions_by_ids([6101])
+    cs.close()
+    monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (list(bericht), "semantisch"))
+    monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
+    monkeypatch.setattr(qa_mod, "research_plan_with_mandatory",
+                        lambda *a, **k: {"valid": True, "channels": ["decisions"]})
+    monkeypatch.setattr(emb, "search_wortbeitraege", lambda *a, **k: [])
+    monkeypatch.setattr(emb, "search_zusagen", lambda *a, **k: [])
+    gesehen: dict = {}
+
+    def fake_stream(*args, **kwargs):
+        gesehen["debatten"] = kwargs.get("debatten") or []
+        yield "Ein Termin steht nicht fest [6101]."
+
+    monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
+    with client.stream("POST", "/api/council/ask",
+                       json={"question": "Wann kommen öffentliche Trinkwasserspender?"}) as r:
+        assert r.status_code == 200
+        "".join(r.iter_text())
+
+    texte = [d.get("text") or "" for d in gesehen["debatten"]]
+    assert any("KLAK" in t for t in texte), texte
+    assert not any("Wie lange" in t for t in texte), "Reden bleiben draußen, der Plan will keine"

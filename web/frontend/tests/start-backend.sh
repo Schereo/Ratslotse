@@ -22,6 +22,9 @@ export WEB_JWT_SECRET="e2e-test-secret"
 export WEB_ADMIN_EMAIL="admin@test.de"
 export COOKIE_SECURE="false"
 export DISABLE_RATE_LIMIT="1"
+# Die Passkey-Anmeldung prüft ihre Abfragen im echten Backend (34-passkey);
+# Anmeldung und Registrierung zeigen dann den Passkey-Knopf vor dem Formular.
+export FEATURE_FLAGS="passkey-anmeldung"
 export TELEGRAM_BOT_USERNAME="testbot"
 # Never inherit a developer's real mail configuration into throwaway browser
 # tests. Without delivery configured, test accounts are active immediately.

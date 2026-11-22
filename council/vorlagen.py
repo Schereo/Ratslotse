@@ -144,6 +144,14 @@ def parse_vorlage_page(html: str) -> dict | None:
     }
 
 
+def pdf_seiten_laden(url: str, extraktor: str = anlagentext.PYMUPDF) -> list[str]:
+    """Ein PDF laden und seine Seiten als Texte liefern — für Seitenanker
+    (``council/unterlagen_seiten.py``)."""
+    r = _session.get(url, timeout=45)
+    r.raise_for_status()
+    return anlagentext.pdf_seiten(r.content, extraktor)
+
+
 def _pdf_text(url: str, extraktor: str = anlagentext.PYMUPDF) -> tuple[str, int]:
     """Download a PDF and return (text, n_pages). ``extraktor`` says who reads
     it — PyMuPDF unless the document feeds a budget parser tuned to pypdf

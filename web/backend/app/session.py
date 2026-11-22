@@ -19,7 +19,7 @@ from fastapi import Response
 from starlette.requests import Request
 
 from .config import get_settings
-from .security import create_access_token, decode_access_token, token_lifetime_left
+from .security import create_access_token, decode_access_token, token_lifetime_left, token_via
 
 COOKIE_NAME = "access_token"
 
@@ -67,7 +67,9 @@ def _erneuertes_cookie(scope) -> list[tuple[bytes, bytes]] | None:  # noqa: ANN0
         return None
     sub, ver = decoded
     entity = Response()
-    set_session_cookie(entity, create_access_token(sub, ver))
+    # Die Herkunft reist mit: Eine Sitzung aus einem Anmeldelink bliebe sonst
+    # nach der ersten Verlängerung eine volle Anmeldung.
+    set_session_cookie(entity, create_access_token(sub, ver, via=token_via(token)))
     return [(k, v) for k, v in entity.raw_headers if k == b"set-cookie"]
 
 

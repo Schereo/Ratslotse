@@ -1,0 +1,97 @@
+{
+ "plan": "klimaschutzplan_2035",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "23/0047",
+   "date": "2023-02-09",
+   "text": "Der Plan enthält 90 Maßnahmen in 20 Paketen mit knapp 70 Prozent erreichbarem THG-Minderungspotenzial bis 2035.",
+   "quote": "Der Plan enthält 90 Maßnahmen, gegliedert in 20 Maßnahmenpaketen. Das damit erreichbare Treibhausgas(THG)-Minderungspotenzial beträgt bis 2035 knapp 70 Prozent."
+  },
+  {
+   "template": "23/0064",
+   "date": "2023-06-08",
+   "text": "Die Treibhausgas-Bilanz 2019/2020 wurde am 09.02.2023 vorgelegt; die Ausschreibung für ein Online-Angebot zum Klimaschutzplan samt Monitoring und Controlling ist in Arbeit.",
+   "quote": "Die Treibhausgas-Bilanz 2019/2020 wurde im Auschuss für Stadtgrün, Umwelt und Klima am 09.02.2023 vorgelegt. Die Ausschreibung zur Einrichtung eines Online-Angebotes zur Abbildung des Klimaschutzplanes samt Umsetzungsstand einzelner Maßnahmen (Monitoring und Controlling) ist in Arbeit."
+  },
+  {
+   "template": "23/0784",
+   "date": "2023-11-09",
+   "text": "Für ein „Dashboard“ zum Klimaschutzplan läuft die Vergabe; die Verwaltung rechnet mit dem Projektstart im Dezember 2023.",
+   "quote": "Zurzeit findet das Vergabefahren zur Einrichtung eines Online-Angebotes („Dashboard“) zur Abbildung des Klimaschutzplanes samt Umsetzungsstand einzelner Maßnahmen (Monitoring und Controlling) statt. Die Verwaltung rechnet mit dem Projektstart im Dezember 2023."
+  },
+  {
+   "template": "24/0038",
+   "date": "2024-02-08",
+   "text": "Der Klimaschutzplan soll mit Monitoring und Controlling einzelner Maßnahmen abgebildet werden; der Projektstart war Anfang 2024, das Ergebnis ist für Ende 2024 vorgesehen.",
+   "quote": "Ziel ist die Abbildung des Klimaschutzplanes samt Monitoring und Controlling einzelner Maßnahmen (siehe Absatz unten: „Projektumsetzung Klimaschutzplan“). Der Projektstart fand Anfang 2024 statt. Das vollständige Projektergebnis ist für Ende 2024 avisiert."
+  },
+  {
+   "template": "24/0340",
+   "date": "2024-06-13",
+   "text": "Alle für die Analyse erforderlichen Datenbestände wurden durch die Stadt gesammelt und den Dienstleistern zur Verfügung gestellt; das vollständige Projektergebnis soll Anfang 2025 vorliegen.",
+   "quote": "Das vollständige Projektergebnis soll Anfang 2025 vorliegen. Alle für die Analyse erforderlichen Datenbestände wurden durch die Stadt gesammelt und den Dienstleistern zur Verfügung gestellt."
+  },
+  {
+   "template": "24/0720",
+   "date": "2024-11-14",
+   "text": "Das Altbausanierungsbudget von 2.000.000 Euro wird voraussichtlich bis Ende des Jahres in Zusagen gebunden.",
+   "quote": "Das „Förderprogramm Altbausanierung“ wird in 2024 kontinuierlich sehr stark nachgefragt. Das auf 2.000.000 Euro aufgestockte Budget wird voraussichtlich bis Ende des Jahres in Zusagen gebunden."
+  },
+  {
+   "template": "25/0029",
+   "date": "2025-02-13",
+   "text": "Der Klimaschutzplan ist seit 12.12.2024 als Beta-Version veröffentlicht; der öffentliche Start ist nach der Bundestagswahl Anfang März vorgesehen.",
+   "quote": "Unter www.klimaportal.oldenburg.de ist der Klimaschutzplan veröffentlicht. Die Veröffentlichung erfolgte als Beta-Version am 12.12.2024, der öffentliche Start ist nach der Bundestagswahl Anfang März vorgesehen und wird durch eine Werbe-Kampagne begleitet."
+  },
+  {
+   "template": "25/0346",
+   "date": "2025-08-14",
+   "text": "Das Klimaportal startete Anfang Mai 2025; in den ersten ca. 14 Tagen besuchten es 856 Personen, und seit dem 07.05.2025 begleitet eine Öffentlichkeitskampagne das Portal.",
+   "quote": "Der offizielle Start des Klimaportals (www.klimaportal.oldenburg.de) erfolgte Anfang Mai 2025 und wird seit dem 07.05.2025 durch eine breite Öffentlichkeitskampagne begleitet (siehe unten). Seit dem Start besuchten in den ersten ca. 14 Tagen 856 Personen das Klimaportal (unique visitors)."
+  },
+  {
+   "template": "25/0742",
+   "date": "2025-11-13",
+   "text": "2025 sind 25 Klimaschutzmaßnahmen in Umsetzung und 22 realisiert; 2024 waren es 19 beziehungsweise 20.",
+   "quote": "Die Umsetzungsstände der einzelnen Klimaschutzmaßnahmen im Vergleich zu den Vorjahren sind in der Grafik „Umsetzungsstatus der Klimaschutzmaßnahmen“ unter www.klimaportal.oldenburg.de/monitoring zusammengefasst. Im Vergleich zum Vorjahr 2024 sind in 2025 mehr Maßnahmen „in Umsetzung“ (von 19 auf 25) oder „realisiert“ (von 20 auf 22)."
+  },
+  {
+   "template": "26/0074",
+   "date": "2026-02-12",
+   "text": "Von den 90 Klimaschutzmaßnahmen sind 22 realisiert, 25 in Umsetzung und 20 in Planung.",
+   "quote": "Im Jahr 2025 hat die Umsetzung der 90 Klimaschutzmaßnahmen folgenden Stand erreicht: - 1 Maßnahme: Neu/Noch nicht begonnen - 6 Maßnahmen: Zuordnung Amt - 20 Maßnahmen: In Planung - 9 Maßnahmen: Umsetzungsreif - 25 Maßnahmen: In Umsetzung - 22 Maßnahmen: Realisiert (und teilweise weiterhin Daueraufgabe) - 7 Maßnahmen: Ein- oder Zurückgestellt"
+  },
+  {
+   "template": "26/0418",
+   "date": "2026-06-11",
+   "text": "Derzeit gibt es 22 realisierte Maßnahmen und neun, die zurück- oder eingestellt sind.",
+   "quote": "Insgesamt gibt es derzeit 22 realisierte Maßnahmen und neun die zurück- oder eingestellt sind."
+  },
+  {
+   "template": "26/0750",
+   "date": "2026-10-08",
+   "text": "Im September wurde eine Neuberechnung der Treibhausgas-Emissionen bis 2035 beauftragt; im kommenden Jahr will die Verwaltung eine Überarbeitung des Klimaschutzplans vorschlagen.",
+   "quote": "Zur Fortschreibung des Klimaschutzplans wurde im September die Hamburg Consulting Institut GmbH mit der Neuberechnung des Szenarios für die Entwicklung der Treibhausgas-Emissionen bis 2035 beauftragt. Auf Basis der Ergebnisse will die Verwaltung im kommenden Jahr einen Vorschlag zur Überarbeitung des Klimaschutzplans und dessen Maßnahmen vorlegen."
+  }
+ ],
+ "news": {
+  "from": "26/0418",
+  "from_date": "2026-06-11",
+  "to": "26/0750",
+  "to_date": "2026-10-08",
+  "items": [
+   {
+    "text": "Ab Anfang Oktober gibt es ein neues Energie-Beratungsangebot für Wohneigentumsgemeinschaften, das als Pilot bis Ende 2026 befristet ist.",
+    "quote": "Ab Anfang Oktober werden mit einem neuen Energie-Beratungsangebot speziell Wohneigentumsgemeinschaften (WEG) adressiert. Das Angebot ist vorläufig als Pilotprojket konzipiert und die bis Ende 2026 befristet."
+   },
+   {
+    "text": "Die Online-B2B-Plattform Regiothek wurde 2026 gestartet; ihre Bestellwerte liegen aktuell bei 700 bis 1.000 Euro pro Woche.",
+    "quote": "Die Online B2B-Plattform Regiothek wurde im Jahr 2026 gestartet und wird von den regionalen landwirtschaftlichen Betrieben sowie von den Küchen und Cateringbetrieben gut angenommen. Die Bestellwerte liegen aktuell bei 700 bis 1.000 Euro pro Woche"
+   }
+  ]
+ }
+}

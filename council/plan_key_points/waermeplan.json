@@ -1,0 +1,78 @@
+{
+ "plan": "waermeplan",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Der Plan ist Oldenburgs Strategie für eine klimafreundliche Wärmeversorgung bis 2035.",
+  "quote": "Der Oldenburger Wärmeplan stellt eine Strategie für eine klimafreundliche Wärmeversorgung 2035 dar.",
+  "source": {
+   "kind": "template",
+   "template": "26/0236"
+  }
+ },
+ "points": [
+  {
+   "text": "Die Verwaltung soll die 18 Maßnahmen schrittweise je nach Personal- und Finanzlage umsetzen und über die Ressourcen berichten.",
+   "kind": "responsibility",
+   "quote": "Die Verwaltung wird beauftragt, die 18 Maßnahmen aus dem Oldenburger Wärmeplan sukzessive in Abhängigkeit von der finanziellen und personellen Ressourcenlage umzusetzen. Die Verwaltung wird über die personellen und finanziellen Ressourcen berichten.",
+   "source": {
+    "kind": "decision",
+    "template": "26/0236",
+    "date": "2026-06-01",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Im Szenario sinken die Wärme-Emissionen bis 2035 um ca. 94,6 %; rund 22.724,3 tCO2e bleiben.",
+   "kind": "figure",
+   "figure": {
+    "value": "ca. 94,6 %",
+    "label": "weniger Wärme-Emissionen im Szenario bis 2035"
+   },
+   "quote": "Es zeigt sich, dass im angenommenen Szenario im Zieljahr 2035 eine Reduktion um ca. 94,6 % verglichen mit dem Basisjahr erzielt werden kann. Dies bedeutet, dass ein CO2- Restemissionen im Wärmesektor von ca. 22.724,3 tCO2e im Jahr 2035 anfallen.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0236",
+    "document_id": 306748,
+    "label": "Abschlussbericht Kommunale Wärmeplanung",
+    "page": 118
+   }
+  },
+  {
+   "text": "Der Plan priorisiert Unterstützung für dezentrale Wärmeversorgung; im Fokus stehen Kreyenbrück, Kernstadt und Alte Fleiwa.",
+   "kind": "measure",
+   "quote": "Da es den größten Teil des Stadtgebiets betrifft, wird die grundsätzliche Priorisierung auf Unterstützungsangebote für dezentrale Versorgungslösungen gelegt. Daneben wird der Fokus auf die drei Wärmenetzeignungsgebiete Kreyenbrück, Kernstadt und Alte Fleiwa gerichtet.",
+   "source": {
+    "kind": "template",
+    "template": "26/0236"
+   }
+  },
+  {
+   "text": "Der Plan identifiziert 11 Wärmenetzeignungsgebiete, in denen ein wirtschaftlich tragfähiges Wärmenetz grundsätzlich wahrscheinlich erscheint.",
+   "kind": "figure",
+   "figure": {
+    "value": "11",
+    "label": "Gebiete, in denen ein Wärmenetz wahrscheinlich tragfähig ist"
+   },
+   "quote": "In den folgenden Steckbriefen werden die 11 identifizierten Wärmenetzeignungsgebiete vertieft beschrieben, bei denen eine wirtschaftlich tragfähige Umsetzung eines Wärmenetzes grundsätzlich wahrscheinlich erscheint.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0236",
+    "document_id": 306748,
+    "label": "Abschlussbericht Kommunale Wärmeplanung",
+    "page": 78
+   }
+  },
+  {
+   "text": "Wärmenetzeignungsgebiete sind keine Zusage für einen Netzbau: Der Plan macht deren Realisierung nicht verbindlich.",
+   "kind": "standard",
+   "quote": "Mit dem Beschluss über die Umsetzung des Oldenburger Wärmeplans geht nicht einher, dass in den darin ausgewiesenen Wärmenetzeignungs- und Prüfgebieten verbindlich Wärmenetze realisiert werden.",
+   "source": {
+    "kind": "template",
+    "template": "26/0236"
+   }
+  }
+ ]
+}

@@ -1,35 +1,46 @@
 ---
 title: Architektur
-description: Überblick über Stadtrat-Scraper, Datenbank, KI-Klassifikation, Benachrichtigungen und Deployment.
+description: Datenquellen, Paketabhängigkeiten, Datenbanken, KI-Verarbeitung, Oberflächen, Benachrichtigungen und Betrieb von Ratslotse.
 ---
 
 import Mermaid from '../../components/Mermaid.astro';
 
-Ein Scraper für das Oldenburger Ratsinformationssystem speist eine
-SQLite-Datenbank. Ein Web-Frontend (FastAPI + Next.js) sitzt auf denselben
-Daten und liefert personalisierte Benachrichtigungen per E-Mail und Web-Push.
+Ratslotse liest öffentliche Ratsinformationen der Stadt Oldenburg ein und
+bereitet sie für die Suche auf. Der Zugriff erfolgt über die Webanwendung, die
+native iOS-App oder eine Schnittstelle für eigene Agenten.
 
 <Mermaid code={`
 flowchart TD
-    RIS["Oldenburger Ratsinformationssystem
-    (SessionNet)"]
-    SCRAPER["Scraper (council/)
-    Sitzungen · Protokolle · Vorlagen · Anlagen"]
+    QUELLEN["Quellen der Stadt
+    Ratsinformationssystem · Presse · Geoportal
+    Haushaltsdokumente · Livestream · Wahlergebnisse"]
+    STAEDTE["Ratsinformationssysteme
+    anderer Städte"]
+    COUNCIL["council/
+    einlesen · parsen · aufbereiten"]
     DB[("SQLite
-    Ratsdaten · Konten & Themen")]
-    LLM["LLM via OpenRouter
-    zusammenfassen · matchen · klassifizieren"]
-    API["FastAPI-Backend"]
-    WEB["Next.js-Frontend
-    ratslotse.de · iOS-App"]
+    Ratsdaten · Konten · Städte-Speicher")]
+    LLM["Sprachmodelle über OpenRouter
+    Embeddings und Reranker lokal"]
+    API["FastAPI-Backend
+    web/backend/"]
+    WEB["Web
+    Next.js"]
+    IOS["iOS-App
+    SwiftUI"]
+    MCP["MCP-Server
+    eigene Agenten"]
     NOTIFY["Benachrichtigungen
-    E-Mail (Resend) · Web-Push (APNs/FCM)"]
+    E-Mail · App-Push"]
 
-    RIS -->|"HTML & PDFs — ohne LLM"| SCRAPER
-    SCRAPER --> DB
+    QUELLEN -->|"HTML, PDF, CSV — ohne Modell"| COUNCIL
+    STAEDTE --> COUNCIL
+    COUNCIL --> DB
     DB <--> LLM
     DB --> API
     API --> WEB
+    API --> IOS
+    API --> MCP
     DB --> NOTIFY
 `} />
 
@@ -38,133 +49,246 @@ die Übersichtsgrafik unter [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
 
 ---
 
-## Komponenten
+## Pakete und ihre Schichten
 
-### Stadtrat-Scraper (`council/`)
+| Pfad | Inhalt |
+|---|---|
+| `kern/` | Geteilte Infrastruktur: Sprachmodell-Zugang (`llm.py`), Konten-Datenbank (`store.py`), Benachrichtigungen, E-Mail, Push, Prompts, die Register für Cron-Jobs, Feature-Schalter und Rollen |
+| `council/` | Alles zu den Ratsdaten: Scraper, Parser, Aufbereitung mit und ohne Modell, die Rats-Datenbank. Darin `council/cities/` (der [Städte-Speicher](/docs/andere-staedte/)) und `council/geld/` (Bausteine des [Haushalts](/docs/haushalt/)) |
+| `web/backend/` | FastAPI-Backend: die Router unter `app/routers/`, die Antwortformen der API in `app/antworten.py` |
+| `web/frontend/` | Next.js-Webanwendung |
+| `ios/` | Native SwiftUI-App für iPhone und iPad |
+| `scripts/` | Cron-Jobs und Werkzeuge für den Betrieb |
+| `eval/` | Messläufe für die Qualität der Modell-Schritte ([Eval-Harness](/docs/eval/)) |
+| `kommunalwahl/` | Wahlprogramme, Kandidatenregister und Referenzdaten für den [Wahlabend](/docs/wahlabend/) |
+| `docs-site/` | Diese Dokumentation |
 
-Das Ratsinformationssystem (`ratsinfo.oldenburg.de`) läuft auf **SessionNet**
-(Somacos GmbH). Es gibt keine öffentliche API — die Seiten werden mit
-BeautifulSoup4 gescrapt:
+**Die Paketabhängigkeiten verlaufen nur in der gezeigten Richtung.**
 
-- die **Kalenderseite** liefert alle Sitzungen eines Monats,
-- die **Sitzungs-Detailseite** Kopfdaten (Datum/Zeit/Ort) und die
-  Tagesordnungstabelle (TOPs mit `Ö` sind öffentlich, `N` nicht-öffentlich),
-- die **Vorlagen-Seite** Vorlagen- und Anlagen-PDFs (`council/vorlagen.py`,
-  ausgewertet ganz ohne LLM).
+```
+kern  ←  council  ←  web/backend/app  ←  scripts
+                  ↖  eval
+```
 
-Der Store merkt sich, welche Sitzungen bereits gesehen und welche Alerts schon
-versendet wurden — das verhindert Doppel-Benachrichtigungen.
+`kern/` importiert aus keinem der anderen Pakete, `council/` nur aus `kern`,
+das Backend nicht aus `scripts`. Ein Import entgegen der vorgesehenen
+Richtung kann zu einem zyklischen Import führen. Beim Start eines Dienstes
+zeigt sich das als `ImportError`. Die Testsuite lädt alle Pakete gemeinsam,
+sodass der Fehler dort ausbleiben kann. `tests/test_schichten.py` prüft auch,
+ob die erlaubten Ausnahmen noch verwendet werden.
 
-### KI-Klassifikation
+## Woher die Daten kommen
 
-Die Klassifikation läuft über **OpenRouter** (OpenAI-SDK) und ist bewusst
-zustandslos — kein Fine-Tuning, strukturierte Prompts mit JSON-Mode. Die
-Modelle sind je Aufgabe über Env-Variablen konfigurierbar; Defaults greifen
-ohne Konfiguration.
+Das Einlesen selbst nutzt kein Sprachmodell.
 
-Details: siehe [KI-Pipeline](/docs/ki-pipeline/).
+| Quelle | Was | Wo im Code |
+|---|---|---|
+| Ratsinformationssystem der Stadt (SessionNet) | Sitzungen, Tagesordnungen, Protokolle, Vorlagen, Anlagen, Beratungsfolge, Personen, Gremien | `council/scraper.py`, `council/protocols.py`, `council/vorlagen.py`, `council/stammdaten.py` |
+| Pressemitteilungen der Stadt | RSS, für „Frag den Rat“ und „Mein Viertel“ | `council/presse.py` |
+| Geoportal der Stadt | Bebauungsplan-Flächen, Straßensperrungen, Stadterneuerungsgebiete | `council/bplan.py`, `council/sperrungen.py`, `council/stadterneuerung.py` |
+| Beteiligungsportal | laufende Bauleitplan-Beteiligungen | `council/beteiligung.py` |
+| Haushaltspläne, Jahresabschlüsse, Open Data, Landesstatistik | die Zahlen des Haushalts-Bereichs, je Datenart eine Definition | `council/finanzquellen.py` |
+| Übertragung der Ratssitzung | Live-Verfolgung und vorläufige Abstimmungsergebnisse | `council/livestream.py`, `council/stream_stt.py`, `council/videos.py` |
+| Open Data des Wahlamts | Auszählungsstand am Wahlabend | `web/backend/app/election/` |
+| Ratsinformationssysteme anderer Städte | Vorlagen und Beschlüsse zum Vergleich | `council/cities/` |
 
-### Benachrichtigungen
+Das Ratsinformationssystem hat keine öffentliche Schnittstelle. Die Seiten
+liest der Scraper mit BeautifulSoup, PDFs mit PyMuPDF. Ein Bildmodell liest
+gescannte Anlagen und ein zweites Modell prüft das Ergebnis
+(`council/ocr.py`). Ratslotse archiviert die Quelldateien
+(`council/archiv.py`), damit spätere Auswertungen sie wiederverwenden können.
 
-Pro Konto lässt sich ein Zustellkanal wählen (`email` / `push` / `both` —
-oder `off` für gar nicht) und zusätzlich, **wofür** es Post gibt — sechs
-Anlässe, einzeln abschaltbar.
-Zustellung: **E-Mail** via Resend, **Web-Push** auf die registrierten
-App-Geräte via APNs/FCM. Fehlt das Secret eines Kanals, wird dieser still
-übersprungen.
+## Was aus den Daten entsteht
 
-Kein Anlass sendet selbst: Alle reihen in `notification_queue` ein, und
-`nwz.notify.zustellen()` liefert zentral aus — unter zwei harten Grenzen
-(höchstens zwei Zustellungen pro Person und Tag, nichts zwischen 21 und 7 Uhr).
-Termingebundene Anlässe — die Vorabend-Erinnerung — zählen dabei in einem
-eigenen Topf, sonst kämen sie am Sitzungstag statt am Vortag.
-Details in [App & Konten](/docs/app-und-konten/#benachrichtigungen-sechs-anlässe-vier-grenzen).
+| Bereich | Seite |
+|---|---|
+| Beschlüsse aus den Protokollen, Themenfelder, Kurzfassungen, Orte | [Ratsdokumente & Beschlüsse](/docs/beschluesse/), [KI-Pipeline](/docs/ki-pipeline/) |
+| Sitzungsseite, Seite je Tagesordnungspunkt, Dossiers, Anträge, Live-Verfolgung | [Sitzung & Tagesordnungspunkt](/docs/sitzungen/) |
+| Fragen an den Bestand, ausführliche Recherche, die Akte | [Frag den Rat](/docs/frag-den-rat/) |
+| Tragweite, Gesprächswert, Wichtigkeit, Fundstück des Tages | [Bewertungs-Scores](/docs/bewertungen/) |
+| Vorhaben je Ortsbereich | [Mein Viertel](/docs/mein-viertel/) |
+| Pläne der Stadt mit Berichten und Stand | [Pläne der Stadt](/docs/plaene/) |
+| Vergleich mit anderen Städten | [Andere Städte](/docs/andere-staedte/) |
+| Der Haushalt in seinen Datenschichten, mit Beleg je Zahl | [Stadtfinanzen](/docs/haushalt/) |
+| Wahlabend und Tippspiel | [Wahlabend](/docs/wahlabend/), [Tippspiel](/docs/tippspiel/) |
 
----
+## Sprachmodelle
 
-## Datenbankschema
+Alle Modellaufrufe laufen über OpenRouter (`kern/llm.py`,
+[ADR 0001](/docs/adr/0001-openrouter/)) und sind zustandslos: kein
+Fine-Tuning, strukturierte Prompts, JSON-Antworten. Die Prompts stehen als
+Code in `kern/prompts.py`, damit jede Änderung im Pull Request sichtbar ist.
+Das Modell je Aufgabe ist über eine Umgebungsvariable wählbar; die Vorgaben
+stehen unter [Betrieb](/docs/betrieb/#modellwahl-je-aufgabe).
 
-Zwei SQLite-Dateien: eine für Konten & Themen, eine für die Ratsdaten
-(siehe [ADR 0005](/docs/adr/0005-sqlite-fts5/)).
+Drei Regeln gelten über alle Aufgaben:
 
-Die Trennlinie ist: **alles Nutzerbezogene** liegt in `ratslotse.sqlite`, **alle
-Ratsdaten** in `council.sqlite`. Deshalb liegen z. B. Themen-Treffer und
-Quiz-Antworten in der Konten-DB, obwohl sie auf Beschlüsse bzw. Fragen zeigen —
-ein Join über beide Dateien ist nicht möglich, solche Zeilen denormalisieren die
-nötigen Felder.
+- **Nutzereingaben bleiben in der EU**, bei Anbietern ohne Training und mit
+  Zero Data Retention; Anbieter aus China sind ausgeschlossen
+  ([ADR 0002](/docs/adr/0002-dsgvo-provider-routing/)).
+- **Ratslotse prüft Modellaussagen soweit möglich anhand der Quelle.**
+  Der Beleg muss das Zitat im Wortlaut und die genannten Zahlen enthalten
+  (`council/evidence.py`, `council/kritiker.py`).
+- **Ratslotse behandelt Dokumente von Dritten als Eingabedaten.**
+  `kern/foreign_text.py` entfernt Anweisungen an ein KI-System aus Vorlagen
+  und Anträgen, bevor das Modell die Texte verarbeitet.
 
-**Konten & Nutzerdaten (`ratslotse.sqlite`)**
+Embeddings und der Reranker der Suche laufen lokal mit fastembed
+([ADR 0003](/docs/adr/0003-fastembed-statt-torch/)). `kern/usage.py`
+erfasst die Nutzung je Feature. Das Admin-Panel zeigt die daraus
+berechneten Kosten. Der tägliche Überwachungsjob meldet, wenn die Kosten
+des Vortags den Schwellenwert überschreiten.
 
-- `web_users` — Konten (E-Mail, Passwort-Hash, Rolle, Status, `display_name`,
-  `delivery_channel`, `badges`, `onboarding`, `apple_sub`, `token_version`)
-- `topics`, `committee_subscriptions` — Themen-Watchlist und Ausschuss-Abos
+## Datenbanken
+
+Drei SQLite-Dateien unter `data/` ([ADR 0005](/docs/adr/0005-sqlite-fts5/)):
+
+| Datei | Inhalt | Tabellen (Stand 11/2026) | Schema |
+|---|---|---:|---|
+| `ratslotse.sqlite` | alles Nutzerbezogene: Konten, Rollen, Themen, Abos, Gespräche, Notizen, Warteschlange der Benachrichtigungen, Protokolle der Jobs | 58 | `kern/store.py` |
+| `council.sqlite` | die Ratsdaten und alles daraus Abgeleitete, samt Haushalt | 154 | `council/store_schema.py` |
+| `cities.sqlite` | der Städte-Speicher in fünf Schichten | 25 | `council/cities/schema.py` |
+
+Die Trennlinie zwischen den ersten beiden ist: **alles Nutzerbezogene** liegt
+in `ratslotse.sqlite`, **alle Ratsdaten** in `council.sqlite`. Deshalb liegen
+Themen-Treffer und Quiz-Antworten in der Konten-Datenbank, obwohl sie auf
+Beschlüsse oder Fragen zeigen. Da kein Join über beide Dateien möglich ist,
+enthalten die betreffenden Zeilen die benötigten Felder bereits.
+
+Die wichtigsten Tabellen sind hier aufgeführt.
+
+**Konten und Nutzerdaten** (`ratslotse.sqlite`)
+
+- `web_users`, `web_user_roles`, `web_passkeys` — Konten, ihre Rollen
+  ([Rollen und Rechte](/docs/referenz/rollen-rechte/)) und Passkeys
+- `topics`, `committee_subscriptions`, `template_follows`, `bookmarks` —
+  Themen, Ausschuss-Abos, verfolgte Vorlagen, Merkliste
 - `council_topic_matches`, `topic_hits_seen` — Beschluss-Treffer je Thema und
-  was davon schon gesehen wurde („Neu"-Zähler)
-- `council_agenda_matches`, `council_agenda_classified` — Tagesordnungs-Treffer
-  und bereits klassifizierte Agenden
-- `push_tokens`, `email_verification_tokens`, `password_reset_tokens` — Push und
-  E-Mail-/Passwort-Flows
-- `quiz_answers`, `quiz_ratings`, `quiz_daily`, `user_quiz_questions` — Quiz:
-  Antworten/Punkte, 👍/👎, tägliche Challenge, eigene Fragen
-- `user_activity`, `llm_usage` — Aktivitätssignale und LLM-Kostenerfassung
+  was davon schon gesehen wurde
+- `notification_queue`, `push_tokens`, `email_log` — Warteschlange und
+  Zustellung
+- `qa_conversations`, `deep_research_jobs` — Gespräche mit „Frag den Rat“ und
+  Recherchen
+- `user_notes`, `note_keys`, `note_passkeys` — verschlüsselte Notizen
+- `mcp_tokens` — Schlüssel für den [MCP-Server](/docs/mcp/)
+- `job_runs`, `request_errors`, `page_views`, `signup_rejections` — Betrieb:
+  Läufe der Cron-Jobs, gesammelte Fehler, Seitenaufrufe ohne Personenbezug,
+  abgewiesene Registrierungen
 
-**Ratsdaten (`council.sqlite`)**
+**Ratsdaten** (`council.sqlite`)
 
-- `council_sessions`, `council_agenda_items`, `council_scheduled_sessions` —
-  Sitzungen, Tagesordnungen und terminierte Sitzungen ohne Tagesordnung
-- `council_alerts_sent`, `committee_notifications` — Deduplizierung der Benachrichtigungen
-- `committee_summaries` — gecachte Agenda-Zusammenfassungen
-- `council_protocols`, `council_decisions`, `council_attendance`,
-  `council_templates`, `council_attachments`, `council_deliberations` — Dokument-Auswertung
-  und Beratungsfolge (siehe [Beschlüsse](/docs/beschluesse/))
+- `council_sessions`, `council_agenda_items` — Sitzungen und Tagesordnungen
+- `council_protocols`, `council_decisions`, `council_speeches` — Protokolle,
+  Beschlüsse, Wortbeiträge
+- `council_templates`, `council_attachments`, `council_deliberations` —
+  Vorlagen, Anlagen, Beratungsfolge
+- `template_dossiers`, `template_terms`, `page_questions` — Dossiers,
+  Fachwörter und Vorschlagsfragen je Vorlage
 - `council_persons`, `council_memberships` — Mandatsträger*innen und Gremien
-- `council_entities` (+ `_links`, `_meta`, `_obs`, `_scanned`) — erkannte Orte
-  und Projekte samt Geokoordinaten für die Stadtkarte
-- `council_embeddings`, `council_similar` — Vektoren und vorberechnete Nachbarn
-  („Ähnliche Beschlüsse", siehe [ADR 0003](/docs/adr/0003-fastembed-statt-torch/))
-- `council_field_recaps`, `council_goal_links` — Themenfeld-Rückblicke und
-  Ziele-Tracking
-- `council_daily_finds` — kuratierte „Fundstück des Tages"-Karten
-  (siehe [Bewertungs-Scores](/docs/bewertungen/))
-- `council_quiz_questions`, `council_budget` — Quizfragen und Haushaltszahlen
-- `council_decisions_fts` — FTS5-Volltextindex über die Beschlüsse
+- `council_entities` — erkannte Themen, Orte und Projekte
+- `council_embeddings`, `council_similar`, `council_decisions_fts` — Vektoren,
+  vorab ermittelte ähnliche Beschlüsse, Volltextindex
+- `council_matters` — Grundakten, je Vorgang eine
+- `council_press`, `council_bplan_outlines`, `council_district_projects` —
+  Pressemitteilungen, Bebauungsplan-Flächen, Vorhaben je Ortsbereich
+- `council_video_results`, `council_live_state` — vorläufige Ergebnisse und
+  der Stand der Live-Verfolgung
+- `council_plan_items`, `council_plan_links` — Zuordnungen zu den Plänen der
+  Stadt
 
----
+**Schema und Migration müssen denselben Stand herstellen.** Neue Datenbanken
+entstehen aus dem Schema, bestehende aktualisiert Ratslotse per Migration.
+Tests, die nur neue Datenbanken verwenden, können eine fehlende Migration
+übersehen. `tests/test_migration_bestand.py` migriert daher eingecheckte
+Auszüge der echten Schemata und vergleicht die Spalten.
+
+## Oberflächen
+
+- **Web** (`web/frontend/`): Next.js. Das Frontend spricht nur über
+  `lib/api.ts` mit dem Backend, die Typen kommen aus dem API-Vertrag
+  (`api/openapi.json`, daraus `lib/api-schema.ts`).
+- **iOS** (`ios/`): eine native SwiftUI-App ab iOS 17, drei Swift-Pakete
+  (Schnittstelle, Design, Funktionen). Einzelheiten unter
+  [App & Konten](/docs/app-und-konten/#native-app-swiftui).
+- **MCP-Server** (`/api/mcp`): die Ratsdaten für den eigenen Agenten, lesend,
+  mit persönlichem Schlüssel oder OAuth ([MCP-Server](/docs/mcp/)).
+
+**Logik gehört ins Backend.** Sortierung, Gruppen, Sätze und Zustände
+bereitet das Backend für beide Oberflächen auf. Die App verwendet
+handgeschriebene Typen. `tests/test_ios_vertrag.py` gleicht ihre Modelle mit
+dem API-Vertrag ab. Vor jedem Release zeigt `scripts/ios_vertrag.py`,
+welche Änderungen mit der veröffentlichten App nicht kompatibel sind.
+
+[Feature-Schalter](/docs/referenz/feature-schalter/) aktivieren einzelne
+Funktionen. Die [Rechte](/docs/referenz/rollen-rechte/) des Kontos bestimmen
+den Zugriff.
+
+## Benachrichtigungen
+
+Jedes Konto kann einen Zustellkanal auswählen (`email`, `push`, `both` oder
+`off`) und sechs Benachrichtigungsanlässe einzeln deaktivieren. E-Mails
+verschickt Ratslotse über Resend, Push-Nachrichten über APNs. Fehlen die
+Zugangsdaten für einen Kanal, überspringt Ratslotse ihn ohne Fehlermeldung.
+
+Alle Benachrichtigungen gelangen über `notification_queue`
+(`kern.notify.einreihen`) zu `kern.notify.zustellen()`. Die zentrale
+Zustellung erlaubt höchstens zwei Benachrichtigungen pro Person und Tag und
+pausiert zwischen 21 und 7 Uhr. Für termingebundene Anlässe wie die
+Vorabend-Erinnerung gilt ein separates Kontingent, damit sie früh genug
+ankommen. Die Warteschlange berücksichtigt die Kanaleinstellung, die
+Nachtruhe und das Tageslimit auch für neue Anlässe.
+
+Einzelheiten unter
+[App & Konten](/docs/app-und-konten/#benachrichtigungen-sechs-anlässe-vier-grenzen).
 
 ## Geplante Jobs
 
-Alle Auswertungen laufen als geplante Jobs auf dem Server — jeder Lauf ist
-idempotent und meldet Fehler per E-Mail an die Betreiber-Adresse:
+Alle Auswertungen laufen als Cron-Jobs auf dem Server. Jeder Lauf ist
+wiederholbar. `run_guarded` (`kern/alerts.py`) protokolliert den Lauf in
+`job_runs` und meldet Abstürze per E-Mail an die Betreiberadresse. Der
+tägliche Überwachungsjob gleicht die erwarteten Intervalle mit den
+protokollierten Läufen ab und erkennt so auch ausgebliebene Starts.
+
+Die vollständige Liste mit Takt steht in der
+[Referenz: Cron-Jobs](/docs/referenz/cron-jobs/), erzeugt aus `kern/jobs.py`.
+In groben Zügen:
 
 | Rhythmus | Aufgabe |
 |---|---|
-| täglich | Datenbank-Backup (rotierend, optional off-site gespiegelt) |
-| täglich | Ausschuss-Tagesordnungen zusammenfassen |
-| mehrmals täglich | Sitzungen auf Themen-Treffer prüfen (inkl. geänderter Tagesordnungen) |
-| täglich | neue Protokolle parsen — und in einem Rutsch: Vorlagen & Anlagen nachladen, Beschlüsse klassifizieren, Beträge erkennen, „Lotti erklärt's einfach" schreiben, Tragweite und Gesprächswert bewerten, Wichtigkeit neu berechnen |
-| wöchentlich | Backfills als Auffangnetz: Entitäten & Beschreibungen, Geocoding, Embeddings/Ähnliche, Themen↔Beschlüsse, Rückblicke, Stammdaten, Scores in Tranchen, Quizfragen, Fundstücke |
+| mehrmals täglich | Sitzungen und Tagesordnungen lesen, Themen-Treffer melden, neue Anträge nachladen, Dossiers für die nächsten 21 Tage bauen |
+| täglich | neue Protokolle lesen und in einem Zug aufbereiten: Beschlüsse, Themenfelder, Kurzfassungen, Bewertungen |
+| täglich | Pressemitteilungen, Sperrungen, verfolgte Vorlagen, Backups und Überwachung |
+| an Sitzungstagen | Mitschnitt und Live-Verfolgung der Ratssitzung |
+| wöchentlich | Fallback für noch ausstehende Verarbeitung (Entitäten, Geocoding, Embeddings, Rückblicke, Quizfragen, Fundstücke, das Register von „Mein Viertel“, der Städtevergleich) |
 
-Der tägliche Protokoll-Lauf deckt neue Beschlüsse **tagesaktuell** ab (mit
-Obergrenzen je Lauf), der wöchentliche Lauf holt in Tranchen den Bestand nach.
-Details und Zeitpläne: [Betrieb](/docs/betrieb/).
-
----
+Lange Jobs prüfen nach jedem Batch, ob ein Deploy ansteht
+(`kern/stopp.py`). Wenn ja, beenden sie den Lauf an dieser Stelle. Bereits
+gespeicherte Ergebnisse bleiben erhalten. Dieselbe Logik setzt die
+Kostengrenze pro Lauf durch.
 
 ## Deployment
 
-- **Hosting:** ein App-Server hinter einer Edge-VM; **Caddy** auf der Edge
-  terminiert TLS und proxyt auf das Next.js-Frontend
-  (siehe [ADR 0004](/docs/adr/0004-caddy-statt-nginx/)).
-- **Prozesse:** Backend (FastAPI/uvicorn) und Frontend (Next.js) laufen als
-  systemd-Services.
-- **CI/CD:** GitHub Actions. **Nur ein gemergter Pull Request nach `main`**
-  löst den Deploy aus (rsync + Service-Restart + Frontend-Build) — ein direkter
-  Push auf `main` läuft nur durch die Tests
-  (siehe [ADR 0008](/docs/adr/0008-deploy-nur-bei-merge/)).
-- **Secrets:** `.env` liegt nur auf dem Server, nie im Git; der Deploy-Key ist
-  ein GitHub-Actions-Secret.
+- **Hosting:** ein App-Server hinter einer Edge-VM. Caddy auf der Edge
+  terminiert TLS und reicht an das Next.js-Frontend weiter
+  ([ADR 0004](/docs/adr/0004-caddy-statt-nginx/)).
+- **Prozesse:** Backend (FastAPI unter uvicorn) und Frontend (Next.js) laufen
+  als systemd-Dienste.
+- **Zwei Zweige, zwei Umgebungen:** `main` ist der Stand von Prod, `dev` der
+  Integrationszweig mit eigener Umgebung, auf der alle Feature-Schalter an
+  sind. Nur ein gemergter Pull Request nach `main` löst den Prod-Deploy aus
+  ([ADR 0008](/docs/adr/0008-deploy-nur-bei-merge/)).
+- **Nach dem Neustart läuft ein Smoke-Test** (`scripts/rauchprobe.py`).
+  Er ruft die Endpunkte auf und prüft ihre Antworten anhand des API-Vertrags.
+- **Fehlerprotokoll** (`kern/fehler.py`). Das Backend gruppiert unbehandelte
+  Ausnahmen. Das Protokoll enthält keine Anfragekörper, Kopfzeilen oder
+  Variablenwerte. Beim ersten Auftreten eines Fehlers versendet es eine
+  E-Mail.
+- **Geheimnisse:** Die `.env` liegt nur auf dem Server, nie im Repo.
+
+Branch-Modell, Deploy-Wege, Sicherungen und alle Umgebungsvariablen:
+[Betrieb](/docs/betrieb/).
 
 :::tip
-Diese Seite ist die Architektur-Übersicht für Mitlesende. Konkrete Hosts,
-Zeitpläne und Server-Details stehen bewusst nicht in dieser öffentlichen Doku.
+Diese öffentliche Übersicht enthält keine konkreten Hosts oder Angaben zu
+einzelnen Servern.
 :::

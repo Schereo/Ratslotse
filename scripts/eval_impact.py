@@ -61,7 +61,8 @@ def golden_zeilen(store: CouncilStore, *, laut: bool = True) -> list[tuple[dict,
     for g in golden:
         row = store._conn.execute(
             """SELECT d.id, d.title, d.official_text, d.summary, d.outcome, d.kind,
-                      d.amount_eur, d.impact, cs.committee, cs.session_date
+                      d.amount_eur, d.impact, cs.committee, cs.session_date,
+                      d.ksinr, d.item_number, d.template_number
                FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
                WHERE d.title LIKE ? ORDER BY d.id LIMIT 1""",
             (f"%{g['match']}%",),
@@ -110,16 +111,44 @@ def auswerten(rows: list[tuple[dict, dict]]) -> dict:
     }
 
 
+def mit_dossier(store: CouncilStore, rows: list[tuple[dict, dict]]) -> int:
+    """A/B Stufe 4 (Plan Vorlagen § 7.4): jedem Golden-Beschluss die Dossier-
+    Zeilen seiner Vorlage anhängen; fehlt das Dossier, wird es erzeugt
+    (~0,0025 $ je Vorlage). Gibt die Zahl der Beschlüsse mit Zeilen zurück."""
+    from council import template_dossier
+    n = 0
+    for _, d in rows:
+        nr = store.agenda_item_for_decision(d["ksinr"], d["item_number"]) if d.get("item_number") else None
+        if not nr:
+            continue
+        if d.get("template_number") and not store.dossier_lines(d["ksinr"], nr):
+            template_dossier.build_for_template(store, d["template_number"], batch=False)
+        d["dossier_lines"] = store.dossier_lines(d["ksinr"], nr)
+        n += bool(d["dossier_lines"])
+    return n
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Tragweite-Score gegen das Golden-Set prüfen")
     ap.add_argument("--rate-missing", action="store_true",
                     help="unbewertete Golden-Beschlüsse zuerst per LLM bewerten")
     ap.add_argument("--db", default=str(COUNCIL_DB))
+    ap.add_argument("--ab-dossier", action="store_true",
+                    help="A/B: frisch bewerten ohne und mit Dossier-Zeilen, nichts speichern")
     args = ap.parse_args()
 
     store = CouncilStore(Path(args.db))
     try:
         rows = golden_zeilen(store)
+        if args.ab_dossier:
+            frisch_bewerten(rows)
+            a = auswerten(rows)
+            n = mit_dossier(store, rows)
+            frisch_bewerten(rows)
+            b = auswerten(rows)
+            print(f"A heute:       rho {a['rho']}  Band {a['hit_rate']}  (n={a['n']})")
+            print(f"B mit Dossier: rho {b['rho']}  Band {b['hit_rate']}  (n={b['n']}, {n} mit Zeilen)")
+            return 0
 
         missing = [d for _, d in rows if d["impact"] is None]
         if missing and args.rate_missing:

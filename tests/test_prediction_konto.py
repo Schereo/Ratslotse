@@ -133,9 +133,12 @@ def test_mit_anmeldung_steht_sie_offen(client):
     assert daten["tip_kind"] == "pct"
 
 
-def test_die_uebersicht_verlinkt_nur_was_man_benutzen_kann(client):
+def test_die_uebersicht_verlinkt_nur_was_man_benutzen_kann(client, monkeypatch):
     """Ein Link, den man sieht und nicht benutzen kann, ist schlechter als
-    keiner — also entscheidet das Backend, nicht die Seite."""
+    keiner — also entscheidet das Backend, nicht die Seite. (Die Einladungen
+    sind seit 09.11.2026 aus; geprüft wird die Regel für danach.)"""
+    from app.routers import wahlabend
+    monkeypatch.setattr(wahlabend, "TIPP_EINLADUNGEN", True)
     # Die Runde anlegen, wie auf Prod: Die Stichwahl ist eingefroren, und
     # eine vorbeie Wahl ohne Runde bekäme gar keinen Link mehr.
     _als(ANNA)

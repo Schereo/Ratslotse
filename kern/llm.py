@@ -246,9 +246,18 @@ def web_denk_extra(model: str, feature: str) -> dict[str, Any]:
     return {"extra_body": {"reasoning": {"effort": aufwand}}} if aufwand else {}
 
 
-def ersatz_fuer(model: str | None) -> list[str]:
-    """Die Ersatzmodelle zu ``model`` — leer, wenn keine gemessen sind."""
-    return list(ERSATZ.get(model or "", ()))
+def ersatz_fuer(model: str | None, *, lange_ausgabe: bool = False) -> list[str]:
+    """Die Ersatzmodelle zu ``model`` — leer, wenn keine gemessen sind.
+
+    ``lange_ausgabe=True`` lässt Modelle mit hohem Token-Boden weg
+    (``min_max_tokens`` ≥ 20.000, heute DeepSeek mit 24k): Bei langen
+    Extraktionen bezahlt der Boden das Denken voll, und am 09.11.2026 kostete
+    ein solcher Ersatzlauf 0,78 $ ohne ein Ergebnis (Plan Vorlagen aufbereiten,
+    Frage 10)."""
+    kette = list(ERSATZ.get(model or "", ()))
+    if lange_ausgabe:
+        kette = [m for m in kette if (MODEL_PARAMS.get(m, {}).get("min_max_tokens") or 0) < 20_000]
+    return kette
 
 
 def _with_model_params(kwargs: dict[str, Any], apply_floor: bool = True) -> dict[str, Any]:
@@ -311,6 +320,20 @@ OHNE_NUTZEREINGABE: frozenset[str] = frozenset({
     "district_projects",
     # Social-Texte über Beschlüsse
     "social_card_text", "social_critic",
+    # Argumente zu einem Tagesordnungspunkt aus Wortbeiträgen und Vorlage
+    "item_arguments",
+    # Vorschlagsfragen zu Punkt- und Beschluss-Seite aus Titel und Unterlagen
+    "page_questions",
+    # Änderungsanträge lesen (council/motions.py)
+    "motion_extract",
+    # Dossier je Vorlage (council/template_dossier.py)
+    "template_dossier", "template_dossier_abruf",
+    # Fachwörter aus der Vorlage vorschlagen und prüfen (council/vorlage_begriffe.py)
+    "template_terms", "template_terms_verify",
+    # Wahlprogramme zum Tagesordnungspunkt einordnen und prüfen (council/programm_bezug.py)
+    "program_stance", "program_stance_verify",
+    # Pläne der Stadt: Stand und Bezüge aus Vorlagen und Berichten heraussuchen
+    "plan_measure_status", "plan_link_judgement", "plan_mandate_check", "plan_key_points", "plan_reports", "plan_plain",
     # Städtevergleich: fremde Ratsdokumente
     "cities_evidence_terms",
 })
@@ -969,10 +992,14 @@ def _record_usage(feature: str | None, model: str | None, usage_obj: Any) -> Non
         return
     try:
         from kern import usage
+        details = getattr(usage_obj, "prompt_tokens_details", None)
+        cached = getattr(details, "cached_tokens", None) if details is not None else None
+        if cached is None and isinstance(details, dict):
+            cached = details.get("cached_tokens")
         usage.record(feature, model,
                      getattr(usage_obj, "prompt_tokens", 0) or 0,
                      getattr(usage_obj, "completion_tokens", 0) or 0,
-                     cost_usd=cost)
+                     cost_usd=cost, cached_tokens=cached)
     except Exception:  # noqa: BLE001
         pass
 

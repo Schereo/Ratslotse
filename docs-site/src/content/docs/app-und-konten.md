@@ -1,12 +1,13 @@
 ---
 title: App & Konten
-description: Die native SwiftUI-App, die Anmeldung (klassisch und mit Apple) und was alles am Nutzerkonto hängt.
+description: Native SwiftUI-App, Anmeldung und Kontofunktionen wie Benachrichtigungen und persönliche Daten.
 ---
 
 Seit Version 2.0 hat Ratslotse eine eigene **SwiftUI-App** für iPhone und iPad.
-Sie spricht direkt mit demselben FastAPI-Backend wie die Website; die Sitzung
-läuft im Web über ein Cookie und in der App über ein Bearer-Token im Keychain.
-Eine WebView gehört nicht mehr zum nativen Produkt.
+Sie nutzt direkt dasselbe FastAPI-Backend wie die Website. Im Web
+authentifiziert ein Cookie die Sitzung, in der App ein Bearer-Token aus
+dem Keychain. Seit der Umstellung auf die native App nutzt sie keine
+WebView mehr.
 
 ## Native App (SwiftUI)
 
@@ -21,16 +22,17 @@ Das Projekt liegt unter `ios/`, sein technischer Einstiegspunkt ist
 
 Die App läuft ab iOS 17 auf iPhone und iPad. Sie nutzt native Systembausteine:
 Sign in with Apple, APNs, Universal Links, `NWPathMonitor`, MapKit, EventKit und
-das Share-Sheet. Der Ratsdialog spricht als POST-SSE direkt mit FastAPI;
-gründliche Recherchen werden nach einem Verbindungsabriss ab dem letzten Event
-fortgesetzt.
+das Share-Sheet. Der Ratsdialog verbindet sich per POST und SSE direkt mit
+FastAPI. Ausführliche Recherchen setzt die App nach einem Verbindungsabbruch
+ab dem letzten Ereignis fort.
 
 Auch der Erststart ist nativ: Lotti begrüßt vor der Anmeldung und führt danach
 durch Gremien-Abos, automatisch beschriebene Themen und Push. Alle drei Schritte
-sind überspringbar. `UserDefaults` merkt den lokalen Schritt;
-`GET/POST /api/onboarding/setup` hält ihn zusätzlich am Konto, sodass die
-Einrichtung nach Gerätewechsel oder Neuinstallation fortgesetzt wird. Im Konto
-kann der Ablauf absichtlich erneut geöffnet werden.
+lassen sich überspringen. `UserDefaults` speichert den lokalen Fortschritt.
+`GET/POST /api/onboarding/setup` speichert ihn zusätzlich beim Konto. So
+lässt sich die Einrichtung nach einem Gerätewechsel oder einer
+Neuinstallation fortsetzen. In den Kontoeinstellungen kann sie erneut
+geöffnet werden.
 
 Der Release-Build behält `de.ratslotse.app`. Debug verwendet
 `de.ratslotse.dev`, damit Entwicklungs- und Release-Build getrennt installiert
@@ -83,9 +85,8 @@ Token nie.
 Plattform — `ios` aus der nativen App; Browser schicken den Header gar nicht.
 `android` (aus der entfernten Capacitor-Hülle) und `app` bleiben als Altwerte
 gültig, weil im Feld Stände laufen, die `app` noch senden. Die Zuordnung macht
-`web/backend/app/clients.py`; Fremdwerte werden dort **nicht** durchgereicht,
-sondern zu `web`, damit über den Header nichts Beliebiges in die
-Statistiktabelle wandert. Erkennt das Backend einen der nativen Werte,
+`web/backend/app/clients.py`. Unbekannte Werte ordnet das Backend
+`web` zu, damit die Statistiktabelle nur bekannte Client-Werte enthält. Erkennt das Backend einen der nativen Werte,
 liefert es zusätzlich ein **langlebiges Token im Antwort-Body**
 (`app_access_token_expire_minutes`, Default 90 Tage), das die SwiftUI-App im
 Keychain ablegt und als `Authorization: Bearer …` mitschickt.
@@ -118,8 +119,8 @@ Der Widerruf bleibt davon unberührt: Das erneuerte Token trägt dieselbe
 **Widerruf** läuft über `web_users.token_version`: Der Wert steckt als `ver` im
 Token; passt er nicht mehr zur Zeile, ist die Sitzung ungültig. Erhöht wird er
 bei Passwort-Änderung und Passwort-Reset. `POST /api/auth/logout` löscht nur das
-Cookie — die App entfernt ihr Token zusätzlich lokal und meldet vorher ihren
-Push-Token ab (`lib/auth.tsx`, `lib/push.ts`).
+Cookie (`lib/auth.tsx`). Die native App entfernt ihr Token zusätzlich aus dem
+Schlüsselbund und meldet vorher ihren Push-Token ab.
 
 | Endpunkt | Zweck | Limit |
 |---|---|---|
@@ -134,6 +135,9 @@ Push-Token ab (`lib/auth.tsx`, `lib/push.ts`).
 | `POST /api/account/change-email` | Adresswechsel anstoßen (Passwort bzw. Apple-Re-Auth) | 5 / 15 min je Konto |
 | `DELETE /api/account/change-email` | schwebenden Wechsel verwerfen | — |
 | `POST /api/auth/apple` | Sign in with Apple | 10 / min |
+| `POST /api/auth/passkey/signup/options`, `…/signup` | Mit Passkey registrieren (Schalter `passkey-anmeldung`) | 5 / 5 min bzw. 10 / min |
+| `POST /api/auth/passkey/login/options`, `…/login` | Mit Passkey anmelden; die Optionen auch zum Bestätigen beim Löschen und Adresswechsel | 10 / min |
+| `GET/POST /api/account/passkeys`, `DELETE …/{id}` | Passkeys im Konto | 10 / 15 min je Konto |
 
 Die Registrierung braucht **keine Admin-Freigabe**: Wer die E-Mail bestätigt,
 ist aktiv; die Admins bekommen nur eine FYI-Mail. Ohne konfigurierten
@@ -175,10 +179,9 @@ landet dort genauso wie jemand, der Adressen durchprobiert.
 
 ### Was ohne Konto sichtbar ist
 
-Vier Endpunkte antworten **ohne Anmeldung**. Nicht aus Versehen, sondern weil
-Teilen die Kernhandlung der App ist: Wer einen Beschluss weiterreichte,
-schickte die Empfänger*innen vorher ins Registrierungsformular — bevor sie
-überhaupt gesehen hatten, worum es geht.
+Vier Endpunkte antworten **ohne Anmeldung**, damit geteilte Inhalte
+direkt aufrufbar sind. Früher mussten sich Empfänger*innen eines
+Beschlusslinks registrieren, bevor sie den Beschluss lesen konnten.
 
 | Endpunkt | Seite |
 |---|---|
@@ -188,9 +191,9 @@ schickte die Empfänger*innen vorher ins Registrierungsformular — bevor sie
 | `GET /api/council/session/{ksinr}` | Sitzung (die Beschluss-Seite zieht Gremium + Datum daraus) |
 | `GET /api/council/preview/{art}/{key}` | nur Titel + Kurzfassung für die Link-Vorschau |
 
-Genau die Seiten mit Teilen-Knopf und Link-Vorschau. Alles davon bereitet das
-amtliche Ratsinformationssystem auf und ist dort ohnehin für alle einsehbar —
-es entsteht keine neue Öffentlichkeit, nur eine lesbare.
+Der öffentliche Zugriff betrifft die teilbaren Seiten und die
+Link-Vorschau. Ratslotse bereitet dafür Daten auf, die im amtlichen
+Ratsinformationssystem bereits öffentlich einsehbar sind.
 
 :::caution[Die Grenze steht im Backend, nicht im Frontend]
 `optional_user` (`web/backend/app/deps.py`) liefert `None` statt eines 401 und
@@ -215,10 +218,11 @@ Ziele verlangen ausnahmslos ein Konto. Die Einladung zum Registrieren steht am
 `?weiter=<pfad>` bringt nach Anmeldung, Registrierung oder Apple-Login zurück
 zum Ausgangspunkt (nur seiteneigene Pfade, siehe `sicheresZiel`).
 
-Der „Zurück"-Knopf fehlt Gästen bewusst: Bei einem frisch aus einem Messenger
-geöffneten Tab führt `router.back()` aus der Seite heraus, und der Rückfall auf
-die Sitzungs-Übersicht landet an der Anmeldewand. `history.length > 1`
-unterscheidet die Fälle nicht — es zählt auch fremde Einträge.
+Die Gastansicht enthält keinen „Zurück"-Knopf. Bei einem aus einem Messenger
+geöffneten Tab kann `router.back()` von Ratslotse wegführen. Die
+Sitzungsübersicht als Fallback würde eine Anmeldung verlangen.
+`history.length > 1` unterscheidet diese Fälle nicht, weil es auch
+Einträge anderer Websites zählt.
 
 ### Sign in with Apple
 
@@ -254,11 +258,86 @@ Konto zugeordnet werden — die API antwortet mit 400 und dem Hinweis, Ratslotse
 in den Apple-ID-Einstellungen unter „Mit Apple anmelden" zu entfernen und es
 erneut zu versuchen (Apple sendet die Adresse nur bei der Erstautorisierung).
 
+### Mit Passkey anmelden
+
+Seit 11/2026, hinter dem Schalter `passkey-anmeldung`. Die Prüfung steht in
+`web/backend/app/passkeys.py` (mit `py_webauthn`), die Konten-Seite in
+`routers/auth_passkey.py`, der Browser-Teil in `web/frontend/lib/passkey.ts`.
+
+- **Challenge** serverseitig, fünf Minuten gültig, genau einmal einlösbar
+  (`webauthn_challenges`, gelöscht beim Einlösen). Geprüft werden Herkunft,
+  RP-ID, Signatur gegen den gespeicherten öffentlichen Schlüssel
+  (`web_passkeys`), Nutzerverifikation und Zähler. Attestierung: `none`.
+- **RP-ID = Host der Seite.** Erlaubt sind die Herkunft aus `APP_BASE_URL`,
+  die aus `CORS_ORIGINS` und lokal (`COOKIE_SECURE=false`) jedes `localhost`.
+- **Registrieren** läuft durch dieselben Prüfungen wie mit Passwort und legt
+  das Konto genauso unbestätigt an (Tims Entscheidung 11.11.2026). Im Hash steht
+  ein Zufallswert, `password_set = 0`; ein Passwort lässt sich über „Passwort
+  vergessen“ nachrüsten.
+- **Anmelden** ohne Adresse: kein `allowCredentials`, der Passkey nennt sein
+  Konto selbst (`userHandle`, je Konto eine Kennung).
+- **Im Konto** braucht Hinzufügen und Entfernen eine volle Anmeldung; ein neuer
+  Passkey meldet sich per Mail (`passkey_added`). Der letzte Weg ins Konto —
+  kein Passwort, kein Apple, nur dieser Passkey — bleibt (409).
+- **Ohne Passwort** bestätigen Löschen und Adresswechsel mit einem Passkey
+  (`passkey` im Rumpf statt `current_password`).
+- **Zurückholen:** Setzt die Besitzerin einer Adresse über „Passwort
+  vergessen“ ein unbestätigtes Konto neu, verschwinden dessen Passkeys — sie
+  könnten von jemand Fremdem stammen. Dasselbe beim Verknüpfen mit Apple.
+
+**Dieselbe Abfrage schließt die Notizen auf.** Bei Registrierung und Anmeldung
+fragt der Browser die Erweiterung PRF mit einem festen Salz an (SHA-256 von
+„ratslotse-passkey-notizen-v1“; bei der Anmeldung weiß niemand vorher, welcher
+Passkey kommt, und `evalByCredential` geht ohne `allowCredentials` nicht). Das
+Ergebnis bleibt auf dem Gerät: Noch keine Notiz-Schlüssel → still einrichten;
+mit diesem Passkey eingerichtet → entsperren; mit anderem Schlüssel → für die
+Sitzung merken und beim nächsten Entsperren dazulegen. Die Formen im Backend
+nehmen `clientExtensionResults` gar nicht erst an.
+
+**In der iOS-App** fragt `ASAuthorizationPlatformPublicKeyCredentialProvider`
+(`ios/…/PasskeyAuthenticator.swift`) mit demselben Salz; PRF gibt es ab
+iOS 18, davor geht nur die Anmeldung. Was ohne AuthenticationServices geht —
+Optionen lesen, das Ergebnis für den Server ohne PRF schreiben, Schlüssel per
+HKDF ableiten, die drei Lagen der Notizen — steht testbar in
+`ios/Packages/RatslotseAPI/Sources/RatslotseAPI/Passkeys.swift`, mit denselben Testvektoren wie im Web. Die App
+schickt keine `Origin`; die RP-ID kommt dann aus `APP_BASE_URL`, auf Prod also
+`ratslotse.de`. Damit das Gerät der App einen Passkey dieser Domain gibt,
+braucht es beides: `webcredentials:ratslotse.de` im Entitlement und
+`webcredentials` in `public/.well-known/apple-app-site-association.json`
+(`tests/test_universal_links.py` hält beides fest). Weil diese Datei erst mit
+dem Release auf Prod liegt, steht auch die App hinter dem Schalter.
+
+### Anmeldelinks in Mails
+
+Hinter dem Schalter `zugangslinks` tragen die Links der Release-Ankündigung
+(„Neu bei Ratslotse“) einen Anmeldelink je Empfänger*in: `?ml=<token>`
+(`kern/zugangslink.py`). Wer nicht angemeldet ist, wird von der Hülle direkt
+angemeldet (`POST /api/auth/magic`) und steht auf der Seite, ohne
+Zwischenschritt. Gilt der Link nicht mehr, verschwindet nur das Token aus der
+Adresse, und es geht ohne Fehlermeldung zur normalen Anmeldung mit
+`weiter=` — gezählt wird der Fall je Grund im Fehlersammler (Admin →
+*Fehler*, „AnmeldelinkNichtEingeloest“), ohne Token und ohne Konto.
+
+| Regel | Warum |
+|---|---|
+| zehn Tage gültig, danach das normale Formular mit `weiter=` | ein alter Link führt weiter zum Ziel, nur eben über die Anmeldung |
+| an `token_version` gebunden | Abmelden überall, Passwortwechsel und Sperre machen jeden offenen Link wertlos |
+| Zweck `magic`, nie eine Sitzung | `decode_access_token` weist jedes Token mit Zweck ab — sonst wäre der Link ein zehn Tage gültiger Generalschlüssel |
+| eingelöst per POST aus der Seite, nicht durch den Aufruf selbst | ein GET, der anmeldet, liefe in jeder Link-Vorschau mit; ein Scanner, der die Seite samt Skript ausführt, verbraucht das Token nicht (es gilt mehrfach) und bekommt nur die eingeschränkte Sitzung |
+| Sitzung `via: magic`, auch über die Verlängerung | Passwort, Adresse, Konto löschen, MCP-Schlüssel, OAuth-Freigabe und das Admin-Panel verlangen die echte Anmeldung (`deps.require_volle_anmeldung`) |
+| nur im Browser | die App meldet sich per Bearer an und kennt keine Mail-Links (400) |
+
+Eine weitergeleitete Mail meldet damit an, übergibt aber kein Konto. Das Token
+entsteht in `kern/` (die Zustellung läuft dort), mit derselben HS256-Formel
+wie `app.security`; `tests/test_zugangslink.py` hält fest, dass das Backend es
+annimmt und nie als Sitzung gelten lässt.
+
 ### Rollen und Status
 
 | Spalte | Werte | Bedeutung |
 |---|---|---|
-| `web_users.role` | `user`, `admin` | `admin` sieht den Admin-Bereich (`require_admin`) und ist immer aktiv |
+| `web_user_roles` | eine Zeile je Rolle | Ein Konto trägt mehrere Rollen, jede bündelt Rechte. Geprüft wird immer gegen ein **Recht** (`require_permission`), nie gegen einen Rollennamen. Welche es gibt, steht unter [Rollen und Rechte](/docs/referenz/rollen-rechte/), erzeugt aus `kern/roles.py` |
+| `web_users.role` | abgeleitet | nur noch ein Schaufenster für ältere App-Builds; nie die Grundlage einer Rechteprüfung |
 | `web_users.status` | `pending`, `active`, `disabled` | `pending` = wartet auf die **eigene** E-Mail-Bestätigung; `disabled` = von einem Admin abgeschaltet |
 | `web_users.email_verified` | 0/1 | gesetzt durch Verifikationslink oder Apple-Login |
 | `web_users.password_set` | 0/1 | 0 = Apple-Konto ohne selbst gesetztes Passwort |
@@ -375,9 +454,10 @@ diese Konten — auch die freundlich gemeinte Einrichtungs-Erinnerung schweigt.
 - **Push** über **APNs** (iOS, token-basiert mit `.p8` — kein Firebase) und
   **FCM v1** (Android) in `kern/push.py`. Geräte-Token, die die Gateways als
   ungültig melden, werden ausgesortiert.
-- In der App führt der **Push-Primer** (`components/push-primer.tsx`) vor den
-  System-Dialog: Er erscheint erst, wenn es mindestens ein Thema oder ein
-  Ausschuss-Abo gibt, und schlummert nach „Später" 7 Tage.
+- In der App fragt der dritte Schritt der Einrichtung nach Push, nach
+  Gremien-Abos und Themen und vor dem System-Dialog; er lässt sich
+  überspringen. Den Web-Baustein dazu gab es nur in der früheren WebView-App,
+  er ist mit ihr im November 2026 entfernt worden.
 
 Geräte-Token registriert die App selbst:
 
@@ -500,7 +580,7 @@ blieb.
 | Grenze | Regel |
 |---|---|
 | **Zwei am Tag** | pro Person, nicht pro Anlass. Was darüber hinausgeht, nimmt die letzte freie Zustellung als **ein Bündel** mit; ein Bündel zählt als eine Zustellung. Nichts geht verloren — der Rest kommt morgen. |
-| **… außer termingebunden** | `kern.notify.TERMINGEBUNDEN` (derzeit nur `n5_vorabend`) hat einen **eigenen** Vorrat von zwei am Tag. Eine Vorabend-Erinnerung, die einen Tag später kommt, ist nicht verspätet, sondern wertlos — und weil der 18-Uhr-Lauf der letzte des Tages ist, verlor sie den Wettlauf um den gemeinsamen Topf regelmäßig (Prod, 16.08.2026: ab 18 Uhr fertig, zugestellt am Sitzungstag selbst). Innerhalb ihres Topfes gelten dieselben Regeln, also auch das Bündeln ab der dritten. Weil `notifications_sent_on()` je Topf nach `kind` zählt, bündelt `_zustellen_fuer()` nie über die Topfgrenze hinweg — ein gemischtes Bündel wäre in beiden Töpfen eine Zustellung. |
+| **… außer termingebunden** | `kern.notify.TERMINGEBUNDEN` (derzeit nur `n5_vorabend`) hat einen **eigenen** Vorrat von zwei am Tag. Die Vorabend-Erinnerung muss vor dem Sitzungstag ankommen. Im früheren gemeinsamen Kontingent war das Tageslimit beim letzten Lauf um 18 Uhr oft schon erreicht. Am 16.08.2026 stand die Erinnerung in der Produktionsumgebung ab 18 Uhr bereit, wurde aber erst am Sitzungstag zugestellt. Dieselben Regeln gelten jetzt getrennt je Kontingent, einschließlich der Bündelung ab der dritten Nachricht. `notifications_sent_on()` zählt je Kontingent nach `kind`. `_zustellen_fuer()` bündelt nur innerhalb desselben Kontingents, da ein gemischtes Bündel in beiden zählen würde. |
 | **Nachtruhe 21–7 Uhr** | Ortszeit (`zoneinfo`, Europe/Berlin). Was abends anfällt, bekommt `deliver_after` auf 7 Uhr. |
 | **Nie ohne Ereignis** | Es gibt keine Funktion, die ohne Ratsvorgang einreiht. Abzeichen und Quiz-Serien bleiben in der App. |
 | **Immer ein Ziel** | `url` ist Pflichtfeld; `einreihen()` wirft ohne. Antippen öffnet den Beschluss oder die Tagesordnung, nie die Startseite. |
@@ -523,6 +603,53 @@ und eine Änderungsmeldung geht nur noch **≤ 48 h vor der Sitzung** raus.
 Die Oberfläche pflegt **keine** eigene Anlass-Liste — sie rendert, was der
 Endpunkt liefert. Sonst fiele ein neu dazugekommener Anlass erst auf, wenn sich
 jemand über eine unabschaltbare Meldung ärgert.
+
+### Notizen: auf dem Gerät verschlüsselt
+
+Hinter dem Schalter `notizen` gibt es „Meine Notiz“ an Tagesordnungspunkten
+und Beschlüssen. Notizen zu Ratsthemen können politische Meinungen tragen.
+Sie sind deshalb Ende-zu-Ende verschlüsselt: Der Server speichert und liefert
+**nur Geheimtext** (`web/backend/app/routers/notes.py`). Er prüft Form und
+Größe, nie den Inhalt.
+
+| Was | Wie | Wo |
+|---|---|---|
+| Datenschlüssel | AES-256-GCM, beim Einrichten zufällig erzeugt | nur auf dem Gerät |
+| Verpackung mit Passkey | WebAuthn-Erweiterung PRF, daraus per HKDF-SHA-256 der Schlüssel der Verpackung | Kennung, Salz und Verpackung in `note_passkeys` |
+| Verpackung mit Passphrase | PBKDF2-SHA-256, 600.000 Runden, 16 Byte Salz | Verpackung in `note_keys` |
+| Wiederherstellungscode | 128 Bit Zufall, einmal beim Einrichten gezeigt | nur bei der Person |
+| Notiz | Initialisierungsvektor und Geheimtext je Ziel | `user_notes` in `ratslotse.sqlite` |
+
+Der Normalweg ist der Passkey, damit sich niemand etwas merken muss:
+Derselbe Passkey, der anmeldet, schließt die Notizen auf (siehe
+[Mit Passkey anmelden](#mit-passkey-anmelden)). Passphrase plus
+Wiederherstellungscode bleiben der Rückfall für Browser ohne PRF. Der Server
+prüft beim Notiz-Passkey keine WebAuthn-Signatur, und das mit Absicht: Der
+Passkey meldet hier niemanden an (das tut die Sitzung), er ersetzt nur die
+Passphrase. Wer eine falsche Verpackung hochlädt, sperrt sich selbst aus,
+niemanden sonst.
+
+Zwei Geräte, eine Notiz: Jede Notiz trägt eine Version. Wer eine ältere
+schickt, bekommt 409 und den neuen Stand, und der Client fragt, statt still
+zu überschreiben. Der letzte Weg zu den Notizen lässt sich nicht löschen.
+Grenzen: 16 KB je Geheimtext, 2.000 Notizen und zehn Passkeys je Konto.
+
+Was man dazu sagen muss, steht auf der Seite und nicht im Kleingedruckten:
+
+1. Wer alle Wege zu den Notizen verliert, verliert die Notizen. Ratslotse
+   kann sie nicht zurückholen.
+2. Der Server kann nicht in ihnen suchen. Suche geht nur auf dem Gerät.
+3. „Frag den Rat“ kennt sie nicht. Keine Notiz geht an ein Sprachmodell.
+4. Im Web ist das Versprechen schwächer als in der App: Den Code, der
+   verschlüsselt, liefert im Browser derselbe Server, der die Daten
+   speichert. Die App bringt ihren Code aus dem Store mit.
+5. Der Server sieht trotzdem, zu welchem Punkt es eine Notiz gibt, wann sie
+   geändert wurde und wie lang sie ungefähr ist.
+
+Beide Tabellen hängen am Konto und gehen mit dessen Löschung. Den
+„Mitschrieb“ beim [Mitlesen](/docs/sitzungen/#mitlesen) speichert dieselbe
+Tabelle mit einer anderen Art (`kind`). Web und App lesen dieselben
+Testvektoren (`lib/notiz-krypto.test.ts`, `tests/test_notizen.py`).
 
 ### Abzeichen
 
@@ -711,7 +838,7 @@ selbst entstehen:
 Verarbeiter sind **Resend** (E-Mail-Versand), **Apple/APNs** bzw.
 **Google/FCM** (Push-Zustellung) und **Apple** beim „Sign in with Apple" — jeweils
 nur, wenn der entsprechende Kanal aktiv ist. Auf dem Gerät liegen Design-Wahl,
-in der App das Anmelde-Token und der oben beschriebene Inhalts-Zwischenspeicher.
+in der App das Anmelde-Token und der oben beschriebene Cache für Inhalte.
 
 **Nicht** übernommen werden die **Kontaktdaten der Mandatsträger*innen** aus dem
 Ratsinformationssystem (Adresse, Telefon, Beruf auf den Personenseiten) — das

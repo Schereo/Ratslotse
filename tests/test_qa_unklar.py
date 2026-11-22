@@ -452,3 +452,65 @@ def test_eine_klare_frage_startet_die_recherche_weiterhin(client, monkeypatch):
     assert antwort.status_code == 201
     assert antwort.json()["job_id"]
     assert gestartet
+
+
+# ---- Von einer Seite mit Gegenstand (Sitzungsseite, Schritt 4.5) -------------
+
+def test_die_seite_ist_der_verlauf():
+    """„Und was kostet das?“ von der Seite eines Punkts kam am 10.11.2026 in
+    sechs von sechs Fällen als Rückfrage zurück — MIT Bezug-Chip genauso wie
+    ohne (``eval/run_punkt_bezug.py``). Der Gegenstand der Seite geht der
+    Analyse deshalb als erste Runde voraus, und die Rückfrage entfällt."""
+    unklar = {"unklar": True}
+    assert qa.rueckfrage_noetig(unklar, seite=True) is False
+    punkt = {"agenda_item": {"title": "Soziales D-Ticket in Oldenburg - Bericht", "item_number": "Ö 9",
+                             "committee": "Verkehrsausschuss", "session_date": "2026-09-21",
+                             "template_number": "26/0719"}}
+    assert qa.seiten_gegenstand(None, punkt) == (
+        "Tagesordnungspunkt „Soziales D-Ticket in Oldenburg - Bericht“ "
+        "(Verkehrsausschuss am 2026-09-21, Vorlage 26/0719)")
+
+    class _Store:
+        def get_decision(self, i):
+            return {"id": i, "title": "VBN-Tarifanpassung 2027", "committee": "Rat", "session_date": "2026-08-31"}
+
+    assert qa.seiten_gegenstand(_Store(), {"refs": {"decision_id": 9487}}) == (
+        "Beschluss „VBN-Tarifanpassung 2027“ (Rat am 2026-08-31)")
+    assert qa.seiten_gegenstand(_Store(), {"route": "/dashboard"}) is None
+    assert qa.seiten_gegenstand(_Store(), None) is None
+
+
+def test_von_der_punkt_seite_keine_rueckfrage_und_die_analyse_kennt_den_punkt(client, monkeypatch):
+    """Durch ``/ask``: Die Analyse bekommt den Punkt als Verlauf, und obwohl
+    sie die Frage für sich genommen „unklar“ nennt, wird gesucht."""
+    from app.routers import council as council_router
+    from council import qa as qa_mod
+    from council.scraper import CouncilSession
+    from council.store import CouncilStore
+
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(4654, "Verkehrsausschuss", "2026-09-21", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute("INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, is_public) "
+                         "VALUES (4654, 'Ö 9', 'Soziales D-Ticket in Oldenburg - Bericht', '26/0719', 1)")
+    gesehen: dict = {}
+
+    def analyse(q, *a, verlauf=None, **k):
+        gesehen["verlauf"] = verlauf
+        return _analyse(q, unklar=True)
+
+    class _Gesucht(Exception):
+        pass
+
+    def suchen(*a, **k):
+        raise _Gesucht
+
+    monkeypatch.setattr(qa_mod, "analyse_query", analyse)
+    monkeypatch.setattr(council_router, "_qa_retrieve", suchen)
+    with client.stream("POST", "/api/council/ask", json={
+            "question": "Und was kostet das?",
+            "screen": {"route": "/council/punkt", "refs": {"ksinr": 4654, "item_number": "Ö 9"}}}) as antwort:
+        roh = "".join(antwort.iter_text())
+    ereignisse = [json.loads(z[6:]) for z in roh.splitlines() if z.startswith("data: ")]
+    assert "Soziales D-Ticket" in gesehen["verlauf"][0]["question"]
+    assert not [e for e in ereignisse if e.get("type") == "token" and e.get("text") == qa.RUECKFRAGE_TEXT]

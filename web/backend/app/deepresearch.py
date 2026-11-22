@@ -8,8 +8,10 @@ Bericht steht zusätzlich persistent in ``deep_research_jobs`` (ratslotse.sqlite
 und überlebt damit auch App- und Server-Neustarts.
 
 Ablauf eines Jobs (Phasen wie im Design 8a):
-zerlegen → je Facette suchen → Dokumente lesen (volle Vorlagen-Auszüge)
-→ Bericht schreiben (Token-Stream) → done. „Abbrechen" stoppt sofort vor
+zerlegen → je Facette suchen → Dokumente lesen (Zusatzquellen je Kanal,
+dann volle Vorlagen-Auszüge) → Bericht schreiben (Token-Stream) → done. Jeder
+Rahmen trägt die Laufzeit (``elapsed``), die Fortschrittsrahmen eine geschätzte
+Restzeit (``remaining``, s. ``remaining_seconds``). „Abbrechen" stoppt sofort vor
 dem nächsten LLM-/Suchschritt; fertige Facetten bleiben als Material für
 einen Teilbericht erhalten (Design 8c⑥).
 """
@@ -19,6 +21,7 @@ import json
 import logging
 import math
 import threading
+import time
 from dataclasses import dataclass, field
 
 from council.store import CouncilStore
@@ -75,6 +78,28 @@ MELDE_ZIEL = "/council?tab=decisions&mode=fragen"
 # Wie in council.py: Reranker-Logits → ehrliche absolute Relevanz.
 RERANK_BIAS = 1.5
 
+# Restzeit bis zum ersten Satz des Berichts. Bis 11/2026 versprach die Karte
+# „~ noch 30 Sek" — gemessen am 09.11.2026 waren es auf Prod 36 bis 58 s, auf
+# dev (2 Kerne) 93 bis 106 s. Eine feste Zahl kann für beide nicht stimmen;
+# deshalb misst der Job, wie schnell SEINE Teilfragen gehen, und schätzt den
+# Rest daraus. Die Bausteine, gemessen an drei Läufen auf dev und den
+# Suchschritten auf Prod:
+#: Zerlegen (ein Modellaufruf) — auf beiden Servern rund 3 s.
+DECOMPOSE_SECONDS = 3.0
+#: Vom Start des Berichts bis zum ersten Satz — 5 bis 7 s, ein Modellaufruf.
+FIRST_TEXT_SECONDS = 7.0
+#: Je Teilfrage, solange noch keine gemessen ist (Prod ~4 s, dev ~10 s).
+FACET_DEFAULT_SECONDS = 6.0
+#: So viele Teilfragen nimmt die Schätzung vor der Zerlegung an.
+FACETS_DEFAULT = 4
+#: Die Zusatzquellen (Ratsdebatten, Presse, Anlagen) kosten etwa so viel wie
+#: drei Teilfragen: dev 31 bis 35 s bei 9 bis 12 s je Teilfrage. Es ist
+#: derselbe Reranker auf derselben Maschine, die Verhältnisse wandern mit.
+EXTRAS_IN_FACETS = 3.0
+#: Welcher Anteil der Zusatzquellen nach dem jeweiligen Kanal noch aussteht —
+#: die Wortbeiträge sind der Löwenanteil (dev 25 von 33 s, Prod 10,6 von 12).
+EXTRAS_LEFT_AFTER = {"press": 0.95, "speeches": 0.2, "attachments": 0.0}
+
 
 @dataclass
 class DeepJob:
@@ -111,6 +136,11 @@ class DeepJob:
     #: Einmal melden, nicht je Anlauf (Teilbericht nach Stopp, Fehler nach
     #: Teilbericht …).
     gemeldet: bool = False
+    #: Für die Restzeit: Start des Jobs, Zeitpunkt der Zerlegung und die
+    #: gemessene Dauer je Teilfrage (``None``, solange keine fertig ist).
+    start: float = field(default_factory=time.monotonic)
+    facets_started: float | None = None
+    per_facet: float | None = None
 
     @property
     def suchfrage(self) -> str:
@@ -126,9 +156,36 @@ _reg_lock = threading.Lock()
 
 
 def _emit(job: DeepJob, event: dict) -> None:
+    # Jeder Rahmen außer den Text-Häppchen trägt, wie lange der Job schon
+    # läuft (``elapsed``, Sekunden). Damit zeigt die Karte auch nach dem
+    # Wiederverbinden die echte Laufzeit statt bei null anzufangen.
+    if event.get("type") != "token":
+        event = {**event, "elapsed": round(time.monotonic() - job.start, 1)}
     with job.cond:
         job.events.append(event)
         job.cond.notify_all()
+
+
+def remaining_seconds(job: DeepJob, step: str, extras_left: float = 1.0) -> int:
+    """Geschätzte Sekunden, bis der Bericht zu erscheinen beginnt.
+
+    Die Schätzung rechnet in Teilfragen: Sobald eine fertig ist, kennt der Job
+    das Tempo dieses Servers, und die übrigen Schritte skalieren damit (s. die
+    Konstanten oben). ``extras_left`` ist der Anteil der Zusatzquellen, der
+    noch aussteht.
+    """
+    d = job.per_facet or FACET_DEFAULT_SECONDS
+    extras = EXTRAS_IN_FACETS * d
+    if step == "zerlegen":
+        rest = DECOMPOSE_SECONDS + FACETS_DEFAULT * d + extras + FIRST_TEXT_SECONDS
+    elif step == "suchen":
+        left = max(0, job.facetten_gesamt - job.facetten_fertig)
+        rest = left * d + extras + FIRST_TEXT_SECONDS
+    elif step == "lesen":
+        rest = extras * extras_left + FIRST_TEXT_SECONDS
+    else:
+        rest = FIRST_TEXT_SECONDS
+    return round(rest)
 
 
 def _finish(job: DeepJob) -> None:
@@ -342,7 +399,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
     store = CouncilStore(council_db)
     try:
         # ---- Phase 1: zerlegen -------------------------------------------
-        _emit(job, {"type": "phase", "phase": "zerlegen"})
+        _emit(job, {"type": "phase", "phase": "zerlegen", "remaining": remaining_seconds(job, "zerlegen")})
         # Anschlussfragen tragen ihr Thema nicht im Text („Nochmal bitte
         # ausführlich"). Ohne diesen Schritt zerlegte das Modell genau diesen
         # Satz und recherchierte am Thema vorbei — wie /ask liefert die
@@ -357,7 +414,9 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                 _log.info("deep %s: Anschlussfrage aufgelöst → %r", job.id, job.recherche_frage)
         facetten = qa.deep_zerlege(job.suchfrage)
         job.facetten_gesamt = len(facetten)
-        _emit(job, {"type": "facets", "facets": [f["name"] for f in facetten]})
+        job.facets_started = time.monotonic()
+        _emit(job, {"type": "facets", "facets": [f["name"] for f in facetten],
+                    "remaining": remaining_seconds(job, "suchen")})
 
         # ---- Phase 2: je Facette suchen ----------------------------------
         try:
@@ -390,9 +449,10 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                 elif s > beste[did]:
                     beste[did] = s
             job.facetten_fertig += 1
+            job.per_facet = (time.monotonic() - (job.facets_started or job.start)) / job.facetten_fertig
             _emit(job, {"type": "facette", "name": f["name"], "treffer": len(hits),
                         "neu": neu, "fertig": job.facetten_fertig,
-                        "gesamt": job.facetten_gesamt})
+                        "gesamt": job.facetten_gesamt, "remaining": remaining_seconds(job, "suchen")})
 
         geordnet = sorted(beste.items(), key=lambda kv: -kv[1])[:MAX_KANDIDATEN]
         candidates = store.get_decisions_by_ids([did for did, _ in geordnet])
@@ -410,6 +470,20 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
         presse_rows: list[dict] = []
         debatten_rows: list[dict] = []
         anlagen_rows: list[dict] = []
+        # Ab hier lief die Karte bis 11/2026 auf „Teilfragen durchsuchen" weiter,
+        # obwohl alle fertig waren — auf dev eine halbe Minute ohne ein
+        # sichtbares Zeichen, auf Prod gut zehn Sekunden. Die Zusatzquellen sind
+        # deshalb ein eigener Schritt mit je einem Rahmen pro Kanal. „lesen"
+        # statt einer neuen Phase: Die ausgelieferte App kennt nur die vier,
+        # und „Dokumente lesen" beschreibt diesen Schritt richtig.
+        channels = list(EXTRAS_LEFT_AFTER) if emb is not None else []
+        _emit(job, {"type": "phase", "phase": "lesen", "channels": channels,
+                    "remaining": remaining_seconds(job, "lesen")})
+
+        def channel_done(name: str, hits: int) -> None:
+            _emit(job, {"type": "channel", "name": name, "hits": hits,
+                        "remaining": remaining_seconds(job, "lesen", EXTRAS_LEFT_AFTER[name])})
+
         if emb is not None:
             try:
                 # Volltext statt Begriffsliste, und breiter als der UI-Block:
@@ -419,6 +493,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                 presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
             except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
                 pass
+            channel_done("press", len(presse_rows))
             try:
                 hits_w = emb.search_wortbeitraege(store, job.suchfrage, begriffe_alle, top_k=DEBATTEN_TOP,
                                                  kandidaten=WORTBEITRAG_KANDIDATEN,
@@ -433,6 +508,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                 qa.parteien_aufloesen(store, debatten_rows)
             except Exception:  # noqa: BLE001
                 pass
+            channel_done("speeches", len(debatten_rows))
             # Plan „Akte“, Phase 3 (Schalter `akten-suche`): dieselbe Ergänzung
             # aus der Akte des Vorgangs wie in /ask — neueste Beschlüsse,
             # passende Wortbeiträge samt jüngster Aussagen der Verwaltung,
@@ -469,6 +545,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
                     a["nr"] = i + 1
             except Exception:  # noqa: BLE001
                 pass
+            channel_done("attachments", len(anlagen_rows))
         try:
             orte = store.orte_fuer_decisions([c["id"] for c in candidates])
             for c in candidates:
@@ -559,7 +636,8 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
         if job.stop.is_set():
             _gestoppt(job, ratslotse_db)
             return
-        _emit(job, {"type": "phase", "phase": "lesen", "dokumente": gelesen})
+        _emit(job, {"type": "phase", "phase": "lesen", "dokumente": gelesen,
+                    "remaining": remaining_seconds(job, "lesen", 0.0)})
         # Änderungs- und GO-Anträge gehören zum Beschluss (wie in /ask).
         try:
             teile = store.subvotes_of(candidates)
@@ -599,7 +677,7 @@ def _schreiben_und_abschliessen(job: DeepJob, ratslotse_db: str, council_db: str
     m = job.material or {}
     candidates = m.get("candidates") or []
     try:
-        _emit(job, {"type": "phase", "phase": "schreiben"})
+        _emit(job, {"type": "phase", "phase": "schreiben", "remaining": remaining_seconds(job, "schreiben")})
         vermerk = ""
         if teilbericht:
             fehlend = m.get("facet_names", [])[m.get("facets_done", 0):]

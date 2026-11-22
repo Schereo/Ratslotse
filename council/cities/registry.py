@@ -58,6 +58,12 @@ class BodySpec:
     #: unser eigenes Ratsinformationssystem (gemessen: 706 Abrufe,
     #: zwölf Minuten, für nichts).
     fetch_files: bool = True
+    #: Weist die Stadt automatische Abrufe ab — gemessen, nicht vermutet? Nur
+    #: für Städte, die der Cron deshalb gar nicht mehr holt (``active=False``):
+    #: Bei den aktiven misst die Ernte den Zugang jede Woche selbst
+    #: (``pipeline.access_status``). Die Ideen-Seite sagt dann „der Server
+    #: weist den Abruf ab" statt bloß „wird derzeit nicht abgeglichen".
+    access_blocked: bool = False
     notes: str = ""
 
 
@@ -168,6 +174,10 @@ BODIES: dict[str, BodySpec] = {
         "hildesheim", "Hildesheim", "NI", "allris_classic",
         "https://www.stadt-hildesheim.de/allris",
         since="2018-01-01", active=False, fetch_files=False,
+        # Seit etwa 12.09.2026 steht die ganze Bürgerinfo hinter einer
+        # ALTCHA-Prüfung („Zum Schutz vor automatisierten Zugriffen"). Eine
+        # Absage, keine Aufgabe — der Bestand bis dahin bleibt.
+        access_blocked=True,
         notes="Kein OParl. Der Vorlagentext steht IN der Seite, es gibt keine "
               "Anlagen — deshalb fetch_files=False und Text über inline_texts. "
               "Zu jedem beratenen Punkt gibt es einen Auszug (to020.asp) mit "

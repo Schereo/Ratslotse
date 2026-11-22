@@ -1,14 +1,14 @@
 ---
 title: 0007 — Long-Polling statt Webhook
-description: Der Telegram-Bot pollte, statt einen Webhook-Endpunkt zu betreiben (abgelöst).
+description: Historische Entscheidung zum Long-Polling des früheren Telegram-Bots.
 sidebar:
   order: 7
   badge: Abgelöst
 ---
 
-**Status:** Abgelöst — der Telegram-Bot wurde entfernt; **Web-Push** (APNs/FCM) und
-**E-Mail** übernehmen die Benachrichtigungen. Dieser ADR bleibt als historischer
-Kontext erhalten.
+**Status:** Abgelöst. Seit der Entfernung des Telegram-Bots übernimmt
+Ratslotse die Benachrichtigungen per **Web-Push** (APNs/FCM) und **E-Mail**.
+Der ADR dokumentiert die frühere Entscheidung.
 
 ## Kontext
 
@@ -24,13 +24,14 @@ systemd-Service (`nwz-bot`, `scripts/bot_poll.py`).
 
 ## Konsequenzen
 
-- **Plus:** Kein öffentlicher Port und keine eingehende Route für den Bot — die
-  Angriffsfläche bleibt klein, und das Edge-/Caddy-Setup muss nichts für den Bot
-  vorhalten. Lokales Entwickeln funktioniert ohne Tunnel.
+- **Plus:** Der Bot benötigt keinen öffentlichen Port und keine eingehende
+  Route in Caddy. Das begrenzt die Angriffsfläche. Die lokale Entwicklung
+  ist ohne Tunnel möglich.
 - **Plus:** Einfaches Betriebsmodell: ein dauerlaufender Prozess unter systemd,
   Neustart per `systemctl restart nwz-bot`.
 - **Minus:** Eine dauerhaft offene Verbindung mit minimaler Latenz beim Poll-
   Intervall; bei sehr hohem Nachrichtenaufkommen wäre ein Webhook effizienter —
   für die aktuelle Nutzerzahl irrelevant.
-- **Minus:** `bot_poll.py` muss seine eigene Fehler-/Restart-Resilienz mitbringen
-  (grober `except` + `sleep`), da kein externer Aufrufer Retries übernimmt.
+- **Minus:** `bot_poll.py` muss Fehler abfangen und Aufrufe selbst erneut
+  versuchen (allgemeiner `except` mit `sleep`). Ein externer Aufrufer
+  übernimmt keine Wiederholungsversuche.

@@ -456,3 +456,21 @@ def test_suchwoerter_ueberleben_den_lauf(tmp_path):
         assert s.put_evidence_terms([]) == 0
     finally:
         s.close()
+
+
+def test_zugangsstand_haelt_fest_seit_wann_er_gilt(store):
+    """``since`` sagt, seit wann der Status ununterbrochen gilt — ein zweiter
+    Lauf mit demselben Befund verschiebt es nicht, ein Wechsel setzt es neu."""
+    store.set_access("wolfsburg", "blocked", "nichts geerntet")
+    with store._conn:
+        store._conn.execute("UPDATE body_access SET since='2026-11-01T05:00:00', "
+                            "checked_at='2026-11-01T05:00:00'")
+    store.set_access("wolfsburg", "blocked", "nichts geerntet")
+    zeile = store.access("wolfsburg")
+    assert zeile["since"] == "2026-11-01T05:00:00"
+    assert zeile["checked_at"] > "2026-11-01T05:00:00"
+
+    store.set_access("wolfsburg", "ok")
+    zeile = store.access("wolfsburg")
+    assert zeile["status"] == "ok" and zeile["reason"] is None
+    assert zeile["since"] > "2026-11-01T05:00:00"

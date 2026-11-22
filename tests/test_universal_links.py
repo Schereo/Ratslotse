@@ -98,3 +98,50 @@ def test_jedes_genaue_muster_hat_einen_fall_im_router():
             if not m.startswith("NOT ") and "*" not in m and "?" not in m
             and (m.rstrip("/") or "/") not in faelle]
     assert not ohne, f"Kein Fall in AppRouter.route(for:) für {ohne}"
+
+
+# ---- Passkeys: dieselbe Datei, zweiter Zweck ------------------------------------
+#
+# Seit 11/2026 meldet sich die App auch mit Passkey an (`PasskeyAuthenticator`).
+# Das Gerät gibt ihr einen Passkey der Domain nur, wenn BEIDE Seiten es sagen:
+# das Entitlement (`webcredentials:ratslotse.de`) und die AASA-Datei
+# (`webcredentials.apps` mit Team und Bundle-ID). Fehlt eine, scheitert die
+# Abfrage am Gerät mit „Application not associated with domain" — im Simulator
+# wie im Store, und keine Testsuite merkt es.
+
+ENTITLEMENTS = WURZEL / "ios" / "RatslotseApp" / "Ratslotse.entitlements"
+XCCONFIG = WURZEL / "ios" / "Config"
+PASSKEYS_SWIFT = WURZEL / "ios" / "Packages" / "RatslotseAPI" / "Sources" / "RatslotseAPI" / "Passkeys.swift"
+TEAM = "YM87689GUY"
+
+
+def _relying_party() -> str:
+    m = re.search(r'static let relyingParty = "([^"]+)"', PASSKEYS_SWIFT.read_text(encoding="utf-8"))
+    assert m, "Passkeys.relyingParty nicht gefunden"
+    return m.group(1)
+
+
+def test_das_entitlement_nennt_die_passkey_domain():
+    domains = re.findall(r"<string>([^<]+)</string>", ENTITLEMENTS.read_text(encoding="utf-8"))
+    assert f"webcredentials:{_relying_party()}" in domains, (
+        f"`webcredentials:{_relying_party()}` fehlt in {ENTITLEMENTS.relative_to(WURZEL)} "
+        "unter com.apple.developer.associated-domains — ohne es gibt das Gerät der "
+        "App keinen Passkey.")
+
+
+def test_die_aasa_datei_nennt_jede_gebaute_app():
+    """Release (`de.ratslotse.app`) und Debug (`de.ratslotse.dev`) — die
+    Bundle-IDs stehen in den xcconfig-Dateien, nicht im Projekt."""
+    apps = set(json.loads(AASA.read_text(encoding="utf-8")).get("webcredentials", {}).get("apps", []))
+    bundles = set()
+    for datei in XCCONFIG.glob("*.xcconfig"):
+        m = re.search(r"PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(\S+)", datei.read_text(encoding="utf-8"))
+        if m:
+            bundles.add(f"{TEAM}.{m.group(1)}")
+    assert bundles, "Keine Bundle-ID in ios/Config/*.xcconfig gefunden"
+    fehlend = sorted(bundles - apps)
+    assert not fehlend, (
+        f"{fehlend} fehlen in {AASA.relative_to(WURZEL)} unter `webcredentials.apps` — "
+        "diese Fassung der App bekäme keinen Passkey.")
+    fremd = sorted(apps - bundles)
+    assert not fremd, f"{fremd} in `webcredentials.apps` baut niemand (mehr) — streichen."

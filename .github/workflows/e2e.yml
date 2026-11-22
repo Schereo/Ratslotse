@@ -36,86 +36,96 @@ jobs:
   browser:
     runs-on: ubuntu-latest
 
-    # AUFGETEILT AUF VIER LÄUFER (09/2026). Vorher lief die Suite auf einem
-    # einzigen und brauchte 16–21 Minuten — und weil alle anderen Prüfungen
-    # eines PRs unter 10 Minuten bleiben, war das WARTEN AUF EINEN PR
-    # praktisch identisch mit dieser einen Zahl.
+    # AUFGETEILT AUF ACHT LÄUFER, NACH DAUER VERTEILT (11/2026).
     #
-    # Warum die Aufteilung hier gefahrlos ist, obwohl die Tests ausdrücklich
+    # Die Wartezeit eines Pull Requests ist der LANGSAMSTE Teil dieser Suite —
+    # alle anderen Prüfungen sind früher fertig. Deshalb zählt hier nicht die
+    # Rechenzeit, sondern wie lang der längste Läufer braucht.
+    #
+    # Die Geschichte in drei Zahlen:
+    #
+    #     bis 09/2026   ein Läufer                       16–21 min
+    #     09/2026       vier, `--shard=i/4`               7,6 min (140 Tests)
+    #     22.11.2026    dieselben vier, 419 Tests        10,6 min
+    #
+    # Die Suite hat sich seit der Vierteilung verdreifacht, und `--shard`
+    # schneidet nach Test-ANZAHL in Dateireihenfolge — die Tests sind aber
+    # sehr ungleich teuer (2,1 s je Test in `16-tippspiel`, 7,0 s in
+    # `27-plaene`). Gemessen am 22.11.2026, reine Testzeit je Teil:
+    #
+    #     Teil 1  8,5 min      Teil 3  6,3 min
+    #     Teil 2  7,5 min      Teil 4  9,8 min   ← darauf wartete jeder PR
+    #
+    # Zwei Änderungen, beide in `tests/shard-specs.mjs`:
+    #
+    #  * **Nach Dauer statt nach Anzahl.** Die Dateien werden nach ihrer in
+    #    der CI gemessenen Laufzeit verteilt (`tests/e2e-durations.json`).
+    #    Schon bei vier Teilen wären es damit 7,5–7,6 statt 6,3–9,8 Minuten.
+    #  * **Acht statt vier.** Mit denselben Zahlen gerechnet: je Teil 3,7–3,9
+    #    Minuten reine Testzeit. Dazu kommt je Läufer eine knappe Minute
+    #    Rüstzeit (venv, npm ci, Chromium) und das Übersetzen der Routen.
+    #
+    # „Vier, nicht acht" stand hier bis 11/2026, mit der Begründung, mehr
+    # Teile verschöben die Zahl nur langsam: Bei 140 Tests und 2,3 Minuten im
+    # längsten Teil fraß die Rüstzeit den Gewinn. Bei 30 Minuten Testzeit
+    # stimmt die Rechnung nicht mehr.
+    #
+    # Warum die Aufteilung gefahrlos ist, obwohl die Tests ausdrücklich
     # seriell laufen (`workers: 1`): Jeder Läufer startet über
     # `tests/start-backend.sh` sein EIGENES Backend auf einer eigenen
-    # Wegwerf-Datenbank (`mktemp -d`). Die Läufer teilen also nichts. Und
-    # `--shard` verteilt ganze DATEIEN, solange `fullyParallel` aus ist — die
-    # Reihenfolge innerhalb einer Datei bleibt damit erhalten.
+    # Wegwerf-Datenbank (`mktemp -d`). Die Läufer teilen also nichts. Und eine
+    # DATEI bleibt die kleinste Einheit — die Reihenfolge innerhalb einer
+    # Datei bleibt erhalten.
     #
     # Kein Weg über die Datei-Reihenfolge hinweg: `loginAdmin` in
     # `helpers.ts` registriert sein Konto selbst und verträgt die 409, wenn es
     # schon da ist. Genau deshalb darf Datei 09 auch ohne Datei 01 laufen.
     #
-    # VIER, NICHT ACHT. Die Teile werden nach Test-ANZAHL geschnitten, nicht
-    # nach Dauer — sie werden also nicht gleich lang. Lokal gemessen
-    # (07.09.2026, ganze Suite 6,1 min):
+    # ES KOSTET MEHR RECHENZEIT, ALS ES SPART — und das ist Absicht. Der
+    # Aufschlag kommt vom Next-Entwicklungsserver: Jeder Teil übersetzt die
+    # Routen, die SEINE Tests aufrufen, von vorn, und die Routen überschneiden
+    # sich zwischen den Teilen (bei vier Teilen zusammen rund drei Minuten).
     #
-    #     Teil 1  39 Tests  1,2 min
-    #     Teil 2  39 Tests  2,3 min   ← der langsamste bestimmt die Wartezeit
-    #     Teil 3  38 Tests  1,8 min
-    #     Teil 4  24 Tests  1,0 min
+    # Gekauft wird damit nicht Rechenzeit, sondern WARTEZEIT. Dass das ein
+    # guter Tausch ist, liegt daran, dass dieses Repo öffentlich ist: GitHub
+    # rechnet Actions-Minuten für öffentliche Repos nicht ab. In einem
+    # privaten Repo wäre dieselbe Änderung eine Rechnung.
     #
-    # Der Gewinn ist damit 6,1 → 2,3 min, nicht 6,1 → 1,5. Mehr Teile
-    # verschieben das nur langsam weiter, weil eine DATEI die kleinste Einheit
-    # ist und jeder Läufer knapp 1 Minute Rüstzeit zahlt (venv, npm ci,
-    # Chromium). Vier ist der Punkt, an dem sich beides die Waage hält.
-    #
-    # ES KOSTET MEHR RECHENZEIT, ALS ES SPART — und das ist Absicht. In der CI
-    # gemessen brauchen die vier Teile ZUSAMMEN 22 Minuten reine Testzeit, der
-    # serielle Lauf vorher 15,4. Der Aufschlag kommt vom Next-Entwicklungs-
-    # server: Jeder Teil übersetzt die Routen, die SEINE Tests aufrufen, von
-    # vorn, und die Routen überschneiden sich zwischen den Teilen.
-    #
-    # Gekauft wird damit nicht Rechenzeit, sondern WARTEZEIT — die bestimmt der
-    # langsamste Teil, nicht die Summe. Dass das ein guter Tausch ist, liegt
-    # daran, dass dieses Repo öffentlich ist: GitHub rechnet Actions-Minuten
-    # für öffentliche Repos nicht ab. In einem privaten Repo wäre dieselbe
-    # Änderung eine Rechnung, und dann wäre die Anmeldung (s. u.) der richtige
-    # Hebel, weil sie beides senkt.
+    # Die Liste zählt lückenlos ab 1 — NUR sie legt fest, wie viele Teile es
+    # gibt: Name und Aufruf nehmen die Gesamtzahl aus `strategy.job-total`.
+    # Eine Lücke oder ein doppelter Eintrag ließe einen Teil der Suite still
+    # aus; `tests/test_ci_shards.py` hält die Liste deshalb fest.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
 
-    name: Browsertests (${{ matrix.shard }}/4)
+    name: Browsertests (${{ matrix.shard }}/${{ strategy.job-total }})
 
     # Die Grenze ist kein Ziel, sondern der Notausgang für einen hängenden
-    # Lauf — sie gilt jetzt für EINEN Teil, nicht mehr für die ganze Suite.
-    # Von 35 auf 20. In der CI gemessen (07.09.2026, reine Testzeit):
+    # Lauf — sie gilt für EINEN Teil, nicht für die ganze Suite.
     #
-    #     Teil 1  4,6 min      Teil 3  6,7 min
-    #     Teil 2  7,6 min      Teil 4  3,2 min
-    #
-    # 20 statt 10, obwohl der langsamste Teil 7,6 Minuten braucht: Derselbe
+    # 20 Minuten, obwohl ein Teil nur rund fünf braucht: Derselbe
     # Läufer schwankt stark. Die Python-Suite, die sonst gut drei Minuten
     # läuft, brauchte an einem Tag zwölf — ohne dass sich etwas am Code
     # geändert hätte. Eine knapp gesetzte Grenze macht daraus eine
     # ZEITÜBERSCHREITUNG, also einen roten PR mit einer Meldung, die nicht
     # sagt, was kaputt ist. Der Notausgang darf großzügig sein.
     #
-    # Der nächste Hebel, wenn die Suite weiter wächst, ist nicht diese Zahl
-    # und auch nicht die Zahl der Teile, sondern die Anmeldung: Fast jeder
-    # Test meldet sich neu an (`anmelden()` in den Specs, `loginAdmin` in
-    # `helpers.ts`), gemessen ~5 s je Test — bei ~100 angemeldeten Tests also
-    # gut die Hälfte der reinen Laufzeit. Eine wiederverwendete Sitzung über
-    # `storageState` spart diese Runde. Das ist ein Umbau der Suite, kein
-    # Schalter in dieser Datei, und deshalb hier nicht mitgemacht.
+    # Die Anmeldung, die hier bis 11/2026 als „nächster Hebel" stand, ist
+    # längst umgebaut: `auth.setup.ts` meldet jede Identität einmal je Lauf
+    # an, die Specs starten über `storageState` angemeldet
+    # (`tests/e2e/konten.ts`).
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -154,17 +164,44 @@ jobs:
       # Verzeichnisses. Der Cache machte den Lauf also um 3 s LANGSAMER und
       # belegte 261 MB.
       #
-      # `--with-deps` einfach wegzulassen wäre der einzige Hebel hier. Nicht
-      # gemacht: Fehlt eine Bibliothek, startet der Browser gar nicht erst,
-      # und der Preis wäre ein rotes Gate für 20 s auf einem Lauf, der über 8
-      # Minuten braucht.
+      # `--with-deps` NUR, WENN CHROMIUM NICHT STARTET (11.11.2026). Bis dahin
+      # lief es bei jedem Lauf, mit der Begründung: Fehlt eine Bibliothek,
+      # startet der Browser gar nicht erst. Gemessen auf ubuntu-26.04
+      # (20261101.186.1): Jede Bibliothek, die Chromium braucht, liegt schon im
+      # Image („already the newest version"); `apt` holt nur noch neun
+      # Schriftpakete für CJK, Thai und Kyrillisch nach. Die Suite vergleicht
+      # keine Bilder (`page.screenshot` schreibt nur Dateien für den Bericht),
+      # die Schriften ändern am Ergebnis also nichts.
+      #
+      # Der Download war trotzdem ein Gate: Am 11.11.2026 lösten die Läufer
+      # `archive.ubuntu.com` und `security.ubuntu.com` nicht auf, `apt-get`
+      # endete mit 100, und jeder PR mit Frontend- oder Backend-Änderung war
+      # rot — zweimal hintereinander, bei Tests, die nie gelaufen sind.
+      #
+      # Die Startprobe hält die alte Absicherung: Fehlt dem Image eines Tages
+      # eine Bibliothek, wirft `launch()` und erst dann läuft `install-deps`.
       - name: Browser holen
         working-directory: web/frontend
-        run: npx playwright install --with-deps chromium
+        run: |
+          npx playwright install chromium
+          if ! node -e "require('@playwright/test').chromium.launch().then(b => b.close()).catch(e => { console.error(e.message); process.exit(1); })"; then
+            echo "Chromium startet nicht — System-Bibliotheken nachinstallieren."
+            npx playwright install-deps chromium
+          fi
 
+      # Welche Dateien dieser Läufer fährt, sagt `tests/shard-specs.mjs`. Ein
+      # leerer Teil bricht dort ab, statt durchzugehen: `playwright test` ohne
+      # Dateien führe die GANZE Suite — auf jedem leeren Läufer noch einmal.
+      # (`bash -e` beendet den Schritt, wenn die Zuweisung scheitert.)
       - name: Browsertests
         working-directory: web/frontend
-        run: npx playwright test --shard=${{ matrix.shard }}/4
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ strategy.job-total }}
+        run: |
+          SPECS=$(node tests/shard-specs.mjs "$SHARD" "$SHARDS")
+          echo "Teil $SHARD/$SHARDS: $SPECS"
+          npx playwright test $SPECS
 
       # Bei Rot: der HTML-Bericht mit Screenshot, Video und Trace jedes
       # gescheiterten Laufs. Ohne ihn steht in der CI nur „Timeout", und die
@@ -177,7 +214,7 @@ jobs:
       # Teils).
       - name: Bericht sichern
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-bericht-${{ matrix.shard }}
           path: |

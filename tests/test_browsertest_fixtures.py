@@ -262,3 +262,67 @@ def test_die_app_probe_traegt_dieselbe_geschaeftsordnungs_karte():
         "Die Karte in ask-geschaeftsordnung.sse weicht von "
         "web/frontend/tests/e2e/fixtures/geschaeftsordnung-karte.json ab — "
         "den sources-Rahmen der Aufzeichnung mit der Abschrift neu schreiben.")
+
+
+@pytest.mark.parametrize("ksinr", [4653, 4654])
+def test_die_sitzungs_kurs_abschrift_kennt_jedes_feld(ksinr):
+    """``sitzung-kurs-{ksinr}.json`` ist eine Antwort von ``/council/session``
+    (Abzug von dev, 10.11.2026, Anwesenheit geleert). Fehlt dort ein Feld des
+    ``course``-Blocks, prüft der Browsertest eine Seite, die es so nicht gibt.
+    Neu ziehen: lokalen Server starten, ``curl …/api/council/session/{ksinr}``
+    und wie in der Datei abspecken."""
+    import sys
+    from typing import get_type_hints
+    sys.path.insert(0, str(WURZEL / "web" / "backend"))
+    from app.antworten import CourseItem, CourseStage, SessionCourse
+
+    d = json.loads((FIXTURES / f"sitzung-kurs-{ksinr}.json").read_text())
+    kurs = d["course"]
+    assert set(kurs) == set(get_type_hints(SessionCourse))
+    for st in kurs["stages"]:
+        assert set(st) == set(get_type_hints(CourseStage))
+    for it in kurs["items"].values():
+        assert set(it) == set(get_type_hints(CourseItem))
+
+
+def test_die_punkt_abschrift_kennt_jedes_feld():
+    """``punkt-4654-11-1.json`` ist eine Antwort von ``/council/session/{ksinr}/item``
+    (Abzug von dev, 10.11.2026). Neu ziehen: lokalen Server starten und
+    ``curl '…/api/council/session/4654/item?nr=%C3%96%2011.1'``."""
+    import sys
+    from typing import get_type_hints
+    sys.path.insert(0, str(WURZEL / "web" / "backend"))
+    from app.antworten import SessionItemDetail
+
+    d = json.loads((FIXTURES / "punkt-4654-11-1.json").read_text())
+    # ohne Schalter; ``terms`` steht nur, wenn die Texte ein Fachwort tragen (Abzug davor)
+    assert set(d) == set(get_type_hints(SessionItemDetail)) - {"arguments", "amendments", "dossier", "terms", "budget_context", "surroundings", "program_stances"}
+
+
+def test_die_argumente_abschrift_kennt_jedes_feld():
+    """``punkt-4702-8-1.json`` ist dieselbe Antwort MIT ``arguments`` (Schalter
+    ``punkt-argumente``; VBN-Tarif 2027, lokaler Abzug vom 08.11.2026,
+    Auswertung mit ``scripts/punkt_argumente.py``). Neu ziehen: lokalen Server
+    mit ``FEATURE_FLAGS='*'`` starten und
+    ``curl '…/api/council/session/4702/item?nr=%C3%96%208.1'``."""
+    import sys
+    from typing import get_type_hints
+    sys.path.insert(0, str(WURZEL / "web" / "backend"))
+    from app.antworten import (ArgumentFaction, ArgumentIssue, ArgumentSource, ArgumentStatement,
+                               ItemArguments, SessionItemDetail)
+
+    d = json.loads((FIXTURES / "punkt-4702-8-1.json").read_text())
+    # ohne Anträge und Dossier; ``terms`` kam nach dem Abzug dazu
+    assert set(d) == set(get_type_hints(SessionItemDetail)) - {"amendments", "dossier", "terms", "budget_context", "surroundings", "program_stances"}
+    a = d["arguments"]
+    assert set(a) == set(get_type_hints(ItemArguments))
+    aussagen = [*a["further"]["pro"], *a["further"]["contra"]]
+    for i in a["issues"]:
+        assert set(i) == set(get_type_hints(ArgumentIssue))
+        aussagen += [*i["pro"], *i["contra"]]
+    for f in a["factions"]:
+        assert set(f) == set(get_type_hints(ArgumentFaction))
+        aussagen += f["statements"]
+    for s in aussagen:
+        assert set(s) == set(get_type_hints(ArgumentStatement))
+        assert set(s["source"]) == set(get_type_hints(ArgumentSource))

@@ -160,7 +160,7 @@ def test_movement_detail_carries_its_data_status(client, cities_db):
     # Als Körperschaft steht hier nur Osnabrück im Bestand; seine jüngste
     # Vorlage liegt weit vor dem Abgleich — also „hinkt hinterher".
     assert d["data_status"] == {"as_of": "2026-09-14", "lagging": [
-        {"body_id": "osnabrueck", "city": "Osnabrück", "latest_paper": "2023-06-01"}]}
+        {"body_id": "osnabrueck", "city": "Osnabrück", "latest_paper": "2023-06-01"}], "blocked": []}
 
 
 def test_die_uebersicht_zaehlt_bewegungen(client):

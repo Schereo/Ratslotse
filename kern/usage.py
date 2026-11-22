@@ -75,24 +75,31 @@ def _connect() -> sqlite3.Connection:
         "CREATE TABLE IF NOT EXISTS llm_usage ("
         "id INTEGER PRIMARY KEY, ts TEXT NOT NULL DEFAULT (datetime('now')), "
         "feature TEXT NOT NULL, model TEXT, prompt_tokens INTEGER, completion_tokens INTEGER, "
-        "cost_usd REAL)")
+        "cost_usd REAL, cached_tokens INTEGER)")
     try:  # Bestands-DBs: Spalte nachrüsten (idempotent scheitern lassen)
         conn.execute("ALTER TABLE llm_usage ADD COLUMN cost_usd REAL")
+    except sqlite3.OperationalError:
+        pass
+    # Wie viel der Eingabe aus dem Anbieter-Cache kam (Plan Vorlagen aufbereiten,
+    # § 4.4: Kern und Form teilen ein Präfix). NULL = nicht gemeldet.
+    try:
+        conn.execute("ALTER TABLE llm_usage ADD COLUMN cached_tokens INTEGER")
     except sqlite3.OperationalError:
         pass
     return conn
 
 
 def record(feature: str, model: str | None, prompt_tokens: int, completion_tokens: int,
-           cost_usd: float | None = None) -> None:
+           cost_usd: float | None = None, cached_tokens: int | None = None) -> None:
     """Append one usage row. Swallows all errors — tracking is never load-bearing."""
     try:
         conn = _connect()
         with conn:
             conn.execute(
-                "INSERT INTO llm_usage(feature, model, prompt_tokens, completion_tokens, cost_usd) "
-                "VALUES (?,?,?,?,?)",
-                (feature, model, int(prompt_tokens or 0), int(completion_tokens or 0), cost_usd))
+                "INSERT INTO llm_usage(feature, model, prompt_tokens, completion_tokens, cost_usd, cached_tokens) "
+                "VALUES (?,?,?,?,?,?)",
+                (feature, model, int(prompt_tokens or 0), int(completion_tokens or 0), cost_usd,
+                 int(cached_tokens) if cached_tokens is not None else None))
         conn.close()
     except Exception:  # noqa: BLE001 — usage tracking must never break an LLM call
         pass

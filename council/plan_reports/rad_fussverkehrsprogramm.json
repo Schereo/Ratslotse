@@ -1,0 +1,49 @@
+{
+ "plan": "rad_fussverkehrsprogramm",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "19/0080",
+   "date": "2019-02-18",
+   "text": "Für das RFP 2019 stehen 278.500 € für konsumtive und 500.000 € für investive Maßnahmen zur Verfügung.",
+   "quote": "Für die Umsetzung der Maßnahmen des RFP 2019 stehen im THH 08 Mittel in Höhe von 278.500 € für konsumtive Maßnahmen im Ergebnishaushalt und Mittel in Höhe von 500.000 € für investive Maßnahmen im Finanzhaushalt zur Verfügung."
+  },
+  {
+   "template": "19/0916",
+   "date": "2019-12-09",
+   "text": "Für das Rad- und Fußverkehrsprogramm 2020 sind 29 Maßnahmen aufgelistet; teils sind im nächsten Jahr Planungsleistungen, teils die Umsetzung vorgesehen.",
+   "quote": "Für das Rad- und Fußverkehrsprogramm 2020 werden 29 relevante Maßnahmen (siehe Anlage) aufgelistet, bei denen teilweise im nächsten Jahr Planungsleistungen durchgeführt werden, bei anderen aber auch die Umsetzung vorgesehen ist."
+  },
+  {
+   "template": "20/0163",
+   "date": "2020-05-18",
+   "text": "2020 sollen 29 Maßnahmen geplant oder umgesetzt werden.",
+   "quote": "In der dazugehörigen Vorlage 19/0916 wurden 29 relevante Maßnahmen aufgelistet, die in 2020 geplant bzw. umgesetzt werden sollen."
+  },
+  {
+   "template": "22/0072",
+   "date": "2022-03-21",
+   "text": "Der Verbindungsweg zwischen Elritzenweg und Querweg in Ofenerdiek wurde als neuer Radweg gebaut.",
+   "quote": "Am Pferdemarkt wurden zum Beispiel neue Radabstellanlagen geschaffen und als neuer Radweg wurde der Verbindungsweg zwischen Elritzenweg und Querweg in Ofenerdiek gebaut."
+  }
+ ],
+ "news": {
+  "from": "20/0163",
+  "from_date": "2020-05-18",
+  "to": "22/0072",
+  "to_date": "2022-03-21",
+  "items": [
+   {
+    "text": "Für die ersten sieben Teilkonzepte des Rahmenplans Mobilität und Verkehr (RMV 2030) wurden Aufträge über insgesamt ca. 490.000 Euro vergeben.",
+    "quote": "Ein weiterer großer Schwerpunkt in 2021 waren die Vergabeverfahren für die ersten sieben Teilkonzepte des Rahmenplans Mobilität und Verkehr (RMV 2030), bei dem Aufträge über insgesamt ca. 490.000 Euro vergeben wurden"
+   },
+   {
+    "text": "Der Start des neuen öffentlichen Fahrradverleihsystems ist für April 2022 geplant.",
+    "quote": "Gleichzeitig wurde das aufwendige Vergabeverfahren für das neue öffentliche Fahrradverleihsystem durchgeführt, dessen Start für April 2022 geplant ist."
+   }
+  ]
+ }
+}

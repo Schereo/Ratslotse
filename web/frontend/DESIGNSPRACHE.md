@@ -218,6 +218,15 @@ iOS-Schrift.
     hellsten (über 55 %, dunkler Text).
   Die Fuge zwischen Feldern einer Grafik ist `--hh-raster` (die Farbe der
   Fläche), nicht `--card`: Auf der Tafel sind das zwei verschiedene Farben.
+  **Seit 11/2026 trägt die Tafel auch den Kopf einer einzelnen Sitzung** mit
+  dem „Kurs der Sitzung“ (`components/session/course.tsx`, Schalter
+  `sitzung-kurs`). Dort steht keine Zahl, sondern der Ablauf: eine Linie vom
+  Anker bis zum Schloss, je Punkt eine Boje, je Etappe ein Band aus `--card`
+  mit Deckkraft (offen 60 %, nichtöffentlich 30 %), keine eigene Farbe. Die
+  Bojen tragen `--card` mit Rand `primary/35` — `--border` liegt auf der
+  dunklen Tafel einen Punkt neben `--card`, die Boje verschwand im Band.
+  Gedimmt (55 %) werden nur die Zeichen der schon behandelten Bojen beim
+  Mitlesen, nie die Nummern darunter.
 - **Ebenen & Abdunkler:** Fünf benannte Stufen, definiert in `app/globals.css`
   (`--ebene-huelle` 40 · `--ebene-schwebend` 60 · `--ebene-flaeche` 100 ·
   `--ebene-dialog` 110 · `--ebene-meldung` 120) — eine neue Ebene wird dort
@@ -422,6 +431,47 @@ iOS-Schrift.
   und teilen sich `OUTCOME_META` — die Farben gehen nie auseinander.
 - **Zeitstrahl** (RG-03): 16-px-Rail, Punkte 10 ⌀, letzte Station = gefüllter
   Punkt mit Halo + primary/6-Box „AKTUELLER STAND".
+- **Zeitband** (Pläne der Stadt, `components/plans/time-band.tsx`): ein Plan
+  als Strecke auf einer Zeitachse — vom Beschluss bis zum Laufzeitende, darauf
+  jede Station im Rat. **Kein Fortschrittsbalken:** durchgehend ein Ton, die
+  Gegenwart ist ein 1,5-px-Strich in Signal-Orange (ein Marker, keine Fläche)
+  quer durch alle Bänder; nichts ist „bis heute gefüllt“. Was das Band sagt,
+  sagt es über die Form: gefüllt im Primär-Tint (bg /20, Rahmen /45) =
+  beschlossen · gefüllt neutral (Muted /15, Rahmen /45) = zur Kenntnis
+  genommen · 1,5 px gestrichelt = in Arbeit (gestrichelt heißt „noch nicht“,
+  § 4) · läuft per Maske blass aus = ohne Enddatum, kommt blass herein =
+  begann vor der Achse. Marken: Punkt 7 ⌀ gefüllt = Bericht mit Vorlage, Ring
+  = mündlich, ohne Text · Strich 2,5 × 16 = Beschluss über den Plan · Raute
+  7 px = vorgesehene Überprüfung · 2-px-Spur davor = Laufzeit des Vorgängers,
+  gepunktet bis zum Band verbunden. Höhe 10 px (Übersicht) / 14 px (Kopfbühne,
+  Marken 11 ⌀). Lagen kommen als Anteile der Achse aus dem Backend
+  (`council/plan_pages.py`); gezeichnet wird mit Prozent-Lagen, kein SVG.
+  **Übersicht:** alle Pläne auf EINER Achse (Bestand ab 2018 bis zehn Jahre
+  voraus), drei Spalten Text · Band · Berichtslage; die Kopfzeile der Gruppe
+  mit den Jahren bleibt beim Scrollen stehen, die Jahreslinien laufen von
+  Zeile zu Zeile durch. Unter 672 px Kartenbreite steht das Band unter dem
+  Titel — dieselbe Achse, der Strich für heute liegt in jeder Karte an
+  derselben Stelle. Das Band ist rein bildlich (`aria-hidden`): Was es zeigt,
+  steht als Text daneben. **Kopfbühne der Planseite:** eigene Achse je Plan,
+  jede Marke ein Knopf zum Eintrag im Zeitstrahl; vor 2018 liegt eine neutrale
+  Fläche „vor 2018“ — dort fehlen die Daten, nicht die Berichte. Einmal beim
+  Aufbau fährt das Band von seinem Beginn her auf und die Marken gehen
+  chronologisch auf (Richtung der Zeit, kein Füllstand).
+- **Lücke im Zeitstrahl** (`components/plans/report-log.tsx`): Der Zeitstrahl
+  eines Plans steht nach Jahren, das jüngste zuerst; jedes Jahr ist eine
+  Mono-Zwischenzeile mit Haarlinie. Jahre, in denen kein Bericht zu finden
+  war, stehen als EIN Eintrag mit gestrichelter Linie und kursivem Satz
+  („2025–2026 · kein Bericht im Rat gefunden“, im laufenden Jahr „bisher …“) —
+  neutral, ohne Warnfarbe. Steht über der jüngsten Station eine Lücke, heißt
+  ihr Kasten „Zuletzt im Rat“ statt „Aktueller Stand“. Der Satz dazu steht
+  einmal in einem gestrichelten Kasten über dem Strahl, mit der Einordnung:
+  eine Aussage über die Berichte, nicht über die Arbeit. In einer breiten
+  Karte (ab 672 px) steht das Datum als eigene Spalte vor dem Titel.
+- **Maßnahmen als Kästchen** (`components/plans/measures.tsx`): Jedes
+  Handlungsfeld trägt in seiner Kopfzeile ein 12-px-Kästchen je Maßnahme
+  (Radius 3, bg primary/15, Rahmen /40), Pakete 7 px abgesetzt. Alle gleich
+  getönt, solange es keinen Stand je Maßnahme gibt; die Liste ist ihr eigenes
+  Bild, keine zweite Grafik darüber.
 - **Geld** (RG-04): Bricolage-Großbetrag + Vergleichszeilen (Label · Balken h 6 ·
   Betrag), Delta in Signal-Orange, jeder Betrag mit [n].
 - **Eckdaten** (Plan „Akte“, `components/key-facts.tsx`): Kicker ECKDATEN, darunter
@@ -614,6 +664,50 @@ iOS-Schrift.
   ein zweites Wort ersetzt das erste. Esc schließt ihn (und nur ihn, nicht
   gleich das Fenster), `aria-expanded` sagt, woran man ist. Faustregel: unter
   ~28 rem Textbreite klappt es auf, darüber überlagert es.
+  **Auf Leseseiten (Punkt-, Beschluss- und Sitzungsseite) steht dieselbe Aufklapp-Form** — je Absatz
+  ein Bereich, damit die Erklärung direkt unter dem Satz erscheint, in 14 px
+  statt 12 (neben 17-px-Lesetext wäre 12 eine Fußnote). Welche Wörter, sagt
+  der Server (`council/seitenbegriffe.py`): je Begriff nur die **erste
+  Nennung der Seite**, keine Alltagswörter („Ausschuss" stünde auf drei von
+  vier Seiten), keine mehrdeutigen, kein Kompositum. Die Seite erkennt selbst
+  nichts.
+  **In einer Liste von Karten (Sitzungsseite) klappt nur der Klick auf**
+  (`nurKlick`), nicht das Überfahren: Die Karte wüchse unter dem Zeiger und
+  schöbe alle folgenden weiter, während man die Liste nur überfliegt. Dort
+  höchstens zwei Wörter je Karte und zwölf je Seite. Wort und Erklärung liegen
+  über der gestreckten Link-Fläche der Karte (`relative z-[1]`) — ein Tipp auf
+  die Erklärung navigiert nicht weg.
+  Stammt die Erklärung nicht aus dem geprüften Glossar, sondern aus der
+  Vorlage (ein Modell schlägt vor, ein zweites prüft), trägt der Begriff im
+  aufgeklappten Block den **KI-Stern** — am Wort im Text nicht: Dort sieht
+  jedes erklärte Wort gleich aus.
+  **„Aus der Vorlage“ auf der Beschluss-Seite**
+  (`components/session/aus-der-vorlage.tsx`): zwei Karten in den Stufen von
+  „Aus den Unterlagen“ — Kartentitel, Mono-Kicker je Abschnitt, Inhalt in der
+  Leserolle. Vorher standen beide als Fließtext unter 14-px-Zeilen; der Inhalt
+  war größer gesetzt als seine Überschriften (Tim, 14.11.2026).
+  *Vorschlag und Beschluss* nur, wo der Rat abgewichen ist: ein Umschalter
+  (`Segmented`) zwischen **Änderungen** (Wortdiff, Vorgabe), **Vorschlag** und
+  **Beschluss**; die Legende zeigt die beiden Auszeichnungen an sich selbst,
+  statt sie zu beschreiben. Der Diff kommt geglättet vom Server: Ein
+  umformulierter Satz steht durchgestrichen neben dem neuen, nicht als
+  Wort-Konfetti.
+  *So stand es in der Vorlage* ist eine **aufklappbare Gliederung**: die ersten
+  zwei Abschnitte offen, die übrigen als Zeile mit ihrer Zahl („5 Angaben“).
+  Zugeklapptes bleibt im Druck (`hidden print:block`).
+  **Zweite Stufe im Dossier** (auch auf der Punkt-Seite): Die Art einer Aussage
+  steht EINMAL als Zwischenzeile in Meta, halbfett — „Nicht Teil des
+  Beschlusses“, „Deckung“, „Termine“, „Noch offen“ —, nicht vor jedem Satz.
+  Termine sind eine zweispaltige Reihe (Datum in Tabellenziffern · was), alles
+  andere eine Liste mit stillen Punkten.
+  **„Im Haushalt“ auf der Punkt-Seite** (`components/session/im-haushalt.tsx`):
+  eine Karte in den Stufen von „Aus den Unterlagen“ — Kartentitel, je Reihe
+  ein Mono-Kicker, darunter in Meta, WAS die Reihe ist (Plan des jeweiligen
+  Jahres · tatsächlich eingenommen · gilt ab dem genannten Jahr). Plan, Ist
+  und Sätze stehen nie in einer Tabelle. Die Zahlen in der `ZahlenTabelle`
+  des Ressorts mit `schlicht` (ein Stand trägt keine Vorzeichen-Farbe),
+  höchstens drei Jahre und drei Reihen. Ein Weg in den Haushalts-Bereich je
+  Karte, und nur für Konten mit dem Recht dazu.
   **Anschlussfragen**: In derselben Chip-Reihe stehen unter der LETZTEN
   Antwort höchstens **zwei** weiterführende Angebote — „Erklär mir: <der
   nächste Baustein der Seite, der noch nicht erklärt wurde>" und „Was heißt
@@ -702,19 +796,39 @@ iOS-Schrift.
 
 ### Kopf einer einzelnen Sitzung
 
-Der Sitzungskopf bildet eine gemeinsame Karte: leiser Kicker „Sitzung“ und
-Anzahl der Tagesordnungspunkte, darunter der Kurzname als einzige Hauptüberschrift.
-Der amtliche Name steht bei Abweichung separat in Inter 13, ohne Abschneiden
-und ohne die fette Titelschrift zu erben. Eine abgesetzte Informationszeile
-ordnet „Termin“ und „Ort“ mit kleinen Icons; das Datum erscheint einmal vollständig,
-die Uhrzeit darunter. Adressen bleiben vollständig lesbar. Fehlende Angaben
-werden benannt. Breite und Schriftgröße bestimmen, ob die zwei Angaben neben-
-oder untereinander stehen.
+Seit 11/2026 (Schalter `sitzung-kurs`, `components/session/session-page.tsx`;
+Plan `docs/plan-sitzungsseite-kurs.md`) steht der Kopf auf der
+**Anzeigetafel** (§ 4) und erzählt die Sitzung, statt nur Termin und Ort zu
+nennen. Von oben: Mono-Kicker mit „Heute“/„Morgen“ oder dem Wochentag, Datum,
+Uhrzeit und dem Ort ohne Straße (die volle Adresse steht in der Karte „Ort und
+Zeit“) · der Kurzname als einzige Hauptüberschrift (Bricolage 28/32), der
+amtliche Name darunter bei Abweichung in `meta` · rechts die Aktionen ·
+darunter der **gerechnete Satz zur Sitzung** in einer **Sprechblase neben
+Lotti** (`components/session/lotti-satz.tsx`: Lotti 44/48 px mit `erklaert`,
+Blase `bg-card`, Rand, Radius 16, Zipfel zur Figur, Text in `lese`), ohne
+Herkunftszeile darunter (Tims Wunsch 12.11.2026). **Tims
+Entscheidung 10.11.2026 (Plan 8.1):** Hier darf Lotti die Sitzung erzählen,
+denn der Satz ist gezählt, nicht verfasst; dieselbe Blase trägt beim Mitlesen
+den Satz zum Stand. Es ist die einzige Ausnahme von § 1 und § 8 · der
+**Kurs der Sitzung** mit Legende bzw. der Zählung der Ergebnisse als Text mit
+Punkt (keine Abstimmungsgrafik, § 8) · „Wichtig in dieser Sitzung“ mit
+höchstens drei Karten, auf dem Handy zum Wischen.
 
-Kalender, Merken und Teilen stehen gleichwertig in einer abgetrennten
-Aktionsleiste; der externe Ratsinfo-Link folgt am Ende. Alle Aktionen haben
-mindestens 44 px Bedienhöhe. Mobil passen zwei in eine Zeile, bei großer Schrift
-eine. Die Rücknavigation liegt oberhalb der Karte.
+**Nur eine Karte mit Ziel ist eine Karte zum Antippen** (Tims Wunsch
+11.11.2026). Die Karten der Tagesordnung führen zum Beschluss oder, wo das
+Backend eine verspricht (`own_page`), zur Seite des Punkts — dann sind sie
+weiß mit Schatten, tragen rechts oben einen Pfeil, und unter dem Zeiger wird
+der Rahmen primary und der Pfeil rückt vor. Formalien, Fragestunde, Anfragen
+und Mitteilungen haben kein Ziel: flach (Rahmen gestrichelt, Fläche halb
+durchsichtig, kein Schatten), Titel in 500 statt 600 — sie dürfen nicht nach
+einem Link aussehen, der nirgendwohin führt.
+
+Die Aktionen: vor der Sitzung „In den Kalender“ gefüllt, danach „Sitzung
+teilen“; Merken, Teilen, Protokoll und Ratsinfo daneben, Externes gestrichelt.
+Alle mindestens 44 px hoch, sie brechen um. Die Rücknavigation liegt oberhalb
+der Tafel. Ohne Schalter gilt die bisherige Karte: leiser Kicker „Sitzung“,
+Kurzname, eine Informationszeile mit Termin und Ort, darunter die
+Aktionsleiste.
 
 ### Allgemeine Aktionen
 
@@ -736,6 +850,44 @@ eine. Die Rücknavigation liegt oberhalb der Karte.
 - Fehler/Limits: immer mit Ausweg (Retry, „Als schnelle Frage", Countdown) und
   ohne Datenverlust („Frage steht wieder im Eingabefeld").
 - Ehrliche Mengen: nie „viele", immer Zahl + Zeitraum.
+
+### Seitenleiste: Untermenü eines Bereichs (seit 11/2026)
+
+Ein Bereich mit Unterseiten zeigt sie **in der Seitenleiste**, eingerückt unter
+seinem Punkt — die Analyse ihre Auswertungen, der Haushalt seine vier Etappen
+(`NavSection` in `components/nav.tsx`).
+
+- **Offen genau so lange, wie man im Bereich ist.** Kein Pfeil, kein gemerkter
+  Zustand: Im Ruhezustand ist die Leiste so kurz wie ohne Untermenüs.
+- **Die Fläche liegt auf der Unterzeile**, der Hauptpunkt behält nur die
+  Primärfarbe (und keine Hover-Fläche — zwei gefüllte Zeilen untereinander
+  läsen sich als zwei Standorte). Gehört die Seite zu keiner Unterzeile
+  (Haushalts-Übersicht, ein Steckbrief), trägt der Hauptpunkt die Fläche.
+  Es gibt **immer genau einen** Standort.
+- **Unterzeile:** 12,5 px, kleines Zeichen (14 px) davor, an einer neutralen
+  Führungslinie unter der Mitte des Hauptzeichens. Die Fläche ist mit der
+  Zeile eingerückt und beginnt kurz vor dem Zeichen — nie über die volle
+  Breite der Leiste (das ließ links leeres Blau vor der Schrift stehen).
+  Aktiv wechselt nur die Farbe, nicht das Schriftgewicht: Fettere Schrift ist
+  breiter, und ein Name, der gerade so passt, bräche beim Anklicken um. Die
+  Maße sind auf die längsten Namen gerechnet; was trotzdem nicht passt, bricht
+  in zwei Zeilen um, statt abgeschnitten zu werden.
+- **Die Zeichen kommen aus dem Bestand:** die der Analyse aus derselben
+  Zuordnung wie die Reiterleiste (`components/analyse-icons.ts`), die der
+  Haushalts-Etappen vom ersten Schritt der Etappe — dem Ziel der Zeile.
+- **Kein Auffahren.** Die Zeilen stehen sofort da, die gleitende Markierung
+  fährt den Weg. Ein animiertes Aufklappen ließ sie springen und hängen
+  (gemessen 22.11.2026, Begründung an `NavSection`).
+- **Höchstens eine Handvoll Zeilen.** Der Haushalt zeigt deshalb die vier
+  Etappen und nicht die zwölf Schritte — die stehen im Schritt-Pfad der Seite.
+  Ein Untermenü mit EINER Zeile gibt es nicht (Werkzeuge: erst ab dem zweiten).
+- **Nicht doppelt navigieren.** Wo die Seitenleiste die Unterseiten zeigt
+  (`desk`), steht auf der Seite keine Reiterleiste mit denselben Zielen;
+  darunter (Telefon, iPad) ist die Reiterleiste der einzige Weg und bleibt.
+  Beide lesen dieselbe Liste (`lib/analysis-nav.ts`).
+- **Gruppen:** Hauptziele · *Ratsarbeit* (Haushalt, Werkzeuge — nur für Konten
+  mit Mandat; sonst steht der Haushalt ohne Überschrift am Ende der
+  Hauptziele) · *Persönlich*. Dieselben Gruppen im „Mehr"-Blatt.
 
 ## 7. Bewegung
 
@@ -792,6 +944,31 @@ unten sind der gemeinsame Nenner; die Bausteine dazu stehen in
   der Seiten-Einstieg (`page-in`) blendet nur ein, statt anzuheben: Der
   Chat-Composer hing sonst die ersten 0,34 s jeder Navigation 164 px zu hoch
   (Tims Befund 15.08.). Wer eine neue Ein-Animation schreibt, prüft beides.
+- **Was sortiert oder gefiltert wird, gleitet an seinen Platz**
+  (`lib/flip.ts`, seit 11/2026). Eine Liste, die in neuer Reihenfolge einfach
+  dasteht, zeigt zwei Zustände und keinen Weg — man sucht die Zeile, die man
+  eben noch im Blick hatte. `useFlip` misst vor und nach der Änderung und
+  fährt jedes Element per `transform` vom alten Platz zum neuen; was neu
+  dazukommt, blendet ein. Gemessen wird gegen die Wurzel der Liste (nicht das
+  Fenster), bewegt wird nur, was vorher oder nachher im Bild liegt, und ein
+  Weg länger als das Fenster wird gekappt. Erste Anwendungen: die Zeilen der
+  Pläne-Übersicht beim Wechsel der Ansicht, die Kästchen im „Stand laut
+  Stadt“ beim Wechsel des Jahres. **Wo die Bewegung mehr behauptet, als die
+  Daten hergeben, steht das dabei:** Die Stadt meldet je Stand nur Summen —
+  welches Kästchen die Stufe wechselt, ist gerechnet, und der Satz darunter
+  sagt es.
+- **Ein Übergang zwischen zwei Seiten ist Zugabe.** Das Band einer Zeile der
+  Pläne-Übersicht wird zum Band im Kopf der Planseite
+  (`components/plans/band-transition.ts`, View Transitions API): Es ist
+  dasselbe Band, einmal auf der gemeinsamen Achse, einmal auf seiner eigenen.
+  Benannt wird NUR die Form des Bandes, nicht die ganze Zeile — zwei
+  verschieden beschriftete Achsen ineinander zu blenden ergibt ein Geisterbild.
+  Ohne die API, bei reduzierter Bewegung, mit Strg/Cmd-Klick und wenn die
+  Zielseite nicht binnen 0,9 s steht, ist es ein gewöhnlicher Link.
+- **Ein Beleg wird markiert, nicht hervorgezaubert** (`.zitat-marker`). Klappt
+  ein Zitat auf, fährt einmal ein Textmarker darüber: Unter dem Text liegt die
+  Markierung, eine Decke in Kartenfarbe fährt per `transform` zur Seite weg.
+  Kein animiertes `background-size`.
 - **Gestaffelt heißt gedeckelt.** Der Versatz endet bei der sechsten Zeile
   (`components/staffel.tsx`); ohne Deckel käme die 40. Zeile einer
   Trefferliste 1,8 s nach der ersten und die Seite wirkte lahm statt lebendig.
@@ -859,7 +1036,8 @@ eine Wirkung der einzelnen Mail zu behaupten.
 
 ## 8. Anti-Patterns
 
-Keine Lotti-Sprechblase außerhalb der Anstupser-Grenzen (§ 5) · kein Zähler
+Keine Lotti-Sprechblase außerhalb der Anstupser-Grenzen (§ 5) und des
+Sitzungskopfs samt Mitlesen (`lotti-satz.tsx`, gerechnete Sätze, Plan 8.1) · kein Zähler
 oder Abzeichen am geschlossenen Lotti-Knopf ·
 keine Anführungszeichen um Paraphrasen · keine Stimm-/Abstimmungsgrafiken ·
 kein Signal-Orange als Flächenfarbe (Ausnahme: Neuigkeiten-Kacheln, § 2) · keine Parteifarben-Flächen (Ausnahmen:
@@ -974,3 +1152,13 @@ und schob alles darunter weg; die Zahl wuchs von einem 40-px-Balken auf das
 Vierfache (Tims Befund 01.10.2026: „ploppt auf“). Ein Widget, das ohne Daten
 ganz entfällt (Woche ohne Sitzungen, Fundstück), zeigt das Skelett nur,
 solange die Antwort aussteht.
+
+### KI-Stern statt Hinweiszeile (seit 11/2026)
+
+Ein automatisch erstellter Text trägt **am Text selbst** einen kleinen
+Funken in Signal-Orange (`components/ki-stern.tsx`). Beim Überfahren, auf dem
+Telefon beim Antippen, sagt er, woher der Text kommt und was verbindlich ist.
+**Keine Hinweiszeile darüber oder darunter** („Kurzfassungen sind
+automatisch …“): Sie wiederholt sich auf jeder Seite und wird überlesen (Tims
+Entscheidung 12.11.2026). Die Hover-Karte bleibt kurz, ein bis zwei Sätze.
+

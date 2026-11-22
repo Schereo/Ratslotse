@@ -1,3 +1,6 @@
+# Der Prod-Deploy: Nur ein gemergter Pull Request nach `main` löst ihn aus.
+# Erst läuft die Testsuite, dann baut der Lauf die Doku, überträgt den Code,
+# startet die Dienste neu und prüft sie mit der Rauchprobe.
 name: Deploy to VPS
 
 on:
@@ -38,9 +41,9 @@ jobs:
     if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -70,10 +73,10 @@ jobs:
     if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build docs site
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -86,28 +89,17 @@ jobs:
           npm run build
 
       - name: Configure deployment SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' \
-            'Host edge' \
-            "  HostName ${{ secrets.VPS_PROXY_HOST }}" \
-            "  User ${{ secrets.VPS_PROXY_USER }}" \
-            "  Port ${{ secrets.VPS_SSH_PORT }}" \
-            '  IdentityFile ~/.ssh/id_ed25519' \
-            '  StrictHostKeyChecking no' \
-            'Host target' \
-            "  HostName ${{ secrets.VPS_HOST }}" \
-            "  User ${{ secrets.VPS_USER }}" \
-            "  Port ${{ secrets.VPS_SSH_PORT }}" \
-            '  IdentityFile ~/.ssh/id_ed25519' \
-            '  ProxyJump edge' \
-            '  StrictHostKeyChecking no' \
-            > ~/.ssh/config
-          chmod 600 ~/.ssh/config
+        uses: ./.github/actions/ssh-config
+        with:
+          targets: |
+            target ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
 
       # UM PLATZ BITTEN, bevor irgendetwas angefasst wird. Lange Cron-Läufe
       # sehen an ihrer nächsten Stapelgrenze nach diesem Marker, behalten das
@@ -278,7 +270,7 @@ jobs:
             docs-site/dist/ target:~/app/web/frontend/public/docs/
 
       - name: Restart services and rebuild web
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        uses: ./.github/actions/ssh
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -287,6 +279,7 @@ jobs:
           proxy_host: ${{ secrets.VPS_PROXY_HOST }}
           proxy_username: ${{ secrets.VPS_PROXY_USER }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           script: |
             set -e
@@ -321,6 +314,12 @@ jobs:
             # verdrehten Build geliefert (15.09.2026 hier, 08.11.2026 auf dev)
             # und spart Sekunden, auf die seit dem Bau daneben niemand wartet.
             rm -rf .next-build
+            # OHNE DIE TYPEN DES LAUFENDEN BUILDS: Die tsconfig schließt
+            # `.next/types` ein, der Build nach `.next-build` prüfte sie also
+            # mit und scheiterte an Dateien, die nicht seine sind, sobald sie
+            # nicht zum neuen Stand passen (22.11.2026 auf dev, s.
+            # deploy-dev.yml). `next start` braucht das Verzeichnis nicht.
+            rm -rf .next/types .next/dev/types
             # CARTO_API_KEY: Key für die Kartenkacheln, zur Build-Zeit ins
             # Client-Bundle einkompiliert (NEXT_PUBLIC_, s. lib/basemap.ts).
             # Fehlt das Secret, baut der Build trotzdem durch — die Karten

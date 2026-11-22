@@ -1,0 +1,18 @@
+{
+ "plan": "aktionsplan_gewalt_2020",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "5740d5475116aa39",
+ "plain": [
+  "Der Plan soll Betroffene vor Gewalt schützen und akute Gewalt beenden.",
+  "Er soll Betroffenen professionelle Hilfe und Unterstützung bei der Verarbeitung ermöglichen.",
+  "Das Gleichstellungsbüro nennt eine Koordinierungsstelle und mehr Förderung für Schutz- und Gewaltberatungsstellen als Prioritäten."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Plan gegen Gewalt an Frauen* berichtet oder beschlossen?",
+  "Was sieht Oldenburgs Aktionsplan gegen Gewalt an Frauen* zur Koordinierungsstelle vor?",
+  "Wie prüft Oldenburg laut Aktionsplan gegen Gewalt die Wirksamkeit der Maßnahmen?"
+ ]
+}

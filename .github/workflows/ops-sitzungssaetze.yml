@@ -39,12 +39,18 @@ jobs:
   saetze:
     runs-on: ubuntu-latest
     steps:
+      # Für die SSH-Action aus .github/actions/ssh.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
       - name: "Sitzungssätze (${{ inputs.umgebung }})"
         env:
           SCHREIBEN: ${{ inputs.schreiben }}
           LIMIT: ${{ inputs.limit }}
           MAX_USD: ${{ inputs.max_usd }}
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        uses: ./.github/actions/ssh
         with:
           host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -53,6 +59,7 @@ jobs:
           proxy_host: ${{ secrets.VPS_PROXY_HOST }}
           proxy_username: ${{ secrets.VPS_PROXY_USER }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           command_timeout: 60m
           # Eingaben über `envs` und geprüft, nicht als `${{ … }}` im Skripttext.

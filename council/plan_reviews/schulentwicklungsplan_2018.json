@@ -1,0 +1,17 @@
+{
+ "plan": "schulentwicklungsplan_2018",
+ "statements": [
+  {
+   "kind": "result",
+   "text": "Im Gutachten werden zehn Empfehlungen zur Weiterentwicklung der Oldenburger Schullandschaft gegeben.",
+   "source_label": "Abschlussbericht",
+   "template": "19/0942"
+  },
+  {
+   "kind": "result",
+   "text": "Das hierfür vorgesehene Zeitfenster bis Ende 2019 konnte eingehalten werden und es wurden zu den zehn Empfehlungen insgesamt 12 Vorlagen eingebracht.",
+   "source_label": "Abschlussbericht",
+   "template": "19/0942"
+  }
+ ]
+}

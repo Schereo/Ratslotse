@@ -1,0 +1,18 @@
+{
+ "plan": "demografiestrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "4bdf04949d23f0c8",
+ "plain": [
+  "Der Plan soll Oldenburg zu einer Kommune machen, in der alle Menschen Zugang und gleiche Chancen haben.",
+  "Der Plan rechnet damit, dass Oldenburg zunächst um rund 10.000 Menschen wächst und sich die Einwohnerzahl danach stabilisiert.",
+  "Er empfiehlt, Projektverantwortung auch außerhalb der Verwaltung zu übertragen und möglichst gemeinsam mit Einwohnern zu gestalten."
+ ],
+ "questions": [
+  "Was wurde zuletzt zur Demografiestrategie Oldenburgs berichtet oder beschlossen?",
+  "Mit welchem Bevölkerungswachstum rechnet die Demografiestrategie für Oldenburg?",
+  "Welche Maßnahmen zu Wohn- und Pflegearrangements nennt die Demografiestrategie für Oldenburg?"
+ ]
+}

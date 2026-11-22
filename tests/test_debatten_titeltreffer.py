@@ -73,3 +73,44 @@ def test_title_frequencies_counts_capitalised_nouns(tmp_path):
                      "(1, 1, 1, 'Trinkwasserspender draußen'), (2, 1, 2, 'Mülltonnen')")
     assert st.title_frequencies(["trinkwasserspender", "stadion"]) == {
         "trinkwasserspender": 1, "stadion": 0}
+
+
+# ---- Aussprache zu den jüngsten Beschlüssen hinter Platz 8 ------------------
+
+def _dated(i, date, ksinr=1):
+    return {"id": i, "title": f"Beschluss {i}", "session_date": date, "ksinr": ksinr}
+
+
+def test_newest_behind_head_are_coupled():
+    """Gold Prod 09.11.2026: Die ersten acht reichten bis 2025, der Bericht vom
+    16.04.2026 stand dahinter — seine Protokollnotiz fehlte im Prompt."""
+    cands = [_dated(i, f"20{19 + i % 6}-03-01") for i in range(8)]
+    cands += [_dated(20, "2026-04-16"), _dated(21, "2019-01-01"), _dated(22, "2025-11-06"),
+              _dated(23, "2026-06-11"), _dated(24, "2026-05-11"), _dated(25, "2026-01-01")]
+    out = qa.newest_beyond_head(cands, limit=20)
+    # Nur jünger als JEDER der ersten acht (2024-03-01), neueste zuerst, höchstens drei.
+    assert [c["id"] for c in out] == [23, 24, 20]
+
+
+def test_nothing_changes_when_the_head_is_newest():
+    cands = [_dated(i, "2026-06-29") for i in range(8)] + [_dated(9, "2026-01-01")]
+    assert qa.newest_beyond_head(cands, limit=20) == []
+
+
+def test_only_within_the_prompt_and_with_a_session():
+    cands = [_dated(i, "2024-01-01") for i in range(8)]
+    cands += [{"id": 30, "title": "ohne Sitzung", "session_date": "2026-01-01"}]
+    cands += [_dated(i, "2024-01-01") for i in range(31, 43)] + [_dated(50, "2026-02-02")]
+    assert qa.newest_beyond_head(cands, limit=20) == []
+
+
+def test_kept_speeches_survive_the_diet():
+    """Die Beiträge zu den jüngsten Beschlüssen hält die Diät fest — sonst
+    füllten die 24 der ersten acht den Prompt, und sie fielen wieder heraus."""
+    ctx = [_dated(i, "2024-01-01") for i in range(9)]
+    reden = [{"id": 100 + k, "zu_beschluss": k % 8, "session_date": "2024-01-01",
+              "top": f"TOP {k}"} for k in range(30)]
+    neu = {"id": 999, "zu_beschluss": 8, "session_date": "2026-04-16", "top": "Trinkwasser"}
+    out = qa.debatten_diaet(reden + [neu], ctx, {999})
+    assert 999 in {d["id"] for d in out}
+    assert len(out) == qa.DEBATTEN_PROMPT_MAX + 1

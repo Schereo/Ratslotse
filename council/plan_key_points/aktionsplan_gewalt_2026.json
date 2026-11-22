@@ -1,0 +1,77 @@
+{
+ "plan": "aktionsplan_gewalt_2026",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan soll Betroffene von Gewalt schützen und unterstützen.",
+  "quote": "Nur mit einer verlässlichen Kooperation aller Beteiligten können die gemeinsamen Ziele erreicht werden: • Gewalt gegen Frauen* und Häusliche Gewalt verhindern, bevor sie entsteht • Betroffene schützen und unterstützen • ein solidarisches und gewaltfreies Zusammenleben fördern",
+  "source": {
+   "kind": "attachment",
+   "template": "26/0681/1",
+   "document_id": 314635,
+   "label": "Evaluation und Fortschreibung des Aktionsplans",
+   "page": 68
+  }
+ },
+ "points": [
+  {
+   "text": "Hilfen sollen unterschiedliche Lebensrealitäten und Bedarfe berücksichtigen und möglichst für alle zugänglich oder angepasst sein.",
+   "kind": "standard",
+   "quote": "Ein wirksames Gewalthilfesystem muss die unterschiedlichen Lebensrealitäten und Bedarfe von Betroffenen berücksichtigen und möglichst für alle zugänglich sein oder angepasst werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0681/1",
+    "document_id": 314635,
+    "label": "Evaluation und Fortschreibung des Aktionsplans",
+    "page": 45
+   }
+  },
+  {
+   "text": "StoP soll in Dietrichsfeld dauerhaft verankert und im Stadtgebiet ausgeweitet werden.",
+   "kind": "measure",
+   "quote": "Eine maßgebliche Handlungsempfehlung für die Prävention von Gewalt gegen Frauen* und Häuslicher Gewalt ist die nachhaltige Verankerung des StoP-Angebotes in Dietrichsfeld und die Ausweitung im Stadtgebiet.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0681/1",
+    "document_id": 314635,
+    "label": "Evaluation und Fortschreibung des Aktionsplans",
+    "page": 50
+   }
+  },
+  {
+   "text": "Oldenburg soll ein niedrigschwelliges digitales Informationsangebot mit Vorträgen und Impulsen zu Gewalt-Themen einführen.",
+   "kind": "measure",
+   "quote": "In Oldenburg soll ein niedrigschwelliges Online-Format mit Vorträgen und Impulsen zu gewaltspezifischen Themen eingeführt werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0681/1",
+    "document_id": 314635,
+    "label": "Evaluation und Fortschreibung des Aktionsplans",
+    "page": 48
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt mehrjährige Förderzusagen samt Inflationsausgleich für die Gewaltberatungsstellen.",
+   "kind": "measure",
+   "quote": "Die Gewaltberatungsstellen brauchen Planungssicherheit und die Gelder inklusive Inflationsausgleich müssen auf mehrere Jahre zugesichert werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "26/0681/1",
+    "document_id": 314635,
+    "label": "Evaluation und Fortschreibung des Aktionsplans",
+    "page": 61
+   }
+  },
+  {
+   "text": "Die Fachausschüsse sollen jedes Jahr über den aktuellen Umsetzungsstand informiert werden.",
+   "kind": "deadline",
+   "quote": "Wie bisher ist vorgesehen, einmal jährlich in den Fachausschüssen über den aktuellen Umsetzungsstand zu informieren.",
+   "source": {
+    "kind": "template",
+    "template": "26/0681/1"
+   }
+  }
+ ]
+}

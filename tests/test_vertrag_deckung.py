@@ -138,8 +138,6 @@ def _offene_schemata() -> set[str]:
 BEWUSST_OFFEN = {
     "AdminJob": "`last` ist eine job_runs-Zeile; ihr `stats` ist die "
                 "Kennzahlen-Rückgabe des jeweiligen Jobs und je Job anders.",
-    "AnalysisData": "Die Hülle steht, die verschachtelten Auswertungen "
-                    "darunter bleiben offen (so schon im Code begründet).",
     "ConversationTurn": "Gespeicherter Quellen-Block eines Gesprächs-Zugs — "
                         "gewachsener JSON-Blob, ältere Zeilen tragen weniger.",
     "DecisionDetail": "`budget_link` hat zwei Formen (Nachbewilligung bzw. "
@@ -151,6 +149,8 @@ BEWUSST_OFFEN = {
     "McpMessage": "Eine JSON-RPC-Antwort des MCP-Servers. `result` und `error` "
                   "trägt die MCP-Spezifikation je Methode; den Vertrag hält sie, "
                   "nicht unsere Clients (die rufen den Endpunkt nie auf).",
+    "PasskeyOptions": "WebAuthn-Optionen für `navigator.credentials`; ihre Form "
+                      "gibt die Norm vor (und `py_webauthn` erzeugt sie), nicht wir.",
     "QaShare": "Geteilter Antwort-Schnappschuss aus `qa_shares.extras` — "
                "gespeichert in der Form von damals.",
     "ResearchSnapshot": "Gespeicherter Quellen-Block eines Deep-Research-Jobs "
@@ -175,7 +175,6 @@ WEB_OHNE_VERTRAG = {
     ("AdminStats", "web_users"),
     ("DecisionDetail", "bild"),
     ("DecisionDetail", "href"),
-    ("FieldRecap", "field_label"),
     ("FieldRecap", "generated_at"),
     ("FieldRecap", "n_decisions"),
     ("Member", "filter_parteien"),
@@ -183,10 +182,6 @@ WEB_OHNE_VERTRAG = {
     ("MemberDetail", "current_faction"),
     ("MemberDetail", "kpenr"),
     ("MemberDetail", "memberships"),
-    ("PartyAnalysis", "matrix"),
-    ("PartyAnalysis", "n_antraege"),
-    ("PartyAnalysis", "n_mit_beschluss"),
-    ("QaAnswer", "mode"),
     ("QaSource", "ort_name"),
     ("QuizImageCredit", "author"),
     ("QuizImageCredit", "license_url"),

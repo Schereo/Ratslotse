@@ -65,7 +65,100 @@ CREATE TABLE IF NOT EXISTS council_agenda_attachments (
     -- seine Vorlage hat, und ein Download je Anlage bei jedem Scrape wäre
     -- teuer für nichts.
     raw_text     TEXT,
+    -- Die Kennung des Dokuments aus der URL (getfile.php?id=…). Die Tabelle
+    -- wird bei jedem Abgleich neu geschrieben; was am Dokument hängt
+    -- (Steckbrief, Seiten, Antrags-Auszug), steht deshalb in eigenen
+    -- Tabellen unter dieser Kennung (docs/plan-vorlagen-aufbereiten.md, § 3.1).
+    document_id  INTEGER,
     UNIQUE(ksinr, item_number, url)
+);
+
+-- Antrags-Auszug je Dokument (council/motions.py): Ziel, Muster, alt/neu,
+-- Bedeutung — geprüft gegen den Wortlaut. text_hash hält fest, zu welchem
+-- Antragstext er gehört; base_hash, zu welcher Basis (Beschlussvorschlag).
+CREATE TABLE IF NOT EXISTS motion_extracts (
+    document_id      INTEGER PRIMARY KEY,
+    base_subject_key TEXT,
+    base_hash        TEXT,
+    text_hash        TEXT NOT NULL,
+    status           TEXT NOT NULL,
+    payload          TEXT,
+    prompt_version   INTEGER NOT NULL,
+    model            TEXT,
+    cost_usd         REAL,
+    created_at       TEXT NOT NULL
+);
+
+-- Dossier je Vorlage (council/template_dossier.py): je Quellenlage eine Zeile
+-- — eine vergangene Station zeigt, was bis zum Sitzungstag galt. status:
+-- ok | running (Sperre gegen Doppelaufrufe, 5 min gültig) | failed.
+CREATE TABLE IF NOT EXISTS template_dossiers (
+    subject_key    TEXT NOT NULL,
+    sources_hash   TEXT NOT NULL,
+    prompt_version INTEGER NOT NULL,
+    model          TEXT,
+    form           TEXT,
+    status         TEXT NOT NULL,
+    started_at     TEXT,
+    payload        TEXT,
+    cost_usd       REAL,
+    created_at     TEXT NOT NULL,
+    PRIMARY KEY (subject_key, sources_hash)
+);
+
+-- Fachwörter aus der Vorlage (council/vorlage_begriffe.py): je Vorlage die
+-- geprüften Begriffe mit Erklärung. sources_hash hält Lesetexte und Vorlage
+-- fest — neu erzeugt wird nur, wenn sich daran etwas ändert. status: ok | failed.
+CREATE TABLE IF NOT EXISTS template_terms (
+    template_number TEXT PRIMARY KEY,
+    sources_hash    TEXT NOT NULL,
+    prompt_version  INTEGER NOT NULL,
+    model           TEXT,
+    verify_model    TEXT,
+    status          TEXT NOT NULL,
+    payload         TEXT,
+    cost_usd        REAL,
+    created_at      TEXT NOT NULL
+);
+
+-- Wahlprogramme zum Tagesordnungspunkt (council/programm_bezug.py): die
+-- Einbettungen der Programm-Abschnitte je Liste (text_hash = Stand der
+-- Programmdatei; ändert sie sich, wird neu gerechnet) und je Vorlage die
+-- geprüften Einordnungen. status: ok | failed.
+CREATE TABLE IF NOT EXISTS program_vectors (
+    slug      TEXT PRIMARY KEY,
+    text_hash TEXT NOT NULL,
+    n         INTEGER NOT NULL,
+    vectors   BLOB NOT NULL
+);
+CREATE TABLE IF NOT EXISTS template_program_stances (
+    template_number TEXT PRIMARY KEY,
+    sources_hash    TEXT NOT NULL,
+    prompt_version  INTEGER NOT NULL,
+    model           TEXT,
+    verify_model    TEXT,
+    status          TEXT NOT NULL,
+    payload         TEXT,
+    cost_usd        REAL,
+    created_at      TEXT NOT NULL
+);
+
+-- Steckbrief je Dokument (Vorlagen-PDF, Vorlagen-Anlage, Punkt-Anlage — alle
+-- hängen an derselben getfile-Kennung): Art, Antragsteller, Seiten, Scan,
+-- Seitenanfänge im gespeicherten Text samt dessen Prüfsumme. Ein Dokument an
+-- zwei Punkten steht einmal da.
+CREATE TABLE IF NOT EXISTS council_documents (
+    document_id   INTEGER PRIMARY KEY,
+    doc_type      TEXT NOT NULL,
+    applicants    TEXT NOT NULL DEFAULT '[]',
+    n_pages       INTEGER,
+    is_scan       INTEGER NOT NULL DEFAULT 0,
+    page_offsets  TEXT,
+    text_hash     TEXT,
+    classified_at TEXT NOT NULL,
+    -- Spezialleser (council/synopse.py): bei Synopsen die geänderten Stellen
+    -- je Paragraf mit Seite, als JSON. NULL = nicht gelesen.
+    structure     TEXT
 );
 
 -- Terminierte Sitzungen aus dem Sitzungskalender, noch ohne veröffentlichte
@@ -125,6 +218,19 @@ CREATE TABLE IF NOT EXISTS committee_summaries (
 -- Kurze KI-Zusammenfassung je TOP (Tims Wunsch 12.08.) — dieselben Sätze,
 -- die auch in der Tagesordnungs-Mail stehen; hier je Punkt statt als
 -- HTML-Block, damit die App sie unter dem Titel zeigen kann.
+-- Lottis Satz zur Sitzung, vom Modell geschrieben (council/session_summary.py):
+-- je Sitzung einer, „agenda“ vor dem Protokoll, „protocol“ danach.
+-- material_hash über Version, Modell und Angaben — neu geschrieben wird nur,
+-- wenn sich daran etwas ändert.
+CREATE TABLE IF NOT EXISTS council_session_sentences (
+    ksinr         INTEGER PRIMARY KEY,
+    stage         TEXT NOT NULL,
+    sentence      TEXT NOT NULL,
+    material_hash TEXT NOT NULL,
+    model         TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS agenda_item_summaries (
     ksinr       INTEGER NOT NULL,
     item_number TEXT NOT NULL,
@@ -162,6 +268,31 @@ CREATE TABLE IF NOT EXISTS agenda_item_impact (
 --     Zum Sortieren richtig; unter einem eigenen Absender auf Instagram wird
 --     daraus eine Meinung des Absenders zur Sache.
 -- Dieser Text bekommt Vorlage UND Anlagen und darf nicht werten.
+-- Argumente zu einem Vorgang (Punkt-Seite, docs/plan-punkt-argumente.md):
+-- Streitpunkte mit Dafür/Dagegen und die Wortmeldungen je Fraktion, je
+-- Vorgang EINMAL — geschlüsselt nach Vorlage („tn:26/0719") bzw. dem datierten
+-- Titel eines Antrags ohne Vorlage („titel:…"). `sources_hash` über die
+-- Kennungen der Quellen: Erst eine neue Wortmeldung macht einen neuen Lauf nötig.
+-- Jede Aussage im JSON trägt die Kennung ihrer Quelle; ohne wird sie verworfen.
+CREATE TABLE IF NOT EXISTS agenda_item_arguments (
+    subject_key   TEXT PRIMARY KEY,
+    sources_hash  TEXT NOT NULL,
+    model         TEXT,
+    payload       TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+);
+
+-- Vorschlagsfragen unter „Frag den Rat“ je Detailseite (council/vorschlagsfragen.py):
+-- page_key „item:<ksinr>|<nr>“ oder „decision:<id>“; neu erzeugt, wenn sich
+-- die Unterlagen ändern (sources_hash).
+CREATE TABLE IF NOT EXISTS page_questions (
+    page_key      TEXT PRIMARY KEY,
+    sources_hash  TEXT NOT NULL,
+    model         TEXT,
+    questions     TEXT NOT NULL,
+    created_at    TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS agenda_item_social (
     ksinr       INTEGER NOT NULL,
     item_number TEXT NOT NULL,
@@ -333,6 +464,40 @@ CREATE TABLE IF NOT EXISTS council_goal_links (
     PRIMARY KEY (goal, decision_id)
 );
 CREATE INDEX IF NOT EXISTS idx_goal_links_goal ON council_goal_links(goal);
+
+-- Pläne der Stadt (council/plans.py, docs/plan-ziele-plaene.md). Abgeleitet:
+-- council/plan_tracking.py baut beide Tabellen im Protokoll-Cron neu.
+-- Jeder Tagesordnungspunkt, der dem Titel oder der Vorlage nach zu einem Plan
+-- gehört — Beschluss des Plans, Bericht, Antrag, Vorbereitung.
+CREATE TABLE IF NOT EXISTS council_plan_items (
+    plan_key        TEXT NOT NULL,
+    agenda_item_id  INTEGER NOT NULL,
+    ksinr           INTEGER NOT NULL,
+    item_number     TEXT,
+    date            TEXT NOT NULL,
+    committee       TEXT,
+    title           TEXT NOT NULL,
+    template_number TEXT,
+    kvonr           INTEGER,
+    role            TEXT NOT NULL,   -- adoption|amendment|evaluation|report|preparation|implementation|motion|decision
+    oral            INTEGER NOT NULL DEFAULT 0,
+    decision_id     INTEGER,
+    outcome         TEXT,
+    PRIMARY KEY (plan_key, agenda_item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_plan_items_plan ON council_plan_items(plan_key, date);
+-- Beschlüsse, die auf anderem Weg zu einem Plan finden als über den Titel:
+-- Verweis über die Vorlagennummer, später Maßnahmen-Kennung und Modellurteil.
+CREATE TABLE IF NOT EXISTS council_plan_links (
+    plan_key     TEXT NOT NULL,
+    decision_id  INTEGER NOT NULL,
+    measure_code TEXT NOT NULL DEFAULT '',
+    relation     TEXT NOT NULL,      -- mentions (Phase 1); implements|amends|motion (ab Phase 4)
+    method       TEXT NOT NULL,      -- number|code|model
+    confidence   REAL NOT NULL DEFAULT 1.0,
+    PRIMARY KEY (plan_key, decision_id, measure_code, relation)
+);
+CREATE INDEX IF NOT EXISTS idx_plan_links_plan ON council_plan_links(plan_key);
 
 -- Precomputed nearest neighbours per decision (semantic embeddings, council.embeddings).
 CREATE TABLE IF NOT EXISTS council_similar (
@@ -2159,6 +2324,18 @@ class SchemaMixin(StoreBasis):
             "PRAGMA table_info(council_agenda_attachments)").fetchall()}
         if aacols and "raw_text" not in aacols:
             self._conn.execute("ALTER TABLE council_agenda_attachments ADD COLUMN raw_text TEXT")
+        if aacols and "document_id" not in aacols:
+            self._conn.execute("ALTER TABLE council_agenda_attachments ADD COLUMN document_id INTEGER")
+            self._conn.execute(
+                "UPDATE council_agenda_attachments SET document_id = "
+                "CAST(substr(url, instr(url, '?id=') + 4) AS INTEGER) "
+                "WHERE url LIKE '%getfile.%?id=%'")
+        if aacols:
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_agenda_att_doc "
+                               "ON council_agenda_attachments(document_id)")
+        dcols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_documents)").fetchall()}
+        if dcols and "structure" not in dcols:
+            self._conn.execute("ALTER TABLE council_documents ADD COLUMN structure TEXT")
 
         acols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_attachments)").fetchall()}
         if "is_image" not in acols:

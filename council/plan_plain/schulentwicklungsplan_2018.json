@@ -1,0 +1,18 @@
+{
+ "plan": "schulentwicklungsplan_2018",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "3e71b693c01de45a",
+ "plain": [
+  "Der Plan dient langfristiger Schulplanung in Oldenburg und empfiehlt den Erhalt der Grundschulbezirke sowie feste Klassenzahlen je Grundschule.",
+  "Der Plan empfiehlt den Erhalt teils einzügiger Grundschulen ohne Schließungen oder Zusammenlegungen sowie eine neue Grundschule am Fliegerhorst.",
+  "Oberschulen sollen 3 bis 4 Eingangsklassen haben; das Gesamtschulangebot soll erhalten und weiter gestützt werden."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Schulentwicklungsplan 2018 in Oldenburg berichtet oder beschlossen?",
+  "Was empfiehlt Oldenburgs Schulentwicklungsplan 2018 zur Grundschule im Fliegerhorst?",
+  "Was empfiehlt Oldenburgs Schulentwicklungsplan 2018 zum Erhalt der Grundschulbezirke?"
+ ]
+}

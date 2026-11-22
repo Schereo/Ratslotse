@@ -206,6 +206,14 @@ def main(fehler: list[str] | None = None) -> dict:
     except Exception as exc:  # noqa: BLE001 — abgeleitete Daten, nie Blocker des Nachtlaufs
         akten = {"akten": 0}
         print(f"Grundakten übersprungen: {exc}")
+    # Pläne der Stadt (docs/plan-ziele-plaene.md): Berichte, Planbeschlüsse und
+    # Verweise je Plan, ohne Modell, unter einer Sekunde — ebenfalls nach
+    # Vorlagen und Beratungsfolge, damit ein frischer Bericht am selben Tag
+    # auf seiner Planseite steht.
+    from council import plan_tracking
+    plaene = _schritt(fehler, "Pläne", lambda: plan_tracking.build(_store), {"plan_reports": 0})
+    print(f"Pläne: {plaene.get('plan_items', 0)} Tagesordnungspunkte, "
+          f"{plaene['plan_reports']} Berichte, {plaene.get('plan_mentions', 0)} Verweise.")
 
     # N3 „Es ist entschieden" (Design 30a): Erst hier — beim Protokoll-Import —
     # steht das Ergebnis überhaupt fest. Die Sitzung selbst liegt dann meist
@@ -221,6 +229,13 @@ def main(fehler: list[str] | None = None) -> dict:
     zugestellt = _schritt(fehler, "Zustellung", lambda: notify.zustellen(ratslotse), 0)
     ratslotse.close()
     print(f"Ergebnis-Meldungen: {ergebnisse} eingereiht, {zugestellt} zugestellt.")
+    # Lottis Satz zur Sitzung neu, jetzt mit dem, was herauskam
+    # (council/session_summary.py) — nur für Sitzungen mit frischem Protokoll.
+    from council import session_summary
+    saetze = _schritt(fehler, "Sitzungssätze",
+                      lambda: session_summary.nachziehen(_store, stats.get("ksinrs") or [], max_usd=0.5),
+                      {"geschrieben": 0})
+    print(f"Sitzungssätze: {saetze}")
     _store.close()
     return {
         "Protokolle geparst": stats["parsed"],
@@ -230,6 +245,10 @@ def main(fehler: list[str] | None = None) -> dict:
         "Tragweite bewertet": prated,
         "Wortbeiträge": wstats["contributions"],
         "Grundakten": akten["akten"],
+        "Plan-Berichte": plaene["plan_reports"],
+        # Pflege der Pläne: > 0 heißt „scripts/pruefe_plaene.py ansehen“.
+        "Pläne: Stand veraltet": plaene.get("plan_status_stale", 0),
+        "Pläne: Frist fällig": plaene.get("plans_due", 0),
         "Vorlagen geladen": vstats["fetched"],
         "Vorlagen aus dem Punkt": pstats["gelesen"],
         "Beschlüsse mit Ortszuordnung": lstats["assigned"],
@@ -252,6 +271,7 @@ def main(fehler: list[str] | None = None) -> dict:
         "Straßen ohne Vollgeometrie": geostats["strassen_ohne_vollgeometrie"],
         "Wichtig-Score neu": wichtig,
         "Ergebnis-Meldungen": ergebnisse,
+        "Sitzungssätze geschrieben": saetze.get("geschrieben", 0),
         "LLM-Kosten $": round(cstats["cost"] + gstats["cost"], 4),
         TEILFEHLER_SCHLUESSEL: len(fehler),
     }

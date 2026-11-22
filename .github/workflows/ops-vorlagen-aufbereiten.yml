@@ -6,9 +6,41 @@
 #   1. scripts/antraege_nachziehen.py         Anträge an Punkten lesen (≈ 0,03 $)
 #   2. scripts/unterlagen_steckbriefe.py      Art, Seiten, Synopsen, Abwägungen und
 #                                             Prüfberichte (1 PDF/s, ohne Modell)
-#   3. scripts/vorlagen_dossiers.py --bestand Dossiers der letzten 12 Monate (≈ 0,7 $,
+#   3. scripts/vorlagen_dossiers.py --bestand Dossiers der letzten 12 Monate (≈ 1,5 $,
 #                                             die Kostengrenze hält den Lauf an)
 # Ohne „schreiben“ zählen alle drei nur, was anstünde.
+#
+# Schritt 3 läuft mit „schreiben“ IM HINTERGRUND auf dem Server weiter
+# (nohup, Log data/dossier-bestand.log, PID in data/dossier-bestand.pid);
+# `stand` zeigt, wie weit er ist. Am 13.11.2026 schaffte er auf dev rund ein
+# Dossier je 1,6 min (Luna drosselt) — 667 Vorlagen sind also ein halber Tag,
+# und die SSH-Verbindung hielt weder die 120 min noch beim zweiten Versuch die
+# ersten 30. Ein wartender Deploy beendet ihn an der nächsten Vorlage
+# (kern/stopp.py); was geschrieben ist, bleibt, der nächste Lauf macht weiter.
+#
+# begriffe: Fachwörter aus der Vorlage für die letzten 12 Monate
+# (council/vorlage_begriffe.py — ein Modell schlägt vor, ein zweites prüft;
+# rund 0,005 $ und eine halbe Minute je Vorlage, bei 1.000 Vorlagen also etwa
+# 5 $ und acht Stunden). Mit „schreiben“ im Hintergrund wie die Dossiers (Log
+# data/begriffe-bestand.log); er liest die Lesetexte der Punkt-Seite und gehört
+# deshalb NACH den Dossier-Bestand. Neue Vorlagen übernimmt danach der Cron
+# `vorlagen_dossiers`, sobald der Schalter `begriffe-aus-vorlage` an ist.
+#
+# programme: was die Wahlprogramme zu den Vorlagen der letzten 12 Monate sagen
+# (council/programm_bezug.py; rund 0,005 $ je Vorlage, im Hintergrund wie die
+# Begriffe, Log data/programme-bestand.log). Braucht fastembed auf dem Server.
+#
+# dossiers: nur der Dossier-Bestand der letzten 12 Monate (Schritt 3 der
+# Nachläufe, ohne die beiden davor) — für eine geänderte Eingabe, die eine
+# neue Prüfsumme trägt (14.11.2026: lange Anlagen weiter lesen). Mit
+# „schreiben" im Hintergrund wie dort.
+#
+# ernte: die Regex-Ernte über den Bestand (scripts/ernte_backfill.py — Amt,
+# Kosten, Klima, Beschlussvorschlag je Vorlage und die Abweichung Beschluss ↔
+# Vorschlag; ohne Netz und Modell, Sekunden). Auf Prod macht das der Wochenlauf
+# von selbst; auf dev laufen keine Crons, und der Bestand blieb dort auf dem
+# Stand vor der Verbesserung (14.11.2026: bei 751 Vorlagen lief der
+# Beschlussvorschlag noch in den „Anlass“ hinein).
 #
 # crontab: ergänzt `antraege_nachzuegler` (11, 13, 16, 18 Uhr) und
 # `vorlagen_dossiers` (10 und 15 Uhr) nach dem Muster der vorhandenen
@@ -28,9 +60,9 @@ on:
         options: [dev, prod]
         default: dev
       schritt:
-        description: "nachlaeufe = die drei einmaligen Läufe, crontab = die zwei Cron-Zeilen (nur prod)"
+        description: "nachlaeufe = die drei einmaligen Läufe, dossiers = nur der Dossier-Bestand, begriffe = Fachwörter aus der Vorlage (12 Monate), programme = Wahlprogramme zum Punkt (12 Monate), ernte = Regex-Ernte über den Bestand (ohne Modell), stand = wie weit Dossiers und Begriffe sind, crontab = die zwei Cron-Zeilen (nur prod)"
         type: choice
-        options: [nachlaeufe, crontab]
+        options: [nachlaeufe, dossiers, begriffe, programme, ernte, stand, crontab]
         default: nachlaeufe
       schreiben:
         description: "Wirklich schreiben (aus = nur zählen bzw. Vorschau)"
@@ -86,19 +118,100 @@ jobs:
             fi
             PY=.venv/bin/python
             SEIT=$(date -d '-12 months' +%F)
-            if [ "$SCHRITT" = "nachlaeufe" ]; then
+            LOG=data/dossier-bestand.log
+            PID=data/dossier-bestand.pid
+            # Eine PID-Datei statt pgrep -f: Das Muster stünde auch in der
+            # Kommandozeile dieses Skripts, pgrep fände sich selbst.
+            laeuft() { [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; }
+            BLOG=data/begriffe-bestand.log
+            BPID=data/begriffe-bestand.pid
+            blaeuft() { [ -f "$BPID" ] && kill -0 "$(cat "$BPID")" 2>/dev/null; }
+            PLOG=data/programme-bestand.log
+            PPID_DATEI=data/programme-bestand.pid
+            plaeuft() { [ -f "$PPID_DATEI" ] && kill -0 "$(cat "$PPID_DATEI")" 2>/dev/null; }
+            if [ "$SCHRITT" = "stand" ]; then
+              if laeuft; then echo "Dossier-Bestand läuft (PID $(cat "$PID"))."; else echo "Dossier-Bestand läuft nicht."; fi
+              if [ -f "$LOG" ]; then tail -n 8 "$LOG"; else echo "Noch kein Log."; fi
+              if blaeuft; then echo "Begriffe-Bestand läuft (PID $(cat "$BPID"))."; else echo "Begriffe-Bestand läuft nicht."; fi
+              if [ -f "$BLOG" ]; then tail -n 6 "$BLOG"; else echo "Noch kein Begriffe-Log."; fi
+              if plaeuft; then echo "Programme-Bestand läuft (PID $(cat "$PPID_DATEI"))."; else echo "Programme-Bestand läuft nicht."; fi
+              if [ -f "$PLOG" ]; then tail -n 6 "$PLOG"; else echo "Noch kein Programme-Log."; fi
+            elif [ "$SCHRITT" = "dossiers" ]; then
+              if [ "$SCHREIBEN" = "true" ]; then
+                if laeuft; then
+                  echo "Dossier-Bestand läuft schon (PID $(cat "$PID")) — kein zweiter."
+                else
+                  nohup $PY -u scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD" --schreiben \
+                    > "$LOG" 2>&1 < /dev/null &
+                  echo $! > "$PID"
+                  sleep 5
+                  if laeuft; then echo "Dossier-Bestand läuft im Hintergrund (PID $(cat "$PID")); Stand mit schritt=stand."
+                  else echo "Dossier-Bestand ist sofort beendet:"; cat "$LOG"; fi
+                fi
+              else
+                $PY scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD"
+              fi
+            elif [ "$SCHRITT" = "ernte" ]; then
+              if [ "$SCHREIBEN" = "true" ]; then $PY scripts/ernte_backfill.py
+              else $PY scripts/ernte_backfill.py --trocken; fi
+            elif [ "$SCHRITT" = "programme" ]; then
+              if ! $PY scripts/vorlagen_dossiers.py --help | grep -q -- --programme; then
+                echo "scripts/vorlagen_dossiers.py kennt --programme hier noch nicht — auf Prod erst nach dem Release."; exit 2
+              fi
+              if [ "$SCHREIBEN" = "true" ]; then
+                if plaeuft; then
+                  echo "Programme-Bestand läuft schon (PID $(cat "$PPID_DATEI")) — kein zweiter."
+                else
+                  nohup $PY -u scripts/vorlagen_dossiers.py --bestand --programme --seit "$SEIT" --max-usd "$MAX_USD" --schreiben \
+                    > "$PLOG" 2>&1 < /dev/null &
+                  echo $! > "$PPID_DATEI"
+                  sleep 5
+                  if plaeuft; then echo "Programme-Bestand läuft im Hintergrund (PID $(cat "$PPID_DATEI")); Stand mit schritt=stand."
+                  else echo "Programme-Bestand ist sofort beendet:"; cat "$PLOG"; fi
+                fi
+              else
+                $PY scripts/vorlagen_dossiers.py --bestand --programme --seit "$SEIT" --max-usd "$MAX_USD"
+              fi
+            elif [ "$SCHRITT" = "begriffe" ]; then
+              if ! $PY scripts/vorlagen_dossiers.py --help | grep -q -- --begriffe; then
+                echo "scripts/vorlagen_dossiers.py kennt --begriffe hier noch nicht — auf Prod erst nach dem Release."; exit 2
+              fi
+              if [ "$SCHREIBEN" = "true" ]; then
+                if blaeuft; then
+                  echo "Begriffe-Bestand läuft schon (PID $(cat "$BPID")) — kein zweiter."
+                else
+                  nohup $PY -u scripts/vorlagen_dossiers.py --bestand --begriffe --seit "$SEIT" --max-usd "$MAX_USD" --schreiben \
+                    > "$BLOG" 2>&1 < /dev/null &
+                  echo $! > "$BPID"
+                  sleep 5
+                  if blaeuft; then echo "Begriffe-Bestand läuft im Hintergrund (PID $(cat "$BPID")); Stand mit schritt=stand."
+                  else echo "Begriffe-Bestand ist sofort beendet:"; cat "$BLOG"; fi
+                fi
+              else
+                $PY scripts/vorlagen_dossiers.py --bestand --begriffe --seit "$SEIT" --max-usd "$MAX_USD"
+              fi
+            elif [ "$SCHRITT" = "nachlaeufe" ]; then
               # Die Login-Shell auf dem Server ist zsh: Schalter in einer Variablen
               # würden dort nicht geteilt (s. ops-gold.yml) — deshalb ausgeschrieben.
               if [ "$SCHREIBEN" = "true" ]; then
-                $PY scripts/antraege_nachziehen.py --schreiben
+                $PY scripts/antraege_nachziehen.py --schreiben --lesen-tage 365 --max-usd "$MAX_USD"
                 if $PY scripts/unterlagen_steckbriefe.py --help | grep -q -- --spezial; then
                   $PY scripts/unterlagen_steckbriefe.py --schreiben --seiten 400 --synopsen 100 --spezial 100
                 else
                   $PY scripts/unterlagen_steckbriefe.py --schreiben --seiten 400 --synopsen 100
                 fi
-                $PY scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD" --schreiben
+                if laeuft; then
+                  echo "Dossier-Bestand läuft schon (PID $(cat "$PID")) — kein zweiter."
+                else
+                  nohup $PY -u scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD" --schreiben \
+                    > "$LOG" 2>&1 < /dev/null &
+                  echo $! > "$PID"
+                  sleep 5
+                  if laeuft; then echo "Dossier-Bestand läuft im Hintergrund (PID $(cat "$PID")); Stand mit schritt=stand."
+                  else echo "Dossier-Bestand ist sofort beendet:"; cat "$LOG"; fi
+                fi
               else
-                $PY scripts/antraege_nachziehen.py
+                $PY scripts/antraege_nachziehen.py --lesen-tage 365
                 $PY scripts/unterlagen_steckbriefe.py
                 $PY scripts/vorlagen_dossiers.py --bestand --seit "$SEIT" --max-usd "$MAX_USD"
               fi

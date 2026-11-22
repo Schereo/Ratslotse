@@ -970,7 +970,7 @@ export default function View() {
   if (!cfg.isSuccess && !cfg.isError) return <DetailSkeleton />;
   if (!an) notFound();
   const ungefiltert = !zustand.feld && !zustand.q;
-  const { stand, luecke } = standZeilen(felder?.data_status);
+  const { stand, luecke, sperre } = standZeilen(felder?.data_status);
   const felderFehler = felderAbfrage.isError ? (
     <ErrorState title="Die Themenfelder konnten nicht geladen werden"
                 onRetry={() => void felderAbfrage.refetch()} busy={felderAbfrage.isFetching} />
@@ -985,11 +985,9 @@ export default function View() {
             Reiter-Leiste beim Wechsel um eine Überschrift nach oben. */}
         <PageHeader
           title="Analyse"
-          description="Parteien, Personen, Finanzen, Trends und Ziele im Überblick."
+          description="Trends, Parteien, Personen und Ziele im Überblick."
         />
-        <div className="mt-4">
-          <AnalyseReiter aktiv="staedte" />
-        </div>
+        <AnalyseReiter aktiv="staedte" className="mt-4" />
       </div>
       <div className="max-w-3xl">
         <h2 className="font-display text-[24px] font-bold leading-tight text-foreground sm:text-[28px]">
@@ -1017,6 +1015,11 @@ export default function View() {
             {stand}
             {luecke && <span className="font-sans"> · {luecke}</span>}
           </p>
+        )}
+        {sperre && (
+          // Städte, die uns nichts (Neues) mehr herausgeben. Ihr Bestand
+          // bleibt auf der Seite; der Satz sagt, warum nichts dazukommt.
+          <p className="mt-1 text-hinweis text-muted-foreground">{sperre}</p>
         )}
       </div>
 

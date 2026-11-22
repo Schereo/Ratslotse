@@ -20,7 +20,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "install_frontend_modules.py"
 WORKFLOWS = ROOT / ".github" / "workflows"
-DEPLOYS = ("deploy.yml", "deploy-dev.yml", "deploy-feature.yml")
+DEPLOYS = ("deploy.yml", "deploy-dev.yml")
 
 # An npm that logs its calls: `ci` creates a tree with one package (fails with
 # NPM_FAIL=1), `ls` succeeds while that package is present.
@@ -125,7 +125,7 @@ def _server_scripts(workflow: dict) -> list[str]:
     scripts = []
     for job in workflow.get("jobs", {}).values():
         for step in job.get("steps", []):
-            if str(step.get("uses", "")).startswith("appleboy/ssh-action"):
+            if step.get("uses") == "./.github/actions/ssh":
                 scripts.append(step.get("with", {}).get("script", ""))
             elif "ssh target" in step.get("run", ""):
                 scripts.append(step["run"])

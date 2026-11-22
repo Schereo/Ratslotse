@@ -1,6 +1,6 @@
 ---
 title: 0003 — fastembed (ONNX) statt torch
-description: Embeddings für „Ähnliche Beschlüsse" ohne schwere torch-Abhängigkeit.
+description: Embeddings für „Ähnliche Beschlüsse“ mit fastembed und ONNX.
 sidebar:
   order: 3
 ---
@@ -11,25 +11,26 @@ sidebar:
 
 Die Sektion „Ähnliche Beschlüsse" braucht semantische Embeddings
 (`scripts/embed_decisions.py`, Tabelle `council_similar`). Die naheliegende
-Bibliothek wäre `sentence-transformers` — die zieht aber **torch** mit, ein sehr
-großes Paket (mehrere hundert MB), das Deploy-Zeit, Image-Größe und die
-Build-Dauer von Bot und Web-Service unnötig aufbläht. Der Web-Service liest die
-Nachbarn nur **vorberechnet** aus der DB; er braucht zur Laufzeit gar kein
+Bibliothek wäre `sentence-transformers`. Sie benötigt **torch**, ein Paket
+von mehreren hundert MB. Das vergrößert das Image und verlängert Deploys
+und Builds von Bot und Webdienst. Der Webdienst liest die vorab ermittelten
+ähnlichen Beschlüsse aus der Datenbank und braucht dafür zur Laufzeit kein
 Embedding-Modell.
 
 ## Entscheidung
 
 Embeddings werden mit **fastembed** (ONNX-Runtime, kein torch) berechnet.
-fastembed steht **bewusst nicht** in `requirements.txt` — es wird nur bei Bedarf
-manuell auf dem Server installiert und der Embedding-Job von Hand bzw. im
-wöchentlichen `weekly_enrich.py` ausgeführt.
+fastembed fehlt in `requirements.txt`, weil es nur für die Berechnung der
+Embeddings erforderlich ist. Installiere es bei Bedarf manuell auf dem Server.
+Der Embedding-Job läuft bei Bedarf manuell oder wöchentlich über
+`weekly_enrich.py`.
 
 ## Konsequenzen
 
-- **Plus:** Deploy und der reguläre Web-/Bot-Build bleiben schlank und schnell —
-  keine torch-Abhängigkeit im kritischen Pfad.
-- **Plus:** Der Web-Service hat zur Laufzeit keine ML-Abhängigkeit; er liest nur
-  die vorberechnete Nachbarschaftstabelle.
+- **Plus:** Deploy und reguläre Builds von Webdienst und Bot benötigen
+  kein torch. Dadurch bleiben sie schneller und kleiner.
+- **Plus:** Der Webdienst hat zur Laufzeit keine ML-Abhängigkeit. Er liest
+  die schon berechneten Ähnlichkeiten aus der Datenbank.
 - **Minus:** Der Embedding-Schritt ist ein **separater, manueller** Vorgang
   (`pip install fastembed` auf prod). Wer das vergisst, bekommt veraltete
   „Ähnliche Beschlüsse". Dokumentiert in `CLAUDE.md`.

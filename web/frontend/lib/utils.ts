@@ -1,5 +1,15 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/** tailwind-merge kennt nur die eingebauten Schriftgrößen. Die Leserollen aus
+ *  `tailwind.config.ts` hielt es für Textfarben — und warf sie neben
+ *  `text-muted-foreground` stillschweigend weg: `cn("text-meta …
+ *  text-muted-foreground")` ergab Standardgröße. So stand auf der Punkt-Seite
+ *  „Was der Änderungsantrag will“ größer da als jede andere Überschrift
+ *  (Tim, 13.11.2026: „schlechte visuelle Hierarchie“). */
+const twMerge = extendTailwindMerge({
+  extend: { classGroups: { "font-size": [{ text: ["lese", "quelle", "meta", "hinweis"] }] } },
+});
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));

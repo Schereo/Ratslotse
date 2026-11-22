@@ -25,8 +25,11 @@ export function generateStaticParams() {
 
 export const dynamicParams = false;
 
-export function generateMetadata({ params }: { params: { thema: string } }): Metadata {
-  const t = themaSeite(params.thema);
+type Props = { params: Promise<{ thema: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { thema } = await params;
+  const t = themaSeite(thema);
   if (!t) return {};
   return {
     title: t.label,
@@ -34,8 +37,9 @@ export function generateMetadata({ params }: { params: { thema: string } }): Met
   };
 }
 
-export default function ThemaSeite({ params }: { params: { thema: string } }) {
-  const t = themaSeite(params.thema);
+export default async function ThemaSeite({ params }: Props) {
+  const { thema } = await params;
+  const t = themaSeite(thema);
   if (!t) notFound();
 
   return (

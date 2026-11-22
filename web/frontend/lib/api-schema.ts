@@ -307,6 +307,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/account/passkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Passkeys */
+        get: operations["list_passkeys_api_account_passkeys_get"];
+        put?: never;
+        /** Add Passkey */
+        post: operations["add_passkey_api_account_passkeys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/passkeys/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Options */
+        post: operations["add_options_api_account_passkeys_options_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account/passkeys/{passkey_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Passkey
+         * @description Nur die Anmeldung — schließt derselbe Passkey auch die Notizen auf,
+         *     bleibt das (dort entfernen).
+         */
+        delete: operations["delete_passkey_api_account_passkeys__passkey_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/account/test-notification": {
         parameters: {
             query?: never;
@@ -323,6 +379,31 @@ export interface paths {
          *     (deliver_message); ohne RESEND_API_KEY wird E-Mail still übersprungen.
          */
         post: operations["test_notification_api_account_test_notification_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activity/event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ui Event
+         * @description Eine Handlung in der Oberfläche zählen — je Konto und Tag.
+         *
+         *     **Was NICHT mitgeht:** kein Zeitpunkt, keine Seite, keine Eingabe. Nur
+         *     welche Handlung es war. Ein unbekannter Name wird abgewiesen statt still
+         *     gezählt: Sonst entstünde aus einem Tippfehler eine Zeile, die in keiner
+         *     Auswertung auftaucht und trotzdem wie ein Wert aussieht.
+         */
+        post: operations["ui_event_api_activity_event_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1407,6 +1488,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/magic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Magic Einloesen
+         * @description Einen Anmeldelink aus einer Mail einlösen.
+         *
+         *     Die Seite ruft das beim Ankommen von selbst auf (Tims Vorgabe 09.11.2026:
+         *     direkt angemeldet, kein Zwischenschritt). Ein POST statt des Links selbst
+         *     bleibt es trotzdem: Ein GET, der anmeldet, liefe in jedem Vorschau-Abruf
+         *     mit. Die Sitzung trägt ``via: magic`` und darf nichts, was das Konto
+         *     übernimmt (``deps.require_volle_anmeldung``).
+         *
+         *     Abgelaufen, widerrufen (``token_version``) oder gesperrt: 401 — die Seite
+         *     zeigt dann ohne Fehlermeldung die normale Anmeldung mit Rücksprung. Bei uns
+         *     landet der Fall im Fehlersammler (``_link_fehler_merken``), gruppiert nach
+         *     Grund, ohne Token und ohne Konto: Häufen sich abgelaufene Links, sind zehn
+         *     Tage zu kurz; häufen sich ungültige, stimmt etwas am Bau der Links nicht.
+         */
+        post: operations["magic_einloesen_api_auth_magic_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -1426,6 +1539,81 @@ export interface paths {
         get: operations["me_api_auth_me_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_auth_passkey_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/login/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login Options
+         * @description Auch für die Bestätigung beim Löschen und beim Adresswechsel.
+         */
+        post: operations["login_options_api_auth_passkey_login_options_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signup */
+        post: operations["signup_api_auth_passkey_signup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/passkey/signup/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Signup Options
+         * @description Die Prüfungen der Registrierung VOR der Abfrage am Gerät — wer eine
+         *     vergebene Adresse tippt, soll nicht erst Face ID bemühen müssen.
+         */
+        post: operations["signup_options_api_auth_passkey_signup_options_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2884,6 +3072,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/budget/plan/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Budget
+         * @description Haushaltsposten, deren eigener Text den Plan nennt — nur mit dem Recht ``budget``.
+         */
+        get: operations["plan_budget_api_council_budget_plan__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/budget/preface-figures": {
         parameters: {
             query?: never;
@@ -4026,6 +4234,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/page-questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Page Questions */
+        get: operations["page_questions_api_council_page_questions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/parties": {
         parameters: {
             query?: never;
@@ -4200,6 +4425,66 @@ export interface paths {
          *     Dateien schreibt scripts/render_plaene.py nach ``data/plaene/``.
          */
         get: operations["plan_bild_api_council_plan_bild__document_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/plan/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Detail
+         * @description Ein Plan mit Beschluss, Laufzeit, Berichten und den Beschlüssen dazu.
+         */
+        get: operations["plan_detail_api_council_plan__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/plan/{key}/geojson": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plan Geojson
+         * @description Abschnitte und Gebiete, die der Plan selbst festlegt, als GeoJSON zum Herunterladen.
+         */
+        get: operations["plan_geojson_api_council_plan__key__geojson_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plans Overview
+         * @description Alle Pläne im Register: laufend, in Arbeit, abgelaufen oder abgelöst.
+         */
+        get: operations["plans_overview_api_council_plans_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4419,6 +4704,23 @@ export interface paths {
         };
         /** Session Detail */
         get: operations["session_detail_api_council_session__ksinr__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/session/{ksinr}/item": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Session Item */
+        get: operations["session_item_api_council_session__ksinr__item_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4799,6 +5101,133 @@ export interface paths {
          */
         post: operations["mark_seen_api_news_seen_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notes
+         * @description Die Notizen einer Seite — ohne Filter alle (Export; entschlüsselt wird im Browser).
+         */
+        get: operations["list_notes_api_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Keys */
+        get: operations["get_keys_api_notes_keys_get"];
+        /**
+         * Put Keys
+         * @description Einrichten (noch keine Schlüssel: Passphrase und/oder Passkey, Code
+         *     freiwillig) oder Passphrase setzen bzw. wechseln (Schlüssel da, dieselbe
+         *     ``key_version``). Vorhandene Schlüssel überschreibt das nie.
+         */
+        put: operations["put_keys_api_notes_keys_put"];
+        post?: never;
+        /**
+         * Delete Keys
+         * @description Neu anfangen: Schlüssel und alle Notizen weg.
+         */
+        delete: operations["delete_keys_api_notes_keys_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/keys/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Recovery
+         * @description Den Notfall-Code nachträglich anlegen oder ersetzen — nur diese eine
+         *     Verpackung wechselt.
+         */
+        put: operations["put_recovery_api_notes_keys_recovery_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/passkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Passkey
+         * @description Ein weiterer Passkey (anderes Gerät, anderes System) für denselben
+         *     Datenschlüssel. Derselbe Passkey noch einmal ersetzt seine Verpackung.
+         */
+        post: operations["add_passkey_api_notes_passkeys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/passkeys/{passkey_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Passkey
+         * @description Einen Passkey entfernen — nicht den letzten Weg zu den Notizen.
+         */
+        delete: operations["delete_passkey_api_notes_passkeys__passkey_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notes/{target_kind}/{target_key}/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Note */
+        put: operations["put_note_api_notes__target_kind___target_key___kind__put"];
+        post?: never;
+        /** Delete Note */
+        delete: operations["delete_note_api_notes__target_kind___target_key___kind__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6797,6 +7226,44 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AccountPasskey
+         * @description Ein Passkey zum Anmelden, wie das Konto ihn zeigt. ``notes``: Er
+         *     schließt auch die Notizen auf (gleiche Kennung in ``note_passkeys``).
+         */
+        AccountPasskey: {
+            /** Backed Up */
+            backed_up: boolean;
+            /** Created At */
+            created_at: string;
+            /** Credential Id */
+            credential_id: string;
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Notes */
+            notes: boolean;
+        };
+        /** AccountPasskeyList */
+        AccountPasskeyList: {
+            /** Passkeys */
+            passkeys: components["schemas"]["AccountPasskey"][];
+        };
+        /**
+         * ActivityEventIn
+         * @description Eine Handlung in der Oberfläche, die sonst keinen Endpunkt aufruft.
+         *
+         *     Das Öffnen der Befehlspalette ist so eine: Ohne Zähler ließe sich „benutzt
+         *     die überhaupt jemand?" nicht beantworten. Nur der Name der Handlung, aus
+         *     der Positivliste ``UI_EVENTS`` — keine Seite, keine Eingabe.
+         */
+        ActivityEventIn: {
+            /** Kind */
+            kind: string;
+        };
+        /**
          * ActivityPageIn
          * @description Ein Seitenwechsel eines angemeldeten Kontos — für die Bereiche je Konto.
          *
@@ -8276,6 +8743,53 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** AnalysisAlliance */
+        AnalysisAlliance: {
+            /** A */
+            a: string;
+            /** B */
+            b: string;
+            /** Count */
+            count: number;
+        };
+        /** AnalysisApplicationParty */
+        AnalysisApplicationParty: {
+            /** Abgelehnt */
+            abgelehnt: number;
+            /** Accepted */
+            accepted: number;
+            /** Angenommen */
+            angenommen: number;
+            /** N */
+            n: number;
+            /** Party */
+            party: string;
+            /** Rejected */
+            rejected: number;
+        };
+        /**
+         * AnalysisApplicationStats
+         * @description Erfolgsquoten der eingereichten Antragsdokumente (``CouncilStore.antrag_stats``).
+         */
+        AnalysisApplicationStats: {
+            /** N Antraege */
+            n_antraege: number;
+            /** N Mit Beschluss */
+            n_mit_beschluss: number;
+            /** Parties */
+            parties: components["schemas"]["AnalysisApplicationParty"][];
+        };
+        /** AnalysisContention */
+        AnalysisContention: {
+            /** Contested */
+            contested: number;
+            /** Contested Rate */
+            contested_rate: number;
+            /** Field */
+            field: string;
+            /** Total */
+            total: number;
+        };
         /** AnalysisCoverage */
         AnalysisCoverage: {
             /** Total */
@@ -8285,27 +8799,65 @@ export interface components {
         };
         /**
          * AnalysisData
-         * @description ``CouncilStore.party_analysis`` — die Hülle steht, die Innereien sind
-         *     verschachtelte Auswertungen und bleiben offen.
+         * @description ``CouncilStore.party_analysis``.
+         *
+         *     Bis 11/2026 standen die Innereien als ``Any`` im Vertrag. Genau darum blieb
+         *     unbemerkt, dass die iOS-App ``angenommen``/``abgelehnt``/``vertagt`` las,
+         *     während der Server seit 09/2026 ``accepted``/``rejected``/``postponed``
+         *     sendet: Die Analyse-Seite der App zeigte nur noch „unerwartetes Format“,
+         *     und ``scripts/ios_vertrag.py`` hatte nichts, wogegen es hätte prüfen können.
          */
         AnalysisData: {
             /** Alliances */
-            alliances: unknown;
-            /** Antrag Stats */
-            antrag_stats: unknown;
+            alliances: components["schemas"]["AnalysisAlliance"][];
+            antrag_stats: components["schemas"]["AnalysisApplicationStats"];
             /** Contention */
-            contention: unknown;
+            contention: components["schemas"]["AnalysisContention"][];
             coverage: components["schemas"]["AnalysisCoverage"];
             /** Field Labels */
             field_labels: {
                 [key: string]: string;
             };
             /** Success Rates */
-            success_rates: unknown;
-            /** Topic Matrix */
-            topic_matrix: {
-                [key: string]: unknown;
+            success_rates: components["schemas"]["AnalysisSuccessRate"][];
+            topic_matrix: components["schemas"]["AnalysisTopicMatrix"];
+        };
+        /**
+         * AnalysisSuccessRate
+         * @description Erfolgsquote der Anträge einer Partei.
+         */
+        AnalysisSuccessRate: {
+            /** Abgelehnt */
+            abgelehnt: number;
+            /** Accepted */
+            accepted: number;
+            /** Angenommen */
+            angenommen: number;
+            /** Motions */
+            motions: number;
+            /** Party */
+            party: string;
+            /** Postponed */
+            postponed: number;
+            /** Rate */
+            rate: number | null;
+            /** Rejected */
+            rejected: number;
+            /** Vertagt */
+            vertagt: number;
+        };
+        /** AnalysisTopicMatrix */
+        AnalysisTopicMatrix: {
+            /** Fields */
+            fields: string[];
+            /** Matrix */
+            matrix: {
+                [key: string]: {
+                    [key: string]: number;
+                };
             };
+            /** Parties */
+            parties: string[];
         };
         /**
          * AppConfigOut
@@ -8405,6 +8957,67 @@ export interface components {
             /** Identity Token */
             identity_token: string;
         };
+        /** ArgumentFaction */
+        ArgumentFaction: {
+            /** Party */
+            party: string;
+            /** Statements */
+            statements: components["schemas"]["ArgumentStatement"][];
+        };
+        /** ArgumentIssue */
+        ArgumentIssue: {
+            /** Contra */
+            contra: components["schemas"]["ArgumentStatement"][];
+            /** Pro */
+            pro: components["schemas"]["ArgumentStatement"][];
+            /** Question */
+            question: string;
+        };
+        /** ArgumentSides */
+        ArgumentSides: {
+            /** Contra */
+            contra: components["schemas"]["ArgumentStatement"][];
+            /** Pro */
+            pro: components["schemas"]["ArgumentStatement"][];
+        };
+        /**
+         * ArgumentSource
+         * @description Fundstelle einer Aussage: ein Wortbeitrag (Protokoll, mit Seite) oder
+         *     die Vorlage. ``url`` springt dorthin, wo es geht (Protokoll-PDF auf die
+         *     Seite, Vorlage im Ratsinfo).
+         */
+        ArgumentSource: {
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "speech" | "template";
+            /** Page */
+            page: number | null;
+            /** Url */
+            url: string | null;
+        };
+        /**
+         * ArgumentStatement
+         * @description Eine Aussage: Paraphrase und Urheber. Person, Fraktion, Gremium und
+         *     Datum kommen aus der Quelle, nie vom Modell; ``party`` fehlt, wenn das
+         *     Protokoll keine nennt (Verwaltung, Gäste, oft auch Ausschussmitglieder).
+         */
+        ArgumentStatement: {
+            /** Body */
+            body: string | null;
+            /** Date */
+            date: string | null;
+            /** Party */
+            party: string | null;
+            source: components["schemas"]["ArgumentSource"];
+            /** Speaker */
+            speaker: string | null;
+            /** Text */
+            text: string;
+        };
         /** AskBody */
         AskBody: {
             /** Conversation Id */
@@ -8459,6 +9072,12 @@ export interface components {
                  * @default
                  */
                 selection: string;
+                /**
+                 * Surface
+                 * @default lotti
+                 * @enum {string}
+                 */
+                surface: "lotti" | "page";
             } | null;
         };
         /**
@@ -8806,6 +9425,7 @@ export interface components {
             decision: {
                 /** Abstentions */
                 abstentions?: number | null;
+                amendment?: components["schemas"]["ItemAmendment"];
                 /** Amount Eur */
                 amount_eur?: number | null;
                 /** Applicants Named */
@@ -9066,6 +9686,80 @@ export interface components {
             values: unknown;
             /** Years */
             years: unknown;
+        };
+        /**
+         * BudgetContextBlock
+         * @description Eine Zahlenreihe aus dem Haushalt neben einem Punkt
+         *     (``council/punkt_haushalt.py``). ``basis`` hält Plan, Ist und Sätze
+         *     auseinander; ``page`` nennt die Haushalts-Seite, auf der die Reihe steht.
+         */
+        BudgetContextBlock: {
+            /** Basis */
+            basis: string;
+            /** Columns */
+            columns: string[];
+            /** Description */
+            description: string | null;
+            /** Key */
+            key: string;
+            /** Note */
+            note: string;
+            /** Page */
+            page: string | null;
+            /** Rows */
+            rows: components["schemas"]["BudgetContextRow"][];
+            /**
+             * BudgetContextShare
+             * @description Eine Nachbewilligung im Verhältnis zum Jahresansatz. ``percent`` ist
+             *     exakt; die Seite rundet genau einmal.
+             */
+            share: {
+                /** Amount */
+                amount: number;
+                /** Of */
+                of: number;
+                /** Percent */
+                percent: number;
+                /** Year */
+                year: number;
+            } | null;
+            /** Sources */
+            sources: components["schemas"]["BudgetContextSource"][];
+            /** Title */
+            title: string;
+            /** Unit */
+            unit: string;
+        };
+        /** BudgetContextRow */
+        BudgetContextRow: {
+            /** Values */
+            values: (number | null)[];
+            /** Year */
+            year: number;
+        };
+        /**
+         * BudgetContextShare
+         * @description Eine Nachbewilligung im Verhältnis zum Jahresansatz. ``percent`` ist
+         *     exakt; die Seite rundet genau einmal.
+         */
+        BudgetContextShare: {
+            /** Amount */
+            amount: number;
+            /** Of */
+            of: number;
+            /** Percent */
+            percent: number;
+            /** Year */
+            year: number;
+        };
+        /** BudgetContextSource */
+        BudgetContextSource: {
+            /** Label */
+            label: string;
+            /** Url */
+            url: string;
+            /** Year */
+            year: number | null;
         };
         /** BudgetDataState */
         BudgetDataState: {
@@ -9680,6 +10374,20 @@ export interface components {
              * Format: email
              */
             new_email: string;
+            /** PasskeyAssertion */
+            passkey?: {
+                /** Id */
+                id: string;
+                /** Rawid */
+                rawId: string;
+                response: components["schemas"]["PasskeyAssertionResponse"];
+                /**
+                 * Type
+                 * @default public-key
+                 * @constant
+                 */
+                type: "public-key";
+            } | null;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -10062,6 +10770,182 @@ export interface components {
             to_date: string;
         };
         /**
+         * CourseCell
+         * @description Eine Boje im Kurs. Meist ein Punkt; die Formalien am Anfang teilen sich
+         *     eine („Ö 1–3"), der nichtöffentliche Teil ist eine Schloss-Boje ohne
+         *     Punkte (sein Bereich steht in ``label``).
+         */
+        CourseCell: {
+            /** Items */
+            items: string[];
+            /** Label */
+            label: string;
+            /** Title */
+            title: string | null;
+        };
+        /**
+         * CourseItem
+         * @description Was Kurs und Karten je Tagesordnungspunkt brauchen.
+         *
+         *     ``type_label`` ist die Art in Worten („Entscheidung", „Vorberatung",
+         *     „Antrag" …; ``None`` bei ``other``). ``icon`` ist ein Schlüssel aus
+         *     ``council/course.py::ICONS`` (Plan, Anhang A). ``postponed``: in wie vielen
+         *     früheren Sitzungen DIESES Gremiums der Punkt schon stand und vertagt wurde
+         *     — 0, wo die Zuordnung nicht sicher ist. ``formal_act``: Widmung,
+         *     Einziehung, Umstufung — gleichartige direkt hintereinander teilen sich in
+         *     der Liste eine Karte. ``group``: Nummer der Vorhaben-Überschrift
+         *     („Bauleitplanung Meerweg"), unter der der Punkt steht.
+         */
+        CourseItem: {
+            /** Amendment Parties */
+            amendment_parties: string[];
+            /** Amendments Label */
+            amendments_label: string | null;
+            /** Applicant */
+            applicant: string | null;
+            /** Cost Label */
+            cost_label: string | null;
+            /** Formal Act */
+            formal_act: boolean;
+            /** Formality */
+            formality: boolean;
+            /** Group */
+            group: string | null;
+            /** Icon */
+            icon: string;
+            /** Important */
+            important: boolean;
+            /** Important Reason */
+            important_reason: string | null;
+            /** Journey */
+            journey: components["schemas"]["CourseStation"][];
+            /**
+             * CourseLaterAgenda
+             * @description Wo ein hier vertagter Punkt wieder auf der Tagesordnung steht.
+             */
+            next_on_agenda: {
+                /** Item Number */
+                item_number: string;
+                /** Ksinr */
+                ksinr: number;
+                /** Session Date */
+                session_date: string;
+            } | null;
+            /** Own Page */
+            own_page: boolean;
+            /** Postponed */
+            postponed: number;
+            /** Short Title */
+            short_title: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "formality" | "question_time" | "inquiries" | "announcement" | "motion" | "decision" | "preliminary" | "report" | "other";
+            /** Type Label */
+            type_label: string | null;
+        };
+        /**
+         * CourseLaterAgenda
+         * @description Wo ein hier vertagter Punkt wieder auf der Tagesordnung steht.
+         */
+        CourseLaterAgenda: {
+            /** Item Number */
+            item_number: string;
+            /** Ksinr */
+            ksinr: number;
+            /** Session Date */
+            session_date: string;
+        };
+        /**
+         * CourseNextSession
+         * @description Die nächste Sitzung desselben Gremiums — „Wie es weitergeht".
+         */
+        CourseNextSession: {
+            /** Has Agenda */
+            has_agenda: boolean;
+            /** Ksinr */
+            ksinr: number;
+            /** Location */
+            location: string | null;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time: string | null;
+        };
+        /**
+         * CourseProtocolEstimate
+         * @description Wann das Protokoll voraussichtlich erscheint (``council/protokoll_erwartung.py``):
+         *     wenige Tage nach der Sitzung, in der es genehmigt wird — der nächsten des
+         *     Gremiums. ``basis`` sagt, ob deren Datum im Kalender steht oder aus
+         *     derselben Jahreszeit früherer Jahre geschätzt ist (dann ungenauer).
+         */
+        CourseProtocolEstimate: {
+            /** Approval Date */
+            approval_date: string;
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "next_session" | "history";
+            /** Earliest */
+            earliest: string;
+            /** Expected */
+            expected: string;
+            /** Latest */
+            latest: string;
+        };
+        /**
+         * CourseStage
+         * @description Eine Etappe der Sitzung — ein helles Band im Kurs, ein Band in der Liste.
+         *
+         *     ``name`` ist der volle Name, ``name_medium`` und ``name_short`` die
+         *     kürzeren Formen, falls die Etappe im Kurs zu schmal ist (``None``: es gibt
+         *     keine, der Client nimmt die nächstlängere). ``subtitle`` ist die
+         *     Unterzeile des Bands („der Fraktionen, Gruppen …", im Rat der amtliche
+         *     Ausschussname). ``range`` ist „Ö 5 – Ö 10", bei einer Rubrik deren Kopf
+         *     („Ö 11"); ``count`` die Zahl der Tagesordnungspunkte darin.
+         */
+        CourseStage: {
+            /** Cells */
+            cells: components["schemas"]["CourseCell"][];
+            /** Count */
+            count: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "start" | "urgent" | "content" | "section" | "motions" | "end" | "closed" | "agenda";
+            /** Name */
+            name: string;
+            /** Name Medium */
+            name_medium: string | null;
+            /** Name Short */
+            name_short: string | null;
+            /** Range */
+            range: string;
+            /** Subtitle */
+            subtitle: string | null;
+        };
+        /**
+         * CourseStation
+         * @description Eine Station einer Vorlage auf einer Tagesordnung — „Der Weg dieser
+         *     Vorlage". ``outcome`` aus dem Protokoll, sonst aus dem Zusatz, den das
+         *     Ratsinfo an den Titel hängt; ``None``, solange keins bekannt ist.
+         */
+        CourseStation: {
+            /** Committee */
+            committee: string;
+            /** Item Number */
+            item_number: string;
+            /** Ksinr */
+            ksinr: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string;
+        };
+        /**
          * DataLayer
          * @description Eine Datenschicht des Haushalts und ihr Stand (``finanzquellen.datenstand``).
          *
@@ -10271,6 +11155,8 @@ export interface components {
             plan_image?: number | null;
             /** Present Parties */
             present_parties: string[];
+            /** Proposal Diff */
+            proposal_diff?: string[][];
             /** Ratsinfo Url */
             ratsinfo_url: string | null;
             /** Similar */
@@ -10278,10 +11164,13 @@ export interface components {
             /** Sub Votes */
             sub_votes: components["schemas"]["DecisionRow"][];
             template?: components["schemas"]["DecisionTemplate"];
+            template_dossier?: components["schemas"]["ItemDossier"];
             /** Template Journey */
             template_journey: unknown[];
             /** Template Url */
             template_url?: string | null;
+            /** Terms */
+            terms?: components["schemas"]["PageTerm"][];
         };
         /**
          * DecisionEntity
@@ -10403,6 +11292,7 @@ export interface components {
         DecisionRow: {
             /** Abstentions */
             abstentions?: number | null;
+            amendment?: components["schemas"]["ItemAmendment"];
             /** Amount Eur */
             amount_eur?: number | null;
             /** Applicants Named */
@@ -10497,6 +11387,8 @@ export interface components {
             n_pages: number | null;
             /** Office */
             office: string | null;
+            /** Proposed Decision */
+            proposed_decision?: string | null;
             /** Template Number */
             template_number: string | null;
             /** Title */
@@ -10550,6 +11442,20 @@ export interface components {
              * @default
              */
             current_password: string;
+            /** PasskeyAssertion */
+            passkey?: {
+                /** Id */
+                id: string;
+                /** Rawid */
+                rawId: string;
+                response: components["schemas"]["PasskeyAssertionResponse"];
+                /**
+                 * Type
+                 * @default public-key
+                 * @constant
+                 */
+                type: "public-key";
+            } | null;
         };
         /**
          * DeliberationStation
@@ -10787,6 +11693,28 @@ export interface components {
             valid_until: string | null;
         };
         /**
+         * DistrictPlan
+         * @description Ein laufender oder entstehender Plan mit mindestens einem Ort in diesem Ortsbereich.
+         */
+        DistrictPlan: {
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /** Place Count */
+            place_count: number;
+            /** Places */
+            places: string[];
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label: string;
+            /** Title */
+            title: string;
+            /** Via Measures */
+            via_measures: boolean;
+        };
+        /**
          * DistrictPlanInfo
          * @description Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und
          *     die Stationen des Verfahrens aus den offenen Geodaten der Stadt.
@@ -10997,10 +11925,14 @@ export interface components {
             participations: components["schemas"]["DistrictParticipation"][];
             /** Place */
             place: unknown;
+            /** Plans */
+            plans?: components["schemas"]["DistrictPlan"][];
             /** Press */
             press: components["schemas"]["DistrictPressItem"][];
             /** Projects */
             projects: components["schemas"]["DistrictProject"][];
+            /** Renewal Areas */
+            renewal_areas?: components["schemas"]["DistrictRenewalArea"][];
             /** Upcoming */
             upcoming: components["schemas"]["DistrictUpcomingItem"][];
             /** Updated At */
@@ -11043,6 +11975,26 @@ export interface components {
             stages: {
                 [key: string]: number;
             };
+        };
+        /**
+         * DistrictRenewalArea
+         * @description Ein Stadterneuerungsgebiet, von dessen Fläche ein nennenswerter Teil hier liegt.
+         */
+        DistrictRenewalArea: {
+            /** End Year */
+            end_year: number;
+            /** Funding Eur */
+            funding_eur: number;
+            /** Name */
+            name: string;
+            /** Own Funds Eur */
+            own_funds_eur: number;
+            /** Size Ha */
+            size_ha: number;
+            /** Source */
+            source: string;
+            /** Start Year */
+            start_year: number;
         };
         /**
          * DistrictSuggestions
@@ -11089,6 +12041,74 @@ export interface components {
             catalog: components["schemas"]["PlaceCatalogHead"];
             /** Districts */
             districts: unknown;
+        };
+        /**
+         * DossierGist
+         * @description Inhaltssatz zu einer Unterlage (belegt aus Seite 1–2).
+         */
+        DossierGist: {
+            /** Doc Label */
+            doc_label: string | null;
+            /** List No */
+            list_no: number | null;
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string;
+            /** Source */
+            source: string | null;
+            /** Text */
+            text: string;
+            /** Url */
+            url: string | null;
+        };
+        /** DossierSection */
+        DossierSection: {
+            /** Key */
+            key: string;
+            /** Stance */
+            stance: string | null;
+            /** Statements */
+            statements: components["schemas"]["DossierStatement"][];
+            /** Status */
+            status: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * DossierStatement
+         * @description Eine belegte Aussage: Satz, wörtliches Zitat, Quelle, Seite — dazu die
+         *     Nummer in der Gegenlese-Liste und der Sprung ins PDF (``#page=N``).
+         */
+        DossierStatement: {
+            /** Amount Eur */
+            amount_eur?: number | null;
+            /** Borne By */
+            borne_by?: string | null;
+            /** Date */
+            date?: string | null;
+            /** Doc Label */
+            doc_label: string | null;
+            /** Kind */
+            kind: string;
+            /** List No */
+            list_no: number | null;
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string;
+            /** Recurrence */
+            recurrence?: string | null;
+            /** Role */
+            role?: string | null;
+            /** Source */
+            source: string;
+            /** Subject */
+            subject?: string | null;
+            /** Text */
+            text: string;
+            /** Url */
+            url: string | null;
         };
         /**
          * ElectedAffiliation
@@ -12320,6 +13340,8 @@ export interface components {
             area?: string | null;
             /** Decision Id */
             decision_id?: number | null;
+            /** Item Number */
+            item_number?: string | null;
             /** Ksinr */
             ksinr?: number | null;
             /** Place Id */
@@ -13007,6 +14029,28 @@ export interface components {
             window_since: string | null;
         };
         /**
+         * IdeaBlockedCity
+         * @description Eine Stadt, die uns bei der letzten Ernte nicht alles herausgab.
+         *
+         *     Was schon vorliegt, bleibt auf der Seite — die Zeile sagt nur, warum
+         *     nichts Neues dazukommt.
+         */
+        IdeaBlockedCity: {
+            /** Body Id */
+            body_id: string;
+            /** City */
+            city: string;
+            /** Latest Paper */
+            latest_paper: string | null;
+            /** Since */
+            since: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "documents_blocked" | "blocked" | "paused";
+        };
+        /**
          * IdeaDataStatus
          * @description Wie frisch der Bestand ist — „Stand: TT.MM.JJJJ" auf der Seite.
          *
@@ -13017,6 +14061,8 @@ export interface components {
         IdeaDataStatus: {
             /** As Of */
             as_of: string | null;
+            /** Blocked */
+            blocked: components["schemas"]["IdeaBlockedCity"][];
             /** Lagging */
             lagging: components["schemas"]["IdeaLaggingCity"][];
         };
@@ -13174,6 +14220,255 @@ export interface components {
             signals: {
                 [key: string]: number | null;
             };
+        };
+        /**
+         * ItemAmendment
+         * @description Ein Antrag am Punkt, gelesen von ``council/motions.py``. Ohne Auszug
+         *     (``read`` false) nur Label, Antragsteller und Link. ``outcome`` und
+         *     ``decision_id`` stehen, wenn die Teilabstimmung im Protokoll eindeutig
+         *     zugeordnet ist.
+         */
+        ItemAmendment: {
+            /** ItemAmendmentStatement */
+            after?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Applicants */
+            applicants: string[];
+            /** Base Missing */
+            base_missing?: boolean;
+            /** Base Template */
+            base_template?: string | null;
+            /** ItemAmendmentStatement */
+            before?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Diff */
+            diff?: string[][] | null;
+            /** Doc Type */
+            doc_type: string;
+            /** Document Id */
+            document_id: number;
+            /** Label */
+            label: string;
+            /** List No */
+            list_no: number;
+            /** ItemAmendmentStatement */
+            meaning?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Pattern */
+            pattern?: string | null;
+            /** Read */
+            read: boolean;
+            /** ItemAmendmentStatement */
+            reason?: {
+                /** Page */
+                page: number | null;
+                /** Quote */
+                quote: string;
+                /** Source */
+                source: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Target */
+            target?: string | null;
+            /** Url */
+            url: string;
+        };
+        /** ItemAmendmentStatement */
+        ItemAmendmentStatement: {
+            /** Page */
+            page: number | null;
+            /** Quote */
+            quote: string;
+            /** Source */
+            source: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * ItemArguments
+         * @description Die Reiter „Argumente“ und „Fraktionen“ der Punkt-Seite
+         *     (``docs/plan-punkt-argumente.md``). Je Reiter ein ``show_…``: darunter
+         *     die Mindestmenge, und der Reiter fehlt. ``stale``: seit der Auswertung
+         *     kamen Wortbeiträge dazu.
+         */
+        ItemArguments: {
+            /** Contra Count */
+            contra_count: number;
+            /** Created At */
+            created_at: string | null;
+            /** Factions */
+            factions: components["schemas"]["ArgumentFaction"][];
+            further: components["schemas"]["ArgumentSides"];
+            /** Issues */
+            issues: components["schemas"]["ArgumentIssue"][];
+            /** Pro Count */
+            pro_count: number;
+            /** Show Arguments */
+            show_arguments: boolean;
+            /** Show Factions */
+            show_factions: boolean;
+            /** Stale */
+            stale: boolean;
+            /** Subject Key */
+            subject_key: string;
+        };
+        /** ItemBudgetContext */
+        ItemBudgetContext: {
+            /** Blocks */
+            blocks: components["schemas"]["BudgetContextBlock"][];
+        };
+        /**
+         * ItemDossier
+         * @description „Aus den Unterlagen" (``council/template_dossier.py``): Abschnitte mit
+         *     belegten Aussagen, Stand, gelesene Dokumente, was danach dazukam.
+         */
+        ItemDossier: {
+            /** Added After */
+            added_after: string[];
+            /** Created At */
+            created_at: string | null;
+            /** Documents Read */
+            documents_read: number;
+            /** Form */
+            form: string | null;
+            /** Gists */
+            gists: components["schemas"]["DossierGist"][];
+            /** Sections */
+            sections: components["schemas"]["DossierSection"][];
+        };
+        /** ItemParticipation */
+        ItemParticipation: {
+            /** Ended At */
+            ended_at: string | null;
+            /** Status */
+            status: string;
+            /** Step */
+            step: string | null;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid Until */
+            valid_until: string | null;
+        };
+        /** ItemPlace */
+        ItemPlace: {
+            /** District */
+            district: string | null;
+            /** Kind */
+            kind: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Source */
+            source: string;
+        };
+        /** ItemProgramStances */
+        ItemProgramStances: {
+            /** Concern */
+            concern: string | null;
+            /** Parties */
+            parties: components["schemas"]["ProgramStance"][];
+            /** Silent */
+            silent: string[];
+        };
+        /** ItemSimilarDecision */
+        ItemSimilarDecision: {
+            /** Committee */
+            committee: string;
+            /** Id */
+            id: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * ItemSurroundings
+         * @description Das Umfeld eines Punkts (``council/punkt_umfeld.py``), alles ohne Modell.
+         */
+        ItemSurroundings: {
+            /** ItemParticipation */
+            participation: {
+                /** Ended At */
+                ended_at: string | null;
+                /** Status */
+                status: string;
+                /** Step */
+                step: string | null;
+                /** Title */
+                title: string;
+                /** Url */
+                url: string;
+                /** Valid From */
+                valid_from: string | null;
+                /** Valid Until */
+                valid_until: string | null;
+            } | null;
+            /** Places */
+            places: components["schemas"]["ItemPlace"][];
+            /** Similar */
+            similar: components["schemas"]["ItemSimilarDecision"][];
+            /**
+             * ItemVideo
+             * @description Fundstelle in der Aufzeichnung — nur Ratssitzungen werden übertragen.
+             */
+            video: {
+                /** Seconds */
+                seconds: number | null;
+                /** Video Id */
+                video_id: string;
+            } | null;
+        };
+        /**
+         * ItemVideo
+         * @description Fundstelle in der Aufzeichnung — nur Ratssitzungen werden übertragen.
+         */
+        ItemVideo: {
+            /** Seconds */
+            seconds: number | null;
+            /** Video Id */
+            video_id: string;
         };
         /**
          * LimitsUpdate
@@ -13456,6 +14751,14 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * MagicLinkRequest
+         * @description Ein Anmeldelink aus einer Mail (``security.create_magic_token``).
+         */
+        MagicLinkRequest: {
+            /** Token */
+            token: string;
         };
         /**
          * MajorityAdvisory
@@ -14293,6 +15596,162 @@ export interface components {
             seen_version: string | null;
         };
         /**
+         * NoteEntry
+         * @description Eine Notiz, wie der Server sie kennt: Ziel, IV, Geheimtext, Version.
+         */
+        NoteEntry: {
+            /** Ciphertext */
+            ciphertext: string;
+            /** Iv */
+            iv: string;
+            /** Key Version */
+            key_version: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "note" | "transcript";
+            /** Target Key */
+            target_key: string;
+            /**
+             * Target Kind
+             * @enum {string}
+             */
+            target_kind: "agenda_item" | "decision";
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number;
+        };
+        /** NoteIn */
+        NoteIn: {
+            /** Ciphertext */
+            ciphertext: string;
+            /** Iv */
+            iv: string;
+            /** Key Version */
+            key_version: number;
+            /** Version */
+            version: number;
+        };
+        /**
+         * NoteKeys
+         * @description Der Datenschlüssel, verpackt (AES-KW, Base64) — mit der
+         *     Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``), mit dem
+         *     Notfall-Code und/oder mit Passkeys (``NoteKeysState.passkeys``). Seit
+         *     11/2026 sind Passphrase und Code freiwillig: ``None``, wo es keine gibt.
+         *     Auspacken kann nur das Gerät.
+         */
+        NoteKeys: {
+            /** Iterations */
+            iterations: number;
+            /** Kdf */
+            kdf: string;
+            /** Key Version */
+            key_version: number;
+            /** Salt */
+            salt: string;
+            /** Updated At */
+            updated_at: string;
+            /** Wrapped Passphrase */
+            wrapped_passphrase: string | null;
+            /** Wrapped Recovery */
+            wrapped_recovery: string | null;
+        };
+        /** NoteKeysIn */
+        NoteKeysIn: {
+            /** Iterations */
+            iterations: number;
+            /**
+             * Kdf
+             * @constant
+             */
+            kdf: "pbkdf2-sha256";
+            /** Key Version */
+            key_version: number;
+            /** PasskeyIn */
+            passkey?: {
+                /** Credential Id */
+                credential_id: string;
+                /**
+                 * Label
+                 * @default
+                 */
+                label: string;
+                /** Prf Salt */
+                prf_salt: string;
+                /** Wrapped Key */
+                wrapped_key: string;
+            } | null;
+            /** Salt */
+            salt: string;
+            /** Wrapped Passphrase */
+            wrapped_passphrase?: string | null;
+            /** Wrapped Recovery */
+            wrapped_recovery?: string | null;
+        };
+        /** NoteKeysState */
+        NoteKeysState: {
+            /** Configured */
+            configured: boolean;
+            /**
+             * NoteKeys
+             * @description Der Datenschlüssel, verpackt (AES-KW, Base64) — mit der
+             *     Notiz-Passphrase (PBKDF2 aus ``salt``/``iterations``), mit dem
+             *     Notfall-Code und/oder mit Passkeys (``NoteKeysState.passkeys``). Seit
+             *     11/2026 sind Passphrase und Code freiwillig: ``None``, wo es keine gibt.
+             *     Auspacken kann nur das Gerät.
+             */
+            keys: {
+                /** Iterations */
+                iterations: number;
+                /** Kdf */
+                kdf: string;
+                /** Key Version */
+                key_version: number;
+                /** Salt */
+                salt: string;
+                /** Updated At */
+                updated_at: string;
+                /** Wrapped Passphrase */
+                wrapped_passphrase: string | null;
+                /** Wrapped Recovery */
+                wrapped_recovery: string | null;
+            } | null;
+            /** Passkeys */
+            passkeys: components["schemas"]["NotePasskey"][];
+        };
+        /** NoteList */
+        NoteList: {
+            /** Notes */
+            notes: components["schemas"]["NoteEntry"][];
+        };
+        /**
+         * NotePasskey
+         * @description Ein Passkey als Schlüssel zu den Notizen: Kennung (Base64url, für
+         *     ``allowCredentials``), das Salz, zu dem er über PRF sein Geheimnis
+         *     liefert, und der damit verpackte Datenschlüssel.
+         */
+        NotePasskey: {
+            /** Created At */
+            created_at: string;
+            /** Credential Id */
+            credential_id: string;
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** Prf Salt */
+            prf_salt: string;
+            /** Wrapped Key */
+            wrapped_key: string;
+        };
+        /** NotesDeleted */
+        NotesDeleted: {
+            /** Deleted */
+            deleted: number;
+        };
+        /**
          * NotifyKind
          * @description Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste
          *     pflegen müssen. ``parent`` ist gesetzt, wenn der Anlass eine Unter-Option
@@ -14361,6 +15820,8 @@ export interface components {
         NumberOfTheWeekCount: {
             /** Count */
             count: number;
+            /** Date From */
+            date_from?: string;
             /**
              * Kind
              * @constant
@@ -14578,6 +16039,39 @@ export interface components {
             steps?: string[];
         };
         /**
+         * PageQuestions
+         * @description Vorschlagsfragen unter „Frag den Rat“ (``council/vorschlagsfragen.py``):
+         *     bis zu drei, zu genau dieser Seite. Leer, wenn der Schalter aus ist, das
+         *     Modell nichts lieferte oder (ohne Konto) noch nichts gespeichert ist —
+         *     dann bleiben die festen Fragen der Seite.
+         */
+        PageQuestions: {
+            /** Questions */
+            questions: string[];
+        };
+        /**
+         * PageTerm
+         * @description Ein Fachwort, das die Seite am Wort erklärt (``council/seitenbegriffe.py``).
+         *     Die Seite sucht ``snippet`` (ein wörtliches Stück eines ihrer Texte) und
+         *     unterstreicht darin ``form`` ab ``offset`` — sie erkennt selbst nichts.
+         */
+        PageTerm: {
+            /** Explanation */
+            explanation: string;
+            /** Form */
+            form: string;
+            /** Item */
+            item?: string;
+            /** Kind */
+            kind: string;
+            /** Offset */
+            offset: number;
+            /** Snippet */
+            snippet: string;
+            /** Term */
+            term: string;
+        };
+        /**
          * PageViewIn
          * @description Ein Seitenaufruf, gemeldet vom Browser.
          *
@@ -14631,6 +16125,128 @@ export interface components {
             decision_ids?: number[];
             /** Question */
             question: string;
+        };
+        /** PasskeyAddIn */
+        PasskeyAddIn: {
+            /** Credential Id */
+            credential_id: string;
+            /** Key Version */
+            key_version: number;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Prf Salt */
+            prf_salt: string;
+            /** Wrapped Key */
+            wrapped_key: string;
+        };
+        /** PasskeyAddRequest */
+        PasskeyAddRequest: {
+            credential: components["schemas"]["PasskeyRegistration"];
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+        };
+        /** PasskeyAssertion */
+        PasskeyAssertion: {
+            /** Id */
+            id: string;
+            /** Rawid */
+            rawId: string;
+            response: components["schemas"]["PasskeyAssertionResponse"];
+            /**
+             * Type
+             * @default public-key
+             * @constant
+             */
+            type: "public-key";
+        };
+        /** PasskeyAssertionResponse */
+        PasskeyAssertionResponse: {
+            /** Authenticatordata */
+            authenticatorData: string;
+            /** Clientdatajson */
+            clientDataJSON: string;
+            /** Signature */
+            signature: string;
+            /** Userhandle */
+            userHandle?: string | null;
+        };
+        /** PasskeyAttestationResponse */
+        PasskeyAttestationResponse: {
+            /** Attestationobject */
+            attestationObject: string;
+            /** Clientdatajson */
+            clientDataJSON: string;
+            /** Transports */
+            transports?: string[];
+        };
+        /** PasskeyIn */
+        PasskeyIn: {
+            /** Credential Id */
+            credential_id: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /** Prf Salt */
+            prf_salt: string;
+            /** Wrapped Key */
+            wrapped_key: string;
+        };
+        /** PasskeyLoginRequest */
+        PasskeyLoginRequest: {
+            credential: components["schemas"]["PasskeyAssertion"];
+        };
+        /**
+         * PasskeyOptions
+         * @description WebAuthn-Optionen im JSON-Format der Norm (Binärfelder als Base64url) —
+         *     für ``navigator.credentials.create``/``get``. Die Form gibt die Norm vor,
+         *     nicht wir; deshalb bewusst ``dict[str, Any]`` statt einer Nachbildung.
+         */
+        PasskeyOptions: {
+            /** Public Key */
+            public_key: {
+                [key: string]: unknown;
+            };
+        };
+        /** PasskeyRegistration */
+        PasskeyRegistration: {
+            /** Id */
+            id: string;
+            /** Rawid */
+            rawId: string;
+            response: components["schemas"]["PasskeyAttestationResponse"];
+            /**
+             * Type
+             * @default public-key
+             * @constant
+             */
+            type: "public-key";
+        };
+        /** PasskeySignupOptionsRequest */
+        PasskeySignupOptionsRequest: {
+            /** Display Name */
+            display_name?: string | null;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
+        /** PasskeySignupRequest */
+        PasskeySignupRequest: {
+            credential: components["schemas"]["PasskeyRegistration"];
+            /**
+             * Label
+             * @default
+             */
+            label: string;
         };
         /** PeopleDirectory */
         PeopleDirectory: {
@@ -14924,6 +16540,1985 @@ export interface components {
             type: string;
             /** Url */
             url: string;
+        };
+        /**
+         * PlanAreaFact
+         * @description Eine Kennzahl zu einem Gebiet, wie der Plan sie nennt — „Verkaufsfläche 2021: 2.000 m² (2012: 2.150 m²)“.
+         */
+        PlanAreaFact: {
+            /** Label */
+            label: string;
+            /** Page */
+            page: number | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Value */
+            value: string;
+        };
+        /**
+         * PlanAreaGroup
+         * @description Eine Art Gebiet auf der Karte eines Plans („Friedhof“, „Nahversorgungszentrum“) — mit dem, was der Plan
+         *     darunter versteht, und dem Randstil, mit dem die Karte sie unterscheidet.
+         */
+        PlanAreaGroup: {
+            /** Description */
+            description: string | null;
+            /** Name */
+            name: string;
+            /** Page */
+            page: number | null;
+            /** Sites Only */
+            sites_only: boolean;
+            /** Source Url */
+            source_url: string | null;
+            /** Style */
+            style: number;
+        };
+        /**
+         * PlanAreaNote
+         * @description Eine Liste oder Absätze des Plans zu einem Gebiet: Defizite, Handlungskonzept, Stärken, Sätze zum Stadtteil.
+         */
+        PlanAreaNote: {
+            /** Items */
+            items: string[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "list" | "text";
+            /** Page */
+            page: number | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanAxis
+         * @description Die gemeinsame Zeitachse der Übersicht: Beginn des Bestands bis zehn Jahre nach vorn.
+         */
+        PlanAxis: {
+            /** End */
+            end: string;
+            /** Fade */
+            fade: number;
+            /** Start */
+            start: string;
+            /** Ticks */
+            ticks: components["schemas"]["PlanAxisTick"][];
+            /** Today */
+            today: number;
+        };
+        /** PlanAxisTick */
+        PlanAxisTick: {
+            /** Label */
+            label: string;
+            /** X */
+            x: number;
+        };
+        /**
+         * PlanBand
+         * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+         *
+         *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+         */
+        PlanBand: {
+            /** Beyond */
+            beyond: boolean;
+            /** Open End */
+            open_end: boolean;
+            /** Open Start */
+            open_start: boolean;
+            /** X0 */
+            x0: number;
+            /** X1 */
+            x1: number;
+        };
+        /**
+         * PlanBrief
+         * @description Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.
+         */
+        PlanBrief: {
+            /** Count */
+            count: number;
+            /** Heading */
+            heading: string;
+            /** Points */
+            points: string[];
+            /** Purpose */
+            purpose: string;
+        };
+        /**
+         * PlanBudget
+         * @description ``GET /api/council/budget/plan/{key}`` — nur mit dem Recht ``budget``.
+         */
+        PlanBudget: {
+            /** Items */
+            items: components["schemas"]["PlanBudgetItem"][];
+            /** Note */
+            note: string;
+        };
+        /** PlanBudgetAmount */
+        PlanBudgetAmount: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * PlanBudgetItem
+         * @description Ein Haushaltsposten, dessen eigener Text den Plan nennt.
+         */
+        PlanBudgetItem: {
+            /** Amounts */
+            amounts: components["schemas"]["PlanBudgetAmount"][];
+            /** Context */
+            context: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "product" | "investment" | "change";
+            /** Number */
+            number: string | null;
+            /** Quote */
+            quote: string;
+            /** Since */
+            since: number | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanCard
+         * @description Eine Karte der Übersicht „Pläne der Stadt“. Keine Note, keine Quote (Plan § 3.4).
+         */
+        PlanCard: {
+            /** Adopted On */
+            adopted_on: string | null;
+            /**
+             * Adoption Mode
+             * @enum {string|null}
+             */
+            adoption_mode: "adopted" | "noted" | null;
+            /**
+             * PlanBrief
+             * @description Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.
+             */
+            brief: {
+                /** Count */
+                count: number;
+                /** Heading */
+                heading: string;
+                /** Points */
+                points: string[];
+                /** Purpose */
+                purpose: string;
+            } | null;
+            /** Ends In */
+            ends_in: string | null;
+            /** Ends On */
+            ends_on: string | null;
+            /** Field Label */
+            field_label: string;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "running" | "preparing" | "ended";
+            /** Key */
+            key: string;
+            /** Kicker */
+            kicker: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "action" | "framework" | "statutory" | "reference";
+            /** Kind Label */
+            kind_label: string;
+            lane: components["schemas"]["PlanLane"];
+            /**
+             * PlanReport
+             * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+             */
+            latest_report: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Oral */
+                oral: boolean;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string;
+            } | null;
+            /** Measure Count */
+            measure_count: number | null;
+            /** Office */
+            office: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** Report Count */
+            report_count: number;
+            /** Report Note */
+            report_note: string | null;
+            report_state: components["schemas"]["PlanReportState"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /**
+             * PlanStatusBrief
+             * @description Die jüngste Verteilung laut Stadt, für die Übersicht.
+             */
+            status_brief: {
+                /** As Of */
+                as_of: string;
+                /** As Of Label */
+                as_of_label: string;
+                /** Complete */
+                complete: boolean;
+                /** Counts */
+                counts: components["schemas"]["PlanStatusCount"][];
+                /** Origin Label */
+                origin_label: string;
+                /** Total */
+                total: number;
+            } | null;
+            /** Status Label */
+            status_label: string;
+            /** PlanNeighbour */
+            successor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** Timing */
+            timing: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanCityStatus
+         * @description Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).
+         */
+        PlanCityStatus: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            /** Complete */
+            complete: boolean;
+            /** Confirmed */
+            confirmed: boolean;
+            /** Counts */
+            counts: components["schemas"]["PlanStatusCount"][];
+            /**
+             * PlanStatusMovement
+             * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+             */
+            movement: {
+                /** Counts */
+                counts: components["schemas"]["PlanStatusMove"][];
+                /** Since */
+                since: string;
+                /** Since Label */
+                since_label: string;
+                /** Total Before */
+                total_before: number;
+                /** Total Delta */
+                total_delta: number;
+            } | null;
+            /** Notes */
+            notes: components["schemas"]["PlanStatusNote"][];
+            /** Origin Label */
+            origin_label: string;
+            /** Series */
+            series: components["schemas"]["PlanStatusSnapshot"][];
+            /** Source Label */
+            source_label: string;
+            /** Source Url */
+            source_url: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Total */
+            total: number;
+        };
+        /**
+         * PlanContent
+         * @description Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
+         *     (``council/plan_key_points/<key>.json``), nach Art gegliedert.
+         */
+        PlanContent: {
+            /** As Of Label */
+            as_of_label: string | null;
+            /** Count */
+            count: number;
+            /** Groups */
+            groups: components["schemas"]["PlanContentGroup"][];
+            /** Heading */
+            heading: string;
+            /** Note */
+            note: string;
+            purpose: components["schemas"]["PlanContentStatement"];
+        };
+        /**
+         * PlanContentDue
+         * @description Der Termin, den der Kernpunkt nennt.
+         */
+        PlanContentDue: {
+            /** Date */
+            date: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * PlanContentFigure
+         * @description Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.
+         */
+        PlanContentFigure: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * PlanContentGroup
+         * @description Kernpunkte einer Art: Ziele, Zahlen (als Kacheln), Regeln, Vorhaben und Termine.
+         */
+        PlanContentGroup: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "goals" | "figures" | "rules" | "steps";
+            /** Label */
+            label: string;
+            /**
+             * Layout
+             * @enum {string}
+             */
+            layout: "list" | "tiles";
+            /** Points */
+            points: components["schemas"]["PlanContentStatement"][];
+        };
+        /**
+         * PlanContentSource
+         * @description Wo ein Kernpunkt steht: Beschlusstext, Vorlage oder Anlage (mit Seite).
+         */
+        PlanContentSource: {
+            /** Date */
+            date: string | null;
+            /** Date Label */
+            date_label: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "decision" | "template" | "attachment";
+            /** Label */
+            label: string;
+            /** Page */
+            page: number | null;
+            /** Template Number */
+            template_number: string;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanContentStatement */
+        PlanContentStatement: {
+            /** Amended */
+            amended: boolean;
+            /**
+             * PlanContentDue
+             * @description Der Termin, den der Kernpunkt nennt.
+             */
+            due: {
+                /** Date */
+                date: string;
+                /** Label */
+                label: string;
+            } | null;
+            /**
+             * PlanContentFigure
+             * @description Die eine Zahl eines Kernpunkts, groß gesetzt — von Hand gewählt, jede Ziffer steht im Zitat.
+             */
+            figure: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /** Index */
+            index: number | null;
+            /**
+             * Kind
+             * @enum {string|null}
+             */
+            kind: "goal" | "standard" | "figure" | "responsibility" | "deadline" | "measure" | null;
+            /** Quote */
+            quote: string;
+            source: components["schemas"]["PlanContentSource"];
+            /** Tag */
+            tag: string | null;
+            /** Text */
+            text: string;
+        };
+        /** PlanDecisionEntry */
+        PlanDecisionEntry: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Deliberations */
+            deliberations: number;
+            /** Measure Codes */
+            measure_codes: string[];
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+            /** Quote */
+            quote: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /** PlanDecisionGroup */
+        PlanDecisionGroup: {
+            /** Entries */
+            entries: components["schemas"]["PlanDecisionEntry"][];
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "plan" | "implementation" | "motion" | "decision" | "mentions" | "measures" | "judged";
+            /** Label */
+            label: string;
+        };
+        /**
+         * PlanDecisionRef
+         * @description Ein Beschluss über den Plan selbst, wie ihn das Register nennt.
+         */
+        PlanDecisionRef: {
+            /** Committee */
+            committee: string;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Label */
+            label: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "adopted" | "noted";
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Url */
+            url: string | null;
+            /** Vote */
+            vote: string | null;
+        };
+        /** PlanDetail */
+        PlanDetail: {
+            /** Adopted On */
+            adopted_on: string | null;
+            /**
+             * PlanDecisionRef
+             * @description Ein Beschluss über den Plan selbst, wie ihn das Register nennt.
+             */
+            adoption: {
+                /** Committee */
+                committee: string;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Label */
+                label: string | null;
+                /**
+                 * Mode
+                 * @enum {string}
+                 */
+                mode: "adopted" | "noted";
+                /**
+                 * Outcome
+                 * @enum {string|null}
+                 */
+                outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | "settled" | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Url */
+                url: string | null;
+                /** Vote */
+                vote: string | null;
+            } | null;
+            /**
+             * Adoption Mode
+             * @enum {string|null}
+             */
+            adoption_mode: "adopted" | "noted" | null;
+            /**
+             * PlanBrief
+             * @description Für die aufgeklappte Zeile der Übersicht: Zweck und die ersten zwei Kernpunkte, ohne Zitat.
+             */
+            brief: {
+                /** Count */
+                count: number;
+                /** Heading */
+                heading: string;
+                /** Points */
+                points: string[];
+                /** Purpose */
+                purpose: string;
+            } | null;
+            /**
+             * PlanCityStatus
+             * @description Stand laut Stadt auf der Planseite (``council/plan_status/<key>.json``).
+             */
+            city_status: {
+                /** As Of */
+                as_of: string;
+                /** As Of Label */
+                as_of_label: string;
+                /** Complete */
+                complete: boolean;
+                /** Confirmed */
+                confirmed: boolean;
+                /** Counts */
+                counts: components["schemas"]["PlanStatusCount"][];
+                /**
+                 * PlanStatusMovement
+                 * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+                 */
+                movement: {
+                    /** Counts */
+                    counts: components["schemas"]["PlanStatusMove"][];
+                    /** Since */
+                    since: string;
+                    /** Since Label */
+                    since_label: string;
+                    /** Total Before */
+                    total_before: number;
+                    /** Total Delta */
+                    total_delta: number;
+                } | null;
+                /** Notes */
+                notes: components["schemas"]["PlanStatusNote"][];
+                /** Origin Label */
+                origin_label: string;
+                /** Series */
+                series: components["schemas"]["PlanStatusSnapshot"][];
+                /** Source Label */
+                source_label: string;
+                /** Source Url */
+                source_url: string | null;
+                /** Template Number */
+                template_number: string | null;
+                /** Total */
+                total: number;
+            } | null;
+            /** PlanTemplateRef */
+            commissioned: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /** PlanTemplateRef */
+            concluded: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /**
+             * PlanContent
+             * @description Was im Plan steht: ein Satz zum Zweck und drei bis sechs Kernpunkte, jeder mit Beleg
+             *     (``council/plan_key_points/<key>.json``), nach Art gegliedert.
+             */
+            content: {
+                /** As Of Label */
+                as_of_label: string | null;
+                /** Count */
+                count: number;
+                /** Groups */
+                groups: components["schemas"]["PlanContentGroup"][];
+                /** Heading */
+                heading: string;
+                /** Note */
+                note: string;
+                purpose: components["schemas"]["PlanContentStatement"];
+            } | null;
+            /** Decision Groups */
+            decision_groups: components["schemas"]["PlanDecisionGroup"][];
+            /** Decisions */
+            decisions: components["schemas"]["PlanDecisionRef"][];
+            /** End */
+            end: string | null;
+            /** End Label */
+            end_label: string | null;
+            /** Ends In */
+            ends_in: string | null;
+            /** Ends On */
+            ends_on: string | null;
+            /** Field Label */
+            field_label: string;
+            /** Goal */
+            goal: string | null;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "running" | "preparing" | "ended";
+            /** Horizon Note */
+            horizon_note: string | null;
+            /** Indicators */
+            indicators: components["schemas"]["PlanIndicator"][];
+            /** Key */
+            key: string;
+            /** Kicker */
+            kicker: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "action" | "framework" | "statutory" | "reference";
+            /** Kind Label */
+            kind_label: string;
+            lane: components["schemas"]["PlanLane"];
+            /**
+             * PlanReport
+             * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+             */
+            latest_report: {
+                /** Committee */
+                committee: string | null;
+                /** Date */
+                date: string;
+                /** Decision Id */
+                decision_id: number | null;
+                /** Oral */
+                oral: boolean;
+                /** Template Number */
+                template_number: string | null;
+                /** Title */
+                title: string;
+            } | null;
+            /** Lists */
+            lists: components["schemas"]["PlanList"][];
+            /** Measure Count */
+            measure_count: number | null;
+            /**
+             * PlanMeasures
+             * @description Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).
+             */
+            measures: {
+                /** Count */
+                count: number;
+                /** Count City */
+                count_city: number | null;
+                /** Count Note */
+                count_note: string | null;
+                /** Groups */
+                groups: components["schemas"]["PlanMeasureGroup"][];
+                source: components["schemas"]["PlanMeasureSource"];
+                /** Status As Of Label */
+                status_as_of_label: string | null;
+                /** Status By Model */
+                status_by_model: boolean;
+                /** Status Count */
+                status_count: number;
+                /** Status Template */
+                status_template: string | null;
+            } | null;
+            /**
+             * PlanNews
+             * @description Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.
+             */
+            news: {
+                /** Decision Id */
+                decision_id: number | null;
+                /** From Date Label */
+                from_date_label: string;
+                /** Items */
+                items: components["schemas"]["PlanQuoted"][];
+                /** Note */
+                note: string;
+                /** Title */
+                title: string;
+                /** To Date */
+                to_date: string;
+                /** To Date Label */
+                to_date_label: string;
+                /** To Template */
+                to_template: string;
+            } | null;
+            /** Note */
+            note: string | null;
+            /** Office */
+            office: string | null;
+            /** Oral Report Count */
+            oral_report_count: number;
+            /** Owner */
+            owner: string | null;
+            /**
+             * PlanPlaces
+             * @description Die Karte zum Plan — ab drei Orten.
+             */
+            places: {
+                /** Area Places */
+                area_places: number;
+                /** Decision Places */
+                decision_places: number;
+                /** Geojson */
+                geojson: boolean;
+                /** Groups */
+                groups: components["schemas"]["PlanAreaGroup"][];
+                /** Items */
+                items: components["schemas"]["PlanPlace"][];
+                /** Measure Places */
+                measure_places: number;
+                /** Measures Named */
+                measures_named: number;
+                /** Measures Total */
+                measures_total: number | null;
+                /** Note */
+                note: string;
+                /** Section Places */
+                section_places: number;
+            } | null;
+            /**
+             * PlanPlain
+             * @description Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.
+             */
+            plain: {
+                /** Note */
+                note: string;
+                /** Questions */
+                questions: string[];
+                /** Sentences */
+                sentences: string[];
+            } | null;
+            /** Policy Field */
+            policy_field: string;
+            /** PlanNeighbour */
+            predecessor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** Related */
+            related: components["schemas"]["PlanRelated"][];
+            /** PlanFact */
+            remaining: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /** Report Count */
+            report_count: number;
+            /** Report Note */
+            report_note: string | null;
+            report_state: components["schemas"]["PlanReportState"];
+            /**
+             * PlanReview
+             * @description Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.
+             */
+            review: {
+                /** PlanNeighbour */
+                continued_by: {
+                    /** Adopted */
+                    adopted: boolean;
+                    /** Key */
+                    key: string;
+                    /** Title */
+                    title: string;
+                } | null;
+                /** PlanTemplateRef */
+                evaluation: {
+                    /** Date */
+                    date: string | null;
+                    /** Kvonr */
+                    kvonr: number | null;
+                    /** Template Number */
+                    template_number: string;
+                    /** Title */
+                    title: string | null;
+                    /** Url */
+                    url: string | null;
+                } | null;
+                /** Has Status */
+                has_status: boolean;
+                /** No Evaluation Note */
+                no_evaluation_note: string | null;
+                /** Planned */
+                planned: components["schemas"]["PlanFact"][];
+                /** Statements */
+                statements: components["schemas"]["PlanReviewStatement"][];
+            } | null;
+            /** Review Due */
+            review_due: string | null;
+            /** Review Label */
+            review_label: string | null;
+            /**
+             * PlanRunway
+             * @description Das Zeitband der Detailseite: eine eigene Achse je Plan.
+             */
+            runway: {
+                /** Archive From */
+                archive_from: number | null;
+                /**
+                 * PlanBand
+                 * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+                 *
+                 *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+                 */
+                band: {
+                    /** Beyond */
+                    beyond: boolean;
+                    /** Open End */
+                    open_end: boolean;
+                    /** Open Start */
+                    open_start: boolean;
+                    /** X0 */
+                    x0: number;
+                    /** X1 */
+                    x1: number;
+                } | null;
+                /** Dues */
+                dues: components["schemas"]["PlanRunwayDue"][];
+                /** End */
+                end: string;
+                /** Marks */
+                marks: components["schemas"]["PlanRunwayMark"][];
+                /** PlanRunwayPoint */
+                review: {
+                    /** Label */
+                    label: string;
+                    /** X */
+                    x: number;
+                } | null;
+                /** Start */
+                start: string;
+                /**
+                 * Style
+                 * @enum {string}
+                 */
+                style: "adopted" | "noted" | "preparing";
+                /** Ticks */
+                ticks: components["schemas"]["PlanAxisTick"][];
+                /** Today */
+                today: number | null;
+            } | null;
+            /** Sections */
+            sections: components["schemas"]["PlanSection"][];
+            /** PlanFact */
+            since: {
+                /** Label */
+                label: string;
+                /** Value */
+                value: string;
+            } | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "council" | "website";
+            /** Start */
+            start: string | null;
+            /** Start Label */
+            start_label: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /**
+             * PlanStatusBrief
+             * @description Die jüngste Verteilung laut Stadt, für die Übersicht.
+             */
+            status_brief: {
+                /** As Of */
+                as_of: string;
+                /** As Of Label */
+                as_of_label: string;
+                /** Complete */
+                complete: boolean;
+                /** Counts */
+                counts: components["schemas"]["PlanStatusCount"][];
+                /** Origin Label */
+                origin_label: string;
+                /** Total */
+                total: number;
+            } | null;
+            /** Status Label */
+            status_label: string;
+            /** PlanNeighbour */
+            successor: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            timeline: components["schemas"]["PlanTimeline"];
+            /** Timing */
+            timing: string;
+            /** Title */
+            title: string;
+            /** Website */
+            website: string | null;
+        };
+        /** PlanFact */
+        PlanFact: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /** PlanFieldCount */
+        PlanFieldCount: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * PlanFollowUp
+         * @description Ein Plan, zu dem kein aktueller Bericht zu finden ist (Plan § 3.5): eine Tatsache, keine Wertung.
+         */
+        PlanFollowUp: {
+            /** Fact */
+            fact: string;
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /** Last Report */
+            last_report: string | null;
+            /** Policy Field */
+            policy_field: string;
+            /** Question */
+            question: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "continued" | "in_preparation" | "evaluated" | "expired_no_evaluation" | "reported" | "not_yet_due" | "no_report_found";
+            /** Title */
+            title: string;
+        };
+        /** PlanGeoFeature */
+        PlanGeoFeature: {
+            /** Geometry */
+            geometry: unknown;
+            properties: components["schemas"]["PlanGeoProperties"];
+            /**
+             * Type
+             * @constant
+             */
+            type: "Feature";
+        };
+        /**
+         * PlanGeoJson
+         * @description ``GET /api/council/plan/{key}/geojson`` — Abschnitte und Gebiete des Plans als GeoJSON (WGS84).
+         */
+        PlanGeoJson: {
+            /** Attribution */
+            attribution: string;
+            /** Features */
+            features: components["schemas"]["PlanGeoFeature"][];
+            /** Generated */
+            generated: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @constant
+             */
+            type: "FeatureCollection";
+        };
+        /**
+         * PlanGeoProperties
+         * @description Eigenschaften eines Abschnitts (``section``), Gebiets (``area``) oder Standorts (``site``) im
+         *     GeoJSON-Download.
+         */
+        PlanGeoProperties: {
+            /** Area Ha */
+            area_ha?: number | null;
+            /** Area Ha Plan */
+            area_ha_plan?: number | null;
+            /** Code */
+            code: string;
+            /** Facts */
+            facts?: components["schemas"]["PlanAreaFact"][];
+            /** Figure */
+            figure?: number | null;
+            /** Group */
+            group?: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "section" | "area" | "site";
+            /** Length M */
+            length_m?: number;
+            /** Name */
+            name?: string | null;
+            /** Page */
+            page: number;
+            /** Quote */
+            quote?: string;
+            /** Source Url */
+            source_url: string;
+            /** Street */
+            street?: string;
+            /** Stretch */
+            stretch?: string;
+            /** Summary */
+            summary?: string | null;
+        };
+        /** PlanGroup */
+        PlanGroup: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "running" | "preparing" | "ended";
+            /** Label */
+            label: string;
+            /** Plans */
+            plans: components["schemas"]["PlanCard"][];
+        };
+        /**
+         * PlanIndicator
+         * @description Eine Kennzahl neben dem Plan — nicht sein Ergebnis (Plan § 3.4 Nr. 4).
+         */
+        PlanIndicator: {
+            /** Baseline Label */
+            baseline_label: string;
+            /** Baseline Template */
+            baseline_template: string | null;
+            /** Baseline Value */
+            baseline_value: number;
+            /** Baseline Year */
+            baseline_year: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Notes */
+            notes: components["schemas"]["PlanIndicatorNote"][];
+            /** Rows */
+            rows: components["schemas"]["PlanIndicatorRow"][];
+            /** Unit */
+            unit: string;
+        };
+        /** PlanIndicatorNote */
+        PlanIndicatorNote: {
+            /** Template Number */
+            template_number: string | null;
+            /** Text */
+            text: string;
+        };
+        /** PlanIndicatorRow */
+        PlanIndicatorRow: {
+            /** Actual */
+            actual: number | null;
+            /** Actual Change */
+            actual_change: number | null;
+            /** Target */
+            target: number | null;
+            /** Target Change */
+            target_change: number | null;
+            /** Target Label */
+            target_label: string | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Year */
+            year: number;
+        };
+        /**
+         * PlanLane
+         * @description Das Zeitband einer Karte auf der gemeinsamen Achse der Übersicht (``Plans.axis``).
+         */
+        PlanLane: {
+            /**
+             * PlanBand
+             * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+             *
+             *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+             */
+            band: {
+                /** Beyond */
+                beyond: boolean;
+                /** Open End */
+                open_end: boolean;
+                /** Open Start */
+                open_start: boolean;
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Marks */
+            marks: components["schemas"]["PlanLaneMark"][];
+            /** PlanSpan */
+            predecessor: {
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Review */
+            review: number | null;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "adopted" | "noted" | "preparing";
+        };
+        /** PlanLaneMark */
+        PlanLaneMark: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** X */
+            x: number;
+        };
+        /**
+         * PlanList
+         * @description Eine Tabelle aus dem Plan-Dokument, Zeile für Zeile, wie sie dort steht.
+         */
+        PlanList: {
+            /** Caption */
+            caption: string;
+            /** Columns */
+            columns: string[];
+            /** Key */
+            key: string;
+            /** Name Column */
+            name_column: number;
+            /** Page */
+            page: number;
+            /** Rows */
+            rows: components["schemas"]["PlanListRow"][];
+            /** Source Label */
+            source_label: string;
+            /** Source Url */
+            source_url: string;
+            /** Title */
+            title: string;
+        };
+        /** PlanListRow */
+        PlanListRow: {
+            /** Cells */
+            cells: string[];
+            /** Page */
+            page: number | null;
+            /** Source Url */
+            source_url: string | null;
+        };
+        /** PlanMeasure */
+        PlanMeasure: {
+            /** Code */
+            code: string;
+            /** Decision Count */
+            decision_count: number;
+            /** Package */
+            package: string | null;
+            /** Page */
+            page: number;
+            /**
+             * Status Norm
+             * @enum {string|null}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear" | null;
+            /** Status Quote */
+            status_quote: string | null;
+            /** Status Raw */
+            status_raw: string | null;
+            /** Title */
+            title: string;
+        };
+        /** PlanMeasureGroup */
+        PlanMeasureGroup: {
+            /** Field */
+            field: string | null;
+            /** Measures */
+            measures: components["schemas"]["PlanMeasure"][];
+        };
+        /** PlanMeasureSource */
+        PlanMeasureSource: {
+            /** As Of */
+            as_of: string | null;
+            /** As Of Label */
+            as_of_label: string | null;
+            /** Document Id */
+            document_id: number;
+            /** Label */
+            label: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Url */
+            url: string;
+        };
+        /**
+         * PlanMeasures
+         * @description Die geprüfte Maßnahmenliste (``council/plan_measures/<key>.json``).
+         */
+        PlanMeasures: {
+            /** Count */
+            count: number;
+            /** Count City */
+            count_city: number | null;
+            /** Count Note */
+            count_note: string | null;
+            /** Groups */
+            groups: components["schemas"]["PlanMeasureGroup"][];
+            source: components["schemas"]["PlanMeasureSource"];
+            /** Status As Of Label */
+            status_as_of_label: string | null;
+            /** Status By Model */
+            status_by_model: boolean;
+            /** Status Count */
+            status_count: number;
+            /** Status Template */
+            status_template: string | null;
+        };
+        /** PlanNeighbour */
+        PlanNeighbour: {
+            /** Adopted */
+            adopted: boolean;
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanNews
+         * @description Neu im jüngsten Bericht: steht dort wörtlich und im vorigen Bericht derselben Reihe nicht.
+         */
+        PlanNews: {
+            /** Decision Id */
+            decision_id: number | null;
+            /** From Date Label */
+            from_date_label: string;
+            /** Items */
+            items: components["schemas"]["PlanQuoted"][];
+            /** Note */
+            note: string;
+            /** Title */
+            title: string;
+            /** To Date */
+            to_date: string;
+            /** To Date Label */
+            to_date_label: string;
+            /** To Template */
+            to_template: string;
+        };
+        /**
+         * PlanPlace
+         * @description Ein Ort zum Plan: ein Abschnitt aus dem Plan selbst oder eine Straße aus einem Maßnahmentitel
+         *     (beide mit Verlauf), oder ein Ort aus Beschlüssen (als Punkt).
+         */
+        PlanPlace: {
+            /** Areas */
+            areas: components["schemas"]["PlanPlaceArea"][];
+            /** Decision Count */
+            decision_count: number;
+            /** Decisions */
+            decisions: components["schemas"]["PlanPlaceDecision"][];
+            /** Geometry */
+            geometry: unknown;
+            /** Kind */
+            kind: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Measures */
+            measures: components["schemas"]["PlanPlaceMeasure"][];
+            /** Name */
+            name: string;
+            /** Sections */
+            sections: components["schemas"]["PlanPlaceSection"][];
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * PlanPlaceArea
+         * @description Ein Gebiet, nachgezeichnet aus einer Karte des Plans (``council/plan_shapes/``) — oder ein Standort,
+         *     wo die Karte nur einen Punkt zeigt (dann ohne Fläche und ohne ``geometry`` am Ort).
+         */
+        PlanPlaceArea: {
+            /** Area Ha */
+            area_ha: number | null;
+            /** Area Ha Plan */
+            area_ha_plan: number | null;
+            /** Code */
+            code: string;
+            /** Facts */
+            facts: components["schemas"]["PlanAreaFact"][];
+            /** Figure */
+            figure: number | null;
+            /** Group */
+            group: string;
+            /** Label */
+            label: string;
+            /** Notes */
+            notes: components["schemas"]["PlanAreaNote"][];
+            /** Page */
+            page: number;
+            /** Radius M */
+            radius_m: number | null;
+            /** Source Label */
+            source_label: string;
+            /** Source Url */
+            source_url: string;
+            /** Summary */
+            summary: string | null;
+        };
+        /** PlanPlaceDecision */
+        PlanPlaceDecision: {
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+        };
+        /** PlanPlaceMeasure */
+        PlanPlaceMeasure: {
+            /** Code */
+            code: string;
+            /**
+             * Status Norm
+             * @enum {string|null}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear" | null;
+            /** Status Raw */
+            status_raw: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanPlaceSection
+         * @description Ein Abschnitt, den der Plan selbst festlegt (``council/plan_lists/``).
+         */
+        PlanPlaceSection: {
+            /** Code */
+            code: string;
+            /** Page */
+            page: number;
+            /** Quote */
+            quote: string;
+            /** Source Url */
+            source_url: string;
+            /** Stretch */
+            stretch: string;
+        };
+        /**
+         * PlanPlaces
+         * @description Die Karte zum Plan — ab drei Orten.
+         */
+        PlanPlaces: {
+            /** Area Places */
+            area_places: number;
+            /** Decision Places */
+            decision_places: number;
+            /** Geojson */
+            geojson: boolean;
+            /** Groups */
+            groups: components["schemas"]["PlanAreaGroup"][];
+            /** Items */
+            items: components["schemas"]["PlanPlace"][];
+            /** Measure Places */
+            measure_places: number;
+            /** Measures Named */
+            measures_named: number;
+            /** Measures Total */
+            measures_total: number | null;
+            /** Note */
+            note: string;
+            /** Section Places */
+            section_places: number;
+        };
+        /**
+         * PlanPlain
+         * @description Der Plan in drei einfachen Sätzen und drei Fragen dazu — entstanden NUR aus den Kernpunkten.
+         */
+        PlanPlain: {
+            /** Note */
+            note: string;
+            /** Questions */
+            questions: string[];
+            /** Sentences */
+            sentences: string[];
+        };
+        /**
+         * PlanQuoted
+         * @description Ein Satz mit der wörtlichen Stelle, die ihn belegt.
+         */
+        PlanQuoted: {
+            /** Quote */
+            quote: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * PlanRecentReport
+         * @description Ein jüngster Bericht über alle Pläne hinweg.
+         */
+        PlanRecentReport: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** Plan Key */
+            plan_key: string;
+            /** Plan Title */
+            plan_title: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanRelated
+         * @description Ein verwandter Plan — ohne Grad und ohne Begründung.
+         */
+        PlanRelated: {
+            /** Field Label */
+            field_label: string;
+            /** Key */
+            key: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "preparing" | "superseded" | "concluded" | "expired";
+            /** Status Label */
+            status_label: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanReport
+         * @description Der jüngste Bericht zu einem Plan (``council/plan_pages.py``).
+         */
+        PlanReport: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Oral */
+            oral: boolean;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanReportState
+         * @description Der Berichtsstand (Plan § 3.3a): Wird über den Plan berichtet? Keine Aussage über die Arbeit.
+         */
+        PlanReportState: {
+            /** Hint */
+            hint: string | null;
+            /** Label */
+            label: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "continued" | "in_preparation" | "evaluated" | "expired_no_evaluation" | "reported" | "not_yet_due" | "no_report_found";
+        };
+        /**
+         * PlanReview
+         * @description Rückblick für abgelaufene Pläne (Plan § 3.3): ein fester Aufbau, keine Bewertung.
+         */
+        PlanReview: {
+            /** PlanNeighbour */
+            continued_by: {
+                /** Adopted */
+                adopted: boolean;
+                /** Key */
+                key: string;
+                /** Title */
+                title: string;
+            } | null;
+            /** PlanTemplateRef */
+            evaluation: {
+                /** Date */
+                date: string | null;
+                /** Kvonr */
+                kvonr: number | null;
+                /** Template Number */
+                template_number: string;
+                /** Title */
+                title: string | null;
+                /** Url */
+                url: string | null;
+            } | null;
+            /** Has Status */
+            has_status: boolean;
+            /** No Evaluation Note */
+            no_evaluation_note: string | null;
+            /** Planned */
+            planned: components["schemas"]["PlanFact"][];
+            /** Statements */
+            statements: components["schemas"]["PlanReviewStatement"][];
+        };
+        /**
+         * PlanReviewStatement
+         * @description Ein wörtlicher Satz aus der Auswertung: ein Ergebnis oder eine Grenze, die der Bericht selbst nennt.
+         */
+        PlanReviewStatement: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "result" | "limit";
+            /** Source Label */
+            source_label: string;
+            /** Template Number */
+            template_number: string | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * PlanRunway
+         * @description Das Zeitband der Detailseite: eine eigene Achse je Plan.
+         */
+        PlanRunway: {
+            /** Archive From */
+            archive_from: number | null;
+            /**
+             * PlanBand
+             * @description Wann ein Plan gilt, als Strecke auf einer Zeitachse (Anteile 0–1).
+             *
+             *     KEIN Fortschrittsbalken (Plan § 3.4): Das Band zeigt Laufzeit, nicht Erledigtes.
+             */
+            band: {
+                /** Beyond */
+                beyond: boolean;
+                /** Open End */
+                open_end: boolean;
+                /** Open Start */
+                open_start: boolean;
+                /** X0 */
+                x0: number;
+                /** X1 */
+                x1: number;
+            } | null;
+            /** Dues */
+            dues: components["schemas"]["PlanRunwayDue"][];
+            /** End */
+            end: string;
+            /** Marks */
+            marks: components["schemas"]["PlanRunwayMark"][];
+            /** PlanRunwayPoint */
+            review: {
+                /** Label */
+                label: string;
+                /** X */
+                x: number;
+            } | null;
+            /** Start */
+            start: string;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "adopted" | "noted" | "preparing";
+            /** Ticks */
+            ticks: components["schemas"]["PlanAxisTick"][];
+            /** Today */
+            today: number | null;
+        };
+        /**
+         * PlanRunwayDue
+         * @description Ein Termin, den der Plan selbst nennt — keine Frist von uns, und keine Aussage, ob er gehalten wurde.
+         */
+        PlanRunwayDue: {
+            /** Date */
+            date: string;
+            /** Label */
+            label: string;
+            /** Point */
+            point: number;
+            /** Text */
+            text: string;
+            /** X */
+            x: number;
+        };
+        /** PlanRunwayMark */
+        PlanRunwayMark: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Oral */
+            oral: boolean;
+            /** Station */
+            station: number;
+            /** X */
+            x: number;
+        };
+        /** PlanRunwayPoint */
+        PlanRunwayPoint: {
+            /** Label */
+            label: string;
+            /** X */
+            x: number;
+        };
+        /**
+         * PlanSection
+         * @description Ein Abschnitt der Planseite, für die Sprungleiste.
+         */
+        PlanSection: {
+            /** Count */
+            count: number | null;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "content" | "review" | "reports" | "status" | "indicators" | "measures" | "places" | "lists" | "decisions";
+            /** Label */
+            label: string;
+        };
+        /** PlanSpan */
+        PlanSpan: {
+            /** X0 */
+            x0: number;
+            /** X1 */
+            x1: number;
+        };
+        /**
+         * PlanStatusBrief
+         * @description Die jüngste Verteilung laut Stadt, für die Übersicht.
+         */
+        PlanStatusBrief: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            /** Complete */
+            complete: boolean;
+            /** Counts */
+            counts: components["schemas"]["PlanStatusCount"][];
+            /** Origin Label */
+            origin_label: string;
+            /** Total */
+            total: number;
+        };
+        /** PlanStatusCount */
+        PlanStatusCount: {
+            /** Count */
+            count: number;
+            /**
+             * Status Norm
+             * @enum {string}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear";
+            /** Status Raw */
+            status_raw: string;
+        };
+        /** PlanStatusMove */
+        PlanStatusMove: {
+            /** Before */
+            before: number;
+            /** Count */
+            count: number;
+            /** Delta */
+            delta: number;
+            /**
+             * Status Norm
+             * @enum {string}
+             */
+            status_norm: "open" | "started" | "in_progress" | "done" | "paused" | "unclear";
+            /** Status Raw */
+            status_raw: string;
+        };
+        /**
+         * PlanStatusMovement
+         * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+         */
+        PlanStatusMovement: {
+            /** Counts */
+            counts: components["schemas"]["PlanStatusMove"][];
+            /** Since */
+            since: string;
+            /** Since Label */
+            since_label: string;
+            /** Total Before */
+            total_before: number;
+            /** Total Delta */
+            total_delta: number;
+        };
+        /**
+         * PlanStatusNote
+         * @description Ein Vorbehalt, den die Stadt selbst nennt (in unseren Worten, mit Quelle).
+         */
+        PlanStatusNote: {
+            /** Text */
+            text: string;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanStatusSnapshot */
+        PlanStatusSnapshot: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            /** Counts */
+            counts: components["schemas"]["PlanStatusCount"][];
+            /**
+             * PlanStatusMovement
+             * @description Was sich seit der vorigen Momentaufnahme bewegt hat — auch die Zählbasis.
+             */
+            movement: {
+                /** Counts */
+                counts: components["schemas"]["PlanStatusMove"][];
+                /** Since */
+                since: string;
+                /** Since Label */
+                since_label: string;
+                /** Total Before */
+                total_before: number;
+                /** Total Delta */
+                total_delta: number;
+            } | null;
+            /** Total */
+            total: number;
+        };
+        /** PlanTemplateRef */
+        PlanTemplateRef: {
+            /** Date */
+            date: string | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Template Number */
+            template_number: string;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string | null;
+        };
+        /** PlanTimeline */
+        PlanTimeline: {
+            /** Count */
+            count: number;
+            /** Log */
+            log: components["schemas"]["PlanTimelineYear"][];
+            /** Span */
+            span: string;
+            /** Stations */
+            stations: components["schemas"]["PlanTimelineStation"][];
+        };
+        /** PlanTimelineMember */
+        PlanTimelineMember: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Decision Id */
+            decision_id: number | null;
+        };
+        /** PlanTimelineStation */
+        PlanTimelineStation: {
+            /** Committees */
+            committees: string[];
+            /** Date */
+            date: string;
+            /** Date End */
+            date_end: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "adoption" | "amendment" | "evaluation" | "report" | "preparation";
+            /** Label */
+            label: string | null;
+            /** Members */
+            members: components["schemas"]["PlanTimelineMember"][];
+            /**
+             * Mode
+             * @enum {string|null}
+             */
+            mode: "adopted" | "noted" | null;
+            /** Oral */
+            oral: boolean;
+            /**
+             * PlanQuoted
+             * @description Ein Satz mit der wörtlichen Stelle, die ihn belegt.
+             */
+            summary: {
+                /** Quote */
+                quote: string;
+                /** Text */
+                text: string;
+            } | null;
+            /** Template Number */
+            template_number: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PlanTimelineYear
+         * @description Ein Abschnitt des Zeitstrahls, das jüngste Jahr zuerst.
+         *
+         *     ``gap``: In diesen Jahren war kein Bericht zu finden — „keinen gefunden“, nicht „es gab keinen“.
+         */
+        PlanTimelineYear: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "year" | "gap";
+            /** Stations */
+            stations: number[];
+            /** Text */
+            text: string | null;
+            /** Year */
+            year: number;
+            /** Year To */
+            year_to: number;
+        };
+        /**
+         * PlanUpcoming
+         * @description Was ein Plan selbst als Nächstes vorsieht — eine Angabe aus dem Plan, keine Frist von uns.
+         */
+        PlanUpcoming: {
+            /** Date */
+            date: string;
+            /** Date Label */
+            date_label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "end" | "review";
+            /** Plan Key */
+            plan_key: string;
+            /** Plan Title */
+            plan_title: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * PlanView
+         * @description Eine Ansicht der Übersicht: eine Auswahl von Plänen in einer Reihenfolge — eine Tatsache mit
+         *     Datum, keine Rangfolge nach gut oder schlecht.
+         */
+        PlanView: {
+            /** Hint */
+            hint: string;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "recent" | "ending" | "silent";
+            /** Label */
+            label: string;
+            /** Plans */
+            plans: string[];
+        };
+        /** Plans */
+        Plans: {
+            /** As Of */
+            as_of: string;
+            /** As Of Label */
+            as_of_label: string;
+            axis: components["schemas"]["PlanAxis"];
+            /** Count */
+            count: number;
+            /** Fields */
+            fields: components["schemas"]["PlanFieldCount"][];
+            /** Follow Up Caveat */
+            follow_up_caveat: string;
+            /** Follow Ups */
+            follow_ups: components["schemas"]["PlanFollowUp"][];
+            /** Groups */
+            groups: components["schemas"]["PlanGroup"][];
+            /** Recent */
+            recent: components["schemas"]["PlanRecentReport"][];
+            /** References */
+            references: components["schemas"]["PlanCard"][];
+            /** Upcoming */
+            upcoming: components["schemas"]["PlanUpcoming"][];
+            /** Views */
+            views: components["schemas"]["PlanView"][];
         };
         /** PolicyField */
         PolicyField: {
@@ -15483,6 +19078,34 @@ export interface components {
             figures: components["schemas"]["PrefaceFigure"][];
             /** Plan Budget Year */
             plan_budget_year: number;
+        };
+        /**
+         * ProgramStance
+         * @description Was das Wahlprogramm einer Liste im Rat zu diesem Punkt sagt
+         *     (``council/programm_bezug.py``): wörtliches Zitat, im Code gegen das
+         *     Programm geprüft und von einem zweiten Modell bestätigt.
+         */
+        ProgramStance: {
+            /** Basis */
+            basis: string;
+            /** Label */
+            label: string;
+            /** Page */
+            page: number | null;
+            /** Program Title */
+            program_title: string;
+            /** Program Url */
+            program_url: string | null;
+            /** Quote */
+            quote: string;
+            /** Reason */
+            reason: string;
+            /** Seats */
+            seats: number;
+            /** Slug */
+            slug: string;
+            /** Stance */
+            stance: string;
         };
         /** ProjectReportIn */
         ProjectReportIn: {
@@ -16187,6 +19810,13 @@ export interface components {
             top: string | null;
             /** Vote */
             vote: string | null;
+        };
+        /** RecoveryIn */
+        RecoveryIn: {
+            /** Key Version */
+            key_version: number;
+            /** Wrapped Recovery */
+            wrapped_recovery: string;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -17238,6 +20868,84 @@ export interface components {
              * @default
              */
             selection: string;
+            /**
+             * Surface
+             * @default lotti
+             * @enum {string}
+             */
+            surface: "lotti" | "page";
+        };
+        /**
+         * SessionCourse
+         * @description Der „Kurs der Sitzung" (``docs/plan-sitzungsseite-kurs.md``, Schritt 1).
+         *
+         *     ``items`` ist nach Tagesordnungsnummer geschlüsselt und trägt jeden Punkt,
+         *     der in einer Boje steht — nicht die Überschriften und nicht den
+         *     nichtöffentlichen Teil. ``public_count`` und ``closed_count`` zählen alle
+         *     Zeilen der Tagesordnung („17 öffentlich · 5 nichtöffentlich"),
+         *     ``substantive_count`` die inhaltlichen Punkte (ohne Formalien,
+         *     Fragestunde, Anfragen, Mitteilungen — „3 von 9").
+         */
+        SessionCourse: {
+            /** Closed Count */
+            closed_count: number;
+            /** Items */
+            items: {
+                [key: string]: components["schemas"]["CourseItem"];
+            };
+            /**
+             * CourseNextSession
+             * @description Die nächste Sitzung desselben Gremiums — „Wie es weitergeht".
+             */
+            next_session: {
+                /** Has Agenda */
+                has_agenda: boolean;
+                /** Ksinr */
+                ksinr: number;
+                /** Location */
+                location: string | null;
+                /** Session Date */
+                session_date: string;
+                /** Session Time */
+                session_time: string | null;
+            } | null;
+            /**
+             * CourseProtocolEstimate
+             * @description Wann das Protokoll voraussichtlich erscheint (``council/protokoll_erwartung.py``):
+             *     wenige Tage nach der Sitzung, in der es genehmigt wird — der nächsten des
+             *     Gremiums. ``basis`` sagt, ob deren Datum im Kalender steht oder aus
+             *     derselben Jahreszeit früherer Jahre geschätzt ist (dann ungenauer).
+             */
+            protocol_estimate: {
+                /** Approval Date */
+                approval_date: string;
+                /**
+                 * Basis
+                 * @enum {string}
+                 */
+                basis: "next_session" | "history";
+                /** Earliest */
+                earliest: string;
+                /** Expected */
+                expected: string;
+                /** Latest */
+                latest: string;
+            } | null;
+            /** Public Count */
+            public_count: number;
+            /** Stages */
+            stages: components["schemas"]["CourseStage"][];
+            /** Start */
+            start: string | null;
+            /** Substantive Count */
+            substantive_count: number;
+            /** Summary */
+            summary: string | null;
+            /**
+             * Summary Source
+             * @enum {string}
+             */
+            summary_source: "rule" | "model";
         };
         /**
          * SessionDetail
@@ -17257,6 +20965,7 @@ export interface components {
             attendance: components["schemas"]["Attendance"][];
             /** Committee */
             committee: string;
+            course?: components["schemas"]["SessionCourse"];
             /** Decisions */
             decisions: components["schemas"]["DecisionRow"][];
             /** Fetched At */
@@ -17282,10 +20991,183 @@ export interface components {
             session_date: string;
             /** Session Time */
             session_time?: string | null;
+            /** Terms */
+            terms?: components["schemas"]["PageTerm"][];
             /** Url */
             url: string | null;
             /** Video Results */
             video_results: components["schemas"]["VideoResult"][];
+        };
+        /**
+         * SessionItemDetail
+         * @description Ein Tagesordnungspunkt auf seiner eigenen Seite
+         *     (``docs/plan-sitzungsseite-kurs.md``, Schritt 4). ``decision_id`` steht,
+         *     sobald das Protokoll einen Beschluss dazu hat — dann führt die Seite zur
+         *     Beschluss-Seite (Plan 3.9). ``position``/``count``: der wievielte Punkt
+         *     der Sitzung (Formalien als einer).
+         */
+        SessionItemDetail: {
+            /** Amendments */
+            amendments?: components["schemas"]["ItemAmendment"][];
+            arguments?: components["schemas"]["ItemArguments"];
+            budget_context?: components["schemas"]["ItemBudgetContext"];
+            /** Committee */
+            committee: string;
+            /** Count */
+            count: number;
+            course_item: components["schemas"]["CourseItem"];
+            /** Decision Id */
+            decision_id: number | null;
+            /** Documents */
+            documents: components["schemas"]["SessionItemDocument"][];
+            dossier?: components["schemas"]["ItemDossier"];
+            /** Has Protocol */
+            has_protocol: boolean;
+            /** History */
+            history: components["schemas"]["SessionItemStation"][];
+            item: components["schemas"]["AgendaItemRow"];
+            /** Ksinr */
+            ksinr: number;
+            /**
+             * SessionItemNeighbor
+             * @description Der Punkt davor oder danach — Zurück und Weiter.
+             */
+            next: {
+                /** Item Number */
+                item_number: string;
+                /** Short Title */
+                short_title: string;
+                /** Type Label */
+                type_label: string | null;
+            } | null;
+            /** Position */
+            position: number;
+            /**
+             * SessionItemNeighbor
+             * @description Der Punkt davor oder danach — Zurück und Weiter.
+             */
+            previous: {
+                /** Item Number */
+                item_number: string;
+                /** Short Title */
+                short_title: string;
+                /** Type Label */
+                type_label: string | null;
+            } | null;
+            program_stances?: components["schemas"]["ItemProgramStances"];
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time: string | null;
+            surroundings?: components["schemas"]["ItemSurroundings"];
+            /**
+             * TemplateFields
+             * @description Was die Vorlage eines Punkts schon trägt, ohne Modell
+             *     (``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).
+             *     ``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher
+             *     Wortlaut — die Seite zeigt sie als Zitat.
+             */
+            template_fields: {
+                /** TemplateFieldsClimate */
+                climate: {
+                    /** Relevant */
+                    relevant: boolean | null;
+                    /** Text */
+                    text: string;
+                } | null;
+                /** TemplateFieldsCost */
+                cost: {
+                    /**
+                     * Status
+                     * @enum {string}
+                     */
+                    status: "amount" | "none" | "text";
+                    /** Text */
+                    text: string;
+                } | null;
+                /** Document Url */
+                document_url: string | null;
+                /** Motions */
+                motions: components["schemas"]["TemplateFieldsMotion"][];
+                /** Office */
+                office: string | null;
+                /** Proposed Decision */
+                proposed_decision: string | null;
+                /** Template Number */
+                template_number: string | null;
+            } | null;
+            /** Terms */
+            terms?: components["schemas"]["PageTerm"][];
+        };
+        /**
+         * SessionItemDocument
+         * @description Eine Unterlage zum Punkt — alles extern im Ratsinfo. Die Felder ab
+         *     ``document_id`` tragen die Gegenlese-Liste (Plan Vorlagen aufbereiten,
+         *     § 6.1); Protokolle früherer Stationen haben sie nicht.
+         */
+        SessionItemDocument: {
+            /** After Session */
+            after_session?: boolean;
+            /** Applicants */
+            applicants?: string[];
+            /** Date */
+            date: string | null;
+            /** Doc Type */
+            doc_type?: string;
+            /** Document Id */
+            document_id?: number;
+            /** Is Scan */
+            is_scan?: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "template" | "attachment" | "protocol";
+            /** Label */
+            label: string;
+            /** List No */
+            list_no?: number;
+            /** Pages */
+            pages?: number | null;
+            /** Url */
+            url: string;
+        };
+        /**
+         * SessionItemNeighbor
+         * @description Der Punkt davor oder danach — Zurück und Weiter.
+         */
+        SessionItemNeighbor: {
+            /** Item Number */
+            item_number: string;
+            /** Short Title */
+            short_title: string;
+            /** Type Label */
+            type_label: string | null;
+        };
+        /**
+         * SessionItemStation
+         * @description Eine Station der Vorgeschichte eines Punkts. ``current`` ist diese
+         *     Sitzung; ``text`` die Kurzfassung des Beschlusses, wo es einen gibt.
+         */
+        SessionItemStation: {
+            /** Committee */
+            committee: string;
+            /** Current */
+            current: boolean;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Item Number */
+            item_number: string;
+            /** Ksinr */
+            ksinr: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Session Date */
+            session_date: string;
+            /** Text */
+            text: string | null;
+            /** Vote */
+            vote: string | null;
         };
         /** SessionList */
         SessionList: {
@@ -17600,6 +21482,68 @@ export interface components {
             label: string | null;
             /** Status */
             status: string;
+            /** Url */
+            url: string | null;
+        };
+        /**
+         * TemplateFields
+         * @description Was die Vorlage eines Punkts schon trägt, ohne Modell
+         *     (``council/vorlage_felder.py``, Plan Vorlagen aufbereiten, Stufe 0).
+         *     ``proposed_decision``, ``cost.text`` und ``climate.text`` sind amtlicher
+         *     Wortlaut — die Seite zeigt sie als Zitat.
+         */
+        TemplateFields: {
+            /** TemplateFieldsClimate */
+            climate: {
+                /** Relevant */
+                relevant: boolean | null;
+                /** Text */
+                text: string;
+            } | null;
+            /** TemplateFieldsCost */
+            cost: {
+                /**
+                 * Status
+                 * @enum {string}
+                 */
+                status: "amount" | "none" | "text";
+                /** Text */
+                text: string;
+            } | null;
+            /** Document Url */
+            document_url: string | null;
+            /** Motions */
+            motions: components["schemas"]["TemplateFieldsMotion"][];
+            /** Office */
+            office: string | null;
+            /** Proposed Decision */
+            proposed_decision: string | null;
+            /** Template Number */
+            template_number: string | null;
+        };
+        /** TemplateFieldsClimate */
+        TemplateFieldsClimate: {
+            /** Relevant */
+            relevant: boolean | null;
+            /** Text */
+            text: string;
+        };
+        /** TemplateFieldsCost */
+        TemplateFieldsCost: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "amount" | "none" | "text";
+            /** Text */
+            text: string;
+        };
+        /** TemplateFieldsMotion */
+        TemplateFieldsMotion: {
+            /** Applicants */
+            applicants: string[];
+            /** Label */
+            label: string;
             /** Url */
             url: string | null;
         };
@@ -18910,6 +22854,138 @@ export interface operations {
             };
         };
     };
+    list_passkeys_api_account_passkeys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountPasskeyList"];
+                };
+            };
+        };
+    };
+    add_passkey_api_account_passkeys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountPasskeyList"];
+                };
+            };
+            /** @description Passkey schon vorhanden */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_options_api_account_passkeys_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptions"];
+                };
+            };
+            /** @description Höchstzahl erreicht */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_passkey_api_account_passkeys__passkey_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountPasskeyList"];
+                };
+            };
+            /** @description Unbekannt */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Letzter Weg ins Konto */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     test_notification_api_account_test_notification_post: {
         parameters: {
             query?: never;
@@ -18926,6 +23002,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TestDelivery"];
+                };
+            };
+        };
+    };
+    ui_event_api_activity_event_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityEventIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -20399,6 +24508,39 @@ export interface operations {
             };
         };
     };
+    magic_einloesen_api_auth_magic_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MagicLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     me_api_auth_me_get: {
         parameters: {
             query?: never;
@@ -20415,6 +24557,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+        };
+    };
+    login_api_auth_passkey_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Passkey unbekannt oder ungültig */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_options_api_auth_passkey_login_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptions"];
+                };
+            };
+        };
+    };
+    signup_api_auth_passkey_signup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeySignupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Adresse oder Passkey schon vergeben */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    signup_options_api_auth_passkey_signup_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeySignupOptionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptions"];
+                };
+            };
+            /** @description Adresse schon registriert */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -21541,6 +25823,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetNotes"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plan_budget_api_council_budget_plan__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanBudget"];
                 };
             };
             /** @description Validation Error */
@@ -22933,6 +27246,39 @@ export interface operations {
             };
         };
     };
+    page_questions_api_council_page_questions_get: {
+        parameters: {
+            query?: {
+                ksinr?: number | null;
+                nr?: string | null;
+                decision_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageQuestions"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     parties_api_council_parties_get: {
         parameters: {
             query?: never;
@@ -23171,6 +27517,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plan_detail_api_council_plan__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plan_geojson_api_council_plan__key__geojson_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanGeoJson"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plans_overview_api_council_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plans"];
                 };
             };
         };
@@ -23417,6 +27845,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_item_api_council_session__ksinr__item_get: {
+        parameters: {
+            query: {
+                nr: string;
+            };
+            header?: never;
+            path: {
+                ksinr: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionItemDetail"];
                 };
             };
             /** @description Validation Error */
@@ -23935,6 +28396,290 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NewsSeen"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notes_api_notes_get: {
+        parameters: {
+            query?: {
+                target_kind?: "agenda_item" | "decision" | null;
+                target_key?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_keys_api_notes_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+        };
+    };
+    put_keys_api_notes_keys_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteKeysIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_keys_api_notes_keys_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotesDeleted"];
+                };
+            };
+        };
+    };
+    put_recovery_api_notes_keys_recovery_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_passkey_api_notes_passkeys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyAddIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_passkey_api_notes_passkeys__passkey_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteKeysState"];
+                };
+            };
+            /** @description Letzter Weg zu den Notizen */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_note_api_notes__target_kind___target_key___kind__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_kind: "agenda_item" | "decision";
+                target_key: string;
+                kind: "note" | "transcript";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteEntry"];
+                };
+            };
+            /** @description Version veraltet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_note_api_notes__target_kind___target_key___kind__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_kind: "agenda_item" | "decision";
+                target_key: string;
+                kind: "note" | "transcript";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gelöscht */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -27090,4 +31835,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 14638fd7261b65de6e95c89748c24b301eced0e883f72b5605ae7dcfe2c65d1f
+// vertrag-sha256: 37b1796e82d2aba5097fb524b164e31fc32c26d9ebde2ec5f33c51729cf1b747

@@ -52,6 +52,11 @@ export default function DatenschutzPage() {
           <Section title="Welche Daten wir verarbeiten">
             <ul className="list-disc space-y-1 pl-5">
               <li><strong>Konto:</strong> E-Mail-Adresse und ein Passwort-Hash (das Passwort selbst wird nicht im Klartext gespeichert).</li>
+              {/* Hinter dem Schalter `passkey-anmeldung` — wie bei den Notizen
+                  steht der Absatz auf Prod erst mit der Freigabe. */}
+              {process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev" && (
+                <li><strong>Anmeldung mit Passkey (optional):</strong> Meldest du dich mit einem Passkey an, speichern wir dessen Kennung, den öffentlichen Schlüssel, einen Zähler, eine Gerätebezeichnung wie „iPhone“ sowie Datum der Einrichtung und der letzten Anmeldung. Der private Schlüssel und dein Fingerabdruck bzw. Gesicht bleiben auf deinem Gerät oder in deinem Schlüsselbund; wir sehen sie nie. Für die Anmeldung merken wir uns fünf Minuten lang eine Zufallszahl, bei der Registrierung zusätzlich Name und E-Mail-Adresse, bis das Konto angelegt ist. Kommt ein Passkey dazu, schicken wir dir einen Hinweis an deine bestätigte Adresse. Passkeys werden mit deinem Konto gelöscht.</li>
+              )}
               <li><strong>Anmeldung mit Apple (optional):</strong> Meldest du dich mit Apple an, erhalten wir von Apple eine pseudonyme Nutzerkennung und deine E-Mail-Adresse (bei „E-Mail-Adresse verbergen" eine Apple-Weiterleitungsadresse). Beides dient ausschließlich der Anmeldung und Konto-Verknüpfung.</li>
               <li><strong>Push (optional):</strong> ein Geräte-Token, wenn du App-Push-Benachrichtigungen aktivierst.</li>
               <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen. Dazu gehören auch die Stadtteile, die „Mein Viertel" als deine Viertel zeigt — sie sind Themen deines Kontos und liegen wie diese auf dem Server.</li>
@@ -67,6 +72,11 @@ export default function DatenschutzPage() {
               <li><strong>Tippspiel zur Wahl:</strong> Spielst du mit, speichern wir den Namen, den du dafür wählst, optional eine Parteizugehörigkeit und deine Tipps. <strong>Name, Partei und Platzierung sind in der Rangliste öffentlich sichtbar</strong> — wähle also keinen Namen, der dich ungewollt erkennbar macht. Ohne Konto erkennt dich das Spiel an einem Cookie (siehe unten), in Konto-Runden an deinem Konto.</li>
               <li><strong>Geteilte Antworten:</strong> Wenn du ausdrücklich „Teilen" auswählst, speichern wir Frage, Antwort und die dazugehörigen Belege unter einem nicht erratbaren öffentlichen Link. Jede Person mit dem Link kann den Inhalt lesen und melden. Der Link wird mit deinem Konto gelöscht; gemeldete Links können wir vorher entfernen.</li>
               <li><strong>Rückmeldungen zu Einordnungen:</strong> Wenn du bei „Ideen aus anderen Städten" angibst, ob eine Einordnung stimmt, speichern wir deine Antwort mit deinem Konto, damit du sie wiedersiehst und wir die Einordnungen prüfen können. Sie werden mit deinem Konto gelöscht.</li>
+              {/* Hinter dem Schalter `notizen`: Auf dev sind alle Schalter an, auf Prod
+                  steht der Absatz erst mit der Freigabe (dann fällt diese Bedingung weg). */}
+              {process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev" && (
+                <li><strong>Notizen (optional):</strong> Notizen zu Tagesordnungspunkten und Beschlüssen werden auf deinem Gerät verschlüsselt, bevor sie an uns gehen. Den Schlüssel schließt ein Passkey auf (über die WebAuthn-Erweiterung „PRF“; der Passkey selbst bleibt in deinem Schlüsselbund) oder eine eigene Notiz-Passphrase. Wir speichern nur den verschlüsselten Text, den verpackten Schlüssel und je Passkey dessen Kennung und eine Gerätebezeichnung wie „iPhone“ — die Notizen können wir nicht lesen. Sichtbar ist, zu welchem Punkt es eine Notiz gibt, wann sie geändert wurde und wie lang sie ungefähr ist. Wählst du „Auf diesem Gerät offen lassen“, liegt der Schlüssel in deinem Browser (IndexedDB), nicht exportierbar. Notizen, Schlüssel und Passkey-Einträge werden mit deinem Konto gelöscht.</li>
+              )}
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
             </ul>
           </Section>

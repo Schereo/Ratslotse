@@ -1,0 +1,18 @@
+{
+ "plan": "klimaschutzplan_2035",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "9f0ec626d0c86e9c",
+ "plain": [
+  "Der Plan bündelt Oldenburgs Klimaschutzmaßnahmen und soll den Weg zur Klimaneutralität der Stadt weisen.",
+  "Er enthält 90 Maßnahmen in 20 Paketen, die Emissionen aus Energieverbrauch und andere Emissionen senken sollen.",
+  "Alle Maßnahmen sollen sofort und vollständig umgesetzt werden; laut Szenario ist Klimaneutralität bis 2035 trotzdem nicht erreichbar."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Klimaschutzplan 2035 berichtet oder beschlossen?",
+  "Sind alle Maßnahmen im Klimaschutzplan Oldenburg 2035 sofort und vollständig umzusetzen?",
+  "Welche Energie- und Treibhausgasbilanz sieht der Klimaschutzplan Oldenburg 2035 ab 2021 vor?"
+ ]
+}

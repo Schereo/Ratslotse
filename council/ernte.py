@@ -37,7 +37,11 @@ _SCHLUSS = (r"(?:In[^\S\n]+Vertretung|Im[^\S\n]+Auftrag|"
 # - Der Druckkopf („Ausdruck vom: …", „Seite: 2/5") wird vor der Ernte
 #   entfernt (``_ohne_druckkopf``) statt als Blockende zu gelten: Er steht
 #   mitten im Vorschlag, wo die Seite umbricht (26/0737, rund 76 Vorlagen).
+# „c) Klima“/„d) Weitere“ nur allein auf der Zeile: Manche Vorlagen zählen
+# anders (24/0412: „b)“ im Finanz-Punkt; 25/0713: „c)“ im Klima-Punkt) und
+# schieben die folgenden Punkte einen Buchstaben nach hinten.
 _ENDE = (r"(?:a\)[^\S\n]*Finanzen|b\)[^\S\n]*Klima|c\)[^\S\n]*Weitere|"
+         r"[cd]\)[^\S\n]*Klima[^\S\n]*(?=\n|$)|[de]\)[^\S\n]*Weitere[^\S\n]*(?=\n|$)|"
          + _SCHLUSS + r"(?=[^\S\n]*\n|[^\S\n]*$)|"
          r"(?:Beschlussvorschlag|Sachverhalt|Begründung|Beratungsfolge|"
          r"Finanzielle[^\S\n]+Auswirkungen|Klimarelevante[^\S\n]+Auswirkungen|"
@@ -92,11 +96,19 @@ def _saeubern(text: str, max_len: int = 800) -> str | None:
 # re.MULTILINE nur wegen des „^" der alten Form. Es färbt auf das „$" in _ENDE
 # ab — dort steht aber neben jedem „[^\S\n]*$" schon ein „[^\S\n]*\n", beide
 # Zweige meinen dasselbe Zeilenende. _KLIMA_RE bleibt deshalb ohne das Flag.
+# Ein Punkt kann LEER sein: „b) Klima“, darunter nichts, dann „c) Weitere“.
+# Der Kopf schluckte früher mit „\s*\n“ alle Leerzeilen bis vor „c) Weitere“;
+# danach fand das Ende kein „\n“ mehr davor, und der Klima-Check zeigte den
+# Text der weiteren Auswirkungen (26/0681/1, Aktionsplan gegen Gewalt an
+# Frauen*: „c) Weitere Die Umsetzung …“, auf dev 18 Vorlagen). Deshalb endet
+# der Kopf an SEINEM Zeilenende, und das Ende gilt auch direkt am Anfang des
+# Abschnitts (nach dem eben gelesenen Zeilenumbruch).
+_ZEILENANFANG = r"(?:\n|(?<=\n))\s*"
 _FINANZ_RE = re.compile(
     r"(?:\ba\)[^\S\n]*Finanzen|^[^\S\n]*Finanzielle[^\S\n]+Auswirkungen[^\S\n]*:?)"
-    r"[^\S\n]*\n(?P<t>.*?)(?=\n\s*b\)\s*Klima|\n\s*" + _ENDE + r"|\Z)",
+    r"[^\S\n]*\n(?P<t>.*?)(?=" + _ZEILENANFANG + r"b\)\s*Klima|" + _ZEILENANFANG + _ENDE + r"|\Z)",
     re.DOTALL | re.MULTILINE)
-_KLIMA_RE = re.compile(r"\bb\)\s*Klima\s*\n(?P<t>.*?)(?=\n\s*" + _ENDE + r"|\Z)",
+_KLIMA_RE = re.compile(r"\bb\)\s*Klima[^\S\n]*\n(?P<t>.*?)(?=" + _ZEILENANFANG + _ENDE + r"|\Z)",
                        re.DOTALL)
 # Der Klima-Block beginnt fast immer mit dem Prüfvermerk — der ist die Kerninfo.
 _RELEVANT_RE = re.compile(r"(?:Prüfungsrelevant:\s*)?\b(Ja|Nein)\b", re.IGNORECASE)
@@ -110,8 +122,13 @@ def auswirkungen(vorlagen_text: str) -> dict:
     text = _ohne_druckkopf(vorlagen_text)
     fin = _FINANZ_RE.search(text)
     kli = _KLIMA_RE.search(text)
-    return {"finanzen": _saeubern(fin.group("t")) if fin else None,
-            "klima": _saeubern(kli.group("t"), max_len=2500) if kli else None}
+    klima = _saeubern(kli.group("t"), max_len=2500) if kli else None
+    # Manche Vorlagen zählen IM Klima-Punkt weiter („b) Klima / c) Prüfungsrelevant:
+    # Nein …“, 24/0622, 25/0713, 25/0796). Der Buchstabe ist Satz, kein Inhalt —
+    # und verdeckte den Prüfvermerk für ``klima_relevant``.
+    if klima:
+        klima = re.sub(r"^[a-e]\)\s+", "", klima) or None
+    return {"finanzen": _saeubern(fin.group("t")) if fin else None, "klima": klima}
 
 
 def klima_relevant(klima_text: str | None) -> bool | None:
@@ -210,7 +227,14 @@ def deviation(vorschlag: str | None, official_text: str | None) -> str | None:
     dem Protokoll extrahierte Beschluss ist oft eine Kurzfassung des Vorschlags
     — Kürzung allein ist keine inhaltliche Änderung. Gezählt wird, welcher
     Anteil des kürzeren Texts als gemeinsame Blöcke (ab 12 Zeichen, gegen
-    Zufallstreffer) im längeren wiederkehrt."""
+    Zufallstreffer) im längeren wiederkehrt.
+
+    **Eine Ergänzung ist eine Änderung.** Steht der Vorschlag vollständig im
+    Beschluss, der Beschluss ist aber deutlich länger, hat der Rat etwas
+    angefügt („… unter Berücksichtigung des Änderungsantrages der SPD",
+    ein zusätzlicher Satz zur auflösenden Bedingung beim Stadionneubau) —
+    das Containment allein nannte das „unchanged". Gemessen am 14.11.2026:
+    24 Beschlüsse im Bestand, zwölf gelesen, alle zwölf echte Ergänzungen."""
     v, b = _norm(vorschlag or "")[:2000], _norm(official_text or "")[:2000]
     if len(v) < 25 or len(b) < 25:
         return None
@@ -219,6 +243,8 @@ def deviation(vorschlag: str | None, official_text: str | None) -> str | None:
     getroffen = sum(bl.size for bl in sm.get_matching_blocks() if bl.size >= 12)
     anteil = getroffen / len(kurz)
     if anteil >= 0.9:
+        if len(b) - len(v) >= max(60, 0.2 * len(v)):
+            return "slight"
         return "unchanged"
     if anteil >= 0.55:
         return "slight"

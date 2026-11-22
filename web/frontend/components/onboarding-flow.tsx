@@ -606,7 +606,7 @@ export function gewaehlteOrtsbereiche(topics: { name: string }[], orte: Ortsbere
 /** Die Beschreibung, an der der Wächter später misst. Dieselbe Formulierung
  *  wie in der App — sie darf nicht generisch sein, sonst trifft das Thema
  *  entweder alles oder nichts. */
-function ortsBeschreibung(ort: Ortsbereich): string {
+export function ortsBeschreibung(ort: Pick<Ortsbereich, "name" | "description">): string {
   const detail = (ort.description ?? "").trim();
   return detail
     ? `${detail} Neue Beschlüsse, Planungen und Maßnahmen mit Bezug zu ${ort.name}.`

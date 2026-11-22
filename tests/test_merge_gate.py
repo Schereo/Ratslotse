@@ -109,3 +109,15 @@ def test_gh_gibt_irgendwann_auf(monkeypatch):
     with pytest.raises(SystemExit) as fehler:
         tor.gh("api", "x", versuche=2)
     assert "dauerhaft kaputt" in str(fehler.value)
+
+
+def test_gemergt_wird_nur_der_gepruefte_commit():
+    """Geprüft wird ein Commit, gemergt wird der Kopf des Pull Requests — und
+    dazwischen kann jemand pushen. Am 22.11.2026 nannte GitHub direkt nach
+    einem Push noch den alten Kopf (alle Prüfungen grün) und mergte Sekunden
+    später den neuen, für den keine einzige gestartet war (#1949). Der Merge
+    trägt deshalb die geprüfte SHA: Passt sie nicht mehr, lehnt GitHub ab."""
+    befehl = tor.merge_befehl(1949, "759af1ddd334")
+    assert befehl[:3] == ["pr", "merge", "1949"]
+    assert befehl[befehl.index("--match-head-commit") + 1] == "759af1ddd334"
+    assert "--squash" in befehl

@@ -481,7 +481,7 @@ export default function View() {
   // Bewegung aus. Bis 11/2026 holte die Seite dafür die ganze
   // Themenfeld-Übersicht und filterte hier; die war in jeder Messung die
   // letzte Antwort.
-  const { stand, luecke } = standZeilen(data.data_status);
+  const { stand, luecke, sperre } = standZeilen(data.data_status);
 
   const b = data.movement;
   const feld = b.field ? POLICY_FIELD_LABELS[b.field] ?? b.field : null;
@@ -503,6 +503,7 @@ export default function View() {
             {luecke && <span className="font-sans"> · {luecke}</span>}
           </p>
         )}
+        {sperre && <p className="text-hinweis text-muted-foreground">{sperre}</p>}
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">

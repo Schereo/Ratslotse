@@ -1,0 +1,96 @@
+{
+ "plan": "ernaehrungsstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Die Strategie soll in Oldenburg Treibhausgas-Emissionen aus Landwirtschaft und Ernährung senken.",
+  "quote": "Die Stadt Oldenburg hat eine Ernährungsstrategie entwickelt, um Treibhausgas-Emissionen aus dem Landwirtschafts- und Ernährungsbereich zu reduzieren.",
+  "source": {
+   "kind": "attachment",
+   "template": "24/0810",
+   "document_id": 286179,
+   "label": "Ernährungsstrategie (Entwurf)",
+   "page": 5
+  }
+ },
+ "points": [
+  {
+   "text": "Lebensmittelverschwendung soll bis 2030 halbiert werden.",
+   "kind": "goal",
+   "due": {
+    "date": "2030",
+    "at": "end",
+    "label": "bis 2030"
+   },
+   "quote": "die Verschwendung von Lebensmitteln wird bis 2030 halbiert,",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0810",
+    "document_id": 286179,
+    "label": "Ernährungsstrategie (Entwurf)",
+    "page": 15
+   }
+  },
+  {
+   "text": "Der Konsum tierischer Produkte wie Fleisch, Wurst, Milchprodukte und Eier soll sinken.",
+   "kind": "goal",
+   "quote": "der Konsum von tierischen Produkten wie Fleisch, Wurstwaren, Milchprodukte oder Eiern wird im Sinne einer klimafreundlichen und gesunden Ernährung verringert,",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0810",
+    "document_id": 286179,
+    "label": "Ernährungsstrategie (Entwurf)",
+    "page": 15
+   }
+  },
+  {
+   "text": "Gesundheitsfördernde Ernährung soll für alle zugänglich sein.",
+   "kind": "goal",
+   "quote": "der Zugang zu gesundheitsfördernder Ernährung wird für alle ermöglicht,",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0810",
+    "document_id": 286179,
+    "label": "Ernährungsstrategie (Entwurf)",
+    "page": 15
+   }
+  },
+  {
+   "text": "Klimaschutz ist das prioritäre Ziel der Umsetzung der Strategie.",
+   "kind": "goal",
+   "quote": "Klimaschutz ist prioritäres Ziel der Umsetzung dieser Strategie",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0810",
+    "document_id": 286179,
+    "label": "Ernährungsstrategie (Entwurf)",
+    "page": 5
+   }
+  },
+  {
+   "text": "Die städtische Außer-Haus-Verpflegung soll vorrangig klimafreundliche, saisonale, regionale, faire und ökologische Produkte anbieten.",
+   "kind": "standard",
+   "quote": "die Stadt Oldenburg nimmt ihre Vorbildfunktion wahr, indem die städtische Außer-Haus-Verpflegung vorrangig mit klimafreundlichen, saisonalen, regionalen, fairen und ökologischen Produkten gestaltet wird,",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0810",
+    "document_id": 286179,
+    "label": "Ernährungsstrategie (Entwurf)",
+    "page": 15
+   }
+  },
+  {
+   "text": "Zu den ersten beschlossenen Schritten gehört, Schulgarten-AGs zu stärken und eine beispielhafte Wertschöpfungskette mit Betrieben der städtischen Außer-Haus-Verpflegung aufzubauen.",
+   "kind": "measure",
+   "quote": "d) Schulgarten AGs stärken; Eine beispielhafte Wertschöpfungskette mit geeigneten Betrieben der städtischen Außer-Haus-Verpflegung (AHV) aufbauen.",
+   "source": {
+    "kind": "decision",
+    "template": "24/0811",
+    "date": "2025-02-24",
+    "committee": "Rat"
+   }
+  }
+ ]
+}

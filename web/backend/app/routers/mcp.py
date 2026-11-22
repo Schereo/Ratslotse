@@ -45,7 +45,7 @@ from kern.store import Store
 
 from ..antworten import McpMessage, McpToken, McpTokenCreated, McpTokenList, Ok
 from ..config import get_settings
-from ..deps import get_council_store, get_store, ist_aktiv, require_permission
+from ..deps import get_council_store, get_store, ist_aktiv, require_permission, require_volle_anmeldung
 from ..ratelimit import RateLimiter
 from . import mcp_oauth
 
@@ -143,7 +143,8 @@ def list_tokens(
             "endpoint": _endpoint()}
 
 
-@router.post("/api/account/mcp-tokens", status_code=status.HTTP_201_CREATED)
+@router.post("/api/account/mcp-tokens", status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_volle_anmeldung)])
 def create_token(
     label: str = Body(..., embed=True, min_length=1, max_length=60),
     user: dict = Depends(require_mcp),

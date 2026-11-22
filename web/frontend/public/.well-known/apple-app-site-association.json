@@ -35,5 +35,11 @@
         ]
       }
     ]
+  },
+  "webcredentials": {
+    "apps": [
+      "YM87689GUY.de.ratslotse.app",
+      "YM87689GUY.de.ratslotse.dev"
+    ]
   }
 }

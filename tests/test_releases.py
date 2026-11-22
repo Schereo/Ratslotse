@@ -619,7 +619,7 @@ def test_die_ankuendigung_kommt_auch_bei_ausgeschalteter_zustellung_per_mail(sto
     # Morgen 10 Uhr UTC: nach der Einreihung (sie trägt die ECHTE Uhrzeit) und
     # außerhalb der Nachtruhe. Bis 09.11.2026 stand hier ein festes Datum —
     # ab 10:00 UTC an diesem Tag war die Meldung damit „noch nicht fällig",
-    # und der Test fiel für jeden Zweig.
+    # und der Test fiel für jeden Zweig gegen dev.
     morgen = (datetime.now(UTC) + timedelta(days=1)).replace(hour=10, minute=0)
     notify.zustellen(store, jetzt=morgen)
     assert sorted(k for k, _ in raus) == ["both", "email"]

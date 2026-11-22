@@ -1,0 +1,15 @@
+{
+ "plan": "luftreinhalteplan",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "19/0636",
+   "date": "2019-08-22",
+   "text": "Das Verfahren wurde zunächst nicht weitergeführt; die gerichtliche Entscheidung über den Inhalt eines zukünftigen Luftreinhalteplans sollte abgewartet werden.",
+   "quote": "Der vergleichsweise schwierige Abwägungsprozess und eine notwendige Effizienz bei der weiteren Bearbeitung der Luftschadstoffproblematik und weiterer Immissionsschutzangelegenheiten, führten dazu dass das Verfahren zunächst nicht weiter geführt wurde. Die gerichtliche Entscheidung über den Inhalt eines zukünftigen Luftreinhalteplans sollte abgewartet werden."
+  }
+ ]
+}

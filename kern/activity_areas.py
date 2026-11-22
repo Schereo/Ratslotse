@@ -32,7 +32,7 @@ AREAS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     ("search", "Suche", ("/council", "/council?tab=decisions", "/council?tab=themen")),
     ("decisions", "Beschlüsse", ("/council/decision", "/council/thema")),
     ("sessions", "Sitzungen", ("/council?tab=sessions", "/council/sitzung")),
-    ("analysis", "Analyse", ("/council?tab=analysis",)),
+    ("analysis", "Analyse", ("/council?tab=analysis", "/council/plan")),
     ("people", "Personen", ("/council/person", "/council/neuer-rat")),
     ("map", "Karte", ("/karte", "/council/ort")),
     ("district", "Mein Viertel", ("/viertel",)),

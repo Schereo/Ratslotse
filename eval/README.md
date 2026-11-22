@@ -86,6 +86,15 @@ Ratssitzungen aus `~/.cache/ratslotse/transkripte` — nicht im Repo, weil es
 O1s Aufzeichnung ist. Einmal je Rechner: `python eval/transkripte.py` (braucht
 `yt-dlp`; YouTube sperrt Rechenzentren, auf dem Server also nur mit Proxy).
 
+### Gold-Läufe „Frag den Rat“: das Messbuch (11/2026)
+
+Pipeline-Änderungen an „Frag den Rat“ (Suche, Kontext, Notizen, Regeln) misst
+`ops-gold.yml` auf dem Server gegen `cases_deep_gold.json`. Jeder Lauf gehört
+mit Label, Stand und Ergebnis in **`docs/gold-messbuch.md`**, auch ein
+erfolgloser. Der Prüfstand oben vergleicht nur Modelle und kennt diese Läufe
+nicht. Anlass: Die Belegnotizen galten nach dem Oktober als Gewinn, im
+November brachten sie nichts, und der Grund war nur aus Commits zu rekonstruieren.
+
 ### Fakten-Eval: Kontextfehler und Modellfehler getrennt (09/2026)
 
 `run_fakten.py` stellt jede Frage über den ECHTEN Weg — ein eigenes Backend,

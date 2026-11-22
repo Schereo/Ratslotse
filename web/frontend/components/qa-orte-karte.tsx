@@ -12,8 +12,10 @@ export type QaOrtPin = { id: number; nummer: number; name: string; lat: number; 
  *  CouncilMap (View-Persistenz, Stadtteil-Grenzen, Filter braucht hier
  *  niemand). Nummern-Pins im Fußnoten-Look; Klick öffnet das Beleg-Peek.
  *  Nur per next/dynamic (ssr:false) laden — Leaflet kennt kein window nicht. */
-export default function QaOrteKarte({ pins, onPin }: {
+export default function QaOrteKarte({ pins, onPin, label = "Karte der zitierten Orte" }: {
   pins: QaOrtPin[]; onPin: (id: number) => void;
+  /** Was die Karte zeigt — sie steht auch auf der Punkt-Seite („Wo das ist“). */
+  label?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const onPinRef = useRef(onPin);
@@ -72,5 +74,5 @@ export default function QaOrteKarte({ pins, onPin }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins.map((p) => p.id).join(",")]);
 
-  return <div ref={ref} className="h-44 w-full" aria-label="Karte der zitierten Orte" />;
+  return <div ref={ref} className="h-44 w-full" aria-label={label} />;
 }

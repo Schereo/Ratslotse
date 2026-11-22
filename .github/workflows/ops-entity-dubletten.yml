@@ -29,8 +29,14 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     steps:
+      # Für die SSH-Action aus .github/actions/ssh.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
       - name: Merge duplicate entities on server
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
+        uses: ./.github/actions/ssh
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -39,6 +45,7 @@ jobs:
           proxy_host: ${{ secrets.VPS_PROXY_HOST }}
           proxy_username: ${{ secrets.VPS_PROXY_USER }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           # ~165 Kandidatenpaare in 20er-Batches; ein Batch braucht gut eine Minute.
           command_timeout: 40m

@@ -18,6 +18,10 @@ export const fragenHref = (opts?: { q?: string; share?: string }) => {
 export const personHref = (slug: string) => `/council/person?slug=${encodeURIComponent(slug)}`;
 export const themaHref = (slug: string) => `/council/thema?slug=${encodeURIComponent(slug)}`;
 export const ortHref = (id: string) => `/council/ort?id=${encodeURIComponent(id)}`;
+/** Ein Plan der Stadt (Schalter `plaene`); Schlüssel aus `council/plans.py`. */
+export const planHref = (key: string) => `/council/plan?key=${encodeURIComponent(key)}`;
+/** Die Übersicht der Pläne — der Analyse-Reiter, der vorher „Ziele" hieß. */
+export const plaeneHref = "/council?tab=analysis&sub=ziele";
 /** Die vereinte Stadtkarte (`/karte`, STADTKARTE-PLAN.md): ohne `ort` die
  *  Stadt-Stufe, mit `ort` das Viertel, mit `vorhaben` das Detail. */
 export const karteHref = (ort?: string | null, vorhaben?: number | null) =>
@@ -41,6 +45,12 @@ export const sessionHref = (ksinr: number, tops?: string[]) => {
   return sauber.length ? `${ziel}&top=${encodeURIComponent(sauber.join(","))}` : ziel;
 };
 
+/** „Zurück zu den Sitzungen“ von der Sitzungs-Seite: die Liste, aufgeklappt
+ *  bei dieser Sitzung, wenn sie im gezeigten Zeitraum steht — sonst einfach die
+ *  Liste. `sessionHref` springt im zweiten Fall auf die Sitzungs-Seite, und
+ *  genau von dort kam man: Der Knopf führte im Kreis (Tim, 13.11.2026). */
+export const sitzungslisteHref = (ksinr: number) => `${sessionHref(ksinr)}&bleiben=1`;
+
 /** Die eigenständige Sitzungs-Seite — Ziel der Teilen-Knöpfe.
  *
  *  Bewusst ein anderer Pfad als `sessionHref`: Der führt in die Sitzungs*liste*
@@ -54,6 +64,12 @@ export const sessionHref = (ksinr: number, tops?: string[]) => {
  *  `tops` reist wie bei `sessionHref` als volle Nummer („Ö 6", nicht „6"): Die
  *  Seite rollt zu dieser Zeile und hebt sie kurz hervor.
  */
+/** Ein Tagesordnungspunkt auf seiner eigenen Seite (Schalter `punkt-seite`,
+ *  Plan Sitzungsseite § 3.15): `top` im selben Format wie beim geteilten Punkt. */
+/** Mitlesen einer Sitzung (Schalter `mitlesen`). */
+export const mitlesenHref = (ksinr: number) => `/council/sitzung/mitlesen?ksinr=${ksinr}`;
+export const punktHref = (ksinr: number, itemNumber: string) =>
+  `/council/punkt?ksinr=${ksinr}&top=${encodeURIComponent(itemNumber.trim())}`;
 export const sitzungHref = (ksinr: number, tops?: string[]) => {
   const ziel = `/council/sitzung?ksinr=${ksinr}`;
   const sauber = (tops ?? []).map((t) => t.trim()).filter(Boolean);

@@ -1,0 +1,89 @@
+{
+ "plan": "masterplan_stadtgruen",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan behandelt die zukünftige Entwicklung der städtischen Grünflächen im Siedlungszusammenhang.",
+  "quote": "Er stellt die zukünftige Entwicklung der städtischen Grünflächen im Siedlungszusammenhang für die nächsten 15 bis 20 Jahre dar.",
+  "source": {
+   "kind": "decision",
+   "template": "22/0642",
+   "date": "2022-09-26",
+   "committee": "Rat"
+  }
+ },
+ "points": [
+  {
+   "text": "Die gesamte Stadtbevölkerung soll ausreichend mit Stadtgrün versorgt werden.",
+   "kind": "goal",
+   "quote": "Entsprechend soll die ausreichende Versorgung der gesamten Stadtbevölkerung mit Stadtgrün sichergestellt werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0642",
+    "document_id": 251236,
+    "label": "Masterplan Stadtgrün, Textteil",
+    "page": 73
+   }
+  },
+  {
+   "text": "Bereiche mit hoher Biodiversität sollen erhalten, gefördert und durch Korridore und Verbindungselemente vernetzt werden.",
+   "kind": "goal",
+   "quote": "Als Gartengroßstadt Oldenburg soll die Stadt Bereiche mit hoher Biodiversität erhalten und fördern und diese durch ein geeignetes Netzwerk von Korridoren und Verbindungselementen (Biotopverbund) miteinander verbinden.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0642",
+    "document_id": 251236,
+    "label": "Masterplan Stadtgrün, Textteil",
+    "page": 74
+   }
+  },
+  {
+   "text": "Ein Wegenetz im Grünen soll Alltagsziele, Stadtviertel und Stadtgrün miteinander verbinden.",
+   "kind": "goal",
+   "quote": "Die Gartengroßstadt Oldenburg wird durch ein Wegenetzwerk im Grünen geprägt sein, welches Orte des täglichen Bedarfs, Stadtviertel und Stadtgrün miteinander verbindet und das Stadtgebiet wie ein System aus Grünen Adern durchzieht.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0642",
+    "document_id": 251236,
+    "label": "Masterplan Stadtgrün, Textteil",
+    "page": 74
+   }
+  },
+  {
+   "text": "Gründachpotenziale sollen genutzt und an geeigneten Stellen neue klimaaktive Flächen geschaffen werden.",
+   "kind": "measure",
+   "quote": "Hier wird die Gartengroßstadt Oldenburg bestehende Ressourcen durch die Ausschöpfung vorhandener Gründachpotenziale aktivieren und an geeigneten Stellen neue klimaaktive Flächen schaffen.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0642",
+    "document_id": 251236,
+    "label": "Masterplan Stadtgrün, Textteil",
+    "page": 74
+   }
+  },
+  {
+   "text": "Der Plan ist für die Verwaltung und künftige politische Entscheidungen verbindlich handlungsleitend.",
+   "kind": "standard",
+   "quote": "Mit dem Beschluss durch den Rat wird der Masterplan Stadtgrün verbindlich handlungsleitend für die Arbeit der Verwaltung sowie für zukünftige politische Entscheidungen.",
+   "source": {
+    "kind": "decision",
+    "template": "22/0642",
+    "date": "2022-09-26",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Das Amt für Umweltschutz und Bauordnung soll darauf hinwirken, dass die jeweils verantwortlichen Akteure die Maßnahmen umsetzen.",
+   "kind": "responsibility",
+   "quote": "Das Amt für Umweltschutz und Bauordnung wird beauftragt, sich dafür einzusetzen, dass die geforderten Maßnahmen durch die jeweils verantwortlichen Akteure durchgeführt werden, um die aufgeführten Ziele zu erreichen.",
+   "source": {
+    "kind": "decision",
+    "template": "22/0642",
+    "date": "2022-09-26",
+    "committee": "Rat"
+   }
+  }
+ ]
+}

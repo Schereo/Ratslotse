@@ -1,0 +1,18 @@
+{
+ "plan": "ernaehrungsstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "6909df5bb846e9b0",
+ "plain": [
+  "Die Strategie soll in Oldenburg den Ausstoß von Treibhausgasen durch Landwirtschaft und Ernährung senken.",
+  "Lebensmittelverschwendung soll bis 2030 halbiert werden, und der Konsum tierischer Produkte soll sinken.",
+  "Schulgarten-AGs sollen gestärkt und eine beispielhafte Wertschöpfungskette mit Betrieben der Stadtverpflegung aufgebaut werden."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zur Ernährungsstrategie berichtet oder beschlossen?",
+  "Was hat Oldenburg beschlossen, um Lebensmittelverschwendung bis 2030 zu halbieren?",
+  "Was soll die städtische Außer-Haus-Verpflegung laut Ernährungsstrategie in Oldenburg anbieten?"
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "plan": "klimaanpassungskonzept",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "24/0830",
+   "date": "2024-12-19",
+   "text": "Eine verwaltungsinterne Projektgruppe wurde gegründet und arbeitet an den inhaltlichen Schwerpunkten und Maßnahmen des Konzepts.",
+   "quote": "Es wurde eine verwaltungsinterne Projektgruppe gegründet, die gemeinsam an den inhaltlichen Schwerpunkten und Maßnahmen des Konzeptes arbeitet."
+  },
+  {
+   "template": "25/0465",
+   "date": "2025-08-21",
+   "text": "Am 6. November 2025 findet ein Workshop statt; mindestens 30 Prozent der Klimaanpassungsmaßnahmen müssen naturbasierte Lösungen sein.",
+   "quote": "Hierzu wird am 6. November 2025 ein dezernatsübergreifender Workshop stattfinden, an dem erneut verschiedenste lokale Expertinnen und Experten teilnehmen werden. Besonderer Wert wird dabei auf Maßnahmen gelegt, die gleichzeitig dem natürlichen Klimaschutz dienen. Mindestens 30 Prozent der Maßnahmen zur Klimaanpassung müssen nach Maßgabe der Fördergeberin naturbasierte Lösungen sein."
+  },
+  {
+   "template": "25/0863",
+   "date": "2025-12-09",
+   "text": "Erste Schlüsselmaßnahmen zur Klimaanpassung wurden erarbeitet und werden nun detaillierter ausgearbeitet und abgestimmt.",
+   "quote": "Am 6. November 2025 wurden in einem dezernatsübergreifenden Workshop erste Schlüsselmaßnahmen für die Klimaanpassung auf Grundlage der räumlichen und funktionalen Betroffenheiten sowie der identifizierten Handlungserfordernisse erarbeitet. Diese werden im Weiteren nun detaillierter ausgearbeitet und in einem engen Austausch mit den jeweiligen Expertinnen und Experten weiter abgestimmt."
+  }
+ ]
+}

@@ -19,13 +19,28 @@ import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Ohne diese Zeile pufferte Next 14 den Strom trotz allem oben: Ein GET-fetch
+// galt seinem fetch-Patch als zwischenspeicherbar, und dann las er die
+// Antwort ganz ein, bevor er sie weitergab (`next/dist/server/lib/
+// patch-fetch.js`). `cache: "no-store"` am Aufruf allein half im Versuch
+// nicht, erst die Einstellung für das ganze Segment. Die /ask-Route ist ein
+// POST und war nie betroffen. Gemessen am 09.11.2026 auf dev: Alle Rahmen
+// kamen gebündelt nach 104 s, die Fortschrittskarte stand so lange auf
+// „Frage aufteilen …". `tests/test_strom_routen.py` hält die Zeile fest.
+//
+// Seit Next 15 speichert `fetch` nicht mehr von selbst zwischen; unter 16.4.6
+// kam der Strom im Versuch (22.11.2026, Rahmen im 0,4-s-Takt) auch ohne die
+// Zeile einzeln an. Sie bleibt als Sicherung: Sie kostet nichts, und ihr
+// Fehlen war schon einmal wochenlang unbemerkt.
+export const fetchCache = "force-no-store";
 
 const BACKEND = process.env.BACKEND_URL || "http://localhost:8000";
 
-export async function GET(req: NextRequest, { params }: { params: { jobId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
+  const { jobId } = await params;
   // Job-IDs sind token_urlsafe(12) — alles andere gar nicht erst ans Backend
   // weiterreichen, damit hier kein Pfad zusammengebaut werden kann.
-  if (!/^[A-Za-z0-9_-]{1,64}$/.test(params.jobId)) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(jobId)) {
     return new Response(JSON.stringify({ detail: "Unbekannter Job." }), {
       status: 404, headers: { "Content-Type": "application/json" },
     });
@@ -36,7 +51,7 @@ export async function GET(req: NextRequest, { params }: { params: { jobId: strin
   const client = req.headers.get("x-client");
 
   const upstream = await fetch(
-    `${BACKEND}/api/council/deep-research/${params.jobId}/events${abParam}`,
+    `${BACKEND}/api/council/deep-research/${jobId}/events${abParam}`,
     {
       headers: {
         cookie: req.headers.get("cookie") ?? "",

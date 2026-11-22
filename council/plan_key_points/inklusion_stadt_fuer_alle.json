@@ -1,0 +1,76 @@
+{
+ "plan": "inklusion_stadt_fuer_alle",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan soll den Oldenburger Inklusionsprozess auf Grundlage der überarbeiteten Zielsetzung voranbringen.",
+  "quote": "Der Rat beauftragt die Verwaltung, den Oldenburger Inklusionsprozess auf Grundlage der überarbeiteten Zielsetzung voranzutreiben.",
+  "source": {
+   "kind": "template",
+   "template": "23/0189"
+  }
+ },
+ "points": [
+  {
+   "text": "Betriebe und Beschäftigte sollen stärker sensibilisiert werden; konkrete Netzwerke und Unterstützung sollen den Ausbildungs- und Arbeitsmarkt inklusiver machen.",
+   "kind": "measure",
+   "quote": "Darum sind eine verstärkte Sensibilisierung der Betriebe und der Beschäftigten sowie konkrete Netzwerk- und Unterstützungsangebote unumgänglich, um den hiesigen Ausbildungs- und Arbeitsmarkt inklusiver zu gestalten.",
+   "source": {
+    "kind": "template",
+    "template": "23/0189"
+   }
+  },
+  {
+   "text": "Quartiersmanagement soll zentral und dezentral integriert werden; Versorgungsengpässe sollen erkannt und mit geeigneten Maßnahmen angegangen werden.",
+   "kind": "measure",
+   "quote": "In Zukunft gilt es, sowohl das zentrale als auch das dezentrale Quartiersmanagement professionell integriert zu etablieren, Versorgungsengpässe zu identifizieren und mit geeigneten Maßnahmen gegenzusteuern.",
+   "source": {
+    "kind": "template",
+    "template": "23/0189"
+   }
+  },
+  {
+   "text": "Beteiligung soll auch Menschen erreichen, die üblichen Formaten fernbleiben und in kommunalen Entscheidungen selten gehört werden.",
+   "kind": "goal",
+   "quote": "Um allen Menschen in Oldenburg die Möglichkeit zu geben, die Zukunft unserer Stadt mitzugestalten, muss zukünftig noch mehr Augenmerk darauf gelegt werden, diejenigen zu erreichen, die üblicherweise Beteiligungsformaten fernbleiben und in kommunalen Entscheidungsprozessen selten Gehör finden.",
+   "source": {
+    "kind": "template",
+    "template": "23/0189"
+   }
+  },
+  {
+   "text": "Alle Menschen sollen gleichberechtigt an Bildung teilhaben und über ihre Lernwege entscheiden können.",
+   "kind": "goal",
+   "quote": "Alle Menschen können an Bildung gleichberechtigt teilhaben und entscheiden über die eigenen Lernwege.",
+   "source": {
+    "kind": "attachment",
+    "template": "23/0189",
+    "document_id": 259558,
+    "label": "Wertorientierte Zielsetzungen des Aktionsplans Inklusion",
+    "page": 1
+   }
+  },
+  {
+   "text": "Die Fokusthemen werden bis Ende 2025 vorrangig bearbeitet.",
+   "kind": "deadline",
+   "quote": "Bis Ende 2025 werden die genannten Fokusthemen prioritär bearbeitet.",
+   "source": {
+    "kind": "decision",
+    "template": "23/0189",
+    "date": "2023-04-24",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Die Strategische Sozialplanung koordiniert den Prozess und berichtet regelmäßig im Sozialausschuss.",
+   "kind": "responsibility",
+   "quote": "Koordiniert wird dieser Prozess durch die Strategische Sozialplanung, die in regelmäßigen Abständen dazu im Sozialausschuss berichtet.",
+   "source": {
+    "kind": "template",
+    "template": "23/0189"
+   }
+  }
+ ]
+}

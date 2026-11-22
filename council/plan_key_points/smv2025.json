@@ -1,0 +1,73 @@
+{
+ "plan": "smv2025",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan ist die Grundlage für die städtische Mobilitäts- und Verkehrsentwicklung.",
+  "quote": "Der Strategieplan Mobilität und Verkehr 2025 (smv2025) in der Fassung vom 31.03.2014 wird um die nachfolgend aufgeführten 26 aktuellen Zielsetzungen und Maßnahmen ergänzt und stellt als fortgeschriebener Plan weiterhin die Grundlage der städtischen Mobilitäts- und Verkehrsentwicklung dar.",
+  "source": {
+   "kind": "decision",
+   "template": "18/0254",
+   "date": "2018-08-27",
+   "committee": "Rat"
+  }
+ },
+ "points": [
+  {
+   "text": "Die VWG soll die jährlichen ÖPNV-Fahrgastzahlen von derzeit 19 Mio. auf 30 Mio. bis zum Jahr 2030 steigern.",
+   "kind": "goal",
+   "figure": {
+    "value": "30 Mio.",
+    "label": "Fahrgäste im Jahr bis 2030 (zuvor 19 Mio.)"
+   },
+   "due": {
+    "date": "2030",
+    "at": "end",
+    "label": "bis 2030"
+   },
+   "quote": "Für die VWG wurden in diesem Zusammenhang Zielsetzungen für den Unternehmensbereich ÖPNV formuliert, die eine Steigerung der jährlichen Fahrgastzahlen von derzeit 19 Mio. auf 30 Mio. bis zum Jahr 2030 vorsehen.",
+   "source": {
+    "kind": "template",
+    "template": "18/0254"
+   }
+  },
+  {
+   "text": "Pauschale Kfz-Fahrverbote sollen vermieden werden.",
+   "kind": "goal",
+   "quote": "Grundsätzlich soll die Vermeidung pauschaler Kfz-Fahrverbote eine wesentliche übergeordnete Zielsetzung sein.",
+   "source": {
+    "kind": "template",
+    "template": "18/0254"
+   }
+  },
+  {
+   "text": "Stadt-Umland-Busse sollen spürbar verbessert und der Regionalverkehr in den Stadtverkehr integriert werden.",
+   "kind": "measure",
+   "quote": "Insgesamt sieht die VWG im Rahmen ihrer Gesamtstrategie folgende Schwerpunkte vor: Spürbare Angebotsverbesserungen im Stadt-Umland-Busverkehr; Integration des Regionalverkehrs in den Stadtverkehr ( vgl. Nr.6, 15),",
+   "source": {
+    "kind": "template",
+    "template": "18/0254"
+   }
+  },
+  {
+   "text": "Ein P+R-Konzept soll einpendelnde Pkw schon deutlich außerhalb der Innenstadt auf den ÖPNV verlagern; schnelle Busverbindungen zum Zentrum sind Voraussetzung.",
+   "kind": "measure",
+   "quote": "Entwicklung und Umsetzung eines P+R-Konzeptes, das bereits deutlich außerhalb des Innenstadtbereiches einpendelnde PKW-Verkehre auf den ÖPNV verlagert. Schnelle und zügige Busverbindungen von den P+R-Plätzen in den Zentrumsbereich sind hierbei zwingende Voraussetzung.",
+   "source": {
+    "kind": "template",
+    "template": "18/0254"
+   }
+  },
+  {
+   "text": "Die B+R-Infrastruktur soll an wichtigen Haltestellen ausgebaut werden, besonders in den Vororten.",
+   "kind": "measure",
+   "quote": "Ausweitung der B+R-Infrastruktur an den wichtigsten Haltestellen – insbesondere in den Vororten Oldenburgs (Nr. 24),",
+   "source": {
+    "kind": "template",
+    "template": "18/0254"
+   }
+  }
+ ]
+}

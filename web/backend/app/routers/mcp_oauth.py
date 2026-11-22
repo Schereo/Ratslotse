@@ -71,7 +71,10 @@ from ..antworten import (McpGrant, McpGrantList, OAuthAuthorizeCheck, OAuthAutho
                          OAuthClientRegistered, OAuthProtectedResource, OAuthServerMetadata,
                          OAuthToken, Ok)
 from ..config import get_settings
-from ..deps import get_current_user, get_store, ist_aktiv, kein_fremder_aufruf, require_permission
+from ..deps import (
+    get_current_user, get_store, ist_aktiv, kein_fremder_aufruf, require_permission,
+    require_volle_anmeldung,
+)
 from ..ratelimit import RateLimiter
 
 router = APIRouter(tags=["mcp"])
@@ -558,7 +561,8 @@ def authorize_check(
     return {**antwort, "already_connected": schon, "at_limit": andere >= store.MCP_GRANTS_MAX}
 
 
-@router.post("/api/oauth/authorize", dependencies=[Depends(kein_fremder_aufruf)])
+@router.post("/api/oauth/authorize",
+             dependencies=[Depends(kein_fremder_aufruf), Depends(require_volle_anmeldung)])
 def authorize_decide(
     entscheidung: AuthorizeDecision,
     request: Request,

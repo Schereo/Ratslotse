@@ -156,7 +156,7 @@ test.describe("E-Mail-Adresse ändern", () => {
     await page.goto("/login");
     await page.locator("#email").fill(adresse);
     await page.locator("#password").fill(PASSWORT);
-    await page.getByRole("button", { name: "Anmelden" }).click();
+    await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
     await page.request.post("/api/onboarding/setup", { data: { step: 3, done: true } });
     return adresse;
@@ -183,12 +183,12 @@ test.describe("E-Mail-Adresse ändern", () => {
     await page.goto("/login");
     await page.locator("#email").fill(alt);
     await page.locator("#password").fill(PASSWORT);
-    await page.getByRole("button", { name: "Anmelden" }).click();
+    await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await expect(page.getByText(/E-Mail oder Passwort/i)).toBeVisible();
 
     await page.locator("#email").fill(neu);
     await page.locator("#password").fill(PASSWORT);
-    await page.getByRole("button", { name: "Anmelden" }).click();
+    await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
   });
 

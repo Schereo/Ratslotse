@@ -8,6 +8,7 @@ describe("standZeilen", () => {
     const z = standZeilen({
       as_of: "2026-09-10",
       lagging: [{ body_id: "wolfsburg", city: "Wolfsburg", latest_paper: "2026-06-25" }],
+      blocked: [],
     });
     expect(z.stand).toBe("Stand: 10.09.2026");
     expect(z.luecke).toBe("Aus Wolfsburg liegen Vorlagen nur bis 25.06.2026 vor.");
@@ -20,18 +21,55 @@ describe("standZeilen", () => {
         { body_id: "a", city: "Langenhagen", latest_paper: "2026-06-19" },
         { body_id: "b", city: "Wolfsburg", latest_paper: "2026-06-25" },
       ],
+      blocked: [],
     });
     expect(z.luecke).toContain("Langenhagen (bis 19.06.2026) und Wolfsburg (bis 25.06.2026)");
   });
 
   it("erfindet ohne Abgleich kein Datum", () => {
-    expect(standZeilen({ as_of: null, lagging: [] })).toEqual({ stand: null, luecke: null });
-    expect(standZeilen(undefined)).toEqual({ stand: null, luecke: null });
+    const leer = { stand: null, luecke: null, sperre: null };
+    expect(standZeilen({ as_of: null, lagging: [], blocked: [] })).toEqual(leer);
+    expect(standZeilen(undefined)).toEqual(leer);
   });
 
   it("verspricht keinen Takt", () => {
-    const z = standZeilen({ as_of: "2026-09-10", lagging: [] });
+    const z = standZeilen({ as_of: "2026-09-10", lagging: [], blocked: [] });
     expect(`${z.stand} ${z.luecke ?? ""}`).not.toMatch(/wöchentlich|täglich|monatlich/);
+  });
+
+  it("sagt, aus welcher Stadt nichts mehr kommt — und dass der Bestand bleibt", () => {
+    const z = standZeilen({
+      as_of: "2026-11-09",
+      lagging: [],
+      blocked: [
+        { body_id: "braunschweig", city: "Braunschweig", status: "documents_blocked",
+          since: "2026-11-09", latest_paper: "2026-11-02" },
+        { body_id: "osnabrueck", city: "Osnabrück", status: "documents_blocked",
+          since: "2026-11-09", latest_paper: "2026-11-05" },
+        { body_id: "wolfsburg", city: "Wolfsburg", status: "blocked",
+          since: "2026-11-09", latest_paper: "2026-06-25" },
+      ],
+    });
+    expect(z.sperre).toBe(
+      "Aus Wolfsburg kommen derzeit keine neuen Vorlagen, der Server der Stadt weist den Abruf ab "
+      + "(jüngste Vorlage: 25.06.2026). Aus Braunschweig und Osnabrück kommen neue Vorlagen derzeit "
+      + "ohne Dokumente, die Städte lassen sie nicht automatisch abrufen. "
+      + "Was schon vorliegt, bleibt hier sichtbar.");
+  });
+
+  it("nennt eine Stadt, die der Wochenlauf nicht holt, ohne eine Sperre zu behaupten", () => {
+    const z = standZeilen({
+      as_of: "2026-11-09",
+      lagging: [],
+      blocked: [{ body_id: "peine", city: "Peine", status: "paused",
+        since: "2026-09-10", latest_paper: "2026-09-08" }],
+    });
+    expect(z.sperre).toBe("Peine wird derzeit nicht abgeglichen. Was schon vorliegt, bleibt hier sichtbar.");
+    expect(z.sperre).not.toMatch(/weist|lässt/);
+  });
+
+  it("schweigt, wenn alle Städte liefern", () => {
+    expect(standZeilen({ as_of: "2026-11-09", lagging: [], blocked: [] }).sperre).toBeNull();
   });
 });
 

@@ -1,0 +1,90 @@
+{
+ "plan": "aktionsplan_energie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan bündelt konkrete Umsetzungsschritte für Oldenburgs jährliche Energie- und Klimaschutzarbeit.",
+  "quote": "Die Verwaltung wurde beauftragt, auf der Basis der Maßnahmenvorschläge aus dem InEKK-Handlungsrahmen und eigener Überlegungen jährlich ein energiepolitisches Arbeitsprogramm mit konkreten Umsetzungsschritten für das jeweils folgende Jahr zu erstellen.",
+  "source": {
+   "kind": "template",
+   "template": "19/0836"
+  }
+ },
+ "points": [
+  {
+   "text": "Als übergeordnetes Ziel nennt der Plan, bis 2020 durch eigene Maßnahmen rund 100.000 Tonnen CO₂ einzusparen.",
+   "kind": "goal",
+   "figure": {
+    "value": "100.000 t",
+    "label": "CO₂ weniger bis 2020 – das übergeordnete Ziel"
+   },
+   "quote": "Ziel des Oldenburger Leitbildbeschlusses war es, bis 2020 eine CO2-Reduktion um ca. 100.000 Tonnen durch eigene Maßnahmen zu erreichen.",
+   "source": {
+    "kind": "template",
+    "template": "19/0836"
+   }
+  },
+  {
+   "text": "Für die Altbausanierung sieht der Plan 2020 im Ergebnishaushalt 350.000 Euro vor.",
+   "kind": "figure",
+   "figure": {
+    "value": "350.000 €",
+    "label": "für die Altbausanierung im Haushalt 2020"
+   },
+   "quote": "Ergebnishaushalt 2019 2020 1 Mobile Energieberatung 1.000 1.000 2 Zukunftsquartier – Käthe-Kollwitz-Straße / Hoffkamp 46.000 19.000 3 Oldenburger Heizungs-Check (vorher „Clever heizen“) 12.000 8.000 4 Oldenburger Energie-Check 13.000 12.000 5 Effizienzhauskampagne (vorher Sanierungskampagne) 30.000 30.000 7 Neubauberatung 11.000 16.000 8 Förderprogramm Altbausanierung 340.000 350.000",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0836",
+    "document_id": 209182,
+    "label": "Aktionsplan Energie 2020",
+    "page": 22
+   }
+  },
+  {
+   "text": "Für Effizienzhäuser 55 und besser nennt der Plan 2.000 Euro Förderung je Vorhaben; 40 Vorhaben sollen gefördert werden können.",
+   "kind": "standard",
+   "figure": {
+    "value": "2.000 €",
+    "label": "Förderung je Effizienzhaus 55 oder besser"
+   },
+   "quote": "Mit einer Impulsförderung von 2.000 Euro sollen Bauherren angeregt werden, weitergehende wirtschaftliche Effizienzhausstandards (Effizienzhausstandard 55 und besser) umzusetzen. Mit Haushaltsmitteln von 80.000 Euro können 40 Vorhaben gefördert werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0836",
+    "document_id": 209182,
+    "label": "Aktionsplan Energie 2020",
+    "page": 9
+   }
+  },
+  {
+   "text": "Für Photovoltaikanlagen von 3 bis 8 kWp sieht der Plan 100,00 € Zuschuss je installiertem kWp vor.",
+   "kind": "standard",
+   "figure": {
+    "value": "100 €",
+    "label": "Zuschuss je kWp Photovoltaik, für Anlagen von 3 bis 8 kWp"
+   },
+   "quote": "Die Förderhöhe beträgt 100,00 € pro installiertem Kilowatt-Peak Leistung (kWp) für Anlagen von 3 bis 8 kWp vor.",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0836",
+    "document_id": 209182,
+    "label": "Aktionsplan Energie 2020",
+    "page": 13
+   }
+  },
+  {
+   "text": "Der Plan sieht eine Stromsparberatung für alle Privathaushalte vor, besonders für Haushalte mit geringem Einkommen, die den Caritas-Check nicht nutzen können.",
+   "kind": "measure",
+   "quote": "Das Projekt zur Stromsparberatung für alle Privathaushalte der Stadt Oldenburg ist ein niedrigschwelliges Angebot, um Einsparpotenziale beim Stromverbrauch zu ermitteln. Ein besonderer Fokus wird dabei auf Haushalte gelegt, die zwar im unteren Einkommensbereich angesiedelt sind, jedoch den Service des Stromsparchecks für einkommensschwache Haushalte der Caritas nicht in Anspruch nehmen können.",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0836",
+    "document_id": 209182,
+    "label": "Aktionsplan Energie 2020",
+    "page": 15
+   }
+  }
+ ]
+}

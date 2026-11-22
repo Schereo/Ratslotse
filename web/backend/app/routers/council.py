@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from collections.abc import Callable
 from typing import Annotated, Literal, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import (AliasChoices, BaseModel, Field, field_validator)
 
@@ -48,7 +48,7 @@ from kern.store import Store
 
 from .. import deepresearch, response_cache
 from ..config import get_settings
-from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
+from ..antworten import (AnalysisData, PageQuestions, SessionItemDetail, ElectedCouncil, ElectedMember, AssistantStarters, BudgetAmendmentLists, BudgetAuditReports,
                          BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
                          BudgetDispute, BudgetDocuments, BudgetExecution, BudgetGrants, GrantRow, GrantTotal, BudgetGrantsReceived, BudgetFederalComparison, BudgetDebtComparison, CityDebt, CityDebtYear, FederalCity, FederalGroup, FederalIndicator, FederalStats, FederalYear, GrantReceivedList, GrantReceivedRow, GrantReceivedTotal, GrantTemplate, BudgetSourceStats, Provenance,
                          BudgetNote, BudgetNotes, BudgetPrefaceFigures, PrefaceFigure, PrefacePlan, BudgetMeasure, BudgetMeasureReport, BudgetMeasures,
@@ -60,7 +60,8 @@ from ..antworten import (AnalysisData, ElectedCouncil, ElectedMember, AssistantS
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
-                         Idea, IdeaDataStatus, IdeaEvidence, IdeaFields, IdeaFieldSummary,
+                         Idea, IdeaBlockedCity, IdeaDataStatus, IdeaEvidence, IdeaFields,
+                         IdeaFieldSummary,
                          IdeaLaggingCity, IdeaProtocol,
                          IdeaSibling, Movement, MovementCity, MovementDetail,
                          MovementDocument, MovementSimilar, MovementsResponse,
@@ -89,6 +90,7 @@ from ..ratelimit import (
     partei_meinungen_limiter,
     debatten_limiter,
     qa_feedback_limiter,
+    page_questions_limiter,
     qa_limiter,
     qa_share_limiter,
     qa_share_report_limiter,
@@ -564,11 +566,16 @@ def zahl_der_woche(
     # Wahl stand wochenlang eine orange „0" oben auf „Heute", obwohl die
     # Ausschüsse längst wieder tagten (ihre Protokolle kommen ein bis drei
     # Wochen später). Die App liest `window_days` mit (TodayView.swift).
+    # `date_from` geht mit: Der Link „Diese N ansehen“ filtert die Liste ab
+    # genau diesem Tag. Rechnete das Frontend ihn selbst (in UTC), lag er um
+    # Mitternacht einen Tag neben dem gezählten Fenster.
     for days in (7, 30, 90):
-        anzahl = store.count_decisions_since((today - timedelta(days=days)).isoformat())
+        seit = (today - timedelta(days=days)).isoformat()
+        anzahl = store.count_decisions_since(seit)
         if anzahl:
-            return {"kind": "count", "count": anzahl, "window_days": days}
-    return {"kind": "count", "count": 0, "window_days": 90}
+            return {"kind": "count", "count": anzahl, "window_days": days, "date_from": seit}
+    return {"kind": "count", "count": 0, "window_days": 90,
+            "date_from": (today - timedelta(days=90)).isoformat()}
 
 
 @router.get("/budget/products")
@@ -2052,7 +2059,162 @@ def session_detail(
     live_state = store.get_live_state(ksinr)
     if live_state:
         session["live_state"] = live_state
+    # „Kurs der Sitzung" (Plan Sitzungsseite, Schritt 1): Etappen, Art,
+    # Piktogramm, „wichtig" und „schon vertagt" je Punkt. Ein Zusatz — fällt
+    # er aus, bleibt die Seite mit der Tagesordnung von oben stehen.
+    try:
+        course = store.session_course(ksinr)
+    except Exception:  # noqa: BLE001 — Zusatz, nie 500 der Sitzung
+        _log.exception("session_course fehlgeschlagen für %s", ksinr)
+        course = None
+    if course:
+        session["course"] = course
+    # Fachwörter am Wort (council/seitenbegriffe.py): je Begriff die erste
+    # Karte, die ihn nennt. Ein Zusatz wie der Kurs.
+    try:
+        from council import seitenbegriffe  # noqa: PLC0415
+        aus_vorlagen = (store.template_terms_for([(p.get("template_number") or "").strip()
+                                                  for p in session["agenda_items"]])
+                        if features.an("begriffe-aus-vorlage") else None)
+        begriffe = seitenbegriffe.session_terms(session, aus_vorlagen)
+        if begriffe:
+            session["terms"] = begriffe
+    except Exception:  # noqa: BLE001 — Zusatz, nie 500 der Sitzung
+        _log.exception("Begriffe fehlgeschlagen für Sitzung %s", ksinr)
     return session
+
+
+# Öffentlich wie die Sitzung (Plan Sitzungsseite, Schritt 4): Wer einen Punkt
+# weiterreicht, schickt den Link an Leute ohne Konto.
+@router.get("/session/{ksinr}/item")
+def session_item(
+    ksinr: int,
+    background: BackgroundTasks,
+    nr: str = Query(..., min_length=1, max_length=20),
+    store: CouncilStore = Depends(get_council_store),
+    user: dict | None = Depends(optional_user),
+) -> SessionItemDetail:
+    punkt = store.session_item(ksinr, nr)
+    if not punkt:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+    # „Aus den Unterlagen": das belegte Dossier (council/template_dossier.py).
+    # Fehlt es, holt ein angemeldeter Besuch es im Hintergrund nach — mit
+    # Tagesdeckel und Sperre; die Seite zeigt solange die Felder ohne Modell.
+    if features.an("aus-den-unterlagen"):
+        try:
+            dossier = store.item_dossier_view(ksinr, punkt["item"]["item_number"])
+            if dossier:
+                punkt["dossier"] = dossier
+            elif user is not None and (punkt["item"].get("template_number") or "").strip():
+                from council import template_dossier as td
+                settings = get_settings()
+                background.add_task(td.im_hintergrund, lambda: CouncilStore(settings.council_db),
+                                    punkt["item"]["template_number"].strip())
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Dossier fehlgeschlagen für %s %s", ksinr, nr)
+    if features.an("aenderungsantraege"):
+        try:
+            antraege = store.item_amendments(ksinr, punkt["item"]["item_number"])
+            if antraege:
+                punkt["amendments"] = antraege
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Anträge fehlgeschlagen für %s %s", ksinr, nr)
+    if features.an("punkt-argumente"):
+        try:
+            args = store.item_arguments_view(ksinr, nr)
+            if args:
+                punkt["arguments"] = args
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Argumente fehlgeschlagen für %s %s", ksinr, nr)
+    if features.an("wahlprogramm-am-punkt") and (tn := (punkt["item"].get("template_number") or "").strip()):
+        try:
+            from council import programm_bezug  # noqa: PLC0415
+            gespeichert = store.program_stances(tn)
+            sicht = programm_bezug.item_view(gespeichert["payload"]) if gespeichert and gespeichert["status"] == "ok" else None
+            if sicht:
+                punkt["program_stances"] = sicht
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Wahlprogramme fehlgeschlagen für %s %s", ksinr, nr)
+    if features.an("punkt-umfeld"):
+        try:
+            from council import punkt_umfeld  # noqa: PLC0415
+            umfeld = punkt_umfeld.item_surroundings(store, punkt)
+            if umfeld:
+                punkt["surroundings"] = umfeld
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Umfeld fehlgeschlagen für %s %s", ksinr, nr)
+    if features.an("haushalt-am-punkt"):
+        try:
+            from council import punkt_haushalt  # noqa: PLC0415
+            haushalt = punkt_haushalt.item_budget_context(
+                store, punkt, store.get_vorlage_by_nr(punkt["item"].get("template_number") or ""))
+            if haushalt:
+                punkt["budget_context"] = haushalt
+        except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+            _log.exception("Haushalt am Punkt fehlgeschlagen für %s %s", ksinr, nr)
+    try:
+        from council import seitenbegriffe  # noqa: PLC0415
+        aus_vorlage = None
+        if features.an("begriffe-aus-vorlage") and (tn := (punkt["item"].get("template_number") or "").strip()):
+            gespeichert = store.template_terms(tn)
+            if gespeichert and gespeichert["status"] == "ok":
+                aus_vorlage = (gespeichert["payload"] or {}).get("terms")
+        begriffe = seitenbegriffe.item_terms(punkt, aus_vorlage)
+        if begriffe:
+            punkt["terms"] = begriffe
+    except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Punkt-Seite
+        _log.exception("Begriffe fehlgeschlagen für %s %s", ksinr, nr)
+    return punkt
+
+
+# Vorschlagsfragen unter „Frag den Rat“ (Schalter `vorschlagsfragen`,
+# council/vorschlagsfragen.py). Erzeugt nur für angemeldete Konten — sonst
+# könnte ein Crawler jede Seite einmal bezahlen lassen; ohne Konto gibt es,
+# was schon gespeichert ist.
+@router.get("/page-questions")
+def page_questions(
+    request: Request,
+    ksinr: int | None = Query(None),
+    nr: str | None = Query(None, min_length=1, max_length=20),
+    decision_id: int | None = Query(None),
+    store: CouncilStore = Depends(get_council_store),
+    user: dict | None = Depends(optional_user),
+) -> PageQuestions:
+    from council import vorschlagsfragen as vf  # noqa: PLC0415
+
+    leer: PageQuestions = {"questions": []}
+    if not features.an("vorschlagsfragen"):
+        return leer
+    if decision_id is not None:
+        d = store.get_decision(decision_id)
+        if not d:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
+        key = f"decision:{decision_id}"
+        material = vf.decision_material(d, store.get_vorlage_by_nr(d.get("template_number") or ""))
+    elif ksinr is not None and nr:
+        punkt = store.session_item(ksinr, nr)
+        if not punkt:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+        # Der Schlüssel aus den Daten, nicht aus der Anfrage: „Ö 9" und
+        # „ Ö 9 " träfen sonst denselben Punkt unter zwei Schlüsseln und
+        # zahlten zweimal.
+        key = f"item:{ksinr}|{punkt['item']['item_number']}"
+        material = vf.item_material(
+            punkt, store.get_vorlage_by_nr(punkt["item"].get("template_number") or ""),
+            store.dossier_lines(ksinr, punkt["item"]["item_number"]) if features.an("aus-den-unterlagen") else None)
+    else:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "ksinr und nr oder decision_id angeben.")
+    gespeichert = store.page_questions(key)
+    if gespeichert and gespeichert["sources_hash"] == vf.sources_hash(material):
+        return {"questions": gespeichert["questions"]}
+    if user is None:
+        return leer
+    if not user.get("limits_unlocked"):
+        try:
+            page_questions_limiter.check(request, subject=user["id"])
+        except HTTPException:
+            return leer  # die festen Fragen statt eines Fehlers
+    return {"questions": vf.questions_for(store, key, material) or []}
 
 
 def _agenda_aenderungen(store: CouncilStore, ksinr: int) -> list[dict]:
@@ -2308,15 +2470,41 @@ STAND_LUECKE_TAGE = 60
 
 
 def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
-    """„Stand: …" für die Seite — und welche Stadt deutlich älter endet."""
+    """„Stand: …" für die Seite — welche Stadt deutlich älter endet, und
+    welche uns bei der letzten Ernte nicht alles herausgab."""
     from datetime import date as _date
 
     from council.cities.registry import BODIES
 
     zeilen = cities.coverage(body_ids)
-    abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
+    # Städte, die der Wochenlauf gar nicht mehr holt (in der Registry aus),
+    # zählen nicht in den Stand: Hildesheim steht seit 13.09.2026 still, und
+    # „Stand: 13.09.2026" stand damit über einer Seite, deren übrige Städte
+    # am selben Tag abgeglichen waren. Sie bekommen stattdessen ihren Satz.
+    ruht = {str(z["body_id"]) for z in zeilen
+            if str(z["body_id"]) in BODIES and not BODIES[str(z["body_id"])].active}
+    abgleiche = [str(z["last_fetched"])[:10] for z in zeilen
+                 if z.get("last_fetched") and str(z["body_id"]) not in ruht]
+    if not abgleiche:  # nur ruhende Städte: dann ist ihr Abgleich der Stand
+        abgleiche = [str(z["last_fetched"])[:10] for z in zeilen if z.get("last_fetched")]
     hinten: list[IdeaLaggingCity] = []
+    gesperrt: list[IdeaBlockedCity] = []
     for z in zeilen:
+        b = str(z["body_id"])
+        stadt = BODIES[b].name if b in BODIES else b
+        if b in ruht:
+            gesperrt.append({"body_id": b, "city": stadt,
+                             "status": "blocked" if BODIES[b].access_blocked else "paused",
+                             "since": str(z.get("last_fetched") or "")[:10],
+                             "latest_paper": (str(z["latest_paper"])[:10]
+                                              if z.get("latest_paper") else None)})
+            continue
+        if z.get("access") in ("documents_blocked", "blocked"):
+            gesperrt.append({"body_id": b, "city": stadt, "status": z["access"],
+                             "since": str(z["access_since"])[:10],
+                             "latest_paper": (str(z["latest_paper"])[:10]
+                                              if z.get("latest_paper") else None)})
+            continue
         if not z.get("last_fetched") or not z.get("latest_paper"):
             continue
         try:
@@ -2325,11 +2513,11 @@ def _datenstand(cities: CitiesStore, body_ids: list[str]) -> IdeaDataStatus:
         except ValueError:
             continue
         if luecke > STAND_LUECKE_TAGE:
-            b = str(z["body_id"])
-            hinten.append({"body_id": b, "city": BODIES[b].name if b in BODIES else b,
+            hinten.append({"body_id": b, "city": stadt,
                            "latest_paper": str(z["latest_paper"])[:10]})
     return {"as_of": min(abgleiche) if abgleiche else None,
-            "lagging": sorted(hinten, key=lambda h: h["city"])}
+            "lagging": sorted(hinten, key=lambda h: h["city"]),
+            "blocked": sorted(gesperrt, key=lambda g: g["city"])}
 
 
 @router.get("/cities/search")
@@ -2977,6 +3165,30 @@ def decision_detail(
             bd["impact_reason"] = d["impact_reason"]
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
+        # „Aus der Vorlage" (Plan Vorlagen § 6.3): das Dossier des Punkts, wie es
+        # bis zur Sitzung stand — ausdrücklich der Vorschlag, das Ergebnis zeigt
+        # die Seite selbst. Dazu „Vorgeschlagen ↔ beschlossen" als Wortdiff.
+        if features.an("aus-den-unterlagen"):
+            try:
+                punkt_nr = store.agenda_item_for_decision(d["ksinr"], d["item_number"])
+                dossier = store.item_dossier_view(d["ksinr"], punkt_nr) if punkt_nr else None
+                if dossier:
+                    out["template_dossier"] = dossier
+            except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Beschluss-Seite
+                _log.exception("Dossier zum Beschluss fehlgeschlagen für %s", d["id"])
+        # „Was beantragt wurde": der gelesene Antrag an seiner Teilabstimmung
+        # (council/motions.py, Zuordnung nur wenn eindeutig).
+        if out["sub_votes"] and features.an("aenderungsantraege"):
+            try:
+                punkt_nr = store.agenda_item_for_decision(d["ksinr"], d["item_number"])
+                if punkt_nr:
+                    je_abstimmung = {a["decision_id"]: a for a in store.item_amendments(d["ksinr"], punkt_nr)
+                                     if a.get("decision_id")}
+                    for sv in out["sub_votes"]:
+                        if sv["id"] in je_abstimmung:
+                            sv["amendment"] = je_abstimmung[sv["id"]]
+            except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Beschluss-Seite
+                _log.exception("Anträge zur Teilabstimmung fehlgeschlagen für %s", d["id"])
     if d.get("template_number"):
         out["template_journey"] = store.vorlage_journey(d["template_number"])
         out["template_url"] = _vorlage_url(d["kvonr"]) if d.get("kvonr") else None
@@ -3012,9 +3224,16 @@ def decision_detail(
                 # „Was kostet das?" (Design H-21). Amtlicher Wortlaut, deshalb
                 # unverändert und als Zitat gekennzeichnet.
                 "financial_impact": v.get("financial_impact"),
+                "proposed_decision": v.get("proposed_decision"),
             }
             if not out["template_url"] and v.get("kvonr"):
                 out["template_url"] = _vorlage_url(v["kvonr"])
+            # Vorgeschlagen ↔ beschlossen: nur, wo die Abweichung messbar ist
+            # (ernte.deviation slight/strong) — Wortdiff ohne Modell.
+            if d.get("deviation") in ("slight", "strong") and v.get("proposed_decision") and d.get("official_text"):
+                from council.motions import word_diff
+                # Geglättet: ganze Absätze, kein Konfetti aus Allerweltswörtern.
+                out["proposal_diff"] = word_diff(v["proposed_decision"], d["official_text"], min_equal=4)
         out["attachments"] = store.anlagen_for_vorlage_nr(d["template_number"])
         # Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt
         # über eine echte Verknüpfung, nicht über eine Textsuche. `None` heißt
@@ -3049,6 +3268,17 @@ def decision_detail(
             # Verfolgen-Knopf über `data.follow &&` aus, ohne etwas zu wissen.
             if user:
                 out["follow"] = {"kvonr": kv, "following": ratslotse.is_following_vorlage(user["id"], kv)}
+    # Fachwörter am Wort — wie auf der Punkt-Seite (council/seitenbegriffe.py).
+    try:
+        from council import seitenbegriffe  # noqa: PLC0415
+        tn = (d.get("template_number") or "").strip()
+        aus_vorlage = (store.template_terms_for([tn]).get(tn)
+                       if tn and features.an("begriffe-aus-vorlage") else None)
+        begriffe = seitenbegriffe.decision_terms(out, aus_vorlage)
+        if begriffe:
+            out["terms"] = begriffe
+    except Exception:  # noqa: BLE001 — Zusatz, nie ein 500er der Beschluss-Seite
+        _log.exception("Begriffe fehlgeschlagen für Beschluss %s", decision_id)
     return out
 
 
@@ -4232,6 +4462,21 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
             "description": " ".join(x for x in (f"{kopf}." if kopf else "", satz) if x)[:300],
         }
 
+    if kind == "punkt":
+        # Schlüssel „ksinr|Nummer" — ein Punkt ist nur in seiner Sitzung eindeutig.
+        ksinr_roh, _, nummer = key.partition("|")
+        punkt = (store.agenda_item_subject(int(ksinr_roh), nummer)
+                 if ksinr_roh.isdigit() and nummer else None)
+        if not punkt:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tagesordnungspunkt nicht gefunden.")
+        from council import course as _course  # noqa: PLC0415
+        titel = _kuerzen(_course.strip_result(punkt["title"]) or "Tagesordnungspunkt", 90)
+        return {
+            "title": f"{punkt['item_number']} · {titel}",
+            "description": (f"{punkt['committee']} · {_preview_datum(punkt['session_date'])}. "
+                            "Worum es geht, die Vorgeschichte und die Unterlagen im Ratslotse.")[:300],
+        }
+
     if kind == "person":
         p = store.member_detail(key)
         if not p:
@@ -4496,6 +4741,10 @@ class ExplainRefs(BaseModel):
     place_id: str | None = Field(default=None, max_length=120)
     year: int | None = Field(default=None, ge=1990, le=2100)
     area: str | None = Field(default=None, max_length=120)
+    # Der Punkt einer Sitzung (mit ``ksinr``), wenn die Frage von seiner Seite
+    # kommt — sonst wäre er unter 40 Punkten nicht eindeutig. Optional und am
+    # Ende: Die ausgelieferte App schickt das Feld nicht.
+    item_number: str | None = Field(default=None, max_length=20)
 
 
 class ExplainBody(BaseModel):
@@ -5028,6 +5277,14 @@ class ScreenContext(BaseModel):
     # nicht zur Identität. Optional mit leerem Default: Die ausgelieferte
     # iOS-App schickt das Feld nicht (ios/CLAUDE.md).
     refs: ExplainRefs = Field(default_factory=ExplainRefs)
+    # **Wer fragt: Lottis Fenster oder die Seite selbst?** Bis 11/2026 schickte
+    # nur Lottis Fenster einen Bildschirm mit, und „hat `screen`" hieß deshalb
+    # „Lotti-Gespräch". Seitdem fragen auch die Punkt-Seite (über die
+    # Fragen-Seite) und der Chat direkt auf Punkt- und Beschluss-Seite mit
+    # ihrem Gegenstand — deren Gespräche gehören auf die Fragen-Seite, nicht in
+    # Lottis Fenster. Vorgabe ``lotti``: So bleibt Lotti, die das Feld nicht
+    # kennt, wie sie war.
+    surface: Literal["lotti", "page"] = "lotti"
 
 
 class AskBody(BaseModel):
@@ -5316,7 +5573,7 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
             # darin (gemessen am 22.09.2026: Gespräch 51, kind=ask).
             conversation_id = ratslotse.qa_gespraech_start(
                 user["id"], q_suche or body.question,
-                kind="lotti" if body.screen else "ask")
+                kind="lotti" if body.screen and body.screen.surface == "lotti" else "ask")
             if conversation_id is None:
                 return None
         zitiert = set(cited)
@@ -5403,6 +5660,20 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         bildschirm["heading"] = lotti.ueberschrift_ohne_konto(
             bildschirm.get("heading") or "", user.get("display_name"))
         ratslotse.record_activity(user["id"], "assistant_to_ask", client_kind(request))
+        # Von der Seite eines Tagesordnungspunkts: den Punkt nachschlagen, nie
+        # raten. Hat er einen Beschluss, ist DER der Gegenstand (wie auf der
+        # Beschluss-Seite); sonst nennt der Prompt den Punkt beim Namen.
+        refs = bildschirm.get("refs") or {}
+        if refs.get("ksinr") and refs.get("item_number") and not refs.get("decision_id"):
+            punkt = store.agenda_item_subject(int(refs["ksinr"]), str(refs["item_number"]))
+            if punkt and punkt.get("decision_id"):
+                bildschirm["refs"] = {**refs, "decision_id": punkt["decision_id"]}
+            elif punkt:
+                # Das belegte Dossier als fester Kontext (Plan Vorlagen § 6.5):
+                # Erst damit stimmt „An Bord · N Unterlagen".
+                if features.an("aus-den-unterlagen"):
+                    punkt["dossier_lines"] = store.dossier_lines(int(refs["ksinr"]), str(refs["item_number"]))
+                bildschirm["agenda_item"] = punkt
     # ZUSÄTZLICH, nicht statt: `ai_question` bleibt die Gesamtzahl, sonst
     # verlören alle bestehenden Auswertungen die Chip-Fragen.
     if body.from_suggestion:
@@ -5432,7 +5703,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # wählt aus Kandidaten nach Wortanfang (`qa.themen_kandidaten`).
             suche_ausbau = features.an("suche-ausbau")
             themen = qa.themen_kandidaten(store, q) if suche_ausbau else None
-            analyse = qa.analyse_query(q, verlauf=verlauf, orte=orte, themen=themen)
+            # Ohne Verlauf ist die Seite der Verlauf: Ihr Gegenstand geht als
+            # erste Runde voraus, damit „Und was kostet das?“ ihn meint
+            # (qa.seiten_gegenstand sagt, warum). Nur für die Analyse — das
+            # gespeicherte Gespräch bekommt keine erfundene Runde.
+            seite = qa.seiten_gegenstand(store, bildschirm) if bildschirm else None
+            verlauf_analyse = verlauf or ([{"question": f"Ich bin auf der Seite zu: {seite}", "answer": ""}]
+                                          if seite else [])
+            analyse = qa.analyse_query(q, verlauf=verlauf_analyse, orte=orte, themen=themen)
             expanded, typ = analyse["terms"], analyse["kind"]
             # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
             # der Befund kam aus einer echten Nutzer-Frage, der nach dem
@@ -5537,7 +5815,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # mitgebracht hat.
             if qa.rueckfrage_noetig(analyse, einfach=einfach, person=person,
                                     ort=ort, sitzungen=sitzungen,
-                                    procedure=bool(rules_sel)):
+                                    procedure=bool(rules_sel), seite=bool(seite)):
                 yield _sse({"type": "token", "text": qa.RUECKFRAGE_TEXT})
                 try:
                     vorschlaege = qa.rueckfrage_vorschlaege(store, q)
@@ -5820,6 +6098,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     staedte_rows = []
 
             debatten_rows: list[dict] = []
+            newest_speech_ids: set[int] = set()
             # Kommende oder protokolllose Sitzung: Es KANN noch keine Debatte
             # dieser Sitzung geben — die Ähnlichkeitssuche fände nur Beiträge
             # aus ALTEN Sitzungen, und die stünden als „Aus den Ratsdebatten"
@@ -5869,7 +6148,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                             candidates = linked + candidates
                     elif person:
                         debatten_rows = emb.search_wortbeitraege_von_person(
-                            store, q_suche, person["nachname"])
+                            store, q_suche, person["nachname"],
+                            top_k=qa.PERSON_SPEECHES_TOP, name=person["name"])
                     else:
                         hits_w = emb.search_wortbeitraege(
                             store, q_suche, expanded, top_k=qa.ASK_WORTBEITRAG_TOP,
@@ -5987,6 +6267,45 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     zeiten["akte"] = akte["akte"]
                 except Exception:  # noqa: BLE001 — die Akte ist Zusatz, nie Blocker
                     _log.exception("Akte nicht geladen")
+            # Aussprache zu den Beschlüssen im Prompt, die JÜNGER sind als die
+            # ersten acht (qa.newest_beyond_head). Erst hier, nach der Akte: Der
+            # jüngste Stand kommt oft über sie herein. Ihre Beiträge hält die
+            # Diät fest wie die der Akte.
+            #
+            # Und die ZUSAGEN der Verwaltung zu den ersten acht und den jüngsten
+            # — auch wenn der Rechercheplan die Debatten abschaltet. Er tut das
+            # bei Termin- und Faktenfragen, und genau deren Antwort steht oft in
+            # einer Protokollnotiz: „Wann kommen öffentliche Trinkwasserspender?“
+            # — „Klärung 2027 mit Abschluss des KLAK“ (16.04.2026). Der Bericht
+            # stand auf Rang 7, seine Zusage trotzdem nie im Prompt (Gold dev
+            # 09.11.2026, nach #1803). Eine Zusage ist keine Debatte, sondern
+            # eine datierte Tatsache der Verwaltung.
+            if not latest_place and typ != "session" and not person:
+                head = candidates[:QA_ANSWER_N]
+                in_head = {c["id"] for c in head}
+                pool = head + [d for d in akte_beschluesse if d["id"] not in in_head]
+                newest = qa.newest_beyond_head(pool, limit=len(pool))
+                try:
+                    have = {d["id"] for d in debatten_rows}
+                    if debates_enabled:
+                        extra_rows = [w for w in store.wortbeitraege_zu_beschluessen(
+                            newest, max_gesamt=qa.DEBATTE_NEUESTE_MAX,
+                            max_je_top=qa.DEBATTE_NEUESTE_JE_TOP)
+                            if w["id"] not in have] if newest else []
+                    else:
+                        extra_rows = [w for w in store.wortbeitraege_zu_beschluessen(
+                            candidates[:qa.DEBATTE_ANKER_KOPF] + newest,
+                            max_gesamt=qa.ZUSAGEN_POOL, max_je_top=qa.ZUSAGEN_POOL)
+                            if w["id"] not in have and w.get("kind") == "pledge"
+                        ][:qa.ZUSAGEN_MAX]
+                    if extra_rows:
+                        qa.parteien_aufloesen(store, extra_rows)
+                        debatten_rows += extra_rows
+                        newest_speech_ids = {w["id"] for w in extra_rows}
+                        zeiten["aussprache_neueste" if debates_enabled
+                               else "zusagen_ohne_debatten"] = len(extra_rows)
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    _log.exception("Aussprache der jüngsten Beschlüsse nicht geladen")
             # Beleg nachlesbar machen: jeder Beitrag bekommt die PDF-URL
             # seines Protokolls (Tims Wunsch 18.08.).
             qa.protokolle_verlinken(store, debatten_rows)
@@ -6448,22 +6767,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Zweckentfremdung 70/70 → 40–65 %, 18.10.2026).
             if (features.an("kontext-diaet") and typ not in ("session", "person")
                     and not qa.fraktionsfrage(analyse) and not einfach):
-                debatten_prompt = qa.debatten_diaet(
-                    debatten_rows, ctx, set(akte_prompt["speech_ids"]) if akte_prompt else None)
+                keep = set(akte_prompt["speech_ids"]) if akte_prompt else set()
+                debatten_prompt = qa.debatten_diaet(debatten_rows, ctx, keep | newest_speech_ids)
                 zeiten["kontext_debatten_ids"] = [d["id"] for d in debatten_prompt]
-            # Belegnotizen (Schalter `belegnotizen`): vor der Antwort je Dokument
-            # eine Notiz, was es zur Frage beiträgt — oben im Kontext, wo das
-            # Antwort-Modell liest (`qa.belegnotizen`). Nicht bei Sitzungsfragen
-            # (dort zählt die ganze Tagesordnung), beim Vereinfachen und beim
-            # deterministischen „zuletzt an Ort X“.
-            notiz_block = ""
-            if (features.an("belegnotizen") and typ != "session" and not einfach
-                    and not latest_place and ctx):
-                t_notiz = time.perf_counter()
-                notizen = qa.belegnotizen(q_suche, ctx, debatten_prompt)
-                notiz_block = qa.belegnotizen_block(notizen)
-                zeiten["belegnotizen"] = len(notizen)
-                zeiten["belegnotizen_ms"] = round((time.perf_counter() - t_notiz) * 1000)
             if latest_place and not einfach:
                 # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
                 # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
@@ -6486,7 +6792,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           screen=bildschirm, akte=akte_prompt,
                                           rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block, notiz_block=notiz_block))
+                                          extra_block=extra_block))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -6527,7 +6833,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  akte=akte_prompt,
                                                  rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block, notiz_block=notiz_block))
+                                          extra_block=extra_block))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)

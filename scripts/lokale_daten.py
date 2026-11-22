@@ -407,6 +407,19 @@ def _akte_bauen(ziel: Path) -> None:
               f"OHNE Akte.\n  python scripts/build_matters.py", file=sys.stderr)
         return
     print(f"✓ Akte gebaut: {json.dumps(ergebnis, ensure_ascii=False)}")
+    # Die Pläne der Stadt (docs/plan-ziele-plaene.md) fehlen im Abzug aus
+    # demselben Grund; ohne LLM, eine Sekunde.
+    try:
+        from council import plan_tracking
+
+        store = CouncilStore(ziel)
+        try:
+            print(f"✓ Pläne zugeordnet: {json.dumps(plan_tracking.build(store), ensure_ascii=False)}")
+        finally:
+            store.close()
+    except Exception as exc:  # noqa: BLE001 — Zugabe wie die Akte
+        print(f"ACHTUNG: Pläne nicht zugeordnet ({exc}).\n  python scripts/build_plans.py",
+              file=sys.stderr)
 
 
 def _akte_pruefen(kopie: Path) -> None:

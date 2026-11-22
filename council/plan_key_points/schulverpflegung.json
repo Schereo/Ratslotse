@@ -1,0 +1,96 @@
+{
+ "plan": "schulverpflegung",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Das Konzept ist die Grundlage dafür, wie die Mensen an Oldenburgs Schulen stadtweit gestaltet werden.",
+  "quote": "Das vorliegende Konzept soll als Grundlage einer stadtweiten und ganzheitlichen Gestaltung der Mensalandschaft dienen.",
+  "source": {
+   "kind": "attachment",
+   "template": "19/0943",
+   "document_id": 210853,
+   "label": "Rahmenkonzept „Schulverpflegung in Oldenburg“",
+   "page": 2
+  }
+ },
+ "points": [
+  {
+   "text": "Beim Mittagessen müssen die Lebensmittel bestimmter Warengruppen zu 100 % bio sein; langfristiges Ziel sind 100 % Bio-Lebensmittel.",
+   "kind": "standard",
+   "figure": {
+    "value": "100 %",
+    "label": "Bio beim Mittagessen in den Warengruppen der Liste"
+   },
+   "quote": "100 % Bio- Lebensmittel beim Mittagessen in den Warengruppen laut Anlage • langfristiges Ziel von 100 % Bio-Lebensmitteln beim Mittagessen",
+   "source": {
+    "kind": "template",
+    "template": "22/0811/1"
+   }
+  },
+  {
+   "text": "Die Bio-Liste umfasst inzwischen zwölf Warengruppen, von Fleisch, Teigwaren und Kartoffeln bis Käse (ab dem Schuljahr 2026/2027).",
+   "kind": "standard",
+   "due": {
+    "date": "2026-08",
+    "at": "start",
+    "label": "Käse ab Schuljahr 2026/2027"
+   },
+   "quote": "Warengruppenliste für den Anteil an Bio-Lebensmitteln Anlage des Rahmenkonzeptes „Schulverpflegung in Oldenburg“ Warengruppe Umsetzung ab dem Schuljahr Fleisch und Wurstwaren 2020/2021 Teigwaren Äpfel 2023/2024 Eier Kartoffeln Getreide und Getreideprodukte (auch Pseudo-Getreide) 2024/2025 Brot und Backwaren Milch und Milchprodukte ohne Käse Hülsenfrüchte 2025/2026 Nüsse und Ölsaaten Gewürze Käse 2026/2027",
+   "source": {
+    "kind": "template",
+    "template": "25/0634"
+   }
+  },
+  {
+   "text": "Ab dem Schuljahr 2025/2026 wird der Bio-Anteil bei allen Neuvergaben überwacht.",
+   "kind": "deadline",
+   "due": {
+    "date": "2025-08",
+    "at": "start",
+    "label": "ab Schuljahr 2025/2026"
+   },
+   "quote": "Zum Schuljahr 2025/2026 wird ein Monitoring des Anteils der Bio-Lebensmittel in der Schulverpflegung bei allen Neuvergaben umgesetzt.",
+   "source": {
+    "kind": "decision",
+    "template": "24/0687",
+    "date": "2024-12-16",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Der DGE-Qualitätsstandard ist verbindliche Grundlage für Mittagessen und Zwischenverpflegung.",
+   "kind": "standard",
+   "quote": "Der DGE-Qualitätsstandard für die Schulverpflegung wird als verbindliche Grundlage des Mittagessens und der Zwischenverpflegung eingeführt.",
+   "source": {
+    "kind": "template",
+    "template": "19/0943"
+   }
+  },
+  {
+   "text": "Grundschulen bekommen je nach Größe ein anderes Verpflegungssystem: bei 4 und 3 Zügen Mischküche, bei 2 Zügen Kühlkost, bei 1 Zug Warm- oder Tiefkühlkost.",
+   "kind": "standard",
+   "quote": "An den Grundschulen wird die Auswahl des Verpflegungssystems in Abhängigkeit von der Zügigkeit getroffen: 4 Züge 3 Züge 2 Züge 1 Zug Mischküche Mischküche Kühlkost Warmverpflegung oder Tiefkühlkost",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0943",
+    "document_id": 210853,
+    "label": "Rahmenkonzept „Schulverpflegung in Oldenburg“",
+    "page": 5
+   }
+  },
+  {
+   "text": "In der Zwischenverpflegung sind höchstens zwei Saftschorlen und sechs Süßwaren-Artikel erlaubt.",
+   "kind": "standard",
+   "quote": "Maximal zwei Saftschorlen und sechs variable Artikel aus dem Bereich Süßwaren dürfen demnach in der Zwischenverpflegung angeboten werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0943",
+    "document_id": 210853,
+    "label": "Rahmenkonzept „Schulverpflegung in Oldenburg“",
+    "page": 8
+   }
+  }
+ ]
+}

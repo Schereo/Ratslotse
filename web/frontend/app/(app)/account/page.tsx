@@ -3,7 +3,7 @@
 import { abmeldenMerken } from "@/lib/abmelden";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -17,6 +17,11 @@ import { BadgesCard } from "@/components/badges";
 import { GespraecheCard } from "@/components/gespraeche-settings";
 import { LottiCard } from "@/components/assistentin/einstellung";
 import { McpCard } from "@/components/mcp-zugang";
+import { NotizenVerwalten } from "@/components/notiz/notizen-verwalten";
+import { PasskeysCard } from "@/components/konto-passkeys";
+import { passkeyMeldung } from "@/components/passkey-knopf";
+import { kontoPasskeysLaden, passkeyBestaetigung } from "@/lib/passkey";
+import { useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 /**
@@ -93,6 +98,8 @@ function TilePreview({ mode }: { mode: "light" | "dark" }) {
 }
 
 export default function AccountPage() {
+  const mitNotizen = useFeature("notizen");
+  const mitPasskeys = useFeature("passkey-anmeldung");
   const { user, logout } = useAuth();
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
@@ -104,12 +111,16 @@ export default function AccountPage() {
   const hasPassword = user?.has_password !== false;
   const [appleMoeglich, setAppleMoeglich] = useState(false);
   useEffect(() => setAppleMoeglich(appleSignInAvailable()), []);
+  // Ohne Passwort bestätigt ein Passkey — wenn es einen gibt und Apple hier
+  // nicht zur Hand ist.
+  const perPasskey = usePerPasskey(hasPassword, mitPasskeys, !!user?.apple_linked && appleMoeglich);
 
   const deleteMutation = useMutation({
     // Löschung verlangt eine frische Bestätigung — eine offene Session allein
     // (fremder Zugriff aufs Gerät) darf das Konto nicht zerstören können.
     mutationFn: async () => {
       if (hasPassword) return api.del("/account", { current_password: deletePassword });
+      if (perPasskey) return api.del("/account", { passkey: await passkeyBestaetigung() });
       const token = await appleIdentityToken();
       if (!token) throw new ApiError(400, "Apple-Bestätigung abgebrochen.");
       return api.del("/account", { apple_identity_token: token });
@@ -120,8 +131,10 @@ export default function AccountPage() {
       await logout();
       router.replace("/");
     },
-    onError: (err) =>
-      toast.error(err instanceof ApiError ? err.message : "Konto konnte nicht gelöscht werden."),
+    onError: (err) => {
+      const m = passkeyMeldung(err);
+      if (m) toast.error(err instanceof ApiError ? err.message : m || "Konto konnte nicht gelöscht werden.");
+    },
   });
 
   const changeMutation = useMutation({
@@ -217,6 +230,10 @@ export default function AccountPage() {
 
             <AppearanceCard />
 
+            {mitPasskeys && <PasskeysCard />}
+
+            {mitNotizen && <NotizenVerwalten />}
+
             {hasPassword ? (
               <Card className="p-6">
                 <h2 className="font-semibold text-foreground">Passwort ändern</h2>
@@ -266,8 +283,10 @@ export default function AccountPage() {
               <Card className="p-6">
                 <h2 className="font-semibold text-foreground">Anmeldung</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Du meldest dich mit Apple an — ein Passwort hat dieses Konto nicht.
-                  Falls du zusätzlich eines möchtest, kannst du dir einen Link zum
+                  {user?.apple_linked
+                    ? "Du meldest dich mit Apple an — ein Passwort hat dieses Konto nicht."
+                    : "Du meldest dich mit Passkey an — ein Passwort hat dieses Konto nicht."}
+                  {" "}Falls du zusätzlich eines möchtest, kannst du dir einen Link zum
                   Setzen an deine E-Mail-Adresse schicken lassen.
                 </p>
                 <Button
@@ -317,7 +336,9 @@ export default function AccountPage() {
                   Löscht dein Konto und alle zugehörigen Daten (Themen, Treffer, Abos) unwiderruflich.
                   {hasPassword
                     ? " Zur Bestätigung brauchst du dein aktuelles Passwort."
-                    : " Zur Bestätigung meldest du dich einmal frisch mit Apple an."}
+                    : perPasskey
+                      ? " Zur Bestätigung fragt dein Passkey einmal nach."
+                      : " Zur Bestätigung meldest du dich einmal frisch mit Apple an."}
                 </p>
               </div>
               {/* justify-end hier war seit dem justify-between-Fix oben schon
@@ -334,7 +355,7 @@ export default function AccountPage() {
                       autoComplete="current-password"
                     />
                   </div>
-                ) : !appleMoeglich ? (
+                ) : !appleMoeglich && !perPasskey ? (
                   <p className="text-sm text-muted-foreground @3xl/konto:max-w-xs">
                     Die Apple-Bestätigung funktioniert nur in der App — oder richte dir oben
                     zuerst ein Passwort ein.
@@ -343,9 +364,10 @@ export default function AccountPage() {
                 <Button
                   variant="danger"
                   onClick={() => setDeleteOpen(true)}
-                  disabled={(hasPassword ? !deletePassword : !appleMoeglich) || deleteMutation.isPending}
+                  disabled={(hasPassword ? !deletePassword : !(appleMoeglich || perPasskey)) || deleteMutation.isPending}
                 >
-                  {deleteMutation.isPending ? "Lösche…" : hasPassword ? "Konto löschen" : "Mit Apple bestätigen & löschen"}
+                  {deleteMutation.isPending ? "Lösche…" : hasPassword ? "Konto löschen"
+                    : perPasskey ? "Mit Passkey bestätigen & löschen" : "Mit Apple bestätigen & löschen"}
                 </Button>
               </div>
             </div>
@@ -399,6 +421,16 @@ export default function AccountPage() {
  * Ohne Mail-Versand (dev, feature, Browsertests) gilt der Wechsel sofort; die
  * Antwort sagt, was passiert ist, und die Meldung richtet sich danach.
  */
+/** Bestätigt dieses Konto Löschen und Adresswechsel mit einem Passkey? Nur
+ *  ohne Passwort, mit mindestens einem Passkey und wenn Apple hier nicht geht
+ *  (dieselbe Liste wie die Karte „Passkeys“, also kein zweiter Abruf). */
+function usePerPasskey(hatPasswort: boolean, mitPasskeys: boolean, appleHier: boolean): boolean {
+  const { data } = useQuery({
+    queryKey: ["konto-passkeys"], queryFn: kontoPasskeysLaden, enabled: mitPasskeys && !hatPasswort,
+  });
+  return !hatPasswort && mitPasskeys && !appleHier && (data?.passkeys.length ?? 0) > 0;
+}
+
 function EmailCard() {
   const { user, refresh } = useAuth();
   const [neu, setNeu] = useState("");
@@ -406,6 +438,7 @@ function EmailCard() {
   const hatPasswort = user?.has_password !== false;
   const [appleMoeglich, setAppleMoeglich] = useState(false);
   useEffect(() => setAppleMoeglich(appleSignInAvailable()), []);
+  const perPasskey = usePerPasskey(hatPasswort, useFeature("passkey-anmeldung"), !!user?.apple_linked && appleMoeglich);
   const schwebend = user?.pending_email ?? null;
 
   const wechseln = useMutation({
@@ -415,6 +448,9 @@ function EmailCard() {
           new_email: neu.trim(),
           current_password: passwort,
         });
+      }
+      if (perPasskey) {
+        return api.post<User>("/account/change-email", { new_email: neu.trim(), passkey: await passkeyBestaetigung() });
       }
       const token = await appleIdentityToken();
       if (!token) throw new ApiError(400, "Apple-Bestätigung abgebrochen.");
@@ -435,8 +471,10 @@ function EmailCard() {
       setPasswort("");
       await refresh();
     },
-    onError: (err) =>
-      toast.error(err instanceof ApiError ? err.message : "Adresse konnte nicht geändert werden."),
+    onError: (err) => {
+      const m = passkeyMeldung(err);
+      if (m) toast.error(err instanceof ApiError ? err.message : m || "Adresse konnte nicht geändert werden.");
+    },
   });
 
   const erneut = useMutation({
@@ -494,7 +532,7 @@ function EmailCard() {
             </button>
           </div>
         </div>
-      ) : hatPasswort || appleMoeglich ? (
+      ) : hatPasswort || appleMoeglich || perPasskey ? (
         <form
           onSubmit={(e: React.FormEvent) => {
             e.preventDefault();

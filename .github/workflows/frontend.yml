@@ -36,9 +36,9 @@ jobs:
       run:
         working-directory: web/frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -80,7 +80,7 @@ jobs:
       # Teil bewusst so, das zu entscheiden ist Handarbeit und gehört nicht in
       # denselben Schritt wie das Einschalten.
       - name: ESLint (Hook-Regeln)
-        run: npx next lint
+        run: npm run lint
 
       # Rechnet die Skalen-Regeln des Grafik-Baukastens nach. Der Übersetzer
       # oben kann das nicht: Eine Achse, die jeden Wert der Reihe aus dem Bild

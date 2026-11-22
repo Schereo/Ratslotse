@@ -77,3 +77,27 @@ class StoreBasis:
         def list_beteiligungen(self, nur_laufende: bool = True) -> list[dict]:
             """Bauleitplan-Beteiligungen der Stadt (``store_presse``)."""
             ...
+
+        def get_vorlage_by_nr(self, template_number: str) -> dict | None:
+            """Die Vorlage zu einer Vorlagennummer (``store``)."""
+            ...
+
+        def anlagen_for_vorlage_nr(self, template_number: str) -> list[dict]:
+            """Die Anlagen der Vorlage, Anträge zuerst (``store``)."""
+            ...
+
+        def amendment_summary(self, ksinr: int, item_number: str) -> tuple[int, list[str]]:
+            """Zahl und Antragsteller der Änderungsanträge eines Punkts (``store_unterlagen``)."""
+            ...
+
+        def dossier_cost_label(self, template_number: str | None) -> str | None:
+            """„89.000 € jährlich" aus dem Dossier (``store_unterlagen``)."""
+            ...
+
+        def item_documents(self, ksinr: int, item_number: str) -> list[dict]:
+            """Die Dokumente eines Punkts über alle Stationen (``store_unterlagen``)."""
+            ...
+
+        def session_item(self, ksinr: int, item_number: str) -> dict | None:
+            """Ein Tagesordnungspunkt, wie seine Seite ihn zeigt (``store_sitzungen``)."""
+            ...

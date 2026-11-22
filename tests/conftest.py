@@ -152,6 +152,33 @@ def source():
     return bauen
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--shard", default=None, metavar="I/N",
+        help="Nur Teil I von N der Testdateien laufen lassen (CI, s. tests/ci_shards.py).")
+
+
+def pytest_collection_modifyitems(config, items):
+    """``--shard i/n``: nur die Dateien dieses Teils behalten.
+
+    Läuft in jedem xdist-Arbeiter gleich — die Zuordnung hängt allein am
+    Dateinamen, also schneiden alle dieselbe Menge.
+    """
+    spec = config.getoption("--shard")
+    if not spec:
+        return
+    from tests.ci_shards import parse_shard, shard_of
+
+    index, total = parse_shard(spec)
+    keep, drop = [], []
+    for item in items:
+        test_file = item.nodeid.split("::", 1)[0]
+        (keep if shard_of(test_file, total) == index else drop).append(item)
+    if drop:
+        config.hook.pytest_deselected(items=drop)
+        items[:] = keep
+
+
 def pytest_configure(config):
     """Eigene Marker anmelden — sonst warnt pytest bei jedem Lauf.
 

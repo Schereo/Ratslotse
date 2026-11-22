@@ -27,6 +27,7 @@ load_dotenv(ROOT / ".env")
 
 from council.impact import BATCH_SIZE, rate_batch  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
+from kern import features  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
@@ -35,6 +36,12 @@ def process(db_path: Path, limit: int | None, workers: int) -> tuple[int, int]:
     store = CouncilStore(db_path)
     try:
         todo = store.decisions_needing_impact(limit)
+        if features.an("folgetexte-aus-dossier"):
+            # Stufe 4 (Plan Vorlagen § 7.4): die belegten Zeilen der Vorlage —
+            # Kosten, Betroffene, Kennzahlen — neben dem Beschlusstext.
+            for d in todo:
+                nr = store.agenda_item_for_decision(d["ksinr"], d["item_number"]) if d.get("item_number") else None
+                d["dossier_lines"] = store.dossier_lines(d["ksinr"], nr) if nr and d["kind"] == "decision" else []
         batches = [todo[i : i + BATCH_SIZE] for i in range(0, len(todo), BATCH_SIZE)]
         rated = 0
         with ThreadPoolExecutor(max_workers=workers) as pool:

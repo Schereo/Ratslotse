@@ -83,6 +83,31 @@ public final class AppModel {
     /// sagt, ob etwas schon so weit ist — keine Rechteprüfung (kern/features.py).
     public var features: Set<String> = []
     public func feature(_ key: String) -> Bool { features.contains(key) }
+
+    /// Der entsperrte Notiz-Schlüssel dieser Sitzung (Plan
+    /// `docs/plan-notizen-app.md`). Im Speicher immer; in der Keychain nur
+    /// mit „Auf diesem Gerät merken". Abmelden räumt beides.
+    public private(set) var notesKey: Data?
+    private let noteVault = NoteKeyVault()
+
+    public func setNotesKey(_ dk: Data, remember: Bool) {
+        notesKey = dk
+        guard let owner = user?.id else { return }
+        if remember { noteVault.save(dk, owner: owner) } else { noteVault.delete(owner: owner) }
+    }
+
+    public func restoreNotesKey(owner: Int) {
+        if notesKey == nil { notesKey = noteVault.load(owner: owner) }
+    }
+
+    public func lockNotes() {
+        notesKey = nil
+        if let owner = user?.id { noteVault.delete(owner: owner) }
+    }
+
+    /// Ein Anmelde-Passkey, dessen Notiz-Schlüssel bereitliegt, aber noch
+    /// nicht verpackt ist (`AppModel+Passkeys.swift`). Nur im Speicher.
+    var pendingNotesPasskey: PendingNotesPasskey?
     /// Ob `/api/app-config` schon geantwortet hat (oder gescheitert ist). Ein
     /// Deep-Link beim Kaltstart kommt oft VOR der Antwort — bis dahin heißt ein
     /// leeres `features` „weiß noch nicht", nicht „aus".
@@ -352,21 +377,26 @@ public final class AppModel {
         }
     }
 
-    /// Einen Adresswechsel anstoßen. Bestätigt wird mit dem Passwort oder —
-    /// bei Apple-Konten ohne eigenes Passwort — mit einem frischen
-    /// Apple-Identity-Token. Bis der Link in der neuen Mailbox geklickt ist,
-    /// ändert sich nichts; `user.pendingEmail` trägt so lange das Ziel.
+    /// Einen Adresswechsel anstoßen. Bestätigt wird mit dem Passwort, bei
+    /// Apple-Konten ohne eigenes Passwort mit einem frischen
+    /// Apple-Identity-Token, bei Passkey-Konten mit dem Passkey. Bis der Link
+    /// in der neuen Mailbox geklickt ist, ändert sich nichts;
+    /// `user.pendingEmail` trägt so lange das Ziel.
     public func changeEmail(newEmail: String, password: String = "",
-                            appleIdentityToken: String = "") async throws {
+                            appleIdentityToken: String = "",
+                            passkey: PasskeyAssertionCredential? = nil) async throws {
         struct Body: Codable, Sendable {
             let new_email: String
             let current_password: String
             let apple_identity_token: String
+            /// Fehlt er, fehlt der Schlüssel ganz (`encodeIfPresent`) — der
+            /// Server nimmt dann Passwort oder Apple.
+            let passkey: PasskeyAssertionCredential?
         }
         let user: User = try await api.send(
             "/api/account/change-email",
             body: Body(new_email: newEmail, current_password: password,
-                       apple_identity_token: appleIdentityToken)
+                       apple_identity_token: appleIdentityToken, passkey: passkey)
         )
         try await accept(user: user)
     }
@@ -635,6 +665,10 @@ public final class AppModel {
         // Zuletzt angesehene Beschlüsse, Karten-Ebenen, Lottis Anstupser —
         // bis 10/2026 blieben sie für das nächste Konto liegen.
         LocalAccountData.clear(defaults)
+        // Der Notiz-Schlüssel gehört dem Konto, nicht dem Gerät.
+        notesKey = nil
+        noteVault.delete()
+        pendingNotesPasskey = nil
         session = .loggedOut
     }
 

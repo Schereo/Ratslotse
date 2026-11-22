@@ -1,0 +1,88 @@
+{
+ "plan": "integrationskonzept_2020",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan soll allen Beteiligten eine transparente und verbindliche Handlungsstrategie für die kommunale Integrationsarbeit geben.",
+  "quote": "Ziel des Konzeptes ist es, für alle Beteiligten eine transparente und verbindliche Handlungsstrategie zu erstellen, die neben einer zielorientierten Steuerung auf der operativen Ebene auch eine aufeinander abgestimmte Aufgabenverteilung sicherstellt.",
+  "source": {
+   "kind": "attachment",
+   "template": "19/0697/2",
+   "document_id": 213530,
+   "label": "Integrationskonzept, Fassung für den Ausschuss",
+   "page": 12
+  }
+ },
+ "points": [
+  {
+   "text": "Der Plan ordnet die Arbeit in vier Felder: Bildung und Arbeit, Leben, Wohnen und Gesundheit, solidarisches Miteinander sowie Öffnung von Institutionen und Verwaltung.",
+   "kind": "standard",
+   "quote": "Die vier Handlungsfelder – „Bildung und Arbeit“, „Leben, Wohnen und Gesundheit“, „Solidarisches Miteinander“, sowie „Migrationsgesellschaftliche Öffnung der Institutionen, Organisationen sowie der Verwaltung“ – markieren die thematischen Schwerpunkte des vorliegenden Konzeptes.",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0697/2",
+    "document_id": 213530,
+    "label": "Integrationskonzept, Fassung für den Ausschuss",
+    "page": 16
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt abgestimmte, zielgruppenspezifische und bedarfsorientierte Bildungsangebote.",
+   "kind": "goal",
+   "quote": "4.1. Strategisches Ziel: Abgestimmte, zielgruppenspezifische und bedarfsorientierte Bildungsangebote sind vorhanden",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0697/2",
+    "document_id": 213530,
+    "label": "Integrationskonzept, Fassung für den Ausschuss",
+    "page": 19
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt abgestimmte, zielgruppenspezifische und bedarfsorientierte Angebote zum Spracherwerb.",
+   "kind": "goal",
+   "quote": "4.2. Strategisches Ziel: Abgestimmte, zielgruppenspezifische und bedarfsorientierte Angebote zum Spracherwerb sind vorhanden",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0697/2",
+    "document_id": 213530,
+    "label": "Integrationskonzept, Fassung für den Ausschuss",
+    "page": 21
+   }
+  },
+  {
+   "text": "Der Plan zielt auf bessere Ausbildungs- und Arbeitschancen sowie Chancengleichheit für Migrantinnen und Migranten am Arbeitsmarkt.",
+   "kind": "goal",
+   "quote": "4.3. Strategisches Ziel: Verbesserung der Arbeits- und Ausbildungsplatzsituation für Migrantinnen und Migranten sowie Förderung ihrer Chancengleichheit auf dem Arbeitsmarkt",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0697/2",
+    "document_id": 213530,
+    "label": "Integrationskonzept, Fassung für den Ausschuss",
+    "page": 23
+   }
+  },
+  {
+   "text": "Die Verwaltung sollte für jedes Schwerpunktjahr Maßnahmen zur Beschlussfassung vorlegen, mögliche Kosten darstellen und zum Jahresende eine erste Evaluation vorlegen.",
+   "kind": "responsibility",
+   "quote": "Die Verwaltung wird beauftragt im Rahmen eines Schwerpunktjahres Maßnahmen zu erarbeiten und die geplanten Maßnahmen im Ausschuss für Integration und Migration zu benennen und zur Beschlussfassung vorzulegen und mögliche finanzielle Auswirkungen darzustellen. Zudem wird die Verwaltung beauftragt zum jeweiligen Ende eines Schwerpunktjahres eine erste Evaluation vorzulegen.",
+   "source": {
+    "kind": "decision",
+    "template": "19/0697/2",
+    "date": "2020-02-24",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Für das Handlungsfeld Bildung und Arbeit wurde ein Maßnahmenkatalog beschlossen.",
+   "kind": "measure",
+   "quote": "Als Ergebnis des Schwerpunktjahres zum Handlungsfeld Bildung und Arbeit des Integrationskonzeptes werden die in der Anlage 1 aufgeführten Maßnahmen der Stadt Oldenburg in der anliegenden Fassung beschlossen.",
+   "source": {
+    "kind": "template",
+    "template": "21/0287"
+   }
+  }
+ ]
+}

@@ -1,0 +1,96 @@
+{
+ "plan": "kita_ausbau",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Das Konzept reagiert auf den Bedarf an zusätzlichen Krippen- und Kindergartenplätzen in Oldenburg.",
+  "quote": "Auch in den folgenden Jahren wird es einen Zuwachs der 0 bis 6-Jährigen geben, sodass mehr Krippen- und Kindergartenplätze benötigt werden, als im Rahmen der 4. Fortschreibung noch geschaffen werden könnten.",
+  "source": {
+   "kind": "attachment",
+   "template": "22/0620",
+   "document_id": 251642,
+   "label": "Konzept zum Ausbau der Kindertagesbetreuung, 5. Fortschreibung",
+   "page": 1
+  }
+ },
+ "points": [
+  {
+   "text": "Die Versorgungsquote für Krippenplätze soll 55% betragen.",
+   "kind": "standard",
+   "figure": {
+    "value": "55 %",
+    "label": "Versorgungsquote für Krippenplätze"
+   },
+   "quote": "Es wird davon ausgegangen, dass die Nachfrage nach Krippenplätzen weiterhin ansteigen wird, sodass die Versorgungsquote von 55% noch realistisch ist.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0620",
+    "document_id": 251642,
+    "label": "Konzept zum Ausbau der Kindertagesbetreuung, 5. Fortschreibung",
+    "page": 4
+   }
+  },
+  {
+   "text": "Für Kinder unter drei Jahren soll die Kindertagespflege rund 10% der Versorgung abdecken.",
+   "kind": "standard",
+   "figure": {
+    "value": "ca. 10 %",
+    "label": "der unter Dreijährigen in Kindertagespflege"
+   },
+   "quote": "Für die Kindertagespflege bleibt es ebenfalls bei einer Versorgung von ca. 10% der unter Dreijährigen.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0620",
+    "document_id": 251642,
+    "label": "Konzept zum Ausbau der Kindertagesbetreuung, 5. Fortschreibung",
+    "page": 4
+   }
+  },
+  {
+   "text": "Laut Konzept fehlen noch 226 Krippenplätze; 60 davon können über die 4. Fortschreibung entstehen.",
+   "kind": "figure",
+   "figure": {
+    "value": "226",
+    "label": "Krippenplätze fehlen laut Konzept"
+   },
+   "quote": "Es fehlen somit noch 226 Krippenplätze, von denen 60 noch über die 4. Fortschreibung abgedeckt werden können.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0620",
+    "document_id": 251642,
+    "label": "Konzept zum Ausbau der Kindertagesbetreuung, 5. Fortschreibung",
+    "page": 4
+   }
+  },
+  {
+   "text": "Laut Konzept fehlen noch 256 Kindergartenplätze; 25 davon können über die 4. Fortschreibung entstehen.",
+   "kind": "figure",
+   "figure": {
+    "value": "256",
+    "label": "Kindergartenplätze fehlen laut Konzept"
+   },
+   "quote": "Es fehlen somit noch 256 Kindergartenplätze, von denen 25 noch über die 4. Fortschreibung abgedeckt werden können.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0620",
+    "document_id": 251642,
+    "label": "Konzept zum Ausbau der Kindertagesbetreuung, 5. Fortschreibung",
+    "page": 7
+   }
+  },
+  {
+   "text": "Für rund zehn unversorgte Kinder sind zunächst zwei heilpädagogische Gruppen vorgesehen; jede Gruppe hat sechs Plätze.",
+   "kind": "measure",
+   "quote": "Aktuell gibt es ca. zehn unversorgte Kinder, für die ein heilpädagogischer Förderbedarf festgestellt wurde, sodass zunächst von zwei weiteren heilpädagogischen Gruppen ausgegangen wird. Heilpädagogische Gruppen umfassen lediglich sechs Plätze.",
+   "source": {
+    "kind": "attachment",
+    "template": "22/0620",
+    "document_id": 251642,
+    "label": "Konzept zum Ausbau der Kindertagesbetreuung, 5. Fortschreibung",
+    "page": 8
+   }
+  }
+ ]
+}

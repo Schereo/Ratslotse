@@ -1,0 +1,18 @@
+{
+ "plan": "aktionsplan_gewalt_2026",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "8a800e667257818d",
+ "plain": [
+  "Der Plan soll Betroffene von Gewalt schützen und unterstützen.",
+  "Hilfen sollen unterschiedliche Lebenslagen und Bedürfnisse berücksichtigen und möglichst zugänglich oder angepasst sein.",
+  "StoP soll in Dietrichsfeld dauerhaft verankert und im Stadtgebiet ausgeweitet werden."
+ ],
+ "questions": [
+  "Was ist der letzte Stand in Oldenburg zum Aktionsplan gegen Gewalt an Frauen*?",
+  "Was sieht Oldenburgs Aktionsplan gegen Gewalt an Frauen* für das Projekt StoP in Dietrichsfeld vor?",
+  "Welches digitale Informationsangebot zu Gewalt-Themen plant Oldenburg im Aktionsplan?"
+ ]
+}

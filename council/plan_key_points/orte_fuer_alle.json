@@ -1,0 +1,92 @@
+{
+ "plan": "orte_fuer_alle",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan beschreibt, wie Interessengruppen Orte für alle entwickeln und bei der Planung und Umsetzung unterstützt werden.",
+  "quote": "Insbesondere wird dargestellt, wie der weitere Planungsprozess grundsätzlich ablaufen soll, um Gruppen, die am Aufbau eines ORTES FÜR ALLE Interesse haben, zu unterstützen und ein vergleichbares, abgestimmtes und transparentes Vorgehen für die Konzept- und Umsetzungsphase zu haben.",
+  "source": {
+   "kind": "attachment",
+   "template": "21/0478/1",
+   "document_id": 236979,
+   "label": "Gesamtkonzept „Orte für Alle“",
+   "page": 4
+  }
+ },
+ "points": [
+  {
+   "text": "Alle Stadtteile sollen bei der Gestaltung gleich behandelt werden; Verfahren sollen offen und nachvollziehbar sein.",
+   "kind": "standard",
+   "quote": "Dabei sollen alle Stadtteile bei der Gestaltung von ORTEN FÜR ALLE gleich behandelt werden und Verfahren offen und für die Menschen nachvollziehbar ablaufen.",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0478/1",
+    "document_id": 236979,
+    "label": "Gesamtkonzept „Orte für Alle“",
+    "page": 1
+   }
+  },
+  {
+   "text": "Die Orte müssen inklusiv und für alle zugänglich sein; Initiativen und Einzelpersonen verpflichten sich demokratischen Werten.",
+   "kind": "standard",
+   "quote": "Initiativen und Einzelpersonen, die ORTE FÜR ALLE nutzen oder aufbauen wollen, ver- pflichten sich auf die demokratischen Werte und schaffen Orte und Gegebenheiten, die inklusiv für alle zugänglich sind.",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0478/1",
+    "document_id": 236979,
+    "label": "Gesamtkonzept „Orte für Alle“",
+    "page": 1
+   }
+  },
+  {
+   "text": "Bestehende Räume, Personal und Organisation haben Vorrang vor Neubau und Neueinrichtung.",
+   "kind": "standard",
+   "quote": "Dabei gilt der Grundsatz „Alt vor Neu“, d. h. vorhandene Strukturen (Räumlichkeiten, Personalressourcen und Organisation) sind einem Neubau und einer Neueinrichtung stets vorzuziehen.",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0478/1",
+    "document_id": 236979,
+    "label": "Gesamtkonzept „Orte für Alle“",
+    "page": 6
+   }
+  },
+  {
+   "text": "Neue Orte sollen grundsätzlich nicht von der Stadt finanziert werden; alternative Finanzierungsmöglichkeiten sollen die Unabhängigkeit sichern.",
+   "kind": "standard",
+   "quote": "Bei neuen ORTEN FÜR ALLE ist eine finanzielle Unterstützung durch die Stadt grundsätzlich nicht vorzusehen, sondern sollten alternative Möglichkeiten gefunden werden, um die innere Unabhängigkeit des Vorhabens zu gewährleisten.",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0478/1",
+    "document_id": 236979,
+    "label": "Gesamtkonzept „Orte für Alle“",
+    "page": 6
+   }
+  },
+  {
+   "text": "Die Verwaltung begleitet Interessengruppen, wenn sie das wünschen oder städtische Mittel oder andere Ressourcen nutzen wollen.",
+   "kind": "responsibility",
+   "quote": "Interessengruppen an der Verwirklichung einer Einrichtung oder eines Netzwerkes ORTE FÜR ALLE werden, sofern sie dies wünschen oder sie finanzielle Mittel oder andere Ressourcen von der Stadt in Anspruch nehmen wollen, von der Verwaltung begleitet.",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0478/1",
+    "document_id": 236979,
+    "label": "Gesamtkonzept „Orte für Alle“",
+    "page": 7
+   }
+  },
+  {
+   "text": "Planung, Entscheidungen und Projekte sollen grundsätzlich gemeinsam mit den Menschen im Stadtteil erfolgen.",
+   "kind": "standard",
+   "quote": "Planungsprozess, Entscheidungen und Projekte sollten grundsätzlich gemeinsam mit den Menschen im Stadtteil erfolgen, um deren Bedürfnisse angemessen berücksichtigen zu können und sie auch für eine dauerhafte Mitwirkung zu gewinnen.",
+   "source": {
+    "kind": "attachment",
+    "template": "21/0478/1",
+    "document_id": 236979,
+    "label": "Gesamtkonzept „Orte für Alle“",
+    "page": 7
+   }
+  }
+ ]
+}

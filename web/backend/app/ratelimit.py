@@ -92,6 +92,10 @@ class RateLimiter:
 # genug fürs Ausprobieren beim Anlegen („neu generieren"), eng genug, dass
 # niemand damit Kosten treiben kann.
 topic_describe_limiter = RateLimiter(max_calls=20, window_seconds=300)
+# Vorschlagsfragen (council/vorschlagsfragen.py): jede noch nicht gespeicherte
+# Seite ist ein Modellaufruf. Wer schneller blättert als dreißig neue Seiten in
+# fünf Minuten, bekommt die festen Fragen statt eines Fehlers.
+page_questions_limiter = RateLimiter(max_calls=30, window_seconds=300)
 # Themen anlegen und ändern rechnen den Beschluss-Abgleich sofort mit — das
 # sind rund 3 s Cross-Encoder auf der CPU je Aufruf, auf derselben Maschine,
 # die die Website ausliefert. Ohne Bremse wären das die einzigen teuren
@@ -157,6 +161,9 @@ assistant_limiter = RateLimiter(max_calls=30, window_seconds=600)
 # Konto und Tag) und kommen häufiger: Öffnen, Anstupser gezeigt, Ja, Nein.
 # 60 in zehn Minuten deckt jede ehrliche Sitzung.
 assistant_event_limiter = RateLimiter(max_calls=60, window_seconds=600)
+# Dieselbe Sorte aus der übrigen Oberfläche (``POST /api/activity/event``): ein
+# INSERT je Konto und Tag, ausgelöst von Hand. Gleiches Maß wie bei Lotti.
+ui_event_limiter = RateLimiter(max_calls=60, window_seconds=600)
 # Daumen-Feedback ist anonym beschreibbar — ohne Limit ließe sich die Tabelle
 # (und mit ihr Backups + Off-Site-Mirror) per Skript um Gigabytes aufblähen.
 # 20 pro 10 Minuten deckt jedes ehrliche Gespräch, auch mit Grund-Nachträgen.

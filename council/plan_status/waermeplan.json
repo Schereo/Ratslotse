@@ -1,0 +1,62 @@
+{
+ "plan": "waermeplan",
+ "snapshots": [
+  {
+   "as_of": "2026-03",
+   "source": {
+    "kind": "template",
+    "label": "Beschlussvorlage Oldenburger Wärmeplan",
+    "template": "26/0236",
+    "url": null,
+    "fetched": null
+   },
+   "total": 18,
+   "complete": false,
+   "counts": [
+    {
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress",
+     "count": 6
+    }
+   ],
+   "measures": [
+    {
+     "code": "K1",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "K2",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "K3",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "F2",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "T2",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    },
+    {
+     "code": "T5",
+     "status_raw": "in Umsetzung",
+     "status_norm": "in_progress"
+    }
+   ]
+  }
+ ],
+ "notes": [
+  {
+   "text": "Für die übrigen 12 Maßnahmen beschreibt die Vorlage ein Vorhaben und nennt keinen Stand.",
+   "url": null
+  }
+ ]
+}

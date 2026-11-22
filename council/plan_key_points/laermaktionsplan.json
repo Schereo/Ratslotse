@@ -1,0 +1,64 @@
+{
+ "plan": "laermaktionsplan",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "purpose": {
+  "text": "Der Plan soll die Zahl der von Umgebungslärm betroffenen Menschen verringern und ruhige Gebiete vor mehr Lärm schützen.",
+  "quote": "Mit Hilfe einer strategisch ausgerichteten Planung, nämlich der Lärmaktionsplanung, soll daher die Zahl der durch Lärm betroffenen Personen in durch Lärm betroffenen Gebieten verringert werden. Außerdem sollen ruhige Gebiete festgesetzt und vor einer Zunahme des Umgebungslärms geschützt werden.",
+  "source": {
+   "kind": "attachment",
+   "template": "24/0293/1",
+   "document_id": 280381,
+   "label": "Fortschreibung des Lärmaktionsplans (2. Entwurf, Mai 2024)",
+   "page": 4
+  }
+ },
+ "points": [
+  {
+   "text": "Tempo 30 kommt zuerst auf Abschnitten mehrerer Hauptstraßen, darunter Nadorster Straße und Hauptstraße – vorbereitet zum Fahrplanwechsel 2025.",
+   "kind": "measure",
+   "due": {
+    "date": "2025",
+    "at": "end",
+    "label": "zum Fahrplanwechsel 2025"
+   },
+   "quote": "Die Umsetzung der vorgeschlagenen Tempo-30-Regelungen wird so vorbereitet, dass die Regelungen für die nachfolgend aufgeführten Streckenabschnitte zum Fahrplanwechsel der VWG 2025 in Kraft gesetzt werden können: • Nadorster Straße: zwischen Gertrudenfriedhof und Hochheider Weg • Hauptstraße: zwischen Marktplatz Eversten und dem Übergang Edewechter Landstraße / Eichenstraße",
+   "source": {
+    "kind": "decision",
+    "template": "24/0293/1",
+    "date": "2024-09-30",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Ende 2027 sollen die Tempo-30-Regelungen auf weitere Abschnitte der genannten Straßen ausgeweitet werden, wenn sich die erste Stufe bewährt hat.",
+   "kind": "deadline",
+   "due": {
+    "date": "2027",
+    "at": "end",
+    "label": "Ende 2027"
+   },
+   "quote": "Wenn sich die Regelungen auf den ersten Abschnitten bewährt haben, werden die Tempo-30-Anordnungen Ende 2027 auf die weiteren Streckenabschnitte ausgedehnt.",
+   "source": {
+    "kind": "decision",
+    "template": "24/0293/1",
+    "date": "2024-09-30",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Ruhige Gebiete werden festgesetzt; bei späteren Planungen müssen ihre Lärmschutzbelange berücksichtigt werden.",
+   "kind": "standard",
+   "quote": "Die in der geschilderten Art und Weise identifizierten Bereiche werden jeweils als „Ruhige Gebiete“ festgesetzt. Bei nachfolgenden Planungsvorhaben sind die Belange des Lärmschutzes in die Abwägungen einzustellen und zu berücksichtigen.",
+   "source": {
+    "kind": "attachment",
+    "template": "24/0293/1",
+    "document_id": 280381,
+    "label": "Fortschreibung des Lärmaktionsplans (2. Entwurf, Mai 2024)",
+    "page": 156
+   }
+  }
+ ]
+}

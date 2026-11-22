@@ -187,6 +187,20 @@ def test_abweichung_containment_statt_ratio():
     assert ernte.deviation(None, lang) is None
 
 
+def test_abweichung_eine_ergaenzung_ist_eine_aenderung():
+    vorschlag = ("Der Rat stimmt dem Neubau des Stadions an der Maastrichter Straße zum Pauschalpreis "
+                 "von 57.339.000 Euro netto zuzüglich Baunebenkosten zu.")
+    # Der Rat hat einen Satz angefügt: Der Vorschlag steht vollständig im
+    # Beschluss — das Containment allein nannte das „unchanged" (Beschluss 8677).
+    ergaenzt = vorschlag + (" Der Totalunternehmervertrag wird auflösend bedingt für den Fall eines "
+                            "negativen Ausgangs des Notifizierungsverfahrens geschlossen.")
+    assert ernte.deviation(vorschlag, ergaenzt) == "slight"
+    # Ein paar Wörter Protokoll-Rahmen sind keine Ergänzung …
+    assert ernte.deviation(vorschlag, "Der Rat beschließt einstimmig: " + vorschlag) == "unchanged"
+    # … und eine Kürzung bleibt, was sie war.
+    assert ernte.deviation(ergaenzt, vorschlag) == "unchanged"
+
+
 def _session(store, ksinr=1):
     with store._conn:
         store._conn.execute(
@@ -379,3 +393,36 @@ def test_auswirkungen_enden_an_weitere_und_abwaegung():
     aus = ernte.auswirkungen(t)
     assert aus["finanzen"] == "Kosten von 20.000 Euro."
     assert aus["klima"] == "Prüfungsrelevant: Nein"
+
+
+def test_leerer_klima_punkt_nimmt_nicht_die_weiteren_auswirkungen():
+    """26/0681/1: „b) Klima“ ohne Text, darunter „c) Weitere“ — der Klima-Check
+    zeigte die Gleichberechtigung. Leer heißt: kein Klima-Check."""
+    t = ("Auswirkungen:\na) Finanzen\nKleinere Maßnahmen mit 10.000 Euro.\n \nb) Klima\n \n"
+         "c) Weitere\nDie Umsetzung stärkt die Gleichberechtigung.\n \n"
+         "Abwägung und Bewertung der Verwaltung:\nEs wird empfohlen …\n")
+    aus = ernte.auswirkungen(t)
+    assert aus["klima"] is None
+    assert aus["finanzen"] == "Kleinere Maßnahmen mit 10.000 Euro."
+    # Ohne Leerzeile dazwischen dasselbe.
+    assert ernte.auswirkungen(t.replace("b) Klima\n \n", "b) Klima\n"))["klima"] is None
+
+
+def test_leerer_finanz_punkt_nimmt_nicht_den_klima_check():
+    t = ("Auswirkungen:\na) Finanzen\nb) Klima\nPrüfungsrelevant: Nein\nc) Weitere\nKeine.\n")
+    aus = ernte.auswirkungen(t)
+    assert aus["finanzen"] is None
+    assert aus["klima"] == "Prüfungsrelevant: Nein"
+
+
+def test_klima_mit_leerzeile_vor_dem_text():
+    t = "b) Klima\n \nPrüfungsrelevant: Ja\nDer Neubau spart CO2.\n \nc) Weitere\nKeine.\n"
+    assert ernte.auswirkungen(t)["klima"] == "Prüfungsrelevant: Ja Der Neubau spart CO2."
+
+
+def test_buchstabe_im_klima_punkt_faellt_weg():
+    t = ("b) Klima\nc) Prüfungsrelevant: Nein. Der Beschlussgegenstand ist nicht \nprüfungsrelevant.\n"
+         "d) Weitere\n \nAbwägung und Bewertung der Verwaltung:\nText\n")
+    klima = ernte.auswirkungen(t)["klima"]
+    assert klima == "Prüfungsrelevant: Nein. Der Beschlussgegenstand ist nicht prüfungsrelevant."
+    assert ernte.klima_relevant(klima) is False

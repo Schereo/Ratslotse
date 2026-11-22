@@ -1,0 +1,21 @@
+{
+ "plan": "schulentwicklungsplan_2018",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "18/0608",
+   "date": "2018-09-04",
+   "text": "Die Verwaltung legt der Politik einen Vorschlag zur Beschlussfassung über die Zügigkeiten an allen vier Oberschulen vor.",
+   "quote": "Die Festlegung von Zügigkeiten ist dennoch für die Umsetzung der Raumprogramme und die Möglichkeit der Steuerung an allen vier Oberschulen unabdingbar. Hierzu legt die Verwaltung der Politik einen Vorschlag zur Beschlussfassung vor."
+  },
+  {
+   "template": "19/0942",
+   "date": "2019-12-16",
+   "text": "Zu den zehn Empfehlungen wurden insgesamt 12 Vorlagen eingebracht; alle Beschlussvorschläge wurden angenommen.",
+   "quote": "es wurden zu den zehn Empfehlungen insgesamt 12 Vorlagen eingebracht. Alle Beschlussvorschläge wurden angenommen."
+  }
+ ]
+}

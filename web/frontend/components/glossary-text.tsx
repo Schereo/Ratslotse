@@ -5,6 +5,7 @@ import {
   useState, type ReactNode,
 } from "react";
 import { GLOSSARY } from "@/lib/glossary";
+import { KiStern } from "@/components/ki-stern";
 // Die Erkennung steht in `lib/glossar-treffer.ts` — dieselbe, die Lottis
 // Anschluss-Chip „Was heißt …?" benutzt. Zwei Fassungen hätten unterstrichen,
 // was kein Chip anbietet, und umgekehrt.
@@ -28,11 +29,16 @@ import { BEGRIFF_KANON as CANON, BEGRIFF_RE as RE } from "@/lib/glossar-treffer"
  * Wer diese Form will, legt `GlossarAufklappBereich` um den Text. Alles
  * darin schaltet um; alles ohne den Bereich bleibt beim Popover.
  */
-type Aufgeklappt = { label: string; def: string } | null;
+const KI_HINWEIS = "Automatisch aus der Vorlage erklärt und geprüft. Verbindlich sind die Unterlagen im Ratsinfo.";
+
+/** `ki`: Die Erklärung hat ein Modell geschrieben (Begriffe aus der Vorlage,
+ *  `council/vorlage_begriffe.py`) — dann steht der KI-Stern am Begriff. */
+type Aufgeklappt = { label: string; def: string; ki?: boolean } | null;
 
 const AufklappKontext = createContext<{
   auswahl: Aufgeklappt;
   waehlen: (a: Aufgeklappt) => void;
+  nurKlick: boolean;
 } | null>(null);
 
 /**
@@ -49,11 +55,20 @@ const AufklappKontext = createContext<{
  * ganzen Verlauf.
  */
 export function GlossarAufklappBereich(
-  { children, className }: { children: ReactNode; className?: string },
+  { children, className, lesegroesse = false, nurKlick = false }: {
+    children: ReactNode; className?: string;
+    /** Auf Leseseiten (Punkt, Beschluss) steht die Erklärung neben 17-px-Text;
+     *  die 12 px aus Lottis schmalem Fenster wären dort eine Fußnote. */
+    lesegroesse?: boolean;
+    /** In einer Liste von Karten (Sitzungsseite) klappt nur der Klick auf:
+     *  Beim Überfahren wüchse die Karte unter dem Zeiger und schöbe alle
+     *  folgenden weiter, während man die Liste nur überfliegt. */
+    nurKlick?: boolean;
+  },
 ) {
   const [auswahl, setAuswahl] = useState<Aufgeklappt>(null);
   const waehlen = useCallback((a: Aufgeklappt) => setAuswahl(a), []);
-  const wert = useMemo(() => ({ auswahl, waehlen }), [auswahl, waehlen]);
+  const wert = useMemo(() => ({ auswahl, waehlen, nurKlick }), [auswahl, waehlen, nurKlick]);
   // Esc schließt — auch wenn der Fokus inzwischen woanders steht (man klappt
   // auf, liest, scrollt weiter). Nur registriert, solange etwas offen ist.
   useEffect(() => {
@@ -78,9 +93,15 @@ export function GlossarAufklappBereich(
           <div
             data-glossar-aufklapp
             role="note"
-            className="mt-2 rounded-lg border border-border bg-muted/40 p-2.5 text-left text-xs font-normal normal-case leading-relaxed text-muted-foreground"
+            // `relative z-[1]`: In einer Karte, die als Ganzes ein Link ist
+            // (gestreckte Fläche), bleibt die Erklärung lesbar und markierbar,
+            // statt beim Antippen wegzunavigieren.
+            className={`relative z-[1] mt-2 rounded-lg border border-border bg-muted/40 p-2.5 text-left font-normal normal-case not-italic leading-relaxed text-muted-foreground ${lesegroesse ? "text-sm" : "text-xs"}`}
           >
-            <span className="mb-0.5 block font-semibold text-foreground">{auswahl.label}</span>
+            <span className="mb-0.5 block font-semibold text-foreground">
+              {auswahl.label}
+              {auswahl.ki && <KiStern className="ml-0.5" text={KI_HINWEIS} />}
+            </span>
             {auswahl.def}
           </div>
         )}
@@ -91,20 +112,27 @@ export function GlossarAufklappBereich(
 
 /** Ein erklärter Fachbegriff: gepunktet unterstrichen, zeigt beim Überfahren
  *  (Desktop) bzw. Antippen (mobil) eine kurze Erklärung. */
-function Term({ label, def }: { label: string; def: string }) {
+function Term({ label, def, ki }: { label: string; def: string; ki?: boolean }) {
   const aufklapp = useContext(AufklappKontext);
-  if (aufklapp) return <TermAufklapp label={label} def={def} ctx={aufklapp} />;
+  if (aufklapp) return <TermAufklapp label={label} def={def} ki={ki} ctx={aufklapp} />;
   return <TermPopover label={label} def={def} />;
 }
 
+/** Ein Fachwort, dessen Erklärung der Aufrufer mitbringt — die Punkt-Seite
+ *  bekommt Fundstelle und Erklärung vom Server (`components/session/begriffe.tsx`)
+ *  und erkennt selbst nichts. */
+export function Fachwort({ label, def, ki }: { label: string; def: string; ki?: boolean }) {
+  return <Term label={label} def={def} ki={ki} />;
+}
+
 /** Die Fassung für schmale Flächen: der Block steht unter dem Absatz. */
-function TermAufklapp({ label, def, ctx }: {
-  label: string; def: string;
-  ctx: { auswahl: Aufgeklappt; waehlen: (a: Aufgeklappt) => void };
+function TermAufklapp({ label, def, ki, ctx }: {
+  label: string; def: string; ki?: boolean;
+  ctx: { auswahl: Aufgeklappt; waehlen: (a: Aufgeklappt) => void; nurKlick: boolean };
 }) {
   const offen = ctx.auswahl?.label === label;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const umschalten = () => ctx.waehlen(offen ? null : { label, def });
+  const umschalten = () => ctx.waehlen(offen ? null : { label, def, ki });
   // Am Zeigergerät reicht Überfahren — mit kurzer Ruhepause, damit ein
   // Mauszeiger, der nur über den Satz fährt, nicht drei Erklärungen
   // nacheinander aufklappt. `maus:` gibt es nur als Tailwind-Variante, im
@@ -117,8 +145,8 @@ function TermAufklapp({ label, def, ctx }: {
       type="button"
       onClick={(e) => { e.stopPropagation(); umschalten(); }}
       onMouseEnter={() => {
-        if (!zeigergeraet()) return;
-        timer.current = setTimeout(() => ctx.waehlen({ label, def }), 220);
+        if (ctx.nurKlick || !zeigergeraet()) return;
+        timer.current = setTimeout(() => ctx.waehlen({ label, def, ki }), 220);
       }}
       onMouseLeave={() => { if (timer.current) clearTimeout(timer.current); }}
       // Kein Schließen beim Verlassen: Der Block steht unter dem Absatz, nicht
@@ -126,7 +154,8 @@ function TermAufklapp({ label, def, ctx }: {
       // wäre weg, bevor man sie gelesen hat.
       aria-expanded={offen}
       aria-label={`Was bedeutet ${label}?`}
-      className="max-w-full cursor-help whitespace-normal break-words border-b border-dotted border-primary/70 text-left font-medium text-inherit"
+      // `relative z-[1]`: über der gestreckten Link-Fläche einer Karte.
+      className="relative z-[1] max-w-full cursor-help whitespace-normal break-words border-b border-dotted border-primary/70 text-left font-medium text-inherit"
     >
       {label}
     </button>

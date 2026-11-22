@@ -999,18 +999,66 @@ def search_zusagen(store, query: str, expanded: str, top_k: int = 2,
                            top_k, min_rerank=ZUSAGE_RERANK_MIN)
 
 
+#: Personen-Fragetyp: so viele Beiträge der Person prüft der Cross-Encoder.
+#: Er kostet ~32 ms je Paar — das Feld bestimmt die Wartezeit, nicht der
+#: Bestand der Person (Vielredner kommen auf ~800 Beiträge).
+WB_PERSON_POOL = 120
+
+
+def _person_pool(store, query: str, speeches: list[dict], n: int) -> list[dict]:
+    """Die ``n`` Beiträge einer Person, die der Frage am ähnlichsten sind.
+
+    Bis 11/2026 waren es die ``n`` NEUESTEN: Bei „Was hat Paul Behrens (SPD)
+    zum Baumschutz gesagt?“ reichten 120 Beiträge nicht einmal bis 2025
+    zurück — die Strategie von 2024 und der Schramperweg von 2023 kamen nie
+    vor den Cross-Encoder (Gold Prod 09.11.2026: 12 % Abdeckung, 12 von 15
+    Belegen fehlten). Ohne Vektorindex bleibt es bei den neuesten."""
+    try:
+        import numpy as np
+
+        ids, mat = _wb_matrix(store)
+        if not ids:
+            return speeches[:n]
+        pos = {wid: i for i, wid in enumerate(ids)}
+        embedded = [r for r in speeches if r["id"] in pos]
+        if not embedded:
+            return speeches[:n]
+        qv = embed([query])[0]
+        scores = mat[np.array([pos[r["id"]] for r in embedded])] @ qv
+        ranked = sorted(zip(scores.tolist(), range(len(embedded))), reverse=True)[:n]
+        pool = [embedded[i] for _, i in ranked]
+        # Beiträge ohne Embedding (frisch extrahiert) hängen hinten an — sie
+        # sind die neuesten und fehlen sonst genau bei Stand-Fragen.
+        fresh = [r for r in speeches if r["id"] not in pos][:max(0, n - len(pool))]
+        return pool + fresh
+    except Exception:  # noqa: BLE001 — ohne fastembed die neuesten
+        return speeches[:n]
+
+
 def search_wortbeitraege_von_person(store, query: str, nachname: str,
-                                    top_k: int = 10) -> list[dict]:
+                                    top_k: int = 10, name: str = "") -> list[dict]:
     """Personen-Fragetyp: die zur Frage passenden Wortbeiträge EINER Person.
-    Alle Beiträge des Sprechers sind die Kandidaten (per Nachname, ≤120),
-    der Cross-Encoder wählt die einschlägigen. Ist die Frage so allgemein,
-    dass nichts den Cutoff schafft („Was sagt X?"), kommen die neuesten
-    Beiträge — die Person wurde ausdrücklich gefragt, leer wäre falsch."""
-    roh = store.wortbeitraege_von_sprecher(nachname)
+    Kandidaten sind alle Beiträge der Person — mit ``name`` über ihre
+    Namensformen und ohne Namensvettern (``store.speeches_of_person``),
+    sonst per Nachname. Davon kommen die der Frage ähnlichsten in den
+    Cross-Encoder (``_person_pool``), der die einschlägigen wählt. Ist die
+    Frage so allgemein, dass nichts den Cutoff schafft („Was sagt X?"),
+    kommen die neuesten Beiträge — die Person wurde ausdrücklich gefragt,
+    leer wäre falsch.
+
+    Einwohnerfragen fallen heraus: Eine Ratsperson fragt nicht in der
+    Einwohnerfragestunde. Gleichnamige Einwohner tun es — ein „Paul Behrens“
+    fragte dort zweimal nach den Sumpfeichen, und die Antwort hätte es dem
+    Ratsherrn zugeschrieben (Gold-Fall behrens-baumschutz, Verbot X1)."""
+    roh = (store.speeches_of_person(name) if name
+           else store.wortbeitraege_von_sprecher(nachname))
+    roh = [r for r in roh if r.get("kind") != "citizen_question"
+           and "einwohnerfragestunde" not in (r.get("top") or "").lower()]
     if not roh:
         return []
+    pool = _person_pool(store, query, roh, WB_PERSON_POOL) if len(roh) > WB_PERSON_POOL else roh
     paare = [(r["id"], " — ".join(t for t in (r.get("top"), r.get("text")) if t))
-             for r in roh]
+             for r in pool]
     bestaetigt = _rerank_kontext(query, paare, top_k)
     by_id = {r["id"]: r for r in roh}
     rows = [by_id[i] for i, _ in bestaetigt if i in by_id]

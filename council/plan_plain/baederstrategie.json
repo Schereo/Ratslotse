@@ -1,0 +1,18 @@
+{
+ "plan": "baederstrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "9f33d84dd60608a8",
+ "plain": [
+  "Die Strategie soll Lücken im Angebot an Gesundheits-, Bewegungs- und Sportbädern schließen.",
+  "Die Stadtteilbäder in Kreyenbrück und Eversten bleiben erhalten und werden umfassend saniert, während das OLantis weiterentwickelt wird.",
+  "Am Flötenteich ist ein Sportbecken für Wettkämpfe vorgesehen; der Bäderbetrieb plant den Neubau und ein Konzept für erneuerbare Energien."
+ ],
+ "questions": [
+  "Was wurde zuletzt zur Bäderstrategie der Stadt Oldenburg berichtet oder beschlossen?",
+  "Welche Ausstattung ist für das Sportbecken am Flötenteich in Oldenburg vorgesehen?",
+  "Was plant der Bäderbetrieb Oldenburg laut Bäderstrategie für regenerative Energien?"
+ ]
+}

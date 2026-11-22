@@ -651,6 +651,17 @@ def main() -> dict:
         tragweite_fehler = repr(exc)
         print(f"  ⚠️ Tragweite-Bewertung fehlgeschlagen: {exc!r} — Karte nutzt solange die Regeln")
 
+    # Lottis Satz je Sitzung (council/session_summary.py): nur, wo sich die
+    # Angaben seit dem letzten Lauf geändert haben — neue Tagesordnung, neue
+    # Kurzfassungen. Ein Fehler hält die Meldungen nicht auf.
+    try:
+        from council import session_summary
+        saetze = session_summary.nachziehen(council_store, sorted(session_ids), max_usd=0.5)
+        print(f"  Sitzungssätze: {saetze}")
+    except Exception as exc:  # noqa: BLE001 — Zusatz, nie Blocker des Laufs
+        saetze = {"geschrieben": 0}
+        print(f"  ⚠️ Sitzungssätze übersprungen: {exc!r}")
+
     council_store.close()
 
     # Der 7-Uhr-Lauf ist zugleich der Wecker der Warteschlange: Was über Nacht
@@ -659,14 +670,31 @@ def main() -> dict:
     zugestellt = notify.zustellen(ratslotse_store, stats=stats)
     ratslotse_store.close()
 
+    # Texte der Punkt-Anlagen nachladen und einordnen (Änderungsanträge hängen
+    # am Punkt, nicht an der Vorlage; council/punkt_texte.py).
+    try:
+        from council import punkt_texte
+        ptexte = punkt_texte.nachladen(council_store)
+        print(f"Punkt-Anlagen: {ptexte['geladen']} von {ptexte['offen']} geladen, {ptexte['antraege']} Anträge.")
+        # Und die Anträge kommender Sitzungen lesen (council/motions.py).
+        from council import motions
+        mstats = motions.nachziehen(council_store)
+        ptexte["antraege_gelesen"] = mstats["gelesen"]
+        print(f"Anträge gelesen: {mstats['gelesen']} von {mstats['antraege']}.")
+    except Exception as exc:  # noqa: BLE001 — Zusatz, nie Blocker des Laufs
+        ptexte = {"geladen": 0, "antraege": 0, "antraege_gelesen": 0}
+        print(f"Punkt-Anlagen übersprungen: {exc!r}")
     print(f"Done — {notifications_sent} Meldung(en) eingereiht, {zugestellt} zugestellt.")
     indicators = {
         "Gremien": len(committees),
         "Sitzungen mit Tagesordnung": len(session_ids),
         "Termine im Kalender": len(scheduled),
         "Benachrichtigungen": notifications_sent,
+        "Punkt-Anlagen gelesen": ptexte["geladen"],
+        "Anträge gelesen": ptexte.get("antraege_gelesen", 0),
         "Tragweite bewertet": bewertet,
         "Tragweite offen": len(offen),
+        "Sitzungssätze geschrieben": saetze.get("geschrieben", 0),
         **stats,
     }
 

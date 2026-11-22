@@ -1,0 +1,18 @@
+{
+ "plan": "gleichstellungsplan_2018",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "d70b964e10f33e78",
+ "plain": [
+  "Der Plan soll Unterrepräsentanzen abbauen und die Vereinbarkeit von Familie und Beruf verbessern.",
+  "Bei der Besetzung freier Führungsstellen sollen Frauen aktiv mitbedacht werden, wobei die Auswahl der Bestgeeigneten maßgeblich bleibt.",
+  "Der Plan sieht vor, dass die Teilzeitquoten von Frauen und Männern näher zusammenrücken."
+ ],
+ "questions": [
+  "Was wurde zuletzt in Oldenburg zum Gleichstellungsplan 2018–2020 berichtet oder beschlossen?",
+  "Was galt in Oldenburg laut Gleichstellungsplan bei der Besetzung freier Führungsstellen?",
+  "Was sah Oldenburgs Gleichstellungsplan zu Telearbeit und mobilem Arbeiten vor?"
+ ]
+}

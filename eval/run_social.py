@@ -67,12 +67,19 @@ def _store():
     return CouncilStore(Path(os.environ.get("COUNCIL_DB") or WURZEL / "data" / "council.sqlite"))
 
 
-def _kontext(store, ksinr: int, nummer: str) -> str:
+def _kontext(store, ksinr: int, nummer: str, *, dossier: bool = False) -> str:
     from council import social_text
     material = store.agenda_item_material(ksinr, [nummer])
     if not material:
         raise LookupError(f"{ksinr} {nummer}: nicht in der Ratsdatenbank")
     punkt = material[0]
+    if dossier:
+        # A/B Stufe 4 (Plan Vorlagen § 7.4): die belegten Dossier-Zeilen statt
+        # Vorlagentext und Anlagen. Fehlt das Dossier, wird es erzeugt.
+        if punkt.get("template_number") and not store.dossier_lines(ksinr, nummer):
+            from council import template_dossier
+            template_dossier.build_for_template(store, punkt["template_number"], batch=False)
+        return social_text.kontext_aus_dossier(punkt, store.dossier_lines(ksinr, nummer))[0]
     anlagen = store.anlagen_fuer(punkt["kvonr"]) if punkt.get("kvonr") else []
     return social_text.kontext(punkt, anlagen)[0]
 
@@ -99,7 +106,7 @@ def text_bewerten(fall_id: str, roh: str, ktx: str) -> dict:
             "text": text, "ueberschrift": kopf, "laenge": len(text)}
 
 
-def lauf_text() -> dict:
+def lauf_text(*, dossier: bool = False) -> dict:
     from council import social_text
     from kern import prompts
     store = _store()
@@ -107,7 +114,7 @@ def lauf_text() -> dict:
     try:
         for fall in json.loads(FAELLE_TEXT.read_text(encoding="utf-8")):
             fid = f"{fall['ksinr']} {fall['item_number']}"
-            ktx = _kontext(store, fall["ksinr"], fall["item_number"])
+            ktx = _kontext(store, fall["ksinr"], fall["item_number"], dossier=dossier)
             try:
                 roh = social_text._antwort(prompts.get("social_card_text_system"),
                                            prompts.render("social_card_text_user", kontext=ktx))
@@ -175,7 +182,8 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv(WURZEL / ".env")
     wahl = sys.argv[1] if len(sys.argv) > 1 else "text"
-    erg = lauf_text() if wahl == "text" else lauf_kritiker()
+    erg = (lauf_text() if wahl == "text" else lauf_text(dossier=True) if wahl == "text-dossier"
+           else lauf_kritiker())
     for z in erg["faelle"]:
         print(f"  {z['id']:24} {json.dumps({k: v for k, v in z.items() if k != 'id'}, ensure_ascii=False)}")
     print({k: v for k, v in erg.items() if k != "faelle"})

@@ -335,6 +335,15 @@ def wahlen(user: dict | None = Depends(optional_user), store: Store = Depends(ge
     return ElectionList(elections=zeilen)
 
 
+#: Lädt die App zum Tippspiel ein? Tims Entscheidung 09.11.2026: nein — die
+#: Tippspiele bleiben unter ihrem Link erreichbar (`/tipp?runde=…`), aber keine
+#: Seite verweist mehr darauf. Jeder Einstieg (Wahlen-Übersicht, Hinweis auf
+#: Heute, Wahlabend, Stichwahl) hängt an `tipp_path`/`tipp_locked` dieser
+#: Übersicht; leer heißt dort überall: kein Knopf. Für eine künftige Wahl
+#: hier wieder einschalten.
+TIPP_EINLADUNGEN = False
+
+
 def _tipp_pfad(store: Store, w: elections.Election, user: dict | None) -> tuple[str, bool]:
     """Der Weg zum Tippspiel dieser Wahl — oder nichts; dazu, ob es eines gäbe.
 
@@ -348,7 +357,7 @@ def _tipp_pfad(store: Store, w: elections.Election, user: dict | None) -> tuple[
     eine Nebenwirkung, die niemand bestellt hat. Angelegt wird sie beim ersten
     Aufruf von ``/tipp``.
     """
-    if not features.an("tippspiel"):
+    if not TIPP_EINLADUNGEN or not features.an("tippspiel"):
         return "", False
     runde = rounds.get(w.slug)
     if runde is None:

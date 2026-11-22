@@ -13,7 +13,7 @@ import type { Metadata } from "next";
  *  Segmenten (siehe lib/routes.ts); die Hüllen lesen sie in `generateMetadata`.
  */
 
-export type VorschauArt = "decision" | "person" | "thema" | "sitzung" | "ort";
+export type VorschauArt = "decision" | "person" | "thema" | "sitzung" | "ort" | "punkt";
 
 /** Backend-Origin für den Server-seitigen Abruf. Im Betrieb läuft das Frontend
  *  neben dem Backend auf demselben Host; `BACKEND_URL` ist dieselbe Variable,

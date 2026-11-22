@@ -190,7 +190,7 @@ export default function DashboardPage() {
                   date_from längst — es fehlte nur der Link dorthin. */}
               {zahl.count > 0 && (
                 <Link
-                  href={`/council?tab=decisions&date_from=${lastWeekIso(zahl.window_days)}`}
+                  href={`/council?tab=decisions&date_from=${zahl.date_from ?? lastWeekIso(zahl.window_days)}`}
                   className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                 >
                   Diese {zahl.count} ansehen <ArrowRight className="h-3.5 w-3.5" />

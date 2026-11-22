@@ -1,6 +1,6 @@
 ---
 title: KI-Pipeline
-description: Wie das Ratsinfo-Matching und die Beschluss-Aufbereitung per LLM funktionieren.
+description: KI-gestützte Zusammenfassungen, Themenabgleich und Aufbereitung von Ratsbeschlüssen.
 ---
 
 import Mermaid from '../../components/Mermaid.astro';
@@ -10,15 +10,15 @@ Dieses Dokument beschreibt die KI-gestützten Schritte rund um das
 Themen-Matching (Watcher) und die Beschluss-Aufbereitung. Alle LLM-Aufrufe
 laufen über **OpenRouter** (siehe [ADR 0001](/docs/adr/0001-openrouter/)).
 
-Die Pipeline-Qualität entscheidet über den Produktwert: Sie bestimmt, wie
-zuverlässig relevante Tagesordnungspunkte und Beschlüsse zu den Themen der
-Nutzer*innen gefunden werden — bei hoher **Precision** (keine Fehltreffer) *und*
-brauchbarem **Recall**.
+Die Qualität der Pipeline bestimmt, wie zuverlässig Ratslotse
+Tagesordnungspunkte und Beschlüsse zu den Themen der Nutzer*innen findet.
+Ziel ist ein hoher Anteil relevanter Treffer (**Precision**) bei brauchbarer
+Abdeckung (**Recall**).
 
-Wichtig vorab: **Das Scraping selbst nutzt kein LLM.** Tagesordnungen und
-Protokolle werden per BeautifulSoup bzw. PyMuPDF strukturiert eingelesen; das LLM
-kommt **erst beim Zusammenfassen, Matchen und Klassifizieren** zum Einsatz.
-Vorlagen und Anlagen werden sogar komplett ohne LLM ausgewertet.
+**Das Scraping nutzt kein LLM.** BeautifulSoup liest die Tagesordnungen ein,
+PyMuPDF die Protokolle. Ein LLM kommt erst für Zusammenfassungen,
+Themenabgleich und Klassifikation zum Einsatz. Die Auswertung von Vorlagen
+und Anlagen kommt ebenfalls ohne LLM aus.
 
 <Mermaid code={`
 flowchart TD
@@ -69,19 +69,18 @@ eigene Seite: [Bewertungs-Scores](/docs/bewertungen/).
 ## Ausschuss-Zusammenfassungen
 
 - Ausschussliste aktualisieren, kommende Sitzungen (3 Monate voraus) scannen.
-- Pro Sitzung mit Tagesordnung wird ein **Hash der Agenda** gebildet — er dient
-  als Cache-Schlüssel *und* zur Änderungserkennung (neue vs. geänderte
-  Tagesordnung).
+- Für jede Sitzung mit Tagesordnung berechnet das Skript einen **Agenda-Hash**.
+  Er dient als Cache-Schlüssel und macht geänderte Tagesordnungen erkennbar.
 - Routine-TOPs („Genehmigung der Niederschrift", Fragestunde …) filtert bereits
   der Code vor, erst dann fasst das LLM zusammen (JSON-Mode). Das Ergebnis wird
-  je Agenda-Stand **gecacht** — dieselbe Tagesordnung wird nie zweimal
-  zusammengefasst.
+  pro Version der Tagesordnung im Cache gespeichert, damit das Skript jede
+  Version nur einmal zusammenfasst.
 
 ## Watcher / Themen-Matching
 
 - Pro Konto werden nur **zukünftige** Sitzungen mit Tagesordnung
-  klassifiziert, die dieses Konto noch nicht gesehen hat — ändert sich eine
-  Tagesordnung, wird erneut geprüft und benachrichtigt.
+  klassifiziert, die das Konto noch nicht gesehen hat. Ändert sich
+  eine Tagesordnung, prüft Ratslotse sie erneut und benachrichtigt das Konto.
 - Das LLM bekommt die öffentlichen TOPs und die nummerierte Themenliste des
   Kontos und liefert die Treffer-Paare als JSON. Alerts werden dedupliziert.
 - Der Prompt liegt zentral in `kern/prompts.py`.
@@ -112,8 +111,9 @@ Backfill ergänzt sie im Bestand.
 
 #### Vier Regeln, die dabei aussieben (Prüfung des Bestands, 09/2026)
 
-Ein Abgleich der echten Zuordnungen legte vier Fehlerklassen offen. Alle vier
-sind jetzt Code, keine davon fällt in einer frischen Testdatenbank auf:
+Ein Abgleich mit vorhandenen Zuordnungen ergab vier Fehlerklassen. Der Code
+berücksichtigt sie inzwischen. Mit einer frisch angelegten Testdatenbank
+fallen diese Fehler nicht auf.
 
 1. **Der Verlauf schlägt den Punkt.** Der Ortsbereich wurde aus dem Mittelpunkt
    des umschließenden Rechtecks abgeleitet. Bei Flächen trägt das, bei Straßen
@@ -154,10 +154,10 @@ etwas). Und fehlen die Ortsbereichs-Polygone, liefert jede Geo-Ableitung still
 `None`; der Lauf sieht erfolgreich aus und ordnet nichts zu. `geo._features()`
 schreibt das jetzt als Warnung ins Log.
 
-Ein weiterer Fund gehört nicht in die Qualität, sondern in den Datenschutz:
-Fundstellen, die wie eine Wohnanschrift aussehen (`… 49, 26127 Oldenburg`),
-werden abgewiesen. Sie stammten aus Vorlagen zu Ausschussbesetzungen und
-verorteten Personalbeschlüsse nach der Privatadresse eines Mitglieds.
+Aus Datenschutzgründen verwirft die Pipeline Fundstellen, die wie eine
+Wohnanschrift aussehen (`… 49, 26127 Oldenburg`). Solche Fundstellen
+stammten aus Vorlagen zu Ausschussbesetzungen und ordneten Personalbeschlüsse
+der Privatadresse eines Mitglieds zu.
 
 **Bestand nachziehen** — beides ohne `--apply` erst als Bericht:
 
@@ -190,17 +190,14 @@ exakte Beschluss-Suche für diesen Ort.
 
 ## „Lotti erklärt's einfach"
 
-Amtsdeutsch ist die größte Hürde vor den Ratsdaten. Deshalb schreibt
-`council/simple_summary.py` je Beschluss zwei bis drei bürgernahe Sätze in die
-Spalte `simple_summary` — was beschlossen wurde und was es praktisch bedeutet,
-ohne Fachbegriffe.
+`council/simple_summary.py` erklärt den Beschluss und seine praktischen
+Folgen in zwei bis drei Sätzen ohne Fachbegriffe. Das Modul speichert
+den Text in `simple_summary`.
 
-Zwei Einschränkungen sind bewusst gesetzt: Nur echte Beschlüsse
-(`kind='decision'`) mit einem hinreichend langen Beschlusstext bekommen eine
-Kurzfassung — bei einer Zwei-Zeilen-Kenntnisnahme gäbe es nichts zu vereinfachen,
-und eine erfundene Erklärung wäre schlimmer als keine. Neue Beschlüsse werden im
-täglichen Protokoll-Lauf bedient, der Bestand wandert in wöchentlichen Tranchen
-nach.
+Eine Kurzfassung setzt einen Beschluss (`kind='decision'`) und einen
+ausreichend langen Beschlusstext voraus. Eine kurze Kenntnisnahme bietet
+zu wenig Inhalt für eine belegbare Erklärung. Der tägliche Protokolllauf
+verarbeitet neue Beschlüsse, der Wochenlauf ergänzt den Bestand in Batches.
 
 ## Wöchentliche Anreicherung
 
@@ -210,9 +207,9 @@ und „Ähnliche Beschlüsse" frisch bleiben: Entitäten-Extraktion → Beschrei
 Themenfeld-Rückblicke.
 
 Bestätigte Themen-Zusammenführungen (siehe unten) wendet der Entitäten-Schritt
-dabei automatisch mit an. Die *Suche* nach neuen Dubletten läuft bewusst nicht
-wöchentlich mit, sondern nur auf Anstoß („Ops: Themen-Dubletten zusammenführen") —
-eine Zusammenführung sollte man sehen, bevor sie wirkt.
+automatisch an. Die Suche nach neuen Dubletten startet ausschließlich
+manuell über „Ops: Themen-Dubletten zusammenführen". So lässt sich eine
+Zusammenführung vor ihrer Anwendung prüfen.
 
 ## Doppelte Themen
 
@@ -223,11 +220,10 @@ mehrere Themen-Seiten für denselben Gegenstand — gemessen am Bestand vom
 drei für die Gebäudewirtschaft. Beschlüsse und aufsummierte Beträge verteilen
 sich dann auf mehrere Seiten.
 
-`scripts/merge_entity_aliases.py` räumt das auf. Erkennungsmerkmal ist
-kontraintuitiv, aber zuverlässig: **echte Dubletten haben null gemeinsame
-Beschlüsse bei sehr hoher inhaltlicher Nähe.** Das folgt direkt aus der Ursache —
-nennt die Extraktion in einem Beschluss „Bäderbetrieb Oldenburg", nennt sie dort
-nicht zusätzlich „Bäderbetrieb der Stadt Oldenburg".
+`scripts/merge_entity_aliases.py` führt Dubletten zusammen. Typisch sind
+**hohe inhaltliche Ähnlichkeit und keine gemeinsamen Beschlüsse**. Die
+Extraktion verwendet pro Beschluss nur eine Benennung, etwa „Bäderbetrieb
+Oldenburg" oder „Bäderbetrieb der Stadt Oldenburg".
 
 Der Lauf sammelt Kandidaten über Namensnormalisierung (Rechtsform, Ortszusatz,
 vorangestellte Gattung, Abkürzung, Teilstring) und legt **jedes Paar einzeln dem
@@ -257,11 +253,10 @@ nicht eindeutig aus der Quelle belegbar sind. Antwortoptionen werden gemischt
 (die richtige Antwort liegt sonst gern auf Position A), Dubletten fängt ein
 `content_hash`.
 
-Danach kommt der **Richter** (seit 09/2026, `quiz.rate_appeal`): Er fragt
-nicht, ob eine Frage stimmt, sondern ob man sie gern spielt, und benotet sie
-von 1 bis 5. Unter 3 wird eine neue Frage gar nicht erst gespeichert; im
-Bestand kommen knappe Fälle in der Runde erst nach den reizvollen dran und
-nie in die Tages-Challenge. Umformulierungen einer schon vorhandenen Frage
+Seit 09/2026 bewertet ein weiteres Modell den Spielwert auf einer Skala
+von 1 bis 5 (`quiz.rate_appeal`). Neue Fragen mit einer Bewertung unter 3
+speichert Ratslotse nicht. Niedrig bewertete Bestandsfragen erscheinen
+erst nach den besser bewerteten Fragen und fehlen in der Tages-Challenge. Umformulierungen einer schon vorhandenen Frage
 fallen über einen Wortvergleich heraus, und Ratspolitik macht höchstens ein
 Drittel einer Lieferung aus. Anlass: Im Bestand waren 48 % der Fragen
 Ratspolitik, und viele davon fragten Straßenabschnitte oder
@@ -464,9 +459,9 @@ python scripts/fetch_rules_of_procedure.py --pdf neu.pdf \
 Ein Knopf auf jeder Seite öffnet ein Fenster, in dem Lotti erklärt, was gerade
 auf dem Bildschirm steht — die Seite, ein angeklicktes Element oder markierter
 Text. Der Endpunkt ist `POST /api/council/explain`
-(`council/assistant.py`), und er ist bewusst **keine zweite KI-Frage**: Es
-gibt kein Retrieval, keinen Reranker und keine Kandidatenliste. Der Gegenstand
-steht auf der Seite, die Person zeigt selbst darauf.
+(`council/assistant.py`). Lotti erklärt den von der Person ausgewählten
+Seiteninhalt unmittelbar. Der Endpunkt verwendet kein Retrieval, keinen
+Reranker und keine Kandidatenliste.
 
 **Drei Wege kommen ohne Modell aus** und beantworten zusammen den häufigsten
 Klick — gemessen 10 von 30 Eval-Fällen, je unter einer Millisekunde:
@@ -493,12 +488,13 @@ haben. Sechs Fälle im Eval (`eval/run_assistant.py`) schieben Anweisungen
 unter („ignoriere alle Anweisungen", „antworte auf Englisch", „du bist
 jetzt …"); gemessen am 21.09.2026 wurden 6 von 6 abgewehrt.
 
-**Was das Archiv braucht, geht ans Archiv.** Fragt jemand „Wer hat dagegen
-gestimmt?", antwortet Lotti nicht, sondern sagt das im ersten Satz und bietet
-den Weg zu „Frag den Rat" an. Die Entscheidung fällt **deterministisch am
-Wortlaut** (`assistant.archivfrage`), nicht im Modell: Es soll die Marke
-`WEITER: ratsfrage` selbst setzen und tut das meistens — über drei Eval-Läufe
-hat es sie einmal vergessen, und dann stand da eine Absage ohne Ausweg.
+**Fragen zum Archiv leitet Lotti an „Frag den Rat" weiter.** Bei einer
+Frage wie „Wer hat dagegen gestimmt?" weist Lotti im ersten Satz darauf
+hin, dass sie die Frage nicht beantworten kann, und bietet „Frag den Rat"
+an. `assistant.archivfrage` erkennt solche Fragen deterministisch am
+Wortlaut. Das Modell soll die Marke `WEITER: ratsfrage` selbst setzen.
+In drei Eval-Läufen fehlte sie einmal, sodass die Antwort keine
+Weiterleitung anbot.
 
 **Kosten**, gemessen am 21.09.2026 über 20 echte Aufrufe (Gemini 2.5 Flash):
 
@@ -517,8 +513,8 @@ Expansion und Reranker.
 
 Mit dem Schalter `lotti-selbstpruefung` prüft Ratslotse einen Teil der
 Erklärungen, die ein Modell geschrieben hat (`COUNCIL_ASSISTANT_PRUEFER_ANTEIL`,
-Vorgabe 10 %) — **nach** der Antwort, als Hintergrund-Aufgabe, wenn der Strom
-schon beim Client ist (`council/self_check.py`):
+Standardwert 10 %). Die Prüfung läuft nach dem Versand der Antwort im
+Hintergrund (`council/self_check.py`).
 
 1. **Ohne Modell:** Jede Zahl der Antwort steht im Kontext, unter dem Jahr,
    unter dem sie dort steht — dieselbe Logik wie die Fakten-Eval
@@ -528,25 +524,64 @@ schon beim Client ist (`council/self_check.py`):
    GPT-6 Luna), mit Zero Data Retention. Es bekommt Lottis ganzen Prompt samt
    Frage und Antwort und urteilt als JSON.
 
-Das Urteil landet in `assistant_checks` und im Admin-Reiter „Lotti“ — Frage
-und Antwort nur mit Einwilligung in die Gesprächsspeicherung.
+Ratslotse speichert die Bewertung in `assistant_checks` und zeigt sie im
+Admin-Reiter „Lotti“. Frage und Antwort sind nur mit Einwilligung in die
+Gesprächsspeicherung enthalten.
 
-**Warum nicht vor der Anzeige?** Gemessen am 24.09.2026 an der Fakten-Eval
-(178 Fälle): Die Fassung, die vor der Anzeige prüfte und bei einem Mangel neu
-schrieb, ersetzte 4 Antworten, eine davon besser — ok blieb bei 163, dafür
-+1,7 s im Median und das 2,5-Fache der Kosten. Zahlen und Befehle:
+**Vergleich mit einer Prüfung vor der Anzeige.** In der Fakten-Eval am
+24.09.2026 mit 178 Fällen ersetzte diese Variante 4 Antworten. Eine davon
+war besser, die Zahl der als „ok" bewerteten Fälle blieb bei 163. Die
+Laufzeit stieg im Median um 1,7 s und die Kosten auf das 2,5-Fache.
+Zahlen und Befehle stehen in
 `docs/lotti-selbstpruefung.md`.
+
+### Werkzeuge: nachschlagen statt raten
+
+Lotti bekommt einen vorbereiteten Kontext und antwortet daraus in einem Zug.
+Für die meisten Fragen reicht das. Bei mehrstufigen Fragen nicht: Von 30
+solchen Fällen der Fakten-Eval (`eval/cases_fakten_haushalt.json`, Kategorie
+`haushalt/mehrstufig`) bestanden am 25.09.2026 nur 17, zwölf davon scheiterten
+am Kontext. Es fehlte die Entwicklung seit 2010 (der Baustein zeigt jüngstes
+Jahr, Vorjahr und Höchstwert), die Antwort stand auf einer anderen Seite, oder
+gefragt war ein Anteil, den kein Dokument ausrechnet.
+
+Mit dem Schalter `lotti-werkzeuge` darf Lotti deshalb nachschlagen
+(`council/lotti_werkzeuge.py`): Zeitreihen, Haushaltszahlen anderer Seiten,
+Ratsbeschlüsse. Höchstens drei Runden je Antwort. Die Grenzen:
+
+- Die Werkzeuge **lesen nur**. Nichts wird geschrieben, nichts verschickt.
+- Die Haushalts-Werkzeuge gibt es nur mit dem Recht `budget`, dieselbe Grenze
+  wie für den Haushalts-Kontext selbst.
+- Jede Zahl kommt mit Jahr und Beleg zurück, in derselben Form wie der
+  vorbereitete Kontext. Die Belege landen unter „Grundlage“.
+- **Rechnen nur mit belegten Zahlen.** Lotti rechnet nicht selbst, sonst
+  entstehen Zahlen, die in keinem Dokument stehen. Das Rechenwerkzeug nimmt
+  nur Werte an, die schon im Gespräch standen (im Kontext oder in einem
+  Werkzeug-Ergebnis), und gibt die Herleitung mit. Eine erfundene Zahl lässt
+  sich so nicht „durchrechnen“.
+- Text aus dem Ratsarchiv ist Fremdtext: Er läuft durch den Anweisungsfilter
+  (`kern/foreign_text.py`) und steht zwischen Markern.
+
+Messung und Befehle: `docs/lotti-werkzeuge.md`.
+
+### Der Anstupser
+
+Mit dem Schalter `lotti-anstupser` klopft Lotti selten von selbst an („Hast
+du eine Frage zu dem, was du siehst?“): nur auf Leseseiten, nach 45 Sekunden
+Lesezeit, höchstens einmal am Tag und dreimal in 30 Tagen. Ob er bleibt,
+entscheidet eine Messung: Das Admin-Panel zählt im Reiter „Lotti“, wie oft er
+angenommen wird. Liegt die Quote nach vier Wochen unter 5 %, wird er seltener
+oder abgeschafft.
 
 ## Frag den Rat: welche Quelle eine Geldfrage zieht
 
-Die KI-Frage antwortet nicht nur aus Beschlüssen. Zu Geldfragen liegen
-vierzehn weitere Quellen bereit — der ganze
-[Haushalts-Bestand](/docs/haushalt/). Alle anzuhängen wäre die bequeme und die
-falsche Lösung: Jeder Baustein kostet Platz im Antwort-Prompt, in dem schon 20
-Beschlüsse, Debatten-Auszüge, Pressemitteilungen und Steckbriefe stehen.
+Für Fragen zu Stadtfinanzen kann die KI-Frage auf vierzehn zusätzliche
+Quellen aus dem [Haushalts-Bestand](/docs/haushalt/) zugreifen. Sie wählt
+daraus passende Auszüge, weil der Antwort-Prompt bereits 20 Beschlüsse
+sowie Debattenauszüge, Pressemitteilungen und Steckbriefe enthält.
 
-**Welche Quelle gefragt wird, entscheidet `qa.geld_facetten` am
-Frage-Wortlaut** — deterministisch, ohne LLM-Call:
+**`qa.geld_facetten` wählt die Quellen anhand des Wortlauts der Frage**.
+Das Verfahren ist deterministisch und kommt ohne LLM-Aufruf aus.
 
 | Facette | Quelle | Beantwortet | Bestand endet |
 |---------|--------|-------------|---------------|
@@ -571,8 +606,8 @@ Muster für `plan` und zogen damit den Ergebnishaushalt — in dem der
 Schuldenstand nicht vorkommt und keine einzige Investition steht. Gemessen an
 20 typischen Fragen zu diesen vier Schichten: vorher 0 Treffer, nachher 20.
 
-Jeder der vier Bausteine trägt außerdem eine Grenze, die in die Antwort
-gehört und ohne die er schadet:
+Der Antwort-Prompt enthält für jede dieser vier Quellen einen Hinweis
+zur korrekten Verwendung der Daten.
 
 - **Schulden** sind ein *Bestand* am Stichtag, kein Jahresbetrag — und sie
   zählen die Stadt als Rechtsträger (Kernhaushalt **und** Eigenbetriebe, ohne
@@ -588,31 +623,30 @@ gehört und ohne die er schadet:
   — nicht *was genau*. Der Inhalt liegt in Anlagen ohne Volltext; ohne diesen
   Satz füllt das Modell die Lücke mit Plausiblem.
 
-Drei Entscheidungen dahinter, die sich beim Weiterbauen leicht umdrehen
-lassen — und dann Schaden anrichten:
+Für die Auswahl von Haushaltsquellen gelten drei Regeln.
 
 1. **Nicht am LLM-Fragetyp.** Der Typ `geld` ist ein Modell-Urteil und lautet
    für „Was hat das Rechnungsprüfungsamt beanstandet?" mit gutem Grund
    `thema` — es ist keine Betragsfrage. Hinge der Haushalts-Kontext am Typ,
-   bekämen genau diese Fragen nichts. `geld` bleibt trotzdem als Auffangnetz:
-   Sagt das Modell `geld` und trifft kein Muster, kommen die Plan-Zahlen.
+   bekämen genau diese Fragen nichts. Die Klassifikation `geld` dient als Fallback. Erkennt das Modell `geld`
+   und passt kein Muster, verwendet die Anwendung die Planzahlen.
 2. **Nicht an den expandierten Suchbegriffen.** Der Analyse-Prompt verlangt
    ausdrücklich eine Umformulierung „aus anderem Blickwinkel — z. B. die
    Sachstands-Frage zusätzlich als Finanzierungs-Frage". Wer die Facetten
    daran festmacht, zieht den halben Haushalt in jede Stadion-Frage. Der
    **Wortlaut** entscheidet, ob gefragt wird; die **Expansion** entscheidet,
    was die Quelle liefert.
-3. **Feuern heißt nicht anhängen.** Eine Facette kostet zunächst nur eine
-   Datenbank-Abfrage. „Was kostete der Stadionumbau?" befragt die Produkt- und
-   die Plan-Ebene, findet dort nichts (ein Stadionumbau ist weder Produkt noch
-   Teilhaushalt) und schreibt kein Zeichen in den Prompt.
+3. **Nur verfügbare Daten kommen in den Prompt.** Ein passendes
+   Suchmuster löst zunächst eine Datenbankabfrage aus. „Was kostete der
+   Stadionumbau?" fragt Produkte und Teilhaushaltspläne ab. Da der
+   Stadionumbau weder ein Produkt noch ein Teilhaushalt ist, erhält der
+   Prompt aus diesen Quellen keinen Text.
 
 Der Prompt-Abschnitt ist auf **4.500 Zeichen** gedeckelt
-(`qa.GELD_MAX_CHARS`); reißt das Budget, fallen die **hinteren** Facetten ganz
-weg statt alle in der Mitte abzubrechen. Echte Fragen kosten gemessen
-**616–1.755 Zeichen** — der Deckel ist für den Normalfall keine Fessel. Er
-greift erst, wenn eine Frage ein halbes Dutzend Quellen auf einmal zieht;
-ungedeckelt wären es dann rund 8.300 Zeichen.
+(`qa.GELD_MAX_CHARS`). Bei Überschreitung entfallen ganze Quellenblöcke
+am Ende der Liste. Bei typischen Fragen enthielt der Abschnitt gemessen
+**616–1.755 Zeichen**. Das Limit greift erst, wenn eine Frage etwa sechs
+Quellen abruft. Ohne Limit wären das rund 8.300 Zeichen.
 
 Genau daran hängt auch die **Reihenfolge** in `qa.GELD_FACETTEN`: Die drei
 neuen Bestands-Quellen stehen vorn, weil sie nur bei ihren eigenen,

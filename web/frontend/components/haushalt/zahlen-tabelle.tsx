@@ -140,11 +140,15 @@ export function TextZelle({ children, className }: {
  *  Fließtext sagt nicht, ob sie Ertrag oder Aufwand ist — dort steht das
  *  Label deshalb vor dem Betrag. Ohne `label` bleibt die Zelle auf schmalen
  *  Schirmen unbeschriftet; wer eine neue Zahlentabelle baut, gibt es mit. */
-export function BetragZelle({ euro, text, label, className }: {
+export function BetragZelle({ euro, text, label, className, schlicht = false }: {
   euro: number | null;
   text: string;
   label?: string;
   className?: string;
+  /** Ein Stand statt einer Änderung (Aufwendungen 2026, ein Hebesatz): ohne
+   *  Vorzeichen-Farbe und auch gestapelt immer da — die Zahl IST die Zeile.
+   *  Der Kasten „Im Haushalt“ der Punkt-Seite zeigt nur solche. */
+  schlicht?: boolean;
 }) {
   return (
     <td
@@ -160,12 +164,14 @@ export function BetragZelle({ euro, text, label, className }: {
         // ohne unter jeder Position eine tote Zeile zu hinterlassen. Trägt
         // eine Position in BEIDEN Spalten nichts, steht sie nur mit ihrem
         // Text da — und genau so steht sie auch im Dokument.
-        euro == null && "hidden breit:table-cell",
-        euro == null
-          ? "text-muted-foreground/60"
-          : euro < 0
-            ? "text-signal"
-            : "text-emerald-700 dark:text-emerald-400",
+        !schlicht && euro == null && "hidden breit:table-cell",
+        schlicht
+          ? "text-foreground"
+          : euro == null
+            ? "text-muted-foreground/60"
+            : euro < 0
+              ? "text-signal"
+              : "text-emerald-700 dark:text-emerald-400",
         className,
       )}
     >

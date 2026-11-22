@@ -87,6 +87,78 @@ def test_search_wortbeitraege_von_person_fallback(monkeypatch):
     assert [r["id"] for r in rows] == [2]
 
 
+def test_personensuche_ohne_namensvetter_aus_der_einwohnerfragestunde(monkeypatch):
+    """Gold-Fall behrens-baumschutz: Ein Einwohner „Paul Behrens“ fragte in der
+    Einwohnerfragestunde nach den Sumpfeichen — das ist nicht der Ratsherr."""
+    class _S:
+        def speeches_of_person(self, name):
+            assert name == "Paul Behrens"
+            return [
+                {"id": 1, "speaker": "Paul Behrens", "kind": "citizen_question",
+                 "top": "Einwohnerfragestunde", "text": "Sumpfeichen?"},
+                {"id": 2, "speaker": "Paul Behrens", "kind": "speech",
+                 "top": "4 Einwohnerfragestunde", "text": "Jungbäume?"},
+                {"id": 3, "speaker": "Ratsherr Behrens", "kind": "speech",
+                 "top": "Schutz der Platanen", "text": "Theo und Leni"},
+            ]
+
+        def wortbeitraege_von_sprecher(self, nachname, limit=120):
+            raise AssertionError("mit Namen nicht per Nachname suchen")
+
+    monkeypatch.setattr(emb, "_rerank_kontext", lambda q, paare, top_k: [(i, 1.0) for i, _ in paare])
+    rows = emb.search_wortbeitraege_von_person(_S(), "Baumschutz", "Behrens", name="Paul Behrens")
+    assert [r["id"] for r in rows] == [3]
+
+
+def test_personensuche_waehlt_das_feld_nach_aehnlichkeit(monkeypatch):
+    """Bis 11/2026 kamen nur die 120 NEUESTEN Beiträge vor den Cross-Encoder —
+    bei einem Vielredner reichte das nicht bis 2024 zurück."""
+    import numpy as np
+
+    n = emb.WB_PERSON_POOL + 30
+    beitraege = [{"id": i, "speaker": "Behrens", "kind": "speech", "top": "TOP",
+                  "text": f"Beitrag {i}"} for i in range(n)]   # neueste zuerst
+
+    class _S:
+        def speeches_of_person(self, name):
+            return beitraege
+
+    # Der älteste Beitrag (id n-1) ist der Frage am ähnlichsten.
+    mat = np.array([[1.0 if i == n - 1 else 0.0, 0.1] for i in range(n)], dtype="float32")
+    monkeypatch.setattr(emb, "_wb_matrix", lambda store: (list(range(n)), mat))
+    monkeypatch.setattr(emb, "embed", lambda texte: np.array([[1.0, 0.0]], dtype="float32"))
+    gesehen: list[int] = []
+
+    def rerank(q, paare, top_k):
+        gesehen.extend(i for i, _ in paare)
+        return [(n - 1, 1.0)]
+
+    monkeypatch.setattr(emb, "_rerank_kontext", rerank)
+    rows = emb.search_wortbeitraege_von_person(_S(), "Schramperweg", "Behrens", name="Paul Behrens")
+    assert len(gesehen) == emb.WB_PERSON_POOL and n - 1 in gesehen
+    assert [r["id"] for r in rows] == [n - 1]
+
+
+def test_beitraege_der_person_ohne_fremden_vornamen(tmp_path):
+    store = CouncilStore(tmp_path / "c.sqlite")
+    try:
+        with store._conn:
+            store._conn.execute(
+                "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+                "location, fetched_at) VALUES (1, 'Rat', '2026-06-01', '', '', datetime('now'))")
+            store._conn.executemany(
+                "INSERT INTO council_speeches (ksinr, position, speaker, party, kind, "
+                "top, text, extracted_at) VALUES (1, ?, ?, 'SPD', 'speech', 'Ö 1', ?, "
+                "datetime('now'))",
+                [(1, "Ratsherr Behrens", "a"), (2, "Christian Behrens", "b"),
+                 (3, "Paul Behrens", "c")])
+        texte = sorted(w["text"] for w in store.speeches_of_person("Paul Behrens"))
+        assert texte == ["a", "c"]
+        assert store.wortbeitraege_person("Paul Behrens")["overall"] == 2
+    finally:
+        store.close()
+
+
 def test_person_slug_und_anzeige_normalisieren_anreden():
     """Tims Befund 10.08.: „Herr Jens Freymuth" und „Jens Freymuth" erschienen
     als zwei Personen im Verzeichnis — Anreden gehören weder in den Slug noch

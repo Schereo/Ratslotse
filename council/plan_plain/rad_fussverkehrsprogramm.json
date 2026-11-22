@@ -1,0 +1,18 @@
+{
+ "plan": "rad_fussverkehrsprogramm",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "7ce7a1d31f32ff9e",
+ "plain": [
+  "Das Programm für Rad- und Fußverkehr wird jedes Jahr neu aufgestellt und mit Polizei, Behindertenbeirat und ADFC abgestimmt.",
+  "2018 sollen an der Südroute zwei Fahrradstraßen entstehen, und an der Ofener Straße wird der Rad- und Gehweg stadtauswärts weiter umgebaut.",
+  "Das Programm umfasst Maßnahmen für barrierefreie öffentliche Räume; „Radliebe“ und „Stadtradeln“ sollen die Öffentlichkeitsarbeit stärken."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Rad- und Fußverkehrsprogramm in Oldenburg berichtet oder beschlossen?",
+  "Welche Fahrradstraßen an Oldenburgs Südroute sah das Rad- und Fußverkehrsprogramm vor?",
+  "Welche Maßnahmen zur Barrierefreiheit nennt Oldenburgs Rad- und Fußverkehrsprogramm?"
+ ]
+}

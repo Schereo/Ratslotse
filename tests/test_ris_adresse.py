@@ -131,6 +131,18 @@ def test_die_dokumentnummer_bleibt_die_identitaet_eines_anhangs():
     assert agenda_diff.anlagen_schluessel(alt) == agenda_diff.anlagen_schluessel(neu) == ["315885"]
 
 
+def test_die_dokumentkennung_einer_anlage_kommt_aus_alter_wie_neuer_adresse():
+    """``council_agenda_attachments.document_id`` wird bei jedem Abgleich aus
+    der Adresse gelesen; an ihr hängen Steckbrief, Seiten und Antrags-Auszug.
+    Träfe das Muster nur ``getfile.php``, bliebe sie für jede neu gelesene
+    Anlage leer — und nichts davon fände sein Dokument wieder."""
+    from council.store_sitzungen import dokument_id
+
+    assert dokument_id("https://buergerinfo.oldenburg.de/getfile.php?id=315885&type=do") == 315885
+    assert dokument_id(ris.file_url(315885)) == 315885
+    assert dokument_id(ris.template_url(7)) is None and dokument_id(None) is None
+
+
 # --------------------------------------------------------------- Bestand
 
 def _fingerabdruck(zeile) -> str:

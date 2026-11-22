@@ -1,0 +1,18 @@
+{
+ "plan": "gleichstellungsplan_2024",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "20df4d34118b1867",
+ "plain": [
+  "Der Plan empfiehlt Maßnahmen gegen eine zu geringe Vertretung eines Geschlechts und für bessere Vereinbarkeit von Beruf und Familie.",
+  "Ein Ziel ist, mehr Frauen in Führungspositionen zu beschäftigen.",
+  "Der Plan sieht vor, Führung in Teilzeit und geteilte Führung auszubauen."
+ ],
+ "questions": [
+  "Was wurde in Oldenburg zuletzt zum Gleichstellungsplan 2024–2026 berichtet oder beschlossen?",
+  "Welche Schritte nennt Oldenburgs Gleichstellungsplan für mehr Frauen in Führungsjobs?",
+  "Was plant Oldenburg für Teilzeit- und geteilte Führung im Gleichstellungsplan?"
+ ]
+}

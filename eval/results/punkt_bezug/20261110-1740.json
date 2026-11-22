@@ -1,0 +1,63 @@
+{
+ "zusammen": {
+  "mit": "0/3",
+  "ohne": "0/3",
+  "usd": 0.0011
+ },
+ "zeilen": [
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Und was kostet das?",
+   "bezug": true,
+   "beim_punkt": false,
+   "sekunden": 3.2,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4654,
+   "item_number": "Ö 9",
+   "frage": "Und was kostet das?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Und was kostet das?",
+   "bezug": true,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4650,
+   "item_number": "Ö 10.3",
+   "frage": "Und was kostet das?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Und was kostet das?",
+   "bezug": true,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  },
+  {
+   "ksinr": 4702,
+   "item_number": "Ö 8.1",
+   "frage": "Und was kostet das?",
+   "bezug": false,
+   "beim_punkt": false,
+   "sekunden": 0.0,
+   "antwort": "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+  }
+ ]
+}

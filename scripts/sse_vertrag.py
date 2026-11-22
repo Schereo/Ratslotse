@@ -90,7 +90,8 @@ def rahmen_der_recherche() -> dict[str, set[str]]:
     „sendet niemand". Genau das ist beim Bauen passiert.
     """
     aus: dict[str, set[str]] = {}
-    for knoten in ast.walk(ast.parse(RECHERCHE.read_text())):
+    baum = ast.parse(RECHERCHE.read_text())
+    for knoten in ast.walk(baum):
         if not (isinstance(knoten, ast.Call) and isinstance(knoten.func, ast.Name)
                 and knoten.func.id == "_emit" and len(knoten.args) >= 2
                 and isinstance(knoten.args[1], ast.Dict)):
@@ -99,6 +100,17 @@ def rahmen_der_recherche() -> dict[str, set[str]]:
         typ = felder.get("type")
         if isinstance(typ, ast.Constant) and isinstance(typ.value, str):
             aus.setdefault(typ.value, set()).update(set(felder) - {"type"})
+    # Was ``_emit`` selbst an den Rahmen hängt (seit 11/2026 die Laufzeit
+    # ``elapsed``), steht in keinem Aufruf — ohne diesen Schritt meldete der
+    # Test das Feld als „sendet niemand".
+    stempel: set[str] = set()
+    for knoten in ast.walk(baum):
+        if isinstance(knoten, ast.FunctionDef) and knoten.name == "_emit":
+            for d in ast.walk(knoten):
+                if isinstance(d, ast.Dict):
+                    stempel |= set(_dict_schluessel(d))
+    for felder in aus.values():
+        felder |= stempel - {"type"}
     return aus
 
 

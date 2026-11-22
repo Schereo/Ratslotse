@@ -22,7 +22,7 @@ from ..clients import client_kind, is_app_client
 from ..config import get_settings
 from ..mailprotokoll import protokolliere
 from ..antworten import Ok
-from ..deps import get_current_user, get_store
+from ..deps import get_current_user, get_store, kein_fremder_aufruf
 from ..ratelimit import (forgot_password_limiter, login_fail_limiter, login_limiter,
                          register_duplicate_limiter, register_limiter, register_notice_limiter,
                          verify_code_limiter, verify_email_limiter)
@@ -31,6 +31,7 @@ from ..schemas import (
     NAME_UNZULAESSIG,
     ForgotPasswordRequest,
     LoginRequest,
+    MagicLinkRequest,
     RegisterRequest,
     ResetPasswordRequest,
     UserOut,
@@ -38,7 +39,10 @@ from ..schemas import (
     VerifyEmailRequest,
     name_zulaessig,
 )
-from ..security import DUMMY_PASSWORD_HASH, create_access_token, hash_password, verify_password
+from ..security import (
+    DUMMY_PASSWORD_HASH, VIA_LINK, create_access_token, decode_magic_token, hash_password,
+    magic_grund, verify_password,
+)
 from ..session import clear_session_cookie, set_session_cookie
 
 # Email-verification links stay valid for 24h (more forgiving than the 1h reset link).
@@ -158,7 +162,20 @@ def _set_auth_cookie(response: Response, user: dict, request: Request) -> None:
     """
     if _is_app_client(request):
         return
-    set_session_cookie(response, create_access_token(user["id"], user.get("token_version", 0)))
+    set_session_cookie(response, create_access_token(
+        user["id"], user.get("token_version", 0), via=_herkunft(user)))
+
+
+def _herkunft(sitzung: dict) -> str | None:
+    """Das ``via`` für ein Token, das aus einer bestehenden Sitzung entsteht.
+
+    Eine Sitzung aus einem Anmeldelink (``deps.get_current_user`` setzt dann
+    ``per_link``) bleibt eine — auch im frisch ausgestellten Token. Bis 11/2026
+    stellte ``_app_access_token`` es ohne ``via`` aus: ``GET /api/auth/me`` mit
+    ``X-Client: ios`` machte aus der eingeschränkten Sitzung eine volle, und
+    ``require_volle_anmeldung`` ließ Adresswechsel und Löschen wieder durch.
+    """
+    return VIA_LINK if sitzung.get("per_link") else None
 
 
 def _is_app_client(request: Request) -> bool:
@@ -172,19 +189,26 @@ def _is_app_client(request: Request) -> bool:
     return is_app_client(request)
 
 
-def _app_access_token(request: Request, user: dict) -> str | None:
+def _app_access_token(request: Request, user: dict,
+                      sitzung: dict | None = None) -> str | None:
     """Mint a long-lived bearer token for native-app clients to store on-device.
 
     Browsers rely on the httpOnly cookie set by ``_set_auth_cookie`` and get
     ``None`` here (the token is never exposed to page JS). The app can't persist
     cross-site cookies reliably, so it carries the token in the Authorization
     header instead — which ``deps.get_current_user`` already accepts.
+
+    The token keeps the origin of the session it is minted from (``sitzung``,
+    else ``user`` itself — see ``_herkunft``): a session from a sign-in link
+    gets a link token back, never a full one. Pass ``sitzung`` whenever
+    ``user`` was re-read from the store, because that copy has lost the flag.
     """
     if not _is_app_client(request):
         return None
     settings = get_settings()
     return create_access_token(
-        user["id"], user.get("token_version", 0), settings.app_access_token_expire_minutes
+        user["id"], user.get("token_version", 0), settings.app_access_token_expire_minutes,
+        via=_herkunft(sitzung if sitzung is not None else user),
     )
 
 
@@ -259,31 +283,20 @@ def _sitzungskonto(request: Request, store: Store) -> dict | None:
         return None
 
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register(
-    request: Request,
-    body: RegisterRequest,
-    response: Response,
-    background: BackgroundTasks,
-    store: Store = Depends(get_store),
-) -> UserOut:
-    # Die Bremse zählt ihren Treffer mit: Ein Skript, das hier hängenbleibt,
-    # hinterließ sonst nirgends eine Spur — „niemand hat es versucht" sah aus
-    # wie „500 haben es versucht".
-    try:
-        register_limiter.check(request)
-    except HTTPException:
-        store.record_signup_rejection("rate_limit")
-        raise
-    settings = get_settings()
-    email = str(body.email).lower().strip()
+def anmeldedaten_pruefen(request: Request, store: Store, email_roh: str,
+                         name_roh: str | None) -> tuple[str, str] | JSONResponse:
+    """Name, Wegwerf-Adresse, Dublette — für die Registrierung mit Passwort
+    und mit Passkey dieselben Prüfungen. Gibt Adresse und Namen zurück, bei
+    einer vorhandenen Adresse die fertige 409-Antwort (samt Hinweis an die
+    Besitzerin). Die Bremse ``register_limiter`` zählt der Aufrufer."""
+    email = str(email_roh).lower().strip()
     # Der Name ist Pflicht — geprüft HIER und nicht als `min_length` im Schema:
     # Eine Pydantic-Verletzung käme als englischer Text („String should have at
     # least 1 character") aus dem Vertrag, und die ausgelieferte App zeigt genau
     # diesen `msg` an. Ein eigener Abbruch liefert stattdessen einen deutschen
     # Satz, den jeder Client unverändert anzeigen kann — auch die App im Store,
     # deren Feld noch „optional" heißt.
-    display_name = (body.display_name or "").strip()
+    display_name = (name_roh or "").strip()
     if not display_name:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
     if not name_zulaessig(display_name):
@@ -311,9 +324,20 @@ def register(
             # Als Hintergrund-Aufgabe DIESER Antwort: Aufgaben aus
             # `BackgroundTasks` laufen nach einer HTTPException nicht.
             hinweis = BackgroundTask(_send_duplicate_notice, email, int(vorhanden["id"]))
-        return JSONResponse(  # pyright: ignore[reportReturnType] — wie /api/health
+        return JSONResponse(
             {"detail": "E-Mail ist bereits registriert."},
             status_code=status.HTTP_409_CONFLICT, background=hinweis)
+    return email, display_name
+
+
+def konto_anlegen(request: Request, background: BackgroundTasks, store: Store, email: str,
+                  display_name: str, password_hash: str, *, mit_passwort: bool = True) -> dict:
+    """Das Konto anlegen — für Passwort und Passkey gleich: unbestätigt, bis
+    Link oder Code aus der Mail eingelöst sind (Tim 11.11.2026: auch beim
+    Passkey, sonst ließe sich eine fremde Adresse eintragen). Das Cookie setzt
+    der Aufrufer. ``mit_passwort=False``: Im Hash steht ein Zufallswert, das
+    Konto gilt als passwortlos (wie ein Apple-Konto)."""
+    settings = get_settings()
     # Registration hands out no role at all: everything it could decide on comes
     # from this unauthenticated request body. Even the configured WEB_ADMIN_EMAIL
     # starts as a plain user and is only promoted once it has proven control of
@@ -330,11 +354,13 @@ def register(
         # unlocks it — the same switch the panel already uses to lock one.
         user_status = "disabled"
     user_id = store.create_web_user(
-        email, hash_password(body.password), role, user_status, email_verified=verified,
+        email, password_hash, role, user_status, email_verified=verified,
         display_name=display_name,
         # Womit dieses Konto entstanden ist — Browser oder App (Admin 20a).
         signup_client=client_kind(request),
     )
+    if not mit_passwort:
+        store.set_password_set(user_id, False)
     # Der Zustellweg wird NICHT vorbelegt, wenn der Assistent im Browser gleich
     # danach fragt: „Soll Lotti sich melden?" stand über einem Schalter,
     # der längst an war, und die Antwort dort änderte nichts (Tim, 03.09.2026:
@@ -349,7 +375,7 @@ def register(
     # behält sie die bisherige Vorbelegung.
     store.set_delivery_channel(user_id, "email" if is_app_client(request) else "off")
     created_user = store.get_web_user_by_id(user_id)
-    _set_auth_cookie(response, created_user, request)
+    assert created_user is not None
     if user_status == "pending":
         # Send a verification link; confirming it activates the account and
         # pings the admins (FYI) once the address is confirmed real.
@@ -370,6 +396,32 @@ def register(
             "Adminrechte von Hand vergeben: " + _GRANT_ADMIN_CMD,
             email, email,
         )
+    return created_user
+
+
+@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def register(
+    request: Request,
+    body: RegisterRequest,
+    response: Response,
+    background: BackgroundTasks,
+    store: Store = Depends(get_store),
+) -> UserOut:
+    # Die Bremse zählt ihren Treffer mit: Ein Skript, das hier hängenbleibt,
+    # hinterließ sonst nirgends eine Spur — „niemand hat es versucht" sah aus
+    # wie „500 haben es versucht".
+    try:
+        register_limiter.check(request)
+    except HTTPException:
+        store.record_signup_rejection("rate_limit")
+        raise
+    geprueft = anmeldedaten_pruefen(request, store, str(body.email), body.display_name)
+    if isinstance(geprueft, JSONResponse):
+        return geprueft  # pyright: ignore[reportReturnType] — wie /api/health
+    email, display_name = geprueft
+    created_user = konto_anlegen(request, background, store, email, display_name,
+                                 hash_password(body.password))
+    _set_auth_cookie(response, created_user, request)
     return _to_out(created_user, _app_access_token(request, created_user))
 
 
@@ -399,6 +451,64 @@ def login(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-Mail oder Passwort falsch.")
     _set_auth_cookie(response, user, request)
     return _to_out(user, _app_access_token(request, user))
+
+
+@router.post("/magic", response_model=UserOut, dependencies=[Depends(kein_fremder_aufruf)])
+def magic_einloesen(
+    request: Request,
+    body: MagicLinkRequest,
+    response: Response,
+    store: Store = Depends(get_store),
+) -> UserOut:
+    """Einen Anmeldelink aus einer Mail einlösen.
+
+    Die Seite ruft das beim Ankommen von selbst auf (Tims Vorgabe 09.11.2026:
+    direkt angemeldet, kein Zwischenschritt). Ein POST statt des Links selbst
+    bleibt es trotzdem: Ein GET, der anmeldet, liefe in jedem Vorschau-Abruf
+    mit. Die Sitzung trägt ``via: magic`` und darf nichts, was das Konto
+    übernimmt (``deps.require_volle_anmeldung``).
+
+    Abgelaufen, widerrufen (``token_version``) oder gesperrt: 401 — die Seite
+    zeigt dann ohne Fehlermeldung die normale Anmeldung mit Rücksprung. Bei uns
+    landet der Fall im Fehlersammler (``_link_fehler_merken``), gruppiert nach
+    Grund, ohne Token und ohne Konto: Häufen sich abgelaufene Links, sind zehn
+    Tage zu kurz; häufen sich ungültige, stimmt etwas am Bau der Links nicht.
+    """
+    login_limiter.check(request)
+    if _is_app_client(request):
+        # Die App meldet sich per Bearer an und kennt keine Mail-Links.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Anmeldelinks gelten nur im Browser.")
+    decoded = decode_magic_token(body.token)
+    user = store.get_web_user_by_id(int(decoded[0])) if decoded else None
+    grund = (magic_grund(body.token) if not decoded
+             else "kein_konto" if not user
+             else "widerrufen" if decoded[1] != user.get("token_version", 0)
+             else "gesperrt" if user.get("status") != "active" else None)
+    if grund or not user:
+        _link_fehler_merken(store, grund or "kein_konto")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            "Der Link ist abgelaufen oder gilt nicht mehr. Melde dich bitte an.")
+    set_session_cookie(response, create_access_token(
+        user["id"], user.get("token_version", 0), via=VIA_LINK))
+    return _to_out(user)
+
+
+def _link_fehler_merken(store: Store, grund: str) -> None:
+    """Einen nicht einlösbaren Anmeldelink im Fehlersammler zählen — je Grund
+    eine Gruppe, ohne Token, Konto oder Adresse. Ohne Alarm-Mail: Abgelaufene
+    Links sind erwartbar; gezählt wird, damit man sieht, wie oft."""
+    import hashlib
+
+    logger.info("Anmeldelink nicht eingelöst: %s", grund)
+    store.merke_request_fehler({
+        "fingerprint": hashlib.sha1(f"magic|{grund}".encode(), usedforsecurity=False).hexdigest()[:16],
+        "exc_type": "AnmeldelinkNichtEingeloest",
+        "message": f"Anmeldelink aus einer Mail nicht eingelöst: {grund}",
+        "route": "/api/auth/magic",
+        "method": "POST",
+        "trace": "",
+        "quelle": "server",
+    })
 
 
 @router.post("/logout")
@@ -556,6 +666,10 @@ def reset_password(
     store.increment_token_version(user_id)
     if not vorher.get("email_verified"):
         store.set_email_verified(user_id, True)
+        # Ein unbestätigtes Konto mit Passkey hat womöglich ein Fremder auf
+        # diese Adresse angelegt — sein Passkey bliebe sonst ein zweiter Weg
+        # hinein, nachdem die Besitzerin es sich zurückgeholt hat.
+        store.delete_web_passkeys(user_id)
         if vorher.get("status") == "pending":
             store.set_web_user_status(user_id, "active")
             background.add_task(_notify_admins_registration, str(vorher.get("email", "")))
@@ -569,6 +683,10 @@ def reset_password(
     # man sich jetzt einmal selbst an.
     if aufrufer is None:
         return _to_out(user, None)
+    # Bewusst eine VOLLE Sitzung, auch wenn ``aufrufer`` aus einem Anmeldelink
+    # stammt: Wer hier ankommt, hat eben das Passwort neu gesetzt — das wiegt
+    # so viel wie eine Anmeldung damit. ``user`` ist frisch gelesen und trägt
+    # deshalb kein ``per_link``.
     _set_auth_cookie(response, user, request)
     # Reset links can open directly in the native app. Returning the refreshed
     # account and its app token avoids an unnecessary login immediately after
@@ -856,7 +974,7 @@ def _bestaetigung_abschliessen(request: Request, background: BackgroundTasks, st
         user = _promote_configured_admin(store, user)
     # Die App bekommt ihr frisches Token nur, wenn sie schon als genau dieses
     # Konto angemeldet ist (s. o.) — ein Link aus einer Mail meldet niemanden an.
-    return _to_out(user, _app_access_token(request, user) if aufrufer else None)
+    return _to_out(user, _app_access_token(request, user, aufrufer) if aufrufer else None)
 
 
 @router.post("/verify-code", response_model=UserOut)

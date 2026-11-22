@@ -1,0 +1,84 @@
+{
+ "plan": "wohnungslosen_suchthilfe",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Das Konzept gilt der niedrigschwelligen Wohnungslosen- und Suchthilfe in Oldenburg.",
+  "quote": "Das Gesamtkonzept „Niedrigschwellige Wohnungslosen- und Suchthilfe in Oldenburg“ wird in der vorliegenden Textfassung (s. Anlage) beschlossen.",
+  "source": {
+   "kind": "template",
+   "template": "19/0239"
+  }
+ },
+ "points": [
+  {
+   "text": "Die Verwaltung setzt Teil I um und konkretisiert Teil II mit der Projektgruppe, um die Maßnahmen zur Umsetzung vorzubereiten.",
+   "kind": "responsibility",
+   "quote": "Die Verwaltung wird mit der Umsetzung von Teil I des Konzeptes beauftragt. Außerdem wird die Verwaltung beauftragt, die Handlungsfelder und Maßnahmen aus Teil II mit der Projektgruppe des Gesamtkonzeptes zu konkretisieren und zur Umsetzung vorzubereiten.",
+   "source": {
+    "kind": "decision",
+    "template": "19/0239",
+    "date": "2019-05-27",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Ein zweiter Tagesaufenthalt wird in der Bloherfelder Straße 7 eingerichtet.",
+   "kind": "measure",
+   "quote": "Einrichtung eines zweiten Tagesaufenthaltes in der Bloherfelder Straße 7",
+   "source": {
+    "kind": "decision",
+    "template": "19/0239",
+    "date": "2019-05-27",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Die Beratungsstelle Rose 12 zieht von der Alexanderstraße 17 an den Schießstand 34.",
+   "kind": "measure",
+   "quote": "Verlegung der Drogenberatungsstelle Rose 12 von der Alexanderstraße 17 an den Schießstand 34",
+   "source": {
+    "kind": "decision",
+    "template": "19/0239",
+    "date": "2019-05-27",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Das Café Caro wird ausgebaut, erweitert und von der Heiligengeiststraße 19 in die Alexanderstraße 17 verlegt.",
+   "kind": "measure",
+   "quote": "Ausbau, Erweiterung und Umzug der niedrigschwelligen Anlaufstelle Café Caro von der Heiligengeiststraße 19 in die Alexanderstraße 17",
+   "source": {
+    "kind": "decision",
+    "template": "19/0239",
+    "date": "2019-05-27",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Der Tagesaufenthalt Ehnernstraße 2 und das Mädchenhaus Cloppenburger Straße 35 tauschen die Gebäude.",
+   "kind": "measure",
+   "quote": "Gebäudetausch: Tagesaufenthalt Ehnernstraße 2 und Mädchenhaus Cloppenburger Straße 35.",
+   "source": {
+    "kind": "decision",
+    "template": "19/0239",
+    "date": "2019-05-27",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Der zweite Tagesaufenthalt muss wie der bestehende Beratung durch Sozialarbeit, postalische Erreichbarkeit und einen Versorgungsbereich bieten.",
+   "kind": "standard",
+   "quote": "Wichtig ist dabei, dass der zweite Standort mindestens die gleiche Angebotsausstattung wie der jetzige Tagesaufenthalt hat (Beratung durch Sozialarbeiterinnen oder Sozialarbeiter, postalische Erreichbarkeit und Versorgungsbereich)",
+   "source": {
+    "kind": "attachment",
+    "template": "19/0239",
+    "document_id": 200992,
+    "label": "Gesamtkonzept niedrigschwellige Wohnungslosen- und Suchthilfe",
+    "page": 4
+   }
+  }
+ ]
+}

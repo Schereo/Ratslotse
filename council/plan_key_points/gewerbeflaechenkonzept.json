@@ -1,0 +1,89 @@
+{
+ "plan": "gewerbeflaechenkonzept",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan regelt den schonenden Umgang mit gewerblichen Flächen.",
+  "quote": "Mit den gewerblichen Flächen ist weiterhin schonend umzugehen.",
+  "source": {
+   "kind": "decision",
+   "template": "19/0132/1",
+   "date": "2019-03-25",
+   "committee": "Rat"
+  }
+ },
+ "points": [
+  {
+   "text": "Betriebe sollen städtische Flächen wegen der Knappheit nur bei bestimmter Personalintensität und/oder nachhaltiger Zukunftsperspektive erwerben können.",
+   "kind": "standard",
+   "quote": "Aufgrund der Flächenknappheit sollten Betriebe im Sinne einer Ansiedlungsstrategie nur bei einer bestimmten Personalintensität oder/und bei einer zukunftsfähigen nachhaltigen Perspektive eine städtische Fläche erwerben können.",
+   "source": {
+    "kind": "decision",
+    "template": "19/0132/1",
+    "date": "2019-03-25",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Innenentwicklungspotenziale sowie FNP- und STEP 2025-Potenziale sind so weit wie möglich für die Gewerbeflächenentwicklung auszuschöpfen.",
+   "kind": "standard",
+   "quote": "Die im Gewerbeflächenentwicklungskonzept ermittelten Innenentwicklungspotenziale und FNP- und STEP 2025-Potenziale sind so weit wie möglich auszuschöpfen und für die Gewerbeflächenentwicklung zu nutzen.",
+   "source": {
+    "kind": "decision",
+    "template": "19/0132/1",
+    "date": "2019-03-25",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Das größte Potenzial ist die ca. 20 ha große Gewerbefläche auf dem ehemaligen Fliegerhorst (Hallensichel).",
+   "kind": "figure",
+   "figure": {
+    "value": "ca. 20 ha",
+    "label": "größtes Potenzial: Gewerbefläche auf dem Fliegerhorst"
+   },
+   "quote": "Das größte Potenzial bietet in diesem Zusammenhang die ca. 20 ha große Gewerbefläche auf dem ehemaligen Fliegerhorst (Hallensichel).",
+   "source": {
+    "kind": "decision",
+    "template": "19/0132/1",
+    "date": "2019-03-25",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Freiwerdende Gewerbeflächen bleiben grundsätzlich für eine gewerbliche Nutzung erhalten.",
+   "kind": "standard",
+   "quote": "Freiwerdende Gewerbeflächen bleiben auch zukünftig grundsätzlich für eine gewerbliche Nutzung erhalten.",
+   "source": {
+    "kind": "decision",
+    "template": "19/0132/1",
+    "date": "2019-03-25",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Die priorisierten Suchräume für Gewerbe werden näher untersucht.",
+   "kind": "measure",
+   "quote": "Parallel dazu sind die im Gewerbeflächenentwicklungskonzept priorisierten Suchräume für eine gewerbliche Nutzung näher zu untersuchen.",
+   "source": {
+    "kind": "decision",
+    "template": "19/0132/1",
+    "date": "2019-03-25",
+    "committee": "Rat"
+   }
+  },
+  {
+   "text": "Erkenntnisse aus dem Konzept sollen bei künftigen Konzepten und Bauleitplänen berücksichtigt werden.",
+   "kind": "standard",
+   "quote": "Die aus dem Gewerbeflächenentwicklungskonzept gewonnenen Erkenntnisse sollen bei zukünftigen Konzepten und Bauleitplänen Berücksichtigung finden.",
+   "source": {
+    "kind": "decision",
+    "template": "19/0132/1",
+    "date": "2019-03-25",
+    "committee": "Rat"
+   }
+  }
+ ]
+}

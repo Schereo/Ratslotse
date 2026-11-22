@@ -109,3 +109,92 @@ def test_recherche_bericht_bekommt_die_erklaerung_auch():
         llm.chat_stream = alt
     prompt = gestellt["messages"][0]["content"]
     assert "WAS DIE FACHWÖRTER BEDEUTEN" in prompt
+
+
+# ---- Leseseiten: Erklärung am Wort (fuer_seite) --------------------------------
+
+def test_seite_erklaert_nur_die_erste_nennung_und_meldet_die_fundstelle():
+    texte = ["Der Antrag befasst sich mit der Einführung einer Grundsteuer C zur Bekämpfung von Bodenspekulation.",
+             "Die Grundsteuer C und der Hebesatz werden später beraten."]
+    treffer = glossar.fuer_seite(texte)
+    assert [t["term"] for t in treffer] == ["Grundsteuer C", "Hebesatz"]
+    for t in treffer:
+        # Die Seite findet das Stück wörtlich wieder und darin die Form.
+        text = next(x for x in texte if t["snippet"] in x)
+        assert t["snippet"][t["offset"]:t["offset"] + len(t["form"])] == t["form"]
+        assert text.index(t["snippet"]) >= 0
+    assert treffer[0]["snippet"] in texte[0] and treffer[0]["snippet"] not in texte[1]
+
+
+def test_seite_nimmt_den_laengsten_begriff():
+    """„Grundsteuer C" ist nicht die „Grundsteuer" — Tims Beispiel vom 13.11.2026."""
+    assert [t["term"] for t in glossar.fuer_seite(["Die Grundsteuer C kommt."])] == ["Grundsteuer C"]
+    assert [t["term"] for t in glossar.fuer_seite(["Die Grundsteuer B bleibt."])] == ["Grundsteuer"]
+
+
+def test_seite_laesst_alltagswoerter_und_mehrdeutige_weg():
+    text = ("Der Ausschuss berät die Vorlage der Fraktion zum Haushalt; Entgelte für Produkte "
+            "und der Ausschuss für Finanzen und Beteiligungen.")
+    assert glossar.fuer_seite([text]) == []
+    # Für die KI-Frage bleiben sie auffindbar.
+    assert glossar.finde("Was ist ein Ausschuss?")[0]["begriff"] == "Ausschuss"
+
+
+def test_seite_erklaert_kein_kompositum():
+    """„Haushaltsmittel" ist kein „Haushalt", „Satzungstext" keine „Satzung"."""
+    assert glossar.fuer_seite(["Satzungstext und Rücklagenkonto, Zuwendungsvertrag."]) == []
+    assert [t["form"] for t in glossar.fuer_seite(["Die Satzungen, überplanmäßige Zuwendungen und des Bebauungsplanes."])] \
+        == ["Satzungen", "überplanmäßige", "Zuwendungen", "Bebauungsplanes"]
+
+
+def test_seite_ausschlusslisten_kennen_nur_glossarwoerter():
+    """Ein Tippfehler in ALLTAG/MEHRDEUTIG wäre wirkungslos und fiele nie auf."""
+    assert glossar.ALLTAG <= set(glossar.BEGRIFFE), glossar.ALLTAG - set(glossar.BEGRIFFE)
+    assert glossar.MEHRDEUTIG <= set(glossar.BEGRIFFE), glossar.MEHRDEUTIG - set(glossar.BEGRIFFE)
+    assert not glossar.ALLTAG & glossar.MEHRDEUTIG
+
+
+def test_seite_deckelt_die_zahl():
+    viele = "Bebauungsplan, Flächennutzungsplan, Satzung, Hebesatz, Rücklage, Widmung, Eigenbetrieb, Wirtschaftsplan, Bürgschaft, Doppik."
+    assert len(glossar.fuer_seite([viele])) == 8
+
+
+# --- Fachsinn statt Alltagssinn (Messung 14.11.2026, Beschluss- und Sitzungsseite) ---
+
+def _seite(text: str) -> list[str]:
+    return [b["term"] for b in glossar.fuer_seite([text])]
+
+
+def test_alltagssinn_bleibt_ohne_erklaerung():
+    # Alle vier standen so im Auszug einer Vorlage — mit der Erklärung des Fachworts daneben.
+    assert _seite("Diese dritte Stelle dient nicht nur der Entlastung des Teams.") == []
+    assert _seite("Eine weitgehende Einziehung der Kronen hätte negative Auswirkungen.") == []
+    assert _seite("Aufgrund der Dringlichkeit der Umsetzung wurde eine Übergangslösung eingerichtet.") == []
+    assert _seite("Der Kriterienkatalog wird vorhabenbezogen angewendet.") == []
+
+
+def test_im_fachumfeld_bleibt_das_wort_erklaert():
+    assert _seite("Der Geschäftsführung wird für 2025 Entlastung erteilt.") == ["Entlastung"]
+    assert _seite("Die Einziehung der Teilfläche der Straße Am Markt wird beschlossen.") == ["Einziehung"]
+    assert _seite("Die Dringlichkeit des Antrags wurde vom Rat anerkannt.") == ["Dringlichkeit"]
+    assert _seite("Der vorhabenbezogene Bebauungsplan 60 wird beschlossen.") == ["vorhabenbezogen", "Bebauungsplan"]
+
+
+def test_spaetere_nennung_im_fachsinn_zaehlt_noch():
+    texte = ["Das dient der Entlastung des Teams.", "Dem Aufsichtsrat wird Entlastung erteilt."]
+    begriffe = glossar.fuer_seite(texte)
+    assert [b["term"] for b in begriffe] == ["Entlastung"]
+    assert begriffe[0]["snippet"] in texte[1]
+
+
+def test_bindestrich_ist_auch_ein_kompositum():
+    assert _seite("Die Nutzungsänderung zu einem Sonderposten-Markt.") == ["Nutzungsänderung"]
+    assert _seite("Dies umfasst Haupt-, Dringlichkeits- und Änderungsanträge.") == []
+    assert _seite("Die Stadt-Satzung gilt.") == []
+    # … ein Gedankenstrich mit Abstand dagegen nicht
+    assert _seite("Änderung der Satzung - Beschluss") == ["Satzung"]
+
+
+def test_jedes_wort_mit_umfeld_steht_im_glossar():
+    assert set(glossar.BRAUCHT_UMFELD) <= set(glossar.BEGRIFFE)
+    assert not set(glossar.BRAUCHT_UMFELD) & (glossar.ALLTAG | glossar.MEHRDEUTIG)

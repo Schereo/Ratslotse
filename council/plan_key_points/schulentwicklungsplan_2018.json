@@ -1,0 +1,96 @@
+{
+ "plan": "schulentwicklungsplan_2018",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan dient der langfristigen Planung für die Entwicklung der Schulen in Oldenburg.",
+  "quote": "Die Schulentwicklungsplanung für die Stadt Oldenburg ist die langfristig gültige Planung für die Entwicklung der Schulen in der Stadt.",
+  "source": {
+   "kind": "attachment",
+   "template": "18/0420/1",
+   "document_id": 190469,
+   "label": "Schulentwicklungsplan, Kurzfassung",
+   "page": 2
+  }
+ },
+ "points": [
+  {
+   "text": "Der Plan empfiehlt, auch teilweise einzügige Grundschulen zu erhalten und keine Grundschulen zu schließen oder zusammenzulegen.",
+   "kind": "measure",
+   "quote": "Auch Grundschulen, die teilweise einzügig sind oder werden könnten, sollten erhalten bleiben = keine Schulschließungen oder Schulzusammenlegungen.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0420/1",
+    "document_id": 190469,
+    "label": "Schulentwicklungsplan, Kurzfassung",
+    "page": 24
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt für den Stadtteil „Fliegerhorst“ eine eigene neue Grundschule.",
+   "kind": "measure",
+   "quote": "Der absehbar entstehende Stadtteil „Fliegerhorst“ sollte eine eigene neue Grundschule erhalten.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0420/1",
+    "document_id": 190469,
+    "label": "Schulentwicklungsplan, Kurzfassung",
+    "page": 25
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt, die Schulbezirke der Grundschulen grundsätzlich zu erhalten.",
+   "kind": "standard",
+   "quote": "Die Schulbezirke für die Grundschulen sollten grundsätzlich erhalten bleiben.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0420/1",
+    "document_id": 190469,
+    "label": "Schulentwicklungsplan, Kurzfassung",
+    "page": 26
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt, für jede Grundschule eine Zügigkeit festzulegen.",
+   "kind": "standard",
+   "quote": "Für alle Grundschulen der Stadt Oldenburg sollte ein Beschluss zur jeweiligen Zügigkeit gefasst werde.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0420/1",
+    "document_id": 190469,
+    "label": "Schulentwicklungsplan, Kurzfassung",
+    "page": 25
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt, die Oberschulen so zu steuern, dass jede 3 bis 4 Eingangsklassen hat.",
+   "kind": "standard",
+   "figure": {
+    "value": "3 bis 4",
+    "label": "Eingangsklassen je Oberschule"
+   },
+   "quote": "Durch eine Verteilerkonferenz wird im ersten Schritt Sorge getragen, dass keine Oberschule weniger als 3 Eingangsklassen hat - und im zweiten Schritt keine mehr als 4 Eingangsklassen.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0420/1",
+    "document_id": 190469,
+    "label": "Schulentwicklungsplan, Kurzfassung",
+    "page": 31
+   }
+  },
+  {
+   "text": "Der Plan empfiehlt, das Gesamtschulangebot in seiner bisherigen Form zu erhalten und weiter zu stützen.",
+   "kind": "measure",
+   "quote": "Das Gesamtschulangebot in der momentanen Form bleibt erhalten und wird weiter gestützt..",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0420/1",
+    "document_id": 190469,
+    "label": "Schulentwicklungsplan, Kurzfassung",
+    "page": 31
+   }
+  }
+ ]
+}

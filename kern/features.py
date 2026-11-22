@@ -3,7 +3,7 @@
 **Wozu.** Ein Feature fährt heute in dem Moment nach Prod, in dem sein PR
 gemergt wird. Wer etwas Größeres baut, hat drei Möglichkeiten, und alle drei
 sind unangenehm: den Zweig wochenlang offen halten (und mit jedem Tag
-schwerer mergen), auf `feature.ratslotse.de` ausweichen (wo niemand
+schwerer mergen), auf eine eigene Vorschau-Instanz ausweichen (wo niemand
 mitliest), oder es einfach live schalten und hoffen.
 
 Ein Schalter trennt **Ausliefern** von **Freischalten**. Der Code fährt
@@ -44,6 +44,11 @@ class Feature:
     #: Woran man erkennt, dass er weg kann. Ohne das bleibt jeder Schalter für
     #: immer stehen — „vielleicht braucht ihn noch jemand".
     fertig_wenn: str
+    #: Wo die Technik-Doku das Feature erklärt: ``seite`` oder ``seite#anker``
+    #: unter ``docs-site/src/content/docs/``. Ein Schalter ohne Doku-Stelle
+    #: heißt, dass ein Feature entsteht, das niemand beschrieben hat —
+    #: ``tests/test_docs_current.py`` verlangt den Eintrag und prüft das Ziel.
+    docs: str = ""
 
 
 #: Alle Schalter, die es gibt. Ein Name, der hier nicht steht, ist ein
@@ -70,14 +75,7 @@ FEATURES: dict[str, Feature] = {
                     "Themas.",
         fertig_wenn="Kontext-Recall im Gold-Lauf höher als ohne, Abdeckung ohne Rückschritt; "
                     "dann Normalweg.",
-    ),
-    "belegnotizen": Feature(
-        key="belegnotizen",
-        description="„Frag den Rat“ lässt vor der Antwort ein kleines Modell je Dokument "
-                    "notieren, was es zur Frage beiträgt; die Notizen stehen oben im "
-                    "Kontext (qa.belegnotizen).",
-        fertig_wenn="Zwei Gold-Läufe auf dev mit weniger „im Prompt, aber weggelassen“ und "
-                    "ohne Rückschritt, Laufzeit auf Prod gemessen; dann Normalweg.",
+        docs="frag-den-rat#themen-als-suchhinweis",
     ),
     "kontext-diaet": Feature(
         key="kontext-diaet",
@@ -86,6 +84,7 @@ FEATURES: dict[str, Feature] = {
                     "(qa.debatten_diaet).",
         fertig_wenn="Zwei Gold-Läufe auf dev ohne Rückschritt gegenüber zwei ohne, weniger "
                     "„im Prompt, aber weggelassen“; dann ist die Diät der Normalweg.",
+        docs="frag-den-rat#debatten-im-prompt-wenige-und-die-richtigen",
     ),
     "nachrecherche": Feature(
         key="nachrecherche",
@@ -94,6 +93,7 @@ FEATURES: dict[str, Feature] = {
                     "(qa.nachrecherche_anfragen, embeddings.nachsuche).",
         fertig_wenn="Gold „Frag den Rat“ auf dev ohne Rückschritt und mit mehr bestandenen "
                     "Fällen als ohne, Laufzeit auf Prod gemessen; dann ist sie der Normalweg.",
+        docs="frag-den-rat#nachrecherche",
     ),
     "akten-suche": Feature(
         key="akten-suche",
@@ -104,6 +104,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Phase 3 hat ihr Tor erreicht (Gold „Frag den Rat“ +10 Pp und "
                     "mindestens drei Fälle mehr bestanden, Retrieval ohne Rückschritt) "
                     "und lag zwei Wochen auf Prod an; dann ist die Akte der Normalweg.",
+        docs="frag-den-rat#akten-suche",
     ),
     "akten-zeitleiste": Feature(
         key="akten-zeitleiste",
@@ -116,6 +117,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Phase 4 hat ihr Tor erreicht (Gold „Frag den Rat“: +10 Pp bei "
                     "„Fakt genannt, wenn Material vorhanden“ gegenüber Phase 3, Fakten-Eval "
                     "ohne Zunahme) und lag zwei Wochen auf Prod an.",
+        docs="frag-den-rat#zeitleiste",
     ),
     "mein-viertel": Feature(
         key="mein-viertel",
@@ -123,6 +125,7 @@ FEATURES: dict[str, Feature] = {
                     "Jahren ändert — Vorhaben aus Beschlüssen, gebündelt und geprüft.",
         fertig_wenn="Das Vorhaben-Register läuft einige Wochen ohne „Gehört nicht "
                     "hierher“-Treffer auf Prod, und Tim hat die Tafel freigegeben.",
+        docs="mein-viertel",
     ),
     "andere-staedte": Feature(
         key="andere-staedte",
@@ -137,6 +140,7 @@ FEATURES: dict[str, Feature] = {
                     "Mandat haben die Treffer als brauchbar bestätigt — dann Schalter raus. "
                     "Überwiegt der Widerspruch, auf Prod wieder aus und die Einordnung "
                     "nacharbeiten.",
+        docs="andere-staedte",
     ),
     "ideen-anderswo": Feature(
         key="ideen-anderswo",
@@ -149,6 +153,7 @@ FEATURES: dict[str, Feature] = {
                     "meistbesuchten Themenfelder sind anhand der Rückmeldungen „stimmt / "
                     "stimmt nicht“ geprüft und tragen (mehr Zustimmung als Widerspruch) — "
                     "dann Schalter raus. Kippen sie, auf Prod wieder aus.",
+        docs="andere-staedte#das-urteil-hat-oldenburg-das-schon",
     ),
     "wahlabend": Feature(
         key="wahlabend",
@@ -165,6 +170,7 @@ FEATURES: dict[str, Feature] = {
                     "Er kann weg, sobald keine App-Fassung im Store mehr `wahlabend` "
                     "abfragt (Karten-Ebene in CityMapView, Mehr-Zeile) — dann alle "
                     "Abfragen entfernen und APP_MIN_BUILD nachziehen.",
+        docs="wahlabend",
     ),
     "lotti-assistentin": Feature(
         key="lotti-assistentin",
@@ -176,6 +182,7 @@ FEATURES: dict[str, Feature] = {
                     "kosten im Mittel unter 0,3 Cent; der Eval (eval/run_assistant.py) ist "
                     "grün, die sechs Injektions-Fälle eingeschlossen; Tim hat den Knopf "
                     "freigegeben.",
+        docs="ki-pipeline#lotti-als-assistentin-erklären-statt-suchen",
     ),
     "lotti-anstupser": Feature(
         key="lotti-anstupser",
@@ -188,6 +195,7 @@ FEATURES: dict[str, Feature] = {
                     "(Admin-Panel, Reiter „Lotti“): Liegt die Ja-Quote unter 5 %, wird er "
                     "seltener oder abgeschafft — Tims Entscheidung. Bleibt er, fliegt der "
                     "Schalter raus.",
+        docs="ki-pipeline#der-anstupser",
     ),
     "lotti-selbstpruefung": Feature(
         key="lotti-selbstpruefung",
@@ -203,6 +211,7 @@ FEATURES: dict[str, Feature] = {
                     "gehen sie als Aufgaben an die Kontext- und Regelarbeit; dann entscheidet "
                     "Tim, ob die Stichprobe dauerhaft läuft (Schalter raus) oder wegfällt "
                     "(docs/lotti-selbstpruefung.md).",
+        docs="ki-pipeline#selbstprüfung-eine-stille-stichprobe",
     ),
     "lotti-werkzeuge": Feature(
         key="lotti-werkzeuge",
@@ -212,6 +221,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Die mehrstufigen Fälle der Fakten-Eval (haushalt/mehrstufig) liegen "
                     "deutlich über dem Stand ohne Werkzeuge, die übrigen Haushaltsfälle und "
                     "die Wartezeit nicht schlechter — dann auf Prod an und Schalter raus.",
+        docs="ki-pipeline#werkzeuge-nachschlagen-statt-raten",
     ),
     "mcp-server": Feature(
         key="mcp-server",
@@ -224,6 +234,18 @@ FEATURES: dict[str, Feature] = {
                     "benutzt, die Last ist gemessen (mcp_tokens.calls) und die Bremse hat "
                     "nicht zugeschlagen, wo sie nicht sollte — dann Schalter raus; der "
                     "Zugang hängt ohnehin am Recht `mcp`.",
+        docs="mcp",
+    ),
+    "zugangslinks": Feature(
+        key="zugangslinks",
+        description="Anmeldelinks in der Release-Ankündigung: Jeder Link der Mail meldet "
+                    "zehn Tage lang per Klick an — mit einer Sitzung, die weder Passwort "
+                    "noch Adresse ändern, das Konto löschen oder ins Admin-Panel darf "
+                    "(kern/zugangslink.py).",
+        fertig_wenn="Eine Release-Mail ist mit Anmeldelinks rausgegangen, die Klickquote "
+                    "(mail_returns, angemeldet vs. nicht) ist gelesen und keine "
+                    "Fehlermeldung zu `/api/auth/magic` aufgelaufen — dann Normalweg.",
+        docs="app-und-konten#anmeldelinks-in-mails",
     ),
     "neuer-rat": Feature(
         key="neuer-rat",
@@ -233,6 +255,17 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Tim hat die Liste nach dem amtlichen Endergebnis freigegeben. "
                     "Nach der konstituierenden Sitzung (02.11.2026) prüfen, ob die "
                     "Vorab-Liste noch gebraucht wird.",
+        docs="wahlabend#der-neue-rat-vor-seiner-ersten-sitzung",
+    ),
+    "plaene": Feature(
+        key="plaene",
+        description="„Pläne der Stadt“ statt „Ziele“ in der Analyse: jeder Plan mit Beschluss, "
+                    "Laufzeit, Berichten im Rat und den Beschlüssen dazu (council/plans.py, "
+                    "docs/plan-ziele-plaene.md).",
+        fertig_wenn="Alle Phasen des Plans stehen auf dev und Tim hat die Seite freigegeben; mit dem "
+                    "nächsten Release auf Prod an. Danach fliegt der Schalter raus, und die alte "
+                    "Ziel-Ansicht geht, sobald APP_MIN_BUILD auf einem App-Build mit „Pläne“ steht.",
+        docs="plaene",
     ),
     "tippspiel": Feature(
         key="tippspiel",
@@ -247,6 +280,154 @@ FEATURES: dict[str, Feature] = {
                     "aus der Wahl-Phase. Er kann weg, wenn das Tippspiel zu einer "
                     "künftigen Wahl ohne Freischaltung starten darf — dann die "
                     "Abfragen in /tipp und /api/tipp entfernen.",
+        docs="tippspiel",
+    ),
+    "mitlesen": Feature(
+        key="mitlesen",
+        description="Mitlesen während der Sitzung: Punkt für Punkt mit dem Kurs, Zurück und "
+                    "Weiter; im Rat folgt die Seite der Übertragung "
+                    "(docs/plan-sitzungsseite-kurs.md, Schritt 5).",
+        fertig_wenn="Zwei echte Sitzungen (ein Ausschuss, ein Rat mit Übertragung) auf dev "
+                    "mitgelesen ohne Befund, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#mitlesen",
+    ),
+    "mitschrieb": Feature(
+        key="mitschrieb",
+        description="„Mein Mitschrieb“ beim Mitlesen: je Punkt die eigene Einschätzung, was passiert "
+                    "ist, und ein Text — verschlüsselt wie die Notizen; färbt die Bojen nur im eigenen "
+                    "Kurs (docs/plan-sitzungsseite-kurs.md 3.17).",
+        fertig_wenn="Tim hat Frage 8.3 beantwortet (die Idee bleibt), eine echte Sitzung auf dev damit "
+                    "mitgeschrieben, und `notizen` ist auf Prod an; dann mit ihm zusammen an.",
+        docs="sitzungen#mitlesen",
+    ),
+    "notizen": Feature(
+        key="notizen",
+        description="„Meine Notiz“ an Tagesordnungspunkten und Beschlüssen — auf dem Gerät "
+                    "verschlüsselt, mit eigener Notiz-Passphrase und Wiederherstellungscode "
+                    "(docs/plan-notizen-verschluesselt.md).",
+        fertig_wenn="Datenschutzerklärung von Tim abgenommen, auf dev zwei Wochen ohne Befund "
+                    "(Einrichten, zweites Gerät, Passphrase wechseln, Wiederherstellung), App liest "
+                    "dieselben Testvektoren; dann mit dem Release auf Prod an.",
+        docs="app-und-konten#notizen-auf-dem-gerät-verschlüsselt",
+    ),
+    "passkey-anmeldung": Feature(
+        key="passkey-anmeldung",
+        description="„Mit Passkey anmelden“ und „Mit Passkey registrieren“ neben Passwort und Apple; "
+                    "Passkeys im Konto. Derselbe Passkey schließt die Notizen auf — eine Abfrage für "
+                    "beides (web/backend/app/passkeys.py).",
+        fertig_wenn="Datenschutzerklärung von Tim abgenommen, auf dev zwei Wochen ohne Befund (Registrieren, "
+                    "Anmelden, zweites Gerät, Entfernen, Löschen ohne Passwort) und zusammen mit `notizen` "
+                    "auf Prod an.",
+        docs="app-und-konten#mit-passkey-anmelden",
+    ),
+    "beschluss-chat": Feature(
+        key="beschluss-chat",
+        description="„Frag den Rat“ direkt auf der Seite eines Beschlusses: Die Antwort entsteht "
+                    "dort, mit dem Beschluss als Gegenstand, statt auf die Fragen-Seite zu "
+                    "springen (Tims Wunsch 11.11.2026; auf der Punkt-Seite gehört er zu "
+                    "`punkt-seite`).",
+        fertig_wenn="Auf dev zwei Wochen ohne Befund, Antworten mit Beschluss-Bezug von Tim "
+                    "gegengelesen und auf Prod angeschaltet.",
+        docs="frag-den-rat#auf-der-seite-eines-beschlusses-oder-punkts",
+    ),
+    "vorschlagsfragen": Feature(
+        key="vorschlagsfragen",
+        description="Vorschlagsfragen unter „Frag den Rat“ auf Punkt- und Beschluss-Seite vom "
+                    "Sprachmodell, passend zu genau diesem Gegenstand (council/vorschlagsfragen.py); "
+                    "sonst feste Fragen.",
+        fertig_wenn="Auf dev zwei Wochen ohne unpassende Frage, Kosten im Admin-Panel unter "
+                    "page_questions gesichtet, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="frag-den-rat#auf-der-seite-eines-beschlusses-oder-punkts",
+    ),
+    "aus-den-unterlagen": Feature(
+        key="aus-den-unterlagen",
+        description="Karte „Aus den Unterlagen“ auf der Punkt-Seite: was Vorlage und Anträge tragen — "
+                    "Beschlussvorschlag, Anträge mit Antragsteller, Kosten, Klima, Federführung; ab dem "
+                    "Dossier mit belegten Abschnitten (docs/plan-vorlagen-aufbereiten.md).",
+        fertig_wenn="Dossier-Tore aus Plan § 7.2 erreicht, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#aus-den-unterlagen-das-dossier",
+    ),
+    "folgetexte-aus-dossier": Feature(
+        key="folgetexte-aus-dossier",
+        description="Kartentext und Tragweite lesen die belegten Dossier-Zeilen statt Vorlagen-Rohtext "
+                    "(Stufe 4, docs/plan-vorlagen-aufbereiten.md § 7.4; A/B am 13.11.2026 bestanden).",
+        fertig_wenn="Zwei Wochen auf dev ohne Befund in den Kartentexten, dann auf Prod an und der "
+                    "Schalter samt Rückweg auf den Rohtext entfernt.",
+        docs="sitzungen#aus-den-unterlagen-das-dossier",
+    ),
+    "aenderungsantraege": Feature(
+        key="aenderungsantraege",
+        description="Änderungsanträge auf Punkt-, Sitzungs- und Beschluss-Seite: wer was an welcher Stelle will, "
+                    "alt gegen neu mit Belegen, nach dem Protokoll mit Ergebnis (council/motions.py, "
+                    "docs/plan-vorlagen-aufbereiten.md § 5).",
+        fertig_wenn="Tore aus Plan § 7.3 auf Prod-Daten bestätigt, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#änderungsanträge",
+    ),
+    "punkt-argumente": Feature(
+        key="punkt-argumente",
+        description="Die Reiter „Argumente“ und „Fraktionen“ auf der Punkt-Seite: Streitpunkte mit "
+                    "Dafür und Dagegen aus den Wortbeiträgen und der Vorlage, jede Aussage mit "
+                    "Fundstelle; Wortmeldungen je Fraktion (docs/plan-punkt-argumente.md).",
+        fertig_wenn="Bestand auf dev erzeugt (scripts/punkt_argumente.py), zwei Wochen ohne Befund, "
+                    "von Tim abgenommen und mit dem Release auf Prod angeschaltet; die Erzeugung "
+                    "neuer Vorgänge hängt dann am Protokoll-Cron.",
+        docs="sitzungen#argumente-und-fraktionen",
+    ),
+    "haushalt-am-punkt": Feature(
+        key="haushalt-am-punkt",
+        description="Der Kasten „Im Haushalt“ auf der Punkt-Seite: Zahlenreihen aus dem Haushalt zu dem, was "
+                    "die Vorlage nennt — Teilhaushalt, Produkt, Betrieb, Steuer, Schulden — mit Beleg, für "
+                    "alle sichtbar (council/punkt_haushalt.py; Tims Entscheidung 13.11.2026).",
+        fertig_wenn="Auf dev zwei Wochen ohne Befund an echten Finanz-Punkten, von Tim abgenommen und auf "
+                    "Prod angeschaltet — unabhängig davon, ob der Haushalts-Bereich selbst dort schon frei ist.",
+        docs="sitzungen#im-haushalt",
+    ),
+    "begriffe-aus-vorlage": Feature(
+        key="begriffe-aus-vorlage",
+        description="Fachwörter auf der Punkt-Seite, die das geprüfte Glossar nicht kennt: Ein Modell schlägt "
+                    "sie je Vorlage vor, ein zweites prüft jede Erklärung, die Seite zeigt sie mit KI-Stern "
+                    "(council/vorlage_begriffe.py). Das Glossar am Wort braucht den Schalter nicht.",
+        fertig_wenn="Bestand der letzten zwölf Monate auf dev erzeugt, Stichprobe von 50 Erklärungen ohne "
+                    "Fehler gesichtet, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#fachwörter-aus-der-vorlage",
+    ),
+    "punkt-umfeld": Feature(
+        key="punkt-umfeld",
+        description="Das Umfeld auf der Punkt-Seite: Ort mit Karte, ähnliche frühere Beschlüsse, Sprung in die "
+                    "Aufzeichnung (nur Rat) und laufende Bürgerbeteiligung — aus vorhandenen Daten, ohne Modell "
+                    "(council/punkt_umfeld.py; Tims Auswahl 13.11.2026).",
+        fertig_wenn="Auf dev zwei Wochen ohne Befund, auf Prod mit echten Beteiligungen und Videos gesichtet, "
+                    "von Tim abgenommen und angeschaltet.",
+        docs="sitzungen#das-umfeld",
+    ),
+    "wahlprogramm-am-punkt": Feature(
+        key="wahlprogramm-am-punkt",
+        description="„Was die Wahlprogramme dazu sagen“ auf der Punkt-Seite: je Liste im Rat, ob ihr Programm "
+                    "zur Ratswahl 2026 für oder gegen das Anliegen spricht — mit wörtlichem Zitat und Seite, "
+                    "im Code geprüft und von einem zweiten Modell bestätigt (council/programm_bezug.py, "
+                    "docs/plan-wahlprogramm-am-punkt.md).",
+        fertig_wenn="Bestand auf dev erzeugt, 50 Einordnungen von Hand ohne falsche Zuschreibung gesichtet, "
+                    "von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#was-die-wahlprogramme-dazu-sagen",
+    ),
+    "punkt-seite": Feature(
+        key="punkt-seite",
+        description="Jeder Tagesordnungspunkt bekommt eine eigene Seite mit Kurzfassung, "
+                    "Vorgeschichte, Unterlagen und „Frag den Rat“ zu diesem Punkt; die Karten der "
+                    "Sitzungsseite führen dorthin (docs/plan-sitzungsseite-kurs.md, Schritt 4).",
+        fertig_wenn="Auf dev zwei Wochen ohne Befund, Messung „Frag den Rat mit Punkt-Bezug“ "
+                    "ohne Rückschritt, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#die-punkt-seite",
+    ),
+    "sitzung-kurs": Feature(
+        key="sitzung-kurs",
+        description="Die neue Seite einer einzelnen Sitzung: Kopf auf der Anzeigetafel mit dem "
+                    "„Kurs der Sitzung“, „Wichtig in dieser Sitzung“, Tagesordnung als Linie mit "
+                    "Etappen und Karten (docs/plan-sitzungsseite-kurs.md, Schritt 3).",
+        fertig_wenn="Auf dev zwei Wochen ohne Befund an echten Sitzungen (vorher, nachher, "
+                    "Rat mit vielen Punkten), von Tim abgenommen und auf Prod angeschaltet; dann "
+                    "fliegt die alte Seite samt Schalter raus.",
+        docs="sitzungen#kurs-der-sitzung",
     ),
 }
 

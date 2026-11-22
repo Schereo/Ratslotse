@@ -1,0 +1,207 @@
+{
+ "_beschreibung": "Gold für das Lesen von Änderungsanträgen (council/motions.py, docs/plan-vorlagen-aufbereiten.md § 7.3). Festgelegt am 12.11.2026 vor der Messung, aus den Antragstexten. 'pattern' nennt die zulässigen Muster; 'before'/'after': 'ja' = muss belegt da sein, 'nein' = darf nicht da sein, 'egal'. 'urteil' trägt die Handprüfung nach dem Lauf.",
+ "faelle": [
+  {
+   "document_id": 315834,
+   "ksinr": 4709,
+   "item": "Ö 9",
+   "applicants": [
+    "Volt"
+   ],
+   "target": "24",
+   "pattern": [
+    "rewrite",
+    "replace"
+   ],
+   "before": "ja",
+   "after": "ja",
+   "diff_enthaelt": [
+    "zwei",
+    "Woche"
+   ],
+   "notiz": "Ladungsfrist zwei Tage → eine Woche, § 24 Abs. 2 GO aus dem Regelwerk 315818"
+  },
+  {
+   "document_id": 315836,
+   "ksinr": 4709,
+   "item": "Ö 9",
+   "applicants": [
+    "CDU"
+   ],
+   "target": "18",
+   "pattern": [
+    "delete"
+   ],
+   "before": "ja",
+   "after": "nein",
+   "notiz": "geheime Abstimmung in § 18 (4) ersatzlos streichen"
+  },
+  {
+   "document_id": 315835,
+   "ksinr": 4709,
+   "item": "Ö 13.2",
+   "applicants": [
+    "Grüne"
+   ],
+   "target": "Beschlussvorschlag",
+   "pattern": [
+    "replace",
+    "rewrite"
+   ],
+   "before": "ja",
+   "after": "ja",
+   "notiz": "von fünf auf vier, fünfter Platz für das Jugendparlament; Typ nur über den Textkopf"
+  },
+  {
+   "document_id": 315795,
+   "ksinr": 4709,
+   "item": "Ö 13.1",
+   "applicants": [
+    "CDU"
+   ],
+   "target": "",
+   "pattern": [
+    "delete",
+    "replace",
+    "rewrite"
+   ],
+   "before": "egal",
+   "after": "egal",
+   "notiz": "Ausschuss für Allgemeine Angelegenheiten nicht bilden"
+  },
+  {
+   "document_id": 313562,
+   "ksinr": 4705,
+   "item": "Ö 11.1",
+   "applicants": [],
+   "target": "Beschlussvorschlag",
+   "pattern": [
+    "replace",
+    "rewrite",
+    "counter"
+   ],
+   "before": "egal",
+   "after": "ja",
+   "notiz": "Studie als städtebauliches Entwicklungskonzept nach § 1 Abs. 6 Nr. 11 BauGB; Schreiben an die Stadtbaurätin"
+  },
+  {
+   "document_id": 313563,
+   "ksinr": 4705,
+   "item": "Ö 11.1",
+   "applicants": [
+    "FDP"
+   ],
+   "target": "Beschlussvorschlag",
+   "pattern": [
+    "replace",
+    "rewrite"
+   ],
+   "before": "egal",
+   "after": "ja",
+   "base_template": "26/0351/1",
+   "notiz": "ersetzt den Beschlussvorschlag 26/0351/1 — Fassungsbezug muss erkannt werden (Punkt trägt 26/0714)"
+  },
+  {
+   "document_id": 313627,
+   "ksinr": 4667,
+   "item": "Ö 9.1.2",
+   "applicants": [
+    "CDU"
+   ],
+   "target": "Beschlussvorschlag",
+   "pattern": [
+    "replace",
+    "counter",
+    "rewrite"
+   ],
+   "before": "egal",
+   "after": "ja",
+   "notiz": "Baumschutzsatzung ab 1. Juli 2026 außer Vollzug, Neufassung bis 31.12.2026; Basis ist der SPD/BSW-Antrag bzw. die geltende Satzung — keiner von beiden liegt in den Quellen, „nicht beigefügt“ ist richtig (Gold nach Durchsicht 12.11. angepasst)",
+   "base_missing": true
+  },
+  {
+   "document_id": 315588,
+   "ksinr": 4708,
+   "item": "DZT 1",
+   "applicants": [
+    "CDU"
+   ],
+   "target": "7",
+   "pattern": [
+    "replace",
+    "rewrite",
+    "add"
+   ],
+   "before": "nein",
+   "after": "ja",
+   "base_missing": true,
+   "notiz": "Dringlichkeitsantrag Hauptsatzung § 7: bis zu vier Bürgermeister; geltende Fassung nicht beigefügt"
+  },
+  {
+   "document_id": 312907,
+   "ksinr": 4653,
+   "item": "Ö 5",
+   "applicants": [
+    "Grüne"
+   ],
+   "target": "Beschlussvorschlag",
+   "pattern": [
+    "add"
+   ],
+   "before": "egal",
+   "after": "ja",
+   "notiz": "ergänzt: Soziales Deutschlandticket zum 01.07.2027, Zuschuss 18 € im Monat"
+  },
+  {
+   "document_id": 309788,
+   "ksinr": 4742,
+   "item": "Ö 4",
+   "applicants": [
+    "CDU"
+   ],
+   "target": "Beschlussvorschlag",
+   "pattern": [
+    "add",
+    "replace",
+    "rewrite"
+   ],
+   "before": "egal",
+   "after": "ja",
+   "notiz": "Stadion: Totalunternehmervertrag auflösend bedingt für negatives Notifizierungsverfahren (Ergänzung kursiv)"
+  },
+  {
+   "document_id": 312737,
+   "ksinr": 4674,
+   "item": "Ö 8",
+   "applicants": [],
+   "target": "2",
+   "pattern": [
+    "replace",
+    "rewrite",
+    "add"
+   ],
+   "before": "egal",
+   "after": "ja",
+   "notiz": "Jugendamtssatzung: § 2 Abs. 2 — 14 beratende Mitglieder; § 4 neue Nummer 11; die Änderungssatzung hängt an der Vorlage 26/0539 und hat im lokalen Abzug keinen Text — „nicht beigefügt“ ist für diese Quellenlage richtig",
+   "base_missing": true
+  },
+  {
+   "document_id": 314245,
+   "ksinr": 4675,
+   "item": "Ö 9",
+   "applicants": [
+    "Grüne",
+    "FDP"
+   ],
+   "target": "",
+   "pattern": [
+    "replace",
+    "add",
+    "rewrite"
+   ],
+   "before": "nein",
+   "after": "ja",
+   "notiz": "Jugendparlament: „18. Lebensjahr“ → „21. Lebensjahr“; der geltende Satzungstext liegt nicht bei — ein Alt aus der Anweisung selbst wäre ein falsches Paar"
+  }
+ ]
+}

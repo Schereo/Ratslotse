@@ -1,0 +1,92 @@
+{
+ "plan": "gleichstellungsplan_2018",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": false,
+ "purpose": {
+  "text": "Der Plan soll Unterrepräsentanzen abbauen und die Vereinbarkeit von Familie und Beruf verbessern.",
+  "quote": "5. Ziele und Maßnahmen Formulierung von Zielen und Standards aufbauend auf den ermittelten Ergebnissen der Analyse sowie Benennung konkreter Maßnahmen zum Abbau der Unterrepräsentanzen bzw. besseren Vereinbarkeit von Familie und Beruf",
+  "source": {
+   "kind": "attachment",
+   "template": "18/0406",
+   "document_id": 189127,
+   "label": "Gleichstellungsplan 2018–2020",
+   "page": 6
+  }
+ },
+ "points": [
+  {
+   "text": "Bei jeder Besetzung einer freien Führungsstelle sollen Frauen aktiv mitbedacht werden; der Grundsatz der Bestenauslese bleibt dabei maßgeblich.",
+   "kind": "goal",
+   "quote": "Vielmehr soll die Besetzung freiwerdender Führungspositionen mit Frauen in jedem Stellenbesetzungsverfahren stets aktiv und bewusst bedacht werden, um so einer paritätischen Besetzung der Führungsebene näherzukommen, ohne dabei den Auswahlgrundsatz der Bestenauslese zu verletzen.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0406",
+    "document_id": 189127,
+    "label": "Gleichstellungsplan 2018–2020",
+    "page": 21
+   }
+  },
+  {
+   "text": "Der Plan setzt sich zum Ziel, die Teilzeitquoten von Männern und Frauen aneinander anzunähern.",
+   "kind": "goal",
+   "quote": "Ziel ist es daher, die Teilzeitquoten der männlichen und weiblichen Kräfte aneinander anzunähern.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0406",
+    "document_id": 189127,
+    "label": "Gleichstellungsplan 2018–2020",
+    "page": 52
+   }
+  },
+  {
+   "text": "Für Führungs- und Expertenstellen soll in allen Ausschreibungen weiter auf Teilzeit hingewiesen werden.",
+   "kind": "measure",
+   "quote": "Um besonders Frauen mit Familie bzw. Familienwunsch nicht von Führungspositionen auszuschließen, soll in sämtlichen Ausschreibungen für Führungs- und Expertenstellen weiterhin der Teilzeitzusatz aufgenommen werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0406",
+    "document_id": 189127,
+    "label": "Gleichstellungsplan 2018–2020",
+    "page": 53
+   }
+  },
+  {
+   "text": "Telearbeit und mobiles Arbeiten sowie die großzügige Genehmigungspraxis sollen weiter angeboten werden.",
+   "kind": "measure",
+   "quote": "Sowohl das Angebot der Telearbeit bzw. des mobilen Arbeitens selbst als auch die gelebte großzügige Genehmigungspraxis sollen auch zukünftig beibehalten werden.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0406",
+    "document_id": 189127,
+    "label": "Gleichstellungsplan 2018–2020",
+    "page": 54
+   }
+  },
+  {
+   "text": "Der Plan bezeichnet seine festgeschriebenen Maßnahmen und Ziele als verbindlich für das Verwaltungshandeln.",
+   "kind": "responsibility",
+   "quote": "Die im Gleichstellungsplan festgeschriebenen Maßnahmen und Zielevorgaben haben für das Verwaltungshandeln einen verbindlichen Charakter.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0406",
+    "document_id": 189127,
+    "label": "Gleichstellungsplan 2018–2020",
+    "page": 57
+   }
+  },
+  {
+   "text": "Der Plan gilt bis zum 31.12.2020; zum Ablauf soll ein neuer Plan erstellt werden.",
+   "kind": "deadline",
+   "quote": "Die Geltungsdauer des Gleichstellungsplans umfasst drei Jahre (§ 15 Absatz 1 Satz 1 NGG); zum Ablauf (31.12.2020) ist ein neuer Plan zu erstellen.",
+   "source": {
+    "kind": "attachment",
+    "template": "18/0406",
+    "document_id": 189127,
+    "label": "Gleichstellungsplan 2018–2020",
+    "page": 57
+   }
+  }
+ ]
+}

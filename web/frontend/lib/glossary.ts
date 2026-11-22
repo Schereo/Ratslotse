@@ -75,7 +75,7 @@ export const GLOSSARY: Record<string, string> = {
   "Gewerbesteuer":
     "Steuer, die Unternehmen an ihre Stadt zahlen — eine der wichtigsten eigenen Einnahmequellen der Kommunen; den Hebesatz legt der Rat fest.",
   "Rücklage":
-    "Erspartes der Stadt aus Überschüssen früherer Jahre — daraus können geplante Defizite ausgeglichen werden.",
+    "Erspartes aus Überschüssen früherer Jahre — bei der Stadt, einem ihrer Betriebe oder einer Stiftung. Daraus lassen sich spätere Fehlbeträge ausgleichen.",
   "Ertrag":
     "Das Fachwort für Einnahmen im Haushalt — alles, was der Stadt in einem Jahr zusteht: Steuern, Zuweisungen, Gebühren.",
   "Aufwendung":
@@ -106,6 +106,8 @@ export const GLOSSARY: Record<string, string> = {
     "Ein Anteil der Gewerbesteuer, den die Stadt an Bund und Land weiterreichen muss — von jedem eingenommenen Euro bleibt ihr also nicht alles.",
   "Grundsteuer":
     "Steuer auf Grundstücke und Gebäude, gezahlt von Eigentümer*innen — über die Nebenkosten meist auch von Mieter*innen. Den Hebesatz beschließt der Rat.",
+  "Grundsteuer C":
+    "Eine eigene, höhere Grundsteuer auf Grundstücke, die bebaut werden dürften, aber leer bleiben. Städte dürfen sie seit 2025 erheben: Bauen soll sich mehr lohnen, als Bauland liegen zu lassen.",
   "Haushaltssatzung":
     "Der förmliche Beschluss, mit dem der Rat den Haushalt in Kraft setzt — darin stehen auch die Hebesätze für das Jahr.",
   "Doppik":
@@ -135,7 +137,7 @@ export const GLOSSARY: Record<string, string> = {
   "Aufwandsart":
     "Die Gliederung der Ausgaben nach ihrer Art — Personal, Sachaufwand, Transferleistungen, Abschreibungen. Das Gegenstück zur Ertragsart.",
   "Jahresabschluss":
-    "Die Abrechnung eines Haushaltsjahres: Was tatsächlich eingenommen und ausgegeben wurde, jeweils neben dem, was geplant war. Er erscheint erst ein bis zwei Jahre nach dem Jahr, das er abrechnet.",
+    "Die Abrechnung eines Jahres: was tatsächlich eingenommen und ausgegeben wurde — bei der Stadt neben dem, was geplant war. Es gibt ihn für die Stadt selbst und für jeden ihrer Betriebe und Gesellschaften; der städtische erscheint erst ein bis zwei Jahre nach dem Jahr, das er abrechnet.",
   "Ergebnisrechnung":
     "Der Teil des Jahresabschlusses, der Erträge und Aufwendungen gegenüberstellt — das tatsächliche Gegenstück zum geplanten Ergebnishaushalt.",
   "ordentliches Ergebnis":
@@ -173,7 +175,7 @@ export const GLOSSARY: Record<string, string> = {
   "Vollkonsolidierung":
     "Die vollständige Aufnahme eines Betriebs in die Gesamtrechnung: Alle seine Einnahmen und Ausgaben zählen mit, so als gehörten sie der Stadt direkt.",
   "Bilanzsumme":
-    "Alles zusammen, was der Stadt am 31. Dezember gehört — und, von der anderen Seite gelesen, woher es finanziert ist. Für Oldenburg waren das Ende 2024 rund 1,48 Milliarden Euro. Viele Kennzahlen sind ein Anteil davon.",
+    "Alles zusammen, was der Stadt oder einem ihrer Betriebe am 31. Dezember gehört — und, von der anderen Seite gelesen, woher es finanziert ist. Für die Stadt Oldenburg waren das Ende 2024 rund 1,48 Milliarden Euro. Viele Kennzahlen sind ein Anteil davon.",
   "Bilanz":
     "Die Aufstellung, was der Stadt an einem Stichtag gehört und wem es zusteht. Anders als der Haushalt zählt sie kein Jahr, sondern einen Tag — ihre Beträge lassen sich deshalb nicht mit Einnahmen und Ausgaben verrechnen.",
   "Nettoposition":
@@ -235,7 +237,7 @@ export const GLOSSARY: Record<string, string> = {
   "Eilentscheidung":
     "Eine Entscheidung, die getroffen wird, ohne dass das zuständige Gremium vorher tagen konnte, weil die Sache keinen Aufschub duldet. Sie wird ihm nachträglich vorgelegt.",
   "Entlastung":
-    "Der förmliche Beschluss, dass der Rat mit der Kassenführung eines Jahres einverstanden ist — eine Quittung, kein Lob.",
+    "Der förmliche Beschluss, mit dem der Rat oder die Gesellschafter die Arbeit der Verantwortlichen für ein Jahr billigen — des Oberbürgermeisters, einer Betriebsleitung oder Geschäftsführung. Eine Quittung, kein Lob.",
   "Entlastungsstraße":
     "Eine neue Straße, die eine bestehende vom Verkehr entlasten soll. Mit der Entlastung eines Haushaltsjahres hat sie nichts zu tun.",
   "Ausfallbürgschaft":
@@ -265,7 +267,7 @@ export const GLOSSARY: Record<string, string> = {
   "Jahresfehlbetrag":
     "Das Gegenteil des Jahresüberschusses: Ein Betrieb hat mehr ausgegeben als eingenommen. Wer den Fehlbetrag trägt, steht im Beschluss dazu.",
   "Zuwendung":
-    "Geld, das die Stadt an Vereine, Verbände oder Einrichtungen gibt, ohne dafür eine Leistung zu kaufen — ein Zuschuss für einen festgelegten Zweck, über den hinterher abgerechnet wird.",
+    "Geld ohne Gegenleistung für einen festgelegten Zweck. Meist gibt die Stadt es an Vereine, Verbände oder Einrichtungen und lässt hinterher abrechnen. „Annahme von Zuwendungen“ meint die andere Richtung: Spenden und Schenkungen an die Stadt, die sie nur mit einem Beschluss annehmen darf.",
   "Gebührenbedarfsberechnung":
     "Die Rechnung hinter einer Gebühr: Was kostet die Leistung, wie viele nehmen sie in Anspruch, wie viel muss jede*r zahlen, damit die Kosten gedeckt sind. Sie ist die Begründung jeder Gebührenänderung.",
   "AöR":
@@ -291,7 +293,7 @@ export const GLOSSARY: Record<string, string> = {
   "Grundzüge der Planung":
     "Der Kern eines Bebauungsplans, der sein Gesicht ausmacht. Werden sie nicht berührt, darf die Stadt ihn in einem vereinfachten Verfahren ändern — mit weniger Beteiligungsschritten.",
   "Satzungsbeschluss":
-    "Der letzte Schritt eines Bebauungsplans: Der Rat beschließt ihn als Satzung, damit wird er verbindliches Recht.",
+    "Der Beschluss, mit dem der Rat einen Plan oder eine Regel als Satzung erlässt — beim Bebauungsplan der letzte Schritt. Damit wird sie verbindliches Recht.",
   "Geltungsbereich":
     "Das Gebiet, für das ein Plan oder eine Satzung gilt — auf der Planzeichnung als Linie eingetragen.",
   "Veränderungssperre":
@@ -310,6 +312,52 @@ export const GLOSSARY: Record<string, string> = {
     "Die Behörde, die prüft, ob die Stadt sich an Recht und Gesetz hält — für Oldenburg das Land Niedersachsen. Manche Beschlüsse, etwa zum Haushalt, brauchen ihre Genehmigung.",
   "Zweckverband":
     "Ein Zusammenschluss mehrerer Kommunen für eine gemeinsame Aufgabe, mit eigener Verwaltung und eigenem Haushalt.",
+  "Gewinn- und Verlustrechnung":
+    "Die Jahresrechnung eines Unternehmens: was es in einem Jahr erwirtschaftet hat, gegen das, was es dafür aufwenden musste. Unter dem Strich steht der Gewinn oder der Verlust.",
+  "Lagebericht":
+    "Der Textteil zum Jahresabschluss eines Unternehmens: Die Geschäftsführung beschreibt darin, wie das Jahr lief, wie es dem Unternehmen geht und welche Risiken sie sieht.",
+  "örtlichen Bauvorschriften":
+    "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
+  "örtliche Bauvorschriften":
+    "Gestaltungsregeln der Stadt für ein Baugebiet — etwa Dachform, Fassadenmaterial, Zäune oder Werbeanlagen. Sie werden meist zusammen mit dem Bebauungsplan beschlossen.",
+  "Betriebsausschuss":
+    "Der Ausschuss des Rats, der einen städtischen Betrieb begleitet und kontrolliert — etwa die Abfallwirtschaft oder die Gebäudewirtschaft.",
+  "Gesellschafterversammlung":
+    "Das Treffen der Eigentümer einer Gesellschaft — ihr oberstes Gremium. Bei städtischen Gesellschaften sitzt dort die Stadt; wie ihre Vertreter*innen abstimmen sollen, legt oft vorher der Rat fest.",
+  "Kapitalrücklage":
+    "Eigenes Geld einer Gesellschaft, das ihre Eigentümer zusätzlich zum Grundkapital eingezahlt haben. Ein Verlust kann damit verrechnet werden.",
+  "Deckungsreserve":
+    "Geld, das der Haushalt für Unvorhergesehenes zurückhält. Reicht es an einer Stelle im Lauf des Jahres nicht, kann daraus nachgelegt werden.",
+  "Feststellungsbeschluss":
+    "Der Beschluss, mit dem der Rat eine Änderung des Flächennutzungsplans abschließt. Wirksam wird sie erst, wenn die Aufsichtsbehörde sie genehmigt und die Stadt das bekannt gemacht hat.",
+  "Komplementärin":
+    "Bei einer Kommanditgesellschaft die Gesellschafterin, die die Geschäfte führt und unbeschränkt haftet. Bei einer GmbH & Co. KG ist das eine GmbH — so haftet am Ende niemand persönlich.",
+  "Kommanditistin":
+    "Wer an einer Kommanditgesellschaft beteiligt ist, aber nur mit der eigenen Einlage haftet und die Geschäfte nicht führt. Bei den städtischen GmbH & Co. KGs ist das die Stadt.",
+  "Entschädigungssatzung":
+    "Die Satzung, die regelt, was Ratsmitglieder und andere Ehrenamtliche für ihre Arbeit bekommen — Sitzungsgeld, eine monatliche Pauschale, Fahrtkosten.",
+  "Betrauungsakt":
+    "Der förmliche Auftrag der Stadt an ein Unternehmen, eine Aufgabe für die Allgemeinheit zu erfüllen — etwa Bäder zu betreiben. Erst damit darf die Stadt dessen Verluste ausgleichen, ohne gegen EU-Recht zu verstoßen.",
+  "Beschlussantrag":
+    "Ein Antrag, mit dem eine Fraktion den Rat oder einen Ausschuss etwas beschließen lassen will — anders als beim Berichtsantrag wird darüber abgestimmt.",
+  "NKomVG":
+    "Das Niedersächsische Kommunalverfassungsgesetz — das Landesgesetz, das regelt, wie Städte und Gemeinden aufgebaut sind und was Rat, Ausschüsse und Verwaltung jeweils dürfen.",
+  "Mehrauszahlung":
+    "Eine Zahlung für eine Anschaffung oder ein Bauvorhaben, die über den dafür geplanten Betrag hinausgeht. Der Rat muss sie nachträglich bewilligen.",
+  "Berichtsantrag":
+    "Ein Antrag, mit dem eine Fraktion die Verwaltung bittet, zu einem Thema zu berichten. Beschlossen wird dabei nichts.",
+  "Mehraufwendung":
+    "Laufende Ausgaben, die über den Betrag hinausgehen, der im Haushalt dafür vorgesehen war. Der Rat muss sie nachträglich bewilligen.",
+  "Mehrertrag":
+    "Einnahmen, die höher ausfallen als im Haushalt geplant — oft die Quelle, aus der zusätzliche Ausgaben an anderer Stelle bezahlt werden.",
+  "Mehrerträge":
+    "Einnahmen, die höher ausfallen als im Haushalt geplant — oft die Quelle, aus der zusätzliche Ausgaben an anderer Stelle bezahlt werden.",
+  "Liegenschaft":
+    "Ein Grundstück samt den Gebäuden darauf. „Städtische Liegenschaften“ sind also die Grundstücke und Häuser, die der Stadt gehören.",
+  "Gemeinnützigkeit":
+    "Der steuerliche Status einer Einrichtung, die der Allgemeinheit dient und keinen Gewinn an Private ausschüttet. Sie zahlt dann weniger Steuern.",
+  "Minderaufwendung":
+    "Laufende Ausgaben, die niedriger ausfallen als im Haushalt geplant. Das gesparte Geld kann zusätzliche Ausgaben an anderer Stelle decken.",
 };
 
-// glossar-sha256: f604605fb96aaca39fdc2547621cc98251184d6dd50f38c3fc777dadfe45b585
+// glossar-sha256: e5da168cc4808bb066e122fdd79a399bab6ecefb1372ed3387278889a6e8a199

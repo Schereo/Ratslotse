@@ -5,16 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { entwurfZiel } from "@/lib/draft";
 import { useWeiterSuffix, zielNachAnmeldung } from "@/lib/public-routes";
+import { zugangAus } from "@/lib/zugangslink";
 import { useAuth } from "@/lib/auth";
 import { Button, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
 import { AppleSignInButton } from "@/components/apple-sign-in-button";
+import { OderTrenner, PasskeyKnopf, passkeyMeldung, usePasskeyAnmeldung } from "@/components/passkey-knopf";
 // Aus lib/, nicht aus dem Assistenten: Für eine Konstante kam sonst sein
 // ganzes Modul (gut 90 KB Quelltext) auf die Anmeldeseite.
 import { ONBOARDING_NEEDS_LOGIN_EVENT } from "@/lib/onboarding-state";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginPerLink, loginWithPasskey } = useAuth();
+  const mitPasskey = usePasskeyAnmeldung();
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,6 +40,19 @@ export default function LoginPage() {
     return () => window.removeEventListener(ONBOARDING_NEEDS_LOGIN_EVENT, check);
   }, []);
 
+  // Ein Anmeldelink im Rücksprungziel (lib/zugangslink.ts) — der Normalfall
+  // löst die Hülle schon vor der Umleitung ein. Kommt doch einer bis hierher,
+  // wird er ebenso still eingelöst; gilt er nicht, bleibt das Formular ohne
+  // Fehlermeldung, und `weiter=` führt ohne Token zum selben Ziel.
+  useEffect(() => {
+    const zugang = zugangAus(new URLSearchParams(window.location.search).get("weiter"));
+    if (!zugang) return;
+    loginPerLink(zugang.token).then(
+      () => router.replace(zugang.ziel),
+      () => window.history.replaceState(null, "", `/login?weiter=${encodeURIComponent(zugang.ziel)}`));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- einmal beim Ankommen
+  }, []);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -51,6 +68,19 @@ export default function LoginPage() {
       setError(err instanceof Error ? err.message : "Anmeldung fehlgeschlagen.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const mitPasskeyAnmelden = async () => {
+    setError("");
+    setPasskeyBusy(true);
+    try {
+      await loginWithPasskey();
+      router.replace(entwurfZiel() ?? zielNachAnmeldung());
+    } catch (err) {
+      setError(passkeyMeldung(err) ?? "");
+    } finally {
+      setPasskeyBusy(false);
     }
   };
 
@@ -75,6 +105,14 @@ export default function LoginPage() {
         <div className="mt-6">
           {/* RL-1001: Apple steht immer an erster Stelle (nur in der App sichtbar). */}
           <AppleSignInButton label="Mit Apple anmelden" />
+          {/* Passkey vor E-Mail und Passwort (Tim 11.11.2026: zu Passkey oder
+              Apple lenken). Apple bleibt davor, wo es ihn gibt — in der App. */}
+          {mitPasskey && (
+            <>
+              <div className="mt-3"><PasskeyKnopf label="Mit Passkey anmelden" busy={passkeyBusy} onClick={mitPasskeyAnmelden} /></div>
+              <OderTrenner text="oder mit E-Mail" />
+            </>
+          )}
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
@@ -89,7 +127,7 @@ export default function LoginPage() {
             <PasswordInput id="password" className="h-11" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" disabled={busy} className="h-11 w-full">
+          <Button type="submit" variant={mitPasskey ? "secondary" : "primary"} disabled={busy} className="h-11 w-full">
             {busy ? "Anmelden…" : "Anmelden"}
           </Button>
         </form>

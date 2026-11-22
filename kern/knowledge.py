@@ -306,6 +306,35 @@ PAGES: dict[str, PageKnowledge] = dict([
            "Bekommt jeder Punkt sofort ein Ergebnis?",
        ),
     ),
+    _p("/council/sitzung/mitlesen", "Mitlesen",
+       "Eine laufende Sitzung Punkt für Punkt: oben der Ablauf als Linie, darunter "
+       "der Punkt, der gerade dran ist, mit Kurzfassung, Vorgeschichte und Unterlagen.",
+       "Im Rat folgt die Seite der Übertragung von O1; in Ausschüssen gibt man den "
+       "Takt selbst vor. Die Inhalte stammen aus dem Ratsinformationssystem.",
+       "Wo die Sitzung gerade ist, weiß die Seite nur im Rat, und auch dort mit "
+       "einigen Minuten Verzug.",
+       nudge=False,
+       starters=(
+           "Was wird gerade beraten?",
+           "Was kommt als Nächstes?",
+       ),
+    ),
+    _p("/council/punkt", "Tagesordnungspunkt",
+       "Ein einzelner Punkt einer Sitzung: eine kurze Fassung, die früheren "
+       "Stationen derselben Vorlage oder desselben Antrags mit ihren Ergebnissen "
+       "und die Unterlagen im Ratsinformationssystem.",
+       "Titel, Stationen und Unterlagen stammen aus dem Ratsinformationssystem; "
+       "die kurze Fassung ist maschinell aus Vorlage und Antrag geschrieben.",
+       "Solange kein Protokoll vorliegt, ist der Punkt nicht entschieden — die "
+       "Seite sagt, worum es geht, nicht, wie es ausgeht.",
+       # Kein Anstupser (noch): Die Liste steht auch in der App, und die Seite
+       # liegt hinter einem Schalter.
+       nudge=False,
+       starters=(
+           "Worum geht es bei diesem Punkt?",
+           "Was wurde dazu früher beschlossen?",
+       ),
+    ),
     # Der Titel bleibt „Themenfeld“ (so heißt die Seite in Statistik und
     # Seitenaufrufen); der Text beschreibt seit 23.09.2026 aber, was sie
     # wirklich zeigt. `themaHref` führt auf `/council/entity/{slug}` — ein
@@ -406,6 +435,22 @@ PAGES: dict[str, PageKnowledge] = dict([
        starters=(
            "Wie kommt ein Sitz über Personenstimmen zustande?",
            "Was passiert, wenn jemand die Wahl ablehnt?",
+       ),
+    ),
+    _p("/council/plan", "Plan der Stadt",
+       "Ein Plan der Stadt Oldenburg — etwa der Klimaschutzplan oder der "
+       "Mobilitätsplan: wann und wie der Rat ihn beschlossen oder nur zur "
+       "Kenntnis genommen hat, wie lange er läuft, Vorgänger und Nachfolger, "
+       "alle Berichte im Rat seitdem und die Beschlüsse dazu.",
+       "Welche Pläne es gibt, steht in einem von Hand gepflegten Register; die "
+       "Berichte findet Ratslotse über die Titel und Vorlagen der "
+       "Tagesordnungspunkte im Ratsinformationssystem.",
+       "Nichtöffentliche Sitzungen, Mitteilungen ohne Vorlage und Berichte "
+       "außerhalb des Ratsinformationssystems fehlen; „kein Bericht“ heißt "
+       "„keinen gefunden“. Ratslotse bewertet den Plan nicht.",
+       starters=(
+           "Was ist ein mündlicher Bericht?",
+           "Was heißt „zur Kenntnis genommen“?",
        ),
     ),
     _p("/council/ort", "Ort",

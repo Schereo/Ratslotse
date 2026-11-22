@@ -56,7 +56,7 @@ test.describe("Auth", () => {
     await page.goto("/login");
     await page.locator("#email").fill(ADMIN_EMAIL);
     await page.locator("#password").fill("wrongpassword");
-    await page.getByRole("button", { name: "Anmelden" }).click();
+    await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await expect(page.getByText(/E-Mail oder Passwort|fehlgeschlagen/i)).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/01-login-error.png", fullPage: true });
   });

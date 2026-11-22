@@ -1,0 +1,15 @@
+{
+ "plan": "integrationskonzept_2020",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "26/0063",
+   "date": "2026-02-10",
+   "text": "Die Verschriftlichung des Integrationskonzepts ist in Ämterbeteiligung und Layout; die Präsentation ist für 11. März 2026 geplant.",
+   "quote": "Die Verschriftlichung des Integrationskonzeptes befindet sich aktuell in der Ämterbeteiligung und im Layout. Die Präsentation des Konzeptes ist für die Sitzung des Ausschusses für Integration und Migration am 11.März 2026 geplant."
+  }
+ ]
+}

@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -64,6 +64,18 @@ CREATE TABLE IF NOT EXISTS bodies (
     population     INTEGER,
     first_fetched  TEXT,
     last_fetched   TEXT
+);
+
+-- Gibt die Stadt ihre Daten noch heraus? Gemessen an der letzten Ernte
+-- (`pipeline.access_status`), geschrieben von `scripts/check_cities.py`.
+-- Eigene Tabelle, nicht Spalten an `bodies`: Den Stammsatz schreibt das
+-- Normalisieren bei jedem Lauf neu, auch wenn die Ernte nichts brachte.
+CREATE TABLE IF NOT EXISTS body_access (
+    body_id     TEXT PRIMARY KEY,
+    status      TEXT NOT NULL,   -- ok | documents_blocked | blocked
+    reason      TEXT,
+    since       TEXT NOT NULL,   -- seit wann dieser Status ununterbrochen gilt
+    checked_at  TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS organizations (
@@ -649,5 +661,16 @@ MIGRATIONS: list[tuple[int, str]] = [
     CREATE INDEX IF NOT EXISTS idx_annotations_field
         ON annotations(annotator, version, json_extract(payload, '$.field'))
         WHERE object_kind = 'paper';
+    """),
+    # 11 — Zugangsstand je Stadt (09.11.2026). Reines Anlegen; die Begründung
+    # steht am SCHEMA oben. Gefüllt wird die Tabelle von der nächsten Ernte.
+    (11, """
+    CREATE TABLE IF NOT EXISTS body_access (
+        body_id     TEXT PRIMARY KEY,
+        status      TEXT NOT NULL,
+        reason      TEXT,
+        since       TEXT NOT NULL,
+        checked_at  TEXT NOT NULL
+    );
     """),
 ]

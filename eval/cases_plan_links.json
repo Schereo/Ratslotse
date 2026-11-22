@@ -1,0 +1,344 @@
+{
+ "_comment": "Golden-Set für Phase 4 Teil 2 (Plan „Pläne“): 40 Paare aus Plan und Vorlage, die den Plan beim Namen nennt, von Hand bewertet — geschichtet gezogen (Klimaschutzplan 12, Mobilitätsplan 8, EEK 6 als Fallen, ISEK 5, …). accept nennt die vertretbaren Urteile; steht implements nicht darin, darf die Vorlage NICHT in der Umsetzungsliste landen. 30 ist ein falscher Freund (ein anderes ISEK), 38 und 39 gehören zur Lärmaktionsplanung selbst und sind Auslegungssache.",
+ "cases": [
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "26/0298",
+   "title": "Nachhaltiger urbaner Mobilitätsplan (SUMP Oldenburg 2040) (beratendes Mitglied VCD vom 02.04.2026) - Bericht",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "26/0547",
+   "title": "Bebauungsplan 871 (Etzhorner Weg/Harmsweg) mit örtlichen Bauvorschriften - Aufstellungsbeschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "23/0867",
+   "title": "Mobilitätsplan Oldenburg 2030 - weiteres Vorgehen - Beschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "25/0151",
+   "title": "Änderung 1 des Bebauungsplanes 650 (Oskar-Homt-Straße/nördlich Osterkampsweg) - Aufstellungsbeschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "26/0394",
+   "title": "Änderung 94 des Flächennutzungsplanes (Gewerbegebiet Brokhausen) - Aufstellungsbeschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "23/0699",
+   "title": "Aufstellung vorhabenbezogener Bebauungsplan 69 (Moslestraße/Osterstraße) - Grundzüge der Planung - Information vor der Öffentlichkeitsbeteiligung",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "26/0564",
+   "title": "Änderung 1 des Bebauungsplanes 560 (Brookweg/Rauhehorst) mit örtlichen Bauvorschriften - Erneuter Aufstellungsbeschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "26/0545",
+   "title": "Bebauungsplan 870 (Etzhorner Weg) mit örtlichen Bauvorschriften - Aufstellungsbeschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "25/0777",
+   "title": "Neufassung der Richtlinie der Stadt Oldenburg (Oldb) zur Förderung von Unternehmen im Bereich Klimaschutz, Nachhaltigkeit und Energieeffizienz",
+   "accept": [
+    "implements"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "23/0631",
+   "title": "Änderung 90 des Flächennutzungsplanes (Photovoltaik-Freiflächenanlage Alexandersfeld) - Grundzüge der Planung - Information vor der Öffentlichkeitsbeteiligung - Bericht",
+   "accept": [
+    "implements"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "26/0542",
+   "title": "Änderung 1 des Bebauungsplanes 435 (Etzhorner Weg/Ekernstraße/Haselriege) mit örtlichen Bauvorschriften - erneuter Aufstellungsbeschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "klimaschutzplan_2035",
+   "template": "24/0600",
+   "title": "Bebauungsplan 864 (Flötenteich) - Aufstellungsbeschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "eek",
+   "template": "18/0083",
+   "title": "Ehemaliger Combi-Markt an der Bremer Heerstraße (SPD-Fraktion vom 17.01.2018) - Bericht",
+   "accept": [
+    "mentions",
+    "motion"
+   ]
+  },
+  {
+   "plan": "eek",
+   "template": "26/0664",
+   "title": "Nachnutzung des ehemaligen Hammer Marktes in der Nadorster Straße (SPD-Fraktion vom 25. Juni 2026) - Bericht",
+   "accept": [
+    "motion",
+    "mentions"
+   ]
+  },
+  {
+   "plan": "eek",
+   "template": "25/0652",
+   "title": "Bebauungsplan 845 (Nadorster Straße) - Prüfung der Stellungnahmen - Satzungsbeschluss",
+   "accept": [
+    "implements",
+    "mentions"
+   ]
+  },
+  {
+   "plan": "eek",
+   "template": "23/0434",
+   "title": "Vorhabenbezogener Bebauungsplan 74 (Nadorster Straße/Hochheider Weg) - Auslegungsbeschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "eek",
+   "template": "21/0528",
+   "title": "Vorhabenbezogener Bebauungsplan 60 (Hauptstraße/Feststraße) - Grundzüge der Planung - Information vor der Öffentlichkeitsbeteiligung",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "eek",
+   "template": "23/0887",
+   "title": "Bebauungsplan 774, Teil B (Stubbenweg) - erneuter Aufstellungsbeschluss",
+   "accept": [
+    "implements",
+    "mentions"
+   ]
+  },
+  {
+   "plan": "mobilitaetsplan_2030",
+   "template": "25/0042",
+   "title": "Ergebnisse des Forschungsprojekts \"Mobilität in Städten - SrV 2023\" - Bericht",
+   "accept": [
+    "implements",
+    "mentions"
+   ]
+  },
+  {
+   "plan": "mobilitaetsplan_2030",
+   "template": "23/0897",
+   "title": "Außerplanmäßige Bewilligung einer Mehrauszahlung in Höhe von 97.300 Euro für die Maßnahme \"Dashboard Klimaschutz\" -Beschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "mobilitaetsplan_2030",
+   "template": "24/0173",
+   "title": "Überplanung der Radwegweisung und Integration eines Knotenpunktsystems – Sachstand",
+   "accept": [
+    "mentions",
+    "implements"
+   ]
+  },
+  {
+   "plan": "mobilitaetsplan_2030",
+   "template": "23/0649",
+   "title": "Aufbau von Fahrrad-Reparaturstationen Bericht",
+   "accept": [
+    "mentions",
+    "implements"
+   ]
+  },
+  {
+   "plan": "mobilitaetsplan_2030",
+   "template": "23/0219",
+   "title": "Verkehrssituation Leffersweg (CDU-Fraktion vom 07.03.2023)",
+   "accept": [
+    "mentions",
+    "motion"
+   ]
+  },
+  {
+   "plan": "mobilitaetsplan_2030",
+   "template": "25/0186",
+   "title": "Einführung vergünstigter Parkgebühren zu Marktzeiten (Antrag der CDU vom 05.03.2025) - Bericht",
+   "accept": [
+    "motion",
+    "mentions"
+   ]
+  },
+  {
+   "plan": "mobilitaetsplan_2030",
+   "template": "24/0366",
+   "title": "Satzung der Stadt Oldenburg über die Ermittlung und den Nachweis von Einstellplätzen (Stellplatzsatzung – StS) - Bericht",
+   "accept": [
+    "implements",
+    "mentions"
+   ]
+  },
+  {
+   "plan": "mobilitaetsplan_2030",
+   "template": "25/0110",
+   "title": "Stand des Stellenbesetzungsverfahrens für drei Verkehrsplanerinnen/Verkehrsplaner - Bericht",
+   "accept": [
+    "implements",
+    "mentions"
+   ]
+  },
+  {
+   "plan": "isek_2035",
+   "template": "25/0402",
+   "title": "Inklusive Quartiersentwicklung Donnerschwee Süd - Bericht",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "isek_2035",
+   "template": "26/0590",
+   "title": "Bauvorhaben am Helmsweg / Storchweg - Anwendung des Bau-Turbo nach § 246e Baugesetzbuch - Beschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "isek_2035",
+   "template": "25/0403",
+   "title": "Agenda 2025 „Selbstbestimmt und mittendrin!“ - Handlungskonzept für ein altersgerechtes Oldenburg - Beschluss",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "isek_2035",
+   "template": "26/0168",
+   "title": "Sanierungsgebiet Mittlere Innenstadt Vorbereitende Untersuchung inklusive Integriertem städtebaulichen Entwicklungskonzept (ISEK) für den Bereich \"Mittlere Innenstadt\" - Bericht",
+   "accept": [
+    "none"
+   ]
+  },
+  {
+   "plan": "isek_2035",
+   "template": "23/0340/1",
+   "title": "Baumerhalt- und Stadtgrünstrategie (Fraktionen Bündnis 90/ Die Grünen und SPD vom 24.02.2023) - Beschlussantrag mit Bericht der Verwaltung",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "ernaehrungsstrategie",
+   "template": "24/0340",
+   "title": "Klimaschutz-Aktivitäten 2/2024 - Bericht",
+   "accept": [
+    "mentions",
+    "none"
+   ]
+  },
+  {
+   "plan": "ernaehrungsstrategie",
+   "template": "23/0567",
+   "title": "Inklusives Quartiersmanagement - Bericht",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "ernaehrungsstrategie",
+   "template": "24/0389",
+   "title": "Beitritt der Stadt Oldenburg in das Netzwerk der Bio-Städte (Fraktionen Bündnis 90/Die Grünen und SPD vom 28.05.2024) - Bericht",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "waermeplan",
+   "template": "25/0073",
+   "title": "Kalte Nahwärmenetze fördern (Fraktionen Bündnis 90/Die Grünen und SPD vom 24.01.2025) - Bericht",
+   "accept": [
+    "motion",
+    "mentions"
+   ]
+  },
+  {
+   "plan": "waermeplan",
+   "template": "24/0720",
+   "title": "Klimaschutz-Aktivitäten 3/2024 - Bericht",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "waermeplan",
+   "template": "24/0340",
+   "title": "Klimaschutz-Aktivitäten 2/2024 - Bericht",
+   "accept": [
+    "mentions"
+   ]
+  },
+  {
+   "plan": "laermaktionsplan",
+   "template": "19/0684",
+   "title": "Umsetzung der EU-Umgebungslärmrichtlinie - Beteiligung der Öffentlichkeit",
+   "accept": [
+    "implements",
+    "mentions",
+    "motion"
+   ]
+  },
+  {
+   "plan": "laermaktionsplan",
+   "template": "23/0449",
+   "title": "Lärmaktionsplanung der Stadt Oldenburg und des Eisenbahnbundesamtes",
+   "accept": [
+    "implements",
+    "mentions",
+    "motion"
+   ]
+  },
+  {
+   "plan": "masterplan_stadtgruen",
+   "template": "23/0340/1",
+   "title": "Baumerhalt- und Stadtgrünstrategie (Fraktionen Bündnis 90/ Die Grünen und SPD vom 24.02.2023) - Beschlussantrag mit Bericht der Verwaltung",
+   "accept": [
+    "mentions",
+    "implements",
+    "motion"
+   ]
+  }
+ ]
+}

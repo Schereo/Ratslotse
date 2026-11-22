@@ -30,12 +30,15 @@ import { getMascotTheme, type MascotTheme } from "@/lib/mascot-theme";
  * spielt nur, wer sie ausdrücklich setzt, s. DESIGNSPRACHE.md § 1).
  */
 
-declare global {
+// React 19 kennt den globalen `JSX`-Namensraum nicht mehr; die eigenen
+// Elemente hängen deshalb an dem des Moduls.
+declare module "react" {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
     interface IntrinsicElements {
       "lotti-figur": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        /** React 18 lässt `className` auf Custom Elements fallen — `class` nehmen. */
+        /** React 18 ließ `className` auf Custom Elements fallen, deshalb `class`.
+         *  React 19 versteht beides; die Schreibweise bleibt. */
         class?: string;
         /** ATTRIBUT DES CUSTOM ELEMENTS — heißt im Abspieler
          *  `public/lotti/lotti-figur.js` so und bleibt deshalb deutsch.
@@ -73,7 +76,9 @@ export type LottiRegung =
 /* Einmal je Seite: Der Abspieler liegt als fertiges ES-Modul im Bündel und
  * definiert beim Import das Custom Element. `webpackIgnore`, weil die Datei
  * bewusst NICHT durchs Bundling läuft — sie gehört zum kopierten Bündel und
- * muss zu dessen Blättern und Verzeichnis passen, nicht zum App-Build. */
+ * muss zu dessen Blättern und Verzeichnis passen, nicht zum App-Build.
+ * Turbopack (seit Next 16) beachtet denselben Kommentar; im gebauten Chunk
+ * steht ein unverändertes `import(url)`. */
 /* ── Jahreszeit: welcher Bündel-Ordner? ──────────────────────────────────
  * Das Studio backt je Jahreszeit ein komplettes Bündel (fruehling: Blume,
  * sommer: Sonnenbrille, herbst/winter: Schal, weihnachten: roter Schal) —
@@ -131,7 +136,7 @@ function useSeasonSource(): string | null {
  * erscheinen — so wie bisher schon beim ersten Laden der Seite. */
 const NEAR_MARGIN = "300px 0px";
 
-function useNearViewport(): [React.RefObject<HTMLElement>, boolean] {
+function useNearViewport(): [React.RefObject<HTMLElement | null>, boolean] {
   const ref = useRef<HTMLElement>(null);
   const [near, setNear] = useState(false);
   useEffect(() => {

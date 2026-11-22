@@ -1,0 +1,15 @@
+{
+ "plan": "demografiestrategie",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "23/0088",
+   "date": "2023-02-14",
+   "text": "„Utkiek“ wurde zweimal angeboten; die dritte Vernetzungsveranstaltung wurde mit dem neuen Namen „Forum Beteiligung“ beworben.",
+   "quote": "Das Format „Utkiek“ wurde zweimal angeboten. Die Bezeichnung führte jedoch zu Verwirrung, so dass die dritte Vernetzungsveranstaltung mit dem neuen Namen „Forum Beteiligung“ beworben wurde."
+  }
+ ]
+}

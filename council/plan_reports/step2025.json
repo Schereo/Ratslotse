@@ -1,0 +1,33 @@
+{
+ "plan": "step2025",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "reports": [
+  {
+   "template": "19/0921",
+   "date": "2019-12-05",
+   "text": "Im nächsten Schritt werden alle im Workshop vorgebrachten Ideen und Wünsche auf Machbarkeit geprüft; danach folgt die Erarbeitung des Rahmenplanes.",
+   "quote": "Im nächsten Schritt werden alle im Workshop vorgebrachten Ideen und Wünsche gesammelt, ausgewertet und auf Machbarkeit geprüft sowie ihre städtebaulichen und finanziellen Auswirkungen abgeschätzt. Es folgt die Erarbeitung des Rahmenplanes."
+  },
+  {
+   "template": "19/0938",
+   "date": "2019-12-05",
+   "text": "Für die verwaltungsinterne Abstimmung und die eigentliche Planung sind mindestens ein bis zwei Jahre anzusetzen.",
+   "quote": "Für die verwal- tungsinterne Abstimmung und für die eigentliche Planung ist ein Zeitraum von mindestens ein bis zwei Jahren anzusetzen."
+  },
+  {
+   "template": "20/0845",
+   "date": "2020-12-10",
+   "text": "In einer Fortschreibung des step2025 würden Klimaschutz, Klimaanpassung, Digitalisierung, Gesundheit und Quartiersentwicklung mehr Gewicht erhalten.",
+   "quote": "In einer Fortschreibung des step2025 würden der Klimaschutz beziehungsweise die -anpassung aber auch weitere Themen, wie Digitalisierung, Gesundheit und Quartiersentwicklung, einen größeren Stellenwert erhalten als im Jahr 2014."
+  },
+  {
+   "template": "21/0217",
+   "date": "2021-06-17",
+   "text": "Viele Maßnahmen des step2025 sind bereits umgesetzt oder befinden sich derzeit in Umsetzung.",
+   "quote": "viele Maßnahmen des step2025 bereits umgesetzt wurden beziehungsweise sich zurzeit in Umsetzung befinden."
+  }
+ ]
+}

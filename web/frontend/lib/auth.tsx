@@ -14,8 +14,14 @@ interface AuthContextValue {
    *  Die Hülle zeigt dann „antwortet gerade nicht" statt der Anmeldung. */
   authFehler: boolean;
   login: (email: string, password: string) => Promise<void>;
+  /** Einen Anmeldelink aus einer Mail einlösen (`lib/zugangslink.ts`). */
+  loginPerLink: (token: string) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   loginWithApple: (cred: AppleCredential) => Promise<User>;
+  /** Mit Passkey anmelden bzw. registrieren (`lib/passkey.ts`). Dieselbe
+   *  Abfrage schließt, wo möglich, gleich die Notizen auf. */
+  loginWithPasskey: (opts?: { signal?: AbortSignal; mediation?: CredentialMediationRequirement }) => Promise<User>;
+  registerWithPasskey: (email: string, displayName: string) => Promise<User>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -73,6 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
+  const loginPerLink = async (token: string) => {
+    const u = await api.post<User>("/auth/magic", { token });
+    setUser(u);
+  };
+
   const register = async (email: string, password: string, displayName: string) => {
     // Der Name ist Pflicht (Backend weist einen leeren ab) — deshalb kein
     // `|| null` mehr, das die Prüfung nur zum Server verschöbe.
@@ -94,6 +105,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u;
   };
 
+  const loginWithPasskey = async (opts?: { signal?: AbortSignal; mediation?: CredentialMediationRequirement }) => {
+    const { mitPasskeyAnmelden, notizenMitPasskey, passkeyFehlerMelden } = await import("./passkey");
+    const { user: u, treffer } = await mitPasskeyAnmelden(opts);
+    setUser(u);
+    // Die Notizen hängen an der Anmeldung, nicht umgekehrt: Scheitert das,
+    // ist man trotzdem angemeldet, und das Schloss fragt später selbst. Was
+    // der Browser dabei ablehnt, landet still im Fehlerprotokoll.
+    void notizenMitPasskey(u.id, treffer).catch((e) => passkeyFehlerMelden(e, "Notizen nach der Anmeldung"));
+    return u;
+  };
+
+  const registerWithPasskey = async (email: string, displayName: string) => {
+    const { mitPasskeyRegistrieren, notizenMitPasskey, passkeyFehlerMelden } = await import("./passkey");
+    const { user: u, treffer } = await mitPasskeyRegistrieren(email, displayName.trim());
+    setUser(u);
+    void notizenMitPasskey(u.id, treffer).catch((e) => passkeyFehlerMelden(e, "Notizen nach der Registrierung"));
+    return u;
+  };
+
   const logout = async () => {
     await api.post("/auth/logout");
     setUser(null);
@@ -104,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, authFehler, login, register, loginWithApple, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, authFehler, login, loginPerLink, register, loginWithApple, loginWithPasskey, registerWithPasskey, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

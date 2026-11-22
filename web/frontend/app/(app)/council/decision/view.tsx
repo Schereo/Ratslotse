@@ -1,20 +1,27 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { AusDerVorlage } from "@/components/session/aus-der-vorlage";
+import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
+import { AntragKarte } from "@/components/session/aenderungsantraege";
+import { useVorschlagsfragen } from "@/lib/vorschlagsfragen";
+import { KiStern } from "@/components/ki-stern";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Tag, Euro } from "lucide-react";
 import { DecisionDetail, CouncilDecision } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
+import { MeineNotiz } from "@/components/notiz/meine-notiz";
+import { useFeature } from "@/lib/features";
 import { OutcomeDot, OUTCOME_META, voteLabel, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
-import { decisionHref, themaHref, sitzungHref } from "@/lib/routes";
+import { decisionHref, fragenHref, themaHref, sitzungHref } from "@/lib/routes";
+import { FragDenRatChat } from "@/components/frag-den-rat-chat";
 import { apiUrl, istNichtGefunden } from "@/lib/api";
 import { shortCommittee } from "@/lib/committees";
 import { ShareButton } from "@/components/share-button";
 import { PrintButton } from "@/components/print-button";
 import { FollowButton } from "@/components/follow-button";
 import { BookmarkButton } from "@/components/bookmark-button";
-import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { useZurueck } from "@/lib/zurueck";
 import { kamDirektAusSuche, suchRueckweg } from "@/lib/suchkontext";
@@ -84,7 +91,9 @@ function SimpleSummaryHero({ text }: { text: string }) {
           <p className="font-display text-base font-bold leading-tight text-foreground">Das Wichtigste in Kürze</p>
         </div>
       </div>
-      <p className="mt-3 text-lese text-foreground">{text}</p>
+      <ErklaerBereich className="mt-3">
+        <p className="text-lese text-foreground"><Erklaert text={text} /></p>
+      </ErklaerBereich>
       <p className="mt-2.5 text-hinweis text-muted-foreground">
         Automatische Kurzfassung — verbindlich ist der amtliche Wortlaut.
       </p>
@@ -123,7 +132,9 @@ function OfficialTextCard({ text }: { text: string }) {
       </button>
       {open && (
         <div className="border-t border-border px-4 pb-4">
-          <p className="mt-3 text-lese text-foreground">{text}</p>
+          <ErklaerBereich className="mt-3">
+            <p className="text-lese text-foreground"><Erklaert text={text} /></p>
+          </ErklaerBereich>
         </div>
       )}
     </div>
@@ -224,7 +235,7 @@ function GlanceCard({
           label="Vom Vorschlag abgewichen"
         >
           Der Rat hat hier nicht den Beschlussvorschlag der Verwaltung übernommen,
-          sondern deutlich anders entschieden — das kommt nur bei rund 8 % der
+          sondern deutlich anders entschieden — das kommt nur bei rund 6 % der
           angenommenen Beschlüsse vor.
         </GlanceDisclosure>
       )}
@@ -445,7 +456,17 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
               <OutcomeDot outcome={s.outcome} />
               {voteSummary(s) && <span>· {voteSummary(s)}</span>}
             </p>
-            {body && (
+            {s.amendment?.read ? (
+              // Der gelesene Antrag (council/motions.py): Bedeutung, alt/neu im
+              // Wortlaut, das PDF — statt nur des Protokolltitels.
+              <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3">
+                <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Was beantragt wurde
+                  <KiStern text="Automatisch aus dem Antrag gelesen; verbindlich ist der Antrag im Ratsinfo." />
+                </p>
+                <ul className="mt-1"><AntragKarte a={s.amendment} /></ul>
+              </div>
+            ) : body && (
               <div className="mt-2 rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Was beantragt wurde</p>
                 <p className="mt-1 text-sm leading-relaxed text-foreground">{body}</p>
@@ -549,11 +570,35 @@ function GlanceDisclosure({ icon, label, badge, children }: {
 function VorlageExcerpt({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const long = text.length > 420;
+  // Zeilenweise, damit die Erklärung eines Fachworts unter SEINER Zeile
+  // aufklappt — im Auszug ist eine Zeile ein Absatz —, nicht am Ende des
+  // ganzen Auszugs. Eine Leerzeile bleibt der Abstand, den
+  // `whitespace-pre-line` vorher gezeigt hat (Zeilenhöhe 1,6).
+  const zeilen = useMemo(() => {
+    const aus: { text: string; abstand: boolean }[] = [];
+    let leer = false;
+    for (const z of text.split("\n")) {
+      if (!z.trim()) { leer = aus.length > 0; continue; }
+      aus.push({ text: z, abstand: leer });
+      leer = false;
+    }
+    return aus;
+  }, [text]);
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <p className={cn("whitespace-pre-line text-lese text-foreground", !open && long && "line-clamp-5")}>
-        {text}
-      </p>
+      {open || !long ? (
+        <div className="text-lese">
+          {zeilen.map((z, i) => (
+            <ErklaerBereich key={i} className={z.abstand ? "mt-[1.6em]" : undefined}>
+              <p className="text-lese text-foreground"><Erklaert text={z.text} /></p>
+            </ErklaerBereich>
+          ))}
+        </div>
+      ) : (
+        <ErklaerBereich>
+          <p className="line-clamp-5 whitespace-pre-line text-lese text-foreground"><Erklaert text={text} /></p>
+        </ErklaerBereich>
+      )}
       {long && (
         <button onClick={() => setOpen((o) => !o)} className="mt-2 text-xs font-medium text-primary hover:underline">
           {open ? "Weniger anzeigen" : "Mehr anzeigen"}
@@ -610,6 +655,8 @@ function DecisionDetailInner() {
   const suche = suchRueckweg(sp.get("suche"));
   const router = useRouter();
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
+  const mitNotizen = useFeature("notizen");
+  const mitChat = useFeature("beschluss-chat");
   const { data, loading, error, refetch } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null,
     // Still: Die Seite zeigt den Fehler selbst (<AbrufFehler>) — der Toast
     // daneben sagte denselben Satz ein zweites Mal.
@@ -668,10 +715,11 @@ function DecisionDetailInner() {
   const nachbarHref = (nr: number) => decisionHref(nr)
     + (suche ? `&suche=${encodeURIComponent(suche)}` : "");
 
-  // Der Weg der Vorlage und die Presse: rechts unter den Metadaten oder, ab
-  // `weit`, oben in der dritten Spalte — sonst stünde die rechte Spalte
-  // doppelt so lang wie die neue daneben.
-  const wegUndPresse = (
+  // Der Weg der Vorlage: rechts unter den Metadaten oder, ab `weit`, oben in
+  // der dritten Spalte — sonst stünde die rechte Spalte doppelt so lang wie
+  // die neue daneben. (Bis 11/2026 stand darunter „In der Presse“ mit einer
+  // NWZonline-Suche; Tim: führte meistens nirgendwohin.)
+  const wegDerVorlage = (
     <>
       {(data.deliberation_path && data.deliberation_path.length > 0) || data.template_journey.length > 1 ? (
         <MetaCard title={`Weg der Vorlage ${d.template_number ?? ""}`.trim()}>
@@ -731,18 +779,6 @@ function DecisionDetailInner() {
         </MetaCard>
       ) : null}
 
-      {d.title && (
-        <MetaCard title="In der Presse">
-          <a
-            href={nwzSearchUrl(d.title)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-          >
-            <Newspaper className="h-4 w-4 shrink-0" /> Bei NWZonline nach Berichten suchen
-          </a>
-        </MetaCard>
-      )}
     </>
   );
 
@@ -752,6 +788,7 @@ function DecisionDetailInner() {
     // ziehen von unten daneben — auf 1440p standen links und rechts je 648 px
     // leer, während man für die Nachbarn scrollen musste. Ab `ultra` wachsen
     // nur die beiden Seitenspalten; die Lesespalte bleibt um 900 px.
+    <SeitenBegriffe begriffe={data.terms}>
     <div className="mx-auto max-w-5xl weit:max-w-[1480px] ultra:max-w-[1800px]">
       <div className="print-hidden flex flex-wrap items-center justify-between gap-3">
         {zeigeZurueck ? (
@@ -845,8 +882,8 @@ function DecisionDetailInner() {
       <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px] weit:grid-cols-[minmax(0,1fr)_300px_360px] ultra:grid-cols-[minmax(0,1fr)_340px_520px]">
         {/* Linke Spalte (25a): nur noch die inhaltliche Erzählung —
             Kurzfassung → amtlicher Wortlaut → Verlauf & Begründung → Nachbarn.
-            Dokumente, Anwesenheit, Beratungsweg und Presse sind Metadaten und
-            sitzen rechts. */}
+            Dokumente, Anwesenheit und Beratungsweg sind Metadaten und sitzen
+            rechts. */}
         <div className="min-w-0 space-y-3">
           {d.simple_summary && <SimpleSummaryHero text={d.simple_summary} />}
 
@@ -880,6 +917,17 @@ function DecisionDetailInner() {
           {/* 25a ③: Teilabstimmungen, Endergebnis und das Warum standen als drei
               getrennte Blöcke untereinander — zusammen erzählen sie den Hergang
               des Vorgangs und stehen deshalb unter einer Überschrift. */}
+          {/* „Aus der Vorlage" (Plan Vorlagen § 6.3): wie die Vorlage den
+              Vorschlag aufbereitet hat — ausdrücklich der Vorschlag; das
+              Ergebnis steht oben. Dazu der Wortdiff Vorschlag ↔ Beschluss. */}
+          {(data.proposal_diff || data.template_dossier) && (
+            <Section title="Aus der Vorlage">
+              <AusDerVorlage diff={data.proposal_diff} vorschlag={data.template?.proposed_decision}
+                beschluss={d.official_text} vorlageArt={vorlageArt(data.template?.kind)}
+                dossier={data.template_dossier} />
+            </Section>
+          )}
+
           {(data.sub_votes.length > 0 || data.template?.excerpt) && (
             <Section title="Verlauf & Begründung">
               <div className="space-y-4">
@@ -901,6 +949,8 @@ function DecisionDetailInner() {
             </Section>
           )}
 
+          {mitChat && <FragZumBeschluss d={d} hatVorlage={Boolean(data.template?.excerpt)} />}
+
           <div className="space-y-3 weit:hidden">
             <Zusammenhang decisionId={d.id} similar={data.similar} />
           </div>
@@ -908,8 +958,8 @@ function DecisionDetailInner() {
 
         {/* Rechte Spalte (25a): drei Karten statt sechs — „Auf einen Blick"
             bündelt Betrag/Abstimmung/Antrag/Wichtigkeit, „Dokumente & Anlagen"
-            führt alle Datei-Links zusammen, dazu Anwesenheit. Beratungsweg und
-            Presse sind ebenfalls Metadaten und schließen unten an. */}
+            führt alle Datei-Links zusammen, dazu Anwesenheit. Der Beratungsweg
+            ist ebenfalls Metadatum und schließt unten an. */}
         <aside className="space-y-4">
           <GlanceCard d={d} data={data} present={present} unanimous={unanimous} className="hidden lg:block" />
 
@@ -971,8 +1021,10 @@ function DecisionDetailInner() {
             </MetaCard>
           )}
 
-          {/* Weg und Presse stehen ab `weit` in der dritten Spalte. */}
-          <div className="space-y-4 weit:hidden">{wegUndPresse}</div>
+          {mitNotizen && <MeineNotiz targetKind="decision" targetKey={String(d.id)} wofuer="Beschluss" />}
+
+          {/* Der Weg steht ab `weit` in der dritten Spalte. */}
+          <div className="space-y-4 weit:hidden">{wegDerVorlage}</div>
         </aside>
 
         {/* Die dritte Spalte ab `weit` — dieselben Blöcke wie links unten
@@ -980,11 +1032,12 @@ function DecisionDetailInner() {
             react-query-Schlüssel; display:none nimmt die jeweils andere auch
             aus dem Vorlese-Baum, wie bei der GlanceCard. */}
         <div className="hidden min-w-0 space-y-4 weit:block">
-          {wegUndPresse}
+          {wegDerVorlage}
           <Zusammenhang decisionId={d.id} similar={data.similar} />
         </div>
       </div>
     </div>
+    </SeitenBegriffe>
   );
 }
 
@@ -1001,6 +1054,33 @@ function Zusammenhang({ decisionId, similar }: { decisionId: number; similar: De
         </Section>
       )}
     </>
+  );
+}
+
+/** „Frag den Rat" zu diesem Beschluss, direkt hier (Schalter `beschluss-chat`,
+ *  Tims Wunsch 11.11.2026). Der Beschluss reist als `refs.decision_id` mit —
+ *  der Server schlägt ihn nach (`qa.screen_decision`), „das" wird zu ihm. */
+function FragZumBeschluss({ d, hatVorlage }: { d: CouncilDecision; hatVorlage: boolean }) {
+  const rueckfall = [
+    "Worum geht es dabei in einfachen Worten?",
+    d.amount_eur != null ? "Was kostet das?" : null,
+    d.vote || d.no_votes ? "Wer hat wie abgestimmt?" : null,
+    hatVorlage ? "Wie hat die Verwaltung das begründet?" : null,
+  ].filter((x): x is string => !!x);
+  const vorschlaege = useVorschlagsfragen(`/council/page-questions?decision_id=${d.id}`, rueckfall, 3);
+  return (
+    <section aria-labelledby="frag-zum-beschluss" className="mt-6 rounded-2xl border border-border bg-card shadow-sm">
+      <div className="border-b border-border p-4">
+        <h2 id="frag-zum-beschluss" className="font-display text-base font-semibold text-foreground">
+          Frag den Rat
+          <KiStern className="ml-1" text="Automatische Antwort aus dem Ratsarchiv. Kann unvollständig sein — Quellen prüfen." />
+        </h2>
+        <p className="text-sm text-muted-foreground">zu diesem Beschluss</p>
+      </div>
+      <FragDenRatChat seite={{ route: "/council/decision", refs: { decision_id: d.id } }}
+        vorschlaege={vorschlaege} platzhalter="Deine Frage zu diesem Beschluss …"
+        fallbackHref={(q) => `${fragenHref({ q })}&chip=1`} />
+    </section>
   );
 }
 

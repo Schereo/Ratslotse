@@ -1,0 +1,18 @@
+{
+ "plan": "waermeplan",
+ "read_by": "model",
+ "model": "openai/gpt-6-luna",
+ "generated": "2026-11-10",
+ "reviewed": true,
+ "based_on": "f38d0818c939d5db",
+ "plain": [
+  "Der Wärmeplan ist Oldenburgs Strategie für eine klimafreundliche Wärmeversorgung bis 2035.",
+  "Die Verwaltung soll 18 Maßnahmen je nach Personal- und Finanzlage schrittweise umsetzen und über die Ressourcen berichten.",
+  "Der Plan nennt 11 Gebiete, in denen ein Wärmenetz grundsätzlich wirtschaftlich sein könnte, sagt den Bau aber nicht zu."
+ ],
+ "questions": [
+  "Was wurde zuletzt zum Oldenburger Wärmeplan berichtet oder beschlossen?",
+  "Welche Orte priorisiert Oldenburgs Wärmeplan für dezentrale Wärme?",
+  "Was bedeutet die Einstufung als Wärmenetzeignungsgebiet im Oldenburger Wärmeplan?"
+ ]
+}
