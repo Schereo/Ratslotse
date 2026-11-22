@@ -2225,6 +2225,18 @@ class SchemaMixin(StoreBasis):
             "valid_from TEXT, valid_until TEXT, fetched_at TEXT NOT NULL)"
         )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_memberships_kpenr ON council_memberships(kpenr)")
+        # Die AKTUELLE Besetzung je Gremium (council.committee_seats), wie die
+        # Mitgliederseite des Ratsinfos sie zeigt: wer sitzt drin, für welche
+        # Fraktion oder Gruppe, mit Stimme oder beratend. Je Abruf komplett
+        # ersetzt — eine Momentaufnahme, keine Historie (die steht in
+        # council_memberships). Liest der Mehrheitsrechner der Werkzeuge.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_committee_seats ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, committee TEXT NOT NULL, "
+            "kgrnr INTEGER, position INTEGER NOT NULL, kpenr INTEGER, "
+            "name TEXT NOT NULL, faction TEXT, role TEXT, "
+            "voting INTEGER NOT NULL DEFAULT 0, fetched_at TEXT NOT NULL)"
+        )
         # Quizfragen (council.quiz): generierte Multiple-Choice-Fragen je Gebiet
         # (Stadtteil/Wahlbereich/Thema), gegroundet in Wikipedia/Stadt-Website/
         # Ratsdaten. status='retired' fliegt aus den Runden (schlecht bewertet).

@@ -50,3 +50,8 @@ export function darfHaushalt(user: MitRechten | null | undefined): boolean {
 export function darfAdmin(user: MitRechten | null | undefined): boolean {
   return hatRecht(user, "admin");
 }
+
+/** Die Werkzeuge für die Ratsarbeit (`/werkzeuge`) — Ratsmitglieder und Admins. */
+export function darfWerkzeuge(user: MitRechten | null | undefined): boolean {
+  return hatRecht(user, "council_tools");
+}
