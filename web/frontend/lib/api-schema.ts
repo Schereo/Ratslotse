@@ -13521,6 +13521,8 @@ export interface components {
             name: string;
             /** Notes */
             notes: string[];
+            /** Reachable */
+            reachable: boolean;
             /** Short */
             short: string;
             /** Source Url */
@@ -13572,6 +13574,8 @@ export interface components {
                 name: string;
                 /** Notes */
                 notes: string[];
+                /** Reachable */
+                reachable: boolean;
                 /** Short */
                 short: string;
                 /** Source Url */
@@ -13632,6 +13636,8 @@ export interface components {
             missing: number;
             /** Possible */
             possible: boolean;
+            /** Reachable */
+            reachable: boolean;
             /** Seats */
             seats: number;
             /** Short */
@@ -27084,4 +27090,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: dff1e3177d9de482c54b43cbf555edf30dc4d28e33e43215dd04eacc50ec8cd3
+// vertrag-sha256: 14638fd7261b65de6e95c89748c24b301eced0e883f72b5605ae7dcfe2c65d1f

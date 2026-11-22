@@ -54,6 +54,7 @@ ist die DB immer frisch.
 | `QUELLEN` / `REIHENFOLGE` / `STELLEN` (`finanzquellen.py`) | eine Finanz-Datenart ergänzt | Erkennung und Anzeige kennen sie nicht |
 | `QUERY_TYPES`, `RESEARCH_CHANNELS`, `EXTRA_REGELN` (`qa.py`) | einen Fragetyp oder Kanal ergänzt | das Modell darf ihn nicht wählen |
 | `POLICY_FIELDS` (`topics.py`) | ein Themenfeld ergänzt | die Klassifikation kennt es nicht |
+| `COMPOSITION` (`committee_rules.py`) | der Rat Größe oder Zusammensetzung eines Ausschusses ändert | der Mehrheitsrechner rechnet mit einer falschen Schwelle — das Ratsinfo führt nicht alle Stimmberechtigten |
 
 ## Belege: keine Zahl ohne Herkunft
 

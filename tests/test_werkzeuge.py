@@ -132,6 +132,25 @@ def test_abruf_setzt_rat_ob_und_verwaltungsausschuss_zusammen():
     assert {s["name"] for s in va_sitze} == {"Person 0", "Oberbürgermeister Max Muster"}
 
 
+def test_wer_eine_personenseite_hat_aber_kein_mandat_ist_keine_fraktion():
+    """Gemessen am 22.11.2026: Eine Beschäftigtenvertreterin hat im Ratsinfo
+    eine Personenseite. Ohne den Abgleich mit den Mandatsträgern stand sie mit
+    Namen als wählbarer Block „Beschäftigtenvertreterin“ im Rechner."""
+    rat = "<table>" + "".join(
+        _zeile(f"Person {i}", "SPD", "Ratsmitglied", 100 + i) for i in range(21)) + "</table>"
+    holders = "<table>" + "".join(_zeile(f"Person {i}", "SPD", "", 100 + i) for i in range(21)) + "</table>"
+    betrieb = "<table>" + _zeile("Person 1", "SPD", "Ausschussmitglied", 101) \
+        + _zeile("Erika Beispiel", "Beschäftigtenvertreterin", "Stimmberechtigtes Mitglied", 7777) + "</table>"
+    pages = {
+        "gr0040.asp": '<a href="kp0040.asp?__kgrnr=22&">Rat</a><a href="kp0040.asp?__kgrnr=55&">Betriebsausschuss</a>',
+        "kp0040.asp?__kgrnr=22": rat, "kp0040.asp?__kgrnr=55": betrieb, "kp0041.asp": holders,
+    }
+    seats = cs.fetch_all(_FakeRis(pages), log=lambda _m: None)  # type: ignore[arg-type]
+    extern = [s for s in seats if s["committee"] == "Betriebsausschuss" and s["kpenr"] is None]
+    assert [(s["name"], s["faction"], s["voting"]) for s in extern] == [("Beschäftigtenvertreterin", None, True)]
+    assert "Erika Beispiel" not in {s["name"] for s in seats}
+
+
 # ---------------------------------------------------------------- Rechnung
 
 def _rat() -> list[dict]:
@@ -203,14 +222,16 @@ def test_ohne_moegliche_mehrheit_bleibt_die_liste_leer():
 
 
 def test_stimmberechtigte_ohne_ratsmandat_sind_kein_partner():
-    rows = [{"committee": "Schulausschuss", "kgrnr": 38, "position": i, "kpenr": i + 1,
+    """Ein Gremium OHNE Eintrag in ``committee_rules`` rechnet mit dem, was das
+    Ratsinfo führt — auch mit dessen Stimmberechtigten ohne Ratsmandat."""
+    rows = [{"committee": "Beirat für Beispiele", "kgrnr": 99, "position": i, "kpenr": i + 1,
              "name": f"P{i}", "faction": f, "role": "Ausschussmitglied", "voting": 1,
              "fetched_at": None}
             for i, f in enumerate(["SPD"] * 5 + ["CDU"] * 4)]
-    rows += [{"committee": "Schulausschuss", "kgrnr": 38, "position": 20 + i, "kpenr": None,
+    rows += [{"committee": "Beirat für Beispiele", "kgrnr": 99, "position": 20 + i, "kpenr": None,
               "name": "Elternvertreter", "faction": None, "role": "Stimmberechtigtes Mitglied",
               "voting": 1, "fetched_at": None} for i in range(4)]
-    out = majorities.calculate(rows, "schulausschuss", ["weitere"], [])
+    out = majorities.calculate(rows, "beirat-fuer-beispiele", ["weitere"], [])
     assert out["body"] is not None and out["body"]["votes"] == 13
     ext = next(b for b in out["blocks"] if b["key"] == "weitere")
     assert not ext["selectable"] and ext["members"] == []
@@ -218,6 +239,109 @@ def test_stimmberechtigte_ohne_ratsmandat_sind_kein_partner():
     # SPD allein (5) reicht nicht für 7 von 13 — erst mit der CDU.
     assert [c["blocks"] for c in out["coalitions"]] == [["spd", "cdu"]]
     assert any("ohne Ratsmandat" in n for n in out["body"]["notes"])
+
+
+# ------------------------------------- die beschlossene Zusammensetzung
+
+def _ausschuss(name: str, verteilung: list[tuple[str, int]], weitere: int = 0) -> list[dict]:
+    """Ein Ausschuss, wie das Ratsinfo ihn führt — samt dem Rat, aus dem sich
+    die Fraktionsstärken ergeben."""
+    rows, n = _rat(), 0
+    for fraktion, sitze in verteilung:
+        for _ in range(sitze):
+            rows.append({"committee": name, "kgrnr": 7, "position": n, "kpenr": 500 + n,
+                         "name": f"{fraktion} {n}", "faction": fraktion,
+                         "role": "Ausschussmitglied", "voting": 1, "fetched_at": None})
+            n += 1
+    for _ in range(weitere):
+        rows.append({"committee": name, "kgrnr": 7, "position": n, "kpenr": None,
+                     "name": "Beschäftigtenvertreter", "faction": None,
+                     "role": "Stimmberechtigtes Mitglied", "voting": 1, "fetched_at": None})
+        n += 1
+    return rows
+
+
+ELF = [("Bündnis 90/Die Grünen", 3), ("SPD", 3), ("Die Linke", 2), ("CDU", 1), ("AfD", 1),
+       ("Zukunft Oldenburg", 1)]
+SECHS = [("Bündnis 90/Die Grünen", 2), ("SPD", 1), ("Die Linke", 1), ("CDU", 1), ("AfD", 1)]
+
+
+def test_sainte_lague_ergibt_die_verteilung_des_rats_von_2026():
+    """Gegen die Vorlagen der konstituierenden Sitzung vom 02.11.2026: elf
+    Sitze 3/3/2/1/1/1, sechs Sitze 2/1/1/1/1, zehn Beigeordnete 3/3/1/1/1/1.
+    Beim zwölften Sitz stehen CDU, FDP und Volt gleich — das Los entscheidet."""
+    from council.committee_rules import sainte_lague
+
+    rat = {"gruene": 13, "spd": 12, "linke": 7, "cdu": 6, "afd": 5, "zo": 3, "fdp": 2, "volt": 2}
+    assert sainte_lague(rat, 11) == (
+        {"gruene": 3, "spd": 3, "linke": 2, "cdu": 1, "afd": 1, "zo": 1}, (), 0)
+    assert sainte_lague(rat, 6)[0] == {"gruene": 2, "spd": 1, "linke": 1, "cdu": 1, "afd": 1}
+    assert sainte_lague(rat, 10)[0] == {"gruene": 3, "spd": 3, "linke": 1, "cdu": 1, "afd": 1, "zo": 1}
+    sicher, gleich, offen = sainte_lague(rat, 12)
+    assert sum(sicher.values()) == 11 and set(gleich) == {"cdu", "fdp", "volt"} and offen == 1
+
+
+def test_jugendhilfeausschuss_hat_fuenfzehn_stimmen_nicht_sechs():
+    """Das Ratsinfo führt nur die sechs Ratsmitglieder. Mit 4 von 6 als
+    Mehrheit stünde dort eine Mehrheit, die es nicht gibt: Es braucht 8 von 15,
+    und die Fraktionen haben zusammen sechs (Vorlage 26/0784)."""
+    out = majorities.calculate(_ausschuss("Jugendhilfeausschuss", SECHS), "jugendhilfeausschuss",
+                               ["gruene", "spd", "linke"], [])
+    body = out["body"]
+    assert body is not None
+    assert (body["votes"], body["majority"], body["reachable"]) == (15, 8, False)
+    assert next(b for b in out["blocks"] if b["key"] == "weitere")["seats"] == 9
+    assert not out["selection"]["has_majority"] and out["coalitions"] == [] and out["partners"] == []
+
+
+def test_betriebsausschuss_zaehlt_drei_beschaeftigte_auch_wenn_das_ratsinfo_zwei_fuehrt():
+    """Gebäudewirtschaft: 11 + 3 = 14, Mehrheit 8. Mit den zwei aus dem
+    Ratsinfo wären es 7 von 13 — Grüne + SPD + Zukunft Oldenburg (7) hätten
+    dann fälschlich eine Mehrheit."""
+    name = "Betriebsausschuss Eigenbetrieb Gebäudewirtschaft und Hochbau"
+    out = majorities.calculate(_ausschuss(name, ELF, weitere=2), majorities.slug(name),
+                               ["gruene", "spd", "zukunft-oldenburg"], [])
+    assert out["body"] is not None
+    assert (out["body"]["votes"], out["body"]["majority"]) == (14, 8)
+    assert out["selection"]["seats"] == 7 and not out["selection"]["has_majority"]
+
+
+def test_schulausschuss_siebzehn_stimmen_und_der_hinweis_auf_die_berufsbildenden():
+    out = majorities.calculate(_ausschuss("Schulausschuss", ELF, weitere=5), "schulausschuss", [], [])
+    assert out["body"] is not None
+    assert (out["body"]["votes"], out["body"]["majority"]) == (17, 9)
+    assert any("19 Stimmen, Mehrheit ab 10" in n for n in out["body"]["notes"])
+
+
+def test_ein_eintrag_zu_viel_im_ratsinfo_wird_auf_die_sitzverteilung_gekuerzt():
+    """Sportausschuss am 22.11.2026: vier SPD-Mitglieder im Ratsinfo, drei
+    Sitze laut Ratsbeschluss. Mit zwölf Stimmen läge die Schwelle bei 7 —
+    Grüne + Linke + CDU (6) hätten dann fälschlich KEINE Mehrheit."""
+    vier = [(f, 4 if f == "SPD" else n) for f, n in ELF]
+    out = majorities.calculate(_ausschuss("Sportausschuss", vier), "sportausschuss",
+                               ["gruene", "linke", "cdu"], [])
+    assert out["body"] is not None
+    assert (out["body"]["votes"], out["body"]["majority"]) == (11, 6)
+    spd = next(b for b in out["blocks"] if b["key"] == "spd")
+    assert spd["seats"] == 3 and len(spd["members"]) == 4      # Namen bleiben, wie das Ratsinfo sie führt
+    assert out["selection"]["has_majority"]
+    assert any("führt 4 Mitglieder" in n and "3 Sitze" in n for n in out["body"]["notes"])
+
+
+def test_stimmt_das_ratsinfo_mit_dem_beschluss_bleibt_es_ohne_hinweis():
+    out = majorities.calculate(_ausschuss("Verkehrsausschuss", ELF), "verkehrsausschuss", [], [])
+    assert out["body"] is not None
+    assert (out["body"]["votes"], out["body"]["majority"], out["body"]["notes"]) == (11, 6, [])
+
+
+def test_jedes_gremium_im_register_kennt_seine_vorlage():
+    """Ein Eintrag ohne Quelle wäre eine Behauptung. Der Rat steht im Gesetz."""
+    from council.committee_rules import COMPOSITION
+
+    for name, c in COMPOSITION.items():
+        assert c.council_seats > 0, name
+        assert name == "Rat" or c.source.startswith("Vorlage"), name
+        assert bool(c.conditional) == bool(c.conditional_when), name
 
 
 def test_partner_sind_die_die_fuer_die_mehrheit_in_frage_kommen():
