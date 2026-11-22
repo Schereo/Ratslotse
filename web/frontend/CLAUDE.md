@@ -93,6 +93,11 @@ Der Export ist weg, diese Regeln bleiben:
   Phase — nicht zu einem Objekt zurückbauen. (Next 16 trennt Dev und Build
   inzwischen selbst, der Dev-Server schreibt nach `<distDir>/dev`, hier also
   `.next-dev/dev`. Die eigene Trennung bleibt, weil die Deploys daran hängen.)
+- **Turbopack schreibt keinen Cache auf die Platte**, weder beim Bauen noch im
+  Dev-Server (beide Schalter in `next.config.mjs`). Der Dev-Cache wog nach
+  einem Nachmittag 1,4 GB je Worktree und hielt einen Fehler fest, der keiner
+  mehr war — über einen Neustart hinweg. Wer ihn einschaltet, liest vorher die
+  Begründung dort.
 - **Der Deploy baut ebenfalls daneben.** Dasselbe Bild traf den alten
   `next start` auf den Servern: jede Seite ungestaltet, bis zum Neustart.
   Die Deploys bauen deshalb mit `NEXT_DIST_DIR=.next-build` (wirkt nur in der

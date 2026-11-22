@@ -262,6 +262,20 @@ const nextConfig = {
   // installierten Fassung liegt in node_modules/next/dist/docs/ — trägt
   // web/frontend/CLAUDE.md.
   agentRules: false,
+  // METADATEN IMMER IM <head>, FÜR JEDEN ABRUFER.
+  //
+  // Seit Next 15.2 hält `generateMetadata` das erste Byte nicht mehr auf:
+  // Liegt die Antwort nicht sofort vor, schickt Next die Seite los und reicht
+  // <title> und die og:-Felder im <body> nach. Ausgenommen ist nur, wer auf
+  // einer festen Liste steht (WhatsApp, Slack, Twitter, Facebook …). Gemessen
+  // am 22.11.2026 mit 16.4.6: Mastodon und Matrix (Synapse) stehen nicht
+  // darauf und bekamen die og:-Felder einer frisch geteilten Adresse im Body.
+  //
+  // Geteilte Links sind die Kernhandlung der App (lib/share-metadata.ts), und
+  // welcher Messenger morgen abruft, steht auf keiner Liste. Deshalb wartet
+  // wie unter Next 14 jede Seite auf ihre Metadaten; lange kann das nicht
+  // dauern, der Abruf ist auf VORSCHAU_GRENZE_MS begrenzt.
+  htmlLimitedBots: /.*/,
   // No image optimizer: `/_next/image` answers 404. The optimizer runs images
   // through `sharp`. Under Next 14 the copy it found (0.32.6, pulled in only
   // by `@capacitor/assets`) carried the libvips/libheif flaws behind two
@@ -282,9 +296,20 @@ const nextConfig = {
     // Turbopack schriebe sonst nach jedem Build einen Cache nach
     // `<distDir>/cache/turbopack`. Die Deploys beginnen jeden Build in einem
     // leeren `.next-build` (s. u. und deploy*.yml), gelesen würde er also nie
-    // — er läge nur als Ballast im ausgelieferten Verzeichnis. Der Dev-Server
-    // behält seinen Cache (`.next-dev/dev/cache`).
+    // — er läge nur als Ballast im ausgelieferten Verzeichnis.
     turbopackFileSystemCacheForBuild: false,
+    // Auch der Dev-Server schreibt keinen. Gemessen am 22.11.2026 in einem
+    // Worktree nach einem Nachmittag: 1,4 GB unter `.next-dev/dev/cache`,
+    // gegen rund 100 MB beim Webpack-Cache von Next 14 — und er wächst, weil
+    // nichts ihn aufräumt (`turbopackGc` ist aus). Bei zehn Worktrees ist das
+    // die Platte. Dazu hielt er am selben Tag einen Fehler fest, der keiner
+    // mehr war: Während `npm install` lief, fehlte eine Datei aus
+    // node_modules einen Augenblick lang, der Dev-Server meldete „ENOENT …
+    // postcss/lib/container.js" — und meldete es nach einem NEUSTART weiter,
+    // obwohl die Datei längst da war. Geheilt hat es nur `rm -rf .next-dev`.
+    // Der Preis fürs Abschalten: Nach einem Neustart übersetzt Turbopack jede
+    // Seite beim ersten Aufruf neu, gemessen 0,3 bis 0,7 s.
+    turbopackFileSystemCacheForDev: false,
   },
   // Die Abdrücke der Bündel für lib/asset-paths.ts (zur Bauzeit einkompiliert,
   // passend zu den Dateien, die derselbe Build ausliefert).
