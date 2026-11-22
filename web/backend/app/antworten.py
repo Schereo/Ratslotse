@@ -8189,3 +8189,128 @@ class PredictionAdminStand(TypedDict):
     results: list[PredictionResultRow]
     players: list[PredictionAdminPlayer]
     log: list[str]
+
+
+# --------------------------------------------------------------------------
+# Werkzeuge: der Mehrheitsrechner (/api/tools/majorities)
+# --------------------------------------------------------------------------
+
+
+class MajorityBodyOption(TypedDict):
+    """Ein Gremium in der Auswahl — Rat, Verwaltungsausschuss, Ausschüsse."""
+    key: str
+    name: str
+    #: Ohne „Ausschuss für “ — für enge Auswahllisten.
+    short: str
+    kind: Literal["council", "administrative", "committee"]
+    #: Stimmberechtigte insgesamt.
+    votes: int
+
+
+class MajorityBody(TypedDict):
+    key: str
+    name: str
+    short: str
+    kind: Literal["council", "administrative", "committee"]
+    votes: int
+    #: Mehr als die Hälfte aller Stimmen (im Rat 27 von 53).
+    majority: int
+    #: Sachliche Hinweise zu diesem Gremium (wer außer den Fraktionen mitstimmt,
+    #: was das Ratsinfo nicht führt) — fertig formuliert.
+    notes: list[str]
+    #: Die Mitgliederseite im Ratsinformationssystem.
+    source_url: str
+
+
+class MajorityFunction(TypedDict):
+    """Stimmberechtigte ohne Ratsmandat, zusammengefasst nach Funktion."""
+    label: str
+    seats: int
+
+
+class MajorityBlock(TypedDict):
+    """Die Stimmen einer Fraktion oder Gruppe in diesem Gremium."""
+    key: str
+    short: str
+    label: str
+    #: faction = Fraktion (ab zwei Mitgliedern im Rat), group = Gruppe mehrerer
+    #: Parteien, single = Einzelmitglied, mayor = Oberbürgermeister,
+    #: external = Stimmberechtigte ohne Ratsmandat.
+    kind: Literal["faction", "group", "single", "mayor", "external"]
+    color: str
+    color_dark: str
+    seats: int
+    #: Lässt sich mit „dabei“ / „ohne“ setzen und erscheint in Kombinationen.
+    #: Nicht bei ``external``: Wer ohne Ratsmandat mitstimmt, verabredet sich
+    #: nicht als Block — die Stimmen zählen nur zur Schwelle.
+    selectable: bool
+    #: Namen der Stimmberechtigten (leer bei ``external``).
+    members: list[str]
+    #: Mitgliedsparteien einer Gruppe.
+    parties: list[str]
+    #: Nur bei ``external``: wer genau (Elternvertretung, Beschäftigte, …).
+    functions: list[MajorityFunction]
+
+
+class MajorityAdvisory(TypedDict):
+    """Ein Mitglied mit beratender Stimme (Grundmandat u. Ä.) — zählt nicht mit."""
+    name: str
+    role: str
+    key: str | None
+    short: str | None
+    color: str
+    color_dark: str
+
+
+class MajoritySelection(TypedDict):
+    include: list[str]
+    exclude: list[str]
+    #: Stimmen der mit „dabei“ gesetzten Blöcke.
+    seats: int
+    #: Wie viele Stimmen ihnen noch zur Mehrheit fehlen (0, wenn sie reicht).
+    missing: int
+    has_majority: bool
+    #: Alle Stimmen außer den ausgeschlossenen — reicht das nicht, ist ohne
+    #: diese Blöcke keine Mehrheit möglich.
+    max_seats: int
+    possible: bool
+
+
+class MajorityCoalition(TypedDict):
+    """Eine Kombination mit Mehrheit, aus der kein frei gewählter Partner
+    wegfallen kann."""
+    blocks: list[str]
+    seats: int
+    #: Stimmen über der Schwelle.
+    surplus: int
+    #: Die Blöcke, die zur Auswahl („dabei“) hinzukommen.
+    added: list[str]
+
+
+class MajorityOverview(TypedDict):
+    """Die Auswahl in einem Gremium — eine Zeile der Übersicht über alle."""
+    key: str
+    short: str
+    kind: Literal["council", "administrative", "committee"]
+    votes: int
+    majority: int
+    #: Stimmen der mit „dabei“ gesetzten Blöcke in diesem Gremium.
+    seats: int
+    has_majority: bool
+    missing: int
+    #: Ist ohne die ausgeschlossenen Blöcke überhaupt eine Mehrheit möglich?
+    possible: bool
+
+
+class MajorityCalculator(TypedDict):
+    bodies: list[MajorityBodyOption]
+    #: ``None``, solange die Besetzung noch nie abgerufen wurde.
+    body: MajorityBody | None
+    blocks: list[MajorityBlock]
+    advisory: list[MajorityAdvisory]
+    selection: MajoritySelection
+    coalitions: list[MajorityCoalition]
+    #: Dieselbe Auswahl in jedem Gremium, in der Reihenfolge von ``bodies``.
+    overview: list[MajorityOverview]
+    #: Zeitpunkt des Abrufs aus dem Ratsinfo (UTC, ISO).
+    as_of: str | None

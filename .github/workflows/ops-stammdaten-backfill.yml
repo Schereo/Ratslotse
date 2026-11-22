@@ -2,15 +2,31 @@
 # eingelesenen Vorlagen (vo0053) und die Personen-/Gremien-Stammdaten
 # (Mandatsträger aller Wahlperioden + Mitgliedschaften) nach. Reines
 # Netz-Parsing, kein LLM. Nutzt denselben Deploy-Key/ProxyJump wie deploy.yml —
-# praktisch, wenn lokal kein SSH-Zugang verfügbar ist. Keine Inputs, feste
-# Befehle; nur Collaborator können triggern.
+# praktisch, wenn lokal kein SSH-Zugang verfügbar ist. Feste Befehle; nur
+# Collaborator können triggern.
+#
+# schritt=besetzung holt nur die aktuelle Besetzung von Rat und Ausschüssen
+# (council/committee_seats.py, ~70 Abrufe, gut eine Minute) — die Grundlage
+# des Mehrheitsrechners in den Werkzeugen. Auf dev gibt es keinen Wochenlauf,
+# der sie füllt; dort ist das der Weg.
 name: "Ops: Stammdaten-Backfill"
 
 on:
   workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de)"
+        type: choice
+        options: [prod, dev]
+        default: prod
+      schritt:
+        description: "alles = Stammdaten + Beratungsfolge (bis 2 h), besetzung = nur die Gremienbesetzung"
+        type: choice
+        options: [alles, besetzung]
+        default: alles
 
 concurrency:
-  group: ops-stammdaten-backfill
+  group: ops-stammdaten-backfill-${{ inputs.umgebung }}
   cancel-in-progress: false
 
 jobs:
@@ -23,10 +39,12 @@ jobs:
           sparse-checkout: .github/actions
           persist-credentials: false
 
-      - name: Run Stammdaten + Beratungsfolge backfill on server
+      - name: "Stammdaten (${{ inputs.umgebung }}, ${{ inputs.schritt }})"
+        env:
+          SCHRITT: ${{ inputs.schritt }}
         uses: ./.github/actions/ssh
         with:
-          host: ${{ secrets.VPS_HOST }}
+          host: ${{ inputs.umgebung == 'dev' && secrets.VPS_DEV_HOST || secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_SSH_PORT }}
@@ -37,9 +55,15 @@ jobs:
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           # Erstlauf: ~5.000 Beratungsfolge-Seiten + ~300 Personen-Abrufe.
           command_timeout: 120m
+          # Eingabe über `envs`, nicht als `${{ … }}` im Skripttext.
+          envs: SCHRITT
           script: |
             set -e
             cd ~/app
+            if [ "$SCHRITT" = "besetzung" ]; then
+              .venv/bin/python scripts/backfill_stammdaten.py --nur-besetzung
+              exit 0
+            fi
             .venv/bin/python scripts/backfill_stammdaten.py
             .venv/bin/python scripts/backfill_beratungen.py
             .venv/bin/python - <<'PY'
