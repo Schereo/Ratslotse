@@ -39,13 +39,16 @@ import { api, apiUrl } from "@/lib/api";
 import { sendAndForget } from "@/lib/send-and-forget";
 // Der Vertrag statt einer abgetippten Form: ein umbenanntes Feld bricht
 // damit hier den Build statt still eine leere Kachel zu zeigen.
-import { type ApiAntwort } from "@/lib/vertrag";
+import { type ApiAntwort, vertrag } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseSseStrom } from "@/lib/sse";
 import { ASK_SCHRITTE, type AskSchritt } from "@/lib/qa-schritte";
 import { GespraecheEinwilligung } from "@/components/gespraeche-einwilligung";
-import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
+import {
+  advanceExampleOffset, exampleWindow, leseHatGespraeche, merkeHatGespraeche, readExampleOffset,
+  readExampleQuestions, storeExampleQuestions,
+} from "@/lib/qa-zuletzt";
 import { Button, Input, toast } from "@/components/ui";
 // Die beiden Kanten, an denen der fixierte Composer und die Belege-Spalte
 // hängen, gehören der Navigation — deshalb kommen sie von dort und werden
@@ -78,79 +81,6 @@ import {
   anlageNummer, anlagenBuchstaben, ANL_RE, belegeSichtbar, CITE_RE, citationIds, fmtDatumKurz,
   zitatNummern,
 } from "@/lib/qa-belege";
-
-/** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
- *
- *  Jede Frage lief am 10.08.2026 durch das echte Retrieval des /ask-Endpoints
- *  gegen den Prod-Bestand und musste liefern: mindestens vier Volltreffer
- *  (Relevanz ≥ 0,7), zweistellig viele brauchbare Treffer und Material bis
- *  mindestens 2025. Themen, die im Ratsinformationssystem kaum vorkommen
- *  (Küstenautobahn A20, Straßenbahn, Ärztemangel, E-Ladesäulen), stehen
- *  bewusst NICHT hier — ein Beispiel, das beim ersten Klick eine dünne
- *  Antwort erzeugt, kostet mehr Vertrauen, als Abwechslung einbringt.
- *  Wer die Liste erweitert, misst vorher nach. Die Orts- und Projektfragen
- *  unten wurden am 27.08.2026 zusätzlich gegen die produktive Ortszuordnung
- *  und die Rechercheplan-Routingmatrix geprüft.
- */
-const EXAMPLES = [
-  "Wie ist der Stand bei der Cäcilienbrücke?",
-  "Was wurde zum Radverkehr beschlossen?",
-  "Was kostet der Neubau des Stadions?",
-  "Gab es Beschlüsse zu Kita-Plätzen?",
-  "Was ist beim Fliegerhorst geplant?",
-  "Was wurde zur Weser-Ems-Halle beschlossen?",
-  "Was wurde zum Thema Parken und Parkgebühren entschieden?",
-  "Welche Beschlüsse gibt es zum Klimaschutz?",
-  "Welche Beschlüsse gibt es zu Spielplätzen?",
-  "Was ist zum Pferdemarkt beschlossen worden?",
-  "Welche Sportstätten werden gefördert?",
-  "Wie unterstützt die Stadt Kultur und Museen?",
-  "Welche neuen Baugebiete hat der Rat beschlossen?",
-  "Was wurde zur Gebührenerhöhung bei Müll und Abwasser beschlossen?",
-  "Was wurde zur Digitalisierung der Verwaltung beschlossen?",
-  "Welche Beschlüsse gibt es zum Thema Jugend und Jugendzentren?",
-  "Was tut die Stadt für bezahlbaren Wohnraum?",
-  "Was wurde zu Windenergie und Photovoltaik beschlossen?",
-  "Welche Schulen werden saniert oder neu gebaut?",
-  "Welche Beschlüsse gibt es zu Tempo 30?",
-  "Was wurde zum Thema Obdachlosigkeit beschlossen?",
-  "Wie viele Bäume werden gefällt und nachgepflanzt?",
-  "Welche Beschlüsse betreffen Eversten?",
-  "Was wurde zuletzt in Osternburg beschlossen?",
-  "Wie ist der Stand beim Innovationsquartier Alte Fleiwa?",
-  "Was wurde zuletzt in Kreyenbrück beschlossen?",
-];
-
-/** Wörter, die in fast jeder Beispielfrage stehen und deshalb nichts über ihr
- *  Thema aussagen — sie dürfen die Dubletten-Prüfung nicht auslösen. */
-const BEISPIEL_STOPP = new Set([
-  "beschl", "entsch", "welche", "wurden", "themas", "oldenb", "stadts",
-]);
-
-/** Themen-Stämme einer Frage: Wortanfänge (6 Zeichen) der langen Wörter.
- *  Auf Stämmen statt ganzen Wörtern, weil deutsche Komposita sonst
- *  aneinander vorbeilaufen („Stadions" vs. „Stadionneubau"). */
-function themenStaemme(question: string): string[] {
-  const woerter = question.toLowerCase().match(/[a-zäöüß]{6,}/g) ?? [];
-  return woerter.map((w) => w.slice(0, 6)).filter((s) => !BEISPIEL_STOPP.has(s));
-}
-
-/** Vorschläge aus dem bewährten Pool ziehen — bei jedem Besuch andere, aber
- *  keine, die ein frischer Vorschlag schon abdeckt: sonst steht das Stadion
- *  zweimal untereinander. Wird bewusst erst nach dem Mount aufgerufen; das
- *  vorgerenderte HTML darf nicht gegen ein zufälliges Ergebnis hydrieren. */
-function waehleBeispiele(frisch: string[], count: number): string[] {
-  if (count <= 0) return [];
-  const belegt = new Set(frisch.flatMap(themenStaemme));
-  const pool = [...EXAMPLES];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  const frei = pool.filter((f) => !themenStaemme(f).some((s) => belegt.has(s)));
-  // Lieber eine thematische Dublette als eine leere Liste.
-  return [...frei, ...pool.filter((f) => !frei.includes(f))].slice(0, count);
-}
 
 // Die Schritt-Texte stehen seit 22.09.2026 in `lib/qa-schritte.ts` — Lottis
 // Fenster zeigt dieselben Rahmen, und zwei Fassungen liefen auseinander.
@@ -484,46 +414,6 @@ function ChipZeile({ children }: { children: ReactNode }) {
       )}
     </div>
   );
-}
-
-/** Gremium mit Artikel für die frische Beispielfrage (5a/I-07). */
-function derAusschuss(committee: string): string {
-  if (committee === "Rat") return "der Rat";
-  if (/ausschuss|beirat/i.test(committee)) return `der ${committee}`;
-  return `„${committee}"`;
-}
-
-/** TOP-Titel auf den Gegenstand eindampfen, damit „Was wurde zu „…" entschieden?"
- *  eine lesbare Frage ergibt. RIS-Titel schleppen Zusätze mit: Semikolon-Ketten
- *  („…; außerplanmäßige Bewilligung von Mehrausgaben"), Antragsteller-Klammern,
- *  „ - Beschluss", und vorneweg gern die Firmierung des Vorhabenträgers. Ohne
- *  das entsteht der Stummel „Stadion Oldenburg GmbH & Co. KG: Stadionneubau
- *  Maastrichter " — mitten im Wort abgeschnitten. Leerer String = unbrauchbar.
- *
- *  Seit dem 10.09.2026 macht der Server den ersten Teil der Arbeit schon
- *  (`qa.vorschlags_gegenstand`), und vor allem wählt er die Sitzung nach
- *  Substanz aus — kein Titel-Putz rettet „Beratung von nichtöffentlichen
- *  Tagesordnungspunkten im Verwaltungsausschuss", die Zeile ist ungekürzt
- *  genauso wertlos. Das hier bleibt als Sicherheitsnetz für die Fälle, die
- *  der Server nicht kennt (Firmierungen, Semikolon-Ketten) und für ältere
- *  Server-Stände. */
-function kurzerGegenstand(roh: string): string {
-  // „(Oldb)" ist der amtliche Namenszusatz und steht mitten im Titel — als
-  // Klammer-Trenner behandelt würde er „Satzung der Stadt Oldenburg" übrig
-  // lassen und die eigentliche Sache abschneiden.
-  let t = roh.replace(/\s*\((?:Oldb|Oldenburg)\.?\)/gi, "").split(/;|\s[-–—(]/)[0].trim();
-  // Anführungszeichen raus: der Vorschlag setzt den Gegenstand selbst in „…".
-  t = t.replace(/["'‚“”„‘’«»]/g, "")
-    .replace(/\s+([:,])/g, "$1").replace(/\s{2,}/g, " ").trim();
-  // „Stadion Oldenburg GmbH & Co. KG: Stadionneubau …" — der Firmen-Präfix vor
-  // dem Doppelpunkt sagt nichts über die Sache, der Teil dahinter alles.
-  const teile = t.match(/^(.{3,70}?):\s+(.{8,})$/);
-  if (teile && /\b(GmbH|AG|KG|mbH|e\.\s?V\.|Stiftung|Verband|Betrieb)\b/.test(teile[1])) t = teile[2];
-  // Zu lang heißt: kein Vorschlag — nicht gekürzt. Ein „…" schnitt genau den
-  // Teil ab, um den es ging („Satzung zur Änderung der Satzung … über …",
-  // Tim 08.11.2026); dieselbe Grenze wie `qa.vorschlags_gegenstand`.
-  if (t.length > 60) return "";
-  return t.length >= 8 ? t : "";
 }
 
 /** „Dieses Thema verfolgen" — der eine Handgriff, der aus einer Frage einen
@@ -1769,81 +1659,53 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 5a/I-07: frische Beispiel-Anlässe aus den jüngsten Sitzungen — die
-  // Klassiker bleiben, aber ein bis zwei Vorschläge zeigen, dass hier
-  // aktuelles Material liegt. Fehlt der Endpoint, bleiben die Klassiker.
-  // Was beim letzten Besuch hier stand. `null` heißt: allererster Besuch —
-  // nur dann sind Platzhalter richtig (s. `frischeLaedt`).
-  const [zuletzt] = useState(leseQaBeispiele);
-  const [frische, setFrische] = useState<string[]>(() => zuletzt?.frisch ?? []);
-  // Tims Befund 13.08. (iOS): Beim Wechsel auf „Fragen" tauschten die
-  // Beispiele nach ~0,5 s ihren Text — und weil die frischen Anlässe länger
-  // sind als die Klassiker, wuchs die Liste dabei um eine Zeile je Vorschlag.
-  // Nachgemessen auf 375 px: 200 px → 240 px, der Inhalt sprang um 40 px.
-  // Dagegen zwei Dinge, die zusammengehören: Solange geladen wird, stehen
-  // hier Platzhalter statt Text, der gleich wieder ausgetauscht wird — und
-  // jede Zeile ist zwei Textzeilen hoch, egal was drinsteht (s. Liste unten).
-  // Der Platzhalter allein reichte nicht: Ohne feste Zeilenhöhe verschöbe
-  // sich das Layout beim Wechsel vom Platzhalter zum echten Text genauso.
+  // Beispielfragen: eine kuratierte Top 20 vom Server
+  // (`council/example_questions.py`), bei jedem Besuch die nächsten zwei oder
+  // drei (Tims Wunsch 22.11.2026: „bei jedem Aktualisieren rotieren"). Bis
+  // dahin standen hier oben immer zwei erzeugte Fragen aus der jüngsten
+  // Sitzung — mit Verlauf zeigt die Seite nur zwei, also gab es nie etwas
+  // anderes zu sehen, und die erzeugten waren oft schlecht.
   //
-  // Nachtrag 15.08.: Springen tat danach nichts mehr, aber die Fragen
-  // erschienen weiter erst nach einer halben Sekunde — „popt auf". Wer schon
-  // einmal hier war, sieht deshalb sofort die Vorschläge von damals; der
-  // Abruf läuft trotzdem und legt sein Ergebnis für das nächste Mal ab.
-  // Platzhalter bleiben für den allerersten Besuch, wo es nichts zu zeigen
-  // gibt (lib/qa-zuletzt.ts).
-  const [frischeLaedt, setFrischeLaedt] = useState(() => zuletzt === null);
+  // Tims Befund 13.08. (iOS) gilt weiter: Die Fragen dürfen nicht nach dem
+  // Laden ihren Text tauschen. Deshalb stehen sofort die Fragen vom letzten
+  // Abruf da; der Abruf läuft trotzdem und legt sein Ergebnis für das nächste
+  // Mal ab. Nur auf einem Gerät, das die Liste noch nie hatte, stehen kurz
+  // Platzhalter (lib/qa-zuletzt.ts) — und jede Zeile ist zwei Textzeilen hoch,
+  // egal was drinsteht (s. Liste unten), damit beim Wechsel nichts springt.
+  const [gemerkt] = useState(readExampleQuestions);
+  const [fragen, setFragen] = useState<string[]>(() => gemerkt ?? []);
+  const [fragenLaden, setFragenLaden] = useState(() => gemerkt === null);
+  // Der Zähler wird beim Mount EINMAL gelesen und weitergerückt — der Ref
+  // hält das, auch wenn der Strict Mode den Effekt zweimal laufen lässt.
+  const [rotation] = useState(readExampleOffset);
+  const weitergerueckt = useRef(false);
+  useEffect(() => {
+    if (!showIntro || weitergerueckt.current) return;
+    weitergerueckt.current = true;
+    advanceExampleOffset(beispielAnzahl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showIntro]);
   useEffect(() => {
     if (!showIntro) return;
     let lebt = true;
-    const fertig = () => { if (lebt) setFrischeLaedt(false); };
-    // Notbremse: Hängt der Endpoint, bleiben die Platzhalter nicht stehen —
-    // nach 1,2 s zeigen wir die Klassiker, die es ohnehin schon gibt.
+    const fertig = () => { if (lebt) setFragenLaden(false); };
+    // Notbremse: Hängt der Endpoint, bleiben die Platzhalter nicht stehen.
     const bremse = setTimeout(fertig, 1200);
-    fetch(apiUrl("/council/qa-beispiele"), { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
+    vertrag.get("/council/qa-beispiele")
       .then((b) => {
-        const rows = (b?.sessions ?? []) as { committee: string; session_date: string; top_titel?: string | null }[];
-        if (rows.length === 0 || !lebt) return;
-        // Zwei frische Anlässe, aber nicht zweimal dieselbe Datums-Formel:
-        // erst die jüngste Sitzung, dann KONKRET ihr wichtigster Beschluss
-        // (Tims Wunsch nach dynamischeren Vorschlägen).
-        const vorschlaege = [
-          `Was hat ${derAusschuss(rows[0].committee)} am ${fmtDatum(rows[0].session_date)} beschlossen?`,
-        ];
-        const kurz = kurzerGegenstand(rows[0].top_titel ?? "");
-        if (kurz) vorschlaege.push(`Was wurde zu „${kurz}" entschieden?`);
-        const neu = vorschlaege.slice(0, 2);
-        merkeQaBeispiele(neu);
-        // Nur einwechseln, solange noch Platzhalter stehen. Steht schon Text
-        // da, würde er unter dem Blick ausgetauscht — genau das Aufpoppen,
-        // das hier weg soll. Beim nächsten Besuch stehen die neuen sofort.
-        if (zuletzt === null) setFrische(neu);
+        const neu = (b.questions ?? []).filter((f) => f.trim() !== "");
+        if (neu.length === 0) return;
+        storeExampleQuestions(neu);
+        // Nur einwechseln, solange noch nichts dasteht — sonst tauschte der
+        // Text unter dem Blick. Beim nächsten Besuch steht die neue Liste.
+        if (lebt && gemerkt === null) setFragen(neu);
       })
       .catch(() => {})
       .finally(() => { clearTimeout(bremse); fertig(); });
     return () => { lebt = false; clearTimeout(bremse); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showIntro]);
-  // Die restlichen Plätze füllt der bewährte Pool — bei jedem Besuch mit
-  // anderen Fragen (Tims Wunsch), aber nur solchen, die messbar tragen.
-  // Gewürfelt wird schon im ersten Render, damit der Text nicht gleich nach
-  // dem Mount noch einmal wechselt. Das kollidiert nicht mit dem statischen
-  // Export: Die Hülle zeigt bis `loading === false` das Shell-Skelett, dieses
-  // Gespräch hängt also gar nicht im exportierten Markup (app/(app)/layout.tsx).
-  const [gewuerfelt, setGewuerfelt] = useState<string[]>(() =>
-    waehleBeispiele(zuletzt?.frisch ?? [], 4 - (zuletzt?.frisch.length ?? 0)),
-  );
-  // Beim allerersten Besuch kommen die frischen Vorschläge nach — dann muss
-  // der Rest neu gewürfelt werden, damit nichts doppelt steht. Der Lauf zum
-  // Mount würde nur das Ergebnis von oben verwerfen und wird übersprungen.
-  const wuerfelnUebersprungen = useRef(false);
-  useEffect(() => {
-    if (!showIntro) return;
-    if (!wuerfelnUebersprungen.current) { wuerfelnUebersprungen.current = true; return; }
-    setGewuerfelt(waehleBeispiele(frische, 4 - frische.length));
-  }, [showIntro, frische]);
-  const beispiele = [...frische, ...gewuerfelt].slice(0, 4);
+  const beispiele = exampleWindow(fragen, rotation, beispielAnzahl);
   // Weiterfragen leben im Composer (Design 2②) — nur vom jüngsten Turn.
   const composerFollowups = !loading && letzter && !letzter.fehler ? letzter.followups.slice(0, 3) : [];
 
@@ -2028,6 +1890,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 </div>
               </div>
             )}
+            {/* Ohne Liste (Abruf beim allerersten Besuch gescheitert) kein
+                leerer Kicker — die Seite funktioniert auch ohne Beispiele. */}
+            {(fragenLaden || beispiele.length > 0) && (
             <div className="mt-4 w-full max-w-md text-left">
             {/* Design 15a: EIN Funkel im Kicker statt eines je Zeile. */}
             <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -2043,7 +1908,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                 em statt px, damit größere Systemschrift die Zeilen mitwachsen
                 lässt statt den Text abzuschneiden. */}
             <div className="flex flex-col gap-1.5">
-              {frischeLaedt
+              {fragenLaden
                 ? Array.from({ length: beispielAnzahl }, (_, i) => (
                     <div key={`skelett-${i}`} aria-hidden
                       /* text-[13.5px] MUSS hier stehen, obwohl kein Text drin
@@ -2058,7 +1923,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                       </div>
                     </div>
                   ))
-                : beispiele.slice(0, beispielAnzahl).map((ex, i) => (
+                : beispiele.map((ex) => (
                     <button key={ex} type="button" onClick={() => frageStellen(ex)} title={ex}
                       className="flex items-center gap-2.5 rounded-[13px] border border-primary/25 bg-primary/[0.04] px-3 py-2 text-left text-[13.5px] text-foreground transition-[background-color,transform] duration-150 ease-out-strong hover:bg-primary/[0.09] active:scale-[0.99]">
                       {/* Zwei Ebenen: außen die reservierte Höhe samt
@@ -2068,15 +1933,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                       <span className="flex min-h-[3em] min-w-0 flex-1 items-center">
                         <span className="line-clamp-2">{ex}</span>
                       </span>
-                      {/* „Neu" nur an den frischen Vorschlägen aus der letzten
-                          Sitzung — nicht an Klassikern (Design 15, WEG). */}
-                      {i < frische.length && (
-                        <span className="shrink-0 rounded-full bg-signal/10 px-1.5 py-0.5 text-[10px] font-medium text-signal">Neu</span>
-                      )}
                     </button>
                   ))}
             </div>
             </div>
+            )}
           </div>
         )}
 
