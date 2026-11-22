@@ -15,9 +15,11 @@ from kern.store import Store
 from ..config import get_settings
 from ..antworten import Ok
 from ..deps import get_store, require_active
-from ..ratelimit import client_error_limiter, feedback_limiter, page_view_limiter, support_limiter
+from ..ratelimit import (
+    client_error_limiter, feedback_limiter, page_view_limiter, support_limiter, ui_event_limiter,
+)
 from ..clients import client_kind
-from ..schemas import ActivityPageIn, ClientErrorIn, FeedbackIn, PageViewIn, SupportIn
+from ..schemas import ActivityEventIn, ActivityPageIn, ClientErrorIn, FeedbackIn, PageViewIn, SupportIn
 
 logger = logging.getLogger("ratslotse.web.feedback")
 
@@ -279,4 +281,40 @@ def bereich_gesehen(payload: ActivityPageIn, request: Request,
     if bereich:
         store.record_activity(user["id"], activity_areas.PREFIX + bereich,
                               client_kind(request), warten=False)
+    return {"ok": True}
+
+
+#: Was die Oberfläche als Handlung melden darf — und wie es im Zähler heißt.
+#: Eine Positivliste, damit die Tabelle nicht mit erfundenen Namen wächst
+#: (dieselbe Bauform wie ``ASSISTANT_EVENTS`` für Lottis Fenster).
+#:
+#: Die Befehlspalette steht zweimal da, weil sie zwei Eingänge hat, die
+#: Verschiedenes sagen: Am Schreibtisch öffnet sie ⌘K oder der Knopf neben dem
+#: Logo — das ist die Abkürzung für Geübte. Auf dem Telefon öffnet sie die Lupe
+#: in der Kopfzeile, und die tippt an, wer schlicht suchen will. In einer Zahl
+#: zusammen bliebe Tims Frage vom 22.11.2026 offen („die wird von keinem
+#: genutzt").
+UI_EVENTS: dict[str, str] = {
+    "palette_desktop": "command_palette_desktop",
+    "palette_mobile": "command_palette_mobile",
+}
+
+
+@activity_router.post("/event")
+def ui_event(payload: ActivityEventIn, request: Request,
+             user: dict = Depends(require_active),
+             store: Store = Depends(get_store)) -> Ok:
+    """Eine Handlung in der Oberfläche zählen — je Konto und Tag.
+
+    **Was NICHT mitgeht:** kein Zeitpunkt, keine Seite, keine Eingabe. Nur
+    welche Handlung es war. Ein unbekannter Name wird abgewiesen statt still
+    gezählt: Sonst entstünde aus einem Tippfehler eine Zeile, die in keiner
+    Auswertung auftaucht und trotzdem wie ein Wert aussieht.
+    """
+    feature = UI_EVENTS.get(payload.kind)
+    if not feature:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Unbekanntes Ereignis: {payload.kind!r}")
+    ui_event_limiter.check(request, subject=user["id"])
+    store.record_activity(user["id"], feature, client_kind(request), warten=False)
     return {"ok": True}

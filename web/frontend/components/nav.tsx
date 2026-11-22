@@ -429,7 +429,7 @@ export function DesktopSidebar() {
         <Brand />
         <button
           type="button"
-          onClick={openCommandPalette}
+          onClick={() => openCommandPalette("desktop")}
           aria-label="Befehle und Sprünge öffnen (Tastenkürzel ⌘K)"
           title="Befehle & Sprünge — ⌘K"
           className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/50 text-muted-foreground transition-[color,background-color,transform] duration-fluss ease-out-strong hover:bg-accent hover:text-foreground active:scale-95"
@@ -454,7 +454,7 @@ export function MobileTopbar() {
       </div>
       <button
         type="button"
-        onClick={openCommandPalette}
+        onClick={() => openCommandPalette("mobile")}
         aria-label="Suchen und Befehle öffnen"
         className="flex h-9 w-9 items-center justify-center rounded-md text-foreground transition-[color,background-color,transform] duration-fluss ease-out-strong hover:bg-accent active:scale-90"
       >
