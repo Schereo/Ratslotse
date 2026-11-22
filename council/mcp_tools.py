@@ -40,7 +40,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from council import anlagentext
+from council import anlagentext, ris
 from council import lotti_werkzeuge as lw
 from council import vorlagen
 from council.haushaltsdebatte import saeubern, top_abschnitt
@@ -49,7 +49,7 @@ from kern import foreign_text
 
 logger = logging.getLogger("council.mcp_tools")
 
-RIS = "https://buergerinfo.oldenburg.de"
+RIS = ris.BASE  # die Adresse steht in council/ris.py
 
 #: Höchstens so viele Treffer je Suche. Ein Agent blättert mit ``offset``.
 SUCHE_MAX = 25
@@ -295,11 +295,11 @@ def get_decision(store, args: dict, base: str) -> str:
         "amount_eur": d.get("amount_eur"),
         "policy_tags": d.get("policy_tags") or [],
         "protocol_url": d.get("protocol_url"),
-        "session_url": f"{RIS}/si0057.php?__ksinr={d['ksinr']}",
+        "session_url": ris.session_url(d['ksinr']),
         "ksinr": d.get("ksinr"),
     })
     if d.get("kvonr"):
-        aus["template_url"] = f"{RIS}/vo0050.php?__kvonr={d['kvonr']}"
+        aus["template_url"] = ris.template_url(d['kvonr'])
     if d.get("kind") == "decision" and d.get("item_number"):
         aus["amendments"] = [
             {"id": s["id"], "title": _sauber(s.get("title")),
@@ -331,7 +331,7 @@ def get_template(store, args: dict, base: str) -> str:
         "full_text": stueck or None,
         "full_text_length": len(volltext),
         "next_offset": weiter if weiter < len(volltext) else None,
-        "url": f"{RIS}/vo0050.php?__kvonr={v['kvonr']}" if v.get("kvonr") else v.get(
+        "url": ris.template_url(v['kvonr']) if v.get("kvonr") else v.get(
             "document_url"),
         "attachments": _anlagen(store, v.get("kvonr")),
     })
@@ -402,7 +402,7 @@ _DOKUMENT_ID = re.compile(r"[?&]id=(\d+)")
 
 
 def _dokument_id(url: str | None) -> int | None:
-    """Die Dokumentnummer des Ratsinformationssystems aus ``getfile.php?id=…``
+    """Die Dokumentnummer des Ratsinformationssystems aus ``getfile?id=…``
     — die gemeinsame Kennung für Vorlagen- und TOP-Anlagen."""
     m = _DOKUMENT_ID.search(url or "")
     return int(m.group(1)) if m else None
@@ -623,7 +623,7 @@ def get_agenda(store, args: dict, base: str) -> str:
                    else []}
                   for nr, titel, o, vorlage in tops],
         "url": f"{base}/council/sitzung?ksinr={ksinr}",
-        "original_url": f"{RIS}/si0057.php?__ksinr={ksinr}",
+        "original_url": ris.session_url(ksinr),
     })
 
 

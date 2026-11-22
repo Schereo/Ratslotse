@@ -8,9 +8,12 @@ from datetime import date, timedelta
 import requests
 from bs4 import BeautifulSoup
 
+from . import ris
 from .dringlichkeit import zusatz_punkte
 
-BASE = "https://buergerinfo.oldenburg.de"
+#: Die Adresse steht in ``council/ris.py`` — hier nur der Name, unter dem
+#: dieses Modul sie schon immer führte.
+BASE = ris.BASE
 _DATE_RE = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
 _TIME_RE = re.compile(r"(\d{2}:\d{2})")
 
@@ -34,7 +37,7 @@ class ScheduledSession:
 
     SessionNet verlinkt eine Sitzung erst, wenn ihre Tagesordnung
     veröffentlicht ist — vorher steht sie nur als Text im Kalender
-    (kein __ksinr im HTML, si0057.php antwortet mit 302). Ohne dieses
+    (kein __ksinr im HTML, si0057 antwortet mit 302). Ohne dieses
     Parsing wären neue Terminpläne wochenlang unsichtbar.
     """
     committee: str
@@ -58,7 +61,7 @@ class CouncilSession:
 
     @property
     def url(self) -> str:
-        return f"{BASE}/si0057.php?__ksinr={self.ksinr}"
+        return ris.session_url(self.ksinr)
 
 
 _RSS_DATE_RE = re.compile(r"Datum:\s*(\d{2})\.(\d{2})\.(\d{4})")
@@ -68,7 +71,7 @@ _RSS_GREMIUM_RE = re.compile(r"Gremium:\s*(.+?)\s*Datum:")
 
 
 def _extract_rss_scheduled(xml_text: str) -> list[ScheduledSession]:
-    """Sitzungs-Items aus dem RIS-RSS-Feed (rssfeed.php?filter=s).
+    """Sitzungs-Items aus dem RIS-RSS-Feed (rssfeed?filter=s).
 
     Ergänzt den Kalender: nichtöffentliche Gremien (z. B. Verwaltungsausschuss)
     fehlen in der Kalenderansicht, stehen aber im Feed. Beschreibung hat das
@@ -170,14 +173,18 @@ class CouncilScraper:
         self._s.headers["User-Agent"] = "Mozilla/5.0"
         self._delay = delay
 
-    def _get(self, path: str, **params) -> BeautifulSoup:
-        r = self._s.get(f"{BASE}/{path}", params=params, timeout=20)
-        r.raise_for_status()
+    def _get(self, page: str, **params) -> BeautifulSoup:
+        """Eine SessionNet-Seite holen (``page`` ohne Endung: ``"si0057"``).
+
+        Geprüft über ``ris.get``: Ein dauerhafter Umzug oder eine Seite, die
+        kein SessionNet mehr ist, wirft ``ris.RisError`` — statt eine leere
+        Trefferliste zu liefern, die wie „nichts Neues“ aussieht."""
+        r = ris.get(self._s, page, **params)
         time.sleep(self._delay)
         return BeautifulSoup(r.text, "html.parser")
 
     def session_ids_for_month(self, year: int, month: int) -> list[int]:
-        soup = self._get("si0040.php", __cjahr=year, __cmonat=month)
+        soup = self._get("si0040", __cjahr=year, __cmonat=month)
         return _extract_session_ids(soup)
 
     def calendar_month(self, year: int, month: int) -> tuple[list[int], list[ScheduledSession]]:
@@ -186,7 +193,7 @@ class CouncilScraper:
         Terminierte Sitzungen stehen auch dann im Kalender, wenn noch keine
         Tagesordnung veröffentlicht ist (dann ohne Link/ksinr).
         """
-        soup = self._get("si0040.php", __cjahr=year, __cmonat=month)
+        soup = self._get("si0040", __cjahr=year, __cmonat=month)
         return _extract_session_ids(soup), _extract_scheduled(soup, year, month)
 
     def upcoming_session_ids(self, months_ahead: int = 3) -> list[int]:
@@ -197,8 +204,9 @@ class CouncilScraper:
         """Terminierte Sitzungen aus dem RSS-Feed (ergänzt nichtöffentliche
         Gremien, die die Kalenderansicht nicht listet). Best effort."""
         try:
-            r = self._s.get(f"{BASE}/rssfeed.php", params={"filter": "s"}, timeout=20)
-            r.raise_for_status()
+            # ``RisError`` (Umzug, fremder Host) geht bewusst NICHT in dieses
+            # „best effort“: Sie ist keine RequestException und fällt durch.
+            r = ris.get(self._s, "rssfeed", html=False, filter="s")
             time.sleep(self._delay)
         except requests.RequestException:
             return []
@@ -220,6 +228,16 @@ class CouncilScraper:
                     ids.append(sid)
             scheduled.extend(month_scheduled)
         scheduled.extend(self.rss_scheduled())
+        if not ids and not scheduled:
+            # Über mehrere Monate kein einziger Termin und keine Sitzung: Das
+            # gibt es nicht — auch in der Sommerpause stehen die Sitzungen des
+            # Herbstes im Kalender. Genau so sah der Umzug des Ratsinfos im
+            # 11/2026 aus („Termine im Kalender: 0“, Lauf für Lauf, ohne
+            # Fehler). Lieber ein lauter Abbruch als ein stiller Ausfall.
+            raise ris.RisError(
+                f"Der Kalender des Ratsinformationssystems ist für {months_ahead + 1} Monate "
+                f"leer — kein Termin, keine Sitzung, auch nicht im RSS-Feed ({ris.BASE}). "
+                f"Seitenaufbau oder Adresse geändert?")
         return ids, scheduled
 
     def past_session_ids(self, months_back: int = 3) -> list[int]:
@@ -254,7 +272,7 @@ class CouncilScraper:
         return ids
 
     def fetch_session(self, ksinr: int) -> CouncilSession | None:
-        soup = self._get("si0057.php", __ksinr=ksinr)
+        soup = self._get("si0057", __ksinr=ksinr)
         h1 = soup.find("h1")
         if not h1:
             return None
@@ -321,7 +339,7 @@ class CouncilScraper:
             anlagen: list[dict] = []
             gesehen_ids: set[str] = set()
             for a in row.find_all("a", href=True):
-                m = re.search(r"getfile\.php\?id=(\d+)", a["href"])
+                m = ris.GETFILE_ID.search(a["href"])
                 if not m:
                     continue
                 label = a.get_text(" ", strip=True)
@@ -360,7 +378,7 @@ class CouncilScraper:
 
     def fetch_committee_list(self) -> list[tuple[str, int | None]]:
         """Fetch all committees (Gremien) from the Gremienübersicht page."""
-        soup = self._get("gr0040.php")
+        soup = self._get("gr0040")
         result: list[tuple[str, int | None]] = []
         for td in soup.find_all("td", class_="grname"):
             a = td.find("a", href=True)
@@ -377,7 +395,7 @@ class CouncilScraper:
 
     def fetch_proposal_text(self, kvonr: int) -> str:
         """Fetch the full text of a Vorlage (proposal document)."""
-        soup = self._get("vo0050.php", __kvonr=kvonr)
+        soup = self._get("vo0050", __kvonr=kvonr)
         # Main content is usually in a <div> or <td> with the proposal body
         # Strip navigation, tables with metadata, keep paragraph text
         for tag in soup(["script", "style", "nav", "header", "footer"]):

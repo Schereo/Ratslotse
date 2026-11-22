@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { BackLink } from "@/components/back-link";
 import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
+import { RIS_BASE, RIS_HOST } from "@/lib/ris";
 import { KopfKontoLink } from "@/components/kopf-konto-link";
 
 export const metadata: Metadata = {
@@ -152,8 +153,8 @@ export default function DatenschutzPage() {
               <li>
                 <strong>Woher:</strong> ausschließlich aus den veröffentlichten Einladungen, Vorlagen, Niederschriften
                 und Beschlüssen unter{" "}
-                <a href="https://buergerinfo.oldenburg.de" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  buergerinfo.oldenburg.de
+                <a href={RIS_BASE} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  {RIS_HOST}
                 </a>
                 . Es werden keine weiteren Quellen zusammengeführt, keine Profile aus sozialen Netzwerken ergänzt und
                 keine Kontaktdaten, Anschriften oder Angaben aus dem Privatleben erhoben.

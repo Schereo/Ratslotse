@@ -92,7 +92,7 @@ def test_run_watcher_persists_matches_and_skips_unchanged(tmp_path, monkeypatch)
     # Das Ziel nennt auch den TOP — die App springt dann zur gemeldeten Zeile
     # statt nur zum Sitzungskopf, unter dem die Tagesordnung liegt.
     assert offen[0]["url"] == "/council?tab=sessions&ksinr=42&top=%C3%96%206"
-    assert "buergerinfo.oldenburg.de" in offen[0]["body_html"]
+    assert "ratsinfo.oldenburg.de" in offen[0]["body_html"]
     # Und der Hauptweg der MAIL führt ebenfalls in die App — als volle Adresse,
     # denn ein Pfad allein ist in einer E-Mail wertlos.
     assert "https://ratslotse.de/council?tab=sessions&ksinr=42" in offen[0]["body_html"]

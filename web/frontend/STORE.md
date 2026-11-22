@@ -140,13 +140,13 @@ appreview@ratslotse.de · Passwort steht in App Store Connect (App-Review-Inform
 **Notizen für die Prüfer:**
 
 ```
-Ratslotse macht die öffentlich zugänglichen Beschlüsse des Stadtrats Oldenburg durchsuchbar und verständlich. Die Daten stammen aus dem amtlichen Ratsinformationssystem der Stadt (buergerinfo.oldenburg.de).
+Ratslotse macht die öffentlich zugänglichen Beschlüsse des Stadtrats Oldenburg durchsuchbar und verständlich. Die Daten stammen aus dem amtlichen Ratsinformationssystem der Stadt (ratsinfo.oldenburg.de).
 
 Unabhängigkeit: Ratslotse ist ein privates Bürgerprojekt und wird nicht von der Stadt Oldenburg herausgegeben oder beauftragt. Der Hinweis steht in der Store-Beschreibung, im Impressum der App sowie auf Anmelde- und Registrierungsbildschirm.
 
 KI-Funktion: Die Frage-Funktion antwortet ausschließlich auf Grundlage der importierten Ratsdokumente und nennt zu jeder Aussage die Quelle. Kein offener Chat, kein Zugriff auf das freie Web, keine Bildgenerierung.
 
-Rechte an den Inhalten: Die gezeigten Dokumente sind amtliche Werke der Stadt Oldenburg (§ 5 UrhG) und damit gemeinfrei; sie sind öffentlich unter buergerinfo.oldenburg.de abrufbar. Ratslotse gibt sie aufbereitet wieder, nennt zu jeder Aussage die Quelle und verlinkt jedes Originaldokument. Es werden keine kostenpflichtigen oder zugangsbeschränkten Inhalte verwendet.
+Rechte an den Inhalten: Die gezeigten Dokumente sind amtliche Werke der Stadt Oldenburg (§ 5 UrhG) und damit gemeinfrei; sie sind öffentlich unter ratsinfo.oldenburg.de abrufbar. Ratslotse gibt sie aufbereitet wieder, nennt zu jeder Aussage die Quelle und verlinkt jedes Originaldokument. Es werden keine kostenpflichtigen oder zugangsbeschränkten Inhalte verwendet.
 
 Personenbezogene Daten Dritter: In den amtlichen Protokollen kommen Ratsmitglieder in ihrer öffentlichen Funktion vor (Fraktion, Ämter, Anwesenheit, sinngemäße Wortbeiträge). Es werden keine privaten Daten und keine weiteren Quellen zusammengeführt. Grundlage, Umfang und ein Widerspruchsweg stehen unter ratslotse.de/datenschutz („Daten von Ratsmitgliedern und Verwaltung").
 

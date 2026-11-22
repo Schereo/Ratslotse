@@ -283,7 +283,7 @@ def test_alle_werkzeuge_antworten_als_json(client):
     # mitten im Wort („Grundsatzbeschluss vo“).
     assert a["items"][0]["title"] == lang
     assert [i["public"] for i in a["items"]] == [True, False]
-    assert a["original_url"].endswith("si0057.php?__ksinr=4712")
+    assert a["original_url"].endswith("si0057.asp?__ksinr=4712")
     assert _rufe(token, "get_agenda", ksinr=4711)["items"][0]["outcome"] == "angenommen"
 
     h = _rufe(token, "get_template_history", template_number="26/0101")

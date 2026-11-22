@@ -42,7 +42,7 @@ import Testing
         "abstentions": 1, "factions": ["SPD"], "template_number": "26/0400"
       },
       "present_parties": ["CDU", "SPD"],
-      "ratsinfo_url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=88",
+      "ratsinfo_url": "https://ratsinfo.oldenburg.de/bi/si0057.asp?__ksinr=88",
       "sub_votes": [{
         "id": 43, "title": "Änderungsantrag", "committee": "Verkehrsausschuss",
         "session_date": "2026-02-01", "outcome": "rejected", "factions": ["CDU"]
@@ -54,7 +54,7 @@ import Testing
         "date": "2026-02-01", "committee": "Rat", "top": "Ö 2", "result": "angenommen",
         "ksinr": 88, "future": false
       }],
-      "template_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
+      "template_url": "https://ratsinfo.oldenburg.de/bi/vo0050.asp?__kvonr=901",
       "template": {
         "template_number": "26/0400", "title": "Radweg", "kind": "Beschlussvorlage",
         "document_url": "https://example.test/vorlage.pdf", "n_pages": 3,

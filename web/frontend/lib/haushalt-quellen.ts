@@ -38,6 +38,8 @@
 //   * die `lsn_*`-Quellen — deren Angabe nennt die AUSGABE der Landestabelle
 //     („endgültig, Stand 26.03.2026"), nicht die Spanne ihrer Daten.
 
+import { RIS_BASE, RIS_RECHERCHE, risDokument, risVorlage } from "@/lib/ris";
+
 export type Quelle = {
   title: string;
   /** Wo genau im Dokument die Zahlen stehen — der Punkt, an dem man nachschlägt. */
@@ -299,7 +301,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Jahresabschlüsse",
     as_of: "Jahresabschlüsse 2017–2024",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   wirtschaftsplan: {
     title: "Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften",
@@ -318,7 +320,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Wirtschaftspläne",
     as_of: "Wirtschaftspläne 2019–2026",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   fees: {
     title: "Gebührenbedarfsberechnungen des Abfallwirtschaftsbetriebs",
@@ -334,7 +336,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Gebührenbedarfsberechnungen",
     as_of: "Gebührenbedarfsberechnungen 2023–2026",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   aenderungsliste: {
     title: "Änderungslisten zum Haushaltsentwurf",
@@ -353,7 +355,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Änderungslisten",
     as_of: "Änderungslisten 2019–2026",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   budget_execution: {
     title: "Finanz- und Leistungsberichte zum Haushaltsvollzug",
@@ -368,7 +370,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Controlling und Finanzen",
     as_of: "Berichte 2018–2026",
     standWort: "Haushaltsjahre",
-    url: "https://buergerinfo.oldenburg.de/",
+    url: RIS_BASE,
     art: "pdf",
   },
   enterprise_accounts: {
@@ -386,7 +388,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Rechnungsprüfungsamt bzw. Wirtschaftsprüfer",
     as_of: "Geschäftsjahre 2015–2025",
     standWort: "Geschäftsjahre",
-    url: "https://buergerinfo.oldenburg.de/",
+    url: RIS_BASE,
     art: "pdf",
   },
   loans: {
@@ -402,7 +404,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen",
     as_of: "Berichte 2018 und 2022–2026",
     standWort: "Berichtsjahre",
-    url: "https://buergerinfo.oldenburg.de/",
+    url: RIS_BASE,
     art: "pdf",
   },
   liquidity: {
@@ -416,7 +418,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Amt für Controlling und Finanzen",
     as_of: "monatlich seit 2015",
     standWort: "Monate",
-    url: "https://buergerinfo.oldenburg.de/",
+    url: RIS_BASE,
     art: "pdf",
   },
   budget_bylaw: {
@@ -436,7 +438,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltssatzungen",
     as_of: "Haushaltssatzungen 2019–2026 (Verwaltungsentwürfe)",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   income_budget: {
     title: "Gesamtergebnishaushalte der Stadt Oldenburg (Planjahre)",
@@ -454,7 +456,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltspläne",
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   teilhaushalt: {
     title: "Teilhaushaltspläne der Stadt Oldenburg (Produktebene)",
@@ -466,7 +468,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltsjahre",
     as_of: "Haushaltsjahre 2018–2025",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   stellenplan: {
     title: "Stellenpläne der Stadt Oldenburg",
@@ -486,7 +488,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     // Zeilen Teil B, gemessen 23.09.2026 auf Prod).
     as_of: "Haushaltsjahre 2023–2026",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   pruefbericht: {
     title: "Schlussberichte des Rechnungsprüfungsamtes der Stadt Oldenburg",
@@ -501,7 +503,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     // trägt 15 Feststellungen.
     as_of: "Jahresabschlüsse 2017–2024",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   gesamtabschluss: {
     title: "Konsolidierte Gesamtabschlüsse der Stadt Oldenburg",
@@ -524,7 +526,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Gesamtabschlüsse",
     as_of: "Gesamtabschlüsse 2014–2024",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   reserves: {
     title: "Überschussrücklage aus den Jahresabschlüssen",
@@ -571,7 +573,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Jahresabschlüsse",
     as_of: "Jahresabschlüsse 2017–2024",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   cash_flow_statement: {
     title: "Finanzrechnung der Kernverwaltung (Jahresabschlüsse)",
@@ -588,7 +590,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Jahresabschlüsse",
     as_of: "Jahresabschlüsse 2017–2024",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   bilanz: {
     title: "Bilanz der Stadt Oldenburg (Jahresabschlüsse)",
@@ -607,7 +609,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Bilanzstichtage",
     as_of: "Bilanzstichtage 2016–2024",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   indicators: {
     title: "Kennzahlenübersicht der Rechenschaftsberichte",
@@ -627,7 +629,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Rechenschaftsberichte",
     as_of: "Rechenschaftsberichte 2019–2024",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   ratsbeschluss: {
     title: "Sitzungen, Vorlagen und Beschlüsse des Rates (Bürgerinformationssystem)",
@@ -640,7 +642,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Ratsinformationssystem",
     as_of: "Sitzungen seit Januar 2018",
     art: "web",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   // A10: Der Städtevergleich (/haushalt/vergleich). Die einzigen Quellen des
   // Bereichs, die nicht die Stadt Oldenburg herausgibt — und genau das ist
@@ -725,7 +727,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     herausgeber: "Stadt Oldenburg, Amt für Personal- und Verwaltungsmanagement",
     as_of: "26.11.2018",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=17170",
+    url: risVorlage(17170),
   },
   gebaut: {
     title:
@@ -836,7 +838,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     // Bürgerinformationssystem — jede Zeile verlinkt ihre eigene über den
     // Beleg-Chip.
     art: "web",
-    url: "https://buergerinfo.oldenburg.de/vo040.asp",
+    url: RIS_RECHERCHE,
   },
   // A11: Die Investitionen des Finanzhaushalts (/haushalt/investitionen). Die
   // einzige CSV des Open-Data-Portals in diesem Verzeichnis, die eine
@@ -876,7 +878,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltspläne",
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   regionalstatistik: {
     title: "Regionaldatenbank — Schulden der Kernhaushalte und der eigenen Einrichtungen (71327)",
@@ -948,7 +950,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Stichtage",
     as_of: "Stichtage 30.06.2018 bis 30.06.2026",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   budget_preface: {
     title: "Vorbericht zum Haushaltsplan (Anlage 001) — Zahlen",
@@ -962,7 +964,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltspläne",
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   budget_notes: {
     title: "Vorbericht zum Haushaltsplan (Anlage 001)",
@@ -975,7 +977,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltspläne",
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   debt_plan: {
     title: "Übersichten zum Schuldenstand und zu den Verpflichtungsermächtigungen (Anlage 003)",
@@ -990,7 +992,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltspläne",
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   grants: {
     title: "Übersicht über die Zuweisungen und Zuschüsse an Dritte (Anlage 003)",
@@ -1004,7 +1006,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltspläne",
     as_of: "Haushaltspläne 2019–2026, Stand der Einbringung",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
   // A12: Das Investitionsprogramm (/haushalt/investitionen, Block „Die
   // einzelnen Vorhaben"). Die Ebene unter A11 — und aus einer ganz anderen
@@ -1029,7 +1031,7 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Haushaltsjahre",
     as_of: "Haushaltsjahre 2019–2026",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de/getfile.php?id=297440&type=do",
+    url: risDokument(297440),
   },
   beteiligungsbericht: {
     title: "Beteiligungsbericht der Stadt Oldenburg (§ 151 NKomVG)",
@@ -1064,6 +1066,6 @@ export const QUELLEN: Record<QuellenSchluessel, Quelle> = {
     standWort: "Geschäftsjahre",
     as_of: "Geschäftsjahre 2017–2025",
     art: "pdf",
-    url: "https://buergerinfo.oldenburg.de",
+    url: RIS_BASE,
   },
 };

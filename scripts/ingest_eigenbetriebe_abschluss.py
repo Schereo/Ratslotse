@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council import eigenbetriebe_abschluss as ea, finanzquellen, herkunft as h  # noqa: E402
+from council import ris  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.wirtschaftsplan import BETRIEBE  # noqa: E402
 
@@ -128,7 +129,7 @@ def main() -> int:
         for z in zeilen:
             url, label = urls.get(z.get("document_id"), (None, None))
             z["herkunft"] = ea.herkunft_fuer(z, url=url, label=label)
-        lauf = h.Herkunft(kind="ris", url="https://buergerinfo.oldenburg.de/vo040.asp", label=LABEL,
+        lauf = h.Herkunft(kind="ris", url=ris.SEARCH_URL, label=LABEL,
                           citation=ea.FUNDSTELLE_UEBERSICHT,
                           probe=[ea.PROBE_SPALTEN, ea.PROBE_UEBERLAPPUNG],
                           probe_result=f"{len(zeilen)} Kennzahlen, {len(strittig)} strittig")

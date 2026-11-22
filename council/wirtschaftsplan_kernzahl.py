@@ -71,6 +71,7 @@ from __future__ import annotations
 
 import re
 
+from council import ris
 from council.herkunft import Herkunft
 from council.wirtschaftsplan import (BETRIEBE, Wirtschaftsplan,
                                     WirtschaftsplanFehler, dokument_name)
@@ -311,7 +312,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
                if plan.investments is not None else [PROBE_KERNZAHL]),
         # Der Name statt des Aktenzeichens — s. `wirtschaftsplan.dokument_name`.
         label=dokument_name(plan),
-        url=url or (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
+        url=url or (ris.template_url(kvonr)
                     if kvonr else None),
         citation="Beschlussvorschlag der Vorlage",
         probe_result=f"„{wort}“ — {BELEGLAGE[beleglage]}",

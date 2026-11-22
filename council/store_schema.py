@@ -4177,6 +4177,127 @@ class SchemaMixin(StoreBasis):
         self._migrate_owner_id()
         self._satzung_beschlussdatum("satzung_beschlussdatum_2026_09")
         self._antragsteller_ohne_aenderungen("antragsteller_ohne_aenderungen_2026_10")
+        # ZULETZT, wenn jede Tabelle steht: die gespeicherten Adressen des
+        # Ratsinformationssystems auf den neuen Host bringen (council/ris.py).
+        self._ratsinfo_adressen_umziehen("ratsinfo_host_2026_11")
+
+    #: Spalten, die Adressen des Ratsinformationssystems TRAGEN — am Namen
+    #: erkannt, damit eine neue Tabelle nicht eingetragen werden muss. Bewusst
+    #: nicht dabei: Volltexte (``raw_text``, Beschlusstexte, Kurzfassungen,
+    #: die FTS-Tabellen). Nennt ein Protokoll die alte Adresse, ist das Inhalt
+    #: des Dokuments und bleibt, wie es geschrieben wurde.
+    _ADRESS_SPALTEN = frozenset({"source_ref", "items_json", "diff_json"})
+
+    def _ratsinfo_adressen_umziehen(self, marke: str) -> None:
+        """Gespeicherte Ratsinfo-Adressen einmalig auf den neuen Host bringen.
+
+        Die Stadt ist im 11/2026 von ``buergerinfo.oldenburg.de`` nach
+        ``ratsinfo.oldenburg.de/bi`` umgezogen (Geschichte in
+        ``council/ris.py``). Der alte Host leitet jede Adresse auf die
+        Startseite um — rund 75.000 gespeicherte Links (Anlagen, Vorlagen,
+        Protokolle, Belege des Haushalts) führten damit ins Leere, und jeder
+        Nachlauf, der ein gespeichertes PDF noch einmal holt, bekäme HTML.
+
+        **Warum hier und nicht als Skript.** Der Umzug muss VOR dem ersten
+        Abruf mit neuem Code liegen: Der Scraper schreibt Anlagen jetzt unter
+        der neuen Adresse, und stünde daneben noch die alte, sähe dieselbe
+        Anlage aus wie zwei. `_migrate` läuft beim Öffnen des Stores, also vor
+        jedem Cron.
+
+        Einmalig über die Marke; ein zweiter Start liest eine Zeile und kehrt
+        zurück. Zeile für Zeile über die ``rowid``, in einer Transaktion je
+        Tabelle. Stößt eine Zeile an eine Eindeutigkeit (die neue Adresse
+        steht schon da), bleibt sie stehen — gezählt und geloggt.
+
+        `council_provenance`: Die Adresse geht in den Fingerabdruck ein
+        (`Herkunft.key`). Er wird für jede umgezogene Zeile neu gerechnet,
+        sonst fände der nächste Ingest seine Quelle nicht wieder und legte sie
+        ein zweites Mal an.
+        """
+        import hashlib
+        import json
+
+        from council import ris
+
+        log = logging.getLogger("ratslotse.council.store")
+        marks = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='council_migration_marks'"
+        ).fetchone()
+        if marks and self._conn.execute(
+                "SELECT 1 FROM council_migration_marks WHERE marke = ?", (marke,)).fetchone():
+            return
+        if not marks:
+            with self._conn:
+                self._conn.execute(
+                    "CREATE TABLE IF NOT EXISTS council_migration_marks ("
+                    "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+
+        muster = [f"%{h}%" for h in ris.FORMER_HOSTS]
+        bilanz: dict[str, int] = {}
+        gesperrt = 0
+        tabellen = self._conn.execute(
+            "SELECT name, sql FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%'").fetchall()
+        for name, sql in tabellen:
+            sql = sql or ""
+            if "VIRTUAL TABLE" in sql.upper() or "_fts" in name:
+                continue
+            ohne_rowid = "WITHOUT ROWID" in sql.upper()
+            spalten = [r[1] for r in self._conn.execute(f'PRAGMA table_info("{name}")')
+                       if r[1].lower().endswith("url") or r[1].lower() in self._ADRESS_SPALTEN]
+            for spalte in spalten:
+                wo = " OR ".join(f'"{spalte}" LIKE ?' for _ in muster)
+                schluessel = f'"{spalte}"' if ohne_rowid else "rowid"
+                zeilen = self._conn.execute(
+                    f'SELECT {schluessel}, "{spalte}" FROM "{name}" WHERE {wo}',
+                    muster).fetchall()
+                if not zeilen:
+                    continue
+                n = 0
+                with self._conn:
+                    for key, alt in zeilen:
+                        neu = ris.current(alt)
+                        if neu == alt:
+                            continue
+                        try:
+                            self._conn.execute(
+                                f'UPDATE "{name}" SET "{spalte}" = ? WHERE {schluessel} = ?',
+                                (neu, key))
+                            n += 1
+                        except sqlite3.IntegrityError:
+                            gesperrt += 1
+                if n:
+                    bilanz[f"{name}.{spalte}"] = n
+
+        # Fingerabdrücke der umgezogenen Herkünfte neu rechnen (s. Docstring).
+        if "council_provenance.url" in bilanz:
+            rows = self._conn.execute(
+                "SELECT id, kind, document_id, label, url, citation, page, probe, "
+                "probe_result, as_of FROM council_provenance WHERE url LIKE ?",
+                (f"%{ris.HOST}%",)).fetchall()
+            with self._conn:
+                for r in rows:
+                    felder = {"kind": r[1], "document_id": r[2], "label": r[3], "url": r[4],
+                              "citation": r[5], "page": r[6], "probe": str(r[7]),
+                              "probe_result": r[8], "as_of": r[9]}
+                    roh = json.dumps(felder, sort_keys=True, ensure_ascii=False)
+                    try:
+                        self._conn.execute(
+                            "UPDATE council_provenance SET key = ? WHERE id = ?",
+                            (hashlib.sha256(roh.encode("utf-8")).hexdigest(), r[0]))
+                    except sqlite3.IntegrityError:
+                        gesperrt += 1
+
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO council_migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
+        if bilanz:
+            log.warning(
+                "Ratsinfo-Adressen umgezogen: %d Zeilen in %d Spalten (%s)%s",
+                sum(bilanz.values()), len(bilanz),
+                ", ".join(f"{k}: {v}" for k, v in sorted(bilanz.items(), key=lambda x: -x[1])[:8]),
+                f"; {gesperrt} wegen Eindeutigkeit stehen gelassen" if gesperrt else "")
 
     def _antragsteller_ohne_aenderungen(self, marke: str) -> None:
         """``council_decisions.factions`` am HAUPTbeschluss einmalig um die

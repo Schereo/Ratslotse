@@ -18,6 +18,7 @@ from pydantic import (AliasChoices, BaseModel, Field, field_validator)
 
 from council.cities.model import display_title
 from council.cities.store import CitiesStore
+from council import ris
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
@@ -170,15 +171,15 @@ require_budget = require_permission("budget")
 
 _log = logging.getLogger(__name__)
 
-BASE_URL = "https://buergerinfo.oldenburg.de"
+BASE_URL = ris.BASE  # die Adresse steht in council/ris.py
 
 
 def _ratsinfo_url(ksinr: int) -> str:
-    return f"{BASE_URL}/si0057.php?__ksinr={ksinr}"
+    return ris.session_url(ksinr)
 
 
 def _vorlage_url(kvonr: int) -> str:
-    return f"{BASE_URL}/vo0050.php?__kvonr={kvonr}"
+    return ris.template_url(kvonr)
 
 
 @router.get("/committees")
@@ -3102,9 +3103,12 @@ def gespraech_detail(conversation_id: int, user: dict = Depends(require_active),
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     for t in g["turns"]:
         try:
-            t["sources"] = json.loads(t["sources"]) if t["sources"] else None
+            # Gespeichert vor dem Umzug des Ratsinfos (11/2026): Die Links in
+            # alten Gesprächen zeigten sonst auf die Startseite der Stadt.
+            t["sources"] = ris.current_in(json.loads(t["sources"])) if t["sources"] else None
         except ValueError:
             t["sources"] = None
+        t["answer"] = ris.current(t.get("answer"))
     return g
 
 
@@ -3382,7 +3386,7 @@ def _stadt_link(v: str | None) -> str | None:
     kommen mit dem Snapshot vom Client. Bis 10/2026 wurden sie ungeprüft
     gespeichert: Unter ratslotse.de ließ sich so ein Link auf eine beliebige
     Seite oder eine ``javascript:``-URL verbreiten. Echte Werte kommen nur von
-    ``www.oldenburg.de`` (Presse) und ``buergerinfo.oldenburg.de`` (Anlagen).
+    ``www.oldenburg.de`` (Presse) und ``ratsinfo.oldenburg.de`` (Anlagen).
 
     Python und Browser lesen eine URL nicht gleich: ``urlsplit`` hält ``\\``
     für ein gewöhnliches Zeichen, ein Browser für ``/``. Aus
@@ -3616,7 +3620,7 @@ def qa_share_lesen(token: str, ratslotse: Store = Depends(get_store)) -> QaShare
     share = ratslotse.qa_share_get(token)
     if not share:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
-    return share
+    return ris.current_in(share)  # geteilt vor dem Umzug des Ratsinfos
 
 
 class QaShareReportBody(BaseModel):

@@ -28,6 +28,7 @@ import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 
+from council import ris
 from council.cities.model import Batch
 from council.cities.oparl import OParlClient
 from council.cities.registry import BodySpec
@@ -36,6 +37,10 @@ from council.cities.store import CitiesStore
 logger = logging.getLogger("council.cities.oldenburg")
 
 BODY_ID = "oldenburg"
+#: Die KENNUNG des Body-Objekts im Städte-Speicher — eine Zeichenkette, keine
+#: Adresse, die jemand abruft. Sie bleibt beim alten Host stehen: Mit einer
+#: neuen Kennung wäre Oldenburg dort eine zweite Stadt. Links bauen
+#: ``council/ris.py``.
 BASE = "https://buergerinfo.oldenburg.de"
 
 #: Der Text der Vorlagen und Anträge liegt schon geparst in der
@@ -222,7 +227,7 @@ class OldenburgAdapter:
                     "id": paper_id(zeile["kvonr"]), "type": "Paper",
                     "name": zeile["title"] or "", "reference": zeile["template_number"],
                     "date": d, "paperType": zeile["kind"],
-                    "web": f"{BASE}/vo0050.php?__kvonr={zeile['kvonr']}",
+                    "web": ris.template_url(zeile['kvonr']),
                     "consultation": [{
                         "id": f"{BODY_ID}:cons:{zeile['kvonr']}:{b['ksinr']}:{b['top']}",
                         "type": "Consultation",
@@ -263,7 +268,7 @@ class OldenburgAdapter:
                     "id": motion_id(zeile["document_id"]), "type": "Paper",
                     "name": zeile["label"] or "", "reference": zeile["template_number"],
                     "date": d, "paperType": "Antrag (Anlage)",
-                    "web": f"{BASE}/vo0050.php?__kvonr={zeile['kvonr']}",
+                    "web": ris.template_url(zeile['kvonr']),
                     "originatorOrganization": [faction_id(a) for a in antragsteller],
                     "mainFile": {
                         "id": file_id(zeile["document_id"]), "type": "File",

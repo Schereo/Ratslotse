@@ -17,7 +17,7 @@ import sqlite3
 
 import pytest
 
-from council import herkunft
+from council import herkunft, ris
 from council.herkunft import Herkunft
 from council.store import CouncilStore
 
@@ -171,7 +171,13 @@ def test_kein_einziger_bestehender_wert_aendert_sich(alte_db):
     geprueft = 0
     for tabelle, (spalten, vorher) in snapshot.items():
         nachher = _alles(alte_db, tabelle, spalten)
-        assert nachher == vorher, f"{tabelle}: Werte verändert"
+        # Die eine angemeldete Ausnahme quer über alle Tabellen: Adressen des
+        # Ratsinformationssystems ziehen beim Start auf den neuen Host um
+        # (`_ratsinfo_adressen_umziehen`, 11/2026). Verglichen wird deshalb
+        # gegen den umgezogenen Stand — jede ANDERE Änderung fliegt weiter auf.
+        erwartet = [tuple(ris.current(v) if isinstance(v, str) else v for v in zeile)
+                    for zeile in vorher]
+        assert nachher == erwartet, f"{tabelle}: Werte verändert"
         geprueft += len(vorher)
     assert geprueft == 8  # alle Zeilen des Fixtures, nicht nur ein paar
 
@@ -187,7 +193,7 @@ def test_altbestand_erbt_label_und_url_und_gewinnt_den_anker(alte_db):
         "WHERE e.year = 2023 AND e.sub_budget_no IS NULL AND e.nr = 12").fetchone()
     store.close()
     assert row["label"] == JA_LABEL
-    assert row["url"] == JA_URL
+    assert row["url"] == ris.current(JA_URL)      # beim Start umgezogen (council/ris.py)
     assert row["kind"] == "ris"
     assert row["document_id"] == 280861     # der Anker, den der Altbestand nicht hatte
     # Der Zeitstempel der Zeilen, nicht der Zeitpunkt der Migration.

@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council import finanzquellen, herkunft as h, loans  # noqa: E402
+from council import ris  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.vorlagen import fetch_vorlage  # noqa: E402
 
@@ -29,7 +30,7 @@ def _lauf_herkunft(result: dict) -> h.Herkunft:
     years = [n["year"] for n in result["notices"]]
     spanne = f"{min(years)}–{max(years)}" if years else "—"
     return h.Herkunft(
-        kind="ris", url="https://buergerinfo.oldenburg.de/vo040.asp", label=LABEL,
+        kind="ris", url=ris.SEARCH_URL, label=LABEL,
         citation=loans.FUNDSTELLE, as_of=f"Berichtsjahre {spanne}",
         probe=[loans.ZEITRAUM, loans.POSTEN_BETRAG],
         probe_result=loans.probennachweis(result))
@@ -93,7 +94,7 @@ def main() -> int:
         for n in notices:
             n["herkunft"] = h.Herkunft(
                 kind="ris", document_id=n.get("document_id"),
-                url=n.get("document_url") or "https://buergerinfo.oldenburg.de/vo040.asp",
+                url=n.get("document_url") or ris.SEARCH_URL,
                 label=f"{LABEL} — Vorlage {n['template_number']}",
                 citation=loans.FUNDSTELLE,
                 as_of=f"Berichtszeitraum {n['period_from']} bis {n['period_to']}",
