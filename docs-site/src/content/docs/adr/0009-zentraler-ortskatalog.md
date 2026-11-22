@@ -25,13 +25,13 @@ Stadtteile“ genauer, als die Datengrundlage tatsächlich ist.
 
 ## Entscheidung
 
-Ratslotse trennt zwei Ebenen und verbindet sie über stabile IDs:
+Ratslotse bildet zwei Ebenen ab und verknüpft sie über stabile IDs.
 
 - Der versionierte Basiskatalog `council/oldenburg_places.json` enthält die 31
-  flächendeckenden Ortsbereiche und fest recherchierte Startdaten. Eine
-  redaktionelle DB-Schicht (`council_place_reviews`) erweitert ihn um geprüfte
-  Kandidaten, ohne Rohbeobachtungen oder Git-Dateien im laufenden Betrieb zu
-  überschreiben. Beide Schichten bilden gemeinsam den Laufzeitkatalog.
+  flächendeckenden Ortsbereiche und die recherchierten Startdaten.
+  Die redaktionell gepflegte Tabelle `council_place_reviews` erweitert den
+  Katalog um geprüfte Kandidaten. Rohbeobachtungen und versionierte Dateien
+  bleiben dabei im laufenden Betrieb erhalten. Beide Schichten bilden gemeinsam den Laufzeitkatalog.
 - Die 31 flächendeckenden **Ortsbereiche** bleiben die primäre Produktebene.
   Zusätzlich darf der Katalog kuratierte, nicht flächendeckende Ortsobjekte wie
   Quartiere, Wohn- und Sanierungsgebiete, Parks, Schutz- oder
@@ -42,9 +42,10 @@ Ratslotse trennt zwei Ebenen und verbindet sie über stabile IDs:
   In den Katalog aufgenommen werden nur wiederkehrende, politisch nützliche und
   anhand belastbarer Quellen eindeutig benennbare Orte.
 - Der Admin-Bereich zeigt Kandidaten mit Beschlusszahl, Koordinaten und
-  Fundstellen-Stichproben. Ein Urteil kann einen eigenen Katalogort freigeben,
-  den Namen als Alias eines vorhandenen Orts einordnen oder ihn verwerfen; es
-  bleibt reversibel. Neuimporte verwenden freigegebene Namen und Aliase sofort.
+  Stichproben der Fundstellen. Bei der Prüfung lässt sich ein Kandidat
+  als eigener Ort oder als Alias eines vorhandenen Orts freigeben oder
+  verwerfen. Die Entscheidung kann rückgängig gemacht werden. Neue Importe
+  verwenden freigegebene Namen und Aliase sofort.
 - Grenzen bleiben ein separates, über den stabilen Namen verknüpftes
   GeoJSON-Asset. Sie stammen aus OpenStreetMap (`admin_level=10`, ODbL) und
   sind keine amtlichen Stadtteilgrenzen.
@@ -64,17 +65,18 @@ Ratslotse trennt zwei Ebenen und verbindet sie über stabile IDs:
 - Nutzeroberflächen unterscheiden den jeweiligen Typ („Ortsbereich“,
   „Quartier“, „Park“ …). Freier Text darf weiterhin natürlich von einem
   Stadtteil sprechen.
-- Historische DB-Felder und API-Schlüssel wie `stadtteil` bleiben vorerst als
-  kompatible technische Namen bestehen; fachlich referenzieren sie immer einen
-  kanonischen Ratslotse-Ortsbereich. Neue Logik verwendet die stabilen IDs.
+- Historische Datenbankfelder und API-Schlüssel wie `stadtteil` bleiben
+  vorerst aus Kompatibilitätsgründen bestehen. Sie verweisen stets auf
+  einen kanonischen Ortsbereich von Ratslotse. Neue Logik verwendet die stabilen IDs.
 - Amtliche statistische Bezirke und Unterbezirke sind eine **separate
   Taxonomie**. Sie dürfen später über eigene IDs verknüpft, aber nicht still mit
   den Ratslotse-Ortsbereichen gleichgesetzt werden.
 
 ## Konsequenzen
 
-- **Plus:** Bornhorst, Fliegerhorst und alle anderen Gebiete bedeuten in jeder
-  Funktion dasselbe; Schreibvarianten landen auf derselben stabilen ID.
+- **Plus:** Alle Funktionen verwenden dieselbe Definition für Bornhorst,
+  Fliegerhorst und die übrigen Gebiete. Schreibvarianten verweisen auf
+  dieselbe stabile ID.
 - **Plus:** Die Oberfläche macht die tatsächliche Genauigkeit transparent und
   behauptet keine nicht vorhandene amtliche Stadtteilgliederung.
 - **Plus:** Eine spätere feinere Ebene (Quartier, statistischer Unterbezirk,
@@ -89,6 +91,6 @@ Ratslotse trennt zwei Ebenen und verbindet sie über stabile IDs:
 - **Minus:** Die 31 OSM-Grenzen bleiben eine redaktionelle Produktentscheidung.
   Änderungen brauchen Quellenprüfung, Review und gegebenenfalls eine Migration
   bestehender Ortszuordnungen.
-- **Minus:** Nicht jeder gebräuchliche Mikro-Ort gehört sofort in den Katalog.
-  Mehrdeutige Kandidaten bleiben bewusst Rohbeobachtungen, bis Geometrie,
-  Einordnung und Quelle geklärt sind.
+- **Minus:** Manche kleinräumigen Orte lassen sich erst nach einer
+  Prüfung in den Katalog aufnehmen. Mehrdeutige Kandidaten bleiben
+  Rohbeobachtungen, bis Geometrie, Einordnung und Quelle geklärt sind.

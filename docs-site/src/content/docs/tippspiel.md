@@ -1,14 +1,14 @@
 ---
 title: "Feature: Tippspiel"
-description: Das Tippspiel zu den Wahlen 2026 — Beitritt ohne Konto, Sitze bzw. Prozente und die Wahlbeteiligung tippen, Live-Vergleich und Beamer-Scoreboard am Wahlabend.
+description: Tipps für Sitze, Stimmenanteile und Wahlbeteiligung bei den Wahlen 2026 sowie Live-Rangliste und Beameransicht. Der Beitritt erfordert kein Konto.
 ---
 
 Zur Ratswahl am 13.09.2026 gab es ein Tippspiel, zur OB-Stichwahl am
 27.09.2026 gibt es das nächste: Gäste tippen, wie viele Sitze jede Liste
 bekommt bzw. wie viel Prozent die Kandidaturen holen — dazu die
-Wahlbeteiligung — und sehen am Wahlabend live, wie ihr Tipp gegen den Stand
-abschneidet. Kein Konto, kein Passwort — ein Name reicht (freiwillig dazu die
-Parteizugehörigkeit), per QR-Code vom Handy.
+Wahlbeteiligung. Am Wahlabend zeigt der Vergleich mit dem aktuellen Stand,
+wie gut der Tipp abschneidet. Der Beitritt per QR-Code vom Handy erfordert
+nur einen Namen. Die Parteizugehörigkeit ist freiwillig.
 
 **Eine Runde je Wahl.** Die Ratswahl-Runde ist die Hauptrunde unter `/tipp`,
 die Stichwahl läuft unter `/tipp?runde=stichwahl` (Registry-Eintrag
@@ -18,13 +18,13 @@ geschlossene Runde einen `successor_path`: Neue werden zur gelisteten Runde
 der Wahl im Fokus geschickt, wer in der alten Runde mitgespielt hat (Cookie),
 sieht weiter sein Ergebnis.
 
-**Bis zum 19.09.2026 konnte die Stichwahl-Runde nicht spielen** — gemessen
-vor dem Umbau: `service.stand` las `mayor.fetch()` ohne Wahl (den ERSTEN
-Wahlgang, längst ausgezählt), ein Prozent-Tipp ohne Sitze galt als „kein
-Tipp“ (`has_tip False`, `tip_count 0`), und der Tipp-Schluss fiel nur für
-die aktive Ratswahl. Seitdem entscheidet `service.basis()` je Runde, welche
-Wahl gelesen und verglichen wird; `tests/test_prediction_stichwahl.py` hält
-das fest.
+**Bis zum 19.09.2026 funktionierte die Stichwahlrunde nicht.**
+`service.stand` rief `mayor.fetch()` ohne Wahl auf und erhielt die
+Ergebnisse des bereits ausgezählten ersten Wahlgangs. Ein Prozenttipp
+ohne Sitze galt als fehlend (`has_tip False`, `tip_count 0`). Die
+Abgabefrist galt nur für die aktive Ratswahl. Seit dem Umbau bestimmt
+`service.basis()` pro Runde, welche Wahl für Abruf und Vergleich
+maßgeblich ist. `tests/test_prediction_stichwahl.py` prüft das Verhalten.
 
 :::note[Hinter dem Feature-Schalter `tippspiel`]
 Die **öffentlichen** Routen (`POST /api/tipp`, `GET /api/tipp/me`,
@@ -53,11 +53,10 @@ den Tipp, `name` wird dann ignoriert — umbenennen kann nur der Admin
 | Attribute | `HttpOnly`, `SameSite=Lax` |
 | Gespeichert | nur der SHA-256-Hash, nie der Klartext |
 
-`GET /api/tipp/me` beantwortet „bin ich schon dabei, und was habe ich
-getippt" — ohne Cookie oder mit einem unbekannten Hash antwortet er **401**,
-und das ist hier kein Fehlerfall, sondern die erwartete Antwort für
-Erstbesuchende (das Frontend fängt genau diesen Code ab, statt ihn als Netz-
-oder Serverfehler zu behandeln).
+`GET /api/tipp/me` liefert den Teilnahmestatus und den eigenen Tipp.
+Ohne Cookie oder mit einem unbekannten Hash liefert der Endpunkt **401**.
+Das Frontend erkennt an diesem Statuscode neue Gäste und zeigt in diesem
+Fall keinen Netz- oder Serverfehler an.
 
 ## Das Spiel
 
@@ -84,14 +83,15 @@ Admin) und ist wie der Name nur vom Admin änderbar
 ist eine freiwillige, öffentliche Selbstauskunft — mit der Teilnahme
 (`DELETE /api/tipp/me`, Kontolöschung) verschwindet sie.
 
-**Der Tipp-Schluss setzt sich selbst — spätestens um 18 Uhr am Wahltag.**
-Seit 19.09.2026 (Tims Regel) ist die Schließung der Wahllokale
-(`polls_close` der Wahl) die feste Frist: Jeder Aufruf danach — Tafel,
-Beitritt, Tipp — sperrt zuerst (`_check_auto_lock`), und `locked_at` ist die
-Schließung selbst, nicht der Moment des Aufrufs. Davor beendet schon die
-erste echte Zahl der Wahl die Frist (Hochrechnung bei der Ratswahl,
-Auszählungsstand bei der Stichwahl). Niemand muss im Admin auf einen Knopf
-drücken; der Knopf „Tippen beenden" bleibt für den Fall der Fälle.
+**Die Tippabgabe endet automatisch, spätestens um 18 Uhr am Wahltag.**
+Seit 19.09.2026 gilt nach Tims Regel die Schließung der Wahllokale
+(`polls_close` der Wahl) als Frist. Jeder spätere Aufruf der Rangliste,
+des Beitritts oder der Tippabgabe sperrt zuerst die Abgabe
+(`_check_auto_lock`). `locked_at` speichert den Zeitpunkt der
+Schließung. Vor diesem Zeitpunkt endet die Tippabgabe bereits mit den ersten
+verfügbaren Wahldaten (Hochrechnung bei der Ratswahl, Auszählungsstand
+bei der Stichwahl). Admins können sie bei Bedarf auch manuell über
+„Tippen beenden" schließen.
 
 **Ein später Beitritt zählt „außer Konkurrenz".** Wer erst nach dem
 Tipp-Schluss beitritt, bekommt das Etikett „nachgetippt" und taucht auf der
@@ -125,10 +125,9 @@ die Summe der Prozentpunkt-Abweichungen über Kandidaturen und
 Wahlbeteiligung (`pct_deviation` — bei einer Stichwahl der einzige
 Zahlen-Tie-Breaker, denn mit zwei Kandidaturen fallen viele auf dieselbe
 Punktzahl), dann wer seinen Tipp zuerst abgegeben hat. Ein echter
-Gleichstand — alles identisch — wird nicht ausgelost, sondern nach
-Eingabereihenfolge entschieden;
-`prediction_standings_previous` hält je Stand fest, wer wo
-stand, damit die ▲▼-Chips auf dem Beamer den **vorherigen** Rang kennen.
+Gleichstand in allen Kriterien entscheidet sich nach Eingabereihenfolge.
+`prediction_standings_previous` speichert den Rang im vorherigen Stand
+für die ▲▼-Anzeige auf dem Beamer.
 
 ## Mehrere Runden
 

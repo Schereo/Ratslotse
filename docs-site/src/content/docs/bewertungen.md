@@ -1,14 +1,13 @@
 ---
 title: Bewertungs-Scores
-description: Wie Ratslotse Beschlüsse gewichtet — Wichtigkeit (Heuristik), Tragweite (LLM) und Gesprächswert, und wie sie zusammenfließen.
+description: Berechnung und Verwendung der Scores für Wichtigkeit, Tragweite und Gesprächswert von Ratsbeschlüssen.
 ---
 
-Über 7.700 Beschlüsse seit 2018 lassen sich nicht chronologisch lesen. Ratslotse
-gewichtet sie deshalb mit **drei getrennten Scores**, die bewusst
-Verschiedenes messen: eine billige, nachrechenbare **Heuristik**, eine
-LLM-Einschätzung der **Tragweite** und eine LLM-Einschätzung des
-**Gesprächswerts**. Nur die ersten beiden fließen zusammen — der dritte bleibt
-strikt daneben.
+Für die mehr als 7.700 Beschlüsse seit 2018 berechnet Ratslotse drei Scores,
+die beim Sichten des Bestands helfen. Eine kostengünstige, nachvollziehbare
+**Heuristik** ermittelt die Wichtigkeit. Ein LLM bewertet **Tragweite** und
+**Gesprächswert**. Die Tragweite fließt in die Wichtigkeit ein. Der
+Gesprächswert bleibt ein eigener Score.
 
 | Score | Spalte in `council_decisions` | Herkunft | Skala | Treibt |
 |-------|------------------------------|----------|-------|--------|
@@ -16,9 +15,9 @@ strikt daneben.
 | **Tragweite** | `impact`, `impact_reason` | LLM nach fester Rubrik (`council/impact.py`) | 0–100 | mischt 50/50 in die Wichtigkeit, Kontext der KI-Frage |
 | **Gesprächswert** | `interest`, `interest_reason` | LLM (`council/interest.py`) | 0–100 | „Fundstück des Tages", „Diese Woche im Rat", Tie-Breaks |
 
-Alle drei sind **optional**: Ein Beschluss ohne LLM-Bewertung (`NULL`) verliert
-nichts, er sortiert nur hinter den bewerteten. Datenmodell und Herkunft der
-Rohdaten: [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
+Alle drei Scores sind **optional**. Die Sortierung ordnet Beschlüsse ohne
+LLM-Bewertung (`NULL`) hinter den bewerteten ein. Datenmodell und Quellen
+beschreibt [Ratsdokumente & Beschlüsse](/docs/beschluesse/).
 
 ## 1. Wichtigkeit — die Heuristik
 
@@ -158,9 +157,10 @@ OpenRouter ([ADR 0001](/docs/adr/0001-openrouter/)).
 
 `council/interest.py` misst etwas ganz anderes: Wie **erzählenswert** ist ein
 Beschluss für normale Stadtbewohner*innen? Der Prompt
-(`interest_rating_system`) fragt nach Gesprächswert („Würde man es beim
-Abendessen erzählen?"), Alltagsnähe, Kuriosität/Überraschung und Konkretheit
-(ein Ort, ein Ding, ein Datum) und staffelt die Skala:
+(`interest_rating_system`) bewertet den Gesprächswert („Würde man es beim
+Abendessen erzählen?") anhand von Alltagsnähe, Überraschung und
+konkreten Angaben wie einem Ort, Gegenstand oder Datum. Er verwendet
+die folgende Skala.
 
 | Band | Bedeutung |
 |------|-----------|
@@ -184,12 +184,12 @@ gemischt zum **Fundwert** (55 % Interesse, 45 % Tragweite,
 `council/store_fundstuecke.py`). Interesse allein wählte Kuriositäten statt
 Beschlüssen, über die man redet.
 
-- **Der Jahrestag ist ein Aufhänger, kein Freifahrtschein.** Gleicher
-  Kalendertag, früheres Jahr, Fundwert mindestens 60
-  (`MIN_FUNDWERT_JAHRESTAG`) → Kicker „Heute vor N Jahren". Bis 20.08.2026
-  gewann jeder Jahrestag ab Interesse 45 gegen jeden Archivfund, auch gegen
-  einen mit Bestwerten. Jetzt sticht ihn ein Archivfund, der um mehr als
-  12 Punkte besser ist (`ARCHIV_STICHT_UM`).
+- **Jahrestage** kommen infrage, wenn der Kalendertag in einem früheren
+  Jahr liegt und der Fundwert mindestens 60 beträgt
+  (`MIN_FUNDWERT_JAHRESTAG`). Die Karte trägt dann „Heute vor N Jahren".
+  Bis 20.08.2026 hatten Jahrestage ab Interesse 45 generell Vorrang vor
+  Archivfunden. Jetzt erhält ein Archivfund Vorrang, wenn sein Fundwert
+  um mehr als 12 Punkte höher ist (`ARCHIV_STICHT_UM`).
 - Sonst ein Archiv-Fund mit Fundwert mindestens 65 (`MIN_FUNDWERT_ARCHIV`) →
   Kicker „Aus dem Archiv". Unter den besten Kandidaten wählt ein **Hash des
   Datums** (kein Zufall) — Läufe sind wiederholbar.
@@ -275,12 +275,12 @@ dazwischen. Genau dafür gibt es die zweite Meinung.
 | `scripts/score_importance.py` | Wichtigkeit + Mischung | ja, als direkter `backfill_importance()`-Aufruf ohne Limit | ja, voller Lauf |
 | `scripts/generate_fundstuecke.py` | Fundstück-Karten | — | `--days 21` |
 
-- **Reihenfolge zählt:** Tragweite läuft in beiden Jobs **vor** dem
-  Wichtigkeits-Score, damit die 50/50-Mischung frische Werte sieht.
-- **Täglich klein, wöchentlich als Backstop:** Beide LLM-Queries liefern
-  „neueste zuerst", das Tageslimit von 200 trifft also den Tageszuwachs. An
-  Tagen ohne neue Protokolle ist der Schritt ein No-op (0 LLM-Aufrufe). Den
-  Alt-Bestand seit 2018 arbeiten die 500er-Wochentranchen ab.
+- Beide Jobs berechnen zuerst die Tragweite, damit der Wichtigkeits-Score
+  neue Tragweite-Werte unmittelbar im Verhältnis 50/50 berücksichtigt.
+- **Tageslauf und Wochenlauf.** Beide LLM-Abfragen behandeln die neuesten
+  Beschlüsse zuerst. Das Tageslimit von 200 deckt den Tageszuwachs ab. An
+  Tagen ohne neue Protokolle führt der Lauf 0 LLM-Aufrufe aus. Der Wochenlauf
+  verarbeitet den Bestand seit 2018 in Batches à 500.
 - **Auswahlkriterien:** `decisions_needing_interest` nimmt nur
   `kind = 'decision'`, `decisions_needing_impact` auch `subvote`; beide
   verlangen einen Titel ab 8 Zeichen und überspringen bereits bewertete Zeilen.
