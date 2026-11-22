@@ -61,6 +61,119 @@ test.describe("Der aktive Punkt leuchtet", () => {
   });
 });
 
+test.describe("Untermenüs der Seitenleiste", () => {
+  // Seit 11/2026 klappt ein Bereich seine Unterseiten in der Seitenleiste auf,
+  // solange man darin ist. Die Fläche wandert dabei auf die UNTERZEILE — und
+  // genau das prüft sonst keine einzelne Seite: dass am Schreibtisch nicht
+  // zwei Zeilen zugleich „hier bist du" sagen und nicht keine.
+  test.use({ storageState: zustandsDatei("nutzerin") });
+
+  test("die Analyse zeigt ihre Unterseiten, und die Unterzeile ist der Standort", async ({ page }) => {
+    await page.goto("/council?tab=analysis&sub=parties");
+    const leiste = page.locator("aside");
+    const analyse = leiste.getByRole("group", { name: "Analyse" });
+    await expect(analyse.getByRole("link", { name: "Parteien", exact: true }))
+      .toHaveAttribute("aria-current", "page");
+    // Der Hauptpunkt gibt die Markierung ab — sonst stünden zwei Standorte da.
+    await expect(leiste.getByRole("link", { name: "Analyse", exact: true }))
+      .not.toHaveAttribute("aria-current", "page");
+    await expect(leiste.locator('[aria-current="page"]')).toHaveCount(1);
+
+    await analyse.getByRole("link", { name: "Personen", exact: true }).click();
+    await expect(page).toHaveURL(/sub=personen/, { timeout: 15_000 });
+    await expect(analyse.getByRole("link", { name: "Personen", exact: true }))
+      .toHaveAttribute("aria-current", "page");
+  });
+
+  test("„Analyse“ selbst führt auf Trends — die erste Unterzeile", async ({ page }) => {
+    await page.goto("/dashboard");
+    const leiste = page.locator("aside");
+    await leiste.getByRole("link", { name: "Analyse", exact: true }).click();
+    await expect(page).toHaveURL(/tab=analysis/, { timeout: 15_000 });
+    await expect(leiste.getByRole("group", { name: "Analyse" }).getByRole("link", { name: "Trends", exact: true }))
+      .toHaveAttribute("aria-current", "page");
+  });
+
+  test("außerhalb des Bereichs ist das Untermenü zu", async ({ page }) => {
+    // Im Ruhezustand ist die Leiste so kurz wie vor dem Umbau.
+    await page.goto("/dashboard");
+    await expect(page.getByRole("link", { name: "Heute", exact: true }).first())
+      .toHaveAttribute("aria-current", "page");
+    await expect(page.locator("aside").getByRole("group", { name: "Analyse" })).toHaveCount(0);
+  });
+
+  test("am Schreibtisch keine Reiterleiste auf der Seite, auf dem Telefon schon", async ({ page }) => {
+    // Beides zugleich wäre dieselbe Navigation doppelt. Unterhalb von `desk`
+    // gibt es keine Seitenleiste, dort ist die Leiste der einzige Weg.
+    await page.goto("/council?tab=analysis");
+    const reiter = page.getByRole("button", { name: "Parteien", exact: true });
+    await expect(page.locator("aside").getByRole("link", { name: "Parteien", exact: true })).toBeVisible();
+    await expect(reiter).toBeHidden();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(reiter).toBeVisible();
+    await reiter.click();
+    await expect(page).toHaveURL(/sub=parties/, { timeout: 15_000 });
+  });
+
+  test("ohne Mandat gibt es keine Gruppe „Ratsarbeit“ — der Haushalt steht trotzdem da", async ({ page }) => {
+    // Den Haushalt sieht jedes Konto; die Gruppe ist das Arbeitsmittel-Fach
+    // für Ratsmitglieder und hängt am Recht `council_tools`. Für alle anderen
+    // wäre „Ratsarbeit" eine Überschrift über einer einzigen Zeile.
+    await page.goto("/dashboard");
+    const leiste = page.locator("aside");
+    await expect(leiste.getByText("Persönlich", { exact: true })).toBeVisible();
+    await expect(leiste.getByRole("link", { name: "Haushalt", exact: true })).toBeVisible();
+    await expect(leiste.getByText("Ratsarbeit", { exact: true })).toHaveCount(0);
+    await expect(leiste.getByRole("link", { name: "Werkzeuge", exact: true })).toHaveCount(0);
+  });
+});
+
+test.describe("Ratsarbeit: Haushalt und Werkzeuge", () => {
+  test.use({ storageState: zustandsDatei("ratsfrau") });
+
+  test("beide stehen in ihrer eigenen Gruppe", async ({ page }) => {
+    await page.goto("/dashboard");
+    const leiste = page.locator("aside");
+    await expect(leiste.getByText("Ratsarbeit", { exact: true })).toBeVisible();
+    await expect(leiste.getByRole("link", { name: "Haushalt", exact: true })).toBeVisible();
+    await expect(leiste.getByRole("link", { name: "Werkzeuge", exact: true })).toBeVisible();
+  });
+
+  test("der Haushalt zeigt seine vier Etappen, ein Schritt markiert die seine", async ({ page }) => {
+    // Schritt 6 und 7 liegen in derselben Etappe; ihre Zeile führt auf den
+    // ersten der beiden. Geprüft wird die Adresse, nicht der Name der Etappe —
+    // der ist Text und darf sich ändern.
+    await page.goto("/haushalt/pruefung");
+    const leiste = page.locator("aside");
+    const etappen = leiste.getByRole("group", { name: "Haushalt" });
+    await expect(etappen.getByRole("link")).toHaveCount(4, { timeout: 15_000 });
+    await expect(etappen.locator('[aria-current="page"]')).toHaveAttribute("href", "/haushalt/plan-ist");
+    await expect(leiste.locator('[aria-current="page"]')).toHaveCount(1);
+  });
+
+  test("auf der Übersicht trägt der Hauptpunkt die Markierung", async ({ page }) => {
+    // Die Übersicht gehört zu keiner Etappe — dann darf die Navigation nicht
+    // ohne Standort dastehen.
+    await page.goto("/haushalt");
+    const leiste = page.locator("aside");
+    await expect(leiste.getByRole("group", { name: "Haushalt" }).getByRole("link")).toHaveCount(4, { timeout: 15_000 });
+    await expect(leiste.getByRole("link", { name: "Haushalt", exact: true }))
+      .toHaveAttribute("aria-current", "page");
+    await expect(leiste.locator('[aria-current="page"]')).toHaveCount(1);
+  });
+
+  test("die Werkzeuge haben noch kein Untermenü", async ({ page }) => {
+    // Es erscheint erst ab dem zweiten Werkzeug: Eine einzelne Unterzeile
+    // wiederholte nur die Übersicht.
+    await page.goto("/werkzeuge/mehrheiten");
+    const leiste = page.locator("aside");
+    await expect(leiste.getByRole("link", { name: "Werkzeuge", exact: true }))
+      .toHaveAttribute("aria-current", "page");
+    await expect(leiste.getByRole("group", { name: "Werkzeuge" })).toHaveCount(0);
+  });
+});
+
 test.describe("Deep-Links kommen an", () => {
   test.use({ storageState: zustandsDatei("nutzerin") });
 

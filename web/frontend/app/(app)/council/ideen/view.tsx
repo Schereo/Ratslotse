@@ -987,9 +987,7 @@ export default function View() {
           title="Analyse"
           description="Trends, Parteien, Personen und Ziele im Überblick."
         />
-        <div className="mt-4">
-          <AnalyseReiter aktiv="staedte" />
-        </div>
+        <AnalyseReiter aktiv="staedte" className="mt-4" />
       </div>
       <div className="max-w-3xl">
         <h2 className="font-display text-[24px] font-bold leading-tight text-foreground sm:text-[28px]">

@@ -258,15 +258,32 @@ test("eine unbekannte Idee zeigt einen Leerzustand statt eines Fehlers", async (
   await expect(page.getByText("Diese Idee gibt es nicht (mehr).")).toBeVisible();
 });
 
-test("die Ideen sind ein Reiter der Analyse, kein eigener Punkt in der Navigation", async ({ page }) => {
+test("die Ideen sind eine Unterseite der Analyse, kein eigener Punkt in der Navigation", async ({ page }) => {
+  await mocks(page);
+  await page.goto("/council/ideen");
+  // Am Schreibtisch ist das die Unterzeile unter „Analyse" in der Seitenleiste
+  // (seit 11/2026; vorher ein Reiter in einer Leiste auf der Seite).
+  const analyse = page.locator("aside").getByRole("group", { name: "Analyse" });
+  const zeile = analyse.getByRole("link", { name: "Ideen aus anderen Städten", exact: true });
+  await expect(zeile).toHaveAttribute("aria-current", "page");
+  // Zurück in die Analyse über dasselbe Untermenü.
+  await analyse.getByRole("link", { name: "Trends", exact: true }).click();
+  await expect(page).toHaveURL(/\/council\?tab=analysis$/, { timeout: 20_000 });
+  // Und von dort wieder hin.
+  await analyse.getByRole("link", { name: "Ideen aus anderen Städten", exact: true }).click();
+  await expect(page).toHaveURL(/\/council\/ideen$/, { timeout: 20_000 });
+});
+
+test("auf dem Telefon bleibt es der Reiter in der Leiste auf der Seite", async ({ page }) => {
+  // Unterhalb von `desk` gibt es keine Seitenleiste — die Reiterleiste ist
+  // dort der einzige Weg zwischen den Unterseiten der Analyse.
+  await page.setViewportSize({ width: 390, height: 844 });
   await mocks(page);
   await page.goto("/council/ideen");
   const reiter = page.getByRole("button", { name: "Ideen aus anderen Städten", exact: true });
   await expect(reiter).toHaveAttribute("aria-pressed", "true");
-  // Zurück in die Analyse über dieselbe Leiste.
   await page.getByRole("button", { name: /^Trends$/ }).click();
   await expect(page).toHaveURL(/\/council\?tab=analysis$/, { timeout: 20_000 });
-  // Und von dort wieder hin.
   await page.getByRole("button", { name: "Ideen aus anderen Städten", exact: true }).click();
   await expect(page).toHaveURL(/\/council\/ideen$/, { timeout: 20_000 });
 });
