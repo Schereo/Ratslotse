@@ -905,7 +905,7 @@ beim Nachsehen entstanden:
    nicht an das Glossar gehängt: Dort landete er mitten zwischen den
    Stilregeln und las sich wie eine.
 
-Die vitest-Prüfung der Einstellung entfällt ebenfalls: `vitest.config.ts`
+Die vitest-Prüfung der Einstellung entfällt ebenfalls: `vitest.config.mts`
 lässt bewusst nur `lib/`-LOGIK ohne DOM zu, und ein `localStorage`-Modul
 braucht einen. Geprüft wird sie stattdessen im Browsertest — samt dem Weg
 zurück über ⌘K, der ohnehin nur dort zu sehen ist.

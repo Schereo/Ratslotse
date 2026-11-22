@@ -178,6 +178,16 @@ und braucht eine DOM-Nachbildung, die mit jeder React-Fassung nachgezogen
 werden will. Flüsse durch die Oberfläche prüfen die Browsertests
 (`npx playwright test`).
 
+**vitest 5 (seit 11/2026) verhält sich an drei Stellen anders als ältere
+Beispiele.** Der Aufrufverlauf jedes Mocks wird vor jedem Test geleert
+(`clearMocks` ist ab Werk an): Ein `vi.fn()` auf Modulebene bringt keine
+Aufrufe aus dem Test davor mit. `vi.mock(…)` und `vi.hoisted(…)` stehen auf
+oberster Ebene der Datei, sonst bricht der Lauf ab, statt zu warnen. Und ein
+`expect(p).rejects…` ohne `await` lässt den Test scheitern. Verlangt wird
+Node ≥ 22.12. vite kommt nur als Peer von vitest in den Baum — Next baut mit
+Turbopack und braucht es nicht. Die Konfiguration heißt `vitest.config.mts`;
+warum `.mts` und warum der Pool dort festgeschrieben ist, steht in der Datei.
+
 **Browser-Speicher ohne jsdom.** `lib/__testhilfen/speicher.ts` liefert einen
 `localStorage`/`sessionStorage`-Ersatz samt Schalter „gesperrt" — der echte
 Fall im privaten Fenster. Eine ganze DOM-Nachbildung dafür zu laden kostet

@@ -13,6 +13,12 @@ import { fileURLToPath } from "node:url";
 // Komponenten bleiben bewusst außen vor. Ein Test, der JSX rendert, prüft am
 // Ende meist die eigene Fixture (s. `tests/CLAUDE.md`) und braucht eine
 // DOM-Nachbildung, die mit jeder React-Fassung nachgezogen werden will.
+//
+// WARUM `.mts`. Das Paket hat kein `"type": "module"`, eine `.ts`-Datei gilt
+// für Node also als CommonJS — und diese hier benutzt `import`. Vite 8 lädt sie
+// noch über einen Bündelschritt, meldet das aber bei jedem Lauf und kündigt
+// an, die Datei künftig von Node selbst laden zu lassen. `.mts` ist in jedem
+// Fall ein ES-Modul.
 export default defineConfig({
   test: {
     include: ["lib/**/*.test.ts"],
@@ -21,6 +27,13 @@ export default defineConfig({
     // ein Test, der auf dem Notebook in Europe/Berlin läuft und in der CI
     // unter UTC, prüft zweierlei. Node liest beides beim Start.
     env: { TZ: "Europe/Berlin", LANG: "de_DE.UTF-8" },
+    // „Beim Start" heißt: Jede Testdatei braucht einen eigenen PROZESS. `forks`
+    // ist die Vorgabe und steht hier trotzdem, weil die Zeile darüber daran
+    // hängt. Gemessen beim Sprung auf vitest 5 (22.11.2026), Elternprozess
+    // unter `TZ=UTC LANG=C.UTF-8` wie in der CI: mit `forks` stimmen Zeitzone
+    // und Sprache in allen 85 Dateien, mit `threads` in keiner — Threads
+    // teilen sich den Prozess, und der ist dann schon unter UTC gestartet.
+    pool: "forks",
   },
   resolve: {
     alias: {
