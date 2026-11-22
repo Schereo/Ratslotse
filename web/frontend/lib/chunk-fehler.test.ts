@@ -5,8 +5,13 @@ import { speicherStub } from "./__testhilfen/speicher";
 const chunk = Object.assign(new Error("Loading chunk 4512 failed. (error: https://ratslotse.de/_next/static/chunks/4512-abc.js)"), { name: "ChunkLoadError" });
 
 describe("istChunkFehler", () => {
-  it("erkennt die Fassungen von Webpack, Vite und Firefox", () => {
+  it("erkennt die Fassungen von Webpack, Turbopack, Vite und Firefox", () => {
     expect(istChunkFehler(chunk)).toBe(true);
+    // Turbopack, Wortlaut aus dem gebauten Laufzeit-Skript (Next 16.4.6) —
+    // mit Namen und, falls der verloren geht, am Text allein.
+    const turbopack = "Failed to load chunk /_next/static/chunks/3w_3x5ccsfov9.js from module 51234";
+    expect(istChunkFehler(Object.assign(new Error(turbopack), { name: "ChunkLoadError" }))).toBe(true);
+    expect(istChunkFehler(new Error(turbopack))).toBe(true);
     expect(istChunkFehler(new Error("Loading CSS chunk 77 failed."))).toBe(true);
     expect(istChunkFehler(new TypeError("Failed to fetch dynamically imported module: /x.js"))).toBe(true);
     expect(istChunkFehler(new TypeError("error loading dynamically imported module"))).toBe(true);

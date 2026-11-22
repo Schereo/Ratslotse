@@ -76,7 +76,9 @@ export type LottiRegung =
 /* Einmal je Seite: Der Abspieler liegt als fertiges ES-Modul im Bündel und
  * definiert beim Import das Custom Element. `webpackIgnore`, weil die Datei
  * bewusst NICHT durchs Bundling läuft — sie gehört zum kopierten Bündel und
- * muss zu dessen Blättern und Verzeichnis passen, nicht zum App-Build. */
+ * muss zu dessen Blättern und Verzeichnis passen, nicht zum App-Build.
+ * Turbopack (seit Next 16) beachtet denselben Kommentar; im gebauten Chunk
+ * steht ein unverändertes `import(url)`. */
 /* ── Jahreszeit: welcher Bündel-Ordner? ──────────────────────────────────
  * Das Studio backt je Jahreszeit ein komplettes Bündel (fruehling: Blume,
  * sommer: Sonnenbrille, herbst/winter: Schal, weihnachten: roter Schal) —

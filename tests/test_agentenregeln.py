@@ -87,7 +87,9 @@ def _ci_schritte(datei: Path) -> set[str]:
         for wort, muster in (("ruff", r"\bruff check\b"),
                              ("pytest", r"\bpytest\b"),
                              ("tsc", r"\btsc --noEmit\b"),
-                             ("next lint", r"\bnext lint\b")):
+                             # Bis Next 15 `npx next lint`; den Befehl gibt
+                             # es seit Next 16 nicht mehr.
+                             ("npm run lint", r"\bnpm run lint\b")):
             if re.search(muster, nackt):
                 marken.add(wort)
     return marken
@@ -109,7 +111,7 @@ def test_pruefe_kennt_jeden_schritt_der_ci():
     # Die Marken sind Dateinamen bzw. Werkzeugnamen; sie müssen im Skript
     # vorkommen. Pfade werden dort relativ zum jeweiligen Arbeitsverzeichnis
     # geschrieben, deshalb reicht der Dateiname — und ein mehrteiliger
-    # Werkzeugname („next lint") steht dort als Liste einzelner Wörter.
+    # Werkzeugname („npm run lint") steht dort als Liste einzelner Wörter.
     def kennt(marke: str) -> bool:
         return (marke in quelle or Path(marke).name in quelle
                 or all(w in quelle for w in marke.split()))

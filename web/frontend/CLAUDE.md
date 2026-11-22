@@ -51,7 +51,7 @@ Pfad in der Capacitor-Hülle ins Nichts zeigte; sie bleibt, weil eine Stelle
 für die Adresse besser ist als achtzig.
 
 Seit 09/2026 ist das keine Bitte mehr, sondern eine ESLint-Regel
-(`no-restricted-syntax` in `.eslintrc.json`) und damit Teil von `npm run lint`
+(`no-restricted-syntax` in `eslint.config.mjs`) und damit Teil von `npm run lint`
 und `pruefe.py`. Sie trifft genau den Fehler — ein Zeichenketten- oder
 Template-Literal, das mit `/api/` beginnt — und lässt `apiUrl(…)` und absolute
 URLs in Ruhe. Eingeführt wurde sie mit **null** Verstößen im Bestand; sie
