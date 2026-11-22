@@ -14849,6 +14849,8 @@ export interface components {
             coalitions: components["schemas"]["MajorityCoalition"][];
             /** Overview */
             overview: components["schemas"]["MajorityOverview"][];
+            /** Partners */
+            partners: components["schemas"]["MajorityPartner"][];
             selection: components["schemas"]["MajoritySelection"];
         };
         /**
@@ -14902,6 +14904,23 @@ export interface components {
             short: string;
             /** Votes */
             votes: number;
+        };
+        /**
+         * MajorityPartner
+         * @description Ein Block, der für die Mehrheit in Frage kommt: Er kommt in mindestens
+         *     einer möglichen Mehrheit zur Auswahl hinzu.
+         */
+        MajorityPartner: {
+            /** Coalitions */
+            coalitions: number;
+            /** Completes */
+            completes: boolean;
+            /** Key */
+            key: string;
+            /** Seats */
+            seats: number;
+            /** Total */
+            total: number;
         };
         /** MajoritySelection */
         MajoritySelection: {
@@ -31740,4 +31759,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d1e90506292786eee2db8cc8b04c41fdd90ef754abc9f525b1ef10487dde2e69
+// vertrag-sha256: 765928d33065ef356b5a1bbf8ff1a9692351419458d2248819363d66be418165

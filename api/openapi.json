@@ -18808,6 +18808,13 @@
             "title": "Overview",
             "type": "array"
           },
+          "partners": {
+            "items": {
+              "$ref": "#/components/schemas/MajorityPartner"
+            },
+            "title": "Partners",
+            "type": "array"
+          },
           "selection": {
             "$ref": "#/components/schemas/MajoritySelection"
           }
@@ -18819,6 +18826,7 @@
           "advisory",
           "selection",
           "coalitions",
+          "partners",
           "overview",
           "as_of"
         ],
@@ -18936,6 +18944,40 @@
           "possible"
         ],
         "title": "MajorityOverview",
+        "type": "object"
+      },
+      "MajorityPartner": {
+        "description": "Ein Block, der für die Mehrheit in Frage kommt: Er kommt in mindestens\neiner möglichen Mehrheit zur Auswahl hinzu.",
+        "properties": {
+          "coalitions": {
+            "title": "Coalitions",
+            "type": "integer"
+          },
+          "completes": {
+            "title": "Completes",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "seats",
+          "total",
+          "completes",
+          "coalitions"
+        ],
+        "title": "MajorityPartner",
         "type": "object"
       },
       "MajoritySelection": {

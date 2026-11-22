@@ -220,6 +220,36 @@ def test_stimmberechtigte_ohne_ratsmandat_sind_kein_partner():
     assert any("ohne Ratsmandat" in n for n in out["body"]["notes"])
 
 
+def test_partner_sind_die_die_fuer_die_mehrheit_in_frage_kommen():
+    """Grüne + SPD haben 25 von 27: Jeder Block ab zwei Stimmen reicht allein,
+    die drei Einzelstimmen nur zu zweit — und wer auf „ohne“ steht, nie."""
+    out = majorities.calculate(_rat(), "rat", ["gruene", "spd"], ["afd"])
+    by = {p["key"]: p for p in out["partners"]}
+    assert set(by) == {"linke", "cdu", "zukunft-oldenburg", "fdp", "volt", "bsw", "obm", "ob"}
+    assert all(by[k]["completes"] for k in ("linke", "cdu", "zukunft-oldenburg", "fdp", "volt"))
+    assert not any(by[k]["completes"] for k in ("bsw", "obm", "ob"))
+    assert by["linke"]["total"] == 32 and by["bsw"]["total"] == 26
+    # Wer allein reicht, steht vorn.
+    reicht = [p["completes"] for p in out["partners"]]
+    assert reicht == sorted(reicht, reverse=True)
+
+
+def test_ein_entbehrlicher_block_kommt_nicht_in_frage():
+    """A (3) braucht 5 von 9: Mit B (5) reicht es, C (1) hilft allein nicht und
+    wäre neben B überflüssig — C ist kein Vorschlag."""
+    rows = [{"committee": "Rat", "kgrnr": 22, "position": i, "kpenr": i + 1, "name": f"P{i}",
+             "faction": f, "role": "Ratsmitglied", "voting": 1, "fetched_at": None}
+            for i, f in enumerate(["SPD"] * 3 + ["CDU"] * 5 + ["BSW"])]
+    out = majorities.calculate(rows, "rat", ["spd"], [])
+    assert [p["key"] for p in out["partners"]] == ["cdu"]
+
+
+def test_ohne_auswahl_oder_mit_mehrheit_gibt_es_keine_vorschlaege():
+    assert majorities.calculate(_rat(), "rat", [], [])["partners"] == []
+    assert majorities.calculate(_rat(), "rat", ["gruene", "spd", "linke"], [])["partners"] == []
+    assert majorities.calculate(_rat(), "rat", ["fdp"], ["gruene", "spd", "linke"])["partners"] == []
+
+
 def test_die_uebersicht_rechnet_dieselbe_auswahl_in_jedem_gremium():
     rows = _rat()
     rows += [{"committee": "Verkehrsausschuss", "kgrnr": 35, "position": i, "kpenr": i + 1,

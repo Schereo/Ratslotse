@@ -8287,6 +8287,19 @@ class MajorityCoalition(TypedDict):
     added: list[str]
 
 
+class MajorityPartner(TypedDict):
+    """Ein Block, der für die Mehrheit in Frage kommt: Er kommt in mindestens
+    einer möglichen Mehrheit zur Auswahl hinzu."""
+    key: str
+    seats: int
+    #: Stimmen der Auswahl zusammen mit diesem Block.
+    total: int
+    #: Reicht dieser eine Block, damit die Auswahl die Mehrheit hat?
+    completes: bool
+    #: In wie vielen der möglichen Mehrheiten er vorkommt.
+    coalitions: int
+
+
 class MajorityOverview(TypedDict):
     """Die Auswahl in einem Gremium — eine Zeile der Übersicht über alle."""
     key: str
@@ -8310,6 +8323,9 @@ class MajorityCalculator(TypedDict):
     advisory: list[MajorityAdvisory]
     selection: MajoritySelection
     coalitions: list[MajorityCoalition]
+    #: Wer für die Mehrheit in Frage kommt — nur, wenn etwas auf „dabei“ steht
+    #: und noch Stimmen fehlen. Wer allein reicht, zuerst.
+    partners: list[MajorityPartner]
     #: Dieselbe Auswahl in jedem Gremium, in der Reihenfolge von ``bodies``.
     overview: list[MajorityOverview]
     #: Zeitpunkt des Abrufs aus dem Ratsinfo (UTC, ISO).

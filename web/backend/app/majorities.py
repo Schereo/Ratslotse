@@ -33,7 +33,7 @@ from typing import Literal
 
 from .antworten import (MajorityAdvisory, MajorityBlock, MajorityBody, MajorityBodyOption,
                         MajorityCalculator, MajorityCoalition, MajorityOverview,
-                        MajoritySelection)
+                        MajorityPartner, MajoritySelection)
 
 KOMMUNALWAHL = Path(__file__).resolve().parents[3] / "kommunalwahl"
 RIS_GREMIUM = "https://ratsinfo.oldenburg.de/bi/kp0040.asp?__kgrnr={kgrnr}"
@@ -302,7 +302,7 @@ def calculate(seats: list[dict], body_key: str | None, include: list[str],
         return {"bodies": [], "body": None, "blocks": [], "advisory": [],
                 "selection": {"include": [], "exclude": [], "seats": 0, "missing": 0,
                               "has_majority": False, "max_seats": 0, "possible": False},
-                "coalitions": [], "overview": [], "as_of": as_of}
+                "coalitions": [], "partners": [], "overview": [], "as_of": as_of}
 
     rat = next((b for b in bodies if b.name == RAT), None)
     council_seats: dict[str, int] = {}
@@ -351,12 +351,29 @@ def calculate(seats: list[dict], body_key: str | None, include: list[str],
          "added": [k for k in c if k not in incl]}
         for c, s in (_coalitions(blocks, need, incl, excl) if max_seats >= need else [])]
 
+    # Wer kommt für die Mehrheit in Frage? Jeder Block, der in mindestens einer
+    # der Kombinationen zur Auswahl hinzukommt — also nie einer, der nur als
+    # entbehrlicher Mitläufer dabei wäre. Nur mit einer Auswahl, der noch
+    # Stimmen fehlen; ohne Auswahl wäre es schlicht jeder.
+    partners: list[MajorityPartner] = []
+    if incl and picked < need:
+        count: dict[str, int] = {}
+        for c in coalitions:
+            for k in c["added"]:
+                count[k] = count.get(k, 0) + 1
+        partners = [
+            {"key": b.faction.key, "seats": b.seats, "total": picked + b.seats,
+             "completes": picked + b.seats >= need, "coalitions": count[b.faction.key]}
+            for b in blocks if b.faction.key in count]
+        # Wer allein reicht, zuerst; sonst bleibt die Reihenfolge der Blöcke.
+        partners.sort(key=lambda p: not p["completes"])
+
     out_body: MajorityBody = {
         "key": body.key, "name": body.name, "short": _short(body.name), "kind": body.kind,
         "votes": body.votes, "majority": need, "notes": _notes(body, blocks),
         "source_url": RIS_GREMIUM.format(kgrnr=body.kgrnr) if body.kgrnr else RIS_GREMIEN,
     }
     return {"bodies": options, "body": out_body, "blocks": out_blocks, "advisory": advisory,
-            "selection": selection, "coalitions": coalitions,
+            "selection": selection, "coalitions": coalitions, "partners": partners,
             "overview": _overview(bodies, council_seats, selection["include"], selection["exclude"]),
             "as_of": as_of}
