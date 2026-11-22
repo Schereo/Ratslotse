@@ -88,3 +88,10 @@ export function reihenFuer(sitze: number): number {
   if (sitze <= 30) return 2;
   return 3;
 }
+
+/** Die Mail, mit der man ein Werkzeug vorschlägt — Betreff und Anfang stehen schon da. */
+export function vorschlagMailto(adresse: string): string {
+  const betreff = "Idee für ein Werkzeug";
+  const text = "Welches Werkzeug würde dir bei der Ratsarbeit helfen?\n\n";
+  return `mailto:${adresse}?subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text)}`;
+}

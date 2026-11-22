@@ -61,3 +61,11 @@ it("zählt Namen auf, wie man sie sagt", () => {
   expect(aufzaehlung(["Grüne"])).toBe("Grüne");
   expect(aufzaehlung(["Grüne", "SPD", "Linke"])).toBe("Grüne, SPD und Linke");
 });
+
+it("baut die Vorschlags-Mail mit Betreff und Anfang", async () => {
+  const { vorschlagMailto } = await import("./werkzeuge");
+  const m = vorschlagMailto("post@example.org");
+  expect(m.startsWith("mailto:post@example.org?subject=")).toBe(true);
+  expect(decodeURIComponent(m)).toContain("Idee für ein Werkzeug");
+  expect(m).not.toContain(" ");
+});
