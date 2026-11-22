@@ -6,7 +6,8 @@ Architektur, Datenverarbeitung, KI-Pipeline, Betrieb und technische Entscheidung
 
 ## Lokal arbeiten
 
-Vom Repository-Root aus, mit Node.js ab Version 22:
+Vom Repository-Root aus, mit Node.js ab Version 22.23.4 (das verlangt Astro 7.4;
+die CI nimmt mit `node-version: 22` die jeweils neueste 22.x):
 
 ```bash
 npm --prefix docs-site ci

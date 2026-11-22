@@ -44,6 +44,12 @@ const { code } = Astro.props;
     mermaid.initialize({
       startOnLoad: false,
       theme: isDark() ? "dark" : "neutral",
+      // Seit mermaid 12 sind ELK, der „neo"-Look, 120 px Umbruchbreite und eine
+      // Mindestbreite je Knoten die Vorgabe. Die vier Werte hier halten
+      // Anordnung und Aussehen der Diagramme wie unter mermaid 11.
+      layout: "dagre",
+      look: "classic",
+      flowchart: { wrappingWidth: 200, minNodeWidth: 0 },
       fontFamily: "ui-sans-serif, system-ui, sans-serif",
     });
     for (const block of document.querySelectorAll<HTMLElement>(".mermaid-block")) {

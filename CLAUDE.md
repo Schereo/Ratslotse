@@ -66,7 +66,7 @@ cd web/frontend && npm ci
 # Beispiel für Backend-Port 8600; den Port aus scripts/dev.py start verwenden:
 BACKEND_URL=http://127.0.0.1:8600 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8600 npm run dev
 
-# Technik-Doku (separates Terminal im Repo-Root, Node ≥ 22)
+# Technik-Doku (separates Terminal im Repo-Root, Node ≥ 22.23.4)
 npm --prefix docs-site ci && npm --prefix docs-site run dev
 
 # Tests (Repo-Root)

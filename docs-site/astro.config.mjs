@@ -1,12 +1,71 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import { satteri } from '@astrojs/markdown-satteri';
 import starlight from '@astrojs/starlight';
+
+/**
+ * Deutsche Schlusszeichen: „…“ statt „…”.
+ *
+ * Die Quellen schreiben das Schlusszeichen meist gerade („Ähnliche
+ * Beschlüsse"). Der Markdown-Prozessor Sätteri macht daraus seit 0.10.0 ein ”,
+ * weil er ein unpaariges schließendes " als englisches Schlusszeichen setzt;
+ * bis 0.9 wurde es ein “ — für deutschen Text das richtige, aber Zufall. Eine
+ * Sprachoption hat Sätteri nicht.
+ *
+ * Das Plugin wandelt NUR ein ”, das ein offenes „ schließt. Englische
+ * Anführungen (“…”), Zollzeichen und alles in Code bleiben, wie sie sind: Code
+ * ist kein Textknoten, und ohne offenes „ wird nichts angefasst. Gezählt wird
+ * je Absatz, Überschrift, Listenpunkt und Tabellenzelle neu, damit ein
+ * vergessenes Schlusszeichen nicht in den nächsten Block wirkt.
+ *
+ * Kann weg, sobald Sätteri (oder Astro) die Anführungszeichen nach der Sprache
+ * der Seite setzt — oder sobald die Quellen durchgehend „…“ schreiben.
+ *
+ * Eine Fabrik und kein festes Objekt: Sätteri ruft sie je Dokument einmal,
+ * der Zähler gehört damit genau einem Dokument.
+ */
+const germanClosingQuotes = () => {
+	let open = 0;
+	const reset = () => {
+		open = 0;
+	};
+	return {
+		name: 'german-closing-quotes',
+		paragraph: reset,
+		heading: reset,
+		listItem: reset,
+		tableCell: reset,
+		/**
+		 * @param {{ value: string }} node
+		 * @param {{ setProperty: (node: any, key: 'value', value: string) => void }} ctx
+		 */
+		text(node, ctx) {
+			let changed = false;
+			const value = [...node.value]
+				.map((ch) => {
+					if (ch === '„') open++;
+					else if (ch === '“' && open > 0) open--;
+					else if (ch === '”' && open > 0) {
+						open--;
+						changed = true;
+						return '“';
+					}
+					return ch;
+				})
+				.join('');
+			if (changed) ctx.setProperty(node, 'value', value);
+		},
+	};
+};
 
 // Ausgeliefert unter ratslotse.de/docs (statische Site, hinter Caddy/Next).
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://ratslotse.de',
 	base: '/docs',
+	markdown: {
+		processor: satteri({ mdastPlugins: [germanClosingQuotes] }),
+	},
 	integrations: [
 		starlight({
 			title: 'Ratslotse — Technik',
