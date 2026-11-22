@@ -254,15 +254,38 @@ const nextConfig = {
   reactStrictMode: true,
   // Don't advertise the framework in the X-Powered-By header.
   poweredByHeader: false,
-  // No image optimizer: `/_next/image` answers 404. Next 14 runs it through
-  // `sharp`, and the copy it found (0.32.6, pulled in only by
-  // `@capacitor/assets`) carried the libvips/libheif flaws behind two
+  // `next dev` legt seit Next 16.2 von sich aus eine `AGENTS.md` neben die
+  // package.json, sobald es einen Coding-Agent erkennt. Die Regeln dieses
+  // Repos stehen in den CLAUDE.md-Dateien (die AGENTS.md der Wurzel ist ein
+  // Symlink darauf); eine zweite Datei, die von selbst entsteht, läge als
+  // fremde Änderung in jedem Arbeitsbaum. Ihren einen Hinweis — die Doku zur
+  // installierten Fassung liegt in node_modules/next/dist/docs/ — trägt
+  // web/frontend/CLAUDE.md.
+  agentRules: false,
+  // No image optimizer: `/_next/image` answers 404. The optimizer runs images
+  // through `sharp`. Under Next 14 the copy it found (0.32.6, pulled in only
+  // by `@capacitor/assets`) carried the libvips/libheif flaws behind two
   // unauthenticated RCE advisories (GHSA-2464-fhr4-w9xw, GHSA-2xp9-vwfh-vxw4;
-  // fixed only from sharp 0.35.5 / Next 15.5.28). `@capacitor/assets` is gone
-  // since 11/2026, but the optimizer stays off: we use `next/image` for a
-  // handful of our own small PNG icons, which lose nothing by being served
-  // as they are.
+  // fixed from sharp 0.35.5 / Next 15.5.28). Next 16.4 brings sharp 0.35.5
+  // itself and `@capacitor/assets` is gone since 11/2026, so the flaw is no
+  // longer the reason. The optimizer stays off all the same: we use
+  // `next/image` for a handful of our own small PNG icons, which lose nothing
+  // by being served as they are.
   images: { unoptimized: true },
+  experimental: {
+    // Der Client-Router hält Seiten-Segmente dynamischer Routen wieder 30 s
+    // vor, wie unter Next 14. Seit Next 15 ist die Vorgabe 0: Jeder Klick auf
+    // eine Detailseite (/council/decision?id=…, …) holte ihr RSC-Paket neu,
+    // auch beim Hin und Her zwischen zwei Beschlüssen. Die Daten selbst laden
+    // die Ansichten ohnehin über /api, veralten kann hier also nichts.
+    staleTimes: { dynamic: 30 },
+    // Turbopack schriebe sonst nach jedem Build einen Cache nach
+    // `<distDir>/cache/turbopack`. Die Deploys beginnen jeden Build in einem
+    // leeren `.next-build` (s. u. und deploy*.yml), gelesen würde er also nie
+    // — er läge nur als Ballast im ausgelieferten Verzeichnis. Der Dev-Server
+    // behält seinen Cache (`.next-dev/dev/cache`).
+    turbopackFileSystemCacheForBuild: false,
+  },
   // Die Abdrücke der Bündel für lib/asset-paths.ts (zur Bauzeit einkompiliert,
   // passend zu den Dateien, die derselbe Build ausliefert).
   env: { LOTTI_BUNDLE_VERSION: LOTTI_VERSION, GEO_BUNDLE_VERSION: GEO_VERSION },

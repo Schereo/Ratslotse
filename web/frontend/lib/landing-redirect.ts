@@ -25,7 +25,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * Backend, und eine zwischengespeicherte Umleitung überlebte im Router das
  * Abmelden. Beim Klicken übernimmt wie bisher der Rückfall im Browser.
  * Erkannt wird das an `Sec-Fetch-Dest` — die `RSC`-Kopfzeilen und `?_rsc=`
- * nimmt Next der Middleware vorher weg.
+ * nimmt Next dem Proxy (`proxy.ts`, bis Next 15 `middleware.ts`) vorher weg.
  */
 
 /** Wie `COOKIE_NAME` in `web/backend/app/session.py`. */

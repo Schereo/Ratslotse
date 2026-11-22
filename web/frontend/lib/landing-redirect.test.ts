@@ -62,7 +62,7 @@ describe("redirectSignedIn", () => {
   });
 
   it("lässt Client-Navigation und Prefetch durch (dort leitet der Rückfall im Browser)", async () => {
-    // Next nimmt der Middleware die RSC-Kopfzeilen weg; was bleibt, ist
+    // Next nimmt dem Proxy die RSC-Kopfzeilen weg; was bleibt, ist
     // `Sec-Fetch-Dest: empty` und `Accept: */*`.
     const check = vi.fn(async () => true);
     const varianten: Record<string, string>[] = [
