@@ -563,7 +563,7 @@ Anbinden einer Tabelle, ob die neuen Suchmuster die richtige Quelle
 auswählen und die Auswahl vorhandener Quellen nicht unbeabsichtigt ändern.
 :::
 
-## Der Bereich hält sich selbst aktuell
+## Aktualisierung der Haushaltsdaten
 
 Alle **dreiunddreißig** Datenschichten wurden anfangs manuell eingelesen.
 `check_finanzdaten.py` überwacht die Aktualität am Sonntag. Für **zehn**
