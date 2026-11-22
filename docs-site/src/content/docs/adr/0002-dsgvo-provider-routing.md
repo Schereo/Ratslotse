@@ -1,6 +1,6 @@
 ---
 title: 0002 — DSGVO-Provider-Routing
-description: China-Anbieter ausschließen und Zero-Data-Retention erzwingen.
+description: Ausschluss von Anbietern aus China und Regeln zur Zero Data Retention.
 sidebar:
   order: 2
 ---
@@ -16,34 +16,35 @@ gehen oder bei Anbietern landen, die Eingaben zum Training speichern.
 
 ## Entscheidung
 
-`kern/llm.py` setzt ein **Provider-Routing** durch (per Env steuerbar):
+`kern/llm.py` setzt das **Provider-Routing** anhand von
+Umgebungsvariablen um.
 
 - `NWZ_OPENROUTER_IGNORE` schließt bestimmte Anbieter-Slugs aus
-  (Default: `deepseek,baidu,streamlake,siliconflow,alibaba`).
+  (Standardwert `deepseek,baidu,streamlake,siliconflow,alibaba`).
 - `NWZ_OPENROUTER_ZDR=1` verlangt **Zero Data Retention** (keine Speicherung/kein
   Training auf den Daten).
-- `NWZ_OPENROUTER_ROUTING=off` ist ein Notausschalter, der den Block komplett
-  deaktiviert.
+- `NWZ_OPENROUTER_ROUTING=off` deaktiviert den gesamten Routing-Block.
 
 ## Konsequenzen
 
 - **Plus:** KI-Anfragen gehen nicht an ausgeschlossene Anbieter; ZDR reduziert das
   Risiko, dass Inhalte gespeichert oder zum Training genutzt werden.
-- **Plus:** Über Env steuerbar — kein Code-Deploy nötig, um auf Anbieter-
-  Änderungen zu reagieren.
+- **Plus:** Bei Änderungen auf Anbieterseite lässt sich das Routing
+  über Umgebungsvariablen anpassen, ohne neuen Code zu deployen.
 - **Minus:** Die Anbieter-Auswahl schrumpft, was Verfügbarkeit/Preis verschlechtern
   kann. Der Ausschluss per Slug muss gepflegt werden, wenn neue Anbieter
   dazukommen.
-- **Hinweis:** Die DeepSeek-Modelle, die als *Defaults* der Protokoll-Pipelines
-  konfiguriert sind, werden über OpenRouter bei DSGVO-konformen Hostern geroutet —
-  der Ausschluss betrifft den Anbieter-Slug `deepseek` (direktes Hosting), nicht
-  das Modellgewicht als solches. Beim Tunen beider Stellschrauben aufeinander achten.
+- **Hinweis:** Die Protokoll-Pipelines verwenden standardmäßig
+  DeepSeek-Modelle. OpenRouter leitet diese Anfragen an DSGVO-konforme
+  Anbieter weiter. Der Ausschluss von `deepseek` betrifft das direkte
+  Hosting. Berücksichtige bei Konfigurationsänderungen sowohl das Modell
+  als auch den Anbieter.
 
 ## Nachtrag 22.09.2026: ZDR nur, wo Nutzereingaben im Prompt stehen
 
-Die ZDR-Pflicht galt bis hierhin für jeden Aufruf. Sie schützt aber nur
-etwas, wenn der Prompt Text enthält, den eine Nutzerin selbst geschrieben
-hat — eine Frage, ein Thema, Lottis Seitenkontext. Die meisten Crons lesen
+Bis dahin galt die ZDR-Pflicht für jeden Aufruf. Maßgeblich für die
+Entscheidung war der Schutz von Nutzereingaben im Prompt, etwa bei Fragen,
+Themen oder Lottis Seitenkontext. Die meisten Cron-Jobs verarbeiten
 ausschließlich öffentliche Ratsdokumente.
 
 Anlass war ein gemessener Ausschluss: GPT-6 Luna bieten bisher nur OpenAI
@@ -52,12 +53,12 @@ Dasselbe gilt für OpenAIs Flex-Tarif.
 
 **Entscheidung (Tim):** Features, die nur öffentliche Daten verarbeiten,
 dürfen an Anbieter ohne ZDR. Sie stehen einzeln in
-`kern/llm.py::OHNE_NUTZEREINGABE` (dazu alle `cities_*`-Annotatoren). Die
-Liste ist eine **Freigabe**: Ein Feature, das dort fehlt — auch ein Aufruf
-ohne `_feature` —, bleibt bei ZDR. `data_collection: deny` (kein Training)
+`kern/llm.py::OHNE_NUTZEREINGABE` (dazu alle `cities_*`-Annotatoren). Nur die aufgeführten Features sind von der ZDR-Pflicht ausgenommen.
+Für andere Features und für Aufrufe ohne `_feature` bleibt ZDR Pflicht. `data_collection: deny` (kein Training)
 und der China-Ausschluss gelten für **alle** Aufrufe unverändert.
-`tests/test_llm.py` hält fest, dass die Nutzer-Pfade (KI-Frage, Deep, Lotti,
-Themen-Beschreibung, Vagheits-Prüfung) nie in der Liste landen.
+`tests/test_llm.py` prüft, dass die Verarbeitung von Nutzereingaben
+(KI-Frage, ausführliche Recherche, Lotti, Themenbeschreibung und Prüfung
+auf zu allgemeine Themen) von der Freigabe ausgenommen bleibt.
 
 ## Nachtrag 22.09.2026: Flex- und Batch-Tarif
 
@@ -90,9 +91,8 @@ Luna in 12 von 14 fehlerfrei, Gemini 2.5 Flash (das bisherige Modell, bei
 OpenRouter ab 20.10.2026 abgeschaltet) in 5 von 14. GPT-6 Luna bieten nur
 OpenAI direkt und Amazon Bedrock an, beide ohne ZDR.
 
-Umgesetzt als **benannte Ausnahme**, nicht als Lockerung:
-`kern/llm.py::ZDR_VERZICHT` nennt genau die Features, die diese beiden
-Modelle lesen (`assistant_explain`, `qa_answer`, `qa_simple`, `deep_report`,
+`kern/llm.py::ZDR_VERZICHT` führt die **Ausnahmen** für die Features auf,
+die diese beiden Modelle nutzen (`assistant_explain`, `qa_answer`, `qa_simple`, `deep_report`,
 `party_opinions`). Alles andere mit Nutzereingabe — die Frage-Analyse vor der
 Suche, der Watcher, die Themen-Beschreibung, die Vagheits-Prüfung und jeder
 Aufruf ohne `_feature` — behält ZDR. Für die Ausnahme gelten weiter
@@ -124,12 +124,12 @@ Verzicht gilt damit nur noch für den Rückfall.
   GPT-6 Sol. Beide haben `azure/eu`, geprüft am 23.09. Für ein Modell ohne
   Eintrag bleibt das bisherige Routing. Ein EU-Versuch dort wäre ein
   sicherer 404, und jeder Aufruf würde als Rückfall gezählt.
-- **Wann zurückgefallen wird:** bei allem, was `_is_transient` als
-  vorübergehend kennt (429, 5xx, Netz, 200er ohne `choices`), bei einem 404
-  und bei einem Fehler-Ereignis im Strom. **Nicht** bei einem
-  Inhaltsfilter-Treffer. Der hängt am Text, und ein Rückfall schickte genau
-  diesen Text in die USA. Im Strom wird nur zurückgefallen, solange noch
-  kein Token beim Leser ist.
+- **Wann der Fallback greift.** `_is_transient` erkennt vorübergehende
+  Fehler (429, 5xx, Netzfehler, 200er ohne `choices`). Der Fallback greift
+  auch bei 404 und bei einem Fehler im Stream. Ein Inhaltsfilter-Treffer
+  löst keinen Fallback aus, da der betroffene Text sonst in die USA
+  übertragen würde. Beim Streaming greift der Fallback nur vor dem ersten
+  an den Client gesendeten Token.
 - **Was der erste Weg im Fehlerfall kostet:** Er ist das normale `_create`
   mit vier schnellen Anläufen, ohne Geduld. Bei einem vorübergehenden
   Fehler sind das 2 + 2 + 4 = 8 s Pause plus die Anläufe selbst, bei einem
@@ -191,11 +191,11 @@ auf dev 0 von rund 620 Antwort-Aufrufen seit dem 23.09.
   Vagheits-Prüfung ist eine Spur strenger („Ausbau der Kita-Plätze“ gilt als
   zu allgemein). Lottis Prüfer: Claude Haiku 5.5 (EU), am Fakten-Lauf vom
   25.09. Fehlalarme 0/29 statt 1/29, Absagen 30/30, halber Preis.
-- **Notausgang:** `RATSLOTSE_KI_AUSSERHALB_EU=1` stellt das Verhalten des
-  vorigen Nachtrags wieder her (Rückfall, Modelle ohne EU-Anbieter). Gedacht
-  für eine längere Störung bei Azure EU. Wer ihn setzt, ändert, was die
-  Oberfläche verspricht („KI in der EU“), und die Datenschutzerklärung muss
-  es dann sagen.
+- **Fallback bei längerem Ausfall von Azure EU.**
+  `RATSLOTSE_KI_AUSSERHALB_EU=1` stellt das Verhalten des vorigen Nachtrags
+  wieder her. Dadurch sind der Fallback und Modelle ohne EU-Anbieter
+  wieder zulässig. Bei Aktivierung muss die Datenschutzerklärung die
+  Abweichung von der Angabe „KI in der EU“ ausweisen.
 - **Was bleibt:** OpenRouter selbst sitzt in den USA und vermittelt jede
   Anfrage. Die Datenschutzerklärung nennt das unter „Drittlandübermittlung“.
 
