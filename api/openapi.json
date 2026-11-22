@@ -16397,6 +16397,10 @@
             "title": "Notes",
             "type": "array"
           },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
           "short": {
             "title": "Short",
             "type": "string"
@@ -16418,6 +16422,7 @@
           "votes",
           "majority",
           "notes",
+          "reachable",
           "source_url"
         ],
         "title": "MajorityBody",
@@ -16522,6 +16527,10 @@
                 "title": "Notes",
                 "type": "array"
               },
+              "reachable": {
+                "title": "Reachable",
+                "type": "boolean"
+              },
               "short": {
                 "title": "Short",
                 "type": "string"
@@ -16543,6 +16552,7 @@
               "votes",
               "majority",
               "notes",
+              "reachable",
               "source_url"
             ],
             "title": "MajorityBody",
@@ -16676,6 +16686,10 @@
             "title": "Possible",
             "type": "boolean"
           },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
           "seats": {
             "title": "Seats",
             "type": "integer"
@@ -16698,7 +16712,8 @@
           "seats",
           "has_majority",
           "missing",
-          "possible"
+          "possible",
+          "reachable"
         ],
         "title": "MajorityOverview",
         "type": "object"
