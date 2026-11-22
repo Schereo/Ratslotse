@@ -60,6 +60,32 @@ def test_jeder_geschriebene_wert_wird_auch_gezeigt():
     )
 
 
+def test_die_oberflaeche_meldet_nur_bekannte_handlungen():
+    """`lib/ui-events.ts` und `UI_EVENTS` sind zwei Listen derselben Namen.
+
+    Der Server weist einen unbekannten Namen ab — aber die Meldung geht mit
+    `sendAndForget` raus und verschluckt die Absage. Ein Name, der nur auf
+    einer Seite steht, zählte also dauerhaft 0 und sähe aus wie „benutzt
+    niemand". Beide Richtungen: gemeldet ohne Gegenstück, und ein Gegenstück,
+    das niemand mehr meldet.
+    """
+    router = (BACKEND / "routers" / "feedback.py").read_text(encoding="utf-8")
+    block = re.search(r"^UI_EVENTS: dict\[str, str\] = \{(.*?)^\}", router, re.M | re.S)
+    assert block, "web/backend/app/routers/feedback.py: `UI_EVENTS` nicht gefunden"
+    bekannt = set(re.findall(r'"([a-z_]+)"\s*:', block.group(1)))
+
+    quelle = (WURZEL / "web" / "frontend" / "lib" / "ui-events.ts").read_text(encoding="utf-8")
+    typ = re.search(r"export type UiEvent\s*=([^;]+);", quelle)
+    assert typ, "lib/ui-events.ts: `export type UiEvent = …;` nicht gefunden"
+    gemeldet = set(re.findall(r'"([a-z_]+)"', typ.group(1)))
+    assert gemeldet and gemeldet == bekannt, (
+        "Die Namen in web/frontend/lib/ui-events.ts (UiEvent) und UI_EVENTS in "
+        "web/backend/app/routers/feedback.py müssen übereinstimmen — "
+        f"nur im Frontend: {sorted(gemeldet - bekannt)}, "
+        f"nur im Backend: {sorted(bekannt - gemeldet)}"
+    )
+
+
 def _zaehle(store: Store, uid: int, feature: str, n: int = 1, tag: date | None = None) -> None:
     with store._conn:
         store._conn.execute(

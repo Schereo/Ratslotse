@@ -5368,6 +5368,12 @@ class Store:
         ("topic_created", "Themen angelegt"),
         ("bookmark", "Lesezeichen gesetzt"),
         ("template_follow", "Vorgängen gefolgt"),
+        # Seit 11/2026 (Tims Frage 22.11.: „die wird von keinem genutzt"). Zwei
+        # Zeilen, weil die Palette zwei Eingänge hat: ⌘K bzw. der Knopf neben
+        # dem Logo, und die Lupe in der Kopfzeile des Telefons — die tippt an,
+        # wer schlicht suchen will (``UI_EVENTS`` im Feedback-Router).
+        ("command_palette_desktop", "Befehlspalette geöffnet (⌘K oder Knopf)"),
+        ("command_palette_mobile", "Befehlspalette geöffnet (Lupe am Telefon)"),
     )
 
     def lotti_auswertung(self, tage: int = 30, council_db: str | None = None) -> dict:

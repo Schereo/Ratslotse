@@ -218,9 +218,10 @@ sein soll, liegt hinter einem Feature-Schalter.
 
 Alle Jobs laufen auf der App-VM; maßgeblich ist die dort eingetragene Crontab.
 Die Kopie, gegen die die Überfällig-Ampel im Admin-Panel und
-`check_herzschlag.py` rechnen, steht in `kern/jobs.py` — die Tabelle hier
-folgt ihr (Stand 10/2026: 20 Jobs). Ein Job ohne Zeile in dieser Tabelle ist
-ein Hinweis, dass jemand nur eine der beiden Stellen nachgezogen hat.
+`check_herzschlag.py` rechnen, steht in `kern/jobs.py`. Daraus entsteht die
+[Referenz: Cron-Jobs](/docs/referenz/cron-jobs/) von selbst; die Tabelle hier
+trägt zusätzlich die Zeile der crontab und mehr Zusammenhang. Ein Job ohne
+Zeile in dieser Tabelle macht `tests/test_docs_current.py` rot.
 
 | Skript | Rhythmus | Aufgabe |
 |---|---|---|
@@ -228,13 +229,15 @@ ein Hinweis, dass jemand nur eine der beiden Stellen nachgezogen hat.
 | `check_committees.py` | täglich `0 7 * * *` | Gremienliste und Kalender (3 Monate voraus) auffrischen, Terminplan-Sitzungen ohne Tagesordnung mitschreiben, Tagesordnungen zusammenfassen und Ausschuss-Abonnent*innen benachrichtigen (auch bei *geänderter* Tagesordnung, erkannt über einen Agenda-Hash). |
 | `check_council.py` | zweimal täglich `0 8,14 * * *` | Kommende Sitzungen gegen die Themen aller Nutzer*innen klassifizieren und Treffer per E-Mail/Push ausliefern. |
 | `check_protocols.py` | täglich `0 9 * * *` | Neue Protokolle parsen — und alles Nachgelagerte gleich mit (siehe unten). |
-| `weekly_enrich.py` | sonntags `0 3 * * 0` | LLM- und Embedding-Backfills in 14 Schritten (siehe unten). |
+| `weekly_enrich.py` | sonntags `0 3 * * 0` | Nachläufe mit und ohne Modell in 23 Schritten (siehe unten). |
 | `remind_setup.py` | täglich `0 11 * * *` | Genau eine Service-Mail an Konten, die den Einrichtungs-Assistenten angefangen und seit 48 h nicht beendet haben. |
 | `abendmeldungen.py` | täglich `0 18 * * *` | Abend-Anlässe aus Design 30a: N5 Vorabend-Erinnerung täglich, N6 Wochenüberblick nur sonntags. N5 ist standardmäßig aus, N6 seit 09/2026 für neue Konten an. |
 | `check_finanzdaten.py`&nbsp;¹ | sonntags `0 6 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#der-bereich-hält-sich-selbst-aktuell). |
 | `check_beteiligungsbericht.py` | sonntags `30 6 * * 0` | Lädt die Beteiligungsberichte von oldenburg.de und liest Gesellschaften, Aufsichtsorgane und Kennzahlen daraus. Der einzige Haushalts-Cron, der selbst herunterlädt. |
 | `archive_statistik.py` | täglich `0 4 * * *` | Sichert die amtlichen Statistik-Quellen versioniert unter `data/archiv/` — siehe unten. |
 | `check_vorlage_follows.py` | täglich `30 9 * * *` | Neue Beratungsstationen und nachgetragene Ergebnisse zu Vorlagen, denen jemand folgt. |
+| `vorlagen_dossiers.py` | zweimal täglich `0 10,15 * * *` | Dossiers für die Vorlagen der nächsten 21 Tage: ein Modellaufruf je Vorlage, jede Aussage gegen die Quelle geprüft ([Sitzung & Tagesordnungspunkt](/docs/sitzungen/#aus-den-unterlagen-das-dossier)). Mit den Schaltern dazu auch Fachwörter und Wahlprogramm-Einordnungen. Je Teil eine Kostengrenze je Lauf. |
+| `antraege_nachzuegler.py` | viermal täglich `0 11,13,16,18 * * *` | An Sitzungstagen und am Tag davor: Tagesordnung neu lesen, neue Änderungsanträge laden und lesen. An anderen Tagen tut er nichts. |
 | `check_council_videos.py` | täglich `30 10 * * *` | Abstimmungsergebnisse aus der O1-Aufzeichnung der Ratssitzung — als vorläufiger Stand, bis das Protokoll kommt. |
 | `record_council_livestream.py` | täglich `0 13 * * *` (UTC) | Schneidet die Ratssitzung live aus dem O1-Stream mit, verfolgt den laufenden TOP und liest die Ergebnisse noch am Abend; an Tagen ohne Ratssitzung ein Leerlauf. |
 | `check_presse.py` | täglich `15 5 * * *` | RSS-Abgleich der städtischen Pressemitteilungen und der laufenden Bauleitplan-Beteiligungen. |
@@ -289,29 +292,43 @@ der frischen Tragweite gerechnet, damit die 50/50-Mischung sofort greift
 
 ### Schrittfolge des Wochenlaufs
 
-`weekly_enrich.py` startet seine Schritte als Subprozesse. Maßgeblich ist die
-`STEPS`-Liste im Skript — sie hat inzwischen 14 Einträge, in dieser Reihenfolge:
+`weekly_enrich.py` startet seine Schritte als Unterprozesse. Maßgeblich ist die
+`STEPS`-Liste im Skript. Sie hat 23 Einträge, in dieser Reihenfolge:
 
-1. **Entitäten (NER)** — `extract_entities.py`, baut `council_entities` neu auf.
-2. **Beschreibungen** — `describe_entities.py`, füllt fehlende Entitäts-Texte (slug-basiert, überlebt den Rebuild).
-3. **Geocoding** — `geocode_entities.py`, verortet neue Orts-Entitäten über Nominatim.
-4. **Embeddings / Ähnliche** — `embed_decisions.py`, berechnet „Ähnliche Beschlüsse" neu ([ADR 0003](/docs/adr/0003-fastembed-statt-torch/)).
-5. **Verwandte Themen** — `build_entity_relations.py`, berechnet „Hängt zusammen mit …" je Thema (kein LLM). Braucht Schritt 1 und 4.
-6. **Themen ↔ Beschlüsse** — `match_topics_decisions.py`, matcht Nutzer-Themen semantisch gegen Beschlüsse.
-7. **Themenfeld-Rückblicke** — `generate_field_recaps.py`, erneuert nur veraltete Felder (faktisch ≈ monatlich je Feld).
-8. **Einfach erklärt** — `generate_simple_summaries.py`, 500er-Tranche, neueste zuerst.
-9. **Personen-Stammdaten** — `backfill_stammdaten.py`, Mandatsträger und Mitgliedschaften aus dem Ratsinfo (kein LLM).
-10. **Tragweite** — `rate_impact.py --limit 500`, bewusst *vor* dem Wichtigkeits-Score.
-11. **Wichtigkeits-Score** — `score_importance.py`, Heuristik über den Gesamtbestand.
-12. **Quizfragen** — `generate_quiz.py`, füllt nur Gebiete unter der Ziel-Fragenzahl auf.
-13. **Interessantheit** — `rate_interest.py --limit 500`, neueste zuerst.
-14. **Fundstücke** — `generate_fundstuecke.py --days 21`, legt fehlende Kalendertage 21 Tage im Voraus an.
+1. **Regex-Ernte** — `ernte_backfill.py`, ohne Modell und ohne Netz. Sie steht vorn, weil jede Verbesserung an den Mustern in `council/ernte.py` erst durch diesen Schritt auf die schon gespeicherten Vorlagen wirkt.
+2. **Sitzungs-Nachlauf** — `nachlauf_sitzungen.py --monate 24`, holt Sitzungen nach, die der tägliche Kalenderlauf verpasst hat (sein Rückblick reicht drei Monate).
+3. **Entitäten** — `extract_entities.py`, baut `council_entities` neu auf.
+4. **Beschreibungen** — `describe_entities.py`, füllt fehlende Texte zu Entitäten.
+5. **Vagheits-Urteile** — `warm_topic_vagueness.py`, rechnet die Urteile über Themen-Vorschläge vor, damit der Einrichtungs-Assistent sie nicht in der Anfrage holen muss.
+6. **Geocoding** — `geocode_entities.py`, verortet neue Orts-Entitäten.
+7. **Straßen-Geometrie** — `strassen_snapshot.py aktualisieren`: **ein** Abruf holt alle benannten Wege der Stadt, der Abgleich läuft danach ohne Netz. Einzelabfragen je Straße scheitern am Limit des Dienstes.
+8. **Embeddings und Ähnliche** — `embed_decisions.py`, berechnet „Ähnliche Beschlüsse“ neu ([ADR 0003](/docs/adr/0003-fastembed-statt-torch/)).
+9. **Anlagen-Texte** — `backfill_anlagen_texte.py --limit 300`, lädt Volltexte neuer Anlagen nach (ohne Modell).
+10. **Anlagen-Embeddings** — `embed_anlagen.py`, schreibt ihre Vektoren für die ausführliche Recherche.
+11. **Verwandte Themen** — `build_entity_relations.py`, berechnet „Hängt zusammen mit …“ je Thema (ohne Modell). Braucht die Schritte 3 und 8.
+12. **Themen ↔ Beschlüsse** — `match_topics_decisions.py`, gleicht die Themen der Nutzer*innen semantisch mit Beschlüssen ab.
+13. **Themenfeld-Rückblicke** — `generate_field_recaps.py`, erneuert nur veraltete Felder.
+14. **Einfach erklärt** — `generate_simple_summaries.py`, 500er-Tranche, neueste zuerst.
+15. **Personen-Stammdaten** — `backfill_stammdaten.py`, Mandatsträger und Mitgliedschaften aus dem Ratsinformationssystem (ohne Modell).
+16. **Tragweite** — `rate_impact.py --limit 500`, bewusst vor dem Wichtigkeits-Score.
+17. **Wichtigkeits-Score** — `score_importance.py`, Heuristik über den Gesamtbestand.
+18. **Bebauungsplan-Flächen** — `fetch_bplan_outlines.py`, ein Abruf beim Geoportal der Stadt (über den [Heim-Proxy](#heim-proxy-gegen-adress-sperren)).
+19. **Mein Viertel** — `build_district_projects.py`, Richter-Urteil je neuem verorteten Beschluss und Bündelung zu Vorhaben ([Mein Viertel](/docs/mein-viertel/#das-register-der-vorhaben)).
+20. **Quizfragen** — `generate_quiz.py`, füllt nur Gebiete unter der Ziel-Fragenzahl auf.
+21. **Quiz aus Daten** — `build_quiz_formats.py`, Fragen aus Anträgen und Haushaltsprodukten (ohne Modell).
+22. **Interessantheit** — `rate_interest.py --limit 500`, neueste zuerst.
+23. **Fundstücke** — `generate_fundstuecke.py --days 21`, legt fehlende Kalendertage 21 Tage im Voraus an.
 
 Jeder Schritt läuft **fehlertolerant**: Ein Fehlschlag wird protokolliert und
 gemerkt, stoppt aber die übrigen Schritte nicht. Am Ende gibt der Lauf eine
-Bilanz („n/14 ok") aus und setzt einen Exit-Code ungleich null, sobald
-mindestens ein Schritt gescheitert ist — daraus wird für den Alarmweg eine
-Exception erzeugt.
+Bilanz aus und setzt einen Exit-Code ungleich null, sobald mindestens ein
+Schritt gescheitert ist; daraus wird für den Alarmweg eine Ausnahme.
+
+Zwei Grenzen halten den Lauf im Zaum: Ein Schritt, der länger braucht als
+`WEEKLY_STEP_MAX_SECONDS` (Vorgabe drei Stunden), wird beendet und zählt als
+Fehlschlag. Und zwischen zwei Schritten sieht der Lauf nach, ob ein Deploy
+wartet, und tritt dann zur Seite; der nächste Sonntag macht weiter, denn
+jeder Schritt fragt „Was fehlt noch?“.
 
 ### Fehler-Alarme
 
@@ -353,8 +370,13 @@ Herzschlag neu ist — sonst käme jeden Tag dieselbe Mail. Die Kennzahlen
 
 ## Ops-Workflows (manuell auslösbar)
 
-Sechs `ops-*`-Workflows, alle per `workflow_dispatch`. Fünf laufen ohne Inputs mit
-festen Befehlen; `ops-entity-dubletten.yml` hat zwei Schalter (siehe Tabelle).
+Die vollständige Liste aller Workflows mit Auslöser und Zweck entsteht aus den
+Dateien selbst: [Referenz: Workflows](/docs/referenz/workflows/). Dieser Abschnitt
+erklärt die Werkzeuge, die im Betrieb am häufigsten gebraucht werden.
+
+Die `ops-*`-Workflows starten per `workflow_dispatch`; zwei laufen zusätzlich
+nach Zeitplan (`ops-erreichbarkeit.yml`, `ops-deploy-rueckstand.yml`). Die
+Tabelle unten beschreibt sechs davon ausführlicher.
 Sie nutzen denselben Deploy-Key und ProxyJump wie `deploy.yml` und führen die
 Skripte direkt auf der App-VM aus — praktisch, wenn kein SSH-Zugang zur Hand
 ist. Nur Collaborator können sie starten.
@@ -819,6 +841,9 @@ Die `.env` liegt ausschließlich auf dem Server und wird vom Deploy nicht
 | `NWZ_OPENROUTER_IGNORE` | Kommaliste ausgeschlossener Provider-Slugs | nein | `deepseek,baidu,streamlake,siliconflow,alibaba` |
 | `NWZ_OPENROUTER_ZDR` | Zero-Data-Retention verlangen — für Aufrufe mit Nutzereingaben; Features mit nur öffentlichen Daten stehen in `kern/llm.py::OHNE_NUTZEREINGABE` und laufen ohne ZDR. `0`/`false`/`off`/`no` lockert es für alle | nein | `1` |
 | `NWZ_DEEPSEEK_MIN_MAX_TOKENS` | Untergrenze für `max_tokens` bei DeepSeek-Reasoning-Modellen | nein | `24000` |
+| `NWZ_GPT56_MIN_MAX_TOKENS` | Untergrenze für `max_tokens` bei den GPT-5.6-Modellen; sonst endet eine Antwort still mit `finish_reason='length'` | nein | `16000` |
+| `NWZ_GEMINI_DENK_MIN_MAX_TOKENS` | Dieselbe Untergrenze für Gemini-Modelle, die vor der Antwort denken | nein | `4000` |
+| `RATSLOTSE_KI_AUSSERHALB_EU` | Notausgang: `1` lässt Nutzereingaben bei einem Ausfall wieder außerhalb der EU laufen (`kern/llm.py::EU_ZUERST`); sonst nur EU | nein | nicht gesetzt |
 
 ### Modellwahl je Aufgabe
 
@@ -849,6 +874,72 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_RERANK_MODEL` | Reranker für die hybride Suche | `jinaai/jina-reranker-v2-base-multilingual` |
 | `COUNCIL_ALIAS_MODEL` | Prüft Themen-Dubletten (`council/aliases.py`) | `deepseek/deepseek-v4-pro` |
 | `TOPIC_INTEL_MODEL` | Themen-Beschreibung und Relevanzprüfung (`council/topic_intel.py`, Azure EU) — bricht die `COUNCIL_`-Namenskonvention | `openai/gpt-5.6-luna` |
+| `COUNCIL_WATCHER_MODEL` | Themen-Zuordnung des Watchers (`council/watcher.py`) | `openai/gpt-5.6-luna` |
+| `COUNCIL_COMMITTEE_MODEL` | Ausschuss-Zusammenfassungen und Kurzfassungen je Tagesordnungspunkt (`council/committee_summary.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_SESSION_SUMMARY_MODEL` | Lottis Satz zur Sitzung (`council/session_summary.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_LOCATION_MODEL` | Ortsbezüge aus Beschlüssen (`council/locations.py`) | `google/gemini-3.1-flash-lite` |
+| `COUNCIL_WORTBEITRAG_MODEL` | Wortbeiträge aus den Protokollen (`council/wortbeitraege.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_KRITIKER_MODEL` | Prüft jeden Kartentext, bevor er gespeichert wird (`council/kritiker.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_SOCIAL_MODEL` | Kartentext für Social Media (`council/social_text.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_DOSSIER_MODEL` | Dossier einer Vorlage (`council/template_dossier.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_MOTIONS_MODEL` | Änderungsanträge lesen (`council/motions.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_ARGUMENTS_MODEL` | Argumente zu einem Vorgang (`council/arguments.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_TERMS_MODEL` | Fachwörter aus der Vorlage vorschlagen (`council/vorlage_begriffe.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_TERMS_VERIFY_MODEL` | … und jede Erklärung prüfen; nur was besteht, erscheint | `openai/gpt-6-sol` |
+| `COUNCIL_PROGRAM_MODEL` | Wahlprogramme zum Punkt einordnen (`council/programm_bezug.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_PROGRAM_VERIFY_MODEL` | … und jede Einordnung bestätigen | `openai/gpt-6-sol` |
+| `COUNCIL_PAGE_QUESTIONS_MODEL` | Vorschlagsfragen auf Punkt- und Beschluss-Seite (`council/vorschlagsfragen.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_PLAN_MODEL` | Pläne der Stadt: Stand je Maßnahme, Umsetzung oder Erwähnung (`council/plan_judge.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_DEEP_MODEL` | Bericht der ausführlichen Recherche; leer heißt wie `COUNCIL_QA_MODEL` | leer |
+| `COUNCIL_DEEP_PLUS_MODEL` | derselbe Bericht für Konten mit dem Recht `premium_models` | `openai/gpt-6-sol` |
+| `COUNCIL_VIDEO_MODEL` | Abstimmungsergebnisse aus Sitzungs-Transkripten (`council/videos.py`) | `openai/gpt-5.6-luna` |
+| `COUNCIL_STT_MODEL` | Transkription der Audio-Stücke, wenn kein Streaming-Schlüssel gesetzt ist (`council/livestream.py`) | `google/gemini-3.1-flash-lite` |
+| `COUNCIL_LIVE_TRACKER_MODEL` | Live-Verfolgung: welcher Punkt läuft, wer spricht (`council/livetracker.py`) | `google/gemini-3.5-flash-lite` |
+| `COUNCIL_OCR_MODEL` | Gescannte Anlagen lesen, Seite als Bild (`council/ocr.py`) | `google/gemini-3.1-flash-lite` |
+| `COUNCIL_OCR_MODEL_ZWEIT` | Zweitleser für dieselbe Seite; Uneinigkeit ist ein Prüffall, kein Mittelwert | `anthropic/claude-sonnet-4.6` |
+| `COUNCIL_QUIZ_MOTION_MODEL` | Quizfragen aus Anträgen (`council/quiz_formats.py`) | `openai/gpt-4o-mini` |
+
+### Suche von „Frag den Rat“
+
+Stellschrauben der hybriden Suche (`council/embeddings.py`). Sie sind gemessen
+gesetzt; wer sie ändert, misst gegen das Gold-Set
+([Frag den Rat](/docs/frag-den-rat/#rückmeldungen-und-messung)).
+
+| Variable | Wofür | Default |
+|---|---|---|
+| `COUNCIL_RETRIEVAL_KLASSISCH` | Notausschalter: `1` stellt die Suche ohne Vorlagen-Stücke her; wirkt ohne Neustart | nicht gesetzt |
+| `COUNCIL_PAIR_MAX_CHARS` | Zeichen-Deckel je Paar für den Reranker | `260` |
+| `COUNCIL_KONTEXT_PAIR_MAX` | derselbe Deckel für die Zusatzkanäle (Presse, Wortbeiträge, Anlagen) | `150` |
+| `COUNCIL_KONTEXT_RERANK_MIN` | Mindestwert des Rerankers, damit ein Zusatzkanal-Treffer in den Kontext kommt | `-1.5` |
+| `COUNCIL_ZUSAGE_RERANK_MIN` | strengerer Mindestwert für Zusagen der Verwaltung | `-0.5` |
+| `COUNCIL_RERANK_MAX` | Obergrenze der Reranker-Paare; `0` heißt keine. Nur für Notfälle | `0` |
+| `COUNCIL_SERIE_MAX` | so viele Beschlüsse mit wortgleichem Titel bleiben vorn | `3` |
+| `COUNCIL_WB_FRAKTION_POOL` | Kandidaten-Wortbeiträge für den Baustein „Das sagen die Parteien“ | `600` |
+| `COUNCIL_WB_FRAKTION_LABELS` | Deckel auf die Zahl der Fraktions-Töpfe darin; mehr kostet Wartezeit | `20` |
+| `COUNCIL_QA_PLAN_HASH_SALT` | Salz für den Hash, unter dem der Rechercheplan einer Frage protokolliert wird, damit das Log keine Frage im Klartext trägt | leer |
+
+### Vorlagen aufbereiten: Kostengrenzen
+
+| Variable | Wofür | Default |
+|---|---|---|
+| `DOSSIER_MAX_USD` | Kostengrenze der Dossiers je Lauf von `vorlagen_dossiers.py` | `0.5` |
+| `DOSSIER_ABRUF_MAX_USD` | Tagesdeckel für Dossiers, die beim ersten Aufruf einer Seite nachgeholt werden | `0.2` |
+| `TERMS_MAX_USD` | Kostengrenze der Fachwörter je Lauf (Schalter `begriffe-aus-vorlage`) | `0.25` |
+| `PROGRAM_MAX_USD` | Kostengrenze der Wahlprogramm-Einordnungen je Lauf (Schalter `wahlprogramm-am-punkt`) | `0.25` |
+
+### Livestream und Live-Verfolgung
+
+| Variable | Wofür | Default |
+|---|---|---|
+| `COUNCIL_STREAM_URL` | HLS-Adresse der Übertragung | `https://cdn.oeins.de/sd480/index.m3u8` |
+| `COUNCIL_RECORD_MAX_HOURS` | Kappe des Sitzungs-Mitschnitts in Stunden | `6` |
+| `COUNCIL_CHUNK_SECONDS` | Länge der Audio-Stücke ohne Streaming | `30` |
+| `COUNCIL_CLOSING_MIN_SECONDS` | Frühestens nach so vielen Sekunden beendet die Schlussformel die Aufnahme; davor wäre es eine Wiederholung im Vorprogramm | 1.200 (20 Minuten) |
+| `GLADIA_API_KEY` | Schlüssel für die Streaming-Transkription (`council/stream_stt.py`); leer heißt Audio-Stücke | leer |
+| `GLADIA_REGION` | Region des Transkriptionsdienstes | `eu-west` |
+| `COUNCIL_LIVE_WINDOW_SECONDS` | Takt der Live-Verfolgung beim Streaming | `15` |
+| `COUNCIL_STT_BEHALTEN` | So viele Audio-Stücke je Sitzung bleiben als Referenz für die Transkriptions-Eval erhalten; `0` schaltet das ab | `20` |
+| `RATSLOTSE_STT_AUDIO` | Ablageordner dieser Stücke | unter `data/` |
 
 ### Web-Backend
 
@@ -870,6 +961,14 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `APPLE_PRIVATE_KEY` | Inhalt des privaten `.p8`-Schlüssels als PEM; escaped `\\n` werden akzeptiert | für App Store | – |
 | `LLM_BUDGET_MONTHLY` | Monatsbudget für die Budget-Ampel (reine Anzeige) | nein | `40.0` |
 | `DISABLE_RATE_LIMIT` | `1` schaltet das Rate-Limiting ab (nur für Tests) | nein | nicht gesetzt |
+| `SIGNUP_REQUIRES_APPROVAL` | `1`: Neue Konten beginnen gesperrt und werden im Admin-Panel freigeschaltet. So steht es auf dev, wo ohne Mailversand sonst jedes Konto sofort aktiv wäre | nein | aus |
+| `FEATURE_FLAGS` | Kommaliste der eingeschalteten [Feature-Schalter](/docs/referenz/feature-schalter/); `*` schaltet alle an (so steht es auf dev) | nein | leer |
+| `STATS_EXCLUDE_DOMAINS` | Kommaliste von Mail-Domains, deren Konten aus der Nutzungsstatistik fallen (eigene Testkonten) | nein | leer |
+| `SOCIAL_API_TOKEN` | Token für die Schnittstelle des Social-Media-Bots (`routers/social.py`); ohne Token sind die Endpunkte aus | nein | leer |
+| `SOCIAL_MEDIA_DIR` / `SOCIAL_MEDIA_BASE_URL` | Ablage der Bilder für Social Media und die öffentliche Adresse dazu | nein | `web/frontend/public/social`, `https://ratslotse.de/social` |
+| `BACKEND_URL` | Adresse des Backends für die Server-Routen des Frontends (`app/api/council/ask/route.ts`) | nein | `http://localhost:8000` |
+| `NEXT_PUBLIC_CARTO_API_KEY` | Schlüssel der Kartenkacheln, zur **Bauzeit** des Frontends einkompiliert (`lib/basemap.ts`); ohne ihn tragen die Kacheln ein Wasserzeichen | nein | nicht gesetzt |
+| `GEO_BUNDLE_VERSION` / `LOTTI_BUNDLE_VERSION` | Versionsmarken, die der Frontend-Build an die Adressen der Geodaten und der Lotti-Grafiken hängt, damit der Browser sie lange halten darf (`lib/asset-paths.ts`) | nein | nicht gesetzt |
 
 ### Datenbanken
 
@@ -888,6 +987,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `EMAIL_FROM` | Absender der Mails | nein | `Ratslotse <noreply@ratslotse.de>` |
 | `APP_BASE_URL` | Basis-URL in Mail-Links | nein | `https://ratslotse.de` |
 | `FEEDBACK_EMAIL` | Empfänger*in des Nutzer-Feedbacks; zugleich die Antwortadresse der Rückmeldungen an die absendende Person | nein | leer → `WEB_ADMIN_EMAIL` |
+| `EMAIL_REPLY_TO` | Antwortadresse aller Mails; ohne sie ginge eine Antwort an die Absenderadresse ohne Postfach | nein | leer |
 | `ALERT_EMAIL` | Empfänger*in der Cron-Alarme | nein | nicht gesetzt → `WEB_ADMIN_EMAIL` |
 
 ### Push (APNs / FCM)
@@ -911,6 +1011,13 @@ sind.
 |---|---|---|---|
 | `BACKUP_RSYNC_TARGET` | Ziel des Off-Site-Mirrors; leer = kein Mirror | nein | leer |
 | `BACKUP_RSYNC_SSH_PORT` | SSH-Port des Backup-Ziels | nein | `22` |
+| `BACKUP_ENV` | `0` nimmt die `.env` mit den Geheimnissen aus der Sicherung | nein | `1` |
+| `LLM_TAGESKOSTEN_ALARM_USD` | Der Herzschlag schickt eine Mail, wenn die Modellkosten des Vortags darüber liegen; `0` schaltet den Alarm ab | nein | 5 $ |
+| `WEEKLY_STEP_MAX_SECONDS` | Höchstdauer eines Schritts im Wochenlauf; ein Schritt darüber wird beendet und zählt als Fehlschlag, der Lauf geht weiter. `0` hebt sie auf | nein | 10.800 (3 h) |
+| `WEEKLY_ENRICH_MAX_SECONDS` | Frist für den ganzen Wochenlauf; ein wartender Deploy beendet ihn ohnehin | nein | keine |
+| `RATSLOTSE_RELEASE_MAINTENANCE` | `1` lässt genau einen Prozess durch die Wartungssperre des Prod-Deploys (`kern/maintenance.py`). Setzt nur `scripts/prepare_release_databases.py` für sich selbst; in eine `.env` gehört sie nicht | nein | nicht gesetzt |
+| `ARCHIV_DIR` | Ordner des Archivs der gesicherten Quelldateien (`council/archiv.py`) | nein | `data/archiv` |
+| `REGIONALSTATISTIK_USER` / `REGIONALSTATISTIK_PASSWORD` | Konto bei der Regionalstatistik für `scripts/ingest_regionalstatistik.py` | nur für diesen Ingest | — |
 | `FASTEMBED_CACHE_PATH` | Persistenter Modell-Cache von fastembed (ohne ihn liegt er im Temp-Verzeichnis und ist nach einem Neustart weg) — von der Bibliothek selbst gelesen, nicht vom Repo-Code | nein | Vorgabe der Bibliothek |
 
 ### Wahlen
@@ -919,6 +1026,7 @@ sind.
 |---|---|---|---|
 | `WAHLKAMPF_TOKEN` | Geheimer Link-Teil der Wahlkampf-Auswertung (`scripts/stichwahl_potenzial.py --link`); mindestens 16 Zeichen, sonst wird er aus `WEB_JWT_SECRET` abgeleitet | nein | abgeleitet |
 | `WAHLTERMINE_URL` | Terminkalender des Votemanagers für `check_wahltermine.py`; leer = aus der Basis-URL der aktiven Wahl abgeleitet | nein | abgeleitet |
+| `WAHLABEND_ELECTION` | Welche Wahl `/wahlabend` zeigt (Ordnername unter `kommunalwahl/wahlen/`); leer heißt die jüngste, die kein Entwurf mehr ist | nein | leer |
 
 ### Städte-Speicher (`check_cities.py`)
 
@@ -934,8 +1042,21 @@ sind.
 | `CITIES_RATE_SECONDS` | Abstand zwischen zwei Abrufen bei einem fremden Ratsinformationssystem (mindestens 1 s) | nein | `1.0` |
 | `CITIES_FIT_WORKERS`, `CITIES_TERM_WORKERS`, `CITIES_IDEA_FIT_WORKERS`, `CITIES_STANCE_WORKERS` | Gleichzeitige Urteile je Stufe — mehr ist schneller, nicht teurer | nein | `8`, `16`, `4`, `12` |
 | `CITIES_FIT_VOTES` / `CITIES_FIT_PROBE` | Stimmen je Urteil bzw. Stichprobengröße der Selbstkontrolle | nein | `3` / `300` |
-| `CITIES_*_MODEL` (`CLASSIFY`, `FIT`, `CLUSTER`, `STANCE`, `REASON`, `EFFORT`, `IDEA_FIT`) | Modell je Stufe | nein | `deepseek/deepseek-v4-flash` |
+| `CITIES_CLASSIFY_MODEL`, `CITIES_FIT_MODEL`, `CITIES_CLUSTER_MODEL`, `CITIES_STANCE_MODEL`, `CITIES_REASON_MODEL`, `CITIES_EFFORT_MODEL`, `CITIES_IDEA_FIT_MODEL` | Modell je Stufe | nein | `deepseek/deepseek-v4-flash` |
 | `CITIES_LLM_TIMEOUT` | Zeitgrenze je Modellaufruf in Sekunden | nein | `120` |
+
+### Messläufe und Werkzeuge
+
+Nur für Eval-Läufe und Werkzeuge von Hand; kein Dienst liest sie.
+
+| Variable | Wofür | Default |
+|---|---|---|
+| `COUNCIL_GOLD_JUDGE_MODEL` | Richter-Modell der Gold-Läufe (`scripts/eval_deep_gold.py`) | `anthropic/claude-opus-5.5` |
+| `GOLD_OHNE_RICHTER` | `true` lässt den Gold-Lauf von „Frag den Rat“ ohne Richter laufen | nicht gesetzt |
+| `COUNCIL_QUALITY_JUDGE_MODEL` | Richter der Qualitäts-Suite (`eval/quality_qa.py`) | `google/gemini-3.5-flash` |
+| `RATSLOTSE_TRANSKRIPTE` | Ordner der Referenz-Transkripte für die Transkriptions-Eval | unter `data/` |
+| `VIERTEL_POC_MODEL` | Modell des Probe-Skripts `scripts/viertel_poc.py` | `openai/gpt-5.6-luna` |
+| `LOTTI_STUDIO` | Checkout des Grafik-Studios, nur zum Rendern der Mail-Bilder (`scripts/mail_helden/bauen.py`) | im Heimatordner |
 
 :::tip
 Wer nur lokal entwickelt, braucht davon fast nichts: `OPENROUTER_API_KEY` für

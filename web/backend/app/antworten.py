@@ -8218,6 +8218,9 @@ class MajorityBody(TypedDict):
     #: Sachliche Hinweise zu diesem Gremium (wer außer den Fraktionen mitstimmt,
     #: was das Ratsinfo nicht führt) — fertig formuliert.
     notes: list[str]
+    #: Könnten alle Fraktionen zusammen die Mehrheit stellen? ``False`` im
+    #: Jugendhilfeausschuss: Dort haben Mitglieder ohne Ratsmandat 9 von 15 Stimmen.
+    reachable: bool
     #: Die Mitgliederseite im Ratsinformationssystem.
     source_url: str
 
@@ -8313,6 +8316,8 @@ class MajorityOverview(TypedDict):
     missing: int
     #: Ist ohne die ausgeschlossenen Blöcke überhaupt eine Mehrheit möglich?
     possible: bool
+    #: Könnten alle Fraktionen zusammen die Mehrheit stellen (s. ``MajorityBody``)?
+    reachable: bool
 
 
 class MajorityCalculator(TypedDict):

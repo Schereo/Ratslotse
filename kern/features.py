@@ -44,6 +44,11 @@ class Feature:
     #: Woran man erkennt, dass er weg kann. Ohne das bleibt jeder Schalter für
     #: immer stehen — „vielleicht braucht ihn noch jemand".
     fertig_wenn: str
+    #: Wo die Technik-Doku das Feature erklärt: ``seite`` oder ``seite#anker``
+    #: unter ``docs-site/src/content/docs/``. Ein Schalter ohne Doku-Stelle
+    #: heißt, dass ein Feature entsteht, das niemand beschrieben hat —
+    #: ``tests/test_docs_current.py`` verlangt den Eintrag und prüft das Ziel.
+    docs: str = ""
 
 
 #: Alle Schalter, die es gibt. Ein Name, der hier nicht steht, ist ein
@@ -70,6 +75,7 @@ FEATURES: dict[str, Feature] = {
                     "Themas.",
         fertig_wenn="Kontext-Recall im Gold-Lauf höher als ohne, Abdeckung ohne Rückschritt; "
                     "dann Normalweg.",
+        docs="frag-den-rat#themen-als-suchhinweis",
     ),
     "kontext-diaet": Feature(
         key="kontext-diaet",
@@ -78,6 +84,7 @@ FEATURES: dict[str, Feature] = {
                     "(qa.debatten_diaet).",
         fertig_wenn="Zwei Gold-Läufe auf dev ohne Rückschritt gegenüber zwei ohne, weniger "
                     "„im Prompt, aber weggelassen“; dann ist die Diät der Normalweg.",
+        docs="frag-den-rat#debatten-im-prompt-wenige-und-die-richtigen",
     ),
     "nachrecherche": Feature(
         key="nachrecherche",
@@ -86,6 +93,7 @@ FEATURES: dict[str, Feature] = {
                     "(qa.nachrecherche_anfragen, embeddings.nachsuche).",
         fertig_wenn="Gold „Frag den Rat“ auf dev ohne Rückschritt und mit mehr bestandenen "
                     "Fällen als ohne, Laufzeit auf Prod gemessen; dann ist sie der Normalweg.",
+        docs="frag-den-rat#nachrecherche",
     ),
     "akten-suche": Feature(
         key="akten-suche",
@@ -96,6 +104,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Phase 3 hat ihr Tor erreicht (Gold „Frag den Rat“ +10 Pp und "
                     "mindestens drei Fälle mehr bestanden, Retrieval ohne Rückschritt) "
                     "und lag zwei Wochen auf Prod an; dann ist die Akte der Normalweg.",
+        docs="frag-den-rat#akten-suche",
     ),
     "akten-zeitleiste": Feature(
         key="akten-zeitleiste",
@@ -108,6 +117,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Phase 4 hat ihr Tor erreicht (Gold „Frag den Rat“: +10 Pp bei "
                     "„Fakt genannt, wenn Material vorhanden“ gegenüber Phase 3, Fakten-Eval "
                     "ohne Zunahme) und lag zwei Wochen auf Prod an.",
+        docs="frag-den-rat#zeitleiste",
     ),
     "mein-viertel": Feature(
         key="mein-viertel",
@@ -115,6 +125,7 @@ FEATURES: dict[str, Feature] = {
                     "Jahren ändert — Vorhaben aus Beschlüssen, gebündelt und geprüft.",
         fertig_wenn="Das Vorhaben-Register läuft einige Wochen ohne „Gehört nicht "
                     "hierher“-Treffer auf Prod, und Tim hat die Tafel freigegeben.",
+        docs="mein-viertel",
     ),
     "andere-staedte": Feature(
         key="andere-staedte",
@@ -129,6 +140,7 @@ FEATURES: dict[str, Feature] = {
                     "Mandat haben die Treffer als brauchbar bestätigt — dann Schalter raus. "
                     "Überwiegt der Widerspruch, auf Prod wieder aus und die Einordnung "
                     "nacharbeiten.",
+        docs="andere-staedte",
     ),
     "ideen-anderswo": Feature(
         key="ideen-anderswo",
@@ -141,6 +153,7 @@ FEATURES: dict[str, Feature] = {
                     "meistbesuchten Themenfelder sind anhand der Rückmeldungen „stimmt / "
                     "stimmt nicht“ geprüft und tragen (mehr Zustimmung als Widerspruch) — "
                     "dann Schalter raus. Kippen sie, auf Prod wieder aus.",
+        docs="andere-staedte#das-urteil-hat-oldenburg-das-schon",
     ),
     "wahlabend": Feature(
         key="wahlabend",
@@ -157,6 +170,7 @@ FEATURES: dict[str, Feature] = {
                     "Er kann weg, sobald keine App-Fassung im Store mehr `wahlabend` "
                     "abfragt (Karten-Ebene in CityMapView, Mehr-Zeile) — dann alle "
                     "Abfragen entfernen und APP_MIN_BUILD nachziehen.",
+        docs="wahlabend",
     ),
     "lotti-assistentin": Feature(
         key="lotti-assistentin",
@@ -168,6 +182,7 @@ FEATURES: dict[str, Feature] = {
                     "kosten im Mittel unter 0,3 Cent; der Eval (eval/run_assistant.py) ist "
                     "grün, die sechs Injektions-Fälle eingeschlossen; Tim hat den Knopf "
                     "freigegeben.",
+        docs="ki-pipeline#lotti-als-assistentin-erklären-statt-suchen",
     ),
     "lotti-anstupser": Feature(
         key="lotti-anstupser",
@@ -180,6 +195,7 @@ FEATURES: dict[str, Feature] = {
                     "(Admin-Panel, Reiter „Lotti“): Liegt die Ja-Quote unter 5 %, wird er "
                     "seltener oder abgeschafft — Tims Entscheidung. Bleibt er, fliegt der "
                     "Schalter raus.",
+        docs="ki-pipeline#der-anstupser",
     ),
     "lotti-selbstpruefung": Feature(
         key="lotti-selbstpruefung",
@@ -195,6 +211,7 @@ FEATURES: dict[str, Feature] = {
                     "gehen sie als Aufgaben an die Kontext- und Regelarbeit; dann entscheidet "
                     "Tim, ob die Stichprobe dauerhaft läuft (Schalter raus) oder wegfällt "
                     "(docs/lotti-selbstpruefung.md).",
+        docs="ki-pipeline#selbstprüfung-eine-stille-stichprobe",
     ),
     "lotti-werkzeuge": Feature(
         key="lotti-werkzeuge",
@@ -204,6 +221,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Die mehrstufigen Fälle der Fakten-Eval (haushalt/mehrstufig) liegen "
                     "deutlich über dem Stand ohne Werkzeuge, die übrigen Haushaltsfälle und "
                     "die Wartezeit nicht schlechter — dann auf Prod an und Schalter raus.",
+        docs="ki-pipeline#werkzeuge-nachschlagen-statt-raten",
     ),
     "mcp-server": Feature(
         key="mcp-server",
@@ -216,6 +234,7 @@ FEATURES: dict[str, Feature] = {
                     "benutzt, die Last ist gemessen (mcp_tokens.calls) und die Bremse hat "
                     "nicht zugeschlagen, wo sie nicht sollte — dann Schalter raus; der "
                     "Zugang hängt ohnehin am Recht `mcp`.",
+        docs="mcp",
     ),
     "zugangslinks": Feature(
         key="zugangslinks",
@@ -226,6 +245,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Eine Release-Mail ist mit Anmeldelinks rausgegangen, die Klickquote "
                     "(mail_returns, angemeldet vs. nicht) ist gelesen und keine "
                     "Fehlermeldung zu `/api/auth/magic` aufgelaufen — dann Normalweg.",
+        docs="app-und-konten#anmeldelinks-in-mails",
     ),
     "neuer-rat": Feature(
         key="neuer-rat",
@@ -235,6 +255,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Tim hat die Liste nach dem amtlichen Endergebnis freigegeben. "
                     "Nach der konstituierenden Sitzung (02.11.2026) prüfen, ob die "
                     "Vorab-Liste noch gebraucht wird.",
+        docs="wahlabend#der-neue-rat-vor-seiner-ersten-sitzung",
     ),
     "plaene": Feature(
         key="plaene",
@@ -244,6 +265,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Alle Phasen des Plans stehen auf dev und Tim hat die Seite freigegeben; mit dem "
                     "nächsten Release auf Prod an. Danach fliegt der Schalter raus, und die alte "
                     "Ziel-Ansicht geht, sobald APP_MIN_BUILD auf einem App-Build mit „Pläne“ steht.",
+        docs="plaene",
     ),
     "tippspiel": Feature(
         key="tippspiel",
@@ -258,6 +280,7 @@ FEATURES: dict[str, Feature] = {
                     "aus der Wahl-Phase. Er kann weg, wenn das Tippspiel zu einer "
                     "künftigen Wahl ohne Freischaltung starten darf — dann die "
                     "Abfragen in /tipp und /api/tipp entfernen.",
+        docs="tippspiel",
     ),
     "mitlesen": Feature(
         key="mitlesen",
@@ -266,6 +289,7 @@ FEATURES: dict[str, Feature] = {
                     "(docs/plan-sitzungsseite-kurs.md, Schritt 5).",
         fertig_wenn="Zwei echte Sitzungen (ein Ausschuss, ein Rat mit Übertragung) auf dev "
                     "mitgelesen ohne Befund, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#mitlesen",
     ),
     "mitschrieb": Feature(
         key="mitschrieb",
@@ -274,6 +298,7 @@ FEATURES: dict[str, Feature] = {
                     "Kurs (docs/plan-sitzungsseite-kurs.md 3.17).",
         fertig_wenn="Tim hat Frage 8.3 beantwortet (die Idee bleibt), eine echte Sitzung auf dev damit "
                     "mitgeschrieben, und `notizen` ist auf Prod an; dann mit ihm zusammen an.",
+        docs="sitzungen#mitlesen",
     ),
     "notizen": Feature(
         key="notizen",
@@ -283,6 +308,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Datenschutzerklärung von Tim abgenommen, auf dev zwei Wochen ohne Befund "
                     "(Einrichten, zweites Gerät, Passphrase wechseln, Wiederherstellung), App liest "
                     "dieselben Testvektoren; dann mit dem Release auf Prod an.",
+        docs="app-und-konten#notizen-auf-dem-gerät-verschlüsselt",
     ),
     "passkey-anmeldung": Feature(
         key="passkey-anmeldung",
@@ -292,6 +318,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Datenschutzerklärung von Tim abgenommen, auf dev zwei Wochen ohne Befund (Registrieren, "
                     "Anmelden, zweites Gerät, Entfernen, Löschen ohne Passwort) und zusammen mit `notizen` "
                     "auf Prod an.",
+        docs="app-und-konten#mit-passkey-anmelden",
     ),
     "beschluss-chat": Feature(
         key="beschluss-chat",
@@ -301,6 +328,7 @@ FEATURES: dict[str, Feature] = {
                     "`punkt-seite`).",
         fertig_wenn="Auf dev zwei Wochen ohne Befund, Antworten mit Beschluss-Bezug von Tim "
                     "gegengelesen und auf Prod angeschaltet.",
+        docs="frag-den-rat#auf-der-seite-eines-beschlusses-oder-punkts",
     ),
     "vorschlagsfragen": Feature(
         key="vorschlagsfragen",
@@ -309,6 +337,7 @@ FEATURES: dict[str, Feature] = {
                     "sonst feste Fragen.",
         fertig_wenn="Auf dev zwei Wochen ohne unpassende Frage, Kosten im Admin-Panel unter "
                     "page_questions gesichtet, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="frag-den-rat#auf-der-seite-eines-beschlusses-oder-punkts",
     ),
     "aus-den-unterlagen": Feature(
         key="aus-den-unterlagen",
@@ -316,6 +345,7 @@ FEATURES: dict[str, Feature] = {
                     "Beschlussvorschlag, Anträge mit Antragsteller, Kosten, Klima, Federführung; ab dem "
                     "Dossier mit belegten Abschnitten (docs/plan-vorlagen-aufbereiten.md).",
         fertig_wenn="Dossier-Tore aus Plan § 7.2 erreicht, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#aus-den-unterlagen-das-dossier",
     ),
     "folgetexte-aus-dossier": Feature(
         key="folgetexte-aus-dossier",
@@ -323,6 +353,7 @@ FEATURES: dict[str, Feature] = {
                     "(Stufe 4, docs/plan-vorlagen-aufbereiten.md § 7.4; A/B am 13.11.2026 bestanden).",
         fertig_wenn="Zwei Wochen auf dev ohne Befund in den Kartentexten, dann auf Prod an und der "
                     "Schalter samt Rückweg auf den Rohtext entfernt.",
+        docs="sitzungen#aus-den-unterlagen-das-dossier",
     ),
     "aenderungsantraege": Feature(
         key="aenderungsantraege",
@@ -330,6 +361,7 @@ FEATURES: dict[str, Feature] = {
                     "alt gegen neu mit Belegen, nach dem Protokoll mit Ergebnis (council/motions.py, "
                     "docs/plan-vorlagen-aufbereiten.md § 5).",
         fertig_wenn="Tore aus Plan § 7.3 auf Prod-Daten bestätigt, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#änderungsanträge",
     ),
     "punkt-argumente": Feature(
         key="punkt-argumente",
@@ -339,6 +371,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Bestand auf dev erzeugt (scripts/punkt_argumente.py), zwei Wochen ohne Befund, "
                     "von Tim abgenommen und mit dem Release auf Prod angeschaltet; die Erzeugung "
                     "neuer Vorgänge hängt dann am Protokoll-Cron.",
+        docs="sitzungen#argumente-und-fraktionen",
     ),
     "haushalt-am-punkt": Feature(
         key="haushalt-am-punkt",
@@ -347,6 +380,7 @@ FEATURES: dict[str, Feature] = {
                     "alle sichtbar (council/punkt_haushalt.py; Tims Entscheidung 13.11.2026).",
         fertig_wenn="Auf dev zwei Wochen ohne Befund an echten Finanz-Punkten, von Tim abgenommen und auf "
                     "Prod angeschaltet — unabhängig davon, ob der Haushalts-Bereich selbst dort schon frei ist.",
+        docs="sitzungen#im-haushalt",
     ),
     "begriffe-aus-vorlage": Feature(
         key="begriffe-aus-vorlage",
@@ -355,6 +389,7 @@ FEATURES: dict[str, Feature] = {
                     "(council/vorlage_begriffe.py). Das Glossar am Wort braucht den Schalter nicht.",
         fertig_wenn="Bestand der letzten zwölf Monate auf dev erzeugt, Stichprobe von 50 Erklärungen ohne "
                     "Fehler gesichtet, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#fachwörter-aus-der-vorlage",
     ),
     "punkt-umfeld": Feature(
         key="punkt-umfeld",
@@ -363,6 +398,7 @@ FEATURES: dict[str, Feature] = {
                     "(council/punkt_umfeld.py; Tims Auswahl 13.11.2026).",
         fertig_wenn="Auf dev zwei Wochen ohne Befund, auf Prod mit echten Beteiligungen und Videos gesichtet, "
                     "von Tim abgenommen und angeschaltet.",
+        docs="sitzungen#das-umfeld",
     ),
     "wahlprogramm-am-punkt": Feature(
         key="wahlprogramm-am-punkt",
@@ -372,6 +408,7 @@ FEATURES: dict[str, Feature] = {
                     "docs/plan-wahlprogramm-am-punkt.md).",
         fertig_wenn="Bestand auf dev erzeugt, 50 Einordnungen von Hand ohne falsche Zuschreibung gesichtet, "
                     "von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#was-die-wahlprogramme-dazu-sagen",
     ),
     "punkt-seite": Feature(
         key="punkt-seite",
@@ -380,6 +417,7 @@ FEATURES: dict[str, Feature] = {
                     "Sitzungsseite führen dorthin (docs/plan-sitzungsseite-kurs.md, Schritt 4).",
         fertig_wenn="Auf dev zwei Wochen ohne Befund, Messung „Frag den Rat mit Punkt-Bezug“ "
                     "ohne Rückschritt, von Tim abgenommen und auf Prod angeschaltet.",
+        docs="sitzungen#die-punkt-seite",
     ),
     "sitzung-kurs": Feature(
         key="sitzung-kurs",
@@ -389,6 +427,7 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Auf dev zwei Wochen ohne Befund an echten Sitzungen (vorher, nachher, "
                     "Rat mit vielen Punkten), von Tim abgenommen und auf Prod angeschaltet; dann "
                     "fliegt die alte Seite samt Schalter raus.",
+        docs="sitzungen#kurs-der-sitzung",
     ),
 }
 

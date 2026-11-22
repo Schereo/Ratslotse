@@ -226,16 +226,25 @@ def fetch_all(client: RisClient, log: Callable[[str], None] = print) -> list[dic
     hat sich das Ratsinfo verändert (Host, Aufbau), und eine leere oder halbe
     Besetzung darf den gespeicherten Stand nicht ersetzen."""
     committees = parse_committee_list(client.get("gr0040.asp"))
+    holders = parse_mandate_holders(client.get("kp0041.asp"))
+    mandate = {h["kpenr"] for h in holders}
     seats: list[dict] = []
     covered: set[str] = set()
     for name, kgrnr in committees:
         rows = parse_committee_members(client.get("kp0040.asp", __kgrnr=kgrnr), name, kgrnr)
+        for r in rows:
+            # Eine Personenseite haben auch manche Mitglieder OHNE Ratsmandat
+            # (gemessen 22.11.2026: eine Beschäftigtenvertreterin). Maßgeblich
+            # ist die Liste der Mandatsträger — sonst stünde sie mit Namen als
+            # eigene „Fraktion“ im Rechner.
+            if mandate and r["kpenr"] is not None and r["kpenr"] not in mandate:
+                r["name"] = r["faction"] or r["role"]
+                r["kpenr"], r["faction"] = None, None
         log(f"  {name}: {sum(r['voting'] for r in rows)} Stimmen, "
             f"{sum(not r['voting'] for r in rows)} beratend")
         seats.extend(rows)
         covered.add(name)
 
-    holders = parse_mandate_holders(client.get("kp0041.asp"))
     ob = mayor_seat(holders, position=sum(1 for s in seats if s["committee"] == RAT))
     if ob:
         seats.append(ob)

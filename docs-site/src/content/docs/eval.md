@@ -17,6 +17,11 @@ sollen messbar besser/schlechter werden, statt „gefühlt".
 
 Jede Suite hat ein `run_<suite>.py`; `eval/run_all.py` fährt alle nacheinander.
 
+Die Tabelle zeigt die drei Suiten des Harness. Daneben gibt es Messläufe für fast
+jeden weiteren Modell-Schritt (Dossiers, Änderungsanträge, Live-Verfolgung,
+Städtevergleich, Lottis Erklärungen …). Die vollständige Liste entsteht aus den
+Docstrings der Dateien: [Referenz: Eval-Läufe](/docs/referenz/eval-laeufe/).
+
 **Binär**: eine Ja/Nein-Entscheidung pro Fall → TP/FP/TN/FN + Precision/Recall/F1.
 **Label-Sets**: pro Fall wird eine *Menge* von Treffern vorhergesagt (z. B. die
 `(Thema, TOP)`-Paare). Bewertung als Retrieval-Aufgabe: `TP = vorhergesagt ∩

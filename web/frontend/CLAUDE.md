@@ -182,18 +182,30 @@ Zeichen.
 ## Browsertests: was sie abdecken und wie man sie startet
 
 ```bash
-npx playwright test                       # alles
-npx playwright test tests/e2e/09-konto    # eine Datei
-E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test   # auf freien Ports
-npx playwright test --shard=2/4           # nur das, was Teil 2 der CI fährt
+npx playwright test tests/e2e/09-konto    # eine Datei — der Normalfall lokal
+E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test tests/e2e/09-konto   # auf freien Ports
+npx playwright test $(node tests/shard-specs.mjs 2 8)   # genau das, was Teil 2 der CI fährt
+npx playwright test                       # alles — lokal 15–20 Minuten, s. u.
 ```
 
-**In der CI läuft die Suite auf vier Läufern** (`--shard=i/4`, s. `e2e.yml`).
-Jeder bringt sein eigenes Backend auf einer eigenen Wegwerf-Datenbank mit, die
-Teile teilen also nichts. Lokal nachstellen lässt sich ein einzelner Teil mit
-der Zeile oben.
+**Lokal nur die Dateien zur Änderung, die ganze Suite fährt die CI.** Seriell
+auf einem Rechner braucht sie 15–20 Minuten (gemessen 22.11.2026: 19 min für
+426 Tests), in der CI auf acht Läufern rund fünf. Wer lokal „zur Sicherheit"
+alles startet, wartet also viermal so lang auf dasselbe Ergebnis. Lokal
+gehören die Spec-Dateien dazu, die den geänderten Bereich prüfen — und
+`12-navigation` plus `14-layout`, sobald die Hülle (Navigation, Layout,
+`globals.css`) angefasst ist. Für alles, was neue Tests mitbringt, einmal
+gegen die leere Datenbank (s. u.).
 
-**Was lokal NICHT geht: die vier Teile gleichzeitig starten.** Verschiedene
+**In der CI läuft die Suite auf acht Läufern**, verteilt nach gemessener Dauer
+je Datei (`tests/shard-specs.mjs`, Zahlen in `tests/e2e-durations.json`, s.
+`e2e.yml`). Jeder bringt sein eigenes Backend auf einer eigenen
+Wegwerf-Datenbank mit, die Teile teilen also nichts. Eine neue Spec-Datei
+läuft von selbst mit — ohne Eintrag mit mittlerem Gewicht. Laufen die Teile
+sichtbar auseinander: `python scripts/e2e_durations.py --write` zieht die
+Dauern aus dem jüngsten grünen Lauf.
+
+**Was lokal NICHT geht: mehrere Teile gleichzeitig starten.** Verschiedene
 Ports reichen dafür nicht — alle `next dev` eines Worktrees teilen sich
 **dasselbe `.next-dev/`**. Seit Next 16 startet der zweite gar nicht erst:
 
@@ -206,10 +218,11 @@ Ports reichen dafür nicht — alle `next dev` eines Worktrees teilen sich
 Das gilt auch für einen Dev-Server, der noch von der Arbeit an einer Seite
 läuft: Playwright startet seinen eigenen (`npm run dev -- --port …`) und
 scheitert daran. Vorher den EIGENEN anhalten (die PID steht in der Meldung).
-Bis Next 15 starteten beide und zerlegten sich gegenseitig den Webpack-Cache:
-21 Fehlschläge über die vier Teile, dieselbe Suite seriell 140/140 grün
-(gemessen 07.09.2026). Wer die Teile wirklich parallel messen will, braucht je
-einen eigenen Worktree — oder lässt es und misst sie nacheinander.
+Bis Next 15 starteten beide und zerlegten sich gegenseitig den Webpack-Cache.
+Das Ergebnis sah aus wie ein echter Befund und war keiner: 21 Fehlschläge
+über vier gleichzeitige Teile, dieselbe Suite seriell 140/140 grün, jeder Teil
+einzeln grün (gemessen 07.09.2026). Wer die Teile wirklich parallel messen will,
+braucht je einen eigenen Worktree — oder lässt es und misst sie nacheinander.
 
 **Die Ports sind einstellbar, und das braucht man wirklich.** Dieses Repo wird
 in mehreren `git worktree`s gleichzeitig bearbeitet, und dort läuft fast immer

@@ -21,7 +21,8 @@
 import { useId, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Check, ExternalLink, RotateCcw, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Check, ExternalLink, RotateCcw, X } from "lucide-react";
 
 import { api } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -85,10 +86,19 @@ export function Mehrheitsrechner() {
 
   const query = auswahlQuery(auswahl);
   const kopf = (
-    <PageHeader
-      title="Mehrheitsrechner"
-      description="Welche Fraktionen und Gruppen zusammen eine Mehrheit haben — im Rat und in jedem Ausschuss."
-    />
+    <div>
+      <Link
+        href="/werkzeuge"
+        className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden />
+        Werkzeuge
+      </Link>
+      <PageHeader
+        title="Mehrheitsrechner"
+        description="Welche Fraktionen und Gruppen zusammen eine Mehrheit haben — im Rat und in jedem Ausschuss."
+      />
+    </div>
   );
   const body = data.body;
   if (!body) {
@@ -160,7 +170,7 @@ export function Mehrheitsrechner() {
                 hinten={sel.exclude}
                 titel={body.name}
               />
-              <Stand sel={sel} namen={namen} votes={body.votes} majority={body.majority} />
+              <Stand sel={sel} namen={namen} votes={body.votes} majority={body.majority} reachable={body.reachable} />
               {data.partners.length > 0 && (
                 <Vorschlaege
                   partners={data.partners}
@@ -253,7 +263,8 @@ export function Mehrheitsrechner() {
 
       <p className="text-meta text-muted-foreground">
         Besetzung laut Ratsinformationssystem der Stadt Oldenburg
-        {data.as_of && <>, Stand {formatDate(data.as_of)}</>} ·{" "}
+        {data.as_of && <>, Stand {formatDate(data.as_of)}</>}; Größe der Gremien laut Ratsbeschlüssen vom
+        02.11.2026 ·{" "}
         <a
           href={body.source_url}
           target="_blank"
@@ -368,17 +379,29 @@ function Sitzbogen({
 
 /** Die Ablesezeile unter dem Bogen — nie leer, und sie sagt, was die Auswahl hergibt. */
 function Stand({
-  sel, namen, votes, majority,
+  sel, namen, votes, majority, reachable,
 }: {
   sel: Rechner["selection"];
   namen: Map<string, string>;
   votes: number;
   majority: number;
+  /** Könnten alle Fraktionen zusammen die Mehrheit stellen? */
+  reachable: boolean;
 }) {
   const dabei = aufzaehlung(sel.include.map((k) => namen.get(k) ?? k));
   const ohne = aufzaehlung(sel.exclude.map((k) => namen.get(k) ?? k));
   let satz: React.ReactNode;
-  if (!sel.possible) {
+  if (!reachable) {
+    // Jugendhilfeausschuss: Die Mehrheit der Stimmen liegt bei Mitgliedern
+    // ohne Ratsmandat — keine Kombination von Fraktionen reicht.
+    satz = (
+      <>
+        {sel.include.length > 0 && <><strong className="font-semibold">{dabei}</strong>: {sel.seats} von {votes} Stimmen. </>}
+        Mehrheit ab {majority} von {votes} Stimmen — die Fraktionen haben hier zusammen weniger, es braucht
+        Stimmen der Mitglieder ohne Ratsmandat.
+      </>
+    );
+  } else if (!sel.possible) {
     satz = <>Ohne {ohne} kommen höchstens {sel.max_seats} von {votes} Stimmen zusammen — für eine Mehrheit braucht es {majority}.</>;
   } else if (!sel.include.length) {
     satz = <>Mehrheit ab {majority} von {votes} Stimmen. Setze Fraktionen auf „dabei“ — oder übernimm eine der möglichen Mehrheiten.</>;
@@ -564,7 +587,8 @@ function Kombinationen({
   }
 
   let einleitung: string;
-  if (!sel.possible) einleitung = "Mit dieser Auswahl kommt keine Kombination auf eine Mehrheit.";
+  if (!data.body?.reachable) einleitung = "Hier kommt keine Kombination von Fraktionen auf eine Mehrheit: Die meisten Stimmen haben Mitglieder ohne Ratsmandat.";
+  else if (!sel.possible) einleitung = "Mit dieser Auswahl kommt keine Kombination auf eine Mehrheit.";
   else if (sel.has_majority) einleitung = `${dabei} ${sel.include.length > 1 ? "haben" : "hat"} schon eine Mehrheit.`;
   else if (sel.include.length) einleitung = `Mit wem ${dabei} auf eine Mehrheit ${sel.include.length > 1 ? "kommen" : "kommt"} — ohne Partner, die entbehrlich wären. Ein Klick übernimmt die Kombination.`;
   else einleitung = "Jede Kombination, aus der niemand wegfallen kann, ohne die Mehrheit zu verlieren. Ein Klick übernimmt sie.";
@@ -656,24 +680,31 @@ function Gremien({
       </p>
       <ul className="-mx-2 mt-2 @3xl:columns-2 @3xl:gap-x-8">
         {zeilen.map((z) => (
-          <li key={z.key} className="break-inside-avoid">
+          // Jede Zeile misst sich selbst (`@container`): Reicht der Platz nicht
+          // für Name UND Balken nebeneinander, steht der Name oben und der
+          // Balken darunter. An der Fensterbreite ließe sich das nicht
+          // festmachen — die Zeile ist je nach Spaltenzahl halb so breit, und
+          // „Verwaltungsausschuss“ lief unter den Balken (Tims Bild 22.11.2026).
+          <li key={z.key} className="break-inside-avoid @container">
             <button
               type="button"
               onClick={() => onGremium(z.key)}
               aria-current={z.key === aktuell ? "true" : undefined}
               className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors duration-tipp hover:bg-accent focus-visible:bg-accent",
+                "flex w-full flex-col gap-1.5 rounded-lg px-2 py-2 text-left transition-colors duration-tipp hover:bg-accent focus-visible:bg-accent @lg:flex-row @lg:items-center @lg:gap-3",
                 z.key === aktuell && "bg-primary/[0.06]",
               )}
             >
-              <span className={cn("min-w-0 flex-1 text-[13.5px] leading-snug", z.key === aktuell ? "font-semibold text-foreground" : "text-foreground")}>
+              <span className={cn("min-w-0 text-[13.5px] leading-snug [overflow-wrap:anywhere] @lg:flex-1", z.key === aktuell ? "font-semibold text-foreground" : "text-foreground")}>
                 {z.short}
               </span>
-              <Meter seats={z.seats} votes={z.votes} majority={z.majority} className="hidden w-20 shrink-0 sm:block" />
-              <span className="w-12 shrink-0 text-right text-[12.5px] tabular-nums text-muted-foreground">
-                {gewaehlt ? `${z.seats}/${z.votes}` : z.votes}
+              <span className="flex items-center gap-3">
+                <Meter seats={z.seats} votes={z.votes} majority={z.majority} className="min-w-0 flex-1 @lg:w-20 @lg:flex-none" />
+                <span className="w-12 shrink-0 text-right text-[12.5px] tabular-nums text-muted-foreground">
+                  {gewaehlt ? `${z.seats}/${z.votes}` : z.votes}
+                </span>
+                <Lage z={z} gewaehlt={gewaehlt} />
               </span>
-              <Lage z={z} gewaehlt={gewaehlt} />
             </button>
           </li>
         ))}
@@ -686,13 +717,14 @@ function Gremien({
 function Lage({ z, gewaehlt }: { z: Zeile; gewaehlt: boolean }) {
   let punkt = "bg-muted-foreground/50";
   let wort = `ab ${z.majority}`;
-  if (!z.possible) wort = "nicht möglich";
+  if (!z.reachable) wort = "nur mit Weiteren";
+  else if (!z.possible) wort = "nicht möglich";
   else if (gewaehlt && z.has_majority) { punkt = "bg-[#22c55e]"; wort = "Mehrheit"; }
   else if (gewaehlt) { punkt = "bg-[#f59e0b]"; wort = fehlen(z.missing); }
   return (
     <span className="inline-flex w-[6.5rem] shrink-0 items-center gap-1.5 text-xs font-medium text-foreground">
-      {(gewaehlt || !z.possible) && <span className={cn("h-[7px] w-[7px] shrink-0 rounded-full", punkt)} aria-hidden />}
-      <span className={cn(!gewaehlt && z.possible && "font-normal text-muted-foreground")}>{wort}</span>
+      {(gewaehlt || !z.possible) && z.reachable && <span className={cn("h-[7px] w-[7px] shrink-0 rounded-full", punkt)} aria-hidden />}
+      <span className={cn((!z.reachable || (!gewaehlt && z.possible)) && "font-normal text-muted-foreground")}>{wort}</span>
     </span>
   );
 }

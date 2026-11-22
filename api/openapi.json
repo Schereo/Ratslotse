@@ -64,6 +64,21 @@
         "title": "AccountPasskeyList",
         "type": "object"
       },
+      "ActivityEventIn": {
+        "description": "Eine Handlung in der Oberfläche, die sonst keinen Endpunkt aufruft.\n\nDas Öffnen der Befehlspalette ist so eine: Ohne Zähler ließe sich „benutzt\ndie überhaupt jemand?\" nicht beantworten. Nur der Name der Handlung, aus\nder Positivliste ``UI_EVENTS`` — keine Seite, keine Eingabe.",
+        "properties": {
+          "kind": {
+            "maxLength": 40,
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ActivityEventIn",
+        "type": "object"
+      },
       "ActivityPageIn": {
         "description": "Ein Seitenwechsel eines angemeldeten Kontos — für die Bereiche je Konto.\n\nGetrennt von ``PageViewIn``: Der Seitenaufruf bleibt anonym und schaut in\nkein Token. Hier ist das Konto der Punkt; gespeichert wird aber nur der\nBEREICH, auf den ``kern/activity_areas.py`` den Pfad abbildet.",
         "properties": {
@@ -18640,6 +18655,10 @@
             "title": "Notes",
             "type": "array"
           },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
           "short": {
             "title": "Short",
             "type": "string"
@@ -18661,6 +18680,7 @@
           "votes",
           "majority",
           "notes",
+          "reachable",
           "source_url"
         ],
         "title": "MajorityBody",
@@ -18765,6 +18785,10 @@
                 "title": "Notes",
                 "type": "array"
               },
+              "reachable": {
+                "title": "Reachable",
+                "type": "boolean"
+              },
               "short": {
                 "title": "Short",
                 "type": "string"
@@ -18786,6 +18810,7 @@
               "votes",
               "majority",
               "notes",
+              "reachable",
               "source_url"
             ],
             "title": "MajorityBody",
@@ -18919,6 +18944,10 @@
             "title": "Possible",
             "type": "boolean"
           },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
           "seats": {
             "title": "Seats",
             "type": "integer"
@@ -18941,7 +18970,8 @@
           "seats",
           "has_majority",
           "missing",
-          "possible"
+          "possible",
+          "reachable"
         ],
         "title": "MajorityOverview",
         "type": "object"
@@ -38281,6 +38311,48 @@
         "summary": "Test Notification",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/api/activity/event": {
+      "post": {
+        "description": "Eine Handlung in der Oberfläche zählen — je Konto und Tag.\n\n**Was NICHT mitgeht:** kein Zeitpunkt, keine Seite, keine Eingabe. Nur\nwelche Handlung es war. Ein unbekannter Name wird abgewiesen statt still\ngezählt: Sonst entstünde aus einem Tippfehler eine Zeile, die in keiner\nAuswertung auftaucht und trotzdem wie ein Wert aussieht.",
+        "operationId": "ui_event_api_activity_event_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityEventIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ui Event",
+        "tags": [
+          "activity"
         ]
       }
     },

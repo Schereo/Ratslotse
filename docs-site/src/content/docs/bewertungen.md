@@ -177,19 +177,30 @@ Tragweite mit ihrer festen Rubrik.
 
 ### Fundstück des Tages
 
-`council/fundstueck.py` kuratiert daraus je Kalendertag **einen** Archiv-Fund
+`council/fundstueck.py` kuratiert je Kalendertag **einen** Archiv-Fund
 (Tabelle `council_daily_finds`, ein Datensatz je Tag mit Kicker und
-1-Satz-Story):
+1-Satz-Story). Bewertet wird aus **zwei** Werten: Erzählbarkeit und Tragweite,
+gemischt zum **Fundwert** (55 % Interesse, 45 % Tragweite,
+`council/store_fundstuecke.py`). Interesse allein wählte Kuriositäten statt
+Beschlüssen, über die man redet.
 
-- **Jahrestage gewinnen**: gleicher Kalendertag, früheres Jahr, `interest ≥ 45`
-  (`MIN_INTEREST_ANNIVERSARY`) → Kicker „Heute vor N Jahren".
-- Sonst ein Archiv-Fund mit `interest ≥ 60` (`MIN_INTEREST_ARCHIVE`) → Kicker
-  „Aus dem Archiv". Unter den Top-10-Kandidaten wählt ein **Hash des Datums**
-  (kein Zufall) — Läufe sind wiederholbar und Resume-sicher.
-- Zuletzt gezeigte Beschlüsse sind 180 Tage gesperrt (`REUSE_BLOCK_DAYS`).
-- Ein LLM schreibt die Story (ein Satz, ≤ 200 Zeichen laut Prompt, > 260 Zeichen
-  werden verworfen). Ohne brauchbare Story bleibt der Tag leer — das Frontend
-  lässt die Karte dann ersatzlos weg.
+- **Der Jahrestag ist ein Aufhänger, kein Freifahrtschein.** Gleicher
+  Kalendertag, früheres Jahr, Fundwert mindestens 60
+  (`MIN_FUNDWERT_JAHRESTAG`) → Kicker „Heute vor N Jahren". Bis 20.08.2026
+  gewann jeder Jahrestag ab Interesse 45 gegen jeden Archivfund, auch gegen
+  einen mit Bestwerten. Jetzt sticht ihn ein Archivfund, der um mehr als
+  12 Punkte besser ist (`ARCHIV_STICHT_UM`).
+- Sonst ein Archiv-Fund mit Fundwert mindestens 65 (`MIN_FUNDWERT_ARCHIV`) →
+  Kicker „Aus dem Archiv". Unter den besten Kandidaten wählt ein **Hash des
+  Datums** (kein Zufall) — Läufe sind wiederholbar.
+- **Zwei Sperren.** Derselbe Beschluss ist 180 Tage gesperrt
+  (`REUSE_BLOCK_DAYS`), dasselbe **Thema** 45 Tage (`THEMA_BLOCK_DAYS`): Die
+  eigentümlichen Wörter des Titels dürfen in den zuletzt gezeigten Karten
+  nicht vorkommen. Ohne diese Sperre gewinnt die Kuriosität, weil sie
+  leichter hohe Werte erreicht.
+- Ein LLM schreibt die Story (`COUNCIL_FUNDSTUECK_MODEL`; ein Satz, mehr als
+  260 Zeichen werden verworfen). Ohne brauchbare Story bleibt der Tag leer —
+  das Frontend lässt die Karte dann ersatzlos weg.
 
 ## Die Mischung: 50/50 — an zwei Stellen
 

@@ -385,6 +385,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/activity/event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ui Event
+         * @description Eine Handlung in der Oberfläche zählen — je Konto und Tag.
+         *
+         *     **Was NICHT mitgeht:** kein Zeitpunkt, keine Seite, keine Eingabe. Nur
+         *     welche Handlung es war. Ein unbekannter Name wird abgewiesen statt still
+         *     gezählt: Sonst entstünde aus einem Tippfehler eine Zeile, die in keiner
+         *     Auswertung auftaucht und trotzdem wie ein Wert aussieht.
+         */
+        post: operations["ui_event_api_activity_event_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activity/page": {
         parameters: {
             query?: never;
@@ -7225,6 +7250,18 @@ export interface components {
         AccountPasskeyList: {
             /** Passkeys */
             passkeys: components["schemas"]["AccountPasskey"][];
+        };
+        /**
+         * ActivityEventIn
+         * @description Eine Handlung in der Oberfläche, die sonst keinen Endpunkt aufruft.
+         *
+         *     Das Öffnen der Befehlspalette ist so eine: Ohne Zähler ließe sich „benutzt
+         *     die überhaupt jemand?" nicht beantworten. Nur der Name der Handlung, aus
+         *     der Positivliste ``UI_EVENTS`` — keine Seite, keine Eingabe.
+         */
+        ActivityEventIn: {
+            /** Kind */
+            kind: string;
         };
         /**
          * ActivityPageIn
@@ -14787,6 +14824,8 @@ export interface components {
             name: string;
             /** Notes */
             notes: string[];
+            /** Reachable */
+            reachable: boolean;
             /** Short */
             short: string;
             /** Source Url */
@@ -14838,6 +14877,8 @@ export interface components {
                 name: string;
                 /** Notes */
                 notes: string[];
+                /** Reachable */
+                reachable: boolean;
                 /** Short */
                 short: string;
                 /** Source Url */
@@ -14898,6 +14939,8 @@ export interface components {
             missing: number;
             /** Possible */
             possible: boolean;
+            /** Reachable */
+            reachable: boolean;
             /** Seats */
             seats: number;
             /** Short */
@@ -22959,6 +23002,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TestDelivery"];
+                };
+            };
+        };
+    };
+    ui_event_api_activity_event_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityEventIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -31759,4 +31835,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 765928d33065ef356b5a1bbf8ff1a9692351419458d2248819363d66be418165
+// vertrag-sha256: 37b1796e82d2aba5097fb524b164e31fc32c26d9ebde2ec5f33c51729cf1b747
