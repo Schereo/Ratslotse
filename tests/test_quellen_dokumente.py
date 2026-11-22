@@ -31,6 +31,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from council import ris
 from council.store import CouncilStore
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,10 +39,7 @@ QUELLEN_TS = ROOT / "web" / "frontend" / "lib" / "haushalt-quellen.ts"
 
 #: Adressen, die nichts belegen: die Startseite des Ratsinformationssystems,
 #: mit und ohne Schrägstrich.
-STARTSEITEN = {
-    "https://buergerinfo.oldenburg.de",
-    "https://buergerinfo.oldenburg.de/",
-}
+STARTSEITEN = {ris.BASE, ris.BASE + "/"}
 
 #: Quellen, die diese Adresse zu Recht tragen — mit dem Grund im Klartext.
 #:
@@ -66,10 +64,33 @@ def _statische_adressen() -> dict[str, str]:
     # Eintrag endet an der schließenden Klammer in derselben Einrückung.
     aus: dict[str, str] = {}
     for block in re.finditer(r"^  (\w+): \{(.*?)^  \},", text, re.S | re.M):
-        adresse = re.search(r'\burl:\s*"([^"]+)"', block.group(2))
+        adresse = _adresse(block.group(2))
         if adresse:
-            aus[block.group(1)] = adresse.group(1)
+            aus[block.group(1)] = adresse
     return aus
+
+
+def _adresse(block: str) -> str | None:
+    """Das ``url``-Feld eines Eintrags — wörtlich oder über ``lib/ris.ts``.
+
+    Seit dem Umzug des Ratsinformationssystems (11/2026) stehen dessen
+    Adressen nicht mehr wörtlich in der Datei, sondern als Konstante oder
+    Aufruf; hier werden sie mit ``council/ris.py`` aufgelöst. Eine Form, die
+    diese Funktion nicht kennt, ergibt ``None`` — und lässt
+    ``test_quellenverzeichnis_gelesen`` anschlagen."""
+    m = re.search(r'\burl:\s*"([^"]+)"', block)
+    if m:
+        return m.group(1)
+    m = re.search(r"\burl:\s*(RIS_BASE|RIS_RECHERCHE|risVorlage\((\d+)\)|risDokument\((\d+)\))", block)
+    if not m:
+        return None
+    if m.group(1) == "RIS_BASE":
+        return ris.BASE
+    if m.group(1) == "RIS_RECHERCHE":
+        return ris.SEARCH_URL
+    if m.group(2):
+        return ris.template_url(int(m.group(2)))
+    return ris.file_url(int(m.group(3)))
 
 
 def test_quellenverzeichnis_gelesen():

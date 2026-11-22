@@ -299,7 +299,7 @@ class SitzungenMixin(StoreBasis):
             "JOIN council_agenda_items a ON a.ksinr = aa.ksinr AND a.item_number = aa.item_number "
             "JOIN council_sessions s ON s.ksinr = a.ksinr "
             "JOIN council_templates t ON t.template_number = a.template_number "
-            "WHERE aa.label = 'Vorlage' AND s.session_date >= ? AND aa.url LIKE '%getfile.php?id=%' "
+            "WHERE aa.label = 'Vorlage' AND s.session_date >= ? AND aa.url LIKE '%getfile.%?id=%' "
             "ORDER BY s.session_date DESC", (seit,)).fetchall()
         out, gesehen = [], set()
         for r in rows:
@@ -1805,7 +1805,7 @@ class SitzungenMixin(StoreBasis):
 
     def top_anlage_zu_dokument(self, document_id: int) -> dict | None:
         """Eine TOP-Anlage über die Dokumentnummer des Ratsinformationssystems
-        (``getfile.php?id=…``) — dieselbe Nummer wie ``council_attachments
+        (``getfile?id=…``) — dieselbe Nummer wie ``council_attachments
         .document_id``, sodass ein Agent beide über EINE Kennung anspricht."""
         muster = re.compile(rf"[?&]id={int(document_id)}(?:&|$)")
         for r in self._conn.execute(

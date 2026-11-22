@@ -35,7 +35,7 @@ Nennung „© OpenStreetMap contributors", die in der Karte steht.
 ## Amtliche Inhalte
 
 Beschlüsse, Vorlagen, Protokolle und Tagesordnungen stammen aus dem
-Ratsinformationssystem der Stadt Oldenburg (buergerinfo.oldenburg.de). Es
+Ratsinformationssystem der Stadt Oldenburg (ratsinfo.oldenburg.de). Es
 sind amtliche Werke nach § 5 UrhG und damit gemeinfrei; jede Darstellung
 verlinkt das Original. Pressemitteilungen der Stadt werden per RSS gelesen
 und nur in Auszügen mit Quellenlink gezeigt. Haushaltsdaten und Statistiken

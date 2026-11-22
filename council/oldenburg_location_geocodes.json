@@ -15,14 +15,14 @@
       "lat": 53.1458,
       "lon": 8.2356,
       "precision": "site",
-      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=304854&type=do"
+      "source_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=304854&type=do"
     },
     {
       "slug": "alexanderstrasse-nord",
       "lat": 53.1695,
       "lon": 8.1985,
       "precision": "area",
-      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=287378&type=do"
+      "source_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=287378&type=do"
     },
     {
       "slug": "mittlere-innenstadt",
@@ -43,7 +43,7 @@
       "lat": 53.1702319,
       "lon": 8.2444542,
       "precision": "site",
-      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=235687&type=do"
+      "source_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=235687&type=do"
     },
     {
       "slug": "mittlere-hunte",
@@ -57,7 +57,7 @@
       "lat": 53.101,
       "lon": 8.2495,
       "precision": "area",
-      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=308528&type=do"
+      "source_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=308528&type=do"
     },
     {
       "slug": "sportpark-kreyenbrueck",
@@ -99,7 +99,7 @@
       "lat": 53.10654,
       "lon": 8.22033,
       "precision": "area",
-      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=246577&type=do"
+      "source_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=246577&type=do"
     },
     {
       "slug": "fliegerhorstgelaende",
@@ -169,7 +169,7 @@
       "lat": 53.168,
       "lon": 8.1687,
       "precision": "area",
-      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=308544&type=do"
+      "source_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=308544&type=do"
     },
     {
       "slug": "sporthalle-haarenesch",
@@ -260,7 +260,7 @@
       "lat": 53.1742,
       "lon": 8.1765,
       "precision": "street",
-      "source_url": "https://buergerinfo.oldenburg.de/getfile.php?id=235883&type=do"
+      "source_url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=235883&type=do"
     },
     {
       "slug": "innenstadtbereich",

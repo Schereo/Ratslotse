@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council import finanzquellen, herkunft as h, donations  # noqa: E402
+from council import ris  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
@@ -46,7 +47,7 @@ def _lauf_herkunft(result: dict) -> h.Herkunft:
     spanne = f"{min(years)}–{max(years)}" if years else "—"
     return h.Herkunft(
         kind="ris",
-        url="https://buergerinfo.oldenburg.de/vo040.asp",
+        url=ris.SEARCH_URL,
         label=LABEL,
         citation=donations.FUNDSTELLE,
         as_of=f"Sitzungsjahre {spanne}",
@@ -106,7 +107,7 @@ def main() -> int:
             v["herkunft"] = h.Herkunft(
                 kind="ris",
                 document_id=v.get("document_id"),
-                url=v.get("dokument_url") or "https://buergerinfo.oldenburg.de/vo040.asp",
+                url=v.get("dokument_url") or ris.SEARCH_URL,
                 label=f"{LABEL} — Vorlage {v['template_number']}",
                 citation=donations.FUNDSTELLE,
                 as_of=f"Sitzung vom {v['session_date']}",

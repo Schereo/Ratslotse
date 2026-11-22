@@ -2475,7 +2475,7 @@ FUNDORT_BLOCK = (
     "die Beschlüsse): In Ratslotse unter „Sitzungen“ hat jede Sitzung eine eigene Seite mit "
     "Tagesordnung und — sobald das Protokoll ausgewertet ist — den Beschlüssen samt "
     "Abstimmung. Die Originale (Tagesordnung, Vorlagen, Niederschrift) stehen im "
-    "Ratsinformationssystem der Stadt, buergerinfo.oldenburg.de. Die Stadt veröffentlicht "
+    "Ratsinformationssystem der Stadt, ratsinfo.oldenburg.de. Die Stadt veröffentlicht "
     "Niederschriften in der Regel einige Wochen bis ein, zwei Monate nach der Sitzung; bis "
     "dahin gibt es nur die Tagesordnung. Nenne das, und keine Beschlüsse als „Fundort“.\n")
 

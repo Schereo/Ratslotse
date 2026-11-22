@@ -48,6 +48,7 @@ import {
 } from "@/lib/haushalt-indicators";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import { Beleg } from "@/components/haushalt/source";
+import { RIS_BASE } from "@/lib/ris";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 
 //: Kleine Zahlen schreibt der Bereich aus („aus sechs Berichten"), große als
@@ -298,7 +299,7 @@ export function KennzahlenAbschnitt() {
 
   const korrekturen = korrekturenVon(daten);
   const n_reports = [...new Set(daten.series.map((p) => p.report_year))];
-  const quelleUrl = "https://buergerinfo.oldenburg.de";
+  const quelleUrl = RIS_BASE;
 
   return (
       <div className="flex flex-col gap-4">

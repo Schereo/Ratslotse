@@ -37,6 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from council import ris  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.wirtschaftsplan import (  # noqa: E402
     WirtschaftsplanFehler,
@@ -333,8 +334,7 @@ def main() -> int:
             return 1 if risse else 0
 
         for plan, kvonr in gefunden:
-            url = (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
-                   if kvonr else None)
+            url = ris.template_url(kvonr) if kvonr else None
             store.save_wirtschaftsplan(plan, herkunft_fuer(plan, url=url))
         for plan, probes, a in aus_anlage:
             store.save_wirtschaftsplan(plan, herkunft_tabelle(
