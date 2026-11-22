@@ -732,6 +732,16 @@ class ActivityPageIn(BaseModel):
     route: str = Field(default="/", max_length=200)
 
 
+class ActivityEventIn(BaseModel):
+    """Eine Handlung in der Oberfläche, die sonst keinen Endpunkt aufruft.
+
+    Das Öffnen der Befehlspalette ist so eine: Ohne Zähler ließe sich „benutzt
+    die überhaupt jemand?" nicht beantworten. Nur der Name der Handlung, aus
+    der Positivliste ``UI_EVENTS`` — keine Seite, keine Eingabe.
+    """
+    kind: str = Field(max_length=40)
+
+
 class ClientErrorIn(BaseModel):
     """Eine Fehlermeldung aus dem Browser.
 
