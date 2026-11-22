@@ -1,9 +1,9 @@
 ---
 title: Ratslotse — Technische Dokumentation
-description: Architektur, KI-Pipeline und Architekturentscheidungen hinter ratslotse.de.
+description: Technische Dokumentation zu Architektur, KI-Verarbeitung und Betrieb von ratslotse.de.
 template: splash
 hero:
-  tagline: Wie der Ratslotse Oldenburger Lokalpolitik scrapt, per LLM klassifiziert und personalisiert ausliefert.
+  tagline: Wie Ratslotse öffentliche Ratsinformationen aus Oldenburg erfasst, mit Sprachmodellen klassifiziert und personalisiert bereitstellt.
   actions:
     - text: Architektur ansehen
       link: /docs/architektur/
@@ -17,34 +17,34 @@ hero:
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-Diese Doku richtet sich an Entwickler*innen und Betreiber*innen. Sie erklärt, **wie**
-das System gebaut ist und **warum** es so gebaut ist. Endnutzer-Hilfe steht
-direkt auf [ratslotse.de](https://ratslotse.de).
+Die Dokumentation richtet sich an Entwickler*innen und Betreiber*innen.
+Sie beschreibt den Aufbau des Systems und begründet technische
+Entscheidungen. Hilfe zur Nutzung steht auf [ratslotse.de](https://ratslotse.de).
 
 <CardGrid>
 	<Card title="Architektur" icon="puzzle">
-		Quellen, Pakete und ihre Schichten, drei SQLite-Datenbanken, Web, iOS-App
-		und MCP-Server.
+		Datenquellen, Paketabhängigkeiten und drei SQLite-Datenbanken.
+		Anbindung von Webanwendung, iOS-App und MCP-Server.
 		[→ Architektur](/docs/architektur/)
 	</Card>
 	<Card title="KI-Pipeline" icon="open-book">
-		Welche Schritte ein Sprachmodell nutzen, welche bewusst nicht, und wie
-		Modellaussagen im Code gegen die Quelle geprüft werden.
+		Einsatz von Sprachmodellen in der Datenverarbeitung und
+		automatisierte Prüfung von Modellaussagen anhand der Quellen.
 		[→ KI-Pipeline](/docs/ki-pipeline/)
 	</Card>
 	<Card title="Frag den Rat" icon="magnifier">
-		Von der Frage zur belegten Antwort: Analyse, hybride Suche, die Akte,
-		ausführliche Recherche.
+		Frageanalyse, hybride Suche, Akten und ausführliche Recherche
+		für Antworten mit Quellen.
 		[→ Frag den Rat](/docs/frag-den-rat/)
 	</Card>
 	<Card title="Beschlüsse" icon="comment">
-		Was aus Protokollen, Vorlagen und Anlagen entsteht: Extraktion,
-		Themenfelder, Kurzfassungen.
+		Wie Ratslotse Protokolle, Vorlagen und Anlagen verarbeitet, Beschlüsse
+		Themenfeldern zuordnet und Kurzfassungen erstellt.
 		[→ Beschlüsse](/docs/beschluesse/)
 	</Card>
 	<Card title="Sitzung & Punkt" icon="document">
-		Die Sitzung als Kurs, die Seite je Tagesordnungspunkt mit Dossier und
-		Anträgen, die Live-Verfolgung der Ratssitzung.
+		Sitzungsübersicht, Dossiers und Anträge je Tagesordnungspunkt
+		sowie Live-Verfolgung der Ratssitzung.
 		[→ Sitzung & Tagesordnungspunkt](/docs/sitzungen/)
 	</Card>
 	<Card title="Stadt im Blick" icon="information">
@@ -54,12 +54,13 @@ direkt auf [ratslotse.de](https://ratslotse.de).
 		[Andere Städte](/docs/andere-staedte/)
 	</Card>
 	<Card title="Stadtfinanzen" icon="list-format">
-		Der Haushalt in seinen Datenschichten, jede Zahl mit Beleg.
+		Datenquellen und Verarbeitung der Haushaltszahlen mit Belegen für
+		jeden Wert.
 		[→ Stadtfinanzen](/docs/haushalt/)
 	</Card>
 	<Card title="Bewertungs-Scores" icon="star">
-		Wie Beschlüsse gewichtet werden: nachrechenbare Heuristik, KI-Tragweite,
-		Gesprächswert — und wie sie zusammenfließen.
+		Wie Ratslotse Wichtigkeit und Tragweite von Beschlüssen gewichtet
+		und wofür der Gesprächswert verwendet wird.
 		[→ Bewertungs-Scores](/docs/bewertungen/)
 	</Card>
 	<Card title="App & Konten" icon="laptop">
@@ -68,28 +69,28 @@ direkt auf [ratslotse.de](https://ratslotse.de).
 		[→ App & Konten](/docs/app-und-konten/)
 	</Card>
 	<Card title="Betrieb" icon="setting">
-		Deploy-Wege, Dev-Umgebung, Cron-Jobs, Sicherungen, Kosten und alle
+		Deploys, Dev-Umgebung, Cron-Jobs, Backups, LLM-Kosten und
 		Umgebungsvariablen.
 		[→ Betrieb](/docs/betrieb/)
 	</Card>
 	<Card title="Referenz" icon="rocket">
-		Aus dem Code erzeugt und deshalb immer aktuell: Cron-Jobs,
+		Aus den Registern im Code erzeugte Listen der Cron-Jobs,
 		Feature-Schalter, Rollen und Rechte.
 		[→ Cron-Jobs](/docs/referenz/cron-jobs/) ·
 		[Schalter](/docs/referenz/feature-schalter/) ·
 		[Rollen](/docs/referenz/rollen-rechte/)
 	</Card>
 	<Card title="Entscheidungen" icon="approve-check">
-		Architecture Decision Records: die wichtigen Technik-Weichen und warum sie
-		so gestellt wurden.
+		Architecture Decision Records mit Kontext, Begründung und
+		Konsequenzen der technischen Entscheidungen.
 		[→ ADRs](/docs/adr/)
 	</Card>
 </CardGrid>
 
 :::note[Für Entwickler*innen]
 Das Repo ist Open Source
-([AGPL-3.0](https://github.com/Schereo/Ratslotse)) — Beiträge willkommen.
-Der Einstieg für Mitwirkende steht in `CONTRIBUTING.md`, die technischen
-Projektregeln in `CLAUDE.md`, beide im Repo-Root. Konkrete Hosts und Secrets
-liegen ausschließlich auf dem Server, nie im Git.
+([AGPL-3.0](https://github.com/Schereo/Ratslotse)) und offen für Beiträge.
+Im Repo-Root stehen der Einstieg für Mitwirkende in `CONTRIBUTING.md` und
+die technischen Projektregeln in `CLAUDE.md`. Konkrete Hosts und Secrets
+liegen ausschließlich auf dem Server und werden nicht eingecheckt.
 :::
