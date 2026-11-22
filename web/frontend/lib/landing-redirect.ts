@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { LANDING_PARAM } from "./landing-wanted";
 
 /**
  * Angemeldet auf „/": gleich aufs Dashboard — schon auf dem Server.
@@ -52,7 +53,7 @@ export function isDocumentRequest(req: NextRequest): boolean {
 }
 
 export async function redirectSignedIn(req: NextRequest, sessionValid: SessionCheck): Promise<NextResponse> {
-  if (req.nextUrl.searchParams.has("start")) {
+  if (req.nextUrl.searchParams.has(LANDING_PARAM)) {
     const res = NextResponse.next();
     res.cookies.set(LANDING_WANTED_COOKIE, "1", { path: "/", sameSite: "lax", httpOnly: true });
     return res;
