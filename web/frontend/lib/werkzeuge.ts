@@ -7,6 +7,17 @@
  * `?gremium=rat&dabei=spd,gruene&ohne=afd`.
  */
 
+/** Die Werkzeuge unter `/werkzeuge` — EINE Liste für die Übersicht
+ *  (`app/(app)/werkzeuge/page.tsx`, die je Eintrag Bild und Text ergänzt) und
+ *  für das Untermenü der Seitenleiste. Kommt ein Werkzeug dazu, steht es
+ *  hier; die Übersicht verlangt dann seine Karte (der Typ dort hängt an
+ *  diesen Adressen). */
+export type CouncilTool = { href: string; title: string };
+
+export const COUNCIL_TOOLS = [
+  { href: "/werkzeuge/mehrheiten", title: "Mehrheitsrechner" },
+] as const satisfies readonly CouncilTool[];
+
 export type Wahl = "dabei" | "ohne";
 
 export type Auswahl = { gremium: string | null; dabei: string[]; ohne: string[] };

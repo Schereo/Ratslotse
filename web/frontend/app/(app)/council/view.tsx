@@ -68,10 +68,14 @@ const EntitiesTab = dynamic(
 function AnalyseReiterPlatzhalter() {
   const sub = analysisSub(useSearchParams().get("sub"));
   return (
-    <div className="mt-4 space-y-4">
-      <AnalyseReiter aktiv={sub} />
-      <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
-      <ChartSkeleton />
+    // Derselbe Aufbau wie `AnalysisTab` — sonst spränge der Inhalt, wenn der
+    // Code des Reiters da ist.
+    <div className="mt-4">
+      <AnalyseReiter aktiv={sub} className="mb-4" />
+      <div className="space-y-4">
+        <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
+        <ChartSkeleton />
+      </div>
     </div>
   );
 }

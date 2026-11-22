@@ -25,6 +25,9 @@ import { karteHref } from "@/lib/routes";
 import { abmeldenMerken } from "@/lib/abmelden";
 import type { Topic } from "@/lib/types";
 import { TABLEISTE_HOEHE } from "@/lib/tableiste";
+import { activeAnalysisSection, analysisSections } from "@/lib/analysis-nav";
+import { COUNCIL_TOOLS, type CouncilTool } from "@/lib/werkzeuge";
+import type { BudgetStage } from "@/components/haushalt/nav-stages";
 
 /** Wohin „Mein Viertel" führt: auf den eigenen Stadtteil, wenn einer gewählt
  *  ist (Tims Entscheidung 5, STADTKARTE-PLAN.md), sonst auf die Stadt-Stufe.
@@ -198,22 +201,32 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   return <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{children}</p>;
 }
 
-function NavItem({ item, active, badge = 0, badgeLabel, onNavigate }: { item: Item; active: boolean; badge?: number; badgeLabel?: string; onNavigate?: () => void }) {
+/** `active` heißt: Man ist in diesem Bereich. `marked` heißt: Diese Zeile
+ *  trägt die Fläche. Beides fällt zusammen, solange der Bereich kein
+ *  Untermenü hat — sonst wandert die Fläche auf die Unterzeile, und der
+ *  Hauptpunkt bleibt nur noch in der Farbe stehen (s. `NavSection`). */
+function NavItem({ item, active, marked = active, badge = 0, badgeLabel, onNavigate }: { item: Item; active: boolean; marked?: boolean; badge?: number; badgeLabel?: string; onNavigate?: () => void }) {
   const Icon = item.icon;
   return (
     <Link
       href={item.href}
       onClick={onNavigate}
       data-tour={item.tour}
-      data-aktiv={active ? "true" : undefined}
-      aria-current={active ? "page" : undefined}
+      data-aktiv={marked ? "true" : undefined}
+      aria-current={marked ? "page" : undefined}
       className={cn(
         // Aktiv = Pill (RL-102): Fläche + Farbe, kein Akzent-Balken mehr. Die
         // Fläche zeichnet seit 09/2026 die gleitende Markierung (s. o.); die
         // Klasse hier bleibt als Stand ohne JS stehen und wird vom Marker
         // übernommen, sobald er misst.
         "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-fluss",
-        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+        marked ? "bg-primary/10 text-primary"
+          // Im Bereich, aber die Fläche liegt auf einer Unterzeile: nur die
+          // Farbe. Bewusst OHNE Hover-Fläche — nach dem Klick auf „Analyse"
+          // ruht der Zeiger genau hier, und zwei gefüllte Zeilen
+          // untereinander läsen sich als zwei Standorte.
+          : active ? "text-primary"
+          : "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >
       {/* Das Zeichen rückt beim Überfahren einen halben Schritt vor und steht
@@ -231,7 +244,124 @@ function NavItem({ item, active, badge = 0, badgeLabel, onNavigate }: { item: It
   );
 }
 
-function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigate?: () => void }) {
+/* ------------------- Untermenüs der Seitenleiste (11/2026) ------------------- */
+
+type SubItem = { key: string; label: string; href: string };
+
+/** Ein Navigationspunkt samt seinem Untermenü.
+ *
+ *  Tims Wunsch 22.11.2026: Wer „Analyse" anklickt, sieht darunter Trends,
+ *  Parteien, Personen … — und nur dann. Vier Dinge gehören zu dieser Form:
+ *
+ *  * **Offen ist es genau so lange, wie man im Bereich ist.** Kein Pfeil zum
+ *    Auf- und Zuklappen, kein gemerkter Zustand: Im Ruhezustand ist die
+ *    Leiste so kurz wie vorher („wir dürfen das Nav nicht bloaten"), und es
+ *    gibt nichts, was man aus Versehen offen stehen lassen könnte.
+ *  * **Die Fläche markiert die Unterzeile.** Sie ist der Ort, an dem man
+ *    steht; der Hauptpunkt darüber behält nur die Farbe. Ohne passende
+ *    Unterzeile (die Übersicht des Haushalts, ein Bereichs-Steckbrief) trägt
+ *    der Hauptpunkt die Fläche wie jeder andere.
+ *  * **Es steht sofort da, ohne Auffahren.** Die naheliegende Bewegung —
+ *    die Höhe fährt auf (`Aufklapp`) — verträgt sich nicht mit der gleitenden
+ *    Markierung, und beides gemessen am 22.11.2026: Die Unterzeilen hängen
+ *    beim Auffahren einen Frame später im Baum als der Rest, die Markierung
+ *    fand also kein Ziel, verschwand und sprang dann OHNE Weg auf die Stelle,
+ *    an der in dem Moment noch „Mein Viertel" stand. Beim Zufahren bleibt der
+ *    alte Inhalt 300 ms stehen — samt seiner aktiven Zeile, die im Baum VOR
+ *    dem neuen Ziel liegt; die Markierung blieb auf ihr sitzen und danach an
+ *    einer Stelle, an der längst ein anderer Punkt stand. Ohne Auffahren sind
+ *    Ziel und Liste im selben Bild fertig, und die Fläche fährt den ganzen
+ *    Weg — sie ist die Bewegung, die den Wechsel führt.
+ *  * **Nur am Schreibtisch.** Die Seitenleiste gibt es erst ab `desk`; auf
+ *    Telefon und iPad führen weiter die Reiterleiste der Analyse und der
+ *    Wegweiser des Haushalts.
+ */
+function NavSection({ item, active, sub, activeKey, onNavigate }: {
+  item: Item;
+  active: boolean;
+  /** Leer = der Bereich hat (noch) kein Untermenü. */
+  sub: SubItem[];
+  activeKey: string | null;
+  onNavigate?: () => void;
+}) {
+  const open = active && sub.length > 0;
+  return (
+    // Hauptpunkt und Untermenü sind EIN Platz im Stapel der Liste: Die Fuge
+    // zwischen beiden ist kleiner als die zwischen zwei Hauptpunkten.
+    <div>
+      <NavItem item={item} active={active} marked={active && !(open && activeKey)} onNavigate={onNavigate} />
+      {open && (
+        <div role="group" aria-label={item.label} className="space-y-0.5 pb-1 pt-1">
+          {sub.map((z) => {
+            const current = z.key === activeKey;
+            return (
+              <Link
+                key={z.key}
+                href={z.href}
+                onClick={onNavigate}
+                data-aktiv={current ? "true" : undefined}
+                aria-current={current ? "page" : undefined}
+                className={cn(
+                  // Eingerückt bis unter die Schrift des Hauptpunkts (12 px
+                  // Rand + 16 px Zeichen + 12 px Fuge), eine Stufe kleiner und
+                  // ohne eigenes Zeichen: Die Einrückung IST die Hierarchie.
+                  "block rounded-lg py-1.5 pl-10 pr-3 text-[13px] leading-snug transition-colors duration-fluss",
+                  current ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                )}
+              >
+                {z.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Die Etappen des Haushalts — nachgeladen, sobald jemand den Bereich betritt.
+ *
+ *  Sie stehen in `wegweiser.tsx`, und der hängt an Schlangenpfad, Lesestand
+ *  und siebzehn Symbolen. Die Navigation steht auf JEDER Seite; den Haushalt
+ *  sehen nur Konten mit dem Recht `budget`, und auch die brauchen die Etappen
+ *  erst dort. Auf den Haushaltsseiten ist der Wegweiser ohnehin geladen.
+ *
+ *  Der Merkstand liegt außerhalb von React: Next baut die Leiste bei einer
+ *  Navigation neu auf (s. `gleit-marker.tsx`), und ohne ihn kämen die Zeilen
+ *  bei jedem Schritt im Haushalt einen Wimpernschlag zu spät. */
+let budgetStages: BudgetStage[] | null = null;
+
+function useBudgetStages(enabled: boolean): BudgetStage[] | null {
+  const [stages, setStages] = useState(budgetStages);
+  useEffect(() => {
+    if (!enabled || stages) return;
+    let alive = true;
+    import("@/components/haushalt/nav-stages")
+      .then((m) => {
+        budgetStages = m.BUDGET_STAGES;
+        if (alive) setStages(m.BUDGET_STAGES);
+      })
+      // Ein Chunk, der nach einem Deploy fehlt: Dann bleibt es beim
+      // Hauptpunkt — die Navigation darf daran nicht hängen.
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [enabled, stages]);
+  return enabled ? stages : null;
+}
+
+/** Das Untermenü der Werkzeuge erscheint erst ab dem ZWEITEN Werkzeug: Eine
+ *  einzelne Unterzeile wiederholte nur, was die Übersicht ohnehin zeigt. */
+const TOOL_ITEMS: SubItem[] = (COUNCIL_TOOLS as readonly CouncilTool[]).length >= 2
+  ? COUNCIL_TOOLS.map((w) => ({ key: w.href, label: w.title, href: w.href }))
+  : [];
+
+function NavLinksInner({ activeTab, tab, sub, onNavigate }: {
+  activeTab: string;
+  /** `?tab=` und `?sub=` roh aus der Adresse — für das Untermenü der Analyse. */
+  tab: string | null;
+  sub: string | null;
+  onNavigate?: () => void;
+}) {
   const pathname = pfad(usePathname());
   const { user } = useAuth();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
@@ -242,6 +372,20 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const openFeedback = useUnreadFeedback(darfAdmin(user));
   const viertel = useFeature("mein-viertel");
   const viertelZiel = useViertelZiel(viertel && !!user);
+
+  // Die Untermenüs: was sie zeigen und welche Zeile der Standort ist.
+  const plans = useFeature("plaene");
+  const ideas = useFeature("ideen-anderswo");
+  const elections = useFeature("wahlabend");
+  const analysisItems = analysisSections({ plans, ideas, elections });
+  const analysisSection = activeAnalysisSection(pathname, tab, sub);
+  // Ein Ziel hinter einem abgeschalteten Schalter hat keine Zeile — dann
+  // trägt der Hauptpunkt die Fläche.
+  const analysisKey = analysisItems.some((z) => z.key === analysisSection) ? analysisSection : null;
+  const budgetOpen = darfHaushalt(user) && isActive("/haushalt");
+  const stages = useBudgetStages(budgetOpen);
+  const stageKey = stages?.find((e) => e.steps.includes(pathname))?.key ?? null;
+  const toolKey = TOOL_ITEMS.find((w) => isActive(w.href))?.key ?? null;
 
   // Der Marker muss neu messen, sobald sich das aktive Ziel ändern KANN — das
   // ist der Pfad plus der ?tab=-Wert (fünf der Punkte zeigen auf /council und
@@ -255,28 +399,49 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   // für den Marker gleich aus. Die Rechte nennen genau das, was die Zeilen
   // bestimmt.
   const { gruppeRef, markerRef } = useGleitMarker(
-    `${pathname}|${activeTab}|${user?.permissions?.join(",") ?? ""}|${viertel ? "v" : ""}`, "seitenleiste");
+    `${pathname}|${activeTab}|${user?.permissions?.join(",") ?? ""}|${viertel ? "v" : ""}`
+    // … und alles, was die Fläche auf eine UNTERZEILE setzt: der Unterreiter
+    // der Analyse und die Etappe des Haushalts (die erst nach dem Nachladen
+    // feststeht — bis dahin trägt der Hauptpunkt die Fläche).
+    + `|${analysisKey ?? ""}|${stageKey ?? ""}|${toolKey ?? ""}`, "seitenleiste");
 
   return (
     <div ref={gruppeRef} className="gleit-gruppe relative flex-1">
       <GleitMarker markerRef={markerRef} radius="var(--radius)" />
       <nav className="space-y-1 px-3">
-        {MAIN_ITEMS.map((l) => (
-          <NavItem
-            key={l.href}
-            item={l}
-            active={l.tab ? onCouncil && activeTab === l.tab : isActive(l.href)}
-            onNavigate={onNavigate}
-          />
-        ))}
+        {MAIN_ITEMS.map((l) => {
+          const active = l.tab ? onCouncil && activeTab === l.tab : isActive(l.href);
+          return l.tab === "analysis"
+            ? <NavSection key={l.href} item={l} active={active} sub={analysisItems} activeKey={analysisKey} onNavigate={onNavigate} />
+            : <NavItem key={l.href} item={l} active={active} onNavigate={onNavigate} />;
+        })}
         {viertel && (
           <NavItem item={{ ...VIERTEL, href: viertelZiel }} active={isActive("/karte") || isActive("/viertel")} onNavigate={onNavigate} />
         )}
+
+        {/* Eigene Gruppe seit 11/2026 (Tim, 22.11.): Wer im Rat sitzt, hat
+            Haushalt und Werkzeuge als Arbeitsmittel beieinander — vorher
+            standen sie als siebter und achter Punkt in einer flachen Reihe mit
+            „Heute" und „Fragen".
+
+            Die Überschrift hängt am Recht `council_tools`, NICHT am Haushalt:
+            Den sieht seit 08.11.2026 jedes Konto (`kern/roles.py`). Für alle
+            ohne Mandat bliebe „Ratsarbeit" eine Überschrift über einer
+            einzigen Zeile, die mit ihrer Arbeit im Rat nichts zu tun hat —
+            dort steht der Haushalt wie bisher am Ende der Hauptliste, an
+            derselben Stelle, nur ohne Überschrift. */}
+        {darfWerkzeuge(user) && <SectionHeader>Ratsarbeit</SectionHeader>}
         {darfHaushalt(user) && (
-          <NavItem item={HAUSHALT} active={isActive("/haushalt")} onNavigate={onNavigate} />
+          <NavSection
+            item={HAUSHALT}
+            active={isActive("/haushalt")}
+            sub={stages ?? []}
+            activeKey={stageKey}
+            onNavigate={onNavigate}
+          />
         )}
         {darfWerkzeuge(user) && (
-          <NavItem item={WERKZEUGE} active={isActive("/werkzeuge")} onNavigate={onNavigate} />
+          <NavSection item={WERKZEUGE} active={isActive("/werkzeuge")} sub={TOOL_ITEMS} activeKey={toolKey} onNavigate={onNavigate} />
         )}
 
         <SectionHeader>Persönlich</SectionHeader>
@@ -326,15 +491,16 @@ export function councilBereich(pathname: string, param: string | null): string {
 
 function NavLinksWithParams({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = pfad(usePathname());
-  const param = useSearchParams().get("tab");
-  return <NavLinksInner activeTab={councilBereich(pathname, param)} onNavigate={onNavigate} />;
+  const params = useSearchParams();
+  const tab = params.get("tab");
+  return <NavLinksInner activeTab={councilBereich(pathname, tab)} tab={tab} sub={params.get("sub")} onNavigate={onNavigate} />;
 }
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   // useSearchParams must sit under a Suspense boundary; the fallback renders the
   // same nav with the default (decisions) tab so there is no empty flash.
   return (
-    <Suspense fallback={<NavLinksInner activeTab="decisions" onNavigate={onNavigate} />}>
+    <Suspense fallback={<NavLinksInner activeTab="decisions" tab={null} sub={null} onNavigate={onNavigate} />}>
       <NavLinksWithParams onNavigate={onNavigate} />
     </Suspense>
   );
@@ -729,7 +895,7 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
             Konto
           </span>
         </Link>
-        {/* In drei Gruppen statt einer Reihe (10/2026): Neun Zeilen ohne
+        {/* In Gruppen statt einer Reihe (10/2026): Neun Zeilen ohne
             Gliederung mischten Entdecken, Persönliches und Konto-Aktionen —
             dieselben Gruppen wie in der Seitenleiste. */}
         <div className="flex flex-col pt-1">
@@ -744,6 +910,10 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
               „Ideen aus anderen Städten" IN der Analyse, nicht mehr als eigene Zeile hier
               (Tim: „ungern noch einen weiteren Punkt in die Navigation"). */}
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
+          {/* Dieselbe Gruppe wie in der Seitenleiste (11/2026) — und wie dort
+              nur für Konten mit Mandat; sonst bleibt der Haushalt eine Zeile
+              von „Entdecken". */}
+          {darfWerkzeuge(user) && <MehrKicker>Ratsarbeit</MehrKicker>}
           {darfHaushalt(user) && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
           {darfWerkzeuge(user) && <MehrZeile href="/werkzeuge" icon={Wrench} label="Werkzeuge" onClose={onClose} />}
           <MehrKicker>Für dich</MehrKicker>

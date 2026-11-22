@@ -39,7 +39,10 @@ const CLIMATE_PLAN = 'a[href="/council/plan?key=klimaschutzplan_2035"]';
 test("der Reiter heißt „Pläne“ und führt zum Plan", async ({ page }) => {
   await schalter(page, true);
   await page.goto("/council?tab=analysis&sub=ziele");
-  await expect(page.getByRole("button", { name: "Pläne", pressed: true })).toBeVisible();
+  // Am Schreibtisch steht der Reiter als Unterzeile der Seitenleiste (seit
+  // 11/2026), nicht mehr als Leiste auf der Seite.
+  await expect(page.locator("aside").getByRole("link", { name: "Pläne", exact: true }))
+    .toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("heading", { name: "Laufend" })).toBeVisible();
   // Über die Adresse und in der Gruppe: Der Plan steht auch im Kopf unter
   // „Als Nächstes laut Plan“, und sein Name auf der Zeile des Vorgängers.
@@ -455,7 +458,8 @@ test("die Viertel-Tafel nennt das Stadterneuerungsgebiet und den Wärmeplan", as
 test("ohne Schalter bleibt es bei den Zielen", async ({ page }) => {
   await schalter(page, false);
   await page.goto("/council?tab=analysis&sub=ziele");
-  await expect(page.getByRole("button", { name: "Ziele", pressed: true })).toBeVisible();
+  await expect(page.locator("aside").getByRole("link", { name: "Ziele", exact: true }))
+    .toHaveAttribute("aria-current", "page");
   await page.goto("/council/plan?key=klimaschutzplan_2035");
   await expect(page.getByRole("heading", { level: 1, name: "Klimaschutzplan Oldenburg 2035" })).toHaveCount(0);
 });

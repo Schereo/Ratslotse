@@ -14,25 +14,24 @@ import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Users, TrendingUp, Target, User, Lightbulb, Vote } from "lucide-react";
 import { useFeature } from "@/lib/features";
+import { analysisSections, analysisSub, type AnalysisSection, type AnalysisSub } from "@/lib/analysis-nav";
 import { Segmented } from "@/components/ui";
 import { ScrollZeile } from "@/components/ui/scroll-zeile";
+import { cn } from "@/lib/utils";
 
-export type AnalysisSub = "parties" | "trends" | "ziele" | "personen";
-// Trends zuerst und als Default: Die Themenfeld-Rückblicke sind der
-// zugänglichste Einstieg in die Analyse — Parteien/Personen sind die Vertiefung.
-const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
-  ["trends", "Trends", TrendingUp],
-  ["parties", "Parteien", Users],
-  ["personen", "Personen", User],
-  // „Finanzen“ stand hier bis 11/2026 — Summen aus Beschlusstexten neben dem
-  // echten Haushalt, der dasselbe besser beantwortet (Tim, 09.11.2026).
-  ["ziele", "Ziele", Target],
-];
+// Welche Reiter es gibt und wohin sie führen, steht in `lib/analysis-nav.ts` —
+// dieselbe Liste speist das Untermenü der Seitenleiste. Hier kommen nur die
+// Symbole dazu, die es dort nicht gibt.
+export { analysisSub, type AnalysisSub };
 
-/** Der Unterreiter aus `?sub=` — alles Unbekannte ist „Trends". */
-export function analysisSub(raw: string | null): AnalysisSub {
-  return raw === "parties" || raw === "ziele" || raw === "personen" ? raw : "trends";
-}
+const ICONS: Record<AnalysisSection, typeof Users> = {
+  trends: TrendingUp,
+  parties: Users,
+  personen: User,
+  ziele: Target,
+  staedte: Lightbulb,
+  wahlen: Vote,
+};
 
 /** Fragen, die zum jeweiligen Unterreiter passen — und die die Beschlüsse
  *  hergeben. Wer hier eine Sackgasse einbaut, zeigt sie Neuen als Erstes.
@@ -51,39 +50,43 @@ export const ANALYSE_FRAGEN: Record<AnalysisSub, readonly string[]> = {
   ziele: ["Was steht im Klimaschutzplan 2035?", "Was hat der Rat zur Wärmeplanung beschlossen?"],
 };
 
-/** Ein Reiter mehr als die Analyse selbst kennt: „Ideen aus anderen Städten"
- *  — derselbe Name wie Seitentitel, Menü und App (Tims Entscheidung 10/2026;
- *  vorher hieß er hier „Andere Städte", in der App „Ideen anderswo"). Er ist
- *  länger als die übrigen Reiter, passt am Schreibtisch aber in die Leiste,
- *  und auf dem Handy läuft die Leiste ohnehin seitwärts. Er führt auf
- *  die Ideen-Seite (`/council/ideen`). Sie stellt dieselbe Frage wie die
- *  Analyse — was tut der Rat? — aus der anderen Richtung: was tun andere Räte,
- *  was Oldenburg nicht tut. Tims Entscheidung 23.09.2026: kein eigener Punkt
- *  in der Navigation, sondern ein Reiter hier. */
-type AnalyseReiterWert = AnalysisSub | "staedte" | "wahlen";
-
-/* „Wahlen" ist der dauerhafte Weg zur Wahl-Auswertung (`/wahlen`: Ratswahl,
- * OB-Wahl, Stichwahl, Rückblicke). Tims Entscheidung 03.10.2026: Wahlabend
- * und Tippspiel bleiben, aber nicht mehr prominent — die Auswertung soll
+/* Zwei Reiter mehr, als die Analyse selbst kennt — beide führen auf eine
+ * eigene Seite und haben trotzdem keinen eigenen Punkt in der Navigation:
+ *
+ * „Ideen aus anderen Städten" (`/council/ideen`) — derselbe Name wie
+ * Seitentitel, Menü und App (Tims Entscheidung 10/2026; vorher hieß er hier
+ * „Andere Städte", in der App „Ideen anderswo"). Die Seite stellt dieselbe
+ * Frage wie die Analyse — was tut der Rat? — aus der anderen Richtung: was tun
+ * andere Räte, was Oldenburg nicht tut (Tim, 23.09.2026).
+ *
+ * „Wahlen" (`/wahlen`: Ratswahl, OB-Wahl, Stichwahl, Rückblicke) — der
+ * dauerhafte Weg zur Wahl-Auswertung. Tims Entscheidung 03.10.2026: Wahlabend
+ * und Tippspiel bleiben, aber nicht mehr prominent; die Auswertung soll
  * trotzdem immer erreichbar sein. Laut (oben auf Heute, auf der Startseite)
- * wird eine Wahl nur noch um ihren Wahltag (`election.prominent`); hier steht
- * sie das ganze Jahr. Gleiche Bauform wie „Andere Städte": kein eigener
- * Navigationspunkt, ein Reiter, der auf die eigene Seite führt. Am Schalter
+ * wird eine Wahl nur noch um ihren Wahltag (`election.prominent`). Am Schalter
  * `wahlabend`, weil die Zielseite daran hängt. */
 
-export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; className?: string }) {
+/** Die Reiterleiste — **nur auf Telefon und iPad** (`desk:hidden`).
+ *
+ *  Am Schreibtisch stehen dieselben Ziele als Untermenü unter „Analyse" in der
+ *  Seitenleiste (seit 11/2026). Beides zugleich wäre dieselbe Navigation
+ *  doppelt, 200 px voneinander entfernt (Tim, 22.11.2026: „doppelte Navigation
+ *  ist unnötig"). Unterhalb von `desk` gibt es keine Seitenleiste, dort bleibt
+ *  die Leiste der einzige Weg.
+ *
+ *  `className` gilt der Hülle und trägt den Abstand zur Umgebung: Er muss mit
+ *  der Leiste verschwinden, sonst bliebe am Schreibtisch eine Lücke stehen. */
+export function AnalyseReiter({ aktiv, className }: { aktiv: AnalysisSection; className?: string }) {
   const sp = useSearchParams();
   const router = useRouter();
   const staedte = useFeature("ideen-anderswo");
   // „Pläne“ statt „Ziele“ (Schalter `plaene`): dieselbe Adresse `sub=ziele`,
   // damit alte Links und die App weiter dort landen.
   const plaene = useFeature("plaene");
-  const optionen: { value: AnalyseReiterWert; label: string; icon: typeof Users }[] =
-    SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: s === "ziele" && plaene ? "Pläne" : lbl, icon: Icon }));
   const wahlen = useFeature("wahlabend");
-  if (staedte) optionen.push({ value: "staedte", label: "Ideen aus anderen Städten", icon: Lightbulb });
-  if (wahlen) optionen.push({ value: "wahlen", label: "Wahlen", icon: Vote });
-  const wechsel = (s: AnalyseReiterWert) => {
+  const optionen = analysisSections({ plans: plaene, ideas: staedte, elections: wahlen })
+    .map((z) => ({ value: z.key, label: z.label, icon: ICONS[z.key] }));
+  const wechsel = (s: AnalysisSection) => {
     if (s === aktiv) return;
     if (s === "staedte") { router.push("/council/ideen"); return; }
     if (s === "wahlen") { router.push("/wahlen"); return; }
@@ -104,17 +107,13 @@ export function AnalyseReiter({ aktiv, className }: { aktiv: AnalyseReiterWert; 
       ?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [aktiv, staedte, wahlen]);
   return (
-    <div ref={huelle}>
+    <div ref={huelle} className={cn("desk:hidden", className)}>
       {/* Die Zeile scrollt auf dem Handy — und zeigt das jetzt mit der
           Ausblend-Maske (Designsprache § 6). Bis 10/2026 stand „€ Finanzen"
           hart angeschnitten am Rand, ohne Hinweis auf weitere Reiter. */}
-      {className ? (
-        <Segmented className={className} value={aktiv} onChange={wechsel} options={optionen} />
-      ) : (
-        <ScrollZeile>
-          <Segmented className="w-max" value={aktiv} onChange={wechsel} options={optionen} />
-        </ScrollZeile>
-      )}
+      <ScrollZeile>
+        <Segmented className="w-max" value={aktiv} onChange={wechsel} options={optionen} />
+      </ScrollZeile>
     </div>
   );
 }
