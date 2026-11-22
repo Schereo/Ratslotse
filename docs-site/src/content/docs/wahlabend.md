@@ -559,7 +559,7 @@ Reihenfolge, die am Wahlabend trägt — jede Zeile ist ohne Deploy machbar:
 | `web/backend/app/election/service.py` | Zusammensetzen der Antwort, Generalprobe, Stale-while-revalidate |
 | `web/backend/app/routers/wahlabend.py` | `GET /api/wahlabend` hinter dem Feature-Schalter |
 | `web/backend/app/antworten.py` | Antwortform `ElectionNight` (Teil des API-Vertrags) |
-| `web/frontend/app/wahlabend/` | Die Seite, außerhalb des Konto-Gates |
+| `web/frontend/app/(app)/wahlabend/` | Die Seite, außerhalb des Konto-Gates |
 | `web/frontend/components/wahlabend/view.tsx` | Anzeigetafel, Listen-Tafel, Sitzband, Wahlbereiche, Mandate |
 | `web/frontend/lib/wahlabend.ts` | Formate, Sortierung, Status einer Kandidatur in Worten |
 | `kommunalwahl/kandidaten.py` | Erzeugt `kandidaten.json` aus der amtlichen Bekanntmachung (pypdf, Koordinaten) |
@@ -587,3 +587,27 @@ sind deshalb die Dokumentation der Rechnung:
 - **Die Hochrechnung** trifft das Endergebnis, wenn die Referenz die Wahrheit
   ist — und liefert nichts, wenn noch nichts ausgezählt ist.
 - **Der Endpunkt** ist ohne Schalter ein 404 und übersteht einen Netzfehler.
+
+## Der neue Rat vor seiner ersten Sitzung
+
+Zwischen Wahl und konstituierender Sitzung gibt es die Gewählten nur im
+Wahlergebnis, in keinem Protokoll. Die Personen-Seiten der App entstehen aber
+aus Protokollen und Anwesenheitslisten. Der Schalter `neuer-rat` schließt
+diese Lücke: `/council/neuer-rat` zeigt die Liste der 52 Gewählten, wer ab dem
+1. November einen Sitz hat, mit Liste, Wahlbereich und Personenstimmen. Dazu
+bekommt jede Person eine Seite, auch wenn es aus den Protokollen noch kein
+Profil gibt.
+
+| Route | Zweck |
+|---|---|
+| `GET /api/council/elected` | der gewählte Rat nach der letzten Ratswahl |
+| `GET /api/council/elected/{slug}` | eine Person daraus |
+
+Beide sind ohne Anmeldung lesbar. Es ist das bekannt gemachte Wahlergebnis,
+und die Angaben zur Person (Name, Beruf, Jahrgang) stammen aus der amtlichen
+Bekanntmachung der Wahlvorschläge. Das Kandidatenregister dazu liegt unter
+`kommunalwahl/`.
+
+Der Schalter trägt seine Abbaubedingung selbst: Nach der konstituierenden
+Sitzung stehen die Gewählten in den Protokollen, und die Vorab-Liste wird
+überflüssig.

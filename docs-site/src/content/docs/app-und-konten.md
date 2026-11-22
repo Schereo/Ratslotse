@@ -118,8 +118,8 @@ Der Widerruf bleibt davon unberührt: Das erneuerte Token trägt dieselbe
 **Widerruf** läuft über `web_users.token_version`: Der Wert steckt als `ver` im
 Token; passt er nicht mehr zur Zeile, ist die Sitzung ungültig. Erhöht wird er
 bei Passwort-Änderung und Passwort-Reset. `POST /api/auth/logout` löscht nur das
-Cookie — die App entfernt ihr Token zusätzlich lokal und meldet vorher ihren
-Push-Token ab (`lib/auth.tsx`, `lib/push.ts`).
+Cookie (`lib/auth.tsx`). Die native App entfernt ihr Token zusätzlich aus dem
+Schlüsselbund und meldet vorher ihren Push-Token ab.
 
 | Endpunkt | Zweck | Limit |
 |---|---|---|
@@ -298,7 +298,7 @@ nehmen `clientExtensionResults` gar nicht erst an.
 iOS 18, davor geht nur die Anmeldung. Was ohne AuthenticationServices geht —
 Optionen lesen, das Ergebnis für den Server ohne PRF schreiben, Schlüssel per
 HKDF ableiten, die drei Lagen der Notizen — steht testbar in
-`RatslotseAPI/Passkeys.swift`, mit denselben Testvektoren wie im Web. Die App
+`ios/Packages/RatslotseAPI/Sources/RatslotseAPI/Passkeys.swift`, mit denselben Testvektoren wie im Web. Die App
 schickt keine `Origin`; die RP-ID kommt dann aus `APP_BASE_URL`, auf Prod also
 `ratslotse.de`. Damit das Gerät der App einen Passkey dieser Domain gibt,
 braucht es beides: `webcredentials:ratslotse.de` im Entitlement und
@@ -335,7 +335,8 @@ annimmt und nie als Sitzung gelten lässt.
 
 | Spalte | Werte | Bedeutung |
 |---|---|---|
-| `web_users.role` | `user`, `admin` | `admin` sieht den Admin-Bereich (`require_admin`) und ist immer aktiv |
+| `web_user_roles` | eine Zeile je Rolle | Ein Konto trägt mehrere Rollen, jede bündelt Rechte. Geprüft wird immer gegen ein **Recht** (`require_permission`), nie gegen einen Rollennamen. Welche es gibt, steht unter [Rollen und Rechte](/docs/referenz/rollen-rechte/), erzeugt aus `kern/roles.py` |
+| `web_users.role` | abgeleitet | nur noch ein Schaufenster für ältere App-Builds; nie die Grundlage einer Rechteprüfung |
 | `web_users.status` | `pending`, `active`, `disabled` | `pending` = wartet auf die **eigene** E-Mail-Bestätigung; `disabled` = von einem Admin abgeschaltet |
 | `web_users.email_verified` | 0/1 | gesetzt durch Verifikationslink oder Apple-Login |
 | `web_users.password_set` | 0/1 | 0 = Apple-Konto ohne selbst gesetztes Passwort |
@@ -452,9 +453,10 @@ diese Konten — auch die freundlich gemeinte Einrichtungs-Erinnerung schweigt.
 - **Push** über **APNs** (iOS, token-basiert mit `.p8` — kein Firebase) und
   **FCM v1** (Android) in `kern/push.py`. Geräte-Token, die die Gateways als
   ungültig melden, werden ausgesortiert.
-- In der App führt der **Push-Primer** (`components/push-primer.tsx`) vor den
-  System-Dialog: Er erscheint erst, wenn es mindestens ein Thema oder ein
-  Ausschuss-Abo gibt, und schlummert nach „Später" 7 Tage.
+- In der App fragt der dritte Schritt der Einrichtung nach Push, nach
+  Gremien-Abos und Themen und vor dem System-Dialog; er lässt sich
+  überspringen. Den Web-Baustein dazu gab es nur in der früheren WebView-App,
+  er ist mit ihr im November 2026 entfernt worden.
 
 Geräte-Token registriert die App selbst:
 
@@ -600,6 +602,53 @@ und eine Änderungsmeldung geht nur noch **≤ 48 h vor der Sitzung** raus.
 Die Oberfläche pflegt **keine** eigene Anlass-Liste — sie rendert, was der
 Endpunkt liefert. Sonst fiele ein neu dazugekommener Anlass erst auf, wenn sich
 jemand über eine unabschaltbare Meldung ärgert.
+
+### Notizen: auf dem Gerät verschlüsselt
+
+Hinter dem Schalter `notizen` gibt es „Meine Notiz“ an Tagesordnungspunkten
+und Beschlüssen. Notizen zu Ratsthemen können politische Meinungen tragen.
+Sie sind deshalb Ende-zu-Ende verschlüsselt: Der Server speichert und liefert
+**nur Geheimtext** (`web/backend/app/routers/notes.py`). Er prüft Form und
+Größe, nie den Inhalt.
+
+| Was | Wie | Wo |
+|---|---|---|
+| Datenschlüssel | AES-256-GCM, beim Einrichten zufällig erzeugt | nur auf dem Gerät |
+| Verpackung mit Passkey | WebAuthn-Erweiterung PRF, daraus per HKDF-SHA-256 der Schlüssel der Verpackung | Kennung, Salz und Verpackung in `note_passkeys` |
+| Verpackung mit Passphrase | PBKDF2-SHA-256, 600.000 Runden, 16 Byte Salz | Verpackung in `note_keys` |
+| Wiederherstellungscode | 128 Bit Zufall, einmal beim Einrichten gezeigt | nur bei der Person |
+| Notiz | Initialisierungsvektor und Geheimtext je Ziel | `user_notes` in `ratslotse.sqlite` |
+
+Der Normalweg ist der Passkey, damit sich niemand etwas merken muss:
+Derselbe Passkey, der anmeldet, schließt die Notizen auf (siehe
+[Mit Passkey anmelden](#mit-passkey-anmelden)). Passphrase plus
+Wiederherstellungscode bleiben der Rückfall für Browser ohne PRF. Der Server
+prüft beim Notiz-Passkey keine WebAuthn-Signatur, und das mit Absicht: Der
+Passkey meldet hier niemanden an (das tut die Sitzung), er ersetzt nur die
+Passphrase. Wer eine falsche Verpackung hochlädt, sperrt sich selbst aus,
+niemanden sonst.
+
+Zwei Geräte, eine Notiz: Jede Notiz trägt eine Version. Wer eine ältere
+schickt, bekommt 409 und den neuen Stand, und der Client fragt, statt still
+zu überschreiben. Der letzte Weg zu den Notizen lässt sich nicht löschen.
+Grenzen: 16 KB je Geheimtext, 2.000 Notizen und zehn Passkeys je Konto.
+
+Was man dazu sagen muss, steht auf der Seite und nicht im Kleingedruckten:
+
+1. Wer alle Wege zu den Notizen verliert, verliert die Notizen. Ratslotse
+   kann sie nicht zurückholen.
+2. Der Server kann nicht in ihnen suchen. Suche geht nur auf dem Gerät.
+3. „Frag den Rat“ kennt sie nicht. Keine Notiz geht an ein Sprachmodell.
+4. Im Web ist das Versprechen schwächer als in der App: Den Code, der
+   verschlüsselt, liefert im Browser derselbe Server, der die Daten
+   speichert. Die App bringt ihren Code aus dem Store mit.
+5. Der Server sieht trotzdem, zu welchem Punkt es eine Notiz gibt, wann sie
+   geändert wurde und wie lang sie ungefähr ist.
+
+Beide Tabellen hängen am Konto und gehen mit dessen Löschung. Den
+„Mitschrieb“ beim [Mitlesen](/docs/sitzungen/#mitlesen) speichert dieselbe
+Tabelle mit einer anderen Art (`kind`). Web und App lesen dieselben
+Testvektoren (`lib/notiz-krypto.test.ts`, `tests/test_notizen.py`).
 
 ### Abzeichen
 

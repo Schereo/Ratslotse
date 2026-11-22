@@ -1,3 +1,5 @@
+# Die Prüfungen je Pull Request: Linter, Typprüfung, API-Vertrag und die
+# Testsuite — dasselbe, was `scripts/pruefe.py` lokal vor dem Push fährt.
 name: Tests
 
 on:

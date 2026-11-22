@@ -27,13 +27,13 @@ export default defineConfig({
 					items: [
 						{ slug: 'architektur' },
 						{ slug: 'betrieb' },
-						{ slug: 'release-dossier' },
 					],
 				},
 				{
 					label: 'KI & Qualität',
 					items: [
 						{ slug: 'ki-pipeline' },
+						{ slug: 'frag-den-rat' },
 						{ slug: 'bewertungen' },
 						{ slug: 'eval' },
 					],
@@ -42,6 +42,10 @@ export default defineConfig({
 					label: 'Produkt',
 					items: [
 						{ slug: 'beschluesse' },
+						{ slug: 'sitzungen' },
+						{ slug: 'mein-viertel' },
+						{ slug: 'plaene' },
+						{ slug: 'andere-staedte' },
 						{ slug: 'haushalt' },
 						{ slug: 'haushalt-quellen-recherche' },
 						{ slug: 'wahlabend' },
@@ -49,6 +53,11 @@ export default defineConfig({
 						{ slug: 'app-und-konten' },
 						{ slug: 'mcp' },
 					],
+				},
+				{
+					// Erzeugt aus den Registern im Code (scripts/docs_reference.py).
+					label: 'Referenz',
+					items: [{ autogenerate: { directory: 'referenz' } }],
 				},
 				{
 					label: 'Entscheidungen (ADRs)',

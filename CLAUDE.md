@@ -158,9 +158,21 @@ Ratsdatenbank dazugehört, steht in
 
 Er bündelt, was vorher über `CONTRIBUTING.md` und drei Workflow-Dateien
 verstreut stand: Adressen-Lint, ruff, die Python-Typprüfung, den API-Vertrag,
-die generierten Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
-TypeScript-Übersetzer und die beiden Grafik-Proben. `--liste` zeigt sie
-einzeln, `--nur ruff,vertrag` wählt aus.
+die generierten Frontend-Typen, die Changelog-Fragmente, die erzeugten
+Referenzseiten der Doku, die Testsuite, den TypeScript-Übersetzer und die
+beiden Grafik-Proben. `--liste` zeigt sie einzeln, `--nur ruff,vertrag` wählt
+aus.
+
+**Die Technik-Doku wird mitgeprüft** (seit 11/2026). Gemessen am 22.11.2026
+kannte sie 24 von 34 Feature-Schaltern und 83 von 153 Umgebungsvariablen
+nicht, nannte 14 Dateien, die umgezogen waren, und der Wochenlauf hatte 23
+Schritte, wo sie 14 beschrieb. Seitdem gilt: Die Listen, die im Code eine
+Quelle haben (Cron-Jobs, Schalter, Rollen, Eval-Läufe, Workflows), entstehen
+als Seiten daraus (`python scripts/docs_reference.py`), und
+`tests/test_docs_current.py` hält die geschriebenen Seiten gegen den Code.
+Jeder Feature-Schalter nennt im Feld `docs`, wo er erklärt wird. Was das für
+die tägliche Arbeit heißt, steht in [`REZEPTE.md`](REZEPTE.md) unter „Die
+Technik-Doku nachziehen".
 
 **Die Python-Typprüfung (pyright) deckt noch nicht alles ab.** Sie läuft über
 `kern/` und den Backend-Kern; `council/`, `scripts/` und die Router stehen

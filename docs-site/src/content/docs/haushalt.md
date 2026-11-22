@@ -24,7 +24,7 @@ aber nicht im Rat sitzen — Verwaltung, Presse, sachkundige Bürger*innen,
 Fraktionsmitarbeit. Sie trägt `budget` und **nicht** `mandate`: derselbe
 Haushalt, aber die gewöhnlichen Benachrichtigungs-Vorgaben statt der
 vollständigen eines Mandats (siehe [Konten und
-Benachrichtigungen](/app-und-konten/)).
+Benachrichtigungen](/docs/app-und-konten/)).
 
 Vorher lag der Bereich hinter einem Umgebungs-Gate und war auf ratslotse.de
 für **alle** unsichtbar. Die Rolle leistet dasselbe, aber richtig herum: Er
@@ -447,8 +447,8 @@ Frage: „Woher kommt diese *Zahl*?" Jede Ziffer im Verzeichnis zeigt auf ein
 Papier, aus dem wir gelesen haben. Aus einem Gesetz haben wir keine Zahl
 gelesen — es sagt, warum es die Zahl überhaupt gibt. Beides in eine
 Nummernfolge zu werfen hieße, das Verzeichnis um eine zweite Bedeutung zu
-erweitern, die niemand ansagt. Deshalb: dasselbe Fähnchen (`useFaehnchenLage`
-ist aus `quelle.tsx` exportiert, nicht nachgebaut), dieselbe Bedienung,
+erweitern, die niemand ansagt. Deshalb: dasselbe Fähnchen (`useFaehnchen`
+ist aus `source.tsx` exportiert, nicht nachgebaut), dieselbe Bedienung,
 anderes Zeichen, außerhalb der Nummerierung.
 
 Im Fähnchen steht außerdem, ob **Bund oder Land** die Vorschrift gemacht hat.
@@ -883,7 +883,7 @@ Frontend, damit sie überprüfbar bleiben:
   Jahrgang stillschweigend Zeilen. `bereichKanon()` gibt deshalb **immer** etwas
   zurück; ein unbekannter Name fällt auf sich selbst zurück (`bekannt: false`),
   statt zu verschwinden.
-- **`lib/haushalt-steuern.ts`** — je Einnahmeart: die Stufen „Wer entscheidet
+- **`lib/haushalt-taxes.ts`** — je Einnahmeart: die Stufen „Wer entscheidet
   was", Spielraum-Einstufung, Rechenbeispiel, Lotti-Erklärung.
 - **`lib/haushalt-pflicht.ts`** — Einordnung der Teilhaushalte in Pflicht /
   Pflicht mit Spielraum / überwiegend freiwillig. Eine Einschätzung auf Ebene
@@ -1331,7 +1331,7 @@ Note, und „kaum Spielraum" kein Missstand.
 Jahre zeigen — 2025 und 2026 haben keinen Jahresabschluss. Die Zahlen stehen
 aber längst im Haushaltsplan selbst: Anlage 005, der *Gesamtergebnishaushalt*,
 führt dieselben Posten 01–24 auf 16 bis 18 Seiten. Acht Dokumente decken die
-Planjahre 2019–2026 ab (`council/ergebnishaushalt.py`).
+Planjahre 2019–2026 ab (`council/income_budget.py`).
 
 Der Tabellenkopf sieht harmlos aus und ist die eigentliche Gefahr:
 
@@ -1559,7 +1559,7 @@ vorliegt. Dass ein Jahrgang an einer Probe scheitert, ist kein Seiteninhalt,
 sondern ein Betriebsvorgang; er steht hier und im Lauf-Protokoll
 (`DESIGNSPRACHE.md` § 7).
 
-Für die Planjahre (`council/ergebnishaushalt.py`) gelten zwei eigene, und beide
+Für die Planjahre (`council/income_budget.py`) gelten zwei eigene, und beide
 sind Pflicht:
 
 | Probe | Was sie prüft | Wo |
@@ -2299,7 +2299,7 @@ ohne den Jahrgang mitzunehmen.
 
 ### Die dritte Komponente des Finanzausgleichs
 
-Dieselbe Datei, zweites Blatt (`9a`), gelesen von `council/steuerkraft.py`.
+Dieselbe Datei, zweites Blatt (`9a`), gelesen von `council/haushalt.py::parse_steuerkraft`.
 Sie schließt eine Lücke, die vorher niemandem auffiel, weil sie eine Zahl
 nicht falsch, sondern **zu klein** machte.
 
@@ -2375,7 +2375,7 @@ Diese Zahl ist, anders als der einzelne Betrag, amtlich veröffentlicht:
 in der **Gewerbesteuerstatistik** (EVAS 735 11) des Landesamts für Statistik
 Niedersachsen, Statistischer Bericht L IV 13.
 
-Gelesen wird sie von `council/gewerbesteuerstatistik.py` in die Tabelle
+Gelesen wird sie von `council/trade_tax_statistics.py` in die Tabelle
 `council_trade_tax_statistics`; eingelesen wird von Hand
 (`scripts/ingest_gewerbesteuerstatistik.py`), weil die Statistik einmal
 jährlich erscheint.
@@ -2910,7 +2910,7 @@ Reihe zu zeigen läse Bevölkerungswachstum als Schuldenaufbau.
 
 ## Nachbewilligungen: was am Plan vorbei beschlossen wurde
 
-`council/nachbewilligungen.py` · Tabellen `council_supplementary_approvals`,
+`council/supplementary_approvals.py` · Tabellen `council_supplementary_approvals`,
 `council_supplementary_years`, `council_supplementary_channels` · Ingest
 `scripts/ingest_nachbewilligungen.py` · Seite `/haushalt/plan-ist`
 
@@ -3059,7 +3059,7 @@ meist gar nicht erst.
 Am Ende jedes Rechenschaftsberichts steht die Anlage „Kennzahlenübersicht und
 Berechnungsmethoden": dreizehn Zahlen, auf die die Stadt ihren ganzen
 Jahresabschluss eindampft — Eigenkapitalquote, Anlagenintensität, Steuerquote,
-Verschuldung je Kopf. Parser: `council/kennzahlen.py`, Tabellen
+Verschuldung je Kopf. Parser: `council/indicators.py`, Tabellen
 `council_indicators` und `council_indicator_formulas`, Seite
 `/haushalt/kennzahlen`.
 
@@ -3425,7 +3425,7 @@ Von allen Zahlen des Haushalts landet keine so direkt bei den Leuten wie die
 Abfall- und Straßenreinigungsgebühr. Wie sie zustande kommt, legt der
 Abfallwirtschaftsbetrieb jedes Jahr als Anlage zur Ratsvorlage vor — und diese
 Anlage ist das **am besten prüfbare Dokument des ganzen Bestands**
-(`council/gebuehren.py`, `scripts/ingest_gebuehren.py`,
+(`council/fees.py`, `scripts/ingest_gebuehren.py`,
 `council_fees`, `council_fee_rates`).
 
 Drei Bereiche je Jahrgang, jeder mit eigener Bezugsgröße:
@@ -3509,7 +3509,7 @@ beginnen deshalb derzeit 2023.
 Der Haushaltsplan sagt, wofür das Geld ausgegeben werden soll. Die
 **Haushaltssatzung** sagt, in welchem Rahmen — auf drei Seiten, je Jahrgang,
 und bis zum 20.08.2026 las sie niemand. Sie füllt `council_budget_bylaw`
-(`council/haushaltssatzung.py`, `scripts/ingest_haushaltssatzung.py`).
+(`council/budget_bylaw.py`, `scripts/ingest_haushaltssatzung.py`).
 
 | § | Was dort steht | Warum es fehlte |
 |---|---|---|
