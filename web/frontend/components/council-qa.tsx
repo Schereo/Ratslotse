@@ -75,7 +75,8 @@ import {
   RulesOfProcedureBlock, type RulesOfProcedureCard,
 } from "@/components/qa-bausteine";
 import {
-  anlageNummer, anlagenBuchstaben, ANL_RE, CITE_RE, citationIds, fmtDatumKurz, zitatNummern,
+  anlageNummer, anlagenBuchstaben, ANL_RE, belegeSichtbar, CITE_RE, citationIds, fmtDatumKurz,
+  zitatNummern,
 } from "@/lib/qa-belege";
 
 /** Bewährte Beispielfragen für den Empty State — kuratiert, nicht beliebig.
@@ -2351,10 +2352,14 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           "--rl-unten": TABLEISTE_HOEHE,
         } as React.CSSProperties}>
         <div className="flex-1 overflow-y-auto p-4">
-          {/* Die Belege stehen, sobald sie gefunden sind — nicht erst mit dem
-              ersten Wort der Antwort. Bis dahin hält jede Art ihren Platz
-              (`BelegeSkelett`), damit nichts hineinspringt (Tim 08.11.2026). */}
-          {letzter && !letzter.fehler && (letzter.answer || hatBelege(letzter)) ? (
+          {/* Die Belege erscheinen mit dem ersten Wort der Antwort, nicht
+              vorher (Tim 22.11.2026, `belegeSichtbar`). Bis dahin hält jede
+              Art ihren Platz (`BelegeSkelett`), damit nichts hineinspringt
+              (Tim 08.11.2026). Vom 08. bis 22.11. standen sie, sobald sie
+              gefunden waren — bei einer halben Minute Denkzeit des Modells
+              eine Antwort ohne Text. */}
+          {letzter && !letzter.fehler
+            && belegeSichtbar(letzter.answer, loading || deepAktiv, hatBelege(letzter)) ? (
             <>
               {/* Die Spalte zeigt immer die Belege des JÜNGSTEN Turns — beim
                   Mitlaufen steht sie damit auch neben älteren Antworten. Ein
@@ -3096,7 +3101,7 @@ function GespraecheSheet({ gespraeche, gesamt, treffer, weitere, laedtMehr, such
 /* ------------------- Belege-Spalte (Desktop, Design 2⑤) ------------------- */
 
 /** Ist für diesen Turn schon etwas gefunden? (Das `sources`-Ereignis kommt vor
- *  dem ersten Wort der Antwort.) */
+ *  dem ersten Wort der Antwort; gezeigt wird erst mit ihm, s. `belegeSichtbar`.) */
 function hatBelege(t: Turn): boolean {
   return t.sources.length > 0 || t.press_releases.length > 0 || (t.debates?.length ?? 0) > 0
     || (t.attachments?.length ?? 0) > 0 || !!t.rules_of_procedure;
