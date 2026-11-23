@@ -39,7 +39,20 @@ Modell eine Ratsperson (`finde_person`), einen Ort aus dem
 bestimmte Sitzung (`finde_sitzungen`) und bekannte Themen
 (`finde_entitaeten`). Diese Erkennung hat Vorrang vor dem Modell.
 Nennt die Frage einen Ort aus dem Katalog, beschränkt die Suche die
-Treffer auf diesen Ort.
+Treffer auf diesen Ort. Vektor- und Volltextsuche holen dann die besten
+Treffer **im** Ort, nicht die besten der ganzen Stadt, die zufällig auch dort
+liegen.
+
+Nennt die Frage außer dem Ort kein Thema („Was plant die Stadt für die
+Innenstadt?“, „Welche Projekte gibt es in Osternburg?“), ist sie ein
+**Ortsüberblick** (`place_overview_question`). Dann ordnet kein Reranker:
+Eine Frage ohne Thema ähnelt am meisten den Titeln, die den Ortsnamen tragen,
+und das waren bei der Innenstadt vier Beratungen eines Programms von 2021.
+`select_place_overview` fasst die Beschlüsse des Orts zu Vorgängen zusammen
+(Grundakte, Vorlage, Titelkopf oder Projekt-Entität) und wählt die zwölf
+gewichtigsten nach Wichtig-Wert und Frische, je Vorgang höchstens zwei
+Beschlüsse. Die Akte entfällt: Sie vertieft einen Vorgang, der Überblick
+braucht viele.
 
 **2. Suche.** `council/embeddings.py::hybrid_search` vereinigt drei
 Kandidatenmengen:

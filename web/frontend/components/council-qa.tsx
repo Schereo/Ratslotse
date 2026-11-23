@@ -99,13 +99,6 @@ const PLAYFUL = [
   "Tagesordnungen wälzen", "Fußnoten entstauben", "Vorlagen sichten", "Sitzungssäle durchsuchen",
 ];
 
-const MODE_LABEL: Record<string, string> = {
-  semantisch: "ähnliche Beschlüsse suchen",
-  keyword: "Stichwortsuche",
-  chronologisch: "neueste zuerst",
-  research: "gründliche Recherche",
-};
-
 const OUTCOME_BADGE: Record<string, string> = {
   accepted: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
   rejected: "bg-signal/10 text-signal",
@@ -3065,11 +3058,9 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
         <MehrKnopf offen={showAll} anzahl={weitere.length} einheit={zitierte.length > 0 ? "weitere" : "gefunden"}
           onClick={() => setShowAll((v) => !v)} />
       )}
-      {/* Wie gesucht wurde, stand bis 11/2026 in der Kopfzeile und brach sie
-          in der schmalen Spalte über drei Zeilen um. */}
-      {turn.mode && (
-        <p className="mt-2 text-[11.5px] text-muted-foreground">Suchweg: {MODE_LABEL[turn.mode] ?? turn.mode}</p>
-      )}
+      {/* Wie gesucht wurde („Suchweg: …“), stand bis 23.11.2026 unter den
+          Quellen — Tims Entscheidung: braucht niemand. `turn.mode` bleibt im
+          Zustand, der Server schickt ihn weiter mit. */}
       {showAll && weitere.length > 0 && (
         <div className="-mx-1.5 mt-2 space-y-0.5">
           {zitierte.length > 0 && (

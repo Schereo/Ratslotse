@@ -5857,6 +5857,17 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             latest_place = bool(
                 ort and typ not in ("money", "person", "party", "session")
                 and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
+            # Überblick über einen Ort („Was plant die Stadt für die
+            # Innenstadt?“): Die Frage nennt außer dem Ort kein Thema, und der
+            # Reranker zog dann die Titel nach vorn, die den Ortsnamen tragen —
+            # das Sofortprogramm von 2021 statt der Sanierungsgebiete von 2025/26
+            # (Prod, 23.11.2026). Ausgewählt wird stattdessen nach Vorgang,
+            # Wichtigkeit und Frische (qa.select_place_overview).
+            overview = bool(
+                ort and not latest_place and not person and not sitzungen
+                and typ not in ("money", "person", "party", "session")
+                and (qa.place_overview_question(q_suche, ort["name"])
+                     or qa.place_overview_question(q, ort["name"])))
             shadow_plan = qa.research_plan_with_mandatory(
                 analyse.get("rechercheplan") or {}, typ=typ, question=q_suche,
                 person=bool(person), place=bool(ort), sessions=bool(sitzungen),
@@ -5887,6 +5898,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         i for i, _s, _snip in store.search_decisions_fts(ort["name"], limit=40)
                         if i not in schon]
             allowed_place_ids = set(place_ids or []) if ort else None
+            # Bei einem kleinen Ort kommt ohnehin alles in die Auswahl.
+            overview = overview and len(place_ids or []) >= qa.OVERVIEW_MIN_DECISIONS
             if latest_place:
                 # Bei einer reinen Ortsfrage nach dem „zuletzt“ ist das Datum
                 # die Antwort. Der Reranker schob in der Produktionsprobe einen
@@ -5895,6 +5908,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # exakt belegt — hier braucht es keine Semantik.
                 candidates = store.get_decisions_by_ids((place_ids or [])[:QA_TOP_K])
                 mode = "chronologisch"
+            elif overview and ort:
+                ueberblick_ids = qa.place_overview_ids(store, place_ids or [], ort["name"])
+                candidates = store.get_decisions_by_ids(ueberblick_ids[:QA_TOP_K])
+                mode = "ueberblick"
+                zeiten["ueberblick"] = len(ueberblick_ids)
             else:
                 candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
                                                 varianten=analyse.get("variants"),
@@ -6249,8 +6267,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # kein Vorgang, und die Akte baute sich aus den Treffern davor —
             # bei „Wie lange darf man reden?" aus irgendeinem
             # „Geschäftsordnungsantrag auf Vertagung".
+            # Und nicht beim Ortsüberblick: Die Akte vertieft EINEN Vorgang, der
+            # Überblick braucht die Breite über viele.
             if (features.an("akten-suche") and not einfach and typ != "session" and not person
-                    and not rules_sel and candidates):
+                    and not rules_sel and not overview and candidates):
                 try:
                     akte = akte_suche.material(store, q_suche, candidates)
                     have = {c["id"] for c in candidates}
@@ -6365,8 +6385,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Hintergrund zu den genannten Objekten („Was ist die GSG?").
             steckbriefe = qa.steckbriefe_mit_ort(
                 qa.steckbriefe_fuer(store, q_suche), ort)
-            # Wie tragfähig ist der Fund? Deterministisch aus den Scores.
-            lage = qa.beleglage(candidates)
+            # Wie tragfähig ist der Fund? Deterministisch aus den Scores —
+            # außer im chronologischen Modus und im Ortsüberblick: Dort gibt es
+            # keine Rerank-Scores, der Ortsbezug ist trotzdem belegt.
+            lage = qa.beleglage(candidates, deterministic=latest_place or overview)
             # Und wie ALT ist er? Der Antwort-Prompt kennt das heutige Datum
             # nicht; ohne Bezugspunkt liest ein Modell „Satzungsbeschluss
             # Oktober 2018" als Gegenwart (gemessen 21.09.2026, echte
@@ -6376,11 +6398,6 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Ein konkreter Gutachten-/Anlagenfund ist ein direkter Beleg,
                 # auch wenn keine verknüpfte Beschlussstation vorhanden ist.
                 lage = "solide"
-            if latest_place:
-                # Keine Rerank-Scores im chronologischen Modus; der Ortsbezug
-                # ist dennoch deterministisch. Nur ein Mini-Bestand bleibt
-                # bewusst als dünn markiert.
-                lage = "solide" if len(candidates) >= 3 else "duenn"
             if person and ort and debatten_rows:
                 # Sitzung + TOP + Sprecher + kuratierter Ortsbezug sind harte
                 # Beziehungen, keine Ähnlichkeitsschätzung.
@@ -6798,7 +6815,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                           screen=bildschirm, akte=akte_prompt,
                                           rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block))
+                                          extra_block=extra_block,
+                                          overview=overview))
             try:
                 for delta in strom:
                     if not buf and delta:
@@ -6839,7 +6857,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                                  akte=akte_prompt,
                                                  rules_block=rules_block,
                                           election_block=election_block,
-                                          extra_block=extra_block))
+                                          extra_block=extra_block,
+                                          overview=overview))
                     buf = ans
                     yield _sse({"type": "replace", "text": qa.split_followups(ans)[0]})
                     sent = len(ans)
