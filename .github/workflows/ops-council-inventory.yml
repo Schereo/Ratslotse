@@ -1,0 +1,66 @@
+# Manuell auslösbar: den Ratsbestand von dev und Prod nebeneinanderstellen.
+#
+# WOFÜR. Der Gold-Lauf von „Frag den Rat“ fand am 23.11.2026 auf dev 142 von
+# 200 Belegen im Kontext, auf Prod 158 — bei gleichem Code. Ein Teil der
+# Belege fehlte auf dev ganz, ein Teil wurde nicht gefunden. Dieser Lauf zählt
+# auf beiden VMs, was die KI-Frage liest (Beschlüsse, leere Sitzungen,
+# Wortbeiträge, Presse, Embeddings, Akten, Orte), und vergleicht auf dem
+# Runner. Braucht nur den Deploy-Key — nicht den 1Password-Agenten, an dem die
+# SSH-Wege vom Notebook hängen.
+#
+# WAS ER NICHT TUT: nichts schreiben. Die Datenbank wird nur lesend geöffnet
+# (scripts/council_inventory.py, `mode=ro`), ausgegeben werden nur Zahlen.
+name: "Ops: Ratsbestand dev↔prod vergleichen"
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ops-council-inventory
+  cancel-in-progress: false
+
+jobs:
+  vergleichen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: SSH einrichten
+        uses: ./.github/actions/ssh-config
+        with:
+          targets: |
+            prod ${{ secrets.VPS_HOST }}
+            dev ${{ secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
+
+      - name: Kennzahlen holen
+        run: |
+          for ziel in dev prod; do
+            scp -q scripts/council_inventory.py "$ziel:/tmp/council_inventory.py"
+            ssh "$ziel" 'cd ~/app && .venv/bin/python /tmp/council_inventory.py --collect --db data/council.sqlite; rm -f /tmp/council_inventory.py' \
+              > "$ziel.json"
+            echo "$ziel: $(wc -c < "$ziel.json") Bytes"
+          done
+
+      - name: Vergleichen
+        run: |
+          python3 scripts/council_inventory.py --compare dev.json prod.json | tee bericht.md
+          cat bericht.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Kennzahlen aufheben
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ratsbestand
+          path: |
+            dev.json
+            prod.json
+            bericht.md

@@ -22,6 +22,7 @@ Alles, was GitHub Actions für dieses Repo tut: Prüfungen je Pull Request, die 
 | **Frontend** (`frontend.yml`) | Push auf `main`, Pull Request | Prüft das Next-Frontend bei jedem PR, der es anfasst. |
 | **iOS** (`ios.yml`) | Pull Request, Push auf `main`, `dev` | `api/openapi.json` steht bewusst in den Pfaden: Die App liest ihre Felder aus handgeschriebenen `CodingKeys`, und eine Umbenennung im BACKEND erreichte sie auf keinem Weg — dieser Workflow lief nur bei Änderungen unter `ios/`. |
 | **Ops: Gescannte Anlagen lesen (dev)** (`ops-anlagen-ocr.yml`) | von Hand | Manuell auslösbarer Ops-Lauf: liest die gescannten Anlagen per Sehmodell (`scripts/backfill_anlagen_ocr.py`) — den GANZEN Bestand, nicht nur die Finanzdokumente. |
+| **Ops: Ratsbestand dev↔prod vergleichen** (`ops-council-inventory.yml`) | von Hand | Manuell auslösbar: den Ratsbestand von dev und Prod nebeneinanderstellen. |
 | **Ops – Deploy-Rückstand (Prod)** (`ops-deploy-rueckstand.yml`) | Zeitplan (`*/30 * * * *`), von Hand | Holt einen ausgefallenen Prod-Deploy nach — und meldet, wenn das nicht geht. |
 | **Ops: Themen-Dubletten zusammenführen** (`ops-entity-dubletten.yml`) | von Hand | Manuell auslösbarer Ops-Lauf: sucht doppelte Themen (derselbe Gegenstand unter mehreren Namen) und führt die vom LLM bestätigten zusammen. |
 | **Ops – Erreichbarkeit (Prod)** (`ops-erreichbarkeit.yml`) | Zeitplan (`*/10 * * * *`), von Hand | Prüft von AUSSERHALB der Maschine, ob ratslotse.de antwortet. |
@@ -51,4 +52,4 @@ Alles, was GitHub Actions für dieses Repo tut: Prüfungen je Pull Request, die 
 | **Sync production back to dev** (`sync-main-to-dev.yml`) | Push auf `main`, von Hand | Produktion darf nie dauerhaft Commits enthalten, die im Integrationsbranch fehlen. |
 | **Tests** (`test.yml`) | Push auf `main`, Pull Request | Die Prüfungen je Pull Request: Linter, Typprüfung, API-Vertrag und die Testsuite — dasselbe, was `scripts/pruefe.py` lokal vor dem Push fährt. |
 
-37 Workflows unter `.github/workflows/`.
+38 Workflows unter `.github/workflows/`.
