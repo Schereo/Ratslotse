@@ -1,4 +1,12 @@
-"""Die frischen Beispielfragen auf der leeren Fragen-Seite.
+"""Die Beispielfragen auf der leeren Fragen-Seite.
+
+Seit 22.11.2026 kommen sie aus einer kuratierten Top 20
+(``council/example_questions.py``), die die Clients durchrotieren. Die Tests
+dazu stehen unten; was die Liste halten muss, steht im Modul selbst.
+
+Die erzeugten Fragen aus der jüngsten Sitzung (``sessions``) liest nur noch
+die ausgelieferte App. Für sie gilt weiter, was hier seit dem 10.09.2026
+steht:
 
 Am 10.09.2026 stand dort „Was wurde zu ‚Beratung von nichtöffentlichen
 Tagesordnungspunkten im …' entschieden?". Zwei Ursachen, und nur eine davon
@@ -26,6 +34,8 @@ sys.path.insert(0, str(_BACKEND))
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
+from council import qa  # noqa: E402
+from council.example_questions import TOP_QUESTIONS  # noqa: E402
 from council.scraper import CouncilSession  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
@@ -105,3 +115,59 @@ def test_die_app_liest_den_schluessel_den_der_server_sendet():
     assert gelesen <= schluessel, (
         f"Die App liest {sorted(gelesen - schluessel)}, der Server sendet "
         f"{sorted(schluessel)}.")
+
+
+# --- Die kuratierte Top 20 ------------------------------------------------
+
+#: Wortstämme, die in fast jeder Frage stehen und nichts über ihr Thema sagen.
+_FUELLSTAEMME = {"beschl", "entsch", "zuletz", "werden", "welche"}
+
+
+def _staemme(frage: str) -> set[str]:
+    """Themen-Stämme: die ersten sechs Buchstaben jedes langen Wortes. Auf
+    Stämmen, weil Komposita sonst aneinander vorbeilaufen („Stadions" und
+    „Stadion")."""
+    woerter = re.findall(r"[a-zäöüß]{6,}", frage.lower())
+    return {w[:6] for w in woerter} - _FUELLSTAEMME
+
+
+def test_der_server_liefert_die_top_20_in_ihrer_reihenfolge():
+    """Die Reihenfolge ist Teil der Auswahl: Die Clients rotieren in ihr."""
+    body = TestClient(app).get("/api/council/qa-beispiele").json()
+
+    assert body["questions"] == list(TOP_QUESTIONS)
+    assert len(TOP_QUESTIONS) == 20
+    assert len(set(TOP_QUESTIONS)) == len(TOP_QUESTIONS), "Eine Frage steht doppelt."
+
+
+def test_jede_frage_passt_in_zwei_zeilen_und_altert_nicht():
+    """Die Zeile ist auf zwei Textzeilen geklemmt. Und eine Frage mit Datum
+    war genau das, was hier vorher stand und schlecht war."""
+    for frage in TOP_QUESTIONS:
+        assert frage.endswith("?"), frage
+        assert len(frage) <= 60, f"{len(frage)} Zeichen: {frage}"
+        assert not re.search(r"\d{1,2}\.\d{1,2}\.|\b20\d\d\b|dies(?:es|em) jahr",
+                             frage, re.IGNORECASE), f"Altert: {frage}"
+
+
+def test_keine_frage_schaltet_die_zukunftsregel_ein():
+    """Eine Zukunftsfrage ohne kommende Beratung beginnt mit genau diesem
+    Hinweis (``qa.ZUKUNFT_LEER_REGEL``) — richtig für echte Fragen, aber ein
+    schwacher erster Satz für ein Aushängeschild."""
+    zukunft = [f for f in TOP_QUESTIONS if qa.zukunftsfrage(f)]
+    assert zukunft == [], f"Futur umformulieren: {zukunft}"
+
+
+def test_drei_nachbarn_treffen_nie_dasselbe_thema():
+    """Bis zu drei aufeinanderfolgende Fragen stehen zusammen auf der Seite,
+    auch über das Listenende hinweg. Zweimal Stadion untereinander sähe nach
+    einer Liste mit fünf Themen aus."""
+    n = len(TOP_QUESTIONS)
+    for start in range(n):
+        fenster = [TOP_QUESTIONS[(start + i) % n] for i in range(3)]
+        for i, a in enumerate(fenster):
+            for b in fenster[i + 1:]:
+                gemeinsam = _staemme(a) & _staemme(b)
+                assert not gemeinsam, (
+                    f"„{a}“ und „{b}“ stehen zusammen auf der Seite und teilen "
+                    f"{sorted(gemeinsam)} — eine von beiden in der Liste verschieben.")
