@@ -6,6 +6,7 @@
 
 import { Karte, Fuss, LINK, NotizSchloss, SperrenKnopf, type Offen } from "@/components/notiz/notiz-schloss";
 import { NoteField } from "@/components/notiz/note-field";
+import { NoteView } from "@/components/notiz/note-view";
 import { statusText, useVerschluesselt } from "@/components/notiz/use-verschluesselt";
 import type { NoteDoc, TargetKind } from "@/lib/notizen";
 
@@ -55,7 +56,7 @@ export function Konflikt({ text, onUebernehmen, onBehalten, was }: {
   return (
     <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
       <p>Auf einem anderen Gerät wurde diese {was} inzwischen geändert.</p>
-      <p className="mt-1 whitespace-pre-wrap italic">{text || "(leer)"}</p>
+      {text.trim() ? <NoteView text={text} className="mt-1 text-sm" /> : <p className="mt-1 italic">(leer)</p>}
       <div className="mt-2 flex flex-wrap gap-3">
         <button type="button" className={LINK} onClick={onUebernehmen}>Diese Fassung übernehmen</button>
         <button type="button" className={LINK} onClick={onBehalten}>Meine behalten</button>

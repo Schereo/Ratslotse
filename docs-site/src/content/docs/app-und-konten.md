@@ -630,12 +630,24 @@ Passkey meldet hier niemanden an (das tut die Sitzung), er ersetzt nur die
 Passphrase. Wer eine falsche Verpackung hochlädt, sperrt sich selbst aus,
 niemanden sonst.
 
-**Formatiert wird mit Markdown im Klartext**, nicht mit HTML: Die Leiste
-über dem Feld setzt `**fett**`, `*kursiv*`, `- Punkte`, `1. Nummern` und
-`- [ ] Aufgaben`, ↩ setzt eine Liste fort (`lib/note-format.ts`). Der Grund
-ist das Format `{ text }`: Die App bearbeitet dasselbe Feld in einem
-schlichten Textfeld, und Konfliktanzeige und Export zeigen den Text, wie er
-ist. Markdown liest sich überall, eine Notiz von vorher ist schon gültig.
+**Gezeigt wird formatiert, gespeichert als Klartext mit Markdown.** Das Feld
+ist ein Editor (TipTap, `components/notiz/note-editor.tsx`, nur geladen, wo
+eine Notiz offen ist): fett, kursiv, Aufzählung, nummerierte Liste und
+Checkliste mit Kästchen, über die Leiste, die üblichen Kürzel oder wie in
+Markdown getippt („- “, „1. “, „[ ] “). Gespeichert wird Text mit
+`**fett**`, `*kursiv*`, `- Punkt`, `1. Punkt`, `- [ ] Aufgabe`, zwei
+Leerzeichen je Ebene (`lib/note-markdown.ts`). Der Grund ist das Format
+`{ text }`: Die App bearbeitet dasselbe Feld in einem schlichten Textfeld,
+Export und Notizen von vorher bleiben lesbar. **Das Format ist
+zeilenweise, nicht CommonMark:** Eine Zeile ist ein Absatz oder ein
+Listenpunkt. In CommonMark verschmölzen zwei Zeilen ohne Leerzeile zu einem
+Absatz, und eine Zeile unter einem Punkt gehörte zu ihm; eine Notiz von
+vorher änderte beim ersten Öffnen ihre Form. Fett und Kursiv liest `marked`
+(nur Hervorhebung; Code, Links und HTML bleiben Text), damit
+Verschachtelungen wie `**fett *und kursiv***` den Hin- und Rückweg
+überstehen. Deshalb kennt der Editor auch keine Überschriften, Zitate oder
+Zeilenumbrüche mit Umschalt+Enter: Was keine Zeile im Text hat, ginge auf
+dem Rückweg verloren.
 Dasselbe Feld trägt „Mein Mitschrieb“.
 
 Zwei Geräte, eine Notiz: Jede Notiz trägt eine Version. Wer eine ältere
