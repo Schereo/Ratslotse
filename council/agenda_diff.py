@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import re
 
+from . import ris
+
 
 def _norm_titel(title: str) -> str:
     return " ".join(str(title or "").split()).lower()
@@ -26,7 +28,10 @@ def _norm_vorlage(nr: str) -> str:
     return " ".join(str(nr or "").split())
 
 
-_GETFILE_ID = re.compile(r"getfile\.php\?id=(\d+)")
+#: Alt wie neu (``getfile.php`` bis 11/2026, seitdem ``getfile.asp``) — s.
+#: ``council/ris.py``: Träfe das Muster nur eine Endung, wäre nach dem Umzug
+#: jede Anlage „neu“ und jede Tagesordnung „geändert“.
+_GETFILE_ID = ris.GETFILE_ID
 
 
 def anlagen_schluessel(anlagen: list | None) -> list[str]:

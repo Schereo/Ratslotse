@@ -88,4 +88,4 @@ def test_fundortfrage():
     assert not qa.fundortfrage("Wo soll das neue Stadion gebaut werden?")
     messages, _ = qa._answer_messages("wo finde ich Ergebnisse der Ausschusssitzung", [],
                                       typ="topic", extra_block=qa.FUNDORT_BLOCK)
-    assert "buergerinfo.oldenburg.de" in messages[0]["content"]
+    assert "ratsinfo.oldenburg.de" in messages[0]["content"]

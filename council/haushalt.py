@@ -17,6 +17,8 @@ import json
 import random
 import re
 
+from council import ris as ris_modul
+
 from pypdf import PdfReader
 
 # Beschlossene Haushaltspläne der Stadt Oldenburg (aktuelles Jahr + Archiv).
@@ -821,7 +823,7 @@ def build_abschluss_questions(store) -> list[dict]:
     def key(name: str) -> str:
         return quiz._content_hash("topic", "haushalt", f"abschluss-{name}")
 
-    ris = "https://buergerinfo.oldenburg.de"
+    ris = ris_modul.BASE
     qs: list[dict] = []
 
     # 1) Die drei Schuldenzahlen. Die Frage sieht aus wie eine Zahlenfrage und

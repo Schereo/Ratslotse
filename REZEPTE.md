@@ -42,7 +42,7 @@ schnellen Prüfungen, und `tests` steckt bewusst nicht darin.
 5. Soll die Seite noch nicht für alle sichtbar sein: Recht (`web/frontend/lib/rechte.ts`) für
    „wer darf", Feature-Schalter (`web/frontend/lib/features.ts`) für „schon so weit?".
 
-**Was dich fängt:** `npx tsc --noEmit`, `npx next lint`, `14-layout.spec.ts`
+**Was dich fängt:** `npx tsc --noEmit`, `npm run lint`, `14-layout.spec.ts`
 (die Seite darf nicht seitwärts scrollen), `npx vitest run`.
 
 **Und:** Vor dem Merge ein Bild an Tim (`SendUserFile`) und sein Gegenlesen
@@ -77,8 +77,12 @@ UND Prod, seit 09/2026 **mit** Datenzeilen), `test_schema_gegen_migration.py`,
    und das vergisst, bekommt eine falsch anschlagende Überfällig-Ampel.
 4. Meldungen an Nutzer NUR über `notify.einreihen` — alles andere umgeht
    Aus-Schalter, Nachtruhe und Tagesgrenze zugleich.
+5. **Doku:** `python scripts/docs_reference.py` schreibt die Referenzseite neu,
+   und der Job bekommt eine Zeile mit seiner crontab-Zeile unter „Geplante Jobs
+   (Cron)" in `docs-site/src/content/docs/betrieb.md`.
 
-**Was dich fängt:** `tests/test_jobs.py`. Achtung: `Callable[..., dict]`
+**Was dich fängt:** `tests/test_jobs.py` und für Schritt 5
+`tests/test_docs_current.py`. Achtung: `Callable[..., dict]`
 prüft **nichts**, und ein Trockenlauf beweist nie den scharfen Lauf.
 
 ---
@@ -112,6 +116,9 @@ Die iOS-Admin-Ansicht tippt ihre Rollen-Menüeinträge ab (`ADMIN_ROLLEN` in
 `AdminView.swift`) — eine neue vergebbare Rolle dort ergänzen; das Web-Panel
 baut seine Kästchen aus `GET /api/admin/roles` und braucht nichts.
 
+Danach `python scripts/docs_reference.py`: Die Doku-Seite „Rollen und Rechte"
+entsteht aus dem Register.
+
 **Was dich fängt:** `test_rollen.py` — auch die Frage, ob jede Route mit dem
 Recht wirklich das Recht verlangt.
 
@@ -128,8 +135,15 @@ Recht wirklich das Recht verlangt.
 Ein Schalter sagt „schon so weit?", ein Recht sagt „wer darf?". Verwechsle sie
 nicht: Ein Schalter schützt nichts, das Backend setzt ihn nicht durch.
 
+**Jeder Schalter nennt, wo die Technik-Doku das Feature erklärt** (Feld `docs`,
+Form `seite` oder `seite#anker` unter `docs-site/src/content/docs/`). Ein neues
+Feature heißt also: einen Abschnitt schreiben, bevor der Schalter grün wird.
+Danach `python scripts/docs_reference.py`.
+
 **Was dich fängt:** `test_features.py` — ein Name, den die Registry nicht kennt,
-ist **dauerhaft aus** und sieht aus wie „noch nicht angeschaltet".
+ist **dauerhaft aus** und sieht aus wie „noch nicht angeschaltet". Und
+`test_docs_current.py`: ein Schalter ohne Doku-Stelle, oder mit einer, die es
+nicht gibt.
 
 ---
 
@@ -362,6 +376,32 @@ was nicht, Gruppierung, „nur die erste Meldung"),
 `tests/test_endpunkt_schutz.py` (der offene Endpunkt steht mit Begründung in
 `OEFFENTLICH`), `web/frontend/lib/fehler-melden.test.ts` (keine Query, kein
 Cookie, Deckel je Seite).
+
+## Die Technik-Doku nachziehen
+
+Die Doku unter `docs-site/` hat zwei Sorten Seiten:
+
+* **Erzeugte** unter `referenz/` — Cron-Jobs, Feature-Schalter, Rollen,
+  Eval-Läufe, Workflows. Nie von Hand ändern:
+  `python scripts/docs_reference.py` schreibt sie aus den Registern.
+* **Geschriebene** — alles andere. Wer Verhalten ändert, ändert den Absatz
+  dazu im selben Pull Request. Welche Seite ein Feature erklärt, steht am
+  Schalter (`kern/features.py`, Feld `docs`).
+
+Eine **neue Umgebungsvariable** bekommt eine Zeile in der passenden Tabelle
+unter „Umgebungsvariablen" in `betrieb.md` (Variable, wofür, Vorgabe). Eine
+**neue Seite** bekommt einen Eintrag in der Seitenleiste
+(`docs-site/astro.config.mjs`). Links innerhalb der Doku beginnen mit `/docs/`.
+
+**Was dich fängt:** `tests/test_docs_current.py` hält alles, was sich ohne
+Urteil prüfen lässt: Pfade, Symbole, Modelle, API-Routen und
+Umgebungsvariablen (samt Vorgabewert), die die Doku nennt, gegen den Code;
+jede Variable, die der Code liest, gegen die Doku; Cron-Jobs, Schritte des
+Wochenlaufs und MCP-Werkzeuge; Links, Anker und die Seitenleiste. Vor dem
+Push läuft dazu `python scripts/pruefe.py --nur doku`. Ob ein Absatz noch
+**stimmt**, sieht kein Test — das bleibt Handarbeit im Pull Request.
+
+---
 
 ## Wenn ein Wächter anschlägt
 

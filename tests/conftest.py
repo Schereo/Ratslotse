@@ -76,6 +76,8 @@ os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["WEB_ADMIN_EMAIL"] = "admin@test.de"
 os.environ["COOKIE_SECURE"] = "false"   # TestClient spricht http://testserver
 os.environ["DISABLE_RATE_LIMIT"] = "1"  # sonst blutet der Zähler über Tests
+# Der Herzschlag fragt das Ratsinformationssystem der Stadt — in der Suite nie.
+os.environ["RATSLOTSE_RIS_PROBE"] = "0"
 
 # Und dann liest die .env doch jemand ein. Fast jedes Skript ruft beim Import
 # `load_dotenv(ROOT / ".env")`; das überschreibt zwar nichts, was oben schon
@@ -148,6 +150,33 @@ def source():
         return Herkunft(kind="ris", probe=probe, label=label, url=url, **rest)
 
     return bauen
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--shard", default=None, metavar="I/N",
+        help="Nur Teil I von N der Testdateien laufen lassen (CI, s. tests/ci_shards.py).")
+
+
+def pytest_collection_modifyitems(config, items):
+    """``--shard i/n``: nur die Dateien dieses Teils behalten.
+
+    Läuft in jedem xdist-Arbeiter gleich — die Zuordnung hängt allein am
+    Dateinamen, also schneiden alle dieselbe Menge.
+    """
+    spec = config.getoption("--shard")
+    if not spec:
+        return
+    from tests.ci_shards import parse_shard, shard_of
+
+    index, total = parse_shard(spec)
+    keep, drop = [], []
+    for item in items:
+        test_file = item.nodeid.split("::", 1)[0]
+        (keep if shard_of(test_file, total) == index else drop).append(item)
+    if drop:
+        config.hook.pytest_deselected(items=drop)
+        items[:] = keep
 
 
 def pytest_configure(config):

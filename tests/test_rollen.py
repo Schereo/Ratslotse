@@ -45,8 +45,19 @@ def test_die_standardrolle_traegt_den_haushalt():
 
 
 def test_ratsmitglied_darf_den_haushalt_und_sonst_nichts_besonderes():
-    assert roles.permissions_for(["council_member"]) == frozenset({"budget", "mandate"})
+    assert roles.permissions_for(["council_member"]) == frozenset(
+        {"budget", "mandate", "council_tools"})
     assert "admin" not in roles.permissions_for(["council_member"])
+
+
+def test_werkzeuge_nur_fuer_ratsmitglieder_und_admins():
+    """Die Werkzeuge sind ein Bereich für die Ratsarbeit (Tims Wunsch
+    22.11.2026) — weder die Standardrolle noch das Fachpublikum tragen das
+    Recht. Fehlte es beim Ratsmitglied, stünde der Bereich leer da."""
+    assert "council_tools" not in roles.permissions_for([])
+    assert "council_tools" not in roles.permissions_for(["expert"])
+    assert "council_tools" in roles.permissions_for(["council_member"])
+    assert "council_tools" in roles.permissions_for(["admin"])
 
 
 def test_fachpublikum_bekommt_den_haushalt_aber_kein_mandat():
@@ -83,7 +94,7 @@ def test_recherche_plus_traegt_nur_das_modell_recht():
     assert roles.ROLES["research_plus"].permissions == frozenset({"premium_models"})
     assert roles.permissions_for(["research_plus"]) == frozenset({"premium_models", "budget"})
     assert roles.permissions_for(["council_member", "research_plus"]) == frozenset(
-        {"budget", "mandate", "premium_models"})
+        {"budget", "mandate", "council_tools", "premium_models"})
     assert roles.ROLES["research_plus"].assignable is True
 
 

@@ -16,3 +16,16 @@ export const KONTAKT_EMAIL = "ratslotse@timsigl.de";
 
 /** `mailto:`-Adresse für ein `href`. */
 export const KONTAKT_MAILTO = `mailto:${KONTAKT_EMAIL}`;
+
+/**
+ * Die Postanschrift des Betreibers — für Impressum (§ 5 DDG) und
+ * Datenschutzerklärung (Verantwortlicher). Aus demselben Grund hier wie die
+ * Mailadresse: Zwei Rechtsseiten, die beide dieselbe ladungsfähige Anschrift
+ * nennen müssen, und eine davon vergisst man beim Umzug.
+ */
+export const ANSCHRIFT = {
+  name: "Tim Sigl",
+  street: "Heiligengeiststraße 6-8",
+  city: "26121 Oldenburg",
+  country: "Deutschland",
+} as const;

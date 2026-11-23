@@ -13,15 +13,15 @@
   "anlagen": [
    {
     "label": "2026-08-21 - Antrag - VerkA - VBN-Tarifanpassung 2027",
-    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313315&type=do"
+    "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=313315&type=do"
    },
    {
     "label": "Vorlage",
-    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312296&type=do"
+    "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312296&type=do"
    },
    {
     "label": "Anlage 1 VBN Tariferhöhung zum 1 Jan 2027",
-    "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312295&type=do"
+    "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312295&type=do"
    }
   ],
   "summary": "Der Ausschuss berät über die VBN-Tarifanpassung für das Jahr 2027.",
@@ -90,31 +90,31 @@
   {
    "kind": "template",
    "label": "Vorlage 26/0622",
-   "url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=30078",
+   "url": "https://ratsinfo.oldenburg.de/bi/vo0050.asp?__kvonr=30078",
    "date": null
   },
   {
    "kind": "attachment",
    "label": "2026-08-21 - Antrag - VerkA - VBN-Tarifanpassung 2027",
-   "url": "https://buergerinfo.oldenburg.de/getfile.php?id=313315&type=do",
+   "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=313315&type=do",
    "date": null
   },
   {
    "kind": "attachment",
    "label": "Vorlage",
-   "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312296&type=do",
+   "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312296&type=do",
    "date": null
   },
   {
    "kind": "attachment",
    "label": "Anlage 1 VBN Tariferhöhung zum 1 Jan 2027",
-   "url": "https://buergerinfo.oldenburg.de/getfile.php?id=312295&type=do",
+   "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=312295&type=do",
    "date": null
   },
   {
    "kind": "protocol",
    "label": "Protokoll Verkehrsausschuss",
-   "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do",
+   "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do",
    "date": "2026-08-24"
   }
  ],
@@ -147,7 +147,7 @@
        "kind": "template",
        "id": 30078,
        "page": null,
-       "url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=30078"
+       "url": "https://ratsinfo.oldenburg.de/bi/vo0050.asp?__kvonr=30078"
       }
      },
      {
@@ -160,7 +160,7 @@
        "kind": "speech",
        "id": 43043,
        "page": 12,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=12"
       }
      },
      {
@@ -173,7 +173,7 @@
        "kind": "speech",
        "id": 43040,
        "page": 11,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=11"
       }
      }
     ],
@@ -188,7 +188,7 @@
        "kind": "speech",
        "id": 42737,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -201,7 +201,7 @@
        "kind": "speech",
        "id": 42739,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -214,7 +214,7 @@
        "kind": "speech",
        "id": 43041,
        "page": 12,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=12"
       }
      }
     ]
@@ -232,7 +232,7 @@
        "kind": "speech",
        "id": 43039,
        "page": 11,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=11"
       }
      },
      {
@@ -245,7 +245,7 @@
        "kind": "speech",
        "id": 42743,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -258,7 +258,7 @@
        "kind": "speech",
        "id": 42746,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -271,7 +271,7 @@
        "kind": "speech",
        "id": 43045,
        "page": null,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do"
       }
      }
     ],
@@ -286,7 +286,7 @@
        "kind": "speech",
        "id": 42741,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -299,7 +299,7 @@
        "kind": "speech",
        "id": 42752,
        "page": 9,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=9"
       }
      },
      {
@@ -312,7 +312,7 @@
        "kind": "speech",
        "id": 43042,
        "page": 12,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=12"
       }
      }
     ]
@@ -330,7 +330,7 @@
       "kind": "speech",
       "id": 42736,
       "page": 7,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=7"
+      "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=7"
      }
     },
     {
@@ -343,7 +343,7 @@
       "kind": "speech",
       "id": 43040,
       "page": 11,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+      "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=11"
      }
     }
    ],
@@ -358,7 +358,7 @@
       "kind": "speech",
       "id": 42747,
       "page": 9,
-      "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+      "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=9"
      }
     }
    ]
@@ -380,7 +380,7 @@
        "kind": "speech",
        "id": 42734,
        "page": 7,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=7"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=7"
       }
      },
      {
@@ -393,7 +393,7 @@
        "kind": "speech",
        "id": 42739,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -406,7 +406,7 @@
        "kind": "speech",
        "id": 42745,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -419,7 +419,7 @@
        "kind": "speech",
        "id": 42746,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -432,7 +432,7 @@
        "kind": "speech",
        "id": 42750,
        "page": 9,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=9"
       }
      },
      {
@@ -445,7 +445,7 @@
        "kind": "speech",
        "id": 42755,
        "page": 9,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=9"
       }
      },
      {
@@ -458,7 +458,7 @@
        "kind": "speech",
        "id": 43039,
        "page": 11,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=11"
       }
      }
     ]
@@ -476,7 +476,7 @@
        "kind": "speech",
        "id": 42736,
        "page": 7,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=7"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=7"
       }
      },
      {
@@ -489,7 +489,7 @@
        "kind": "speech",
        "id": 42747,
        "page": 9,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=9"
       }
      },
      {
@@ -502,7 +502,7 @@
        "kind": "speech",
        "id": 42751,
        "page": 9,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=9"
       }
      },
      {
@@ -515,7 +515,7 @@
        "kind": "speech",
        "id": 43041,
        "page": 12,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=12"
       }
      },
      {
@@ -528,7 +528,7 @@
        "kind": "speech",
        "id": 43045,
        "page": null,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do"
       }
      }
     ]
@@ -546,7 +546,7 @@
        "kind": "speech",
        "id": 42738,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -559,7 +559,7 @@
        "kind": "speech",
        "id": 42742,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -572,7 +572,7 @@
        "kind": "speech",
        "id": 42752,
        "page": 9,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=9"
       }
      },
      {
@@ -585,7 +585,7 @@
        "kind": "speech",
        "id": 43043,
        "page": 12,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=12"
       }
      }
     ]
@@ -603,7 +603,7 @@
        "kind": "speech",
        "id": 42735,
        "page": 7,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=7"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=7"
       }
      },
      {
@@ -616,7 +616,7 @@
        "kind": "speech",
        "id": 42748,
        "page": 9,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=9"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=9"
       }
      },
      {
@@ -629,7 +629,7 @@
        "kind": "speech",
        "id": 43040,
        "page": 11,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=11"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=11"
       }
      }
     ]
@@ -647,7 +647,7 @@
        "kind": "speech",
        "id": 42741,
        "page": 8,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314487&type=do#page=8"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314487&type=do#page=8"
       }
      },
      {
@@ -660,7 +660,7 @@
        "kind": "speech",
        "id": 43044,
        "page": 12,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=12"
       }
      }
     ]
@@ -678,7 +678,7 @@
        "kind": "speech",
        "id": 43042,
        "page": 12,
-       "url": "https://buergerinfo.oldenburg.de/getfile.php?id=314836&type=do#page=12"
+       "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=314836&type=do#page=12"
       }
      }
     ]

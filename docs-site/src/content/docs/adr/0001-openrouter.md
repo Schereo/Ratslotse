@@ -1,6 +1,6 @@
 ---
 title: 0001 — OpenRouter statt direkter OpenAI-API
-description: Warum alle LLM-Calls über OpenRouter statt direkt gegen OpenAI laufen.
+description: Gründe für den zentralen LLM-Zugriff über OpenRouter.
 sidebar:
   order: 1
 ---
@@ -9,8 +9,9 @@ sidebar:
 
 ## Kontext
 
-Die App braucht LLM-Inferenz an mehreren Stellen (Ausschuss-
-Zusammenfassung, Topic-Matching, Protokoll-Extraktion). Anforderungen:
+Die App nutzt LLMs für Ausschusszusammenfassungen, Themenabgleich und
+die Extraktion von Beschlüssen aus Protokollen. Der Zugriff muss die
+folgenden Anforderungen erfüllen.
 
 - Modelle frei wählbar und pro Aufgabe austauschbar, ohne Code-Umbau.
 - Kostenkontrolle und die Option, je Task ein günstigeres Modell zu nutzen.
@@ -21,17 +22,18 @@ Zusammenfassung, Topic-Matching, Protokoll-Extraktion). Anforderungen:
 
 Alle LLM-Aufrufe laufen über **OpenRouter** mit dem offiziellen `openai`-SDK
 (`base_url` auf den OpenRouter-Endpunkt, `OPENROUTER_API_KEY`). Modellnamen sind
-über Env-Variablen konfigurierbar (`COUNCIL_PROTOCOL_MODEL`, `COUNCIL_TOPIC_MODEL`,
-…), Defaults greifen ohne Konfiguration.
+über Umgebungsvariablen konfigurierbar (`COUNCIL_PROTOCOL_MODEL`,
+`COUNCIL_TOPIC_MODEL`, …). Ohne Konfiguration gelten die Standardwerte.
 
 ## Konsequenzen
 
-- **Plus:** Ein einziger Key, ein SDK, viele Modelle. Modellwechsel ist eine
-  Env-Änderung, kein Deploy von Code. Provider-Routing-Regeln (ADR 0002) lassen
-  sich zentral durchsetzen.
+- **Plus:** Ein API-Key und ein SDK genügen für mehrere Modelle. Ein
+  Modellwechsel erfordert nur eine Änderung der Umgebungsvariable. Die
+  Regeln für das Provider-Routing (ADR 0002) gelten zentral.
 - **Plus:** Ein Modellvergleich
   konnte ohne Integrationsaufwand mehrere Anbieter gegeneinander testen.
 - **Minus:** Zusätzliche Abhängigkeit von OpenRouter als Vermittler (eine weitere
-  Ausfall-/Latenzquelle). Einige OpenAI-spezifische Features (z. B. strikte
-  JSON-Schema-Outputs) sind je nach geroutetem Anbieter nicht garantiert — die
-  Pipeline nutzt daher nur den breit unterstützten JSON-Mode.
+  mögliche Quelle für Ausfälle und zusätzliche Latenz). Manche
+  OpenAI-spezifischen Funktionen wie Ausgaben mit striktem JSON-Schema
+  hängen vom Anbieter ab. Die Pipeline nutzt daher nur den breit
+  unterstützten JSON-Mode.

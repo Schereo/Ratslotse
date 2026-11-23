@@ -71,6 +71,7 @@ from __future__ import annotations
 
 import re
 
+from council import ris
 from council.herkunft import Herkunft
 from council.wirtschaftsplan import (BETRIEBE, Wirtschaftsplan,
                                     WirtschaftsplanFehler, dokument_name)
@@ -109,6 +110,20 @@ _KERNZAHL = re.compile(
 #: Vorzeichen, egal wie die Ziffernfolge geschrieben ist.
 _VERLUST = ("fehlbetrag", "verlust")
 
+#: Der geteilte Beschluss der Bäderbetriebsgesellschaft (Wirtschaftsplan 2024,
+#: 23/0755): „… im Bereich der Dienstleistungen allgemeinen wirtschaftlichen
+#: Interesses (DAWI) von 5.824.574 Euro und einem maximalen Fehlbedarf im
+#: Bereich … (Nicht-DAWI) von 75.426 Euro beschlossen." Das Jahresergebnis ist
+#: die SUMME beider Teile (−5.900.000 €, so steht es in der Ergebnisplanung der
+#: Anlage). Bis 11/2026 griff ``_KERNZAHL`` den ersten Fehlbetrag im Text — den
+#: DAWI-Teil — und weil auch der in der Anlage steht (Spartenrechnung), ging
+#: die Gegenprobe auf. Gespeichert war damit nur der Teil, den die Stadt
+#: ausgleicht, nicht das Ergebnis der Gesellschaft.
+_DAWI_TEILE = re.compile(
+    r"\(DAWI\)\s+von\s+(?P<dawi>\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro|EUR)"
+    r"(?P<mitte>[^.]{0,200}?)\(Nicht-DAWI\)\s+von\s+"
+    r"(?P<nicht>\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro|EUR)", re.I)
+
 
 def _eur(roh: str) -> float:
     s = roh.replace(" ", "")
@@ -122,7 +137,16 @@ def kernzahl_aus_beschluss(text: str) -> tuple[str, float] | None:
     Liefert ``(wort, amount)`` mit dem Betrag **vorzeichenrichtig**: Ein
     „Fehlbetrag" ist negativ, auch wenn die Ziffern ohne Minus dastehen.
     """
-    m = _KERNZAHL.search(re.sub(r"\s+", " ", text))
+    text = re.sub(r"\s+", " ", text)
+    teile = _DAWI_TEILE.search(text)
+    if teile and re.search(r"fehlbe", teile.group("mitte"), re.I):
+        # Beide Teile sind Fehlbeträge („maximalen Fehlbedarf"); das Ergebnis
+        # der Gesellschaft ist ihre Summe. Die Gegenprobe sucht dann diese
+        # Summe in der Anlage — und nicht mehr den Teil, der zufällig auch
+        # dort steht.
+        summe = _eur(teile.group("dawi")) + _eur(teile.group("nicht"))
+        return "Fehlbetrag (DAWI und Nicht-DAWI zusammen)", -abs(summe)
+    m = _KERNZAHL.search(text)
     if not m:
         return None
     wort = m.group("wort")
@@ -311,7 +335,7 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
                if plan.investments is not None else [PROBE_KERNZAHL]),
         # Der Name statt des Aktenzeichens — s. `wirtschaftsplan.dokument_name`.
         label=dokument_name(plan),
-        url=url or (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
+        url=url or (ris.template_url(kvonr)
                     if kvonr else None),
         citation="Beschlussvorschlag der Vorlage",
         probe_result=f"„{wort}“ — {BELEGLAGE[beleglage]}",

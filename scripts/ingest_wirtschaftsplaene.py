@@ -31,15 +31,18 @@ import dataclasses
 import re
 import sys
 import time
-import urllib.request
 from pathlib import Path
+
+import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from council import ris  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.wirtschaftsplan import (  # noqa: E402
     WirtschaftsplanFehler,
+    bestand_ist_reicher,
     betrieb_aus_titel,
     herkunft_fuer,
     ohne_eckwerte,
@@ -273,6 +276,14 @@ def main() -> int:
                     juengste[(erkannt[0], year)] = r
             kern_je = {(p.enterprise, p.year): i for i, (p, _w, _l, _r) in enumerate(kernzahlen)}
             abrufe = 0
+            # Abgerufen wird über council/ris.py: Eine gespeicherte Adresse vom
+            # früheren Host wird umgezogen, und eine Antwort, die keine
+            # Ratsinfo-Seite ist, wirft RisError statt still ein HTML-Dokument
+            # als „PDF“ zu reichen. Bis 11/2026 lief das über urllib — nach dem
+            # Umzug des Ratsinfos scheiterte jeder Abruf, und die Kernzahl
+            # überschrieb die volle Zeile (s. bestand_ist_reicher).
+            sitzung = requests.Session()
+            sitzung.headers["User-Agent"] = "Mozilla/5.0 (Ratslotse)"
             for (enterprise, year), r in sorted(juengste.items()):
                 if (enterprise, year) in schon:
                     continue
@@ -290,10 +301,9 @@ def main() -> int:
                         time.sleep(1.5)
                     abrufe += 1
                     try:
-                        anfrage = urllib.request.Request(a["url"], headers={"User-Agent": "Mozilla/5.0"})
-                        with urllib.request.urlopen(anfrage, timeout=60) as antwort:
-                            lesung = guv.lies_guv_pdf(antwort.read(), year, soll)
-                    except (OSError, guv.GuvFehler) as fehler:
+                        antwort = ris.fetch(sitzung, a["url"], timeout=60)
+                        lesung = guv.lies_guv_pdf(antwort.content, year, soll)
+                    except (requests.RequestException, guv.GuvFehler) as fehler:
                         guv_hinweise.append(f"{year} {enterprise} ({a['document_id']}): {fehler}")
                         continue
                     i = kern_je.get((enterprise, year))
@@ -333,22 +343,35 @@ def main() -> int:
             return 1 if risse else 0
 
         for plan, kvonr in gefunden:
-            url = (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
-                   if kvonr else None)
+            url = ris.template_url(kvonr) if kvonr else None
             store.save_wirtschaftsplan(plan, herkunft_fuer(plan, url=url))
         for plan, probes, a in aus_anlage:
             store.save_wirtschaftsplan(plan, herkunft_tabelle(
                 plan, probes, url=a["url"], document_id=a["document_id"],
                 ocr_model=a.get("ocr_model")))
+        geschuetzt = []
         for plan, wort, lage, r in kernzahlen:
+            alt = store._conn.execute(  # noqa: SLF001
+                "SELECT template_number, revenues, expenses, result "
+                "FROM council_business_plans WHERE enterprise = ? AND year = ?",
+                (plan.enterprise, plan.year)).fetchone()
+            if bestand_ist_reicher(dict(alt) if alt else None, plan):
+                geschuetzt.append(plan)
+                continue
             store.save_wirtschaftsplan(plan, herkunft_kernzahl(
                 plan, wort, lage, url=None, kvonr=r["kvonr"]))
+        for plan in geschuetzt:
+            print(f"  = {plan.year} {plan.enterprise}: gespeicherte Zeile mit Erträgen und "
+                  f"Aufwendungen aus derselben Vorlage bleibt — die Kernzahl allein "
+                  f"ersetzt sie nicht")
         for plan, lesung, a, mit_kern in guv_ergaenzt:
             store.save_wirtschaftsplan(plan, guv.herkunft_fuer(
                 lesung, label=dokument_name(plan), jahr=plan.year, url=a["url"],
                 document_id=a["document_id"], kernzahl_geprueft=mit_kern))
         print(f"\n{len(gefunden)} Eckwerte, {len(aus_anlage)} Erfolgspläne, "
-              f"{len(kernzahlen)} Kernzahlen, {len(guv_ergaenzt)} GuV-Übersichten gespeichert.")
+              f"{len(kernzahlen) - len(geschuetzt)} Kernzahlen, "
+              f"{len(guv_ergaenzt)} GuV-Übersichten gespeichert, "
+              f"{len(geschuetzt)} volle Zeile(n) geschützt.")
 
         luecken_ohne_beleg = store.herkunft_luecken().get("council_business_plans")
         if luecken_ohne_beleg:

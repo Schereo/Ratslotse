@@ -25,15 +25,15 @@ export default defineConfig({
   // Tests eines Laufs reden mit EINEM uvicorn auf EINER SQLite-Datei.
   //
   // Parallel wird trotzdem gearbeitet, nur eine Ebene höher: Die CI fährt
-  // vier Läufer mit `--shard=i/4` (`e2e.yml`), und jeder startet über
+  // mehrere Läufer (`e2e.yml`, seit 11/2026 acht), und jeder startet über
   // `tests/start-backend.sh` sein eigenes Backend auf einer eigenen
   // Wegwerf-Datenbank. Die Aufteilung ist deshalb sicher, ohne dass ein
   // einziger Test isoliert werden müsste.
   //
-  // Dass sie ganze DATEIEN verteilt und keine einzelnen Tests, hängt an
-  // `fullyParallel` — das steht hier bewusst nicht auf `true`. Damit ist eine
-  // Datei EINE Gruppe, und die Reihenfolge innerhalb einer Datei bleibt, wie
-  // sie ist. Wer `fullyParallel: true` setzt, zerreißt genau das.
+  // Verteilt werden ganze DATEIEN, nach gemessener Dauer
+  // (`tests/shard-specs.mjs`), keine einzelnen Tests. Innerhalb einer Datei
+  // bleibt die Reihenfolge, wie sie ist, weil `fullyParallel` hier bewusst
+  // nicht auf `true` steht. Wer es setzt, zerreißt genau das.
   workers: 1,
 
   use: {

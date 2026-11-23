@@ -12,7 +12,7 @@ from __future__ import annotations
 from calendar import monthrange
 from datetime import date as _date
 
-from council import plan_judge, plan_state
+from council import plan_judge, plan_state, ris
 from council import plans as register
 
 #: Kurze Themenfeld-Namen für den Kicker. Die langen stehen in
@@ -70,12 +70,8 @@ AXIS_YEARS_AHEAD = 10
 #: So viele Jahre hinter heute läuft ein Band ohne Enddatum blass aus.
 OPEN_END_YEARS = 3
 
-#: Die Vorlage im Ratsinformationssystem der Stadt.
-VORLAGE_URL = "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
-
-
 def vorlage_url(kvonr: int | None) -> str | None:
-    return VORLAGE_URL.format(kvonr=kvonr) if kvonr else None
+    return ris.template_url(kvonr) if kvonr else None
 
 
 def _month(iso: str | None) -> str | None:
@@ -816,7 +812,6 @@ CONTENT_HEADINGS = {"adopted": "Was der Plan festlegt", "noted": "Was im Plan st
                     "draft": "Was der Entwurf vorsieht"}
 CONTENT_NOTE = ("Ein Sprachmodell hat diese Punkte aus den Dokumenten herausgesucht. Gezeigt wird nur, "
                 "was als wörtliches Zitat in der Quelle steht.")
-RIS_FILE = "https://buergerinfo.oldenburg.de/getfile.php?id={id}&type=do"
 
 
 def _content_source(store, plan: register.Plan, ref: dict, kvonr: dict[str, int]) -> dict:
@@ -838,7 +833,7 @@ def _content_source(store, plan: register.Plan, ref: dict, kvonr: dict[str, int]
         source["label"] = "Vorlage der Verwaltung"
     else:
         source["label"] = ref["label"]
-        source["url"] = RIS_FILE.format(id=ref["document_id"]) + (f"#page={ref['page']}" if ref.get("page") else "")
+        source["url"] = ris.file_url(ref["document_id"]) + (f"#page={ref['page']}" if ref.get("page") else "")
     return source
 
 
@@ -1139,7 +1134,7 @@ def plan_places(store, plan: register.Plan) -> list[dict]:
     # ``districts`` rechnet ``scripts/plan_listen.py`` mit; die Seite gibt es nicht aus.
     listed_doc = plan_state.plan_lists(plan.key)
     if listed_doc:
-        url = RIS_FILE.format(id=listed_doc["document"]["document_id"])
+        url = ris.file_url(listed_doc["document"]["document_id"])
         for s in listed_doc.get("sections", []):
             by_slug[f"abschnitt-{s['code']}"] = {
                 "slug": f"abschnitt-{s['code']}", "name": s["name"], "kind": "street", "lat": s["lat"],
@@ -1212,7 +1207,7 @@ def _shape_places(shapes: dict) -> list[dict]:
     """Je Gebiet aus ``council/plan_shapes/`` ein Ort — mit Fläche oder, wo der Plan nur einen Standort
     zeigt, als Punkt. Den vereinfachten Umriss und den Beschriftungspunkt legen ``scripts/plan_umrisse.py``
     und ``scripts/plan_karten.py`` in die Datei; der Server rechnet nicht."""
-    url = RIS_FILE.format(id=shapes["document"]["document_id"])
+    url = ris.file_url(shapes["document"]["document_id"])
     word = shapes.get("figure_word", "Abb.")
     out = []
     for i, f in enumerate(shapes["features"]):
@@ -1296,7 +1291,7 @@ def geojson_export(store, plan: register.Plan) -> dict | None:
     lists, shapes = plan_state.plan_lists(plan.key) or {}, plan_state.plan_shapes(plan.key) or {}
     features = []
     for s in lists.get("sections", []):
-        url = RIS_FILE.format(id=lists["document"]["document_id"])
+        url = ris.file_url(lists["document"]["document_id"])
         features.append({"type": "Feature", "geometry": s["geometry"], "properties": {
             "kind": "section", "code": s["code"], "street": s["name"], "stretch": s["stretch"], "quote": s["quote"],
             "page": s["page"], "source_url": f"{url}#page={s['page']}", "length_m": s["length_m"]}})
@@ -1324,7 +1319,7 @@ def lists_block(plan: register.Plan) -> list[dict]:
     data = plan_state.plan_lists(plan.key)
     if not data:
         return []
-    url = RIS_FILE.format(id=data["document"]["document_id"])
+    url = ris.file_url(data["document"]["document_id"])
     return [{
         "key": lst["key"], "title": lst["title"], "caption": lst["caption"], "page": lst["page"],
         "source_label": data["document"]["label"], "source_url": f"{url}#page={lst['page']}",
@@ -1466,7 +1461,7 @@ def budget_block(store, plan: register.Plan) -> dict:
                       "amounts": [{"label": f"{slot['what']} {year}", "value": value}
                                   for year, value in sorted(slot["stages"][stage].items()) if value is not None],
                       "since": budget_year,
-                      "source_url": RIS_FILE.format(id=row["document_id"]) if row.get("document_id") else None})
+                      "source_url": ris.file_url(row["document_id"]) if row.get("document_id") else None})
     order = {"product": 0, "investment": 1, "change": 2}
     items.sort(key=lambda i: (order[i["kind"]], -(i["since"] or 0), i["title"]))
     return {"items": items, "note": BUDGET_NOTE}

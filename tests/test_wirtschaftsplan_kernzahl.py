@@ -332,3 +332,45 @@ def test_probe_haengt_nur_dran_wo_sie_lief():
                          url=None, kvonr=1)
     assert PROBE_INVESTITIONEN in mit.probe
     assert PROBE_INVESTITIONEN not in ohne.probe
+
+
+# Echter Beschlussvorschlag 23/0755 (BBGO, Wirtschaftsplan 2024): Der Rat
+# beschließt zwei Teile, das Jahresergebnis ist ihre Summe. Die Anlage führt
+# den DAWI-Teil (Spartenrechnung) UND die Summe (Ergebnisplanung) — bis 11/2026
+# wurde der Teil gespeichert, weil auch er die Gegenprobe bestand.
+TITEL_BBGO_2024 = "Bäderbetriebsgesellschaft Oldenburg mbH (BBGO): Wirtschaftsplan 2024 - Beschluss"
+TEXT_BBGO_2024 = """Beschlussvorschlag:
+Der Wirtschaftsplan 2024 der Bäderbetriebsgesellschaft Oldenburg mbH (BBGO), beste-
+hend aus Ergebnisplanung, Bilanzplanung, Liquiditätsplanung, Vermögensplanung und
+Spartenrechnungsplanung, wird in der anliegenden Fassung im Bereich der Dienstleistun-
+gen allgemeinen wirtschaftlichen Interesses (DAWI) von 5.824.574 Euro und einem maxi-
+malen Fehlbedarf im Bereich der Dienstleistungen nicht allgemeinen wirtschaftlichen Inte-
+resses (Nicht-DAWI) von 75.426 Euro beschlossen.
+
+Auswirkungen:
+a) Finanzen Der geplante Jahresfehlbetrag für 2024 im DAWI-Bereich in Höhe von
+5.824.574 Euro wird durch die Gesellschafterin Stadt Oldenburg ausgeglichen.
+"""
+ANLAGE_BBGO_2024 = ("Jahresüberschuss / -fehlbetrag -4.819.066 -75,1 -5.298.647 -86,6 "
+                    "-5.288.325 -86,3 -5.900.000 -78,2 -6.000.740 -69,4\n"
+                    "DAWI -5.824.574 Nicht-DAWI -75.426\n")
+
+
+def test_geteilter_beschluss_ergibt_die_summe():
+    assert kernzahl_aus_beschluss(TEXT_BBGO_2024) == (
+        "Fehlbetrag (DAWI und Nicht-DAWI zusammen)", -5_900_000.0)
+
+
+def test_geteilter_beschluss_wird_mit_der_summe_belegt():
+    plan, _wort, lage = parse_kernzahl("23/0755", TITEL_BBGO_2024, TEXT_BBGO_2024,
+                                       2024, [ANLAGE_BBGO_2024])
+    assert plan.result == -5_900_000.0
+    assert lage == "belegt"
+
+
+def test_geteilter_beschluss_ohne_summe_in_der_anlage_wirft():
+    """Steht nur der DAWI-Teil in der Anlage, ist die Summe NICHT belegt —
+    dann widersprechen sich die Dokumente oder sind falsch gelesen."""
+    with pytest.raises(WirtschaftsplanFehler):
+        parse_kernzahl("23/0755", TITEL_BBGO_2024, TEXT_BBGO_2024, 2024,
+                       ["DAWI -5.824.574 Nicht-DAWI -75.426"])

@@ -30,7 +30,7 @@ def test_form_einer_liste(pfad):
     assert d["plan"] == pfad.stem, f"{pfad.name}: Dateiname und Plan passen nicht zusammen"
     assert d["plan"] in plans.PLANS, f"{pfad.name}: Plan {d['plan']!r} steht nicht im Register"
     src = d["source"]
-    assert isinstance(src["document_id"], int) and src["url"].startswith("https://buergerinfo.oldenburg.de/")
+    assert isinstance(src["document_id"], int) and src["url"].startswith("https://ratsinfo.oldenburg.de/bi/")
     assert src.get("template") is None or plans.TEMPLATE_RE.match(src["template"])
     codes = [m["code"] for m in d["measures"]]
     assert len(codes) == len(set(codes)), f"{pfad.name}: doppelte Kennung"

@@ -875,6 +875,44 @@ Aktionsleiste.
   ohne Datenverlust („Frage steht wieder im Eingabefeld").
 - Ehrliche Mengen: nie „viele", immer Zahl + Zeitraum.
 
+### Seitenleiste: Untermenü eines Bereichs (seit 11/2026)
+
+Ein Bereich mit Unterseiten zeigt sie **in der Seitenleiste**, eingerückt unter
+seinem Punkt — die Analyse ihre Auswertungen, der Haushalt seine vier Etappen
+(`NavSection` in `components/nav.tsx`).
+
+- **Offen genau so lange, wie man im Bereich ist.** Kein Pfeil, kein gemerkter
+  Zustand: Im Ruhezustand ist die Leiste so kurz wie ohne Untermenüs.
+- **Die Fläche liegt auf der Unterzeile**, der Hauptpunkt behält nur die
+  Primärfarbe (und keine Hover-Fläche — zwei gefüllte Zeilen untereinander
+  läsen sich als zwei Standorte). Gehört die Seite zu keiner Unterzeile
+  (Haushalts-Übersicht, ein Steckbrief), trägt der Hauptpunkt die Fläche.
+  Es gibt **immer genau einen** Standort.
+- **Unterzeile:** 12,5 px, kleines Zeichen (14 px) davor, an einer neutralen
+  Führungslinie unter der Mitte des Hauptzeichens. Die Fläche ist mit der
+  Zeile eingerückt und beginnt kurz vor dem Zeichen — nie über die volle
+  Breite der Leiste (das ließ links leeres Blau vor der Schrift stehen).
+  Aktiv wechselt nur die Farbe, nicht das Schriftgewicht: Fettere Schrift ist
+  breiter, und ein Name, der gerade so passt, bräche beim Anklicken um. Die
+  Maße sind auf die längsten Namen gerechnet; was trotzdem nicht passt, bricht
+  in zwei Zeilen um, statt abgeschnitten zu werden.
+- **Die Zeichen kommen aus dem Bestand:** die der Analyse aus derselben
+  Zuordnung wie die Reiterleiste (`components/analyse-icons.ts`), die der
+  Haushalts-Etappen vom ersten Schritt der Etappe — dem Ziel der Zeile.
+- **Kein Auffahren.** Die Zeilen stehen sofort da, die gleitende Markierung
+  fährt den Weg. Ein animiertes Aufklappen ließ sie springen und hängen
+  (gemessen 22.11.2026, Begründung an `NavSection`).
+- **Höchstens eine Handvoll Zeilen.** Der Haushalt zeigt deshalb die vier
+  Etappen und nicht die zwölf Schritte — die stehen im Schritt-Pfad der Seite.
+  Ein Untermenü mit EINER Zeile gibt es nicht (Werkzeuge: erst ab dem zweiten).
+- **Nicht doppelt navigieren.** Wo die Seitenleiste die Unterseiten zeigt
+  (`desk`), steht auf der Seite keine Reiterleiste mit denselben Zielen;
+  darunter (Telefon, iPad) ist die Reiterleiste der einzige Weg und bleibt.
+  Beide lesen dieselbe Liste (`lib/analysis-nav.ts`).
+- **Gruppen:** Hauptziele · *Ratsarbeit* (Haushalt, Werkzeuge — nur für Konten
+  mit Mandat; sonst steht der Haushalt ohne Überschrift am Ende der
+  Hauptziele) · *Persönlich*. Dieselben Gruppen im „Mehr"-Blatt.
+
 ## 7. Bewegung
 
 Bis 09/2026 stand hier nichts, und entsprechend sah es aus: ein paar sehr

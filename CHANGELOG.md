@@ -7,6 +7,232 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [3.1.0] – 2026-11-22
+
+### Hinzugefügt
+- **Fachwörter sind jetzt auch auf der Beschluss- und der Sitzungsseite am Wort
+  erklärt.** Auf der Beschluss-Seite in Lottis Kurzfassung, im amtlichen
+  Wortlaut und im Auszug aus der Vorlage, auf der Sitzungsseite in den Karten
+  der Tagesordnung: Begriffe wie „Veränderungssperre“, „Bürgschaft“ oder
+  „Grundsteuer C“ sind bei ihrer ersten Nennung unterstrichen, ein Tipp klappt
+  die Erklärung direkt darunter auf. Wörter, die im Fließtext auch im
+  Alltagssinn vorkommen („zur Entlastung des Teams“), bleiben dort ohne
+  Erklärung. (#1927)
+- **Die Sitzungsseite schätzt, wann das Protokoll kommt.** Es wird in der
+  nächsten Sitzung des Gremiums genehmigt und erscheint meist wenige Tage
+  danach. Steht diese Sitzung schon im Kalender, nennt „Wie es weitergeht“ sie
+  samt ungefährer Wochenzahl. Sonst wird ihr Abstand aus derselben Jahreszeit
+  früherer Jahre geschätzt, so dass Ferienpausen mitzählen. (#1876)
+- **Werkzeuge für Ratsmitglieder, als erstes der Mehrheitsrechner.** Ein neuer
+  Bereich in der Navigation, den nur Konten mit der Rolle Ratsmitglied sehen.
+  Der Mehrheitsrechner zeigt die Sitze im Rat, im Verwaltungsausschuss und in
+  jedem Fachausschuss als Halbkreis. Jede Fraktion und Gruppe lässt sich auf
+  „dabei“ oder „ohne“ setzen; daneben stehen alle Kombinationen, die damit auf
+  eine Mehrheit kommen. Fehlen der Auswahl noch Stimmen, schlägt der Rechner
+  vor, wer für die Mehrheit in Frage kommt — wer die Lücke allein schließt und
+  wer nur zusammen mit anderen. Eine Übersicht zeigt dieselbe Auswahl in allen
+  Gremien. Die Besetzung kommt aus dem Ratsinformationssystem, samt
+  Oberbürgermeister und Stimmberechtigten ohne Ratsmandat (etwa der
+  Elternvertretung im Schulausschuss). Die Übersicht der Werkzeuge stellt jedes
+  mit einem kleinen Bild vor und lädt dazu ein, weitere vorzuschlagen. (#1942)
+
+### Geändert
+- **Die Nutzungszählung je Konto erfasst jetzt auch aktive Minuten und besuchte
+  Bereiche.** Für die Übersicht in der Verwaltung zählt Ratslotse je Tag, wie
+  viele Minuten ein Konto aktiv war und welche Bereiche es aufgerufen hat, etwa
+  Fragen, Beschlüsse, Karte oder Haushalt. Einzelne Seiten, Inhalte und
+  Uhrzeiten werden weiterhin nicht gespeichert; die Datenschutzerklärung nennt
+  die neue Zählung. (#1799)
+- **Die Analyse ist aufgeräumt.** Den Reiter „Finanzen“ gibt es nicht mehr: Er
+  summierte Euro-Beträge aus Beschlusstexten, und der Haushalt beantwortet
+  dieselbe Frage mit den echten Zahlen. Alte Links führen dorthin. „Wahlen“
+  behält jetzt die Reiterleiste der Analyse und zeigt alle Wahlen als Liste, die
+  neueste zuerst. Groß oben steht nur noch eine Wahl, die ansteht oder gerade
+  ausgezählt wird. Die Tippspiele sind nur noch über ihren Link zu erreichen.
+  Die Frage-Vorschläge unter den Reitern sind ausgetauscht, und jede neue Frage
+  ist vorher mit einer belegten Antwort geprüft. (#1807)
+- **Automatisch aufbereitete Angaben werden gegen den Wortlaut geprüft.** Eine
+  Aussage über eine Vorlage bleibt nur stehen, wenn ihr Zitat wörtlich im
+  Dokument steht, jede Zahl darin vorkommt und Wertungen aus dem Zitat stammen.
+  Die Pläne der Stadt nutzen dieselbe Prüfung. (#1888)
+- **Frag den Rat antwortet schneller.** Das Sprachmodell denkt vor der Antwort
+  kürzer nach. Die Antwort beginnt damit etwa doppelt so schnell wie bisher. Wer
+  eine Frage gründlicher beantwortet haben möchte, nutzt die gründliche
+  Recherche. (#1955)
+- **Frag den Rat lädt ruhiger.** Beschlüsse, Wortbeiträge und Pressemitteilungen
+  haben neben der Antwort jetzt je einen eigenen Platzhalter, statt nacheinander
+  hineinzuspringen. Ein gedrucktes Gespräch passt deutlich kompakter auf A4, und
+  beim Daumen runter ist „Antwort mit Quellen zur Prüfung mitschicken“
+  vorausgewählt. (#1790)
+- **Die Unterlagen eines Tagesordnungspunkts sind eine geordnete Liste.** Jedes
+  Dokument steht einmal da, mit Nummer, Art (Vorlage, Änderungsantrag, Satzung
+  …), Antragsteller und Seitenzahl — Anträge gleich nach der Vorlage, Pläne und
+  weitere Anlagen eingeklappt. Die Vorlage öffnet direkt das PDF, und Anlagen
+  aus späteren Beratungen sind markiert. (#1887)
+- **Der Haushalt ist für alle offen.** Einnahmen, Ausgaben, Investitionen,
+  Schulden und die Betriebe der Stadt sieht jetzt jedes Konto, nicht mehr nur
+  Ratsmitglieder und Fachpublikum, rechtzeitig zu den Haushaltsberatungen des
+  neuen Rats. (#1791)
+- **Die zwölf Schritte durch den Haushalt sagen jetzt, was drinsteht.** Aus
+  „Muss oder kann?" wird „Pflichtausgaben und Spielraum", aus „Und ist das die
+  ganze Stadt?" „Städtische Unternehmen", aus dem „Haushalts-Labor" „Haushalt
+  selbst durchrechnen" — und so für alle Schritte. Auch die vier Etappen heißen
+  nach ihrem Inhalt: „Einnahmen und Ausgaben", „Ergebnis und Prüfung",
+  „Unternehmen, Vergleich, Schulden" und „Entscheidung und Mitreden". Wegweiser,
+  Seitenüberschrift und Lottis Verweise tragen denselben Namen. (#1937)
+- **Die Ideen-Seite sagt, aus welcher Stadt nichts Neues mehr kommt.** Weist der
+  Server einer Stadt unseren Abruf ab (Wolfsburg, Hildesheim), oder gibt sie
+  ihre Dokumente nicht für automatische Abrufe heraus (Braunschweig, Osnabrück,
+  Potsdam), steht das unter dem Stand der Seite. Was schon vorliegt, bleibt
+  sichtbar; die Zeile erklärt nur, warum keine neuen Vorlagen dazukommen. Den
+  Zugang hält die wöchentliche Ernte je Stadt fest. (#1815)
+- **Automatisch erstellte Texte tragen einen kleinen orangefarbenen Stern.**
+  Fährt man darüber oder tippt ihn an, sagt er, woher der Text kommt und was
+  verbindlich ist. Er ersetzt die Hinweiszeilen über der Tagesordnung und unter
+  „Frag den Rat“ auf Sitzungs-, Punkt- und Beschluss-Seite. „Wichtig“ steht als
+  kräftiges Abzeichen an der Karte, der Grund dafür in einem abgesetzten Kasten.
+  Auf der Punkt-Seite heißt die Kurzfassung nur noch „Das Wichtigste in Kürze“,
+  ohne doppelte Überschrift. (#1877)
+- **Die Website läuft auf der aktuellen Fassung ihres Unterbaus.** Next.js 16
+  und React 19 lösen die Fassungen von 2024 ab, für die inzwischen
+  Sicherheitslücken gemeldet waren. Für Nutzer*innen der Webseite und der
+  iOS-App ändert sich nichts. (#1944)
+- **Kein Link mehr zur NWZonline-Suche.** Beschluss- und Punkt-Seiten, in Web
+  und App, verweisen nicht mehr auf die Suche bei NWZonline — sie fand zu den
+  meisten Beschlüssen nichts. (#1864)
+- **„Neu bei Ratslotse“ kommt an alle.** Die Ankündigung einer neuen Version,
+  ein paar Mal im Jahr, kommt per Mail auch dann, wenn die übrigen
+  Benachrichtigungen aus sind. Wer sie nicht möchte, schaltet „Neu bei
+  Ratslotse“ in den Einstellungen ab; der Link dazu steht in jeder dieser Mails.
+  Die Bilder in der Mail zeigen außerdem nur noch das Browserfenster und sind
+  dadurch größer. (#1792)
+- **Die Seitenleiste zeigt die Unterseiten des Bereichs, in dem du gerade
+  bist.** Unter „Analyse“ stehen am Rechner jetzt Trends, Parteien, Personen und
+  die übrigen Auswertungen direkt in der Seitenleiste, unter „Haushalt“ die vier
+  Etappen des Rundgangs. Die markierte Zeile zeigt, wo du bist. Die Reiterleiste
+  oben auf der Analyse-Seite entfällt dafür am Rechner, auf Telefon und iPad
+  bleibt sie. Für Ratsmitglieder stehen Haushalt und Werkzeuge zusammen in einer
+  eigenen Gruppe „Ratsarbeit“. (#1948)
+- **Die Sitzungsseite sagt Ort und Zeit nur noch einmal.** Die volle Adresse
+  steht oben im Kopf, die eigene Karte „Ort und Zeit“ ist weg. „Sitzung teilen“
+  ist kein hervorgehobener Knopf mehr, und die Hover-Karte an den Bojen wird
+  nicht mehr von den Etappen-Beschriftungen überdeckt. Die Erklärzeile unter dem
+  Kurs entfällt; was eine Boje bedeutet, sagt ihre Hover-Karte. (#1874)
+- **Die Technik-Doku ist wieder auf dem Stand des Codes.** Neu beschrieben sind
+  die Sitzungsseite und die Seite je Tagesordnungspunkt, „Frag den Rat“ vom
+  Eingang der Frage bis zum Beleg, „Mein Viertel“, die Pläne der Stadt und der
+  Vergleich mit anderen Städten; die Architekturseite zeigt das System, wie es
+  heute ist. Damit sie nicht wieder zurückfällt, entstehen die Listen mit einer
+  Quelle im Code (Cron-Jobs, Feature-Schalter, Rollen, Messläufe, Workflows)
+  jetzt als Seiten daraus, und eine Prüfung hält bei jeder Änderung fest, dass
+  die Doku nur nennt, was es im Code noch gibt. (#1945)
+- **Anlagen an Tagesordnungspunkten werden gelesen und eingeordnet.**
+  Änderungsanträge hängen oft am Punkt statt an der Vorlage und verraten sich
+  manchmal erst im Text. Ihre Texte kommen jetzt beim täglichen Abgleich mit,
+  jedes Dokument bekommt einen Steckbrief mit Art, Antragsteller und Seiten —
+  die Grundlage, um später jede Angabe auf die richtige Seite im PDF zu
+  verweisen. (#1886)
+
+### Behoben
+- **Einzelne Beschluss-Seiten ließen sich nicht öffnen.** Stand unter „Ähnliche
+  Beschlüsse“ ein Beschluss ohne Titel, antwortete die ganze Seite mit einem
+  Fehler — auf Prod betraf das vier Seiten. Solche Einträge erscheinen in der
+  Liste nicht mehr. (#1926)
+- **Änderungs-, Berichts- und Dringlichkeitsanträge an Vorlagen werden als
+  Anträge erkannt.** Bisher galten sie als gewöhnliche Anlagen, ihr Text wurde
+  nicht gelesen. Vorlagen, deren PDF zunächst fehlte oder später ausgetauscht
+  wurde, werden über die Anlage am Tagesordnungspunkt nachgelesen, etwa die neue
+  Geschäftsordnung des Rats. (#1882)
+- **Die Beschluss-Seite zeigt wieder die Anlagen der Vorlage.** Die Liste
+  „Anlagen zum Beschluss“ war seit September leer. (#1883)
+- **Der Beschlussvorschlag einer Vorlage wird vollständig gelesen.** Bisher lief
+  er in rund jeder dritten Vorlage in den Abschnitt „Anlass“ hinein, brach bei
+  eigener Aufzählung nach Ziffer a) ab oder endete am Seitenumbruch. Beim
+  Jahresabschluss fehlte so zum Beispiel der Fehlbetrag. Auch Kosten- und
+  Klimaangaben reißen am Seitenumbruch nicht mehr ab. (#1881)
+- **Während eines Updates kommt keine Fehlerseite mehr.** Bisher konnte eine
+  Seite in der ersten Minute eines Updates mit „Internal Server Error“
+  antworten, weil die Programmbausteine der Website unter dem laufenden Server
+  ausgetauscht wurden. Jetzt entstehen sie daneben und werden in einem Schritt
+  eingewechselt. (#1871)
+- **Frag den Rat findet den jüngsten Stand und die Reden einer Person
+  zuverlässiger.** Fragen nach einer Ratsperson durchsuchen jetzt alle ihre
+  Wortbeiträge statt nur der neuesten und lassen gleichnamige Einwohnerinnen und
+  Einwohner aus der Einwohnerfragestunde weg. Liegen die jüngsten Beschlüsse
+  hinter den besten Treffern, kommt ihre Aussprache trotzdem in die Antwort.
+  Zusammengesetzte Wörter wie „Parkgebührenerhöhung“ finden auch Titel, die die
+  Teile getrennt nennen. Und die Antwort sagt nur noch mit Datum, dass seitdem
+  nichts entschieden wurde. (#1801)
+- **Die Analyse in der App lädt wieder.** Seit September zeigte die iOS-App
+  unter „Analyse“ nur noch „Die Antwort des Servers hat ein unerwartetes
+  Format“: Der Server nannte drei Zahlen der Antrags-Auswertung inzwischen
+  anders, als die App sie las. Der Server schickt sie jetzt zusätzlich unter den
+  alten Namen, damit auch die bereits installierte App wieder etwas anzeigt; der
+  nächste App-Build liest die neuen. (#1831)
+- **Der Klima-Check zeigt nicht mehr den falschen Abschnitt.** War der
+  Klima-Punkt einer Vorlage leer, stand dort der Text der „weiteren
+  Auswirkungen“, etwa beim Aktionsplan gegen Gewalt an Frauen* die
+  Gleichberechtigung. Vorlagen, die im Klima-Punkt anders durchzählen, zeigen
+  den Prüfvermerk jetzt ohne vorangestellten Buchstaben. (#1933)
+- **Lotti findet Ausschüsse auch unter ihrem Kurznamen.** Wer nach dem nächsten
+  „Finanzausschuss“ fragt, bekommt jetzt den Termin des „Ausschusses für
+  Finanzen und Beteiligungen“, statt zu hören, es stehe keine Sitzung im
+  Kalender. (#1787)
+- **Lotti versteht „hier“ auf der Karte.** Reicht sie eine Frage wie „Was ist
+  hier gerade im Bau?“ ans Ratsarchiv weiter, meint „hier“ jetzt das Viertel,
+  das du gerade ansiehst. Bisher fragte das Archiv zurück, worum es gehen soll.
+  (#1788)
+- **Der Mehrheitsrechner zählte in fünf Gremien nicht alle Stimmen.** Das
+  Ratsinformationssystem führt dort nicht alle Stimmberechtigten oder einen zu
+  viel: Im Jugendhilfeausschuss stand eine Mehrheit ab 4 von 6 Stimmen statt ab
+  8 von 15, im Betriebsausschuss Gebäudewirtschaft ab 7 von 13 statt ab 8 von
+  14, im Sportausschuss zwölf statt elf Sitze, dazu Schulausschuss und
+  Betriebsausschuss Abfallwirtschaft. Die Größe jedes Gremiums folgt jetzt den
+  Ratsbeschlüssen vom 2. November 2026; wo das Ratsinformationssystem abweicht,
+  steht es dabei. Rat, Verwaltungsausschuss und die übrigen neun Ausschüsse
+  waren richtig. (#1947)
+- **Die Clips auf der Karte „Neu bei Ratslotse“ laufen flüssig.** Die Aufnahmen
+  zu Lotti, Mein Viertel, den Ideen aus anderen Städten und Frag den Rat ruckeln
+  nicht mehr, einzelne leere Bilder blitzen nicht mehr auf, und der Mauszeiger
+  gleitet, statt zu springen. (#1793)
+- **Mehr Personen in Antworten tragen ihr Partei-Badge.** Steht der volle Name
+  einer Person im Text („Ruth Regina Drügemöller“) oder nennt ein Listenpunkt
+  vorne die Fraktion („**FDP** unterstützt … Pfeiffer“), erkennt Ratslotse sie
+  jetzt auch dann, wenn mehrere Personen denselben Nachnamen tragen. (#1796)
+- **Neue Sitzungen, Tagesordnungen und Protokolle kommen wieder an.** Die Stadt
+  hat ihr Ratsinformationssystem auf eine neue Adresse umgezogen
+  (ratsinfo.oldenburg.de); die alte leitete jeden Abruf auf die Startseite um,
+  und der Abgleich fand dort nichts mehr, ohne einen Fehler zu melden. Der Abruf
+  läuft jetzt gegen die neue Adresse, und alle gespeicherten Links zu Sitzungen,
+  Vorlagen und Anlagen führen wieder zum Dokument statt auf die Startseite.
+  Damit so etwas nicht noch einmal tagelang unbemerkt bleibt: Ein Umzug, ein
+  fremder Host oder ein über Monate leerer Kalender gilt jetzt als Fehler und
+  löst sofort einen Alarm aus, und eine tägliche Probe prüft von außen, ob das
+  Ratsinfo wie erwartet antwortet und ob die dort verlinkten Sitzungen im
+  Bestand angekommen sind. (#1952)
+- **Die gründliche Recherche zeigt ihren Fortschritt jetzt wirklich an.** Bisher
+  kamen alle Schritte erst gebündelt am Ende an, die Karte stand die ganze Zeit
+  auf „Frage aufteilen …". Jetzt hakt sie Teilfrage für Teilfrage ab, zeigt das
+  Lesen von Ratsdebatten, Pressemitteilungen und Anlagen als eigenen Schritt und
+  nennt Laufzeit und eine Restzeit, die der Server aus seinem eigenen Tempo
+  schätzt. Die Zeitangabe vorab lautet ehrlicher „etwa eine Minute" statt „30
+  Sekunden". (#1798)
+- **„Zurück zu den Sitzungen“ führt in die Sitzungsliste.** Wer von einem
+  Tagesordnungspunkt zur Sitzung kam, landete mit dem Knopf wieder auf dem Punkt
+  oder auf derselben Sitzung. (#1918)
+- **Viertel lassen sich jetzt direkt auf der Karte zu „Mein Viertel“
+  hinzufügen.** Jede Viertel-Tafel hat dafür einen Knopf „Zu meinen Vierteln“.
+  Bisher ging das nur im Einrichtungs-Assistenten, und der Link „Viertel
+  auswählen“ auf der Startseite führte auf eine Karte ohne Auswahlmöglichkeit.
+  Ein gewähltes Viertel steht danach auf der Startseite, und neue Beschlüsse
+  dazu kommen wie bei jedem Thema. Entfernen geht über denselben Knopf und fragt
+  vorher nach. (#1805)
+- **Die Zahl der Woche stimmt mit der Liste überein, auf die sie verlinkt.** Die
+  Karte zählte bisher auch Änderungsanträge und Berichte. Die Liste zeigt unter
+  „Beschlüsse“ nur Abstimmungen, deshalb führten „159 Beschlüsse in den letzten
+  90 Tagen“ zu einer Liste mit 91 Einträgen. Jetzt zählen beide gleich und ab
+  demselben Tag. (#1806)
+
 ## [3.0.0] – 2026-11-08
 
 ### Hinzugefügt
@@ -10291,7 +10517,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v3.0.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v3.1.0...main
+[3.1.0]: https://github.com/Schereo/Ratslotse/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/Schereo/Ratslotse/compare/v2.11.0...v3.0.0
 [2.11.0]: https://github.com/Schereo/Ratslotse/compare/v2.10.0...v2.11.0
 [2.10.0]: https://github.com/Schereo/Ratslotse/compare/v2.9.0...v2.10.0

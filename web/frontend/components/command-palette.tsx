@@ -6,15 +6,16 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   BarChart3, Bookmark, CalendarDays, CornerDownLeft, Gavel, History, Home, Landmark,
   Play, Scale, Search, Settings, Sparkles, SunMoon, Tag, Tags, UserCircle, type LucideIcon,
-  Lightbulb, MapPinned, MessageCircleQuestion, Euro, Bell, Trophy, Vote, LifeBuoy, MessageCircle,
+  Lightbulb, MapPinned, MessageCircleQuestion, Euro, Bell, Trophy, Vote, LifeBuoy, MessageCircle, Wrench,
 } from "lucide-react";
 import { api, qs } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { darfAdmin, darfHaushalt } from "@/lib/rechte";
+import { darfAdmin, darfHaushalt, darfWerkzeuge } from "@/lib/rechte";
 import { openFeedback } from "@/components/feedback";
 import { useFeature } from "@/lib/features";
 import { openLotti } from "@/components/assistentin";
 import { useDebounce } from "@/lib/use-debounce";
+import { reportUiEvent } from "@/lib/ui-events";
 import { decisionHref } from "@/lib/routes";
 import { getRecentDecisions } from "@/lib/recent";
 import { applyTheme, isDarkNow } from "@/lib/theme";
@@ -31,8 +32,14 @@ import { cn } from "@/lib/utils";
  */
 const OPEN_EVENT = "ratslotse:open-palette";
 
-export function openCommandPalette() {
-  window.dispatchEvent(new Event(OPEN_EVENT));
+/** Über welchen Eingang die Palette aufgeht. Die beiden sagen Verschiedenes:
+ *  Am Schreibtisch ist sie die Abkürzung für Geübte (⌘K, Knopf neben dem
+ *  Logo), auf dem Telefon öffnet sie die Lupe der Kopfzeile — die tippt an,
+ *  wer schlicht suchen will. Gezählt wird deshalb getrennt (lib/ui-events.ts). */
+export type PaletteEntrance = "desktop" | "mobile";
+
+export function openCommandPalette(entrance: PaletteEntrance = "desktop") {
+  window.dispatchEvent(new CustomEvent<PaletteEntrance>(OPEN_EVENT, { detail: entrance }));
 }
 
 type Item = {
@@ -59,12 +66,28 @@ export function CommandPalette() {
   const listRef = useRef<HTMLDivElement>(null);
   const debounced = useDebounce(query.trim(), 250);
 
-  // Öffnen/Schließen: Event + globales ⌘K/Strg+K.
+  // Der Stand für die Zählung unten. Sie liest ihn aus einer Ref statt im
+  // Updater von `setOpen`: Den ruft React im Entwicklungsmodus doppelt auf,
+  // und eine Meldung darin ginge zweimal raus.
+  const openRef = useRef(false);
+  useEffect(() => { openRef.current = open; }, [open]);
+
+  // Öffnen/Schließen: Event + globales ⌘K/Strg+K. Gezählt wird nur das
+  // ÖFFNEN — ⌘K schließt auch, und das ist keine Nutzung.
   useEffect(() => {
-    const onOpen = () => setOpen(true);
+    const opened = (entrance: PaletteEntrance) => {
+      if (openRef.current) return;
+      openRef.current = true;
+      reportUiEvent(entrance === "mobile" ? "palette_mobile" : "palette_desktop");
+    };
+    const onOpen = (e: Event) => {
+      opened((e as CustomEvent<PaletteEntrance>).detail);
+      setOpen(true);
+    };
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        opened("desktop");
         setOpen((o) => !o);
       }
     };
@@ -146,6 +169,9 @@ export function CommandPalette() {
         : []),
       ...(darfHaushalt(user)
         ? [{ key: "nav-haushalt", section: "Navigation", label: "Haushalt", icon: Euro, run: () => go("/haushalt") } as Item]
+        : []),
+      ...(darfWerkzeuge(user)
+        ? [{ key: "nav-werkzeuge", section: "Navigation", label: "Werkzeuge · Mehrheitsrechner", icon: Wrench, run: () => go("/werkzeuge/mehrheiten") } as Item]
         : []),
       { key: "nav-meine", section: "Navigation", label: "Meine Themen", icon: Tags, run: () => go("/topics") },
       { key: "nav-abos", section: "Navigation", label: "Ausschuss-Abos", icon: Bell, run: () => go("/abos") },

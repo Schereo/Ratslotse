@@ -183,7 +183,7 @@ import Testing
       "sources": [{"id":42,"title":"Sichere Querung","session_date":"2026-08-28","committee":"Rat","outcome":"accepted"}],
       "debates": [{"speaker":"Anna Beispiel","party":"SPD","excerpt":"Wir stimmen zu."}],
       "press_releases": [{"title":"Mitteilung","url":"https://www.oldenburg.de/presse"}],
-      "attachments": [{"nr":1,"label":"Lageplan","url":"https://buergerinfo.oldenburg.de/getfile.php?id=42"}],
+      "attachments": [{"nr":1,"label":"Lageplan","url":"https://ratsinfo.oldenburg.de/bi/getfile.asp?id=42"}],
       "parties": [
         {"party":"SPD","stance":"dafür","position":"Zustimmung","unanimous":true},
         {"party":"CDU","stance":"dagegen","position":"Ablehnung","unanimous":false}
@@ -953,8 +953,8 @@ private final class FeedbackURLProtocol: URLProtocol {
           "is_public": 1,
           "summary": "Der Ausschuss berät zwei Varianten.",
           "anlagen": [
-            {"label": "Lageplan Querungsstelle", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310001"},
-            {"label": "Verkehrsgutachten", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310002"}
+            {"label": "Lageplan Querungsstelle", "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=310001"},
+            {"label": "Verkehrsgutachten", "url": "https://ratsinfo.oldenburg.de/bi/getfile.asp?id=310002"}
           ]
         }, {
           "item_number": "Ö 8",
@@ -986,7 +986,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "agenda_items": [],
           "decisions": [],
           "has_protocol": false,
-          "url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=42",
+          "url": "https://ratsinfo.oldenburg.de/bi/si0057.asp?__ksinr=42",
           "agenda_changes": [{
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",

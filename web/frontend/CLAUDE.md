@@ -1,12 +1,21 @@
 # Regeln für `web/frontend/`
 
-Next.js, nur die Webanwendung. Bis 11/2026 wurde derselbe Code zusätzlich als
-statischer Export in eine Capacitor-Hülle gebaut (Android, nie
-veröffentlicht); einige Konventionen unten stammen daher und gelten weiter.
+Next.js 16 (App Router, Turbopack) mit React 19, nur die Webanwendung. Bis
+11/2026 wurde derselbe Code zusätzlich als statischer Export in eine
+Capacitor-Hülle gebaut (Android, nie veröffentlicht); einige Konventionen
+unten stammen daher und gelten weiter.
 
 **Pflichtlektüre vor UI-Arbeit:** [`DESIGNSPRACHE.md`](DESIGNSPRACHE.md).
 Grafiken zusätzlich: [`components/grafik/README.md`](components/grafik/README.md).
 Allgemeines: [`../../CLAUDE.md`](../../CLAUDE.md).
+
+**Die Doku zur installierten Next-Fassung liegt im Paket:**
+`node_modules/next/dist/docs/` (nach `npm ci`). Next 16 weicht an vielen
+Stellen von dem ab, was man aus 14 kennt (`params` und `searchParams` sind
+Promises, `middleware.ts` heißt `proxy.ts`, `next lint` gibt es nicht mehr) —
+dort nachlesen, bevor eine Next-API aus dem Gedächtnis benutzt wird. `next dev`
+würde denselben Hinweis von sich aus in eine `AGENTS.md` schreiben; das ist in
+`next.config.mjs` abgeschaltet (`agentRules: false`), die Regeln stehen hier.
 
 ## Vorher: echte Daten holen
 
@@ -43,7 +52,7 @@ Pfad in der Capacitor-Hülle ins Nichts zeigte; sie bleibt, weil eine Stelle
 für die Adresse besser ist als achtzig.
 
 Seit 09/2026 ist das keine Bitte mehr, sondern eine ESLint-Regel
-(`no-restricted-syntax` in `.eslintrc.json`) und damit Teil von `npm run lint`
+(`no-restricted-syntax` in `eslint.config.mjs`) und damit Teil von `npm run lint`
 und `pruefe.py`. Sie trifft genau den Fehler — ein Zeichenketten- oder
 Template-Literal, das mit `/api/` beginnt — und lässt `apiUrl(…)` und absolute
 URLs in Ruhe. Eingeführt wurde sie mit **null** Verstößen im Bestand; sie
@@ -82,13 +91,31 @@ Der Export ist weg, diese Regeln bleiben:
   einem laufenden Dev-Server überschreibt dessen Chunks; die Seite liefert
   danach für jede Chunk-URL eine 404-Seite. Das sieht aus wie ein Fehler im
   Code und ist keiner. Die Konfiguration ist deshalb eine Funktion über die
-  Phase — nicht zu einem Objekt zurückbauen.
+  Phase — nicht zu einem Objekt zurückbauen. (Next 16 trennt Dev und Build
+  inzwischen selbst, der Dev-Server schreibt nach `<distDir>/dev`, hier also
+  `.next-dev/dev`. Die eigene Trennung bleibt, weil die Deploys daran hängen.)
+- **Turbopack schreibt keinen Cache auf die Platte**, weder beim Bauen noch im
+  Dev-Server (beide Schalter in `next.config.mjs`). Der Dev-Cache wog nach
+  einem Nachmittag 1,4 GB je Worktree und hielt einen Fehler fest, der keiner
+  war — auch ein neu gestarteter Dev-Server meldete ihn. Wer den Cache
+  einschaltet, liest vorher die Begründung dort.
 - **Der Deploy baut ebenfalls daneben.** Dasselbe Bild traf den alten
   `next start` auf den Servern: jede Seite ungestaltet, bis zum Neustart.
   Die Deploys bauen deshalb mit `NEXT_DIST_DIR=.next-build` (wirkt nur in der
   Build-Phase) und schalten erst unmittelbar vor `systemctl restart` um;
   `tests/test_pruefe_build_chunks.py` hält die Reihenfolge in beiden
   Deploy-Workflows fest.
+- **Die Typprüfung des Builds liest auch `.next/types` — die Typen des
+  Builds, der gerade ausliefert.** Die `tsconfig.json` schließt alle drei
+  Bauverzeichnisse ein (sonst schreibt Next sie bei jedem Lauf um), und Next
+  legt dort je Route eine Prüfzeile ab. Passt die nicht zum neuen Stand — eine
+  Route gelöscht oder umgezogen, ein anderes Next —, scheitert der Build an
+  Dateien, die nicht seine sind (22.11.2026 auf dev: „Cannot find module
+  'next/types.js'"). Die Deploys räumen `.next/types` deshalb vor dem Build
+  weg; `next start` braucht es nicht. **Kein `exclude` in der tsconfig
+  dafür:** Der gewöhnliche Build nach `.next` prüft dann die Seiten-Exporte
+  gar nicht mehr und meldet trotzdem Erfolg. Lokal dasselbe Bild nach einem
+  Zweigwechsel: `rm -rf .next/types`.
 - **Tailwinds `min-[…]`-Kurzform ist in diesem Projekt aus.** Die Klasse steht
   im DOM, CSS gibt es keins. Benannte Breakpoints benutzen.
 - **Breiten mit `getBoundingClientRect()` messen**, nicht `clientWidth` — das
@@ -151,6 +178,16 @@ und braucht eine DOM-Nachbildung, die mit jeder React-Fassung nachgezogen
 werden will. Flüsse durch die Oberfläche prüfen die Browsertests
 (`npx playwright test`).
 
+**vitest 5 (seit 11/2026) verhält sich an drei Stellen anders als ältere
+Beispiele.** Der Aufrufverlauf jedes Mocks wird vor jedem Test geleert
+(`clearMocks` ist ab Werk an): Ein `vi.fn()` auf Modulebene bringt keine
+Aufrufe aus dem Test davor mit. `vi.mock(…)` und `vi.hoisted(…)` stehen auf
+oberster Ebene der Datei, sonst bricht der Lauf ab, statt zu warnen. Und ein
+`expect(p).rejects…` ohne `await` lässt den Test scheitern. Verlangt wird
+Node ≥ 22.12. vite kommt nur als Peer von vitest in den Baum — Next baut mit
+Turbopack und braucht es nicht. Die Konfiguration heißt `vitest.config.mts`;
+warum `.mts` und warum der Pool dort festgeschrieben ist, steht in der Datei.
+
 **Browser-Speicher ohne jsdom.** `lib/__testhilfen/speicher.ts` liefert einen
 `localStorage`/`sessionStorage`-Ersatz samt Schalter „gesperrt" — der echte
 Fall im privaten Fenster. Eine ganze DOM-Nachbildung dafür zu laden kostet
@@ -166,29 +203,46 @@ Zeichen.
 ## Browsertests: was sie abdecken und wie man sie startet
 
 ```bash
-npx playwright test                       # alles
-npx playwright test tests/e2e/09-konto    # eine Datei
-E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test   # auf freien Ports
-npx playwright test --shard=2/4           # nur das, was Teil 2 der CI fährt
+npx playwright test tests/e2e/09-konto    # eine Datei — der Normalfall lokal
+E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test tests/e2e/09-konto   # auf freien Ports
+npx playwright test $(node tests/shard-specs.mjs 2 8)   # genau das, was Teil 2 der CI fährt
+npx playwright test                       # alles — lokal 15–20 Minuten, s. u.
 ```
 
-**In der CI läuft die Suite auf vier Läufern** (`--shard=i/4`, s. `e2e.yml`).
-Jeder bringt sein eigenes Backend auf einer eigenen Wegwerf-Datenbank mit, die
-Teile teilen also nichts. Lokal nachstellen lässt sich ein einzelner Teil mit
-der Zeile oben.
+**Lokal nur die Dateien zur Änderung, die ganze Suite fährt die CI.** Seriell
+auf einem Rechner braucht sie 15–20 Minuten (gemessen 22.11.2026: 19 min für
+426 Tests), in der CI auf acht Läufern rund fünf. Wer lokal „zur Sicherheit"
+alles startet, wartet also viermal so lang auf dasselbe Ergebnis. Lokal
+gehören die Spec-Dateien dazu, die den geänderten Bereich prüfen — und
+`12-navigation` plus `14-layout`, sobald die Hülle (Navigation, Layout,
+`globals.css`) angefasst ist. Für alles, was neue Tests mitbringt, einmal
+gegen die leere Datenbank (s. u.).
 
-**Was lokal NICHT geht: die vier Teile gleichzeitig starten.** Verschiedene
-Ports reichen dafür nicht — alle `next dev` eines Worktrees schreiben in
-**dasselbe `.next-dev/`** und zerlegen sich gegenseitig den Webpack-Cache:
+**In der CI läuft die Suite auf acht Läufern**, verteilt nach gemessener Dauer
+je Datei (`tests/shard-specs.mjs`, Zahlen in `tests/e2e-durations.json`, s.
+`e2e.yml`). Jeder bringt sein eigenes Backend auf einer eigenen
+Wegwerf-Datenbank mit, die Teile teilen also nichts. Eine neue Spec-Datei
+läuft von selbst mit — ohne Eintrag mit mittlerem Gewicht. Laufen die Teile
+sichtbar auseinander: `python scripts/e2e_durations.py --write` zieht die
+Dauern aus dem jüngsten grünen Lauf.
+
+**Was lokal NICHT geht: mehrere Teile gleichzeitig starten.** Verschiedene
+Ports reichen dafür nicht — alle `next dev` eines Worktrees teilen sich
+**dasselbe `.next-dev/`**. Seit Next 16 startet der zweite gar nicht erst:
 
 ```
-[webpack.cache.PackFileCacheStrategy] Caching failed for pack:
-  ENOENT: no such file or directory, rename '….next-dev/cache/webpack/0.pack.gz_'
+⨯ Another next dev server is already running.
+- Local:        http://localhost:3410
+- PID:          39577
 ```
 
-Das Ergebnis sieht aus wie ein echter Befund und ist keiner: 21 Fehlschläge
-über die vier Teile, dieselbe Suite seriell 140/140 grün, jeder Teil einzeln
-grün (gemessen 07.09.2026). Wer die Teile wirklich parallel messen will,
+Das gilt auch für einen Dev-Server, der noch von der Arbeit an einer Seite
+läuft: Playwright startet seinen eigenen (`npm run dev -- --port …`) und
+scheitert daran. Vorher den EIGENEN anhalten (die PID steht in der Meldung).
+Bis Next 15 starteten beide und zerlegten sich gegenseitig den Webpack-Cache.
+Das Ergebnis sah aus wie ein echter Befund und war keiner: 21 Fehlschläge
+über vier gleichzeitige Teile, dieselbe Suite seriell 140/140 grün, jeder Teil
+einzeln grün (gemessen 07.09.2026). Wer die Teile wirklich parallel messen will,
 braucht je einen eigenen Worktree — oder lässt es und misst sie nacheinander.
 
 **Die Ports sind einstellbar, und das braucht man wirklich.** Dieses Repo wird

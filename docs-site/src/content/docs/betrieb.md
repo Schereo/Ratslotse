@@ -1,16 +1,14 @@
 ---
 title: Betrieb
-description: Deploy-Wege, Dev-Umgebung, geplante Jobs, manuelle Ops-Workflows, Backups, LLM-Kosten und die vollständige Env-Referenz.
+description: Deploys, Dev-Umgebung, Cron-Jobs, manuelle Betriebsworkflows, Backups, LLM-Kosten und Umgebungsvariablen.
 ---
 
-Ratslotse läuft auf einer eigenen App-VM hinter einer Edge-VM. Ausgeliefert wird
-ausschließlich über GitHub Actions; alles Wiederkehrende (Scraping,
-LLM-Anreicherung, Backups) läuft als geplanter Job auf der App-VM. Diese Seite
-beschreibt die Betriebsseite: was wann deployt, was wann läuft, was schiefgehen
-kann und wie es gemeldet wird.
+Ratslotse läuft auf einer eigenen App-VM hinter einer Edge-VM. GitHub Actions
+übernimmt alle Deploys. Wiederkehrende Aufgaben wie Scraping, LLM-Anreicherung
+und Backups laufen als geplante Jobs auf der App-VM.
 
-Konkrete Hosts, Benutzer und Serverpfade stehen bewusst **nicht** in dieser
-Doku — sie liegen als GitHub-Secrets bzw. in der `.env` auf dem Server.
+Konkrete Hosts, Benutzer und Serverpfade stehen in den GitHub-Secrets oder
+in der `.env` auf dem Server.
 
 ---
 
@@ -19,22 +17,23 @@ Doku — sie liegen als GitHub-Secrets bzw. in der `.env` auf dem Server.
 Seit 08/2026 ist **`main` der Prod-Stand und `dev` der Integrations-Branch**:
 
 - **Features** gehen per Pull Request nach `dev` (Squash-Merge). Jeder Push
-  auf `dev` deployt automatisch auf die Dev-VM — dort reift ein Release-Paket.
+  auf `dev` startet einen Deploy auf die Dev-VM. Dort werden die Änderungen
+  für den nächsten Release integriert.
 - **Fixes** gehen weiterhin einzeln per Pull Request nach `main` (Squash-Merge)
-  und erreichen Prod sofort. Danach wird `main` nach `dev` zurückgemergt,
-  damit der nächste Release-PR konfliktfrei bleibt:
+  und lösen sofort einen Deploy in die Produktionsumgebung aus. Der Rückmerge
+  von `main` nach `dev` beugt Konflikten im nächsten Release-PR vor.
   `git checkout dev && git merge origin/main && git push origin dev`.
 - **Ein Release** ist ein Pull Request `dev` → `main` mit **Merge-Commit**
-  (nicht squashen — sonst divergieren die Branches dauerhaft). Der
+  (ein Squash-Merge würde die Branches dauerhaft auseinanderlaufen lassen). Der
   Versionsschnitt im Changelog und der Git-Tag gehören in diesen PR
   (siehe [Changelog](#changelog)).
 - **Umgebungs-Gate:** Der Dev-Build setzt `NEXT_PUBLIC_RATSLOTSE_ENV=dev`
   (der Prod-Build nicht). Features, die nur auf der Dev-Umgebung sichtbar
-  sein sollen, prüfen diese Variable und liefern auf Prod `notFound()` —
-  der Code kann so gefahrlos mit einem Release nach `main` fahren.
-- **Kein Force-Push auf `dev`:** Der Branch trägt gemeinsame Historie. (Bis
-  08/2026 war `dev` ein beweglicher Zeiger, auf den man beliebige Stände
-  force-pushen konnte — das gilt nicht mehr.)
+  sein sollen, prüfen diese Variable und liefern in der Produktionsumgebung
+  `notFound()`. Ihr Code kann daher bereits mit einem Release nach `main`
+  gelangen.
+- **Kein Force-Push auf `dev`:** Der Branch hat eine gemeinsame Historie.
+  Bis 08/2026 waren Force-Pushes auf beliebige Stände von `dev` möglich.
 
 ## Changelog
 
@@ -49,11 +48,10 @@ kategorie: hinzugefuegt   # oder: geaendert | behoben
 **Kernsatz fett.** Danach der Fließtext, deutsch, ohne PR-Nummer.
 ```
 
-Der Grund ist ein rein mechanischer: Alle PRs schrieben bisher in dieselben
-Zeilen unter `## [Unreleased]`, also kollidierte bei parallelen Zweigen
-zuverlässig *jeder* Merge an derselben Stelle. Eine Datei je PR kollidiert nie.
-Dazu kommt, dass die PR-Nummer beim Schreiben des Eintrags noch gar nicht
-existiert — geraten wurde sie prompt falsch.
+Früher änderten alle PRs dieselben Zeilen unter `## [Unreleased]`. Das
+führte bei parallelen Zweigen zu Merge-Konflikten. Separate Dateien pro
+PR vermeiden diese Konflikte. Die PR-Nummer steht beim Schreiben des
+Eintrags noch nicht fest und wurde früher deshalb teils falsch angegeben.
 
 **Beim Versionsschnitt** (im Release-PR `dev` → `main`) sammelt
 `scripts/changelog_schnitt.py` die Fragmente ein:
@@ -63,13 +61,14 @@ existiert — geraten wurde sie prompt falsch.
 .venv/bin/python scripts/changelog_schnitt.py 1.13.0             # schreiben
 ```
 
-Das Skript hängt an jedes Fragment die Nummer des Squash-Commits, der die Datei
-angelegt hat (`git log --diff-filter=A`; findet es keine, warnt es und lässt den
-Eintrag ohne Nummer), sortiert es unter `## [x.y.z] – Datum` in seinen
-Abschnitt, löscht die Fragmente und zieht die Compare-Links am Dateiende nach.
+Das Skript ermittelt für jedes Fragment die Nummer aus dem Squash-Commit, der
+die Datei angelegt hat (`git log --diff-filter=A`). Fehlt die Nummer, gibt
+es eine Warnung aus und übernimmt den Eintrag ohne Nummer. Anschließend
+ordnet es die Einträge unter `## [x.y.z] – Datum` ihren Abschnitten zu,
+löscht die Fragmente und aktualisiert die Compare-Links am Dateiende.
 
-**Nach dem Merge des Release-PRs** wird der annotierte Tag gesetzt — und aus ihm
-das GitHub-Release:
+**Nach dem Merge des Release-PRs** setzt du den annotierten Tag und erstellst
+daraus das GitHub-Release.
 
 ```bash
 git tag -a v1.13.0 -m "Ratslotse 1.13.0" && git push origin v1.13.0
@@ -77,23 +76,21 @@ git tag -a v1.13.0 -m "Ratslotse 1.13.0" && git push origin v1.13.0
     --titel "v1.13.0 — Belege bis zur Protokollseite"
 ```
 
-Der zweite Schritt war bis 09/2026 Handarbeit und fiel dreimal aus: v1.14.0,
-v1.15.0 und v2.0.0 lagen als Tags im Repository, ohne dass jemand ein Release
-daraus machte — GitHub führt einen bloßen Tag nur unter „Tags", die
-Release-Seite zeigte deshalb wochenlang v1.13.2 als neuesten Stand. `--release`
-liest den fertigen Abschnitt aus `CHANGELOG.md`, prüft, dass der Tag wirklich
-bei `origin` liegt und das Release noch nicht existiert, und legt es über `gh`
-an. Zwei Feinheiten: Ist ein Jahrgang zu umfangreich für einen Release-Text —
-GitHub nimmt 125.000 Zeichen, der Abschnitt zu 1.14.0 hat 181.451 — gehen statt
-eines Fehlers nur die Kernsätze aller Einträge raus, darüber der Verweis auf den
-vollständigen Text. Und `--latest` setzt das Skript nur, wenn die Version im
-Changelog obenauf steht, damit ein nachgereichtes Release für einen alten Tag
-den aktuellen Stand nicht verdrängt.
+Bis 09/2026 war der zweite Schritt manuell. Für v1.14.0, v1.15.0 und v2.0.0
+gab es Tags ohne Releases. GitHub führt solche Tags nur unter „Tags", sodass die
+Release-Seite wochenlang v1.13.2 als neuesten Stand zeigte. `--release`
+liest den Abschnitt aus `CHANGELOG.md`, prüft, ob der Tag bei `origin`
+vorliegt und ob das Release noch fehlt, und legt es über `gh` an.
+GitHub akzeptiert bis zu 125.000 Zeichen. Der Abschnitt zu 1.14.0 umfasst
+181.451 Zeichen. In solchen Fällen übernimmt das Skript die Kernsätze aller
+Einträge und stellt einen Link zum vollständigen Text voran. `--latest`
+setzt es nur für die oberste Version im Changelog. Nachträglich angelegte
+Releases für ältere Tags ändern so den angezeigten aktuellen Stand nicht.
 
-Von Hand direkt unter `## [Unreleased]` eingetragene Einträge bleiben gültig —
-sie wandern beim Schnitt unverändert mit unter die neue Version. `/changelog`
-rendert zur Build-Zeit `CHANGELOG.md` **und** die noch offenen Fragmente; für
-Leser\*innen sind beide Wege nicht unterscheidbar. Ob alle Fragmente lesbar
+Manuelle Einträge unter `## [Unreleased]` bleiben gültig. Beim
+Versionsschnitt übernimmt das Skript sie unverändert in die neue Version.
+`/changelog` rendert zur Build-Zeit sowohl `CHANGELOG.md` als auch die
+offenen Fragmente in derselben Darstellung. Ob alle Fragmente lesbar
 sind, prüfen `tests/test_changelog_fragmente.py` und
 `scripts/changelog_schnitt.py --pruefen`.
 
@@ -112,15 +109,14 @@ Die wichtigsten Workflows in `.github/workflows/`:
 | `docs-review.yml` | PR `opened` / `reopened` / `ready_for_review`, keine Forks | KI-Review, das den Diff auf Doku-Drift prüft und **genau einen** PR-Kommentar postet. Nur `contents: read` — die Action kann nichts committen. `continue-on-error: true`, der Review ist also kein Qualitäts-Gate. |
 | `claude.yml` | `@claude` in einem PR-Kommentar, Review oder Zeilenkommentar — nur von Konten mit Schreibrecht | Code-Review auf Zuruf: Claude liest den Diff und antwortet mit Inline-Kommentaren und einer Zusammenfassung. Bezahlt aus dem Claude-Abo (`CLAUDE_CODE_OAUTH_TOKEN`), nicht über die API. Nur `contents: read` — Claude kann nicht pushen. |
 
-**Der Prod-Deploy im Detail** (`deploy.yml`, in dieser Reihenfolge):
+Der **Produktionsdeploy** läuft in `deploy.yml` in der folgenden Reihenfolge.
 
-1. Testjob — schlägt er fehl, läuft der Deployjob gar nicht erst an.
+1. Der Deploy-Job startet nur, wenn der Testjob erfolgreich war.
 2. `docs-site` mit Node 22 bauen (`npm ci && npm run build`).
 3. `rsync -az --delete` des Repos auf die App-VM. Ausgespart bleiben `.env`,
    `data/`, `.venv/`, `.git/`, `web/frontend/node_modules/`,
    `web/frontend/.next/` (samt `.next-build/` und `.next-alt/`, s. Schritt 5),
-   `web/frontend/public/docs/`, `docs-site/node_modules/` und `docs-site/dist/`
-   — Datenbanken und Secrets überlebt jeder Deploy also unverändert.
+   `web/frontend/public/docs/`, `docs-site/node_modules/` und `docs-site/dist/`. Die Ausschlussliste schützt Datenbanken und Secrets beim Deploy.
 4. Zweiter rsync: das gebaute `docs-site/dist/` in das `public/docs/`-Verzeichnis
    des Frontends. Next.js liefert die Doku damit unter `/docs` aus; die Edge
    braucht dafür keine eigene Konfiguration.
@@ -129,37 +125,39 @@ Die wichtigsten Workflows in `.github/workflows/`:
    Backend-API und Frontend.
 
 **Das Frontend wird neben dem laufenden Server gebaut** (seit 11/2026, in
-beiden Deploys gleich). `next build` leert sein Ausgabeverzeichnis als
-Erstes; schrieb es direkt nach `.next`, zog es dem alten `next start` CSS und
-Skripte weg, und bis zum Neustart — gemessen rund eine Minute — kam jede Seite
-ungestaltet. Deshalb:
+beiden Deploys gleich). `next build` leert zuerst sein Ausgabeverzeichnis.
+Bei einem Build direkt in `.next` fehlten dem laufenden `next start`
+vorübergehend CSS und Skripte. Bis zum Neustart wurden die Seiten rund
+eine Minute lang ohne Gestaltung ausgeliefert. Der Deploy verwendet
+deshalb ein separates Build-Verzeichnis.
 
 1. `rm -rf .next-build`, dann `NEXT_DIST_DIR=.next-build npm run build`
    (`next.config.mjs` nimmt die Variable nur in der Build-Phase). Jeder Build
-   beginnt leer, **ohne Webpack-Cache**: Der hat zweimal einen in sich
-   verdrehten Build geliefert und spart auf der Dev-VM nur 10–25 Sekunden.
-2. `scripts/pruefe_build_chunks.py web/frontend/.next-build` — jede verlinkte
-   Datei da, jede next/font-Klasse am `<html>` im verlinkten CSS definiert.
-   Scheitert er, bleibt `.next` unberührt.
+   beginnt leer, **ohne Webpack-Cache**: Der Cache führte zweimal zu inkonsistenten
+   Build-Ergebnissen und spart auf der Dev-VM nur 10–25 Sekunden.
+2. `scripts/pruefe_build_chunks.py web/frontend/.next-build` prüft, ob
+   alle verlinkten Dateien existieren und ob das verlinkte CSS jede
+   next/font-Klasse des Elements `<html>` definiert. Schlägt die
+   Prüfung fehl, bleibt `.next` unverändert.
 3. Unmittelbar vor dem Neustart des Frontends: `.next` → `.next-alt`,
    `.next-build` → `.next`, `systemctl restart`, dann `.next-alt` löschen.
 
-Auf Prod liegt Schritt 3 hinter Migration und Vorprobe. Bricht der Cutover
-vorher ab, läuft das Frontend heil auf dem alten Build; der neue liegt mit der
-Marke `.geprueft` daneben, und `ops-wartungsbarriere.yml` (Aktion
-`frontend-restart`) schaltet ihn ein.
+In der Produktionsumgebung folgt Schritt 3 auf Migration und Vorprobe.
+Bricht der Deploy vorher ab, läuft das Frontend mit dem bisherigen Build
+weiter. Den neuen Build mit der Markierung `.geprueft` kann
+`ops-wartungsbarriere.yml` über die Aktion `frontend-restart` aktivieren.
 
-Warum der Umweg über den gemergten PR statt „Push auf `main` deployt": siehe
-[ADR 0008](/docs/adr/0008-deploy-nur-bei-merge/). Kurz — ein direkter Push auf
-`main` läuft nur durch die Tests und erreicht die Produktion nicht.
+[ADR 0008](/docs/adr/0008-deploy-nur-bei-merge/) begründet, warum ein
+gemergter PR nach `main` den Deploy auslöst. Ein direkter Push auf
+`main` startet nur die Tests.
 
 **Wenn der Merge keinen Deploy auslöst:** Der Workflow lässt sich in der
 Actions-UI von Hand starten („Deploy to VPS" → *Run workflow*, Ref `main`) — mit
-demselben Test-Gate davor. Der Notausgang stammt vom 26.08.2026: Während einer
-GitHub-Actions-Störung fiel das `closed`-Ereignis zweier gemergter PRs ersatzlos
-aus, `main` trug den neuen Stand und Prod nicht. Einen Lauf, den es nie gegeben
-hat, kann man nicht neu starten; erkennbar ist der Fall daran, dass zum
-Merge-Commit gar kein Workflow-Lauf existiert
+derselben vorgeschalteten Testprüfung. Der manuelle Start ist seit 26.08.2026
+möglich. Während einer GitHub-Actions-Störung fehlte das `closed`-Ereignis
+zweier gemergter PRs. `main` war dadurch aktueller als die
+Produktionsumgebung. In diesem Fall existiert zum Merge-Commit kein
+Workflow-Lauf, den du erneut starten könntest
 (`gh api repos/<owner>/<repo>/actions/runs?head_sha=<sha>` bleibt leer).
 
 **Verwendete GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`,
@@ -176,11 +174,16 @@ Repository-Secrets.
 Neben der Produktion läuft eine **eigene Dev-VM** mit eigenen Datenbanken und
 eigenen Secrets. Sie unterscheidet sich bewusst von Prod:
 
-- **Basic-Auth vor dem vhost** — die Umgebung ist nicht öffentlich erreichbar.
-- **Kein Mailversand** — es ist kein Resend-Key hinterlegt, E-Mails werden im
-  Code still übersprungen.
-- **Keine Crons** — geplante Jobs laufen dort nicht mit; Dev ist zum Anschauen
-  da, nicht zum Datensammeln.
+- **Öffentlich erreichbar seit 10/2026.** Die Dev-Umgebung verlangt keine
+  Basic-Auth. Für die reguläre Registrierung setzt Dev
+  `SIGNUP_REQUIRES_APPROVAL=1`. Neue Konten aus diesem Registrierungsweg
+  bleiben bis zur Freischaltung im Admin-Panel gesperrt. Der Dev-Build
+  sperrt Crawling über `robots.ts`. Caddy setzt zusätzlich
+  `X-Robots-Tag: noindex`.
+- **Kein Mailversand.** Ohne Resend-Key überspringt Ratslotse die Zustellung
+  ohne Fehlermeldung.
+- **Keine Cron-Jobs.** Die Dev-Umgebung dient der Vorschau und erfasst keine
+  neuen Daten über geplante Jobs.
 - **Eigene Datenbanken und ein eigener OpenRouter-Key**, damit Testläufe weder
   Prod-Daten noch das Prod-Kostenbudget berühren.
 
@@ -202,10 +205,9 @@ Kommando-Timeout von 30 Minuten für `npm ci` + `next build` und am Ende zwei
 Smoke-Checks gegen Frontend und `/api/health` plus die Rauchprobe. Prod bleibt
 davon vollständig unberührt.
 
-Der `concurrency`-Block steht auf `cancel-in-progress: false`: Deploys laufen
-nacheinander, keiner wird abgebrochen — ein Lauf, der zwischen Build und
-Neustart abgewürgt wird, hinterließe eine halb umgestellte Umgebung, ohne dass
-es jemandem auffällt.
+Der `concurrency`-Block setzt `cancel-in-progress: false`. Damit laufen
+Deploys nacheinander bis zum Ende. Ein Abbruch zwischen Build und Neustart
+könnte unbemerkt eine nur teilweise aktualisierte Umgebung hinterlassen.
 
 Bis 11/2026 lief auf derselben VM eine zweite Instanz für den Branch
 `feature` (feature.ratslotse.de) und ein Datenbank-Betrachter
@@ -217,24 +219,27 @@ sein soll, liegt hinter einem Feature-Schalter.
 ## Geplante Jobs (Cron)
 
 Alle Jobs laufen auf der App-VM; maßgeblich ist die dort eingetragene Crontab.
-Die Kopie, gegen die die Überfällig-Ampel im Admin-Panel und
-`check_herzschlag.py` rechnen, steht in `kern/jobs.py` — die Tabelle hier
-folgt ihr (Stand 10/2026: 20 Jobs). Ein Job ohne Zeile in dieser Tabelle ist
-ein Hinweis, dass jemand nur eine der beiden Stellen nachgezogen hat.
+Die Statusanzeige im Admin-Panel und `check_herzschlag.py` nutzen die
+Intervalle aus `kern/jobs.py`. Aus derselben Datei entsteht die
+[Referenz: Cron-Jobs](/docs/referenz/cron-jobs/). Die Tabelle unten enthält
+zusätzlich die Crontab-Einträge und weitere Details. `tests/test_docs_current.py`
+prüft, ob jeder Job in der Tabelle steht.
 
 | Skript | Rhythmus | Aufgabe |
 |---|---|---|
-| `backup_db.py` | täglich `0 3 * * *` | SQLite-Backup beider Datenbanken, rotierend, optional off-site gespiegelt. |
+| `backup_db.py` | täglich `0 3 * * *` | SQLite-Backup aller Datenbanken samt `.env`, crontab und unersetzlicher Dateien, rotierend, off-site gespiegelt. |
 | `check_committees.py` | täglich `0 7 * * *` | Gremienliste und Kalender (3 Monate voraus) auffrischen, Terminplan-Sitzungen ohne Tagesordnung mitschreiben, Tagesordnungen zusammenfassen und Ausschuss-Abonnent*innen benachrichtigen (auch bei *geänderter* Tagesordnung, erkannt über einen Agenda-Hash). |
 | `check_council.py` | zweimal täglich `0 8,14 * * *` | Kommende Sitzungen gegen die Themen aller Nutzer*innen klassifizieren und Treffer per E-Mail/Push ausliefern. |
 | `check_protocols.py` | täglich `0 9 * * *` | Neue Protokolle parsen — und alles Nachgelagerte gleich mit (siehe unten). |
-| `weekly_enrich.py` | sonntags `0 3 * * 0` | LLM- und Embedding-Backfills in 14 Schritten (siehe unten). |
+| `weekly_enrich.py` | sonntags `0 3 * * 0` | Nachläufe mit und ohne Modell in 23 Schritten (siehe unten). |
 | `remind_setup.py` | täglich `0 11 * * *` | Genau eine Service-Mail an Konten, die den Einrichtungs-Assistenten angefangen und seit 48 h nicht beendet haben. |
 | `abendmeldungen.py` | täglich `0 18 * * *` | Abend-Anlässe aus Design 30a: N5 Vorabend-Erinnerung täglich, N6 Wochenüberblick nur sonntags. N5 ist standardmäßig aus, N6 seit 09/2026 für neue Konten an. |
-| `check_finanzdaten.py`&nbsp;¹ | sonntags `0 6 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#der-bereich-hält-sich-selbst-aktuell). |
+| `check_finanzdaten.py`&nbsp;¹ | sonntags `0 6 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand einlesen (Jahresabschluss, Teilhaushalts-Pläne, Prüfberichte) und melden, wenn ein erwarteter Jahrgang ausbleibt. Lädt nichts herunter, ergänzt nur Fehlendes — siehe [Stadtfinanzen](/docs/haushalt/#aktualisierung-der-haushaltsdaten). |
 | `check_beteiligungsbericht.py` | sonntags `30 6 * * 0` | Lädt die Beteiligungsberichte von oldenburg.de und liest Gesellschaften, Aufsichtsorgane und Kennzahlen daraus. Der einzige Haushalts-Cron, der selbst herunterlädt. |
 | `archive_statistik.py` | täglich `0 4 * * *` | Sichert die amtlichen Statistik-Quellen versioniert unter `data/archiv/` — siehe unten. |
 | `check_vorlage_follows.py` | täglich `30 9 * * *` | Neue Beratungsstationen und nachgetragene Ergebnisse zu Vorlagen, denen jemand folgt. |
+| `vorlagen_dossiers.py` | zweimal täglich `0 10,15 * * *` | Dossiers für die Vorlagen der nächsten 21 Tage: ein Modellaufruf je Vorlage, jede Aussage gegen die Quelle geprüft ([Sitzung & Tagesordnungspunkt](/docs/sitzungen/#aus-den-unterlagen-das-dossier)). Mit den Schaltern dazu auch Fachwörter und Wahlprogramm-Einordnungen. Je Teil eine Kostengrenze je Lauf. |
+| `antraege_nachzuegler.py` | viermal täglich `0 11,13,16,18 * * *` | An Sitzungstagen und am Tag davor: Tagesordnung neu lesen, neue Änderungsanträge laden und lesen. An anderen Tagen tut er nichts. |
 | `check_council_videos.py` | täglich `30 10 * * *` | Abstimmungsergebnisse aus der O1-Aufzeichnung der Ratssitzung — als vorläufiger Stand, bis das Protokoll kommt. |
 | `record_council_livestream.py` | täglich `0 13 * * *` (UTC) | Schneidet die Ratssitzung live aus dem O1-Stream mit, verfolgt den laufenden TOP und liest die Ergebnisse noch am Abend; an Tagen ohne Ratssitzung ein Leerlauf. |
 | `check_presse.py` | täglich `15 5 * * *` | RSS-Abgleich der städtischen Pressemitteilungen und der laufenden Bauleitplan-Beteiligungen. |
@@ -242,7 +247,7 @@ ein Hinweis, dass jemand nur eine der beiden Stellen nachgezogen hat.
 | `render_plaene.py` | sonntags `30 4 * * 0` | Neue Bauleitplan-Anlagen (Planzeichnung, Lageplan) als Bilder für die Beschluss-Seite. |
 | `speicherfristen.py` | täglich `40 4 * * *` | Löscht Recherchen von Konten ohne Einwilligung ins Speichern sieben Tage nach ihrem letzten Stand (dieselbe Frist greift zusätzlich bei jedem Start des Backends). |
 | `check_wahltermine.py` | täglich `15 6 * * *` | Vergleicht den Terminkalender des Votemanagers mit `kommunalwahl/wahlen/` — meldet eine unbekannte Wahl und eine Wahl-Id, die endlich da ist oder kurz vor dem Wahltag noch fehlt. Legt nichts an. |
-| `check_herzschlag.py` | täglich `30 6 * * *` | Meldet Jobs, die gegen ihren Takt aus `kern/jobs.py` schweigen, einen vollen Datenträger, auffällige Registrierungen und Verstöße gegen die Datenregeln. |
+| `check_herzschlag.py` | täglich `30 6 * * *` | Meldet Jobs, die gegen ihren Takt aus `kern/jobs.py` schweigen, einen vollen Datenträger, auffällige Registrierungen, Verstöße gegen die Datenregeln und ein Ratsinformationssystem, das nicht wie erwartet antwortet. |
 | `check_cities.py` | werktags `15 10 * * 1-6` mit `--nur-oldenburg`, sonntags `0 5 * * 0` | Städte-Speicher: werktags nur Oldenburg übernehmen und einbetten (ohne Netz und Modell — daraus entsteht „Anderswo" unter neuen Beschlüssen), sonntags zusätzlich die Vergleichsstädte, Einordnung, Ideen-Gruppen und Urteile. Kostengrenze je Lauf `CITIES_MAX_USD` (Vorgabe 2 $), Frist `CITIES_MAX_SECONDS`. |
 
 ¹ **Nur auf Prod** — und das ist seit 09/2026 die richtige Seite. Der
@@ -253,18 +258,17 @@ Ratsmitglieder sichtbar (`kern/roles.py`), die Daten sind eingelesen. Auf der
 Dev-VM gibt es beide Jobs **nicht**; dort zieht `ops-finanzdaten-ingest.yml`
 den Bestand von Hand nach.
 
-Am 03.09.2026 auf dem Server nachgesehen, nachdem hier und in `kern/jobs.py`
-jahrelang eine Angabe stand, die nie gestimmt hat: Beide Takte sind
-**wöchentlich**, nicht 14-tägig. Was in dieser Tabelle steht, ist eine Kopie
-der crontab — und eine Kopie wird nur dann nicht zur Lüge, wenn jemand
-nachsieht statt abzuschreiben.
+Ein Abgleich mit der Crontab auf dem Server am 03.09.2026 ergab für beide
+Jobs ein **wöchentliches** Intervall. In dieser Tabelle und in `kern/jobs.py`
+stand zuvor fälschlich ein 14-tägiges Intervall. Bei Änderungen am Zeitplan
+ist die Crontab des Servers die maßgebliche Quelle.
 
 ### Was der Protokoll-Lauf inline nachzieht
 
-`check_protocols.py` ist längst mehr als ein Protokoll-Parser: Es ruft die
-Sub-Steps direkt als Python-Funktionen auf, jeweils mit einer Obergrenze, damit
-der Tageszuwachs abgedeckt ist, ohne dass ein einzelner Lauf entgleist. An
-Tagen ohne neue Protokolle sind die LLM-Schritte ein No-op.
+`check_protocols.py` ruft nach dem Parsen die nachgelagerten
+Python-Funktionen direkt auf. Für jeden Schritt gilt eine Obergrenze,
+die den Tageszuwachs abdeckt und den Arbeitsumfang pro Lauf begrenzt. An
+Tagen ohne neue Protokolle fallen keine LLM-Aufrufe an.
 
 | Schritt | Modul | Limit je Lauf |
 |---|---|---|
@@ -281,37 +285,51 @@ Tagen ohne neue Protokolle sind die LLM-Schritte ein No-op.
 | Wichtigkeits-Score neu berechnen (Heuristik, kein LLM) | `CouncilStore.backfill_importance` | alle |
 | Volltext-Index neu bauen | `CouncilStore.rebuild_fts` | alle |
 
-Die beiden LLM-Scores und die Vorlagen-Abrufe sortieren „neueste zuerst" — das
-kleine Limit trifft also zuverlässig den Tageszuwachs. Den historischen Bestand
-arbeiten die Wochentranchen ab. Der Wichtigkeits-Score wird bewusst *nach*
-der frischen Tragweite gerechnet, damit die 50/50-Mischung sofort greift
+Bei beiden LLM-Scores und beim Abruf der Vorlagen verarbeitet das Skript die
+neuesten Einträge zuerst. So deckt es den Tageszuwachs auch mit einem kleinen
+Limit ab. Der Wochenlauf verarbeitet den historischen Bestand in Batches.
+Das Skript berechnet den Wichtigkeits-Score nach der Tragweite, damit deren
+neuer Wert sofort in die 50/50-Gewichtung eingeht
 (siehe [Bewertungs-Scores](/docs/bewertungen/)).
 
 ### Schrittfolge des Wochenlaufs
 
-`weekly_enrich.py` startet seine Schritte als Subprozesse. Maßgeblich ist die
-`STEPS`-Liste im Skript — sie hat inzwischen 14 Einträge, in dieser Reihenfolge:
+`weekly_enrich.py` startet seine Schritte als Unterprozesse. Maßgeblich ist die
+`STEPS`-Liste im Skript. Sie hat 23 Einträge, in dieser Reihenfolge:
 
-1. **Entitäten (NER)** — `extract_entities.py`, baut `council_entities` neu auf.
-2. **Beschreibungen** — `describe_entities.py`, füllt fehlende Entitäts-Texte (slug-basiert, überlebt den Rebuild).
-3. **Geocoding** — `geocode_entities.py`, verortet neue Orts-Entitäten über Nominatim.
-4. **Embeddings / Ähnliche** — `embed_decisions.py`, berechnet „Ähnliche Beschlüsse" neu ([ADR 0003](/docs/adr/0003-fastembed-statt-torch/)).
-5. **Verwandte Themen** — `build_entity_relations.py`, berechnet „Hängt zusammen mit …" je Thema (kein LLM). Braucht Schritt 1 und 4.
-6. **Themen ↔ Beschlüsse** — `match_topics_decisions.py`, matcht Nutzer-Themen semantisch gegen Beschlüsse.
-7. **Themenfeld-Rückblicke** — `generate_field_recaps.py`, erneuert nur veraltete Felder (faktisch ≈ monatlich je Feld).
-8. **Einfach erklärt** — `generate_simple_summaries.py`, 500er-Tranche, neueste zuerst.
-9. **Personen-Stammdaten** — `backfill_stammdaten.py`, Mandatsträger und Mitgliedschaften aus dem Ratsinfo (kein LLM).
-10. **Tragweite** — `rate_impact.py --limit 500`, bewusst *vor* dem Wichtigkeits-Score.
-11. **Wichtigkeits-Score** — `score_importance.py`, Heuristik über den Gesamtbestand.
-12. **Quizfragen** — `generate_quiz.py`, füllt nur Gebiete unter der Ziel-Fragenzahl auf.
-13. **Interessantheit** — `rate_interest.py --limit 500`, neueste zuerst.
-14. **Fundstücke** — `generate_fundstuecke.py --days 21`, legt fehlende Kalendertage 21 Tage im Voraus an.
+1. **Regex-Ernte** — `ernte_backfill.py`, ohne Modell und ohne Netz. Sie steht vorn, weil jede Verbesserung an den Mustern in `council/ernte.py` erst durch diesen Schritt auf die schon gespeicherten Vorlagen wirkt.
+2. **Sitzungs-Nachlauf** — `nachlauf_sitzungen.py --monate 24`, holt Sitzungen nach, die der tägliche Kalenderlauf verpasst hat (sein Rückblick reicht drei Monate).
+3. **Entitäten** — `extract_entities.py`, baut `council_entities` neu auf.
+4. **Beschreibungen** — `describe_entities.py`, füllt fehlende Texte zu Entitäten.
+5. **Vagheits-Urteile** — `warm_topic_vagueness.py`, rechnet die Urteile über Themen-Vorschläge vor, damit der Einrichtungs-Assistent sie nicht in der Anfrage holen muss.
+6. **Geocoding** — `geocode_entities.py`, verortet neue Orts-Entitäten.
+7. **Straßen-Geometrie** — `strassen_snapshot.py aktualisieren`: **ein** Abruf holt alle benannten Wege der Stadt, der Abgleich läuft danach ohne Netz. Einzelabfragen je Straße scheitern am Limit des Dienstes.
+8. **Embeddings und Ähnliche** — `embed_decisions.py`, berechnet „Ähnliche Beschlüsse“ neu ([ADR 0003](/docs/adr/0003-fastembed-statt-torch/)).
+9. **Anlagen-Texte** — `backfill_anlagen_texte.py --limit 300`, lädt Volltexte neuer Anlagen nach (ohne Modell).
+10. **Anlagen-Embeddings** — `embed_anlagen.py`, schreibt ihre Vektoren für die ausführliche Recherche.
+11. **Verwandte Themen** — `build_entity_relations.py`, berechnet „Hängt zusammen mit …“ je Thema (ohne Modell). Braucht die Schritte 3 und 8.
+12. **Themen ↔ Beschlüsse** — `match_topics_decisions.py`, gleicht die Themen der Nutzer*innen semantisch mit Beschlüssen ab.
+13. **Themenfeld-Rückblicke** — `generate_field_recaps.py`, erneuert nur veraltete Felder.
+14. **Einfach erklärt** — `generate_simple_summaries.py`, 500er-Tranche, neueste zuerst.
+15. **Personen-Stammdaten** — `backfill_stammdaten.py`, Mandatsträger und Mitgliedschaften aus dem Ratsinformationssystem (ohne Modell).
+16. **Tragweite** — `rate_impact.py --limit 500`, bewusst vor dem Wichtigkeits-Score.
+17. **Wichtigkeits-Score** — `score_importance.py`, Heuristik über den Gesamtbestand.
+18. **Bebauungsplan-Flächen** — `fetch_bplan_outlines.py`, ein Abruf beim Geoportal der Stadt (über den [Heim-Proxy](#heim-proxy-gegen-adress-sperren)).
+19. **Mein Viertel** — `build_district_projects.py`, Richter-Urteil je neuem verorteten Beschluss und Bündelung zu Vorhaben ([Mein Viertel](/docs/mein-viertel/#das-register-der-vorhaben)).
+20. **Quizfragen** — `generate_quiz.py`, füllt nur Gebiete unter der Ziel-Fragenzahl auf.
+21. **Quiz aus Daten** — `build_quiz_formats.py`, Fragen aus Anträgen und Haushaltsprodukten (ohne Modell).
+22. **Interessantheit** — `rate_interest.py --limit 500`, neueste zuerst.
+23. **Fundstücke** — `generate_fundstuecke.py --days 21`, legt fehlende Kalendertage 21 Tage im Voraus an.
 
 Jeder Schritt läuft **fehlertolerant**: Ein Fehlschlag wird protokolliert und
 gemerkt, stoppt aber die übrigen Schritte nicht. Am Ende gibt der Lauf eine
-Bilanz („n/14 ok") aus und setzt einen Exit-Code ungleich null, sobald
-mindestens ein Schritt gescheitert ist — daraus wird für den Alarmweg eine
-Exception erzeugt.
+Bilanz aus und setzt einen Exit-Code ungleich null, sobald mindestens ein
+Schritt gescheitert ist; daraus wird für den Alarmweg eine Ausnahme.
+
+Das Skript beendet einen Schritt nach `WEEKLY_STEP_MAX_SECONDS` (Standardwert
+drei Stunden) und zählt ihn als fehlgeschlagen. Zwischen zwei Schritten prüft
+es, ob ein Deploy ansteht, und beendet in diesem Fall den Wochenlauf. Der
+nächste Sonntagslauf verarbeitet die noch fehlenden Einträge.
 
 ### Fehler-Alarme
 
@@ -325,15 +343,28 @@ Alarmpfad selbst wirft nie.
 
 ### Der Herzschlag
 
-Ein Job, der gar nicht startet, stürzt auch nicht ab. `check_herzschlag.py`
-(täglich `30 6 * * *`) prüft deshalb jeden Job gegen seinen Takt aus
-`kern/jobs.py`, schaut auf den freien Platz und zählt die Registrierungen des
-letzten Tages. Gemeldet wird höchstens eine Mail am Tag.
+`check_herzschlag.py` (täglich `30 6 * * *`) erkennt auch Jobs, die gar
+nicht starten. Es gleicht die Läufe mit den Intervallen aus `kern/jobs.py`
+ab, prüft den freien Speicherplatz und zählt die Registrierungen des
+letzten Tages. Das Skript versendet höchstens eine E-Mail am Tag.
+
+Seit 11/2026 fragt derselbe Lauf das **Ratsinformationssystem** von außen ab
+(`council/ris.py::probe`): Kalender des laufenden Monats und RSS-Feed, dazu
+ein Abgleich der dort verlinkten Sitzungen gegen den Bestand. Anlass war der
+Umzug der Stadt von `buergerinfo.oldenburg.de` nach
+`ratsinfo.oldenburg.de/bi`: Der alte Host leitete jede Adresse auf die
+Startseite um, die Parser fanden nichts, und „nichts gefunden“ war kein
+Fehler. Ein solcher Befund steht in der Mail an erster Stelle und gibt ihr
+den Betreff *Ratsinfo liefert nicht*. Unabhängig davon werfen die Abrufe
+selbst einen `RisError` (dauerhafte Weiterleitung, fremder Host, keine
+SessionNet-Seite, vier Monate leerer Kalender) — der betroffene Cron stürzt
+ab und meldet sich über `run_guarded` schon beim ersten Lauf.
+`RATSLOTSE_RIS_PROBE=0` schaltet die Tagesprobe ab.
 
 Seit 10/2026 prüft derselbe Lauf auch den **Rats-Bestand**
-(`council/datenpruefung.py`). Ein Fehler in den Daten stürzt ebenfalls
-nicht ab, er steht einfach da: Die Antworten der Verwaltung lagen wochenlang
-im Feld eines Ratsbeitrags, bevor eine Antwort es zeigte. Die Regeln:
+(`council/datenpruefung.py`). Datenfehler können auch bei erfolgreichen
+Jobs bestehen bleiben. So lagen Antworten der Verwaltung wochenlang im Feld
+für Ratsbeiträge. Der Fehler fiel erst in einer ausgegebenen Antwort auf.
 
 | Regel | Art | Behebung |
 |---|---|---|
@@ -344,17 +375,23 @@ im Feld eines Ratsbeitrags, bevor eine Antwort es zeigte. Die Regeln:
 | Protokoll fehlt nach 10 Wochen | einmal je Sitzung | bei der Stadt nachsehen |
 | Grundakten älter als 36 Stunden, Hauptpunkt ohne Akte, über 40 % der Beiträge ohne Akte | Bestand (90 Tage) | `scripts/build_matters.py` |
 
-**Bestandsregeln** stehen im ganzen Bestand auf null und melden sich, solange
-ein Verstoß steht. **Die übrigen** schauen nur auf das, was seit dem letzten
-Herzschlag neu ist — sonst käme jeden Tag dieselbe Mail. Die Kennzahlen
+**Bestandsregeln** erwarten null Verstöße im gesamten Bestand und melden
+jeden Verstoß, solange er besteht. Die übrigen Regeln prüfen nur Zugänge
+seit dem letzten Überwachungsjob. Das verhindert Meldungen über dieselben
+Einträge an mehreren Tagen. Die Kennzahlen
 (`daten_…`) stehen auch ohne Meldung unter *Statistik → Cron-Jobs*.
 
 ---
 
 ## Ops-Workflows (manuell auslösbar)
 
-Sechs `ops-*`-Workflows, alle per `workflow_dispatch`. Fünf laufen ohne Inputs mit
-festen Befehlen; `ops-entity-dubletten.yml` hat zwei Schalter (siehe Tabelle).
+Die vollständige Liste mit Auslöser und Zweck entsteht aus den
+Workflow-Dateien. [Referenz: Workflows](/docs/referenz/workflows/). Dieser Abschnitt
+erklärt die Werkzeuge, die im Betrieb am häufigsten gebraucht werden.
+
+Die `ops-*`-Workflows starten per `workflow_dispatch`; zwei laufen zusätzlich
+nach Zeitplan (`ops-erreichbarkeit.yml`, `ops-deploy-rueckstand.yml`). Die
+Tabelle unten beschreibt sechs davon ausführlicher.
 Sie nutzen denselben Deploy-Key und ProxyJump wie `deploy.yml` und führen die
 Skripte direkt auf der App-VM aus — praktisch, wenn kein SSH-Zugang zur Hand
 ist. Nur Collaborator können sie starten.
@@ -495,9 +532,9 @@ Eine Stadt, die Protokoll-Adressen nennt, aber keine ausliefert, wird nach
 drei Fehlversuchen übersprungen — Magdeburg nennt 606 Adressen, von denen
 jede einzelne mit 404 antwortet.
 
-**Nach jeder Ernte die Plausibilität prüfen.** Am 08.09.2026 lagen vier
-Ernte-Fehler gleichzeitig im Bestand, und kein einziger hat sich gemeldet —
-kein Absturz, kein roter Test, keine auffällige Zahl:
+**Nach jedem Abruf folgt eine Plausibilitätsprüfung.** Am 08.09.2026
+enthielt der Bestand vier Fehler aus der Datenerhebung, die weder
+Abstürze oder Testfehler noch auffällige Kennzahlen verursachten.
 
 ```bash
 python scripts/cities_backfill.py --pruefen
@@ -520,10 +557,11 @@ python scripts/cities_gegenrichtung.py --offen              # wie ging es anders
 plus Oldenburg seit 2018 sind rund 600 MB. `check_herzschlag.py` schaut auf
 den freien Platz, aber vor dem ersten Lauf lohnt ein Blick.
 
-**Nie zwei Läufe auf dieselbe Datei.** `--parallel` erntet mehrere Städte
-gleichzeitig in getrennte Rohdateien; das ist erlaubt. Zwei Prozesse, die
-beide in `cities.sqlite` schreiben, sind es nicht — SQLite quittiert das mit
-`database is locked`, und im Probelauf starb der unterlegene Thread still.
+**Pro Datenbankdatei darf nur ein Prozess schreiben.** Mit `--parallel`
+kann der Backfill Daten mehrerer Städte gleichzeitig in getrennte Rohdateien
+schreiben. Konkurrieren zwei Prozesse um einen Schreibzugriff auf
+`cities.sqlite`, meldet SQLite `database is locked`. Beim Probelauf endete
+der zweite Thread ohne weitere Meldung.
 
 **Ein anderes Einbettungs-Modell probieren.** Der Speicher hält Vektoren und
 Nachbarschaften je Modell getrennt, ein neues liegt also neben dem alten und
@@ -549,10 +587,10 @@ weiterlaufen.
 
 ### Der Weg auf Prod
 
-Beide Schalter des Städtevergleichs sind **Schulden mit Fälligkeitsdatum**:
-Jeder nennt in `kern/features.py` unter `fertig_wenn`, woran man erkennt, dass
-er weg kann. Sie umzulegen ist keine technische Frage, sondern eine
-inhaltliche — deshalb steht hier die Reihenfolge, nicht der Griff.
+Beide Schalter des Städtevergleichs sind vorübergehend. In
+`kern/features.py` steht unter `fertig_wenn` jeweils die Bedingung für
+das Entfernen. Die Aktivierung setzt eine fachliche Entscheidung voraus.
+Die folgende Reihenfolge beschreibt den technischen Ablauf.
 
 | # | Schritt | Bedingung |
 |---|---|---|
@@ -635,10 +673,12 @@ Lauf ab, statt zu urteilen oder Hashes zu übernehmen.
 
 ## Backups
 
-`scripts/backup_db.py` läuft täglich um 03:00 und sichert **beide** Datenbanken
-(`ratslotse.sqlite` und `council.sqlite`) mit der `sqlite3`-Backup-API — also
-konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
-`data/backups/` mit Datum im Dateinamen.
+`scripts/backup_db.py` läuft täglich um 03:00 und sichert **jede** Datenbank
+unter `data/` (heute `ratslotse.sqlite`, `council.sqlite` und `cities.sqlite`)
+mit der `sqlite3`-Backup-API — also konsistent, ohne den laufenden Betrieb zu
+stoppen. Die Kopien landen unter `data/backups/` mit Datum
+im Dateinamen, im Journal-Modus `DELETE`: Mit dem WAL-Modus der Quelle ließ jedes
+spätere Öffnen `-wal`/`-shm` daneben liegen (am 23.11.2026 waren es 218).
 
 - **Erst prüfen, dann ablegen (seit 10/2026):** Die Backup-API schreibt in
   eine Zwischendatei (`.<name>.tmp`), `PRAGMA integrity_check` (ab 500 MB
@@ -658,7 +698,12 @@ konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
   kosmetisch: Reicht das Tagesfenster in die Vorwoche hinein, läge deren Marke
   einen Tag neben einem Tagesstand und gewänne keinen Abstand — der Bestand
   endete dann schon nach 22 Tagen.
-- **Handkopien bleiben liegen.** Gezählt wird nur, was `<stamm>_JJJJ-MM-TT.sqlite`
+- **Handkopien unter `data/` werden nicht gesichert (seit 11/2026).** Eine
+  Datenbank mit Punkt im Stamm (`council.vor-pymupdf-2026-10-18.sqlite`) ist
+  selbst schon eine Sicherung. Bis dahin lief sie als eigene Datenbank durch
+  die Rotation — elf Stände zu 800 MB, 8,8 GB lokal und noch einmal off-site.
+  Der Lauf nennt sie und zählt sie unter „Handkopien übersprungen".
+- **Handkopien im Sicherungsordner bleiben liegen.** Gezählt wird nur, was `<stamm>_JJJJ-MM-TT.sqlite`
   heißt. Eine von Hand gezogene `council_vor_release_v2.0.0.sqlite` fällt aus der
   Rotation heraus: Sie wird nie gelöscht und kostet auch keinen Platz im Bestand.
   Vorher war beides falsch herum — gelöscht wurde `sorted(...)[:-7]`, und weil
@@ -683,13 +728,30 @@ in der `--exclude`-Liste des rsync, genau wie `.env` und `.venv/`. Ein Deploy
 kann den Datenbestand also nicht überschreiben.
 
 **Was noch mitgesichert wird:** Nicht alles unter `data/` steht in einer
-Datenbank. `dateien_spiegeln()` legt zwei Ordner per `rsync` in
-`data/backups/` und damit in den Off-Site-Spiegel:
+Datenbank. `dateien_spiegeln()` legt Ordner per `rsync` in `data/backups/` und
+damit in den Off-Site-Spiegel, `einzeldateien_sichern()` dazu einzelne Dateien
+nach `data/backups/einzeldateien/` (Liste `EINZELDATEIEN` — bewusst kein „alle
+`.json`", dort liegen auch Fortschrittsmarken):
 
-| Ordner | Inhalt | Wiederherstellbar? |
+| Was | Inhalt | Wiederherstellbar? |
 |---|---|---|
 | `data/plaene/` | gerenderte Planzeichnungen | ja, aber nur über einen Stapellauf über 600 Anlagen |
 | `data/archiv/` | Statistik-Archiv (s. u.) | **nein** — die Quellen sind überschrieben |
+| `data/transkripte/` | Transkripte der Sitzungs-Mitschnitte | **nein** — der Livestream ist danach weg |
+| `data/eval_gold/` | Ergebnisse der Gold-Läufe | **nein** — die Vergleichsbasis jeder Messung |
+| `wahlabend-verlauf-*.json` | Verlauf der Wahlabende, Stand je Abruf | **nein** |
+| `strassen-snapshot.json` | Straßenbestand aus dem GIS der Stadt | nur über den Heim-Proxy |
+| `wahltermine-*.json` | was der Wahltermin-Abgleich schon gemeldet hat | ja, mit Doppelmeldungen |
+| crontab | `crontab -l` → `backups/crontab.backup` (0600) | nur aus Skript-Köpfen und `kern/jobs.py` |
+
+Bewusst **nicht** dabei ist die Rohernte der fremden Städte (`cities-raw`,
+`cities-files`): öffentliche Dokumente, die sich aus deren RIS neu holen lassen.
+
+**Die Storage Box ist ein Spiegel, kein Archiv.** Was lokal aus der Rotation
+fällt oder gelöscht wird, ist nach dem nächsten Lauf auch dort weg — eine
+versehentlich gelöschte oder zerschriebene Datei ebenso. Gegen diesen Fall
+helfen nur die Schnappschüsse der Storage Box selbst (Hetzner Robot →
+Storage Box → Snapshots), die außerhalb des Repos eingerichtet werden.
 
 ---
 
@@ -706,7 +768,7 @@ Finanzzuweisungen, 0803 Sozialhilfe) ist damit jedes Jahr ein Jahrgang
 endgültig verloren. Beim Open-Data-Portal ist es dasselbe, nur leiser: Die
 Adressen sind stabil, der Inhalt wird überschrieben.
 
-**Was der Job tut:** Er sichert, er parst nichts. Drei Quellen:
+Der Job archiviert Dateien aus drei Quellen ohne weitere Auswertung.
 
 | Bereich | Woher | Umfang (17.08.2026) |
 |---|---|---|
@@ -714,10 +776,10 @@ Adressen sind stabil, der Inhalt wird überschrieben.
 | `jahrbuch` | die Übersichtsseite des Statistischen Jahrbuchs, alle Tabellen-PDFs daraus | 246 PDFs, 56 MB |
 | `kfa` | die Übersichtsseite des Kommunalen Finanzausgleichs beim LSN | 14 Mappen, 3 MB |
 
-**Keine festen Adresslisten.** Eine feste Liste zeigte nach dem nächsten
-Erscheinen auf 404-Adressen und **fände die neue Ausgabe nicht** — sie
-versagte genau in dem Moment, für den es den Job gibt. Stabil sind die
-Übersichtsseiten, nicht die Dateinamen.
+**Download-Links aus den Übersichtsseiten.** Die Übersichtsseiten behalten
+ihre Adressen, während die Dateinamen mit neuen Ausgaben wechseln. Eine
+feste Liste würde nach Erscheinen neuer Ausgaben weiterhin die alten
+Dateien anfragen und Status 404 erhalten.
 
 **Wie versioniert wird:**
 
@@ -726,31 +788,33 @@ data/archiv/jahrbuch/1103-2025-AZ.pdf/2026-08-17_9f3c1a2b4d5e.pdf
                      └ Ordner heißt wie die Datei ┘ └ Tag ┘└ Hash ┘
 ```
 
-Datum **und** Hash: Der Hash allein sagte nicht, wann eine Fassung zuerst
-auftauchte; das Datum allein legte dieselben Bytes erneut ab, sobald ein
-Server seinen `ETag` ohne Inhaltsänderung neu vergibt. Entschieden wird über
-den **Inhalts-Hash** — liegt er im Ordner, passiert nichts. Daran hängt die
-Idempotenz: Ein zweiter Lauf am selben oder an einem späteren Tag legt nichts
-doppelt ab.
+Der Dateiname enthält das Datum der ersten Sichtung und den Inhalts-Hash.
+Der Job prüft anhand des Hashs, ob der Inhalt bereits vorliegt. Auch ein
+neuer `ETag` ohne Inhaltsänderung erzeugt so keine neue Kopie. Wiederholte
+Läufe am selben oder an einem späteren Tag legen denselben Inhalt nur
+einmal ab.
 
 `data/archiv/manifest.json` hält je Adresse ETag, `Last-Modified`, Hash, Pfad,
 Erst- und Letztsichtung sowie den letzten Fehler. Es liegt bewusst **im
 Archiv** statt in der Datenbank: Ein Archiv, dessen Inhaltsverzeichnis
 woanders liegt, ist nach einer Wiederherstellung ein Haufen Hashes.
 
-**Warum täglich, wenn sich selten etwas ändert:** Weil die Änderungen in
-Schüben kommen (29 Open-Data-Datensätze am 19.06.2026, 20 am 14.07.2026) und
-Vorlauf bei einer Quelle ohne Archiv der einzige Puffer ist. Der Preis ist
-klein — gemessen:
+**Tägliche Sicherung.** Die Quellen ändern sich in unregelmäßigen
+Abständen, teils in mehreren Datensätzen zugleich (29 Open-Data-Datensätze
+am 19.06.2026, 20 am 14.07.2026). Der tägliche Lauf sichert die Fassungen
+zeitnah, bevor die Quelle sie überschreibt. Die Messung zeigt den
+Aufwand pro Lauf.
 
 | Lauf | geladen | Dauer |
 |---|---|---|
 | erster | 72,4 MB (447 Dateien) | 2:49 min |
 | jeder weitere ohne Änderung | 0,0 MB | 34 s |
 
-Möglich macht das ein dreistufiges Sieb: das `modified`-Feld des
-Open-Data-Katalogs (kein Abruf), danach `If-None-Match`/`If-Modified-Since`
-(304, keine Bytes), zuletzt der Hash. Die LSN-Adressen schicken **weder ETag
+Der Job prüft zuerst das Feld `modified` des Open-Data-Katalogs und kann
+damit auf den Dateiabruf verzichten. Falls nötig, stellt er einen
+bedingten Request mit `If-None-Match` oder `If-Modified-Since` (304
+ohne Antwortbody). Bei heruntergeladenen Dateien vergleicht er zuletzt
+den Inhalts-Hash. Die LSN-Adressen schicken **weder ETag
 noch Last-Modified**; dort greift stattdessen, dass eine Download-Nummer
 unveränderlich ist — eine neue Ausgabe bekommt eine neue Nummer, auch eine
 Korrektur (KFA 2023 steht als „endgültig Korrektur" neben dem Original).
@@ -783,8 +847,8 @@ Gekennzeichnet sind unter anderem `protokoll_extraktion`,
 `themenfeld_rueckblick`, `quiz_generation`, `quiz_verify`,
 `qa_query_expansion` und `qa_antwort`.
 
-Kosten stehen **nicht** in der Datenbank, sondern werden aus Tokens ×
-hinterlegtem Modellpreis gerechnet. Die Preistabelle `PRICES` in `kern/usage.py`
+Ratslotse berechnet die Kosten aus der gespeicherten Tokenzahl und dem
+hinterlegten Modellpreis. Die Preistabelle `PRICES` in `kern/usage.py`
 führt $ je 1 Mio. Tokens (Input, Output) je Modell und muss beim Wechsel auf ein
 neues Modell ergänzt werden — ein unbekanntes Modell zählt mit 0,00 $.
 
@@ -798,9 +862,9 @@ Das Backend liefert das Ganze unter `GET /admin/llm-usage` (nur für Admins) aus
 | Täglicher Kostenverlauf | 30 Tage, lückenlos (Tage ohne Aufrufe erscheinen als 0) |
 | Kostentreiber | Aggregat je Feature: Aufrufe, Tokens, geschätzte Kosten, verwendete Modelle, erster/letzter Aufruf — teuerste zuerst |
 
-Das Budget kommt aus der Einstellung `llm_budget_monthly` (Default 40,0). Die
-Ampel ist eine reine **Anzeigeschwelle** — sie drosselt nichts und schaltet
-nichts ab.
+Die Einstellung `llm_budget_monthly` gibt das Budget vor (Standardwert
+40,0). Der Schwellenwert ändert nur die Statusanzeige. Modellaufrufe bleiben
+möglich und laufen unverändert weiter.
 
 ---
 
@@ -817,12 +881,15 @@ Die `.env` liegt ausschließlich auf dem Server und wird vom Deploy nicht
 | `OPENROUTER_API_KEY` | Zugang zu allen LLM-Aufrufen ([ADR 0001](/docs/adr/0001-openrouter/)) | ja | — |
 | `NWZ_OPENROUTER_ROUTING` | Provider-Routing (DSGVO) an/aus; `off` ist der Notausschalter ([ADR 0002](/docs/adr/0002-dsgvo-provider-routing/)) | nein | `on` |
 | `NWZ_OPENROUTER_IGNORE` | Kommaliste ausgeschlossener Provider-Slugs | nein | `deepseek,baidu,streamlake,siliconflow,alibaba` |
-| `NWZ_OPENROUTER_ZDR` | Zero-Data-Retention verlangen — für Aufrufe mit Nutzereingaben; Features mit nur öffentlichen Daten stehen in `kern/llm.py::OHNE_NUTZEREINGABE` und laufen ohne ZDR. `0`/`false`/`off`/`no` lockert es für alle | nein | `1` |
+| `NWZ_OPENROUTER_ZDR` | ZDR-Vorgabe für Aufrufe mit ZDR-Pflicht, einschließlich des regulären EU-Routings. `0`/`false`/`off`/`no` deaktivieren die Vorgabe für alle Aufrufe. Für ausschließlich öffentliche Daten (`kern/llm.py::OHNE_NUTZEREINGABE`) gilt keine ZDR-Pflicht. | nein | `1` |
 | `NWZ_DEEPSEEK_MIN_MAX_TOKENS` | Untergrenze für `max_tokens` bei DeepSeek-Reasoning-Modellen | nein | `24000` |
+| `NWZ_GPT56_MIN_MAX_TOKENS` | Untergrenze für `max_tokens` bei den GPT-5.6-Modellen; sonst endet eine Antwort still mit `finish_reason='length'` | nein | `16000` |
+| `NWZ_GEMINI_DENK_MIN_MAX_TOKENS` | Dieselbe Untergrenze für Gemini-Modelle, die vor der Antwort denken | nein | `4000` |
+| `RATSLOTSE_KI_AUSSERHALB_EU` | Notausgang: `1` lässt Nutzereingaben bei einem Ausfall wieder außerhalb der EU laufen (`kern/llm.py::EU_ZUERST`); sonst nur EU | nein | nicht gesetzt |
 
 ### Modellwahl je Aufgabe
 
-Alle optional — greift keine Variable, gilt der Default aus dem Code.
+Alle Variablen sind optional. Ohne Angabe gilt der Standardwert aus dem Code.
 
 | Variable | Aufgabe | Default |
 |---|---|---|
@@ -836,9 +903,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_IMPACT_MODEL` | Tragweite-Score | `openai/gpt-6-luna` (Flex-Tarif) |
 | `COUNCIL_FUNDSTUECK_MODEL` | Story zum „Fundstück des Tages" | `deepseek/deepseek-v4-pro` |
 | `COUNCIL_RECAP_MODEL` | Themenfeld-Rückblicke | `deepseek/deepseek-v4-pro` |
-| `COUNCIL_QA_MODEL` | „Frag den Rat": Antwort, vereinfachte Antwort, Deep-Research-Bericht, Partei-Meinungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
+| `COUNCIL_QA_MODEL` | Antwort und vereinfachte Antwort von „Frag den Rat", Bericht der ausführlichen Recherche und Parteipositionen. Standardmäßig EU mit ZDR. Beim aktivierten Fallback außerhalb der EU entfällt die ZDR-Vorgabe (`llm.ZDR_VERZICHT`). | `openai/gpt-6-luna` (Denkaufwand: `low` für die Antwort, sonst Vorgabe des Anbieters; `llm.WEB_DENKAUFWAND`) |
 | `COUNCIL_QA_EXPAND_MODEL` | „Frag den Rat": Frage-Analyse vor der Suche (Azure EU, mit ZDR); auch die Städte-Suchbegriffe | `openai/gpt-5.6-luna` |
-| `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen — ohne ZDR (`llm.ZDR_VERZICHT`) | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
+| `COUNCIL_ASSISTANT_MODEL` | Lottis Erklärungen. Standardmäßig EU mit ZDR. Beim aktivierten Fallback außerhalb der EU entfällt die ZDR-Vorgabe (`llm.ZDR_VERZICHT`). | `openai/gpt-6-luna` (Denkaufwand: Vorgabe des Anbieters) |
 | `COUNCIL_ASSISTANT_PRUEFER_MODEL` | Lottis Selbstprüfung: Prüfer-Modell einer anderen Familie, in der EU (`council/self_check.py`, Schalter `lotti-selbstpruefung`) | `anthropic/claude-haiku-5.5` |
 | `COUNCIL_ASSISTANT_PRUEFER_ANTEIL` | Anteil der Erklärungen, die nachträglich geprüft werden (0–1) | `0.1` |
 | `COUNCIL_DISTRICT_MODEL` | „Mein Viertel": Vorhaben aus Beschlüssen bündeln und einordnen (`council/viertel.py`) | `openai/gpt-6-luna` |
@@ -849,6 +916,72 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `COUNCIL_RERANK_MODEL` | Reranker für die hybride Suche | `jinaai/jina-reranker-v2-base-multilingual` |
 | `COUNCIL_ALIAS_MODEL` | Prüft Themen-Dubletten (`council/aliases.py`) | `deepseek/deepseek-v4-pro` |
 | `TOPIC_INTEL_MODEL` | Themen-Beschreibung und Relevanzprüfung (`council/topic_intel.py`, Azure EU) — bricht die `COUNCIL_`-Namenskonvention | `openai/gpt-5.6-luna` |
+| `COUNCIL_WATCHER_MODEL` | Themen-Zuordnung des Watchers (`council/watcher.py`) | `openai/gpt-5.6-luna` |
+| `COUNCIL_COMMITTEE_MODEL` | Ausschuss-Zusammenfassungen und Kurzfassungen je Tagesordnungspunkt (`council/committee_summary.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_SESSION_SUMMARY_MODEL` | Lottis Satz zur Sitzung (`council/session_summary.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_LOCATION_MODEL` | Ortsbezüge aus Beschlüssen (`council/locations.py`) | `google/gemini-3.1-flash-lite` |
+| `COUNCIL_WORTBEITRAG_MODEL` | Wortbeiträge aus den Protokollen (`council/wortbeitraege.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_KRITIKER_MODEL` | Prüft jeden Kartentext, bevor er gespeichert wird (`council/kritiker.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_SOCIAL_MODEL` | Kartentext für Social Media (`council/social_text.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_DOSSIER_MODEL` | Dossier einer Vorlage (`council/template_dossier.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_MOTIONS_MODEL` | Änderungsanträge lesen (`council/motions.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_ARGUMENTS_MODEL` | Argumente zu einem Vorgang (`council/arguments.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_TERMS_MODEL` | Fachwörter aus der Vorlage vorschlagen (`council/vorlage_begriffe.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_TERMS_VERIFY_MODEL` | … und jede Erklärung prüfen; nur was besteht, erscheint | `openai/gpt-6-sol` |
+| `COUNCIL_PROGRAM_MODEL` | Wahlprogramme zum Punkt einordnen (`council/programm_bezug.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_PROGRAM_VERIFY_MODEL` | … und jede Einordnung bestätigen | `openai/gpt-6-sol` |
+| `COUNCIL_PAGE_QUESTIONS_MODEL` | Vorschlagsfragen auf Punkt- und Beschluss-Seite (`council/vorschlagsfragen.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_PLAN_MODEL` | Pläne der Stadt: Stand je Maßnahme, Umsetzung oder Erwähnung (`council/plan_judge.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_DEEP_MODEL` | Bericht der ausführlichen Recherche; leer heißt wie `COUNCIL_QA_MODEL` | leer |
+| `COUNCIL_DEEP_PLUS_MODEL` | derselbe Bericht für Konten mit dem Recht `premium_models` | `openai/gpt-6-sol` |
+| `COUNCIL_VIDEO_MODEL` | Abstimmungsergebnisse aus Sitzungs-Transkripten (`council/videos.py`) | `openai/gpt-5.6-luna` |
+| `COUNCIL_STT_MODEL` | Transkription der Audio-Stücke, wenn kein Streaming-Schlüssel gesetzt ist (`council/livestream.py`) | `google/gemini-3.1-flash-lite` |
+| `COUNCIL_LIVE_TRACKER_MODEL` | Live-Verfolgung: welcher Punkt läuft, wer spricht (`council/livetracker.py`) | `google/gemini-3.5-flash-lite` |
+| `COUNCIL_OCR_MODEL` | Gescannte Anlagen lesen, Seite als Bild (`council/ocr.py`) | `google/gemini-3.1-flash-lite` |
+| `COUNCIL_OCR_MODEL_ZWEIT` | Zweitleser für dieselbe Seite; Uneinigkeit ist ein Prüffall, kein Mittelwert | `anthropic/claude-sonnet-4.6` |
+| `COUNCIL_QUIZ_MOTION_MODEL` | Quizfragen aus Anträgen (`council/quiz_formats.py`) | `openai/gpt-4o-mini` |
+
+### Suche von „Frag den Rat“
+
+Stellschrauben der hybriden Suche (`council/embeddings.py`). Sie sind gemessen
+gesetzt; wer sie ändert, misst gegen das Gold-Set
+([Frag den Rat](/docs/frag-den-rat/#rückmeldungen-und-messung)).
+
+| Variable | Wofür | Default |
+|---|---|---|
+| `COUNCIL_RETRIEVAL_KLASSISCH` | `1` stellt die Suche ohne Vorlagenabschnitte wieder her. Wirkt ohne Neustart. | nicht gesetzt |
+| `COUNCIL_PAIR_MAX_CHARS` | Zeichen-Deckel je Paar für den Reranker | `260` |
+| `COUNCIL_KONTEXT_PAIR_MAX` | derselbe Deckel für die Zusatzkanäle (Presse, Wortbeiträge, Anlagen) | `150` |
+| `COUNCIL_KONTEXT_RERANK_MIN` | Mindestwert des Rerankers, damit ein Zusatzkanal-Treffer in den Kontext kommt | `-1.5` |
+| `COUNCIL_ZUSAGE_RERANK_MIN` | strengerer Mindestwert für Zusagen der Verwaltung | `-0.5` |
+| `COUNCIL_RERANK_MAX` | Obergrenze der Reranker-Paare; `0` heißt keine. Nur für Notfälle | `0` |
+| `COUNCIL_SERIE_MAX` | so viele Beschlüsse mit wortgleichem Titel bleiben vorn | `3` |
+| `COUNCIL_WB_FRAKTION_POOL` | Kandidaten-Wortbeiträge für den Baustein „Das sagen die Parteien“ | `600` |
+| `COUNCIL_WB_FRAKTION_LABELS` | Deckel auf die Zahl der Fraktions-Töpfe darin; mehr kostet Wartezeit | `20` |
+| `COUNCIL_QA_PLAN_HASH_SALT` | Salz für den Hash, unter dem der Rechercheplan einer Frage protokolliert wird, damit das Log keine Frage im Klartext trägt | leer |
+
+### Vorlagen aufbereiten: Kostengrenzen
+
+| Variable | Wofür | Default |
+|---|---|---|
+| `DOSSIER_MAX_USD` | Kostengrenze der Dossiers je Lauf von `vorlagen_dossiers.py` | `0.5` |
+| `DOSSIER_ABRUF_MAX_USD` | Tagesdeckel für Dossiers, die beim ersten Aufruf einer Seite nachgeholt werden | `0.2` |
+| `TERMS_MAX_USD` | Kostengrenze der Fachwörter je Lauf (Schalter `begriffe-aus-vorlage`) | `0.25` |
+| `PROGRAM_MAX_USD` | Kostengrenze der Wahlprogramm-Einordnungen je Lauf (Schalter `wahlprogramm-am-punkt`) | `0.25` |
+
+### Livestream und Live-Verfolgung
+
+| Variable | Wofür | Default |
+|---|---|---|
+| `COUNCIL_STREAM_URL` | HLS-Adresse der Übertragung | `https://cdn.oeins.de/sd480/index.m3u8` |
+| `COUNCIL_RECORD_MAX_HOURS` | Kappe des Sitzungs-Mitschnitts in Stunden | `6` |
+| `COUNCIL_CHUNK_SECONDS` | Länge der Audio-Stücke ohne Streaming | `30` |
+| `COUNCIL_CLOSING_MIN_SECONDS` | Frühestens nach so vielen Sekunden beendet die Schlussformel die Aufnahme; davor wäre es eine Wiederholung im Vorprogramm | 1.200 (20 Minuten) |
+| `GLADIA_API_KEY` | Schlüssel für die Streaming-Transkription (`council/stream_stt.py`); leer heißt Audio-Stücke | leer |
+| `GLADIA_REGION` | Region des Transkriptionsdienstes | `eu-west` |
+| `COUNCIL_LIVE_WINDOW_SECONDS` | Takt der Live-Verfolgung beim Streaming | `15` |
+| `COUNCIL_STT_BEHALTEN` | So viele Audio-Stücke je Sitzung bleiben als Referenz für die Transkriptions-Eval erhalten; `0` schaltet das ab | `20` |
+| `RATSLOTSE_STT_AUDIO` | Ablageordner dieser Stücke | unter `data/` |
 
 ### Web-Backend
 
@@ -870,6 +1003,14 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `APPLE_PRIVATE_KEY` | Inhalt des privaten `.p8`-Schlüssels als PEM; escaped `\\n` werden akzeptiert | für App Store | – |
 | `LLM_BUDGET_MONTHLY` | Monatsbudget für die Budget-Ampel (reine Anzeige) | nein | `40.0` |
 | `DISABLE_RATE_LIMIT` | `1` schaltet das Rate-Limiting ab (nur für Tests) | nein | nicht gesetzt |
+| `SIGNUP_REQUIRES_APPROVAL` | `1`: Neue Konten beginnen gesperrt und werden im Admin-Panel freigeschaltet. So steht es auf dev, wo ohne Mailversand sonst jedes Konto sofort aktiv wäre | nein | aus |
+| `FEATURE_FLAGS` | Kommaliste der eingeschalteten [Feature-Schalter](/docs/referenz/feature-schalter/); `*` schaltet alle an (so steht es auf dev) | nein | leer |
+| `STATS_EXCLUDE_DOMAINS` | Kommaliste von Mail-Domains, deren Konten aus der Nutzungsstatistik fallen (eigene Testkonten) | nein | leer |
+| `SOCIAL_API_TOKEN` | Token für die Schnittstelle des Social-Media-Bots (`routers/social.py`); ohne Token sind die Endpunkte aus | nein | leer |
+| `SOCIAL_MEDIA_DIR` / `SOCIAL_MEDIA_BASE_URL` | Verzeichnis für Social-Media-Bilder und öffentliche Basis-URL. Der Upload legt das Verzeichnis bei Bedarf an. | nein | `web/frontend/public/social`, `https://ratslotse.de/social` |
+| `BACKEND_URL` | Adresse des Backends für die Server-Routen des Frontends (`app/api/council/ask/route.ts`) | nein | `http://localhost:8000` |
+| `NEXT_PUBLIC_CARTO_API_KEY` | Schlüssel der Kartenkacheln, zur **Bauzeit** des Frontends einkompiliert (`lib/basemap.ts`); ohne ihn tragen die Kacheln ein Wasserzeichen | nein | nicht gesetzt |
+| `GEO_BUNDLE_VERSION` / `LOTTI_BUNDLE_VERSION` | Versionsmarken, die der Frontend-Build an die Adressen der Geodaten und der Lotti-Grafiken hängt, damit der Browser sie lange halten darf (`lib/asset-paths.ts`) | nein | nicht gesetzt |
 
 ### Datenbanken
 
@@ -888,6 +1029,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `EMAIL_FROM` | Absender der Mails | nein | `Ratslotse <noreply@ratslotse.de>` |
 | `APP_BASE_URL` | Basis-URL in Mail-Links | nein | `https://ratslotse.de` |
 | `FEEDBACK_EMAIL` | Empfänger*in des Nutzer-Feedbacks; zugleich die Antwortadresse der Rückmeldungen an die absendende Person | nein | leer → `WEB_ADMIN_EMAIL` |
+| `EMAIL_REPLY_TO` | Antwortadresse aller Mails; ohne sie ginge eine Antwort an die Absenderadresse ohne Postfach | nein | leer |
 | `ALERT_EMAIL` | Empfänger*in der Cron-Alarme | nein | nicht gesetzt → `WEB_ADMIN_EMAIL` |
 
 ### Push (APNs / FCM)
@@ -911,6 +1053,13 @@ sind.
 |---|---|---|---|
 | `BACKUP_RSYNC_TARGET` | Ziel des Off-Site-Mirrors; leer = kein Mirror | nein | leer |
 | `BACKUP_RSYNC_SSH_PORT` | SSH-Port des Backup-Ziels | nein | `22` |
+| `BACKUP_ENV` | `0` nimmt die `.env` mit den Geheimnissen aus der Sicherung | nein | `1` |
+| `LLM_TAGESKOSTEN_ALARM_USD` | Der tägliche Überwachungsjob meldet Modellkosten des Vortags oberhalb dieses Schwellenwerts per E-Mail. `0` deaktiviert den Alarm. | nein | 5 $ |
+| `WEEKLY_STEP_MAX_SECONDS` | Höchstdauer eines Schritts im Wochenlauf; ein Schritt darüber wird beendet und zählt als Fehlschlag, der Lauf geht weiter. `0` hebt sie auf | nein | 10.800 (3 h) |
+| `WEEKLY_ENRICH_MAX_SECONDS` | Frist für den ganzen Wochenlauf; ein wartender Deploy beendet ihn ohnehin | nein | keine |
+| `RATSLOTSE_RELEASE_MAINTENANCE` | `1` lässt genau einen Prozess durch die Wartungssperre des Prod-Deploys (`kern/maintenance.py`). Setzt nur `scripts/prepare_release_databases.py` für sich selbst; in eine `.env` gehört sie nicht | nein | nicht gesetzt |
+| `ARCHIV_DIR` | Ordner des Archivs der gesicherten Quelldateien (`council/archiv.py`) | nein | `data/archiv` |
+| `REGIONALSTATISTIK_USER` / `REGIONALSTATISTIK_PASSWORD` | Konto bei der Regionalstatistik für `scripts/ingest_regionalstatistik.py` | nur für diesen Ingest | — |
 | `FASTEMBED_CACHE_PATH` | Persistenter Modell-Cache von fastembed (ohne ihn liegt er im Temp-Verzeichnis und ist nach einem Neustart weg) — von der Bibliothek selbst gelesen, nicht vom Repo-Code | nein | Vorgabe der Bibliothek |
 
 ### Wahlen
@@ -919,6 +1068,7 @@ sind.
 |---|---|---|---|
 | `WAHLKAMPF_TOKEN` | Geheimer Link-Teil der Wahlkampf-Auswertung (`scripts/stichwahl_potenzial.py --link`); mindestens 16 Zeichen, sonst wird er aus `WEB_JWT_SECRET` abgeleitet | nein | abgeleitet |
 | `WAHLTERMINE_URL` | Terminkalender des Votemanagers für `check_wahltermine.py`; leer = aus der Basis-URL der aktiven Wahl abgeleitet | nein | abgeleitet |
+| `WAHLABEND_ELECTION` | Welche Wahl `/wahlabend` zeigt (Ordnername unter `kommunalwahl/wahlen/`); leer heißt die jüngste, die kein Entwurf mehr ist | nein | leer |
 
 ### Städte-Speicher (`check_cities.py`)
 
@@ -934,8 +1084,21 @@ sind.
 | `CITIES_RATE_SECONDS` | Abstand zwischen zwei Abrufen bei einem fremden Ratsinformationssystem (mindestens 1 s) | nein | `1.0` |
 | `CITIES_FIT_WORKERS`, `CITIES_TERM_WORKERS`, `CITIES_IDEA_FIT_WORKERS`, `CITIES_STANCE_WORKERS` | Gleichzeitige Urteile je Stufe — mehr ist schneller, nicht teurer | nein | `8`, `16`, `4`, `12` |
 | `CITIES_FIT_VOTES` / `CITIES_FIT_PROBE` | Stimmen je Urteil bzw. Stichprobengröße der Selbstkontrolle | nein | `3` / `300` |
-| `CITIES_*_MODEL` (`CLASSIFY`, `FIT`, `CLUSTER`, `STANCE`, `REASON`, `EFFORT`, `IDEA_FIT`) | Modell je Stufe | nein | `deepseek/deepseek-v4-flash` |
+| `CITIES_CLASSIFY_MODEL`, `CITIES_FIT_MODEL`, `CITIES_CLUSTER_MODEL`, `CITIES_STANCE_MODEL`, `CITIES_REASON_MODEL`, `CITIES_EFFORT_MODEL`, `CITIES_IDEA_FIT_MODEL` | Modell je Stufe | nein | `deepseek/deepseek-v4-flash` |
 | `CITIES_LLM_TIMEOUT` | Zeitgrenze je Modellaufruf in Sekunden | nein | `120` |
+
+### Messläufe und Werkzeuge
+
+Nur für Eval-Läufe und Werkzeuge von Hand; kein Dienst liest sie.
+
+| Variable | Wofür | Default |
+|---|---|---|
+| `COUNCIL_GOLD_JUDGE_MODEL` | Richter-Modell der Gold-Läufe (`scripts/eval_deep_gold.py`) | `anthropic/claude-opus-5.5` |
+| `GOLD_OHNE_RICHTER` | `true` lässt den Gold-Lauf von „Frag den Rat“ ohne Richter laufen | nicht gesetzt |
+| `COUNCIL_QUALITY_JUDGE_MODEL` | Richter der Qualitäts-Suite (`eval/quality_qa.py`) | `google/gemini-3.5-flash` |
+| `RATSLOTSE_TRANSKRIPTE` | Ordner der Referenz-Transkripte für die Transkriptions-Eval | unter `data/` |
+| `VIERTEL_POC_MODEL` | Modell des Probe-Skripts `scripts/viertel_poc.py` | `openai/gpt-5.6-luna` |
+| `LOTTI_STUDIO` | Checkout des Grafik-Studios, nur zum Rendern der Mail-Bilder (`scripts/mail_helden/bauen.py`) | im Heimatordner |
 
 :::tip
 Wer nur lokal entwickelt, braucht davon fast nichts: `OPENROUTER_API_KEY` für
@@ -961,11 +1124,11 @@ RATSLOTSE_PROXY_URL=socks5h://nutzer:passwort@100.118.52.13:1080
 RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com
 ```
 
-Nur die genannten Hosts und ihre Subdomains nehmen den Umweg (`kern/proxy.py`);
-alles andere bleibt direkt. Ohne die Variablen ändert sich nichts. Es gibt
-**keinen** stillen Rückfall auf „direkt": Antwortet der Proxy nicht, scheitert
-der Abruf laut, wie vorher an der Sperre — und der Wochenlauf meldet den
-Schritt.
+Nur Anfragen an die genannten Hosts und deren Subdomains laufen über den
+Proxy (`kern/proxy.py`). Andere Anfragen laufen direkt. Ohne die Variablen
+verbindet sich Ratslotse mit allen Zielen direkt. Fällt der konfigurierte
+Proxy aus, scheitert der Abruf ohne direkten Fallback und der Wochenlauf
+meldet den Fehler.
 
 Wer den Umweg braucht: `scripts/fetch_bplan_outlines.py` (Bebauungsplan-
 Umringe, wöchentlich) und der Video-Abruf per yt-dlp in `council/videos.py`.

@@ -29,6 +29,19 @@ export function citationIds(bracket: string): number[] {
   return m ? [Number(m[1])] : [];
 }
 
+/** Dürfen die Belege einer Antwort schon zu sehen sein?
+ *
+ *  **Erst mit dem ersten Wort** (Tims Entscheidung 22.11.2026). Das
+ *  `sources`-Ereignis kommt vor dem Text, und bis 11/2026 stand die
+ *  Belege-Spalte am Schreibtisch, sobald es da war. Solange das Modell danach
+ *  noch eine halbe Minute nachdachte, sahen die Quellen wie eine Antwort ohne
+ *  Text aus. Ist der Turn vorbei, ohne dass Text kam (Stopp, Abriss), stehen
+ *  sie trotzdem da — dann sind sie alles, was es gibt. */
+export function belegeSichtbar(antwort: string, laeuft: boolean, gefunden: boolean): boolean {
+  if (antwort.length > 0) return true;
+  return !laeuft && gefunden;
+}
+
 /** Fußnoten-Nummern einer Antwort: Beschluss-id → 1, 2, 3 … in der
  *  Reihenfolge, in der der Text sie zitiert. Nur ids, die unter den Quellen
  *  stehen — eine erfundene Klammer bekommt keine Nummer. Eine Regel für das

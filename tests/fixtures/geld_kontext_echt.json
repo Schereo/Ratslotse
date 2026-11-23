@@ -3796,6 +3796,62 @@
    }
   ]
  ],
+ "handbook": [
+  {
+   "rules": [
+    {
+     "key": "supervisory_board",
+     "title": "Was ein Aufsichtsrat tut",
+     "text": "Der Aufsichtsrat berät und überwacht die Geschäftsführung — ob ihre Entscheidungen ordnungsgemäß, zweckmäßig und wirtschaftlich sind. Welche Geschäfte seine vorherige Zustimmung brauchen, legt der Gesellschaftsvertrag fest; die grundlegenden Entscheidungen bleiben der Gesellschafterversammlung. Seine Mitglieder sind dem Wohl des Unternehmens verpflichtet und haften persönlich: Empfehlungen aus Rat und Ausschüssen müssen sie selbst prüfen, und sie folgen ihnen nicht, wenn sie dem Unternehmenswohl widersprechen. Er tagt mindestens zweimal im Jahr und nicht öffentlich; die Ratsmitglieder darin müssen den Rat aber über Angelegenheiten von besonderer Bedeutung frühzeitig unterrichten (§ 138 Abs. 4 NKomVG). Ohne Aufsichtsrat übernimmt die Gesellschafterversammlung seine Aufgaben.",
+     "pages": "S. 15, 18–19, 23"
+    }
+   ],
+   "beleg": {
+    "label": "Handbuch Beteiligungen der Stadt Oldenburg",
+    "citation": "Ratsbeschluss 23/0599/1 vom 27.11.2023",
+    "as_of": "Januar 2025",
+    "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/Handbuch_Beteiligungen_DIN_A5_b.pdf"
+   }
+  },
+  {
+   "rules": [
+    {
+     "key": "appointment",
+     "title": "Wer die Stadt in den Gremien vertritt",
+     "text": "Die städtischen Mitglieder von Gesellschafterversammlung und Aufsichtsrat bestellt der Rat. Im Aufsichtsrat endet ihr Mandat mit Ablauf der Ratsperiode, in der Gesellschafterversammlung mit dem Ausscheiden aus dem Rat oder der Abberufung; die Nachfolge ist jeweils unverzüglich zu regeln. Sind mehrere Vertreter in einen Aufsichtsrat zu wählen, ist die Oberbürgermeisterin oder der Oberbürgermeister zu berücksichtigen, außer bei Verzicht; auf deren Vorschlag kann stattdessen eine andere Beschäftigte oder ein anderer Beschäftigter der Stadt benannt werden. In der Regel sollen nicht mehr als fünf Mandate gleichzeitig wahrgenommen werden.",
+     "pages": "S. 16–17, 22"
+    },
+    {
+     "key": "supervisory_board",
+     "title": "Was ein Aufsichtsrat tut",
+     "text": "Der Aufsichtsrat berät und überwacht die Geschäftsführung — ob ihre Entscheidungen ordnungsgemäß, zweckmäßig und wirtschaftlich sind. Welche Geschäfte seine vorherige Zustimmung brauchen, legt der Gesellschaftsvertrag fest; die grundlegenden Entscheidungen bleiben der Gesellschafterversammlung. Seine Mitglieder sind dem Wohl des Unternehmens verpflichtet und haften persönlich: Empfehlungen aus Rat und Ausschüssen müssen sie selbst prüfen, und sie folgen ihnen nicht, wenn sie dem Unternehmenswohl widersprechen. Er tagt mindestens zweimal im Jahr und nicht öffentlich; die Ratsmitglieder darin müssen den Rat aber über Angelegenheiten von besonderer Bedeutung frühzeitig unterrichten (§ 138 Abs. 4 NKomVG). Ohne Aufsichtsrat übernimmt die Gesellschafterversammlung seine Aufgaben.",
+     "pages": "S. 15, 18–19, 23"
+    }
+   ],
+   "beleg": {
+    "label": "Handbuch Beteiligungen der Stadt Oldenburg",
+    "citation": "Ratsbeschluss 23/0599/1 vom 27.11.2023",
+    "as_of": "Januar 2025",
+    "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/Handbuch_Beteiligungen_DIN_A5_b.pdf"
+   }
+  },
+  {
+   "rules": [
+    {
+     "key": "reporting",
+     "title": "Welche Berichte wann fällig sind",
+     "text": "Den Wirtschaftsplan — eine Planung über fünf Jahre für Erfolg, Vermögen, Investitionen und Liquidität samt Risikoeinschätzung — beschließt das Unternehmen spätestens einen Monat vor Ende des Geschäftsjahres. Zum 30. Juni, 30. September und 31. Dezember berichtet die Geschäftsführung mit einem Soll-Ist-Vergleich (bisheriges Ist, Hochrechnung fürs Jahr, Plan, Abweichung), in der Regel spätestens drei Wochen danach an die Gremien und das Beteiligungsmanagement. Den Jahresabschluss stellt sie binnen drei Monaten auf, damit die Gesellschafterversammlung ihn binnen sechs Monaten feststellen kann. Die Zuarbeit für Beteiligungsbericht (§ 151 NKomVG) und Gesamtabschluss soll so rechtzeitig kommen, dass beide binnen sechs Monaten nach Ende des Haushaltsjahres entstehen können; der Beteiligungsbericht steht mindestens fünf Jahre auf oldenburg.de.",
+     "pages": "S. 31–32, 34–35"
+    }
+   ],
+   "beleg": {
+    "label": "Handbuch Beteiligungen der Stadt Oldenburg",
+    "citation": "Ratsbeschluss 23/0599/1 vom 27.11.2023",
+    "as_of": "Januar 2025",
+    "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/Handbuch_Beteiligungen_DIN_A5_b.pdf"
+   }
+  }
+ ],
  "haushalt": [
   [
    {

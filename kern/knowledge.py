@@ -192,6 +192,38 @@ PAGES: dict[str, PageKnowledge] = dict([
        ),
     ),
 
+    # ── Werkzeuge (Recht council_tools) ─────────────────────────────────
+    _p("/werkzeuge", "Werkzeuge",
+       "Werkzeuge für die Arbeit im Rat. Als erstes steht hier der "
+       "Mehrheitsrechner.",
+       "Die Werkzeuge rechnen mit Daten aus dem Ratsinformationssystem der Stadt.",
+       "Der Bereich ist für Konten mit der Rolle Ratsmitglied gedacht.",
+       requires="council_tools",
+       starters=(
+           "Was kann der Mehrheitsrechner?",
+           "Für wen sind die Werkzeuge gedacht?",
+       ),
+    ),
+    _p("/werkzeuge/mehrheiten", "Mehrheitsrechner",
+       "Die Sitze im Rat, im Verwaltungsausschuss und in jedem Fachausschuss als "
+       "Halbkreis. Jede Fraktion und Gruppe lässt sich auf „dabei“ oder „ohne“ "
+       "setzen; daneben stehen alle Kombinationen, aus denen niemand wegfallen "
+       "kann, ohne die Mehrheit zu verlieren, Vorschläge, wer einer Auswahl "
+       "noch zur Mehrheit verhelfen kann, und eine Übersicht, in welchen "
+       "Gremien die Auswahl eine Mehrheit hat. Mehrheit heißt hier mehr als die "
+       "Hälfte aller Stimmberechtigten.",
+       "Wer für welche Fraktion sitzt, stammt von den Mitgliederseiten des "
+       "Ratsinformationssystems (einmal in der Woche abgerufen); wie viele "
+       "Stimmen ein Gremium hat, aus den Ratsbeschlüssen vom 2. November 2026.",
+       "Der Rechner zählt Stimmen; wie Fraktionen tatsächlich abstimmen, sagt er "
+       "nicht. Fehlt jemand in einer Sitzung, reichen dort auch weniger Stimmen.",
+       requires="council_tools",
+       starters=(
+           "Was zählt hier als Mehrheit?",
+           "Woher kommt die Besetzung der Ausschüsse?",
+       ),
+    ),
+
     # ── Ratsinhalte ─────────────────────────────────────────────────────
     _p("/council", "Ratsinfo",
        "Der Einstieg in die Ratsunterlagen mit vier Registern: Suche, Sitzungen, "

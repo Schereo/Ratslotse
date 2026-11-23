@@ -1,3 +1,6 @@
+# Der Prod-Deploy: Nur ein gemergter Pull Request nach `main` löst ihn aus.
+# Erst läuft die Testsuite, dann baut der Lauf die Doku, überträgt den Code,
+# startet die Dienste neu und prüft sie mit der Rauchprobe.
 name: Deploy to VPS
 
 on:
@@ -311,6 +314,12 @@ jobs:
             # verdrehten Build geliefert (15.09.2026 hier, 08.11.2026 auf dev)
             # und spart Sekunden, auf die seit dem Bau daneben niemand wartet.
             rm -rf .next-build
+            # OHNE DIE TYPEN DES LAUFENDEN BUILDS: Die tsconfig schließt
+            # `.next/types` ein, der Build nach `.next-build` prüfte sie also
+            # mit und scheiterte an Dateien, die nicht seine sind, sobald sie
+            # nicht zum neuen Stand passen (22.11.2026 auf dev, s.
+            # deploy-dev.yml). `next start` braucht das Verzeichnis nicht.
+            rm -rf .next/types .next/dev/types
             # CARTO_API_KEY: Key für die Kartenkacheln, zur Build-Zeit ins
             # Client-Bundle einkompiliert (NEXT_PUBLIC_, s. lib/basemap.ts).
             # Fehlt das Secret, baut der Build trotzdem durch — die Karten

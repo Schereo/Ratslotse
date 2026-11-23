@@ -1,6 +1,6 @@
 ---
 title: Eval-Harness
-description: Evaluierungs-Framework für die KI-Qualität (Suiten, Baselines).
+description: Testsuiten, Baselines und Referenzdaten für die Evaluation der KI-Funktionen.
 ---
 
 Misst die **Qualität der KI-Extraktion** (Topic-Matching & Filter) gegen
@@ -16,6 +16,11 @@ sollen messbar besser/schlechter werden, statt „gefühlt".
 | `qa` | KI-Frage: findet sie die richtigen Beschlüsse? | `council/qa.py` | Label-Sets | `cases_qa.json` |
 
 Jede Suite hat ein `run_<suite>.py`; `eval/run_all.py` fährt alle nacheinander.
+
+Die Tabelle zeigt die drei Suiten des Harness. Daneben gibt es Messläufe für fast
+jeden weiteren Modell-Schritt (Dossiers, Änderungsanträge, Live-Verfolgung,
+Städtevergleich, Lottis Erklärungen …). Die vollständige Liste entsteht aus den
+Docstrings der Dateien: [Referenz: Eval-Läufe](/docs/referenz/eval-laeufe/).
 
 **Binär**: eine Ja/Nein-Entscheidung pro Fall → TP/FP/TN/FN + Precision/Recall/F1.
 **Label-Sets**: pro Fall wird eine *Menge* von Treffern vorhergesagt (z. B. die
@@ -43,8 +48,9 @@ besten/aktuellen Lauf einchecken, damit `--compare` Regressionen zeigt.
 
 ## Neue Fälle hinzufügen
 
-Am wertvollsten sind Fälle aus **echten** Fehltreffern (False Positives) und
-Verpassern (False Negatives) aus dem Produktivbetrieb.
+Verwende nach Möglichkeit Fälle aus dem Produktivbetrieb, in denen die
+Suche falsche Treffer geliefert (False Positives) oder relevante Treffer
+übersehen hat (False Negatives).
 
 - **watcher** (`cases_watcher.json`): `{id, note, session:{ksinr,committee,session_date,session_time,location,agenda_items:[{item_number,title,vorlage_nr,is_public}]}, topics:[{id,name,description}], expected_matches:[[topic_id, item_number], …]}`
   (nicht-öffentliche TOPs werden nie klassifiziert → dürfen nicht in `expected_matches` stehen)
@@ -54,8 +60,8 @@ Nur das Erzeugen einer echten Baseline braucht den `OPENROUTER_API_KEY`.
 
 ## Golden-Sets außerhalb des Harness
 
-Zwei Prüfungen liegen bewusst neben dem Harness, weil sie nicht Treffer-Mengen
-messen, sondern die Qualität einer **Bewertung**:
+Tests außerhalb des Harness prüfen die Qualität einzelner
+**Bewertungen** anhand von Golden-Sets.
 
 | Skript | Prüft | Reißleine |
 |--------|-------|-----------|
@@ -76,16 +82,16 @@ sie selbst. `cities_fit` beantwortet dagegen zwei Fragen über **Oldenburg** —
 aus dem eigenen Bestand mit: die nächsten Oldenburger Vorlagen, Treffer der
 Volltextsuche und den Themenfeld-Rückblick.
 
-Das macht ein drittes Maß nötig, und es ist das wichtigste: die
-**Beleg-Disziplin**. Jede Kennung, die das Modell nennt, muss ihm vorgelegen
-haben, und eine Behauptung über Oldenburg braucht mindestens eine. Ein Urteil,
-das sich auf einen erfundenen Beleg beruft, ist nicht ungenau, sondern falsch —
-deshalb als einziges Maß mit Schwelle 100 %. Im Betrieb verwirft
-`council/cities/fit.py` solche Antworten und zählt sie.
+Die Evaluation prüft zusätzlich die **Gültigkeit der Belege**. Jede vom
+Modell genannte Kennung muss im Kontext enthalten sein. Aussagen über
+Oldenburg erfordern mindestens eine solche Kennung. Ein erfundener Beleg
+macht die Aussage falsch. Deshalb gilt hier als einzigem Maß ein
+Schwellenwert von 100 %. Im Betrieb verwirft und zählt
+`council/cities/fit.py` solche Antworten.
 
-Beide Prüfstände tragen ihre Fälle **samt Belegen** bei sich und brauchen keine
-Datenbank. Das ist keine Bequemlichkeit: Oldenburgs Bestand wächst, und ein
-Maßstab, der sich unter der Hand ändert, misst nichts.
+Beide Evaluationen enthalten ihre Fälle samt Belegen und benötigen keine
+Datenbank. Der feste Datensatz macht die Ergebnisse auch bei wachsendem
+Oldenburger Bestand vergleichbar.
 
 ### Die dritte harte Zusage: kein erfundenes „Warum"
 
@@ -101,10 +107,10 @@ ist „nein"; die meisten Beschlüsse fallen ohne Aussprache. Dann zeigt die
 Karte an dieser Stelle nichts. Der Prüfstand zählt `grounded=true` ohne
 Begründung im Text wie eine erfundene Beleg-Kennung: Schwelle null.
 
-**Eine Falle, in die ich selbst getappt bin:** Die ersten durchgerechneten
-Beispiele im `fit`-Prompt waren Fälle aus dem Prüfstand. Die Trefferquote stieg
-prompt — und maß ab da sich selbst. Die Beispiele sind jetzt erfunden, aber
-typisch; keiner davon steht in `cases_cities_fit.json`.
+Die ersten Beispiele im `fit`-Prompt stammten aus dem Evaluationsdatensatz.
+Dadurch stieg die Trefferquote, ohne dass die Messung eine bessere
+Generalisierung belegte. Der Prompt verwendet jetzt synthetische typische
+Beispiele. Keines davon steht in `cases_cities_fit.json`.
 
 `eval_impact.py` ist der erste Schritt des Ops-Workflows für die Tragweite: Nur
 wenn das Gate hält, startet der Voll-Backfill. Siehe

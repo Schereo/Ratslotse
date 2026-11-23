@@ -11,11 +11,15 @@ const dok = (year: number, url: string, title = `Dokument ${year}`) =>
 
 describe("zielart — der Linktext muss die Wahrheit sagen", () => {
   it.each([
+    ["https://ratsinfo.oldenburg.de/bi/getfile.asp?id=1", "dokument"],
+    // Frühere Adressen (bis 11/2026) bleiben erkannt — sie stehen in alten Texten.
     ["https://buergerinfo.oldenburg.de/getfile.php?id=1", "dokument"],
     ["https://example.org/plan.pdf", "dokument"],
     ["https://example.org/daten.CSV", "datensatz"],
+    ["https://ratsinfo.oldenburg.de/bi/vo0050.asp?__kvonr=1", "vorlage"],
     ["https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=1", "vorlage"],
-    ["https://buergerinfo.oldenburg.de/to0040.php?x=1", "vorlage"],
+    ["https://ratsinfo.oldenburg.de/bi/to0040.asp?x=1", "vorlage"],
+    ["https://ratsinfo.oldenburg.de/bi/vo0040.asp", "ris"],
     ["https://buergerinfo.oldenburg.de/suche", "ris"],
     ["https://oldenburg.de/statistik", "webseite"],
   ])("%s → %s", (url, art) => {
@@ -24,16 +28,16 @@ describe("zielart — der Linktext muss die Wahrheit sagen", () => {
 
   it("hält eine Vorlagen-Seite NICHT für ein Dokument", () => {
     // Sie listet ihre Anlagen; „Dokument öffnen" wäre eine falsche Zusage.
-    expect(zielText("https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=1"))
+    expect(zielText("https://ratsinfo.oldenburg.de/bi/vo0050.asp?__kvonr=1"))
       .toContain("Vorlage");
   });
 
-  it("erkennt getfile.php auch ohne Endung als Datei", () => {
-    expect(zielart("https://buergerinfo.oldenburg.de/getfile.php?id=9")).toBe("dokument");
+  it("erkennt getfile auch ohne Dateiendung als Datei", () => {
+    expect(zielart("https://ratsinfo.oldenburg.de/bi/getfile.asp?id=9")).toBe("dokument");
   });
 
   it("gibt für jede Art einen Text", () => {
-    for (const url of ["x.pdf", "x.csv", "vo0050.php", "buergerinfo.oldenburg.de/x", "x.de"]) {
+    for (const url of ["x.pdf", "x.csv", "vo0050.asp", "ratsinfo.oldenburg.de/bi/x", "x.de"]) {
       expect(zielText(url).length).toBeGreaterThan(5);
     }
   });

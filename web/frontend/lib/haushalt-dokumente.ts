@@ -6,7 +6,7 @@
 // für acht Jahresabschlüsse gleichermaßen.
 //
 // Genau daran scheiterte aber der Link darunter: „Dokument öffnen" führte auf
-// `https://buergerinfo.oldenburg.de`, die Startseite des
+// die Startseite des
 // Ratsinformationssystems. Wer dort landet, sucht das Dokument selbst — ein
 // Beleg, der sein Versprechen nicht einlöst, auf einer Seite, die auf
 // Nachprüfbarkeit gebaut ist.
@@ -23,6 +23,7 @@ import type { Jahrgaenge, QuellenSchluessel } from "@/lib/haushalt-quellen";
 // und kommt an zwei Endpunkten heraus (hier und bei `get_herkunft`). Deshalb
 // steht er neutral in `lib/herkunft.ts` — siehe die Begründung dort.
 import type { Ratsvorgang } from "@/lib/herkunft";
+import { istRis } from "@/lib/ris";
 
 export type { Ratsvorgang };
 
@@ -270,14 +271,15 @@ export type Zielart = "dokument" | "datensatz" | "vorlage" | "ris" | "webseite";
 export function zielart(url: string): Zielart {
   const u = url.toLowerCase();
   // Die Anlagen-URL des Ratsinformationssystems ist immer eine Datei.
-  if (u.includes("/getfile.php")) return "dokument";
+  // Alt wie neu: `getfile.php` bis 11/2026, seitdem `getfile.asp` (lib/ris.ts).
+  if (/\/getfile\.(php|asp)/.test(u)) return "dokument";
   if (u.includes(".csv")) return "datensatz";
   if (u.includes(".pdf")) return "dokument";
   // Die Seite einer Ratsvorlage listet ihre Anlagen — ein Dokument ist sie nicht.
-  if (u.includes("vo0050.php") || u.includes("to0040.php") || u.includes("si0057.php")) {
+  if (/(vo0050|to0040|si0057)\.(php|asp)/.test(u)) {
     return "vorlage";
   }
-  if (u.includes("buergerinfo.oldenburg.de")) return "ris";
+  if (istRis(u)) return "ris";
   return "webseite";
 }
 

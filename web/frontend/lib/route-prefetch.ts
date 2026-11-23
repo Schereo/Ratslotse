@@ -9,11 +9,13 @@ const prefetched = new Set<string>();
 /**
  * Eine Vorladung je Ziel-ROUTE statt je Karte.
  *
- * Next 14 lädt jeden sichtbaren `<Link>` einzeln vor, und der Schlüssel
+ * Next lädt jeden sichtbaren `<Link>` einzeln vor, und der Schlüssel
  * enthält die Suchparameter: 27 Themen-Kacheln auf `/council/thema?slug=…`
- * waren 27 dynamisch gerenderte RSC-Pakete (gemessen 11/2026), obwohl Route
- * und JavaScript dieselben sind — die Zielseiten laden ihre Daten ohnehin
- * selbst über `/api`. Listen-Karten tragen deshalb `prefetch={false}`, und die
+ * waren 27 dynamisch gerenderte RSC-Pakete (gemessen 11/2026 unter Next 14;
+ * Next 16 teilt die Vorladung in Segmente auf, neu gemessen ist das nicht),
+ * obwohl Route und JavaScript dieselben sind — die Zielseiten laden ihre
+ * Daten ohnehin selbst über `/api`. Listen-Karten tragen deshalb
+ * `prefetch={false}`, und die
  * Liste ruft hier EINMAL mit ihrem ersten Ziel an: Das holt den Code der Route
  * in den Browser, der erste Klick wartet dann nur noch auf das kleine
  * RSC-Paket.

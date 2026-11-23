@@ -307,14 +307,20 @@ export function AnalysisTab() {
   }, [alterFinanzLink, router]);
 
   return (
-    <div className="mt-4 space-y-4">
-      <AnalyseReiter aktiv={sub} />
-      {/* Die Auswertungen sind das, was Neue nach dem Wahlabend als Erstes
-          anklicken (BartVZ, Neele — Auswertung 17.09.2026), und dort endete
-          es. Zwei Fragen je Reiter, die die Zahlen darunter zur Sprache bringen. */}
-      <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
-      {sub === "parties" ? <PartiesView /> : sub === "personen" ? <PersonenView />
-        : sub === "trends" ? <TrendsView /> : plaene ? <PlansView /> : <GoalsView />}
+    <div className="mt-4">
+      {/* Die Leiste steht AUSSERHALB des Stapels und bringt ihren Abstand
+          selbst mit: Am Schreibtisch gibt es sie nicht (dort führt das
+          Untermenü der Seitenleiste), und als ausgeblendeter erster Platz im
+          Stapel ließe sie 16 px Lücke über den Fragen stehen. */}
+      <AnalyseReiter aktiv={sub} className="mb-4" />
+      <div className="space-y-4">
+        {/* Die Auswertungen sind das, was Neue nach dem Wahlabend als Erstes
+            anklicken (BartVZ, Neele — Auswertung 17.09.2026), und dort endete
+            es. Zwei Fragen je Reiter, die die Zahlen darunter zur Sprache bringen. */}
+        <FrageChips fragen={ANALYSE_FRAGEN[sub]} />
+        {sub === "parties" ? <PartiesView /> : sub === "personen" ? <PersonenView />
+          : sub === "trends" ? <TrendsView /> : plaene ? <PlansView /> : <GoalsView />}
+      </div>
     </div>
   );
 }

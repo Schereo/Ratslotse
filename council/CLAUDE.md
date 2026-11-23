@@ -17,6 +17,26 @@ Ohne Konten, ohne Personendaten, ohne Embeddings und Anlagen-Rohtexte — aber
 mit allem, was die Auswertungen lesen. Näheres in der
 Wurzel-[`CLAUDE.md`](../CLAUDE.md).
 
+## Das Ratsinfo: eine Adresse, geprüfte Abrufe
+
+Host, Pfad und Seitenendung stehen in [`ris.py`](ris.py) und nirgends sonst.
+Adressen bauen `ris.page_url` / `session_url` / `template_url` / `file_url`;
+geholt wird über `ris.get(session, "si0057", __ksinr=…)` bzw.
+`ris.fetch(session, url)` für gespeicherte Adressen. Beide prüfen die Antwort
+(`ris.check`): Ein 301/308, ein fremder Host oder eine Seite ohne
+SessionNet-Kennung ist ein `RisError`, kein leeres Ergebnis. Ein nacktes
+`requests.get` gegen das Ratsinfo umgeht genau diese Prüfung — daran lag es,
+dass der Umzug im 11/2026 tagelang niemandem auffiel.
+
+`RisError` ist bewusst **keine** `requests.RequestException`: Die wird an
+mehreren Stellen als „gerade nicht erreichbar" geschluckt. Wer eine neue
+Schleife baut, fängt ihn nicht mit weg.
+
+Die Dokumentnummer aus `ris.GETFILE_ID` ist die Identität eines Anhangs
+(Tagesordnungs-Hash, Anlagen-Diff). Das Muster trifft alte wie neue
+Datei-Adressen; wer es enger fasst, löst für jedes Abo eine Änderungsmeldung
+aus.
+
 ## Schema und Migration sind ZWEI Stellen
 
 Eine frische Datenbank entsteht aus dem `SCHEMA`-Literal, eine gewachsene
@@ -54,6 +74,7 @@ ist die DB immer frisch.
 | `QUELLEN` / `REIHENFOLGE` / `STELLEN` (`finanzquellen.py`) | eine Finanz-Datenart ergänzt | Erkennung und Anzeige kennen sie nicht |
 | `QUERY_TYPES`, `RESEARCH_CHANNELS`, `EXTRA_REGELN` (`qa.py`) | einen Fragetyp oder Kanal ergänzt | das Modell darf ihn nicht wählen |
 | `POLICY_FIELDS` (`topics.py`) | ein Themenfeld ergänzt | die Klassifikation kennt es nicht |
+| `COMPOSITION` (`committee_rules.py`) | der Rat Größe oder Zusammensetzung eines Ausschusses ändert | der Mehrheitsrechner rechnet mit einer falschen Schwelle — das Ratsinfo führt nicht alle Stimmberechtigten |
 
 ## Belege: keine Zahl ohne Herkunft
 

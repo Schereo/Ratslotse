@@ -6,7 +6,7 @@ und geprüft (Zählabgleich gegen die Zahl der Stadt, Stichprobe gegen die
 Quelle, Befunde im PR); dieses Skript macht sie **nachvollziehbar**, nicht
 täglich neu. Ohne Modell — jede Liste steht in den Dokumenten als Text.
 
-Quellen (öffentliches Ratsinformationssystem, ``getfile.php``), höflich
+Quellen (öffentliches Ratsinformationssystem, ``getfile``), höflich
 geholt — eigener User-Agent, mindestens 1 s Abstand — und unter
 ``~/.cache/ratslotse/plan-quellen/`` aufgehoben:
 
@@ -37,10 +37,9 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
-from council import plans  # noqa: E402
+from council import plans, ris  # noqa: E402
 
 CACHE = Path.home() / ".cache" / "ratslotse" / "plan-quellen"
-RIS_DATEI = "https://buergerinfo.oldenburg.de/getfile.php?id={id}&type=do"
 USER_AGENT = "Ratslotse/1.0 (+https://ratslotse.de; Pläne der Stadt)"
 _letzter_abruf = 0.0
 
@@ -55,7 +54,7 @@ def holen(document_id: int) -> Path:
     warten = 1.5 - (time.monotonic() - _letzter_abruf)
     if warten > 0:
         time.sleep(warten)
-    req = urllib.request.Request(RIS_DATEI.format(id=document_id), headers={"User-Agent": USER_AGENT})
+    req = urllib.request.Request(ris.file_url(document_id), headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(req, timeout=60) as r:
         daten = r.read()
     _letzter_abruf = time.monotonic()
@@ -560,7 +559,7 @@ def bauen(key: str) -> dict:
         raise RuntimeError(f"{key}: doppelte Kennungen")
     if zahl is not None and len(massnahmen) != zahl:
         raise RuntimeError(f"{key}: {len(massnahmen)} Maßnahmen gelesen, die Stadt zählt {zahl}")
-    return {"plan": key, "source": {**quelle, "url": RIS_DATEI.format(id=quelle["document_id"])},
+    return {"plan": key, "source": {**quelle, "url": ris.file_url(quelle["document_id"])},
             "count_city": zahl, "count_note": hinweis, "measures": massnahmen}
 
 

@@ -24,7 +24,7 @@ WURZEL = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WURZEL))
 sys.path.insert(0, str(WURZEL / "scripts"))
 
-RIS = "https://buergerinfo.oldenburg.de/getfile.php?id={id}&type=do"
+from council import ris  # noqa: E402
 
 
 def _norm(text: str) -> str:
@@ -98,7 +98,7 @@ GROUPS: dict[str, dict[str, tuple[str, int]]] = {
 
 
 def groups(key: str, document_id: int) -> dict[str, dict]:
-    url = RIS.format(id=document_id)
+    url = ris.file_url(document_id)
     return {name: {"description": text, "page": page, "source_url": f"{url}#page={page}"}
             for name, (text, page) in GROUPS.get(key, {}).items()}
 

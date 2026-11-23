@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { BackLink } from "@/components/back-link";
-import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
+import { ANSCHRIFT, KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
+import { RIS_BASE, RIS_HOST } from "@/lib/ris";
 import { KopfKontoLink } from "@/components/kopf-konto-link";
 
 export const metadata: Metadata = {
@@ -46,12 +47,12 @@ export default function ImpressumPage() {
           Angebot. Ratslotse bereitet ausschließlich die öffentlich zugänglichen Dokumente des
           Ratsinformationssystems auf — verbindlich sind allein die amtlichen Originale unter{" "}
           <a
-            href="https://buergerinfo.oldenburg.de"
+            href={RIS_BASE}
             target="_blank"
             rel="noopener noreferrer"
             className="textlink"
           >
-            buergerinfo.oldenburg.de
+            {RIS_HOST}
           </a>
           .
         </p>
@@ -59,10 +60,10 @@ export default function ImpressumPage() {
         <div className="mt-6 space-y-6">
           <Section title="Angaben gemäß § 5 DDG">
             <p>
-              Tim Sigl<br />
-              Krusenweg 26<br />
-              26135 Oldenburg<br />
-              Deutschland
+              {ANSCHRIFT.name}<br />
+              {ANSCHRIFT.street}<br />
+              {ANSCHRIFT.city}<br />
+              {ANSCHRIFT.country}
             </p>
           </Section>
 
@@ -74,7 +75,7 @@ export default function ImpressumPage() {
           </Section>
 
           <Section title="Inhaltlich verantwortlich gemäß § 18 Abs. 2 MStV">
-            <p>Tim Sigl (Anschrift wie oben).</p>
+            <p>{ANSCHRIFT.name} (Anschrift wie oben).</p>
           </Section>
 
           <Section title="Haftung für Inhalte">

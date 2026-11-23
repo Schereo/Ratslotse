@@ -13,7 +13,7 @@ Quellenverweisen und Benachrichtigungen per E-Mail oder App-Push.
 
 | Pfad | Inhalt |
 |------|--------|
-| `council/` | Stadtrat-Scraper (SessionNet/Bürgerinfo), Protokoll-Parsing, LLM-Klassifikation, Watcher |
+| `council/` | Stadtrat-Scraper (SessionNet, Adresse in `council/ris.py`), Protokoll-Parsing, LLM-Klassifikation, Watcher |
 | `kern/` | Geteilte Infrastruktur: LLM-Client (`llm.py`), SQLite-Store (`store.py`), E-Mail, Push, Prompts |
 | `scripts/` | Cron-Jobs & Ops-Tools (`check_*.py`, `weekly_enrich.py`, `backup_db.py`, …) |
 | `web/backend/` | FastAPI-Backend (uvicorn) |
@@ -66,7 +66,7 @@ cd web/frontend && npm ci
 # Beispiel für Backend-Port 8600; den Port aus scripts/dev.py start verwenden:
 BACKEND_URL=http://127.0.0.1:8600 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8600 npm run dev
 
-# Technik-Doku (separates Terminal im Repo-Root, Node ≥ 22)
+# Technik-Doku (separates Terminal im Repo-Root, Node ≥ 22.23.4)
 npm --prefix docs-site ci && npm --prefix docs-site run dev
 
 # Tests (Repo-Root)
@@ -100,12 +100,18 @@ was dir fehlt. Am 02.09.2026 stand `council_liquidity` deshalb lokal auf 0
 Zeilen, während der Abzug 137 hatte — der naheliegende Schluss („der Ingest
 ist ausgefallen") wäre falsch gewesen.
 
-**Auf dev laufen keine Cron-Jobs**, und was nur ein Cron füllt, fehlt im
-Abzug ganz. Gemessen gegen beide Server: Die Bauleitplan-Beteiligungen gibt es
-auf dev als Tabelle nicht (auf Prod drei Zeilen), sonst ist dev fast
-vollständig. Wer so eine Tabelle braucht: `hol --von prod` — dieselbe
-Abspeckung greift dort, die nutzerbezogenen Tabellen kommen also auch von dort
-nicht mit.
+**Auf dev laufen keine Cron-Jobs — die Ratsdaten kommen nachts von Prod**
+(seit 11/2026, `ops-dev-mirror.yml`, Logik in `scripts/dev_mirror.py`). Vorher
+lief dev Prod davon: Am 23.11.2026 fehlten dort 18 % der Wortbeiträge, alle
+Pressemitteilungen seit dem 26.08. und zwei Jahrgänge eines Ausschusses, und
+der Gold-Lauf fand auf dev 142 statt 158 von 200 Belegen — jede Messung auf
+dev war verzerrt. Der Spiegel leert die nutzerbezogenen Tabellen schon auf
+Prod und lässt die Konten-Datenbank in Ruhe. **Wer auf dev etwas anreichert,
+das Prod nicht hat** (ein Nachlauf hinter einem Schalter), trägt die Tabelle in
+`DEV_ONLY_TABLES` ein; sonst ist sie am nächsten Morgen weg. Der Bericht des
+Laufs nennt jede Tabelle, die dev voller hatte und die verloren ging. Seitdem
+sind die Beschluss-ids auf dev und Prod dieselben. `ops-council-inventory.yml`
+stellt die Bestände beider Server nebeneinander.
 
 **Die Konten werden gebaut, nicht geholt.** Die echte Konten-Datenbank trägt
 Adressen, Tokens und gespeicherte Gespräche; sie gehört auf kein Notebook. Aus
@@ -137,11 +143,12 @@ python scripts/pruefe.py --schnell  # kurze Auswahl für die Prüfung vor dem Pu
 ```
 
 Nicht dabei sind die **Browsertests** — sie brauchen zwei laufende Server und
-einen Browser und dauern fünf Minuten. Sie laufen in der CI
-(`.github/workflows/e2e.yml`) und lokal auf Zuruf:
+einen Browser. Die ganze Suite fährt die CI (`.github/workflows/e2e.yml`, acht
+Läufer, rund fünf Minuten); lokal braucht sie seriell 15–20 Minuten. **Lokal
+deshalb nur die Dateien zur eigenen Änderung:**
 
 ```bash
-cd web/frontend && npx playwright test
+cd web/frontend && npx playwright test tests/e2e/12-navigation
 ```
 
 Läuft in einem anderen Worktree schon ein `next dev` auf 3000, bricht das mit
@@ -158,9 +165,21 @@ Ratsdatenbank dazugehört, steht in
 
 Er bündelt, was vorher über `CONTRIBUTING.md` und drei Workflow-Dateien
 verstreut stand: Adressen-Lint, ruff, die Python-Typprüfung, den API-Vertrag,
-die generierten Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
-TypeScript-Übersetzer und die beiden Grafik-Proben. `--liste` zeigt sie
-einzeln, `--nur ruff,vertrag` wählt aus.
+die generierten Frontend-Typen, die Changelog-Fragmente, die erzeugten
+Referenzseiten der Doku, die Testsuite, den TypeScript-Übersetzer und die
+beiden Grafik-Proben. `--liste` zeigt sie einzeln, `--nur ruff,vertrag` wählt
+aus.
+
+**Die Technik-Doku wird mitgeprüft** (seit 11/2026). Gemessen am 22.11.2026
+kannte sie 24 von 34 Feature-Schaltern und 83 von 153 Umgebungsvariablen
+nicht, nannte 14 Dateien, die umgezogen waren, und der Wochenlauf hatte 23
+Schritte, wo sie 14 beschrieb. Seitdem gilt: Die Listen, die im Code eine
+Quelle haben (Cron-Jobs, Schalter, Rollen, Eval-Läufe, Workflows), entstehen
+als Seiten daraus (`python scripts/docs_reference.py`), und
+`tests/test_docs_current.py` hält die geschriebenen Seiten gegen den Code.
+Jeder Feature-Schalter nennt im Feld `docs`, wo er erklärt wird. Was das für
+die tägliche Arbeit heißt, steht in [`REZEPTE.md`](REZEPTE.md) unter „Die
+Technik-Doku nachziehen".
 
 **Die Python-Typprüfung (pyright) deckt noch nicht alles ab.** Sie läuft über
 `kern/` und den Backend-Kern; `council/`, `scripts/` und die Router stehen
@@ -528,6 +547,7 @@ WEEKLY_STEP_MAX_SECONDS=10800        # Höchstdauer je Schritt; 0 hebt sie auf
 WEEKLY_ENRICH_MAX_SECONDS=           # Frist für den ganzen Lauf (leer = keine); ein wartender Deploy beendet ihn ohnehin
 # Kostenalarm im Herzschlag (check_herzschlag.py)
 LLM_TAGESKOSTEN_ALARM_USD=5          # Mail, wenn die Modellkosten des Vortags darüber liegen; 0 = aus
+RATSLOTSE_RIS_PROBE=                 # "0" schaltet die tägliche Ratsinfo-Probe im Herzschlag ab (s. council/ris.py::probe)
 # OpenRouter Provider-Routing (DSGVO) — schließt China-Anbieter aus, verlangt ZDR
 NWZ_OPENROUTER_ROUTING=on            # "off" = Notausschalter
 NWZ_OPENROUTER_IGNORE=deepseek,baidu,streamlake,siliconflow,alibaba
@@ -577,11 +597,14 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   **Recht**, nie gegen einen Rollennamen: im Backend über
   `Depends(require_permission("…"))`, im Web über `lib/rechte.ts`, in der App
   über `User.can(_:)`. Eine neue Rolle ist damit ein Eintrag in der Registry —
-  ohne Frontend-Release und ohne App-Update im Store. Heute gibt es vier
+  ohne Frontend-Release und ohne App-Update im Store. Heute gibt es sechs
   Rechte: `budget` (der Haushalts-Bereich), `mandate` (Benachrichtigungen ab
   Werk vollständig), `premium_models` (die ausführliche Recherche schreibt
   ihren Bericht mit dem größeren Modell aus `COUNCIL_DEEP_PLUS_MODEL`,
-  Vorgabe GPT-6 Sol) und `admin`. Dass die ersten beiden getrennt sind, ist der
+  Vorgabe GPT-6 Sol), `mcp` (Schlüssel für den MCP-Server), `council_tools`
+  (der Bereich *Werkzeuge* unter `/werkzeuge`, seit 11/2026 — trägt das
+  Ratsmitglied; die Besetzung für den Mehrheitsrechner holt
+  `council/committee_seats.py` im Wochenlauf) und `admin`. Dass die ersten beiden getrennt sind, ist der
   Grund, warum *Fachpublikum* (nur `budget`) und *Ratsmitglied* (beide) sich
   ohne eine einzige weitere Codezeile unterscheiden lassen. *Recherche Plus*
   (seit 09/2026) trägt nur `premium_models` und wird **zusätzlich** zu einer
@@ -804,5 +827,26 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   Er merkt, dass EIN Job schweigt, nicht dass alle schweigen. Dafür bräuchte es
   eine Prüfung von außerhalb der Maschine; die gehört nicht ins Repo, sondern
   auf einen zweiten Rechner.
+- **Die Adresse des Ratsinformationssystems steht an EINER Stelle** (seit
+  11/2026): [`council/ris.py`](council/ris.py), fürs Frontend
+  `web/frontend/lib/ris.ts`. Die Stadt zog damals von
+  `buergerinfo.oldenburg.de` nach `ratsinfo.oldenburg.de/bi` um (`.php` →
+  `.asp`); der alte Host leitete jede Adresse auf die Startseite um, die
+  Parser fanden dort nichts, und „nichts gefunden" war kein Fehler —
+  `Termine im Kalender: 0`, Lauf für Lauf, ohne Alarm. Seitdem gilt dreierlei:
+  Wer eine Ratsinfo-Adresse braucht, baut sie über `ris.page_url` /
+  `session_url` / `template_url` / `file_url` und holt sie über `ris.get` /
+  `ris.fetch` (`tests/test_ris_adresse.py` meldet jede zweite Stelle). Ein
+  dauerhafter Umzug (301/308), ein fremder Host, eine Seite ohne
+  SessionNet-Kennung oder ein über vier Monate leerer Kalender wirft
+  `ris.RisError` — der Cron stürzt ab, und `run_guarded` mailt beim ersten
+  Lauf. Und `check_herzschlag.py` fragt täglich von außen nach
+  (`ris.probe`): Antwortet das Ratsinfo wie erwartet, und sind die dort
+  verlinkten Sitzungen des Monats im Bestand? **Beim nächsten Umzug:** `HOST`
+  / `BASE` / `EXT` in `ris.py` und `lib/ris.ts` nachziehen, den alten Host in
+  `FORMER_HOSTS` aufnehmen und den Bestand mit einer neuen Marke in
+  `_ratsinfo_adressen_umziehen` umschreiben — und `ris.GETFILE_ID` muss alte
+  wie neue Datei-Adressen treffen, sonst sieht jede Anlage „neu" aus und jedes
+  Abo bekommt eine Änderungsmeldung.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).
