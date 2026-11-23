@@ -96,6 +96,10 @@ topic_describe_limiter = RateLimiter(max_calls=20, window_seconds=300)
 # Seite ist ein Modellaufruf. Wer schneller blättert als dreißig neue Seiten in
 # fünf Minuten, bekommt die festen Fragen statt eines Fehlers.
 page_questions_limiter = RateLimiter(max_calls=30, window_seconds=300)
+# Seitenbilder (council/page_images.py): das erste Bild einer Unterlage holt
+# das ganze PDF vom Ratsinfo. Wer in der Auswahl blättert, braucht ein paar
+# Dutzend; die Grenze hält jemanden ab, den Server als PDF-Renderer zu nutzen.
+page_image_limiter = RateLimiter(max_calls=150, window_seconds=300)
 # Themen anlegen und ändern rechnen den Beschluss-Abgleich sofort mit — das
 # sind rund 3 s Cross-Encoder auf der CPU je Aufruf, auf derselben Maschine,
 # die die Website ausliefert. Ohne Bremse wären das die einzigen teuren

@@ -25,6 +25,9 @@ async function schein(page: Page, ablage: Ablage) {
   await notizenSchein(page, ablage);
 }
 
+/** Ein 1×1-JPEG — genug, damit der Browser es als Bild zeigt. */
+const JPEG = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+
 const karte = (page: Page) => page.locator("section", { has: page.locator("#meine-notiz") });
 /** Die Notiz ist ein Reiter der Lesespalte — neben dem Chat, nicht unter ihm. */
 const zurNotiz = (page: Page) => page.getByRole("tab", { name: "Meine Notiz" }).click();
@@ -246,6 +249,14 @@ test.describe("Meine Notiz", () => {
         { type: "done", conversation_id: null },
       ].map((e) => `data: ${JSON.stringify(e)}\n\n`).join("") });
     });
+    // Die Seitenbilder: ein winziges JPEG je Seite, die Seitenzahl vom Server.
+    const seitenbilder: string[] = [];
+    await page.route("**/api/council/documents/314015/pages", (r) =>
+      r.fulfill({ json: { document_id: 314015, n_pages: 3 } }));
+    await page.route("**/api/council/documents/314015/page/**", (r) => {
+      seitenbilder.push(r.request().url().split("/documents/")[1]);
+      return r.fulfill({ contentType: "image/jpeg", body: Buffer.from(JPEG, "base64") });
+    });
     await page.goto(URL);
     await zurNotiz(page);
     const k = karte(page);
@@ -255,16 +266,28 @@ test.describe("Meine Notiz", () => {
     await feld.click();
     await feld.pressSequentially("Prüfen: ");
 
-    // Unterlage wählen (die einzige ist vorausgewählt), Seite angeben, einfügen.
+    // Unterlage wählen (die einzige ist vorausgewählt), Seite in der Vorschau
+    // blättern, einfügen.
     await k.getByRole("toolbar", { name: "Formatierung" }).getByRole("button", { name: "Unterlage verweisen" }).click();
     const auswahl = k.getByRole("group", { name: "Unterlage verweisen" });
     await expect(auswahl.getByRole("radio", { name: /VCD-Antrag/ })).toBeChecked();
-    await auswahl.getByLabel(/Seite/).fill("2");
+    await expect(auswahl.getByRole("img", { name: /^Seite 1 von „VCD-Antrag/ })).toBeVisible();
+    await expect(auswahl.getByText("Seite 1 von 3")).toBeVisible();
+    await auswahl.getByRole("button", { name: "Nächste Seite" }).click();
+    await expect(auswahl.getByLabel(/Seite \(leer/)).toHaveValue("2");
+    await expect(auswahl.getByRole("img", { name: /^Seite 2 von „VCD-Antrag/ })).toBeVisible();
+    expect(seitenbilder).toEqual(["314015/page/1?w=640", "314015/page/2?w=640"]);
     await auswahl.getByRole("button", { name: "Einfügen" }).click();
     const chip = feld.locator("[data-doc-ref]");
     await expect(chip).toContainText("VCD-Antrag");
     await expect(chip).toContainText("S. 2");
     await expect(chip.getByRole("link")).toHaveAttribute("href", /getfile\.asp\?id=314015&type=do#page=2$/);
+    // Beim Überfahren: die Seite als Bild — aus dem Zwischenspeicher, kein neuer Abruf.
+    await chip.getByRole("link").hover();
+    await expect(page.getByRole("tooltip").getByRole("img", { name: /^Seite 2 von „VCD-Antrag/ })).toBeVisible();
+    await page.mouse.move(0, 0);
+    await expect(page.getByRole("tooltip")).toHaveCount(0);
+    expect(seitenbilder).toHaveLength(2);
 
     // Im Chat fragen: Der Bezug steht über dem Feld, die Frage trägt Kennung und Seite.
     await chip.getByRole("button", { name: /^Im Chat fragen/ }).click();
@@ -285,6 +308,23 @@ test.describe("Meine Notiz", () => {
     await page.reload();
     await k.getByRole("button", { name: "Mit Passkey entsperren" }).click();
     await expect(notiz(k).locator("[data-doc-ref]")).toContainText("S. 2");
+  });
+
+  test("die Auswahl der Unterlagen schiebt das Telefon nicht seitwärts", async ({ page, context }) => {
+    await passkeyGeraet(page, context);
+    await page.setViewportSize({ width: 320, height: 760 });
+    const ablage: Ablage = { keys: null, notes: new Map() };
+    await schein(page, ablage);
+    await page.route("**/api/council/documents/**", (r) => r.fulfill({ status: 404, json: { detail: "—" } }));
+    await page.goto(URL);
+    await zurNotiz(page);
+    const k = karte(page);
+    await k.getByRole("button", { name: "Notizen einrichten" }).click();
+    await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
+    await k.getByRole("button", { name: "Unterlage verweisen" }).click();
+    await expect(k.getByText("Keine Vorschau für diese Seite.")).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
+      .toBeLessThanOrEqual(0);
   });
 
   test("ohne Schalter keine Karte", async ({ page }) => {

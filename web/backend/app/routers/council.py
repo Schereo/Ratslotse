@@ -18,7 +18,9 @@ from pydantic import (AliasChoices, BaseModel, Field, field_validator)
 
 from council.cities.model import display_title
 from council.cities.store import CitiesStore
-from council import ris
+from pathlib import Path
+
+from council import page_images, ris
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
@@ -71,7 +73,7 @@ from ..antworten import (AnalysisData, PageQuestions, SessionItemDetail, Elected
                          EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
                          PartyFilter, PartyOpinions, DebatesMore, PeopleDirectory, PersonDetail, PlaceCatalog,
-                         PlaceDetail, PLANZEICHNUNG_JPEG, PolicyFieldRecaps, PolicyFields,
+                         PlaceDetail, PLANZEICHNUNG_JPEG, SEITENBILD_JPEG, DocumentPages, PolicyFieldRecaps, PolicyFields,
                          PublicNumbers, QaExampleSession, QaExamples,
                          QaShare, QaShareToken, ResearchCurrent, ResearchSnapshot, ResearchStarted,
                          ResearchStopped, SessionDetail, SessionList, SharePreview, Speeches,
@@ -85,6 +87,7 @@ from .. import fehlersammler
 from ..deps import (get_cities_store, get_council_store, get_store,
                     optional_user, require_active, require_permission)
 from ..ratelimit import (
+    page_image_limiter,
     assistant_event_limiter,
     cities_feedback_limiter,
     assistant_limiter,
@@ -4212,6 +4215,64 @@ def plan_bild(document_id: int, thumb: bool = False) -> FileResponse:
     # Ein gerendertes Blatt ändert sich nie — aggressiv cachen.
     return FileResponse(pfad, media_type="image/jpeg",
                         headers={"Cache-Control": "public, max-age=2592000, immutable"})
+
+
+# ---- Seitenbilder: Vorschau an Notiz-Verweisen (council/page_images.py) ----
+# Nur mit Konto: Notizen gibt es nur mit Konto, und offen wäre der Server ein
+# freier PDF-Renderer. Die Adresse kommt immer aus der eigenen Datenbank.
+
+def _seitenbild_quelle(store: CouncilStore, document_id: int) -> tuple[dict, Path]:
+    from ..config import get_settings
+
+    quelle = store.document_source(document_id)
+    if not quelle:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Diese Unterlage kennen wir nicht.")
+    return quelle, Path(get_settings().council_db).parent / "page-images"
+
+
+def _keine_vorschau(exc: page_images.NoPreview) -> HTTPException:
+    code, text = {
+        "no_page": (status.HTTP_404_NOT_FOUND, "Diese Seite gibt es nicht."),
+        "not_ris": (status.HTTP_404_NOT_FOUND, "Für diese Unterlage gibt es keine Vorschau."),
+        "too_large": (status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Die Unterlage ist für eine Vorschau zu groß."),
+        "unavailable": (status.HTTP_503_SERVICE_UNAVAILABLE, "Vorschau gerade nicht verfügbar."),
+    }.get(exc.reason, (status.HTTP_502_BAD_GATEWAY, "Das Ratsinfo hat die Unterlage nicht geliefert."))
+    return HTTPException(code, text)
+
+
+@router.get("/documents/{document_id}/pages")
+def document_pages(document_id: int, request: Request, user: dict = Depends(require_active),
+                   store: CouncilStore = Depends(get_council_store)) -> DocumentPages:
+    """Wie viele Seiten eine Unterlage hat — aus dem Steckbrief, sonst aus dem PDF."""
+    quelle, cache = _seitenbild_quelle(store, document_id)
+    if quelle.get("n_pages"):
+        return {"document_id": quelle["document_id"], "n_pages": int(quelle["n_pages"])}
+    page_image_limiter.check(request, subject=user["id"])
+    try:
+        n = page_images.page_count(cache, quelle["document_id"], quelle["url"])
+    except page_images.NoPreview as exc:
+        raise _keine_vorschau(exc) from exc
+    return {"document_id": quelle["document_id"], "n_pages": n}
+
+
+@router.get("/documents/{document_id}/page/{page}", response_class=JpegResponse, responses=SEITENBILD_JPEG)
+def document_page_image(document_id: int, page: int, request: Request, w: int = 640,
+                        user: dict = Depends(require_active),
+                        store: CouncilStore = Depends(get_council_store)) -> FileResponse:
+    """Eine Seite einer Unterlage als Bild — gerendert einmal, dann aus der Ablage."""
+    if w not in page_images.WIDTHS:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"w muss {page_images.WIDTHS} sein.")
+    if page < 1:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Diese Seite gibt es nicht.")
+    quelle, cache = _seitenbild_quelle(store, document_id)
+    page_image_limiter.check(request, subject=user["id"])
+    try:
+        pfad = page_images.page_image(cache, quelle["document_id"], quelle["url"], page, w)
+    except page_images.NoPreview as exc:
+        raise _keine_vorschau(exc) from exc
+    # Eine getfile-Kennung nennt ein festes Dokument: Die Seite ändert sich nie.
+    return FileResponse(pfad, media_type="image/jpeg",
+                        headers={"Cache-Control": "private, max-age=2592000, immutable"})
 
 
 # ---- Vorgänge verfolgen (Design 28a/W1) ----

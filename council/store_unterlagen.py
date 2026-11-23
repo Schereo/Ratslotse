@@ -226,6 +226,22 @@ class UnterlagenMixin(StoreBasis):
         out["whole"] = True
         return out
 
+    def document_source(self, document_id: int) -> dict | None:
+        """Adresse und (falls bekannt) Seitenzahl einer Unterlage — für die
+        Seitenbilder (``council/page_images.py``). Nur, was in den eigenen
+        Tabellen steht: Die Vorschau holt nie eine Adresse vom Client."""
+        did = int(document_id)
+        r = self._conn.execute(
+            "SELECT document_url AS url FROM council_protocols WHERE document_id = ? UNION ALL "
+            "SELECT document_url FROM council_templates WHERE document_id = ? UNION ALL "
+            "SELECT url FROM council_attachments WHERE document_id = ? UNION ALL "
+            "SELECT url FROM council_agenda_attachments WHERE document_id = ? LIMIT 1",
+            (did, did, did, did)).fetchone()
+        if not r or not r["url"]:
+            return None
+        n = (self.document_profiles([did]).get(did) or {}).get("n_pages")
+        return {"document_id": did, "url": r["url"], "n_pages": n}
+
     def motion_material(self, document_id: int, ksinr: int, item_number: str) -> dict | None:
         """Was ``motions.extract`` braucht: Antrag, Vorlage des Punkts (mit
         Seiten), Regelwerke am Punkt (für §-Anker). ``None`` ohne Antragstext."""

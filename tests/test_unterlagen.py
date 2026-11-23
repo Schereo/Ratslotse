@@ -140,3 +140,14 @@ def test_vorlage_und_protokoll_sind_auch_unterlagen(tmp_path):
         assert (p["kind"], p["label"], p["text"]) == ("protocol", "Protokoll 12/2026", "Seite eins: Anlass")
     finally:
         store.close()
+
+
+def test_die_adresse_einer_unterlage_kommt_aus_der_eigenen_datenbank(tmp_path):
+    store = CouncilStore(tmp_path / "council.sqlite")
+    try:
+        store.save_anlagen(30078, [{"document_id": 312295, "label": "Anlage 1", "url": URL.format(312295)}])
+        store.save_document_profile(312295, "other", n_pages=4)
+        assert store.document_source(312295) == {"document_id": 312295, "url": URL.format(312295), "n_pages": 4}
+        assert store.document_source(999) is None
+    finally:
+        store.close()

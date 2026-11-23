@@ -6666,6 +6666,28 @@ CALENDAR_ICS: dict[int | str, dict[str, Any]] = {
 }
 
 
+SEITENBILD_JPEG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Eine Seite einer Unterlage als JPEG, für die Vorschau an einem "
+            "Notiz-Verweis. `w` ist 320 oder 640. Eine getfile-Kennung nennt "
+            "ein festes Dokument, die Antwort ist deshalb lange cachebar."
+        ),
+        "content": {"image/jpeg": {"schema": {"type": "string", "format": "binary"}}},
+    },
+    404: {"description": "Unbekannte Unterlage oder Seite, die es nicht gibt."},
+    413: {"description": "Die Unterlage ist für eine Vorschau zu groß."},
+    502: {"description": "Das Ratsinfo hat das PDF nicht geliefert."},
+    503: {"description": "Auf diesem Server gibt es keine Vorschau (PyMuPDF fehlt)."},
+}
+
+
+class DocumentPages(TypedDict):
+    """Wie viele Seiten eine Unterlage hat — für das Blättern in der Vorschau."""
+    document_id: int
+    n_pages: int
+
+
 PLANZEICHNUNG_JPEG: dict[int | str, dict[str, Any]] = {
     200: {
         "description": (

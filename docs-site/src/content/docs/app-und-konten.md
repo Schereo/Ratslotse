@@ -665,6 +665,18 @@ selbst (`document_page` in `council/store_unterlagen.py`, aus den
 Seitenanfängen in `council_documents`). **Nur der Verweis reist, nie der
 Notiztext.**
 
+**Vorschau der Seite.** In der Auswahl steht die gewählte Seite als Bild
+daneben, mit ‹ › zum Blättern; über einem Chip erscheint sie beim Überfahren
+mit der Maus oder beim Fokus mit der Tastatur. Der Browser darf das PDF nicht
+selbst vom Ratsinfo laden (keine CORS-Kopfzeilen), deshalb rendert der Server:
+`GET /api/council/documents/{id}/page/{n}?w=640` und
+`…/documents/{id}/pages` (`council/page_images.py`). Nur mit Konto, nur
+Adressen aus der eigenen Datenbank und nur vom Ratsinfo; PDF und Seitenbilder
+liegen in `data/page-images/` mit Obergrenze (400 MB PDFs, 200 MB Bilder, das
+zuletzt Benutzte bleibt). PyMuPDF liegt auf dev und Prod in der venv, ist aber
+bewusst nicht in `requirements.txt` (AGPL); wo es fehlt, antwortet der
+Endpunkt 503 und die Vorschau sagt „Keine Vorschau“.
+
 Zwei Geräte, eine Notiz: Jede Notiz trägt eine Version. Wer eine ältere
 schickt, bekommt 409 und den neuen Stand, und der Client fragt, statt still
 zu überschreiben. Ein Feld speichert dafür nie zweimal zugleich, und die
