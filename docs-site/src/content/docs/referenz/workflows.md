@@ -24,6 +24,7 @@ Alles, was GitHub Actions für dieses Repo tut: Prüfungen je Pull Request, die 
 | **Ops: Gescannte Anlagen lesen (dev)** (`ops-anlagen-ocr.yml`) | von Hand | Manuell auslösbarer Ops-Lauf: liest die gescannten Anlagen per Sehmodell (`scripts/backfill_anlagen_ocr.py`) — den GANZEN Bestand, nicht nur die Finanzdokumente. |
 | **Ops: Ratsbestand dev↔prod vergleichen** (`ops-council-inventory.yml`) | von Hand | Manuell auslösbar: den Ratsbestand von dev und Prod nebeneinanderstellen. |
 | **Ops – Deploy-Rückstand (Prod)** (`ops-deploy-rueckstand.yml`) | Zeitplan (`*/30 * * * *`), von Hand | Holt einen ausgefallenen Prod-Deploy nach — und meldet, wenn das nicht geht. |
+| **Ops: Ratsdaten Prod → dev spiegeln** (`ops-dev-mirror.yml`) | Zeitplan (`30 3 * * *`), von Hand | Nachts (und von Hand): die Ratsdaten von Prod nach dev spiegeln. |
 | **Ops: Themen-Dubletten zusammenführen** (`ops-entity-dubletten.yml`) | von Hand | Manuell auslösbarer Ops-Lauf: sucht doppelte Themen (derselbe Gegenstand unter mehreren Namen) und führt die vom LLM bestätigten zusammen. |
 | **Ops – Erreichbarkeit (Prod)** (`ops-erreichbarkeit.yml`) | Zeitplan (`*/10 * * * *`), von Hand | Prüft von AUSSERHALB der Maschine, ob ratslotse.de antwortet. |
 | **Ops: KI-Eval (Frag den Rat)** (`ops-eval-ai.yml`) | von Hand | Manuell auslösbarer Ops-Lauf: misst die KI-Frage gegen das QA-Golden-Set auf der Prod-Datenbank (eval/run_qa.py) — Retrieval-Trefferquote/MRR, Antwort-A/B und Latenz je Pipeline-Schritt. |
@@ -52,4 +53,4 @@ Alles, was GitHub Actions für dieses Repo tut: Prüfungen je Pull Request, die 
 | **Sync production back to dev** (`sync-main-to-dev.yml`) | Push auf `main`, von Hand | Produktion darf nie dauerhaft Commits enthalten, die im Integrationsbranch fehlen. |
 | **Tests** (`test.yml`) | Push auf `main`, Pull Request | Die Prüfungen je Pull Request: Linter, Typprüfung, API-Vertrag und die Testsuite — dasselbe, was `scripts/pruefe.py` lokal vor dem Push fährt. |
 
-38 Workflows unter `.github/workflows/`.
+39 Workflows unter `.github/workflows/`.

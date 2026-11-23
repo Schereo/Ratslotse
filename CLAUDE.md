@@ -100,12 +100,18 @@ was dir fehlt. Am 02.09.2026 stand `council_liquidity` deshalb lokal auf 0
 Zeilen, während der Abzug 137 hatte — der naheliegende Schluss („der Ingest
 ist ausgefallen") wäre falsch gewesen.
 
-**Auf dev laufen keine Cron-Jobs**, und was nur ein Cron füllt, fehlt im
-Abzug ganz. Gemessen gegen beide Server: Die Bauleitplan-Beteiligungen gibt es
-auf dev als Tabelle nicht (auf Prod drei Zeilen), sonst ist dev fast
-vollständig. Wer so eine Tabelle braucht: `hol --von prod` — dieselbe
-Abspeckung greift dort, die nutzerbezogenen Tabellen kommen also auch von dort
-nicht mit.
+**Auf dev laufen keine Cron-Jobs — die Ratsdaten kommen nachts von Prod**
+(seit 11/2026, `ops-dev-mirror.yml`, Logik in `scripts/dev_mirror.py`). Vorher
+lief dev Prod davon: Am 23.11.2026 fehlten dort 18 % der Wortbeiträge, alle
+Pressemitteilungen seit dem 26.08. und zwei Jahrgänge eines Ausschusses, und
+der Gold-Lauf fand auf dev 142 statt 158 von 200 Belegen — jede Messung auf
+dev war verzerrt. Der Spiegel leert die nutzerbezogenen Tabellen schon auf
+Prod und lässt die Konten-Datenbank in Ruhe. **Wer auf dev etwas anreichert,
+das Prod nicht hat** (ein Nachlauf hinter einem Schalter), trägt die Tabelle in
+`DEV_ONLY_TABLES` ein; sonst ist sie am nächsten Morgen weg. Der Bericht des
+Laufs nennt jede Tabelle, die dev voller hatte und die verloren ging. Seitdem
+sind die Beschluss-ids auf dev und Prod dieselben. `ops-council-inventory.yml`
+stellt die Bestände beider Server nebeneinander.
 
 **Die Konten werden gebaut, nicht geholt.** Die echte Konten-Datenbank trägt
 Adressen, Tokens und gespeicherte Gespräche; sie gehört auf kein Notebook. Aus
