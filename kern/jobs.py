@@ -197,7 +197,7 @@ JOBS: list[dict] = [
     {
         "key": "backup_db",
         "label": "Datenbank-Backup",
-        "description": "Nächtliche Sicherung beider SQLite-Dateien, optional gespiegelt auf die Storage Box.",
+        "description": "Nächtliche Sicherung aller Datenbanken, der .env, der crontab und unersetzlicher Dateien, gespiegelt auf die Storage Box.",
         "schedule": "täglich 3 Uhr",
         "max_age_h": 30,
     },

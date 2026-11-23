@@ -227,7 +227,7 @@ prüft, ob jeder Job in der Tabelle steht.
 
 | Skript | Rhythmus | Aufgabe |
 |---|---|---|
-| `backup_db.py` | täglich `0 3 * * *` | SQLite-Backup beider Datenbanken, rotierend, optional off-site gespiegelt. |
+| `backup_db.py` | täglich `0 3 * * *` | SQLite-Backup aller Datenbanken samt `.env`, crontab und unersetzlicher Dateien, rotierend, off-site gespiegelt. |
 | `check_committees.py` | täglich `0 7 * * *` | Gremienliste und Kalender (3 Monate voraus) auffrischen, Terminplan-Sitzungen ohne Tagesordnung mitschreiben, Tagesordnungen zusammenfassen und Ausschuss-Abonnent*innen benachrichtigen (auch bei *geänderter* Tagesordnung, erkannt über einen Agenda-Hash). |
 | `check_council.py` | zweimal täglich `0 8,14 * * *` | Kommende Sitzungen gegen die Themen aller Nutzer*innen klassifizieren und Treffer per E-Mail/Push ausliefern. |
 | `check_protocols.py` | täglich `0 9 * * *` | Neue Protokolle parsen — und alles Nachgelagerte gleich mit (siehe unten). |
@@ -673,10 +673,12 @@ Lauf ab, statt zu urteilen oder Hashes zu übernehmen.
 
 ## Backups
 
-`scripts/backup_db.py` läuft täglich um 03:00 und sichert **beide** Datenbanken
-(`ratslotse.sqlite` und `council.sqlite`) mit der `sqlite3`-Backup-API — also
-konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
-`data/backups/` mit Datum im Dateinamen.
+`scripts/backup_db.py` läuft täglich um 03:00 und sichert **jede** Datenbank
+unter `data/` (heute `ratslotse.sqlite`, `council.sqlite` und `cities.sqlite`)
+mit der `sqlite3`-Backup-API — also konsistent, ohne den laufenden Betrieb zu
+stoppen. Die Kopien landen unter `data/backups/` mit Datum
+im Dateinamen, im Journal-Modus `DELETE`: Mit dem WAL-Modus der Quelle ließ jedes
+spätere Öffnen `-wal`/`-shm` daneben liegen (am 23.11.2026 waren es 218).
 
 - **Erst prüfen, dann ablegen (seit 10/2026):** Die Backup-API schreibt in
   eine Zwischendatei (`.<name>.tmp`), `PRAGMA integrity_check` (ab 500 MB
@@ -696,7 +698,12 @@ konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
   kosmetisch: Reicht das Tagesfenster in die Vorwoche hinein, läge deren Marke
   einen Tag neben einem Tagesstand und gewänne keinen Abstand — der Bestand
   endete dann schon nach 22 Tagen.
-- **Handkopien bleiben liegen.** Gezählt wird nur, was `<stamm>_JJJJ-MM-TT.sqlite`
+- **Handkopien unter `data/` werden nicht gesichert (seit 11/2026).** Eine
+  Datenbank mit Punkt im Stamm (`council.vor-pymupdf-2026-10-18.sqlite`) ist
+  selbst schon eine Sicherung. Bis dahin lief sie als eigene Datenbank durch
+  die Rotation — elf Stände zu 800 MB, 8,8 GB lokal und noch einmal off-site.
+  Der Lauf nennt sie und zählt sie unter „Handkopien übersprungen".
+- **Handkopien im Sicherungsordner bleiben liegen.** Gezählt wird nur, was `<stamm>_JJJJ-MM-TT.sqlite`
   heißt. Eine von Hand gezogene `council_vor_release_v2.0.0.sqlite` fällt aus der
   Rotation heraus: Sie wird nie gelöscht und kostet auch keinen Platz im Bestand.
   Vorher war beides falsch herum — gelöscht wurde `sorted(...)[:-7]`, und weil
@@ -721,13 +728,30 @@ in der `--exclude`-Liste des rsync, genau wie `.env` und `.venv/`. Ein Deploy
 kann den Datenbestand also nicht überschreiben.
 
 **Was noch mitgesichert wird:** Nicht alles unter `data/` steht in einer
-Datenbank. `dateien_spiegeln()` legt zwei Ordner per `rsync` in
-`data/backups/` und damit in den Off-Site-Spiegel:
+Datenbank. `dateien_spiegeln()` legt Ordner per `rsync` in `data/backups/` und
+damit in den Off-Site-Spiegel, `einzeldateien_sichern()` dazu einzelne Dateien
+nach `data/backups/einzeldateien/` (Liste `EINZELDATEIEN` — bewusst kein „alle
+`.json`", dort liegen auch Fortschrittsmarken):
 
-| Ordner | Inhalt | Wiederherstellbar? |
+| Was | Inhalt | Wiederherstellbar? |
 |---|---|---|
 | `data/plaene/` | gerenderte Planzeichnungen | ja, aber nur über einen Stapellauf über 600 Anlagen |
 | `data/archiv/` | Statistik-Archiv (s. u.) | **nein** — die Quellen sind überschrieben |
+| `data/transkripte/` | Transkripte der Sitzungs-Mitschnitte | **nein** — der Livestream ist danach weg |
+| `data/eval_gold/` | Ergebnisse der Gold-Läufe | **nein** — die Vergleichsbasis jeder Messung |
+| `wahlabend-verlauf-*.json` | Verlauf der Wahlabende, Stand je Abruf | **nein** |
+| `strassen-snapshot.json` | Straßenbestand aus dem GIS der Stadt | nur über den Heim-Proxy |
+| `wahltermine-*.json` | was der Wahltermin-Abgleich schon gemeldet hat | ja, mit Doppelmeldungen |
+| crontab | `crontab -l` → `backups/crontab.backup` (0600) | nur aus Skript-Köpfen und `kern/jobs.py` |
+
+Bewusst **nicht** dabei ist die Rohernte der fremden Städte (`cities-raw`,
+`cities-files`): öffentliche Dokumente, die sich aus deren RIS neu holen lassen.
+
+**Die Storage Box ist ein Spiegel, kein Archiv.** Was lokal aus der Rotation
+fällt oder gelöscht wird, ist nach dem nächsten Lauf auch dort weg — eine
+versehentlich gelöschte oder zerschriebene Datei ebenso. Gegen diesen Fall
+helfen nur die Schnappschüsse der Storage Box selbst (Hetzner Robot →
+Storage Box → Snapshots), die außerhalb des Repos eingerichtet werden.
 
 ---
 
