@@ -7,6 +7,7 @@
 import { Karte, Fuss, LINK, NotizSchloss, SperrenKnopf, type Offen } from "@/components/notiz/notiz-schloss";
 import { NoteField } from "@/components/notiz/note-field";
 import { NoteView } from "@/components/notiz/note-view";
+import type { NoteDocument } from "@/lib/doc-ref";
 import { statusText, useVerschluesselt } from "@/components/notiz/use-verschluesselt";
 import type { NoteDoc, TargetKind } from "@/lib/notizen";
 
@@ -15,19 +16,22 @@ const istLeer = (d: NoteDoc) => !d.text.trim();
 
 /** `rows`: Höhe des Felds — in der Seitenspalte knapp, als eigener Reiter
  *  der Punkt-Seite (neben dem Chat) mit Platz zum Schreiben. */
-export function MeineNotiz({ targetKind, targetKey, wofuer = "Punkt", rows = 5 }: {
+export function MeineNotiz({ targetKind, targetKey, wofuer = "Punkt", rows = 5, documents }: {
   targetKind: TargetKind; targetKey: string; wofuer?: "Punkt" | "Beschluss"; rows?: number;
+  /** Unterlagen, auf deren Seiten die Notiz verweisen kann (`doc-ref.tsx`). */
+  documents?: NoteDocument[];
 }) {
   return (
     <NotizSchloss titel="Meine Notiz" id="meine-notiz"
       angebot={`Notiere dir, was du zu diesem ${wofuer} wissen oder nachfragen willst. Nur du kannst es lesen.`}>
-      {(o) => <Editor key={`${targetKind}|${targetKey}`} o={o} targetKind={targetKind} targetKey={targetKey} wofuer={wofuer} rows={rows} />}
+      {(o) => <Editor key={`${targetKind}|${targetKey}`} o={o} targetKind={targetKind} targetKey={targetKey} wofuer={wofuer}
+        rows={rows} documents={documents} />}
     </NotizSchloss>
   );
 }
 
-function Editor({ o, targetKind, targetKey, wofuer, rows }: {
-  o: Offen; targetKind: TargetKind; targetKey: string; wofuer: string; rows: number;
+function Editor({ o, targetKind, targetKey, wofuer, rows, documents }: {
+  o: Offen; targetKind: TargetKind; targetKey: string; wofuer: string; rows: number; documents?: NoteDocument[];
 }) {
   const v = useVerschluesselt<NoteDoc>(o.dk, o.keyVersion, targetKind, targetKey, "note", leer, istLeer);
   return (
@@ -38,7 +42,7 @@ function Editor({ o, targetKind, targetKey, wofuer, rows }: {
         </p>
       )}
       <NoteField id="notiz-text" label={`Meine Notiz zu diesem ${wofuer}`} value={v.doc.text}
-        disabled={v.stand === "lädt"} rows={rows}
+        disabled={v.stand === "lädt"} rows={rows} documents={documents}
         onChange={(text) => v.setDoc({ text })} onBlur={() => { void v.jetztSpeichern(); }}
         placeholder={`Was willst du dir zu diesem ${wofuer} merken?`} />
       {v.stand === "konflikt" && (

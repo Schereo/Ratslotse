@@ -163,6 +163,69 @@ class UnterlagenMixin(StoreBasis):
             "AND raw_text IS NOT NULL AND raw_text != '' LIMIT 1", (int(document_id),)).fetchone()
         return (r["raw_text"], r["label"], r["url"]) if r else (None, None, None)
 
+    #: So viel Seitentext geht höchstens in den Prompt — eine Seite ist selten
+    #: länger; eine Planlegende oder Tabelle soll den Rest nicht verdrängen.
+    SEITE_MAX = 6000
+
+    def document_page(self, document_id: int, page: int | None) -> dict | None:
+        """Eine Stelle in einer Unterlage, auf die eine Notiz verweist und zu
+        der jemand fragt (Tims Wunsch 23.11.2026: Notiz-Verweise, über die man
+        mit „Frag den Rat“ sprechen kann).
+
+        Vorlagen-PDF, Anlage (an der Vorlage oder am Punkt) oder Protokoll —
+        alle hängen an der getfile-Kennung. Die Seite entsteht aus den
+        gespeicherten Seitenanfängen (``council_documents.page_offsets``, bei
+        Protokollen in der eigenen Spalte). ``text`` ist ``None``, wenn es
+        keinen gibt (Scan, noch nicht geladen); ``whole`` sagt, dass die
+        Seitengrenzen fehlen und der Anfang der ganzen Unterlage drinsteht.
+        ``None`` nur, wenn die Kennung keine bekannte Unterlage ist."""
+        from council import evidence  # noqa: PLC0415
+
+        did = int(document_id)
+        text = label = url = None
+        offsets: list[int] | None = None
+        kind = "attachment"
+        prot = self._conn.execute(
+            "SELECT raw_text, page_offsets, document_url, protocol_nr FROM council_protocols "
+            "WHERE document_id = ? LIMIT 1", (did,)).fetchone()
+        if prot:
+            kind, text, url = "protocol", prot["raw_text"], prot["document_url"]
+            label = f"Protokoll {prot['protocol_nr']}" if prot["protocol_nr"] else "Protokoll"
+            offsets = json.loads(prot["page_offsets"]) if prot["page_offsets"] else None
+        else:
+            v = self._conn.execute(
+                "SELECT template_number, raw_text, document_url FROM council_templates WHERE document_id = ? "
+                "ORDER BY kvonr DESC LIMIT 1", (did,)).fetchone()
+            if v:
+                kind, text, url = "template", v["raw_text"], v["document_url"]
+                label = f"Vorlage {v['template_number']}" if v["template_number"] else "Vorlage"
+            else:
+                text, label, url = self._dokument_text(did)
+                if not label:
+                    r = self._conn.execute(
+                        "SELECT label, url FROM council_attachments WHERE document_id = ? UNION ALL "
+                        "SELECT label, url FROM council_agenda_attachments WHERE document_id = ? LIMIT 1",
+                        (did, did)).fetchone()
+                    if not r:
+                        return None
+                    label, url = r["label"], r["url"]
+            offsets = (self.document_profiles([did]).get(did) or {}).get("page_offsets")
+        if not (text or "").strip():
+            text = None
+        seiten = evidence.pages_from_offsets(text, offsets) if text else None
+        out: dict = {"document_id": did, "kind": kind, "label": label or "Unterlage", "url": url,
+                     "page": page, "n_pages": len(seiten) if seiten else None, "text": None, "whole": False}
+        if not text:
+            return out
+        if page and seiten:
+            if 1 <= page <= len(seiten):
+                out["text"] = seiten[page - 1].strip()[:self.SEITE_MAX] or None
+            return out
+        # Ohne Seite (oder ohne Seitengrenzen): der Anfang der ganzen Unterlage.
+        out["text"] = text.strip()[:self.SEITE_MAX]
+        out["whole"] = True
+        return out
+
     def motion_material(self, document_id: int, ksinr: int, item_number: str) -> dict | None:
         """Was ``motions.extract`` braucht: Antrag, Vorlage des Punkts (mit
         Seiten), Regelwerke am Punkt (für §-Anker). ``None`` ohne Antragstext."""

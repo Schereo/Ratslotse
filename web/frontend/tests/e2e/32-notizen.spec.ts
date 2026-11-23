@@ -233,6 +233,60 @@ test.describe("Meine Notiz", () => {
     await expect(feld.getByRole("heading", { level: 4, name: "Fragen" })).toBeVisible();
   });
 
+  test("Verweis auf eine Seite der Anlage: Chip in der Notiz, und der Chat fragt zu genau dieser Stelle", async ({ page, context }) => {
+    await passkeyGeraet(page, context);
+    const ablage: Ablage = { keys: null, notes: new Map() };
+    await schein(page, ablage);
+    let koerper: Record<string, unknown> = {};
+    await page.route("**/api/council/ask", async (route) => {
+      koerper = JSON.parse(route.request().postData() ?? "{}");
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: [
+        { type: "step", step: "answer" },
+        { type: "token", text: "Auf Seite 2 fordert der VCD Tempo 30." },
+        { type: "done", conversation_id: null },
+      ].map((e) => `data: ${JSON.stringify(e)}\n\n`).join("") });
+    });
+    await page.goto(URL);
+    await zurNotiz(page);
+    const k = karte(page);
+    await k.getByRole("button", { name: "Notizen einrichten" }).click();
+    await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
+    const feld = notiz(k);
+    await feld.click();
+    await feld.pressSequentially("Prüfen: ");
+
+    // Unterlage wählen (die einzige ist vorausgewählt), Seite angeben, einfügen.
+    await k.getByRole("toolbar", { name: "Formatierung" }).getByRole("button", { name: "Unterlage verweisen" }).click();
+    const auswahl = k.getByRole("group", { name: "Unterlage verweisen" });
+    await expect(auswahl.getByRole("radio", { name: /VCD-Antrag/ })).toBeChecked();
+    await auswahl.getByLabel(/Seite/).fill("2");
+    await auswahl.getByRole("button", { name: "Einfügen" }).click();
+    const chip = feld.locator("[data-doc-ref]");
+    await expect(chip).toContainText("VCD-Antrag");
+    await expect(chip).toContainText("S. 2");
+    await expect(chip.getByRole("link")).toHaveAttribute("href", /getfile\.asp\?id=314015&type=do#page=2$/);
+
+    // Im Chat fragen: Der Bezug steht über dem Feld, die Frage trägt Kennung und Seite.
+    await chip.getByRole("button", { name: /^Im Chat fragen/ }).click();
+    const frage = page.getByRole("textbox", { name: /Deine Frage zu Seite 2/ });
+    await expect(frage).toBeFocused();
+    await frage.fill("Was steht dort zu Tempo 30?");
+    await frage.press("Enter");
+    await expect(page.getByText("Auf Seite 2 fordert der VCD Tempo 30.")).toBeVisible();
+    const refs = (koerper.screen as { refs: Record<string, unknown> }).refs;
+    expect(refs).toMatchObject({ ksinr: 4654, item_number: "Ö 11.1", document_id: 314015, page: 2 });
+    // Der Notiztext reist nicht mit.
+    expect(JSON.stringify(koerper)).not.toContain("Prüfen");
+
+    // Gespeichert als Text, nach dem Neuladen wieder ein Chip.
+    await feld.blur();
+    await expect(k.getByText(/Gespeichert um/)).toBeVisible({ timeout: 10_000 });
+    await k.getByRole("button", { name: "Sperren" }).click();
+    await page.reload();
+    await k.getByRole("button", { name: "Mit Passkey entsperren" }).click();
+    await expect(notiz(k).locator("[data-doc-ref]")).toContainText("S. 2");
+  });
+
   test("ohne Schalter keine Karte", async ({ page }) => {
     await page.route("**/api/app-config", (r) => r.fulfill({ json: { min_build: 0, features: ["punkt-seite"] } }));
     await page.route("**/api/council/session/4654/item**", (r) => r.fulfill({ json: PUNKT }));

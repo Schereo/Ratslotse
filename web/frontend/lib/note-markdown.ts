@@ -25,13 +25,21 @@
        - [ ] Aufgabe      task list          (`[x]` ticked)
          - Unterpunkt     two spaces per level nest a list
          Text             indented plain line under an item: its next paragraph
-       **fett** *kursiv*  inline, read by `marked` (only emphasis — code,
-                          links and HTML stay text), so nesting like
+       **fett** *kursiv*  inline, read by `marked` (only emphasis and links —
+                          code and HTML stay text), so nesting like
                           `**fett *und kursiv***` survives the round trip
+       [Anlage 1, S. 14](https://ratsinfo…/getfile.asp?id=312295#page=14)
+                          a reference to a page of a document (`docRef`):
+                          a chip in the editor, a readable link in the app.
+                          Any other link stays text.
 
    Everything here is pure and covered by `note-markdown.test.ts`. */
 
 import { Lexer, Tokenizer, defaults, type Token, type Tokens } from "marked";
+import { istRis } from "@/lib/ris";
+import { docRefName, type DocRefAttrs } from "@/lib/doc-ref";
+
+export type { DocRefAttrs };
 
 export type MarkType = "bold" | "italic";
 
@@ -48,15 +56,36 @@ type ListType = "bulletList" | "orderedList" | "taskList";
 
 // ---- inline ---------------------------------------------------------------
 
-/** Only `*`/`_` emphasis and backslash escapes: a note is not a web page,
- *  and text that LOOKS like a code span or a link must come back unchanged. */
+/** Only `*`/`_` emphasis, `[…](…)` links and backslash escapes: a note is
+ *  not a web page, and text that LOOKS like a code span must come back
+ *  unchanged. A link that is not a document reference stays its raw text. */
 class EmphasisOnly extends Tokenizer {}
-for (const k of ["codespan", "link", "reflink", "autolink", "url", "tag", "del", "br"] as const) {
+for (const k of ["codespan", "reflink", "autolink", "url", "tag", "del", "br"] as const) {
   (EmphasisOnly.prototype as unknown as Record<string, () => undefined>)[k] = () => undefined;
 }
 
 function lexInline(src: string): Token[] {
   return new Lexer({ ...defaults, tokenizer: new EmphasisOnly() }).inlineTokens(src);
+}
+
+const GETFILE = /\/getfile\.(?:asp|php)\?(?:[^#]*&)?id=(\d+)/i;
+
+/** A link → a document reference, if it points to a document in the Ratsinfo. */
+export function docRefFromLink(href: string, text: string): DocRefAttrs | null {
+  if (!istRis(href)) return null;
+  const id = GETFILE.exec(href);
+  if (!id) return null;
+  const [base, hash = ""] = href.split("#");
+  const p = /(?:^|&)page=(\d+)/.exec(hash);
+  const page = p ? Number(p[1]) : null;
+  // „…, S. 14“ steht für die App im Text; im Chip steht die Seite für sich.
+  const label = (page ? text.replace(new RegExp(`,\\s*S\\.\\s*${page}$`), "") : text).trim();
+  return { documentId: Number(id[1]), page, label: label || "Unterlage", href: base };
+}
+
+function plain(tokens: Token[] | undefined): string {
+  return (tokens ?? []).map((t) => ("tokens" in t && t.tokens ? plain(t.tokens) : (t as Tokens.Text).text ?? t.raw))
+    .join("");
 }
 
 function textNode(text: string, marks: MarkType[]): NoteNode {
@@ -65,19 +94,32 @@ function textNode(text: string, marks: MarkType[]): NoteNode {
   return m.length ? { type: "text", text, marks: m.map((type) => ({ type })) } : { type: "text", text };
 }
 
+function pushText(out: NoteNode[], text: string, marks: MarkType[]) {
+  if (!text) return;
+  const last = out[out.length - 1];
+  const sameMarks = last?.type === "text"
+    && JSON.stringify(last.marks ?? []) === JSON.stringify(textNode("x", marks).marks ?? []);
+  if (last && sameMarks) last.text += text;
+  else out.push(textNode(text, marks));
+}
+
 function inlineNodes(tokens: Token[], marks: MarkType[], out: NoteNode[]) {
   for (const t of tokens) {
     if (t.type === "strong" || t.type === "em") {
       const mark: MarkType = t.type === "strong" ? "bold" : "italic";
       inlineNodes((t as Tokens.Strong | Tokens.Em).tokens ?? [], [...marks, mark], out);
+    } else if (t.type === "link") {
+      const l = t as Tokens.Link;
+      const ref = docRefFromLink(l.href, plain(l.tokens));
+      if (ref) out.push({ type: "docRef", attrs: { ...ref } });
+      // Kein Verweis: als Text, aus Beschriftung und ENTschlüsselter Adresse
+      // neu gebaut. Mit `raw` bekäme die Adresse bei jedem Speichern eine
+      // Schicht Backslashes mehr (`?__ksinr` → `?\_\_ksinr` → …).
+      else pushText(out, `[${plain(l.tokens)}](${l.href}${l.title ? ` "${l.title}"` : ""})`, marks);
     } else if (t.type === "escape" || t.type === "text") {
-      const text = (t as Tokens.Text).text;
-      const last = out[out.length - 1];
-      const sameMarks = last && JSON.stringify(last.marks ?? []) === JSON.stringify(textNode("x", marks).marks ?? []);
-      if (last && sameMarks) last.text += text;
-      else if (text) out.push(textNode(text, marks));
+      pushText(out, (t as Tokens.Text).text, marks);
     } else if ("raw" in t && t.raw) {
-      out.push(textNode(t.raw, marks));
+      pushText(out, t.raw, marks);
     }
   }
 }
@@ -85,7 +127,7 @@ function inlineNodes(tokens: Token[], marks: MarkType[], out: NoteNode[]) {
 export function parseInline(src: string): NoteNode[] {
   const out: NoteNode[] = [];
   inlineNodes(lexInline(src), [], out);
-  return out.filter((n) => n.text);
+  return out.filter((n) => n.text || n.type !== "text");
 }
 
 const PUNCT = /[!-/:-@[-`{-~]/;
@@ -94,6 +136,12 @@ const ALNUM = /[\p{L}\p{N}]/u;
 /** Escape what `marked` would read as emphasis: every `*`, a `_` that is
  *  not inside a word, and a backslash in front of punctuation. */
 function escapeText(s: string): string {
+  // Ein Link-Ziel „](…)“ bleibt, wie es ist: Dort hebt `marked` nichts
+  // hervor, und `\_` stünde in der App mitten in einer Adresse.
+  return s.split(/(\]\([^)\s]*\))/).map((teil, i) => (i % 2 ? teil : escapeEmphasis(teil))).join("");
+}
+
+function escapeEmphasis(s: string): string {
   let out = "";
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
@@ -107,6 +155,12 @@ function escapeText(s: string): string {
 
 const MARKER: Record<MarkType, string> = { bold: "**", italic: "*" };
 
+/** `[Anlage 1, S. 14](…#page=14)` — die Seite auch im Text, für die App. */
+export function serializeDocRef(r: DocRefAttrs): string {
+  const text = escapeText(docRefName(r)).replace(/[[\]]/g, (c) => "\\" + c);
+  return `[${text}](${r.href}${r.page ? `#page=${r.page}` : ""})`;
+}
+
 /** Inline nodes back to text. Marks nest like a stack (`**ab*cd***`), and
  *  spaces stay outside the markers — `** fett**` is not bold. */
 export function serializeInline(nodes: NoteNode[] | undefined): string {
@@ -119,6 +173,11 @@ export function serializeInline(nodes: NoteNode[] | undefined): string {
     out += ws;
   };
   for (const node of nodes ?? []) {
+    if (node.type === "docRef") {
+      close(open.length);
+      out += serializeDocRef(node.attrs as unknown as DocRefAttrs);
+      continue;
+    }
     const text = node.text ?? "";
     if (!text) continue;
     if (!text.trim()) { out += text; continue; }

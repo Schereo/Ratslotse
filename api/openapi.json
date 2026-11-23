@@ -14923,6 +14923,14 @@
               "null"
             ]
           },
+          "document_id": {
+            "minimum": 1.0,
+            "title": "Document Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "item_number": {
             "maxLength": 20,
             "title": "Item Number",
@@ -14934,6 +14942,15 @@
           "ksinr": {
             "minimum": 1.0,
             "title": "Ksinr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "page": {
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Page",
             "type": [
               "integer",
               "null"

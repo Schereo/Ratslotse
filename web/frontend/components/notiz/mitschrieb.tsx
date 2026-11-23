@@ -13,6 +13,7 @@ import { OUTCOME_DOT_CLS } from "@/components/decision-ui";
 import { Konflikt } from "@/components/notiz/meine-notiz";
 import { Fuss, Karte, NotizSchloss, SperrenKnopf, type Offen } from "@/components/notiz/notiz-schloss";
 import { NoteField } from "@/components/notiz/note-field";
+import type { NoteDocument } from "@/lib/doc-ref";
 import { statusText, useVerschluesselt } from "@/components/notiz/use-verschluesselt";
 import type { TranscriptDoc } from "@/lib/notizen";
 import { cn } from "@/lib/utils";
@@ -28,22 +29,26 @@ const WAHL: { key: NonNullable<TranscriptDoc["outcome"]>; label: string }[] = [
   { key: "noted", label: "Zur Kenntnis" },
 ];
 
-export function Mitschrieb({ ksinr, itemNumber, label, onOutcome }: {
+export function Mitschrieb({ ksinr, itemNumber, label, onOutcome, documents }: {
   ksinr: number; itemNumber: string; label: string;
   onOutcome?: (itemNumber: string, outcome: TranscriptDoc["outcome"]) => void;
+  /** Unterlagen des Punkts, auf deren Seiten der Mitschrieb verweisen kann. */
+  documents?: NoteDocument[];
 }) {
   const titel = `Mein Mitschrieb zu ${label}`;
   return (
     <NotizSchloss titel={titel} id="mein-mitschrieb" fuss={FUSS}
       angebot="Halte fest, was bei diesem Punkt passiert ist. Nur du kannst es lesen.">
-      {(o) => <Editor key={itemNumber} o={o} ksinr={ksinr} itemNumber={itemNumber} titel={titel} onOutcome={onOutcome} />}
+      {(o) => <Editor key={itemNumber} o={o} ksinr={ksinr} itemNumber={itemNumber} titel={titel} onOutcome={onOutcome}
+        documents={documents} />}
     </NotizSchloss>
   );
 }
 
-function Editor({ o, ksinr, itemNumber, titel, onOutcome }: {
+function Editor({ o, ksinr, itemNumber, titel, onOutcome, documents }: {
   o: Offen; ksinr: number; itemNumber: string; titel: string;
   onOutcome?: (itemNumber: string, outcome: TranscriptDoc["outcome"]) => void;
+  documents?: NoteDocument[];
 }) {
   const v = useVerschluesselt<TranscriptDoc>(o.dk, o.keyVersion, "agenda_item", `${ksinr}|${itemNumber}`, "transcript", leer, istLeer);
   const setze = (neu: TranscriptDoc) => {
@@ -70,7 +75,7 @@ function Editor({ o, ksinr, itemNumber, titel, onOutcome }: {
       </fieldset>
       <NoteField id="mitschrieb-text" label="Mein Mitschrieb" value={v.doc.text} disabled={v.stand === "lädt"} rows={4}
         onChange={(text) => setze({ ...v.doc, text })} onBlur={() => { void v.jetztSpeichern(); }}
-        placeholder="Was wurde gesagt, was ist offen?" className="mt-3" />
+        placeholder="Was wurde gesagt, was ist offen?" className="mt-3" documents={documents} />
       {v.stand === "konflikt" && (
         <Konflikt text={v.konflikt?.doc?.text ?? ""} was="Mitschrieb"
           onUebernehmen={() => { v.uebernehmen(); onOutcome?.(itemNumber, v.konflikt?.doc?.outcome ?? null); }}

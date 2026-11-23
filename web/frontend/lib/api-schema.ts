@@ -13345,10 +13345,14 @@ export interface components {
             area?: string | null;
             /** Decision Id */
             decision_id?: number | null;
+            /** Document Id */
+            document_id?: number | null;
             /** Item Number */
             item_number?: string | null;
             /** Ksinr */
             ksinr?: number | null;
+            /** Page */
+            page?: number | null;
             /** Place Id */
             place_id?: string | null;
             /** Slug */
@@ -31842,4 +31846,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: df137331a579699207073aa1a4a9c64556e0f91377d36a5e6a183b988ca4ce8c
+// vertrag-sha256: c19fdfd79958bb86c3bbcae8698457b5300b458597960bba57e429ea0b6affb2

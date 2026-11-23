@@ -19,6 +19,9 @@ import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { FragDenRat, Unterlagen, Vorgeschichte, type Punkt } from "@/components/session/item-sections";
 import { JetztZurAbstimmung } from "@/components/session/aus-den-unterlagen";
 import { Mitschrieb } from "@/components/notiz/mitschrieb";
+import { ChatBridgeProvider } from "@/components/notiz/chat-bridge";
+import { noteDocuments } from "@/lib/doc-ref";
+import { istRis } from "@/lib/ris";
 import { useAuth } from "@/lib/auth";
 import { onKeyChange, rememberedKey, sessionKey, sessionTranscripts } from "@/lib/notizen";
 import { ergebnisseJeTop, kurzfassung, sessionUrl } from "@/components/tagesordnung";
@@ -217,9 +220,12 @@ function Mitlesen({ data, ksinr }: { data: SessionWithCourse; ksinr: number }) {
         <JetztDran key={schritt.key} ksinr={ksinr} schritt={schritt} course={course} titelRef={titelRef}
           punktSeite={punktSeite}
           fuss={<Steuerung vorher={vorher} nachher={nachher} onZurueck={() => gehe(state.index - 1)} onWeiter={() => gehe(state.index + 1)} />} />
+        {/* Mitschrieb und „Frag den Rat“ reden über diese Brücke: „Im Chat
+            fragen“ an einem Verweis auf eine Unterlage. */}
+        <ChatBridgeProvider>
         <aside className="flex flex-col gap-4" aria-label="Neben der Sitzung">
           {mitMitschrieb && !schritt.closed && !course.items[schritt.key]?.formality && (
-            <Mitschrieb ksinr={ksinr} itemNumber={schritt.key} label={schritt.label}
+            <MitschriebMitUnterlagen ksinr={ksinr} itemNumber={schritt.key} label={schritt.label}
               onOutcome={(nr, o) => setEigen((alt) => ({ ...alt, [splitNumber(nr).rest]: o }))} />
           )}
           {!schritt.closed && <FragDenRatKurz ksinr={ksinr} nr={schritt.key} />}
@@ -230,6 +236,7 @@ function Mitlesen({ data, ksinr }: { data: SessionWithCourse; ksinr: number }) {
             <span className="text-meta text-muted-foreground">Tagesordnung, Vorlagen und Anlagen</span>
           </a>
         </aside>
+        </ChatBridgeProvider>
       </div>
 
       {/* Handy: Zurück und Weiter kleben am unteren Rand — die kleinen Punkte
@@ -344,8 +351,16 @@ function JetztDran({ ksinr, schritt, course, titelRef, fuss, punktSeite }: {
   );
 }
 
+/** Der Mitschrieb mit den Unterlagen des Punkts, auf deren Seiten er
+ *  verweisen kann — derselbe geteilte Abruf wie „Frag den Rat“ daneben. */
+function MitschriebMitUnterlagen(props: Omit<React.ComponentProps<typeof Mitschrieb>, "documents">) {
+  const { data: p } = useFetch<Punkt>(`/council/session/${props.ksinr}/item?nr=${encodeURIComponent(props.itemNumber)}`,
+    { quiet: true, shared: true });
+  return <Mitschrieb {...props} documents={p ? noteDocuments(p.documents, istRis) : undefined} />;
+}
+
 function FragDenRatKurz({ ksinr, nr }: { ksinr: number; nr: string }) {
-  const { data: p } = useFetch<Punkt>(`/council/session/${ksinr}/item?nr=${encodeURIComponent(nr)}`, { quiet: true });
+  const { data: p } = useFetch<Punkt>(`/council/session/${ksinr}/item?nr=${encodeURIComponent(nr)}`, { quiet: true, shared: true });
   if (!p) return null;
   return <FragDenRat p={p} />;
 }

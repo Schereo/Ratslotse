@@ -4751,6 +4751,11 @@ class ExplainRefs(BaseModel):
     # kommt — sonst wäre er unter 40 Punkten nicht eindeutig. Optional und am
     # Ende: Die ausgelieferte App schickt das Feld nicht.
     item_number: str | None = Field(default=None, max_length=20)
+    # Eine Stelle in einer Unterlage (getfile-Kennung, Seite), wenn die Frage
+    # von einem Verweis in der eigenen Notiz kommt („Im Chat fragen“). Nur die
+    # Kennung reist mit, nie der Notiztext: Der geht an kein Modell.
+    document_id: int | None = Field(default=None, ge=1)
+    page: int | None = Field(default=None, ge=1, le=5000)
 
 
 class ExplainBody(BaseModel):
@@ -5680,6 +5685,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 if features.an("aus-den-unterlagen"):
                     punkt["dossier_lines"] = store.dossier_lines(int(refs["ksinr"]), str(refs["item_number"]))
                 bildschirm["agenda_item"] = punkt
+        # Eine Stelle in einer Unterlage (Verweis aus der Notiz): Ihr Text geht
+        # als fester Kontext mit — nachgeschlagen an der Kennung, nie vom
+        # Client geliefert.
+        if refs.get("document_id"):
+            stelle = store.document_page(int(refs["document_id"]), refs.get("page"))
+            if stelle:
+                bildschirm["document_ref"] = stelle
     # ZUSÄTZLICH, nicht statt: `ai_question` bleibt die Gesamtzahl, sonst
     # verlören alle bestehenden Auswertungen die Chip-Fragen.
     if body.from_suggestion:
