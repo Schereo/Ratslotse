@@ -57,3 +57,22 @@ def test_das_frontend_tippt_die_adresse_nirgends_mehr_ab():
     assert not nachzuegler, (
         "Diese Dateien tippen die Kontaktadresse ab, statt KONTAKT_EMAIL aus "
         f"lib/kontakt.ts zu nehmen: {sorted(nachzuegler)}")
+
+
+def test_die_postanschrift_steht_nur_in_kontakt_ts():
+    """Dieselbe Regel für die Postanschrift: Impressum und Datenschutz nannten
+    sie bis 11/2026 je wörtlich — ein Umzug hätte eine der beiden vergessen."""
+    treffer = re.search(r'street:\s*"([^"]+)"', WEB.read_text(encoding="utf-8"))
+    assert treffer, f"ANSCHRIFT.street nicht gefunden in {WEB}"
+    strasse = treffer.group(1)
+    basis = WURZEL / "web" / "frontend"
+    nachzuegler = []
+    for pfad in list(basis.glob("app/**/*.tsx")) + list(basis.glob("components/**/*.tsx")) \
+            + list(basis.glob("lib/**/*.ts")):
+        if pfad == WEB or "node_modules" in pfad.parts or ".next" in str(pfad):
+            continue
+        if strasse in pfad.read_text(encoding="utf-8"):
+            nachzuegler.append(str(pfad.relative_to(WURZEL)))
+    assert not nachzuegler, (
+        "Diese Dateien tippen die Postanschrift ab, statt ANSCHRIFT aus "
+        f"lib/kontakt.ts zu nehmen: {sorted(nachzuegler)}")
