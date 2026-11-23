@@ -77,6 +77,16 @@ test.describe("Meine Notiz", () => {
     await k2.locator("input[type=password]").fill("neue Passphrase 2027");
     await k2.getByRole("button", { name: "Neue Passphrase setzen" }).click();
     await expect(k2.locator("textarea")).toHaveValue("Verwaltung nach Unfallzahlen fragen.");
+
+    // Ein ECHT fremder Stand fragt weiterhin nach, statt still zu überschreiben.
+    await k2.locator("textarea").fill("Verwaltung nach Unfallzahlen fragen. Ortstermin?");
+    await k2.locator("textarea").blur();
+    await expect.poll(() => [...ablage.notes.values()][0]?.version, { timeout: 10_000 }).toBe(2);
+    await k.locator("textarea").fill("Verwaltung nach Unfallzahlen fragen. Und die Kosten?");
+    await k.locator("textarea").blur();
+    await expect(k.getByText("Auf einem anderen Gerät wurde diese Notiz inzwischen geändert.")).toBeVisible({ timeout: 10_000 });
+    await expect(k.getByText("Verwaltung nach Unfallzahlen fragen. Ortstermin?")).toBeVisible();
+    expect([...ablage.notes.values()][0]?.version).toBe(2);
     await ctx2.close();
   });
 
@@ -108,6 +118,39 @@ test.describe("Meine Notiz", () => {
     await expect(k.getByRole("button", { name: "Mit Passphrase" })).toHaveCount(0);
     await k.getByRole("button", { name: "Mit Passkey entsperren" }).click();
     await expect(k.locator("textarea")).toHaveValue("Kosten 2027 nachfragen.");
+  });
+
+  test("weiterschreiben, während gespeichert wird, ist kein Konflikt", async ({ page, context }) => {
+    // Tims Befund 23.11.2026: Mitten im Tippen stand „Auf einem anderen Gerät
+    // wurde diese Notiz inzwischen geändert“ — mit dem EIGENEN Text von eben.
+    // Das zweite Speichern trug die Version von vor dem ersten.
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    await cdp.send("WebAuthn.addVirtualAuthenticator", { options: {
+      protocol: "ctap2", ctap2Version: "ctap2_1", transport: "internal", hasResidentKey: true,
+      hasUserVerification: true, isUserVerified: true, hasPrf: true, automaticPresenceSimulation: true,
+    } });
+    const ablage: Ablage = { keys: null, notes: new Map() };
+    await schein(page, ablage);
+    // Ein langsamer Server: So überholt das Tippen seine Antwort.
+    await page.route("**/api/notes/agenda_item/**", async (r) => {
+      if (r.request().method() === "PUT") await new Promise((weiter) => setTimeout(weiter, 1200));
+      await r.fallback();
+    });
+    await page.goto(URL);
+    const k = karte(page);
+    await k.getByRole("button", { name: "Notizen einrichten" }).click();
+    await k.getByRole("button", { name: "Mit Passkey einrichten" }).click();
+    const feld = k.locator("textarea");
+    await feld.pressSequentially("Defizit 182 Millionen €");
+    await expect(k.getByText("Speichert …")).toBeVisible({ timeout: 5_000 });
+    await feld.pressSequentially(", kann Oldenburg nicht selber schließen");
+    await feld.blur();
+    await expect.poll(() => [...ablage.notes.values()][0]?.version, { timeout: 15_000 }).toBe(2);
+    await expect(k.getByText(/Gespeichert um/)).toBeVisible({ timeout: 10_000 });
+    await expect(k.getByText(/anderen Gerät/)).toHaveCount(0);
+    await page.reload();
+    await expect(k.locator("textarea")).toHaveValue("Defizit 182 Millionen €, kann Oldenburg nicht selber schließen");
   });
 
   test("ohne Schalter keine Karte", async ({ page }) => {

@@ -632,7 +632,9 @@ niemanden sonst.
 
 Zwei Geräte, eine Notiz: Jede Notiz trägt eine Version. Wer eine ältere
 schickt, bekommt 409 und den neuen Stand, und der Client fragt, statt still
-zu überschreiben. Der letzte Weg zu den Notizen lässt sich nicht löschen.
+zu überschreiben. Ein Feld speichert dafür nie zweimal zugleich, und die
+Version gilt ab dem Absenden (`use-verschluesselt.ts`): Sonst hielte es den
+eigenen Text von eben für den Stand eines anderen Geräts. Der letzte Weg zu den Notizen lässt sich nicht löschen.
 Grenzen: 16 KB je Geheimtext, 2.000 Notizen und zehn Passkeys je Konto.
 
 Was man dazu sagen muss, steht auf der Seite und nicht im Kleingedruckten:
