@@ -1243,6 +1243,14 @@ def _nachweis(delta: float | None, n_reports: int) -> str:
     return "; ".join(teile)
 
 
+def fehlende_jahrgaenge(bestand: list[int], gelesen) -> list[int]:
+    """Berichtsjahrgänge, die gespeichert sind, aber in diesem Lauf fehlen.
+
+    Nur ab ``ERSTER_JAHRGANG``: Ältere Berichte liest dieser Parser nicht, sie
+    können also gar nicht fehlen."""
+    return sorted(j for j in bestand if j >= ERSTER_JAHRGANG and j not in gelesen)
+
+
 def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> dict:
     """Alle vorliegenden Berichte lesen, prüfen und den Bestand ersetzen.
 
@@ -1289,6 +1297,21 @@ def einlesen(store, dokumente: dict[int, dict], p, schuetzen: bool = True) -> di
         p.warnen("  Kein lesbarer Jahrgang — Bestand bleibt unangetastet")
         return {"gesellschaften": 0, "texte": 0, "indicators": 0, "verworfen": 0,
                 "widersprueche": 0, "bestand_geschuetzt": 0, "jahrgaenge": []}
+
+    # Ein Jahrgang, der im Bestand steht, aber in diesem Lauf fehlt (Download
+    # gescheitert, Link verschwunden, Datei unlesbar), hält den GANZEN Bestand
+    # fest. Gespeichert wird je Lauf alles neu; ohne diese Sperre verschwände
+    # der fehlende Jahrgang still. Gemessen 11/2026: Ohne den Bericht 2024
+    # fielen alle 26 Werte für 2024 weg, ohne 2022 schrumpfte 2019 von 38 auf 3
+    # Zeilen — und die Zeilenschwelle unten (80 %) merkt beides nicht.
+    luecke = fehlende_jahrgaenge(store.beteiligungsbericht_jahre(), gelesen)
+    if luecke and schuetzen:
+        p.warnen(f"  Jahrgang {', '.join(map(str, luecke))} steht im Bestand, fehlt "
+                 f"aber in diesem Lauf — Bestand bleibt unangetastet")
+        return {"gesellschaften": 0, "texte": 0, "indicators": 0, "personen": 0,
+                "eigentuemer": 0, "ohne_zuordnung": 0, "verworfen": 0,
+                "widersprueche": 0, "bestand_geschuetzt": 1,
+                "jahrgaenge": sorted(gelesen), "fehlende_jahrgaenge": luecke}
 
     # Welche (Gesellschaft, Kennzahl, Bezugsjahr) hat im Dokument eine
     # bestandene Probe — und wie groß war die gemessene Abweichung?
