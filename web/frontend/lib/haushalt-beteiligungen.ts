@@ -127,7 +127,16 @@ export type Konzernzeile = {
   difference: number;
 };
 
+/** Ein Unternehmen im jüngsten Jahr mit Quartalsbericht: Plan und
+ *  Hochrechnungen je Stichtag (`stations`), das Ist nur aus dem Abschluss
+ *  (`actual`). Zusammengestellt im Backend (`council/holding_quarterly.py`);
+ *  die Seite rechnet nichts davon neu. */
+export type Quartalsjahr = ApiAntwort<"/council/budget/shareholdings">["forecasts"][number];
+export type Quartalsstand = Quartalsjahr["stations"][number];
+
 export type BeteiligungsDaten = {
+  /** Optional wie alles Neue: eine ältere API kennt das Feld nicht. */
+  forecasts?: Quartalsjahr[];
   report_years: number[];
   years: number[];
   companies: Gesellschaft[];
@@ -161,6 +170,31 @@ export const KENNZAHL_TITEL: Record<Kennzahl["indicator"], string> = {
   bilanzsumme: "Bilanzsumme",
   eigenkapitalquote: "Eigenkapitalquote",
 };
+
+/** Plan und Hochrechnungen einer Gesellschaft im jüngsten Jahr mit Bericht. */
+export function quartalsjahrVon(daten: BeteiligungsDaten | null, company: string): Quartalsjahr | null {
+  const j = (daten?.forecasts ?? []).find((f) => f.company === company);
+  return j && j.stations.length > 0 ? j : null;
+}
+
+/** Wie der Bericht den Plan nennt: „Geänderter Plan“ nur, wo er ihn so nennt.
+ *  Ohne Angabe heißt er schlicht „Plan“ — eine Art wird nicht geraten. */
+export function planTitel(kind: string | null | undefined): string {
+  return kind === "adjusted" ? "Geänderter Plan" : "Plan";
+}
+
+/** „30.09.2025“ aus „2025-09-30“. */
+export function stichtagText(iso: string): string {
+  const [j, m, t] = iso.split("-");
+  return `${t}.${m}.${j}`;
+}
+
+/** Ein Betrag in vollen Euro — bei Plan und Hochrechnung sind es die
+ *  Unterschiede im Tausender, die zählen; „Mio. €“ ließe zwei Stände gleich
+ *  aussehen. */
+export function euroVoll(value: number): string {
+  return `${Math.round(value).toLocaleString("de-DE")} €`;
+}
 
 export function herkunftVon(daten: BeteiligungsDaten | null, id: number | null | undefined) {
   if (!daten || id == null) return null;
