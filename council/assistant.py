@@ -147,6 +147,12 @@ GELD_AUSSERHALB = frozenset({
     "schulden", "bilanz", "konzern", "taxes", "tax_rates", "ausgleich",
     "fees", "loans", "stellenplan", "indicators", "pruefung", "vergleich",
     "kassensicht", "supplementary_approvals", "antraege",
+    # Das Handbuch Beteiligungen (11/2026): Seine Auslöser sind eng genug
+    # („Aufsichtsrat", „Gesellschafterversammlung", Regelwörter nur zusammen
+    # mit einer Gesellschaft), und die Frage „Was darf der Aufsichtsrat?"
+    # kommt meist von einer Beschluss-Seite zum Jahresabschluss, nicht aus
+    # dem Haushalts-Bereich.
+    "handbook",
 })
 
 @dataclass(frozen=True)

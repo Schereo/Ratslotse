@@ -1985,6 +1985,17 @@ folgenden Prüfungen.
 - **Kennung im Request.** Der `User-Agent` enthält Namen, Adresse und Zweck.
 - **Bedingter Abruf.** `If-Modified-Since` und `If-None-Match` vermeiden
   bei `304` eine erneute Übertragung. Sieben Berichte umfassen zusammen 25 MB.
+  Die Kopfzeilen der letzten Fassung stehen neben ihr im Archiv
+  (`data/archiv/beteiligungsbericht/<datei>/.quelle.json`); bis 11/2026 stand
+  dieser Punkt hier, ohne dass der Job je eine Kopfzeile mitschickte.
+- **Archiv statt Lücke.** Jede geholte Fassung liegt versioniert im Archiv
+  der Quelldateien (`council/archiv.py`, Bereich `beteiligungsbericht`; das
+  Backup spiegelt es mit). Scheitert ein Download oder verschwindet ein Link,
+  liest der Job die gesicherte Fassung. Gibt es keine, hält
+  `beteiligungsbericht.einlesen` den ganzen Bestand fest
+  (`fehlende_jahrgaenge`). Vorher ersetzte ein Lauf mit zwei von drei
+  Berichten still den Bestand: Ohne den Bericht 2024 fielen alle 26 Werte für
+  2024 weg, und die Schrumpf-Schranke (80 %) merkte es nicht.
 - **Abrufabstand und Dateiprüfung.** Der Job wartet zwischen den Abrufen.
   Er akzeptiert nur Dateien bis 40 MB mit PDF als `Content-Type` und
   `%PDF` am Dateianfang. Ein CMS kann auch für Fehlerseiten `200 OK`
@@ -2159,6 +2170,44 @@ steht im Cron-Protokoll sowie auf der Seite — als **Einordnung**, nicht als
 Urteil. Springt eine Abweichung, die jahrelang null war, auf Millionen, ist das
 den Blick wert.
 :::
+
+## Handbuch Beteiligungen: wie die Stadt ihre Gesellschaften steuert
+
+Der Beteiligungsbericht sagt, **was** eine Gesellschaft tut und erwirtschaftet.
+Wie die Stadt sie **steuert** — wer bestimmt, wer kontrolliert, was öffentlich
+ist, wer prüft, welche Berichte wann fällig sind —, steht im *Handbuch
+Beteiligungen* der Stadt: drei Richtlinien (Oldenburger Corporate Governance
+Kodex, Beteiligungsmanagement, Korruptionsvorbeugung), vom Rat am 27.11.2023
+beschlossen (Vorlage 23/0599/1), Broschüre Stand Januar 2025. Finanzzahlen
+enthält es keine.
+
+`council/shareholding_handbook.py` führt elf Regeln als **belegte
+Kurzfassungen**, jede mit ihren Seiten der Broschüre — kein Wortlaut, nichts
+aus dem Gedächtnis ergänzt. Sie erreichen die Antworten über eine eigene
+Geld-Facette (`council/geld/handbook.py`) und damit auf einen Schlag KI-Frage,
+Lotti, Lottis Werkzeuge, MCP und die ausführliche Recherche; außerhalb des
+Haushalts-Bereichs darf Lotti sie ebenfalls ziehen (`GELD_AUSSERHALB`).
+
+- **Auslöser an der Frage, deterministisch.** Fachwörter („Aufsichtsrat",
+  „Gesellschafterversammlung", „Feststellungsvermerk") ziehen allein;
+  allgemeine Wörter („öffentlich", „Vergütung", „wann") nur zusammen mit einer
+  Gesellschaft — dieselbe Erkennung wie die Facette `companies`, ohne die
+  „Beteiligung der Öffentlichkeit" am Bebauungsplan. Höchstens zwei Regeln je
+  Frage, die engere zuerst.
+- **Kein Prüfergebnis.** Der Baustein sagt dem Modell, dass es Vorgaben sind:
+  Ob eine Gesellschaft sie einhält, steht nicht darin, und niemandem wird ein
+  Verstoß unterstellt. Eine öffentliche „Ampel" über fehlende
+  Vergütungsberichte auf Websites ist deshalb bewusst nicht gebaut — dass
+  etwas auf einer Website fehlt, lässt sich nicht beweisen.
+- **Die Besetzung trägt ihre Ratsperiode.** Der Beteiligungsbericht nennt die
+  Gremien im Berichtsjahr; die städtischen Aufsichtsratssitze enden mit der Ratsperiode
+  (Handbuch S. 22). `board_term_note` rechnet die Periode aus (§ 47
+  NKomVG: fünf Jahre ab 1. November), und die Facette `companies` sagt dazu,
+  wenn sie abgelaufen ist. Am 23.11.2026 stand dort sonst die Besetzung von
+  2024 samt einem Oberbürgermeister im Vorsitz, der seit 01.11.2026 nicht mehr
+  im Amt ist. Die Gremien zählt sie seitdem einzeln: Bei der GSG stand vorher
+  „Aufsichtsorgan: 24 Mitglieder" — Aufsichtsrat (18) und
+  Gesellschafterversammlung (6) zusammengezählt.
 
 ## Städtevergleich: was sich vergleichen lässt — und was nicht
 
