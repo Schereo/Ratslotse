@@ -104,6 +104,7 @@ const MODE_LABEL: Record<string, string> = {
   semantisch: "ähnliche Beschlüsse suchen",
   keyword: "Stichwortsuche",
   chronologisch: "neueste zuerst",
+  ueberblick: "wichtigste Vorhaben am Ort",
   research: "gründliche Recherche",
 };
 
