@@ -1024,6 +1024,7 @@ EXTRA_REGELN = {
         "Im Kontext stehen nur Beschlüsse mit belegtem Bezug zu diesem Ort. "
         "Unterscheide den Ort von seinem größeren Ortsbereich und behaupte nicht, "
         "dass jeder Beschluss des Elternbereichs auch den kleineren Ort betrifft. "
+        "Ein Teilgebiet INNERHALB des gefragten Orts gehört dagegen zu ihm. "
         "Nenne bei einem Überblick die wichtigsten Vorgänge mit Datum und Ergebnis; "
         "ist der Bestand dünn, sage das ausdrücklich.\n"
         "Steht im Beschlusstext ein ANDERER Ortsname als der gefragte, gilt für die "
@@ -5762,11 +5763,21 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
     if ort:
         ortsregel = (
             f"\nORTSFILTER: Die Frage nennt den Katalogort „{ort.get('name', '')}“ "
-            f"({ort.get('kind_label', 'Ort')}). Verwende nur Beschlüsse mit "
-            "belegtem Bezug zu genau diesem Ort; die konkrete Fundstelle steht "
-            "im Kontext als „Ortsbezug“. Verwechsle einen kleineren Ort nicht "
-            "mit seinem größeren Ortsbereich und benenne eine dünne Datenlage ehrlich."
+            f"({ort.get('kind_label', 'Ort')}). Im Kontext stehen nur Beschlüsse, "
+            "die diesem Ort zugeordnet sind; die konkrete Fundstelle steht jeweils "
+            "als „Ortsbezug“. Nennt der Ortsbezug ein Teilgebiet, einen Platz oder "
+            "eine Straße INNERHALB des gefragten Orts (etwa „Nördliche Innenstadt“ "
+            "bei der Innenstadt), gehört der Beschluss zum gefragten Ort — antworte "
+            "damit. Umgekehrt gilt ein Beschluss zum größeren Ortsbereich nicht "
+            "automatisch für einen kleineren Ort darin. Benenne eine dünne "
+            "Datenlage ehrlich."
         )
+        # Bis 23.11.2026 hieß es hier „nur Beschlüsse mit belegtem Bezug zu
+        # GENAU diesem Ort“. Seit die Suche im Ort sucht, steht neben den
+        # Sanierungsgebieten „Nördliche“ und „Mittlere Innenstadt“ auch ein
+        # Beschluss mit dem Ortsbezug „Innenstadt“ selbst im Kontext — und auf
+        # „Was wurde zum Sanierungsgebiet Innenstadt beschlossen?“ kam auf dev
+        # zweimal „kein Beschluss mit genau diesem Ortsbezug belegt“.
         if overview:
             ortsregel += PLACE_OVERVIEW_RULE
     if latest_intent(question):
