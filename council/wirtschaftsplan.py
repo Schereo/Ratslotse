@@ -179,6 +179,35 @@ BETRIEBE: dict[str, tuple[str, str]] = {
 }
 
 
+def bestand_ist_reicher(alt: dict | None, neu: Wirtschaftsplan,
+                        toleranz: float = 2.0) -> bool:
+    """Würde ``neu`` eine gespeicherte Zeile ärmer machen?
+
+    Die Kernzahl aus dem Beschlusstext nennt nur das Ergebnis. Dieselbe Vorlage
+    trägt in der Anlage oft die ganze Ergebnisplanung, die der GuV-Leser
+    (``council/wirtschaftsplan_guv.py``) einliest — aber nur, wenn der Download
+    der Anlage gelingt. Scheiterte er, schrieb der Lauf bis 11/2026 die bloße
+    Kernzahl über die volle Zeile: Am 24.09.2026 trugen die Bäder Erträge und
+    Aufwendungen, nach dem Umzug des Ratsinfos nicht mehr.
+
+    ``True`` heißt: Die gespeicherte Zeile stammt aus **derselben** Vorlage,
+    trägt dasselbe Ergebnis (± ``toleranz`` Euro) und nennt Erträge und
+    Aufwendungen, die ``neu`` nicht nennt — dann bleibt sie stehen. Eine
+    andere Vorlage (eine Anpassung des Plans) ersetzt dagegen immer: Ihre
+    Erträge sind andere, und die alten stehen zu lassen hieße, zwei Pläne zu
+    mischen.
+    """
+    if not alt or alt.get("template_number") != neu.template_number:
+        return False
+    if alt.get("revenues") is None or alt.get("expenses") is None:
+        return False
+    if neu.revenues is not None and neu.expenses is not None:
+        return False
+    if alt.get("result") is None or neu.result is None:
+        return False
+    return abs(alt["result"] - neu.result) <= toleranz
+
+
 class WirtschaftsplanFehler(ValueError):
     """Der Beschlusstext trägt Eckwerte, aber sie gehen nicht auf."""
 
