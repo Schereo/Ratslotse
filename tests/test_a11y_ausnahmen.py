@@ -1,6 +1,6 @@
 """Ausnahmen vom axe-Wächter stehen am Element — und ihre Begründung hier.
 
-Der Browsertest ``web/frontend/tests/e2e/35-barrierefreiheit.spec.ts`` verlangt
+Der Browsertest ``web/frontend/tests/e2e/36-barrierefreiheit.spec.ts`` verlangt
 null Befunde. Was bewusst nicht passt (die Haushalts-Leiste ist so schmal wie
 ihr Betrag), trägt ``data-a11y-ausnahme="<regel>"``, und
 ``a11y-ausnahmen.json`` sagt, warum. Dieser Test hält beide Richtungen:

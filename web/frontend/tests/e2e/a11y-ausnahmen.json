@@ -1,5 +1,5 @@
 {
-  "_zweck": "Bewusste Ausnahmen vom axe-Wächter (35-barrierefreiheit.spec.ts). Ein Element trägt data-a11y-ausnahme=\"<regel>\"; hier steht je Regel, WARUM. tests/test_a11y_ausnahmen.py hält beide Richtungen: keine Markierung ohne Eintrag, kein Eintrag ohne Markierung.",
+  "_zweck": "Bewusste Ausnahmen vom axe-Wächter (36-barrierefreiheit.spec.ts). Ein Element trägt data-a11y-ausnahme=\"<regel>\"; hier steht je Regel, WARUM. tests/test_a11y_ausnahmen.py hält beide Richtungen: keine Markierung ohne Eintrag, kein Eintrag ohne Markierung.",
   "target-size": "Grafiken, deren Breite den Betrag abbildet: Haushalts-Leisten (components/haushalt/gegenbalken.tsx) und Schritt-Punkte (components/haushalt/schritt-pfad.tsx). Jeder Abschnitt hat einen Namen und ist per Tastatur erreichbar; steht als bekannte Einschränkung in app/barrierefreiheit/page.tsx.",
   "color-contrast": "Rein dekorative Ziffern „01, 02 …“ im Haushalts-Wegweiser (components/haushalt/wegweiser.tsx, aria-hidden) und gedimmte, gerade wirkungslose Benachrichtigungs-Schalter samt Beschriftung (components/delivery-settings.tsx) — WCAG 1.4.3 nimmt reine Dekoration und inaktive Bedienelemente aus."
 }

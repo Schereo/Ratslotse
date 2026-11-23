@@ -283,7 +283,7 @@ Genau so ist der einzige Test aufgefallen, der nur mit Daten grün war.
 | `12-navigation` | Jeder Navigationspunkt, der aktive Zustand, Deep-Links |
 | `13-einrichtung` | Der Assistent — den alle anderen absichtlich überspringen |
 | `14-layout` | Keine Seite scrollt seitwärts (390 px und 320 px); die Antwort samt Parteien-Baustein gestubbt bei 375 und 320 px |
-| `35-barrierefreiheit` | axe (WCAG 2.2 AA + Best Practices) auf allen Hauptseiten, hell und dunkel, **null Befunde**; Fokus nie unter einer festen Leiste (390 px) |
+| `36-barrierefreiheit` | axe (WCAG 2.2 AA + Best Practices) auf allen Hauptseiten, hell und dunkel, **null Befunde**; Fokus nie unter einer festen Leiste (390 px) |
 
 **Barrierefreiheit: Ausnahmen stehen am Element.** Was bewusst nicht passt
 (die Haushalts-Leiste ist so schmal wie ihr Betrag), trägt
