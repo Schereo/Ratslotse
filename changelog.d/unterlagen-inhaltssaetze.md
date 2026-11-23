@@ -1,6 +1,6 @@
 ---
-kategorie: hinzugefuegt
+kategorie: geaendert
 schalter: aus-den-unterlagen
 ---
 
-**Jede Unterlage mit einem Satz dazu, worum es geht.** In der Liste der Unterlagen eines Tagesordnungspunkts steht unter dem Namen jetzt ein kurzer Inhaltssatz, etwa „Die Anlage enthält Änderungsvorschläge der Verwaltung zu Investitionen im Finanzhaushalt 2027 bis 2030“. So lässt sich bei 30 Anlagen schneller finden, welche man lesen will.
+**Die Unterlagen eines Punkts stehen kompakt, jede mit einem Satz dazu.** Statt einer Karte je Dokument steht jede Unterlage in einer Zeile mit Nummer, kurzem Namen und Seitenzahl, darunter ein kurzer Inhaltssatz. Bei vielen Unterlagen gliedert die Liste nach Art, und was alle Titel gemeinsam haben, steht nicht in jeder Zeile: Beim Haushaltsentwurf 2027 heißt es „Teilhaushalt 01“ statt „2027 007 Vw THH01 Haushalt 2027 Verwaltungsentwurf“.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ohneDatum, teileListe, angabenWort, aussagenGruppen, belegEinklappen } from "./unterlagen";
+import { ohneDatum, teileListe, angabenWort, aussagenGruppen, belegEinklappen, kurzeTitel } from "./unterlagen";
 
 describe("ohneDatum", () => {
   it("nimmt das Datumspräfix ab", () => {
@@ -109,5 +109,35 @@ describe("angabenWort", () => {
   it("zählt in Einzahl und Mehrzahl", () => {
     expect(angabenWort(1)).toBe("1 Angabe");
     expect(angabenWort(5)).toBe("5 Angaben");
+  });
+});
+
+describe("kurzeTitel", () => {
+  it("nimmt den gemeinsamen Teil weg (Haushaltsentwurf 2027, 26/0835)", () => {
+    const labels = [
+      "Vorlage",
+      "2027 030 Vw Änderungsliste Verwaltung I EHH",
+      "2027 001 Vw Vorbericht Haushalt 2027 Verwaltungsentwurf",
+      "2027 007 Vw THH01 Haushalt 2027 Verwaltungsentwurf",
+      "2027 008 Vw THH02 Haushalt 2027 Verwaltungsentwurf",
+      "2027 021 Vw WP EGH Haushalt 2027 Verwaltungsentwurf",
+      "2027 027 Vw Konsolidierungskonzept 2027",
+    ];
+    expect(kurzeTitel(labels)).toEqual([
+      "Vorlage",
+      "Änderungsliste Verwaltung I Ergebnishaushalt",
+      "Vorbericht",
+      "Teilhaushalt 01",
+      "Teilhaushalt 02",
+      "Wirtschaftsplan EGH",
+      "Konsolidierungskonzept 2027",
+    ]);
+  });
+  it("lässt kurze und verschiedene Listen, wie sie sind", () => {
+    expect(kurzeTitel(["Vorlage 26/0818", "Quartalsbericht 30.09.2026"])).toEqual(["Vorlage 26/0818", "Quartalsbericht 30.09.2026"]);
+    expect(kurzeTitel(["Lageplan", "Begründung", "Stellungnahme CDU"])).toEqual(["Lageplan", "Begründung", "Stellungnahme CDU"]);
+  });
+  it("lässt nie einen leeren Titel stehen", () => {
+    expect(kurzeTitel(["Anlage 1", "Anlage 2", "Anlage 3"])).toEqual(["Anlage 1", "Anlage 2", "Anlage 3"]);
   });
 });
