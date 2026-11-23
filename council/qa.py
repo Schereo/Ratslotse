@@ -4246,10 +4246,15 @@ def geld_kontext(store, question: str, begriffe: str = "", typ: str = "topic",
         # streut Jahreszahlen ein, die niemand getippt hat.
         aus["antraege"] = _sicher(store.haushaltsantraege_kontext, jahr)
     # Die Modul-Facetten: eine Store-Methode je Facette, Signatur (woerter, year).
+    # Das Handbuch wählt seine Regeln an der ROHEN Frage, wie es sie erkannt
+    # hat: Die Expansion streut Wörter ein („Aufsichtsrat", „Vergütung"), die
+    # eine andere Regel zögen als die, nach der gefragt war.
+    fac_woerter = {"accounts": woerter_konten,
+                   "handbook": (question or "").split()}
     for fac in _geld.FACETTEN:
         if fac.name in facetten:
             aus[fac.key] = _sicher(getattr(store, fac.methode),
-                                   woerter_konten if fac.name == "accounts" else woerter, jahr)
+                                   fac_woerter.get(fac.name, woerter), jahr)
     # Trifft die Frage ein KONTO („Parkgebühren“), ist das die Antwort, und
     # die Summen daneben sind Ablenkung: Auf „Wie hoch sind die Abweichungen
     # zwischen Soll und Ist bei den Parkgebühren?“ antwortete das Modell am
