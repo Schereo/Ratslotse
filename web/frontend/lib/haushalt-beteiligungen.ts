@@ -14,6 +14,7 @@
 // stattdessen, was da ist, und lässt die Lücke Lücke sein.
 
 import type { Herkunft } from "@/lib/herkunft";
+import type { ApiAntwort } from "@/lib/vertrag";
 
 export type { Herkunft };
 
@@ -29,7 +30,26 @@ export type Gesellschaft = {
    *  trägt eine Person ihr Amt (s. `aufsichtspersonen`). Optional, weil eine
    *  ältere API das Feld nicht kennt — dann gilt „unbekannt", nicht „ja". */
   roles_assignable?: boolean;
+  /** Aus welcher Ratsperiode die Besetzung im Bericht stammt; `note` steht
+   *  nur da, wenn die Periode inzwischen abgelaufen ist (Backend:
+   *  `shareholding_handbook.board_term_note`). Optional wie oben. */
+  board_term?: {
+    term_label: string; term_start: string; term_end: string;
+    term_ended: boolean; note: string | null;
+  } | null;
+  /** Gilt das Handbuch Beteiligungen, und wie (Handbuch S. 10) — der Satz
+   *  kommt fertig aus dem Backend (`shareholding_handbook.scope`). */
+  handbook_scope?: { key: string; text: string; pages: string } | null;
 };
+
+/** Das Handbuch Beteiligungen der Stadt — Fundstelle und Kurzfassungen. */
+export type Handbuch = ApiAntwort<"/council/budget/shareholdings">["handbook"];
+
+/** Adresse einer Seite der Broschüre. Die gedruckte Seitenzahl ist die des
+ *  PDFs (Umschlag = S. 1). */
+export function handbuchSeite(h: Handbuch, seite: number): string {
+  return `${h.url}#page=${seite}`;
+}
 
 /** Ein Mitglied des Aufsichtsorgans — Betriebsausschuss, Aufsichtsrat oder
  *  Verwaltungsrat, je nach Rechtsform.
@@ -120,6 +140,8 @@ export type BeteiligungsDaten = {
   people?: Aufsichtsperson[];
   owners?: Eigentuemer[];
   provenance: Record<string, Herkunft>;
+  /** Optional, damit eine ältere API die Seite nicht leer lässt. */
+  handbook?: Handbuch;
 };
 
 /** Überschriften der beschreibenden Abschnitte, in der Reihenfolge des

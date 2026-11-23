@@ -175,3 +175,38 @@ def test_besetzung_2024_ist_seit_november_2026_die_der_vorigen_periode():
     nachher = hb.board_term_note(2024, today=date(2026, 11, 23))
     assert vorher["term_label"] == nachher["term_label"] == "2021–2026"
     assert not vorher["term_ended"] and nachher["term_ended"]
+
+
+# ---------------------------------------------------------------------------
+# 4. Die Seite: Geltungsbereich und Kurzfassungen
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("gliederung,anteil,tochter,stufe", [
+    ("2.4.8", 74.0, False, "majority"),        # VWG
+    ("2.4.9", 34.5, False, "minority"),        # GSG
+    ("2.3.2", 16.67, False, "minority"),       # Großleitstelle: AöR, aber Minderheit
+    ("2.3.1", 100.0, False, "other_form"),     # Klinikum
+    ("2.2.2", 100.0, False, "other_form"),     # Abfallwirtschaft
+    ("2.4.5", None, True, "subsidiary"),       # TGO Besitz — NICHT durchgerechnet
+    ("2.4.11", None, False, None),             # Stadion KG: keine geprüfte Tabelle
+])
+def test_geltungsbereich(gliederung, anteil, tochter, stufe):
+    s = hb.scope(gliederung, anteil, tochter)
+    assert (s or {}).get("key") == stufe
+    if s:
+        assert s["pages"] == "S. 10" and "Handbuch Beteiligungen" in s["text"]
+        # Was das Handbuch vorsieht, nie ein Urteil über die Gesellschaft.
+        assert not re.search(r"verbindlich|hält sich|verstößt|erfüllt", s["text"])
+
+
+def test_kurzfassungen_fuer_die_seite():
+    h = hb.page_summary()
+    assert [r["key"] for r in h["rules"]] == list(hb.PAGE_RULES)
+    assert all(r["summary"] and len(r["summary"]) < 300 for r in h["rules"])
+    assert h["url"] == hb.SOURCE_URL and h["adopted_decision_id"] == hb.ADOPTED_DECISION_ID
+
+
+def test_satz_zur_besetzung_nur_wenn_abgelaufen():
+    assert hb.board_term_note(2024, today=date(2026, 10, 1))["note"] is None
+    satz = hb.board_term_note(2024, today=date(2026, 11, 23))["note"]
+    assert "Ratsperiode 2021–2026" in satz and "1. November 2026" in satz

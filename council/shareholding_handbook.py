@@ -67,6 +67,10 @@ class Rule:
     text: str
     #: Seiten der Broschüre, z. B. „S. 14–15".
     pages: str
+    #: Ein bis zwei Sätze für die Seite /haushalt/konzern — nur bei den Regeln,
+    #: die dort im Block „Wie die Stadt ihre Gesellschaften steuert" stehen
+    #: (:data:`PAGE_RULES`). Der volle Text bleibt der Prompt-Baustein.
+    summary: str | None = None
 
 
 def _re(muster: str) -> re.Pattern[str]:
@@ -188,7 +192,12 @@ RULES: tuple[Rule, ...] = (
             "bei Verzicht; auf deren Vorschlag kann stattdessen eine andere Beschäftigte "
             "oder ein anderer Beschäftigter der Stadt benannt werden. In der Regel "
             "sollen nicht mehr als fünf Mandate gleichzeitig wahrgenommen werden."),
-        pages="S. 16–17, 22"),
+        pages="S. 16–17, 22",
+        summary=(
+            "Die städtischen Sitze besetzt der Rat. Im Aufsichtsrat enden sie mit der "
+            "Ratsperiode, in der Gesellschafterversammlung mit dem Ausscheiden aus dem "
+            "Rat."),
+    ),
     Rule(
         key="supervisory_board",
         title="Was ein Aufsichtsrat tut",
@@ -207,7 +216,12 @@ RULES: tuple[Rule, ...] = (
             "Angelegenheiten von besonderer Bedeutung frühzeitig unterrichten "
             "(§ 138 Abs. 4 NKomVG). Ohne Aufsichtsrat übernimmt die "
             "Gesellschafterversammlung seine Aufgaben."),
-        pages="S. 15, 18–19, 23"),
+        pages="S. 15, 18–19, 23",
+        summary=(
+            "Er berät und überwacht die Geschäftsführung. Seine Mitglieder sind dem Wohl "
+            "des Unternehmens verpflichtet und haften persönlich — Empfehlungen aus dem "
+            "Rat prüfen sie selbst."),
+    ),
     Rule(
         key="reporting",
         title="Welche Berichte wann fällig sind",
@@ -250,7 +264,12 @@ RULES: tuple[Rule, ...] = (
             "Gremienmitglieder, die Mitglieder des Aufsichtsrats mit Beruf und "
             "gegebenenfalls politischem Mandat sowie, soweit gesetzlich vorgeschrieben, "
             "das Hinweisgebersystem."),
-        pages="S. 14, 18, 27–28"),
+        pages="S. 14, 18, 27–28",
+        summary=(
+            "Gesellschafterversammlung und Aufsichtsrat tagen nicht öffentlich. "
+            "Öffentlich beschließt der Rat die Jahresabschlüsse, die Weisungen an seine "
+            "Vertreterinnen und Vertreter und den Rahmen ihrer Aufwandsentschädigungen."),
+    ),
     Rule(
         key="governance",
         title="Wer bei einer städtischen Gesellschaft bestimmt",
@@ -273,7 +292,13 @@ RULES: tuple[Rule, ...] = (
             "Eigentümerentscheidungen — Gesellschaftszweck, Rechtsform, Auflösung — "
             "bleiben dem Rat vorbehalten; Rechte von Mitgesellschaftern sind dabei zu "
             "beachten."),
-        pages="S. 14–16"),
+        pages="S. 14–16",
+        summary=(
+            "Die Stadt übt ihre Rechte als Eigentümerin in der Gesellschafterversammlung "
+            "aus; deren städtische Mitglieder bestellt der Rat. Sie kann der "
+            "Geschäftsführung Weisungen erteilen. Über Zweck, Rechtsform oder Auflösung "
+            "einer Gesellschaft entscheidet der Rat."),
+    ),
     Rule(
         key="scope",
         title="Für wen das Handbuch gilt",
@@ -294,6 +319,73 @@ RULES: tuple[Rule, ...] = (
             "Empfehlung."),
         pages="S. 10, 13, 27"),
 )
+
+
+#: Die Regeln im Block „Wie die Stadt ihre Gesellschaften steuert" auf
+#: /haushalt/konzern — in dieser Reihenfolge.
+PAGE_RULES = ("governance", "supervisory_board", "appointment", "transparency")
+
+
+def page_summary() -> dict:
+    """Das Handbuch für die Seite: Fundstelle und die Kurzfassungen."""
+    nach_key = {r.key: r for r in RULES}
+    return {
+        "title": SHORT_TITLE, "version": VERSION, "adopted_date": ADOPTED_DATE,
+        "adopted_template": ADOPTED_TEMPLATE, "adopted_decision_id": ADOPTED_DECISION_ID,
+        "url": SOURCE_URL,
+        "rules": [{"key": k, "title": nach_key[k].title, "summary": nach_key[k].summary or "",
+                   "pages": nach_key[k].pages} for k in PAGE_RULES],
+    }
+
+
+#: Gilt das Handbuch für eine Gesellschaft — und wie? (S. 10). Die Sätze sagen,
+#: was das Handbuch vorsieht, nicht, ob es im Gesellschaftsvertrag steht: Das
+#: wissen wir nicht, und eine Seite darf daraus weder Erfüllung noch Verstoß
+#: ableiten.
+_SCOPE_TEXT = {
+    "majority": (
+        "Die Stadt hält mehr als die Hälfte. Für solche Unternehmen hat der Rat das "
+        "Handbuch Beteiligungen beschlossen: Regeln für Gesellschafterversammlung, "
+        "Aufsichtsrat und Geschäftsführung."),
+    "other_form": (
+        "Für Unternehmen, an denen die Stadt mit mehr als der Hälfte beteiligt ist, hat "
+        "der Rat das Handbuch Beteiligungen beschlossen. Es ist auf die GmbH "
+        "zugeschnitten und gilt für {form} sinngemäß."),
+    "minority": (
+        "Die Stadt hält die Hälfte oder weniger. Für solche Unternehmen soll das "
+        "Handbuch Beteiligungen der Stadt nur sinngemäß angewendet werden."),
+    "subsidiary": (
+        "Sie gehört der Stadt über eine städtische Gesellschaft. Für solche Töchter soll "
+        "das Handbuch Beteiligungen sinngemäß angewendet werden."),
+}
+_FORM_WORT = {"2": "einen Eigenbetrieb", "3": "eine Anstalt des öffentlichen Rechts"}
+
+
+def scope(classification: str | None, city_share: float | None,
+          owned_by_city_company: bool) -> dict | None:
+    """Welche Stufe des Geltungsbereichs (Handbuch S. 10) — oder ``None``.
+
+    ``classification`` ist die Gliederungsnummer des Beteiligungsberichts
+    (2.2 Eigenbetriebe, 2.3 Anstalten, 2.4 privatrechtlich), ``city_share`` der
+    gedruckte Anteil der Stadt (``None``: keine Stadt-Zeile), und
+    ``owned_by_city_company`` heißt: eine der Gesellschaften des Berichts steht
+    unter den Eigentümern. Durchgerechnet wird NICHT — die TGO Besitz läge
+    bei 98,82 % × 51 % = 50,4 % und sähe nach Mehrheit aus, das Handbuch stuft
+    Töchter aber eigens als „sinngemäß" ein."""
+    teile = (classification or "").split(".")
+    gruppe = teile[1] if len(teile) > 1 else None
+    if city_share is not None and city_share <= 50:
+        key = "minority"
+    elif city_share is not None and gruppe in _FORM_WORT:
+        key = "other_form"
+    elif city_share is not None:
+        key = "majority"
+    elif owned_by_city_company:
+        key = "subsidiary"
+    else:
+        return None
+    text = _SCOPE_TEXT[key].format(form=_FORM_WORT.get(gruppe or "", ""))
+    return {"key": key, "text": text, "pages": "S. 10"}
 
 
 def fold(text: str) -> str:
@@ -387,6 +479,14 @@ def board_term_note(report_year: int, today: date | None = None) -> dict:
     """
     today = today or date.today()
     beginn, ende = council_term(date(report_year, 12, 31))
+    abgelaufen = today > ende
     return {"term_start": beginn.isoformat(), "term_end": ende.isoformat(),
             "term_label": f"{beginn.year}–{ende.year}",
-            "term_ended": today > ende}
+            "term_ended": abgelaufen,
+            # Der Satz für die Seite — nur, wenn er etwas sagt.
+            "note": (f"Die Besetzung stammt aus dem Berichtsjahr {report_year}, also aus "
+                     f"der Ratsperiode {beginn.year}–{ende.year}; seit dem 1. November "
+                     f"{ende.year} läuft die nächste. Städtische Sitze im Aufsichtsrat enden "
+                     "mit der Ratsperiode, in der Gesellschafterversammlung mit dem "
+                     "Ausscheiden aus dem Rat.")
+            if abgelaufen else None}

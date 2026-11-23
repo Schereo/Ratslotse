@@ -6541,6 +6541,9 @@
           "group_comparison": {
             "title": "Group Comparison"
           },
+          "handbook": {
+            "$ref": "#/components/schemas/HoldingsHandbook"
+          },
           "indicators": {
             "title": "Indicators"
           },
@@ -6580,7 +6583,8 @@
           "indicators",
           "group_comparison",
           "people",
-          "texts"
+          "texts",
+          "handbook"
         ],
         "title": "BudgetHoldings",
         "type": "object"
@@ -16335,6 +16339,82 @@
           "highest_id"
         ],
         "title": "HighestDecisionId",
+        "type": "object"
+      },
+      "HoldingsHandbook": {
+        "description": "Das Handbuch Beteiligungen der Stadt (``council/shareholding_handbook.py``):\nFundstelle samt Ratsbeschluss und die Regeln, die die Seite zeigt.",
+        "properties": {
+          "adopted_date": {
+            "title": "Adopted Date",
+            "type": "string"
+          },
+          "adopted_decision_id": {
+            "title": "Adopted Decision Id",
+            "type": "integer"
+          },
+          "adopted_template": {
+            "title": "Adopted Template",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingsHandbookRule"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "version",
+          "adopted_date",
+          "adopted_template",
+          "adopted_decision_id",
+          "url",
+          "rules"
+        ],
+        "title": "HoldingsHandbook",
+        "type": "object"
+      },
+      "HoldingsHandbookRule": {
+        "description": "Eine Regel des Handbuchs Beteiligungen als Kurzfassung für die Seite.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "summary",
+          "pages"
+        ],
+        "title": "HoldingsHandbookRule",
         "type": "object"
       },
       "Idea": {
