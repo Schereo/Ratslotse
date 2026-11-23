@@ -278,7 +278,7 @@ function QuizSetup({ catalog, starting, onStart, onCancel }: {
                     </span>
                   )}
                   <span className={cn("block font-display text-[15px] font-bold", active && "text-primary")}>WB {w.key}</span>
-                  <span className={cn("block text-[10.5px]", active ? "text-primary/80" : "text-muted-foreground")}>
+                  <span className={cn("block text-[10.5px]", active ? "text-primary" : "text-muted-foreground")}>
                     {w.questions} {w.questions === 1 ? "Frage" : "Fragen"}{w.points ? ` · ${w.points} P` : ""}
                   </span>
                 </button>

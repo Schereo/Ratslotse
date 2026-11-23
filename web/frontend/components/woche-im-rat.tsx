@@ -480,7 +480,7 @@ function RailPunkt({ punkt, top, mehrere, dichte }: {
         {/* Sagt, warum ausgerechnet dieser Punkt hinterlegt ist — ohne den
             Kicker wirkte die Fläche willkürlich (Tims Befund 15.08.). */}
         {top && desktop && (
-          <span className="mb-0.5 block font-mono text-meta font-semibold uppercase tracking-[0.06em] text-primary/80">
+          <span className="mb-0.5 block font-mono text-meta font-semibold uppercase tracking-[0.06em] text-primary">
             {punkt.topic_name
               ? "Dein Thema"
               /* Beim Dringlichkeitsantrag ist die Kurzfristigkeit selbst der

@@ -984,7 +984,7 @@ function SessionHighlights({ punkte, ksinr }: { punkte: NonNullable<CouncilSessi
               {(p.topic_name || p.top) && (
                 <span className={cn(
                   "mb-0.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]",
-                  p.topic_name ? "text-signal-ink" : "text-primary/80",
+                  p.topic_name ? "text-signal-ink" : "text-primary",
                 )}>
                   {p.topic_name ? `Dein Thema · ${p.topic_name}` : p.dringlich ? "Dringlichkeitsantrag" : "Wichtiger Punkt"}
                 </span>
