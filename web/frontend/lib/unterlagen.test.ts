@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ohneDatum, teileListe, angabenWort, aussagenGruppen } from "./unterlagen";
+import { ohneDatum, teileListe, angabenWort, aussagenGruppen, belegEinklappen } from "./unterlagen";
 
 describe("ohneDatum", () => {
   it("nimmt das Datumspräfix ab", () => {
@@ -14,7 +14,25 @@ describe("ohneDatum", () => {
   });
 });
 
+describe("belegEinklappen", () => {
+  it("klappt erst ab drei Stücken Belegmaterial ein, und nur hinter Lesestoff", () => {
+    expect(belegEinklappen(1, 1)).toBe(false);   // Vorlage + Quartalsbericht: beide sichtbar
+    expect(belegEinklappen(1, 2)).toBe(false);
+    expect(belegEinklappen(1, 3)).toBe(true);
+    expect(belegEinklappen(0, 5)).toBe(false);   // sonst stünde die Liste zugeklappt leer da
+  });
+});
+
 describe("teileListe", () => {
+  it("ein Bericht ist Lesestoff (wie im Dossier)", () => {
+    const t = teileListe([
+      { kind: "template", doc_type: "template", label: "Vorlage 26/0818" },
+      { kind: "attachment", doc_type: "report", label: "Quartalsbericht 30.09.2026" },
+    ]);
+    expect(t.lesestoff.map((d) => d.label)).toEqual(["Vorlage 26/0818", "Quartalsbericht 30.09.2026"]);
+    expect(t.beleg).toEqual([]);
+  });
+
   it("Lesestoff vorn, Belegmaterial und Protokolle getrennt", () => {
     const t = teileListe([
       { kind: "template", doc_type: "template", label: "Vorlage" },

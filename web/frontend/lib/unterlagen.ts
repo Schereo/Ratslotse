@@ -19,8 +19,22 @@ export const ART_WORT: Record<string, string> = {
   protocol: "Protokoll",
 };
 
-/** Was man liest, um die Aufbereitung gegenzulesen — der Rest ist Belegmaterial. */
-const LESESTOFF = new Set(["template", "amendment", "motion", "report_request", "synopsis", "statute", "statement"]);
+/** Was man liest, um die Aufbereitung gegenzulesen — der Rest ist Belegmaterial.
+ *  Dieselbe Einteilung wie im Plan (§ 2.4) und im Dossier
+ *  (`council/template_dossier.py::LESESTOFF`): Ein Bericht ist Lesestoff — bis
+ *  11/2026 fehlte er hier, und der Quartalsbericht, aus dem das Dossier seine
+ *  Zahlen hat, stand eingeklappt unter „Weitere Unterlagen" (Tim, 23.11.2026). */
+const LESESTOFF = new Set(["template", "amendment", "motion", "report_request", "synopsis", "statute", "statement", "report"]);
+
+/** Ab so vielen Stücken Belegmaterial lohnt das Einklappen. Darunter kostet
+ *  der Klick mehr, als die eingesparte Zeile bringt. */
+export const EINKLAPPEN_AB = 3;
+
+/** Wird das Belegmaterial eingeklappt? Nur, wenn es viel ist UND davor
+ *  Lesestoff steht — sonst wäre die Liste zugeklappt leer. */
+export function belegEinklappen(lesestoff: number, beleg: number): boolean {
+  return lesestoff > 0 && beleg >= EINKLAPPEN_AB;
+}
 
 /** „2026-10-31 Reduzierung …", „2026 11 01. - Antrag …", „20241025 DIE GRÜNEN …" → ohne Datum. */
 export function ohneDatum(label: string): string {

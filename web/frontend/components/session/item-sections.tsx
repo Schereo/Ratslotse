@@ -17,7 +17,7 @@ import { decisionHref, sitzungHref } from "@/lib/routes";
 import type { ApiAntwort } from "@/lib/vertrag";
 import type { DecisionOutcome } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ART_WORT, ohneDatum, teileListe } from "@/lib/unterlagen";
+import { ART_WORT, belegEinklappen, ohneDatum, teileListe } from "@/lib/unterlagen";
 
 export type Punkt = ApiAntwort<"/council/session/{ksinr}/item">;
 
@@ -103,17 +103,21 @@ function UnterlageZeile({ d }: { d: Unterlage }) {
 
 /** Die Gegenlese-Liste (Plan Vorlagen aufbereiten, § 6.1): je Dokument
  *  einmal, mit Nummer, Art, Antragsteller und Seiten — Lesestoff offen,
- *  Belegmaterial eingeklappt, Protokolle früherer Stationen zuletzt. */
+ *  viel Belegmaterial eingeklappt, Protokolle früherer Stationen zuletzt. */
 export function Unterlagen({ p, titel, bare }: { p: Punkt; titel: string | null; bare?: boolean }) {
   const { lesestoff, beleg, protokolle } = teileListe(p.documents);
+  const einklappen = belegEinklappen(lesestoff.length, beleg.length);
+  // Wenig Belegmaterial steht einfach mit in der Liste — in der Reihenfolge
+  // des Backends, damit die Nummern aufsteigen.
+  const offen = einklappen ? lesestoff : p.documents.filter((d) => d.kind !== "protocol");
   return (
     <section id="unterlagen" className={cn("scroll-mt-24", !bare && "rounded-2xl border border-border bg-card p-5 shadow-sm")}>
       {titel && <h2 className="mb-3 font-display text-base font-semibold text-foreground">{titel}</h2>}
-      {lesestoff.length > 0 && (
-        <ul className="grid gap-2">{lesestoff.map((d) => <UnterlageZeile key={d.url} d={d} />)}</ul>
+      {offen.length > 0 && (
+        <ul className="grid gap-2">{offen.map((d) => <UnterlageZeile key={d.url} d={d} />)}</ul>
       )}
-      {beleg.length > 0 && (
-        <details className="group mt-3" open={lesestoff.length === 0}>
+      {einklappen && (
+        <details className="group mt-3">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground">
             <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
             Weitere Unterlagen <span className="text-muted-foreground">{beleg.length}</span>
