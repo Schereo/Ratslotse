@@ -181,3 +181,15 @@ def test_ueberblicksregel_steht_nur_beim_ueberblick_im_prompt():
     text = lambda m: " ".join(str(x.get("content")) for x in m)  # noqa: E731
     assert "ÜBERBLICK ÜBER DEN ORT" in text(mit)
     assert "ÜBERBLICK ÜBER DEN ORT" not in text(ohne)
+
+
+# --- Beleglage --------------------------------------------------------------
+
+def test_ueberblick_gilt_nicht_als_duenn():
+    """Die Auswahl trägt keine Rerank-Scores. Als „dünn“ verlangte der Prompt
+    einen ersten Satz „die Unterlagen geben wenig her“ und eine kurze
+    Antwort — bei zwölf belegten Vorgängen das Gegenteil der Wahrheit."""
+    ohne_scores = [{"id": i, "title": "T"} for i in range(12)]
+    assert qa.beleglage(ohne_scores) == "duenn"
+    assert qa.beleglage(ohne_scores, deterministic=True) == "solide"
+    assert qa.beleglage(ohne_scores[:2], deterministic=True) == "duenn"
