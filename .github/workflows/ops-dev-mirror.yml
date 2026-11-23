@@ -1,0 +1,105 @@
+# Nachts (und von Hand): die Ratsdaten von Prod nach dev spiegeln.
+#
+# WARUM. Auf dev laufen keine Crons, und nach der Zusammenführung am
+# 27.08.2026 lief dev Prod davon: Am 23.11.2026 fehlten dort 358 Beschlüsse,
+# 9.709 Wortbeiträge und alle Pressemitteilungen seit dem 26.08. — der
+# Gold-Lauf von „Frag den Rat“ fand auf dev 142 von 200 Belegen, auf Prod 158,
+# mit demselben Code. Tims Entscheidung (23.11.2026): dev bekommt die
+# Ratsdaten von Prod. Was der Lauf genau tut und was dev dabei behält, steht
+# in scripts/dev_mirror.py.
+#
+# DATENSCHUTZ. Die nutzerbezogenen Tabellen werden AUF PROD in der Kopie
+# geleert, bevor sie die Maschine verlässt (COUNCIL_USER_OWNED_TABLES). Die
+# Konten-Datenbank (ratslotse.sqlite) wird nie angefasst — dev behält seine.
+#
+# REIHENFOLGE. Dieselbe Warteschlange wie der dev-Deploy (`deploy-dev-vm`):
+# Ein Deploy, der mitten im Tausch die Dienste neu startet, liefe sonst auf
+# einer halb getauschten Datei an.
+name: "Ops: Ratsdaten Prod → dev spiegeln"
+
+on:
+  schedule:
+    # 04:30 Uhr deutscher Winterzeit — nach den nächtlichen Prod-Crons,
+    # vor dem Arbeitstag.
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      trocken:
+        description: "Nur prüfen und berichten, dev nicht tauschen"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-dev-vm
+  cancel-in-progress: false
+
+jobs:
+  spiegeln:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: SSH einrichten
+        uses: ./.github/actions/ssh-config
+        with:
+          targets: |
+            prod ${{ secrets.VPS_HOST }}
+            dev ${{ secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_PROXY_USER }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
+
+      - name: Kopie auf Prod (ohne nutzerbezogene Tabellen)
+        run: |
+          scp -q scripts/dev_mirror.py prod:/tmp/dev_mirror.py
+          ssh prod 'cd ~/app && .venv/bin/python /tmp/dev_mirror.py snapshot --db data/council.sqlite --out /tmp/ratslotse-spiegel.sqlite'
+
+      - name: Nach dev übertragen
+        run: |
+          ssh prod 'gzip -1 -c /tmp/ratslotse-spiegel.sqlite' \
+            | ssh dev 'gunzip -c > ~/app/data/.spiegel-neu.sqlite'
+          ssh dev 'ls -l ~/app/data/.spiegel-neu.sqlite'
+
+      - name: Auf dev prüfen, übernehmen, tauschen
+        env:
+          TROCKEN: ${{ inputs.trocken && 'true' || 'false' }}
+        run: |
+          scp -q scripts/dev_mirror.py dev:/tmp/dev_mirror.py
+          schalter=""
+          if [ "$TROCKEN" = "true" ]; then schalter="--dry-run"; fi
+          ssh dev "cd ~/app && .venv/bin/python /tmp/dev_mirror.py swap --new data/.spiegel-neu.sqlite $schalter" \
+            | tee bericht.md
+          cat bericht.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dienste auf dev neu starten und prüfen
+        if: ${{ !inputs.trocken }}
+        run: |
+          # Exakt der Befehl aus deploy-dev.yml — nur der steht in den sudoers.
+          ssh dev 'sudo systemctl restart nwz-web-api nwz-web-frontend'
+          # Der Store migriert beim ersten Öffnen (dev ist im Code oft weiter
+          # als Prod); die Rauchprobe fasst die Datenbank wirklich an.
+          # Rückgabe 2 heißt „nur Rand-Proben rot“ — wie im dev-Deploy eine
+          # Warnung, kein Abbruch.
+          set +e
+          ssh dev 'for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/api/health >/dev/null && break; sleep 2; done
+                   python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000'
+          rc=$?
+          set -e
+          if [ "$rc" = "2" ]; then
+            echo "WARNUNG: Rand-Proben rot." | tee -a "$GITHUB_STEP_SUMMARY"
+          elif [ "$rc" != "0" ]; then
+            exit "$rc"
+          fi
+
+      - name: Aufräumen
+        if: always()
+        run: |
+          ssh prod 'rm -f /tmp/ratslotse-spiegel.sqlite /tmp/dev_mirror.py' || true
+          ssh dev 'rm -f ~/app/data/.spiegel-neu.sqlite ~/app/data/.spiegel-neu.sqlite-journal /tmp/dev_mirror.py' || true
