@@ -24,7 +24,9 @@ export COOKIE_SECURE="false"
 export DISABLE_RATE_LIMIT="1"
 # Die Passkey-Anmeldung prüft ihre Abfragen im echten Backend (34-passkey);
 # Anmeldung und Registrierung zeigen dann den Passkey-Knopf vor dem Formular.
-export FEATURE_FLAGS="passkey-anmeldung"
+# Gemeinsame Notizen laufen gegen das echte Backend samt Live-Verbindung
+# (35-gemeinsame-notizen) und brauchen dafür auch `notizen`.
+export FEATURE_FLAGS="passkey-anmeldung,notizen,notizen-teilen"
 export TELEGRAM_BOT_USERNAME="testbot"
 # Never inherit a developer's real mail configuration into throwaway browser
 # tests. Without delivery configured, test accounts are active immediately.

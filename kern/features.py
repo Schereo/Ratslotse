@@ -310,6 +310,17 @@ FEATURES: dict[str, Feature] = {
                     "dieselben Testvektoren; dann mit dem Release auf Prod an.",
         docs="app-und-konten#notizen-auf-dem-gerät-verschlüsselt",
     ),
+    "notizen-teilen": Feature(
+        key="notizen-teilen",
+        description="Gemeinsame Notizen: per Link einladen und live zusammen schreiben, Ende-zu-Ende "
+                    "verschlüsselt (eigener Notizschlüssel je Notiz, Yjs über eine Live-Verbindung). "
+                    "Braucht auch `notizen`.",
+        fertig_wenn="Datenschutzerklärung um gemeinsame Notizen ergänzt und von Tim abgenommen, auf dev "
+                    "zwei Wochen mit mindestens zwei Konten ohne Befund (einladen, gleichzeitig schreiben, "
+                    "Verbindung weg und wieder da, Mitglied entfernen), App liest gemeinsame Notizen; dann "
+                    "mit dem Release auf Prod an.",
+        docs="app-und-konten#gemeinsame-notizen",
+    ),
     "passkey-anmeldung": Feature(
         key="passkey-anmeldung",
         description="„Mit Passkey anmelden“ und „Mit Passkey registrieren“ neben Passwort und Apple; "

@@ -13,6 +13,11 @@
    render as h3/h4: the card around the note is already an h2, and an h1
    inside it would break the page's outline.
 
+   With `collab` it edits a SHARED note: the content is a Yjs document kept
+   in step by `lib/shared-note-live.ts`, other people's cursors and names
+   show (CollaborationCaret), undo is Yjs's own (StarterKit's is off — two
+   histories would fight). `value`/`onChange` are then not used.
+
    Loaded on demand by `note-field.tsx`; nothing of this reaches a page
    without an unlocked note. */
 
@@ -22,6 +27,10 @@ import StarterKit from "@tiptap/starter-kit";
 import { Heading } from "@tiptap/extension-heading";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import type * as Y from "yjs";
+import type { Awareness } from "y-protocols/awareness";
 import { Bold, Heading1, Heading2, Italic, List, ListChecks, ListOrdered, Paperclip, type LucideIcon } from "lucide-react";
 import { DocRefNode, DocRefPicker } from "@/components/notiz/doc-ref";
 import type { NoteDocument } from "@/lib/doc-ref";
@@ -43,6 +52,18 @@ export interface NoteEditorProps {
   /** Die Unterlagen der Seite, auf die die Notiz verweisen kann; ohne sie
    *  kein Knopf „Unterlage verweisen“. */
   documents?: NoteDocument[];
+  /** Eine gemeinsame Notiz: Yjs-Dokument und Anwesenheit statt `value`. */
+  collab?: NoteCollab;
+}
+
+export interface NoteCollab {
+  doc: Y.Doc;
+  awareness: Awareness;
+  user: { name: string; color: string };
+  /** Erst nach dem ersten Abgleich wird `seed` eingesetzt — und nur in ein leeres Dokument. */
+  synced: boolean;
+  /** Markdown-Text, mit dem eine neue gemeinsame Notiz beginnt (die eigene Notiz). */
+  seed?: string;
 }
 
 const MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
@@ -89,8 +110,9 @@ const NoteHeading = Heading.extend({
 });
 
 export default function NoteEditor({ id, label, value, onChange, onBlur, disabled, rows = 5, placeholder, className,
-  documents }: NoteEditorProps) {
+  documents, collab }: NoteEditorProps) {
   const [picking, setPicking] = useState(false);
+  const seeded = useRef(false);
   // Was das Feld zuletzt gemeldet hat: Kommt genau das als `value` zurück,
   // ist es das eigene Echo und kein neuer Stand (Laden, „übernehmen").
   const last = useRef(value);
@@ -110,7 +132,13 @@ export default function NoteEditor({ id, label, value, onChange, onBlur, disable
         hardBreak: false, link: false, underline: false, dropcursor: false,
         // Kein Leer-Absatz hinter einer Liste am Ende: Er stünde als Leerzeile im Text.
         trailingNode: false,
+        // Gemeinsam: Rückgängig übernimmt Yjs (nur die eigenen Schritte).
+        ...(collab ? { undoRedo: false as const } : {}),
       }),
+      ...(collab ? [
+        Collaboration.configure({ document: collab.doc }),
+        CollaborationCaret.configure({ provider: { awareness: collab.awareness }, user: collab.user }),
+      ] : []),
       DocRefNode,
       TaskList,
       TaskItem.configure({
@@ -121,7 +149,7 @@ export default function NoteEditor({ id, label, value, onChange, onBlur, disable
       // So viel wie das Textfeld davor; die Grenze des Servers liegt beim Geheimtext.
       CharacterCount.configure({ limit: 8000 }),
     ],
-    content: parseNote(value) as JSONContent,
+    ...(collab ? {} : { content: parseNote(value) as JSONContent }),
     editable: !disabled,
     editorProps: {
       attributes: {
@@ -131,18 +159,27 @@ export default function NoteEditor({ id, label, value, onChange, onBlur, disable
       },
     },
     onUpdate: ({ editor: e }) => {
+      if (collab) return;
       const text = serializeNote(e.getJSON() as NoteNode);
       last.current = text;
       onChangeRef.current(text);
     },
     onBlur: () => onBlurRef.current?.(),
-  });
+  }, [collab?.doc]);
 
   useEffect(() => {
-    if (!editor || value === last.current) return;
+    if (collab || !editor || value === last.current) return;
     last.current = value;
     editor.commands.setContent(parseNote(value) as JSONContent, { emitUpdate: false });
-  }, [editor, value]);
+  }, [editor, value, collab]);
+
+  // Eine neue gemeinsame Notiz beginnt mit der eigenen — einmal, nach dem
+  // ersten Abgleich, und nur, wenn noch niemand etwas geschrieben hat.
+  useEffect(() => {
+    if (!editor || !collab?.synced || !collab.seed?.trim() || seeded.current) return;
+    seeded.current = true;
+    if (editor.isEmpty) editor.commands.setContent(parseNote(collab.seed) as JSONContent);
+  }, [editor, collab?.synced, collab?.seed]);
 
   useEffect(() => { editor?.setEditable(!disabled, false); }, [editor, disabled]);
 

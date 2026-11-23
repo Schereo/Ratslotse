@@ -23,12 +23,15 @@
     "@radix-ui/react-slot": "1.1.0",
     "@tanstack/react-query": "5.56.2",
     "@tiptap/core": "3.33.0",
+    "@tiptap/extension-collaboration": "3.33.0",
+    "@tiptap/extension-collaboration-caret": "3.33.0",
     "@tiptap/extension-heading": "3.33.0",
     "@tiptap/extension-list": "3.33.0",
     "@tiptap/extensions": "3.33.0",
     "@tiptap/pm": "3.33.0",
     "@tiptap/react": "3.33.0",
     "@tiptap/starter-kit": "3.33.0",
+    "@tiptap/y-tiptap": "3.2.0",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "0.7.0",
     "clsx": "2.1.1",
@@ -46,7 +49,9 @@
     "sonner": "1.6.1",
     "tailwind-merge": "2.5.4",
     "tailwindcss-animate": "1.0.7",
-    "three": "^0.184.0"
+    "three": "^0.184.0",
+    "y-protocols": "1.0.7",
+    "yjs": "13.6.33"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",

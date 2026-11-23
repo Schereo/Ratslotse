@@ -7,6 +7,7 @@
 
 import dynamic from "next/dynamic";
 import type { NoteEditorProps } from "@/components/notiz/note-editor";
+export type { NoteCollab } from "@/components/notiz/note-editor";
 import { cn } from "@/lib/utils";
 
 const NoteEditor = dynamic(() => import("@/components/notiz/note-editor"), {

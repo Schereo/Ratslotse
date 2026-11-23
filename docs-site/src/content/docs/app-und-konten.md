@@ -706,6 +706,66 @@ Beide Tabellen hängen am Konto und gehen mit dessen Löschung. Den
 Tabelle mit einer anderen Art (`kind`). Web und App lesen dieselben
 Testvektoren (`lib/notiz-krypto.test.ts`, `tests/test_notizen.py`).
 
+### Gemeinsame Notizen
+
+Hinter dem Schalter `notizen-teilen` (braucht `notizen`) schreiben mehrere
+Konten live an einer Notiz zu einem Punkt oder Beschluss, Ende-zu-Ende
+verschlüsselt wie die eigenen. Bedient wird das im Umschalter über dem
+Notizfeld: „Nur ich“, die gemeinsamen Notizen zu diesem Ziel, „+ Gemeinsam“.
+
+| Was | Wie | Wo |
+|---|---|---|
+| Notizschlüssel | AES-256-GCM, je gemeinsamer Notiz zufällig | nur in den Browsern der Mitglieder |
+| Verpackung je Mitglied | mit dem eigenen Datenschlüssel (derselbe wie für die eigenen Notizen) | `shared_note_members` |
+| Inhalt | ein Yjs-Dokument: verschlüsselter Stand plus verschlüsselte, nummerierte Änderungen | `shared_notes.snapshot`, `shared_note_updates` |
+| Einladung | Notizschlüssel verpackt mit einem Geheimnis, das nur im Link-Anker steht | `shared_note_invites` (das Geheimnis nie) |
+
+**Einladen per Link.** Der Link heißt `/notiz-einladung?i=<Kennung>#<Geheimnis>`.
+Kein Browser schickt den Anker an einen Server; die Seite rettet ihn vor der
+Anmeldung in den `sessionStorage` und nimmt ihn aus der Adresszeile. Wer
+beitritt, packt den Notizschlüssel mit dem Geheimnis aus und verpackt ihn mit
+dem eigenen Datenschlüssel neu. Es gibt kein Adressbuch und keine Suche nach
+Konten, und der Server kann sich nicht selbst einladen, weil er das Geheimnis
+nie sieht. Ein Link gilt sieben Tage, jedes Mitglied kann einladen und
+Einladungen zurückziehen.
+
+**Live.** `web/frontend/lib/shared-note-live.ts` hält das Yjs-Dokument über
+einen WebSocket (`{id}/live` neben den übrigen Pfaden der gemeinsamen Notizen; WebSockets stehen in keinem OpenAPI-Vertrag) mit den anderen im Takt: Tippen
+geht gesammelt als eine Änderung hinaus, nach einer Unterbrechung holt der
+Browser nach und schickt Unbestätigtes neu, ab 200 Änderungen fasst ein
+Mitglied sie zu einem Stand zusammen. Auch Anwesenheit (Name, Cursor) geht
+verschlüsselt. Angemeldet wird die Verbindung mit einer Einmal-Kennung aus
+`POST /{id}/ticket`, nicht mit dem Cookie (sonst könnte jede fremde Seite eine
+Verbindung im Namen der Person öffnen). Der Server nummeriert, speichert und
+verteilt nur; die Räume liegen im Speicher des einen API-Prozesses. Auf Prod
+geht der WebSocket über Caddy und den Rewrite von Next; `next start` reicht
+Upgrade-Anfragen eines Rewrites wie `next dev` durch.
+
+**Rollen.** Wer anlegt, leitet: entfernt Mitglieder und löscht die Notiz für
+alle. Geht die Leitung (oder löscht ihr Konto), übernimmt das älteste
+Mitglied; ist niemand mehr da, verschwindet die Notiz samt Änderungen und
+Einladungen (`kern/store.py::_shared_notes_hand_over`). Eigene Änderungen
+verlieren beim Kontolöschen ihren Urheber, der Text bleibt den anderen.
+
+Was ausdrücklich noch fehlt:
+
+1. **Entfernen verschlüsselt nicht neu.** Wer entfernt wird, bekommt keine
+   Änderungen mehr, weil der Server sie ihm nicht liefert. Den alten
+   Notizschlüssel kennt er aber; gegen einen Server, der ihm trotzdem
+   Änderungen gäbe, hilft erst ein neuer Schlüssel für alle übrigen.
+2. **Wer den Link hat, kann beitreten**, bis er abläuft oder zurückgezogen ist.
+   Die Leitung sieht, wer dabei ist.
+3. **Der Server sieht**, wer mit wem eine gemeinsame Notiz zu welchem Punkt
+   hat, wann geschrieben wird und wie groß die Änderungen sind.
+4. **Die App** kennt gemeinsame Notizen noch nicht.
+
+Grenzen: 25 Mitglieder je Notiz, 200 gemeinsame Notizen je Konto, 5.000
+Änderungen ohne Stand, 256 KB je Änderung. Prüfungen:
+`tests/test_shared_notes.py`, `lib/shared-note-crypto.test.ts`,
+`lib/shared-note-live.test.ts` (zwei Clients und ein Relais im Speicher) und
+der Browsertest `35-gemeinsame-notizen` (zwei Konten, echtes Backend, echter
+WebSocket).
+
 ### Abzeichen
 
 `web/backend/app/routers/badges.py` — **acht** Lotsen-Abzeichen, kein Ranking,
