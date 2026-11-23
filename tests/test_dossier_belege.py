@@ -82,3 +82,19 @@ def test_verworfenes_landet_mit_grund():
 def test_seiten_aus_offsets():
     assert evidence.pages_from_offsets("aaaabbbb", [0, 4]) == ["aaaa", "bbbb"]
     assert evidence.pages_from_offsets("x", None) is None
+
+
+def test_ligatur_ohne_zeichen_und_aufzaehlungspunkt():
+    """Quartalsbericht 30.09.2026, Seite 4: Die Ligatur „ti" trägt dort gar kein
+    Zeichen („bestägt"). Das Modell schreibt ab, was im PDF zu sehen ist, und
+    setzt „•", wo der Text ein Zeichen aus dem privaten Bereich trägt."""
+    quelle = {"text": "", "pages": [
+        "Die aktuelle Hochrechnung bestägt im Ergebnis den Wirtscha)splan 2026.",
+        "Berichtet wird über die Eigenbetriebe:  Abfallwirtschaftsbetrieb  Bäderbetrieb"]}
+    assert evidence.locate("Die aktuelle Hochrechnung bestätigt im Ergebnis", quelle, None) == (True, 1)
+    assert evidence.locate("Berichtet wird über die Eigenbetriebe: • Abfallwirtschaftsbetrieb • Bäderbetrieb",
+                           quelle, 1) == (True, 2)
+    # Ziffern bleiben streng: Eine andere Zahl ist kein Beleg.
+    assert evidence.locate("Die aktuelle Hochrechnung bestätigt im Ergebnis den Wirtschaftsplan 2025", quelle, None)[0] is False
+    # Ohne Seiten genauso.
+    assert evidence.locate("Die aktuelle Hochrechnung bestätigt im Ergebnis", {"text": quelle["pages"][0]}, None) == (True, None)

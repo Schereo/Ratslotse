@@ -52,14 +52,17 @@ class UnterlagenMixin(StoreBasis):
             out[d["document_id"]] = d
         return out
 
-    def punkt_anlagen_ohne_text(self, seit: str) -> list[dict]:
+    def punkt_anlagen_ohne_text(self, seit: str, bis: str | None = None) -> list[dict]:
         """Punkt-Anlagen kommender und jüngster Sitzungen, deren Text noch nie
-        geladen wurde (``raw_text IS NULL``; ``""`` heißt „geladen, aber Scan")."""
+        geladen wurde (``raw_text IS NULL``; ``""`` heißt „geladen, aber Scan").
+        Mit ``bis`` nur bis zu diesem Tag, die frühesten zuerst — für den
+        Nachholer des Dossier-Laufs, dem der Sitzungstag am dringendsten ist."""
+        grenze, folge = ("AND s.session_date <= ? ", "ASC") if bis else ("", "DESC")
         return [dict(r) for r in self._conn.execute(
             "SELECT DISTINCT aa.document_id, aa.label, aa.url FROM council_agenda_attachments aa "
             "JOIN council_sessions s ON s.ksinr = aa.ksinr "
-            "WHERE s.session_date >= ? AND aa.raw_text IS NULL AND aa.document_id IS NOT NULL "
-            "AND aa.label != 'Vorlage' ORDER BY s.session_date DESC", (seit,))]
+            f"WHERE s.session_date >= ? {grenze}AND aa.raw_text IS NULL AND aa.document_id IS NOT NULL "
+            f"AND aa.label != 'Vorlage' ORDER BY s.session_date {folge}", (seit, bis) if bis else (seit,))]
 
     def set_punkt_anlagentext(self, url: str, text: str) -> None:
         """Den Text einer Punkt-Anlage setzen — an jeder Zeile mit dieser URL.
@@ -473,6 +476,28 @@ class UnterlagenMixin(StoreBasis):
                 "SELECT sources_hash FROM template_dossiers WHERE subject_key = ? AND status = 'ok' "
                 "AND substr(created_at, 1, 10) <= ? ORDER BY created_at DESC LIMIT 1", (key, r["session_date"])).fetchone()
             d = self.template_dossier(key, z["sources_hash"]) if z else self.template_dossier(key)
+            # Der Stand zum Sitzungstag soll keine Unterlage zeigen, die erst
+            # danach kam. Wurde dasselbe Material später nur neu GELESEN —
+            # Berichte mit eigenem Auftrag, reparierte Ligaturen (11/2026) —,
+            # gilt die neuere Lesung; sonst bliebe sie an jeder vergangenen
+            # Station unsichtbar. „Dasselbe Material" heißt: dieselben Dokumente.
+            if z and d and d.get("payload"):
+                def dokumente(pl: dict) -> set:
+                    # „material": alle Dokumente, die der Lauf kannte — auch die ohne
+                    # Text. Eine Anlage, deren Text erst später geladen wurde, ist
+                    # dieselbe Unterlage (Review 23.11.2026). Ältere Dossiers kennen
+                    # nur ihre Quellen.
+                    if isinstance(pl.get("material"), list):
+                        return set(pl["material"])
+                    return {q.get("document_id") for q in (pl.get("sources") or {}).values() if isinstance(q, dict)}
+                gleich = dokumente(d["payload"])
+                for n in self._conn.execute(
+                        "SELECT sources_hash, payload FROM template_dossiers WHERE subject_key = ? AND status = 'ok' "
+                        "AND created_at > ? AND payload IS NOT NULL ORDER BY created_at DESC",
+                        (key, d["created_at"])).fetchall():
+                    if dokumente(json.loads(n["payload"])) == gleich:
+                        d = self.template_dossier(key, n["sources_hash"])
+                        break
         else:
             d = self.template_dossier(key)
         if not d or not d.get("payload"):
