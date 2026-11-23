@@ -60,39 +60,85 @@ describe("recent — zuletzt angesehene Beschlüsse", () => {
 describe("qa-zuletzt — was der Fragen-Screen schon wusste", () => {
   const laden = () => import("./qa-zuletzt");
 
-  it("unterscheidet „noch nie hier“ von „nichts Frisches“", async () => {
-    // Der ganze Sinn: `null` rechtfertigt Platzhalter, ein leeres Array nicht.
+  it("unterscheidet „noch nie geladen“ von einer gemerkten Liste", async () => {
+    // Der ganze Sinn: `null` rechtfertigt Platzhalter, eine Liste nicht.
     const q = await laden();
-    expect(q.leseQaBeispiele()).toBeNull();
-    q.merkeQaBeispiele([]);
-    expect(q.leseQaBeispiele()).toEqual({ frisch: [] });
+    expect(q.readExampleQuestions()).toBeNull();
+    q.storeExampleQuestions(["Was kostet der Neubau des Stadions?"]);
+    expect(q.readExampleQuestions()).toEqual(["Was kostet der Neubau des Stadions?"]);
   });
 
-  it("gibt gemerkte Vorschläge zurück", async () => {
+  it("eine leere Liste zählt wie nie geladen", async () => {
+    // Sonst stünde beim nächsten Besuch ein leerer Block statt Platzhaltern.
     const q = await laden();
-    q.merkeQaBeispiele(["Wie steht es um das Stadion?"]);
-    expect(q.leseQaBeispiele()?.frisch).toEqual(["Wie steht es um das Stadion?"]);
+    q.storeExampleQuestions([]);
+    expect(q.readExampleQuestions()).toBeNull();
   });
 
-  it("wirft Vorschläge weg, die älter als eine Woche sind", async () => {
+  it("wirft Nicht-Zeichenketten und Leeres weg", async () => {
     const q = await laden();
-    q.merkeQaBeispiele(["alt"]);
-    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 8 * 24 * 3600 * 1000);
-    // Nicht null — „schon da gewesen" bleibt wahr, nur das Frische ist weg.
-    expect(q.leseQaBeispiele()).toEqual({ frisch: [] });
-    vi.restoreAllMocks();
+    localStorage.setItem("ratslotse:qa-fragen", JSON.stringify(["ok", 42, null, "  "]));
+    expect(q.readExampleQuestions()).toEqual(["ok"]);
   });
 
-  it("wirft Nicht-Zeichenketten weg", async () => {
+  it("räumt den Eintrag der alten, erzeugten Vorschläge weg", async () => {
     const q = await laden();
-    localStorage.setItem("ratslotse:qa-beispiele", JSON.stringify({ frisch: ["ok", 42, null], ts: Date.now() }));
-    expect(q.leseQaBeispiele()?.frisch).toEqual(["ok"]);
+    localStorage.setItem("ratslotse:qa-beispiele", JSON.stringify({ frisch: ["alt"], ts: 1 }));
+    q.storeExampleQuestions(["neu?"]);
+    expect(localStorage.getItem("ratslotse:qa-beispiele")).toBeNull();
   });
 
-  it("verträgt kaputten Inhalt", async () => {
+  it("rückt bei jedem Besuch um die gezeigten Fragen weiter", async () => {
     const q = await laden();
-    localStorage.setItem("ratslotse:qa-beispiele", "{kein json");
-    expect(q.leseQaBeispiele()).toBeNull();
+    expect(q.readExampleOffset()).toBe(0);
+    q.advanceExampleOffset(3);
+    q.advanceExampleOffset(2);
+    expect(q.readExampleOffset()).toBe(5);
+  });
+
+  it("verträgt kaputten Inhalt und gesperrten Speicher", async () => {
+    const q = await laden();
+    localStorage.setItem("ratslotse:qa-fragen", "{kein json");
+    localStorage.setItem("ratslotse:qa-fragen-weiter", "minus eins");
+    expect(q.readExampleQuestions()).toBeNull();
+    expect(q.readExampleOffset()).toBe(0);
+    speicher.kaputt(true);
+    expect(() => q.storeExampleQuestions(["a"])).not.toThrow();
+    expect(() => q.advanceExampleOffset(3)).not.toThrow();
+    expect(q.readExampleOffset()).toBe(0);
+  });
+});
+
+describe("exampleWindow — welche Fragen gerade dran sind", () => {
+  const liste = ["a", "b", "c", "d", "e"];
+  const laden = () => import("./qa-zuletzt");
+
+  it("nimmt die nächsten ab dem Zähler", async () => {
+    const { exampleWindow } = await laden();
+    expect(exampleWindow(liste, 0, 3)).toEqual(["a", "b", "c"]);
+    expect(exampleWindow(liste, 3, 2)).toEqual(["d", "e"]);
+  });
+
+  it("läuft über das Ende hinweg am Anfang weiter", async () => {
+    const { exampleWindow } = await laden();
+    expect(exampleWindow(liste, 4, 3)).toEqual(["e", "a", "b"]);
+    expect(exampleWindow(liste, 12, 2)).toEqual(["c", "d"]);
+  });
+
+  it("zeigt jede Frage einmal, bevor sich eine wiederholt", async () => {
+    // Die Zusage aus Tims Wunsch: durchrotieren, nicht würfeln.
+    const { exampleWindow } = await laden();
+    const zwanzig = Array.from({ length: 20 }, (_, i) => `F${i}`);
+    const gesehen: string[] = [];
+    for (let zaehler = 0; gesehen.length < 20; zaehler += 2) gesehen.push(...exampleWindow(zwanzig, zaehler, 2));
+    expect(new Set(gesehen).size).toBe(20);
+  });
+
+  it("nie mehr, als die Liste hat — und nichts bei leerer Liste", async () => {
+    const { exampleWindow } = await laden();
+    expect(exampleWindow(["a", "b"], 1, 3)).toEqual(["b", "a"]);
+    expect(exampleWindow([], 5, 3)).toEqual([]);
+    expect(exampleWindow(liste, 0, 0)).toEqual([]);
   });
 });
 
