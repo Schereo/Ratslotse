@@ -3283,6 +3283,70 @@ class ProgramStance(TypedDict):
     program_url: str | None
 
 
+class BudgetFindingSeries(TypedDict):
+    name: str
+    values: list[float | None]
+
+
+class BudgetFindingStep(TypedDict):
+    label: str
+    value: float
+
+
+class BudgetFindingRow(TypedDict):
+    label: str
+    value: float
+    change: NotRequired[float | None]
+
+
+class BudgetFindingVisual(TypedDict):
+    """Wie die Seite einen Befund zeichnet. ``type``: ``columns`` (Säulen je
+    Kategorie, ``kinds`` vom Code gesetzt: actual · forecast · plan ·
+    financial_plan · null), ``bridge`` (von ``start`` über ``steps`` zu
+    ``end``) oder ``bars`` (Rangfolge)."""
+    type: str
+    unit: str
+    categories: NotRequired[list[str]]
+    kinds: NotRequired[list[str | None]]
+    series: NotRequired[list[BudgetFindingSeries]]
+    stacked: NotRequired[bool]
+    highlight: NotRequired[list[int]]
+    start: NotRequired[BudgetFindingStep]
+    steps: NotRequired[list[BudgetFindingStep]]
+    end: NotRequired[BudgetFindingStep]
+    rows: NotRequired[list[BudgetFindingRow]]
+
+
+class BudgetFindingKeyFigure(TypedDict):
+    value: float
+    unit: str
+    label: str
+
+
+class BudgetFinding(TypedDict):
+    title: str
+    text: str
+    key_figure: BudgetFindingKeyFigure
+    #: Nummer der Grafik im Vorbericht („2.1.1-1“); ``None`` bei einem Befund nur aus dem Text.
+    chart: str | None
+    #: Seite der Grafik im Vorbericht (aus dem PDF gelesen).
+    page: int | None
+    quote: str | None
+    #: Seite des Zitats — oft eine andere als die der Grafik.
+    quote_page: NotRequired[int | None]
+    visual: BudgetFindingVisual
+
+
+class ItemBudgetFindings(TypedDict):
+    """„Was der Haushaltsentwurf zeigt“ (``council/budget_findings.py``)."""
+    document_id: int
+    label: str
+    url: str | None
+    budget_year: int | None
+    findings: list[BudgetFinding]
+    created_at: str
+
+
 class ItemProgramStances(TypedDict):
     #: Das Anliegen des Punkts, auf das sich „dafür“ und „dagegen“ beziehen.
     concern: str | None
@@ -3391,6 +3455,9 @@ class SessionItemDetail(TypedDict):
     surroundings: NotRequired[ItemSurroundings]
     #: Nur hinter dem Schalter ``wahlprogramm-am-punkt`` und nur, wenn ein Programm etwas sagt.
     program_stances: NotRequired[ItemProgramStances]
+    #: Nur hinter dem Schalter ``haushaltsentwurf-befunde`` und nur am Punkt mit einem
+    #: Vorbericht, zu dem es geprüfte Befunde gibt.
+    budget_findings: NotRequired[ItemBudgetFindings]
 
 
 class ImportanceBreakdown(TypedDict):

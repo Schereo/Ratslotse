@@ -930,6 +930,8 @@ Alle Variablen sind optional. Ohne Angabe gilt der Standardwert aus dem Code.
 | `COUNCIL_TERMS_VERIFY_MODEL` | … und jede Erklärung prüfen; nur was besteht, erscheint | `openai/gpt-6-sol` |
 | `COUNCIL_PROGRAM_MODEL` | Wahlprogramme zum Punkt einordnen (`council/programm_bezug.py`) | `openai/gpt-6-luna` |
 | `COUNCIL_PROGRAM_VERIFY_MODEL` | … und jede Einordnung bestätigen | `openai/gpt-6-sol` |
+| `COUNCIL_FINDINGS_MODEL` | Befunde aus den Grafiken des Vorberichts zum Haushaltsentwurf vorschlagen (`council/budget_findings.py`) | `openai/gpt-6-luna` |
+| `COUNCIL_FINDINGS_VERIFY_MODEL` | … und jede Deutung prüfen; nur was besteht, erscheint | `openai/gpt-6-sol` |
 | `COUNCIL_PAGE_QUESTIONS_MODEL` | Vorschlagsfragen auf Punkt- und Beschluss-Seite (`council/vorschlagsfragen.py`) | `openai/gpt-6-luna` |
 | `COUNCIL_PLAN_MODEL` | Pläne der Stadt: Stand je Maßnahme, Umsetzung oder Erwähnung (`council/plan_judge.py`) | `openai/gpt-6-luna` |
 | `COUNCIL_DEEP_MODEL` | Bericht der ausführlichen Recherche; leer heißt wie `COUNCIL_QA_MODEL` | leer |
@@ -968,6 +970,7 @@ gesetzt; wer sie ändert, misst gegen das Gold-Set
 | `DOSSIER_ABRUF_MAX_USD` | Tagesdeckel für Dossiers, die beim ersten Aufruf einer Seite nachgeholt werden | `0.2` |
 | `TERMS_MAX_USD` | Kostengrenze der Fachwörter je Lauf (Schalter `begriffe-aus-vorlage`) | `0.25` |
 | `PROGRAM_MAX_USD` | Kostengrenze der Wahlprogramm-Einordnungen je Lauf (Schalter `wahlprogramm-am-punkt`) | `0.25` |
+| `FINDINGS_MAX_USD` | Kostengrenze der Befunde aus dem Vorbericht zum Haushaltsentwurf je Lauf (Schalter `haushaltsentwurf-befunde`) | `0.5` |
 
 ### Livestream und Live-Verfolgung
 

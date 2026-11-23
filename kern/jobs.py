@@ -71,7 +71,7 @@ JOBS: list[dict] = [
     {
         "key": "vorlagen_dossiers",
         "label": "Dossiers der Vorlagen",
-        "description": "Aus den Unterlagen: holt nachgetragene Vorlagen und Punkt-Texte, dann Dossiers für die Vorlagen von drei Tagen zurück bis 21 Tage voraus (belegt, Kostengrenze je Lauf).",
+        "description": "Aus den Unterlagen: holt nachgetragene Vorlagen und Punkt-Texte, dann Dossiers für die Vorlagen von drei Tagen zurück bis 21 Tage voraus (belegt, Kostengrenze je Lauf); mit Schaltern danach Fachwörter, Wahlprogramme und die Befunde aus dem Vorbericht zum Haushaltsentwurf.",
         "schedule": "täglich 10 und 15 Uhr",
         "max_age_h": 30,
     },

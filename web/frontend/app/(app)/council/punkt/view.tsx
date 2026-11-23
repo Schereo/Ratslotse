@@ -24,6 +24,7 @@ import { KiStern } from "@/components/ki-stern";
 import { AusDenUnterlagen } from "@/components/session/aus-den-unterlagen";
 import { ImHaushalt } from "@/components/session/im-haushalt";
 import { Wahlprogramme } from "@/components/session/wahlprogramme";
+import { HaushaltsentwurfBefunde } from "@/components/session/haushaltsentwurf-befunde";
 import { AehnlicheBeschluesse, BeteiligungsHinweis, VideoSprung, WoDasIst } from "@/components/session/punkt-umfeld";
 import { ErklaerBereich, Erklaert, SeitenBegriffe } from "@/components/session/begriffe";
 import { useFetch } from "@/lib/use-fetch";
@@ -184,6 +185,7 @@ function PunktView({ p }: { p: Punkt }) {
               antraege={mitAntraegen ? p.amendments : undefined} dossier={ausDenUnterlagen ? p.dossier : null} />
           )}
 
+          <HaushaltsentwurfBefunde befunde={p.budget_findings} />
           <ImHaushalt kontext={p.budget_context} />
           <Wahlprogramme bezug={p.program_stances} />
 

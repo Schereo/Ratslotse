@@ -150,6 +150,8 @@ const FEATURE_LABELS: Record<string, string> = {
   template_terms_verify: "Fachwörter aus der Vorlage prüfen",
   program_stance: "Wahlprogramme zum Punkt einordnen",
   program_stance_verify: "Wahlprogramme zum Punkt prüfen",
+  budget_findings: "Was der Haushaltsentwurf zeigt",
+  budget_findings_verify: "Was der Haushaltsentwurf zeigt – Prüfung",
   simple_summary: "Lotti erklärt's einfach",
   social_card_text: "Social-Kartentext",
   social_critic: "Social-Kritiker",
