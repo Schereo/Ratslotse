@@ -15,6 +15,19 @@ Gesichert wird ALLES, was der Server nicht aus dem Repo wiederherstellen kann:
   neu zu beschaffen. Die Kopie bekommt 0600 und liegt im selben Verzeichnis
   wie die Datenbanken — wer den Off-Site-Spiegel nutzt, sollte wissen, dass
   die Geheimnisse mitwandern.
+* die **crontab** — sie steht nur auf dem Server, nicht im Repo.
+* **einzelne Dateien und Ordner**, die keine Datenbank sind und sich nicht
+  oder nur mühsam neu erzeugen lassen: die Verläufe der Wahlabende, die
+  Sitzungs-Transkripte, der Straßen-Snapshot, die Gold-Läufe
+  (``EINZELDATEIEN``, ``GESPIEGELTE_ORDNER``).
+
+**Was bewusst NICHT mitkommt** (Bestandsaufnahme 23.11.2026): Handkopien wie
+``council.vor-pymupdf-2026-10-18.sqlite`` — eine Datenbank mit Punkt im
+Stamm ist eine Sicherheitskopie von Hand, keine, die die App benutzt. Bis
+dahin lief sie als eigene Datenbank durch die Rotation: elf Stände zu 800 MB,
+8,8 GB lokal und noch einmal auf der Storage Box. Außerdem die Rohernte der
+fremden Städte (``cities-raw``, ``cities-files``): öffentliche Dokumente, die
+sich aus deren RIS neu holen lassen.
 
 Cron (als Nutzer tim auf dem App-Server):
   0 3 * * * /home/<user>/app/.venv/bin/python /home/<user>/app/scripts/backup_db.py
@@ -26,6 +39,7 @@ Off-Site-Mirror (optional, .env):
 from __future__ import annotations
 
 import os
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -198,6 +212,10 @@ def backup_db(src: Path) -> int:
         try:
             with dst_conn:
                 src_conn.backup(dst_conn)
+            # Die Kopie übernimmt den WAL-Modus der Quelle. Jedes spätere Öffnen
+            # (Prüfung, Deploy-Vergleich) legte dann -wal/-shm daneben, die die
+            # Rotation nie mitlöschte — am 23.11.2026 lagen 218 davon herum.
+            dst_conn.execute("PRAGMA journal_mode = DELETE")
         finally:
             src_conn.close()
             dst_conn.close()
@@ -212,6 +230,8 @@ def backup_db(src: Path) -> int:
                                   taeglich=taeglich, woechentlich=woechentlich)
     for alt in veraltet:
         alt.unlink()
+        for suffix in ("-wal", "-shm", "-journal"):
+            alt.with_name(alt.name + suffix).unlink(missing_ok=True)
 
     print(f"✓  {src.name} → {dst.name} ({len(behalten)} Stände im Bestand)")
     return len(behalten)
@@ -281,7 +301,30 @@ def backup_env() -> bool:
 GESPIEGELTE_ORDNER: dict[str, str] = {
     "plaene": "Planzeichnungen",
     "archiv": "Statistik-Archiv",
+    # Transkripte der Sitzungs-Mitschnitte: Der Livestream ist danach weg.
+    "transkripte": "Sitzungs-Transkripte",
+    # Ergebnisse der Gold-Läufe — die Vergleichsbasis jeder Messung.
+    "eval_gold": "Gold-Läufe",
 }
+
+#: Einzelne Dateien direkt unter ``data/`` (Muster), die keine Datenbank sind
+#: und trotzdem nicht verloren gehen dürfen. Eine Liste und kein „alle .json“:
+#: Dort liegen auch Fortschrittsmarken und Abzüge, die nichts in einem Backup
+#: zu suchen haben.
+EINZELDATEIEN = (
+    # Der Verlauf eines Wahlabends (Stand je Abruf) — nachträglich lässt er
+    # sich nirgends mehr abrufen.
+    "wahlabend-verlauf-*.json",
+    # Straßenbestand aus dem GIS der Stadt, das nur über den Heim-Proxy
+    # antwortet (kern/proxy.py).
+    "strassen-snapshot.json",
+    # Was der Wahltermin-Abgleich schon gesehen und gemeldet hat.
+    "wahltermine-*.json",
+)
+
+#: So holt das Backup die crontab. Ein Feld statt eines festen Aufrufs, damit
+#: die Tests nicht die crontab des Rechners lesen, auf dem sie laufen.
+CRONTAB_BEFEHL = ["crontab", "-l"]
 
 
 def dateien_spiegeln() -> dict[str, int]:
@@ -311,6 +354,51 @@ def dateien_spiegeln() -> dict[str, int]:
     return aus
 
 
+def einzeldateien_sichern() -> int:
+    """Die Dateien aus ``EINZELDATEIEN`` nach ``backups/einzeldateien``
+    spiegeln (der Off-Site-Lauf nimmt sie von dort mit). Was es unter
+    ``data/`` nicht mehr gibt, verschwindet auch dort."""
+    ziel = BACKUP_DIR / "einzeldateien"
+    ziel.mkdir(parents=True, exist_ok=True)
+    gefunden = {p.name: p for muster in EINZELDATEIEN for p in DATA.glob(muster) if p.is_file()}
+    for name, quelle in gefunden.items():
+        shutil.copy2(quelle, ziel / name)
+    for alt in ziel.iterdir():
+        if alt.is_file() and alt.name not in gefunden:
+            alt.unlink()
+    if gefunden:
+        print(f"✓  Einzeldateien gesichert ({len(gefunden)})")
+    return len(gefunden)
+
+
+def crontab_sichern() -> bool:
+    """Die crontab des Nutzers nach ``backups/crontab.backup`` (0600). Sie
+    steht nur auf dem Server; nach einem Serververlust wäre sonst jeder
+    Zeitplan aus Skript-Köpfen und ``kern/jobs.py`` zusammenzusuchen."""
+    try:
+        lauf = subprocess.run(CRONTAB_BEFEHL, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if lauf.returncode != 0 or not lauf.stdout.strip():
+        return False
+    ziel = BACKUP_DIR / "crontab.backup"
+    ziel.write_text(lauf.stdout)
+    ziel.chmod(0o600)
+    print("✓  crontab → crontab.backup")
+    return True
+
+
+def verwaiste_begleitdateien_entfernen() -> int:
+    """``-wal``/``-shm``/``-journal`` neben Sicherungen, die es nicht mehr gibt."""
+    weg = 0
+    for begleit in BACKUP_DIR.glob("*.sqlite-*"):
+        basis = begleit.with_name(begleit.name.rsplit("-", 1)[0])
+        if begleit.name.rsplit("-", 1)[1] in ("wal", "shm", "journal") and not basis.exists():
+            begleit.unlink()
+            weg += 1
+    return weg
+
+
 def backup_databases() -> dict[str, int | float]:
     """Back up every top-level SQLite database and return its core metrics.
 
@@ -325,19 +413,29 @@ def backup_databases() -> dict[str, int | float]:
         )
 
     gesichert, bytes_total, staende = 0, 0, 0
+    handkopien: list[str] = []
     # ALLE Datenbanken statt einer festen Liste: Eine neu hinzugekommene wäre
     # sonst still durchgerutscht. `data/backups/` bleibt außen vor (dort liegen
     # die Kopien selbst), `-wal`/`-shm` sind keine .sqlite-Dateien.
     for db_path in sorted(DATA.glob("*.sqlite")):
+        if "." in db_path.stem:
+            # Handkopie („council.vor-pymupdf-2026-10-18.sqlite“): keine
+            # Datenbank der App, sondern selbst schon eine Sicherung.
+            handkopien.append(db_path.name)
+            continue
         staende += backup_db(db_path)
         gesichert += 1
         bytes_total += db_path.stat().st_size
     if not gesichert:
         raise RuntimeError("keine Datenbank gefunden — es wurde nichts gesichert")
+    if handkopien:
+        print(f"·  Handkopien nicht gesichert: {', '.join(handkopien)}")
+    verwaiste_begleitdateien_entfernen()
     return {
         "Datenbanken gesichert": gesichert,
         "Größe (MB)": round(bytes_total / 1_000_000, 1),
         "Stände im Bestand": staende,
+        "Handkopien übersprungen": len(handkopien),
     }
 
 
@@ -345,13 +443,19 @@ def main() -> dict:
     """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
     stats = backup_databases()
     env_dabei = backup_env()
+    crontab_dabei = crontab_sichern()
+    einzeln = einzeldateien_sichern()
     gespiegelt = dateien_spiegeln()
     offsite_sync()
     return {
         **stats,
         "Planzeichnungen": gespiegelt.get("Planzeichnungen", 0),
         "Statistik-Archiv": gespiegelt.get("Statistik-Archiv", 0),
+        "Sitzungs-Transkripte": gespiegelt.get("Sitzungs-Transkripte", 0),
+        "Gold-Läufe": gespiegelt.get("Gold-Läufe", 0),
+        "Einzeldateien": einzeln,
         ".env gesichert": "ja" if env_dabei else "nein",
+        "crontab gesichert": "ja" if crontab_dabei else "nein",
         "Off-Site-Mirror": "ja" if os.environ.get("BACKUP_RSYNC_TARGET") else "nein",
     }
 
