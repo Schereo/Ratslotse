@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 from council.scraper import CouncilSession
-from council.store import COUNCIL_USER_OWNED_TABLES, CouncilStore
+from council.store import COUNCIL_USER_OWNED_TABLES, COUNCIL_USER_TEXT_TABLES, CouncilStore
 
 WURZEL = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location("dev_mirror", WURZEL / "scripts" / "dev_mirror.py")
@@ -28,6 +28,7 @@ mirror = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mirror)
 
 NUTZER = [t for t, _ in COUNCIL_USER_OWNED_TABLES]
+NUTZER_UND_TEXT = NUTZER + list(COUNCIL_USER_TEXT_TABLES)
 
 
 def _db(pfad: Path, beschluesse: int) -> str:
@@ -57,11 +58,51 @@ def _feedback(pfad: str, frage: str) -> None:
 def test_kopie_traegt_keine_nutzerdaten(tmp_path):
     prod = _db(tmp_path / "prod.sqlite", 3)
     _feedback(prod, "Frage einer echten Person")
-    bericht = mirror.snapshot(prod, str(tmp_path / "kopie.sqlite"), NUTZER)
+    _sql(prod, "INSERT INTO council_partei_meinungen_cache (key, question, result, created_at)"
+               " VALUES ('k', 'Was denkt die SPD über meine Straße?', '{}', '2026-11-23')")
+    kopie = str(tmp_path / "kopie.sqlite")
+    bericht = mirror.snapshot(prod, kopie, NUTZER_UND_TEXT)
     assert bericht["cleared"]["council_qa_feedback"] == 1
-    assert _sql(str(tmp_path / "kopie.sqlite"), "SELECT count(*) FROM council_qa_feedback") == [(0,)]
+    assert bericht["cleared"]["council_partei_meinungen_cache"] == 1
+    assert _sql(kopie, "SELECT count(*) FROM council_qa_feedback") == [(0,)]
+    assert _sql(kopie, "SELECT count(*) FROM council_partei_meinungen_cache") == [(0,)]
+    # Auch nicht in freien Seiten: Ein bloßes DELETE ließe den Text in der Datei.
+    roh = Path(kopie).read_bytes()
+    assert b"Frage einer echten Person" not in roh
+    assert "meine Straße".encode() not in roh
+    assert not Path(kopie + ".arbeit").exists()
     # Die Quelle bleibt unberührt.
     assert _sql(prod, "SELECT count(*) FROM council_qa_feedback") == [(1,)]
+
+
+#: Tabellen, deren Fragetext ERZEUGT ist (Quiz, Vorschlagsfragen) — kein
+#: Nutzer-Freitext, darf deshalb mit nach dev.
+ERZEUGTER_TEXT = {"council_quiz_questions", "page_questions"}
+
+
+def test_jede_tabelle_mit_fragetext_ist_eingeordnet(tmp_path):
+    """Eine neue Tabelle, die Fragen speichert, muss jemand einordnen: an einem
+    Konto (COUNCIL_USER_OWNED_TABLES), Nutzer-Freitext ohne Konto
+    (COUNCIL_USER_TEXT_TABLES) oder erzeugter Text (ERZEUGTER_TEXT hier). Sonst
+    trüge der dev-Spiegel sie mit gestellten Fragen von Prod nach dev — so
+    ging es dem Zwischenspeicher der Parteien-Meinungen bis zum 23.11.2026."""
+    import re
+    pfad = _db(tmp_path / "c.sqlite", 1)
+    con = sqlite3.connect(pfad)
+    verdacht = re.compile(r"(^|_)(question|questions|frage|fragen|query|anfrage)(_|$)", re.I)
+    eingeordnet = set(NUTZER_UND_TEXT) | ERZEUGTER_TEXT
+    offen = []
+    for (tabelle,) in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'"):
+        if "_fts" in tabelle:
+            continue
+        spalten = [r[1] for r in con.execute(f'PRAGMA table_info("{tabelle}")')]
+        if any(verdacht.search(sp) for sp in spalten) and tabelle not in eingeordnet:
+            offen.append(tabelle)
+    con.close()
+    assert not offen, (
+        f"Tabellen mit Fragetext, die niemand eingeordnet hat: {offen}. "
+        "Nutzer-Freitext → council.store.COUNCIL_USER_TEXT_TABLES (oder mit Konto-Spalte "
+        "COUNCIL_USER_OWNED_TABLES); erzeugter Text → ERZEUGTER_TEXT in diesem Test.")
 
 
 def test_dev_behaelt_anreicherungen_und_testkonten(tmp_path):
@@ -73,9 +114,12 @@ def test_dev_behaelt_anreicherungen_und_testkonten(tmp_path):
     kopie = str(tmp_path / "kopie.sqlite")
     mirror.snapshot(prod, kopie, NUTZER)
 
+    import os
+    os.chmod(dev, 0o644)
     bericht = mirror.swap(kopie, dev, NUTZER, backup=str(tmp_path / "sicherung.sqlite"))
 
     assert bericht["swapped"] is True
+    assert os.stat(dev).st_mode & 0o777 == 0o644   # Rechte der alten Datei
     assert bericht["preserved"]["template_terms"] == 1
     assert _sql(dev, "SELECT count(*) FROM council_decisions") == [(10,)]   # jetzt die von Prod
     assert _sql(dev, "SELECT template_number FROM template_terms") == [("26/0331",)]

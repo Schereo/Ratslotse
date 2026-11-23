@@ -17,7 +17,10 @@ bekommt die Ratsdaten von Prod.
 (nimmt einen offenen WAL korrekt mit, die Originaldatei wird nur gelesen).
 Danach werden die nutzerbezogenen Tabellen geleert —
 ``council.store.COUNCIL_USER_OWNED_TABLES``, dieselbe Liste, die das
-Konto-Löschen benutzt. Das passiert, **bevor** die Datei Prod verlässt.
+Konto-Löschen benutzt, dazu ``COUNCIL_USER_TEXT_TABLES`` (gestellte Fragen
+ohne Konto-Spalte) — mit ``secure_delete`` und ``VACUUM INTO``, damit nichts
+davon in freien Seiten der Datei überlebt. Das passiert, **bevor** die Datei
+Prod verlässt, in einem nur für den eigenen Nutzer lesbaren Verzeichnis.
 
 ``swap`` — auf **dev**. Prüft die Kopie (Integrität, und dass sie nicht
 deutlich weniger Beschlüsse trägt als dev), übernimmt, was es nur auf dev gibt,
@@ -86,6 +89,17 @@ def _user_owned_tables() -> list[str]:
     return [table for table, _owner in COUNCIL_USER_OWNED_TABLES]
 
 
+def _user_text_tables() -> list[str]:
+    """Freitext von Nutzern ohne Konto-Spalte (s. ``COUNCIL_USER_TEXT_TABLES``).
+    Ein älterer Stand auf der Maschine kennt die Liste vielleicht noch nicht —
+    dann gilt die Fassung aus diesem Skript."""
+    try:
+        from council.store import COUNCIL_USER_TEXT_TABLES
+        return list(COUNCIL_USER_TEXT_TABLES)
+    except ImportError:
+        return ["council_partei_meinungen_cache"]
+
+
 def _tables(conn: sqlite3.Connection) -> list[str]:
     return [r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")]
@@ -107,13 +121,24 @@ def _is_fts(table: str) -> bool:
 
 
 def snapshot(db: str, out: str, user_owned: list[str]) -> dict:
-    """Kopie ohne Personenbezug. Die Quelle wird nur gelesen."""
-    for suffix in ("", "-wal", "-shm"):
+    """Kopie ohne Personenbezug. Die Quelle wird nur gelesen.
+
+    Ein bloßes ``DELETE`` reicht nicht: SQLite gibt die Seiten nur frei, der
+    alte Inhalt stünde weiter in der Datei und ginge mit nach dev. Deshalb
+    ``secure_delete`` (überschreibt mit Nullen) und danach ``VACUUM INTO`` in
+    eine frische Datei, die keine freien Seiten mehr kennt. Die Zwischenkopie
+    wird gelöscht, bevor die Funktion zurückkehrt.
+    """
+    for suffix in ("", "-wal", "-shm", "-journal"):
         Path(out + suffix).unlink(missing_ok=True)
+    work = out + ".arbeit"
+    for suffix in ("", "-journal"):
+        Path(work + suffix).unlink(missing_ok=True)
     src = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
-    dst = sqlite3.connect(out)
+    dst = sqlite3.connect(work)
     src.backup(dst)
     src.close()
+    dst.execute("PRAGMA secure_delete = ON")
     cleared: dict[str, int] = {}
     existing = set(_tables(dst))
     for table in user_owned:
@@ -121,8 +146,10 @@ def snapshot(db: str, out: str, user_owned: list[str]) -> dict:
             cleared[table] = _rows(dst, table)
             dst.execute(f'DELETE FROM "{table}"')
     dst.commit()
-    dst.execute("PRAGMA journal_mode = DELETE")
+    dst.execute("VACUUM INTO ?", (out,))
     dst.close()
+    for suffix in ("", "-journal"):
+        Path(work + suffix).unlink(missing_ok=True)
     return {"bytes": os.path.getsize(out), "cleared": cleared}
 
 
@@ -218,6 +245,9 @@ def swap(new_path: str, db: str, user_owned: list[str], backup: str | None = Non
         dst.close()
     staged = db + ".spiegel"
     shutil.move(new_path, staged)
+    # Dieselben Rechte wie die alte Datei: Das Skript läuft mit umask 077, der
+    # Dienst muss die neue Datei aber genauso öffnen können wie bisher.
+    os.chmod(staged, os.stat(db).st_mode & 0o777)
     # Den WAL der alten Datei leeren, BEVOR sie ersetzt wird: Ein Rest-WAL
     # neben der neuen Datei würde beim nächsten Öffnen in sie eingespielt.
     # Der laufende Dienst hält die alte Datei bis zum Neustart offen; der
@@ -268,9 +298,10 @@ def main() -> int:
     s2.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     sys.path.insert(0, os.getcwd())
+    os.umask(0o077)  # Kopien nur für den eigenen Nutzer lesbar
     user_owned = _user_owned_tables()
     if args.cmd == "snapshot":
-        print(json.dumps(snapshot(args.db, args.out, user_owned)))
+        print(json.dumps(snapshot(args.db, args.out, user_owned + _user_text_tables())))
         return 0
     report = swap(args.new, args.db, user_owned, backup=args.backup, dry_run=args.dry_run)
     sys.stdout.write(markdown(report))

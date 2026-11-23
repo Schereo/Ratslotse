@@ -56,25 +56,29 @@ jobs:
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           known_hosts: ${{ secrets.VPS_KNOWN_HOSTS }}
 
+      # Zwischendateien liegen in einem privaten Verzeichnis (0700) im Home des
+      # App-Nutzers, nicht im für alle lesbaren /tmp.
       - name: Kopie auf Prod (ohne nutzerbezogene Tabellen)
         run: |
-          scp -q scripts/dev_mirror.py prod:/tmp/dev_mirror.py
-          ssh prod 'cd ~/app && .venv/bin/python /tmp/dev_mirror.py snapshot --db data/council.sqlite --out /tmp/ratslotse-spiegel.sqlite'
+          ssh prod 'umask 077; rm -rf ~/.dev-spiegel; mkdir -m 700 ~/.dev-spiegel'
+          scp -q scripts/dev_mirror.py prod:.dev-spiegel/dev_mirror.py
+          ssh prod 'cd ~/app && umask 077 && .venv/bin/python ~/.dev-spiegel/dev_mirror.py snapshot --db data/council.sqlite --out ~/.dev-spiegel/council.sqlite'
 
       - name: Nach dev übertragen
         run: |
-          ssh prod 'gzip -1 -c /tmp/ratslotse-spiegel.sqlite' \
-            | ssh dev 'gunzip -c > ~/app/data/.spiegel-neu.sqlite'
+          ssh dev 'umask 077; rm -rf ~/.dev-spiegel; mkdir -m 700 ~/.dev-spiegel'
+          ssh prod 'gzip -1 -c ~/.dev-spiegel/council.sqlite' \
+            | ssh dev 'umask 077; gunzip -c > ~/app/data/.spiegel-neu.sqlite'
           ssh dev 'ls -l ~/app/data/.spiegel-neu.sqlite'
 
       - name: Auf dev prüfen, übernehmen, tauschen
         env:
           TROCKEN: ${{ inputs.trocken && 'true' || 'false' }}
         run: |
-          scp -q scripts/dev_mirror.py dev:/tmp/dev_mirror.py
+          scp -q scripts/dev_mirror.py dev:.dev-spiegel/dev_mirror.py
           schalter=""
           if [ "$TROCKEN" = "true" ]; then schalter="--dry-run"; fi
-          ssh dev "cd ~/app && .venv/bin/python /tmp/dev_mirror.py swap --new data/.spiegel-neu.sqlite $schalter" \
+          ssh dev "cd ~/app && umask 077 && .venv/bin/python ~/.dev-spiegel/dev_mirror.py swap --new data/.spiegel-neu.sqlite $schalter" \
             | tee bericht.md
           cat bericht.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -101,5 +105,5 @@ jobs:
       - name: Aufräumen
         if: always()
         run: |
-          ssh prod 'rm -f /tmp/ratslotse-spiegel.sqlite /tmp/dev_mirror.py' || true
-          ssh dev 'rm -f ~/app/data/.spiegel-neu.sqlite ~/app/data/.spiegel-neu.sqlite-journal /tmp/dev_mirror.py' || true
+          ssh prod 'rm -rf ~/.dev-spiegel' || true
+          ssh dev 'rm -rf ~/.dev-spiegel; rm -f ~/app/data/.spiegel-neu.sqlite ~/app/data/.spiegel-neu.sqlite-journal' || true

@@ -76,6 +76,18 @@ COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("council_district_project_reports", "owner_id"),
 )
 
+#: Tabellen mit Freitext von Nutzerinnen und Nutzern, aber OHNE Konto-Spalte —
+#: das Konto-Löschen findet sie deshalb nicht, und sie stehen nicht oben.
+#: Der Zwischenspeicher der Parteien-Meinungen trägt die gestellte Frage im
+#: Klartext. Wer Daten aus Prod herausträgt (``scripts/dev_mirror.py``,
+#: ``scripts/lokale_daten.py``), leert diese Tabellen mit — gefunden am
+#: 23.11.2026 bei der Sicherheitsprüfung des dev-Spiegels.
+#: ``tests/test_dev_mirror.py`` meldet jede neue Tabelle mit einer Fragetext-
+#: Spalte, die weder hier noch oben noch als erzeugter Text eingeordnet ist.
+COUNCIL_USER_TEXT_TABLES: tuple[str, ...] = (
+    "council_partei_meinungen_cache",
+)
+
 
 
 
